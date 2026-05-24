@@ -882,16 +882,25 @@ describe('large simple XLSX import fast path', () => {
 </Relationships>`,
         'xl/connections.xml':
           '<connections xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1"><connection id="1" name="Revenue connection" type="5"/></connections>',
-        'xl/tables/_rels/table1.xml.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rIdQueryTable1" Type="${queryTableRelationshipType}" Target="../queryTables/queryTable1.xml"/>
-</Relationships>`,
         'xl/queryTables/queryTable1.xml':
           '<queryTable xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" name="RevenueTable" disableRefresh="1" connectionId="1"/>',
       },
+      sheetRelationshipsXml: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdQueryTable1" Type="${queryTableRelationshipType}" Target="../queryTables/queryTable1.xml"/>
+</Relationships>`,
     })
 
-    const imported = tryImportLargeSimpleXlsx(bytes, 'query-table-connections.xlsx', readXlsxZipEntriesLazy(bytes), {
+    const zip = readXlsxZipEntriesLazy(bytes)
+    Object.defineProperty(zip, 'xl/worksheets/sheet1.xml', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        throw new Error('query-table metadata should use worksheet relationships instead of inflating worksheet XML')
+      },
+    })
+
+    const imported = tryImportLargeSimpleXlsx(bytes, 'query-table-connections.xlsx', zip, {
       minByteLength: 0,
     })
     const artifacts = imported?.snapshot.workbook.metadata?.slicerConnectionArtifacts
@@ -904,11 +913,19 @@ describe('large simple XLSX import fast path', () => {
         target: 'connections.xml',
       },
     ])
-    expect(artifacts?.parts.map((part) => part.path).toSorted()).toEqual([
-      'xl/connections.xml',
-      'xl/queryTables/queryTable1.xml',
-      'xl/tables/_rels/table1.xml.rels',
+    expect(artifacts?.sheetArtifacts).toEqual([
+      {
+        sheetName: 'Data',
+        relationships: [
+          {
+            id: 'rIdQueryTable1',
+            type: queryTableRelationshipType,
+            target: '../queryTables/queryTable1.xml',
+          },
+        ],
+      },
     ])
+    expect(artifacts?.parts.map((part) => part.path).toSorted()).toEqual(['xl/connections.xml', 'xl/queryTables/queryTable1.xml'])
   })
 
   it('imports worksheet auto filters without falling back to SheetJS', () => {

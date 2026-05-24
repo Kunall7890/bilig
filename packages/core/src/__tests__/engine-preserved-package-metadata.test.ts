@@ -157,6 +157,32 @@ describe('engine imported package metadata preservation', () => {
     ])
   })
 
+  it('prunes preserved worksheet query-table topology when deleting its owning sheet', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-query-table-artifact-sheet-delete' })
+    await engine.ready()
+
+    engine.importSnapshot(queryTableConnectionSheetDeletionSnapshot())
+    engine.deleteSheet('Revenue')
+
+    const exported = engine.exportSnapshot()
+    expect(exported.sheets.map((sheet) => sheet.name)).toEqual(['Keep'])
+    expect(exported.workbook.metadata?.slicerConnectionArtifacts?.sheetArtifacts).toBeUndefined()
+    expect(exported.workbook.metadata?.slicerConnectionArtifacts?.parts.map((part) => part.path).toSorted()).toEqual(['xl/connections.xml'])
+    expect(exported.workbook.metadata?.slicerConnectionArtifacts?.workbookRelationships).toEqual([
+      {
+        id: 'rIdConnections',
+        type: `${officeRelationshipTypePrefix}/connections`,
+        target: 'connections.xml',
+      },
+    ])
+    expect(exported.workbook.metadata?.slicerConnectionArtifacts?.contentTypeOverrides).toEqual([
+      {
+        partName: '/xl/connections.xml',
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.connections+xml',
+      },
+    ])
+  })
+
   it('keeps shared preserved slicer parts when deleting one referencing sheet', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-shared-slicer-artifact-sheet-delete' })
     await engine.ready()
@@ -657,6 +683,67 @@ function slicerConnectionSheetDeletionSnapshot(): WorkbookSnapshot {
             {
               partName: '/xl/slicers/slicer1.xml',
               contentType: 'application/vnd.ms-excel.slicer+xml',
+            },
+          ],
+        },
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Revenue',
+        order: 0,
+        cells: [{ address: 'A1', value: 'revenue' }],
+      },
+      {
+        id: 2,
+        name: 'Keep',
+        order: 1,
+        cells: [{ address: 'A1', value: 'keep' }],
+      },
+    ],
+  }
+}
+
+function queryTableConnectionSheetDeletionSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Query table connection sheet deletion',
+      metadata: {
+        slicerConnectionArtifacts: {
+          parts: [
+            encodedPart('xl/connections.xml', '<connections/>'),
+            encodedPart('xl/queryTables/queryTable1.xml', '<queryTable connectionId="1"/>'),
+            encodedPart('xl/queryTables/_rels/queryTable1.xml.rels', '<Relationships/>'),
+          ],
+          workbookRelationships: [
+            {
+              id: 'rIdConnections',
+              type: `${officeRelationshipTypePrefix}/connections`,
+              target: 'connections.xml',
+            },
+          ],
+          sheetArtifacts: [
+            {
+              sheetName: 'Revenue',
+              relationships: [
+                {
+                  id: 'rIdQueryTable1',
+                  type: `${officeRelationshipTypePrefix}/queryTable`,
+                  target: '../queryTables/queryTable1.xml',
+                },
+              ],
+            },
+          ],
+          contentTypeOverrides: [
+            {
+              partName: '/xl/connections.xml',
+              contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.connections+xml',
+            },
+            {
+              partName: '/xl/queryTables/queryTable1.xml',
+              contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.queryTable+xml',
             },
           ],
         },

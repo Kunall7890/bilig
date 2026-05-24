@@ -32,6 +32,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-pivot-oracle.test.ts',
   'macos-desktop-excel-print-page-setup-oracle.test.ts',
   'macos-desktop-excel-protected-ranges-oracle.test.ts',
+  'macos-desktop-excel-query-table-package-oracle.test.ts',
   'macos-desktop-excel-rich-text-oracle.test.ts',
   'macos-desktop-excel-sheet-move-metadata-topology-oracle.test.ts',
   'macos-desktop-excel-sheet-properties-oracle.test.ts',
@@ -313,6 +314,17 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain("kind: 'deleteSheet'")
     expect(source).toContain('slicerConnectionTopology')
     expect(source).toContain('matches Desktop Excel slicer package cleanup after deleting the slicer sheet')
+  })
+
+  it('keeps the query-table package oracle anchored to Desktop Excel worksheet relationships', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-query-table-package-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelPackageOpenSaveOracle')
+    expect(source).toContain('queryTableRelationshipType')
+    expect(source).toContain('worksheetQueryTableRelationships')
+    expect(source).toContain('WorkPaper.buildFromSnapshot')
+    expect(source).toContain('preserves Desktop Excel legacy text query-table topology after open/save and headless export')
   })
 
   it('keeps the rich text oracle anchored to Desktop Excel cell run preservation', () => {

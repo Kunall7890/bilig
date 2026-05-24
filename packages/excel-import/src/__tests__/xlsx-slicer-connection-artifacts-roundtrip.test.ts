@@ -70,6 +70,27 @@ describe('xlsx slicer and connection artifacts roundtrip', () => {
     expect(readContentTypeOverride(exported, '/xl/connections.xml')).toBe(connectionsContentType)
     expect(readContentTypeOverride(exported, '/xl/queryTables/queryTable1.xml')).toBe(queryTableContentType)
   })
+
+  it('preserves Desktop Excel worksheet-level query-table relationships', () => {
+    const source = buildWorkbookWithWorksheetQueryTableArtifacts()
+
+    const imported = importXlsx(source, 'desktop-excel-query-table.xlsx')
+    const exported = exportXlsx(imported.snapshot)
+
+    expect(imported.snapshot.workbook.metadata?.slicerConnectionArtifacts?.parts.map((part) => part.path).toSorted()).toEqual([
+      'xl/connections.xml',
+      'xl/queryTables/queryTable1.xml',
+    ])
+    expect(imported.snapshot.workbook.metadata?.slicerConnectionArtifacts?.sheetArtifacts).toEqual([
+      {
+        sheetName: 'Revenue',
+        relationships: [{ id: 'rIdQueryTable1', type: queryTableRelationshipType, target: '../queryTables/queryTable1.xml' }],
+      },
+    ])
+    expect(queryTableMetrics(exported)).toEqual(queryTableMetrics(source))
+    expect(readZipText(exported, 'xl/queryTables/queryTable1.xml')).toBe(desktopExcelQueryTableXml)
+    expect(readContentTypeOverride(exported, '/xl/queryTables/queryTable1.xml')).toBe(queryTableContentType)
+  })
 })
 
 function buildWorkbookWithSlicerAndConnectionArtifacts(): Uint8Array {
@@ -145,6 +166,26 @@ function buildWorkbookWithQueryTableArtifacts(): Uint8Array {
   return zipSync(zip)
 }
 
+function buildWorkbookWithWorksheetQueryTableArtifacts(): Uint8Array {
+  const zip = unzipSync(exportXlsx(buildPlainWorkbook()))
+  zip['xl/_rels/workbook.xml.rels'] = strToU8(
+    appendRelationship(
+      readZipTextFromZip(zip, 'xl/_rels/workbook.xml.rels'),
+      `<Relationship Id="rIdQueryConnections" Type="${connectionsRelationshipType}" Target="connections.xml"/>`,
+    ),
+  )
+  zip['xl/worksheets/_rels/sheet1.xml.rels'] = strToU8(desktopExcelWorksheetQueryTableRelationshipsXml)
+  zip['xl/connections.xml'] = strToU8(desktopExcelTextConnectionXml)
+  zip['xl/queryTables/queryTable1.xml'] = strToU8(desktopExcelQueryTableXml)
+  zip['[Content_Types].xml'] = strToU8(
+    [
+      { partName: '/xl/connections.xml', contentType: connectionsContentType },
+      { partName: '/xl/queryTables/queryTable1.xml', contentType: queryTableContentType },
+    ].reduce((xml, entry) => upsertContentTypeOverride(xml, entry), readZipTextFromZip(zip, '[Content_Types].xml')),
+  )
+  return zipSync(zip)
+}
+
 function buildWorkbook(): WorkbookSnapshot {
   return {
     version: 1,
@@ -184,6 +225,30 @@ function buildWorkbook(): WorkbookSnapshot {
   }
 }
 
+function buildPlainWorkbook(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Desktop Excel query table',
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Revenue',
+        order: 0,
+        cells: [
+          { address: 'A1', value: 'Region' },
+          { address: 'B1', value: 'Amount' },
+          { address: 'A2', value: 'North' },
+          { address: 'B2', value: 1200 },
+          { address: 'A3', value: 'South' },
+          { address: 'B3', value: 900 },
+        ],
+      },
+    ],
+  }
+}
+
 function slicerConnectionMetrics(bytes: Uint8Array): {
   packageParts: string[]
   sheetSlicerRelationships: number
@@ -213,11 +278,13 @@ function queryTableMetrics(bytes: Uint8Array): {
   packageParts: string[]
   queryTableConnectionIds: string[]
   tableQueryTableRelationships: number
+  worksheetQueryTableRelationships: number
   workbookConnectionsRelationships: number
 } {
   const zip = unzipSync(bytes)
   const workbookRelationshipsXml = readZipTextFromZip(zip, 'xl/_rels/workbook.xml.rels')
   const tableRelationshipsXml = readOptionalZipTextFromZip(zip, 'xl/tables/_rels/table1.xml.rels') ?? ''
+  const worksheetRelationshipsXml = readOptionalZipTextFromZip(zip, 'xl/worksheets/_rels/sheet1.xml.rels') ?? ''
   const queryTableXml = readOptionalZipTextFromZip(zip, 'xl/queryTables/queryTable1.xml') ?? ''
   return {
     packageParts: Object.keys(zip)
@@ -228,6 +295,7 @@ function queryTableMetrics(bytes: Uint8Array): {
       return connectionId ? [connectionId] : []
     }),
     tableQueryTableRelationships: relationshipsWithType(tableRelationshipsXml, queryTableRelationshipType).length,
+    worksheetQueryTableRelationships: relationshipsWithType(worksheetRelationshipsXml, queryTableRelationshipType).length,
     workbookConnectionsRelationships: relationshipsWithType(workbookRelationshipsXml, connectionsRelationshipType).length,
   }
 }
@@ -336,6 +404,37 @@ const queryTableXml = [
   '</queryTableFields>',
   '</queryTableRefresh>',
   '</queryTable>',
+].join('')
+
+const desktopExcelWorksheetQueryTableRelationshipsXml = [
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+  `<Relationships xmlns="${relationshipNamespace}">`,
+  `<Relationship Id="rIdQueryTable1" Type="${queryTableRelationshipType}" Target="../queryTables/queryTable1.xml"/>`,
+  '</Relationships>',
+].join('')
+
+const desktopExcelTextConnectionXml = [
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+  '<connections xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ',
+  'xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="xr16" ',
+  'xmlns:xr16="http://schemas.microsoft.com/office/spreadsheetml/2017/revision16">',
+  '<connection id="1" xr16:uid="{881E9239-E69B-3140-9DE4-947575726693}" ',
+  'name="bilig-query-table-revenue" type="6" refreshedVersion="8" background="1" saveData="1">',
+  '<textPr codePage="10000" sourceFile="/Users/gregkonush/Downloads/bilig-query-table-revenue.csv" comma="1">',
+  '<textFields count="2"><textField/><textField/></textFields>',
+  '</textPr>',
+  '</connection>',
+  '</connections>',
+].join('')
+
+const desktopExcelQueryTableXml = [
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+  '<queryTable xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ',
+  'xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="xr16" ',
+  'xmlns:xr16="http://schemas.microsoft.com/office/spreadsheetml/2017/revision16" ',
+  'name="bilig-query-table-revenue" connectionId="1" xr16:uid="{29AC6D69-DFA8-664F-AA09-24F79E4E8EE2}" ',
+  'autoFormatId="16" applyNumberFormats="0" applyBorderFormats="0" applyFontFormats="1" ',
+  'applyPatternFormats="1" applyAlignmentFormats="0" applyWidthHeightFormats="0"/>',
 ].join('')
 
 const slicerCacheXml = [

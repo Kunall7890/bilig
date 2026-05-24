@@ -69,6 +69,7 @@ import type { ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
 import {
   largeSimpleControlArtifactSheetSources,
   largeSimpleLegacyCommentVmlSheetSources,
+  largeSimpleSlicerConnectionRelationshipSheetNames,
   largeSimpleSlicerConnectionSheetSources,
 } from './xlsx-large-simple-package-artifact-sources.js'
 import { parseHeadlessLargeSimpleWorksheetFromChunks } from './xlsx-large-simple-headless-worksheet-scanner.js'
@@ -259,6 +260,9 @@ export function tryImportLargeSimpleXlsx(
   const styleCatalog = new Map<string, CellStyleRecord>()
   let materializationStringPool: ImportedWorkbookStringPool | undefined = stringPool
   const scannedWorksheets: (ScannedWorksheet | undefined)[] = []
+  const slicerConnectionRelationshipSheetNames = hasSlicerConnectionParts
+    ? largeSimpleSlicerConnectionRelationshipSheetNames(zip, worksheetEntries)
+    : new Set<string>()
   const referencedSharedStringIndexes = new LargeSimpleSharedStringIndexCollector()
   const allowPreReleaseSheetFinalization =
     materializeCells &&
@@ -277,7 +281,8 @@ export function tryImportLargeSimpleXlsx(
       metadataScan?.controlArtifacts ||
       metadataScan?.legacyDrawingRelationshipId ||
       metadataScan?.pivotTableDefinitionsXml ||
-      metadataScan?.sheetSlicerListExtXml,
+      metadataScan?.sheetSlicerListExtXml ||
+      slicerConnectionRelationshipSheetNames.has(sheetName),
     )
   const canFinalizeSheetBeforeStyleParsing = (
     sheetName: string,

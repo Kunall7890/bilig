@@ -56,6 +56,7 @@ const tableRelationshipPartPathPattern = /^xl\/tables\/_rels\/table[1-9][0-9]*\.
 export interface ImportedWorkbookSlicerConnectionSheetSource {
   readonly sheetName: string
   readonly sheetPath: string
+  readonly readSheetXmlForSlicerList?: boolean
   readonly sheetSlicerListExtXml?: string
 }
 
@@ -166,6 +167,10 @@ function isQueryTableRelationship(relationship: ParsedRelationship | WorkbookPac
   return relationship.type === queryTableRelationshipType
 }
 
+function isSheetArtifactRelationship(relationship: ParsedRelationship | WorkbookPackageRelationshipSnapshot): boolean {
+  return isSlicerRelationship(relationship) || isQueryTableRelationship(relationship)
+}
+
 function relationshipPartPath(partPath: string): string {
   const normalized = normalizeZipPath(partPath)
   const slashIndex = normalized.lastIndexOf('/')
@@ -259,8 +264,12 @@ function readSheetArtifacts(
 ): WorkbookSlicerConnectionSheetArtifactsSnapshot[] {
   return sheets.flatMap((sheet) => {
     const relationshipsPath = relationshipPartPath(sheet.sheetPath)
-    const sheetSlicerListExtXml = sheet.sheetSlicerListExtXml ?? extensionXmlWithChild(getZipText(zip, sheet.sheetPath), 'slicerList')
-    const relationships = parseRelationships(getZipText(zip, relationshipsPath)).filter(isSlicerRelationship).map(relationshipSnapshot)
+    const sheetSlicerListExtXml =
+      sheet.sheetSlicerListExtXml ??
+      (sheet.readSheetXmlForSlicerList === false ? undefined : extensionXmlWithChild(getZipText(zip, sheet.sheetPath), 'slicerList'))
+    const relationships = parseRelationships(getZipText(zip, relationshipsPath))
+      .filter(isSheetArtifactRelationship)
+      .map(relationshipSnapshot)
     if (!sheetSlicerListExtXml && relationships.length === 0) {
       return []
     }
@@ -565,7 +574,7 @@ export function addExportSlicerConnectionArtifactsToXlsxBytes(bytes: Uint8Array,
         partsByPath,
         zip,
         basePartPath: sheetPath,
-        includeRelationship: isSlicerRelationship,
+        includeRelationship: isSheetArtifactRelationship,
       })
       if (relationshipResult.changed) {
         setZipText(zip, relationshipPath, buildRelationshipsXml(relationships))

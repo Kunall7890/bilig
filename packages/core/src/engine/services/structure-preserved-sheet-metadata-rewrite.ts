@@ -18,6 +18,7 @@ const pivotCacheDefinitionPartPathPattern = /^xl\/pivotCache\/pivotCacheDefiniti
 const worksheetSourcePattern = /<((?:[A-Za-z_][\w.-]*:)?worksheetSource)\b([^>]*\bref=(["'])([^"']+)\3[^>]*)\/?>/gu
 const worksheetSourceElementPattern = /<((?:[A-Za-z_][\w.-]*:)?worksheetSource)\b[^>]*\/?>/gu
 const workbookViewElementPattern = /<((?:[A-Za-z_][\w.-]*:)?workbookView)\b[^>]*\/?>/gu
+const queryTableRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/queryTable'
 const slicerRelationshipType = 'http://schemas.microsoft.com/office/2007/relationships/slicer'
 type WorkbookViewIndexAttribute = 'activeTab' | 'firstSheet'
 type WorkbookSlicerConnectionArtifactsRecord = NonNullable<WorkbookPreservedMetadataRecord['slicerConnectionArtifacts']>
@@ -535,7 +536,7 @@ function slicerPartPathsReferencedBySheetArtifacts(sheetArtifacts: readonly Work
   return new Set(
     sheetArtifacts
       .flatMap((entry) => entry.relationships ?? [])
-      .filter((relationship) => relationship.type === slicerRelationshipType)
+      .filter((relationship) => relationship.type === slicerRelationshipType || relationship.type === queryTableRelationshipType)
       .map((relationship) => normalizePackagePath(resolvePackageRelationshipTarget('xl/worksheets/sheet1.xml', relationship.target))),
   )
 }
