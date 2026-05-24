@@ -406,6 +406,8 @@ the check is recorded.
 Formula helpers reject sparse or accessor-backed raw options, explicit input
 arrays, label arrays, and function argument arrays before returning formula
 intent.
+Ref transport helpers return frozen plain data and frozen arrays, so inspected
+refs stay stable across agent handoff and verification.
 Normalized payloads preserve consumer-owned JSON keys as own data properties,
 including names like `__proto__` and `constructor`, so transported tool payloads
 cannot mutate prototypes or disappear during canonicalization.

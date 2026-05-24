@@ -276,22 +276,22 @@ export function normalizeRangeRef(input: FindRangeInput): CellRangeRef {
     const endAddress = optionalDataValue(source, 'endAddress', 'Workbook range selector endAddress')
     const end = normalizeCellAddress(endAddress.status === 'present' ? endAddress.value : startAddress.value, 'endAddress')
     assertRangeOrder(start, end)
-    return {
+    return Object.freeze({
       sheetName,
       startAddress: start.text,
       endAddress: end.text,
-    }
+    })
   }
 
   const address = optionalDataValue(source, 'address', 'Workbook range selector address')
   if (address.status === 'present') {
     const sheetName = requiredSelectorText(requiredDataValue(source, 'sheetName', 'Workbook range selector sheetName'), 'sheet name')
     const normalizedAddress = normalizeCellAddress(address.value, 'address')
-    return {
+    return Object.freeze({
       sheetName,
       startAddress: normalizedAddress.text,
       endAddress: normalizedAddress.text,
-    }
+    })
   }
 
   throw new Error('Workbook range selector must include address or startAddress')

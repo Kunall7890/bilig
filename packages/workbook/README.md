@@ -146,6 +146,8 @@ rejected before a check is recorded.
 Formula helpers also normalize as plain data: raw formula options, explicit
 inputs, labels, and function argument arrays reject sparse or accessor-backed
 payloads before formula intent is returned.
+Ref transport helpers return frozen plain data and frozen arrays, so a ref that
+an agent inspected cannot be mutated behind the same handoff object.
 `verifyModel` keeps the same behavior at whole-model scope: invalid manifests
 return an invalid verdict with an `invalid_model` error and no actions.
 

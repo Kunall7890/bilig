@@ -145,6 +145,14 @@ export function isWorkbookRefKind(value: unknown): value is WorkbookRefKind {
   return typeof value === 'string' && WORKBOOK_REF_KIND_SET.has(value)
 }
 
+function freezeCellRangeRef(range: CellRangeRef): CellRangeRef {
+  return Object.freeze({
+    sheetName: range.sheetName,
+    startAddress: range.startAddress,
+    endAddress: range.endAddress,
+  })
+}
+
 function hasValidBaseRef(value: object): value is WorkbookBaseRef {
   return hasOwnString(value, 'kind') && isWorkbookRefKind(value.kind) && hasOwnString(value, 'id') && hasOwnString(value, 'label')
 }
@@ -368,7 +376,7 @@ export function collectWorkbookRefs(value: unknown): readonly WorkbookRef[] {
   }
 
   visit(value)
-  return refs
+  return Object.freeze(refs)
 }
 
 export function toWorkbookRefData(ref: WorkbookRef | WorkbookRefData): WorkbookRefData {
@@ -377,54 +385,50 @@ export function toWorkbookRefData(ref: WorkbookRef | WorkbookRefData): WorkbookR
   }
   switch (ref.kind) {
     case 'range':
-      return {
+      return Object.freeze({
         kind: 'range',
         id: ref.id,
         label: ref.label,
-        range: {
-          sheetName: ref.range.sheetName,
-          startAddress: ref.range.startAddress,
-          endAddress: ref.range.endAddress,
-        },
-      }
+        range: freezeCellRangeRef(ref.range),
+      })
     case 'name':
-      return {
+      return Object.freeze({
         kind: 'name',
         id: ref.id,
         label: ref.label,
         name: ref.name,
-      }
+      })
     case 'table':
-      return {
+      return Object.freeze({
         kind: 'table',
         id: ref.id,
         label: ref.label,
         ...(ref.name !== undefined ? { name: ref.name } : {}),
         ...(ref.sheetName !== undefined ? { sheetName: ref.sheetName } : {}),
-        ...(ref.headers !== undefined ? { headers: copyStringArrayData(ref.headers) } : {}),
-      }
+        ...(ref.headers !== undefined ? { headers: Object.freeze(copyStringArrayData(ref.headers)) } : {}),
+      })
     case 'column':
-      return {
+      return Object.freeze({
         kind: 'column',
         id: ref.id,
         label: ref.label,
         table: toWorkbookTableRefData(ref.table),
         ...(ref.rows !== undefined ? { rows: toWorkbookRowsRefData(ref.rows) } : {}),
         name: ref.name,
-      }
+      })
     case 'rows':
-      return {
+      return Object.freeze({
         kind: 'rows',
         id: ref.id,
         label: ref.label,
         ...(ref.sheetName !== undefined ? { sheetName: ref.sheetName } : {}),
         ...(ref.table !== undefined ? { table: toWorkbookTableRefData(ref.table) } : {}),
-        where: {
+        where: Object.freeze({
           column: ref.where.column,
           op: ref.where.op,
           value: ref.where.value,
-        },
-      }
+        }),
+      })
   }
 }
 
@@ -488,7 +492,7 @@ export function collectWorkbookRefData(value: unknown): readonly WorkbookRefData
   }
 
   visit(value)
-  return refs
+  return Object.freeze(refs)
 }
 
 export interface WorkbookFindApi {
@@ -763,13 +767,13 @@ export function findRows(options: FindRowsOptions): WorkbookRowsRef {
 }
 
 export function createWorkbookFindApi(): WorkbookFindApi {
-  return {
+  return Object.freeze({
     findTable,
     findColumn,
     findRange,
     findName,
     findRows,
-  }
+  })
 }
 
 export const find: WorkbookFindNamespace = Object.freeze({

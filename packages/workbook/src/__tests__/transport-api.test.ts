@@ -4,6 +4,7 @@ import {
   checkPlanData,
   collectWorkbookRefData,
   collectWorkbookRefs,
+  createWorkbookFindApi,
   defineModel,
   describePlan,
   describeRuntimeRequirements,
@@ -17,6 +18,7 @@ import {
   isPlanData,
   isWorkbookRef,
   isWorkbookRefData,
+  normalizeRangeRef,
   runWorkbookPlan,
   toPlanData,
   toWorkbookRefData,
@@ -74,6 +76,12 @@ describe('@bilig/workbook transport api', () => {
     expect(isWorkbookRefData(parsed)).toBe(true)
     expect(isWorkbookRef(parsed)).toBe(false)
     expect(collectWorkbookRefData({ amount: parsed })).toEqual([data, data.rows, data.table])
+    expect(Object.isFrozen(data)).toBe(true)
+    expect(Object.isFrozen(data.table)).toBe(true)
+    expect(Object.isFrozen(data.table.headers)).toBe(true)
+    expect(Object.isFrozen(data.rows)).toBe(true)
+    expect(Object.isFrozen(data.rows.where)).toBe(true)
+    expect(Object.isFrozen(collectWorkbookRefData({ amount: parsed }))).toBe(true)
 
     if (!isWorkbookRefData(parsed)) {
       throw new Error('expected parsed workbook ref data')
@@ -87,6 +95,23 @@ describe('@bilig/workbook transport api', () => {
     }
     expect(hydrated.table.column('Amount')).toEqual(table.column('Amount'))
     expect(hydrated.rows.column('Amount')).toEqual(amount)
+  })
+
+  it('returns frozen selector and find helper data for stable agent handoff', () => {
+    const api = createWorkbookFindApi()
+    const normalizedRange = normalizeRangeRef({ sheetName: 'Sheet1', address: 'A1' })
+    const ref = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    const refData = toWorkbookRefData(ref)
+    const refs = collectWorkbookRefs({ ref })
+
+    expect(Object.isFrozen(api)).toBe(true)
+    expect(Object.isFrozen(normalizedRange)).toBe(true)
+    expect(Object.isFrozen(refData)).toBe(true)
+    if (refData.kind !== 'range') {
+      throw new Error('expected range ref data')
+    }
+    expect(Object.isFrozen(refData.range)).toBe(true)
+    expect(Object.isFrozen(refs)).toBe(true)
   })
 
   it('hydrates arbitrary consumer ref shapes without requiring hidden methods in transport data', () => {
@@ -183,9 +208,14 @@ describe('@bilig/workbook transport api', () => {
 
   it('copies known nested ref fields without invoking extra accessors', () => {
     const range = findRange({ sheetName: 'Sheet1', address: 'D2' })
-    const data = toWorkbookRefData(range)
-    if (data.kind !== 'range') {
+    const frozenData = toWorkbookRefData(range)
+    if (frozenData.kind !== 'range') {
       throw new Error('expected range ref data')
+    }
+    expect(Object.isFrozen(frozenData.range)).toBe(true)
+    const data = {
+      ...frozenData,
+      range: { ...frozenData.range },
     }
 
     let extraGetterInvoked = false
