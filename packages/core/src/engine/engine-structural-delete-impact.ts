@@ -10,6 +10,26 @@ import {
 import { preservedSheetMetadataTouchesStructuralDelete } from './services/structure-preserved-sheet-metadata-rewrite.js'
 
 type StructuralDeleteAxis = 'row' | 'column'
+type StructuralAxisTransformKind = 'insert' | 'delete'
+
+function formulaWouldRewriteForStructuralTransform(
+  formula: string,
+  sheetName: string,
+  axis: StructuralDeleteAxis,
+  start: number,
+  count: number,
+  kind: StructuralAxisTransformKind,
+): boolean {
+  const hasLeadingEquals = formula.startsWith('=')
+  const source = hasLeadingEquals ? formula.slice(1) : formula
+  const rewritten = rewriteFormulaForStructuralTransform(source, sheetName, sheetName, {
+    kind,
+    axis,
+    start,
+    count,
+  })
+  return (hasLeadingEquals ? `=${rewritten}` : rewritten) !== formula
+}
 
 function formulaWouldRewriteForDelete(
   formula: string,
@@ -18,15 +38,17 @@ function formulaWouldRewriteForDelete(
   start: number,
   count: number,
 ): boolean {
-  const hasLeadingEquals = formula.startsWith('=')
-  const source = hasLeadingEquals ? formula.slice(1) : formula
-  const rewritten = rewriteFormulaForStructuralTransform(source, sheetName, sheetName, {
-    kind: 'delete',
-    axis,
-    start,
-    count,
-  })
-  return (hasLeadingEquals ? `=${rewritten}` : rewritten) !== formula
+  return formulaWouldRewriteForStructuralTransform(formula, sheetName, axis, start, count, 'delete')
+}
+
+function formulaWouldRewriteForInsert(
+  formula: string,
+  sheetName: string,
+  axis: StructuralDeleteAxis,
+  start: number,
+  count: number,
+): boolean {
+  return formulaWouldRewriteForStructuralTransform(formula, sheetName, axis, start, count, 'insert')
 }
 
 function cellHasSemanticDeleteImpact(args: {
@@ -51,6 +73,7 @@ function hasFormulaReferenceAtOrAfter(args: {
   readonly axis: StructuralDeleteAxis
   readonly start: number
   readonly count: number
+  readonly kind: StructuralAxisTransformKind
 }): boolean {
   let found = false
   for (const sheet of args.workbook.sheetsByName.values()) {
@@ -66,7 +89,10 @@ function hasFormulaReferenceAtOrAfter(args: {
         return
       }
       const snapshot = args.getCellByIndex(cellIndex)
-      if (snapshot.formula && formulaWouldRewriteForDelete(snapshot.formula, args.sheetName, args.axis, args.start, args.count)) {
+      if (
+        snapshot.formula &&
+        formulaWouldRewriteForStructuralTransform(snapshot.formula, args.sheetName, args.axis, args.start, args.count, args.kind)
+      ) {
         found = true
       }
     })
@@ -142,6 +168,237 @@ function dataValidationTouchesAxisDelete(
 function addressTouchesAxisDelete(sheetName: string, address: string, axis: StructuralDeleteAxis, start: number): boolean {
   const parsed = parseCellAddress(address, sheetName)
   return axis === 'row' ? parsed.row >= start : parsed.col >= start
+}
+
+function definedNameTouchesAxisInsert(
+  value: WorkbookDefinedNameValueSnapshot,
+  sheetName: string,
+  axis: StructuralDeleteAxis,
+  start: number,
+  count: number,
+): boolean {
+  if (typeof value === 'string') {
+    return formulaWouldRewriteForInsert(value, sheetName, axis, start, count)
+  }
+  if (value === null || typeof value !== 'object') {
+    return false
+  }
+  switch (value.kind) {
+    case 'scalar':
+    case 'structured-ref':
+      return false
+    case 'formula':
+      return formulaWouldRewriteForInsert(value.formula, sheetName, axis, start, count)
+    case 'cell-ref': {
+      if (value.sheetName !== sheetName) {
+        return false
+      }
+      const parsed = parseCellAddress(value.address, value.sheetName)
+      return axis === 'row' ? parsed.row >= start : parsed.col >= start
+    }
+    case 'range-ref': {
+      if (value.sheetName !== sheetName) {
+        return false
+      }
+      const end = parseCellAddress(value.endAddress, value.sheetName)
+      return axis === 'row' ? end.row >= start : end.col >= start
+    }
+  }
+}
+
+function dataValidationTouchesAxisInsert(
+  validation: WorkbookDataValidationSnapshot,
+  sheetName: string,
+  axis: StructuralDeleteAxis,
+  start: number,
+  count: number,
+): boolean {
+  if (validation.rule.kind !== 'list' || !validation.rule.source) {
+    return false
+  }
+  const source = validation.rule.source
+  switch (source.kind) {
+    case 'cell-ref':
+      return source.sheetName === sheetName && addressTouchesAxisDelete(sheetName, source.address, axis, start)
+    case 'range-ref':
+      return source.sheetName === sheetName && rangeTouchesAxisDelete(source, axis, start)
+    case 'formula':
+      return formulaWouldRewriteForInsert(source.formula, sheetName, axis, start, count)
+    case 'named-range':
+    case 'structured-ref':
+      return false
+  }
+}
+
+export function hasEngineStructuralInsertImpact(args: {
+  readonly workbook: WorkbookStore
+  readonly getCellByIndex: (cellIndex: number) => CellSnapshot
+  readonly sheetName: string
+  readonly axis: StructuralDeleteAxis
+  readonly start: number
+  readonly count: number
+}): boolean {
+  const sheet = args.workbook.getSheet(args.sheetName)
+  if (!sheet) {
+    return false
+  }
+  if (
+    sheet.grid.someCellInAxisScope(args.axis, { start: args.start }, (cellIndex) =>
+      cellHasSemanticDeleteImpact({
+        workbook: args.workbook,
+        getCellByIndex: args.getCellByIndex,
+        cellIndex,
+      }),
+    )
+  ) {
+    return true
+  }
+  const axisEntries =
+    args.axis === 'row' ? args.workbook.listRowAxisEntries(args.sheetName) : args.workbook.listColumnAxisEntries(args.sheetName)
+  if (axisEntries.some((entry) => entry.index >= args.start)) {
+    return true
+  }
+  const axisMetadata =
+    args.axis === 'row' ? args.workbook.listRowMetadata(args.sheetName) : args.workbook.listColumnMetadata(args.sheetName)
+  if (axisMetadata.some((record) => record.start + record.count - 1 >= args.start)) {
+    return true
+  }
+  if (args.workbook.listStyleRanges(args.sheetName).some((record) => rangeTouchesAxisDelete(record.range, args.axis, args.start))) {
+    return true
+  }
+  if (args.workbook.listFormatRanges(args.sheetName).some((record) => rangeTouchesAxisDelete(record.range, args.axis, args.start))) {
+    return true
+  }
+  const freezePane = args.workbook.getFreezePane(args.sheetName)
+  if (freezePane && (args.axis === 'row' ? freezePane.rows > args.start : freezePane.cols > args.start)) {
+    return true
+  }
+  if (args.workbook.listFilters(args.sheetName).some((record) => rangeTouchesAxisDelete(record.range, args.axis, args.start))) {
+    return true
+  }
+  if (args.workbook.listSorts(args.sheetName).some((record) => rangeTouchesAxisDelete(record.range, args.axis, args.start))) {
+    return true
+  }
+  if (args.workbook.listDataValidations(args.sheetName).some((record) => rangeTouchesAxisDelete(record.range, args.axis, args.start))) {
+    return true
+  }
+  if (args.workbook.listConditionalFormats(args.sheetName).some((record) => rangeTouchesAxisDelete(record.range, args.axis, args.start))) {
+    return true
+  }
+  if (args.workbook.listRangeProtections(args.sheetName).some((record) => rangeTouchesAxisDelete(record.range, args.axis, args.start))) {
+    return true
+  }
+  if (
+    args.workbook
+      .listCommentThreads(args.sheetName)
+      .some((record) => addressTouchesAxisDelete(args.sheetName, record.address, args.axis, args.start))
+  ) {
+    return true
+  }
+  if (
+    args.workbook
+      .listNotes(args.sheetName)
+      .some((record) => addressTouchesAxisDelete(args.sheetName, record.address, args.axis, args.start))
+  ) {
+    return true
+  }
+  if (
+    args.workbook
+      .listTables()
+      .some(
+        (table) =>
+          table.sheetName === args.sheetName &&
+          rangeTouchesAxisDelete(
+            { sheetName: args.sheetName, startAddress: table.startAddress, endAddress: table.endAddress },
+            args.axis,
+            args.start,
+          ),
+      )
+  ) {
+    return true
+  }
+  if (
+    args.workbook
+      .listSpills()
+      .some((spill) => spill.sheetName === args.sheetName && addressTouchesAxisDelete(args.sheetName, spill.address, args.axis, args.start))
+  ) {
+    return true
+  }
+  if (
+    args.workbook
+      .listPivots()
+      .some(
+        (pivot) =>
+          (pivot.sheetName === args.sheetName && addressTouchesAxisDelete(args.sheetName, pivot.address, args.axis, args.start)) ||
+          (pivot.source?.sheetName === args.sheetName && rangeTouchesAxisDelete(pivot.source, args.axis, args.start)),
+      )
+  ) {
+    return true
+  }
+  if (
+    args.workbook
+      .listCharts()
+      .some(
+        (chart) =>
+          (chart.sheetName === args.sheetName && addressTouchesAxisDelete(args.sheetName, chart.address, args.axis, args.start)) ||
+          (chart.source.sheetName === args.sheetName && rangeTouchesAxisDelete(chart.source, args.axis, args.start)),
+      )
+  ) {
+    return true
+  }
+  if (
+    args.workbook
+      .listImages()
+      .some((image) => image.sheetName === args.sheetName && addressTouchesAxisDelete(args.sheetName, image.address, args.axis, args.start))
+  ) {
+    return true
+  }
+  if (
+    args.workbook
+      .listShapes()
+      .some((shape) => shape.sheetName === args.sheetName && addressTouchesAxisDelete(args.sheetName, shape.address, args.axis, args.start))
+  ) {
+    return true
+  }
+  if (
+    preservedSheetMetadataTouchesStructuralDelete(args.workbook.metadata.preservedSheetMetadata.get(args.sheetName), args.axis, args.start)
+  ) {
+    return true
+  }
+  if (drawingArtifactsTouchStructuralDelete(args.workbook, args.sheetName)) {
+    return true
+  }
+  if (drawingChartPackageArtifactsTouchStructuralDelete(args.workbook, args.sheetName, args.axis, args.start, args.count)) {
+    return true
+  }
+  if (
+    preservedChartPackageArtifactsTouchStructuralDelete(
+      args.workbook.metadata.preservedWorkbookMetadata,
+      args.sheetName,
+      args.axis,
+      args.start,
+      args.count,
+    )
+  ) {
+    return true
+  }
+  if (
+    args.workbook
+      .listDefinedNames()
+      .some((definedName) => definedNameTouchesAxisInsert(definedName.value, args.sheetName, args.axis, args.start, args.count))
+  ) {
+    return true
+  }
+  for (const candidateSheet of args.workbook.sheetsByName.values()) {
+    if (
+      args.workbook
+        .listDataValidations(candidateSheet.name)
+        .some((validation) => dataValidationTouchesAxisInsert(validation, args.sheetName, args.axis, args.start, args.count))
+    ) {
+      return true
+    }
+  }
+  return hasFormulaReferenceAtOrAfter({ ...args, kind: 'insert' })
 }
 
 export function hasEngineStructuralDeleteImpact(args: {
@@ -312,5 +569,5 @@ export function hasEngineStructuralDeleteImpact(args: {
       return true
     }
   }
-  return hasFormulaReferenceAtOrAfter(args)
+  return hasFormulaReferenceAtOrAfter({ ...args, kind: 'delete' })
 }

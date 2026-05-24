@@ -28,7 +28,7 @@ import type {
 } from '@bilig/protocol'
 import { calculationSettingsEqual, definedNameValuesEqual, normalizeWorkbookCalculationSettings } from '../engine-metadata-utils.js'
 import { buildFormatClearOps, buildFormatPatchOps, buildStyleClearOps, buildStylePatchOps } from '../engine-range-format-ops.js'
-import { hasEngineStructuralDeleteImpact } from './engine-structural-delete-impact.js'
+import { hasEngineStructuralDeleteImpact, hasEngineStructuralInsertImpact } from './engine-structural-delete-impact.js'
 import { buildSortRangeOps, buildSortTableOps, type SpreadsheetEngineSortRangeOptions } from './engine-sort-range.js'
 import { buildApplyTableAutoFilterOps, buildClearWorksheetAutoFilterOps, buildSetWorksheetAutoFilterOps } from './engine-autofilter.js'
 import { upsertNumericDefinedNameFast as upsertNumericDefinedNameFastPath } from './engine-numeric-defined-name-fast-path.js'
@@ -211,7 +211,7 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
   }
 
   insertRows(sheetName: string, start: number, count: number, options: { readonly emitTracked?: boolean } = {}): void {
-    if (count <= 0 || !this.workbook.getSheet(sheetName)) {
+    if (count <= 0 || !this.hasStructuralInsertImpact(sheetName, 'row', start, count)) {
       return
     }
     this.runtime.mutation.executeLocalSingleStructuralInsertNow({ kind: 'insertRows', sheetName, start, count }, undefined, options)
@@ -251,7 +251,7 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
   }
 
   insertColumns(sheetName: string, start: number, count: number, options: { readonly emitTracked?: boolean } = {}): void {
-    if (count <= 0 || !this.workbook.getSheet(sheetName)) {
+    if (count <= 0 || !this.hasStructuralInsertImpact(sheetName, 'column', start, count)) {
       return
     }
     this.runtime.mutation.executeLocalSingleStructuralInsertNow({ kind: 'insertColumns', sheetName, start, count }, undefined, options)
@@ -686,6 +686,17 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
 
   private hasStructuralDeleteImpact(sheetName: string, axis: 'row' | 'column', start: number, count: number): boolean {
     return hasEngineStructuralDeleteImpact({
+      workbook: this.workbook,
+      getCellByIndex: (cellIndex) => this.getCellByIndex(cellIndex),
+      sheetName,
+      axis,
+      start,
+      count,
+    })
+  }
+
+  private hasStructuralInsertImpact(sheetName: string, axis: 'row' | 'column', start: number, count: number): boolean {
+    return hasEngineStructuralInsertImpact({
       workbook: this.workbook,
       getCellByIndex: (cellIndex) => this.getCellByIndex(cellIndex),
       sheetName,

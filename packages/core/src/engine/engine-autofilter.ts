@@ -58,6 +58,15 @@ export function buildSetWorksheetAutoFilterOps(snapshot: WorkbookSnapshot, filte
     filter.criteria && filter.criteria.length > 0
       ? buildAutoFilterRowVisibilityOps(sheet, filter, bounds)
       : buildClearFilterRowVisibilityOps(sheet, bounds.bodyStartRow, bounds.bodyEndRow)
+  const existingFilter = sheet.metadata?.filters?.find(
+    (candidate) =>
+      candidate.sheetName === filter.sheetName &&
+      candidate.startAddress === filter.startAddress &&
+      candidate.endAddress === filter.endAddress,
+  )
+  if (visibilityOps.length === 0 && existingFilter && JSON.stringify(existingFilter) === JSON.stringify(filter)) {
+    return []
+  }
   return [...visibilityOps, { kind: 'setFilter', sheetName: filter.sheetName, range: structuredClone(filter) }]
 }
 
