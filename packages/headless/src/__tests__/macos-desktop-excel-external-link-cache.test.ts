@@ -11,6 +11,7 @@ import { exportXlsx, externalWorkbookReferencesWarning, importXlsx } from '@bili
 import {
   isMacosExcelInstalled,
   runMacosExcelInspectionOracle,
+  runMacosExcelPackageOpenSaveOracle,
   runMacosExcelStructuralOperationOracle,
   type NormalizedFormulaValue,
 } from '@bilig/excel-fixtures'
@@ -97,6 +98,44 @@ describe('macOS Desktop Excel external-link cache oracle', () => {
     expect(workbookXml).toContain('name="__bilig_ext_1_Rates"')
     expect(workbookXml).toContain('state="veryHidden"')
   })
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel native no-update save for stale external-link caches',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-external-link-native-save-')
+      try {
+        const sourceWorkbookPath = join(tempDir, 'external-link-native-save.xlsx')
+        const sourceBytes = buildExternalLinkRangeCacheWorkbook()
+        writeFileSync(sourceWorkbookPath, sourceBytes)
+
+        const sourceExternalLinkSummary = externalLinkPackageSummary(unzipSync(sourceBytes))
+        const sourceFormulaCacheValues = worksheetFormulaCacheValues(sourceBytes)
+        const excelNativeSave = runMacosExcelPackageOpenSaveOracle({
+          workbookPath: sourceWorkbookPath,
+          calculationPolicy: 'none',
+          saveWorkbook: true,
+          timeoutMs: 120_000,
+          updateLinks: 'never',
+        })
+        expect(excelNativeSave.excelVersion).toMatch(/^\d+\./u)
+
+        const excelNativeBytes = new Uint8Array(readFileSync(sourceWorkbookPath))
+        expect(externalLinkPackageSummary(unzipSync(excelNativeBytes))).toEqual(sourceExternalLinkSummary)
+        expect(worksheetFormulaCacheValues(excelNativeBytes)).toEqual(sourceFormulaCacheValues)
+
+        const exported = exportXlsx(importXlsx(sourceBytes, 'external-link-native-save.xlsx').snapshot)
+        expect(externalLinkPackageSummary(unzipSync(exported))).toEqual(sourceExternalLinkSummary)
+        expect(worksheetFormulaCacheValues(exported)).toEqual(sourceFormulaCacheValues)
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    150_000,
+  )
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
     'round-trips cached external ranges through Desktop Excel and Bilig recalc',
@@ -385,6 +424,19 @@ function externalLinkPackageMetrics(zip: Record<string, Uint8Array>): {
       /<Override\b[^>]*ContentType="application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.externalLink\+xml"[^>]*\/>/gu,
     ),
   }
+}
+
+function worksheetFormulaCacheValues(bytes: Uint8Array): Readonly<Record<string, string | null>> {
+  const sheetXml = xmlText(unzipSync(bytes), 'xl/worksheets/sheet1.xml')
+  return Object.fromEntries(
+    externalRangeAddresses.map((address) => {
+      const cellXml = new RegExp(`<c\\b(?=[^>]*\\br="${address}")[\\s\\S]*?<\\/c>`, 'u').exec(sheetXml)?.[0]
+      if (!cellXml) {
+        throw new Error(`Missing formula cell ${address}`)
+      }
+      return [address, /<v>([\s\S]*?)<\/v>/u.exec(cellXml)?.[1] ?? null]
+    }),
+  )
 }
 
 function extractSingleXmlOptional(xml: string, pattern: RegExp): string | undefined {

@@ -1,4 +1,5 @@
 import type { WorkbookCalculationSettingsSnapshot, WorkbookFormulaAuditSnapshot } from '@bilig/protocol'
+import { formulaReferencesExternalWorkbook, formulaReferencesVolatileFunction } from './xlsx-import-warnings.js'
 
 export const largeTrustedCachedFormulaOpenModeThreshold = 50_000
 
@@ -34,9 +35,19 @@ export function shouldUseCachedFormulaOpenMode(args: {
   const worksheetFormulaEntries = args.formulaAudit?.formulas.filter((entry) => entry.context === 'worksheet-cell') ?? []
   return (
     worksheetFormulaEntries.length === args.formulaCellCount &&
-    worksheetFormulaEntries.every((entry) => entry.cacheStatus === 'trustedCached') &&
+    worksheetFormulaEntries.every((entry) => isSafeTrustedCachedWorksheetFormula(entry)) &&
     calcChainExactlyCoversWorksheetFormulas(args.formulaAudit, worksheetFormulaEntries)
   )
+}
+
+function isSafeTrustedCachedWorksheetFormula(entry: WorkbookFormulaAuditSnapshot['formulas'][number]): boolean {
+  if (entry.cacheStatus !== 'trustedCached') {
+    return false
+  }
+  if (entry.formulaType === 'array' || entry.formulaType === 'dataTable') {
+    return false
+  }
+  return !formulaReferencesExternalWorkbook(entry.formula) && !formulaReferencesVolatileFunction(entry.formula)
 }
 
 function calcChainExactlyCoversWorksheetFormulas(

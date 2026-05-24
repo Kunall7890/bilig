@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -24,6 +24,16 @@ import {
 } from '../macos-excel-oracle.js'
 
 describe('macOS Desktop Excel oracle harness', () => {
+  it('uses Excel collection count syntax that works for workbook-open polling', () => {
+    const source = readFileSync(new URL('../macos-excel-oracle.ts', import.meta.url), 'utf8')
+
+    expect(source).toContain('set workbookCount to count of workbooks')
+    expect(source).toContain('set workbookCount to 0')
+    expect(source).toContain('repeat with workbookIndex from 1 to workbookCount')
+    expect(source).toContain('repeat with workbookIndex from workbookCount to 1 by -1')
+    expect(source).not.toContain('(count workbooks)')
+  })
+
   it('builds an AppleScript runner that opens, recalculates, reads, and closes a workbook', () => {
     const script = createMacosExcelRecalculationAppleScript({
       worksheetName: 'Cases',

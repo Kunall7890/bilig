@@ -7,6 +7,8 @@ function trustedAudit(
   options: {
     readonly calcChainCount?: number
     readonly cacheStatus?: 'trustedCached' | 'staleRisk' | 'unsupportedCached' | 'externalSubstitution' | 'engineRecomputed' | 'missing'
+    readonly formula?: string
+    readonly formulaType?: string
     readonly omitFormulaAddressAt?: number
     readonly mismatchedCalcChainAddressAt?: number
   } = {},
@@ -18,7 +20,8 @@ function trustedAudit(
       clause: '18.3.1.40',
       sheetName: 'Sheet1',
       ...(options.omitFormulaAddressAt === index ? {} : { address: `A${index + 1}` }),
-      formula: 'B1',
+      formula: options.formula ?? 'B1',
+      ...(options.formulaType ? { formulaType: options.formulaType } : {}),
       cachedValue: 1,
       cacheStatus: options.cacheStatus ?? ('trustedCached' as const),
     })),
@@ -118,5 +121,26 @@ describe('cached formula open mode policy', () => {
         formulaAudit: trustedAudit(formulaCount, { omitFormulaAddressAt: 10 }),
       }),
     ).toBe(false)
+  })
+
+  it('does not pass through automatic cached formulas that depend on Excel-only refresh semantics', () => {
+    const formulaCount = largeTrustedCachedFormulaOpenModeThreshold
+    const riskyAudits = [
+      trustedAudit(formulaCount, { formula: '[source.xlsx]Sheet1!A1' }),
+      trustedAudit(formulaCount, { formula: 'RAND()' }),
+      trustedAudit(formulaCount, { formula: 'TRANSPOSE(A1:C1)', formulaType: 'array' }),
+      trustedAudit(formulaCount, { formula: 'TABLE(A1,A2)', formulaType: 'dataTable' }),
+    ]
+
+    for (const formulaAudit of riskyAudits) {
+      expect(
+        shouldUseCachedFormulaOpenMode({
+          cachedFormulaValueCount: formulaCount,
+          formulaCellCount: formulaCount,
+          calculationSettings: { mode: 'automatic', compatibilityMode: 'excel-modern', calcId: 191029 },
+          formulaAudit,
+        }),
+      ).toBe(false)
+    }
   })
 })

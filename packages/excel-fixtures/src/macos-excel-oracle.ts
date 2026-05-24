@@ -284,7 +284,12 @@ function macosExcelWorkbookOpenCheckAppleScript(): string {
   set expectedName to item 2 of argv
   set normalizedExpectedPath to my normalizedMacosPath(expectedPath)
   tell application "Microsoft Excel"
-    repeat with workbookIndex from 1 to (count workbooks)
+    try
+      set workbookCount to count of workbooks
+    on error
+      set workbookCount to 0
+    end try
+    repeat with workbookIndex from 1 to workbookCount
       set candidateWorkbook to workbook workbookIndex
       try
         if (name of candidateWorkbook as string) is expectedName then return "ready"
@@ -321,7 +326,12 @@ function closeStaleMacosExcelOracleWorkbooks(): void {
 
 function macosExcelCloseStaleOracleWorkbooksAppleScript(): string {
   return `tell application "Microsoft Excel"
-  repeat with workbookIndex from (count workbooks) to 1 by -1
+  try
+    set workbookCount to count of workbooks
+  on error
+    return
+  end try
+  repeat with workbookIndex from workbookCount to 1 by -1
     set candidateWorkbook to workbook workbookIndex
     try
       set candidatePath to full name of candidateWorkbook as string
