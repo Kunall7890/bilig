@@ -1,4 +1,5 @@
 import { strFromU8, strToU8, zipSync, type Unzipped } from 'fflate'
+import { isDataModelPackagePartPath } from './xlsx-data-model-artifacts.js'
 
 const xlsxWorksheetXmlPathPattern = /^xl\/worksheets\/[^/]+\.xml$/u
 const xmlAttributePattern = /\s([A-Za-z_:][\w:.-]*)=("[^"]*"|'[^']*')/gu
@@ -19,16 +20,12 @@ interface PrepareSheetJsParserXlsxBytesOptions extends StripStyleOnlyBlankCellsO
   readonly omitParserIgnoredPackageParts?: boolean
 }
 
-const sheetJsParserIgnoredPackagePartPattern = /^(?:xl\/model\/|xl\/customData\/|customXml\/)/u
-
 function shouldOmitSheetJsParserPackagePart(path: string, options: PrepareSheetJsParserXlsxBytesOptions): boolean {
-  return options.omitParserIgnoredPackageParts === true && sheetJsParserIgnoredPackagePartPattern.test(path)
+  return options.omitParserIgnoredPackageParts === true && isDataModelPackagePartPath(path)
 }
 
 function hasSheetJsParserIgnoredPackagePart(zip: Unzipped, options: PrepareSheetJsParserXlsxBytesOptions): boolean {
-  return (
-    options.omitParserIgnoredPackageParts === true && Object.keys(zip).some((path) => sheetJsParserIgnoredPackagePartPattern.test(path))
-  )
+  return options.omitParserIgnoredPackageParts === true && Object.keys(zip).some(isDataModelPackagePartPath)
 }
 
 function cloneZipForSheetJsParser(zip: Unzipped, options: PrepareSheetJsParserXlsxBytesOptions): Unzipped {

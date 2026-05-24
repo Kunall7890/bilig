@@ -718,6 +718,52 @@ describe('large simple XLSX import fast path', () => {
     expect(decodeBase64(modelPart?.dataBase64 ?? '')).toEqual(modelBytes)
   })
 
+  it('preserves Power Query query and query-group artifacts on the streaming path', () => {
+    const queryXml = '<query xmlns="http://schemas.microsoft.com/office/2014/queries" name="RevenueQuery"/>'
+    const queryGroupXml = '<queryGroup xmlns="http://schemas.microsoft.com/office/2014/queryGroups" name="Finance Queries"/>'
+    const bytes = buildLargeSimpleWorkbook({
+      includeSharedStrings: false,
+      worksheetXml: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<dimension ref="A1"/>',
+        '<sheetData><row r="1"><c r="A1"><v>7</v></c></row></sheetData>',
+        '</worksheet>',
+      ].join(''),
+      extraEntries: {
+        'xl/_rels/workbook.xml.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rIdQuery1" Type="http://schemas.microsoft.com/office/2014/relationships/query" Target="queries/query1.xml"/>
+  <Relationship Id="rIdQueryGroup1" Type="http://schemas.microsoft.com/office/2014/relationships/queryGroup" Target="queryGroups/queryGroup1.xml"/>
+</Relationships>`,
+        'xl/queries/query1.xml': queryXml,
+        'xl/queryGroups/queryGroup1.xml': queryGroupXml,
+      },
+    })
+
+    const imported = tryImportLargeSimpleXlsx(bytes, 'power-query-artifacts.xlsx', readXlsxZipEntriesLazy(bytes), {
+      minByteLength: 0,
+      releaseZipSource: true,
+    })
+    const artifacts = imported?.snapshot.workbook.metadata?.dataModelArtifacts
+
+    expect(imported?.stats.cellCount).toBe(1)
+    expect(artifacts?.parts.map((part) => part.path).toSorted()).toEqual(['xl/queries/query1.xml', 'xl/queryGroups/queryGroup1.xml'])
+    expect(artifacts?.workbookRelationships).toEqual([
+      {
+        id: 'rIdQuery1',
+        type: 'http://schemas.microsoft.com/office/2014/relationships/query',
+        target: 'queries/query1.xml',
+      },
+      {
+        id: 'rIdQueryGroup1',
+        type: 'http://schemas.microsoft.com/office/2014/relationships/queryGroup',
+        target: 'queryGroups/queryGroup1.xml',
+      },
+    ])
+  })
+
   it('uses the streaming path for sub-threshold Power Pivot packages', () => {
     const modelBytes = deterministicBytes(64 * 1024)
     const bytes = buildLargeSimpleWorkbook({

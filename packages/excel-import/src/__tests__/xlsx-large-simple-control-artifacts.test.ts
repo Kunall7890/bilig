@@ -75,7 +75,7 @@ describe('large simple XLSX control artifacts', () => {
     expect(inspected?.warnings).toContain(externalPivotCachesWarning)
     expect(inspected?.stats.warningCount).toBe(1)
     expect(inspected?.workbookMetadataKeys).toEqual(
-      expect.arrayContaining(['documentPropertyArtifacts', 'pivotArtifacts', 'properties', 'styles', 'tables']),
+      expect.arrayContaining(['dataModelArtifacts', 'documentPropertyArtifacts', 'pivotArtifacts', 'properties', 'styles', 'tables']),
     )
   })
 
@@ -249,6 +249,7 @@ function buildHeadlessMetadataPackageWorkbook(): Uint8Array {
         `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${relationshipNamespace}">`,
         `<Relationship Id="rIdSheet1" Type="${worksheetRelationshipType}" Target="worksheets/sheet1.xml"/>`,
         '<Relationship Id="rIdPivotCache1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheDefinition" Target="pivotCache/pivotCacheDefinition1.xml"/>',
+        '<Relationship Id="rIdQuery1" Type="http://schemas.microsoft.com/office/2014/relationships/query" Target="queries/query1.xml"/>',
         '</Relationships>',
       ].join(''),
     ),
@@ -262,6 +263,7 @@ function buildHeadlessMetadataPackageWorkbook(): Uint8Array {
     'xl/tables/table1.xml': strToU8(
       '<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="Table1" ref="A1:A1"/>',
     ),
+    'xl/queries/query1.xml': strToU8('<query xmlns="http://schemas.microsoft.com/office/2014/queries" name="RevenueQuery"/>'),
   })
 }
 

@@ -36,6 +36,7 @@ const customDataPropertiesRelationshipType = 'http://schemas.microsoft.com/offic
 const dataModelPackagePartPattern = /^xl\/model\//u
 const customDataPackagePartPattern = /^xl\/customData\//u
 const customXmlPackagePartPattern = /^customXml\//u
+const powerQueryPackagePartPattern = /^xl\/(?:queries|queryGroups)\//u
 
 function readAttribute(xml: string, attributeName: string): string | null {
   const match = new RegExp(`\\s${attributeName}=("|')([\\s\\S]*?)\\1`, 'u').exec(xml)
@@ -131,16 +132,26 @@ function parsedRelationship(relationship: WorkbookPackageRelationshipSnapshot): 
   }
 }
 
+function relationshipTargetsDataModelPackagePart(relationship: ParsedRelationship): boolean {
+  return isDataModelPackagePartPath(resolveTargetPath(workbookPath, relationship.target))
+}
+
 function isDataModelRelationship(relationship: ParsedRelationship): boolean {
   return (
     relationship.type === powerPivotDataRelationshipType ||
     relationship.type === customXmlRelationshipType ||
-    relationship.type === customDataPropertiesRelationshipType
+    relationship.type === customDataPropertiesRelationshipType ||
+    relationshipTargetsDataModelPackagePart(relationship)
   )
 }
 
-function isDataModelPackagePartPath(path: string): boolean {
-  return dataModelPackagePartPattern.test(path) || customDataPackagePartPattern.test(path) || customXmlPackagePartPattern.test(path)
+export function isDataModelPackagePartPath(path: string): boolean {
+  return (
+    dataModelPackagePartPattern.test(path) ||
+    customDataPackagePartPattern.test(path) ||
+    customXmlPackagePartPattern.test(path) ||
+    powerQueryPackagePartPattern.test(path)
+  )
 }
 
 function preservedPartsByPath(parts: readonly WorkbookPreservedPackagePartSnapshot[]): Map<string, Uint8Array> {

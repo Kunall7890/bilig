@@ -1,5 +1,6 @@
 import { normalizeWorkbookName } from './workbook-import-helpers.js'
 import { externalPivotCachesWarning, unsupportedCellStylesWarning } from './xlsx-import-warnings.js'
+import { isDataModelPackagePartPath } from './xlsx-data-model-artifacts.js'
 import type {
   LargeSimpleXlsxImportStats,
   LargeSimpleXlsxOwnedSourceReleaseEvidence,
@@ -568,7 +569,7 @@ function workbookMetadataKeysForHeadlessPackage(packagePaths: readonly string[],
       keys.add('drawingArtifacts')
     } else if (path.startsWith('xl/pivotTables/') || path.startsWith('xl/pivotCache/')) {
       keys.add('pivotArtifacts')
-    } else if (path.startsWith('xl/model/') || path.startsWith('xl/customData/') || path.startsWith('customXml/')) {
+    } else if (isDataModelPackagePartPath(path)) {
       keys.add('dataModelArtifacts')
     } else if (
       path === 'xl/connections.xml' ||

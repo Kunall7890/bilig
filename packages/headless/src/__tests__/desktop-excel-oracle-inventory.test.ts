@@ -32,6 +32,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-pivot-oracle.test.ts',
   'macos-desktop-excel-print-page-setup-oracle.test.ts',
   'macos-desktop-excel-protected-ranges-oracle.test.ts',
+  'macos-desktop-excel-power-query-package-oracle.test.ts',
   'macos-desktop-excel-query-table-package-oracle.test.ts',
   'macos-desktop-excel-rich-text-oracle.test.ts',
   'macos-desktop-excel-sheet-move-metadata-topology-oracle.test.ts',
@@ -338,6 +339,19 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('worksheetQueryTableRelationships')
     expect(source).toContain('WorkPaper.buildFromSnapshot')
     expect(source).toContain('preserves Desktop Excel legacy text query-table topology after open/save and headless export')
+  })
+
+  it('keeps the Power Query package oracle anchored to Desktop Excel workbook query topology', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-power-query-package-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelPackageOpenSaveOracle')
+    expect(source).toContain('powerQueryTopology')
+    expect(source).toContain('xl/queries/query1.xml')
+    expect(source).toContain('xl/queryGroups/queryGroup1.xml')
+    expect(source).toContain('dataModelArtifacts')
+    expect(source).toContain('WorkPaper.buildFromSnapshot')
+    expect(source).toContain('preserves Power Query package topology after Desktop Excel open/save and headless export')
   })
 
   it('keeps the rich text oracle anchored to Desktop Excel cell run preservation', () => {

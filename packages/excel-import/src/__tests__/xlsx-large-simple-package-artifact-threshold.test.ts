@@ -11,6 +11,8 @@ describe('large simple XLSX package artifact threshold', () => {
     expect(shouldBypassLargeSimpleByteThresholdForPackageArtifacts(zipWith(['xl/model/item.data']))).toBe(true)
     expect(shouldBypassLargeSimpleByteThresholdForPackageArtifacts(zipWith(['xl/customData/item1.xml']))).toBe(true)
     expect(shouldBypassLargeSimpleByteThresholdForPackageArtifacts(zipWith(['customXml/item1.xml']))).toBe(true)
+    expect(shouldBypassLargeSimpleByteThresholdForPackageArtifacts(zipWith(['xl/queries/query1.xml']))).toBe(true)
+    expect(shouldBypassLargeSimpleByteThresholdForPackageArtifacts(zipWith(['xl/queryGroups/queryGroup1.xml']))).toBe(true)
   })
 
   it('keeps pivot-only packages on the normal fidelity fallback threshold', () => {

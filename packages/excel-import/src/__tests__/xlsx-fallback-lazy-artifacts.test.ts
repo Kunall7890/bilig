@@ -34,7 +34,12 @@ describe('XLSX fallback lazy artifact readers', () => {
     }).not.toThrow()
 
     const dataModelArtifacts = readImportedWorkbookDataModelArtifacts(zip)
-    expect(dataModelArtifacts?.parts).toMatchObject([{ path: 'xl/model/item.data', byteLength: 1024 * 1024 }])
+    expect(dataModelArtifacts?.parts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: 'xl/model/item.data', byteLength: 1024 * 1024 }),
+        expect.objectContaining({ path: 'xl/queries/query1.xml', byteLength: 512 * 1024 }),
+      ]),
+    )
 
     const descriptor = Object.getOwnPropertyDescriptor(zip, 'xl/model/item.data')
     expect(descriptor && 'get' in descriptor && typeof descriptor.get).toBe('function')
@@ -61,5 +66,6 @@ function buildWorkbookWithUnrelatedHeavyPart(): Uint8Array {
       ),
   )
   zip['xl/model/item.data'] = new Uint8Array(1024 * 1024)
+  zip['xl/queries/query1.xml'] = new Uint8Array(512 * 1024)
   return zipSync(zip)
 }

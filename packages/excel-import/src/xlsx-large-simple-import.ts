@@ -13,7 +13,7 @@ import {
 import { readImportedWorkbookCellMetadataPart } from './xlsx-cell-metadata.js'
 import { legacyCommentThreadSignature, readImportedWorkbookLegacyCommentVmlFromSheetSources } from './xlsx-comment-vml.js'
 import { readImportedWorkbookControlArtifactsFromSheetSources } from './xlsx-control-artifacts.js'
-import { readImportedWorkbookDataModelArtifacts } from './xlsx-data-model-artifacts.js'
+import { isDataModelPackagePartPath, readImportedWorkbookDataModelArtifacts } from './xlsx-data-model-artifacts.js'
 import { readImportedWorkbookDrawingArtifactsFromWorksheetRelationships } from './xlsx-drawing-artifacts.js'
 import { readImportedWorkbookExternalLinkArtifacts } from './xlsx-external-link-artifacts.js'
 import { readImportedSheetAutoFilters } from './xlsx-filters.js'
@@ -171,9 +171,7 @@ export function tryImportLargeSimpleXlsx(
   const hasPivotParts = packagePaths.some((path) => path.startsWith('xl/pivotTables/') || path.startsWith('xl/pivotCache/'))
   const hasExternalLinkParts = packagePaths.some((path) => path.startsWith('xl/externalLinks/'))
   const hasLegacyCommentParts = packagePaths.some((path) => path.startsWith('xl/comments') || path.endsWith('.vml'))
-  const hasDataModelParts = packagePaths.some(
-    (path) => path.startsWith('xl/model/') || path.startsWith('xl/customData/') || path.startsWith('customXml/'),
-  )
+  const hasDataModelParts = packagePaths.some(isDataModelPackagePartPath)
   const hasSlicerConnectionParts = packagePaths.some(
     (path) =>
       path === 'xl/connections.xml' ||

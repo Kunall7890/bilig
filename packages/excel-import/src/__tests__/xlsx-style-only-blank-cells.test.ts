@@ -116,6 +116,8 @@ describe('stripStyleOnlyBlankCellsForSheetJs', () => {
 </worksheet>`),
       'xl/model/item.data': new Uint8Array([1, 2, 3]),
       'xl/customData/item1.data': new Uint8Array([4, 5, 6]),
+      'xl/queries/query1.xml': strToU8('<query/>'),
+      'xl/queryGroups/queryGroup1.xml': strToU8('<queryGroup/>'),
       'customXml/item1.xml': strToU8('<root/>'),
     })
     const zip = unzipSync(bytes)
@@ -133,6 +135,8 @@ describe('stripStyleOnlyBlankCellsForSheetJs', () => {
     expect(parserZip['xl/worksheets/sheet1.xml']).toBeDefined()
     expect(parserZip['xl/model/item.data']).toBeUndefined()
     expect(parserZip['xl/customData/item1.data']).toBeUndefined()
+    expect(parserZip['xl/queries/query1.xml']).toBeUndefined()
+    expect(parserZip['xl/queryGroups/queryGroup1.xml']).toBeUndefined()
     expect(parserZip['customXml/item1.xml']).toBeUndefined()
   })
 })

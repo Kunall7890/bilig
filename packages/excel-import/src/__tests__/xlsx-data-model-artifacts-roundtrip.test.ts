@@ -10,9 +10,13 @@ const customXmlRelationshipType = 'http://schemas.openxmlformats.org/officeDocum
 const customDataPropertiesRelationshipType = 'http://schemas.microsoft.com/office/2007/relationships/customDataProps'
 const customDataRelationshipType = 'http://schemas.microsoft.com/office/2007/relationships/customData'
 const customXmlPropertiesRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXmlProps'
+const powerQueryRelationshipType = 'http://schemas.microsoft.com/office/2014/relationships/query'
+const powerQueryGroupRelationshipType = 'http://schemas.microsoft.com/office/2014/relationships/queryGroup'
 const dataModelContentType = 'application/vnd.openxmlformats-officedocument.model+data'
 const customDataPropertiesContentType = 'application/vnd.ms-excel.customDataProperties+xml'
 const customXmlPropertiesContentType = 'application/vnd.openxmlformats-officedocument.customXmlProperties+xml'
+const powerQueryContentType = 'application/vnd.ms-excel.query+xml'
+const powerQueryGroupContentType = 'application/vnd.ms-excel.queryGroup+xml'
 
 describe('xlsx data model artifacts roundtrip', () => {
   it('preserves Power Pivot data model parts and supporting custom XML package parts', () => {
@@ -59,6 +63,37 @@ describe('xlsx data model artifacts roundtrip', () => {
     expect(readContentTypeOverride(exported, '/customXml/itemProps1.xml')).toBe(customXmlPropertiesContentType)
     expect(readContentTypeOverride(exported, '/xl/customData/itemProps1.xml')).toBe(customDataPropertiesContentType)
   })
+
+  it('preserves Power Query query and query-group package parts as inert data-model artifacts', () => {
+    const source = buildWorkbookWithPowerQueryArtifacts()
+
+    const imported = importXlsx(source, 'power-query-artifacts.xlsx')
+    const exported = exportXlsx(imported.snapshot)
+
+    expect(imported.snapshot.workbook.metadata?.dataModelArtifacts?.parts.map((part) => part.path).toSorted()).toEqual([
+      'xl/queries/_rels/query1.xml.rels',
+      'xl/queries/query1.xml',
+      'xl/queryGroups/queryGroup1.xml',
+    ])
+    expect(imported.snapshot.workbook.metadata?.dataModelArtifacts?.workbookRelationships).toEqual([
+      { id: 'rIdQuery1', type: powerQueryRelationshipType, target: 'queries/query1.xml' },
+      { id: 'rIdQueryGroup1', type: powerQueryGroupRelationshipType, target: 'queryGroups/queryGroup1.xml' },
+    ])
+    expect(powerQueryMetrics(exported)).toEqual(powerQueryMetrics(source))
+    expect(readZipText(exported, 'xl/queries/query1.xml')).toBe(powerQueryXml)
+    expect(readZipText(exported, 'xl/queries/_rels/query1.xml.rels')).toBe(powerQueryRelationshipsXml)
+    expect(readZipText(exported, 'xl/queryGroups/queryGroup1.xml')).toBe(powerQueryGroupXml)
+    expect(readWorkbookRelationship(exported, powerQueryRelationshipType)).toMatchObject({
+      target: 'queries/query1.xml',
+      type: powerQueryRelationshipType,
+    })
+    expect(readWorkbookRelationship(exported, powerQueryGroupRelationshipType)).toMatchObject({
+      target: 'queryGroups/queryGroup1.xml',
+      type: powerQueryGroupRelationshipType,
+    })
+    expect(readContentTypeOverride(exported, '/xl/queries/query1.xml')).toBe(powerQueryContentType)
+    expect(readContentTypeOverride(exported, '/xl/queryGroups/queryGroup1.xml')).toBe(powerQueryGroupContentType)
+  })
 })
 
 function buildWorkbookWithDataModelArtifacts(): Uint8Array {
@@ -90,6 +125,36 @@ function buildWorkbookWithDataModelArtifacts(): Uint8Array {
       {
         contentType: customDataPropertiesContentType,
         partName: '/xl/customData/itemProps1.xml',
+      },
+    ),
+  )
+  return zipSync(zip)
+}
+
+function buildWorkbookWithPowerQueryArtifacts(): Uint8Array {
+  const zip = unzipSync(exportXlsx(buildWorkbook()))
+  zip['xl/_rels/workbook.xml.rels'] = strToU8(
+    readZipTextFromZip(zip, 'xl/_rels/workbook.xml.rels').replace(
+      '</Relationships>',
+      [
+        `<Relationship Id="rIdQuery1" Type="${powerQueryRelationshipType}" Target="queries/query1.xml"/>`,
+        `<Relationship Id="rIdQueryGroup1" Type="${powerQueryGroupRelationshipType}" Target="queryGroups/queryGroup1.xml"/>`,
+        '</Relationships>',
+      ].join(''),
+    ),
+  )
+  zip['xl/queries/query1.xml'] = strToU8(powerQueryXml)
+  zip['xl/queries/_rels/query1.xml.rels'] = strToU8(powerQueryRelationshipsXml)
+  zip['xl/queryGroups/queryGroup1.xml'] = strToU8(powerQueryGroupXml)
+  zip['[Content_Types].xml'] = strToU8(
+    upsertContentTypeOverride(
+      upsertContentTypeOverride(readZipTextFromZip(zip, '[Content_Types].xml'), {
+        contentType: powerQueryContentType,
+        partName: '/xl/queries/query1.xml',
+      }),
+      {
+        contentType: powerQueryGroupContentType,
+        partName: '/xl/queryGroups/queryGroup1.xml',
       },
     ),
   )
@@ -128,6 +193,22 @@ function dataModelMetrics(bytes: Uint8Array): {
     workbookCustomDataRelationships: relationshipsWithType(workbookRelationshipsXml, customDataPropertiesRelationshipType).length,
     workbookCustomXmlRelationships: relationshipsWithType(workbookRelationshipsXml, customXmlRelationshipType).length,
     workbookDataModelRelationships: relationshipsWithType(workbookRelationshipsXml, powerPivotDataRelationshipType).length,
+  }
+}
+
+function powerQueryMetrics(bytes: Uint8Array): {
+  powerQueryGroupPackageParts: number
+  powerQueryPackageParts: number
+  workbookQueryGroupRelationships: number
+  workbookQueryRelationships: number
+} {
+  const zip = unzipSync(bytes)
+  const workbookRelationshipsXml = readZipTextFromZip(zip, 'xl/_rels/workbook.xml.rels')
+  return {
+    powerQueryGroupPackageParts: Object.keys(zip).filter((path) => path.startsWith('xl/queryGroups/')).length,
+    powerQueryPackageParts: Object.keys(zip).filter((path) => path.startsWith('xl/queries/')).length,
+    workbookQueryGroupRelationships: relationshipsWithType(workbookRelationshipsXml, powerQueryGroupRelationshipType).length,
+    workbookQueryRelationships: relationshipsWithType(workbookRelationshipsXml, powerQueryRelationshipType).length,
   }
 }
 
@@ -252,4 +333,21 @@ const customDataItemRelationshipsXml = [
   `<Relationships xmlns="${relationshipNamespace}">`,
   `<Relationship Id="rId1" Type="${customDataRelationshipType}" Target="item1.data"/>`,
   '</Relationships>',
+].join('')
+
+const powerQueryXml = [
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+  '<query xmlns="http://schemas.microsoft.com/office/2014/queries" name="RevenueQuery">',
+  '<formula><![CDATA[let Source = #table({"Region","Amount"}, {{"North",1200}}) in Source]]></formula>',
+  '</query>',
+].join('')
+
+const powerQueryRelationshipsXml = [
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+  `<Relationships xmlns="${relationshipNamespace}"/>`,
+].join('')
+
+const powerQueryGroupXml = [
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+  '<queryGroup xmlns="http://schemas.microsoft.com/office/2014/queryGroups" name="Finance Queries"/>',
 ].join('')
