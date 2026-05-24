@@ -27,6 +27,7 @@ import type { ProjectedRenderTile, ProjectedTileSceneChange, ProjectedTileSceneS
 import { normalizeWorkbookMergeRange } from './worker-runtime-support.js'
 import { ProjectedWorkbookLocalDeltaPublisher } from './projected-workbook-local-delta-publisher.js'
 import { ProjectedViewportPatchRevisionGate } from './projected-viewport-patch-revision-gate.js'
+import { resolveProjectedStyleDirtyMask } from './projected-style-dirty-mask.js'
 import {
   normalizeViewportRange,
   ProjectedViewportRangeOverlayStore,
@@ -35,6 +36,7 @@ import {
 } from './projected-viewport-range-overlay.js'
 import { createContentClearedOptimisticSnapshot } from './workbook-optimistic-range.js'
 import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from './workbook-optimistic-cell-flags.js'
+import { LOCAL_CELL_VISUAL_DIRTY_MASK } from './projected-workbook-local-delta.js'
 
 export interface ProjectedViewportStoreOptions {
   readonly maxCachedCellsPerSheet?: number
@@ -44,6 +46,7 @@ interface ProjectedCellSnapshotWriteOptions {
   readonly forceOptimistic?: boolean
   readonly allowOptimisticClearResurrection?: boolean
   readonly emitLocalDelta?: boolean
+  readonly localDirtyMask?: number | ((snapshot: CellSnapshot) => number) | undefined
   readonly suppressRangeOverlays?: boolean
 }
 type CellItem = readonly [number, number]
@@ -270,22 +273,28 @@ export class ProjectedViewportStore implements GridEngineLike {
   }
 
   private setCellSnapshots(snapshots: readonly CellSnapshot[], options: ProjectedCellSnapshotWriteOptions = {}): void {
-    const acceptedSnapshotsBySheet = new Map<string, CellSnapshot[]>()
+    const acceptedSnapshotsBySheetAndMask = new Map<string, Map<number, CellSnapshot[]>>()
     snapshots.forEach((snapshot) => {
       if (options.suppressRangeOverlays !== false) {
         this.rangeOverlayStore.suppressExistingOverlaysForCell(snapshot.sheetName, snapshot.address)
       }
       const result = this.cellCache.writeCellSnapshot(snapshot, options)
       if (result.changed && result.acceptedSnapshot && options.emitLocalDelta !== false) {
-        const acceptedSnapshots = acceptedSnapshotsBySheet.get(result.acceptedSnapshot.sheetName) ?? []
+        const acceptedSnapshotsByMask =
+          acceptedSnapshotsBySheetAndMask.get(result.acceptedSnapshot.sheetName) ?? new Map<number, CellSnapshot[]>()
+        const dirtyMask = resolveProjectedCellLocalDirtyMask(result.acceptedSnapshot, options.localDirtyMask)
+        const acceptedSnapshots = acceptedSnapshotsByMask.get(dirtyMask) ?? []
         acceptedSnapshots.push(result.acceptedSnapshot)
-        acceptedSnapshotsBySheet.set(result.acceptedSnapshot.sheetName, acceptedSnapshots)
+        acceptedSnapshotsByMask.set(dirtyMask, acceptedSnapshots)
+        acceptedSnapshotsBySheetAndMask.set(result.acceptedSnapshot.sheetName, acceptedSnapshotsByMask)
       }
     })
-    if (acceptedSnapshotsBySheet.size > 0) {
+    if (acceptedSnapshotsBySheetAndMask.size > 0) {
       this.localRevision += 1
-      acceptedSnapshotsBySheet.forEach((acceptedSnapshots, sheetName) => {
-        this.localDeltaPublisher.emitCellSnapshots(sheetName, acceptedSnapshots)
+      acceptedSnapshotsBySheetAndMask.forEach((acceptedSnapshotsByMask, sheetName) => {
+        acceptedSnapshotsByMask.forEach((acceptedSnapshots, dirtyMask) => {
+          this.localDeltaPublisher.emitCellSnapshots(sheetName, acceptedSnapshots, dirtyMask)
+        })
       })
     }
   }
@@ -602,8 +611,8 @@ export class ProjectedViewportStore implements GridEngineLike {
       for (let col = normalizedRange.startCol; col <= normalizedRange.endCol; col += 1) {
         const address = formatAddress(row, col)
         const snapshot = this.getCell(range.sheetName, address)
-        const nextSnapshot = this.applyStyleMutationToSnapshot(snapshot, mutateStyle)
-        if (snapshotStyleId(snapshot) === snapshotStyleId(nextSnapshot)) {
+        const mutation = this.applyStyleMutationToSnapshotDetailed(snapshot, mutateStyle)
+        if (snapshotStyleId(snapshot) === snapshotStyleId(mutation.snapshot)) {
           continue
         }
         previousSnapshots.push({
@@ -611,7 +620,7 @@ export class ProjectedViewportStore implements GridEngineLike {
           overlaySuppressionCutoff: this.rangeOverlayStore.getSuppressedOverlayMaxId(snapshot.sheetName, snapshot.address),
           snapshot: structuredClone(snapshot),
         })
-        this.setCellSnapshot(nextSnapshot, { force: true, forceOptimistic: true })
+        this.setCellSnapshot(mutation.snapshot, { force: true, forceOptimistic: true, localDirtyMask: mutation.dirtyMask })
       }
     }
     if (previousSnapshots.length === 0) {
@@ -620,7 +629,15 @@ export class ProjectedViewportStore implements GridEngineLike {
     return () => {
       previousSnapshots.forEach(({ existed, overlaySuppressionCutoff, snapshot }) => {
         this.rangeOverlayStore.restoreOverlaySuppression(snapshot.sheetName, snapshot.address, overlaySuppressionCutoff)
-        this.setCellSnapshot(snapshot, { force: true, forceOptimistic: true, suppressRangeOverlays: false })
+        const currentSnapshot = this.getCell(snapshot.sheetName, snapshot.address)
+        const currentStyle = this.cellCache.getCellStyle(currentSnapshot.styleId) ?? { id: DEFAULT_STYLE_ID }
+        const restoreStyle = this.cellCache.getCellStyle(snapshot.styleId) ?? { id: DEFAULT_STYLE_ID }
+        this.setCellSnapshot(snapshot, {
+          force: true,
+          forceOptimistic: true,
+          localDirtyMask: resolveProjectedStyleDirtyMask({ baseStyle: currentStyle, nextStyle: restoreStyle, snapshot: currentSnapshot }),
+          suppressRangeOverlays: false,
+        })
         if (!existed) {
           this.cellCache.deleteCellSnapshot(snapshot.sheetName, snapshot.address)
         }
@@ -646,14 +663,32 @@ export class ProjectedViewportStore implements GridEngineLike {
     snapshot: CellSnapshot,
     mutateStyle: (baseStyle: CellStyleRecord) => Omit<CellStyleRecord, 'id'>,
   ): CellSnapshot {
+    return this.applyStyleMutationToSnapshotDetailed(snapshot, mutateStyle).snapshot
+  }
+
+  private applyStyleMutationToSnapshotDetailed(
+    snapshot: CellSnapshot,
+    mutateStyle: (baseStyle: CellStyleRecord) => Omit<CellStyleRecord, 'id'>,
+  ): { readonly dirtyMask: number; readonly snapshot: CellSnapshot } {
     const baseStyle = this.cellCache.getCellStyle(snapshot.styleId) ?? { id: DEFAULT_STYLE_ID }
     const nextStyle = this.internLocalCellStyle(mutateStyle(baseStyle))
-    return nextStyle.id === DEFAULT_STYLE_ID ? omitSnapshotStyleId(snapshot) : { ...snapshot, styleId: nextStyle.id }
+    return {
+      dirtyMask: resolveProjectedStyleDirtyMask({ baseStyle, nextStyle, snapshot }),
+      snapshot: nextStyle.id === DEFAULT_STYLE_ID ? omitSnapshotStyleId(snapshot) : { ...snapshot, styleId: nextStyle.id },
+    }
   }
 }
 
 function snapshotStyleId(snapshot: CellSnapshot): string {
   return snapshot.styleId ?? DEFAULT_STYLE_ID
+}
+
+function resolveProjectedCellLocalDirtyMask(
+  snapshot: CellSnapshot,
+  dirtyMask: number | ((snapshot: CellSnapshot) => number) | undefined,
+): number {
+  const resolved = typeof dirtyMask === 'function' ? dirtyMask(snapshot) : dirtyMask
+  return Number.isInteger(resolved) && resolved !== undefined && resolved >= 0 ? resolved : LOCAL_CELL_VISUAL_DIRTY_MASK
 }
 
 function createIdempotentContentClearedSnapshot(snapshot: CellSnapshot): CellSnapshot {

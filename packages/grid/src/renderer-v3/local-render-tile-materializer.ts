@@ -26,6 +26,7 @@ export function buildLocalFixedRenderTiles(input: {
   readonly dirtySpansForTile?: ((tileId: number) => readonly DirtyTileLocalSpanV3[]) | undefined
   readonly editingCell?: Item | null | undefined
   readonly reuseStaticGridRectsByTileId?: ReadonlyMap<number, GridRenderTile> | undefined
+  readonly reuseStaticTextRunsByTileId?: ReadonlyMap<number, GridRenderTile> | undefined
   readonly selectedCell?: Item | undefined
   readonly selectedCellSnapshot?: CellSnapshot | null | undefined
 }): readonly GridRenderTile[] {
@@ -53,6 +54,7 @@ export function buildLocalFixedRenderTiles(input: {
       packetSeq: input.generation,
       rectSeq: input.generation,
       reuseStaticGridRectsFrom: input.reuseStaticGridRectsByTileId?.get(tileId),
+      reuseTextRunsFrom: input.reuseStaticTextRunsByTileId?.get(tileId),
       styleSeq: input.generation,
       textSeq: input.generation,
       viewport: tileViewport,

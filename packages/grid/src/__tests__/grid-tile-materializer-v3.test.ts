@@ -7,6 +7,7 @@ import { buildLocalFixedRenderTiles } from '../renderer-v3/local-render-tile-mat
 import { materializeGridRenderTileV3 } from '../renderer-v3/grid-tile-materializer.js'
 import { GRID_RECT_INSTANCE_FLOAT_COUNT_V3 } from '../renderer-v3/rect-instance-buffer.js'
 import { GRID_TILE_PACKET_V3_MAGIC } from '../renderer-v3/tile-packet-v3.js'
+import { DirtyMaskV3 } from '../renderer-v3/tile-damage-index.js'
 
 function createCellSnapshot(address: string, value: CellSnapshot['value'], styleId: string | undefined = 'style-1'): CellSnapshot {
   return {
@@ -163,6 +164,152 @@ describe('renderer-v3 grid tile materializer', () => {
       GRID_TILE_PACKET_V3_MAGIC,
       GRID_TILE_PACKET_V3_MAGIC,
     ])
+  })
+
+  test('reuses stable tile buffers for style-only local dirty spans', () => {
+    const gridMetrics = getGridMetrics()
+    const viewport = {
+      colEnd: VIEWPORT_TILE_COLUMN_COUNT - 1,
+      colStart: 0,
+      rowEnd: VIEWPORT_TILE_ROW_COUNT - 1,
+      rowStart: 0,
+    }
+    const baseTile = materializeGridRenderTileV3({
+      axisSeqX: 1,
+      axisSeqY: 1,
+      cameraSeq: 1,
+      columnWidths: {},
+      dprBucket: 1,
+      engine: makeEngine({
+        A1: createCellSnapshot('A1', { tag: ValueTag.String, value: 'alpha' }),
+      }),
+      freezeSeq: 0,
+      gridMetrics,
+      materializedAtSeq: 1,
+      packetSeq: 1,
+      rectSeq: 1,
+      rowHeights: {},
+      sheetId: 3,
+      sheetOrdinal: 1,
+      sheetName: 'Sheet1',
+      sortedColumnWidthOverrides: [],
+      sortedRowHeightOverrides: [],
+      styleSeq: 1,
+      textSeq: 1,
+      valueSeq: 1,
+      viewport,
+    })
+
+    const reusedTile = materializeGridRenderTileV3({
+      axisSeqX: 1,
+      axisSeqY: 1,
+      cameraSeq: 2,
+      columnWidths: {},
+      dirtyLocalCols: new Uint32Array([0, 0]),
+      dirtyLocalRows: new Uint32Array([0, 0]),
+      dirtyMasks: new Uint32Array([DirtyMaskV3.Style]),
+      dprBucket: 1,
+      engine: makeEngine({
+        A1: createCellSnapshot('A1', { tag: ValueTag.String, value: 'should not rebuild text' }),
+      }),
+      freezeSeq: 0,
+      gridMetrics,
+      materializedAtSeq: 2,
+      packetSeq: 2,
+      rectSeq: 2,
+      reuseStaticGridRectsFrom: baseTile,
+      reuseTextRunsFrom: baseTile,
+      rowHeights: {},
+      sheetId: 3,
+      sheetOrdinal: 1,
+      sheetName: 'Sheet1',
+      sortedColumnWidthOverrides: [],
+      sortedRowHeightOverrides: [],
+      styleSeq: 2,
+      textSeq: 2,
+      valueSeq: 2,
+      viewport,
+    })
+
+    expect(reusedTile.rectInstances).toBe(baseTile.rectInstances)
+    expect(reusedTile.textMetrics).toBe(baseTile.textMetrics)
+    expect(reusedTile.textRuns).toBe(baseTile.textRuns)
+    expect(reusedTile.dirty?.rectSpans).toEqual([])
+    expect(reusedTile.dirty?.textSpans).toEqual([])
+  })
+
+  test('patches one dirty text run without rebuilding clean text runs', () => {
+    const gridMetrics = getGridMetrics()
+    const viewport = {
+      colEnd: VIEWPORT_TILE_COLUMN_COUNT - 1,
+      colStart: 0,
+      rowEnd: VIEWPORT_TILE_ROW_COUNT - 1,
+      rowStart: 0,
+    }
+    const baseTile = materializeGridRenderTileV3({
+      axisSeqX: 1,
+      axisSeqY: 1,
+      cameraSeq: 1,
+      columnWidths: {},
+      dprBucket: 1,
+      engine: makeEngine({
+        A1: createCellSnapshot('A1', { tag: ValueTag.String, value: 'alpha' }),
+        B1: createCellSnapshot('B1', { tag: ValueTag.String, value: 'beta' }),
+      }),
+      freezeSeq: 0,
+      gridMetrics,
+      materializedAtSeq: 1,
+      packetSeq: 1,
+      rectSeq: 1,
+      rowHeights: {},
+      sheetId: 3,
+      sheetOrdinal: 1,
+      sheetName: 'Sheet1',
+      sortedColumnWidthOverrides: [],
+      sortedRowHeightOverrides: [],
+      styleSeq: 1,
+      textSeq: 1,
+      valueSeq: 1,
+      viewport,
+    })
+
+    const patchedTile = materializeGridRenderTileV3({
+      axisSeqX: 1,
+      axisSeqY: 1,
+      cameraSeq: 2,
+      columnWidths: {},
+      dirtyLocalCols: new Uint32Array([0, 0]),
+      dirtyLocalRows: new Uint32Array([0, 0]),
+      dirtyMasks: new Uint32Array([DirtyMaskV3.Value | DirtyMaskV3.Text]),
+      dprBucket: 1,
+      engine: makeEngine({
+        A1: createCellSnapshot('A1', { tag: ValueTag.String, value: 'gamma' }),
+        B1: createCellSnapshot('B1', { tag: ValueTag.String, value: 'should not be read while patching' }),
+      }),
+      freezeSeq: 0,
+      gridMetrics,
+      materializedAtSeq: 2,
+      packetSeq: 2,
+      rectSeq: 2,
+      reuseStaticGridRectsFrom: baseTile,
+      reuseTextRunsFrom: baseTile,
+      rowHeights: {},
+      sheetId: 3,
+      sheetOrdinal: 1,
+      sheetName: 'Sheet1',
+      sortedColumnWidthOverrides: [],
+      sortedRowHeightOverrides: [],
+      styleSeq: 2,
+      textSeq: 2,
+      valueSeq: 2,
+      viewport,
+    })
+
+    expect(patchedTile.textRuns.find((run) => run.col === 0 && run.row === 0)?.text).toBe('gamma')
+    expect(patchedTile.textRuns.find((run) => run.col === 1 && run.row === 0)).toBe(
+      baseTile.textRuns.find((run) => run.col === 1 && run.row === 0),
+    )
+    expect(patchedTile.dirty?.textSpans).toEqual([{ offset: 0, length: 1 }])
   })
 
   test('fixed data tiles omit leading gridlines so adjacent tile boundaries do not double paint seams', () => {

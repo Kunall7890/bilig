@@ -170,7 +170,7 @@ function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCa
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
   ).length
   const tenXMeanAndP95CaseCount = cases.filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length
-  const invalidReasons = sameCorpusRunManifestInvalidReasons({
+  const invalidReasons = sameCorpusManifestInvalidReasons({
     capturedWorkloads,
     caseCount: cases.length,
     corpusCaseIds,
@@ -226,7 +226,7 @@ export function buildSameCorpusCaptureRunManifest(
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
   ).length
   const tenXMeanAndP95CaseCount = cases.map(buildSameCorpusCase).filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length
-  const invalidReasons = sameCorpusRunManifestInvalidReasons({
+  const invalidReasons = sameCorpusManifestInvalidReasons({
     capturedWorkloads,
     caseCount: cases.length,
     corpusCaseIds,
@@ -266,7 +266,7 @@ export function buildSameCorpusCaptureRunManifest(
   }
 }
 
-function sameCorpusRunManifestInvalidReasons(args: {
+function sameCorpusManifestInvalidReasons(args: {
   readonly capturedWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
   readonly caseCount: number
   readonly corpusCaseIds: readonly string[]

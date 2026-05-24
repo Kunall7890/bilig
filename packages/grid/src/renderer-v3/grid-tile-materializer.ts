@@ -13,7 +13,7 @@ import type { GridRenderTile } from './render-tile-source.js'
 import { resolveGridRenderTileDirtySpansV3 } from './render-tile-dirty-spans.js'
 import { createGridTilePacketV3 } from './tile-packet-v3.js'
 import { packTileKey53 } from './tile-key.js'
-import { packGridTextBufferV3 } from './text-run-buffer.js'
+import { packGridTextBufferV3, packGridTextRunsBufferV3, type PackedGridTextBufferV3 } from './text-run-buffer.js'
 import { DirtyMaskV3 } from './tile-damage-index.js'
 
 export interface GridTileMaterializerAxisInputV3 {
@@ -47,6 +47,7 @@ export interface MaterializeGridRenderTileInputV3 extends GridTileMaterializerAx
   readonly dirtyLocalCols?: Uint32Array | undefined
   readonly dirtyMasks?: Uint32Array | undefined
   readonly reuseStaticGridRectsFrom?: GridRenderTile | undefined
+  readonly reuseTextRunsFrom?: GridRenderTile | undefined
   readonly selectedCell?: Item | undefined
   readonly selectedCellSnapshot?: CellSnapshot | null | undefined
 }
@@ -90,6 +91,8 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
   const selectedCell = input.selectedCell ?? STATIC_TILE_SELECTED_CELL
   const selectedCellSnapshot = input.selectedCellSnapshot ?? null
   const reuseRectTile = canReuseStaticGridRectsForTile(input, tileId) ? input.reuseStaticGridRectsFrom : undefined
+  const reuseTextTile = canReuseTextRunsForTile(input, tileId) ? input.reuseTextRunsFrom : undefined
+  const patchedTextBuffer = reuseTextTile ? null : tryPatchTextRunsForTile(input, tileId, getTextCellBounds, visibleRegion, surfaceSize)
   const rectBuffer = reuseRectTile
     ? {
         rectCount: reuseRectTile.rectCount,
@@ -120,31 +123,41 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
         }),
         surfaceSize,
       )
-  const textScene = buildGridTextScene({
-    activeHeaderDrag: null,
-    columnWidths: input.columnWidths,
-    contentMode: 'data',
-    editingCell: input.editingCell ?? null,
-    engine: input.engine,
-    getCellBounds: getTextCellBounds,
-    gridMetrics: input.gridMetrics,
-    hostBounds: {
-      height: surfaceSize.height,
-      left: 0,
-      top: 0,
-      width: surfaceSize.width,
-    },
-    hoveredHeader: null,
-    resizeGuideColumn: null,
-    rowHeights: input.rowHeights,
-    selectedCell,
-    selectedCellSnapshot,
-    selectionRange: null,
-    sheetName: input.sheetName,
-    visibleItems: inboundTextSourceItems.length > 0 ? [...visibleItems, ...inboundTextSourceItems] : visibleItems,
-    visibleRegion,
-  })
-  const textBuffer = packGridTextBufferV3(textScene)
+  const textBuffer = reuseTextTile
+    ? {
+        textCount: reuseTextTile.textCount,
+        textMetrics: reuseTextTile.textMetrics,
+        textRuns: reuseTextTile.textRuns,
+        textSignature: reuseTextTile.textSignature ?? '',
+      }
+    : patchedTextBuffer
+      ? patchedTextBuffer
+      : packGridTextBufferV3(
+          buildGridTextScene({
+            activeHeaderDrag: null,
+            columnWidths: input.columnWidths,
+            contentMode: 'data',
+            editingCell: input.editingCell ?? null,
+            engine: input.engine,
+            getCellBounds: getTextCellBounds,
+            gridMetrics: input.gridMetrics,
+            hostBounds: {
+              height: surfaceSize.height,
+              left: 0,
+              top: 0,
+              width: surfaceSize.width,
+            },
+            hoveredHeader: null,
+            resizeGuideColumn: null,
+            rowHeights: input.rowHeights,
+            selectedCell,
+            selectedCellSnapshot,
+            selectionRange: null,
+            sheetName: input.sheetName,
+            visibleItems: inboundTextSourceItems.length > 0 ? [...visibleItems, ...inboundTextSourceItems] : visibleItems,
+            visibleRegion,
+          }),
+        )
   const packet = createGridTilePacketV3({
     axisSeqX: input.axisSeqX,
     axisSeqY: input.axisSeqY,
@@ -233,10 +246,191 @@ function canReuseStaticGridRectsForTile(input: MaterializeGridRenderTileInputV3,
   if (!dirtyMasks || dirtyMasks.length === 0) {
     return false
   }
-  const rectDirtyMask =
-    DirtyMaskV3.Style | DirtyMaskV3.Rect | DirtyMaskV3.Border | DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
+  const rectDirtyMask = DirtyMaskV3.Rect | DirtyMaskV3.Border | DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
   for (const mask of dirtyMasks) {
     if ((mask & rectDirtyMask) !== 0) {
+      return false
+    }
+  }
+  return true
+}
+
+function tryPatchTextRunsForTile(
+  input: MaterializeGridRenderTileInputV3,
+  tileId: number,
+  getCellBounds: (col: number, row: number) => Rectangle | undefined,
+  visibleRegion: {
+    readonly range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>
+    readonly tx: number
+    readonly ty: number
+    readonly freezeRows: number
+    readonly freezeCols: number
+  },
+  surfaceSize: { readonly width: number; readonly height: number },
+): PackedGridTextBufferV3 | null {
+  const baseTile = input.reuseTextRunsFrom
+  if (!baseTile || baseTile.tileId !== tileId || !sameTileBounds(baseTile, input.viewport)) {
+    return null
+  }
+  if (input.editingCell !== undefined && input.editingCell !== null) {
+    return null
+  }
+  if (input.selectedCellSnapshot !== undefined && input.selectedCellSnapshot !== null) {
+    return null
+  }
+  if (baseTile.textRuns.length !== baseTile.textCount) {
+    return null
+  }
+  const dirtyItems = collectPatchableTextDirtyItems(input)
+  if (!dirtyItems || dirtyItems.length === 0) {
+    return null
+  }
+  const dirtyKeys = new Set(dirtyItems.map(([col, row]) => textRunCellKey(row, col)))
+  const baseRunKeys = new Set<string>()
+  for (const run of baseTile.textRuns) {
+    if (run.row === undefined || run.col === undefined) {
+      return null
+    }
+    baseRunKeys.add(textRunCellKey(run.row, run.col))
+  }
+  if (dirtyItems.some(([col, row]) => !baseRunKeys.has(textRunCellKey(row, col)))) {
+    return null
+  }
+  const dirtyTextBuffer = packGridTextBufferV3(
+    buildGridTextScene({
+      activeHeaderDrag: null,
+      columnWidths: input.columnWidths,
+      contentMode: 'data',
+      editingCell: null,
+      engine: input.engine,
+      getCellBounds,
+      gridMetrics: input.gridMetrics,
+      hostBounds: {
+        height: surfaceSize.height,
+        left: 0,
+        top: 0,
+        width: surfaceSize.width,
+      },
+      hoveredHeader: null,
+      resizeGuideColumn: null,
+      rowHeights: input.rowHeights,
+      selectedCell: STATIC_TILE_SELECTED_CELL,
+      selectedCellSnapshot: null,
+      selectionRange: null,
+      sheetName: input.sheetName,
+      visibleItems: dirtyItems,
+      visibleRegion,
+    }),
+  )
+  const replacementRuns = new Map<string, (typeof baseTile.textRuns)[number]>()
+  for (const run of dirtyTextBuffer.textRuns) {
+    if (run.row === undefined || run.col === undefined) {
+      return null
+    }
+    const key = textRunCellKey(run.row, run.col)
+    if (!dirtyKeys.has(key) || replacementRuns.has(key)) {
+      return null
+    }
+    replacementRuns.set(key, run)
+  }
+  if ([...dirtyKeys].some((key) => !replacementRuns.has(key))) {
+    return null
+  }
+  return packGridTextRunsBufferV3(baseTile.textRuns.map((run) => replacementRuns.get(textRunCellKey(run.row!, run.col!)) ?? run))
+}
+
+function collectPatchableTextDirtyItems(input: MaterializeGridRenderTileInputV3): readonly Item[] | null {
+  const dirtyMasks = input.dirtyMasks
+  const dirtyLocalRows = input.dirtyLocalRows
+  const dirtyLocalCols = input.dirtyLocalCols
+  if (
+    !dirtyMasks ||
+    !dirtyLocalRows ||
+    !dirtyLocalCols ||
+    dirtyLocalRows.length !== dirtyMasks.length * 2 ||
+    dirtyLocalCols.length !== dirtyMasks.length * 2
+  ) {
+    return null
+  }
+  const structuralMask = DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
+  const textDirtyMask = DirtyMaskV3.Value | DirtyMaskV3.Text
+  const items: Item[] = []
+  const seen = new Set<string>()
+  for (let index = 0; index < dirtyMasks.length; index += 1) {
+    const mask = dirtyMasks[index] ?? 0
+    if ((mask & structuralMask) !== 0) {
+      return null
+    }
+    if ((mask & textDirtyMask) === 0) {
+      continue
+    }
+    const offset = index * 2
+    const rowStart = clampDirtyLocalIndex(dirtyLocalRows[offset] ?? 0, input.viewport.rowEnd - input.viewport.rowStart + 1)
+    const rowEnd = clampDirtyLocalIndex(dirtyLocalRows[offset + 1] ?? rowStart, input.viewport.rowEnd - input.viewport.rowStart + 1)
+    const colStart = clampDirtyLocalIndex(dirtyLocalCols[offset] ?? 0, input.viewport.colEnd - input.viewport.colStart + 1)
+    const colEnd = clampDirtyLocalIndex(dirtyLocalCols[offset + 1] ?? colStart, input.viewport.colEnd - input.viewport.colStart + 1)
+    for (let row = rowStart; row <= rowEnd; row += 1) {
+      for (let col = colStart; col <= colEnd; col += 1) {
+        const globalRow = input.viewport.rowStart + row
+        const globalCol = input.viewport.colStart + col
+        const key = textRunCellKey(globalRow, globalCol)
+        if (seen.has(key)) {
+          continue
+        }
+        seen.add(key)
+        items.push([globalCol, globalRow])
+        if (items.length > 16) {
+          return null
+        }
+      }
+    }
+  }
+  return items
+}
+
+function sameTileBounds(tile: GridRenderTile, viewport: Viewport): boolean {
+  return (
+    tile.bounds.rowStart === viewport.rowStart &&
+    tile.bounds.rowEnd === viewport.rowEnd &&
+    tile.bounds.colStart === viewport.colStart &&
+    tile.bounds.colEnd === viewport.colEnd
+  )
+}
+
+function clampDirtyLocalIndex(value: number, length: number): number {
+  return Math.max(0, Math.min(length - 1, Math.floor(value)))
+}
+
+function textRunCellKey(row: number, col: number): string {
+  return `${String(row)}:${String(col)}`
+}
+
+function canReuseTextRunsForTile(input: MaterializeGridRenderTileInputV3, tileId: number): boolean {
+  const baseTile = input.reuseTextRunsFrom
+  if (!baseTile || baseTile.tileId !== tileId) {
+    return false
+  }
+  if (input.editingCell !== undefined && input.editingCell !== null) {
+    return false
+  }
+  if (input.selectedCellSnapshot !== undefined && input.selectedCellSnapshot !== null) {
+    return false
+  }
+  if (
+    baseTile.bounds.rowStart !== input.viewport.rowStart ||
+    baseTile.bounds.rowEnd !== input.viewport.rowEnd ||
+    baseTile.bounds.colStart !== input.viewport.colStart ||
+    baseTile.bounds.colEnd !== input.viewport.colEnd
+  ) {
+    return false
+  }
+  const dirtyMasks = input.dirtyMasks
+  if (!dirtyMasks || dirtyMasks.length === 0) {
+    return false
+  }
+  const textDirtyMask = DirtyMaskV3.Value | DirtyMaskV3.Text | DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
+  for (const mask of dirtyMasks) {
+    if ((mask & textDirtyMask) !== 0) {
       return false
     }
   }

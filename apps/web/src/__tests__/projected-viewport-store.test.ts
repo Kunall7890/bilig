@@ -7,6 +7,7 @@ import { GRID_RECT_INSTANCE_FLOAT_COUNT_V3 } from '../../../../packages/grid/src
 import { buildLocalFixedRenderTiles } from '../../../../packages/grid/src/renderer-v3/local-render-tile-materializer.js'
 import { encodeViewportPatch, type ViewportPatch, type WorkerEngineClient } from '@bilig/worker-transport'
 import { DEFAULT_MAX_CACHED_CELLS_PER_SHEET } from '../projected-viewport-cell-cache.js'
+import { LOCAL_CELL_VISUAL_DIRTY_MASK } from '../projected-workbook-local-delta.js'
 import { ProjectedViewportStore } from '../projected-viewport-store.js'
 import { buildViewportPatchFromEngine, DEFAULT_STYLE_ID } from '../worker-runtime-viewport.js'
 import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from '../workbook-optimistic-cell-flags.js'
@@ -23,7 +24,7 @@ const TEST_METRICS: RecalcMetrics = {
   recalcMs: 0,
   compileMs: 0,
 }
-const LOCAL_CELL_VISUAL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
+const LOCAL_FILL_DIRTY_MASK = DirtyMaskV3.Style | DirtyMaskV3.Rect
 
 function createPatch(styleId?: string): ViewportPatch {
   return {
@@ -259,7 +260,7 @@ describe('ProjectedViewportStore', () => {
     expect(tiles.some((tile) => hasOpaqueGreenFillRect(tile.rectInstances, tile.rectCount))).toBe(true)
   })
 
-  it('optimistically styles visible empty cells and publishes full visual tile damage', () => {
+  it('optimistically styles visible empty cells and publishes precise fill tile damage', () => {
     const cache = new ProjectedViewportStore(createNoopWorkerEngineClient())
     const deltaListener = vi.fn()
     cache.setSheetIdentities([{ id: 7, name: 'Sheet1', order: 3 }])
@@ -294,7 +295,7 @@ describe('ProjectedViewportStore', () => {
         dirty: {
           axisX: new Uint32Array(),
           axisY: new Uint32Array(),
-          cellRanges: new Uint32Array([4, 4, 3, 3, LOCAL_CELL_VISUAL_DIRTY_MASK]),
+          cellRanges: new Uint32Array([4, 4, 3, 3, LOCAL_FILL_DIRTY_MASK]),
         },
         source: 'localOptimistic',
       }),
@@ -331,7 +332,55 @@ describe('ProjectedViewportStore', () => {
         dirty: {
           axisX: new Uint32Array(),
           axisY: new Uint32Array(),
-          cellRanges: new Uint32Array([4, 4, 3, 3, LOCAL_CELL_VISUAL_DIRTY_MASK]),
+          cellRanges: new Uint32Array([4, 4, 3, 3, LOCAL_FILL_DIRTY_MASK]),
+        },
+        source: 'localOptimistic',
+      }),
+    )
+    unsubscribeViewport()
+    unsubscribeDeltas()
+  })
+
+  it('publishes style-only damage for bold applied to a visible empty cell', () => {
+    const cache = new ProjectedViewportStore(createNoopWorkerEngineClient())
+    const deltaListener = vi.fn()
+    cache.setSheetIdentities([{ id: 7, name: 'Sheet1', order: 3 }])
+    const unsubscribeDeltas = cache.subscribeWorkbookDeltas(deltaListener)
+    const unsubscribeViewport = cache.subscribeViewport(
+      'Sheet1',
+      {
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 12,
+        colStart: 0,
+        colEnd: 12,
+      },
+      () => undefined,
+      { initialPatch: 'none' },
+    )
+
+    const rollback = cache.setRangeStyle({ sheetName: 'Sheet1', startAddress: 'D5', endAddress: 'D5' }, { font: { bold: true } })
+
+    expect(rollback).toEqual(expect.any(Function))
+    expect(deltaListener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([4, 4, 3, 3, DirtyMaskV3.Style]),
+        },
+        source: 'localOptimistic',
+      }),
+    )
+
+    deltaListener.mockClear()
+    rollback?.()
+    expect(deltaListener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([4, 4, 3, 3, DirtyMaskV3.Style]),
         },
         source: 'localOptimistic',
       }),

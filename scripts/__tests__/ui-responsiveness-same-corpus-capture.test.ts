@@ -45,6 +45,7 @@ import {
 } from '../ui-responsiveness-same-corpus-workload-runner.ts'
 import {
   visibleNonScrollResponseChanged,
+  visibleNonScrollResponseNeedsScreenshot,
   type VisibleNonScrollResponseSignature,
 } from '../ui-responsiveness-same-corpus-visible-response-page.ts'
 
@@ -500,6 +501,13 @@ describe('same-corpus UI responsiveness capture CLI', () => {
         },
       ),
     ).toBe(true)
+  })
+
+  it('does not charge screenshot capture to Bilig visible-response timing once TypeGPU tokens exist', () => {
+    expect(visibleNonScrollResponseNeedsScreenshot('bilig', 'selection-revision-2')).toBe(false)
+    expect(visibleNonScrollResponseNeedsScreenshot('bilig', null)).toBe(true)
+    expect(visibleNonScrollResponseNeedsScreenshot('google-sheets')).toBe(true)
+    expect(visibleNonScrollResponseNeedsScreenshot('microsoft-excel-web')).toBe(true)
   })
 
   it('requires visual proof for Bilig and Google Sheets in each same-corpus scenario', () => {

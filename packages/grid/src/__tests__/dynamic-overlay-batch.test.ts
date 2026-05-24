@@ -11,6 +11,43 @@ import {
 } from '../renderer-v3/dynamic-overlay-batch.js'
 
 describe('dynamic overlay batch v3', () => {
+  test('draws structural body gridlines from geometry when no selection overlay is active', () => {
+    const metrics = getGridMetrics()
+    const geometry = createGridGeometrySnapshotFromAxes({
+      columns: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 }),
+      dpr: 1,
+      freezeCols: 0,
+      freezeRows: 0,
+      gridMetrics: metrics,
+      hostHeight: 220,
+      hostWidth: 520,
+      rows: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 20 }),
+      scrollLeft: 0,
+      scrollTop: 0,
+      sheetName: 'Sheet1',
+      updatedAt: 100,
+    })
+
+    const overlay = buildDynamicGridOverlayBatchV3({
+      geometry,
+      selectionRange: null,
+      showFillHandle: false,
+      showHoverOverlay: false,
+      showSelectionOverlay: false,
+    })
+
+    expect(overlay.fillRectCount).toBeGreaterThan(0)
+    expect(overlay.borderRectCount).toBe(0)
+    expect(readOverlayRects(overlay)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ x: 46, y: 24, width: 2, height: 196 }),
+        expect.objectContaining({ x: 144, y: 24, width: 2, height: 196 }),
+        expect.objectContaining({ x: 46, y: 24, width: 474, height: 2 }),
+        expect.objectContaining({ x: 46, y: 42, width: 474, height: 2 }),
+      ]),
+    )
+  })
+
   test('builds selection, fill-handle, resize, and frozen separator rects from geometry without scene packets', () => {
     const metrics = getGridMetrics()
     const geometry = createGridGeometrySnapshotFromAxes({
@@ -322,6 +359,7 @@ describe('dynamic overlay batch v3', () => {
       showFillHandle: false,
       showHoverOverlay: false,
       showSelectionOverlay: false,
+      showStructuralGridlines: false,
     })
 
     expect(overlay.rectCount).toBe(0)

@@ -32,11 +32,11 @@ export class ProjectedWorkbookLocalDeltaPublisher {
     }
   }
 
-  emitCellSnapshot(snapshot: CellSnapshot): void {
-    this.emitCellSnapshots(snapshot.sheetName, [snapshot])
+  emitCellSnapshot(snapshot: CellSnapshot, dirtyMask?: number): void {
+    this.emitCellSnapshots(snapshot.sheetName, [snapshot], dirtyMask)
   }
 
-  emitCellSnapshots(sheetName: string, snapshots: readonly CellSnapshot[]): void {
+  emitCellSnapshots(sheetName: string, snapshots: readonly CellSnapshot[], dirtyMask?: number): void {
     if (this.listeners.size === 0 || snapshots.length === 0) {
       return
     }
@@ -46,6 +46,7 @@ export class ProjectedWorkbookLocalDeltaPublisher {
     }
     const startedAt = this.now()
     const batch = buildLocalCellSnapshotsWorkbookDelta({
+      dirtyMask,
       identity,
       seq: this.nextLocalWorkbookDeltaSeq(),
       snapshots,

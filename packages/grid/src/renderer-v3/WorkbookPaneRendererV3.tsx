@@ -35,6 +35,44 @@ export interface WorkbookPaneRendererV3Props {
   readonly suppressedTextCell?: SuppressedNativeTextCellV3 | null | undefined
 }
 
+export interface WorkbookPaneTextLayerModeV3 {
+  readonly hasNativeTextLayerRuns: boolean
+  readonly nativeHeaderPanes: readonly GridHeaderPaneState[]
+  readonly nativeLayerSource: 'backend-unavailable-live' | 'typegpu-pending-native-text' | 'typegpu-text-primary'
+  readonly nativeTilePanes: readonly WorkbookRenderTilePaneState[]
+  readonly showNativeTextLayer: boolean
+  readonly showTypeGpuCanvas: boolean
+  readonly typeGpuDrawText: boolean
+}
+
+export function resolveWorkbookPaneTextLayerModeV3(input: {
+  readonly active: boolean
+  readonly backendStatus: WorkbookPaneSurfaceBackendStatusV3
+  readonly headerPanes: readonly GridHeaderPaneState[]
+  readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+}): WorkbookPaneTextLayerModeV3 {
+  const showTypeGpuCanvas = input.backendStatus !== 'unavailable'
+  const typeGpuDrawText = input.backendStatus === 'ready'
+  const nativeHeaderPanes = typeGpuDrawText ? [] : input.headerPanes
+  const nativeTilePanes = typeGpuDrawText ? [] : input.tilePanes
+  const nativeHeaderTextRunCount = countHeaderPaneTextRunsV3(nativeHeaderPanes)
+  const nativeTileTextRunCount = countTilePaneTextRunsV3(nativeTilePanes)
+  const hasNativeTextLayerRuns = nativeHeaderTextRunCount + nativeTileTextRunCount > 0
+  return {
+    hasNativeTextLayerRuns,
+    nativeHeaderPanes,
+    nativeLayerSource: typeGpuDrawText
+      ? 'typegpu-text-primary'
+      : showTypeGpuCanvas
+        ? 'typegpu-pending-native-text'
+        : 'backend-unavailable-live',
+    nativeTilePanes,
+    showNativeTextLayer: input.active && !typeGpuDrawText && hasNativeTextLayerRuns,
+    showTypeGpuCanvas,
+    typeGpuDrawText,
+  }
+}
+
 export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   active,
   cameraStore = null,
@@ -194,19 +232,19 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     [geometry, selectionOcclusionRanges, tilePanes],
   )
   const tileTextRunCount = countTilePaneTextRunsV3(typeGpuTilePanes)
-  const showTypeGpuCanvas = backendStatus !== 'unavailable'
-  const typeGpuDrawText = false
-  const nativeLayerSource = showTypeGpuCanvas ? 'browser-native-text-live' : 'backend-unavailable-live'
+  const textLayerMode = resolveWorkbookPaneTextLayerModeV3({
+    active,
+    backendStatus,
+    headerPanes,
+    tilePanes,
+  })
+  const { showTypeGpuCanvas, typeGpuDrawText, nativeLayerSource, nativeHeaderPanes, nativeTilePanes, showNativeTextLayer } = textLayerMode
   const presentedHeaderPanes = presentedVisualFrame?.headerPanes ?? []
   const presentedTilePanes = presentedVisualFrame?.tilePanes ?? []
-  const nativeHeaderPanes = headerPanes
-  const nativeTilePanes = tilePanes
   const presentedHeaderTextRunCount = countHeaderPaneTextRunsV3(presentedHeaderPanes)
   const presentedTileTextRunCount = countTilePaneTextRunsV3(presentedTilePanes)
   const nativeHeaderTextRunCount = countHeaderPaneTextRunsV3(nativeHeaderPanes)
   const nativeTileTextRunCount = countTilePaneTextRunsV3(nativeTilePanes)
-  const hasNativeTextLayerRuns = nativeHeaderTextRunCount + nativeTileTextRunCount > 0
-  const showNativeTextLayer = active && hasNativeTextLayerRuns
 
   useLayoutEffect(() => {
     hostRuntime.updateProps({

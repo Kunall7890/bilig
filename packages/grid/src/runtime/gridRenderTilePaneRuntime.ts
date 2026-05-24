@@ -678,6 +678,7 @@ export class GridRenderTilePaneRuntime {
       generation: resolveLocalRenderGeneration(input),
       gridMetrics: input.gridMetrics,
       reuseStaticGridRectsByTileId: hasCompleteRenderTileGrid(baseTile) ? new Map([[tileKey, baseTile]]) : undefined,
+      reuseStaticTextRunsByTileId: hasCompleteRenderTileGrid(baseTile) ? new Map([[tileKey, baseTile]]) : undefined,
       rowHeights: input.rowHeights,
       selectedCell: input.selectedCell,
       selectedCellSnapshot: input.selectedCellSnapshot,
@@ -883,6 +884,7 @@ export class GridRenderTilePaneRuntime {
         sortedRowHeightOverrides: input.sortedRowHeightOverrides,
         tileKeys: dirtyTileKeys,
         reuseStaticGridRectsByTileId: dirtyBaseTiles,
+        reuseStaticTextRunsByTileId: dirtyBaseTiles,
         viewport: input.renderTileViewport,
       }).map((tile) => [tile.tileId, tile] as const),
     )

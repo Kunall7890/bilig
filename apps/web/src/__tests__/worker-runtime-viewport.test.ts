@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ValueTag, type CellSnapshot, type CellStyleRecord, type EngineEvent, type RecalcMetrics } from '@bilig/protocol'
-import type { ViewportPatch } from '@bilig/worker-transport'
+import { decodeViewportPatch, type ViewportPatch } from '@bilig/worker-transport'
+import { WorkbookWorkerRuntime } from '../worker-runtime.js'
 import { buildViewportPatchFromEngine } from '../worker-runtime-viewport.js'
 import { WorkerViewportPatchPublisher } from '../worker-runtime-viewport-publisher.js'
 import type { ViewportSubscriptionState, WorkerEngine } from '../worker-runtime-support.js'
@@ -292,5 +293,54 @@ describe('worker runtime viewport patches', () => {
     expect(listener).toHaveBeenCalledTimes(1)
 
     unsubscribe()
+  })
+
+  it('does not rebroadcast a full viewport after journaling a pending cell mutation', async () => {
+    const runtime = new WorkbookWorkerRuntime()
+    await runtime.bootstrap({
+      documentId: 'viewport-pending-mutation',
+      replicaId: 'replica-1',
+      persistState: false,
+    })
+    await runtime.ready()
+
+    const patches: ViewportPatch[] = []
+    const unsubscribe = runtime.subscribeViewportPatches(
+      {
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 5,
+        colStart: 0,
+        colEnd: 5,
+        initialPatch: 'none',
+      },
+      (bytes) => {
+        patches.push(decodeViewportPatch(bytes))
+      },
+    )
+
+    await runtime.enqueuePendingMutation({
+      method: 'setRangeStyle',
+      args: [{ sheetName: 'Sheet1', startAddress: 'B2', endAddress: 'B2' }, { fill: { backgroundColor: '#34a853' } }],
+    })
+
+    expect(patches.length).toBeGreaterThan(0)
+    expect(patches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          full: false,
+          cells: [
+            expect.objectContaining({
+              row: 1,
+              col: 1,
+            }),
+          ],
+        }),
+      ]),
+    )
+    expect(patches.filter((patch) => patch.full)).toEqual([])
+
+    unsubscribe()
+    runtime.dispose()
   })
 })

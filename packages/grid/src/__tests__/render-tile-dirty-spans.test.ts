@@ -91,7 +91,26 @@ describe('render tile dirty spans v3', () => {
     )
 
     expect(spans.rectSpans).toEqual([{ offset: 9, length: 2 }])
-    expect(spans.textSpans).toEqual([{ offset: 0, length: 2 }])
+    expect(spans.textSpans).toEqual([])
+  })
+
+  test('treats metadata-only style masks as stable content', () => {
+    const spans = resolveGridRenderTileDirtySpansV3(
+      createTile({
+        dirtyLocalCols: new Uint32Array([0, 0]),
+        dirtyLocalRows: new Uint32Array([0, 0]),
+        dirtyMasks: new Uint32Array([DirtyMaskV3.Style]),
+        rectCount: 4,
+        textCount: 1,
+        textRuns: [createTextRun({ col: 0, row: 0 })],
+      }),
+    )
+
+    expect(spans).toEqual({
+      glyphSpans: [],
+      rectSpans: [],
+      textSpans: [],
+    })
   })
 
   test('merges unsorted overlapping rect dirty spans without a sorted copy', () => {

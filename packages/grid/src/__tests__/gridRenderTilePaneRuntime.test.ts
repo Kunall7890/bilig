@@ -1237,6 +1237,111 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(host.tiles.dirtyTiles.getUnconsumedMask(dirtyTileId)).toBe(0)
   })
 
+  it('keeps clean remote tiles resident during pending local projections', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const [dirtyTileId, cleanTileId] = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })
+    if (dirtyTileId === undefined || cleanTileId === undefined) {
+      throw new Error('Expected two render tile keys for the test viewport')
+    }
+    const dirtyRemoteTile = createRenderTile(dirtyTileId)
+    const cleanRemoteTextAddress = formatAddress(0, 128)
+    let localRevision = 0
+    let projectedRevision = 1
+    let cleanTileReadCount = 0
+    const engine: GridEngineLike = {
+      ...LOCAL_EMPTY_ENGINE,
+      getCell: (_sheetName, address) => {
+        if (address === cleanRemoteTextAddress) {
+          cleanTileReadCount += 1
+          return createStringCellSnapshot(cleanRemoteTextAddress, 'clean remote text')
+        }
+        return address === 'B2' ? createStyledStringCellSnapshot('B2', '', 'style-green') : createEmptyCellSnapshot(address)
+      },
+      getCellStyle: (styleId) => (styleId === 'style-green' ? { id: 'style-green', fill: { backgroundColor: '#00ff00' } } : undefined),
+      getRenderRevisionSnapshot: () => ({
+        authoritativeRevision: 0,
+        localRevision,
+        projectedRevision,
+        tileSceneCameraSeq: null,
+        tileSceneRevision: null,
+      }),
+    }
+    const cleanRemoteTile = materializeGridRenderTileV3({
+      axisSeqX: 1,
+      axisSeqY: 1,
+      cameraSeq: 1,
+      columnWidths: {},
+      dprBucket: 1,
+      engine,
+      freezeSeq: 1,
+      gridMetrics: getGridMetrics(),
+      materializedAtSeq: 1,
+      packetSeq: 1,
+      rectSeq: 1,
+      rowHeights: {},
+      sheetId: 7,
+      sheetName: 'Sheet1',
+      sheetOrdinal: 7,
+      sortedColumnWidthOverrides: [],
+      sortedRowHeightOverrides: [],
+      styleSeq: 1,
+      textSeq: 1,
+      valueSeq: 1,
+      viewport: { colEnd: 255, colStart: 128, rowEnd: 31, rowStart: 0 },
+    })
+    expect(cleanRemoteTile.tileId).toBe(cleanTileId)
+    const renderTileSource = createRenderTileSource([dirtyRemoteTile, cleanRemoteTile])
+    const viewport = { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 }
+
+    runtime.resolve(
+      createInput({
+        engine,
+        gridRuntimeHost: host,
+        renderTileSource,
+        renderTileViewport: viewport,
+        residentViewport: viewport,
+        visibleViewport: viewport,
+      }),
+    )
+    cleanTileReadCount = 0
+    localRevision = 1
+    projectedRevision = 2
+    host.tiles.applyWorkbookDelta(
+      createWorkbookDeltaBatch({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([1, 1, 1, 1, DirtyMaskV3.Style | DirtyMaskV3.Rect]),
+        },
+        seq: 2,
+        source: 'localOptimistic',
+      }),
+      { dprBucket: 1 },
+    )
+
+    const state = runtime.resolve(
+      createInput({
+        engine,
+        gridRuntimeHost: host,
+        renderTileSource,
+        renderTileViewport: viewport,
+        residentViewport: viewport,
+        visibleViewport: viewport,
+      }),
+    )
+
+    expect(state.renderTilePanes[0]?.tile).not.toBe(dirtyRemoteTile)
+    expect(state.renderTilePanes[0]?.tile.dirtyLocalRows).toEqual(new Uint32Array([1, 1]))
+    expect(state.renderTilePanes[0]?.tile.dirtyLocalCols).toEqual(new Uint32Array([1, 1]))
+    expect(state.renderTilePanes[1]?.tile).toBe(cleanRemoteTile)
+    expect(cleanTileReadCount).toBe(0)
+  })
+
   it('requires coherent sheet id and ordinal for remote tiles when both are known', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
@@ -2168,7 +2273,7 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(hasOpaqueGreenFillRect(acknowledged.residentBodyPane?.tile)).toBe(true)
   })
 
-  it('rebuilds resident tiles for pending local projections even when the remote batch id is ahead', () => {
+  it('rebuilds dirty resident tiles for pending local projections even when the remote batch id is ahead', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
     const tileId = host.viewportTileKeys({
@@ -2209,6 +2314,18 @@ describe('GridRenderTilePaneRuntime', () => {
         getSheet: () => undefined,
       },
     }
+    host.tiles.applyWorkbookDelta(
+      createWorkbookDeltaBatch({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([5, 5, 4, 4, DirtyMaskV3.Style | DirtyMaskV3.Rect]),
+        },
+        seq: 2,
+        source: 'localOptimistic',
+      }),
+      { dprBucket: 1 },
+    )
 
     const refreshed = runtime.resolve(
       createInput({
@@ -2849,7 +2966,7 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(refreshed.residentBodyPane?.tile.textRuns.some((run) => run.row === 0 && run.col === 0 && run.text === visibleText)).toBe(true)
   })
 
-  it('rechecks visible remote tile text when the local workbook revision changes', () => {
+  it('rechecks visible remote tile text when a local workbook delta dirties the tile', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
     const tileId = host.viewportTileKeys({
@@ -2907,6 +3024,18 @@ describe('GridRenderTilePaneRuntime', () => {
 
     localRevision = 1
     visibleText = 'abcdef'
+    host.tiles.applyWorkbookDelta(
+      createWorkbookDeltaBatch({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([24, 24, 1, 1, DirtyMaskV3.Value | DirtyMaskV3.Text | DirtyMaskV3.Rect]),
+        },
+        seq: 2,
+        source: 'localOptimistic',
+      }),
+      { dprBucket: 1 },
+    )
 
     const refreshed = runtime.resolve(
       createInput({

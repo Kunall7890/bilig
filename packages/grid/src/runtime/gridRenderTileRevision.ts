@@ -19,7 +19,8 @@ export function tileProjectionRevisionIsBehind(tile: GridRenderTile | null, engi
   const localRevision = normalizeNonNegativeInteger(renderRevision?.localRevision)
   const hasPendingLocalProjection =
     localRevision !== null && localRevision > 0 && (authoritativeRevision === null || projectedRevision > authoritativeRevision)
-  return tile.lastBatchId < projectedRevision || hasPendingLocalProjection
+  const requiredRevision = hasPendingLocalProjection ? authoritativeRevision : projectedRevision
+  return requiredRevision !== null && tile.lastBatchId < requiredRevision
 }
 
 export function resolveLocalRenderGeneration(input: GridRenderTilePaneRuntimeInput): number {

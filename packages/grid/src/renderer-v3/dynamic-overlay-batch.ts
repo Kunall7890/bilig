@@ -54,6 +54,7 @@ export function buildDynamicGridOverlayBatchV3(input: {
   readonly showHoverOverlay?: boolean | undefined
   readonly selectionOverlayMode?: DynamicGridSelectionOverlayModeV3 | undefined
   readonly showSelectionOverlay?: boolean | undefined
+  readonly showStructuralGridlines?: boolean | undefined
   readonly resizeGuideColumn?: number | null | undefined
   readonly resizeGuideColumnWidth?: number | null | undefined
   readonly resizeGuideRow?: number | null | undefined
@@ -61,6 +62,12 @@ export function buildDynamicGridOverlayBatchV3(input: {
 }): DynamicGridOverlayBatchV3 {
   const fillRects: GridGpuRect[] = []
   const borderRects: GridGpuRect[] = []
+  if (input.showStructuralGridlines !== false) {
+    appendStructuralGridlines({
+      fillRects,
+      geometry: input.geometry,
+    })
+  }
   if (input.showSelectionOverlay !== false) {
     const selectionOverlayMode = input.selectionOverlayMode ?? 'all'
     appendSelectionVisualOverlay({
@@ -118,6 +125,142 @@ export function buildDynamicGridOverlayBatchV3(input: {
     seq: input.geometry.camera.seq,
     sheetName: input.geometry.camera.sheetName,
     surfaceSize,
+  }
+}
+
+function appendStructuralGridlines(input: { readonly geometry: GridGeometrySnapshot; readonly fillRects: GridGpuRect[] }): void {
+  const parsedColor = parseGpuColor(workbookThemeColors.gridBorder)
+  const color = { ...parsedColor, a: 0.58 }
+  appendCellPaneStructuralGridlines({
+    color,
+    fillRects: input.fillRects,
+    geometry: input.geometry,
+    paneKind: 'body',
+  })
+  appendCellPaneStructuralGridlines({
+    color,
+    fillRects: input.fillRects,
+    geometry: input.geometry,
+    paneKind: 'frozen-rows',
+  })
+  appendCellPaneStructuralGridlines({
+    color,
+    fillRects: input.fillRects,
+    geometry: input.geometry,
+    paneKind: 'frozen-columns',
+  })
+  appendCellPaneStructuralGridlines({
+    color,
+    fillRects: input.fillRects,
+    geometry: input.geometry,
+    paneKind: 'frozen-cells',
+  })
+}
+
+function appendCellPaneStructuralGridlines(input: {
+  readonly color: GridGpuRect['color']
+  readonly fillRects: GridGpuRect[]
+  readonly geometry: GridGeometrySnapshot
+  readonly paneKind: 'body' | 'frozen-rows' | 'frozen-columns' | 'frozen-cells'
+}): void {
+  const pane = input.geometry.camera.panes.find((candidate) => candidate.kind === input.paneKind)
+  if (!pane || pane.frame.width <= 0 || pane.frame.height <= 0) {
+    return
+  }
+  const thickness = resolveStructuralGridlineThickness(input.geometry.camera.dpr)
+  const ranges = resolveCellPaneStructuralGridlineRanges(input.geometry, input.paneKind)
+  if (!ranges || ranges.colStart >= ranges.colEndExclusive || ranges.rowStart >= ranges.rowEndExclusive) {
+    return
+  }
+
+  for (let row = ranges.rowStart; row < ranges.rowEndExclusive; row += 1) {
+    if (input.geometry.rows.isHidden(row) || input.geometry.rows.sizeOf(row) <= 0) {
+      continue
+    }
+    for (let col = ranges.colStart; col < ranges.colEndExclusive; col += 1) {
+      if (input.geometry.columns.isHidden(col) || input.geometry.columns.sizeOf(col) <= 0) {
+        continue
+      }
+      const rect = input.geometry.cellScreenRectForPane(col, row, input.paneKind)
+      if (!rect || rect.width <= 0 || rect.height <= 0) {
+        continue
+      }
+      if (row === ranges.rowStart) {
+        input.fillRects.push({ x: rect.x, y: rect.y, width: rect.width, height: Math.min(thickness, rect.height), color: input.color })
+      }
+      if (col === ranges.colStart) {
+        input.fillRects.push({ x: rect.x, y: rect.y, width: Math.min(thickness, rect.width), height: rect.height, color: input.color })
+      }
+      input.fillRects.push({
+        x: rect.x,
+        y: rect.y + Math.max(0, rect.height - thickness),
+        width: rect.width,
+        height: Math.min(thickness, rect.height),
+        color: input.color,
+      })
+      input.fillRects.push({
+        x: rect.x + Math.max(0, rect.width - thickness),
+        y: rect.y,
+        width: Math.min(thickness, rect.width),
+        height: rect.height,
+        color: input.color,
+      })
+    }
+  }
+}
+
+function resolveStructuralGridlineThickness(dpr: number): number {
+  const resolvedDpr = Number.isFinite(dpr) ? Math.max(1, dpr) : 1
+  return 2 / resolvedDpr
+}
+
+function resolveCellPaneStructuralGridlineRanges(
+  geometry: GridGeometrySnapshot,
+  paneKind: 'body' | 'frozen-rows' | 'frozen-columns' | 'frozen-cells',
+): {
+  readonly colEndExclusive: number
+  readonly colStart: number
+  readonly rowEndExclusive: number
+  readonly rowStart: number
+} | null {
+  const camera = geometry.camera
+  const bodyColumns = geometry.columns.visibleRangeForWorldRect(camera.bodyWorldX, camera.bodyViewportWidth)
+  const bodyRows = geometry.rows.visibleRangeForWorldRect(camera.bodyWorldY, camera.bodyViewportHeight)
+  switch (paneKind) {
+    case 'body':
+      return {
+        colEndExclusive: bodyColumns.endIndexExclusive,
+        colStart: bodyColumns.startIndex,
+        rowEndExclusive: bodyRows.endIndexExclusive,
+        rowStart: bodyRows.startIndex,
+      }
+    case 'frozen-rows':
+      return camera.frozenRowCount <= 0
+        ? null
+        : {
+            colEndExclusive: bodyColumns.endIndexExclusive,
+            colStart: bodyColumns.startIndex,
+            rowEndExclusive: camera.frozenRowCount,
+            rowStart: 0,
+          }
+    case 'frozen-columns':
+      return camera.frozenColumnCount <= 0
+        ? null
+        : {
+            colEndExclusive: camera.frozenColumnCount,
+            colStart: 0,
+            rowEndExclusive: bodyRows.endIndexExclusive,
+            rowStart: bodyRows.startIndex,
+          }
+    case 'frozen-cells':
+      return camera.frozenColumnCount <= 0 || camera.frozenRowCount <= 0
+        ? null
+        : {
+            colEndExclusive: camera.frozenColumnCount,
+            colStart: 0,
+            rowEndExclusive: camera.frozenRowCount,
+            rowStart: 0,
+          }
   }
 }
 

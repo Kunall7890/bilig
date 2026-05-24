@@ -212,13 +212,7 @@ function resolveRenderRevisionKey(engine: GridEngineLike): string {
   if (!revision) {
     return 'untracked'
   }
-  return [
-    revision.authoritativeRevision ?? 'none',
-    revision.localRevision ?? 'none',
-    revision.projectedRevision,
-    revision.tileSceneRevision ?? 'none',
-    revision.tileSceneCameraSeq ?? 'none',
-  ].join(':')
+  return String(revision.authoritativeRevision ?? 'none')
 }
 
 function resolveVisibleTextLayoutKey(

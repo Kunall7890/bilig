@@ -11,6 +11,7 @@ import {
   WorkbookPaneRendererV3,
   resolveWorkbookPaneSelectionOccludedTilePanesV3,
   resolveWorkbookPanePresentedRevisionV3,
+  resolveWorkbookPaneTextLayerModeV3,
   resolveWorkbookPaneTileSceneCameraSeqV3,
   resolveWorkbookPaneTileSceneRevisionV3,
   resolveTypeGpuV3DrawScrollSnapshot,
@@ -259,6 +260,46 @@ describe('WorkbookPaneRendererV3', () => {
     await act(async () => {
       root.unmount()
     })
+  })
+
+  test('uses TypeGPU text as the primary path only after the backend is ready', () => {
+    const textPane = createTextTilePane()
+
+    const ready = resolveWorkbookPaneTextLayerModeV3({
+      active: true,
+      backendStatus: 'ready',
+      headerPanes: [],
+      tilePanes: [textPane],
+    })
+    expect(ready.typeGpuDrawText).toBe(true)
+    expect(ready.showTypeGpuCanvas).toBe(true)
+    expect(ready.showNativeTextLayer).toBe(false)
+    expect(ready.nativeLayerSource).toBe('typegpu-text-primary')
+    expect(ready.nativeTilePanes).toHaveLength(0)
+
+    const initializing = resolveWorkbookPaneTextLayerModeV3({
+      active: true,
+      backendStatus: 'initializing',
+      headerPanes: [],
+      tilePanes: [textPane],
+    })
+    expect(initializing.typeGpuDrawText).toBe(false)
+    expect(initializing.showTypeGpuCanvas).toBe(true)
+    expect(initializing.showNativeTextLayer).toBe(true)
+    expect(initializing.nativeLayerSource).toBe('typegpu-pending-native-text')
+    expect(initializing.nativeTilePanes).toHaveLength(1)
+
+    const unavailable = resolveWorkbookPaneTextLayerModeV3({
+      active: true,
+      backendStatus: 'unavailable',
+      headerPanes: [],
+      tilePanes: [textPane],
+    })
+    expect(unavailable.typeGpuDrawText).toBe(false)
+    expect(unavailable.showTypeGpuCanvas).toBe(false)
+    expect(unavailable.showNativeTextLayer).toBe(true)
+    expect(unavailable.nativeLayerSource).toBe('backend-unavailable-live')
+    expect(unavailable.nativeTilePanes).toHaveLength(1)
   })
 
   test('mounts native vector rects from V3 tile packets without a fallback canvas', async () => {

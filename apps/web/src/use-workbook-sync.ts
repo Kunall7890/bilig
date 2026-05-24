@@ -572,9 +572,7 @@ export function useWorkbookSync(input: {
       }
 
       let rollbackOptimisticMutation: (() => void) | null = null
-      flushSync(() => {
-        setLocalMutationInFlightCount((count) => count + 1)
-      })
+      setLocalMutationInFlightCount((count) => count + 1)
       try {
         const viewportStore = workerHandleRef.current?.viewportStore
         const deferProjectionStyleMutationUntilJournaled = isStyleMutation(mutation)

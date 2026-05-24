@@ -1,10 +1,8 @@
 import type { GridRenderTile, GridRenderTileDirtySpan, GridRenderTileDirtySpans } from './render-tile-source.js'
 import { DirtyMaskV3 } from './tile-damage-index.js'
 
-const RECT_DIRTY_MASK_V3 =
-  DirtyMaskV3.Style | DirtyMaskV3.Rect | DirtyMaskV3.Border | DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
-const TEXT_DIRTY_MASK_V3 =
-  DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
+const RECT_DIRTY_MASK_V3 = DirtyMaskV3.Rect | DirtyMaskV3.Border | DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
+const TEXT_DIRTY_MASK_V3 = DirtyMaskV3.Value | DirtyMaskV3.Text | DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
 
 const EMPTY_DIRTY_SPANS: GridRenderTileDirtySpans = Object.freeze({
   glyphSpans: Object.freeze([]),

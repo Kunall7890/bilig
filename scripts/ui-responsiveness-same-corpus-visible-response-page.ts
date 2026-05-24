@@ -75,12 +75,22 @@ async function readVisibleNonScrollResponseSignature(
   product: UiResponsivenessSameCorpusProduct,
   workload: NonScrollWorkload,
 ): Promise<VisibleNonScrollResponseSignature> {
+  const biligPresentedToken = product === 'bilig' ? await readBiligPresentedResponseToken(page, workload) : null
   return {
-    biligPresentedToken: product === 'bilig' ? await readBiligPresentedResponseToken(page, workload) : null,
+    biligPresentedToken,
     product,
-    screenshotSignature: await readViewportScreenshotSignature(page),
+    screenshotSignature: visibleNonScrollResponseNeedsScreenshot(product, biligPresentedToken)
+      ? await readViewportScreenshotSignature(page)
+      : null,
     workload,
   }
+}
+
+export function visibleNonScrollResponseNeedsScreenshot(
+  product: UiResponsivenessSameCorpusProduct,
+  biligPresentedToken: string | null = null,
+): boolean {
+  return product !== 'bilig' || biligPresentedToken === null
 }
 
 async function readBiligPresentedResponseToken(page: Page, workload: NonScrollWorkload): Promise<string | null> {

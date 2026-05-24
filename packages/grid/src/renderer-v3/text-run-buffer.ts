@@ -12,28 +12,16 @@ export interface PackedGridTextBufferV3 {
 
 export function packGridTextBufferV3(scene: GridTextScene): PackedGridTextBufferV3 {
   const textRuns = scene.items.map(mapTextRunV3)
+  return packGridTextRunsBufferV3(textRuns)
+}
+
+export function packGridTextRunsBufferV3(textRuns: readonly GridRenderTileTextRun[]): PackedGridTextBufferV3 {
   return {
-    textCount: scene.items.length,
-    textMetrics: packTextMetricsV3(scene.items),
+    textCount: textRuns.length,
+    textMetrics: packTextRunMetricsV3(textRuns),
     textRuns,
     textSignature: resolveGridTextSignatureV3(textRuns),
   }
-}
-
-function packTextMetricsV3(items: readonly GridTextItem[]): Float32Array {
-  const floats = new Float32Array(Math.max(1, items.length) * GRID_TEXT_METRIC_FLOAT_COUNT_V3)
-  items.forEach((item, index) => {
-    const offset = index * GRID_TEXT_METRIC_FLOAT_COUNT_V3
-    floats[offset + 0] = item.x
-    floats[offset + 1] = item.y
-    floats[offset + 2] = item.width
-    floats[offset + 3] = item.height
-    floats[offset + 4] = item.clipInsetTop
-    floats[offset + 5] = item.clipInsetRight
-    floats[offset + 6] = item.clipInsetBottom
-    floats[offset + 7] = item.clipInsetLeft
-  })
-  return floats
 }
 
 function mapTextRunV3(item: GridTextItem): GridRenderTileTextRun {
@@ -58,6 +46,22 @@ function mapTextRunV3(item: GridTextItem): GridRenderTileTextRun {
     x: item.x,
     y: item.y,
   }
+}
+
+function packTextRunMetricsV3(textRuns: readonly GridRenderTileTextRun[]): Float32Array {
+  const floats = new Float32Array(Math.max(1, textRuns.length) * GRID_TEXT_METRIC_FLOAT_COUNT_V3)
+  textRuns.forEach((run, index) => {
+    const offset = index * GRID_TEXT_METRIC_FLOAT_COUNT_V3
+    floats[offset + 0] = run.x
+    floats[offset + 1] = run.y
+    floats[offset + 2] = run.width
+    floats[offset + 3] = run.height
+    floats[offset + 4] = Math.max(0, run.clipY - run.y)
+    floats[offset + 5] = Math.max(0, run.x + run.width - (run.clipX + run.clipWidth))
+    floats[offset + 6] = Math.max(0, run.y + run.height - (run.clipY + run.clipHeight))
+    floats[offset + 7] = Math.max(0, run.clipX - run.x)
+  })
+  return floats
 }
 
 function resolveGridTextSignatureV3(textRuns: readonly GridRenderTileTextRun[]): string {
