@@ -13,7 +13,9 @@ import {
   requiresWorkbookAgentOwnerReview,
   resolveWorkbookAgentBundleExecutionPolicyInput,
   splitWorkbookAgentCommandBundle,
+  toWorkbookCommandBundle,
 } from '@bilig/agent-api'
+import { checkWorkbookCommandResultForBundle, type WorkbookCommandResult } from '@bilig/workbook'
 import type { ZeroSyncService } from '../zero/service.js'
 import { createWorkbookAgentServiceError } from '../workbook-agent-errors.js'
 import {
@@ -142,6 +144,43 @@ function assertWorkbookAgentApplyStillAuthorized(input: {
   }
 }
 
+function assertAppliedCommandResultProof(input: {
+  commandBundle: WorkbookAgentCommandBundle
+  commandResult: WorkbookCommandResult | undefined
+  appliedRevision: number
+}): WorkbookCommandResult {
+  if (input.commandResult === undefined) {
+    throw createWorkbookAgentServiceError({
+      code: 'WORKBOOK_AGENT_COMMAND_RESULT_REQUIRED',
+      message: 'Workbook apply completed without generic command result proof.',
+      statusCode: 500,
+      retryable: false,
+    })
+  }
+  try {
+    const bundle = toWorkbookCommandBundle(input.commandBundle)
+    const check = checkWorkbookCommandResultForBundle(bundle, input.commandResult)
+    if (check.status === 'invalid') {
+      const [firstIssue] = check.issues
+      throw new Error(firstIssue === undefined ? 'Workbook command result is invalid' : firstIssue.message)
+    }
+    if (check.result.status !== 'applied') {
+      throw new Error(`Workbook command result status must be applied, got ${check.result.status}`)
+    }
+    if (check.result.revision !== input.appliedRevision) {
+      throw new Error('Workbook command result revision must match the applied workbook revision')
+    }
+    return check.result
+  } catch (error) {
+    throw createWorkbookAgentServiceError({
+      code: 'WORKBOOK_AGENT_INVALID_COMMAND_RESULT',
+      message: error instanceof Error ? error.message : String(error),
+      statusCode: 500,
+      retryable: false,
+    })
+  }
+}
+
 export async function applyWorkbookAgentCommandBundleForSessionState(
   context: WorkbookAgentBundleApplicationContext,
   input: {
@@ -254,12 +293,17 @@ export async function applyWorkbookAgentCommandBundleForSessionState(
     userID: input.actorUserId,
     roles: ['editor'],
   })
+  const commandResult = assertAppliedCommandResultProof({
+    commandBundle: selection.acceptedBundle,
+    commandResult: result.commandResult,
+    appliedRevision: result.revision,
+  })
   const executionRecord = buildWorkbookAgentExecutionRecord({
     bundle: selection.acceptedBundle,
     actorUserId: input.actorUserId,
     planText: collectPlanTextForTurn(input.sessionState, input.commandBundle.turnId),
     preview: result.preview,
-    commandResult: result.commandResult,
+    commandResult,
     appliedRevision: result.revision,
     appliedBy: input.appliedBy,
     acceptedScope: selection.acceptedScope,

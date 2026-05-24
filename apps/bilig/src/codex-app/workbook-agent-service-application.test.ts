@@ -165,7 +165,7 @@ describe('workbook agent service application', () => {
           ],
         },
       ],
-      matched: true,
+      matched: null,
       changedRanges: [
         {
           sheetName: 'Sheet1',
@@ -206,6 +206,196 @@ describe('workbook agent service application', () => {
     expect(record.commandResult).toEqual(commandResult)
     expect(appendWorkbookAgentRun).toHaveBeenCalledWith(expect.objectContaining({ commandResult }))
     expect(sessionState.durable.executionRecords[0]).toEqual(expect.objectContaining({ commandResult }))
+  })
+
+  it('fails closed when runtime apply omits generic command result proof', async () => {
+    const sessionState = createSessionState()
+    const bundle = createWorkbookAgentCommandBundle({
+      documentId: 'doc-1',
+      threadId: 'thr-1',
+      turnId: 'turn-2',
+      goalText: 'Apply a workbook command with proof',
+      baseRevision: 1,
+      context: null,
+      commands: [
+        {
+          kind: 'writeRange',
+          sheetName: 'Sheet1',
+          startAddress: 'C3',
+          values: [[2]],
+        },
+      ],
+      now: 100,
+    })
+    const engine = new SpreadsheetEngine({
+      workbookName: 'Proof Workbook',
+      replicaId: 'test:missing-command-result-proof',
+    })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const runtime = {
+      documentId: 'doc-1',
+      engine,
+      projection: buildWorkbookSourceProjection('doc-1', engine.exportSnapshot(), {
+        revision: 1,
+        calculatedRevision: 1,
+        ownerUserId: 'alex@example.com',
+        updatedBy: 'alex@example.com',
+        updatedAt: '2026-05-23T00:00:00.000Z',
+      }),
+      headRevision: 1,
+      calculatedRevision: 1,
+      ownerUserId: 'alex@example.com',
+    } satisfies WorkbookRuntime
+    const inspectWorkbook: ZeroSyncService['inspectWorkbook'] = vi.fn(async (_documentId, task) => task(runtime))
+    const applyAgentCommandBundle: ZeroSyncService['applyAgentCommandBundle'] = vi.fn(async (_documentId, _bundle, preview) => ({
+      revision: 2,
+      preview,
+    }))
+    const appendWorkbookAgentRun = vi.fn(async () => {})
+
+    await expect(
+      applyWorkbookAgentCommandBundleForSessionState(
+        {
+          zeroSyncService: createZeroSyncServiceStub({
+            inspectWorkbook,
+            applyAgentCommandBundle,
+            appendWorkbookAgentRun,
+          }),
+          now: () => 200,
+          autoApplyLowRiskEnabled: true,
+          isRolloutAllowed: () => true,
+          touchSession: vi.fn(),
+        },
+        {
+          sessionState,
+          commandBundle: bundle,
+          actorUserId: 'alex@example.com',
+          appliedBy: 'auto',
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: 'WORKBOOK_AGENT_COMMAND_RESULT_REQUIRED',
+      retryable: false,
+      statusCode: 500,
+    })
+    expect(appendWorkbookAgentRun).not.toHaveBeenCalled()
+    expect(sessionState.durable.executionRecords).toEqual([])
+  })
+
+  it('fails closed when runtime apply returns command result proof for a different bundle', async () => {
+    const sessionState = createSessionState()
+    const bundle = createWorkbookAgentCommandBundle({
+      documentId: 'doc-1',
+      threadId: 'thr-1',
+      turnId: 'turn-2',
+      goalText: 'Apply a workbook command with proof',
+      baseRevision: 1,
+      context: null,
+      commands: [
+        {
+          kind: 'writeRange',
+          sheetName: 'Sheet1',
+          startAddress: 'C3',
+          values: [[2]],
+        },
+      ],
+      now: 100,
+    })
+    const engine = new SpreadsheetEngine({
+      workbookName: 'Proof Workbook',
+      replicaId: 'test:mismatched-command-result-proof',
+    })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const runtime = {
+      documentId: 'doc-1',
+      engine,
+      projection: buildWorkbookSourceProjection('doc-1', engine.exportSnapshot(), {
+        revision: 1,
+        calculatedRevision: 1,
+        ownerUserId: 'alex@example.com',
+        updatedBy: 'alex@example.com',
+        updatedAt: '2026-05-23T00:00:00.000Z',
+      }),
+      headRevision: 1,
+      calculatedRevision: 1,
+      ownerUserId: 'alex@example.com',
+    } satisfies WorkbookRuntime
+    const commandResult = {
+      status: 'applied' as const,
+      bundleId: `${bundle.id}:other`,
+      targetRevision: 1,
+      idempotencyKey: bundle.id,
+      commandCount: 1,
+      touchedRanges: [
+        {
+          sheetName: 'Sheet1',
+          startAddress: 'C3',
+          endAddress: 'C3',
+        },
+      ],
+      touchedCellCount: 1,
+      receipts: [
+        {
+          status: 'applied' as const,
+          featureId: 'workbook-agent',
+          commandId: 'workbookAgent.writeRange',
+          category: 'mutation' as const,
+          changedRanges: [
+            {
+              sheetName: 'Sheet1',
+              startAddress: 'C3',
+              endAddress: 'C3',
+            },
+          ],
+        },
+      ],
+      matched: null,
+      changedRanges: [
+        {
+          sheetName: 'Sheet1',
+          startAddress: 'C3',
+          endAddress: 'C3',
+        },
+      ],
+      revision: 2,
+    }
+    const inspectWorkbook: ZeroSyncService['inspectWorkbook'] = vi.fn(async (_documentId, task) => task(runtime))
+    const applyAgentCommandBundle: ZeroSyncService['applyAgentCommandBundle'] = vi.fn(async (_documentId, _bundle, preview) => ({
+      revision: 2,
+      preview,
+      commandResult,
+    }))
+    const appendWorkbookAgentRun = vi.fn(async () => {})
+
+    await expect(
+      applyWorkbookAgentCommandBundleForSessionState(
+        {
+          zeroSyncService: createZeroSyncServiceStub({
+            inspectWorkbook,
+            applyAgentCommandBundle,
+            appendWorkbookAgentRun,
+          }),
+          now: () => 200,
+          autoApplyLowRiskEnabled: true,
+          isRolloutAllowed: () => true,
+          touchSession: vi.fn(),
+        },
+        {
+          sessionState,
+          commandBundle: bundle,
+          actorUserId: 'alex@example.com',
+          appliedBy: 'auto',
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: 'WORKBOOK_AGENT_INVALID_COMMAND_RESULT',
+      retryable: false,
+      statusCode: 500,
+    })
+    expect(appendWorkbookAgentRun).not.toHaveBeenCalled()
+    expect(sessionState.durable.executionRecords).toEqual([])
   })
 
   it('does not auto-apply a queued private bundle from a stale completed turn', async () => {

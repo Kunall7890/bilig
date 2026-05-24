@@ -122,8 +122,8 @@ flowchart LR
   - agent APIs
   - authoritative agent apply validates the existing app command bundle through
     the generic `@bilig/workbook` command-bundle handoff before mutation
-  - agent execution records persist the generic `WorkbookCommandResult` proof
-    from authoritative apply for later inspection
+  - agent execution records require generic `WorkbookCommandResult` proof for
+    the exact accepted bundle and applied revision before persistence
 
 ## Removed topology
 

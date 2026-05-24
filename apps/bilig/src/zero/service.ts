@@ -306,7 +306,7 @@ class EnabledZeroSyncService implements ZeroSyncService {
     bundle: WorkbookAgentCommandBundle,
     preview: WorkbookAgentPreviewSummary,
     session?: SessionIdentity,
-  ): Promise<{ revision: number; preview: WorkbookAgentPreviewSummary }> {
+  ): Promise<{ revision: number; preview: WorkbookAgentPreviewSummary; commandResult: WorkbookCommandResult }> {
     const client = await this.pool.connect()
     try {
       return await this.runtimeManager.runExclusive(documentId, async () => {

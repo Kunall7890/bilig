@@ -411,9 +411,10 @@ count without importing `@bilig/core`. The bundle check verdict is frozen.
 `@bilig/agent-api` uses this same public handoff to validate its richer
 app-owned `WorkbookAgentCommandBundle` before preview and authoritative apply,
 without making `@bilig/workbook` depend on agent runtime code.
-`apps/bilig` then stores the validated `WorkbookCommandResult` on the agent
-execution record, so later agents can inspect the generic proof without replaying
-human spreadsheet UI state.
+`apps/bilig` then refuses to write the agent execution record unless
+authoritative apply returns a validated `WorkbookCommandResult` for the exact
+accepted bundle and applied revision, so later agents can inspect the generic
+proof without replaying human spreadsheet UI state.
 
 After a runtime has previewed or applied a bundle, call
 `workbookCommandResultForReceipts(bundle, receipts, { revision, undo })` to turn
