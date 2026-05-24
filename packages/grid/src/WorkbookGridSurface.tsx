@@ -360,6 +360,45 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
       ? props.editorTargetSelection.address
       : props.selectedAddr
   const displayTargetAddress = props.isEditingCell ? editorTargetAddress : formatAddress(displaySelectionRow, displaySelectionCol)
+  const selectionVisibleRevision = useMemo(
+    () =>
+      [
+        'grid-selection-v1',
+        props.sheetName,
+        displayTargetAddress,
+        `cell:${String(displaySelectionCol)}:${String(displaySelectionRow)}`,
+        displaySelectionRange
+          ? `range:${String(displaySelectionRange.x)}:${String(displaySelectionRange.y)}:${String(displaySelectionRange.width)}:${String(displaySelectionRange.height)}`
+          : 'range:none',
+      ].join('|'),
+    [displaySelectionCol, displaySelectionRange, displaySelectionRow, displayTargetAddress, props.sheetName],
+  )
+  const editorVisibleRevision = useMemo(
+    () => ['grid-editor-v1', props.sheetName, editorTargetAddress, props.isEditingCell ? props.editorValue : ''].join('|'),
+    [editorTargetAddress, props.editorValue, props.isEditingCell, props.sheetName],
+  )
+  const interactionVisibleRevision = useMemo(
+    () =>
+      [
+        'grid-interaction-v1',
+        selectionVisibleRevision,
+        editorVisibleRevision,
+        props.isEditingCell ? 'editing' : 'viewing',
+        `authoritative:${String(renderRevisionSnapshot?.authoritativeRevision ?? '')}`,
+        `local:${String(renderRevisionSnapshot?.localRevision ?? '')}`,
+        `projected:${String(renderRevisionSnapshot?.projectedRevision ?? '')}`,
+        `tile:${String(renderRevisionSnapshot?.tileSceneRevision ?? '')}`,
+      ].join('|'),
+    [
+      editorVisibleRevision,
+      props.isEditingCell,
+      renderRevisionSnapshot?.authoritativeRevision,
+      renderRevisionSnapshot?.localRevision,
+      renderRevisionSnapshot?.projectedRevision,
+      renderRevisionSnapshot?.tileSceneRevision,
+      selectionVisibleRevision,
+    ],
+  )
   const workbookDisplayFontSize = workbookDisplayFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)
   const [paneRendererBackendStatus, setPaneRendererBackendStatus] = useState<WorkbookPaneSurfaceBackendStatusV3>('idle')
   const selectionChromeMode = paneRendererBackendStatus === 'ready' ? 'chrome-only' : 'visible'
@@ -372,8 +411,11 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         data-default-column-width={renderState.gridMetrics.columnWidth}
         data-default-row-height={renderState.gridMetrics.rowHeight}
         data-render-authoritative-revision={renderRevisionSnapshot?.authoritativeRevision ?? ''}
+        data-render-editor-visible-revision={editorVisibleRevision}
+        data-render-interaction-visible-revision={interactionVisibleRevision}
         data-render-local-revision={renderRevisionSnapshot?.localRevision ?? ''}
         data-render-projected-revision={renderRevisionSnapshot?.projectedRevision ?? ''}
+        data-render-selection-visible-revision={selectionVisibleRevision}
         data-render-tile-scene-camera-seq={renderRevisionSnapshot?.tileSceneCameraSeq ?? ''}
         data-render-tile-scene-revision={renderRevisionSnapshot?.tileSceneRevision ?? ''}
         data-row-height-overrides={renderState.rowHeightOverridesAttr}

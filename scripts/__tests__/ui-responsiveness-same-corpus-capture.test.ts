@@ -45,6 +45,7 @@ import {
 } from '../ui-responsiveness-same-corpus-workload-runner.ts'
 import {
   biligInteractionVisibleResponseToken,
+  measureVisibleNonScrollResponse,
   visibleNonScrollResponseChanged,
   visibleNonScrollResponseNeedsScreenshot,
   type VisibleNonScrollResponseSignature,
@@ -506,14 +507,108 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     ).toBe(true)
   })
 
+  it('measures Bilig visible response after the operation starts instead of after authoritative completion', async () => {
+    let operationCompleted = false
+    let evaluateCount = 0
+    const surface = {
+      dpr: 1,
+      editorVisibleRevision: null,
+      fallback: null,
+      formulaVisibleRevision: null,
+      gridAuthoritativeRenderRevision: '0',
+      gridEditorVisibleRevision: 'grid-editor-before',
+      gridHeight: 480,
+      gridInteractionVisibleRevision: 'grid-before',
+      gridLocalRenderRevision: '1',
+      gridProjectedRenderRevision: '2',
+      gridSelectionVisibleRevision: 'grid-selection-before',
+      gridWidth: 720,
+      nativeRectCount: 4,
+      nativeRectLayerMounted: true,
+      nativeTextLayerMounted: true,
+      nativeTextRunCount: 3,
+      typeGpu: {
+        authoritativeRenderRevision: '0',
+        backendStatus: 'ready',
+        currentContentSignature: 'content-current',
+        currentRectSignature: 'rect-current',
+        currentSceneEpochSignature: 'epoch-current',
+        currentSceneOwnershipSignature: 'scene-current',
+        currentSelectionRevision: 'selection-current',
+        currentSemanticMutationRevision: 'semantic-current',
+        currentTextSignature: 'text-current',
+        currentViewportRevision: 'viewport-current',
+        currentWorkbookRevision: 'workbook-current',
+        frameProofStatus: 'presented',
+        headerPaneCount: 3,
+        localRenderRevision: '1',
+        mode: 'typegpu-v3',
+        pixelHeight: 480,
+        pixelWidth: 720,
+        presentedContentSignature: 'content-current',
+        presentedRectSignature: 'rect-current',
+        presentedSelectionRevision: 'selection-current',
+        presentedSemanticMutationRevision: 'semantic-current',
+        presentedTextSignature: 'text-current',
+        presentedViewportRevision: 'viewport-current',
+        presentedWorkbookRevision: 'workbook-current',
+        projectedRenderRevision: '2',
+        tilePaneCount: 6,
+        tileSceneRevision: '2',
+        visibleLocalRenderRevision: '1',
+        visibleProjectedRenderRevision: '2',
+      },
+    }
+    // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- This test supplies the minimal Playwright Page surface used by the visible-response barrier.
+    const page = {
+      evaluate: async (_callback: unknown, arg?: unknown) => {
+        evaluateCount += 1
+        if (evaluateCount === 1) {
+          return surface
+        }
+        if (typeof arg === 'number') {
+          return Array.from({ length: arg }, () => 1)
+        }
+        return undefined
+      },
+      waitForFunction: async () => {
+        expect(operationCompleted).toBe(false)
+      },
+    } as unknown as Page
+
+    let finishOperation: (() => void) | null = null
+    const operationPromise = new Promise<void>((resolve) => {
+      finishOperation = () => {
+        operationCompleted = true
+        resolve()
+      }
+    })
+    const samplePromise = measureVisibleNonScrollResponse(page, 'bilig', 'edit-visible-cell', 0, async () => {
+      await operationPromise
+    })
+    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+    expect(operationCompleted).toBe(false)
+    finishOperation?.()
+    const sample = await samplePromise
+
+    expect(operationCompleted).toBe(true)
+    expect(sample.operationResponseMs).toBeLessThan(50)
+    expect(sample.operationResponseProof).toBe('visible-non-scroll-response')
+  })
+
   it('keys Bilig non-scroll response timing from local visible revisions, not authoritative presented proof', () => {
     const surface = {
       dpr: 2,
+      editorVisibleRevision: 'cell-editor:WideGrid!F6:typed:5:5',
       fallback: null,
+      formulaVisibleRevision: null,
       gridAuthoritativeRenderRevision: 'authoritative-1',
+      gridEditorVisibleRevision: 'grid-editor-current',
       gridHeight: 480,
+      gridInteractionVisibleRevision: 'grid-interaction-current',
       gridLocalRenderRevision: 'local-7',
       gridProjectedRenderRevision: 'projected-9',
+      gridSelectionVisibleRevision: 'grid-selection-current',
       gridWidth: 720,
       nativeRectCount: 4,
       nativeRectLayerMounted: true,
@@ -552,9 +647,9 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       },
     }
 
-    expect(biligInteractionVisibleResponseToken(surface, 'select-cell')).toBe('selection-current')
-    expect(biligInteractionVisibleResponseToken(surface, 'jump-deep-row')).toBe('viewport-current')
-    expect(biligInteractionVisibleResponseToken(surface, 'edit-visible-cell')).toContain('semantic-current')
+    expect(biligInteractionVisibleResponseToken(surface, 'select-cell')).toBe('grid-selection-current')
+    expect(biligInteractionVisibleResponseToken(surface, 'jump-deep-row')).toBe('grid-selection-current')
+    expect(biligInteractionVisibleResponseToken(surface, 'edit-visible-cell')).toContain('cell-editor:WideGrid!F6:typed')
     expect(biligInteractionVisibleResponseToken(surface, 'edit-visible-cell')).not.toContain('semantic-stale')
   })
 

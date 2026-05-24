@@ -168,6 +168,7 @@ export function CellEditorOverlay({
 }: CellEditorOverlayProps) {
   const targetAddress = targetSelection.address
   const targetSheetName = targetSelection.sheetName
+  const editorTargetToken = `${targetSheetName}!${targetAddress}`
   const overlayRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const completionRef = useRef<'idle' | 'commit' | 'cancel'>('idle')
@@ -824,6 +825,7 @@ export function CellEditorOverlay({
     <div
       className="cell-editor-overlay box-border overflow-hidden border bg-[var(--wb-surface)]"
       data-completing={isCompleting ? 'true' : undefined}
+      data-editor-target={editorTargetToken}
       data-testid="cell-editor-overlay"
       ref={overlayRef}
       style={
@@ -835,6 +837,7 @@ export function CellEditorOverlay({
       <textarea
         aria-label={`${label} editor`}
         className="w-full resize-none border-0 bg-transparent px-2 py-[3px] leading-[1.2] outline-none"
+        data-editor-target={editorTargetToken}
         data-testid="cell-editor-input"
         ref={inputRef}
         readOnly={isCompleting}

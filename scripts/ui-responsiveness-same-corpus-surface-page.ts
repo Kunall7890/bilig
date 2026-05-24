@@ -20,6 +20,28 @@ export async function readBiligRenderedSurfaceState(page: Page): Promise<BiligRe
       nativeTextLayer instanceof HTMLElement
         ? Number.parseInt(nativeTextLayer.getAttribute('data-v3-native-text-run-count') ?? '0', 10) || 0
         : 0
+    const editor = document.querySelector('[data-testid="cell-editor-input"]')
+    const editorVisibleRevision =
+      editor instanceof HTMLTextAreaElement
+        ? [
+            'cell-editor',
+            editor.getAttribute('data-editor-target') ?? '',
+            editor.value,
+            String(editor.selectionStart ?? editor.value.length),
+            String(editor.selectionEnd ?? editor.value.length),
+          ].join(':')
+        : null
+    const formulaInput = document.querySelector('[data-testid="formula-input"]')
+    const formulaVisibleRevision =
+      formulaInput instanceof HTMLTextAreaElement
+        ? [
+            'formula-input',
+            formulaInput.getAttribute('data-formula-editing') ?? '',
+            formulaInput.value,
+            String(formulaInput.selectionStart ?? formulaInput.value.length),
+            String(formulaInput.selectionEnd ?? formulaInput.value.length),
+          ].join(':')
+        : null
     const fallbackState: BiligRenderedCanvasState | null =
       fallback instanceof HTMLCanvasElement
         ? {
@@ -134,11 +156,16 @@ export async function readBiligRenderedSurfaceState(page: Page): Promise<BiligRe
         : null
     return {
       dpr: Math.max(1, window.devicePixelRatio || 1),
+      editorVisibleRevision,
+      formulaVisibleRevision,
       fallback: fallbackState,
       gridAuthoritativeRenderRevision: grid.getAttribute('data-render-authoritative-revision'),
+      gridEditorVisibleRevision: grid.getAttribute('data-render-editor-visible-revision'),
       gridHeight: Math.max(0, Math.floor(grid.clientHeight)),
+      gridInteractionVisibleRevision: grid.getAttribute('data-render-interaction-visible-revision'),
       gridLocalRenderRevision: grid.getAttribute('data-render-local-revision'),
       gridProjectedRenderRevision: grid.getAttribute('data-render-projected-revision'),
+      gridSelectionVisibleRevision: grid.getAttribute('data-render-selection-visible-revision'),
       gridWidth: Math.max(0, Math.floor(grid.clientWidth)),
       nativeRectCount,
       nativeRectLayerMounted: nativeRectLayer instanceof HTMLElement,

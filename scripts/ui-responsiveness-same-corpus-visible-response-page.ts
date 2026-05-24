@@ -27,19 +27,41 @@ export async function measureVisibleNonScrollResponse(
   page: Page,
   product: UiResponsivenessSameCorpusProduct,
   workload: NonScrollWorkload,
+  sampleIndex: number,
+  runOperation: SameCorpusProductOperation,
+): Promise<ProductOperationSample> {
+  return await measureVisibleNonScrollResponseAfterOperationStarted(page, product, workload, sampleIndex, runOperation)
+}
+
+export async function measureVisibleNonScrollResponseAfterOperationStarted(
+  page: Page,
+  product: UiResponsivenessSameCorpusProduct,
+  workload: NonScrollWorkload,
   _sampleIndex: number,
   runOperation: SameCorpusProductOperation,
 ): Promise<ProductOperationSample> {
   const before = await readVisibleNonScrollResponseSignature(page, product, workload)
   const startedAt = performance.now()
-  await runOperation()
-  if (product === 'bilig' && before.biligInteractionVisibleToken) {
-    await waitForBiligVisibleNonScrollResponseToken(page, workload, before.biligInteractionVisibleToken)
-  } else {
-    await waitForVisibleNonScrollResponse(page, product, workload, before)
+  const operationPromise = runOperation()
+  const operationFailurePromise = waitForOperationFailure(operationPromise)
+  try {
+    const responsePromise =
+      product === 'bilig' && before.biligInteractionVisibleToken
+        ? waitForBiligVisibleNonScrollResponseToken(page, workload, before.biligInteractionVisibleToken)
+        : waitForVisibleNonScrollResponse(page, product, workload, before)
+    await Promise.race([responsePromise, operationFailurePromise])
+    const interactionVisibleMs = performance.now() - startedAt
+    await operationPromise
+    return await sampleSettledOperation(page, interactionVisibleMs, 'visible-non-scroll-response')
+  } catch (error) {
+    await operationPromise.catch(() => undefined)
+    throw error
   }
-  const interactionVisibleMs = performance.now() - startedAt
-  return await sampleSettledOperation(page, interactionVisibleMs, 'visible-non-scroll-response')
+}
+
+async function waitForOperationFailure(operationPromise: Promise<void>): Promise<never> {
+  await operationPromise
+  await new Promise<never>(() => {})
 }
 
 export function visibleNonScrollResponseChanged(
@@ -105,17 +127,45 @@ export function biligInteractionVisibleResponseToken(
   workload: NonScrollWorkload,
 ): string | null {
   const canvas = surface?.typeGpu
-  if (!canvas) {
+  if (!surface || !canvas) {
     return null
   }
+  if (workload === 'edit-visible-cell' || workload === 'formula-edit') {
+    return firstVisibleToken(
+      surface.editorVisibleRevision,
+      surface.formulaVisibleRevision,
+      surface.gridEditorVisibleRevision,
+      surface.gridInteractionVisibleRevision,
+      canvas.currentSemanticMutationRevision,
+      canvas.currentWorkbookRevision,
+      canvas.currentContentSignature,
+      canvas.currentTextSignature,
+      canvas.currentRectSignature,
+      canvas.visibleLocalRenderRevision,
+      canvas.visibleProjectedRenderRevision,
+      surface.gridLocalRenderRevision,
+      surface.gridProjectedRenderRevision,
+    )
+  }
   if (workload === 'select-cell') {
-    return firstVisibleToken(canvas.currentSelectionRevision, canvas.visibleLocalRenderRevision, surface.gridLocalRenderRevision)
+    return firstVisibleToken(
+      surface.gridSelectionVisibleRevision,
+      canvas.currentSelectionRevision,
+      canvas.visibleLocalRenderRevision,
+      surface.gridLocalRenderRevision,
+    )
   }
   if (workload === 'jump-deep-row') {
-    return firstVisibleToken(canvas.currentViewportRevision, canvas.visibleProjectedRenderRevision, surface.gridProjectedRenderRevision)
+    return firstVisibleToken(
+      surface.gridSelectionVisibleRevision,
+      canvas.currentViewportRevision,
+      canvas.visibleProjectedRenderRevision,
+      surface.gridProjectedRenderRevision,
+    )
   }
   return (
     [
+      surface.gridInteractionVisibleRevision,
       canvas.currentSemanticMutationRevision,
       canvas.currentWorkbookRevision,
       canvas.currentContentSignature,
@@ -142,32 +192,76 @@ async function waitForBiligVisibleNonScrollResponseToken(page: Page, workload: N
       // oxlint-disable-next-line eslint-plugin-unicorn(consistent-function-scoping) -- Playwright evaluates this helper inside the browser context.
       const firstDocumentToken = (...tokens: readonly (string | null | undefined)[]): string | null =>
         tokens.find((token): token is string => typeof token === 'string' && token.length > 0) ?? null
+      const editor = document.querySelector('[data-testid="cell-editor-input"]')
+      const editorToken =
+        editor instanceof HTMLTextAreaElement
+          ? [
+              'cell-editor',
+              editor.getAttribute('data-editor-target') ?? '',
+              editor.value,
+              String(editor.selectionStart ?? editor.value.length),
+              String(editor.selectionEnd ?? editor.value.length),
+            ].join(':')
+          : null
+      const formulaInput = document.querySelector('[data-testid="formula-input"]')
+      const formulaToken =
+        formulaInput instanceof HTMLTextAreaElement
+          ? [
+              'formula-input',
+              formulaInput.getAttribute('data-formula-editing') ?? '',
+              formulaInput.value,
+              String(formulaInput.selectionStart ?? formulaInput.value.length),
+              String(formulaInput.selectionEnd ?? formulaInput.value.length),
+            ].join(':')
+          : null
+      const gridInteractionToken = grid.getAttribute('data-render-interaction-visible-revision')
+      const gridSelectionToken = grid.getAttribute('data-render-selection-visible-revision')
+      const gridEditorToken = grid.getAttribute('data-render-editor-visible-revision')
       const token =
         targetWorkload === 'select-cell'
           ? firstDocumentToken(
+              gridSelectionToken,
               canvas.getAttribute('data-v3-current-selection-revision'),
               canvas.getAttribute('data-v3-visible-local-render-revision'),
               grid.getAttribute('data-render-local-revision'),
             )
           : targetWorkload === 'jump-deep-row'
             ? firstDocumentToken(
+                gridSelectionToken,
                 canvas.getAttribute('data-v3-current-viewport-revision'),
                 canvas.getAttribute('data-v3-visible-projected-render-revision'),
                 grid.getAttribute('data-render-projected-revision'),
               )
-            : [
-                canvas.getAttribute('data-v3-current-semantic-mutation-revision'),
-                canvas.getAttribute('data-v3-current-workbook-revision'),
-                canvas.getAttribute('data-v3-current-content-signature'),
-                canvas.getAttribute('data-v3-current-text-signature'),
-                canvas.getAttribute('data-v3-current-rect-signature'),
-                canvas.getAttribute('data-v3-visible-local-render-revision'),
-                canvas.getAttribute('data-v3-visible-projected-render-revision'),
-                grid.getAttribute('data-render-local-revision'),
-                grid.getAttribute('data-render-projected-revision'),
-              ]
-                .filter((entry): entry is string => Boolean(entry))
-                .join('|') || null
+            : targetWorkload === 'edit-visible-cell' || targetWorkload === 'formula-edit'
+              ? firstDocumentToken(
+                  editorToken,
+                  formulaToken,
+                  gridEditorToken,
+                  gridInteractionToken,
+                  canvas.getAttribute('data-v3-current-semantic-mutation-revision'),
+                  canvas.getAttribute('data-v3-current-workbook-revision'),
+                  canvas.getAttribute('data-v3-current-content-signature'),
+                  canvas.getAttribute('data-v3-current-text-signature'),
+                  canvas.getAttribute('data-v3-current-rect-signature'),
+                  canvas.getAttribute('data-v3-visible-local-render-revision'),
+                  canvas.getAttribute('data-v3-visible-projected-render-revision'),
+                  grid.getAttribute('data-render-local-revision'),
+                  grid.getAttribute('data-render-projected-revision'),
+                )
+              : [
+                  gridInteractionToken,
+                  canvas.getAttribute('data-v3-current-semantic-mutation-revision'),
+                  canvas.getAttribute('data-v3-current-workbook-revision'),
+                  canvas.getAttribute('data-v3-current-content-signature'),
+                  canvas.getAttribute('data-v3-current-text-signature'),
+                  canvas.getAttribute('data-v3-current-rect-signature'),
+                  canvas.getAttribute('data-v3-visible-local-render-revision'),
+                  canvas.getAttribute('data-v3-visible-projected-render-revision'),
+                  grid.getAttribute('data-render-local-revision'),
+                  grid.getAttribute('data-render-projected-revision'),
+                ]
+                  .filter((entry): entry is string => Boolean(entry))
+                  .join('|') || null
       return Boolean(token && token !== previousToken)
     },
     { previousToken: beforeToken, targetWorkload: workload },

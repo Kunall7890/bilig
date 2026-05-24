@@ -55,11 +55,16 @@ export interface BiligRenderedCanvasState {
 
 export interface BiligRenderedSurfaceState {
   readonly dpr: number
+  readonly editorVisibleRevision?: string | null | undefined
+  readonly formulaVisibleRevision?: string | null | undefined
   readonly fallback: BiligRenderedCanvasState | null
   readonly gridAuthoritativeRenderRevision?: string | null | undefined
+  readonly gridEditorVisibleRevision?: string | null | undefined
   readonly gridHeight: number
+  readonly gridInteractionVisibleRevision?: string | null | undefined
   readonly gridLocalRenderRevision?: string | null | undefined
   readonly gridProjectedRenderRevision?: string | null | undefined
+  readonly gridSelectionVisibleRevision?: string | null | undefined
   readonly gridWidth: number
   readonly nativeRectCount: number
   readonly nativeRectLayerMounted: boolean
@@ -348,8 +353,13 @@ function baseSurfaceEvidence(state: BiligRenderedSurfaceState): string[] {
     `expectedPixelWidth=${String(expectedPixelWidth)}`,
     `expectedPixelHeight=${String(expectedPixelHeight)}`,
     `gridAuthoritativeRevision=${state.gridAuthoritativeRenderRevision ?? ''}`,
+    `gridSelectionVisibleRevision=${state.gridSelectionVisibleRevision ?? ''}`,
+    `gridEditorVisibleRevision=${state.gridEditorVisibleRevision ?? ''}`,
+    `gridInteractionVisibleRevision=${state.gridInteractionVisibleRevision ?? ''}`,
     `gridLocalRevision=${state.gridLocalRenderRevision ?? ''}`,
     `gridProjectedRevision=${state.gridProjectedRenderRevision ?? ''}`,
+    `editorVisibleRevision=${state.editorVisibleRevision ?? ''}`,
+    `formulaVisibleRevision=${state.formulaVisibleRevision ?? ''}`,
     `fallbackMounted=${String(Boolean(state.fallback))}`,
     `nativeRectLayerMounted=${String(state.nativeRectLayerMounted)}`,
     `nativeRectCount=${String(state.nativeRectCount)}`,
