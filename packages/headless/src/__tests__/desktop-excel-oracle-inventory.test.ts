@@ -172,10 +172,13 @@ describe('macOS Desktop Excel oracle inventory', () => {
 
     expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
     expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
     expect(source).toContain("updateLinks: 'external'")
     expect(source).toContain('externalLinkArtifacts')
     expect(source).toContain('externalLinkPackageSummary')
+    expect(source).toContain('externalLinkPackageMetrics')
     expect(source).toContain('round-trips cached external ranges through Desktop Excel and Bilig recalc')
+    expect(source).toContain('matches Desktop Excel external-link cleanup after deleting the formula sheet')
   })
 
   it('keeps the sparkline oracle anchored to Desktop Excel extension XML refs', () => {

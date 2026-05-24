@@ -8,7 +8,12 @@ import * as XLSX from 'xlsx'
 
 import { SpreadsheetEngine } from '@bilig/core'
 import { exportXlsx, externalWorkbookReferencesWarning, importXlsx } from '@bilig/excel-import'
-import { isMacosExcelInstalled, runMacosExcelInspectionOracle, type NormalizedFormulaValue } from '@bilig/excel-fixtures'
+import {
+  isMacosExcelInstalled,
+  runMacosExcelInspectionOracle,
+  runMacosExcelStructuralOperationOracle,
+  type NormalizedFormulaValue,
+} from '@bilig/excel-fixtures'
 import { ValueTag, type CellValue } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
 
@@ -27,6 +32,28 @@ const changedExternalRangeValues = [
 ] as const
 
 describe('macOS Desktop Excel external-link cache oracle', () => {
+  it('drops orphaned external-link caches when deleting the last formula sheet', async () => {
+    const source = buildExternalLinkRangeCacheWorkbook('file:///tmp/rates.xlsx', { includeKeepSheet: true })
+    const imported = importXlsx(source, 'external-link-range-cache-delete.xlsx')
+    expect(imported.snapshot.sheets.map((sheet) => sheet.name)).toEqual(['Keep', 'Model', '__bilig_ext_1_Rates'])
+
+    const engine = new SpreadsheetEngine({ workbookName: 'external-link-range-cache-delete' })
+    await engine.ready()
+    engine.importSnapshot(imported.snapshot)
+    engine.deleteSheet('Model')
+
+    const snapshot = engine.exportSnapshot()
+    expect(snapshot.sheets.map((sheet) => sheet.name)).toEqual(['Keep'])
+    expect(snapshot.workbook.metadata?.externalLinkArtifacts).toBeUndefined()
+    expect(snapshot.workbook.metadata?.externalWorkbookReferences).toBeUndefined()
+    expect(externalLinkPackageMetrics(unzipSync(exportXlsx(snapshot)))).toEqual({
+      packageParts: [],
+      workbookExternalReferenceTargets: [],
+      externalLinkPathRelationshipParts: [],
+      contentTypeOverrides: [],
+    })
+  })
+
   it('imports cached external ranges as hidden-sheet references', async () => {
     const source = buildExternalLinkRangeCacheWorkbook()
     const imported = importXlsx(source, 'external-link-range-cache.xlsx')
@@ -124,6 +151,73 @@ describe('macOS Desktop Excel external-link cache oracle', () => {
     },
     60_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel external-link cleanup after deleting the formula sheet',
+    async () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-external-link-delete-')
+      try {
+        const linkedSourceWorkbookPath = join(tempDir, 'rates.xlsx')
+        const sourceWorkbookPath = join(tempDir, 'external-link-delete-source.xlsx')
+        writeFileSync(linkedSourceWorkbookPath, buildExternalSourceWorkbook())
+        const sourceBytes = buildExternalLinkRangeCacheWorkbook(pathToFileURL(linkedSourceWorkbookPath).href, {
+          includeKeepSheet: true,
+        })
+        writeFileSync(sourceWorkbookPath, sourceBytes)
+
+        const excelDeleted = runMacosExcelStructuralOperationOracle({
+          workbookPath: sourceWorkbookPath,
+          worksheetName: 'Keep',
+          operations: [{ kind: 'deleteSheet', name: 'Model' }],
+          inspectCells: ['A1'],
+          companionWorkbookPaths: [linkedSourceWorkbookPath],
+          saveWorkbook: true,
+          updateLinks: 'external',
+          timeoutMs: 120_000,
+        })
+        expect(excelDeleted.cells[0]?.value).toEqual({ kind: 'string', value: 'keep' })
+
+        const excelTruthBytes = new Uint8Array(readFileSync(sourceWorkbookPath))
+        const excelTruthMetrics = externalLinkPackageMetrics(unzipSync(excelTruthBytes))
+        expect(excelTruthMetrics).toEqual({
+          packageParts: [],
+          workbookExternalReferenceTargets: [],
+          externalLinkPathRelationshipParts: [],
+          contentTypeOverrides: [],
+        })
+
+        const imported = importXlsx(sourceBytes, 'external-link-delete-source.xlsx')
+        const engine = new SpreadsheetEngine({ workbookName: 'external-link-delete-oracle' })
+        await engine.ready()
+        engine.importSnapshot(imported.snapshot)
+        engine.deleteSheet('Model')
+
+        const headlessSnapshot = engine.exportSnapshot()
+        expect(headlessSnapshot.sheets.map((sheet) => sheet.name)).toEqual(['Keep'])
+
+        const exportedWorkbookPath = join(tempDir, 'external-link-delete-headless.xlsx')
+        writeFileSync(exportedWorkbookPath, exportXlsx(headlessSnapshot))
+        expect(externalLinkPackageMetrics(unzipSync(new Uint8Array(readFileSync(exportedWorkbookPath))))).toEqual(excelTruthMetrics)
+
+        const headlessExcel = runMacosExcelInspectionOracle({
+          workbookPath: exportedWorkbookPath,
+          worksheetName: 'Keep',
+          formulaCells: [],
+          inspectCells: ['A1'],
+          saveWorkbook: true,
+          timeoutMs: 90_000,
+        })
+        expect(headlessExcel.cells).toEqual(excelDeleted.cells)
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    150_000,
+  )
 })
 
 function expectEngineValues(
@@ -168,8 +262,14 @@ function createExcelAccessibleTempDir(prefix: string): string {
   return mkdtempSync(join(root, prefix))
 }
 
-function buildExternalLinkRangeCacheWorkbook(target = 'file:///tmp/rates.xlsx'): Uint8Array {
+function buildExternalLinkRangeCacheWorkbook(
+  target = 'file:///tmp/rates.xlsx',
+  options: { readonly includeKeepSheet?: boolean } = {},
+): Uint8Array {
   const workbook = XLSX.utils.book_new()
+  if (options.includeKeepSheet === true) {
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['keep']]), 'Keep')
+  }
   const sheet = XLSX.utils.aoa_to_sheet([[null, 2]])
   sheet.C1 = { t: 'n', f: "SUM('[1]Rates'!$B$2:$B$4)*B1", v: 120 }
   sheet.C2 = { t: 'n', f: "_xlfn.XLOOKUP(\"B\",'[1]Rates'!$A$2:$A$4,'[1]Rates'!$B$2:$B$4)*B1", v: 40 }
@@ -254,12 +354,53 @@ function externalLinkPackageSummary(zip: Record<string, Uint8Array>): {
   }
 }
 
+function externalLinkPackageMetrics(zip: Record<string, Uint8Array>): {
+  readonly packageParts: readonly (readonly [path: string, xml: string])[]
+  readonly workbookExternalReferenceTargets: readonly string[]
+  readonly externalLinkPathRelationshipParts: readonly (readonly [path: string, xml: string])[]
+  readonly contentTypeOverrides: readonly string[]
+} {
+  const workbookExternalReferencesXml = extractSingleXmlOptional(
+    xmlText(zip, 'xl/workbook.xml'),
+    /<(?:[A-Za-z_][\w.-]*:)?externalReferences\b[^>]*>[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?externalReferences>/u,
+  )
+  const workbookExternalLinkTargets = workbookExternalLinkTargetsByRelationshipIdOptional(xmlText(zip, 'xl/_rels/workbook.xml.rels'))
+  return {
+    packageParts: Object.entries(zip)
+      .filter(([path]) => /^xl\/externalLinks\/externalLink[^/]*\.xml$/u.test(path))
+      .map(([path, bytes]) => [path, strFromU8(bytes)] as const)
+      .toSorted(([left], [right]) => left.localeCompare(right)),
+    workbookExternalReferenceTargets: workbookExternalReferencesXml
+      ? extractCaptureMatchesOptional(workbookExternalReferencesXml, /\br:id="([^"]+)"/gu).flatMap((id) => {
+          const target = workbookExternalLinkTargets.get(id)
+          return target === undefined ? [] : [target]
+        })
+      : [],
+    externalLinkPathRelationshipParts: Object.entries(zip)
+      .filter(([path]) => /^xl\/externalLinks\/_rels\/externalLink[^/]*\.xml\.rels$/u.test(path))
+      .map(([path, bytes]) => [path, strFromU8(bytes)] as const)
+      .toSorted(([left], [right]) => left.localeCompare(right)),
+    contentTypeOverrides: extractXmlMatchesOptional(
+      xmlText(zip, '[Content_Types].xml'),
+      /<Override\b[^>]*ContentType="application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.externalLink\+xml"[^>]*\/>/gu,
+    ),
+  }
+}
+
+function extractSingleXmlOptional(xml: string, pattern: RegExp): string | undefined {
+  return xml.match(pattern)?.[0]
+}
+
 function extractSingleXml(xml: string, pattern: RegExp): string {
   const match = xml.match(pattern)
   if (!match) {
     throw new Error(`Missing expected XLSX XML fragment for pattern ${String(pattern)}`)
   }
   return match[0]
+}
+
+function extractXmlMatchesOptional(xml: string, pattern: RegExp): readonly string[] {
+  return [...xml.matchAll(pattern)].map((match) => match[0]).toSorted()
 }
 
 function extractXmlMatches(xml: string, pattern: RegExp): readonly string[] {
@@ -270,12 +411,29 @@ function extractXmlMatches(xml: string, pattern: RegExp): readonly string[] {
   return matches.toSorted()
 }
 
+function extractCaptureMatchesOptional(xml: string, pattern: RegExp): readonly string[] {
+  return [...xml.matchAll(pattern)].flatMap((match) => match[1] ?? [])
+}
+
 function extractCaptureMatches(xml: string, pattern: RegExp): readonly string[] {
   const matches = [...xml.matchAll(pattern)].flatMap((match) => match[1] ?? [])
   if (matches.length === 0) {
     throw new Error(`Missing expected XLSX XML capture for pattern ${String(pattern)}`)
   }
   return matches
+}
+
+function workbookExternalLinkTargetsByRelationshipIdOptional(workbookRelationshipsXml: string): ReadonlyMap<string, string> {
+  const targetsById = new Map<string, string>()
+  for (const relationship of extractXmlMatchesOptional(workbookRelationshipsXml, /<Relationship\b[^>]*\/>/gu)) {
+    if (!relationship.includes('/relationships/externalLink"')) {
+      continue
+    }
+    const id = extractAttribute(relationship, 'Id')
+    const target = extractAttribute(relationship, 'Target')
+    targetsById.set(id, target)
+  }
+  return targetsById
 }
 
 function workbookExternalLinkTargetsByRelationshipId(workbookRelationshipsXml: string): ReadonlyMap<string, string> {

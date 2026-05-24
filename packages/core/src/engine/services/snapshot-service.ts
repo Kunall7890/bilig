@@ -51,6 +51,50 @@ function hasNonDefaultCalculationSettings(calculationSettings: WorkbookCalculati
   )
 }
 
+interface ExternalCacheExportPlan {
+  readonly cacheSheetNames: ReadonlySet<string>
+  readonly omitExternalLinkArtifacts: boolean
+}
+
+function collectExternalCacheExportPlan(args: {
+  readonly workbook: EngineRuntimeState['workbook']
+  readonly getCellByIndex: (cellIndex: number) => CellSnapshot
+}): ExternalCacheExportPlan {
+  const cacheSheetNames = new Set(
+    [...args.workbook.sheetsByName.values()]
+      .filter((sheet) => sheet.name.startsWith('__bilig_ext_') && sheet.visibility === 'veryHidden')
+      .map((sheet) => sheet.name),
+  )
+  if (cacheSheetNames.size === 0) {
+    return { cacheSheetNames, omitExternalLinkArtifacts: false }
+  }
+
+  const cacheSheetNameList = [...cacheSheetNames]
+  let hasLiveCacheReference = false
+  for (const sheet of args.workbook.sheetsByName.values()) {
+    if (cacheSheetNames.has(sheet.name)) {
+      continue
+    }
+    sheet.grid.forEachCellEntry((cellIndex) => {
+      if (hasLiveCacheReference) {
+        return
+      }
+      const formula = args.getCellByIndex(cellIndex).formula
+      if (formula && cacheSheetNameList.some((cacheSheetName) => formula.includes(cacheSheetName))) {
+        hasLiveCacheReference = true
+      }
+    })
+    if (hasLiveCacheReference) {
+      break
+    }
+  }
+
+  return {
+    cacheSheetNames,
+    omitExternalLinkArtifacts: !hasLiveCacheReference,
+  }
+}
+
 function runtimeImageSheetCellsAreDenseRowMajor(args: {
   readonly coords: readonly { readonly row: number; readonly col: number }[]
   readonly width: number
@@ -103,6 +147,10 @@ export function createEngineSnapshotService(args: {
           const workbook: WorkbookSnapshot['workbook'] = {
             name: args.state.workbook.workbookName,
           }
+          const externalCacheExportPlan = collectExternalCacheExportPlan({
+            workbook: args.state.workbook,
+            getCellByIndex: args.getCellByIndex,
+          })
           const properties = args.state.workbook.listWorkbookProperties().map(({ key, value }) => ({ key, value }))
           const workbookProtection = args.state.workbook.getWorkbookProtection()
           const macroPayloads = args.state.workbook.listMacroPayloads().map((payload) => Object.assign({}, payload))
@@ -141,10 +189,15 @@ export function createEngineSnapshotService(args: {
           const charts = args.state.workbook.listCharts().map((chart) => structuredClone(chart))
           const drawingArtifacts = args.state.workbook.getDrawingArtifacts()
           const controlArtifacts = args.state.workbook.metadata.controlArtifacts
-          const externalLinkArtifacts = args.state.workbook.getExternalLinkArtifacts()
+          const externalLinkArtifacts = externalCacheExportPlan.omitExternalLinkArtifacts
+            ? undefined
+            : args.state.workbook.getExternalLinkArtifacts()
           const threadedCommentArtifacts = args.state.workbook.getThreadedCommentArtifacts()
           const cellMetadata = args.state.workbook.metadata.cellMetadata
           const preservedWorkbookMetadata = clonePreservedWorkbookMetadata(args.state.workbook.metadata.preservedWorkbookMetadata)
+          if (externalCacheExportPlan.omitExternalLinkArtifacts) {
+            delete preservedWorkbookMetadata.externalWorkbookReferences
+          }
           const images = args.state.workbook.listImages().map((image) => structuredClone(image))
           const shapes = args.state.workbook.listShapes().map((shape) => structuredClone(shape))
           if (
@@ -248,6 +301,9 @@ export function createEngineSnapshotService(args: {
             workbook,
             sheets: [...args.state.workbook.sheetsByName.values()]
               .toSorted((left, right) => left.order - right.order)
+              .filter(
+                (sheet) => !externalCacheExportPlan.omitExternalLinkArtifacts || !externalCacheExportPlan.cacheSheetNames.has(sheet.name),
+              )
               .map((sheet) => {
                 const metadata = exportSheetMetadata(args.state.workbook, sheet.name)
                 const cells: WorkbookSnapshot['sheets'][number]['cells'] = []
