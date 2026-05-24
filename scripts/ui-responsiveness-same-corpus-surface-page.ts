@@ -10,6 +10,16 @@ export async function readBiligRenderedSurfaceState(page: Page): Promise<BiligRe
     }
     const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
     const fallback = document.querySelector('[data-testid="grid-pane-renderer-fallback"]')
+    const nativeRectLayer = document.querySelector('[data-testid="grid-native-rect-layer"]')
+    const nativeTextLayer = document.querySelector('[data-testid="grid-native-text-layer"]')
+    const nativeRectCount =
+      nativeRectLayer instanceof HTMLElement
+        ? Number.parseInt(nativeRectLayer.getAttribute('data-v3-native-rect-count') ?? '0', 10) || 0
+        : 0
+    const nativeTextRunCount =
+      nativeTextLayer instanceof HTMLElement
+        ? Number.parseInt(nativeTextLayer.getAttribute('data-v3-native-text-run-count') ?? '0', 10) || 0
+        : 0
     const fallbackState: BiligRenderedCanvasState | null =
       fallback instanceof HTMLCanvasElement
         ? {
@@ -27,6 +37,7 @@ export async function readBiligRenderedSurfaceState(page: Page): Promise<BiligRe
             currentTextSignature: fallback.getAttribute('data-v3-current-text-signature'),
             currentViewportRevision: fallback.getAttribute('data-v3-current-viewport-revision'),
             currentWorkbookRevision: fallback.getAttribute('data-v3-current-workbook-revision'),
+            drawText: fallback.getAttribute('data-v3-draw-text') === 'true',
             frameProofStatus: fallback.getAttribute('data-v3-frame-proof-status'),
             frameProofSignature: fallback.getAttribute('data-v3-frame-proof-signature'),
             headerPaneCount: Number.parseInt(fallback.getAttribute('data-v3-header-pane-count') ?? '0', 10) || 0,
@@ -34,6 +45,11 @@ export async function readBiligRenderedSurfaceState(page: Page): Promise<BiligRe
             hasPresentedVisibleFrame: fallback.getAttribute('data-v3-has-presented-visible-frame') === 'true',
             localRenderRevision: fallback.getAttribute('data-v3-local-render-revision'),
             mode: fallback.getAttribute('data-renderer-mode'),
+            nativeHeaderPaneCount: Number.parseInt(fallback.getAttribute('data-v3-native-header-pane-count') ?? '0', 10) || 0,
+            nativeHeaderTextRunCount: Number.parseInt(fallback.getAttribute('data-v3-native-header-text-run-count') ?? '0', 10) || 0,
+            nativeLayerSource: fallback.getAttribute('data-v3-native-layer-source'),
+            nativeTilePaneCount: Number.parseInt(fallback.getAttribute('data-v3-native-tile-pane-count') ?? '0', 10) || 0,
+            nativeTileTextRunCount: Number.parseInt(fallback.getAttribute('data-v3-native-text-run-count') ?? '0', 10) || 0,
             pixelHeight: fallback.height,
             pixelWidth: fallback.width,
             presentedContentSignature: fallback.getAttribute('data-v3-presented-content-signature'),
@@ -77,6 +93,7 @@ export async function readBiligRenderedSurfaceState(page: Page): Promise<BiligRe
             currentTextSignature: typeGpu.getAttribute('data-v3-current-text-signature'),
             currentViewportRevision: typeGpu.getAttribute('data-v3-current-viewport-revision'),
             currentWorkbookRevision: typeGpu.getAttribute('data-v3-current-workbook-revision'),
+            drawText: typeGpu.getAttribute('data-v3-draw-text') === 'true',
             frameProofStatus: typeGpu.getAttribute('data-v3-frame-proof-status'),
             frameProofSignature: typeGpu.getAttribute('data-v3-frame-proof-signature'),
             headerPaneCount: Number.parseInt(typeGpu.getAttribute('data-v3-header-pane-count') ?? '0', 10) || 0,
@@ -84,6 +101,11 @@ export async function readBiligRenderedSurfaceState(page: Page): Promise<BiligRe
             hasPresentedVisibleFrame: typeGpu.getAttribute('data-v3-has-presented-visible-frame') === 'true',
             localRenderRevision: typeGpu.getAttribute('data-v3-local-render-revision'),
             mode: typeGpu.getAttribute('data-renderer-mode'),
+            nativeHeaderPaneCount: Number.parseInt(typeGpu.getAttribute('data-v3-native-header-pane-count') ?? '0', 10) || 0,
+            nativeHeaderTextRunCount: Number.parseInt(typeGpu.getAttribute('data-v3-native-header-text-run-count') ?? '0', 10) || 0,
+            nativeLayerSource: typeGpu.getAttribute('data-v3-native-layer-source'),
+            nativeTilePaneCount: Number.parseInt(typeGpu.getAttribute('data-v3-native-tile-pane-count') ?? '0', 10) || 0,
+            nativeTileTextRunCount: Number.parseInt(typeGpu.getAttribute('data-v3-native-text-run-count') ?? '0', 10) || 0,
             pixelHeight: typeGpu.height,
             pixelWidth: typeGpu.width,
             presentedContentSignature: typeGpu.getAttribute('data-v3-presented-content-signature'),
@@ -118,6 +140,10 @@ export async function readBiligRenderedSurfaceState(page: Page): Promise<BiligRe
       gridLocalRenderRevision: grid.getAttribute('data-render-local-revision'),
       gridProjectedRenderRevision: grid.getAttribute('data-render-projected-revision'),
       gridWidth: Math.max(0, Math.floor(grid.clientWidth)),
+      nativeRectCount,
+      nativeRectLayerMounted: nativeRectLayer instanceof HTMLElement,
+      nativeTextLayerMounted: nativeTextLayer instanceof HTMLElement,
+      nativeTextRunCount,
       typeGpu: typeGpuState,
     }
   })

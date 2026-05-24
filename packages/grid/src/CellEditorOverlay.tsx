@@ -186,6 +186,7 @@ export function CellEditorOverlay({
     undoStack: [],
   })
   const applyEditorHistoryRef = useRef<(input: HTMLTextAreaElement, direction: 'redo' | 'undo') => boolean>(() => false)
+  const pendingHeightSyncFrameRef = useRef<number | null>(null)
   const pendingParentDraftFrameRef = useRef<number | null>(null)
   const pendingParentDraftValueRef = useRef<string | null>(null)
   const onChangeRef = useRef(onChange)
@@ -243,6 +244,28 @@ export function CellEditorOverlay({
       textarea.style.overflowY = textarea.scrollHeight > MAX_EDITOR_HEIGHT ? 'auto' : 'hidden'
     },
     [displayFontSize],
+  )
+
+  const cancelPendingTextareaHeightSync = () => {
+    const frame = pendingHeightSyncFrameRef.current
+    if (frame === null) {
+      return
+    }
+    pendingHeightSyncFrameRef.current = null
+    window.cancelAnimationFrame(frame)
+  }
+
+  const scheduleTextareaHeightSync = useCallback(
+    (textarea: HTMLTextAreaElement) => {
+      if (pendingHeightSyncFrameRef.current !== null) {
+        return
+      }
+      pendingHeightSyncFrameRef.current = window.requestAnimationFrame(() => {
+        pendingHeightSyncFrameRef.current = null
+        syncTextareaHeight(inputRef.current ?? textarea)
+      })
+    },
+    [syncTextareaHeight],
   )
 
   const cancelPendingParentDraftChange = () => {
@@ -314,8 +337,10 @@ export function CellEditorOverlay({
         nextSelection.direction,
       )
     }
-    if (input) {
+    if (input && options.writeInput) {
       syncTextareaHeight(input)
+    } else if (input) {
+      scheduleTextareaHeightSync(input)
     }
     notifyDraftValue(nextValue, options.notify ?? 'immediate')
   }
@@ -689,6 +714,7 @@ export function CellEditorOverlay({
   useEffect(() => {
     return () => {
       cancelPendingBlurCommit()
+      cancelPendingTextareaHeightSync()
       cancelPendingParentDraftChange()
     }
   }, [])

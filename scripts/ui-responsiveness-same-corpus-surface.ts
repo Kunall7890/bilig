@@ -13,6 +13,7 @@ export interface BiligRenderedCanvasState {
   readonly currentTextSignature?: string | null | undefined
   readonly currentViewportRevision?: string | null | undefined
   readonly currentWorkbookRevision?: string | null | undefined
+  readonly drawText?: boolean | undefined
   readonly frameProofStatus?: string | null | undefined
   readonly frameProofSignature?: string | null | undefined
   readonly headerPaneCount: number
@@ -20,6 +21,11 @@ export interface BiligRenderedCanvasState {
   readonly hasPresentedVisibleFrame?: boolean | undefined
   readonly localRenderRevision?: string | null | undefined
   readonly mode: string | null
+  readonly nativeHeaderPaneCount?: number | undefined
+  readonly nativeHeaderTextRunCount?: number | undefined
+  readonly nativeLayerSource?: string | null | undefined
+  readonly nativeTilePaneCount?: number | undefined
+  readonly nativeTileTextRunCount?: number | undefined
   readonly pixelHeight: number
   readonly pixelWidth: number
   readonly presentedContentSignature?: string | null | undefined
@@ -55,6 +61,10 @@ export interface BiligRenderedSurfaceState {
   readonly gridLocalRenderRevision?: string | null | undefined
   readonly gridProjectedRenderRevision?: string | null | undefined
   readonly gridWidth: number
+  readonly nativeRectCount: number
+  readonly nativeRectLayerMounted: boolean
+  readonly nativeTextLayerMounted: boolean
+  readonly nativeTextRunCount: number
   readonly typeGpu: BiligRenderedCanvasState | null
 }
 
@@ -173,6 +183,17 @@ export function biligRenderedSurfaceReadiness(state: BiligRenderedSurfaceState |
   }
   if (!canvasPixelsMatchViewport(canvas, state)) {
     gaps.push('TypeGPU canvas backing pixels do not cover the viewport')
+  }
+  if (canvas.nativeLayerSource === 'typegpu-ready-native-visuals') {
+    if (!state.nativeRectLayerMounted || state.nativeRectCount <= 0) {
+      gaps.push('ready TypeGPU native visual rect proof is missing')
+    }
+    if ((canvas.currentTextRunCount ?? 0) > 0 && (!state.nativeTextLayerMounted || state.nativeTextRunCount <= 0)) {
+      gaps.push('ready TypeGPU native visual text proof is missing')
+    }
+    if ((canvas.nativeTilePaneCount ?? 0) !== canvas.tilePaneCount || (canvas.nativeHeaderPaneCount ?? 0) !== canvas.headerPaneCount) {
+      gaps.push('ready TypeGPU native visual pane coverage does not match current panes')
+    }
   }
   if (!hasText(canvas.currentContentSignature)) {
     gaps.push('current visible content signature is missing')
@@ -330,6 +351,10 @@ function baseSurfaceEvidence(state: BiligRenderedSurfaceState): string[] {
     `gridLocalRevision=${state.gridLocalRenderRevision ?? ''}`,
     `gridProjectedRevision=${state.gridProjectedRenderRevision ?? ''}`,
     `fallbackMounted=${String(Boolean(state.fallback))}`,
+    `nativeRectLayerMounted=${String(state.nativeRectLayerMounted)}`,
+    `nativeRectCount=${String(state.nativeRectCount)}`,
+    `nativeTextLayerMounted=${String(state.nativeTextLayerMounted)}`,
+    `nativeTextRunCount=${String(state.nativeTextRunCount)}`,
   ]
 }
 
@@ -337,6 +362,12 @@ function canvasEvidence(canvas: BiligRenderedCanvasState, state: BiligRenderedSu
   return [
     `mode=${canvas.mode ?? ''}`,
     `backendStatus=${canvas.backendStatus ?? ''}`,
+    `drawText=${String(canvas.drawText === true)}`,
+    `nativeLayerSource=${canvas.nativeLayerSource ?? ''}`,
+    `nativeTilePaneCount=${String(canvas.nativeTilePaneCount ?? 0)}`,
+    `nativeHeaderPaneCount=${String(canvas.nativeHeaderPaneCount ?? 0)}`,
+    `nativeTileTextRunCount=${String(canvas.nativeTileTextRunCount ?? 0)}`,
+    `nativeHeaderTextRunCount=${String(canvas.nativeHeaderTextRunCount ?? 0)}`,
     `frameProofStatus=${canvas.frameProofStatus ?? ''}`,
     `frameProofSignature=${canvas.frameProofSignature ?? ''}`,
     `hasPresentedFrame=${String(canvas.hasPresentedFrame === true)}`,

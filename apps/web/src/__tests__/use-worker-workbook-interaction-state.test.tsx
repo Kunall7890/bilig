@@ -151,6 +151,61 @@ describe('useWorkerWorkbookInteractionState', () => {
     })
   })
 
+  it('updates mounted cell-editor commits optimistically before durable persistence starts', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    vi.useFakeTimers()
+    const selectedCell = stringCell('Sheet1', 'A1', 'before')
+    const workerHandle = { viewportStore: createViewportStoreStub('Sheet1', 'A1', selectedCell) }
+    const invokeMutation = vi.fn(async () => undefined)
+    const sendSelectionChanged = vi.fn()
+    const editor = document.createElement('textarea')
+    editor.dataset['testid'] = 'cell-editor-input'
+    editor.value = 'after'
+    document.body.appendChild(editor)
+    const harness = mountHarness()
+    let captured: ReturnType<typeof useWorkerWorkbookInteractionState> | null = null
+
+    await harness.render({
+      documentId: 'doc-1',
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+      selectedCell,
+      workerHandle,
+      invokeMutation,
+      sendSelectionChanged,
+      capture: (value) => {
+        captured = value
+      },
+    })
+    if (!captured) {
+      throw new Error('Expected interaction state capture')
+    }
+
+    let commitResult: boolean | undefined
+    await act(async () => {
+      captured?.beginEditing()
+      commitResult = captured?.commitEditor()
+      await Promise.resolve()
+    })
+
+    expect(commitResult).toBe(true)
+    expect(workerHandle.viewportStore.getCell('Sheet1', 'A1')).toMatchObject({
+      input: 'after',
+      value: { tag: ValueTag.String, value: 'after' },
+    })
+    expect(invokeMutation).not.toHaveBeenCalled()
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync()
+    })
+
+    expect(invokeMutation).toHaveBeenCalledWith('setCellValue', 'Sheet1', 'A1', 'after')
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
+
   it('commits a cleared formula bar draft before applying a click-away selection', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -360,6 +415,7 @@ describe('useWorkerWorkbookInteractionState', () => {
         input: '=1+',
         value: { tag: ValueTag.Error, code: ErrorCode.Value },
       }),
+      expect.objectContaining({ localDirtyMask: expect.any(Number) }),
     )
     expect(captured?.visibleEditorValue).toBe('#VALUE!')
     expect(invokeMutation).toHaveBeenCalledWith('setCellFormula', 'Sheet1', 'A1', '1+')

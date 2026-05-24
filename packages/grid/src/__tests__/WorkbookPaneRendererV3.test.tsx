@@ -262,7 +262,7 @@ describe('WorkbookPaneRendererV3', () => {
     })
   })
 
-  test('uses TypeGPU text as the primary path only after the backend is ready', () => {
+  test('keeps native visual layers mounted while the TypeGPU backend is ready', () => {
     const textPane = createTextTilePane()
 
     const ready = resolveWorkbookPaneTextLayerModeV3({
@@ -271,11 +271,11 @@ describe('WorkbookPaneRendererV3', () => {
       headerPanes: [],
       tilePanes: [textPane],
     })
-    expect(ready.typeGpuDrawText).toBe(true)
+    expect(ready.typeGpuDrawText).toBe(false)
     expect(ready.showTypeGpuCanvas).toBe(true)
-    expect(ready.showNativeTextLayer).toBe(false)
-    expect(ready.nativeLayerSource).toBe('typegpu-text-primary')
-    expect(ready.nativeTilePanes).toHaveLength(0)
+    expect(ready.showNativeTextLayer).toBe(true)
+    expect(ready.nativeLayerSource).toBe('typegpu-ready-native-visuals')
+    expect(ready.nativeTilePanes).toHaveLength(1)
 
     const initializing = resolveWorkbookPaneTextLayerModeV3({
       active: true,

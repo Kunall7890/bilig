@@ -38,7 +38,7 @@ export interface WorkbookPaneRendererV3Props {
 export interface WorkbookPaneTextLayerModeV3 {
   readonly hasNativeTextLayerRuns: boolean
   readonly nativeHeaderPanes: readonly GridHeaderPaneState[]
-  readonly nativeLayerSource: 'backend-unavailable-live' | 'typegpu-pending-native-text' | 'typegpu-text-primary'
+  readonly nativeLayerSource: 'backend-unavailable-live' | 'typegpu-pending-native-text' | 'typegpu-ready-native-visuals'
   readonly nativeTilePanes: readonly WorkbookRenderTilePaneState[]
   readonly showNativeTextLayer: boolean
   readonly showTypeGpuCanvas: boolean
@@ -52,22 +52,23 @@ export function resolveWorkbookPaneTextLayerModeV3(input: {
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
 }): WorkbookPaneTextLayerModeV3 {
   const showTypeGpuCanvas = input.backendStatus !== 'unavailable'
-  const typeGpuDrawText = input.backendStatus === 'ready'
-  const nativeHeaderPanes = typeGpuDrawText ? [] : input.headerPanes
-  const nativeTilePanes = typeGpuDrawText ? [] : input.tilePanes
+  const typeGpuDrawText = false
+  const nativeHeaderPanes = input.headerPanes
+  const nativeTilePanes = input.tilePanes
   const nativeHeaderTextRunCount = countHeaderPaneTextRunsV3(nativeHeaderPanes)
   const nativeTileTextRunCount = countTilePaneTextRunsV3(nativeTilePanes)
   const hasNativeTextLayerRuns = nativeHeaderTextRunCount + nativeTileTextRunCount > 0
   return {
     hasNativeTextLayerRuns,
     nativeHeaderPanes,
-    nativeLayerSource: typeGpuDrawText
-      ? 'typegpu-text-primary'
-      : showTypeGpuCanvas
-        ? 'typegpu-pending-native-text'
-        : 'backend-unavailable-live',
+    nativeLayerSource:
+      input.backendStatus === 'ready'
+        ? 'typegpu-ready-native-visuals'
+        : showTypeGpuCanvas
+          ? 'typegpu-pending-native-text'
+          : 'backend-unavailable-live',
     nativeTilePanes,
-    showNativeTextLayer: input.active && !typeGpuDrawText && hasNativeTextLayerRuns,
+    showNativeTextLayer: input.active && hasNativeTextLayerRuns,
     showTypeGpuCanvas,
     typeGpuDrawText,
   }

@@ -73,6 +73,30 @@ function readMountedCellEditorValue(): string | null {
   return editor?.value ?? null
 }
 
+function scheduleCellEditorCommitPersistence(task: () => Promise<void>, deferUntilPaint: boolean): Promise<void> {
+  if (!deferUntilPaint || typeof window === 'undefined') {
+    return task()
+  }
+  return new Promise((resolve, reject) => {
+    const run = async () => {
+      try {
+        await task()
+        resolve()
+      } catch (error) {
+        reject(error)
+      }
+    }
+    const scheduleAfterFrame = () => {
+      window.setTimeout(run, 0)
+    }
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(scheduleAfterFrame)
+      return
+    }
+    scheduleAfterFrame()
+  })
+}
+
 function resolveDetachedOptimisticValue(
   targetSelection: EditTargetSelection,
   selectedCell: CellSnapshot,
@@ -547,13 +571,15 @@ export function useWorkerWorkbookInteractionState(input: {
         }
         return true
       }
+      const mountedCellEditorValue = editingModeRef.current === 'cell' ? readMountedCellEditorValue() : null
       const targetSelection =
         targetSelectionOverride ?? (editingModeRef.current === 'idle' ? selectionRef.current : editorTargetRef.current)
       const nextValue =
         valueOverride ??
         (editingModeRef.current === 'idle'
           ? toEditorValue(getLiveSelectedCell(targetSelection))
-          : (readMountedCellEditorValue() ?? editorValueRef.current))
+          : (mountedCellEditorValue ?? editorValueRef.current))
+      const deferCommitPersistenceUntilPaint = editingModeRef.current === 'cell' && mountedCellEditorValue !== null
       const commitSessionId = editSessionRef.current
       if (pendingEditCommitSessionRef.current === commitSessionId) {
         if (movement && !pendingEditCommitMovementAppliedRef.current) {
@@ -609,8 +635,11 @@ export function useWorkerWorkbookInteractionState(input: {
         optimisticResult?.resolvedValue ?? resolveDetachedOptimisticValue(targetSelection, selectedCell, parsed),
       )
       bumpOptimisticSeedRevision((revision) => revision + 1)
-      const mutationTask = applyParsedInput(targetSelection.sheetName, targetSelection.address, parsed)
       finishEditingAtSelection(nextSelection)
+      const mutationTask = scheduleCellEditorCommitPersistence(
+        () => applyParsedInput(targetSelection.sheetName, targetSelection.address, parsed),
+        deferCommitPersistenceUntilPaint,
+      )
       void (async () => {
         try {
           await mutationTask
