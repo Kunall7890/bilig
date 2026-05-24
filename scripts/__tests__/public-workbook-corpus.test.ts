@@ -11,6 +11,7 @@ import {
   macroExecutionDeclinedWarning,
   manualCalculationModeWarning,
   precisionAsDisplayedCalculationWarning,
+  unsupportedFormulaCachesWarning,
   volatileFormulasWarning,
 } from '../../packages/excel-import/src/index.js'
 import { addExportCalculationSettingsToXlsxBytes } from '../../packages/excel-import/src/xlsx-calculation-settings.js'
@@ -762,9 +763,10 @@ describe('public workbook corpus', () => {
       status: 'failed',
       passed: false,
       validation: { formulaOraclePassed: false, formulaOracleComparisons: 1 },
-      unsupportedFeatureClassifications: [],
+      unsupportedFeatureClassifications: [`xlsx.import.warning:${unsupportedFormulaCachesWarning}`],
     })
     expect(scorecard.cases[0]?.validation.formulaOracleMismatches).toHaveLength(1)
+    expect(scorecard.cases[0]?.evidence).toContain(publicWorkbookImportWarningClassifierEvidence)
     expect(scorecard.cases[0]?.evidence).not.toContain(publicWorkbookFormulaOracleCacheClassifierEvidence)
   })
 
