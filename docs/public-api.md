@@ -70,6 +70,9 @@ prepaid, or other business models in this package.
 - `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, and
   `describeRunResult` return frozen JSON-safe objects for logs, approvals,
   tools, and tests.
+- `runWorkbookPlan` and `runWorkbookAction` return frozen run results, so status,
+  changes, checks, errors, apply proof, undo refs, and unverified proof notes
+  stay stable after inspection.
 - `toPlanData` returns JSON-safe plan data for runtime handoff.
 - `checkPlanData` returns structured path-based issues for transported plan
   payloads before hydration.
@@ -705,6 +708,11 @@ treated as missing capabilities without invoking getters. If a readback
 expectation is missing or mismatched after a reader runs, the run fails with
 deterministic codes such as `readback_missing`, `value_mismatch`, or
 `formula_mismatch`.
+Returned run results are frozen before they cross the public API boundary,
+including nested changed summaries, checks, errors, apply summaries, undo refs,
+and unverified proof notes. That lets an agent inspect a run once and keep the
+same proof object for logging, approval, or retry decisions without defensive
+copying.
 Failures after an adapter reports `status: "applied"` preserve `changed` and
 `undo`, so an agent can still inspect what was applied and how to reverse it
 when a later proof step rejects the run.

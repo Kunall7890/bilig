@@ -144,6 +144,9 @@ checks.
 Feature, command, receipt, result, and runtime-adapter validators return frozen
 verdicts too, so every public `{ status, issues }` handoff has the same
 inspect-once behavior.
+`runWorkbookPlan` and `runWorkbookAction` return frozen run results too,
+including changed summaries, checks, errors, apply proof, undo refs, and
+unverified proof notes.
 `planWorkbookAction` also validates that boundary before reading action metadata
 or running model code. Invalid manifests return a structured `invalid_model`
 failure instead of making the agent catch an accessor side effect.
@@ -338,6 +341,9 @@ If runtime apply succeeds but readback or check proof fails, the failed result
 still carries `changed` and `undo` when the adapter returned applied ops or undo
 metadata. A failed result before apply, or a failed apply that reports
 `appliedOps: []` without undo metadata, uses `changed: []`.
+Returned run results are frozen before they cross the public boundary, so an
+agent can inspect `status`, `changed`, `checks`, `errors`, `apply`, `undo`, and
+`unverified` without another actor mutating the proof underneath it.
 
 The result is deliberately plain:
 

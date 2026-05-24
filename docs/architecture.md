@@ -51,6 +51,7 @@ flowchart LR
   - readback proof attached to passed value/formula checks
   - exact readback target validation, including duplicate-target rejection
   - frozen validator and readback-proof verdicts for stable agent handoff
+  - frozen run results for inspect-once apply/readback/check proof
   - stable run error code union for predictable agent branching
   - null-prototype model action manifests with own-action-only planning
   - transport-neutral run adapters for preview/apply/readback/check proof

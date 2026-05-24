@@ -23,6 +23,7 @@ import {
   applyProofErrors,
   normalizeRunOptions,
 } from './run-runtime-boundary.js'
+import { freezeWorkbookRunResult } from './run-result.js'
 import {
   isWorkbookRunErrorCode,
   type WorkbookChangeSummary,
@@ -962,18 +963,20 @@ export function runWorkbookPlan(
 export function runWorkbookPlan(plan: unknown, adapter: WorkbookRunAdapter, options?: WorkbookRunOptions): Promise<WorkbookRunResult>
 export function runWorkbookPlan(plan: unknown, adapter: WorkbookRunAdapter, options: unknown = {}): Promise<WorkbookRunResult> {
   if (isHydratedPlan(plan)) {
-    return runLiveWorkbookPlan<unknown>(plan, adapter, options)
+    return runLiveWorkbookPlan<unknown>(plan, adapter, options).then(freezeWorkbookRunResult)
   }
   const planDataCheck = checkPlanData(plan)
   if (planDataCheck.status === 'invalid') {
     return Promise.resolve(
-      failedRun({
-        errors: planDataCheck.issues.map(planDataRunError),
-        checks: [],
-      }),
+      freezeWorkbookRunResult(
+        failedRun({
+          errors: planDataCheck.issues.map(planDataRunError),
+          checks: [],
+        }),
+      ),
     )
   }
-  return runLiveWorkbookPlan<unknown>(hydratePlanData(planDataCheck.plan), adapter, options)
+  return runLiveWorkbookPlan<unknown>(hydratePlanData(planDataCheck.plan), adapter, options).then(freezeWorkbookRunResult)
 }
 
 export async function runWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>>(
@@ -985,10 +988,12 @@ export async function runWorkbookAction<Refs, Actions extends WorkbookActionMap<
 ): Promise<WorkbookRunResult> {
   const result = planWorkbookAction(model, actionName, input)
   if (result.status === 'failed') {
-    return failedRun({
-      errors: result.errors,
-      checks: result.checks,
-    })
+    return freezeWorkbookRunResult(
+      failedRun({
+        errors: result.errors,
+        checks: result.checks,
+      }),
+    )
   }
-  return runLiveWorkbookPlan(result.plan, adapter, options)
+  return freezeWorkbookRunResult(await runLiveWorkbookPlan(result.plan, adapter, options))
 }

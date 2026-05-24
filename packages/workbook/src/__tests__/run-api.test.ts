@@ -519,6 +519,12 @@ describe('@bilig/workbook run api', () => {
       ],
     })
     expect(result).not.toHaveProperty('apply')
+    expect(Object.isFrozen(result)).toBe(true)
+    expect(Object.isFrozen(result.changed)).toBe(true)
+    expect(Object.isFrozen(result.checks)).toBe(true)
+    expect(Object.isFrozen(result.checks[0])).toBe(true)
+    expect(Object.isFrozen(result.checks[0]?.target)).toBe(true)
+    expect(Object.isFrozen(result.checks[0]?.proof)).toBe(true)
   })
 
   it('passes formula readback checks with exact normalized formula text', async () => {
@@ -1197,6 +1203,17 @@ describe('@bilig/workbook run api', () => {
     })
     const described = describeRunResult(result)
 
+    expect(Object.isFrozen(result)).toBe(true)
+    if (result.status !== 'failed') {
+      throw new Error('expected failed result')
+    }
+    expect(Object.isFrozen(result.errors)).toBe(true)
+    expect(Object.isFrozen(result.errors[0])).toBe(true)
+    expect(Object.isFrozen(result.apply)).toBe(true)
+    expect(Object.isFrozen(result.changed)).toBe(true)
+    expect(Object.isFrozen(result.checks)).toBe(true)
+    expect(Object.isFrozen(result.checks[0])).toBe(true)
+    expect(Object.isFrozen(result.checks[0]?.target)).toBe(true)
     expect(described).toEqual({
       status: 'failed',
       errors: [
