@@ -71,6 +71,31 @@ describe('xlsx slicer and connection artifacts roundtrip', () => {
     expect(readContentTypeOverride(exported, '/xl/queryTables/queryTable1.xml')).toBe(queryTableContentType)
   })
 
+  it('reattaches table-owned query-table relationships when table paths are regenerated', () => {
+    const source = buildWorkbookWithTwoTableQueryTableArtifacts()
+
+    expect(tablePathForDisplayName(source, 'ARevenueQuery')).toBe('xl/tables/table2.xml')
+
+    const imported = importXlsx(source, 'two-table-query-table-connections.xlsx')
+    const exported = exportXlsx(imported.snapshot)
+
+    expect(imported.snapshot.workbook.metadata?.tables?.map((table) => table.name)).toEqual(['ARevenueQuery', 'ZPlain'])
+    expect(imported.snapshot.workbook.metadata?.slicerConnectionArtifacts?.tableArtifacts).toEqual([
+      {
+        tableName: 'ARevenueQuery',
+        sheetName: 'Revenue',
+        relationshipPartPath: 'xl/tables/_rels/table2.xml.rels',
+        relationships: [{ id: 'rIdQueryTable1', type: queryTableRelationshipType, target: '../queryTables/queryTable1.xml' }],
+      },
+    ])
+    expect(tablePathForDisplayName(exported, 'ARevenueQuery')).toBe('xl/tables/table1.xml')
+    expect(tablePathForDisplayName(exported, 'ZPlain')).toBe('xl/tables/table2.xml')
+    expect(queryTableRelationshipCountForTable(exported, 'ARevenueQuery')).toBe(1)
+    expect(queryTableRelationshipCountForTable(exported, 'ZPlain')).toBe(0)
+    expect(readZipText(exported, 'xl/queryTables/queryTable1.xml')).toBe(twoTableQueryTableXml)
+    expect(readContentTypeOverride(exported, '/xl/queryTables/queryTable1.xml')).toBe(queryTableContentType)
+  })
+
   it('preserves Desktop Excel worksheet-level query-table relationships', () => {
     const source = buildWorkbookWithWorksheetQueryTableArtifacts()
 
@@ -166,6 +191,32 @@ function buildWorkbookWithQueryTableArtifacts(): Uint8Array {
   return zipSync(zip)
 }
 
+function buildWorkbookWithTwoTableQueryTableArtifacts(): Uint8Array {
+  const zip = unzipSync(exportXlsx(buildTwoTableWorkbook()))
+  if (tablePathForDisplayNameFromZip(zip, 'ZPlain') !== 'xl/tables/table1.xml') {
+    throw new Error('Expected ZPlain to start as xl/tables/table1.xml')
+  }
+  if (tablePathForDisplayNameFromZip(zip, 'ARevenueQuery') !== 'xl/tables/table2.xml') {
+    throw new Error('Expected ARevenueQuery to start as xl/tables/table2.xml')
+  }
+  zip['xl/_rels/workbook.xml.rels'] = strToU8(
+    appendRelationship(
+      readZipTextFromZip(zip, 'xl/_rels/workbook.xml.rels'),
+      `<Relationship Id="rIdQueryConnections" Type="${connectionsRelationshipType}" Target="connections.xml"/>`,
+    ),
+  )
+  zip['xl/connections.xml'] = strToU8(connectionsXml)
+  zip['xl/tables/_rels/table2.xml.rels'] = strToU8(queryTableRelationshipsXml)
+  zip['xl/queryTables/queryTable1.xml'] = strToU8(twoTableQueryTableXml)
+  zip['[Content_Types].xml'] = strToU8(
+    [
+      { partName: '/xl/connections.xml', contentType: connectionsContentType },
+      { partName: '/xl/queryTables/queryTable1.xml', contentType: queryTableContentType },
+    ].reduce((xml, entry) => upsertContentTypeOverride(xml, entry), readZipTextFromZip(zip, '[Content_Types].xml')),
+  )
+  return zipSync(zip)
+}
+
 function buildWorkbookWithWorksheetQueryTableArtifacts(): Uint8Array {
   const zip = unzipSync(exportXlsx(buildPlainWorkbook()))
   zip['xl/_rels/workbook.xml.rels'] = strToU8(
@@ -249,6 +300,54 @@ function buildPlainWorkbook(): WorkbookSnapshot {
   }
 }
 
+function buildTwoTableWorkbook(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Two table query artifacts',
+      metadata: {
+        tables: [
+          {
+            name: 'ZPlain',
+            sheetName: 'Revenue',
+            startAddress: 'A1',
+            endAddress: 'B3',
+            columnNames: ['Region', 'Amount'],
+            headerRow: true,
+            totalsRow: false,
+          },
+          {
+            name: 'ARevenueQuery',
+            sheetName: 'Revenue',
+            startAddress: 'D1',
+            endAddress: 'E3',
+            columnNames: ['Region', 'Amount'],
+            headerRow: true,
+            totalsRow: false,
+          },
+        ],
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Revenue',
+        order: 0,
+        cells: [
+          { address: 'A1', value: 'Region' },
+          { address: 'B1', value: 'Amount' },
+          { address: 'A2', value: 'West' },
+          { address: 'B2', value: 400 },
+          { address: 'D1', value: 'Region' },
+          { address: 'E1', value: 'Amount' },
+          { address: 'D2', value: 'North' },
+          { address: 'E2', value: 1200 },
+        ],
+      },
+    ],
+  }
+}
+
 function slicerConnectionMetrics(bytes: Uint8Array): {
   packageParts: string[]
   sheetSlicerRelationships: number
@@ -298,6 +397,33 @@ function queryTableMetrics(bytes: Uint8Array): {
     worksheetQueryTableRelationships: relationshipsWithType(worksheetRelationshipsXml, queryTableRelationshipType).length,
     workbookConnectionsRelationships: relationshipsWithType(workbookRelationshipsXml, connectionsRelationshipType).length,
   }
+}
+
+function queryTableRelationshipCountForTable(bytes: Uint8Array, tableName: string): number {
+  const zip = unzipSync(bytes)
+  const tablePath = tablePathForDisplayNameFromZip(zip, tableName)
+  if (!tablePath) {
+    throw new Error(`Missing table path for ${tableName}`)
+  }
+  const relationshipsXml = readOptionalZipTextFromZip(zip, relationshipPartPath(tablePath)) ?? ''
+  return relationshipsWithType(relationshipsXml, queryTableRelationshipType).length
+}
+
+function tablePathForDisplayName(bytes: Uint8Array, tableName: string): string | undefined {
+  return tablePathForDisplayNameFromZip(unzipSync(bytes), tableName)
+}
+
+function tablePathForDisplayNameFromZip(zip: Record<string, Uint8Array>, tableName: string): string | undefined {
+  return Object.entries(zip)
+    .filter(([path]) => /^xl\/tables\/table[1-9][0-9]*\.xml$/u.test(path))
+    .find(([, data]) => readXmlAttribute(strFromU8(data), 'displayName') === tableName)?.[0]
+}
+
+function relationshipPartPath(partPath: string): string {
+  const slashIndex = partPath.lastIndexOf('/')
+  const directory = slashIndex >= 0 ? partPath.slice(0, slashIndex) : ''
+  const fileName = slashIndex >= 0 ? partPath.slice(slashIndex + 1) : partPath
+  return directory.length > 0 ? `${directory}/_rels/${fileName}.rels` : `_rels/${fileName}.rels`
 }
 
 function relationshipsWithType(relationshipsXml: string, relationshipType: string): string[] {
@@ -405,6 +531,8 @@ const queryTableXml = [
   '</queryTableRefresh>',
   '</queryTable>',
 ].join('')
+
+const twoTableQueryTableXml = queryTableXml.replace('name="RevenueTable"', 'name="ARevenueQuery"')
 
 const desktopExcelWorksheetQueryTableRelationshipsXml = [
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',

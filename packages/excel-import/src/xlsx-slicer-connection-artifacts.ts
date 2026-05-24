@@ -7,6 +7,7 @@ import type {
   WorkbookPreservedPackagePartSnapshot,
   WorkbookSlicerConnectionArtifactsSnapshot,
   WorkbookSlicerConnectionSheetArtifactsSnapshot,
+  WorkbookSlicerConnectionTableArtifactsSnapshot,
   WorkbookSnapshot,
 } from '@bilig/protocol'
 import {
@@ -37,6 +38,7 @@ const connectionsRelationshipType = 'http://schemas.openxmlformats.org/officeDoc
 const queryTableRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/queryTable'
 const slicerCacheRelationshipType = 'http://schemas.microsoft.com/office/2007/relationships/slicerCache'
 const slicerRelationshipType = 'http://schemas.microsoft.com/office/2007/relationships/slicer'
+const tableRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/table'
 const connectionsContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.connections+xml'
 const queryTableContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.queryTable+xml'
 const slicerCacheContentType = 'application/vnd.ms-excel.slicerCache+xml'
@@ -283,6 +285,60 @@ function readSheetArtifacts(
   })
 }
 
+function readTableName(xml: string | null): string | undefined {
+  if (!xml) {
+    return undefined
+  }
+  return readAttribute(xml, 'displayName') ?? readAttribute(xml, 'name') ?? undefined
+}
+
+function readTableSheetNames(
+  zip: XlsxZipEntries,
+  sheets: readonly ImportedWorkbookSlicerConnectionSheetSource[],
+): ReadonlyMap<string, string> {
+  const output = new Map<string, string>()
+  for (const sheet of sheets) {
+    const relationships = parseRelationships(getZipText(zip, relationshipPartPath(sheet.sheetPath)))
+    for (const relationship of relationships) {
+      if (relationship.type !== tableRelationshipType && !relationship.type.endsWith('/table')) {
+        continue
+      }
+      output.set(normalizeZipPath(resolveTargetPath(sheet.sheetPath, relationship.target)), sheet.sheetName)
+    }
+  }
+  return output
+}
+
+function readTableArtifacts(
+  zip: XlsxZipEntries,
+  sheets: readonly ImportedWorkbookSlicerConnectionSheetSource[],
+): WorkbookSlicerConnectionTableArtifactsSnapshot[] {
+  const tableSheetNames = readTableSheetNames(zip, sheets)
+  return Object.keys(zip).flatMap((path) => {
+    const normalized = normalizeZipPath(path)
+    if (!tableRelationshipPartPathPattern.test(normalized)) {
+      return []
+    }
+    const relationships = parseRelationships(getZipText(zip, normalized)).filter(isQueryTableRelationship).map(relationshipSnapshot)
+    if (relationships.length === 0) {
+      return []
+    }
+    const tablePath = relationshipSourcePartPath(normalized)
+    const tableName = tablePath ? readTableName(getZipText(zip, tablePath)) : undefined
+    const sheetName = tablePath ? tableSheetNames.get(tablePath) : undefined
+    return tableName
+      ? [
+          {
+            tableName,
+            ...(sheetName ? { sheetName } : {}),
+            relationshipPartPath: normalized,
+            relationships,
+          },
+        ]
+      : []
+  })
+}
+
 function addRelationshipTargetPartPath(
   partPaths: Set<string>,
   zip: XlsxZipEntries,
@@ -474,6 +530,7 @@ export function readImportedWorkbookSlicerConnectionArtifactsFromSheets(
     .filter(isWorkbookArtifactRelationship)
     .map(relationshipSnapshot)
   const sheetArtifacts = readSheetArtifacts(zip, sheets)
+  const tableArtifacts = readTableArtifacts(zip, sheets)
   const partPaths = readSlicerConnectionPartPaths(zip, sheets, workbookRelationships, sheetArtifacts)
   const parts = partPaths.flatMap((path) => {
     const byteLength = readXlsxZipEntryUncompressedSize(zip, path)
@@ -508,9 +565,14 @@ export function readImportedWorkbookSlicerConnectionArtifactsFromSheets(
     ...(workbookSlicerCachesExtXml ? { workbookSlicerCachesExtXml } : {}),
     ...(workbookRelationships.length > 0 ? { workbookRelationships } : {}),
     ...(sheetArtifacts.length > 0 ? { sheetArtifacts } : {}),
+    ...(tableArtifacts.length > 0 ? { tableArtifacts } : {}),
     ...(contentTypeDefaults.length > 0 ? { contentTypeDefaults } : {}),
     ...(contentTypeOverrides.length > 0 ? { contentTypeOverrides } : {}),
   }
+}
+
+function shouldCopyPreservedPartPath(path: string, artifacts: WorkbookSlicerConnectionArtifactsSnapshot): boolean {
+  return !tableRelationshipPartPathPattern.test(normalizeZipPath(path)) || (artifacts.tableArtifacts?.length ?? 0) === 0
 }
 
 export function addExportSlicerConnectionArtifactsToXlsxBytes(bytes: Uint8Array, snapshot: WorkbookSnapshot): Uint8Array {
@@ -528,6 +590,9 @@ export function addExportSlicerConnectionArtifactsToXlsxBytes(bytes: Uint8Array,
   let changed = false
   const copiedPartPaths = new Set<string>()
   for (const [path, partBytes] of partsByPath) {
+    if (!shouldCopyPreservedPartPath(path, artifacts)) {
+      continue
+    }
     zip[path] = partBytes
     copiedPartPaths.add(path)
     changed = true
@@ -592,6 +657,27 @@ export function addExportSlicerConnectionArtifactsToXlsxBytes(bytes: Uint8Array,
       }
     })
 
+  for (const tableArtifact of artifacts.tableArtifacts ?? []) {
+    const tablePath = tablePathForName(zip, tableArtifact.tableName)
+    if (!tablePath) {
+      continue
+    }
+    const relationshipPath = relationshipPartPath(tablePath)
+    const relationships = parseRelationships(getZipText(zip, relationshipPath))
+    const relationshipResult = addRelationshipsWithStableTargets({
+      relationships,
+      additions: tableArtifact.relationships,
+      partsByPath,
+      zip,
+      basePartPath: tablePath,
+      includeRelationship: isQueryTableRelationship,
+    })
+    if (relationshipResult.changed) {
+      setZipText(zip, relationshipPath, buildRelationshipsXml(relationships))
+      changed = true
+    }
+  }
+
   const contentTypesXml = getZipText(zip, contentTypesPath) ?? ''
   const nextContentTypesXml = contentTypesXml
     ? addSlicerConnectionContentTypes(contentTypesXml, artifacts, copiedPartPaths)
@@ -602,4 +688,10 @@ export function addExportSlicerConnectionArtifactsToXlsxBytes(bytes: Uint8Array,
   }
 
   return changed ? zipSync(zip) : bytes
+}
+
+function tablePathForName(zip: XlsxZipEntries, tableName: string): string | undefined {
+  return Object.keys(zip)
+    .filter((path) => /^xl\/tables\/table[1-9][0-9]*\.xml$/u.test(path))
+    .find((path) => readTableName(getZipText(zip, path)) === tableName)
 }

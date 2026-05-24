@@ -91,11 +91,19 @@ export interface WorkbookSlicerConnectionSheetArtifactsSnapshot {
   relationships?: WorkbookPackageRelationshipSnapshot[]
 }
 
+export interface WorkbookSlicerConnectionTableArtifactsSnapshot {
+  tableName: string
+  sheetName?: string
+  relationshipPartPath?: string
+  relationships: WorkbookPackageRelationshipSnapshot[]
+}
+
 export interface WorkbookSlicerConnectionArtifactsSnapshot {
   parts: WorkbookPreservedPackagePartSnapshot[]
   workbookSlicerCachesExtXml?: string
   workbookRelationships?: WorkbookPackageRelationshipSnapshot[]
   sheetArtifacts?: WorkbookSlicerConnectionSheetArtifactsSnapshot[]
+  tableArtifacts?: WorkbookSlicerConnectionTableArtifactsSnapshot[]
   contentTypeDefaults?: WorkbookContentTypeDefaultSnapshot[]
   contentTypeOverrides?: WorkbookContentTypeOverrideSnapshot[]
 }

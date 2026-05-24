@@ -23,6 +23,7 @@ const slicerRelationshipType = 'http://schemas.microsoft.com/office/2007/relatio
 type WorkbookViewIndexAttribute = 'activeTab' | 'firstSheet'
 type WorkbookSlicerConnectionArtifactsRecord = NonNullable<WorkbookPreservedMetadataRecord['slicerConnectionArtifacts']>
 type WorkbookSlicerConnectionSheetArtifactRecord = NonNullable<WorkbookSlicerConnectionArtifactsRecord['sheetArtifacts']>[number]
+type WorkbookSlicerConnectionTableArtifactRecord = NonNullable<WorkbookSlicerConnectionArtifactsRecord['tableArtifacts']>[number]
 
 export function rewritePreservedSheetMetadataForStructuralTransform(
   metadata: WorkbookPreservedSheetMetadataRecord | undefined,
@@ -132,9 +133,18 @@ export function renamePreservedWorkbookMetadataSheetReferences(
       changed ||= sheetName !== entry.sheetName
       return { ...entry, sheetName }
     })
+    const tableArtifacts = metadata.slicerConnectionArtifacts.tableArtifacts?.map((entry) => {
+      if (entry.sheetName === undefined) {
+        return { ...entry }
+      }
+      const sheetName = renameSheetName(entry.sheetName, oldSheetName, newSheetName)
+      changed ||= sheetName !== entry.sheetName
+      return { ...entry, sheetName }
+    })
     next.slicerConnectionArtifacts = {
       ...metadata.slicerConnectionArtifacts,
       ...(sheetArtifacts ? { sheetArtifacts } : {}),
+      ...(tableArtifacts ? { tableArtifacts } : {}),
     }
   }
 
@@ -496,14 +506,17 @@ function rewriteSlicerConnectionArtifactsForSheetDeletion(
 ): WorkbookSlicerConnectionArtifactsRecord | undefined {
   const sourceSheetArtifacts = artifacts.sheetArtifacts ?? []
   const remainingSheetArtifacts = sourceSheetArtifacts.filter((entry) => entry.sheetName !== deletedSheetName)
-  if (remainingSheetArtifacts.length === sourceSheetArtifacts.length) {
+  const sourceTableArtifacts = artifacts.tableArtifacts ?? []
+  const remainingTableArtifacts = sourceTableArtifacts.filter((entry) => entry.sheetName !== deletedSheetName)
+  if (remainingSheetArtifacts.length === sourceSheetArtifacts.length && remainingTableArtifacts.length === sourceTableArtifacts.length) {
     return artifacts
   }
 
-  const deletedSlicerPartPaths = slicerPartPathsReferencedBySheetArtifacts(
+  const deletedSlicerPartPaths = packagePartPathsReferencedBySlicerConnectionArtifacts(
     sourceSheetArtifacts.filter((entry) => entry.sheetName === deletedSheetName),
+    sourceTableArtifacts.filter((entry) => entry.sheetName === deletedSheetName),
   )
-  const remainingSlicerPartPaths = slicerPartPathsReferencedBySheetArtifacts(remainingSheetArtifacts)
+  const remainingSlicerPartPaths = packagePartPathsReferencedBySlicerConnectionArtifacts(remainingSheetArtifacts, remainingTableArtifacts)
   const removedPartPaths = new Set<string>()
   const parts = artifacts.parts.filter((part) => {
     const path = normalizePackagePath(part.path)
@@ -525,6 +538,7 @@ function rewriteSlicerConnectionArtifactsForSheetDeletion(
     ...(artifacts.workbookSlicerCachesExtXml ? { workbookSlicerCachesExtXml: artifacts.workbookSlicerCachesExtXml } : {}),
     ...(artifacts.workbookRelationships ? { workbookRelationships: artifacts.workbookRelationships } : {}),
     ...(remainingSheetArtifacts.length > 0 ? { sheetArtifacts: remainingSheetArtifacts } : {}),
+    ...(remainingTableArtifacts.length > 0 ? { tableArtifacts: remainingTableArtifacts } : {}),
     ...(artifacts.contentTypeDefaults ? { contentTypeDefaults: artifacts.contentTypeDefaults } : {}),
     ...(contentTypeOverrides.length > 0 ? { contentTypeOverrides } : {}),
   }
@@ -532,13 +546,22 @@ function rewriteSlicerConnectionArtifactsForSheetDeletion(
   return hasSlicerConnectionArtifacts(next) ? next : undefined
 }
 
-function slicerPartPathsReferencedBySheetArtifacts(sheetArtifacts: readonly WorkbookSlicerConnectionSheetArtifactRecord[]): Set<string> {
-  return new Set(
-    sheetArtifacts
+function packagePartPathsReferencedBySlicerConnectionArtifacts(
+  sheetArtifacts: readonly WorkbookSlicerConnectionSheetArtifactRecord[],
+  tableArtifacts: readonly WorkbookSlicerConnectionTableArtifactRecord[],
+): Set<string> {
+  return new Set([
+    ...sheetArtifacts
       .flatMap((entry) => entry.relationships ?? [])
       .filter((relationship) => relationship.type === slicerRelationshipType || relationship.type === queryTableRelationshipType)
       .map((relationship) => normalizePackagePath(resolvePackageRelationshipTarget('xl/worksheets/sheet1.xml', relationship.target))),
-  )
+    ...tableArtifacts.flatMap((entry) => [
+      ...(entry.relationshipPartPath ? [normalizePackagePath(entry.relationshipPartPath)] : []),
+      ...entry.relationships
+        .filter((relationship) => relationship.type === queryTableRelationshipType)
+        .map((relationship) => normalizePackagePath(resolvePackageRelationshipTarget('xl/tables/table1.xml', relationship.target))),
+    ]),
+  ])
 }
 
 function hasSlicerConnectionArtifacts(artifacts: WorkbookSlicerConnectionArtifactsRecord): boolean {
@@ -547,6 +570,7 @@ function hasSlicerConnectionArtifacts(artifacts: WorkbookSlicerConnectionArtifac
     artifacts.workbookSlicerCachesExtXml !== undefined ||
     (artifacts.workbookRelationships?.length ?? 0) > 0 ||
     (artifacts.sheetArtifacts?.length ?? 0) > 0 ||
+    (artifacts.tableArtifacts?.length ?? 0) > 0 ||
     (artifacts.contentTypeOverrides?.length ?? 0) > 0
   )
 }
