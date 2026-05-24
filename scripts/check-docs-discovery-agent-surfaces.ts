@@ -370,6 +370,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'docs/mcp-workpaper-tool-server.md',
   )
   for (const required of [
+    `ARG BILIG_WORKPAPER_VERSION=${headlessPackageVersion}`,
     'npm install --omit=dev "@bilig/workpaper@${BILIG_WORKPAPER_VERSION}"',
     "import { buildDemoWorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/workpaper'",
     'ENTRYPOINT ["./node_modules/.bin/bilig-workpaper-mcp", "--workpaper", "/workpaper/pricing.workpaper.json", "--writable"]',
