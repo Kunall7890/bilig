@@ -907,6 +907,8 @@ jobs:
           pnpm --filter @bilig/exceljs-formula-recalc build
 
           bun scripts/sync-headless-package-footprint.ts
+          # llms-full embeds README footprint, so refresh agent docs after footprint sync.
+          bun scripts/sync-agent-discovery-docs.ts
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
