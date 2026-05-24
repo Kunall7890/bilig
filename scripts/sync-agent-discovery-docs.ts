@@ -881,6 +881,10 @@ function syncVersionedStaticReferenceLine(line: string): string {
     .replace(new RegExp(`npm latest is \`@bilig/workpaper@${stableSemverPattern}\``, 'g'), `npm latest is \`${workpaperPackageSpec}\``)
     .replace(new RegExp(`npm latest \`@bilig/headless@${stableSemverPattern}\``, 'g'), `npm latest \`${workpaperPackageSpec}\``)
     .replace(new RegExp(`npm latest \`@bilig/workpaper@${stableSemverPattern}\``, 'g'), `npm latest \`${workpaperPackageSpec}\``)
+    .replace(
+      new RegExp(`io\\.github\\.proompteng/bilig-workpaper@${stableSemverPattern}`, 'g'),
+      `io.github.proompteng/bilig-workpaper@${headlessPackageVersion}`,
+    )
     .replace(new RegExp(`(now points reviewers at \`)@bilig/headless@${stableSemverPattern}(\`)`, 'g'), `$1${workpaperPackageSpec}$2`)
     .replace(new RegExp(`(now points reviewers at \`)@bilig/workpaper@${stableSemverPattern}(\`)`, 'g'), `$1${workpaperPackageSpec}$2`)
     .replace(new RegExp(`libraries-v${stableSemverPattern}`, 'g'), mcpbReleaseTag)
