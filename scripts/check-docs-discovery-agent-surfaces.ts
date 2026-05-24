@@ -372,8 +372,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   for (const required of [
     `ARG BILIG_WORKPAPER_VERSION=${headlessPackageVersion}`,
     'npm install --omit=dev "@bilig/workpaper@${BILIG_WORKPAPER_VERSION}"',
-    "import { buildDemoWorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/workpaper'",
-    'ENTRYPOINT ["./node_modules/.bin/bilig-workpaper-mcp", "--workpaper", "/workpaper/pricing.workpaper.json", "--writable"]',
+    'ENTRYPOINT ["./node_modules/.bin/bilig-workpaper-mcp", "--workpaper", "/workpaper/pricing.workpaper.json", "--init-demo-workpaper", "--writable"]',
     'io.modelcontextprotocol.server.name="io.github.proompteng/bilig-workpaper"',
   ]) {
     requireIncludes(dockerfile, required, 'Dockerfile')
