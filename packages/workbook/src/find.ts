@@ -78,6 +78,35 @@ function hasOwnFunction<Key extends string>(value: object, key: Key): value is R
   return descriptor !== undefined && typeof descriptor.value === 'function'
 }
 
+function workbookRefIssue(code: WorkbookRefIssueCode, path: string, message: string): WorkbookRefIssue {
+  return Object.freeze({
+    code,
+    path,
+    message,
+  })
+}
+
+function ownDataValue(value: object, key: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key)
+  return descriptor !== undefined && descriptor.enumerable && 'value' in descriptor ? descriptor.value : undefined
+}
+
+function pushRequiredLiveHelperIssue(issues: WorkbookRefIssue[], value: object, path: string, key: string): void {
+  const fieldPath = `${path}.${key}`
+  const descriptor = Object.getOwnPropertyDescriptor(value, key)
+  if (descriptor === undefined) {
+    issues.push(workbookRefIssue('missing_field', fieldPath, `Workbook ref ${fieldPath} is required`))
+    return
+  }
+  if (!('value' in descriptor)) {
+    issues.push(workbookRefIssue('invalid_field', fieldPath, `Workbook ref ${fieldPath} must be a data property`))
+    return
+  }
+  if (typeof descriptor.value !== 'function') {
+    issues.push(workbookRefIssue('invalid_field', fieldPath, `Workbook ref ${fieldPath} must be a function`))
+  }
+}
+
 export interface WorkbookRowsRef extends WorkbookBaseRef {
   readonly kind: 'rows'
   readonly sheetName?: string
@@ -91,6 +120,26 @@ export interface WorkbookRowsRef extends WorkbookBaseRef {
 }
 
 export type WorkbookRef = WorkbookRangeRef | WorkbookNameRef | WorkbookTableRef | WorkbookColumnRef | WorkbookRowsRef
+
+export type WorkbookRefIssueCode = 'invalid_type' | 'missing_field' | 'invalid_field'
+
+export interface WorkbookRefIssue {
+  readonly code: WorkbookRefIssueCode
+  readonly path: string
+  readonly message: string
+}
+
+export type WorkbookRefCheckResult =
+  | {
+      readonly status: 'valid'
+      readonly ref: WorkbookRef
+      readonly data: WorkbookRefData
+      readonly issues: readonly []
+    }
+  | {
+      readonly status: 'invalid'
+      readonly issues: readonly WorkbookRefIssue[]
+    }
 
 export interface WorkbookBaseRefData {
   readonly kind: WorkbookRefKind
@@ -302,7 +351,7 @@ function isWorkbookColumnRefData(value: unknown): value is WorkbookColumnRefData
   return isWorkbookTableRefData(table) && (rows === undefined || isWorkbookRowsRefData(rows))
 }
 
-export function isWorkbookRef(value: unknown): value is WorkbookRef {
+function isWorkbookRefCore(value: unknown): value is WorkbookRef {
   if (typeof value !== 'object' || value === null || !hasValidBaseRef(value)) {
     return false
   }
@@ -318,6 +367,78 @@ export function isWorkbookRef(value: unknown): value is WorkbookRef {
     case 'rows':
       return isWorkbookRowsRef(value)
   }
+}
+
+function pushLiveRefIssues(issues: WorkbookRefIssue[], value: unknown, path: string): void {
+  const dataCheck = checkWorkbookRefData(value)
+  if (dataCheck.status !== 'valid') {
+    dataCheck.issues.forEach((issue) => {
+      issues.push(workbookRefIssue(issue.code, issue.path, issue.message))
+    })
+    return
+  }
+  if (typeof value !== 'object' || value === null) {
+    issues.push(workbookRefIssue('invalid_type', path, `Workbook ref ${path} must be an object`))
+    return
+  }
+  switch (dataCheck.ref.kind) {
+    case 'range':
+    case 'name':
+      return
+    case 'table':
+      pushRequiredLiveHelperIssue(issues, value, path, 'column')
+      return
+    case 'rows': {
+      pushRequiredLiveHelperIssue(issues, value, path, 'column')
+      const table = ownDataValue(value, 'table')
+      if (table !== undefined) {
+        pushLiveRefIssues(issues, table, `${path}.table`)
+      }
+      return
+    }
+    case 'column': {
+      pushLiveRefIssues(issues, ownDataValue(value, 'table'), `${path}.table`)
+      const rows = ownDataValue(value, 'rows')
+      if (rows !== undefined) {
+        pushLiveRefIssues(issues, rows, `${path}.rows`)
+      }
+      return
+    }
+  }
+}
+
+export function checkWorkbookRef(value: unknown): WorkbookRefCheckResult {
+  const dataCheck = checkWorkbookRefData(value)
+  if (dataCheck.status !== 'valid') {
+    return Object.freeze({
+      status: 'invalid',
+      issues: Object.freeze(dataCheck.issues.map((issue) => workbookRefIssue(issue.code, issue.path, issue.message))),
+    })
+  }
+  const issues: WorkbookRefIssue[] = []
+  pushLiveRefIssues(issues, value, 'ref')
+  if (issues.length > 0) {
+    return Object.freeze({
+      status: 'invalid',
+      issues: Object.freeze(issues),
+    })
+  }
+  if (!isWorkbookRefCore(value)) {
+    return Object.freeze({
+      status: 'invalid',
+      issues: Object.freeze([workbookRefIssue('invalid_field', 'ref', 'Workbook ref is invalid')]),
+    })
+  }
+  return Object.freeze({
+    status: 'valid',
+    ref: value,
+    data: dataCheck.ref,
+    issues: Object.freeze([] as const),
+  })
+}
+
+export function isWorkbookRef(value: unknown): value is WorkbookRef {
+  return checkWorkbookRef(value).status === 'valid'
 }
 
 export function isWorkbookRefData(value: unknown): value is WorkbookRefData {

@@ -164,9 +164,10 @@ The following are not current architecture anymore:
   applied ops, and frozen run-result descriptions; replay uses the applied ops,
   while agents inspect the plan/result proof instead of a human spreadsheet UI
   state
-- transported refs are validated through a structured `checkWorkbookRefData`
-  boundary before hydration, so selector/ref failures report stable paths
-  instead of disappearing behind a boolean guard
+- live ergonomic refs and transported refs are validated through structured
+  `checkWorkbookRef` / `checkWorkbookRefData` boundaries before transport or
+  hydration, so selector/ref failures report stable paths instead of
+  disappearing behind boolean guards
 - persisted run-result descriptions are validated through a structured
   `checkWorkbookRunResultDescription` boundary, so invalid proof reports stable
   paths instead of collapsing to an unhelpful boolean

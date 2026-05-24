@@ -109,7 +109,7 @@ The main API is intentionally small:
 
 Stable data helpers are exported for generic tool builders:
 
-- `workbookRefKinds`, `isWorkbookRefKind`, `isWorkbookRef`
+- `workbookRefKinds`, `isWorkbookRefKind`, `checkWorkbookRef`, `isWorkbookRef`
 - `checkWorkbookRefData`, `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`
 - `isPlanData`, `checkPlanData`, `workbookPlanId`
 - `workbookRowOperators`, `workbookRowOperatorValueTypes`, `isWorkbookRowOperator`, `isWorkbookRowValueCompatible`
@@ -144,7 +144,7 @@ Validation and proof results follow the same rule: `checkInput`,
 `checkPlanData`, `verifyPlan`, `verifyModel`, and `verifyWorkbookReadbacks`
 return frozen verdict containers, arrays, generated issues, and readback-derived
 checks.
-Ref-data, feature, command, receipt, result, run-result-description, and
+Ref, ref-data, feature, command, receipt, result, run-result-description, and
 runtime-adapter validators return frozen verdicts too, so every public
 `{ status, issues }` handoff has the same inspect-once behavior.
 `runWorkbookPlan` and `runWorkbookAction` return frozen run results too,

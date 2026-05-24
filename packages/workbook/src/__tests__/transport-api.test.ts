@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   buildWorkbookActionPlan,
   checkPlanData,
+  checkWorkbookRef,
   checkWorkbookRefData,
   collectWorkbookRefData,
   collectWorkbookRefs,
@@ -142,6 +143,39 @@ describe('@bilig/workbook transport api', () => {
     expect(Object.isFrozen(invalid)).toBe(true)
     expect(Object.isFrozen(invalid.issues)).toBe(true)
     expect(Object.isFrozen(invalid.issues[0])).toBe(true)
+  })
+
+  it('checks live refs with structured helper issues before transport', () => {
+    const table = findTable({ name: 'Inputs' })
+    const amount = table.column('Amount')
+    const valid = checkWorkbookRef(amount)
+
+    expect(valid).toEqual({
+      status: 'valid',
+      ref: amount,
+      data: toWorkbookRefData(amount),
+      issues: [],
+    })
+    expect(Object.isFrozen(valid)).toBe(true)
+    expect(Object.isFrozen(valid.issues)).toBe(true)
+    if (valid.status !== 'valid') {
+      throw new Error('expected valid ref')
+    }
+    expect(Object.isFrozen(valid.data)).toBe(true)
+
+    const dataOnlyColumn = toWorkbookRefData(amount)
+    expect(isWorkbookRefData(dataOnlyColumn)).toBe(true)
+    expect(isWorkbookRef(dataOnlyColumn)).toBe(false)
+    expect(checkWorkbookRef(dataOnlyColumn)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'missing_field',
+          path: 'ref.table.column',
+          message: 'Workbook ref ref.table.column is required',
+        },
+      ],
+    })
   })
 
   it('checks accessor-backed transported refs without invoking getters', () => {
