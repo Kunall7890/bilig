@@ -251,6 +251,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
       sceneOwnershipEpochSignature !== this.visibleSceneOwnershipEpochSignature ||
       !result.visualFrame
     ) {
+      this.adoptRejectedFrameVisibleSceneProof(result)
       return
     }
     this.setPresentedVisualFrame(result.visualFrame)
@@ -261,6 +262,23 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     this.setPresentedPayloadProof(this.payloadProof)
     this.setHasPresentedFrame(true)
     this.setFrameProofStatus('presented')
+  }
+
+  private adoptRejectedFrameVisibleSceneProof(result: WorkbookPaneFrameResultV3): void {
+    if (!result.visibleSceneOwnershipEpoch || !result.visibleSceneOwnershipSignature || !result.visibleSceneOwnershipEpochSignature) {
+      return
+    }
+    this.setVisibleSceneProof({
+      ownershipEpoch: result.visibleSceneOwnershipEpoch,
+      ownershipEpochSignature: result.visibleSceneOwnershipEpochSignature,
+      ownershipSignature: result.visibleSceneOwnershipSignature,
+      payload: result.visibleScenePayloadProof,
+    })
+    this.syncFrameProofSignature(this.props)
+    this.applyRendererState()
+    this.setHasPresentedFrame(false)
+    this.setFrameProofStatus(this.frameProofSignature ? 'pending' : 'idle')
+    this.requestRenderDraw()
   }
 
   private handleInputSignal(): void {

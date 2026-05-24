@@ -443,9 +443,6 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
     expect(runtime.getFrameProofStatusSnapshot()).toBe('pending')
     expect(runtime.getPresentedFrameProofSignatureSnapshot()).toBe('')
     expect(runtime.getPresentedVisibleSceneOwnershipEpochSignatureSnapshot()).toBe('')
-    expect(runtime.getVisibleSceneOwnershipEpochSignatureSnapshot()).toBe(firstEpochSignature)
-
-    runtime.updateProps(props)
     expect(runtime.getVisibleSceneOwnershipEpochSignatureSnapshot()).not.toBe(firstEpochSignature)
     animationFrames.flushNextFrame()
 

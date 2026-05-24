@@ -9,6 +9,7 @@ import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import { drawWorkbookTypeGpuTileFrameV3, type WorkbookTypeGpuBackendV3 } from './typegpu-workbook-backend-v3.js'
 import {
   resolveWorkbookPaneVisibleSceneProofV3,
+  type WorkbookPaneVisiblePayloadProofV3,
   type WorkbookPaneVisibleSceneOwnershipEpochV3,
 } from './workbook-pane-visible-scene-proof.js'
 
@@ -75,6 +76,7 @@ export interface WorkbookPanePresentedVisualFrameV3 {
 export interface WorkbookPaneFrameResultV3 {
   readonly frameProofSignature: string
   readonly submitted: boolean
+  readonly visibleScenePayloadProof: WorkbookPaneVisiblePayloadProofV3
   readonly visibleSceneOwnershipEpoch: WorkbookPaneVisibleSceneOwnershipEpochV3 | null
   readonly visibleSceneOwnershipEpochSignature: string
   readonly visibleSceneOwnershipSignature: string
@@ -272,6 +274,7 @@ export class WorkbookPaneRendererRuntimeV3 {
       this.frameResultListener?.({
         frameProofSignature,
         submitted: false,
+        visibleScenePayloadProof: liveVisibleSceneProof.payload,
         visibleSceneOwnershipEpoch: liveVisibleSceneProof.ownershipEpoch,
         visibleSceneOwnershipEpochSignature: liveVisibleSceneProof.ownershipEpochSignature,
         visibleSceneOwnershipSignature: liveVisibleSceneProof.ownershipSignature,
@@ -297,6 +300,7 @@ export class WorkbookPaneRendererRuntimeV3 {
     this.frameResultListener?.({
       frameProofSignature,
       submitted,
+      visibleScenePayloadProof: liveVisibleSceneProof.payload,
       visibleSceneOwnershipEpoch: liveVisibleSceneProof.ownershipEpoch,
       visibleSceneOwnershipEpochSignature,
       visibleSceneOwnershipSignature,
