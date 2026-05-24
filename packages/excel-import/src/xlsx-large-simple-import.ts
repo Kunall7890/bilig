@@ -182,7 +182,12 @@ export function tryImportLargeSimpleXlsx(
     (path) => path.startsWith('xl/model/') || path.startsWith('xl/customData/') || path.startsWith('customXml/'),
   )
   const hasSlicerConnectionParts = packagePaths.some(
-    (path) => path === 'xl/connections.xml' || path.startsWith('xl/slicerCaches/') || path.startsWith('xl/slicers/'),
+    (path) =>
+      path === 'xl/connections.xml' ||
+      path.startsWith('xl/queryTables/') ||
+      path.startsWith('xl/slicerCaches/') ||
+      path.startsWith('xl/slicers/') ||
+      /^xl\/tables\/_rels\/table[1-9][0-9]*\.xml\.rels$/u.test(path),
   )
   phaseRecorder.finish('zip-setup', zipSetupStart)
   let ownedSourceReleasedForReplacement = false

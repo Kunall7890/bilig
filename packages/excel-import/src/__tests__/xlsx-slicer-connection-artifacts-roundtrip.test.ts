@@ -10,9 +10,11 @@ const connectionsRelationshipType = 'http://schemas.openxmlformats.org/officeDoc
 const slicerCacheRelationshipType = 'http://schemas.microsoft.com/office/2007/relationships/slicerCache'
 const slicerRelationshipType = 'http://schemas.microsoft.com/office/2007/relationships/slicer'
 const tableRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/table'
+const queryTableRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/queryTable'
 const connectionsContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.connections+xml'
 const slicerCacheContentType = 'application/vnd.ms-excel.slicerCache+xml'
 const slicerContentType = 'application/vnd.ms-excel.slicer+xml'
+const queryTableContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.queryTable+xml'
 
 describe('xlsx slicer and connection artifacts roundtrip', () => {
   it('preserves slicer caches, slicers, and workbook connections as package artifacts', () => {
@@ -46,6 +48,27 @@ describe('xlsx slicer and connection artifacts roundtrip', () => {
     expect(readContentTypeOverride(exported, '/xl/connections.xml')).toBe(connectionsContentType)
     expect(readContentTypeOverride(exported, '/xl/slicerCaches/slicerCache1.xml')).toBe(slicerCacheContentType)
     expect(readContentTypeOverride(exported, '/xl/slicers/slicer1.xml')).toBe(slicerContentType)
+  })
+
+  it('preserves query-table package topology for external data tables', () => {
+    const source = buildWorkbookWithQueryTableArtifacts()
+
+    const imported = importXlsx(source, 'query-table-connections.xlsx')
+    const exported = exportXlsx(imported.snapshot)
+
+    expect(imported.snapshot.workbook.metadata?.slicerConnectionArtifacts?.parts.map((part) => part.path).toSorted()).toEqual([
+      'xl/connections.xml',
+      'xl/queryTables/queryTable1.xml',
+      'xl/tables/_rels/table1.xml.rels',
+    ])
+    expect(imported.snapshot.workbook.metadata?.slicerConnectionArtifacts?.workbookRelationships).toEqual([
+      { id: 'rIdQueryConnections', type: connectionsRelationshipType, target: 'connections.xml' },
+    ])
+    expect(queryTableMetrics(exported)).toEqual(queryTableMetrics(source))
+    expect(readZipText(exported, 'xl/queryTables/queryTable1.xml')).toBe(queryTableXml)
+    expect(readZipText(exported, 'xl/tables/_rels/table1.xml.rels')).toBe(queryTableRelationshipsXml)
+    expect(readContentTypeOverride(exported, '/xl/connections.xml')).toBe(connectionsContentType)
+    expect(readContentTypeOverride(exported, '/xl/queryTables/queryTable1.xml')).toBe(queryTableContentType)
   })
 })
 
@@ -93,6 +116,30 @@ function buildWorkbookWithSlicerAndConnectionArtifacts(): Uint8Array {
       { partName: '/xl/connections.xml', contentType: connectionsContentType },
       { partName: '/xl/slicerCaches/slicerCache1.xml', contentType: slicerCacheContentType },
       { partName: '/xl/slicers/slicer1.xml', contentType: slicerContentType },
+    ].reduce((xml, entry) => upsertContentTypeOverride(xml, entry), readZipTextFromZip(zip, '[Content_Types].xml')),
+  )
+  return zipSync(zip)
+}
+
+function buildWorkbookWithQueryTableArtifacts(): Uint8Array {
+  const zip = unzipSync(exportXlsx(buildWorkbook()))
+  const tablePath = Object.keys(zip).find((path) => /^xl\/tables\/table[1-9][0-9]*\.xml$/u.test(path))
+  if (tablePath !== 'xl/tables/table1.xml') {
+    throw new Error(`Expected exported workbook table path to be xl/tables/table1.xml, got ${tablePath ?? 'none'}`)
+  }
+  zip['xl/_rels/workbook.xml.rels'] = strToU8(
+    appendRelationship(
+      readZipTextFromZip(zip, 'xl/_rels/workbook.xml.rels'),
+      `<Relationship Id="rIdQueryConnections" Type="${connectionsRelationshipType}" Target="connections.xml"/>`,
+    ),
+  )
+  zip['xl/connections.xml'] = strToU8(connectionsXml)
+  zip['xl/tables/_rels/table1.xml.rels'] = strToU8(queryTableRelationshipsXml)
+  zip['xl/queryTables/queryTable1.xml'] = strToU8(queryTableXml)
+  zip['[Content_Types].xml'] = strToU8(
+    [
+      { partName: '/xl/connections.xml', contentType: connectionsContentType },
+      { partName: '/xl/queryTables/queryTable1.xml', contentType: queryTableContentType },
     ].reduce((xml, entry) => upsertContentTypeOverride(xml, entry), readZipTextFromZip(zip, '[Content_Types].xml')),
   )
   return zipSync(zip)
@@ -162,6 +209,29 @@ function slicerConnectionMetrics(bytes: Uint8Array): {
   }
 }
 
+function queryTableMetrics(bytes: Uint8Array): {
+  packageParts: string[]
+  queryTableConnectionIds: string[]
+  tableQueryTableRelationships: number
+  workbookConnectionsRelationships: number
+} {
+  const zip = unzipSync(bytes)
+  const workbookRelationshipsXml = readZipTextFromZip(zip, 'xl/_rels/workbook.xml.rels')
+  const tableRelationshipsXml = readOptionalZipTextFromZip(zip, 'xl/tables/_rels/table1.xml.rels') ?? ''
+  const queryTableXml = readOptionalZipTextFromZip(zip, 'xl/queryTables/queryTable1.xml') ?? ''
+  return {
+    packageParts: Object.keys(zip)
+      .filter((path) => path === 'xl/connections.xml' || path === 'xl/tables/_rels/table1.xml.rels' || path.startsWith('xl/queryTables/'))
+      .toSorted(),
+    queryTableConnectionIds: [...queryTableXml.matchAll(/<queryTable\b([^>]*)>/gu)].flatMap((match) => {
+      const connectionId = readXmlAttribute(match[1] ?? '', 'connectionId')
+      return connectionId ? [connectionId] : []
+    }),
+    tableQueryTableRelationships: relationshipsWithType(tableRelationshipsXml, queryTableRelationshipType).length,
+    workbookConnectionsRelationships: relationshipsWithType(workbookRelationshipsXml, connectionsRelationshipType).length,
+  }
+}
+
 function relationshipsWithType(relationshipsXml: string, relationshipType: string): string[] {
   return [...relationshipsXml.matchAll(/<Relationship\b([^>]*)\/?>/gu)].flatMap((match) => {
     const attributes = match[1] ?? ''
@@ -179,6 +249,11 @@ function readZipTextFromZip(zip: Record<string, Uint8Array>, path: string): stri
     throw new Error(`Missing XLSX part: ${path}`)
   }
   return strFromU8(bytes)
+}
+
+function readOptionalZipTextFromZip(zip: Record<string, Uint8Array>, path: string): string | undefined {
+  const bytes = zip[path]
+  return bytes ? strFromU8(bytes) : undefined
 }
 
 function readContentTypeOverride(bytes: Uint8Array, partName: string): string | undefined {
@@ -241,6 +316,26 @@ const connectionsXml = [
   '<dbPr connection="Provider=Microsoft.ACE.OLEDB.12.0;Data Source=revenue.xlsx" command="SELECT * FROM Revenue" commandType="2"/>',
   '</connection>',
   '</connections>',
+].join('')
+
+const queryTableRelationshipsXml = [
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+  `<Relationships xmlns="${relationshipNamespace}">`,
+  `<Relationship Id="rIdQueryTable1" Type="${queryTableRelationshipType}" Target="../queryTables/queryTable1.xml"/>`,
+  '</Relationships>',
+].join('')
+
+const queryTableXml = [
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+  '<queryTable xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ',
+  'name="RevenueTable" headers="1" rowNumbers="0" disableRefresh="1" backgroundRefresh="0" connectionId="1">',
+  '<queryTableRefresh nextId="3">',
+  '<queryTableFields count="2">',
+  '<queryTableField id="1" name="Region" tableColumnId="1"/>',
+  '<queryTableField id="2" name="Amount" tableColumnId="2"/>',
+  '</queryTableFields>',
+  '</queryTableRefresh>',
+  '</queryTable>',
 ].join('')
 
 const slicerCacheXml = [

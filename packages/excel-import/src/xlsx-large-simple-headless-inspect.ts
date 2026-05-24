@@ -570,7 +570,13 @@ function workbookMetadataKeysForHeadlessPackage(packagePaths: readonly string[],
       keys.add('pivotArtifacts')
     } else if (path.startsWith('xl/model/') || path.startsWith('xl/customData/') || path.startsWith('customXml/')) {
       keys.add('dataModelArtifacts')
-    } else if (path === 'xl/connections.xml' || path.startsWith('xl/slicerCaches/') || path.startsWith('xl/slicers/')) {
+    } else if (
+      path === 'xl/connections.xml' ||
+      path.startsWith('xl/queryTables/') ||
+      path.startsWith('xl/slicerCaches/') ||
+      path.startsWith('xl/slicers/') ||
+      /^xl\/tables\/_rels\/table[1-9][0-9]*\.xml\.rels$/u.test(path)
+    ) {
       keys.add('slicerConnectionArtifacts')
     } else if (path.startsWith('xl/externalLinks/')) {
       keys.add('externalLinkArtifacts')

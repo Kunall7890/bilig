@@ -34,19 +34,24 @@ const workbookPath = 'xl/workbook.xml'
 const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
 const contentTypesPath = '[Content_Types].xml'
 const connectionsRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/connections'
+const queryTableRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/queryTable'
 const slicerCacheRelationshipType = 'http://schemas.microsoft.com/office/2007/relationships/slicerCache'
 const slicerRelationshipType = 'http://schemas.microsoft.com/office/2007/relationships/slicer'
 const connectionsContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.connections+xml'
+const queryTableContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.queryTable+xml'
 const slicerCacheContentType = 'application/vnd.ms-excel.slicerCache+xml'
 const slicerContentType = 'application/vnd.ms-excel.slicer+xml'
 const extensionElementPattern = /<(?:[A-Za-z_][\w.-]*:)?ext\b[^>]*(?:\/>|>[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?ext>)/gu
 const extLstClosingElementPattern = /<\/(?:[A-Za-z_][\w.-]*:)?extLst>/u
 const connectionsPartPathPattern = /^xl\/connections\.xml$/u
 const connectionsRelationshipPartPathPattern = /^xl\/_rels\/connections\.xml\.rels$/u
+const queryTablePartPathPattern = /^xl\/queryTables\/queryTable[1-9][0-9]*\.xml$/u
+const queryTableRelationshipPartPathPattern = /^xl\/queryTables\/_rels\/queryTable[1-9][0-9]*\.xml\.rels$/u
 const slicerCachePartPathPattern = /^xl\/slicerCaches\/slicerCache[1-9][0-9]*\.xml$/u
 const slicerCacheRelationshipPartPathPattern = /^xl\/slicerCaches\/_rels\/slicerCache[1-9][0-9]*\.xml\.rels$/u
 const slicerPartPathPattern = /^xl\/slicers\/slicer[1-9][0-9]*\.xml$/u
 const slicerRelationshipPartPathPattern = /^xl\/slicers\/_rels\/slicer[1-9][0-9]*\.xml\.rels$/u
+const tableRelationshipPartPathPattern = /^xl\/tables\/_rels\/table[1-9][0-9]*\.xml\.rels$/u
 
 export interface ImportedWorkbookSlicerConnectionSheetSource {
   readonly sheetName: string
@@ -157,12 +162,26 @@ function isSlicerRelationship(relationship: ParsedRelationship | WorkbookPackage
   return relationship.type === slicerRelationshipType
 }
 
+function isQueryTableRelationship(relationship: ParsedRelationship | WorkbookPackageRelationshipSnapshot): boolean {
+  return relationship.type === queryTableRelationshipType
+}
+
 function relationshipPartPath(partPath: string): string {
   const normalized = normalizeZipPath(partPath)
   const slashIndex = normalized.lastIndexOf('/')
   const directory = slashIndex >= 0 ? normalized.slice(0, slashIndex) : ''
   const fileName = slashIndex >= 0 ? normalized.slice(slashIndex + 1) : normalized
   return directory.length > 0 ? `${directory}/_rels/${fileName}.rels` : `_rels/${fileName}.rels`
+}
+
+function relationshipSourcePartPath(relationshipPath: string): string | null {
+  const normalized = normalizeZipPath(relationshipPath)
+  const marker = '/_rels/'
+  const markerIndex = normalized.lastIndexOf(marker)
+  if (markerIndex < 0 || !normalized.endsWith('.rels')) {
+    return null
+  }
+  return `${normalized.slice(0, markerIndex)}/${normalized.slice(markerIndex + marker.length, -'.rels'.length)}`
 }
 
 function hasZipEntry(zip: XlsxZipEntries, path: string): boolean {
@@ -174,10 +193,13 @@ function isPreservedPackagePartPath(path: string): boolean {
   return (
     connectionsPartPathPattern.test(normalized) ||
     connectionsRelationshipPartPathPattern.test(normalized) ||
+    queryTablePartPathPattern.test(normalized) ||
+    queryTableRelationshipPartPathPattern.test(normalized) ||
     slicerCachePartPathPattern.test(normalized) ||
     slicerCacheRelationshipPartPathPattern.test(normalized) ||
     slicerPartPathPattern.test(normalized) ||
-    slicerRelationshipPartPathPattern.test(normalized)
+    slicerRelationshipPartPathPattern.test(normalized) ||
+    tableRelationshipPartPathPattern.test(normalized)
   )
 }
 
@@ -185,6 +207,9 @@ function fallbackContentTypeForPath(path: string): string | null {
   const normalized = normalizeZipPath(path)
   if (connectionsPartPathPattern.test(normalized)) {
     return connectionsContentType
+  }
+  if (queryTablePartPathPattern.test(normalized)) {
+    return queryTableContentType
   }
   if (slicerCachePartPathPattern.test(normalized)) {
     return slicerCacheContentType
@@ -286,9 +311,32 @@ function readSlicerConnectionPartPaths(
       partPaths.add(path)
     }
   }
+  for (const path of Object.keys(zip)) {
+    const normalized = normalizeZipPath(path)
+    if (!tableRelationshipPartPathPattern.test(normalized)) {
+      continue
+    }
+    const tableRelationships = parseRelationships(getZipText(zip, normalized))
+    if (!tableRelationships.some(isQueryTableRelationship)) {
+      continue
+    }
+    partPaths.add(normalized)
+    const tablePartPath = relationshipSourcePartPath(normalized)
+    if (!tablePartPath) {
+      continue
+    }
+    for (const relationship of tableRelationships) {
+      if (isQueryTableRelationship(relationship)) {
+        addRelationshipTargetPartPath(partPaths, zip, tablePartPath, relationshipSnapshot(relationship))
+      }
+    }
+  }
 
   const allPartPaths = new Set<string>(partPaths)
   for (const partPath of partPaths) {
+    if (partPath.includes('/_rels/')) {
+      continue
+    }
     const relsPath = relationshipPartPath(partPath)
     if (hasZipEntry(zip, relsPath)) {
       allPartPaths.add(relsPath)

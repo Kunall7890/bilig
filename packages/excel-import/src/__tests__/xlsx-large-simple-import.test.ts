@@ -860,6 +860,57 @@ describe('large simple XLSX import fast path', () => {
     ])
   })
 
+  it('preserves query-table external data topology on the streaming path', () => {
+    const queryTableRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/queryTable'
+    const bytes = buildLargeSimpleWorkbook({
+      includeSharedStrings: false,
+      worksheetXml: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<dimension ref="A1:B2"/>',
+        '<sheetData>',
+        '<row r="1"><c r="A1" t="inlineStr"><is><t>Region</t></is></c><c r="B1" t="inlineStr"><is><t>Amount</t></is></c></row>',
+        '<row r="2"><c r="A2" t="inlineStr"><is><t>North</t></is></c><c r="B2"><v>1200</v></c></row>',
+        '</sheetData>',
+        '</worksheet>',
+      ].join(''),
+      extraEntries: {
+        'xl/_rels/workbook.xml.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rIdConnections" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/connections" Target="connections.xml"/>
+</Relationships>`,
+        'xl/connections.xml':
+          '<connections xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1"><connection id="1" name="Revenue connection" type="5"/></connections>',
+        'xl/tables/_rels/table1.xml.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdQueryTable1" Type="${queryTableRelationshipType}" Target="../queryTables/queryTable1.xml"/>
+</Relationships>`,
+        'xl/queryTables/queryTable1.xml':
+          '<queryTable xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" name="RevenueTable" disableRefresh="1" connectionId="1"/>',
+      },
+    })
+
+    const imported = tryImportLargeSimpleXlsx(bytes, 'query-table-connections.xlsx', readXlsxZipEntriesLazy(bytes), {
+      minByteLength: 0,
+    })
+    const artifacts = imported?.snapshot.workbook.metadata?.slicerConnectionArtifacts
+
+    expect(imported?.stats.cellCount).toBe(4)
+    expect(artifacts?.workbookRelationships).toEqual([
+      {
+        id: 'rIdConnections',
+        type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/connections',
+        target: 'connections.xml',
+      },
+    ])
+    expect(artifacts?.parts.map((part) => part.path).toSorted()).toEqual([
+      'xl/connections.xml',
+      'xl/queryTables/queryTable1.xml',
+      'xl/tables/_rels/table1.xml.rels',
+    ])
+  })
+
   it('imports worksheet auto filters without falling back to SheetJS', () => {
     const bytes = buildLargeSimpleWorkbook({
       includeSharedStrings: false,
