@@ -25,10 +25,9 @@ LABEL org.opencontainers.image.description="Bilig WorkPaper stdio MCP server for
 
 RUN npm init -y >/dev/null \
   && npm install --omit=dev "@bilig/workpaper@${BILIG_WORKPAPER_VERSION}" \
-  && node --input-type=module -e "import { writeFileSync } from 'node:fs'; import { buildDemoWorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/workpaper'; writeFileSync('/workpaper/pricing.workpaper.json', serializeWorkPaperDocument(exportWorkPaperDocument(buildDemoWorkPaper(), { includeConfig: true })));" \
   && npm cache clean --force
 
-ENTRYPOINT ["./node_modules/.bin/bilig-workpaper-mcp", "--workpaper", "/workpaper/pricing.workpaper.json", "--writable"]
+ENTRYPOINT ["./node_modules/.bin/bilig-workpaper-mcp", "--workpaper", "/workpaper/pricing.workpaper.json", "--init-demo-workpaper", "--writable"]
 
 FROM build-base AS app-build
 
