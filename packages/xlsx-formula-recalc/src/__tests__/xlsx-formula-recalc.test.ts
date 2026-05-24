@@ -154,6 +154,29 @@ describe('xlsx-formula-recalc', () => {
     expect(readWorkbookXml(result.xlsx)).not.toContain('<calcPr')
   })
 
+  it('carries import warnings when unsupported cached formulas recalculate to Excel errors', () => {
+    const sourceWorkbook = WorkPaper.buildFromSheets({
+      Model: [['AAPL', 0]],
+    })
+    const sourceBytes = replaceCellXml(
+      exportXlsx(sourceWorkbook.exportSnapshot()),
+      'xl/worksheets/sheet1.xml',
+      'B1',
+      '<c r="B1"><f>_xldudf_WISEPRICE(A1,&quot;Shares Outstanding&quot;)</f><v>14935800000</v></c>',
+    )
+    sourceWorkbook.dispose()
+
+    const result = recalculateXlsx(sourceBytes, {
+      fileName: 'unsupported-cache-warning.xlsx',
+      reads: ['Model!B1'],
+    })
+
+    expect(result.warnings).toContain(
+      'Unsupported formulas were preserved from cached XLSX values; recalculation may return Excel error values.',
+    )
+    expect(readCachedFormulaValue(result.xlsx, 'xl/worksheets/sheet1.xml', 'B1')).toBe('#NAME?')
+  })
+
   it('preserves non-stale calculation preferences after explicit formula recalculation', () => {
     const sourceWorkbook = WorkPaper.buildFromSheets({
       Model: [

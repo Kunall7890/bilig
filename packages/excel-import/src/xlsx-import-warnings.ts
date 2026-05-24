@@ -1,12 +1,18 @@
 import type * as XLSX from 'xlsx'
 
+import { formulaShouldUseCachedUnsupportedFunctionValue } from '@bilig/core/headless-runtime'
 import { FORMULA_VOLATILE_FUNCTION_NAMES } from '@bilig/formula'
+import type { WorkbookFormulaAuditSnapshot } from '@bilig/protocol'
 
 export const externalWorkbookReferencesWarning = 'External workbook links were preserved but not recalculated during XLSX import.'
 export const externalPivotCachesWarning = 'External pivot caches were detected but not semantically imported during XLSX import.'
 export const unsupportedCellStylesWarning = 'Some cell styles were ignored during XLSX import.'
 export const macroExecutionDeclinedWarning = 'Macros were preserved but not executed during XLSX import.'
 export const dataTableFormulasWarning = 'Excel data table formulas were preserved but not recalculated during XLSX import.'
+export const unsupportedFormulaCachesWarning =
+  'Unsupported formulas were preserved from cached XLSX values; recalculation may return Excel error values.'
+export const definedNameFormulaCachesWarning =
+  'Defined-name formulas contain volatile, external, or unsupported Excel semantics; dependent cached formula values may change during recalculation.'
 export const volatileFormulasWarning =
   'Volatile formulas were preserved during XLSX import; cached formula values may depend on workbook calculation time.'
 
@@ -53,6 +59,42 @@ export function formulaReferencesExternalWorkbook(formula: string): boolean {
 
 export function formulaReferencesVolatileFunction(formula: string): boolean {
   return volatileFunctionPattern.test(formulaWithoutDoubleQuotedStrings(formula))
+}
+
+export function readImportedFormulaAuditWarnings(formulaAudit: WorkbookFormulaAuditSnapshot | undefined): string[] {
+  if (!formulaAudit) {
+    return []
+  }
+  const warnings: string[] = []
+  if (formulaAudit.diagnostics?.some((diagnostic) => diagnostic.code === 'unsupported-formula-cache')) {
+    warnings.push(unsupportedFormulaCachesWarning)
+  }
+  if (formulaAuditHasRiskyDefinedNameFormula(formulaAudit)) {
+    warnings.push(definedNameFormulaCachesWarning)
+  }
+  return warnings
+}
+
+export function formulaAuditHasRiskyDefinedNameFormula(formulaAudit: WorkbookFormulaAuditSnapshot | undefined): boolean {
+  if (!formulaAudit) {
+    return false
+  }
+  const definedNameEntries = formulaAudit.formulas.filter((entry) => entry.context === 'defined-name')
+  if (definedNameEntries.length === 0) {
+    return false
+  }
+  const definedFormulaNames = new Set(
+    definedNameEntries.flatMap((entry) => {
+      const normalizedName = entry.name?.trim().toUpperCase()
+      return normalizedName ? [normalizedName] : []
+    }),
+  )
+  return definedNameEntries.some(
+    (entry) =>
+      formulaReferencesExternalWorkbook(entry.formula) ||
+      formulaReferencesVolatileFunction(entry.formula) ||
+      formulaShouldUseCachedUnsupportedFunctionValue(entry.formula, definedFormulaNames),
+  )
 }
 
 const volatileFunctionPattern = new RegExp(

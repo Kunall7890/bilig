@@ -50,6 +50,7 @@ import { buildImportedSheetMetadata } from './xlsx-import-sheet-metadata.js'
 import { internImportedStyle } from './xlsx-import-style-interning.js'
 import {
   addWorkbookWarnings,
+  readImportedFormulaAuditWarnings,
   dataTableFormulasWarning,
   externalPivotCachesWarning,
   externalWorkbookReferencesWarning,
@@ -775,6 +776,11 @@ function importParsedSheetJsWorkbook(args: {
         ...(importedCalculationSettings ? { calculationSettings: importedCalculationSettings } : {}),
       })
     : undefined
+  for (const warning of readImportedFormulaAuditWarnings(importedFormulaAudit)) {
+    if (!warnings.includes(warning)) {
+      warnings.push(warning)
+    }
+  }
   releaseFallbackInflatedZipEntries(workbookZip)
 
   const shouldUseCachedFormulaOpenModeForImportedWorkbook = shouldUseCachedFormulaOpenMode({

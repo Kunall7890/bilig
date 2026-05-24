@@ -44,10 +44,12 @@ import {
 export { manualCalculationModeWarning, precisionAsDisplayedCalculationWarning } from './xlsx-calculation-settings.js'
 export {
   dataTableFormulasWarning,
+  definedNameFormulaCachesWarning,
   externalPivotCachesWarning,
   externalWorkbookReferencesWarning,
   macroExecutionDeclinedWarning,
   unsupportedCellStylesWarning,
+  unsupportedFormulaCachesWarning,
   volatileFormulasWarning,
 } from './xlsx-import-warnings.js'
 export { readImportedXlsxCellStyle } from './xlsx-import-cell-styles.js'

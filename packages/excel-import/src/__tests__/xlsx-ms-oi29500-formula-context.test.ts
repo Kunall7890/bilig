@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import * as XLSX from 'xlsx'
 
-import { importXlsx } from '../index.js'
+import { definedNameFormulaCachesWarning, importXlsx, unsupportedFormulaCachesWarning } from '../index.js'
 
 describe('MS-OI29500 formula context audit import', () => {
   it('records worksheet, defined-name, CF, DV, shared-formula, and cached-value provenance', () => {
@@ -74,6 +74,37 @@ describe('MS-OI29500 formula context audit import', () => {
       ]),
     })
   })
+
+  it('promotes unsupported cached formula diagnostics to public warnings', () => {
+    const imported = importXlsx(buildUnsupportedCachedFormulaWorkbookBytes(), 'unsupported-cached-formula.xlsx')
+
+    expect(imported.warnings).toContain(unsupportedFormulaCachesWarning)
+    expect(imported.snapshot.workbook.metadata?.formulaAudit?.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'unsupported-formula-cache',
+          context: 'worksheet-cell',
+          sheetName: 'Model',
+          address: 'B1',
+        }),
+      ]),
+    )
+  })
+
+  it('warns when formula-valued defined names hide volatile or unsupported recalculation semantics', () => {
+    const imported = importXlsx(buildRiskyDefinedNameFormulaWorkbookBytes(), 'risky-defined-name-formula.xlsx')
+
+    expect(imported.warnings).toContain(definedNameFormulaCachesWarning)
+    expect(imported.snapshot.workbook.metadata?.formulaAudit?.formulas).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          context: 'defined-name',
+          name: 'LiveShares',
+          formula: '_xldudf_WISEPRICE(A1,"Shares Outstanding")',
+        }),
+      ]),
+    )
+  })
 })
 
 function buildFormulaContextWorkbookBytes(): Uint8Array {
@@ -110,4 +141,35 @@ function buildFormulaContextWorkbookBytes(): Uint8Array {
       ),
   )
   return zipSync(zip)
+}
+
+function buildUnsupportedCachedFormulaWorkbookBytes(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([['AAPL', 0]])
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
+
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const sourceSheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+  zip['xl/worksheets/sheet1.xml'] = strToU8(
+    sourceSheetXml.replace(
+      /<c r="B1"[^>]*>[\s\S]*?<\/c>/u,
+      '<c r="B1"><f>_xldudf_WISEPRICE(A1,&quot;Shares Outstanding&quot;)</f><v>14935800000</v></c>',
+    ),
+  )
+  return zipSync(zip)
+}
+
+function buildRiskyDefinedNameFormulaWorkbookBytes(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([['AAPL', { f: 'LiveShares/1000000', v: 0 }]])
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
+  workbook.Workbook = {
+    Names: [
+      {
+        Name: 'LiveShares',
+        Ref: '_xldudf_WISEPRICE(A1,"Shares Outstanding")',
+      },
+    ],
+  }
+  return new Uint8Array(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
 }
