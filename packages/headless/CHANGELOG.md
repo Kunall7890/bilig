@@ -4,6 +4,21 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.90.2
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.90.0
+- Manual override: no
+
+## Fixes
+- fix(xlsx): preserve table query ownership (36dc4a9a)
+- fix(workbook): require undo proof data fields (9bc6df4d)
+- fix(workbook): require command result data fields (8cdd388a)
+- fix(xlsx): prune pivot cache sidecars on sheet delete (7f5d6b63)
+
+## Internal runtime changes
+- chore(release): runtime packages v0.90.1 (1ff330dc)
+
 ## 0.90.1
 
 - Release type: patch
