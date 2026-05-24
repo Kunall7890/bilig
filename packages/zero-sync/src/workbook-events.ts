@@ -3,10 +3,11 @@ import { isWorkbookSnapshot } from '@bilig/protocol'
 import { parseCellAddress } from '@bilig/formula'
 import { applyWorkbookAgentCommandBundle, type WorkbookAgentCommandBundle } from '@bilig/agent-api'
 import type { CommitOp, SpreadsheetEngine } from '@bilig/core'
-import { isEngineOps, type EngineOp, type EngineOpBatch } from '@bilig/workbook'
+import { isEngineOps, type EngineOp, type EngineOpBatch, type WorkbookPlanData } from '@bilig/workbook'
 import {
   applyAgentCommandBundleArgsSchema,
   applyBatchArgsSchema,
+  applyWorkbookPlanDataArgsSchema,
   clearCellArgsSchema,
   clearRangeArgsSchema,
   clearRangeNumberFormatArgsSchema,
@@ -53,6 +54,11 @@ export type WorkbookEventPayload =
   | {
       kind: 'applyAgentCommandBundle'
       bundle: WorkbookAgentCommandBundle
+    }
+  | {
+      kind: 'applyWorkbookPlanData'
+      plan: WorkbookPlanData
+      appliedOps: EngineOp[]
     }
   | {
       kind: 'setCellValue'
@@ -205,6 +211,7 @@ export type WorkbookEventKind = WorkbookEventPayload['kind']
 export const WORKBOOK_EVENT_KINDS = [
   'applyBatch',
   'applyAgentCommandBundle',
+  'applyWorkbookPlanData',
   'setCellValue',
   'setCellFormula',
   'clearCell',
@@ -304,6 +311,8 @@ export function isWorkbookEventPayload(value: unknown): value is WorkbookEventPa
       return matchesMutationArgsSchema(value, applyBatchArgsSchema)
     case 'applyAgentCommandBundle':
       return matchesMutationArgsSchema(value, applyAgentCommandBundleArgsSchema)
+    case 'applyWorkbookPlanData':
+      return matchesMutationArgsSchema(value, applyWorkbookPlanDataArgsSchema) && isEngineOps(value['appliedOps'])
     case 'setCellValue':
       return matchesMutationArgsSchema(value, setCellValueArgsSchema)
     case 'setCellFormula':
@@ -462,6 +471,7 @@ export function deriveDirtyRegions(payload: WorkbookEventPayload): DirtyRegion[]
       return [rangeRegion(payload.range)]
     case 'applyBatch':
     case 'applyAgentCommandBundle':
+    case 'applyWorkbookPlanData':
     case 'renderCommit':
     case 'insertRows':
     case 'deleteRows':
@@ -489,6 +499,9 @@ export function applyWorkbookEvent(engine: SpreadsheetEngine, payload: WorkbookE
       return
     case 'applyAgentCommandBundle':
       applyWorkbookAgentCommandBundle(engine, payload.bundle)
+      return
+    case 'applyWorkbookPlanData':
+      engine.applyOps(payload.appliedOps, { trusted: true })
       return
     case 'setCellValue':
       engine.setCellValue(payload.sheetName, payload.address, payload.value)

@@ -41,10 +41,7 @@ describe('workbook run adapter', () => {
       throw new Error(planned.errors.map((error) => error.message).join('\n'))
     }
 
-    const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine), undefined, {
-      requireApplyProof: true,
-      requirePlanId: true,
-    })
+    const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine), undefined, { strict: true })
 
     expect(result).toMatchObject({ status: 'done' })
     if (result.status !== 'done') {
@@ -73,6 +70,27 @@ describe('workbook run adapter', () => {
               formula: '(Sheet1!A1)+(Sheet1!B1)',
             },
           ],
+          resolvedRefs: {
+            target: {
+              kind: 'range',
+              label: 'Sheet1!C1',
+              range: {
+                sheetName: 'Sheet1',
+                startAddress: 'C1',
+                endAddress: 'C1',
+              },
+            },
+            inputs: [
+              expect.objectContaining({
+                kind: 'range',
+                label: 'Sheet1!A1',
+              }),
+              expect.objectContaining({
+                kind: 'range',
+                label: 'Sheet1!B1',
+              }),
+            ],
+          },
         },
       ],
       proof: {

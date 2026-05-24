@@ -7,6 +7,7 @@ import {
   clearCellArgsSchema,
   mergeCellsArgsSchema,
   parseApplyBatchArgs,
+  parseApplyWorkbookPlanDataArgs,
   parseRenderCommitArgs,
   redoLatestWorkbookChangeArgsSchema,
   rangeMutationArgsSchema,
@@ -36,6 +37,7 @@ import {
 } from './server-mutator-history-targets.js'
 import {
   captureEngineUndoBundle,
+  commitWorkbookPlanDataMutation,
   commitWorkbookHistoryMutation,
   commitWorkbookMutation,
   requireServerTransaction,
@@ -94,6 +96,12 @@ export async function handleServerMutator(
         parsed.clientMutationId,
         session,
       )
+      return
+    }
+
+    case 'workbook.applyWorkbookPlanData': {
+      const parsed = parseApplyWorkbookPlanDataArgs(args)
+      await commitWorkbookPlanDataMutation(parsed.documentId, serverTx, parsed.plan, runtimeManager, parsed.clientMutationId, session)
       return
     }
 

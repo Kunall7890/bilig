@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { defineModel, planWorkbookAction, toPlanData } from '@bilig/workbook'
 import {
   isAuthoritativeWorkbookEventBatch,
   isAuthoritativeWorkbookEventBatchAfterRevision,
@@ -6,6 +7,25 @@ import {
   isWorkbookChangeUndoBundle,
   isWorkbookEventPayload,
 } from '../workbook-events.js'
+
+function buildPlanData() {
+  const model = defineModel({
+    name: 'event-plan',
+    find(workbook) {
+      return { output: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }) }
+    },
+    actions: {
+      write({ refs, workbook }) {
+        workbook.writeValue(refs.output, 1)
+      },
+    },
+  })
+  const planned = planWorkbookAction(model, 'write')
+  if (planned.status !== 'planned') {
+    throw new Error(planned.errors.map((error) => error.message).join('\n'))
+  }
+  return toPlanData(planned.plan)
+}
 
 function buildAuthoritativeCellEvent(revision: number) {
   return {
@@ -33,6 +53,23 @@ describe('workbook event guards', () => {
         },
       }),
     ).toBe(true)
+  })
+
+  it('accepts transported workbook plan data payloads with concrete applied ops', () => {
+    expect(
+      isWorkbookEventPayload({
+        kind: 'applyWorkbookPlanData',
+        plan: buildPlanData(),
+        appliedOps: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1 }],
+      }),
+    ).toBe(true)
+    expect(
+      isWorkbookEventPayload({
+        kind: 'applyWorkbookPlanData',
+        plan: buildPlanData(),
+        appliedOps: [{ kind: 'not-an-op' }],
+      }),
+    ).toBe(false)
   })
 
   it('rejects renderCommit payloads with malformed commit ops', () => {

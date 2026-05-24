@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util'
 import type { SpreadsheetEngine } from '@bilig/core'
-import type { EngineOp } from '@bilig/workbook'
+import type { EngineOp, WorkbookPlanData } from '@bilig/workbook'
 import type { WorkbookChangeUndoBundle, WorkbookEventPayload } from '@bilig/zero-sync'
 import type { SessionIdentity } from '../http/session.js'
 import type { WorkbookRuntimeManager } from '../workbook-runtime/runtime-manager.js'
@@ -16,6 +16,7 @@ import {
   type WorkbookChangeRange,
   type WorkbookChangeStoreConnection,
 } from './workbook-change-store.js'
+import { runStrictWorkbookPlanData, workbookPlanRunAppliedOps, workbookPlanRunUndoBundle } from './workbook-plan-data-apply.js'
 
 export interface ServerTransactionLike extends ZeroQueryRunner {
   dbTransaction: {
@@ -116,6 +117,63 @@ export async function commitWorkbookMutation(
         revision: result.revision,
         updatedAt: result.updatedAt,
       }
+    } catch (error) {
+      runtimeManager.invalidate(documentId)
+      throw error
+    }
+  })
+}
+
+export async function commitWorkbookPlanDataMutation(
+  documentId: string,
+  tx: ServerTransactionLike,
+  plan: WorkbookPlanData,
+  runtimeManager: WorkbookRuntimeManager,
+  clientMutationId?: string,
+  session?: SessionIdentity,
+): Promise<void> {
+  await runtimeManager.runExclusive(documentId, async () => {
+    const db = tx.dbTransaction.wrappedTransaction
+    const runtimeStore = runtimeStoreFromServerTransaction(tx)
+    await acquireWorkbookMutationLock(db, documentId)
+    const appliedClientMutation = await loadAppliedWorkbookClientMutation(db, documentId, clientMutationId)
+    if (appliedClientMutation) {
+      assertClientMutationReplaySatisfies(
+        appliedClientMutation,
+        (payload) => payload.kind === 'applyWorkbookPlanData' && isDeepStrictEqual(payload.plan, plan),
+      )
+      return
+    }
+    const state = await runtimeManager.loadRuntime(runtimeStore, documentId)
+    try {
+      const run = await runStrictWorkbookPlanData(state.engine, plan)
+      if (run.status === 'failed') {
+        throw new Error(`Workbook plan data failed: ${run.errors.map((error) => error.message).join('; ')}`)
+      }
+      const appliedOps = workbookPlanRunAppliedOps(run)
+      if (appliedOps.length === 0) {
+        return
+      }
+      const ownerUserId = resolveOwnerUserId(state, session)
+      const result = await persistWorkbookMutation(db, documentId, {
+        previousState: state,
+        nextEngine: state.engine,
+        updatedBy: session?.userID ?? 'system',
+        ownerUserId,
+        eventPayload: {
+          kind: 'applyWorkbookPlanData',
+          plan,
+          appliedOps: structuredClone([...appliedOps]),
+        },
+        undoBundle: workbookPlanRunUndoBundle(run),
+        ...(clientMutationId !== undefined ? { clientMutationId } : {}),
+      })
+      runtimeManager.commitMutation(documentId, {
+        projectionCommit: result.projectionCommit,
+        headRevision: result.revision,
+        calculatedRevision: result.calculatedRevision,
+        ownerUserId,
+      })
     } catch (error) {
       runtimeManager.invalidate(documentId)
       throw error

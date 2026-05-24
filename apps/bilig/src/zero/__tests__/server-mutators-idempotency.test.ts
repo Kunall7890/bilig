@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SpreadsheetEngine } from '@bilig/core'
+import { defineModel, planWorkbookAction, toPlanData } from '@bilig/workbook'
 import { WorkbookRuntimeManager, type WorkbookRuntime } from '../../workbook-runtime/runtime-manager.js'
 import type { WorkbookChangeRecord } from '../workbook-change-store.js'
 import type { Queryable } from '../store.js'
@@ -371,6 +372,42 @@ describe('server mutator client mutation idempotency', () => {
     )
   })
 
+  it('persists transported workbook plan data with materialized applied ops', async () => {
+    const db = createQueryable()
+    const { commitMutation, loadRuntime, runtimeManager } = createRuntimeManagerHarness()
+    const engine = new SpreadsheetEngine({ workbookName: 'doc-1' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    loadRuntime.mockResolvedValueOnce(createWorkbookRuntime(engine))
+    const plan = createWorkbookPlanData()
+
+    await handleServerMutator(
+      createServerTransaction(db),
+      'workbook.applyWorkbookPlanData',
+      {
+        documentId: 'doc-1',
+        clientMutationId: 'doc-1:pending:plan',
+        plan,
+      },
+      runtimeManager,
+    )
+
+    expect(mutationStoreFns.persistWorkbookMutation).toHaveBeenCalledWith(
+      db,
+      'doc-1',
+      expect.objectContaining({
+        eventPayload: {
+          kind: 'applyWorkbookPlanData',
+          plan,
+          appliedOps: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 42 }],
+        },
+        undoBundle: expect.objectContaining({ kind: 'engineOps', ops: expect.any(Array) }),
+        clientMutationId: 'doc-1:pending:plan',
+      }),
+    )
+    expect(commitMutation).toHaveBeenCalledWith('doc-1', expect.objectContaining({ headRevision: 12 }))
+  })
+
   it('validates explicit revert targets only after the workbook mutation lock is held', async () => {
     const db = createQueryable()
     const { commitMutation, loadRuntime, runtimeManager } = createRuntimeManagerHarness()
@@ -503,6 +540,25 @@ describe('server mutator client mutation idempotency', () => {
     expect(mutationStoreFns.persistWorkbookMutation).not.toHaveBeenCalled()
   })
 })
+
+function createWorkbookPlanData() {
+  const model = defineModel({
+    name: 'server-plan',
+    find(workbook) {
+      return { output: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }) }
+    },
+    actions: {
+      write({ refs, workbook }) {
+        workbook.writeValue(refs.output, 42)
+      },
+    },
+  })
+  const planned = planWorkbookAction(model, 'write')
+  if (planned.status !== 'planned') {
+    throw new Error(planned.errors.map((error) => error.message).join('\n'))
+  }
+  return toPlanData(planned.plan)
+}
 
 function createQueryable(): Queryable {
   return {

@@ -2,7 +2,7 @@ import { defineMutator, defineMutatorsWithType } from '@rocicorp/zero'
 import { isWorkbookAgentCommandBundle } from '@bilig/agent-api'
 import { isCommitOps, type CommitOp } from '@bilig/core'
 import { z } from 'zod'
-import { isEngineOpBatch, type EngineOpBatch } from '@bilig/workbook'
+import { isEngineOpBatch, isPlanData, type EngineOpBatch, type WorkbookPlanData } from '@bilig/workbook'
 import type { CellRangeRef } from '@bilig/protocol'
 import {
   CELL_BORDER_STYLE_VALUES,
@@ -249,6 +249,10 @@ export const applyAgentCommandBundleArgsSchema = baseMutationArgsSchema.extend({
   bundle: jsonValueSchema.refine((value) => isWorkbookAgentCommandBundle(value), 'Invalid workbook agent command bundle'),
 })
 
+export const applyWorkbookPlanDataArgsSchema = baseMutationArgsSchema.extend({
+  plan: jsonValueSchema.refine((value) => isPlanData(value), 'Invalid workbook plan data'),
+})
+
 const zeroApplyBatchArgsSchema: ZeroMutatorSchema = {
   '~standard': {
     version: applyBatchArgsSchema['~standard'].version,
@@ -273,6 +277,14 @@ const zeroApplyAgentCommandBundleArgsSchema: ZeroMutatorSchema = {
   },
 }
 
+const zeroApplyWorkbookPlanDataArgsSchema: ZeroMutatorSchema = {
+  '~standard': {
+    version: applyWorkbookPlanDataArgsSchema['~standard'].version,
+    vendor: applyWorkbookPlanDataArgsSchema['~standard'].vendor,
+    validate: (value) => applyWorkbookPlanDataArgsSchema['~standard'].validate(value),
+  },
+}
+
 export function parseApplyBatchArgs(args: unknown): {
   documentId: string
   clientMutationId?: string
@@ -288,6 +300,24 @@ export function parseApplyBatchArgs(args: unknown): {
         documentId: parsed.documentId,
         clientMutationId: parsed.clientMutationId,
         batch: parsed.batch,
+      }
+}
+
+export function parseApplyWorkbookPlanDataArgs(args: unknown): {
+  documentId: string
+  clientMutationId?: string
+  plan: WorkbookPlanData
+} {
+  const parsed = applyWorkbookPlanDataArgsSchema.parse(args)
+  if (!isPlanData(parsed.plan)) {
+    throw new Error('Invalid workbook plan data')
+  }
+  return parsed.clientMutationId === undefined
+    ? { documentId: parsed.documentId, plan: parsed.plan }
+    : {
+        documentId: parsed.documentId,
+        clientMutationId: parsed.clientMutationId,
+        plan: parsed.plan,
       }
 }
 
@@ -320,6 +350,7 @@ export const mutators = defineMutators({
     clearRange: defineMutator(clearRangeArgsSchema, noop),
     renderCommit: defineMutator(zeroRenderCommitArgsSchema, noop),
     applyAgentCommandBundle: defineMutator(zeroApplyAgentCommandBundleArgsSchema, noop),
+    applyWorkbookPlanData: defineMutator(zeroApplyWorkbookPlanDataArgsSchema, noop),
     fillRange: defineMutator(rangeMutationArgsSchema, noop),
     copyRange: defineMutator(rangeMutationArgsSchema, noop),
     moveRange: defineMutator(rangeMutationArgsSchema, noop),

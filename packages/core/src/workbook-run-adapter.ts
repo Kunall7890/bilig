@@ -3,7 +3,10 @@ import { formatAddress, parseCellAddress } from '@bilig/formula'
 import {
   workbookActionCommandDigest,
   workbookPlanId,
+  normalizeWorkbookActionInput,
+  toWorkbookRefData,
   type EngineOp,
+  type WorkbookActionInput,
   type WorkbookActionCommand,
   type WorkbookActionPlan,
   type WorkbookRunApplyCommandReceipt,
@@ -599,12 +602,24 @@ function materializeCommandOps(engine: SpreadsheetEngine, command: WorkbookActio
   }
 }
 
+function resolvedRefsForCommand(command: WorkbookActionCommand): WorkbookActionInput | undefined {
+  const refs: Record<string, WorkbookActionInput> = {}
+  if (command.target !== undefined) {
+    refs['target'] = normalizeWorkbookActionInput(toWorkbookRefData(command.target))
+  }
+  if (command.kind === 'writeFormula' && command.inputs.length > 0) {
+    refs['inputs'] = normalizeWorkbookActionInput(command.inputs.map((input) => toWorkbookRefData(input)))
+  }
+  return Object.keys(refs).length === 0 ? undefined : refs
+}
+
 function materializePlanCommandReceipts(engine: SpreadsheetEngine, plan: WorkbookActionPlan): readonly WorkbookRunApplyCommandReceipt[] {
   if (plan.commands.length === 0) {
     return []
   }
   return plan.commands.map((command, commandIndex) => {
     const ops = materializeCommandOps(engine, command)
+    const resolvedRefs = resolvedRefsForCommand(command)
     return {
       commandIndex,
       commandKind: command.kind,
@@ -615,6 +630,7 @@ function materializePlanCommandReceipts(engine: SpreadsheetEngine, plan: Workboo
         source: '@bilig/core',
         opCount: ops.length,
       },
+      ...(resolvedRefs !== undefined ? { resolvedRefs } : {}),
     }
   })
 }

@@ -329,6 +329,12 @@ indexes, mismatched receipt ops, or receipts whose flattened ops disagree with
 the apply-level ops. With `{ requireApplyProof: true }`, a plan with commands
 fails closed unless those command receipts are present. With `{ strict: true }`,
 empty per-command applied ops or missing resolved-ref proof fail closed too.
+The repository-owned `@bilig/core` adapter now supplies that strict proof for
+generic model actions: each command receipt includes materialized applied ops and
+the resolved target/input refs that produced them. `apps/bilig` can therefore
+accept transported `WorkbookPlanData` directly through its Zero mutation path,
+run it with `strict: true`, persist the original plan plus the concrete applied
+ops, and roll back engine ops if post-apply readback or check proof fails.
 Runtime apply results, undo refs, apply errors, and check verifier output are
 validated from own fields only; prototype-inherited fields are ignored before
 they can become run proof. Adapter-returned ops and verifier proof must be data

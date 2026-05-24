@@ -216,6 +216,14 @@ export function buildWorkbookChangeDescriptor(payload: WorkbookEventPayload): Wo
               },
       }
     }
+    case 'applyWorkbookPlanData':
+      return {
+        eventKind: payload.kind,
+        summary: `Applied workbook plan ${payload.plan.modelName}.${payload.plan.actionName}`,
+        sheetName: null,
+        anchorAddress: null,
+        range: null,
+      }
     case 'setCellValue':
       return {
         eventKind: payload.kind,

@@ -1,7 +1,13 @@
 import { handleMutateRequest, handleQueryRequest } from '@rocicorp/zero/server'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { resolveRequestBaseUrl } from '@bilig/runtime-kernel'
-import { checkWorkbookCommandResultForBundle, type WorkbookCommandResult, type WorkbookUndoRef } from '@bilig/workbook'
+import {
+  checkWorkbookCommandResultForBundle,
+  type WorkbookCommandResult,
+  type WorkbookPlanData,
+  type WorkbookRunResult,
+  type WorkbookUndoRef,
+} from '@bilig/workbook'
 import {
   type AuthoritativeWorkbookEventBatch,
   executeZeroQueryTransform,
@@ -27,6 +33,7 @@ import { ZeroRecalcWorker } from './recalc-worker.js'
 import { loadWorkbookEventRecordsAfter } from './store.js'
 import type { WorkbookRuntimeStoreConnection } from './store.js'
 import { applyWorkbookAgentCommandBundleWithUndoCapture } from './workbook-agent-apply.js'
+import { runStrictWorkbookPlanData, workbookPlanRunAppliedOps, workbookPlanRunUndoBundle } from './workbook-plan-data-apply.js'
 import {
   assertZeroDataMigrationsReady,
   ensureZeroDataMigrationSchema,
@@ -86,6 +93,11 @@ export interface ZeroSyncService {
     preview: WorkbookAgentPreviewSummary,
     session?: SessionIdentity,
   ): Promise<{ revision: number; preview: WorkbookAgentPreviewSummary; commandResult?: WorkbookCommandResult }>
+  applyWorkbookPlanData?(
+    documentId: string,
+    plan: WorkbookPlanData,
+    session?: SessionIdentity,
+  ): Promise<{ revision: number; result: WorkbookRunResult }>
   listWorkbookChanges(documentId: string, limit?: number): Promise<WorkbookChangeRecord[]>
   listWorkbookAgentRuns(documentId: string, actorUserId: string, limit?: number): Promise<WorkbookAgentExecutionRecord[]>
   listWorkbookAgentThreadRuns(
@@ -164,6 +176,10 @@ class DisabledZeroSyncService implements ZeroSyncService {
   }
 
   async applyAgentCommandBundle(): Promise<never> {
+    throw new Error('Zero sync is not configured')
+  }
+
+  async applyWorkbookPlanData(): Promise<never> {
     throw new Error('Zero sync is not configured')
   }
 
@@ -367,6 +383,62 @@ class EnabledZeroSyncService implements ZeroSyncService {
             preview: authoritativePreview,
             commandResult,
           }
+        } catch (error) {
+          this.runtimeManager.invalidate(documentId)
+          await client.query('ROLLBACK').catch(() => undefined)
+          throw error
+        }
+      })
+    } finally {
+      client.release()
+    }
+  }
+
+  async applyWorkbookPlanData(
+    documentId: string,
+    plan: WorkbookPlanData,
+    session?: SessionIdentity,
+  ): Promise<{ revision: number; result: WorkbookRunResult }> {
+    const client = await this.pool.connect()
+    try {
+      return await this.runtimeManager.runExclusive(documentId, async () => {
+        await client.query('BEGIN')
+        try {
+          await acquireWorkbookMutationLock(client, documentId)
+          const transactionRuntimeStore = createWorkbookRuntimeStoreConnection(client, createZeroDbProvider(client))
+          const state = await this.runtimeManager.loadRuntime(transactionRuntimeStore, documentId)
+          const result = await runStrictWorkbookPlanData(state.engine, plan)
+          if (result.status === 'failed') {
+            this.runtimeManager.invalidate(documentId)
+            await client.query('ROLLBACK').catch(() => undefined)
+            return { revision: state.headRevision, result }
+          }
+          const appliedOps = workbookPlanRunAppliedOps(result)
+          if (appliedOps.length === 0) {
+            await client.query('COMMIT')
+            return { revision: state.headRevision, result }
+          }
+          const ownerUserId = resolveOwnerUserId(state, session)
+          const persisted = await persistWorkbookMutation(client, documentId, {
+            previousState: state,
+            nextEngine: state.engine,
+            updatedBy: session?.userID ?? 'system',
+            ownerUserId,
+            eventPayload: {
+              kind: 'applyWorkbookPlanData',
+              plan,
+              appliedOps: structuredClone([...appliedOps]),
+            },
+            undoBundle: workbookPlanRunUndoBundle(result),
+          })
+          this.runtimeManager.commitMutation(documentId, {
+            projectionCommit: persisted.projectionCommit,
+            headRevision: persisted.revision,
+            calculatedRevision: persisted.calculatedRevision,
+            ownerUserId,
+          })
+          await client.query('COMMIT')
+          return { revision: persisted.revision, result }
         } catch (error) {
           this.runtimeManager.invalidate(documentId)
           await client.query('ROLLBACK').catch(() => undefined)

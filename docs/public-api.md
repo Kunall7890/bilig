@@ -729,6 +729,14 @@ treated as missing capabilities without invoking getters. If a readback
 expectation is missing or mismatched after a reader runs, the run fails with
 deterministic codes such as `readback_missing`, `value_mismatch`, or
 `formula_mismatch`.
+The in-repo `@bilig/core` adapter is the reference execution path for this
+contract. It returns plan-bound apply proof, command receipts, concrete applied
+ops, and resolved target/input refs for generic workbook model actions. The
+monolith app accepts transported `WorkbookPlanData` through
+`workbook.applyWorkbookPlanData`, runs it with `{ strict: true }`, persists the
+original plan together with the materialized applied ops for replay, and applies
+the run undo ops if post-apply proof fails. That keeps `@bilig/workbook` generic
+while giving agents a real app-owned execution path for their own models.
 Returned run results are frozen before they cross the public API boundary,
 including nested changed summaries, checks, errors, apply summaries, undo refs,
 and unverified proof notes. That lets an agent inspect a run once and keep the

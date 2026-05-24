@@ -1,6 +1,7 @@
 export { mutators } from './mutators.js'
 export {
   applyAgentCommandBundleArgsSchema,
+  applyWorkbookPlanDataArgsSchema,
   applyBatchArgsSchema,
   clearRangeNumberFormatArgsSchema,
   clearRangeArgsSchema,
@@ -18,6 +19,7 @@ export {
   setRangeNumberFormatArgsSchema,
   setRangeStyleArgsSchema,
   parseApplyBatchArgs,
+  parseApplyWorkbookPlanDataArgs,
   parseRenderCommitArgs,
   setFreezePaneArgsSchema,
   unmergeCellsArgsSchema,
