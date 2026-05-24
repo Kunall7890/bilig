@@ -2,6 +2,7 @@ import {
   isWorkbookAgentCommandBundle,
   isWorkbookAgentExecutionRecord,
   isWorkbookAgentReviewQueueItem,
+  toAppliedWorkbookCommandResult,
   toWorkbookAgentCommandBundle,
   toWorkbookAgentReviewQueueItem,
   type CodexDynamicToolCallResult,
@@ -276,6 +277,24 @@ function isUnknownRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+type ApplyAgentCommandBundleResult = Awaited<ReturnType<ZeroSyncService['applyAgentCommandBundle']>>
+
+function withAppliedCommandResultProof(
+  bundle: WorkbookAgentCommandBundle,
+  result: ApplyAgentCommandBundleResult,
+): ApplyAgentCommandBundleResult {
+  if (result.commandResult !== undefined) {
+    return result
+  }
+  return {
+    ...result,
+    commandResult: toAppliedWorkbookCommandResult({
+      bundle,
+      revision: result.revision,
+    }),
+  }
+}
+
 async function createWorkbookRuntimeStub(documentId = 'doc-1'): Promise<WorkbookRuntime> {
   const engine = new SpreadsheetEngine({
     workbookName: documentId,
@@ -301,6 +320,15 @@ async function createWorkbookRuntimeStub(documentId = 'doc-1'): Promise<Workbook
 }
 
 function createZeroSyncStub(overrides: Partial<ZeroSyncService> = {}): ZeroSyncService {
+  const applyAgentCommandBundleOverride = overrides.applyAgentCommandBundle
+  const normalizedOverrides = { ...overrides }
+  if (applyAgentCommandBundleOverride !== undefined) {
+    normalizedOverrides.applyAgentCommandBundle = async (...args) => {
+      const result = await applyAgentCommandBundleOverride(...args)
+      return withAppliedCommandResultProof(args[1], result)
+    }
+  }
+
   return {
     enabled: true,
     async initialize() {},
@@ -315,8 +343,12 @@ function createZeroSyncStub(overrides: Partial<ZeroSyncService> = {}): ZeroSyncS
       return await task(await createWorkbookRuntimeStub(documentId))
     },
     async applyServerMutator() {},
-    async applyAgentCommandBundle() {
-      return { revision: 2, preview: createPreviewSummary() }
+    async applyAgentCommandBundle(_documentId, bundle) {
+      const revision = Math.max(2, bundle.baseRevision + 1)
+      return withAppliedCommandResultProof(bundle, { revision, preview: createPreviewSummary() })
+    },
+    async applyWorkbookPlanData() {
+      throw new Error('not used')
     },
     async listWorkbookChanges() {
       return []
@@ -345,7 +377,7 @@ function createZeroSyncStub(overrides: Partial<ZeroSyncService> = {}): ZeroSyncS
     async loadAuthoritativeEvents() {
       throw new Error('not used')
     },
-    ...overrides,
+    ...normalizedOverrides,
   }
 }
 
@@ -356,16 +388,18 @@ async function waitForWorkflowStatus(
   status: 'running' | 'completed' | 'failed' | 'cancelled',
 ): Promise<ReturnType<WorkbookAgentService['getSnapshot']>> {
   await vi.waitFor(() => {
-    expect(
-      service.getSnapshot({
-        documentId: 'doc-1',
-        threadId,
-        session: {
-          userID: userId,
-          roles: ['editor'],
-        },
-      }).workflowRuns[0]?.status,
-    ).toBe(status)
+    const workflowRun = service.getSnapshot({
+      documentId: 'doc-1',
+      threadId,
+      session: {
+        userID: userId,
+        roles: ['editor'],
+      },
+    }).workflowRuns[0]
+    if (workflowRun?.status === 'failed' && status !== 'failed') {
+      throw new Error(workflowRun.errorMessage ?? 'Workflow failed')
+    }
+    expect(workflowRun?.status).toBe(status)
   })
   return service.getSnapshot({
     documentId: 'doc-1',

@@ -10,12 +10,12 @@ import {
   workbookPlanId,
   type WorkbookExecutablePlan,
   type WorkbookPlanId,
-  type WorkbookPlanDataIssue,
   type WorkbookPlanDataRefs,
 } from './plan-data.js'
 import { verifyWorkbookReadbacks, type WorkbookRunReadback } from './readback.js'
 import { checkRuntimeAdapter, type WorkbookRuntimeCapability } from './requirements.js'
 import { cloneWorkbookRunApplyCommandReceipts, cloneWorkbookRunApplyCommandReceiptsForSummary } from './run-command-receipts.js'
+import { errorMessage, failedRun, planDataRunError, runError } from './run-failure.js'
 import {
   adapterApplyMethod,
   adapterReadMethod,
@@ -31,7 +31,6 @@ import {
   type WorkbookRunApplyCommandReceipt,
   type WorkbookCheckResult,
   type WorkbookRunError,
-  type WorkbookRunErrorCode,
   type WorkbookRunResult,
   type WorkbookRunUnverified,
   type WorkbookUndoRef,
@@ -65,36 +64,6 @@ export interface WorkbookRunAdapter<Refs = unknown> {
   verifyChecks?(checks: readonly WorkbookCheckResult[], plan: WorkbookActionPlan<Refs>): MaybePromise<readonly WorkbookCheckResult[]>
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
-function runError(code: WorkbookRunErrorCode, message: string): WorkbookRunError {
-  return {
-    code,
-    message,
-  }
-}
-
-function failedRun(args: {
-  readonly errors: readonly WorkbookRunError[]
-  readonly apply?: WorkbookRunApplySummary | undefined
-  readonly changed?: readonly WorkbookChangeSummary[]
-  readonly checks: readonly WorkbookCheckResult[]
-  readonly undo?: WorkbookUndoRef
-  readonly unverified?: readonly WorkbookRunUnverified[]
-}): WorkbookRunResult {
-  return {
-    status: 'failed',
-    errors: args.errors,
-    ...(args.apply !== undefined ? { apply: args.apply } : {}),
-    changed: args.changed ?? [],
-    checks: args.checks,
-    ...(args.undo !== undefined ? { undo: args.undo } : {}),
-    ...(args.unverified !== undefined && args.unverified.length > 0 ? { unverified: args.unverified } : {}),
-  }
-}
-
 function readbackTargets(checks: readonly WorkbookCheckResult[]): readonly WorkbookRef[] {
   const targets: WorkbookRef[] = []
   const seen = new Set<string>()
@@ -122,15 +91,6 @@ function failedFromPlanIssues<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRun
     errors: verification.issues.map((issue) => runError(issue.code, issue.message)),
     checks: plan.checks,
   })
-}
-
-function planDataRunError(issue: WorkbookPlanDataIssue): WorkbookRunError {
-  return {
-    code: 'invalid_plan_data',
-    message: issue.message,
-    path: issue.path,
-    issueCode: issue.code,
-  }
 }
 
 function changedAfterApply(

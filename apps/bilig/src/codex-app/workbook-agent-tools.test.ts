@@ -133,6 +133,9 @@ function createZeroSyncHarness(engine: SpreadsheetEngine) {
         },
       }
     },
+    async applyWorkbookPlanData() {
+      throw new Error('not used')
+    },
     async listWorkbookChanges() {
       return []
     },

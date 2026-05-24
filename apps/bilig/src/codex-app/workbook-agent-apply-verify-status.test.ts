@@ -61,6 +61,9 @@ function createZeroSyncHarness(
     async applyAgentCommandBundle() {
       throw new Error('not used')
     },
+    async applyWorkbookPlanData() {
+      throw new Error('not used')
+    },
     async listWorkbookChanges() {
       return []
     },

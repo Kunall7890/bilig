@@ -93,7 +93,7 @@ export interface ZeroSyncService {
     preview: WorkbookAgentPreviewSummary,
     session?: SessionIdentity,
   ): Promise<{ revision: number; preview: WorkbookAgentPreviewSummary; commandResult?: WorkbookCommandResult }>
-  applyWorkbookPlanData?(
+  applyWorkbookPlanData(
     documentId: string,
     plan: WorkbookPlanData,
     session?: SessionIdentity,

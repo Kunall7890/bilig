@@ -1,4 +1,10 @@
-import type { CodexDynamicToolCallResult, CodexServerNotification, CodexTurn, WorkbookAgentCommandBundle } from '@bilig/agent-api'
+import {
+  toAppliedWorkbookCommandResult,
+  type CodexDynamicToolCallResult,
+  type CodexServerNotification,
+  type CodexTurn,
+  type WorkbookAgentCommandBundle,
+} from '@bilig/agent-api'
 import { SpreadsheetEngine } from '@bilig/core'
 import { ValueTag } from '@bilig/protocol'
 import type { WorkbookAgentUiContext } from '@bilig/contracts'
@@ -163,7 +169,14 @@ function createZeroSyncService(engine: SpreadsheetEngine, input: { readonly revi
           address: 'K14',
           afterInput: 'tool-check-freshness',
         }),
+        commandResult: toAppliedWorkbookCommandResult({
+          bundle,
+          revision: 3,
+        }),
       }
+    },
+    async applyWorkbookPlanData() {
+      throw new Error('not used')
     },
     async listWorkbookChanges() {
       return [

@@ -61,9 +61,9 @@ trust.
 The shortest no-project checks are:
 
 ```sh
-npm exec --package @bilig/xlsx-formula-recalc -- xlsx-recalc --demo --json
-npm exec --package @bilig/workpaper -- bilig-agent-challenge
-npm exec --package @bilig/workpaper -- bilig-mcp-challenge
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge
 ```
 
 Those commands are intentionally small. If one matches your workflow, continue
@@ -89,7 +89,7 @@ examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.jso
 Run the same proof locally without cloning the repo:
 
 ```sh
-npm exec --package @bilig/workpaper -- bilig-n8n-formula-server --port 4321
+npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321
 ```
 
 Then point the self-hosted workflow at `http://host.docker.internal:4321` from
@@ -112,14 +112,14 @@ for the community-node install path, proof shape, import steps, and limits.
 
 ## Which Package Should I Install?
 
-| Problem you have right now                                                                      | Install                                                       | First proof                                                                             |
-| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Formula workbook state inside a Node service or agent tool                                      | `npm install @bilig/workpaper`                                | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                         |
-| AI agent needs to edit workbook inputs and verify formula readback                              | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](docs/ai-agent-spreadsheet-tool-node.md)                     |
-| SheetJS / `xlsx` pipeline returns stale formula values after input edits                        | `npm install @bilig/sheetjs-formula-recalc`                   | [SheetJS formula result not updating](docs/sheetjs-formula-result-not-updating-node.md) |
-| Generic XLSX bytes changed in Node; formula outputs must refresh before returning               | `npm install @bilig/xlsx-formula-recalc`                      | [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md)        |
-| Existing ExcelJS workflow needs recalculated values, not stale cached results                   | `npm install exceljs @bilig/exceljs-formula-recalc`           | [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md)  |
-| Advanced runtime subpaths, provenance docs, and package-boundary audits                        | `npm install @bilig/headless`                                 | [npm provenance and package trust](docs/npm-provenance-package-trust.md)                |
+| Problem you have right now                                                        | Install                                                       | First proof                                                                             |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Formula workbook state inside a Node service or agent tool                        | `npm install @bilig/workpaper`                                | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                         |
+| AI agent needs to edit workbook inputs and verify formula readback                | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](docs/ai-agent-spreadsheet-tool-node.md)                     |
+| SheetJS / `xlsx` pipeline returns stale formula values after input edits          | `npm install @bilig/sheetjs-formula-recalc`                   | [SheetJS formula result not updating](docs/sheetjs-formula-result-not-updating-node.md) |
+| Generic XLSX bytes changed in Node; formula outputs must refresh before returning | `npm install @bilig/xlsx-formula-recalc`                      | [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md)        |
+| Existing ExcelJS workflow needs recalculated values, not stale cached results     | `npm install exceljs @bilig/exceljs-formula-recalc`           | [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md)  |
+| Advanced runtime subpaths, provenance docs, and package-boundary audits           | `npm install @bilig/headless`                                 | [npm provenance and package trust](docs/npm-provenance-package-trust.md)                |
 
 ### Stale XLSX Formula Values? Run This First
 
@@ -174,7 +174,7 @@ Reduced workbook already in hand? Generate the paste-ready fixture report in
 one command:
 
 ```sh
-npm exec --package @bilig/workpaper -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Handing a spreadsheet task to another coding agent? Start with the
@@ -184,8 +184,8 @@ To prove the package-owned agent loop without cloning the repo or downloading a
 TypeScript file:
 
 ```sh
-npm exec --package @bilig/workpaper -- bilig-agent-challenge
-npm exec --package @bilig/workpaper -- bilig-mcp-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge
 ```
 
 Agent tools that support skill manifests can start from
@@ -331,7 +331,7 @@ Current checked npm footprint for `@bilig/headless@0.84.0`:
 attestations. Verify the package version you are about to adopt:
 
 ```sh
-npm view @bilig/headless version dist.attestations dist.signatures --json
+npm view @bilig/headless@latest version dist.attestations dist.signatures --json
 ```
 
 After installing, npm can verify the current dependency tree:
@@ -420,7 +420,7 @@ and [serverless quote approval](examples/serverless-workpaper-api). Run
 `npm run agent:framework-adapters`,
 `npm run agent:mcp-tools`, `npm run agent:mcp-transcript`,
 `npm run agent:mcp-file-transcript`, `npm run agent:mcp-stdio`, or
-`npm exec --package @bilig/workpaper -- bilig-workpaper-mcp` when that is the
+`npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp` when that is the
 path you are evaluating.
 
 The serverless example also includes `npm run next-route-handler`,
@@ -493,12 +493,12 @@ The agent framework guide is
 The package also ships the MCP stdio binary:
 
 ```sh
-npm exec --package @bilig/workpaper -- bilig-agent-challenge
-npm exec --package @bilig/workpaper -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/workpaper -- bilig-mcp-challenge
-npm exec --package @bilig/workpaper -- bilig-workpaper-mcp
-npm exec --package @bilig/workpaper -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
-npm exec --package @bilig/headless -- bilig-workpaper-mcp
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@latest -- bilig-workpaper-mcp
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 

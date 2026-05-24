@@ -1,0 +1,9 @@
+export const defaultLargeSimpleXlsxByteThreshold = 1_000_000
+export const maxMultiSheetDimensionCellPreallocation = 1_000_000
+export const eagerSharedStringsXmlByteThreshold = 1_000_000
+export const repeatedInlineStringDedupeMaxEntries = 65_536
+export const workbookPath = 'xl/workbook.xml'
+export const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
+export const sharedStringsPath = 'xl/sharedStrings.xml'
+export const stylesPath = 'xl/styles.xml'
+export const unsupportedPackagePathPattern = /^xl\/(?:ctrlProps|threadedComments|vbaProject\.bin)/u

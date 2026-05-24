@@ -66,6 +66,9 @@ function createZeroSyncServiceStub(input: {
       throw new Error('not used')
     },
     applyAgentCommandBundle: input.applyAgentCommandBundle,
+    async applyWorkbookPlanData() {
+      throw new Error('not used')
+    },
     async listWorkbookChanges() {
       return []
     },

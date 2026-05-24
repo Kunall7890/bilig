@@ -107,6 +107,7 @@ import type {
   ParsedWorksheet,
   ScannedWorksheet,
 } from './xlsx-large-simple-import-types.js'
+import * as importConstants from './xlsx-large-simple-import-constants.js'
 
 export type {
   LargeSimpleXlsxImportOptions,
@@ -117,33 +118,24 @@ export type {
   LargeSimpleXlsxSheetDimension,
 } from './xlsx-large-simple-import-types.js'
 
-const defaultLargeSimpleXlsxByteThreshold = 1_000_000
-const maxMultiSheetDimensionCellPreallocation = 1_000_000
-const eagerSharedStringsXmlByteThreshold = 1_000_000
-const repeatedInlineStringDedupeMaxEntries = 65_536
-const workbookPath = 'xl/workbook.xml'
-const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
-const sharedStringsPath = 'xl/sharedStrings.xml'
-const stylesPath = 'xl/styles.xml'
-const unsupportedPackagePathPattern = /^xl\/(?:ctrlProps|threadedComments|vbaProject\.bin)/u
 export function tryImportLargeSimpleXlsx(
   source: LargeSimpleXlsxImportSource,
   fileName: string,
   zip: XlsxZipEntries,
   options: LargeSimpleXlsxImportOptions = {},
 ): LargeSimpleXlsxImportResult | null {
-  if (source.byteLength < (options.minByteLength ?? defaultLargeSimpleXlsxByteThreshold)) {
+  if (source.byteLength < (options.minByteLength ?? importConstants.defaultLargeSimpleXlsxByteThreshold)) {
     return null
   }
   const phaseRecorder = new LargeSimpleXlsxImportPhaseRecorder()
   const zipSetupStart = phaseRecorder.start()
   const packagePaths = Object.keys(zip).map(normalizeZipPath)
-  if (packagePaths.some((path) => unsupportedPackagePathPattern.test(path))) {
+  if (packagePaths.some((path) => importConstants.unsupportedPackagePathPattern.test(path))) {
     return null
   }
 
-  const workbookXml = getZipText(zip, workbookPath)
-  const workbookRelationshipsXml = getZipText(zip, workbookRelationshipsPath)
+  const workbookXml = getZipText(zip, importConstants.workbookPath)
+  const workbookRelationshipsXml = getZipText(zip, importConstants.workbookRelationshipsPath)
   if (!workbookXml || !workbookRelationshipsXml) {
     return null
   }
@@ -171,8 +163,8 @@ export function tryImportLargeSimpleXlsx(
   }
   const materializeCells = options.materializeCells !== false
   const materializeMetadata = options.materializeMetadata !== false
-  const hasSharedStrings = packagePaths.includes(sharedStringsPath)
-  const hasStyles = packagePaths.includes(stylesPath)
+  const hasSharedStrings = packagePaths.includes(importConstants.sharedStringsPath)
+  const hasStyles = packagePaths.includes(importConstants.stylesPath)
   const hasCalcChain = packagePaths.includes('xl/calcChain.xml')
   const hasDrawingParts = packagePaths.some((path) => path.startsWith('xl/drawings/') || path.startsWith('xl/media/'))
   const hasChartParts = packagePaths.some((path) => path.startsWith('xl/charts/') || path.startsWith('xl/chartSheets/'))
@@ -226,7 +218,7 @@ export function tryImportLargeSimpleXlsx(
         )
       : null
   const deduplicateInlineStrings = hasSharedStrings ? true : 'bounded'
-  const inlineStringDedupeMaxEntries = hasSharedStrings ? undefined : repeatedInlineStringDedupeMaxEntries
+  const inlineStringDedupeMaxEntries = hasSharedStrings ? undefined : importConstants.repeatedInlineStringDedupeMaxEntries
   const deduplicateFormulaStrings = 'bounded'
   let fallbackSharedStrings: LargeSimpleSharedStrings | null | undefined = hasSharedStrings ? undefined : []
   if (
@@ -234,7 +226,8 @@ export function tryImportLargeSimpleXlsx(
     hasSharedStrings &&
     !hasCalcChain &&
     !hasPivotParts &&
-    (readXlsxZipEntryUncompressedSize(zip, sharedStringsPath) ?? Number.POSITIVE_INFINITY) <= eagerSharedStringsXmlByteThreshold
+    (readXlsxZipEntryUncompressedSize(zip, importConstants.sharedStringsPath) ?? Number.POSITIVE_INFINITY) <=
+      importConstants.eagerSharedStringsXmlByteThreshold
   ) {
     const sharedStringResolutionStart = phaseRecorder.start()
     fallbackSharedStrings = readAllLargeSimpleSharedStringsStreamed(zip, {
@@ -246,8 +239,8 @@ export function tryImportLargeSimpleXlsx(
     }
     phaseRecorder.finish('shared-string-resolution', sharedStringResolutionStart)
   }
-  delete zip[workbookPath]
-  delete zip[workbookRelationshipsPath]
+  delete zip[importConstants.workbookPath]
+  delete zip[importConstants.workbookRelationshipsPath]
   const workbookName = stringPool.intern(normalizeWorkbookName(fileName))
   const warnings = workbookDefinedNames.ignoredCount > 0 ? ['Some defined names were ignored during XLSX import.'] : []
   if (hasExternalLargeSimplePivotCaches(zip)) {
@@ -361,7 +354,7 @@ export function tryImportLargeSimpleXlsx(
           maxDimensionCellPreallocation:
             worksheetEntries.length === 1
               ? maxPreallocatedWorksheetCells(zip, entry.path)
-              : Math.min(maxPreallocatedWorksheetCells(zip, entry.path), maxMultiSheetDimensionCellPreallocation),
+              : Math.min(maxPreallocatedWorksheetCells(zip, entry.path), importConstants.maxMultiSheetDimensionCellPreallocation),
         },
       )
       if (!streamed) {
@@ -564,7 +557,7 @@ export function tryImportLargeSimpleXlsx(
     }
     sharedStrings = referencedSharedStrings
   }
-  delete zip[sharedStringsPath]
+  delete zip[importConstants.sharedStringsPath]
   if (materializeCells && hasSharedStrings && referencedSharedStringIndexSet.size > 0) {
     for (const [index, scanned] of scannedWorksheets.entries()) {
       if (!scanned || scanned.sharedStringIndexes.size === 0) {
@@ -667,7 +660,7 @@ export function tryImportLargeSimpleXlsx(
   const parsedStyleArtifacts =
     materializeCells && hasStyles
       ? readLargeSimpleWorkbookStyleArtifactsFromChunks(
-          (onChunk) => forEachLargeSimpleInflatedZipEntryChunk(zip, stylesPath, onChunk),
+          (onChunk) => forEachLargeSimpleInflatedZipEntryChunk(zip, importConstants.stylesPath, onChunk),
           requiredStyleIndexes,
         )
       : { stylesByIndex: new Map(), numberFormatsByStyleIndex: new Map() }
@@ -692,7 +685,7 @@ export function tryImportLargeSimpleXlsx(
     (scanned) =>
       scanned && sheetNeedsStyleCoordinateMaterialization(scanned.cellScan) && !scanned.cellScan.styleIndexes.hasCoordinateStorage,
   )
-  delete zip[stylesPath]
+  delete zip[importConstants.stylesPath]
   phaseRecorder.finish('style-parsing', styleParsingStart)
   if (
     materializeCells &&
