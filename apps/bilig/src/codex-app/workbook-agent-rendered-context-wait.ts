@@ -7,7 +7,7 @@ const RENDERED_CONTEXT_POLL_INTERVAL_MS = 50
 
 type WorkbookAgentUiContext = WorkbookAgentThreadState['durable']['context']
 
-export function hasRenderedContext(context: WorkbookAgentUiContext): boolean {
+function hasRenderedContext(context: WorkbookAgentUiContext): boolean {
   return context?.rendered !== undefined
 }
 
