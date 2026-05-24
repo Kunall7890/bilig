@@ -310,6 +310,134 @@ describe('@bilig/workbook command bundle api', () => {
     expect(getterInvoked).toBe(false)
   })
 
+  it('ignores command result undo scratch fields without invoking getters', () => {
+    let getterInvoked = false
+    const bundle = normalizeWorkbookCommandBundle({
+      id: 'bundle-undo-scratch',
+      targetRevision: 7,
+      idempotencyKey: 'bundle-undo-scratch',
+      commands: [
+        {
+          id: 'bundle-undo-scratch:0:write',
+          kind: 'request',
+          destructive: true,
+          request: mutationRequest,
+          touchedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+        },
+      ],
+    })
+    const clean = workbookCommandResultForReceipts(
+      bundle,
+      [
+        {
+          status: 'applied',
+          featureId: 'cells',
+          commandId: 'cells.setValue',
+          category: 'mutation',
+          changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+        },
+      ],
+      {
+        revision: 8,
+        undo: { id: 'undo-1', ops: [setCellValueOp] },
+      },
+    )
+    if (clean.status === 'accepted') {
+      throw new Error('expected settled result')
+    }
+    if (clean.undo === undefined) {
+      throw new Error('expected undo result')
+    }
+    const noisy = { ...clean, undo: { ...clean.undo } }
+    Object.defineProperty(noisy.undo, 'hiddenScratchpad', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    expect(checkWorkbookCommandResult(noisy)).toEqual(checkWorkbookCommandResult(clean))
+    expect(normalizeWorkbookCommandResult(noisy)).toEqual(clean)
+    expect(getterInvoked).toBe(false)
+  })
+
+  it('rejects accessor-backed command result fields without invoking getters', () => {
+    let getterInvoked = false
+    const result = {
+      status: 'accepted',
+      targetRevision: 7,
+      idempotencyKey: 'bundle-accessor',
+      commandCount: 1,
+      touchedRanges: [],
+      touchedCellCount: 0,
+    }
+    Object.defineProperty(result, 'touchedRanges', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    expect(checkWorkbookCommandResult(result)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_result',
+          path: 'touchedRanges',
+          message: 'Workbook command result touchedRanges must be a data property',
+        },
+      ],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
+  it('rejects accessor-backed command result undo ops without invoking getters', () => {
+    let getterInvoked = false
+    const undo = { id: 'undo-1' }
+    Object.defineProperty(undo, 'ops', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    expect(
+      checkWorkbookCommandResult({
+        status: 'applied',
+        targetRevision: 7,
+        idempotencyKey: 'bundle-undo-accessor',
+        commandCount: 1,
+        touchedRanges: [],
+        touchedCellCount: 0,
+        receipts: [
+          {
+            status: 'applied',
+            featureId: 'cells',
+            commandId: 'cells.setValue',
+            category: 'mutation',
+            changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+          },
+        ],
+        matched: null,
+        changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+        undo,
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_undo',
+          path: 'undo.ops',
+          message: 'Workbook command result undo.ops must be a data property',
+        },
+      ],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
   it('rejects bundles without revision, idempotency, or commands', () => {
     expect(checkWorkbookCommandBundle({})).toEqual({
       status: 'invalid',

@@ -1,5 +1,6 @@
 import type { CellRangeRef } from '@bilig/protocol'
 import { commandRangeBounds, commandRangeContains, commandRangeLabel, normalizeCommandRange } from './command-ranges.js'
+import { normalizeCommandResultUndoRef } from './command-result-undo.js'
 import {
   checkWorkbookCommandReceipt,
   normalizeWorkbookCommandReceipt,
@@ -8,8 +9,6 @@ import {
   type WorkbookCommandReceipt,
   type WorkbookCommandReceiptStatus,
 } from './features.js'
-import { isWorkbookOp } from './guards.js'
-import type { EngineOp } from './ops.js'
 import type { WorkbookCommandBundle, WorkbookCommandBundleCommand } from './command-bundle.js'
 import type { WorkbookUndoRef } from './result.js'
 
@@ -23,6 +22,16 @@ export const workbookCommandResultStatuses = Object.freeze([
 const WORKBOOK_COMMAND_RESULT_STATUS_SET = new Set<string>(workbookCommandResultStatuses)
 
 const acceptedResultSettledFields = Object.freeze(['receipts', 'matched', 'changedRanges', 'revision', 'undo', 'errors'] as const)
+const commandResultDataFields = Object.freeze([
+  'status',
+  'bundleId',
+  'targetRevision',
+  'idempotencyKey',
+  'commandCount',
+  'touchedRanges',
+  'touchedCellCount',
+  ...acceptedResultSettledFields,
+] as const)
 
 export interface WorkbookCommandResultBase {
   readonly bundleId?: string
@@ -139,7 +148,7 @@ export function workbookCommandResultForReceipts(
   if (revision !== undefined && !isSafeNonNegativeInteger(revision)) {
     throw new Error('Workbook command result is invalid: revision must be a safe non-negative integer')
   }
-  const undo = options.undo === undefined ? undefined : normalizeUndoRef(options.undo, 'undo')
+  const undo = options.undo === undefined ? undefined : normalizeCommandResultUndoRef(options.undo, 'undo')
   const changedRanges = normalizedReceipts.flatMap((receipt) => [...(receipt.changedRanges ?? [])])
   const errors = commandResultErrorsForReceipts(normalizedReceipts)
   return normalizeWorkbookCommandResult({
@@ -185,36 +194,68 @@ export function checkWorkbookCommandResult(value: unknown): WorkbookCommandResul
   }
 
   const issues: WorkbookCommandResultIssue[] = []
-  const status = ownValue(value, 'status')
+  const accessorKeys = new Set(ownAccessorKeys(value, commandResultDataFields))
+  accessorKeys.forEach((key) => {
+    issues.push(commandResultIssue('invalid_command_result', key, `Workbook command result ${key} must be a data property`))
+  })
+  const status = accessorKeys.has('status') ? undefined : ownValue(value, 'status')
   if (!isWorkbookCommandResultStatus(status)) {
     issues.push(commandResultIssue('invalid_command_result', 'status', 'Workbook command result status is invalid'))
   }
-  pushResultOptionalStringIssue(issues, ownValue(value, 'bundleId'), 'bundleId', 'bundle id')
-  pushResultSafeIntegerIssue(issues, ownValue(value, 'targetRevision'), 'targetRevision', 'target revision', true)
-  pushResultRequiredStringIssue(issues, ownValue(value, 'idempotencyKey'), 'idempotencyKey', 'idempotency key')
-  pushResultSafeIntegerIssue(issues, ownValue(value, 'commandCount'), 'commandCount', 'command count', true)
-  pushResultRangesIssues(issues, ownValue(value, 'touchedRanges'), 'touchedRanges', 'touched ranges')
-  pushResultSafeIntegerIssue(issues, ownValue(value, 'touchedCellCount'), 'touchedCellCount', 'touched cell count', true)
+  if (!accessorKeys.has('bundleId')) {
+    pushResultOptionalStringIssue(issues, ownValue(value, 'bundleId'), 'bundleId', 'bundle id')
+  }
+  if (!accessorKeys.has('targetRevision')) {
+    pushResultSafeIntegerIssue(issues, ownValue(value, 'targetRevision'), 'targetRevision', 'target revision', true)
+  }
+  if (!accessorKeys.has('idempotencyKey')) {
+    pushResultRequiredStringIssue(issues, ownValue(value, 'idempotencyKey'), 'idempotencyKey', 'idempotency key')
+  }
+  if (!accessorKeys.has('commandCount')) {
+    pushResultSafeIntegerIssue(issues, ownValue(value, 'commandCount'), 'commandCount', 'command count', true)
+  }
+  if (!accessorKeys.has('touchedRanges')) {
+    pushResultRangesIssues(issues, ownValue(value, 'touchedRanges'), 'touchedRanges', 'touched ranges')
+  }
+  if (!accessorKeys.has('touchedCellCount')) {
+    pushResultSafeIntegerIssue(issues, ownValue(value, 'touchedCellCount'), 'touchedCellCount', 'touched cell count', true)
+  }
 
   if (status === 'accepted') {
     pushAcceptedResultSettledFieldIssues(issues, value)
   } else if (isWorkbookCommandResultStatus(status)) {
-    pushResultSafeIntegerIssue(issues, ownValue(value, 'revision'), 'revision', 'revision', false)
-    pushResultReceiptsIssues(issues, ownValue(value, 'receipts'))
-    const matched = ownValue(value, 'matched')
-    if (matched !== null && typeof matched !== 'boolean') {
-      issues.push(commandResultIssue('invalid_command_result', 'matched', 'Workbook command result matched must be boolean or null'))
+    if (!accessorKeys.has('revision')) {
+      pushResultSafeIntegerIssue(issues, ownValue(value, 'revision'), 'revision', 'revision', false)
     }
-    pushResultRangesIssues(issues, ownValue(value, 'changedRanges'), 'changedRanges', 'changed ranges')
-    const undo = ownValue(value, 'undo')
-    if (undo !== undefined) {
-      try {
-        normalizeUndoRef(undo, 'undo')
-      } catch (error) {
-        issues.push(commandResultIssue('invalid_undo', 'undo', errorMessage(error)))
+    if (!accessorKeys.has('receipts')) {
+      pushResultReceiptsIssues(issues, ownValue(value, 'receipts'))
+    }
+    if (!accessorKeys.has('matched')) {
+      const matched = ownValue(value, 'matched')
+      if (matched !== null && typeof matched !== 'boolean') {
+        issues.push(commandResultIssue('invalid_command_result', 'matched', 'Workbook command result matched must be boolean or null'))
       }
     }
-    pushResultErrorsIssues(issues, ownValue(value, 'errors'))
+    if (!accessorKeys.has('changedRanges')) {
+      pushResultRangesIssues(issues, ownValue(value, 'changedRanges'), 'changedRanges', 'changed ranges')
+    }
+    const undo = accessorKeys.has('undo') ? undefined : ownValue(value, 'undo')
+    if (!accessorKeys.has('undo') && undo !== undefined) {
+      const undoAccessorKeys = isRecord(undo) ? ownAccessorKeys(undo, ['id', 'ops']) : []
+      undoAccessorKeys.forEach((key) => {
+        issues.push(commandResultIssue('invalid_undo', `undo.${key}`, `Workbook command result undo.${key} must be a data property`))
+      })
+      if (undoAccessorKeys.length === 0) {
+        try {
+          normalizeCommandResultUndoRef(undo, 'undo')
+        } catch (error) {
+          issues.push(commandResultIssue('invalid_undo', 'undo', errorMessage(error)))
+        }
+      }
+    }
+    if (!accessorKeys.has('errors')) {
+      pushResultErrorsIssues(issues, ownValue(value, 'errors'))
+    }
   }
 
   if (issues.length > 0) {
@@ -760,7 +801,7 @@ function normalizeWorkbookCommandResultData(value: Record<string, unknown>): Wor
     receipts: Object.freeze(normalizeResultReceipts(ownValue(value, 'receipts'))),
     matched: matched === true ? true : matched === false ? false : null,
     changedRanges: Object.freeze(normalizeResultRanges(ownValue(value, 'changedRanges'), 'changedRanges')),
-    ...(undo !== undefined ? { undo: normalizeUndoRef(undo, 'undo') } : {}),
+    ...(undo !== undefined ? { undo: normalizeCommandResultUndoRef(undo, 'undo') } : {}),
     ...(Array.isArray(errors) ? { errors: Object.freeze(normalizeResultErrors(errors)) } : {}),
   })
 }
@@ -788,52 +829,6 @@ function normalizeResultErrors(errors: readonly unknown[]): readonly string[] {
   })
 }
 
-function normalizeUndoRef(value: unknown, path: string): WorkbookUndoRef {
-  if (!isRecord(value)) {
-    throw new Error(`Workbook command result ${path} must be an object`)
-  }
-  const id = ownValue(value, 'id')
-  if (typeof id !== 'string') {
-    throw new Error(`Workbook command result ${path}.id must be a string`)
-  }
-  const ops = ownValue(value, 'ops')
-  if (ops !== undefined && !Array.isArray(ops)) {
-    throw new Error(`Workbook command result ${path}.ops must be an array`)
-  }
-  if (Array.isArray(ops)) {
-    const accessorPath = firstAccessorPath(ops, `${path}.ops`)
-    if (accessorPath !== null) {
-      throw new Error(`Workbook command result ${accessorPath} must contain only data properties`)
-    }
-    const normalizedOps: EngineOp[] = []
-    for (let index = 0; index < ops.length; index += 1) {
-      const op = arrayDataValue(ops, index)
-      if (op === undefined) {
-        throw new Error(`Workbook command result ${path}.ops[${String(index)}] must contain only data properties`)
-      }
-      normalizedOps.push(normalizeOp(op))
-    }
-    return Object.freeze({
-      id: normalizeExactString(id, `${path}.id`),
-      ops: Object.freeze(normalizedOps),
-    })
-  }
-  return Object.freeze({
-    id: normalizeExactString(id, `${path}.id`),
-  })
-}
-
-function normalizeOp(value: unknown): EngineOp {
-  if (!isWorkbookOp(value)) {
-    throw new Error('Workbook command result op is invalid')
-  }
-  const cloned = cloneData(value)
-  if (!isWorkbookOp(cloned)) {
-    throw new Error('Workbook command result op clone is invalid')
-  }
-  return freezeData(cloned)
-}
-
 function normalizeExactString(value: string, path: string): string {
   const normalized = value.trim()
   if (normalized === '') {
@@ -854,6 +849,17 @@ function ownValue(value: Record<string, unknown>, key: string): unknown {
   return Object.getOwnPropertyDescriptor(value, key)?.value
 }
 
+function ownAccessorKeys(value: Record<string, unknown>, keys: readonly string[]): readonly string[] {
+  const accessors: string[] = []
+  for (const key of keys) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key)
+    if (descriptor !== undefined && !('value' in descriptor)) {
+      accessors.push(key)
+    }
+  }
+  return accessors
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -864,76 +870,4 @@ function isSafeNonNegativeInteger(value: unknown): value is number {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
-}
-
-function firstAccessorPath(value: unknown, path: string, seen = new WeakSet<object>()): string | null {
-  if (typeof value !== 'object' || value === null) {
-    return null
-  }
-  if (seen.has(value)) {
-    return null
-  }
-  seen.add(value)
-
-  for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))) {
-    const childPath = Array.isArray(value) && /^\d+$/.test(key) ? `${path}[${key}]` : `${path}.${key}`
-    if (!('value' in descriptor)) {
-      return childPath
-    }
-    const nestedPath = firstAccessorPath(descriptor.value, childPath, seen)
-    if (nestedPath !== null) {
-      return nestedPath
-    }
-  }
-  return null
-}
-
-function freezeData<T>(value: T, seen = new WeakSet<object>()): T {
-  if (typeof value !== 'object' || value === null) {
-    return value
-  }
-  if (seen.has(value)) {
-    return value
-  }
-  seen.add(value)
-  Object.values(Object.getOwnPropertyDescriptors(value)).forEach((descriptor) => {
-    if ('value' in descriptor) {
-      freezeData(descriptor.value, seen)
-    }
-  })
-  return Object.freeze(value)
-}
-
-function cloneData(value: unknown, seen = new WeakMap<object, unknown>()): unknown {
-  if (typeof value !== 'object' || value === null) {
-    return value
-  }
-  const existing = seen.get(value)
-  if (existing !== undefined) {
-    return existing
-  }
-  if (Array.isArray(value)) {
-    const cloned: unknown[] = []
-    seen.set(value, cloned)
-    for (let index = 0; index < value.length; index += 1) {
-      const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
-      if (descriptor !== undefined && descriptor.enumerable && 'value' in descriptor) {
-        cloned[index] = cloneData(descriptor.value, seen)
-      }
-    }
-    return cloned
-  }
-  const cloned: Record<string, unknown> = Object.create(Object.getPrototypeOf(value))
-  seen.set(value, cloned)
-  Object.entries(Object.getOwnPropertyDescriptors(value)).forEach(([key, descriptor]) => {
-    if (descriptor.enumerable && 'value' in descriptor) {
-      Object.defineProperty(cloned, key, {
-        configurable: true,
-        enumerable: true,
-        value: cloneData(descriptor.value, seen),
-        writable: true,
-      })
-    }
-  })
-  return cloned
 }
