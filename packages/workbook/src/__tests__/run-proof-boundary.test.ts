@@ -153,6 +153,29 @@ function accessorArray(get: () => unknown): unknown[] {
   return value
 }
 
+function arrayBackedApplyResult(): unknown[] {
+  const result: unknown[] = []
+  Object.defineProperty(result, 'status', {
+    enumerable: true,
+    value: 'applied',
+  })
+  return result
+}
+
+function arrayBackedVerifiedCheck(checkResult: WorkbookCheckResult): unknown[] {
+  const verified: unknown[] = []
+  Object.entries({
+    ...checkResult,
+    status: 'passed' as const,
+  }).forEach(([key, value]) => {
+    Object.defineProperty(verified, key, {
+      enumerable: true,
+      value,
+    })
+  })
+  return verified
+}
+
 describe('@bilig/workbook run proof boundary', () => {
   it('rejects apply proof that is not JSON-safe', async () => {
     const model = valueModel()
@@ -678,6 +701,34 @@ describe('@bilig/workbook run proof boundary', () => {
     })
   })
 
+  it('rejects array-backed apply results as uninspectable runtime proof', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      // @ts-expect-error exercising JS adapters that bypass the apply result type
+      apply: arrayBackedApplyResult,
+      read: (targets) => [{ target: first(targets), value: 12 }],
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message: 'Workbook action run-value-model.write returned an invalid apply result',
+        },
+      ],
+      changed: [],
+      checks: [
+        expect.objectContaining({
+          status: 'planned',
+          kind: 'valueEquals',
+          message: 'Sheet1!B2 equals 12',
+        }),
+      ],
+    })
+  })
+
   it('rejects accessor-backed apply error arrays without invoking getters', async () => {
     const model = valueModel()
     let getterInvoked = false
@@ -836,6 +887,27 @@ describe('@bilig/workbook run proof boundary', () => {
       checks: [expect.objectContaining({ status: 'planned', kind: 'exists' })],
     })
     expect(getterInvoked).toBe(false)
+  })
+
+  it('rejects array-backed verifier checks as uninspectable runtime proof', async () => {
+    const model = proofModel()
+
+    const result = await runWorkbookAction(model, 'inspect', {
+      // @ts-expect-error exercising JS adapters that bypass the check result type
+      verifyChecks: (checks) => checks.map(arrayBackedVerifiedCheck),
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_check_verification',
+          message: 'Check verifier returned an invalid check at index 0',
+        },
+      ],
+      changed: [],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'exists' })],
+    })
   })
 
   it('strips unsupported verifier fields from check results', async () => {

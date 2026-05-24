@@ -153,11 +153,12 @@ Runtimes execute plans. `@bilig/workbook` only defines the handoff.
 
 Adapter-returned apply results, undo refs, apply errors, and check verifier
 output are accepted from own payload fields only. Prototype-inherited fields do
-not satisfy runtime proof. Adapter-returned op arrays and verifier proof must be
-plain data properties; runtime evidence arrays must contain own enumerable data
-entries. Holes, non-enumerable entries, and accessor-backed fields are rejected
-before cloning or preview/apply comparison, including non-enumerable fields that
-op guards would otherwise read directly.
+not satisfy runtime proof. Apply-result objects and verifier check objects must
+be record-shaped payloads, not arrays with attached fields. Adapter-returned op
+arrays and verifier proof must be plain data properties; runtime evidence arrays
+must contain own enumerable data entries. Holes, non-enumerable entries, and
+accessor-backed fields are rejected before cloning or preview/apply comparison,
+including non-enumerable fields that op guards would otherwise read directly.
 
 When `previewOps` and `appliedOps` are both present, `runWorkbookPlan` reports
 whether runtime apply matched preview. When they are missing, the result reports

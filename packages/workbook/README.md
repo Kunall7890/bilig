@@ -340,11 +340,13 @@ and the frozen run-result description, and roll back engine ops if post-apply
 readback or check proof fails.
 Runtime apply results, undo refs, apply errors, and check verifier output are
 validated from own fields only; prototype-inherited fields are ignored before
-they can become run proof. Adapter-returned ops and verifier proof must be data
-properties, including non-enumerable guard fields such as `kind`. Runtime
-evidence arrays must contain own enumerable data entries; holes,
-non-enumerable entries, and accessors are rejected before any getter can run
-during validation, cloning, or preview/apply comparison.
+they can become run proof. Apply-result objects and verifier check objects must
+be plain record-shaped payloads, not arrays with attached fields.
+Adapter-returned ops and verifier proof must be data properties, including
+non-enumerable guard fields such as `kind`. Runtime evidence arrays must contain
+own enumerable data entries; holes, non-enumerable entries, and accessors are
+rejected before any getter can run during validation, cloning, or preview/apply
+comparison.
 Readback checks attach proof to passed checks, such as
 `{ source: "readback", value: 12 }` or
 `{ source: "readback", formula: "Table[Quantity]*Table[Rate]" }`.
