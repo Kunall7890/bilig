@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.86.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.86.0
+- Manual override: no
+
+## Fixes
+- fix(core): ignore no-op workbook history entries (60d14724)
+
 ## 0.86.0
 
 - Release type: minor
