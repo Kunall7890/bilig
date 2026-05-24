@@ -48,6 +48,7 @@
           "same-corpus render proof contract: same-corpus-ui-v4",
           "same-corpus strict rendered-grid proof cases: 9/9",
           "same-corpus visible operation-response proof cases: 9/9",
+          "same-corpus Bilig authoritative render proof cases: 0/9",
           "same-corpus legacy-insufficient rendered-grid proof cases: 0/9",
           "same-corpus run manifest invalid reasons: Bilig authoritative render proof timing covers 0/9 cases; not every required workload is 10x against Google Sheets"
         ],
@@ -670,6 +671,7 @@
         "same-corpus UI render proof contract: same-corpus-ui-v4",
         "same-corpus UI strict rendered-grid proof cases: 9/9",
         "same-corpus UI visible operation-response proof cases: 9/9",
+        "same-corpus UI Bilig authoritative render proof cases: 0/9",
         "same-corpus UI legacy-insufficient rendered-grid proof cases: 0/9",
         "same-corpus UI current-contract evidence complete: false",
         "same-corpus UI run manifest invalid reasons: Bilig authoritative render proof timing covers 0/9 cases; not every required workload is 10x against Google Sheets",

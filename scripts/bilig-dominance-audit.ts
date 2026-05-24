@@ -258,6 +258,9 @@ function buildChecklistItem(args: {
               `live same-corpus UI visible operation-response proof cases: ${String(
                 args.liveUiSameCorpus.visibleOperationResponseProofCaseCount,
               )}/${String(args.liveUiSameCorpus.requiredCaseCount)}`,
+              `live same-corpus UI Bilig authoritative render proof cases: ${String(
+                args.liveUiSameCorpus.biligAuthoritativeRenderProofCaseCount,
+              )}/${String(args.liveUiSameCorpus.requiredCaseCount)}`,
               `live same-corpus UI current-contract evidence complete: ${String(args.liveUiSameCorpus.currentContractEvidenceComplete)}`,
               `live same-corpus UI run manifest invalid reasons: ${args.liveUiSameCorpus.runManifestInvalidReasons.join('; ') || 'none'}`,
               `live same-corpus UI missing inputs: ${args.liveUiSameCorpus.missingInputs.join(', ') || 'none'}`,
@@ -317,6 +320,13 @@ function uiSameCorpusLiveBlockers(status: BiligDominanceStatus['uiSameCorpus']):
       `same-corpus UI proof has ${String(status.visibleOperationResponseProofCaseCount)}/${String(
         status.requiredCaseCount,
       )} visible operation-response proof cases`,
+    )
+  }
+  if (status.biligAuthoritativeRenderProofCaseCount !== status.requiredCaseCount) {
+    blockers.push(
+      `same-corpus UI proof has ${String(status.biligAuthoritativeRenderProofCaseCount)}/${String(
+        status.requiredCaseCount,
+      )} Bilig authoritative render proof cases`,
     )
   }
   for (const reason of status.runManifestInvalidReasons) {
