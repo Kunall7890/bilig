@@ -14,6 +14,7 @@ import {
   type WorkbookModel,
   type WorkbookRunAdapter,
   type WorkbookRunApplyResult,
+  type WorkbookRunOptions,
 } from '../index.js'
 
 function valueModel(): WorkbookModel<{ readonly output: ReturnType<typeof findRange> }> {
@@ -109,7 +110,74 @@ describe('@bilig/workbook run api', () => {
     expect(workbookRunErrorCodes).toContain('runtime_rejected')
     expect(new Set(workbookRunErrorCodes).size).toBe(workbookRunErrorCodes.length)
     expect(isWorkbookRunErrorCode('check_not_verified')).toBe(true)
+    expect(isWorkbookRunErrorCode('invalid_run_options')).toBe(true)
     expect(isWorkbookRunErrorCode('custom_runtime_error')).toBe(false)
+  })
+
+  it('fails closed for accessor-backed run options without invoking getters', async () => {
+    const model = valueModel()
+    const apply = vi.fn<Required<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>>['apply']>(applied)
+    const read = vi.fn<Required<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>>['read']>((targets) => [
+      { target: first(targets), value: 12 },
+    ])
+    let strictGetterInvoked = false
+    const options: WorkbookRunOptions = {}
+    Object.defineProperty(options, 'strict', {
+      enumerable: true,
+      get() {
+        strictGetterInvoked = true
+        throw new Error('strict getter must not run')
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'write', { apply, read }, undefined, options)
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_run_options',
+          message: 'Workbook run option strict must be a data property',
+          path: 'options.strict',
+          issueCode: 'invalid_run_options',
+        },
+      ],
+      changed: [],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
+    })
+    expect(strictGetterInvoked).toBe(false)
+    expect(apply).not.toHaveBeenCalled()
+    expect(read).not.toHaveBeenCalled()
+  })
+
+  it('fails closed for accessor-backed runtime adapter methods without invoking getters', async () => {
+    const model = valueModel()
+    let applyGetterInvoked = false
+    const adapter: WorkbookRunAdapter<{ readonly output: ReturnType<typeof findRange> }> = {
+      read: () => [],
+    }
+    Object.defineProperty(adapter, 'apply', {
+      enumerable: true,
+      get() {
+        applyGetterInvoked = true
+        throw new Error('apply getter must not run')
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'write', adapter)
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'adapter_missing_capability',
+          message: 'Adapter is missing apply for writeValue',
+        },
+      ],
+      changed: [],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
+    })
+    expect(applyGetterInvoked).toBe(false)
   })
 
   it('plans, verifies, applies, reads back, and returns done for value checks', async () => {

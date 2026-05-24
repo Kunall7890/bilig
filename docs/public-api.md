@@ -676,7 +676,10 @@ or applied ops, or omits command receipts for a command-based plan, the run
 fails with `apply_not_verified`. If the adapter returns
 a stale `planId`, the run fails before readback or check proof; if
 `requirePlanId` is true and the adapter omits it, the run fails with
-`plan_not_verified`. `{ strict: true }` enables both proof requirements. If a readback
+`plan_not_verified`. `{ strict: true }` enables both proof requirements. Run
+options and adapter methods are read as own data properties only; accessor-backed
+options fail with `invalid_run_options`, and accessor-backed runtime methods are
+treated as missing capabilities without invoking getters. If a readback
 expectation is missing or mismatched after a reader runs, the run fails with
 deterministic codes such as `readback_missing`, `value_mismatch`, or
 `formula_mismatch`.

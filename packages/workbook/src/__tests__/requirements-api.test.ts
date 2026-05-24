@@ -412,6 +412,51 @@ describe('@bilig/workbook runtime requirements api', () => {
     })
   })
 
+  it('checks runtime adapter methods as own data functions without invoking getters', () => {
+    const model = defineModel({
+      name: 'adapter-accessor-model',
+
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeValue(refs.output, 12)
+        },
+      },
+    })
+    const plan = buildWorkbookActionPlan(model, 'write')
+    let applyGetterInvoked = false
+    const adapter = {}
+    Object.defineProperty(adapter, 'apply', {
+      enumerable: true,
+      get() {
+        applyGetterInvoked = true
+        throw new Error('apply getter must not run')
+      },
+    })
+
+    expect(checkRuntimeAdapter(plan, adapter)).toEqual({
+      status: 'invalid',
+      modelName: 'adapter-accessor-model',
+      actionName: 'write',
+      requiredCapabilities: ['writeValue'],
+      issues: [
+        {
+          code: 'missing_apply',
+          capability: 'writeValue',
+          method: 'apply',
+          requirementIndexes: [0],
+          message: 'Adapter is missing apply for writeValue',
+        },
+      ],
+    })
+    expect(applyGetterInvoked).toBe(false)
+  })
+
   it('does not require apply for check-only runtime handoff', () => {
     const model = defineModel({
       name: 'check-only-adapter-model',

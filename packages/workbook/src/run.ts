@@ -17,6 +17,13 @@ import { verifyWorkbookReadbacks, type WorkbookRunReadback } from './readback.js
 import { checkRuntimeAdapter, type WorkbookRuntimeCapability } from './requirements.js'
 import { cloneWorkbookRunApplyCommandReceipts, cloneWorkbookRunApplyCommandReceiptsForSummary } from './run-command-receipts.js'
 import {
+  adapterApplyMethod,
+  adapterReadMethod,
+  adapterVerifyChecksMethod,
+  applyProofErrors,
+  normalizeRunOptions,
+} from './run-runtime-boundary.js'
+import {
   isWorkbookRunErrorCode,
   type WorkbookChangeSummary,
   type WorkbookRunApplySummary,
@@ -265,12 +272,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+function ownDataDescriptor(value: object, key: string): PropertyDescriptor | undefined {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key)
+  return descriptor !== undefined && 'value' in descriptor ? descriptor : undefined
+}
+
 function isSafeNonNegativeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 }
 
 function ownValue(value: object, key: string): unknown {
-  return Object.getOwnPropertyDescriptor(value, key)?.value
+  return ownDataDescriptor(value, key)?.value
 }
 
 function arrayDataValues<T>(value: unknown, guard: (entry: unknown) => entry is T): readonly T[] | null {
@@ -641,28 +653,6 @@ function unverifiedProperty(unverified: readonly WorkbookRunUnverified[]): { rea
   return unverified.length === 0 ? {} : { unverified }
 }
 
-function applyProofErrors(
-  plan: WorkbookActionPlan,
-  apply: WorkbookRunApplySummary,
-  options: WorkbookRunOptions,
-): readonly WorkbookRunError[] {
-  const requireApplyProof = options.strict === true || options.requireApplyProof === true
-  const requirePlanId = options.strict === true || options.requirePlanId === true
-  if (apply.matched === false) {
-    return [runError('apply_mismatch', 'Adapter applied ops do not match its preview ops')]
-  }
-  if (requireApplyProof && apply.matched === null) {
-    return [runError('apply_not_verified', 'Adapter did not return both previewOps and appliedOps')]
-  }
-  if (requireApplyProof && plan.commands.length > 0 && apply.commandReceipts === undefined) {
-    return [runError('apply_not_verified', 'Adapter did not bind planned commands to materialized ops')]
-  }
-  if (requirePlanId && apply.planId === undefined) {
-    return [runError('plan_not_verified', 'Adapter did not bind apply proof to a plan id')]
-  }
-  return []
-}
-
 function needsApply(capabilities: readonly WorkbookRuntimeCapability[]): boolean {
   return capabilities.some(
     (capability) =>
@@ -767,7 +757,8 @@ async function verifyChecksWithAdapter<Refs>(
   plan: WorkbookActionPlan<Refs>,
   adapter: WorkbookRunAdapter<Refs>,
 ): Promise<{ readonly checks: readonly WorkbookCheckResult[]; readonly errors: readonly WorkbookRunError[] }> {
-  if (adapter.verifyChecks === undefined) {
+  const verifyChecks = adapterVerifyChecksMethod(adapter)
+  if (verifyChecks === undefined) {
     return { checks, errors: [] }
   }
 
@@ -777,7 +768,7 @@ async function verifyChecksWithAdapter<Refs>(
   const verifierInput = originalChecks.map(cloneCheck)
   let verified: unknown
   try {
-    verified = await adapter.verifyChecks(verifierInput, plan)
+    verified = await Reflect.apply(verifyChecks, adapter, [verifierInput, plan])
   } catch (error) {
     return {
       checks: originalChecks,
@@ -816,11 +807,19 @@ function unverifiedCheckErrors(checks: readonly WorkbookCheckResult[]): readonly
 async function runLiveWorkbookPlan<Refs>(
   plan: WorkbookActionPlan<Refs>,
   adapter: WorkbookRunAdapter<Refs>,
-  options: WorkbookRunOptions = {},
+  options: unknown = {},
 ): Promise<WorkbookRunResult> {
   const invalidPlan = failedFromPlanIssues(plan)
   if (invalidPlan !== null) {
     return invalidPlan
+  }
+
+  const normalizedOptions = normalizeRunOptions(options)
+  if (normalizedOptions.status === 'invalid') {
+    return failedRun({
+      errors: [normalizedOptions.error],
+      checks: plan.checks,
+    })
   }
 
   const adapterCheck = checkRuntimeAdapter(plan, adapter)
@@ -835,9 +834,10 @@ async function runLiveWorkbookPlan<Refs>(
   let apply: WorkbookRunApplySummary | undefined
   let unverified: readonly WorkbookRunUnverified[] = []
   if (needsApply(adapterCheck.requiredCapabilities)) {
+    const applyMethod = adapterApplyMethod(adapter)
     let applyResult: unknown
     try {
-      applyResult = await adapter.apply?.(plan)
+      applyResult = applyMethod === undefined ? undefined : await Reflect.apply(applyMethod, adapter, [plan])
     } catch (error) {
       return failedRun({
         errors: [runError('apply_failed', errorMessage(error))],
@@ -857,7 +857,7 @@ async function runLiveWorkbookPlan<Refs>(
 
     apply = describeApply(validApplyResult)
     unverified = applyUnverified(plan, apply)
-    const applyErrors = applyProofErrors(plan, apply, options)
+    const applyErrors = applyProofErrors(plan, apply, normalizedOptions.options)
     if (applyErrors.length > 0) {
       return failedRun({
         errors: applyErrors,
@@ -873,7 +873,8 @@ async function runLiveWorkbookPlan<Refs>(
   let checks = plan.checks
   const targets = readbackTargets(checks)
   if (targets.length > 0) {
-    if (adapter.read === undefined) {
+    const read = adapterReadMethod(adapter)
+    if (read === undefined) {
       const readbackVerification = verifyWorkbookReadbacks(checks, [])
       return failedRun({
         errors: readbackVerification.issues.map((issue) => runError(issue.code, issue.message)),
@@ -887,7 +888,7 @@ async function runLiveWorkbookPlan<Refs>(
 
     let readbacks: readonly WorkbookRunReadback[]
     try {
-      readbacks = await adapter.read(targets, plan)
+      readbacks = await Reflect.apply(read, adapter, [targets, plan])
     } catch (error) {
       return failedRun({
         errors: [runError('readback_failed', errorMessage(error))],
@@ -959,7 +960,7 @@ export function runWorkbookPlan(
   options?: WorkbookRunOptions,
 ): Promise<WorkbookRunResult>
 export function runWorkbookPlan(plan: unknown, adapter: WorkbookRunAdapter, options?: WorkbookRunOptions): Promise<WorkbookRunResult>
-export function runWorkbookPlan(plan: unknown, adapter: WorkbookRunAdapter, options: WorkbookRunOptions = {}): Promise<WorkbookRunResult> {
+export function runWorkbookPlan(plan: unknown, adapter: WorkbookRunAdapter, options: unknown = {}): Promise<WorkbookRunResult> {
   if (isHydratedPlan(plan)) {
     return runLiveWorkbookPlan<unknown>(plan, adapter, options)
   }

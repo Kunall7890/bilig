@@ -590,7 +590,11 @@ function requirementIndexesFor(
 }
 
 function hasMethod(adapter: WorkbookRuntimeAdapterCandidate, method: WorkbookRuntimeAdapterMethod): boolean {
-  return typeof adapter[method] === 'function'
+  if (!isRecord(adapter)) {
+    return false
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(adapter, method)
+  return descriptor !== undefined && 'value' in descriptor && typeof descriptor.value === 'function'
 }
 
 function adapterIssue(

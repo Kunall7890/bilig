@@ -276,6 +276,9 @@ accessor-backed entries are rejected without running getters. Use
 Check-only plans do not require `apply`; when runtime requirements
 contain only `read` or `verifyCheck`, `runWorkbookPlan` skips mutation and
 verifies the declared checks directly.
+Adapter methods are own data functions, not getters or inherited prototype
+methods. Accessor-backed `apply`, `read`, or `verifyChecks` entries are treated
+as missing capabilities without running hidden consumer code.
 If an adapter returns both `previewOps` and `appliedOps`, the result reports
 whether they matched. If the adapter returns neither, the run records an
 unverified apply fact. Use `runWorkbookPlan(plan, adapter, { requireApplyProof:
@@ -288,6 +291,8 @@ adapter omits that binding. Apply summaries may also carry `baseRevision` and
 claimed to apply against.
 Use `{ strict: true }` as the single agent-safe option when callers want both
 apply proof and plan-id proof without remembering multiple flags.
+Run options are data-only too: accessor-backed or non-boolean proof options
+return `invalid_run_options` before any adapter method is called.
 Use `workbookActionCommandDigest(command)` when a runtime needs to bind
 materialized ops to a specific planned command. Adapter apply results can return
 `commandReceipts`, one per planned command, with the command index, command kind,
