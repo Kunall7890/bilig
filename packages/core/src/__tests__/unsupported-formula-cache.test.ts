@@ -13,16 +13,16 @@ describe('unsupported formula cache preservation', () => {
     expect(formulaMayContainFullRecalcPreservableUnavailableFormulaCall('_xldudf_WISEPRICE(B1,"Shares Outstanding")')).toBe(true)
   })
 
-  it('preserves only supported imported-cache markers during full recalculation', () => {
+  it('does not preserve unavailable formula caches during full recalculation', () => {
     const definedNames = new Set<string>()
 
     expect(formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc('SUM(1,2)', definedNames)).toBe(false)
     expect(formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc('UNKNOWNFUNC(42)', definedNames)).toBe(false)
-    expect(formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc('_FV(A1,"Industry")', definedNames)).toBe(true)
-    expect(formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc('_fv(A1,"Industry")', definedNames)).toBe(true)
+    expect(formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc('_FV(A1,"Industry")', definedNames)).toBe(false)
+    expect(formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc('_fv(A1,"Industry")', definedNames)).toBe(false)
     expect(
       formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc('_xldudf_WISEPRICE(B1,"Shares Outstanding")', definedNames),
-    ).toBe(true)
+    ).toBe(false)
   })
 
   it('uses the AST walk as the authority when marker text is present', () => {

@@ -135,6 +135,8 @@ export function formatErrorCode(code: ErrorCode): string {
       return '#BLOCKED!'
     case ErrorCode.Num:
       return '#NUM!'
+    case ErrorCode.Field:
+      return '#FIELD!'
     default:
       return '#ERROR!'
   }

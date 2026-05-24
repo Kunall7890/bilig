@@ -6,7 +6,7 @@ function trustedAudit(
   count: number,
   options: {
     readonly calcChainCount?: number
-    readonly cacheStatus?: 'trustedCached' | 'staleRisk' | 'externalSubstitution' | 'engineRecomputed' | 'missing'
+    readonly cacheStatus?: 'trustedCached' | 'staleRisk' | 'unsupportedCached' | 'externalSubstitution' | 'engineRecomputed' | 'missing'
     readonly omitFormulaAddressAt?: number
     readonly mismatchedCalcChainAddressAt?: number
   } = {},

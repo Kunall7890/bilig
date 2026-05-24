@@ -1,5 +1,6 @@
 import { XMLParser } from 'fast-xml-parser'
 
+import { formulaShouldUseCachedUnsupportedFunctionValue } from '@bilig/core/headless-runtime'
 import type {
   WorkbookCalculationSettingsSnapshot,
   WorkbookDefinedNameSnapshot,
@@ -66,7 +67,9 @@ function worksheetFormulaEntry(
   sheetName: string,
   cell: WorksheetFormulaCell,
   settings: WorkbookCalculationSettingsSnapshot | undefined,
+  definedFormulaNames: ReadonlySet<string>,
 ): WorkbookFormulaAuditEntrySnapshot {
+  const hasUnsupportedCachedFormula = formulaShouldUseCachedUnsupportedFunctionValue(cell.formula, definedFormulaNames)
   const hasStaleRisk =
     settings?.mode === 'manual' ||
     settings?.forceFullCalc === true ||
@@ -91,7 +94,14 @@ function worksheetFormulaEntry(
     ...(cell.cellValueType ? { cellValueType: cell.cellValueType } : {}),
     ...(cell.cachedValue !== undefined ? { cachedValue: cell.cachedValue } : {}),
     ...(cell.cachedValueRaw !== null ? { cachedValueRaw: cell.cachedValueRaw } : {}),
-    cacheStatus: cell.cachedValue !== undefined ? (hasStaleRisk ? 'staleRisk' : 'trustedCached') : 'missing',
+    cacheStatus:
+      cell.cachedValue !== undefined
+        ? hasUnsupportedCachedFormula
+          ? 'unsupportedCached'
+          : hasStaleRisk
+            ? 'staleRisk'
+            : 'trustedCached'
+        : 'missing',
     rawFormulaXml: cell.rawFormulaXml,
     ...(Object.keys(attributes).length > 0 ? { attributes } : {}),
   }
@@ -167,6 +177,19 @@ function readSheetFormulaTags(sheetXml: string | null): {
 }
 
 function formulaDiagnostics(entry: WorkbookFormulaAuditEntrySnapshot): WorkbookFormulaDiagnosticSnapshot[] {
+  if (entry.context === 'worksheet-cell' && entry.cacheStatus === 'unsupportedCached') {
+    return [
+      {
+        code: 'unsupported-formula-cache',
+        context: entry.context,
+        clause: '18.3.1.40',
+        message: 'Cached value belongs to an unsupported worksheet formula; Desktop Excel can invalidate it during full recalculation.',
+        formula: entry.formula,
+        ...(entry.sheetName ? { sheetName: entry.sheetName } : {}),
+        ...(entry.address ? { address: entry.address } : {}),
+      },
+    ]
+  }
   if (entry.context === 'defined-name' && formulaLooksLikeR1C1(entry.formula)) {
     return [
       {
@@ -313,9 +336,10 @@ export function readImportedWorkbookFormulaAudit(args: {
 }): WorkbookFormulaAuditSnapshot | undefined {
   const formulas: WorkbookFormulaAuditEntrySnapshot[] = []
   const diagnostics: WorkbookFormulaDiagnosticSnapshot[] = []
+  const definedFormulaNames = new Set(args.definedNames.map((definedName) => definedName.name.trim().toUpperCase()).filter(Boolean))
   for (const sheetName of args.sheetNames) {
     for (const cell of args.worksheetFormulasBySheet.get(sheetName)?.values() ?? []) {
-      const entry = worksheetFormulaEntry(sheetName, cell, args.calculationSettings)
+      const entry = worksheetFormulaEntry(sheetName, cell, args.calculationSettings, definedFormulaNames)
       formulas.push(entry)
       diagnostics.push(...formulaDiagnostics(entry))
     }

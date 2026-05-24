@@ -10,7 +10,13 @@ export type WorkbookFormulaAuditContext =
   | 'external-name'
   | 'ole-link'
 
-export type WorkbookFormulaCacheStatus = 'trustedCached' | 'staleRisk' | 'externalSubstitution' | 'engineRecomputed' | 'missing'
+export type WorkbookFormulaCacheStatus =
+  | 'trustedCached'
+  | 'staleRisk'
+  | 'unsupportedCached'
+  | 'externalSubstitution'
+  | 'engineRecomputed'
+  | 'missing'
 
 export interface WorkbookFormulaAuditAttributesSnapshot {
   aca?: boolean

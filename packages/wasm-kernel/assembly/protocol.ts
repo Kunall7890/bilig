@@ -19,7 +19,8 @@ export enum ErrorCode {
   Cycle = 6,
   Spill = 7,
   Blocked = 8,
-  Num = 9
+  Num = 9,
+  Field = 10
 }
 
 export enum FormulaMode {

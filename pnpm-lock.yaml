@@ -589,6 +589,9 @@ importers:
       '@bilig/protocol':
         specifier: workspace:*
         version: link:../protocol
+      fflate:
+        specifier: 0.3.11
+        version: 0.3.11
 
   packages/zero-sync:
     dependencies:

@@ -1,6 +1,7 @@
 import { WorkPaper, type RawCellContent, type WorkPaperCellAddress, type WorkPaperChange, type WorkPaperConfig } from '@bilig/headless'
 import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
-import { ValueTag } from '@bilig/protocol'
+import { ErrorCode, formatErrorCode, ValueTag } from '@bilig/protocol'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 
 export { WorkPaper } from '@bilig/headless'
 export { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
@@ -8,6 +9,11 @@ export { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
 type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSnapshot>
 type WorkbookSnapshot = Parameters<typeof WorkPaper.buildFromSnapshot>[0]
 type WorkbookCalculationSettings = NonNullable<NonNullable<WorkbookSnapshot['workbook']['metadata']>['calculationSettings']>
+interface FormulaErrorCache {
+  readonly sheetName: string
+  readonly address: string
+  readonly value: string
+}
 
 export type XlsxFormulaRecalcCellValue = ReturnType<WorkPaperInstance['getCellValue']>
 
@@ -52,16 +58,18 @@ export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, option
       reads[target] = workbook.getCellValue(parseQualifiedCellTarget(workbook, target))
     }
 
-    const outputSnapshot = snapshotWithFormulaCachedValues(workbook, workbook.exportSnapshot())
-    return {
-      xlsx: toUint8Array(
-        exportXlsx(
-          restoreOutputCalculationSettings(
-            outputSnapshot,
-            options.config?.calculationSettings === undefined ? originalCalculationSettings : undefined,
-          ),
+    const outputFormulaCaches = snapshotWithFormulaCachedValues(workbook, workbook.exportSnapshot())
+    const outputSnapshot = outputFormulaCaches.snapshot
+    const exportedXlsx = toUint8Array(
+      exportXlsx(
+        restoreOutputCalculationSettings(
+          outputSnapshot,
+          options.config?.calculationSettings === undefined ? originalCalculationSettings : undefined,
         ),
       ),
+    )
+    return {
+      xlsx: addFormulaErrorCachesToXlsxBytes(exportedXlsx, outputSnapshot, outputFormulaCaches.errorCaches),
       warnings: imported.warnings,
       sheetNames: imported.sheetNames,
       reads,
@@ -74,8 +82,12 @@ export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, option
 
 export const recalculateSheetjsWorkbook = recalculateXlsx
 
-function snapshotWithFormulaCachedValues(workbook: WorkPaperInstance, snapshot: WorkbookSnapshot): WorkbookSnapshot {
+function snapshotWithFormulaCachedValues(
+  workbook: WorkPaperInstance,
+  snapshot: WorkbookSnapshot,
+): { readonly snapshot: WorkbookSnapshot; readonly errorCaches: readonly FormulaErrorCache[] } {
   const next = structuredClone(snapshot)
+  const errorCaches: FormulaErrorCache[] = []
   for (const sheet of next.sheets) {
     const sheetId = workbook.getSheetId(sheet.name)
     if (sheetId === undefined) {
@@ -86,13 +98,20 @@ function snapshotWithFormulaCachedValues(workbook: WorkPaperInstance, snapshot: 
         continue
       }
       const address = parseA1CellReference(cell.address)
-      const cachedValue = literalInputForFormulaCache(workbook.getCellValue({ sheet: sheetId, row: address.row, col: address.col }))
+      const cellValue = workbook.getCellValue({ sheet: sheetId, row: address.row, col: address.col })
+      const cachedValue = literalInputForFormulaCache(cellValue)
       if (cachedValue !== undefined) {
         cell.value = cachedValue
+        continue
+      }
+      const cachedError = errorInputForFormulaCache(cellValue)
+      if (cachedError !== undefined) {
+        delete cell.value
+        errorCaches.push({ sheetName: sheet.name, address: cell.address, value: cachedError })
       }
     }
   }
-  return next
+  return { snapshot: next, errorCaches }
 }
 
 function literalInputForFormulaCache(value: XlsxFormulaRecalcCellValue): string | number | boolean | null | undefined {
@@ -112,6 +131,86 @@ function literalInputForFormulaCache(value: XlsxFormulaRecalcCellValue): string 
     return value.value
   }
   return undefined
+}
+
+function errorInputForFormulaCache(value: XlsxFormulaRecalcCellValue): string | undefined {
+  if (typeof value !== 'object' || value === null || !('tag' in value) || value.tag !== ValueTag.Error || !('code' in value)) {
+    return undefined
+  }
+  if (typeof value.code !== 'number') {
+    return undefined
+  }
+  // Desktop Excel displays #FIELD! for linked-data field failures but saves #VALUE! in worksheet formula caches.
+  return value.code === ErrorCode.Field ? '#VALUE!' : formatErrorCode(value.code)
+}
+
+function addFormulaErrorCachesToXlsxBytes(
+  bytes: Uint8Array,
+  snapshot: WorkbookSnapshot,
+  errorCaches: readonly FormulaErrorCache[],
+): Uint8Array {
+  if (errorCaches.length === 0) {
+    return bytes
+  }
+  const zip = unzipSync(bytes)
+  const cachesBySheetName = new Map<string, FormulaErrorCache[]>()
+  for (const cache of errorCaches) {
+    const sheetCaches = cachesBySheetName.get(cache.sheetName) ?? []
+    sheetCaches.push(cache)
+    cachesBySheetName.set(cache.sheetName, sheetCaches)
+  }
+  const orderedSheets = snapshot.sheets.toSorted((left, right) => left.order - right.order)
+  for (let index = 0; index < orderedSheets.length; index += 1) {
+    const sheet = orderedSheets[index]!
+    const sheetCaches = cachesBySheetName.get(sheet.name)
+    if (!sheetCaches || sheetCaches.length === 0) {
+      continue
+    }
+    const sheetPath = `xl/worksheets/sheet${String(index + 1)}.xml`
+    const sheetXml = strFromU8(zip[sheetPath] ?? new Uint8Array())
+    if (sheetXml.length === 0) {
+      continue
+    }
+    let nextSheetXml = sheetXml
+    for (const cache of sheetCaches) {
+      nextSheetXml = replaceFormulaCellErrorCache(nextSheetXml, cache.address, cache.value)
+    }
+    if (nextSheetXml !== sheetXml) {
+      zip[sheetPath] = strToU8(nextSheetXml)
+    }
+  }
+  return zipSync(zip)
+}
+
+function replaceFormulaCellErrorCache(sheetXml: string, address: string, value: string): string {
+  const pattern = new RegExp(`<c\\b(?=[^>]*\\br="${escapeRegExp(address)}")[\\s\\S]*?<\\/c>`, 'u')
+  if (!pattern.test(sheetXml)) {
+    return sheetXml
+  }
+  return sheetXml.replace(pattern, (cellXml) => writeCellErrorCache(cellXml, value))
+}
+
+function writeCellErrorCache(cellXml: string, value: string): string {
+  const escapedValue = escapeXmlText(value)
+  const typedCellXml = cellXml.replace(/^<c\b([^>]*)>/u, (_match: string, attributes: string) => {
+    const nextAttributes = attributes.replace(/\s+t="[^"]*"/u, '')
+    return `<c${nextAttributes} t="e">`
+  })
+  if (/<v>[\s\S]*?<\/v>/u.test(typedCellXml)) {
+    return typedCellXml.replace(/<v>[\s\S]*?<\/v>/u, `<v>${escapedValue}</v>`)
+  }
+  if (/<\/f>/u.test(typedCellXml)) {
+    return typedCellXml.replace(/<\/f>/u, `</f><v>${escapedValue}</v>`)
+  }
+  return typedCellXml.replace(/<\/c>$/u, `<v>${escapedValue}</v></c>`)
+}
+
+function escapeXmlText(value: string): string {
+  return value.replace(/&/gu, '&amp;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;')
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
 
 function snapshotForFreshFormulaRecalculation(snapshot: WorkbookSnapshot): WorkbookSnapshot {

@@ -30,7 +30,8 @@ function isErrorCode(value: unknown): value is ErrorCode {
     value === ErrorCode.Cycle ||
     value === ErrorCode.Spill ||
     value === ErrorCode.Blocked ||
-    value === ErrorCode.Num
+    value === ErrorCode.Num ||
+    value === ErrorCode.Field
   )
 }
 

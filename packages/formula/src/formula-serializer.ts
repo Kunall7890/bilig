@@ -29,6 +29,7 @@ const ERROR_LITERAL_TEXT: Record<number, string> = {
   [ErrorCode.Spill]: '#SPILL!',
   [ErrorCode.Blocked]: '#BLOCKED!',
   [ErrorCode.Num]: '#NUM!',
+  [ErrorCode.Field]: '#FIELD!',
 }
 
 function formatRangeSheetPrefix(sheetName: string | undefined, sheetEndName: string | undefined): string {

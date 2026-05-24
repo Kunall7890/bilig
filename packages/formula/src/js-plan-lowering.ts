@@ -358,6 +358,10 @@ function lowerNode(node: FormulaNode, plan: JsPlanInstruction[]): void {
         return
       }
       if (!hasBuiltin(callee)) {
+        if (callee === '_FV') {
+          plan.push({ opcode: 'push-error', code: ErrorCode.Field })
+          return
+        }
         lowerNode({ kind: 'NameRef', name: node.callee }, plan)
         node.args.forEach((arg) => lowerNode(arg, plan))
         plan.push({ opcode: 'invoke', argc: node.args.length })

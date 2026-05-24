@@ -7,10 +7,23 @@ function cellValue(workbook: WorkPaper, sheetName: string, row: number, col: num
   return workbook.getCellValue({ sheet: workbook.getSheetId(sheetName)!, row, col })
 }
 
-function issueSnapshot(): WorkbookSnapshot {
+function issueSnapshot(options: { readonly manualNativeOpen?: boolean } = {}): WorkbookSnapshot {
   return {
     version: 1,
-    workbook: { name: 'UDF cached workbook' },
+    workbook: {
+      name: 'UDF cached workbook',
+      ...(options.manualNativeOpen
+        ? {
+            metadata: {
+              calculationSettings: {
+                mode: 'manual',
+                compatibilityMode: 'excel-modern',
+                fullCalcOnLoad: false,
+              },
+            },
+          }
+        : {}),
+    },
     sheets: [
       {
         id: 1,
@@ -34,10 +47,9 @@ function issueSnapshot(): WorkbookSnapshot {
 
 describe('imported UDF cached formula values', () => {
   it.each([false, true])(
-    'hydrates cached unsupported UDF formula values before downstream formulas with useColumnIndex=%s',
+    'hydrates cached unsupported UDF formula values for manual native-open imports with useColumnIndex=%s',
     (useColumnIndex) => {
-      const workbook = WorkPaper.buildFromSnapshot(issueSnapshot(), { maxRows: 8, maxColumns: 8, useColumnIndex })
-      const sheet = workbook.getSheetId('Model')!
+      const workbook = WorkPaper.buildFromSnapshot(issueSnapshot({ manualNativeOpen: true }), { maxRows: 8, maxColumns: 8, useColumnIndex })
 
       expect(cellValue(workbook, 'Model', 0, 0)).toEqual({
         tag: ValueTag.Number,
@@ -56,39 +68,36 @@ describe('imported UDF cached formula values', () => {
         tag: ValueTag.String,
         value: 'AAPL ok',
         stringId: expect.any(Number),
-      })
-
-      workbook.rebuildAndRecalculate()
-
-      expect(cellValue(workbook, 'Model', 0, 0)).toEqual({
-        tag: ValueTag.Number,
-        value: 14935800000,
-      })
-      expect(cellValue(workbook, 'Model', 0, 2)).toEqual({
-        tag: ValueTag.Number,
-        value: 14935.8,
-      })
-      expect(cellValue(workbook, 'Model', 0, 3)).toEqual({
-        tag: ValueTag.String,
-        value: 'AAPL',
-        stringId: expect.any(Number),
-      })
-      expect(cellValue(workbook, 'Model', 0, 4)).toEqual({
-        tag: ValueTag.String,
-        value: 'AAPL ok',
-        stringId: expect.any(Number),
-      })
-
-      workbook.setCellContents({ sheet, row: 0, col: 1 }, 'MSFT')
-
-      expect(cellValue(workbook, 'Model', 0, 0)).toEqual({
-        tag: ValueTag.Error,
-        code: ErrorCode.Name,
       })
 
       workbook.dispose()
     },
   )
+
+  it('does not preserve imported UDF caches during explicit full recalculation', () => {
+    const workbook = WorkPaper.buildFromSnapshot(issueSnapshot(), { maxRows: 8, maxColumns: 8, useColumnIndex: true })
+
+    workbook.rebuildAndRecalculate()
+
+    expect(cellValue(workbook, 'Model', 0, 0)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Name,
+    })
+    expect(cellValue(workbook, 'Model', 0, 2)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Name,
+    })
+    expect(cellValue(workbook, 'Model', 0, 3)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Field,
+    })
+    expect(cellValue(workbook, 'Model', 0, 4)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Field,
+    })
+
+    workbook.dispose()
+  })
 
   it('does not hydrate stale cached values for formulas the engine can evaluate', () => {
     const snapshot = issueSnapshot()

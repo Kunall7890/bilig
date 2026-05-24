@@ -9,8 +9,8 @@ type UnavailableCallMatcher = (normalizedName: string) => boolean
 
 const matchAnyUnavailableFormulaCall: UnavailableCallMatcher = () => true
 
-function isFullRecalcPreservableUnavailableFormulaCall(normalizedName: string): boolean {
-  return normalizedName.startsWith('_XLDUDF_') || normalizedName === '_FV'
+function isFullRecalcPreservableUnavailableFormulaCall(_normalizedName: string): boolean {
+  return false
 }
 
 function containsAsciiCaseInsensitive(source: string, needle: string): boolean {

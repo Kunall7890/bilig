@@ -151,6 +151,7 @@ const excelErrorCodeByDisplay = new Map<string, ErrorCode>([
   ['#SPILL!', ErrorCode.Spill],
   ['#BLOCKED!', ErrorCode.Blocked],
   ['#NUM!', ErrorCode.Num],
+  ['#FIELD!', ErrorCode.Field],
 ])
 
 function normalizeExcelErrorValue(value: string): string {

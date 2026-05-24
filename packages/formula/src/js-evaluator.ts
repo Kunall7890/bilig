@@ -573,7 +573,7 @@ function executePlan(
 
         const builtin = resolveBuiltinForContext(instruction.callee, context)
         if (!builtin) {
-          stack.push({ kind: 'scalar', value: error(ErrorCode.Name) })
+          stack.push({ kind: 'scalar', value: error(unavailableCallErrorCode(instruction.callee)) })
           break
         }
         const liftedResult = evaluateArrayLiftedScalarBuiltin(instruction.callee, rawArgs, builtin)
@@ -734,6 +734,10 @@ function implicitIntersectionFromRange(value: Extract<StackValue, { kind: 'range
   } catch {
     return undefined
   }
+}
+
+function unavailableCallErrorCode(callee: string): ErrorCode {
+  return callee.trim().toUpperCase() === '_FV' ? ErrorCode.Field : ErrorCode.Name
 }
 
 function sameSheetName(left: string, right: string): boolean {

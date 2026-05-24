@@ -70,7 +70,8 @@
   },
   "dependencies": {
     "@bilig/headless": "workspace:*",
-    "@bilig/protocol": "workspace:*"
+    "@bilig/protocol": "workspace:*",
+    "fflate": "0.3.11"
   },
   "engines": {
     "node": ">=22.0.0"

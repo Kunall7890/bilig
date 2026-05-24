@@ -19,6 +19,7 @@ export const enumManifest: ProtocolEnumManifest = {
     ['Spill', 7],
     ['Blocked', 8],
     ['Num', 9],
+    ['Field', 10],
   ],
   FormulaMode: [
     ['JsOnly', 0],
