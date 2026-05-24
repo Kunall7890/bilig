@@ -1,6 +1,5 @@
 import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import type { GridGeometrySnapshot } from './gridGeometry.js'
-import { selectionFillRangesForRange } from './gridSelectionFillRanges.js'
 import type { GridSelection, Item, Rectangle } from './gridTypes.js'
 
 export type GridSelectionVisualRectRole =
@@ -78,15 +77,7 @@ function appendBodySelectionVisualRects(
   const isMultiCellSelection = input.selectionRange.width > 1 || input.selectionRange.height > 1
 
   if (isMultiCellSelection) {
-    let fillIndex = 0
-    for (const fillRange of selectionFillRangesForRange(input.selectionRange)) {
-      let segmentIndex = 0
-      for (const bounds of input.geometry.rangeScreenRects(fillRange)) {
-        appendInsetRect(rects, 'selection-fill', stableRangeKey('selection-fill:range', fillRange, fillIndex, segmentIndex), bounds, 1, 1)
-        segmentIndex += 1
-      }
-      fillIndex += 1
-    }
+    appendVisibleCellSelectionFillRects(rects, input.geometry, input.selectionRange, 'selection-fill:range')
 
     let segmentIndex = 0
     for (const bounds of input.geometry.rangeScreenRects(input.selectionRange)) {
@@ -173,43 +164,50 @@ function appendAxisSelectionVisualRects(
     for (const range of columnRanges) {
       const start = Math.max(0, range.start)
       const endExclusive = Math.max(start + 1, Math.min(MAX_COLS, range.endExclusive))
-      let fillIndex = 0
-      for (const fillRange of selectionFillRangesForRange({ x: start, y: 0, width: endExclusive - start, height: MAX_ROWS })) {
-        let segmentIndex = 0
-        for (const bounds of input.geometry.rangeScreenRects(fillRange)) {
-          appendInsetRect(
-            rects,
-            'selection-fill',
-            stableRangeKey(`selection-fill:columns:${start}:${endExclusive}`, fillRange, fillIndex, segmentIndex),
-            bounds,
-            1,
-            1,
-          )
-          segmentIndex += 1
-        }
-        fillIndex += 1
-      }
+      appendVisibleCellSelectionFillRects(
+        rects,
+        input.geometry,
+        { x: start, y: 0, width: endExclusive - start, height: MAX_ROWS },
+        `selection-fill:columns:${start}:${endExclusive}`,
+      )
     }
   }
   if (input.gridSelection.rows.length > 0) {
     for (const range of rowRanges) {
       const start = Math.max(0, range.start)
       const endExclusive = Math.max(start + 1, Math.min(MAX_ROWS, range.endExclusive))
-      let fillIndex = 0
-      for (const fillRange of selectionFillRangesForRange({ x: 0, y: start, width: MAX_COLS, height: endExclusive - start })) {
-        let segmentIndex = 0
-        for (const bounds of input.geometry.rangeScreenRects(fillRange)) {
-          appendInsetRect(
-            rects,
-            'selection-fill',
-            stableRangeKey(`selection-fill:rows:${start}:${endExclusive}`, fillRange, fillIndex, segmentIndex),
-            bounds,
-            1,
-            1,
-          )
-          segmentIndex += 1
-        }
-        fillIndex += 1
+      appendVisibleCellSelectionFillRects(
+        rects,
+        input.geometry,
+        { x: 0, y: start, width: MAX_COLS, height: endExclusive - start },
+        `selection-fill:rows:${start}:${endExclusive}`,
+      )
+    }
+  }
+}
+
+function appendVisibleCellSelectionFillRects(
+  rects: GridSelectionVisualRect[],
+  geometry: GridGeometrySnapshot,
+  range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>,
+  keyPrefix: string,
+): void {
+  const startCol = Math.max(0, range.x)
+  const startRow = Math.max(0, range.y)
+  const endColExclusive = Math.max(startCol, Math.min(MAX_COLS, range.x + range.width))
+  const endRowExclusive = Math.max(startRow, Math.min(MAX_ROWS, range.y + range.height))
+  if (startCol >= endColExclusive || startRow >= endRowExclusive) {
+    return
+  }
+
+  const selectedCols = visibleColumnIndexes(geometry).filter((col) => col >= startCol && col < endColExclusive)
+  const selectedRows = visibleRowIndexes(geometry).filter((row) => row >= startRow && row < endRowExclusive)
+  for (const row of selectedRows) {
+    for (const col of selectedCols) {
+      let segmentIndex = 0
+      for (const bounds of geometry.rangeScreenRects({ x: col, y: row, width: 1, height: 1 })) {
+        appendInsetRect(rects, 'selection-fill', `${keyPrefix}:cell:${col}:${row}:${segmentIndex}`, bounds, 1, 1)
+        segmentIndex += 1
       }
     }
   }

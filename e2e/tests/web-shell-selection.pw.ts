@@ -269,7 +269,7 @@ test('web app supports rectangular drag selection', async ({ page }) => {
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
 })
 
-test('web app paints selected areas as one continuous body range and collapses on body click', async ({ page }) => {
+test('web app paints selected areas as crisp cell interiors and collapses on body click', async ({ page }) => {
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-range-active-collapse'))}`)
   await waitForWorkbookReady(page)
 
@@ -277,7 +277,7 @@ test('web app paints selected areas as one continuous body range and collapses o
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
   await expect(page.getByTestId('name-box')).toHaveValue('B2:D4')
   await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 D4')
-  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(9)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
   await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCount(1)
@@ -312,7 +312,7 @@ test('@browser-ci web app paints forward-drag ranges without an internal active-
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:F13')
   await expect(page.getByTestId('name-box')).toHaveValue('B2:F13')
   await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 B2')
-  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(60)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
   await expectSelectionVisualRoles(page, ['selection-fill', 'selection-border', 'fill-handle'], 'visible')
@@ -373,7 +373,7 @@ test('@browser-ci web app collapses a locally dragged range when the active addr
   await dragProductBodySelection(page, 1, 1, 3, 3)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
   await expect(page.getByTestId('name-box')).toHaveValue('B2:D4')
-  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(9)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
 
   await selectAddress(page, 'B2')

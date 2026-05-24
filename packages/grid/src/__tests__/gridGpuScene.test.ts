@@ -207,7 +207,7 @@ describe('gridGpuScene', () => {
     expect(scene.borderRects.filter((rect) => rect.height === 1).length).toBeGreaterThanOrEqual(2)
   })
 
-  test('adds continuous GPU selection fill and outline for body ranges', () => {
+  test('adds cell-interior GPU selection fill and one outline for body ranges', () => {
     const scene = buildGridGpuScene({
       engine: makeEngine({}),
       columnWidths: {},
@@ -234,18 +234,21 @@ describe('gridGpuScene', () => {
       }),
     })
 
-    expect(scene.fillRects).toContainEqual({
+    const selectionFills = scene.fillRects.filter((rect) => rect.color.a === SELECTION_FILL_COLOR.a)
+    expect(selectionFills).toHaveLength(6)
+    expect(selectionFills).toEqual(
+      expect.arrayContaining([
+        { x: 101, y: 49, width: 98, height: 22, color: SELECTION_FILL_COLOR },
+        { x: 201, y: 49, width: 98, height: 22, color: SELECTION_FILL_COLOR },
+        { x: 101, y: 97, width: 98, height: 22, color: SELECTION_FILL_COLOR },
+        { x: 201, y: 97, width: 98, height: 22, color: SELECTION_FILL_COLOR },
+      ]),
+    )
+    expect(scene.fillRects).not.toContainEqual({
       x: 101,
       y: 49,
       width: 198,
       height: 70,
-      color: SELECTION_FILL_COLOR,
-    })
-    expect(scene.fillRects).not.toContainEqual({
-      x: 201,
-      y: 49,
-      width: 98,
-      height: 22,
       color: SELECTION_FILL_COLOR,
     })
     expect(scene.borderRects).toContainEqual({

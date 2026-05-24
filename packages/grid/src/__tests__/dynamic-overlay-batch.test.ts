@@ -46,7 +46,8 @@ describe('dynamic overlay batch v3', () => {
     expect(overlay.surfaceSize).toEqual({ height: 220, width: 520 })
     expect(readOverlayRects(overlay)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ x: 147, y: 45, width: 148, height: 28 }),
+        expect.objectContaining({ x: 147, y: 45, width: 48, height: 8 }),
+        expect.objectContaining({ x: 197, y: 55, width: 98, height: 18 }),
         expect.objectContaining({ x: 146, y: 44, width: 150, height: 2 }),
         expect.objectContaining({ x: 146, y: 44, width: 2, height: 30 }),
         expect.objectContaining({ x: 292, y: 70, width: 8, height: 8 }),
@@ -101,8 +102,9 @@ describe('dynamic overlay batch v3', () => {
     )
     expect(readOverlayRects(overlay)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ x: 147, y: 25, width: 248, height: 18 }),
-        expect.objectContaining({ x: 147, y: 45, width: 248, height: 174 }),
+        expect.objectContaining({ x: 147, y: 25, width: 48, height: 18 }),
+        expect.objectContaining({ x: 197, y: 25, width: 98, height: 18 }),
+        expect.objectContaining({ x: 297, y: 55, width: 98, height: 18 }),
       ]),
     )
     expect(readOverlayRects(overlay)).toEqual(
@@ -157,7 +159,7 @@ describe('dynamic overlay batch v3', () => {
     )
   })
 
-  test('fills-only mode draws TypeGPU body selection fill without border or handle chrome', () => {
+  test('fills-only mode draws TypeGPU cell-interior selection fill without border or handle chrome', () => {
     const metrics = getGridMetrics()
     const geometry = createGridGeometrySnapshotFromAxes({
       columns: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 }),
@@ -185,16 +187,23 @@ describe('dynamic overlay batch v3', () => {
 
     expect(overlay.fillRectCount).toBeGreaterThan(0)
     expect(overlay.borderRectCount).toBe(0)
-    expect(readOverlayRects(overlay)).toEqual(expect.arrayContaining([expect.objectContaining({ x: 147, y: 45, width: 298, height: 58 })]))
+    expect(readOverlayRects(overlay)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ x: 147, y: 45, width: 98, height: 18 }),
+        expect.objectContaining({ x: 247, y: 65, width: 98, height: 18 }),
+        expect.objectContaining({ x: 347, y: 85, width: 98, height: 18 }),
+      ]),
+    )
     expect(readOverlayRects(overlay)).not.toEqual(
       expect.arrayContaining([
+        expect.objectContaining({ x: 147, y: 45, width: 298, height: 58 }),
         expect.objectContaining({ x: 146, y: 44, width: 300, height: 1 }),
         expect.objectContaining({ x: 442, y: 100, width: 8, height: 8 }),
       ]),
     )
   })
 
-  test('uses the same continuous selection fill geometry as the DOM visual overlay', () => {
+  test('uses the same cell-interior selection fill geometry as the DOM visual overlay', () => {
     const metrics = getGridMetrics()
     const geometry = createGridGeometrySnapshotFromAxes({
       columns: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 }),
@@ -212,13 +221,13 @@ describe('dynamic overlay batch v3', () => {
     })
     const gridSelection = createRangeSelection(createGridSelection(1, 1), [1, 1], [5, 12])
 
-    const visualSelectionFill = buildGridSelectionVisualRects({
+    const visualSelectionFills = buildGridSelectionVisualRects({
       geometry,
       gridSelection,
       selectedCell: [1, 1],
       selectionRange: { x: 1, y: 1, width: 5, height: 12 },
       showFillHandle: true,
-    }).find((rect) => rect.role === 'selection-fill')
+    }).filter((rect) => rect.role === 'selection-fill')
 
     const overlay = buildDynamicGridOverlayBatchV3({
       geometry,
@@ -229,15 +238,21 @@ describe('dynamic overlay batch v3', () => {
       showFillHandle: true,
     })
     const overlayRects = readOverlayRects(overlay)
-    if (!visualSelectionFill) {
-      throw new Error('Expected shared visual model to produce a selection fill')
+    if (visualSelectionFills.length === 0) {
+      throw new Error('Expected shared visual model to produce selection fills')
     }
 
-    expect(visualSelectionFill).toEqual(
-      expect.objectContaining({ bounds: expect.objectContaining({ x: 147, y: 45, width: 498, height: 238 }) }),
+    expect(visualSelectionFills).toHaveLength(60)
+    expect(visualSelectionFills).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ bounds: expect.objectContaining({ x: 147, y: 45, width: 98, height: 18 }) }),
+        expect.objectContaining({ bounds: expect.objectContaining({ x: 547, y: 265, width: 98, height: 18 }) }),
+      ]),
     )
-    expect(overlayRects).toEqual(expect.arrayContaining([expect.objectContaining(visualSelectionFill.bounds)]))
-    expect(overlayRects.filter((rect) => rect.x === 147 && rect.y === 45 && rect.width === 498 && rect.height === 238)).toHaveLength(1)
+    for (const rect of visualSelectionFills) {
+      expect(overlayRects).toEqual(expect.arrayContaining([expect.objectContaining(rect.bounds)]))
+    }
+    expect(overlayRects.filter((rect) => rect.x === 147 && rect.y === 45 && rect.width === 498 && rect.height === 238)).toHaveLength(0)
     expect(overlayRects).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ x: 146, y: 44, width: 100, height: 2 }),
@@ -341,7 +356,9 @@ describe('dynamic overlay batch v3', () => {
 
     expect(readOverlayRects(overlay)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ x: 47, y: 65, width: 472, height: 58 }),
+        expect.objectContaining({ x: 47, y: 65, width: 98, height: 18 }),
+        expect.objectContaining({ x: 147, y: 85, width: 98, height: 18 }),
+        expect.objectContaining({ x: 447, y: 105, width: 72, height: 18 }),
         expect.objectContaining({ x: 146, y: 64, width: 100, height: 2 }),
       ]),
     )
