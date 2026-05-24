@@ -4,6 +4,17 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.90.8
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.90.7
+- Manual override: no
+
+## Fixes
+- fix(excel): preopen linked companions before oracle targets (ff925b26)
+- fix(workbook): reject custom ref data records (0c91233a)
+- fix(xlsx): surface unsupported formula cache warnings (83fe836c)
+
 ## 0.90.7
 
 - Release type: patch
