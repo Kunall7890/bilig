@@ -106,6 +106,7 @@ export interface CreateWorkPaperRuntimeAdaptersArgs {
     readonly requireSheet: (sheetId: number) => void
     readonly doesSheetExist: (sheetName: string) => boolean
     readonly getSheetIdByName: (sheetName: string) => number | undefined
+    readonly isCellContentProtected?: (address: WorkPaperCellAddress) => boolean
   }
   readonly getVisibleCellIndexInSheet: (sheet: SheetRecord, row: number, col: number) => number | undefined
   readonly enqueueSuspendedLiteralMutation: (
@@ -180,6 +181,7 @@ export interface CreateWorkPaperRuntimeAdaptersArgs {
   readonly validateNamedExpression: (expressionName: string, expression: RawCellContent, scope?: number) => void
   readonly deleteDefinedName: (internalName: string) => void
   readonly isItPossibleToSetCellContents: (address: WorkPaperCellAddress, content?: RawCellContent | WorkPaperSheet) => boolean
+  readonly isCellContentProtected?: (address: WorkPaperCellAddress) => boolean
   readonly applyMatrixContents: (address: WorkPaperCellAddress, content: WorkPaperSheet) => void
   readonly getRangeSerialized: (range: WorkPaperCellRange) => RawCellContent[][]
   readonly getRangeValues: (range: WorkPaperCellRange) => ReturnType<WorkPaperReadOperations['getRangeValues']>
@@ -324,6 +326,7 @@ export function createWorkPaperRuntimeAdapters(args: CreateWorkPaperRuntimeAdapt
     captureTrackedChangesWithoutVisibilityCache: args.captureTrackedChangesWithoutVisibilityCache,
     captureChanges: (mutate) => args.captureChanges(undefined, mutate),
     isItPossibleToSetCellContents: args.isItPossibleToSetCellContents,
+    ...(args.isCellContentProtected ? { isCellContentProtected: args.isCellContentProtected } : {}),
     applyMatrixContents: args.applyMatrixContents,
   }
 

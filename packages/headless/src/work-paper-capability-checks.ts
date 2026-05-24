@@ -20,6 +20,7 @@ interface WorkPaperCapabilityContext {
   readonly requireSheet: (sheetId: number) => void
   readonly doesSheetExist: (sheetName: string) => boolean
   readonly getSheetIdByName: (sheetName: string) => number | undefined
+  readonly isCellContentProtected?: (address: WorkPaperCellAddress) => boolean
 }
 
 const limitForAxis = (config: WorkPaperConfig, axis: WorkPaperAxis): number =>
@@ -33,6 +34,27 @@ const validateSheetName = (sheetName: string): string => {
   return trimmed
 }
 
+function protectedCellContentsIntersect(
+  context: WorkPaperCapabilityContext,
+  sheet: number,
+  startRow: number,
+  startCol: number,
+  rowCount: number,
+  colCount: number,
+): boolean {
+  if (!context.isCellContentProtected || rowCount <= 0 || colCount <= 0) {
+    return false
+  }
+  for (let rowOffset = 0; rowOffset < rowCount; rowOffset += 1) {
+    for (let colOffset = 0; colOffset < colCount; colOffset += 1) {
+      if (context.isCellContentProtected({ sheet, row: startRow + rowOffset, col: startCol + colOffset })) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
 export function isWorkPaperSetCellContentsPossible(
   context: WorkPaperCapabilityContext,
   addressOrRange: WorkPaperAddressLike,
@@ -41,14 +63,29 @@ export function isWorkPaperSetCellContentsPossible(
   if (isCellRange(addressOrRange)) {
     assertRange(addressOrRange)
     context.requireSheet(addressOrRange.start.sheet)
-    return addressOrRange.end.row < (context.config.maxRows ?? MAX_ROWS) && addressOrRange.end.col < (context.config.maxColumns ?? MAX_COLS)
+    return (
+      addressOrRange.end.row < (context.config.maxRows ?? MAX_ROWS) &&
+      addressOrRange.end.col < (context.config.maxColumns ?? MAX_COLS) &&
+      !protectedCellContentsIntersect(
+        context,
+        addressOrRange.start.sheet,
+        addressOrRange.start.row,
+        addressOrRange.start.col,
+        addressOrRange.end.row - addressOrRange.start.row + 1,
+        addressOrRange.end.col - addressOrRange.start.col + 1,
+      )
+    )
   }
 
   context.requireSheet(addressOrRange.sheet)
   assertRowAndColumn(addressOrRange.row, 'address.row')
   assertRowAndColumn(addressOrRange.col, 'address.col')
   if (content === undefined) {
-    return addressOrRange.row < (context.config.maxRows ?? MAX_ROWS) && addressOrRange.col < (context.config.maxColumns ?? MAX_COLS)
+    return (
+      addressOrRange.row < (context.config.maxRows ?? MAX_ROWS) &&
+      addressOrRange.col < (context.config.maxColumns ?? MAX_COLS) &&
+      !context.isCellContentProtected?.(addressOrRange)
+    )
   }
   if (Array.isArray(content)) {
     if (!content.every((row) => Array.isArray(row))) {
@@ -58,10 +95,15 @@ export function isWorkPaperSetCellContentsPossible(
     const width = Math.max(0, ...content.map((row) => row.length))
     return (
       addressOrRange.row + height <= (context.config.maxRows ?? MAX_ROWS) &&
-      addressOrRange.col + width <= (context.config.maxColumns ?? MAX_COLS)
+      addressOrRange.col + width <= (context.config.maxColumns ?? MAX_COLS) &&
+      !protectedCellContentsIntersect(context, addressOrRange.sheet, addressOrRange.row, addressOrRange.col, height, width)
     )
   }
-  return addressOrRange.row < (context.config.maxRows ?? MAX_ROWS) && addressOrRange.col < (context.config.maxColumns ?? MAX_COLS)
+  return (
+    addressOrRange.row < (context.config.maxRows ?? MAX_ROWS) &&
+    addressOrRange.col < (context.config.maxColumns ?? MAX_COLS) &&
+    !context.isCellContentProtected?.(addressOrRange)
+  )
 }
 
 export function isWorkPaperAxisSwapPossible(

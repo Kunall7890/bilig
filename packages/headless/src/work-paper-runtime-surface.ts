@@ -1,6 +1,6 @@
 import { CellFlags, type EngineCellMutationRef, type SheetRecord } from '@bilig/core/headless-runtime'
 import type { CellRangeRef, CellValue, LiteralInput, WorkbookSnapshot } from '@bilig/protocol'
-import { formatAddress } from '@bilig/formula'
+import { formatAddress, parseCellAddress } from '@bilig/formula'
 import { assertRange, valuesEqual } from './work-paper-runtime-helpers.js'
 import { formatTrackedA1, sourceRangeRef } from './work-paper-address-format.js'
 import {
@@ -83,6 +83,15 @@ function shouldPreferLazyPublicChanges(events: readonly TrackedEngineEvent[], sh
       !event.hasInvalidatedRows &&
       !event.hasInvalidatedColumns,
   )
+}
+
+function cellAddressInRange(row: number, col: number, range: CellRangeRef): boolean {
+  const start = parseCellAddress(range.startAddress, range.sheetName)
+  const end = parseCellAddress(range.endAddress, range.sheetName)
+  if (!start || !end) {
+    return false
+  }
+  return row >= start.row && row <= end.row && col >= start.col && col <= end.col
 }
 
 export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSurface {
@@ -436,7 +445,24 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
       },
       doesSheetExist: (sheetName: string): boolean => this.doesSheetExist(sheetName),
       getSheetIdByName: (sheetName: string): number | undefined => this.getSheetId(sheetName),
+      isCellContentProtected: (address: WorkPaperCellAddress): boolean => this.cellContentIsProtected(address),
     }
+  }
+
+  protected cellContentIsProtected(address: WorkPaperCellAddress): boolean {
+    const sheet = this.sheetRecord(address.sheet)
+    const sheetName = sheet.name
+    const workbook = this.engine.workbook
+    if (!workbook.hasProtectionMetadataForSheet(sheetName)) {
+      return false
+    }
+    if (workbook.listRangeProtections(sheetName).some((protection) => cellAddressInRange(address.row, address.col, protection.range))) {
+      return true
+    }
+    if (!workbook.getSheetProtection(sheetName)) {
+      return false
+    }
+    return workbook.getCellStyleProtection(sheetName, address.row, address.col)?.locked !== false
   }
 
   protected requireSheetId(name: string): number {

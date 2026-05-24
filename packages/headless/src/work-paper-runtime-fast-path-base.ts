@@ -184,6 +184,7 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
       captureTrackedChangesWithoutVisibilityCache: (mutate, options) => this.captureTrackedChangesWithoutVisibilityCache(mutate, options),
       captureChanges: (mutate) => this.captureChanges(undefined, mutate),
       isItPossibleToSetCellContents: (address, content) => this.isItPossibleToSetCellContents(address, content),
+      isCellContentProtected: (address) => this.cellContentIsProtected(address),
       applyMatrixContents: (address, content) => this.applyMatrixContents(address, content),
     }
     return this.setCellContentsRuntimeCache
@@ -388,6 +389,13 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
   }
 
   override setCellContents(address: WorkPaperCellAddress, content: RawCellContent | WorkPaperSheet): WorkPaperChange[] {
+    this.assertNotDisposed()
+    if (this.cellContentIsProtected(address)) {
+      throw new WorkPaperOperationError('Workbook protection blocks this change: cell is protected')
+    }
+    if (!this.isItPossibleToSetCellContents(address, content)) {
+      throw new WorkPaperOperationError('Cell contents cannot be set')
+    }
     const deferredBatchChanges = this.tryEnqueueDeferredBatchLiteralCellContents(address, content)
     if (deferredBatchChanges !== null) {
       return deferredBatchChanges
@@ -508,6 +516,7 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
         this.engine.deleteDefinedName(internalName)
       },
       isItPossibleToSetCellContents: (address, content) => this.isItPossibleToSetCellContents(address, content),
+      isCellContentProtected: (address) => this.cellContentIsProtected(address),
       applyMatrixContents: (address, content) => this.applyMatrixContents(address, content),
       getRangeSerialized: (range) => this.getRangeSerialized(range),
       getRangeValues: (range) => this.getRangeValues(range),

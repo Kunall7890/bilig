@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { WorkbookSnapshot } from '@bilig/protocol'
 import { createBatch, createReplicaState } from '../replica-state.js'
 import { SpreadsheetEngine } from '../engine.js'
 
@@ -80,6 +81,31 @@ describe('SpreadsheetEngine protections', () => {
     expect(() => engine.setCellValue('Sheet1', 'A1', 7)).not.toThrow()
   })
 
+  it('allows content edits to unlocked cells on protected sheets while blocking locked cells', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'protection-unlocked-cell-edits' })
+    await engine.ready()
+    engine.importSnapshot(protectedSheetWithUnlockedInputSnapshot())
+
+    expect(() => engine.setCellValue('Input', 'B2', 25)).not.toThrow()
+    expect(() => engine.setCellFormula('Input', 'B2', '40')).not.toThrow()
+    expect(() => engine.clearCell('Input', 'B2')).not.toThrow()
+    expect(() => engine.setCellValue('Input', 'A1', 1)).toThrow(/Workbook protection blocks this change/)
+    expect(() => engine.setCellValue('Input', 'C2', 50)).toThrow(/Workbook protection blocks this change/)
+    expect(() => engine.setCellFormat('Input', 'B2', '0.00')).toThrow(/Workbook protection blocks this change/)
+  })
+
+  it('keeps explicit protected ranges locked even when sheet cell style is unlocked', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'protection-unlocked-cell-explicit-range' })
+    await engine.ready()
+    const snapshot = protectedSheetWithUnlockedInputSnapshot()
+    snapshot.sheets[0].metadata!.protectedRanges = [
+      { id: 'protect-input', range: { sheetName: 'Input', startAddress: 'B2', endAddress: 'B2' } },
+    ]
+    engine.importSnapshot(snapshot)
+
+    expect(() => engine.setCellValue('Input', 'B2', 25)).toThrow(/Workbook protection blocks this change/)
+  })
+
   it('reports missing range protections after deletion through the public API', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'protection-delete-missing' })
     await engine.ready()
@@ -131,3 +157,42 @@ describe('SpreadsheetEngine protections', () => {
     })
   })
 })
+
+function protectedSheetWithUnlockedInputSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Protected input template',
+      metadata: {
+        styles: [
+          {
+            id: 'unlocked-input',
+            protection: { locked: false },
+          },
+          {
+            id: 'locked-formula',
+            protection: { locked: true, hidden: true },
+          },
+        ],
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Input',
+        order: 0,
+        metadata: {
+          sheetProtection: { sheetName: 'Input' },
+          styleRanges: [
+            { range: { sheetName: 'Input', startAddress: 'B2', endAddress: 'B2' }, styleId: 'unlocked-input' },
+            { range: { sheetName: 'Input', startAddress: 'C2', endAddress: 'C2' }, styleId: 'locked-formula' },
+          ],
+        },
+        cells: [
+          { address: 'B2', value: 10 },
+          { address: 'C2', formula: 'B2*2' },
+        ],
+      },
+    ],
+  }
+}

@@ -87,7 +87,12 @@ export interface WorkPaperSetCellContentsRuntime {
   ) => WorkPaperChange[]
   readonly captureChanges: (mutate: () => void) => WorkPaperChange[]
   readonly isItPossibleToSetCellContents: (address: WorkPaperCellAddress, content: RawCellContent | WorkPaperSheet) => boolean
+  readonly isCellContentProtected?: (address: WorkPaperCellAddress) => boolean
   readonly applyMatrixContents: (address: WorkPaperCellAddress, content: WorkPaperSheet) => void
+}
+
+function throwProtectedCellContents(): never {
+  throw new WorkPaperOperationError('Workbook protection blocks this change: cell is protected')
 }
 
 export function setWorkPaperCellContents(
@@ -102,6 +107,12 @@ export function setWorkPaperCellContents(
   if (!isWorkPaperSheetMatrix(content)) {
     const config = runtime.getConfig()
     if (address.row >= (config.maxRows ?? MAX_ROWS) || address.col >= (config.maxColumns ?? MAX_COLS)) {
+      throw new WorkPaperOperationError('Cell contents cannot be set')
+    }
+    if (runtime.isCellContentProtected?.(address)) {
+      throwProtectedCellContents()
+    }
+    if (!runtime.isItPossibleToSetCellContents(address, content)) {
       throw new WorkPaperOperationError('Cell contents cannot be set')
     }
     const visibleCellIndex = runtime.getVisibleCellIndexInSheet(sheet, address.row, address.col)
@@ -238,6 +249,12 @@ export function setWorkPaperCellValues(
     if (isWorkPaperSheetMatrix(value) || isFormulaContent(value)) {
       throw new WorkPaperOperationError('Bulk cell value updates require literal values')
     }
+    if (runtime.isCellContentProtected?.(address)) {
+      throwProtectedCellContents()
+    }
+    if (!runtime.isItPossibleToSetCellContents(address, value)) {
+      throw new WorkPaperOperationError('Cell contents cannot be set')
+    }
     const visibleCellIndex = runtime.getVisibleCellIndexInSheet(currentSheet, address.row, address.col)
     refs[index] = {
       sheetId: address.sheet,
@@ -278,6 +295,12 @@ export function setWorkPaperSheetCellValues(
     }
     if (isWorkPaperSheetMatrix(value) || isFormulaContent(value)) {
       throw new WorkPaperOperationError('Bulk cell value updates require literal values')
+    }
+    if (runtime.isCellContentProtected?.({ sheet: sheetId, row, col })) {
+      throwProtectedCellContents()
+    }
+    if (!runtime.isItPossibleToSetCellContents({ sheet: sheetId, row, col }, value)) {
+      throw new WorkPaperOperationError('Cell contents cannot be set')
     }
     const visibleCellIndex = runtime.getVisibleCellIndexInSheet(sheet, row, col)
     refs[index] = {
@@ -353,6 +376,12 @@ export function setWorkPaperSheetRangeValues(
       const value = row[colOffset] ?? null
       if (Array.isArray(value) || isFormulaContent(value)) {
         throw new WorkPaperOperationError('Bulk cell value updates require literal values')
+      }
+      if (runtime.isCellContentProtected?.({ sheet: sheetId, row: destinationRow, col: destinationCol })) {
+        throwProtectedCellContents()
+      }
+      if (!runtime.isItPossibleToSetCellContents({ sheet: sheetId, row: destinationRow, col: destinationCol }, value)) {
+        throw new WorkPaperOperationError('Cell contents cannot be set')
       }
       const physicalCellIndex = physicalCellIndices === ALL_PHYSICAL_RANGE_CELLS_FRESH ? -1 : physicalCellIndices?.[refIndex]
       const visibleCellIndex =

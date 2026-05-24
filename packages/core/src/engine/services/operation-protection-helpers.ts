@@ -1,4 +1,5 @@
 import type { CellRangeRef } from '@bilig/protocol'
+import { parseCellAddress } from '@bilig/formula'
 import type { EngineOp } from '@bilig/workbook'
 import { assertNever, cellRange, rangesIntersect, throwProtectionBlocked } from './operation-change-helpers.js'
 
@@ -36,6 +37,11 @@ interface WorkbookProtectedRecord {
 export interface OperationProtectionAccess {
   readonly getWorkbookProtection?: () => WorkbookProtectedRecord | undefined
   readonly hasProtectionMetadataForSheet?: (sheetName: string) => boolean
+  readonly getCellStyleProtection?: (
+    sheetName: string,
+    row: number,
+    col: number,
+  ) => { readonly locked?: boolean; readonly hidden?: boolean } | undefined
   readonly getSheetProtection: (sheetName: string) => unknown
   readonly listRangeProtections: (sheetName: string) => readonly RangeProtectedRecord[]
   readonly getConditionalFormat: (id: string) => RangeProtectedRecord | undefined
@@ -65,6 +71,24 @@ export function rangeIsProtected(access: OperationProtectionAccess, range: CellR
     return true
   }
   return access.listRangeProtections(range.sheetName).some((protection) => rangesIntersect(protection.range, range))
+}
+
+function cellContentIsProtected(access: OperationProtectionAccess, sheetName: string, address: string): boolean {
+  if (access.hasProtectionMetadataForSheet?.(sheetName) === false) {
+    return false
+  }
+  const range = cellRange(sheetName, address)
+  if (access.listRangeProtections(sheetName).some((protection) => rangesIntersect(protection.range, range))) {
+    return true
+  }
+  if (!access.getSheetProtection(sheetName)) {
+    return false
+  }
+  const parsed = parseCellAddress(address, sheetName)
+  if (!parsed) {
+    return true
+  }
+  return access.getCellStyleProtection?.(sheetName, parsed.row, parsed.col)?.locked !== false
 }
 
 function rangeLabel(range: CellRangeRef): string {
@@ -184,8 +208,12 @@ export function assertProtectionAllowsOp(access: OperationProtectionAccess, op: 
       return
     case 'setCellValue':
     case 'setCellFormula':
-    case 'setCellFormat':
     case 'clearCell':
+      if (cellContentIsProtected(access, op.sheetName, op.address)) {
+        throwProtectionBlocked(`cell ${op.sheetName}!${op.address} is protected`)
+      }
+      return
+    case 'setCellFormat':
       if (rangeIsProtected(access, cellRange(op.sheetName, op.address))) {
         throwProtectionBlocked(`cell ${op.sheetName}!${op.address} is protected`)
       }

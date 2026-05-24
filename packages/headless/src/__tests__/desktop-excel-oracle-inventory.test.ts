@@ -35,6 +35,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-query-table-package-oracle.test.ts',
   'macos-desktop-excel-rich-text-oracle.test.ts',
   'macos-desktop-excel-sheet-move-metadata-topology-oracle.test.ts',
+  'macos-desktop-excel-sheet-protection-edit-oracle.test.ts',
   'macos-desktop-excel-sheet-properties-oracle.test.ts',
   'macos-desktop-excel-slicer-connection-delete-oracle.test.ts',
   'macos-desktop-excel-sort-oracle.test.ts',
@@ -303,6 +304,18 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('moveSheet')
     expect(source).toContain('metadataCodeNames')
     expect(source).toContain('matches Desktop Excel worksheet metadata ownership after moving a sheet tab')
+  })
+
+  it('keeps the sheet-protection edit oracle anchored to Desktop Excel unlocked-cell semantics', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-sheet-protection-edit-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
+    expect(source).toContain('WorkPaper.buildFromSnapshot')
+    expect(source).toContain('locked: false')
+    expect(source).toContain('protectionForCell')
+    expect(source).toContain('sheetProtection')
+    expect(source).toContain('matches Desktop Excel unlocked-cell edits and locked-cell metadata on protected sheets')
   })
 
   it('keeps the slicer connection delete oracle anchored to Desktop Excel package cleanup', () => {

@@ -334,6 +334,10 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return readCellStyle(this, id, WorkbookStore.defaultStyleId)
   }
 
+  getCellStyleProtection(sheetName: string, row: number, col: number): Protocol.CellStyleRecord['protection'] | undefined {
+    return this.getCellStyle(this.getStyleId(sheetName, row, col))?.protection
+  }
+
   listCellStyles(): WorkbookCellStyleRecord[] {
     return listWorkbookCellStyles(this)
   }
