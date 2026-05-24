@@ -877,10 +877,12 @@ function syncVersionedStaticReferenceLine(line: string): string {
       `$1${headlessPackageSpec}$2`,
     )
     .replace(new RegExp(`npm latest is \`${stableSemverPattern}\``, 'g'), `npm latest is \`${headlessPackageVersion}\``)
-    .replace(new RegExp(`npm latest is \`@bilig/headless@${stableSemverPattern}\``, 'g'), `npm latest is \`${workpaperPackageSpec}\``)
+    .replace(new RegExp(`npm latest is \`@bilig/headless@${stableSemverPattern}\``, 'g'), `npm latest is \`${headlessPackageSpec}\``)
     .replace(new RegExp(`npm latest is \`@bilig/workpaper@${stableSemverPattern}\``, 'g'), `npm latest is \`${workpaperPackageSpec}\``)
-    .replace(new RegExp(`npm latest \`@bilig/headless@${stableSemverPattern}\``, 'g'), `npm latest \`${workpaperPackageSpec}\``)
+    .replace(new RegExp(`npm latest \`@bilig/headless@${stableSemverPattern}\``, 'g'), `npm latest \`${headlessPackageSpec}\``)
     .replace(new RegExp(`npm latest \`@bilig/workpaper@${stableSemverPattern}\``, 'g'), `npm latest \`${workpaperPackageSpec}\``)
+    .replace(new RegExp(`\`@bilig/headless@${stableSemverPattern}\``, 'g'), `\`${headlessPackageSpec}\``)
+    .replace(new RegExp(`\`@bilig/workpaper@${stableSemverPattern}\``, 'g'), `\`${workpaperPackageSpec}\``)
     .replace(
       new RegExp(`io\\.github\\.proompteng/bilig-workpaper@${stableSemverPattern}`, 'g'),
       `io.github.proompteng/bilig-workpaper@${headlessPackageVersion}`,
