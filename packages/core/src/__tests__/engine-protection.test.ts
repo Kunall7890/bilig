@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { createBatch, createReplicaState } from '../replica-state.js'
 import { SpreadsheetEngine } from '../engine.js'
 
 describe('SpreadsheetEngine protections', () => {
@@ -98,5 +99,35 @@ describe('SpreadsheetEngine protections', () => {
     expect(engine.getRangeProtection('protect-a1')).toBeUndefined()
     expect(engine.getRangeProtections('Sheet1')).toEqual([])
     expect(engine.deleteRangeProtection('protect-a1')).toBe(false)
+  })
+
+  it('blocks sheet topology mutations when workbook structure is protected', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'workbook-structure-protection' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.createSheet('Report')
+    engine.workbook.setWorkbookProtection({
+      lockStructure: true,
+      xmlAttributes: [{ name: 'lockStructure', value: '1' }],
+    })
+
+    expect(() => engine.createSheet('Added')).toThrow(/workbook structure is protected/)
+    expect(() => engine.moveSheet('Report', 0)).toThrow(/workbook structure is protected/)
+    expect(() => engine.renameSheet('Data', 'Source')).toThrow(/workbook structure is protected/)
+    expect(() => engine.deleteSheet('Data')).toThrow(/workbook structure is protected/)
+    expect(() => engine.renderCommit([{ kind: 'upsertSheet', name: 'Committed', order: 2 }])).toThrow(
+      /Failed to execute render commit transaction/,
+    )
+    expect(() =>
+      engine.applyRemoteBatch(createBatch(createReplicaState('remote-lock'), [{ kind: 'upsertSheet', name: 'Remote', order: 2 }])),
+    ).toThrow(/Failed to apply remote batch/)
+    expect(engine.renameSheetMetadataOnly('Data', 'Source')).toBe(false)
+    expect(engine.renameSheetMetadataOnlyById(engine.workbook.getSheet('Data')!.id, 'Source')).toBe(false)
+
+    expect(engine.exportSnapshot().sheets.map((sheet) => sheet.name)).toEqual(['Data', 'Report'])
+    expect(engine.exportSnapshot().workbook.metadata?.workbookProtection).toEqual({
+      lockStructure: true,
+      xmlAttributes: [{ name: 'lockStructure', value: '1' }],
+    })
   })
 })

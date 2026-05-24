@@ -206,6 +206,8 @@ export interface CreateWorkPaperRuntimeAdaptersArgs {
 }
 
 export function createWorkPaperRuntimeAdapters(args: CreateWorkPaperRuntimeAdaptersArgs): WorkPaperRuntimeAdapters {
+  const isWorkbookStructureProtected = (): boolean => args.getEngine().workbook.getWorkbookProtection()?.lockStructure === true
+
   const cellMutationApplyRuntime: WorkPaperCellMutationApplyRuntime = {
     isEvaluationSuspended: args.isEvaluationSuspended,
     appendSuspendedCellMutationRefs: (refs) => {
@@ -344,6 +346,7 @@ export function createWorkPaperRuntimeAdapters(args: CreateWorkPaperRuntimeAdapt
 
   const sheetOperations = createWorkPaperSheetOperations({
     assertNotDisposed: args.assertNotDisposed,
+    isWorkbookStructureProtected,
     materializePendingLazyChanges: () => args.engineEvents.materializePendingLazyChanges(),
     nextSheetName: args.nextSheetName,
     isItPossibleToAddSheet: args.isItPossibleToAddSheet,
@@ -408,6 +411,7 @@ export function createWorkPaperRuntimeAdapters(args: CreateWorkPaperRuntimeAdapt
 
   const capabilityOperations = createWorkPaperCapabilityOperations({
     assertNotDisposed: args.assertNotDisposed,
+    isWorkbookStructureProtected,
     getCapabilityContext: args.getCapabilityContext,
     doesSheetIdExist: args.doesSheetIdExist,
     validateNamedExpression: args.validateNamedExpression,

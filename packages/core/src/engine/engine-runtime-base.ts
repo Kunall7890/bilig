@@ -403,7 +403,8 @@ export abstract class SpreadsheetEngineRuntimeBase {
       this.syncClientConnection !== null ||
       this.batchListeners.size > 0 ||
       this.batchMutationDepth !== 0 ||
-      this.transactionReplayDepth !== 0
+      this.transactionReplayDepth !== 0 ||
+      this.workbook.getWorkbookProtection()?.lockStructure === true
     ) {
       return false
     }
@@ -427,7 +428,8 @@ export abstract class SpreadsheetEngineRuntimeBase {
       this.syncClientConnection !== null ||
       this.batchListeners.size > 0 ||
       this.batchMutationDepth !== 0 ||
-      this.transactionReplayDepth !== 0
+      this.transactionReplayDepth !== 0 ||
+      this.workbook.getWorkbookProtection()?.lockStructure === true
     ) {
       return false
     }

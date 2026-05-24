@@ -7,11 +7,13 @@ import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
 
 import {
+  createMacosExcelRejectedStructuralOperationAppleScript,
   createMacosExcelRecalculationAppleScript,
   createMacosExcelInspectionAppleScript,
   createMacosExcelStructuralOperationAppleScript,
   isMacosExcelInstalled,
   parseMacosExcelInspectionOutput,
+  parseMacosExcelRejectedStructuralOperationOutput,
   parseMacosExcelRecalculationOutput,
   runMacosExcelInspectionOracle,
   runMacosExcelRecalculationOracle,
@@ -99,6 +101,7 @@ describe('macOS Desktop Excel oracle harness', () => {
       operations: [
         { kind: 'setCellValue', address: 'B1', value: 9 },
         { kind: 'clearCell', address: 'B1' },
+        { kind: 'createSheet', name: 'Added' },
         { kind: 'renameSheet', newName: 'Renamed Cases' },
         { kind: 'deleteSheet', name: 'Archive' },
         { kind: 'moveSheet', name: 'Report', before: 'Renamed Cases' },
@@ -112,6 +115,10 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(script).toContain('open workbook workbook file name workbookPath update links do not update links')
     expect(script).toContain('set value of range "B1" of targetWorksheet to 9')
     expect(script).toContain('clear contents range "B1" of targetWorksheet')
+    expect(script).toContain(
+      'set createdWorksheet to make new worksheet at after worksheet (count of worksheets of targetWorkbook) of targetWorkbook',
+    )
+    expect(script).toContain('set name of createdWorksheet to "Added"')
     expect(script).toContain('set name of targetWorksheet to "Renamed Cases"')
     expect(script).toContain('delete worksheet "Archive" of targetWorkbook')
     expect(script).toContain('delete chart sheet "Archive" of targetWorkbook')
@@ -217,6 +224,24 @@ describe('macOS Desktop Excel oracle harness', () => {
     )
   })
 
+  it('builds a rejected structural operation runner that reports live sheet topology', () => {
+    const script = createMacosExcelRejectedStructuralOperationAppleScript({
+      worksheetName: 'Cases',
+      operation: { kind: 'createSheet', name: 'Added' },
+    })
+
+    expect(script).toContain('open workbook workbook file name workbookPath update links do not update links')
+    expect(script).toContain('set targetWorksheet to worksheet "Cases" of targetWorkbook')
+    expect(script).toContain(
+      'set createdWorksheet to make new worksheet at after worksheet (count of worksheets of targetWorkbook) of targetWorkbook',
+    )
+    expect(script).toContain('operation=rejected')
+    expect(script).toContain('errorNumber=')
+    expect(script).toContain('my workbookSheetNames(targetWorkbook)')
+    expect(script).toContain('close targetWorkbook saving no')
+    expect(script).not.toContain('active workbook')
+  })
+
   it('parses typed Excel oracle values into normalized formula values', () => {
     expect(
       parseMacosExcelRecalculationOutput(
@@ -263,6 +288,19 @@ describe('macOS Desktop Excel oracle harness', () => {
           value: { kind: 'error', value: String(ErrorCode.NA) },
         },
       ],
+    })
+  })
+
+  it('parses rejected structural operation output with workbook sheet names', () => {
+    expect(
+      parseMacosExcelRejectedStructuralOperationOutput(
+        ['version=16.109', 'operation=rejected', 'errorNumber=-10006', 'errorMessage=protected', 'sheet=Data', 'sheet=Report'].join('\n'),
+      ),
+    ).toEqual({
+      excelVersion: '16.109',
+      errorNumber: -10006,
+      errorMessage: 'protected',
+      sheetNames: ['Data', 'Report'],
     })
   })
 

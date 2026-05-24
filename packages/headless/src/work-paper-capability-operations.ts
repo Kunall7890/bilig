@@ -22,6 +22,7 @@ type WorkPaperCapabilityContext = Parameters<typeof isWorkPaperSetCellContentsPo
 
 export interface WorkPaperCapabilityOperationsRuntime {
   readonly assertNotDisposed: () => void
+  readonly isWorkbookStructureProtected: () => boolean
   readonly getCapabilityContext: () => WorkPaperCapabilityContext
   readonly doesSheetIdExist: (sheetId: number) => boolean
   readonly validateNamedExpression: (expressionName: string, expression: RawCellContent, scope?: number) => void
@@ -143,12 +144,12 @@ export function createWorkPaperCapabilityOperations(runtime: WorkPaperCapability
     },
 
     isItPossibleToAddSheet(sheetName) {
-      return isWorkPaperSheetNameAvailable(capabilityContext(), sheetName)
+      return !runtime.isWorkbookStructureProtected() && isWorkPaperSheetNameAvailable(capabilityContext(), sheetName)
     },
 
     isItPossibleToRemoveSheet(sheetId) {
       runtime.assertNotDisposed()
-      return runtime.doesSheetIdExist(sheetId)
+      return !runtime.isWorkbookStructureProtected() && runtime.doesSheetIdExist(sheetId)
     },
 
     isItPossibleToClearSheet(sheetId) {
@@ -161,7 +162,7 @@ export function createWorkPaperCapabilityOperations(runtime: WorkPaperCapability
     },
 
     isItPossibleToRenameSheet(sheetId, nextName) {
-      return isWorkPaperSheetNameAvailable(capabilityContext(), nextName, sheetId)
+      return !runtime.isWorkbookStructureProtected() && isWorkPaperSheetNameAvailable(capabilityContext(), nextName, sheetId)
     },
 
     isItPossibleToAddNamedExpression(expressionName, expression, scope) {

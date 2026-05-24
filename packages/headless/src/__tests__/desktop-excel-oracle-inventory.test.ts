@@ -156,6 +156,20 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('matches Desktop Excel threaded comment package cleanup after deleting a commented sheet')
   })
 
+  it('keeps the workbook protection oracle anchored to Desktop Excel protected sheet topology', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-workbook-protection-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelRejectedStructuralOperationOracle')
+    expect(source).toContain("kind: 'createSheet'")
+    expect(source).toContain("kind: 'renameSheet'")
+    expect(source).toContain("kind: 'moveSheet'")
+    expect(source).toContain("deleteSheet('Data')")
+    expect(source).toContain('removeSheet(dataSheet)')
+    expect(source).toContain('Workbook structure is protected')
+    expect(source).toContain('matches Desktop Excel protected workbook rejection for protected sheet topology commands')
+  })
+
   it('keeps the hyperlink structural oracle anchored to Desktop Excel metadata movement', () => {
     const source = readFileSync(join(testDir, 'macos-desktop-excel-hyperlink-structural-oracle.test.ts'), 'utf8')
 

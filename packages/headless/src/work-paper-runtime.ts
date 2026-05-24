@@ -273,6 +273,12 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     return super.captureChanges(semanticEvent, mutate, options)
   }
 
+  private assertWorkbookStructureEditable(): void {
+    if (this.engine.workbook.getWorkbookProtection()?.lockStructure === true) {
+      throw new WorkPaperSheetError('Workbook structure is protected')
+    }
+  }
+
   override renameSheet(sheetId: number, nextName: string): WorkPaperChange[] {
     const sheet = this.sheetRecord(sheetId)
     const newName = nextName.trim()
@@ -283,6 +289,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     if (existing && existing.id !== sheetId) {
       throw new WorkPaperSheetError(`Sheet '${sheetId}' cannot be renamed to '${nextName}'`)
     }
+    this.assertWorkbookStructureEditable()
 
     const oldName = sheet.name
     this.preservedImportedSnapshot = undefined

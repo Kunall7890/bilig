@@ -29,7 +29,12 @@ interface AnchorProtectedRecord {
   readonly address: string
 }
 
+interface WorkbookProtectedRecord {
+  readonly lockStructure?: boolean
+}
+
 export interface OperationProtectionAccess {
+  readonly getWorkbookProtection?: () => WorkbookProtectedRecord | undefined
   readonly hasProtectionMetadataForSheet?: (sheetName: string) => boolean
   readonly getSheetProtection: (sheetName: string) => unknown
   readonly listRangeProtections: (sheetName: string) => readonly RangeProtectedRecord[]
@@ -39,6 +44,10 @@ export interface OperationProtectionAccess {
   readonly getChart: (id: string) => SourceProtectedRecord | undefined
   readonly getImage: (id: string) => AnchorProtectedRecord | undefined
   readonly getShape: (id: string) => AnchorProtectedRecord | undefined
+}
+
+export function workbookStructureIsLocked(access: OperationProtectionAccess): boolean {
+  return access.getWorkbookProtection?.()?.lockStructure === true
 }
 
 export function sheetHasProtection(access: OperationProtectionAccess, sheetName: string): boolean {
@@ -78,9 +87,15 @@ export function assertProtectionAllowsOp(access: OperationProtectionAccess, op: 
     case 'upsertCellNumberFormat':
       return
     case 'upsertSheet':
+      if (workbookStructureIsLocked(access)) {
+        throwProtectionBlocked('workbook structure is protected')
+      }
       return
     case 'renameSheet':
     case 'deleteSheet': {
+      if (workbookStructureIsLocked(access)) {
+        throwProtectionBlocked('workbook structure is protected')
+      }
       const sheetName = op.kind === 'renameSheet' ? op.oldName : op.name
       if (sheetHasProtection(access, sheetName)) {
         throwProtectionBlocked(`sheet ${sheetName} is protected`)

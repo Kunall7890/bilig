@@ -63,6 +63,7 @@ export type MacosExcelStructuralOperation =
   | { readonly kind: 'deleteColumns'; readonly range: string }
   | { readonly kind: 'setCellValue'; readonly address: string; readonly value: string | number | boolean }
   | { readonly kind: 'clearCell'; readonly address: string }
+  | { readonly kind: 'createSheet'; readonly name: string }
   | { readonly kind: 'renameSheet'; readonly newName: string }
   | { readonly kind: 'deleteSheet'; readonly name: string }
   | { readonly kind: 'moveSheet'; readonly name: string; readonly before?: string; readonly after?: string }
@@ -106,6 +107,16 @@ export interface MacosExcelStructuralOperationOracleRequest {
   readonly updateLinks?: MacosExcelLinkUpdateMode
 }
 
+export interface MacosExcelRejectedStructuralOperationOracleRequest {
+  readonly workbookPath: string
+  readonly worksheetName: string
+  readonly operation: MacosExcelStructuralOperation
+  readonly companionWorkbookPaths?: readonly string[]
+  readonly appPath?: string
+  readonly timeoutMs?: number
+  readonly updateLinks?: MacosExcelLinkUpdateMode
+}
+
 export interface MacosExcelCellInspection {
   readonly address: string
   readonly formula?: string
@@ -116,6 +127,13 @@ export interface MacosExcelCellInspection {
 export interface MacosExcelInspectionOracleResult {
   readonly cells: readonly MacosExcelCellInspection[]
   readonly excelVersion: string
+}
+
+export interface MacosExcelRejectedStructuralOperationOracleResult {
+  readonly excelVersion: string
+  readonly errorMessage: string
+  readonly errorNumber: number
+  readonly sheetNames: readonly string[]
 }
 
 export function isMacosExcelInstalled(appPath: string = defaultMacosExcelAppPath): boolean {
@@ -185,6 +203,29 @@ export function runMacosExcelStructuralOperationOracle(
     }).trim()
     copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
     return parseMacosExcelInspectionOutput(rawOutput, request.inspectCells)
+  } finally {
+    removeMacosExcelOracleTempDir(tempDir)
+  }
+}
+
+export function runMacosExcelRejectedStructuralOperationOracle(
+  request: MacosExcelRejectedStructuralOperationOracleRequest,
+): MacosExcelRejectedStructuralOperationOracleResult {
+  const appPath = request.appPath ?? defaultMacosExcelAppPath
+  if (!isMacosExcelInstalled(appPath)) {
+    throw new Error(`Microsoft Excel app is not installed at ${appPath}`)
+  }
+
+  const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-rejected-structure-')
+  const scriptPath = join(tempDir, 'rejected-structure.scpt')
+  try {
+    const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
+    writeFileSync(scriptPath, createMacosExcelRejectedStructuralOperationAppleScript(request))
+    const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
+      encoding: 'utf8',
+      timeout: request.timeoutMs ?? 60_000,
+    }).trim()
+    return parseMacosExcelRejectedStructuralOperationOutput(rawOutput)
   } finally {
     removeMacosExcelOracleTempDir(tempDir)
   }
@@ -489,6 +530,60 @@ end run
 ${cellValueAppleScriptHelpers()}`
 }
 
+export function createMacosExcelRejectedStructuralOperationAppleScript(
+  request: Pick<MacosExcelRejectedStructuralOperationOracleRequest, 'operation' | 'updateLinks' | 'worksheetName'>,
+): string {
+  const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
+  const operation = structuralOperationAppleScript(request.operation)
+
+  return `on run argv
+  set workbookPath to item 1 of argv
+  set targetWorkbook to missing value
+  set companionWorkbooks to {}
+  tell application "Microsoft Excel"
+    try
+${openCompanionWorkbooksAppleScript()}
+      set targetWorkbook to open workbook workbook file name workbookPath update links ${updateLinksMode}
+      set targetWorksheet to worksheet ${toAppleScriptString(request.worksheetName)} of targetWorkbook
+      set output to "version=" & (version as string)
+      try
+        ${operation}
+      on error operationErrorMessage number operationErrorNumber
+        set output to output & linefeed & "operation=rejected"
+        set output to output & linefeed & "errorNumber=" & (operationErrorNumber as string)
+        set output to output & linefeed & "errorMessage=" & (operationErrorMessage as string)
+        set output to output & my workbookSheetNames(targetWorkbook)
+        close targetWorkbook saving no
+${closeCompanionWorkbooksAppleScript()}
+        return output
+      end try
+      set output to output & linefeed & "operation=applied" & my workbookSheetNames(targetWorkbook)
+      close targetWorkbook saving no
+${closeCompanionWorkbooksAppleScript()}
+      error "Expected Microsoft Excel to reject structural workbook operation" number -2700
+    on error errMsg number errNum
+      if targetWorkbook is not missing value then
+        try
+          close targetWorkbook saving no
+        end try
+      end if
+${closeCompanionWorkbooksAppleScript()}
+      error errMsg number errNum
+    end try
+  end tell
+end run
+
+on workbookSheetNames(targetWorkbook)
+  set output to ""
+  tell application "Microsoft Excel"
+    repeat with sheetIndex from 1 to count of worksheets of targetWorkbook
+      set output to output & linefeed & "sheet=" & (name of worksheet (sheetIndex as integer) of targetWorkbook as string)
+    end repeat
+  end tell
+  return output
+end workbookSheetNames`
+}
+
 export function parseMacosExcelRecalculationOutput(rawOutput: string, expectedValueCount: number): MacosExcelRecalculationOracleResult {
   const lines = rawOutput.split(/\r?\n/u)
   const versionLine = lines[0]
@@ -519,6 +614,40 @@ export function parseMacosExcelInspectionOutput(rawOutput: string, expectedAddre
   return {
     excelVersion: versionLine.slice('version='.length),
     cells: cellLines.map((line, index) => parseInspectionCell(line, expectedAddresses[index]!)),
+  }
+}
+
+export function parseMacosExcelRejectedStructuralOperationOutput(rawOutput: string): MacosExcelRejectedStructuralOperationOracleResult {
+  const lines = rawOutput.split(/\r?\n/u)
+  const versionLine = lines[0]
+  if (!versionLine?.startsWith('version=')) {
+    throw new Error(`Unexpected Microsoft Excel rejected-operation oracle output header: ${versionLine ?? '<empty>'}`)
+  }
+  if (lines[1] !== 'operation=rejected') {
+    throw new Error(`Expected Microsoft Excel to reject structural operation, received: ${lines[1] ?? '<missing>'}`)
+  }
+  const errorNumberLine = lines[2]
+  if (!errorNumberLine?.startsWith('errorNumber=')) {
+    throw new Error(`Missing Microsoft Excel rejected-operation error number: ${errorNumberLine ?? '<empty>'}`)
+  }
+  const errorNumber = Number(errorNumberLine.slice('errorNumber='.length))
+  if (!Number.isFinite(errorNumber)) {
+    throw new Error(`Invalid Microsoft Excel rejected-operation error number: ${errorNumberLine}`)
+  }
+  const errorMessageLine = lines[3]
+  if (!errorMessageLine?.startsWith('errorMessage=')) {
+    throw new Error(`Missing Microsoft Excel rejected-operation error message: ${errorMessageLine ?? '<empty>'}`)
+  }
+  return {
+    excelVersion: versionLine.slice('version='.length),
+    errorNumber,
+    errorMessage: errorMessageLine.slice('errorMessage='.length),
+    sheetNames: lines.slice(4).map((line) => {
+      if (!line.startsWith('sheet=')) {
+        throw new Error(`Unexpected Microsoft Excel rejected-operation sheet line: ${line}`)
+      }
+      return line.slice('sheet='.length)
+    }),
   }
 }
 
@@ -588,6 +717,11 @@ function structuralOperationAppleScript(operation: MacosExcelStructuralOperation
       return `set value of range ${toAppleScriptString(operation.address)} of targetWorksheet to ${toAppleScriptValue(operation.value)}`
     case 'clearCell':
       return `clear contents range ${toAppleScriptString(operation.address)} of targetWorksheet`
+    case 'createSheet':
+      return [
+        'set createdWorksheet to make new worksheet at after worksheet (count of worksheets of targetWorkbook) of targetWorkbook',
+        `set name of createdWorksheet to ${toAppleScriptString(operation.name)}`,
+      ].join('\n      ')
     case 'renameSheet':
       return `set name of targetWorksheet to ${toAppleScriptString(operation.newName)}`
     case 'deleteSheet':

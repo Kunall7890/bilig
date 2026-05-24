@@ -17,6 +17,7 @@ type SheetOperationEvent =
 
 export interface WorkPaperSheetOperationsRuntime {
   readonly assertNotDisposed: () => void
+  readonly isWorkbookStructureProtected: () => boolean
   readonly materializePendingLazyChanges: () => void
   readonly nextSheetName: () => string
   readonly isItPossibleToAddSheet: (name: string) => boolean
@@ -67,10 +68,17 @@ export interface WorkPaperSheetOperations {
 }
 
 export function createWorkPaperSheetOperations(runtime: WorkPaperSheetOperationsRuntime): WorkPaperSheetOperations {
+  const assertWorkbookStructureEditable = (): void => {
+    if (runtime.isWorkbookStructureProtected()) {
+      throw new WorkPaperSheetError('Workbook structure is protected')
+    }
+  }
+
   return {
     addSheet(sheetName) {
       runtime.assertNotDisposed()
       runtime.materializePendingLazyChanges()
+      assertWorkbookStructureEditable()
       const name = sheetName?.trim() || runtime.nextSheetName()
       if (!runtime.isItPossibleToAddSheet(name)) {
         throw new WorkPaperSheetNameAlreadyTakenError(name)
@@ -97,6 +105,7 @@ export function createWorkPaperSheetOperations(runtime: WorkPaperSheetOperations
 
     moveSheet(sheetId, order) {
       const sheet = runtime.sheetRecord(sheetId)
+      assertWorkbookStructureEditable()
       const nextOrder = Number.isFinite(order) ? Math.max(0, Math.trunc(order)) : 0
       if (sheet.order === nextOrder) {
         return []
@@ -108,6 +117,7 @@ export function createWorkPaperSheetOperations(runtime: WorkPaperSheetOperations
     },
 
     removeSheet(sheetId) {
+      assertWorkbookStructureEditable()
       if (!runtime.isItPossibleToRemoveSheet(sheetId)) {
         throw new WorkPaperSheetError(`Sheet '${sheetId}' cannot be removed`)
       }
@@ -166,6 +176,7 @@ export function createWorkPaperSheetOperations(runtime: WorkPaperSheetOperations
       if (existing && existing.id !== sheetId) {
         throw new WorkPaperSheetError(`Sheet '${sheetId}' cannot be renamed to '${nextName}'`)
       }
+      assertWorkbookStructureEditable()
       const oldName = sheet.name
       const fastPathChanges = runtime.tryRenameSheetWithoutVisibilitySnapshots(oldName, newName)
       if (fastPathChanges) {
