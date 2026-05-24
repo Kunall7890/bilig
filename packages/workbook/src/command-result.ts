@@ -292,10 +292,6 @@ function normalizeReceiptArrayForResult(receipts: readonly WorkbookCommandReceip
   if (!Array.isArray(receipts)) {
     throw new Error('Workbook command result is invalid: receipts must be an array')
   }
-  const accessorPath = firstAccessorPath(receipts, 'receipts')
-  if (accessorPath !== null) {
-    throw new Error(`Workbook command result is invalid: ${accessorPath} must contain only data properties`)
-  }
   const normalizedReceipts: WorkbookCommandReceipt[] = []
   for (let index = 0; index < receipts.length; index += 1) {
     const receipt = arrayDataValue(receipts, index)
@@ -665,11 +661,6 @@ function pushResultErrorsIssues(issues: WorkbookCommandResultIssue[], value: unk
 }
 
 function pushResultArrayDataIssues(issues: WorkbookCommandResultIssue[], value: readonly unknown[], path: string, label: string): void {
-  const accessorPath = firstAccessorPath(value, path)
-  if (accessorPath !== null) {
-    issues.push(commandResultIssue('invalid_command_result', accessorPath, `${label} must contain only data properties`))
-    return
-  }
   for (let index = 0; index < value.length; index += 1) {
     const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
     if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {

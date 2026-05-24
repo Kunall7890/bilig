@@ -181,6 +181,17 @@ function ownValue(value: object, key: string): unknown {
   return Object.getOwnPropertyDescriptor(value, key)?.value
 }
 
+function ownAccessorKeys(value: object, keys: readonly string[]): readonly string[] {
+  const accessors: string[] = []
+  for (const key of keys) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key)
+    if (descriptor !== undefined && !('value' in descriptor)) {
+      accessors.push(key)
+    }
+  }
+  return accessors
+}
+
 function arrayDataValues<T>(value: unknown, guard: (entry: unknown) => entry is T): readonly T[] | null {
   if (!Array.isArray(value)) {
     return null
@@ -269,11 +280,19 @@ export function checkWorkbookCommandRequest(value: unknown): WorkbookCommandRequ
   }
 
   const issues: WorkbookCommandRequestIssue[] = []
-  pushRequiredCommandRequestStringIssue(issues, value, 'featureId', 'feature id')
-  pushRequiredCommandRequestStringIssue(issues, value, 'commandId', 'command id')
-  const category = ownValue(value, 'category')
-  const mode = ownValue(value, 'mode')
-  const input = ownValue(value, 'input')
+  const accessorKeys = new Set(ownAccessorKeys(value, ['featureId', 'commandId', 'category', 'mode', 'input']))
+  accessorKeys.forEach((key) => {
+    issues.push(commandRequestIssue(key, `Workbook command request ${key} must be a data property`))
+  })
+  if (!accessorKeys.has('featureId')) {
+    pushRequiredCommandRequestStringIssue(issues, value, 'featureId', 'feature id')
+  }
+  if (!accessorKeys.has('commandId')) {
+    pushRequiredCommandRequestStringIssue(issues, value, 'commandId', 'command id')
+  }
+  const category = accessorKeys.has('category') ? undefined : ownValue(value, 'category')
+  const mode = accessorKeys.has('mode') ? undefined : ownValue(value, 'mode')
+  const input = accessorKeys.has('input') ? undefined : ownValue(value, 'input')
   if (category !== undefined && !isWorkbookCommandCategory(category)) {
     issues.push(commandRequestIssue('category', 'Workbook command request category is invalid'))
   }
@@ -671,22 +690,45 @@ export function checkWorkbookCommandReceipt(value: unknown): WorkbookCommandRece
   }
 
   const issues: WorkbookCommandReceiptIssue[] = []
-  if (!isWorkbookCommandReceiptStatus(ownValue(value, 'status'))) {
+  const accessorKeys = new Set(
+    ownAccessorKeys(value, [
+      'status',
+      'featureId',
+      'commandId',
+      'category',
+      'previewOps',
+      'appliedOps',
+      'undo',
+      'changedRanges',
+      'proof',
+      'message',
+      'metadata',
+      'errors',
+    ]),
+  )
+  accessorKeys.forEach((key) => {
+    issues.push(commandReceiptIssue(key, `Workbook command receipt ${key} must be a data property`))
+  })
+  if (!accessorKeys.has('status') && !isWorkbookCommandReceiptStatus(ownValue(value, 'status'))) {
     issues.push(commandReceiptIssue('status', 'Workbook command receipt status is invalid'))
   }
-  pushRequiredCommandReceiptStringIssue(issues, value, 'featureId', 'feature id')
-  pushRequiredCommandReceiptStringIssue(issues, value, 'commandId', 'command id')
-  if (!isWorkbookCommandCategory(ownValue(value, 'category'))) {
+  if (!accessorKeys.has('featureId')) {
+    pushRequiredCommandReceiptStringIssue(issues, value, 'featureId', 'feature id')
+  }
+  if (!accessorKeys.has('commandId')) {
+    pushRequiredCommandReceiptStringIssue(issues, value, 'commandId', 'command id')
+  }
+  if (!accessorKeys.has('category') && !isWorkbookCommandCategory(ownValue(value, 'category'))) {
     issues.push(commandReceiptIssue('category', 'Workbook command receipt category is invalid'))
   }
-  pushCommandReceiptOpsIssues(issues, ownValue(value, 'previewOps'), 'previewOps', 'preview')
-  pushCommandReceiptOpsIssues(issues, ownValue(value, 'appliedOps'), 'appliedOps', 'applied')
-  pushCommandReceiptUndoIssues(issues, ownValue(value, 'undo'))
-  pushCommandReceiptChangedRangesIssues(issues, ownValue(value, 'changedRanges'))
-  pushCommandReceiptInputIssue(issues, ownValue(value, 'proof'), 'proof', 'proof')
-  pushOptionalCommandReceiptStringIssue(issues, ownValue(value, 'message'), 'message', 'message')
-  pushCommandReceiptInputIssue(issues, ownValue(value, 'metadata'), 'metadata', 'metadata')
-  pushCommandReceiptErrorsIssues(issues, ownValue(value, 'errors'))
+  pushCommandReceiptOpsIssues(issues, accessorKeys.has('previewOps') ? undefined : ownValue(value, 'previewOps'), 'previewOps', 'preview')
+  pushCommandReceiptOpsIssues(issues, accessorKeys.has('appliedOps') ? undefined : ownValue(value, 'appliedOps'), 'appliedOps', 'applied')
+  pushCommandReceiptUndoIssues(issues, accessorKeys.has('undo') ? undefined : ownValue(value, 'undo'))
+  pushCommandReceiptChangedRangesIssues(issues, accessorKeys.has('changedRanges') ? undefined : ownValue(value, 'changedRanges'))
+  pushCommandReceiptInputIssue(issues, accessorKeys.has('proof') ? undefined : ownValue(value, 'proof'), 'proof', 'proof')
+  pushOptionalCommandReceiptStringIssue(issues, accessorKeys.has('message') ? undefined : ownValue(value, 'message'), 'message', 'message')
+  pushCommandReceiptInputIssue(issues, accessorKeys.has('metadata') ? undefined : ownValue(value, 'metadata'), 'metadata', 'metadata')
+  pushCommandReceiptErrorsIssues(issues, accessorKeys.has('errors') ? undefined : ownValue(value, 'errors'))
   if (issues.length === 0) {
     pushCommandReceiptStatusInvariantIssues(issues, value)
   }

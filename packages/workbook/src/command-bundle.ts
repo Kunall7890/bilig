@@ -231,7 +231,11 @@ function pushOpCommandIssues(
   touchedRanges: unknown,
   scopedTouchedRangesRequired: boolean,
 ): void {
-  if (!isWorkbookOp(ownValue(value, 'op'))) {
+  const op = ownValue(value, 'op')
+  const accessorPath = firstAccessorPath(op, `${path}.op`)
+  if (accessorPath !== null) {
+    issues.push(commandBundleIssue('invalid_command', accessorPath, 'Workbook command bundle op must contain only data properties'))
+  } else if (!isWorkbookOp(op)) {
     issues.push(commandBundleIssue('invalid_command', `${path}.op`, 'Workbook command bundle op is invalid'))
   }
   if (ownValue(value, 'destructive') !== true) {
@@ -393,11 +397,6 @@ function pushNonEmptyExactStringIssue(
 }
 
 function pushArrayDataIssues(issues: WorkbookCommandBundleIssue[], value: readonly unknown[], path: string, label: string): void {
-  const accessorPath = firstAccessorPath(value, path)
-  if (accessorPath !== null) {
-    issues.push(commandBundleIssue('invalid_bundle', accessorPath, `${label} must contain only data properties`))
-    return
-  }
   for (let index = 0; index < value.length; index += 1) {
     const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
     if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {

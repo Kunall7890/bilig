@@ -177,6 +177,61 @@ describe('@bilig/workbook command bundle api', () => {
     expect(getterInvoked).toBe(false)
   })
 
+  it('ignores command-level scratch fields without invoking getters', () => {
+    let getterInvoked = false
+    const clean = {
+      id: 'bundle-command-scratch',
+      targetRevision: 42,
+      idempotencyKey: 'agent-run-command-scratch',
+      commands: [
+        {
+          id: 'preview-first',
+          kind: 'request',
+          request: {
+            ...previewRequest,
+          },
+          touchedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+        },
+      ],
+    }
+    const noisy = {
+      ...clean,
+      commands: [
+        {
+          ...clean.commands[0],
+          request: {
+            ...clean.commands[0].request,
+          },
+          touchedRanges: [{ ...clean.commands[0].touchedRanges[0] }],
+        },
+      ],
+    }
+    Object.defineProperty(noisy.commands[0], 'hiddenScratchpad', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+    Object.defineProperty(noisy.commands[0].request, 'hiddenScratchpad', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+    Object.defineProperty(noisy.commands[0].touchedRanges[0], 'hiddenScratchpad', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    expect(checkWorkbookCommandBundle(noisy)).toEqual(checkWorkbookCommandBundle(clean))
+    expect(getterInvoked).toBe(false)
+  })
+
   it('ignores command result envelope scratch fields without invoking getters', () => {
     let getterInvoked = false
     const bundle = normalizeWorkbookCommandBundle({
@@ -194,6 +249,55 @@ describe('@bilig/workbook command bundle api', () => {
     const clean = workbookCommandResultFor(bundle)
     const noisy = { ...clean, agentScratchpad: { ignored: true } }
     Object.defineProperty(noisy, 'hiddenScratchpad', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    expect(checkWorkbookCommandResult(noisy)).toEqual(checkWorkbookCommandResult(clean))
+    expect(normalizeWorkbookCommandResult(noisy)).toEqual(clean)
+    expect(getterInvoked).toBe(false)
+  })
+
+  it('ignores receipt-level scratch fields without invoking getters', () => {
+    let getterInvoked = false
+    const bundle = normalizeWorkbookCommandBundle({
+      id: 'bundle-receipt-scratch',
+      targetRevision: 7,
+      idempotencyKey: 'bundle-receipt-scratch',
+      commands: [
+        {
+          id: 'bundle-receipt-scratch:0:inspect',
+          kind: 'request',
+          request: previewRequest,
+        },
+      ],
+    })
+    const clean = workbookCommandResultForReceipts(
+      bundle,
+      [
+        {
+          status: 'applied',
+          featureId: 'inspect',
+          commandId: 'inspect.selection',
+          category: 'command',
+          proof: {
+            inspected: true,
+          },
+        },
+      ],
+      { revision: 8 },
+    )
+    if (clean.status === 'accepted') {
+      throw new Error('expected settled result')
+    }
+    const noisy = {
+      ...clean,
+      receipts: [{ ...clean.receipts[0] }],
+    }
+    Object.defineProperty(noisy.receipts[0], 'hiddenScratchpad', {
       enumerable: true,
       get() {
         getterInvoked = true
@@ -346,6 +450,42 @@ describe('@bilig/workbook command bundle api', () => {
         },
       ],
     })
+  })
+
+  it('rejects accessor-backed op proof without invoking getters', () => {
+    let getterInvoked = false
+    const op = { ...setCellValueOp }
+    Object.defineProperty(op, 'extra', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    expect(
+      checkWorkbookCommandBundle({
+        targetRevision: 1,
+        idempotencyKey: 'agent-run-1',
+        commands: [
+          {
+            kind: 'op',
+            destructive: true,
+            op,
+          },
+        ],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command',
+          path: 'commands[0].op.extra',
+          message: 'Workbook command bundle op must contain only data properties',
+        },
+      ],
+    })
+    expect(getterInvoked).toBe(false)
   })
 
   it('rejects command bundles that exceed maxTouchedCells', () => {
@@ -1016,14 +1156,9 @@ describe('@bilig/workbook command bundle api', () => {
       status: 'invalid',
       issues: [
         {
-          code: 'invalid_command_result',
-          path: 'receipts[0].proof',
-          message: 'Workbook command result receipts must contain only data properties',
-        },
-        {
           code: 'invalid_receipt',
-          path: 'receipts[0].appliedOps',
-          message: 'Workbook command receipt applied status must include applied ops, changed ranges, undo metadata, or proof',
+          path: 'receipts[0].proof',
+          message: 'Workbook command receipt proof must be a data property',
         },
       ],
     })
