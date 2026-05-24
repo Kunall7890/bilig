@@ -23,7 +23,7 @@ const protectedRangeSecurityAttributes = [
 describe('macOS Desktop Excel protected ranges oracle', () => {
   it('preserves imported protected editable range security attributes through WorkPaper export', () => {
     const workpaper = WorkPaper.buildFromSnapshot(
-      importXlsx(buildProtectedEditableRangeSecurityBytes(), 'protected-editable-range-source.xlsx').snapshot,
+      withUnlockedReviewCell(importXlsx(buildProtectedEditableRangeSecurityBytes(), 'protected-editable-range-source.xlsx').snapshot),
     )
     try {
       const sheet = workpaper.getSheetId('Protected')
@@ -79,7 +79,7 @@ describe('macOS Desktop Excel protected ranges oracle', () => {
           },
         ])
 
-        const workpaper = WorkPaper.buildFromSnapshot(excelTruth.snapshot)
+        const workpaper = WorkPaper.buildFromSnapshot(withUnlockedReviewCell(excelTruth.snapshot))
         try {
           const sheet = workpaper.getSheetId('Protected')
           if (sheet === undefined) {
@@ -137,6 +137,25 @@ function buildProtectedEditableRangeSecurityBytes(): Uint8Array {
     ),
   )
   return zipSync(zip)
+}
+
+function withUnlockedReviewCell(snapshot: WorkbookSnapshot): WorkbookSnapshot {
+  const clone = structuredClone(snapshot)
+  clone.workbook.metadata = clone.workbook.metadata ?? {}
+  clone.workbook.metadata.styles = [...(clone.workbook.metadata.styles ?? []), { id: 'review-cell-unlocked', protection: { locked: false } }]
+  const protectedSheet = clone.sheets.find((sheet) => sheet.name === 'Protected')
+  if (!protectedSheet) {
+    throw new Error('Expected Protected sheet to be available')
+  }
+  protectedSheet.metadata = protectedSheet.metadata ?? {}
+  protectedSheet.metadata.styleRanges = [
+    ...(protectedSheet.metadata.styleRanges ?? []),
+    {
+      range: { sheetName: 'Protected', startAddress: 'A1', endAddress: 'A1' },
+      styleId: 'review-cell-unlocked',
+    },
+  ]
+  return clone
 }
 
 function protectedRangeSecuritySummary(snapshot: WorkbookSnapshot): Array<{
