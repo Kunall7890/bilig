@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.90.5
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.90.4
+- Manual override: no
+
+## Fixes
+- fix(workbook): reject custom-prototype model roots (954ad32f)
+
 ## 0.90.4
 
 - Release type: patch
