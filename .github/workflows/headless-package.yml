@@ -833,6 +833,7 @@ jobs:
             docs/headless-package-footprint.json
             docs/public-evidence.json
             README.md
+            Dockerfile
             packages/protocol/package.json
             packages/workbook/package.json
             packages/wasm-kernel/package.json
