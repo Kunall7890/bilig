@@ -153,6 +153,9 @@ handoff objects return an `invalid_plan` issue instead of executing hidden
 properties or throwing at the caller.
 `verifyModel` keeps the same behavior at whole-model scope: invalid manifests
 return an invalid verdict with an `invalid_model` error and no actions.
+Its `{ inputs }` option is data-only too: accessor-backed option payloads or
+per-action inputs produce structured `invalid_action_input` results without
+running hidden consumer code.
 
 ## Selectors
 

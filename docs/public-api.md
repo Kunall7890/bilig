@@ -422,6 +422,9 @@ planning.
 whole-model verification. Invalid or accessor-backed model manifests return an
 `invalid_model` verdict with no actions instead of throwing, so agents can audit
 unknown model objects without wrapping the verifier in their own try/catch.
+Verification options use the same data boundary: `inputs` and each action input
+must be own data properties. Accessor-backed verification inputs return
+structured `invalid_action_input` results without invoking getters.
 The frozen
 `workbookActionInputDescriptionKinds` list plus
 `isWorkbookActionInputDescriptionKind(value)`,

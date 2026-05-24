@@ -63,4 +63,126 @@ describe('@bilig/workbook model verification api', () => {
     })
     expect(actionGetterInvoked).toBe(false)
   })
+
+  it('returns structured invalid results for accessor-backed verification options without invoking getters', () => {
+    const model = {
+      name: 'verify-options-model',
+      actions: {
+        write() {},
+      },
+    }
+
+    let inputsGetterInvoked = false
+    const options: Record<string, unknown> = {}
+    Object.defineProperty(options, 'inputs', {
+      enumerable: true,
+      get() {
+        inputsGetterInvoked = true
+        throw new Error('inputs getter must not run')
+      },
+    })
+
+    expect(verifyModel(model, options)).toEqual({
+      status: 'invalid',
+      modelName: 'verify-options-model',
+      errors: [
+        {
+          code: 'invalid_action_input',
+          message: 'Workbook model verification options inputs must be a data property',
+          path: 'options.inputs',
+          issueCode: 'invalid_action_input',
+        },
+      ],
+      actions: [],
+    })
+    expect(inputsGetterInvoked).toBe(false)
+  })
+
+  it('returns structured failed planning for accessor-backed per-action inputs without invoking getters', () => {
+    const model = {
+      name: 'verify-action-input-model',
+      actions: {
+        write() {},
+      },
+    }
+
+    let actionInputGetterInvoked = false
+    const inputs: Record<string, unknown> = {}
+    Object.defineProperty(inputs, 'write', {
+      enumerable: true,
+      get() {
+        actionInputGetterInvoked = true
+        throw new Error('action input getter must not run')
+      },
+    })
+
+    expect(verifyModel(model, { inputs })).toEqual({
+      status: 'invalid',
+      modelName: 'verify-action-input-model',
+      actions: [
+        {
+          actionName: 'write',
+          planning: {
+            status: 'failed',
+            modelName: 'verify-action-input-model',
+            actionName: 'write',
+            errors: [
+              {
+                code: 'invalid_action_input',
+                message: 'Workbook model verification input for action write must be a data property',
+                path: 'inputs.write',
+                issueCode: 'invalid_action_input',
+              },
+            ],
+            checks: [],
+          },
+        },
+      ],
+    })
+    expect(actionInputGetterInvoked).toBe(false)
+  })
+
+  it('prefixes invalid nested per-action input paths without invoking getters', () => {
+    const model = {
+      name: 'verify-nested-input-model',
+      actions: {
+        write() {},
+      },
+    }
+
+    let valueGetterInvoked = false
+    const input: Record<string, unknown> = {}
+    Object.defineProperty(input, 'value', {
+      enumerable: true,
+      get() {
+        valueGetterInvoked = true
+        throw new Error('nested input getter must not run')
+      },
+    })
+
+    expect(verifyModel(model, { inputs: { write: input } })).toEqual({
+      status: 'invalid',
+      modelName: 'verify-nested-input-model',
+      actions: [
+        {
+          actionName: 'write',
+          planning: {
+            status: 'failed',
+            modelName: 'verify-nested-input-model',
+            actionName: 'write',
+            errors: [
+              {
+                code: 'invalid_action_input',
+                message: 'Action input at input.value must be a data property',
+                path: 'inputs.write.value',
+                issueCode: 'invalid_action_input',
+              },
+            ],
+            checks: [],
+          },
+        },
+      ],
+    })
+    expect(valueGetterInvoked).toBe(false)
+  })
 })

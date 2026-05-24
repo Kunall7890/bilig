@@ -18,6 +18,7 @@ import {
   type WorkbookActionPlan,
   type WorkbookModelInspection,
 } from './model.js'
+import { isObject, optionalDataProperty } from './data-properties.js'
 import { describeRuntimeRequirements, type WorkbookRuntimeRequirements } from './requirements.js'
 import {
   getOwnActionInput,
@@ -88,6 +89,26 @@ export interface WorkbookModelVerification {
 export interface WorkbookModelVerificationOptions {
   readonly inputs?: Partial<Record<string, WorkbookActionInput>>
 }
+
+type WorkbookVerificationInputs =
+  | {
+      readonly status: 'valid'
+      readonly inputs?: object
+    }
+  | {
+      readonly status: 'invalid'
+      readonly error: WorkbookRunError
+    }
+
+type WorkbookVerificationActionInput =
+  | {
+      readonly status: 'valid'
+      readonly input?: WorkbookActionInput
+    }
+  | {
+      readonly status: 'invalid'
+      readonly error: WorkbookRunError
+    }
 
 function refKey(ref: WorkbookRef): string {
   return `${ref.kind}:${ref.id}`
@@ -338,6 +359,120 @@ function opTargetMismatch(op: WorkbookOp, target: WorkbookRef | undefined): stri
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+function errorPath(error: unknown): string {
+  return error instanceof WorkbookActionInputError ? error.path : 'input'
+}
+
+function childPath(path: string, key: string): string {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? `${path}.${key}` : `${path}[${JSON.stringify(key)}]`
+}
+
+function prefixedInputPath(path: string, error: unknown): string {
+  const inputPath = errorPath(error)
+  return inputPath === 'input' ? path : `${path}${inputPath.slice('input'.length)}`
+}
+
+function invalidActionInputRunError(error: unknown, path: string): WorkbookRunError {
+  return {
+    code: 'invalid_action_input',
+    message: errorMessage(error),
+    path: prefixedInputPath(path, error),
+    issueCode: 'invalid_action_input',
+  }
+}
+
+function invalidVerificationInput(message: string, path: string): WorkbookVerificationInputs {
+  return {
+    status: 'invalid',
+    error: {
+      code: 'invalid_action_input',
+      message,
+      path,
+      issueCode: 'invalid_action_input',
+    },
+  }
+}
+
+function readVerificationInputs(options: unknown): WorkbookVerificationInputs {
+  if (options === undefined) {
+    return { status: 'valid' }
+  }
+  if (!isObject(options) || Array.isArray(options)) {
+    return invalidVerificationInput('Workbook model verification options must be an object', 'options')
+  }
+
+  let inputsValue: unknown
+  try {
+    const inputs = optionalDataProperty(options, 'inputs', 'Workbook model verification options inputs')
+    if (inputs.status === 'missing' || inputs.value === undefined) {
+      return { status: 'valid' }
+    }
+    inputsValue = inputs.value
+  } catch (error) {
+    return invalidVerificationInput(errorMessage(error), 'options.inputs')
+  }
+
+  if (!isObject(inputsValue) || Array.isArray(inputsValue)) {
+    return invalidVerificationInput('Workbook model verification options inputs must be an object', 'options.inputs')
+  }
+
+  return {
+    status: 'valid',
+    inputs: inputsValue,
+  }
+}
+
+function readVerificationActionInput(inputs: object | undefined, actionName: string): WorkbookVerificationActionInput {
+  if (inputs === undefined) {
+    return { status: 'valid' }
+  }
+
+  const path = childPath('inputs', actionName)
+  const descriptor = Object.getOwnPropertyDescriptor(inputs, actionName)
+  if (descriptor === undefined) {
+    return { status: 'valid' }
+  }
+  if (!('value' in descriptor)) {
+    return {
+      status: 'invalid',
+      error: {
+        code: 'invalid_action_input',
+        message: `Workbook model verification input for action ${actionName} must be a data property`,
+        path,
+        issueCode: 'invalid_action_input',
+      },
+    }
+  }
+  if (descriptor.value === undefined) {
+    return { status: 'valid' }
+  }
+
+  try {
+    return {
+      status: 'valid',
+      input: normalizeWorkbookActionInput(descriptor.value),
+    }
+  } catch (error) {
+    return {
+      status: 'invalid',
+      error: invalidActionInputRunError(error, path),
+    }
+  }
+}
+
+function failedVerificationAction(modelName: string, actionName: string, error: WorkbookRunError): WorkbookModelActionVerification {
+  return {
+    actionName,
+    planning: describePlanResult({
+      status: 'failed',
+      modelName,
+      actionName,
+      errors: Object.freeze([error]),
+      checks: Object.freeze([]),
+    }),
+  }
 }
 
 function ownPlanValue<T extends object, K extends keyof T>(value: T, key: K, path: string): T[K] {
@@ -714,7 +849,9 @@ export function verifyPlanData(plan: WorkbookActionPlanDescription): WorkbookPla
   return verifyPlan(hydratePlanData(plan))
 }
 
-export function verifyModel(model: unknown, options: WorkbookModelVerificationOptions = {}): WorkbookModelVerification {
+export function verifyModel(model: unknown, options?: WorkbookModelVerificationOptions): WorkbookModelVerification
+export function verifyModel(model: unknown, options?: unknown): WorkbookModelVerification
+export function verifyModel(model: unknown, options: unknown = {}): WorkbookModelVerification {
   let inspection: WorkbookModelInspection
   try {
     inspection = inspectModel(model)
@@ -726,8 +863,22 @@ export function verifyModel(model: unknown, options: WorkbookModelVerificationOp
       actions: Object.freeze([]),
     }
   }
+  const inputsResult = readVerificationInputs(options)
+  if (inputsResult.status === 'invalid') {
+    return {
+      status: 'invalid',
+      modelName: inspection.name,
+      errors: Object.freeze([inputsResult.error]),
+      actions: Object.freeze([]),
+    }
+  }
+
   const actions = inspection.actions.map((actionName): WorkbookModelActionVerification => {
-    const planning = planWorkbookAction(model, actionName, options.inputs?.[actionName])
+    const actionInput = readVerificationActionInput(inputsResult.inputs, actionName)
+    if (actionInput.status === 'invalid') {
+      return failedVerificationAction(inspection.name, actionName, actionInput.error)
+    }
+    const planning = planWorkbookAction(model, actionName, actionInput.input)
     const describedPlanning = describePlanResult(planning)
     if (planning.status === 'failed') {
       return {
