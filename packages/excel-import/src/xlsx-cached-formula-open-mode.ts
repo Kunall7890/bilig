@@ -34,6 +34,43 @@ export function shouldUseCachedFormulaOpenMode(args: {
   const worksheetFormulaEntries = args.formulaAudit?.formulas.filter((entry) => entry.context === 'worksheet-cell') ?? []
   return (
     worksheetFormulaEntries.length === args.formulaCellCount &&
-    worksheetFormulaEntries.every((entry) => entry.cacheStatus === 'trustedCached')
+    worksheetFormulaEntries.every((entry) => entry.cacheStatus === 'trustedCached') &&
+    calcChainExactlyCoversWorksheetFormulas(args.formulaAudit, worksheetFormulaEntries)
   )
+}
+
+function calcChainExactlyCoversWorksheetFormulas(
+  formulaAudit: WorkbookFormulaAuditSnapshot | undefined,
+  worksheetFormulaEntries: WorkbookFormulaAuditSnapshot['formulas'],
+): boolean {
+  const calcChainCells = formulaAudit?.calcChain?.cells ?? []
+  if (calcChainCells.length !== worksheetFormulaEntries.length) {
+    return false
+  }
+
+  const formulaKeys = new Set<string>()
+  for (const entry of worksheetFormulaEntries) {
+    const key = formulaAddressKey(entry.sheetName, entry.address)
+    if (key === undefined || formulaKeys.has(key)) {
+      return false
+    }
+    formulaKeys.add(key)
+  }
+
+  const calcChainKeys = new Set<string>()
+  for (const cell of calcChainCells) {
+    const key = formulaAddressKey(cell.sheetName, cell.address)
+    if (key === undefined || calcChainKeys.has(key) || !formulaKeys.has(key)) {
+      return false
+    }
+    calcChainKeys.add(key)
+  }
+  return calcChainKeys.size === formulaKeys.size
+}
+
+function formulaAddressKey(sheetName: string | undefined, address: string | undefined): string | undefined {
+  if (!sheetName || !address) {
+    return undefined
+  }
+  return `${sheetName}\u0000${address.toUpperCase()}`
 }
