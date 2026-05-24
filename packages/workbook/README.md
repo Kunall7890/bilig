@@ -204,6 +204,9 @@ Selector creation follows the same data boundary. `findTable`, `findColumn`,
 `findRange`, and `findRows` read option objects, row predicates, and header
 arrays through own data properties, rejecting accessor-backed fields before any
 getter can run.
+Transported row refs use that same selector contract too: ref-data guards,
+collection, cloning, and hydration reject operator/value pairs that `findRows`
+would reject.
 
 For full action handoff, use `toPlanData(plan)` before JSON transport. A runtime
 can call `checkPlanData(data)` to get structured path-based issues before

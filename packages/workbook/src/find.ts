@@ -9,6 +9,7 @@ import {
   normalizeTableSelector,
   requiredSelectorText,
   isWorkbookRowOperator,
+  isWorkbookRowValueCompatible,
   type FindColumnOptions,
   type FindRangeInput,
   type FindRowsOptions,
@@ -266,12 +267,15 @@ function isWorkbookRowsRefData(value: unknown): value is WorkbookRowsRefData {
     return false
   }
   const where = Object.getOwnPropertyDescriptor(value, 'where')?.value
+  const op = typeof where === 'object' && where !== null ? Object.getOwnPropertyDescriptor(where, 'op')?.value : undefined
+  const rowValue = typeof where === 'object' && where !== null ? Object.getOwnPropertyDescriptor(where, 'value')?.value : undefined
   if (
     typeof where !== 'object' ||
     where === null ||
     !hasOwnString(where, 'column') ||
-    !isWorkbookRowOperator(Object.getOwnPropertyDescriptor(where, 'op')?.value) ||
-    !isLiteralInput(Object.getOwnPropertyDescriptor(where, 'value')?.value)
+    !isWorkbookRowOperator(op) ||
+    !isLiteralInput(rowValue) ||
+    !isWorkbookRowValueCompatible(op, rowValue)
   ) {
     return false
   }

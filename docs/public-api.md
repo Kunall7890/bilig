@@ -542,6 +542,9 @@ or malformed selectors before the runtime handoff. That keeps bad agent intent
 out of the plan instead of letting an invalid address, blank column, duplicate
 header, invalid row operator, non-finite predicate value, or invalid
 operator/value pair fail later inside an engine adapter.
+The same operator/value compatibility is enforced for transported row refs, so
+`isWorkbookRefData`, `collectWorkbookRefData`, `toWorkbookRefData`, and
+`hydrateWorkbookRef` do not accept row predicates that `findRows` would reject.
 Table header selectors are an all-of match, not a coordinate or position
 contract. Headers are case-sensitive after trimming, stored in sorted order, and
 deduped so agents get stable ids for the same generic table intent.

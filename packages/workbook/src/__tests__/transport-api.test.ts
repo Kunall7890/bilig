@@ -206,6 +206,36 @@ describe('@bilig/workbook transport api', () => {
     expect(headerGetterInvoked).toBe(false)
   })
 
+  it('rejects transported row refs with incompatible operator values', () => {
+    const table = findTable({ name: 'Inputs' })
+    const rows = findRows({ table, where: { column: 'Status', op: 'contains', value: 'ready' } })
+    const data = toWorkbookRefData(rows)
+    const invalidRowsData = {
+      ...data,
+      where: {
+        ...data.where,
+        value: 12,
+      },
+    }
+
+    expect(isWorkbookRefData(invalidRowsData)).toBe(false)
+    expect(collectWorkbookRefData({ rows: invalidRowsData })).toEqual([toWorkbookRefData(table)])
+    expect(() => hydrateWorkbookRef(invalidRowsData)).toThrowError('Workbook ref data is invalid')
+    expect(() => toWorkbookRefData(invalidRowsData)).toThrowError('Workbook ref data is invalid')
+
+    const invalidColumnData = {
+      kind: 'column',
+      id: 'bad-column',
+      label: 'Bad column',
+      table: toWorkbookRefData(table),
+      rows: invalidRowsData,
+      name: 'Amount',
+    }
+
+    expect(isWorkbookRefData(invalidColumnData)).toBe(false)
+    expect(collectWorkbookRefData({ amount: invalidColumnData })).toEqual([toWorkbookRefData(table)])
+  })
+
   it('copies known nested ref fields without invoking extra accessors', () => {
     const range = findRange({ sheetName: 'Sheet1', address: 'D2' })
     const frozenData = toWorkbookRefData(range)
