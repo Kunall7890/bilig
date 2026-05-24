@@ -314,18 +314,21 @@ rejects stale or mismatched ids; `{ requirePlanId: true }` fails closed when the
 adapter omits that binding. Apply summaries may also carry `baseRevision` and
 `revision`, so a later agent can inspect which workbook revision the proof
 claimed to apply against.
-Use `{ strict: true }` as the single agent-safe option when callers want both
-apply proof and plan-id proof without remembering multiple flags.
+Use `{ strict: true }` as the single agent-safe option when callers want
+agent-grade proof without remembering multiple flags. Strict mode requires
+apply proof, plan-id proof, concrete applied ops for every planned command, and
+non-empty resolved-ref proof for commands that target workbook refs.
 Run options are data-only too: accessor-backed or non-boolean proof options
 return `invalid_run_options` before any adapter method is called.
 Use `workbookActionCommandDigest(command)` when a runtime needs to bind
 materialized ops to a specific planned command. Adapter apply results can return
 `commandReceipts`, one per planned command, with the command index, command kind,
-command digest, preview ops, and applied ops. `@bilig/workbook` rejects stale
-digests, missing commands, duplicate command indexes, mismatched receipt ops, or
-receipts whose flattened ops disagree with the apply-level ops. With
-`{ requireApplyProof: true }`, a plan with commands fails closed unless those
-command receipts are present.
+command digest, preview ops, applied ops, and optional `resolvedRefs` proof.
+`@bilig/workbook` rejects stale digests, missing commands, duplicate command
+indexes, mismatched receipt ops, or receipts whose flattened ops disagree with
+the apply-level ops. With `{ requireApplyProof: true }`, a plan with commands
+fails closed unless those command receipts are present. With `{ strict: true }`,
+empty per-command applied ops or missing resolved-ref proof fail closed too.
 Runtime apply results, undo refs, apply errors, and check verifier output are
 validated from own fields only; prototype-inherited fields are ignored before
 they can become run proof. Adapter-returned ops and verifier proof must be data

@@ -5,6 +5,7 @@ import {
   findRange,
   runWorkbookAction,
   verifyWorkbookReadbacks,
+  type findTable,
   type WorkbookActionPlan,
   type WorkbookCheckResult,
   type WorkbookModel,
@@ -28,6 +29,24 @@ function valueModel(): WorkbookModel<{ readonly output: ReturnType<typeof findRa
       write({ refs, workbook }) {
         workbook.writeValue(refs.output, 12)
         workbook.check.valueEquals(refs.output, 12)
+      },
+    },
+  })
+}
+
+function semanticTargetModel(): WorkbookModel<{ readonly table: ReturnType<typeof findTable> }> {
+  return defineModel({
+    name: 'run-semantic-target-model',
+
+    find(workbook) {
+      return {
+        table: workbook.findTable({ name: 'Inputs' }),
+      }
+    },
+
+    actions: {
+      write({ refs, workbook }) {
+        workbook.writeValue(refs.table, 'ready')
       },
     },
   })
@@ -74,11 +93,12 @@ function applied<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRunApplyResult {
       commandDigest: workbookActionCommandDigest(command),
       previewOps: plan.ops,
       appliedOps: plan.ops,
+      resolvedRefs: { commandIndex, target: command.target?.label ?? null },
     })),
   }
 }
 
-function commandReceipt<Refs>(plan: WorkbookActionPlan<Refs>, commandIndex = 0) {
+function commandReceipt<Refs>(plan: WorkbookActionPlan<Refs>, commandIndex = 0, options: { readonly resolvedRefs?: boolean } = {}) {
   const command = plan.commands[commandIndex]
   if (command === undefined) {
     throw new Error('expected planned command')
@@ -89,6 +109,7 @@ function commandReceipt<Refs>(plan: WorkbookActionPlan<Refs>, commandIndex = 0) 
     commandDigest: workbookActionCommandDigest(command),
     previewOps: plan.ops,
     appliedOps: plan.ops,
+    ...(options.resolvedRefs === false ? {} : { resolvedRefs: { commandIndex, target: command.target?.label ?? null } }),
   }
 }
 
@@ -358,6 +379,87 @@ describe('@bilig/workbook run proof boundary', () => {
       ],
       apply: expect.objectContaining({
         matched: true,
+        commandReceipts: [expect.objectContaining({ commandKind: 'writeValue' })],
+      }),
+      changed: [
+        {
+          kind: 'writeValue',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Write value to Sheet1!B2',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
+    })
+  })
+
+  it('strict mode fails closed when command receipts have no concrete applied ops', async () => {
+    const model = semanticTargetModel()
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => ({
+          status: 'applied',
+          planId: workbookPlanId(plan),
+          previewOps: [],
+          appliedOps: [],
+          commandReceipts: [commandReceipt(plan)],
+        }),
+      },
+      undefined,
+      { strict: true },
+    )
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'apply_not_verified',
+          message: 'Adapter did not bind command 0 to concrete applied ops',
+        },
+      ],
+      apply: expect.objectContaining({
+        matched: true,
+        planId: expect.any(String),
+        commandReceipts: [expect.objectContaining({ commandKind: 'writeValue' })],
+      }),
+      changed: [],
+      checks: [],
+    })
+  })
+
+  it('strict mode fails closed when command receipts omit resolved ref proof', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => ({
+          status: 'applied',
+          planId: workbookPlanId(plan),
+          previewOps: plan.ops,
+          appliedOps: plan.ops,
+          commandReceipts: [commandReceipt(plan, 0, { resolvedRefs: false })],
+        }),
+        read: (targets) => [{ target: first(targets), value: 12 }],
+      },
+      undefined,
+      { strict: true },
+    )
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'apply_not_verified',
+          message: 'Adapter did not return resolved ref proof for command 0',
+        },
+      ],
+      apply: expect.objectContaining({
+        matched: true,
+        planId: expect.any(String),
         commandReceipts: [expect.objectContaining({ commandKind: 'writeValue' })],
       }),
       changed: [

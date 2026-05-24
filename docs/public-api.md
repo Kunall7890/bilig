@@ -160,8 +160,8 @@ When `previewOps` and `appliedOps` are both present, `runWorkbookPlan` reports
 whether runtime apply matched preview. When they are missing, the result reports
 an unverified apply fact. Agents that need fail-closed execution can call
 `runWorkbookPlan(plan, adapter, { requireApplyProof: true })`, or use
-`{ strict: true }` to require both apply proof and plan-id proof with one
-option.
+`{ strict: true }` to require apply proof, plan-id proof, concrete command ops,
+and resolved-ref proof with one option.
 Plans with no apply requirements skip mutation entirely: a readback-only or
 check-only model can run with only `read` or `verifyChecks`, and the result has
 no `apply` summary because nothing was supposed to mutate.
@@ -682,12 +682,15 @@ adapter is asked to apply, so runtime proof can be tied back to the exact model,
 action, refs, commands, ops, changes, and checks that were planned.
 `workbookActionCommandDigest(command)` returns the stable digest for one planned
 high-level command. Apply adapters can return `commandReceipts` with command
-index, command kind, command digest, preview ops, and applied ops, so an agent
-can inspect which planned command produced which materialized operations.
+index, command kind, command digest, preview ops, applied ops, and resolved-ref
+proof, so an agent can inspect which planned command produced which materialized
+operations and which workbook refs the runtime materialized.
 `@bilig/workbook` rejects stale digests, duplicate or missing command indexes,
 receipt preview/apply mismatches, and receipts whose flattened ops do not match
 the apply-level preview or applied ops. With `requireApplyProof: true`, a plan
 with high-level commands fails closed unless those command receipts are present.
+With `strict: true`, each command receipt must also prove concrete applied ops
+and non-empty resolved refs for ref-targeting commands.
 For generic feature-command results, `@bilig/workbook` also derives the settled
 result status, matched flag, changed ranges, and errors from receipts before a
 bundle-bound result can pass validation.
@@ -711,11 +714,13 @@ the apply adapter is not called. If the adapter is missing a required method for
 the plan, the apply adapter is not called and the run fails with
 `adapter_missing_capability`. If preview/apply ops mismatch, the run fails with
 `apply_mismatch`. If `requireApplyProof` is true and the adapter omits preview
-or applied ops, or omits command receipts for a command-based plan, the run
-fails with `apply_not_verified`. If the adapter returns
+or applied ops, omits command receipts for a command-based plan, or returns
+command receipts with no concrete applied ops, the run fails with
+`apply_not_verified`. In strict mode, missing resolved-ref proof for a
+ref-targeting command also fails with `apply_not_verified`. If the adapter returns
 a stale `planId`, the run fails before readback or check proof; if
 `requirePlanId` is true and the adapter omits it, the run fails with
-`plan_not_verified`. `{ strict: true }` enables both proof requirements. Run
+`plan_not_verified`. `{ strict: true }` enables the agent-safe proof bundle. Run
 options and adapter methods are read as own data properties only; accessor-backed
 options fail with `invalid_run_options`, and accessor-backed runtime methods are
 treated as missing capabilities without invoking getters. If a readback
@@ -780,7 +785,8 @@ including range and table-column writes, falls back to explicit `plan.ops` for
 low-level plans, reads single-cell `valueEquals` and `formulaEquals` targets,
 and verifies generic `exists` and `noFormulaErrors` checks. When the engine
 applies a plan, the adapter returns matching `previewOps` and `appliedOps`, plus
-the stable plan id, per-command receipts, and JSON-safe apply proof. When the
+the stable plan id, per-command receipts, resolved-ref proof, and JSON-safe
+apply proof. When the
 engine captures an undo transaction, the adapter
 returns a portable `undo.ops` ref using the same workbook operation language.
 Consumer-defined business meaning stays in the model; the core adapter only

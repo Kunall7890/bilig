@@ -57,7 +57,8 @@ flowchart LR
   - stable run error code union for predictable agent branching
   - null-prototype model action manifests with own-action-only planning
   - transport-neutral run adapters for preview/apply/readback/check proof
-  - strict run mode for one-flag agent-safe apply and plan proof
+  - strict run mode for one-flag agent-safe apply, plan, concrete-op, and
+    resolved-ref proof
   - runtime adapter capability checks before mutation handoff
   - bundle-scoped receipt changed-range validation for command proof
   - duplicate command-id rejection for inspectable command bundles
@@ -88,6 +89,8 @@ flowchart LR
     and unverified apply facts
   - command-level apply receipts that bind each planned high-level command to
     the materialized preview and applied operations returned by a runtime
+  - strict command proof that rejects empty materialized ops or missing
+    resolved-ref evidence for ref-targeting commands
   - failed run ledgers that preserve changed summaries and undo metadata after
     runtime apply, but keep `changed: []` when failed apply proof reports no
     applied ops and no undo

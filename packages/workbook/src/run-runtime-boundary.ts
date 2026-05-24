@@ -5,6 +5,7 @@ import type { WorkbookRunApplySummary, WorkbookRunError } from './result.js'
 export type NormalizedWorkbookRunOptions = {
   readonly requireApplyProof: boolean
   readonly requirePlanId: boolean
+  readonly requireResolvedRefs: boolean
 }
 
 export type WorkbookRunOptionsNormalization =
@@ -119,6 +120,7 @@ export function normalizeRunOptions(options: unknown): WorkbookRunOptionsNormali
       options: {
         requireApplyProof: false,
         requirePlanId: false,
+        requireResolvedRefs: false,
       },
     }
   }
@@ -137,6 +139,7 @@ export function normalizeRunOptions(options: unknown): WorkbookRunOptionsNormali
       options: {
         requireApplyProof: strict || requireApplyProof,
         requirePlanId: strict || requirePlanId,
+        requireResolvedRefs: strict,
       },
     }
   } catch (error) {
@@ -145,6 +148,14 @@ export function normalizeRunOptions(options: unknown): WorkbookRunOptionsNormali
       error: runErrorAt('invalid_run_options', errorMessage(error), runOptionsErrorPath(error), 'invalid_run_options'),
     }
   }
+}
+
+function resolvedRefProofNeedsData(command: WorkbookActionPlan['commands'][number]): boolean {
+  return command.target !== undefined || (command.kind === 'writeFormula' && command.inputs.length > 0)
+}
+
+function hasResolvedRefProofData(value: unknown): boolean {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length > 0
 }
 
 export function applyProofErrors(
@@ -160,6 +171,25 @@ export function applyProofErrors(
   }
   if (options.requireApplyProof && plan.commands.length > 0 && apply.commandReceipts === undefined) {
     return [runError('apply_not_verified', 'Adapter did not bind planned commands to materialized ops')]
+  }
+  if (options.requireApplyProof && apply.commandReceipts !== undefined) {
+    const unprovedReceipt = apply.commandReceipts.find((receipt) => receipt.appliedOps.length === 0)
+    if (unprovedReceipt !== undefined) {
+      return [
+        runError('apply_not_verified', `Adapter did not bind command ${String(unprovedReceipt.commandIndex)} to concrete applied ops`),
+      ]
+    }
+  }
+  if (options.requireResolvedRefs && apply.commandReceipts !== undefined) {
+    const missingResolvedRefs = apply.commandReceipts.find((receipt) => {
+      const command = plan.commands[receipt.commandIndex]
+      return command !== undefined && resolvedRefProofNeedsData(command) && !hasResolvedRefProofData(receipt.resolvedRefs)
+    })
+    if (missingResolvedRefs !== undefined) {
+      return [
+        runError('apply_not_verified', `Adapter did not return resolved ref proof for command ${String(missingResolvedRefs.commandIndex)}`),
+      ]
+    }
   }
   if (options.requirePlanId && apply.planId === undefined) {
     return [runError('plan_not_verified', 'Adapter did not bind apply proof to a plan id')]
