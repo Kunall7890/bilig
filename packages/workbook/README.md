@@ -140,6 +140,9 @@ Action helper calls fail closed during planning too: write, clear, format, and
 low-level-op helpers reject malformed targets, non-literal values, invalid
 format options, invalid add-op options, and accessor-backed op payloads before a
 plan is returned.
+Check helper calls use the same boundary: malformed targets, readback options,
+custom check options, sparse ref arrays, and accessor-backed check payloads are
+rejected before a check is recorded.
 `verifyModel` keeps the same behavior at whole-model scope: invalid manifests
 return an invalid verdict with an `invalid_model` error and no actions.
 

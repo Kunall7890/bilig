@@ -400,6 +400,9 @@ Action helper calls also validate their own output boundary during planning:
 write, clear, format, and low-level-op helpers reject malformed targets,
 non-literal values, invalid format/add-op options, and accessor-backed op
 payloads before a plan is returned.
+Check helper calls validate the same way: bad targets, readback options, custom
+check options, sparse ref arrays, and accessor-backed check payloads fail before
+the check is recorded.
 Normalized payloads preserve consumer-owned JSON keys as own data properties,
 including names like `__proto__` and `constructor`, so transported tool payloads
 cannot mutate prototypes or disappear during canonicalization.

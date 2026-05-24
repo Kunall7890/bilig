@@ -96,6 +96,63 @@ describe('@bilig/workbook check api', () => {
     )
   })
 
+  it('rejects malformed check helper calls before reading unsafe values', () => {
+    const output = findRange({ sheetName: 'Model', address: 'C2' })
+    let targetLabelGetterInvoked = false
+    const targetWithGetter = {
+      kind: 'range',
+      id: 'bad-target',
+      range: {
+        sheetName: 'Model',
+        startAddress: 'C2',
+        endAddress: 'C2',
+      },
+    }
+    Object.defineProperty(targetWithGetter, 'label', {
+      enumerable: true,
+      get() {
+        targetLabelGetterInvoked = true
+        throw new Error('target label getter must not run')
+      },
+    })
+
+    expect(() => Reflect.apply(check.exists, undefined, [targetWithGetter])).toThrowError(
+      'Workbook check exists target must be a workbook ref',
+    )
+    expect(targetLabelGetterInvoked).toBe(false)
+
+    let optionsMessageGetterInvoked = false
+    const readbackOptions = {}
+    Object.defineProperty(readbackOptions, 'message', {
+      enumerable: true,
+      get() {
+        optionsMessageGetterInvoked = true
+        throw new Error('message getter must not run')
+      },
+    })
+    expect(() => Reflect.apply(check.valueEquals, undefined, [output, 1, readbackOptions])).toThrowError(
+      'Workbook check valueEquals options.message must be a data property',
+    )
+    expect(optionsMessageGetterInvoked).toBe(false)
+
+    let refsGetterInvoked = false
+    const customOptions = {
+      kind: 'contract',
+      message: 'Contract stays valid',
+    }
+    Object.defineProperty(customOptions, 'refs', {
+      enumerable: true,
+      get() {
+        refsGetterInvoked = true
+        throw new Error('refs getter must not run')
+      },
+    })
+    expect(() => Reflect.apply(check.custom, undefined, [customOptions])).toThrowError(
+      'Workbook custom check options.refs must be a data property',
+    )
+    expect(refsGetterInvoked).toBe(false)
+  })
+
   it('plans and describes readback checks through model actions', () => {
     const model = defineModel({
       name: 'readback-check-model',
@@ -233,6 +290,35 @@ describe('@bilig/workbook check api', () => {
           },
         ],
       }),
+    })
+  })
+
+  it('returns structured planning failures for malformed check helper calls in actions', () => {
+    const model = defineModel({
+      name: 'malformed-check-model',
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Model', address: 'C2' }),
+        }
+      },
+      actions: {
+        inspect({ workbook }) {
+          Reflect.apply(workbook.check.exists, undefined, [{ kind: 'range', id: 'bad-target', label: 'Bad target' }])
+        },
+      },
+    })
+
+    expect(planWorkbookAction(model, 'inspect')).toEqual({
+      status: 'failed',
+      modelName: 'malformed-check-model',
+      actionName: 'inspect',
+      checks: [],
+      errors: [
+        {
+          code: 'action_failed',
+          message: 'Workbook check exists target must be a workbook ref',
+        },
+      ],
     })
   })
 
