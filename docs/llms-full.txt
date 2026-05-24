@@ -989,6 +989,7 @@ budget checks, browser smoke, and tracked-file cleanliness checks.
 ## License
 
 MIT.
+
 ---
 
 ## WorkPaper Package README
