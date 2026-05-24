@@ -2,6 +2,8 @@ import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import type { GridGeometrySnapshot } from './gridGeometry.js'
 import type { GridSelection, Item, Rectangle } from './gridTypes.js'
 
+const DIRECT_SELECTION_FILL_CELL_LIMIT = 10_000
+
 export type GridSelectionVisualRectRole =
   | 'selection-fill'
   | 'selection-gridline'
@@ -201,17 +203,62 @@ function appendVisibleCellSelectionFillRects(
     return
   }
 
+  if (selectionCellCount(startCol, endColExclusive, startRow, endRowExclusive) <= DIRECT_SELECTION_FILL_CELL_LIMIT) {
+    appendBoundedCellSelectionFillRects(rects, geometry, startCol, endColExclusive, startRow, endRowExclusive, keyPrefix)
+    return
+  }
+
   const selectedCols = visibleColumnIndexes(geometry).filter((col) => col >= startCol && col < endColExclusive)
   const selectedRows = visibleRowIndexes(geometry).filter((row) => row >= startRow && row < endRowExclusive)
-  for (const row of selectedRows) {
-    for (const col of selectedCols) {
-      let segmentIndex = 0
-      for (const bounds of geometry.rangeScreenRects({ x: col, y: row, width: 1, height: 1 })) {
-        appendInsetRect(rects, 'selection-fill', `${keyPrefix}:cell:${col}:${row}:${segmentIndex}`, bounds, 1, 1)
-        segmentIndex += 1
-      }
+  appendIndexedCellSelectionFillRects(rects, geometry, selectedCols, selectedRows, keyPrefix)
+}
+
+function appendBoundedCellSelectionFillRects(
+  rects: GridSelectionVisualRect[],
+  geometry: GridGeometrySnapshot,
+  startCol: number,
+  endColExclusive: number,
+  startRow: number,
+  endRowExclusive: number,
+  keyPrefix: string,
+): void {
+  for (let row = startRow; row < endRowExclusive; row += 1) {
+    for (let col = startCol; col < endColExclusive; col += 1) {
+      appendCellSelectionFillRect(rects, geometry, col, row, keyPrefix)
     }
   }
+}
+
+function appendIndexedCellSelectionFillRects(
+  rects: GridSelectionVisualRect[],
+  geometry: GridGeometrySnapshot,
+  selectedCols: readonly number[],
+  selectedRows: readonly number[],
+  keyPrefix: string,
+): void {
+  for (const row of selectedRows) {
+    for (const col of selectedCols) {
+      appendCellSelectionFillRect(rects, geometry, col, row, keyPrefix)
+    }
+  }
+}
+
+function appendCellSelectionFillRect(
+  rects: GridSelectionVisualRect[],
+  geometry: GridGeometrySnapshot,
+  col: number,
+  row: number,
+  keyPrefix: string,
+): void {
+  let segmentIndex = 0
+  for (const bounds of geometry.rangeScreenRects({ x: col, y: row, width: 1, height: 1 })) {
+    appendInsetRect(rects, 'selection-fill', `${keyPrefix}:cell:${col}:${row}:${segmentIndex}`, bounds, 1, 1)
+    segmentIndex += 1
+  }
+}
+
+function selectionCellCount(startCol: number, endColExclusive: number, startRow: number, endRowExclusive: number): number {
+  return Math.max(0, endColExclusive - startCol) * Math.max(0, endRowExclusive - startRow)
 }
 
 function appendCellBorderRects(

@@ -2,8 +2,8 @@
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, test } from 'vitest'
-import { createGridAxisWorldIndex } from '../gridAxisWorldIndex.js'
-import { createGridGeometrySnapshotFromAxes } from '../gridGeometry.js'
+import { createGridAxisWorldIndex, type GridAxisWorldIndex } from '../gridAxisWorldIndex.js'
+import { createGridGeometrySnapshotFromAxes, type GridGeometrySnapshot } from '../gridGeometry.js'
 import { getGridMetrics } from '../gridMetrics.js'
 import { createColumnSliceSelection, createRangeSelection, createGridSelection } from '../gridSelection.js'
 import { buildGridSelectionVisualRects, GridSelectionVisualOverlay } from '../GridSelectionVisualOverlay.js'
@@ -166,6 +166,29 @@ describe('GridSelectionVisualOverlay', () => {
     expect(bottomRightRects.filter((rect) => rect.role === 'selection-gridline')).toHaveLength(0)
   })
 
+  test('keeps bounded range fill visible when visible index caches lag behind range geometry', () => {
+    const geometry = createGeometryWithStaleVisibleIndexes()
+    const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [2, 2])
+
+    const rects = buildGridSelectionVisualRects({
+      geometry,
+      gridSelection: selection,
+      selectedCell: [1, 1],
+      selectionRange: selection.current?.range ?? null,
+      showFillHandle: true,
+    })
+
+    expect(rects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 147, y: 45, width: 98, height: 18 }) }),
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 247, y: 65, width: 98, height: 18 }) }),
+        expect.objectContaining({ role: 'selection-border', bounds: expect.objectContaining({ x: 146, y: 44, width: 200, height: 40 }) }),
+      ]),
+    )
+    expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(4)
+    expect(rects.some((rect) => rect.role === 'active-border')).toBe(false)
+  })
+
   test('builds hover chrome in the DOM overlay without covering the selected range', () => {
     const geometry = createGeometry()
     const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
@@ -317,4 +340,28 @@ function createFrozenScrolledGeometry(scrollLeft = 50) {
     sheetName: 'Sheet1',
     updatedAt: 100,
   })
+}
+
+function createGeometryWithStaleVisibleIndexes(): GridGeometrySnapshot {
+  return createGridGeometrySnapshotFromAxes({
+    columns: createStaleVisibleRangeAxis(createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 })),
+    dpr: 2,
+    freezeCols: 0,
+    freezeRows: 0,
+    gridMetrics: getGridMetrics(),
+    hostHeight: 240,
+    hostWidth: 560,
+    rows: createStaleVisibleRangeAxis(createGridAxisWorldIndex({ axisLength: 20, defaultSize: 20 })),
+    scrollLeft: 0,
+    scrollTop: 0,
+    sheetName: 'Sheet1',
+    updatedAt: 100,
+  })
+}
+
+function createStaleVisibleRangeAxis(axis: GridAxisWorldIndex): GridAxisWorldIndex {
+  return {
+    ...axis,
+    visibleRangeForWorldRect: () => ({ count: 0, endIndexExclusive: 0, startIndex: 0 }),
+  }
 }
