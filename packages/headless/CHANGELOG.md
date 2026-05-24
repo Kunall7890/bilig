@@ -4,6 +4,29 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.90.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.86.1
+- Manual override: no
+
+## Features
+- feat(workbook): check transported ref data (2a685fd7)
+- feat(workbook): check live refs (998efa61)
+- feat(workbook): canonicalize transported plan data (3dd51d0e)
+
+## Fixes
+- fix(xlsx): preserve legacy comment vml after sheet rename (60706d82)
+- fix(workbook): ignore command envelope scratch fields (047a916d)
+- fix(workbook): allow command scratch metadata (53de4c71)
+- fix(workbook): canonicalize receipt ranges (35a7dc53)
+- fix(engine): block protected direct cell mutations (7983cce8)
+
+## Internal runtime changes
+- chore(release): runtime packages v0.87.0 (b7833b50)
+- chore(release): runtime packages v0.88.0 (ecbea8e9)
+- chore(release): runtime packages v0.89.0 (6c59925a)
+
 ## 0.89.0
 
 - Release type: minor
