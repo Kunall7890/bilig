@@ -610,6 +610,73 @@ describe('@bilig/workbook feature api', () => {
     })
   })
 
+  it('ignores command receipt changed range scratch fields without invoking getters', () => {
+    let getterInvoked = false
+    const changedRange = {
+      sheetName: 'Sheet1',
+      startAddress: 'A1',
+      endAddress: 'B3',
+    }
+    Object.defineProperty(changedRange, 'hiddenScratchpad', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    const receipt = normalizeWorkbookCommandReceipt({
+      status: 'applied',
+      featureId: 'tables',
+      commandId: 'tables.createFromSelection',
+      category: 'command',
+      changedRanges: [changedRange],
+    })
+
+    expect(receipt.changedRanges).toEqual([{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B3' }])
+    expect(checkWorkbookCommandReceipt(receipt)).toEqual({
+      status: 'valid',
+      receipt,
+      issues: [],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
+  it('rejects accessor-backed command receipt changed range fields without invoking getters', () => {
+    let getterInvoked = false
+    const changedRange = {
+      sheetName: 'Sheet1',
+      endAddress: 'B3',
+    }
+    Object.defineProperty(changedRange, 'startAddress', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    expect(
+      checkWorkbookCommandReceipt({
+        status: 'applied',
+        featureId: 'tables',
+        commandId: 'tables.createFromSelection',
+        category: 'command',
+        changedRanges: [changedRange],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_receipt',
+          path: 'changedRanges[0]',
+          message: 'Workbook command receipt changed range is invalid',
+        },
+      ],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
   it('matches command receipt ops by canonical data, not property order', () => {
     expect(
       workbookCommandReceiptOpsMatch({

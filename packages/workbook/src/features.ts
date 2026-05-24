@@ -211,6 +211,22 @@ function arrayDataValues<T>(value: unknown, guard: (entry: unknown) => entry is 
   return entries
 }
 
+function shallowArrayDataValues<T>(value: unknown, guard: (entry: unknown) => entry is T): readonly T[] | null {
+  if (!Array.isArray(value)) {
+    return null
+  }
+
+  const entries: T[] = []
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor) || !guard(descriptor.value)) {
+      return null
+    }
+    entries.push(descriptor.value)
+  }
+  return entries
+}
+
 function pushCommandRequestInputIssue(issues: WorkbookCommandRequestIssue[], value: unknown): void {
   if (value === undefined) {
     return
@@ -432,11 +448,6 @@ function pushCommandReceiptChangedRangesIssues(issues: WorkbookCommandReceiptIss
     issues.push(commandReceiptIssue('changedRanges', 'Workbook command receipt changed ranges must be an array'))
     return
   }
-  const accessorPath = firstAccessorPath(value, 'changedRanges')
-  if (accessorPath !== null) {
-    issues.push(commandReceiptIssue(accessorPath, 'Workbook command receipt changed ranges must contain only data properties'))
-    return
-  }
   for (let index = 0; index < value.length; index += 1) {
     const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
     if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
@@ -491,7 +502,16 @@ function pushCommandReceiptErrorsIssues(issues: WorkbookCommandReceiptIssue[], v
 }
 
 function dataArrayLength(value: unknown): number | null {
-  return Array.isArray(value) && firstAccessorPath(value, 'array') === null ? value.length : null
+  if (!Array.isArray(value)) {
+    return null
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
+      return null
+    }
+  }
+  return value.length
 }
 
 function pushCommandReceiptStatusInvariantIssues(issues: WorkbookCommandReceiptIssue[], value: Record<string, unknown>): void {
@@ -635,7 +655,7 @@ function normalizedCommandReceipt(value: unknown): WorkbookCommandReceipt | null
   if (
     (previewOps !== undefined && !isEngineOpArray(previewOps)) ||
     (appliedOps !== undefined && !isEngineOpArray(appliedOps)) ||
-    (changedRanges !== undefined && arrayDataValues(changedRanges, isCellRangeRefData) === null) ||
+    (changedRanges !== undefined && shallowArrayDataValues(changedRanges, isCellRangeRefData) === null) ||
     (proof !== undefined && !isWorkbookActionInput(proof)) ||
     (metadata !== undefined && !isWorkbookActionInput(metadata)) ||
     (message !== undefined && typeof message !== 'string') ||
@@ -662,7 +682,7 @@ function normalizedCommandReceipt(value: unknown): WorkbookCommandReceipt | null
     ...(changedRanges !== undefined
       ? {
           changedRanges: Object.freeze(
-            arrayDataValues(changedRanges, isCellRangeRefData)!.map((range) => normalizeReceiptRange(commandId, range)),
+            shallowArrayDataValues(changedRanges, isCellRangeRefData)!.map((range) => normalizeReceiptRange(commandId, range)),
           ),
         }
       : {}),
@@ -856,11 +876,17 @@ function deepFreezeOpClone(value: EngineOp): EngineOp {
 }
 
 function deepFreezeRangeClone(commandId: string, value: CellRangeRef): CellRangeRef {
-  const cloned = cloneData(value)
-  if (!isCellRangeRefData(cloned)) {
+  const sheetName = ownValue(value, 'sheetName')
+  const startAddress = ownValue(value, 'startAddress')
+  const endAddress = ownValue(value, 'endAddress')
+  if (typeof sheetName !== 'string' || typeof startAddress !== 'string' || typeof endAddress !== 'string') {
     throw new Error(`Workbook command receipt ${commandId} changed range clone is invalid`)
   }
-  return deepFreeze(cloned, new WeakSet())
+  return Object.freeze({
+    sheetName,
+    startAddress,
+    endAddress,
+  })
 }
 
 function deepFreeze<T>(value: T, seen: WeakSet<object>): T {
