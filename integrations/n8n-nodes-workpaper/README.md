@@ -114,4 +114,7 @@ examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.jso
 
 ## Version history
 
+- `0.1.2`: align the node codex category with n8n's supported `Development`
+  category.
+- `0.1.1`: publish through the shared trusted-publishing workflow.
 - `0.1.0`: initial forecast formula-readback action.
