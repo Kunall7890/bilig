@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.90.7
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.90.6
+- Manual override: no
+
+## Fixes
+- fix(xlsx): reject risky defined-name cache passthrough (a52af388)
+
 ## 0.90.6
 
 - Release type: patch
