@@ -250,6 +250,7 @@ describe('@bilig/workbook run api', () => {
       source: 'readback',
       value: 12,
     })
+    expect(Object.isFrozen(result.checks[0]?.proof)).toBe(true)
   })
 
   it('reports unverified apply proof when an adapter does not return preview and applied ops', async () => {
@@ -1369,6 +1370,13 @@ describe('@bilig/workbook run api', () => {
         },
       ],
     })
+    expect(Object.isFrozen(verification)).toBe(true)
+    expect(Object.isFrozen(verification.checks)).toBe(true)
+    expect(Object.isFrozen(verification.checks[0])).toBe(true)
+    expect(Object.isFrozen(verification.checks[0]?.expectation)).toBe(true)
+    expect(Object.isFrozen(verification.issues)).toBe(true)
+    expect(Object.isFrozen(verification.issues[0])).toBe(true)
+    expect(Object.isFrozen(verification.issues[0]?.target)).toBe(true)
   })
 
   it('supports async apply and async read adapters', async () => {

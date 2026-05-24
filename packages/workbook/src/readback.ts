@@ -1,7 +1,7 @@
 import { isLiteralInput, type LiteralInput } from '@bilig/protocol'
-import { isWorkbookRef, type WorkbookRef } from './find.js'
+import { hydrateWorkbookRef, isWorkbookRef, toWorkbookRefData, type WorkbookRef } from './find.js'
 import type { WorkbookFormulaLabel } from './formula.js'
-import { isWorkbookActionInput } from './input.js'
+import { normalizeWorkbookActionInput } from './input.js'
 import type { WorkbookCheckExpectation, WorkbookCheckResult } from './result.js'
 
 export interface WorkbookRunReadback {
@@ -38,7 +38,7 @@ function refKey(ref: WorkbookRef): string {
 }
 
 function issue(input: WorkbookReadbackIssue): WorkbookReadbackIssue {
-  return input
+  return Object.freeze(input)
 }
 
 function invalidReadback(message: string): WorkbookReadbackIssue {
@@ -150,17 +150,17 @@ interface SafeReadback {
 }
 
 function valid<T>(value: T): DataValidation<T> {
-  return {
+  return Object.freeze({
     status: 'valid',
     value,
-  }
+  })
 }
 
 function invalid<T>(message: string): DataValidation<T> {
-  return {
+  return Object.freeze({
     status: 'invalid',
     issue: invalidReadback(message),
-  }
+  })
 }
 
 function isRecord(value: unknown): value is object {
@@ -170,18 +170,18 @@ function isRecord(value: unknown): value is object {
 function optionalDataValue(value: object, key: string, path: string): OptionalData {
   const descriptor = Object.getOwnPropertyDescriptor(value, key)
   if (descriptor === undefined) {
-    return { status: 'missing' }
+    return Object.freeze({ status: 'missing' })
   }
   if (!('value' in descriptor)) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issue: invalidReadback(`Workbook readback proof at ${path} must be a data property`),
-    }
+    })
   }
-  return {
+  return Object.freeze({
     status: 'present',
     value: descriptor.value,
-  }
+  })
 }
 
 function requiredDataValue(value: object, key: string, path: string): DataValidation<unknown> {
@@ -217,14 +217,14 @@ function arrayDataValues<T>(
     }
     entries.push(entry.value)
   }
-  return valid(entries)
+  return valid(Object.freeze(entries))
 }
 
 function normalizeRef(value: unknown, path: string): DataValidation<WorkbookRef> {
   if (!isWorkbookRef(value)) {
     return invalid(`Workbook reference at ${path} is invalid`)
   }
-  return valid(value)
+  return valid(hydrateWorkbookRef(toWorkbookRefData(value)))
 }
 
 function normalizeRefArray(value: unknown, path: string): DataValidation<readonly WorkbookRef[]> {
@@ -250,10 +250,12 @@ function normalizeFormulaLabel(value: unknown, path: string): DataValidation<Wor
   if (checkedRef.status === 'invalid') {
     return checkedRef
   }
-  return valid({
-    name: name.value,
-    ref: checkedRef.value,
-  })
+  return valid(
+    Object.freeze({
+      name: name.value,
+      ref: checkedRef.value,
+    }),
+  )
 }
 
 function normalizeFormulaLabels(value: unknown, path: string): DataValidation<readonly WorkbookFormulaLabel[]> {
@@ -278,10 +280,12 @@ function normalizeExpectation(value: unknown, path: string): DataValidation<Work
     if (!isLiteralInput(expected.value)) {
       return invalid(`Workbook check expectation at ${path}.value is invalid`)
     }
-    return valid({
-      kind: 'valueEquals',
-      value: expected.value,
-    })
+    return valid(
+      Object.freeze({
+        kind: 'valueEquals',
+        value: expected.value,
+      }),
+    )
   }
 
   if (kind.value === 'formulaEquals') {
@@ -311,12 +315,14 @@ function normalizeExpectation(value: unknown, path: string): DataValidation<Work
       return normalizedLabels
     }
 
-    return valid({
-      kind: 'formulaEquals',
-      formula: formula.value,
-      inputs: normalizedInputs?.value ?? [],
-      labels: normalizedLabels?.value ?? [],
-    })
+    return valid(
+      Object.freeze({
+        kind: 'formulaEquals',
+        formula: formula.value,
+        inputs: normalizedInputs?.value ?? [],
+        labels: normalizedLabels?.value ?? [],
+      }),
+    )
   }
 
   return invalid(`Workbook check expectation at ${path}.kind is invalid`)
@@ -384,14 +390,14 @@ function normalizeCheck(value: unknown, path: string): DataValidation<SafeCheck>
   }
   let proofValue: WorkbookCheckResult['proof'] | undefined
   if (proof.status === 'present') {
-    const candidate = proof.value
-    if (!isWorkbookActionInput(candidate)) {
+    try {
+      proofValue = normalizeWorkbookActionInput(proof.value)
+    } catch {
       return invalid(`Workbook check at ${path}.proof is invalid`)
     }
-    proofValue = candidate
   }
 
-  const result: WorkbookCheckResult = {
+  const result: WorkbookCheckResult = Object.freeze({
     status: status.value,
     kind: kind.value,
     ...(checkedTarget !== undefined ? { target: checkedTarget.value } : {}),
@@ -399,15 +405,17 @@ function normalizeCheck(value: unknown, path: string): DataValidation<SafeCheck>
     message: message.value,
     ...(checkedExpectation !== undefined ? { expectation: checkedExpectation.value } : {}),
     ...(proofValue !== undefined ? { proof: proofValue } : {}),
-  }
-
-  return valid({
-    result,
-    kind: kind.value,
-    ...(checkedTarget !== undefined ? { target: checkedTarget.value } : {}),
-    ...(checkedExpectation !== undefined ? { expectation: checkedExpectation.value } : {}),
-    label: checkedTarget?.value.label ?? kind.value,
   })
+
+  return valid(
+    Object.freeze({
+      result,
+      kind: kind.value,
+      ...(checkedTarget !== undefined ? { target: checkedTarget.value } : {}),
+      ...(checkedExpectation !== undefined ? { expectation: checkedExpectation.value } : {}),
+      label: checkedTarget?.value.label ?? kind.value,
+    }),
+  )
 }
 
 function normalizeReadback(value: unknown, path: string): DataValidation<SafeReadback> {
@@ -428,55 +436,58 @@ function normalizeReadback(value: unknown, path: string): DataValidation<SafeRea
   if (valueReadback.status === 'invalid') {
     return valueReadback
   }
-  let safeValue: SafeReadbackData<LiteralInput> = { status: 'missing' }
+  let safeValue: SafeReadbackData<LiteralInput> = Object.freeze({ status: 'missing' })
   if (valueReadback.status === 'present') {
     const candidate = valueReadback.value
     if (!isLiteralInput(candidate)) {
       return invalid(`Workbook readback at ${path}.value is invalid`)
     }
-    safeValue = {
+    safeValue = Object.freeze({
       status: 'present',
       value: candidate,
-    }
+    })
   }
 
   const formulaReadback = optionalDataValue(value, 'formula', `${path}.formula`)
   if (formulaReadback.status === 'invalid') {
     return formulaReadback
   }
-  let safeFormula: SafeReadbackData<string | null> = { status: 'missing' }
+  let safeFormula: SafeReadbackData<string | null> = Object.freeze({ status: 'missing' })
   if (formulaReadback.status === 'present') {
     const candidate = formulaReadback.value
     if (typeof candidate !== 'string' && candidate !== null) {
       return invalid(`Workbook readback at ${path}.formula is invalid`)
     }
-    safeFormula = {
+    safeFormula = Object.freeze({
       status: 'present',
       value: candidate,
-    }
+    })
   }
 
-  const result: WorkbookRunReadback = {
+  const result: WorkbookRunReadback = Object.freeze({
     target: checkedTarget.value,
     ...(safeValue.status === 'present' ? { value: safeValue.value } : {}),
     ...(safeFormula.status === 'present' ? { formula: safeFormula.value } : {}),
-  }
-
-  return valid({
-    result,
-    target: checkedTarget.value,
-    key: refKey(checkedTarget.value),
-    value: safeValue,
-    formula: safeFormula,
   })
+
+  return valid(
+    Object.freeze({
+      result,
+      target: checkedTarget.value,
+      key: refKey(checkedTarget.value),
+      value: safeValue,
+      formula: safeFormula,
+    }),
+  )
 }
 
 function checked(check: SafeCheck, status: WorkbookCheckResult['status'], proof?: WorkbookCheckResult['proof']): WorkbookCheckResult {
-  return {
+  const normalizedProof = proof === undefined ? undefined : normalizeWorkbookActionInput(proof)
+  return Object.freeze({
     ...check.result,
     status,
-    ...(proof !== undefined ? { proof } : {}),
-  }
+    ...(normalizedProof !== undefined ? { proof: normalizedProof } : {}),
+  })
 }
 
 function verifyCheck(
@@ -539,20 +550,20 @@ export function verifyWorkbookReadbacks(
 ): WorkbookReadbackVerification {
   const checkValidation = arrayDataValues(checks, 'checks', normalizeCheck)
   if (checkValidation.status === 'invalid') {
-    return {
+    return Object.freeze({
       status: 'failed',
-      checks: [],
-      issues: [checkValidation.issue],
-    }
+      checks: Object.freeze([]),
+      issues: Object.freeze([checkValidation.issue]),
+    })
   }
 
   const readbackValidation = arrayDataValues(readbacks, 'readbacks', normalizeReadback)
   if (readbackValidation.status === 'invalid') {
-    return {
+    return Object.freeze({
       status: 'failed',
-      checks: checkValidation.value.map((check) => check.result),
-      issues: [readbackValidation.issue],
-    }
+      checks: Object.freeze(checkValidation.value.map((check) => check.result)),
+      issues: Object.freeze([readbackValidation.issue]),
+    })
   }
 
   const expectedTargets = new Set<string>()
@@ -588,9 +599,9 @@ export function verifyWorkbookReadbacks(
     }
   })
 
-  return {
+  return Object.freeze({
     status: issues.length === 0 ? 'passed' : 'failed',
-    checks: verifiedChecks,
-    issues,
-  }
+    checks: Object.freeze(verifiedChecks),
+    issues: Object.freeze(issues),
+  })
 }

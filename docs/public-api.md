@@ -77,6 +77,9 @@ prepaid, or other business models in this package.
   plan data without reconstructing the consumer's private `refs` shape.
 - `verifyPlanData` proves a JSON-transported plan description after it has lost
   local helper methods and consumer-private `refs` object shape.
+- `checkInput`, `checkPlanData`, `verifyPlan`, `verifyModel`, and
+  `verifyWorkbookReadbacks` return frozen verdict containers, generated issue
+  arrays, and proof checks, so an inspected result stays stable.
 
 The model contract is intentionally data-first. Refs are frozen. Helper methods
 such as `table.column("Amount")` and `rows.column("Amount")` are non-enumerable.
@@ -426,6 +429,10 @@ unknown model objects without wrapping the verifier in their own try/catch.
 Verification options use the same data boundary: `inputs` and each action input
 must be own data properties. Accessor-backed verification inputs return
 structured `invalid_action_input` results without invoking getters.
+The verdict containers and generated issue arrays from `checkInput`,
+`checkPlanData`, `verifyPlan`, and `verifyModel` are frozen, so an agent can
+inspect them once and pass them onward without later mutation changing the
+meaning.
 The frozen
 `workbookActionInputDescriptionKinds` list plus
 `isWorkbookActionInputDescriptionKind(value)`,
@@ -642,6 +649,9 @@ If the model manifest itself is invalid, the verdict is `invalid` with an
 Successfully planned actions include their runtime requirements in the same
 result, so an agent can inspect the planned intent, static proof, and adapter
 handoff checklist without stitching multiple API calls together.
+`verifyWorkbookReadbacks` freezes the returned runtime proof verdict, generated
+checks, and readback issues. Formula/value readback proof is normalized before it
+is attached to passed checks.
 `checkRuntimeAdapter(planOrRequirements, adapter)` compares that checklist to an
 adapter shape and returns a plain valid/invalid result with missing capability
 issues. It accepts a live plan, transported plan data, or the output of

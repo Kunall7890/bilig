@@ -137,6 +137,10 @@ The description layer is frozen too: `describeRef`, `describePlan`,
 `describePlanResult`, and `describeRunResult` return JSON-safe objects whose
 nested refs, commands, checks, apply proof, undo ops, and errors cannot be
 mutated after an agent has inspected them.
+Validation and proof results follow the same rule: `checkInput`,
+`checkPlanData`, `verifyPlan`, `verifyModel`, and `verifyWorkbookReadbacks`
+return frozen verdict containers, arrays, generated issues, and readback-derived
+checks.
 `planWorkbookAction` also validates that boundary before reading action metadata
 or running model code. Invalid manifests return a structured `invalid_model`
 failure instead of making the agent catch an accessor side effect.
@@ -211,7 +215,7 @@ exposes `refs: { refsUsed }` instead of the consumer's private model-shaped
 
 Action input is JSON-safe data, not a schema-framework object. Action metadata
 can describe generic input with `json`, `object`, `array`, `string`, `number`,
-`boolean`, and `null` kinds. `checkInput(description, value)` returns a plain
+`boolean`, and `null` kinds. `checkInput(description, value)` returns a frozen
 `{ status, input, issues }` result so an agent can reject malformed tool payloads
 before running workbook model code. Omitted input is valid unless the top-level
 description sets `required: true`, so agents can distinguish an optional payload

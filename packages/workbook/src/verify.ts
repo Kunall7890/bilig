@@ -124,12 +124,16 @@ function issue(input: {
   readonly path: string
   readonly ref?: WorkbookRef
 }): WorkbookPlanIssue {
-  return {
+  return Object.freeze({
     code: input.code,
     message: input.message,
     path: input.path,
     ...(input.ref !== undefined ? { ref: describeProblemRef(input.ref) } : {}),
-  }
+  })
+}
+
+function freezePlanIssues(issues: readonly WorkbookPlanIssue[]): readonly WorkbookPlanIssue[] {
+  return Object.freeze(issues.map((entry) => Object.freeze(entry)))
 }
 
 function concreteSingleCell(target: WorkbookRef): { sheetName: string; address: string } | null {
@@ -375,24 +379,24 @@ function prefixedInputPath(path: string, error: unknown): string {
 }
 
 function invalidActionInputRunError(error: unknown, path: string): WorkbookRunError {
-  return {
+  return Object.freeze({
     code: 'invalid_action_input',
     message: errorMessage(error),
     path: prefixedInputPath(path, error),
     issueCode: 'invalid_action_input',
-  }
+  })
 }
 
 function invalidVerificationInput(message: string, path: string): WorkbookVerificationInputs {
-  return {
+  return Object.freeze({
     status: 'invalid',
-    error: {
+    error: Object.freeze({
       code: 'invalid_action_input',
       message,
       path,
       issueCode: 'invalid_action_input',
-    },
-  }
+    }),
+  })
 }
 
 function readVerificationInputs(options: unknown): WorkbookVerificationInputs {
@@ -463,7 +467,7 @@ function readVerificationActionInput(inputs: object | undefined, actionName: str
 }
 
 function failedVerificationAction(modelName: string, actionName: string, error: WorkbookRunError): WorkbookModelActionVerification {
-  return {
+  return Object.freeze({
     actionName,
     planning: describePlanResult({
       status: 'failed',
@@ -472,7 +476,7 @@ function failedVerificationAction(modelName: string, actionName: string, error: 
       errors: Object.freeze([error]),
       checks: Object.freeze([]),
     }),
-  }
+  })
 }
 
 function ownPlanValue<T extends object, K extends keyof T>(value: T, key: K, path: string): T[K] {
@@ -511,18 +515,18 @@ function safePlanText(plan: unknown, key: string, fallback: string): string {
 }
 
 function invalidPlanVerification(plan: unknown, error: unknown): WorkbookPlanVerification {
-  return {
+  return Object.freeze({
     status: 'invalid',
     modelName: safePlanText(plan, 'modelName', 'unknown-model'),
     actionName: safePlanText(plan, 'actionName', 'unknown-action'),
-    issues: [
-      {
+    issues: freezePlanIssues([
+      Object.freeze({
         code: 'invalid_plan',
         path: 'plan',
         message: `Workbook plan is invalid: ${errorMessage(error)}`,
-      },
-    ],
-  }
+      }),
+    ]),
+  })
 }
 
 function formulaLabelsForCommand(
@@ -837,12 +841,12 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
     }
   })
 
-  return {
+  return Object.freeze({
     status: issues.length === 0 ? 'valid' : 'invalid',
     modelName,
     actionName,
-    issues,
-  }
+    issues: freezePlanIssues(issues),
+  })
 }
 
 export function verifyPlanData(plan: WorkbookActionPlanDescription): WorkbookPlanVerification {
@@ -856,58 +860,60 @@ export function verifyModel(model: unknown, options: unknown = {}): WorkbookMode
   try {
     inspection = inspectModel(model)
   } catch (error) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       modelName: invalidModelName(model),
       errors: Object.freeze([invalidModelRunError(error)]),
       actions: Object.freeze([]),
-    }
+    })
   }
   const inputsResult = readVerificationInputs(options)
   if (inputsResult.status === 'invalid') {
-    return {
+    return Object.freeze({
       status: 'invalid',
       modelName: inspection.name,
       errors: Object.freeze([inputsResult.error]),
       actions: Object.freeze([]),
-    }
+    })
   }
 
-  const actions = inspection.actions.map((actionName): WorkbookModelActionVerification => {
-    const actionInput = readVerificationActionInput(inputsResult.inputs, actionName)
-    if (actionInput.status === 'invalid') {
-      return failedVerificationAction(inspection.name, actionName, actionInput.error)
-    }
-    const planning = planWorkbookAction(model, actionName, actionInput.input)
-    const describedPlanning = describePlanResult(planning)
-    if (planning.status === 'failed') {
-      return {
+  const actions = Object.freeze(
+    inspection.actions.map((actionName): WorkbookModelActionVerification => {
+      const actionInput = readVerificationActionInput(inputsResult.inputs, actionName)
+      if (actionInput.status === 'invalid') {
+        return failedVerificationAction(inspection.name, actionName, actionInput.error)
+      }
+      const planning = planWorkbookAction(model, actionName, actionInput.input)
+      const describedPlanning = describePlanResult(planning)
+      if (planning.status === 'failed') {
+        return Object.freeze({
+          actionName,
+          planning: describedPlanning,
+        })
+      }
+      return Object.freeze({
         actionName,
         planning: describedPlanning,
-      }
-    }
-    return {
-      actionName,
-      planning: describedPlanning,
-      requirements: describeRuntimeRequirements(planning.plan),
-      verification: verifyPlan(planning.plan),
-    }
-  })
+        requirements: describeRuntimeRequirements(planning.plan),
+        verification: verifyPlan(planning.plan),
+      })
+    }),
+  )
 
   const isValid = actions.every((action) => action.planning.status === 'planned' && action.verification?.status === 'valid')
 
-  return {
+  return Object.freeze({
     status: isValid ? 'valid' : 'invalid',
     modelName: inspection.name,
     actions,
-  }
+  })
 }
 
 function invalidModelRunError(error: unknown): WorkbookRunError {
-  return {
+  return Object.freeze({
     code: 'invalid_model',
     message: error instanceof Error ? error.message : String(error),
-  }
+  })
 }
 
 function invalidModelName(model: unknown): string {

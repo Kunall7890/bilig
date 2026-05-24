@@ -1133,6 +1133,12 @@ describe('@bilig/workbook model api', () => {
       },
     ])
     expect(verification.actions[0]?.verification?.issues.map((issue) => issue.code)).toEqual(['formula_input_not_resolved'])
+    expect(Object.isFrozen(verification)).toBe(true)
+    expect(Object.isFrozen(verification.actions)).toBe(true)
+    expect(Object.isFrozen(verification.actions[0])).toBe(true)
+    expect(Object.isFrozen(verification.actions[0]?.verification)).toBe(true)
+    expect(Object.isFrozen(verification.actions[0]?.verification?.issues)).toBe(true)
+    expect(Object.isFrozen(verification.actions[0]?.verification?.issues[0])).toBe(true)
     expect(verification.actions[2]?.planning).toEqual({
       status: 'failed',
       modelName: 'whole-model-verification',

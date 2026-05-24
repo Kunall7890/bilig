@@ -401,52 +401,52 @@ export function checkInput(description: unknown, input: unknown): WorkbookAction
   try {
     normalizedDescription = normalizeWorkbookActionInputDescription(description)
   } catch (error) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([inputIssue('invalid_action_input_description', errorPath(error), errorMessage(error))]),
-    }
+    })
   }
 
   if (input === undefined) {
     const issues: WorkbookActionInputIssue[] = []
     validateInputDescription(normalizedDescription, undefined, 'input', issues)
     if (issues.length > 0) {
-      return {
+      return Object.freeze({
         status: 'invalid',
         issues: Object.freeze(issues),
-      }
+      })
     }
-    return {
+    return Object.freeze({
       status: 'valid',
-      issues: Object.freeze([]),
-    }
+      issues: Object.freeze([] as const),
+    })
   }
 
   let normalizedInput: WorkbookActionInput
   try {
     normalizedInput = normalizeWorkbookActionInput(input)
   } catch (error) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([inputIssue('invalid_action_input', errorPath(error), errorMessage(error))]),
-    }
+    })
   }
 
   const issues: WorkbookActionInputIssue[] = []
   validateInputDescription(normalizedDescription, normalizedInput, 'input', issues)
   if (issues.length > 0) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       input: normalizedInput,
       issues: Object.freeze(issues),
-    }
+    })
   }
 
-  return {
+  return Object.freeze({
     status: 'valid',
     input: normalizedInput,
-    issues: Object.freeze([]),
-  }
+    issues: Object.freeze([] as const),
+  })
 }
 
 export function normalizeOptionalWorkbookActionInput(input: WorkbookActionInput | undefined): WorkbookActionInput | undefined {

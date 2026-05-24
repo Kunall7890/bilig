@@ -982,6 +982,11 @@ describe('@bilig/workbook run proof boundary', () => {
         },
       ],
     })
+    expect(Object.isFrozen(verification)).toBe(true)
+    expect(Object.isFrozen(verification.checks)).toBe(true)
+    expect(Object.isFrozen(verification.checks[0])).toBe(true)
+    expect(Object.isFrozen(verification.issues)).toBe(true)
+    expect(Object.isFrozen(verification.issues[0])).toBe(true)
     expect(getterInvoked).toBe(false)
   })
 })

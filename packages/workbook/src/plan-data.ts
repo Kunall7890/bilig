@@ -393,10 +393,10 @@ function pushCheckArrayIssues(issues: WorkbookPlanDataIssue[], value: Record<str
 
 export function checkPlanData(value: unknown): WorkbookPlanDataCheckResult {
   if (!isRecord(value)) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([planDataIssue('plan', 'Workbook plan data must be an object')]),
-    }
+    })
   }
 
   const issues: WorkbookPlanDataIssue[] = []
@@ -410,23 +410,23 @@ export function checkPlanData(value: unknown): WorkbookPlanDataCheckResult {
   pushCheckArrayIssues(issues, value)
 
   if (issues.length > 0) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze(issues),
-    }
+    })
   }
   if (!isPlanData(value)) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([planDataIssue('plan', 'Workbook plan data is invalid')]),
-    }
+    })
   }
 
-  return {
+  return Object.freeze({
     status: 'valid',
     plan: value,
-    issues: Object.freeze([]),
-  }
+    issues: Object.freeze([] as const),
+  })
 }
 
 function hydrateRef(ref: WorkbookRefDescription): WorkbookRef {

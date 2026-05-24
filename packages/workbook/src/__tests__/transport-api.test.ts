@@ -322,12 +322,17 @@ describe('@bilig/workbook transport api', () => {
     }
     const data = parsedData
 
-    expect(checkPlanData(data)).toEqual({
+    const valid = checkPlanData(data)
+    expect(valid).toEqual({
       status: 'valid',
       plan: data,
       issues: [],
     })
-    expect(checkPlanData(null)).toEqual({
+    expect(Object.isFrozen(valid)).toBe(true)
+    expect(Object.isFrozen(valid.issues)).toBe(true)
+
+    const invalidNull = checkPlanData(null)
+    expect(invalidNull).toEqual({
       status: 'invalid',
       issues: [
         {
@@ -337,6 +342,9 @@ describe('@bilig/workbook transport api', () => {
         },
       ],
     })
+    expect(Object.isFrozen(invalidNull)).toBe(true)
+    expect(Object.isFrozen(invalidNull.issues)).toBe(true)
+    expect(Object.isFrozen(invalidNull.issues[0])).toBe(true)
 
     const broken = {
       ...data,

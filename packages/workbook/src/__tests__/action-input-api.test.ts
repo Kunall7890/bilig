@@ -73,13 +73,16 @@ describe('@bilig/workbook action input api', () => {
       },
       issues: [],
     })
+    expect(Object.isFrozen(valid)).toBe(true)
     expect(Object.isFrozen(valid.input)).toBe(true)
+    expect(Object.isFrozen(valid.issues)).toBe(true)
+    expect(Object.isFrozen(inputObject(valid.input).tags)).toBe(true)
 
-    expect(
-      checkInput(description, {
-        tags: ['ready', 3],
-      }),
-    ).toEqual({
+    const invalid = checkInput(description, {
+      tags: ['ready', 3],
+    })
+
+    expect(invalid).toEqual({
       status: 'invalid',
       input: {
         tags: ['ready', 3],
@@ -97,6 +100,9 @@ describe('@bilig/workbook action input api', () => {
         },
       ],
     })
+    expect(Object.isFrozen(invalid)).toBe(true)
+    expect(Object.isFrozen(invalid.issues)).toBe(true)
+    expect(Object.isFrozen(inputObject(invalid.input).tags)).toBe(true)
 
     expect(
       checkInput(

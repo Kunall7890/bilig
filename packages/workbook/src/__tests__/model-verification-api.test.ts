@@ -22,7 +22,8 @@ describe('@bilig/workbook model verification api', () => {
       },
     })
 
-    expect(verifyUnknownModel(modelWithAccessorName)).toEqual({
+    const accessorNameVerification = verifyUnknownModel(modelWithAccessorName)
+    expect(accessorNameVerification).toEqual({
       status: 'invalid',
       modelName: 'unknown-model',
       errors: [
@@ -33,6 +34,10 @@ describe('@bilig/workbook model verification api', () => {
       ],
       actions: [],
     })
+    expect(Object.isFrozen(accessorNameVerification)).toBe(true)
+    expect(Object.isFrozen(accessorNameVerification.errors)).toBe(true)
+    expect(Object.isFrozen(accessorNameVerification.errors?.[0])).toBe(true)
+    expect(Object.isFrozen(accessorNameVerification.actions)).toBe(true)
     expect(modelNameGetterInvoked).toBe(false)
 
     let actionGetterInvoked = false
