@@ -4,6 +4,33 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.90.3
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.90.0
+- Manual override: no
+
+## Fixes
+- fix(xlsx): preserve table query ownership (36dc4a9a)
+- fix(workbook): require undo proof data fields (9bc6df4d)
+- fix(workbook): require command result data fields (8cdd388a)
+- fix(xlsx): prune pivot cache sidecars on sheet delete (7f5d6b63)
+- fix(workbook): validate receipt changed ranges (1b00d1a6)
+- fix(xlsx): prune query tables on table delete (2e248432)
+- fix(workbook): reject array-backed runtime proof (128a6b22)
+- fix(xlsx): preserve native calculation save metadata (d0c02fc0)
+- fix(workbook): reject array-backed runtime requirements (e493cc0c)
+- fix(ui): surface authoritative render proof gaps (47eef0ea)
+- fix(workbook): reject array-backed plan data (3856e93a)
+- fix(xlsx): clear stale calc metadata after recalc (e4112ebd)
+- fix(workbook): reject array-backed readback proof (25e9c7c4)
+- fix(xlsx): require complete calc chain for cached open (a0d94cb1)
+- fix(ci): include Dockerfile in runtime release paths (fdd14737)
+
+## Internal runtime changes
+- chore(release): runtime packages v0.90.1 (1ff330dc)
+- chore(release): runtime packages v0.90.2 (f4d27d75)
+
 ## 0.90.2
 
 - Release type: patch
