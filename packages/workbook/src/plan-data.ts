@@ -421,10 +421,11 @@ export function checkPlanData(value: unknown): WorkbookPlanDataCheckResult {
       issues: Object.freeze([planDataIssue('plan', 'Workbook plan data is invalid')]),
     })
   }
+  const plan = describePlan(hydrateCheckedPlanData(value))
 
   return Object.freeze({
     status: 'valid',
-    plan: value,
+    plan,
     issues: Object.freeze([] as const),
   })
 }
@@ -520,17 +521,7 @@ function cloneOp(op: WorkbookOp): WorkbookOp {
   return Object.freeze(structuredClone(op))
 }
 
-export function toPlanData<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanData {
-  return describePlan(plan)
-}
-
-export function hydratePlanData(data: unknown): WorkbookActionPlan<WorkbookPlanDataRefs> {
-  const check = checkPlanData(data)
-  if (check.status === 'invalid') {
-    const [firstIssue] = check.issues
-    throw new Error(firstIssue === undefined ? 'Workbook plan data is invalid' : `Workbook plan data is invalid: ${firstIssue.message}`)
-  }
-  const plan = check.plan
+function hydrateCheckedPlanData(plan: WorkbookPlanData): WorkbookActionPlan<WorkbookPlanDataRefs> {
   const refsUsed = Object.freeze(mapArrayData(plan.refsUsed, isWorkbookRefDescription, hydrateRef))
   const input = plan.input === undefined ? undefined : normalizeWorkbookActionInput(plan.input)
   return Object.freeze({
@@ -544,6 +535,19 @@ export function hydratePlanData(data: unknown): WorkbookActionPlan<WorkbookPlanD
     changed: Object.freeze(mapArrayData(plan.changed, isChangeData, hydrateChange)),
     checks: Object.freeze(mapArrayData(plan.checks, isCheckData, hydrateCheck)),
   })
+}
+
+export function toPlanData<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanData {
+  return describePlan(plan)
+}
+
+export function hydratePlanData(data: unknown): WorkbookActionPlan<WorkbookPlanDataRefs> {
+  const check = checkPlanData(data)
+  if (check.status === 'invalid') {
+    const [firstIssue] = check.issues
+    throw new Error(firstIssue === undefined ? 'Workbook plan data is invalid' : `Workbook plan data is invalid: ${firstIssue.message}`)
+  }
+  return hydrateCheckedPlanData(check.plan)
 }
 
 export function isHydratedPlan<Refs>(value: unknown): value is WorkbookActionPlan<Refs> {

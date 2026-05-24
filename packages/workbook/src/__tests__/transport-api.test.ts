@@ -25,11 +25,26 @@ import {
   toPlanData,
   toWorkbookRefData,
   verifyPlanData,
+  workbookPlanId,
   type WorkbookActionPlanDescription,
 } from '../index.js'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
+}
+
+function mutableRecord(value: unknown): Record<string, unknown> {
+  if (!isRecord(value) || Array.isArray(value)) {
+    throw new Error('expected object record')
+  }
+  return value
+}
+
+function mutableRecordArray(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) {
+    throw new Error('expected object record array')
+  }
+  return value.map((entry) => mutableRecord(entry))
 }
 
 function isPlanDescription(value: unknown): value is WorkbookActionPlanDescription {
@@ -503,7 +518,9 @@ describe('@bilig/workbook transport api', () => {
       plan: data,
       issues: [],
     })
+    expect(valid.status === 'valid' ? valid.plan : undefined).not.toBe(data)
     expect(Object.isFrozen(valid)).toBe(true)
+    expect(valid.status === 'valid' ? Object.isFrozen(valid.plan) : false).toBe(true)
     expect(Object.isFrozen(valid.issues)).toBe(true)
 
     const invalidNull = checkPlanData(null)
@@ -569,6 +586,63 @@ describe('@bilig/workbook transport api', () => {
       ],
     })
     expect(() => hydratePlanData(broken)).toThrow('Workbook plan data is invalid: Workbook plan data modelName must be a string')
+  })
+
+  it('canonicalizes transported plan data before ids and hydration', () => {
+    const model = defineModel({
+      name: 'transport-canonical-plan-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'D2' }),
+        }
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeValue(refs.result, 1)
+        },
+      },
+    })
+    const plan = buildWorkbookActionPlan(model, 'write')
+    const data = structuredClone(toPlanData(plan))
+    const noisy = mutableRecord(structuredClone(data))
+    noisy['agentScratchpad'] = {
+      ignored: true,
+    }
+    const commands = mutableRecordArray(noisy['commands'])
+    const firstCommand = commands[0]
+    if (firstCommand === undefined) {
+      throw new Error('expected command')
+    }
+    firstCommand['agentScratchpad'] = 'ignored'
+    const target = mutableRecord(firstCommand['target'])
+    target['agentScratchpad'] = 'ignored'
+    const range = mutableRecord(target['range'])
+    range['agentScratchpad'] = 'ignored'
+
+    let extraGetterInvoked = false
+    Object.defineProperty(noisy, 'hiddenScratchpad', {
+      enumerable: true,
+      get() {
+        extraGetterInvoked = true
+        throw new Error('extra getter must not run')
+      },
+    })
+
+    const check = checkPlanData(noisy)
+    expect(check).toEqual({
+      status: 'valid',
+      plan: data,
+      issues: [],
+    })
+    expect(isPlanData(noisy)).toBe(true)
+    if (!isPlanData(noisy)) {
+      throw new Error('expected noisy plan data')
+    }
+    expect(workbookPlanId(noisy)).toBe(workbookPlanId(data))
+    expect(describePlan(hydratePlanData(noisy))).toEqual(data)
+    expect(extraGetterInvoked).toBe(false)
   })
 
   it('returns failed run results for invalid transported plan data without applying', async () => {

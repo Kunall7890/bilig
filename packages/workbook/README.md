@@ -222,7 +222,9 @@ prototype fields never satisfy the transport contract. Transported plan arrays
 must contain own enumerable data entries too; holes, non-enumerable entries, or
 accessor-backed entries are rejected without running getters. The hydrated plan
 exposes `refs: { refsUsed }` instead of the consumer's private model-shaped
-`refs` object, so transported execution stays generic.
+`refs` object, so transported execution stays generic. A valid
+`checkPlanData(data)` result returns canonical plan data, stripping caller-owned
+scratch fields before ids, hydration, requirements, or execution inspect it.
 
 ## Action Input
 

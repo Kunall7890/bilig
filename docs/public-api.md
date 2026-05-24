@@ -124,7 +124,10 @@ Agents that receive untrusted JSON can call `checkPlanData(data)` first to get
 boring `{ status, issues }` diagnostics such as `commands[0]` or `refsUsed[2]`
 instead of catching a generic hydration failure. Transported plan arrays are
 also data-only: holes, non-enumerable entries, or accessor-backed entries are
-rejected without invoking getters before hydration or execution.
+rejected without invoking getters before hydration or execution. Valid
+`checkPlanData` results return canonical plan data, so caller-owned scratch
+fields cannot change `workbookPlanId` or the payload later hydrated by runtime
+code.
 
 ### Runtime adapter contract
 
@@ -618,7 +621,9 @@ refs and helpers, and `verifyPlanData` verifies transported plan data using only
 and check proof keep nested JSON paths such as `input.rows[1]` and
 `checks[0].proof.when`. Plan-data validation treats transport payloads as own
 data only, so prototype-inherited fields cannot make an invalid payload look
-valid.
+valid. Valid `checkPlanData` results canonicalize the plan before returning it,
+so extra enumerable scratch fields are ignored consistently by ids, hydration,
+requirements, and execution.
 Plans are frozen handoff objects: action input, refs, refs used, commands,
 concrete ops, changed summaries, and checks cannot be rewritten after planning.
 That lets an agent inspect a plan once and pass the same intent to an adapter
@@ -693,7 +698,8 @@ issues. It accepts a live plan, transported plan data, or the output of
 `describeRuntimeRequirements`. Its verdict and issue arrays are frozen.
 `workbookPlanId(planOrData)` returns the stable id for the generic plan data an
 adapter is asked to apply, so runtime proof can be tied back to the exact model,
-action, refs, commands, ops, changes, and checks that were planned.
+action, refs, commands, ops, changes, and checks that were planned. Transported
+plan data is canonicalized through `checkPlanData` before hashing.
 `workbookActionCommandDigest(command)` returns the stable digest for one planned
 high-level command. Apply adapters can return `commandReceipts` with command
 index, command kind, command digest, preview ops, applied ops, and resolved-ref
