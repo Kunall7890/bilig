@@ -304,6 +304,24 @@ test('web app paints selected areas as one continuous body range and collapses o
   await expectSelectionVisualRoles(page, ['active-border', 'fill-handle'], 'visible')
 })
 
+test('@browser-ci web app paints forward-drag ranges without an internal active-cell box', async ({ page }) => {
+  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-forward-range-visual'))}&persist=0`)
+  await waitForWorkbookReady(page)
+
+  await dragProductBodySelection(page, 1, 1, 5, 12)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:F13')
+  await expect(page.getByTestId('name-box')).toHaveValue('B2:F13')
+  await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 B2')
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
+  await expectSelectionVisualRoles(page, ['selection-fill', 'selection-border', 'fill-handle'], 'visible')
+  await expectSelectedRangeBodyTint(page, 1, 1)
+  await expectSelectedRangeBodyTint(page, 1, 2)
+  await expectSelectedRangeBodyTint(page, 3, 6)
+  await expectSelectedRangeBodyTint(page, 5, 12)
+})
+
 test('@browser-ci web app keeps reverse-drag range selection chrome geometrically aligned', async ({ page }) => {
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-range-visual-geometry'))}&persist=0`)
   await waitForWorkbookReady(page)
