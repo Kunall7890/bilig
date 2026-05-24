@@ -415,6 +415,7 @@ async function measureProduct(
     product,
     source: url,
     operationResponseMsSamples: collection.samples.map((entry) => entry.operationResponseMs),
+    operationResponseProofs: collection.samples.map((entry) => entry.operationResponseProof),
     postOperationFrameMsSamples: collection.samples.map((entry) => entry.postOperationFrameMs),
     ...(uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
       ? {

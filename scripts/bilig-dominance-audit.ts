@@ -255,6 +255,9 @@ function buildChecklistItem(args: {
               `live same-corpus UI strict rendered-grid proof cases: ${String(
                 args.liveUiSameCorpus.strictRenderedGridProofCaseCount,
               )}/${String(args.liveUiSameCorpus.requiredCaseCount)}`,
+              `live same-corpus UI visible operation-response proof cases: ${String(
+                args.liveUiSameCorpus.visibleOperationResponseProofCaseCount,
+              )}/${String(args.liveUiSameCorpus.requiredCaseCount)}`,
               `live same-corpus UI current-contract evidence complete: ${String(args.liveUiSameCorpus.currentContractEvidenceComplete)}`,
               `live same-corpus UI run manifest invalid reasons: ${args.liveUiSameCorpus.runManifestInvalidReasons.join('; ') || 'none'}`,
               `live same-corpus UI missing inputs: ${args.liveUiSameCorpus.missingInputs.join(', ') || 'none'}`,
@@ -308,6 +311,13 @@ function uiSameCorpusLiveBlockers(status: BiligDominanceStatus['uiSameCorpus']):
   }
   if (!status.currentContractEvidenceComplete) {
     blockers.push('same-corpus UI proof does not satisfy the current render-proof contract')
+  }
+  if (status.visibleOperationResponseProofCaseCount !== status.requiredCaseCount) {
+    blockers.push(
+      `same-corpus UI proof has ${String(status.visibleOperationResponseProofCaseCount)}/${String(
+        status.requiredCaseCount,
+      )} visible operation-response proof cases`,
+    )
   }
   for (const reason of status.runManifestInvalidReasons) {
     blockers.push(`same-corpus UI run manifest: ${reason}`)

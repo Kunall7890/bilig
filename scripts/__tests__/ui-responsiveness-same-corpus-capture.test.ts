@@ -19,8 +19,16 @@ import {
   parseSaveStorageStateArgs,
   verifyXlsxCorpusFingerprint,
 } from '../capture-ui-responsiveness-same-corpus.ts'
-import { parseSameCorpusCapture, sameCorpusScenarioCaseFields } from '../gen-ui-responsiveness-live-browser-scorecard.ts'
-import { requiredUiResponsivenessSameCorpusWorkloads } from '../ui-responsiveness-same-corpus-workloads.ts'
+import {
+  parseSameCorpusCapture,
+  sameCorpusScenarioCaseFields,
+  type SameCorpusOperationResponseProof,
+} from '../gen-ui-responsiveness-live-browser-scorecard.ts'
+import {
+  requiredUiResponsivenessSameCorpusWorkloads,
+  uiSameCorpusWorkloadRequiresScrollEventEvidence,
+  type UiResponsivenessSameCorpusWorkload,
+} from '../ui-responsiveness-same-corpus-workloads.ts'
 import {
   buildCaptureScenarioProof,
   isSameCorpusProductPixelGridProofComplete,
@@ -979,12 +987,15 @@ describe('same-corpus UI responsiveness capture CLI', () => {
 function sameCorpusCaptureMeasurement(
   product: 'bilig' | 'google-sheets' | 'microsoft-excel-web',
   method: 'bilig-benchmark-state' | 'google-sheets-xlsx-export' | 'microsoft-excel-web-source-xlsx',
+  workload: UiResponsivenessSameCorpusWorkload = 'open-workbook',
 ) {
   const sourceWorkbookSha256 = product === 'bilig' ? 'a'.repeat(64) : product === 'google-sheets' ? 'b'.repeat(64) : 'c'.repeat(64)
+  const operationResponseProof = expectedSameCorpusOperationResponseProof(workload)
   return {
     product,
     source: product === 'bilig' ? 'http://127.0.0.1:5173/?benchmarkCorpus=wide-mixed-250k' : 'https://example.com/sheet',
     operationResponseMsSamples: [10, 11, 12],
+    operationResponseProofs: [operationResponseProof, operationResponseProof, operationResponseProof],
     postOperationFrameMsSamples: [8, 9, 10],
     corpusVerification: {
       verified: true,
@@ -1004,10 +1015,10 @@ function sameCorpusCaptureCase(args: {
   readonly biligRuntimeProof: ReturnType<typeof sameCorpusBiligRuntimeProof> | null
 }) {
   const bilig = {
-    ...sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state'),
+    ...sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', args.workload),
     ...(args.biligRuntimeProof ? { biligRuntimeProof: args.biligRuntimeProof } : {}),
   }
-  const googleSheets = sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export')
+  const googleSheets = sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export', args.workload)
   const scenarioProof = buildCaptureScenarioProof({
     bilig,
     googleSheets,
@@ -1026,6 +1037,16 @@ function sameCorpusCaptureCase(args: {
     bilig,
     googleSheets,
   }
+}
+
+function expectedSameCorpusOperationResponseProof(workload: UiResponsivenessSameCorpusWorkload): SameCorpusOperationResponseProof {
+  if (workload === 'open-workbook') {
+    return 'load-to-ready'
+  }
+  if (uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)) {
+    return 'visible-scroll-movement'
+  }
+  return 'visible-non-scroll-response'
 }
 
 function sameCorpusBiligRuntimeProof(buildKind: 'development' | 'production' | 'unknown') {

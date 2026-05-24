@@ -38,6 +38,7 @@ import type {
 } from './ui-responsiveness-same-corpus-proof.ts'
 import { sameCorpusUiRenderProofContractVersion } from './ui-responsiveness-same-corpus-proof.ts'
 import { sameCorpusUiCaptureToolVersion } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
+import type { SameCorpusOperationResponseProof } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import { isUiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export function parseUiResponsivenessLiveBrowserScorecard(value: Record<string, unknown>): UiResponsivenessLiveBrowserScorecard {
@@ -147,6 +148,7 @@ function parseSameCorpusRunManifest(value: Record<string, unknown>): UiResponsiv
     sampleCount: numberField(value, 'sampleCount'),
     caseCount: numberField(value, 'caseCount'),
     strictRenderedGridProofCaseCount: numberField(value, 'strictRenderedGridProofCaseCount'),
+    visibleOperationResponseProofCaseCount: numberField(value, 'visibleOperationResponseProofCaseCount'),
     legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
@@ -178,6 +180,7 @@ function parseSameCorpusCaptureRunManifest(value: Record<string, unknown>): Same
     sampleCount: numberField(value, 'sampleCount'),
     caseCount: numberField(value, 'caseCount'),
     strictRenderedGridProofCaseCount: numberField(value, 'strictRenderedGridProofCaseCount'),
+    visibleOperationResponseProofCaseCount: numberField(value, 'visibleOperationResponseProofCaseCount'),
     legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
@@ -200,6 +203,7 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
   const biligToMicrosoftExcelWebScrollEventP95Ratio = optionalNumberField(record, 'biligToMicrosoftExcelWebScrollEventP95Ratio')
   const tenXMeanAndP95Metric = optionalSameCorpusTenXMetric(record, 'tenXMeanAndP95Metric')
   const postOperationFrameGuardrailPassed = optionalBooleanField(record, 'postOperationFrameGuardrailPassed')
+  const operationResponseProofGuardrailPassed = optionalBooleanField(record, 'operationResponseProofGuardrailPassed')
   const biligRuntimeProofGuardrailPassed = optionalBooleanField(record, 'biligRuntimeProofGuardrailPassed')
   const scrollMovementGuardrailPassed = optionalBooleanField(record, 'scrollMovementGuardrailPassed')
   const sourceWorkbookFingerprintGuardrailPassed = optionalBooleanField(record, 'sourceWorkbookFingerprintGuardrailPassed')
@@ -229,6 +233,7 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
       ? { tenXMeanAndP95AgainstMicrosoftExcelWeb: booleanField(record, 'tenXMeanAndP95AgainstMicrosoftExcelWeb') }
       : {}),
     ...(postOperationFrameGuardrailPassed !== undefined ? { postOperationFrameGuardrailPassed } : {}),
+    ...(operationResponseProofGuardrailPassed !== undefined ? { operationResponseProofGuardrailPassed } : {}),
     ...(biligRuntimeProofGuardrailPassed !== undefined ? { biligRuntimeProofGuardrailPassed } : {}),
     ...(scrollMovementGuardrailPassed !== undefined ? { scrollMovementGuardrailPassed } : {}),
     ...(sourceWorkbookFingerprintGuardrailPassed !== undefined ? { sourceWorkbookFingerprintGuardrailPassed } : {}),
@@ -246,6 +251,7 @@ function parseSameCorpusMeasurement(value: Record<string, unknown>): UiResponsiv
     product: parseSameCorpusProduct(stringField(value, 'product')),
     source: stringField(value, 'source'),
     operationResponseMs: parseNumericSummary(objectField(value, 'operationResponseMs')),
+    operationResponseProofs: stringArrayField(value, 'operationResponseProofs').map(parseSameCorpusOperationResponseProof),
     postOperationFrameMs: parseNumericSummary(objectField(value, 'postOperationFrameMs')),
     ...(scrollEventResponseMs ? { scrollEventResponseMs } : {}),
     ...(scrollMovementPx ? { scrollMovementPx } : {}),
@@ -307,6 +313,7 @@ function parseSameCorpusCaptureMeasurement(
     product: parsedProduct,
     source: stringField(value, 'source'),
     operationResponseMsSamples: numericArrayField(value, 'operationResponseMsSamples'),
+    operationResponseProofs: stringArrayField(value, 'operationResponseProofs').map(parseSameCorpusOperationResponseProof),
     postOperationFrameMsSamples: numericArrayField(value, 'postOperationFrameMsSamples'),
     ...(Object.hasOwn(value, 'scrollEventResponseMsSamples')
       ? { scrollEventResponseMsSamples: numericArrayField(value, 'scrollEventResponseMsSamples') }
@@ -320,6 +327,13 @@ function parseSameCorpusCaptureMeasurement(
     corpusVerification: parseSameCorpusVerification(objectField(value, 'corpusVerification')),
     limitations: stringArrayField(value, 'limitations'),
   }
+}
+
+function parseSameCorpusOperationResponseProof(value: string): SameCorpusOperationResponseProof {
+  if (value === 'load-to-ready' || value === 'visible-non-scroll-response' || value === 'visible-scroll-movement') {
+    return value
+  }
+  throw new Error(`Unexpected same-corpus operation response proof: ${value}`)
 }
 
 function parseBiligRuntimeProof(value: Record<string, unknown>): SameCorpusBiligRuntimeProof {

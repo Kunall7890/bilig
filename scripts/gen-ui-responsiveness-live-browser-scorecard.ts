@@ -31,6 +31,7 @@ export type {
   SameCorpusCaptureRunManifest,
   SameCorpusCaptureMeasurement,
   SameCorpusCaptureVerifiedCell,
+  SameCorpusOperationResponseProof,
   SameCorpusScenarioCaseFields,
   SameCorpusProductSourceWorkbookFingerprint,
   UiResponsivenessSameCorpusCase,

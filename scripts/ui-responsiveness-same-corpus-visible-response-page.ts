@@ -33,7 +33,7 @@ export async function measureVisibleNonScrollResponse(
   const startedAt = performance.now()
   await runOperation()
   await waitForVisibleNonScrollResponse(page, product, workload, before)
-  return await sampleSettledOperation(page, performance.now() - startedAt)
+  return await sampleSettledOperation(page, performance.now() - startedAt, 'visible-non-scroll-response')
 }
 
 export function visibleNonScrollResponseChanged(

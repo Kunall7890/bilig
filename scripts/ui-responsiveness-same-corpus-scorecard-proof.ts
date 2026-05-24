@@ -16,6 +16,7 @@ import {
   type SameCorpusCaptureCorpusVerification,
   type SameCorpusCaptureMeasurement,
   type SameCorpusCaptureRunManifest,
+  type SameCorpusOperationResponseProof,
   type SameCorpusScenarioCaseFields,
   type SameCorpusProductSourceWorkbookFingerprint,
   type UiResponsivenessSameCorpusCase,
@@ -46,6 +47,7 @@ export type {
   SameCorpusCaptureMeasurement,
   SameCorpusCaptureRunManifest,
   SameCorpusCaptureVerifiedCell,
+  SameCorpusOperationResponseProof,
   SameCorpusScenarioCaseFields,
   SameCorpusProductSourceWorkbookFingerprint,
   UiResponsivenessSameCorpusCase,
@@ -163,6 +165,7 @@ function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCa
   const materializedCellCounts = [...new Set(cases.map((entry) => entry.materializedCells))].toSorted((left, right) => left - right)
   const biligProductionRuntimeProofCaseCount = cases.filter((entry) => hasBiligProductionRuntimeProof(entry.bilig)).length
   const strictRenderedGridProofCaseCount = cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
+  const visibleOperationResponseProofCaseCount = cases.filter((entry) => sameCorpusCaseOperationResponseProofGuardrailPassed(entry)).length
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
   ).length
@@ -177,6 +180,7 @@ function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCa
     legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
     strictRenderedGridProofCaseCount,
+    visibleOperationResponseProofCaseCount,
     tenXMeanAndP95CaseCount,
   })
   return {
@@ -193,6 +197,7 @@ function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCa
     sampleCount: manifestSampleCount(cases),
     caseCount: cases.length,
     strictRenderedGridProofCaseCount,
+    visibleOperationResponseProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
     currentContractEvidenceComplete: !invalidReasons.some(
@@ -214,6 +219,9 @@ export function buildSameCorpusCaptureRunManifest(
   const materializedCellCounts = [...new Set(cases.map((entry) => entry.materializedCells))].toSorted((left, right) => left - right)
   const biligProductionRuntimeProofCaseCount = cases.filter((entry) => hasBiligProductionRuntimeProof(entry.bilig)).length
   const strictRenderedGridProofCaseCount = cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
+  const visibleOperationResponseProofCaseCount = cases.filter((entry) =>
+    sameCorpusCaptureCaseOperationResponseProofGuardrailPassed(entry, sampleCount),
+  ).length
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
   ).length
@@ -228,6 +236,7 @@ export function buildSameCorpusCaptureRunManifest(
     legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
     strictRenderedGridProofCaseCount,
+    visibleOperationResponseProofCaseCount,
     tenXMeanAndP95CaseCount,
   })
   return {
@@ -245,6 +254,7 @@ export function buildSameCorpusCaptureRunManifest(
     sampleCount,
     caseCount: cases.length,
     strictRenderedGridProofCaseCount,
+    visibleOperationResponseProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
     currentContractEvidenceComplete: !invalidReasons.some(
@@ -266,6 +276,7 @@ function sameCorpusRunManifestInvalidReasons(args: {
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly materializedCellCounts: readonly number[]
   readonly strictRenderedGridProofCaseCount: number
+  readonly visibleOperationResponseProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
 }): string[] {
   const invalidReasons: string[] = []
@@ -301,6 +312,13 @@ function sameCorpusRunManifestInvalidReasons(args: {
   if (args.strictRenderedGridProofCaseCount !== requiredSameCorpusWorkloads.length) {
     invalidReasons.push(
       `strict rendered-grid proof covers ${String(args.strictRenderedGridProofCaseCount)}/${String(requiredSameCorpusWorkloads.length)} cases`,
+    )
+  }
+  if (args.visibleOperationResponseProofCaseCount !== requiredSameCorpusWorkloads.length) {
+    invalidReasons.push(
+      `visible operation-response proof covers ${String(args.visibleOperationResponseProofCaseCount)}/${String(
+        requiredSameCorpusWorkloads.length,
+      )} cases`,
     )
   }
   if (args.legacyInsufficientRenderedGridProofCaseCount > 0) {
@@ -326,6 +344,7 @@ function sameCorpusCaptureRunManifestInvalidReasons(args: {
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly materializedCellCounts: readonly number[]
   readonly strictRenderedGridProofCaseCount: number
+  readonly visibleOperationResponseProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
 }): string[] {
   const invalidReasons: string[] = []
@@ -361,6 +380,13 @@ function sameCorpusCaptureRunManifestInvalidReasons(args: {
   if (args.strictRenderedGridProofCaseCount !== requiredSameCorpusWorkloads.length) {
     invalidReasons.push(
       `strict rendered-grid proof covers ${String(args.strictRenderedGridProofCaseCount)}/${String(requiredSameCorpusWorkloads.length)} cases`,
+    )
+  }
+  if (args.visibleOperationResponseProofCaseCount !== requiredSameCorpusWorkloads.length) {
+    invalidReasons.push(
+      `visible operation-response proof covers ${String(args.visibleOperationResponseProofCaseCount)}/${String(
+        requiredSameCorpusWorkloads.length,
+      )} cases`,
     )
   }
   if (args.legacyInsufficientRenderedGridProofCaseCount > 0) {
@@ -444,8 +470,54 @@ function requiredProductSourceWorkbookFingerprintsPresent(fingerprints: readonly
   )
 }
 
+function sameCorpusCaseOperationResponseProofGuardrailPassed(entry: UiResponsivenessSameCorpusCase): boolean {
+  return sameCorpusMeasurementOperationResponseProofsPassed(entry.workload, entry.sampleCount, [
+    entry.bilig,
+    entry.googleSheets,
+    ...(entry.microsoftExcelWeb ? [entry.microsoftExcelWeb] : []),
+  ])
+}
+
+function sameCorpusCaptureCaseOperationResponseProofGuardrailPassed(entry: SameCorpusCaptureCase, sampleCount: number): boolean {
+  return sameCorpusMeasurementOperationResponseProofsPassed(entry.workload, sampleCount, [
+    entry.bilig,
+    entry.googleSheets,
+    ...(entry.microsoftExcelWeb ? [entry.microsoftExcelWeb] : []),
+  ])
+}
+
+function sameCorpusMeasurementOperationResponseProofsPassed(
+  workload: UiResponsivenessSameCorpusWorkload,
+  sampleCount: number,
+  measurements: readonly Pick<SameCorpusCaptureMeasurement | UiResponsivenessSameCorpusMeasurement, 'operationResponseProofs'>[],
+): boolean {
+  const expected = expectedSameCorpusOperationResponseProof(workload)
+  return measurements.every(
+    (measurement) =>
+      measurement.operationResponseProofs.length >= sampleCount && measurement.operationResponseProofs.every((proof) => proof === expected),
+  )
+}
+
+function expectedSameCorpusOperationResponseProof(workload: UiResponsivenessSameCorpusWorkload): SameCorpusOperationResponseProof {
+  if (workload === 'open-workbook') {
+    return 'load-to-ready'
+  }
+  if (uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)) {
+    return 'visible-scroll-movement'
+  }
+  return 'visible-non-scroll-response'
+}
+
 function manifestSampleCount(cases: readonly UiResponsivenessSameCorpusCase[]): number {
   return cases.length === 0 ? 0 : Math.min(...cases.map((entry) => entry.sampleCount))
+}
+
+function captureCaseSampleCount(entry: SameCorpusCaptureCase): number {
+  return Math.min(
+    entry.bilig.operationResponseMsSamples.length,
+    entry.googleSheets.operationResponseMsSamples.length,
+    ...(entry.microsoftExcelWeb ? [entry.microsoftExcelWeb.operationResponseMsSamples.length] : []),
+  )
 }
 
 function validateSameCorpusRunManifest(proof: UiResponsivenessSameCorpusProof): void {
@@ -483,6 +555,7 @@ function validateSameCorpusCapture(capture: SameCorpusCapture): void {
     for (const measurement of measurements) {
       if (
         measurement.operationResponseMsSamples.length < capture.sampleCount ||
+        measurement.operationResponseProofs.length < capture.sampleCount ||
         measurement.postOperationFrameMsSamples.length < capture.sampleCount
       ) {
         throw new Error(`UI responsiveness same-corpus capture has too few samples for ${entry.id}`)
@@ -588,6 +661,11 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
   const postOperationFrameGuardrailPassed = comparedProducts.every(
     (entry) => entry.postOperationFrameMs.p95 > 0 && entry.postOperationFrameMs.p95 <= 50,
   )
+  const operationResponseProofGuardrailPassed = sameCorpusMeasurementOperationResponseProofsPassed(
+    captureCase.workload,
+    captureCaseSampleCount(captureCase),
+    [captureCase.bilig, captureCase.googleSheets, ...(captureCase.microsoftExcelWeb ? [captureCase.microsoftExcelWeb] : [])],
+  )
   const sourceWorkbookFingerprintGuardrailPassed = comparedProducts.every(hasCapturedSourceWorkbookFingerprint)
   const biligRuntimeProofGuardrailPassed = hasBiligProductionRuntimeProof(bilig)
   const scrollMovementGuardrailPassed =
@@ -617,6 +695,7 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
   const visualProofGuardrailPassed = scenarioProof.screenshotProof.captured && scenarioProof.pixelGridProof.captured
   const tenXMeanAndP95AgainstGoogleSheets =
     timingMetricPassedAgainstGoogleSheets &&
+    operationResponseProofGuardrailPassed &&
     postOperationFrameGuardrailPassed &&
     visualProofGuardrailPassed &&
     biligRuntimeProofGuardrailPassed &&
@@ -625,6 +704,7 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
     timingMetricPassedAgainstMicrosoftExcelWeb === undefined
       ? undefined
       : timingMetricPassedAgainstMicrosoftExcelWeb &&
+        operationResponseProofGuardrailPassed &&
         postOperationFrameGuardrailPassed &&
         visualProofGuardrailPassed &&
         biligRuntimeProofGuardrailPassed &&
@@ -663,6 +743,7 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
     ...sameCorpusScenarioCaseFields(scenarioProof),
     scenarioProof,
     postOperationFrameGuardrailPassed,
+    operationResponseProofGuardrailPassed,
     biligRuntimeProofGuardrailPassed,
     sourceWorkbookFingerprintGuardrailPassed,
     tenXMeanAndP95AgainstGoogleSheets,
@@ -685,6 +766,7 @@ function buildSameCorpusMeasurement(capture: SameCorpusCaptureMeasurement): UiRe
     product: capture.product,
     source: capture.source,
     operationResponseMs: summarizeNumbers(capture.operationResponseMsSamples),
+    operationResponseProofs: [...capture.operationResponseProofs],
     postOperationFrameMs: summarizeNumbers(capture.postOperationFrameMsSamples),
     ...(capture.scrollEventResponseMsSamples ? { scrollEventResponseMs: summarizeNumbers(capture.scrollEventResponseMsSamples) } : {}),
     ...(capture.scrollMovementPxSamples ? { scrollMovementPx: summarizeNumbers(capture.scrollMovementPxSamples) } : {}),
@@ -776,6 +858,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
   const postOperationFrameGuardrailPassed = comparedProducts.every(
     (measurement) => measurement.postOperationFrameMs.p95 > 0 && measurement.postOperationFrameMs.p95 <= 50,
   )
+  const operationResponseProofGuardrailPassed = sameCorpusCaseOperationResponseProofGuardrailPassed(entry)
   const sourceWorkbookFingerprintGuardrailPassed = comparedProducts.every(hasCapturedSourceWorkbookFingerprint)
   const biligRuntimeProofGuardrailPassed = hasBiligProductionRuntimeProof(entry.bilig)
   const scrollMovementGuardrailPassed =
@@ -796,6 +879,12 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
     entry.postOperationFrameGuardrailPassed !== postOperationFrameGuardrailPassed
   ) {
     throw new Error(`UI responsiveness same-corpus post-frame guardrail is stale: ${entry.id}`)
+  }
+  if (
+    entry.operationResponseProofGuardrailPassed !== undefined &&
+    entry.operationResponseProofGuardrailPassed !== operationResponseProofGuardrailPassed
+  ) {
+    throw new Error(`UI responsiveness same-corpus operation-response proof guardrail is stale: ${entry.id}`)
   }
   if (
     entry.sourceWorkbookFingerprintGuardrailPassed !== undefined &&
@@ -833,6 +922,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
     : undefined
   const tenXAgainstGoogleSheets =
     timingMetricPassedAgainstGoogleSheets &&
+    operationResponseProofGuardrailPassed &&
     postOperationFrameGuardrailPassed &&
     visualProofGuardrailPassed &&
     biligRuntimeProofGuardrailPassed &&
@@ -841,6 +931,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
     timingMetricPassedAgainstMicrosoftExcelWeb === undefined
       ? undefined
       : timingMetricPassedAgainstMicrosoftExcelWeb &&
+        operationResponseProofGuardrailPassed &&
         postOperationFrameGuardrailPassed &&
         visualProofGuardrailPassed &&
         biligRuntimeProofGuardrailPassed &&
@@ -911,6 +1002,9 @@ function validateSameCorpusMeasurement(
     validateBiligRuntimeProof(measurement.biligRuntimeProof, measurement.source, caseId)
   }
   validateSummary(measurement.operationResponseMs, `${caseId} ${product} operationResponseMs`, sameCorpusSampleCount)
+  if (measurement.operationResponseProofs.length < sameCorpusSampleCount) {
+    throw new Error(`UI responsiveness same-corpus proof is missing operation-response proof for ${caseId}`)
+  }
   validateSummary(measurement.postOperationFrameMs, `${caseId} ${product} postOperationFrameMs`, sameCorpusSampleCount)
   if (measurement.scrollEventResponseMs) {
     validateSummary(measurement.scrollEventResponseMs, `${caseId} ${product} scrollEventResponseMs`, sameCorpusSampleCount)

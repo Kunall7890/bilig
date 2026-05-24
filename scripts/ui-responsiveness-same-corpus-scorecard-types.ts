@@ -9,11 +9,13 @@ import type {
 import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export type UiResponsivenessSameCorpusProduct = 'bilig' | 'google-sheets' | 'microsoft-excel-web'
+export type SameCorpusOperationResponseProof = 'load-to-ready' | 'visible-non-scroll-response' | 'visible-scroll-movement'
 
 export interface UiResponsivenessSameCorpusMeasurement {
   readonly product: UiResponsivenessSameCorpusProduct
   readonly source: string
   readonly operationResponseMs: NumericSummary
+  readonly operationResponseProofs: readonly SameCorpusOperationResponseProof[]
   readonly postOperationFrameMs: NumericSummary
   readonly scrollEventResponseMs?: NumericSummary
   readonly scrollMovementPx?: NumericSummary
@@ -66,6 +68,7 @@ export interface UiResponsivenessSameCorpusCase extends SameCorpusScenarioCaseFi
   readonly biligRuntimeProofGuardrailPassed?: boolean
   readonly scrollMovementGuardrailPassed?: boolean
   readonly sourceWorkbookFingerprintGuardrailPassed?: boolean
+  readonly operationResponseProofGuardrailPassed?: boolean
   readonly passed: boolean
 }
 
@@ -95,6 +98,7 @@ export interface UiResponsivenessSameCorpusRunManifest {
   readonly sampleCount: number
   readonly caseCount: number
   readonly strictRenderedGridProofCaseCount: number
+  readonly visibleOperationResponseProofCaseCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
   readonly currentContractEvidenceComplete: boolean
@@ -133,6 +137,7 @@ export interface SameCorpusCaptureRunManifest {
   readonly sampleCount: number
   readonly caseCount: number
   readonly strictRenderedGridProofCaseCount: number
+  readonly visibleOperationResponseProofCaseCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
   readonly currentContractEvidenceComplete: boolean
@@ -156,6 +161,7 @@ export interface SameCorpusCaptureMeasurement {
   readonly product: UiResponsivenessSameCorpusProduct
   readonly source: string
   readonly operationResponseMsSamples: number[]
+  readonly operationResponseProofs: SameCorpusOperationResponseProof[]
   readonly postOperationFrameMsSamples: number[]
   readonly scrollEventResponseMsSamples?: number[]
   readonly scrollMovementPxSamples?: number[]
@@ -208,4 +214,4 @@ export interface SameCorpusCaptureCorpusVerification {
   readonly checkedCells: readonly SameCorpusCaptureVerifiedCell[]
 }
 
-export const sameCorpusUiCaptureToolVersion = 'same-corpus-capture-v2'
+export const sameCorpusUiCaptureToolVersion = 'same-corpus-capture-v3'

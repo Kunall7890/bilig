@@ -2,11 +2,13 @@ import type { Page } from '@playwright/test'
 
 import type { CaptureArgs } from './ui-responsiveness-same-corpus-args.ts'
 import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-live-browser-scorecard.ts'
+import type { SameCorpusOperationResponseProof } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 import { collectFrameIntervals, settleFrames, waitForNextFrame } from './ui-responsiveness-same-corpus-page-utils.ts'
 
 export interface ProductOperationSample {
   readonly operationResponseMs: number
+  readonly operationResponseProof: SameCorpusOperationResponseProof
   readonly postOperationFrameMs: number
   readonly scrollEventResponseMs?: number
   readonly scrollMovementPx?: number
@@ -49,7 +51,7 @@ export async function measureProductWorkload(args: {
   readonly hooks: SameCorpusWorkloadRunnerHooks
 }): Promise<ProductOperationSample> {
   if (args.workload === 'open-workbook') {
-    return await sampleSettledOperation(args.page, args.loadToReadyMs)
+    return await sampleSettledOperation(args.page, args.loadToReadyMs, 'load-to-ready')
   }
   if (args.workload === 'scroll-vertical') {
     return await args.hooks.measureVisibleScrollResponseWithRetries(args.page, args.product, 0, args.captureArgs.deltaY)
@@ -89,11 +91,16 @@ async function measureNonScrollProductWorkload(
   })
 }
 
-export async function sampleSettledOperation(page: Page, operationResponseMs: number): Promise<ProductOperationSample> {
+export async function sampleSettledOperation(
+  page: Page,
+  operationResponseMs: number,
+  operationResponseProof: SameCorpusOperationResponseProof,
+): Promise<ProductOperationSample> {
   await waitForNextFrame(page)
   const frameIntervals = await collectFrameIntervals(page, 12)
   return {
     operationResponseMs,
+    operationResponseProof,
     postOperationFrameMs: percentile(frameIntervals, 0.95),
   }
 }

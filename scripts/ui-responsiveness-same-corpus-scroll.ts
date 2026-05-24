@@ -1,5 +1,8 @@
+import type { SameCorpusOperationResponseProof } from './ui-responsiveness-same-corpus-scorecard-types.ts'
+
 export interface ScrollSample {
   readonly operationResponseMs: number
+  readonly operationResponseProof: SameCorpusOperationResponseProof
   readonly postOperationFrameMs: number
   readonly scrollEventResponseMs: number
   readonly scrollMovementPx: number
@@ -47,6 +50,7 @@ export async function measureVisibleScrollResponseWithHooks(hooks: VisibleScroll
   const frameIntervals = await hooks.collectFrameIntervals(12)
   return {
     operationResponseMs,
+    operationResponseProof: 'visible-scroll-movement',
     postOperationFrameMs: percentile(frameIntervals, 0.95),
     scrollEventResponseMs: scrollResult.scrollEventResponseMs,
     scrollMovementPx,

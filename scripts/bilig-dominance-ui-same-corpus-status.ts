@@ -30,6 +30,7 @@ export interface UiSameCorpusStatus {
   readonly runManifest: UiResponsivenessSameCorpusRunManifest | null
   readonly renderProofContractVersion: string | null
   readonly strictRenderedGridProofCaseCount: number
+  readonly visibleOperationResponseProofCaseCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly currentContractEvidenceComplete: boolean
   readonly googleSheetsTenXRequirementSatisfied: boolean
@@ -92,6 +93,7 @@ export interface UiSameCorpusCaptureArtifactStatus {
   readonly sampleCount: number | null
   readonly caseCount: number | null
   readonly strictRenderedGridProofCaseCount: number | null
+  readonly visibleOperationResponseProofCaseCount: number | null
   readonly legacyInsufficientRenderedGridProofCaseCount: number | null
   readonly tenXMeanAndP95CaseCount: number | null
   readonly currentContractEvidenceComplete: boolean | null
@@ -244,6 +246,9 @@ export function buildUiSameCorpusStatus(
     renderProofContractVersion: runManifest?.contractVersion ?? null,
     strictRenderedGridProofCaseCount:
       runManifest?.strictRenderedGridProofCaseCount ?? proof.cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length,
+    visibleOperationResponseProofCaseCount:
+      runManifest?.visibleOperationResponseProofCaseCount ??
+      proof.cases.filter((entry) => entry.operationResponseProofGuardrailPassed === true).length,
     legacyInsufficientRenderedGridProofCaseCount:
       runManifest?.legacyInsufficientRenderedGridProofCaseCount ?? proof.cases.filter(hasLegacyInsufficientRenderedGridProof).length,
     currentContractEvidenceComplete: runManifest?.currentContractEvidenceComplete ?? false,
@@ -350,6 +355,7 @@ function buildUiSameCorpusCaptureArtifactStatus(path: string, capture: SameCorpu
       sampleCount: capture.sampleCount,
       caseCount: capture.cases.length,
       strictRenderedGridProofCaseCount: runManifest?.strictRenderedGridProofCaseCount ?? null,
+      visibleOperationResponseProofCaseCount: runManifest?.visibleOperationResponseProofCaseCount ?? null,
       legacyInsufficientRenderedGridProofCaseCount: runManifest?.legacyInsufficientRenderedGridProofCaseCount ?? null,
       tenXMeanAndP95CaseCount: proof.tenXMeanAndP95CaseCount,
       currentContractEvidenceComplete: runManifest?.currentContractEvidenceComplete ?? null,
@@ -392,6 +398,7 @@ function buildParsedUiSameCorpusCaptureArtifactStatus(
     sampleCount: capture.sampleCount,
     caseCount: capture.cases.length,
     strictRenderedGridProofCaseCount: capture.runManifest.strictRenderedGridProofCaseCount,
+    visibleOperationResponseProofCaseCount: capture.runManifest.visibleOperationResponseProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount: capture.runManifest.legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount: capture.runManifest.tenXMeanAndP95CaseCount,
     currentContractEvidenceComplete: capture.runManifest.currentContractEvidenceComplete,
@@ -421,6 +428,7 @@ function buildInvalidUiSameCorpusCaptureArtifactStatus(
     sampleCount: null,
     caseCount: null,
     strictRenderedGridProofCaseCount: null,
+    visibleOperationResponseProofCaseCount: null,
     legacyInsufficientRenderedGridProofCaseCount: null,
     tenXMeanAndP95CaseCount: null,
     currentContractEvidenceComplete: null,
@@ -611,6 +619,7 @@ function uiSameCorpusTenXRequirementSatisfied(
     proof.runManifest.googleSheetsTenXRequirementSatisfied &&
     proof.runManifest.invalidReasons.length === 0 &&
     proof.runManifest.strictRenderedGridProofCaseCount === proof.requiredCaseCount &&
+    proof.runManifest.visibleOperationResponseProofCaseCount === proof.requiredCaseCount &&
     proof.requiredProductCount === 2 &&
     proof.requiredCaseCount > 0 &&
     proof.cases.length === proof.requiredCaseCount &&

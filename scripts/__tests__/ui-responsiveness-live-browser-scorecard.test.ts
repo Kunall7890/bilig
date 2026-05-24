@@ -18,6 +18,7 @@ import {
   validateUiResponsivenessLiveBrowserScorecard,
   type SameCorpusCapture,
   type SameCorpusCaptureMeasurement,
+  type SameCorpusOperationResponseProof,
   type UiResponsivenessLiveBrowserScorecard,
   type UiResponsivenessSameCorpusProof,
 } from '../gen-ui-responsiveness-live-browser-scorecard.ts'
@@ -71,6 +72,7 @@ describe('UI responsiveness live browser scorecard', () => {
       contractVersion: 'same-corpus-ui-v4',
       caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+      visibleOperationResponseProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       legacyInsufficientRenderedGridProofCaseCount: 0,
       tenXMeanAndP95CaseCount: 1,
       currentContractEvidenceComplete: true,
@@ -173,6 +175,7 @@ describe('UI responsiveness live browser scorecard', () => {
         sampleCount: 3,
         caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
         strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+        visibleOperationResponseProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
         legacyInsufficientRenderedGridProofCaseCount: 0,
         tenXMeanAndP95CaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
         currentContractEvidenceComplete: true,
@@ -769,6 +772,7 @@ function sameCorpusCaptureMeasurementFixture(
     product,
     source,
     operationResponseMsSamples,
+    operationResponseProofs: sameCorpusOperationResponseProofSamples(workload),
     postOperationFrameMsSamples: product === 'bilig' ? [8, 9, 10] : [14, 15, 16],
     ...(requiresScrollEventSamples
       ? { scrollEventResponseMsSamples: operationResponseMsSamples, scrollMovementPxSamples: [720, 720, 720] }
@@ -777,6 +781,21 @@ function sameCorpusCaptureMeasurementFixture(
     corpusVerification: corpusVerification(method, verifiedCells()),
     limitations: [],
   }
+}
+
+function sameCorpusOperationResponseProofSamples(workload: UiResponsivenessSameCorpusWorkload): SameCorpusOperationResponseProof[] {
+  const proof = expectedSameCorpusOperationResponseProof(workload)
+  return [proof, proof, proof]
+}
+
+function expectedSameCorpusOperationResponseProof(workload: UiResponsivenessSameCorpusWorkload): SameCorpusOperationResponseProof {
+  if (workload === 'open-workbook') {
+    return 'load-to-ready'
+  }
+  if (uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)) {
+    return 'visible-scroll-movement'
+  }
+  return 'visible-non-scroll-response'
 }
 
 function biligRuntimeProofFixture(source: string) {

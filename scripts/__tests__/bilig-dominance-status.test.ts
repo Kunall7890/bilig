@@ -20,7 +20,10 @@ import {
   type SameCorpusPixelGridProof,
   type SameCorpusProductPixelGridProof,
 } from '../ui-responsiveness-same-corpus-proof.ts'
-import { requiredUiResponsivenessSameCorpusWorkloads } from '../ui-responsiveness-same-corpus-workloads.ts'
+import {
+  requiredUiResponsivenessSameCorpusWorkloads,
+  uiSameCorpusWorkloadRequiresScrollEventEvidence,
+} from '../ui-responsiveness-same-corpus-workloads.ts'
 import { buildFixtureInput } from './bilig-dominance-scorecard.fixture.ts'
 
 const sameCorpusFixtureFingerprint = buildSameCorpusFingerprint(buildWorkbookBenchmarkCorpus('wide-mixed-250k')).corpusFingerprint
@@ -786,6 +789,7 @@ function failingSameCorpusCapture(
       product: 'bilig',
       source: 'e2e/tests/web-shell-scroll-performance.pw.ts',
       operationResponseMsSamples: [200, 200, 200],
+      operationResponseProofs: sameCorpusOperationResponseProofSamples(workload),
       postOperationFrameMsSamples: [12, 12, 12],
       corpusVerification: sameCorpusVerification('bilig-benchmark-state'),
       limitations: [],
@@ -794,6 +798,7 @@ function failingSameCorpusCapture(
       product: 'google-sheets',
       source: index === 0 ? (args.firstGoogleSheetsSource ?? defaultGoogleSheetsSource) : defaultGoogleSheetsSource,
       operationResponseMsSamples: [100, 100, 100],
+      operationResponseProofs: sameCorpusOperationResponseProofSamples(workload),
       postOperationFrameMsSamples: [16, 16, 16],
       corpusVerification:
         index === 0 ? (args.firstGoogleSheetsVerification ?? defaultGoogleSheetsVerification) : defaultGoogleSheetsVerification,
@@ -803,6 +808,7 @@ function failingSameCorpusCapture(
       product: 'microsoft-excel-web',
       source: 'https://view.officeapps.live.com/op/view.aspx?src=sameCorpusWorkbook',
       operationResponseMsSamples: [100, 100, 100],
+      operationResponseProofs: sameCorpusOperationResponseProofSamples(workload),
       postOperationFrameMsSamples: [16, 16, 16],
       corpusVerification: sameCorpusVerification('microsoft-excel-web-source-xlsx'),
       limitations: [],
@@ -838,6 +844,16 @@ function failingSameCorpusCapture(
     limitations: [],
     cases,
   }
+}
+
+function sameCorpusOperationResponseProofSamples(workload: (typeof requiredUiResponsivenessSameCorpusWorkloads)[number]) {
+  const proof =
+    workload === 'open-workbook'
+      ? 'load-to-ready'
+      : uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
+        ? 'visible-scroll-movement'
+        : 'visible-non-scroll-response'
+  return [proof, proof, proof]
 }
 
 function sameCorpusScenarioProof(
