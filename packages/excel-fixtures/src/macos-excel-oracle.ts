@@ -56,6 +56,16 @@ export interface MacosExcelInspectionOracleRequest {
   readonly refreshWorkbook?: boolean
 }
 
+export interface MacosExcelPackageOpenSaveOracleRequest {
+  readonly workbookPath: string
+  readonly companionWorkbookPaths?: readonly string[]
+  readonly appPath?: string
+  readonly saveWorkbook?: boolean
+  readonly timeoutMs?: number
+  readonly updateLinks?: MacosExcelLinkUpdateMode
+  readonly refreshWorkbook?: boolean
+}
+
 export type MacosExcelStructuralOperation =
   | { readonly kind: 'insertRows'; readonly range: string }
   | { readonly kind: 'insertColumns'; readonly range: string }
@@ -129,6 +139,10 @@ export interface MacosExcelInspectionOracleResult {
   readonly excelVersion: string
 }
 
+export interface MacosExcelPackageOpenSaveOracleResult {
+  readonly excelVersion: string
+}
+
 export interface MacosExcelRejectedStructuralOperationOracleResult {
   readonly excelVersion: string
   readonly errorMessage: string
@@ -179,6 +193,28 @@ export function runMacosExcelInspectionOracle(request: MacosExcelInspectionOracl
     }).trim()
     copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
     return parseMacosExcelInspectionOutput(rawOutput, request.inspectCells)
+  } finally {
+    removeMacosExcelOracleTempDir(tempDir)
+  }
+}
+
+export function runMacosExcelPackageOpenSaveOracle(request: MacosExcelPackageOpenSaveOracleRequest): MacosExcelPackageOpenSaveOracleResult {
+  const appPath = request.appPath ?? defaultMacosExcelAppPath
+  if (!isMacosExcelInstalled(appPath)) {
+    throw new Error(`Microsoft Excel app is not installed at ${appPath}`)
+  }
+
+  const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-package-')
+  const scriptPath = join(tempDir, 'package-open-save.scpt')
+  try {
+    const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
+    writeFileSync(scriptPath, createMacosExcelPackageOpenSaveAppleScript(request))
+    const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
+      encoding: 'utf8',
+      timeout: request.timeoutMs ?? 60_000,
+    }).trim()
+    copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
+    return parseMacosExcelPackageOpenSaveOutput(rawOutput)
   } finally {
     removeMacosExcelOracleTempDir(tempDir)
   }
@@ -271,6 +307,7 @@ function copySavedWorkbookFromMacosExcelOracle(
   request:
     | Pick<MacosExcelRecalculationOracleRequest, 'saveWorkbook' | 'workbookPath'>
     | Pick<MacosExcelInspectionOracleRequest, 'saveWorkbook' | 'workbookPath'>
+    | Pick<MacosExcelPackageOpenSaveOracleRequest, 'saveWorkbook' | 'workbookPath'>
     | Pick<MacosExcelStructuralOperationOracleRequest, 'saveWorkbook' | 'workbookPath'>,
   stagedWorkbookPath: string,
 ): void {
@@ -308,6 +345,26 @@ function closeCompanionWorkbooksAppleScript(): string {
           close companionWorkbook saving no
         end try
       end repeat`
+}
+
+function macroPromptDisablerAppleScript(): string {
+  const command = `/usr/bin/osascript <<'BILIG_MACRO_PROMPT' >/dev/null 2>&1 &
+repeat 120 times
+  delay 0.25
+  tell application "System Events"
+    tell process "Microsoft Excel"
+      if exists button "Disable Macros" of window 1 then
+        click button "Disable Macros" of window 1
+        return
+      end if
+    end tell
+  end tell
+end repeat
+BILIG_MACRO_PROMPT`
+
+  return `on startMacroPromptDisabler()
+  do shell script ${toAppleScriptString(command)}
+end startMacroPromptDisabler`
 }
 
 export function createMacosExcelRecalculationAppleScript(
@@ -467,6 +524,55 @@ end run
 ${cellValueAppleScriptHelpers()}`
 }
 
+export function createMacosExcelPackageOpenSaveAppleScript(
+  request: Pick<MacosExcelPackageOpenSaveOracleRequest, 'refreshWorkbook' | 'saveWorkbook' | 'updateLinks'>,
+): string {
+  const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
+  const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
+  const refreshWorkbook = request.refreshWorkbook === true ? '      refresh all targetWorkbook' : ''
+
+  return `on run argv
+  set workbookPath to item 1 of argv
+  set targetWorkbook to missing value
+  set companionWorkbooks to {}
+  set output to ""
+  set priorAutomationSecurity to missing value
+  tell application "Microsoft Excel"
+    try
+      set priorAutomationSecurity to automation security
+      set automation security to msoAutomationSecurityForceDisable
+${openCompanionWorkbooksAppleScript()}
+      my startMacroPromptDisabler()
+      set targetWorkbook to open workbook workbook file name workbookPath update links ${updateLinksMode}
+${refreshWorkbook}
+      calculate full rebuild
+      set output to "version=" & (version as string)
+      close targetWorkbook saving ${closeSavingMode}
+${closeCompanionWorkbooksAppleScript()}
+      if priorAutomationSecurity is not missing value then
+        set automation security to priorAutomationSecurity
+      end if
+    on error errMsg number errNum
+      if targetWorkbook is not missing value then
+        try
+          close targetWorkbook saving no
+        end try
+      end if
+${closeCompanionWorkbooksAppleScript()}
+      if priorAutomationSecurity is not missing value then
+        try
+          set automation security to priorAutomationSecurity
+        end try
+      end if
+      error errMsg number errNum
+    end try
+  end tell
+  return output
+end run
+
+${macroPromptDisablerAppleScript()}`
+}
+
 export function createMacosExcelStructuralOperationAppleScript(
   request: Pick<
     MacosExcelStructuralOperationOracleRequest,
@@ -614,6 +720,20 @@ export function parseMacosExcelInspectionOutput(rawOutput: string, expectedAddre
   return {
     excelVersion: versionLine.slice('version='.length),
     cells: cellLines.map((line, index) => parseInspectionCell(line, expectedAddresses[index]!)),
+  }
+}
+
+export function parseMacosExcelPackageOpenSaveOutput(rawOutput: string): MacosExcelPackageOpenSaveOracleResult {
+  const lines = rawOutput.split(/\r?\n/u)
+  const versionLine = lines[0]
+  if (!versionLine?.startsWith('version=')) {
+    throw new Error(`Unexpected Microsoft Excel package oracle output header: ${versionLine ?? '<empty>'}`)
+  }
+  if (lines.length !== 1) {
+    throw new Error(`Unexpected Microsoft Excel package oracle output lines: ${String(lines.length)}`)
+  }
+  return {
+    excelVersion: versionLine.slice('version='.length),
   }
 }
 

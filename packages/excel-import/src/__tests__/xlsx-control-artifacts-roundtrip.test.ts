@@ -41,6 +41,27 @@ describe('xlsx worksheet control artifacts roundtrip', () => {
     expect(readContentTypeDefault(exported, 'vml')).toBe(vmlDrawingContentType)
     expect(readContentTypeOverride(exported, '/xl/ctrlProps/ctrlProp1.xml')).toBe(controlPropertiesContentType)
   })
+
+  it('preserves VML-only form button macro assignments', () => {
+    const source = buildWorkbookWithVmlOnlyButton()
+
+    const imported = importXlsx(source, 'vml-only-form-button.xlsm')
+    const exported = exportXlsx(imported.snapshot)
+
+    expect(imported.snapshot.workbook.metadata?.controlArtifacts?.parts.map((part) => part.path)).toEqual(['xl/drawings/vmlDrawing1.vml'])
+    expect(imported.snapshot.sheets[0]?.metadata?.controlArtifacts).toMatchObject({
+      controlsXml: '',
+      relationships: [{ target: '../drawings/vmlDrawing1.vml', type: vmlDrawingRelationshipType }],
+    })
+    expect(readZipText(exported, 'xl/worksheets/sheet1.xml')).toContain('<legacyDrawing r:id=')
+    expect(readZipText(exported, 'xl/drawings/vmlDrawing1.vml')).toBe(vmlDrawingXml)
+    expect(readZipText(exported, 'xl/drawings/vmlDrawing1.vml')).toContain('<x:FmlaMacro>[0]!WriteHelloWorld</x:FmlaMacro>')
+    expect(readSheetRelationship(exported, vmlDrawingRelationshipType)).toMatchObject({
+      target: '../drawings/vmlDrawing1.vml',
+      type: vmlDrawingRelationshipType,
+    })
+    expect(readContentTypeDefault(exported, 'vml')).toBe(vmlDrawingContentType)
+  })
 })
 
 function buildWorkbookWithWorksheetControl(): Uint8Array {
@@ -66,6 +87,22 @@ function buildWorkbookWithWorksheetControl(): Uint8Array {
   return zipSync(zip)
 }
 
+function buildWorkbookWithVmlOnlyButton(): Uint8Array {
+  const zip = unzipSync(exportXlsx(buildWorkbook()))
+  zip['xl/worksheets/sheet1.xml'] = strToU8(addLegacyDrawingXml(readZipTextFromZip(zip, 'xl/worksheets/sheet1.xml')))
+  zip['xl/worksheets/_rels/sheet1.xml.rels'] = strToU8(
+    [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      `<Relationships xmlns="${relationshipNamespace}">`,
+      `<Relationship Id="rId3" Type="${vmlDrawingRelationshipType}" Target="../drawings/vmlDrawing1.vml"/>`,
+      '</Relationships>',
+    ].join(''),
+  )
+  zip['xl/drawings/vmlDrawing1.vml'] = strToU8(vmlDrawingXml)
+  zip['[Content_Types].xml'] = strToU8(addContentTypeDefault(readZipTextFromZip(zip, '[Content_Types].xml'), 'vml', vmlDrawingContentType))
+  return zipSync(zip)
+}
+
 function buildWorkbook(): WorkbookSnapshot {
   return {
     version: 1,
@@ -83,6 +120,14 @@ function buildWorkbook(): WorkbookSnapshot {
 
 function addWorksheetControlXml(sheetXml: string): string {
   return withWorksheetControlNamespaces(sheetXml).replace('</worksheet>', `${worksheetControlsXml}</worksheet>`)
+}
+
+function addLegacyDrawingXml(sheetXml: string): string {
+  return withRelationshipNamespace(sheetXml).replace('</worksheet>', '<legacyDrawing r:id="rId3"/></worksheet>')
+}
+
+function withRelationshipNamespace(sheetXml: string): string {
+  return sheetXml.replace(/<worksheet\b[^>]*>/u, (rootOpenTag) => upsertXmlAttribute(rootOpenTag, 'xmlns:r', officeRelationshipNamespace))
 }
 
 function withWorksheetControlNamespaces(sheetXml: string): string {

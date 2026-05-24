@@ -7,15 +7,18 @@ import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
 
 import {
+  createMacosExcelPackageOpenSaveAppleScript,
   createMacosExcelRejectedStructuralOperationAppleScript,
   createMacosExcelRecalculationAppleScript,
   createMacosExcelInspectionAppleScript,
   createMacosExcelStructuralOperationAppleScript,
   isMacosExcelInstalled,
   parseMacosExcelInspectionOutput,
+  parseMacosExcelPackageOpenSaveOutput,
   parseMacosExcelRejectedStructuralOperationOutput,
   parseMacosExcelRecalculationOutput,
   runMacosExcelInspectionOracle,
+  runMacosExcelPackageOpenSaveOracle,
   runMacosExcelRecalculationOracle,
   runMacosExcelStructuralOperationOracle,
 } from '../macos-excel-oracle.js'
@@ -93,6 +96,31 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(script).toContain('refresh all targetWorkbook')
     expect(script.indexOf('refresh all targetWorkbook')).toBeLessThan(script.indexOf('calculate full rebuild'))
     expect(script).toContain('close targetWorkbook saving yes')
+  })
+
+  it('builds a package open/save runner for binary topology oracles', () => {
+    const script = createMacosExcelPackageOpenSaveAppleScript({
+      updateLinks: 'external',
+      refreshWorkbook: true,
+      saveWorkbook: true,
+    })
+
+    expect(script).toContain('tell application "Microsoft Excel"')
+    expect(script).toContain('set priorAutomationSecurity to automation security')
+    expect(script).toContain('set automation security to msoAutomationSecurityForceDisable')
+    expect(script).toContain('repeat with companionIndex from 2 to count of argv')
+    expect(script).toContain('my startMacroPromptDisabler()')
+    expect(script).toContain('Disable Macros')
+    expect(script).toContain('open workbook workbook file name workbookPath update links update external links only')
+    expect(script).toContain('refresh all targetWorkbook')
+    expect(script.indexOf('refresh all targetWorkbook')).toBeLessThan(script.indexOf('calculate full rebuild'))
+    expect(script).toContain('set output to "version=" & (version as string)')
+    expect(script).toContain('close targetWorkbook saving yes')
+    expect(script).toContain('set automation security to priorAutomationSecurity')
+    expect(script).not.toContain('worksheetName')
+    expect(script).not.toContain('range "')
+    expect(script).not.toContain('set display alerts')
+    expect(script).not.toContain('active workbook')
   })
 
   it('builds a structural operation runner that can cut-insert columns before inspection', () => {
@@ -291,6 +319,14 @@ describe('macOS Desktop Excel oracle harness', () => {
     })
   })
 
+  it('parses package open/save output', () => {
+    expect(parseMacosExcelPackageOpenSaveOutput('version=16.109')).toEqual({ excelVersion: '16.109' })
+    expect(() => parseMacosExcelPackageOpenSaveOutput('warning=repair')).toThrow('Unexpected Microsoft Excel package oracle output header')
+    expect(() => parseMacosExcelPackageOpenSaveOutput(['version=16.109', 'extra'].join('\n'))).toThrow(
+      'Unexpected Microsoft Excel package oracle output lines',
+    )
+  })
+
   it('parses rejected structural operation output with workbook sheet names', () => {
     expect(
       parseMacosExcelRejectedStructuralOperationOutput(
@@ -338,6 +374,14 @@ describe('macOS Desktop Excel oracle harness', () => {
         expect(inspection.cells).toEqual([
           { address: 'C1', formula: '=A1+B1*2', rawValue: 'number\t16.0', value: { kind: 'number', value: 16 } },
         ])
+
+        const packageWorkbookPath = join(tempDir, 'package-open-save.xlsx')
+        writeFileSync(packageWorkbookPath, XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }))
+        const packageOpenSave = runMacosExcelPackageOpenSaveOracle({
+          workbookPath: packageWorkbookPath,
+          saveWorkbook: true,
+        })
+        expect(packageOpenSave.excelVersion).toMatch(/^\d+\./u)
 
         const structuralWorkbookPath = join(tempDir, 'structural-oracle.xlsx')
         const structuralWorksheet = XLSX.utils.aoa_to_sheet([[1, 2, 3, 4, 5, { f: 'SUM(B1:C1)' }]])

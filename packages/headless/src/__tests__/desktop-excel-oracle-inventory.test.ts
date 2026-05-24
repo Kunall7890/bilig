@@ -42,6 +42,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-table-header-canonicalization.test.ts',
   'macos-desktop-excel-threaded-comment-structural-oracle.test.ts',
   'macos-desktop-excel-workbook-protection-oracle.test.ts',
+  'macos-desktop-excel-xlsm-package-oracle.test.ts',
   'macos-desktop-excel-xlsx-oracle.test.ts',
 ] as const
 
@@ -57,6 +58,7 @@ const corpusDesktopExcelOracleFiles = [
   'macos-desktop-excel-structured-reference-syntax.test.ts',
   'macos-desktop-excel-table-header-canonicalization.test.ts',
   'macos-desktop-excel-threaded-comment-structural-oracle.test.ts',
+  'macos-desktop-excel-xlsm-package-oracle.test.ts',
   'macos-desktop-excel-xlsx-oracle.test.ts',
 ] as const
 
@@ -210,6 +212,19 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('externalLinkPackageMetrics')
     expect(source).toContain('round-trips cached external ranges through Desktop Excel and Bilig recalc')
     expect(source).toContain('matches Desktop Excel external-link cleanup after deleting the formula sheet')
+  })
+
+  it('keeps the XLSM/VBA package oracle anchored to Desktop Excel macro survivability', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-xlsm-package-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelPackageOpenSaveOracle')
+    expect(source).toContain('macroPayloads')
+    expect(source).toContain('xl/vbaProject.bin')
+    expect(source).toContain('application/vnd.ms-excel.sheet.macroEnabled.main+xml')
+    expect(source).toContain('[0]!say_hello')
+    expect(source).toContain('macro sentinel unchanged')
+    expect(source).toContain('preserves real VBA project and button macro assignment after Desktop Excel open/save and a headless edit')
   })
 
   it('keeps the sparkline oracle anchored to Desktop Excel extension XML refs', () => {

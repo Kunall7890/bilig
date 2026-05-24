@@ -183,6 +183,15 @@ function readLegacyDrawingRelationshipId(sheetXml: string | null): string | null
   return legacyDrawingTag ? (readAttribute(legacyDrawingTag, 'r:id') ?? readAttribute(legacyDrawingTag, 'id')) : null
 }
 
+function vmlDrawingContainsFormControl(xml: string | null): boolean {
+  return Boolean(
+    xml &&
+    (/<(?:[A-Za-z_][\w.-]*:)?FmlaMacro\b/u.test(xml) ||
+      /<v:shape\b[^>]*\bo:button=(["'])t\1/u.test(xml) ||
+      /<x:ClientData\b[^>]*\bObjectType=(["'])(?:Button|CheckBox|Drop|GBox|Label|List|Option|Scroll|Spin)\1/u.test(xml)),
+  )
+}
+
 function relationshipSnapshot(relationship: ParsedRelationship): WorkbookPackageRelationshipSnapshot {
   return {
     id: relationship.id,
@@ -398,16 +407,31 @@ export function readImportedWorkbookControlArtifactsFromSheetSources(
     const sheetXml = sheet.controlsXml && sheet.worksheetRootOpenTag ? null : getZipText(zip, sheet.sheetPath)
     const controlsXml = sheet.controlsXml ?? readControlsXml(sheetXml)
     const worksheetRootOpenTag = sheet.worksheetRootOpenTag ?? readWorksheetRootOpenTag(sheetXml)
-    if (!controlsXml || !worksheetRootOpenTag) {
+    const legacyDrawingRelationshipId = sheet.legacyDrawingRelationshipId ?? readLegacyDrawingRelationshipId(sheetXml)
+    if ((!controlsXml && !legacyDrawingRelationshipId) || !worksheetRootOpenTag) {
       return
     }
 
     const sheetRelationships = parseRelationships(getZipText(zip, relationshipPathForPart(sheet.sheetPath)))
+    const legacyDrawingRelationship = legacyDrawingRelationshipId
+      ? sheetRelationships.find(
+          (relationship) => relationship.id === legacyDrawingRelationshipId && relationship.type === vmlDrawingRelationshipType,
+        )
+      : undefined
+    const shouldPreserveLegacyDrawing =
+      legacyDrawingRelationship &&
+      (Boolean(controlsXml) ||
+        vmlDrawingContainsFormControl(
+          getZipText(zip, normalizeZipPath(resolveTargetPath(sheet.sheetPath, legacyDrawingRelationship.target))),
+        ))
+    if (!controlsXml && !shouldPreserveLegacyDrawing) {
+      return
+    }
+
     const relationshipIds = new Set(
-      [...controlsXml.matchAll(/\br:id=(["'])([\s\S]*?)\1/gu)].map((match) => match[2]).filter((id): id is string => Boolean(id)),
+      [...(controlsXml ?? '').matchAll(/\br:id=(["'])([\s\S]*?)\1/gu)].map((match) => match[2]).filter((id): id is string => Boolean(id)),
     )
-    const legacyDrawingRelationshipId = sheet.legacyDrawingRelationshipId ?? readLegacyDrawingRelationshipId(sheetXml)
-    if (legacyDrawingRelationshipId) {
+    if (shouldPreserveLegacyDrawing && legacyDrawingRelationshipId) {
       relationshipIds.add(legacyDrawingRelationshipId)
     }
     const relationships = sheetRelationships.filter((relationship) => relationshipIds.has(relationship.id))
@@ -416,7 +440,7 @@ export function readImportedWorkbookControlArtifactsFromSheetSources(
     }
 
     sheetArtifactsByName.set(sheet.sheetName, {
-      controlsXml,
+      controlsXml: controlsXml ?? '',
       worksheetRootOpenTag,
       relationships: relationships.map(relationshipSnapshot),
     })

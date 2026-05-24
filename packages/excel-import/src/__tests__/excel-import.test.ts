@@ -859,7 +859,13 @@ describe('excel import', () => {
     expect(imported.snapshot.sheets[0]?.cells).toEqual([expect.objectContaining({ address: 'A1', value: 'safe value' })])
 
     const exported = exportXlsx(imported.snapshot)
+    const exportedZip = unzipSync(exported)
+    const contentTypesXml = strFromU8(exportedZip['[Content_Types].xml'] ?? new Uint8Array())
     const roundTripped = XLSX.read(exported, { type: 'array', bookVBA: true })
+    expect(contentTypesXml).toContain('<Default Extension="bin" ContentType="application/vnd.ms-office.vbaProject"/>')
+    expect(contentTypesXml).toContain(
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.ms-excel.sheet.macroEnabled.main+xml"/>',
+    )
     expect(Array.from(roundTripped.vbaraw ?? [])).toEqual([1, 2, 3, 4])
     expect(roundTripped.SheetNames).toEqual(['Sheet1'])
     expect(roundTripped.Workbook?.WBProps?.CodeName).toBe('ThisWorkbook')

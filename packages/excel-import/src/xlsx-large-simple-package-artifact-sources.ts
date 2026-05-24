@@ -37,8 +37,18 @@ export function largeSimpleControlArtifactSheetSources(
 ): ImportedWorkbookControlArtifactSheetSource[] {
   return scannedWorksheets.flatMap((scanned) => {
     const controlArtifacts = scanned?.metadataScan?.controlArtifacts
+    const legacyDrawingRelationshipId = scanned?.metadataScan?.legacyDrawingRelationshipId
     const sheetPath = scanned ? worksheetEntries[scanned.order]?.path : undefined
-    return scanned && controlArtifacts && sheetPath ? [{ sheetName: scanned.name, sheetPath, ...controlArtifacts }] : []
+    return scanned && sheetPath && (controlArtifacts || legacyDrawingRelationshipId)
+      ? [
+          {
+            sheetName: scanned.name,
+            sheetPath,
+            ...(controlArtifacts ? { ...controlArtifacts } : {}),
+            ...(legacyDrawingRelationshipId ? { legacyDrawingRelationshipId } : {}),
+          },
+        ]
+      : []
   })
 }
 

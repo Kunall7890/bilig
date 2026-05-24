@@ -627,6 +627,52 @@ function toUint8Array(value: unknown): Uint8Array {
   throw new Error('XLSX writer returned unsupported output bytes')
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+}
+
+function upsertContentTypeDefault(xml: string, extension: string, contentType: string): string {
+  const replacement = `<Default Extension="${escapeXmlAttribute(extension)}" ContentType="${escapeXmlAttribute(contentType)}"/>`
+  const pattern = new RegExp(`<Default\\b[^>]*\\bExtension=(["'])${escapeRegExp(extension)}\\1[^>]*/>`, 'u')
+  if (pattern.test(xml)) {
+    return xml.replace(pattern, replacement)
+  }
+  return xml.replace('</Types>', `${replacement}</Types>`)
+}
+
+function upsertContentTypeOverride(xml: string, partName: string, contentType: string): string {
+  const replacement = `<Override PartName="${escapeXmlAttribute(partName)}" ContentType="${escapeXmlAttribute(contentType)}"/>`
+  const pattern = new RegExp(`<Override\\b[^>]*\\bPartName=(["'])${escapeRegExp(partName)}\\1[^>]*/>`, 'u')
+  if (pattern.test(xml)) {
+    return xml.replace(pattern, replacement)
+  }
+  return xml.replace('</Types>', `${replacement}</Types>`)
+}
+
+function addExportMacroPackageContentTypesToXlsxBytes(bytes: Uint8Array, hasPreservedVbaProject: boolean): Uint8Array {
+  if (!hasPreservedVbaProject) {
+    return bytes
+  }
+  const zip = unzipSync(bytes)
+  if (!zip['xl/vbaProject.bin']) {
+    return bytes
+  }
+  const contentTypesXml = getZipText(zip, '[Content_Types].xml')
+  if (!contentTypesXml) {
+    return bytes
+  }
+  const nextContentTypesXml = upsertContentTypeOverride(
+    upsertContentTypeDefault(contentTypesXml, 'bin', 'application/vnd.ms-office.vbaProject'),
+    '/xl/workbook.xml',
+    'application/vnd.ms-excel.sheet.macroEnabled.main+xml',
+  )
+  if (nextContentTypesXml === contentTypesXml) {
+    return bytes
+  }
+  setZipText(zip, '[Content_Types].xml', nextContentTypesXml)
+  return zipSync(zip)
+}
+
 function applyMacroCodeNamesToWorkbook(
   workbook: XLSX.WorkBook,
   macroPayload: WorkbookMacroPayloadSnapshot | undefined,
@@ -744,6 +790,7 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
       bookVBA: Boolean(preservedVbaProject),
     }) as unknown,
   )
+  const macroPackageBytes = addExportMacroPackageContentTypesToXlsxBytes(bytes, Boolean(preservedVbaProject))
   const pivotBytes = addExportPivotsToXlsxBytes(
     addExportTablesToXlsxBytes(
       addExportDataValidationsToXlsxBytes(
@@ -757,7 +804,10 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
                       addExportWorksheetPropertiesToXlsxBytes(
                         addExportSheetTabColorsToXlsxBytes(
                           addExportCalculationSettingsToXlsxBytes(
-                            addExportWorkbookProtectionToXlsxBytes(addExportWorkbookPropertiesToXlsxBytes(bytes, snapshot), snapshot),
+                            addExportWorkbookProtectionToXlsxBytes(
+                              addExportWorkbookPropertiesToXlsxBytes(macroPackageBytes, snapshot),
+                              snapshot,
+                            ),
                             snapshot,
                           ),
                           snapshot,
