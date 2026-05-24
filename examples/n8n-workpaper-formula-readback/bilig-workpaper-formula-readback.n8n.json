@@ -52,6 +52,32 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [820, 0]
+    },
+    {
+      "parameters": {
+        "content": "## Verify spreadsheet formulas without Excel\n\nThis workflow writes one forecast input into a Bilig WorkPaper, asks Bilig to recalculate the stored formulas, then checks that the computed output changed and survived JSON restore.\n\nUse this when an n8n workflow needs workbook-shaped business logic instead of a one-off JavaScript formula.",
+        "height": 300,
+        "width": 420,
+        "color": 4
+      },
+      "id": "ad0ae50d-3a4c-40ee-bc40-517b1ad1fa4c",
+      "name": "Workflow overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [240, -360]
+    },
+    {
+      "parameters": {
+        "content": "## Hosted demo data boundary\n\nThe HTTP node calls `https://bilig.proompteng.ai/api/workpaper/n8n/forecast` and sends only the selected sheet name, cell address, and new value.\n\nFor private data, import the self-hosted workflow and point it at your own Bilig runtime.",
+        "height": 260,
+        "width": 420,
+        "color": 5
+      },
+      "id": "ee20c382-a752-4623-9d90-9a2a5ae5cc53",
+      "name": "Hosted demo data boundary",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [520, 180]
     }
   ],
   "pinData": {},

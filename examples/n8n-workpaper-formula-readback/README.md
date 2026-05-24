@@ -8,6 +8,7 @@ browser spreadsheet UI.
 The workflow uses only built-in n8n nodes:
 
 - Manual Trigger
+- Sticky Note
 - Code
 - HTTP Request
 - Code
@@ -51,6 +52,10 @@ internal URL.
 The route edits one input cell in a demo forecast WorkPaper, recalculates the
 summary formulas, exports and restores the WorkPaper JSON, and returns proof
 that the formula output changed and survived restore.
+
+Both workflow files include sticky notes with the setup context, data boundary,
+and formula-readback proof criteria so the import is ready for n8n's template
+review path.
 
 ## Import
 

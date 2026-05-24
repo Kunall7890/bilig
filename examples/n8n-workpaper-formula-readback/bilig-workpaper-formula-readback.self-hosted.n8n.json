@@ -118,6 +118,45 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [1580, 0]
+    },
+    {
+      "parameters": {
+        "content": "## Verify spreadsheet formulas on your own runtime\n\nThis workflow keeps workbook calculation inside your self-hosted Bilig runtime. n8n sends one forecast input, Bilig recalculates the stored formulas, and the final Code node rejects stale or unverified results.",
+        "height": 280,
+        "width": 440,
+        "color": 4
+      },
+      "id": "9d2afc3b-f3a8-4f0f-a8e4-31a7672eb902",
+      "name": "Self-hosted overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [240, -360]
+    },
+    {
+      "parameters": {
+        "content": "## Local setup\n\nStart the formula-readback server before running this workflow:\n\n`npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321`\n\nDocker-based n8n usually reaches the host through `host.docker.internal`; non-Docker installs can use `localhost`.",
+        "height": 300,
+        "width": 460,
+        "color": 5
+      },
+      "id": "a17be462-9969-42fa-97d6-05108a23857a",
+      "name": "Local setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [500, 180]
+    },
+    {
+      "parameters": {
+        "content": "## Proof criteria\n\nThe final node expects Bilig to confirm formulas persisted, restored output matches the recalculated result, and the computed output changed after the input edit. If any check fails, the workflow throws instead of passing stale spreadsheet data downstream.",
+        "height": 260,
+        "width": 440,
+        "color": 6
+      },
+      "id": "3b299f9e-e55b-4766-a093-7e03c91f1993",
+      "name": "Formula proof criteria",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1180, -340]
     }
   ],
   "pinData": {},
