@@ -7,8 +7,13 @@ import { SpreadsheetEngine } from '../index.js'
 
 const officeRelationshipTypePrefix = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 const microsoftOfficeRelationshipTypePrefix = 'http://schemas.microsoft.com/office/2007/relationships'
+const drawingRelationshipType = `${officeRelationshipTypePrefix}/drawing`
+const chartRelationshipType = `${officeRelationshipTypePrefix}/chart`
 const threadedCommentRelationshipType = 'http://schemas.microsoft.com/office/2017/10/relationships/threadedComment'
 const personRelationshipType = 'http://schemas.microsoft.com/office/2017/10/relationships/person'
+const chartSheetContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.chartsheet+xml'
+const drawingContentType = 'application/vnd.openxmlformats-officedocument.drawing+xml'
+const chartContentType = 'application/vnd.openxmlformats-officedocument.drawingml.chart+xml'
 const threadedCommentContentType = 'application/vnd.ms-excel.threadedcomments+xml'
 const personContentType = 'application/vnd.ms-excel.person+xml'
 
@@ -386,6 +391,20 @@ describe('engine imported package metadata preservation', () => {
     const exported = engine.exportSnapshot()
     expect(exported.sheets.map((sheet) => sheet.name)).toEqual(['Other'])
     expect(chartFormulaRefs(exported.workbook.metadata, 'xl/charts/chart1.xml')).toEqual(['#REF!', 'SUM(#REF!,Other!$B$2:$B$3)'])
+  })
+
+  it('prunes deleted chart sheet package artifacts', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-chart-sheet-owner-delete' })
+    await engine.ready()
+
+    engine.importSnapshot(chartSheetOwnerDeletionSnapshot())
+    engine.deleteSheet('Revenue Chart')
+
+    const exported = engine.exportSnapshot()
+    expect(exported.sheets.map((sheet) => sheet.name)).toEqual(['Data'])
+    expect(exported.workbook.metadata?.chartSheetArtifacts).toBeUndefined()
+    expect(chartPackagePartPaths(exported.workbook.metadata)).toEqual(['xl/charts/chart99.xml'])
+    expect(chartContentTypeOverridePartNames(exported.workbook.metadata)).toEqual(['/xl/charts/chart99.xml'])
   })
 })
 
@@ -939,6 +958,54 @@ function rawChartWithSurvivingSheetSnapshot(chartXml: string): WorkbookSnapshot 
   }
 }
 
+function chartSheetOwnerDeletionSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Chart sheet owner deletion',
+      metadata: {
+        chartArtifacts: {
+          parts: [
+            encodedPart('xl/chartsheets/sheet2.xml', '<chartsheet><drawing r:id="rId1"/></chartsheet>'),
+            encodedPart(
+              'xl/chartsheets/_rels/sheet2.xml.rels',
+              relationshipsXml([{ id: 'rId1', type: drawingRelationshipType, target: '../drawings/drawing2.xml' }]),
+            ),
+            encodedPart('xl/drawings/drawing2.xml', '<xdr:wsDr/>'),
+            encodedPart(
+              'xl/drawings/_rels/drawing2.xml.rels',
+              relationshipsXml([{ id: 'rId1', type: chartRelationshipType, target: '../charts/chart2.xml' }]),
+            ),
+            encodedPart('xl/charts/chart2.xml', chartFormulaXml()),
+            encodedPart('xl/charts/chart99.xml', '<c:chartSpace/>'),
+          ],
+          contentTypeOverrides: [
+            { partName: '/xl/chartsheets/sheet2.xml', contentType: chartSheetContentType },
+            { partName: '/xl/drawings/drawing2.xml', contentType: drawingContentType },
+            { partName: '/xl/charts/chart2.xml', contentType: chartContentType },
+            { partName: '/xl/charts/chart99.xml', contentType: chartContentType },
+          ],
+        },
+        chartSheetArtifacts: [{ name: 'Revenue Chart', relationshipTarget: 'chartsheets/sheet2.xml', sheetId: 2 }],
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Data',
+        order: 0,
+        cells: [{ address: 'A1', value: 'source' }],
+      },
+      {
+        id: 2,
+        name: 'Revenue Chart',
+        order: 1,
+        cells: [],
+      },
+    ],
+  }
+}
+
 function rawPivotOnlySnapshot(): WorkbookSnapshot {
   return {
     version: 1,
@@ -997,6 +1064,24 @@ function chartFormulaRefs(metadata: WorkbookMetadataSnapshot | undefined, path: 
   return [...xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?f\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?f>/gu)].map((match) =>
     decodeXmlText(match[1] ?? ''),
   )
+}
+
+function chartPackagePartPaths(metadata: WorkbookMetadataSnapshot | undefined): string[] {
+  return metadata?.chartArtifacts?.parts.map((part) => part.path).toSorted() ?? []
+}
+
+function chartContentTypeOverridePartNames(metadata: WorkbookMetadataSnapshot | undefined): string[] {
+  return metadata?.chartArtifacts?.contentTypeOverrides?.map((entry) => entry.partName).toSorted() ?? []
+}
+
+function relationshipsXml(relationships: readonly { readonly id: string; readonly type: string; readonly target: string }[]): string {
+  return [
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+    ...relationships.map(
+      (relationship) => `<Relationship Id="${relationship.id}" Type="${relationship.type}" Target="${relationship.target}"/>`,
+    ),
+    '</Relationships>',
+  ].join('')
 }
 
 function threadedCommentPartText(metadata: WorkbookMetadataSnapshot | undefined, path: string): string {

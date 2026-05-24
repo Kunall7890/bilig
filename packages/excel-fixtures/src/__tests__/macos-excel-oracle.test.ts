@@ -114,6 +114,7 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(script).toContain('clear contents range "B1" of targetWorksheet')
     expect(script).toContain('set name of targetWorksheet to "Renamed Cases"')
     expect(script).toContain('delete worksheet "Archive" of targetWorkbook')
+    expect(script).toContain('delete chart sheet "Archive" of targetWorkbook')
     expect(script).toContain('move worksheet "Report" of targetWorkbook to before worksheet "Renamed Cases" of targetWorkbook')
     expect(script).toContain('cut range (range "B:B" of targetWorksheet)')
     expect(script).toContain('insert into range (range "F:F" of targetWorksheet) shift shift to right')

@@ -591,7 +591,13 @@ function structuralOperationAppleScript(operation: MacosExcelStructuralOperation
     case 'renameSheet':
       return `set name of targetWorksheet to ${toAppleScriptString(operation.newName)}`
     case 'deleteSheet':
-      return `delete worksheet ${toAppleScriptString(operation.name)} of targetWorkbook`
+      return [
+        'try',
+        `  delete worksheet ${toAppleScriptString(operation.name)} of targetWorkbook`,
+        'on error',
+        `  delete chart sheet ${toAppleScriptString(operation.name)} of targetWorkbook`,
+        'end try',
+      ].join('\n      ')
     case 'moveSheet':
       return moveSheetAppleScript(operation)
     case 'moveRows':

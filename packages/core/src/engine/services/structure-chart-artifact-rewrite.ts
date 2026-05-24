@@ -14,6 +14,9 @@ import type { WorkbookStore } from '../../workbook-store.js'
 const binaryChunkSize = 0x8000
 const chartPackageFormulaOwnerSheetName = '__bilig_chart_package_artifact__'
 const chartPartPathPattern = /^xl\/charts\/chart\d+\.xml$/u
+type WorkbookChartSheetArtifactRecord = NonNullable<WorkbookPreservedMetadataRecord['chartSheetArtifacts']>[number]
+type WorkbookChartContentTypeDefaultRecord = NonNullable<WorkbookDrawingArtifactsSnapshot['contentTypeDefaults']>[number]
+type WorkbookChartContentTypeOverrideRecord = NonNullable<WorkbookDrawingArtifactsSnapshot['contentTypeOverrides']>[number]
 
 export function rewritePreservedChartPackageArtifactsForStructuralTransform(
   metadata: WorkbookPreservedMetadataRecord,
@@ -154,18 +157,26 @@ export function rewritePreservedChartPackageArtifactsForSheetDeletion(
   metadata: WorkbookPreservedMetadataRecord,
   deletedSheetName: string,
 ): WorkbookPreservedMetadataRecord | undefined {
-  const chartArtifacts = metadata.chartArtifacts
-  if (!chartArtifacts || chartArtifacts.parts.length === 0) {
-    return undefined
+  let changed = false
+  let nextMetadata = metadata
+  const prunedChartSheetMetadata = pruneDeletedChartSheetPackageArtifacts(nextMetadata, deletedSheetName)
+  if (prunedChartSheetMetadata) {
+    changed = true
+    nextMetadata = prunedChartSheetMetadata
   }
 
+  const chartArtifacts = nextMetadata.chartArtifacts
+  if (!chartArtifacts || chartArtifacts.parts.length === 0) {
+    return changed ? nextMetadata : undefined
+  }
   const nextChartArtifacts = rewriteChartPackageArtifactsForSheetDeletion(chartArtifacts, deletedSheetName)
-  return nextChartArtifacts
-    ? {
-        ...metadata,
-        chartArtifacts: nextChartArtifacts,
-      }
-    : undefined
+  if (!nextChartArtifacts) {
+    return changed ? nextMetadata : undefined
+  }
+  return {
+    ...nextMetadata,
+    chartArtifacts: nextChartArtifacts,
+  }
 }
 
 export function rewriteDrawingChartPackageArtifactsForSheetDeletion(
@@ -211,6 +222,171 @@ function rewriteChartPackageArtifactsForSheetDeletion(
   })
 
   return changed ? { ...artifacts, parts } : undefined
+}
+
+function pruneDeletedChartSheetPackageArtifacts(
+  metadata: WorkbookPreservedMetadataRecord,
+  deletedSheetName: string,
+): WorkbookPreservedMetadataRecord | undefined {
+  const chartSheetArtifacts = metadata.chartSheetArtifacts
+  if (!chartSheetArtifacts || chartSheetArtifacts.length === 0) {
+    return undefined
+  }
+  const deletedChartSheets = chartSheetArtifacts.filter((entry) => entry.name === deletedSheetName)
+  if (deletedChartSheets.length === 0) {
+    return undefined
+  }
+
+  const remainingChartSheets = chartSheetArtifacts.filter((entry) => entry.name !== deletedSheetName)
+  const chartArtifacts = metadata.chartArtifacts
+  const nextMetadata: WorkbookPreservedMetadataRecord = { ...metadata }
+  if (remainingChartSheets.length > 0) {
+    nextMetadata.chartSheetArtifacts = remainingChartSheets.map(cloneChartSheetArtifact)
+  } else {
+    delete nextMetadata.chartSheetArtifacts
+  }
+  if (!chartArtifacts) {
+    return nextMetadata
+  }
+
+  const partsByPath = new Map(chartArtifacts.parts.map((part) => [normalizeZipPath(part.path), part]))
+  const deletedRootPaths = deletedChartSheets.map((entry) => resolveWorkbookRelationshipTarget(entry.relationshipTarget))
+  const remainingRootPaths = remainingChartSheets.map((entry) => resolveWorkbookRelationshipTarget(entry.relationshipTarget))
+  const deletedPackagePaths = collectPreservedPackageDependencyPaths(partsByPath, deletedRootPaths)
+  const remainingPackagePaths = collectPreservedPackageDependencyPaths(partsByPath, remainingRootPaths)
+  const prunedPackagePaths = new Set([...deletedPackagePaths].filter((path) => !remainingPackagePaths.has(path)))
+  if (prunedPackagePaths.size === 0) {
+    return nextMetadata
+  }
+
+  const parts = chartArtifacts.parts
+    .filter((part) => !prunedPackagePaths.has(normalizeZipPath(part.path)))
+    .map((part) => structuredClone(part))
+  if (parts.length === 0) {
+    delete nextMetadata.chartArtifacts
+    return nextMetadata
+  }
+
+  const contentTypeOverrides = chartArtifacts.contentTypeOverrides
+    ?.filter((entry) => !prunedPackagePaths.has(normalizePackagePartName(entry.partName)))
+    .map(cloneChartContentTypeOverride)
+  nextMetadata.chartArtifacts = {
+    parts,
+    ...(chartArtifacts.contentTypeDefaults
+      ? { contentTypeDefaults: chartArtifacts.contentTypeDefaults.map(cloneChartContentTypeDefault) }
+      : {}),
+    ...(contentTypeOverrides && contentTypeOverrides.length > 0 ? { contentTypeOverrides } : {}),
+  }
+  return nextMetadata
+}
+
+function cloneChartSheetArtifact(entry: WorkbookChartSheetArtifactRecord): WorkbookChartSheetArtifactRecord {
+  return {
+    name: entry.name,
+    relationshipTarget: entry.relationshipTarget,
+    ...(entry.sheetId !== undefined ? { sheetId: entry.sheetId } : {}),
+    ...(entry.state !== undefined ? { state: entry.state } : {}),
+  }
+}
+
+function cloneChartContentTypeDefault(entry: WorkbookChartContentTypeDefaultRecord): WorkbookChartContentTypeDefaultRecord {
+  return {
+    extension: entry.extension,
+    contentType: entry.contentType,
+  }
+}
+
+function cloneChartContentTypeOverride(entry: WorkbookChartContentTypeOverrideRecord): WorkbookChartContentTypeOverrideRecord {
+  return {
+    partName: entry.partName,
+    contentType: entry.contentType,
+  }
+}
+
+function collectPreservedPackageDependencyPaths(
+  partsByPath: ReadonlyMap<string, WorkbookPreservedPackagePartSnapshot>,
+  rootPaths: readonly string[],
+): Set<string> {
+  const collected = new Set<string>()
+  const pending = [...rootPaths]
+  while (pending.length > 0) {
+    const partPath = pending.pop()
+    if (!partPath || collected.has(partPath) || !partsByPath.has(partPath)) {
+      continue
+    }
+    collected.add(partPath)
+    const relationshipsPath = packageRelationshipsPath(partPath)
+    const relationshipsPart = partsByPath.get(relationshipsPath)
+    if (!relationshipsPart) {
+      continue
+    }
+    collected.add(relationshipsPath)
+    packageRelationshipTargets(relationshipsPart).forEach((target) => {
+      pending.push(resolvePackageRelationshipTarget(partPath, target))
+    })
+  }
+  return collected
+}
+
+function packageRelationshipsPath(partPath: string): string {
+  const normalizedPath = normalizeZipPath(partPath)
+  const directory = normalizedPath.slice(0, normalizedPath.lastIndexOf('/'))
+  const fileName = normalizedPath.slice(normalizedPath.lastIndexOf('/') + 1)
+  return `${directory}/_rels/${fileName}.rels`
+}
+
+function packageRelationshipTargets(part: WorkbookPreservedPackagePartSnapshot): string[] {
+  const xml = preservedPackagePartText(part)
+  if (!xml) {
+    return []
+  }
+  return [...xml.matchAll(/<Relationship\b([^>]*)\/?>/gu)].flatMap((match) => {
+    const attributes = match[1] ?? ''
+    const targetMode = readXmlAttribute(attributes, 'TargetMode')
+    const target = readXmlAttribute(attributes, 'Target')
+    return target && targetMode !== 'External' ? [target] : []
+  })
+}
+
+function preservedPackagePartText(part: WorkbookPreservedPackagePartSnapshot): string | undefined {
+  const bytes = decodeBase64(part.dataBase64)
+  return bytes.byteLength === part.byteLength ? new TextDecoder().decode(bytes) : undefined
+}
+
+function resolveWorkbookRelationshipTarget(target: string): string {
+  const normalizedTarget = normalizeZipPath(target)
+  return normalizedTarget.startsWith('xl/') ? normalizedTarget : resolvePackageRelationshipTarget('xl/workbook.xml', target)
+}
+
+function resolvePackageRelationshipTarget(sourcePartPath: string, target: string): string {
+  const normalizedTarget = normalizeZipPath(target)
+  if (normalizedTarget.startsWith('xl/')) {
+    return normalizedPathSegments(normalizedTarget)
+  }
+  const normalizedSourcePath = normalizeZipPath(sourcePartPath)
+  const sourceDirectory = normalizedSourcePath.slice(0, normalizedSourcePath.lastIndexOf('/'))
+  return normalizedPathSegments(`${sourceDirectory}/${normalizedTarget}`)
+}
+
+function normalizedPathSegments(path: string): string {
+  const segments: string[] = []
+  normalizeZipPath(path)
+    .split('/')
+    .forEach((segment) => {
+      if (segment === '' || segment === '.') {
+        return
+      }
+      if (segment === '..') {
+        segments.pop()
+        return
+      }
+      segments.push(segment)
+    })
+  return segments.join('/')
+}
+
+function normalizePackagePartName(partName: string): string {
+  return normalizeZipPath(partName)
 }
 
 function rewriteChartPackagePartForStructuralTransform(
@@ -446,6 +622,11 @@ function decodeXmlText(value: string): string {
 
 function escapeXmlText(value: string): string {
   return value.replace(/&/gu, '&amp;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;')
+}
+
+function readXmlAttribute(attributes: string, name: string): string | undefined {
+  const value = new RegExp(`\\b${name}=("|')([\\s\\S]*?)\\1`, 'u').exec(attributes)?.[2]
+  return value === undefined ? undefined : decodeXmlText(value)
 }
 
 function encodeBinaryString(bytes: Uint8Array): string {
