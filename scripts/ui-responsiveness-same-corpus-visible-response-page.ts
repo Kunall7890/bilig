@@ -33,7 +33,11 @@ export async function measureVisibleNonScrollResponse(
   const before = await readVisibleNonScrollResponseSignature(page, product, workload)
   const startedAt = performance.now()
   await runOperation()
-  await waitForVisibleNonScrollResponse(page, product, workload, before)
+  if (product === 'bilig' && before.biligInteractionVisibleToken) {
+    await waitForBiligVisibleNonScrollResponseToken(page, workload, before.biligInteractionVisibleToken)
+  } else {
+    await waitForVisibleNonScrollResponse(page, product, workload, before)
+  }
   const interactionVisibleMs = performance.now() - startedAt
   return await sampleSettledOperation(page, interactionVisibleMs, 'visible-non-scroll-response')
 }
@@ -124,6 +128,50 @@ export function biligInteractionVisibleResponseToken(
     ]
       .filter((entry): entry is string => Boolean(entry))
       .join('|') || null
+  )
+}
+
+async function waitForBiligVisibleNonScrollResponseToken(page: Page, workload: NonScrollWorkload, beforeToken: string): Promise<void> {
+  await page.waitForFunction(
+    ({ previousToken, targetWorkload }) => {
+      const grid = document.querySelector('[data-testid="sheet-grid"]')
+      const canvas = document.querySelector('[data-testid="grid-pane-renderer"]')
+      if (!(grid instanceof HTMLElement) || !(canvas instanceof HTMLElement)) {
+        return false
+      }
+      // oxlint-disable-next-line eslint-plugin-unicorn(consistent-function-scoping) -- Playwright evaluates this helper inside the browser context.
+      const firstDocumentToken = (...tokens: readonly (string | null | undefined)[]): string | null =>
+        tokens.find((token): token is string => typeof token === 'string' && token.length > 0) ?? null
+      const token =
+        targetWorkload === 'select-cell'
+          ? firstDocumentToken(
+              canvas.getAttribute('data-v3-current-selection-revision'),
+              canvas.getAttribute('data-v3-visible-local-render-revision'),
+              grid.getAttribute('data-render-local-revision'),
+            )
+          : targetWorkload === 'jump-deep-row'
+            ? firstDocumentToken(
+                canvas.getAttribute('data-v3-current-viewport-revision'),
+                canvas.getAttribute('data-v3-visible-projected-render-revision'),
+                grid.getAttribute('data-render-projected-revision'),
+              )
+            : [
+                canvas.getAttribute('data-v3-current-semantic-mutation-revision'),
+                canvas.getAttribute('data-v3-current-workbook-revision'),
+                canvas.getAttribute('data-v3-current-content-signature'),
+                canvas.getAttribute('data-v3-current-text-signature'),
+                canvas.getAttribute('data-v3-current-rect-signature'),
+                canvas.getAttribute('data-v3-visible-local-render-revision'),
+                canvas.getAttribute('data-v3-visible-projected-render-revision'),
+                grid.getAttribute('data-render-local-revision'),
+                grid.getAttribute('data-render-projected-revision'),
+              ]
+                .filter((entry): entry is string => Boolean(entry))
+                .join('|') || null
+      return Boolean(token && token !== previousToken)
+    },
+    { previousToken: beforeToken, targetWorkload: workload },
+    { polling: 'raf', timeout: visibleResponseTimeoutMs },
   )
 }
 

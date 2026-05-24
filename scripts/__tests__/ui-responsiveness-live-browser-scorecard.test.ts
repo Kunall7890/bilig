@@ -67,21 +67,21 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(
       scorecard.sameCorpusProof.cases.filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length,
     )
-    expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(0)
+    expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(1)
     expect(scorecard.sameCorpusProof.runManifest).toMatchObject({
       contractVersion: 'same-corpus-ui-v4',
       caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       visibleOperationResponseProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
-      biligAuthoritativeRenderProofCaseCount: 0,
+      biligAuthoritativeRenderProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       legacyInsufficientRenderedGridProofCaseCount: 0,
-      tenXMeanAndP95CaseCount: 0,
-      currentContractEvidenceComplete: false,
+      tenXMeanAndP95CaseCount: 1,
+      currentContractEvidenceComplete: true,
       googleSheetsTenXRequirementSatisfied: false,
     })
     expect(scorecard.sameCorpusProof.runManifest?.capturedWorkloads).toEqual(requiredUiResponsivenessSameCorpusWorkloads)
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('not every required workload is 10x against Google Sheets')
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('Bilig authoritative render proof timing covers 0/9 cases')
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).not.toContain('Bilig authoritative render proof timing covers 0/9 cases')
     expect(scorecard.sameCorpusProof.limitations).toContain(
       'Caller must supply a Google Sheets URL for the same exported Bilig benchmark corpus.',
     )
