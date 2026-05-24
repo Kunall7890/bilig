@@ -1,5 +1,6 @@
 import { normalizeFormulaFunctionName, parseFormula } from '@bilig/formula'
 import type { CellRangeRef } from '@bilig/protocol'
+import { isObjectRecord } from './data-properties.js'
 import { isWorkbookRef, type WorkbookRef } from './find.js'
 
 export interface WorkbookFormulaExpression {
@@ -100,7 +101,7 @@ function formulaRefArray(value: unknown, path: string): readonly WorkbookRef[] {
 }
 
 function formulaLabel(value: unknown, path: string): WorkbookFormulaLabel {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+  if (!isObjectRecord(value)) {
     throw new Error(`${path} must be a formula label`)
   }
   assertOnlyDataProperties(value, path)
@@ -133,7 +134,7 @@ function rawFormulaOptions(options: unknown): {
   readonly inputs: readonly WorkbookRef[]
   readonly labels?: readonly WorkbookFormulaLabel[]
 } {
-  if (typeof options !== 'object' || options === null || Array.isArray(options)) {
+  if (!isObjectRecord(options)) {
     throw new Error('Formula raw options must be an object')
   }
   assertOnlyDataProperties(options, 'Formula raw options')

@@ -6,6 +6,18 @@ function verifyUnknownModel(model: unknown) {
   return verifyModel(model)
 }
 
+function customPrototypeRecord(fields: Record<string, unknown>): Record<string, unknown> {
+  const value: Record<string, unknown> = {}
+  Object.setPrototypeOf(value, { inherited: true })
+  for (const [key, entry] of Object.entries(fields)) {
+    Object.defineProperty(value, key, {
+      enumerable: true,
+      value: entry,
+    })
+  }
+  return value
+}
+
 describe('@bilig/workbook model verification api', () => {
   it('returns structured invalid_model results for invalid model manifests without invoking getters', () => {
     let modelNameGetterInvoked = false
@@ -101,6 +113,46 @@ describe('@bilig/workbook model verification api', () => {
       actions: [],
     })
     expect(inputsGetterInvoked).toBe(false)
+
+    expect(
+      verifyModel(
+        model,
+        customPrototypeRecord({
+          inputs: {},
+        }),
+      ),
+    ).toEqual({
+      status: 'invalid',
+      modelName: 'verify-options-model',
+      errors: [
+        {
+          code: 'invalid_action_input',
+          message: 'Workbook model verification options must be an object',
+          path: 'options',
+          issueCode: 'invalid_action_input',
+        },
+      ],
+      actions: [],
+    })
+    expect(
+      verifyModel(model, {
+        inputs: customPrototypeRecord({
+          write: {},
+        }),
+      }),
+    ).toEqual({
+      status: 'invalid',
+      modelName: 'verify-options-model',
+      errors: [
+        {
+          code: 'invalid_action_input',
+          message: 'Workbook model verification options inputs must be an object',
+          path: 'options.inputs',
+          issueCode: 'invalid_action_input',
+        },
+      ],
+      actions: [],
+    })
   })
 
   it('returns structured failed planning for accessor-backed per-action inputs without invoking getters', () => {

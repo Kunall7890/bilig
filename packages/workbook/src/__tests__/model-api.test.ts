@@ -1502,8 +1502,29 @@ describe('@bilig/workbook model api', () => {
         badFormat({ refs, workbook }) {
           Reflect.apply(workbook.format, undefined, [refs.target, { numberFormat: 12 }])
         },
+        formatOptionsPrototype({ refs, workbook }) {
+          Reflect.apply(workbook.format, undefined, [
+            refs.target,
+            customPrototypeRecord({
+              numberFormat: '0.00',
+            }),
+          ])
+        },
         badOp({ workbook }) {
           Reflect.apply(workbook.addOp, undefined, [opWithGetter])
+        },
+        addOpOptionsPrototype({ refs, workbook }) {
+          Reflect.apply(workbook.addOp, undefined, [
+            {
+              kind: 'setCellValue',
+              sheetName: 'Sheet1',
+              address: 'A1',
+              value: 1,
+            },
+            customPrototypeRecord({
+              target: refs.target,
+            }),
+          ])
         },
         stylePrototype({ refs, workbook }) {
           workbook.format(refs.target, { style: styleWithPrototype })
@@ -1547,6 +1568,18 @@ describe('@bilig/workbook model api', () => {
         },
       ],
     })
+    expect(planWorkbookAction(model, 'formatOptionsPrototype')).toEqual({
+      status: 'failed',
+      modelName: 'helper-validation-model',
+      actionName: 'formatOptionsPrototype',
+      checks: [],
+      errors: [
+        {
+          code: 'action_failed',
+          message: 'Workbook action format options must be an object',
+        },
+      ],
+    })
     expect(planWorkbookAction(model, 'badOp')).toEqual({
       status: 'failed',
       modelName: 'helper-validation-model',
@@ -1556,6 +1589,18 @@ describe('@bilig/workbook model api', () => {
         {
           code: 'action_failed',
           message: 'Workbook action op.extra must be a data property',
+        },
+      ],
+    })
+    expect(planWorkbookAction(model, 'addOpOptionsPrototype')).toEqual({
+      status: 'failed',
+      modelName: 'helper-validation-model',
+      actionName: 'addOpOptionsPrototype',
+      checks: [],
+      errors: [
+        {
+          code: 'action_failed',
+          message: 'Workbook action addOp options must be an object',
         },
       ],
     })

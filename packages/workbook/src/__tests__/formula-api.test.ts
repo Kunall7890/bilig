@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { defineModel, describePlan, findRange, formula, planWorkbookAction, verifyPlan } from '../index.js'
 
+function customPrototypeRecord(fields: Record<string, unknown>): Record<string, unknown> {
+  const value: Record<string, unknown> = {}
+  Object.setPrototypeOf(value, { inherited: true })
+  for (const [key, entry] of Object.entries(fields)) {
+    Object.defineProperty(value, key, {
+      enumerable: true,
+      value: entry,
+    })
+  }
+  return value
+}
+
 describe('@bilig/workbook formula api', () => {
   it('freezes the public formula namespace and helper arrays', () => {
     const input = findRange({ sheetName: 'Sheet1', address: 'A1' })
@@ -187,6 +199,14 @@ describe('@bilig/workbook formula api', () => {
     })
     expect(() => formula.raw('Sheet1!A1', rawOptions)).toThrowError('Formula raw options.inputs must be a data property')
     expect(optionsGetterInvoked).toBe(false)
+    expect(() =>
+      formula.raw(
+        'Sheet1!A1',
+        customPrototypeRecord({
+          inputs: [input],
+        }),
+      ),
+    ).toThrowError('Formula raw options must be an object')
 
     let labelGetterInvoked = false
     const label = { ref: input }
@@ -199,6 +219,16 @@ describe('@bilig/workbook formula api', () => {
     })
     expect(() => formula.raw('Sheet1!A1', { labels: [label] })).toThrowError('Formula raw options.labels[0].name must be a data property')
     expect(labelGetterInvoked).toBe(false)
+    expect(() =>
+      formula.raw('Sheet1!A1', {
+        labels: [
+          customPrototypeRecord({
+            name: 'input',
+            ref: input,
+          }),
+        ],
+      }),
+    ).toThrowError('Formula raw options.labels[0] must be a formula label')
 
     let operandGetterInvoked = false
     const expressionInputs: unknown[] = []

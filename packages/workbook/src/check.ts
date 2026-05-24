@@ -1,7 +1,7 @@
 import { isLiteralInput, type LiteralInput } from '@bilig/protocol'
 import { isWorkbookRef, type WorkbookRef } from './find.js'
 import { formula, type WorkbookFormulaOperand } from './formula.js'
-import { isObject, optionalDataProperty, requiredDataProperty } from './data-properties.js'
+import { isObjectRecord, optionalDataProperty, requiredDataProperty } from './data-properties.js'
 import type { WorkbookCheckExpectation, WorkbookCheckResult } from './result.js'
 
 export interface WorkbookCustomCheckOptions {
@@ -142,7 +142,7 @@ function assertOnlyDataProperties(value: unknown, path: string, seen = new WeakS
 }
 
 function readbackOptions(kind: string, options: unknown): WorkbookReadbackCheckOptions {
-  if (!isObject(options) || Array.isArray(options)) {
+  if (!isObjectRecord(options)) {
     throw new Error(`Workbook check ${kind} options must be an object`)
   }
   assertOnlyDataProperties(options, `Workbook check ${kind} options`)
@@ -156,7 +156,7 @@ function readbackOptions(kind: string, options: unknown): WorkbookReadbackCheckO
 }
 
 function customOptions(options: unknown): WorkbookCustomCheckOptions {
-  if (!isObject(options) || Array.isArray(options)) {
+  if (!isObjectRecord(options)) {
     throw new Error('Workbook custom check options must be an object')
   }
   assertOnlyDataProperties(options, 'Workbook custom check options')

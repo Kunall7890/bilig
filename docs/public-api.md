@@ -433,14 +433,14 @@ without parsing messages. JSON-safety failures preserve nested paths like
 `input.items[2].amount` instead of collapsing every issue to `input`.
 Action helper calls also validate their own output boundary during planning:
 write, clear, format, and low-level-op helpers reject malformed targets,
-non-literal values, invalid format/add-op options, and accessor-backed op
-payloads before a plan is returned.
+non-literal values, invalid format/add-op options, class/custom-prototype option
+roots, and accessor-backed op payloads before a plan is returned.
 Check helper calls validate the same way: bad targets, readback options, custom
-check options, sparse ref arrays, and accessor-backed check payloads fail before
-the check is recorded.
-Formula helpers reject sparse or accessor-backed raw options, explicit input
-arrays, label arrays, and function argument arrays before returning formula
-intent.
+check options, class/custom-prototype option roots, sparse ref arrays, and
+accessor-backed check payloads fail before the check is recorded.
+Formula helpers reject sparse, accessor-backed, or class/custom-prototype raw
+options, explicit input arrays, label arrays, and function argument arrays before
+returning formula intent.
 Ref transport helpers return frozen plain data and frozen arrays, so inspected
 refs stay stable across agent handoff and verification.
 `verifyPlan` treats public plan handoff as data too: malformed, sparse, or
@@ -459,8 +459,9 @@ manifests return an `invalid_model` verdict with no actions instead of
 throwing, so agents can audit unknown model objects without wrapping the
 verifier in their own try/catch.
 Verification options use the same data boundary: `inputs` and each action input
-must be own data properties. Accessor-backed verification inputs return
-structured `invalid_action_input` results without invoking getters.
+must be object-record roots with own data properties. Accessor-backed or
+class/custom-prototype verification inputs return structured
+`invalid_action_input` results without invoking getters.
 The verdict containers and generated issue arrays from `checkInput`,
 `checkPlanData`, `verifyPlan`, and `verifyModel` are frozen, so an agent can
 inspect them once and pass them onward without later mutation changing the

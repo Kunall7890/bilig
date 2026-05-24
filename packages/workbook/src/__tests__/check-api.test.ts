@@ -13,6 +13,18 @@ import {
   verifyPlan,
 } from '../index.js'
 
+function customPrototypeRecord(fields: Record<string, unknown>): Record<string, unknown> {
+  const value: Record<string, unknown> = {}
+  Object.setPrototypeOf(value, { inherited: true })
+  for (const [key, entry] of Object.entries(fields)) {
+    Object.defineProperty(value, key, {
+      enumerable: true,
+      value: entry,
+    })
+  }
+  return value
+}
+
 describe('@bilig/workbook check api', () => {
   it('exports machine-readable readback checks without runtime dependencies', () => {
     const table = findTable({ name: 'Inputs' })
@@ -137,6 +149,15 @@ describe('@bilig/workbook check api', () => {
       'Workbook check valueEquals options.message must be a data property',
     )
     expect(optionsMessageGetterInvoked).toBe(false)
+    expect(() =>
+      Reflect.apply(check.valueEquals, undefined, [
+        output,
+        1,
+        customPrototypeRecord({
+          message: 'Output stays valid',
+        }),
+      ]),
+    ).toThrowError('Workbook check valueEquals options must be an object')
 
     let refsGetterInvoked = false
     const customOptions = {
@@ -154,6 +175,14 @@ describe('@bilig/workbook check api', () => {
       'Workbook custom check options.refs must be a data property',
     )
     expect(refsGetterInvoked).toBe(false)
+    expect(() =>
+      Reflect.apply(check.custom, undefined, [
+        customPrototypeRecord({
+          kind: 'contract',
+          message: 'Contract stays valid',
+        }),
+      ]),
+    ).toThrowError('Workbook custom check options must be an object')
   })
 
   it('plans and describes readback checks through model actions', () => {

@@ -104,6 +104,8 @@ flowchart LR
     and errors before freezing or runtime proof comparison
   - object-record model roots and returned checks before model planning or
     whole-model verification
+  - object-record action, check, formula, and verification option roots before
+    helper output is recorded or described
   - transport-neutral workbook ops and txns with own-field-only public guards
   - accessor-free low-level op fields, nested fields, and op arrays before
     runtime guard acceptance

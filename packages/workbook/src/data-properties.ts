@@ -11,6 +11,14 @@ export function isObject(value: unknown): value is object {
   return typeof value === 'object' && value !== null
 }
 
+export function isObjectRecord(value: unknown): value is object {
+  if (!isObject(value) || Array.isArray(value)) {
+    return false
+  }
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
+
 export function optionalDataProperty(value: object, key: string, label: string): OptionalDataValue {
   const descriptor = Object.getOwnPropertyDescriptor(value, key)
   if (descriptor === undefined) {

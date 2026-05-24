@@ -7,7 +7,7 @@ import {
   type CellStylePatch,
   type LiteralInput,
 } from '@bilig/protocol'
-import { optionalDataProperty, isObject } from './data-properties.js'
+import { optionalDataProperty, isObject, isObjectRecord } from './data-properties.js'
 import { isWorkbookRef, type WorkbookRef } from './find.js'
 import { isWorkbookOp } from './guards.js'
 import type { WorkbookOp } from './ops.js'
@@ -35,7 +35,7 @@ export function normalizeWorkbookActionFormatOptions(options: unknown): {
   readonly style?: CellStylePatch
   readonly numberFormat?: string | null
 } {
-  if (!isObject(options) || Array.isArray(options)) {
+  if (!isObjectRecord(options)) {
     throw new Error('Workbook action format options must be an object')
   }
   assertOnlyDataProperties(options, 'Workbook action format options')
@@ -69,7 +69,7 @@ export function normalizeWorkbookActionFormatOptions(options: unknown): {
 }
 
 export function normalizeWorkbookAddOpOptions(options: unknown): NormalizedWorkbookAddOpOptions {
-  if (!isObject(options) || Array.isArray(options)) {
+  if (!isObjectRecord(options)) {
     throw new Error('Workbook action addOp options must be an object')
   }
   assertOnlyDataProperties(options, 'Workbook action addOp options')

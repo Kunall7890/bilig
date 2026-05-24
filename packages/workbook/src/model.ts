@@ -10,7 +10,7 @@ import {
   type WorkbookActionInput,
   type WorkbookActionInputDescription,
 } from './input.js'
-import { isObject, optionalDataProperty, requiredDataProperty, type OptionalDataValue } from './data-properties.js'
+import { isObject, isObjectRecord, optionalDataProperty, requiredDataProperty, type OptionalDataValue } from './data-properties.js'
 import {
   errorMessage,
   failedActionInputIssuesPlan,
@@ -272,14 +272,6 @@ function normalizeOptionalDescription(value: unknown, label: string): string | u
     throw new Error(`${label} cannot be empty`)
   }
   return description
-}
-
-function isObjectRecord(value: unknown): value is object {
-  if (!isObject(value) || Array.isArray(value)) {
-    return false
-  }
-  const prototype = Object.getPrototypeOf(value)
-  return prototype === Object.prototype || prototype === null
 }
 
 function isActionConfig<Refs>(definition: unknown): definition is WorkbookActionConfig<Refs> {

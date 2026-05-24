@@ -18,7 +18,7 @@ import {
   type WorkbookActionPlan,
   type WorkbookModelInspection,
 } from './model.js'
-import { isObject, optionalDataProperty } from './data-properties.js'
+import { isObjectRecord, optionalDataProperty } from './data-properties.js'
 import { describeRuntimeRequirements, type WorkbookRuntimeRequirements } from './requirements.js'
 import {
   getOwnActionInput,
@@ -403,7 +403,7 @@ function readVerificationInputs(options: unknown): WorkbookVerificationInputs {
   if (options === undefined) {
     return { status: 'valid' }
   }
-  if (!isObject(options) || Array.isArray(options)) {
+  if (!isObjectRecord(options)) {
     return invalidVerificationInput('Workbook model verification options must be an object', 'options')
   }
 
@@ -418,7 +418,7 @@ function readVerificationInputs(options: unknown): WorkbookVerificationInputs {
     return invalidVerificationInput(errorMessage(error), 'options.inputs')
   }
 
-  if (!isObject(inputsValue) || Array.isArray(inputsValue)) {
+  if (!isObjectRecord(inputsValue)) {
     return invalidVerificationInput('Workbook model verification options inputs must be an object', 'options.inputs')
   }
 

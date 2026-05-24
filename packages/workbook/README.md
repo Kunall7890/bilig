@@ -158,14 +158,14 @@ failure instead of making the agent catch an accessor side effect. Planned and
 failed action-plan result wrappers are frozen before they are returned.
 Action helper calls fail closed during planning too: write, clear, format, and
 low-level-op helpers reject malformed targets, non-literal values, invalid
-format options, invalid add-op options, and accessor-backed op payloads before a
-plan is returned.
+format options, invalid add-op options, class/custom-prototype option roots, and
+accessor-backed op payloads before a plan is returned.
 Check helper calls use the same boundary: malformed targets, readback options,
-custom check options, sparse ref arrays, and accessor-backed check payloads are
-rejected before a check is recorded.
+custom check options, class/custom-prototype option roots, sparse ref arrays, and
+accessor-backed check payloads are rejected before a check is recorded.
 Formula helpers also normalize as plain data: raw formula options, explicit
-inputs, labels, and function argument arrays reject sparse or accessor-backed
-payloads before formula intent is returned.
+inputs, labels, and function argument arrays reject sparse, accessor-backed, or
+class/custom-prototype payloads before formula intent is returned.
 Ref transport helpers return frozen plain data and frozen arrays, so a ref that
 an agent inspected cannot be mutated behind the same handoff object.
 `verifyPlan` also treats plans as data: malformed, sparse, or accessor-backed
@@ -174,9 +174,9 @@ properties or throwing at the caller.
 `verifyModel` keeps the same behavior at whole-model scope: invalid,
 array-backed, or accessor-backed manifests return an invalid verdict with an
 `invalid_model` error and no actions.
-Its `{ inputs }` option is data-only too: accessor-backed option payloads or
-per-action inputs produce structured `invalid_action_input` results without
-running hidden consumer code.
+Its `{ inputs }` option is data-only too: accessor-backed or
+class/custom-prototype option payloads and per-action inputs produce structured
+`invalid_action_input` results without running hidden consumer code.
 
 ## Selectors
 
