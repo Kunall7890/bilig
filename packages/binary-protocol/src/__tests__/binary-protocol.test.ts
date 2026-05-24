@@ -172,6 +172,16 @@ describe('binary protocol', () => {
               },
             },
             {
+              kind: 'setDataValidation',
+              validation: {
+                range: { sheetName: 'Sheet1', startAddress: 'E2', endAddress: 'E10' },
+                rule: {
+                  kind: 'list',
+                  source: { kind: 'formula', formula: '=OFFSET($A$1,0,0,3,1)' },
+                },
+              },
+            },
+            {
               kind: 'upsertCommentThread',
               thread: {
                 threadId: 'thread-1',
@@ -353,6 +363,16 @@ describe('binary protocol', () => {
           errorStyle: 'stop',
           errorTitle: 'Status required',
           errorMessage: 'Pick Draft or Final.',
+        },
+      },
+      {
+        kind: 'setDataValidation',
+        validation: {
+          range: { sheetName: 'Sheet1', startAddress: 'E2', endAddress: 'E10' },
+          rule: {
+            kind: 'list',
+            source: { kind: 'formula', formula: '=OFFSET($A$1,0,0,3,1)' },
+          },
         },
       },
       {

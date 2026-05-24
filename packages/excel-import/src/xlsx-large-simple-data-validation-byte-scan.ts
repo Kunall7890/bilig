@@ -262,13 +262,18 @@ function parseListFormula(
   const sheetReference = parseSheetReference(expression)
   if (sheetReference) {
     const source = parseSourceReference(sheetReference.sheetName, sheetReference.reference)
-    return source ? { source } : null
+    if (source) {
+      return { source }
+    }
   }
   const structured = parseStructuredReference(expression)
   if (structured) {
     return { source: structured }
   }
-  return /^[A-Za-z_][A-Za-z0-9_.]*$/u.test(expression) ? { source: { kind: 'named-range', name: expression } } : null
+  if (/^[A-Za-z_][A-Za-z0-9_.]*$/u.test(expression)) {
+    return { source: { kind: 'named-range', name: expression } }
+  }
+  return expression.length > 0 ? { source: { kind: 'formula', formula: trimmed.startsWith('=') ? trimmed : `=${expression}` } } : null
 }
 
 function parseSourceReference(sheetName: string, reference: string): WorkbookValidationListSourceSnapshot | null {

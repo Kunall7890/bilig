@@ -402,6 +402,10 @@ function encodeValidationListSource(writer: BinaryWriter, source: WorkbookValida
       writer.string(source.tableName)
       writer.string(source.columnName)
       return
+    case 'formula':
+      writer.u8(4)
+      writer.string(source.formula)
+      return
     default:
       assertNever(source)
   }
@@ -426,6 +430,8 @@ function decodeValidationListSource(reader: BinaryReader): WorkbookValidationLis
         tableName: reader.string(),
         columnName: reader.string(),
       }
+    case 4:
+      return { kind: 'formula', formula: reader.string() }
     default:
       throw new BinaryProtocolError('Unknown validation source tag')
   }

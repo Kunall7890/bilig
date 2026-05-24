@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
 import type { CellRangeRef } from '@bilig/protocol'
-import { parseCellAddress } from '@bilig/formula'
+import { parseCellAddress, renameFormulaSheetReferences } from '@bilig/formula'
 import { cloneDataValidationRecord } from './workbook-metadata-records.js'
 import type { WorkbookDataValidationRecord, WorkbookFilterRecord, WorkbookMergeRangeRecord } from './workbook-metadata-types.js'
 import { canonicalWorkbookRangeRef } from './workbook-range-records.js'
@@ -25,8 +25,22 @@ export function renameDataValidationSourceSheet(
     case 'named-range':
     case 'structured-ref':
       return cloned
+    case 'formula':
+      cloned.rule.source.formula = renameValidationFormulaSheetReferences(cloned.rule.source.formula, oldSheetName, newSheetName)
+      return cloned
   }
   return cloned
+}
+
+function renameValidationFormulaSheetReferences(formula: string, oldSheetName: string, newSheetName: string): string {
+  const hasFormulaPrefix = formula.startsWith('=')
+  const source = hasFormulaPrefix ? formula.slice(1) : formula
+  try {
+    const renamed = renameFormulaSheetReferences(source, oldSheetName, newSheetName)
+    return hasFormulaPrefix ? `=${renamed}` : renamed
+  } catch {
+    return formula
+  }
 }
 
 export function assertMergeRangesDoNotOverlap(ranges: readonly WorkbookMergeRangeRecord[]): void {

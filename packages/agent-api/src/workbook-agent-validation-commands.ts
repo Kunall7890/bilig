@@ -46,6 +46,8 @@ function isWorkbookValidationListSource(value: unknown): value is WorkbookValida
         typeof value['columnName'] === 'string' &&
         value['columnName'].trim().length > 0
       )
+    case 'formula':
+      return typeof value['formula'] === 'string' && value['formula'].trim().length > 0
     default:
       return false
   }

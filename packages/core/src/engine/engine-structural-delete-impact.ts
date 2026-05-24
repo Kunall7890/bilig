@@ -1,4 +1,4 @@
-import type { CellRangeRef, CellSnapshot, WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
+import type { CellRangeRef, CellSnapshot, WorkbookDataValidationSnapshot, WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
 import { ValueTag } from '@bilig/protocol'
 import { parseCellAddress, rewriteFormulaForStructuralTransform } from '@bilig/formula'
 import type { WorkbookStore } from '../workbook-store.js'
@@ -113,6 +113,30 @@ function definedNameTouchesAxisDelete(
 function rangeTouchesAxisDelete(range: CellRangeRef, axis: StructuralDeleteAxis, start: number): boolean {
   const end = parseCellAddress(range.endAddress, range.sheetName)
   return axis === 'row' ? end.row >= start : end.col >= start
+}
+
+function dataValidationTouchesAxisDelete(
+  validation: WorkbookDataValidationSnapshot,
+  sheetName: string,
+  axis: StructuralDeleteAxis,
+  start: number,
+  count: number,
+): boolean {
+  if (validation.rule.kind !== 'list' || !validation.rule.source) {
+    return false
+  }
+  const source = validation.rule.source
+  switch (source.kind) {
+    case 'cell-ref':
+      return source.sheetName === sheetName && addressTouchesAxisDelete(sheetName, source.address, axis, start)
+    case 'range-ref':
+      return source.sheetName === sheetName && rangeTouchesAxisDelete(source, axis, start)
+    case 'formula':
+      return formulaWouldRewriteForDelete(source.formula, sheetName, axis, start, count)
+    case 'named-range':
+    case 'structured-ref':
+      return false
+  }
 }
 
 function addressTouchesAxisDelete(sheetName: string, address: string, axis: StructuralDeleteAxis, start: number): boolean {
@@ -278,6 +302,15 @@ export function hasEngineStructuralDeleteImpact(args: {
       .some((definedName) => definedNameTouchesAxisDelete(definedName.value, args.sheetName, args.axis, args.start, args.count))
   ) {
     return true
+  }
+  for (const candidateSheet of args.workbook.sheetsByName.values()) {
+    if (
+      args.workbook
+        .listDataValidations(candidateSheet.name)
+        .some((validation) => dataValidationTouchesAxisDelete(validation, args.sheetName, args.axis, args.start, args.count))
+    ) {
+      return true
+    }
   }
   return hasFormulaReferenceAtOrAfter(args)
 }

@@ -128,11 +128,70 @@ describe('data validation roundtrip', () => {
     expect(imported.snapshot.sheets[0]?.metadata?.validations).toEqual(snapshot.sheets[0]?.metadata?.validations)
   })
 
-  it('ignores broken list validation references during XLSX import', async () => {
+  it('preserves formula list validation sources across XLSX import and export', () => {
+    const snapshot = {
+      version: 1,
+      workbook: { name: 'Formula Validation' },
+      sheets: [
+        {
+          id: 1,
+          name: 'Model',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 'Choice' },
+            { address: 'D2', value: 'Base' },
+            { address: 'D3', value: 'Downside' },
+            { address: 'D4', value: 'Upside' },
+          ],
+          metadata: {
+            validations: [
+              {
+                range: { sheetName: 'Model', startAddress: 'A2', endAddress: 'A2' },
+                rule: { kind: 'list', source: { kind: 'formula', formula: '=OFFSET($D$2,0,0,3,1)' } },
+              },
+            ],
+          },
+        },
+      ],
+    } as const
+
+    const exported = exportXlsx(snapshot)
+    expect(readDataValidations(exported)).toEqual([
+      {
+        type: 'list',
+        sqref: 'A2',
+        promptTitle: null,
+        prompt: null,
+        formula1: 'OFFSET($D$2,0,0,3,1)',
+        formula2: '',
+      },
+    ])
+
+    const imported = importXlsx(exported, 'formula-validation.xlsx')
+    expect(imported.snapshot.sheets[0]?.metadata?.validations).toEqual(snapshot.sheets[0]?.metadata?.validations)
+  })
+
+  it('preserves broken list validation references during XLSX import', async () => {
     const source = buildBrokenListValidationWorkbookBytes()
     const imported = importXlsx(source, 'broken-list-validation.xlsx')
 
-    expect(imported.snapshot.sheets[0]?.metadata?.validations ?? []).toEqual([])
+    expect(imported.snapshot.sheets[0]?.metadata?.validations).toEqual([
+      {
+        range: { sheetName: 'Model', startAddress: 'A1', endAddress: 'A1' },
+        rule: { kind: 'list', source: { kind: 'formula', formula: '=#REF!' } },
+        allowBlank: true,
+      },
+    ])
+    expect(readDataValidations(exportXlsx(imported.snapshot))).toEqual([
+      {
+        type: 'list',
+        sqref: 'A1',
+        promptTitle: null,
+        prompt: null,
+        formula1: '#REF!',
+        formula2: '',
+      },
+    ])
 
     const engine = new SpreadsheetEngine({ workbookName: 'broken-list-validation-import' })
     await engine.ready()

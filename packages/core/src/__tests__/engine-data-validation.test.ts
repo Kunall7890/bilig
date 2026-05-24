@@ -149,6 +149,67 @@ describe('SpreadsheetEngine data validations', () => {
     ])
   })
 
+  it('rewrites formula list validation sources across structural edits', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'validation-formula-source-structural' })
+    await engine.ready()
+    engine.createSheet('Entry')
+    engine.setRangeValues({ sheetName: 'Entry', startAddress: 'A1', endAddress: 'A3' }, [['Draft'], ['Review'], ['Final']])
+    engine.setDataValidation({
+      range: {
+        sheetName: 'Entry',
+        startAddress: 'B2',
+        endAddress: 'B4',
+      },
+      rule: {
+        kind: 'list',
+        source: {
+          kind: 'formula',
+          formula: '=OFFSET($A$1,0,0,3,1)',
+        },
+      },
+      allowBlank: true,
+    })
+
+    engine.insertRows('Entry', 0, 1)
+
+    expect(engine.getDataValidations('Entry')).toEqual([
+      {
+        range: {
+          sheetName: 'Entry',
+          startAddress: 'B3',
+          endAddress: 'B5',
+        },
+        rule: {
+          kind: 'list',
+          source: {
+            kind: 'formula',
+            formula: '=OFFSET($A$2,0,0,3,1)',
+          },
+        },
+        allowBlank: true,
+      },
+    ])
+
+    expect(engine.undo()).toBe(true)
+    expect(engine.getDataValidations('Entry')).toEqual([
+      {
+        range: {
+          sheetName: 'Entry',
+          startAddress: 'B2',
+          endAddress: 'B4',
+        },
+        rule: {
+          kind: 'list',
+          source: {
+            kind: 'formula',
+            formula: '=OFFSET($A$1,0,0,3,1)',
+          },
+        },
+        allowBlank: true,
+      },
+    ])
+  })
+
   it('clips bottom-bounded data validation ranges during structural inserts', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'validation-structural-bottom-clip' })
     await engine.ready()

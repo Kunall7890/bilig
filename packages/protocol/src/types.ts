@@ -621,11 +621,17 @@ export interface WorkbookValidationStructuredRefSourceSnapshot {
   columnName: string
 }
 
+export interface WorkbookValidationFormulaSourceSnapshot {
+  kind: 'formula'
+  formula: string
+}
+
 export type WorkbookValidationListSourceSnapshot =
   | WorkbookValidationNamedRangeSourceSnapshot
   | WorkbookValidationCellRefSourceSnapshot
   | WorkbookValidationRangeRefSourceSnapshot
   | WorkbookValidationStructuredRefSourceSnapshot
+  | WorkbookValidationFormulaSourceSnapshot
 
 export interface WorkbookListValidationRuleSnapshot {
   kind: 'list'

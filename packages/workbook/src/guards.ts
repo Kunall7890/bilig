@@ -253,6 +253,8 @@ function isWorkbookValidationListSource(value: unknown): boolean {
       return isCellRangeRef(value)
     case 'structured-ref':
       return hasString(value, 'tableName') && hasString(value, 'columnName')
+    case 'formula':
+      return hasString(value, 'formula')
     default:
       return false
   }

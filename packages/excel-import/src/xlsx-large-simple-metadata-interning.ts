@@ -259,6 +259,12 @@ function internValidationSourceInPlace(
         mutableSource.columnName = intern(source.columnName)
       }
       return
+    case 'formula':
+      {
+        const mutableSource = source as Mutable<typeof source>
+        mutableSource.formula = intern(source.formula)
+      }
+      return
   }
 }
 

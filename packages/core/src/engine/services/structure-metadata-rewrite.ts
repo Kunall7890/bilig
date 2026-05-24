@@ -28,6 +28,7 @@ import { rewriteDrawingArtifactsForStructuralTransform } from './structure-drawi
 import { rewriteFormulaSourceForDeletedStructuredReferences } from './structure-structured-ref-rewrite.js'
 import { chartGeometryFromAnchor, rewriteChartAnchorForStructuralTransform } from './structure-chart-anchor-metadata-rewrite.js'
 import { rewriteControlArtifactsForStructuralTransform } from './structure-control-artifact-rewrite.js'
+import { rewriteDataValidationSourceForStructuralTransform } from './structure-data-validation-metadata-rewrite.js'
 import { rewriteThreadedCommentArtifactsForStructuralTransform } from './structure-threaded-comment-artifact-rewrite.js'
 import { rewriteIgnoredErrorsForStructuralTransform } from './structure-ignored-errors-metadata-rewrite.js'
 import {
@@ -400,37 +401,13 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     }
     const nextValidation = structuredClone(validation)
     nextValidation.range = range
-    if (nextValidation.rule.kind === 'list' && nextValidation.rule.source) {
-      switch (nextValidation.rule.source.kind) {
-        case 'cell-ref': {
-          if (nextValidation.rule.source.sheetName !== sheetName) {
-            break
-          }
-          const nextAddress = rewriteMetadataAddressForStructuralTransform(nextValidation.rule.source.address, transform)
-          if (!nextAddress) {
-            return
-          }
-          nextValidation.rule.source.address = nextAddress
-          break
-        }
-        case 'range-ref': {
-          if (nextValidation.rule.source.sheetName !== sheetName) {
-            break
-          }
-          const nextSourceRange = rewriteMetadataRangeForStructuralTransform(nextValidation.rule.source, transform)
-          if (!nextSourceRange) {
-            return
-          }
-          nextValidation.rule.source = nextSourceRange
-          break
-        }
-        case 'named-range':
-        case 'structured-ref':
-          break
-      }
+    const sourceRewrite = rewriteDataValidationSourceForStructuralTransform(nextValidation, sheetName, transform)
+    if (sourceRewrite.kind === 'invalid') {
+      return
     }
-    workbook.setDataValidation(nextValidation)
+    workbook.setDataValidation(sourceRewrite.kind === 'rewritten' ? sourceRewrite.validation : nextValidation)
   })
+  rewriteCrossSheetDataValidationSourcesForStructuralTransform(args, sheetName, transform)
   workbook.listConditionalFormats(sheetName).forEach((format) => {
     const nextFormat = rewriteMetadataRangeRecord(format, transform)
     workbook.deleteConditionalFormat(format.id)
@@ -687,6 +664,29 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     })
   })
   return { changedTableNames, tableHeaderCellWrites, deletedTableColumns }
+}
+
+function rewriteCrossSheetDataValidationSourcesForStructuralTransform(
+  args: StructureMetadataRewriteArgs,
+  sheetName: string,
+  transform: StructuralAxisTransform,
+): void {
+  const workbook = args.state.workbook
+  for (const ownerSheet of workbook.sheetsByName.values()) {
+    if (ownerSheet.name === sheetName) {
+      continue
+    }
+    workbook.listDataValidations(ownerSheet.name).forEach((validation) => {
+      const sourceRewrite = rewriteDataValidationSourceForStructuralTransform(validation, sheetName, transform)
+      if (sourceRewrite.kind === 'unchanged') {
+        return
+      }
+      workbook.deleteDataValidation(validation.range.sheetName, validation.range)
+      if (sourceRewrite.kind === 'rewritten') {
+        workbook.setDataValidation(sourceRewrite.validation)
+      }
+    })
+  }
 }
 
 function workbookSheetIndex(sheets: Iterable<{ readonly name: string; readonly order: number }>, sheetName: string): number | undefined {

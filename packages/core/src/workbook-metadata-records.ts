@@ -138,6 +138,8 @@ function cloneValidationListSource(source: WorkbookValidationListSourceSnapshot)
         tableName: source.tableName,
         columnName: source.columnName,
       }
+    case 'formula':
+      return { kind: 'formula', formula: source.formula }
   }
 }
 
