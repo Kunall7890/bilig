@@ -140,11 +140,10 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
     }
     if (this.canUseTrackedMutationFastPath()) {
       this.ensureEngineEventTracking()
-      const beforeFormulaValues = this.captureFormulaResultValueSnapshot()
       this.engineEvents.drain()
       try {
         this.engineEvents.withRetainedIndices(() => {
-          this.engine.recalculateNow()
+          this.engine.recalculateChangedValuesNowForRebuild()
           this.sheetDimensionCache.invalidateAll()
         })
       } catch (error) {
@@ -152,12 +151,9 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
       }
       const shouldEmitValuesUpdated = this.emitter.hasListeners('valuesUpdated')
       const events = this.engineEvents.drain()
-      const changes = this.filterUnchangedRebuildChanges(
-        this.computeTrackedChangesWithoutVisibilityCache(events, {
-          preferLazyPublicChanges: shouldPreferLazyPublicChanges(events, shouldEmitValuesUpdated),
-        }),
-        beforeFormulaValues,
-      )
+      const changes = this.computeTrackedChangesWithoutVisibilityCache(events, {
+        preferLazyPublicChanges: shouldPreferLazyPublicChanges(events, shouldEmitValuesUpdated),
+      })
       if (changes.length > 0 && shouldEmitValuesUpdated) {
         this.emitter.emitDetailed({ eventName: 'valuesUpdated', payload: { changes } })
       }

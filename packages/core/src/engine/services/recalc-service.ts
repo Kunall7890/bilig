@@ -17,6 +17,8 @@ import {
 } from './formula-initialization-native-direct-lookup.js'
 import { refreshPivotOutputsForChangedCells } from './recalc-pivot-refresh.js'
 import { filterSkippedCachedFormulaCells } from './recalc-skipped-cached-formula-cells.js'
+import { capturePivotOutputValues, notePivotValueChanges } from './recalc-pivot-value-changes.js'
+import { createRecalcValueChangeCollector, type RecalcValueChangeCollector } from './recalc-value-change-collector.js'
 import type { EngineRecalcService, EngineRecalcServiceArgs } from './recalc-service-types.js'
 
 export type { DirtyRegion, EngineRecalcService } from './recalc-service-types.js'
@@ -25,15 +27,40 @@ interface RecalculateInternalOptions {
   readonly orderedFormulaCellIndices?: readonly number[] | U32
   readonly orderedFormulaCount?: number
   readonly preserveCachedValuesOnFullRecalc?: boolean
+  readonly valueChangeCollector?: RecalcValueChangeCollector
+}
+
+interface RecalculateAllNowOptions {
+  readonly collectValueChangesForRebuild?: boolean
 }
 
 export function createEngineRecalcService(args: EngineRecalcServiceArgs): EngineRecalcService {
-  const refreshPivotOutputs = (changed: readonly number[] | U32, forceAll: boolean): U32 =>
+  const refreshPivotOutputs = (
+    changed: readonly number[] | U32,
+    forceAll: boolean,
+    valueChangeCollector?: RecalcValueChangeCollector,
+  ): U32 =>
     refreshPivotOutputsForChangedCells({
       changed,
       forceAll,
       workbook: args.state.workbook,
-      materializePivot: args.materializePivot,
+      materializePivot: (pivot) => {
+        const beforeValues =
+          valueChangeCollector === undefined
+            ? undefined
+            : capturePivotOutputValues({ pivot, workbook: args.state.workbook, strings: args.state.strings })
+        const pivotChanged = args.materializePivot(pivot)
+        if (beforeValues !== undefined && valueChangeCollector !== undefined) {
+          notePivotValueChanges({
+            changed: pivotChanged,
+            before: beforeValues,
+            workbook: args.state.workbook,
+            strings: args.state.strings,
+            collector: valueChangeCollector,
+          })
+        }
+        return pivotChanged
+      },
       emptyChangedSet: args.emptyChangedSet,
     })
 
@@ -69,6 +96,14 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
 
       const precisionAsDisplayed = args.state.workbook.getCalculationSettings().fullPrecision === false
       const skippedCachedFormulaCells = options.preserveCachedValuesOnFullRecalc === true ? new Set<number>() : undefined
+      const valueChangeCollector = options.valueChangeCollector
+      const noteValueChanged = (cellIndex: number): void => {
+        valueChangeCollector?.note(cellIndex)
+      }
+      const notifyCellValueWritten = (cellIndex: number): void => {
+        args.state.workbook.notifyCellValueWritten(cellIndex)
+        noteValueChanged(cellIndex)
+      }
       const allChangedRoots = [...changedRoots]
       const allOrdered: number[] = []
       let singlePassOrdered: readonly number[] | U32 | null = null
@@ -141,9 +176,7 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
         const batchIndices = wasmBatch.subarray(0, batchCount)
         args.checkEvaluationBudget(batchCount)
         args.state.wasm.evalBatch(batchIndices)
-        args.state.wasm.syncToStore(args.state.workbook.cellStore, batchIndices, args.state.strings, (cellIndex) =>
-          args.state.workbook.notifyCellValueWritten(cellIndex),
-        )
+        args.state.wasm.syncToStore(args.state.workbook.cellStore, batchIndices, args.state.strings, notifyCellValueWritten)
         args.checkEvaluationBudget(batchCount)
         return batchCount
       }
@@ -202,6 +235,7 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
         const noteSpillChanges = (changedCellIndices: readonly number[]): void => {
           for (let spillIndex = 0; spillIndex < changedCellIndices.length; spillIndex += 1) {
             const changedCellIndex = changedCellIndices[spillIndex]!
+            noteValueChanged(changedCellIndex)
             if (spillChangedSeen.has(changedCellIndex)) {
               continue
             }
@@ -232,11 +266,13 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
         const nativeDirectScalarBatch = createRecalcNativeDirectScalarBatch({
           state: args.state,
           capacity: Math.min(Math.max(orderedCount, 1), MAX_RECALC_NATIVE_DIRECT_SCALAR_BATCH_SIZE),
+          ...(valueChangeCollector === undefined ? {} : { onCellValueChanged: noteValueChanged }),
         })
         const nativeDirectScalarCells: number[] = []
         const nativeDirectLookupBatch = createRecalcNativeDirectLookupBatch({
           state: args.state,
           capacity: Math.min(Math.max(orderedCount, 1), MAX_RECALC_NATIVE_DIRECT_LOOKUP_BATCH_SIZE),
+          ...(valueChangeCollector === undefined ? {} : { onCellValueChanged: noteValueChanged }),
         })
         const nativeDirectLookupCells: number[] = []
         const nativeDirectLookupQueued = new Set<number>()
@@ -276,7 +312,7 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
             return
           }
           args.state.workbook.cellStore.setValue(cellIndex, nextValue)
-          args.state.workbook.notifyCellValueWritten(cellIndex)
+          notifyCellValueWritten(cellIndex)
           queueKernelSync(cellIndex)
           noteQueuedSpillChanges(spillChanges)
         }
@@ -323,9 +359,7 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
           const batchIndices = Uint32Array.of(cellIndex)
           args.checkEvaluationBudget()
           args.state.wasm.evalBatch(batchIndices)
-          args.state.wasm.syncToStore(args.state.workbook.cellStore, batchIndices, args.state.strings, (changedCellIndex) =>
-            args.state.workbook.notifyCellValueWritten(changedCellIndex),
-          )
+          args.state.wasm.syncToStore(args.state.workbook.cellStore, batchIndices, args.state.strings, notifyCellValueWritten)
           args.checkEvaluationBudget()
           const spill = args.state.wasm.readSpill(cellIndex, args.state.strings)
           const spillMaterialization = spill
@@ -350,10 +384,14 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
 
         const evaluateDirectFormulaImmediately = (cellIndex: number, formula: RuntimeFormula): boolean => {
           args.checkEvaluationBudget()
+          const beforeValue = valueChangeCollector === undefined ? undefined : readStoredValue(cellIndex)
           const directLookupChanges = args.evaluateDirectLookupFormula(cellIndex)
           args.checkEvaluationBudget()
           if (directLookupChanges === undefined) {
             return false
+          }
+          if (beforeValue !== undefined && !areCellValuesEqual(beforeValue, readStoredValue(cellIndex))) {
+            noteValueChanged(cellIndex)
           }
           if (
             formula.compiled.mode === FormulaMode.WasmFastPath &&
@@ -369,6 +407,15 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
           noteQueuedSpillChanges(directLookupChanges)
           queueKernelSync(cellIndex)
           return true
+        }
+
+        const evaluateUnsupportedFormulaWithValueCollection = (cellIndex: number): number[] => {
+          const beforeValue = valueChangeCollector === undefined ? undefined : readStoredValue(cellIndex)
+          const spillChanges = args.evaluateUnsupportedFormula(cellIndex)
+          if (beforeValue !== undefined && !areCellValuesEqual(beforeValue, readStoredValue(cellIndex))) {
+            noteValueChanged(cellIndex)
+          }
+          return spillChanges
         }
 
         const flushNativeDirectLookupBatch = (): void => {
@@ -387,7 +434,7 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
               const formula = args.state.formulas.get(cellIndex)
               if (formula && !evaluateDirectFormulaImmediately(cellIndex, formula)) {
                 jsCount += 1
-                const spillChanges = args.evaluateUnsupportedFormula(cellIndex)
+                const spillChanges = evaluateUnsupportedFormulaWithValueCollection(cellIndex)
                 noteQueuedSpillChanges(spillChanges)
                 queueKernelSync(cellIndex)
               }
@@ -414,7 +461,7 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
               const formula = args.state.formulas.get(cellIndex)
               if (formula && !evaluateDirectFormulaImmediately(cellIndex, formula)) {
                 jsCount += 1
-                const spillChanges = args.evaluateUnsupportedFormula(cellIndex)
+                const spillChanges = evaluateUnsupportedFormulaWithValueCollection(cellIndex)
                 noteQueuedSpillChanges(spillChanges)
                 queueKernelSync(cellIndex)
               }
@@ -531,7 +578,7 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
           flushNativeDirectScalarBatch()
           jsCount += 1
           args.checkEvaluationBudget()
-          const spillChanges = args.evaluateUnsupportedFormula(cellIndex)
+          const spillChanges = evaluateUnsupportedFormulaWithValueCollection(cellIndex)
           args.checkEvaluationBudget()
           noteQueuedSpillChanges(spillChanges)
           queueKernelSync(cellIndex)
@@ -679,7 +726,7 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
     orderedFormulaCellIndices: readonly number[] | U32,
     orderedFormulaCount: number,
     kernelSyncRoots: readonly number[] | U32 = changedRoots,
-    options: Pick<RecalculateInternalOptions, 'preserveCachedValuesOnFullRecalc'> = {},
+    options: Pick<RecalculateInternalOptions, 'preserveCachedValuesOnFullRecalc' | 'valueChangeCollector'> = {},
   ): U32 =>
     recalculateInternal(changedRoots, kernelSyncRoots, {
       orderedFormulaCellIndices,
@@ -687,18 +734,21 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
       ...options,
     })
 
-  const reconcilePivotOutputs = (baseChanged: U32, forceAllPivots = false): U32 => {
+  const reconcilePivotOutputs = (baseChanged: U32, forceAllPivots = false, valueChangeCollector?: RecalcValueChangeCollector): U32 => {
     let aggregate = baseChanged
     let pending = baseChanged
     let forceAll = forceAllPivots
 
     for (let iteration = 0; iteration < 4; iteration += 1) {
-      const pivotChanged = refreshPivotOutputs(pending, forceAll)
+      const pivotChanged = refreshPivotOutputs(pending, forceAll, valueChangeCollector)
       if (pivotChanged.length === 0) {
         break
       }
       aggregate = aggregate.length === 0 ? pivotChanged : args.unionChangedSets(aggregate, pivotChanged)
-      pending = recalculate(pivotChanged, pivotChanged)
+      pending =
+        valueChangeCollector === undefined
+          ? recalculateInternal(pivotChanged, pivotChanged)
+          : recalculateInternal(pivotChanged, pivotChanged, { valueChangeCollector })
       aggregate = pending.length === 0 ? aggregate : args.unionChangedSets(aggregate, pending)
       forceAll = false
     }
@@ -706,11 +756,14 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
     return aggregate
   }
 
-  const recalculateAllNow = (): number[] => {
+  const recalculateAllNow = (options: RecalculateAllNowOptions = {}): number[] => {
     args.beginMutationCollection()
     args.state.workbook.setVolatileContext({
       recalcEpoch: args.state.workbook.getVolatileContext().recalcEpoch + 1,
     })
+    const valueChangeCollector = options.collectValueChangesForRebuild
+      ? createRecalcValueChangeCollector(args.state.workbook.cellStore.size)
+      : undefined
     let formulaChangedCount = 0
     let explicitChangedCount = 0
     let canUseFullFormulaOrder = true
@@ -719,13 +772,19 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
         return
       }
       formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
-      explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
+      if (valueChangeCollector === undefined) {
+        explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
+      }
       if (formula.compiled.producesSpill || formula.directLookup !== undefined || formula.directCriteria !== undefined) {
         canUseFullFormulaOrder = false
       }
     })
     const mutationRoots = args.composeMutationRoots(0, formulaChangedCount)
     let recalculatedBase: U32
+    const fullRecalcOptions =
+      valueChangeCollector === undefined
+        ? { preserveCachedValuesOnFullRecalc: true as const }
+        : { preserveCachedValuesOnFullRecalc: true as const, valueChangeCollector }
     if (canUseFullFormulaOrder) {
       const fullFormulaOrder = args.dirtyScheduler.collectAll()
       recalculatedBase = recalculatePreordered(
@@ -733,15 +792,16 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
         fullFormulaOrder.orderedFormulaCellIndices,
         fullFormulaOrder.orderedFormulaCount,
         args.emptyChangedSet(),
-        { preserveCachedValuesOnFullRecalc: true },
+        fullRecalcOptions,
       )
     } else {
-      recalculatedBase = recalculateInternal(mutationRoots, args.emptyChangedSet(), {
-        preserveCachedValuesOnFullRecalc: true,
-      })
+      recalculatedBase = recalculateInternal(mutationRoots, args.emptyChangedSet(), fullRecalcOptions)
     }
-    const recalculated = reconcilePivotOutputs(recalculatedBase, true)
-    const changed = args.composeEventChanges(recalculated, explicitChangedCount)
+    const recalculated = reconcilePivotOutputs(recalculatedBase, true, valueChangeCollector)
+    const changed =
+      valueChangeCollector === undefined
+        ? args.composeEventChanges(recalculated, explicitChangedCount)
+        : valueChangeCollector.toChangedSet()
     const lastMetrics = { ...args.state.getLastMetrics() }
     lastMetrics.batchId += 1
     lastMetrics.changedInputCount = formulaChangedCount
@@ -763,6 +823,17 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
     } catch (cause) {
       throw new EngineRecalcError({
         message: 'Failed to recalculate all formulas',
+        cause,
+      })
+    }
+  }
+
+  const recalculateChangedValuesNowForRebuildSync = (): number[] => {
+    try {
+      return recalculateAllNow({ collectValueChangesForRebuild: true })
+    } catch (cause) {
+      throw new EngineRecalcError({
+        message: 'Failed to recalculate changed formula values for rebuild',
         cause,
       })
     }
@@ -903,6 +974,7 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
     },
     recalculatePreorderedNowSync: recalculatePreordered,
     recalculateAllNowSync,
+    recalculateChangedValuesNowForRebuildSync,
     recalculateNowSync: recalculate,
     reconcilePivotOutputsNow: reconcilePivotOutputs,
   }

@@ -12,8 +12,12 @@ function hasCaptureVisibilitySnapshot(value: unknown): value is WorkPaper & { ca
   return typeof Reflect.get(value, 'captureVisibilitySnapshot') === 'function'
 }
 
+function hasCaptureFormulaResultValueSnapshot(value: unknown): value is WorkPaper & { captureFormulaResultValueSnapshot: () => unknown } {
+  return typeof Reflect.get(value, 'captureFormulaResultValueSnapshot') === 'function'
+}
+
 describe('WorkPaper rebuild fast path', () => {
-  it('rebuilds stable formulas without full visibility snapshots', () => {
+  it('rebuilds stable formulas without full visibility or formula-value snapshots', () => {
     const workbook = WorkPaper.buildFromSheets({
       Bench: [
         [1, 2, '=A1+B1', '=C1*2'],
@@ -24,16 +28,24 @@ describe('WorkPaper rebuild fast path', () => {
     if (!hasCaptureVisibilitySnapshot(workbook)) {
       throw new Error('Expected work paper runtime to expose captureVisibilitySnapshot in tests')
     }
+    if (!hasCaptureFormulaResultValueSnapshot(workbook)) {
+      throw new Error('Expected work paper runtime to expose captureFormulaResultValueSnapshot in tests')
+    }
     const captureVisibilitySnapshot = vi.spyOn(workbook, 'captureVisibilitySnapshot').mockImplementation(() => {
       throw new Error('stable rebuilds should not require full visibility snapshots')
+    })
+    const captureFormulaResultValueSnapshot = vi.spyOn(workbook, 'captureFormulaResultValueSnapshot').mockImplementation(() => {
+      throw new Error('stable rebuilds should not require formula-value snapshots')
     })
 
     try {
       expect(workbook.rebuildAndRecalculate()).toEqual([])
       expect(workbook.getCellValue(cell(sheetId, 1, 3))).toEqual({ tag: ValueTag.Number, value: 14 })
       expect(captureVisibilitySnapshot).not.toHaveBeenCalled()
+      expect(captureFormulaResultValueSnapshot).not.toHaveBeenCalled()
     } finally {
       captureVisibilitySnapshot.mockRestore()
+      captureFormulaResultValueSnapshot.mockRestore()
     }
   })
 

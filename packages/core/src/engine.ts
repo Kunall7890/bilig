@@ -336,6 +336,10 @@ export class SpreadsheetEngine extends SpreadsheetEngineWorkbookFacadeBase {
     return this.runtime.recalc.recalculateAllNowSync()
   }
 
+  recalculateChangedValuesNowForRebuild(): number[] {
+    return this.runtime.recalc.recalculateChangedValuesNowForRebuildSync()
+  }
+
   recalculateDifferential(): { js: CellSnapshot[]; wasm: CellSnapshot[]; drift: string[] } {
     return runEngineEffect(this.runtime.recalc.recalculateDifferential())
   }

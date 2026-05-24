@@ -92,6 +92,60 @@ describe('EngineRecalcService', () => {
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 50 })
   })
 
+  it('keeps public full recalculation broad while rebuild-internal recalc returns actual value changes only', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'recalc-value-changed' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 10)
+    engine.setCellFormula('Sheet1', 'B1', 'A1*2')
+
+    const b1Index = engine.workbook.getCellIndex('Sheet1', 'B1')
+    const publicChanged = engine.recalculateNow()
+    const internalStableChanged = engine.recalculateChangedValuesNowForRebuild()
+
+    expect(publicChanged).toContain(b1Index)
+    expect(internalStableChanged).not.toContain(b1Index)
+
+    const a1Index = engine.workbook.ensureCell('Sheet1', 'A1')
+    engine.workbook.cellStore.setValue(a1Index, { tag: ValueTag.Number, value: 25 })
+
+    const internalChanged = engine.recalculateChangedValuesNowForRebuild()
+
+    expect(internalChanged).toContain(b1Index)
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 50 })
+  })
+
+  it('collects actual native direct scalar value changes for rebuild-internal full recalculation', async () => {
+    const rowCount = 160
+    const engine = new SpreadsheetEngine({ workbookName: 'recalc-value-changed-native-direct-scalar' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+      engine.setCellFormula('Sheet1', `B${row}`, `A${row}*2+1`)
+    }
+
+    const stableChanged = engine.recalculateChangedValuesNowForRebuild()
+
+    expect(stableChanged).toEqual([])
+
+    for (let row = 1; row <= rowCount; row += 1) {
+      const cellIndex = engine.workbook.ensureCell('Sheet1', `A${row}`)
+      engine.workbook.cellStore.setValue(cellIndex, { tag: ValueTag.Number, value: row + 10 })
+    }
+
+    engine.resetPerformanceCounters()
+    const changed = engine.recalculateChangedValuesNowForRebuild()
+    const counters = engine.getPerformanceCounters() as Record<string, number | undefined> & {
+      readonly nativeDirectScalarRecalcEvaluations?: number
+    }
+
+    expect(changed).toContain(engine.workbook.getCellIndex('Sheet1', `B${rowCount}`))
+    expect(engine.getCellValue('Sheet1', `B${rowCount}`)).toEqual({ tag: ValueTag.Number, value: (rowCount + 10) * 2 + 1 })
+    expect(counters.nativeDirectScalarRecalcEvaluations).toBeGreaterThanOrEqual(rowCount)
+  })
+
   it('batches large direct scalar full recalculation through the native scalar kernel', async () => {
     const rowCount = 160
     const engine = new SpreadsheetEngine({ workbookName: 'recalc-native-direct-scalar' })
@@ -344,6 +398,22 @@ describe('EngineRecalcService', () => {
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({
       tag: ValueTag.Number,
       value: 0.75,
+    })
+
+    vi.setSystemTime(new Date('2026-02-05T00:00:00Z'))
+    randomSpy.mockReturnValue(0.5)
+
+    const internalChanged = engine.recalculateChangedValuesNowForRebuild()
+
+    expect(internalChanged).toContain(engine.workbook.getCellIndex('Sheet1', 'A1'))
+    expect(internalChanged).toContain(engine.workbook.getCellIndex('Sheet1', 'B1'))
+    expect(engine.getCellValue('Sheet1', 'A1')).toEqual({
+      tag: ValueTag.Number,
+      value: utcDateToExcelSerial(new Date('2026-02-05T00:00:00Z')),
+    })
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({
+      tag: ValueTag.Number,
+      value: 0.5,
     })
   })
 

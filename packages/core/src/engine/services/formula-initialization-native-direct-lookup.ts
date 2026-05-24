@@ -53,6 +53,7 @@ export function createInitialNativeDirectLookupBatch(args: {
 export function createRecalcNativeDirectLookupBatch(args: {
   readonly state: InitialNativeDirectLookupBatchState
   readonly capacity: number
+  readonly onCellValueChanged?: (cellIndex: number) => void
 }): NativeDirectLookupBatch {
   return createNativeDirectLookupBatch({
     ...args,
@@ -66,6 +67,7 @@ function createNativeDirectLookupBatch(args: {
   readonly capacity: number
   readonly counterName: Extract<EngineCounterKey, 'nativeDirectLookupInitialEvaluations' | 'nativeDirectLookupRecalcEvaluations'>
   readonly minBatchSize: number
+  readonly onCellValueChanged?: (cellIndex: number) => void
 }): NativeDirectLookupBatch {
   const targets = new Uint32Array(args.capacity)
   const kinds = new Uint8Array(args.capacity)
@@ -198,16 +200,28 @@ function createNativeDirectLookupBatch(args: {
         return undefined
       }
       const cellStore = args.state.workbook.cellStore
+      const onCellValueChanged = args.onCellValueChanged
       for (let index = 0; index < count; index += 1) {
         const cellIndex = targets[index]!
         const tag = (outTags[index] as ValueTag | undefined) ?? ValueTag.Empty
+        const nextError = tag === ValueTag.Error ? ((outErrors[index] as ErrorCode | undefined) ?? ErrorCode.None) : ErrorCode.None
+        const nextNumber = tag === ValueTag.Number || tag === ValueTag.Boolean ? (outNumbers[index] ?? 0) : 0
+        const beforeTag = onCellValueChanged === undefined ? tag : ((cellStore.tags[cellIndex] as ValueTag | undefined) ?? ValueTag.Empty)
+        const changed =
+          onCellValueChanged === undefined
+            ? false
+            : beforeTag !== tag ||
+              ((tag === ValueTag.Number || tag === ValueTag.Boolean) && !Object.is(cellStore.numbers[cellIndex] ?? 0, nextNumber)) ||
+              (tag === ValueTag.Error && ((cellStore.errors[cellIndex] as ErrorCode | undefined) ?? ErrorCode.None) !== nextError)
         cellStore.flags[cellIndex] = (cellStore.flags[cellIndex] ?? 0) & ~(CellFlags.SpillChild | CellFlags.PivotOutput)
         cellStore.tags[cellIndex] = tag
-        cellStore.errors[cellIndex] =
-          tag === ValueTag.Error ? ((outErrors[index] as ErrorCode | undefined) ?? ErrorCode.None) : ErrorCode.None
+        cellStore.errors[cellIndex] = nextError
         cellStore.stringIds[cellIndex] = 0
-        cellStore.numbers[cellIndex] = tag === ValueTag.Number || tag === ValueTag.Boolean ? (outNumbers[index] ?? 0) : 0
+        cellStore.numbers[cellIndex] = nextNumber
         cellStore.versions[cellIndex] = (cellStore.versions[cellIndex] ?? 0) + 1
+        if (changed) {
+          onCellValueChanged?.(cellIndex)
+        }
       }
       columnsBySheetId.forEach((tracker, sheetId) => {
         args.state.workbook.notifyColumnsWritten(sheetId, materializeWrittenColumns(tracker))

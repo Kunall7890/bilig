@@ -36,6 +36,7 @@ export interface EngineRecalcService {
     kernelSyncRoots?: readonly number[] | U32,
   ) => U32
   readonly recalculateAllNowSync: () => number[]
+  readonly recalculateChangedValuesNowForRebuildSync: () => number[]
   readonly recalculateNowSync: (changedRoots: readonly number[] | U32, kernelSyncRoots?: readonly number[] | U32) => U32
   readonly reconcilePivotOutputsNow: (baseChanged: U32, forceAllPivots?: boolean) => U32
 }
