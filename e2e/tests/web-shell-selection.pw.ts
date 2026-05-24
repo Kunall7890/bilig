@@ -286,7 +286,7 @@ test('web app paints selected areas as one continuous body range and collapses o
   await expectSelectionVisualRoles(page, ['selection-border', 'fill-handle'], 'visible')
   await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]').first()).toHaveCSS(
     'background-color',
-    'rgba(33, 115, 70, 0.18)',
+    'rgba(33, 115, 70, 0.22)',
   )
   await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]').first()).toHaveCSS('opacity', '1')
   await expectSelectedRangeBodyTint(page, 3, 3)
@@ -1041,7 +1041,7 @@ async function expectSelectedRangeBodyTint(page: Page, columnIndex: number, rowI
     .poll(
       async () => {
         const pixel = await sampleCellInteriorPixel(page, columnIndex, rowIndex)
-        return pixel.red < 238 && pixel.green < 242 && pixel.blue < 238 && pixel.green > pixel.red
+        return pixel.red < 212 && pixel.green < 230 && pixel.blue < 220 && pixel.green > pixel.red
       },
       {
         message: `cell ${columnIndex}:${rowIndex} should show selected range body tint`,
@@ -1049,9 +1049,9 @@ async function expectSelectedRangeBodyTint(page: Page, columnIndex: number, rowI
     )
     .toBe(true)
   const pixel = await sampleCellInteriorPixel(page, columnIndex, rowIndex)
-  expect(pixel.red, 'selected range interior should not read as a white hollow rectangle').toBeLessThan(238)
+  expect(pixel.red, 'selected range interior should not read as a white hollow rectangle').toBeLessThan(212)
   expect(pixel.green, 'selected range interior should keep a visible spreadsheet selection tint').toBeLessThan(242)
-  expect(pixel.blue, 'selected range interior should not read as a white hollow rectangle').toBeLessThan(238)
+  expect(pixel.blue, 'selected range interior should not read as a white hollow rectangle').toBeLessThan(220)
   expect(pixel.green, 'selected range interior should carry the green Excel-style selection cast').toBeGreaterThan(pixel.red)
 }
 
