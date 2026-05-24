@@ -93,6 +93,8 @@ describe('xlsx-formula-recalc', () => {
 
     expect(readNumber(result.reads['Model!B2'])).toBe(20)
     expect(readCachedFormulaValue(result.xlsx, 'xl/worksheets/sheet1.xml', 'B2')).toBe('20')
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'calcMode')).toBe('manual')
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'fullCalcOnLoad')).toBeNull()
 
     const imported = importXlsx(result.xlsx, 'manual-stale-cache.recalculated.xlsx')
     const restored = WorkPaper.buildFromSnapshot(imported.snapshot)
@@ -100,6 +102,85 @@ describe('xlsx-formula-recalc', () => {
     expect(model).toBeTypeOf('number')
     expect(readNumber(restored.getCellValue({ sheet: model!, row: 1, col: 1 }))).toBe(20)
     restored.dispose()
+  })
+
+  it('clears stale calculation metadata after explicit formula recalculation', () => {
+    const sourceWorkbook = WorkPaper.buildFromSheets({
+      Model: [
+        ['Input', 'Output'],
+        [2, '=A2*10'],
+      ],
+    })
+    const sourceBytes = setWorkbookCalcPr(
+      replaceCellXml(exportXlsx(sourceWorkbook.exportSnapshot()), 'xl/worksheets/sheet1.xml', 'B2', '<c r="B2"><f>A2*10</f><v>999</v></c>'),
+      '<calcPr calcMode="manual" calcOnSave="1" calcCompleted="0" fullCalcOnLoad="0" forceFullCalc="1"/>',
+    )
+    sourceWorkbook.dispose()
+
+    const result = recalculateXlsx(sourceBytes, {
+      fileName: 'manual-stale-cache-flags.xlsx',
+      reads: ['Model!B2'],
+    })
+
+    expect(readNumber(result.reads['Model!B2'])).toBe(20)
+    expect(readCachedFormulaValue(result.xlsx, 'xl/worksheets/sheet1.xml', 'B2')).toBe('20')
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'calcMode')).toBe('manual')
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'calcOnSave')).toBeNull()
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'calcCompleted')).toBeNull()
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'fullCalcOnLoad')).toBeNull()
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'forceFullCalc')).toBeNull()
+  })
+
+  it('drops incomplete automatic calc metadata after explicit formula recalculation', () => {
+    const sourceWorkbook = WorkPaper.buildFromSheets({
+      Model: [
+        ['Input', 'Output'],
+        [2, '=A2*10'],
+      ],
+    })
+    const sourceBytes = setWorkbookCalcPr(
+      replaceCellXml(exportXlsx(sourceWorkbook.exportSnapshot()), 'xl/worksheets/sheet1.xml', 'B2', '<c r="B2"><f>A2*10</f><v>999</v></c>'),
+      '<calcPr calcCompleted="0"/>',
+    )
+    sourceWorkbook.dispose()
+
+    const result = recalculateXlsx(sourceBytes, {
+      fileName: 'automatic-incomplete-cache.xlsx',
+      reads: ['Model!B2'],
+    })
+
+    expect(readNumber(result.reads['Model!B2'])).toBe(20)
+    expect(readCachedFormulaValue(result.xlsx, 'xl/worksheets/sheet1.xml', 'B2')).toBe('20')
+    expect(readWorkbookXml(result.xlsx)).not.toContain('<calcPr')
+  })
+
+  it('preserves non-stale calculation preferences after explicit formula recalculation', () => {
+    const sourceWorkbook = WorkPaper.buildFromSheets({
+      Model: [
+        ['Input', 'Output'],
+        [2, '=A2*10'],
+      ],
+    })
+    const sourceBytes = setWorkbookCalcPr(
+      replaceCellXml(exportXlsx(sourceWorkbook.exportSnapshot()), 'xl/worksheets/sheet1.xml', 'B2', '<c r="B2"><f>A2*10</f><v>999</v></c>'),
+      '<calcPr calcMode="manual" fullPrecision="0" iterate="1" iterateCount="32" iterateDelta="0.001" concurrentCalc="0" calcCompleted="0" fullCalcOnLoad="0"/>',
+    )
+    sourceWorkbook.dispose()
+
+    const result = recalculateXlsx(sourceBytes, {
+      fileName: 'manual-stale-cache-with-preferences.xlsx',
+      reads: ['Model!B2'],
+    })
+
+    expect(readNumber(result.reads['Model!B2'])).toBe(20)
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'calcMode')).toBe('manual')
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'fullPrecision')).toBe('0')
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'iterate')).toBe('1')
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'iterateCount')).toBe('32')
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'iterateDelta')).toBe('0.001')
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'concurrentCalc')).toBe('0')
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'calcCompleted')).toBeNull()
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'fullCalcOnLoad')).toBeNull()
   })
 
   it('parses quoted sheet names and absolute A1 addresses', () => {
@@ -170,6 +251,16 @@ function setWorkbookCalcPr(bytes: Uint8Array, calcPrXml: string): Uint8Array {
   }
   zip['xl/workbook.xml'] = strToU8(workbookXml.replace('</workbook>', `${calcPrXml}</workbook>`))
   return zipSync(zip)
+}
+
+function readWorkbookXml(bytes: Uint8Array): string {
+  return strFromU8(unzipSync(bytes)['xl/workbook.xml'] ?? new Uint8Array())
+}
+
+function readWorkbookCalcPrAttribute(bytes: Uint8Array, name: string): string | null {
+  const calcPr = /<calcPr\b([^>]*)\/?>/u.exec(readWorkbookXml(bytes))?.[1] ?? ''
+  const match = new RegExp(`\\b${name}="([^"]*)"`, 'u').exec(calcPr)
+  return match?.[1] ?? null
 }
 
 function readCachedFormulaValue(bytes: Uint8Array, sheetPath: string, address: string): string | null {

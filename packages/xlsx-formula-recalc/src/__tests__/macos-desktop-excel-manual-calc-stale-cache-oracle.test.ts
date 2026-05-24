@@ -38,14 +38,21 @@ describe('macOS Desktop Excel manual-calc stale-cache oracle', () => {
           formula: '=A2*10',
           value: { kind: 'number', value: 20 },
         })
-        expect(readCachedFormulaValue(new Uint8Array(readFileSync(sourcePath)), 'xl/worksheets/sheet1.xml', 'B2')).toBe('20')
+        const excelSavedState = nativeSaveFormulaState(new Uint8Array(readFileSync(sourcePath)))
+        expect(excelSavedState).toMatchObject({
+          cachedValue: '20',
+          calcMode: 'manual',
+          calcOnSave: null,
+          calcCompleted: null,
+          fullCalcOnLoad: null,
+        })
 
         const result = recalculateXlsx(sourceBytes, {
           fileName: 'manual-stale-cache-source.xlsx',
           reads: ['Model!B2'],
         })
         expect(numberCell(result.reads['Model!B2'])).toBe(20)
-        expect(readCachedFormulaValue(result.xlsx, 'xl/worksheets/sheet1.xml', 'B2')).toBe('20')
+        expect(nativeSaveFormulaState(result.xlsx)).toEqual(excelSavedState)
 
         const headlessPath = join(tempDir, 'manual-stale-cache-headless.xlsx')
         writeFileSync(headlessPath, result.xlsx)
@@ -97,7 +104,13 @@ describe('macOS Desktop Excel manual-calc stale-cache oracle', () => {
           reads: ['Model!B2'],
         })
         expect(numberCell(recalculated.reads['Model!B2'])).toBe(20)
-        expect(nativeSaveFormulaState(recalculated.xlsx).cachedValue).toBe('20')
+        expect(nativeSaveFormulaState(recalculated.xlsx)).toMatchObject({
+          cachedValue: '20',
+          calcMode: 'manual',
+          calcOnSave: null,
+          calcCompleted: null,
+          fullCalcOnLoad: null,
+        })
       } finally {
         rmSync(tempDir, { recursive: true, force: true })
       }

@@ -142,8 +142,17 @@ function restoreOutputCalculationSettings(
   }
   const next = structuredClone(snapshot)
   next.workbook.metadata ??= {}
-  next.workbook.metadata.calculationSettings = structuredClone(originalCalculationSettings)
+  next.workbook.metadata.calculationSettings = calculationSettingsAfterExplicitRecalculation(originalCalculationSettings)
   return next
+}
+
+function calculationSettingsAfterExplicitRecalculation(settings: WorkbookCalculationSettings): WorkbookCalculationSettings {
+  const recalculated = structuredClone(settings)
+  delete recalculated.calcCompleted
+  delete recalculated.calcOnSave
+  delete recalculated.forceFullCalc
+  delete recalculated.fullCalcOnLoad
+  return recalculated
 }
 
 export function parseQualifiedCellTarget(workbook: WorkPaperInstance, target: string): WorkPaperCellAddress {
