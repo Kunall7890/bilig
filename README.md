@@ -498,6 +498,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xls
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@latest -- bilig-workpaper-mcp
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 
