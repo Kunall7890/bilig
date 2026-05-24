@@ -4,6 +4,35 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.82.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.78.0
+- Manual override: no
+
+## Features
+- feat(workbook): freeze runtime requirements (9d2ec121)
+- feat(workbook): freeze agent descriptions (a401b3d9)
+- feat(workbook): freeze proof verdicts (e5298df2)
+- feat(workbook): freeze handoff validators (593be6e8)
+- feat(workbook): freeze run results (8bcb2f8d)
+- feat(workbook): freeze planning results (0fac6f26)
+- feat(workbook): freeze helper namespaces (a780256b)
+- feat(workbook): canonicalize formula readback proof (95b60f47)
+- feat(workbook): validate transported row selectors (324fde09)
+
+## Fixes
+- perf(headless): skip stable rebuild value materialization (6f01a160)
+- fix(xlsx): prune orphaned external link caches (3abf1875)
+- fix(workbook): enforce protected structure locks (5611d516)
+- fix(xlsx): preserve protected range security attrs (6cc9a443)
+- fix(ui): require visible operation response proof (3b2c9320)
+
+## Internal runtime changes
+- chore(release): runtime packages v0.79.0 (3f2b5ea0)
+- chore(release): runtime packages v0.80.0 (d53af3bb)
+- chore(release): runtime packages v0.81.0 (70878ea5)
+
 ## 0.81.0
 
 - Release type: minor
