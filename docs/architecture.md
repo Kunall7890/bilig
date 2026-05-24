@@ -28,6 +28,7 @@ flowchart LR
   - agent-first public workbook model API
   - phase-scoped find/check/action contexts
   - frozen workbook refs with non-enumerable ergonomic helpers
+  - frozen public helper namespaces for find/check/formula construction
   - JSON-safe ref data plus hydration helpers for agent/runtime transport
   - own-data-only ref discovery and hydration, with accessors ignored instead
     of invoked during planning and transport

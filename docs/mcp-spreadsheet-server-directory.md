@@ -222,7 +222,7 @@ The canonical package metadata in this repo includes:
 Latest checked result on May 24, 2026: Live; latest marker matches npm latest `@bilig/workpaper@0.80.0`. npm latest is `@bilig/workpaper@0.80.0`.
 The official Registry latest-marked entry is
 `io.github.proompteng/bilig-workpaper@0.80.0` with package
-`@bilig/workpaper@0.79.0`. The API also returns historical entries, so
+`@bilig/workpaper@0.80.0`. The API also returns historical entries, so
 consumers should follow pagination, request a sufficient limit, and select the
 latest-marked entry when they need the Registry-owned freshest install
 coordinate. The hosted server-card path still advertises remote `https://bilig.proompteng.ai/mcp` for live smoke tests.

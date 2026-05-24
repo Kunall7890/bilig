@@ -2,6 +2,21 @@ import { describe, expect, it } from 'vitest'
 import { defineModel, describePlan, findRange, formula, planWorkbookAction, verifyPlan } from '../index.js'
 
 describe('@bilig/workbook formula api', () => {
+  it('freezes the public formula namespace and helper arrays', () => {
+    const input = findRange({ sheetName: 'Sheet1', address: 'A1' })
+
+    expect(Object.isFrozen(formula)).toBe(true)
+    expect(formula.inputs(input)).toEqual([input])
+    expect(Object.isFrozen(formula.inputs(input))).toBe(true)
+    expect(formula.labels(input)).toEqual([{ name: 'Sheet1!A1', ref: input }])
+    expect(Object.isFrozen(formula.labels(input))).toBe(true)
+    expect(Object.isFrozen(formula.labels(input)[0])).toBe(true)
+    expect(formula.inputs(1)).toEqual([])
+    expect(Object.isFrozen(formula.inputs(1))).toBe(true)
+    expect(formula.labels(false)).toEqual([])
+    expect(Object.isFrozen(formula.labels(false))).toBe(true)
+  })
+
   it('keeps explicit raw formula inputs inspectable', () => {
     const model = defineModel({
       name: 'raw-formula-input-model',

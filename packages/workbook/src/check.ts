@@ -211,7 +211,7 @@ export function createWorkbookCheckApi(record?: (check: WorkbookCheckResult) => 
     return check
   }
 
-  return {
+  const api: WorkbookCheckApi = {
     exists(target) {
       const checkedTarget = checkTarget('exists', target)
       return planned({ kind: 'exists', target: checkedTarget, message: `${checkedTarget.label} exists` })
@@ -258,6 +258,7 @@ export function createWorkbookCheckApi(record?: (check: WorkbookCheckResult) => 
       return check
     },
   }
+  return Object.freeze(api)
 }
 
 export const check: WorkbookCheckApi = createWorkbookCheckApi()

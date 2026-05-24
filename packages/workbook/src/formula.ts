@@ -23,6 +23,8 @@ export type WorkbookFormulaOperand = WorkbookFormulaExpression | WorkbookRef | n
 
 const FORMULA_OPERAND_ERROR =
   'Formula operands must be formula expressions, workbook refs, finite numbers, booleans, or formula.text/raw wrappers'
+const EMPTY_FORMULA_INPUTS = Object.freeze([] as readonly WorkbookRef[])
+const EMPTY_FORMULA_LABELS = Object.freeze([] as readonly WorkbookFormulaLabel[])
 
 function dataValue(value: object, key: string): unknown {
   return Object.getOwnPropertyDescriptor(value, key)?.value
@@ -187,7 +189,7 @@ function labelForRef(ref: WorkbookRef): WorkbookFormulaLabel {
 }
 
 function labelsForRefs(refs: readonly WorkbookRef[]): readonly WorkbookFormulaLabel[] {
-  return refs.map(labelForRef)
+  return Object.freeze(refs.map(labelForRef))
 }
 
 function createFormulaExpression(
@@ -278,9 +280,9 @@ function operandInputs(operand: WorkbookFormulaOperand): readonly WorkbookRef[] 
     return formulaExpressionInputs(operand)
   }
   if (isWorkbookRef(operand)) {
-    return [operand]
+    return Object.freeze([operand])
   }
-  return []
+  return EMPTY_FORMULA_INPUTS
 }
 
 function operandLabels(operand: WorkbookFormulaOperand): readonly WorkbookFormulaLabel[] {
@@ -288,9 +290,9 @@ function operandLabels(operand: WorkbookFormulaOperand): readonly WorkbookFormul
     return formulaExpressionLabels(operand)
   }
   if (isWorkbookRef(operand)) {
-    return [labelForRef(operand)]
+    return Object.freeze([labelForRef(operand)])
   }
-  return []
+  return EMPTY_FORMULA_LABELS
 }
 
 function collectInputs(args: readonly WorkbookFormulaOperand[]): readonly WorkbookRef[] {
@@ -315,7 +317,7 @@ function call(name: string, args: readonly WorkbookFormulaOperand[]): WorkbookFo
   return createFormulaExpression(`${callee}(${operands.map(operandSource).join(',')})`, collectInputs(operands), collectLabels(operands))
 }
 
-export const formula = {
+export const formula = Object.freeze({
   raw(source: string, options: WorkbookRawFormulaOptions = {}): WorkbookFormulaExpression {
     const normalized = rawFormulaOptions(options)
     return createFormulaExpression(source, normalized.inputs, normalized.labels ?? labelsForRefs(normalized.inputs))
@@ -351,4 +353,4 @@ export const formula = {
   sum(...args: readonly WorkbookFormulaOperand[]): WorkbookFormulaExpression {
     return call('SUM', args)
   },
-} as const
+} as const)

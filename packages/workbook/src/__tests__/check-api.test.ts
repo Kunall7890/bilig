@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   builtInWorkbookCheckKinds,
   check,
+  createWorkbookCheckApi,
   defineModel,
   describePlanResult,
   findRange,
@@ -28,6 +29,8 @@ describe('@bilig/workbook check api', () => {
         value: 12,
       },
     })
+    expect(Object.isFrozen(check)).toBe(true)
+    expect(Object.isFrozen(createWorkbookCheckApi())).toBe(true)
     expect(
       check.formulaEquals(output, formula.multiply(amount, 2), {
         message: 'Output formula matches the declared model formula',

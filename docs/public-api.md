@@ -61,6 +61,8 @@ prepaid, or other business models in this package.
 - `find` returns generic workbook refs through `findTable`, `findColumn`,
   `findRange`, `findName`, and `findRows`.
 - `checks` declares generic facts the runtime must prove.
+- `find`, `check`, and `formula` are frozen helper namespaces, so consumers
+  cannot mutate the imported public tool surface after an agent inspects it.
 - `actions` build portable workbook intent with `writeFormula`, `writeValue`,
   `format`, `clear`, or a guarded low-level op.
 - `inspectModel` returns a frozen model manifest without running find, checks,
@@ -97,6 +99,9 @@ Action manifests are frozen null-prototype maps, and planning only runs own
 manifest actions. Generic action names such as `toString`, `constructor`, or
 `__proto__` can be explicit own actions, but inherited prototype fields are not
 part of the executable surface.
+Imported helper namespaces such as `find`, `check`, and `formula` are frozen,
+and factory-created check/find helper objects are frozen too. Formula helper
+arrays are frozen even for direct refs or literal operands.
 For transport, `toWorkbookRefData` turns any ref into plain data,
 `isWorkbookRefData` validates that data, `collectWorkbookRefData` discovers refs
 without requiring hidden methods, and `hydrateWorkbookRef` /
