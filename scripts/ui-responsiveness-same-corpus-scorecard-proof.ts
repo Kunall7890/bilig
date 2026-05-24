@@ -226,7 +226,7 @@ export function buildSameCorpusCaptureRunManifest(
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
   ).length
   const tenXMeanAndP95CaseCount = cases.map(buildSameCorpusCase).filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length
-  const invalidReasons = sameCorpusCaptureRunManifestInvalidReasons({
+  const invalidReasons = sameCorpusRunManifestInvalidReasons({
     capturedWorkloads,
     caseCount: cases.length,
     corpusCaseIds,
@@ -267,74 +267,6 @@ export function buildSameCorpusCaptureRunManifest(
 }
 
 function sameCorpusRunManifestInvalidReasons(args: {
-  readonly capturedWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
-  readonly caseCount: number
-  readonly corpusCaseIds: readonly string[]
-  readonly corpusFingerprints: readonly SameCorpusCaptureCorpusFingerprint[]
-  readonly productSourceWorkbookFingerprints: readonly SameCorpusProductSourceWorkbookFingerprint[]
-  readonly biligProductionRuntimeProofCaseCount: number
-  readonly legacyInsufficientRenderedGridProofCaseCount: number
-  readonly materializedCellCounts: readonly number[]
-  readonly strictRenderedGridProofCaseCount: number
-  readonly visibleOperationResponseProofCaseCount: number
-  readonly tenXMeanAndP95CaseCount: number
-}): string[] {
-  const invalidReasons: string[] = []
-  if (args.caseCount !== requiredSameCorpusWorkloads.length) {
-    invalidReasons.push('required workload count is incomplete')
-  }
-  const missingWorkloads = requiredSameCorpusWorkloads.filter((workload) => !args.capturedWorkloads.includes(workload))
-  if (missingWorkloads.length > 0) {
-    invalidReasons.push(`missing required workloads: ${missingWorkloads.join(', ')}`)
-  }
-  if (new Set(args.capturedWorkloads).size !== args.capturedWorkloads.length) {
-    invalidReasons.push('duplicate workload evidence is present')
-  }
-  if (args.corpusCaseIds.length !== 1) {
-    invalidReasons.push('same-corpus evidence must use exactly one corpus case')
-  }
-  if (args.corpusFingerprints.length !== 1) {
-    invalidReasons.push('same-corpus evidence must use exactly one benchmark workbook fingerprint')
-  }
-  if (!requiredProductSourceWorkbookFingerprintsPresent(args.productSourceWorkbookFingerprints)) {
-    invalidReasons.push('source workbook fingerprint must be stable for every required product')
-  }
-  if (args.materializedCellCounts.length > 1) {
-    invalidReasons.push('same-corpus evidence has mixed materialized cell counts')
-  }
-  if (args.biligProductionRuntimeProofCaseCount !== requiredSameCorpusWorkloads.length) {
-    invalidReasons.push(
-      `Bilig production runtime proof covers ${String(args.biligProductionRuntimeProofCaseCount)}/${String(
-        requiredSameCorpusWorkloads.length,
-      )} cases`,
-    )
-  }
-  if (args.strictRenderedGridProofCaseCount !== requiredSameCorpusWorkloads.length) {
-    invalidReasons.push(
-      `strict rendered-grid proof covers ${String(args.strictRenderedGridProofCaseCount)}/${String(requiredSameCorpusWorkloads.length)} cases`,
-    )
-  }
-  if (args.visibleOperationResponseProofCaseCount !== requiredSameCorpusWorkloads.length) {
-    invalidReasons.push(
-      `visible operation-response proof covers ${String(args.visibleOperationResponseProofCaseCount)}/${String(
-        requiredSameCorpusWorkloads.length,
-      )} cases`,
-    )
-  }
-  if (args.legacyInsufficientRenderedGridProofCaseCount > 0) {
-    invalidReasons.push(
-      `legacy-insufficient rendered-grid proof covers ${String(args.legacyInsufficientRenderedGridProofCaseCount)}/${String(
-        requiredSameCorpusWorkloads.length,
-      )} cases`,
-    )
-  }
-  if (args.tenXMeanAndP95CaseCount !== requiredSameCorpusWorkloads.length) {
-    invalidReasons.push('not every required workload is 10x against Google Sheets')
-  }
-  return invalidReasons
-}
-
-function sameCorpusCaptureRunManifestInvalidReasons(args: {
   readonly capturedWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
   readonly caseCount: number
   readonly corpusCaseIds: readonly string[]
