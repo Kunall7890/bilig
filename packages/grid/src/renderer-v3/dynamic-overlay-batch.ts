@@ -1,9 +1,9 @@
-import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
-import type { GridGeometrySnapshot, GridPaneKind } from '../gridGeometry.js'
+import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import { parseGpuColor, type GridGpuRect } from '../gridGpuPrimitives.js'
 import type { HeaderSelection } from '../gridPointer.js'
-import { selectionFillRangesForRange } from '../gridSelectionFillRanges.js'
-import type { CompactSelectionState, GridSelection, Item, Rectangle } from '../gridTypes.js'
+import { createRectangleSelectionFromRange } from '../gridSelection.js'
+import { buildGridSelectionVisualRects } from '../gridSelectionVisualRects.js'
+import type { GridSelection, Item, Rectangle } from '../gridTypes.js'
 import { workbookThemeColors } from '../workbookTheme.js'
 import { GRID_RECT_FLOAT_COUNT_V3, GRID_RECT_INSTANCE_FLOAT_COUNT_V3, packGridRectBufferV3 } from './rect-instance-buffer.js'
 
@@ -63,23 +63,15 @@ export function buildDynamicGridOverlayBatchV3(input: {
   const borderRects: GridGpuRect[] = []
   if (input.showSelectionOverlay !== false) {
     const selectionOverlayMode = input.selectionOverlayMode ?? 'all'
-    const showSelectionChrome = selectionOverlayMode === 'all'
-    appendAxisSelectionOverlay({
+    appendSelectionVisualOverlay({
       borderRects,
       fillRects,
       geometry: input.geometry,
       gridSelection: input.gridSelection ?? null,
       selectedCell: input.selectedCell ?? null,
       selectionRange: input.selectionRange,
-    })
-    appendSelectionOverlay({
-      borderRects,
-      fillRects,
-      geometry: input.geometry,
-      gridSelection: input.gridSelection ?? null,
-      selectionRange: input.selectionRange,
-      showFillHandle: showSelectionChrome && input.showFillHandle,
-      showSelectionChrome,
+      showFillHandle: input.showFillHandle,
+      selectionOverlayMode,
     })
   }
   appendFillPreviewOverlay({
@@ -205,189 +197,55 @@ function appendHoverOverlay(input: {
   })
 }
 
-function appendSelectionOverlay(input: {
+function appendSelectionVisualOverlay(input: {
   readonly geometry: GridGeometrySnapshot
   readonly gridSelection: GridSelection | null
+  readonly selectedCell: Item | null
   readonly selectionRange: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'> | null
   readonly showFillHandle: boolean
-  readonly showSelectionChrome: boolean
+  readonly selectionOverlayMode: DynamicGridSelectionOverlayModeV3
   readonly fillRects: GridGpuRect[]
   readonly borderRects: GridGpuRect[]
 }): void {
   if (!input.selectionRange) {
     return
   }
-  const hasAxisSelection = (input.gridSelection?.columns.length ?? 0) > 0 || (input.gridSelection?.rows.length ?? 0) > 0
   const borderColor = parseGpuColor(workbookThemeColors.selectionAccent)
-  const fillColor = parseGpuColor(workbookThemeColors.selectionFill)
-  if (hasAxisSelection) {
-    if (!input.showSelectionChrome) {
-      return
-    }
-    const activeCell = input.gridSelection?.current?.cell ?? [input.selectionRange.x, input.selectionRange.y]
-    for (const activeRect of input.geometry.rangeScreenRects({ x: activeCell[0], y: activeCell[1], width: 1, height: 1 })) {
-      appendBorderRects(input.borderRects, activeRect, borderColor, 2)
-    }
-    return
-  }
-  const isMultiCellSelection = input.selectionRange.width > 1 || input.selectionRange.height > 1
-  if (isMultiCellSelection) {
-    appendSelectionFillRects({
-      color: fillColor,
-      fillRects: input.fillRects,
-      geometry: input.geometry,
-      range: input.selectionRange,
-    })
-    if (input.showSelectionChrome) {
-      for (const rect of input.geometry.rangeScreenRects(input.selectionRange)) {
-        appendBorderRects(input.borderRects, rect, borderColor, 2)
-      }
-    }
-  } else if (input.showSelectionChrome) {
-    for (const rect of input.geometry.rangeScreenRects(input.selectionRange)) {
-      appendBorderRects(input.borderRects, rect, borderColor, 2)
-    }
-  }
-  if (input.showFillHandle) {
-    const handle = input.geometry.fillHandleScreenRect(input.selectionRange)
-    if (handle) {
-      input.fillRects.push({ ...handle, color: borderColor })
-      appendBorderRects(input.borderRects, handle, parseGpuColor(workbookThemeColors.surface), 1)
-    }
-  }
-}
-
-function appendAxisSelectionOverlay(input: {
-  readonly geometry: GridGeometrySnapshot
-  readonly gridSelection: GridSelection | null
-  readonly selectedCell: Item | null
-  readonly selectionRange: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'> | null
-  readonly fillRects: GridGpuRect[]
-  readonly borderRects: GridGpuRect[]
-}): void {
-  const headerFillColor = parseGpuColor(workbookThemeColors.selectionHeaderFill)
-  const columnRanges = resolveSelectedAxisRanges({
-    axis: input.gridSelection?.columns ?? null,
-    fallbackIndex: input.selectedCell?.[0] ?? null,
-    fallbackRange: input.selectionRange
-      ? { start: input.selectionRange.x, endExclusive: input.selectionRange.x + input.selectionRange.width }
-      : null,
-  })
-  const rowRanges = resolveSelectedAxisRanges({
-    axis: input.gridSelection?.rows ?? null,
-    fallbackIndex: input.selectedCell?.[1] ?? null,
-    fallbackRange: input.selectionRange
-      ? { start: input.selectionRange.y, endExclusive: input.selectionRange.y + input.selectionRange.height }
-      : null,
+  const gridSelection = input.gridSelection ?? createRectangleSelectionFromRange(input.selectionRange)
+  const selectedCell = input.selectedCell ?? gridSelection.current?.cell ?? [input.selectionRange.x, input.selectionRange.y]
+  const showSelectionChrome = input.selectionOverlayMode === 'all'
+  const visualRects = buildGridSelectionVisualRects({
+    geometry: input.geometry,
+    gridSelection,
+    hoverCell: null,
+    selectedCell,
+    selectionRange: input.selectionRange,
+    showFillHandle: showSelectionChrome && input.showFillHandle,
   })
 
-  appendSelectedColumnHeaderFills({ color: headerFillColor, fillRects: input.fillRects, geometry: input.geometry, ranges: columnRanges })
-  appendSelectedRowHeaderFills({ color: headerFillColor, fillRects: input.fillRects, geometry: input.geometry, ranges: rowRanges })
-
-  const selectionFillColor = parseGpuColor(workbookThemeColors.selectionFill)
-  if ((input.gridSelection?.columns.length ?? 0) > 0) {
-    appendAxisBodySelectionFills({
-      color: selectionFillColor,
-      fillRects: input.fillRects,
-      geometry: input.geometry,
-      ranges: columnRanges,
-      axis: 'column',
-    })
-  }
-  if ((input.gridSelection?.rows.length ?? 0) > 0) {
-    appendAxisBodySelectionFills({
-      color: selectionFillColor,
-      fillRects: input.fillRects,
-      geometry: input.geometry,
-      ranges: rowRanges,
-      axis: 'row',
-    })
-  }
-}
-
-function appendSelectionFillRects(input: {
-  readonly geometry: GridGeometrySnapshot
-  readonly range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>
-  readonly color: GridGpuRect['color']
-  readonly fillRects: GridGpuRect[]
-}): void {
-  for (const fillRange of selectionFillRangesForRange(input.range)) {
-    for (const rect of input.geometry.rangeScreenRects(fillRange)) {
-      const fill = insetRect(rect, 1, 1)
-      if (fill.width > 0 && fill.height > 0) {
-        input.fillRects.push({ ...fill, color: input.color })
-      }
-    }
-  }
-}
-
-function appendAxisBodySelectionFills(input: {
-  readonly geometry: GridGeometrySnapshot
-  readonly ranges: readonly AxisSelectionRange[]
-  readonly axis: 'column' | 'row'
-  readonly color: GridGpuRect['color']
-  readonly fillRects: GridGpuRect[]
-}): void {
-  for (const range of input.ranges) {
-    const start = Math.max(0, range.start)
-    const endExclusive = Math.max(start + 1, Math.min(input.axis === 'column' ? MAX_COLS : MAX_ROWS, range.endExclusive))
-    const selectionRange =
-      input.axis === 'column'
-        ? { x: start, y: 0, width: endExclusive - start, height: MAX_ROWS }
-        : { x: 0, y: start, width: MAX_COLS, height: endExclusive - start }
-    appendSelectionFillRects({
-      color: input.color,
-      fillRects: input.fillRects,
-      geometry: input.geometry,
-      range: selectionRange,
-    })
-  }
-}
-
-function appendSelectedColumnHeaderFills(input: {
-  readonly geometry: GridGeometrySnapshot
-  readonly ranges: readonly AxisSelectionRange[]
-  readonly color: GridGpuRect['color']
-  readonly fillRects: GridGpuRect[]
-}): void {
-  if (input.ranges.length === 0) {
-    return
-  }
-  const clipFrozen = paneFrame(input.geometry, 'column-header-frozen')
-  const clipBody = paneFrame(input.geometry, 'column-header-body')
-  for (const index of visibleColumnIndexes(input.geometry)) {
-    if (!isIndexSelected(index, input.ranges)) {
-      continue
-    }
-    const rect = input.geometry.columnHeaderScreenRect(index)
-    const clip = index < input.geometry.camera.frozenColumnCount ? clipFrozen : clipBody
-    const clipped = rect && clip ? clipRect(rect, clip) : null
-    if (clipped) {
-      input.fillRects.push({ ...insetRect(clipped, 1, 1), color: input.color })
-    }
-  }
-}
-
-function appendSelectedRowHeaderFills(input: {
-  readonly geometry: GridGeometrySnapshot
-  readonly ranges: readonly AxisSelectionRange[]
-  readonly color: GridGpuRect['color']
-  readonly fillRects: GridGpuRect[]
-}): void {
-  if (input.ranges.length === 0) {
-    return
-  }
-  const clipFrozen = paneFrame(input.geometry, 'row-header-frozen')
-  const clipBody = paneFrame(input.geometry, 'row-header-body')
-  for (const index of visibleRowIndexes(input.geometry)) {
-    if (!isIndexSelected(index, input.ranges)) {
-      continue
-    }
-    const rect = input.geometry.rowHeaderScreenRect(index)
-    const clip = index < input.geometry.camera.frozenRowCount ? clipFrozen : clipBody
-    const clipped = rect && clip ? clipRect(rect, clip) : null
-    if (clipped) {
-      input.fillRects.push({ ...insetRect(clipped, 1, 1), color: input.color })
+  for (const rect of visualRects) {
+    switch (rect.role) {
+      case 'selection-fill':
+        input.fillRects.push({ ...rect.bounds, color: parseGpuColor(workbookThemeColors.selectionFill) })
+        break
+      case 'header-fill':
+        input.fillRects.push({ ...rect.bounds, color: parseGpuColor(workbookThemeColors.selectionHeaderFill) })
+        break
+      case 'hover-fill':
+        input.fillRects.push({ ...rect.bounds, color: parseGpuColor(workbookThemeColors.hoverFill) })
+        break
+      case 'selection-border':
+      case 'active-border':
+        if (showSelectionChrome) {
+          appendBorderRects(input.borderRects, rect.bounds, borderColor, rect.strokeWidth ?? (rect.role === 'active-border' ? 2 : 1))
+        }
+        break
+      case 'fill-handle':
+        if (showSelectionChrome) {
+          input.fillRects.push({ ...rect.bounds, color: borderColor })
+          appendBorderRects(input.borderRects, rect.bounds, parseGpuColor(workbookThemeColors.surface), 1)
+        }
+        break
     }
   }
 }
@@ -544,67 +402,6 @@ function appendFrozenSeparators(input: { readonly geometry: GridGeometrySnapshot
   }
 }
 
-interface AxisSelectionRange {
-  readonly start: number
-  readonly endExclusive: number
-}
-
-function resolveSelectedAxisRanges(input: {
-  readonly axis: CompactSelectionState | null
-  readonly fallbackIndex: number | null
-  readonly fallbackRange: AxisSelectionRange | null
-}): readonly AxisSelectionRange[] {
-  if (input.axis && input.axis.length > 0) {
-    return input.axis.ranges.map(([start, endExclusive]) => ({ start, endExclusive }))
-  }
-  if (input.fallbackRange) {
-    return [input.fallbackRange]
-  }
-  return input.fallbackIndex === null ? [] : [{ start: input.fallbackIndex, endExclusive: input.fallbackIndex + 1 }]
-}
-
-function visibleColumnIndexes(geometry: GridGeometrySnapshot): readonly number[] {
-  const indexes: number[] = []
-  for (let index = 0; index < geometry.camera.frozenColumnCount; index += 1) {
-    indexes.push(index)
-  }
-  const bodyRange = geometry.columns.visibleRangeForWorldRect(geometry.camera.bodyWorldX, geometry.camera.bodyViewportWidth)
-  for (let index = bodyRange.startIndex; index < bodyRange.endIndexExclusive; index += 1) {
-    if (index < geometry.camera.frozenColumnCount) {
-      continue
-    }
-    if (!geometry.columns.isHidden(index) && geometry.columns.sizeOf(index) > 0) {
-      indexes.push(index)
-    }
-  }
-  return indexes
-}
-
-function visibleRowIndexes(geometry: GridGeometrySnapshot): readonly number[] {
-  const indexes: number[] = []
-  for (let index = 0; index < geometry.camera.frozenRowCount; index += 1) {
-    indexes.push(index)
-  }
-  const bodyRange = geometry.rows.visibleRangeForWorldRect(geometry.camera.bodyWorldY, geometry.camera.bodyViewportHeight)
-  for (let index = bodyRange.startIndex; index < bodyRange.endIndexExclusive; index += 1) {
-    if (index < geometry.camera.frozenRowCount) {
-      continue
-    }
-    if (!geometry.rows.isHidden(index) && geometry.rows.sizeOf(index) > 0) {
-      indexes.push(index)
-    }
-  }
-  return indexes
-}
-
-function isIndexSelected(index: number, ranges: readonly AxisSelectionRange[]): boolean {
-  return ranges.some((range) => index >= range.start && index < range.endExclusive)
-}
-
-function paneFrame(geometry: GridGeometrySnapshot, kind: GridPaneKind): Rectangle | null {
-  return geometry.camera.panes.find((pane) => pane.kind === kind)?.frame ?? null
-}
-
 function hostRect(geometry: GridGeometrySnapshot): Rectangle {
   return geometry.camera.panes.reduce(
     (current, pane) => ({
@@ -615,23 +412,6 @@ function hostRect(geometry: GridGeometrySnapshot): Rectangle {
     }),
     { x: 0, y: 0, width: 0, height: 0 },
   )
-}
-
-function clipRect(target: Rectangle, clip: Rectangle): Rectangle | null {
-  const x = Math.max(target.x, clip.x)
-  const y = Math.max(target.y, clip.y)
-  const right = Math.min(target.x + target.width, clip.x + clip.width)
-  const bottom = Math.min(target.y + target.height, clip.y + clip.height)
-  return right <= x || bottom <= y ? null : { x, y, width: right - x, height: bottom - y }
-}
-
-function insetRect(rect: Rectangle, insetX: number, insetY: number): Rectangle {
-  return {
-    x: rect.x + insetX,
-    y: rect.y + insetY,
-    width: Math.max(0, rect.width - insetX * 2),
-    height: Math.max(0, rect.height - insetY * 2),
-  }
 }
 
 function appendBorderRects(target: GridGpuRect[], rect: Rectangle, color: GridGpuRect['color'], thickness: number): void {

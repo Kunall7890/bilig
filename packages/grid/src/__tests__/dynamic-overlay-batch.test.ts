@@ -3,6 +3,7 @@ import { createGridAxisWorldIndex } from '../gridAxisWorldIndex.js'
 import { createGridGeometrySnapshotFromAxes } from '../gridGeometry.js'
 import { getGridMetrics } from '../gridMetrics.js'
 import { createColumnSliceSelection, createGridSelection, createRangeSelection, createRowSliceSelection } from '../gridSelection.js'
+import { buildGridSelectionVisualRects } from '../gridSelectionVisualRects.js'
 import {
   DYNAMIC_OVERLAY_RECT_FLOAT_COUNT_V3,
   DYNAMIC_OVERLAY_RECT_INSTANCE_FLOAT_COUNT_V3,
@@ -189,6 +190,59 @@ describe('dynamic overlay batch v3', () => {
       expect.arrayContaining([
         expect.objectContaining({ x: 146, y: 44, width: 300, height: 1 }),
         expect.objectContaining({ x: 442, y: 100, width: 8, height: 8 }),
+      ]),
+    )
+  })
+
+  test('uses the same continuous selection fill geometry as the DOM visual overlay', () => {
+    const metrics = getGridMetrics()
+    const geometry = createGridGeometrySnapshotFromAxes({
+      columns: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 }),
+      dpr: 2,
+      freezeCols: 0,
+      freezeRows: 0,
+      gridMetrics: metrics,
+      hostHeight: 360,
+      hostWidth: 760,
+      rows: createGridAxisWorldIndex({ axisLength: 40, defaultSize: 20 }),
+      scrollLeft: 0,
+      scrollTop: 0,
+      sheetName: 'Sheet1',
+      updatedAt: 100,
+    })
+    const gridSelection = createRangeSelection(createGridSelection(1, 1), [1, 1], [5, 12])
+
+    const visualSelectionFill = buildGridSelectionVisualRects({
+      geometry,
+      gridSelection,
+      selectedCell: [1, 1],
+      selectionRange: { x: 1, y: 1, width: 5, height: 12 },
+      showFillHandle: true,
+    }).find((rect) => rect.role === 'selection-fill')
+
+    const overlay = buildDynamicGridOverlayBatchV3({
+      geometry,
+      gridSelection,
+      selectedCell: [1, 1],
+      selectionOverlayMode: 'fills-only',
+      selectionRange: { x: 1, y: 1, width: 5, height: 12 },
+      showFillHandle: true,
+    })
+    const overlayRects = readOverlayRects(overlay)
+    if (!visualSelectionFill) {
+      throw new Error('Expected shared visual model to produce a selection fill')
+    }
+
+    expect(visualSelectionFill).toEqual(
+      expect.objectContaining({ bounds: expect.objectContaining({ x: 147, y: 45, width: 498, height: 238 }) }),
+    )
+    expect(overlayRects).toEqual(expect.arrayContaining([expect.objectContaining(visualSelectionFill.bounds)]))
+    expect(overlayRects.filter((rect) => rect.x === 147 && rect.y === 45 && rect.width === 498 && rect.height === 238)).toHaveLength(1)
+    expect(overlayRects).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ x: 146, y: 44, width: 100, height: 2 }),
+        expect.objectContaining({ x: 146, y: 44, width: 2, height: 20 }),
+        expect.objectContaining({ x: 244, y: 44, width: 2, height: 20 }),
       ]),
     )
   })
