@@ -220,7 +220,10 @@ proof keep nested JSON paths such as `input.rows[1]` and
 hydration. Plan-data guards only trust own payload fields; inherited
 prototype fields never satisfy the transport contract. Transported plan arrays
 must contain own enumerable data entries too; holes, non-enumerable entries, or
-accessor-backed entries are rejected without running getters. The hydrated plan
+accessor-backed entries are rejected without running getters. The plan root and
+nested plan entries such as commands, changes, checks, formula labels, and
+expectations must be record-shaped payloads, not arrays with attached fields.
+The hydrated plan
 exposes `refs: { refsUsed }` instead of the consumer's private model-shaped
 `refs` object, so transported execution stays generic. A valid
 `checkPlanData(data)` result returns canonical plan data, stripping caller-owned

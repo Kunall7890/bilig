@@ -79,6 +79,17 @@ function nonEnumerableArray(value: unknown): unknown[] {
   return values
 }
 
+function arrayBackedRecord(fields: Record<string, unknown>): unknown[] {
+  const value: unknown[] = []
+  for (const [key, entry] of Object.entries(fields)) {
+    Object.defineProperty(value, key, {
+      enumerable: true,
+      value: entry,
+    })
+  }
+  return value
+}
+
 describe('@bilig/workbook transport api', () => {
   it('round-trips refs as plain JSON data and hydrates ergonomic helpers back', () => {
     const table = findTable({ name: 'Inputs', sheetName: 'Model', headers: ['Amount', 'Status'] })
@@ -730,6 +741,82 @@ describe('@bilig/workbook transport api', () => {
         },
       ]),
     })
+  })
+
+  it('rejects array-backed transported plan roots as uninspectable handoff data', () => {
+    const model = defineModel({
+      name: 'transport-array-backed-root-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'D2' }),
+        }
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeValue(refs.result, 1)
+        },
+      },
+    })
+    const plan = buildWorkbookActionPlan(model, 'write')
+    const data = mutableRecord(structuredClone(toPlanData(plan)))
+    const arrayBackedData = arrayBackedRecord(data)
+
+    expect(isPlanData(arrayBackedData)).toBe(false)
+    expect(checkPlanData(arrayBackedData)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'plan',
+          message: 'Workbook plan data must be an object',
+        },
+      ],
+    })
+    expect(() => hydratePlanData(arrayBackedData)).toThrow('Workbook plan data is invalid: Workbook plan data must be an object')
+  })
+
+  it('rejects array-backed transported plan entries as uninspectable handoff data', () => {
+    const model = defineModel({
+      name: 'transport-array-backed-entry-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'D2' }),
+        }
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeValue(refs.result, 1)
+        },
+      },
+    })
+    const plan = buildWorkbookActionPlan(model, 'write')
+    const data = mutableRecord(structuredClone(toPlanData(plan)))
+    const rawCommands = data['commands']
+    if (!Array.isArray(rawCommands)) {
+      throw new Error('expected command array')
+    }
+    const firstCommand = mutableRecord(rawCommands[0])
+    if (firstCommand === undefined) {
+      throw new Error('expected command')
+    }
+    rawCommands[0] = arrayBackedRecord(firstCommand)
+
+    expect(isPlanData(data)).toBe(false)
+    expect(checkPlanData(data)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'commands[0]',
+          message: 'Workbook plan data command at commands[0] is invalid',
+        },
+      ],
+    })
+    expect(() => hydratePlanData(data)).toThrow('Workbook plan data is invalid: Workbook plan data command at commands[0] is invalid')
   })
 
   it('rejects accessor-backed transported plan arrays without invoking getters', () => {

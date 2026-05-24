@@ -128,6 +128,10 @@ rejected without invoking getters before hydration or execution. Valid
 `checkPlanData` results return canonical plan data, so caller-owned scratch
 fields cannot change `workbookPlanId` or the payload later hydrated by runtime
 code.
+The plan root and nested plan entries such as commands, changes, checks,
+formula labels, and expectations must be record-shaped payloads; arrays with
+attached fields are rejected even when the attached fields look like valid plan
+data.
 
 ### Runtime adapter contract
 
@@ -627,6 +631,8 @@ data only, so prototype-inherited fields cannot make an invalid payload look
 valid. Valid `checkPlanData` results canonicalize the plan before returning it,
 so extra enumerable scratch fields are ignored consistently by ids, hydration,
 requirements, and execution.
+Plan roots and nested plan entries are record-shaped payloads, not arrays with
+attached fields. Runtime evidence arrays are still arrays; plan objects are not.
 Plans are frozen handoff objects: action input, refs, refs used, commands,
 concrete ops, changed summaries, and checks cannot be rewritten after planning.
 That lets an agent inspect a plan once and pass the same intent to an adapter
