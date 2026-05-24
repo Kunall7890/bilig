@@ -4,6 +4,28 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.86.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.84.0
+- Manual override: no
+
+## Features
+- feat(workbook): execute transported plan data (3ca2740a)
+- feat(workbook): persist plan run proof (b82cdac0)
+- feat(workbook): check run result descriptions (e33d7cb6)
+
+## Fixes
+- fix(xlsx): preserve worksheet query table topology (4d92e1c2)
+- fix(protection): allow unlocked protected-sheet inputs (fa8f9b5e)
+- fix(xlsx): preserve power query package artifacts (81310bb0)
+- fix(workbook): reject unknown result statuses (aa11e19a)
+
+## Internal runtime changes
+- refactor(workbook): keep run handoff inspectable (42a6d8a1)
+- test(headless): unlock protected range oracle edit cell (c74f2cba)
+- chore(release): runtime packages v0.85.0 (3c0cd4b3)
+
 ## 0.85.0
 
 - Release type: minor
