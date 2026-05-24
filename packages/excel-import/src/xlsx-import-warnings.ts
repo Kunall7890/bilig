@@ -1,5 +1,7 @@
 import type * as XLSX from 'xlsx'
 
+import { FORMULA_VOLATILE_FUNCTION_NAMES } from '@bilig/formula'
+
 export const externalWorkbookReferencesWarning = 'External workbook links were preserved but not recalculated during XLSX import.'
 export const externalPivotCachesWarning = 'External pivot caches were detected but not semantically imported during XLSX import.'
 export const unsupportedCellStylesWarning = 'Some cell styles were ignored during XLSX import.'
@@ -50,7 +52,16 @@ export function formulaReferencesExternalWorkbook(formula: string): boolean {
 }
 
 export function formulaReferencesVolatileFunction(formula: string): boolean {
-  return /(?:^|[^A-Z0-9_.])(?:NOW|RAND|RANDBETWEEN|TODAY)\s*\(/iu.test(formulaWithoutDoubleQuotedStrings(formula))
+  return volatileFunctionPattern.test(formulaWithoutDoubleQuotedStrings(formula))
+}
+
+const volatileFunctionPattern = new RegExp(
+  `(?:^|[^A-Z0-9_.])(?:_xlfn\\.)?(?:${FORMULA_VOLATILE_FUNCTION_NAMES.map(escapeRegExp).join('|')})\\s*\\(`,
+  'iu',
+)
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
 
 export function workbookDefinedNamesReferenceExternalWorkbook(workbook: XLSX.WorkBook): boolean {

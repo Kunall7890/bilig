@@ -19,6 +19,7 @@ import {
   importWorkbookFile,
   importXlsx,
   readImportedXlsxCellStyle,
+  volatileFormulasWarning,
 } from '../index.js'
 
 function buildWorkbook(): Uint8Array {
@@ -95,6 +96,15 @@ function buildExternalLinkCacheWorkbook(): Uint8Array {
       '</Relationships>',
   )
   return zipSync(zip)
+}
+
+function buildVolatileFormulaWorkbook(formula: string): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([[1]])
+  sheet.B1 = { t: 'n', f: formula, v: 1 }
+  sheet['!ref'] = 'A1:B1'
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
+  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
 }
 
 function buildExternalLinkRangeCacheWorkbook(
@@ -430,6 +440,14 @@ describe('excel import', () => {
         }),
       ]),
     )
+  })
+
+  it('warns for every formula-compiler volatile function during XLSX import', () => {
+    for (const formula of ['INDIRECT("A1")', 'OFFSET(A1,0,0)', '_xlfn.RANDARRAY(2,2)', 'SUBTOTAL(9,A1:A1)', 'AGGREGATE(9,0,A1:A1)']) {
+      const imported = importXlsx(buildVolatileFormulaWorkbook(formula), 'volatile-formula.xlsx')
+
+      expect(imported.warnings, formula).toContain(volatileFormulasWarning)
+    }
   })
 
   it('resolves external workbook cell references from saved XLSX external-link caches', async () => {

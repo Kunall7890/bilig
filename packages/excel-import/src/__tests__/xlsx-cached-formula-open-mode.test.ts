@@ -137,6 +137,9 @@ describe('cached formula open mode policy', () => {
     const riskyAudits = [
       trustedAudit(formulaCount, { formula: '[source.xlsx]Sheet1!A1' }),
       trustedAudit(formulaCount, { formula: 'RAND()' }),
+      trustedAudit(formulaCount, { formula: 'INDIRECT("A1")' }),
+      trustedAudit(formulaCount, { formula: 'OFFSET(A1,0,0)' }),
+      trustedAudit(formulaCount, { formula: '_xlfn.RANDARRAY(2,2)' }),
       trustedAudit(formulaCount, { formula: 'TRANSPOSE(A1:C1)', formulaType: 'array' }),
       trustedAudit(formulaCount, { formula: 'TABLE(A1,A2)', formulaType: 'dataTable' }),
     ]
@@ -185,6 +188,28 @@ describe('cached formula open mode policy', () => {
         formulaAudit: trustedAudit(formulaCount, {
           formula: 'AddinRate',
           definedNames: [{ name: 'AddinRate', formula: '_xldudf_RATE(A1)' }],
+        }),
+      }),
+    ).toBe(false)
+    expect(
+      shouldUseCachedFormulaOpenMode({
+        cachedFormulaValueCount: formulaCount,
+        formulaCellCount: formulaCount,
+        calculationSettings: { mode: 'automatic', compatibilityMode: 'excel-modern', calcId: 191029 },
+        formulaAudit: trustedAudit(formulaCount, {
+          formula: 'IndirectRate',
+          definedNames: [{ name: 'IndirectRate', formula: 'INDIRECT("A1")' }],
+        }),
+      }),
+    ).toBe(false)
+    expect(
+      shouldUseCachedFormulaOpenMode({
+        cachedFormulaValueCount: formulaCount,
+        formulaCellCount: formulaCount,
+        calculationSettings: { mode: 'automatic', compatibilityMode: 'excel-modern', calcId: 191029 },
+        formulaAudit: trustedAudit(formulaCount, {
+          formula: 'OffsetRate',
+          definedNames: [{ name: 'OffsetRate', formula: 'OFFSET(A1,0,0)' }],
         }),
       }),
     ).toBe(false)

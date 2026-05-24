@@ -75,7 +75,7 @@ export function runMacosExcelRecalculationOracle(request: MacosExcelRecalculatio
     const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
     openWorkbooksForMacosExcelOracle(
       appPath,
-      [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])],
+      macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths),
       request.timeoutMs,
       request.updateLinks ?? 'never',
     )
@@ -104,7 +104,7 @@ export function runMacosExcelInspectionOracle(request: MacosExcelInspectionOracl
     const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
     openWorkbooksForMacosExcelOracle(
       appPath,
-      [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])],
+      macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths),
       request.timeoutMs,
       request.updateLinks ?? 'never',
     )
@@ -133,7 +133,7 @@ export function runMacosExcelPackageOpenSaveOracle(request: MacosExcelPackageOpe
     const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
     openWorkbooksForMacosExcelOracle(
       appPath,
-      [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])],
+      macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths),
       request.timeoutMs,
       request.updateLinks ?? 'never',
     )
@@ -164,7 +164,7 @@ export function runMacosExcelStructuralOperationOracle(
     const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
     openWorkbooksForMacosExcelOracle(
       appPath,
-      [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])],
+      macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths),
       request.timeoutMs,
       request.updateLinks ?? 'never',
     )
@@ -195,7 +195,7 @@ export function runMacosExcelRejectedStructuralOperationOracle(
     const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
     openWorkbooksForMacosExcelOracle(
       appPath,
-      [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])],
+      macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths),
       request.timeoutMs,
       request.updateLinks ?? 'never',
     )
@@ -239,6 +239,13 @@ function createMacosExcelOracleTempDir(prefix: string): string {
   const root = join(tmpdir(), 'bilig-excel-oracle')
   mkdirSync(root, { recursive: true })
   return mkdtempSync(join(root, prefix))
+}
+
+function macosExcelPreOpenWorkbookPaths(
+  stagedWorkbookPath: string,
+  companionWorkbookPaths: readonly string[] | undefined,
+): readonly string[] {
+  return [...(companionWorkbookPaths ?? []), stagedWorkbookPath]
 }
 
 function openWorkbooksForMacosExcelOracle(

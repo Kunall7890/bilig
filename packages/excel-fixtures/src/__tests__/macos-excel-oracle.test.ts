@@ -114,6 +114,14 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(script).toContain('repeat with companionWorkbook in companionWorkbooks')
   })
 
+  it('pre-opens companion workbooks before linked target workbooks', () => {
+    const source = readFileSync(new URL('../macos-excel-oracle.ts', import.meta.url), 'utf8')
+
+    expect(source).toContain('macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths)')
+    expect(source).toContain('return [...(companionWorkbookPaths ?? []), stagedWorkbookPath]')
+    expect(source).not.toContain('[stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])]')
+  })
+
   it('builds an inspection runner that reads formulas and values from the opened workbook', () => {
     const script = createMacosExcelInspectionAppleScript({
       worksheetName: 'Cases',
