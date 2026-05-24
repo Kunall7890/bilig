@@ -815,7 +815,7 @@ function failingSameCorpusCapture(
       microsoftExcelWeb.scrollEventResponseMsSamples = [100, 100, 100]
       microsoftExcelWeb.scrollMovementPxSamples = [720, 720, 720]
     }
-    const scenarioProof = sameCorpusScenarioProof(bilig, googleSheets, microsoftExcelWeb)
+    const scenarioProof = sameCorpusScenarioProof(workload, bilig, googleSheets, microsoftExcelWeb)
     return Object.assign(
       {
         id: `same-corpus-wide-mixed-250k-${workload}`,
@@ -841,10 +841,12 @@ function failingSameCorpusCapture(
 }
 
 function sameCorpusScenarioProof(
+  workload: (typeof requiredUiResponsivenessSameCorpusWorkloads)[number],
   bilig: SameCorpusCapture['cases'][number]['bilig'],
   googleSheets: SameCorpusCapture['cases'][number]['googleSheets'],
   microsoftExcelWeb: NonNullable<SameCorpusCapture['cases'][number]['microsoftExcelWeb']>,
 ) {
+  const caseId = `same-corpus-wide-mixed-250k-${workload}`
   const pixelGridProof = withProductPixelGridVerdicts({
     captured: true,
     requiredProducts: ['bilig', 'google-sheets'],
@@ -931,7 +933,7 @@ function sameCorpusScenarioProof(
     visualProofs: pixelGridProof.products.map((productProof) => ({
       product: productProof.product,
       screenshotCaptured: true,
-      screenshotPath: `tmp/${productProof.product}-sample-1.png`,
+      screenshotPath: `tmp/${caseId}/${productProof.product}-sample-1.png`,
       pixelGridProof: productProof,
     })),
   })

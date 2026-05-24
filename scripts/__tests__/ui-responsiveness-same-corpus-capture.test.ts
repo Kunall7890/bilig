@@ -923,8 +923,8 @@ function sameCorpusCaptureCase(args: {
     bilig,
     googleSheets,
     visualProofs: [
-      sameCorpusVisualProof('bilig', 'typegpu-visible-canvas'),
-      sameCorpusVisualProof('google-sheets', 'google-sheets-visible-grid'),
+      sameCorpusVisualProof('bilig', 'typegpu-visible-canvas', `same-corpus-wide-mixed-250k-${args.workload}`),
+      sameCorpusVisualProof('google-sheets', 'google-sheets-visible-grid', `same-corpus-wide-mixed-250k-${args.workload}`),
     ],
   })
   return {
@@ -972,10 +972,11 @@ function sameCorpusBiligRuntimeProof(buildKind: 'development' | 'production' | '
 function sameCorpusVisualProof(
   product: SameCorpusProductVisualProof['product'],
   method: SameCorpusProductVisualProof['pixelGridProof']['method'],
+  caseId = 'same-corpus-wide-mixed-250k-open-workbook',
 ): SameCorpusProductVisualProof {
   return {
     product,
-    screenshotPath: `tmp/${product}-sample-1.png`,
+    screenshotPath: `tmp/${caseId}/${product}-sample-1.png`,
     screenshotCaptured: true,
     pixelGridProof: {
       product,

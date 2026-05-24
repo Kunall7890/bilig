@@ -13,7 +13,7 @@ describe('GridSelectionVisualOverlay', () => {
     document.body.innerHTML = ''
   })
 
-  test('builds Excel-style cell-interior DOM visual rects for body range selections', () => {
+  test('builds Excel-style continuous DOM visual rects for body range selections', () => {
     const geometry = createGeometry()
     const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
 
@@ -27,15 +27,15 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(rects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 147, y: 45, width: 98, height: 18 }) }),
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 247, y: 65, width: 98, height: 18 }) }),
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 347, y: 85, width: 98, height: 18 }) }),
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 146, y: 44, width: 300, height: 60 }) }),
+        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 246, y: 44, width: 1, height: 60 }) }),
+        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 146, y: 64, width: 300, height: 1 }) }),
         expect.objectContaining({ role: 'selection-border', bounds: expect.objectContaining({ x: 146, y: 44, width: 300, height: 60 }) }),
         expect.objectContaining({ role: 'fill-handle', bounds: expect.objectContaining({ x: 442, y: 100, width: 8, height: 8 }) }),
       ]),
     )
-    expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(9)
-    expect(rects.filter((rect) => rect.role === 'selection-gridline')).toHaveLength(0)
+    expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(1)
+    expect(rects.filter((rect) => rect.role === 'selection-gridline')).toHaveLength(4)
     expect(rects.some((rect) => rect.role === 'active-border')).toBe(false)
   })
 
@@ -56,13 +56,14 @@ describe('GridSelectionVisualOverlay', () => {
         expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 147, y: 1, width: 98, height: 22 }) }),
         expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 247, y: 1, width: 98, height: 22 }) }),
         expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 347, y: 1, width: 98, height: 22 }) }),
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 147, y: 25, width: 98, height: 18 }) }),
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 247, y: 105, width: 98, height: 18 }) }),
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 347, y: 225, width: 98, height: 14 }) }),
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 146, y: 24, width: 300, height: 216 }) }),
+        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 246, y: 24, width: 1, height: 216 }) }),
+        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 146, y: 44, width: 300, height: 1 }) }),
         expect.objectContaining({ role: 'active-border', bounds: expect.objectContaining({ x: 146, y: 104, width: 100, height: 20 }) }),
       ]),
     )
-    expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(33)
+    expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(1)
+    expect(rects.filter((rect) => rect.role === 'selection-gridline')).toHaveLength(12)
   })
 
   test('clips scrolled axis header fills to their panes', () => {
@@ -138,7 +139,7 @@ describe('GridSelectionVisualOverlay', () => {
     expect(rects.some((rect) => rect.role === 'selection-fill')).toBe(false)
   })
 
-  test('keeps range selections cell-interior filled with no internal active-cell chrome', () => {
+  test('keeps range selections continuously filled with no internal active-cell chrome', () => {
     const geometry = createGeometry()
     const topLeftSelection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
     const bottomRightSelection = createRangeSelection(createGridSelection(3, 3), [3, 3], [1, 1])
@@ -160,10 +161,10 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(topLeftRects.some((rect) => rect.role === 'active-border')).toBe(false)
     expect(bottomRightRects.some((rect) => rect.role === 'active-border')).toBe(false)
-    expect(topLeftRects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(9)
-    expect(bottomRightRects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(9)
-    expect(topLeftRects.filter((rect) => rect.role === 'selection-gridline')).toHaveLength(0)
-    expect(bottomRightRects.filter((rect) => rect.role === 'selection-gridline')).toHaveLength(0)
+    expect(topLeftRects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(1)
+    expect(bottomRightRects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(1)
+    expect(topLeftRects.filter((rect) => rect.role === 'selection-gridline')).toHaveLength(4)
+    expect(bottomRightRects.filter((rect) => rect.role === 'selection-gridline')).toHaveLength(4)
   })
 
   test('keeps bounded range fill visible when visible index caches lag behind range geometry', () => {
@@ -180,12 +181,14 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(rects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 147, y: 45, width: 98, height: 18 }) }),
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 247, y: 65, width: 98, height: 18 }) }),
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 146, y: 44, width: 200, height: 40 }) }),
+        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 246, y: 44, width: 1, height: 40 }) }),
+        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 146, y: 64, width: 200, height: 1 }) }),
         expect.objectContaining({ role: 'selection-border', bounds: expect.objectContaining({ x: 146, y: 44, width: 200, height: 40 }) }),
       ]),
     )
-    expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(4)
+    expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(1)
+    expect(rects.filter((rect) => rect.role === 'selection-gridline')).toHaveLength(2)
     expect(rects.some((rect) => rect.role === 'active-border')).toBe(false)
   })
 
@@ -249,8 +252,8 @@ describe('GridSelectionVisualOverlay', () => {
     const activeBorder = queryVisualElement(host, 'active-border')
     const fillHandle = queryVisualElement(host, 'fill-handle')
 
-    expect(host.querySelectorAll('[data-grid-selection-visual-role="selection-fill"]')).toHaveLength(9)
-    expect(host.querySelectorAll('[data-grid-selection-visual-role="selection-gridline"]')).toHaveLength(0)
+    expect(host.querySelectorAll('[data-grid-selection-visual-role="selection-fill"]')).toHaveLength(1)
+    expect(host.querySelectorAll('[data-grid-selection-visual-role="selection-gridline"]')).toHaveLength(4)
     expect(headerFill).toBeInstanceOf(HTMLElement)
     expect(selectionFill).toBeInstanceOf(HTMLElement)
     expect(hoverFill).toBeInstanceOf(HTMLElement)

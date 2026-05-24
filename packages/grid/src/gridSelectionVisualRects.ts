@@ -2,7 +2,7 @@ import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import type { GridGeometrySnapshot } from './gridGeometry.js'
 import type { GridSelection, Item, Rectangle } from './gridTypes.js'
 
-const DIRECT_SELECTION_FILL_CELL_LIMIT = 10_000
+const DIRECT_SELECTION_GRIDLINE_AXIS_LIMIT = 20_000
 
 export type GridSelectionVisualRectRole =
   | 'selection-fill'
@@ -80,7 +80,7 @@ function appendBodySelectionVisualRects(
   const isMultiCellSelection = input.selectionRange.width > 1 || input.selectionRange.height > 1
 
   if (isMultiCellSelection) {
-    appendVisibleCellSelectionFillRects(rects, input.geometry, input.selectionRange, 'selection-fill:range')
+    appendRangeSelectionFillAndGridlineRects(rects, input.geometry, input.selectionRange, 'selection-fill:range')
 
     let segmentIndex = 0
     for (const bounds of input.geometry.rangeScreenRects(input.selectionRange)) {
@@ -203,62 +203,96 @@ function appendVisibleCellSelectionFillRects(
     return
   }
 
-  if (selectionCellCount(startCol, endColExclusive, startRow, endRowExclusive) <= DIRECT_SELECTION_FILL_CELL_LIMIT) {
-    appendBoundedCellSelectionFillRects(rects, geometry, startCol, endColExclusive, startRow, endRowExclusive, keyPrefix)
-    return
-  }
-
-  const selectedCols = visibleColumnIndexes(geometry).filter((col) => col >= startCol && col < endColExclusive)
-  const selectedRows = visibleRowIndexes(geometry).filter((row) => row >= startRow && row < endRowExclusive)
-  appendIndexedCellSelectionFillRects(rects, geometry, selectedCols, selectedRows, keyPrefix)
+  appendRangeSelectionFillAndGridlineRects(
+    rects,
+    geometry,
+    { x: startCol, y: startRow, width: endColExclusive - startCol, height: endRowExclusive - startRow },
+    keyPrefix,
+  )
 }
 
-function appendBoundedCellSelectionFillRects(
+function appendRangeSelectionFillAndGridlineRects(
   rects: GridSelectionVisualRect[],
   geometry: GridGeometrySnapshot,
-  startCol: number,
-  endColExclusive: number,
-  startRow: number,
-  endRowExclusive: number,
-  keyPrefix: string,
-): void {
-  for (let row = startRow; row < endRowExclusive; row += 1) {
-    for (let col = startCol; col < endColExclusive; col += 1) {
-      appendCellSelectionFillRect(rects, geometry, col, row, keyPrefix)
-    }
-  }
-}
-
-function appendIndexedCellSelectionFillRects(
-  rects: GridSelectionVisualRect[],
-  geometry: GridGeometrySnapshot,
-  selectedCols: readonly number[],
-  selectedRows: readonly number[],
-  keyPrefix: string,
-): void {
-  for (const row of selectedRows) {
-    for (const col of selectedCols) {
-      appendCellSelectionFillRect(rects, geometry, col, row, keyPrefix)
-    }
-  }
-}
-
-function appendCellSelectionFillRect(
-  rects: GridSelectionVisualRect[],
-  geometry: GridGeometrySnapshot,
-  col: number,
-  row: number,
+  range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>,
   keyPrefix: string,
 ): void {
   let segmentIndex = 0
-  for (const bounds of geometry.rangeScreenRects({ x: col, y: row, width: 1, height: 1 })) {
-    appendInsetRect(rects, 'selection-fill', `${keyPrefix}:cell:${col}:${row}:${segmentIndex}`, bounds, 1, 1)
+  for (const bounds of geometry.rangeScreenRects(range)) {
+    rects.push({
+      role: 'selection-fill',
+      key: stableRangeKey(keyPrefix, range, 0, segmentIndex),
+      bounds,
+    })
     segmentIndex += 1
+  }
+  appendRangeSelectionGridlineRects(rects, geometry, range, keyPrefix)
+}
+
+function appendRangeSelectionGridlineRects(
+  rects: GridSelectionVisualRect[],
+  geometry: GridGeometrySnapshot,
+  range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>,
+  keyPrefix: string,
+): void {
+  const startCol = Math.max(0, range.x)
+  const startRow = Math.max(0, range.y)
+  const endColExclusive = Math.max(startCol, Math.min(MAX_COLS, range.x + range.width))
+  const endRowExclusive = Math.max(startRow, Math.min(MAX_ROWS, range.y + range.height))
+  const columnIndexes =
+    endColExclusive - startCol <= DIRECT_SELECTION_GRIDLINE_AXIS_LIMIT
+      ? internalIndexes(startCol, endColExclusive)
+      : visibleColumnIndexes(geometry).filter((col) => col > startCol && col < endColExclusive)
+  const rowIndexes =
+    endRowExclusive - startRow <= DIRECT_SELECTION_GRIDLINE_AXIS_LIMIT
+      ? internalIndexes(startRow, endRowExclusive)
+      : visibleRowIndexes(geometry).filter((row) => row > startRow && row < endRowExclusive)
+
+  const gridlineKeyPrefix = selectionGridlineKeyPrefix(keyPrefix)
+  for (const col of columnIndexes) {
+    let segmentIndex = 0
+    for (const bounds of geometry.rangeScreenRects({ x: col, y: startRow, width: 1, height: endRowExclusive - startRow })) {
+      appendSelectionGridlineRect(rects, `${gridlineKeyPrefix}:column:${col}:${segmentIndex}`, {
+        x: bounds.x,
+        y: bounds.y,
+        width: 1,
+        height: bounds.height,
+      })
+      segmentIndex += 1
+    }
+  }
+  for (const row of rowIndexes) {
+    let segmentIndex = 0
+    for (const bounds of geometry.rangeScreenRects({ x: startCol, y: row, width: endColExclusive - startCol, height: 1 })) {
+      appendSelectionGridlineRect(rects, `${gridlineKeyPrefix}:row:${row}:${segmentIndex}`, {
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: 1,
+      })
+      segmentIndex += 1
+    }
   }
 }
 
-function selectionCellCount(startCol: number, endColExclusive: number, startRow: number, endRowExclusive: number): number {
-  return Math.max(0, endColExclusive - startCol) * Math.max(0, endRowExclusive - startRow)
+function internalIndexes(start: number, endExclusive: number): readonly number[] {
+  const indexes: number[] = []
+  for (let index = start + 1; index < endExclusive; index += 1) {
+    indexes.push(index)
+  }
+  return indexes
+}
+
+function selectionGridlineKeyPrefix(selectionFillKeyPrefix: string): string {
+  return selectionFillKeyPrefix.startsWith('selection-fill:')
+    ? `selection-gridline:${selectionFillKeyPrefix.slice('selection-fill:'.length)}`
+    : `selection-gridline:${selectionFillKeyPrefix}`
+}
+
+function appendSelectionGridlineRect(rects: GridSelectionVisualRect[], key: string, bounds: Rectangle): void {
+  if (bounds.width > 0 && bounds.height > 0) {
+    rects.push({ role: 'selection-gridline', key, bounds })
+  }
 }
 
 function appendCellBorderRects(

@@ -656,6 +656,36 @@ describe('UI responsiveness live browser scorecard', () => {
       'UI responsiveness same-corpus screenshot proof is stale',
     )
   })
+
+  it('rejects same-corpus screenshot artifacts that are not tied to the exact scenario', () => {
+    const scorecard = parseUiResponsivenessLiveBrowserScorecard(
+      readJsonObject(resolve(repoRoot, 'packages/benchmarks/baselines/ui-responsiveness-live-browser-scorecard.json')),
+    )
+    const proof = buildSameCorpusProof(buildSameCorpusCapture())
+    const staleScorecard: UiResponsivenessLiveBrowserScorecard = {
+      ...scorecard,
+      sameCorpusProof: {
+        ...proof,
+        cases: proof.cases.map((entry, index) =>
+          index === 0
+            ? Object.assign({}, entry, {
+                scenarioProof: Object.assign({}, entry.scenarioProof, {
+                  screenshotProof: Object.assign({}, entry.scenarioProof.screenshotProof, {
+                    artifactPaths: entry.scenarioProof.screenshotProof.artifactPaths.map((artifactPath) =>
+                      artifactPath.replace(entry.id, 'same-corpus-wide-mixed-250k-other-case'),
+                    ),
+                  }),
+                }),
+              })
+            : entry,
+        ),
+      },
+    }
+
+    expect(() => validateUiResponsivenessLiveBrowserScorecard(staleScorecard)).toThrow(
+      'UI responsiveness same-corpus screenshot artifact path is not tied to scenario',
+    )
+  })
 })
 
 function writeSameCorpusScreenshotArtifacts(rootDir: string, proof: UiResponsivenessSameCorpusProof): void {

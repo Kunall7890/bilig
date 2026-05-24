@@ -440,6 +440,7 @@ function legacyOperationOnlySameCorpusProof(): UiResponsivenessSameCorpusProof {
 
 function sameCorpusScenarioProof(biligMs: number, googleMs: number) {
   const microsoftExcelWebMs = googleMs
+  const caseId = 'same-corpus-wide-mixed-250k-scroll-vertical'
   return {
     biligMeanMs: biligMs,
     biligP95Ms: biligMs,
@@ -454,7 +455,11 @@ function sameCorpusScenarioProof(biligMs: number, googleMs: number) {
     screenshotProof: {
       captured: true,
       requiredProducts: ['bilig', 'google-sheets'],
-      artifactPaths: ['tmp/bilig-sample-1.png', 'tmp/google-sheets-sample-1.png', 'tmp/microsoft-excel-web-sample-1.png'],
+      artifactPaths: [
+        `tmp/${caseId}/bilig-sample-1.png`,
+        `tmp/${caseId}/google-sheets-sample-1.png`,
+        `tmp/${caseId}/microsoft-excel-web-sample-1.png`,
+      ],
       missingProducts: [],
     },
     pixelGridProof: withProductPixelGridVerdicts({

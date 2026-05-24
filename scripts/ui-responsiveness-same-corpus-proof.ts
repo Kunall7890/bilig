@@ -76,6 +76,12 @@ export interface SameCorpusProductPixelGridProofVerdict {
   readonly invalidReasons: readonly string[]
 }
 
+const sameCorpusScreenshotProducts = [
+  'bilig',
+  'google-sheets',
+  'microsoft-excel-web',
+] as const satisfies readonly UiResponsivenessSameCorpusProduct[]
+
 export function isSameCorpusProductPixelGridProofComplete(proof: SameCorpusProductPixelGridProof): boolean {
   return validateSameCorpusProductPixelGridProof(proof).acceptedForCurrentScorecard
 }
@@ -430,13 +436,16 @@ export function validateSameCorpusScenarioProof(
   googleSheets: UiResponsivenessSameCorpusMeasurement,
   microsoftExcelWeb?: UiResponsivenessSameCorpusMeasurement,
 ): void {
+  validateSameCorpusScenarioScreenshotArtifacts(proof.screenshotProof, caseId)
   const expected = buildScorecardScenarioProof({
     bilig,
     googleSheets,
     microsoftExcelWeb,
     visualProofs: proof.pixelGridProof.products.map((entry) => ({
       product: entry.product,
-      screenshotPath: proof.screenshotProof.artifactPaths.find((artifact) => artifact.includes(`${entry.product}-`)) ?? null,
+      screenshotPath:
+        proof.screenshotProof.artifactPaths.find((artifact) => sameCorpusScreenshotArtifactProduct(artifact, caseId) === entry.product) ??
+        null,
       screenshotCaptured: !proof.screenshotProof.missingProducts.includes(entry.product),
       pixelGridProof: entry,
     })),
@@ -473,6 +482,52 @@ export function validateSameCorpusScenarioProof(
   if (!proof.screenshotProof.captured) {
     throw new Error(`UI responsiveness same-corpus scenario proof is missing screenshot proof: ${caseId}`)
   }
+}
+
+function validateSameCorpusScenarioScreenshotArtifacts(proof: SameCorpusScreenshotProof, caseId: string): void {
+  const seenPaths = new Set<string>()
+  const artifactProducts = new Map<UiResponsivenessSameCorpusProduct, string[]>()
+  for (const artifactPath of proof.artifactPaths) {
+    const normalizedPath = normalizeArtifactPath(artifactPath)
+    if (seenPaths.has(normalizedPath)) {
+      throw new Error(`UI responsiveness same-corpus screenshot proof has duplicate artifact paths: ${caseId}`)
+    }
+    seenPaths.add(normalizedPath)
+    const product = sameCorpusScreenshotArtifactProduct(normalizedPath, caseId)
+    if (!product) {
+      throw new Error(`UI responsiveness same-corpus screenshot artifact path is not tied to scenario: ${caseId}`)
+    }
+    artifactProducts.set(product, [...(artifactProducts.get(product) ?? []), normalizedPath])
+  }
+
+  if (proof.captured && proof.missingProducts.length > 0) {
+    throw new Error(`UI responsiveness same-corpus screenshot proof is internally inconsistent: ${caseId}`)
+  }
+  for (const product of proof.requiredProducts) {
+    const paths = artifactProducts.get(product) ?? []
+    if (proof.missingProducts.includes(product)) {
+      if (paths.length > 0) {
+        throw new Error(`UI responsiveness same-corpus screenshot proof has an artifact for missing product ${product}: ${caseId}`)
+      }
+      continue
+    }
+    if (paths.length !== 1) {
+      throw new Error(`UI responsiveness same-corpus screenshot proof must include exactly one ${product} artifact: ${caseId}`)
+    }
+  }
+}
+
+function sameCorpusScreenshotArtifactProduct(artifactPath: string, caseId: string): UiResponsivenessSameCorpusProduct | null {
+  const segments = normalizeArtifactPath(artifactPath).split('/').filter(Boolean)
+  if (segments.length < 2 || segments.at(-2) !== caseId) {
+    return null
+  }
+  const filename = segments.at(-1) ?? ''
+  return sameCorpusScreenshotProducts.find((product) => filename === `${product}-sample-1.png`) ?? null
+}
+
+function normalizeArtifactPath(artifactPath: string): string {
+  return artifactPath.replaceAll('\\', '/')
 }
 
 function buildScenarioProof(args: {
