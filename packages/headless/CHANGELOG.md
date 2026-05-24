@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.87.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.86.1
+- Manual override: no
+
+## Features
+- feat(workbook): check transported ref data (2a685fd7)
+
 ## 0.86.1
 
 - Release type: patch
