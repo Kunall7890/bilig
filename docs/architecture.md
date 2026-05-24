@@ -102,6 +102,8 @@ flowchart LR
   - own-field-only feature receipt changed-range validation
   - own-enumerable-data feature manifest arrays, receipt ops, undo ops, ranges,
     and errors before freezing or runtime proof comparison
+  - object-record model roots, action objects, and returned checks before model
+    planning or whole-model verification
   - transport-neutral workbook ops and txns with own-field-only public guards
   - accessor-free low-level op fields, nested fields, and op arrays before
     runtime guard acceptance

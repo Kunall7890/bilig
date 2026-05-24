@@ -35,6 +35,17 @@ function planUnknownModel(model: unknown, actionName: string, input?: WorkbookAc
   return Reflect.apply(planWorkbookAction, undefined, [model, actionName, input])
 }
 
+function arrayBackedRecord(fields: Record<string, unknown>): unknown[] {
+  const value: unknown[] = []
+  for (const [key, entry] of Object.entries(fields)) {
+    Object.defineProperty(value, key, {
+      enumerable: true,
+      value: entry,
+    })
+  }
+  return value
+}
+
 describe('@bilig/workbook action metadata api', () => {
   it('describes action objects with plain input metadata and still plans their run function', () => {
     const model = defineModel({
@@ -326,6 +337,83 @@ describe('@bilig/workbook action metadata api', () => {
       }),
     ).toThrowError('Workbook model accessor-action-map-model action write must be a data property')
     expect(actionGetterInvoked).toBe(false)
+  })
+
+  it('rejects array-backed model roots as uninspectable data', () => {
+    expect(() =>
+      defineUnknownModel(
+        arrayBackedRecord({
+          name: 'array-backed-config-model',
+          find() {
+            return {}
+          },
+          actions: {
+            write() {},
+          },
+        }),
+      ),
+    ).toThrowError('Workbook model config must be an object')
+
+    const model = arrayBackedRecord({
+      name: 'array-backed-manifest-model',
+      find() {
+        return {}
+      },
+      actions: {
+        write() {},
+      },
+    })
+
+    expect(() => inspectUnknownModel(model)).toThrowError('Workbook model must be an object')
+    expect(() => describeUnknownModel(model)).toThrowError('Workbook model must be an object')
+    expect(planUnknownModel(model, 'write')).toEqual({
+      status: 'failed',
+      modelName: 'unknown-model',
+      actionName: 'write',
+      checks: [],
+      errors: [
+        {
+          code: 'invalid_model',
+          message: 'Workbook model must be an object',
+        },
+      ],
+    })
+    expect(verifyModel(model)).toEqual({
+      status: 'invalid',
+      modelName: 'unknown-model',
+      errors: [
+        {
+          code: 'invalid_model',
+          message: 'Workbook model must be an object',
+        },
+      ],
+      actions: [],
+    })
+
+    expect(() =>
+      defineUnknownModel({
+        name: 'array-backed-action-object-model',
+        find() {
+          return {}
+        },
+        actions: {
+          write: arrayBackedRecord({
+            run() {},
+          }),
+        },
+      }),
+    ).toThrowError('Workbook model array-backed-action-object-model action write must be a function or action object with run')
+
+    expect(() =>
+      inspectUnknownModel({
+        name: 'array-backed-action-manifest-model',
+        actions: {
+          write: arrayBackedRecord({
+            run() {},
+          }),
+        },
+      }),
+    ).toThrowError('Workbook action write must be a function or action object')
   })
 
   it('rejects accessor-backed action-object metadata without invoking getters', () => {

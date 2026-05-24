@@ -169,8 +169,9 @@ an agent inspected cannot be mutated behind the same handoff object.
 `verifyPlan` also treats plans as data: malformed, sparse, or accessor-backed
 handoff objects return an `invalid_plan` issue instead of executing hidden
 properties or throwing at the caller.
-`verifyModel` keeps the same behavior at whole-model scope: invalid manifests
-return an invalid verdict with an `invalid_model` error and no actions.
+`verifyModel` keeps the same behavior at whole-model scope: invalid,
+array-backed, or accessor-backed manifests return an invalid verdict with an
+`invalid_model` error and no actions.
 Its `{ inputs }` option is data-only too: accessor-backed option payloads or
 per-action inputs produce structured `invalid_action_input` results without
 running hidden consumer code.

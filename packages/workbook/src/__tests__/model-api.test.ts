@@ -47,6 +47,17 @@ function sparseArray<T>(): readonly T[] {
   return values
 }
 
+function arrayBackedRecord(fields: Record<string, unknown>): unknown[] {
+  const value: unknown[] = []
+  for (const [key, entry] of Object.entries(fields)) {
+    Object.defineProperty(value, key, {
+      enumerable: true,
+      value: entry,
+    })
+  }
+  return value
+}
+
 describe('@bilig/workbook model api', () => {
   it('preserves model metadata, refs, checks, commands, and concrete workbook ops', () => {
     const model = defineModel({
@@ -1672,6 +1683,44 @@ describe('@bilig/workbook model api', () => {
       ],
     })
     expect(getterInvoked).toBe(false)
+  })
+
+  it('rejects array-backed returned checks as uninspectable data', () => {
+    const model = defineModel({
+      name: 'returned-check-array-backed-proof-model',
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+      checks({ refs }) {
+        // @ts-expect-error exercising JS callers that bypass the returned check type
+        return [
+          arrayBackedRecord({
+            status: 'planned',
+            kind: 'exists',
+            target: refs.output,
+            message: 'Output exists',
+          }),
+        ]
+      },
+      actions: {
+        inspect() {},
+      },
+    })
+
+    expect(planWorkbookAction(model, 'inspect')).toEqual({
+      status: 'failed',
+      modelName: 'returned-check-array-backed-proof-model',
+      actionName: 'inspect',
+      checks: [],
+      errors: [
+        {
+          code: 'checks_failed',
+          message: 'Workbook check at checks[0] must be an object',
+        },
+      ],
+    })
   })
 
   it('describes failed plan results without raw workbook refs', () => {

@@ -454,9 +454,10 @@ properties. Accessors are rejected without invocation, which keeps tool payload
 validation inspectable and prevents hidden consumer code from running during
 planning.
 `verifyModel(model, { inputs })` supplies per-action inputs for
-whole-model verification. Invalid or accessor-backed model manifests return an
-`invalid_model` verdict with no actions instead of throwing, so agents can audit
-unknown model objects without wrapping the verifier in their own try/catch.
+whole-model verification. Invalid, array-backed, or accessor-backed model
+manifests return an `invalid_model` verdict with no actions instead of
+throwing, so agents can audit unknown model objects without wrapping the
+verifier in their own try/catch.
 Verification options use the same data boundary: `inputs` and each action input
 must be own data properties. Accessor-backed verification inputs return
 structured `invalid_action_input` results without invoking getters.
@@ -607,9 +608,10 @@ checks fail planning without invoking hidden getters.
 model description, sorted action names, per-action descriptions, optional input
 descriptions, and whether model-level checks exist. It does not run `find`,
 checks, or actions.
-Model inspection reads own data properties only, rejecting accessor-backed model
-names, descriptions, action maps, and action metadata without invoking hidden
-getters.
+Model inspection reads own data properties only. Model roots and action objects
+must be object records, not arrays with attached fields; accessor-backed model
+names, descriptions, action maps, and action metadata are rejected without
+invoking hidden getters.
 For agent logs, approvals, tests, and runtime handoff, `describeRef` and
 `describePlan` produce JSON-safe descriptions of refs and action plans. The
 descriptions preserve generic action input and workbook intent while removing

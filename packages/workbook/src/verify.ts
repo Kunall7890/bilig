@@ -917,7 +917,7 @@ function invalidModelRunError(error: unknown): WorkbookRunError {
 }
 
 function invalidModelName(model: unknown): string {
-  if (typeof model !== 'object' || model === null) {
+  if (typeof model !== 'object' || model === null || Array.isArray(model)) {
     return 'unknown-model'
   }
   const descriptor = Object.getOwnPropertyDescriptor(model, 'name')
