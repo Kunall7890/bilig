@@ -4,6 +4,28 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.78.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.75.0
+- Manual override: no
+
+## Features
+- feat(workbook): validate check helper inputs (5a5cc867)
+- feat(workbook): validate formula helper inputs (a6152282)
+- feat(workbook): freeze ref transport data (a3aa8b6b)
+- feat(workbook): fail closed on invalid plan verification (f23ea256)
+- feat(workbook): validate model verification inputs (d209467a)
+
+## Fixes
+- fix(xlsx): prune deleted pivot package artifacts (ee5ed149)
+- fix(xlsx): preserve formula validation sources (d30fb42e)
+- fix(workbook): preserve defined names after sheet deletes (5a44bee3)
+
+## Internal runtime changes
+- chore(release): runtime packages v0.76.0 (48bbac33)
+- chore(release): runtime packages v0.77.0 (c10cbb2e)
+
 ## 0.77.0
 
 - Release type: minor
