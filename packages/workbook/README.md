@@ -119,7 +119,7 @@ Stable data helpers are exported for generic tool builders:
 - `workbookCommandCategories`, `isWorkbookCommandCategory`, `workbookCommandExecutionModes`, `isWorkbookCommandExecutionMode`, `workbookCommandReceiptStatuses`, `isWorkbookCommandReceiptStatus`, `workbookCommandResultStatuses`, `isWorkbookCommandResultStatus`
 - `workbookProjectionInterceptorPoints`, `isWorkbookProjectionInterceptorPoint`, `workbookUiContributionSlots`, `isWorkbookUiContributionSlot`, `checkWorkbookCommandRequest`
 - `workbookCommandBundleCommandKinds`, `isWorkbookCommandBundleCommandKind`, `checkWorkbookCommandBundle`, `isWorkbookCommandBundle`, `workbookCommandResultFor`, `workbookCommandResultForReceipts`, `workbookOpCommandFeatureId`, `workbookOpCommandReceiptIdentity`, `workbookOpCommandReceipt`, `checkWorkbookCommandResult`, `checkWorkbookCommandResultForBundle`, `isWorkbookCommandResult`, `isWorkbookCommandResultForBundle`
-- `workbookRunErrorCodes`, `isWorkbookRunErrorCode`
+- `workbookRunErrorCodes`, `isWorkbookRunErrorCode`, `isWorkbookRunResultDescription`
 
 Model action manifests are frozen null-prototype maps. Consumers can use normal
 business-agnostic action names, including names such as `toString` or
@@ -333,8 +333,9 @@ The repository-owned `@bilig/core` adapter now supplies that strict proof for
 generic model actions: each command receipt includes materialized applied ops and
 the resolved target/input refs that produced them. `apps/bilig` can therefore
 accept transported `WorkbookPlanData` directly through its Zero mutation path,
-run it with `strict: true`, persist the original plan plus the concrete applied
-ops, and roll back engine ops if post-apply readback or check proof fails.
+run it with `strict: true`, persist the original plan, the concrete applied ops,
+and the frozen run-result description, and roll back engine ops if post-apply
+readback or check proof fails.
 Runtime apply results, undo refs, apply errors, and check verifier output are
 validated from own fields only; prototype-inherited fields are ignored before
 they can become run proof. Adapter-returned ops and verifier proof must be data

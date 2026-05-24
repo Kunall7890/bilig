@@ -396,11 +396,16 @@ describe('server mutator client mutation idempotency', () => {
       db,
       'doc-1',
       expect.objectContaining({
-        eventPayload: {
+        eventPayload: expect.objectContaining({
           kind: 'applyWorkbookPlanData',
           plan,
           appliedOps: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 42 }],
-        },
+          result: expect.objectContaining({
+            status: 'done',
+            changed: expect.any(Array),
+            checks: expect.any(Array),
+          }),
+        }),
         undoBundle: expect.objectContaining({ kind: 'engineOps', ops: expect.any(Array) }),
         clientMutationId: 'doc-1:pending:plan',
       }),

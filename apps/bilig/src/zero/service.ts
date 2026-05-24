@@ -33,7 +33,12 @@ import { ZeroRecalcWorker } from './recalc-worker.js'
 import { loadWorkbookEventRecordsAfter } from './store.js'
 import type { WorkbookRuntimeStoreConnection } from './store.js'
 import { applyWorkbookAgentCommandBundleWithUndoCapture } from './workbook-agent-apply.js'
-import { runStrictWorkbookPlanData, workbookPlanRunAppliedOps, workbookPlanRunUndoBundle } from './workbook-plan-data-apply.js'
+import {
+  runStrictWorkbookPlanData,
+  workbookPlanRunAppliedOps,
+  workbookPlanRunResultProof,
+  workbookPlanRunUndoBundle,
+} from './workbook-plan-data-apply.js'
 import {
   assertZeroDataMigrationsReady,
   ensureZeroDataMigrationSchema,
@@ -418,6 +423,7 @@ class EnabledZeroSyncService implements ZeroSyncService {
             await client.query('COMMIT')
             return { revision: state.headRevision, result }
           }
+          const runResultProof = workbookPlanRunResultProof(result)
           const ownerUserId = resolveOwnerUserId(state, session)
           const persisted = await persistWorkbookMutation(client, documentId, {
             previousState: state,
@@ -428,6 +434,7 @@ class EnabledZeroSyncService implements ZeroSyncService {
               kind: 'applyWorkbookPlanData',
               plan,
               appliedOps: structuredClone([...appliedOps]),
+              result: runResultProof,
             },
             undoBundle: workbookPlanRunUndoBundle(result),
           })

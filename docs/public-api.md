@@ -313,6 +313,7 @@ Full export surface:
 - `describePlan`
 - `describePlanResult`
 - `describeRunResult`
+- `isWorkbookRunResultDescription`
 - `describeRuntimeRequirements`
 - `checkRuntimeRequirements`
 - `checkRuntimeAdapter`
@@ -632,6 +633,8 @@ failed action planning results.
 execution, preserving `done`/`failed` status, changed summaries, checks, errors,
 and undo ops while removing ref helper functions from the public result. The
 returned run description is frozen before it crosses the agent boundary.
+`isWorkbookRunResultDescription` validates persisted run-result descriptions
+before a sync event or later agent treats them as proof.
 `describeRuntimeRequirements(plan)` gives agents a JSON-safe adapter checklist
 for the same plan or transported plan data: which generic commands must be applied, which readbacks are
 needed, and which checks need proof. It stays generic, with capabilities such
@@ -734,9 +737,10 @@ contract. It returns plan-bound apply proof, command receipts, concrete applied
 ops, and resolved target/input refs for generic workbook model actions. The
 monolith app accepts transported `WorkbookPlanData` through
 `workbook.applyWorkbookPlanData`, runs it with `{ strict: true }`, persists the
-original plan together with the materialized applied ops for replay, and applies
-the run undo ops if post-apply proof fails. That keeps `@bilig/workbook` generic
-while giving agents a real app-owned execution path for their own models.
+original plan together with the materialized applied ops for replay and the
+frozen run-result description for later inspection, and applies the run undo ops
+if post-apply proof fails. That keeps `@bilig/workbook` generic while giving
+agents a real app-owned execution path for their own models.
 Returned run results are frozen before they cross the public API boundary,
 including nested changed summaries, checks, errors, apply summaries, undo refs,
 and unverified proof notes. That lets an agent inspect a run once and keep the

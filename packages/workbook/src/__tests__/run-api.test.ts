@@ -4,6 +4,7 @@ import {
   defineModel,
   findRange,
   formula,
+  isWorkbookRunResultDescription,
   isWorkbookRunErrorCode,
   runWorkbookAction,
   runWorkbookPlan,
@@ -442,6 +443,9 @@ describe('@bilig/workbook run api', () => {
       ],
     })
     expect(JSON.parse(JSON.stringify(described))).toEqual(described)
+    expect(isWorkbookRunResultDescription(described)).toBe(true)
+    expect(isWorkbookRunResultDescription({ ...described, status: 'done', errors: [] })).toBe(false)
+    expect(isWorkbookRunResultDescription({ ...described, status: 'failed', errors: [() => undefined] })).toBe(false)
     expect(Object.isFrozen(described)).toBe(true)
     expect(Object.isFrozen(described.changed)).toBe(true)
     expect(Object.isFrozen(described.checks)).toBe(true)

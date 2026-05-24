@@ -3,7 +3,14 @@ import { isWorkbookSnapshot } from '@bilig/protocol'
 import { parseCellAddress } from '@bilig/formula'
 import { applyWorkbookAgentCommandBundle, type WorkbookAgentCommandBundle } from '@bilig/agent-api'
 import type { CommitOp, SpreadsheetEngine } from '@bilig/core'
-import { isEngineOps, type EngineOp, type EngineOpBatch, type WorkbookPlanData } from '@bilig/workbook'
+import {
+  isEngineOps,
+  isWorkbookRunResultDescription,
+  type EngineOp,
+  type EngineOpBatch,
+  type WorkbookPlanData,
+  type WorkbookRunResultDescription,
+} from '@bilig/workbook'
 import {
   applyAgentCommandBundleArgsSchema,
   applyBatchArgsSchema,
@@ -59,6 +66,7 @@ export type WorkbookEventPayload =
       kind: 'applyWorkbookPlanData'
       plan: WorkbookPlanData
       appliedOps: EngineOp[]
+      result?: WorkbookRunResultDescription
     }
   | {
       kind: 'setCellValue'
@@ -312,7 +320,11 @@ export function isWorkbookEventPayload(value: unknown): value is WorkbookEventPa
     case 'applyAgentCommandBundle':
       return matchesMutationArgsSchema(value, applyAgentCommandBundleArgsSchema)
     case 'applyWorkbookPlanData':
-      return matchesMutationArgsSchema(value, applyWorkbookPlanDataArgsSchema) && isEngineOps(value['appliedOps'])
+      return (
+        matchesMutationArgsSchema(value, applyWorkbookPlanDataArgsSchema) &&
+        isEngineOps(value['appliedOps']) &&
+        (value['result'] === undefined || isWorkbookRunResultDescription(value['result']))
+      )
     case 'setCellValue':
       return matchesMutationArgsSchema(value, setCellValueArgsSchema)
     case 'setCellFormula':

@@ -127,9 +127,9 @@ flowchart LR
   - agent execution records require generic `WorkbookCommandResult` proof for
     the exact accepted bundle and applied revision before persistence
   - authoritative transported `WorkbookPlanData` apply runs through the
-    `@bilig/core` strict workbook adapter, persists the original generic plan
-    plus concrete applied ops, and rolls back runtime ops when post-apply proof
-    fails
+    `@bilig/core` strict workbook adapter, persists the original generic plan,
+    concrete applied ops, and frozen run-result description, and rolls back
+    runtime ops when post-apply proof fails
 
 ## Removed topology
 
@@ -160,9 +160,10 @@ The following are not current architecture anymore:
 - `@bilig/workbook` results must expose proof for runtime apply and passed
   checks, preserve changed/undo evidence after post-apply failures, or preserve
   the unverified state instead of hiding it behind a done status
-- transported model plans are persisted as generic plan data plus materialized
-  applied ops; replay uses the applied ops, while agents inspect the plan/result
-  proof instead of a human spreadsheet UI state
+- transported model plans are persisted as generic plan data, materialized
+  applied ops, and frozen run-result descriptions; replay uses the applied ops,
+  while agents inspect the plan/result proof instead of a human spreadsheet UI
+  state
 
 ## Recommended next focus
 

@@ -61,6 +61,11 @@ describe('workbook event guards', () => {
         kind: 'applyWorkbookPlanData',
         plan: buildPlanData(),
         appliedOps: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1 }],
+        result: {
+          status: 'done',
+          changed: [],
+          checks: [],
+        },
       }),
     ).toBe(true)
     expect(
@@ -68,6 +73,19 @@ describe('workbook event guards', () => {
         kind: 'applyWorkbookPlanData',
         plan: buildPlanData(),
         appliedOps: [{ kind: 'not-an-op' }],
+      }),
+    ).toBe(false)
+    expect(
+      isWorkbookEventPayload({
+        kind: 'applyWorkbookPlanData',
+        plan: buildPlanData(),
+        appliedOps: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1 }],
+        result: {
+          status: 'failed',
+          errors: [() => undefined],
+          changed: [],
+          checks: [],
+        },
       }),
     ).toBe(false)
   })

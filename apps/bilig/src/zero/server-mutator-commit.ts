@@ -16,7 +16,12 @@ import {
   type WorkbookChangeRange,
   type WorkbookChangeStoreConnection,
 } from './workbook-change-store.js'
-import { runStrictWorkbookPlanData, workbookPlanRunAppliedOps, workbookPlanRunUndoBundle } from './workbook-plan-data-apply.js'
+import {
+  runStrictWorkbookPlanData,
+  workbookPlanRunAppliedOps,
+  workbookPlanRunResultProof,
+  workbookPlanRunUndoBundle,
+} from './workbook-plan-data-apply.js'
 
 export interface ServerTransactionLike extends ZeroQueryRunner {
   dbTransaction: {
@@ -154,6 +159,7 @@ export async function commitWorkbookPlanDataMutation(
       if (appliedOps.length === 0) {
         return
       }
+      const runResultProof = workbookPlanRunResultProof(run)
       const ownerUserId = resolveOwnerUserId(state, session)
       const result = await persistWorkbookMutation(db, documentId, {
         previousState: state,
@@ -164,6 +170,7 @@ export async function commitWorkbookPlanDataMutation(
           kind: 'applyWorkbookPlanData',
           plan,
           appliedOps: structuredClone([...appliedOps]),
+          result: runResultProof,
         },
         undoBundle: workbookPlanRunUndoBundle(run),
         ...(clientMutationId !== undefined ? { clientMutationId } : {}),

@@ -1,5 +1,12 @@
 import { createWorkbookRunAdapter, type SpreadsheetEngine } from '@bilig/core'
-import { runWorkbookPlan, type EngineOp, type WorkbookPlanData, type WorkbookRunResult } from '@bilig/workbook'
+import {
+  describeRunResult,
+  runWorkbookPlan,
+  type EngineOp,
+  type WorkbookPlanData,
+  type WorkbookRunResult,
+  type WorkbookRunResultDescription,
+} from '@bilig/workbook'
 import type { WorkbookChangeUndoBundle } from '@bilig/zero-sync'
 
 function engineOpsUndoBundle(ops: readonly EngineOp[] | undefined): WorkbookChangeUndoBundle | null {
@@ -18,6 +25,10 @@ export function workbookPlanRunAppliedOps(result: WorkbookRunResult): readonly E
 
 export function workbookPlanRunUndoBundle(result: WorkbookRunResult): WorkbookChangeUndoBundle | null {
   return engineOpsUndoBundle(result.undo?.ops)
+}
+
+export function workbookPlanRunResultProof(result: WorkbookRunResult): WorkbookRunResultDescription {
+  return describeRunResult(result)
 }
 
 export async function runStrictWorkbookPlanData(engine: SpreadsheetEngine, plan: WorkbookPlanData): Promise<WorkbookRunResult> {
