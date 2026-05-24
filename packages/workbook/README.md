@@ -455,10 +455,11 @@ It returns the same boring `{ status, issues }` shape for receipt fields such as
 `changedRanges`, `proof`, `metadata`, and `errors`. Feature manifests, command
 requests, and command receipts are validated from own payload fields only;
 prototype-inherited fields are ignored. Receipt verdicts are frozen. Receipt ops are frozen after
-normalization, changed ranges must be own-field data, and manifest or receipt
-arrays must contain own enumerable data entries. Holes, non-enumerable entries,
-and accessor-backed ops, undo ops, ranges, or errors are rejected before any
-getter can run.
+normalization, changed ranges are canonicalized through the same workbook range
+normalizer used by command scopes, and manifest or receipt arrays must contain
+own enumerable data entries. Holes, non-enumerable entries, invalid range
+addresses, and accessor-backed ops, undo ops, ranges, or errors are rejected
+before any getter can run.
 Receipt statuses are semantic: `previewed` cannot include applied proof,
 `applied` cannot include errors and must carry applied evidence, `rejected`
 cannot claim changed workbook proof, and `noop` cannot claim changed ranges or

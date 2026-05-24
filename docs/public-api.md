@@ -236,8 +236,10 @@ and UI contributions. The public package still stays data-only.
   own payload fields only; prototype-inherited fields cannot satisfy the public
   transport contract. Manifest and receipt arrays must contain own enumerable
   data entries; receipt ops, undo ops, changed ranges, and errors must be data
-  properties. Holes, non-enumerable entries, and accessor-backed receipt proof
-  are rejected before freezing or preview/apply comparison.
+  properties. Receipt changed ranges are canonicalized through the same workbook
+  range normalizer used by command scopes. Holes, non-enumerable entries,
+  invalid range addresses, and accessor-backed receipt proof are rejected before
+  freezing or preview/apply comparison.
 - Receipt statuses are semantic: previewed receipts cannot include applied
   proof, applied receipts cannot include errors and must carry applied
   evidence, rejected receipts cannot claim changed workbook proof, and noop

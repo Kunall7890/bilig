@@ -669,12 +669,43 @@ describe('@bilig/workbook feature api', () => {
       issues: [
         {
           code: 'invalid_command_receipt',
-          path: 'changedRanges[0]',
-          message: 'Workbook command receipt changed range is invalid',
+          path: 'changedRanges[0].startAddress',
+          message: 'Workbook command receipt changedRanges[0].startAddress must be a data property',
         },
       ],
     })
     expect(getterInvoked).toBe(false)
+  })
+
+  it('rejects invalid command receipt changed range addresses before proof normalization', () => {
+    expect(
+      checkWorkbookCommandReceipt({
+        status: 'applied',
+        featureId: 'tables',
+        commandId: 'tables.createFromSelection',
+        category: 'command',
+        changedRanges: [{ sheetName: 'Sheet1', startAddress: 'not-a-cell', endAddress: 'B3' }],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_receipt',
+          path: 'changedRanges[0]',
+          message: 'Workbook command receipt changedRanges[0].startAddress is invalid: not-a-cell',
+        },
+      ],
+    })
+
+    expect(() =>
+      normalizeWorkbookCommandReceipt({
+        status: 'applied',
+        featureId: 'tables',
+        commandId: 'tables.createFromSelection',
+        category: 'command',
+        changedRanges: [{ sheetName: 'Sheet1', startAddress: 'not-a-cell', endAddress: 'B3' }],
+      }),
+    ).toThrowError('Workbook command receipt is invalid: Workbook command receipt changedRanges[0].startAddress is invalid: not-a-cell')
   })
 
   it('ignores command receipt undo scratch fields without invoking getters', () => {
@@ -1138,7 +1169,7 @@ describe('@bilig/workbook feature api', () => {
         {
           code: 'invalid_command_receipt',
           path: 'changedRanges[0]',
-          message: 'Workbook command receipt changed range is invalid',
+          message: 'Workbook command receipt changedRanges[0] must include sheetName, startAddress, and endAddress strings',
         },
         {
           code: 'invalid_command_receipt',
@@ -1212,7 +1243,7 @@ describe('@bilig/workbook feature api', () => {
         {
           code: 'invalid_command_receipt',
           path: 'changedRanges[0]',
-          message: 'Workbook command receipt changed range is invalid',
+          message: 'Workbook command receipt changedRanges[0] must include sheetName, startAddress, and endAddress strings',
         },
       ],
     })

@@ -16,13 +16,21 @@ export interface CommandRangeBounds {
   readonly endCol: number
 }
 
+const commandRangeDataFields = Object.freeze(['sheetName', 'startAddress', 'endAddress'] as const)
+
 export function normalizeCommandRange(value: unknown, path: string, label = 'Workbook command bundle'): NormalizedCommandRange {
   if (!isRecord(value)) {
     throw new Error(`${label} ${path} must be an object`)
   }
-  const sheetName = ownValue(value, 'sheetName')
-  const startAddress = ownValue(value, 'startAddress')
-  const endAddress = ownValue(value, 'endAddress')
+  for (const field of commandRangeDataFields) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, field)
+    if (descriptor !== undefined && !('value' in descriptor)) {
+      throw new Error(`${label} ${path}.${field} must be a data property`)
+    }
+  }
+  const sheetName = ownDataValue(value, 'sheetName')
+  const startAddress = ownDataValue(value, 'startAddress')
+  const endAddress = ownDataValue(value, 'endAddress')
   if (typeof sheetName !== 'string' || typeof startAddress !== 'string' || typeof endAddress !== 'string') {
     throw new Error(`${label} ${path} must include sheetName, startAddress, and endAddress strings`)
   }
@@ -104,7 +112,7 @@ function normalizeExactString(value: string, path: string, label: string): strin
   return normalized
 }
 
-function ownValue(value: Record<string, unknown>, key: string): unknown {
+function ownDataValue(value: Record<string, unknown>, key: string): unknown {
   return Object.getOwnPropertyDescriptor(value, key)?.value
 }
 

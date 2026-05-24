@@ -1,4 +1,5 @@
 import type { CellRangeRef } from '@bilig/protocol'
+import { commandReceiptChangedRangeIssues, normalizeCommandReceiptChangedRanges } from './command-receipt-ranges.js'
 import { isWorkbookOp } from './guards.js'
 import { WorkbookActionInputError, isWorkbookActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import type { EngineOp } from './ops.js'
@@ -197,22 +198,6 @@ function arrayDataValues<T>(value: unknown, guard: (entry: unknown) => entry is 
     return null
   }
   if (firstAccessorPath(value, 'array') !== null) {
-    return null
-  }
-
-  const entries: T[] = []
-  for (let index = 0; index < value.length; index += 1) {
-    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
-    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor) || !guard(descriptor.value)) {
-      return null
-    }
-    entries.push(descriptor.value)
-  }
-  return entries
-}
-
-function shallowArrayDataValues<T>(value: unknown, guard: (entry: unknown) => entry is T): readonly T[] | null {
-  if (!Array.isArray(value)) {
     return null
   }
 
@@ -444,22 +429,9 @@ function pushCommandReceiptChangedRangesIssues(issues: WorkbookCommandReceiptIss
   if (value === undefined) {
     return
   }
-  if (!Array.isArray(value)) {
-    issues.push(commandReceiptIssue('changedRanges', 'Workbook command receipt changed ranges must be an array'))
-    return
-  }
-  for (let index = 0; index < value.length; index += 1) {
-    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
-    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
-      issues.push(
-        commandReceiptIssue(`changedRanges[${index}]`, 'Workbook command receipt changed ranges must contain only data properties'),
-      )
-      continue
-    }
-    if (!isCellRangeRefData(descriptor.value)) {
-      issues.push(commandReceiptIssue(`changedRanges[${index}]`, 'Workbook command receipt changed range is invalid'))
-    }
-  }
+  commandReceiptChangedRangeIssues(value).forEach((issue) => {
+    issues.push(commandReceiptIssue(issue.path, issue.message))
+  })
 }
 
 function pushCommandReceiptUndoIssues(issues: WorkbookCommandReceiptIssue[], value: unknown): void {
@@ -666,7 +638,7 @@ function normalizedCommandReceipt(value: unknown): WorkbookCommandReceipt | null
   if (
     (previewOps !== undefined && !isEngineOpArray(previewOps)) ||
     (appliedOps !== undefined && !isEngineOpArray(appliedOps)) ||
-    (changedRanges !== undefined && shallowArrayDataValues(changedRanges, isCellRangeRefData) === null) ||
+    (changedRanges !== undefined && normalizeCommandReceiptChangedRanges(changedRanges) === null) ||
     (proof !== undefined && !isWorkbookActionInput(proof)) ||
     (metadata !== undefined && !isWorkbookActionInput(metadata)) ||
     (message !== undefined && typeof message !== 'string') ||
@@ -692,9 +664,7 @@ function normalizedCommandReceipt(value: unknown): WorkbookCommandReceipt | null
     ...(normalizedUndo !== undefined ? { undo: normalizedUndo } : {}),
     ...(changedRanges !== undefined
       ? {
-          changedRanges: Object.freeze(
-            shallowArrayDataValues(changedRanges, isCellRangeRefData)!.map((range) => normalizeReceiptRange(commandId, range)),
-          ),
+          changedRanges: normalizeCommandReceiptChangedRanges(changedRanges)!,
         }
       : {}),
     ...(proof !== undefined ? { proof: normalizeWorkbookActionInput(proof) } : {}),
@@ -820,24 +790,8 @@ function normalizeReceiptOp(commandId: string, op: EngineOp, label: string): Eng
   return deepFreezeOpClone(op)
 }
 
-function normalizeReceiptRange(commandId: string, range: CellRangeRef): CellRangeRef {
-  if (!isCellRangeRefData(range)) {
-    throw new Error(`Workbook command receipt ${commandId} changed range is invalid`)
-  }
-  return deepFreezeRangeClone(commandId, range)
-}
-
 function isEngineOpArray(value: unknown): value is readonly EngineOp[] {
   return arrayDataValues(value, isWorkbookOp) !== null
-}
-
-function isCellRangeRefData(value: unknown): value is CellRangeRef {
-  return (
-    isRecord(value) &&
-    typeof ownValue(value, 'sheetName') === 'string' &&
-    typeof ownValue(value, 'startAddress') === 'string' &&
-    typeof ownValue(value, 'endAddress') === 'string'
-  )
 }
 
 function isString(value: unknown): value is string {
@@ -884,20 +838,6 @@ function deepFreezeOpClone(value: EngineOp): EngineOp {
     throw new Error('Workbook command receipt op clone is invalid')
   }
   return deepFreeze(cloned, new WeakSet())
-}
-
-function deepFreezeRangeClone(commandId: string, value: CellRangeRef): CellRangeRef {
-  const sheetName = ownValue(value, 'sheetName')
-  const startAddress = ownValue(value, 'startAddress')
-  const endAddress = ownValue(value, 'endAddress')
-  if (typeof sheetName !== 'string' || typeof startAddress !== 'string' || typeof endAddress !== 'string') {
-    throw new Error(`Workbook command receipt ${commandId} changed range clone is invalid`)
-  }
-  return Object.freeze({
-    sheetName,
-    startAddress,
-    endAddress,
-  })
 }
 
 function deepFreeze<T>(value: T, seen: WeakSet<object>): T {
