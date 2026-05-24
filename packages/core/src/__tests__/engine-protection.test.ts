@@ -94,6 +94,43 @@ describe('SpreadsheetEngine protections', () => {
     expect(() => engine.setCellFormat('Input', 'B2', '0.00')).toThrow(/Workbook protection blocks this change/)
   })
 
+  it('blocks coordinate and direct fast-path content writes to protected cells', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'protection-coordinate-cell-edits' })
+    await engine.ready()
+    engine.importSnapshot(protectedSheetWithUnlockedInputSnapshot())
+    const sheetId = engine.workbook.getSheet('Input')!.id
+
+    expect(() => engine.setCellValueAt(sheetId, 0, 0, 25)).toThrow(/Workbook protection blocks this change/)
+    expect(() => engine.setCellFormulaAt(sheetId, 0, 0, '40')).toThrow(/Workbook protection blocks this change/)
+    expect(() => engine.clearCellAt(sheetId, 0, 0)).toThrow(/Workbook protection blocks this change/)
+    expect(() => engine.applyCellMutationsAt([{ sheetId, mutation: { kind: 'setCellValue', row: 0, col: 0, value: 30 } }], 1)).toThrow(
+      /Workbook protection blocks this change/,
+    )
+    expect(() =>
+      engine.applyCellMutationsAtWithOptions([{ sheetId, mutation: { kind: 'setCellValue', row: 0, col: 0, value: 32 } }]),
+    ).toThrow(/Workbook protection blocks this change/)
+    expect(() =>
+      engine.applyCellMutationsAtWithOptions([{ sheetId, mutation: { kind: 'setCellValue', row: 0, col: 0, value: 35 } }], {
+        captureUndo: false,
+        source: 'local',
+      }),
+    ).toThrow(/Workbook protection blocks this change/)
+    expect(() => engine.applyOps([{ kind: 'setCellValue', sheetName: 'Input', address: 'A1', value: 40 }])).toThrow(
+      /Workbook protection blocks this change/,
+    )
+    expect(() => engine.applyOps([{ kind: 'setCellValue', sheetName: 'Input', address: 'A1', value: 45 }], { trusted: true })).toThrow(
+      /Workbook protection blocks this change/,
+    )
+    expect(() => engine.setCellValueAt(sheetId, 1, 1, 25)).not.toThrow()
+    expect(() =>
+      engine.applyCellMutationsAtWithOptions([{ sheetId, mutation: { kind: 'setCellValue', row: 0, col: 0, value: 50 } }], {
+        captureUndo: false,
+        source: 'restore',
+      }),
+    ).not.toThrow()
+    expect(engine.getCellValue('Input', 'A1')).toMatchObject({ value: 50 })
+  })
+
   it('keeps explicit protected ranges locked even when sheet cell style is unlocked', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'protection-unlocked-cell-explicit-range' })
     await engine.ready()
@@ -189,8 +226,10 @@ function protectedSheetWithUnlockedInputSnapshot(): WorkbookSnapshot {
           ],
         },
         cells: [
+          { address: 'A1', value: 5 },
           { address: 'B2', value: 10 },
           { address: 'C2', formula: 'B2*2' },
+          { address: 'D1', formula: 'A1*2' },
         ],
       },
     ],

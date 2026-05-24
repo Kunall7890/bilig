@@ -228,7 +228,8 @@ export class SpreadsheetEngine extends SpreadsheetEngineWorkbookFacadeBase {
       reuseRefs?: boolean
     } = {},
   ): readonly EngineOp[] | null {
-    return this.runtime.mutation.applyCellMutationsAtNow(refs, options)
+    const nextOptions = options.source === undefined ? { ...options, source: 'local' as const } : options
+    return this.runtime.mutation.applyCellMutationsAtNow(refs, nextOptions)
   }
 
   tryApplyExistingNumericCellMutationAt(request: EngineExistingNumericCellMutationRef): EngineExistingNumericCellMutationResult | null {
@@ -485,6 +486,7 @@ export class SpreadsheetEngine extends SpreadsheetEngineWorkbookFacadeBase {
       trusted?: boolean
     } = {},
   ): readonly EngineOp[] | null {
-    return this.runtime.mutation.applyOpsNow(ops, options)
+    const nextOptions = options.source === undefined ? { ...options, source: 'local' as const } : options
+    return this.runtime.mutation.applyOpsNow(ops, nextOptions)
   }
 }

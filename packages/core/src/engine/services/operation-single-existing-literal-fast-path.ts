@@ -1,5 +1,6 @@
 import { ValueTag, type CellValue } from '@bilig/protocol'
 import type { EngineOpBatch } from '@bilig/workbook'
+import { formatAddress } from '@bilig/formula'
 import type {
   EngineCellMutationRef,
   EngineExistingLiteralCellMutationRef,
@@ -29,6 +30,7 @@ import { applyOperationLookupNumericWriteTailPatches, planOperationLookupNumeric
 import { tryApplySinglePostRecalcDirectFormula, type DirectFormulaMetricCounts } from './operation-post-recalc-direct-formulas.js'
 import type { MutationSource, OperationSingleExistingLiteralFastPathArgs } from './operation-single-existing-literal-fast-path-types.js'
 import { isWorkbookTableHeaderCell } from './operation-table-header-rename.js'
+import { assertProtectionAllowsOp as assertProtectionAllowsProtectedOp } from './operation-protection-helpers.js'
 
 const DIRECT_RANGE_POST_RECALC_LIMIT = 16_384
 const EMPTY_CHANGED_CELLS = new Uint32Array(0)
@@ -83,6 +85,18 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     countPostRecalcDirectFormulaMetric,
     hasDynamicFormulaDependents,
   } = args
+
+  const assertProtectionAllowsExistingValueMutation = (
+    sheetName: string,
+    request: EngineExistingNumericCellMutationRef | EngineExistingLiteralCellMutationRef,
+  ): void => {
+    assertProtectionAllowsProtectedOp(args.state.workbook, {
+      kind: 'setCellValue',
+      sheetName,
+      address: formatAddress(request.row, request.col),
+      value: request.value,
+    })
+  }
 
   const hasKnownDynamicFormulaDependents = (
     sheetId: number,
@@ -651,6 +665,7 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
       return null
     }
     const sheetName = sheet.name
+    assertProtectionAllowsExistingValueMutation(sheetName, request)
     const singleExistingCellDependent = args.getSingleEntityDependent(makeCellEntity(existingIndex))
     const hasTrackedColumnDependents = args.hasTrackedColumnDependentsAnywhere()
     const hasExactLookupDependents = hasTrackedColumnDependents && hasTrackedExactLookupDependents(request.sheetId, request.col)
@@ -938,6 +953,7 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     ) {
       return null
     }
+    assertProtectionAllowsExistingValueMutation(sheet.name, request)
     const formulaCellIndex = args.getSingleEntityDependent(makeCellEntity(existingIndex))
     if (hasKnownDynamicFormulaDependents(request.sheetId, request.row, request.col, existingIndex, formulaCellIndex)) {
       return null

@@ -1,6 +1,6 @@
 import type { EngineOpBatch } from '@bilig/workbook'
 import type { CellValue } from '@bilig/protocol'
-import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
+import { cellMutationRefToEngineOp, type EngineCellMutationRef } from '../../cell-mutations-at.js'
 import { batchOpOrder, markBatchApplied, type OpOrder } from '../../replica-state.js'
 import { DirectFormulaIndexCollection } from './direct-formula-index-collection.js'
 import { aggregateColumnDependencyKey } from './direct-formula-recalc-helpers.js'
@@ -21,6 +21,7 @@ import { createOperationExistingRectangularLiteralBatchFastPath } from './operat
 import { applyClearCellMutation } from './operation-clear-cell-mutation.js'
 import { applySetCellValueMutation } from './operation-set-cell-value-mutation.js'
 import { applySetCellFormulaMutation } from './operation-set-cell-formula-mutation.js'
+import { assertProtectionAllowsOp as assertProtectionAllowsProtectedOp } from './operation-protection-helpers.js'
 
 type OperationCellMutationSource = Exclude<MutationSource, 'remote'>
 type OperationCellDirectFormulaCallbacks = Parameters<typeof finalizeOperationRecalcAndEvents>[0]['directFormulaCallbacks']
@@ -246,6 +247,11 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
     potentialNewCells?: number,
   ): void {
     const isRestore = source === 'restore'
+    if (!isRestore && source !== 'undo' && source !== 'redo') {
+      for (const ref of refs) {
+        assertProtectionAllowsProtectedOp(args.state.workbook, cellMutationRefToEngineOp(args.state.workbook, ref))
+      }
+    }
     if (tryApplySingleExistingDirectLiteralMutation(refs, batch, source)) {
       return
     }

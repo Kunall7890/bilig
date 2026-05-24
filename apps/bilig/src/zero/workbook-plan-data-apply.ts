@@ -36,7 +36,7 @@ export async function runStrictWorkbookPlanData(engine: SpreadsheetEngine, plan:
   if (result.status === 'failed') {
     const undoOps = result.undo?.ops
     if (undoOps !== undefined && undoOps.length > 0) {
-      engine.applyOps(undoOps, { trusted: true })
+      engine.applyOps(undoOps, { source: 'restore', trusted: true })
     }
   }
   return result

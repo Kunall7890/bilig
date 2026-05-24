@@ -513,7 +513,7 @@ export function applyWorkbookEvent(engine: SpreadsheetEngine, payload: WorkbookE
       applyWorkbookAgentCommandBundle(engine, payload.bundle)
       return
     case 'applyWorkbookPlanData':
-      engine.applyOps(payload.appliedOps, { trusted: true })
+      engine.applyOps(payload.appliedOps, { source: 'restore', trusted: true })
       return
     case 'setCellValue':
       engine.setCellValue(payload.sheetName, payload.address, payload.value)
@@ -587,7 +587,7 @@ export function applyWorkbookEvent(engine: SpreadsheetEngine, payload: WorkbookE
     case 'revertChange':
     case 'redoChange':
       if (payload.appliedBundle.kind === 'engineOps') {
-        engine.applyOps(payload.appliedBundle.ops)
+        engine.applyOps(payload.appliedBundle.ops, { source: 'restore', trusted: true })
         return
       }
       engine.importSnapshot(payload.appliedBundle.snapshot)
