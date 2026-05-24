@@ -1,12 +1,12 @@
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const cleanupRetryMs = 100
 const retriableCleanupCodes = new Set(['EBUSY', 'EINTR', 'ENOTEMPTY'])
 
 export function createExcelAccessibleTempDir(prefix: string): string {
-  const root = join(homedir(), 'Library/Containers/com.microsoft.Excel/Data/tmp/bilig-headless-oracle')
+  const root = join(tmpdir(), 'bilig-headless-oracle')
   mkdirSync(root, { recursive: true })
   return mkdtempSync(join(root, prefix))
 }

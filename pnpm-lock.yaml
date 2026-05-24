@@ -586,6 +586,9 @@ importers:
       '@bilig/headless':
         specifier: workspace:*
         version: link:../headless
+      '@bilig/protocol':
+        specifier: workspace:*
+        version: link:../protocol
 
   packages/zero-sync:
     dependencies:

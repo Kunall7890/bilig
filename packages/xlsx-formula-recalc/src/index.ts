@@ -1,10 +1,13 @@
 import { WorkPaper, type RawCellContent, type WorkPaperCellAddress, type WorkPaperChange, type WorkPaperConfig } from '@bilig/headless'
 import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
+import { ValueTag } from '@bilig/protocol'
 
 export { WorkPaper } from '@bilig/headless'
 export { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
 
 type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSnapshot>
+type WorkbookSnapshot = Parameters<typeof WorkPaper.buildFromSnapshot>[0]
+type WorkbookCalculationSettings = NonNullable<NonNullable<WorkbookSnapshot['workbook']['metadata']>['calculationSettings']>
 
 export type XlsxFormulaRecalcCellValue = ReturnType<WorkPaperInstance['getCellValue']>
 
@@ -30,7 +33,8 @@ export interface XlsxFormulaRecalcResult {
 
 export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, options: XlsxFormulaRecalcOptions = {}): XlsxFormulaRecalcResult {
   const imported = importXlsx(toUint8Array(input), options.fileName ?? 'workbook.xlsx')
-  const workbook = WorkPaper.buildFromSnapshot(imported.snapshot, {
+  const originalCalculationSettings = imported.snapshot.workbook.metadata?.calculationSettings
+  const workbook = WorkPaper.buildFromSnapshot(snapshotForFreshFormulaRecalculation(imported.snapshot), {
     evaluationTimeoutMs: 30_000,
     useColumnIndex: true,
     ...options.config,
@@ -41,14 +45,23 @@ export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, option
     for (const edit of options.edits ?? []) {
       changes.push(...workbook.setCellContents(parseQualifiedCellTarget(workbook, edit.target), edit.value))
     }
+    changes.push(...workbook.rebuildAndRecalculate())
 
     const reads: Record<string, XlsxFormulaRecalcCellValue> = {}
     for (const target of options.reads ?? []) {
       reads[target] = workbook.getCellValue(parseQualifiedCellTarget(workbook, target))
     }
 
+    const outputSnapshot = snapshotWithFormulaCachedValues(workbook, workbook.exportSnapshot())
     return {
-      xlsx: toUint8Array(exportXlsx(workbook.exportSnapshot())),
+      xlsx: toUint8Array(
+        exportXlsx(
+          restoreOutputCalculationSettings(
+            outputSnapshot,
+            options.config?.calculationSettings === undefined ? originalCalculationSettings : undefined,
+          ),
+        ),
+      ),
       warnings: imported.warnings,
       sheetNames: imported.sheetNames,
       reads,
@@ -60,6 +73,78 @@ export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, option
 }
 
 export const recalculateSheetjsWorkbook = recalculateXlsx
+
+function snapshotWithFormulaCachedValues(workbook: WorkPaperInstance, snapshot: WorkbookSnapshot): WorkbookSnapshot {
+  const next = structuredClone(snapshot)
+  for (const sheet of next.sheets) {
+    const sheetId = workbook.getSheetId(sheet.name)
+    if (sheetId === undefined) {
+      continue
+    }
+    for (const cell of sheet.cells) {
+      if (typeof cell.formula !== 'string' || cell.formula.trim().length === 0) {
+        continue
+      }
+      const address = parseA1CellReference(cell.address)
+      const cachedValue = literalInputForFormulaCache(workbook.getCellValue({ sheet: sheetId, row: address.row, col: address.col }))
+      if (cachedValue !== undefined) {
+        cell.value = cachedValue
+      }
+    }
+  }
+  return next
+}
+
+function literalInputForFormulaCache(value: XlsxFormulaRecalcCellValue): string | number | boolean | null | undefined {
+  if (typeof value !== 'object' || value === null || !('tag' in value)) {
+    return undefined
+  }
+  if (value.tag === ValueTag.Empty) {
+    return null
+  }
+  if (value.tag === ValueTag.Number && 'value' in value && typeof value.value === 'number' && Number.isFinite(value.value)) {
+    return value.value
+  }
+  if (value.tag === ValueTag.Boolean && 'value' in value && typeof value.value === 'boolean') {
+    return value.value
+  }
+  if (value.tag === ValueTag.String && 'value' in value && typeof value.value === 'string') {
+    return value.value
+  }
+  return undefined
+}
+
+function snapshotForFreshFormulaRecalculation(snapshot: WorkbookSnapshot): WorkbookSnapshot {
+  const next = structuredClone(snapshot)
+  const calculationSettings = next.workbook.metadata?.calculationSettings
+  if (calculationSettings === undefined) {
+    return next
+  }
+  if (calculationSettings.mode !== 'manual' && calculationSettings.fullCalcOnLoad !== false) {
+    return next
+  }
+
+  next.workbook.metadata ??= {}
+  next.workbook.metadata.calculationSettings = {
+    ...calculationSettings,
+    mode: 'automatic',
+    fullCalcOnLoad: true,
+  }
+  return next
+}
+
+function restoreOutputCalculationSettings(
+  snapshot: WorkbookSnapshot,
+  originalCalculationSettings: WorkbookCalculationSettings | undefined,
+): WorkbookSnapshot {
+  if (originalCalculationSettings === undefined) {
+    return snapshot
+  }
+  const next = structuredClone(snapshot)
+  next.workbook.metadata ??= {}
+  next.workbook.metadata.calculationSettings = structuredClone(originalCalculationSettings)
+  return next
+}
 
 export function parseQualifiedCellTarget(workbook: WorkPaperInstance, target: string): WorkPaperCellAddress {
   const parsed = parseQualifiedA1(target)
@@ -99,6 +184,27 @@ export function parseQualifiedA1(target: string): { sheetName: string; row: numb
 
   return {
     sheetName,
+    ...parseA1Parts(row, col),
+  }
+}
+
+function parseA1CellReference(address: string): { row: number; col: number } {
+  const match = /^\$?(?<col>[A-Z]+)\$?(?<row>[1-9][0-9]*)$/u.exec(address.trim().toUpperCase())
+  if (!match?.groups) {
+    throw new Error(`Expected a single A1 cell reference, received: ${address}`)
+  }
+
+  const row = match.groups['row']
+  const col = match.groups['col']
+  if (!row || !col) {
+    throw new Error(`Expected a single A1 cell reference, received: ${address}`)
+  }
+
+  return parseA1Parts(row, col)
+}
+
+function parseA1Parts(row: string, col: string): { row: number; col: number } {
+  return {
     row: Number.parseInt(row, 10) - 1,
     col: columnLettersToIndex(col),
   }

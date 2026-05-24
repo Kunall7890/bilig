@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 
 import {
@@ -175,6 +175,7 @@ export function runMacosExcelRecalculationOracle(request: MacosExcelRecalculatio
   const scriptPath = join(tempDir, 'recalculate.scpt')
   try {
     const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
+    openWorkbooksForMacosExcelOracle(appPath, [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], request.timeoutMs)
     writeFileSync(scriptPath, createMacosExcelRecalculationAppleScript(request))
     const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
       encoding: 'utf8',
@@ -197,6 +198,7 @@ export function runMacosExcelInspectionOracle(request: MacosExcelInspectionOracl
   const scriptPath = join(tempDir, 'inspect.scpt')
   try {
     const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
+    openWorkbooksForMacosExcelOracle(appPath, [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], request.timeoutMs)
     writeFileSync(scriptPath, createMacosExcelInspectionAppleScript(request))
     const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
       encoding: 'utf8',
@@ -219,6 +221,7 @@ export function runMacosExcelPackageOpenSaveOracle(request: MacosExcelPackageOpe
   const scriptPath = join(tempDir, 'package-open-save.scpt')
   try {
     const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
+    openWorkbooksForMacosExcelOracle(appPath, [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], request.timeoutMs)
     writeFileSync(scriptPath, createMacosExcelPackageOpenSaveAppleScript(request))
     const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
       encoding: 'utf8',
@@ -243,6 +246,7 @@ export function runMacosExcelStructuralOperationOracle(
   const scriptPath = join(tempDir, 'structure.scpt')
   try {
     const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
+    openWorkbooksForMacosExcelOracle(appPath, [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], request.timeoutMs)
     writeFileSync(scriptPath, createMacosExcelStructuralOperationAppleScript(request))
     const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
       encoding: 'utf8',
@@ -267,6 +271,7 @@ export function runMacosExcelRejectedStructuralOperationOracle(
   const scriptPath = join(tempDir, 'rejected-structure.scpt')
   try {
     const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
+    openWorkbooksForMacosExcelOracle(appPath, [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], request.timeoutMs)
     writeFileSync(scriptPath, createMacosExcelRejectedStructuralOperationAppleScript(request))
     const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
       encoding: 'utf8',
@@ -303,9 +308,50 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function createMacosExcelOracleTempDir(prefix: string): string {
-  const root = join(homedir(), 'Library/Containers/com.microsoft.Excel/Data/tmp/bilig-excel-oracle')
+  const root = join(tmpdir(), 'bilig-excel-oracle')
   mkdirSync(root, { recursive: true })
   return mkdtempSync(join(root, prefix))
+}
+
+function openWorkbooksForMacosExcelOracle(appPath: string, workbookPaths: readonly string[], timeoutMs: number | undefined): void {
+  for (const workbookPath of workbookPaths) {
+    execFileSync('open', ['-a', appPath, workbookPath], {
+      timeout: Math.min(timeoutMs ?? 60_000, 30_000),
+    })
+    waitForMacosExcelWorkbookOpen(workbookPath, timeoutMs)
+  }
+}
+
+function waitForMacosExcelWorkbookOpen(workbookPath: string, timeoutMs: number | undefined): void {
+  const deadline = Date.now() + Math.min(timeoutMs ?? 60_000, 30_000)
+  let lastError: unknown
+
+  while (Date.now() < deadline) {
+    try {
+      execFileSync('osascript', ['-e', macosExcelWorkbookOpenCheckAppleScript(), workbookPath], {
+        encoding: 'utf8',
+        timeout: 5_000,
+      })
+      return
+    } catch (error) {
+      lastError = error
+      sleepSync(250)
+    }
+  }
+
+  throw new Error(`Timed out waiting for Microsoft Excel to open ${workbookPath}: ${String(lastError)}`)
+}
+
+function macosExcelWorkbookOpenCheckAppleScript(): string {
+  return `on run argv
+  set expectedPath to item 1 of argv
+  tell application "Microsoft Excel"
+    try
+      if (full name of active workbook as string) is expectedPath then return "ready"
+    end try
+  end tell
+  error "Workbook is not open: " & expectedPath number -2700
+end run`
 }
 
 function stageWorkbookForMacosExcelOracle(workbookPath: string, tempDir: string): string {

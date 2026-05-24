@@ -73,6 +73,35 @@ describe('xlsx-formula-recalc', () => {
     expect(readNumber(result.reads['Summary!B2'])).toBe(72_000)
   })
 
+  it('refreshes stale manual-calc caches for supported formulas before reads and export', () => {
+    const sourceWorkbook = WorkPaper.buildFromSheets({
+      Model: [
+        ['Input', 'Output'],
+        [2, '=A2*10'],
+      ],
+    })
+    const sourceBytes = setWorkbookCalcPr(
+      replaceCellXml(exportXlsx(sourceWorkbook.exportSnapshot()), 'xl/worksheets/sheet1.xml', 'B2', '<c r="B2"><f>A2*10</f><v>999</v></c>'),
+      '<calcPr calcMode="manual" fullCalcOnLoad="0"/>',
+    )
+    sourceWorkbook.dispose()
+
+    const result = recalculateXlsx(sourceBytes, {
+      fileName: 'manual-stale-cache.xlsx',
+      reads: ['Model!B2'],
+    })
+
+    expect(readNumber(result.reads['Model!B2'])).toBe(20)
+    expect(readCachedFormulaValue(result.xlsx, 'xl/worksheets/sheet1.xml', 'B2')).toBe('20')
+
+    const imported = importXlsx(result.xlsx, 'manual-stale-cache.recalculated.xlsx')
+    const restored = WorkPaper.buildFromSnapshot(imported.snapshot)
+    const model = restored.getSheetId('Model')
+    expect(model).toBeTypeOf('number')
+    expect(readNumber(restored.getCellValue({ sheet: model!, row: 1, col: 1 }))).toBe(20)
+    restored.dispose()
+  })
+
   it('parses quoted sheet names and absolute A1 addresses', () => {
     expect(parseQualifiedA1("'Pricing Model'!$AB$12")).toEqual({
       sheetName: 'Pricing Model',
@@ -130,4 +159,22 @@ function replaceCellXml(bytes: Uint8Array, sheetPath: string, address: string, r
   }
   zip[sheetPath] = strToU8(sheetXml.replace(pattern, replacement))
   return zipSync(zip)
+}
+
+function setWorkbookCalcPr(bytes: Uint8Array, calcPrXml: string): Uint8Array {
+  const zip = unzipSync(bytes)
+  const workbookXml = strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())
+  if (/<calcPr\b[\s\S]*?\/>/u.test(workbookXml)) {
+    zip['xl/workbook.xml'] = strToU8(workbookXml.replace(/<calcPr\b[\s\S]*?\/>/u, calcPrXml))
+    return zipSync(zip)
+  }
+  zip['xl/workbook.xml'] = strToU8(workbookXml.replace('</workbook>', `${calcPrXml}</workbook>`))
+  return zipSync(zip)
+}
+
+function readCachedFormulaValue(bytes: Uint8Array, sheetPath: string, address: string): string | null {
+  const zip = unzipSync(bytes)
+  const sheetXml = strFromU8(zip[sheetPath] ?? new Uint8Array())
+  const match = new RegExp(`<c\\b(?=[^>]*\\br="${address}")[\\s\\S]*?<v>([\\s\\S]*?)<\\/v>[\\s\\S]*?<\\/c>`, 'u').exec(sheetXml)
+  return match?.[1] ?? null
 }

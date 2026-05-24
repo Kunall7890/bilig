@@ -64,10 +64,13 @@
   },
   "scripts": {
     "build": "pnpm --dir ../.. --filter @bilig/headless build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json",
+    "test:excel-oracle": "vitest run --root ../.. src/__tests__/macos-desktop-excel-*.test.ts --maxWorkers=1",
+    "test:excel-oracle:live": "BILIG_EXCEL_ORACLE_RUN=1 vitest run --root ../.. src/__tests__/macos-desktop-excel-*.test.ts --maxWorkers=1",
     "smoke": "node ./dist/cli.js --help"
   },
   "dependencies": {
-    "@bilig/headless": "workspace:*"
+    "@bilig/headless": "workspace:*",
+    "@bilig/protocol": "workspace:*"
   },
   "engines": {
     "node": ">=22.0.0"
