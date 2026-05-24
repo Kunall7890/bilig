@@ -12,8 +12,14 @@ import {
   type WorkbookActionInputIssue,
   type WorkbookActionInputDescription,
 } from './input.js'
-import { isWorkbookOp } from './guards.js'
 import { isObject, optionalDataProperty, requiredDataProperty, type OptionalDataValue } from './data-properties.js'
+import {
+  normalizeWorkbookActionFormatOptions,
+  normalizeWorkbookActionLiteralInput,
+  normalizeWorkbookActionOp,
+  normalizeWorkbookActionTarget,
+  normalizeWorkbookAddOpOptions,
+} from './model-action-validation.js'
 import type { WorkbookOp } from './ops.js'
 import type {
   WorkbookChangeSummary,
@@ -515,18 +521,6 @@ function commandMessage(command: WorkbookActionCommand): string {
   }
 }
 
-function commandTarget(command: WorkbookActionCommand): WorkbookRef | undefined {
-  return command.target
-}
-
-function cloneWorkbookOp(op: WorkbookOp): WorkbookOp {
-  return structuredClone(op)
-}
-
-function freezeWorkbookOp(op: WorkbookOp): WorkbookOp {
-  return Object.freeze(cloneWorkbookOp(op))
-}
-
 function freezeActionCommand(command: WorkbookActionCommand): WorkbookActionCommand {
   switch (command.kind) {
     case 'writeFormula':
@@ -558,7 +552,7 @@ function freezeActionCommand(command: WorkbookActionCommand): WorkbookActionComm
     case 'op':
       return Object.freeze({
         kind: 'op',
-        op: freezeWorkbookOp(command.op),
+        op: normalizeWorkbookActionOp(command.op),
         ...(command.target !== undefined ? { target: command.target } : {}),
         ...(command.message !== undefined ? { message: command.message } : {}),
       })
@@ -616,8 +610,8 @@ function createActionWorkbook(input: {
 
   function pushCommand(command: WorkbookActionCommand): void {
     if (command.kind === 'op') {
-      const commandOp = cloneWorkbookOp(command.op)
-      const planOp = cloneWorkbookOp(command.op)
+      const commandOp = normalizeWorkbookActionOp(command.op)
+      const planOp = normalizeWorkbookActionOp(command.op)
       input.commands.push({
         kind: 'op',
         op: commandOp,
@@ -674,44 +668,49 @@ function createActionWorkbook(input: {
   const workbook: WorkbookActionWorkbook = {
     ...checkWorkbook,
     writeFormula(target: WorkbookRef, value: WorkbookFormulaOperand) {
+      const normalizedTarget = normalizeWorkbookActionTarget('writeFormula', target)
       pushCommand({
         kind: 'writeFormula',
-        target,
+        target: normalizedTarget,
         formula: formula.source(value),
         inputs: formula.inputs(value),
         labels: formula.labels(value),
       })
     },
     writeValue(target: WorkbookRef, value: LiteralInput) {
+      const normalizedTarget = normalizeWorkbookActionTarget('writeValue', target)
+      const normalizedValue = normalizeWorkbookActionLiteralInput('writeValue', value)
       pushCommand({
         kind: 'writeValue',
-        target,
-        value,
+        target: normalizedTarget,
+        value: normalizedValue,
       })
     },
     format(target: WorkbookRef, options: { readonly style?: CellStylePatch; readonly numberFormat?: string | null }) {
+      const normalizedTarget = normalizeWorkbookActionTarget('format', target)
+      const normalizedOptions = normalizeWorkbookActionFormatOptions(options)
       pushCommand({
         kind: 'format',
-        target,
-        ...(options.style !== undefined ? { style: options.style } : {}),
-        ...(options.numberFormat !== undefined ? { numberFormat: options.numberFormat } : {}),
+        target: normalizedTarget,
+        ...(normalizedOptions.style !== undefined ? { style: normalizedOptions.style } : {}),
+        ...(normalizedOptions.numberFormat !== undefined ? { numberFormat: normalizedOptions.numberFormat } : {}),
       })
     },
     clear(target: WorkbookRef) {
+      const normalizedTarget = normalizeWorkbookActionTarget('clear', target)
       pushCommand({
         kind: 'clear',
-        target,
+        target: normalizedTarget,
       })
     },
     addOp(op: WorkbookOp, options: WorkbookAddOpOptions = {}) {
-      if (!isWorkbookOp(op)) {
-        throw new Error('Workbook op is not a valid WorkbookOp')
-      }
+      const normalizedOp = normalizeWorkbookActionOp(op)
+      const normalizedOptions = normalizeWorkbookAddOpOptions(options)
       pushCommand({
         kind: 'op',
-        op,
-        ...(options.target !== undefined ? { target: options.target } : {}),
-        ...(options.message !== undefined ? { message: options.message } : {}),
+        op: normalizedOp,
+        ...(normalizedOptions.target !== undefined ? { target: normalizedOptions.target } : {}),
+        ...(normalizedOptions.message !== undefined ? { message: normalizedOptions.message } : {}),
       })
     },
   }
@@ -849,12 +848,12 @@ function createActionPlan<Refs>(
   checks: readonly WorkbookCheckResult[],
 ): WorkbookActionPlan<Refs> {
   const plannedCommands = Object.freeze(commands.map(freezeActionCommand))
-  const plannedOps = Object.freeze(ops.map(freezeWorkbookOp))
+  const plannedOps = Object.freeze(ops.map(normalizeWorkbookActionOp))
   const plannedChecks = Object.freeze(checks.map(freezeCheckResult))
   const plannedRefs = freezeRefs(refs)
   const plannedChanged = Object.freeze(
     plannedCommands.map((command) => {
-      const target = commandTarget(command)
+      const target = command.target
       return freezeChangeSummary({
         kind: command.kind,
         ...(target !== undefined ? { target } : {}),

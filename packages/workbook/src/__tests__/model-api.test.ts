@@ -1381,6 +1381,121 @@ describe('@bilig/workbook model api', () => {
     })
   })
 
+  it('rejects malformed action helper calls before returning a plan', () => {
+    let opGetterInvoked = false
+    let stylePrototypeGetterInvoked = false
+    const opWithGetter: Record<string, unknown> = {
+      kind: 'setCellValue',
+      sheetName: 'Sheet1',
+      address: 'A1',
+      value: 1,
+    }
+    Object.defineProperty(opWithGetter, 'extra', {
+      enumerable: true,
+      get() {
+        opGetterInvoked = true
+        throw new Error('op getter must not run')
+      },
+    })
+    const styleWithPrototype = Object.create({
+      get inherited() {
+        stylePrototypeGetterInvoked = true
+        throw new Error('style prototype getter must not run')
+      },
+    })
+    Object.defineProperty(styleWithPrototype, 'font', {
+      enumerable: true,
+      value: { bold: true },
+    })
+
+    const model = defineModel({
+      name: 'helper-validation-model',
+      find(workbook) {
+        return {
+          target: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+        }
+      },
+      actions: {
+        badTarget({ workbook }) {
+          Reflect.apply(workbook.writeValue, undefined, [{ kind: 'range', id: 'missing-range', label: 'missing range' }, 1])
+        },
+        badValue({ refs, workbook }) {
+          Reflect.apply(workbook.writeValue, undefined, [refs.target, Number.NaN])
+        },
+        badFormat({ refs, workbook }) {
+          Reflect.apply(workbook.format, undefined, [refs.target, { numberFormat: 12 }])
+        },
+        badOp({ workbook }) {
+          Reflect.apply(workbook.addOp, undefined, [opWithGetter])
+        },
+        stylePrototype({ refs, workbook }) {
+          workbook.format(refs.target, { style: styleWithPrototype })
+        },
+      },
+    })
+
+    expect(planWorkbookAction(model, 'badTarget')).toEqual({
+      status: 'failed',
+      modelName: 'helper-validation-model',
+      actionName: 'badTarget',
+      checks: [],
+      errors: [
+        {
+          code: 'action_failed',
+          message: 'Workbook action writeValue target must be a workbook ref',
+        },
+      ],
+    })
+    expect(planWorkbookAction(model, 'badValue')).toEqual({
+      status: 'failed',
+      modelName: 'helper-validation-model',
+      actionName: 'badValue',
+      checks: [],
+      errors: [
+        {
+          code: 'action_failed',
+          message: 'Workbook action writeValue value must be a finite JSON literal',
+        },
+      ],
+    })
+    expect(planWorkbookAction(model, 'badFormat')).toEqual({
+      status: 'failed',
+      modelName: 'helper-validation-model',
+      actionName: 'badFormat',
+      checks: [],
+      errors: [
+        {
+          code: 'action_failed',
+          message: 'Workbook action format numberFormat must be a string, null, or undefined',
+        },
+      ],
+    })
+    expect(planWorkbookAction(model, 'badOp')).toEqual({
+      status: 'failed',
+      modelName: 'helper-validation-model',
+      actionName: 'badOp',
+      checks: [],
+      errors: [
+        {
+          code: 'action_failed',
+          message: 'Workbook action op.extra must be a data property',
+        },
+      ],
+    })
+    expect(opGetterInvoked).toBe(false)
+    const stylePlan = planWorkbookAction(model, 'stylePrototype')
+    expect(stylePlan.status).toBe('planned')
+    if (stylePlan.status === 'planned') {
+      const command = stylePlan.plan.commands[0]
+      if (command?.kind !== 'format') {
+        throw new Error('expected format command')
+      }
+      expect(command.style).toEqual({ font: { bold: true } })
+      expect(Object.getPrototypeOf(command.style)).toBe(Object.prototype)
+    }
+    expect(stylePrototypeGetterInvoked).toBe(false)
+  })
+
   it('keeps planned checks when action planning fails', () => {
     const model = defineModel({
       name: 'checkable-failure-model',

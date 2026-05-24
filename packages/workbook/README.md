@@ -136,6 +136,10 @@ triggering hidden getters.
 `planWorkbookAction` also validates that boundary before reading action metadata
 or running model code. Invalid manifests return a structured `invalid_model`
 failure instead of making the agent catch an accessor side effect.
+Action helper calls fail closed during planning too: write, clear, format, and
+low-level-op helpers reject malformed targets, non-literal values, invalid
+format options, invalid add-op options, and accessor-backed op payloads before a
+plan is returned.
 `verifyModel` keeps the same behavior at whole-model scope: invalid manifests
 return an invalid verdict with an `invalid_model` error and no actions.
 

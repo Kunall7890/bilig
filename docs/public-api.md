@@ -396,6 +396,10 @@ metadata. Failed action input checks keep the stable input issue `path` and
 `issueCode` on each run error, so agents can branch on structured diagnostics
 without parsing messages. JSON-safety failures preserve nested paths like
 `input.items[2].amount` instead of collapsing every issue to `input`.
+Action helper calls also validate their own output boundary during planning:
+write, clear, format, and low-level-op helpers reject malformed targets,
+non-literal values, invalid format/add-op options, and accessor-backed op
+payloads before a plan is returned.
 Normalized payloads preserve consumer-owned JSON keys as own data properties,
 including names like `__proto__` and `constructor`, so transported tool payloads
 cannot mutate prototypes or disappear during canonicalization.
