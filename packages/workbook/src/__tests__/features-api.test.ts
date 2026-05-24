@@ -677,6 +677,72 @@ describe('@bilig/workbook feature api', () => {
     expect(getterInvoked).toBe(false)
   })
 
+  it('ignores command receipt undo scratch fields without invoking getters', () => {
+    let getterInvoked = false
+    const undo = {
+      id: 'undo-1',
+      ops: [{ kind: 'clearCell', sheetName: 'Sheet1', address: 'A1' }],
+    }
+    Object.defineProperty(undo, 'hiddenScratchpad', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    const receipt = normalizeWorkbookCommandReceipt({
+      status: 'applied',
+      featureId: 'tables',
+      commandId: 'tables.clearCell',
+      category: 'command',
+      undo,
+    })
+
+    expect(receipt.undo).toEqual({
+      id: 'undo-1',
+      ops: [{ kind: 'clearCell', sheetName: 'Sheet1', address: 'A1' }],
+    })
+    expect(checkWorkbookCommandReceipt(receipt)).toEqual({
+      status: 'valid',
+      receipt,
+      issues: [],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
+  it('rejects accessor-backed command receipt undo ops without invoking getters', () => {
+    let getterInvoked = false
+    const undo = { id: 'undo-1' }
+    Object.defineProperty(undo, 'ops', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    expect(
+      checkWorkbookCommandReceipt({
+        status: 'applied',
+        featureId: 'tables',
+        commandId: 'tables.clearCell',
+        category: 'command',
+        undo,
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_receipt',
+          path: 'undo.ops',
+          message: 'Workbook command receipt undo ops must be a data property',
+        },
+      ],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
   it('matches command receipt ops by canonical data, not property order', () => {
     expect(
       workbookCommandReceiptOpsMatch({

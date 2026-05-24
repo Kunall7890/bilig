@@ -470,12 +470,20 @@ function pushCommandReceiptUndoIssues(issues: WorkbookCommandReceiptIssue[], val
     issues.push(commandReceiptIssue('undo', 'Workbook command receipt undo must be an object'))
     return
   }
-  const id = ownValue(value, 'id')
-  pushOptionalCommandReceiptStringIssue(issues, id, 'undo.id', 'undo id')
-  if (id === undefined) {
-    issues.push(commandReceiptIssue('undo.id', 'Workbook command receipt undo id must be a string'))
+  const accessorKeys = new Set(ownAccessorKeys(value, ['id', 'ops']))
+  accessorKeys.forEach((key) => {
+    issues.push(commandReceiptIssue(`undo.${key}`, `Workbook command receipt undo ${key} must be a data property`))
+  })
+  if (!accessorKeys.has('id')) {
+    const id = ownValue(value, 'id')
+    pushOptionalCommandReceiptStringIssue(issues, id, 'undo.id', 'undo id')
+    if (id === undefined) {
+      issues.push(commandReceiptIssue('undo.id', 'Workbook command receipt undo id must be a string'))
+    }
   }
-  pushCommandReceiptOpsIssues(issues, ownValue(value, 'ops'), 'undo.ops', 'undo')
+  if (!accessorKeys.has('ops')) {
+    pushCommandReceiptOpsIssues(issues, ownValue(value, 'ops'), 'undo.ops', 'undo')
+  }
 }
 
 function pushCommandReceiptErrorsIssues(issues: WorkbookCommandReceiptIssue[], value: unknown): void {
@@ -607,6 +615,9 @@ function pushCommandReceiptStatusInvariantIssues(issues: WorkbookCommandReceiptI
 
 function normalizeReceiptUndo(value: unknown): WorkbookUndoRef | undefined {
   if (!isRecord(value)) {
+    return undefined
+  }
+  if (ownAccessorKeys(value, ['id', 'ops']).length > 0) {
     return undefined
   }
   const id = ownValue(value, 'id')
