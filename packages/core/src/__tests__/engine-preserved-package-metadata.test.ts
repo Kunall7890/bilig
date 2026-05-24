@@ -202,6 +202,32 @@ describe('engine imported package metadata preservation', () => {
     ])
   })
 
+  it('prunes preserved table query-table topology when deleting its owning table', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-table-query-artifact-table-delete' })
+    await engine.ready()
+
+    engine.importSnapshot(tableQueryConnectionSheetDeletionSnapshot())
+    expect(engine.deleteTable('revenuequery')).toBe(true)
+
+    const exported = engine.exportSnapshot()
+    expect(exported.workbook.metadata?.tables).toBeUndefined()
+    expect(exported.workbook.metadata?.slicerConnectionArtifacts?.tableArtifacts).toBeUndefined()
+    expect(exported.workbook.metadata?.slicerConnectionArtifacts?.parts.map((part) => part.path).toSorted()).toEqual(['xl/connections.xml'])
+    expect(exported.workbook.metadata?.slicerConnectionArtifacts?.workbookRelationships).toEqual([
+      {
+        id: 'rIdConnections',
+        type: `${officeRelationshipTypePrefix}/connections`,
+        target: 'connections.xml',
+      },
+    ])
+    expect(exported.workbook.metadata?.slicerConnectionArtifacts?.contentTypeOverrides).toEqual([
+      {
+        partName: '/xl/connections.xml',
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.connections+xml',
+      },
+    ])
+  })
+
   it('keeps shared preserved slicer parts when deleting one referencing sheet', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-shared-slicer-artifact-sheet-delete' })
     await engine.ready()

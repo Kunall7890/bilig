@@ -93,6 +93,7 @@ import {
   rewritePreservedPivotPackageArtifactsForSheetDeletion,
   rewritePreservedWorkbookMetadataForSheetDeletion,
   rewritePreservedWorkbookMetadataForSheetReorder,
+  rewritePreservedWorkbookMetadataForTableDeletion,
 } from './engine/services/structure-preserved-sheet-metadata-rewrite.js'
 import { rewriteThreadedCommentArtifactsForSheetDeletion } from './engine/services/structure-threaded-comment-artifact-rewrite.js'
 
@@ -493,7 +494,20 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
       })
     },
     deleteTable(name) {
-      return metadataEffect('Failed to delete table metadata', () => metadata.tables.delete(tableKey(name)))
+      return metadataEffect('Failed to delete table metadata', () => {
+        const existing = metadata.tables.get(tableKey(name))
+        if (!existing) {
+          return false
+        }
+        const preservedWorkbookMetadata = rewritePreservedWorkbookMetadataForTableDeletion(
+          metadata.preservedWorkbookMetadata,
+          existing.name,
+        )
+        if (preservedWorkbookMetadata) {
+          metadata.preservedWorkbookMetadata = preservedWorkbookMetadata
+        }
+        return metadata.tables.delete(tableKey(existing.name))
+      })
     },
     listTables() {
       return metadataEffect('Failed to list table metadata', () =>

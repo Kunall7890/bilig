@@ -1,8 +1,9 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { SpreadsheetEngine } from '@bilig/core'
 import { exportXlsx, importXlsx } from '@bilig/excel-import'
-import { isMacosExcelInstalled, runMacosExcelPackageOpenSaveOracle } from '@bilig/excel-fixtures'
+import { isMacosExcelInstalled, runMacosExcelPackageOpenSaveOracle, runMacosExcelStructuralOperationOracle } from '@bilig/excel-fixtures'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
@@ -176,6 +177,57 @@ describe('macOS Desktop Excel query-table package oracle', () => {
         } finally {
           workpaper.dispose()
         }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    180_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel when deleting a ListObject with a table-owned query-table relationship',
+    async () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-table-query-delete-oracle-')
+      try {
+        const csvPath = join(tempDir, 'bilig-table-query-delete-revenue.csv')
+        writeFileSync(csvPath, 'Region,Amount\nNorth,1200\nSouth,900\n')
+
+        const sourcePath = join(tempDir, 'excel-table-query-delete-source.xlsx')
+        const sourceBytes = buildTableOwnedQueryTableSourceXlsx(csvPath)
+        writeFileSync(sourcePath, sourceBytes)
+        expect(queryTableTopology(sourceBytes).tableQueryOwnerNames).toEqual(['ARevenueQuery'])
+
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath: sourcePath,
+          worksheetName: 'Revenue',
+          operations: [{ kind: 'deleteTable', tableName: 'ARevenueQuery' }],
+          inspectCells: ['A1'],
+          saveWorkbook: true,
+          timeoutMs: 120_000,
+        })
+        expect(excelResult.excelVersion).toMatch(/^\d+\./u)
+
+        const excelDeletedTopology = queryTableTopology(new Uint8Array(readFileSync(sourcePath)))
+        expect(excelDeletedTopology).toMatchObject({
+          packageParts: ['xl/connections.xml'],
+          workbookConnectionRelationships: 1,
+          worksheetQueryTableRelationships: 0,
+          tableQueryOwnerNames: [],
+          queryTableConnectionIds: [],
+          contentTypeOverrides: ['/xl/connections.xml'],
+        })
+
+        const headless = new SpreadsheetEngine({ workbookName: 'headless-table-query-delete-oracle' })
+        await headless.ready()
+        headless.importSnapshot(importXlsx(sourceBytes, 'excel-table-query-delete-source.xlsx').snapshot)
+        expect(headless.deleteTable('ARevenueQuery')).toBe(true)
+
+        const headlessBytes = exportXlsx(headless.exportSnapshot())
+        expect(queryTableTopology(headlessBytes)).toEqual(excelDeletedTopology)
       } finally {
         removeMacosExcelTestDir(tempDir)
       }

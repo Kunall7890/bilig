@@ -71,6 +71,7 @@ export type MacosExcelStructuralOperation =
   | { readonly kind: 'moveRows'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'moveColumns'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'createDataTable'; readonly range: string; readonly rowInput?: string; readonly columnInput?: string }
+  | { readonly kind: 'deleteTable'; readonly tableName: string }
   | {
       readonly kind: 'applySort'
       readonly range: string

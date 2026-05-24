@@ -826,6 +826,8 @@ function structuralOperationAppleScript(operation: MacosExcelStructuralOperation
       ]
         .filter((part) => part.length > 0)
         .join(' ')
+    case 'deleteTable':
+      return `delete list object ${toAppleScriptString(operation.tableName)} of targetWorksheet`
     case 'applySort':
       if (operation.keys.length === 0 || operation.keys.length > 3) {
         throw new Error('macOS Excel sort operation requires one to three sort keys')

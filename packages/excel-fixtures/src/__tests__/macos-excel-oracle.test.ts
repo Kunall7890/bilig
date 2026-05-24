@@ -236,6 +236,18 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(script).toContain('close targetWorkbook saving yes')
   })
 
+  it('builds a structural operation runner that can delete Desktop Excel ListObjects', () => {
+    const script = createMacosExcelStructuralOperationAppleScript({
+      worksheetName: 'Cases',
+      operations: [{ kind: 'deleteTable', tableName: 'Sales' }],
+      inspectCells: ['A1'],
+      saveWorkbook: true,
+    })
+
+    expect(script).toContain('delete list object "Sales" of targetWorksheet')
+    expect(script).toContain('close targetWorkbook saving yes')
+  })
+
   it('builds one-variable and two-variable data-table structural operations', () => {
     const script = createMacosExcelStructuralOperationAppleScript({
       worksheetName: 'Cases',

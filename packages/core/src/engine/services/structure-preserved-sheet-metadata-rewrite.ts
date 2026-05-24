@@ -214,6 +214,38 @@ export function rewritePreservedWorkbookMetadataForSheetDeletion(
   return changed ? next : undefined
 }
 
+export function rewritePreservedWorkbookMetadataForTableDeletion(
+  metadata: WorkbookPreservedMetadataRecord,
+  deletedTableName: string,
+): WorkbookPreservedMetadataRecord | undefined {
+  const slicerConnectionArtifacts = metadata.slicerConnectionArtifacts
+  if (!slicerConnectionArtifacts) {
+    return undefined
+  }
+
+  const tableArtifacts = slicerConnectionArtifacts.tableArtifacts ?? []
+  const deletedTableKey = tableArtifactKey(deletedTableName)
+  const remainingTableArtifacts = tableArtifacts.filter((entry) => tableArtifactKey(entry.tableName) !== deletedTableKey)
+  if (remainingTableArtifacts.length === tableArtifacts.length) {
+    return undefined
+  }
+
+  const nextSlicerConnectionArtifacts = rewriteSlicerConnectionArtifactsForRemovedReferences({
+    artifacts: slicerConnectionArtifacts,
+    removedSheetArtifacts: [],
+    removedTableArtifacts: tableArtifacts.filter((entry) => tableArtifactKey(entry.tableName) === deletedTableKey),
+    remainingSheetArtifacts: slicerConnectionArtifacts.sheetArtifacts ?? [],
+    remainingTableArtifacts,
+  })
+  const next: WorkbookPreservedMetadataRecord = { ...metadata }
+  if (nextSlicerConnectionArtifacts) {
+    next.slicerConnectionArtifacts = nextSlicerConnectionArtifacts
+  } else {
+    delete next.slicerConnectionArtifacts
+  }
+  return next
+}
+
 export function rewritePreservedPivotPackageArtifactsForSheetDeletion(
   workbookMetadata: WorkbookPreservedMetadataRecord | undefined,
   sheetMetadata: WorkbookPreservedSheetMetadataRecord | undefined,
@@ -517,13 +549,32 @@ function rewriteSlicerConnectionArtifactsForSheetDeletion(
     return artifacts
   }
 
+  return rewriteSlicerConnectionArtifactsForRemovedReferences({
+    artifacts,
+    removedSheetArtifacts: sourceSheetArtifacts.filter((entry) => entry.sheetName === deletedSheetName),
+    removedTableArtifacts: sourceTableArtifacts.filter((entry) => entry.sheetName === deletedSheetName),
+    remainingSheetArtifacts,
+    remainingTableArtifacts,
+  })
+}
+
+function rewriteSlicerConnectionArtifactsForRemovedReferences(input: {
+  readonly artifacts: WorkbookSlicerConnectionArtifactsRecord
+  readonly removedSheetArtifacts: readonly WorkbookSlicerConnectionSheetArtifactRecord[]
+  readonly removedTableArtifacts: readonly WorkbookSlicerConnectionTableArtifactRecord[]
+  readonly remainingSheetArtifacts: readonly WorkbookSlicerConnectionSheetArtifactRecord[]
+  readonly remainingTableArtifacts: readonly WorkbookSlicerConnectionTableArtifactRecord[]
+}): WorkbookSlicerConnectionArtifactsRecord | undefined {
   const deletedSlicerPartPaths = packagePartPathsReferencedBySlicerConnectionArtifacts(
-    sourceSheetArtifacts.filter((entry) => entry.sheetName === deletedSheetName),
-    sourceTableArtifacts.filter((entry) => entry.sheetName === deletedSheetName),
+    input.removedSheetArtifacts,
+    input.removedTableArtifacts,
   )
-  const remainingSlicerPartPaths = packagePartPathsReferencedBySlicerConnectionArtifacts(remainingSheetArtifacts, remainingTableArtifacts)
+  const remainingSlicerPartPaths = packagePartPathsReferencedBySlicerConnectionArtifacts(
+    input.remainingSheetArtifacts,
+    input.remainingTableArtifacts,
+  )
   const removedPartPaths = new Set<string>()
-  const parts = artifacts.parts.filter((part) => {
+  const parts = input.artifacts.parts.filter((part) => {
     const path = normalizePackagePath(part.path)
     const slicerPartPath = packagePartPathFromRelationshipPartPath(path)
     const shouldRemove =
@@ -535,16 +586,16 @@ function rewriteSlicerConnectionArtifactsForSheetDeletion(
     return true
   })
 
-  const contentTypeOverrides = (artifacts.contentTypeOverrides ?? []).filter(
+  const contentTypeOverrides = (input.artifacts.contentTypeOverrides ?? []).filter(
     (entry) => !removedPartPaths.has(normalizePackagePath(entry.partName)),
   )
   const next: WorkbookSlicerConnectionArtifactsRecord = {
     parts,
-    ...(artifacts.workbookSlicerCachesExtXml ? { workbookSlicerCachesExtXml: artifacts.workbookSlicerCachesExtXml } : {}),
-    ...(artifacts.workbookRelationships ? { workbookRelationships: artifacts.workbookRelationships } : {}),
-    ...(remainingSheetArtifacts.length > 0 ? { sheetArtifacts: remainingSheetArtifacts } : {}),
-    ...(remainingTableArtifacts.length > 0 ? { tableArtifacts: remainingTableArtifacts } : {}),
-    ...(artifacts.contentTypeDefaults ? { contentTypeDefaults: artifacts.contentTypeDefaults } : {}),
+    ...(input.artifacts.workbookSlicerCachesExtXml ? { workbookSlicerCachesExtXml: input.artifacts.workbookSlicerCachesExtXml } : {}),
+    ...(input.artifacts.workbookRelationships ? { workbookRelationships: input.artifacts.workbookRelationships } : {}),
+    ...(input.remainingSheetArtifacts.length > 0 ? { sheetArtifacts: [...input.remainingSheetArtifacts] } : {}),
+    ...(input.remainingTableArtifacts.length > 0 ? { tableArtifacts: [...input.remainingTableArtifacts] } : {}),
+    ...(input.artifacts.contentTypeDefaults ? { contentTypeDefaults: input.artifacts.contentTypeDefaults } : {}),
     ...(contentTypeOverrides.length > 0 ? { contentTypeOverrides } : {}),
   }
 
@@ -582,6 +633,10 @@ function hasSlicerConnectionArtifacts(artifacts: WorkbookSlicerConnectionArtifac
 
 function packagePartPathFromRelationshipPartPath(path: string): string {
   return path.replace(/\/_rels\/([^/]+)\.rels$/u, '/$1')
+}
+
+function tableArtifactKey(name: string): string {
+  return name.trim().toUpperCase()
 }
 
 function resolvePackageRelationshipTarget(basePartPath: string, target: string): string {
