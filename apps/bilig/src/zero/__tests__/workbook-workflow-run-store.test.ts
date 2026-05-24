@@ -11,6 +11,13 @@ type ZeroWorkflowRunRow = Row['workbook_workflow_run']
 type ZeroWorkflowStepRow = Row['workbook_workflow_step']
 type ZeroWorkflowArtifactRow = Row['workbook_workflow_artifact']
 
+const NON_REPLICATED_WORKFLOW_MUTATION_COLUMNS = [
+  'mutation_executed',
+  'verification_complete',
+  'mutation_status',
+  'mutation_receipt_json',
+] as const
+
 interface RecordedQuery {
   readonly text: string
   readonly values: readonly unknown[] | undefined
@@ -237,25 +244,31 @@ describe('workbook-workflow-run-store', () => {
     expect(artifactColumnIndex).toBeGreaterThan(stepsColumnIndex)
   })
 
-  it('adds nullable workflow completion columns for legacy run rows', async () => {
+  it('adds nullable workflow completion and artifact columns for legacy run rows', async () => {
     const queryable = new FakeQueryable()
 
     await ensureWorkbookWorkflowRunSchema(queryable)
 
-    for (const column of [
-      'completed_at_unix_ms',
-      'error_message',
-      'artifact_json',
-      'mutation_executed',
-      'verification_complete',
-      'mutation_status',
-      'mutation_receipt_json',
-    ]) {
+    for (const column of ['completed_at_unix_ms', 'error_message', 'artifact_json']) {
       expect(
         queryable.calls.some(
           (call) => call.text.includes('ALTER TABLE workbook_workflow_run') && call.text.includes(`ADD COLUMN IF NOT EXISTS ${column}`),
         ),
       ).toBe(true)
+    }
+  })
+
+  it('does not create workflow mutation proof columns outside the Zero replication contract', async () => {
+    const queryable = new FakeQueryable()
+
+    await ensureWorkbookWorkflowRunSchema(queryable)
+
+    for (const column of NON_REPLICATED_WORKFLOW_MUTATION_COLUMNS) {
+      expect(
+        queryable.calls.some(
+          (call) => call.text.includes('ALTER TABLE workbook_workflow_run') && call.text.includes(`ADD COLUMN IF NOT EXISTS ${column}`),
+        ),
+      ).toBe(false)
     }
   })
 
@@ -328,6 +341,9 @@ describe('workbook-workflow-run-store', () => {
     const insertQuery = queryable.calls.find((call) => call.text.includes('INSERT INTO workbook_workflow_run'))
     expect(insertQuery?.text).not.toContain('steps_json')
     expect(insertQuery?.text).not.toContain('artifact_json')
+    for (const column of NON_REPLICATED_WORKFLOW_MUTATION_COLUMNS) {
+      expect(insertQuery?.text).not.toContain(column)
+    }
     expect(insertQuery?.values).not.toContain(JSON.stringify(createWorkflowRun().steps))
     expect(insertQuery?.values).not.toContain(JSON.stringify(createWorkflowRun().artifact))
     expect(queryable.calls.find((call) => call.text.includes('DELETE FROM workbook_workflow_step'))).toBeDefined()
