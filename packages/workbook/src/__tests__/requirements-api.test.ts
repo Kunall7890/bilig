@@ -40,6 +40,52 @@ function accessorArray(get: () => unknown): unknown[] {
   return value
 }
 
+function arrayBackedRuntimeRequirements(): unknown[] {
+  const value: unknown[] = []
+  Object.defineProperties(value, {
+    modelName: {
+      enumerable: true,
+      value: 'array-backed-requirements-model',
+    },
+    actionName: {
+      enumerable: true,
+      value: 'seed',
+    },
+    requirements: {
+      enumerable: true,
+      value: [],
+    },
+  })
+  return value
+}
+
+function arrayBackedRuntimeRequirement(): unknown[] {
+  const value: unknown[] = []
+  Object.defineProperties(value, {
+    kind: {
+      enumerable: true,
+      value: 'apply',
+    },
+    capability: {
+      enumerable: true,
+      value: 'writeValue',
+    },
+    commandIndex: {
+      enumerable: true,
+      value: 0,
+    },
+    target: {
+      enumerable: true,
+      value: findRange({ sheetName: 'Sheet1', address: 'A1' }),
+    },
+    message: {
+      enumerable: true,
+      value: 'Apply value write to Sheet1!A1',
+    },
+  })
+  return value
+}
+
 describe('@bilig/workbook runtime requirements api', () => {
   it('describes apply, read, and check proof requirements as JSON-safe handoff data', () => {
     const model = defineModel({
@@ -337,6 +383,38 @@ describe('@bilig/workbook runtime requirements api', () => {
     })
   })
 
+  it('rejects array-backed runtime requirements as uninspectable handoff data', () => {
+    expect(checkRuntimeRequirements(arrayBackedRuntimeRequirements())).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'requirements',
+          message: 'Workbook runtime requirements must be an object',
+        },
+      ],
+    })
+  })
+
+  it('rejects array-backed runtime requirement entries as uninspectable handoff data', () => {
+    expect(
+      checkRuntimeRequirements({
+        modelName: 'array-backed-requirement-model',
+        actionName: 'seed',
+        requirements: [arrayBackedRuntimeRequirement()],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'requirements[0]',
+          message: 'Workbook runtime requirement at requirements[0] must be an object',
+        },
+      ],
+    })
+  })
+
   it('rejects accessor-backed runtime requirement arrays without invoking getters', () => {
     let requirementGetterInvoked = false
     const requirements = accessorArray(() => {
@@ -521,6 +599,48 @@ describe('@bilig/workbook runtime requirements api', () => {
       ],
     })
     expect(applyGetterInvoked).toBe(false)
+  })
+
+  it('treats array-backed runtime adapters as missing their methods', () => {
+    const model = defineModel({
+      name: 'adapter-array-backed-model',
+
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeValue(refs.output, 12)
+        },
+      },
+    })
+    const plan = buildWorkbookActionPlan(model, 'write')
+    const adapter: unknown[] = []
+    Object.defineProperty(adapter, 'apply', {
+      enumerable: true,
+      value() {
+        return { status: 'applied' }
+      },
+    })
+
+    expect(checkRuntimeAdapter(plan, adapter)).toEqual({
+      status: 'invalid',
+      modelName: 'adapter-array-backed-model',
+      actionName: 'write',
+      requiredCapabilities: ['writeValue'],
+      issues: [
+        {
+          code: 'missing_apply',
+          capability: 'writeValue',
+          method: 'apply',
+          requirementIndexes: [0],
+          message: 'Adapter is missing apply for writeValue',
+        },
+      ],
+    })
   })
 
   it('does not require apply for check-only runtime handoff', () => {

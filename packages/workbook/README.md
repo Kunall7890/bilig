@@ -296,6 +296,8 @@ must be own enumerable data entries; holes, non-enumerable entries, or
 accessor-backed entries are rejected without running getters. Use
 `checkRuntimeAdapter(planOrRequirements, adapter)` when an agent wants to check
 `apply`, `read`, and `verifyChecks` coverage before calling the runtime.
+The requirements root object, every requirement entry, and runtime adapter
+objects must be record-shaped payloads, not arrays with attached fields.
 Runtime requirement descriptions are frozen normalized data too:
 `describeRuntimeRequirements` and `checkRuntimeRequirements` strip
 caller-owned extra fields and freeze the returned requirement tree, including

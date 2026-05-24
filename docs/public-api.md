@@ -669,6 +669,9 @@ arrays and nested ref arrays are data-only too: holes, non-enumerable entries,
 or accessor-backed entries are rejected without invoking getters. Valid runtime
 requirements are returned as frozen normalized data with caller-owned extra
 fields stripped before an agent or adapter trusts the checklist.
+The requirements root object, each requirement entry, and the adapter object
+must be record-shaped payloads; arrays with attached properties are rejected
+even when those properties look like valid runtime handoff fields.
 
 `verifyPlan` gives agents a runtime-free consistency check before handoff. It
 first checks that the plan handoff itself is own data, then flags invalid action
