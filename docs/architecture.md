@@ -47,6 +47,7 @@ flowchart LR
     rejected instead of invoked before model code runs
   - action-object metadata, plain input descriptions, and `checkInput` payload
     checks for agent manifests
+  - frozen model inspection and action-plan result wrappers
   - machine-readable readback checks for runtime proof
   - readback proof attached to passed value/formula checks
   - exact readback target validation, including duplicate-target rejection

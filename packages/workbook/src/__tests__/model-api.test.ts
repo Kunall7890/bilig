@@ -179,6 +179,7 @@ describe('@bilig/workbook model api', () => {
     const result = planWorkbookAction(model, 'write')
 
     expect(result.status).toBe('planned')
+    expect(Object.isFrozen(result)).toBe(true)
     expect(seen).toEqual([
       ['findColumn', 'findName', 'findRange', 'findRows', 'findTable'],
       ['check', 'findColumn', 'findName', 'findRange', 'findRows', 'findTable'],
@@ -1325,12 +1326,18 @@ describe('@bilig/workbook model api', () => {
       },
     })
 
-    expect(inspectModel(model)).toEqual({
+    const inspection = inspectModel(model)
+
+    expect(inspection).toEqual({
       name: 'inspectable-model',
       actions: ['calculate', 'reset'],
       actionDetails: [{ name: 'calculate' }, { name: 'reset' }],
       hasChecks: true,
     })
+    expect(Object.isFrozen(inspection)).toBe(true)
+    expect(Object.isFrozen(inspection.actions)).toBe(true)
+    expect(Object.isFrozen(inspection.actionDetails)).toBe(true)
+    expect(Object.isFrozen(inspection.actionDetails[0])).toBe(true)
   })
 
   it('describes models as JSON-safe manifests without running model code', () => {
@@ -1382,7 +1389,10 @@ describe('@bilig/workbook model api', () => {
       },
     })
 
-    expect(planWorkbookAction(model, 'missing')).toEqual({
+    const missing = planWorkbookAction(model, 'missing')
+    const failed = planWorkbookAction(model, 'calculate')
+
+    expect(missing).toEqual({
       status: 'failed',
       modelName: 'failing-model',
       actionName: 'missing',
@@ -1394,8 +1404,16 @@ describe('@bilig/workbook model api', () => {
         },
       ],
     })
+    expect(Object.isFrozen(missing)).toBe(true)
+    expect(missing.status).toBe('failed')
+    if (missing.status !== 'failed') {
+      throw new Error('expected missing action failure')
+    }
+    expect(Object.isFrozen(missing.checks)).toBe(true)
+    expect(Object.isFrozen(missing.errors)).toBe(true)
+    expect(Object.isFrozen(missing.errors[0])).toBe(true)
 
-    expect(planWorkbookAction(model, 'calculate')).toEqual({
+    expect(failed).toEqual({
       status: 'failed',
       modelName: 'failing-model',
       actionName: 'calculate',
@@ -1407,6 +1425,14 @@ describe('@bilig/workbook model api', () => {
         },
       ],
     })
+    expect(Object.isFrozen(failed)).toBe(true)
+    expect(failed.status).toBe('failed')
+    if (failed.status !== 'failed') {
+      throw new Error('expected action failure')
+    }
+    expect(Object.isFrozen(failed.checks)).toBe(true)
+    expect(Object.isFrozen(failed.errors)).toBe(true)
+    expect(Object.isFrozen(failed.errors[0])).toBe(true)
   })
 
   it('rejects malformed action helper calls before returning a plan', () => {

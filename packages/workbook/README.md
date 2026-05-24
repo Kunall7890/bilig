@@ -132,7 +132,7 @@ own data properties for `actions` entries and for action-object `run`,
 getter can run.
 `inspectModel` and `describeModel` use the same manifest boundary, so model
 names, descriptions, action maps, and action metadata can be inspected without
-triggering hidden getters.
+triggering hidden getters. `inspectModel` returns a frozen manifest snapshot.
 The description layer is frozen too: `describeRef`, `describePlan`,
 `describePlanResult`, and `describeRunResult` return JSON-safe objects whose
 nested refs, commands, checks, apply proof, undo ops, and errors cannot be
@@ -149,7 +149,8 @@ including changed summaries, checks, errors, apply proof, undo refs, and
 unverified proof notes.
 `planWorkbookAction` also validates that boundary before reading action metadata
 or running model code. Invalid manifests return a structured `invalid_model`
-failure instead of making the agent catch an accessor side effect.
+failure instead of making the agent catch an accessor side effect. Planned and
+failed action-plan result wrappers are frozen before they are returned.
 Action helper calls fail closed during planning too: write, clear, format, and
 low-level-op helpers reject malformed targets, non-literal values, invalid
 format options, invalid add-op options, and accessor-backed op payloads before a

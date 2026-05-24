@@ -4,15 +4,24 @@ import { collectWorkbookRefs, createWorkbookFindApi, isWorkbookRef, type Workboo
 import { createWorkbookCheckApi, type WorkbookCheckApi } from './check.js'
 import {
   checkInput,
-  WorkbookActionInputError,
   normalizeOptionalWorkbookActionInput,
   normalizeWorkbookActionInput,
   normalizeWorkbookActionInputDescription,
   type WorkbookActionInput,
-  type WorkbookActionInputIssue,
   type WorkbookActionInputDescription,
 } from './input.js'
 import { isObject, optionalDataProperty, requiredDataProperty, type OptionalDataValue } from './data-properties.js'
+import {
+  errorMessage,
+  failedActionInputIssuesPlan,
+  failedActionInputPlan,
+  failedActionNotFoundPlan,
+  failedInvalidModelPlan,
+  failedPlan,
+  freezeModelInspection,
+  inputProperty,
+  plannedActionPlanResult,
+} from './model-plan-result.js'
 import {
   normalizeWorkbookActionFormatOptions,
   normalizeWorkbookActionLiteralInput,
@@ -21,13 +30,7 @@ import {
   normalizeWorkbookAddOpOptions,
 } from './model-action-validation.js'
 import type { WorkbookOp } from './ops.js'
-import type {
-  WorkbookChangeSummary,
-  WorkbookCheckExpectation,
-  WorkbookCheckResult,
-  WorkbookRunError,
-  WorkbookRunErrorCode,
-} from './result.js'
+import type { WorkbookChangeSummary, WorkbookCheckExpectation, WorkbookCheckResult, WorkbookRunError } from './result.js'
 
 export type WorkbookActionCommand =
   | {
@@ -232,7 +235,7 @@ export function inspectModel(model: unknown): WorkbookModelInspection {
     descriptionValue.status === 'present' ? descriptionValue.value : undefined,
     `Workbook model ${name} description`,
   )
-  return {
+  return freezeModelInspection({
     name,
     ...(description !== undefined ? { description } : {}),
     actions,
@@ -240,7 +243,7 @@ export function inspectModel(model: unknown): WorkbookModelInspection {
       inspectAction(actionName, requiredDataProperty(actionMap, actionName, `Workbook model ${name} action ${actionName}`)),
     ),
     hasChecks: checksValue.status === 'present' && checksValue.value !== undefined,
-  }
+  })
 }
 
 function normalizeRequiredName(value: unknown, label: string): string {
@@ -728,64 +731,6 @@ function pushReturnedChecks(target: WorkbookCheckResult[], returned: readonly Wo
   })
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
-function inputProperty(input: WorkbookActionInput | undefined): { readonly input: WorkbookActionInput } | {} {
-  return input === undefined ? {} : { input }
-}
-
-function failedPlan<Refs>(
-  modelName: string,
-  actionName: string,
-  code: WorkbookRunErrorCode,
-  message: string,
-  checks: readonly WorkbookCheckResult[] = [],
-  input?: WorkbookActionInput,
-): WorkbookActionPlanResult<Refs> {
-  return {
-    status: 'failed',
-    modelName,
-    actionName,
-    ...inputProperty(input),
-    checks,
-    errors: [{ code, message }],
-  }
-}
-
-function actionNotFound(modelName: string, actionName: string): WorkbookRunError {
-  return {
-    code: 'action_not_found',
-    message: `Workbook model ${modelName} does not define action ${actionName}`,
-  }
-}
-
-function actionInputError(issue: WorkbookActionInputIssue): WorkbookRunError {
-  return {
-    code: 'invalid_action_input',
-    message: issue.message,
-    path: issue.path,
-    issueCode: issue.code,
-  }
-}
-
-function invalidActionInputError(error: unknown): WorkbookRunError {
-  return {
-    code: 'invalid_action_input',
-    message: errorMessage(error),
-    path: error instanceof WorkbookActionInputError ? error.path : 'input',
-    issueCode: 'invalid_action_input',
-  }
-}
-
-function invalidModelError(error: unknown): WorkbookRunError {
-  return {
-    code: 'invalid_model',
-    message: errorMessage(error),
-  }
-}
-
 interface WorkbookPlanningModelData<Refs> {
   readonly name: string
   readonly find: (workbook: WorkbookFindWorkbook) => Refs
@@ -819,22 +764,6 @@ function readPlanningModelData<Refs>(model: unknown): WorkbookPlanningModelData<
     find,
     ...(checks !== undefined ? { checks } : {}),
     actions,
-  }
-}
-
-function failedInvalidModelPlan<Refs>(
-  actionName: string,
-  input: WorkbookActionInput | undefined,
-  error: unknown,
-  modelName = 'unknown-model',
-): WorkbookActionPlanResult<Refs> {
-  return {
-    status: 'failed',
-    modelName,
-    actionName,
-    ...inputProperty(input),
-    checks: [],
-    errors: [invalidModelError(error)],
   }
 }
 
@@ -893,13 +822,7 @@ export function planWorkbookAction<Refs>(model: unknown, actionName: string, inp
   try {
     normalizedInput = normalizeOptionalWorkbookActionInput(input)
   } catch (error) {
-    return {
-      status: 'failed',
-      modelName: modelData.name,
-      actionName,
-      checks: [],
-      errors: [invalidActionInputError(error)],
-    }
+    return failedActionInputPlan(modelData.name, actionName, error)
   }
 
   let actionValue: unknown
@@ -911,14 +834,7 @@ export function planWorkbookAction<Refs>(model: unknown, actionName: string, inp
     return failedInvalidModelPlan<Refs>(actionName, normalizedInput, error, modelData.name)
   }
   if (actionValue === undefined) {
-    return {
-      status: 'failed',
-      modelName: modelData.name,
-      actionName,
-      ...inputProperty(normalizedInput),
-      checks: [],
-      errors: [actionNotFound(modelData.name, actionName)],
-    }
+    return failedActionNotFoundPlan(modelData.name, actionName, normalizedInput)
   }
 
   let actionDefinition: WorkbookActionDefinition<Refs>
@@ -932,14 +848,7 @@ export function planWorkbookAction<Refs>(model: unknown, actionName: string, inp
   if (inputDescription !== undefined) {
     const inputCheck = checkInput(inputDescription, normalizedInput)
     if (inputCheck.status === 'invalid') {
-      return {
-        status: 'failed',
-        modelName: modelData.name,
-        actionName,
-        ...inputProperty(normalizedInput),
-        checks: [],
-        errors: inputCheck.issues.map(actionInputError),
-      }
+      return failedActionInputIssuesPlan(modelData.name, actionName, inputCheck.issues, normalizedInput)
     }
     normalizedInput = inputCheck.input
   }
@@ -976,10 +885,7 @@ export function planWorkbookAction<Refs>(model: unknown, actionName: string, inp
     return failedPlan<Refs>(modelData.name, actionName, 'action_failed', errorMessage(error), checks, normalizedInput)
   }
 
-  return {
-    status: 'planned',
-    plan: createActionPlan(modelData.name, actionName, normalizedInput, refs, commands, ops, checks),
-  }
+  return plannedActionPlanResult(createActionPlan(modelData.name, actionName, normalizedInput, refs, commands, ops, checks))
 }
 
 export function buildWorkbookActionPlan<Refs, Actions extends WorkbookActionMap<Refs>, ActionName extends keyof Actions & string>(

@@ -63,8 +63,11 @@ prepaid, or other business models in this package.
 - `checks` declares generic facts the runtime must prove.
 - `actions` build portable workbook intent with `writeFormula`, `writeValue`,
   `format`, `clear`, or a guarded low-level op.
-- `planWorkbookAction` returns either a frozen plan or a structured failure,
-  including `invalid_model` when the supplied model manifest is not data-safe.
+- `inspectModel` returns a frozen model manifest without running find, checks,
+  or actions.
+- `planWorkbookAction` returns a frozen result wrapper containing either a
+  frozen plan or a frozen structured failure, including `invalid_model` when the
+  supplied model manifest is not data-safe.
 - `verifyPlan` proves static consistency without importing or starting an
   engine.
 - `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, and
@@ -610,6 +613,9 @@ Planning validates model manifest data before reading action metadata or running
 model code. Accessor-backed model names, action maps, action entries, or action
 metadata return structured `invalid_model` errors without invoking hidden
 getters.
+`inspectModel` and `planWorkbookAction` return frozen wrappers too, so action
+manifests, planned results, and failure results have the same inspect-once
+behavior as the nested plan objects.
 `describePlanResult` applies the same description layer to either planned or
 failed action planning results.
 `describeRunResult` applies the same JSON-safe description layer after
