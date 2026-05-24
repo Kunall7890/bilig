@@ -473,9 +473,14 @@ function pushSelectionRects(options: {
   }
 
   if (selectionRange.width > 1 || selectionRange.height > 1) {
-    fillRects.push({
-      ...selectionRect,
-      color: SELECTION_FILL_COLOR,
+    pushSelectionCellInteriorFillRects({
+      endCol,
+      endRow,
+      fillRects,
+      getCellBounds,
+      hostBounds,
+      startCol,
+      startRow,
     })
   }
 
@@ -510,6 +515,33 @@ function pushSelectionRects(options: {
       color: outlineColor,
     },
   )
+}
+
+function pushSelectionCellInteriorFillRects(options: {
+  fillRects: GridGpuRect[]
+  getCellBounds: (col: number, row: number) => Rectangle | undefined
+  hostBounds: Pick<DOMRect, 'left' | 'top'>
+  startCol: number
+  startRow: number
+  endCol: number
+  endRow: number
+}): void {
+  const { endCol, endRow, fillRects, getCellBounds, hostBounds, startCol, startRow } = options
+  for (let row = startRow; row <= endRow; row += 1) {
+    for (let col = startCol; col <= endCol; col += 1) {
+      const bounds = getCellBounds(col, row)
+      if (!bounds) {
+        continue
+      }
+      fillRects.push({
+        x: bounds.x - hostBounds.left + 1,
+        y: bounds.y - hostBounds.top + 1,
+        width: Math.max(0, bounds.width - 2),
+        height: Math.max(0, bounds.height - 2),
+        color: SELECTION_FILL_COLOR,
+      })
+    }
+  }
 }
 
 function pushBooleanCellRects(

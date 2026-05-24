@@ -484,11 +484,9 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
     'selected range body fill',
     'visible',
   )
-  await expectSelectionVisualOpacity(
+  await expect(
     page.locator('[data-grid-selection-visual-role="selection-gridline"][data-grid-selection-visual-key^="selection-gridline:range"]'),
-    'selected range gridlines',
-    'visible',
-  )
+  ).toHaveCount(0)
   await expectSelectionVisualOpacity(
     page.locator(['[data-grid-selection-visual-role="fill-handle"]', '[data-grid-selection-visual-role="selection-border"]'].join(',')),
     'selected range chrome',
