@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  describePlanResult,
   describeRunResult,
   defineModel,
   findRange,
@@ -451,6 +452,15 @@ describe('@bilig/workbook run api', () => {
     expect(Object.isFrozen(described.checks)).toBe(true)
     expect(Object.isFrozen(described.checks[0])).toBe(true)
     expect(Object.isFrozen(described.checks[0]?.target)).toBe(true)
+  })
+
+  it('rejects unsupported description result statuses instead of relabeling them', () => {
+    expect(() => Reflect.apply(describePlanResult, undefined, [{ status: 'unknown' }])).toThrowError(
+      'Unsupported workbook plan result status: unknown',
+    )
+    expect(() => Reflect.apply(describeRunResult, undefined, [{ status: 'unknown' }])).toThrowError(
+      'Unsupported workbook run result status: unknown',
+    )
   })
 
   it('rejects hidden behavior in run result descriptions without invoking getters', async () => {

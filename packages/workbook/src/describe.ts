@@ -749,6 +749,10 @@ export function describePlanResult<Refs>(result: WorkbookActionPlanResult<Refs>)
       plan: describePlan(requiredOwnDataValue(result, 'plan', 'result.plan')),
     })
   }
+  if (!hasPlanResultStatus(result, 'failed')) {
+    const status = requiredOwnDataValue(result, 'status', 'result.status')
+    throw new Error(`Unsupported workbook plan result status: ${String(status)}`)
+  }
   const input = ownDataValue(result, 'input', 'result.input')
   return freezeDescriptionData({
     status: 'failed',
@@ -773,6 +777,10 @@ export function describeRunResult(result: WorkbookRunResult): WorkbookRunResultD
       ...(undo !== undefined ? { undo: describeUndo(undo) } : {}),
       ...(unverified !== undefined ? { unverified: mapArrayData(unverified, 'result.unverified', describeUnverified) } : {}),
     })
+  }
+  if (!hasRunResultStatus(result, 'failed')) {
+    const status = requiredOwnDataValue(result, 'status', 'result.status')
+    throw new Error(`Unsupported workbook run result status: ${String(status)}`)
   }
   return freezeDescriptionData({
     status: 'failed',
