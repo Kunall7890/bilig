@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { Page } from '@playwright/test'
 import { describe, expect, it } from 'vitest'
 
 import { exportXlsx } from '../../packages/excel-import/src/index.js'
@@ -29,10 +30,15 @@ import { sameCorpusChromiumLaunchOptions } from '../ui-responsiveness-same-corpu
 import { sameCorpusScrollProbeSelectorsForProduct } from '../ui-responsiveness-same-corpus-scroll-page.ts'
 import {
   incumbentEditableWorkloadBlocker,
+  measureProductWorkload,
   sameCorpusKeyboardOperations,
   sameCorpusWorkbookRestoreOperations,
   sameCorpusWorkloadMutatesWorkbook,
 } from '../ui-responsiveness-same-corpus-workload-runner.ts'
+import {
+  visibleNonScrollResponseChanged,
+  type VisibleNonScrollResponseSignature,
+} from '../ui-responsiveness-same-corpus-visible-response-page.ts'
 
 const sameCorpusFixtureCheckedCells = [
   { address: 'A1', expected: 'metric-1', actual: 'metric-1' },
@@ -403,6 +409,89 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(sameCorpusWorkloadMutatesWorkbook('formula-edit')).toBe(true)
     expect(sameCorpusWorkloadMutatesWorkbook('fill-format-change')).toBe(true)
     expect(sameCorpusWorkloadMutatesWorkbook('jump-deep-row')).toBe(false)
+  })
+
+  it('routes non-scroll timings through the browser-visible response barrier', async () => {
+    const events: string[] = []
+    // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- This test supplies the minimal Playwright Page surface used by the keyboard workload path.
+    const page = {
+      keyboard: {
+        press: async (key: string) => {
+          events.push(`press:${key}`)
+        },
+        type: async (text: string) => {
+          events.push(`type:${text}`)
+        },
+      },
+    } as unknown as Page
+    const sample = await measureProductWorkload({
+      page,
+      product: 'bilig',
+      captureArgs: parseCaptureArgs([
+        '--output',
+        'tmp/ui-capture.json',
+        '--google-sheets-url',
+        'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+        '--allow-incomplete-evidence',
+      ]),
+      workload: 'select-cell',
+      sampleIndex: 0,
+      loadToReadyMs: 999,
+      hooks: {
+        measureVisibleScrollResponseWithRetries: async () => {
+          throw new Error('scroll hook should not be used for select-cell')
+        },
+        measureVisibleNonScrollResponse: async (_page, product, workload, sampleIndex, runOperation) => {
+          events.push(`visible:${product}:${workload}:${String(sampleIndex)}`)
+          await runOperation()
+          return { operationResponseMs: 42, postOperationFrameMs: 7 }
+        },
+        movePointerToProductViewport: async () => {
+          events.push('pointer')
+        },
+      },
+    })
+
+    expect(sample).toEqual({ operationResponseMs: 42, postOperationFrameMs: 7 })
+    expect(events).toEqual(['pointer', 'visible:bilig:select-cell:0', 'press:ArrowRight'])
+  })
+
+  it('requires Bilig presented-state movement instead of arbitrary screenshot noise', () => {
+    const before: VisibleNonScrollResponseSignature = {
+      biligPresentedToken: 'selection-revision-1',
+      product: 'bilig',
+      screenshotSignature: 'screenshot-a',
+      workload: 'select-cell',
+    }
+
+    expect(
+      visibleNonScrollResponseChanged(before, {
+        ...before,
+        screenshotSignature: 'screenshot-b',
+      }),
+    ).toBe(false)
+    expect(
+      visibleNonScrollResponseChanged(before, {
+        ...before,
+        biligPresentedToken: 'selection-revision-2',
+      }),
+    ).toBe(true)
+    expect(
+      visibleNonScrollResponseChanged(
+        {
+          biligPresentedToken: null,
+          product: 'google-sheets',
+          screenshotSignature: 'screenshot-a',
+          workload: 'select-cell',
+        },
+        {
+          biligPresentedToken: null,
+          product: 'google-sheets',
+          screenshotSignature: 'screenshot-b',
+          workload: 'select-cell',
+        },
+      ),
+    ).toBe(true)
   })
 
   it('requires visual proof for Bilig and Google Sheets in each same-corpus scenario', () => {

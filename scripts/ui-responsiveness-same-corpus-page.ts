@@ -34,6 +34,7 @@ import {
   movePointerToProductViewport,
   resetProductScrollPosition,
 } from './ui-responsiveness-same-corpus-scroll-page.ts'
+import { measureVisibleNonScrollResponse } from './ui-responsiveness-same-corpus-visible-response-page.ts'
 import {
   incumbentEditableWorkloadBlocker,
   measureProductWorkload,
@@ -477,6 +478,7 @@ async function measureProductSamples(
         loadToReadyMs,
         hooks: {
           measureVisibleScrollResponseWithRetries,
+          measureVisibleNonScrollResponse,
           movePointerToProductViewport,
         },
       }),

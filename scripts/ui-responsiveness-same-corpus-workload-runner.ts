@@ -1,5 +1,3 @@
-import { performance } from 'node:perf_hooks'
-
 import type { Page } from '@playwright/test'
 
 import type { CaptureArgs } from './ui-responsiveness-same-corpus-args.ts'
@@ -14,6 +12,8 @@ export interface ProductOperationSample {
   readonly scrollMovementPx?: number
 }
 
+export type SameCorpusProductOperation = () => Promise<void>
+
 export interface SameCorpusWorkloadRunnerHooks {
   readonly measureVisibleScrollResponseWithRetries: (
     page: Page,
@@ -21,10 +21,17 @@ export interface SameCorpusWorkloadRunnerHooks {
     deltaX: number,
     deltaY: number,
   ) => Promise<ProductOperationSample>
+  readonly measureVisibleNonScrollResponse: (
+    page: Page,
+    product: UiResponsivenessSameCorpusProduct,
+    workload: NonScrollWorkload,
+    sampleIndex: number,
+    runOperation: SameCorpusProductOperation,
+  ) => Promise<ProductOperationSample>
   readonly movePointerToProductViewport: (page: Page, product: UiResponsivenessSameCorpusProduct) => Promise<void>
 }
 
-type NonScrollWorkload = Exclude<
+export type NonScrollWorkload = Exclude<
   UiResponsivenessSameCorpusWorkload,
   'open-workbook' | 'scroll-vertical' | 'scroll-horizontal' | 'wide-sheet-navigation'
 >
@@ -77,12 +84,12 @@ async function measureNonScrollProductWorkload(
   hooks: SameCorpusWorkloadRunnerHooks,
 ): Promise<ProductOperationSample> {
   await hooks.movePointerToProductViewport(page, product)
-  const startedAt = performance.now()
-  await performProductUiOperation(page, product, workload, sampleIndex)
-  return await sampleSettledOperation(page, performance.now() - startedAt)
+  return await hooks.measureVisibleNonScrollResponse(page, product, workload, sampleIndex, async () => {
+    await performProductUiOperation(page, product, workload, sampleIndex)
+  })
 }
 
-async function sampleSettledOperation(page: Page, operationResponseMs: number): Promise<ProductOperationSample> {
+export async function sampleSettledOperation(page: Page, operationResponseMs: number): Promise<ProductOperationSample> {
   await waitForNextFrame(page)
   const frameIntervals = await collectFrameIntervals(page, 12)
   return {
