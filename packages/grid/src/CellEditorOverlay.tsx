@@ -186,8 +186,10 @@ export function CellEditorOverlay({
     undoStack: [],
   })
   const applyEditorHistoryRef = useRef<(input: HTMLTextAreaElement, direction: 'redo' | 'undo') => boolean>(() => false)
+  const pendingParentDraftFrameRef = useRef<number | null>(null)
+  const pendingParentDraftValueRef = useRef<string | null>(null)
+  const onChangeRef = useRef(onChange)
   const [isCompleting, setIsCompleting] = useState(false)
-  const [draftValue, setDraftValue] = useState(value)
   const MAX_EDITOR_HEIGHT = 220
   const dpr = useSyncExternalStore(subscribeWorkbookDevicePixelRatioChange, getWorkbookDevicePixelRatio, () => 1)
   const displayFontSize = workbookDisplayFontCssPx(fontSize, dpr)
@@ -233,13 +235,89 @@ export function CellEditorOverlay({
     [selectionBehavior],
   )
 
-  const updateDraftValue = (nextValue: string, selection?: EditorTextSelection) => {
+  const syncTextareaHeight = useCallback(
+    (textarea: HTMLTextAreaElement) => {
+      textarea.style.height = '0px'
+      const measuredHeight = Math.min(Math.max(textarea.scrollHeight, displayFontSize + 16), MAX_EDITOR_HEIGHT)
+      textarea.style.height = `${measuredHeight}px`
+      textarea.style.overflowY = textarea.scrollHeight > MAX_EDITOR_HEIGHT ? 'auto' : 'hidden'
+    },
+    [displayFontSize],
+  )
+
+  const cancelPendingParentDraftChange = () => {
+    const frame = pendingParentDraftFrameRef.current
+    if (frame !== null) {
+      window.cancelAnimationFrame(frame)
+      pendingParentDraftFrameRef.current = null
+    }
+    pendingParentDraftValueRef.current = null
+  }
+
+  const flushPendingParentDraftChange = () => {
+    const pendingValue = pendingParentDraftValueRef.current
+    if (pendingValue === null) {
+      return
+    }
+    const frame = pendingParentDraftFrameRef.current
+    if (frame !== null) {
+      window.cancelAnimationFrame(frame)
+      pendingParentDraftFrameRef.current = null
+    }
+    pendingParentDraftValueRef.current = null
+    onChangeRef.current(pendingValue)
+  }
+
+  const scheduleParentDraftChange = (nextValue: string) => {
+    pendingParentDraftValueRef.current = nextValue
+    if (pendingParentDraftFrameRef.current !== null) {
+      return
+    }
+    pendingParentDraftFrameRef.current = window.requestAnimationFrame(() => {
+      pendingParentDraftFrameRef.current = null
+      const pendingValue = pendingParentDraftValueRef.current
+      pendingParentDraftValueRef.current = null
+      if (pendingValue !== null) {
+        onChangeRef.current(pendingValue)
+      }
+    })
+  }
+
+  const notifyDraftValue = (nextValue: string, mode: 'deferred' | 'immediate' | 'silent') => {
+    if (mode === 'silent') {
+      return
+    }
+    if (mode === 'immediate') {
+      cancelPendingParentDraftChange()
+      onChangeRef.current(nextValue)
+      return
+    }
+    scheduleParentDraftChange(nextValue)
+  }
+
+  const updateDraftValue = (
+    nextValue: string,
+    selection?: EditorTextSelection,
+    options: { notify?: 'deferred' | 'immediate' | 'silent'; writeInput?: boolean } = {},
+  ) => {
     if (selection) {
       pendingSelectionRestoreRef.current = selection
     }
     draftValueRef.current = nextValue
-    setDraftValue(nextValue)
-    onChange(nextValue)
+    const input = inputRef.current
+    if (options.writeInput && input && input.value !== nextValue) {
+      input.value = nextValue
+      const nextSelection = selection ?? createCaretEndSelection(nextValue)
+      input.setSelectionRange(
+        clampTextOffset(nextSelection.start, nextValue.length),
+        clampTextOffset(nextSelection.end, nextValue.length),
+        nextSelection.direction,
+      )
+    }
+    if (input) {
+      syncTextareaHeight(input)
+    }
+    notifyDraftValue(nextValue, options.notify ?? 'immediate')
   }
 
   const scheduleSelectionRestore = (input: HTMLTextAreaElement, selection: EditorTextSelection) => {
@@ -274,12 +352,26 @@ export function CellEditorOverlay({
     if (!input) {
       return draftValueRef.current
     }
-    return pendingKeyboardSelectionRef.current ? draftValueRef.current : input.value
+    return pendingKeyboardSelectionRef.current && input.value === draftValueRef.current ? draftValueRef.current : input.value
   }, [])
 
-  const readEditorHistoryEntry = (input: HTMLTextAreaElement): EditorHistoryEntry => {
+  const readPendingKeyboardSelection = (input: HTMLTextAreaElement, currentValue: string): EditorTextSelection | null => {
     const pendingSelection = pendingKeyboardSelectionRef.current
-    const currentValue = pendingSelection ? draftValueRef.current : input.value
+    if (!pendingSelection) {
+      return null
+    }
+    const inputStart = clampTextOffset(input.selectionStart ?? currentValue.length, currentValue.length)
+    const inputEnd = clampTextOffset(input.selectionEnd ?? currentValue.length, currentValue.length)
+    if (pendingSelection.start !== inputStart || pendingSelection.end !== inputEnd) {
+      pendingKeyboardSelectionRef.current = null
+      return null
+    }
+    return pendingSelection
+  }
+
+  const readEditorHistoryEntry = (input: HTMLTextAreaElement): EditorHistoryEntry => {
+    const currentValue = pendingKeyboardSelectionRef.current && input.value === draftValueRef.current ? draftValueRef.current : input.value
+    const pendingSelection = readPendingKeyboardSelection(input, currentValue)
     const selection = pendingSelection ?? {
       direction: input.selectionDirection ?? 'none',
       end: input.selectionEnd ?? currentValue.length,
@@ -349,15 +441,19 @@ export function CellEditorOverlay({
             undoStack: trimEditorHistoryStack([...history.undoStack, currentEntry]),
           }
     pendingKeyboardSelectionRef.current = nextEntry.selection
-    updateDraftValue(nextEntry.value, nextEntry.selection)
+    updateDraftValue(nextEntry.value, nextEntry.selection, { writeInput: true })
     scheduleSelectionRestore(input, nextEntry.selection)
     return true
   }
   applyEditorHistoryRef.current = applyEditorHistory
 
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
+
   const insertTextAtSelection = (input: HTMLTextAreaElement, text: string) => {
-    const pendingSelection = pendingKeyboardSelectionRef.current
-    const currentValue = pendingSelection ? draftValueRef.current : input.value
+    const currentValue = pendingKeyboardSelectionRef.current && input.value === draftValueRef.current ? draftValueRef.current : input.value
+    const pendingSelection = readPendingKeyboardSelection(input, currentValue)
     const selectionStart = clampTextOffset(pendingSelection?.start ?? input.selectionStart ?? currentValue.length, currentValue.length)
     const selectionEnd = clampTextOffset(pendingSelection?.end ?? input.selectionEnd ?? currentValue.length, currentValue.length)
     const previousEntry = {
@@ -377,13 +473,13 @@ export function CellEditorOverlay({
     } as const
     recordEditorHistoryMutation(previousEntry, { selection: nextSelection, value: nextValue })
     pendingKeyboardSelectionRef.current = nextSelection
-    updateDraftValue(nextValue, nextSelection)
+    updateDraftValue(nextValue, nextSelection, { writeInput: true })
     scheduleSelectionRestore(input, nextSelection)
   }
 
   const deleteTextAtSelection = (input: HTMLTextAreaElement, direction: 'backward' | 'forward') => {
-    const pendingSelection = pendingKeyboardSelectionRef.current
-    const currentValue = pendingSelection ? draftValueRef.current : input.value
+    const currentValue = pendingKeyboardSelectionRef.current && input.value === draftValueRef.current ? draftValueRef.current : input.value
+    const pendingSelection = readPendingKeyboardSelection(input, currentValue)
     const rawSelectionStart = pendingSelection?.start ?? input.selectionStart ?? currentValue.length
     const rawSelectionEnd = pendingSelection?.end ?? input.selectionEnd ?? currentValue.length
     const selectionStart = clampTextOffset(Math.min(rawSelectionStart, rawSelectionEnd), currentValue.length)
@@ -416,13 +512,13 @@ export function CellEditorOverlay({
 
     const nextValue = `${currentValue.slice(0, deleteStart)}${currentValue.slice(deleteEnd)}`
     recordEditorHistoryMutation(previousEntry, { selection: nextSelection, value: nextValue })
-    updateDraftValue(nextValue, nextSelection)
+    updateDraftValue(nextValue, nextSelection, { writeInput: true })
     scheduleSelectionRestore(input, nextSelection)
   }
 
   const moveCaretHorizontally = (input: HTMLTextAreaElement, direction: 'left' | 'right', extendSelection: boolean) => {
-    const pendingSelection = pendingKeyboardSelectionRef.current
-    const currentValue = pendingSelection ? draftValueRef.current : input.value
+    const currentValue = pendingKeyboardSelectionRef.current && input.value === draftValueRef.current ? draftValueRef.current : input.value
+    const pendingSelection = readPendingKeyboardSelection(input, currentValue)
     const rawSelectionStart = pendingSelection?.start ?? input.selectionStart ?? currentValue.length
     const rawSelectionEnd = pendingSelection?.end ?? input.selectionEnd ?? currentValue.length
     const selectionStart = clampTextOffset(Math.min(rawSelectionStart, rawSelectionEnd), currentValue.length)
@@ -470,8 +566,8 @@ export function CellEditorOverlay({
   }
 
   const moveCaretToBoundary = (input: HTMLTextAreaElement, boundary: 'start' | 'end', extendSelection: boolean) => {
-    const pendingSelection = pendingKeyboardSelectionRef.current
-    const currentValue = pendingSelection ? draftValueRef.current : input.value
+    const currentValue = pendingKeyboardSelectionRef.current && input.value === draftValueRef.current ? draftValueRef.current : input.value
+    const pendingSelection = readPendingKeyboardSelection(input, currentValue)
     const rawSelectionStart = pendingSelection?.start ?? input.selectionStart ?? currentValue.length
     const rawSelectionEnd = pendingSelection?.end ?? input.selectionEnd ?? currentValue.length
     const selectionStart = clampTextOffset(Math.min(rawSelectionStart, rawSelectionEnd), currentValue.length)
@@ -551,6 +647,7 @@ export function CellEditorOverlay({
     }
     const nextValue = readCurrentDraftValue()
     const nextTargetSelection = targetSelectionRef.current
+    flushPendingParentDraftChange()
     beginCompletion('commit')
     pendingBlurCommitRef.current = window.requestAnimationFrame(() => {
       pendingBlurCommitRef.current = null
@@ -589,11 +686,12 @@ export function CellEditorOverlay({
     }
   }, [focusEditorInput, targetAddress, targetSheetName])
 
-  useEffect(() => cancelPendingBlurCommit, [])
-
   useEffect(() => {
-    draftValueRef.current = draftValue
-  }, [draftValue])
+    return () => {
+      cancelPendingBlurCommit()
+      cancelPendingParentDraftChange()
+    }
+  }, [])
 
   useLayoutEffect(() => {
     const restore = pendingSelectionRestoreRef.current
@@ -609,7 +707,7 @@ export function CellEditorOverlay({
     const start = Math.min(restore.start, input.value.length)
     const end = Math.min(restore.end, input.value.length)
     input.setSelectionRange(start, end, restore.direction)
-  }, [draftValue])
+  })
 
   useEffect(() => {
     if (completionRef.current !== 'idle') {
@@ -631,7 +729,6 @@ export function CellEditorOverlay({
           start: input.selectionStart ?? value.length,
         }
         draftValueRef.current = value
-        setDraftValue(value)
         rememberEditorHistoryCurrent({ selection: mirroredSelection, value })
       }
       return
@@ -644,26 +741,27 @@ export function CellEditorOverlay({
       }
     }
     draftValueRef.current = value
-    setDraftValue(value)
+    if (input && input.value !== value) {
+      input.value = value
+      syncTextareaHeight(input)
+    }
     resetEditorHistory(value, pendingSelectionRestoreRef.current ?? createCaretEndSelection(value))
-  }, [resetEditorHistory, targetAddress, targetSheetName, value])
+  }, [resetEditorHistory, syncTextareaHeight, targetAddress, targetSheetName, value])
 
   useEffect(() => {
     const textarea = inputRef.current
     if (!textarea) {
       return
     }
-    textarea.style.height = '0px'
-    const measuredHeight = Math.min(Math.max(textarea.scrollHeight, displayFontSize + 16), MAX_EDITOR_HEIGHT)
-    textarea.style.height = `${measuredHeight}px`
-    textarea.style.overflowY = textarea.scrollHeight > MAX_EDITOR_HEIGHT ? 'auto' : 'hidden'
-  }, [displayFontSize, draftValue])
+    syncTextareaHeight(textarea)
+  }, [syncTextareaHeight, value])
 
   const commit = (movement?: EditMovement) => {
     if (movement) {
       cancelPendingBlurCommit()
     }
     const nextValue = readCurrentDraftValue()
+    flushPendingParentDraftChange()
     if (completionRef.current !== 'idle') {
       if (movement && completionRef.current === 'commit') {
         onCommit(movement, nextValue, targetSelectionRef.current)
@@ -691,6 +789,7 @@ export function CellEditorOverlay({
       return
     }
     cancelPendingBlurCommit()
+    cancelPendingParentDraftChange()
     beginCompletion('cancel')
     onCancel()
   }
@@ -728,7 +827,7 @@ export function CellEditorOverlay({
           textAlign,
           textDecorationLine: underline ? 'underline' : undefined,
         }}
-        value={draftValue}
+        defaultValue={value}
         onBeforeInput={(event) => {
           const inputType = event.nativeEvent.inputType
           if (inputType !== 'historyUndo' && inputType !== 'historyRedo') {
@@ -739,6 +838,7 @@ export function CellEditorOverlay({
         }}
         onBlur={commitAfterBlur}
         onChange={(event) => {
+          pendingKeyboardSelectionRef.current = null
           const nextSelection = {
             direction: event.currentTarget.selectionDirection ?? 'none',
             end: event.currentTarget.selectionEnd ?? event.currentTarget.value.length,
@@ -748,7 +848,20 @@ export function CellEditorOverlay({
             selection: nextSelection,
             value: event.target.value,
           })
-          updateDraftValue(event.target.value, nextSelection)
+          updateDraftValue(event.currentTarget.value, nextSelection, { notify: 'deferred' })
+        }}
+        onSelect={(event) => {
+          if (pendingKeyboardSelectionRef.current !== null) {
+            return
+          }
+          rememberEditorHistoryCurrent({
+            selection: {
+              direction: event.currentTarget.selectionDirection ?? 'none',
+              end: event.currentTarget.selectionEnd ?? event.currentTarget.value.length,
+              start: event.currentTarget.selectionStart ?? event.currentTarget.value.length,
+            },
+            value: event.currentTarget.value,
+          })
         }}
         onKeyDown={(event) => {
           if (event.defaultPrevented) {
@@ -763,6 +876,7 @@ export function CellEditorOverlay({
             applyEditorHistory(event.currentTarget, historyDirection)
             return
           }
+          const requiresSyntheticTextEdit = !event.nativeEvent.isTrusted
           const normalizedNumpadKey = normalizeNumpadKey(event.key, event.code)
           if (normalizedNumpadKey !== null && event.key !== normalizedNumpadKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
             event.preventDefault()
@@ -770,8 +884,10 @@ export function CellEditorOverlay({
             return
           }
           if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
-            event.preventDefault()
-            insertTextAtSelection(event.currentTarget, event.key)
+            if (requiresSyntheticTextEdit) {
+              event.preventDefault()
+              insertTextAtSelection(event.currentTarget, event.key)
+            }
             return
           }
           if (
@@ -781,18 +897,24 @@ export function CellEditorOverlay({
             !event.metaKey &&
             !event.altKey
           ) {
-            event.preventDefault()
-            deleteTextAtSelection(event.currentTarget, event.key === 'Backspace' ? 'backward' : 'forward')
+            if (requiresSyntheticTextEdit) {
+              event.preventDefault()
+              deleteTextAtSelection(event.currentTarget, event.key === 'Backspace' ? 'backward' : 'forward')
+            }
             return
           }
           if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !event.ctrlKey && !event.metaKey && !event.altKey) {
-            event.preventDefault()
-            moveCaretHorizontally(event.currentTarget, event.key === 'ArrowLeft' ? 'left' : 'right', event.shiftKey)
+            if (requiresSyntheticTextEdit) {
+              event.preventDefault()
+              moveCaretHorizontally(event.currentTarget, event.key === 'ArrowLeft' ? 'left' : 'right', event.shiftKey)
+            }
             return
           }
           if ((event.key === 'Home' || event.key === 'End') && !event.ctrlKey && !event.metaKey && !event.altKey) {
-            event.preventDefault()
-            moveCaretToBoundary(event.currentTarget, event.key === 'Home' ? 'start' : 'end', event.shiftKey)
+            if (requiresSyntheticTextEdit) {
+              event.preventDefault()
+              moveCaretToBoundary(event.currentTarget, event.key === 'Home' ? 'start' : 'end', event.shiftKey)
+            }
             return
           }
           if (event.key.toLowerCase() === 'a' && (event.ctrlKey || event.metaKey) && !event.altKey) {

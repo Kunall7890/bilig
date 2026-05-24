@@ -286,15 +286,10 @@ function tryPatchTextRunsForTile(
     return null
   }
   const dirtyKeys = new Set(dirtyItems.map(([col, row]) => textRunCellKey(row, col)))
-  const baseRunKeys = new Set<string>()
   for (const run of baseTile.textRuns) {
     if (run.row === undefined || run.col === undefined) {
       return null
     }
-    baseRunKeys.add(textRunCellKey(run.row, run.col))
-  }
-  if (dirtyItems.some(([col, row]) => !baseRunKeys.has(textRunCellKey(row, col)))) {
-    return null
   }
   const dirtyTextBuffer = packGridTextBufferV3(
     buildGridTextScene({
@@ -333,10 +328,28 @@ function tryPatchTextRunsForTile(
     }
     replacementRuns.set(key, run)
   }
-  if ([...dirtyKeys].some((key) => !replacementRuns.has(key))) {
-    return null
-  }
-  return packGridTextRunsBufferV3(baseTile.textRuns.map((run) => replacementRuns.get(textRunCellKey(run.row!, run.col!)) ?? run))
+  const consumedReplacementKeys = new Set<string>()
+  const patchedRuns = baseTile.textRuns.flatMap((run) => {
+    const key = textRunCellKey(run.row!, run.col!)
+    if (!dirtyKeys.has(key)) {
+      return [run]
+    }
+    const replacement = replacementRuns.get(key)
+    if (!replacement) {
+      return []
+    }
+    consumedReplacementKeys.add(key)
+    return [replacement]
+  })
+  dirtyItems.forEach(([col, row]) => {
+    const key = textRunCellKey(row, col)
+    const replacement = replacementRuns.get(key)
+    if (replacement && !consumedReplacementKeys.has(key)) {
+      patchedRuns.push(replacement)
+      consumedReplacementKeys.add(key)
+    }
+  })
+  return packGridTextRunsBufferV3(patchedRuns.toSorted(compareTextRunsByCell))
 }
 
 function collectPatchableTextDirtyItems(input: MaterializeGridRenderTileInputV3): readonly Item[] | null {
@@ -403,6 +416,13 @@ function clampDirtyLocalIndex(value: number, length: number): number {
 
 function textRunCellKey(row: number, col: number): string {
   return `${String(row)}:${String(col)}`
+}
+
+function compareTextRunsByCell(
+  left: { readonly col?: number | undefined; readonly row?: number | undefined },
+  right: { readonly col?: number | undefined; readonly row?: number | undefined },
+): number {
+  return (left.row ?? 0) - (right.row ?? 0) || (left.col ?? 0) - (right.col ?? 0)
 }
 
 function canReuseTextRunsForTile(input: MaterializeGridRenderTileInputV3, tileId: number): boolean {

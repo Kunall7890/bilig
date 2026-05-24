@@ -2,6 +2,7 @@ import { formatAddress, parseCellAddress } from '@bilig/formula'
 import { ValueTag, type CellRangeRef, type CellSnapshot } from '@bilig/protocol'
 import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from './workbook-optimistic-cell-flags.js'
 import { createSupersedingCellSnapshot } from './workbook-optimistic-cell.js'
+import { LOCAL_CELL_CONTENT_DIRTY_MASK } from './projected-workbook-local-delta.js'
 
 export interface OptimisticViewportStore {
   beginOptimisticClearRange?(range: CellRangeRef): (() => void) | null
@@ -11,7 +12,7 @@ export interface OptimisticViewportStore {
   peekBaseCell?(sheetName: string, address: string): CellSnapshot | undefined
   peekCell?(sheetName: string, address: string): CellSnapshot | undefined
   getCell(sheetName: string, address: string): CellSnapshot
-  setCellSnapshot(snapshot: CellSnapshot): void
+  setCellSnapshot(snapshot: CellSnapshot, options?: { readonly localDirtyMask?: number | undefined }): void
 }
 
 const MAX_MATERIALIZED_OPTIMISTIC_CLEAR_CELLS = 10_000
@@ -76,12 +77,14 @@ export function applyOptimisticClearRange(viewportStore: OptimisticViewportStore
     if (nextSnapshots.length === 0 && !rollbackOverlay) {
       return null
     }
-    nextSnapshots.forEach((snapshot) => viewportStore.setCellSnapshot(snapshot))
+    nextSnapshots.forEach((snapshot) => viewportStore.setCellSnapshot(snapshot, { localDirtyMask: LOCAL_CELL_CONTENT_DIRTY_MASK }))
     return () => {
       rollbackOverlay?.()
       previousSnapshots.forEach((snapshot) => {
         rollbackVersion += 1
-        viewportStore.setCellSnapshot(createSupersedingCellSnapshot(snapshot, rollbackVersion))
+        viewportStore.setCellSnapshot(createSupersedingCellSnapshot(snapshot, rollbackVersion), {
+          localDirtyMask: LOCAL_CELL_CONTENT_DIRTY_MASK,
+        })
       })
     }
   }
@@ -97,12 +100,14 @@ export function applyOptimisticClearRange(viewportStore: OptimisticViewportStore
     }
   }
 
-  nextSnapshots.forEach((snapshot) => viewportStore.setCellSnapshot(snapshot))
+  nextSnapshots.forEach((snapshot) => viewportStore.setCellSnapshot(snapshot, { localDirtyMask: LOCAL_CELL_CONTENT_DIRTY_MASK }))
 
   return () => {
     previousSnapshots.forEach((snapshot) => {
       rollbackVersion += 1
-      viewportStore.setCellSnapshot(createSupersedingCellSnapshot(snapshot, rollbackVersion))
+      viewportStore.setCellSnapshot(createSupersedingCellSnapshot(snapshot, rollbackVersion), {
+        localDirtyMask: LOCAL_CELL_CONTENT_DIRTY_MASK,
+      })
     })
   }
 }

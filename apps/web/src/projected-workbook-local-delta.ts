@@ -17,6 +17,7 @@ export interface ProjectedWorkbookLocalDeltaRange {
 
 const LOCAL_AXIS_X_DIRTY_MASK = DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect
 const LOCAL_AXIS_Y_DIRTY_MASK = DirtyMaskV3.AxisY | DirtyMaskV3.Text | DirtyMaskV3.Rect
+export const LOCAL_CELL_CONTENT_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Text
 export const LOCAL_CELL_VISUAL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
 
 export function buildLocalCellSnapshotWorkbookDelta(input: {

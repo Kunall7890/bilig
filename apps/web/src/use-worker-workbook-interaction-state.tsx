@@ -15,6 +15,7 @@ import {
   optimisticCellKey,
 } from './workbook-optimistic-cell.js'
 import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from './workbook-optimistic-cell-flags.js'
+import { LOCAL_CELL_CONTENT_DIRTY_MASK } from './projected-workbook-local-delta.js'
 import type { WorkbookMutationMethod } from './workbook-sync.js'
 import {
   clampSelectionMovement,
@@ -357,7 +358,7 @@ export function useWorkerWorkbookInteractionState(input: {
           }),
       })
       optimisticCellSnapshotsRef.current.set(targetKey, optimistic)
-      viewportStore?.setCellSnapshot(optimistic)
+      viewportStore?.setCellSnapshot(optimistic, { localDirtyMask: LOCAL_CELL_CONTENT_DIRTY_MASK })
       return {
         editorSeed: toEditorValue(optimistic),
         resolvedValue: toResolvedValue(optimistic),
@@ -367,7 +368,9 @@ export function useWorkerWorkbookInteractionState(input: {
           } else {
             optimisticCellSnapshotsRef.current.delete(targetKey)
           }
-          viewportStore?.setCellSnapshot(createSupersedingCellSnapshot(snapshot, optimistic.version + 1))
+          viewportStore?.setCellSnapshot(createSupersedingCellSnapshot(snapshot, optimistic.version + 1), {
+            localDirtyMask: LOCAL_CELL_CONTENT_DIRTY_MASK,
+          })
         },
       }
     },

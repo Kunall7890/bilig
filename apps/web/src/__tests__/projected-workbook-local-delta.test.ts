@@ -6,6 +6,7 @@ import {
   buildLocalCellSnapshotWorkbookDelta,
   buildLocalCellSnapshotsWorkbookDelta,
   buildLocalRangeWorkbookDelta,
+  LOCAL_CELL_CONTENT_DIRTY_MASK,
   LOCAL_CELL_VISUAL_DIRTY_MASK,
 } from '../projected-workbook-local-delta.js'
 
@@ -108,6 +109,23 @@ describe('projected workbook local delta builders', () => {
     })
 
     expect(batch.dirty.cellRanges).toEqual(new Uint32Array([1, 1, 1, 1, DirtyMaskV3.Style]))
+  })
+
+  it('honors precise dirty masks for local content-only updates', () => {
+    const batch = buildLocalCellSnapshotWorkbookDelta({
+      dirtyMask: LOCAL_CELL_CONTENT_DIRTY_MASK,
+      identity,
+      seq: 52,
+      snapshot: {
+        address: 'B2',
+        flags: 0,
+        sheetName: 'Sheet1',
+        value: { tag: ValueTag.String, value: 'typed' },
+        version: 17,
+      },
+    })
+
+    expect(batch.dirty.cellRanges).toEqual(new Uint32Array([1, 1, 1, 1, DirtyMaskV3.Value | DirtyMaskV3.Text]))
   })
 
   it('builds coarse range deltas for unmaterialized optimistic style overlays', () => {
