@@ -9,6 +9,7 @@ import { collectFrameIntervals, settleFrames, waitForNextFrame } from './ui-resp
 export interface ProductOperationSample {
   readonly operationResponseMs: number
   readonly operationResponseProof: SameCorpusOperationResponseProof
+  readonly authoritativeRenderProofMs?: number
   readonly postOperationFrameMs: number
   readonly scrollEventResponseMs?: number
   readonly scrollMovementPx?: number

@@ -327,6 +327,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
           product,
           source: url,
           operationResponseMsSamples: [10, 11, 12],
+          ...(product === 'bilig' ? { authoritativeRenderProofMsSamples: [14, 15, 16] } : {}),
           postOperationFrameMsSamples: [8, 9, 10],
           corpusVerification: {
             verified: true,
@@ -360,6 +361,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
           product,
           source: url,
           operationResponseMsSamples: [10, 11, 12],
+          ...(product === 'bilig' ? { authoritativeRenderProofMsSamples: [14, 15, 16] } : {}),
           postOperationFrameMsSamples: [8, 9, 10],
           corpusVerification: {
             verified: true,
@@ -614,6 +616,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
 
     expect(capture.runManifest).toMatchObject({
       artifactGenerator: 'scripts/capture-ui-responsiveness-same-corpus.ts',
+      biligAuthoritativeRenderProofCaseCount: 1,
       caseCount: 1,
       contractVersion: 'same-corpus-ui-v4',
       currentContractEvidenceComplete: false,
@@ -675,8 +678,27 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     })
 
     expect(capture.runManifest.biligProductionRuntimeProofCaseCount).toBe(1)
+    expect(capture.runManifest.biligAuthoritativeRenderProofCaseCount).toBe(1)
     expect(capture.runManifest.invalidReasons).toContain('Bilig production runtime proof covers 1/9 cases')
     expect(parseSameCorpusCapture(capture).cases[0]?.bilig.biligRuntimeProof?.verified).toBe(true)
+  })
+
+  it('requires Bilig authoritative rendered-proof timing in current same-corpus manifests', () => {
+    const capture = buildSameCorpusCaptureArtifact({
+      sampleCount: 3,
+      limitations: ['test limitation'],
+      cases: requiredUiResponsivenessSameCorpusWorkloads.map((workload) =>
+        sameCorpusCaptureCase({
+          workload,
+          biligRuntimeProof: sameCorpusBiligRuntimeProof('production'),
+          includeAuthoritativeRenderProofTiming: false,
+        }),
+      ),
+    })
+
+    expect(capture.runManifest.currentContractEvidenceComplete).toBe(false)
+    expect(capture.runManifest.biligAuthoritativeRenderProofCaseCount).toBe(0)
+    expect(capture.runManifest.invalidReasons).toContain('Bilig authoritative render proof timing covers 0/9 cases')
   })
 
   it('rejects capture artifacts with incomplete browser-visible evidence by default', () => {
@@ -1057,6 +1079,7 @@ function sameCorpusCaptureMeasurement(
     source: product === 'bilig' ? 'http://127.0.0.1:5173/?benchmarkCorpus=wide-mixed-250k' : 'https://example.com/sheet',
     operationResponseMsSamples: [10, 11, 12],
     operationResponseProofs: [operationResponseProof, operationResponseProof, operationResponseProof],
+    ...(product === 'bilig' ? { authoritativeRenderProofMsSamples: [15, 16, 17] } : {}),
     postOperationFrameMsSamples: [8, 9, 10],
     corpusVerification: {
       verified: true,
@@ -1074,9 +1097,11 @@ function sameCorpusCaptureMeasurement(
 function sameCorpusCaptureCase(args: {
   readonly workload: (typeof requiredUiResponsivenessSameCorpusWorkloads)[number]
   readonly biligRuntimeProof: ReturnType<typeof sameCorpusBiligRuntimeProof> | null
+  readonly includeAuthoritativeRenderProofTiming?: boolean
 }) {
   const bilig = {
     ...sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', args.workload),
+    ...(args.includeAuthoritativeRenderProofTiming === false ? { authoritativeRenderProofMsSamples: undefined } : {}),
     ...(args.biligRuntimeProof ? { biligRuntimeProof: args.biligRuntimeProof } : {}),
   }
   const googleSheets = sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export', args.workload)

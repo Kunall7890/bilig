@@ -158,6 +158,7 @@ function defaultSameCorpusCaptureLimitations(): readonly string[] {
     'Microsoft Excel Web can be supplied as an additional incumbent comparison, but it is not required for the Google Sheets 10x claim.',
     'Edit and format workloads require the supplied incumbent URLs to allow browser-driven editing in the authenticated context.',
     'Bilig non-scroll operationResponseMs measures interaction-visible response first; strict rendered-grid proof is still required after the authoritative frame catches up.',
+    'Bilig captures record authoritativeRenderProofMsSamples separately so interaction-visible timing cannot hide slow or missing rendered-proof completion.',
   ]
 }
 
@@ -227,6 +228,14 @@ function assertSameCorpusProductMeasurement(
     throw new Error(`same-corpus UI measurement for ${product} used an unexpected source URL`)
   }
   assertSameCorpusSampleArray(product, 'operation response', measurement.operationResponseMsSamples)
+  if (product === 'bilig') {
+    assertSameCorpusSampleArray(
+      product,
+      'authoritative render proof',
+      measurement.authoritativeRenderProofMsSamples,
+      measurement.operationResponseMsSamples.length,
+    )
+  }
   assertSameCorpusSampleArray(
     product,
     'post-operation frame',
@@ -417,6 +426,9 @@ async function measureProduct(
     source: url,
     operationResponseMsSamples: collection.samples.map((entry) => entry.operationResponseMs),
     operationResponseProofs: collection.samples.map((entry) => entry.operationResponseProof),
+    ...(product === 'bilig'
+      ? { authoritativeRenderProofMsSamples: collection.samples.map((entry) => entry.authoritativeRenderProofMs ?? Number.NaN) }
+      : {}),
     postOperationFrameMsSamples: collection.samples.map((entry) => entry.postOperationFrameMs),
     ...(uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
       ? {
@@ -470,21 +482,21 @@ async function measureProductSamples(
       await resetProductScrollPosition(page, product)
       await settleFrames(page, 3)
     }
-    samples.push(
-      await measureProductWorkload({
-        page,
-        product,
-        captureArgs: args,
-        workload,
-        sampleIndex,
-        loadToReadyMs,
-        hooks: {
-          measureVisibleScrollResponseWithRetries,
-          measureVisibleNonScrollResponse,
-          movePointerToProductViewport,
-        },
-      }),
-    )
+    const operationStartedAt = workload === 'open-workbook' ? loadStartedAt : performance.now()
+    const sample = await measureProductWorkload({
+      page,
+      product,
+      captureArgs: args,
+      workload,
+      sampleIndex,
+      loadToReadyMs,
+      hooks: {
+        measureVisibleScrollResponseWithRetries,
+        measureVisibleNonScrollResponse,
+        movePointerToProductViewport,
+      },
+    })
+    samples.push(await withAuthoritativeRenderProofTiming(page, product, sample, operationStartedAt, args.readyTimeoutMs))
     if (caseId && visualProofs && sampleIndex === 0) {
       visualProofs.push(await captureSameCorpusProductVisualProof({ caseId, outputPath: args.outputPath, page, product, sampleIndex }))
     }
@@ -508,6 +520,23 @@ async function measureProductSamples(
     nextCorpusVerification,
     runtimeProofSamples,
   )
+}
+
+async function withAuthoritativeRenderProofTiming(
+  page: Page,
+  product: UiResponsivenessSameCorpusProduct,
+  sample: ProductOperationSample,
+  operationStartedAt: number,
+  timeoutMs: number,
+): Promise<ProductOperationSample> {
+  if (product !== 'bilig') {
+    return sample
+  }
+  await waitForVerifiedBiligRenderedSurface(page, timeoutMs)
+  return {
+    ...sample,
+    authoritativeRenderProofMs: Math.max(sample.operationResponseMs, performance.now() - operationStartedAt),
+  }
 }
 
 function buildBiligRuntimeProof(source: string, samples: readonly SameCorpusBiligRuntimeProofSample[]): SameCorpusBiligRuntimeProof {

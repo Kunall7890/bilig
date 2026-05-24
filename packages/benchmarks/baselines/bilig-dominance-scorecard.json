@@ -44,21 +44,22 @@
         "evidence": [
           "direct live browser timing passed: true",
           "same-corpus capture kind: same-corpus-browser-capture",
-          "same-corpus UI 10x cases: 1/9",
+          "same-corpus UI 10x cases: 0/9",
           "same-corpus render proof contract: same-corpus-ui-v4",
           "same-corpus strict rendered-grid proof cases: 9/9",
           "same-corpus visible operation-response proof cases: 9/9",
           "same-corpus legacy-insufficient rendered-grid proof cases: 0/9",
-          "same-corpus run manifest invalid reasons: not every required workload is 10x against Google Sheets"
+          "same-corpus run manifest invalid reasons: Bilig authoritative render proof timing covers 0/9 cases; not every required workload is 10x against Google Sheets"
         ],
         "gaps": [
+          "same-corpus UI run manifest: Bilig authoritative render proof timing covers 0/9 cases",
           "same-corpus UI run manifest: not every required workload is 10x against Google Sheets",
           "live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof"
         ]
       }
     ],
     "unmetRequirements": [
-      "ui-responsiveness: same-corpus UI run manifest: not every required workload is 10x against Google Sheets; live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof"
+      "ui-responsiveness: same-corpus UI run manifest: Bilig authoritative render proof timing covers 0/9 cases; same-corpus UI run manifest: not every required workload is 10x against Google Sheets; live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof"
     ],
     "evidenceArtifacts": [
       "packages/benchmarks/baselines/google-sheets-live-recalculation-scorecard.json",
@@ -665,13 +666,13 @@
         "external UI responsiveness comparison dimensions pass: true",
         "live incumbent browser timing scorecard passes: true",
         "same-corpus UI 10x proof captured: true",
-        "same-corpus UI 10x cases: 1/9",
+        "same-corpus UI 10x cases: 0/9",
         "same-corpus UI render proof contract: same-corpus-ui-v4",
         "same-corpus UI strict rendered-grid proof cases: 9/9",
         "same-corpus UI visible operation-response proof cases: 9/9",
         "same-corpus UI legacy-insufficient rendered-grid proof cases: 0/9",
-        "same-corpus UI current-contract evidence complete: true",
-        "same-corpus UI run manifest invalid reasons: not every required workload is 10x against Google Sheets",
+        "same-corpus UI current-contract evidence complete: false",
+        "same-corpus UI run manifest invalid reasons: Bilig authoritative render proof timing covers 0/9 cases; not every required workload is 10x against Google Sheets",
         "google-sheets: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 163.97883300000012ms and postScrollFrameMs.p95 9.900000000000546ms (3 samples, public-comment-only)",
         "microsoft-excel-web: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 103.92012499999691ms and postScrollFrameMs.p95 9.800000000000182ms (3 samples, public-office-web-viewer)",
         "wide-mixed-250k: open-workbook bilig p95 ratio 1.0166241749206248 vs Google Sheets and undefined vs Excel Web",
@@ -709,6 +710,7 @@
         "pnpm bench:smoke"
       ],
       "blockers": [
+        "same-corpus UI run manifest: Bilig authoritative render proof timing covers 0/9 cases",
         "same-corpus UI run manifest: not every required workload is 10x against Google Sheets",
         "live UI browser evidence is direct, but it is not a same-corpus 10x proof against incumbents"
       ]

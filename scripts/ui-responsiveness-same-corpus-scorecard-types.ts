@@ -16,6 +16,7 @@ export interface UiResponsivenessSameCorpusMeasurement {
   readonly source: string
   readonly operationResponseMs: NumericSummary
   readonly operationResponseProofs: readonly SameCorpusOperationResponseProof[]
+  readonly authoritativeRenderProofMs?: NumericSummary
   readonly postOperationFrameMs: NumericSummary
   readonly scrollEventResponseMs?: NumericSummary
   readonly scrollMovementPx?: NumericSummary
@@ -69,6 +70,7 @@ export interface UiResponsivenessSameCorpusCase extends SameCorpusScenarioCaseFi
   readonly scrollMovementGuardrailPassed?: boolean
   readonly sourceWorkbookFingerprintGuardrailPassed?: boolean
   readonly operationResponseProofGuardrailPassed?: boolean
+  readonly authoritativeRenderProofGuardrailPassed?: boolean
   readonly passed: boolean
 }
 
@@ -99,6 +101,7 @@ export interface UiResponsivenessSameCorpusRunManifest {
   readonly caseCount: number
   readonly strictRenderedGridProofCaseCount: number
   readonly visibleOperationResponseProofCaseCount: number
+  readonly biligAuthoritativeRenderProofCaseCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
   readonly currentContractEvidenceComplete: boolean
@@ -138,6 +141,7 @@ export interface SameCorpusCaptureRunManifest {
   readonly caseCount: number
   readonly strictRenderedGridProofCaseCount: number
   readonly visibleOperationResponseProofCaseCount: number
+  readonly biligAuthoritativeRenderProofCaseCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
   readonly currentContractEvidenceComplete: boolean
@@ -162,6 +166,7 @@ export interface SameCorpusCaptureMeasurement {
   readonly source: string
   readonly operationResponseMsSamples: number[]
   readonly operationResponseProofs: SameCorpusOperationResponseProof[]
+  readonly authoritativeRenderProofMsSamples?: number[]
   readonly postOperationFrameMsSamples: number[]
   readonly scrollEventResponseMsSamples?: number[]
   readonly scrollMovementPxSamples?: number[]

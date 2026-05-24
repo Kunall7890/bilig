@@ -6,7 +6,6 @@ import type { Page } from '@playwright/test'
 import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import type { BiligRenderedSurfaceState } from './ui-responsiveness-same-corpus-surface.ts'
 import { readBiligRenderedSurfaceState } from './ui-responsiveness-same-corpus-surface-page.ts'
-import { waitForVerifiedBiligRenderedSurface } from './ui-responsiveness-same-corpus-verification.ts'
 import { waitForNextFrame } from './ui-responsiveness-same-corpus-page-utils.ts'
 import {
   sampleSettledOperation,
@@ -36,11 +35,7 @@ export async function measureVisibleNonScrollResponse(
   await runOperation()
   await waitForVisibleNonScrollResponse(page, product, workload, before)
   const interactionVisibleMs = performance.now() - startedAt
-  const sample = await sampleSettledOperation(page, interactionVisibleMs, 'visible-non-scroll-response')
-  if (product === 'bilig') {
-    await waitForVerifiedBiligRenderedSurface(page, visibleResponseTimeoutMs)
-  }
-  return sample
+  return await sampleSettledOperation(page, interactionVisibleMs, 'visible-non-scroll-response')
 }
 
 export function visibleNonScrollResponseChanged(

@@ -149,6 +149,7 @@ function parseSameCorpusRunManifest(value: Record<string, unknown>): UiResponsiv
     caseCount: numberField(value, 'caseCount'),
     strictRenderedGridProofCaseCount: numberField(value, 'strictRenderedGridProofCaseCount'),
     visibleOperationResponseProofCaseCount: numberField(value, 'visibleOperationResponseProofCaseCount'),
+    biligAuthoritativeRenderProofCaseCount: optionalNumberField(value, 'biligAuthoritativeRenderProofCaseCount') ?? 0,
     legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
@@ -181,6 +182,7 @@ function parseSameCorpusCaptureRunManifest(value: Record<string, unknown>): Same
     caseCount: numberField(value, 'caseCount'),
     strictRenderedGridProofCaseCount: numberField(value, 'strictRenderedGridProofCaseCount'),
     visibleOperationResponseProofCaseCount: numberField(value, 'visibleOperationResponseProofCaseCount'),
+    biligAuthoritativeRenderProofCaseCount: optionalNumberField(value, 'biligAuthoritativeRenderProofCaseCount') ?? 0,
     legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
@@ -204,6 +206,7 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
   const tenXMeanAndP95Metric = optionalSameCorpusTenXMetric(record, 'tenXMeanAndP95Metric')
   const postOperationFrameGuardrailPassed = optionalBooleanField(record, 'postOperationFrameGuardrailPassed')
   const operationResponseProofGuardrailPassed = optionalBooleanField(record, 'operationResponseProofGuardrailPassed')
+  const authoritativeRenderProofGuardrailPassed = optionalBooleanField(record, 'authoritativeRenderProofGuardrailPassed')
   const biligRuntimeProofGuardrailPassed = optionalBooleanField(record, 'biligRuntimeProofGuardrailPassed')
   const scrollMovementGuardrailPassed = optionalBooleanField(record, 'scrollMovementGuardrailPassed')
   const sourceWorkbookFingerprintGuardrailPassed = optionalBooleanField(record, 'sourceWorkbookFingerprintGuardrailPassed')
@@ -234,6 +237,7 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
       : {}),
     ...(postOperationFrameGuardrailPassed !== undefined ? { postOperationFrameGuardrailPassed } : {}),
     ...(operationResponseProofGuardrailPassed !== undefined ? { operationResponseProofGuardrailPassed } : {}),
+    ...(authoritativeRenderProofGuardrailPassed !== undefined ? { authoritativeRenderProofGuardrailPassed } : {}),
     ...(biligRuntimeProofGuardrailPassed !== undefined ? { biligRuntimeProofGuardrailPassed } : {}),
     ...(scrollMovementGuardrailPassed !== undefined ? { scrollMovementGuardrailPassed } : {}),
     ...(sourceWorkbookFingerprintGuardrailPassed !== undefined ? { sourceWorkbookFingerprintGuardrailPassed } : {}),
@@ -244,6 +248,7 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
 function parseSameCorpusMeasurement(value: Record<string, unknown>): UiResponsivenessSameCorpusMeasurement {
   const scrollEventResponseMs = optionalNumericSummary(value, 'scrollEventResponseMs')
   const scrollMovementPx = optionalNumericSummary(value, 'scrollMovementPx')
+  const authoritativeRenderProofMs = optionalNumericSummary(value, 'authoritativeRenderProofMs')
   const biligRuntimeProof = Object.hasOwn(value, 'biligRuntimeProof')
     ? parseBiligRuntimeProof(objectField(value, 'biligRuntimeProof'))
     : undefined
@@ -252,6 +257,7 @@ function parseSameCorpusMeasurement(value: Record<string, unknown>): UiResponsiv
     source: stringField(value, 'source'),
     operationResponseMs: parseNumericSummary(objectField(value, 'operationResponseMs')),
     operationResponseProofs: stringArrayField(value, 'operationResponseProofs').map(parseSameCorpusOperationResponseProof),
+    ...(authoritativeRenderProofMs ? { authoritativeRenderProofMs } : {}),
     postOperationFrameMs: parseNumericSummary(objectField(value, 'postOperationFrameMs')),
     ...(scrollEventResponseMs ? { scrollEventResponseMs } : {}),
     ...(scrollMovementPx ? { scrollMovementPx } : {}),
@@ -314,6 +320,9 @@ function parseSameCorpusCaptureMeasurement(
     source: stringField(value, 'source'),
     operationResponseMsSamples: numericArrayField(value, 'operationResponseMsSamples'),
     operationResponseProofs: stringArrayField(value, 'operationResponseProofs').map(parseSameCorpusOperationResponseProof),
+    ...(Object.hasOwn(value, 'authoritativeRenderProofMsSamples')
+      ? { authoritativeRenderProofMsSamples: numericArrayField(value, 'authoritativeRenderProofMsSamples') }
+      : {}),
     postOperationFrameMsSamples: numericArrayField(value, 'postOperationFrameMsSamples'),
     ...(Object.hasOwn(value, 'scrollEventResponseMsSamples')
       ? { scrollEventResponseMsSamples: numericArrayField(value, 'scrollEventResponseMsSamples') }
