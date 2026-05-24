@@ -95,7 +95,7 @@ describe('headless package workflow', () => {
     expect(agentDiscoverySource).toContain('syncVersionedStaticReferenceLine')
     expect(agentDiscoverySource).toContain("^(\\\\s*)'@bilig/workpaper@${stableSemverPattern}'")
     expect(agentDiscoverySource).not.toContain('replace(new RegExp(`@bilig/headless@${stableSemverPattern}`')
-    expect(mcpDirectoryDoc).toContain('`io.github.proompteng/bilig-workpaper@0.27.0` with package\n`@bilig/headless@0.27.0`')
+    expect(mcpDirectoryDoc).toContain('`io.github.proompteng/bilig-workpaper@0.75.0` with package\n`@bilig/workpaper@0.75.0`')
     expect(source).toContain('.release-please-manifest.json')
     expect(source).toContain('skills/bilig-workpaper/SKILL.md')
     expect(source).toContain('runner needs runtime d.ts outputs rebuilt after the version sync')
