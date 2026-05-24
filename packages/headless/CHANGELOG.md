@@ -4,6 +4,29 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.75.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.73.0
+- Manual override: no
+
+## Features
+- feat(workbook): harden command receipt proof (d56f4488)
+- feat(workbook): add strict run proof mode (a30baf0b)
+- feat(workbook): enforce command result scopes (f9c1bdc1)
+- feat(workbook): reject duplicate command ids (b0fc1947)
+- feat(workbook): reject ambiguous accepted results (bb9f6778)
+
+## Fixes
+- fix(xlsx): prune threaded comments on sheet delete (4ba0445e)
+- fix(xlsx): keep inserted row cells ordered (d299caf5)
+- fix(xlsx): invalidate raw chart refs on sheet delete (dce4427e)
+- fix(xlsx): prune deleted chart sheet artifacts (1489ba0b)
+
+## Internal runtime changes
+- docs: sharpen first-touch WorkPaper path (a93d9e9b)
+- chore(release): runtime packages v0.74.0 (650174af)
+
 ## 0.74.0
 
 - Release type: minor
