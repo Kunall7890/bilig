@@ -143,6 +143,9 @@ plan is returned.
 Check helper calls use the same boundary: malformed targets, readback options,
 custom check options, sparse ref arrays, and accessor-backed check payloads are
 rejected before a check is recorded.
+Formula helpers also normalize as plain data: raw formula options, explicit
+inputs, labels, and function argument arrays reject sparse or accessor-backed
+payloads before formula intent is returned.
 `verifyModel` keeps the same behavior at whole-model scope: invalid manifests
 return an invalid verdict with an `invalid_model` error and no actions.
 

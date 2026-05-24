@@ -153,6 +153,61 @@ describe('@bilig/workbook formula api', () => {
     expect(expression.inputs).toEqual([first, second])
     expect(expression.inputs).not.toBe(inputs)
     expect(inputs).toEqual([first, second, first])
+    expect(Object.isFrozen(expression)).toBe(true)
+    expect(Object.isFrozen(expression.inputs)).toBe(true)
+    expect(Object.isFrozen(expression.labels)).toBe(true)
+  })
+
+  it('rejects accessor-backed formula inputs without invoking getters', () => {
+    const input = findRange({ sheetName: 'Sheet1', address: 'A1' })
+
+    let optionsGetterInvoked = false
+    const rawOptions = {}
+    Object.defineProperty(rawOptions, 'inputs', {
+      enumerable: true,
+      get() {
+        optionsGetterInvoked = true
+        throw new Error('inputs getter must not run')
+      },
+    })
+    expect(() => formula.raw('Sheet1!A1', rawOptions)).toThrowError('Formula raw options.inputs must be a data property')
+    expect(optionsGetterInvoked).toBe(false)
+
+    let labelGetterInvoked = false
+    const label = { ref: input }
+    Object.defineProperty(label, 'name', {
+      enumerable: true,
+      get() {
+        labelGetterInvoked = true
+        throw new Error('label getter must not run')
+      },
+    })
+    expect(() => formula.raw('Sheet1!A1', { labels: [label] })).toThrowError('Formula raw options.labels[0].name must be a data property')
+    expect(labelGetterInvoked).toBe(false)
+
+    let operandGetterInvoked = false
+    const expressionInputs: unknown[] = []
+    Object.defineProperty(expressionInputs, '0', {
+      enumerable: true,
+      get() {
+        operandGetterInvoked = true
+        throw new Error('operand getter must not run')
+      },
+    })
+    expressionInputs.length = 1
+    expect(() =>
+      formula.inputs({
+        kind: 'formula',
+        source: 'Sheet1!A1',
+        inputs: expressionInputs,
+        labels: [],
+      }),
+    ).toThrowError('Formula expression inputs[0] must be a data property')
+    expect(operandGetterInvoked).toBe(false)
+
+    const sparseArgs: unknown[] = []
+    sparseArgs.length = 1
+    expect(() => Reflect.apply(formula.call, undefined, ['SUM', sparseArgs])).toThrowError('Formula arguments[0] must be a data property')
   })
 
   it('flags raw formula inputs that are not part of resolved model refs', () => {

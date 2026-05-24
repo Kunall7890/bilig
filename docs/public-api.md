@@ -403,6 +403,9 @@ payloads before a plan is returned.
 Check helper calls validate the same way: bad targets, readback options, custom
 check options, sparse ref arrays, and accessor-backed check payloads fail before
 the check is recorded.
+Formula helpers reject sparse or accessor-backed raw options, explicit input
+arrays, label arrays, and function argument arrays before returning formula
+intent.
 Normalized payloads preserve consumer-owned JSON keys as own data properties,
 including names like `__proto__` and `constructor`, so transported tool payloads
 cannot mutate prototypes or disappear during canonicalization.

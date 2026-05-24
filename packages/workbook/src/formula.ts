@@ -1,6 +1,6 @@
 import { normalizeFormulaFunctionName, parseFormula } from '@bilig/formula'
 import type { CellRangeRef } from '@bilig/protocol'
-import type { WorkbookRef } from './find.js'
+import { isWorkbookRef, type WorkbookRef } from './find.js'
 
 export interface WorkbookFormulaExpression {
   readonly kind: 'formula'
@@ -21,14 +21,126 @@ export interface WorkbookRawFormulaOptions {
 
 export type WorkbookFormulaOperand = WorkbookFormulaExpression | WorkbookRef | number | boolean
 
-function normalizeFormulaSource(source: string): string {
-  const trimmed = source.trim()
+const FORMULA_OPERAND_ERROR =
+  'Formula operands must be formula expressions, workbook refs, finite numbers, booleans, or formula.text/raw wrappers'
+
+function dataValue(value: object, key: string): unknown {
+  return Object.getOwnPropertyDescriptor(value, key)?.value
+}
+
+function assertOnlyDataProperties(value: unknown, path: string, seen = new WeakSet<object>()): void {
+  if (typeof value !== 'object' || value === null) {
+    return
+  }
+  if (seen.has(value)) {
+    return
+  }
+  seen.add(value)
+  for (const key of Reflect.ownKeys(value)) {
+    if (typeof key === 'symbol') {
+      throw new Error(`${path}[${String(key)}] must be a data property`)
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(value, key)
+    const child = Array.isArray(value) && /^\d+$/.test(key) ? `${path}[${key}]` : `${path}.${key}`
+    if (descriptor === undefined || !('value' in descriptor)) {
+      throw new Error(`${child} must be a data property`)
+    }
+    assertOnlyDataProperties(descriptor.value, child, seen)
+  }
+}
+
+function dataArrayValues(value: unknown, path: string): readonly unknown[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`${path} must be an array`)
+  }
+  const entries: unknown[] = []
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
+      throw new Error(`${path}[${index}] must be a data property`)
+    }
+    entries.push(descriptor.value)
+  }
+  return entries
+}
+
+function formulaText(value: unknown, label: string): string {
+  if (typeof value !== 'string') {
+    throw new Error(`${label} must be a string`)
+  }
+  return value
+}
+
+function normalizeFormulaSource(source: unknown): string {
+  const sourceText = formulaText(source, 'Formula source')
+  const trimmed = sourceText.trim()
   if (trimmed === '') {
     throw new Error('Formula source cannot be empty')
   }
   const normalized = trimmed.startsWith('=') ? trimmed.slice(1) : trimmed
   parseFormula(normalized)
   return normalized
+}
+
+function formulaFunctionName(value: unknown): string {
+  return normalizeFormulaFunctionName(formulaText(value, 'Formula function name'))
+}
+
+function formulaRef(value: unknown, path: string): WorkbookRef {
+  if (!isWorkbookRef(value)) {
+    throw new Error(`${path} must be a workbook ref`)
+  }
+  return value
+}
+
+function formulaRefArray(value: unknown, path: string): readonly WorkbookRef[] {
+  return Object.freeze(dataArrayValues(value, path).map((entry, index) => formulaRef(entry, `${path}[${index}]`)))
+}
+
+function formulaLabel(value: unknown, path: string): WorkbookFormulaLabel {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error(`${path} must be a formula label`)
+  }
+  assertOnlyDataProperties(value, path)
+  return Object.freeze({
+    name: formulaText(dataValue(value, 'name'), `${path}.name`),
+    ref: formulaRef(dataValue(value, 'ref'), `${path}.ref`),
+  })
+}
+
+function formulaLabelArray(value: unknown, path: string): readonly WorkbookFormulaLabel[] {
+  return Object.freeze(dataArrayValues(value, path).map((entry, index) => formulaLabel(entry, `${path}[${index}]`)))
+}
+
+function isFormulaOperand(value: unknown): value is WorkbookFormulaOperand {
+  return isFormulaExpression(value) || isWorkbookRef(value) || typeof value === 'number' || typeof value === 'boolean'
+}
+
+function formulaOperands(value: unknown, path: string): readonly WorkbookFormulaOperand[] {
+  return Object.freeze(
+    dataArrayValues(value, path).map((entry) => {
+      if (!isFormulaOperand(entry)) {
+        throw new Error(FORMULA_OPERAND_ERROR)
+      }
+      return entry
+    }),
+  )
+}
+
+function rawFormulaOptions(options: unknown): {
+  readonly inputs: readonly WorkbookRef[]
+  readonly labels?: readonly WorkbookFormulaLabel[]
+} {
+  if (typeof options !== 'object' || options === null || Array.isArray(options)) {
+    throw new Error('Formula raw options must be an object')
+  }
+  assertOnlyDataProperties(options, 'Formula raw options')
+  const inputs = dataValue(options, 'inputs')
+  const labels = dataValue(options, 'labels')
+  return Object.freeze({
+    inputs: inputs === undefined ? Object.freeze([]) : formulaRefArray(inputs, 'Formula raw options.inputs'),
+    ...(labels === undefined ? {} : { labels: formulaLabelArray(labels, 'Formula raw options.labels') }),
+  })
 }
 
 function uniqueRefs(refs: readonly WorkbookRef[]): readonly WorkbookRef[] {
@@ -42,7 +154,7 @@ function uniqueRefs(refs: readonly WorkbookRef[]): readonly WorkbookRef[] {
     seen.add(key)
     unique.push(ref)
   }
-  return unique
+  return Object.freeze(unique)
 }
 
 function uniqueLabels(labels: readonly WorkbookFormulaLabel[]): readonly WorkbookFormulaLabel[] {
@@ -57,16 +169,21 @@ function uniqueLabels(labels: readonly WorkbookFormulaLabel[]): readonly Workboo
       continue
     }
     seen.add(key)
-    unique.push(label)
+    unique.push(
+      Object.freeze({
+        name: label.name,
+        ref: label.ref,
+      }),
+    )
   }
-  return unique
+  return Object.freeze(unique)
 }
 
 function labelForRef(ref: WorkbookRef): WorkbookFormulaLabel {
-  return {
+  return Object.freeze({
     name: refSource(ref),
     ref,
-  }
+  })
 }
 
 function labelsForRefs(refs: readonly WorkbookRef[]): readonly WorkbookFormulaLabel[] {
@@ -78,29 +195,37 @@ function createFormulaExpression(
   inputs: readonly WorkbookRef[] = [],
   labels: readonly WorkbookFormulaLabel[] = labelsForRefs(inputs),
 ): WorkbookFormulaExpression {
-  const expressionLabels = uniqueLabels(labels)
-  return {
+  const normalizedLabels = uniqueLabels(labels)
+  const normalizedInputs = uniqueRefs([...inputs, ...normalizedLabels.map((label) => label.ref)])
+  return Object.freeze({
     kind: 'formula',
     source: normalizeFormulaSource(source),
-    inputs: uniqueRefs([...inputs, ...expressionLabels.map((label) => label.ref)]),
-    labels: expressionLabels,
-  }
+    inputs: normalizedInputs,
+    labels: normalizedLabels,
+  })
 }
 
 function isFormulaExpression(value: unknown): value is WorkbookFormulaExpression {
-  return typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'formula'
-}
-
-function isWorkbookRef(value: unknown): value is WorkbookRef {
   return (
     typeof value === 'object' &&
     value !== null &&
-    'kind' in value &&
-    typeof value.kind === 'string' &&
-    value.kind !== 'formula' &&
-    'id' in value &&
-    typeof value.id === 'string'
+    dataValue(value, 'kind') === 'formula' &&
+    typeof dataValue(value, 'source') === 'string' &&
+    Array.isArray(dataValue(value, 'inputs')) &&
+    Array.isArray(dataValue(value, 'labels'))
   )
+}
+
+function expressionSource(expression: WorkbookFormulaExpression): string {
+  return normalizeFormulaSource(dataValue(expression, 'source'))
+}
+
+function formulaExpressionInputs(expression: WorkbookFormulaExpression): readonly WorkbookRef[] {
+  return formulaRefArray(dataValue(expression, 'inputs'), 'Formula expression inputs')
+}
+
+function formulaExpressionLabels(expression: WorkbookFormulaExpression): readonly WorkbookFormulaLabel[] {
+  return formulaLabelArray(dataValue(expression, 'labels'), 'Formula expression labels')
 }
 
 function quoteSheetName(sheetName: string): string {
@@ -131,7 +256,7 @@ function refSource(ref: WorkbookRef): string {
 
 function operandSource(operand: WorkbookFormulaOperand): string {
   if (isFormulaExpression(operand)) {
-    return operand.source
+    return expressionSource(operand)
   }
   if (isWorkbookRef(operand)) {
     return refSource(operand)
@@ -145,12 +270,12 @@ function operandSource(operand: WorkbookFormulaOperand): string {
   if (typeof operand === 'boolean') {
     return operand ? 'TRUE()' : 'FALSE()'
   }
-  throw new Error('Formula operands must be formula expressions, workbook refs, finite numbers, booleans, or formula.text/raw wrappers')
+  throw new Error(FORMULA_OPERAND_ERROR)
 }
 
 function operandInputs(operand: WorkbookFormulaOperand): readonly WorkbookRef[] {
   if (isFormulaExpression(operand)) {
-    return operand.inputs
+    return formulaExpressionInputs(operand)
   }
   if (isWorkbookRef(operand)) {
     return [operand]
@@ -160,7 +285,7 @@ function operandInputs(operand: WorkbookFormulaOperand): readonly WorkbookRef[] 
 
 function operandLabels(operand: WorkbookFormulaOperand): readonly WorkbookFormulaLabel[] {
   if (isFormulaExpression(operand)) {
-    return operand.labels
+    return formulaExpressionLabels(operand)
   }
   if (isWorkbookRef(operand)) {
     return [labelForRef(operand)]
@@ -185,14 +310,15 @@ function binary(left: WorkbookFormulaOperand, operator: '+' | '-' | '*' | '/', r
 }
 
 function call(name: string, args: readonly WorkbookFormulaOperand[]): WorkbookFormulaExpression {
-  const callee = normalizeFormulaFunctionName(name)
-  return createFormulaExpression(`${callee}(${args.map(operandSource).join(',')})`, collectInputs(args), collectLabels(args))
+  const callee = formulaFunctionName(name)
+  const operands = formulaOperands(args, 'Formula arguments')
+  return createFormulaExpression(`${callee}(${operands.map(operandSource).join(',')})`, collectInputs(operands), collectLabels(operands))
 }
 
 export const formula = {
   raw(source: string, options: WorkbookRawFormulaOptions = {}): WorkbookFormulaExpression {
-    const inputs = options.inputs ?? []
-    return createFormulaExpression(source, inputs, options.labels ?? labelsForRefs(inputs))
+    const normalized = rawFormulaOptions(options)
+    return createFormulaExpression(source, normalized.inputs, normalized.labels ?? labelsForRefs(normalized.inputs))
   },
   source(expression: WorkbookFormulaOperand): string {
     return normalizeFormulaSource(operandSource(expression))
@@ -207,7 +333,7 @@ export const formula = {
     return createFormulaExpression(refSource(ref), [ref], [labelForRef(ref)])
   },
   text(value: string): WorkbookFormulaExpression {
-    return createFormulaExpression(`"${value.replaceAll('"', '""')}"`)
+    return createFormulaExpression(`"${formulaText(value, 'Formula text').replaceAll('"', '""')}"`)
   },
   call,
   add(left: WorkbookFormulaOperand, right: WorkbookFormulaOperand): WorkbookFormulaExpression {
