@@ -775,9 +775,9 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
       return metadataEffect('Failed to set range protection metadata', () => {
         const id = rangeProtectionKey(record.id)
         const stored: WorkbookRangeProtectionRecord = cloneRangeProtectionRecord({
+          ...structuredClone(record),
           id,
           range: canonicalWorkbookRangeRef(record.range),
-          ...(record.hideFormulas !== undefined ? { hideFormulas: record.hideFormulas } : {}),
         })
         metadata.rangeProtections.set(id, stored)
         return cloneRangeProtectionRecord(stored)

@@ -80,9 +80,9 @@ export function buildSetConditionalFormatOps(workbook: WorkbookStore, format: Wo
 
 export function buildSetRangeProtectionOps(workbook: WorkbookStore, protection: WorkbookRangeProtectionSnapshot): EngineOp[] | null {
   const normalized: WorkbookRangeProtectionSnapshot = {
+    ...structuredClone(protection),
     id: protection.id.trim(),
     range: canonicalWorkbookRangeRef(protection.range),
-    ...(protection.hideFormulas !== undefined ? { hideFormulas: protection.hideFormulas } : {}),
   }
   const existing = workbook.getRangeProtection(normalized.id)
   if (existing && JSON.stringify(existing) === JSON.stringify(normalized)) {

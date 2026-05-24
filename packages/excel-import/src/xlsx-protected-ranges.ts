@@ -3,6 +3,7 @@ import { XMLParser } from 'fast-xml-parser'
 import * as XLSX from 'xlsx'
 
 import type { CellRangeRef, WorkbookRangeProtectionSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import { escapeXmlAttribute } from './xlsx-export-xml.js'
 import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
@@ -55,8 +56,27 @@ function recordChild(value: unknown, key: string): Record<string, unknown> | nul
   return isRecord(child) ? child : null
 }
 
-function escapeXml(value: string): string {
-  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;')
+const xmlNamePattern = /^[A-Za-z_:][\w:.-]*$/u
+const protectedRangeSemanticAttributes = new Set(['name', 'sqref'])
+const xmlNamedEntities: Readonly<Record<string, string>> = {
+  amp: '&',
+  apos: "'",
+  gt: '>',
+  lt: '<',
+  quot: '"',
+}
+
+function unescapeXmlAttribute(value: string): string {
+  return value.replace(
+    /&#x([0-9a-fA-F]+);|&#([0-9]+);|&(quot|apos|lt|gt|amp);/gu,
+    (match, hex: string | undefined, decimal: string | undefined, named: string | undefined) => {
+      if (hex || decimal) {
+        const codePoint = Number.parseInt(hex ?? decimal ?? '', hex ? 16 : 10)
+        return Number.isSafeInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : match
+      }
+      return named ? (xmlNamedEntities[named] ?? match) : match
+    },
+  )
 }
 
 function normalizeZipPath(path: string): string {
@@ -119,7 +139,14 @@ function exportProtectedRangeXml(sheetName: string, protection: WorkbookRangePro
   if (!name || !ref) {
     return null
   }
-  return `<protectedRange name="${escapeXml(name)}" sqref="${escapeXml(ref)}"/>`
+  const attributes = [
+    { name: 'name', value: name },
+    { name: 'sqref', value: ref },
+    ...(protection.xmlAttributes ?? []).filter(
+      (attribute) => xmlNamePattern.test(attribute.name) && !protectedRangeSemanticAttributes.has(attribute.name),
+    ),
+  ]
+  return `<protectedRange${attributes.map((attribute) => ` ${attribute.name}="${escapeXmlAttribute(attribute.value)}"`).join('')}/>`
 }
 
 export function addExportProtectedRangesToXlsxBytes(bytes: Uint8Array, snapshot: WorkbookSnapshot): Uint8Array {
@@ -164,7 +191,26 @@ function uniqueProtectionId(input: { sheetName: string; name: unknown; range: Ce
   return candidate
 }
 
-function parseProtectedRangeEntry(sheetName: string, entry: unknown, usedIds: Set<string>): WorkbookRangeProtectionSnapshot[] {
+function readProtectedRangeXmlAttributes(sheetXml: string): Array<WorkbookRangeProtectionSnapshot['xmlAttributes']> {
+  return [
+    ...sheetXml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?protectedRange\b[^>]*(?:\/>|>[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?protectedRange>)/gu),
+  ].map((match) => {
+    const attributes = [...match[0].matchAll(/\s([A-Za-z_:][\w:.-]*)=(?:"([^"]*)"|'([^']*)')/gu)]
+      .map((attributeMatch) => ({
+        name: attributeMatch[1] ?? '',
+        value: unescapeXmlAttribute(attributeMatch[2] ?? attributeMatch[3] ?? ''),
+      }))
+      .filter((attribute) => !protectedRangeSemanticAttributes.has(attribute.name))
+    return attributes.length > 0 ? attributes : undefined
+  })
+}
+
+function parseProtectedRangeEntry(
+  sheetName: string,
+  entry: unknown,
+  usedIds: Set<string>,
+  xmlAttributes: WorkbookRangeProtectionSnapshot['xmlAttributes'],
+): WorkbookRangeProtectionSnapshot[] {
   if (!isRecord(entry) || typeof entry['sqref'] !== 'string') {
     return []
   }
@@ -181,6 +227,7 @@ function parseProtectedRangeEntry(sheetName: string, entry: unknown, usedIds: Se
       {
         id: uniqueProtectionId({ sheetName, name: entry['name'], range, usedIds }),
         range,
+        ...(xmlAttributes ? { xmlAttributes: structuredClone(xmlAttributes) } : {}),
       },
     ]
   })
@@ -199,10 +246,11 @@ export function readImportedWorkbookProtectedRanges(
       return
     }
     const parsed: unknown = xmlParser.parse(sheetXml)
+    const xmlAttributes = readProtectedRangeXmlAttributes(sheetXml)
     const usedIds = new Set<string>()
     const protectedRanges = asArray(
       recordChild(recordChild(recordChild(parsed, 'worksheet'), 'protectedRanges'), 'protectedRange'),
-    ).flatMap((entry) => parseProtectedRangeEntry(sheet.name, entry, usedIds))
+    ).flatMap((entry, index) => parseProtectedRangeEntry(sheet.name, entry, usedIds, xmlAttributes[index]))
     if (protectedRanges.length > 0) {
       protectedRangesBySheet.set(sheet.name, protectedRanges)
     }

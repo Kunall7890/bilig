@@ -725,10 +725,16 @@ export interface WorkbookSheetProtectionSnapshot {
   xmlAttributes?: WorkbookSheetProtectionXmlAttributeSnapshot[]
 }
 
+export interface WorkbookRangeProtectionXmlAttributeSnapshot {
+  name: string
+  value: string
+}
+
 export interface WorkbookRangeProtectionSnapshot {
   id: string
   range: CellRangeRef
   hideFormulas?: boolean
+  xmlAttributes?: WorkbookRangeProtectionXmlAttributeSnapshot[]
 }
 
 export interface WorkbookCommentEntrySnapshot {

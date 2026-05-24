@@ -31,6 +31,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-precision-as-displayed-oracle.test.ts',
   'macos-desktop-excel-pivot-oracle.test.ts',
   'macos-desktop-excel-print-page-setup-oracle.test.ts',
+  'macos-desktop-excel-protected-ranges-oracle.test.ts',
   'macos-desktop-excel-rich-text-oracle.test.ts',
   'macos-desktop-excel-sheet-move-metadata-topology-oracle.test.ts',
   'macos-desktop-excel-sheet-properties-oracle.test.ts',
@@ -40,6 +41,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-structured-reference-syntax.test.ts',
   'macos-desktop-excel-table-header-canonicalization.test.ts',
   'macos-desktop-excel-threaded-comment-structural-oracle.test.ts',
+  'macos-desktop-excel-workbook-protection-oracle.test.ts',
   'macos-desktop-excel-xlsx-oracle.test.ts',
 ] as const
 
@@ -168,6 +170,21 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('removeSheet(dataSheet)')
     expect(source).toContain('Workbook structure is protected')
     expect(source).toContain('matches Desktop Excel protected workbook rejection for protected sheet topology commands')
+  })
+
+  it('keeps the protected ranges oracle anchored to Desktop Excel editable range security attributes', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-protected-ranges-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain('WorkPaper.buildFromSnapshot')
+    expect(source).toContain('password')
+    expect(source).toContain('algorithmName')
+    expect(source).toContain('hashValue')
+    expect(source).toContain('saltValue')
+    expect(source).toContain('spinCount')
+    expect(source).toContain('securityDescriptor')
+    expect(source).toContain('preserves Desktop Excel protected editable range security attributes after a headless edit')
   })
 
   it('keeps the hyperlink structural oracle anchored to Desktop Excel metadata movement', () => {
