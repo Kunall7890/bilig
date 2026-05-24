@@ -283,11 +283,13 @@ describe('macOS Desktop Excel oracle inventory', () => {
 
     expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
     expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
     expect(source).toContain('refreshWorkbook: true')
     expect(source).toContain('invalid="1"')
     expect(source).toContain('GETPIVOTDATA("Sum of Sales",$B$2,"Region","East")')
     expect(source).toContain('cachedRecords')
     expect(source).toContain('matches Desktop Excel GETPIVOTDATA after headless source edits and XLSX export')
+    expect(source).toContain('matches Desktop Excel pivot package cleanup after deleting a pivot sheet')
   })
 
   it('keeps the drawing artifact oracle anchored to Desktop Excel package preservation', () => {

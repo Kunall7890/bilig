@@ -170,6 +170,26 @@ export function rewritePreservedWorkbookMetadataForSheetDeletion(
     }
   }
 
+  if (metadata.unsupportedFormulaDependencies) {
+    const unsupportedFormulaDependencies = metadata.unsupportedFormulaDependencies.filter((entry) => entry.sheetName !== deletedSheetName)
+    changed ||= unsupportedFormulaDependencies.length !== metadata.unsupportedFormulaDependencies.length
+    if (unsupportedFormulaDependencies.length > 0) {
+      next.unsupportedFormulaDependencies = unsupportedFormulaDependencies
+    } else {
+      delete next.unsupportedFormulaDependencies
+    }
+  }
+
+  if (metadata.unsupportedPivots) {
+    const unsupportedPivots = metadata.unsupportedPivots.filter((entry) => entry.sheetName !== deletedSheetName)
+    changed ||= unsupportedPivots.length !== metadata.unsupportedPivots.length
+    if (unsupportedPivots.length > 0) {
+      next.unsupportedPivots = unsupportedPivots
+    } else {
+      delete next.unsupportedPivots
+    }
+  }
+
   if (metadata.slicerConnectionArtifacts) {
     const slicerConnectionArtifacts = rewriteSlicerConnectionArtifactsForSheetDeletion(metadata.slicerConnectionArtifacts, deletedSheetName)
     changed ||= slicerConnectionArtifacts !== metadata.slicerConnectionArtifacts
@@ -181,6 +201,67 @@ export function rewritePreservedWorkbookMetadataForSheetDeletion(
   }
 
   return changed ? next : undefined
+}
+
+export function rewritePreservedPivotPackageArtifactsForSheetDeletion(
+  workbookMetadata: WorkbookPreservedMetadataRecord | undefined,
+  sheetMetadata: WorkbookPreservedSheetMetadataRecord | undefined,
+  context: WorkbookSheetDeletionMetadataContext | undefined,
+): WorkbookPreservedMetadataRecord | undefined {
+  const pivotArtifacts = workbookMetadata?.pivotArtifacts
+  const sheetPivotArtifacts = sheetMetadata?.pivotArtifacts
+  if (!workbookMetadata || !pivotArtifacts || !sheetPivotArtifacts || !context) {
+    return workbookMetadata
+  }
+
+  const deletedPivotPartPaths = pivotTablePartPathsForSheet(context.deletedSheetIndex, sheetPivotArtifacts)
+  if (deletedPivotPartPaths.size === 0) {
+    return workbookMetadata
+  }
+
+  const deletedCacheIds = new Set<string>()
+  const remainingCacheIds = new Set<string>()
+  for (const part of pivotArtifacts.parts) {
+    const normalizedPath = normalizePivotPackagePath(part.path)
+    if (!pivotTablePartPathPattern.test(normalizedPath)) {
+      continue
+    }
+    const cacheId = readXmlAttribute(part.xml, 'cacheId')
+    if (!cacheId) {
+      continue
+    }
+    if (deletedPivotPartPaths.has(normalizedPath)) {
+      deletedCacheIds.add(cacheId)
+    } else {
+      remainingCacheIds.add(cacheId)
+    }
+  }
+
+  const deletedOnlyCacheIds = new Set([...deletedCacheIds].filter((cacheId) => !remainingCacheIds.has(cacheId)))
+  const cacheDefinitionPathsToRemove = pivotCacheDefinitionPathsForCacheIds(pivotArtifacts, deletedOnlyCacheIds)
+  const nextParts = pivotArtifacts.parts.filter((part) => {
+    const normalizedPath = normalizePivotPackagePath(part.path)
+    return !deletedPivotPartPaths.has(normalizedPath) && !cacheDefinitionPathsToRemove.has(normalizedPath)
+  })
+  const nextWorkbookPivotCachesXml = removeWorkbookPivotCacheEntries(pivotArtifacts.workbookPivotCachesXml, deletedOnlyCacheIds)
+  const nextWorkbookRelationships = pivotArtifacts.workbookRelationships?.filter((relationship) => {
+    const targetPath = normalizePivotPackagePath(resolvePivotRelationshipTarget('xl/workbook.xml', relationship.target))
+    return !cacheDefinitionPathsToRemove.has(targetPath)
+  })
+
+  const nextPivotArtifacts = {
+    parts: nextParts,
+    ...(nextWorkbookPivotCachesXml ? { workbookPivotCachesXml: nextWorkbookPivotCachesXml } : {}),
+    ...(nextWorkbookRelationships && nextWorkbookRelationships.length > 0 ? { workbookRelationships: nextWorkbookRelationships } : {}),
+  }
+
+  const next: WorkbookPreservedMetadataRecord = { ...workbookMetadata }
+  if (hasPivotArtifacts(nextPivotArtifacts)) {
+    next.pivotArtifacts = nextPivotArtifacts
+  } else {
+    delete next.pivotArtifacts
+  }
+  return next
 }
 
 export function rewritePreservedWorkbookMetadataForSheetReorder(
@@ -520,6 +601,52 @@ function pivotTablePartPathsForSheet(
       .filter((relationship) => relationship.type.endsWith('/pivotTable'))
       .map((relationship) => normalizePivotPackagePath(resolvePivotRelationshipTarget(sheetPath, relationship.target))),
   )
+}
+
+function pivotCacheDefinitionPathsForCacheIds(
+  pivotArtifacts: NonNullable<WorkbookPreservedMetadataRecord['pivotArtifacts']>,
+  cacheIds: ReadonlySet<string>,
+): Set<string> {
+  if (cacheIds.size === 0) {
+    return new Set()
+  }
+  const cacheRelationshipTargetsById = new Map(
+    (pivotArtifacts.workbookRelationships ?? [])
+      .filter((relationship) => relationship.type.endsWith('/pivotCacheDefinition'))
+      .map((relationship) => [
+        relationship.id,
+        normalizePivotPackagePath(resolvePivotRelationshipTarget('xl/workbook.xml', relationship.target)),
+      ]),
+  )
+  const output = new Set<string>()
+  for (const match of (pivotArtifacts.workbookPivotCachesXml ?? '').matchAll(/<((?:[A-Za-z_][\w.-]*:)?pivotCache)\b([^>]*?)\/?>/gu)) {
+    const attributes = match[2] ?? ''
+    const cacheId = readXmlAttribute(attributes, 'cacheId')
+    const relationshipId = readXmlAttribute(attributes, 'r:id') ?? readXmlAttribute(attributes, 'id')
+    const target = relationshipId ? cacheRelationshipTargetsById.get(relationshipId) : undefined
+    if (cacheId && target && cacheIds.has(cacheId)) {
+      output.add(target)
+    }
+  }
+  return output
+}
+
+function removeWorkbookPivotCacheEntries(xml: string | undefined, cacheIds: ReadonlySet<string>): string | undefined {
+  if (!xml || cacheIds.size === 0) {
+    return xml
+  }
+  const nextXml = xml.replace(/<((?:[A-Za-z_][\w.-]*:)?pivotCache)\b([^>]*?)\/?>/gu, (source: string, _tag: string, attributes: string) => {
+    const cacheId = readXmlAttribute(attributes, 'cacheId')
+    return cacheId && cacheIds.has(cacheId) ? '' : source
+  })
+  if (nextXml === xml) {
+    return xml
+  }
+  return /<((?:[A-Za-z_][\w.-]*:)?pivotCache)\b/u.test(nextXml) ? nextXml : undefined
+}
+
+function hasPivotArtifacts(artifacts: NonNullable<WorkbookPreservedMetadataRecord['pivotArtifacts']>): boolean {
+  return artifacts.parts.length > 0 || Boolean(artifacts.workbookPivotCachesXml) || (artifacts.workbookRelationships?.length ?? 0) > 0
 }
 
 function resolvePivotRelationshipTarget(basePartPath: string, target: string): string {

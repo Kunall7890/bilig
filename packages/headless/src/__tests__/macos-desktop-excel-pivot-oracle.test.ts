@@ -3,11 +3,12 @@ import { join } from 'node:path'
 
 import { SpreadsheetEngine } from '@bilig/core'
 import { exportXlsx, importXlsx } from '@bilig/excel-import'
-import { isMacosExcelInstalled, runMacosExcelInspectionOracle } from '@bilig/excel-fixtures'
+import { isMacosExcelInstalled, runMacosExcelInspectionOracle, runMacosExcelStructuralOperationOracle } from '@bilig/excel-fixtures'
 import { ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
+import { WorkPaper } from '../index.js'
 import { createExcelAccessibleTempDir, removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
 
 const expectedEastSales = { tag: ValueTag.Number, value: 25 }
@@ -78,6 +79,84 @@ describe('macOS Desktop Excel pivot oracle', () => {
     },
     120_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel pivot package cleanup after deleting a pivot sheet',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-pivot-delete-oracle-')
+      try {
+        const sourceBytes = exportXlsx(importedSourceBackedPivotSnapshot())
+        const importedSource = importXlsx(sourceBytes, 'pivot-delete-source.xlsx').snapshot
+        expect(pivotPackageSummary(importedSource)).toEqual({
+          pivotParts: ['xl/pivotCache/pivotCacheDefinition1.xml', 'xl/pivotTables/pivotTable1.xml'],
+          workbookCacheIds: ['1'],
+          workbookRelationshipTargets: ['pivotCache/pivotCacheDefinition1.xml'],
+          pivotSheets: ['Pivot'],
+          semanticPivotSheets: ['Pivot'],
+        })
+
+        const excelWorkbookPath = join(tempDir, 'excel-pivot-delete-source.xlsx')
+        writeFileSync(excelWorkbookPath, sourceBytes)
+        runMacosExcelStructuralOperationOracle({
+          workbookPath: excelWorkbookPath,
+          worksheetName: 'Data',
+          operations: [{ kind: 'deleteSheet', name: 'Pivot' }],
+          inspectCells: ['A1'],
+          saveWorkbook: true,
+          timeoutMs: 120_000,
+        })
+
+        const excelTruth = importXlsx(new Uint8Array(readFileSync(excelWorkbookPath)), 'excel-pivot-delete-truth.xlsx')
+        expect(excelTruth.snapshot.sheets.map((sheet) => sheet.name)).toEqual(['Data'])
+        const excelSummary = pivotPackageSummary(excelTruth.snapshot)
+        expect(excelSummary).toEqual({
+          pivotParts: [],
+          workbookCacheIds: [],
+          workbookRelationshipTargets: [],
+          pivotSheets: [],
+          semanticPivotSheets: [],
+        })
+
+        const workpaper = WorkPaper.buildFromSnapshot(importedSource)
+        try {
+          const pivotSheet = workpaper.getSheetId('Pivot')
+          if (pivotSheet === undefined) {
+            throw new Error('Expected Pivot sheet')
+          }
+          workpaper.removeSheet(pivotSheet)
+
+          const headlessSnapshot = workpaper.exportSnapshot()
+          expect(headlessSnapshot.sheets.map((sheet) => sheet.name)).toEqual(['Data'])
+          expect(pivotPackageSummary(headlessSnapshot)).toEqual(excelSummary)
+
+          const headlessWorkbookPath = join(tempDir, 'headless-pivot-delete.xlsx')
+          writeFileSync(headlessWorkbookPath, exportXlsx(headlessSnapshot))
+          runMacosExcelInspectionOracle({
+            workbookPath: headlessWorkbookPath,
+            worksheetName: 'Data',
+            formulaCells: [],
+            inspectCells: ['A1'],
+            saveWorkbook: true,
+            timeoutMs: 120_000,
+          })
+          const headlessExcelTruth = importXlsx(
+            new Uint8Array(readFileSync(headlessWorkbookPath)),
+            'headless-excel-pivot-delete-truth.xlsx',
+          )
+          expect(pivotPackageSummary(headlessExcelTruth.snapshot)).toEqual(excelSummary)
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    180_000,
+  )
 })
 
 async function buildEditedPivotEngine(): Promise<SpreadsheetEngine> {
@@ -146,5 +225,26 @@ function importedSourceBackedPivotSnapshot(): WorkbookSnapshot {
         cells: [],
       },
     ],
+  }
+}
+
+function pivotPackageSummary(snapshot: WorkbookSnapshot): {
+  readonly pivotParts: readonly string[]
+  readonly workbookCacheIds: readonly string[]
+  readonly workbookRelationshipTargets: readonly string[]
+  readonly pivotSheets: readonly string[]
+  readonly semanticPivotSheets: readonly string[]
+} {
+  const metadata = snapshot.workbook.metadata
+  const workbookPivotCachesXml = metadata?.pivotArtifacts?.workbookPivotCachesXml ?? ''
+  return {
+    pivotParts: metadata?.pivotArtifacts?.parts.map((part) => part.path).toSorted() ?? [],
+    workbookCacheIds: [...workbookPivotCachesXml.matchAll(/<pivotCache\b[^>]*\bcacheId="([^"]+)"/gu)]
+      .map((match) => match[1] ?? '')
+      .filter(Boolean),
+    workbookRelationshipTargets:
+      metadata?.pivotArtifacts?.workbookRelationships?.map((relationship) => relationship.target).toSorted() ?? [],
+    pivotSheets: snapshot.sheets.flatMap((sheet) => (sheet.metadata?.pivotArtifacts ? [sheet.name] : [])).toSorted(),
+    semanticPivotSheets: metadata?.pivots?.map((pivot) => pivot.sheetName).toSorted() ?? [],
   }
 }

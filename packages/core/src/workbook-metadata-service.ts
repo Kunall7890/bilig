@@ -84,6 +84,7 @@ import {
 } from './engine/services/structure-chart-artifact-rewrite.js'
 import {
   renamePreservedWorkbookMetadataSheetReferences,
+  rewritePreservedPivotPackageArtifactsForSheetDeletion,
   rewritePreservedWorkbookMetadataForSheetDeletion,
   rewritePreservedWorkbookMetadataForSheetReorder,
 } from './engine/services/structure-preserved-sheet-metadata-rewrite.js'
@@ -263,6 +264,7 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
   }
 
   const deleteSheetRecordsNow = (sheetName: string, context?: WorkbookSheetDeletionMetadataContext): void => {
+    const deletedPreservedSheetMetadata = metadata.preservedSheetMetadata.get(sheetName)
     if (context) {
       const preservedWorkbookMetadata = rewritePreservedWorkbookMetadataForSheetDeletion(
         metadata.preservedWorkbookMetadata,
@@ -272,6 +274,14 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
       if (preservedWorkbookMetadata) {
         metadata.preservedWorkbookMetadata = preservedWorkbookMetadata
       }
+    }
+    const pivotPreservedWorkbookMetadata = rewritePreservedPivotPackageArtifactsForSheetDeletion(
+      metadata.preservedWorkbookMetadata,
+      deletedPreservedSheetMetadata,
+      context,
+    )
+    if (pivotPreservedWorkbookMetadata) {
+      metadata.preservedWorkbookMetadata = pivotPreservedWorkbookMetadata
     }
     const preservedWorkbookMetadata = rewritePreservedChartPackageArtifactsForSheetDeletion(metadata.preservedWorkbookMetadata, sheetName)
     if (preservedWorkbookMetadata) {
