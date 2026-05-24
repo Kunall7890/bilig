@@ -9,6 +9,8 @@ import {
   parseMacosExcelRecalculationOutput,
   parseMacosExcelRejectedStructuralOperationOutput,
 } from './macos-excel-oracle-output.js'
+import { cellValueAppleScriptHelpers } from './macos-excel-oracle-cell-value-helpers.js'
+
 import type {
   MacosExcelCalculationPolicy,
   MacosExcelInspectionOracleRequest,
@@ -954,13 +956,3 @@ on isExcelErrorDisplayText(displayText)
   if displayText is "#N/A" then return true
   if displayText is "#SPILL!" then return true
   if displayText is "#BLOCKED!" then return true
-  if displayText is "#NUM!" then return true
-  if displayText is "#NULL!" then return true
-  if displayText is "#CALC!" then return true
-  if displayText is "#FIELD!" then return true
-  if displayText is "#UNKNOWN!" then return true
-  if displayText is "#GETTING_DATA" then return true
-  return false
-end isExcelErrorDisplayText
-`
-}
