@@ -13,7 +13,7 @@ describe('GridSelectionVisualOverlay', () => {
     document.body.innerHTML = ''
   })
 
-  test('builds Excel-style cell-interior DOM visual rects for body range selections', () => {
+  test('builds Excel-style continuous DOM visual rects for body range selections', () => {
     const geometry = createGeometry()
     const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
 
@@ -27,14 +27,15 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(rects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 147, y: 45, width: 98, height: 18 }) }),
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 247, y: 65, width: 98, height: 18 }) }),
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 347, y: 85, width: 98, height: 18 }) }),
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 146, y: 44, width: 300, height: 60 }) }),
+        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 246, y: 44, width: 1, height: 60 }) }),
+        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 146, y: 64, width: 300, height: 1 }) }),
         expect.objectContaining({ role: 'selection-border', bounds: expect.objectContaining({ x: 146, y: 44, width: 300, height: 60 }) }),
         expect.objectContaining({ role: 'fill-handle', bounds: expect.objectContaining({ x: 442, y: 100, width: 8, height: 8 }) }),
       ]),
     )
-    expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(9)
+    expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(1)
+    expect(rects.filter((rect) => rect.role === 'selection-gridline')).toHaveLength(4)
     expect(rects.some((rect) => rect.role === 'active-border')).toBe(false)
   })
 
@@ -159,8 +160,10 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(topLeftRects.some((rect) => rect.role === 'active-border')).toBe(false)
     expect(bottomRightRects.some((rect) => rect.role === 'active-border')).toBe(false)
-    expect(topLeftRects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(9)
-    expect(bottomRightRects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(9)
+    expect(topLeftRects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(1)
+    expect(bottomRightRects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(1)
+    expect(topLeftRects.filter((rect) => rect.role === 'selection-gridline')).toHaveLength(4)
+    expect(bottomRightRects.filter((rect) => rect.role === 'selection-gridline')).toHaveLength(4)
   })
 
   test('builds hover chrome in the DOM overlay without covering the selected range', () => {
@@ -217,19 +220,27 @@ describe('GridSelectionVisualOverlay', () => {
     })
 
     const hoverFill = queryVisualElement(host, 'hover-fill')
+    const headerFill = queryVisualElement(host, 'header-fill')
     const selectionFill = queryVisualElement(host, 'selection-fill')
+    const selectionGridline = queryVisualElement(host, 'selection-gridline')
     const selectionBorder = queryVisualElement(host, 'selection-border')
     const activeBorder = queryVisualElement(host, 'active-border')
     const fillHandle = queryVisualElement(host, 'fill-handle')
 
-    expect(host.querySelectorAll('[data-grid-selection-visual-role="selection-fill"]')).toHaveLength(9)
+    expect(host.querySelectorAll('[data-grid-selection-visual-role="selection-fill"]')).toHaveLength(1)
+    expect(host.querySelectorAll('[data-grid-selection-visual-role="selection-gridline"]')).toHaveLength(4)
+    expect(headerFill).toBeInstanceOf(HTMLElement)
     expect(selectionFill).toBeInstanceOf(HTMLElement)
+    expect(selectionGridline).toBeInstanceOf(HTMLElement)
     expect(hoverFill).toBeInstanceOf(HTMLElement)
     expect(selectionBorder).toBeInstanceOf(HTMLElement)
     expect(activeBorder).toBeNull()
     expect(fillHandle).toBeInstanceOf(HTMLElement)
+    expect(headerFill?.style.opacity).toBe('')
     expect(selectionFill?.style.opacity).toBe('')
     expect(selectionFill?.style.backgroundColor).toBe('rgba(33, 115, 70, 0.22)')
+    expect(selectionGridline?.style.opacity).toBe('')
+    expect(selectionGridline?.style.backgroundColor).toBe('rgb(221, 216, 204)')
     expect(hoverFill?.style.opacity).toBe('0')
     expect(selectionBorder?.style.opacity).toBe('')
     expect(fillHandle?.style.opacity).toBe('')

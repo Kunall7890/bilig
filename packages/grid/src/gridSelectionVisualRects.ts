@@ -4,6 +4,7 @@ import type { GridSelection, Item, Rectangle } from './gridTypes.js'
 
 export type GridSelectionVisualRectRole =
   | 'selection-fill'
+  | 'selection-gridline'
   | 'selection-border'
   | 'active-border'
   | 'fill-handle'
@@ -77,7 +78,8 @@ function appendBodySelectionVisualRects(
   const isMultiCellSelection = input.selectionRange.width > 1 || input.selectionRange.height > 1
 
   if (isMultiCellSelection) {
-    appendVisibleCellSelectionFillRects(rects, input.geometry, input.selectionRange, 'selection-fill:range')
+    appendContinuousRangeSelectionFillRects(rects, input.geometry, input.selectionRange, 'selection-fill:range')
+    appendRangeInternalGridlineRects(rects, input.geometry, input.selectionRange, 'selection-gridline:range')
 
     let segmentIndex = 0
     for (const bounds of input.geometry.rangeScreenRects(input.selectionRange)) {
@@ -186,6 +188,65 @@ function appendAxisSelectionVisualRects(
   }
 }
 
+function appendContinuousRangeSelectionFillRects(
+  rects: GridSelectionVisualRect[],
+  geometry: GridGeometrySnapshot,
+  range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>,
+  keyPrefix: string,
+): void {
+  let segmentIndex = 0
+  for (const bounds of geometry.rangeScreenRects(range)) {
+    rects.push({
+      role: 'selection-fill',
+      key: stableRangeKey(keyPrefix, range, 0, segmentIndex),
+      bounds,
+    })
+    segmentIndex += 1
+  }
+}
+
+function appendRangeInternalGridlineRects(
+  rects: GridSelectionVisualRect[],
+  geometry: GridGeometrySnapshot,
+  range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>,
+  keyPrefix: string,
+): void {
+  const startCol = Math.max(0, range.x)
+  const startRow = Math.max(0, range.y)
+  const endColExclusive = Math.max(startCol, Math.min(MAX_COLS, range.x + range.width))
+  const endRowExclusive = Math.max(startRow, Math.min(MAX_ROWS, range.y + range.height))
+  if (startCol >= endColExclusive || startRow >= endRowExclusive) {
+    return
+  }
+
+  const selectedCols = visibleColumnIndexes(geometry).filter((col) => col >= startCol && col < endColExclusive)
+  const selectedRows = visibleRowIndexes(geometry).filter((row) => row >= startRow && row < endRowExclusive)
+
+  for (const col of selectedCols) {
+    if (col <= startCol) {
+      continue
+    }
+    let segmentIndex = 0
+    for (const bounds of geometry.rangeScreenRects({ x: col, y: startRow, width: 1, height: endRowExclusive - startRow })) {
+      const line = { x: bounds.x, y: bounds.y, width: 1, height: bounds.height }
+      appendPositiveRect(rects, 'selection-gridline', `${keyPrefix}:col:${col}:${segmentIndex}`, line)
+      segmentIndex += 1
+    }
+  }
+
+  for (const row of selectedRows) {
+    if (row <= startRow) {
+      continue
+    }
+    let segmentIndex = 0
+    for (const bounds of geometry.rangeScreenRects({ x: startCol, y: row, width: endColExclusive - startCol, height: 1 })) {
+      const line = { x: bounds.x, y: bounds.y, width: bounds.width, height: 1 }
+      appendPositiveRect(rects, 'selection-gridline', `${keyPrefix}:row:${row}:${segmentIndex}`, line)
+      segmentIndex += 1
+    }
+  }
+}
+
 function appendVisibleCellSelectionFillRects(
   rects: GridSelectionVisualRect[],
   geometry: GridGeometrySnapshot,
@@ -210,6 +271,12 @@ function appendVisibleCellSelectionFillRects(
         segmentIndex += 1
       }
     }
+  }
+}
+
+function appendPositiveRect(rects: GridSelectionVisualRect[], role: GridSelectionVisualRectRole, key: string, bounds: Rectangle): void {
+  if (bounds.width > 0 && bounds.height > 0) {
+    rects.push({ role, key, bounds })
   }
 }
 

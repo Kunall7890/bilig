@@ -473,26 +473,10 @@ function pushSelectionRects(options: {
   }
 
   if (selectionRange.width > 1 || selectionRange.height > 1) {
-    for (let row = startRow; row <= endRow; row += 1) {
-      for (let col = startCol; col <= endCol; col += 1) {
-        const fillBounds = getCellBounds(col, row)
-        if (!fillBounds) {
-          continue
-        }
-        const fillRect = {
-          x: fillBounds.x - hostBounds.left + 1,
-          y: fillBounds.y - hostBounds.top + 1,
-          width: Math.max(0, fillBounds.width - 2),
-          height: Math.max(0, fillBounds.height - 2),
-        }
-        if (fillRect.width > 0 && fillRect.height > 0) {
-          fillRects.push({
-            ...fillRect,
-            color: SELECTION_FILL_COLOR,
-          })
-        }
-      }
-    }
+    fillRects.push({
+      ...selectionRect,
+      color: SELECTION_FILL_COLOR,
+    })
   }
 
   const outlineThickness = 2

@@ -228,6 +228,9 @@ function appendSelectionVisualOverlay(input: {
       case 'selection-fill':
         input.fillRects.push({ ...rect.bounds, color: parseGpuColor(workbookThemeColors.selectionFill) })
         break
+      case 'selection-gridline':
+        input.fillRects.push({ ...rect.bounds, color: parseGpuColor(workbookThemeColors.gridBorder) })
+        break
       case 'header-fill':
         input.fillRects.push({ ...rect.bounds, color: parseGpuColor(workbookThemeColors.selectionHeaderFill) })
         break

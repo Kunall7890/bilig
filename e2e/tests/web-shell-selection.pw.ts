@@ -277,18 +277,22 @@ test('web app paints selected areas as crisp cell interiors and collapses on bod
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
   await expect(page.getByTestId('name-box')).toHaveValue('B2:D4')
   await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 D4')
-  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(9)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-gridline"]')).toHaveCount(4)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
   await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCount(1)
   await expectSelectionVisualRoles(page, ['header-fill'], 'visible')
-  await expectSelectionVisualRoles(page, ['selection-fill'], 'visible')
+  await expectSelectionVisualRoles(page, ['selection-fill', 'selection-gridline'], 'visible')
   await expectSelectionVisualRoles(page, ['selection-border', 'fill-handle'], 'visible')
   await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]').first()).toHaveCSS(
     'background-color',
     'rgba(33, 115, 70, 0.22)',
   )
-  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]').first()).toHaveCSS('opacity', '1')
+  await expect(page.locator('[data-grid-selection-visual-role="selection-gridline"]').first()).toHaveCSS(
+    'background-color',
+    'rgb(221, 216, 204)',
+  )
   await expectSelectedRangeBodyTint(page, 3, 3)
   await expectSelectedRangeBodyTint(page, 1, 1)
   await expectSelectedRangeBodyTint(page, 1, 2)
@@ -312,10 +316,11 @@ test('@browser-ci web app paints forward-drag ranges without an internal active-
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:F13')
   await expect(page.getByTestId('name-box')).toHaveValue('B2:F13')
   await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 B2')
-  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(60)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-gridline"]')).toHaveCount(15)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
-  await expectSelectionVisualRoles(page, ['selection-fill', 'selection-border', 'fill-handle'], 'visible')
+  await expectSelectionVisualRoles(page, ['selection-fill', 'selection-gridline', 'selection-border', 'fill-handle'], 'visible')
   await expectSelectedRangeBodyTint(page, 1, 1)
   await expectSelectedRangeBodyTint(page, 1, 2)
   await expectSelectedRangeBodyTint(page, 3, 6)
@@ -373,7 +378,8 @@ test('@browser-ci web app collapses a locally dragged range when the active addr
   await dragProductBodySelection(page, 1, 1, 3, 3)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
   await expect(page.getByTestId('name-box')).toHaveValue('B2:D4')
-  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(9)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-gridline"]')).toHaveCount(4)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
 
   await selectAddress(page, 'B2')
@@ -381,6 +387,7 @@ test('@browser-ci web app collapses a locally dragged range when the active addr
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2')
   await expect(page.getByTestId('name-box')).toHaveValue('B2')
   await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(0)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-gridline"]')).toHaveCount(0)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(0)
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(1)
   await expectVisualRectNear(

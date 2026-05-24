@@ -91,6 +91,8 @@ function classNameForRole(role: GridSelectionVisualRectRole): string {
   switch (role) {
     case 'selection-fill':
       return 'absolute box-border'
+    case 'selection-gridline':
+      return 'absolute box-border'
     case 'header-fill':
       return 'absolute box-border'
     case 'hover-fill':
@@ -132,6 +134,12 @@ function styleForRect(
       borderStyle: 'solid',
       borderTopWidth: strokeWidth,
       boxSizing: 'border-box',
+    }
+  }
+  if (rect.role === 'selection-gridline') {
+    return {
+      ...base,
+      backgroundColor: workbookThemeColors.gridBorder,
     }
   }
   if (rect.role === 'fill-handle') {
