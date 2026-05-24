@@ -355,6 +355,8 @@ comparison.
 Readback checks attach proof to passed checks, such as
 `{ source: "readback", value: 12 }` or
 `{ source: "readback", formula: "Table[Quantity]*Table[Rate]" }`.
+Readback proof objects, check objects, expectations, and formula labels must be
+record-shaped payloads, not arrays with attached fields.
 Formula readback proof is parsed with `@bilig/formula` and stored in canonical
 no-leading-`=` form, so harmless runtime differences such as a leading equals
 sign, whitespace, or redundant parentheses do not make proof fail.

@@ -176,6 +176,28 @@ function arrayBackedVerifiedCheck(checkResult: WorkbookCheckResult): unknown[] {
   return verified
 }
 
+function arrayBackedReadback(fields: Record<string, unknown>): unknown[] {
+  const readback: unknown[] = []
+  Object.entries(fields).forEach(([key, value]) => {
+    Object.defineProperty(readback, key, {
+      enumerable: true,
+      value,
+    })
+  })
+  return readback
+}
+
+function arrayBackedCheck(checkResult: WorkbookCheckResult): unknown[] {
+  const check: unknown[] = []
+  Object.entries(checkResult).forEach(([key, value]) => {
+    Object.defineProperty(check, key, {
+      enumerable: true,
+      value,
+    })
+  })
+  return check
+}
+
 describe('@bilig/workbook run proof boundary', () => {
   it('rejects apply proof that is not JSON-safe', async () => {
     const model = valueModel()
@@ -1111,6 +1133,46 @@ describe('@bilig/workbook run proof boundary', () => {
     expect(getterInvoked).toBe(false)
   })
 
+  it('rejects array-backed readback objects as uninspectable runtime proof', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: applied,
+      read: (targets) => [
+        // @ts-expect-error exercising JS adapters that bypass the readback object type
+        arrayBackedReadback({
+          target: first(targets),
+          value: 12,
+        }),
+      ],
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'readback_invalid',
+          message: 'Workbook readback at readbacks[0] is invalid',
+        },
+      ],
+      apply: expect.objectContaining({ matched: true }),
+      changed: [
+        {
+          kind: 'writeValue',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Write value to Sheet1!B2',
+        },
+      ],
+      checks: [
+        expect.objectContaining({
+          status: 'planned',
+          kind: 'valueEquals',
+          message: 'Sheet1!B2 equals 12',
+        }),
+      ],
+    })
+  })
+
   it('rejects accessor-backed public readback arrays without invoking getters', () => {
     const target = findRange({ sheetName: 'Sheet1', address: 'B2' })
     let getterInvoked = false
@@ -1162,5 +1224,36 @@ describe('@bilig/workbook run proof boundary', () => {
     expect(Object.isFrozen(verification.issues)).toBe(true)
     expect(Object.isFrozen(verification.issues[0])).toBe(true)
     expect(getterInvoked).toBe(false)
+  })
+
+  it('rejects array-backed public check objects as uninspectable readback proof', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'B2' })
+    const check: WorkbookCheckResult = {
+      status: 'planned',
+      kind: 'valueEquals',
+      target,
+      message: 'Sheet1!B2 equals 12',
+      expectation: {
+        kind: 'valueEquals',
+        value: 12,
+      },
+    }
+
+    const verification = verifyWorkbookReadbacks(
+      // @ts-expect-error exercising JS callers that bypass the check object type
+      [arrayBackedCheck(check)],
+      [{ target, value: 12 }],
+    )
+
+    expect(verification).toEqual({
+      status: 'failed',
+      checks: [],
+      issues: [
+        {
+          code: 'readback_invalid',
+          message: 'Workbook check at checks[0] is invalid',
+        },
+      ],
+    })
   })
 })

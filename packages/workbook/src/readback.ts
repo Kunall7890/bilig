@@ -165,7 +165,7 @@ function invalid<T>(message: string): DataValidation<T> {
 }
 
 function isRecord(value: unknown): value is object {
-  return typeof value === 'object' && value !== null
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function optionalDataValue(value: object, key: string, path: string): OptionalData {

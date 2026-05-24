@@ -704,6 +704,8 @@ handoff checklist without stitching multiple API calls together.
 `verifyWorkbookReadbacks` freezes the returned runtime proof verdict, generated
 checks, and readback issues. Formula/value readback proof is normalized before it
 is attached to passed checks.
+Readback proof objects, check objects, expectations, and formula labels must be
+record-shaped payloads, not arrays with attached fields.
 `checkRuntimeAdapter(planOrRequirements, adapter)` compares that checklist to an
 adapter shape and returns a plain valid/invalid result with missing capability
 issues. It accepts a live plan, transported plan data, or the output of
@@ -785,6 +787,9 @@ readbacks fail with `readback_unexpected`, and duplicate targets fail with
 canonicalized into no-leading-`=` proof, so agents do not have to special-case
 runtime formatting differences such as a leading equals sign, whitespace, or
 redundant parentheses.
+Readback and check proof objects must be record-shaped data; arrays with
+attached `target`, `value`, `formula`, or check fields are rejected before they
+can become proof.
 Run errors use the stable `WorkbookRunErrorCode` union. Agents and adapters can
 inspect the frozen `workbookRunErrorCodes` list or call
 `isWorkbookRunErrorCode(value)` before branching on a code. Runtime adapters
