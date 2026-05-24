@@ -16,7 +16,9 @@ describe('engine preserved pivot package deletion', () => {
     const exported = engine.exportSnapshot()
     expect(exported.sheets.map((sheet) => sheet.name)).toEqual(['Keep'])
     expect(pivotPartPaths(exported.workbook.metadata)).toEqual([
+      'xl/pivotCache/_rels/pivotCacheDefinition2.xml.rels',
       'xl/pivotCache/pivotCacheDefinition2.xml',
+      'xl/pivotCache/pivotCacheRecords2.xml',
       'xl/pivotTables/pivotTable2.xml',
     ])
     expect(pivotCacheIds(exported.workbook.metadata)).toEqual(['2'])
@@ -90,12 +92,36 @@ function preservedPivotPackageDeletionSnapshot(): WorkbookSnapshot {
               xml: '<pivotCacheDefinition><cacheSource type="worksheet"><worksheetSource ref="A1:D4" sheet="Data"/></cacheSource></pivotCacheDefinition>',
             },
             {
+              path: 'xl/pivotCache/_rels/pivotCacheDefinition1.xml.rels',
+              xml: [
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+                '<Relationship Id="rIdRecords1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheRecords" Target="pivotCacheRecords1.xml"/>',
+                '</Relationships>',
+              ].join(''),
+            },
+            {
+              path: 'xl/pivotCache/pivotCacheRecords1.xml',
+              xml: '<pivotCacheRecords count="1"><r><s v="deleted"/></r></pivotCacheRecords>',
+            },
+            {
               path: 'xl/pivotTables/pivotTable2.xml',
               xml: '<pivotTableDefinition name="KeepPivot" cacheId="2"><location ref="B2:C4"/></pivotTableDefinition>',
             },
             {
               path: 'xl/pivotCache/pivotCacheDefinition2.xml',
               xml: '<pivotCacheDefinition><cacheSource type="worksheet"><worksheetSource ref="A1:D4" sheet="Keep"/></cacheSource></pivotCacheDefinition>',
+            },
+            {
+              path: 'xl/pivotCache/_rels/pivotCacheDefinition2.xml.rels',
+              xml: [
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+                '<Relationship Id="rIdRecords2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheRecords" Target="pivotCacheRecords2.xml"/>',
+                '</Relationships>',
+              ].join(''),
+            },
+            {
+              path: 'xl/pivotCache/pivotCacheRecords2.xml',
+              xml: '<pivotCacheRecords count="1"><r><s v="keep"/></r></pivotCacheRecords>',
             },
           ],
           workbookPivotCachesXml:

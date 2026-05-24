@@ -250,9 +250,14 @@ export function rewritePreservedPivotPackageArtifactsForSheetDeletion(
 
   const deletedOnlyCacheIds = new Set([...deletedCacheIds].filter((cacheId) => !remainingCacheIds.has(cacheId)))
   const cacheDefinitionPathsToRemove = pivotCacheDefinitionPathsForCacheIds(pivotArtifacts, deletedOnlyCacheIds)
+  const cacheSidecarPathsToRemove = pivotCacheSidecarPathsForCacheDefinitions(pivotArtifacts, cacheDefinitionPathsToRemove)
   const nextParts = pivotArtifacts.parts.filter((part) => {
     const normalizedPath = normalizePivotPackagePath(part.path)
-    return !deletedPivotPartPaths.has(normalizedPath) && !cacheDefinitionPathsToRemove.has(normalizedPath)
+    return (
+      !deletedPivotPartPaths.has(normalizedPath) &&
+      !cacheDefinitionPathsToRemove.has(normalizedPath) &&
+      !cacheSidecarPathsToRemove.has(normalizedPath)
+    )
   })
   const nextWorkbookPivotCachesXml = removeWorkbookPivotCacheEntries(pivotArtifacts.workbookPivotCachesXml, deletedOnlyCacheIds)
   const nextWorkbookRelationships = pivotArtifacts.workbookRelationships?.filter((relationship) => {
@@ -651,6 +656,55 @@ function pivotCacheDefinitionPathsForCacheIds(
     const target = relationshipId ? cacheRelationshipTargetsById.get(relationshipId) : undefined
     if (cacheId && target && cacheIds.has(cacheId)) {
       output.add(target)
+    }
+  }
+  return output
+}
+
+function pivotCacheSidecarPathsForCacheDefinitions(
+  pivotArtifacts: NonNullable<WorkbookPreservedMetadataRecord['pivotArtifacts']>,
+  cacheDefinitionPaths: ReadonlySet<string>,
+): Set<string> {
+  if (cacheDefinitionPaths.size === 0) {
+    return new Set()
+  }
+  const partsByPath = new Map(pivotArtifacts.parts.map((part) => [normalizePivotPackagePath(part.path), part]))
+  const output = new Set<string>()
+  for (const cacheDefinitionPath of cacheDefinitionPaths) {
+    const relationshipPath = relationshipPartPathForPackagePart(cacheDefinitionPath)
+    output.add(relationshipPath)
+
+    const relationshipPart = partsByPath.get(relationshipPath)
+    if (relationshipPart) {
+      for (const targetPath of packageRelationshipTargetPaths(cacheDefinitionPath, relationshipPart.xml)) {
+        output.add(targetPath)
+      }
+    }
+
+    const cacheNumber = /\/pivotCacheDefinition(\d+)\.xml$/u.exec(cacheDefinitionPath)?.[1]
+    if (cacheNumber) {
+      output.add(`xl/pivotCache/pivotCacheRecords${cacheNumber}.xml`)
+    }
+  }
+  return output
+}
+
+function relationshipPartPathForPackagePart(partPath: string): string {
+  const normalizedPath = normalizePivotPackagePath(partPath)
+  const slashIndex = normalizedPath.lastIndexOf('/')
+  return slashIndex >= 0
+    ? `${normalizedPath.slice(0, slashIndex)}/_rels/${normalizedPath.slice(slashIndex + 1)}.rels`
+    : `_rels/${normalizedPath}.rels`
+}
+
+function packageRelationshipTargetPaths(basePartPath: string, relationshipsXml: string): Set<string> {
+  const output = new Set<string>()
+  for (const match of relationshipsXml.matchAll(/<((?:[A-Za-z_][\w.-]*:)?Relationship)\b([^>]*?)\/?>/gu)) {
+    const attributes = match[2] ?? ''
+    const target = readXmlAttribute(attributes, 'Target')
+    const targetMode = readXmlAttribute(attributes, 'TargetMode')
+    if (target && targetMode !== 'External') {
+      output.add(normalizePivotPackagePath(resolvePivotRelationshipTarget(basePartPath, target)))
     }
   }
   return output

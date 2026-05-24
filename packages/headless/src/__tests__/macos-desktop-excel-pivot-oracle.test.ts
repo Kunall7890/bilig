@@ -5,7 +5,7 @@ import { SpreadsheetEngine } from '@bilig/core'
 import { exportXlsx, importXlsx } from '@bilig/excel-import'
 import { isMacosExcelInstalled, runMacosExcelInspectionOracle, runMacosExcelStructuralOperationOracle } from '@bilig/excel-fixtures'
 import { ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
-import { strFromU8, unzipSync } from 'fflate'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
 import { WorkPaper } from '../index.js'
@@ -89,10 +89,15 @@ describe('macOS Desktop Excel pivot oracle', () => {
 
       const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-pivot-delete-oracle-')
       try {
-        const sourceBytes = exportXlsx(importedSourceBackedPivotSnapshot())
+        const sourceBytes = sourceBackedPivotWorkbookBytesWithCacheRecordsSidecar()
         const importedSource = importXlsx(sourceBytes, 'pivot-delete-source.xlsx').snapshot
         expect(pivotPackageSummary(importedSource)).toEqual({
-          pivotParts: ['xl/pivotCache/pivotCacheDefinition1.xml', 'xl/pivotTables/pivotTable1.xml'],
+          pivotParts: [
+            'xl/pivotCache/_rels/pivotCacheDefinition1.xml.rels',
+            'xl/pivotCache/pivotCacheDefinition1.xml',
+            'xl/pivotCache/pivotCacheRecords1.xml',
+            'xl/pivotTables/pivotTable1.xml',
+          ],
           workbookCacheIds: ['1'],
           workbookRelationshipTargets: ['pivotCache/pivotCacheDefinition1.xml'],
           pivotSheets: ['Pivot'],
@@ -226,6 +231,54 @@ function importedSourceBackedPivotSnapshot(): WorkbookSnapshot {
       },
     ],
   }
+}
+
+function sourceBackedPivotWorkbookBytesWithCacheRecordsSidecar(): Uint8Array {
+  const zip = unzipSync(exportXlsx(importedSourceBackedPivotSnapshot()))
+  const cacheDefinitionPath = 'xl/pivotCache/pivotCacheDefinition1.xml'
+  const cacheDefinitionBytes = zip[cacheDefinitionPath]
+  const contentTypesBytes = zip['[Content_Types].xml']
+  if (!cacheDefinitionBytes || !contentTypesBytes) {
+    throw new Error('Expected generated pivot cache package parts')
+  }
+
+  zip[cacheDefinitionPath] = strToU8(rewritePivotCacheRecordCount(strFromU8(cacheDefinitionBytes), 3))
+  zip['xl/pivotCache/_rels/pivotCacheDefinition1.xml.rels'] = strToU8(
+    [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+      '<Relationship Id="rIdRecords1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheRecords" Target="pivotCacheRecords1.xml"/>',
+      '</Relationships>',
+    ].join(''),
+  )
+  zip['xl/pivotCache/pivotCacheRecords1.xml'] = strToU8(
+    [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<pivotCacheRecords xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="3">',
+      '<r><s v="East"/><s v="priority"/><s v="Widget"/><n v="10"/></r>',
+      '<r><s v="West"/><s v="priority"/><s v="Widget"/><n v="7"/></r>',
+      '<r><s v="East"/><s v="priority"/><s v="Gizmo"/><n v="5"/></r>',
+      '</pivotCacheRecords>',
+    ].join(''),
+  )
+  zip['[Content_Types].xml'] = strToU8(addPivotCacheRecordsContentType(strFromU8(contentTypesBytes), 1))
+  return zipSync(zip)
+}
+
+function rewritePivotCacheRecordCount(xml: string, recordCount: number): string {
+  const withoutRecordCount = xml.replace(/\srecordCount=(["'])\d+\1/u, '')
+  return withoutRecordCount.replace(/<((?:[A-Za-z_][\w.-]*:)?pivotCacheDefinition)\b/u, `<$1 recordCount="${String(recordCount)}"`)
+}
+
+function addPivotCacheRecordsContentType(xml: string, cacheNumber: number): string {
+  const partName = `/xl/pivotCache/pivotCacheRecords${String(cacheNumber)}.xml`
+  if (xml.includes(`PartName="${partName}"`)) {
+    return xml
+  }
+  return xml.replace(
+    '</Types>',
+    `<Override PartName="${partName}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheRecords+xml"/></Types>`,
+  )
 }
 
 function pivotPackageSummary(snapshot: WorkbookSnapshot): {
