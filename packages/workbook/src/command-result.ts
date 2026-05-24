@@ -184,16 +184,6 @@ export function checkWorkbookCommandResult(value: unknown): WorkbookCommandResul
     })
   }
 
-  const accessorPath = firstAccessorPath(value, 'result')
-  if (accessorPath !== null) {
-    return Object.freeze({
-      status: 'invalid',
-      issues: Object.freeze([
-        commandResultIssue('invalid_command_result', accessorPath, 'Workbook command result must contain only data properties'),
-      ]),
-    })
-  }
-
   const issues: WorkbookCommandResultIssue[] = []
   const status = ownValue(value, 'status')
   if (!isWorkbookCommandResultStatus(status)) {

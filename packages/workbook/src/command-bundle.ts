@@ -94,16 +94,6 @@ export function checkWorkbookCommandBundle(value: unknown): WorkbookCommandBundl
     })
   }
 
-  const accessorPath = firstAccessorPath(value, 'bundle')
-  if (accessorPath !== null) {
-    return Object.freeze({
-      status: 'invalid',
-      issues: Object.freeze([
-        commandBundleIssue('invalid_bundle', accessorPath, 'Workbook command bundle must contain only data properties'),
-      ]),
-    })
-  }
-
   const issues: WorkbookCommandBundleIssue[] = []
   pushOptionalStringIssue(issues, ownValue(value, 'id'), 'id', 'bundle id')
   pushTargetRevisionIssue(issues, ownValue(value, 'targetRevision'))

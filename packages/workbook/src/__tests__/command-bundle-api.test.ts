@@ -150,6 +150,62 @@ describe('@bilig/workbook command bundle api', () => {
     expect(workbookCommandResultFor(check.bundle)).toEqual(check.result)
   })
 
+  it('ignores command bundle envelope scratch fields without invoking getters', () => {
+    let getterInvoked = false
+    const clean = {
+      id: 'bundle-scratch',
+      targetRevision: 42,
+      idempotencyKey: 'agent-run-scratch',
+      commands: [
+        {
+          id: 'preview-first',
+          kind: 'request',
+          request: previewRequest,
+        },
+      ],
+    }
+    const noisy = { ...clean, agentScratchpad: { ignored: true } }
+    Object.defineProperty(noisy, 'hiddenScratchpad', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    expect(checkWorkbookCommandBundle(noisy)).toEqual(checkWorkbookCommandBundle(clean))
+    expect(getterInvoked).toBe(false)
+  })
+
+  it('ignores command result envelope scratch fields without invoking getters', () => {
+    let getterInvoked = false
+    const bundle = normalizeWorkbookCommandBundle({
+      id: 'bundle-result-scratch',
+      targetRevision: 7,
+      idempotencyKey: 'bundle-result-scratch',
+      commands: [
+        {
+          id: 'bundle-result-scratch:0:inspect',
+          kind: 'request',
+          request: previewRequest,
+        },
+      ],
+    })
+    const clean = workbookCommandResultFor(bundle)
+    const noisy = { ...clean, agentScratchpad: { ignored: true } }
+    Object.defineProperty(noisy, 'hiddenScratchpad', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    expect(checkWorkbookCommandResult(noisy)).toEqual(checkWorkbookCommandResult(clean))
+    expect(normalizeWorkbookCommandResult(noisy)).toEqual(clean)
+    expect(getterInvoked).toBe(false)
+  })
+
   it('rejects bundles without revision, idempotency, or commands', () => {
     expect(checkWorkbookCommandBundle({})).toEqual({
       status: 'invalid',
@@ -961,8 +1017,13 @@ describe('@bilig/workbook command bundle api', () => {
       issues: [
         {
           code: 'invalid_command_result',
-          path: 'result.receipts[0].proof',
-          message: 'Workbook command result must contain only data properties',
+          path: 'receipts[0].proof',
+          message: 'Workbook command result receipts must contain only data properties',
+        },
+        {
+          code: 'invalid_receipt',
+          path: 'receipts[0].appliedOps',
+          message: 'Workbook command receipt applied status must include applied ops, changed ranges, undo metadata, or proof',
         },
       ],
     })
