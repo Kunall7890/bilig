@@ -1,3 +1,4 @@
+import { formulaShouldUseCachedUnsupportedFunctionValue } from '@bilig/core/headless-runtime'
 import type { WorkbookCalculationSettingsSnapshot, WorkbookFormulaAuditSnapshot } from '@bilig/protocol'
 import { formulaReferencesExternalWorkbook, formulaReferencesVolatileFunction } from './xlsx-import-warnings.js'
 
@@ -32,11 +33,15 @@ export function shouldUseCachedFormulaOpenMode(args: {
   if (calcChainCellCount === 0) {
     return false
   }
-  const worksheetFormulaEntries = args.formulaAudit?.formulas.filter((entry) => entry.context === 'worksheet-cell') ?? []
+  const formulaAudit = args.formulaAudit
+  const worksheetFormulaEntries = formulaAudit?.formulas.filter((entry) => entry.context === 'worksheet-cell') ?? []
+  if (formulaAuditHasRiskyDefinedNameFormula(formulaAudit)) {
+    return false
+  }
   return (
     worksheetFormulaEntries.length === args.formulaCellCount &&
     worksheetFormulaEntries.every((entry) => isSafeTrustedCachedWorksheetFormula(entry)) &&
-    calcChainExactlyCoversWorksheetFormulas(args.formulaAudit, worksheetFormulaEntries)
+    calcChainExactlyCoversWorksheetFormulas(formulaAudit, worksheetFormulaEntries)
   )
 }
 
@@ -48,6 +53,28 @@ function isSafeTrustedCachedWorksheetFormula(entry: WorkbookFormulaAuditSnapshot
     return false
   }
   return !formulaReferencesExternalWorkbook(entry.formula) && !formulaReferencesVolatileFunction(entry.formula)
+}
+
+function formulaAuditHasRiskyDefinedNameFormula(formulaAudit: WorkbookFormulaAuditSnapshot | undefined): boolean {
+  const definedNameEntries = formulaAudit?.formulas.filter((entry) => entry.context === 'defined-name') ?? []
+  if (definedNameEntries.length === 0) {
+    return false
+  }
+  const definedFormulaNames = new Set(
+    definedNameEntries.flatMap((entry) => {
+      const normalizedName = entry.name?.trim().toUpperCase()
+      return normalizedName ? [normalizedName] : []
+    }),
+  )
+  return definedNameEntries.some((entry) => formulaHasExcelOnlyCachedOpenSemantics(entry.formula, definedFormulaNames))
+}
+
+function formulaHasExcelOnlyCachedOpenSemantics(formula: string, definedFormulaNames: ReadonlySet<string>): boolean {
+  return (
+    formulaReferencesExternalWorkbook(formula) ||
+    formulaReferencesVolatileFunction(formula) ||
+    formulaShouldUseCachedUnsupportedFunctionValue(formula, definedFormulaNames)
+  )
 }
 
 function calcChainExactlyCoversWorksheetFormulas(

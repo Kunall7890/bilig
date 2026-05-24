@@ -9,22 +9,31 @@ function trustedAudit(
     readonly cacheStatus?: 'trustedCached' | 'staleRisk' | 'unsupportedCached' | 'externalSubstitution' | 'engineRecomputed' | 'missing'
     readonly formula?: string
     readonly formulaType?: string
+    readonly definedNames?: readonly { readonly name: string; readonly formula: string }[]
     readonly omitFormulaAddressAt?: number
     readonly mismatchedCalcChainAddressAt?: number
   } = {},
 ) {
   const calcChainCount = options.calcChainCount ?? count
   return {
-    formulas: Array.from({ length: count }, (_, index) => ({
-      context: 'worksheet-cell' as const,
-      clause: '18.3.1.40',
-      sheetName: 'Sheet1',
-      ...(options.omitFormulaAddressAt === index ? {} : { address: `A${index + 1}` }),
-      formula: options.formula ?? 'B1',
-      ...(options.formulaType ? { formulaType: options.formulaType } : {}),
-      cachedValue: 1,
-      cacheStatus: options.cacheStatus ?? ('trustedCached' as const),
-    })),
+    formulas: [
+      ...Array.from({ length: count }, (_, index) => ({
+        context: 'worksheet-cell' as const,
+        clause: '18.3.1.40',
+        sheetName: 'Sheet1',
+        ...(options.omitFormulaAddressAt === index ? {} : { address: `A${index + 1}` }),
+        formula: options.formula ?? 'B1',
+        ...(options.formulaType ? { formulaType: options.formulaType } : {}),
+        cachedValue: 1,
+        cacheStatus: options.cacheStatus ?? ('trustedCached' as const),
+      })),
+      ...(options.definedNames ?? []).map((entry) => ({
+        context: 'defined-name' as const,
+        clause: '3.2.3.1',
+        name: entry.name,
+        formula: entry.formula,
+      })),
+    ],
     calcChain: {
       packagePath: 'xl/calcChain.xml',
       cells: Array.from({ length: calcChainCount }, (_, index) => ({
@@ -142,5 +151,57 @@ describe('cached formula open mode policy', () => {
         }),
       ).toBe(false)
     }
+  })
+
+  it('does not pass through automatic cached formulas through risky defined-name indirection', () => {
+    const formulaCount = largeTrustedCachedFormulaOpenModeThreshold
+    expect(
+      shouldUseCachedFormulaOpenMode({
+        cachedFormulaValueCount: formulaCount,
+        formulaCellCount: formulaCount,
+        calculationSettings: { mode: 'automatic', compatibilityMode: 'excel-modern', calcId: 191029 },
+        formulaAudit: trustedAudit(formulaCount, {
+          formula: 'ExternalRate',
+          definedNames: [{ name: 'ExternalRate', formula: '[rates.xlsx]Sheet1!A1' }],
+        }),
+      }),
+    ).toBe(false)
+    expect(
+      shouldUseCachedFormulaOpenMode({
+        cachedFormulaValueCount: formulaCount,
+        formulaCellCount: formulaCount,
+        calculationSettings: { mode: 'automatic', compatibilityMode: 'excel-modern', calcId: 191029 },
+        formulaAudit: trustedAudit(formulaCount, {
+          formula: 'VolatileRate',
+          definedNames: [{ name: 'VolatileRate', formula: 'RAND()' }],
+        }),
+      }),
+    ).toBe(false)
+    expect(
+      shouldUseCachedFormulaOpenMode({
+        cachedFormulaValueCount: formulaCount,
+        formulaCellCount: formulaCount,
+        calculationSettings: { mode: 'automatic', compatibilityMode: 'excel-modern', calcId: 191029 },
+        formulaAudit: trustedAudit(formulaCount, {
+          formula: 'AddinRate',
+          definedNames: [{ name: 'AddinRate', formula: '_xldudf_RATE(A1)' }],
+        }),
+      }),
+    ).toBe(false)
+  })
+
+  it('allows large automatic cached formulas through safe defined-name indirection', () => {
+    const formulaCount = largeTrustedCachedFormulaOpenModeThreshold
+    expect(
+      shouldUseCachedFormulaOpenMode({
+        cachedFormulaValueCount: formulaCount,
+        formulaCellCount: formulaCount,
+        calculationSettings: { mode: 'automatic', compatibilityMode: 'excel-modern', calcId: 191029 },
+        formulaAudit: trustedAudit(formulaCount, {
+          formula: 'TaxRate*A1',
+          definedNames: [{ name: 'TaxRate', formula: '0.25' }],
+        }),
+      }),
+    ).toBe(true)
   })
 })
