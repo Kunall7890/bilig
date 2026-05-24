@@ -80,6 +80,8 @@ prepaid, or other business models in this package.
 - `checkInput`, `checkPlanData`, `verifyPlan`, `verifyModel`, and
   `verifyWorkbookReadbacks` return frozen verdict containers, generated issue
   arrays, and proof checks, so an inspected result stays stable.
+- Feature, command, receipt, result, requirements, and adapter check APIs return
+  frozen verdict containers too.
 
 The model contract is intentionally data-first. Refs are frozen. Helper methods
 such as `table.column("Amount")` and `rows.column("Amount")` are non-enumerable.
@@ -209,6 +211,8 @@ and UI contributions. The public package still stays data-only.
 - `checkWorkbookCommandReceipt(data)` validates transported receipt evidence
   before an agent trusts runtime extension output, including nested `proof` and
   `metadata` payload paths.
+- Every feature-handoff validator returns a frozen verdict container with frozen
+  issue arrays.
 - `normalizeWorkbookCommandReceipt(receipt)` and
   `workbookCommandReceiptOpsMatch(receipt)` give agents boring receipt proof
   after preview or apply. Receipt ops are normalized into frozen data and
@@ -655,7 +659,7 @@ is attached to passed checks.
 `checkRuntimeAdapter(planOrRequirements, adapter)` compares that checklist to an
 adapter shape and returns a plain valid/invalid result with missing capability
 issues. It accepts a live plan, transported plan data, or the output of
-`describeRuntimeRequirements`.
+`describeRuntimeRequirements`. Its verdict and issue arrays are frozen.
 `workbookPlanId(planOrData)` returns the stable id for the generic plan data an
 adapter is asked to apply, so runtime proof can be tied back to the exact model,
 action, refs, commands, ops, changes, and checks that were planned.

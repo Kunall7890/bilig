@@ -123,10 +123,10 @@ export type WorkbookFeaturePluginCheckResult =
 
 export function checkWorkbookFeaturePlugin(value: unknown): WorkbookFeaturePluginCheckResult {
   if (!isRecord(value)) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([featurePluginIssue('plugin', 'Workbook feature plugin must be an object')]),
-    }
+    })
   }
 
   const issues: WorkbookFeaturePluginIssue[] = []
@@ -154,22 +154,22 @@ export function checkWorkbookFeaturePlugin(value: unknown): WorkbookFeaturePlugi
   pushFeaturePluginLifecycleIssue(issues, ownValue(value, 'dispose'), 'dispose')
 
   if (issues.length > 0) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze(issues),
-    }
+    })
   }
   if (!isWorkbookFeaturePluginRecord(value)) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([featurePluginIssue('plugin', 'Workbook feature plugin is invalid')]),
-    }
+    })
   }
-  return {
+  return Object.freeze({
     status: 'valid',
     plugin: normalizedFeaturePlugin(value),
-    issues: Object.freeze([]),
-  }
+    issues: Object.freeze([] as const),
+  })
 }
 
 export function defineWorkbookFeaturePlugin(plugin: WorkbookFeaturePlugin): WorkbookFeaturePlugin {

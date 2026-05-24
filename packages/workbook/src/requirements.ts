@@ -599,10 +599,10 @@ function pushRequirementIssues(issues: WorkbookRuntimeRequirementsIssue[], value
 
 export function checkRuntimeRequirements(value: unknown): WorkbookRuntimeRequirementsCheckResult {
   if (!isRecord(value)) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([runtimeRequirementsIssue('requirements', 'Workbook runtime requirements must be an object')]),
-    }
+    })
   }
 
   const issues: WorkbookRuntimeRequirementsIssue[] = []
@@ -620,23 +620,23 @@ export function checkRuntimeRequirements(value: unknown): WorkbookRuntimeRequire
   }
 
   if (issues.length > 0) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze(issues),
-    }
+    })
   }
   if (!isRuntimeRequirements(value)) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([runtimeRequirementsIssue('requirements', 'Workbook runtime requirements are invalid')]),
-    }
+    })
   }
 
-  return {
+  return Object.freeze({
     status: 'valid',
     requirements: normalizeRuntimeRequirements(value),
-    issues: Object.freeze([]),
-  }
+    issues: Object.freeze([] as const),
+  })
 }
 
 function requirementsFor<Refs>(input: WorkbookExecutablePlan<Refs> | WorkbookRuntimeRequirements): WorkbookRuntimeRequirements {
@@ -736,15 +736,15 @@ export function checkRuntimeAdapter<Refs>(
     requiredCapabilities: Object.freeze(requiredCapabilities),
   }
   if (issues.length > 0) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       ...shared,
       issues: Object.freeze(issues),
-    }
+    })
   }
-  return {
+  return Object.freeze({
     status: 'valid',
     ...shared,
-    issues: Object.freeze([]),
-  }
+    issues: Object.freeze([] as const),
+  })
 }

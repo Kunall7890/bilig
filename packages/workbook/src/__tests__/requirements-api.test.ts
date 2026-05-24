@@ -163,11 +163,14 @@ describe('@bilig/workbook runtime requirements api', () => {
     }
     const requirements = JSON.parse(JSON.stringify(describeRuntimeRequirements(plan)))
 
-    expect(checkRuntimeRequirements(requirements)).toEqual({
+    const validRequirements = checkRuntimeRequirements(requirements)
+    expect(validRequirements).toEqual({
       status: 'valid',
       requirements,
       issues: [],
     })
+    expect(Object.isFrozen(validRequirements)).toBe(true)
+    expect(Object.isFrozen(validRequirements.issues)).toBe(true)
     expect(workbookRuntimeRequirementKinds).toEqual(['apply', 'read', 'verify'])
     expect(workbookRuntimeCapabilities).toEqual(['writeFormula', 'writeValue', 'format', 'clear', 'applyOp', 'read', 'verifyCheck'])
     expect(isWorkbookRuntimeRequirementKind('apply')).toBe(true)
@@ -236,6 +239,8 @@ describe('@bilig/workbook runtime requirements api', () => {
         },
       ]),
     })
+    expect(Object.isFrozen(result)).toBe(true)
+    expect(Object.isFrozen(result.issues)).toBe(true)
   })
 
   it('returns frozen normalized runtime requirements from transported data', () => {
@@ -417,7 +422,8 @@ describe('@bilig/workbook runtime requirements api', () => {
     const plan = buildWorkbookActionPlan(model, 'write')
     const transportedPlan = JSON.parse(JSON.stringify(toPlanData(plan)))
 
-    expect(checkRuntimeAdapter(transportedPlan, {})).toEqual({
+    const invalidAdapter = checkRuntimeAdapter(transportedPlan, {})
+    expect(invalidAdapter).toEqual({
       status: 'invalid',
       modelName: 'adapter-capability-model',
       actionName: 'write',
@@ -446,6 +452,10 @@ describe('@bilig/workbook runtime requirements api', () => {
         },
       ],
     })
+    expect(Object.isFrozen(invalidAdapter)).toBe(true)
+    expect(Object.isFrozen(invalidAdapter.requiredCapabilities)).toBe(true)
+    expect(Object.isFrozen(invalidAdapter.issues)).toBe(true)
+    expect(Object.isFrozen(invalidAdapter.issues[0])).toBe(true)
 
     expect(
       checkRuntimeAdapter(describeRuntimeRequirements(plan), {

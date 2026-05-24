@@ -58,6 +58,8 @@ flowchart LR
   - runtime adapter capability checks before mutation handoff
   - bundle-scoped receipt changed-range validation for command proof
   - duplicate command-id rejection for inspectable command bundles
+  - frozen command/feature/result/receipt validator verdicts for generic
+    runtime handoff
   - structured `checkRuntimeRequirements` diagnostics for transported adapter
     handoff payloads
   - own-enumerable-data runtime requirement arrays and nested ref arrays before

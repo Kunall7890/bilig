@@ -141,6 +141,9 @@ Validation and proof results follow the same rule: `checkInput`,
 `checkPlanData`, `verifyPlan`, `verifyModel`, and `verifyWorkbookReadbacks`
 return frozen verdict containers, arrays, generated issues, and readback-derived
 checks.
+Feature, command, receipt, result, and runtime-adapter validators return frozen
+verdicts too, so every public `{ status, issues }` handoff has the same
+inspect-once behavior.
 `planWorkbookAction` also validates that boundary before reading action metadata
 or running model code. Invalid manifests return a structured `invalid_model`
 failure instead of making the agent catch an accessor side effect.
@@ -365,13 +368,13 @@ Feature command requests are plain data for runtimes that expose workbook
 features to agents. Use `checkWorkbookFeaturePlugin(data)` before registering
 consumer-provided feature metadata. It returns stable path issues for commands,
 projection interceptors, UI contributions, dependencies, lifecycle hooks, and
-nested command input-description or UI metadata fields.
+nested command input-description or UI metadata fields. Its verdict is frozen.
 
 Use `checkWorkbookCommandRequest(data)` before dispatching a transported
 request. It returns stable path issues such as `featureId`, `commandId`,
 `category`, `mode`, and nested input paths like `input.rows[1]`, and
 `normalizeWorkbookCommandRequest` returns the frozen request data for the
-runtime. The exported command category, execution-mode, receipt-status,
+runtime. The check verdict is frozen. The exported command category, execution-mode, receipt-status,
 projection-point, and UI-slot lists let tool builders present and validate
 command contracts without importing a schema framework.
 
@@ -385,7 +388,7 @@ command ids when ids are supplied. Mutation requests and ops must say
 `scope.maxTouchedCells` is present, every destructive command must also declare
 `touchedRanges`; otherwise the scope limit would be unprovable. The validator
 returns a `WorkbookCommandResult` with normalized touched ranges and touched-cell
-count without importing `@bilig/core`.
+count without importing `@bilig/core`. The bundle check verdict is frozen.
 `@bilig/agent-api` uses this same public handoff to validate its richer
 app-owned `WorkbookAgentCommandBundle` before preview and authoritative apply,
 without making `@bilig/workbook` depend on agent runtime code.
@@ -405,6 +408,7 @@ without requiring `@bilig/core`. If a command declared `touchedRanges`, receipt
 `"accepted"` result is only the pre-runtime handoff acknowledgement: it must not
 carry settled proof fields such as receipts, changed ranges, revision, undo, or
 errors. Those fields are valid only on receipt-backed runtime result statuses.
+Command-result check verdicts are frozen.
 Use `checkWorkbookCommandResultForBundle(bundle, data)` when a stored or
 transported result must be mechanically checked against the bundle it claims to
 settle. It compares bundle id, target revision, idempotency key, command count,
@@ -421,7 +425,7 @@ It returns the same boring `{ status, issues }` shape for receipt fields such as
 `status`, `featureId`, `commandId`, `previewOps`, `appliedOps`, `undo`,
 `changedRanges`, `proof`, `metadata`, and `errors`. Feature manifests, command
 requests, and command receipts are validated from own payload fields only;
-prototype-inherited fields are ignored. Receipt ops are frozen after
+prototype-inherited fields are ignored. Receipt verdicts are frozen. Receipt ops are frozen after
 normalization, changed ranges must be own-field data, and manifest or receipt
 arrays must contain own enumerable data entries. Holes, non-enumerable entries,
 and accessor-backed ops, undo ops, ranges, or errors are rejected before any

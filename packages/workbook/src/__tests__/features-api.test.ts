@@ -82,11 +82,14 @@ describe('@bilig/workbook feature api', () => {
 
     expect(Object.isFrozen(request)).toBe(true)
     expect(isWorkbookCommandRequest(request)).toBe(true)
-    expect(checkWorkbookCommandRequest(request)).toEqual({
+    const requestCheck = checkWorkbookCommandRequest(request)
+    expect(requestCheck).toEqual({
       status: 'valid',
       request,
       issues: [],
     })
+    expect(Object.isFrozen(requestCheck)).toBe(true)
+    expect(Object.isFrozen(requestCheck.issues)).toBe(true)
     expect(request).toEqual({
       featureId: 'tables',
       commandId: 'tables.createFromSelection',
@@ -241,11 +244,14 @@ describe('@bilig/workbook feature api', () => {
     expect(Object.isFrozen(plugin)).toBe(true)
     expect(Object.isFrozen(plugin.commands)).toBe(true)
     expect(Object.isFrozen(plugin.commands[0]?.input)).toBe(true)
-    expect(checkWorkbookFeaturePlugin(plugin)).toEqual({
+    const pluginCheck = checkWorkbookFeaturePlugin(plugin)
+    expect(pluginCheck).toEqual({
       status: 'valid',
       plugin,
       issues: [],
     })
+    expect(Object.isFrozen(pluginCheck)).toBe(true)
+    expect(Object.isFrozen(pluginCheck.issues)).toBe(true)
     expect(plugin).toMatchObject({
       id: 'tables',
       version: '1.0.0',
@@ -580,11 +586,14 @@ describe('@bilig/workbook feature api', () => {
     })
 
     expect(isWorkbookCommandReceipt(receipt)).toBe(true)
-    expect(checkWorkbookCommandReceipt(receipt)).toEqual({
+    const receiptCheck = checkWorkbookCommandReceipt(receipt)
+    expect(receiptCheck).toEqual({
       status: 'valid',
       receipt,
       issues: [],
     })
+    expect(Object.isFrozen(receiptCheck)).toBe(true)
+    expect(Object.isFrozen(receiptCheck.issues)).toBe(true)
     expect(workbookCommandReceiptOpsMatch(receipt)).toBe(true)
     expect(Object.isFrozen(receipt.previewOps)).toBe(true)
     expect(Object.isFrozen(receipt.previewOps?.[0])).toBe(true)

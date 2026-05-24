@@ -93,8 +93,11 @@ describe('@bilig/workbook command bundle api', () => {
       throw new Error('expected valid command bundle')
     }
 
+    expect(Object.isFrozen(check)).toBe(true)
+    expect(Object.isFrozen(check.issues)).toBe(true)
     expect(Object.isFrozen(check.bundle)).toBe(true)
     expect(Object.isFrozen(check.bundle.commands)).toBe(true)
+    expect(Object.isFrozen(check.result)).toBe(true)
     expect(isWorkbookCommandBundle(check.bundle)).toBe(true)
     expect(check.bundle.commands.map((command) => command.id)).toEqual(['preview-first', 'write-second'])
     expect(check.bundle.commands).toMatchObject([
@@ -481,16 +484,23 @@ describe('@bilig/workbook command bundle api', () => {
       },
     })
     expect(Object.isFrozen(result)).toBe(true)
-    expect(checkWorkbookCommandResult(result)).toEqual({
+    const resultCheck = checkWorkbookCommandResult(result)
+    expect(resultCheck).toEqual({
       status: 'valid',
       result,
       issues: [],
     })
-    expect(checkWorkbookCommandResultForBundle(bundle, result)).toEqual({
+    expect(Object.isFrozen(resultCheck)).toBe(true)
+    expect(Object.isFrozen(resultCheck.issues)).toBe(true)
+
+    const bundleResultCheck = checkWorkbookCommandResultForBundle(bundle, result)
+    expect(bundleResultCheck).toEqual({
       status: 'valid',
       result,
       issues: [],
     })
+    expect(Object.isFrozen(bundleResultCheck)).toBe(true)
+    expect(Object.isFrozen(bundleResultCheck.issues)).toBe(true)
     expect(isWorkbookCommandResultForBundle(bundle, result)).toBe(true)
     expect(normalizeWorkbookCommandResult(result)).toEqual(result)
   })

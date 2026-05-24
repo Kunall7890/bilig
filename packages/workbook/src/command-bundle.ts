@@ -88,20 +88,20 @@ export function isWorkbookCommandBundleCommandKind(value: unknown): value is Wor
 
 export function checkWorkbookCommandBundle(value: unknown): WorkbookCommandBundleCheckResult {
   if (!isRecord(value)) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([commandBundleIssue('invalid_bundle', 'bundle', 'Workbook command bundle must be an object')]),
-    }
+    })
   }
 
   const accessorPath = firstAccessorPath(value, 'bundle')
   if (accessorPath !== null) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([
         commandBundleIssue('invalid_bundle', accessorPath, 'Workbook command bundle must contain only data properties'),
       ]),
-    }
+    })
   }
 
   const issues: WorkbookCommandBundleIssue[] = []
@@ -128,17 +128,17 @@ export function checkWorkbookCommandBundle(value: unknown): WorkbookCommandBundl
   }
 
   if (issues.length > 0) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze(issues),
-    }
+    })
   }
 
   const normalized = normalizeWorkbookCommandBundleData(value)
   const result = workbookCommandResultFor(normalized)
   const maxTouchedCells = normalized.scope?.maxTouchedCells
   if (maxTouchedCells !== undefined && result.touchedCellCount > maxTouchedCells) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([
         commandBundleIssue(
@@ -147,15 +147,15 @@ export function checkWorkbookCommandBundle(value: unknown): WorkbookCommandBundl
           `Workbook command bundle touches ${result.touchedCellCount} cells, exceeding scope.maxTouchedCells ${maxTouchedCells}`,
         ),
       ]),
-    }
+    })
   }
 
-  return {
+  return Object.freeze({
     status: 'valid',
     bundle: normalized,
     result,
-    issues: Object.freeze([]),
-  }
+    issues: Object.freeze([] as const),
+  })
 }
 
 export function normalizeWorkbookCommandBundle(value: unknown): WorkbookCommandBundle {

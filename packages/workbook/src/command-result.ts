@@ -178,20 +178,20 @@ export function workbookOpCommandReceipt(
 
 export function checkWorkbookCommandResult(value: unknown): WorkbookCommandResultCheckResult {
   if (!isRecord(value)) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([commandResultIssue('invalid_command_result', 'result', 'Workbook command result must be an object')]),
-    }
+    })
   }
 
   const accessorPath = firstAccessorPath(value, 'result')
   if (accessorPath !== null) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([
         commandResultIssue('invalid_command_result', accessorPath, 'Workbook command result must contain only data properties'),
       ]),
-    }
+    })
   }
 
   const issues: WorkbookCommandResultIssue[] = []
@@ -228,17 +228,17 @@ export function checkWorkbookCommandResult(value: unknown): WorkbookCommandResul
   }
 
   if (issues.length > 0) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze(issues),
-    }
+    })
   }
 
-  return {
+  return Object.freeze({
     status: 'valid',
     result: normalizeWorkbookCommandResultData(value),
-    issues: Object.freeze([]),
-  }
+    issues: Object.freeze([] as const),
+  })
 }
 
 export function normalizeWorkbookCommandResult(value: unknown): WorkbookCommandResult {
@@ -603,10 +603,10 @@ function commandResultIssue(code: WorkbookCommandResultIssueCode, path: string, 
 }
 
 function invalidCommandResult(issues: readonly WorkbookCommandResultIssue[]): WorkbookCommandResultCheckResult {
-  return {
+  return Object.freeze({
     status: 'invalid',
     issues: Object.freeze([...issues]),
-  }
+  })
 }
 
 function pushResultReceiptsIssues(issues: WorkbookCommandResultIssue[], value: unknown): void {

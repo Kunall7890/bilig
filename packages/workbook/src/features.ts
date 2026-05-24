@@ -262,10 +262,10 @@ function normalizedCommandRequest(value: unknown): WorkbookCommandRequest | null
 
 export function checkWorkbookCommandRequest(value: unknown): WorkbookCommandRequestCheckResult {
   if (!isRecord(value)) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([commandRequestIssue('request', 'Workbook command request must be an object')]),
-    }
+    })
   }
 
   const issues: WorkbookCommandRequestIssue[] = []
@@ -283,23 +283,23 @@ export function checkWorkbookCommandRequest(value: unknown): WorkbookCommandRequ
   pushCommandRequestInputIssue(issues, input)
 
   if (issues.length > 0) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze(issues),
-    }
+    })
   }
   const request = normalizedCommandRequest(value)
   if (request === null) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([commandRequestIssue('request', 'Workbook command request is invalid')]),
-    }
+    })
   }
-  return {
+  return Object.freeze({
     status: 'valid',
     request,
-    issues: Object.freeze([]),
-  }
+    issues: Object.freeze([] as const),
+  })
 }
 
 export function normalizeWorkbookCommandRequest(value: unknown): WorkbookCommandRequest {
@@ -664,10 +664,10 @@ function normalizedCommandReceipt(value: unknown): WorkbookCommandReceipt | null
 
 export function checkWorkbookCommandReceipt(value: unknown): WorkbookCommandReceiptCheckResult {
   if (!isRecord(value)) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([commandReceiptIssue('receipt', 'Workbook command receipt must be an object')]),
-    }
+    })
   }
 
   const issues: WorkbookCommandReceiptIssue[] = []
@@ -692,23 +692,23 @@ export function checkWorkbookCommandReceipt(value: unknown): WorkbookCommandRece
   }
 
   if (issues.length > 0) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze(issues),
-    }
+    })
   }
   const receipt = normalizedCommandReceipt(value)
   if (receipt === null) {
-    return {
+    return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([commandReceiptIssue('receipt', 'Workbook command receipt is invalid')]),
-    }
+    })
   }
-  return {
+  return Object.freeze({
     status: 'valid',
     receipt,
-    issues: Object.freeze([]),
-  }
+    issues: Object.freeze([] as const),
+  })
 }
 
 export function normalizeWorkbookCommandReceipt(receipt: unknown): WorkbookCommandReceipt {
