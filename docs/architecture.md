@@ -60,6 +60,8 @@ flowchart LR
     handoff payloads
   - own-enumerable-data runtime requirement arrays and nested ref arrays before
     adapter validation
+  - frozen normalized runtime requirement handoffs before agents trust adapter
+    checklists
   - feature command request validation before runtime-owned workbook extension
     dispatch
   - feature command receipt validation before agents trust runtime extension

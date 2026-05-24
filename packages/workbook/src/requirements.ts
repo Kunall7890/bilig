@@ -1,5 +1,5 @@
 import { describeRef, type WorkbookRefDescription } from './describe.js'
-import { isWorkbookRefData, type WorkbookRef } from './find.js'
+import { isWorkbookRefData, toWorkbookRefData, type WorkbookRef } from './find.js'
 import type { WorkbookActionCommand, WorkbookActionPlan } from './model.js'
 import type { WorkbookOp } from './ops.js'
 import { hydratePlanData, isHydratedPlan, type WorkbookExecutablePlan } from './plan-data.js'
@@ -114,6 +114,85 @@ function describedRef(ref: WorkbookRef | undefined): { readonly target: Workbook
 
 function describedRefs(refs: readonly WorkbookRef[] | undefined): { readonly refs: readonly WorkbookRefDescription[] } | {} {
   return refs === undefined || refs.length === 0 ? {} : { refs: refs.map(describeRef) }
+}
+
+function requiredStringValue(value: object, key: string): string {
+  const entry = ownValue(value, key)
+  if (typeof entry !== 'string') {
+    throw new Error(`Workbook runtime requirements ${key} must be a string`)
+  }
+  return entry
+}
+
+function optionalIndexValue(value: object, key: 'commandIndex' | 'checkIndex' | 'opIndex'): number | undefined {
+  if (!hasOwnValue(value, key)) {
+    return undefined
+  }
+  const entry = ownValue(value, key)
+  if (typeof entry !== 'number' || !Number.isInteger(entry) || entry < 0) {
+    throw new Error(`Workbook runtime requirement ${key} must be a non-negative integer`)
+  }
+  return entry
+}
+
+function optionalStringValue(value: object, key: 'opKind' | 'checkKind'): string | undefined {
+  if (!hasOwnValue(value, key)) {
+    return undefined
+  }
+  const entry = ownValue(value, key)
+  if (typeof entry !== 'string') {
+    throw new Error(`Workbook runtime requirement ${key} must be a string`)
+  }
+  return entry
+}
+
+function normalizedRefDescription(ref: unknown): WorkbookRefDescription {
+  if (!isWorkbookRefData(ref)) {
+    throw new Error('Workbook runtime requirement ref must be workbook ref data')
+  }
+  return toWorkbookRefData(ref)
+}
+
+function normalizeRuntimeRequirement(requirement: WorkbookRuntimeRequirement): WorkbookRuntimeRequirement {
+  const kind = ownValue(requirement, 'kind')
+  const capability = ownValue(requirement, 'capability')
+  if (!isWorkbookRuntimeRequirementKind(kind) || !isWorkbookRuntimeCapability(capability)) {
+    throw new Error('Workbook runtime requirement is invalid')
+  }
+
+  const commandIndex = optionalIndexValue(requirement, 'commandIndex')
+  const checkIndex = optionalIndexValue(requirement, 'checkIndex')
+  const opIndex = optionalIndexValue(requirement, 'opIndex')
+  const opKind = optionalStringValue(requirement, 'opKind')
+  const checkKind = optionalStringValue(requirement, 'checkKind')
+  const target = ownValue(requirement, 'target')
+  const refs = ownValue(requirement, 'refs')
+  const normalizedRefs = refs !== undefined && Array.isArray(refs) ? Object.freeze(refs.map(normalizedRefDescription)) : undefined
+
+  return Object.freeze({
+    kind,
+    capability,
+    ...(commandIndex !== undefined ? { commandIndex } : {}),
+    ...(checkIndex !== undefined ? { checkIndex } : {}),
+    ...(opIndex !== undefined ? { opIndex } : {}),
+    ...(opKind !== undefined ? { opKind } : {}),
+    ...(checkKind !== undefined ? { checkKind } : {}),
+    ...(target !== undefined ? { target: normalizedRefDescription(target) } : {}),
+    ...(normalizedRefs !== undefined ? { refs: normalizedRefs } : {}),
+    message: requiredStringValue(requirement, 'message'),
+  })
+}
+
+function normalizeRuntimeRequirements(requirements: WorkbookRuntimeRequirements): WorkbookRuntimeRequirements {
+  const entries = ownValue(requirements, 'requirements')
+  if (!arrayEveryData(entries, isRuntimeRequirement)) {
+    throw new Error('Workbook runtime requirements are invalid')
+  }
+  return Object.freeze({
+    modelName: requiredStringValue(requirements, 'modelName'),
+    actionName: requiredStringValue(requirements, 'actionName'),
+    requirements: Object.freeze(entries.map(normalizeRuntimeRequirement)),
+  })
 }
 
 function commandCapability(command: WorkbookActionCommand): WorkbookRuntimeCapability {
@@ -315,11 +394,11 @@ function describeLiveRuntimeRequirements<Refs>(plan: WorkbookActionPlan<Refs>): 
     }
   })
 
-  return {
+  return normalizeRuntimeRequirements({
     modelName: plan.modelName,
     actionName: plan.actionName,
     requirements,
-  }
+  })
 }
 
 export function describeRuntimeRequirements<Refs>(plan: WorkbookExecutablePlan<Refs>): WorkbookRuntimeRequirements {
@@ -555,7 +634,7 @@ export function checkRuntimeRequirements(value: unknown): WorkbookRuntimeRequire
 
   return {
     status: 'valid',
-    requirements: value,
+    requirements: normalizeRuntimeRequirements(value),
     issues: Object.freeze([]),
   }
 }

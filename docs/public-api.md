@@ -610,7 +610,9 @@ reject malformed adapter handoff data before checking runtime methods or
 starting mutation. Runtime requirement validation also ignores inherited fields;
 the adapter checklist has to be present as explicit payload data. Requirement
 arrays and nested ref arrays are data-only too: holes, non-enumerable entries,
-or accessor-backed entries are rejected without invoking getters.
+or accessor-backed entries are rejected without invoking getters. Valid runtime
+requirements are returned as frozen normalized data with caller-owned extra
+fields stripped before an agent or adapter trusts the checklist.
 
 `verifyPlan` gives agents a runtime-free consistency check before handoff. It
 first checks that the plan handoff itself is own data, then flags invalid action

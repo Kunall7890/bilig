@@ -134,6 +134,12 @@ describe('@bilig/workbook runtime requirements api', () => {
       },
     ])
     expect(JSON.parse(JSON.stringify(requirements))).toEqual(requirements)
+    expect(Object.isFrozen(requirements)).toBe(true)
+    expect(Object.isFrozen(requirements.requirements)).toBe(true)
+    expect(Object.isFrozen(requirements.requirements[0])).toBe(true)
+    expect(Object.isFrozen(requirements.requirements[0]?.target)).toBe(true)
+    expect(Object.isFrozen(requirements.requirements[0]?.refs)).toBe(true)
+    expect(Object.isFrozen(requirements.requirements[0]?.refs?.[0])).toBe(true)
   })
 
   it('validates transported runtime requirements with stable path issues', () => {
@@ -230,6 +236,56 @@ describe('@bilig/workbook runtime requirements api', () => {
         },
       ]),
     })
+  })
+
+  it('returns frozen normalized runtime requirements from transported data', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    const input = {
+      modelName: 'runtime-normalized-model',
+      actionName: 'seed',
+      ignored: 'caller-owned',
+      requirements: [
+        {
+          kind: 'apply',
+          capability: 'writeValue',
+          commandIndex: 0,
+          target,
+          message: 'Apply value write to Sheet1!A1',
+          ignored: 'caller-owned',
+        },
+      ],
+    }
+
+    const result = checkRuntimeRequirements(input)
+
+    expect(result.status).toBe('valid')
+    if (result.status !== 'valid') {
+      throw new Error('expected valid runtime requirements')
+    }
+    expect(result.requirements).toEqual({
+      modelName: 'runtime-normalized-model',
+      actionName: 'seed',
+      requirements: [
+        {
+          kind: 'apply',
+          capability: 'writeValue',
+          commandIndex: 0,
+          target,
+          message: 'Apply value write to Sheet1!A1',
+        },
+      ],
+    })
+    expect('ignored' in result.requirements).toBe(false)
+    expect('ignored' in result.requirements.requirements[0]).toBe(false)
+    expect(Object.isFrozen(result.requirements)).toBe(true)
+    expect(Object.isFrozen(result.requirements.requirements)).toBe(true)
+    expect(Object.isFrozen(result.requirements.requirements[0])).toBe(true)
+    expect(Object.isFrozen(result.requirements.requirements[0]?.target)).toBe(true)
+    expect(
+      Object.isFrozen(
+        result.requirements.requirements[0]?.target?.kind === 'range' ? result.requirements.requirements[0].target.range : undefined,
+      ),
+    ).toBe(true)
   })
 
   it('treats transported runtime requirement fields as own data, not inherited prototype data', () => {

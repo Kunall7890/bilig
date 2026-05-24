@@ -273,6 +273,10 @@ must be own enumerable data entries; holes, non-enumerable entries, or
 accessor-backed entries are rejected without running getters. Use
 `checkRuntimeAdapter(planOrRequirements, adapter)` when an agent wants to check
 `apply`, `read`, and `verifyChecks` coverage before calling the runtime.
+Runtime requirement descriptions are frozen normalized data too:
+`describeRuntimeRequirements` and `checkRuntimeRequirements` strip
+caller-owned extra fields and freeze the returned requirement tree, including
+nested refs.
 Check-only plans do not require `apply`; when runtime requirements
 contain only `read` or `verifyCheck`, `runWorkbookPlan` skips mutation and
 verifies the declared checks directly.
