@@ -35,12 +35,29 @@ export function syncRuntimePackageVersions(options: SyncRuntimePackageVersionsOp
 
   syncReleasePleaseManifestVersion(options.rootDir, version, updatedFiles)
   syncMcpServerVersions(options.rootDir, version, runtimePackages, updatedFiles)
+  syncDockerfileWorkpaperVersion(options.rootDir, version, updatedFiles)
 
   return {
     version,
     updatedFiles,
     updatedPackages: runtimePackages.map((runtimePackage) => runtimePackage.name),
   }
+}
+
+function syncDockerfileWorkpaperVersion(rootDir: string, version: string, updatedFiles: string[]): void {
+  const dockerfilePath = join(rootDir, 'Dockerfile')
+  const currentContent = readFileSync(dockerfilePath, 'utf8')
+  const versionArgPattern = /^ARG BILIG_WORKPAPER_VERSION=.*$/mu
+  if (!versionArgPattern.test(currentContent)) {
+    throw new Error('Dockerfile must include ARG BILIG_WORKPAPER_VERSION')
+  }
+
+  const nextContent = currentContent.replace(versionArgPattern, `ARG BILIG_WORKPAPER_VERSION=${version}`)
+  if (currentContent === nextContent) {
+    return
+  }
+  writeFileSync(dockerfilePath, nextContent)
+  updatedFiles.push(dockerfilePath)
 }
 
 function syncReleasePleaseManifestVersion(rootDir: string, version: string, updatedFiles: string[]): void {
