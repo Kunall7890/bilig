@@ -164,6 +164,7 @@ function createWorkflowRunStoreConnection(
   childRows: {
     readonly stepRows?: readonly QueryResultRow[]
     readonly artifactRows?: readonly QueryResultRow[]
+    readonly mutationProofRows?: readonly QueryResultRow[]
   } = {},
 ) {
   const queryable = new FakeQueryable(responders)
@@ -182,13 +183,27 @@ function createWorkflowRunStoreConnection(
     readonly actorUserId: string
     readonly threadId: string
   }[] = []
+  const workflowMutationProofInputs: {
+    readonly documentId: string
+    readonly actorUserId: string
+    readonly threadId: string
+  }[] = []
   return Object.assign(queryable, {
     workflowRunInputs,
     workflowStepInputs,
     workflowArtifactInputs,
+    workflowMutationProofInputs,
     async listWorkbookWorkflowRunRows(input: { readonly documentId: string; readonly actorUserId: string; readonly threadId: string }) {
       workflowRunInputs.push(input)
       return workflowRows
+    },
+    async listWorkbookWorkflowMutationProofRows(input: {
+      readonly documentId: string
+      readonly actorUserId: string
+      readonly threadId: string
+    }) {
+      workflowMutationProofInputs.push(input)
+      return childRows.mutationProofRows ?? []
     },
     async listWorkbookWorkflowStepRows(input: { readonly documentId: string; readonly actorUserId: string; readonly threadId: string }) {
       workflowStepInputs.push(input)
@@ -232,6 +247,37 @@ function createZeroWorkflowArtifactRow(run: ReturnType<typeof createWorkflowRun>
   }
 }
 
+function createWorkflowMutationProofRun(overrides: Partial<ReturnType<typeof createWorkflowRun>> = {}) {
+  return {
+    ...createWorkflowRun(),
+    summary: 'Workflow mutation verification incomplete at revision r2: Rendered readback did not prove the mutation.',
+    mutationExecuted: true,
+    verificationComplete: false,
+    mutationStatus: 'verification_incomplete' as const,
+    mutationReceipt: {
+      status: 'verification_incomplete',
+      revision: { before: 1, after: 2 },
+      renderedReadback: {
+        matched: false,
+        incompleteReason: 'Rendered readback did not prove the mutation.',
+      },
+    },
+    ...overrides,
+  }
+}
+
+function createZeroWorkflowMutationProofRow(run: ReturnType<typeof createWorkflowMutationProofRun>): QueryResultRow {
+  return {
+    runId: run.runId,
+    workbookId: 'doc-1',
+    mutationExecuted: run.mutationExecuted,
+    verificationComplete: run.verificationComplete,
+    mutationStatus: run.mutationStatus,
+    mutationReceipt: run.mutationReceipt,
+    updatedAtUnixMs: run.updatedAtUnixMs,
+  }
+}
+
 describe('workbook-workflow-run-store', () => {
   it('migrates legacy workflow run rows with artifact snapshot columns', async () => {
     const queryable = new FakeQueryable()
@@ -270,6 +316,7 @@ describe('workbook-workflow-run-store', () => {
         ),
       ).toBe(false)
     }
+    expect(queryable.calls.some((call) => call.text.includes('CREATE TABLE IF NOT EXISTS workbook_workflow_mutation_proof'))).toBe(true)
   })
 
   it('backfills and enforces workflow run step snapshots on legacy schemas', async () => {
@@ -351,6 +398,45 @@ describe('workbook-workflow-run-store', () => {
       createWorkflowRun().steps.length,
     )
     expect(queryable.calls.find((call) => call.text.includes('INSERT INTO workbook_workflow_artifact'))).toBeDefined()
+  })
+
+  it('persists workflow mutation proof in a durable child row instead of parent Zero columns', async () => {
+    const queryable = new FakeQueryable()
+    const run = createWorkflowMutationProofRun()
+
+    await upsertWorkbookWorkflowRun(queryable, {
+      documentId: 'doc-1',
+      run,
+    })
+
+    const parentInsert = queryable.calls.find((call) => call.text.includes('INSERT INTO workbook_workflow_run'))
+    for (const column of NON_REPLICATED_WORKFLOW_MUTATION_COLUMNS) {
+      expect(parentInsert?.text).not.toContain(column)
+    }
+    const proofInsert = queryable.calls.find((call) => call.text.includes('INSERT INTO workbook_workflow_mutation_proof'))
+    expect(proofInsert?.text).toContain('mutation_receipt_json')
+    expect(proofInsert?.values).toEqual([
+      run.runId,
+      'doc-1',
+      true,
+      false,
+      'verification_incomplete',
+      JSON.stringify(run.mutationReceipt),
+      run.updatedAtUnixMs,
+    ])
+  })
+
+  it('deletes durable workflow mutation proof when the latest snapshot has no proof', async () => {
+    const queryable = new FakeQueryable()
+
+    await upsertWorkbookWorkflowRun(queryable, {
+      documentId: 'doc-1',
+      run: createWorkflowRun({ mutationExecuted: null, verificationComplete: null, mutationStatus: null, mutationReceipt: null }),
+    })
+
+    const deleteQuery = queryable.calls.find((call) => call.text.includes('DELETE FROM workbook_workflow_mutation_proof'))
+    expect(deleteQuery?.text).toContain('WHERE run_id = $1')
+    expect(deleteQuery?.values).toEqual(['workflow-1'])
   })
 
   it('backfills durable child rows from legacy workflow snapshots before removing their authority', async () => {
@@ -467,6 +553,7 @@ describe('workbook-workflow-run-store', () => {
     expect(queryable.workflowRunInputs).toEqual([{ documentId: 'doc-1', actorUserId: 'casey@example.com', threadId: 'thr-1' }])
     expect(queryable.workflowStepInputs).toEqual([{ documentId: 'doc-1', actorUserId: 'casey@example.com', threadId: 'thr-1' }])
     expect(queryable.workflowArtifactInputs).toEqual([{ documentId: 'doc-1', actorUserId: 'casey@example.com', threadId: 'thr-1' }])
+    expect(queryable.workflowMutationProofInputs).toEqual([{ documentId: 'doc-1', actorUserId: 'casey@example.com', threadId: 'thr-1' }])
     expect(queryable.calls.some((call) => call.text.includes('FROM workbook_workflow_run AS run'))).toBe(false)
     expect(queryable.calls.some((call) => call.text.includes('FROM workbook_workflow_step AS step'))).toBe(false)
     expect(queryable.calls.some((call) => call.text.includes('FROM workbook_workflow_artifact AS artifact'))).toBe(false)
@@ -476,6 +563,33 @@ describe('workbook-workflow-run-store', () => {
         startedByUserId: 'alex@example.com',
         artifact: expect.objectContaining({
           title: 'Workbook Summary',
+        }),
+      }),
+    ])
+  })
+
+  it('hydrates durable workflow mutation proof after reload without parent Zero columns', async () => {
+    const run = createWorkflowMutationProofRun()
+    const queryable = createWorkflowRunStoreConnection([createZeroWorkflowRunRow(run)], [], {
+      stepRows: createZeroWorkflowStepRows(run),
+      artifactRows: [createZeroWorkflowArtifactRow(run)],
+      mutationProofRows: [createZeroWorkflowMutationProofRow(run)],
+    })
+
+    const runs = await listWorkbookThreadWorkflowRuns(queryable, {
+      documentId: 'doc-1',
+      actorUserId: 'alex@example.com',
+      threadId: 'thr-1',
+    })
+
+    expect(runs).toEqual([
+      expect.objectContaining({
+        runId: 'workflow-1',
+        mutationExecuted: true,
+        verificationComplete: false,
+        mutationStatus: 'verification_incomplete',
+        mutationReceipt: expect.objectContaining({
+          status: 'verification_incomplete',
         }),
       }),
     ])

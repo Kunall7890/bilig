@@ -15,6 +15,11 @@ export interface WorkbookWorkflowRunStoreConnection extends Queryable {
     readonly actorUserId: string
     readonly threadId: string
   }): Promise<readonly ZeroWorkbookWorkflowRunRow[]>
+  listWorkbookWorkflowMutationProofRows(input: {
+    readonly documentId: string
+    readonly actorUserId: string
+    readonly threadId: string
+  }): Promise<readonly QueryResultRow[]>
   listWorkbookWorkflowStepRows(input: {
     readonly documentId: string
     readonly actorUserId: string
@@ -63,9 +68,25 @@ interface WorkbookWorkflowArtifactRow extends QueryResultRow {
   readonly text?: unknown
 }
 
+interface WorkbookWorkflowMutationProofRow extends QueryResultRow {
+  readonly runId?: unknown
+  readonly mutationExecuted?: unknown
+  readonly verificationComplete?: unknown
+  readonly mutationStatus?: unknown
+  readonly mutationReceipt?: unknown
+  readonly updatedAtUnixMs?: unknown
+}
+
 interface DurableWorkflowArtifact {
   readonly artifact: WorkbookAgentWorkflowArtifact | null
   readonly invalid: boolean
+}
+
+interface DurableWorkflowMutationProof {
+  readonly mutationExecuted: boolean
+  readonly verificationComplete: boolean
+  readonly mutationStatus: NonNullable<WorkbookAgentWorkflowRun['mutationStatus']>
+  readonly mutationReceipt: unknown
 }
 
 interface DurableWorkflowStepRows {
@@ -76,11 +97,47 @@ interface DurableWorkflowArtifactRows {
   readonly byRunId: ReadonlyMap<string, DurableWorkflowArtifact>
 }
 
+interface DurableWorkflowMutationProofRows {
+  readonly byRunId: ReadonlyMap<string, DurableWorkflowMutationProof | null>
+}
+
 export function createWorkbookWorkflowRunStoreConnection(db: Queryable & ZeroQueryRunner): WorkbookWorkflowRunStoreConnection {
   return {
     query: (text, values) => db.query(text, values),
     listWorkbookWorkflowRunRows: ({ actorUserId, documentId, threadId }) =>
       db.run(queries.workbookWorkflowRun.byThread.fn({ args: { documentId, threadId }, ctx: { userID: actorUserId } })),
+    listWorkbookWorkflowMutationProofRows: async ({ actorUserId, documentId, threadId }) => {
+      const result = await db.query(
+        `
+          SELECT
+            proof.run_id AS "runId",
+            proof.mutation_executed AS "mutationExecuted",
+            proof.verification_complete AS "verificationComplete",
+            proof.mutation_status AS "mutationStatus",
+            proof.mutation_receipt_json AS "mutationReceipt",
+            proof.updated_at_unix_ms AS "updatedAtUnixMs"
+          FROM workbook_workflow_mutation_proof AS proof
+          INNER JOIN workbook_workflow_run AS run
+            ON run.run_id = proof.run_id
+           AND run.workbook_id = proof.workbook_id
+          WHERE proof.workbook_id = $1
+            AND run.thread_id = $2
+            AND (
+              run.actor_user_id = $3
+              OR EXISTS (
+                SELECT 1
+                FROM workbook_chat_thread AS thread
+                WHERE thread.workbook_id = run.workbook_id
+                  AND thread.thread_id = run.thread_id
+                  AND thread.scope = 'shared'
+              )
+            )
+          ORDER BY proof.run_id ASC
+        `,
+        [documentId, threadId, actorUserId],
+      )
+      return result.rows
+    },
     listWorkbookWorkflowStepRows: ({ actorUserId, documentId, threadId }) =>
       db.run(queries.workbookWorkflowStep.byThread.fn({ args: { documentId, threadId }, ctx: { userID: actorUserId } })),
     listWorkbookWorkflowArtifactRows: ({ actorUserId, documentId, threadId }) =>
@@ -189,12 +246,39 @@ function normalizeWorkflowArtifactRow(row: WorkbookWorkflowArtifactRow): {
   }
 }
 
+function normalizeWorkflowMutationProofRow(row: WorkbookWorkflowMutationProofRow): {
+  readonly runId: string
+  readonly proof: DurableWorkflowMutationProof
+} | null {
+  const updatedAtUnixMs = parseNonNegativeInteger(row.updatedAtUnixMs)
+  if (
+    typeof row.runId !== 'string' ||
+    typeof row.mutationExecuted !== 'boolean' ||
+    typeof row.verificationComplete !== 'boolean' ||
+    !isWorkflowMutationStatus(row.mutationStatus) ||
+    updatedAtUnixMs === null
+  ) {
+    return null
+  }
+  return {
+    runId: row.runId,
+    proof: {
+      mutationExecuted: row.mutationExecuted,
+      verificationComplete: row.verificationComplete,
+      mutationStatus: row.mutationStatus,
+      mutationReceipt: row.mutationReceipt ?? null,
+    },
+  }
+}
+
 function normalizeWorkflowRun(
   row: WorkbookWorkflowRunRow,
   hydrated: {
     readonly steps: WorkbookAgentWorkflowStep[] | null
     readonly artifact: WorkbookAgentWorkflowArtifact | null
+    readonly mutationProof: DurableWorkflowMutationProof | null
     readonly artifactInvalid?: boolean
+    readonly mutationProofInvalid?: boolean
   },
 ): WorkbookAgentWorkflowRun | null {
   const createdAtUnixMs = parseNonNegativeInteger(row.createdAtUnixMs)
@@ -217,11 +301,13 @@ function normalizeWorkflowRun(
     (completedAtUnixMs !== null && completedAtUnixMs < createdAtUnixMs) ||
     steps === null ||
     hydrated.artifactInvalid === true ||
+    hydrated.mutationProofInvalid === true ||
     (row.errorMessage !== null && row.errorMessage !== undefined && typeof row.errorMessage !== 'string') ||
     (artifact !== null && !isMarkdownArtifact(artifact))
   ) {
     return null
   }
+  const mutationProof = hydrated.mutationProof
   return {
     runId: row.runId,
     threadId: row.threadId,
@@ -236,10 +322,10 @@ function normalizeWorkflowRun(
     errorMessage: typeof row.errorMessage === 'string' ? row.errorMessage : null,
     steps,
     artifact,
-    mutationExecuted: typeof row.mutationExecuted === 'boolean' ? row.mutationExecuted : null,
-    verificationComplete: typeof row.verificationComplete === 'boolean' ? row.verificationComplete : null,
-    mutationStatus: isWorkflowMutationStatus(row.mutationStatus) ? row.mutationStatus : null,
-    mutationReceipt: row.mutationReceipt ?? null,
+    mutationExecuted: mutationProof?.mutationExecuted ?? null,
+    verificationComplete: mutationProof?.verificationComplete ?? null,
+    mutationStatus: mutationProof?.mutationStatus ?? null,
+    mutationReceipt: mutationProof?.mutationReceipt ?? null,
   }
 }
 
@@ -345,6 +431,38 @@ function loadDurableWorkflowArtifacts(rows: readonly QueryResultRow[], runIds: R
   }
 }
 
+function loadDurableWorkflowMutationProofs(rows: readonly QueryResultRow[], runIds: ReadonlySet<string>): DurableWorkflowMutationProofRows {
+  if (runIds.size === 0) {
+    return {
+      byRunId: new Map(),
+    }
+  }
+  const proofsByRunId = new Map<string, DurableWorkflowMutationProof | null>()
+  for (const row of rows) {
+    const normalized = normalizeWorkflowMutationProofRow({
+      runId: row['runId'],
+      mutationExecuted: row['mutationExecuted'],
+      verificationComplete: row['verificationComplete'],
+      mutationStatus: row['mutationStatus'],
+      mutationReceipt: row['mutationReceipt'],
+      updatedAtUnixMs: row['updatedAtUnixMs'],
+    })
+    if (!normalized) {
+      if (typeof row['runId'] === 'string') {
+        proofsByRunId.set(row['runId'], null)
+      }
+      continue
+    }
+    if (!runIds.has(normalized.runId)) {
+      continue
+    }
+    proofsByRunId.set(normalized.runId, normalized.proof)
+  }
+  return {
+    byRunId: proofsByRunId,
+  }
+}
+
 export async function ensureWorkbookWorkflowRunSchema(db: Queryable): Promise<void> {
   await ensureZeroSchemaTable(db, 'workbook_workflow_run')
   await ensureZeroSchemaTable(db, 'workbook_workflow_step', {
@@ -353,6 +471,19 @@ export async function ensureWorkbookWorkflowRunSchema(db: Queryable): Promise<vo
     },
   })
   await ensureZeroSchemaTable(db, 'workbook_workflow_artifact')
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS workbook_workflow_mutation_proof (
+      run_id TEXT PRIMARY KEY,
+      workbook_id TEXT NOT NULL,
+      mutation_executed BOOLEAN NOT NULL,
+      verification_complete BOOLEAN NOT NULL,
+      mutation_status TEXT NOT NULL CHECK (
+        mutation_status IN ('applied', 'staged', 'queued', 'failed', 'verification_incomplete')
+      ),
+      mutation_receipt_json JSONB,
+      updated_at_unix_ms BIGINT NOT NULL
+    )
+  `)
   await ensureDefaultedNotNullColumn(db, {
     tableName: 'workbook_workflow_run',
     columnName: 'steps_json',
@@ -448,6 +579,10 @@ export async function ensureWorkbookWorkflowRunSchema(db: Queryable): Promise<vo
   await db.query(`
     CREATE INDEX IF NOT EXISTS workbook_workflow_artifact_run_idx
       ON workbook_workflow_artifact (workbook_id, run_id)
+  `)
+  await db.query(`
+    CREATE INDEX IF NOT EXISTS workbook_workflow_mutation_proof_run_idx
+      ON workbook_workflow_mutation_proof (workbook_id, run_id)
   `)
 }
 
@@ -572,11 +707,56 @@ async function persistWorkbookWorkflowRun(
         input.run.updatedAtUnixMs,
       ],
     )
+  } else {
+    await db.query(
+      `
+        DELETE FROM workbook_workflow_artifact
+        WHERE run_id = $1
+      `,
+      [input.run.runId],
+    )
+  }
+  if (
+    typeof input.run.mutationExecuted === 'boolean' &&
+    typeof input.run.verificationComplete === 'boolean' &&
+    isWorkflowMutationStatus(input.run.mutationStatus)
+  ) {
+    await db.query(
+      `
+        INSERT INTO workbook_workflow_mutation_proof (
+          run_id,
+          workbook_id,
+          mutation_executed,
+          verification_complete,
+          mutation_status,
+          mutation_receipt_json,
+          updated_at_unix_ms
+        )
+        VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
+        ON CONFLICT (run_id)
+        DO UPDATE SET
+          workbook_id = EXCLUDED.workbook_id,
+          mutation_executed = EXCLUDED.mutation_executed,
+          verification_complete = EXCLUDED.verification_complete,
+          mutation_status = EXCLUDED.mutation_status,
+          mutation_receipt_json = EXCLUDED.mutation_receipt_json,
+          updated_at_unix_ms = EXCLUDED.updated_at_unix_ms
+      `,
+      [
+        input.run.runId,
+        input.documentId,
+        input.run.mutationExecuted,
+        input.run.verificationComplete,
+        input.run.mutationStatus,
+        JSON.stringify(input.run.mutationReceipt ?? null),
+        input.run.updatedAtUnixMs,
+      ],
+    )
     return
   }
   await db.query(
     `
-      DELETE FROM workbook_workflow_artifact
+      DELETE FROM workbook_workflow_mutation_proof
       WHERE run_id = $1
     `,
     [input.run.runId],
@@ -595,9 +775,14 @@ export async function listWorkbookThreadWorkflowRuns(
   const rows = (await db.listWorkbookWorkflowRunRows(input)).map(toWorkflowRunRow)
   const runIds = rows.flatMap((row) => (typeof row.runId === 'string' ? [row.runId] : []))
   const selectedRunIds = new Set(runIds)
-  const [stepRows, artifactRows] = await Promise.all([db.listWorkbookWorkflowStepRows(input), db.listWorkbookWorkflowArtifactRows(input)])
+  const [stepRows, artifactRows, mutationProofRows] = await Promise.all([
+    db.listWorkbookWorkflowStepRows(input),
+    db.listWorkbookWorkflowArtifactRows(input),
+    db.listWorkbookWorkflowMutationProofRows(input),
+  ])
   const durableSteps = loadDurableWorkflowSteps(stepRows, selectedRunIds)
   const durableArtifacts = loadDurableWorkflowArtifacts(artifactRows, selectedRunIds)
+  const durableMutationProofs = loadDurableWorkflowMutationProofs(mutationProofRows, selectedRunIds)
   const limit = input.limit ?? 20
   const runs: WorkbookAgentWorkflowRun[] = []
   for (const row of rows) {
@@ -605,10 +790,13 @@ export async function listWorkbookThreadWorkflowRuns(
     const hydrated: {
       steps: WorkbookAgentWorkflowStep[] | null
       artifact: WorkbookAgentWorkflowArtifact | null
+      mutationProof: DurableWorkflowMutationProof | null
       artifactInvalid?: boolean
+      mutationProofInvalid?: boolean
     } = {
       steps: null,
       artifact: null,
+      mutationProof: null,
     }
     if (runId) {
       hydrated.steps = durableSteps.byRunId.get(runId) ?? null
@@ -616,6 +804,10 @@ export async function listWorkbookThreadWorkflowRuns(
       if (durableArtifact) {
         hydrated.artifact = durableArtifact.artifact
         hydrated.artifactInvalid = durableArtifact.invalid
+      }
+      if (durableMutationProofs.byRunId.has(runId)) {
+        hydrated.mutationProof = durableMutationProofs.byRunId.get(runId) ?? null
+        hydrated.mutationProofInvalid = hydrated.mutationProof === null
       }
     }
     const run = normalizeWorkflowRun(row, hydrated)
