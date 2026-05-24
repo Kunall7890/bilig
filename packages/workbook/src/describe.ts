@@ -236,7 +236,7 @@ export interface WorkbookRunErrorDescription {
 export function describeModel<Refs, Actions extends WorkbookActionMap<Refs>>(
   model: WorkbookModel<Refs, Actions>,
 ): WorkbookModelDescription {
-  return inspectModel(model)
+  return freezeDescriptionData(inspectModel(model))
 }
 
 interface WorkbookDataDescriptor<T> {
@@ -268,6 +268,23 @@ function requiredOwnDataValue<T extends object, K extends keyof T>(value: T, key
     throw new Error(`Workbook description ${path} must be a data property`)
   }
   return data
+}
+
+function freezeDescriptionData<T>(value: T, seen = new WeakSet<object>()): T {
+  if (typeof value !== 'object' || value === null) {
+    return value
+  }
+  if (seen.has(value)) {
+    return value
+  }
+  seen.add(value)
+  Object.values(Object.getOwnPropertyDescriptors(value)).forEach((descriptor) => {
+    if ('value' in descriptor) {
+      freezeDescriptionData(descriptor.value, seen)
+    }
+  })
+  Object.freeze(value)
+  return value
 }
 
 function mapArrayData<T, Result>(
@@ -399,19 +416,19 @@ function describeRowsRef(ref: WorkbookRowsRef): WorkbookRowsRefDescription {
 
 export function describeRef(ref: WorkbookRef): WorkbookRefDescription {
   if (hasRefKind(ref, 'range')) {
-    return describeRangeRef(ref)
+    return freezeDescriptionData(describeRangeRef(ref))
   }
   if (hasRefKind(ref, 'name')) {
-    return describeNameRef(ref)
+    return freezeDescriptionData(describeNameRef(ref))
   }
   if (hasRefKind(ref, 'table')) {
-    return describeTableRef(ref)
+    return freezeDescriptionData(describeTableRef(ref))
   }
   if (hasRefKind(ref, 'column')) {
-    return describeColumnRef(ref)
+    return freezeDescriptionData(describeColumnRef(ref))
   }
   if (hasRefKind(ref, 'rows')) {
-    return describeRowsRef(ref)
+    return freezeDescriptionData(describeRowsRef(ref))
   }
   throw new Error(`Unsupported workbook ref kind: ${String(requiredOwnDataValue(ref, 'kind', 'ref.kind'))}`)
 }
@@ -532,7 +549,7 @@ function describeExpectation(expectation: WorkbookCheckExpectation): WorkbookChe
 
 export function describePlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookActionPlanDescription {
   const input = ownDataValue(plan, 'input', 'plan.input')
-  return {
+  return freezeDescriptionData({
     modelName: requiredOwnDataValue(plan, 'modelName', 'plan.modelName'),
     actionName: requiredOwnDataValue(plan, 'actionName', 'plan.actionName'),
     ...(input !== undefined ? { input: cloneDescriptionData(input, 'plan.input') } : {}),
@@ -543,7 +560,7 @@ export function describePlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookActi
     ),
     changed: mapArrayData(requiredOwnDataValue(plan, 'changed', 'plan.changed'), 'plan.changed', describeChange),
     checks: mapArrayData(requiredOwnDataValue(plan, 'checks', 'plan.checks'), 'plan.checks', describeCheck),
-  }
+  })
 }
 
 function describeError(error: WorkbookRunErrorDescription): WorkbookRunErrorDescription {
@@ -634,20 +651,20 @@ function hasRunResultStatus<K extends WorkbookRunResult['status']>(
 
 export function describePlanResult<Refs>(result: WorkbookActionPlanResult<Refs>): WorkbookActionPlanResultDescription {
   if (hasPlanResultStatus(result, 'planned')) {
-    return {
+    return freezeDescriptionData({
       status: 'planned',
       plan: describePlan(requiredOwnDataValue(result, 'plan', 'result.plan')),
-    }
+    })
   }
   const input = ownDataValue(result, 'input', 'result.input')
-  return {
+  return freezeDescriptionData({
     status: 'failed',
     modelName: requiredOwnDataValue(result, 'modelName', 'result.modelName'),
     actionName: requiredOwnDataValue(result, 'actionName', 'result.actionName'),
     ...(input !== undefined ? { input: cloneDescriptionData(input, 'result.input') } : {}),
     errors: mapArrayData(requiredOwnDataValue(result, 'errors', 'result.errors'), 'result.errors', describeError),
     checks: mapArrayData(requiredOwnDataValue(result, 'checks', 'result.checks'), 'result.checks', describeCheck),
-  }
+  })
 }
 
 export function describeRunResult(result: WorkbookRunResult): WorkbookRunResultDescription {
@@ -655,16 +672,16 @@ export function describeRunResult(result: WorkbookRunResult): WorkbookRunResultD
   const undo = ownDataValue(result, 'undo', 'result.undo')
   const unverified = ownDataValue(result, 'unverified', 'result.unverified')
   if (hasRunResultStatus(result, 'done')) {
-    return {
+    return freezeDescriptionData({
       status: 'done',
       ...(apply !== undefined ? { apply: describeApply(apply) } : {}),
       changed: mapArrayData(requiredOwnDataValue(result, 'changed', 'result.changed'), 'result.changed', describeChange),
       checks: mapArrayData(requiredOwnDataValue(result, 'checks', 'result.checks'), 'result.checks', describeCheck),
       ...(undo !== undefined ? { undo: describeUndo(undo) } : {}),
       ...(unverified !== undefined ? { unverified: mapArrayData(unverified, 'result.unverified', describeUnverified) } : {}),
-    }
+    })
   }
-  return {
+  return freezeDescriptionData({
     status: 'failed',
     errors: mapArrayData(requiredOwnDataValue(result, 'errors', 'result.errors'), 'result.errors', describeError),
     ...(apply !== undefined ? { apply: describeApply(apply) } : {}),
@@ -672,5 +689,5 @@ export function describeRunResult(result: WorkbookRunResult): WorkbookRunResultD
     checks: mapArrayData(requiredOwnDataValue(result, 'checks', 'result.checks'), 'result.checks', describeCheck),
     ...(undo !== undefined ? { undo: describeUndo(undo) } : {}),
     ...(unverified !== undefined ? { unverified: mapArrayData(unverified, 'result.unverified', describeUnverified) } : {}),
-  }
+  })
 }

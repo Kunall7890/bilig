@@ -34,6 +34,7 @@ flowchart LR
   - data-only ref array traversal and known-field ref cloning without
     enumerable-property spread
   - frozen plan refs containers with `refsUsed` verification
+  - frozen JSON-safe descriptions for model/ref/plan/result inspection
   - transported plan data through `toPlanData`, `hydratePlanData`, and
     `verifyPlanData`
   - structured `checkPlanData` diagnostics for JSON handoff payloads

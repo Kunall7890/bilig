@@ -133,6 +133,10 @@ getter can run.
 `inspectModel` and `describeModel` use the same manifest boundary, so model
 names, descriptions, action maps, and action metadata can be inspected without
 triggering hidden getters.
+The description layer is frozen too: `describeRef`, `describePlan`,
+`describePlanResult`, and `describeRunResult` return JSON-safe objects whose
+nested refs, commands, checks, apply proof, undo ops, and errors cannot be
+mutated after an agent has inspected them.
 `planWorkbookAction` also validates that boundary before reading action metadata
 or running model code. Invalid manifests return a structured `invalid_model`
 failure instead of making the agent catch an accessor side effect.

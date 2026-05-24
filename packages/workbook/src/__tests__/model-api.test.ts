@@ -879,6 +879,24 @@ describe('@bilig/workbook model api', () => {
     })
     expect(JSON.parse(JSON.stringify(described))).toEqual(described)
     expect('refs' in described).toBe(false)
+    expect(Object.isFrozen(described)).toBe(true)
+    expect(Object.isFrozen(described.refsUsed)).toBe(true)
+    expect(Object.isFrozen(described.refsUsed[0])).toBe(true)
+    expect(Object.isFrozen(described.commands)).toBe(true)
+    const command = described.commands[0]
+    expect(command?.kind).toBe('writeFormula')
+    if (command?.kind !== 'writeFormula') {
+      throw new Error('expected write formula command description')
+    }
+    expect(Object.isFrozen(command)).toBe(true)
+    expect(Object.isFrozen(command.inputs)).toBe(true)
+    expect(Object.isFrozen(command.inputs[0])).toBe(true)
+    expect(Object.isFrozen(command.labels)).toBe(true)
+    expect(Object.isFrozen(command.labels[0])).toBe(true)
+    expect(Object.isFrozen(described.ops)).toBe(true)
+    expect(Object.isFrozen(described.ops[0])).toBe(true)
+    expect(Object.isFrozen(described.changed[0])).toBe(true)
+    expect(Object.isFrozen(described.checks[0])).toBe(true)
   })
 
   it('rejects hidden behavior in agent-readable descriptions without invoking getters', () => {
@@ -1337,6 +1355,10 @@ describe('@bilig/workbook model api', () => {
       hasChecks: true,
     })
     expect(JSON.parse(JSON.stringify(description))).toEqual(description)
+    expect(Object.isFrozen(description)).toBe(true)
+    expect(Object.isFrozen(description.actions)).toBe(true)
+    expect(Object.isFrozen(description.actionDetails)).toBe(true)
+    expect(Object.isFrozen(description.actionDetails[0])).toBe(true)
   })
 
   it('returns structured planning failures instead of forcing agents to catch exceptions', () => {
@@ -1669,5 +1691,11 @@ describe('@bilig/workbook model api', () => {
       ],
     })
     expect(JSON.parse(JSON.stringify(described))).toEqual(described)
+    expect(Object.isFrozen(described)).toBe(true)
+    expect(Object.isFrozen(described.errors)).toBe(true)
+    expect(Object.isFrozen(described.errors[0])).toBe(true)
+    expect(Object.isFrozen(described.checks)).toBe(true)
+    expect(Object.isFrozen(described.checks[0])).toBe(true)
+    expect(Object.isFrozen(described.checks[0]?.target)).toBe(true)
   })
 })

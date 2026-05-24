@@ -441,6 +441,11 @@ describe('@bilig/workbook run api', () => {
       ],
     })
     expect(JSON.parse(JSON.stringify(described))).toEqual(described)
+    expect(Object.isFrozen(described)).toBe(true)
+    expect(Object.isFrozen(described.changed)).toBe(true)
+    expect(Object.isFrozen(described.checks)).toBe(true)
+    expect(Object.isFrozen(described.checks[0])).toBe(true)
+    expect(Object.isFrozen(described.checks[0]?.target)).toBe(true)
   })
 
   it('rejects hidden behavior in run result descriptions without invoking getters', async () => {
@@ -1228,6 +1233,13 @@ describe('@bilig/workbook run api', () => {
       ],
     })
     expect(JSON.parse(JSON.stringify(described))).toEqual(described)
+    expect(Object.isFrozen(described)).toBe(true)
+    expect(Object.isFrozen(described.errors)).toBe(true)
+    expect(Object.isFrozen(described.errors[0])).toBe(true)
+    expect(Object.isFrozen(described.apply)).toBe(true)
+    expect(Object.isFrozen(described.checks)).toBe(true)
+    expect(Object.isFrozen(described.checks[0])).toBe(true)
+    expect(Object.isFrozen(described.checks[0]?.target)).toBe(true)
   })
 
   it('fails before apply when expected readback requires a missing reader', async () => {

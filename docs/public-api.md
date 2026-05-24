@@ -67,8 +67,9 @@ prepaid, or other business models in this package.
   including `invalid_model` when the supplied model manifest is not data-safe.
 - `verifyPlan` proves static consistency without importing or starting an
   engine.
-- `describeModel`, `describePlan`, and `describePlanResult` return JSON-safe
-  objects for logs, approvals, tools, and tests.
+- `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, and
+  `describeRunResult` return frozen JSON-safe objects for logs, approvals,
+  tools, and tests.
 - `toPlanData` returns JSON-safe plan data for runtime handoff.
 - `checkPlanData` returns structured path-based issues for transported plan
   payloads before hydration.
@@ -572,6 +573,10 @@ For agent logs, approvals, tests, and runtime handoff, `describeRef` and
 `describePlan` produce JSON-safe descriptions of refs and action plans. The
 descriptions preserve generic action input and workbook intent while removing
 consumer-private `refs` object shape and helper methods.
+Description outputs are frozen all the way down, including nested refs, command
+descriptions, check proof, apply proof, undo ops, and error arrays, so an agent
+can inspect them once without later caller-side mutation changing the same
+object.
 Those descriptions are real transport data, not screenshots or UI state:
 `isWorkbookRefData` validates ref payloads, `hydrateWorkbookRefs` restores
 local helper methods after JSON transport, and `toPlanData` makes a full plan
@@ -595,7 +600,8 @@ getters.
 failed action planning results.
 `describeRunResult` applies the same JSON-safe description layer after
 execution, preserving `done`/`failed` status, changed summaries, checks, errors,
-and undo ops while removing ref helper functions from the public result.
+and undo ops while removing ref helper functions from the public result. The
+returned run description is frozen before it crosses the agent boundary.
 `describeRuntimeRequirements(plan)` gives agents a JSON-safe adapter checklist
 for the same plan or transported plan data: which generic commands must be applied, which readbacks are
 needed, and which checks need proof. It stays generic, with capabilities such
