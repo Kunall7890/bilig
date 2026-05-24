@@ -206,13 +206,8 @@ export async function requireSharedPublicDocsDiscovery(args: {
       'examples/headless-workpaper#subscription-mrr-forecast',
     ],
   )
-  requireDocumentsInclude(
-    [
-      { path: 'README.md', content: args.readme },
-      { path: 'docs/llms.txt', content: args.llms },
-    ],
-    ['npm exec --package @bilig/workpaper@'],
-  )
+  requireDocumentIncludes({ path: 'README.md', content: args.readme }, ['npm exec --package @bilig/workpaper --'])
+  requireDocumentIncludes({ path: 'docs/llms.txt', content: args.llms }, ['npm exec --package @bilig/workpaper@'])
   requireDocumentIncludes({ path: 'packages/headless/README.md', content: args.headlessReadme }, ['npm exec --package @bilig/headless@'])
 
   requireDocumentsInclude(

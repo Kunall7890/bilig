@@ -681,7 +681,7 @@ for (const required of [
   requireIncludes(npmProvenancePackageTrustDoc, required, 'docs/npm-provenance-package-trust.md')
 }
 requireIncludes(readme, `@bilig/headless@${headlessPackageVersion}`, 'README.md')
-requireIncludes(readme, 'npm view @bilig/headless@latest version dist.attestations dist.signatures --json', 'README.md')
+requireIncludes(readme, 'npm view @bilig/headless version dist.attestations dist.signatures --json', 'README.md')
 requireIncludes(readme, 'npm provenance and package trust', 'README.md')
 requireIncludes(readme, 'https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge', 'README.md')
 requireIncludes(readme, 'uploaded to GitHub code scanning on every `main` update', 'README.md')
