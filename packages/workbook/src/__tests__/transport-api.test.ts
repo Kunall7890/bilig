@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   buildWorkbookActionPlan,
   checkPlanData,
+  checkWorkbookRefData,
   collectWorkbookRefData,
   collectWorkbookRefs,
   createWorkbookFindApi,
@@ -95,6 +96,116 @@ describe('@bilig/workbook transport api', () => {
     }
     expect(hydrated.table.column('Amount')).toEqual(table.column('Amount'))
     expect(hydrated.rows.column('Amount')).toEqual(amount)
+  })
+
+  it('checks transported refs with structured frozen issues', () => {
+    const table = findTable({ name: 'Inputs', headers: ['Amount'] })
+    const rows = findRows({ table, where: { column: 'Status', op: 'eq', value: 'ready' } })
+    const amount = rows.column('Amount')
+    const data = toWorkbookRefData(amount)
+    const valid = checkWorkbookRefData(JSON.parse(JSON.stringify(data)))
+
+    expect(valid).toEqual({
+      status: 'valid',
+      ref: data,
+      issues: [],
+    })
+    expect(Object.isFrozen(valid)).toBe(true)
+    expect(Object.isFrozen(valid.issues)).toBe(true)
+    if (valid.status !== 'valid') {
+      throw new Error('expected valid ref')
+    }
+    expect(Object.isFrozen(valid.ref)).toBe(true)
+    expect(Object.isFrozen(valid.ref.kind === 'column' ? valid.ref.table : valid.ref)).toBe(true)
+
+    const invalid = checkWorkbookRefData({
+      kind: 'rows',
+      id: 'rows',
+      label: 'Rows',
+      where: {
+        column: 'Status',
+        op: 'contains',
+        value: 12,
+      },
+    })
+
+    expect(invalid).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_field',
+          path: 'ref.where.value',
+          message: 'Workbook ref data ref.where.value is not compatible with row operator contains',
+        },
+      ],
+    })
+    expect(Object.isFrozen(invalid)).toBe(true)
+    expect(Object.isFrozen(invalid.issues)).toBe(true)
+    expect(Object.isFrozen(invalid.issues[0])).toBe(true)
+  })
+
+  it('checks accessor-backed transported refs without invoking getters', () => {
+    let getterInvoked = false
+    const ref = {
+      kind: 'range',
+      id: 'range',
+      label: 'Range',
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'A1',
+      },
+    }
+    Object.defineProperty(ref.range, 'startAddress', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('startAddress getter must not run')
+      },
+    })
+
+    expect(isWorkbookRefData(ref)).toBe(false)
+    expect(checkWorkbookRefData(ref)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_field',
+          path: 'ref.range.startAddress',
+          message: 'Workbook ref data ref.range.startAddress must be a data property',
+        },
+      ],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
+  it('rejects transported column refs whose nested refs have the wrong kind', () => {
+    const table = toWorkbookRefData(findTable({ name: 'Inputs' }))
+    const rows = toWorkbookRefData(findRows({ table: findTable({ name: 'Inputs' }), where: { column: 'Status', op: 'eq', value: 'ok' } }))
+
+    expect(
+      checkWorkbookRefData({
+        kind: 'column',
+        id: 'bad-column',
+        label: 'Bad',
+        table: rows,
+        rows: table,
+        name: 'Amount',
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_field',
+          path: 'ref.table.kind',
+          message: 'Workbook ref data ref.table must be a table ref',
+        },
+        {
+          code: 'invalid_field',
+          path: 'ref.rows.kind',
+          message: 'Workbook ref data ref.rows must be a rows ref',
+        },
+      ],
+    })
   })
 
   it('returns frozen selector and find helper data for stable agent handoff', () => {

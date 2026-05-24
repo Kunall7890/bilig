@@ -16,6 +16,7 @@ import {
   type FindTableOptions,
   type WorkbookRowOperator,
 } from './selectors.js'
+import { checkWorkbookRefData } from './ref-data.js'
 
 export {
   isWorkbookRowOperator,
@@ -320,21 +321,7 @@ export function isWorkbookRef(value: unknown): value is WorkbookRef {
 }
 
 export function isWorkbookRefData(value: unknown): value is WorkbookRefData {
-  if (typeof value !== 'object' || value === null || !hasValidBaseRef(value)) {
-    return false
-  }
-  switch (value.kind) {
-    case 'range':
-      return isCellRangeRef(Object.getOwnPropertyDescriptor(value, 'range')?.value)
-    case 'name':
-      return hasOwnString(value, 'name')
-    case 'table':
-      return isWorkbookTableRefData(value)
-    case 'column':
-      return isWorkbookColumnRefData(value)
-    case 'rows':
-      return isWorkbookRowsRefData(value)
-  }
+  return checkWorkbookRefData(value).status === 'valid'
 }
 
 export function collectWorkbookRefs(value: unknown): readonly WorkbookRef[] {
