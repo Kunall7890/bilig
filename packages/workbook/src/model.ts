@@ -164,7 +164,7 @@ export function defineModel<Refs, Actions extends WorkbookActionMap<Refs>>(
   config: WorkbookModelConfig<Refs, Actions>,
 ): WorkbookModel<Refs, Actions>
 export function defineModel<Refs>(config: WorkbookModelConfig<Refs, WorkbookActionMap<Refs>>): WorkbookModel<Refs> {
-  if (!isObject(config) || Array.isArray(config)) {
+  if (!isObjectRecord(config)) {
     throw new Error('Workbook model config must be an object')
   }
   const name = normalizeRequiredName(requiredModelConfigValue(config, 'name'), 'Workbook model name')
@@ -220,7 +220,7 @@ export function defineModel<Refs>(config: WorkbookModelConfig<Refs, WorkbookActi
 }
 
 export function inspectModel(model: unknown): WorkbookModelInspection {
-  if (!isObject(model) || Array.isArray(model)) {
+  if (!isObjectRecord(model)) {
     throw new Error('Workbook model must be an object')
   }
   const name = normalizeRequiredName(requiredDataProperty(model, 'name', 'Workbook model name'), 'Workbook model name')
@@ -272,6 +272,14 @@ function normalizeOptionalDescription(value: unknown, label: string): string | u
     throw new Error(`${label} cannot be empty`)
   }
   return description
+}
+
+function isObjectRecord(value: unknown): value is object {
+  if (!isObject(value) || Array.isArray(value)) {
+    return false
+  }
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
 }
 
 function isActionConfig<Refs>(definition: unknown): definition is WorkbookActionConfig<Refs> {
@@ -331,7 +339,7 @@ function checkRefArray(value: unknown, path: string): readonly WorkbookRef[] {
 }
 
 function checkFormulaLabel(value: unknown, path: string): WorkbookFormulaLabel {
-  if (!isObject(value) || Array.isArray(value)) {
+  if (!isObjectRecord(value)) {
     throw new Error(`Workbook check at ${path} must be a formula label`)
   }
   const name = requiredDataValue(value, 'name', `${path}.name`)
@@ -350,7 +358,7 @@ function checkFormulaLabels(value: unknown, path: string): readonly WorkbookForm
 }
 
 function cloneCheckExpectation(value: unknown, path: string): WorkbookCheckExpectation {
-  if (!isObject(value) || Array.isArray(value)) {
+  if (!isObjectRecord(value)) {
     throw new Error(`Workbook check at ${path} must be an expectation`)
   }
   const kind = requiredDataValue(value, 'kind', `${path}.kind`)
@@ -380,7 +388,7 @@ function cloneCheckExpectation(value: unknown, path: string): WorkbookCheckExpec
 }
 
 function cloneCheckResult(check: unknown, path: string): WorkbookCheckResult {
-  if (!isObject(check) || Array.isArray(check)) {
+  if (!isObjectRecord(check)) {
     throw new Error(`Workbook check at ${path} must be an object`)
   }
 
@@ -739,7 +747,7 @@ interface WorkbookPlanningModelData<Refs> {
 }
 
 function readPlanningModelData<Refs>(model: unknown): WorkbookPlanningModelData<Refs> {
-  if (!isObject(model) || Array.isArray(model)) {
+  if (!isObjectRecord(model)) {
     throw new Error('Workbook model must be an object')
   }
   const name = normalizeRequiredName(requiredDataProperty(model, 'name', 'Workbook model name'), 'Workbook model name')

@@ -917,7 +917,7 @@ function invalidModelRunError(error: unknown): WorkbookRunError {
 }
 
 function invalidModelName(model: unknown): string {
-  if (typeof model !== 'object' || model === null || Array.isArray(model)) {
+  if (!isModelNameRecord(model)) {
     return 'unknown-model'
   }
   const descriptor = Object.getOwnPropertyDescriptor(model, 'name')
@@ -926,4 +926,12 @@ function invalidModelName(model: unknown): string {
   }
   const name = descriptor.value.trim()
   return name !== '' && name === descriptor.value ? name : 'unknown-model'
+}
+
+function isModelNameRecord(value: unknown): value is object {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false
+  }
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
 }

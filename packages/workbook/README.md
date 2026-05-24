@@ -130,12 +130,14 @@ Public helper namespaces are frozen as well: `find`, `check`, and `formula`
 cannot be patched after import, and factory-created check/find helpers return
 frozen API objects too.
 Model config and action objects are read as data too: `defineModel` requires
-own data properties for `actions` entries and for action-object `run`,
-`description`, and `input`. Accessor-backed model metadata is rejected before any
-getter can run.
+object-record model roots plus own data properties for `actions` entries and
+for action-object `run`, `description`, and `input`. Accessor-backed model
+metadata is rejected before any getter can run.
 `inspectModel` and `describeModel` use the same manifest boundary, so model
 names, descriptions, action maps, and action metadata can be inspected without
-triggering hidden getters. `inspectModel` returns a frozen manifest snapshot.
+triggering hidden getters. Class/custom-prototype model roots are rejected, while
+action maps and action objects keep their existing own-field-only prototype
+behavior. `inspectModel` returns a frozen manifest snapshot.
 The description layer is frozen too: `describeRef`, `describePlan`,
 `describePlanResult`, and `describeRunResult` return JSON-safe objects whose
 nested refs, commands, checks, apply proof, undo ops, and errors cannot be

@@ -46,6 +46,18 @@ function arrayBackedRecord(fields: Record<string, unknown>): unknown[] {
   return value
 }
 
+function customPrototypeRecord(fields: Record<string, unknown>): Record<string, unknown> {
+  const value: Record<string, unknown> = {}
+  Object.setPrototypeOf(value, { inherited: true })
+  for (const [key, entry] of Object.entries(fields)) {
+    Object.defineProperty(value, key, {
+      enumerable: true,
+      value: entry,
+    })
+  }
+  return value
+}
+
 describe('@bilig/workbook action metadata api', () => {
   it('describes action objects with plain input metadata and still plans their run function', () => {
     const model = defineModel({
@@ -414,6 +426,58 @@ describe('@bilig/workbook action metadata api', () => {
         },
       }),
     ).toThrowError('Workbook action write must be a function or action object')
+  })
+
+  it('rejects custom-prototype model roots as uninspectable data', () => {
+    expect(() =>
+      defineUnknownModel(
+        customPrototypeRecord({
+          name: 'custom-prototype-config-model',
+          find() {
+            return {}
+          },
+          actions: {
+            write() {},
+          },
+        }),
+      ),
+    ).toThrowError('Workbook model config must be an object')
+
+    const model = customPrototypeRecord({
+      name: 'custom-prototype-manifest-model',
+      find() {
+        return {}
+      },
+      actions: {
+        write() {},
+      },
+    })
+
+    expect(() => inspectUnknownModel(model)).toThrowError('Workbook model must be an object')
+    expect(() => describeUnknownModel(model)).toThrowError('Workbook model must be an object')
+    expect(planUnknownModel(model, 'write')).toEqual({
+      status: 'failed',
+      modelName: 'unknown-model',
+      actionName: 'write',
+      checks: [],
+      errors: [
+        {
+          code: 'invalid_model',
+          message: 'Workbook model must be an object',
+        },
+      ],
+    })
+    expect(verifyModel(model)).toEqual({
+      status: 'invalid',
+      modelName: 'unknown-model',
+      errors: [
+        {
+          code: 'invalid_model',
+          message: 'Workbook model must be an object',
+        },
+      ],
+      actions: [],
+    })
   })
 
   it('rejects accessor-backed action-object metadata without invoking getters', () => {
