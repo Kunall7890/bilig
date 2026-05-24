@@ -119,7 +119,7 @@ Stable data helpers are exported for generic tool builders:
 - `workbookCommandCategories`, `isWorkbookCommandCategory`, `workbookCommandExecutionModes`, `isWorkbookCommandExecutionMode`, `workbookCommandReceiptStatuses`, `isWorkbookCommandReceiptStatus`, `workbookCommandResultStatuses`, `isWorkbookCommandResultStatus`
 - `workbookProjectionInterceptorPoints`, `isWorkbookProjectionInterceptorPoint`, `workbookUiContributionSlots`, `isWorkbookUiContributionSlot`, `checkWorkbookCommandRequest`
 - `workbookCommandBundleCommandKinds`, `isWorkbookCommandBundleCommandKind`, `checkWorkbookCommandBundle`, `isWorkbookCommandBundle`, `workbookCommandResultFor`, `workbookCommandResultForReceipts`, `workbookOpCommandFeatureId`, `workbookOpCommandReceiptIdentity`, `workbookOpCommandReceipt`, `checkWorkbookCommandResult`, `checkWorkbookCommandResultForBundle`, `isWorkbookCommandResult`, `isWorkbookCommandResultForBundle`
-- `workbookRunErrorCodes`, `isWorkbookRunErrorCode`, `isWorkbookRunResultDescription`
+- `workbookRunErrorCodes`, `isWorkbookRunErrorCode`, `checkWorkbookRunResultDescription`, `isWorkbookRunResultDescription`
 
 Model action manifests are frozen null-prototype maps. Consumers can use normal
 business-agnostic action names, including names such as `toString` or
@@ -144,9 +144,9 @@ Validation and proof results follow the same rule: `checkInput`,
 `checkPlanData`, `verifyPlan`, `verifyModel`, and `verifyWorkbookReadbacks`
 return frozen verdict containers, arrays, generated issues, and readback-derived
 checks.
-Feature, command, receipt, result, and runtime-adapter validators return frozen
-verdicts too, so every public `{ status, issues }` handoff has the same
-inspect-once behavior.
+Feature, command, receipt, result, run-result-description, and runtime-adapter
+validators return frozen verdicts too, so every public `{ status, issues }`
+handoff has the same inspect-once behavior.
 `runWorkbookPlan` and `runWorkbookAction` return frozen run results too,
 including changed summaries, checks, errors, apply proof, undo refs, and
 unverified proof notes.

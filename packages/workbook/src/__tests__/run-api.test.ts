@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  checkWorkbookRunResultDescription,
   describePlanResult,
   describeRunResult,
   defineModel,
@@ -454,6 +455,76 @@ describe('@bilig/workbook run api', () => {
     expect(Object.isFrozen(described.checks[0]?.target)).toBe(true)
   })
 
+  it('checks run result descriptions with structured frozen issues', async () => {
+    const model = valueModel()
+    const result = await runWorkbookAction(model, 'write', {
+      apply: applied,
+      read: (targets) => [
+        {
+          target: first(targets),
+          value: 12,
+        },
+      ],
+    })
+    const described = describeRunResult(result)
+    const valid = checkWorkbookRunResultDescription(described)
+
+    expect(valid).toEqual({
+      status: 'valid',
+      description: described,
+      issues: [],
+    })
+    expect(Object.isFrozen(valid)).toBe(true)
+    if (valid.status !== 'valid') {
+      throw new Error('expected valid description')
+    }
+    expect(Object.isFrozen(valid.description)).toBe(true)
+    expect(Object.isFrozen(valid.issues)).toBe(true)
+
+    const invalid = checkWorkbookRunResultDescription({ ...described, errors: [] })
+
+    expect(invalid).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'unexpected_field',
+          path: 'errors',
+          message: 'Workbook run result description must not include errors',
+        },
+      ],
+    })
+    expect(Object.isFrozen(invalid)).toBe(true)
+    expect(Object.isFrozen(invalid.issues)).toBe(true)
+    expect(Object.isFrozen(invalid.issues[0])).toBe(true)
+
+    expect(
+      checkWorkbookRunResultDescription({
+        status: 'done',
+        changed: [],
+        checks: [{}],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_field',
+          path: 'checks[0].status',
+          message: 'Workbook run result description checks[0].status must be planned, passed, or failed',
+        },
+        {
+          code: 'missing_field',
+          path: 'checks[0].kind',
+          message: 'Workbook run result description checks[0].kind is required',
+        },
+        {
+          code: 'missing_field',
+          path: 'checks[0].message',
+          message: 'Workbook run result description checks[0].message is required',
+        },
+      ],
+    })
+  })
+
   it('rejects unsupported description result statuses instead of relabeling them', () => {
     expect(() => Reflect.apply(describePlanResult, undefined, [{ status: 'unknown' }])).toThrowError(
       'Unsupported workbook plan result status: unknown',
@@ -487,6 +558,37 @@ describe('@bilig/workbook run api', () => {
     }
 
     expect(() => describeRunResult(badResult)).toThrowError('Workbook description result.checks[0] must be a data property')
+    expect(getterInvoked).toBe(false)
+  })
+
+  it('reports nested accessor paths in run result description checks without invoking getters', () => {
+    let getterInvoked = false
+    const error = { code: 'apply_failed', message: 'apply failed' }
+    Object.defineProperty(error, 'message', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('message getter should not run')
+      },
+    })
+
+    const checked = checkWorkbookRunResultDescription({
+      status: 'failed',
+      errors: [error],
+      changed: [],
+      checks: [],
+    })
+
+    expect(checked).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_field',
+          path: 'errors[0].message',
+          message: 'Workbook run result description errors[0].message must be a data property',
+        },
+      ],
+    })
     expect(getterInvoked).toBe(false)
   })
 

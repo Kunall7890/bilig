@@ -313,6 +313,7 @@ Full export surface:
 - `describePlan`
 - `describePlanResult`
 - `describeRunResult`
+- `checkWorkbookRunResultDescription`
 - `isWorkbookRunResultDescription`
 - `describeRuntimeRequirements`
 - `checkRuntimeRequirements`
@@ -633,8 +634,9 @@ failed action planning results.
 execution, preserving `done`/`failed` status, changed summaries, checks, errors,
 and undo ops while removing ref helper functions from the public result. The
 returned run description is frozen before it crosses the agent boundary.
-`isWorkbookRunResultDescription` validates persisted run-result descriptions
-before a sync event or later agent treats them as proof.
+`checkWorkbookRunResultDescription` validates persisted run-result descriptions
+with stable path issues before a sync event or later agent treats them as proof.
+`isWorkbookRunResultDescription` is the boolean guard over the same boundary.
 `describeRuntimeRequirements(plan)` gives agents a JSON-safe adapter checklist
 for the same plan or transported plan data: which generic commands must be applied, which readbacks are
 needed, and which checks need proof. It stays generic, with capabilities such

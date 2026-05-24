@@ -164,6 +164,9 @@ The following are not current architecture anymore:
   applied ops, and frozen run-result descriptions; replay uses the applied ops,
   while agents inspect the plan/result proof instead of a human spreadsheet UI
   state
+- persisted run-result descriptions are validated through a structured
+  `checkWorkbookRunResultDescription` boundary, so invalid proof reports stable
+  paths instead of collapsing to an unhelpful boolean
 
 ## Recommended next focus
 
