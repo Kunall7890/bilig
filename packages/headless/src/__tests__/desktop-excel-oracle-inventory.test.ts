@@ -122,6 +122,17 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('matches Desktop Excel formula list validation source refs after row inserts')
   })
 
+  it('keeps the defined-name structural oracle anchored to Desktop Excel sheet-delete semantics', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-defined-name-structural-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
+    expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain('WorkPaper.buildFromSnapshot')
+    expect(source).toContain("kind: 'deleteSheet'")
+    expect(source).toContain('matches Desktop Excel when deleting a sheet invalidates workbook-level defined names')
+  })
+
   it('keeps the control artifact oracle anchored to Desktop Excel form-control geometry', () => {
     const source = readFileSync(join(testDir, 'macos-desktop-excel-control-artifacts-oracle.test.ts'), 'utf8')
 

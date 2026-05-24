@@ -48,6 +48,52 @@ describe('XLSX defined name import', () => {
     ])
   })
 
+  it('roundtrips Excel sheet-deletion defined names as broken formulas', () => {
+    const exported = exportXlsx({
+      version: 1,
+      workbook: {
+        name: 'Sheet Deleted Defined Names',
+        metadata: {
+          definedNames: [
+            { name: '_xlnm.Print_Area', scopeSheetName: 'Report', value: { kind: 'formula', formula: '=Report!$A$1:$A$3' } },
+            { name: 'FormulaRate', value: { kind: 'formula', formula: '=#REF!' } },
+            { name: 'FormulaSum', value: { kind: 'formula', formula: '=SUM(#REF!)' } },
+            { name: 'RateCell', value: { kind: 'formula', formula: '=#REF!' } },
+            { name: 'SalesRange', value: { kind: 'formula', formula: '=#REF!' } },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Report',
+          order: 0,
+          cells: [
+            { address: 'A1', formula: 'RateCell*2' },
+            { address: 'A2', formula: 'SUM(SalesRange)' },
+            { address: 'A3', formula: 'FormulaRate+FormulaSum' },
+          ],
+        },
+      ],
+    })
+    const workbook = XLSX.read(exported, { type: 'buffer' })
+
+    expect(workbook.Workbook?.Names).toEqual([
+      { Name: '_xlnm.Print_Area', Sheet: 0, Ref: 'Report!$A$1:$A$3' },
+      { Name: 'FormulaRate', Ref: '#REF!' },
+      { Name: 'FormulaSum', Ref: 'SUM(#REF!)' },
+      { Name: 'RateCell', Ref: '#REF!' },
+      { Name: 'SalesRange', Ref: '#REF!' },
+    ])
+    expect(importXlsx(exported, 'sheet-delete-defined-names.xlsx').snapshot.workbook.metadata?.definedNames).toEqual([
+      { name: '_xlnm.Print_Area', scopeSheetName: 'Report', value: { kind: 'formula', formula: '=Report!$A$1:$A$3' } },
+      { name: 'FormulaRate', value: { kind: 'formula', formula: '=#REF!' } },
+      { name: 'FormulaSum', value: { kind: 'formula', formula: '=SUM(#REF!)' } },
+      { name: 'RateCell', value: { kind: 'formula', formula: '=#REF!' } },
+      { name: 'SalesRange', value: { kind: 'formula', formula: '=#REF!' } },
+    ])
+  })
+
   it('escapes structured-reference defined names with special table headers during export', () => {
     const exported = exportXlsx({
       version: 1,

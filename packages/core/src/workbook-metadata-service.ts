@@ -57,7 +57,12 @@ import type {
 import { createWorkbookMetadataCellRecordService } from './workbook-metadata-cell-record-service.js'
 import { createWorkbookMetadataDrawingService } from './workbook-metadata-drawing-service.js'
 import { canonicalMergeRangeRef, isSingleCellMergeRange, rangeContainsAddress, rangesIntersect } from './workbook-merge-records.js'
-import { assertMergeRangesDoNotOverlap, metadataEffect, renameDataValidationSourceSheet } from './workbook-metadata-service-helpers.js'
+import {
+  assertMergeRangesDoNotOverlap,
+  metadataEffect,
+  renameDataValidationSourceSheet,
+  rewriteDefinedNameForSheetDeletion,
+} from './workbook-metadata-service-helpers.js'
 import {
   deleteWorkbookFilterRecord,
   deleteWorkbookSortRecord,
@@ -292,6 +297,7 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
       metadata.drawingArtifacts = drawingArtifacts
     }
     deleteRecordsBySheet(metadata.definedNames, sheetName, (record) => record.scopeSheetName)
+    rekeyRecords(metadata.definedNames, (record) => rewriteDefinedNameForSheetDeletion(record, sheetName))
     deleteRecordsBySheet(metadata.tables, sheetName, (record) => record.sheetName)
     deleteRecordsBySheet(metadata.spills, sheetName, (record) => record.sheetName)
     for (const [key, record] of metadata.pivots.entries()) {

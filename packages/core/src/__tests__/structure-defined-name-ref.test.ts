@@ -56,4 +56,49 @@ describe('structural defined-name references', () => {
     })
     expect(engine.getCellValue('Q1 Data', 'D2')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
   })
+
+  it('preserves workbook-level names as #REF! and removes deleted-sheet scoped names on sheet delete', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'sheet-delete-defined-name-refs' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.createSheet('Report')
+    engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'A3' }, [[5], [10], [20]])
+    engine.setDefinedName('RateCell', { kind: 'cell-ref', sheetName: 'Data', address: 'A1' })
+    engine.setDefinedName('SalesRange', { kind: 'range-ref', sheetName: 'Data', startAddress: 'A1', endAddress: 'A3' })
+    engine.setDefinedName('FormulaRate', { kind: 'formula', formula: '=Data!$A$1' })
+    engine.setDefinedName('FormulaSum', { kind: 'formula', formula: '=SUM(Data!$A$1:$A$3)' })
+    engine.workbook.setDefinedName(
+      '_xlnm.Print_Area',
+      { kind: 'range-ref', sheetName: 'Data', startAddress: 'A1', endAddress: 'A3' },
+      'Data',
+    )
+    engine.workbook.setDefinedName(
+      '_xlnm.Print_Area',
+      { kind: 'range-ref', sheetName: 'Report', startAddress: 'A1', endAddress: 'B4' },
+      'Report',
+    )
+    engine.setCellFormula('Report', 'A1', 'RateCell*2')
+    engine.setCellFormula('Report', 'A2', 'SUM(SalesRange)')
+    engine.setCellFormula('Report', 'A3', 'FormulaRate+FormulaSum')
+    expect(engine.getCellValue('Report', 'A1')).toEqual({ tag: ValueTag.Number, value: 10 })
+    expect(engine.getCellValue('Report', 'A2')).toEqual({ tag: ValueTag.Number, value: 35 })
+    expect(engine.getCellValue('Report', 'A3')).toEqual({ tag: ValueTag.Number, value: 40 })
+
+    engine.deleteSheet('Data')
+
+    expect(engine.getDefinedNames()).toEqual([
+      {
+        name: '_xlnm.Print_Area',
+        scopeSheetName: 'Report',
+        value: { kind: 'range-ref', sheetName: 'Report', startAddress: 'A1', endAddress: 'B4' },
+      },
+      { name: 'FormulaRate', value: { kind: 'formula', formula: '=#REF!' } },
+      { name: 'FormulaSum', value: { kind: 'formula', formula: '=SUM(#REF!)' } },
+      { name: 'RateCell', value: { kind: 'formula', formula: '=#REF!' } },
+      { name: 'SalesRange', value: { kind: 'formula', formula: '=#REF!' } },
+    ])
+    expect(engine.getCellValue('Report', 'A1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
+    expect(engine.getCellValue('Report', 'A2')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
+    expect(engine.getCellValue('Report', 'A3')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
+  })
 })

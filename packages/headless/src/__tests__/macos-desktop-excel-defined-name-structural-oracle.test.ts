@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { SpreadsheetEngine } from '@bilig/core'
 import { exportXlsx, importXlsx } from '@bilig/excel-import'
-import { isMacosExcelInstalled, runMacosExcelStructuralOperationOracle } from '@bilig/excel-fixtures'
+import { isMacosExcelInstalled, runMacosExcelInspectionOracle, runMacosExcelStructuralOperationOracle } from '@bilig/excel-fixtures'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
 
@@ -92,6 +92,89 @@ describe('macOS Desktop Excel defined-name structural oracle', () => {
     },
     60_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel when deleting a sheet invalidates workbook-level defined names',
+    async () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-defined-name-sheet-delete-oracle-'))
+      try {
+        const engine = await buildDeletedSheetDefinedNameEngine()
+        const sourceSnapshot = engine.exportSnapshot()
+        const excelPath = join(tempDir, 'excel-defined-name-sheet-delete-oracle.xlsx')
+        writeFileSync(excelPath, exportXlsx(sourceSnapshot))
+
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath: excelPath,
+          worksheetName: 'Report',
+          operations: [{ kind: 'deleteSheet', name: 'Data' }],
+          inspectCells: ['A1', 'A2', 'A3'],
+          saveWorkbook: true,
+          timeoutMs: 90_000,
+        })
+        expect(excelResult.cells).toEqual([
+          {
+            address: 'A1',
+            formula: '=RateCell*2',
+            rawValue: 'error\t#REF!',
+            value: { kind: 'error', value: String(ErrorCode.Ref) },
+          },
+          {
+            address: 'A2',
+            formula: '=SUM(SalesRange)',
+            rawValue: 'error\t#REF!',
+            value: { kind: 'error', value: String(ErrorCode.Ref) },
+          },
+          {
+            address: 'A3',
+            formula: '=FormulaRate+FormulaSum',
+            rawValue: 'error\t#REF!',
+            value: { kind: 'error', value: String(ErrorCode.Ref) },
+          },
+        ])
+
+        const excelTruth = importXlsx(new Uint8Array(readFileSync(excelPath)), 'excel-defined-name-sheet-delete-truth.xlsx').snapshot
+        expect(excelTruth.sheets.map((sheet) => sheet.name)).toEqual(['Report'])
+        expect(excelTruth.workbook.metadata?.definedNames).toEqual(expectedSheetDeleteDefinedNames())
+
+        const workpaper = WorkPaper.buildFromSnapshot(sourceSnapshot, workbookConfig)
+        try {
+          const dataSheet = workpaper.getSheetId('Data')
+          if (dataSheet === undefined) {
+            throw new Error('Expected Data sheet')
+          }
+          workpaper.removeSheet(dataSheet)
+
+          const headlessPath = join(tempDir, 'headless-defined-name-sheet-delete-oracle.xlsx')
+          writeFileSync(headlessPath, exportXlsx(workpaper.exportSnapshot()))
+          const headlessExcel = runMacosExcelInspectionOracle({
+            workbookPath: headlessPath,
+            worksheetName: 'Report',
+            formulaCells: [],
+            inspectCells: ['A1', 'A2', 'A3'],
+            saveWorkbook: true,
+            timeoutMs: 90_000,
+          })
+          expect(headlessExcel.cells).toEqual(excelResult.cells)
+
+          const headlessTruth = importXlsx(
+            new Uint8Array(readFileSync(headlessPath)),
+            'headless-defined-name-sheet-delete-truth.xlsx',
+          ).snapshot
+          expect(headlessTruth.sheets.map((sheet) => sheet.name)).toEqual(['Report'])
+          expect(headlessTruth.workbook.metadata?.definedNames).toEqual(excelTruth.workbook.metadata?.definedNames)
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    120_000,
+  )
 })
 
 async function buildStructuralDefinedNameReferenceCases(): Promise<
@@ -178,4 +261,40 @@ async function buildDeletedCellDefinedNameEngine(): Promise<SpreadsheetEngine> {
   engine.setDefinedName('RateCell', { kind: 'cell-ref', sheetName: 'Data', address: 'A1' })
   engine.setCellFormula('Data', 'D3', 'RateCell*2')
   return engine
+}
+
+async function buildDeletedSheetDefinedNameEngine(): Promise<SpreadsheetEngine> {
+  const engine = new SpreadsheetEngine({ workbookName: 'defined-name-sheet-delete-oracle' })
+  await engine.ready()
+  engine.createSheet('Data')
+  engine.createSheet('Report')
+  engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'A3' }, [[5], [10], [20]])
+  engine.setDefinedName('RateCell', { kind: 'cell-ref', sheetName: 'Data', address: 'A1' })
+  engine.setDefinedName('SalesRange', { kind: 'range-ref', sheetName: 'Data', startAddress: 'A1', endAddress: 'A3' })
+  engine.setDefinedName('FormulaRate', { kind: 'formula', formula: '=Data!$A$1' })
+  engine.setDefinedName('FormulaSum', { kind: 'formula', formula: '=SUM(Data!$A$1:$A$3)' })
+  engine.workbook.setDefinedName('_xlnm.Print_Area', { kind: 'range-ref', sheetName: 'Data', startAddress: 'A1', endAddress: 'A3' }, 'Data')
+  engine.workbook.setDefinedName(
+    '_xlnm.Print_Area',
+    { kind: 'range-ref', sheetName: 'Report', startAddress: 'A1', endAddress: 'A3' },
+    'Report',
+  )
+  engine.setCellFormula('Report', 'A1', 'RateCell*2')
+  engine.setCellFormula('Report', 'A2', 'SUM(SalesRange)')
+  engine.setCellFormula('Report', 'A3', 'FormulaRate+FormulaSum')
+  return engine
+}
+
+function expectedSheetDeleteDefinedNames() {
+  return [
+    {
+      name: '_xlnm.Print_Area',
+      scopeSheetName: 'Report',
+      value: { kind: 'formula' as const, formula: '=Report!$A$1:$A$3' },
+    },
+    { name: 'FormulaRate', value: { kind: 'formula' as const, formula: '=#REF!' } },
+    { name: 'FormulaSum', value: { kind: 'formula' as const, formula: '=SUM(#REF!)' } },
+    { name: 'RateCell', value: { kind: 'formula' as const, formula: '=#REF!' } },
+    { name: 'SalesRange', value: { kind: 'formula' as const, formula: '=#REF!' } },
+  ]
 }

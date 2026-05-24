@@ -1,8 +1,13 @@
 import { Effect } from 'effect'
-import type { CellRangeRef } from '@bilig/protocol'
-import { parseCellAddress, renameFormulaSheetReferences } from '@bilig/formula'
-import { cloneDataValidationRecord } from './workbook-metadata-records.js'
-import type { WorkbookDataValidationRecord, WorkbookFilterRecord, WorkbookMergeRangeRecord } from './workbook-metadata-types.js'
+import { ErrorCode, type CellRangeRef, type WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
+import { parseCellAddress, parseFormula, renameFormulaSheetReferences, serializeFormula, type FormulaNode } from '@bilig/formula'
+import { cloneDataValidationRecord, cloneDefinedNameRecord } from './workbook-metadata-records.js'
+import type {
+  WorkbookDataValidationRecord,
+  WorkbookDefinedNameRecord,
+  WorkbookFilterRecord,
+  WorkbookMergeRangeRecord,
+} from './workbook-metadata-types.js'
 import { canonicalWorkbookRangeRef } from './workbook-range-records.js'
 import { WorkbookMetadataError } from './workbook-metadata-service-contract.js'
 
@@ -41,6 +46,97 @@ function renameValidationFormulaSheetReferences(formula: string, oldSheetName: s
   } catch {
     return formula
   }
+}
+
+export function rewriteDefinedNameForSheetDeletion(record: WorkbookDefinedNameRecord, deletedSheetName: string): WorkbookDefinedNameRecord {
+  const cloned = cloneDefinedNameRecord(record)
+  cloned.value = rewriteDefinedNameValueForSheetDeletion(cloned.value, deletedSheetName)
+  return cloned
+}
+
+function rewriteDefinedNameValueForSheetDeletion(
+  value: WorkbookDefinedNameValueSnapshot,
+  deletedSheetName: string,
+): WorkbookDefinedNameValueSnapshot {
+  if (typeof value === 'string') {
+    return value.startsWith('=') ? rewriteDefinedNameFormulaForSheetDeletion(value, deletedSheetName) : value
+  }
+  if (value === null || typeof value !== 'object') {
+    return value
+  }
+  switch (value.kind) {
+    case 'cell-ref':
+      return value.sheetName === deletedSheetName ? { kind: 'formula', formula: '=#REF!' } : value
+    case 'range-ref':
+      return value.sheetName === deletedSheetName ? { kind: 'formula', formula: '=#REF!' } : value
+    case 'formula':
+      return {
+        ...value,
+        formula: rewriteDefinedNameFormulaForSheetDeletion(value.formula, deletedSheetName),
+      }
+    case 'scalar':
+    case 'structured-ref':
+      return value
+  }
+}
+
+function rewriteDefinedNameFormulaForSheetDeletion(formula: string, deletedSheetName: string): string {
+  const hasFormulaPrefix = formula.startsWith('=')
+  const source = hasFormulaPrefix ? formula.slice(1) : formula
+  try {
+    const rewritten = serializeFormula(rewriteFormulaNodeForSheetDeletion(parseFormula(source), deletedSheetName))
+    return hasFormulaPrefix ? `=${rewritten}` : rewritten
+  } catch {
+    return formula
+  }
+}
+
+function rewriteFormulaNodeForSheetDeletion(node: FormulaNode, deletedSheetName: string): FormulaNode {
+  switch (node.kind) {
+    case 'NumberLiteral':
+    case 'BooleanLiteral':
+    case 'StringLiteral':
+    case 'ErrorLiteral':
+    case 'OmittedArgument':
+    case 'StructuredRef':
+      return node
+    case 'NameRef':
+    case 'CellRef':
+    case 'SpillRef':
+    case 'RowRef':
+    case 'ColumnRef':
+      return node.sheetName === deletedSheetName ? refErrorNode() : node
+    case 'RangeRef':
+      return node.sheetName === deletedSheetName || node.sheetEndName === deletedSheetName ? refErrorNode() : node
+    case 'ArrayConstant':
+      return { ...node, rows: node.rows.map((row) => row.map((entry) => rewriteFormulaNodeForSheetDeletion(entry, deletedSheetName))) }
+    case 'UnaryExpr':
+      return {
+        ...node,
+        argument: rewriteFormulaNodeForSheetDeletion(node.argument, deletedSheetName),
+      }
+    case 'BinaryExpr':
+      return {
+        ...node,
+        left: rewriteFormulaNodeForSheetDeletion(node.left, deletedSheetName),
+        right: rewriteFormulaNodeForSheetDeletion(node.right, deletedSheetName),
+      }
+    case 'CallExpr':
+      return {
+        ...node,
+        args: node.args.map((arg) => rewriteFormulaNodeForSheetDeletion(arg, deletedSheetName)),
+      }
+    case 'InvokeExpr':
+      return {
+        ...node,
+        callee: rewriteFormulaNodeForSheetDeletion(node.callee, deletedSheetName),
+        args: node.args.map((arg) => rewriteFormulaNodeForSheetDeletion(arg, deletedSheetName)),
+      }
+  }
+}
+
+function refErrorNode(): FormulaNode {
+  return { kind: 'ErrorLiteral', code: ErrorCode.Ref }
 }
 
 export function assertMergeRangesDoNotOverlap(ranges: readonly WorkbookMergeRangeRecord[]): void {
