@@ -732,8 +732,10 @@ ops or undo metadata; an explicit empty `appliedOps` array with no undo keeps
 `changed: []`.
 Runtime readbacks must match the requested target set exactly; surplus
 readbacks fail with `readback_unexpected`, and duplicate targets fail with
-`readback_duplicate`. Formula readbacks are exact and
-should use the normalized no-leading-`=` form produced by `formula.source`.
+`readback_duplicate`. Formula readbacks are parsed with `@bilig/formula` and
+canonicalized into no-leading-`=` proof, so agents do not have to special-case
+runtime formatting differences such as a leading equals sign, whitespace, or
+redundant parentheses.
 Run errors use the stable `WorkbookRunErrorCode` union. Agents and adapters can
 inspect the frozen `workbookRunErrorCodes` list or call
 `isWorkbookRunErrorCode(value)` before branching on a code. Runtime adapters

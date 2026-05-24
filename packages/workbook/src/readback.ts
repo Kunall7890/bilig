@@ -1,3 +1,4 @@
+import { parseFormula, serializeFormula } from '@bilig/formula'
 import { isLiteralInput, type LiteralInput } from '@bilig/protocol'
 import { hydrateWorkbookRef, isWorkbookRef, toWorkbookRefData, type WorkbookRef } from './find.js'
 import type { WorkbookFormulaLabel } from './formula.js'
@@ -262,6 +263,19 @@ function normalizeFormulaLabels(value: unknown, path: string): DataValidation<re
   return arrayDataValues(value, path, normalizeFormulaLabel)
 }
 
+function normalizeFormulaProofSource(value: string, path: string): DataValidation<string> {
+  const trimmed = value.trim()
+  const source = trimmed.startsWith('=') ? trimmed.slice(1).trim() : trimmed
+  if (source.length === 0) {
+    return invalid(`Workbook formula proof at ${path} cannot be empty`)
+  }
+  try {
+    return valid(serializeFormula(parseFormula(source)))
+  } catch (error) {
+    return invalid(`Workbook formula proof at ${path} is invalid: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
 function normalizeExpectation(value: unknown, path: string): DataValidation<WorkbookCheckExpectation> {
   if (!isRecord(value)) {
     return invalid(`Workbook check expectation at ${path} is invalid`)
@@ -296,6 +310,10 @@ function normalizeExpectation(value: unknown, path: string): DataValidation<Work
     if (typeof formula.value !== 'string') {
       return invalid(`Workbook check expectation at ${path}.formula is invalid`)
     }
+    const normalizedFormula = normalizeFormulaProofSource(formula.value, `${path}.formula`)
+    if (normalizedFormula.status === 'invalid') {
+      return normalizedFormula
+    }
 
     const inputs = optionalDataValue(value, 'inputs', `${path}.inputs`)
     if (inputs.status === 'invalid') {
@@ -318,7 +336,7 @@ function normalizeExpectation(value: unknown, path: string): DataValidation<Work
     return valid(
       Object.freeze({
         kind: 'formulaEquals',
-        formula: formula.value,
+        formula: normalizedFormula.value,
         inputs: normalizedInputs?.value ?? [],
         labels: normalizedLabels?.value ?? [],
       }),
@@ -458,9 +476,13 @@ function normalizeReadback(value: unknown, path: string): DataValidation<SafeRea
     if (typeof candidate !== 'string' && candidate !== null) {
       return invalid(`Workbook readback at ${path}.formula is invalid`)
     }
+    const normalizedFormula = candidate === null ? valid(null) : normalizeFormulaProofSource(candidate, `${path}.formula`)
+    if (normalizedFormula.status === 'invalid') {
+      return normalizedFormula
+    }
     safeFormula = Object.freeze({
       status: 'present',
-      value: candidate,
+      value: normalizedFormula.value,
     })
   }
 

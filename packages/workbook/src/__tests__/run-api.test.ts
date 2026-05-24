@@ -527,7 +527,7 @@ describe('@bilig/workbook run api', () => {
     expect(Object.isFrozen(result.checks[0]?.proof)).toBe(true)
   })
 
-  it('passes formula readback checks with exact normalized formula text', async () => {
+  it('passes formula readback checks with canonical formula proof', async () => {
     const model = defineModel({
       name: 'run-formula-model',
 
@@ -547,14 +547,15 @@ describe('@bilig/workbook run api', () => {
         },
       },
     })
-    const source = '(Sheet1!A2)*(Sheet1!B2)'
+    const plannedSource = '(Sheet1!A2)*(Sheet1!B2)'
+    const canonicalSource = 'Sheet1!A2*Sheet1!B2'
 
     const result = await runWorkbookAction(model, 'calculate', {
       apply: applied,
       read: (targets) => [
         {
           target: first(targets),
-          formula: source,
+          formula: '= (Sheet1!A2) * (Sheet1!B2)',
         },
       ],
     })
@@ -565,10 +566,10 @@ describe('@bilig/workbook run api', () => {
         status: 'passed',
         kind: 'formulaEquals',
         target: expect.objectContaining({ label: 'Sheet1!C2' }),
-        message: `Sheet1!C2 formula equals ${source}`,
+        message: `Sheet1!C2 formula equals ${plannedSource}`,
         expectation: {
           kind: 'formulaEquals',
-          formula: source,
+          formula: canonicalSource,
           inputs: [expect.objectContaining({ label: 'Sheet1!A2' }), expect.objectContaining({ label: 'Sheet1!B2' })],
           labels: [
             { name: 'Sheet1!A2', ref: expect.objectContaining({ label: 'Sheet1!A2' }) },
@@ -577,7 +578,7 @@ describe('@bilig/workbook run api', () => {
         },
         proof: {
           source: 'readback',
-          formula: source,
+          formula: canonicalSource,
         },
       },
     ])
@@ -1357,7 +1358,7 @@ describe('@bilig/workbook run api', () => {
           },
         },
       ],
-      [{ target, formula: '=A2+B2' }],
+      [{ target, formula: '=A2+B3' }],
     )
 
     expect(verification).toEqual({
@@ -1382,8 +1383,8 @@ describe('@bilig/workbook run api', () => {
           check: expect.objectContaining({ kind: 'formulaEquals' }),
           target,
           expected: 'A2+B2',
-          actual: '=A2+B2',
-          message: 'Sheet1!C2 expected formula A2+B2 but read =A2+B2',
+          actual: 'A2+B3',
+          message: 'Sheet1!C2 expected formula A2+B2 but read A2+B3',
         },
       ],
     })
@@ -1394,6 +1395,49 @@ describe('@bilig/workbook run api', () => {
     expect(Object.isFrozen(verification.issues)).toBe(true)
     expect(Object.isFrozen(verification.issues[0])).toBe(true)
     expect(Object.isFrozen(verification.issues[0]?.target)).toBe(true)
+  })
+
+  it('returns failed when formula readback proof is not parseable', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'C2' })
+    const verification = verifyWorkbookReadbacks(
+      [
+        {
+          status: 'planned',
+          kind: 'formulaEquals',
+          target,
+          message: 'Sheet1!C2 formula equals A2+B2',
+          expectation: {
+            kind: 'formulaEquals',
+            formula: 'A2+B2',
+            inputs: [],
+            labels: [],
+          },
+        },
+      ],
+      [{ target, formula: '=' }],
+    )
+
+    expect(verification.status).toBe('failed')
+    expect(verification.checks).toEqual([
+      {
+        status: 'planned',
+        kind: 'formulaEquals',
+        target,
+        message: 'Sheet1!C2 formula equals A2+B2',
+        expectation: {
+          kind: 'formulaEquals',
+          formula: 'A2+B2',
+          inputs: [],
+          labels: [],
+        },
+      },
+    ])
+    expect(verification.issues).toEqual([
+      {
+        code: 'readback_invalid',
+        message: 'Workbook formula proof at readbacks[0].formula cannot be empty',
+      },
+    ])
   })
 
   it('supports async apply and async read adapters', async () => {

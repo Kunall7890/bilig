@@ -332,7 +332,10 @@ non-enumerable entries, and accessors are rejected before any getter can run
 during validation, cloning, or preview/apply comparison.
 Readback checks attach proof to passed checks, such as
 `{ source: "readback", value: 12 }` or
-`{ source: "readback", formula: "(Table[Quantity])*(Table[Rate])" }`.
+`{ source: "readback", formula: "Table[Quantity]*Table[Rate]" }`.
+Formula readback proof is parsed with `@bilig/formula` and stored in canonical
+no-leading-`=` form, so harmless runtime differences such as a leading equals
+sign, whitespace, or redundant parentheses do not make proof fail.
 Each requested target may appear only once in runtime readbacks; duplicate
 targets fail with `readback_duplicate` instead of being silently collapsed.
 Generic check verifiers may only change `status` or add JSON-safe `proof`; they
