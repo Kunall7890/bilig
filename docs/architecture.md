@@ -173,7 +173,8 @@ The following are not current architecture anymore:
 - live ergonomic refs and transported refs are validated through structured
   `checkWorkbookRef` / `checkWorkbookRefData` boundaries before transport or
   hydration, so selector/ref failures report stable paths instead of
-  disappearing behind boolean guards
+  disappearing behind boolean guards; transported ref roots and nested range,
+  row predicate, table, and rows refs must be object-record data
 - persisted run-result descriptions are validated through a structured
   `checkWorkbookRunResultDescription` boundary, so invalid proof reports stable
   paths instead of collapsing to an unhelpful boolean

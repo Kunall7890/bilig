@@ -444,7 +444,9 @@ Formula helpers reject sparse, accessor-backed, or class/custom-prototype raw
 options, explicit input arrays, label arrays, and function argument arrays before
 returning formula intent.
 Ref transport helpers return frozen plain data and frozen arrays, so inspected
-refs stay stable across agent handoff and verification.
+refs stay stable across agent handoff and verification. Transported ref nodes
+and nested selector records must be object-record data, not
+class/custom-prototype instances.
 `verifyPlan` treats public plan handoff as data too: malformed, sparse, or
 accessor-backed plan objects return an `invalid_plan` issue instead of executing
 hidden properties or throwing at the caller.
@@ -651,8 +653,10 @@ without caller-side metadata drift.
 `checkWorkbookRef(ref)` validates live ergonomic refs before transport, including
 the helper functions that make table and row refs usable. `checkWorkbookRefData(data)`
 validates transported range/name/table/column/rows refs with stable path issues
-before hydration or persisted proof use. `isWorkbookRef` and `isWorkbookRefData`
-are the boolean guards over those same boundaries.
+before hydration or persisted proof use. Ref data roots, nested ranges, row
+predicates, nested table refs, and nested rows refs must be object-record data.
+`isWorkbookRef` and `isWorkbookRefData` are the boolean guards over those same
+boundaries.
 Planning validates model manifest data before reading action metadata or running
 model code. Accessor-backed model names, action maps, action entries, or action
 metadata return structured `invalid_model` errors without invoking hidden

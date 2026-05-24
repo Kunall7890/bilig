@@ -1,4 +1,5 @@
 import { isLiteralInput } from '@bilig/protocol'
+import { isObjectRecord } from './data-properties.js'
 import type { WorkbookRefData, WorkbookRefKind } from './find.js'
 import { isWorkbookRowOperator, isWorkbookRowValueCompatible } from './selectors.js'
 
@@ -36,8 +37,16 @@ function invalidType(path: string, label: string): WorkbookRefDataIssue {
   return refDataIssue('invalid_type', path, `${label} must be an object`)
 }
 
-function isRefDataObject(value: unknown): value is Record<string, unknown> {
+function invalidObjectRecord(path: string, label: string): WorkbookRefDataIssue {
+  return refDataIssue('invalid_type', path, `${label} must be an object record`)
+}
+
+function isNonArrayObject(value: unknown): value is object {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isRefDataObject(value: unknown): value is Record<string, unknown> {
+  return isObjectRecord(value)
 }
 
 function isWorkbookRefDataKind(value: unknown): value is WorkbookRefKind {
@@ -131,8 +140,12 @@ function pushBaseRefDataIssues(issues: WorkbookRefDataIssue[], value: Record<str
 }
 
 function pushRangeIssues(issues: WorkbookRefDataIssue[], value: unknown, path: string): void {
-  if (!isRefDataObject(value)) {
+  if (!isNonArrayObject(value)) {
     issues.push(invalidType(path, `Workbook ref data ${path}`))
+    return
+  }
+  if (!isRefDataObject(value)) {
+    issues.push(invalidObjectRecord(path, `Workbook ref data ${path}`))
     return
   }
   pushRequiredStringIssue(issues, value, path, 'sheetName')
@@ -151,8 +164,12 @@ function pushTableRefDataIssues(issues: WorkbookRefDataIssue[], value: Record<st
 }
 
 function pushRowsWhereIssues(issues: WorkbookRefDataIssue[], value: unknown, path: string): void {
-  if (!isRefDataObject(value)) {
+  if (!isNonArrayObject(value)) {
     issues.push(invalidType(path, `Workbook ref data ${path}`))
+    return
+  }
+  if (!isRefDataObject(value)) {
+    issues.push(invalidObjectRecord(path, `Workbook ref data ${path}`))
     return
   }
   pushRequiredStringIssue(issues, value, path, 'column')
@@ -222,8 +239,12 @@ function pushColumnRefDataIssues(issues: WorkbookRefDataIssue[], value: Record<s
 }
 
 function pushRefDataIssues(issues: WorkbookRefDataIssue[], value: unknown, path: string): void {
-  if (!isRefDataObject(value)) {
+  if (!isNonArrayObject(value)) {
     issues.push(invalidType(path, `Workbook ref data ${path}`))
+    return
+  }
+  if (!isRefDataObject(value)) {
+    issues.push(invalidObjectRecord(path, `Workbook ref data ${path}`))
     return
   }
   const kind = pushBaseRefDataIssues(issues, value, path)

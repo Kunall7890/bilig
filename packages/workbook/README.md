@@ -171,7 +171,9 @@ Formula helpers also normalize as plain data: raw formula options, explicit
 inputs, labels, and function argument arrays reject sparse, accessor-backed, or
 class/custom-prototype payloads before formula intent is returned.
 Ref transport helpers return frozen plain data and frozen arrays, so a ref that
-an agent inspected cannot be mutated behind the same handoff object.
+an agent inspected cannot be mutated behind the same handoff object. Transported
+ref nodes and nested selector records must be object-record data; class/custom-
+prototype ref records are rejected before hydration or persisted proof use.
 `verifyPlan` also treats plans as data: malformed, sparse, or accessor-backed
 handoff objects return an `invalid_plan` issue instead of executing hidden
 properties or throwing at the caller.
@@ -213,7 +215,9 @@ arrays through own data properties, rejecting accessor-backed fields before any
 getter can run.
 Transported row refs use that same selector contract too: ref-data guards,
 collection, cloning, and hydration reject operator/value pairs that `findRows`
-would reject.
+would reject. Transported ref data is an object-record boundary at every node:
+range payloads, row predicates, and nested table/rows refs cannot be class
+instances with hidden behavior.
 
 For full action handoff, use `toPlanData(plan)` before JSON transport. A runtime
 can call `checkPlanData(data)` to get structured path-based issues before
