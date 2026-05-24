@@ -41,7 +41,7 @@ cd bilig-agent-xlsx-proof
 curl -fsSLO https://proompteng.github.io/bilig/xlsx-recalculation-proof.ts
 npm init -y >/dev/null
 npm pkg set type=module
-npm install @bilig/headless@0.88.0 tsx@4.21.0
+npm install @bilig/headless@0.89.0 tsx@4.21.0
 npx --no-install tsx xlsx-recalculation-proof.ts
 ```
 
