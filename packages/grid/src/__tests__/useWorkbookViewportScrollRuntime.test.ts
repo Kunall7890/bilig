@@ -225,6 +225,101 @@ describe('WorkbookViewportScrollRuntime', () => {
     })
   })
 
+  it('publishes native scroll visuals immediately while deferring authoritative viewport commits', () => {
+    const animationFrames: FrameRequestCallback[] = []
+    const requestAnimationFrame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      animationFrames.push(callback)
+      return animationFrames.length
+    })
+    const cancelAnimationFrame = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined)
+
+    try {
+      const metrics = getGridMetrics()
+      const columnAxis = createGridAxisWorldIndexFromRecords({
+        axisLength: MAX_COLS,
+        defaultSize: metrics.columnWidth,
+      })
+      const rowAxis = createGridAxisWorldIndexFromRecords({
+        axisLength: MAX_ROWS,
+        defaultSize: metrics.rowHeight,
+      })
+      const gridRuntimeHost = new GridRuntimeHost({
+        columnCount: MAX_COLS,
+        defaultColumnWidth: metrics.columnWidth,
+        defaultRowHeight: metrics.rowHeight,
+        gridMetrics: metrics,
+        rowCount: MAX_ROWS,
+        viewportHeight: 360,
+        viewportWidth: 640,
+      })
+      const scrollViewport = document.createElement('div')
+      Object.defineProperty(scrollViewport, 'clientWidth', { configurable: true, value: 640 })
+      Object.defineProperty(scrollViewport, 'clientHeight', { configurable: true, value: 360 })
+      const scrollTransformStore = new WorkbookGridScrollStore()
+      const scrollTransformRef = { current: scrollTransformStore.getSnapshot() }
+      const liveVisibleRegionRef = { current: region({ x: 0, y: 0 }) }
+      let committedRegion = liveVisibleRegionRef.current
+      const setVisibleRegion = vi.fn((updater: VisibleRegionState | ((current: VisibleRegionState) => VisibleRegionState)) => {
+        committedRegion = typeof updater === 'function' ? updater(committedRegion) : updater
+      })
+      const onVisibleViewportChange = vi.fn()
+      const runtime = new WorkbookViewportScrollRuntime()
+
+      runtime.updateInput({
+        columnAxis,
+        freezeCols: 0,
+        freezeRows: 0,
+        gridCameraStore: new GridCameraStore(),
+        gridMetrics: metrics,
+        gridRuntimeHost,
+        hostElement: scrollViewport,
+        liveVisibleRegionRef,
+        onVisibleViewportChange,
+        requiresLiveViewportState: true,
+        rowAxis,
+        scrollTransformRef,
+        scrollTransformStore,
+        scrollViewportRef: { current: scrollViewport },
+        selectedCell: [0, 0],
+        setVisibleRegion,
+        sheetName: 'Sheet1',
+        sortedColumnWidthOverrides: [],
+        sortedRowHeightOverrides: [],
+        syncRuntimeAxes: vi.fn(),
+        viewport: { colEnd: 11, colStart: 0, rowEnd: 23, rowStart: 0 },
+      })
+
+      const cleanup = runtime.attachScrollViewport()
+      setVisibleRegion.mockClear()
+      onVisibleViewportChange.mockClear()
+
+      scrollViewport.scrollLeft = 6 * metrics.columnWidth
+      scrollViewport.scrollTop = 4 * metrics.rowHeight
+      scrollViewport.dispatchEvent(new Event('scroll'))
+
+      expect(liveVisibleRegionRef.current.range).toMatchObject({ x: 6, y: 4 })
+      expect(scrollTransformRef.current.scrollLeft).toBe(scrollViewport.scrollLeft)
+      expect(scrollTransformRef.current.scrollTop).toBe(scrollViewport.scrollTop)
+      expect(setVisibleRegion).not.toHaveBeenCalled()
+      expect(onVisibleViewportChange).not.toHaveBeenCalled()
+
+      animationFrames.shift()?.(performance.now())
+
+      expect(setVisibleRegion).toHaveBeenCalledTimes(1)
+      expect(onVisibleViewportChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          colStart: 6,
+          rowStart: 4,
+        }),
+      )
+      expect(committedRegion.range).toMatchObject({ x: 6, y: 4 })
+      cleanup()
+    } finally {
+      requestAnimationFrame.mockRestore()
+      cancelAnimationFrame.mockRestore()
+    }
+  })
+
   it('rechecks selected-cell visibility when the viewport resizes without changing selection', () => {
     const metrics = getGridMetrics()
     const columnAxis = createGridAxisWorldIndexFromRecords({

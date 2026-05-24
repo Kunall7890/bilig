@@ -157,6 +157,7 @@ function defaultSameCorpusCaptureLimitations(): readonly string[] {
     'Caller must supply a Google Sheets URL for the same exported Bilig benchmark corpus.',
     'Microsoft Excel Web can be supplied as an additional incumbent comparison, but it is not required for the Google Sheets 10x claim.',
     'Edit and format workloads require the supplied incumbent URLs to allow browser-driven editing in the authenticated context.',
+    'Bilig non-scroll operationResponseMs measures interaction-visible response first; strict rendered-grid proof is still required after the authoritative frame catches up.',
   ]
 }
 

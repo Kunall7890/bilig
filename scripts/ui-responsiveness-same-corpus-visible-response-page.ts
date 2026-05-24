@@ -4,7 +4,9 @@ import { performance } from 'node:perf_hooks'
 import type { Page } from '@playwright/test'
 
 import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-live-browser-scorecard.ts'
+import type { BiligRenderedSurfaceState } from './ui-responsiveness-same-corpus-surface.ts'
 import { readBiligRenderedSurfaceState } from './ui-responsiveness-same-corpus-surface-page.ts'
+import { waitForVerifiedBiligRenderedSurface } from './ui-responsiveness-same-corpus-verification.ts'
 import { waitForNextFrame } from './ui-responsiveness-same-corpus-page-utils.ts'
 import {
   sampleSettledOperation,
@@ -16,7 +18,7 @@ import {
 const visibleResponseTimeoutMs = 5_000
 
 export interface VisibleNonScrollResponseSignature {
-  readonly biligPresentedToken: string | null
+  readonly biligInteractionVisibleToken: string | null
   readonly product: UiResponsivenessSameCorpusProduct
   readonly screenshotSignature: string | null
   readonly workload: NonScrollWorkload
@@ -33,7 +35,12 @@ export async function measureVisibleNonScrollResponse(
   const startedAt = performance.now()
   await runOperation()
   await waitForVisibleNonScrollResponse(page, product, workload, before)
-  return await sampleSettledOperation(page, performance.now() - startedAt, 'visible-non-scroll-response')
+  const interactionVisibleMs = performance.now() - startedAt
+  const sample = await sampleSettledOperation(page, interactionVisibleMs, 'visible-non-scroll-response')
+  if (product === 'bilig') {
+    await waitForVerifiedBiligRenderedSurface(page, visibleResponseTimeoutMs)
+  }
+  return sample
 }
 
 export function visibleNonScrollResponseChanged(
@@ -43,8 +50,8 @@ export function visibleNonScrollResponseChanged(
   if (before.product !== after.product || before.workload !== after.workload) {
     return false
   }
-  if (before.product === 'bilig' && before.biligPresentedToken && after.biligPresentedToken) {
-    return before.biligPresentedToken !== after.biligPresentedToken
+  if (before.product === 'bilig' && before.biligInteractionVisibleToken && after.biligInteractionVisibleToken) {
+    return before.biligInteractionVisibleToken !== after.biligInteractionVisibleToken
   }
   return Boolean(before.screenshotSignature && after.screenshotSignature && before.screenshotSignature !== after.screenshotSignature)
 }
@@ -75,11 +82,12 @@ async function readVisibleNonScrollResponseSignature(
   product: UiResponsivenessSameCorpusProduct,
   workload: NonScrollWorkload,
 ): Promise<VisibleNonScrollResponseSignature> {
-  const biligPresentedToken = product === 'bilig' ? await readBiligPresentedResponseToken(page, workload) : null
+  const biligSurface = product === 'bilig' ? await readBiligRenderedSurfaceState(page) : null
+  const biligInteractionVisibleToken = biligInteractionVisibleResponseToken(biligSurface, workload)
   return {
-    biligPresentedToken,
+    biligInteractionVisibleToken,
     product,
-    screenshotSignature: visibleNonScrollResponseNeedsScreenshot(product, biligPresentedToken)
+    screenshotSignature: visibleNonScrollResponseNeedsScreenshot(product, biligInteractionVisibleToken)
       ? await readViewportScreenshotSignature(page)
       : null,
     workload,
@@ -88,34 +96,44 @@ async function readVisibleNonScrollResponseSignature(
 
 export function visibleNonScrollResponseNeedsScreenshot(
   product: UiResponsivenessSameCorpusProduct,
-  biligPresentedToken: string | null = null,
+  biligInteractionVisibleToken: string | null = null,
 ): boolean {
-  return product !== 'bilig' || biligPresentedToken === null
+  return product !== 'bilig' || biligInteractionVisibleToken === null
 }
 
-async function readBiligPresentedResponseToken(page: Page, workload: NonScrollWorkload): Promise<string | null> {
-  const surface = await readBiligRenderedSurfaceState(page)
+export function biligInteractionVisibleResponseToken(
+  surface: BiligRenderedSurfaceState | null,
+  workload: NonScrollWorkload,
+): string | null {
   const canvas = surface?.typeGpu
   if (!canvas) {
     return null
   }
   if (workload === 'select-cell') {
-    return canvas.presentedSelectionRevision ?? null
+    return firstVisibleToken(canvas.currentSelectionRevision, canvas.visibleLocalRenderRevision, surface.gridLocalRenderRevision)
   }
   if (workload === 'jump-deep-row') {
-    return canvas.presentedViewportRevision ?? null
+    return firstVisibleToken(canvas.currentViewportRevision, canvas.visibleProjectedRenderRevision, surface.gridProjectedRenderRevision)
   }
   return (
     [
-      canvas.presentedSemanticMutationRevision,
-      canvas.presentedWorkbookRevision,
-      canvas.presentedContentSignature,
-      canvas.presentedTextSignature,
-      canvas.presentedRectSignature,
+      canvas.currentSemanticMutationRevision,
+      canvas.currentWorkbookRevision,
+      canvas.currentContentSignature,
+      canvas.currentTextSignature,
+      canvas.currentRectSignature,
+      canvas.visibleLocalRenderRevision,
+      canvas.visibleProjectedRenderRevision,
+      surface.gridLocalRenderRevision,
+      surface.gridProjectedRenderRevision,
     ]
       .filter((entry): entry is string => Boolean(entry))
       .join('|') || null
   )
+}
+
+function firstVisibleToken(...tokens: readonly (string | null | undefined)[]): string | null {
+  return tokens.find((token): token is string => typeof token === 'string' && token.length > 0) ?? null
 }
 
 async function readViewportScreenshotSignature(page: Page): Promise<string | null> {

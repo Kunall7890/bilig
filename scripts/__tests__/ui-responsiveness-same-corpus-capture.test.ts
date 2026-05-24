@@ -44,6 +44,7 @@ import {
   sameCorpusWorkloadMutatesWorkbook,
 } from '../ui-responsiveness-same-corpus-workload-runner.ts'
 import {
+  biligInteractionVisibleResponseToken,
   visibleNonScrollResponseChanged,
   visibleNonScrollResponseNeedsScreenshot,
   type VisibleNonScrollResponseSignature,
@@ -465,9 +466,9 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(events).toEqual(['pointer', 'visible:bilig:select-cell:0', 'press:ArrowRight'])
   })
 
-  it('requires Bilig presented-state movement instead of arbitrary screenshot noise', () => {
+  it('requires Bilig interaction-visible state movement instead of arbitrary screenshot noise', () => {
     const before: VisibleNonScrollResponseSignature = {
-      biligPresentedToken: 'selection-revision-1',
+      biligInteractionVisibleToken: 'selection-revision-1',
       product: 'bilig',
       screenshotSignature: 'screenshot-a',
       workload: 'select-cell',
@@ -482,25 +483,77 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(
       visibleNonScrollResponseChanged(before, {
         ...before,
-        biligPresentedToken: 'selection-revision-2',
+        biligInteractionVisibleToken: 'selection-revision-2',
       }),
     ).toBe(true)
     expect(
       visibleNonScrollResponseChanged(
         {
-          biligPresentedToken: null,
+          biligInteractionVisibleToken: null,
           product: 'google-sheets',
           screenshotSignature: 'screenshot-a',
           workload: 'select-cell',
         },
         {
-          biligPresentedToken: null,
+          biligInteractionVisibleToken: null,
           product: 'google-sheets',
           screenshotSignature: 'screenshot-b',
           workload: 'select-cell',
         },
       ),
     ).toBe(true)
+  })
+
+  it('keys Bilig non-scroll response timing from local visible revisions, not authoritative presented proof', () => {
+    const surface = {
+      dpr: 2,
+      fallback: null,
+      gridAuthoritativeRenderRevision: 'authoritative-1',
+      gridHeight: 480,
+      gridLocalRenderRevision: 'local-7',
+      gridProjectedRenderRevision: 'projected-9',
+      gridWidth: 720,
+      nativeRectCount: 4,
+      nativeRectLayerMounted: true,
+      nativeTextLayerMounted: true,
+      nativeTextRunCount: 3,
+      typeGpu: {
+        authoritativeRenderRevision: 'authoritative-1',
+        backendStatus: 'ready',
+        currentContentSignature: 'content-current',
+        currentRectSignature: 'rect-current',
+        currentSceneEpochSignature: 'epoch-current',
+        currentSceneOwnershipSignature: 'scene-current',
+        currentSelectionRevision: 'selection-current',
+        currentSemanticMutationRevision: 'semantic-current',
+        currentTextSignature: 'text-current',
+        currentViewportRevision: 'viewport-current',
+        currentWorkbookRevision: 'workbook-current',
+        frameProofStatus: 'pending',
+        headerPaneCount: 3,
+        localRenderRevision: 'local-7',
+        mode: 'typegpu-v3',
+        pixelHeight: 960,
+        pixelWidth: 1440,
+        presentedContentSignature: 'content-stale',
+        presentedRectSignature: 'rect-stale',
+        presentedSelectionRevision: 'selection-stale',
+        presentedSemanticMutationRevision: 'semantic-stale',
+        presentedTextSignature: 'text-stale',
+        presentedViewportRevision: 'viewport-stale',
+        presentedWorkbookRevision: 'workbook-stale',
+        projectedRenderRevision: 'projected-9',
+        tilePaneCount: 6,
+        tileSceneRevision: 'tile-9',
+        visibleLocalRenderRevision: 'local-7',
+        visibleProjectedRenderRevision: 'projected-9',
+      },
+    }
+
+    expect(biligInteractionVisibleResponseToken(surface, 'select-cell')).toBe('selection-current')
+    expect(biligInteractionVisibleResponseToken(surface, 'jump-deep-row')).toBe('viewport-current')
+    expect(biligInteractionVisibleResponseToken(surface, 'edit-visible-cell')).toContain('semantic-current')
+    expect(biligInteractionVisibleResponseToken(surface, 'edit-visible-cell')).not.toContain('semantic-stale')
   })
 
   it('does not charge screenshot capture to Bilig visible-response timing once TypeGPU tokens exist', () => {

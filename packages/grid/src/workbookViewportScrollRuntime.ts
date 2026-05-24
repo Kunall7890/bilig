@@ -19,6 +19,13 @@ type MutableRef<T> = {
 type VisibleRegionUpdater = VisibleRegionState | ((current: VisibleRegionState) => VisibleRegionState)
 
 type SetVisibleRegion = (updater: VisibleRegionUpdater) => void
+type VisibleRegionCommitMode = 'immediate' | 'deferred'
+
+interface PublishedVisibleRegion {
+  readonly next: VisibleRegionState
+  readonly nextViewport: Viewport
+  readonly sheetName: string
+}
 
 export interface WorkbookViewportScrollRuntimeInput {
   readonly columnAxis: GridAxisWorldIndex
@@ -94,6 +101,8 @@ export class WorkbookViewportScrollRuntime {
   private autoScrollSelection: WorkbookAutoScrollSelectionTarget | null = null
   private input: WorkbookViewportScrollRuntimeInput | null = null
   private lastNotifiedViewport: Viewport | null = null
+  private pendingAuthoritativeVisibleRegion: PublishedVisibleRegion | null = null
+  private pendingAuthoritativeVisibleRegionFrame: number | null = null
   private restoredViewportToken: number | null = null
   private scrollSyncFrame: number | null = null
 
@@ -101,11 +110,23 @@ export class WorkbookViewportScrollRuntime {
     this.input = input
   }
 
-  syncVisibleRegion(): void {
+  syncVisibleRegion(options: { readonly commitMode?: VisibleRegionCommitMode } = {}): void {
+    const published = this.publishInteractionVisibleRegion()
+    if (!published) {
+      return
+    }
+    if (options.commitMode === 'deferred') {
+      this.scheduleAuthoritativeVisibleRegionCommit(published)
+      return
+    }
+    this.commitAuthoritativeVisibleRegion(published)
+  }
+
+  private publishInteractionVisibleRegion(): PublishedVisibleRegion | null {
     const input = this.input
     const scrollViewport = input?.scrollViewportRef.current
     if (!input || !scrollViewport) {
-      return
+      return null
     }
     input.syncRuntimeAxes()
     const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1
@@ -156,6 +177,15 @@ export class WorkbookViewportScrollRuntime {
     input.liveVisibleRegionRef.current = next
     input.scrollTransformStore.setSnapshot(input.scrollTransformRef.current)
     const nextViewport = viewportFromVisibleRegion(next)
+    return { next, nextViewport, sheetName: input.sheetName }
+  }
+
+  private commitAuthoritativeVisibleRegion(published: PublishedVisibleRegion): void {
+    const input = this.input
+    if (!input || input.sheetName !== published.sheetName) {
+      return
+    }
+    const { next, nextViewport } = published
     if (
       shouldNotifyWorkbookVisibleViewportChange({
         next: nextViewport,
@@ -181,6 +211,29 @@ export class WorkbookViewportScrollRuntime {
     })
   }
 
+  private scheduleAuthoritativeVisibleRegionCommit(published: PublishedVisibleRegion): void {
+    this.pendingAuthoritativeVisibleRegion = published
+    if (this.pendingAuthoritativeVisibleRegionFrame !== null || typeof window === 'undefined') {
+      if (typeof window === 'undefined') {
+        this.flushAuthoritativeVisibleRegionCommit()
+      }
+      return
+    }
+    this.pendingAuthoritativeVisibleRegionFrame = window.requestAnimationFrame(() => {
+      this.pendingAuthoritativeVisibleRegionFrame = null
+      this.flushAuthoritativeVisibleRegionCommit()
+    })
+  }
+
+  private flushAuthoritativeVisibleRegionCommit(): void {
+    const pending = this.pendingAuthoritativeVisibleRegion
+    this.pendingAuthoritativeVisibleRegion = null
+    if (!pending) {
+      return
+    }
+    this.commitAuthoritativeVisibleRegion(pending)
+  }
+
   attachScrollViewport(): () => void {
     const input = this.input
     const scrollViewport = input?.scrollViewportRef.current
@@ -200,13 +253,14 @@ export class WorkbookViewportScrollRuntime {
     }
     const handleScroll = () => {
       noteGridScrollInput()
-      this.syncVisibleRegion()
+      this.syncVisibleRegion({ commitMode: 'deferred' })
     }
     scrollViewport.addEventListener('scroll', handleScroll, { passive: true })
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(scheduleVisibleRegionSync)
     observer?.observe(scrollViewport)
     return () => {
       this.cancelScheduledSync()
+      this.cancelScheduledAuthoritativeCommit()
       observer?.disconnect()
       scrollViewport.removeEventListener('scroll', handleScroll)
     }
@@ -295,6 +349,7 @@ export class WorkbookViewportScrollRuntime {
 
   dispose(): void {
     this.cancelScheduledSync()
+    this.cancelScheduledAuthoritativeCommit()
     this.input = null
     this.lastNotifiedViewport = null
   }
@@ -306,6 +361,16 @@ export class WorkbookViewportScrollRuntime {
     }
     window.cancelAnimationFrame(this.scrollSyncFrame)
     this.scrollSyncFrame = null
+  }
+
+  private cancelScheduledAuthoritativeCommit(): void {
+    this.pendingAuthoritativeVisibleRegion = null
+    if (this.pendingAuthoritativeVisibleRegionFrame === null || typeof window === 'undefined') {
+      this.pendingAuthoritativeVisibleRegionFrame = null
+      return
+    }
+    window.cancelAnimationFrame(this.pendingAuthoritativeVisibleRegionFrame)
+    this.pendingAuthoritativeVisibleRegionFrame = null
   }
 }
 
