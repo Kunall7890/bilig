@@ -148,6 +148,9 @@ inputs, labels, and function argument arrays reject sparse or accessor-backed
 payloads before formula intent is returned.
 Ref transport helpers return frozen plain data and frozen arrays, so a ref that
 an agent inspected cannot be mutated behind the same handoff object.
+`verifyPlan` also treats plans as data: malformed, sparse, or accessor-backed
+handoff objects return an `invalid_plan` issue instead of executing hidden
+properties or throwing at the caller.
 `verifyModel` keeps the same behavior at whole-model scope: invalid manifests
 return an invalid verdict with an `invalid_model` error and no actions.
 

@@ -79,6 +79,80 @@ describe('@bilig/workbook plan refs api', () => {
     })
   })
 
+  it('returns invalid verification for accessor-backed plan data without invoking getters', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
+
+    let refsUsedGetterInvoked = false
+    const topLevelPlan = {
+      modelName: 'verify-accessor-plan',
+      actionName: 'write',
+      refs: { target },
+      refsUsed: [target],
+      commands: [],
+      ops: [],
+      changed: [],
+      checks: [],
+    } satisfies WorkbookActionPlan<{ readonly target: typeof target }>
+    Object.defineProperty(topLevelPlan, 'refsUsed', {
+      enumerable: true,
+      get() {
+        refsUsedGetterInvoked = true
+        throw new Error('refsUsed getter should not run')
+      },
+    })
+
+    expect(verifyPlan(topLevelPlan)).toEqual({
+      status: 'invalid',
+      modelName: 'verify-accessor-plan',
+      actionName: 'write',
+      issues: [
+        {
+          code: 'invalid_plan',
+          path: 'plan',
+          message: 'Workbook plan is invalid: Workbook verification plan.refsUsed must be a data property',
+        },
+      ],
+    })
+    expect(refsUsedGetterInvoked).toBe(false)
+
+    let commandGetterInvoked = false
+    const command = {
+      kind: 'clear',
+      target,
+    } satisfies WorkbookActionPlan<{ readonly target: typeof target }>['commands'][number]
+    Object.defineProperty(command, 'kind', {
+      enumerable: true,
+      get() {
+        commandGetterInvoked = true
+        throw new Error('command getter should not run')
+      },
+    })
+    const nestedPlan: WorkbookActionPlan<{ readonly target: typeof target }> = {
+      modelName: 'verify-nested-accessor-plan',
+      actionName: 'write',
+      refs: { target },
+      refsUsed: [target],
+      commands: [command],
+      ops: [],
+      changed: [],
+      checks: [],
+    }
+
+    expect(verifyPlan(nestedPlan)).toEqual({
+      status: 'invalid',
+      modelName: 'verify-nested-accessor-plan',
+      actionName: 'write',
+      issues: [
+        {
+          code: 'invalid_plan',
+          path: 'plan',
+          message: 'Workbook plan is invalid: Workbook description command.kind must be a data property',
+        },
+      ],
+    })
+    expect(commandGetterInvoked).toBe(false)
+  })
+
   it('rejects refsUsed entries that are not discoverable from refs', () => {
     const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
     const forged = findRange({ sheetName: 'Sheet1', address: 'Z9' })

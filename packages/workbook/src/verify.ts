@@ -1,6 +1,7 @@
 import type { CellRangeRef } from '@bilig/protocol'
 import { parseFormula } from '@bilig/formula'
 import {
+  describePlan,
   describePlanResult,
   describeRef,
   type WorkbookActionPlanDescription,
@@ -26,12 +27,13 @@ import {
   type WorkbookActionInput,
 } from './input.js'
 import type { WorkbookOp } from './ops.js'
-import type { WorkbookCheckExpectation, WorkbookRunError } from './result.js'
+import type { WorkbookChangeSummary, WorkbookCheckExpectation, WorkbookCheckResult, WorkbookRunError } from './result.js'
 import { hydratePlanData } from './plan-data.js'
 
 type WorkbookConcreteCommandOp = Extract<WorkbookOp, { kind: 'setCellFormula' | 'setCellValue' | 'setCellFormat' | 'clearCell' }>
 
 export type WorkbookPlanIssueCode =
+  | 'invalid_plan'
   | 'invalid_action_input'
   | 'ref_not_in_refs'
   | 'duplicate_ref'
@@ -338,6 +340,56 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+function ownPlanValue<T extends object, K extends keyof T>(value: T, key: K, path: string): T[K] {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error('Workbook verification plan must be an object')
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(value, key)
+  if (descriptor === undefined || !('value' in descriptor)) {
+    throw new Error(`Workbook verification ${path} must be a data property`)
+  }
+  return descriptor.value
+}
+
+function ownPlanArray<T extends object, K extends keyof T>(value: T, key: K, path: string): T[K] {
+  const array = ownPlanValue(value, key, path)
+  if (!Array.isArray(array)) {
+    throw new Error(`Workbook verification ${path} must be an array`)
+  }
+  return array
+}
+
+function ownPlanString<T extends object, K extends keyof T>(value: T, key: K, path: string): T[K] {
+  const text = ownPlanValue(value, key, path)
+  if (typeof text !== 'string') {
+    throw new Error(`Workbook verification ${path} must be a string`)
+  }
+  return text
+}
+
+function safePlanText(plan: unknown, key: string, fallback: string): string {
+  if (typeof plan !== 'object' || plan === null) {
+    return fallback
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(plan, key)
+  return descriptor !== undefined && 'value' in descriptor && typeof descriptor.value === 'string' ? descriptor.value : fallback
+}
+
+function invalidPlanVerification(plan: unknown, error: unknown): WorkbookPlanVerification {
+  return {
+    status: 'invalid',
+    modelName: safePlanText(plan, 'modelName', 'unknown-model'),
+    actionName: safePlanText(plan, 'actionName', 'unknown-action'),
+    issues: [
+      {
+        code: 'invalid_plan',
+        path: 'plan',
+        message: `Workbook plan is invalid: ${errorMessage(error)}`,
+      },
+    ],
+  }
+}
+
 function formulaLabelsForCommand(
   command: Extract<WorkbookActionCommand, { readonly kind: 'writeFormula' }>,
 ): readonly WorkbookFormulaLabel[] {
@@ -356,9 +408,32 @@ function hasLabelForInput(labels: readonly WorkbookFormulaLabel[], input: Workbo
 }
 
 export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVerification {
+  let modelName: string
+  let actionName: string
+  let refs: Refs
+  let refsUsed: readonly WorkbookRef[]
+  let commands: readonly WorkbookActionCommand[]
+  let ops: readonly WorkbookOp[]
+  let changed: readonly WorkbookChangeSummary[]
+  let checks: readonly WorkbookCheckResult[]
+
+  try {
+    modelName = ownPlanString(plan, 'modelName', 'plan.modelName')
+    actionName = ownPlanString(plan, 'actionName', 'plan.actionName')
+    refs = ownPlanValue(plan, 'refs', 'plan.refs')
+    refsUsed = ownPlanArray(plan, 'refsUsed', 'plan.refsUsed')
+    commands = ownPlanArray(plan, 'commands', 'plan.commands')
+    ops = ownPlanArray(plan, 'ops', 'plan.ops')
+    changed = ownPlanArray(plan, 'changed', 'plan.changed')
+    checks = ownPlanArray(plan, 'checks', 'plan.checks')
+    describePlan(plan)
+  } catch (error) {
+    return invalidPlanVerification(plan, error)
+  }
+
   const issues: WorkbookPlanIssue[] = []
   const knownRefs = new Set<string>()
-  const refsInShape = new Set(collectWorkbookRefs(plan.refs).map(refKey))
+  const refsInShape = new Set(collectWorkbookRefs(refs).map(refKey))
 
   if (hasOwnActionInput(plan)) {
     try {
@@ -372,7 +447,7 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
     }
   }
 
-  plan.refsUsed.forEach((ref, index) => {
+  refsUsed.forEach((ref, index) => {
     const key = refKey(ref)
     if (knownRefs.has(key)) {
       issues.push(
@@ -402,7 +477,7 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
     return knownRefs.has(refKey(ref))
   }
 
-  plan.commands.forEach((command, commandIndex) => {
+  commands.forEach((command, commandIndex) => {
     const target = commandTarget(command)
 
     if (target !== undefined && !hasRef(target)) {
@@ -495,7 +570,7 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
             }),
           )
         }
-        if (!plan.ops.some((op) => workbookOpMatches(command.op, op))) {
+        if (!ops.some((op) => workbookOpMatches(command.op, op))) {
           issues.push({
             code: 'missing_workbook_op',
             path: `commands[${commandIndex}].op`,
@@ -506,7 +581,7 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
     }
 
     const expectedOp = expectedConcreteOp(command)
-    if (expectedOp !== null && !plan.ops.some((op) => opMatches(expectedOp, op))) {
+    if (expectedOp !== null && !ops.some((op) => opMatches(expectedOp, op))) {
       const expectedTarget = commandTarget(command)
       issues.push(
         issue({
@@ -519,7 +594,7 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
     }
   })
 
-  plan.changed.forEach((change, changeIndex) => {
+  changed.forEach((change, changeIndex) => {
     if (change.target !== undefined && !hasRef(change.target)) {
       issues.push(
         issue({
@@ -532,7 +607,7 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
     }
   })
 
-  plan.checks.forEach((check, checkIndex) => {
+  checks.forEach((check, checkIndex) => {
     if (check.status !== 'planned') {
       issues.push({
         code: 'check_status_not_planned',
@@ -629,8 +704,8 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
 
   return {
     status: issues.length === 0 ? 'valid' : 'invalid',
-    modelName: plan.modelName,
-    actionName: plan.actionName,
+    modelName,
+    actionName,
     issues,
   }
 }

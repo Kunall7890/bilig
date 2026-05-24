@@ -70,6 +70,7 @@ export interface WorkbookRunUnverified {
 
 export type WorkbookRunErrorCode =
   | 'invalid_model'
+  | 'invalid_plan'
   | 'invalid_plan_data'
   | 'action_not_found'
   | 'invalid_action_input'
@@ -117,6 +118,7 @@ export type WorkbookRunErrorCode =
 
 export const workbookRunErrorCodes = Object.freeze([
   'invalid_model',
+  'invalid_plan',
   'invalid_plan_data',
   'action_not_found',
   'invalid_action_input',

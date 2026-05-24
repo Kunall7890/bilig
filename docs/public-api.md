@@ -408,6 +408,9 @@ arrays, label arrays, and function argument arrays before returning formula
 intent.
 Ref transport helpers return frozen plain data and frozen arrays, so inspected
 refs stay stable across agent handoff and verification.
+`verifyPlan` treats public plan handoff as data too: malformed, sparse, or
+accessor-backed plan objects return an `invalid_plan` issue instead of executing
+hidden properties or throwing at the caller.
 Normalized payloads preserve consumer-owned JSON keys as own data properties,
 including names like `__proto__` and `constructor`, so transported tool payloads
 cannot mutate prototypes or disappear during canonicalization.
@@ -607,14 +610,15 @@ arrays and nested ref arrays are data-only too: holes, non-enumerable entries,
 or accessor-backed entries are rejected without invoking getters.
 
 `verifyPlan` gives agents a runtime-free consistency check before handoff. It
-flags invalid action input, unresolved command targets, unresolved formula
-inputs, missing formula labels, formula labels that do not point at resolved
-refs or do not appear in formula text, duplicate resolved refs, refs used that
-are not discoverable from `refs`, unparsable formulas, and missing concrete ops
-for write, clear, and number-format commands whose target is already known as a
-single cell. Custom check targets and supporting refs must also resolve through
-`refsUsed`. Formula readback expectation inputs and labels must resolve through
-`refsUsed`, and formula expectation text must be parseable.
+first checks that the plan handoff itself is own data, then flags invalid action
+input, unresolved command targets, unresolved formula inputs, missing formula
+labels, formula labels that do not point at resolved refs or do not appear in
+formula text, duplicate resolved refs, refs used that are not discoverable from
+`refs`, unparsable formulas, and missing concrete ops for write, clear, and
+number-format commands whose target is already known as a single cell. Custom
+check targets and supporting refs must also resolve through `refsUsed`. Formula
+readback expectation inputs and labels must resolve through `refsUsed`, and
+formula expectation text must be parseable.
 Checks must start as `planned`; consumer model code cannot mark a check passed
 or failed before runtime proof.
 Low-level `addOp` commands must contain valid `WorkbookOp` values, must still
