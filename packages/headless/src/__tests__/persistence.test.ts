@@ -17,7 +17,7 @@ describe('WorkPaper persistence helpers', () => {
     const workbook = WorkPaper.buildEmpty({
       useColumnIndex: true,
       decimalSeparator: '.',
-      calculationSettings: { iterate: true, iterateCount: 64, iterateDelta: '0.001' },
+      calculationSettings: { iterate: true, iterateCount: 64, iterateDelta: '0.001', calcOnSave: true, calcCompleted: false },
       parseDateTime: () => undefined,
       functionPlugins: [],
     })
@@ -45,6 +45,8 @@ describe('WorkPaper persistence helpers', () => {
         iterate: true,
         iterateCount: 64,
         iterateDelta: '0.001',
+        calcOnSave: true,
+        calcCompleted: false,
       },
       useColumnIndex: true,
       decimalSeparator: '.',
@@ -89,7 +91,7 @@ describe('WorkPaper persistence helpers', () => {
 
   it('exports config only from the documented JSON-safe subset', () => {
     const config = pickPersistableWorkPaperConfig({
-      calculationSettings: { iterate: true, iterateCount: 50, iterateDelta: '0.001' },
+      calculationSettings: { iterate: true, iterateCount: 50, iterateDelta: '0.001', calcOnSave: true, calcCompleted: false },
       useColumnIndex: true,
       context: { requestId: 'ctx-1', featureFlags: ['alpha'] },
       stringifyDateTime: () => undefined,
@@ -97,7 +99,7 @@ describe('WorkPaper persistence helpers', () => {
     })
 
     expect(config).toEqual({
-      calculationSettings: { iterate: true, iterateCount: 50, iterateDelta: '0.001' },
+      calculationSettings: { iterate: true, iterateCount: 50, iterateDelta: '0.001', calcOnSave: true, calcCompleted: false },
       useColumnIndex: true,
       context: { requestId: 'ctx-1', featureFlags: ['alpha'] },
     })

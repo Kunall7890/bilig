@@ -281,6 +281,14 @@ export function normalizeWorkbookCalculationSettings(
   if (forceFullCalc !== undefined) {
     normalized.forceFullCalc = forceFullCalc
   }
+  const calcOnSave = hasOwnCalculationSetting(settings, 'calcOnSave') ? settings.calcOnSave : base?.calcOnSave
+  if (calcOnSave !== undefined) {
+    normalized.calcOnSave = calcOnSave
+  }
+  const calcCompleted = hasOwnCalculationSetting(settings, 'calcCompleted') ? settings.calcCompleted : base?.calcCompleted
+  if (calcCompleted !== undefined) {
+    normalized.calcCompleted = calcCompleted
+  }
   const concurrentCalc = hasOwnCalculationSetting(settings, 'concurrentCalc') ? settings.concurrentCalc : base?.concurrentCalc
   if (concurrentCalc !== undefined) {
     normalized.concurrentCalc = concurrentCalc
@@ -300,6 +308,8 @@ export function calculationSettingsEqual(left: WorkbookCalculationSettingsSnapsh
     left.fullPrecision === right.fullPrecision &&
     left.fullCalcOnLoad === right.fullCalcOnLoad &&
     left.forceFullCalc === right.forceFullCalc &&
+    left.calcOnSave === right.calcOnSave &&
+    left.calcCompleted === right.calcCompleted &&
     left.concurrentCalc === right.concurrentCalc
   )
 }

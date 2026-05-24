@@ -190,6 +190,8 @@ export interface WorkPaperCalculationSettings {
   iterateDelta?: string | null
   fullPrecision?: boolean | null
   fullCalcOnLoad?: boolean | null
+  calcOnSave?: boolean | null
+  calcCompleted?: boolean | null
   concurrentCalc?: boolean | null
 }
 

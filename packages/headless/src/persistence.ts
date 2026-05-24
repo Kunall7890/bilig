@@ -160,6 +160,8 @@ function isCalculationSettings(value: unknown): value is WorkPaperCalculationSet
       (typeof value['iterateDelta'] === 'string' && Number.isFinite(Number(value['iterateDelta'])))) &&
     (value['fullPrecision'] === undefined || value['fullPrecision'] === null || typeof value['fullPrecision'] === 'boolean') &&
     (value['fullCalcOnLoad'] === undefined || value['fullCalcOnLoad'] === null || typeof value['fullCalcOnLoad'] === 'boolean') &&
+    (value['calcOnSave'] === undefined || value['calcOnSave'] === null || typeof value['calcOnSave'] === 'boolean') &&
+    (value['calcCompleted'] === undefined || value['calcCompleted'] === null || typeof value['calcCompleted'] === 'boolean') &&
     (value['concurrentCalc'] === undefined || value['concurrentCalc'] === null || typeof value['concurrentCalc'] === 'boolean')
   )
 }

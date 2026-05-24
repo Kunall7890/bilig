@@ -106,6 +106,8 @@ describe('work paper config helpers', () => {
           iterateDelta: '0.001',
           fullPrecision: false,
           fullCalcOnLoad: true,
+          calcOnSave: true,
+          calcCompleted: false,
           concurrentCalc: false,
         },
       }),
@@ -118,6 +120,12 @@ describe('work paper config helpers', () => {
       mode: 'automatic',
       compatibilityMode: 'excel-modern',
       iterate: true,
+    })
+    expect(normalizeConfiguredWorkPaperCalculationSettings({ calcOnSave: true, calcCompleted: false })).toEqual({
+      mode: 'automatic',
+      compatibilityMode: 'excel-modern',
+      calcOnSave: true,
+      calcCompleted: false,
     })
     expect(
       normalizeConfiguredWorkPaperCalculationSettings(

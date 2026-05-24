@@ -89,6 +89,8 @@ function hasSemanticCalculationSettings(settings: WorkbookCalculationSettingsSna
     settings.fullPrecision === false ||
     settings.fullCalcOnLoad !== undefined ||
     settings.forceFullCalc !== undefined ||
+    settings.calcOnSave !== undefined ||
+    settings.calcCompleted !== undefined ||
     settings.concurrentCalc !== undefined
   )
 }
@@ -111,6 +113,11 @@ function buildWorkbookCalcPr(settings: WorkbookCalculationSettingsSnapshot): str
     calcPrAttribute(
       'forceFullCalc',
       typeof settings.forceFullCalc === 'boolean' ? formatBooleanAttribute(settings.forceFullCalc) : undefined,
+    ),
+    calcPrAttribute('calcOnSave', typeof settings.calcOnSave === 'boolean' ? formatBooleanAttribute(settings.calcOnSave) : undefined),
+    calcPrAttribute(
+      'calcCompleted',
+      typeof settings.calcCompleted === 'boolean' ? formatBooleanAttribute(settings.calcCompleted) : undefined,
     ),
     calcPrAttribute(
       'concurrentCalc',
@@ -215,6 +222,8 @@ export function readImportedWorkbookCalculationSettings(source: XlsxZipSource): 
   const fullPrecision = booleanAttributeValue(calcPr?.['fullPrecision'])
   const fullCalcOnLoad = booleanAttributeValue(calcPr?.['fullCalcOnLoad'])
   const forceFullCalc = booleanAttributeValue(calcPr?.['forceFullCalc'])
+  const calcOnSave = booleanAttributeValue(calcPr?.['calcOnSave'])
+  const calcCompleted = booleanAttributeValue(calcPr?.['calcCompleted'])
   const concurrentCalc = booleanAttributeValue(calcPr?.['concurrentCalc'])
   const settings: WorkbookCalculationSettingsSnapshot = {
     mode,
@@ -227,6 +236,8 @@ export function readImportedWorkbookCalculationSettings(source: XlsxZipSource): 
     ...(fullPrecision === false ? { fullPrecision } : {}),
     ...(fullCalcOnLoad !== undefined ? { fullCalcOnLoad } : {}),
     ...(forceFullCalc !== undefined ? { forceFullCalc } : {}),
+    ...(calcOnSave !== undefined ? { calcOnSave } : {}),
+    ...(calcCompleted !== undefined ? { calcCompleted } : {}),
     ...(concurrentCalc !== undefined ? { concurrentCalc } : {}),
   }
   return hasSemanticCalculationSettings(settings) || hasNonDefaultDateSystem(settings) ? settings : undefined

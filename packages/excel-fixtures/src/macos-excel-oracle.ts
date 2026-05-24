@@ -10,6 +10,7 @@ import {
   parseMacosExcelRejectedStructuralOperationOutput,
 } from './macos-excel-oracle-output.js'
 import type {
+  MacosExcelCalculationPolicy,
   MacosExcelInspectionOracleRequest,
   MacosExcelInspectionOracleResult,
   MacosExcelLinkUpdateMode,
@@ -34,6 +35,7 @@ export {
 } from './macos-excel-oracle-output.js'
 export type {
   MacosExcelAutoFilterOperator,
+  MacosExcelCalculationPolicy,
   MacosExcelCellInspection,
   MacosExcelInspectionOracleRequest,
   MacosExcelInspectionOracleResult,
@@ -386,6 +388,15 @@ function macosExcelUpdateLinksModeAppleScript(mode: MacosExcelLinkUpdateMode): s
   }
 }
 
+function macosExcelCalculationAppleScript(policy: MacosExcelCalculationPolicy | undefined): string {
+  switch (policy ?? 'fullRebuild') {
+    case 'fullRebuild':
+      return '      calculate full rebuild'
+    case 'none':
+      return ''
+  }
+}
+
 function openCompanionWorkbooksAppleScript(): string {
   return `      if (count of argv) > 1 then
         repeat with companionIndex from 2 to count of argv
@@ -425,7 +436,10 @@ end startMacroPromptDisabler`
 }
 
 export function createMacosExcelRecalculationAppleScript(
-  request: Pick<MacosExcelRecalculationOracleRequest, 'formulaCells' | 'saveWorkbook' | 'updateLinks' | 'valueCells' | 'worksheetName'>,
+  request: Pick<
+    MacosExcelRecalculationOracleRequest,
+    'calculationPolicy' | 'formulaCells' | 'saveWorkbook' | 'updateLinks' | 'valueCells' | 'worksheetName'
+  >,
 ): string {
   if (request.valueCells.length === 0) {
     throw new Error('macOS Excel oracle request must read at least one value cell')
@@ -433,6 +447,7 @@ export function createMacosExcelRecalculationAppleScript(
 
   const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
   const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
+  const calculationCommand = macosExcelCalculationAppleScript(request.calculationPolicy)
   const formulaCells = request.formulaCells
     .map(
       (cell) =>
@@ -462,7 +477,7 @@ export function createMacosExcelRecalculationAppleScript(
 ${openCompanionWorkbooksAppleScript()}
       set targetWorkbook to open workbook workbook file name workbookPath update links ${updateLinksMode}
 ${formulaCells}
-      calculate full rebuild
+${calculationCommand}
       set output to "version=" & (version as string)
 ${valueReads}
       close targetWorkbook saving ${closeSavingMode}
@@ -522,7 +537,7 @@ end isExcelErrorDisplayText
 export function createMacosExcelInspectionAppleScript(
   request: Pick<
     MacosExcelInspectionOracleRequest,
-    'formulaCells' | 'inspectCells' | 'refreshWorkbook' | 'saveWorkbook' | 'updateLinks' | 'worksheetName'
+    'calculationPolicy' | 'formulaCells' | 'inspectCells' | 'refreshWorkbook' | 'saveWorkbook' | 'updateLinks' | 'worksheetName'
   >,
 ): string {
   if (request.inspectCells.length === 0) {
@@ -531,6 +546,7 @@ export function createMacosExcelInspectionAppleScript(
 
   const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
   const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
+  const calculationCommand = macosExcelCalculationAppleScript(request.calculationPolicy)
   const formulaCells = request.formulaCells
     .map(
       (cell) =>
@@ -560,7 +576,7 @@ ${openCompanionWorkbooksAppleScript()}
       set targetWorkbook to open workbook workbook file name workbookPath update links ${updateLinksMode}
 ${formulaCells}
 ${refreshWorkbook}
-      calculate full rebuild
+${calculationCommand}
       set output to "version=" & (version as string)
 ${inspectionReads}
       close targetWorkbook saving ${closeSavingMode}
@@ -582,11 +598,12 @@ ${cellValueAppleScriptHelpers()}`
 }
 
 export function createMacosExcelPackageOpenSaveAppleScript(
-  request: Pick<MacosExcelPackageOpenSaveOracleRequest, 'refreshWorkbook' | 'saveWorkbook' | 'updateLinks'>,
+  request: Pick<MacosExcelPackageOpenSaveOracleRequest, 'calculationPolicy' | 'refreshWorkbook' | 'saveWorkbook' | 'updateLinks'>,
 ): string {
   const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
   const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
   const refreshWorkbook = request.refreshWorkbook === true ? '      refresh all targetWorkbook' : ''
+  const calculationCommand = macosExcelCalculationAppleScript(request.calculationPolicy)
 
   return `on run argv
   set workbookPath to item 1 of argv
@@ -602,7 +619,7 @@ ${openCompanionWorkbooksAppleScript()}
       my startMacroPromptDisabler()
       set targetWorkbook to open workbook workbook file name workbookPath update links ${updateLinksMode}
 ${refreshWorkbook}
-      calculate full rebuild
+${calculationCommand}
       set output to "version=" & (version as string)
       close targetWorkbook saving ${closeSavingMode}
 ${closeCompanionWorkbooksAppleScript()}
@@ -633,7 +650,7 @@ ${macroPromptDisablerAppleScript()}`
 export function createMacosExcelStructuralOperationAppleScript(
   request: Pick<
     MacosExcelStructuralOperationOracleRequest,
-    'formulaCells' | 'inspectCells' | 'operations' | 'saveWorkbook' | 'worksheetName' | 'updateLinks'
+    'calculationPolicy' | 'formulaCells' | 'inspectCells' | 'operations' | 'saveWorkbook' | 'worksheetName' | 'updateLinks'
   >,
 ): string {
   if (request.operations.length === 0) {
@@ -645,6 +662,7 @@ export function createMacosExcelStructuralOperationAppleScript(
 
   const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
   const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
+  const calculationCommand = macosExcelCalculationAppleScript(request.calculationPolicy)
   const sheetDeletePromptHandler = request.operations.some((operation) => operation.kind === 'deleteSheet')
     ? '      my startSheetDeletePromptHandler()'
     : ''
@@ -676,7 +694,7 @@ ${openCompanionWorkbooksAppleScript()}
 ${formulaCells}
 ${sheetDeletePromptHandler}
 ${operations}
-      calculate full rebuild
+${calculationCommand}
       set output to "version=" & (version as string)
 ${inspectionReads}
       close targetWorkbook saving ${closeSavingMode}

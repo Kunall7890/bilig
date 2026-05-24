@@ -229,6 +229,12 @@ function validateWorkPaperCalculationSettings(settings: WorkPaperCalculationSett
   if (settings.fullCalcOnLoad !== undefined && settings.fullCalcOnLoad !== null && typeof settings.fullCalcOnLoad !== 'boolean') {
     throw new WorkPaperExpectedValueOfTypeError('boolean', 'calculationSettings.fullCalcOnLoad')
   }
+  if (settings.calcOnSave !== undefined && settings.calcOnSave !== null && typeof settings.calcOnSave !== 'boolean') {
+    throw new WorkPaperExpectedValueOfTypeError('boolean', 'calculationSettings.calcOnSave')
+  }
+  if (settings.calcCompleted !== undefined && settings.calcCompleted !== null && typeof settings.calcCompleted !== 'boolean') {
+    throw new WorkPaperExpectedValueOfTypeError('boolean', 'calculationSettings.calcCompleted')
+  }
   if (settings.concurrentCalc !== undefined && settings.concurrentCalc !== null && typeof settings.concurrentCalc !== 'boolean') {
     throw new WorkPaperExpectedValueOfTypeError('boolean', 'calculationSettings.concurrentCalc')
   }

@@ -524,6 +524,8 @@ export interface WorkbookCalculationSettingsSnapshot {
   fullPrecision?: boolean | null
   fullCalcOnLoad?: boolean | null
   forceFullCalc?: boolean | null
+  calcOnSave?: boolean | null
+  calcCompleted?: boolean | null
   concurrentCalc?: boolean | null
 }
 

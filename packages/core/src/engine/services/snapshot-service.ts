@@ -46,6 +46,8 @@ function hasNonDefaultCalculationSettings(calculationSettings: WorkbookCalculati
     calculationSettings.fullPrecision === false ||
     calculationSettings.fullCalcOnLoad !== undefined ||
     calculationSettings.forceFullCalc !== undefined ||
+    calculationSettings.calcOnSave !== undefined ||
+    calculationSettings.calcCompleted !== undefined ||
     calculationSettings.concurrentCalc !== undefined ||
     calculationSettings.dateSystem === '1904'
   )

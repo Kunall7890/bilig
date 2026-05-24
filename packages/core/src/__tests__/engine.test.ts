@@ -4648,7 +4648,7 @@ describe('SpreadsheetEngine', () => {
     engine.setCalculationSettings({ mode: 'automatic' })
     expect(outbound).toEqual([])
 
-    engine.setCalculationSettings({ iterate: true, iterateCount: 32, iterateDelta: '0.01' })
+    engine.setCalculationSettings({ iterate: true, iterateCount: 32, iterateDelta: '0.01', calcOnSave: true, calcCompleted: false })
     expect(outbound.at(-1)?.ops).toEqual([
       {
         kind: 'setCalculationSettings',
@@ -4658,6 +4658,8 @@ describe('SpreadsheetEngine', () => {
           iterate: true,
           iterateCount: 32,
           iterateDelta: '0.01',
+          calcOnSave: true,
+          calcCompleted: false,
         },
       },
     ])
@@ -4667,10 +4669,12 @@ describe('SpreadsheetEngine', () => {
       iterate: true,
       iterateCount: 32,
       iterateDelta: '0.01',
+      calcOnSave: true,
+      calcCompleted: false,
     })
     outbound.splice(0)
 
-    engine.setCalculationSettings({ iterate: true, iterateCount: 32, iterateDelta: '0.01' })
+    engine.setCalculationSettings({ iterate: true, iterateCount: 32, iterateDelta: '0.01', calcOnSave: true, calcCompleted: false })
     expect(outbound).toEqual([])
 
     const table = {
@@ -5481,7 +5485,7 @@ describe('SpreadsheetEngine', () => {
     engine.setCellValue('Sheet1', 'A1', 2)
     engine.setCellValue('Sheet1', 'B1', 3)
     engine.setCellFormula('Sheet1', 'C1', 'SUM(A1:B1)')
-    engine.setCalculationSettings({ mode: 'manual', compatibilityMode: 'odf-1.4' })
+    engine.setCalculationSettings({ mode: 'manual', compatibilityMode: 'odf-1.4', calcOnSave: true, calcCompleted: false })
 
     engine.insertColumns('Sheet1', 1, 1)
 
@@ -5491,6 +5495,8 @@ describe('SpreadsheetEngine', () => {
     expect(engine.exportSnapshot().workbook.metadata?.calculationSettings).toEqual({
       mode: 'manual',
       compatibilityMode: 'odf-1.4',
+      calcOnSave: true,
+      calcCompleted: false,
     })
     expect(engine.exportSnapshot().workbook.metadata?.volatileContext?.recalcEpoch).toBeGreaterThan(0)
 
@@ -5500,6 +5506,8 @@ describe('SpreadsheetEngine', () => {
     expect(restored.getCalculationSettings()).toEqual({
       mode: 'manual',
       compatibilityMode: 'odf-1.4',
+      calcOnSave: true,
+      calcCompleted: false,
     })
   })
 

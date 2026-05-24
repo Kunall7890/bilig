@@ -17,20 +17,22 @@ describe('XLSX calculation properties roundtrip', () => {
       iterateCount: 10200,
       iterateDelta: '9.9999999999999995E-7',
       fullCalcOnLoad: true,
+      calcOnSave: true,
+      calcCompleted: false,
       concurrentCalc: false,
     })
     expect(imported.warnings).toEqual([expect.stringContaining('Manual calculation mode')])
 
     const exportedWorkbookXml = workbookXml(exportXlsx(imported.snapshot))
     expect(exportedWorkbookXml).toContain(
-      '<calcPr calcMode="manual" fullPrecision="0" iterate="1" iterateCount="10200" iterateDelta="9.9999999999999995E-7" fullCalcOnLoad="1" concurrentCalc="0"/>',
+      '<calcPr calcMode="manual" fullPrecision="0" iterate="1" iterateCount="10200" iterateDelta="9.9999999999999995E-7" fullCalcOnLoad="1" calcOnSave="1" calcCompleted="0" concurrentCalc="0"/>',
     )
 
     const engine = new SpreadsheetEngine({ workbookName: 'calculation-properties-engine' })
     engine.importSnapshot(imported.snapshot)
     const exportedFromEngineWorkbookXml = workbookXml(exportXlsx(engine.exportSnapshot()))
     expect(exportedFromEngineWorkbookXml).toContain(
-      '<calcPr calcMode="manual" fullPrecision="0" iterate="1" iterateCount="10200" iterateDelta="9.9999999999999995E-7" fullCalcOnLoad="1" concurrentCalc="0"/>',
+      '<calcPr calcMode="manual" fullPrecision="0" iterate="1" iterateCount="10200" iterateDelta="9.9999999999999995E-7" fullCalcOnLoad="1" calcOnSave="1" calcCompleted="0" concurrentCalc="0"/>',
     )
   })
 
@@ -63,7 +65,7 @@ function buildCalculationPropertiesWorkbookBytes(options: { readonly formula?: b
   zip['xl/workbook.xml'] = strToU8(
     workbookXmlWithoutCalcPr.replace(
       '</workbook>',
-      '<calcPr calcMode="manual" fullPrecision="0" iterate="1" iterateCount="10200" iterateDelta="9.9999999999999995E-7" fullCalcOnLoad="1" concurrentCalc="0"/></workbook>',
+      '<calcPr calcMode="manual" fullPrecision="0" iterate="1" iterateCount="10200" iterateDelta="9.9999999999999995E-7" fullCalcOnLoad="1" calcOnSave="1" calcCompleted="0" concurrentCalc="0"/></workbook>',
     ),
   )
   return zipSync(zip)

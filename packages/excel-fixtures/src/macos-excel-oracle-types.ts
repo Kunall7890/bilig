@@ -6,6 +6,7 @@ export interface MacosExcelOracleFormulaCell {
 }
 
 export type MacosExcelLinkUpdateMode = 'all' | 'external' | 'never' | 'remote'
+export type MacosExcelCalculationPolicy = 'fullRebuild' | 'none'
 export type MacosExcelSortHeader = 'guess' | 'no' | 'yes'
 export type MacosExcelSortOrder = 'ascending' | 'descending'
 export type MacosExcelSortOrientation = 'columns' | 'rows'
@@ -26,6 +27,7 @@ export interface MacosExcelRecalculationOracleRequest {
   readonly saveWorkbook?: boolean
   readonly timeoutMs?: number
   readonly updateLinks?: MacosExcelLinkUpdateMode
+  readonly calculationPolicy?: MacosExcelCalculationPolicy
 }
 
 export interface MacosExcelRecalculationOracleResult {
@@ -45,6 +47,7 @@ export interface MacosExcelInspectionOracleRequest {
   readonly timeoutMs?: number
   readonly updateLinks?: MacosExcelLinkUpdateMode
   readonly refreshWorkbook?: boolean
+  readonly calculationPolicy?: MacosExcelCalculationPolicy
 }
 
 export interface MacosExcelPackageOpenSaveOracleRequest {
@@ -55,6 +58,7 @@ export interface MacosExcelPackageOpenSaveOracleRequest {
   readonly timeoutMs?: number
   readonly updateLinks?: MacosExcelLinkUpdateMode
   readonly refreshWorkbook?: boolean
+  readonly calculationPolicy?: MacosExcelCalculationPolicy
 }
 
 export type MacosExcelStructuralOperation =
@@ -107,6 +111,7 @@ export interface MacosExcelStructuralOperationOracleRequest {
   readonly saveWorkbook?: boolean
   readonly timeoutMs?: number
   readonly updateLinks?: MacosExcelLinkUpdateMode
+  readonly calculationPolicy?: MacosExcelCalculationPolicy
 }
 
 export interface MacosExcelRejectedStructuralOperationOracleRequest {

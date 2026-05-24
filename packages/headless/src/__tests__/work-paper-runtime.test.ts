@@ -1795,7 +1795,7 @@ describe('WorkPaper', () => {
         Sheet1: [[1, '=A1+1']],
       },
       {
-        calculationSettings: { iterate: true, iterateCount: 10, iterateDelta: '0.1' },
+        calculationSettings: { iterate: true, iterateCount: 10, iterateDelta: '0.1', calcOnSave: true, calcCompleted: false },
       },
     )
 
@@ -1805,14 +1805,18 @@ describe('WorkPaper', () => {
       iterate: true,
       iterateCount: 10,
       iterateDelta: '0.1',
+      calcOnSave: true,
+      calcCompleted: false,
     })
     expect(workbook.getConfig().calculationSettings).toEqual({
       iterate: true,
       iterateCount: 10,
       iterateDelta: '0.1',
+      calcOnSave: true,
+      calcCompleted: false,
     })
 
-    workbook.setCalculationSettings({ iterate: true, iterateCount: 25, iterateDelta: '0.001' })
+    workbook.setCalculationSettings({ iterate: true, iterateCount: 25, iterateDelta: '0.001', calcOnSave: true, calcCompleted: true })
 
     expect(workbook.getCalculationSettings()).toEqual({
       mode: 'automatic',
@@ -1820,16 +1824,22 @@ describe('WorkPaper', () => {
       iterate: true,
       iterateCount: 25,
       iterateDelta: '0.001',
+      calcOnSave: true,
+      calcCompleted: true,
     })
     expect(workbook.getConfig().calculationSettings).toEqual({
       iterate: true,
       iterateCount: 25,
       iterateDelta: '0.001',
+      calcOnSave: true,
+      calcCompleted: true,
     })
     expect(exportWorkPaperDocument(workbook).config?.calculationSettings).toEqual({
       iterate: true,
       iterateCount: 25,
       iterateDelta: '0.001',
+      calcOnSave: true,
+      calcCompleted: true,
     })
   })
 

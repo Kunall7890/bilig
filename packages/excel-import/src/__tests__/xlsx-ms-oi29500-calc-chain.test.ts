@@ -14,6 +14,7 @@ describe('MS-OI29500 calcPr and calcChain import', () => {
       compatibilityMode: 'excel-modern',
       fullCalcOnLoad: true,
       forceFullCalc: true,
+      calcCompleted: false,
       calcId: 191029,
     })
     expect(formulaAudit).toMatchObject({
@@ -33,12 +34,17 @@ describe('MS-OI29500 calcPr and calcChain import', () => {
           code: 'force-full-calc',
           clause: '18.2.2',
         }),
+        expect.objectContaining({
+          code: 'calc-not-completed',
+          clause: '18.2.2',
+        }),
       ]),
     })
 
     const exportedWorkbookXml = workbookXml(exportXlsx(imported.snapshot))
     expect(exportedWorkbookXml).toContain('calcId="191029"')
     expect(exportedWorkbookXml).toContain('forceFullCalc="1"')
+    expect(exportedWorkbookXml).toContain('calcCompleted="0"')
   })
 
   it('resolves calcChain cell sheet names from workbook sheet ids instead of tab order', () => {
@@ -62,7 +68,7 @@ function buildCalcChainWorkbookBytes(): Uint8Array {
 
   const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
   const sourceWorkbookXml = strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())
-  const calcPrXml = '<calcPr calcId="191029" calcMode="manual" fullCalcOnLoad="1" forceFullCalc="1"/>'
+  const calcPrXml = '<calcPr calcId="191029" calcMode="manual" fullCalcOnLoad="1" forceFullCalc="1" calcCompleted="0"/>'
   zip['xl/workbook.xml'] = strToU8(
     /<calcPr\b/u.test(sourceWorkbookXml)
       ? sourceWorkbookXml.replace(/<calcPr\b[^>]*(?:\/>|>[\s\S]*?<\/calcPr>)/u, calcPrXml)

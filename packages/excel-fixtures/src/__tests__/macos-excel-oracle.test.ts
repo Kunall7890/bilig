@@ -53,6 +53,43 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(script).toContain('close targetWorkbook saving yes')
   })
 
+  it('can open and save through Desktop Excel without an explicit calculation command', () => {
+    const recalculationScript = createMacosExcelRecalculationAppleScript({
+      worksheetName: 'Cases',
+      formulaCells: [],
+      valueCells: ['C1'],
+      calculationPolicy: 'none',
+      saveWorkbook: true,
+    })
+    const inspectionScript = createMacosExcelInspectionAppleScript({
+      worksheetName: 'Cases',
+      formulaCells: [],
+      inspectCells: ['C1'],
+      calculationPolicy: 'none',
+      refreshWorkbook: true,
+      saveWorkbook: true,
+    })
+    const packageScript = createMacosExcelPackageOpenSaveAppleScript({
+      calculationPolicy: 'none',
+      refreshWorkbook: true,
+      saveWorkbook: true,
+    })
+    const structuralScript = createMacosExcelStructuralOperationAppleScript({
+      worksheetName: 'Cases',
+      operations: [{ kind: 'setCellValue', address: 'A1', value: 1 }],
+      inspectCells: ['A1'],
+      calculationPolicy: 'none',
+      saveWorkbook: true,
+    })
+
+    for (const script of [recalculationScript, inspectionScript, packageScript, structuralScript]) {
+      expect(script).not.toContain('calculate full rebuild')
+      expect(script).toContain('close targetWorkbook saving yes')
+    }
+    expect(inspectionScript).toContain('refresh all targetWorkbook')
+    expect(packageScript).toContain('refresh all targetWorkbook')
+  })
+
   it('can open companion workbooks and ask Excel to update external links', () => {
     const script = createMacosExcelInspectionAppleScript({
       worksheetName: 'Cases',

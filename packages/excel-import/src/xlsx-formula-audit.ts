@@ -71,6 +71,7 @@ function worksheetFormulaEntry(
     settings?.mode === 'manual' ||
     settings?.forceFullCalc === true ||
     settings?.fullCalcOnLoad === true ||
+    settings?.calcCompleted === false ||
     settings?.fullPrecision === false
   const attributes = {
     ...(cell.aca !== null ? { aca: cell.aca } : {}),
@@ -225,6 +226,14 @@ function calculationDiagnostics(settings: WorkbookCalculationSettingsSnapshot | 
       context: 'calculation',
       clause: '18.2.2',
       message: 'Workbook requests a full recalculation on open; imported cached formula values can be stale.',
+    })
+  }
+  if (settings.calcCompleted === false) {
+    diagnostics.push({
+      code: 'calc-not-completed',
+      context: 'calculation',
+      clause: '18.2.2',
+      message: 'Workbook calculation was not marked completed; imported cached formula values can be stale.',
     })
   }
   return diagnostics
