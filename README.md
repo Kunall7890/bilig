@@ -49,8 +49,8 @@ Pick the path that matches the thing in your hands:
 | You have...                                                                              | Start with                                                           | You should see                                                                                         |
 | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | An `.xlsx` file with stale formula results after editing inputs in Node                  | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json` | A changed input, a recalculated output, and `verified: true` without opening Excel or LibreOffice.     |
-| Workbook-shaped business logic that should live in a Node service, test, queue, or route | `npm create @bilig/workpaper pricing-workpaper`               | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback. |
-| A coding agent, MCP client, or tool host that needs spreadsheet operations               | `npm create @bilig/workpaper pricing-agent -- --agent`        | An agent contract with read, write, recalc, persist, restore, and a compact proof object.              |
+| Workbook-shaped business logic that should live in a Node service, test, queue, or route | `npm create @bilig/workpaper@latest pricing-workpaper`               | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback. |
+| A coding agent, MCP client, or tool host that needs spreadsheet operations               | `npm create @bilig/workpaper@latest pricing-agent -- --agent`        | An agent contract with read, write, recalc, persist, restore, and a compact proof object.              |
 
 If you are not sure which one fits, use the file-level XLSX path when a real
 spreadsheet file is already the source of truth. Use `@bilig/workpaper` when
@@ -115,7 +115,7 @@ for the community-node install path, proof shape, import steps, and limits.
 | Problem you have right now                                                                      | Install                                                       | First proof                                                                             |
 | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | Formula workbook state inside a Node service or agent tool                                      | `npm install @bilig/workpaper`                                | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                         |
-| AI agent needs to edit workbook inputs and verify formula readback                              | `npm create @bilig/workpaper pricing-agent -- --agent` | [AI spreadsheet agent tool](docs/ai-agent-spreadsheet-tool-node.md)                     |
+| AI agent needs to edit workbook inputs and verify formula readback                              | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](docs/ai-agent-spreadsheet-tool-node.md)                     |
 | SheetJS / `xlsx` pipeline returns stale formula values after input edits                        | `npm install @bilig/sheetjs-formula-recalc`                   | [SheetJS formula result not updating](docs/sheetjs-formula-result-not-updating-node.md) |
 | Generic XLSX bytes changed in Node; formula outputs must refresh before returning               | `npm install @bilig/xlsx-formula-recalc`                      | [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md)        |
 | Existing ExcelJS workflow needs recalculated values, not stale cached results                   | `npm install exceljs @bilig/exceljs-formula-recalc`           | [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md)  |
@@ -209,7 +209,7 @@ reads the calculated value, saves JSON, restores the workbook, and prints the
 same value again.
 
 ```sh
-npm create @bilig/workpaper pricing-workpaper
+npm create @bilig/workpaper@latest pricing-workpaper
 cd pricing-workpaper
 npm install
 npm run smoke
@@ -245,13 +245,13 @@ pnpm --dir examples/serverless-workpaper-api run smoke
 ```
 
 For a generated project from a blank directory, run
-`npm create @bilig/workpaper pricing-workpaper` through the
+`npm create @bilig/workpaper@latest pricing-workpaper` through the
 `@bilig/create-workpaper` package. The package source lives in
 [`packages/create-workpaper`](packages/create-workpaper), and the publish gate
 is documented in [create a Bilig WorkPaper starter](docs/create-bilig-workpaper.md).
 For an agent-ready project with `AGENTS.md`, MCP client configs, and an
 `agent:verify` script, run
-`npm create @bilig/workpaper pricing-agent -- --agent`.
+`npm create @bilig/workpaper@latest pricing-agent -- --agent`.
 
 If that proof almost matches a service or agent workflow you maintain, the useful next
 step is concrete feedback: open or answer one adoption blocker in
