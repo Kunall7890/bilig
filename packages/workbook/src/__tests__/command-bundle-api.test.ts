@@ -193,6 +193,36 @@ describe('@bilig/workbook command bundle api', () => {
     })
   })
 
+  it('rejects duplicate command ids before runtime handoff', () => {
+    expect(
+      checkWorkbookCommandBundle({
+        targetRevision: 1,
+        idempotencyKey: 'agent-run-1',
+        commands: [
+          {
+            id: 'inspect-selection',
+            kind: 'request',
+            request: previewRequest,
+          },
+          {
+            id: 'inspect-selection',
+            kind: 'request',
+            request: previewRequest,
+          },
+        ],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'duplicate_command_id',
+          path: 'commands[1].id',
+          message: 'Workbook command bundle command id inspect-selection already used by commands[0].id',
+        },
+      ],
+    })
+  })
+
   it('rejects invalid touched ranges', () => {
     expect(
       checkWorkbookCommandBundle({

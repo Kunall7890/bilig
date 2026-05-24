@@ -53,6 +53,7 @@ export type WorkbookCommandBundleIssueCode =
   | 'missing_commands'
   | 'unknown_command_kind'
   | 'invalid_command'
+  | 'duplicate_command_id'
   | 'invalid_range'
   | 'missing_touched_ranges'
   | 'destructive_not_confirmed'
@@ -123,6 +124,7 @@ export function checkWorkbookCommandBundle(value: unknown): WorkbookCommandBundl
       }
       pushCommandIssues(issues, command, `commands[${index}]`, scopedTouchedRangesRequired)
     }
+    pushDuplicateCommandIdIssues(issues, commands)
   }
 
   if (issues.length > 0) {
@@ -258,6 +260,32 @@ function pushOpCommandIssues(
 
 function commandNeedsDestructiveConfirmation(request: WorkbookCommandRequest): boolean {
   return request.category === 'mutation' || request.mode === 'apply' || request.mode === 'applyAndVerify'
+}
+
+function pushDuplicateCommandIdIssues(issues: WorkbookCommandBundleIssue[], commands: readonly unknown[]): void {
+  const seen = new Map<string, number>()
+  for (let index = 0; index < commands.length; index += 1) {
+    const command = arrayDataValue(commands, index)
+    if (!isRecord(command)) {
+      continue
+    }
+    const id = ownValue(command, 'id')
+    if (typeof id !== 'string' || id.trim() === '' || id.trim() !== id) {
+      continue
+    }
+    const previousIndex = seen.get(id)
+    if (previousIndex !== undefined) {
+      issues.push(
+        commandBundleIssue(
+          'duplicate_command_id',
+          `commands[${index}].id`,
+          `Workbook command bundle command id ${id} already used by commands[${previousIndex}].id`,
+        ),
+      )
+      continue
+    }
+    seen.set(id, index)
+  }
 }
 
 function scopeRequiresTouchedRanges(value: unknown): boolean {

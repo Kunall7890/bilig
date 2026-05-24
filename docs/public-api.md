@@ -177,8 +177,9 @@ and UI contributions. The public package still stays data-only.
   same validation.
 - `checkWorkbookCommandBundle(data)` validates an ordered runtime handoff
   before execution. It requires `targetRevision`, `idempotencyKey`, and
-  non-empty `commands`; rejects unknown command kinds; canonicalizes declared
-  touched ranges; rejects mutation requests and ops unless they set
+  non-empty `commands`; rejects unknown command kinds and duplicate supplied
+  command ids; canonicalizes declared touched ranges; rejects mutation requests
+  and ops unless they set
   `destructive: true`; requires touched ranges for destructive commands when
   `scope.maxTouchedCells` is present; rejects bundles over that limit; and returns
   a `WorkbookCommandResult` with normalized touched ranges.
