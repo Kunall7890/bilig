@@ -52,6 +52,28 @@ describe('macOS Desktop Excel threaded comment structural oracle', () => {
     }
   })
 
+  it('preserves legacy note VML geometry after headless sheet rename', () => {
+    const sourceBytes = new Uint8Array(readFileSync(excelAuthoredThreadedCommentFixtureUrl))
+    const sourceAnchors = readLegacyCommentAnchors(sourceBytes)
+    expect(sourceAnchors).toEqual(['2, 15, 0, 2, 3, 8, 4, 15'])
+
+    const workpaper = WorkPaper.buildFromSnapshot(importXlsx(sourceBytes, 'excel-threaded-comment-rename-source.xlsx').snapshot)
+    try {
+      const targetSheet = workpaper.getSheetId('Country equity risk premiums')
+      if (targetSheet === undefined) {
+        throw new Error('Expected Country equity risk premiums sheet to be available')
+      }
+      workpaper.renameSheet(targetSheet, 'Renamed Risk Premiums')
+
+      const exported = exportXlsx(workpaper.exportSnapshot())
+      expect(readThreadedCommentRefs(exported)).toEqual(['B1'])
+      expect(readLegacyCommentRefs(exported)).toEqual(['B1'])
+      expect(readLegacyCommentAnchors(exported)).toEqual(sourceAnchors)
+    } finally {
+      workpaper.dispose()
+    }
+  })
+
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
     'matches Desktop Excel threaded comment refs after structural row inserts',
     () => {
@@ -104,6 +126,66 @@ describe('macOS Desktop Excel threaded comment structural oracle', () => {
       }
     },
     120_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'preserves legacy note VML geometry after sheet rename and opens in Desktop Excel',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-legacy-note-rename-oracle-')
+      try {
+        const sourceBytes = new Uint8Array(readFileSync(excelAuthoredThreadedCommentFixtureUrl))
+        const sourcePath = join(tempDir, 'legacy-note-rename-source.xlsx')
+        writeFileSync(sourcePath, sourceBytes)
+
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath: sourcePath,
+          worksheetName: 'Country equity risk premiums',
+          operations: [{ kind: 'renameSheet', newName: 'Renamed Risk Premiums' }],
+          inspectCells: ['A1'],
+          saveWorkbook: true,
+          timeoutMs: 90_000,
+        })
+        expect(excelResult.cells[0]?.value).toEqual({ kind: 'string', value: 'Estimation of Company Equity Risk Premium' })
+
+        const excelTruthBytes = new Uint8Array(readFileSync(sourcePath))
+        expect(readLegacyCommentRefs(excelTruthBytes)).toEqual(['B1'])
+        const excelTruthAnchors = readLegacyCommentAnchors(excelTruthBytes)
+        expect(excelTruthAnchors).toHaveLength(1)
+
+        const workpaper = WorkPaper.buildFromSnapshot(importXlsx(sourceBytes, 'legacy-note-rename-source.xlsx').snapshot)
+        try {
+          const targetSheet = workpaper.getSheetId('Country equity risk premiums')
+          if (targetSheet === undefined) {
+            throw new Error('Expected Country equity risk premiums sheet to be available')
+          }
+          workpaper.renameSheet(targetSheet, 'Renamed Risk Premiums')
+
+          const headlessPath = join(tempDir, 'headless-legacy-note-rename.xlsx')
+          const headlessBytes = exportXlsx(workpaper.exportSnapshot())
+          writeFileSync(headlessPath, headlessBytes)
+          expect(readLegacyCommentRefs(headlessBytes)).toEqual(['B1'])
+          expect(readLegacyCommentAnchors(headlessBytes)).toEqual(['2, 15, 0, 2, 3, 8, 4, 15'])
+          expect(
+            runMacosExcelInspectionOracle({
+              workbookPath: headlessPath,
+              worksheetName: 'Renamed Risk Premiums',
+              formulaCells: [],
+              inspectCells: ['A1'],
+              timeoutMs: 90_000,
+            }).cells[0]?.value,
+          ).toEqual({ kind: 'string', value: 'Mature Market ERP +' })
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    150_000,
   )
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
@@ -404,6 +486,14 @@ function readLegacyCommentRefs(bytes: Uint8Array): string[] {
   return Object.entries(zip)
     .filter(([path]) => /^xl\/comments[^/]*\.xml$/u.test(path))
     .flatMap(([_path, part]) => [...strFromU8(part).matchAll(/<comment\b[^>]*\bref=(["'])(.*?)\1/gu)].map((match) => match[2] ?? ''))
+    .toSorted()
+}
+
+function readLegacyCommentAnchors(bytes: Uint8Array): string[] {
+  const zip = unzipSync(bytes)
+  return Object.entries(zip)
+    .filter(([path]) => /^xl\/drawings\/vmlDrawing[^/]*\.vml$/u.test(path))
+    .flatMap(([_path, part]) => [...strFromU8(part).matchAll(/<x:Anchor>([\s\S]*?)<\/x:Anchor>/gu)].map((match) => match[1]?.trim() ?? ''))
     .toSorted()
 }
 

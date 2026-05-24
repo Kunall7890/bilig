@@ -175,10 +175,16 @@ export function runMacosExcelRecalculationOracle(request: MacosExcelRecalculatio
   const scriptPath = join(tempDir, 'recalculate.scpt')
   try {
     const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
-    openWorkbooksForMacosExcelOracle(appPath, [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], request.timeoutMs)
+    openWorkbooksForMacosExcelOracle(
+      appPath,
+      [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])],
+      request.timeoutMs,
+      request.updateLinks ?? 'never',
+    )
     writeFileSync(scriptPath, createMacosExcelRecalculationAppleScript(request))
     const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
       encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
       timeout: request.timeoutMs ?? 60_000,
     }).trim()
     copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
@@ -198,10 +204,16 @@ export function runMacosExcelInspectionOracle(request: MacosExcelInspectionOracl
   const scriptPath = join(tempDir, 'inspect.scpt')
   try {
     const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
-    openWorkbooksForMacosExcelOracle(appPath, [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], request.timeoutMs)
+    openWorkbooksForMacosExcelOracle(
+      appPath,
+      [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])],
+      request.timeoutMs,
+      request.updateLinks ?? 'never',
+    )
     writeFileSync(scriptPath, createMacosExcelInspectionAppleScript(request))
     const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
       encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
       timeout: request.timeoutMs ?? 60_000,
     }).trim()
     copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
@@ -221,10 +233,16 @@ export function runMacosExcelPackageOpenSaveOracle(request: MacosExcelPackageOpe
   const scriptPath = join(tempDir, 'package-open-save.scpt')
   try {
     const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
-    openWorkbooksForMacosExcelOracle(appPath, [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], request.timeoutMs)
+    openWorkbooksForMacosExcelOracle(
+      appPath,
+      [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])],
+      request.timeoutMs,
+      request.updateLinks ?? 'never',
+    )
     writeFileSync(scriptPath, createMacosExcelPackageOpenSaveAppleScript(request))
     const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
       encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
       timeout: request.timeoutMs ?? 60_000,
     }).trim()
     copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
@@ -246,10 +264,16 @@ export function runMacosExcelStructuralOperationOracle(
   const scriptPath = join(tempDir, 'structure.scpt')
   try {
     const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
-    openWorkbooksForMacosExcelOracle(appPath, [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], request.timeoutMs)
+    openWorkbooksForMacosExcelOracle(
+      appPath,
+      [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])],
+      request.timeoutMs,
+      request.updateLinks ?? 'never',
+    )
     writeFileSync(scriptPath, createMacosExcelStructuralOperationAppleScript(request))
     const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
       encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
       timeout: request.timeoutMs ?? 60_000,
     }).trim()
     copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
@@ -271,10 +295,16 @@ export function runMacosExcelRejectedStructuralOperationOracle(
   const scriptPath = join(tempDir, 'rejected-structure.scpt')
   try {
     const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
-    openWorkbooksForMacosExcelOracle(appPath, [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], request.timeoutMs)
+    openWorkbooksForMacosExcelOracle(
+      appPath,
+      [stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])],
+      request.timeoutMs,
+      request.updateLinks ?? 'never',
+    )
     writeFileSync(scriptPath, createMacosExcelRejectedStructuralOperationAppleScript(request))
     const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
       encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
       timeout: request.timeoutMs ?? 60_000,
     }).trim()
     return parseMacosExcelRejectedStructuralOperationOutput(rawOutput)
@@ -313,7 +343,14 @@ function createMacosExcelOracleTempDir(prefix: string): string {
   return mkdtempSync(join(root, prefix))
 }
 
-function openWorkbooksForMacosExcelOracle(appPath: string, workbookPaths: readonly string[], timeoutMs: number | undefined): void {
+function openWorkbooksForMacosExcelOracle(
+  appPath: string,
+  workbookPaths: readonly string[],
+  timeoutMs: number | undefined,
+  updateLinks: MacosExcelLinkUpdateMode,
+): void {
+  closeStaleMacosExcelOracleWorkbooks()
+  startMacosExcelLinkUpdatePromptHandler(updateLinks)
   for (const workbookPath of workbookPaths) {
     execFileSync('open', ['-a', appPath, workbookPath], {
       timeout: Math.min(timeoutMs ?? 60_000, 30_000),
@@ -328,8 +365,9 @@ function waitForMacosExcelWorkbookOpen(workbookPath: string, timeoutMs: number |
 
   while (Date.now() < deadline) {
     try {
-      execFileSync('osascript', ['-e', macosExcelWorkbookOpenCheckAppleScript(), workbookPath], {
+      execFileSync('osascript', ['-e', macosExcelWorkbookOpenCheckAppleScript(), workbookPath, basename(workbookPath)], {
         encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
         timeout: 5_000,
       })
       return
@@ -345,13 +383,81 @@ function waitForMacosExcelWorkbookOpen(workbookPath: string, timeoutMs: number |
 function macosExcelWorkbookOpenCheckAppleScript(): string {
   return `on run argv
   set expectedPath to item 1 of argv
+  set expectedName to item 2 of argv
+  set normalizedExpectedPath to my normalizedMacosPath(expectedPath)
   tell application "Microsoft Excel"
-    try
-      if (full name of active workbook as string) is expectedPath then return "ready"
-    end try
+    repeat with workbookIndex from 1 to (count workbooks)
+      set candidateWorkbook to workbook workbookIndex
+      try
+        if (name of candidateWorkbook as string) is expectedName then return "ready"
+      end try
+      try
+        if my normalizedMacosPath(full name of candidateWorkbook as string) is normalizedExpectedPath then return "ready"
+      end try
+    end repeat
   end tell
   error "Workbook is not open: " & expectedPath number -2700
-end run`
+end run
+
+on normalizedMacosPath(rawPath)
+  if rawPath starts with "file://" then
+    set rawPath to text 8 thru -1 of rawPath
+  end if
+  if rawPath starts with "/private/" then
+    return text 9 thru -1 of rawPath
+  end if
+  return rawPath
+end normalizedMacosPath`
+}
+
+function closeStaleMacosExcelOracleWorkbooks(): void {
+  try {
+    execFileSync('osascript', ['-e', macosExcelCloseStaleOracleWorkbooksAppleScript()], {
+      stdio: 'ignore',
+      timeout: 5_000,
+    })
+  } catch {
+    // A modal prompt can block stale workbook cleanup; the prompt handler below will clear it.
+  }
+}
+
+function macosExcelCloseStaleOracleWorkbooksAppleScript(): string {
+  return `tell application "Microsoft Excel"
+  repeat with workbookIndex from (count workbooks) to 1 by -1
+    set candidateWorkbook to workbook workbookIndex
+    try
+      set candidatePath to full name of candidateWorkbook as string
+      if my isBiligOracleWorkbookPath(candidatePath) then
+        close candidateWorkbook saving no
+      end if
+    end try
+  end repeat
+end tell
+
+on isBiligOracleWorkbookPath(candidatePath)
+  if candidatePath contains "/bilig-excel-oracle/" then return true
+  if candidatePath contains "/bilig-headless-excel-" then return true
+  return false
+end isBiligOracleWorkbookPath`
+}
+
+function startMacosExcelLinkUpdatePromptHandler(updateLinks: MacosExcelLinkUpdateMode): void {
+  const buttonName = updateLinks === 'never' ? "Don't Update" : 'Update'
+  const command = `/usr/bin/osascript <<'BILIG_LINK_UPDATE_PROMPT' >/dev/null 2>&1 &
+repeat 120 times
+  delay 0.25
+  tell application "System Events"
+    tell process "Microsoft Excel"
+      if exists button ${toAppleScriptString(buttonName)} of window 1 then
+        click button ${toAppleScriptString(buttonName)} of window 1
+        return
+      end if
+    end tell
+  end tell
+end repeat
+BILIG_LINK_UPDATE_PROMPT`
+
+  execFileSync('/bin/sh', ['-c', command], { timeout: 5_000 })
 }
 
 function stageWorkbookForMacosExcelOracle(workbookPath: string, tempDir: string): string {
@@ -645,6 +751,9 @@ export function createMacosExcelStructuralOperationAppleScript(
 
   const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
   const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
+  const sheetDeletePromptHandler = request.operations.some((operation) => operation.kind === 'deleteSheet')
+    ? '      my startSheetDeletePromptHandler()'
+    : ''
   const formulaCells = (request.formulaCells ?? [])
     .map(
       (cell) =>
@@ -671,6 +780,7 @@ ${openCompanionWorkbooksAppleScript()}
       set targetWorkbook to open workbook workbook file name workbookPath update links ${updateLinksMode}
       set targetWorksheet to worksheet ${toAppleScriptString(request.worksheetName)} of targetWorkbook
 ${formulaCells}
+${sheetDeletePromptHandler}
 ${operations}
       calculate full rebuild
       set output to "version=" & (version as string)
@@ -690,7 +800,28 @@ ${closeCompanionWorkbooksAppleScript()}
   return output
 end run
 
-${cellValueAppleScriptHelpers()}`
+${cellValueAppleScriptHelpers()}
+${sheetDeletePromptHandlerAppleScript()}`
+}
+
+function sheetDeletePromptHandlerAppleScript(): string {
+  const command = `/usr/bin/osascript <<'BILIG_SHEET_DELETE_PROMPT' >/dev/null 2>&1 &
+repeat 120 times
+  delay 0.25
+  tell application "System Events"
+    tell process "Microsoft Excel"
+      if exists button "Delete" of window 1 then
+        click button "Delete" of window 1
+        return
+      end if
+    end tell
+  end tell
+end repeat
+BILIG_SHEET_DELETE_PROMPT`
+
+  return `on startSheetDeletePromptHandler()
+  do shell script ${toAppleScriptString(command)}
+end startSheetDeletePromptHandler`
 }
 
 export function createMacosExcelRejectedStructuralOperationAppleScript(
@@ -770,11 +901,13 @@ function structuralOperationAppleScript(operation: MacosExcelStructuralOperation
       return `set name of targetWorksheet to ${toAppleScriptString(operation.newName)}`
     case 'deleteSheet':
       return [
-        'try',
+        `if exists worksheet ${toAppleScriptString(operation.name)} of targetWorkbook then`,
         `  delete worksheet ${toAppleScriptString(operation.name)} of targetWorkbook`,
-        'on error',
+        `else if exists chart sheet ${toAppleScriptString(operation.name)} of targetWorkbook then`,
         `  delete chart sheet ${toAppleScriptString(operation.name)} of targetWorkbook`,
-        'end try',
+        'else',
+        `  error ${toAppleScriptString(`Sheet not found: ${operation.name}`)} number -1728`,
+        'end if',
       ].join('\n      ')
     case 'moveSheet':
       return moveSheetAppleScript(operation)

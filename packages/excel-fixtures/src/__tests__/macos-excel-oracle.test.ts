@@ -148,6 +148,8 @@ describe('macOS Desktop Excel oracle harness', () => {
     )
     expect(script).toContain('set name of createdWorksheet to "Added"')
     expect(script).toContain('set name of targetWorksheet to "Renamed Cases"')
+    expect(script).toContain('my startSheetDeletePromptHandler()')
+    expect(script).toContain('click button \\"Delete\\"')
     expect(script).toContain('delete worksheet "Archive" of targetWorkbook')
     expect(script).toContain('delete chart sheet "Archive" of targetWorkbook')
     expect(script).toContain('move worksheet "Report" of targetWorkbook to before worksheet "Renamed Cases" of targetWorkbook')

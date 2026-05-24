@@ -1,5 +1,5 @@
 import { Cause, Effect, Exit } from 'effect'
-import { canonicalWorkbookRangeRef } from './workbook-range-records.js'
+import { canonicalWorkbookAddress, canonicalWorkbookRangeRef } from './workbook-range-records.js'
 import {
   cloneChartRecord,
   cloneCommentThreadRecord,
@@ -35,6 +35,7 @@ import {
 import {
   createWorkbookMetadataRecord,
   macroPayloadKey,
+  type WorkbookCommentThreadRecord,
   type WorkbookConditionalFormatRecord,
   type WorkbookSheetConditionalFormatArtifactsRecord,
   compareDefinedNameRecords,
@@ -195,6 +196,7 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
         ? { ...cloneCommentThreadRecord(record), sheetName: newSheetName }
         : cloneCommentThreadRecord(record),
     )
+    refreshLegacyCommentVmlCommentSignature(metadata, newSheetName)
     rekeyRecords(metadata.notes, (record) =>
       record.sheetName === oldSheetName ? { ...cloneNoteRecord(record), sheetName: newSheetName } : cloneNoteRecord(record),
     )
@@ -802,6 +804,40 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     },
     ...createWorkbookMetadataCellRecordService(metadata),
     ...createWorkbookMetadataDrawingService(metadata),
+  }
+}
+
+function refreshLegacyCommentVmlCommentSignature(metadata: WorkbookMetadataRecord, sheetName: string): void {
+  const legacyCommentVml = metadata.sheetLegacyCommentVml.get(sheetName)
+  if (!legacyCommentVml) {
+    return
+  }
+  const commentThreads = [...metadata.commentThreads.values()].filter((record) => record.sheetName === sheetName)
+  metadata.sheetLegacyCommentVml.set(sheetName, {
+    ...cloneSheetLegacyCommentVmlRecord(legacyCommentVml),
+    commentSignature: legacyCommentThreadSignature(commentThreads),
+  })
+}
+
+function legacyCommentThreadSignature(commentThreads: readonly WorkbookCommentThreadRecord[]): string {
+  const normalized = commentThreads
+    .map((thread) => ({
+      sheetName: thread.sheetName,
+      address: normalizeCommentAddress(thread.sheetName, thread.address),
+      comments: thread.comments.map((comment) => ({
+        body: comment.body,
+        authorDisplayName: comment.authorDisplayName ?? '',
+      })),
+    }))
+    .toSorted((left, right) => `${left.sheetName}:${left.address}`.localeCompare(`${right.sheetName}:${right.address}`))
+  return JSON.stringify(normalized)
+}
+
+function normalizeCommentAddress(sheetName: string, address: string): string {
+  try {
+    return canonicalWorkbookAddress(sheetName, address)
+  } catch {
+    return address.trim().toUpperCase()
   }
 }
 

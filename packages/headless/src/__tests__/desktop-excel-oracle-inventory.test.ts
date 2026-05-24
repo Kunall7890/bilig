@@ -160,6 +160,7 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('threadedCommentArtifacts')
     expect(source).toContain('legacyCommentVml')
     expect(source).toContain('matches Desktop Excel threaded comment refs after structural row inserts')
+    expect(source).toContain('preserves legacy note VML geometry after sheet rename and opens in Desktop Excel')
     expect(source).toContain('matches Desktop Excel threaded comment package cleanup after deleting a commented sheet')
   })
 
