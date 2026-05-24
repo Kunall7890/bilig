@@ -479,23 +479,13 @@ describe('@bilig/workbook feature api', () => {
 
     expect(checkWorkbookFeaturePlugin(inheritedPlugin)).toEqual({
       status: 'invalid',
-      issues: expect.arrayContaining([
+      issues: [
         {
           code: 'invalid_feature_plugin',
-          path: 'id',
-          message: 'Workbook feature id must be a string',
+          path: 'plugin',
+          message: 'Workbook feature plugin must be an object record',
         },
-        {
-          code: 'invalid_feature_plugin',
-          path: 'version',
-          message: 'Workbook feature version must be a string',
-        },
-        {
-          code: 'invalid_feature_plugin',
-          path: 'commands',
-          message: 'Workbook feature commands must be an array',
-        },
-      ]),
+      ],
     })
   })
 

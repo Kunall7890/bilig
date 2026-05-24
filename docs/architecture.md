@@ -102,6 +102,8 @@ flowchart LR
   - own-field-only feature receipt changed-range validation
   - own-enumerable-data feature manifest arrays, receipt ops, undo ops, ranges,
     and errors before freezing or runtime proof comparison
+  - object-record feature plugin manifests, command descriptors, projection
+    interceptors, and UI contributions before runtime registration
   - object-record model roots and returned checks before model planning or
     whole-model verification
   - object-record action, check, formula, and verification option roots before

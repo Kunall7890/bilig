@@ -1,4 +1,5 @@
 import type { CellRangeRef, CellStylePatch, CellStyleRecord, LiteralInput } from '@bilig/protocol'
+import { isObjectRecord, optionalDataProperty, requiredDataProperty } from './data-properties.js'
 import {
   isWorkbookCommandCategory,
   isWorkbookProjectionInterceptorPoint,
@@ -122,10 +123,16 @@ export type WorkbookFeaturePluginCheckResult =
     }
 
 export function checkWorkbookFeaturePlugin(value: unknown): WorkbookFeaturePluginCheckResult {
-  if (!isRecord(value)) {
+  if (!isNonArrayObject(value)) {
     return Object.freeze({
       status: 'invalid',
       issues: Object.freeze([featurePluginIssue('plugin', 'Workbook feature plugin must be an object')]),
+    })
+  }
+  if (!isObjectRecord(value)) {
+    return Object.freeze({
+      status: 'invalid',
+      issues: Object.freeze([featurePluginIssue('plugin', 'Workbook feature plugin must be an object record')]),
     })
   }
 
@@ -187,22 +194,47 @@ export function normalizeWorkbookCommandDescriptor(
   descriptor: WorkbookCommandDescriptor,
   expectedFeatureId?: WorkbookFeatureId,
 ): WorkbookCommandDescriptor {
-  const featureId = normalizeWorkbookFeatureId(descriptor.featureId, 'Workbook command feature id')
-  if (expectedFeatureId !== undefined && featureId !== expectedFeatureId) {
-    throw new Error(`Workbook command ${descriptor.id} feature id ${featureId} does not match plugin ${expectedFeatureId}`)
+  if (!isNonArrayObject(descriptor)) {
+    throw new Error('Workbook command descriptor must be an object')
   }
-  const id = normalizeRequiredString(descriptor.id, 'Workbook command id')
-  const label = normalizeRequiredString(descriptor.label, `Workbook command ${id} label`)
+  if (!isObjectRecord(descriptor)) {
+    throw new Error('Workbook command descriptor must be an object record')
+  }
+
+  const featureIdValue = requiredDataProperty(descriptor, 'featureId', 'Workbook command descriptor feature id')
+  if (typeof featureIdValue !== 'string') {
+    throw new Error('Workbook command feature id must be a string')
+  }
+  const featureId = normalizeWorkbookFeatureId(featureIdValue, 'Workbook command feature id')
+  const idValue = requiredDataProperty(descriptor, 'id', 'Workbook command descriptor id')
+  if (typeof idValue !== 'string') {
+    throw new Error('Workbook command id must be a string')
+  }
+  const id = normalizeRequiredString(idValue, 'Workbook command id')
+  if (expectedFeatureId !== undefined && featureId !== expectedFeatureId) {
+    throw new Error(`Workbook command ${id} feature id ${featureId} does not match plugin ${expectedFeatureId}`)
+  }
+  const labelValue = requiredDataProperty(descriptor, 'label', `Workbook command ${id} label`)
+  if (typeof labelValue !== 'string') {
+    throw new Error(`Workbook command ${id} label must be a string`)
+  }
+  const label = normalizeRequiredString(labelValue, `Workbook command ${id} label`)
+  const descriptionValue = optionalOwnDataValue(descriptor, 'description', `Workbook command ${id} description`)
+  if (descriptionValue !== undefined && typeof descriptionValue !== 'string') {
+    throw new Error(`Workbook command ${id} description must be a string`)
+  }
   const description =
-    descriptor.description === undefined ? undefined : normalizeRequiredString(descriptor.description, `Workbook command ${id} description`)
-  const input = descriptor.input === undefined ? undefined : normalizeWorkbookActionInputDescription(descriptor.input)
-  if (!isWorkbookCommandCategory(descriptor.category)) {
+    descriptionValue === undefined ? undefined : normalizeRequiredString(descriptionValue, `Workbook command ${id} description`)
+  const inputValue = optionalOwnDataValue(descriptor, 'input', `Workbook command ${id} input`)
+  const input = inputValue === undefined ? undefined : normalizeWorkbookActionInputDescription(inputValue)
+  const categoryValue = requiredDataProperty(descriptor, 'category', `Workbook command ${id} category`)
+  if (!isWorkbookCommandCategory(categoryValue)) {
     throw new Error(`Workbook command ${id} category is invalid`)
   }
   return Object.freeze({
     id,
     featureId,
-    category: descriptor.category,
+    category: categoryValue,
     label,
     ...(description !== undefined ? { description } : {}),
     ...(input !== undefined ? { input } : {}),
@@ -239,6 +271,11 @@ function inputPath(basePath: string, error: unknown): string {
 
 function ownValue(value: object, key: string): unknown {
   return Object.getOwnPropertyDescriptor(value, key)?.value
+}
+
+function optionalOwnDataValue(value: object, key: string, label: string): unknown {
+  const property = optionalDataProperty(value, key, label)
+  return property.status === 'missing' ? undefined : property.value
 }
 
 function arrayDataValues<T>(value: unknown, guard: (entry: unknown) => entry is T): readonly T[] | null {
@@ -350,8 +387,7 @@ function pushFeaturePluginCommandIssues(
   pluginId: string | undefined,
 ): void {
   const path = `commands[${index}]`
-  if (!isRecord(command)) {
-    issues.push(featurePluginIssue(path, 'Workbook command must be an object'))
+  if (!pushFeaturePluginObjectRecordIssue(issues, command, path, 'Workbook command')) {
     return
   }
 
@@ -390,8 +426,7 @@ function pushFeaturePluginProjectionIssues(
   pluginId: string | undefined,
 ): void {
   const path = `projectionInterceptors[${index}]`
-  if (!isRecord(interceptor)) {
-    issues.push(featurePluginIssue(path, 'Workbook projection interceptor must be an object'))
+  if (!pushFeaturePluginObjectRecordIssue(issues, interceptor, path, 'Workbook projection interceptor')) {
     return
   }
 
@@ -432,8 +467,7 @@ function pushFeaturePluginUiContributionIssues(
   pluginId: string | undefined,
 ): void {
   const path = `uiContributions[${index}]`
-  if (!isRecord(contribution)) {
-    issues.push(featurePluginIssue(path, 'Workbook UI contribution must be an object'))
+  if (!pushFeaturePluginObjectRecordIssue(issues, contribution, path, 'Workbook UI contribution')) {
     return
   }
 
@@ -476,6 +510,23 @@ function pushFeaturePluginLifecycleIssue(
   if (value !== undefined && typeof value !== 'function') {
     issues.push(featurePluginIssue(path, `Workbook feature ${path} must be a function`))
   }
+}
+
+function pushFeaturePluginObjectRecordIssue(
+  issues: WorkbookFeaturePluginIssue[],
+  value: unknown,
+  path: string,
+  label: string,
+): value is Record<string, unknown> {
+  if (!isNonArrayObject(value)) {
+    issues.push(featurePluginIssue(path, `${label} must be an object`))
+    return false
+  }
+  if (!isObjectRecord(value)) {
+    issues.push(featurePluginIssue(path, `${label} must be an object record`))
+    return false
+  }
+  return true
 }
 
 function normalizedFeaturePlugin(plugin: WorkbookFeaturePlugin): WorkbookFeaturePlugin {
@@ -620,6 +671,10 @@ function isSafeInteger(value: unknown): value is number {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
+  return isObjectRecord(value)
+}
+
+function isNonArrayObject(value: unknown): value is object {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 

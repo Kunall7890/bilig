@@ -194,7 +194,9 @@ and UI contributions. The public package still stays data-only.
 - `defineWorkbookFeaturePlugin` freezes extension metadata.
 - `checkWorkbookFeaturePlugin(data)` validates consumer-provided feature
   manifests before registration, including nested command input-description and
-  UI contribution metadata paths.
+  UI contribution metadata paths. Feature manifests, command descriptors,
+  projection interceptors, and UI contributions must be object-record data, not
+  class/custom-prototype instances.
 - `checkWorkbookCommandRequest(data)` validates transported command requests
   before dispatch and returns path issues such as `featureId`, `commandId`,
   `category`, `mode`, and nested JSON payload paths such as `input.rows[1]`.
@@ -453,6 +455,11 @@ Action input payloads and input-description metadata must be enumerable own data
 properties. Accessors are rejected without invocation, which keeps tool payload
 validation inspectable and prevents hidden consumer code from running during
 planning.
+Feature extension metadata follows the same plain-data rule.
+`defineWorkbookFeaturePlugin`, `checkWorkbookFeaturePlugin`, and
+`normalizeWorkbookCommandDescriptor` reject custom-prototype records and
+accessor-backed command descriptor fields before feature manifests reach runtime
+registration.
 `verifyModel(model, { inputs })` supplies per-action inputs for
 whole-model verification. Invalid, array-backed, or accessor-backed model
 manifests return an `invalid_model` verdict with no actions instead of

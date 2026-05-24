@@ -149,6 +149,10 @@ checks.
 Ref, ref-data, feature, command, receipt, result, run-result-description, and
 runtime-adapter validators return frozen verdicts too, so every public
 `{ status, issues }` handoff has the same inspect-once behavior.
+Feature plugin manifests, nested command descriptors, projection interceptors,
+and UI contributions must be object-record data. Class/custom-prototype feature
+metadata is rejected before registration, and exported command descriptor
+normalization reads own data properties without invoking accessors.
 `runWorkbookPlan` and `runWorkbookAction` return frozen run results too,
 including changed summaries, checks, errors, apply proof, undo refs, and
 unverified proof notes.
@@ -408,7 +412,10 @@ Feature command requests are plain data for runtimes that expose workbook
 features to agents. Use `checkWorkbookFeaturePlugin(data)` before registering
 consumer-provided feature metadata. It returns stable path issues for commands,
 projection interceptors, UI contributions, dependencies, lifecycle hooks, and
-nested command input-description or UI metadata fields. Its verdict is frozen.
+nested command input-description or UI metadata fields. Feature manifests and
+their nested extension records must be object-record data, so class instances
+and custom-prototype metadata cannot smuggle behavior into registration. Its
+verdict is frozen.
 
 Use `checkWorkbookCommandRequest(data)` before dispatching a transported
 request. It returns stable path issues such as `featureId`, `commandId`,
