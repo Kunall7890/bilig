@@ -26,10 +26,11 @@ export function measureWorkPaperBuildFromSheets(
   sheets: Record<string, readonly (readonly (boolean | number | string | null)[])[]>,
   verification: (workbook: WorkPaper) => Record<string, unknown>,
   config?: Parameters<typeof WorkPaper.buildFromSheets>[1],
+  namedExpressions?: Parameters<typeof WorkPaper.buildFromSheets>[2],
 ): BenchmarkSample {
   const memoryBefore = sampleMemory()
   const started = performance.now()
-  const workbook = WorkPaper.buildFromSheets(sheets, config)
+  const workbook = WorkPaper.buildFromSheets(sheets, config, namedExpressions)
   const elapsedMs = performance.now() - started
   const memoryAfter = sampleMemory()
   const result = verification(workbook)

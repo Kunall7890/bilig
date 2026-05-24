@@ -2,7 +2,11 @@ import { performance } from 'node:perf_hooks'
 import * as UniverPresetModule from '@univerjs/presets'
 import * as UniverSheetsNodeCorePresetModule from '@univerjs/preset-sheets-node-core'
 import sheetsNodeCoreEnUS from '@univerjs/preset-sheets-node-core/locales/en-US'
-import { WorkPaper, type WorkPaperSheet } from '../../headless/src/work-paper.js'
+import {
+  WorkPaper,
+  type SerializedWorkPaperNamedExpression,
+  type WorkPaperSheet,
+} from '../../headless/src/work-paper.js'
 import {
   DEFAULT_COMPETITIVE_SAMPLE_COUNT,
   DEFAULT_COMPETITIVE_WARMUP_COUNT,
@@ -15,32 +19,8 @@ import {
   measureMutationSample,
   type BenchmarkSample,
 } from './benchmark-workpaper-vs-hyperformula-expanded-support.js'
-import {
-  crossSheetAggregateRecalcScenario,
-  crossSheetDashboardBuildScenario,
-  crossSheetDashboardRecalcScenario,
-  crossSheetScalarFanoutRecalcScenario,
-  manySheetsBuildScenario,
-} from './benchmark-workpaper-vs-univer-multisheet-workloads.js'
-import {
-  aggregate2dCanonicalScenario,
-  approximateDuplicateLookupCanonicalScenario,
-  approximateLookupCanonicalScenario,
-  denseLiteralBuildScenario,
-  exactLookupCanonicalScenario,
-  formulaChainRowScenario,
-  formulaFanoutRowScenario,
-  indexMatchExactCanonicalScenario,
-  indexReferenceCanonicalScenario,
-  mixedContentBuildScenario,
-  overlappingAggregateCanonicalScenario,
-  parserCacheMixedTemplateBuildScenario,
-  parserCacheRowTemplateBuildScenario,
-  parserCacheUniqueFormulaBuildScenario,
-  slidingAggregateCanonicalScenario,
-  textLookupCanonicalScenario,
-} from './benchmark-workpaper-vs-univer-single-sheet-workloads.js'
 import { waitForUniverVerification } from './benchmark-workpaper-vs-univer-sync.js'
+import { univerScenario } from './benchmark-workpaper-vs-univer-workload-resolver.js'
 import { measureMemory, sampleMemory, type MemoryMeasurement } from './metrics.js'
 import { summarizeNumbers } from './stats.js'
 
@@ -70,6 +50,12 @@ export type WorkPaperUniverWorkload =
   | 'build-cross-sheet-dashboard'
   | 'build-cross-sheet-dashboard-small'
   | 'build-cross-sheet-dashboard-large'
+  | 'rebuild-and-recalculate'
+  | 'rebuild-and-recalculate-large'
+  | 'rebuild-runtime-from-snapshot'
+  | 'rebuild-runtime-from-snapshot-large'
+  | 'sheet-rename-dependencies'
+  | 'named-expression-change'
   | 'cross-sheet-scalar-recalc'
   | 'cross-sheet-aggregate-recalc'
   | 'cross-sheet-dashboard-recalc'
@@ -79,6 +65,45 @@ export type WorkPaperUniverWorkload =
   | 'single-edit-fanout'
   | 'single-edit-fanout-small'
   | 'single-edit-fanout-large'
+  | 'single-edit-recalc'
+  | 'partial-recompute-mixed-frontier'
+  | 'single-formula-edit-recalc'
+  | 'single-formula-edit-recalc-large'
+  | 'batch-edit-recalc'
+  | 'batch-edit-single-column'
+  | 'batch-edit-single-column-small'
+  | 'batch-edit-single-column-large'
+  | 'batch-edit-multi-column-small'
+  | 'batch-edit-multi-column'
+  | 'batch-edit-multi-column-large'
+  | 'batch-edit-rectangular-block'
+  | 'batch-edit-rectangular-block-wide'
+  | 'batch-clear-rectangular-block'
+  | 'batch-clear-rectangular-block-wide'
+  | 'batch-edit-single-column-with-undo'
+  | 'batch-suspended-single-column'
+  | 'batch-suspended-multi-column'
+  | 'structural-insert-rows'
+  | 'structural-insert-rows-small'
+  | 'structural-insert-rows-large'
+  | 'structural-append-formula-rows'
+  | 'structural-append-formula-rows-small'
+  | 'structural-append-formula-rows-large'
+  | 'structural-delete-rows'
+  | 'structural-move-rows'
+  | 'structural-insert-columns'
+  | 'structural-insert-columns-small'
+  | 'structural-insert-columns-large'
+  | 'structural-delete-columns'
+  | 'structural-delete-columns-large'
+  | 'structural-move-columns'
+  | 'structural-move-columns-large'
+  | 'range-read'
+  | 'range-read-dense'
+  | 'range-read-wide'
+  | 'range-read-sparse-wide'
+  | 'range-read-formula-grid'
+  | 'range-read-formula-grid-wide'
   | 'aggregate-2d-ranges'
   | 'aggregate-2d-ranges-small'
   | 'aggregate-2d-ranges-large'
@@ -94,23 +119,43 @@ export type WorkPaperUniverWorkload =
   | 'lookup-index-match-exact-large'
   | 'lookup-index-reference'
   | 'lookup-index-reference-large'
+  | 'lookup-with-column-index-after-column-write'
+  | 'lookup-with-column-index-after-batch-write'
+  | 'lookup-with-column-index-after-batch-write-large'
   | 'lookup-approximate-sorted'
   | 'lookup-approximate-sorted-large'
+  | 'lookup-approximate-descending'
   | 'lookup-approximate-duplicates'
+  | 'lookup-approximate-sorted-after-column-write'
   | 'lookup-text-exact'
   | 'lookup-text-exact-large'
+  | 'conditional-aggregation-reused-ranges'
+  | 'conditional-aggregation-reused-ranges-large'
+  | 'conditional-aggregation-criteria-cell-edit'
+  | 'conditional-aggregation-shared-criteria'
+  | 'conditional-aggregation-mixed-criteria'
 
 export type WorkPaperUniverWorkloadFamily =
   | 'aggregate'
   | 'aggregate-2d'
+  | 'batch-edit'
   | 'build'
+  | 'conditional-aggregation'
   | 'formula-chain'
   | 'formula-fanout'
   | 'cross-sheet'
+  | 'dirty-execution'
+  | 'named-expression'
   | 'lookup-approximate'
+  | 'lookup-after-write'
   | 'lookup-exact'
   | 'overlapping-aggregate'
+  | 'range-read'
   | 'range-stats'
+  | 'rebuild'
+  | 'sheet-lifecycle'
+  | 'structural-columns'
+  | 'structural-rows'
 
 export type UniverEditableValue = boolean | number | string
 type UniverCellValue = UniverEditableValue
@@ -186,10 +231,14 @@ export interface WorkPaperUniverScenario {
   readonly kind: 'build' | 'mutation'
   readonly fixture: WorkPaperUniverFixture
   readonly buildWorkPaperSheets: () => Record<string, WorkPaperSheet>
+  readonly executeUniverMutation?: (runtime: UniverRuntime) => unknown
+  readonly executeWorkPaperMutation?: (workbook: WorkPaper) => unknown
+  readonly prepareUniverOperation?: (runtime: UniverRuntime, expectedVerification: Record<string, unknown>) => Promise<void>
+  readonly workpaperNamedExpressions?: readonly SerializedWorkPaperNamedExpression[]
   readonly workpaperOptions?: Parameters<typeof WorkPaper.buildFromSheets>[1]
   readonly setupUniver: (runtime: UniverRuntime) => Promise<void>
-  readonly verifyUniver: (runtime: UniverRuntime) => Record<string, unknown>
-  readonly verifyWorkPaper: (workbook: WorkPaper) => Record<string, unknown>
+  readonly verifyUniver: (runtime: UniverRuntime, operationResult?: unknown) => Record<string, unknown>
+  readonly verifyWorkPaper: (workbook: WorkPaper, operationResult?: unknown) => Record<string, unknown>
 }
 
 interface ResolvedBenchmarkSuiteOptions {
@@ -205,10 +254,12 @@ export interface UniverRuntime {
 }
 
 export interface UniverFormulaFacade {
+  executeCalculation(): unknown
   onCalculationEnd(): Promise<void>
 }
 
 interface UniverRangeFacade {
+  getFormula(): unknown
   getValue(): unknown
   getValues(): unknown[][]
   setFormula(formula: string): UniverRangeFacade
@@ -218,17 +269,47 @@ interface UniverRangeFacade {
 }
 
 export interface UniverWorksheetFacade {
+  deleteColumn(columnPosition: number): UniverWorksheetFacade
+  deleteColumns(columnPosition: number, howMany: number): UniverWorksheetFacade
+  deleteRow(rowPosition: number): UniverWorksheetFacade
+  deleteRows(rowPosition: number, howMany: number): UniverWorksheetFacade
   getRange(row: number, column: number): UniverRangeFacade
   getRange(row: number, column: number, numRows: number): UniverRangeFacade
   getRange(row: number, column: number, numRows: number, numColumns: number): UniverRangeFacade
   getRange(a1Notation: string): UniverRangeFacade
+  getMaxColumns(): number
+  getMaxRows(): number
+  insertColumnBefore(beforePosition: number): UniverWorksheetFacade
+  insertColumnsBefore(beforePosition: number, howMany: number): UniverWorksheetFacade
+  insertRowBefore(beforePosition: number): UniverWorksheetFacade
+  insertRowsAfter(afterPosition: number, howMany: number): UniverWorksheetFacade
+  insertRowsBefore(beforePosition: number, howMany: number): UniverWorksheetFacade
+  moveColumns(columnSpec: unknown, destinationIndex: number): UniverWorksheetFacade
+  moveRows(rowSpec: unknown, destinationIndex: number): UniverWorksheetFacade
+  setName(name: string): UniverWorksheetFacade
 }
 
 export interface UniverWorkbookFacade {
   create(name: string, rows: number, columns: number): UniverWorksheetFacade
+  deleteDefinedName(name: string): unknown
   dispose(): void
   getActiveSheet(): UniverWorksheetFacade
+  getDefinedName(name: string): unknown
+  getNumSheets(): number
   getSheetByName(name: string): UniverWorksheetFacade | null
+  insertDefinedName(name: string, formulaOrRefString: string): UniverWorkbookFacade
+  insertDefinedNameBuilder(builder: unknown): unknown
+  newDefinedNameBuilder(): UniverDefinedNameBuilderFacade
+  updateDefinedNameBuilder(builder: unknown): unknown
+  undo(): unknown
+}
+
+export interface UniverDefinedNameBuilderFacade {
+  build(): unknown
+  load(param: unknown): UniverDefinedNameBuilderFacade
+  setFormula(formula: string): UniverDefinedNameBuilderFacade
+  setName(name: string): UniverDefinedNameBuilderFacade
+  setScopeToWorkbook(): UniverDefinedNameBuilderFacade
 }
 
 export const WORKPAPER_UNIVER_WORKLOADS = [
@@ -248,6 +329,45 @@ export const WORKPAPER_UNIVER_WORKLOADS = [
   'single-edit-fanout',
   'single-edit-fanout-small',
   'single-edit-fanout-large',
+  'single-edit-recalc',
+  'partial-recompute-mixed-frontier',
+  'single-formula-edit-recalc',
+  'single-formula-edit-recalc-large',
+  'batch-edit-recalc',
+  'batch-edit-single-column',
+  'batch-edit-single-column-small',
+  'batch-edit-single-column-large',
+  'batch-edit-multi-column-small',
+  'batch-edit-multi-column',
+  'batch-edit-multi-column-large',
+  'batch-edit-rectangular-block',
+  'batch-edit-rectangular-block-wide',
+  'batch-clear-rectangular-block',
+  'batch-clear-rectangular-block-wide',
+  'batch-edit-single-column-with-undo',
+  'batch-suspended-single-column',
+  'batch-suspended-multi-column',
+  'structural-insert-rows',
+  'structural-insert-rows-small',
+  'structural-insert-rows-large',
+  'structural-append-formula-rows',
+  'structural-append-formula-rows-small',
+  'structural-append-formula-rows-large',
+  'structural-delete-rows',
+  'structural-move-rows',
+  'structural-insert-columns',
+  'structural-insert-columns-small',
+  'structural-insert-columns-large',
+  'structural-delete-columns',
+  'structural-delete-columns-large',
+  'structural-move-columns',
+  'structural-move-columns-large',
+  'range-read',
+  'range-read-dense',
+  'range-read-wide',
+  'range-read-sparse-wide',
+  'range-read-formula-grid',
+  'range-read-formula-grid-wide',
   'aggregate-2d-ranges',
   'aggregate-2d-ranges-small',
   'aggregate-2d-ranges-large',
@@ -263,17 +383,33 @@ export const WORKPAPER_UNIVER_WORKLOADS = [
   'lookup-index-match-exact-large',
   'lookup-index-reference',
   'lookup-index-reference-large',
+  'lookup-with-column-index-after-column-write',
+  'lookup-with-column-index-after-batch-write',
+  'lookup-with-column-index-after-batch-write-large',
   'lookup-approximate-sorted',
   'lookup-approximate-sorted-large',
+  'lookup-approximate-descending',
   'lookup-approximate-duplicates',
+  'lookup-approximate-sorted-after-column-write',
   'lookup-text-exact',
   'lookup-text-exact-large',
+  'conditional-aggregation-reused-ranges',
+  'conditional-aggregation-reused-ranges-large',
+  'conditional-aggregation-criteria-cell-edit',
+  'conditional-aggregation-shared-criteria',
+  'conditional-aggregation-mixed-criteria',
   'build-many-sheets',
   'build-many-sheets-wide',
   'build-many-sheets-narrow',
   'build-cross-sheet-dashboard',
   'build-cross-sheet-dashboard-small',
   'build-cross-sheet-dashboard-large',
+  'rebuild-and-recalculate',
+  'rebuild-and-recalculate-large',
+  'rebuild-runtime-from-snapshot',
+  'rebuild-runtime-from-snapshot-large',
+  'sheet-rename-dependencies',
+  'named-expression-change',
   'cross-sheet-scalar-recalc',
   'cross-sheet-aggregate-recalc',
   'cross-sheet-dashboard-recalc',
@@ -370,9 +506,25 @@ async function runUniverScenario(
 
 function measureWorkPaperSample(scenario: WorkPaperUniverScenario): BenchmarkSample {
   if (scenario.kind === 'build') {
-    return measureWorkPaperBuildFromSheets(scenario.buildWorkPaperSheets(), scenario.verifyWorkPaper, scenario.workpaperOptions)
+    return measureWorkPaperBuildFromSheets(
+      scenario.buildWorkPaperSheets(),
+      scenario.verifyWorkPaper,
+      scenario.workpaperOptions,
+      scenario.workpaperNamedExpressions,
+    )
   }
-  const workbook = WorkPaper.buildFromSheets(scenario.buildWorkPaperSheets(), scenario.workpaperOptions)
+  const workbook = WorkPaper.buildFromSheets(
+    scenario.buildWorkPaperSheets(),
+    scenario.workpaperOptions,
+    scenario.workpaperNamedExpressions,
+  )
+  if (scenario.executeWorkPaperMutation !== undefined) {
+    return measureMutationSample(
+      workbook,
+      () => scenario.executeWorkPaperMutation?.(workbook),
+      (operationResult) => scenario.verifyWorkPaper(workbook, operationResult),
+    )
+  }
   const edit = requireMutationEdit(scenario.fixture)
   const editSheetId = workbook.getSheetId(edit.sheetName)
   if (editSheetId === undefined) {
@@ -381,8 +533,10 @@ function measureWorkPaperSample(scenario: WorkPaperUniverScenario): BenchmarkSam
   }
   return measureMutationSample(
     workbook,
-    () => workbook.setCellContents({ sheet: editSheetId, row: edit.row, col: edit.col }, edit.value),
-    () => scenario.verifyWorkPaper(workbook),
+    () =>
+      scenario.executeWorkPaperMutation?.(workbook) ??
+      workbook.setCellContents({ sheet: editSheetId, row: edit.row, col: edit.col }, edit.value),
+    (operationResult) => scenario.verifyWorkPaper(workbook, operationResult),
   )
 }
 
@@ -426,18 +580,26 @@ async function measureUniverRecalcSample(
   scenario: WorkPaperUniverScenario,
   expectedVerification: Record<string, unknown>,
 ): Promise<BenchmarkSample> {
-  const edit = requireMutationEdit(scenario.fixture)
+  const edit = scenario.fixture.edit
+  const sheetName = edit?.sheetName ?? scenario.fixture.result?.sheetName ?? 'Bench'
   const runtime = createUniverRuntime(
     scenario.fixture.rowCount,
-    scenario.fixture.columnCount ?? Math.max((scenario.fixture.result?.col ?? 0) + 1, edit.col + 1, 5),
-    edit.sheetName,
+    scenario.fixture.columnCount ?? Math.max((scenario.fixture.result?.col ?? 0) + 1, (edit?.col ?? 0) + 1, 5),
+    sheetName,
   )
   try {
     await scenario.setupUniver(runtime)
+    await scenario.prepareUniverOperation?.(runtime, expectedVerification)
     const memoryBefore = sampleMemory()
     const started = performance.now()
-    runtime.sheet.getRange(edit.address).setValue(edit.value)
-    const verification = await waitForUniverVerification(runtime, scenario, expectedVerification, univerCalculationTimeoutMs)
+    const operationResult = await executeUniverMutation(runtime, scenario)
+    const verification = await waitForUniverVerification(
+      runtime,
+      scenario,
+      expectedVerification,
+      univerCalculationTimeoutMs,
+      operationResult,
+    )
     const elapsedMs = performance.now() - started
     const memoryAfter = sampleMemory()
 
@@ -450,6 +612,14 @@ async function measureUniverRecalcSample(
     runtime.workbook.dispose()
     runtime.univer.dispose()
   }
+}
+
+async function executeUniverMutation(runtime: UniverRuntime, scenario: WorkPaperUniverScenario): Promise<unknown> {
+  if (scenario.executeUniverMutation !== undefined) {
+    return scenario.executeUniverMutation(runtime)
+  }
+  const edit = requireMutationEdit(scenario.fixture)
+  return runtime.sheet.getRange(edit.address).setValue(edit.value)
 }
 
 function requireMutationEdit(fixture: WorkPaperUniverFixture): NonNullable<WorkPaperUniverFixture['edit']> {
@@ -514,101 +684,6 @@ function summarizeMemory(samples: readonly MemoryMeasurement[]): ComparativeMemo
     heapTotalBytes: summarizeNumbers(samples.map((sample) => sample.delta.heapTotalBytes)),
     externalBytes: summarizeNumbers(samples.map((sample) => sample.delta.externalBytes)),
     arrayBuffersBytes: summarizeNumbers(samples.map((sample) => sample.delta.arrayBuffersBytes)),
-  }
-}
-
-function univerScenario(workload: WorkPaperUniverWorkload): WorkPaperUniverScenario {
-  switch (workload) {
-    case 'build-from-sheets':
-      return denseLiteralBuildScenario(workload, 160, 24)
-    case 'build-dense-literals':
-      return denseLiteralBuildScenario(workload, 160, 24)
-    case 'build-dense-literals-wide':
-      return denseLiteralBuildScenario(workload, 96, 96)
-    case 'build-dense-literals-tall':
-      return denseLiteralBuildScenario(workload, 768, 12)
-    case 'build-mixed-content':
-      return mixedContentBuildScenario(workload, 750)
-    case 'build-mixed-content-small':
-      return mixedContentBuildScenario(workload, 250)
-    case 'build-mixed-content-large':
-      return mixedContentBuildScenario(workload, 1_500)
-    case 'build-parser-cache-row-templates':
-      return parserCacheRowTemplateBuildScenario(workload, 1_500)
-    case 'build-parser-cache-mixed-templates':
-      return parserCacheMixedTemplateBuildScenario(workload, 1_500)
-    case 'build-parser-cache-unique-formulas':
-      return parserCacheUniqueFormulaBuildScenario(workload, 1_500)
-    case 'build-many-sheets':
-      return manySheetsBuildScenario(workload, 6, 96, 16)
-    case 'build-many-sheets-wide':
-      return manySheetsBuildScenario(workload, 4, 64, 48)
-    case 'build-many-sheets-narrow':
-      return manySheetsBuildScenario(workload, 12, 128, 8)
-    case 'build-cross-sheet-dashboard':
-      return crossSheetDashboardBuildScenario(workload, 4, 500)
-    case 'build-cross-sheet-dashboard-small':
-      return crossSheetDashboardBuildScenario(workload, 2, 250)
-    case 'build-cross-sheet-dashboard-large':
-      return crossSheetDashboardBuildScenario(workload, 6, 750)
-    case 'cross-sheet-scalar-recalc':
-      return crossSheetScalarFanoutRecalcScenario(workload, 1_500)
-    case 'cross-sheet-aggregate-recalc':
-      return crossSheetAggregateRecalcScenario(workload, 1_500)
-    case 'cross-sheet-dashboard-recalc':
-      return crossSheetDashboardRecalcScenario(workload, 4, 1_000)
-    case 'single-edit-chain':
-      return formulaChainRowScenario(workload, 2_000)
-    case 'single-edit-chain-small':
-      return formulaChainRowScenario(workload, 500)
-    case 'single-edit-chain-large':
-      return formulaChainRowScenario(workload, 3_000)
-    case 'single-edit-fanout':
-      return formulaFanoutRowScenario(workload, 2_000)
-    case 'single-edit-fanout-small':
-      return formulaFanoutRowScenario(workload, 500)
-    case 'single-edit-fanout-large':
-      return formulaFanoutRowScenario(workload, 3_000)
-    case 'aggregate-2d-ranges':
-      return aggregate2dCanonicalScenario(workload, 1_500)
-    case 'aggregate-2d-ranges-small':
-      return aggregate2dCanonicalScenario(workload, 500)
-    case 'aggregate-2d-ranges-large':
-      return aggregate2dCanonicalScenario(workload, 3_000)
-    case 'aggregate-overlapping-ranges':
-      return overlappingAggregateCanonicalScenario(workload, 1_500)
-    case 'aggregate-overlapping-ranges-small':
-      return overlappingAggregateCanonicalScenario(workload, 500)
-    case 'aggregate-overlapping-sliding-window':
-      return slidingAggregateCanonicalScenario(workload, 1_500, 32)
-    case 'aggregate-overlapping-sliding-window-wide':
-      return slidingAggregateCanonicalScenario(workload, 1_500, 128)
-    case 'lookup-no-column-index':
-      return exactLookupCanonicalScenario(workload, 5_000, false)
-    case 'lookup-no-column-index-small':
-      return exactLookupCanonicalScenario(workload, 1_000, false)
-    case 'lookup-with-column-index':
-      return exactLookupCanonicalScenario(workload, 5_000, true)
-    case 'lookup-with-column-index-large':
-      return exactLookupCanonicalScenario(workload, 10_000, true)
-    case 'lookup-index-match-exact':
-      return indexMatchExactCanonicalScenario(workload, 5_000)
-    case 'lookup-index-match-exact-large':
-      return indexMatchExactCanonicalScenario(workload, 10_000)
-    case 'lookup-index-reference':
-      return indexReferenceCanonicalScenario(workload, 5_000)
-    case 'lookup-index-reference-large':
-      return indexReferenceCanonicalScenario(workload, 10_000)
-    case 'lookup-approximate-sorted':
-      return approximateLookupCanonicalScenario(workload, 5_000)
-    case 'lookup-approximate-sorted-large':
-      return approximateLookupCanonicalScenario(workload, 10_000)
-    case 'lookup-approximate-duplicates':
-      return approximateDuplicateLookupCanonicalScenario(workload, 5_000)
-    case 'lookup-text-exact':
-      return textLookupCanonicalScenario(workload, 5_000)
-    case 'lookup-text-exact-large':
-      return textLookupCanonicalScenario(workload, 10_000)
   }
 }
 

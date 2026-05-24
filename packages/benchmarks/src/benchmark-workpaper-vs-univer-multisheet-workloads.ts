@@ -189,7 +189,7 @@ function canonicalWorkbookMutationScenario(args: {
   }
 }
 
-async function setupUniverWorkbookSheets(runtime: UniverRuntime, sheets: Record<string, WorkPaperSheet>): Promise<void> {
+export async function setupUniverWorkbookSheets(runtime: UniverRuntime, sheets: Record<string, WorkPaperSheet>): Promise<void> {
   const formulaRuns: {
     readonly formulas: string[]
     readonly row: number

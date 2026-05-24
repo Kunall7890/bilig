@@ -7,10 +7,11 @@ export async function waitForUniverVerification(
   scenario: WorkPaperUniverScenario,
   expectedVerification: Record<string, unknown>,
   timeoutMs: number,
+  operationResult?: unknown,
 ): Promise<Record<string, unknown>> {
   const expected = JSON.stringify(expectedVerification)
   const deadline = performance.now() + timeoutMs
-  let actualVerification = scenario.verifyUniver(runtime)
+  let actualVerification = scenario.verifyUniver(runtime, operationResult)
   while (JSON.stringify(actualVerification) !== expected) {
     if (performance.now() >= deadline) {
       throw new Error(
@@ -19,7 +20,7 @@ export async function waitForUniverVerification(
     }
     // oxlint-disable-next-line eslint(no-await-in-loop) -- Polling waits sequentially until Univer exposes the expected calculated values.
     await new Promise((resolve) => setTimeout(resolve, 1))
-    actualVerification = scenario.verifyUniver(runtime)
+    actualVerification = scenario.verifyUniver(runtime, operationResult)
   }
   return actualVerification
 }
