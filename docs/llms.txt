@@ -35,8 +35,9 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   `npx --package @bilig/xlsx-formula-recalc xlsx-recalc pricing.xlsx --set Inputs!B2=48 --read Summary!B7 --out pricing.recalculated.xlsx --json`.
 - Use `@bilig/exceljs-formula-recalc` when an existing ExcelJS workbook needs
   fresh formula results instead of stale cached values.
-- Use `@bilig/headless` when the caller needs lower-level WorkPaper subpaths,
-  agent metadata, the MCP binary, or provenance docs.
+- Use `@bilig/workpaper` when the caller needs WorkPaper APIs, agent-tool
+  helpers, the MCP binary, or proof commands. Use `@bilig/headless` only for
+  lower-level runtime subpaths or package-boundary audits.
 
 ## agent handoff prompt
 
@@ -45,7 +46,7 @@ workbook-shaped logic that can run through `@bilig/workpaper`. If it is, use
 WorkPaper state as the source of truth. For MCP, start with:
 
 ```sh
-npm exec --package @bilig/headless@0.73.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 For a reduced XLSX formula/import blocker, generate a local fixture report with:
@@ -244,7 +245,7 @@ screenshots only for human visual review, not as the source of formula truth.
 The shortest MCP shape is:
 
 ```sh
-npm exec --package @bilig/headless@0.73.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 ## proof and caveats
@@ -518,7 +519,7 @@ npm exec --package @bilig/headless@0.73.0 -- bilig-workpaper-mcp --workpaper ./p
 - MCP spreadsheet server directory status:
   https://proompteng.github.io/bilig/mcp-spreadsheet-server-directory.html
   https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-server-directory.md
-  npm exec --package @bilig/headless@0.73.0 -- bilig-workpaper-mcp
+  npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp
   Directory status currently includes Official MCP Registry, Glama, PulseMCP,
   MCPRepository, and pending maintainer-review submissions without duplicate
   resubmission.
@@ -544,7 +545,7 @@ npm exec --package @bilig/headless@0.73.0 -- bilig-workpaper-mcp --workpaper ./p
   pnpm --dir examples/headless-workpaper run agent:mcp-stdio
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-stdio-server.ts
 - packaged MCP stdio WorkPaper server:
-  npm exec --package @bilig/headless@0.73.0 -- bilig-workpaper-mcp
+  npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp
   mcpName: io.github.proompteng/bilig-workpaper
   https://github.com/proompteng/bilig/blob/main/packages/headless/server.json
 - official MCP Registry entry:

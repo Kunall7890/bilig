@@ -3,7 +3,7 @@
 [![CI](https://github.com/proompteng/bilig/actions/workflows/ci.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/ci.yml)
 [![npm: @bilig/workpaper](https://img.shields.io/npm/v/@bilig/workpaper?label=%40bilig%2Fworkpaper)](https://www.npmjs.com/package/@bilig/workpaper)
 [![npm: @bilig/xlsx-formula-recalc](https://img.shields.io/npm/v/@bilig/xlsx-formula-recalc?label=%40bilig%2Fxlsx-formula-recalc)](https://www.npmjs.com/package/@bilig/xlsx-formula-recalc)
-[![npm weekly downloads](https://img.shields.io/npm/dw/@bilig/headless?label=%40bilig%2Fheadless%20downloads)](https://www.npmjs.com/package/@bilig/headless)
+[![npm weekly downloads](https://img.shields.io/npm/dw/@bilig/workpaper?label=%40bilig%2Fworkpaper%20downloads)](https://www.npmjs.com/package/@bilig/workpaper)
 [![CodeQL](https://github.com/proompteng/bilig/actions/workflows/codeql.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -20,10 +20,10 @@ XLSX bytes. Use
 [`@bilig/exceljs-formula-recalc`](https://www.npmjs.com/package/@bilig/exceljs-formula-recalc)
 when the workbook is already moving through ExcelJS.
 
-[`@bilig/headless`](https://www.npmjs.com/package/@bilig/headless) remains the
-full lower-level runtime package with bundled agent metadata. The unscoped
-packages remain published as compatibility and search aliases, but scoped
-`@bilig/*` packages are the canonical install path.
+The scoped `@bilig/*` packages are the canonical install path. Start with
+`@bilig/workpaper` for service-owned workbook state or
+`@bilig/xlsx-formula-recalc` for stale XLSX formula values. Use the lower-level
+runtime only when you are building against advanced subpaths.
 
 It gives you a `WorkPaper`: build sheets, write inputs, recalculate, read the
 cell value, and save the workbook as JSON. No browser grid is involved.
@@ -119,7 +119,7 @@ for the community-node install path, proof shape, import steps, and limits.
 | SheetJS / `xlsx` pipeline returns stale formula values after input edits                        | `npm install @bilig/sheetjs-formula-recalc`                   | [SheetJS formula result not updating](docs/sheetjs-formula-result-not-updating-node.md) |
 | Generic XLSX bytes changed in Node; formula outputs must refresh before returning               | `npm install @bilig/xlsx-formula-recalc`                      | [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md)        |
 | Existing ExcelJS workflow needs recalculated values, not stale cached results                   | `npm install exceljs @bilig/exceljs-formula-recalc`           | [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md)  |
-| Full runtime package with agent metadata, MCP binary, provenance docs, and lower-level subpaths | `npm install @bilig/headless`                                 | [npm provenance and package trust](docs/npm-provenance-package-trust.md)                |
+| Advanced runtime subpaths, provenance docs, and package-boundary audits                        | `npm install @bilig/headless`                                 | [npm provenance and package trust](docs/npm-provenance-package-trust.md)                |
 
 ### Stale XLSX Formula Values? Run This First
 
@@ -174,7 +174,7 @@ Reduced workbook already in hand? Generate the paste-ready fixture report in
 one command:
 
 ```sh
-npm exec --package @bilig/headless@0.73.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Handing a spreadsheet task to another coding agent? Start with the
@@ -420,7 +420,7 @@ and [serverless quote approval](examples/serverless-workpaper-api). Run
 `npm run agent:framework-adapters`,
 `npm run agent:mcp-tools`, `npm run agent:mcp-transcript`,
 `npm run agent:mcp-file-transcript`, `npm run agent:mcp-stdio`, or
-`npm exec --package @bilig/headless@0.73.0 -- bilig-workpaper-mcp` when that is the
+`npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp` when that is the
 path you are evaluating.
 
 The serverless example also includes `npm run next-route-handler`,
@@ -496,8 +496,8 @@ The package also ships the MCP stdio binary:
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge
 npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge
-npm exec --package @bilig/headless@0.73.0 -- bilig-workpaper-mcp
-npm exec --package @bilig/headless@0.73.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 
@@ -589,7 +589,7 @@ seven file-backed WorkPaper tools:
   [OpenAI Responses tool calls](https://github.com/proompteng/bilig/discussions/335),
   and [benchmark critique](https://github.com/proompteng/bilig/discussions/340).
 
-If you are evaluating `@bilig/headless` for production and want release
+If you are evaluating Bilig runtime packages for production and want release
 notifications, watch releases:
 <https://github.com/proompteng/bilig/subscription>.
 
@@ -675,10 +675,10 @@ pnpm docs:discovery:check
 Start with the public package boundary unless the task is explicitly engine
 work.
 
-1. Read `packages/headless/README.md` before touching WorkPaper behavior.
+1. Read `packages/workpaper/README.md` before touching public WorkPaper behavior.
 2. Read `docs/AGENTS.md`, `docs/skill.md`, or `docs/llms-full.txt` when
    building an agent-facing integration from outside the repo.
-3. Use public exports from `@bilig/headless`; do not reach into `src/` or
+3. Use public exports from `@bilig/workpaper`; do not reach into `src/` or
    `dist/` when writing consumer examples.
 4. Keep examples TypeScript-first.
 5. Do not call stale XLSX cached formula values an accuracy oracle.

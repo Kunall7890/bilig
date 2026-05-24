@@ -43,18 +43,40 @@ const workbook = WorkPaper.buildFromSheets({
   ],
 })
 
-const inputs = workbook.getSheetId('Inputs')
-const summary = workbook.getSheetId('Summary')
+function cell(address: string) {
+  const parsed = workbook.simpleCellAddressFromString(address)
 
-if (inputs === undefined || summary === undefined) {
-  throw new Error('Expected sheets to exist')
+  if (parsed === undefined) {
+    throw new Error(`Unknown cell: ${address}`)
+  }
+
+  return parsed
 }
 
-workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 48)
-workbook.setCellContents({ sheet: inputs, row: 2, col: 1 }, 1500)
+function setCell(address: string, value: string | number | boolean | null) {
+  workbook.setCellContents(cell(address), value)
+}
 
-console.log(workbook.getCellValue({ sheet: summary, row: 1, col: 1 }))
-console.log(workbook.exportSnapshot())
+function displayAt(address: string) {
+  return workbook.getCellDisplayValue(cell(address))
+}
+
+const before = displayAt('Summary!B2')
+
+setCell('Inputs!B2', 48)
+setCell('Inputs!B3', 1500)
+
+const after = displayAt('Summary!B2')
+const document = workbook.exportSnapshot()
+
+console.log({
+  editedCells: ['Inputs!B2', 'Inputs!B3'],
+  readCell: 'Summary!B2',
+  before,
+  after,
+  persistedDocumentBytes: JSON.stringify(document).length,
+  verified: after === '72000',
+})
 
 workbook.dispose()
 ```

@@ -164,7 +164,6 @@
           <a href="#docs">Docs</a>
           <a href="https://context7.com/proompteng/bilig">Ask docs</a>
           <a href="https://www.npmjs.com/package/@bilig/workpaper">npm</a>
-          <a href="https://github.com/proompteng/bilig/stargazers">Star</a>
           <a href="https://github.com/proompteng/bilig">GitHub</a>
         </nav>
       </div>
@@ -233,14 +232,14 @@
               <h2 id="packages-title">Install the package that matches the job.</h2>
             </div>
             <p>
-              Start with the narrow npm package for your problem. The full headless runtime is still available when you need lower-level
-              APIs or agent metadata.
+              Start with the narrow npm package for your problem. WorkPaper owns service-side workbook state; XLSX packages own file-level
+              stale formula readback.
             </p>
           </div>
 
           <div class="traffic-entry" aria-label="XLSX recalculation first command">
             <div>
-              <span>highest-traffic entry</span>
+              <span>file-level first</span>
               <strong>SheetJS or XLSX inputs changed and formulas are stale?</strong>
               <p>
                 Start with the SheetJS-named package before moving to a full workbook runtime. The bridge example covers SheetJS,
@@ -930,12 +929,11 @@ $ curl https://bilig.proompteng.ai/mcp -H 'accept: application/json, text/event-
         <div class="wrap">
           <div>
             <h2 id="final-title">Run it on one calculation you care about.</h2>
-            <p>If the quickstart matches your workflow, star the repo. If it does not, name the blocker.</p>
+            <p>If the quickstart matches your workflow, keep the proof in your repo. If it does not, name the blocker.</p>
           </div>
           <div class="final-actions">
             <a class="button primary" href="https://www.npmjs.com/package/@bilig/workpaper">Install</a>
-            <a class="button" href="https://github.com/proompteng/bilig/stargazers">Star repo</a>
-            <a class="button" href="https://github.com/proompteng/bilig/subscription">Watch releases</a>
+            <a class="button" href="https://github.com/proompteng/bilig/releases">Check releases</a>
             <a class="button" href="https://context7.com/proompteng/bilig">Ask docs</a>
             <a class="button" href="https://github.com/proompteng/bilig/discussions/new?category=general">Name blocker</a>
             <a class="button" href="./formula-bug-clinic.html">Formula clinic</a>
