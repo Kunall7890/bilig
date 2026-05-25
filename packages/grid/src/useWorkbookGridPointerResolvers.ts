@@ -1,6 +1,6 @@
 import { useCallback, type MutableRefObject } from 'react'
 import type { GridGeometrySnapshot } from './gridGeometry.js'
-import type { HeaderSelection, VisibleRegionState } from './gridPointer.js'
+import { clampGridScreenPointToDataPanes, type HeaderSelection, type VisibleRegionState } from './gridPointer.js'
 import type { GridSelection, Item } from './gridTypes.js'
 
 type LocalPoint = { readonly x: number; readonly y: number }
@@ -81,6 +81,24 @@ export function useWorkbookGridPointerResolvers(input: {
     ],
   )
 
+  const resolveClampedPointerCell = useCallback(
+    (clientX: number, clientY: number, region?: VisibleRegionState, geometry?: GridGeometrySnapshot | null): Item | null => {
+      const activeGeometry = geometry ?? resolvePointerGeometry(region)
+      const localPoint = resolveLocalPoint(clientX, clientY)
+      if (!activeGeometry || !localPoint) {
+        return null
+      }
+
+      const clampedPoint = clampGridScreenPointToDataPanes(activeGeometry.camera, localPoint)
+      if (!clampedPoint) {
+        return null
+      }
+      const hit = activeGeometry.hitTestScreenPoint(clampedPoint)
+      return hit ? [hit.col, hit.row] : null
+    },
+    [resolveLocalPoint, resolvePointerGeometry],
+  )
+
   const resolveColumnResizeTarget = useCallback(
     (
       clientX: number,
@@ -150,6 +168,7 @@ export function useWorkbookGridPointerResolvers(input: {
     resolveRowResizeTarget,
     resolveHeaderSelectionAtPointer,
     resolveHeaderSelectionForPointerDrag,
+    resolveClampedPointerCell,
     resolvePointerCell,
     resolvePointerGeometry,
   }

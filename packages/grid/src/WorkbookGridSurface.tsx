@@ -3,6 +3,7 @@ import { formatAddress, parseCellAddress } from '@bilig/formula'
 import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import { CellEditorOverlay } from './CellEditorOverlay.js'
 import { GridFillHandleOverlay } from './GridFillHandleOverlay.js'
+import { GridFillPreviewOverlay } from './GridFillPreviewOverlay.js'
 import { GridSelectionVisualOverlay } from './GridSelectionVisualOverlay.js'
 import { WorkbookGridContextMenu } from './WorkbookGridContextMenu.js'
 import { createGridSelection, isGridSelectionCoherent } from './gridSelection.js'
@@ -492,21 +493,11 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
           selectionRange={displaySelectionRange}
           showFillHandle={showSelectionFillHandle}
         />
-        {renderState.fillPreviewBounds ? (
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute z-20 box-border"
-            data-grid-fill-preview="true"
-            style={{
-              backgroundColor: 'var(--wb-fill-preview-fill)',
-              border: '1px solid var(--wb-selection-accent)',
-              height: renderState.fillPreviewBounds.height,
-              left: renderState.fillPreviewBounds.x,
-              top: renderState.fillPreviewBounds.y,
-              width: renderState.fillPreviewBounds.width,
-            }}
-          />
-        ) : null}
+        <GridFillPreviewOverlay
+          fillPreviewRange={renderState.fillPreviewRange}
+          getGeometrySnapshot={getLiveGeometrySnapshot}
+          scrollTransformStore={renderState.scrollTransformStore}
+        />
         <button
           aria-label="Select entire sheet"
           className="absolute z-20 flex items-center justify-center bg-transparent text-[var(--wb-text-muted)] outline-none transition-colors hover:text-[var(--wb-text)] focus-visible:ring-2 focus-visible:ring-[var(--wb-accent)] focus-visible:ring-offset-0"
