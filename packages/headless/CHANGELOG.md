@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.104.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.103.0
+- Manual override: no
+
+## Features
+- feat(workbook): constrain action input metadata (03d2f83c)
+
+## Internal runtime changes
+- docs(growth): add Directus WorkPaper flow example (4d8840e4)
+
 ## 0.103.0
 
 - Release type: minor
