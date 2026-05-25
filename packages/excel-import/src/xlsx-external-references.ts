@@ -1,13 +1,18 @@
 import { XMLParser } from 'fast-xml-parser'
 import type { WorkbookExternalWorkbookReferenceSnapshot } from '@bilig/protocol'
-import type { XlsxExternalLinkCacheArtifactMode, XlsxExternalWorkbookInput } from './xlsx-import-limits.js'
+import type {
+  XlsxExternalLinkCacheArtifactMode,
+  XlsxExternalWorkbookHydrationDiagnostics,
+  XlsxExternalWorkbookHydrationReferenceDiagnostic,
+  XlsxExternalWorkbookInput,
+} from './xlsx-import-limits.js'
 import { getZipText, readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 import {
   buildExternalLinkSheetDataSetXml,
   externalCachedValueToLiteralInput,
   externalCacheSheetKey,
-  findExternalWorkbookInputForReference,
   readExternalWorkbookCacheFromInput,
+  resolveExternalWorkbookInputForReference,
   type ExternalCachedCells,
   type ExternalCachedSheets,
   type ExternalCachedValue,
@@ -468,21 +473,65 @@ export function refreshImportedExternalLinkCachesFromWorkbooks(
   artifactMode: XlsxExternalLinkCacheArtifactMode = 'preserve-existing',
 ): ImportedExternalLinkCacheRefreshResult {
   if (!externalWorkbooks || externalWorkbooks.length === 0 || references.size === 0) {
-    return { caches, artifactCaches: caches, refreshedBookIndices: new Set() }
+    return {
+      caches,
+      artifactCaches: caches,
+      refreshedBookIndices: new Set(),
+      ...(externalWorkbooks && externalWorkbooks.length > 0
+        ? {
+            diagnostics: buildExternalWorkbookHydrationDiagnostics({
+              externalWorkbookCount: externalWorkbooks.length,
+              externalReferenceCount: references.size,
+              refreshedBookIndices: new Set(),
+              references: [],
+            }),
+          }
+        : {}),
+    }
   }
 
   let refreshedCaches: ImportedExternalLinkCaches | undefined
   let refreshedArtifactCaches: ImportedExternalLinkCaches | undefined
   const refreshedBookIndices = new Set<number>()
+  const referenceDiagnostics: XlsxExternalWorkbookHydrationReferenceDiagnostic[] = []
   for (const reference of [...references.values()].toSorted((left, right) => left.bookIndex - right.bookIndex)) {
-    const input = findExternalWorkbookInputForReference(externalWorkbooks, references, reference)
-    if (!input) {
+    const resolved = resolveExternalWorkbookInputForReference(externalWorkbooks, references, reference)
+    if (!resolved.input) {
+      referenceDiagnostics.push(
+        externalWorkbookHydrationReferenceDiagnostic(reference, {
+          status: resolved.status === 'skipped-ambiguous-match' ? 'skipped-ambiguous-match' : 'skipped-no-match',
+          candidateCount: resolved.candidateCount,
+          referenceCandidateCount: resolved.referenceCandidateCount,
+          matchKind: resolved.matchKind,
+        }),
+      )
       continue
     }
-    const linkedWorkbookCache = readExternalWorkbookCacheFromInput(input, reference, usage)
+    const linkedWorkbookCache = readExternalWorkbookCacheFromInput(resolved.input, reference, usage)
     if (linkedWorkbookCache.size === 0) {
+      referenceDiagnostics.push(
+        externalWorkbookHydrationReferenceDiagnostic(reference, {
+          status: 'skipped-empty-refresh',
+          candidateCount: resolved.candidateCount,
+          referenceCandidateCount: resolved.referenceCandidateCount,
+          matchKind: resolved.matchKind,
+          input: resolved.input,
+        }),
+      )
       continue
     }
+    const refreshedCellCount = externalLinkCacheCellCount(linkedWorkbookCache)
+    referenceDiagnostics.push(
+      externalWorkbookHydrationReferenceDiagnostic(reference, {
+        status: 'refreshed',
+        candidateCount: resolved.candidateCount,
+        referenceCandidateCount: resolved.referenceCandidateCount,
+        matchKind: resolved.matchKind,
+        input: resolved.input,
+        refreshedSheetCount: linkedWorkbookCache.size,
+        refreshedCellCount,
+      }),
+    )
     refreshedCaches ??= new Map(caches)
     refreshedCaches.set(reference.bookIndex, linkedWorkbookCache)
     refreshedArtifactCaches ??= new Map(caches)
@@ -499,7 +548,68 @@ export function refreshImportedExternalLinkCachesFromWorkbooks(
     caches: refreshedCaches ?? caches,
     artifactCaches: refreshedArtifactCaches ?? caches,
     refreshedBookIndices,
+    diagnostics: buildExternalWorkbookHydrationDiagnostics({
+      externalWorkbookCount: externalWorkbooks.length,
+      externalReferenceCount: references.size,
+      refreshedBookIndices,
+      references: referenceDiagnostics,
+    }),
   }
+}
+
+function externalWorkbookHydrationReferenceDiagnostic(
+  reference: WorkbookExternalWorkbookReferenceSnapshot,
+  args: {
+    readonly status: XlsxExternalWorkbookHydrationReferenceDiagnostic['status']
+    readonly candidateCount: number
+    readonly referenceCandidateCount?: number | undefined
+    readonly matchKind?: XlsxExternalWorkbookHydrationReferenceDiagnostic['matchKind'] | undefined
+    readonly input?: XlsxExternalWorkbookInput | undefined
+    readonly refreshedSheetCount?: number | undefined
+    readonly refreshedCellCount?: number | undefined
+  },
+): XlsxExternalWorkbookHydrationReferenceDiagnostic {
+  return {
+    bookIndex: reference.bookIndex,
+    ...(reference.workbookName ? { workbookName: reference.workbookName } : {}),
+    ...(reference.target ? { target: reference.target } : {}),
+    status: args.status,
+    candidateCount: args.candidateCount,
+    ...(args.referenceCandidateCount !== undefined ? { referenceCandidateCount: args.referenceCandidateCount } : {}),
+    ...(args.matchKind ? { matchKind: args.matchKind } : {}),
+    ...(args.input?.fileName ? { matchedFileName: args.input.fileName } : {}),
+    ...(args.input?.workbookName ? { matchedWorkbookName: args.input.workbookName } : {}),
+    ...(args.input?.target ? { matchedTarget: args.input.target } : {}),
+    ...(args.refreshedSheetCount !== undefined ? { refreshedSheetCount: args.refreshedSheetCount } : {}),
+    ...(args.refreshedCellCount !== undefined ? { refreshedCellCount: args.refreshedCellCount } : {}),
+  }
+}
+
+function buildExternalWorkbookHydrationDiagnostics(args: {
+  readonly externalWorkbookCount: number
+  readonly externalReferenceCount: number
+  readonly refreshedBookIndices: ReadonlySet<number>
+  readonly references: readonly XlsxExternalWorkbookHydrationReferenceDiagnostic[]
+}): XlsxExternalWorkbookHydrationDiagnostics {
+  return {
+    externalWorkbookCount: args.externalWorkbookCount,
+    externalReferenceCount: args.externalReferenceCount,
+    refreshedBookIndices: [...args.refreshedBookIndices].toSorted((left, right) => left - right),
+    refreshedSheetCount: args.references.reduce((count, reference) => count + (reference.refreshedSheetCount ?? 0), 0),
+    refreshedCellCount: args.references.reduce((count, reference) => count + (reference.refreshedCellCount ?? 0), 0),
+    skippedNoMatchCount: args.references.filter((reference) => reference.status === 'skipped-no-match').length,
+    skippedAmbiguousMatchCount: args.references.filter((reference) => reference.status === 'skipped-ambiguous-match').length,
+    skippedEmptyRefreshCount: args.references.filter((reference) => reference.status === 'skipped-empty-refresh').length,
+    references: args.references,
+  }
+}
+
+function externalLinkCacheCellCount(sheets: ExternalCachedSheets): number {
+  let cellCount = 0
+  for (const sheet of sheets.values()) {
+    cellCount += sheet.cells.size
+  }
+  return cellCount
 }
 
 function cloneExternalLinkCacheSheets(sheets: ExternalCachedSheets | undefined): ExternalCachedSheets {

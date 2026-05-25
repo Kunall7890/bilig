@@ -17,6 +17,41 @@ export interface XlsxExternalWorkbookInput {
 
 export type XlsxExternalLinkCacheArtifactMode = 'preserve-existing' | 'replace-refreshed'
 
+export type XlsxExternalWorkbookHydrationStatus = 'refreshed' | 'skipped-no-match' | 'skipped-ambiguous-match' | 'skipped-empty-refresh'
+
+export type XlsxExternalWorkbookHydrationMatchKind = 'exact-target' | 'unique-workbook-identity'
+
+export interface XlsxExternalWorkbookHydrationReferenceDiagnostic {
+  readonly bookIndex: number
+  readonly workbookName?: string
+  readonly target?: string
+  readonly status: XlsxExternalWorkbookHydrationStatus
+  readonly candidateCount: number
+  readonly referenceCandidateCount?: number
+  readonly matchKind?: XlsxExternalWorkbookHydrationMatchKind
+  readonly matchedFileName?: string
+  readonly matchedWorkbookName?: string
+  readonly matchedTarget?: string
+  readonly refreshedSheetCount?: number
+  readonly refreshedCellCount?: number
+}
+
+export interface XlsxExternalWorkbookHydrationDiagnostics {
+  readonly externalWorkbookCount: number
+  readonly externalReferenceCount: number
+  readonly refreshedBookIndices: readonly number[]
+  readonly refreshedSheetCount: number
+  readonly refreshedCellCount: number
+  readonly skippedNoMatchCount: number
+  readonly skippedAmbiguousMatchCount: number
+  readonly skippedEmptyRefreshCount: number
+  readonly references: readonly XlsxExternalWorkbookHydrationReferenceDiagnostic[]
+}
+
+export interface ImportedWorkbookDiagnostics {
+  readonly externalWorkbookHydration?: XlsxExternalWorkbookHydrationDiagnostics
+}
+
 export interface XlsxImportOptions {
   readonly externalWorkbooks?: readonly XlsxExternalWorkbookInput[]
   readonly externalLinkCacheArtifactMode?: XlsxExternalLinkCacheArtifactMode

@@ -47,6 +47,7 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
       edits: options.edits.length,
       reads: result.reads,
       warnings: result.warnings,
+      ...(result.diagnostics ? { diagnostics: result.diagnostics } : {}),
       verified: true,
     }
 

@@ -15,6 +15,10 @@ export const definedNameFormulaCachesWarning =
   'Defined-name formulas contain volatile, external, or unsupported Excel semantics; dependent cached formula values may change during recalculation.'
 export const volatileFormulasWarning =
   'Volatile formulas were preserved during XLSX import; cached formula values may depend on workbook calculation time.'
+export const externalWorkbookCompanionNoMatchWarning =
+  'Some supplied external workbook companions could not be matched; existing external-link cache values were preserved.'
+export const externalWorkbookCompanionAmbiguousMatchWarning =
+  'Some supplied external workbook companions matched ambiguously; existing external-link cache values were preserved.'
 
 export function addWorkbookWarnings(workbook: XLSX.WorkBook, warnings: string[], ignoredDefinedNameCount: number): void {
   if (workbook.vbaraw) {

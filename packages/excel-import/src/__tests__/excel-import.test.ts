@@ -13,6 +13,8 @@ import {
   XLSB_CONTENT_TYPE,
   XLSM_CONTENT_TYPE,
   XLSX_CONTENT_TYPE,
+  externalWorkbookCompanionAmbiguousMatchWarning,
+  externalWorkbookCompanionNoMatchWarning,
   externalWorkbookReferencesWarning,
   exportXlsx,
   importCsv,
@@ -621,6 +623,28 @@ describe('excel import', () => {
     expect(cacheCells.get('B2')).toBe(20)
     expect(cacheCells.get('B3')).toBe(30)
     expect(cacheCells.get('B4')).toBe(40)
+    expect(imported.diagnostics?.externalWorkbookHydration).toMatchObject({
+      externalWorkbookCount: 1,
+      externalReferenceCount: 1,
+      refreshedBookIndices: [1],
+      refreshedSheetCount: 1,
+      refreshedCellCount: 6,
+      skippedNoMatchCount: 0,
+      skippedAmbiguousMatchCount: 0,
+      skippedEmptyRefreshCount: 0,
+      references: [
+        expect.objectContaining({
+          bookIndex: 1,
+          status: 'refreshed',
+          candidateCount: 1,
+          referenceCandidateCount: 1,
+          matchKind: 'unique-workbook-identity',
+          matchedFileName: 'rates.xlsx',
+          refreshedSheetCount: 1,
+          refreshedCellCount: 6,
+        }),
+      ],
+    })
 
     const externalLinkXml = readExternalLinkCacheXml(exportXlsx(imported.snapshot))
     expect(externalLinkXml).toContain('<row r="1"><cell r="A1" t="str"><v>SKU</v></cell><cell r="B1" t="str"><v>Rate</v></cell></row>')
@@ -677,6 +701,58 @@ describe('excel import', () => {
     expect(cacheCells.get('B2')).toBe(10)
     expect(cacheCells.get('B3')).toBe(20)
     expect(cacheCells.get('B4')).toBe(30)
+    expect(imported.warnings).toContain(externalWorkbookCompanionNoMatchWarning)
+    expect(imported.diagnostics?.externalWorkbookHydration).toMatchObject({
+      externalWorkbookCount: 1,
+      externalReferenceCount: 1,
+      refreshedBookIndices: [],
+      skippedNoMatchCount: 1,
+      skippedAmbiguousMatchCount: 0,
+      references: [
+        expect.objectContaining({
+          bookIndex: 1,
+          status: 'skipped-no-match',
+          candidateCount: 0,
+        }),
+      ],
+    })
+    expect(externalLinkXml).toContain('<cell r="B2"><v>10</v></cell>')
+    expect(externalLinkXml).toContain('<cell r="B3"><v>20</v></cell>')
+    expect(externalLinkXml).toContain('<cell r="B4"><v>30</v></cell>')
+  })
+
+  it('fails closed when companion workbook basename matching is ambiguous', () => {
+    const imported = importXlsx(buildExternalLinkRangeCacheWorkbook(), 'external-link-range-cache.xlsx', {
+      externalWorkbooks: [
+        { fileName: 'rates.xlsx', bytes: buildRatesWorkbook([20, 30, 40]) },
+        { fileName: 'rates.xlsx', bytes: buildRatesWorkbook([200, 300, 400]) },
+      ],
+    })
+    const cacheSheet = imported.snapshot.sheets.find((sheet) => sheet.name === '__bilig_ext_1_Rates')
+    const cacheCells = new Map(cacheSheet?.cells.map((cell) => [cell.address, cell.value]) ?? [])
+    const externalLinkXml = readExternalLinkCacheXml(exportXlsx(imported.snapshot))
+
+    expect(cacheCells.get('B2')).toBe(10)
+    expect(cacheCells.get('B3')).toBe(20)
+    expect(cacheCells.get('B4')).toBe(30)
+    expect(imported.warnings).toContain(externalWorkbookCompanionAmbiguousMatchWarning)
+    expect(imported.warnings).not.toContain(externalWorkbookCompanionNoMatchWarning)
+    expect(imported.diagnostics?.externalWorkbookHydration).toMatchObject({
+      externalWorkbookCount: 2,
+      externalReferenceCount: 1,
+      refreshedBookIndices: [],
+      skippedNoMatchCount: 0,
+      skippedAmbiguousMatchCount: 1,
+      references: [
+        expect.objectContaining({
+          bookIndex: 1,
+          status: 'skipped-ambiguous-match',
+          candidateCount: 2,
+          referenceCandidateCount: 1,
+          matchKind: 'unique-workbook-identity',
+        }),
+      ],
+    })
     expect(externalLinkXml).toContain('<cell r="B2"><v>10</v></cell>')
     expect(externalLinkXml).toContain('<cell r="B3"><v>20</v></cell>')
     expect(externalLinkXml).toContain('<cell r="B4"><v>30</v></cell>')

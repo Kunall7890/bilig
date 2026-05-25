@@ -45,6 +45,8 @@ export { manualCalculationModeWarning, precisionAsDisplayedCalculationWarning } 
 export {
   dataTableFormulasWarning,
   definedNameFormulaCachesWarning,
+  externalWorkbookCompanionAmbiguousMatchWarning,
+  externalWorkbookCompanionNoMatchWarning,
   externalPivotCachesWarning,
   externalWorkbookReferencesWarning,
   macroExecutionDeclinedWarning,
@@ -57,7 +59,16 @@ export { XlsxImportSizeLimitExceededError } from './xlsx-import-limits.js'
 export type { ImportedWorkbookSheetPreview } from './workbook-import-helpers.js'
 export type { ImportedWorkbookPreview } from './workbook-import-preview.js'
 export type { ImportedWorkbook } from './workbook-import-result.js'
-export type { XlsxExternalWorkbookInput, XlsxImportLimits, XlsxImportOptions } from './xlsx-import-limits.js'
+export type {
+  ImportedWorkbookDiagnostics,
+  XlsxExternalWorkbookHydrationDiagnostics,
+  XlsxExternalWorkbookHydrationMatchKind,
+  XlsxExternalWorkbookHydrationReferenceDiagnostic,
+  XlsxExternalWorkbookHydrationStatus,
+  XlsxExternalWorkbookInput,
+  XlsxImportLimits,
+  XlsxImportOptions,
+} from './xlsx-import-limits.js'
 export {
   CSV_CONTENT_TYPE,
   EXCEL_WORKBOOK_IMPORT_CONTENT_TYPES,

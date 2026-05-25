@@ -1,7 +1,11 @@
 import * as XLSX from 'xlsx'
 
 import type { LiteralInput, WorkbookExternalWorkbookReferenceSnapshot, WorkbookSnapshot } from '@bilig/protocol'
-import type { XlsxExternalWorkbookInput } from './xlsx-import-limits.js'
+import type {
+  XlsxExternalWorkbookHydrationDiagnostics,
+  XlsxExternalWorkbookHydrationMatchKind,
+  XlsxExternalWorkbookInput,
+} from './xlsx-import-limits.js'
 
 interface ExternalCachedNumber {
   readonly kind: 'number'
@@ -36,6 +40,7 @@ export interface ImportedExternalLinkCacheRefreshResult {
   readonly caches: ImportedExternalLinkCaches
   readonly artifactCaches: ImportedExternalLinkCaches
   readonly refreshedBookIndices: ReadonlySet<number>
+  readonly diagnostics?: XlsxExternalWorkbookHydrationDiagnostics
 }
 
 export type ImportedExternalLinkCacheUsage = Map<number, Map<string, Set<string>>>
@@ -136,14 +141,23 @@ function externalReferenceIdentityNames(reference: WorkbookExternalWorkbookRefer
   )
 }
 
-function externalWorkbookInputMatchesReference(
+function externalWorkbookInputMatchesReferenceTarget(
+  input: XlsxExternalWorkbookInput,
+  reference: WorkbookExternalWorkbookReferenceSnapshot,
+): boolean {
+  const inputTarget = normalizedWorkbookTarget(input.target)
+  const referenceTarget = normalizedWorkbookTarget(reference.target)
+  return Boolean(inputTarget && referenceTarget && inputTarget === referenceTarget)
+}
+
+function externalWorkbookInputMatchesReferenceIdentity(
   input: XlsxExternalWorkbookInput,
   reference: WorkbookExternalWorkbookReferenceSnapshot,
 ): boolean {
   const inputTarget = normalizedWorkbookTarget(input.target)
   const referenceTarget = normalizedWorkbookTarget(reference.target)
   if (inputTarget && referenceTarget) {
-    return inputTarget === referenceTarget
+    return false
   }
   const inputNames = externalWorkbookInputIdentityNames(input)
   if (inputNames.size === 0) {
@@ -157,27 +171,79 @@ function externalWorkbookInputMatchesReference(
   return false
 }
 
-function hasExternalWorkbookInputIdentity(input: XlsxExternalWorkbookInput): boolean {
-  return normalizedWorkbookTarget(input.target) !== null || externalWorkbookInputIdentityNames(input).size > 0
+function externalReferenceIdentityCandidateCount(
+  references: ImportedExternalWorkbookReferences,
+  reference: WorkbookExternalWorkbookReferenceSnapshot,
+): number {
+  const referenceNames = externalReferenceIdentityNames(reference)
+  if (referenceNames.size === 0) {
+    return 0
+  }
+  let count = 0
+  for (const candidate of references.values()) {
+    for (const referenceName of externalReferenceIdentityNames(candidate)) {
+      if (referenceNames.has(referenceName)) {
+        count += 1
+        break
+      }
+    }
+  }
+  return count
 }
 
-function hasExternalReferenceIdentity(reference: WorkbookExternalWorkbookReferenceSnapshot): boolean {
-  return normalizedWorkbookTarget(reference.target) !== null || externalReferenceIdentityNames(reference).size > 0
+export interface ResolvedExternalWorkbookInputForReference {
+  readonly input?: XlsxExternalWorkbookInput
+  readonly status: 'matched' | 'skipped-no-match' | 'skipped-ambiguous-match'
+  readonly candidateCount: number
+  readonly referenceCandidateCount?: number
+  readonly matchKind?: XlsxExternalWorkbookHydrationMatchKind
 }
 
-export function findExternalWorkbookInputForReference(
+export function resolveExternalWorkbookInputForReference(
   inputs: readonly XlsxExternalWorkbookInput[],
   references: ImportedExternalWorkbookReferences,
   reference: WorkbookExternalWorkbookReferenceSnapshot,
-): XlsxExternalWorkbookInput | undefined {
-  const matched = inputs.find((input) => externalWorkbookInputMatchesReference(input, reference))
-  if (matched) {
-    return matched
+): ResolvedExternalWorkbookInputForReference {
+  const exactTargetCandidates = inputs.filter((input) => externalWorkbookInputMatchesReferenceTarget(input, reference))
+  if (exactTargetCandidates.length === 1) {
+    return {
+      input: exactTargetCandidates[0]!,
+      status: 'matched',
+      candidateCount: 1,
+      matchKind: 'exact-target',
+    }
   }
-  const onlyInput = inputs.length === 1 ? inputs[0] : undefined
-  return onlyInput && references.size === 1 && !hasExternalWorkbookInputIdentity(onlyInput) && !hasExternalReferenceIdentity(reference)
-    ? onlyInput
-    : undefined
+  if (exactTargetCandidates.length > 1) {
+    return {
+      status: 'skipped-ambiguous-match',
+      candidateCount: exactTargetCandidates.length,
+      matchKind: 'exact-target',
+    }
+  }
+
+  const identityCandidates = inputs.filter((input) => externalWorkbookInputMatchesReferenceIdentity(input, reference))
+  if (identityCandidates.length === 0) {
+    return {
+      status: 'skipped-no-match',
+      candidateCount: 0,
+    }
+  }
+  const referenceCandidateCount = externalReferenceIdentityCandidateCount(references, reference)
+  if (identityCandidates.length > 1 || referenceCandidateCount !== 1) {
+    return {
+      status: 'skipped-ambiguous-match',
+      candidateCount: identityCandidates.length,
+      referenceCandidateCount,
+      matchKind: 'unique-workbook-identity',
+    }
+  }
+  return {
+    input: identityCandidates[0]!,
+    status: 'matched',
+    candidateCount: 1,
+    referenceCandidateCount,
+    matchKind: 'unique-workbook-identity',
+  }
 }
 
 function sheetJsErrorLiteral(value: unknown, formattedValue: unknown): string {

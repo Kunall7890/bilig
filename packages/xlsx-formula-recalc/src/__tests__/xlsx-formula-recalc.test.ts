@@ -193,6 +193,26 @@ describe('xlsx-formula-recalc', () => {
     expect(readCachedFormulaValue(result.xlsx, 'xl/worksheets/sheet1.xml', 'C1')).toBe('180')
     expect(readCachedFormulaValue(result.xlsx, 'xl/worksheets/sheet1.xml', 'C2')).toBe('60')
     expect(readCachedFormulaValue(result.xlsx, 'xl/worksheets/sheet1.xml', 'C3')).toBe('80')
+    expect(result.diagnostics?.externalWorkbookHydration).toMatchObject({
+      externalWorkbookCount: 1,
+      externalReferenceCount: 1,
+      refreshedBookIndices: [1],
+      refreshedSheetCount: 1,
+      refreshedCellCount: 6,
+      skippedNoMatchCount: 0,
+      skippedAmbiguousMatchCount: 0,
+      references: [
+        expect.objectContaining({
+          bookIndex: 1,
+          status: 'refreshed',
+          candidateCount: 1,
+          referenceCandidateCount: 1,
+          matchKind: 'unique-workbook-identity',
+          matchedFileName: 'rates.xlsx',
+          refreshedCellCount: 6,
+        }),
+      ],
+    })
     expect(readExternalLinkCacheCellValue(result.xlsx, 'B2')).toBe('20')
     expect(readExternalLinkCacheCellValue(result.xlsx, 'B3')).toBe('30')
     expect(readExternalLinkCacheCellValue(result.xlsx, 'B4')).toBe('40')
@@ -202,6 +222,44 @@ describe('xlsx-formula-recalc', () => {
     expect(externalLinkCacheXml).toContain('<row r="3">')
     expect(externalLinkCacheXml).toContain('<row r="4">')
     expect(externalLinkCacheXml).not.toContain('<row r="0">')
+  })
+
+  it('preserves cached external-link values when companion workbook matching is ambiguous', () => {
+    const sourceBytes = buildExternalLinkRangeCacheWorkbook('file:///tmp/rates.xlsx')
+    const result = recalculateXlsx(sourceBytes, {
+      fileName: 'external-link-cache.xlsx',
+      externalWorkbooks: [
+        { fileName: 'rates.xlsx', bytes: buildExternalSourceWorkbook([20, 30, 40]) },
+        { fileName: 'rates.xlsx', bytes: buildExternalSourceWorkbook([200, 300, 400]) },
+      ],
+      reads: ['Model!C1', 'Model!C2', 'Model!C3'],
+    })
+
+    expect(readNumber(result.reads['Model!C1'])).toBe(120)
+    expect(readNumber(result.reads['Model!C2'])).toBe(40)
+    expect(readNumber(result.reads['Model!C3'])).toBe(60)
+    expect(result.warnings).toContain(
+      'Some supplied external workbook companions matched ambiguously; existing external-link cache values were preserved.',
+    )
+    expect(result.diagnostics?.externalWorkbookHydration).toMatchObject({
+      externalWorkbookCount: 2,
+      externalReferenceCount: 1,
+      refreshedBookIndices: [],
+      skippedNoMatchCount: 0,
+      skippedAmbiguousMatchCount: 1,
+      references: [
+        expect.objectContaining({
+          bookIndex: 1,
+          status: 'skipped-ambiguous-match',
+          candidateCount: 2,
+          referenceCandidateCount: 1,
+          matchKind: 'unique-workbook-identity',
+        }),
+      ],
+    })
+    expect(readExternalLinkCacheCellValue(result.xlsx, 'B2')).toBe('10')
+    expect(readExternalLinkCacheCellValue(result.xlsx, 'B3')).toBe('20')
+    expect(readExternalLinkCacheCellValue(result.xlsx, 'B4')).toBe('30')
   })
 
   it('preserves non-stale calculation preferences after explicit formula recalculation', () => {

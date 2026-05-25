@@ -58,13 +58,15 @@ import {
   addWorkbookWarnings,
   readImportedFormulaAuditWarnings,
   dataTableFormulasWarning,
+  externalWorkbookCompanionAmbiguousMatchWarning,
+  externalWorkbookCompanionNoMatchWarning,
   externalPivotCachesWarning,
   externalWorkbookReferencesWarning,
   volatileFormulasWarning,
   workbookDefinedNamesReferenceExternalWorkbook,
 } from './xlsx-import-warnings.js'
 import { buildImportedWorkbookMetadata } from './xlsx-import-workbook-metadata.js'
-import { denseSheetJsByteThreshold, type XlsxImportOptions } from './xlsx-import-limits.js'
+import { denseSheetJsByteThreshold, type XlsxExternalWorkbookHydrationDiagnostics, type XlsxImportOptions } from './xlsx-import-limits.js'
 import { createPreservedVbaProjectPayload, type PreservedVbaProjectCodeNames } from './xlsx-macros.js'
 import { buildMergeEntries } from './xlsx-merge-entries.js'
 import { readImportedWorkbookFileNumberFormats } from './xlsx-number-formats.js'
@@ -391,6 +393,7 @@ function importParsedSheetJsWorkbook(args: {
     options?.externalLinkCacheArtifactMode,
   )
   const importedExternalLinkCaches = importedExternalLinkCacheRefresh.caches
+  addExternalWorkbookHydrationWarnings(warnings, importedExternalLinkCacheRefresh.diagnostics)
   const importedExternalLinkArtifacts = refreshImportedWorkbookExternalLinkArtifactCaches(
     workbookZip ? readImportedWorkbookExternalLinkArtifacts(workbookZip) : undefined,
     importedExternalLinkCacheRefresh.artifactCaches,
@@ -920,6 +923,9 @@ function importParsedSheetJsWorkbook(args: {
     workbookName,
     sheetNames: workbook.SheetNames,
     warnings,
+    ...(importedExternalLinkCacheRefresh.diagnostics
+      ? { diagnostics: { externalWorkbookHydration: importedExternalLinkCacheRefresh.diagnostics } }
+      : {}),
     preview: createWorkbookPreview({
       contentType,
       fileName,
@@ -928,6 +934,18 @@ function importParsedSheetJsWorkbook(args: {
       sheets: previewSheets,
       warnings,
     }),
+  }
+}
+
+function addExternalWorkbookHydrationWarnings(warnings: string[], diagnostics: XlsxExternalWorkbookHydrationDiagnostics | undefined): void {
+  if (!diagnostics) {
+    return
+  }
+  if (diagnostics.skippedNoMatchCount > 0 && !warnings.includes(externalWorkbookCompanionNoMatchWarning)) {
+    warnings.push(externalWorkbookCompanionNoMatchWarning)
+  }
+  if (diagnostics.skippedAmbiguousMatchCount > 0 && !warnings.includes(externalWorkbookCompanionAmbiguousMatchWarning)) {
+    warnings.push(externalWorkbookCompanionAmbiguousMatchWarning)
   }
 }
 

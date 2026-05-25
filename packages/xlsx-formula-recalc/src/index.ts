@@ -1,5 +1,5 @@
 import { WorkPaper, type RawCellContent, type WorkPaperCellAddress, type WorkPaperChange, type WorkPaperConfig } from '@bilig/headless'
-import type { XlsxExternalWorkbookInput } from '@bilig/headless/xlsx'
+import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput } from '@bilig/headless/xlsx'
 import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
 import { ErrorCode, formatErrorCode, ValueTag } from '@bilig/protocol'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
@@ -37,6 +37,7 @@ export interface XlsxFormulaRecalcResult {
   readonly sheetNames: readonly string[]
   readonly reads: Readonly<Record<string, XlsxFormulaRecalcCellValue>>
   readonly changes: readonly WorkPaperChange[]
+  readonly diagnostics?: ImportedWorkbookDiagnostics
 }
 
 export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, options: XlsxFormulaRecalcOptions = {}): XlsxFormulaRecalcResult {
@@ -79,6 +80,7 @@ export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, option
       sheetNames: imported.sheetNames,
       reads,
       changes,
+      ...(imported.diagnostics ? { diagnostics: imported.diagnostics } : {}),
     }
   } finally {
     workbook.dispose()
