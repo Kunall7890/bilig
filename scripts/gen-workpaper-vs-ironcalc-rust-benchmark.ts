@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
-import { execFileSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import {
   DEFAULT_COMPETITIVE_WARMUP_COUNT,
   DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT,
@@ -67,12 +67,14 @@ const sidecarOutputPath = join(cacheDir, 'output.json')
 const sidecarManifestPath = join(cacheDir, 'Cargo.toml')
 const sidecarMainPath = join(sidecarSrcDir, 'main.rs')
 const cargoTargetDir = join(rootDir, '.cache', 'ironcalc-rust-target')
+const lockPath = join(cacheDir, 'artifact.lock')
 const isCheckMode = process.argv.slice(2).includes('--check')
 const sampleCount = Number.parseInt(process.env['BILIG_IRONCALC_RUST_SAMPLE_COUNT'] ?? '', 10) || DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT
 const warmupCount = DEFAULT_COMPETITIVE_WARMUP_COUNT
 const workpaperSourcePath = 'packages/headless'
 const ironCalcRustSourcePath = '.cache/ironcalc-rust-bench'
 const ironCalcRustWorkloadNames: readonly string[] = WORKPAPER_IRONCALC_RUST_WORKLOADS
+const rustSidecarChunkSize = Number.parseInt(process.env['BILIG_IRONCALC_RUST_CHUNK_SIZE'] ?? '', 10) || 1
 
 if (isCheckMode) {
   if (!existsSync(outputPath)) {
@@ -129,17 +131,12 @@ if (isCheckMode) {
   process.exit(0)
 }
 
+const releaseLock = acquireArtifactLock()
+process.once('exit', releaseLock)
+
 writeSidecarProject()
 writeFileSync(sidecarInputPath, `${JSON.stringify(buildIronCalcRustRunnerInput({ sampleCount, warmupCount }), null, 2)}\n`)
-execFileSync('cargo', ['run', '--release', '--quiet', '--manifest-path', sidecarManifestPath, '--', sidecarInputPath, sidecarOutputPath], {
-  cwd: rootDir,
-  env: {
-    ...process.env,
-    CARGO_TARGET_DIR: cargoTargetDir,
-  },
-  stdio: 'inherit',
-})
-const runnerOutput = parseIronCalcRustRunnerOutput(readJsonObject(sidecarOutputPath))
+const runnerOutput = await runIronCalcRustSidecarChunks()
 if (runnerOutput.engine.crate !== IRONCALC_RUST_CRATE_NAME || runnerOutput.engine.version !== IRONCALC_RUST_CRATE_VERSION) {
   throw new Error(
     `IronCalc Rust sidecar version mismatch: expected ${IRONCALC_RUST_CRATE_NAME}@${IRONCALC_RUST_CRATE_VERSION}, got ${runnerOutput.engine.crate}@${runnerOutput.engine.version}`,
@@ -147,6 +144,9 @@ if (runnerOutput.engine.crate !== IRONCALC_RUST_CRATE_NAME || runnerOutput.engin
 }
 const report = buildWorkPaperVsIronCalcRustBenchmarkReport(
   runWorkPaperVsIronCalcRustBenchmarkSuite(runnerOutput, {
+    onWorkloadStart: (workload, index, total) => {
+      console.log(`WorkPaper IronCalc workload ${String(index + 1)}/${String(total)}: ${workload}`)
+    },
     sampleCount,
     warmupCount,
   }),
@@ -197,10 +197,167 @@ console.log(
   ),
 )
 
+function acquireArtifactLock(): () => void {
+  mkdirSync(cacheDir, { recursive: true })
+  const lockBody = `${String(process.pid)}\n${new Date().toISOString()}\n`
+  try {
+    const lockFd = openSync(lockPath, 'wx')
+    writeFileSync(lockFd, lockBody)
+    closeSync(lockFd)
+    return () => {
+      rmSync(lockPath, { force: true })
+    }
+  } catch (error) {
+    if (!isFileExistsError(error)) {
+      throw error
+    }
+  }
+
+  const existingLock = readExistingArtifactLock()
+  if (existingLock?.pid !== undefined && processIsAlive(existingLock.pid)) {
+    throw new Error(
+      `WorkPaper vs IronCalc Rust benchmark generation is already running under pid ${String(
+        existingLock.pid,
+      )}. Wait for it to finish before regenerating the timing artifact.`,
+    )
+  }
+  rmSync(lockPath, { force: true })
+  const lockFd = openSync(lockPath, 'wx')
+  writeFileSync(lockFd, lockBody)
+  closeSync(lockFd)
+  return () => {
+    rmSync(lockPath, { force: true })
+  }
+}
+
+function readExistingArtifactLock(): { pid: number | undefined } | undefined {
+  if (!existsSync(lockPath)) {
+    return undefined
+  }
+  const [pidText] = readFileSync(lockPath, 'utf8').split('\n')
+  const pid = Number.parseInt(pidText ?? '', 10)
+  return { pid: Number.isFinite(pid) && pid > 0 ? pid : undefined }
+}
+
+function processIsAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function isFileExistsError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && (error as { readonly code?: unknown }).code === 'EEXIST'
+}
+
 function writeSidecarProject(): void {
   mkdirSync(sidecarSrcDir, { recursive: true })
   writeFileSync(sidecarManifestPath, ironCalcRustSidecarCargoToml())
   writeFileSync(sidecarMainPath, ironCalcRustSidecarMainRs())
+}
+
+async function runIronCalcRustSidecarChunks(): Promise<IronCalcRustRunnerOutput> {
+  const chunkSize = Number.isFinite(rustSidecarChunkSize) && rustSidecarChunkSize > 0 ? Math.trunc(rustSidecarChunkSize) : 1
+  const chunks = chunkArray(WORKPAPER_IRONCALC_RUST_WORKLOADS, chunkSize)
+  const results: IronCalcRustRunnerOutput['results'] = []
+  for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex += 1) {
+    const workloads = chunks[chunkIndex]
+    const inputPath = join(cacheDir, `input-${String(chunkIndex + 1)}.json`)
+    const chunkOutputPath = join(cacheDir, `output-${String(chunkIndex + 1)}.json`)
+    writeFileSync(inputPath, `${JSON.stringify(buildIronCalcRustRunnerInput({ sampleCount, warmupCount, workloads }), null, 2)}\n`)
+    console.log(
+      `IronCalc Rust chunk ${String(chunkIndex + 1)}/${String(chunks.length)} (${String(workloads.length)} workloads): ${workloads.join(
+        ', ',
+      )}`,
+    )
+    const reusableOutput = readReusableIronCalcRustChunkOutput(chunkOutputPath, workloads)
+    if (reusableOutput !== undefined) {
+      console.log(`IronCalc Rust chunk ${String(chunkIndex + 1)}/${String(chunks.length)} reused`)
+      results.push(...reusableOutput.results)
+      continue
+    }
+    // oxlint-disable-next-line eslint(no-await-in-loop) -- Chunks run sequentially so timing samples stay isolated and artifact ordering remains deterministic.
+    await runIronCalcRustSidecar(inputPath, chunkOutputPath, `chunk ${String(chunkIndex + 1)}/${String(chunks.length)}`)
+    const output = parseIronCalcRustRunnerOutput(readJsonObject(chunkOutputPath))
+    results.push(...output.results)
+  }
+  const byWorkload = new Map(results.map((result) => [result.workload, result]))
+  const orderedResults = WORKPAPER_IRONCALC_RUST_WORKLOADS.map((workload) => {
+    const result = byWorkload.get(workload)
+    if (result === undefined) {
+      throw new Error(`IronCalc Rust sidecar chunking did not return workload ${workload}`)
+    }
+    return result
+  })
+  const output: IronCalcRustRunnerOutput = {
+    engine: {
+      crate: IRONCALC_RUST_CRATE_NAME,
+      version: IRONCALC_RUST_CRATE_VERSION,
+    },
+    results: orderedResults,
+  }
+  writeFileSync(sidecarOutputPath, `${JSON.stringify(output, null, 2)}\n`)
+  return output
+}
+
+function readReusableIronCalcRustChunkOutput(
+  chunkOutputPath: string,
+  workloads: readonly WorkPaperIronCalcRustWorkload[],
+): IronCalcRustRunnerOutput | undefined {
+  if (!existsSync(chunkOutputPath)) {
+    return undefined
+  }
+  const output = parseIronCalcRustRunnerOutput(readJsonObject(chunkOutputPath))
+  const actualWorkloads = output.results.map((result) => result.workload)
+  if (JSON.stringify(actualWorkloads) !== JSON.stringify(workloads)) {
+    return undefined
+  }
+  if (output.results.some((result) => result.elapsedMs.length !== sampleCount)) {
+    return undefined
+  }
+  return output
+}
+
+function runIronCalcRustSidecar(inputPath: string, chunkOutputPath: string, label: string): Promise<void> {
+  return new Promise((resolveRun, rejectRun) => {
+    const child = spawn(
+      'cargo',
+      ['run', '--release', '--quiet', '--manifest-path', sidecarManifestPath, '--', inputPath, chunkOutputPath],
+      {
+        cwd: rootDir,
+        env: {
+          ...process.env,
+          CARGO_TARGET_DIR: cargoTargetDir,
+        },
+        stdio: ['ignore', 'inherit', 'inherit'],
+      },
+    )
+    const heartbeat = setInterval(() => {
+      console.log(`IronCalc Rust ${label} still running`)
+    }, 15_000)
+    child.once('error', (error) => {
+      clearInterval(heartbeat)
+      rejectRun(error)
+    })
+    child.once('exit', (code, signal) => {
+      clearInterval(heartbeat)
+      if (code === 0) {
+        resolveRun()
+        return
+      }
+      rejectRun(new Error(`IronCalc Rust ${label} failed with code ${String(code)} signal ${String(signal)}`))
+    })
+  })
+}
+
+function chunkArray<T>(values: readonly T[], chunkSize: number): T[][] {
+  const chunks: T[][] = []
+  for (let start = 0; start < values.length; start += chunkSize) {
+    chunks.push(values.slice(start, start + chunkSize))
+  }
+  return chunks
 }
 
 function assertEngineSourcePath(artifactRecord: Record<string, unknown>, engineName: string, expectedSourcePath: string): void {

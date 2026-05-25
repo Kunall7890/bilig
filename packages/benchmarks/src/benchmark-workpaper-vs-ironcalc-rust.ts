@@ -156,6 +156,11 @@ interface ResolvedBenchmarkSuiteOptions {
   readonly warmupCount: number
 }
 
+interface WorkPaperIronCalcRustSuiteOptions extends ComparativeBenchmarkSuiteOptions {
+  readonly onWorkloadStart?: (workload: WorkPaperIronCalcRustWorkload, index: number, total: number) => void
+  readonly workloads?: readonly WorkPaperIronCalcRustWorkload[]
+}
+
 export const IRONCALC_RUST_CRATE_NAME = 'ironcalc_base'
 export const IRONCALC_RUST_CRATE_VERSION = '0.7.1'
 export const WORKPAPER_IRONCALC_RUST_CANDIDATE_WORKLOADS = WORKPAPER_UNIVER_WORKLOADS
@@ -163,11 +168,12 @@ export const WORKPAPER_IRONCALC_RUST_COMPARABLE_SCENARIOS = buildIronCalcRustCom
 export const WORKPAPER_IRONCALC_RUST_WORKLOADS = WORKPAPER_IRONCALC_RUST_COMPARABLE_SCENARIOS.map((scenario) => scenario.workload)
 export const WORKPAPER_IRONCALC_RUST_UNSUPPORTED_WORKLOADS = buildIronCalcRustUnsupportedWorkloads()
 
-export function buildIronCalcRustRunnerInput(options: ComparativeBenchmarkSuiteOptions = {}): IronCalcRustRunnerInput {
+export function buildIronCalcRustRunnerInput(options: WorkPaperIronCalcRustSuiteOptions = {}): IronCalcRustRunnerInput {
   const resolvedOptions = resolveSuiteOptions(options)
+  const scenarios = selectIronCalcRustScenarios(options.workloads)
   return {
     benchmark: resolvedOptions,
-    workloads: WORKPAPER_IRONCALC_RUST_COMPARABLE_SCENARIOS.map((scenario) => ({
+    workloads: scenarios.map((scenario) => ({
       observations: scenario.observations,
       operation: scenario.operation,
       sheets: Object.entries(scenario.scenario.buildWorkPaperSheets()).map(([name, cells]) => ({ cells, name })),
@@ -178,11 +184,13 @@ export function buildIronCalcRustRunnerInput(options: ComparativeBenchmarkSuiteO
 
 export function runWorkPaperVsIronCalcRustBenchmarkSuite(
   runnerOutput: IronCalcRustRunnerOutput,
-  options: ComparativeBenchmarkSuiteOptions = {},
+  options: WorkPaperIronCalcRustSuiteOptions = {},
 ): WorkPaperIronCalcRustBenchmarkResult[] {
   const resolvedOptions = resolveSuiteOptions(options)
   const ironCalcResults = new Map(runnerOutput.results.map((result) => [result.workload, result]))
-  return WORKPAPER_IRONCALC_RUST_COMPARABLE_SCENARIOS.map((scenario) => {
+  const scenarios = selectIronCalcRustScenarios(options.workloads)
+  return scenarios.map((scenario, index) => {
+    options.onWorkloadStart?.(scenario.workload, index, scenarios.length)
     const ironCalcResult = ironCalcResults.get(scenario.workload)
     if (ironCalcResult === undefined) {
       throw new Error(`IronCalc Rust runner did not return workload ${scenario.workload}`)
@@ -307,6 +315,16 @@ function resolveIronCalcRustComparableScenario(workload: WorkPaperUniverWorkload
     scenario,
     workload,
   }
+}
+
+function selectIronCalcRustScenarios(
+  workloads: readonly WorkPaperIronCalcRustWorkload[] | undefined,
+): readonly IronCalcRustComparableScenario[] {
+  if (workloads === undefined) {
+    return WORKPAPER_IRONCALC_RUST_COMPARABLE_SCENARIOS
+  }
+  const selected = new Set(workloads)
+  return WORKPAPER_IRONCALC_RUST_COMPARABLE_SCENARIOS.filter((scenario) => selected.has(scenario.workload))
 }
 
 function customIronCalcRustOperation(
