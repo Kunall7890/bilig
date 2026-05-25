@@ -334,8 +334,10 @@ describe('bilig dominance scorecard', () => {
       'generated-source CI checks are serialized to avoid pnpm workspace-state races in the evidence gate',
     )
     expect(workflow?.currentEvidence).toContain('completion audit criteria passed: false')
+    expect(workflow?.currentEvidence).toContain('Google Sheets 10x release-claim gate present: true')
     expect(workflow?.blockers).toEqual([])
     expect(workflow?.evidenceArtifacts).toContain('scripts/run-ci.ts')
+    expect(workflow?.checkCommands).toContain('pnpm google-sheets-10x:claim:check')
   })
 
   it('does not keep deployment network policy as a blocker after security evidence covers it', () => {
@@ -357,6 +359,7 @@ describe('bilig dominance scorecard', () => {
     const runCi = readFileSync(resolve(repoRoot, 'scripts/run-ci.ts'), 'utf8')
 
     expect(packageJson).toContain('"dominance:check": "bun scripts/gen-bilig-dominance-scorecard.ts --check"')
+    expect(packageJson).toContain('"google-sheets-10x:claim:check": "bun scripts/google-sheets-10x-claim-gate.ts"')
     expect(packageJson).toContain('"calculation:semantics:check": "bun scripts/gen-calculation-semantics-scorecard.ts --check"')
     expect(packageJson).toContain('"calculation:excel-live:check": "bun scripts/gen-microsoft-excel-live-calculation-scorecard.ts --check"')
     expect(packageJson).toContain(
@@ -435,7 +438,7 @@ describe('bilig dominance scorecard', () => {
 })
 
 function parseGeneratedScorecard(source: string): {
-  categories: Array<{ id: unknown; blockers: string[]; currentEvidence: string[]; evidenceArtifacts: string[] }>
+  categories: Array<{ id: unknown; blockers: string[]; checkCommands: string[]; currentEvidence: string[]; evidenceArtifacts: string[] }>
 } {
   const parsed: unknown = JSON.parse(source)
   if (!isRecord(parsed) || !Array.isArray(parsed['categories'])) {
@@ -450,6 +453,7 @@ function parseGeneratedScorecard(source: string): {
       return {
         id: category['id'],
         blockers: stringList(category['blockers'], 'Generated scorecard category blockers'),
+        checkCommands: stringList(category['checkCommands'], 'Generated scorecard category check commands'),
         currentEvidence: stringList(category['currentEvidence'], 'Generated scorecard category evidence'),
         evidenceArtifacts: stringList(category['evidenceArtifacts'], 'Generated scorecard category artifacts'),
       }

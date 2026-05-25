@@ -121,6 +121,7 @@
     "dominance:status": "bun scripts/bilig-dominance-status.ts",
     "dominance:audit": "bun scripts/bilig-dominance-audit.ts",
     "dominance:audit:check": "bun scripts/bilig-dominance-audit.ts --check",
+    "google-sheets-10x:claim:check": "bun scripts/google-sheets-10x-claim-gate.ts",
     "claims:check": "bun scripts/check-public-claims.ts",
     "workspace-resolution:generate": "bun scripts/gen-workspace-resolution.ts",
     "workspace-resolution:check": "bun scripts/gen-workspace-resolution.ts --check",

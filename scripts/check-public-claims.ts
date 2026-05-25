@@ -5,6 +5,7 @@ import { basename, join, relative } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { outputPath, rootDir } from './bilig-dominance-scorecard-input.ts'
+import { scorecardPermitsGoogleSheetsTenXClaim } from './google-sheets-10x-claim-gate.ts'
 
 export interface PublicClaimViolation {
   readonly path: string
@@ -86,11 +87,12 @@ export function buildPublicClaimCheckReport(
   const repoRoot = input.repoRoot ?? rootDir
   const scorecard = input.scorecard ?? loadScorecard(outputPath)
   const scannedFiles = input.files ?? collectPublicClaimFiles(repoRoot)
-  const violations = scorecard.claimPolicy.blanketTenXClaimAllowed
+  const blanketTenXClaimAllowed = scorecardPermitsGoogleSheetsTenXClaim(scorecard)
+  const violations = blanketTenXClaimAllowed
     ? []
     : scannedFiles.flatMap((repoPath) => findBroadGoogleSheetsTenXClaims(readFileSync(join(repoRoot, repoPath), 'utf8'), repoPath))
   return {
-    blanketTenXClaimAllowed: scorecard.claimPolicy.blanketTenXClaimAllowed,
+    blanketTenXClaimAllowed,
     scannedFiles,
     violations,
   }

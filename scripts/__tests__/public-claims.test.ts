@@ -48,7 +48,20 @@ describe('public claim check', () => {
     })
   })
 
-  it('allows broad claims once the dominance scorecard policy allows them', () => {
+  it('allows broad claims once the full dominance scorecard gate allows them', () => {
+    const repoRoot = makeTempRepo({
+      'README.md': 'Bilig is 10x faster than Google Sheets.',
+    })
+
+    const report = buildPublicClaimCheckReport({
+      repoRoot,
+      scorecard: passingClaimScorecard(),
+    })
+
+    expect(report.violations).toEqual([])
+  })
+
+  it('blocks broad claims when only the blanket claim boolean is forged', () => {
     const repoRoot = makeTempRepo({
       'README.md': 'Bilig is 10x faster than Google Sheets.',
     })
@@ -58,7 +71,8 @@ describe('public claim check', () => {
       scorecard: { claimPolicy: { blanketTenXClaimAllowed: true } },
     })
 
-    expect(report.violations).toEqual([])
+    expect(report.blanketTenXClaimAllowed).toBe(false)
+    expect(report.violations).toHaveLength(1)
   })
 
   it('scans public docs while excluding internal planning docs', () => {
@@ -87,4 +101,30 @@ function makeTempRepo(files: Record<string, string>): string {
     writeFileSync(path, source)
   }
   return repoRoot
+}
+
+function passingClaimScorecard(): unknown {
+  return {
+    goalStatus: 'achieved',
+    claimPolicy: {
+      blanketTenXClaimAllowed: true,
+      unmetRequirements: [],
+    },
+    completionAudit: {
+      allCriteriaPassed: true,
+      unmetRequirements: [],
+      criteria: [],
+    },
+    overallGoogleSheets10xStatus: {
+      passed: true,
+      status: 'passed',
+      unmetRequirements: [],
+      categories: [
+        { id: 'recalculation-speed', passed: true, gaps: [] },
+        { id: 'structural-edit-performance', passed: true, gaps: [] },
+        { id: 'large-workbook-scale', passed: true, gaps: [] },
+        { id: 'ui-responsiveness', passed: true, gaps: [] },
+      ],
+    },
+  }
 }

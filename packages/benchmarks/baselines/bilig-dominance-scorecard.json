@@ -923,6 +923,7 @@
         "this generated scorecard prevents blanket 10x claims from outrunning evidence",
         "dominance package scripts present: true",
         "run-ci executes dominance checks: true",
+        "Google Sheets 10x release-claim gate present: true",
         "blanket claim policy coupled to completion audit: true",
         "prompt-to-artifact audit coupled to live status: true",
         "completion audit criteria passed: false"
@@ -935,7 +936,7 @@
         "packages/formula/src/__tests__/fixtures/formula-dominance-snapshot.json",
         "packages/headless/src/__tests__/fixtures/hyperformula-surface.json"
       ],
-      "checkCommands": ["pnpm dominance:check", "pnpm run ci"],
+      "checkCommands": ["pnpm dominance:check", "pnpm google-sheets-10x:claim:check", "pnpm run ci"],
       "blockers": []
     }
   ]

@@ -9,6 +9,7 @@ export interface OperatorWorkflowEvidence {
   readonly dominanceGenerateScriptPresent: boolean
   readonly dominanceCheckScriptPresent: boolean
   readonly dominanceAuditCheckScriptPresent: boolean
+  readonly googleSheetsTenXClaimGateScriptPresent: boolean
   readonly publicClaimsCheckScriptPresent: boolean
   readonly runCiDominanceCheckPresent: boolean
   readonly runCiDominanceAuditCheckPresent: boolean
@@ -35,6 +36,8 @@ export function loadOperatorWorkflowEvidence(rootDir: string): OperatorWorkflowE
     dominanceGenerateScriptPresent: packageJson.scripts['dominance:generate'] === 'bun scripts/gen-bilig-dominance-scorecard.ts',
     dominanceCheckScriptPresent: packageJson.scripts['dominance:check'] === 'bun scripts/gen-bilig-dominance-scorecard.ts --check',
     dominanceAuditCheckScriptPresent: packageJson.scripts['dominance:audit:check'] === 'bun scripts/bilig-dominance-audit.ts --check',
+    googleSheetsTenXClaimGateScriptPresent:
+      packageJson.scripts['google-sheets-10x:claim:check'] === 'bun scripts/google-sheets-10x-claim-gate.ts',
     publicClaimsCheckScriptPresent: packageJson.scripts['claims:check'] === 'bun scripts/check-public-claims.ts',
     runCiDominanceCheckPresent: runCiSource.includes(
       "bunScript('bilig dominance scorecard check', 'scripts/gen-bilig-dominance-scorecard.ts', '--check')",
@@ -60,6 +63,7 @@ export function operatorWorkflowGaps(evidence: OperatorWorkflowEvidence): string
     ...(evidence.dominanceGenerateScriptPresent ? [] : ['package.json is missing the dominance:generate script']),
     ...(evidence.dominanceCheckScriptPresent ? [] : ['package.json is missing the dominance:check script']),
     ...(evidence.dominanceAuditCheckScriptPresent ? [] : ['package.json is missing the dominance:audit:check script']),
+    ...(evidence.googleSheetsTenXClaimGateScriptPresent ? [] : ['package.json is missing the google-sheets-10x:claim:check script']),
     ...(evidence.publicClaimsCheckScriptPresent ? [] : ['package.json is missing the claims:check script']),
     ...(evidence.runCiDominanceCheckPresent ? [] : ['run-ci does not execute dominance:check']),
     ...(evidence.runCiDominanceAuditCheckPresent ? [] : ['run-ci does not execute dominance:audit:check']),

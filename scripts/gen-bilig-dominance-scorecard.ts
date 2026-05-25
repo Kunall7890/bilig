@@ -781,6 +781,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           `run-ci executes dominance checks: ${String(
             operatorWorkflowEvidence.runCiDominanceCheckPresent && operatorWorkflowEvidence.runCiDominanceAuditCheckPresent,
           )}`,
+          `Google Sheets 10x release-claim gate present: ${String(operatorWorkflowEvidence.googleSheetsTenXClaimGateScriptPresent)}`,
           `blanket claim policy coupled to completion audit: ${String(operatorWorkflowEvidence.blanketClaimPolicyCoupledToCompletionAudit)}`,
           `prompt-to-artifact audit coupled to live status: ${String(operatorWorkflowEvidence.promptArtifactAuditCoupledToLiveStatus)}`,
           `completion audit criteria passed: ${String(completionAudit.allCriteriaPassed)}`,
@@ -793,7 +794,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           input.formulaSnapshotPath,
           input.surfaceSnapshotPath,
         ],
-        checkCommands: ['pnpm dominance:check', 'pnpm run ci'],
+        checkCommands: ['pnpm dominance:check', 'pnpm google-sheets-10x:claim:check', 'pnpm run ci'],
         blockers: operatorWorkflowBlockers,
       },
     ],

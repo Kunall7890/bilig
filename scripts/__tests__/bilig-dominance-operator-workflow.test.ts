@@ -12,6 +12,7 @@ describe('bilig dominance operator workflow evidence', () => {
       dominanceGenerateScriptPresent: true,
       dominanceCheckScriptPresent: true,
       dominanceAuditCheckScriptPresent: true,
+      googleSheetsTenXClaimGateScriptPresent: true,
       publicClaimsCheckScriptPresent: true,
       runCiDominanceCheckPresent: true,
       runCiDominanceAuditCheckPresent: true,
