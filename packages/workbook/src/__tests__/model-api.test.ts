@@ -1458,6 +1458,59 @@ describe('@bilig/workbook model api', () => {
     expect(Object.isFrozen(failed.errors[0])).toBe(true)
   })
 
+  it('rejects non-data action names without coercing user objects', () => {
+    const model = defineModel({
+      name: 'action-name-boundary-model',
+      find(workbook) {
+        return {
+          result: workbook.findName('result'),
+        }
+      },
+      actions: {
+        calculate({ refs, workbook }) {
+          workbook.writeValue(refs.result, 1)
+        },
+      },
+    })
+
+    let coerced = false
+    const actionName = {
+      toString() {
+        coerced = true
+        throw new Error('action key coercion should not run')
+      },
+      valueOf() {
+        coerced = true
+        throw new Error('action key coercion should not run')
+      },
+    }
+
+    const result = Reflect.apply(planWorkbookAction, undefined, [model, actionName])
+
+    expect(coerced).toBe(false)
+    expect(result).toEqual({
+      status: 'failed',
+      modelName: 'unknown-model',
+      actionName: '<invalid-action-name>',
+      checks: [],
+      errors: [
+        {
+          code: 'invalid_action_name',
+          message: 'Workbook action name must be a string',
+          path: 'actionName',
+          issueCode: 'invalid_action_name',
+        },
+      ],
+    })
+    expect(Object.isFrozen(result)).toBe(true)
+    expect(result.status).toBe('failed')
+    if (result.status !== 'failed') {
+      throw new Error('expected invalid action-name failure')
+    }
+    expect(Object.isFrozen(result.errors)).toBe(true)
+    expect(Object.isFrozen(result.errors[0])).toBe(true)
+  })
+
   it('rejects malformed action helper calls before returning a plan', () => {
     let opGetterInvoked = false
     let stylePrototypeGetterInvoked = false

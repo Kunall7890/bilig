@@ -168,6 +168,10 @@ unverified proof notes.
 or running model code. Invalid manifests return a structured `invalid_model`
 failure instead of making the agent catch an accessor side effect. Planned and
 failed action-plan result wrappers are frozen before they are returned.
+Action names are validated as non-empty, already-trimmed strings before model
+lookup. Malformed runtime values return `invalid_action_name` with
+`path: "actionName"` and are never coerced through caller-owned `toString`,
+`valueOf`, or `Symbol.toPrimitive`.
 `prepareWorkbookAction` is the canonical preflight when an agent wants the full
 handoff in one result: it plans the action, runs static verification, returns
 JSON-safe `planData`, includes `planId`, and describes runtime requirements

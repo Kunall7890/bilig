@@ -62,7 +62,7 @@ export function prepareWorkbookAction<Refs, Actions extends WorkbookActionMap<Re
   input?: WorkbookActionInput,
 ): WorkbookActionPreparation<Refs>
 export function prepareWorkbookAction(model: unknown, actionName: string, input?: WorkbookActionInput): WorkbookActionPreparation
-export function prepareWorkbookAction(model: unknown, actionName: string, input?: WorkbookActionInput): WorkbookActionPreparation {
+export function prepareWorkbookAction(model: unknown, actionName: unknown, input?: WorkbookActionInput): WorkbookActionPreparation {
   const planning = planWorkbookAction(model, actionName, input)
   if (planning.status === 'failed') {
     return failedPreparation(planning, planning.errors)

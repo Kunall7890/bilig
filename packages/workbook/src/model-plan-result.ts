@@ -47,6 +47,16 @@ export function failedInvalidModelPlan<Refs>(
   })
 }
 
+export function failedInvalidActionNamePlan<Refs>(error: unknown): WorkbookActionPlanResult<Refs> {
+  return freezePlanResult({
+    status: 'failed',
+    modelName: 'unknown-model',
+    actionName: '<invalid-action-name>',
+    checks: [],
+    errors: [invalidActionNameError(error)],
+  })
+}
+
 export function failedActionInputPlan<Refs>(modelName: string, actionName: string, error: unknown): WorkbookActionPlanResult<Refs> {
   return freezePlanResult({
     status: 'failed',
@@ -129,6 +139,15 @@ function actionInputError(issue: WorkbookActionInputIssue): WorkbookRunError {
     message: issue.message,
     path: issue.path,
     issueCode: issue.code,
+  })
+}
+
+function invalidActionNameError(error: unknown): WorkbookRunError {
+  return Object.freeze({
+    code: 'invalid_action_name',
+    message: errorMessage(error),
+    path: 'actionName',
+    issueCode: 'invalid_action_name',
   })
 }
 

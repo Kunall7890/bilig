@@ -75,6 +75,7 @@ export type WorkbookRunErrorCode =
   | 'invalid_plan'
   | 'invalid_plan_data'
   | 'invalid_run_options'
+  | 'invalid_action_name'
   | 'action_not_found'
   | 'invalid_action_input'
   | 'find_failed'
@@ -124,6 +125,7 @@ export const workbookRunErrorCodes = Object.freeze([
   'invalid_plan',
   'invalid_plan_data',
   'invalid_run_options',
+  'invalid_action_name',
   'action_not_found',
   'invalid_action_input',
   'find_failed',

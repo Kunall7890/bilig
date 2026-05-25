@@ -141,4 +141,59 @@ describe('@bilig/workbook prepare api', () => {
       issues: [],
     })
   })
+
+  it('returns invalid action-name failures without coercing runtime values', () => {
+    const model = defineModel({
+      name: 'prepare-action-name-boundary-model',
+      find(workbook) {
+        return {
+          result: workbook.findName('result'),
+        }
+      },
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeValue(refs.result, 1)
+        },
+      },
+    })
+
+    let coerced = false
+    const actionName = {
+      [Symbol.toPrimitive]() {
+        coerced = true
+        throw new Error('prepare action name coercion should not run')
+      },
+    }
+
+    const prepared = Reflect.apply(prepareWorkbookAction, undefined, [model, actionName])
+
+    expect(coerced).toBe(false)
+    expect(prepared).toEqual({
+      status: 'failed',
+      planning: {
+        status: 'failed',
+        modelName: 'unknown-model',
+        actionName: '<invalid-action-name>',
+        checks: [],
+        errors: [
+          {
+            code: 'invalid_action_name',
+            message: 'Workbook action name must be a string',
+            path: 'actionName',
+            issueCode: 'invalid_action_name',
+          },
+        ],
+      },
+      errors: [
+        {
+          code: 'invalid_action_name',
+          message: 'Workbook action name must be a string',
+          path: 'actionName',
+          issueCode: 'invalid_action_name',
+        },
+      ],
+      issues: [],
+    })
+    expect(Object.isFrozen(prepared)).toBe(true)
+  })
 })

@@ -451,6 +451,10 @@ booleans, `null`, arrays without holes, and plain objects. `@bilig/workbook`
 does not provide schemas for consumer meaning; actions keep domain validation
 local. `checkInput(description, value)` only checks the package's small generic
 input metadata and returns a plain `{ status, input, issues }` result.
+Action names are checked as data before model lookup. Non-string, empty, or
+whitespace-padded runtime action names fail with `invalid_action_name` at
+`path: "actionName"` and are not coerced through caller-owned `toString`,
+`valueOf`, or `Symbol.toPrimitive`.
 Omitted input is valid unless the top-level description sets `required: true`;
 required omissions return `missing_required_input` instead of pretending
 `undefined` is a malformed JSON payload. `planWorkbookAction` runs that same

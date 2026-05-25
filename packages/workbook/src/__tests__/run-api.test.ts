@@ -100,6 +100,7 @@ describe('@bilig/workbook run api', () => {
     expect(workbookRunErrorCodes).toContain('invalid_model')
     expect(workbookRunErrorCodes).toContain('invalid_plan')
     expect(workbookRunErrorCodes).toContain('invalid_plan_data')
+    expect(workbookRunErrorCodes).toContain('invalid_action_name')
     expect(workbookRunErrorCodes).toContain('action_not_found')
     expect(workbookRunErrorCodes).toContain('invalid_action_input')
     expect(workbookRunErrorCodes).toContain('ref_not_in_refs')

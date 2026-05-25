@@ -51,6 +51,8 @@ flowchart LR
     rejected instead of invoked before model code runs
   - action-object metadata, plain input descriptions, and `checkInput` payload
     checks for agent manifests
+  - data-only action-name validation before model lookup, so malformed runtime
+    keys fail without caller-owned coercion
   - frozen model inspection and action-plan result wrappers
   - canonical `prepareWorkbookAction` preflight for plan, verification,
     `planData`, `planId`, and runtime requirements in one agent-facing result

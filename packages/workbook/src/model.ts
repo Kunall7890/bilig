@@ -13,6 +13,7 @@ import {
 import { isObject, isObjectRecord, optionalDataProperty, requiredDataProperty, type OptionalDataValue } from './data-properties.js'
 import {
   errorMessage,
+  failedInvalidActionNamePlan,
   failedActionInputIssuesPlan,
   failedActionInputPlan,
   failedActionNotFoundPlan,
@@ -810,45 +811,53 @@ export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>
   input?: WorkbookActionInput,
 ): WorkbookActionPlanResult<Refs>
 export function planWorkbookAction(model: unknown, actionName: string, input?: WorkbookActionInput): WorkbookActionPlanResult
-export function planWorkbookAction<Refs>(model: unknown, actionName: string, input?: WorkbookActionInput): WorkbookActionPlanResult<Refs> {
+export function planWorkbookAction(model: unknown, actionName: unknown, input?: WorkbookActionInput): WorkbookActionPlanResult
+export function planWorkbookAction<Refs>(model: unknown, actionName: unknown, input?: WorkbookActionInput): WorkbookActionPlanResult<Refs> {
+  let plannedActionName: string
+  try {
+    plannedActionName = normalizeRequiredName(actionName, 'Workbook action name')
+  } catch (error) {
+    return failedInvalidActionNamePlan<Refs>(error)
+  }
+
   let modelData: WorkbookPlanningModelData<Refs>
   try {
     modelData = readPlanningModelData(model)
   } catch (error) {
-    return failedInvalidModelPlan<Refs>(actionName, undefined, error)
+    return failedInvalidModelPlan<Refs>(plannedActionName, undefined, error)
   }
 
   let normalizedInput: WorkbookActionInput | undefined
   try {
     normalizedInput = normalizeOptionalWorkbookActionInput(input)
   } catch (error) {
-    return failedActionInputPlan(modelData.name, actionName, error)
+    return failedActionInputPlan(modelData.name, plannedActionName, error)
   }
 
   let actionValue: unknown
   try {
-    actionValue = Object.hasOwn(modelData.actions, actionName)
-      ? requiredDataProperty(modelData.actions, actionName, `Workbook model ${modelData.name} action ${actionName}`)
+    actionValue = Object.hasOwn(modelData.actions, plannedActionName)
+      ? requiredDataProperty(modelData.actions, plannedActionName, `Workbook model ${modelData.name} action ${plannedActionName}`)
       : undefined
   } catch (error) {
-    return failedInvalidModelPlan<Refs>(actionName, normalizedInput, error, modelData.name)
+    return failedInvalidModelPlan<Refs>(plannedActionName, normalizedInput, error, modelData.name)
   }
   if (actionValue === undefined) {
-    return failedActionNotFoundPlan(modelData.name, actionName, normalizedInput)
+    return failedActionNotFoundPlan(modelData.name, plannedActionName, normalizedInput)
   }
 
   let actionDefinition: WorkbookActionDefinition<Refs>
   try {
-    actionDefinition = normalizeActionDefinition(modelData.name, actionName, actionValue)
+    actionDefinition = normalizeActionDefinition(modelData.name, plannedActionName, actionValue)
   } catch (error) {
-    return failedInvalidModelPlan<Refs>(actionName, normalizedInput, error, modelData.name)
+    return failedInvalidModelPlan<Refs>(plannedActionName, normalizedInput, error, modelData.name)
   }
 
   const inputDescription = actionInputDescription(actionDefinition)
   if (inputDescription !== undefined) {
     const inputCheck = checkInput(inputDescription, normalizedInput)
     if (inputCheck.status === 'invalid') {
-      return failedActionInputIssuesPlan(modelData.name, actionName, inputCheck.issues, normalizedInput)
+      return failedActionInputIssuesPlan(modelData.name, plannedActionName, inputCheck.issues, normalizedInput)
     }
     normalizedInput = inputCheck.input
   }
@@ -864,14 +873,14 @@ export function planWorkbookAction<Refs>(model: unknown, actionName: string, inp
   try {
     refs = Reflect.apply(modelData.find, undefined, [findWorkbook])
   } catch (error) {
-    return failedPlan<Refs>(modelData.name, actionName, 'find_failed', errorMessage(error), checks, normalizedInput)
+    return failedPlan<Refs>(modelData.name, plannedActionName, 'find_failed', errorMessage(error), checks, normalizedInput)
   }
 
   const checkContext: WorkbookCheckContext<Refs> = { refs, workbook: createCheckWorkbook({ checks }), ...inputProperty(normalizedInput) }
   try {
     pushReturnedChecks(checks, modelData.checks === undefined ? undefined : Reflect.apply(modelData.checks, undefined, [checkContext]))
   } catch (error) {
-    return failedPlan<Refs>(modelData.name, actionName, 'checks_failed', errorMessage(error), checks, normalizedInput)
+    return failedPlan<Refs>(modelData.name, plannedActionName, 'checks_failed', errorMessage(error), checks, normalizedInput)
   }
 
   const actionContext: WorkbookActionContext<Refs> = {
@@ -882,10 +891,10 @@ export function planWorkbookAction<Refs>(model: unknown, actionName: string, inp
   try {
     action(actionContext)
   } catch (error) {
-    return failedPlan<Refs>(modelData.name, actionName, 'action_failed', errorMessage(error), checks, normalizedInput)
+    return failedPlan<Refs>(modelData.name, plannedActionName, 'action_failed', errorMessage(error), checks, normalizedInput)
   }
 
-  return plannedActionPlanResult(createActionPlan(modelData.name, actionName, normalizedInput, refs, commands, ops, checks))
+  return plannedActionPlanResult(createActionPlan(modelData.name, plannedActionName, normalizedInput, refs, commands, ops, checks))
 }
 
 export function buildWorkbookActionPlan<Refs, Actions extends WorkbookActionMap<Refs>, ActionName extends keyof Actions & string>(
