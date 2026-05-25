@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import Ajv2020 from 'ajv/dist/2020.js'
 import { describe, expect, it } from 'vitest'
 import {
   checkPlanData,
@@ -20,6 +21,11 @@ import {
 
 const fixtureRoot = new URL('../../fixtures/', import.meta.url)
 const sourceRoot = new URL('../', import.meta.url)
+const nonNegativeSafeIntegerSchema = Object.freeze({
+  type: 'integer',
+  minimum: 0,
+  maximum: Number.MAX_SAFE_INTEGER,
+})
 
 function readFixture(name: string): unknown {
   return JSON.parse(readFileSync(new URL(name, fixtureRoot), 'utf8'))
@@ -83,6 +89,12 @@ function schemaProperty(schema: unknown, key: string): unknown {
   return objectEntry(schema, 'properties')[key]
 }
 
+function validateWithJsonSchema(name: keyof typeof workbookJsonSchemas, payload: unknown): boolean {
+  const ajv = new Ajv2020({ allErrors: true, strict: false })
+  const validate = ajv.compile(workbookJsonSchemas[name])
+  return validate(payload)
+}
+
 describe('@bilig/workbook schema api', () => {
   it('exports frozen JSON schema artifacts with deterministic hashes', () => {
     expect(workbookJsonSchemaVersion).toBe('bilig-workbook-json-schema-v1')
@@ -134,15 +146,15 @@ describe('@bilig/workbook schema api', () => {
       type: 'array',
       items: { $ref: '#/$defs/applyCommandReceipt' },
     })
-    expect(applyProperties['baseRevision']).toEqual({ type: 'integer', minimum: 0 })
-    expect(applyProperties['revision']).toEqual({ type: 'integer', minimum: 0 })
+    expect(applyProperties['baseRevision']).toEqual(nonNegativeSafeIntegerSchema)
+    expect(applyProperties['revision']).toEqual(nonNegativeSafeIntegerSchema)
 
     expect(commandReceipt).toMatchObject({
       type: 'object',
       required: ['commandIndex', 'commandKind', 'commandDigest', 'previewOps', 'appliedOps'],
       additionalProperties: false,
     })
-    expect(commandReceiptProperties['commandIndex']).toEqual({ type: 'integer', minimum: 0 })
+    expect(commandReceiptProperties['commandIndex']).toEqual(nonNegativeSafeIntegerSchema)
     expect(commandReceiptProperties['formulaLabels']).toEqual({
       type: 'array',
       items: {
@@ -236,6 +248,62 @@ describe('@bilig/workbook schema api', () => {
       sourceColumn: { type: 'string', minLength: 1 },
       summarizeBy: { enum: ['sum', 'count'] },
     })
+  })
+
+  it('exports JSON schemas that external validators enforce safe integer bounds', () => {
+    for (const name of workbookJsonSchemaNames) {
+      expect(() => new Ajv2020({ allErrors: true, strict: false }).compile(workbookJsonSchemas[name])).not.toThrow()
+    }
+
+    expect(validateWithJsonSchema('commandBundle', readFixture('command-bundle.json'))).toBe(true)
+
+    const unsafeInteger = Number.MAX_SAFE_INTEGER + 1
+    const targetRange = Object.freeze({
+      sheetName: 'Sheet1',
+      startAddress: 'A1',
+      endAddress: 'A1',
+    })
+    const invalidBundles = [
+      {
+        targetRevision: unsafeInteger,
+        idempotencyKey: 'unsafe-target-revision',
+        commands: [
+          {
+            kind: 'op',
+            destructive: true,
+            op: { kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1 },
+          },
+        ],
+      },
+      {
+        targetRevision: 1,
+        idempotencyKey: 'unsafe-scope',
+        scope: { maxTouchedCells: unsafeInteger },
+        commands: [
+          {
+            kind: 'op',
+            destructive: true,
+            touchedRanges: [targetRange],
+            op: { kind: 'clearCell', sheetName: 'Sheet1', address: 'A1' },
+          },
+        ],
+      },
+      {
+        targetRevision: 1,
+        idempotencyKey: 'unsafe-known-op',
+        commands: [
+          {
+            kind: 'op',
+            destructive: true,
+            op: { kind: 'insertRows', sheetName: 'Sheet1', start: unsafeInteger, count: 1 },
+          },
+        ],
+      },
+    ] as const
+
+    for (const bundle of invalidBundles) {
+      expect(validateWithJsonSchema('commandBundle', bundle), JSON.stringify(bundle)).toBe(false)
+    }
   })
 
   it('publishes command-bundle style record schemas that match op guards', () => {

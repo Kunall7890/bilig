@@ -44,6 +44,11 @@ const cellRange = Object.freeze({ $ref: '#/$defs/cellRange' })
 const engineOp = Object.freeze({ $ref: '#/$defs/engineOp' })
 const actionInput = Object.freeze({ $ref: '#/$defs/actionInput' })
 const actionInputDescription = Object.freeze({ $ref: '#/$defs/actionInputDescription' })
+const nonNegativeSafeInteger = Object.freeze({
+  type: 'integer',
+  minimum: 0,
+  maximum: Number.MAX_SAFE_INTEGER,
+} as const)
 
 function defs(extra: Record<string, WorkbookJsonSchemaValue> = {}): WorkbookJsonSchemaValue {
   return {
@@ -76,11 +81,11 @@ function defs(extra: Record<string, WorkbookJsonSchemaValue> = {}): WorkbookJson
         values: { type: 'array', minItems: 1, items: actionInput },
         min: { type: 'number' },
         max: { type: 'number' },
-        minLength: { type: 'integer', minimum: 0 },
-        maxLength: { type: 'integer', minimum: 0 },
+        minLength: nonNegativeSafeInteger,
+        maxLength: nonNegativeSafeInteger,
         pattern: { type: 'string' },
-        minItems: { type: 'integer', minimum: 0 },
-        maxItems: { type: 'integer', minimum: 0 },
+        minItems: nonNegativeSafeInteger,
+        maxItems: nonNegativeSafeInteger,
         additionalProperties: { type: 'boolean' },
         default: actionInput,
         examples: { type: 'array', minItems: 1, items: actionInput },
@@ -320,9 +325,9 @@ const runtimeRequirementSchema: WorkbookJsonSchemaValue = {
   properties: {
     kind: { enum: ['apply', 'read', 'verify'] },
     capability: { enum: ['writeFormula', 'writeValue', 'format', 'clear', 'applyOp', 'read', 'verifyCheck'] },
-    commandIndex: { type: 'integer', minimum: 0 },
-    checkIndex: { type: 'integer', minimum: 0 },
-    opIndex: { type: 'integer', minimum: 0 },
+    commandIndex: nonNegativeSafeInteger,
+    checkIndex: nonNegativeSafeInteger,
+    opIndex: nonNegativeSafeInteger,
     opKind: { type: 'string', minLength: 1 },
     checkKind: { type: 'string', minLength: 1 },
     target: refData,
@@ -355,8 +360,8 @@ const applySummarySchema: WorkbookJsonSchemaValue = {
   properties: {
     matched: { oneOf: [{ type: 'boolean' }, { type: 'null' }] },
     planId: { type: 'string', minLength: 1 },
-    baseRevision: { type: 'integer', minimum: 0 },
-    revision: { type: 'integer', minimum: 0 },
+    baseRevision: nonNegativeSafeInteger,
+    revision: nonNegativeSafeInteger,
     previewOps: { type: 'array', items: engineOp },
     appliedOps: { type: 'array', items: engineOp },
     commandReceipts: { type: 'array', items: { $ref: '#/$defs/applyCommandReceipt' } },
@@ -369,7 +374,7 @@ const applyCommandReceiptSchema: WorkbookJsonSchemaValue = {
   required: ['commandIndex', 'commandKind', 'commandDigest', 'previewOps', 'appliedOps'],
   additionalProperties: false,
   properties: {
-    commandIndex: { type: 'integer', minimum: 0 },
+    commandIndex: nonNegativeSafeInteger,
     commandKind: { type: 'string', minLength: 1 },
     commandDigest: { type: 'string', minLength: 1 },
     previewOps: { type: 'array', items: engineOp },
@@ -555,12 +560,12 @@ export const workbookJsonSchemas = deepFreeze({
     additionalProperties: false,
     properties: {
       id: { type: 'string', minLength: 1 },
-      targetRevision: { type: 'integer', minimum: 0 },
+      targetRevision: nonNegativeSafeInteger,
       idempotencyKey: { type: 'string', minLength: 1 },
       scope: {
         type: 'object',
         additionalProperties: false,
-        properties: { maxTouchedCells: { type: 'integer', minimum: 0 } },
+        properties: { maxTouchedCells: nonNegativeSafeInteger },
       },
       commands: { type: 'array', minItems: 1, items: { $ref: '#/$defs/bundleCommand' } },
     },
@@ -594,15 +599,15 @@ export const workbookJsonSchemas = deepFreeze({
     properties: {
       status: { enum: ['accepted', 'previewed', 'applied', 'rejected', 'noop'] },
       bundleId: { type: 'string', minLength: 1 },
-      targetRevision: { type: 'integer', minimum: 0 },
+      targetRevision: nonNegativeSafeInteger,
       idempotencyKey: { type: 'string', minLength: 1 },
-      commandCount: { type: 'integer', minimum: 0 },
+      commandCount: nonNegativeSafeInteger,
       touchedRanges: { type: 'array', items: cellRange },
-      touchedCellCount: { type: 'integer', minimum: 0 },
+      touchedCellCount: nonNegativeSafeInteger,
       receipts: { type: 'array', items: { $ref: '#/$defs/receipt' } },
       matched: { oneOf: [{ type: 'boolean' }, { type: 'null' }] },
       changedRanges: { type: 'array', items: cellRange },
-      revision: { type: 'integer', minimum: 0 },
+      revision: nonNegativeSafeInteger,
       undo: { type: 'object', additionalProperties: true },
       errors: { type: 'array', items: { type: 'string' } },
     },

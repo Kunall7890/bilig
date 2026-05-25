@@ -7,8 +7,8 @@ import {
 import type { WorkbookJsonSchemaValue } from './schema.js'
 
 const nonEmptyStringSchema = { type: 'string', minLength: 1 } as const
-const nonNegativeIntegerSchema = { type: 'integer', minimum: 0 } as const
-const positiveIntegerSchema = { type: 'integer', minimum: 1 } as const
+const nonNegativeIntegerSchema = { type: 'integer', minimum: 0, maximum: Number.MAX_SAFE_INTEGER } as const
+const positiveIntegerSchema = { type: 'integer', minimum: 1, maximum: Number.MAX_SAFE_INTEGER } as const
 const booleanSchema = { type: 'boolean' } as const
 const numberSchema = { type: 'number' } as const
 const cellRangeRefSchema = { $ref: '#/$defs/cellRange' } as const
