@@ -13,6 +13,7 @@ import { hydrateWorkbookRef, isWorkbookRefData, type WorkbookRef } from './find.
 import type { WorkbookFormulaLabel } from './formula.js'
 import { isWorkbookOp } from './guards.js'
 import { WorkbookActionInputError, isWorkbookActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
+import { normalizeWorkbookActionFormatOptions } from './model-action-validation.js'
 import type { WorkbookActionCommand, WorkbookActionPlan } from './model.js'
 import type { WorkbookOp } from './ops.js'
 import type { WorkbookChangeSummary, WorkbookCheckExpectation, WorkbookCheckResult, WorkbookCheckStatus } from './result.js'
@@ -172,6 +173,36 @@ function isRefDataArray(value: unknown): value is readonly WorkbookRefDescriptio
   return arrayEvery(value, isWorkbookRefDescription)
 }
 
+function isWorkbookFormatCommandData(value: Record<string, unknown>): boolean {
+  if (!isWorkbookRefDescription(ownValue(value, 'target'))) {
+    return false
+  }
+  if (hasOwnValue(value, 'style') && ownValue(value, 'style') === undefined) {
+    return false
+  }
+  if (hasOwnValue(value, 'numberFormat') && ownValue(value, 'numberFormat') === undefined) {
+    return false
+  }
+
+  const options: {
+    style?: unknown
+    numberFormat?: unknown
+  } = {}
+  if (hasOwnValue(value, 'style')) {
+    options.style = ownValue(value, 'style')
+  }
+  if (hasOwnValue(value, 'numberFormat')) {
+    options.numberFormat = ownValue(value, 'numberFormat')
+  }
+
+  try {
+    normalizeWorkbookActionFormatOptions(options)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function isWorkbookActionCommandData(value: unknown): value is WorkbookActionCommandDescription {
   if (!isRecord(value) || !hasString(value, 'kind')) {
     return false
@@ -187,13 +218,7 @@ function isWorkbookActionCommandData(value: unknown): value is WorkbookActionCom
     case 'writeValue':
       return isWorkbookRefDescription(ownValue(value, 'target')) && isLiteralInput(ownValue(value, 'value'))
     case 'format':
-      return (
-        isWorkbookRefDescription(ownValue(value, 'target')) &&
-        (!hasOwnValue(value, 'style') || isRecord(ownValue(value, 'style'))) &&
-        (!hasOwnValue(value, 'numberFormat') ||
-          typeof ownValue(value, 'numberFormat') === 'string' ||
-          ownValue(value, 'numberFormat') === null)
-      )
+      return isWorkbookFormatCommandData(value)
     case 'clear':
       return isWorkbookRefDescription(ownValue(value, 'target'))
     case 'op':

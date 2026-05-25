@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildWorkbookActionPlan, defineModel, findRange, verifyPlan, type WorkbookActionPlan } from '../index.js'
+import { buildWorkbookActionPlan, checkPlanData, defineModel, findRange, verifyPlan, type WorkbookActionPlan } from '../index.js'
 
 describe('@bilig/workbook plan refs api', () => {
   it('freezes refs containers in planned handoff data', () => {
@@ -189,5 +189,77 @@ describe('@bilig/workbook plan refs api', () => {
         },
       ],
     })
+  })
+
+  it('rejects transported format style data that live action helpers would reject', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    const plan = {
+      modelName: 'bad-format-plan',
+      actionName: 'format',
+      refs: { target },
+      refsUsed: [target],
+      commands: [
+        {
+          kind: 'format',
+          target,
+          style: { font: { bold: 'yes' } },
+        },
+      ],
+      ops: [],
+      changed: [],
+      checks: [],
+    }
+
+    expect(checkPlanData(plan)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'commands[0]',
+          message: 'Workbook plan data command at commands[0] is invalid',
+        },
+      ],
+    })
+  })
+
+  it('rejects transported format style accessors without invoking them', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    let boldGetterInvoked = false
+    const font = {}
+    Object.defineProperty(font, 'bold', {
+      enumerable: true,
+      get() {
+        boldGetterInvoked = true
+        return true
+      },
+    })
+    const plan = {
+      modelName: 'accessor-format-plan',
+      actionName: 'format',
+      refs: { target },
+      refsUsed: [target],
+      commands: [
+        {
+          kind: 'format',
+          target,
+          style: { font },
+        },
+      ],
+      ops: [],
+      changed: [],
+      checks: [],
+    }
+
+    expect(checkPlanData(plan)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'commands[0]',
+          message: 'Workbook plan data command at commands[0] is invalid',
+        },
+      ],
+    })
+    expect(boldGetterInvoked).toBe(false)
   })
 })

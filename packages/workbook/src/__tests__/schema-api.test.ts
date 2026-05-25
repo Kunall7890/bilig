@@ -39,6 +39,26 @@ function objectEntry(value: unknown, key: string): Record<string, unknown> {
   return entry
 }
 
+function arrayEntry(value: unknown, key: string): readonly unknown[] {
+  if (!isRecord(value)) {
+    throw new Error(`expected object before reading ${key}`)
+  }
+  const entry = value[key]
+  if (!Array.isArray(entry)) {
+    throw new Error(`expected ${key} to be an array`)
+  }
+  return entry
+}
+
+function constKindFromSchema(value: unknown): string {
+  const properties = objectEntry(value, 'properties')
+  const kind = objectEntry(properties, 'kind')
+  if (typeof kind['const'] !== 'string') {
+    throw new Error('expected schema variant to have a string kind const')
+  }
+  return kind['const']
+}
+
 describe('@bilig/workbook schema api', () => {
   it('exports frozen JSON schema artifacts with deterministic hashes', () => {
     expect(workbookJsonSchemaVersion).toBe('bilig-workbook-json-schema-v1')
@@ -131,6 +151,143 @@ describe('@bilig/workbook schema api', () => {
       },
     })
     expect(errorProperties['code']).toEqual({ enum: workbookRunErrorCodes })
+  })
+
+  it('publishes engine ops as a known discriminated union', () => {
+    const defs = objectEntry(workbookJsonSchemas.planData, '$defs')
+    const engineOp = objectEntry(defs, 'engineOp')
+    const variants = arrayEntry(engineOp, 'oneOf')
+    const kinds = variants.map(constKindFromSchema)
+
+    expect(kinds).toEqual([
+      'upsertWorkbook',
+      'setWorkbookMetadata',
+      'setCalculationSettings',
+      'setVolatileContext',
+      'upsertSheet',
+      'renameSheet',
+      'deleteSheet',
+      'insertRows',
+      'deleteRows',
+      'moveRows',
+      'insertColumns',
+      'deleteColumns',
+      'moveColumns',
+      'updateRowMetadata',
+      'updateColumnMetadata',
+      'setFreezePane',
+      'clearFreezePane',
+      'mergeCells',
+      'unmergeCells',
+      'setSheetProtection',
+      'clearSheetProtection',
+      'setFilter',
+      'clearFilter',
+      'setSort',
+      'clearSort',
+      'setDataValidation',
+      'clearDataValidation',
+      'upsertConditionalFormat',
+      'deleteConditionalFormat',
+      'setConditionalFormatArtifacts',
+      'clearConditionalFormatArtifacts',
+      'upsertRangeProtection',
+      'deleteRangeProtection',
+      'upsertCommentThread',
+      'deleteCommentThread',
+      'upsertNote',
+      'deleteNote',
+      'upsertHyperlink',
+      'deleteHyperlink',
+      'setCellValue',
+      'setCellFormula',
+      'setCellFormat',
+      'upsertCellStyle',
+      'upsertCellNumberFormat',
+      'setStyleRange',
+      'setFormatRange',
+      'clearCell',
+      'upsertDefinedName',
+      'deleteDefinedName',
+      'upsertTable',
+      'deleteTable',
+      'upsertSpillRange',
+      'deleteSpillRange',
+      'upsertPivotTable',
+      'deletePivotTable',
+      'upsertChart',
+      'deleteChart',
+      'upsertImage',
+      'deleteImage',
+      'upsertShape',
+      'deleteShape',
+    ])
+
+    const setCellValue = variants.find((entry) => constKindFromSchema(entry) === 'setCellValue')
+    expect(setCellValue).toMatchObject({
+      type: 'object',
+      required: ['kind', 'sheetName', 'address', 'value'],
+      properties: {
+        value: { $ref: '#/$defs/literalInput' },
+      },
+    })
+    const unknownKindSchema = variants.find((entry) => constKindFromSchema(entry) === 'makeRevenueModel')
+    expect(unknownKindSchema).toBeUndefined()
+  })
+
+  it('publishes transported checks and format commands with checker-shaped payload schemas', () => {
+    const defs = objectEntry(workbookJsonSchemas.planData, '$defs')
+    expect(objectEntry(defs, 'literalInput')).toEqual({
+      oneOf: [{ type: 'null' }, { type: 'boolean' }, { type: 'number' }, { type: 'string' }],
+    })
+
+    const checkExpectation = objectEntry(defs, 'checkExpectation')
+    expect(checkExpectation).toMatchObject({
+      oneOf: [
+        {
+          required: ['kind', 'value'],
+          additionalProperties: false,
+          properties: {
+            kind: { const: 'valueEquals' },
+            value: { $ref: '#/$defs/literalInput' },
+          },
+        },
+        {
+          required: ['kind', 'formula', 'inputs', 'labels'],
+          additionalProperties: false,
+          properties: {
+            kind: { const: 'formulaEquals' },
+            inputs: { type: 'array', items: { $ref: '#/$defs/refData' } },
+            labels: { type: 'array', items: { $ref: '#/$defs/formulaLabel' } },
+          },
+        },
+      ],
+    })
+
+    const command = objectEntry(defs, 'command')
+    const commandVariants = arrayEntry(command, 'oneOf')
+    const writeValue = commandVariants.find((entry) => constKindFromSchema(entry) === 'writeValue')
+    const format = commandVariants.find((entry) => constKindFromSchema(entry) === 'format')
+    expect(writeValue).toMatchObject({
+      properties: {
+        value: { $ref: '#/$defs/literalInput' },
+      },
+    })
+    expect(format).toMatchObject({
+      properties: {
+        style: { $ref: '#/$defs/cellStylePatch' },
+      },
+    })
+
+    const stylePatch = objectEntry(defs, 'cellStylePatch')
+    const styleProperties = objectEntry(stylePatch, 'properties')
+    const fontOneOf = arrayEntry(objectEntry(styleProperties, 'font'), 'oneOf')
+    const fontObject = fontOneOf.find((entry) => isRecord(entry) && entry['type'] === 'object')
+    expect(fontObject).toMatchObject({
+      properties: {
+        bold: { oneOf: [{ type: 'boolean' }, { type: 'null' }] },
+      },
+    })
   })
 
   it('publishes model manifest and action input description schemas for agent tool discovery', () => {

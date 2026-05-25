@@ -1,5 +1,6 @@
 import { workbookRunErrorCodes } from './result.js'
 import { workbookActionInputDescriptionKinds } from './input.js'
+import { cellStylePatchSchema, literalInputSchema, workbookOpSchema } from './op-schema.js'
 
 export type WorkbookJsonSchemaScalar = string | number | boolean | null
 export type WorkbookJsonSchemaValue =
@@ -37,6 +38,7 @@ export const workbookJsonSchemaNames = Object.freeze([
 ] as const satisfies readonly WorkbookJsonSchemaName[])
 
 const jsonValue = Object.freeze({ $ref: '#/$defs/jsonValue' })
+const literalInput = Object.freeze({ $ref: '#/$defs/literalInput' })
 const refData = Object.freeze({ $ref: '#/$defs/refData' })
 const cellRange = Object.freeze({ $ref: '#/$defs/cellRange' })
 const engineOp = Object.freeze({ $ref: '#/$defs/engineOp' })
@@ -55,6 +57,7 @@ function defs(extra: Record<string, WorkbookJsonSchemaValue> = {}): WorkbookJson
         { type: 'object', additionalProperties: { $ref: '#/$defs/jsonValue' } },
       ],
     },
+    literalInput: literalInputSchema,
     actionInput: { $ref: '#/$defs/jsonValue' },
     actionInputDescription: {
       type: 'object',
@@ -119,14 +122,17 @@ function defs(extra: Record<string, WorkbookJsonSchemaValue> = {}): WorkbookJson
         endAddress: { type: 'string', minLength: 1 },
       },
     },
-    engineOp: {
+    cellStylePatch: cellStylePatchSchema,
+    formulaLabel: {
       type: 'object',
-      required: ['kind'],
+      required: ['name', 'ref'],
+      additionalProperties: false,
       properties: {
-        kind: { type: 'string', minLength: 1 },
+        name: { type: 'string', minLength: 1 },
+        ref: refData,
       },
-      additionalProperties: true,
     },
+    engineOp: workbookOpSchema,
     refData: {
       oneOf: [
         {
@@ -245,10 +251,35 @@ const checkDataSchema: WorkbookJsonSchemaValue = {
     target: refData,
     refs: { type: 'array', items: refData },
     message: { type: 'string', minLength: 1 },
-    expectation: { type: 'object', additionalProperties: true },
+    expectation: { $ref: '#/$defs/checkExpectation' },
     proof: actionInput,
   },
   additionalProperties: false,
+}
+
+const checkExpectationSchema: WorkbookJsonSchemaValue = {
+  oneOf: [
+    {
+      type: 'object',
+      required: ['kind', 'value'],
+      additionalProperties: false,
+      properties: {
+        kind: { const: 'valueEquals' },
+        value: literalInput,
+      },
+    },
+    {
+      type: 'object',
+      required: ['kind', 'formula', 'inputs', 'labels'],
+      additionalProperties: false,
+      properties: {
+        kind: { const: 'formulaEquals' },
+        formula: { type: 'string' },
+        inputs: { type: 'array', items: refData },
+        labels: { type: 'array', items: { $ref: '#/$defs/formulaLabel' } },
+      },
+    },
+  ],
 }
 
 const changeDataSchema: WorkbookJsonSchemaValue = {
@@ -393,15 +424,7 @@ export const workbookJsonSchemas = deepFreeze({
 
   planData: schema('planData', {
     $defs: defs({
-      formulaLabel: {
-        type: 'object',
-        required: ['name', 'ref'],
-        additionalProperties: false,
-        properties: {
-          name: { type: 'string', minLength: 1 },
-          ref: refData,
-        },
-      },
+      checkExpectation: checkExpectationSchema,
       check: checkDataSchema,
       command: {
         oneOf: [
@@ -421,7 +444,7 @@ export const workbookJsonSchemas = deepFreeze({
             type: 'object',
             required: ['kind', 'target', 'value'],
             additionalProperties: false,
-            properties: { kind: { const: 'writeValue' }, target: refData, value: jsonValue },
+            properties: { kind: { const: 'writeValue' }, target: refData, value: literalInput },
           },
           {
             type: 'object',
@@ -430,7 +453,7 @@ export const workbookJsonSchemas = deepFreeze({
             properties: {
               kind: { const: 'format' },
               target: refData,
-              style: { type: 'object', additionalProperties: true },
+              style: { $ref: '#/$defs/cellStylePatch' },
               numberFormat: { oneOf: [{ type: 'string' }, { type: 'null' }] },
             },
           },
@@ -587,6 +610,7 @@ export const workbookJsonSchemas = deepFreeze({
 
   runResult: schema('runResult', {
     $defs: defs({
+      checkExpectation: checkExpectationSchema,
       apply: applySummarySchema,
       applyCommandReceipt: applyCommandReceiptSchema,
       check: checkDataSchema,
@@ -638,6 +662,7 @@ export const workbookJsonSchemas = deepFreeze({
 
   readbackProof: schema('readbackProof', {
     $defs: defs({
+      checkExpectation: checkExpectationSchema,
       check: checkDataSchema,
       readback: {
         type: 'object',

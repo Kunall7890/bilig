@@ -91,9 +91,29 @@ function cellSet(cells: readonly WorkbookConcreteCell[]): ReadonlySet<string> {
   return new Set(cells.map(cellKey))
 }
 
-function rangeCellsBindToTarget(range: CellRangeRef, targetCells: ReadonlySet<string>): boolean {
+function coverRangeCells(range: CellRangeRef, targetCells: ReadonlySet<string>, coveredCells: Set<string>): boolean {
   const cells = cellsFromRange(range)
-  return cells.length > 0 && cells.every((cell) => targetCells.has(cellKey(cell)))
+  if (cells.length === 0) {
+    return false
+  }
+  for (const cell of cells) {
+    if (!targetCells.has(cellKey(cell))) {
+      return false
+    }
+  }
+  for (const cell of cells) {
+    coveredCells.add(cellKey(cell))
+  }
+  return true
+}
+
+function coversEveryTargetCell(targetCells: ReadonlySet<string>, coveredCells: ReadonlySet<string>): boolean {
+  for (const targetCell of targetCells) {
+    if (!coveredCells.has(targetCell)) {
+      return false
+    }
+  }
+  return true
 }
 
 interface FormatSupportCatalog {
@@ -224,7 +244,7 @@ function formatRangeMatchesExpected(
     return false
   }
   if (command.numberFormat === null) {
-    return true
+    return false
   }
   if (!numberFormatRecordMatches(catalog.formats.get(op.formatId), command.numberFormat)) {
     return false
@@ -258,6 +278,8 @@ function formatOpBindsToTarget(
   catalog: FormatSupportCatalog,
   usedStyleIds: Set<string>,
   usedFormatIds: Set<string>,
+  coveredStyleCells: Set<string>,
+  coveredNumberFormatCells: Set<string>,
 ): {
   readonly binding: 'target' | 'support'
 } | null {
@@ -265,19 +287,27 @@ function formatOpBindsToTarget(
     return { binding: 'support' }
   }
   if (op.kind === 'setCellFormat') {
-    return command.numberFormat !== undefined && targetCells.has(`${op.sheetName}!${op.address}`) && op.format === command.numberFormat
-      ? { binding: 'target' }
-      : null
+    const key = `${op.sheetName}!${op.address}`
+    if (command.numberFormat === undefined || !targetCells.has(key) || op.format !== command.numberFormat) {
+      return null
+    }
+    coveredNumberFormatCells.add(key)
+    return { binding: 'target' }
   }
   if (op.kind === 'setFormatRange') {
-    return rangeCellsBindToTarget(op.range, targetCells) && formatRangeMatchesExpected(command, op, catalog, usedFormatIds)
-      ? { binding: 'target' }
-      : null
+    if (
+      !formatRangeMatchesExpected(command, op, catalog, usedFormatIds) ||
+      !coverRangeCells(op.range, targetCells, coveredNumberFormatCells)
+    ) {
+      return null
+    }
+    return { binding: 'target' }
   }
   if (op.kind === 'setStyleRange') {
-    return rangeCellsBindToTarget(op.range, targetCells) && styleRangeMatchesExpected(command, op, catalog, usedStyleIds)
-      ? { binding: 'target' }
-      : null
+    if (!styleRangeMatchesExpected(command, op, catalog, usedStyleIds) || !coverRangeCells(op.range, targetCells, coveredStyleCells)) {
+      return null
+    }
+    return { binding: 'target' }
   }
   return null
 }
@@ -298,15 +328,28 @@ function formatOpsMatchExpected(
   const catalog = formatSupportCatalog(ops)
   const usedStyleIds = new Set<string>()
   const usedFormatIds = new Set<string>()
-  let hasTargetBinding = false
+  const coveredStyleCells = new Set<string>()
+  const coveredNumberFormatCells = new Set<string>()
   for (const op of ops) {
-    const binding = formatOpBindsToTarget(command, op, targetCellSet, catalog, usedStyleIds, usedFormatIds)
+    const binding = formatOpBindsToTarget(
+      command,
+      op,
+      targetCellSet,
+      catalog,
+      usedStyleIds,
+      usedFormatIds,
+      coveredStyleCells,
+      coveredNumberFormatCells,
+    )
     if (binding === null) {
       return false
     }
-    hasTargetBinding ||= binding.binding === 'target'
   }
-  return hasTargetBinding && everySupportOpWasUsed(catalog, usedStyleIds, usedFormatIds)
+  return (
+    (command.style === undefined || coversEveryTargetCell(targetCellSet, coveredStyleCells)) &&
+    (command.numberFormat === undefined || coversEveryTargetCell(targetCellSet, coveredNumberFormatCells)) &&
+    everySupportOpWasUsed(catalog, usedStyleIds, usedFormatIds)
+  )
 }
 
 function workbookRefKey(ref: WorkbookRef): string {
