@@ -20,16 +20,10 @@ pnpm add @bilig/workbook
 ```ts
 import {
   defineModel,
-  describePlan,
   describeRunResult,
-  describeRuntimeRequirements,
   formula,
-  planWorkbookAction,
+  prepareWorkbookAction,
   runWorkbookPlan,
-  toPlanData,
-  verifyPlan,
-  verifyPlanData,
-  workbookPlanId,
 } from '@bilig/workbook'
 
 export const model = defineModel({
@@ -56,17 +50,10 @@ export const model = defineModel({
   },
 })
 
-const planned = planWorkbookAction(model, 'calculate')
-if (planned.status === 'failed') throw new Error(planned.errors[0]?.message)
+const prepared = prepareWorkbookAction(model, 'calculate')
+if (prepared.status === 'failed') throw new Error(prepared.errors[0]?.message)
 
-const staticProof = verifyPlan(planned.plan)
-const requirements = describeRuntimeRequirements(planned.plan)
-const planForLogs = describePlan(planned.plan)
-const planIdForLogs = workbookPlanId(planned.plan)
-const transportedPlan = JSON.parse(JSON.stringify(toPlanData(planned.plan)))
-const transportProof = verifyPlanData(transportedPlan)
-
-const result = await runWorkbookPlan(transportedPlan, adapter, { strict: true })
+const result = await runWorkbookPlan(prepared.planData, adapter, { strict: true })
 const resultForLogs = describeRunResult(result)
 ```
 
@@ -76,11 +63,9 @@ That is the core flow:
 2. `find` returns generic refs.
 3. `checks` declares facts the runtime must prove.
 4. An action builds workbook intent.
-5. `verifyPlan` checks the plan without running an engine.
-6. `describeRuntimeRequirements` tells an adapter what it must apply, read, and prove.
-7. `toPlanData` makes the plan JSON-safe for handoff.
-8. `workbookPlanId` gives that exact plan a stable id for runtime proof.
-9. `runWorkbookPlan(..., { strict: true })` applies either the in-memory plan or transported plan data through a runtime-owned adapter and fails closed unless the adapter returns plan-bound apply proof, matching resolved refs, workbook revisions, check proof, and no unverified apply facts.
+5. `prepareWorkbookAction` verifies the plan, computes runtime requirements,
+   creates JSON-safe plan data, and gives that exact plan a stable id.
+6. `runWorkbookPlan(..., { strict: true })` applies either the in-memory plan or transported plan data through a runtime-owned adapter and fails closed unless the adapter returns plan-bound apply proof, matching resolved refs, workbook revisions, check proof, and no unverified apply facts.
 
 ## Which Package
 
@@ -103,7 +88,7 @@ agents that want a smaller import map: `@bilig/workbook/model`,
 
 The main API is intentionally small:
 
-- model: `defineModel`, `inspectModel`, `planWorkbookAction`, `buildWorkbookActionPlan`
+- model: `defineModel`, `inspectModel`, `prepareWorkbookAction`, `planWorkbookAction`, `buildWorkbookActionPlan`
 - selectors: `findTable`, `findColumn`, `findRange`, `findName`, `findRows`, `find`
 - checks: `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.formulaEquals`, `check.custom`
 - formulas: `formula.add`, `formula.subtract`, `formula.multiply`, `formula.divide`, `formula.sum`, `formula.call`, `formula.raw`, `formula.text`, `formula.labels`
@@ -182,6 +167,10 @@ unverified proof notes.
 or running model code. Invalid manifests return a structured `invalid_model`
 failure instead of making the agent catch an accessor side effect. Planned and
 failed action-plan result wrappers are frozen before they are returned.
+`prepareWorkbookAction` is the canonical preflight when an agent wants the full
+handoff in one result: it plans the action, runs static verification, returns
+JSON-safe `planData`, includes `planId`, and describes runtime requirements
+without importing or starting a workbook engine.
 Action helper calls fail closed during planning too: write, clear, format, and
 low-level-op helpers reject malformed targets, non-literal values, invalid
 format options, invalid add-op options, class/custom-prototype option roots, and

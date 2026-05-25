@@ -3,14 +3,11 @@ import {
   describeModel,
   describePlan,
   describeRunResult,
-  describeRuntimeRequirements,
   formula,
   normalizeWorkbookActionInput,
-  planWorkbookAction,
+  prepareWorkbookAction,
   runWorkbookPlan,
-  toPlanData,
   toWorkbookRefData,
-  verifyPlan,
   verifyPlanData,
   workbookActionCommandDigest,
   workbookPlanId,
@@ -96,16 +93,16 @@ function commandReceipt<Refs>(
   }
 }
 
-const planned = planWorkbookAction(model, 'calculate')
-if (planned.status === 'failed') {
-  throw new Error(JSON.stringify(planned.errors, null, 2))
+const prepared = prepareWorkbookAction(model, 'calculate')
+if (prepared.status === 'failed') {
+  throw new Error(JSON.stringify(prepared.errors, null, 2))
 }
 
-const plannedFormula = requiredFormula(planned.plan)
-const describedPlan = describePlan(planned.plan)
-const transportedPlan = JSON.parse(JSON.stringify(toPlanData(planned.plan)))
+const plannedFormula = requiredFormula(prepared.plan)
+const describedPlan = describePlan(prepared.plan)
+const transportedPlan = JSON.parse(JSON.stringify(prepared.planData))
 const ops = materializedOps(plannedFormula)
-const adapter: WorkbookRunAdapter<{ readonly refsUsed: typeof planned.plan.refsUsed }> = {
+const adapter: WorkbookRunAdapter<{ readonly refsUsed: typeof prepared.plan.refsUsed }> = {
   apply(plan) {
     return {
       status: 'applied',
@@ -147,9 +144,9 @@ console.log(
     {
       model: describeModel(model),
       plan: describedPlan,
-      verification: verifyPlan(planned.plan),
+      verification: prepared.verification,
       transportVerification: verifyPlanData(transportedPlan),
-      requirements: describeRuntimeRequirements(transportedPlan),
+      requirements: prepared.requirements,
       result: describeRunResult(result),
     },
     null,

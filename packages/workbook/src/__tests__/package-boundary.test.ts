@@ -151,7 +151,8 @@ describe('@bilig/workbook package boundary', () => {
     expect(example).toContain("workbook.findName('input')")
     expect(example).toContain("workbook.findName('factor')")
     expect(example).toContain("workbook.findName('result')")
-    expect(example).toContain('runWorkbookPlan(transportedPlan, adapter, { strict: true })')
+    expect(example).toContain("prepareWorkbookAction(model, 'calculate')")
+    expect(example).toContain('runWorkbookPlan(prepared.planData, adapter, { strict: true })')
     for (const term of businessExampleTerms) {
       expect(example.includes(term), `README first example contains ${term}`).toBe(false)
     }
@@ -163,6 +164,7 @@ describe('@bilig/workbook package boundary', () => {
     expect(example).toContain("workbook.findName('input')")
     expect(example).toContain("workbook.findName('factor')")
     expect(example).toContain("workbook.findName('result')")
+    expect(example).toContain("prepareWorkbookAction(model, 'calculate')")
     expect(example).toContain('runWorkbookPlan(transportedPlan, adapter, { strict: true })')
     expect(example).toContain('commandReceipts')
     expect(example).toContain('resolvedRefs')

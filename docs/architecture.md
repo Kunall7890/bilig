@@ -52,6 +52,8 @@ flowchart LR
   - action-object metadata, plain input descriptions, and `checkInput` payload
     checks for agent manifests
   - frozen model inspection and action-plan result wrappers
+  - canonical `prepareWorkbookAction` preflight for plan, verification,
+    `planData`, `planId`, and runtime requirements in one agent-facing result
   - machine-readable readback checks for runtime proof
   - readback proof attached to passed value/formula checks
   - transported readback-proof validation through `checkWorkbookReadbackProof`
