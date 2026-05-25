@@ -238,6 +238,44 @@ describe('@bilig/workbook schema api', () => {
     })
   })
 
+  it('publishes command-bundle style record schemas that match op guards', () => {
+    const defs = objectEntry(workbookJsonSchemas.commandBundle, '$defs')
+    const variants = arrayEntry(objectEntry(defs, 'engineOp'), 'oneOf')
+    const upsertCellStyle = workbookOpVariant(variants, 'upsertCellStyle')
+    const style = schemaProperty(upsertCellStyle, 'style')
+    const fill = schemaProperty(style, 'fill')
+
+    expect(fill).toMatchObject({
+      type: 'object',
+      required: ['backgroundColor'],
+      additionalProperties: true,
+      properties: {
+        backgroundColor: { type: 'string' },
+      },
+    })
+    expect(
+      checkWorkbookCommandBundle({
+        targetRevision: 1,
+        idempotencyKey: 'style-schema-parity',
+        commands: [
+          {
+            kind: 'op',
+            destructive: true,
+            op: { kind: 'upsertCellStyle', style: { id: 'style-1', fill: {} } },
+          },
+        ],
+      }),
+    ).toMatchObject({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command',
+          path: 'commands[0].op',
+        },
+      ],
+    })
+  })
+
   it('publishes comparison rule schemas with checker-matching value counts', () => {
     const defs = objectEntry(workbookJsonSchemas.planData, '$defs')
     const variants = arrayEntry(objectEntry(defs, 'engineOp'), 'oneOf')

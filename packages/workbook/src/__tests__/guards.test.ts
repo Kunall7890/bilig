@@ -184,6 +184,16 @@ describe('workbook guards', () => {
         kind: 'upsertCellStyle',
         style: {
           id: 'style-1',
+          fill: {},
+        },
+      }),
+    ).toBe(false)
+
+    expect(
+      isEngineOp({
+        kind: 'upsertCellStyle',
+        style: {
+          id: 'style-1',
           fill: {
             backgroundColor: 42,
           },

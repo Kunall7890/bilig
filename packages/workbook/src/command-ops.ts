@@ -596,7 +596,7 @@ export function expectedConcreteCommandOp(command: WorkbookActionCommand): Workb
         address: target.address,
       }
     case 'format':
-      if (command.numberFormat === undefined) {
+      if (command.numberFormat === undefined || command.style !== undefined) {
         return null
       }
       return {

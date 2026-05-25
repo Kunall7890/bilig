@@ -117,6 +117,7 @@ export const cellStylePatchSchema: WorkbookJsonSchemaValue = {
 
 const styleFillRecordSchema: WorkbookJsonSchemaValue = {
   type: 'object',
+  required: ['backgroundColor'],
   additionalProperties: true,
   properties: {
     backgroundColor: { type: 'string' },
