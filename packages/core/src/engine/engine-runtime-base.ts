@@ -8,7 +8,7 @@ import { EngineEventBus } from '../events.js'
 import { FormulaTable } from '../formula-table.js'
 import { createEngineCounters, type EngineCounters } from '../perf/engine-counters.js'
 import { RangeRegistry } from '../range-registry.js'
-import { batchOpOrder, compareOpOrder, createBatch, createReplicaState, type OpOrder, type ReplicaState } from '../replica-state.js'
+import { compareOpOrder, createLocalOpOrder, createReplicaState, type OpOrder, type ReplicaState } from '../replica-state.js'
 import { RecalcScheduler } from '../scheduler.js'
 import { StringPool } from '../string-pool.js'
 import { WasmKernelFacade } from '../wasm-facade.js'
@@ -446,8 +446,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
   private recordMetadataOnlySheetRename(oldName: string, trimmedName: string): void {
     const op: EngineOp = { kind: 'renameSheet', oldName, newName: trimmedName }
     if (this.state.trackReplicaVersions) {
-      const batch = createBatch(this.replicaState, [op])
-      const order = batchOpOrder(batch, 0)
+      const order = createLocalOpOrder(this.replicaState)
       this.entityVersions.set(`sheet:${oldName}`, order)
       this.entityVersions.set(`sheet:${trimmedName}`, order)
       this.sheetDeleteVersions.set(oldName, order)

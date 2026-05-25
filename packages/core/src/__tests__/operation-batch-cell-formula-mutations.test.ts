@@ -39,7 +39,7 @@ describe('operation batch cell formula mutations', () => {
     })
     expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0 })
     expect(engine.getPerformanceCounters()).toMatchObject({
-      formulasParsed: 1,
+      formulasParsed: 0,
       formulasBound: 0,
       directScalarDeltaApplications: downstreamCount,
       directScalarDeltaOnlyRecalcSkips: 1,

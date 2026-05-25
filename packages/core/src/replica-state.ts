@@ -94,6 +94,19 @@ export function createBatch(state: ReplicaState, ops: EngineOp[]): EngineOpBatch
   return batch
 }
 
+export function createLocalOpOrder(state: ReplicaState, opIndex = 0): OpOrder {
+  state.clock.counter += 1
+  const counter = state.clock.counter
+  const batchId = `${state.replicaId}:${counter}`
+  state.appliedBatchIds.add(batchId)
+  return {
+    counter,
+    replicaId: state.replicaId,
+    batchId,
+    opIndex,
+  }
+}
+
 export function markBatchApplied(state: ReplicaState, batch: EngineOpBatch): void {
   state.appliedBatchIds.add(batch.id)
   state.clock.counter = Math.max(state.clock.counter, batch.clock.counter)
