@@ -743,6 +743,139 @@ describe('@bilig/workbook transport api', () => {
     })
   })
 
+  it('hydrates transported plan data without invoking inherited optional getters', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    let getterInvoked = false
+    const failOnAccess = (): never => {
+      getterInvoked = true
+      throw new Error('inherited optional getter must not run')
+    }
+    const planPrototype = Object.defineProperty({}, 'input', {
+      get: failOnAccess,
+    })
+    const commandPrototype = Object.defineProperties(
+      {},
+      {
+        style: {
+          get: failOnAccess,
+        },
+        numberFormat: {
+          get: failOnAccess,
+        },
+      },
+    )
+    const changePrototype = Object.defineProperty({}, 'target', {
+      get: failOnAccess,
+    })
+    const checkPrototype = Object.defineProperties(
+      {},
+      {
+        target: {
+          get: failOnAccess,
+        },
+        refs: {
+          get: failOnAccess,
+        },
+        expectation: {
+          get: failOnAccess,
+        },
+        proof: {
+          get: failOnAccess,
+        },
+      },
+    )
+    const command = Object.setPrototypeOf(
+      {
+        kind: 'format',
+        target,
+      },
+      commandPrototype,
+    )
+    const change = Object.setPrototypeOf(
+      {
+        kind: 'format',
+        message: 'formatted range',
+      },
+      changePrototype,
+    )
+    const check = Object.setPrototypeOf(
+      {
+        status: 'planned',
+        kind: 'exists',
+        message: 'range exists',
+      },
+      checkPrototype,
+    )
+    const data = Object.setPrototypeOf(
+      {
+        modelName: 'transport-inherited-optional-plan-model',
+        actionName: 'format',
+        refsUsed: [target],
+        commands: [command],
+        ops: [],
+        changed: [change],
+        checks: [check],
+      },
+      planPrototype,
+    )
+
+    expect(checkPlanData(data)).toEqual({
+      status: 'valid',
+      plan: {
+        modelName: 'transport-inherited-optional-plan-model',
+        actionName: 'format',
+        refsUsed: [target],
+        commands: [
+          {
+            kind: 'format',
+            target,
+          },
+        ],
+        ops: [],
+        changed: [
+          {
+            kind: 'format',
+            message: 'formatted range',
+          },
+        ],
+        checks: [
+          {
+            status: 'planned',
+            kind: 'exists',
+            message: 'range exists',
+          },
+        ],
+      },
+      issues: [],
+    })
+    expect(describePlan(hydratePlanData(data))).toEqual({
+      modelName: 'transport-inherited-optional-plan-model',
+      actionName: 'format',
+      refsUsed: [target],
+      commands: [
+        {
+          kind: 'format',
+          target,
+        },
+      ],
+      ops: [],
+      changed: [
+        {
+          kind: 'format',
+          message: 'formatted range',
+        },
+      ],
+      checks: [
+        {
+          status: 'planned',
+          kind: 'exists',
+          message: 'range exists',
+        },
+      ],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
   it('rejects array-backed transported plan roots as uninspectable handoff data', () => {
     const model = defineModel({
       name: 'transport-array-backed-root-model',

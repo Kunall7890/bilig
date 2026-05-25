@@ -124,6 +124,47 @@ function hasOptionalString(value: Record<string, unknown>, key: string): boolean
   return descriptor === undefined || typeof descriptor.value === 'string'
 }
 
+type PlanValueGuard<T> = (entry: unknown) => entry is T
+
+function isStringValue(value: unknown): value is string {
+  return typeof value === 'string'
+}
+
+function isOpDataArray(value: unknown): value is readonly WorkbookOp[] {
+  return arrayEvery(value, isWorkbookOp)
+}
+
+function isCommandDataArray(value: unknown): value is readonly WorkbookActionCommandDescription[] {
+  return arrayEvery(value, isWorkbookActionCommandData)
+}
+
+function isChangeDataArray(value: unknown): value is readonly WorkbookChangeSummaryDescription[] {
+  return arrayEvery(value, isChangeData)
+}
+
+function isCheckDataArray(value: unknown): value is readonly WorkbookCheckResultDescription[] {
+  return arrayEvery(value, isCheckData)
+}
+
+function requiredPlanValue<T>(value: object, key: string, expected: string, guard: PlanValueGuard<T>): T {
+  const entry = ownValue(value, key)
+  if (!guard(entry)) {
+    throw new Error(`Workbook plan data ${key} must be ${expected}`)
+  }
+  return entry
+}
+
+function optionalPlanValue<T>(value: object, key: string, expected: string, guard: PlanValueGuard<T>): T | undefined {
+  const entry = ownValue(value, key)
+  if (entry === undefined) {
+    return undefined
+  }
+  if (!guard(entry)) {
+    throw new Error(`Workbook plan data ${key} must be ${expected}`)
+  }
+  return entry
+}
+
 function arrayEvery<T>(value: unknown, predicate: (entry: unknown) => entry is T): value is readonly T[]
 function arrayEvery(value: unknown, predicate: (entry: unknown) => boolean): boolean
 function arrayEvery(value: unknown, predicate: (entry: unknown) => boolean): boolean {
@@ -461,35 +502,45 @@ function hydrateRef(ref: WorkbookRefDescription): WorkbookRef {
 
 function hydrateFormulaLabel(label: WorkbookFormulaLabelDescription): WorkbookFormulaLabel {
   return Object.freeze({
-    name: label.name,
-    ref: hydrateRef(label.ref),
+    name: requiredPlanValue(label, 'name', 'a string', isStringValue),
+    ref: hydrateRef(requiredPlanValue(label, 'ref', 'a workbook ref', isWorkbookRefDescription)),
   })
 }
 
 function hydrateCommand(command: WorkbookActionCommandDescription): WorkbookActionCommand {
-  switch (command.kind) {
+  switch (requiredPlanValue(command, 'kind', 'a string', isStringValue)) {
     case 'writeFormula':
       return Object.freeze({
         kind: 'writeFormula',
-        target: hydrateRef(command.target),
-        formula: command.formula,
-        inputs: Object.freeze(mapArrayData(command.inputs, isWorkbookRefDescription, hydrateRef)),
-        labels: Object.freeze(mapArrayData(command.labels, isFormulaLabelData, hydrateFormulaLabel)),
+        target: hydrateRef(requiredPlanValue(command, 'target', 'a workbook ref', isWorkbookRefDescription)),
+        formula: requiredPlanValue(command, 'formula', 'a string', isStringValue),
+        inputs: Object.freeze(
+          mapArrayData(requiredPlanValue(command, 'inputs', 'a workbook ref array', isRefDataArray), isWorkbookRefDescription, hydrateRef),
+        ),
+        labels: Object.freeze(
+          mapArrayData(
+            requiredPlanValue(command, 'labels', 'a formula label array', isFormulaLabelDataArray),
+            isFormulaLabelData,
+            hydrateFormulaLabel,
+          ),
+        ),
       })
     case 'writeValue':
       return Object.freeze({
         kind: 'writeValue',
-        target: hydrateRef(command.target),
-        value: command.value,
+        target: hydrateRef(requiredPlanValue(command, 'target', 'a workbook ref', isWorkbookRefDescription)),
+        value: requiredPlanValue(command, 'value', 'a literal input', isLiteralInput),
       })
     case 'format': {
+      const style = ownValue(command, 'style')
+      const numberFormat = ownValue(command, 'numberFormat')
       const normalized = normalizeWorkbookActionFormatOptions({
-        ...(command.style !== undefined ? { style: command.style } : {}),
-        ...(command.numberFormat !== undefined ? { numberFormat: command.numberFormat } : {}),
+        ...(style !== undefined ? { style } : {}),
+        ...(numberFormat !== undefined ? { numberFormat } : {}),
       })
       return Object.freeze({
         kind: 'format',
-        target: hydrateRef(command.target),
+        target: hydrateRef(requiredPlanValue(command, 'target', 'a workbook ref', isWorkbookRefDescription)),
         ...(normalized.style !== undefined ? { style: normalized.style } : {}),
         ...(normalized.numberFormat !== undefined ? { numberFormat: normalized.numberFormat } : {}),
       })
@@ -497,52 +548,76 @@ function hydrateCommand(command: WorkbookActionCommandDescription): WorkbookActi
     case 'clear':
       return Object.freeze({
         kind: 'clear',
-        target: hydrateRef(command.target),
+        target: hydrateRef(requiredPlanValue(command, 'target', 'a workbook ref', isWorkbookRefDescription)),
       })
-    case 'op':
+    case 'op': {
+      const target = optionalPlanValue(command, 'target', 'a workbook ref', isWorkbookRefDescription)
+      const message = optionalPlanValue(command, 'message', 'a string', isStringValue)
       return Object.freeze({
         kind: 'op',
-        op: Object.freeze(structuredClone(command.op)),
-        ...(command.target !== undefined ? { target: hydrateRef(command.target) } : {}),
-        ...(command.message !== undefined ? { message: command.message } : {}),
+        op: Object.freeze(structuredClone(requiredPlanValue(command, 'op', 'a workbook op', isWorkbookOp))),
+        ...(target !== undefined ? { target: hydrateRef(target) } : {}),
+        ...(message !== undefined ? { message } : {}),
       })
+    }
+    default:
+      throw new Error('Workbook plan data command kind is invalid')
   }
 }
 
 function hydrateChange(change: WorkbookChangeSummaryDescription): WorkbookChangeSummary {
+  const target = optionalPlanValue(change, 'target', 'a workbook ref', isWorkbookRefDescription)
   return Object.freeze({
-    kind: change.kind,
-    ...(change.target !== undefined ? { target: hydrateRef(change.target) } : {}),
-    message: change.message,
+    kind: requiredPlanValue(change, 'kind', 'a string', isStringValue),
+    ...(target !== undefined ? { target: hydrateRef(target) } : {}),
+    message: requiredPlanValue(change, 'message', 'a string', isStringValue),
   })
 }
 
 function hydrateExpectation(expectation: WorkbookCheckExpectationDescription): WorkbookCheckExpectation {
-  switch (expectation.kind) {
+  switch (requiredPlanValue(expectation, 'kind', 'a string', isStringValue)) {
     case 'valueEquals':
       return Object.freeze({
         kind: 'valueEquals',
-        value: expectation.value,
+        value: requiredPlanValue(expectation, 'value', 'a literal input', isLiteralInput),
       })
     case 'formulaEquals':
       return Object.freeze({
         kind: 'formulaEquals',
-        formula: expectation.formula,
-        inputs: Object.freeze(mapArrayData(expectation.inputs, isWorkbookRefDescription, hydrateRef)),
-        labels: Object.freeze(mapArrayData(expectation.labels, isFormulaLabelData, hydrateFormulaLabel)),
+        formula: requiredPlanValue(expectation, 'formula', 'a string', isStringValue),
+        inputs: Object.freeze(
+          mapArrayData(
+            requiredPlanValue(expectation, 'inputs', 'a workbook ref array', isRefDataArray),
+            isWorkbookRefDescription,
+            hydrateRef,
+          ),
+        ),
+        labels: Object.freeze(
+          mapArrayData(
+            requiredPlanValue(expectation, 'labels', 'a formula label array', isFormulaLabelDataArray),
+            isFormulaLabelData,
+            hydrateFormulaLabel,
+          ),
+        ),
       })
+    default:
+      throw new Error('Workbook plan data check expectation kind is invalid')
   }
 }
 
 function hydrateCheck(check: WorkbookCheckResultDescription): WorkbookCheckResult {
-  const proof: WorkbookActionInput | undefined = check.proof === undefined ? undefined : normalizeWorkbookActionInput(check.proof)
+  const target = optionalPlanValue(check, 'target', 'a workbook ref', isWorkbookRefDescription)
+  const refs = optionalPlanValue(check, 'refs', 'a workbook ref array', isRefDataArray)
+  const expectation = optionalPlanValue(check, 'expectation', 'a check expectation', isCheckExpectationData)
+  const proofData = ownValue(check, 'proof')
+  const proof: WorkbookActionInput | undefined = proofData === undefined ? undefined : normalizeWorkbookActionInput(proofData)
   return Object.freeze({
-    status: check.status,
-    kind: check.kind,
-    ...(check.target !== undefined ? { target: hydrateRef(check.target) } : {}),
-    ...(check.refs !== undefined ? { refs: Object.freeze(mapArrayData(check.refs, isWorkbookRefDescription, hydrateRef)) } : {}),
-    message: check.message,
-    ...(check.expectation !== undefined ? { expectation: hydrateExpectation(check.expectation) } : {}),
+    status: requiredPlanValue(check, 'status', 'a check status', isCheckStatus),
+    kind: requiredPlanValue(check, 'kind', 'a string', isStringValue),
+    ...(target !== undefined ? { target: hydrateRef(target) } : {}),
+    ...(refs !== undefined ? { refs: Object.freeze(mapArrayData(refs, isWorkbookRefDescription, hydrateRef)) } : {}),
+    message: requiredPlanValue(check, 'message', 'a string', isStringValue),
+    ...(expectation !== undefined ? { expectation: hydrateExpectation(expectation) } : {}),
     ...(proof !== undefined ? { proof } : {}),
   })
 }
@@ -552,18 +627,25 @@ function cloneOp(op: WorkbookOp): WorkbookOp {
 }
 
 function hydrateCheckedPlanData(plan: WorkbookPlanData): WorkbookActionPlan<WorkbookPlanDataRefs> {
-  const refsUsed = Object.freeze(mapArrayData(plan.refsUsed, isWorkbookRefDescription, hydrateRef))
-  const input = plan.input === undefined ? undefined : normalizeWorkbookActionInput(plan.input)
+  const refsUsed = Object.freeze(
+    mapArrayData(requiredPlanValue(plan, 'refsUsed', 'a workbook ref array', isRefDataArray), isWorkbookRefDescription, hydrateRef),
+  )
+  const inputData = ownValue(plan, 'input')
+  const input = inputData === undefined ? undefined : normalizeWorkbookActionInput(inputData)
   return Object.freeze({
-    modelName: plan.modelName,
-    actionName: plan.actionName,
+    modelName: requiredPlanValue(plan, 'modelName', 'a string', isStringValue),
+    actionName: requiredPlanValue(plan, 'actionName', 'a string', isStringValue),
     ...(input !== undefined ? { input } : {}),
     refs: Object.freeze({ refsUsed }),
     refsUsed,
-    commands: Object.freeze(mapArrayData(plan.commands, isWorkbookActionCommandData, hydrateCommand)),
-    ops: Object.freeze(mapArrayData(plan.ops, isWorkbookOp, cloneOp)),
-    changed: Object.freeze(mapArrayData(plan.changed, isChangeData, hydrateChange)),
-    checks: Object.freeze(mapArrayData(plan.checks, isCheckData, hydrateCheck)),
+    commands: Object.freeze(
+      mapArrayData(requiredPlanValue(plan, 'commands', 'a command array', isCommandDataArray), isWorkbookActionCommandData, hydrateCommand),
+    ),
+    ops: Object.freeze(mapArrayData(requiredPlanValue(plan, 'ops', 'a workbook op array', isOpDataArray), isWorkbookOp, cloneOp)),
+    changed: Object.freeze(
+      mapArrayData(requiredPlanValue(plan, 'changed', 'a change array', isChangeDataArray), isChangeData, hydrateChange),
+    ),
+    checks: Object.freeze(mapArrayData(requiredPlanValue(plan, 'checks', 'a check array', isCheckDataArray), isCheckData, hydrateCheck)),
   })
 }
 
