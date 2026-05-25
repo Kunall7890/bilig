@@ -74,6 +74,9 @@ export function normalizeWorkbookActionFormatOptions(options: unknown): {
     if (!isCellStylePatchValue(clonedStyle)) {
       throw new Error('Workbook action format style must be a valid cell style patch')
     }
+    if (!stylePatchHasRequestedField(clonedStyle)) {
+      throw new Error('Workbook action format style must request at least one style field')
+    }
     normalized.style = clonedStyle
   }
 
@@ -82,6 +85,10 @@ export function normalizeWorkbookActionFormatOptions(options: unknown): {
       throw new Error('Workbook action format numberFormat must be a string, null, or undefined')
     }
     normalized.numberFormat = numberFormat.value
+  }
+
+  if (normalized.style === undefined && normalized.numberFormat === undefined) {
+    throw new Error('Workbook action format options must include style or numberFormat')
   }
 
   return Object.freeze(normalized)
@@ -190,6 +197,33 @@ function isCellStylePatchValue(value: unknown): value is CellStylePatch {
   }
 
   return true
+}
+
+function stylePatchHasRequestedField(value: CellStylePatch): boolean {
+  return (
+    sectionPatchHasRequestedField(value.fill, STYLE_FILL_PATCH_KEYS) ||
+    sectionPatchHasRequestedField(value.font, STYLE_FONT_PATCH_KEYS) ||
+    sectionPatchHasRequestedField(value.alignment, STYLE_ALIGNMENT_PATCH_KEYS) ||
+    value.borders === null ||
+    borderSidePatchHasRequestedField(value.borders?.top) ||
+    borderSidePatchHasRequestedField(value.borders?.right) ||
+    borderSidePatchHasRequestedField(value.borders?.bottom) ||
+    borderSidePatchHasRequestedField(value.borders?.left)
+  )
+}
+
+function sectionPatchHasRequestedField(value: object | null | undefined, keys: readonly string[]): boolean {
+  if (value === undefined) {
+    return false
+  }
+  if (value === null) {
+    return true
+  }
+  return keys.some((key) => Object.getOwnPropertyDescriptor(value, key) !== undefined)
+}
+
+function borderSidePatchHasRequestedField(value: NonNullable<NonNullable<CellStylePatch['borders']>['top']> | null | undefined): boolean {
+  return sectionPatchHasRequestedField(value, STYLE_BORDER_SIDE_PATCH_KEYS)
 }
 
 function isCellBorderSidePatchValue(value: unknown): boolean {

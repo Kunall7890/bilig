@@ -32,6 +32,7 @@ import type { WorkbookChangeSummary, WorkbookCheckExpectation, WorkbookCheckResu
 import { hydratePlanData } from './plan-data.js'
 import { expectedConcreteCommandOp, workbookConcreteOpMatches, workbookOpMatches } from './command-ops.js'
 import { formulaUsesLabel } from './formula-usage.js'
+import { normalizeWorkbookActionFormatOptions } from './model-action-validation.js'
 
 export type WorkbookPlanIssueCode =
   | 'invalid_plan'
@@ -440,6 +441,45 @@ function hasLabelForInput(labels: readonly WorkbookFormulaLabel[], input: Workbo
   return labels.some((label) => refKey(label.ref) === inputKey)
 }
 
+function formatCommandOption(
+  command: Extract<WorkbookActionCommand, { readonly kind: 'format' }>,
+  key: 'style' | 'numberFormat',
+  path: string,
+): { readonly status: 'absent' } | { readonly status: 'present'; readonly value: unknown } {
+  const descriptor = Object.getOwnPropertyDescriptor(command, key)
+  if (descriptor === undefined) {
+    return { status: 'absent' }
+  }
+  if (!('value' in descriptor)) {
+    throw new Error(`${path} must be a data property`)
+  }
+  if (descriptor.value === undefined) {
+    throw new Error(`${path} must not be undefined`)
+  }
+  return { status: 'present', value: descriptor.value }
+}
+
+function pushFormatCommandIssues(
+  issues: WorkbookPlanIssue[],
+  command: Extract<WorkbookActionCommand, { readonly kind: 'format' }>,
+  commandIndex: number,
+): void {
+  try {
+    const style = formatCommandOption(command, 'style', `commands[${commandIndex}].style`)
+    const numberFormat = formatCommandOption(command, 'numberFormat', `commands[${commandIndex}].numberFormat`)
+    normalizeWorkbookActionFormatOptions({
+      ...(style.status === 'present' ? { style: style.value } : {}),
+      ...(numberFormat.status === 'present' ? { numberFormat: numberFormat.value } : {}),
+    })
+  } catch (error) {
+    issues.push({
+      code: 'invalid_plan',
+      path: `commands[${commandIndex}]`,
+      message: `Workbook format command is invalid: ${errorMessage(error)}`,
+    })
+  }
+}
+
 export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVerification {
   let modelName: string
   let actionName: string
@@ -612,6 +652,10 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
           })
         }
       }
+    }
+
+    if (command.kind === 'format') {
+      pushFormatCommandIssues(issues, command, commandIndex)
     }
 
     const expectedOp = expectedConcreteCommandOp(command)

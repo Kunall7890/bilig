@@ -1104,6 +1104,47 @@ describe('@bilig/workbook model api', () => {
     ])
   })
 
+  it('rejects hand-built format plans with empty style patches', () => {
+    const model = defineModel({
+      name: 'verify-empty-style-plan-model',
+
+      find(workbook) {
+        return {
+          target: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.target)]
+      },
+
+      actions: {
+        style({ refs, workbook }) {
+          workbook.format(refs.target, { style: { font: { bold: true } } })
+        },
+      },
+    })
+
+    const plan = buildWorkbookActionPlan(model, 'style')
+    const [command] = plan.commands
+    if (command?.kind !== 'format') {
+      throw new Error('expected format command')
+    }
+    const brokenPlan = {
+      ...plan,
+      commands: [{ ...command, style: { font: {} } }],
+      ops: [],
+    }
+
+    expect(verifyPlan(brokenPlan).issues).toEqual([
+      {
+        code: 'invalid_plan',
+        path: 'commands[0]',
+        message: 'Workbook format command is invalid: Workbook action format style must request at least one style field',
+      },
+    ])
+  })
+
   it('verifies every model action with JSON-safe planning results', () => {
     const model = defineModel({
       name: 'whole-model-verification',
@@ -1555,6 +1596,12 @@ describe('@bilig/workbook model api', () => {
         badFormat({ refs, workbook }) {
           Reflect.apply(workbook.format, undefined, [refs.target, { numberFormat: 12 }])
         },
+        emptyFormatOptions({ refs, workbook }) {
+          workbook.format(refs.target, {})
+        },
+        emptyStyle({ refs, workbook }) {
+          workbook.format(refs.target, { style: { font: {} } })
+        },
         formatOptionsPrototype({ refs, workbook }) {
           Reflect.apply(workbook.format, undefined, [
             refs.target,
@@ -1618,6 +1665,30 @@ describe('@bilig/workbook model api', () => {
         {
           code: 'action_failed',
           message: 'Workbook action format numberFormat must be a string, null, or undefined',
+        },
+      ],
+    })
+    expect(planWorkbookAction(model, 'emptyFormatOptions')).toEqual({
+      status: 'failed',
+      modelName: 'helper-validation-model',
+      actionName: 'emptyFormatOptions',
+      checks: [],
+      errors: [
+        {
+          code: 'action_failed',
+          message: 'Workbook action format options must include style or numberFormat',
+        },
+      ],
+    })
+    expect(planWorkbookAction(model, 'emptyStyle')).toEqual({
+      status: 'failed',
+      modelName: 'helper-validation-model',
+      actionName: 'emptyStyle',
+      checks: [],
+      errors: [
+        {
+          code: 'action_failed',
+          message: 'Workbook action format style must request at least one style field',
         },
       ],
     })

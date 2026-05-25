@@ -788,6 +788,7 @@ describe('@bilig/workbook transport api', () => {
       {
         kind: 'format',
         target,
+        numberFormat: '0.00',
       },
       commandPrototype,
     )
@@ -829,6 +830,7 @@ describe('@bilig/workbook transport api', () => {
           {
             kind: 'format',
             target,
+            numberFormat: '0.00',
           },
         ],
         ops: [],
@@ -856,6 +858,7 @@ describe('@bilig/workbook transport api', () => {
         {
           kind: 'format',
           target,
+          numberFormat: '0.00',
         },
       ],
       ops: [],
@@ -874,6 +877,37 @@ describe('@bilig/workbook transport api', () => {
       ],
     })
     expect(getterInvoked).toBe(false)
+  })
+
+  it('rejects transported format commands with empty style patches', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    const data = {
+      modelName: 'transport-empty-style-plan-model',
+      actionName: 'format',
+      refsUsed: [target],
+      commands: [
+        {
+          kind: 'format',
+          target,
+          style: { font: {} },
+        },
+      ],
+      ops: [],
+      changed: [],
+      checks: [],
+    }
+
+    expect(isPlanData(data)).toBe(false)
+    expect(checkPlanData(data)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'commands[0]',
+          message: 'Workbook plan data command at commands[0] is invalid',
+        },
+      ],
+    })
   })
 
   it('rejects array-backed transported plan roots as uninspectable handoff data', () => {
