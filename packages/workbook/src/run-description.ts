@@ -298,7 +298,11 @@ function pushOptionalStringFieldIssue(
   }
 }
 
-function pushFiniteNumberFieldIssue(
+function isSafeNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function pushSafeNonNegativeIntegerFieldIssue(
   issues: WorkbookRunResultDescriptionIssue[],
   value: Record<string, unknown>,
   path: string,
@@ -315,14 +319,18 @@ function pushFiniteNumberFieldIssue(
     )
     return
   }
-  if (typeof descriptor.value !== 'number' || !Number.isFinite(descriptor.value)) {
+  if (!isSafeNonNegativeInteger(descriptor.value)) {
     issues.push(
-      runResultDescriptionIssue('invalid_field', fieldPath, `Workbook run result description ${fieldPath} must be a finite number`),
+      runResultDescriptionIssue(
+        'invalid_field',
+        fieldPath,
+        `Workbook run result description ${fieldPath} must be a non-negative safe integer`,
+      ),
     )
   }
 }
 
-function pushRequiredFiniteNumberFieldIssue(
+function pushRequiredSafeNonNegativeIntegerFieldIssue(
   issues: WorkbookRunResultDescriptionIssue[],
   value: Record<string, unknown>,
   path: string,
@@ -340,9 +348,13 @@ function pushRequiredFiniteNumberFieldIssue(
     )
     return
   }
-  if (typeof descriptor.value !== 'number' || !Number.isFinite(descriptor.value)) {
+  if (!isSafeNonNegativeInteger(descriptor.value)) {
     issues.push(
-      runResultDescriptionIssue('invalid_field', fieldPath, `Workbook run result description ${fieldPath} must be a finite number`),
+      runResultDescriptionIssue(
+        'invalid_field',
+        fieldPath,
+        `Workbook run result description ${fieldPath} must be a non-negative safe integer`,
+      ),
     )
   }
 }
@@ -486,7 +498,7 @@ function pushCommandReceiptDescriptionIssues(
     path,
     new Set(['commandIndex', 'commandKind', 'commandDigest', 'previewOps', 'appliedOps', 'resolvedRefs', 'formulaLabels', 'proof']),
   )
-  pushRequiredFiniteNumberFieldIssue(issues, entry, path, 'commandIndex')
+  pushRequiredSafeNonNegativeIntegerFieldIssue(issues, entry, path, 'commandIndex')
   pushRequiredStringFieldIssue(issues, entry, path, 'commandKind')
   pushRequiredStringFieldIssue(issues, entry, path, 'commandDigest')
   pushRequiredJsonArrayFieldIssue(issues, entry, path, 'previewOps')
@@ -516,8 +528,8 @@ function pushApplyDescriptionIssues(issues: WorkbookRunResultDescriptionIssue[],
     )
   }
   pushOptionalStringFieldIssue(issues, value, 'apply', 'planId')
-  pushFiniteNumberFieldIssue(issues, value, 'apply', 'baseRevision')
-  pushFiniteNumberFieldIssue(issues, value, 'apply', 'revision')
+  pushSafeNonNegativeIntegerFieldIssue(issues, value, 'apply', 'baseRevision')
+  pushSafeNonNegativeIntegerFieldIssue(issues, value, 'apply', 'revision')
   pushJsonArrayFieldIssue(issues, value, 'apply', 'previewOps')
   pushJsonArrayFieldIssue(issues, value, 'apply', 'appliedOps')
   pushJsonArrayFieldIssue(issues, value, 'apply', 'commandReceipts')

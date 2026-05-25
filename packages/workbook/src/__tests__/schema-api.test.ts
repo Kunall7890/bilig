@@ -13,12 +13,28 @@ import {
   workbookJsonSchemas,
   workbookJsonSchemaVersion,
   workbookPlanId,
+  workbookRunErrorCodes,
 } from '../index.js'
 
 const fixtureRoot = new URL('../../fixtures/', import.meta.url)
 
 function readFixture(name: string): unknown {
   return JSON.parse(readFileSync(new URL(name, fixtureRoot), 'utf8'))
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function objectEntry(value: unknown, key: string): Record<string, unknown> {
+  if (!isRecord(value)) {
+    throw new Error(`expected object before reading ${key}`)
+  }
+  const entry = value[key]
+  if (!isRecord(entry)) {
+    throw new Error(`expected ${key} to be an object`)
+  }
+  return entry
 }
 
 describe('@bilig/workbook schema api', () => {
@@ -44,6 +60,66 @@ describe('@bilig/workbook schema api', () => {
         schemas: workbookJsonSchemas,
       }),
     )
+  })
+
+  it('describes run-result proof fields without opaque apply/undo placeholders', () => {
+    const defs = objectEntry(workbookJsonSchemas.runResult, '$defs')
+    const apply = objectEntry(defs, 'apply')
+    const applyProperties = objectEntry(apply, 'properties')
+    const commandReceipt = objectEntry(defs, 'applyCommandReceipt')
+    const commandReceiptProperties = objectEntry(commandReceipt, 'properties')
+    const errorProperties = objectEntry(objectEntry(defs, 'error'), 'properties')
+
+    expect(apply).toMatchObject({
+      type: 'object',
+      required: ['matched'],
+      additionalProperties: false,
+    })
+    expect(applyProperties['commandReceipts']).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/applyCommandReceipt' },
+    })
+    expect(applyProperties['baseRevision']).toEqual({ type: 'integer', minimum: 0 })
+    expect(applyProperties['revision']).toEqual({ type: 'integer', minimum: 0 })
+
+    expect(commandReceipt).toMatchObject({
+      type: 'object',
+      required: ['commandIndex', 'commandKind', 'commandDigest', 'previewOps', 'appliedOps'],
+      additionalProperties: false,
+    })
+    expect(commandReceiptProperties['commandIndex']).toEqual({ type: 'integer', minimum: 0 })
+    expect(commandReceiptProperties['formulaLabels']).toEqual({
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['name', 'source'],
+        additionalProperties: false,
+        properties: {
+          name: { type: 'string', minLength: 1 },
+          source: { type: 'string', minLength: 1 },
+        },
+      },
+    })
+
+    expect(objectEntry(defs, 'undo')).toEqual({
+      type: 'object',
+      required: ['id'],
+      additionalProperties: false,
+      properties: {
+        id: { type: 'string', minLength: 1 },
+        ops: { type: 'array', items: { $ref: '#/$defs/engineOp' } },
+      },
+    })
+    expect(objectEntry(defs, 'unverified')).toEqual({
+      type: 'object',
+      required: ['kind', 'message'],
+      additionalProperties: false,
+      properties: {
+        kind: { enum: ['apply', 'plan'] },
+        message: { type: 'string', minLength: 1 },
+      },
+    })
+    expect(errorProperties['code']).toEqual({ enum: workbookRunErrorCodes })
   })
 
   it('keeps checked-in contract fixtures aligned with public validators', () => {

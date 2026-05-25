@@ -593,6 +593,49 @@ describe('@bilig/workbook run api', () => {
     expect(getterInvoked).toBe(false)
   })
 
+  it('requires run-result description revisions and command indexes to be non-negative safe integers', () => {
+    expect(
+      checkWorkbookRunResultDescription({
+        status: 'done',
+        apply: {
+          matched: true,
+          baseRevision: 1.5,
+          revision: -1,
+          commandReceipts: [
+            {
+              commandIndex: 0.5,
+              commandKind: 'writeFormula',
+              commandDigest: 'bilig-command-v1:test',
+              previewOps: [],
+              appliedOps: [],
+            },
+          ],
+        },
+        changed: [],
+        checks: [],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_field',
+          path: 'apply.baseRevision',
+          message: 'Workbook run result description apply.baseRevision must be a non-negative safe integer',
+        },
+        {
+          code: 'invalid_field',
+          path: 'apply.revision',
+          message: 'Workbook run result description apply.revision must be a non-negative safe integer',
+        },
+        {
+          code: 'invalid_field',
+          path: 'apply.commandReceipts[0].commandIndex',
+          message: 'Workbook run result description apply.commandReceipts[0].commandIndex must be a non-negative safe integer',
+        },
+      ],
+    })
+  })
+
   it('runs readback-only plans without requiring an apply adapter', async () => {
     const model = defineModel({
       name: 'run-readback-only-model',

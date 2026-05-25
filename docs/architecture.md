@@ -29,6 +29,8 @@ flowchart LR
   - root public barrel plus smaller model/prepare/find/check/formula/verify/runtime/command/schema subpath exports
   - public JSON schema artifacts, deterministic schema hashes, and checked-in
     fixtures for non-TypeScript agent contract inspection
+  - exact run-result proof schema for apply summaries, command receipts, undo
+    refs, and unverified proof notes
   - phase-scoped find/check/action contexts
   - frozen workbook refs with non-enumerable ergonomic helpers
   - frozen public helper namespaces for find/check/formula construction

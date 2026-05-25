@@ -701,11 +701,14 @@ behavior as the nested plan objects.
 failed action planning results.
 `describeRunResult` applies the same JSON-safe description layer after
 execution, preserving `done`/`failed` status, changed summaries, checks, errors,
-and undo ops while removing ref helper functions from the public result. The
-returned run description is frozen before it crosses the agent boundary.
+apply proof, command receipts, undo ops, and unverified proof notes while
+removing ref helper functions from the public result. The returned run
+description is frozen before it crosses the agent boundary.
 `checkWorkbookRunResultDescription` validates persisted run-result descriptions
 with stable path issues before a sync event or later agent treats them as proof.
 `isWorkbookRunResultDescription` is the boolean guard over the same boundary.
+The published run-result JSON schema mirrors those proof fields, so
+non-TypeScript agents do not have to treat apply or undo proof as opaque blobs.
 `describeRuntimeRequirements(plan)` gives agents a JSON-safe adapter checklist
 for the same plan or transported plan data: which generic commands must be applied, which readbacks are
 needed, and which checks need proof. It stays generic, with capabilities such

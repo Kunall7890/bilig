@@ -1,3 +1,5 @@
+import { workbookRunErrorCodes } from './result.js'
+
 export type WorkbookJsonSchemaScalar = string | number | boolean | null
 export type WorkbookJsonSchemaValue =
   | WorkbookJsonSchemaScalar
@@ -170,6 +172,69 @@ const changeDataSchema: WorkbookJsonSchemaValue = {
     kind: { type: 'string', minLength: 1 },
     target: refData,
     message: { type: 'string', minLength: 1 },
+  },
+}
+
+const undoDataSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['id'],
+  additionalProperties: false,
+  properties: {
+    id: { type: 'string', minLength: 1 },
+    ops: { type: 'array', items: engineOp },
+  },
+}
+
+const unverifiedDataSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['kind', 'message'],
+  additionalProperties: false,
+  properties: {
+    kind: { enum: ['apply', 'plan'] },
+    message: { type: 'string', minLength: 1 },
+  },
+}
+
+const applySummarySchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['matched'],
+  additionalProperties: false,
+  properties: {
+    matched: { oneOf: [{ type: 'boolean' }, { type: 'null' }] },
+    planId: { type: 'string', minLength: 1 },
+    baseRevision: { type: 'integer', minimum: 0 },
+    revision: { type: 'integer', minimum: 0 },
+    previewOps: { type: 'array', items: engineOp },
+    appliedOps: { type: 'array', items: engineOp },
+    commandReceipts: { type: 'array', items: { $ref: '#/$defs/applyCommandReceipt' } },
+    proof: actionInput,
+  },
+}
+
+const applyCommandReceiptSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['commandIndex', 'commandKind', 'commandDigest', 'previewOps', 'appliedOps'],
+  additionalProperties: false,
+  properties: {
+    commandIndex: { type: 'integer', minimum: 0 },
+    commandKind: { type: 'string', minLength: 1 },
+    commandDigest: { type: 'string', minLength: 1 },
+    previewOps: { type: 'array', items: engineOp },
+    appliedOps: { type: 'array', items: engineOp },
+    resolvedRefs: actionInput,
+    formulaLabels: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['name', 'source'],
+        additionalProperties: false,
+        properties: {
+          name: { type: 'string', minLength: 1 },
+          source: { type: 'string', minLength: 1 },
+        },
+      },
+    },
+    proof: actionInput,
   },
 }
 
@@ -361,6 +426,8 @@ export const workbookJsonSchemas = deepFreeze({
 
   runResult: schema('runResult', {
     $defs: defs({
+      apply: applySummarySchema,
+      applyCommandReceipt: applyCommandReceiptSchema,
       check: checkDataSchema,
       change: changeDataSchema,
       error: {
@@ -368,12 +435,14 @@ export const workbookJsonSchemas = deepFreeze({
         required: ['code', 'message'],
         additionalProperties: false,
         properties: {
-          code: { type: 'string', minLength: 1 },
+          code: { enum: workbookRunErrorCodes },
           message: { type: 'string', minLength: 1 },
           path: { type: 'string' },
           issueCode: { type: 'string' },
         },
       },
+      undo: undoDataSchema,
+      unverified: unverifiedDataSchema,
     }),
     oneOf: [
       {
@@ -381,11 +450,11 @@ export const workbookJsonSchemas = deepFreeze({
         required: ['status', 'changed', 'checks'],
         properties: {
           status: { const: 'done' },
-          apply: { type: 'object', additionalProperties: true },
+          apply: { $ref: '#/$defs/apply' },
           changed: { type: 'array', items: { $ref: '#/$defs/change' } },
           checks: { type: 'array', items: { $ref: '#/$defs/check' } },
-          undo: { type: 'object', additionalProperties: true },
-          unverified: { type: 'array', items: { type: 'object', additionalProperties: true } },
+          undo: { $ref: '#/$defs/undo' },
+          unverified: { type: 'array', items: { $ref: '#/$defs/unverified' } },
         },
         additionalProperties: false,
       },
@@ -395,11 +464,11 @@ export const workbookJsonSchemas = deepFreeze({
         properties: {
           status: { const: 'failed' },
           errors: { type: 'array', items: { $ref: '#/$defs/error' } },
-          apply: { type: 'object', additionalProperties: true },
+          apply: { $ref: '#/$defs/apply' },
           changed: { type: 'array', items: { $ref: '#/$defs/change' } },
           checks: { type: 'array', items: { $ref: '#/$defs/check' } },
-          undo: { type: 'object', additionalProperties: true },
-          unverified: { type: 'array', items: { type: 'object', additionalProperties: true } },
+          undo: { $ref: '#/$defs/undo' },
+          unverified: { type: 'array', items: { $ref: '#/$defs/unverified' } },
         },
         additionalProperties: false,
       },

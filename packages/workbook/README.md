@@ -123,7 +123,9 @@ JSON schema artifacts through `@bilig/workbook/schema`. These are contract
 artifacts for agents and non-TypeScript consumers. They do not replace the
 runtime validators; they make the same ref, plan, command, run-result, and
 readback-proof shapes inspectable, hashable, and testable before a runtime
-mutates workbook state.
+mutates workbook state. The run-result schema spells out apply proof, command
+receipts, undo refs, and unverified proof notes instead of using opaque object
+placeholders.
 
 Model action manifests are frozen null-prototype maps. Consumers can use normal
 business-agnostic action names, including names such as `toString` or
