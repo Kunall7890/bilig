@@ -415,6 +415,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Sim MCP setup: ${siteRoot}/sim-workpaper-mcp.html
 - Windmill TypeScript script: ${siteRoot}/windmill-workpaper-script.html
 - Trigger.dev task: ${siteRoot}/triggerdev-workpaper-task.html
+- Kestra Node flow: ${siteRoot}/kestra-workpaper-flow.html
 - XLSX formula clinic: ${siteRoot}/formula-bug-clinic.html
 - Compatibility limits: ${siteRoot}/where-bilig-is-not-excel-compatible-yet.html
 - Repository: ${repositoryUrl}
@@ -522,6 +523,11 @@ const llmsFullSources = [
     title: 'Trigger.dev WorkPaper Task',
     relativePath: 'docs/triggerdev-workpaper-task.md',
     url: `${repositoryUrl}/blob/main/docs/triggerdev-workpaper-task.md`,
+  },
+  {
+    title: 'Kestra WorkPaper Node Flow',
+    relativePath: 'docs/kestra-workpaper-flow.md',
+    url: `${repositoryUrl}/blob/main/docs/kestra-workpaper-flow.md`,
   },
   {
     title: 'Open WebUI WorkPaper MCP Setup',
@@ -763,6 +769,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/agent-framework-workbook-tools.html`,
         `${siteRoot}/openai-agents-sdk-workpaper-tool.html`,
         `${siteRoot}/node-framework-workpaper-adapters.html`,
+        `${siteRoot}/kestra-workpaper-flow.html`,
         `${siteRoot}/npm-provenance-package-trust.html`,
       ],
     },

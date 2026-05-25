@@ -228,6 +228,25 @@ wraps the same helper in a Trigger.dev task for deployed durable execution.
 See [Trigger.dev WorkPaper task](docs/triggerdev-workpaper-task.md) for the task
 shape, local smoke command, retry boundary, and outreach note.
 
+## Kestra Formula Flows
+
+Need a Kestra Node Commands flow to calculate workflow fields from reviewable
+formulas? Use `@bilig/workpaper` inside the Node script and emit a
+`workpaper-proof.json` output file for downstream tasks.
+
+The source example lives in:
+
+```text
+examples/kestra-workpaper-flow
+```
+
+It keeps Kestra in charge of orchestration, Docker execution, and output-file
+routing while Bilig owns formula recalculation, JSON restore, and readback
+proof.
+
+See [Kestra WorkPaper Node flow](docs/kestra-workpaper-flow.md) for the flow
+YAML, local smoke command, Blueprint boundary, and outreach note.
+
 ## Directus Persisted Calculated Fields
 
 Need a Directus Flow to calculate and persist quote, pricing, payout, or import

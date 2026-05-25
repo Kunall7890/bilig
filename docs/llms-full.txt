@@ -248,6 +248,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Sim MCP setup: https://proompteng.github.io/bilig/sim-workpaper-mcp.html
 - Windmill TypeScript script: https://proompteng.github.io/bilig/windmill-workpaper-script.html
 - Trigger.dev task: https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
+- Kestra Node flow: https://proompteng.github.io/bilig/kestra-workpaper-flow.html
 - XLSX formula clinic: https://proompteng.github.io/bilig/formula-bug-clinic.html
 - Compatibility limits: https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html
 - Repository: https://github.com/proompteng/bilig
@@ -487,6 +488,25 @@ wraps the same helper in a Trigger.dev task for deployed durable execution.
 
 See [Trigger.dev WorkPaper task](docs/triggerdev-workpaper-task.md) for the task
 shape, local smoke command, retry boundary, and outreach note.
+
+## Kestra Formula Flows
+
+Need a Kestra Node Commands flow to calculate workflow fields from reviewable
+formulas? Use `@bilig/workpaper` inside the Node script and emit a
+`workpaper-proof.json` output file for downstream tasks.
+
+The source example lives in:
+
+```text
+examples/kestra-workpaper-flow
+```
+
+It keeps Kestra in charge of orchestration, Docker execution, and output-file
+routing while Bilig owns formula recalculation, JSON restore, and readback
+proof.
+
+See [Kestra WorkPaper Node flow](docs/kestra-workpaper-flow.md) for the flow
+YAML, local smoke command, Blueprint boundary, and outreach note.
 
 ## Directus Persisted Calculated Fields
 
@@ -1430,6 +1450,7 @@ Pick the path that matches the workflow you are trying to unblock:
 | A coding agent or MCP client that needs spreadsheet operations           | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                                 | The generated project includes an agent contract, MCP config, and `npm run agent:verify`.                           |
 | Windmill TypeScript workflow fields                                      | `cd examples/windmill-workpaper-script && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke` | The script returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.        |
 | Trigger.dev durable task fields                                          | `cd examples/triggerdev-workpaper-task && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke` | The task helper returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.   |
+| Kestra Node Commands flow fields                                         | `cd examples/kestra-workpaper-flow && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`     | The flow script writes a `workpaper-proof.json` artifact with before/after/restore proof and `verified: true`.      |
 | Directus Flow operation for persisted calculated fields                  | `cd examples/directus-workpaper-flow-operation && npm install && npm run smoke`                               | The operation returns a Directus `patch` plus before/after/restore WorkPaper proof with `verified: true`.           |
 | n8n, Dify, or Flowise formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321`                          | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof.               |
 | Open WebUI needs MCP spreadsheet tools                                   | `npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`                                    | Open WebUI can call the hosted Streamable HTTP endpoint or a local stdio server bridged through `mcpo`.             |
@@ -1518,6 +1539,7 @@ Start from the repo examples:
 - `examples/directus-workpaper-flow-operation`
 - `examples/windmill-workpaper-script`
 - `examples/triggerdev-workpaper-task`
+- `examples/kestra-workpaper-flow`
 - `examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json`
 - `examples/dify-workpaper-formula-readback`
 - `examples/flowise-workpaper-formula-readback/bilig-workpaper-formula-readback.flowise-tool.json`
@@ -1527,6 +1549,7 @@ Docs:
 - <https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html>
 - <https://proompteng.github.io/bilig/windmill-workpaper-script.html>
 - <https://proompteng.github.io/bilig/triggerdev-workpaper-task.html>
+- <https://proompteng.github.io/bilig/kestra-workpaper-flow.html>
 - <https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html>
 - <https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html>
 - <https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html>
@@ -4342,6 +4365,154 @@ the concrete boundary it solves:
 Do not post it as a generic spreadsheet-engine pitch. Link the runnable example
 and smoke output, then ask whether a formula-backed durable task would be useful
 as a Trigger.dev examples repo contribution.
+
+---
+
+## Kestra WorkPaper Node Flow
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/kestra-workpaper-flow.md
+
+# Kestra WorkPaper Node flow
+
+Use this when a Kestra flow needs formula-backed workflow fields, but the
+calculation should run through a Node package and leave a proof artifact instead
+of relying on Excel UI automation, browser grid clicks, or stale cached XLSX
+formula values.
+
+Kestra's Node plugin runs JavaScript or TypeScript code inline or from files,
+can install npm packages, and can expose output files for downstream tasks.
+Kestra Blueprints are the curated reusable workflow-template path, so keep this
+as a Bilig-owned proof first and only submit one focused Blueprint if the fit is
+real.
+
+Official Kestra references:
+
+- <https://kestra.io/docs/how-to-guides/javascript>
+- <https://kestra.io/plugins/plugin-script-node>
+- <https://kestra.io/docs/concepts/blueprints>
+- <https://kestra.io/docs/llms.txt>
+
+## Example Artifact
+
+The runnable source lives in:
+
+```text
+examples/kestra-workpaper-flow
+```
+
+It contains:
+
+- `flow.yml` for the Kestra `io.kestra.plugin.scripts.node.Commands` flow
+- `kestra-workpaper-flow.ts` for the TypeScript WorkPaper proof script
+- `scripts/check-flow.ts` for the local flow wiring check
+
+Run it locally:
+
+```sh
+cd examples/kestra-workpaper-flow
+pnpm install --ignore-workspace --lockfile=false
+pnpm run check
+pnpm run smoke
+```
+
+The smoke test edits `Inputs!B2`, recalculates quote formulas, serializes the
+WorkPaper document, restores it, verifies that restored calculated values match,
+prints JSON, and writes `.tmp/workpaper-proof.json`.
+
+## Kestra Flow Shape
+
+The checked-in `flow.yml` uses a Node Commands task:
+
+```yaml
+tasks:
+  - id: calculate_quote
+    type: io.kestra.plugin.scripts.node.Commands
+    namespaceFiles:
+      enabled: true
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+    containerImage: node:24-slim
+    beforeCommands:
+      - npm install @bilig/workpaper@latest
+      - npm install tsx
+    outputFiles:
+      - workpaper-proof.json
+    commands:
+      - npx tsx kestra-workpaper-flow.ts --quantity "{{ inputs.quantity }}" --output workpaper-proof.json
+```
+
+Upload or sync `kestra-workpaper-flow.ts` as a namespace file, import
+`flow.yml`, and run it with the default inputs or quote fields from another
+task.
+
+## Flow Output
+
+The proof file contains:
+
+```json
+{
+  "patch": {
+    "subtotal": 2250,
+    "discount_amount": 225,
+    "taxable_amount": 2025,
+    "tax_amount": 162,
+    "total": 2187,
+    "margin_amount": 1089
+  },
+  "proof": {
+    "editedCell": "Inputs!B2",
+    "before": {
+      "total": 1458
+    },
+    "after": {
+      "total": 2187
+    },
+    "afterRestore": {
+      "total": 2187
+    },
+    "verified": true
+  }
+}
+```
+
+The full local smoke output includes all calculated summary fields and the
+output-file path.
+
+## Workflow Shape
+
+1. Trigger `bilig_workpaper_quote` from a schedule, webhook, API call, or parent
+   flow.
+2. Pass record values such as `quantity`, `unit_price`, `discount_rate`,
+   `tax_rate`, and `unit_cost`.
+3. Feed `patch` into the next task or application writeback step.
+4. Keep `workpaper-proof.json` as the audit artifact when the workflow needs
+   readback evidence.
+
+Kestra owns scheduling, retries, task history, Docker execution, and downstream
+workflow orchestration. Bilig owns the formula workbook, recalculation, JSON
+serialization, restore, and readback proof.
+
+## When This Fits
+
+Use it for quote approvals, pricing rules, discount calculations, payout checks,
+import validation, and workflow steps where spreadsheet formulas are the most
+reviewable representation of business logic.
+
+Do not use it to pretend Bilig is desktop Excel. Keep Excel, LibreOffice,
+Microsoft Graph, or a domain oracle in the loop for macros, pivots, charts,
+external links, and exact spreadsheet UI behavior.
+
+## Outreach Note
+
+If this is shared in a Kestra issue, Slack thread, or Blueprint proposal, lead
+with the concrete boundary it solves:
+
+> Kestra owns orchestration and output-file routing. Bilig owns the formula
+> workbook and returns both calculated field values and readback proof.
+
+Do not post it as a generic spreadsheet-engine pitch. Link the runnable example
+and smoke output, then ask whether a formula-backed Node Commands flow would be
+useful as a Kestra Blueprint.
 
 ---
 

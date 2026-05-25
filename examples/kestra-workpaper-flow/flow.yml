@@ -1,0 +1,43 @@
+id: bilig_workpaper_quote
+namespace: company.finance
+description: Calculate quote fields from a Bilig WorkPaper and persist the readback proof as a Kestra output file.
+
+inputs:
+  - id: quantity
+    type: INT
+    defaults: 18
+  - id: previous_quantity
+    type: INT
+    defaults: 12
+  - id: unit_price
+    type: FLOAT
+    defaults: 125
+  - id: discount_rate
+    type: FLOAT
+    defaults: 0.1
+  - id: tax_rate
+    type: FLOAT
+    defaults: 0.08
+  - id: unit_cost
+    type: FLOAT
+    defaults: 52
+
+tasks:
+  - id: calculate_quote
+    type: io.kestra.plugin.scripts.node.Commands
+    namespaceFiles:
+      enabled: true
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+    containerImage: node:24-slim
+    beforeCommands:
+      - npm install @bilig/workpaper@latest
+      - npm install tsx
+    outputFiles:
+      - workpaper-proof.json
+    commands:
+      - npx tsx kestra-workpaper-flow.ts --quantity "{{ inputs.quantity }}" --previous-quantity "{{ inputs.previous_quantity }}" --unit-price "{{ inputs.unit_price }}" --discount-rate "{{ inputs.discount_rate }}" --tax-rate "{{ inputs.tax_rate }}" --unit-cost "{{ inputs.unit_cost }}" --output workpaper-proof.json
+
+  - id: proof_location
+    type: io.kestra.plugin.core.log.Log
+    message: "Bilig WorkPaper proof file: {{ outputs.calculate_quote.outputFiles['workpaper-proof.json'] }}"

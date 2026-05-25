@@ -160,6 +160,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/node-framework-workpaper-adapters.html
 - https://proompteng.github.io/bilig/windmill-workpaper-script.html
 - https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
+- https://proompteng.github.io/bilig/kestra-workpaper-flow.html
 - https://github.com/proompteng/bilig/blob/main/docs/workbook-automation-examples-node.md
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-framework-adapters
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#mcp-tool-server-shape
@@ -525,6 +526,10 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
   https://github.com/proompteng/bilig/blob/main/docs/triggerdev-workpaper-task.md
   https://github.com/proompteng/bilig/tree/main/examples/triggerdev-workpaper-task
+  Kestra Node Commands flow source:
+  https://proompteng.github.io/bilig/kestra-workpaper-flow.html
+  https://github.com/proompteng/bilig/blob/main/docs/kestra-workpaper-flow.md
+  https://github.com/proompteng/bilig/tree/main/examples/kestra-workpaper-flow
   https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html
   https://github.com/proompteng/bilig/blob/main/docs/n8n-workpaper-formula-readback.md
   https://github.com/proompteng/bilig/tree/main/examples/n8n-workpaper-formula-readback
