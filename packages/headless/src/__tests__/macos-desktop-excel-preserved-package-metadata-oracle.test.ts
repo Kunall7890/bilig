@@ -242,6 +242,72 @@ describe('macOS Desktop Excel preserved package metadata oracle', () => {
   )
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel workbook view first visible tab after moving a prior sheet past it',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-workbook-view-first-sheet-move-oracle-')
+      try {
+        const sourceBytes = exportXlsx(workbookViewSheetReorderSnapshot())
+        const importedSource = importXlsx(sourceBytes, 'workbook-view-first-sheet-move-source.xlsx').snapshot
+        expect(importedSource.sheets.map((sheet) => sheet.name)).toEqual(['Data', 'Inputs', 'Report'])
+        expect(workbookViewTabIndexes(importedSource)).toEqual({ activeTab: '2', firstSheet: '1' })
+
+        const excelWorkbookPath = join(tempDir, 'excel-workbook-view-first-sheet-move-source.xlsx')
+        writeFileSync(excelWorkbookPath, sourceBytes)
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath: excelWorkbookPath,
+          worksheetName: 'Report',
+          operations: [{ kind: 'moveSheet', name: 'Data', after: 'Report' }],
+          inspectCells: ['A1'],
+          saveWorkbook: true,
+          timeoutMs: 120_000,
+        })
+        expect(excelResult.cells[0]?.value).toEqual({ kind: 'string', value: 'report' })
+
+        const excelTruth = importXlsx(new Uint8Array(readFileSync(excelWorkbookPath)), 'excel-workbook-view-first-sheet-move-truth.xlsx')
+        expect(excelTruth.snapshot.sheets.map((sheet) => sheet.name)).toEqual(['Inputs', 'Report', 'Data'])
+        const excelTabIndexes = workbookViewTabIndexes(excelTruth.snapshot)
+
+        const workpaper = WorkPaper.buildFromSnapshot(importedSource)
+        try {
+          const dataSheet = workpaper.getSheetId('Data')
+          if (dataSheet === undefined) {
+            throw new Error('Expected Data sheet')
+          }
+          workpaper.moveSheet(dataSheet, 2)
+
+          const headlessSnapshot = workpaper.exportSnapshot()
+          expect(headlessSnapshot.sheets.map((sheet) => sheet.name)).toEqual(['Inputs', 'Report', 'Data'])
+          expect(workbookViewTabIndexes(headlessSnapshot)).toEqual(excelTabIndexes)
+
+          const headlessPath = join(tempDir, 'headless-workbook-view-first-sheet-move.xlsx')
+          writeFileSync(headlessPath, exportXlsx(headlessSnapshot))
+          const headlessExcel = runMacosExcelInspectionOracle({
+            workbookPath: headlessPath,
+            worksheetName: 'Report',
+            formulaCells: [],
+            inspectCells: ['A1'],
+            saveWorkbook: true,
+            timeoutMs: 120_000,
+          })
+          expect(headlessExcel.cells).toEqual(excelResult.cells)
+
+          const headlessTruth = importXlsx(new Uint8Array(readFileSync(headlessPath)), 'headless-workbook-view-first-sheet-move-truth.xlsx')
+          expect(workbookViewTabIndexes(headlessTruth.snapshot)).toEqual(excelTabIndexes)
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    180_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
     'matches Desktop Excel calc-chain sheet ids after deleting a prior sheet',
     () => {
       if (!isMacosExcelInstalled()) {

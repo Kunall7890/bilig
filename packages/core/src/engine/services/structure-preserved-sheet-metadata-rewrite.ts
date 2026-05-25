@@ -433,7 +433,7 @@ function rewriteWorkbookViewIndexAttributeForSheetReorder(
   if (!attribute) {
     return element
   }
-  const nextIndex = sheetIndexAfterSheetReorder(attribute.value, context)
+  const nextIndex = attributeName === 'activeTab' ? context.newSheetIndex : sheetIndexAfterSheetReorder(attribute.value, context)
   if (nextIndex === attribute.value) {
     return element
   }

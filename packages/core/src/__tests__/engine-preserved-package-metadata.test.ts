@@ -365,6 +365,20 @@ describe('engine imported package metadata preservation', () => {
     })
   })
 
+  it('matches Desktop Excel active workbook view tab after moving a prior sheet past it', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-workbook-view-reorder-prior-sheet' })
+    await engine.ready()
+
+    engine.importSnapshot(workbookViewStateSheetReorderSnapshot())
+    engine.moveSheet('Data', 2)
+
+    const exported = engine.exportSnapshot()
+    expect(exported.sheets.map((sheet) => `${sheet.order}:${sheet.name}`)).toEqual(['0:Inputs', '1:Report', '2:Data'])
+    expect(exported.workbook.metadata?.viewState).toEqual({
+      bookViewsXml: '<bookViews><workbookView activeTab="2" firstSheet="1"/></bookViews>',
+    })
+  })
+
   it('drops deleted-sheet preserved calc-chain cells without reindexing sheet ids', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-calc-chain-delete-sheet' })
     await engine.ready()
