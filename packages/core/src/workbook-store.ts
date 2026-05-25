@@ -253,6 +253,10 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return this.cellRecordStore.createLogicalAxisIdEnsurer(sheetId, axis)
   }
 
+  createDenseLogicalAxisIds(sheetId: number, axis: 'row' | 'column', start: number, count: number): string[] {
+    return this.cellRecordStore.createDenseLogicalAxisIds(sheetId, axis, start, count)
+  }
+
   attachAllocatedCellWithLogicalAxisIds(sheetId: number, row: number, col: number, cellIndex: number, rowId: string, colId: string): void {
     this.cellRecordStore.attachAllocatedCellWithLogicalAxisIds(sheetId, row, col, cellIndex, rowId, colId)
   }

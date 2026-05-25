@@ -230,6 +230,9 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
     if (!sheet || sheet.structureVersion !== 1) {
       return null
     }
+    if (this.cellContentInSheetIsProtected(sheet, address.row, address.col)) {
+      throw new WorkPaperOperationError('Workbook protection blocks this change: cell is protected')
+    }
     const cellIndex = sheet.grid.getPhysical(address.row, address.col)
     if (cellIndex === -1) {
       return null
@@ -379,8 +382,34 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
     if (address.row >= (this.config.maxRows ?? MAX_ROWS) || address.col >= (this.config.maxColumns ?? MAX_COLS)) {
       throw new WorkPaperOperationError('Cell contents cannot be set')
     }
+    if (this.cellContentInSheetIsProtected(sheet, address.row, address.col)) {
+      throw new WorkPaperOperationError('Workbook protection blocks this change: cell is protected')
+    }
     const visibleCellIndex = this.getVisibleCellIndexInSheet(sheet, address.row, address.col)
     return this.enqueueValidatedDeferredBatchLiteral(address.sheet, address.row, address.col, content, visibleCellIndex) ? [] : null
+  }
+
+  private tryEnqueueSuspendedLiteralCellContents(
+    address: WorkPaperCellAddress,
+    content: RawCellContent | WorkPaperSheet,
+  ): WorkPaperChange[] | null {
+    if (!this.evaluationSuspended || isWorkPaperSheetMatrix(content)) {
+      return null
+    }
+    if (!isDeferredBatchLiteralContent(content) || isFormulaContent(content)) {
+      return null
+    }
+    const sheet = this.sheetRecord(address.sheet)
+    assertRowAndColumn(address.row, 'address.row')
+    assertRowAndColumn(address.col, 'address.col')
+    if (address.row >= (this.config.maxRows ?? MAX_ROWS) || address.col >= (this.config.maxColumns ?? MAX_COLS)) {
+      throw new WorkPaperOperationError('Cell contents cannot be set')
+    }
+    if (this.cellContentInSheetIsProtected(sheet, address.row, address.col)) {
+      throw new WorkPaperOperationError('Workbook protection blocks this change: cell is protected')
+    }
+    const visibleCellIndex = this.getVisibleCellIndexInSheet(sheet, address.row, address.col)
+    return this.enqueueSuspendedLiteralMutation(address.sheet, address.row, address.col, content, visibleCellIndex) ? [] : null
   }
 
   override getCellValue(address: WorkPaperCellAddress): CellValue {
@@ -390,19 +419,23 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
 
   override setCellContents(address: WorkPaperCellAddress, content: RawCellContent | WorkPaperSheet): WorkPaperChange[] {
     this.assertNotDisposed()
+    const deferredBatchChanges = this.tryEnqueueDeferredBatchLiteralCellContents(address, content)
+    if (deferredBatchChanges !== null) {
+      return deferredBatchChanges
+    }
+    const suspendedLiteralChanges = this.tryEnqueueSuspendedLiteralCellContents(address, content)
+    if (suspendedLiteralChanges !== null) {
+      return suspendedLiteralChanges
+    }
+    const inlineDirectChanges = this.trySetExistingNumericCellContentsInlineDirectFastPath(address, content)
+    if (inlineDirectChanges !== null) {
+      return inlineDirectChanges
+    }
     if (this.cellContentIsProtected(address)) {
       throw new WorkPaperOperationError('Workbook protection blocks this change: cell is protected')
     }
     if (!this.isItPossibleToSetCellContents(address, content)) {
       throw new WorkPaperOperationError('Cell contents cannot be set')
-    }
-    const deferredBatchChanges = this.tryEnqueueDeferredBatchLiteralCellContents(address, content)
-    if (deferredBatchChanges !== null) {
-      return deferredBatchChanges
-    }
-    const inlineDirectChanges = this.trySetExistingNumericCellContentsInlineDirectFastPath(address, content)
-    if (inlineDirectChanges !== null) {
-      return inlineDirectChanges
     }
     const directChanges = trySetExistingLiteralWorkPaperCellContentsDirectFastPath(
       this.getExistingLiteralDirectFastPathRuntime(),

@@ -878,6 +878,29 @@ describe('Workpaper formula regressions', () => {
     expectString(cellValue(workbook, 'Quoted', 2, 1), 'Four')
   })
 
+  it('keeps approximate VLOOKUP duplicate semantics on operand edits', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Sheet1: [
+        [null, null, null, 2.5, '=VLOOKUP(D1,A2:B7,2)'],
+        [1, 100],
+        [2, 200],
+        [2, 220],
+        [2, 240],
+        [3, 300],
+        [4, 400],
+      ],
+    })
+    const sheetId = workbook.getSheetId('Sheet1')!
+
+    expectNumber(cellValue(workbook, 'Sheet1', 0, 4), 240)
+
+    workbook.setCellContents({ sheet: sheetId, row: 0, col: 3 }, 2)
+    expectNumber(cellValue(workbook, 'Sheet1', 0, 4), 200)
+
+    workbook.setCellContents({ sheet: sheetId, row: 0, col: 3 }, 3)
+    expectNumber(cellValue(workbook, 'Sheet1', 0, 4), 300)
+  })
+
   it('resolves range-valued defined names with scalar implicit intersection', () => {
     const rows = Array.from({ length: 43 }, () => Array.from<TestCell>({ length: 8 }).fill(null))
     rows[2][2] = 1

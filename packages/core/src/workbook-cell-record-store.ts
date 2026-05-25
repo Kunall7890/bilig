@@ -87,6 +87,14 @@ export class WorkbookCellRecordStore {
     return (index) => sheet.logicalAxisMap.ensureId(axis, index, () => this.options.createLogicalAxisId(axis))
   }
 
+  createDenseLogicalAxisIds(sheetId: number, axis: 'row' | 'column', start: number, count: number): string[] {
+    const sheet = this.options.getSheetById(sheetId)
+    if (!sheet) {
+      throw new Error(`Unknown sheet id: ${sheetId}`)
+    }
+    return sheet.logicalAxisMap.ensureDenseIds(axis, start, count, () => this.options.createLogicalAxisId(axis))
+  }
+
   attachAllocatedCellWithLogicalAxisIds(sheetId: number, row: number, col: number, cellIndex: number, rowId: string, colId: string): void {
     const sheet = this.options.getSheetById(sheetId)
     if (!sheet) {

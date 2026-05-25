@@ -488,7 +488,7 @@ export function createEngineRuntimeColumnStoreService(args: {
       const area = width * height
       const sheet = area <= 16_384 ? args.state.workbook.getSheet(sheetName) : undefined
       if (sheet?.structureVersion === 1) {
-        const rows: CellValue[][] = Array.from({ length: height }, () => Array.from<CellValue>({ length: width }))
+        const rows: CellValue[][] = Array.from({ length: height }, () => createSparseCellValueRow(width))
         let filledCells = 0
         const blockRowStart = Math.floor(rowStart / BLOCK_ROWS)
         const blockRowEnd = Math.floor(rowEnd / BLOCK_ROWS)
@@ -571,4 +571,10 @@ export function createEngineRuntimeColumnStoreService(args: {
       return (value.stringId !== undefined && value.stringId !== 0 ? normalizeStringId(value.stringId) : value.value).toUpperCase()
     },
   }
+}
+
+function createSparseCellValueRow(width: number): CellValue[] {
+  const row: CellValue[] = []
+  row.length = width
+  return row
 }

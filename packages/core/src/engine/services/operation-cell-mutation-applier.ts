@@ -27,6 +27,7 @@ type OperationCellMutationSource = Exclude<MutationSource, 'remote'>
 type OperationCellDirectFormulaCallbacks = Parameters<typeof finalizeOperationRecalcAndEvents>[0]['directFormulaCallbacks']
 type OperationCellDirtyTraversalSkip = Parameters<typeof finalizeOperationRecalcAndEvents>[0]['canSkipDirtyTraversalForChangedInputs']
 type OperationCellCycleInputMarker = Parameters<typeof finalizeOperationRecalcAndEvents>[0]['markCycleMemberInputsChanged']
+type OperationCellMutationWorkbook = CreateEngineOperationServiceArgs['state']['workbook']
 
 interface CreateOperationCellMutationApplierArgs {
   readonly serviceArgs: CreateEngineOperationServiceArgs
@@ -105,6 +106,31 @@ interface CreateOperationCellMutationApplierArgs {
   readonly applyDirectFormulaNumericResult: (cellIndex: number, value: number) => void
   readonly pruneCellIfOrphaned: (cellIndex: number) => void
   readonly normalizeHistoryDependencyPlaceholder: (cellIndex: number, source: MutationSource) => void
+}
+
+function assertProtectionAllowsCellMutationRefs(workbook: OperationCellMutationWorkbook, refs: readonly EngineCellMutationRef[]): void {
+  const protectionBySheetId = new Map<number, string | null>()
+  for (const ref of refs) {
+    const cachedProtectionSheetName = protectionBySheetId.get(ref.sheetId)
+    if (cachedProtectionSheetName === null) {
+      continue
+    }
+    if (cachedProtectionSheetName !== undefined) {
+      assertProtectionAllowsProtectedOp(workbook, cellMutationRefToEngineOp(workbook, ref))
+      continue
+    }
+
+    const sheet = workbook.getSheetById(ref.sheetId)
+    if (!sheet) {
+      throw new Error(`Unknown sheet id: ${ref.sheetId}`)
+    }
+    if (!workbook.hasProtectionMetadataForSheet(sheet.name)) {
+      protectionBySheetId.set(ref.sheetId, null)
+      continue
+    }
+    protectionBySheetId.set(ref.sheetId, sheet.name)
+    assertProtectionAllowsProtectedOp(workbook, cellMutationRefToEngineOp(workbook, ref))
+  }
 }
 
 export function createOperationCellMutationApplier(input: CreateOperationCellMutationApplierArgs) {
@@ -248,9 +274,7 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
   ): void {
     const isRestore = source === 'restore'
     if (!isRestore && source !== 'undo' && source !== 'redo') {
-      for (const ref of refs) {
-        assertProtectionAllowsProtectedOp(args.state.workbook, cellMutationRefToEngineOp(args.state.workbook, ref))
-      }
+      assertProtectionAllowsCellMutationRefs(args.state.workbook, refs)
     }
     if (tryApplySingleExistingDirectLiteralMutation(refs, batch, source)) {
       return

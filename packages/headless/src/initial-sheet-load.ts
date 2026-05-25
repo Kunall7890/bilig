@@ -187,11 +187,12 @@ export function prepareInitialMixedSheetLoad(args: {
       if (isDenseInitialMixedSheet(args.content, potentialCellCount, maxColumnCount)) {
         const firstCellIndex = cellStore.allocateDenseRowMajorReserved(args.sheetId, args.content.length, maxColumnCount)
         initializeDenseInitialMixedCellFields(cellStore, firstCellIndex, potentialCellCount)
-        const rowIds = materializeAxisIds(args.content.length, 0, ensureRowId)
+        const rowIds = args.engine.workbook.createDenseLogicalAxisIds(args.sheetId, 'row', 0, args.content.length)
+        const denseColIds = args.engine.workbook.createDenseLogicalAxisIds(args.sheetId, 'column', 0, maxColumnCount)
         for (let colIndex = 0; colIndex < maxColumnCount; colIndex += 1) {
-          colIds[colIndex] = ensureColumnId(colIndex)
+          colIds[colIndex] = denseColIds[colIndex]!
         }
-        const attachedDenseCells = attachDenseFreshInitialCells(sheet, firstCellIndex, 0, 0, rowIds, colIds)
+        const attachedDenseCells = attachDenseFreshInitialCells(sheet, firstCellIndex, 0, 0, rowIds, denseColIds)
         if (attachedDenseCells) {
           for (let rowIndex = 0; rowIndex < args.content.length; rowIndex += 1) {
             const row = args.content[rowIndex]!
@@ -297,15 +298,6 @@ function initializeDenseInitialMixedCellFields(
   cellStore.versions.fill(0, firstCellIndex, end)
   cellStore.topoRanks.fill(0, firstCellIndex, end)
   cellStore.cycleGroupIds.fill(-1, firstCellIndex, end)
-}
-
-function materializeAxisIds(count: number, start: number, ensureAxisId: (index: number) => string): string[] {
-  const axisIds: string[] = []
-  axisIds.length = count
-  for (let offset = 0; offset < count; offset += 1) {
-    axisIds[offset] = ensureAxisId(start + offset)
-  }
-  return axisIds
 }
 
 function attachDenseFreshInitialCells(

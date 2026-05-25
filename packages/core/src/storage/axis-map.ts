@@ -52,6 +52,29 @@ export class AxisMap {
     return this.ensure(index, createId)
   }
 
+  ensureDenseIds(start: number, count: number, createId: () => string): string[] {
+    if (count <= 0) {
+      return []
+    }
+    const ids: string[] = []
+    ids.length = count
+    const end = start + count
+    if (this.entries.length < end) {
+      this.entries.length = end
+    }
+    for (let offset = 0; offset < count; offset += 1) {
+      const index = start + offset
+      let id = this.entries[index]
+      if (id === undefined) {
+        id = createId()
+        this.entries[index] = id
+        this.idToIndex.set(id, index)
+      }
+      ids[offset] = id
+    }
+    return ids
+  }
+
   indexOf(id: string): number {
     return this.idToIndex.get(id) ?? -1
   }

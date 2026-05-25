@@ -11,6 +11,7 @@ import { formatJsonForRepo } from './scorecard-format.ts'
 import { parseWorkPaperTrueCalcExtraComparisonEngineSummary } from './workpaper-vs-truecalc-artifact.ts'
 import { parseWorkPaperUniverExtraComparisonEngineSummary } from './workpaper-vs-univer-artifact.ts'
 import { parseWorkPaperXlsxCalcExtraComparisonEngineSummary } from './workpaper-vs-xlsx-calc-artifact.ts'
+import { parseWorkPaperIronCalcRustExtraComparisonEngineSummary } from './workpaper-vs-ironcalc-rust-artifact.ts'
 
 export interface BuildHeadlessPerformanceLeadershipScorecardInput {
   readonly competitiveArtifact: CompetitiveArtifact
@@ -94,6 +95,7 @@ const competitiveArtifactPath = join(rootDir, 'packages', 'benchmarks', 'baselin
 const trueCalcArtifactPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-truecalc.json')
 const univerArtifactPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-univer.json')
 const xlsxCalcArtifactPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-xlsx-calc.json')
+const ironCalcRustArtifactPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-ironcalc-rust.json')
 const requiredWorkbookWideComparisonEngineCount = 2
 
 function main(): void {
@@ -145,6 +147,10 @@ export function loadHeadlessPerformanceLeadershipScorecardInput(): BuildHeadless
       parseWorkPaperTrueCalcExtraComparisonEngineSummary(readJsonObject(trueCalcArtifactPath), toRepoPath(trueCalcArtifactPath)),
       parseWorkPaperUniverExtraComparisonEngineSummary(readJsonObject(univerArtifactPath), toRepoPath(univerArtifactPath)),
       parseWorkPaperXlsxCalcExtraComparisonEngineSummary(readJsonObject(xlsxCalcArtifactPath), toRepoPath(xlsxCalcArtifactPath)),
+      parseWorkPaperIronCalcRustExtraComparisonEngineSummary(
+        readJsonObject(ironCalcRustArtifactPath),
+        toRepoPath(ironCalcRustArtifactPath),
+      ),
     ],
   }
 }

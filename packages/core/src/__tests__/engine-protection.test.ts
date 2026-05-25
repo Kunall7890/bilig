@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { createBatch, createReplicaState } from '../replica-state.js'
 import { SpreadsheetEngine } from '../engine.js'
@@ -129,6 +129,35 @@ describe('SpreadsheetEngine protections', () => {
       }),
     ).not.toThrow()
     expect(engine.getCellValue('Input', 'A1')).toMatchObject({ value: 50 })
+  })
+
+  it('checks unprotected sheet metadata once for same-sheet cell mutation batches', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'protection-batch-fast-path' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const sheet = engine.workbook.getSheet('Sheet1')!
+    const hasProtectionMetadataForSheet = vi.spyOn(engine.workbook, 'hasProtectionMetadataForSheet')
+
+    try {
+      engine.applyCellMutationsAtWithOptions(
+        [
+          { sheetId: sheet.id, mutation: { kind: 'setCellValue', row: 0, col: 0, value: 1 } },
+          { sheetId: sheet.id, mutation: { kind: 'setCellValue', row: 1, col: 0, value: 2 } },
+          { sheetId: sheet.id, mutation: { kind: 'clearCell', row: 2, col: 0 } },
+        ],
+        {
+          captureUndo: false,
+          potentialNewCells: 2,
+          source: 'local',
+        },
+      )
+
+      expect(hasProtectionMetadataForSheet).toHaveBeenCalledTimes(1)
+      expect(hasProtectionMetadataForSheet).toHaveBeenCalledWith('Sheet1')
+      expect(engine.getCellValue('Sheet1', 'A2')).toMatchObject({ value: 2 })
+    } finally {
+      hasProtectionMetadataForSheet.mockRestore()
+    }
   })
 
   it('keeps explicit protected ranges locked even when sheet cell style is unlocked', async () => {

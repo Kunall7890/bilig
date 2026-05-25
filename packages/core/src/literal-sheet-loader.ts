@@ -140,10 +140,8 @@ export function loadDenseLiteralSheetIntoEmptySheet(
   const cellStore = workbook.cellStore
   const firstCellIndex = cellStore.allocateDenseRowMajorReserved(sheetId, content.length, maxColumnCount)
   const writtenColumns = materializeDenseWrittenColumns(maxColumnCount)
-  const ensureRowId = workbook.createLogicalAxisIdEnsurer(sheetId, 'row')
-  const ensureColumnId = workbook.createLogicalAxisIdEnsurer(sheetId, 'column')
-  const rowIds = materializeAxisIds(content.length, ensureRowId)
-  const colIds = materializeAxisIds(maxColumnCount, ensureColumnId)
+  const rowIds = workbook.createDenseLogicalAxisIds(sheetId, 'row', 0, content.length)
+  const colIds = workbook.createDenseLogicalAxisIds(sheetId, 'column', 0, maxColumnCount)
   const attachedDenseCells = attachDenseFreshLiteralCells(sheet, firstCellIndex, 0, 0, rowIds, colIds)
   const previousOnSetValue = cellStore.onSetValue
   cellStore.onSetValue = null
@@ -194,10 +192,8 @@ function loadDenseNumericLiteralSheetIntoEmptySheet(
   const cellStore = workbook.cellStore
   const firstCellIndex = cellStore.allocateDenseRowMajorReserved(sheetId, rowCount, colCount)
   const writtenColumns = materializeDenseWrittenColumns(colCount)
-  const ensureRowId = workbook.createLogicalAxisIdEnsurer(sheetId, 'row')
-  const ensureColumnId = workbook.createLogicalAxisIdEnsurer(sheetId, 'column')
-  const rowIds = materializeAxisIds(rowCount, ensureRowId)
-  const colIds = materializeAxisIds(colCount, ensureColumnId)
+  const rowIds = workbook.createDenseLogicalAxisIds(sheetId, 'row', 0, rowCount)
+  const colIds = workbook.createDenseLogicalAxisIds(sheetId, 'column', 0, colCount)
   const attachedDenseCells = attachDenseFreshLiteralCells(sheet, firstCellIndex, 0, 0, rowIds, colIds)
   const previousOnSetValue = cellStore.onSetValue
   cellStore.onSetValue = null
@@ -246,15 +242,6 @@ function loadDenseNumericLiteralSheetIntoEmptySheet(
     cellStore.onSetValue = previousOnSetValue
   }
   return cellCount
-}
-
-function materializeAxisIds(count: number, ensureAxisId: (index: number) => string): string[] {
-  const axisIds: string[] = []
-  axisIds.length = count
-  for (let index = 0; index < count; index += 1) {
-    axisIds[index] = ensureAxisId(index)
-  }
-  return axisIds
 }
 
 function materializeDenseWrittenColumns(count: number): Uint32Array {

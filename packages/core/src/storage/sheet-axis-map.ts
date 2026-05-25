@@ -26,6 +26,10 @@ export class SheetAxisMap {
     return this.get(axis).ensureId(index, createId)
   }
 
+  ensureDenseIds(axis: AxisKind, start: number, count: number, createId: () => string): string[] {
+    return this.get(axis).ensureDenseIds(start, count, createId)
+  }
+
   indexOf(axis: AxisKind, id: string): number {
     return this.get(axis).indexOf(id)
   }

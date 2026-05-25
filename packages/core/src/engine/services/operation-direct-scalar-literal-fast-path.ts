@@ -17,6 +17,7 @@ export interface OperationDirectScalarLiteralFastPathArgs {
   readonly state: Pick<CreateEngineOperationServiceArgs['state'], 'workbook' | 'strings' | 'formulas' | 'counters' | 'setLastMetrics'>
   readonly getSingleEntityDependent: (entityId: number) => number
   readonly getEntityDependents: (entityId: number) => U32
+  readonly canSkipDirectFormulaColumnVersion: (cellIndex: number) => boolean
   readonly canUseDirectFormulaPostRecalc: (formulaCellIndex: number) => boolean
   readonly tryDirectScalarNumericDeltaFromNumbers: (
     directScalar: RuntimeDirectScalarDescriptor,
@@ -59,6 +60,7 @@ export function tryApplySingleDirectScalarLiteralMutationWithoutEventsAndReturnC
 
   let commonDelta = 0
   let hasCommonDelta = false
+  let canUseCleanTerminalWrites = true
   const validateDependent = (formulaCellIndex: number): boolean => {
     if (!args.canUseDirectFormulaPostRecalc(formulaCellIndex)) {
       return false
@@ -74,6 +76,15 @@ export function tryApplySingleDirectScalarLiteralMutationWithoutEventsAndReturnC
       args.state.workbook.cellStore.tags[formulaCellIndex] !== ValueTag.Number
     ) {
       return false
+    }
+    if (
+      canUseCleanTerminalWrites &&
+      (!args.canSkipDirectFormulaColumnVersion(formulaCellIndex) ||
+        (args.state.workbook.cellStore.stringIds[formulaCellIndex] ?? 0) !== 0 ||
+        (args.state.workbook.cellStore.errors[formulaCellIndex] ?? 0) !== 0 ||
+        ((args.state.workbook.cellStore.flags[formulaCellIndex] ?? 0) & (CellFlags.SpillChild | CellFlags.PivotOutput)) !== 0)
+    ) {
+      canUseCleanTerminalWrites = false
     }
     if (!hasCommonDelta) {
       commonDelta = delta
@@ -95,20 +106,24 @@ export function tryApplySingleDirectScalarLiteralMutationWithoutEventsAndReturnC
     }
   }
 
-  const changedFormulaIndices = singleFormulaCellIndex >= 0 ? Uint32Array.of(singleFormulaCellIndex) : Uint32Array.from(dependents!)
+  const changedFormulaIndices = singleFormulaCellIndex >= 0 ? Uint32Array.of(singleFormulaCellIndex) : dependents!
 
   args.state.workbook.withBatchedColumnVersionUpdates(() => {
     writeLiteralToCellStore(args.state.workbook.cellStore, request.existingIndex, request.value, args.state.strings)
     args.state.workbook.notifyCellValueWritten(request.existingIndex)
-    if (singleFormulaCellIndex >= 0) {
-      if (!args.applyDirectFormulaNumericDelta(singleFormulaCellIndex, commonDelta)) {
-        throw new Error('Failed to apply direct scalar delta')
+    if (canUseCleanTerminalWrites) {
+      const numbers = args.state.workbook.cellStore.numbers
+      const versions = args.state.workbook.cellStore.versions
+      for (let index = 0; index < changedFormulaIndices.length; index += 1) {
+        const cellIndex = changedFormulaIndices[index]!
+        numbers[cellIndex] = numbers[cellIndex]! + commonDelta
+        versions[cellIndex] = versions[cellIndex]! + 1
       }
-    } else {
-      for (let index = 0; index < dependents!.length; index += 1) {
-        if (!args.applyDirectFormulaNumericDelta(dependents![index]!, commonDelta)) {
-          throw new Error('Failed to apply direct scalar delta')
-        }
+      return
+    }
+    for (let index = 0; index < changedFormulaIndices.length; index += 1) {
+      if (!args.applyDirectFormulaNumericDelta(changedFormulaIndices[index]!, commonDelta)) {
+        throw new Error('Failed to apply direct scalar delta')
       }
     }
   })

@@ -71,6 +71,8 @@ import { applyFormulaRuntimePlanFields } from './formula-binding-runtime-update.
 import { rebuildDeferredFormulaFamilyIndex } from './formula-family-index-rebuild.js'
 import { bindFreshDirectAggregateFormulaRun } from './formula-binding-fresh-direct-aggregate-run.js'
 import { bindFreshDirectScalarFormulaRun } from './formula-binding-fresh-direct-scalar-run.js'
+import { tryRewriteSimpleDirectScalarFormulaSourcePreservingBinding } from './formula-binding-direct-scalar-rewrite.js'
+import { updateFormulaBindingVolatileIndex } from './formula-binding-volatile-index.js'
 import type {
   BindPreparedFormulaOptions,
   CreateEngineFormulaBindingServiceArgs,
@@ -79,7 +81,6 @@ import type {
 } from './formula-binding-service-types.js'
 export { formulaBindingServiceTestHooks } from './formula-binding-service-test-hooks.js'
 export type * from './formula-binding-service-types.js'
-
 export function createEngineFormulaBindingService(args: CreateEngineFormulaBindingServiceArgs): EngineFormulaBindingService {
   const resolvedCompiledCache = new Map<string, ParsedCompiledFormula>()
   const formulaMemberCounts = createFormulaBindingMemberCounts()
@@ -114,16 +115,8 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     formulaFamilyIndex.clearNow()
   }
 
-  const updateVolatileFormulaIndex = (cellIndex: number, formula: RuntimeFormula | undefined): void => {
-    if (!args.volatileFormulaCells) {
-      return
-    }
-    if (formula?.compiled.volatile) {
-      args.volatileFormulaCells.add(cellIndex)
-      return
-    }
-    args.volatileFormulaCells.delete(cellIndex)
-  }
+  const updateVolatileFormulaIndex = (cellIndex: number, formula: RuntimeFormula | undefined): void =>
+    updateFormulaBindingVolatileIndex(args.volatileFormulaCells, cellIndex, formula)
 
   const trackFormulaSheetIndexes = (
     cellIndex: number,
@@ -708,6 +701,16 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     )
 
   const rewriteFormulaSourcePreservingBindingNow = (cellIndex: number, ownerSheetName: string, source: string): boolean => {
+    if (
+      tryRewriteSimpleDirectScalarFormulaSourcePreservingBinding(
+        args.state.formulas.get(cellIndex),
+        args.state.workbook.metadata.definedNames.size,
+        source,
+        (compiled) => rewriteFormulaCompiledPreservingBindingNow(cellIndex, source, compiled),
+      )
+    ) {
+      return true
+    }
     const { compiled, templateResolution } = compileFormulaForCell(cellIndex, ownerSheetName, source)
     return rewriteFormulaCompiledPreservingBindingNow(cellIndex, source, compiled, templateResolution.templateId)
   }

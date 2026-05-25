@@ -204,6 +204,8 @@
     "workpaper:bench:univer:check": "tsx scripts/gen-workpaper-vs-univer-benchmark.ts --check",
     "workpaper:bench:xlsx-calc:generate": "tsx scripts/gen-workpaper-vs-xlsx-calc-benchmark.ts",
     "workpaper:bench:xlsx-calc:check": "tsx scripts/gen-workpaper-vs-xlsx-calc-benchmark.ts --check",
+    "workpaper:bench:ironcalc-rust:generate": "tsx scripts/gen-workpaper-vs-ironcalc-rust-benchmark.ts",
+    "workpaper:bench:ironcalc-rust:check": "tsx scripts/gen-workpaper-vs-ironcalc-rust-benchmark.ts --check",
     "headless:performance:generate": "bun scripts/gen-headless-performance-leadership-scorecard.ts",
     "headless:performance:check": "bun scripts/gen-headless-performance-leadership-scorecard.ts --check",
     "workpaper:xlsx-corpus:fixtures:generate": "bun scripts/gen-workpaper-xlsx-corpus-fixtures.ts",

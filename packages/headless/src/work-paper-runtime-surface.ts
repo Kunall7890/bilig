@@ -451,18 +451,26 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
 
   protected cellContentIsProtected(address: WorkPaperCellAddress): boolean {
     const sheet = this.sheetRecord(address.sheet)
+    return this.cellContentInSheetIsProtected(sheet, address.row, address.col)
+  }
+
+  protected cellContentInSheetIsProtected(sheet: SheetRecord, row: number, col: number): boolean {
     const sheetName = sheet.name
     const workbook = this.engine.workbook
     if (!workbook.hasProtectionMetadataForSheet(sheetName)) {
       return false
     }
-    if (workbook.listRangeProtections(sheetName).some((protection) => cellAddressInRange(address.row, address.col, protection.range))) {
+    if (workbook.listRangeProtections(sheetName).some((protection) => cellAddressInRange(row, col, protection.range))) {
       return true
     }
     if (!workbook.getSheetProtection(sheetName)) {
       return false
     }
-    return workbook.getCellStyleProtection(sheetName, address.row, address.col)?.locked !== false
+    const getCellStyleProtection = Reflect.get(workbook, 'getCellStyleProtection')
+    if (typeof getCellStyleProtection !== 'function') {
+      return true
+    }
+    return getCellStyleProtection.call(workbook, sheetName, row, col)?.locked !== false
   }
 
   protected requireSheetId(name: string): number {
