@@ -57,4 +57,72 @@ describe('@bilig/workbook run adapter option boundary', () => {
       ],
     })
   })
+
+  it('rejects non-plain and unknown adapter check options', async () => {
+    const model = defineModel({
+      name: 'adapter-options-plain-model',
+      find(workbook) {
+        return {
+          target: workbook.findName('target'),
+        }
+      },
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.target)]
+      },
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeValue(refs.target, 1)
+        },
+      },
+    })
+
+    const prepared = prepareWorkbookAction(model, 'write')
+    if (prepared.status !== 'prepared') {
+      throw new Error('expected adapter options fixture to prepare')
+    }
+
+    class AdapterOptions {
+      expectedBaseRevision = 1
+    }
+
+    await expect(Reflect.apply(checkWorkbookRunAdapter, undefined, [prepared.planData, {}, new AdapterOptions()])).resolves.toMatchObject({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_run_options',
+          message: 'Workbook run options must be a plain object',
+          path: 'options',
+          issueCode: 'invalid_run_options',
+        },
+      ],
+      issues: [
+        {
+          code: 'invalid_run_options',
+          path: 'options',
+          message: 'Workbook run options must be a plain object',
+        },
+      ],
+    })
+
+    await expect(
+      Reflect.apply(checkWorkbookRunAdapter, undefined, [prepared.planData, {}, { expectedBaseRevison: 1 }]),
+    ).resolves.toMatchObject({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_run_options',
+          message: 'Workbook run option expectedBaseRevison is unknown',
+          path: 'options.expectedBaseRevison',
+          issueCode: 'invalid_run_options',
+        },
+      ],
+      issues: [
+        {
+          code: 'invalid_run_options',
+          path: 'options.expectedBaseRevison',
+          message: 'Workbook run option expectedBaseRevison is unknown',
+        },
+      ],
+    })
+  })
 })

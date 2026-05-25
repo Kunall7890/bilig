@@ -3,6 +3,11 @@ import type { WorkbookJsonSchemaValue } from './schema.js'
 const engineOp = Object.freeze({ $ref: '#/$defs/engineOp' })
 const cellRange = Object.freeze({ $ref: '#/$defs/cellRange' })
 const actionInput = Object.freeze({ $ref: '#/$defs/actionInput' })
+const exactString = Object.freeze({
+  type: 'string',
+  minLength: 1,
+  pattern: '^(?!\\s)(?![\\s\\S]*\\s$)[\\s\\S]+$',
+} as const)
 
 function styleSectionRequestSchema(section: string, keys: readonly string[]): WorkbookJsonSchemaValue {
   return {
@@ -174,7 +179,7 @@ export const workbookUndoRefSchema: WorkbookJsonSchemaValue = {
   required: ['id'],
   additionalProperties: false,
   properties: {
-    id: { type: 'string', minLength: 1 },
+    id: exactString,
     ops: { type: 'array', items: engineOp },
   },
 }
@@ -184,17 +189,17 @@ export const workbookCommandReceiptSchema: WorkbookJsonSchemaValue = {
   required: ['status', 'featureId', 'commandId', 'category'],
   properties: {
     status: { enum: ['previewed', 'applied', 'rejected', 'noop'] },
-    featureId: { type: 'string', minLength: 1 },
-    commandId: { type: 'string', minLength: 1 },
+    featureId: exactString,
+    commandId: exactString,
     category: { enum: ['command', 'operation', 'mutation'] },
     previewOps: { type: 'array', items: engineOp },
     appliedOps: { type: 'array', items: engineOp },
     undo: workbookUndoRefSchema,
     changedRanges: { type: 'array', items: cellRange },
     proof: actionInput,
-    message: { type: 'string', minLength: 1 },
+    message: exactString,
     metadata: actionInput,
-    errors: { type: 'array', items: { type: 'string', minLength: 1 } },
+    errors: { type: 'array', items: exactString },
   },
   additionalProperties: false,
   allOf: [

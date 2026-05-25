@@ -32,6 +32,17 @@ export type WorkbookRunOptionsNormalization =
       readonly error: WorkbookRunError
     }
 
+const RUN_OPTION_KEYS: ReadonlySet<string> = new Set([
+  'strict',
+  'requireApplyProof',
+  'requirePlanId',
+  'requireChecks',
+  'requireCheckProof',
+  'requireRevision',
+  'requireNoUnverified',
+  'expectedBaseRevision',
+])
+
 class WorkbookRunOptionsError extends Error {
   readonly path: string
 
@@ -67,7 +78,11 @@ function runErrorAt(code: WorkbookRunError['code'], message: string, path: strin
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false
+  }
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
 }
 
 function ownDataDescriptor(value: object, key: string): PropertyDescriptor | undefined {
@@ -144,6 +159,14 @@ function normalizeOptionalRevisionOption(source: object): number | undefined {
   return descriptor.value
 }
 
+function assertKnownRunOptions(source: object): void {
+  for (const key of Object.keys(Object.getOwnPropertyDescriptors(source))) {
+    if (!RUN_OPTION_KEYS.has(key)) {
+      throw new WorkbookRunOptionsError(`options.${key}`, `Workbook run option ${key} is unknown`)
+    }
+  }
+}
+
 export function normalizeRunOptions(options: unknown): WorkbookRunOptionsNormalization {
   if (options === undefined) {
     return {
@@ -159,13 +182,14 @@ export function normalizeRunOptions(options: unknown): WorkbookRunOptionsNormali
       },
     }
   }
-  if (!isRecord(options) || Array.isArray(options)) {
+  if (!isRecord(options)) {
     return {
       status: 'invalid',
-      error: runErrorAt('invalid_run_options', 'Workbook run options must be an object', 'options'),
+      error: runErrorAt('invalid_run_options', 'Workbook run options must be a plain object', 'options'),
     }
   }
   try {
+    assertKnownRunOptions(options)
     const strict = normalizeRunOption(options, 'strict')
     const requireApplyProof = normalizeRunOption(options, 'requireApplyProof')
     const requirePlanId = normalizeRunOption(options, 'requirePlanId')

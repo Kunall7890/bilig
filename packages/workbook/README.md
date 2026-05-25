@@ -175,8 +175,8 @@ production proof. Strict mode requires:
 - command receipts bound to planned digests and concrete `resolvedRefs`
 - proof on every passed check
 
-Runtime authors can run the same own-data-option contract with the
-`@bilig/workbook/testing` adapter helpers.
+Runtime authors can run the same plain-object, known-key, own-data-option
+contract with the `@bilig/workbook/testing` adapter helpers.
 
 The returned `WorkbookRunResult` is intentionally plain:
 

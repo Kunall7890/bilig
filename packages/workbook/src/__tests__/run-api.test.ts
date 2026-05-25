@@ -154,6 +154,54 @@ describe('@bilig/workbook run api', () => {
     expect(read).not.toHaveBeenCalled()
   })
 
+  it('fails closed for non-plain or unknown run options before runtime work starts', async () => {
+    const model = valueModel()
+    const apply = vi.fn<Required<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>>['apply']>(applied)
+    const read = vi.fn<Required<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>>['read']>((targets) => [
+      { target: first(targets), value: 12 },
+    ])
+
+    class RunOptions {
+      strict = true
+    }
+
+    const classResult = await Reflect.apply(runWorkbookAction, undefined, [model, 'write', { apply, read }, undefined, new RunOptions()])
+    expect(classResult).toMatchObject({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_run_options',
+          message: 'Workbook run options must be a plain object',
+          path: 'options',
+          issueCode: 'invalid_run_options',
+        },
+      ],
+    })
+
+    const typoResult = await Reflect.apply(runWorkbookAction, undefined, [
+      model,
+      'write',
+      { apply, read },
+      undefined,
+      {
+        requireApplyproof: true,
+      },
+    ])
+    expect(typoResult).toMatchObject({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_run_options',
+          message: 'Workbook run option requireApplyproof is unknown',
+          path: 'options.requireApplyproof',
+          issueCode: 'invalid_run_options',
+        },
+      ],
+    })
+    expect(apply).not.toHaveBeenCalled()
+    expect(read).not.toHaveBeenCalled()
+  })
+
   it('fails closed for accessor-backed runtime adapter methods without invoking getters', async () => {
     const model = valueModel()
     let applyGetterInvoked = false
@@ -306,6 +354,30 @@ describe('@bilig/workbook run api', () => {
       ],
       checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
     })
+  })
+
+  it('rejects whitespace-padded undo ids before exposing run proof', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: () => ({
+        status: 'applied',
+        undo: { id: ' undo-1 ' },
+      }),
+      read: () => [],
+    })
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message: 'Workbook action run-value-model.write returned invalid undo metadata',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
+    })
+    expect(result).not.toHaveProperty('undo')
   })
 
   it('can require apply proof before readback and check verification', async () => {

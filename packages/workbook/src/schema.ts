@@ -51,6 +51,11 @@ const cellRange = Object.freeze({ $ref: '#/$defs/cellRange' })
 const engineOp = Object.freeze({ $ref: '#/$defs/engineOp' })
 const actionInput = Object.freeze({ $ref: '#/$defs/actionInput' })
 const actionInputDescription = Object.freeze({ $ref: '#/$defs/actionInputDescription' })
+const exactString = Object.freeze({
+  type: 'string',
+  minLength: 1,
+  pattern: '^(?!\\s)(?![\\s\\S]*\\s$)[\\s\\S]+$',
+} as const)
 const nonNegativeSafeInteger = Object.freeze({
   type: 'integer',
   minimum: 0,
@@ -448,8 +453,8 @@ export const workbookJsonSchemas = deepFreeze({
         required: ['featureId', 'commandId'],
         additionalProperties: false,
         properties: {
-          featureId: { type: 'string', minLength: 1 },
-          commandId: { type: 'string', minLength: 1 },
+          featureId: exactString,
+          commandId: exactString,
           category: { enum: ['command', 'operation', 'mutation'] },
           mode: { enum: ['preview', 'apply', 'applyAndVerify'] },
           input: actionInput,
@@ -463,7 +468,7 @@ export const workbookJsonSchemas = deepFreeze({
             additionalProperties: false,
             properties: {
               kind: { const: 'request' },
-              id: { type: 'string', minLength: 1 },
+              id: exactString,
               touchedRanges: { type: 'array', items: cellRange },
               destructive: { type: 'boolean' },
               request: { $ref: '#/$defs/commandRequest' },
@@ -475,7 +480,7 @@ export const workbookJsonSchemas = deepFreeze({
             additionalProperties: false,
             properties: {
               kind: { const: 'op' },
-              id: { type: 'string', minLength: 1 },
+              id: exactString,
               touchedRanges: { type: 'array', items: cellRange },
               destructive: { const: true },
               op: engineOp,
@@ -488,9 +493,9 @@ export const workbookJsonSchemas = deepFreeze({
     required: ['targetRevision', 'idempotencyKey', 'commands'],
     additionalProperties: false,
     properties: {
-      id: { type: 'string', minLength: 1 },
+      id: exactString,
       targetRevision: nonNegativeSafeInteger,
-      idempotencyKey: { type: 'string', minLength: 1 },
+      idempotencyKey: exactString,
       scope: {
         type: 'object',
         additionalProperties: false,
@@ -510,9 +515,9 @@ export const workbookJsonSchemas = deepFreeze({
     additionalProperties: false,
     properties: {
       status: { enum: ['accepted', 'previewed', 'applied', 'rejected', 'noop'] },
-      bundleId: { type: 'string', minLength: 1 },
+      bundleId: exactString,
       targetRevision: nonNegativeSafeInteger,
-      idempotencyKey: { type: 'string', minLength: 1 },
+      idempotencyKey: exactString,
       commandCount: nonNegativeSafeInteger,
       touchedRanges: { type: 'array', items: cellRange },
       touchedCellCount: nonNegativeSafeInteger,
@@ -521,7 +526,7 @@ export const workbookJsonSchemas = deepFreeze({
       changedRanges: { type: 'array', items: cellRange },
       revision: nonNegativeSafeInteger,
       undo: { $ref: '#/$defs/undo' },
-      errors: { type: 'array', items: { type: 'string' } },
+      errors: { type: 'array', items: exactString },
     },
     allOf: [
       {

@@ -276,6 +276,39 @@ function pushRequiredStringFieldIssue(
   }
 }
 
+function pushRequiredExactStringFieldIssue(
+  issues: WorkbookRunResultDescriptionIssue[],
+  value: Record<string, unknown>,
+  path: string,
+  key: string,
+): void {
+  const fieldPath = `${path}.${key}`
+  const descriptor = Object.getOwnPropertyDescriptor(value, key)
+  if (descriptor === undefined) {
+    issues.push(runResultDescriptionIssue('missing_field', fieldPath, `Workbook run result description ${fieldPath} is required`))
+    return
+  }
+  if (!('value' in descriptor)) {
+    issues.push(
+      runResultDescriptionIssue('invalid_field', fieldPath, `Workbook run result description ${fieldPath} must be a data property`),
+    )
+    return
+  }
+  if (typeof descriptor.value !== 'string') {
+    issues.push(runResultDescriptionIssue('invalid_field', fieldPath, `Workbook run result description ${fieldPath} must be a string`))
+    return
+  }
+  if (descriptor.value.trim() === '' || descriptor.value.trim() !== descriptor.value) {
+    issues.push(
+      runResultDescriptionIssue(
+        'invalid_field',
+        fieldPath,
+        `Workbook run result description ${fieldPath} must not be empty or have leading or trailing whitespace`,
+      ),
+    )
+  }
+}
+
 function pushOptionalStringFieldIssue(
   issues: WorkbookRunResultDescriptionIssue[],
   value: Record<string, unknown>,
@@ -628,7 +661,7 @@ function pushUndoDescriptionIssues(issues: WorkbookRunResultDescriptionIssue[], 
     return
   }
   pushUnexpectedObjectFields(issues, value, 'undo', new Set(['id', 'ops']))
-  pushRequiredStringFieldIssue(issues, value, 'undo', 'id')
+  pushRequiredExactStringFieldIssue(issues, value, 'undo', 'id')
   pushJsonArrayFieldIssue(issues, value, 'undo', 'ops')
 }
 

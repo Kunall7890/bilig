@@ -864,10 +864,11 @@ proof; if `requirePlanId` is true and the adapter omits it, the run fails with
 `plan_not_verified`. `requireRevision` and strict mode require `baseRevision`
 and `revision`; `expectedBaseRevision` rejects stale applies before readback.
 `requireCheckProof` and strict mode reject passed checks without proof. Run
-options, adapter-conformance options, and adapter methods are read as own data
-properties only; accessor-backed options fail with `invalid_run_options`, and
-accessor-backed runtime methods are treated as missing capabilities without
-invoking getters. If a readback
+options and adapter-conformance options must be plain objects with known keys and
+own data properties only; custom-prototype objects, unknown option names, and
+accessor-backed options fail with `invalid_run_options`. Adapter methods are
+also read as own data properties only; accessor-backed runtime methods are
+treated as missing capabilities without invoking getters. If a readback
 expectation is missing or mismatched after a reader runs, the run fails with
 deterministic codes such as `readback_missing`, `value_mismatch`, or
 `formula_mismatch`.

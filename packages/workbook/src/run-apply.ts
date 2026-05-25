@@ -277,13 +277,13 @@ function isWorkbookUndoRef(value: unknown): value is WorkbookUndoRef {
   }
   const id = ownValue(value, 'id')
   const ops = ownValue(value, 'ops')
-  return typeof id === 'string' && (ops === undefined || isWorkbookOpArray(ops))
+  return isExactString(id) && (ops === undefined || isWorkbookOpArray(ops))
 }
 
 function cloneUndoRef(undo: WorkbookUndoRef): WorkbookUndoRef {
   const id = ownValue(undo, 'id')
   const ops = ownValue(undo, 'ops')
-  if (typeof id !== 'string') {
+  if (!isExactString(id)) {
     throw new Error('invalid undo metadata')
   }
   return {
@@ -314,6 +314,10 @@ function cloneOp(op: EngineOp): EngineOp {
     throw new Error('invalid workbook op clone')
   }
   return cloned
+}
+
+function isExactString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '' && value.trim() === value
 }
 
 function opsMatch(left: readonly EngineOp[], right: readonly EngineOp[]): boolean {

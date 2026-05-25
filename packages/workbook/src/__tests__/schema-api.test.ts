@@ -28,6 +28,11 @@ const nonNegativeSafeIntegerSchema = Object.freeze({
   minimum: 0,
   maximum: Number.MAX_SAFE_INTEGER,
 })
+const exactStringSchema = Object.freeze({
+  type: 'string',
+  minLength: 1,
+  pattern: '^(?!\\s)(?![\\s\\S]*\\s$)[\\s\\S]+$',
+})
 
 function readFixture(name: string): unknown {
   return JSON.parse(readFileSync(new URL(name, fixtureRoot), 'utf8'))
@@ -105,6 +110,11 @@ function expectInvalidRefDataParity(payload: unknown): void {
 function expectInvalidCommandBundleParity(payload: unknown): void {
   expect(validateWithJsonSchema('commandBundle', payload)).toBe(false)
   expect(checkWorkbookCommandBundle(payload).status).toBe('invalid')
+}
+
+function expectInvalidCommandResultParity(payload: unknown): void {
+  expect(validateWithJsonSchema('commandResult', payload)).toBe(false)
+  expect(checkWorkbookCommandResult(payload).status).toBe('invalid')
 }
 
 describe('@bilig/workbook schema api', () => {
@@ -185,7 +195,7 @@ describe('@bilig/workbook schema api', () => {
       required: ['id'],
       additionalProperties: false,
       properties: {
-        id: { type: 'string', minLength: 1 },
+        id: exactStringSchema,
         ops: { type: 'array', items: { $ref: '#/$defs/engineOp' } },
       },
     })
@@ -475,6 +485,95 @@ describe('@bilig/workbook schema api', () => {
     } as const
     expect(validateWithJsonSchema('commandResult', appliedWithLooseReceiptUndo)).toBe(false)
     expect(checkWorkbookCommandResult(appliedWithLooseReceiptUndo).status).toBe('invalid')
+  })
+
+  it('keeps command transport string schemas aligned with exact-string checks', () => {
+    expectInvalidCommandBundleParity({
+      targetRevision: 1,
+      idempotencyKey: ' bundle ',
+      commands: [
+        {
+          kind: 'op',
+          destructive: true,
+          op: { kind: 'clearCell', sheetName: 'Sheet1', address: 'A1' },
+        },
+      ],
+    })
+    expectInvalidCommandBundleParity({
+      targetRevision: 1,
+      idempotencyKey: 'bundle',
+      commands: [
+        {
+          kind: 'request',
+          id: ' command ',
+          request: {
+            featureId: 'cells',
+            commandId: 'set-value',
+          },
+        },
+      ],
+    })
+    expectInvalidCommandBundleParity({
+      targetRevision: 1,
+      idempotencyKey: 'bundle',
+      commands: [
+        {
+          kind: 'request',
+          request: {
+            featureId: ' cells',
+            commandId: 'set-value',
+          },
+        },
+      ],
+    })
+
+    expectInvalidCommandResultParity({
+      status: 'accepted',
+      targetRevision: 1,
+      idempotencyKey: ' result ',
+      commandCount: 1,
+      touchedRanges: [],
+      touchedCellCount: 0,
+    })
+    expectInvalidCommandResultParity({
+      status: 'applied',
+      targetRevision: 1,
+      idempotencyKey: 'result',
+      commandCount: 1,
+      touchedRanges: [],
+      touchedCellCount: 0,
+      receipts: [
+        {
+          status: 'applied',
+          featureId: 'cells',
+          commandId: ' set-value',
+          category: 'mutation',
+          changedRanges: [],
+        },
+      ],
+      matched: null,
+      changedRanges: [],
+    })
+    expectInvalidCommandResultParity({
+      status: 'rejected',
+      targetRevision: 1,
+      idempotencyKey: 'result',
+      commandCount: 1,
+      touchedRanges: [],
+      touchedCellCount: 0,
+      receipts: [
+        {
+          status: 'rejected',
+          featureId: 'cells',
+          commandId: 'set-value',
+          category: 'mutation',
+          errors: [' failed'],
+        },
+      ],
+      matched: null,
+      changedRanges: [],
+      errors: [' failed'],
+    })
   })
 
   it('publishes command-bundle style record schemas that match op guards', () => {
