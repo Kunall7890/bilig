@@ -370,6 +370,9 @@ function appendSelectionVisualOverlay(input: {
       case 'header-fill':
         input.fillRects.push({ ...rect.bounds, color: parseGpuColor(workbookThemeColors.selectionHeaderFill) })
         break
+      case 'header-seam-cover':
+        input.fillRects.push({ ...rect.bounds, color: parseGpuColor(workbookThemeColors.selectionHeaderSeamFill) })
+        break
       case 'hover-fill':
         input.fillRects.push({ ...rect.bounds, color: parseGpuColor(workbookThemeColors.hoverFill) })
         break

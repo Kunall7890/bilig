@@ -42,6 +42,7 @@ export const workbookThemeColors = {
   selectionAccent: '#217346',
   selectionFill: 'rgba(33, 115, 70, 0.22)',
   selectionHeaderFill: 'rgba(33, 115, 70, 0.16)',
+  selectionHeaderSeamFill: '#d1ddd2',
   border: '#ddd8cc',
   borderSubtle: '#e7e2d6',
   gridBorder: '#ddd8cc',

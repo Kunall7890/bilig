@@ -11,6 +11,7 @@ export type GridSelectionVisualRectRole =
   | 'active-border'
   | 'fill-handle'
   | 'header-fill'
+  | 'header-seam-cover'
   | 'hover-fill'
 
 export interface GridSelectionVisualRect {
@@ -144,6 +145,7 @@ function appendAxisSelectionVisualRects(
     const clipped = bounds && clip ? clipRect(bounds, clip) : null
     if (clipped) {
       appendColumnHeaderFillRect(rects, `header-fill:column:${index}`, clipped)
+      appendColumnHeaderSeamCoverRect(rects, `header-seam-cover:column:${index}`, clipped)
     }
   }
   for (const index of visibleRowIndexes(input.geometry)) {
@@ -158,6 +160,7 @@ function appendAxisSelectionVisualRects(
     const clipped = bounds && clip ? clipRect(bounds, clip) : null
     if (clipped) {
       appendRowHeaderFillRect(rects, `header-fill:row:${index}`, clipped)
+      appendRowHeaderSeamCoverRect(rects, `header-seam-cover:row:${index}`, clipped)
     }
   }
 
@@ -302,11 +305,29 @@ function appendColumnHeaderFillRect(rects: GridSelectionVisualRect[], key: strin
   })
 }
 
+function appendColumnHeaderSeamCoverRect(rects: GridSelectionVisualRect[], key: string, bounds: Rectangle): void {
+  appendRect(rects, 'header-seam-cover', key, {
+    x: bounds.x + 1,
+    y: bounds.y + Math.max(0, bounds.height - 1),
+    width: Math.max(0, bounds.width - 2),
+    height: 1,
+  })
+}
+
 function appendRowHeaderFillRect(rects: GridSelectionVisualRect[], key: string, bounds: Rectangle): void {
   appendRect(rects, 'header-fill', key, {
     x: bounds.x,
     y: bounds.y + 1,
     width: bounds.width,
+    height: Math.max(0, bounds.height - 2),
+  })
+}
+
+function appendRowHeaderSeamCoverRect(rects: GridSelectionVisualRect[], key: string, bounds: Rectangle): void {
+  appendRect(rects, 'header-seam-cover', key, {
+    x: bounds.x + Math.max(0, bounds.width - 1),
+    y: bounds.y + 1,
+    width: 1,
     height: Math.max(0, bounds.height - 2),
   })
 }

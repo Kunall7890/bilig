@@ -407,6 +407,7 @@ test('@browser-ci web app keeps selected row headers and body cells on a single 
   }
   const rowTop = await getProductRowTop(page, 7)
   const seamY = grid.y + PRODUCT_HEADER_HEIGHT + rowTop + 10
+  const headerInteriorPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 4, seamY)
   const headerLastPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 1, seamY)
   const bodyFirstPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH, seamY)
 
@@ -421,6 +422,10 @@ test('@browser-ci web app keeps selected row headers and body cells on a single 
     isGridBorderPixel(headerLastPixel) && isGridBorderPixel(bodyFirstPixel),
     'row header/body seam should not show adjacent structural gridlines',
   ).toBe(false)
+  expect(
+    maxPixelChannelDistance(headerInteriorPixel, headerLastPixel),
+    'selected row-header fill should fully cover the static header seam instead of translucent double-painting it',
+  ).toBeLessThanOrEqual(4)
   expect(bodyFirstPixel.green, 'first body pixel should remain selected-row fill, not a border').toBeGreaterThan(bodyFirstPixel.red)
 })
 
@@ -1323,6 +1328,13 @@ function isSelectionAccentPixel(pixel: { readonly blue: number; readonly green: 
 
 function isGridBorderPixel(pixel: { readonly blue: number; readonly green: number; readonly red: number }): boolean {
   return Math.abs(pixel.red - 221) <= 8 && Math.abs(pixel.green - 216) <= 8 && Math.abs(pixel.blue - 204) <= 8
+}
+
+function maxPixelChannelDistance(
+  left: { readonly blue: number; readonly green: number; readonly red: number },
+  right: { readonly blue: number; readonly green: number; readonly red: number },
+): number {
+  return Math.max(Math.abs(left.red - right.red), Math.abs(left.green - right.green), Math.abs(left.blue - right.blue))
 }
 
 async function isTypeGpuCanvasActive(page: Page): Promise<boolean> {
