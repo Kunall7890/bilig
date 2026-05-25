@@ -40,7 +40,7 @@ export function initialDirectScalarLinearDeltaClosureCapacity(scalarDeltaClosure
   if (!Number.isFinite(scalarDeltaClosureLimit) || scalarDeltaClosureLimit <= 0) {
     return 1
   }
-  return Math.max(1, Math.trunc(scalarDeltaClosureLimit) + 1)
+  return Math.max(1, Math.min(Math.trunc(scalarDeltaClosureLimit) + 1, 2_048))
 }
 
 export function createOperationDirectPostRecalcMarkers(args: {

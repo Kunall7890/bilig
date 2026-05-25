@@ -96,8 +96,8 @@ function createMarkers(input: {
 }
 
 describe('operation direct post-recalc markers', () => {
-  it('preallocates linear scalar closure buffers to the configured large-chain limit', () => {
-    expect(initialDirectScalarLinearDeltaClosureCapacity(4096)).toBe(4097)
+  it('bounds large linear scalar closure buffer preallocation while honoring small-chain limits', () => {
+    expect(initialDirectScalarLinearDeltaClosureCapacity(4096)).toBe(2048)
     expect(initialDirectScalarLinearDeltaClosureCapacity(32)).toBe(33)
     expect(initialDirectScalarLinearDeltaClosureCapacity(0)).toBe(1)
   })
