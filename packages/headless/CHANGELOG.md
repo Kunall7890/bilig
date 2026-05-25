@@ -4,6 +4,30 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.107.8
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.107.3
+- Manual override: no
+
+## Fixes
+- fix(workbook): bind format receipts to ranges (bd36d30e)
+- fix(workbook): bind format receipts to payloads (2b98c0b4)
+- fix(workbook): prove op command receipts (87c067c8)
+- fix(workbook): harden public proof contracts (147f8f7f)
+- fix(workbook): prove all rendered mutation ranges (33316b6a)
+
+## Internal runtime changes
+- test(core): align formula replacement counters (dc369fcf)
+- docs(growth): add LobeHub MCP setup (24672255)
+- chore(release): runtime packages v0.107.4 (0948540d)
+- docs(growth): add AnythingLLM MCP setup (45ffc05e)
+- chore(release): runtime packages v0.107.5 (d5c5e151)
+- test(workbook): include guard fuzz coverage (112f4fa2)
+- chore(release): runtime packages v0.107.6 (3f51ca29)
+- chore(release): runtime packages v0.107.7 (afde4bee)
+- test(workbook): bind op schema to source union (66e77329)
+
 ## 0.107.7
 
 - Release type: patch
