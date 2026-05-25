@@ -5,7 +5,7 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { createGridAxisWorldIndex, type GridAxisWorldIndex } from '../gridAxisWorldIndex.js'
 import { createGridGeometrySnapshotFromAxes, type GridGeometrySnapshot } from '../gridGeometry.js'
 import { getGridMetrics } from '../gridMetrics.js'
-import { createColumnSliceSelection, createRangeSelection, createGridSelection } from '../gridSelection.js'
+import { createColumnSliceSelection, createRangeSelection, createGridSelection, createRowSliceSelection } from '../gridSelection.js'
 import { buildGridSelectionVisualRects, GridSelectionVisualOverlay } from '../GridSelectionVisualOverlay.js'
 
 describe('GridSelectionVisualOverlay', () => {
@@ -39,7 +39,7 @@ describe('GridSelectionVisualOverlay', () => {
     expect(rects.some((rect) => rect.role === 'active-border')).toBe(false)
   })
 
-  test('builds visible header, body, and active-cell rects for axis selections', () => {
+  test('builds visible header and body rects for axis selections without an extra active-cell box', () => {
     const geometry = createGeometry()
     const selection = createColumnSliceSelection(1, 3, 4)
 
@@ -59,11 +59,33 @@ describe('GridSelectionVisualOverlay', () => {
         expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 146, y: 24, width: 300, height: 216 }) }),
         expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 246, y: 24, width: 1, height: 216 }) }),
         expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 146, y: 44, width: 300, height: 1 }) }),
-        expect.objectContaining({ role: 'active-border', bounds: expect.objectContaining({ x: 146, y: 104, width: 100, height: 20 }) }),
       ]),
     )
     expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(1)
     expect(rects.filter((rect) => rect.role === 'selection-gridline')).toHaveLength(12)
+    expect(rects.some((rect) => rect.role === 'active-border')).toBe(false)
+    expect(rects.some((rect) => rect.role === 'selection-border')).toBe(false)
+  })
+
+  test('keeps row-axis selections off the row-header seam by omitting active-cell chrome', () => {
+    const geometry = createGeometry()
+    const selection = createRowSliceSelection(0, 7, 14)
+
+    const rects = buildGridSelectionVisualRects({
+      geometry,
+      gridSelection: selection,
+      selectedCell: [0, 7],
+      selectionRange: selection.current?.range ?? null,
+      showFillHandle: false,
+    })
+
+    expect(rects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 1, y: 165, width: 44, height: 18 }) }),
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 46, y: 164, width: 514, height: 76 }) }),
+      ]),
+    )
+    expect(rects.some((rect) => rect.role === 'active-border')).toBe(false)
   })
 
   test('clips scrolled axis header fills to their panes', () => {

@@ -1456,11 +1456,7 @@ test('@browser-webgpu @browser-deep axis selections paint atomically over the ty
     'selected column body fill',
     'visible',
   )
-  await expectSelectionVisualOpacity(
-    page.locator('[data-grid-selection-visual-role="active-border"]'),
-    'selected column active cell border',
-    'visible',
-  )
+  await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
   await expect(page.locator('[data-grid-selection-visual-key="header-fill:column:3"]')).toHaveCount(0)
 
   await clickProductCell(page, 1, 1)
@@ -1482,11 +1478,7 @@ test('@browser-webgpu @browser-deep axis selections paint atomically over the ty
     'selected row body fill',
     'visible',
   )
-  await expectSelectionVisualOpacity(
-    page.locator('[data-grid-selection-visual-role="active-border"]'),
-    'selected row active cell border',
-    'visible',
-  )
+  await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
   await expect(page.locator('[data-grid-selection-visual-key="header-fill:row:6"]')).toHaveCount(0)
 
   await saveReadbackArtifact(page, testInfo, 'main-workbook-grid-axis-selection-readback.png', 'main-workbook-grid-axis-selection-readback')

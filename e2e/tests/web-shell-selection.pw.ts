@@ -397,6 +397,7 @@ test('@browser-ci web app keeps selected row headers and body cells on a single 
 
   await dragProductHeaderSelection(page, 'row', 7, 14)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!8:15')
+  await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
 
   const gridLocator = page.getByTestId('sheet-grid')
   await expect(gridLocator).toBeVisible()

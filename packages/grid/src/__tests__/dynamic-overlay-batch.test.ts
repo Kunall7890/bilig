@@ -109,7 +109,7 @@ describe('dynamic overlay batch v3', () => {
     expect(readOverlayRects(overlay)).not.toEqual(expect.arrayContaining([expect.objectContaining({ x: 291, y: 70, width: 1, height: 8 })]))
   })
 
-  test('draws axis selection headers and guides from the live camera without masking cell fills', () => {
+  test('draws axis selection headers and guides from the live camera without extra active-cell chrome', () => {
     const metrics = getGridMetrics()
     const geometry = createGridGeometrySnapshotFromAxes({
       columns: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 }),
@@ -153,9 +153,14 @@ describe('dynamic overlay batch v3', () => {
     )
     expect(readOverlayRects(overlay)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ x: 146, y: 54, width: 50, height: 2 }),
         expect.objectContaining({ x: 96, y: 0, width: 1, height: 220 }),
         expect.objectContaining({ x: 395, y: 0, width: 1, height: 220 }),
+      ]),
+    )
+    expect(readOverlayRects(overlay)).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ x: 146, y: 54, width: 50, height: 2 }),
+        expect.objectContaining({ x: 146, y: 54, width: 2, height: 20 }),
       ]),
     )
   })
@@ -402,7 +407,12 @@ describe('dynamic overlay batch v3', () => {
         expect.objectContaining({ x: 46, y: 64, width: 474, height: 60 }),
         expect.objectContaining({ x: 146, y: 64, width: 1, height: 60 }),
         expect.objectContaining({ x: 46, y: 84, width: 474, height: 1 }),
+      ]),
+    )
+    expect(readOverlayRects(overlay)).not.toEqual(
+      expect.arrayContaining([
         expect.objectContaining({ x: 146, y: 64, width: 100, height: 2 }),
+        expect.objectContaining({ x: 146, y: 64, width: 2, height: 20 }),
       ]),
     )
   })

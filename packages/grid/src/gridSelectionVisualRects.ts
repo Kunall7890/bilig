@@ -72,8 +72,6 @@ function appendBodySelectionVisualRects(
 
   const hasAxisSelection = input.gridSelection.columns.length > 0 || input.gridSelection.rows.length > 0
   if (hasAxisSelection) {
-    const activeCell = input.gridSelection.current?.cell ?? [input.selectionRange.x, input.selectionRange.y]
-    appendCellBorderRects(rects, input.geometry, activeCell, 'active-border', `active-border:cell:${activeCell[0]}:${activeCell[1]}`)
     return
   }
 
