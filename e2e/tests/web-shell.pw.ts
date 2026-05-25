@@ -1019,7 +1019,7 @@ test('web app previews and fills rightward autofill like Sheets', async ({ page 
   await page.mouse.move(targetX, targetY, { steps: 10 })
 
   await expect(renderer).toBeVisible()
-  await expect(fillPreview).toHaveCount(0)
+  await expect(fillPreview).toBeVisible()
 
   await page.mouse.up()
 

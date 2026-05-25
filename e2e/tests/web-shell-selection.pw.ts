@@ -16,6 +16,7 @@ import {
   doubleClickProductColumnResizeHandle,
   getProductColumnLeft,
   getProductColumnWidth,
+  getProductFillHandleDragPoints,
   getProductRowHeight,
   getProductRowTop,
   installTypeGpuCellReadbackHarness,
@@ -568,6 +569,63 @@ test('@browser-ci web app keeps fill-handle hit target aligned and pointer-only'
   await expect(page.locator('[data-grid-fill-handle="true"]')).toHaveJSProperty('tagName', 'DIV')
   await expect(page.locator('[data-grid-fill-handle="true"]')).toHaveAttribute('aria-hidden', 'true')
   await expect(page.locator('[data-grid-fill-handle="true"]')).toHaveJSProperty('tabIndex', -1)
+})
+
+test('@browser-ci web app keeps fill-handle drag source selection and target preview visible', async ({ page }) => {
+  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-fill-handle-visible-preview'))}&persist=0`)
+  await waitForWorkbookReady(page)
+
+  await selectAddress(page, 'B2')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2')
+
+  const downDrag = await getProductFillHandleDragPoints(page, 1, 1, 1, 3)
+  await page.mouse.move(downDrag.sourceX, downDrag.sourceY)
+  await page.mouse.down()
+  await page.mouse.move(downDrag.targetX, downDrag.targetY, { steps: 8 })
+
+  await expectVisualRectNear(
+    page.locator('[data-grid-selection-visual-role="active-border"]'),
+    await getProductCellRangeBox(page, 1, 1, 1, 1),
+    'source active border during downward fill',
+  )
+  await expectVisualRectNear(
+    page.locator('[data-grid-fill-preview="true"]'),
+    await getProductCellRangeBox(page, 1, 2, 1, 3),
+    'downward fill preview',
+  )
+
+  await page.mouse.up()
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:B4')
+  await expectVisualRectNear(
+    page.locator('[data-grid-selection-visual-role="selection-border"]'),
+    await getProductCellRangeBox(page, 1, 1, 1, 3),
+    'committed downward fill selection',
+  )
+
+  await selectAddress(page, 'D4')
+  const rightDrag = await getProductFillHandleDragPoints(page, 3, 3, 5, 3)
+  await page.mouse.move(rightDrag.sourceX, rightDrag.sourceY)
+  await page.mouse.down()
+  await page.mouse.move(rightDrag.targetX, rightDrag.targetY, { steps: 8 })
+
+  await expectVisualRectNear(
+    page.locator('[data-grid-selection-visual-role="active-border"]'),
+    await getProductCellRangeBox(page, 3, 3, 3, 3),
+    'source active border during rightward fill',
+  )
+  await expectVisualRectNear(
+    page.locator('[data-grid-fill-preview="true"]'),
+    await getProductCellRangeBox(page, 4, 3, 5, 3),
+    'rightward fill preview',
+  )
+
+  await page.mouse.up()
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D4:F4')
+  await expectVisualRectNear(
+    page.locator('[data-grid-selection-visual-role="selection-border"]'),
+    await getProductCellRangeBox(page, 3, 3, 5, 3),
+    'committed rightward fill selection',
+  )
 })
 
 test('@browser-ci web app keeps old fill-handle hit targets from intercepting cell clicks', async ({ page }) => {

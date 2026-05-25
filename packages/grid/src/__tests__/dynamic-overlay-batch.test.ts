@@ -454,7 +454,7 @@ describe('dynamic overlay batch v3', () => {
 
     expect(readOverlayRects(overlay)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ x: 246, y: 64, width: 200, height: 1 }),
+        expect.objectContaining({ x: 246, y: 64, width: 200, height: 20 }),
         expect.objectContaining({ x: 146, y: 64, width: 200, height: 20 }),
         expect.objectContaining({ x: 146, y: 64, width: 200, height: 1 }),
       ]),

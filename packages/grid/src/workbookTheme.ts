@@ -41,6 +41,7 @@ export const workbookThemeColors = {
   accentSoft: 'rgba(33, 86, 58, 0.2)',
   selectionAccent: '#217346',
   selectionFill: 'rgba(33, 115, 70, 0.22)',
+  fillPreviewFill: 'rgba(33, 115, 70, 0.08)',
   selectionHeaderFill: '#cee0d6',
   selectionHeaderOverlayFill: 'rgba(12, 130, 88, 0.16)',
   selectionHeaderSeamFill: '#cee0d6',

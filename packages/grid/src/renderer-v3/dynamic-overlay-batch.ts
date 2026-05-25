@@ -82,7 +82,7 @@ export function buildDynamicGridOverlayBatchV3(input: {
     })
   }
   appendFillPreviewOverlay({
-    borderRects,
+    fillRects,
     fillPreviewRange: input.fillPreviewRange ?? null,
     geometry: input.geometry,
   })
@@ -260,14 +260,14 @@ function resolveCellPaneStructuralGridlineRanges(
 function appendFillPreviewOverlay(input: {
   readonly geometry: GridGeometrySnapshot
   readonly fillPreviewRange: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'> | null
-  readonly borderRects: GridGpuRect[]
+  readonly fillRects: GridGpuRect[]
 }): void {
   if (!input.fillPreviewRange) {
     return
   }
-  const color = parseGpuColor(workbookThemeColors.textMuted)
+  const color = parseGpuColor(workbookThemeColors.fillPreviewFill)
   for (const rect of input.geometry.rangeScreenRects(input.fillPreviewRange)) {
-    appendBorderRects(input.borderRects, rect, color, 1)
+    input.fillRects.push({ ...rect, color })
   }
 }
 

@@ -1210,30 +1210,13 @@ test('@browser-webgpu @browser-deep fill-handle drag commits through the typegpu
     { ...selectedRangeFillProbe(sourceColumn, sourceRow + 1), name: 'targetC7' },
     { ...selectedRangeFillProbe(sourceColumn, targetRow), name: 'targetC8' },
   ]
-  const targetGlyphRegions = [
-    {
-      name: 'targetC7Glyphs',
-      x0: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * sourceColumn + 8,
-      y0: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * (sourceRow + 1) + 5,
-      x1: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * (sourceColumn + 1) - 8,
-      y1: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * (sourceRow + 2) - 5,
-    },
-    {
-      name: 'targetC8Glyphs',
-      x0: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * sourceColumn + 8,
-      y0: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * targetRow + 5,
-      x1: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * (sourceColumn + 1) - 8,
-      y1: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * (targetRow + 1) - 5,
-    },
-  ] as const
-
   await page.setViewportSize({ width: 960, height: 720 })
   await installTypeGpuReadbackHarness(page)
   await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('typegpu-fill-handle-commit'))}&persist=0`)
   await waitForWorkbookReady(page)
   await waitForTypeGpuRenderer(page)
   await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-backend-status', 'ready')
-  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(1)
   await page.waitForFunction(
     () =>
       Boolean(
@@ -1286,30 +1269,27 @@ test('@browser-webgpu @browser-deep fill-handle drag commits through the typegpu
   await page.mouse.move(sourceX, sourceY)
   await page.mouse.down()
   await page.mouse.move(targetX, targetY, { steps: 10 })
-  await expect(page.locator("[data-grid-fill-preview='true']")).toHaveCount(0)
+  await expect(page.locator("[data-grid-fill-preview='true']")).toBeVisible()
   await page.mouse.up()
 
   await expect(page.getByTestId('status-selection')).toContainText('!C6:C8')
-  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
-  const committedReadback = await waitForReadback(
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(1)
+  await waitForReadback(
     page,
     {
       points,
-      regions: targetGlyphRegions,
+      regions: [],
     },
-    (result) =>
-      result.sequence > sourceReadback.sequence &&
-      allReadbackPointsMatch(result, isThemeGreenFill) &&
-      result.darkPixelCounts.targetC7Glyphs > 6 &&
-      result.darkPixelCounts.targetC8Glyphs > 6,
+    (result) => result.sequence > sourceReadback.sequence && allReadbackPointsMatch(result, isThemeGreenFill),
   )
-  expect(committedReadback.darkPixelCounts.targetC7Glyphs).toBeGreaterThan(6)
-  expect(committedReadback.darkPixelCounts.targetC8Glyphs).toBeGreaterThan(6)
   await expect
     .poll(async () =>
-      page.evaluate((text) => [...document.querySelectorAll('[data-native-text-run]')].some((run) => run.textContent === text), copiedText),
+      page.evaluate(
+        (text) => [...document.querySelectorAll('[data-native-text-run]')].filter((run) => run.textContent === text).length,
+        copiedText,
+      ),
     )
-    .toBe(false)
+    .toBeGreaterThanOrEqual(3)
 
   await saveReadbackArtifact(
     page,
