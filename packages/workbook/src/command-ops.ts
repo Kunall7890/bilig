@@ -1,9 +1,9 @@
 import { formatAddress, parseCellAddress, parseFormula, serializeFormula } from '@bilig/formula'
-import type { CellRangeRef } from '@bilig/protocol'
+import { buildCellNumberFormatCode, type CellRangeRef, type CellStylePatch, type CellStyleRecord } from '@bilig/protocol'
 import type { WorkbookRef, WorkbookRefData } from './find.js'
 import { materializeFormulaLabels, type WorkbookFormulaLabelReplacement } from './formula-usage.js'
 import type { WorkbookActionCommand } from './model.js'
-import type { WorkbookOp } from './ops.js'
+import type { WorkbookCellNumberFormatOp, WorkbookCellStyleOp, WorkbookOp } from './ops.js'
 import type { WorkbookCommandResolvedRefs, WorkbookResolvedRefValue } from './result.js'
 
 export type WorkbookConcreteCommandOp = Extract<WorkbookOp, { kind: 'setCellFormula' | 'setCellValue' | 'setCellFormat' | 'clearCell' }>
@@ -96,10 +96,168 @@ function rangeCellsBindToTarget(range: CellRangeRef, targetCells: ReadonlySet<st
   return cells.length > 0 && cells.every((cell) => targetCells.has(cellKey(cell)))
 }
 
+interface FormatSupportCatalog {
+  readonly styles: ReadonlyMap<string, WorkbookCellStyleOp>
+  readonly formats: ReadonlyMap<string, WorkbookCellNumberFormatOp>
+}
+
+function formatSupportCatalog(ops: readonly WorkbookOp[]): FormatSupportCatalog {
+  const styles = new Map<string, WorkbookCellStyleOp>()
+  const formats = new Map<string, WorkbookCellNumberFormatOp>()
+  for (const op of ops) {
+    if (op.kind === 'upsertCellStyle') {
+      styles.set(op.style.id, op.style)
+    } else if (op.kind === 'upsertCellNumberFormat') {
+      formats.set(op.format.id, op.format)
+    }
+  }
+  return { styles, formats }
+}
+
+function normalizedNumberFormatCode(value: string): string {
+  return buildCellNumberFormatCode(value)
+}
+
+function numberFormatRecordMatches(format: WorkbookCellNumberFormatOp | undefined, expected: string): boolean {
+  return format !== undefined && normalizedNumberFormatCode(format.code) === normalizedNumberFormatCode(expected)
+}
+
+function styleFieldMatches(actual: unknown, expected: unknown): boolean {
+  if (expected === undefined) {
+    return true
+  }
+  return expected === null ? actual === undefined : actual === expected
+}
+
+function borderPatchSideMatchesRecord(
+  patch: NonNullable<NonNullable<CellStylePatch['borders']>['top']> | null | undefined,
+  record: NonNullable<NonNullable<CellStyleRecord['borders']>['top']> | undefined,
+): boolean {
+  if (patch === undefined) {
+    return true
+  }
+  if (patch === null || patch.style === undefined || patch.weight === undefined || patch.color === undefined) {
+    return record === undefined
+  }
+  return record?.style === patch.style && record.weight === patch.weight && record.color === patch.color
+}
+
+function stylePatchMatchesRecord(patch: CellStylePatch, record: WorkbookCellStyleOp): boolean {
+  return (
+    styleFieldMatches(record.fill?.backgroundColor, patch.fill?.backgroundColor) &&
+    styleFieldMatches(record.font?.family, patch.font?.family) &&
+    styleFieldMatches(record.font?.size, patch.font?.size) &&
+    styleFieldMatches(record.font?.bold, patch.font?.bold) &&
+    styleFieldMatches(record.font?.italic, patch.font?.italic) &&
+    styleFieldMatches(record.font?.underline, patch.font?.underline) &&
+    styleFieldMatches(record.font?.color, patch.font?.color) &&
+    styleFieldMatches(record.alignment?.horizontal, patch.alignment?.horizontal) &&
+    styleFieldMatches(record.alignment?.vertical, patch.alignment?.vertical) &&
+    styleFieldMatches(record.alignment?.wrap, patch.alignment?.wrap) &&
+    styleFieldMatches(record.alignment?.indent, patch.alignment?.indent) &&
+    styleFieldMatches(record.alignment?.shrinkToFit, patch.alignment?.shrinkToFit) &&
+    styleFieldMatches(record.alignment?.readingOrder, patch.alignment?.readingOrder) &&
+    styleFieldMatches(record.alignment?.textRotation, patch.alignment?.textRotation) &&
+    styleFieldMatches(record.alignment?.justifyLastLine, patch.alignment?.justifyLastLine) &&
+    borderPatchSideMatchesRecord(patch.borders?.top, record.borders?.top) &&
+    borderPatchSideMatchesRecord(patch.borders?.right, record.borders?.right) &&
+    borderPatchSideMatchesRecord(patch.borders?.bottom, record.borders?.bottom) &&
+    borderPatchSideMatchesRecord(patch.borders?.left, record.borders?.left)
+  )
+}
+
+function borderPatchSideNeedsRecord(patch: NonNullable<NonNullable<CellStylePatch['borders']>['top']> | null | undefined): boolean {
+  return patch !== undefined && patch !== null && patch.style !== undefined && patch.weight !== undefined && patch.color !== undefined
+}
+
+function stylePatchNeedsRecord(patch: CellStylePatch): boolean {
+  return (
+    (patch.fill?.backgroundColor !== undefined && patch.fill.backgroundColor !== null) ||
+    (patch.font?.family !== undefined && patch.font.family !== null) ||
+    (patch.font?.size !== undefined && patch.font.size !== null) ||
+    (patch.font?.bold !== undefined && patch.font.bold !== null) ||
+    (patch.font?.italic !== undefined && patch.font.italic !== null) ||
+    (patch.font?.underline !== undefined && patch.font.underline !== null) ||
+    (patch.font?.color !== undefined && patch.font.color !== null) ||
+    (patch.alignment?.horizontal !== undefined && patch.alignment.horizontal !== null) ||
+    (patch.alignment?.vertical !== undefined && patch.alignment.vertical !== null) ||
+    (patch.alignment?.wrap !== undefined && patch.alignment.wrap !== null) ||
+    (patch.alignment?.indent !== undefined && patch.alignment.indent !== null) ||
+    (patch.alignment?.shrinkToFit !== undefined && patch.alignment.shrinkToFit !== null) ||
+    (patch.alignment?.readingOrder !== undefined && patch.alignment.readingOrder !== null) ||
+    (patch.alignment?.textRotation !== undefined && patch.alignment.textRotation !== null) ||
+    (patch.alignment?.justifyLastLine !== undefined && patch.alignment.justifyLastLine !== null) ||
+    borderPatchSideNeedsRecord(patch.borders?.top) ||
+    borderPatchSideNeedsRecord(patch.borders?.right) ||
+    borderPatchSideNeedsRecord(patch.borders?.bottom) ||
+    borderPatchSideNeedsRecord(patch.borders?.left)
+  )
+}
+
+function styleRangeMatchesExpected(
+  command: Extract<WorkbookActionCommand, { readonly kind: 'format' }>,
+  op: Extract<WorkbookOp, { readonly kind: 'setStyleRange' }>,
+  catalog: FormatSupportCatalog,
+  usedStyleIds: Set<string>,
+): boolean {
+  if (command.style === undefined) {
+    return false
+  }
+  const style = catalog.styles.get(op.styleId)
+  if (style === undefined) {
+    return !stylePatchNeedsRecord(command.style)
+  }
+  if (!stylePatchMatchesRecord(command.style, style)) {
+    return false
+  }
+  usedStyleIds.add(op.styleId)
+  return true
+}
+
+function formatRangeMatchesExpected(
+  command: Extract<WorkbookActionCommand, { readonly kind: 'format' }>,
+  op: Extract<WorkbookOp, { readonly kind: 'setFormatRange' }>,
+  catalog: FormatSupportCatalog,
+  usedFormatIds: Set<string>,
+): boolean {
+  if (command.numberFormat === undefined) {
+    return false
+  }
+  if (command.numberFormat === null) {
+    return true
+  }
+  if (!numberFormatRecordMatches(catalog.formats.get(op.formatId), command.numberFormat)) {
+    return false
+  }
+  usedFormatIds.add(op.formatId)
+  return true
+}
+
+function everySupportOpWasUsed(
+  catalog: FormatSupportCatalog,
+  usedStyleIds: ReadonlySet<string>,
+  usedFormatIds: ReadonlySet<string>,
+): boolean {
+  for (const id of catalog.styles.keys()) {
+    if (!usedStyleIds.has(id)) {
+      return false
+    }
+  }
+  for (const id of catalog.formats.keys()) {
+    if (!usedFormatIds.has(id)) {
+      return false
+    }
+  }
+  return true
+}
+
 function formatOpBindsToTarget(
   command: Extract<WorkbookActionCommand, { readonly kind: 'format' }>,
   op: WorkbookOp,
   targetCells: ReadonlySet<string>,
+  catalog: FormatSupportCatalog,
+  usedStyleIds: Set<string>,
+  usedFormatIds: Set<string>,
 ): {
   readonly binding: 'target' | 'support'
 } | null {
@@ -112,10 +270,14 @@ function formatOpBindsToTarget(
       : null
   }
   if (op.kind === 'setFormatRange') {
-    return command.numberFormat !== undefined && rangeCellsBindToTarget(op.range, targetCells) ? { binding: 'target' } : null
+    return rangeCellsBindToTarget(op.range, targetCells) && formatRangeMatchesExpected(command, op, catalog, usedFormatIds)
+      ? { binding: 'target' }
+      : null
   }
   if (op.kind === 'setStyleRange') {
-    return command.style !== undefined && rangeCellsBindToTarget(op.range, targetCells) ? { binding: 'target' } : null
+    return rangeCellsBindToTarget(op.range, targetCells) && styleRangeMatchesExpected(command, op, catalog, usedStyleIds)
+      ? { binding: 'target' }
+      : null
   }
   return null
 }
@@ -133,15 +295,18 @@ function formatOpsMatchExpected(
     return false
   }
   const targetCellSet = cellSet(targetCells)
+  const catalog = formatSupportCatalog(ops)
+  const usedStyleIds = new Set<string>()
+  const usedFormatIds = new Set<string>()
   let hasTargetBinding = false
   for (const op of ops) {
-    const binding = formatOpBindsToTarget(command, op, targetCellSet)
+    const binding = formatOpBindsToTarget(command, op, targetCellSet, catalog, usedStyleIds, usedFormatIds)
     if (binding === null) {
       return false
     }
     hasTargetBinding ||= binding.binding === 'target'
   }
-  return hasTargetBinding
+  return hasTargetBinding && everySupportOpWasUsed(catalog, usedStyleIds, usedFormatIds)
 }
 
 function workbookRefKey(ref: WorkbookRef): string {

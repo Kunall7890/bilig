@@ -170,6 +170,32 @@ function prepareFormatCommand() {
   return prepared
 }
 
+function prepareStyleFormatCommand() {
+  const prepared = prepareWorkbookAction(
+    defineModel({
+      name: 'testing-adapter-style-model',
+      find(workbook) {
+        return {
+          result: workbook.findName('result'),
+        }
+      },
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.result)]
+      },
+      actions: {
+        format({ refs, workbook }) {
+          workbook.format(refs.result, { style: { font: { bold: true } } })
+        },
+      },
+    }),
+    'format',
+  )
+  if (prepared.status !== 'prepared') {
+    throw new Error('expected prepared style fixture')
+  }
+  return prepared
+}
+
 describe('@bilig/workbook testing api', () => {
   it('checks a runtime adapter against a strict transported plan', async () => {
     const prepared = prepare()
@@ -526,6 +552,142 @@ describe('@bilig/workbook testing api', () => {
         path: 'result',
         message:
           'Workbook action testing-adapter-format-model.format returned invalid command receipts: commandReceipts[0].previewOps do not match the planned command',
+      },
+    ])
+  })
+
+  it('rejects symbolic format receipts whose range format id has the wrong payload', async () => {
+    const prepared = prepareFormatCommand()
+    const command = prepared.plan.commands[0]
+    if (command?.kind !== 'format') {
+      throw new Error('expected format command')
+    }
+    const ops: readonly EngineOp[] = [
+      {
+        kind: 'upsertCellNumberFormat',
+        format: { id: 'format_text', code: 'text', kind: 'text' },
+      },
+      {
+        kind: 'setFormatRange',
+        range: {
+          sheetName: 'Resolved',
+          startAddress: 'C1',
+          endAddress: 'C2',
+        },
+        formatId: 'format_text',
+      },
+    ]
+
+    const check = await checkWorkbookRunAdapter(prepared.planData, {
+      apply(plan) {
+        return {
+          status: 'applied',
+          planId: workbookPlanId(plan),
+          baseRevision: 4,
+          revision: 5,
+          previewOps: ops,
+          appliedOps: ops,
+          commandReceipts: [
+            {
+              commandIndex: 0,
+              commandKind: command.kind,
+              commandDigest: workbookActionCommandDigest(command),
+              previewOps: ops,
+              appliedOps: ops,
+              resolvedRefs: {
+                target: rangeRef('Resolved!C1:C2', 'C1', 'C2'),
+              },
+            },
+          ],
+        }
+      },
+      verifyChecks(checks) {
+        return checks.map((entry) => ({
+          ...entry,
+          status: 'passed' as const,
+          proof: { source: 'adapter' },
+        }))
+      },
+    })
+
+    expect(check.status).toBe('failed')
+    if (check.status !== 'failed') {
+      throw new Error('adapter unexpectedly passed')
+    }
+    expect(check.issues).toEqual([
+      {
+        code: 'runtime_rejected',
+        path: 'result',
+        message:
+          'Workbook action testing-adapter-format-model.format returned invalid command receipts: commandReceipts[0].previewOps do not match the planned command',
+      },
+    ])
+  })
+
+  it('rejects symbolic style receipts whose range style id has the wrong payload', async () => {
+    const prepared = prepareStyleFormatCommand()
+    const command = prepared.plan.commands[0]
+    if (command?.kind !== 'format') {
+      throw new Error('expected format command')
+    }
+    const ops: readonly EngineOp[] = [
+      {
+        kind: 'upsertCellStyle',
+        style: { id: 'style_italic', font: { italic: true } },
+      },
+      {
+        kind: 'setStyleRange',
+        range: {
+          sheetName: 'Resolved',
+          startAddress: 'C1',
+          endAddress: 'C2',
+        },
+        styleId: 'style_italic',
+      },
+    ]
+
+    const check = await checkWorkbookRunAdapter(prepared.planData, {
+      apply(plan) {
+        return {
+          status: 'applied',
+          planId: workbookPlanId(plan),
+          baseRevision: 4,
+          revision: 5,
+          previewOps: ops,
+          appliedOps: ops,
+          commandReceipts: [
+            {
+              commandIndex: 0,
+              commandKind: command.kind,
+              commandDigest: workbookActionCommandDigest(command),
+              previewOps: ops,
+              appliedOps: ops,
+              resolvedRefs: {
+                target: rangeRef('Resolved!C1:C2', 'C1', 'C2'),
+              },
+            },
+          ],
+        }
+      },
+      verifyChecks(checks) {
+        return checks.map((entry) => ({
+          ...entry,
+          status: 'passed' as const,
+          proof: { source: 'adapter' },
+        }))
+      },
+    })
+
+    expect(check.status).toBe('failed')
+    if (check.status !== 'failed') {
+      throw new Error('adapter unexpectedly passed')
+    }
+    expect(check.issues).toEqual([
+      {
+        code: 'runtime_rejected',
+        path: 'result',
+        message:
+          'Workbook action testing-adapter-style-model.format returned invalid command receipts: commandReceipts[0].previewOps do not match the planned command',
       },
     ])
   })
