@@ -71,6 +71,7 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(scorecard.sameCorpusProof.runManifest).toMatchObject({
       contractVersion: 'same-corpus-ui-v4',
       caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+      scenarioSummaryFieldCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       visibleOperationResponseProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       biligAuthoritativeRenderProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
@@ -177,6 +178,7 @@ describe('UI responsiveness live browser scorecard', () => {
         materializedCellCounts: [250000],
         sampleCount: 3,
         caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+        scenarioSummaryFieldCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
         strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
         visibleOperationResponseProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
         biligAuthoritativeRenderProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,

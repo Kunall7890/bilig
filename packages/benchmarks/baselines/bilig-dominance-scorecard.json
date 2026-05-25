@@ -46,6 +46,7 @@
           "same-corpus capture kind: same-corpus-browser-capture",
           "same-corpus UI 10x cases: 1/9",
           "same-corpus render proof contract: same-corpus-ui-v4",
+          "same-corpus first-class scenario summary fields: 9/9",
           "same-corpus strict rendered-grid proof cases: 9/9",
           "same-corpus visible operation-response proof cases: 9/9",
           "same-corpus Bilig authoritative render proof cases: 9/9",
@@ -186,6 +187,7 @@
           "live browser vendors: google-sheets, microsoft-excel-web",
           "headed browser contracts passed: true",
           "same-corpus render proof contract: same-corpus-ui-v4",
+          "same-corpus first-class scenario summary fields: 9/9",
           "same-corpus strict rendered-grid proof cases: 9/9",
           "same-corpus visible operation-response proof cases: 9/9"
         ],
@@ -668,6 +670,7 @@
         "same-corpus UI 10x proof captured: true",
         "same-corpus UI 10x cases: 1/9",
         "same-corpus UI render proof contract: same-corpus-ui-v4",
+        "same-corpus UI first-class scenario summary fields: 9/9",
         "same-corpus UI strict rendered-grid proof cases: 9/9",
         "same-corpus UI visible operation-response proof cases: 9/9",
         "same-corpus UI Bilig authoritative render proof cases: 9/9",

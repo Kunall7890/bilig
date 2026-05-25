@@ -10,6 +10,7 @@ import type {
 } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import { parseSameCorpusCapture } from './ui-responsiveness-live-browser-scorecard-parse.ts'
 import { buildSameCorpusProof, validateSameCorpusCaptureRunManifest } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
+import { sameCorpusScenarioSummaryFieldsCurrent } from './ui-responsiveness-same-corpus-scenario-fields.ts'
 import {
   isUiResponsivenessSameCorpusWorkload,
   requiredUiResponsivenessSameCorpusWorkloads,
@@ -29,6 +30,7 @@ export interface UiSameCorpusStatus {
   readonly tenXRequirementSatisfied: boolean
   readonly runManifest: UiResponsivenessSameCorpusRunManifest | null
   readonly renderProofContractVersion: string | null
+  readonly scenarioSummaryFieldCaseCount: number
   readonly strictRenderedGridProofCaseCount: number
   readonly visibleOperationResponseProofCaseCount: number
   readonly biligAuthoritativeRenderProofCaseCount: number
@@ -93,6 +95,7 @@ export interface UiSameCorpusCaptureArtifactStatus {
   readonly readyForScorecardGeneration: boolean
   readonly sampleCount: number | null
   readonly caseCount: number | null
+  readonly scenarioSummaryFieldCaseCount: number | null
   readonly strictRenderedGridProofCaseCount: number | null
   readonly visibleOperationResponseProofCaseCount: number | null
   readonly biligAuthoritativeRenderProofCaseCount: number | null
@@ -246,6 +249,8 @@ export function buildUiSameCorpusStatus(
     tenXRequirementSatisfied,
     runManifest,
     renderProofContractVersion: runManifest?.contractVersion ?? null,
+    scenarioSummaryFieldCaseCount:
+      runManifest?.scenarioSummaryFieldCaseCount ?? proof.cases.filter(sameCorpusScenarioSummaryFieldsCurrent).length,
     strictRenderedGridProofCaseCount:
       runManifest?.strictRenderedGridProofCaseCount ?? proof.cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length,
     visibleOperationResponseProofCaseCount:
@@ -359,6 +364,7 @@ function buildUiSameCorpusCaptureArtifactStatus(path: string, capture: SameCorpu
       readyForScorecardGeneration: true,
       sampleCount: capture.sampleCount,
       caseCount: capture.cases.length,
+      scenarioSummaryFieldCaseCount: runManifest?.scenarioSummaryFieldCaseCount ?? null,
       strictRenderedGridProofCaseCount: runManifest?.strictRenderedGridProofCaseCount ?? null,
       visibleOperationResponseProofCaseCount: runManifest?.visibleOperationResponseProofCaseCount ?? null,
       biligAuthoritativeRenderProofCaseCount: runManifest?.biligAuthoritativeRenderProofCaseCount ?? null,
@@ -403,6 +409,7 @@ function buildParsedUiSameCorpusCaptureArtifactStatus(
     readyForScorecardGeneration,
     sampleCount: capture.sampleCount,
     caseCount: capture.cases.length,
+    scenarioSummaryFieldCaseCount: capture.runManifest.scenarioSummaryFieldCaseCount,
     strictRenderedGridProofCaseCount: capture.runManifest.strictRenderedGridProofCaseCount,
     visibleOperationResponseProofCaseCount: capture.runManifest.visibleOperationResponseProofCaseCount,
     biligAuthoritativeRenderProofCaseCount: capture.runManifest.biligAuthoritativeRenderProofCaseCount,
@@ -434,6 +441,7 @@ function buildInvalidUiSameCorpusCaptureArtifactStatus(
     readyForScorecardGeneration: false,
     sampleCount: null,
     caseCount: null,
+    scenarioSummaryFieldCaseCount: null,
     strictRenderedGridProofCaseCount: null,
     visibleOperationResponseProofCaseCount: null,
     biligAuthoritativeRenderProofCaseCount: null,
@@ -626,6 +634,7 @@ function uiSameCorpusTenXRequirementSatisfied(
     proof.runManifest?.currentContractEvidenceComplete === true &&
     proof.runManifest.googleSheetsTenXRequirementSatisfied &&
     proof.runManifest.invalidReasons.length === 0 &&
+    proof.runManifest.scenarioSummaryFieldCaseCount === proof.requiredCaseCount &&
     proof.runManifest.strictRenderedGridProofCaseCount === proof.requiredCaseCount &&
     proof.runManifest.visibleOperationResponseProofCaseCount === proof.requiredCaseCount &&
     proof.requiredProductCount === 2 &&

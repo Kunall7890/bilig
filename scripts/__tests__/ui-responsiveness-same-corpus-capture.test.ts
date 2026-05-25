@@ -718,6 +718,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       googleSheetsTenXRequirementSatisfied: false,
       requiredProducts: ['bilig', 'google-sheets'],
       sampleCount: 3,
+      scenarioSummaryFieldCaseCount: 1,
       strictRenderedGridProofCaseCount: 1,
       tenXMeanAndP95CaseCount: 0,
     })
@@ -773,6 +774,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     })
 
     expect(capture.runManifest.biligProductionRuntimeProofCaseCount).toBe(1)
+    expect(capture.runManifest.scenarioSummaryFieldCaseCount).toBe(1)
     expect(capture.runManifest.biligAuthoritativeRenderProofCaseCount).toBe(1)
     expect(capture.runManifest.invalidReasons).toContain('Bilig production runtime proof covers 1/9 cases')
     expect(parseSameCorpusCapture(capture).cases[0]?.bilig.biligRuntimeProof?.verified).toBe(true)

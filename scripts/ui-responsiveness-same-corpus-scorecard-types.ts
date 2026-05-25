@@ -99,6 +99,7 @@ export interface UiResponsivenessSameCorpusRunManifest {
   readonly biligProductionRuntimeProofCaseCount: number
   readonly sampleCount: number
   readonly caseCount: number
+  readonly scenarioSummaryFieldCaseCount: number
   readonly strictRenderedGridProofCaseCount: number
   readonly visibleOperationResponseProofCaseCount: number
   readonly biligAuthoritativeRenderProofCaseCount: number
@@ -140,6 +141,7 @@ export interface SameCorpusCaptureRunManifest {
   readonly biligProductionRuntimeProofCaseCount: number
   readonly sampleCount: number
   readonly caseCount: number
+  readonly scenarioSummaryFieldCaseCount: number
   readonly strictRenderedGridProofCaseCount: number
   readonly visibleOperationResponseProofCaseCount: number
   readonly biligAuthoritativeRenderProofCaseCount: number

@@ -252,6 +252,9 @@ function buildChecklistItem(args: {
                 args.liveUiSameCorpus.casesMissingScrollEventEvidence.join(', ') || 'none'
               }`,
               `live same-corpus UI render proof contract: ${args.liveUiSameCorpus.renderProofContractVersion ?? 'missing'}`,
+              `live same-corpus UI first-class scenario summary fields: ${String(
+                args.liveUiSameCorpus.scenarioSummaryFieldCaseCount,
+              )}/${String(args.liveUiSameCorpus.requiredCaseCount)}`,
               `live same-corpus UI strict rendered-grid proof cases: ${String(
                 args.liveUiSameCorpus.strictRenderedGridProofCaseCount,
               )}/${String(args.liveUiSameCorpus.requiredCaseCount)}`,
@@ -314,6 +317,13 @@ function uiSameCorpusLiveBlockers(status: BiligDominanceStatus['uiSameCorpus']):
   }
   if (!status.currentContractEvidenceComplete) {
     blockers.push('same-corpus UI proof does not satisfy the current render-proof contract')
+  }
+  if (status.scenarioSummaryFieldCaseCount !== status.requiredCaseCount) {
+    blockers.push(
+      `same-corpus UI proof has ${String(status.scenarioSummaryFieldCaseCount)}/${String(
+        status.requiredCaseCount,
+      )} first-class scenario summary field cases`,
+    )
   }
   if (status.visibleOperationResponseProofCaseCount !== status.requiredCaseCount) {
     blockers.push(

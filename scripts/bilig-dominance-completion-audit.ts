@@ -121,6 +121,9 @@ export function buildBiligDominanceCompletionAudit(input: BuildScorecardInput, s
         `live browser vendors: ${input.uiResponsivenessLiveBrowserScorecard.summary.capturedVendors.join(', ')}`,
         `headed browser contracts passed: ${String(input.largeWorkbookSloScorecard.summary.headedBrowserFrameP95ContractsPassed)}`,
         `same-corpus render proof contract: ${input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.contractVersion ?? 'missing'}`,
+        `same-corpus first-class scenario summary fields: ${String(
+          input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.scenarioSummaryFieldCaseCount ?? 0,
+        )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount)}`,
         `same-corpus strict rendered-grid proof cases: ${String(
           input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.strictRenderedGridProofCaseCount ?? 0,
         )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount)}`,
@@ -218,6 +221,7 @@ export function hasUiResponsivenessSameCorpusTenXGap(scorecard: UiResponsiveness
     !runManifest.currentContractEvidenceComplete ||
     !runManifest.googleSheetsTenXRequirementSatisfied ||
     runManifest.invalidReasons.length > 0 ||
+    runManifest.scenarioSummaryFieldCaseCount !== scorecard.sameCorpusProof.requiredCaseCount ||
     runManifest.strictRenderedGridProofCaseCount !== scorecard.sameCorpusProof.requiredCaseCount ||
     runManifest.visibleOperationResponseProofCaseCount !== scorecard.sameCorpusProof.requiredCaseCount ||
     requiredUiResponsivenessSameCorpusWorkloads.some(

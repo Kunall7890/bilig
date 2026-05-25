@@ -33,6 +33,11 @@ import {
   sameCorpusSampleCount,
 } from './ui-responsiveness-same-corpus-guardrails.ts'
 import {
+  sameCorpusScenarioCaseFields,
+  sameCorpusScenarioSummaryFieldsCurrent,
+  validateSameCorpusScenarioCaseFields,
+} from './ui-responsiveness-same-corpus-scenario-fields.ts'
+import {
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
   type UiResponsivenessSameCorpusWorkload,
@@ -45,6 +50,7 @@ import {
 } from './ui-responsiveness-same-corpus-validation-helpers.ts'
 
 export { sameCorpusUiCaptureToolVersion } from './ui-responsiveness-same-corpus-scorecard-types.ts'
+export { sameCorpusScenarioCaseFields } from './ui-responsiveness-same-corpus-scenario-fields.ts'
 export type {
   SameCorpusCapture,
   SameCorpusBiligRuntimeProof,
@@ -100,23 +106,6 @@ export function buildSameCorpusProof(capture: SameCorpusCapture): UiResponsivene
   }
   validateSameCorpusProof(proof)
   return proof
-}
-
-export function sameCorpusScenarioCaseFields(proof: SameCorpusScenarioProof): SameCorpusScenarioCaseFields {
-  return {
-    biligMeanMs: proof.biligMeanMs,
-    biligP95Ms: proof.biligP95Ms,
-    googleMeanMs: proof.googleMeanMs,
-    googleP95Ms: proof.googleP95Ms,
-    ...(proof.microsoftExcelWebMeanMs !== undefined ? { microsoftExcelWebMeanMs: proof.microsoftExcelWebMeanMs } : {}),
-    ...(proof.microsoftExcelWebP95Ms !== undefined ? { microsoftExcelWebP95Ms: proof.microsoftExcelWebP95Ms } : {}),
-    meanRatio: proof.meanRatio,
-    p95Ratio: proof.p95Ratio,
-    ...(proof.microsoftExcelWebMeanRatio !== undefined ? { microsoftExcelWebMeanRatio: proof.microsoftExcelWebMeanRatio } : {}),
-    ...(proof.microsoftExcelWebP95Ratio !== undefined ? { microsoftExcelWebP95Ratio: proof.microsoftExcelWebP95Ratio } : {}),
-    screenshotProof: proof.screenshotProof,
-    pixelGridProof: proof.pixelGridProof,
-  }
 }
 
 export function validateSameCorpusProof(proof: UiResponsivenessSameCorpusProof): void {
@@ -175,6 +164,7 @@ function buildSameCorpusRunManifest(
   const productSourceWorkbookFingerprints = uniqueProductSourceWorkbookFingerprints(cases)
   const materializedCellCounts = [...new Set(cases.map((entry) => entry.materializedCells))].toSorted((left, right) => left - right)
   const biligProductionRuntimeProofCaseCount = cases.filter((entry) => hasBiligProductionRuntimeProof(entry.bilig)).length
+  const scenarioSummaryFieldCaseCount = cases.filter(sameCorpusScenarioSummaryFieldsCurrent).length
   const strictRenderedGridProofCaseCount = cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
   const visibleOperationResponseProofCaseCount = cases.filter((entry) => sameCorpusCaseOperationResponseProofGuardrailPassed(entry)).length
   const biligAuthoritativeRenderProofCaseCount = cases.filter((entry) =>
@@ -191,6 +181,7 @@ function buildSameCorpusRunManifest(
     corpusFingerprints,
     productSourceWorkbookFingerprints,
     biligProductionRuntimeProofCaseCount,
+    scenarioSummaryFieldCaseCount,
     biligAuthoritativeRenderProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
@@ -211,6 +202,7 @@ function buildSameCorpusRunManifest(
     biligProductionRuntimeProofCaseCount,
     sampleCount: manifestSampleCount(cases),
     caseCount: cases.length,
+    scenarioSummaryFieldCaseCount,
     strictRenderedGridProofCaseCount,
     visibleOperationResponseProofCaseCount,
     biligAuthoritativeRenderProofCaseCount,
@@ -235,6 +227,7 @@ export function buildSameCorpusCaptureRunManifest(
   const productSourceWorkbookFingerprints = uniqueCaptureProductSourceWorkbookFingerprints(cases)
   const materializedCellCounts = [...new Set(cases.map((entry) => entry.materializedCells))].toSorted((left, right) => left - right)
   const biligProductionRuntimeProofCaseCount = cases.filter((entry) => hasBiligProductionRuntimeProof(entry.bilig)).length
+  const scenarioSummaryFieldCaseCount = cases.filter(sameCorpusScenarioSummaryFieldsCurrent).length
   const strictRenderedGridProofCaseCount = cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
   const visibleOperationResponseProofCaseCount = cases.filter((entry) =>
     sameCorpusCaptureCaseOperationResponseProofGuardrailPassed(entry, sampleCount),
@@ -253,6 +246,7 @@ export function buildSameCorpusCaptureRunManifest(
     corpusFingerprints,
     productSourceWorkbookFingerprints,
     biligProductionRuntimeProofCaseCount,
+    scenarioSummaryFieldCaseCount,
     biligAuthoritativeRenderProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
@@ -274,6 +268,7 @@ export function buildSameCorpusCaptureRunManifest(
     biligProductionRuntimeProofCaseCount,
     sampleCount,
     caseCount: cases.length,
+    scenarioSummaryFieldCaseCount,
     strictRenderedGridProofCaseCount,
     visibleOperationResponseProofCaseCount,
     biligAuthoritativeRenderProofCaseCount,
@@ -295,6 +290,7 @@ function sameCorpusManifestInvalidReasons(args: {
   readonly corpusFingerprints: readonly SameCorpusCaptureCorpusFingerprint[]
   readonly productSourceWorkbookFingerprints: readonly SameCorpusProductSourceWorkbookFingerprint[]
   readonly biligProductionRuntimeProofCaseCount: number
+  readonly scenarioSummaryFieldCaseCount: number
   readonly biligAuthoritativeRenderProofCaseCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly materializedCellCounts: readonly number[]
@@ -328,6 +324,13 @@ function sameCorpusManifestInvalidReasons(args: {
   if (args.biligProductionRuntimeProofCaseCount !== requiredSameCorpusWorkloads.length) {
     invalidReasons.push(
       `Bilig production runtime proof covers ${String(args.biligProductionRuntimeProofCaseCount)}/${String(
+        requiredSameCorpusWorkloads.length,
+      )} cases`,
+    )
+  }
+  if (args.scenarioSummaryFieldCaseCount !== requiredSameCorpusWorkloads.length) {
+    invalidReasons.push(
+      `first-class scenario summary fields cover ${String(args.scenarioSummaryFieldCaseCount)}/${String(
         requiredSameCorpusWorkloads.length,
       )} cases`,
     )
@@ -565,32 +568,6 @@ function stableJsonValue(value: unknown): unknown {
     )
   }
   return value
-}
-
-function sameCorpusScenarioFieldsFromCase(entry: SameCorpusScenarioCaseFields): SameCorpusScenarioCaseFields {
-  return {
-    biligMeanMs: entry.biligMeanMs,
-    biligP95Ms: entry.biligP95Ms,
-    googleMeanMs: entry.googleMeanMs,
-    googleP95Ms: entry.googleP95Ms,
-    ...(entry.microsoftExcelWebMeanMs !== undefined ? { microsoftExcelWebMeanMs: entry.microsoftExcelWebMeanMs } : {}),
-    ...(entry.microsoftExcelWebP95Ms !== undefined ? { microsoftExcelWebP95Ms: entry.microsoftExcelWebP95Ms } : {}),
-    meanRatio: entry.meanRatio,
-    p95Ratio: entry.p95Ratio,
-    ...(entry.microsoftExcelWebMeanRatio !== undefined ? { microsoftExcelWebMeanRatio: entry.microsoftExcelWebMeanRatio } : {}),
-    ...(entry.microsoftExcelWebP95Ratio !== undefined ? { microsoftExcelWebP95Ratio: entry.microsoftExcelWebP95Ratio } : {}),
-    screenshotProof: entry.screenshotProof,
-    pixelGridProof: entry.pixelGridProof,
-  }
-}
-
-function validateSameCorpusScenarioCaseFields(
-  entry: SameCorpusScenarioCaseFields & { readonly id: string; readonly scenarioProof: SameCorpusScenarioProof },
-  label: 'capture' | 'scorecard',
-): void {
-  if (stableJsonString(sameCorpusScenarioFieldsFromCase(entry)) !== stableJsonString(sameCorpusScenarioCaseFields(entry.scenarioProof))) {
-    throw new Error(`UI responsiveness same-corpus ${label} scenario summary fields are stale: ${entry.id}`)
-  }
 }
 
 function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivenessSameCorpusCase {

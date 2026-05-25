@@ -156,6 +156,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
   const uiSameCorpusRunManifestInvalidReasons = uiSameCorpusRunManifest?.invalidReasons ?? [
     'same-corpus UI proof is missing a run manifest',
   ]
+  const uiSameCorpusScenarioSummaryFieldCaseCount = uiSameCorpusRunManifest?.scenarioSummaryFieldCaseCount ?? 0
   const uiSameCorpusStrictRenderedGridProofCaseCount =
     uiSameCorpusRunManifest?.strictRenderedGridProofCaseCount ??
     uiSameCorpusProof.cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
@@ -471,6 +472,9 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
             input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.tenXMeanAndP95CaseCount,
           )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount)}`,
           `same-corpus UI render proof contract: ${uiSameCorpusRunManifest?.contractVersion ?? 'missing'}`,
+          `same-corpus UI first-class scenario summary fields: ${String(uiSameCorpusScenarioSummaryFieldCaseCount)}/${String(
+            input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount,
+          )}`,
           `same-corpus UI strict rendered-grid proof cases: ${String(uiSameCorpusStrictRenderedGridProofCaseCount)}/${String(
             input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount,
           )}`,
@@ -811,6 +815,7 @@ function buildOverallGoogleSheets10xStatus(
   const uiSameCorpusRunManifestInvalidReasons = uiSameCorpusRunManifest?.invalidReasons ?? [
     'same-corpus UI proof is missing a run manifest',
   ]
+  const uiSameCorpusScenarioSummaryFieldCaseCount = uiSameCorpusRunManifest?.scenarioSummaryFieldCaseCount ?? 0
   const uiSameCorpusStrictRenderedGridProofCaseCount =
     uiSameCorpusRunManifest?.strictRenderedGridProofCaseCount ??
     uiSameCorpusProof.cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
@@ -876,6 +881,9 @@ function buildOverallGoogleSheets10xStatus(
           input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.tenXMeanAndP95CaseCount,
         )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount)}`,
         `same-corpus render proof contract: ${uiSameCorpusRunManifest?.contractVersion ?? 'missing'}`,
+        `same-corpus first-class scenario summary fields: ${String(uiSameCorpusScenarioSummaryFieldCaseCount)}/${String(
+          input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount,
+        )}`,
         `same-corpus strict rendered-grid proof cases: ${String(uiSameCorpusStrictRenderedGridProofCaseCount)}/${String(
           input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount,
         )}`,
