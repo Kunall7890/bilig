@@ -131,7 +131,7 @@ function receiptRanges(bundle: WorkbookAgentCommandBundle): readonly WorkbookAge
   }))
 }
 
-function verificationRanges(bundle: WorkbookAgentCommandBundle): readonly CellRangeRef[] {
+export function selectWorkbookAgentMutationReceiptVerificationRanges(bundle: WorkbookAgentCommandBundle): readonly CellRangeRef[] {
   return bundle.affectedRanges
     .filter((range) => range.role === 'target')
     .slice(0, MAX_VERIFICATION_RANGES)
@@ -156,7 +156,7 @@ export async function buildMutationReceipt(input: {
   readonly normalized: WorkbookAgentStageCommandResult
 }): Promise<WorkbookToolMutationReceipt> {
   const { bundle, executionRecord } = input.normalized
-  const ranges = executionRecord ? verificationRanges(bundle) : []
+  const ranges = executionRecord ? selectWorkbookAgentMutationReceiptVerificationRanges(bundle) : []
   const authoritativeReadback = executionRecord
     ? await buildWorkbookAuthoritativeReadbackProof({
         context: input.context,
@@ -267,7 +267,7 @@ export async function stageWorkbookAgentCommandResult(
     const verification = await buildWorkbookAgentVerificationReport({
       context,
       revision: normalized.executionRecord.appliedRevision,
-      ranges: verificationRanges(bundle),
+      ranges: selectWorkbookAgentMutationReceiptVerificationRanges(bundle),
     })
     return textToolResult(
       stringifyJson({

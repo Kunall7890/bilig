@@ -56,7 +56,8 @@ import {
 } from './workbook-agent-context-geometry.js'
 import { listWorkbookNamedRanges, listWorkbookTables, type ResolvedWorkbookSelector } from './workbook-selector-resolver.js'
 import { parseWorkbookAgentStructuralToolCommand, sortToolArgsSchema } from './workbook-agent-structural-tools.js'
-import { buildWorkbookAgentVerificationReport, stageWorkbookAgentCommandResult } from './workbook-agent-mutation-receipt.js'
+import { buildWorkbookAgentVerificationReport } from './workbook-agent-mutation-receipt.js'
+import { stageWorkbookAgentVisibleCommitBarrierCommandResult } from './workbook-agent-visible-commit-barrier.js'
 import { selectWorkbookRenderedReadback } from './workbook-agent-rendered-readback.js'
 import {
   countWorkbookAgentRangesCells,
@@ -144,7 +145,7 @@ export interface WorkbookAgentToolContext {
 }
 
 async function stageCommandResult(context: WorkbookAgentToolContext, command: WorkbookAgentCommand): Promise<CodexDynamicToolCallResult> {
-  return await stageWorkbookAgentCommandResult(context, command, command.kind)
+  return await stageWorkbookAgentVisibleCommitBarrierCommandResult(context, command, command.kind)
 }
 
 function workflowToolResult(run: WorkbookAgentWorkflowRun): CodexDynamicToolCallResult {

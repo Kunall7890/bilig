@@ -13,7 +13,7 @@ import { buildWorkbookSourceProjectionFromEngine } from '../zero/projection.js'
 import type { WorkbookAgentThreadStateRecord } from '../zero/workbook-chat-thread-store.js'
 import type { WorkbookRuntime } from '../workbook-runtime/runtime-manager.js'
 import type { CodexAppServerClientOptions, CodexAppServerTransport } from './codex-app-server-client.js'
-import { createWorkbookAgentService } from './workbook-agent-service.js'
+import { createWorkbookAgentService, type WorkbookAgentService } from './workbook-agent-service.js'
 
 class FakeCodexTransport implements CodexAppServerTransport {
   private threadCounter = 0
@@ -177,7 +177,138 @@ function createZeroSyncStub(overrides: Partial<ZeroSyncService> = {}): ZeroSyncS
   }
 }
 
+async function waitForWorkflowStatus(
+  service: WorkbookAgentService,
+  threadId: string,
+  userId: string,
+  status: 'running' | 'completed' | 'failed' | 'cancelled',
+): Promise<ReturnType<WorkbookAgentService['getSnapshot']>> {
+  await vi.waitFor(() => {
+    const workflowRun = service.getSnapshot({
+      documentId: 'doc-1',
+      threadId,
+      session: {
+        userID: userId,
+        roles: ['editor'],
+      },
+    }).workflowRuns[0]
+    if (workflowRun?.status === 'failed' && status !== 'failed') {
+      throw new Error(workflowRun.errorMessage ?? 'Workflow failed')
+    }
+    expect(workflowRun?.status).toBe(status)
+  })
+  return service.getSnapshot({
+    documentId: 'doc-1',
+    threadId,
+    session: {
+      userID: userId,
+      roles: ['editor'],
+    },
+  })
+}
+
 describe('workbook agent workflow authority', () => {
+  it('records a visible commit barrier receipt when shared workflows stage mutation commands', async () => {
+    const fakeCodex = new FakeCodexTransport()
+    const engine = new SpreadsheetEngine({
+      workbookName: 'doc-1',
+      replicaId: 'server:test',
+    })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const upsertWorkbookWorkflowRun = vi.fn(async () => undefined)
+    const service = createWorkbookAgentService(
+      createZeroSyncStub({
+        async inspectWorkbook<T>(_documentId: string, task: (runtime: WorkbookRuntime) => T | Promise<T>) {
+          const runtime: WorkbookRuntime = {
+            documentId: 'doc-1',
+            engine,
+            projection: buildWorkbookSourceProjectionFromEngine('doc-1', engine, {
+              revision: 3,
+              calculatedRevision: 3,
+              ownerUserId: 'alex@example.com',
+              updatedBy: 'alex@example.com',
+              updatedAt: '2026-04-11T00:00:00.000Z',
+            }),
+            headRevision: 3,
+            calculatedRevision: 3,
+            ownerUserId: 'alex@example.com',
+          }
+          return await task(runtime)
+        },
+        async getWorkbookHeadRevision() {
+          return 3
+        },
+        upsertWorkbookWorkflowRun,
+      }),
+      {
+        codexClientFactory: (_options: CodexAppServerClientOptions): CodexAppServerTransport => fakeCodex,
+      },
+    )
+
+    try {
+      await service.createSession({
+        documentId: 'doc-1',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {
+          threadId: 'thr-shared',
+          scope: 'shared',
+          executionPolicy: 'ownerReview',
+        },
+      })
+
+      const runningSnapshot = await service.startWorkflow({
+        documentId: 'doc-1',
+        threadId: 'thr-shared',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {
+          workflowTemplate: 'createSheet',
+          name: 'Staged Sheet',
+        },
+      })
+
+      expect(runningSnapshot.workflowRuns[0]?.status).toBe('running')
+      const snapshot = await waitForWorkflowStatus(service, 'thr-shared', 'alex@example.com', 'completed')
+      expect(snapshot.reviewQueueItems).toEqual([
+        expect.objectContaining({
+          commands: [expect.objectContaining({ kind: 'createSheet', name: 'Staged Sheet' })],
+        }),
+      ])
+      expect(snapshot.workflowRuns[0]).toEqual(
+        expect.objectContaining({
+          workflowTemplate: 'createSheet',
+          status: 'completed',
+          summary: expect.stringContaining('Prepared workflow review item; the workbook is unchanged until this is applied'),
+          mutationExecuted: false,
+          verificationComplete: false,
+          mutationStatus: 'staged',
+          mutationReceipt: expect.objectContaining({
+            status: 'staged',
+            toolName: 'workflow:createSheet',
+            warnings: expect.arrayContaining(['Workbook change set is waiting for owner review and has not modified the workbook yet.']),
+          }),
+        }),
+      )
+      expect(upsertWorkbookWorkflowRun).toHaveBeenCalledWith(
+        'doc-1',
+        expect.objectContaining({
+          mutationExecuted: false,
+          verificationComplete: false,
+          mutationStatus: 'staged',
+          mutationReceipt: expect.objectContaining({ status: 'staged' }),
+        }),
+      )
+    } finally {
+      await service.close()
+    }
+  })
+
   it('does not mutate session context when workflow start is rejected by preflight', async () => {
     const saveWorkbookAgentThreadState = vi.fn(async (_record: WorkbookAgentThreadStateRecord) => undefined)
     const service = createWorkbookAgentService(

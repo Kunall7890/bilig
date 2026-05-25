@@ -17,6 +17,7 @@ import type { ZeroSyncService } from '../zero/service.js'
 import type { WorkbookChangeRecord } from '../zero/workbook-change-store.js'
 import type { WorkbookRuntime } from '../workbook-runtime/runtime-manager.js'
 import { buildWorkbookAgentVerificationReport, stageWorkbookAgentCommandResult } from './workbook-agent-mutation-receipt.js'
+import { buildWorkbookAgentVisibleCommitBarrierOutcome } from './workbook-agent-visible-commit-barrier.js'
 
 async function createEngine(): Promise<SpreadsheetEngine> {
   const engine = new SpreadsheetEngine({
@@ -419,6 +420,47 @@ describe('workbook agent mutation receipt helpers', () => {
     expect(payload.bundleId).toBe('bundle-staged')
     expect(payload.mutationReceipt.undo.reasonUnavailable).toContain('has not been applied yet')
     expect(payload.mutationReceipt.warnings).toContain(
+      'Workbook change set is waiting for owner review and has not modified the workbook yet.',
+    )
+  })
+
+  it('exposes staged review items through the shared visible commit barrier outcome', async () => {
+    const engine = await createEngine()
+    const { zeroSyncService } = createZeroSyncHarness(engine)
+    const command: WorkbookAgentCommand = {
+      kind: 'writeRange',
+      sheetName: 'Sheet1',
+      startAddress: 'B2',
+      values: [['Review later']],
+    }
+    const bundle = createBundle(command, 'bundle-staged-barrier')
+
+    const outcome = await buildWorkbookAgentVisibleCommitBarrierOutcome({
+      context: {
+        documentId: 'doc-1',
+        uiContext: null,
+        zeroSyncService,
+      },
+      toolName: 'writeRange',
+      normalized: {
+        bundle,
+        executionRecord: null,
+        disposition: 'reviewQueued',
+      },
+    })
+
+    expect(outcome).toMatchObject({
+      mutationExecuted: false,
+      verificationComplete: false,
+      status: 'staged',
+      appliedRevision: null,
+      mutationReceipt: {
+        toolName: 'writeRange',
+        status: 'staged',
+      },
+    })
+    expect(outcome.summary).toContain('the workbook is unchanged until this is applied')
+    expect(outcome.mutationReceipt.warnings).toContain(
       'Workbook change set is waiting for owner review and has not modified the workbook yet.',
     )
   })

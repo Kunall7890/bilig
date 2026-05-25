@@ -28,7 +28,7 @@ import {
 import { resolveWorkbookSelector, workbookSemanticSelectorSchema, type WorkbookSemanticSelector } from './workbook-selector-resolver.js'
 import type { WorkbookRuntime } from '../workbook-runtime/runtime-manager.js'
 import { normalizeWorkbookAgentUiContext } from './workbook-agent-inspection.js'
-import { stageWorkbookAgentCommandResult } from './workbook-agent-mutation-receipt.js'
+import { stageWorkbookAgentVisibleCommitBarrierCommandResult } from './workbook-agent-visible-commit-barrier.js'
 import { stringifyJson, textToolResult, type WorkbookAgentStageCommandResult } from './workbook-agent-tool-shared.js'
 
 const literalInputSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])
@@ -423,7 +423,7 @@ async function stageCommandResult(
   context: WorkbookAgentObjectToolContext,
   command: WorkbookAgentCommand,
 ): Promise<CodexDynamicToolCallResult> {
-  return await stageWorkbookAgentCommandResult(context, command, command.kind)
+  return await stageWorkbookAgentVisibleCommitBarrierCommandResult(context, command, command.kind)
 }
 
 function normalizeFormulaText(formula: string): string {

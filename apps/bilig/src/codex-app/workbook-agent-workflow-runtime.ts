@@ -13,7 +13,7 @@ import {
   failWorkflowSteps,
 } from './workbook-agent-workflows.js'
 import { createWorkflowAbortError, isWorkflowAbortError, throwIfWorkflowCancelled } from './workbook-agent-workflow-abort.js'
-import { buildMutationReceipt, type WorkbookToolMutationReceipt } from './workbook-agent-mutation-receipt.js'
+import { buildWorkbookAgentVisibleCommitBarrierOutcome } from './workbook-agent-visible-commit-barrier.js'
 import { createSystemEntry } from './workbook-agent-session-model.js'
 import {
   type QueuedWorkbookAgentWorkflowRun,
@@ -26,17 +26,6 @@ import {
 import { logError } from '../runtime-logger.js'
 
 const DEFAULT_WORKFLOW_SHUTDOWN_DRAIN_TIMEOUT_MS = 5_000
-
-function summarizeWorkflowMutationReceipt(input: {
-  readonly executionRecord: WorkbookAgentExecutionRecord
-  readonly receipt: WorkbookToolMutationReceipt
-}): string {
-  if (input.receipt.status === 'applied') {
-    return `Applied workflow: ${input.executionRecord.summary}`
-  }
-  const primaryWarning = input.receipt.warnings[0] ?? 'Mutation proof is incomplete.'
-  return `Workflow mutation verification incomplete at revision r${String(input.executionRecord.appliedRevision)}: ${primaryWarning}`
-}
 
 export class WorkbookAgentWorkflowRuntime {
   private readonly workflowRunTasks = new Map<string, Promise<void>>()
@@ -317,7 +306,7 @@ export class WorkbookAgentWorkflowRuntime {
             return
           }
           if (executionRecord) {
-            const receipt = await buildMutationReceipt({
+            const barrierOutcome = await buildWorkbookAgentVisibleCommitBarrierOutcome({
               context: {
                 documentId: input.documentId,
                 uiContext: input.sessionState.durable.context,
@@ -329,11 +318,17 @@ export class WorkbookAgentWorkflowRuntime {
                 executionRecord,
               },
             })
-            mutationExecuted = true
-            verificationComplete = receipt.status === 'applied'
-            mutationStatus = receipt.status
-            mutationReceipt = receipt
-            completedSummary = summarizeWorkflowMutationReceipt({ executionRecord, receipt })
+            mutationExecuted = barrierOutcome.mutationExecuted
+            verificationComplete = barrierOutcome.verificationComplete
+            mutationStatus = barrierOutcome.status
+            mutationReceipt = barrierOutcome.mutationReceipt
+            completedSummary =
+              barrierOutcome.status === 'applied'
+                ? `Applied workflow: ${executionRecord.summary}`
+                : barrierOutcome.summary.replace(
+                    /^Verification incomplete for workbook change set/,
+                    'Workflow mutation verification incomplete',
+                  )
           }
         } else {
           if (input.sessionState.scope === 'private') {
@@ -345,10 +340,24 @@ export class WorkbookAgentWorkflowRuntime {
           if (!this.isWorkflowStillRunning(input, abortController)) {
             return
           }
-          mutationExecuted = false
-          verificationComplete = false
-          mutationStatus = 'staged'
-          completedSummary = `Prepared workflow review item; the workbook is unchanged until this is applied: ${workflowBundle.summary}`
+          const barrierOutcome = await buildWorkbookAgentVisibleCommitBarrierOutcome({
+            context: {
+              documentId: input.documentId,
+              uiContext: input.sessionState.durable.context,
+              zeroSyncService: this.options.zeroSyncService,
+            },
+            toolName: `workflow:${input.workflowTemplate}`,
+            normalized: {
+              bundle: workflowBundle,
+              executionRecord: null,
+              disposition: 'reviewQueued',
+            },
+          })
+          mutationExecuted = barrierOutcome.mutationExecuted
+          verificationComplete = barrierOutcome.verificationComplete
+          mutationStatus = barrierOutcome.status
+          mutationReceipt = barrierOutcome.mutationReceipt
+          completedSummary = barrierOutcome.summary.replace(/^Prepared workbook review item/, 'Prepared workflow review item')
         }
       }
       if (!this.isWorkflowStillRunning(input, abortController)) {

@@ -13,7 +13,7 @@ import { z } from 'zod'
 import type { SessionIdentity } from '../http/session.js'
 import type { ZeroSyncService } from '../zero/service.js'
 import { rangeOrSelectorJsonSchema, rangeOrSelectorSchema, resolveRangeOrSelectorRequest } from './workbook-agent-selector-tooling.js'
-import { stageWorkbookAgentCommandResult } from './workbook-agent-mutation-receipt.js'
+import { stageWorkbookAgentVisibleCommitBarrierCommandResult } from './workbook-agent-visible-commit-barrier.js'
 import { toWorkbookAgentRangeRef, workbookAgentRangesIntersect } from './workbook-agent-range-chunks.js'
 import { stringifyJson, textToolResult, type WorkbookAgentStageCommandResult } from './workbook-agent-tool-shared.js'
 import type { WorkbookRuntime } from '../workbook-runtime/runtime-manager.js'
@@ -180,7 +180,7 @@ async function stageCommandResult(
   context: WorkbookAgentValidationToolContext,
   command: WorkbookAgentCommand,
 ): Promise<CodexDynamicToolCallResult> {
-  return await stageWorkbookAgentCommandResult(context, command, command.kind)
+  return await stageWorkbookAgentVisibleCommitBarrierCommandResult(context, command, command.kind)
 }
 
 function listWorkbookDataValidations(runtime: WorkbookRuntime): WorkbookDataValidationSnapshot[] {
