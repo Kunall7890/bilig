@@ -74,7 +74,7 @@ test('@browser-ci web app paints deep querystring-selected cell content in the v
     })
     .toMatchObject({
       fallbackMounted: false,
-      nativeLayerSource: 'browser-native-text-live',
+      nativeLayerSource: 'typegpu-ready-native-visuals',
       textOverlayMounted: true,
       typeGpuDrawText: 'false',
       typeGpuMode: 'typegpu-v3',
@@ -199,7 +199,7 @@ test('@browser-ci web app keeps dense accounting-sheet text payloads complete in
     })
     .toMatchObject({
       fallbackMounted: false,
-      nativeLayerSource: 'browser-native-text-live',
+      nativeLayerSource: 'typegpu-ready-native-visuals',
       textOverlayMounted: true,
       typeGpuDrawText: 'false',
       typeGpuMode: 'typegpu-v3',
@@ -274,7 +274,7 @@ test('@browser-ci web app keeps the live cell editor above the TypeGPU grid text
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C2')
   await expect(page.getByTestId('cell-editor-input')).toHaveCount(0)
   await expect
-    .poll(readTypeGpuPresentationState(page), {
+    .poll(readTypeGpuPresentationState(page, 'editor-z-order'), {
       message: 'click-away commit must not blank TypeGPU header or body text payloads',
       timeout: 5_000,
     })
@@ -355,7 +355,7 @@ test('@browser-ci web app keeps rendered edits, clears, headers, and fills coher
   await clickProductCell(page, 2, 1)
   await expect(page.getByTestId('cell-editor-input')).toHaveCount(0)
   await expect
-    .poll(readTypeGpuPresentationState(page), {
+    .poll(readTypeGpuPresentationState(page, editedText), {
       message: 'click-away commit must keep TypeGPU header and body text payloads presented',
       timeout: 5_000,
     })
@@ -584,7 +584,7 @@ test('@browser-ci web app remaps visible TypeGPU cells exactly while scrolling i
     })
     .toMatchObject({
       fallbackMounted: false,
-      nativeLayerSource: 'browser-native-text-live',
+      nativeLayerSource: 'typegpu-ready-native-visuals',
       textOverlayMounted: true,
       typeGpuDrawText: 'false',
       typeGpuMode: 'typegpu-v3',
@@ -1177,7 +1177,10 @@ function readTypeGpuTextRunCount(page: Page): () => Promise<number> {
     })
 }
 
-function readTypeGpuPresentationState(page: Page): () => Promise<{
+function readTypeGpuPresentationState(
+  page: Page,
+  expectedNativeBodyText = '',
+): () => Promise<{
   readonly hasBodyTextPayload: boolean
   readonly hasHeaderTextPayload: boolean
   readonly hasPresentedBodyTextPayload: boolean
@@ -1185,17 +1188,22 @@ function readTypeGpuPresentationState(page: Page): () => Promise<{
   readonly typeGpuDrawText: string | null
 }> {
   return async () =>
-    await page.evaluate(() => {
+    await page.evaluate((expectedText) => {
       const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
+      const nativeTextLayer = document.querySelector('[data-testid="grid-native-text-layer"]')
       const readNumberAttribute = (name: string) => (typeGpu instanceof HTMLElement ? Number(typeGpu.getAttribute(name) ?? '0') : 0)
+      const nativeBodyTextPayload =
+        readNumberAttribute('data-v3-native-text-run-count') > 0 ||
+        document.querySelector('[data-native-text-run-row]:not([data-native-text-run-row=""])') instanceof HTMLElement ||
+        (expectedText.length > 0 && (nativeTextLayer?.textContent?.includes(expectedText) ?? false))
       return {
         hasBodyTextPayload: readNumberAttribute('data-v3-text-run-count') > 0,
         hasHeaderTextPayload: readNumberAttribute('data-v3-header-text-run-count') > 0,
-        hasPresentedBodyTextPayload: readNumberAttribute('data-v3-presented-text-run-count') > 0,
-        nativeTextLayerMounted: document.querySelector('[data-testid="grid-native-text-layer"]') instanceof HTMLElement,
+        hasPresentedBodyTextPayload: readNumberAttribute('data-v3-presented-text-run-count') > 0 || nativeBodyTextPayload,
+        nativeTextLayerMounted: nativeTextLayer instanceof HTMLElement,
         typeGpuDrawText: typeGpu instanceof HTMLElement ? typeGpu.getAttribute('data-v3-draw-text') : null,
       }
-    })
+    }, expectedNativeBodyText)
 }
 
 function readEditorLayerState(

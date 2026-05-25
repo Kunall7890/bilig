@@ -867,6 +867,7 @@ export function CellEditorOverlay({
         }}
         onBlur={commitAfterBlur}
         onChange={(event) => {
+          caretWriteSequenceRef.current += 1
           pendingKeyboardSelectionRef.current = null
           const nextSelection = {
             direction: event.currentTarget.selectionDirection ?? 'none',
@@ -877,7 +878,7 @@ export function CellEditorOverlay({
             selection: nextSelection,
             value: event.target.value,
           })
-          updateDraftValue(event.currentTarget.value, nextSelection, { notify: 'deferred' })
+          updateDraftValue(event.currentTarget.value, nextSelection, { notify: 'immediate' })
         }}
         onSelect={(event) => {
           if (pendingKeyboardSelectionRef.current !== null) {

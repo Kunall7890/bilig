@@ -422,7 +422,7 @@ remoteSyncTest('@browser-ci web app recovers after runtime config failures outli
     await route.continue()
   })
 
-  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-runtime-config-recovery'))}&persist=0`)
+  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-runtime-config-recovery'))}`)
 
   await expect(page.getByTestId('formula-bar')).toBeVisible({ timeout: 20_000 })
   await expect(page.getByTestId('sheet-grid')).toBeVisible({ timeout: 15_000 })

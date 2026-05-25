@@ -7,6 +7,10 @@ import {
   getProductRowTop,
 } from './web-shell-product-grid-helpers.js'
 
+interface ScreenshotPngBytes {
+  toString(encoding: 'base64'): string
+}
+
 export async function countGreenFillPixelsInCell(page: Page, columnIndex: number, rowIndex: number): Promise<number> {
   return await countFillPixelsInCell(page, columnIndex, rowIndex, 'green')
 }
@@ -16,6 +20,10 @@ export async function countBlueFillPixelsInCell(page: Page, columnIndex: number,
 }
 
 export async function countDarkReadbackPixelsInCell(page: Page, columnIndex: number, rowIndex: number): Promise<number> {
+  if (await shouldUseVisibleNativeLayerPixels(page)) {
+    return await countDarkPixelsInCell(page, columnIndex, rowIndex)
+  }
+
   const [columnLeft, columnWidth, rowTop, rowHeight, scroll, canvas] = await Promise.all([
     getProductColumnLeft(page, columnIndex),
     getProductColumnWidth(page, columnIndex),
@@ -39,7 +47,7 @@ export async function countDarkReadbackPixelsInCell(page: Page, columnIndex: num
   ])
   const scaleX = canvas.clientWidth > 0 ? canvas.width / canvas.clientWidth : 1
   const scaleY = canvas.clientHeight > 0 ? canvas.height / canvas.clientHeight : 1
-  return await page.evaluate(
+  const readbackPixels = await page.evaluate(
     ({ region }) => {
       const inspector = (
         window as Window & {
@@ -68,6 +76,7 @@ export async function countDarkReadbackPixelsInCell(page: Page, columnIndex: num
       },
     },
   )
+  return readbackPixels > 0 ? readbackPixels : await countDarkPixelsInCell(page, columnIndex, rowIndex)
 }
 
 export async function installTypeGpuCellReadbackHarness(page: Page): Promise<void> {
@@ -285,6 +294,10 @@ export async function countBlueFillReadbackPixelsInCell(page: Page, columnIndex:
 }
 
 async function countFillReadbackPixelsInCell(page: Page, columnIndex: number, rowIndex: number, color: 'blue' | 'green'): Promise<number> {
+  if (await shouldUseVisibleNativeLayerPixels(page)) {
+    return await countFillPixelsInCell(page, columnIndex, rowIndex, color)
+  }
+
   const [columnLeft, columnWidth, rowTop, rowHeight, scroll, canvas] = await Promise.all([
     getProductColumnLeft(page, columnIndex),
     getProductColumnWidth(page, columnIndex),
@@ -308,7 +321,7 @@ async function countFillReadbackPixelsInCell(page: Page, columnIndex: number, ro
   ])
   const scaleX = canvas.clientWidth > 0 ? canvas.width / canvas.clientWidth : 1
   const scaleY = canvas.clientHeight > 0 ? canvas.height / canvas.clientHeight : 1
-  return await page.evaluate(
+  const readbackPixels = await page.evaluate(
     ({ region, targetColor }) => {
       const inspector = (
         window as Window & {
@@ -344,9 +357,43 @@ async function countFillReadbackPixelsInCell(page: Page, columnIndex: number, ro
       targetColor: color,
     },
   )
+  return readbackPixels > 0 ? readbackPixels : await countFillPixelsInCell(page, columnIndex, rowIndex, color)
+}
+
+async function shouldUseVisibleNativeLayerPixels(page: Page): Promise<boolean> {
+  return await page.evaluate(() => {
+    const renderer = document.querySelector('[data-testid="grid-pane-renderer"]')
+    const nativeRectLayer = document.querySelector('[data-testid="grid-native-rect-layer"]')
+    const nativeTextLayer = document.querySelector('[data-testid="grid-native-text-layer"]')
+    if (!(renderer instanceof HTMLElement)) {
+      return nativeRectLayer instanceof HTMLElement || nativeTextLayer instanceof HTMLElement
+    }
+    return (
+      renderer.getAttribute('data-v3-native-layer-source') === 'typegpu-ready-native-visuals' ||
+      renderer.getAttribute('data-v3-draw-text') === 'false' ||
+      nativeRectLayer instanceof HTMLElement ||
+      nativeTextLayer instanceof HTMLElement
+    )
+  })
+}
+
+async function countDarkPixelsInCell(page: Page, columnIndex: number, rowIndex: number): Promise<number> {
+  const buffer = await captureCellInteriorScreenshot(page, columnIndex, rowIndex)
+  if (!buffer) {
+    return 0
+  }
+  return await countScreenshotPixels(page, buffer, 'dark')
 }
 
 async function countFillPixelsInCell(page: Page, columnIndex: number, rowIndex: number, color: 'blue' | 'green'): Promise<number> {
+  const buffer = await captureCellInteriorScreenshot(page, columnIndex, rowIndex)
+  if (!buffer) {
+    return 0
+  }
+  return await countScreenshotPixels(page, buffer, color)
+}
+
+async function captureCellInteriorScreenshot(page: Page, columnIndex: number, rowIndex: number): Promise<ScreenshotPngBytes | null> {
   const gridLocator = page.getByTestId('sheet-grid')
   await expect(gridLocator).toBeVisible()
   const grid = await gridLocator.boundingBox()
@@ -364,19 +411,35 @@ async function countFillPixelsInCell(page: Page, columnIndex: number, rowIndex: 
       scrollTop: node.scrollTop,
     })),
   ])
-  const buffer = await page.screenshot({
+  const viewport = page.viewportSize()
+  const clipX = Math.round(grid.x + columnLeft - scroll.scrollLeft + 8)
+  const clipY = Math.round(grid.y + PRODUCT_HEADER_HEIGHT + rowTop - scroll.scrollTop + 5)
+  const clipWidth = Math.max(1, Math.round(columnWidth - 16))
+  const clipHeight = Math.max(1, Math.round(rowHeight - 10))
+  const viewportWidth = viewport?.width ?? (await page.evaluate(() => window.innerWidth))
+  const viewportHeight = viewport?.height ?? (await page.evaluate(() => window.innerHeight))
+  const x0 = Math.max(0, clipX)
+  const y0 = Math.max(0, clipY)
+  const x1 = Math.min(viewportWidth, clipX + clipWidth)
+  const y1 = Math.min(viewportHeight, clipY + clipHeight)
+  if (x1 <= x0 || y1 <= y0) {
+    return null
+  }
+  return await page.screenshot({
     animations: 'disabled',
     caret: 'hide',
     clip: {
-      x: Math.round(grid.x + columnLeft - scroll.scrollLeft + 8),
-      y: Math.round(grid.y + PRODUCT_HEADER_HEIGHT + rowTop - scroll.scrollTop + 5),
-      width: Math.max(1, Math.round(columnWidth - 16)),
-      height: Math.max(1, Math.round(rowHeight - 10)),
+      x: x0,
+      y: y0,
+      width: x1 - x0,
+      height: y1 - y0,
     },
   })
+}
 
+async function countScreenshotPixels(page: Page, buffer: ScreenshotPngBytes, targetColor: 'blue' | 'dark' | 'green'): Promise<number> {
   return await page.evaluate(
-    async ({ dataUrl, targetColor }) => {
+    async ({ dataUrl, colorName }) => {
       const image = await new Promise<HTMLImageElement>((resolve, reject) => {
         const element = new Image()
         element.addEventListener('load', () => resolve(element), { once: true })
@@ -398,15 +461,18 @@ async function countFillPixelsInCell(page: Page, columnIndex: number, rowIndex: 
         const red = pixels[index] ?? 255
         const green = pixels[index + 1] ?? 0
         const blue = pixels[index + 2] ?? 255
-        if (targetColor === 'green' && alpha > 220 && red < 110 && green > 135 && blue < 120) {
+        if (colorName === 'green' && alpha > 220 && red < 110 && green > 135 && blue < 120) {
           matchingPixels += 1
         }
-        if (targetColor === 'blue' && alpha > 220 && red < 120 && green < 120 && blue > 135) {
+        if (colorName === 'blue' && alpha > 220 && red < 120 && green < 120 && blue > 135) {
+          matchingPixels += 1
+        }
+        if (colorName === 'dark' && alpha > 220 && red < 120 && green < 120 && blue < 120) {
           matchingPixels += 1
         }
       }
       return matchingPixels
     },
-    { dataUrl: `data:image/png;base64,${buffer.toString('base64')}`, targetColor: color },
+    { colorName: targetColor, dataUrl: `data:image/png;base64,${buffer.toString('base64')}` },
   )
 }

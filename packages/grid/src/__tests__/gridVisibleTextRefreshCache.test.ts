@@ -62,6 +62,20 @@ describe('GridVisibleTextRefreshCache', () => {
     expect(cache.needsLocalRefresh(tile.tileId, tile, createInput({ engine: createEngine({ A1: 'fresh A1' }) }))).toBe(true)
   })
 
+  it('revalidates stale remote text when a local optimistic edit advances before authoritative readback', () => {
+    const cache = new GridVisibleTextRefreshCache()
+    const blankRemoteTile = createTile()
+
+    expect(cache.needsLocalRefresh(blankRemoteTile.tileId, blankRemoteTile, createInput({ engine: createEngine({}, {}, 1) }))).toBe(false)
+    expect(
+      cache.needsLocalRefresh(
+        blankRemoteTile.tileId,
+        blankRemoteTile,
+        createInput({ engine: createEngine({ B2: 'editor-z-order' }, {}, 1, {}, 2) }),
+      ),
+    ).toBe(true)
+  })
+
   it('caches visible proof across value-equivalent layout objects', () => {
     const cache = new GridVisibleTextRefreshCache()
     const tile = createTile({
@@ -530,6 +544,7 @@ function createEngine(
   styles: Record<string, CellStyleRecord> = {},
   projectedRevision = 1,
   mergedRanges: Record<string, { sheetName: string; startAddress: string; endAddress: string }> = {},
+  localRevision = projectedRevision,
 ): GridEngineLike {
   return {
     getCell: (_sheetName, address) => createCellSnapshot(address, values[address] ?? ''),
@@ -537,7 +552,7 @@ function createEngine(
     getMergeRange: (_sheetName, address) => mergedRanges[address],
     getRenderRevisionSnapshot: () => ({
       authoritativeRevision: projectedRevision,
-      localRevision: projectedRevision,
+      localRevision,
       projectedRevision,
       tileSceneCameraSeq: projectedRevision,
       tileSceneRevision: projectedRevision,

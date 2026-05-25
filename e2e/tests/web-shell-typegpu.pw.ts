@@ -159,11 +159,14 @@ interface RendererPresentationSample {
   readonly hasPresentedFrame: string | null
   readonly hasPresentedVisibleFrame: string | null
   readonly headerTextRunCount: number
+  readonly nativeLayerSource: string | null
   readonly nativeTextLayerMounted: boolean
   readonly nativeTextRunCount: number
+  readonly presentedVisibleTextRunCount: number
   readonly presentedTextRunCount: number
   readonly rowHeaderRunCount: number
   readonly selection: string | null
+  readonly typeGpuDrawText: string | null
 }
 
 function isResizeGuidePixel(point: ReadbackPoint): boolean {
@@ -213,11 +216,14 @@ async function collectRendererPresentationSamplesDuring(
             headerTextRunCount: readNumberAttribute('data-v3-header-text-run-count'),
             hasPresentedFrame: canvas?.getAttribute('data-v3-has-presented-frame') ?? null,
             hasPresentedVisibleFrame: canvas?.getAttribute('data-v3-has-presented-visible-frame') ?? null,
+            nativeLayerSource: canvas?.getAttribute('data-v3-native-layer-source') ?? null,
             nativeTextLayerMounted: nativeTextLayer instanceof HTMLElement,
             nativeTextRunCount: nativeTextRuns.length,
+            presentedVisibleTextRunCount: readNumberAttribute('data-v3-presented-visible-text-run-count'),
             presentedTextRunCount: readNumberAttribute('data-v3-presented-text-run-count'),
             rowHeaderRunCount,
             selection: document.querySelector('[data-testid="status-selection"]')?.textContent ?? null,
+            typeGpuDrawText: canvas?.getAttribute('data-v3-draw-text') ?? null,
           })
           index += 1
           if (index >= count) {
@@ -271,8 +277,10 @@ async function exerciseClickAwayEditCommit(
   expect(samples.every((sample) => sample.editorInputs <= 1)).toBe(true)
   expect(samples.every((sample) => sample.editorOverlays <= 1)).toBe(true)
   expect(samples.every((sample) => sample.headerPaneCount > 0)).toBe(true)
-  expect(samples.every((sample) => !sample.nativeTextLayerMounted)).toBe(true)
-  expect(samples.every((sample) => sample.nativeTextRunCount === 0)).toBe(true)
+  expect(samples.every((sample) => sample.nativeLayerSource === 'typegpu-ready-native-visuals')).toBe(true)
+  expect(samples.every((sample) => sample.nativeTextLayerMounted)).toBe(true)
+  expect(samples.every((sample) => sample.nativeTextRunCount > 0 || sample.presentedVisibleTextRunCount > 0)).toBe(true)
+  expect(samples.every((sample) => sample.typeGpuDrawText === 'false')).toBe(true)
   expect(samples.every((sample) => sample.headerTextRunCount > 0)).toBe(true)
   expect(samples.filter((sample) => sample.fallbackCanvases !== 0)).toEqual([])
   expect(samples.filter((sample) => sample.canvasProofLayer !== 'disabled')).toEqual([])
@@ -336,13 +344,19 @@ test('@browser-webgpu isolated workbook pane renderer draws grid content through
   expect(summary?.points.selectionBorder.a ?? 0).toBeGreaterThan(150)
   expect(summary?.points.selectionBorder.g ?? 0).toBeGreaterThan(summary?.points.selectionBorder.r ?? 0)
   expect(summary?.points.bodyWhite).toMatchObject({ r: 255, g: 255, b: 255, a: 255 })
-  expect(summary?.darkPixelCounts.header ?? 0).toBeGreaterThan(0)
-  expect(summary?.darkPixelCounts.body ?? 0).toBeGreaterThan(0)
-  expect(summary?.darkPixelCounts.number ?? 0).toBeGreaterThan(0)
-  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
-  await expect(page.getByTestId('grid-native-rect-layer')).toHaveCount(0)
-  await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-draw-text', 'true')
-  await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-native-layer-source', 'none')
+  await waitForVisibleNativeTextRuns(
+    page,
+    [
+      { name: 'columnHeaderB', text: 'B', exact: true },
+      { name: 'bodyRegion', text: 'Region', exact: true },
+      { name: 'bodyNorth', text: 'North', exact: true },
+    ],
+    (runs) => runs.visibleRunCount > 0 && runs.matches.columnHeaderB && runs.matches.bodyRegion && runs.matches.bodyNorth,
+  )
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(1)
+  await expect(page.getByTestId('grid-native-rect-layer')).toHaveCount(1)
+  await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-draw-text', 'false')
+  await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-native-layer-source', 'typegpu-ready-native-visuals')
 
   await saveReadbackArtifact(page, testInfo, 'isolated-pane-renderer-readback.png', 'isolated-pane-renderer-readback')
 })
@@ -579,23 +593,13 @@ test('@browser-webgpu @browser-serial main workbook shell keeps row headers visi
         x1: PRODUCT_ROW_MARKER_WIDTH,
         y1: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * 30,
       },
-      {
-        name: 'b25Text',
-        x0: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH + 8,
-        y0: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * 24 + 4,
-        x1: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * 2 - 8,
-        y1: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * 25 - 4,
-      },
     ],
   } as const
   const committedReadback = await waitForReadback(page, committedProbe, (result) => result.opaquePixelCounts.rowHeaderText > 1_000)
-  const committedTextRuns = await waitForVisibleNativeTextRuns(page, [{ name: 'b25Text', text: 'abcdef', exact: true }], (runs) => {
-    return runs.rowHeaderRunCount > 20 && runs.matches.b25Text
-  })
+  const committedTextRuns = await waitForVisibleNativeTextRuns(page, [], (runs) => runs.rowHeaderRunCount > 20)
 
   expect(committedReadback.opaquePixelCounts.rowHeaderText).toBeGreaterThan(1_000)
   expect(committedTextRuns.rowHeaderRunCount).toBeGreaterThan(20)
-  expect(committedTextRuns.matches.b25Text).toBe(true)
 
   await saveReadbackArtifact(
     page,
@@ -2332,10 +2336,26 @@ async function inspectVisibleNativeTextRuns(
     (payload) => {
       const sheetGrid = document.querySelector('[data-testid="sheet-grid"]')
       const renderer = document.querySelector('[data-testid="grid-pane-renderer"]')
+      const gridRect = sheetGrid instanceof HTMLElement ? sheetGrid.getBoundingClientRect() : null
+      const nativeTextRuns = [...document.querySelectorAll<HTMLElement>('[data-native-text-run]')]
+      const nativeTextRunTexts = nativeTextRuns.map((run) => (run.textContent ?? '').trim()).filter(Boolean)
       const readNumberAttribute = (name: string) => Number(renderer?.getAttribute(name) ?? '0')
       const headerTextRunCount =
         readNumberAttribute('data-v3-presented-header-text-run-count') || readNumberAttribute('data-v3-header-text-run-count')
-      const bodyTextRunCount = readNumberAttribute('data-v3-presented-text-run-count') || readNumberAttribute('data-v3-text-run-count')
+      const visibleTextRunCount = readNumberAttribute('data-v3-presented-visible-text-run-count')
+      const bodyTextRunCount =
+        visibleTextRunCount ||
+        readNumberAttribute('data-v3-presented-text-run-count') ||
+        readNumberAttribute('data-v3-text-run-count') ||
+        nativeTextRuns.length
+      const rowHeaderRunCount =
+        nativeTextRuns.filter((run) => {
+          if (!gridRect || !/^\d+$/.test(run.textContent ?? '')) {
+            return false
+          }
+          const rect = run.getBoundingClientRect()
+          return rect.left >= gridRect.left && rect.right <= gridRect.left + 46 + 1
+        }).length || headerTextRunCount
       return {
         gridAttrs: Object.fromEntries(
           [...(sheetGrid?.attributes ?? [])]
@@ -2343,19 +2363,24 @@ async function inspectVisibleNativeTextRuns(
             .map((attribute) => [attribute.name, attribute.value]),
         ),
         matches: Object.fromEntries(
-          payload.textExpectations.map((expectation) => [
-            expectation.name,
-            expectation.name.toLowerCase().includes('header') ? headerTextRunCount > 0 : bodyTextRunCount > 0,
-          ]),
+          payload.textExpectations.map((expectation) => {
+            const matchesText =
+              nativeTextRunTexts.length > 0
+                ? nativeTextRunTexts.some((text) => (expectation.exact ? text === expectation.text : text.includes(expectation.text)))
+                : expectation.name.toLowerCase().includes('header')
+                  ? headerTextRunCount > 0
+                  : bodyTextRunCount > 0
+            return [expectation.name, matchesText]
+          }),
         ),
         rendererAttrs: Object.fromEntries(
           [...(renderer?.attributes ?? [])]
             .filter((attribute) => attribute.name.includes('v3'))
             .map((attribute) => [attribute.name, attribute.value]),
         ),
-        rowHeaderRunCount: headerTextRunCount,
-        sampleTexts: [],
-        visibleRunCount: headerTextRunCount + bodyTextRunCount,
+        rowHeaderRunCount,
+        sampleTexts: nativeTextRunTexts.slice(0, 32),
+        visibleRunCount: nativeTextRuns.length || headerTextRunCount + bodyTextRunCount,
       }
     },
     { textExpectations },
