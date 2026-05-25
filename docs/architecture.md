@@ -75,6 +75,7 @@ flowchart LR
     formula intent can be verified without hardcoded workbook models or
     human-facing cell UI assumptions
   - runtime adapter capability checks before mutation handoff
+  - runtime adapter conformance checks through `@bilig/workbook/testing`
   - bundle-scoped receipt changed-range validation for command proof
   - duplicate command-id rejection for inspectable command bundles
   - frozen command/feature/result/receipt validator verdicts for generic

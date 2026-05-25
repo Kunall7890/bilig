@@ -70,6 +70,11 @@
       "import": "./dist/runtime.js",
       "default": "./dist/runtime.js"
     },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js",
+      "default": "./dist/testing.js"
+    },
     "./command": {
       "types": "./dist/command.d.ts",
       "import": "./dist/command.js",
@@ -86,7 +91,7 @@
   },
   "scripts": {
     "build": "tsc -b tsconfig.json",
-    "test": "cd ../.. && tsx scripts/run-vitest.ts --run packages/workbook/src/__tests__/guards.test.ts packages/workbook/src/__tests__/model-api.test.ts packages/workbook/src/__tests__/model-verification-api.test.ts packages/workbook/src/__tests__/transport-api.test.ts packages/workbook/src/__tests__/ref-data-boundary.test.ts packages/workbook/src/__tests__/low-level-op-api.test.ts packages/workbook/src/__tests__/check-api.test.ts packages/workbook/src/__tests__/format-api.test.ts packages/workbook/src/__tests__/formula-api.test.ts packages/workbook/src/__tests__/action-input-api.test.ts packages/workbook/src/__tests__/action-metadata-api.test.ts packages/workbook/src/__tests__/features-api.test.ts packages/workbook/src/__tests__/feature-plugin-boundary.test.ts packages/workbook/src/__tests__/command-bundle-api.test.ts packages/workbook/src/__tests__/run-api.test.ts packages/workbook/src/__tests__/run-proof-boundary.test.ts packages/workbook/src/__tests__/readback-proof-api.test.ts packages/workbook/src/__tests__/run-strict-proof-api.test.ts packages/workbook/src/__tests__/requirements-api.test.ts packages/workbook/src/__tests__/plan-refs-api.test.ts packages/workbook/src/__tests__/prepare-api.test.ts packages/workbook/src/__tests__/schema-api.test.ts packages/workbook/src/__tests__/package-boundary.test.ts"
+    "test": "cd ../.. && tsx scripts/run-vitest.ts --run packages/workbook/src/__tests__/guards.test.ts packages/workbook/src/__tests__/model-api.test.ts packages/workbook/src/__tests__/model-verification-api.test.ts packages/workbook/src/__tests__/transport-api.test.ts packages/workbook/src/__tests__/ref-data-boundary.test.ts packages/workbook/src/__tests__/low-level-op-api.test.ts packages/workbook/src/__tests__/check-api.test.ts packages/workbook/src/__tests__/format-api.test.ts packages/workbook/src/__tests__/formula-api.test.ts packages/workbook/src/__tests__/action-input-api.test.ts packages/workbook/src/__tests__/action-metadata-api.test.ts packages/workbook/src/__tests__/features-api.test.ts packages/workbook/src/__tests__/feature-plugin-boundary.test.ts packages/workbook/src/__tests__/command-bundle-api.test.ts packages/workbook/src/__tests__/run-api.test.ts packages/workbook/src/__tests__/run-proof-boundary.test.ts packages/workbook/src/__tests__/readback-proof-api.test.ts packages/workbook/src/__tests__/run-strict-proof-api.test.ts packages/workbook/src/__tests__/requirements-api.test.ts packages/workbook/src/__tests__/plan-refs-api.test.ts packages/workbook/src/__tests__/prepare-api.test.ts packages/workbook/src/__tests__/schema-api.test.ts packages/workbook/src/__tests__/testing-api.test.ts packages/workbook/src/__tests__/package-boundary.test.ts"
   },
   "dependencies": {
     "@bilig/formula": "workspace:*",

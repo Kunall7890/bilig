@@ -139,6 +139,7 @@ describe('@bilig/workbook package boundary', () => {
       './formula': expect.any(Object),
       './verify': expect.any(Object),
       './runtime': expect.any(Object),
+      './testing': expect.any(Object),
       './command': expect.any(Object),
       './schema': expect.any(Object),
     })

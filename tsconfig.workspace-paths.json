@@ -38,6 +38,7 @@
       "@bilig/workbook/prepare": ["./packages/workbook/src/prepare.ts"],
       "@bilig/workbook/runtime": ["./packages/workbook/src/runtime.ts"],
       "@bilig/workbook/schema": ["./packages/workbook/src/schema.ts"],
+      "@bilig/workbook/testing": ["./packages/workbook/src/testing.ts"],
       "@bilig/workbook/verify": ["./packages/workbook/src/verify.ts"],
       "@bilig/worker-transport": ["./packages/worker-transport/src/index.ts"],
       "@bilig/workpaper": ["./packages/workpaper/src/index.ts"],

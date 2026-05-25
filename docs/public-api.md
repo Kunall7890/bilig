@@ -57,7 +57,8 @@ smaller import maps, the package also publishes layered subpaths:
 `@bilig/workbook/model`, `@bilig/workbook/prepare`,
 `@bilig/workbook/find`, `@bilig/workbook/check`, `@bilig/workbook/formula`,
 `@bilig/workbook/verify`, `@bilig/workbook/runtime`,
-`@bilig/workbook/command`, and `@bilig/workbook/schema`.
+`@bilig/workbook/command`, `@bilig/workbook/testing`, and
+`@bilig/workbook/schema`.
 
 ### Agent model contract
 
@@ -100,7 +101,7 @@ prepaid, or other business models in this package.
   `verifyWorkbookReadbacks` return frozen verdict containers, generated issue
   arrays, and proof checks, so an inspected result stays stable.
 - `checkWorkbookReadbackProof(data)` validates transported `{ checks,
-  readbacks }` proof in one call and returns frozen verified proof or stable
+readbacks }` proof in one call and returns frozen verified proof or stable
   readback issues. `isWorkbookReadbackProof(data)` is the boolean guard over the
   same proof boundary.
 - `workbookJsonSchemas`, `workbookJsonSchemaHashes`, and package `fixtures/`
@@ -167,6 +168,10 @@ Runtimes execute plans. `@bilig/workbook` only defines the handoff.
   `WorkbookRunResult`.
 - `checkRuntimeAdapter(planOrRequirements, adapter)` checks that the adapter has
   the required `apply`, `read`, and `verifyChecks` methods before mutation.
+- `checkWorkbookRunAdapter(planOrData, adapter)` and
+  `assertWorkbookRunAdapter(planOrData, adapter)` live under
+  `@bilig/workbook/testing`. They run the adapter in strict mode and validate
+  the JSON-safe run description without depending on a test runner or engine.
 - `adapter.apply(plan)` owns runtime mutation and may return `previewOps`,
   `appliedOps`, JSON-safe `proof`, and an undo ref.
 - `adapter.read(targets, plan)` returns semantic readbacks for checks such as

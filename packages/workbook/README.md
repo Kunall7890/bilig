@@ -34,13 +34,7 @@ proof without knowing anything about a rendered spreadsheet UI.
 ## The Shape
 
 ```ts
-import {
-  defineModel,
-  describeRunResult,
-  formula,
-  prepareWorkbookAction,
-  runWorkbookPlan,
-} from '@bilig/workbook'
+import { defineModel, describeRunResult, formula, prepareWorkbookAction, runWorkbookPlan } from '@bilig/workbook'
 
 export const model = defineModel({
   name: 'named-range-formula',
@@ -101,7 +95,8 @@ an agent wants a smaller import map: `@bilig/workbook/model`,
 `@bilig/workbook/prepare`, `@bilig/workbook/find`,
 `@bilig/workbook/check`, `@bilig/workbook/formula`,
 `@bilig/workbook/verify`, `@bilig/workbook/runtime`,
-`@bilig/workbook/command`, and `@bilig/workbook/schema`.
+`@bilig/workbook/command`, `@bilig/workbook/testing`, and
+`@bilig/workbook/schema`.
 
 ## Mental Model
 
@@ -181,6 +176,9 @@ production proof. Strict mode requires:
 - command receipts bound to the planned command digests
 - resolved-ref proof for ref-targeting commands
 - proof on every passed check
+
+Runtime authors can run the same contract with `checkWorkbookRunAdapter` or
+`assertWorkbookRunAdapter` from `@bilig/workbook/testing`.
 
 The returned `WorkbookRunResult` is intentionally plain:
 
