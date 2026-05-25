@@ -52,8 +52,8 @@ flowchart LR
   - JSON-safe action input planning and verification
   - own-data-only action input and input-metadata normalization, with accessors
     rejected instead of invoked before model code runs
-  - action-object metadata, plain input descriptions, and `checkInput` payload
-    checks for agent manifests
+  - action-object metadata, constrained input descriptions, and `checkInput`
+    payload checks for agent manifests
   - data-only action-name validation before model lookup, so malformed runtime
     keys fail without caller-owned coercion
   - frozen model inspection and action-plan result wrappers

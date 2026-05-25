@@ -123,6 +123,132 @@ describe('@bilig/workbook action input api', () => {
     })
   })
 
+  it('checks simple action input constraints for agent tool calls', () => {
+    const description = normalizeWorkbookActionInputDescription({
+      kind: 'object',
+      additionalProperties: false,
+      fields: {
+        amount: { kind: 'number', required: true, min: 0, max: 100 },
+        code: { kind: 'string', required: true, minLength: 3, maxLength: 3, pattern: '^[A-Z]{3}$' },
+        mode: { kind: 'string', values: ['append', 'replace'], default: 'append', examples: ['replace'] },
+        rows: { kind: 'array', minItems: 1, maxItems: 2, items: { kind: 'number', min: 1 } },
+      },
+    })
+
+    expect(description).toEqual({
+      kind: 'object',
+      additionalProperties: false,
+      fields: {
+        amount: { kind: 'number', required: true, min: 0, max: 100 },
+        code: { kind: 'string', required: true, minLength: 3, maxLength: 3, pattern: '^[A-Z]{3}$' },
+        mode: { kind: 'string', values: ['append', 'replace'], default: 'append', examples: ['replace'] },
+        rows: { kind: 'array', minItems: 1, maxItems: 2, items: { kind: 'number', min: 1 } },
+      },
+    })
+    expect(Object.isFrozen(description)).toBe(true)
+    expect(Object.isFrozen(description.fields?.mode?.values)).toBe(true)
+    expect(Object.isFrozen(description.fields?.mode?.examples)).toBe(true)
+
+    expect(
+      checkInput(description, {
+        amount: 50,
+        code: 'USD',
+        mode: 'replace',
+        rows: [1, 2],
+      }),
+    ).toEqual({
+      status: 'valid',
+      input: {
+        amount: 50,
+        code: 'USD',
+        mode: 'replace',
+        rows: [1, 2],
+      },
+      issues: [],
+    })
+
+    expect(
+      checkInput(description, {
+        amount: -1,
+        code: 'usd',
+        mode: 'delete',
+        rows: [0, 2, 3],
+        extra: true,
+      }),
+    ).toEqual({
+      status: 'invalid',
+      input: {
+        amount: -1,
+        code: 'usd',
+        extra: true,
+        mode: 'delete',
+        rows: [0, 2, 3],
+      },
+      issues: [
+        {
+          code: 'input_constraint_failed',
+          path: 'input.amount',
+          message: 'Action input at input.amount must be greater than or equal to 0',
+        },
+        {
+          code: 'input_constraint_failed',
+          path: 'input.code',
+          message: 'Action input at input.code must match pattern ^[A-Z]{3}$',
+        },
+        {
+          code: 'input_constraint_failed',
+          path: 'input.mode',
+          message: 'Action input at input.mode must be one of the allowed values',
+        },
+        {
+          code: 'input_constraint_failed',
+          path: 'input.rows',
+          message: 'Action input at input.rows must contain at most 2 items',
+        },
+        {
+          code: 'input_constraint_failed',
+          path: 'input.rows[0]',
+          message: 'Action input at input.rows[0] must be greater than or equal to 1',
+        },
+        {
+          code: 'unknown_input_field',
+          path: 'input.extra',
+          message: 'Action input at input.extra is not allowed',
+        },
+      ],
+    })
+  })
+
+  it('rejects malformed action input constraints without executing getters', () => {
+    expect(() => normalizeWorkbookActionInputDescription({ kind: 'number', min: 10, max: 1 })).toThrowError(
+      'Action input description at input.min must be less than or equal to input.max',
+    )
+    expect(() => normalizeWorkbookActionInputDescription({ kind: 'string', pattern: '[' })).toThrowError(
+      'Action input description at input.pattern must be a valid regular expression',
+    )
+    expect(() => normalizeWorkbookActionInputDescription({ kind: 'object', values: [] })).toThrowError(
+      'Action input description at input.values cannot be empty',
+    )
+    expect(() => normalizeWorkbookActionInputDescription({ kind: 'string', values: ['ready', 'ready'] })).toThrowError(
+      'Action input description at input.values[1] duplicates input.values[0]',
+    )
+    expect(() => normalizeWorkbookActionInputDescription({ kind: 'string', default: 7 })).toThrowError(
+      'Action input description at input.default is invalid: Action input at input.default must be a string',
+    )
+
+    const valuesWithGetter: unknown[] = ['ready']
+    Object.defineProperty(valuesWithGetter, '0', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        throw new Error('values getter should not run')
+      },
+    })
+    expect(() => normalizeWorkbookActionInputDescription({ kind: 'string', values: valuesWithGetter })).toThrowError(
+      'Action input description at input.values[0] must be a data property',
+    )
+  })
+
   it('preserves magic JSON keys in normalized action inputs and descriptions', () => {
     const payload = JSON.parse('{"__proto__":{"polluted":true},"constructor":{"nested":1},"value":12}') as unknown
 

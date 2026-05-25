@@ -24,6 +24,17 @@ export interface WorkbookActionInputDescription {
   readonly required?: boolean
   readonly fields?: { readonly [key: string]: WorkbookActionInputDescription }
   readonly items?: WorkbookActionInputDescription
+  readonly values?: readonly WorkbookActionInput[]
+  readonly min?: number
+  readonly max?: number
+  readonly minLength?: number
+  readonly maxLength?: number
+  readonly pattern?: string
+  readonly minItems?: number
+  readonly maxItems?: number
+  readonly additionalProperties?: boolean
+  readonly default?: WorkbookActionInput
+  readonly examples?: readonly WorkbookActionInput[]
 }
 
 export type WorkbookActionInputIssueCode =
@@ -31,6 +42,8 @@ export type WorkbookActionInputIssueCode =
   | 'invalid_action_input'
   | 'missing_required_input'
   | 'wrong_input_type'
+  | 'unknown_input_field'
+  | 'input_constraint_failed'
 
 export interface WorkbookActionInputIssue {
   readonly code: WorkbookActionInputIssueCode
@@ -140,6 +153,94 @@ function normalizeDescriptionText(value: unknown, path: string): string | undefi
   return text
 }
 
+function normalizeDescriptionBoolean(value: unknown, path: string): boolean | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  if (typeof value !== 'boolean') {
+    throw inputError(path, `Action input description at ${path} must be a boolean`)
+  }
+  return value
+}
+
+function normalizeFiniteDescriptionNumber(value: unknown, path: string): number | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw inputError(path, `Action input description at ${path} must be a finite number`)
+  }
+  return value
+}
+
+function normalizeNonNegativeInteger(value: unknown, path: string): number | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+    throw inputError(path, `Action input description at ${path} must be a non-negative safe integer`)
+  }
+  return value
+}
+
+function normalizePattern(value: unknown, path: string): string | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  if (typeof value !== 'string') {
+    throw inputError(path, `Action input description at ${path} must be a string`)
+  }
+  try {
+    RegExp(value)
+  } catch (error) {
+    throw inputError(path, `Action input description at ${path} must be a valid regular expression: ${errorMessage(error)}`)
+  }
+  return value
+}
+
+function normalizeDescriptionInputArray(value: unknown, path: string): readonly WorkbookActionInput[] | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  if (!Array.isArray(value)) {
+    throw inputError(path, `Action input description at ${path} must be an array`)
+  }
+  if (value.length === 0) {
+    throw inputError(path, `Action input description at ${path} cannot be empty`)
+  }
+  const output: WorkbookActionInput[] = []
+  for (let index = 0; index < value.length; index += 1) {
+    const entryPath = `${path}[${String(index)}]`
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !descriptor.enumerable) {
+      throw inputError(entryPath, `Action input description at ${entryPath} must be a data property`)
+    }
+    if (!('value' in descriptor)) {
+      throw inputError(entryPath, `Action input description at ${entryPath} must be a data property`)
+    }
+    output.push(normalizeInput(descriptor.value, entryPath, new WeakSet()))
+  }
+  return Object.freeze(output)
+}
+
+function assertUniqueAllowedValues(values: readonly WorkbookActionInput[] | undefined, path: string): void {
+  if (values === undefined) {
+    return
+  }
+  const seen = new Map<string, number>()
+  values.forEach((value, index) => {
+    const key = canonicalInputJson(value)
+    const firstIndex = seen.get(key)
+    if (firstIndex !== undefined) {
+      throw inputError(
+        `${path}.values[${String(index)}]`,
+        `Action input description at ${path}.values[${String(index)}] duplicates ${path}.values[${String(firstIndex)}]`,
+      )
+    }
+    seen.set(key, index)
+  })
+}
+
 function normalizeInputDescription(value: unknown, path: string, seen: WeakSet<object>): WorkbookActionInputDescription {
   if (!isPlainObject(value)) {
     throw inputError(path, `Action input description at ${path} must be a plain object`)
@@ -155,7 +256,24 @@ function normalizeInputDescription(value: unknown, path: string, seen: WeakSet<o
       throw inputError(path, `Action input description at ${path} must not contain symbol keys`)
     }
 
-    const allowedKeys = new Set(['kind', 'description', 'required', 'fields', 'items'])
+    const allowedKeys = new Set([
+      'kind',
+      'description',
+      'required',
+      'fields',
+      'items',
+      'values',
+      'min',
+      'max',
+      'minLength',
+      'maxLength',
+      'pattern',
+      'minItems',
+      'maxItems',
+      'additionalProperties',
+      'default',
+      'examples',
+    ])
     const unknownKey = Object.keys(value).find((key) => !allowedKeys.has(key))
     if (unknownKey !== undefined) {
       const unknownPath = childPath(path, unknownKey)
@@ -169,6 +287,17 @@ function normalizeInputDescription(value: unknown, path: string, seen: WeakSet<o
       required?: boolean
       fields?: { readonly [key: string]: WorkbookActionInputDescription }
       items?: WorkbookActionInputDescription
+      values?: readonly WorkbookActionInput[]
+      min?: number
+      max?: number
+      minLength?: number
+      maxLength?: number
+      pattern?: string
+      minItems?: number
+      maxItems?: number
+      additionalProperties?: boolean
+      default?: WorkbookActionInput
+      examples?: readonly WorkbookActionInput[]
     } = { kind }
 
     const description = normalizeDescriptionText(
@@ -179,11 +308,11 @@ function normalizeInputDescription(value: unknown, path: string, seen: WeakSet<o
       output.description = description
     }
 
-    const required = ownDataValue(value, 'required', `${path}.required`, 'Action input description')
+    const required = normalizeDescriptionBoolean(
+      ownDataValue(value, 'required', `${path}.required`, 'Action input description'),
+      `${path}.required`,
+    )
     if (required !== undefined) {
-      if (typeof required !== 'boolean') {
-        throw inputError(`${path}.required`, `Action input description at ${path}.required must be a boolean`)
-      }
       output.required = required
     }
 
@@ -212,6 +341,114 @@ function normalizeInputDescription(value: unknown, path: string, seen: WeakSet<o
       }
       output.items = normalizeInputDescription(items, `${path}.items`, seen)
     }
+
+    const min = normalizeFiniteDescriptionNumber(ownDataValue(value, 'min', `${path}.min`, 'Action input description'), `${path}.min`)
+    const max = normalizeFiniteDescriptionNumber(ownDataValue(value, 'max', `${path}.max`, 'Action input description'), `${path}.max`)
+    if (min !== undefined || max !== undefined) {
+      if (kind !== 'number') {
+        throw inputError(`${path}.min`, `Action input description number bounds can only be used when kind is number`)
+      }
+      if (min !== undefined) {
+        output.min = min
+      }
+      if (max !== undefined) {
+        output.max = max
+      }
+      if (min !== undefined && max !== undefined && min > max) {
+        throw inputError(`${path}.min`, `Action input description at ${path}.min must be less than or equal to ${path}.max`)
+      }
+    }
+
+    const minLength = normalizeNonNegativeInteger(
+      ownDataValue(value, 'minLength', `${path}.minLength`, 'Action input description'),
+      `${path}.minLength`,
+    )
+    const maxLength = normalizeNonNegativeInteger(
+      ownDataValue(value, 'maxLength', `${path}.maxLength`, 'Action input description'),
+      `${path}.maxLength`,
+    )
+    const pattern = normalizePattern(ownDataValue(value, 'pattern', `${path}.pattern`, 'Action input description'), `${path}.pattern`)
+    if (minLength !== undefined || maxLength !== undefined || pattern !== undefined) {
+      if (kind !== 'string') {
+        throw inputError(`${path}.minLength`, `Action input description string constraints can only be used when kind is string`)
+      }
+      if (minLength !== undefined) {
+        output.minLength = minLength
+      }
+      if (maxLength !== undefined) {
+        output.maxLength = maxLength
+      }
+      if (pattern !== undefined) {
+        output.pattern = pattern
+      }
+      if (minLength !== undefined && maxLength !== undefined && minLength > maxLength) {
+        throw inputError(
+          `${path}.minLength`,
+          `Action input description at ${path}.minLength must be less than or equal to ${path}.maxLength`,
+        )
+      }
+    }
+
+    const minItems = normalizeNonNegativeInteger(
+      ownDataValue(value, 'minItems', `${path}.minItems`, 'Action input description'),
+      `${path}.minItems`,
+    )
+    const maxItems = normalizeNonNegativeInteger(
+      ownDataValue(value, 'maxItems', `${path}.maxItems`, 'Action input description'),
+      `${path}.maxItems`,
+    )
+    if (minItems !== undefined || maxItems !== undefined) {
+      if (kind !== 'array') {
+        throw inputError(`${path}.minItems`, `Action input description array constraints can only be used when kind is array`)
+      }
+      if (minItems !== undefined) {
+        output.minItems = minItems
+      }
+      if (maxItems !== undefined) {
+        output.maxItems = maxItems
+      }
+      if (minItems !== undefined && maxItems !== undefined && minItems > maxItems) {
+        throw inputError(`${path}.minItems`, `Action input description at ${path}.minItems must be less than or equal to ${path}.maxItems`)
+      }
+    }
+
+    const additionalProperties = normalizeDescriptionBoolean(
+      ownDataValue(value, 'additionalProperties', `${path}.additionalProperties`, 'Action input description'),
+      `${path}.additionalProperties`,
+    )
+    if (additionalProperties !== undefined) {
+      if (kind !== 'object') {
+        throw inputError(
+          `${path}.additionalProperties`,
+          `Action input description at ${path}.additionalProperties can only be used when kind is object`,
+        )
+      }
+      output.additionalProperties = additionalProperties
+    }
+
+    const values = normalizeDescriptionInputArray(
+      ownDataValue(value, 'values', `${path}.values`, 'Action input description'),
+      `${path}.values`,
+    )
+    if (values !== undefined) {
+      output.values = values
+    }
+    assertUniqueAllowedValues(values, path)
+
+    const defaultValue = ownDataValue(value, 'default', `${path}.default`, 'Action input description')
+    if (defaultValue !== undefined) {
+      output.default = normalizeInput(defaultValue, `${path}.default`, new WeakSet())
+    }
+
+    const examples = normalizeDescriptionInputArray(
+      ownDataValue(value, 'examples', `${path}.examples`, 'Action input description'),
+      `${path}.examples`,
+    )
+    if (examples !== undefined) {
+      output.examples = examples
+    }
+
+    assertDescriptionPayloads(output, path)
 
     return Object.freeze(output)
   } finally {
@@ -355,6 +592,55 @@ function isInputObject(value: WorkbookActionInput): value is { readonly [key: st
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function canonicalInputJson(value: WorkbookActionInput): string {
+  return JSON.stringify(value)
+}
+
+function pushConstraintIssue(path: string, message: string, issues: WorkbookActionInputIssue[]): void {
+  issues.push(inputIssue('input_constraint_failed', path, message))
+}
+
+function validateInputConstraints(
+  description: WorkbookActionInputDescription,
+  value: WorkbookActionInput,
+  path: string,
+  issues: WorkbookActionInputIssue[],
+): void {
+  if (description.values !== undefined) {
+    const allowed = new Set(description.values.map(canonicalInputJson))
+    if (!allowed.has(canonicalInputJson(value))) {
+      pushConstraintIssue(path, `Action input at ${path} must be one of the allowed values`, issues)
+    }
+  }
+  if (description.kind === 'number' && typeof value === 'number') {
+    if (description.min !== undefined && value < description.min) {
+      pushConstraintIssue(path, `Action input at ${path} must be greater than or equal to ${String(description.min)}`, issues)
+    }
+    if (description.max !== undefined && value > description.max) {
+      pushConstraintIssue(path, `Action input at ${path} must be less than or equal to ${String(description.max)}`, issues)
+    }
+  }
+  if (description.kind === 'string' && typeof value === 'string') {
+    if (description.minLength !== undefined && value.length < description.minLength) {
+      pushConstraintIssue(path, `Action input at ${path} must be at least ${String(description.minLength)} characters`, issues)
+    }
+    if (description.maxLength !== undefined && value.length > description.maxLength) {
+      pushConstraintIssue(path, `Action input at ${path} must be at most ${String(description.maxLength)} characters`, issues)
+    }
+    if (description.pattern !== undefined && !new RegExp(description.pattern).test(value)) {
+      pushConstraintIssue(path, `Action input at ${path} must match pattern ${description.pattern}`, issues)
+    }
+  }
+  if (description.kind === 'array' && Array.isArray(value)) {
+    if (description.minItems !== undefined && value.length < description.minItems) {
+      pushConstraintIssue(path, `Action input at ${path} must contain at least ${String(description.minItems)} items`, issues)
+    }
+    if (description.maxItems !== undefined && value.length > description.maxItems) {
+      pushConstraintIssue(path, `Action input at ${path} must contain at most ${String(description.maxItems)} items`, issues)
+    }
+  }
+}
+
 function validateInputDescription(
   description: WorkbookActionInputDescription,
   value: WorkbookActionInput | undefined,
@@ -373,10 +659,22 @@ function validateInputDescription(
     return
   }
 
+  validateInputConstraints(description, value, path, issues)
+
   if (description.kind === 'object' && description.fields !== undefined && isInputObject(value)) {
     Object.entries(description.fields).forEach(([key, fieldDescription]) => {
       const fieldPath = childPath(path, key)
       validateInputDescription(fieldDescription, Object.hasOwn(value, key) ? value[key] : undefined, fieldPath, issues)
+    })
+  }
+
+  if (description.kind === 'object' && description.additionalProperties === false && isInputObject(value)) {
+    const fieldNames = new Set(Object.keys(description.fields ?? {}))
+    Object.keys(value).forEach((key) => {
+      if (!fieldNames.has(key)) {
+        const fieldPath = childPath(path, key)
+        issues.push(inputIssue('unknown_input_field', fieldPath, `Action input at ${fieldPath} is not allowed`))
+      }
     })
   }
 
@@ -386,6 +684,27 @@ function validateInputDescription(
       validateInputDescription(itemDescription, entry, `${path}[${index}]`, issues)
     })
   }
+}
+
+function assertDescriptionValue(description: WorkbookActionInputDescription, value: WorkbookActionInput, path: string): void {
+  const issues: WorkbookActionInputIssue[] = []
+  validateInputDescription(description, value, path, issues)
+  const [firstIssue] = issues
+  if (firstIssue !== undefined) {
+    throw inputError(path, `Action input description at ${path} is invalid: ${firstIssue.message}`)
+  }
+}
+
+function assertDescriptionPayloads(description: WorkbookActionInputDescription, path: string): void {
+  description.values?.forEach((value, index) => {
+    assertDescriptionValue(description, value, `${path}.values[${String(index)}]`)
+  })
+  if (description.default !== undefined) {
+    assertDescriptionValue(description, description.default, `${path}.default`)
+  }
+  description.examples?.forEach((value, index) => {
+    assertDescriptionValue(description, value, `${path}.examples[${String(index)}]`)
+  })
 }
 
 function errorMessage(error: unknown): string {

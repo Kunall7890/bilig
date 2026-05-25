@@ -105,7 +105,7 @@ Models are plain:
 
 - `find(workbook)` binds the workbook parts the model needs.
 - `checks({ refs, workbook })` declares proof the runtime must provide.
-- `actions` write formulas, values, formatting, clears, or guarded low-level ops.
+- `actions` publish constrained input metadata and write workbook intent.
 - `prepareWorkbookAction(model, action)` is the canonical preflight for agents.
 
 Refs are generic:
@@ -211,6 +211,7 @@ Everything that crosses an agent/runtime boundary is inspectable data:
 - `checkPlanData(data)` reports path-based transport issues before hydration.
 - `hydratePlanData(data)` restores frozen refs and helper methods locally.
 - `verifyPlan`, `verifyPlanData`, and `verifyModel` return frozen verdicts.
+- `checkInput(description, value)` validates constrained action inputs without a schema dependency.
 - `checkWorkbookReadbackProof(data)` validates transported readback proof.
 - `workbookJsonSchemas`, `workbookJsonSchemaHashes`, and `fixtures/` publish
   checked plan, runtime-requirements, command, run-result, and readback artifacts

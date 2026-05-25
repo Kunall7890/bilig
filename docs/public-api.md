@@ -467,9 +467,10 @@ and runtime-requirement calls. The input is cloned,
 canonicalized with stable object-key order, recorded on the plan, and exposed to
 the action context as `input`. Supported values are strings, finite numbers,
 booleans, `null`, arrays without holes, and plain objects. `@bilig/workbook`
-does not provide schemas for consumer meaning; actions keep domain validation
-local. `checkInput(description, value)` only checks the package's small generic
-input metadata and returns a plain `{ status, input, issues }` result.
+does not hardcode consumer domains, but it does provide a small generic input
+description language so agents can form safe tool calls without importing the
+consumer's private code. `checkInput(description, value)` checks that generic
+metadata and returns a plain `{ status, input, issues }` result.
 Action names are checked as data before model lookup. Non-string, empty, or
 whitespace-padded runtime action names fail with `invalid_action_name` at
 `path: "actionName"` and are not coerced through caller-owned `toString`,
@@ -560,9 +561,16 @@ actions: {
 
 This is descriptive metadata, not a schema framework. Input descriptions use
 plain JSON kinds: `json`, `object`, `array`, `string`, `number`, `boolean`, and
-`null`. `object` descriptions may list `fields`; `array` descriptions may list
-`items`; any description can mark itself `required`. `checkInput` allows
-unknown object fields, because consumer actions own consumer-specific meaning.
+`null`. `object` descriptions may list `fields` and set
+`additionalProperties: false`; `array` descriptions may list `items`,
+`minItems`, and `maxItems`; `number` descriptions may set `min` and `max`;
+`string` descriptions may set `minLength`, `maxLength`, and `pattern`; any
+description can mark itself `required`, list allowed `values`, and publish a
+checked `default` plus `examples`. These names stay intentionally boring so
+consumer-defined models can describe parameters without pulling in `zod`,
+`effect`, or a Bilig business model package. By default `checkInput` allows
+unknown object fields; set `additionalProperties: false` when the action wants a
+closed input shape.
 `normalizeWorkbookActionInputDescription` trims text, rejects malformed metadata,
 freezes the result, and keeps `@bilig/workbook` independent from `zod`, `effect`,
 and model-specific validators.
