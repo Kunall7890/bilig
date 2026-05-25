@@ -29,6 +29,7 @@ flowchart LR
   - root public barrel plus smaller model/prepare/find/check/formula/verify/runtime/command/schema subpath exports
   - public JSON schema artifacts, deterministic schema hashes, and checked-in
     fixtures for non-TypeScript agent contract inspection
+  - runtime-requirements schema artifacts for adapter handoff inspection
   - exact run-result proof schema for apply summaries, command receipts, undo
     refs, and unverified proof notes
   - phase-scoped find/check/action contexts
@@ -83,6 +84,8 @@ flowchart LR
     runtime handoff
   - structured `checkRuntimeRequirements` diagnostics for transported adapter
     handoff payloads
+  - `checkRuntimeAdapter` invalid-requirements verdicts instead of thrown
+    exceptions for malformed transported adapter handoff data
   - own-enumerable-data runtime requirement arrays and nested ref arrays before
     adapter validation
   - frozen normalized runtime requirement handoffs before agents trust adapter

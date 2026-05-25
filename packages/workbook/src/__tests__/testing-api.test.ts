@@ -133,6 +133,34 @@ describe('@bilig/workbook testing api', () => {
     })
   })
 
+  it('returns transported plan issues without throwing', async () => {
+    const invalidPlan = JSON.parse(
+      JSON.stringify({
+        modelName: 'bad-plan-model',
+        actionName: 'calculate',
+        refsUsed: 'not-an-array',
+        commands: [],
+        ops: [],
+        changed: [],
+        checks: [],
+      }),
+    )
+
+    const check = await checkWorkbookRunAdapter(invalidPlan, passingAdapter())
+
+    expect(check).toEqual({
+      status: 'failed',
+      errors: [],
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'plan',
+          message: 'Workbook plan data is invalid: Workbook plan data refsUsed must be an array',
+        },
+      ],
+    })
+  })
+
   it('returns strict proof failures as boring issues', async () => {
     const prepared = prepare()
 

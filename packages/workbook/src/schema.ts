@@ -12,13 +12,21 @@ export type WorkbookJsonSchema = {
   readonly [key: string]: WorkbookJsonSchemaValue
 }
 
-export type WorkbookJsonSchemaName = 'refData' | 'planData' | 'commandBundle' | 'commandResult' | 'runResult' | 'readbackProof'
+export type WorkbookJsonSchemaName =
+  | 'refData'
+  | 'planData'
+  | 'runtimeRequirements'
+  | 'commandBundle'
+  | 'commandResult'
+  | 'runResult'
+  | 'readbackProof'
 
 export const workbookJsonSchemaVersion = 'bilig-workbook-json-schema-v1'
 
 export const workbookJsonSchemaNames = Object.freeze([
   'refData',
   'planData',
+  'runtimeRequirements',
   'commandBundle',
   'commandResult',
   'runResult',
@@ -195,6 +203,41 @@ const unverifiedDataSchema: WorkbookJsonSchemaValue = {
   },
 }
 
+const runtimeRequirementSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['kind', 'capability', 'message'],
+  additionalProperties: false,
+  properties: {
+    kind: { enum: ['apply', 'read', 'verify'] },
+    capability: { enum: ['writeFormula', 'writeValue', 'format', 'clear', 'applyOp', 'read', 'verifyCheck'] },
+    commandIndex: { type: 'integer', minimum: 0 },
+    checkIndex: { type: 'integer', minimum: 0 },
+    opIndex: { type: 'integer', minimum: 0 },
+    opKind: { type: 'string', minLength: 1 },
+    checkKind: { type: 'string', minLength: 1 },
+    target: refData,
+    refs: { type: 'array', items: refData },
+    message: { type: 'string', minLength: 1 },
+  },
+  allOf: [
+    {
+      if: { properties: { kind: { const: 'apply' } }, required: ['kind'] },
+      // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+      then: { properties: { capability: { enum: ['writeFormula', 'writeValue', 'format', 'clear', 'applyOp'] } } },
+    },
+    {
+      if: { properties: { kind: { const: 'read' } }, required: ['kind'] },
+      // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+      then: { properties: { capability: { const: 'read' } } },
+    },
+    {
+      if: { properties: { kind: { const: 'verify' } }, required: ['kind'] },
+      // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+      then: { properties: { capability: { const: 'verifyCheck' } } },
+    },
+  ],
+}
+
 const applySummarySchema: WorkbookJsonSchemaValue = {
   type: 'object',
   required: ['matched'],
@@ -320,6 +363,20 @@ export const workbookJsonSchemas = deepFreeze({
       ops: { type: 'array', items: engineOp },
       changed: { type: 'array', items: { $ref: '#/$defs/change' } },
       checks: { type: 'array', items: { $ref: '#/$defs/check' } },
+    },
+  }),
+
+  runtimeRequirements: schema('runtimeRequirements', {
+    $defs: defs({
+      runtimeRequirement: runtimeRequirementSchema,
+    }),
+    type: 'object',
+    required: ['modelName', 'actionName', 'requirements'],
+    additionalProperties: false,
+    properties: {
+      modelName: { type: 'string', minLength: 1 },
+      actionName: { type: 'string', minLength: 1 },
+      requirements: { type: 'array', items: { $ref: '#/$defs/runtimeRequirement' } },
     },
   }),
 
@@ -541,6 +598,7 @@ function createSchemaHashes(): Readonly<Record<WorkbookJsonSchemaName, string>> 
   return deepFreeze({
     refData: workbookJsonSchemaHash(workbookJsonSchemas.refData),
     planData: workbookJsonSchemaHash(workbookJsonSchemas.planData),
+    runtimeRequirements: workbookJsonSchemaHash(workbookJsonSchemas.runtimeRequirements),
     commandBundle: workbookJsonSchemaHash(workbookJsonSchemas.commandBundle),
     commandResult: workbookJsonSchemaHash(workbookJsonSchemas.commandResult),
     runResult: workbookJsonSchemaHash(workbookJsonSchemas.runResult),

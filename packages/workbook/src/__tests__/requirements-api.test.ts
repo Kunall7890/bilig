@@ -556,6 +556,60 @@ describe('@bilig/workbook runtime requirements api', () => {
     })
   })
 
+  it('returns adapter issues instead of throwing for malformed requirement inputs', () => {
+    expect(
+      checkRuntimeAdapter(
+        {
+          modelName: 'bad-requirements-model',
+          actionName: 'write',
+          requirements: 'not-an-array',
+        },
+        {},
+      ),
+    ).toEqual({
+      status: 'invalid',
+      modelName: 'bad-requirements-model',
+      actionName: 'write',
+      requiredCapabilities: [],
+      issues: [
+        {
+          code: 'invalid_requirements',
+          path: 'requirements',
+          requirementIndexes: [],
+          message: 'Workbook runtime requirements requirements must be an array',
+        },
+      ],
+    })
+
+    expect(
+      checkRuntimeAdapter(
+        {
+          modelName: 'bad-plan-model',
+          actionName: 'write',
+          refsUsed: 'not-an-array',
+          commands: [],
+          ops: [],
+          changed: [],
+          checks: [],
+        },
+        {},
+      ),
+    ).toEqual({
+      status: 'invalid',
+      modelName: 'bad-plan-model',
+      actionName: 'write',
+      requiredCapabilities: [],
+      issues: [
+        {
+          code: 'invalid_requirements',
+          path: 'plan',
+          requirementIndexes: [],
+          message: 'Workbook plan data is invalid: Workbook plan data refsUsed must be an array',
+        },
+      ],
+    })
+  })
+
   it('checks runtime adapter methods as own data functions without invoking getters', () => {
     const model = defineModel({
       name: 'adapter-accessor-model',

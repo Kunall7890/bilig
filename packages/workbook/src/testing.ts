@@ -3,7 +3,7 @@ import { describeRunResult } from './describe.js'
 import type { WorkbookActionPlan } from './model.js'
 import type { WorkbookExecutablePlan, WorkbookPlanData, WorkbookPlanDataRefs } from './plan-data.js'
 import type { WorkbookRunError, WorkbookRunErrorCode, WorkbookRunResult } from './result.js'
-import { checkRuntimeAdapter } from './requirements.js'
+import { checkRuntimeAdapter, type WorkbookRuntimeAdapterIssue } from './requirements.js'
 import { runWorkbookPlan, type WorkbookRunAdapter, type WorkbookRunOptions } from './run.js'
 import { checkWorkbookRunResultDescription } from './run-description.js'
 
@@ -61,6 +61,13 @@ function runErrorIssue(error: WorkbookRunError): WorkbookRunAdapterCheckIssue {
   return adapterCheckIssue(error.code, error.path ?? 'result', error.message)
 }
 
+function runtimeAdapterIssue(issue: WorkbookRuntimeAdapterIssue): WorkbookRunAdapterCheckIssue {
+  if (issue.code === 'invalid_requirements') {
+    return adapterCheckIssue('invalid_plan_data', issue.path ?? 'plan', issue.message)
+  }
+  return adapterCheckIssue('adapter_missing_capability', issue.method === undefined ? 'adapter' : `adapter.${issue.method}`, issue.message)
+}
+
 function strictOptions(options: WorkbookRunAdapterCheckOptions): WorkbookRunOptions {
   return Object.freeze({
     ...options,
@@ -86,7 +93,7 @@ export async function checkWorkbookRunAdapter(
   const adapterCheck = checkRuntimeAdapter(plan, adapter)
   if (adapterCheck.status === 'invalid') {
     return failedAdapterCheck({
-      issues: adapterCheck.issues.map((issue) => adapterCheckIssue('adapter_missing_capability', `adapter.${issue.method}`, issue.message)),
+      issues: adapterCheck.issues.map(runtimeAdapterIssue),
     })
   }
 

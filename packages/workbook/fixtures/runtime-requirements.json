@@ -1,0 +1,72 @@
+{
+  "modelName": "named-range-formula",
+  "actionName": "calculate",
+  "requirements": [
+    {
+      "kind": "apply",
+      "capability": "writeFormula",
+      "commandIndex": 0,
+      "target": {
+        "kind": "name",
+        "id": "name_result",
+        "label": "result",
+        "name": "result"
+      },
+      "refs": [
+        {
+          "kind": "name",
+          "id": "name_input",
+          "label": "input",
+          "name": "input"
+        },
+        {
+          "kind": "name",
+          "id": "name_factor",
+          "label": "factor",
+          "name": "factor"
+        }
+      ],
+      "message": "Apply formula write to result"
+    },
+    {
+      "kind": "read",
+      "capability": "read",
+      "checkIndex": 1,
+      "checkKind": "formulaEquals",
+      "target": {
+        "kind": "name",
+        "id": "name_result",
+        "label": "result",
+        "name": "result"
+      },
+      "refs": [
+        {
+          "kind": "name",
+          "id": "name_input",
+          "label": "input",
+          "name": "input"
+        },
+        {
+          "kind": "name",
+          "id": "name_factor",
+          "label": "factor",
+          "name": "factor"
+        }
+      ],
+      "message": "Read result for formulaEquals"
+    },
+    {
+      "kind": "verify",
+      "capability": "verifyCheck",
+      "checkIndex": 0,
+      "checkKind": "exists",
+      "target": {
+        "kind": "name",
+        "id": "name_result",
+        "label": "result",
+        "name": "result"
+      },
+      "message": "Verify exists for result"
+    }
+  ]
+}

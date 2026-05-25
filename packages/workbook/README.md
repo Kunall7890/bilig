@@ -213,7 +213,8 @@ Everything that crosses an agent/runtime boundary is inspectable data:
 - `verifyPlan`, `verifyPlanData`, and `verifyModel` return frozen verdicts.
 - `checkWorkbookReadbackProof(data)` validates transported readback proof.
 - `workbookJsonSchemas`, `workbookJsonSchemaHashes`, and `fixtures/` publish
-  checked contract artifacts for non-TypeScript consumers.
+  checked plan, runtime-requirements, command, run-result, and readback artifacts
+  for non-TypeScript consumers.
 
 Public validators read own data properties and reject malformed, sparse,
 accessor-backed, or custom-prototype payloads before hidden consumer code can

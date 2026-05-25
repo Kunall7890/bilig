@@ -67,14 +67,15 @@ export type WorkbookRuntimeRequirementsCheckResult =
       readonly issues: readonly WorkbookRuntimeRequirementsIssue[]
     }
 
-export type WorkbookRuntimeAdapterIssueCode = 'missing_apply' | 'missing_read' | 'missing_check_verifier'
+export type WorkbookRuntimeAdapterIssueCode = 'invalid_requirements' | 'missing_apply' | 'missing_read' | 'missing_check_verifier'
 export type WorkbookRuntimeAdapterMethod = 'apply' | 'read' | 'verifyChecks'
 
 export interface WorkbookRuntimeAdapterIssue {
   readonly code: WorkbookRuntimeAdapterIssueCode
-  readonly capability: WorkbookRuntimeCapability
-  readonly method: WorkbookRuntimeAdapterMethod
+  readonly capability?: WorkbookRuntimeCapability
+  readonly method?: WorkbookRuntimeAdapterMethod
   readonly requirementIndexes: readonly number[]
+  readonly path?: string
   readonly message: string
 }
 
@@ -639,20 +640,74 @@ export function checkRuntimeRequirements(value: unknown): WorkbookRuntimeRequire
   })
 }
 
-function requirementsFor<Refs>(input: WorkbookExecutablePlan<Refs> | WorkbookRuntimeRequirements): WorkbookRuntimeRequirements {
+type RuntimeRequirementsResult =
+  | {
+      readonly status: 'valid'
+      readonly requirements: WorkbookRuntimeRequirements
+    }
+  | {
+      readonly status: 'invalid'
+      readonly modelName: string
+      readonly actionName: string
+      readonly issues: readonly WorkbookRuntimeAdapterIssue[]
+    }
+
+function safeString(value: unknown, key: string, fallback: string): string {
+  if (!isRecord(value)) {
+    return fallback
+  }
+  const entry = ownValue(value, key)
+  return typeof entry === 'string' && entry.trim() !== '' ? entry : fallback
+}
+
+function invalidRequirementsAdapterIssue(path: string, message: string): WorkbookRuntimeAdapterIssue {
+  return Object.freeze({
+    code: 'invalid_requirements',
+    path,
+    requirementIndexes: Object.freeze([] as const),
+    message,
+  })
+}
+
+function invalidRequirementsResult<Refs>(
+  input: WorkbookExecutablePlan<Refs> | WorkbookRuntimeRequirements,
+  issues: readonly WorkbookRuntimeAdapterIssue[],
+): RuntimeRequirementsResult {
+  return Object.freeze({
+    status: 'invalid',
+    modelName: safeString(input, 'modelName', 'unknown-model'),
+    actionName: safeString(input, 'actionName', 'unknown-action'),
+    issues: Object.freeze([...issues]),
+  })
+}
+
+function requirementsFor<Refs>(input: WorkbookExecutablePlan<Refs> | WorkbookRuntimeRequirements): RuntimeRequirementsResult {
   if (isRuntimeRequirementsCandidate(input)) {
     const check = checkRuntimeRequirements(input)
     if (check.status === 'invalid') {
-      const [firstIssue] = check.issues
-      throw new Error(
-        firstIssue === undefined
-          ? 'Workbook runtime requirements are invalid'
-          : `Workbook runtime requirements are invalid: ${firstIssue.message}`,
+      return invalidRequirementsResult(
+        input,
+        check.issues.map((issue) => invalidRequirementsAdapterIssue(issue.path, issue.message)),
       )
     }
-    return check.requirements
+    return Object.freeze({
+      status: 'valid',
+      requirements: check.requirements,
+    })
   }
-  return describeRuntimeRequirements(input)
+  try {
+    return Object.freeze({
+      status: 'valid',
+      requirements: describeRuntimeRequirements(input),
+    })
+  } catch (error) {
+    return invalidRequirementsResult(input, [
+      invalidRequirementsAdapterIssue(
+        'plan',
+        error instanceof Error ? error.message : `Workbook runtime requirements are invalid: ${String(error)}`,
+      ),
+    ])
+  }
 }
 
 function pushCapability(capabilities: WorkbookRuntimeCapability[], capability: WorkbookRuntimeCapability): void {
@@ -695,7 +750,18 @@ export function checkRuntimeAdapter<Refs>(
   planOrRequirements: WorkbookExecutablePlan<Refs> | WorkbookRuntimeRequirements,
   adapter: WorkbookRuntimeAdapterCandidate,
 ): WorkbookRuntimeAdapterCheckResult {
-  const requirements = requirementsFor(planOrRequirements)
+  const requirementsResult = requirementsFor(planOrRequirements)
+  if (requirementsResult.status === 'invalid') {
+    return Object.freeze({
+      status: 'invalid',
+      modelName: requirementsResult.modelName,
+      actionName: requirementsResult.actionName,
+      requiredCapabilities: Object.freeze([] as const),
+      issues: requirementsResult.issues,
+    })
+  }
+
+  const requirements = requirementsResult.requirements
   const requiredCapabilities: WorkbookRuntimeCapability[] = []
   requirements.requirements.forEach((requirement) => {
     pushCapability(requiredCapabilities, requirement.capability)

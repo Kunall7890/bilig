@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
   checkPlanData,
+  checkRuntimeRequirements,
   checkWorkbookCommandBundle,
   checkWorkbookCommandResultForBundle,
   checkWorkbookReadbackProof,
@@ -40,7 +41,15 @@ function objectEntry(value: unknown, key: string): Record<string, unknown> {
 describe('@bilig/workbook schema api', () => {
   it('exports frozen JSON schema artifacts with deterministic hashes', () => {
     expect(workbookJsonSchemaVersion).toBe('bilig-workbook-json-schema-v1')
-    expect(workbookJsonSchemaNames).toEqual(['refData', 'planData', 'commandBundle', 'commandResult', 'runResult', 'readbackProof'])
+    expect(workbookJsonSchemaNames).toEqual([
+      'refData',
+      'planData',
+      'runtimeRequirements',
+      'commandBundle',
+      'commandResult',
+      'runResult',
+      'readbackProof',
+    ])
     expect(Object.isFrozen(workbookJsonSchemaNames)).toBe(true)
     expect(Object.isFrozen(workbookJsonSchemas)).toBe(true)
     expect(Object.isFrozen(workbookJsonSchemaHashes)).toBe(true)
@@ -122,6 +131,37 @@ describe('@bilig/workbook schema api', () => {
     expect(errorProperties['code']).toEqual({ enum: workbookRunErrorCodes })
   })
 
+  it('publishes the runtime requirements schema as an adapter handoff contract', () => {
+    const schema = workbookJsonSchemas.runtimeRequirements
+    expect(schema).toMatchObject({
+      type: 'object',
+      required: ['modelName', 'actionName', 'requirements'],
+      additionalProperties: false,
+    })
+    const properties = objectEntry(schema, 'properties')
+    expect(properties['requirements']).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/runtimeRequirement' },
+    })
+
+    const requirement = objectEntry(objectEntry(schema, '$defs'), 'runtimeRequirement')
+    expect(requirement).toMatchObject({
+      type: 'object',
+      required: ['kind', 'capability', 'message'],
+      additionalProperties: false,
+    })
+    const requirementProperties = objectEntry(requirement, 'properties')
+    expect(requirementProperties['kind']).toEqual({ enum: ['apply', 'read', 'verify'] })
+    expect(requirementProperties['capability']).toEqual({
+      enum: ['writeFormula', 'writeValue', 'format', 'clear', 'applyOp', 'read', 'verifyCheck'],
+    })
+    expect(requirementProperties['target']).toEqual({ $ref: '#/$defs/refData' })
+    expect(requirementProperties['refs']).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/refData' },
+    })
+  })
+
   it('keeps checked-in contract fixtures aligned with public validators', () => {
     const validPlan = readFixture('valid-plan.json')
     const validPlanCheck = checkPlanData(validPlan)
@@ -133,6 +173,9 @@ describe('@bilig/workbook schema api', () => {
 
     const invalidPlanCheck = checkPlanData(readFixture('invalid-plan.json'))
     expect(invalidPlanCheck.status).toBe('invalid')
+
+    const requirementsCheck = checkRuntimeRequirements(readFixture('runtime-requirements.json'))
+    expect(requirementsCheck.status).toBe('valid')
 
     const bundleCheck = checkWorkbookCommandBundle(readFixture('command-bundle.json'))
     expect(bundleCheck.status).toBe('valid')
