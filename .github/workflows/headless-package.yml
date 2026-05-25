@@ -820,6 +820,31 @@ jobs:
             exit 1
           fi
 
+          ensure_workflow_sha_is_current() {
+            phase="$1"
+
+            git fetch --force origin main
+            git fetch --force github main
+
+            origin_sha="$(git rev-parse origin/main)"
+            github_sha="$(git rev-parse github/main)"
+
+            if [[ "${origin_sha}" == "${GITHUB_SHA}" && "${github_sha}" == "${GITHUB_SHA}" ]]; then
+              return 0
+            fi
+
+            {
+              echo "### runtime release metadata skipped"
+              echo
+              echo "A newer main commit appeared ${phase}, so this stale workflow run will not mutate release metadata."
+              echo
+              echo "- workflow SHA: ${GITHUB_SHA}"
+              echo "- Forgejo main: ${origin_sha}"
+              echo "- GitHub main: ${github_sha}"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          }
+
           bun scripts/sync-runtime-release-metadata.ts \
             --version "${TARGET_VERSION}" \
             --notes-file build/runtime-release-notes.md
@@ -828,6 +853,8 @@ jobs:
           pnpm headless:performance:generate
           bun scripts/sync-public-evidence.ts
           bun scripts/sync-agent-discovery-docs.ts
+
+          ensure_workflow_sha_is_current "before release metadata diffing"
 
           release_paths=(
             .release-please-manifest.json
@@ -913,6 +940,8 @@ jobs:
           bun scripts/sync-headless-package-footprint.ts
           # llms-full embeds README footprint, so refresh agent docs after footprint sync.
           bun scripts/sync-agent-discovery-docs.ts
+
+          ensure_workflow_sha_is_current "before release metadata commit"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
