@@ -152,4 +152,49 @@ describe('work paper mutation queues', () => {
     ])
     expect(dimensionUpdates).toHaveLength(1)
   })
+
+  it('flushes validated suspended literal mutations without reclassifying them', () => {
+    const { queues, applied, dimensionUpdates } = createRecordedQueues()
+
+    queues.enqueueValidatedSuspendedLiteral({
+      sheetId: 4,
+      row: 5,
+      col: 2,
+      content: 21,
+      cellIndex: 20,
+    })
+    queues.enqueueValidatedSuspendedLiteral({
+      sheetId: 4,
+      row: 6,
+      col: 2,
+      content: null,
+      cellIndex: undefined,
+    })
+
+    queues.flushSuspendedCellMutations()
+
+    expect(applied).toEqual([
+      {
+        refs: [
+          {
+            sheetId: 4,
+            cellIndex: 20,
+            mutation: { kind: 'setCellValue', row: 5, col: 2, value: 21 },
+          },
+          {
+            sheetId: 4,
+            mutation: { kind: 'clearCell', row: 6, col: 2 },
+          },
+        ],
+        options: {
+          captureUndo: true,
+          potentialNewCells: 0,
+          source: 'local',
+          returnUndoOps: false,
+          reuseRefs: true,
+        },
+      },
+    ])
+    expect(dimensionUpdates).toHaveLength(1)
+  })
 })

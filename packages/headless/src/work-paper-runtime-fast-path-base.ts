@@ -409,7 +409,7 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
       throw new WorkPaperOperationError('Workbook protection blocks this change: cell is protected')
     }
     const visibleCellIndex = this.getVisibleCellIndexInSheet(sheet, address.row, address.col)
-    return this.enqueueSuspendedLiteralMutation(address.sheet, address.row, address.col, content, visibleCellIndex) ? [] : null
+    return this.enqueueValidatedSuspendedLiteral(address.sheet, address.row, address.col, content, visibleCellIndex) ? [] : null
   }
 
   override getCellValue(address: WorkPaperCellAddress): CellValue {

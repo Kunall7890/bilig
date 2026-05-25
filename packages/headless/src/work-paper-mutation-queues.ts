@@ -79,6 +79,20 @@ export class WorkPaperMutationQueues {
     })
   }
 
+  enqueueValidatedSuspendedLiteral(input: WorkPaperLiteralMutationQueueInput): void {
+    this.suspendedCellMutationRefs.push({
+      sheetId: input.sheetId,
+      mutation:
+        input.content === null
+          ? { kind: 'clearCell', row: input.row, col: input.col }
+          : { kind: 'setCellValue', row: input.row, col: input.col, value: input.content },
+      ...(input.cellIndex !== undefined ? { cellIndex: input.cellIndex } : {}),
+    })
+    if (input.content !== null && input.cellIndex === undefined) {
+      this.suspendedCellMutationPotentialNewCells += 1
+    }
+  }
+
   enqueueDeferredBatchLiteral(input: WorkPaperLiteralMutationQueueInput): boolean {
     return tryEnqueueWorkPaperLiteralMutation({
       enabled: true,
