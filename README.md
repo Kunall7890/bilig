@@ -190,6 +190,26 @@ export WorkPaper proof.
 See [Sim WorkPaper MCP setup](docs/sim-workpaper-mcp.md) for the setup steps,
 Agent-block prompt, MCP Tool block shape, and private-workbook boundary.
 
+## Windmill Formula Workflows
+
+Need a Windmill TypeScript script to calculate workflow fields from reviewable
+formulas? Use `@bilig/workpaper` inside the script and return both the field
+patch and readback proof.
+
+The source example lives in:
+
+```text
+examples/windmill-workpaper-script
+```
+
+It edits `Inputs!B2`, recalculates quote formulas, serializes WorkPaper JSON,
+restores it, and verifies the restored formula output before returning
+`verified: true`.
+
+See [Windmill WorkPaper TypeScript script](docs/windmill-workpaper-script.md)
+for the script shape, local smoke command, Windmill dependency boundary, and
+outreach note.
+
 ## Directus Persisted Calculated Fields
 
 Need a Directus Flow to calculate and persist quote, pricing, payout, or import

@@ -246,6 +246,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - LobeHub MCP setup: https://proompteng.github.io/bilig/lobehub-workpaper-mcp.html
 - AnythingLLM MCP setup: https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
 - Sim MCP setup: https://proompteng.github.io/bilig/sim-workpaper-mcp.html
+- Windmill TypeScript script: https://proompteng.github.io/bilig/windmill-workpaper-script.html
 - XLSX formula clinic: https://proompteng.github.io/bilig/formula-bug-clinic.html
 - Compatibility limits: https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html
 - Repository: https://github.com/proompteng/bilig
@@ -447,6 +448,26 @@ export WorkPaper proof.
 
 See [Sim WorkPaper MCP setup](docs/sim-workpaper-mcp.md) for the setup steps,
 Agent-block prompt, MCP Tool block shape, and private-workbook boundary.
+
+## Windmill Formula Workflows
+
+Need a Windmill TypeScript script to calculate workflow fields from reviewable
+formulas? Use `@bilig/workpaper` inside the script and return both the field
+patch and readback proof.
+
+The source example lives in:
+
+```text
+examples/windmill-workpaper-script
+```
+
+It edits `Inputs!B2`, recalculates quote formulas, serializes WorkPaper JSON,
+restores it, and verifies the restored formula output before returning
+`verified: true`.
+
+See [Windmill WorkPaper TypeScript script](docs/windmill-workpaper-script.md)
+for the script shape, local smoke command, Windmill dependency boundary, and
+outreach note.
 
 ## Directus Persisted Calculated Fields
 
@@ -1384,14 +1405,15 @@ npm install @bilig/workpaper
 
 Pick the path that matches the workflow you are trying to unblock:
 
-| You need...                                                              | Run this first                                                                       | Proof you should get                                                                                                |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| Formula workbook logic inside a Node service, route, queue, or test      | `npm create @bilig/workpaper@latest pricing-workpaper`                               | Inputs are written, formulas recalculate, JSON persists, restore matches readback, and `verified: true` is printed. |
-| A coding agent or MCP client that needs spreadsheet operations           | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                        | The generated project includes an agent contract, MCP config, and `npm run agent:verify`.                           |
-| Directus Flow operation for persisted calculated fields                  | `cd examples/directus-workpaper-flow-operation && npm install && npm run smoke`      | The operation returns a Directus `patch` plus before/after/restore WorkPaper proof with `verified: true`.           |
-| n8n, Dify, or Flowise formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321` | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof.               |
-| Open WebUI needs MCP spreadsheet tools                                   | `npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`           | Open WebUI can call the hosted Streamable HTTP endpoint or a local stdio server bridged through `mcpo`.             |
-| An existing `.xlsx` file with stale formula results after Node edits     | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json`                 | The file-level path updates inputs and returns fresh formula values without Excel, LibreOffice, or a browser.       |
+| You need...                                                              | Run this first                                                                                                | Proof you should get                                                                                                |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Formula workbook logic inside a Node service, route, queue, or test      | `npm create @bilig/workpaper@latest pricing-workpaper`                                                        | Inputs are written, formulas recalculate, JSON persists, restore matches readback, and `verified: true` is printed. |
+| A coding agent or MCP client that needs spreadsheet operations           | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                                 | The generated project includes an agent contract, MCP config, and `npm run agent:verify`.                           |
+| Windmill TypeScript workflow fields                                      | `cd examples/windmill-workpaper-script && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke` | The script returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.        |
+| Directus Flow operation for persisted calculated fields                  | `cd examples/directus-workpaper-flow-operation && npm install && npm run smoke`                               | The operation returns a Directus `patch` plus before/after/restore WorkPaper proof with `verified: true`.           |
+| n8n, Dify, or Flowise formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321`                          | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof.               |
+| Open WebUI needs MCP spreadsheet tools                                   | `npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`                                    | Open WebUI can call the hosted Streamable HTTP endpoint or a local stdio server bridged through `mcpo`.             |
+| An existing `.xlsx` file with stale formula results after Node edits     | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json`                                          | The file-level path updates inputs and returns fresh formula values without Excel, LibreOffice, or a browser.       |
 
 ## Use A WorkPaper In Node
 
@@ -1474,6 +1496,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 43
 Start from the repo examples:
 
 - `examples/directus-workpaper-flow-operation`
+- `examples/windmill-workpaper-script`
 - `examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json`
 - `examples/dify-workpaper-formula-readback`
 - `examples/flowise-workpaper-formula-readback/bilig-workpaper-formula-readback.flowise-tool.json`
@@ -1481,6 +1504,7 @@ Start from the repo examples:
 Docs:
 
 - <https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html>
+- <https://proompteng.github.io/bilig/windmill-workpaper-script.html>
 - <https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html>
 - <https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html>
 - <https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html>
@@ -3996,6 +4020,149 @@ solves:
 Do not post it as a generic spreadsheet-engine pitch. Link the runnable example
 and the smoke output, then ask whether a formula-backed persisted-field
 operation matches the Directus extension need.
+
+---
+
+## Windmill WorkPaper TypeScript Script
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/windmill-workpaper-script.md
+
+# Windmill WorkPaper TypeScript script
+
+Use this when a Windmill workflow needs spreadsheet-shaped business logic, but
+the formula state should be edited and verified through a TypeScript API instead
+of Excel UI automation, browser grid clicks, or stale cached XLSX formula
+values.
+
+Windmill's TypeScript scripts run with a `main` entrypoint. Windmill documents
+that TypeScript dependencies can be resolved directly from script imports, with
+lockfiles generated from those imports at deployment time.
+
+Official Windmill references:
+
+- <https://www.windmill.dev/docs/advanced/dependencies_in_typescript>
+- <https://www.windmill.dev/docs/getting_started/scripts_quickstart/typescript>
+- <https://www.windmill.dev/docs/script_editor>
+- <https://www.windmill.dev/docs/core_concepts/workflows_as_code>
+
+## Example Artifact
+
+The runnable source lives in:
+
+```text
+examples/windmill-workpaper-script
+```
+
+It contains:
+
+- `src/workpaper-script.ts` for the Windmill-style `main` script
+- `src/smoke.ts` for a no-Windmill local proof
+
+Run it locally:
+
+```sh
+cd examples/windmill-workpaper-script
+pnpm install --ignore-workspace --lockfile=false
+pnpm run typecheck
+pnpm run smoke
+```
+
+The smoke test edits `Inputs!B2`, recalculates quote formulas, serializes the
+WorkPaper document, restores it, and verifies that the restored calculated
+values match.
+
+## Windmill Script
+
+Paste the contents of `src/workpaper-script.ts` into a Windmill TypeScript
+script.
+
+The script shape is intentionally boring:
+
+```ts
+export async function main(
+  quantity = 18,
+  unitPrice = 125,
+  discountRate = 0.1,
+  taxRate = 0.08,
+  unitCost = 52,
+  previousQuantity = 12,
+) {
+  // Build a WorkPaper, edit one input cell, read dependent formulas, export
+  // JSON, restore it, and return both a patch and proof.
+}
+```
+
+Windmill can infer inputs from the `main` parameters and resolve
+`@bilig/workpaper` from the script import. If your workspace requires pinned
+versions, pin or lock the dependency using the Windmill dependency workflow your
+team already uses.
+
+## Script Output
+
+```json
+{
+  "patch": {
+    "subtotal": 2250,
+    "discount_amount": 225,
+    "taxable_amount": 2025,
+    "tax_amount": 162,
+    "total": 2187,
+    "margin_amount": 1089
+  },
+  "proof": {
+    "editedCell": "Inputs!B2",
+    "before": {
+      "total": 1458
+    },
+    "after": {
+      "total": 2187
+    },
+    "afterRestore": {
+      "total": 2187
+    },
+    "persistedDocumentBytes": 1208,
+    "verified": true
+  }
+}
+```
+
+The live smoke output prints all calculated summary fields.
+
+## Workflow Shape
+
+1. Trigger the Windmill flow from a schedule, webhook, approval, or manual run.
+2. Run the Bilig WorkPaper TypeScript script with record values such as
+   `quantity`, `unitPrice`, `discountRate`, `taxRate`, and `unitCost`.
+3. Feed `patch` into the next step that writes calculated fields back to your
+   system of record.
+4. Keep `proof` in logs, audit storage, or a downstream approval step when the
+   workflow needs readback evidence.
+
+That keeps Windmill in charge of orchestration, retries, workers, and workflow
+routing. Bilig owns the formula workbook, recalculation, JSON serialization,
+restore, and readback proof.
+
+## When This Fits
+
+Use it for quote approvals, pricing rules, discount calculations, payout checks,
+import validation, and operational fields that should be reviewable as formulas
+but executed inside a Windmill workflow.
+
+Do not use it to pretend Bilig is desktop Excel. Keep Excel, LibreOffice,
+Microsoft Graph, or a domain oracle in the loop for macros, pivots, charts,
+external links, and exact spreadsheet UI behavior.
+
+## Outreach Note
+
+If this is shared in a Windmill issue, discussion, or Hub submission, lead with
+the concrete boundary it solves:
+
+> Windmill owns the workflow. Bilig owns the formula workbook and returns both
+> calculated field values and readback proof.
+
+Do not post it as a generic spreadsheet-engine pitch. Link the runnable example
+and smoke output, then ask whether a formula-backed workflow field script would
+be useful as a Windmill Hub example.
 
 ---
 

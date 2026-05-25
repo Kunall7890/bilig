@@ -413,6 +413,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - LobeHub MCP setup: ${siteRoot}/lobehub-workpaper-mcp.html
 - AnythingLLM MCP setup: ${siteRoot}/anythingllm-workpaper-mcp.html
 - Sim MCP setup: ${siteRoot}/sim-workpaper-mcp.html
+- Windmill TypeScript script: ${siteRoot}/windmill-workpaper-script.html
 - XLSX formula clinic: ${siteRoot}/formula-bug-clinic.html
 - Compatibility limits: ${siteRoot}/where-bilig-is-not-excel-compatible-yet.html
 - Repository: ${repositoryUrl}
@@ -510,6 +511,11 @@ const llmsFullSources = [
     title: 'Directus WorkPaper Flow Operation',
     relativePath: 'docs/directus-workpaper-flow-operation.md',
     url: `${repositoryUrl}/blob/main/docs/directus-workpaper-flow-operation.md`,
+  },
+  {
+    title: 'Windmill WorkPaper TypeScript Script',
+    relativePath: 'docs/windmill-workpaper-script.md',
+    url: `${repositoryUrl}/blob/main/docs/windmill-workpaper-script.md`,
   },
   {
     title: 'Open WebUI WorkPaper MCP Setup',
