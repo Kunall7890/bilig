@@ -12,17 +12,27 @@ import {
 } from '../index.js'
 import { assertWorkbookRunAdapter, checkWorkbookRunAdapter } from '../testing.js'
 
-function rangeRef(label: string, address: string) {
+function rangeRef(label: string, startAddress: string, endAddress = startAddress) {
   return {
     kind: 'range' as const,
     id: `range_${label}`,
     label,
     range: {
       sheetName: 'Resolved',
-      startAddress: address,
-      endAddress: address,
+      startAddress,
+      endAddress,
     },
   }
+}
+
+function labelSource(labelName: string): string {
+  if (labelName === 'input') {
+    return 'Resolved!A1'
+  }
+  if (labelName === 'factor') {
+    return 'Resolved!B1'
+  }
+  return labelName
 }
 
 function model() {
@@ -62,7 +72,7 @@ function receipt<Refs>(plan: WorkbookActionPlan<Refs>, commandIndex: number, op:
       target: rangeRef('Resolved!C1', 'C1'),
       inputs: [rangeRef('Resolved!A1', 'A1'), rangeRef('Resolved!B1', 'B1')],
     },
-    formulaLabels: command.labels.map((label) => ({ name: label.name, source: label.name })),
+    formulaLabels: command.labels.map((label) => ({ name: label.name, source: labelSource(label.name) })),
   }
 }
 
@@ -73,7 +83,7 @@ function passingAdapter(): WorkbookRunAdapter<{ readonly refsUsed: ReturnType<ty
         kind: 'setCellFormula',
         sheetName: 'Resolved',
         address: 'C1',
-        formula: plan.commands[0]?.kind === 'writeFormula' ? plan.commands[0].formula : 'input*factor',
+        formula: 'Resolved!A1*Resolved!B1',
       }
       return {
         status: 'applied',
@@ -88,7 +98,11 @@ function passingAdapter(): WorkbookRunAdapter<{ readonly refsUsed: ReturnType<ty
     read(targets) {
       return targets.map((target) => ({
         target,
-        formula: 'input*factor',
+        formula: 'Resolved!A1*Resolved!B1',
+        formulaLabels: [
+          { name: 'input', source: 'Resolved!A1' },
+          { name: 'factor', source: 'Resolved!B1' },
+        ],
       }))
     },
   }
@@ -98,6 +112,34 @@ function prepare() {
   const prepared = prepareWorkbookAction(model(), 'calculate')
   if (prepared.status !== 'prepared') {
     throw new Error('expected prepared fixture')
+  }
+  return prepared
+}
+
+function prepareMultiCellFormula() {
+  const prepared = prepareWorkbookAction(
+    defineModel({
+      name: 'testing-adapter-multi-cell-model',
+      find(workbook) {
+        return {
+          input: workbook.findName('input'),
+          factor: workbook.findName('factor'),
+          result: workbook.findName('result'),
+        }
+      },
+      checks({ refs, workbook }) {
+        return [workbook.check.formulaEquals(refs.result, formula.multiply(refs.input, refs.factor))]
+      },
+      actions: {
+        calculate({ refs, workbook }) {
+          workbook.writeFormula(refs.result, formula.multiply(refs.input, refs.factor))
+        },
+      },
+    }),
+    'calculate',
+  )
+  if (prepared.status !== 'prepared') {
+    throw new Error('expected prepared multi-cell fixture')
   }
   return prepared
 }
@@ -323,6 +365,73 @@ describe('@bilig/workbook testing api', () => {
         path: 'result',
         message:
           'Workbook action testing-adapter-model.calculate returned invalid command receipts: commandReceipts[0].previewOps do not match the planned command',
+      },
+    ])
+  })
+
+  it('rejects multi-cell formula receipts whose formulas do not match resolved inputs', async () => {
+    const prepared = prepareMultiCellFormula()
+    const command = prepared.plan.commands[0]
+    if (command?.kind !== 'writeFormula') {
+      throw new Error('expected formula command')
+    }
+    const ops: readonly EngineOp[] = [
+      {
+        kind: 'setCellFormula',
+        sheetName: 'Resolved',
+        address: 'C1',
+        formula: 'Resolved!A1*Resolved!B1',
+      },
+      {
+        kind: 'setCellFormula',
+        sheetName: 'Resolved',
+        address: 'C2',
+        formula: 'Resolved!A1*Resolved!B1',
+      },
+    ]
+
+    const check = await checkWorkbookRunAdapter(prepared.planData, {
+      apply(plan) {
+        return {
+          status: 'applied',
+          planId: workbookPlanId(plan),
+          baseRevision: 4,
+          revision: 5,
+          previewOps: ops,
+          appliedOps: ops,
+          commandReceipts: [
+            {
+              commandIndex: 0,
+              commandKind: command.kind,
+              commandDigest: workbookActionCommandDigest(command),
+              previewOps: ops,
+              appliedOps: ops,
+              resolvedRefs: {
+                target: rangeRef('Resolved!C1:C2', 'C1', 'C2'),
+                inputs: [rangeRef('Resolved!A1:A2', 'A1', 'A2'), rangeRef('Resolved!B1:B2', 'B1', 'B2')],
+              },
+            },
+          ],
+        }
+      },
+      read(targets) {
+        return targets.map((target) => ({
+          target,
+          formula: 'input*factor',
+        }))
+      },
+    })
+
+    expect(check.status).toBe('failed')
+    if (check.status !== 'failed') {
+      throw new Error('adapter unexpectedly passed')
+    }
+    expect(check.issues).toEqual([
+      {
+        code: 'runtime_rejected',
+        path: 'result',
+        message:
+          'Workbook action testing-adapter-multi-cell-model.calculate returned invalid command receipts: commandReceipts[0].previewOps do not match the planned command',
       },
     ])
   })

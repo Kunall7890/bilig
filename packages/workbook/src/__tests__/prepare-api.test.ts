@@ -70,7 +70,7 @@ describe('@bilig/workbook prepare api', () => {
               kind: 'setCellFormula' as const,
               sheetName: 'Resolved',
               address: 'C1',
-              formula: command.formula,
+              formula: 'Resolved!A1*Resolved!B1',
             }
           })
           return {
@@ -97,7 +97,12 @@ describe('@bilig/workbook prepare api', () => {
                   inputs: [rangeRef('Resolved!A1', 'A1'), rangeRef('Resolved!B1', 'B1')],
                 },
                 formulaLabels:
-                  command.kind === 'writeFormula' ? command.labels.map((label) => ({ name: label.name, source: label.name })) : [],
+                  command.kind === 'writeFormula'
+                    ? command.labels.map((label) => ({
+                        name: label.name,
+                        source: label.name === 'input' ? 'Resolved!A1' : 'Resolved!B1',
+                      }))
+                    : [],
               }
             }),
           }
@@ -105,7 +110,11 @@ describe('@bilig/workbook prepare api', () => {
         read(targets) {
           return targets.map((target) => ({
             target,
-            formula: 'input*factor',
+            formula: 'Resolved!A1*Resolved!B1',
+            formulaLabels: [
+              { name: 'input', source: 'Resolved!A1' },
+              { name: 'factor', source: 'Resolved!B1' },
+            ],
           }))
         },
       },

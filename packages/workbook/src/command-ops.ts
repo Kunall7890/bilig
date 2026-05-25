@@ -8,6 +8,13 @@ import type { WorkbookCommandResolvedRefs, WorkbookResolvedRefValue } from './re
 
 export type WorkbookConcreteCommandOp = Extract<WorkbookOp, { kind: 'setCellFormula' | 'setCellValue' | 'setCellFormat' | 'clearCell' }>
 
+interface WorkbookConcreteCell {
+  readonly sheetName: string
+  readonly address: string
+  readonly row: number
+  readonly col: number
+}
+
 export interface WorkbookCommandOpsExpectation {
   readonly ops: readonly WorkbookOp[]
 }
@@ -35,35 +42,127 @@ function concreteRangesFromResolvedRef(value: WorkbookResolvedRefValue | undefin
   return values.map((entry) => entry.range)
 }
 
-function cellsFromRange(range: CellRangeRef): readonly { readonly sheetName: string; readonly address: string }[] {
+function cellsFromRange(range: CellRangeRef): readonly WorkbookConcreteCell[] {
   const start = parseCellAddress(range.startAddress)
   const end = parseCellAddress(range.endAddress)
   if (end.row < start.row || end.col < start.col) {
     return []
   }
-  const cells: { sheetName: string; address: string }[] = []
+  const cells: WorkbookConcreteCell[] = []
   for (let row = start.row; row <= end.row; row += 1) {
     for (let col = start.col; col <= end.col; col += 1) {
       cells.push({
         sheetName: range.sheetName,
         address: formatAddress(row, col),
+        row,
+        col,
       })
     }
   }
   return cells
 }
 
-function concreteCellsFromResolvedRefs(resolvedRefs: WorkbookCommandResolvedRefs | undefined):
-  | readonly {
-      readonly sheetName: string
-      readonly address: string
-    }[]
-  | null {
+function concreteCellsFromResolvedRefs(resolvedRefs: WorkbookCommandResolvedRefs | undefined): readonly WorkbookConcreteCell[] | null {
   const ranges = concreteRangesFromResolvedRef(resolvedRefs?.target)
   if (ranges === null) {
     return null
   }
   return ranges.flatMap(cellsFromRange)
+}
+
+function quoteSheetName(sheetName: string): string {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(sheetName) ? sheetName : `'${sheetName.replaceAll("'", "''")}'`
+}
+
+function cellSource(cell: WorkbookConcreteCell): string {
+  return `${quoteSheetName(cell.sheetName)}!${cell.address}`
+}
+
+function rangeSource(range: CellRangeRef): string {
+  const sheet = quoteSheetName(range.sheetName)
+  return range.startAddress === range.endAddress ? `${sheet}!${range.startAddress}` : `${sheet}!${range.startAddress}:${range.endAddress}`
+}
+
+function workbookRefKey(ref: WorkbookRef): string {
+  return `${ref.kind}:${ref.id}`
+}
+
+function resolvedInputForLabel(
+  command: Extract<WorkbookActionCommand, { readonly kind: 'writeFormula' }>,
+  label: { readonly ref: WorkbookRef },
+  resolvedRefs: WorkbookCommandResolvedRefs | undefined,
+): WorkbookResolvedRefValue | null {
+  const inputs = resolvedRefs?.inputs
+  if (inputs === undefined) {
+    return null
+  }
+  const labelKey = workbookRefKey(label.ref)
+  const inputIndex = command.inputs.findIndex((input) => workbookRefKey(input) === labelKey)
+  return inputIndex < 0 ? null : (inputs[inputIndex] ?? null)
+}
+
+function labelReplacementForCell(
+  command: Extract<WorkbookActionCommand, { readonly kind: 'writeFormula' }>,
+  label: { readonly name: string; readonly ref: WorkbookRef },
+  targetCells: readonly WorkbookConcreteCell[],
+  cellIndex: number,
+  resolvedRefs: WorkbookCommandResolvedRefs | undefined,
+): WorkbookFormulaLabelReplacement | null {
+  const value = resolvedInputForLabel(command, label, resolvedRefs)
+  const inputRanges = concreteRangesFromResolvedRef(value ?? undefined)
+  if (inputRanges === null) {
+    return null
+  }
+  const inputCells = inputRanges.flatMap(cellsFromRange)
+  if (inputCells.length === targetCells.length) {
+    const inputCell = inputCells[cellIndex]
+    return inputCell === undefined ? null : { name: label.name, source: cellSource(inputCell) }
+  }
+  if (inputCells.length === 1) {
+    return { name: label.name, source: cellSource(inputCells[0]!) }
+  }
+  if (inputRanges.length === 1) {
+    return { name: label.name, source: rangeSource(inputRanges[0]!) }
+  }
+  return null
+}
+
+function resolvedFormulaLabelsForCell(
+  command: Extract<WorkbookActionCommand, { readonly kind: 'writeFormula' }>,
+  targetCells: readonly WorkbookConcreteCell[],
+  cellIndex: number,
+  resolvedRefs: WorkbookCommandResolvedRefs | undefined,
+): readonly WorkbookFormulaLabelReplacement[] | null {
+  const replacements: WorkbookFormulaLabelReplacement[] = []
+  for (const label of command.labels) {
+    const replacement = labelReplacementForCell(command, label, targetCells, cellIndex, resolvedRefs)
+    if (replacement === null) {
+      return null
+    }
+    replacements.push(replacement)
+  }
+  return replacements
+}
+
+function formulaForExpectedCell(
+  command: Extract<WorkbookActionCommand, { readonly kind: 'writeFormula' }>,
+  targetCells: readonly WorkbookConcreteCell[],
+  cellIndex: number,
+  resolvedRefs: WorkbookCommandResolvedRefs | undefined,
+  formulaLabels: readonly WorkbookFormulaLabelReplacement[] = [],
+): string | null {
+  if (command.labels.length === 0) {
+    return command.inputs.length > 0 ? null : command.formula
+  }
+
+  const resolvedLabels = resolvedFormulaLabelsForCell(command, targetCells, cellIndex, resolvedRefs)
+  if (resolvedLabels !== null) {
+    return materializeFormulaLabels(command.formula, resolvedLabels)
+  }
+  if (targetCells.length === 1 && formulaLabels.length > 0) {
+    return materializeFormulaLabels(command.formula, formulaLabels)
+  }
+  return null
 }
 
 function canonicalValue(value: unknown): unknown {
@@ -211,21 +310,29 @@ export function commandOpsMatchExpected(
     if (expected === null && concreteCells === null) {
       return false
     }
-    const expectedCells = concreteCells ?? (expected === null ? [] : [{ sheetName: expected.sheetName, address: expected.address }])
+    const expectedCells =
+      concreteCells ??
+      (expected === null
+        ? []
+        : [
+            {
+              sheetName: expected.sheetName,
+              address: expected.address,
+              ...parseCellAddress(expected.address),
+            },
+          ])
     return (
       expectedCells.length === ops.length &&
       expectedCells.every((cell, index) => {
         const actual = ops[index]
-        const formulaMatches =
-          expectedCells.length === 1
-            ? actual?.kind === 'setCellFormula' && formulasMatchExpected(command.formula, actual.formula, formulaLabels)
-            : true
+        const expectedFormula = formulaForExpectedCell(command, expectedCells, index, resolvedRefs, formulaLabels)
         return (
           actual !== undefined &&
           actual.kind === 'setCellFormula' &&
           actual.sheetName === cell.sheetName &&
           actual.address === cell.address &&
-          formulaMatches
+          expectedFormula !== null &&
+          formulasMatchExpected(expectedFormula, actual.formula)
         )
       })
     )

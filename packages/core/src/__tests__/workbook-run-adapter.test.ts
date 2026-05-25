@@ -296,7 +296,7 @@ describe('workbook run adapter', () => {
       },
     })
 
-    const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine))
+    const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine), undefined, { strict: true })
 
     expect(result).toMatchObject({ status: 'done' })
     if (result.status !== 'done') {
@@ -306,6 +306,33 @@ describe('workbook run adapter', () => {
     expect(engine.getCellValue('Sheet1', 'C2')).toEqual({ tag: ValueTag.Number, value: 6 })
     expect(engine.getCell('Sheet1', 'C3').formula).toBe('Sheet1!A3*Sheet1!B3')
     expect(engine.getCellValue('Sheet1', 'C3')).toEqual({ tag: ValueTag.Number, value: 20 })
+    expect(result.apply?.commandReceipts?.[0]).toMatchObject({
+      commandKind: 'writeFormula',
+      previewOps: [
+        {
+          kind: 'setCellFormula',
+          sheetName: 'Sheet1',
+          address: 'C2',
+          formula: 'Sheet1!A2*Sheet1!B2',
+        },
+        {
+          kind: 'setCellFormula',
+          sheetName: 'Sheet1',
+          address: 'C3',
+          formula: 'Sheet1!A3*Sheet1!B3',
+        },
+      ],
+      resolvedRefs: {
+        target: expect.objectContaining({
+          kind: 'range',
+          label: 'Sheet1!C2:C3',
+        }),
+        inputs: [
+          expect.objectContaining({ kind: 'range', label: 'Sheet1!A2:A3' }),
+          expect.objectContaining({ kind: 'range', label: 'Sheet1!B2:B3' }),
+        ],
+      },
+    })
     expect(result.checks.map((check) => [check.kind, check.status])).toEqual([
       ['exists', 'passed'],
       ['noFormulaErrors', 'passed'],
