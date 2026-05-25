@@ -179,6 +179,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Windmill TypeScript script: https://proompteng.github.io/bilig/windmill-workpaper-script.html
 - Trigger.dev task: https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
 - Kestra Node flow: https://proompteng.github.io/bilig/kestra-workpaper-flow.html
+- Prefect flow: https://proompteng.github.io/bilig/prefect-workpaper-flow.html
 - XLSX formula clinic: https://proompteng.github.io/bilig/formula-bug-clinic.html
 - Compatibility limits: https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html
 - Repository: https://github.com/proompteng/bilig

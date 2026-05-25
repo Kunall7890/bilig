@@ -1,0 +1,18 @@
+{
+  "name": "bilig-prefect-workpaper-flow",
+  "private": true,
+  "description": "Prefect flow example that calculates workflow fields with Bilig WorkPaper formulas.",
+  "type": "module",
+  "scripts": {
+    "check": "tsc -p tsconfig.json --noEmit && tsx scripts/check-flow.ts && python3 -m py_compile flow.py",
+    "smoke": "tsx workpaper-quote.ts --output .tmp/workpaper-proof.json"
+  },
+  "dependencies": {
+    "@bilig/workpaper": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.2"
+  }
+}

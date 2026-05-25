@@ -247,6 +247,25 @@ proof.
 See [Kestra WorkPaper Node flow](docs/kestra-workpaper-flow.md) for the flow
 YAML, local smoke command, Blueprint boundary, and outreach note.
 
+## Prefect Formula Flows
+
+Need a Prefect flow to calculate workflow fields from reviewable formulas? Keep
+Prefect in charge of Python orchestration and call a small Node WorkPaper step
+that writes a proof file.
+
+The source example lives in:
+
+```text
+examples/prefect-workpaper-flow
+```
+
+It keeps Prefect in charge of flows, tasks, retries, deployments, and run
+history while Bilig owns formula recalculation, JSON restore, and readback
+proof.
+
+See [Prefect WorkPaper flow](docs/prefect-workpaper-flow.md) for the flow
+wrapper, local smoke command, deployment boundary, and outreach note.
+
 ## Directus Persisted Calculated Fields
 
 Need a Directus Flow to calculate and persist quote, pricing, payout, or import

@@ -416,6 +416,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Windmill TypeScript script: ${siteRoot}/windmill-workpaper-script.html
 - Trigger.dev task: ${siteRoot}/triggerdev-workpaper-task.html
 - Kestra Node flow: ${siteRoot}/kestra-workpaper-flow.html
+- Prefect flow: ${siteRoot}/prefect-workpaper-flow.html
 - XLSX formula clinic: ${siteRoot}/formula-bug-clinic.html
 - Compatibility limits: ${siteRoot}/where-bilig-is-not-excel-compatible-yet.html
 - Repository: ${repositoryUrl}
@@ -451,6 +452,10 @@ Start by proving the direct WorkPaper loop:`,
     'Use MCP only when the host specifically needs an MCP client boundary. For that path, run the package-owned challenge first:',
   )
   .replace('## Second Choice: Direct TypeScript', '## Direct TypeScript')
+
+function llmsSource(title: string, relativePath: string) {
+  return { title, relativePath, url: `${repositoryUrl}/blob/main/${relativePath}` }
+}
 
 const llmsFullSources = [
   { title: 'Repository README', relativePath: 'README.md', url: `${repositoryUrl}/blob/main/README.md` },
@@ -519,21 +524,10 @@ const llmsFullSources = [
     relativePath: 'docs/windmill-workpaper-script.md',
     url: `${repositoryUrl}/blob/main/docs/windmill-workpaper-script.md`,
   },
-  {
-    title: 'Trigger.dev WorkPaper Task',
-    relativePath: 'docs/triggerdev-workpaper-task.md',
-    url: `${repositoryUrl}/blob/main/docs/triggerdev-workpaper-task.md`,
-  },
-  {
-    title: 'Kestra WorkPaper Node Flow',
-    relativePath: 'docs/kestra-workpaper-flow.md',
-    url: `${repositoryUrl}/blob/main/docs/kestra-workpaper-flow.md`,
-  },
-  {
-    title: 'Open WebUI WorkPaper MCP Setup',
-    relativePath: 'docs/open-webui-workpaper-mcp.md',
-    url: `${repositoryUrl}/blob/main/docs/open-webui-workpaper-mcp.md`,
-  },
+  llmsSource('Trigger.dev WorkPaper Task', 'docs/triggerdev-workpaper-task.md'),
+  llmsSource('Kestra WorkPaper Node Flow', 'docs/kestra-workpaper-flow.md'),
+  llmsSource('Prefect WorkPaper Flow', 'docs/prefect-workpaper-flow.md'),
+  llmsSource('Open WebUI WorkPaper MCP Setup', 'docs/open-webui-workpaper-mcp.md'),
   {
     title: 'LobeHub WorkPaper MCP Setup',
     relativePath: 'docs/lobehub-workpaper-mcp.md',
@@ -770,6 +764,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/openai-agents-sdk-workpaper-tool.html`,
         `${siteRoot}/node-framework-workpaper-adapters.html`,
         `${siteRoot}/kestra-workpaper-flow.html`,
+        `${siteRoot}/prefect-workpaper-flow.html`,
         `${siteRoot}/npm-provenance-package-trust.html`,
       ],
     },

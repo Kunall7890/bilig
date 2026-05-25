@@ -26,6 +26,7 @@ Pick the path that matches the workflow you are trying to unblock:
 | Windmill TypeScript workflow fields                                      | `cd examples/windmill-workpaper-script && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke` | The script returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.        |
 | Trigger.dev durable task fields                                          | `cd examples/triggerdev-workpaper-task && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke` | The task helper returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.   |
 | Kestra Node Commands flow fields                                         | `cd examples/kestra-workpaper-flow && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`     | The flow script writes a `workpaper-proof.json` artifact with before/after/restore proof and `verified: true`.      |
+| Prefect flow fields                                                      | `cd examples/prefect-workpaper-flow && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`    | The Node step writes a `workpaper-proof.json` artifact that a Prefect task can validate and return.                 |
 | Directus Flow operation for persisted calculated fields                  | `cd examples/directus-workpaper-flow-operation && npm install && npm run smoke`                               | The operation returns a Directus `patch` plus before/after/restore WorkPaper proof with `verified: true`.           |
 | n8n, Dify, or Flowise formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321`                          | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof.               |
 | Open WebUI needs MCP spreadsheet tools                                   | `npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`                                    | Open WebUI can call the hosted Streamable HTTP endpoint or a local stdio server bridged through `mcpo`.             |
@@ -115,6 +116,7 @@ Start from the repo examples:
 - `examples/windmill-workpaper-script`
 - `examples/triggerdev-workpaper-task`
 - `examples/kestra-workpaper-flow`
+- `examples/prefect-workpaper-flow`
 - `examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json`
 - `examples/dify-workpaper-formula-readback`
 - `examples/flowise-workpaper-formula-readback/bilig-workpaper-formula-readback.flowise-tool.json`
@@ -125,6 +127,7 @@ Docs:
 - <https://proompteng.github.io/bilig/windmill-workpaper-script.html>
 - <https://proompteng.github.io/bilig/triggerdev-workpaper-task.html>
 - <https://proompteng.github.io/bilig/kestra-workpaper-flow.html>
+- <https://proompteng.github.io/bilig/prefect-workpaper-flow.html>
 - <https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html>
 - <https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html>
 - <https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html>

@@ -530,6 +530,11 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/kestra-workpaper-flow.html
   https://github.com/proompteng/bilig/blob/main/docs/kestra-workpaper-flow.md
   https://github.com/proompteng/bilig/tree/main/examples/kestra-workpaper-flow
+  Prefect flow source:
+  https://proompteng.github.io/bilig/prefect-workpaper-flow.html
+  https://github.com/proompteng/bilig/blob/main/docs/prefect-workpaper-flow.md
+  https://github.com/proompteng/bilig/tree/main/examples/prefect-workpaper-flow
+  n8n workflow source:
   https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html
   https://github.com/proompteng/bilig/blob/main/docs/n8n-workpaper-formula-readback.md
   https://github.com/proompteng/bilig/tree/main/examples/n8n-workpaper-formula-readback
