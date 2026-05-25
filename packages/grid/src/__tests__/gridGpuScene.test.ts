@@ -140,6 +140,56 @@ describe('gridGpuScene', () => {
     })
   })
 
+  test('combined scenes keep body leading gridlines off header-owned pane seams', () => {
+    const gridMetrics = getGridMetrics()
+    const scene = buildGridGpuScene({
+      engine: makeEngine({}),
+      columnWidths: {},
+      gridMetrics,
+      gridSelection: createSelection(),
+      selectedCell: [0, 0],
+      sheetName: 'Sheet1',
+      visibleItems: [[0, 0]],
+      visibleRegion: { range: { x: 0, y: 0, width: 1, height: 1 }, tx: 0, ty: 0 },
+      hostBounds: { left: 0, top: 0 },
+      getCellBounds: () => ({
+        x: gridMetrics.rowMarkerWidth,
+        y: gridMetrics.headerHeight,
+        width: gridMetrics.columnWidth,
+        height: gridMetrics.rowHeight,
+      }),
+    })
+
+    expect(scene.borderRects).toContainEqual({
+      x: gridMetrics.rowMarkerWidth - 1,
+      y: gridMetrics.headerHeight,
+      width: 1,
+      height: gridMetrics.rowHeight,
+      color: GRID_LINE_COLOR,
+    })
+    expect(scene.borderRects).toContainEqual({
+      x: gridMetrics.rowMarkerWidth,
+      y: gridMetrics.headerHeight - 1,
+      width: gridMetrics.columnWidth,
+      height: 1,
+      color: GRID_LINE_COLOR,
+    })
+    expect(scene.borderRects).not.toContainEqual({
+      x: gridMetrics.rowMarkerWidth,
+      y: gridMetrics.headerHeight,
+      width: 1,
+      height: gridMetrics.rowHeight,
+      color: GRID_LINE_COLOR,
+    })
+    expect(scene.borderRects).not.toContainEqual({
+      x: gridMetrics.rowMarkerWidth,
+      y: gridMetrics.headerHeight,
+      width: gridMetrics.columnWidth,
+      height: 1,
+      color: GRID_LINE_COLOR,
+    })
+  })
+
   test('paints a merged range as one cell rectangle', () => {
     const engine = makeEngine(
       {

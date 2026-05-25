@@ -458,6 +458,34 @@ test('@browser-ci web app leaves the top-left selector transparent so the header
   expect(isGridBorderPixel(firstColumnHeaderPixel), 'column header should not start with a second adjacent gridline').toBe(false)
 })
 
+test('@browser-ci web app keeps unselected header/body pane seams to one structural gridline', async ({ page }) => {
+  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-unselected-pane-single-seam'))}&persist=0`)
+  await waitForWorkbookReady(page)
+
+  const gridLocator = page.getByTestId('sheet-grid')
+  await expect(gridLocator).toBeVisible()
+  const grid = await gridLocator.boundingBox()
+  if (!grid) {
+    throw new Error('sheet grid is not visible')
+  }
+
+  const rowTop = await getProductRowTop(page, 9)
+  const rowMidY = grid.y + PRODUCT_HEADER_HEIGHT + rowTop + Math.floor(PRODUCT_ROW_HEIGHT / 2)
+  const headerSeamPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 1, rowMidY)
+  const bodyFirstPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH, rowMidY)
+
+  const columnLeft = await getProductColumnLeft(page, 2)
+  const columnWidth = await getProductColumnWidth(page, 2)
+  const columnMidX = grid.x + columnLeft + Math.floor(columnWidth / 2)
+  const columnHeaderSeamPixel = await sampleViewportPixel(page, columnMidX, grid.y + PRODUCT_HEADER_HEIGHT - 1)
+  const bodyTopPixel = await sampleViewportPixel(page, columnMidX, grid.y + PRODUCT_HEADER_HEIGHT)
+
+  expect(isGridBorderPixel(headerSeamPixel), 'row-header/body seam should have exactly one structural gridline').toBe(true)
+  expect(isGridBorderPixel(bodyFirstPixel), 'first body pixel should not draw a second adjacent gridline').toBe(false)
+  expect(isGridBorderPixel(columnHeaderSeamPixel), 'column-header/body seam should have exactly one structural gridline').toBe(true)
+  expect(isGridBorderPixel(bodyTopPixel), 'first body row should not draw a second adjacent gridline').toBe(false)
+})
+
 test('@browser-ci web app keeps the in-cell editor on the same selection chrome', async ({ page }) => {
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-editor-selection-chrome'))}&persist=0`)
   await waitForWorkbookReady(page)

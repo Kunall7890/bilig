@@ -185,7 +185,16 @@ export function buildGridGpuScene({
       })
     }
 
-    pushGridLineRects(borderRects, rect, row, col, visibleMinRow, visibleMinCol, includeLeadingGridLines)
+    pushGridLineRects(
+      borderRects,
+      rect,
+      row,
+      col,
+      visibleMinRow,
+      visibleMinCol,
+      includeLeadingGridLines,
+      renderHeaders ? gridMetrics : null,
+    )
 
     if (snapshot.value.tag === ValueTag.Boolean) {
       pushBooleanCellRects(fillRects, borderRects, rect, snapshot.value.value)
@@ -392,8 +401,13 @@ function pushGridLineRects(
   visibleMinRow: number,
   visibleMinCol: number,
   includeLeadingGridLines: boolean,
+  headerOwnedPaneSeams: Pick<GridMetrics, 'headerHeight' | 'rowMarkerWidth'> | null,
 ) {
-  if (includeLeadingGridLines && row === visibleMinRow) {
+  const leadingHorizontalOwnedByHeader =
+    headerOwnedPaneSeams !== null && row === visibleMinRow && sameCssPixel(rect.y, headerOwnedPaneSeams.headerHeight)
+  const leadingVerticalOwnedByHeader =
+    headerOwnedPaneSeams !== null && col === visibleMinCol && sameCssPixel(rect.x, headerOwnedPaneSeams.rowMarkerWidth)
+  if (includeLeadingGridLines && row === visibleMinRow && !leadingHorizontalOwnedByHeader) {
     borderRects.push({
       x: rect.x,
       y: rect.y,
@@ -402,7 +416,7 @@ function pushGridLineRects(
       color: GRID_LINE_COLOR,
     })
   }
-  if (includeLeadingGridLines && col === visibleMinCol) {
+  if (includeLeadingGridLines && col === visibleMinCol && !leadingVerticalOwnedByHeader) {
     borderRects.push({
       x: rect.x,
       y: rect.y,
@@ -425,6 +439,10 @@ function pushGridLineRects(
     height: rect.height,
     color: GRID_LINE_COLOR,
   })
+}
+
+function sameCssPixel(left: number, right: number): boolean {
+  return Math.abs(left - right) < 0.001
 }
 
 function pushSelectionRects(options: {
