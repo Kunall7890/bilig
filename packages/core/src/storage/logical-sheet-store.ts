@@ -30,8 +30,10 @@ export interface LogicalAxisIdFactories {
 interface DenseRowMajorVisibleCellBlock {
   readonly firstCellIndex: number
   readonly colCount: number
-  readonly rowOffsets: ReadonlyMap<string, number>
-  readonly colOffsets: ReadonlyMap<string, number>
+  readonly rowIds: readonly string[]
+  readonly colIds: readonly string[]
+  rowOffsets?: ReadonlyMap<string, number>
+  colOffsets?: ReadonlyMap<string, number>
 }
 
 function indexedAxisIds(axisIds: readonly string[]): ReadonlyMap<string, number> {
@@ -177,8 +179,8 @@ export class LogicalSheetStore {
       this.denseRowMajorVisibleCellBlocks.push({
         firstCellIndex,
         colCount: colIds.length,
-        rowOffsets: indexedAxisIds(rowIds),
-        colOffsets: indexedAxisIds(colIds),
+        rowIds,
+        colIds,
       })
     }
   }
@@ -428,10 +430,12 @@ export class LogicalSheetStore {
   private getDenseRowMajorVisibleCell(rowId: string, colId: string): number | undefined {
     for (let index = this.denseRowMajorVisibleCellBlocks.length - 1; index >= 0; index -= 1) {
       const block = this.denseRowMajorVisibleCellBlocks[index]!
+      block.rowOffsets ??= indexedAxisIds(block.rowIds)
       const rowOffset = block.rowOffsets.get(rowId)
       if (rowOffset === undefined) {
         continue
       }
+      block.colOffsets ??= indexedAxisIds(block.colIds)
       const colOffset = block.colOffsets.get(colId)
       if (colOffset === undefined) {
         continue

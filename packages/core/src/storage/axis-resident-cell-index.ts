@@ -60,6 +60,10 @@ export class AxisResidentCellIndex {
   }
 
   addDenseRowMajorDeferredParts(firstCellIndex: number, rowIds: readonly string[], colIds: readonly string[]): void {
+    if (this.rebuildSource) {
+      this.deferRebuild()
+      return
+    }
     this.ensurePrimaryIndex()
     const colCount = colIds.length
     const cellCount = rowIds.length * colCount

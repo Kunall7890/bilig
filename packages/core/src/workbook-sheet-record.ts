@@ -61,7 +61,11 @@ export function createWorkbookSheetRecord(args: {
   const axisMap = new SheetAxisMap()
   const logicalAxisMap = new SheetAxisMap()
   const cellIdentities = new CellAxisIdentityStore()
-  const residentCells = new AxisResidentCellIndex()
+  const residentCells = new AxisResidentCellIndex((callback) => {
+    cellIdentities.forEach((identity, cellIndex) => {
+      callback(cellIndex, identity)
+    })
+  })
   const logical = new LogicalSheetStore(
     args.id,
     logicalAxisMap,
