@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.106.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.105.0
+- Manual override: no
+
+## Features
+- feat(workbook): bind receipts to resolved ranges (97f727b8)
+
+## Internal runtime changes
+- docs(growth): add Open WebUI MCP setup (7b389b0d)
+
 ## 0.105.0
 
 - Release type: minor
