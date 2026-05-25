@@ -1,6 +1,6 @@
 {
   "name": "@bilig/workpaper",
-  "version": "0.107.8",
+  "version": "0.107.9",
   "description": "Scoped Bilig WorkPaper runtime and MCP server for Node.js services, agent tools, and server-side spreadsheet formulas.",
   "keywords": [
     "agent-tools",
