@@ -27,7 +27,7 @@ const styleFillPatchSchema: WorkbookJsonSchemaValue = {
     { type: 'null' },
     {
       type: 'object',
-      additionalProperties: true,
+      additionalProperties: false,
       properties: {
         backgroundColor: nullableStringSchema,
       },
@@ -40,7 +40,7 @@ const styleFontPatchSchema: WorkbookJsonSchemaValue = {
     { type: 'null' },
     {
       type: 'object',
-      additionalProperties: true,
+      additionalProperties: false,
       properties: {
         family: nullableStringSchema,
         size: nullableNumberSchema,
@@ -58,7 +58,7 @@ const styleAlignmentPatchSchema: WorkbookJsonSchemaValue = {
     { type: 'null' },
     {
       type: 'object',
-      additionalProperties: true,
+      additionalProperties: false,
       properties: {
         horizontal: { oneOf: [{ enum: CELL_HORIZONTAL_ALIGNMENT_VALUES }, { type: 'null' }] },
         vertical: { oneOf: [{ enum: CELL_VERTICAL_ALIGNMENT_VALUES }, { type: 'null' }] },
@@ -78,7 +78,7 @@ const styleBorderSidePatchSchema: WorkbookJsonSchemaValue = {
     { type: 'null' },
     {
       type: 'object',
-      additionalProperties: true,
+      additionalProperties: false,
       properties: {
         style: { oneOf: [{ enum: CELL_BORDER_STYLE_VALUES }, { type: 'null' }] },
         weight: { oneOf: [{ enum: CELL_BORDER_WEIGHT_VALUES }, { type: 'null' }] },
@@ -93,7 +93,7 @@ const styleBordersPatchSchema: WorkbookJsonSchemaValue = {
     { type: 'null' },
     {
       type: 'object',
-      additionalProperties: true,
+      additionalProperties: false,
       properties: {
         top: styleBorderSidePatchSchema,
         right: styleBorderSidePatchSchema,
@@ -106,7 +106,7 @@ const styleBordersPatchSchema: WorkbookJsonSchemaValue = {
 
 export const cellStylePatchSchema: WorkbookJsonSchemaValue = {
   type: 'object',
-  additionalProperties: true,
+  additionalProperties: false,
   properties: {
     fill: styleFillPatchSchema,
     font: styleFontPatchSchema,
@@ -228,7 +228,529 @@ const sortKeySchema: WorkbookJsonSchemaValue = {
   },
 }
 
-const looseObjectSchema = { type: 'object', additionalProperties: true } as const
+const workbookCalculationSettingsSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['mode'],
+  additionalProperties: true,
+  properties: {
+    mode: { enum: ['automatic', 'manual'] },
+    compatibilityMode: { enum: ['excel-modern', 'odf-1.4'] },
+    dateSystem: { enum: ['1900', '1904'] },
+    calcId: nullableNumberSchema,
+    iterate: nullableBooleanSchema,
+    iterateCount: nullableNumberSchema,
+    iterateDelta: nullableStringSchema,
+    fullPrecision: nullableBooleanSchema,
+    fullCalcOnLoad: nullableBooleanSchema,
+    forceFullCalc: nullableBooleanSchema,
+    calcOnSave: nullableBooleanSchema,
+    calcCompleted: nullableBooleanSchema,
+    concurrentCalc: nullableBooleanSchema,
+  },
+}
+
+const workbookVolatileContextSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['recalcEpoch'],
+  additionalProperties: true,
+  properties: {
+    recalcEpoch: numberSchema,
+  },
+}
+
+const sheetProtectionSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['sheetName'],
+  additionalProperties: true,
+  properties: {
+    sheetName: nonEmptyStringSchema,
+    hideFormulas: booleanSchema,
+  },
+}
+
+const rangeProtectionSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['id', 'range'],
+  additionalProperties: true,
+  properties: {
+    id: nonEmptyStringSchema,
+    range: cellRangeRefSchema,
+    hideFormulas: booleanSchema,
+  },
+}
+
+const validationListSourceSchema: WorkbookJsonSchemaValue = {
+  oneOf: [
+    {
+      type: 'object',
+      required: ['kind', 'name'],
+      additionalProperties: true,
+      properties: { kind: { const: 'named-range' }, name: nonEmptyStringSchema },
+    },
+    {
+      type: 'object',
+      required: ['kind', 'sheetName', 'address'],
+      additionalProperties: true,
+      properties: { kind: { const: 'cell-ref' }, sheetName: nonEmptyStringSchema, address: nonEmptyStringSchema },
+    },
+    {
+      type: 'object',
+      required: ['kind', 'sheetName', 'startAddress', 'endAddress'],
+      additionalProperties: true,
+      properties: {
+        kind: { const: 'range-ref' },
+        sheetName: nonEmptyStringSchema,
+        startAddress: nonEmptyStringSchema,
+        endAddress: nonEmptyStringSchema,
+      },
+    },
+    {
+      type: 'object',
+      required: ['kind', 'tableName', 'columnName'],
+      additionalProperties: true,
+      properties: { kind: { const: 'structured-ref' }, tableName: nonEmptyStringSchema, columnName: nonEmptyStringSchema },
+    },
+    {
+      type: 'object',
+      required: ['kind', 'formula'],
+      additionalProperties: true,
+      properties: { kind: { const: 'formula' }, formula: { type: 'string' } },
+    },
+  ],
+}
+
+const validationComparisonOperatorSchema = {
+  enum: ['between', 'notBetween', 'equal', 'notEqual', 'greaterThan', 'greaterThanOrEqual', 'lessThan', 'lessThanOrEqual'],
+} as const
+
+const validationRuleSchema: WorkbookJsonSchemaValue = {
+  oneOf: [
+    {
+      type: 'object',
+      required: ['kind'],
+      additionalProperties: true,
+      properties: {
+        kind: { const: 'list' },
+        values: { type: 'array', items: literalInputRefSchema },
+        source: validationListSourceSchema,
+      },
+      oneOf: [
+        { required: ['values'], not: { required: ['source'] } },
+        { required: ['source'], not: { required: ['values'] } },
+      ],
+    },
+    {
+      type: 'object',
+      required: ['kind'],
+      additionalProperties: true,
+      properties: {
+        kind: { const: 'checkbox' },
+        checkedValue: literalInputRefSchema,
+        uncheckedValue: literalInputRefSchema,
+      },
+    },
+    { type: 'object', required: ['kind'], additionalProperties: true, properties: { kind: { const: 'any' } } },
+    {
+      type: 'object',
+      required: ['kind', 'operator', 'values'],
+      additionalProperties: true,
+      properties: {
+        kind: { enum: ['whole', 'decimal', 'date', 'time', 'textLength'] },
+        operator: validationComparisonOperatorSchema,
+        values: { type: 'array', items: literalInputRefSchema },
+      },
+    },
+  ],
+}
+
+const dataValidationSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['range', 'rule'],
+  additionalProperties: true,
+  properties: {
+    range: cellRangeRefSchema,
+    rule: validationRuleSchema,
+    allowBlank: booleanSchema,
+    showDropdown: booleanSchema,
+    promptTitle: { type: 'string' },
+    promptMessage: { type: 'string' },
+    errorStyle: { enum: ['stop', 'warning', 'information'] },
+    errorTitle: { type: 'string' },
+    errorMessage: { type: 'string' },
+  },
+}
+
+const conditionalFormatRuleSchema: WorkbookJsonSchemaValue = {
+  oneOf: [
+    {
+      type: 'object',
+      required: ['kind', 'operator', 'values'],
+      additionalProperties: true,
+      properties: {
+        kind: { const: 'cellIs' },
+        operator: validationComparisonOperatorSchema,
+        values: { type: 'array', items: literalInputRefSchema },
+      },
+    },
+    {
+      type: 'object',
+      required: ['kind', 'text'],
+      additionalProperties: true,
+      properties: {
+        kind: { const: 'textContains' },
+        text: { type: 'string' },
+        caseSensitive: booleanSchema,
+      },
+    },
+    {
+      type: 'object',
+      required: ['kind', 'formula'],
+      additionalProperties: true,
+      properties: { kind: { const: 'formula' }, formula: { type: 'string' } },
+    },
+    { type: 'object', required: ['kind'], additionalProperties: true, properties: { kind: { const: 'blanks' } } },
+    { type: 'object', required: ['kind'], additionalProperties: true, properties: { kind: { const: 'notBlanks' } } },
+  ],
+}
+
+const conditionalFormatSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['id', 'range', 'rule', 'style'],
+  additionalProperties: true,
+  properties: {
+    id: nonEmptyStringSchema,
+    range: cellRangeRefSchema,
+    rule: conditionalFormatRuleSchema,
+    style: cellStylePatchSchema,
+    stopIfTrue: booleanSchema,
+    priority: nonNegativeIntegerSchema,
+  },
+}
+
+const conditionalFormatArtifactsSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['xml'],
+  additionalProperties: true,
+  properties: {
+    xml: { type: 'string' },
+  },
+}
+
+const commentEntrySchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['id', 'body'],
+  additionalProperties: true,
+  properties: {
+    id: nonEmptyStringSchema,
+    body: { type: 'string' },
+    authorUserId: { type: 'string' },
+    authorDisplayName: { type: 'string' },
+    createdAtUnixMs: nonNegativeIntegerSchema,
+  },
+}
+
+const commentThreadSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['threadId', 'sheetName', 'address', 'comments'],
+  additionalProperties: true,
+  properties: {
+    threadId: nonEmptyStringSchema,
+    sheetName: nonEmptyStringSchema,
+    address: nonEmptyStringSchema,
+    comments: { type: 'array', minItems: 1, items: commentEntrySchema },
+    resolved: booleanSchema,
+    resolvedByUserId: { type: 'string' },
+    resolvedAtUnixMs: nonNegativeIntegerSchema,
+  },
+}
+
+const noteSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['sheetName', 'address', 'text'],
+  additionalProperties: true,
+  properties: {
+    sheetName: nonEmptyStringSchema,
+    address: nonEmptyStringSchema,
+    text: { type: 'string' },
+  },
+}
+
+const hyperlinkSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['sheetName', 'address', 'target'],
+  additionalProperties: true,
+  properties: {
+    sheetName: nonEmptyStringSchema,
+    address: nonEmptyStringSchema,
+    target: { type: 'string' },
+    tooltip: { type: 'string' },
+    display: { type: 'string' },
+  },
+}
+
+const definedNameValueSchema: WorkbookJsonSchemaValue = {
+  oneOf: [
+    literalInputRefSchema,
+    {
+      type: 'object',
+      required: ['kind', 'value'],
+      additionalProperties: true,
+      properties: { kind: { const: 'scalar' }, value: literalInputRefSchema },
+    },
+    {
+      type: 'object',
+      required: ['kind', 'sheetName', 'address'],
+      additionalProperties: true,
+      properties: { kind: { const: 'cell-ref' }, sheetName: nonEmptyStringSchema, address: nonEmptyStringSchema },
+    },
+    {
+      type: 'object',
+      required: ['kind', 'sheetName', 'startAddress', 'endAddress'],
+      additionalProperties: true,
+      properties: {
+        kind: { const: 'range-ref' },
+        sheetName: nonEmptyStringSchema,
+        startAddress: nonEmptyStringSchema,
+        endAddress: nonEmptyStringSchema,
+      },
+    },
+    {
+      type: 'object',
+      required: ['kind', 'tableName', 'columnName'],
+      additionalProperties: true,
+      properties: { kind: { const: 'structured-ref' }, tableName: nonEmptyStringSchema, columnName: nonEmptyStringSchema },
+    },
+    {
+      type: 'object',
+      required: ['kind', 'formula'],
+      additionalProperties: true,
+      properties: { kind: { const: 'formula' }, formula: { type: 'string' } },
+    },
+  ],
+}
+
+const autoFilterValueCriteriaSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['values'],
+  additionalProperties: true,
+  properties: {
+    blank: booleanSchema,
+    values: { type: 'array', items: { type: 'string' } },
+  },
+}
+
+const autoFilterCustomCriterionSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['value'],
+  additionalProperties: true,
+  properties: {
+    operator: { enum: ['equal', 'lessThan', 'lessThanOrEqual', 'notEqual', 'greaterThanOrEqual', 'greaterThan'] },
+    value: { type: 'string' },
+  },
+}
+
+const autoFilterCustomCriteriaSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['filters'],
+  additionalProperties: true,
+  properties: {
+    and: booleanSchema,
+    filters: { type: 'array', items: autoFilterCustomCriterionSchema },
+  },
+}
+
+const autoFilterColumnSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['colId'],
+  additionalProperties: true,
+  properties: {
+    colId: nonNegativeIntegerSchema,
+    hiddenButton: booleanSchema,
+    showButton: booleanSchema,
+    filters: autoFilterValueCriteriaSchema,
+    customFilters: autoFilterCustomCriteriaSchema,
+  },
+}
+
+const autoFilterSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['sheetName', 'startAddress', 'endAddress'],
+  additionalProperties: true,
+  properties: {
+    sheetName: nonEmptyStringSchema,
+    startAddress: nonEmptyStringSchema,
+    endAddress: nonEmptyStringSchema,
+    criteria: { type: 'array', items: autoFilterColumnSchema },
+  },
+}
+
+const tableColumnSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['name'],
+  additionalProperties: true,
+  properties: {
+    name: nonEmptyStringSchema,
+    calculatedColumnFormula: { type: 'string' },
+    totalsRowLabel: { type: 'string' },
+    totalsRowFunction: { type: 'string' },
+    totalsRowFormula: { type: 'string' },
+  },
+}
+
+const tableStyleSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  additionalProperties: true,
+  properties: {
+    name: { type: 'string' },
+    showFirstColumn: booleanSchema,
+    showLastColumn: booleanSchema,
+    showRowStripes: booleanSchema,
+    showColumnStripes: booleanSchema,
+  },
+}
+
+const tableSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['name', 'sheetName', 'startAddress', 'endAddress', 'columnNames', 'headerRow', 'totalsRow'],
+  additionalProperties: true,
+  properties: {
+    name: nonEmptyStringSchema,
+    sheetName: nonEmptyStringSchema,
+    startAddress: nonEmptyStringSchema,
+    endAddress: nonEmptyStringSchema,
+    columnNames: { type: 'array', items: { type: 'string' } },
+    columns: { type: 'array', items: tableColumnSchema },
+    headerRow: booleanSchema,
+    totalsRow: booleanSchema,
+    style: tableStyleSchema,
+    autoFilter: autoFilterSchema,
+    sortState: { type: 'string' },
+  },
+}
+
+const pivotValueSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['sourceColumn', 'summarizeBy'],
+  additionalProperties: true,
+  properties: {
+    sourceColumn: nonEmptyStringSchema,
+    summarizeBy: { enum: ['sum', 'count'] },
+    outputLabel: { type: 'string' },
+  },
+}
+
+const drawingAnchorMarkerSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['row', 'col'],
+  additionalProperties: true,
+  properties: {
+    row: nonNegativeIntegerSchema,
+    col: nonNegativeIntegerSchema,
+    rowOffset: nonNegativeIntegerSchema,
+    colOffset: nonNegativeIntegerSchema,
+  },
+}
+
+const drawingAnchorExtentSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['width', 'height'],
+  additionalProperties: true,
+  properties: {
+    width: positiveIntegerSchema,
+    height: positiveIntegerSchema,
+  },
+}
+
+const drawingAnchorPositionSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['x', 'y'],
+  additionalProperties: true,
+  properties: {
+    x: nonNegativeIntegerSchema,
+    y: nonNegativeIntegerSchema,
+  },
+}
+
+const chartAnchorSchema: WorkbookJsonSchemaValue = {
+  oneOf: [
+    {
+      type: 'object',
+      required: ['kind', 'from', 'to'],
+      additionalProperties: true,
+      properties: {
+        kind: { const: 'twoCell' },
+        editAs: { enum: ['twoCell', 'oneCell', 'absolute'] },
+        from: drawingAnchorMarkerSchema,
+        to: drawingAnchorMarkerSchema,
+      },
+    },
+    {
+      type: 'object',
+      required: ['kind', 'from', 'extent'],
+      additionalProperties: true,
+      properties: { kind: { const: 'oneCell' }, from: drawingAnchorMarkerSchema, extent: drawingAnchorExtentSchema },
+    },
+    {
+      type: 'object',
+      required: ['kind', 'position', 'extent'],
+      additionalProperties: true,
+      properties: { kind: { const: 'absolute' }, position: drawingAnchorPositionSchema, extent: drawingAnchorExtentSchema },
+    },
+  ],
+}
+
+const chartSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['id', 'sheetName', 'address', 'source', 'chartType', 'rows', 'cols'],
+  additionalProperties: true,
+  properties: {
+    id: nonEmptyStringSchema,
+    sheetName: nonEmptyStringSchema,
+    address: nonEmptyStringSchema,
+    source: cellRangeRefSchema,
+    chartType: { enum: ['column', 'bar', 'line', 'area', 'pie', 'scatter'] },
+    anchor: chartAnchorSchema,
+    seriesOrientation: { enum: ['rows', 'columns'] },
+    firstRowAsHeaders: booleanSchema,
+    firstColumnAsLabels: booleanSchema,
+    title: { type: 'string' },
+    legendPosition: { enum: ['top', 'right', 'bottom', 'left', 'hidden'] },
+    rows: positiveIntegerSchema,
+    cols: positiveIntegerSchema,
+  },
+}
+
+const imageSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['id', 'sheetName', 'address', 'sourceUrl', 'rows', 'cols'],
+  additionalProperties: true,
+  properties: {
+    id: nonEmptyStringSchema,
+    sheetName: nonEmptyStringSchema,
+    address: nonEmptyStringSchema,
+    sourceUrl: { type: 'string' },
+    rows: positiveIntegerSchema,
+    cols: positiveIntegerSchema,
+    altText: { type: 'string' },
+  },
+}
+
+const shapeSchema: WorkbookJsonSchemaValue = {
+  type: 'object',
+  required: ['id', 'sheetName', 'address', 'shapeType', 'rows', 'cols'],
+  additionalProperties: true,
+  properties: {
+    id: nonEmptyStringSchema,
+    sheetName: nonEmptyStringSchema,
+    address: nonEmptyStringSchema,
+    shapeType: { enum: ['rectangle', 'roundedRectangle', 'ellipse', 'line', 'arrow', 'textBox'] },
+    rows: positiveIntegerSchema,
+    cols: positiveIntegerSchema,
+    text: { type: 'string' },
+    fillColor: { type: 'string' },
+    strokeColor: { type: 'string' },
+  },
+}
 
 function opSchema(kind: string, required: readonly string[], properties: Record<string, WorkbookJsonSchemaValue>): WorkbookJsonSchemaValue {
   return {
@@ -246,8 +768,8 @@ export const workbookOpSchema: WorkbookJsonSchemaValue = {
   oneOf: [
     opSchema('upsertWorkbook', ['name'], { name: nonEmptyStringSchema }),
     opSchema('setWorkbookMetadata', ['key', 'value'], { key: nonEmptyStringSchema, value: literalInputRefSchema }),
-    opSchema('setCalculationSettings', ['settings'], { settings: looseObjectSchema }),
-    opSchema('setVolatileContext', ['context'], { context: looseObjectSchema }),
+    opSchema('setCalculationSettings', ['settings'], { settings: workbookCalculationSettingsSchema }),
+    opSchema('setVolatileContext', ['context'], { context: workbookVolatileContextSchema }),
     opSchema('upsertSheet', ['name', 'order'], { name: nonEmptyStringSchema, order: nonNegativeIntegerSchema, id: positiveIntegerSchema }),
     opSchema('renameSheet', ['oldName', 'newName'], { oldName: nonEmptyStringSchema, newName: nonEmptyStringSchema }),
     opSchema('deleteSheet', ['name'], { name: nonEmptyStringSchema }),
@@ -308,7 +830,7 @@ export const workbookOpSchema: WorkbookJsonSchemaValue = {
     opSchema('clearFreezePane', ['sheetName'], { sheetName: nonEmptyStringSchema }),
     opSchema('mergeCells', ['range'], { range: cellRangeRefSchema }),
     opSchema('unmergeCells', ['range'], { range: cellRangeRefSchema }),
-    opSchema('setSheetProtection', ['protection'], { protection: looseObjectSchema }),
+    opSchema('setSheetProtection', ['protection'], { protection: sheetProtectionSchema }),
     opSchema('clearSheetProtection', ['sheetName'], { sheetName: nonEmptyStringSchema }),
     opSchema('setFilter', ['sheetName', 'range'], { sheetName: nonEmptyStringSchema, range: cellRangeRefSchema }),
     opSchema('clearFilter', ['sheetName', 'range'], { sheetName: nonEmptyStringSchema, range: cellRangeRefSchema }),
@@ -318,22 +840,22 @@ export const workbookOpSchema: WorkbookJsonSchemaValue = {
       keys: { type: 'array', items: sortKeySchema },
     }),
     opSchema('clearSort', ['sheetName', 'range'], { sheetName: nonEmptyStringSchema, range: cellRangeRefSchema }),
-    opSchema('setDataValidation', ['validation'], { validation: looseObjectSchema }),
+    opSchema('setDataValidation', ['validation'], { validation: dataValidationSchema }),
     opSchema('clearDataValidation', ['sheetName', 'range'], { sheetName: nonEmptyStringSchema, range: cellRangeRefSchema }),
-    opSchema('upsertConditionalFormat', ['format'], { format: looseObjectSchema }),
+    opSchema('upsertConditionalFormat', ['format'], { format: conditionalFormatSchema }),
     opSchema('deleteConditionalFormat', ['id', 'sheetName'], { id: nonEmptyStringSchema, sheetName: nonEmptyStringSchema }),
     opSchema('setConditionalFormatArtifacts', ['sheetName', 'artifacts'], {
       sheetName: nonEmptyStringSchema,
-      artifacts: looseObjectSchema,
+      artifacts: conditionalFormatArtifactsSchema,
     }),
     opSchema('clearConditionalFormatArtifacts', ['sheetName'], { sheetName: nonEmptyStringSchema }),
-    opSchema('upsertRangeProtection', ['protection'], { protection: looseObjectSchema }),
+    opSchema('upsertRangeProtection', ['protection'], { protection: rangeProtectionSchema }),
     opSchema('deleteRangeProtection', ['id', 'sheetName'], { id: nonEmptyStringSchema, sheetName: nonEmptyStringSchema }),
-    opSchema('upsertCommentThread', ['thread'], { thread: looseObjectSchema }),
+    opSchema('upsertCommentThread', ['thread'], { thread: commentThreadSchema }),
     opSchema('deleteCommentThread', ['sheetName', 'address'], { sheetName: nonEmptyStringSchema, address: nonEmptyStringSchema }),
-    opSchema('upsertNote', ['note'], { note: looseObjectSchema }),
+    opSchema('upsertNote', ['note'], { note: noteSchema }),
     opSchema('deleteNote', ['sheetName', 'address'], { sheetName: nonEmptyStringSchema, address: nonEmptyStringSchema }),
-    opSchema('upsertHyperlink', ['hyperlink'], { hyperlink: looseObjectSchema }),
+    opSchema('upsertHyperlink', ['hyperlink'], { hyperlink: hyperlinkSchema }),
     opSchema('deleteHyperlink', ['sheetName', 'address'], { sheetName: nonEmptyStringSchema, address: nonEmptyStringSchema }),
     opSchema('setCellValue', ['sheetName', 'address', 'value'], {
       sheetName: nonEmptyStringSchema,
@@ -358,10 +880,10 @@ export const workbookOpSchema: WorkbookJsonSchemaValue = {
     opSchema('clearCell', ['sheetName', 'address'], { sheetName: nonEmptyStringSchema, address: nonEmptyStringSchema }),
     opSchema('upsertDefinedName', ['name', 'value'], {
       name: nonEmptyStringSchema,
-      value: { oneOf: [literalInputRefSchema, looseObjectSchema] },
+      value: definedNameValueSchema,
     }),
     opSchema('deleteDefinedName', ['name'], { name: nonEmptyStringSchema }),
-    opSchema('upsertTable', ['table'], { table: looseObjectSchema }),
+    opSchema('upsertTable', ['table'], { table: tableSchema }),
     opSchema('deleteTable', ['name'], { name: nonEmptyStringSchema }),
     opSchema('upsertSpillRange', ['sheetName', 'address', 'rows', 'cols'], {
       sheetName: nonEmptyStringSchema,
@@ -376,16 +898,16 @@ export const workbookOpSchema: WorkbookJsonSchemaValue = {
       address: nonEmptyStringSchema,
       source: cellRangeRefSchema,
       groupBy: { type: 'array', items: { type: 'string' } },
-      values: { type: 'array', items: looseObjectSchema },
+      values: { type: 'array', items: pivotValueSchema },
       rows: positiveIntegerSchema,
       cols: positiveIntegerSchema,
     }),
     opSchema('deletePivotTable', ['sheetName', 'address'], { sheetName: nonEmptyStringSchema, address: nonEmptyStringSchema }),
-    opSchema('upsertChart', ['chart'], { chart: looseObjectSchema }),
+    opSchema('upsertChart', ['chart'], { chart: chartSchema }),
     opSchema('deleteChart', ['id'], { id: nonEmptyStringSchema }),
-    opSchema('upsertImage', ['image'], { image: looseObjectSchema }),
+    opSchema('upsertImage', ['image'], { image: imageSchema }),
     opSchema('deleteImage', ['id'], { id: nonEmptyStringSchema }),
-    opSchema('upsertShape', ['shape'], { shape: looseObjectSchema }),
+    opSchema('upsertShape', ['shape'], { shape: shapeSchema }),
     opSchema('deleteShape', ['id'], { id: nonEmptyStringSchema }),
   ],
 }

@@ -71,6 +71,18 @@ function workbookOpKindsFromSource(): readonly string[] {
   })
 }
 
+function workbookOpVariant(variants: readonly unknown[], kind: string): Record<string, unknown> {
+  const variant = variants.find((entry) => constKindFromSchema(entry) === kind)
+  if (!isRecord(variant)) {
+    throw new Error(`expected ${kind} schema variant`)
+  }
+  return variant
+}
+
+function schemaProperty(schema: unknown, key: string): unknown {
+  return objectEntry(schema, 'properties')[key]
+}
+
 describe('@bilig/workbook schema api', () => {
   it('exports frozen JSON schema artifacts with deterministic hashes', () => {
     expect(workbookJsonSchemaVersion).toBe('bilig-workbook-json-schema-v1')
@@ -185,6 +197,47 @@ describe('@bilig/workbook schema api', () => {
     expect(unknownKindSchema).toBeUndefined()
   })
 
+  it('publishes checker-shaped payload schemas for known engine ops', () => {
+    const defs = objectEntry(workbookJsonSchemas.planData, '$defs')
+    const variants = arrayEntry(objectEntry(defs, 'engineOp'), 'oneOf')
+    const looseObject = { type: 'object', additionalProperties: true }
+
+    const calculationSettings = objectEntry(schemaProperty(workbookOpVariant(variants, 'setCalculationSettings'), 'settings'), 'properties')
+    expect(calculationSettings['mode']).toEqual({ enum: ['automatic', 'manual'] })
+    expect(calculationSettings['compatibilityMode']).toEqual({ enum: ['excel-modern', 'odf-1.4'] })
+
+    const volatileContext = objectEntry(schemaProperty(workbookOpVariant(variants, 'setVolatileContext'), 'context'), 'properties')
+    expect(volatileContext['recalcEpoch']).toEqual({ type: 'number' })
+
+    const directPayloads: ReadonlyArray<readonly [string, string]> = [
+      ['setCalculationSettings', 'settings'],
+      ['setVolatileContext', 'context'],
+      ['setSheetProtection', 'protection'],
+      ['setDataValidation', 'validation'],
+      ['upsertConditionalFormat', 'format'],
+      ['setConditionalFormatArtifacts', 'artifacts'],
+      ['upsertRangeProtection', 'protection'],
+      ['upsertCommentThread', 'thread'],
+      ['upsertNote', 'note'],
+      ['upsertHyperlink', 'hyperlink'],
+      ['upsertDefinedName', 'value'],
+      ['upsertTable', 'table'],
+      ['upsertChart', 'chart'],
+      ['upsertImage', 'image'],
+      ['upsertShape', 'shape'],
+    ]
+    for (const [kind, key] of directPayloads) {
+      expect(schemaProperty(workbookOpVariant(variants, kind), key), `${kind}.${key}`).not.toEqual(looseObject)
+    }
+
+    const pivotValues = objectEntry(schemaProperty(workbookOpVariant(variants, 'upsertPivotTable'), 'values'), 'items')
+    expect(pivotValues).not.toEqual(looseObject)
+    expect(objectEntry(pivotValues, 'properties')).toMatchObject({
+      sourceColumn: { type: 'string', minLength: 1 },
+      summarizeBy: { enum: ['sum', 'count'] },
+    })
+  })
+
   it('publishes transported checks and format commands with checker-shaped payload schemas', () => {
     const defs = objectEntry(workbookJsonSchemas.planData, '$defs')
     expect(objectEntry(defs, 'literalInput')).toEqual({
@@ -233,7 +286,11 @@ describe('@bilig/workbook schema api', () => {
     const styleProperties = objectEntry(stylePatch, 'properties')
     const fontOneOf = arrayEntry(objectEntry(styleProperties, 'font'), 'oneOf')
     const fontObject = fontOneOf.find((entry) => isRecord(entry) && entry['type'] === 'object')
+    expect(stylePatch).toMatchObject({
+      additionalProperties: false,
+    })
     expect(fontObject).toMatchObject({
+      additionalProperties: false,
       properties: {
         bold: { oneOf: [{ type: 'boolean' }, { type: 'null' }] },
       },

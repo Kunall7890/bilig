@@ -28,7 +28,12 @@ export function buildStylePatchOps(workbook: WorkbookStore, range: CellRangeRef,
   if (!normalizedPatch.fill && !normalizedPatch.font && !normalizedPatch.alignment && !normalizedPatch.borders) {
     return []
   }
-  return materializeStyleRangeOps(workbook, range, (baseStyle) => workbook.internCellStyle(applyStylePatch(baseStyle, normalizedPatch)))
+  return materializeStyleRangeOps(
+    workbook,
+    range,
+    (baseStyle) => workbook.internCellStyle(applyStylePatch(baseStyle, normalizedPatch)),
+    stylePatchNeedsProofRecord(normalizedPatch),
+  )
 }
 
 export function buildStyleClearOps(workbook: WorkbookStore, range: CellRangeRef, fields?: readonly CellStyleField[]): EngineOp[] {
@@ -75,7 +80,7 @@ export function buildFormatPatchOps(workbook: WorkbookStore, range: CellRangeRef
 }
 
 export function buildFormatClearOps(workbook: WorkbookStore, range: CellRangeRef): EngineOp[] {
-  return materializeFormatRangeOps(workbook, range, () => WorkbookStore.defaultFormatId)
+  return materializeFormatRangeOps(workbook, range, () => WorkbookStore.defaultFormatId, undefined, true)
 }
 
 export function restoreFormatRangeOps(workbook: WorkbookStore, range: CellRangeRef): EngineOp[] {
@@ -114,9 +119,11 @@ function materializeStyleRangeOps(
   workbook: WorkbookStore,
   range: CellRangeRef,
   resolveStyle: (baseStyle: Omit<CellStyleRecord, 'id'>, currentStyleId: string) => CellStyleRecord,
+  includeDefaultStyleRecord = false,
 ): EngineOp[] {
   const tiles = resolveStyleTiles(workbook, range)
   const ops: EngineOp[] = []
+  let needsDefaultStyleRecord = false
   tiles.forEach((tile) => {
     const current = workbook.getCellStyle(tile.styleId) ?? {
       id: WorkbookStore.defaultStyleId,
@@ -131,6 +138,8 @@ function materializeStyleRangeOps(
         kind: 'upsertCellStyle',
         style: cloneCellStyleRecord(next),
       })
+    } else if (includeDefaultStyleRecord) {
+      needsDefaultStyleRecord = true
     }
     ops.push({
       kind: 'setStyleRange',
@@ -138,6 +147,15 @@ function materializeStyleRangeOps(
       styleId: normalizedId,
     })
   })
+  if (needsDefaultStyleRecord) {
+    return [
+      {
+        kind: 'upsertCellStyle',
+        style: cloneCellStyleRecord(workbook.getCellStyle(WorkbookStore.defaultStyleId) ?? { id: WorkbookStore.defaultStyleId }),
+      },
+      ...ops,
+    ]
+  }
   return ops
 }
 
@@ -146,6 +164,7 @@ function materializeFormatRangeOps(
   range: CellRangeRef,
   resolveFormatId: (currentFormatId: string, tile: FormatTile) => string,
   upsertFormat?: CellNumberFormatRecord,
+  includeDefaultFormatRecord = false,
 ): EngineOp[] {
   const tiles = resolveFormatTiles(workbook, range)
   const rangeOps: EngineOp[] = []
@@ -163,9 +182,61 @@ function materializeFormatRangeOps(
   if (rangeOps.length === 0) {
     return []
   }
-  return upsertFormat && upsertFormat.id !== WorkbookStore.defaultFormatId
-    ? [{ kind: 'upsertCellNumberFormat', format: { ...upsertFormat } }, ...rangeOps]
-    : rangeOps
+  if (upsertFormat && upsertFormat.id !== WorkbookStore.defaultFormatId) {
+    return [{ kind: 'upsertCellNumberFormat', format: { ...upsertFormat } }, ...rangeOps]
+  }
+  if (includeDefaultFormatRecord) {
+    return [
+      {
+        kind: 'upsertCellNumberFormat',
+        format: {
+          ...(workbook.getCellNumberFormat(WorkbookStore.defaultFormatId) ?? {
+            id: WorkbookStore.defaultFormatId,
+            code: 'general',
+            kind: 'general',
+          }),
+        },
+      },
+      ...rangeOps,
+    ]
+  }
+  return rangeOps
+}
+
+function sectionPatchNeedsProofRecord(value: object | null | undefined, keys: readonly string[]): boolean {
+  if (value === undefined) {
+    return false
+  }
+  if (value === null) {
+    return true
+  }
+  return keys.some((key) => Object.getOwnPropertyDescriptor(value, key) !== undefined)
+}
+
+function borderPatchSideNeedsProofRecord(patch: NonNullable<NonNullable<CellStylePatch['borders']>['top']> | null | undefined): boolean {
+  return sectionPatchNeedsProofRecord(patch, ['style', 'weight', 'color'])
+}
+
+function stylePatchNeedsProofRecord(patch: CellStylePatch): boolean {
+  return (
+    sectionPatchNeedsProofRecord(patch.fill, ['backgroundColor']) ||
+    sectionPatchNeedsProofRecord(patch.font, ['family', 'size', 'bold', 'italic', 'underline', 'color']) ||
+    sectionPatchNeedsProofRecord(patch.alignment, [
+      'horizontal',
+      'vertical',
+      'wrap',
+      'indent',
+      'shrinkToFit',
+      'readingOrder',
+      'textRotation',
+      'justifyLastLine',
+    ]) ||
+    patch.borders === null ||
+    borderPatchSideNeedsProofRecord(patch.borders?.top) ||
+    borderPatchSideNeedsProofRecord(patch.borders?.right) ||
+    borderPatchSideNeedsProofRecord(patch.borders?.bottom) ||
+    borderPatchSideNeedsProofRecord(patch.borders?.left)
+  )
 }
 
 function resolveStyleTiles(workbook: WorkbookStore, range: CellRangeRef): StyleTile[] {

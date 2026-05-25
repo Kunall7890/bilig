@@ -262,4 +262,111 @@ describe('@bilig/workbook plan refs api', () => {
     })
     expect(boldGetterInvoked).toBe(false)
   })
+
+  it('rejects transported format style unknown function fields without throwing during hydration', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    const plan = {
+      modelName: 'function-format-plan',
+      actionName: 'format',
+      refs: { target },
+      refsUsed: [target],
+      commands: [
+        {
+          kind: 'format',
+          target,
+          style: {
+            font: { bold: true },
+            hiddenScratchpad() {
+              return 'not transport data'
+            },
+          },
+        },
+      ],
+      ops: [],
+      changed: [],
+      checks: [],
+    }
+
+    expect(() => checkPlanData(plan)).not.toThrow()
+    expect(checkPlanData(plan)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'commands[0]',
+          message: 'Workbook plan data command at commands[0] is invalid',
+        },
+      ],
+    })
+  })
+
+  it('rejects transported format style undefined data fields', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    const plan = {
+      modelName: 'undefined-format-plan',
+      actionName: 'format',
+      refs: { target },
+      refsUsed: [target],
+      commands: [
+        {
+          kind: 'format',
+          target,
+          style: { font: { bold: undefined } },
+        },
+      ],
+      ops: [],
+      changed: [],
+      checks: [],
+    }
+
+    expect(checkPlanData(plan)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'commands[0]',
+          message: 'Workbook plan data command at commands[0] is invalid',
+        },
+      ],
+    })
+  })
+
+  it('hydrates transported format style through normalized plain data', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    const plan = {
+      modelName: 'valid-format-plan',
+      actionName: 'format',
+      refs: { target },
+      refsUsed: [target],
+      commands: [
+        {
+          kind: 'format',
+          target,
+          style: { font: { bold: true } },
+          numberFormat: '0.00',
+        },
+      ],
+      ops: [],
+      changed: [],
+      checks: [],
+    }
+
+    const check = checkPlanData(plan)
+
+    expect(check.status).toBe('valid')
+    if (check.status !== 'valid') {
+      throw new Error('expected valid plan data')
+    }
+    const command = check.plan.commands[0]
+    if (command?.kind !== 'format') {
+      throw new Error('expected format command')
+    }
+    expect(command).toMatchObject({
+      kind: 'format',
+      style: { font: { bold: true } },
+      numberFormat: '0.00',
+    })
+    expect(Object.getPrototypeOf(command.style)).toBe(Object.prototype)
+    expect(Object.isFrozen(command.style)).toBe(true)
+  })
 })

@@ -456,6 +456,75 @@ describe('workbook run adapter', () => {
     })
   })
 
+  it('proves style and number format clears with default support records', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-clear-format' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 12.5)
+    engine.setCellValue('Sheet1', 'B1', 25)
+    const range = { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B1' }
+    const boldStyle = engine.workbook.internCellStyle({ font: { bold: true } })
+    const numberFormat = engine.workbook.internCellNumberFormat('0.00')
+    engine.workbook.upsertCellStyle(boldStyle)
+    engine.workbook.upsertCellNumberFormat(numberFormat)
+    engine.workbook.setStyleRange(range, boldStyle.id)
+    engine.workbook.setFormatRange(range, numberFormat.id)
+
+    const model = defineModel({
+      name: 'generic-clear-formatting',
+      find(workbook) {
+        return {
+          range: workbook.findRange(range),
+        }
+      },
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.range)]
+      },
+      actions: {
+        clearFormat({ refs, workbook }) {
+          workbook.format(refs.range, {
+            style: { font: { bold: null } },
+            numberFormat: null,
+          })
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'clearFormat', createWorkbookRunAdapter(engine), undefined, { strict: true })
+
+    expect(result).toMatchObject({ status: 'done' })
+    if (result.status !== 'done') {
+      throw new Error(result.errors.map((error) => error.message).join('\n'))
+    }
+    expect(engine.getCellStyle(engine.getCell('Sheet1', 'A1').styleId)?.font?.bold).toBeUndefined()
+    expect(engine.getCellStyle(engine.getCell('Sheet1', 'B1').styleId)?.font?.bold).toBeUndefined()
+    expect(engine.getCell('Sheet1', 'A1').format).toBeUndefined()
+    expect(engine.getCell('Sheet1', 'B1').format).toBeUndefined()
+    expect(result.apply?.commandReceipts?.[0]).toMatchObject({
+      commandKind: 'format',
+      previewOps: expect.arrayContaining([
+        {
+          kind: 'upsertCellStyle',
+          style: { id: 'style-0' },
+        },
+        {
+          kind: 'setStyleRange',
+          range,
+          styleId: 'style-0',
+        },
+        {
+          kind: 'upsertCellNumberFormat',
+          format: { id: 'format-0', code: 'general', kind: 'general' },
+        },
+        {
+          kind: 'setFormatRange',
+          range,
+          formatId: 'format-0',
+        },
+      ]),
+    })
+  })
+
   it('materializes row-filtered table formulas only for matching rows', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-filtered-row-formulas' })
     await engine.ready()

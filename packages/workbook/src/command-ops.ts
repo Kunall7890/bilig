@@ -142,6 +142,12 @@ function numberFormatRecordMatches(format: WorkbookCellNumberFormatOp | undefine
   return format !== undefined && normalizedNumberFormatCode(format.code) === normalizedNumberFormatCode(expected)
 }
 
+function numberFormatClearRecordMatches(format: WorkbookCellNumberFormatOp | undefined): boolean {
+  return (
+    format !== undefined && format.kind === 'general' && normalizedNumberFormatCode(format.code) === normalizedNumberFormatCode('general')
+  )
+}
+
 function styleFieldMatches(actual: unknown, expected: unknown): boolean {
   if (expected === undefined) {
     return true
@@ -162,51 +168,109 @@ function borderPatchSideMatchesRecord(
   return record?.style === patch.style && record.weight === patch.weight && record.color === patch.color
 }
 
-function stylePatchMatchesRecord(patch: CellStylePatch, record: WorkbookCellStyleOp): boolean {
+function fillPatchMatchesRecord(patch: CellStylePatch['fill'], record: CellStyleRecord['fill']): boolean {
+  if (patch === undefined) {
+    return true
+  }
+  if (patch === null) {
+    return record === undefined
+  }
+  return styleFieldMatches(record?.backgroundColor, patch.backgroundColor)
+}
+
+function fontPatchMatchesRecord(patch: CellStylePatch['font'], record: CellStyleRecord['font']): boolean {
+  if (patch === undefined) {
+    return true
+  }
+  if (patch === null) {
+    return record === undefined
+  }
   return (
-    styleFieldMatches(record.fill?.backgroundColor, patch.fill?.backgroundColor) &&
-    styleFieldMatches(record.font?.family, patch.font?.family) &&
-    styleFieldMatches(record.font?.size, patch.font?.size) &&
-    styleFieldMatches(record.font?.bold, patch.font?.bold) &&
-    styleFieldMatches(record.font?.italic, patch.font?.italic) &&
-    styleFieldMatches(record.font?.underline, patch.font?.underline) &&
-    styleFieldMatches(record.font?.color, patch.font?.color) &&
-    styleFieldMatches(record.alignment?.horizontal, patch.alignment?.horizontal) &&
-    styleFieldMatches(record.alignment?.vertical, patch.alignment?.vertical) &&
-    styleFieldMatches(record.alignment?.wrap, patch.alignment?.wrap) &&
-    styleFieldMatches(record.alignment?.indent, patch.alignment?.indent) &&
-    styleFieldMatches(record.alignment?.shrinkToFit, patch.alignment?.shrinkToFit) &&
-    styleFieldMatches(record.alignment?.readingOrder, patch.alignment?.readingOrder) &&
-    styleFieldMatches(record.alignment?.textRotation, patch.alignment?.textRotation) &&
-    styleFieldMatches(record.alignment?.justifyLastLine, patch.alignment?.justifyLastLine) &&
-    borderPatchSideMatchesRecord(patch.borders?.top, record.borders?.top) &&
-    borderPatchSideMatchesRecord(patch.borders?.right, record.borders?.right) &&
-    borderPatchSideMatchesRecord(patch.borders?.bottom, record.borders?.bottom) &&
-    borderPatchSideMatchesRecord(patch.borders?.left, record.borders?.left)
+    styleFieldMatches(record?.family, patch.family) &&
+    styleFieldMatches(record?.size, patch.size) &&
+    styleFieldMatches(record?.bold, patch.bold) &&
+    styleFieldMatches(record?.italic, patch.italic) &&
+    styleFieldMatches(record?.underline, patch.underline) &&
+    styleFieldMatches(record?.color, patch.color)
   )
 }
 
+function alignmentPatchMatchesRecord(patch: CellStylePatch['alignment'], record: CellStyleRecord['alignment']): boolean {
+  if (patch === undefined) {
+    return true
+  }
+  if (patch === null) {
+    return record === undefined
+  }
+  return (
+    styleFieldMatches(record?.horizontal, patch.horizontal) &&
+    styleFieldMatches(record?.vertical, patch.vertical) &&
+    styleFieldMatches(record?.wrap, patch.wrap) &&
+    styleFieldMatches(record?.indent, patch.indent) &&
+    styleFieldMatches(record?.shrinkToFit, patch.shrinkToFit) &&
+    styleFieldMatches(record?.readingOrder, patch.readingOrder) &&
+    styleFieldMatches(record?.textRotation, patch.textRotation) &&
+    styleFieldMatches(record?.justifyLastLine, patch.justifyLastLine)
+  )
+}
+
+function bordersPatchMatchesRecord(patch: CellStylePatch['borders'], record: CellStyleRecord['borders']): boolean {
+  if (patch === undefined) {
+    return true
+  }
+  if (patch === null) {
+    return record === undefined
+  }
+  return (
+    borderPatchSideMatchesRecord(patch.top, record?.top) &&
+    borderPatchSideMatchesRecord(patch.right, record?.right) &&
+    borderPatchSideMatchesRecord(patch.bottom, record?.bottom) &&
+    borderPatchSideMatchesRecord(patch.left, record?.left)
+  )
+}
+
+function stylePatchMatchesRecord(patch: CellStylePatch, record: WorkbookCellStyleOp): boolean {
+  return (
+    fillPatchMatchesRecord(patch.fill, record.fill) &&
+    fontPatchMatchesRecord(patch.font, record.font) &&
+    alignmentPatchMatchesRecord(patch.alignment, record.alignment) &&
+    bordersPatchMatchesRecord(patch.borders, record.borders)
+  )
+}
+
+function hasKnownDataKey(value: object, key: string): boolean {
+  return Object.getOwnPropertyDescriptor(value, key) !== undefined
+}
+
+function sectionPatchNeedsRecord(value: object | null | undefined, keys: readonly string[]): boolean {
+  if (value === undefined) {
+    return false
+  }
+  if (value === null) {
+    return true
+  }
+  return keys.some((key) => hasKnownDataKey(value, key))
+}
+
 function borderPatchSideNeedsRecord(patch: NonNullable<NonNullable<CellStylePatch['borders']>['top']> | null | undefined): boolean {
-  return patch !== undefined && patch !== null && patch.style !== undefined && patch.weight !== undefined && patch.color !== undefined
+  return sectionPatchNeedsRecord(patch, ['style', 'weight', 'color'])
 }
 
 function stylePatchNeedsRecord(patch: CellStylePatch): boolean {
   return (
-    (patch.fill?.backgroundColor !== undefined && patch.fill.backgroundColor !== null) ||
-    (patch.font?.family !== undefined && patch.font.family !== null) ||
-    (patch.font?.size !== undefined && patch.font.size !== null) ||
-    (patch.font?.bold !== undefined && patch.font.bold !== null) ||
-    (patch.font?.italic !== undefined && patch.font.italic !== null) ||
-    (patch.font?.underline !== undefined && patch.font.underline !== null) ||
-    (patch.font?.color !== undefined && patch.font.color !== null) ||
-    (patch.alignment?.horizontal !== undefined && patch.alignment.horizontal !== null) ||
-    (patch.alignment?.vertical !== undefined && patch.alignment.vertical !== null) ||
-    (patch.alignment?.wrap !== undefined && patch.alignment.wrap !== null) ||
-    (patch.alignment?.indent !== undefined && patch.alignment.indent !== null) ||
-    (patch.alignment?.shrinkToFit !== undefined && patch.alignment.shrinkToFit !== null) ||
-    (patch.alignment?.readingOrder !== undefined && patch.alignment.readingOrder !== null) ||
-    (patch.alignment?.textRotation !== undefined && patch.alignment.textRotation !== null) ||
-    (patch.alignment?.justifyLastLine !== undefined && patch.alignment.justifyLastLine !== null) ||
+    sectionPatchNeedsRecord(patch.fill, ['backgroundColor']) ||
+    sectionPatchNeedsRecord(patch.font, ['family', 'size', 'bold', 'italic', 'underline', 'color']) ||
+    sectionPatchNeedsRecord(patch.alignment, [
+      'horizontal',
+      'vertical',
+      'wrap',
+      'indent',
+      'shrinkToFit',
+      'readingOrder',
+      'textRotation',
+      'justifyLastLine',
+    ]) ||
+    patch.borders === null ||
     borderPatchSideNeedsRecord(patch.borders?.top) ||
     borderPatchSideNeedsRecord(patch.borders?.right) ||
     borderPatchSideNeedsRecord(patch.borders?.bottom) ||
@@ -244,7 +308,11 @@ function formatRangeMatchesExpected(
     return false
   }
   if (command.numberFormat === null) {
-    return false
+    if (!numberFormatClearRecordMatches(catalog.formats.get(op.formatId))) {
+      return false
+    }
+    usedFormatIds.add(op.formatId)
+    return true
   }
   if (!numberFormatRecordMatches(catalog.formats.get(op.formatId), command.numberFormat)) {
     return false

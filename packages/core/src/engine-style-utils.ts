@@ -27,11 +27,22 @@ export function cloneCellStyleRecord(style: CellStyleRecord): CellStyleRecord {
 
 export function normalizeCellStylePatch(patch: CellStylePatch): CellStylePatch {
   const normalized: CellStylePatch = {}
-  const fillColor = patch.fill?.backgroundColor
-  if (fillColor !== undefined) {
+  if (patch.fill === null) {
+    normalized.fill = { backgroundColor: null }
+  } else if (patch.fill?.backgroundColor !== undefined) {
+    const fillColor = patch.fill.backgroundColor
     normalized.fill = fillColor === null ? { backgroundColor: null } : { backgroundColor: fillColor }
   }
-  if (patch.font) {
+  if (patch.font === null) {
+    normalized.font = {
+      family: null,
+      size: null,
+      bold: null,
+      italic: null,
+      underline: null,
+      color: null,
+    }
+  } else if (patch.font) {
     normalized.font = {}
     if (patch.font.family !== undefined) {
       normalized.font.family = patch.font.family
@@ -52,7 +63,18 @@ export function normalizeCellStylePatch(patch: CellStylePatch): CellStylePatch {
       normalized.font.color = patch.font.color
     }
   }
-  if (patch.alignment) {
+  if (patch.alignment === null) {
+    normalized.alignment = {
+      horizontal: null,
+      vertical: null,
+      wrap: null,
+      indent: null,
+      shrinkToFit: null,
+      readingOrder: null,
+      textRotation: null,
+      justifyLastLine: null,
+    }
+  } else if (patch.alignment) {
     normalized.alignment = {}
     if (patch.alignment.horizontal !== undefined) {
       normalized.alignment.horizontal = patch.alignment.horizontal
@@ -79,7 +101,14 @@ export function normalizeCellStylePatch(patch: CellStylePatch): CellStylePatch {
       normalized.alignment.justifyLastLine = patch.alignment.justifyLastLine
     }
   }
-  if (patch.borders) {
+  if (patch.borders === null) {
+    normalized.borders = {
+      top: null,
+      right: null,
+      bottom: null,
+      left: null,
+    }
+  } else if (patch.borders) {
     normalized.borders = {}
     if (patch.borders.top !== undefined) {
       normalized.borders.top = patch.borders.top

@@ -482,13 +482,18 @@ function hydrateCommand(command: WorkbookActionCommandDescription): WorkbookActi
         target: hydrateRef(command.target),
         value: command.value,
       })
-    case 'format':
+    case 'format': {
+      const normalized = normalizeWorkbookActionFormatOptions({
+        ...(command.style !== undefined ? { style: command.style } : {}),
+        ...(command.numberFormat !== undefined ? { numberFormat: command.numberFormat } : {}),
+      })
       return Object.freeze({
         kind: 'format',
         target: hydrateRef(command.target),
-        ...(command.style !== undefined ? { style: Object.freeze(structuredClone(command.style)) } : {}),
-        ...(command.numberFormat !== undefined ? { numberFormat: command.numberFormat } : {}),
+        ...(normalized.style !== undefined ? { style: normalized.style } : {}),
+        ...(normalized.numberFormat !== undefined ? { numberFormat: normalized.numberFormat } : {}),
       })
+    }
     case 'clear':
       return Object.freeze({
         kind: 'clear',

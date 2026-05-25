@@ -17,6 +17,22 @@ export interface NormalizedWorkbookAddOpOptions {
   readonly message?: string
 }
 
+const STYLE_PATCH_KEYS = Object.freeze(['fill', 'font', 'alignment', 'borders'] as const)
+const STYLE_FILL_PATCH_KEYS = Object.freeze(['backgroundColor'] as const)
+const STYLE_FONT_PATCH_KEYS = Object.freeze(['family', 'size', 'bold', 'italic', 'underline', 'color'] as const)
+const STYLE_ALIGNMENT_PATCH_KEYS = Object.freeze([
+  'horizontal',
+  'vertical',
+  'wrap',
+  'indent',
+  'shrinkToFit',
+  'readingOrder',
+  'textRotation',
+  'justifyLastLine',
+] as const)
+const STYLE_BORDERS_PATCH_KEYS = Object.freeze(['top', 'right', 'bottom', 'left'] as const)
+const STYLE_BORDER_SIDE_PATCH_KEYS = Object.freeze(['style', 'weight', 'color'] as const)
+
 export function normalizeWorkbookActionTarget(action: string, target: unknown): WorkbookRef {
   if (!isWorkbookRef(target)) {
     throw new Error(`Workbook action ${action} target must be a workbook ref`)
@@ -52,6 +68,9 @@ export function normalizeWorkbookActionFormatOptions(options: unknown): {
       throw new Error('Workbook action format style must be an object')
     }
     const clonedStyle = freezeData(cloneData(style.value))
+    if (containsUndefinedDataValue(clonedStyle)) {
+      throw new Error('Workbook action format style must be JSON-safe and omit undefined fields')
+    }
     if (!isCellStylePatchValue(clonedStyle)) {
       throw new Error('Workbook action format style must be a valid cell style patch')
     }
@@ -110,9 +129,16 @@ function isCellStylePatchValue(value: unknown): value is CellStylePatch {
   if (!isPlainRecord(value)) {
     return false
   }
+  if (!hasOnlyKnownKeys(value, STYLE_PATCH_KEYS)) {
+    return false
+  }
 
   const fill = ownDataValue(value, 'fill')
-  if (fill !== undefined && fill !== null && (!isPlainRecord(fill) || !isOptionalNullableString(fill, 'backgroundColor'))) {
+  if (
+    fill !== undefined &&
+    fill !== null &&
+    (!isPlainRecord(fill) || !hasOnlyKnownKeys(fill, STYLE_FILL_PATCH_KEYS) || !isOptionalNullableString(fill, 'backgroundColor'))
+  ) {
     return false
   }
 
@@ -121,6 +147,7 @@ function isCellStylePatchValue(value: unknown): value is CellStylePatch {
     font !== undefined &&
     font !== null &&
     (!isPlainRecord(font) ||
+      !hasOnlyKnownKeys(font, STYLE_FONT_PATCH_KEYS) ||
       !isOptionalNullableString(font, 'family') ||
       !isOptionalNullableNumber(font, 'size') ||
       !isOptionalNullableBoolean(font, 'bold') ||
@@ -136,6 +163,7 @@ function isCellStylePatchValue(value: unknown): value is CellStylePatch {
     alignment !== undefined &&
     alignment !== null &&
     (!isPlainRecord(alignment) ||
+      !hasOnlyKnownKeys(alignment, STYLE_ALIGNMENT_PATCH_KEYS) ||
       !isOptionalNullableStringValue(CELL_HORIZONTAL_ALIGNMENT_VALUES, ownDataValue(alignment, 'horizontal')) ||
       !isOptionalNullableStringValue(CELL_VERTICAL_ALIGNMENT_VALUES, ownDataValue(alignment, 'vertical')) ||
       !isOptionalNullableBoolean(alignment, 'wrap') ||
@@ -150,7 +178,7 @@ function isCellStylePatchValue(value: unknown): value is CellStylePatch {
 
   const borders = ownDataValue(value, 'borders')
   if (borders !== undefined && borders !== null) {
-    if (!isPlainRecord(borders)) {
+    if (!isPlainRecord(borders) || !hasOnlyKnownKeys(borders, STYLE_BORDERS_PATCH_KEYS)) {
       return false
     }
     for (const side of ['top', 'right', 'bottom', 'left'] as const) {
@@ -167,6 +195,7 @@ function isCellStylePatchValue(value: unknown): value is CellStylePatch {
 function isCellBorderSidePatchValue(value: unknown): boolean {
   return (
     isPlainRecord(value) &&
+    hasOnlyKnownKeys(value, STYLE_BORDER_SIDE_PATCH_KEYS) &&
     isOptionalNullableStringValue(CELL_BORDER_STYLE_VALUES, ownDataValue(value, 'style')) &&
     isOptionalNullableStringValue(CELL_BORDER_WEIGHT_VALUES, ownDataValue(value, 'weight')) &&
     isOptionalNullableString(value, 'color')
@@ -186,6 +215,24 @@ function isPlainRecord(value: unknown): value is object {
   }
   const prototype = Object.getPrototypeOf(value)
   return prototype === Object.prototype || prototype === null
+}
+
+function hasOnlyKnownKeys(value: object, keys: readonly string[]): boolean {
+  const allowed = new Set(keys)
+  return Reflect.ownKeys(value).every((key) => typeof key === 'string' && allowed.has(key))
+}
+
+function containsUndefinedDataValue(value: unknown, seen = new WeakSet<object>()): boolean {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  if (seen.has(value)) {
+    return false
+  }
+  seen.add(value)
+  return Object.values(Object.getOwnPropertyDescriptors(value)).some(
+    (descriptor) => 'value' in descriptor && (descriptor.value === undefined || containsUndefinedDataValue(descriptor.value, seen)),
+  )
 }
 
 function ownDataValue(value: object, key: string): unknown {
