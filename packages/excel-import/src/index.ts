@@ -57,7 +57,7 @@ export { XlsxImportSizeLimitExceededError } from './xlsx-import-limits.js'
 export type { ImportedWorkbookSheetPreview } from './workbook-import-helpers.js'
 export type { ImportedWorkbookPreview } from './workbook-import-preview.js'
 export type { ImportedWorkbook } from './workbook-import-result.js'
-export type { XlsxImportLimits, XlsxImportOptions } from './xlsx-import-limits.js'
+export type { XlsxExternalWorkbookInput, XlsxImportLimits, XlsxImportOptions } from './xlsx-import-limits.js'
 export {
   CSV_CONTENT_TYPE,
   EXCEL_WORKBOOK_IMPORT_CONTENT_TYPES,
@@ -98,6 +98,7 @@ interface SheetJsImportModule {
     contentType: ExcelWorkbookImportContentType,
     workbookZip: Unzipped | null,
     sourceBytesForUntouchedExport?: Uint8Array,
+    options?: XlsxImportOptions,
   ) => ImportedWorkbook
   readonly importXlsxFromPreparedSheetJsParserData: (
     parserData: Uint8Array,
@@ -278,8 +279,9 @@ function importSheetJsWorkbook(
   contentType: ExcelWorkbookImportContentType,
   workbookZip: Unzipped | null,
   sourceBytesForUntouchedExport?: Uint8Array,
+  options?: XlsxImportOptions,
 ): ImportedWorkbook {
-  return loadSheetJsImportModule().importSheetJsWorkbook(data, fileName, contentType, workbookZip, sourceBytesForUntouchedExport)
+  return loadSheetJsImportModule().importSheetJsWorkbook(data, fileName, contentType, workbookZip, sourceBytesForUntouchedExport, options)
 }
 
 export function importXlsxFromPreparedSheetJsParserData(
@@ -409,11 +411,13 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
   const hasLargeCalcChainFormulaSet = hasCalcChain && (inspection?.stats.formulaCellCount ?? 0) >= largeCalcChainStreamingFormulaThreshold
   const allowCachedUnsupportedFormulaText =
     hasCalcChain && (sourceByteLength >= largeCalcChainStreamingByteThreshold || hasLargeCalcChainFormulaSet)
+  const hasExternalWorkbookCompanions = (options.externalWorkbooks?.length ?? 0) > 0
   const shouldTryLargeSimpleImport =
-    !hasCalcChain ||
-    sourceByteLength >= largeCalcChainStreamingByteThreshold ||
-    hasLargeCalcChainFormulaSet ||
-    bypassLargeSimpleByteThreshold
+    !hasExternalWorkbookCompanions &&
+    (!hasCalcChain ||
+      sourceByteLength >= largeCalcChainStreamingByteThreshold ||
+      hasLargeCalcChainFormulaSet ||
+      bypassLargeSimpleByteThreshold)
   const releaseOwnedSourceBytesForLargeSimpleImport =
     spooledUntouchedExportSource || (bypassLargeSimpleByteThreshold && sourceByteLength < denseSheetJsByteThreshold)
       ? () => {
@@ -484,6 +488,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
     XLSX_CONTENT_TYPE,
     readValidXlsxZipContainer(fallbackData, 'lazy'),
     sourceBytesForUntouchedExport,
+    options,
   )
   return imported
 }

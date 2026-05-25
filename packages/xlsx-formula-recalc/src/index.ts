@@ -1,4 +1,5 @@
 import { WorkPaper, type RawCellContent, type WorkPaperCellAddress, type WorkPaperChange, type WorkPaperConfig } from '@bilig/headless'
+import type { XlsxExternalWorkbookInput } from '@bilig/headless/xlsx'
 import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
 import { ErrorCode, formatErrorCode, ValueTag } from '@bilig/protocol'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
@@ -24,6 +25,7 @@ export interface XlsxFormulaRecalcEdit {
 
 export interface XlsxFormulaRecalcOptions {
   readonly fileName?: string
+  readonly externalWorkbooks?: readonly XlsxExternalWorkbookInput[]
   readonly edits?: readonly XlsxFormulaRecalcEdit[]
   readonly reads?: readonly string[]
   readonly config?: WorkPaperConfig
@@ -38,7 +40,8 @@ export interface XlsxFormulaRecalcResult {
 }
 
 export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, options: XlsxFormulaRecalcOptions = {}): XlsxFormulaRecalcResult {
-  const imported = importXlsx(toUint8Array(input), options.fileName ?? 'workbook.xlsx')
+  const importOptions = options.externalWorkbooks ? { externalWorkbooks: options.externalWorkbooks } : {}
+  const imported = importXlsx(toUint8Array(input), options.fileName ?? 'workbook.xlsx', importOptions)
   const originalCalculationSettings = imported.snapshot.workbook.metadata?.calculationSettings
   const workbook = WorkPaper.buildFromSnapshot(snapshotForFreshFormulaRecalculation(imported.snapshot), {
     evaluationTimeoutMs: 30_000,

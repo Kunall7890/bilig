@@ -40,6 +40,7 @@ interface SheetJsImporterModule {
     contentType: typeof XLSX_CONTENT_TYPE,
     workbookZip: XlsxZipEntries | null,
     sourceBytesForUntouchedExport?: Uint8Array,
+    options?: XlsxImportOptions,
   ) => ImportedWorkbook
   readonly importXlsxFromPreparedSheetJsParserData: (
     parserData: Uint8Array,
@@ -98,11 +99,13 @@ export function importXlsxFromZipByteSource(
   const hasLargeCalcChainFormulaSet = hasCalcChain && (inspection?.stats.formulaCellCount ?? 0) >= largeCalcChainStreamingFormulaThreshold
   const allowCachedUnsupportedFormulaText =
     hasCalcChain && (source.byteLength >= largeCalcChainStreamingByteThreshold || hasLargeCalcChainFormulaSet)
+  const hasExternalWorkbookCompanions = (options.externalWorkbooks?.length ?? 0) > 0
   const shouldTryLargeSimpleImport =
-    !hasCalcChain ||
-    source.byteLength >= largeCalcChainStreamingByteThreshold ||
-    hasLargeCalcChainFormulaSet ||
-    bypassLargeSimpleByteThreshold
+    !hasExternalWorkbookCompanions &&
+    (!hasCalcChain ||
+      source.byteLength >= largeCalcChainStreamingByteThreshold ||
+      hasLargeCalcChainFormulaSet ||
+      bypassLargeSimpleByteThreshold)
   const largeSimpleImportOptions = {
     ...(options.limits || bypassLargeSimpleByteThreshold ? { minByteLength: 0 } : {}),
     allowUnsupportedFormulaText: allowCachedUnsupportedFormulaText,
@@ -138,7 +141,7 @@ export function importXlsxFromZipByteSource(
     }
     return largeSimpleImport
   }
-  if (options.attachSourceReaderForUntouchedExport === false) {
+  if (options.attachSourceReaderForUntouchedExport === false && !hasExternalWorkbookCompanions) {
     const preparedFallback = importXlsxFromPreparedByteSourceFallback(source, fileName)
     if (preparedFallback) {
       return preparedFallback
@@ -174,7 +177,14 @@ function importXlsxFromMaterializedSource(
   options: XlsxByteSourceImportOptions,
 ): ImportedWorkbook {
   const data = readAllSourceBytes(source)
-  const imported = loadSheetJsImporterModule().importSheetJsWorkbook(data, fileName, XLSX_CONTENT_TYPE, readMaterializedWorkbookZip(data))
+  const imported = loadSheetJsImporterModule().importSheetJsWorkbook(
+    data,
+    fileName,
+    XLSX_CONTENT_TYPE,
+    readMaterializedWorkbookZip(data),
+    undefined,
+    options,
+  )
   if (options.attachSourceReaderForUntouchedExport === false) {
     detachImportedXlsxSourceBytes(imported.snapshot)
   }

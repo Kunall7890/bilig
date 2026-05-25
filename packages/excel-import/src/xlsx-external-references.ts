@@ -1,6 +1,8 @@
 import { XMLParser } from 'fast-xml-parser'
+import * as XLSX from 'xlsx'
 
 import type { LiteralInput, WorkbookExternalWorkbookReferenceSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import type { XlsxExternalWorkbookInput } from './xlsx-import-limits.js'
 import { getZipText, readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 interface ExternalCachedNumber {
@@ -23,14 +25,27 @@ interface ExternalCachedError {
   readonly value: string
 }
 
-type ExternalCachedValue = ExternalCachedNumber | ExternalCachedString | ExternalCachedBoolean | ExternalCachedError
-type ExternalCachedCells = Map<string, ExternalCachedValue>
-interface ExternalCachedSheet {
+export type ExternalCachedValue = ExternalCachedNumber | ExternalCachedString | ExternalCachedBoolean | ExternalCachedError
+export type ExternalCachedCells = Map<string, ExternalCachedValue>
+export interface ExternalCachedSheet {
   readonly sheetName: string
   readonly cells: ExternalCachedCells
 }
-type ExternalCachedSheets = Map<string, ExternalCachedSheet>
+export type ExternalCachedSheets = Map<string, ExternalCachedSheet>
 export type ImportedExternalLinkCaches = Map<number, ExternalCachedSheets>
+
+export interface ImportedExternalLinkCacheRefreshResult {
+  readonly caches: ImportedExternalLinkCaches
+  readonly refreshedBookIndices: ReadonlySet<number>
+}
+
+export type ImportedExternalLinkCacheUsage = Map<number, Map<string, Set<string>>>
+
+interface SheetJsReadableCell {
+  readonly t?: unknown
+  readonly v?: unknown
+  readonly w?: unknown
+}
 
 interface ParsedRelationship {
   readonly id: string
@@ -115,6 +130,212 @@ function normalizeSheetName(sheetName: string): string {
 
 function normalizeCellAddress(address: string): string {
   return address.replaceAll('$', '').toUpperCase()
+}
+
+function toUint8Array(input: Uint8Array | ArrayBuffer): Uint8Array {
+  return input instanceof Uint8Array ? input : new Uint8Array(input)
+}
+
+function escapeXmlText(value: string): string {
+  return value.replace(/&/gu, '&amp;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;').replace(/"/gu, '&quot;')
+}
+
+function normalizedWorkbookTarget(value: string | undefined): string | null {
+  if (!value || value.trim().length === 0) {
+    return null
+  }
+  const withoutFragment = value.trim().split(/[?#]/u)[0] ?? value.trim()
+  const normalized = withoutFragment.replace(/\\/gu, '/').replace(/^file:\/+/iu, '/')
+  try {
+    return decodeURIComponent(normalized).toLocaleLowerCase('en-US')
+  } catch {
+    return normalized.toLocaleLowerCase('en-US')
+  }
+}
+
+function workbookIdentityFromName(value: string | undefined): string | null {
+  const target = normalizedWorkbookTarget(value)
+  if (!target) {
+    return null
+  }
+  const segments = target.split('/').filter((segment) => segment.length > 0)
+  return segments.at(-1) ?? target
+}
+
+function externalWorkbookInputIdentityNames(input: XlsxExternalWorkbookInput): Set<string> {
+  return new Set(
+    [input.workbookName, input.fileName, input.target]
+      .map(workbookIdentityFromName)
+      .filter((value): value is string => value !== null && value.length > 0),
+  )
+}
+
+function externalReferenceIdentityNames(reference: WorkbookExternalWorkbookReferenceSnapshot): Set<string> {
+  return new Set(
+    [reference.workbookName, reference.target]
+      .map(workbookIdentityFromName)
+      .filter((value): value is string => value !== null && value.length > 0),
+  )
+}
+
+function externalWorkbookInputMatchesReference(
+  input: XlsxExternalWorkbookInput,
+  reference: WorkbookExternalWorkbookReferenceSnapshot,
+): boolean {
+  const inputTarget = normalizedWorkbookTarget(input.target)
+  const referenceTarget = normalizedWorkbookTarget(reference.target)
+  if (inputTarget && referenceTarget) {
+    return inputTarget === referenceTarget
+  }
+  const inputNames = externalWorkbookInputIdentityNames(input)
+  if (inputNames.size === 0) {
+    return false
+  }
+  for (const referenceName of externalReferenceIdentityNames(reference)) {
+    if (inputNames.has(referenceName)) {
+      return true
+    }
+  }
+  return false
+}
+
+function hasExternalWorkbookInputIdentity(input: XlsxExternalWorkbookInput): boolean {
+  return normalizedWorkbookTarget(input.target) !== null || externalWorkbookInputIdentityNames(input).size > 0
+}
+
+function hasExternalReferenceIdentity(reference: WorkbookExternalWorkbookReferenceSnapshot): boolean {
+  return normalizedWorkbookTarget(reference.target) !== null || externalReferenceIdentityNames(reference).size > 0
+}
+
+function findExternalWorkbookInputForReference(
+  inputs: readonly XlsxExternalWorkbookInput[],
+  references: ImportedExternalWorkbookReferences,
+  reference: WorkbookExternalWorkbookReferenceSnapshot,
+): XlsxExternalWorkbookInput | undefined {
+  const matched = inputs.find((input) => externalWorkbookInputMatchesReference(input, reference))
+  if (matched) {
+    return matched
+  }
+  const onlyInput = inputs.length === 1 ? inputs[0] : undefined
+  return onlyInput && references.size === 1 && !hasExternalWorkbookInputIdentity(onlyInput) && !hasExternalReferenceIdentity(reference)
+    ? onlyInput
+    : undefined
+}
+
+function sheetJsErrorLiteral(value: unknown, formattedValue: unknown): string {
+  if (typeof formattedValue === 'string' && formattedValue.startsWith('#')) {
+    return formattedValue
+  }
+  if (typeof value === 'string') {
+    return value
+  }
+  const errorLiteralByCode = new Map<number, string>([
+    [0, '#NULL!'],
+    [7, '#DIV/0!'],
+    [15, '#VALUE!'],
+    [23, '#REF!'],
+    [29, '#NAME?'],
+    [36, '#NUM!'],
+    [42, '#N/A'],
+    [43, '#GETTING_DATA'],
+  ])
+  if (typeof value === 'number') {
+    return errorLiteralByCode.get(value) ?? String(value)
+  }
+  return typeof formattedValue === 'string' ? formattedValue : externalCachedStringLiteral(value)
+}
+
+function externalCachedStringLiteral(value: unknown): string {
+  if (typeof value === 'string') {
+    return value
+  }
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value)
+  }
+  const serialized = JSON.stringify(value)
+  return serialized ?? ''
+}
+
+function sheetJsCellToExternalCachedValue(cell: SheetJsReadableCell): ExternalCachedValue | null {
+  const value = cell.v
+  if (value === undefined || value === null) {
+    return null
+  }
+  const cellType = typeof cell.t === 'string' ? cell.t : undefined
+  if (cellType === 'b' || typeof value === 'boolean') {
+    return { kind: 'boolean', value: value === true || value === 1 || value === '1' }
+  }
+  if (cellType === 'e') {
+    return { kind: 'error', value: sheetJsErrorLiteral(value, cell.w) }
+  }
+  if (cellType === 's' || cellType === 'str') {
+    return { kind: 'string', value: externalCachedStringLiteral(value) }
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return { kind: 'number', value }
+  }
+  return { kind: 'string', value: externalCachedStringLiteral(value) }
+}
+
+function sheetJsSheetName(workbook: XLSX.WorkBook, sheetName: string): string | undefined {
+  return workbook.SheetNames.find((candidate) => normalizeSheetName(candidate) === normalizeSheetName(sheetName))
+}
+
+function readExternalWorkbookSheetCache(sheet: XLSX.WorkSheet, usedAddresses?: ReadonlySet<string>): ExternalCachedCells {
+  const cells: ExternalCachedCells = new Map()
+  for (const [address, rawCell] of Object.entries(sheet)) {
+    if (address.startsWith('!') || !isRecord(rawCell)) {
+      continue
+    }
+    const normalizedAddress = normalizeCellAddress(address)
+    if (!parseCachedCellAddress(normalizedAddress)) {
+      continue
+    }
+    if (usedAddresses && !usedAddresses.has(normalizedAddress)) {
+      continue
+    }
+    const cachedValue = sheetJsCellToExternalCachedValue(rawCell)
+    if (cachedValue) {
+      cells.set(normalizedAddress, cachedValue)
+    }
+  }
+  return cells
+}
+
+function readExternalWorkbookCacheFromInput(
+  input: XlsxExternalWorkbookInput,
+  reference: WorkbookExternalWorkbookReferenceSnapshot,
+  usage: ImportedExternalLinkCacheUsage | undefined,
+): ExternalCachedSheets {
+  const workbook = XLSX.read(toUint8Array(input.bytes), {
+    type: 'array',
+    cellFormula: true,
+    cellNF: false,
+    cellStyles: false,
+    cellText: false,
+    cellDates: false,
+  })
+  const referencedSheetNames = reference.sheetNames ?? []
+  const sheetNames = referencedSheetNames.length > 0 ? referencedSheetNames : workbook.SheetNames
+  const sheets: ExternalCachedSheets = new Map()
+  const bookUsage = usage?.get(reference.bookIndex)
+  for (const linkedSheetName of sheetNames) {
+    const normalizedSheetName = normalizeSheetName(linkedSheetName)
+    const usedAddresses = bookUsage?.get(normalizedSheetName)
+    if (bookUsage && !usedAddresses) {
+      continue
+    }
+    const workbookSheetName = sheetJsSheetName(workbook, linkedSheetName)
+    const worksheet = workbookSheetName ? workbook.Sheets[workbookSheetName] : undefined
+    if (!worksheet) {
+      continue
+    }
+    const cells = readExternalWorkbookSheetCache(worksheet, usedAddresses)
+    if (cells.size > 0) {
+      sheets.set(normalizedSheetName, { sheetName: linkedSheetName, cells })
+    }
+  }
+  return sheets
 }
 
 interface ParsedCellAddress {
@@ -293,6 +514,61 @@ function compareExternalCacheCellAddresses(left: string, right: string): number 
   return leftAddress.row - rightAddress.row || leftAddress.col - rightAddress.col
 }
 
+function externalCachedValueXml(value: ExternalCachedValue): { readonly typeAttribute: string; readonly value: string } {
+  switch (value.kind) {
+    case 'number':
+      return { typeAttribute: '', value: String(value.value) }
+    case 'boolean':
+      return { typeAttribute: ' t="b"', value: value.value ? '1' : '0' }
+    case 'error':
+      return { typeAttribute: ' t="e"', value: escapeXmlText(value.value) }
+    case 'string':
+      return { typeAttribute: ' t="str"', value: escapeXmlText(value.value) }
+  }
+}
+
+function buildExternalLinkSheetDataXml(sheetId: number, sheet: ExternalCachedSheet): string | null {
+  const rows = new Map<number, { readonly address: string; readonly col: number; readonly value: ExternalCachedValue }[]>()
+  for (const [address, value] of sheet.cells) {
+    const parsed = parseCachedCellAddress(address)
+    if (!parsed) {
+      continue
+    }
+    const rowCells = rows.get(parsed.row) ?? []
+    rowCells.push({ address: normalizeCellAddress(address), col: parsed.col, value })
+    rows.set(parsed.row, rowCells)
+  }
+  if (rows.size === 0) {
+    return null
+  }
+
+  const rowXml = [...rows.entries()]
+    .toSorted((left, right) => left[0] - right[0])
+    .map(([rowIndex, cells]) => {
+      const cellXml = cells
+        .toSorted((left, right) => left.col - right.col)
+        .map((cell) => {
+          const serialized = externalCachedValueXml(cell.value)
+          return `<cell r="${escapeXmlText(cell.address)}"${serialized.typeAttribute}><v>${serialized.value}</v></cell>`
+        })
+        .join('')
+      return `<row r="${rowIndex + 1}">${cellXml}</row>`
+    })
+    .join('')
+  return `<sheetData sheetId="${sheetId}">${rowXml}</sheetData>`
+}
+
+function buildExternalLinkSheetDataSetXml(sheetNames: readonly string[], sheets: ExternalCachedSheets): string | null {
+  const sheetDataXml = sheetNames
+    .map((sheetName, sheetId) => {
+      const sheet = sheets.get(normalizeSheetName(sheetName))
+      return sheet ? buildExternalLinkSheetDataXml(sheetId, sheet) : null
+    })
+    .filter((value): value is string => value !== null)
+    .join('')
+  return sheetDataXml.length > 0 ? `<sheetDataSet>${sheetDataXml}</sheetDataSet>` : null
+}
+
 function externalCacheSheetKey(bookIndex: number, sheetName: string): string {
   return `${bookIndex}\u0000${normalizeSheetName(sheetName)}`
 }
@@ -463,6 +739,163 @@ export function readImportedExternalLinkCaches(source: XlsxZipSource): ImportedE
     }
   }
   return caches
+}
+
+function externalCacheUsageSheet(usage: ImportedExternalLinkCacheUsage, bookIndex: number, sheetName: string): Set<string> {
+  let bookUsage = usage.get(bookIndex)
+  if (!bookUsage) {
+    bookUsage = new Map()
+    usage.set(bookIndex, bookUsage)
+  }
+  const normalizedSheetName = normalizeSheetName(sheetName)
+  let sheetUsage = bookUsage.get(normalizedSheetName)
+  if (!sheetUsage) {
+    sheetUsage = new Set()
+    bookUsage.set(normalizedSheetName, sheetUsage)
+  }
+  return sheetUsage
+}
+
+function addExternalCacheUsageCell(usage: ImportedExternalLinkCacheUsage, bookIndex: number, sheetName: string, address: string): void {
+  const normalizedAddress = normalizeCellAddress(address)
+  if (parseCachedCellAddress(normalizedAddress)) {
+    externalCacheUsageSheet(usage, bookIndex, sheetName).add(normalizedAddress)
+  }
+}
+
+function addExternalCacheUsageRange(
+  usage: ImportedExternalLinkCacheUsage,
+  bookIndex: number,
+  sheetName: string,
+  startAddress: string,
+  endAddress: string,
+): void {
+  const start = parseCachedCellAddress(startAddress)
+  const end = parseCachedCellAddress(endAddress)
+  if (!start || !end) {
+    return
+  }
+  const rowStart = Math.min(start.row, end.row)
+  const rowEnd = Math.max(start.row, end.row)
+  const colStart = Math.min(start.col, end.col)
+  const colEnd = Math.max(start.col, end.col)
+  const sheetUsage = externalCacheUsageSheet(usage, bookIndex, sheetName)
+  for (let row = rowStart; row <= rowEnd; row += 1) {
+    for (let col = colStart; col <= colEnd; col += 1) {
+      sheetUsage.add(formatA1Address(row, col))
+    }
+  }
+}
+
+export function addImportedFormulaExternalLinkCacheUsage(usage: ImportedExternalLinkCacheUsage, formula: string): void {
+  if (!formula.includes('[')) {
+    return
+  }
+  let index = 0
+  while (index < formula.length) {
+    const character = formula[index]
+    if (character === '"') {
+      index = skipDoubleQuotedString(formula, index)
+      continue
+    }
+    if (character === "'") {
+      const quoted = readSingleQuotedIdentifier(formula, index)
+      if (!quoted || formula[quoted.endIndex] !== '!') {
+        index = quoted?.endIndex ?? index + 1
+        continue
+      }
+      const externalSheet = readExternalSheetName(quoted.value)
+      const address = readCellAddress(formula, quoted.endIndex + 1)
+      if (!externalSheet || !address) {
+        index = address?.endIndex ?? quoted.endIndex + 1
+        continue
+      }
+      if (formula[address.endIndex] === ':') {
+        const endAddress = readCellAddress(formula, address.endIndex + 1)
+        if (endAddress) {
+          addExternalCacheUsageRange(usage, externalSheet.bookIndex, externalSheet.sheetName, address.address, endAddress.address)
+          index = endAddress.endIndex
+          continue
+        }
+      }
+      if (!isRangeOrSpillReference(formula, quoted.endIndex + 1, address.endIndex)) {
+        addExternalCacheUsageCell(usage, externalSheet.bookIndex, externalSheet.sheetName, address.address)
+      }
+      index = address.endIndex
+      continue
+    }
+    if (character === '[') {
+      const externalSheet = readUnquotedExternalSheetReference(formula, index)
+      const address = externalSheet ? readCellAddress(formula, externalSheet.endIndex + 1) : null
+      if (!externalSheet || !address) {
+        index += 1
+        continue
+      }
+      if (formula[address.endIndex] === ':') {
+        const endAddress = readCellAddress(formula, address.endIndex + 1)
+        if (endAddress) {
+          addExternalCacheUsageRange(usage, externalSheet.bookIndex, externalSheet.sheetName, address.address, endAddress.address)
+          index = endAddress.endIndex
+          continue
+        }
+      }
+      if (!isRangeOrSpillReference(formula, externalSheet.endIndex + 1, address.endIndex)) {
+        addExternalCacheUsageCell(usage, externalSheet.bookIndex, externalSheet.sheetName, address.address)
+      }
+      index = address.endIndex
+      continue
+    }
+    index += 1
+  }
+}
+
+export function refreshImportedExternalLinkCachesFromWorkbooks(
+  caches: ImportedExternalLinkCaches,
+  references: ImportedExternalWorkbookReferences,
+  externalWorkbooks: readonly XlsxExternalWorkbookInput[] | undefined,
+  usage?: ImportedExternalLinkCacheUsage,
+): ImportedExternalLinkCacheRefreshResult {
+  if (!externalWorkbooks || externalWorkbooks.length === 0 || references.size === 0) {
+    return { caches, refreshedBookIndices: new Set() }
+  }
+
+  let refreshedCaches: ImportedExternalLinkCaches | undefined
+  const refreshedBookIndices = new Set<number>()
+  for (const reference of [...references.values()].toSorted((left, right) => left.bookIndex - right.bookIndex)) {
+    const input = findExternalWorkbookInputForReference(externalWorkbooks, references, reference)
+    if (!input) {
+      continue
+    }
+    const linkedWorkbookCache = readExternalWorkbookCacheFromInput(input, reference, usage)
+    if (linkedWorkbookCache.size === 0) {
+      continue
+    }
+    refreshedCaches ??= new Map(caches)
+    refreshedCaches.set(reference.bookIndex, linkedWorkbookCache)
+    refreshedBookIndices.add(reference.bookIndex)
+  }
+
+  return { caches: refreshedCaches ?? caches, refreshedBookIndices }
+}
+
+export function refreshExternalLinkCacheXml(xml: string, sheets: ExternalCachedSheets): string {
+  if (sheets.size === 0 || !/<(?:[A-Za-z_][\w.-]*:)?externalBook\b/u.test(xml)) {
+    return xml
+  }
+  const sheetNames = readExternalBookSheetNames(xml)
+  const orderedSheetNames =
+    sheetNames.length > 0
+      ? sheetNames
+      : [...sheets.values()].map((sheet) => sheet.sheetName).toSorted((left, right) => left.localeCompare(right))
+  const sheetDataSetXml = buildExternalLinkSheetDataSetXml(orderedSheetNames, sheets)
+  if (!sheetDataSetXml) {
+    return xml
+  }
+  const sheetDataSetPattern = /<(?:[A-Za-z_][\w.-]*:)?sheetDataSet\b[^>]*(?:\/>|>[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?sheetDataSet>)/u
+  if (sheetDataSetPattern.test(xml)) {
+    return xml.replace(sheetDataSetPattern, sheetDataSetXml)
+  }
+  return xml.replace(/(<\/(?:[A-Za-z_][\w.-]*:)?externalBook>)/u, `${sheetDataSetXml}$1`)
 }
 
 export function collectImportedFormulaExternalWorkbookReferences(

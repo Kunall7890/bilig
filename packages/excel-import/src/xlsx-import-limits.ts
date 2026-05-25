@@ -8,7 +8,15 @@ export interface XlsxImportLimits {
   maxMaterializedFormulaCells?: number
 }
 
+export interface XlsxExternalWorkbookInput {
+  readonly bytes: Uint8Array | ArrayBuffer
+  readonly fileName?: string
+  readonly workbookName?: string
+  readonly target?: string
+}
+
 export interface XlsxImportOptions {
+  readonly externalWorkbooks?: readonly XlsxExternalWorkbookInput[]
   limits?: XlsxImportLimits | false
 }
 

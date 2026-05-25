@@ -24,11 +24,17 @@ import { shouldUseDenseSheetJsParse } from './xlsx-dense-sheetjs-parse.js'
 import { readImportedWorkbookExternalConnections } from './xlsx-external-connections.js'
 import {
   buildImportedExternalCacheSheetPlan,
+  addImportedFormulaExternalLinkCacheUsage,
   readImportedExternalLinkCaches,
   readImportedExternalWorkbookReferences,
+  refreshImportedExternalLinkCachesFromWorkbooks,
+  type ImportedExternalLinkCacheUsage,
   type ImportedExternalCacheSheetSnapshot,
 } from './xlsx-external-references.js'
-import { readImportedWorkbookExternalLinkArtifacts } from './xlsx-external-link-artifacts.js'
+import {
+  readImportedWorkbookExternalLinkArtifacts,
+  refreshImportedWorkbookExternalLinkArtifactCaches,
+} from './xlsx-external-link-artifacts.js'
 import {
   attachImportedRuntimeCoordinates,
   createImportedRuntimeSheetCells,
@@ -58,7 +64,7 @@ import {
   workbookDefinedNamesReferenceExternalWorkbook,
 } from './xlsx-import-warnings.js'
 import { buildImportedWorkbookMetadata } from './xlsx-import-workbook-metadata.js'
-import { denseSheetJsByteThreshold } from './xlsx-import-limits.js'
+import { denseSheetJsByteThreshold, type XlsxImportOptions } from './xlsx-import-limits.js'
 import { createPreservedVbaProjectPayload, type PreservedVbaProjectCodeNames } from './xlsx-macros.js'
 import { buildMergeEntries } from './xlsx-merge-entries.js'
 import { readImportedWorkbookFileNumberFormats } from './xlsx-number-formats.js'
@@ -190,6 +196,23 @@ function createMaterializedExternalCacheRuntimeSheetCells(sheet: WorkbookSnapsho
   })
 }
 
+function collectWorkbookExternalLinkCacheUsage(workbook: XLSX.WorkBook): ImportedExternalLinkCacheUsage | undefined {
+  const usage: ImportedExternalLinkCacheUsage = new Map()
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName]
+    if (!sheet) {
+      continue
+    }
+    for (const [address, rawCell] of Object.entries(sheet)) {
+      if (address.startsWith('!') || !isRecord(rawCell) || typeof rawCell['f'] !== 'string') {
+        continue
+      }
+      addImportedFormulaExternalLinkCacheUsage(usage, rawCell['f'])
+    }
+  }
+  return usage.size > 0 ? usage : undefined
+}
+
 function buildImportedLegacyCommentVmlSnapshot(
   imported: ImportedLegacyCommentVml | undefined,
   commentThreads: readonly WorkbookCommentThreadSnapshot[],
@@ -209,6 +232,7 @@ export function importSheetJsWorkbook(
   contentType: ExcelWorkbookImportContentType,
   workbookZip: Unzipped | null,
   sourceBytesForUntouchedExport?: Uint8Array,
+  options: XlsxImportOptions = {},
 ): ImportedWorkbook {
   const denseSheetJsParse = shouldUseDenseSheetJsParse(data, workbookZip, {
     maxColumnCount: denseSheetJsMaxColumnCount,
@@ -230,6 +254,7 @@ export function importSheetJsWorkbook(
     fallbackArtifactSource: parserData,
     sourceFileSizeBytes: data.byteLength,
     ...(sourceBytesForUntouchedExport ? { sourceBytesForUntouchedExport } : {}),
+    options,
   })
 }
 
@@ -274,8 +299,18 @@ function importParsedSheetJsWorkbook(args: {
   readonly fallbackArtifactSource: Uint8Array
   readonly sourceFileSizeBytes: number
   readonly sourceBytesForUntouchedExport?: Uint8Array
+  readonly options?: XlsxImportOptions
 }): ImportedWorkbook {
-  const { workbook, fileName, contentType, workbookZip, fallbackArtifactSource, sourceFileSizeBytes, sourceBytesForUntouchedExport } = args
+  const {
+    workbook,
+    fileName,
+    contentType,
+    workbookZip,
+    fallbackArtifactSource,
+    sourceFileSizeBytes,
+    sourceBytesForUntouchedExport,
+    options,
+  } = args
   const workbookName = normalizeWorkbookName(fileName)
   const artifactPathSource = contentType === LEGACY_XLS_CONTENT_TYPE ? undefined : (workbookZip ?? fallbackArtifactSource)
   const sheetPathsByName = workbookSheetPathsByName(workbook, artifactPathSource)
@@ -332,7 +367,20 @@ function importParsedSheetJsWorkbook(args: {
   const importedTables = workbookZip ? readImportedWorkbookTables(workbookZip, workbook.SheetNames) : undefined
   const importedControlArtifacts = workbookZip ? readImportedWorkbookControlArtifacts(workbookZip, workbook.SheetNames) : undefined
   const importedDataModelArtifacts = workbookZip ? readImportedWorkbookDataModelArtifacts(workbookZip) : undefined
-  const importedExternalLinkArtifacts = workbookZip ? readImportedWorkbookExternalLinkArtifacts(workbookZip) : undefined
+  const importedExternalWorkbookReferences = workbookZip ? readImportedExternalWorkbookReferences(workbookZip) : new Map()
+  const importedExternalLinkCacheRefresh = refreshImportedExternalLinkCachesFromWorkbooks(
+    workbookZip ? readImportedExternalLinkCaches(workbookZip) : new Map(),
+    importedExternalWorkbookReferences,
+    options?.externalWorkbooks,
+    collectWorkbookExternalLinkCacheUsage(workbook),
+  )
+  const importedExternalLinkCaches = importedExternalLinkCacheRefresh.caches
+  const importedExternalLinkArtifacts = refreshImportedWorkbookExternalLinkArtifactCaches(
+    workbookZip ? readImportedWorkbookExternalLinkArtifacts(workbookZip) : undefined,
+    importedExternalLinkCaches,
+    importedExternalLinkCacheRefresh.refreshedBookIndices,
+    importedExternalWorkbookReferences,
+  )
   const importedSlicerConnectionArtifacts = workbookZip
     ? readImportedWorkbookSlicerConnectionArtifacts(workbookZip, workbook.SheetNames)
     : undefined
@@ -366,9 +414,7 @@ function importParsedSheetJsWorkbook(args: {
   const importedConditionalFormatArtifactsBySheet = conditionalFormatArtifactSource
     ? readImportedWorkbookConditionalFormatArtifacts(conditionalFormatArtifactSource, workbook.SheetNames)
     : new Map()
-  const importedExternalLinkCaches = workbookZip ? readImportedExternalLinkCaches(workbookZip) : new Map()
   const importedExternalCacheSheetPlan = buildImportedExternalCacheSheetPlan(importedExternalLinkCaches, workbook.SheetNames)
-  const importedExternalWorkbookReferences = workbookZip ? readImportedExternalWorkbookReferences(workbookZip) : new Map()
   const importedExternalConnections = workbookZip ? readImportedWorkbookExternalConnections(workbookZip) : undefined
   const importedRichTextArtifactsBySheet = workbookZip ? readImportedWorkbookRichTextArtifacts(workbookZip, workbook.SheetNames) : new Map()
   const importedWorksheetTextValuesBySheet = workbookZip

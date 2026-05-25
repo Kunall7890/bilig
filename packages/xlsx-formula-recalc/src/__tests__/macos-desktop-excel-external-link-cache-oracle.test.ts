@@ -64,8 +64,15 @@ describe('macOS Desktop Excel external-link cache recalc oracle', () => {
         const excelUpdatedBytes = new Uint8Array(readFileSync(sourcePath))
         expect(worksheetFormulaCacheValues(excelUpdatedBytes)).toEqual(updatedFormulaCacheValues)
 
-        const recalculated = recalculateXlsx(excelUpdatedBytes, {
-          fileName: 'external-link-cache-updated.xlsx',
+        const recalculated = recalculateXlsx(sourceBytes, {
+          fileName: 'external-link-cache.xlsx',
+          externalWorkbooks: [
+            {
+              fileName: 'rates.xlsx',
+              target: pathToFileURL(linkedSourcePath).href,
+              bytes: new Uint8Array(readFileSync(linkedSourcePath)),
+            },
+          ],
           reads: externalRangeAddresses.map((address) => `Model!${address}`),
         })
         expect(
@@ -76,7 +83,7 @@ describe('macOS Desktop Excel external-link cache recalc oracle', () => {
           C3: 80,
         })
         expect(worksheetFormulaCacheValues(recalculated.xlsx)).toEqual(updatedFormulaCacheValues)
-        expect(externalLinkPackageSummary(unzipSync(recalculated.xlsx))).toEqual(externalLinkPackageSummary(unzipSync(excelUpdatedBytes)))
+        expect(externalLinkCachePayload(unzipSync(recalculated.xlsx))).toEqual(externalLinkCachePayload(unzipSync(excelUpdatedBytes)))
 
         const recalculatedPath = join(tempDir, 'external-link-cache-recalculated.xlsx')
         writeFileSync(recalculatedPath, recalculated.xlsx)
@@ -215,84 +222,46 @@ function worksheetFormulaCacheValues(bytes: Uint8Array): Readonly<Record<string,
   )
 }
 
-function externalLinkPackageSummary(zip: Record<string, Uint8Array>): {
-  readonly packageParts: readonly (readonly [path: string, xml: string])[]
-  readonly workbookExternalReferenceTargets: readonly string[]
-  readonly externalLinkPathRelationshipParts: readonly (readonly [path: string, xml: string])[]
-  readonly contentTypeOverrides: readonly string[]
+function externalLinkCachePayload(zip: Record<string, Uint8Array>): {
+  readonly sheetNames: readonly string[]
+  readonly cells: readonly {
+    readonly sheetId: string
+    readonly address: string
+    readonly type: string
+    readonly value: string
+  }[]
 } {
-  const workbookExternalReferencesXml = extractSingleXml(
-    xmlText(zip, 'xl/workbook.xml'),
-    /<(?:[A-Za-z_][\w.-]*:)?externalReferences\b[^>]*>[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?externalReferences>/u,
+  const externalLinkXmls = Object.entries(zip)
+    .filter(([path]) => /^xl\/externalLinks\/externalLink[^/]*\.xml$/u.test(path))
+    .map(([, bytes]) => strFromU8(bytes))
+  const sheetNames = externalLinkXmls.flatMap((xml) =>
+    [...xml.matchAll(/<sheetName\b[^>]*\bval="([^"]+)"/gu)].flatMap((match) => match[1] ?? []),
   )
-  const workbookExternalLinkTargets = workbookExternalLinkTargetsByRelationshipId(xmlText(zip, 'xl/_rels/workbook.xml.rels'))
-  return {
-    packageParts: Object.entries(zip)
-      .filter(([path]) => /^xl\/externalLinks\/externalLink[^/]*\.xml$/u.test(path))
-      .map(([path, bytes]) => [path, strFromU8(bytes)] as const)
-      .toSorted(([left], [right]) => left.localeCompare(right)),
-    workbookExternalReferenceTargets: extractCaptureMatches(workbookExternalReferencesXml, /\br:id="([^"]+)"/gu).map((id) => {
-      const target = workbookExternalLinkTargets.get(id)
-      if (target === undefined) {
-        throw new Error(`Missing workbook external-link relationship target for ${id}`)
-      }
-      return target
+  const cells = externalLinkXmls.flatMap((xml) =>
+    [...xml.matchAll(/<sheetData\b([^>]*)>([\s\S]*?)<\/sheetData>/gu)].flatMap((sheetDataMatch) => {
+      const sheetId = readXmlAttribute(sheetDataMatch[1] ?? '', 'sheetId')
+      return [...(sheetDataMatch[2] ?? '').matchAll(/<cell\b([^>]*)>[\s\S]*?<v>([\s\S]*?)<\/v>[\s\S]*?<\/cell>/gu)].map((cellMatch) => ({
+        sheetId,
+        address: readXmlAttribute(cellMatch[1] ?? '', 'r'),
+        type: readXmlAttribute(cellMatch[1] ?? '', 't'),
+        value: cellMatch[2] ?? '',
+      }))
     }),
-    externalLinkPathRelationshipParts: Object.entries(zip)
-      .filter(([path]) => /^xl\/externalLinks\/_rels\/externalLink[^/]*\.xml\.rels$/u.test(path))
-      .map(([path, bytes]) => [path, strFromU8(bytes)] as const)
-      .toSorted(([left], [right]) => left.localeCompare(right)),
-    contentTypeOverrides: extractXmlMatches(
-      xmlText(zip, '[Content_Types].xml'),
-      /<Override\b[^>]*ContentType="application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.externalLink\+xml"[^>]*\/>/gu,
+  )
+  return {
+    sheetNames: sheetNames.toSorted(),
+    cells: cells.toSorted(
+      (left, right) =>
+        left.sheetId.localeCompare(right.sheetId) ||
+        left.address.localeCompare(right.address) ||
+        left.type.localeCompare(right.type) ||
+        left.value.localeCompare(right.value),
     ),
   }
 }
 
-function workbookExternalLinkTargetsByRelationshipId(workbookRelationshipsXml: string): ReadonlyMap<string, string> {
-  const targetsById = new Map<string, string>()
-  for (const relationship of extractXmlMatches(workbookRelationshipsXml, /<Relationship\b[^>]*\/>/gu)) {
-    if (!relationship.includes('/relationships/externalLink"')) {
-      continue
-    }
-    targetsById.set(extractAttribute(relationship, 'Id'), extractAttribute(relationship, 'Target'))
-  }
-  if (targetsById.size === 0) {
-    throw new Error('Missing workbook external-link relationships')
-  }
-  return targetsById
-}
-
-function extractSingleXml(xml: string, pattern: RegExp): string {
-  const match = xml.match(pattern)
-  if (!match) {
-    throw new Error(`Missing expected XLSX XML fragment for pattern ${String(pattern)}`)
-  }
-  return match[0]
-}
-
-function extractXmlMatches(xml: string, pattern: RegExp): readonly string[] {
-  const matches = [...xml.matchAll(pattern)].map((match) => match[0])
-  if (matches.length === 0) {
-    throw new Error(`Missing expected XLSX XML fragment for pattern ${String(pattern)}`)
-  }
-  return matches.toSorted()
-}
-
-function extractCaptureMatches(xml: string, pattern: RegExp): readonly string[] {
-  const matches = [...xml.matchAll(pattern)].flatMap((match) => match[1] ?? [])
-  if (matches.length === 0) {
-    throw new Error(`Missing expected XLSX XML capture for pattern ${String(pattern)}`)
-  }
-  return matches
-}
-
-function extractAttribute(xml: string, attributeName: string): string {
-  const match = new RegExp(`\\b${attributeName}="([^"]+)"`, 'u').exec(xml)
-  if (!match) {
-    throw new Error(`Missing ${attributeName} attribute in ${xml}`)
-  }
-  return match[1]
+function readXmlAttribute(attributes: string, attributeName: string): string {
+  return new RegExp(`\\b${attributeName}="([^"]*)"`, 'u').exec(attributes)?.[1] ?? ''
 }
 
 function ensureRelationshipNamespace(xml: string): string {

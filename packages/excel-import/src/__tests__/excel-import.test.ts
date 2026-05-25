@@ -109,6 +109,7 @@ function buildVolatileFormulaWorkbook(formula: string): Uint8Array {
 
 function buildExternalLinkRangeCacheWorkbook(
   criteriaFormula = "SUMPRODUCT('[1]Rates'!$B$2:$B$4,--('[1]Rates'!$A$2:$A$4=\"C\"))*B1",
+  target = 'file:///tmp/rates.xlsx',
 ): Uint8Array {
   const workbook = XLSX.utils.book_new()
   const sheet = XLSX.utils.aoa_to_sheet([[null, 2]])
@@ -152,10 +153,27 @@ function buildExternalLinkRangeCacheWorkbook(
   )
   zip['xl/externalLinks/_rels/externalLink5.xml.rels'] = strToU8(
     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLinkPath" Target="file:///tmp/rates.xlsx" TargetMode="External"/>' +
+      `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLinkPath" Target="${target}" TargetMode="External"/>` +
       '</Relationships>',
   )
   return zipSync(zip)
+}
+
+function buildRatesWorkbook(rates: readonly [number, number, number]): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([
+    ['SKU', 'Rate'],
+    ['A', rates[0]],
+    ['B', rates[1]],
+    ['C', rates[2]],
+  ])
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Rates')
+  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+}
+
+function readExternalLinkCacheXml(bytes: Uint8Array): string {
+  const zip = unzipSync(bytes)
+  return strFromU8(zip['xl/externalLinks/externalLink5.xml'] ?? new Uint8Array())
 }
 
 function buildExternalGetPivotDataLinkCacheWorkbook(): Uint8Array {
@@ -577,6 +595,49 @@ describe('excel import', () => {
     expect(engine.getCellValue('Model', 'C1')).toEqual({ tag: ValueTag.Number, value: 180 })
     expect(engine.getCellValue('Model', 'C2')).toEqual({ tag: ValueTag.Number, value: 60 })
     expect(engine.getCellValue('Model', 'C3')).toEqual({ tag: ValueTag.Number, value: 90 })
+  })
+
+  it('hydrates saved external-link caches from supplied workbook bytes by package path', () => {
+    const imported = importXlsx(buildExternalLinkRangeCacheWorkbook(), 'external-link-range-cache.xlsx', {
+      externalWorkbooks: [{ fileName: 'rates.xlsx', bytes: buildRatesWorkbook([20, 30, 40]) }],
+    })
+    const cacheSheet = imported.snapshot.sheets.find((sheet) => sheet.name === '__bilig_ext_1_Rates')
+    const cacheCells = new Map(cacheSheet?.cells.map((cell) => [cell.address, cell.value]) ?? [])
+
+    expect(cacheCells.get('B2')).toBe(20)
+    expect(cacheCells.get('B3')).toBe(30)
+    expect(cacheCells.get('B4')).toBe(40)
+
+    const externalLinkXml = readExternalLinkCacheXml(exportXlsx(imported.snapshot))
+    expect(externalLinkXml).toContain('<row r="2">')
+    expect(externalLinkXml).toContain('<cell r="B2"><v>20</v></cell>')
+    expect(externalLinkXml).toContain('<row r="3">')
+    expect(externalLinkXml).toContain('<cell r="B3"><v>30</v></cell>')
+    expect(externalLinkXml).toContain('<row r="4">')
+    expect(externalLinkXml).toContain('<cell r="B4"><v>40</v></cell>')
+    expect(externalLinkXml).not.toContain('<row r="0">')
+  })
+
+  it('does not hydrate external-link caches from an explicitly mismatched target', () => {
+    const imported = importXlsx(buildExternalLinkRangeCacheWorkbook(), 'external-link-range-cache.xlsx', {
+      externalWorkbooks: [
+        {
+          fileName: 'rates.xlsx',
+          target: 'file:///tmp/other/rates.xlsx',
+          bytes: buildRatesWorkbook([20, 30, 40]),
+        },
+      ],
+    })
+    const cacheSheet = imported.snapshot.sheets.find((sheet) => sheet.name === '__bilig_ext_1_Rates')
+    const cacheCells = new Map(cacheSheet?.cells.map((cell) => [cell.address, cell.value]) ?? [])
+    const externalLinkXml = readExternalLinkCacheXml(exportXlsx(imported.snapshot))
+
+    expect(cacheCells.get('B2')).toBe(10)
+    expect(cacheCells.get('B3')).toBe(20)
+    expect(cacheCells.get('B4')).toBe(30)
+    expect(externalLinkXml).toContain('<cell r="B2"><v>10</v></cell>')
+    expect(externalLinkXml).toContain('<cell r="B3"><v>20</v></cell>')
+    expect(externalLinkXml).toContain('<cell r="B4"><v>30</v></cell>')
   })
 
   it('materializes external criteria-function ranges as hidden-sheet references', async () => {

@@ -19,6 +19,11 @@ import {
   setZipText,
   type ParsedRelationship,
 } from './xlsx-pivot-artifacts.js'
+import {
+  refreshExternalLinkCacheXml,
+  type ImportedExternalLinkCaches,
+  type ImportedExternalWorkbookReferences,
+} from './xlsx-external-references.js'
 
 const binaryChunkSize = 0x8000
 const workbookPath = 'xl/workbook.xml'
@@ -231,6 +236,16 @@ function preservedPartsByPath(parts: readonly WorkbookPreservedPackagePartSnapsh
   return output
 }
 
+function externalLinkBookIndicesByPackagePath(references: ImportedExternalWorkbookReferences): Map<string, number> {
+  const bookIndicesByPackagePath = new Map<string, number>()
+  for (const reference of references.values()) {
+    if (reference.packagePath) {
+      bookIndicesByPackagePath.set(normalizeZipPath(reference.packagePath), reference.bookIndex)
+    }
+  }
+  return bookIndicesByPackagePath
+}
+
 function relationshipTargetExists(
   relationship: WorkbookPackageRelationshipSnapshot,
   partsByPath: ReadonlyMap<string, Uint8Array>,
@@ -348,6 +363,40 @@ export function readImportedWorkbookExternalLinkArtifacts(source: XlsxZipSource)
     ...(contentTypeDefaults.length > 0 ? { contentTypeDefaults } : {}),
     ...(contentTypeOverrides.length > 0 ? { contentTypeOverrides } : {}),
   }
+}
+
+export function refreshImportedWorkbookExternalLinkArtifactCaches(
+  artifacts: WorkbookExternalLinkArtifactsSnapshot | undefined,
+  caches: ImportedExternalLinkCaches,
+  refreshedBookIndices: ReadonlySet<number>,
+  references: ImportedExternalWorkbookReferences,
+): WorkbookExternalLinkArtifactsSnapshot | undefined {
+  if (!artifacts || refreshedBookIndices.size === 0) {
+    return artifacts
+  }
+
+  let changed = false
+  const bookIndicesByPackagePath = externalLinkBookIndicesByPackagePath(references)
+  const parts = artifacts.parts.map((part) => {
+    const bookIndex = bookIndicesByPackagePath.get(normalizeZipPath(part.path))
+    const cache = bookIndex === undefined || !refreshedBookIndices.has(bookIndex) ? undefined : caches.get(bookIndex)
+    if (!cache || part.storage !== 'base64') {
+      return part
+    }
+    const bytes = decodedPartBytes(part)
+    if (!bytes) {
+      return part
+    }
+    const xml = new TextDecoder().decode(bytes)
+    const nextXml = refreshExternalLinkCacheXml(xml, cache)
+    if (nextXml === xml) {
+      return part
+    }
+    changed = true
+    return encodedPartSnapshot(part.path, new TextEncoder().encode(nextXml))
+  })
+
+  return changed ? { ...artifacts, parts } : artifacts
 }
 
 export function addExportExternalLinkArtifactsToXlsxBytes(bytes: Uint8Array, snapshot: WorkbookSnapshot): Uint8Array {
