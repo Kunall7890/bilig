@@ -78,7 +78,7 @@ export function buildMissingSameCorpusProof(): UiResponsivenessSameCorpusProof {
     requiredCaseCount: requiredSameCorpusWorkloads.length,
     tenXMeanAndP95CaseCount: 0,
     coveredCorpusCaseIds: [],
-    runManifest: buildSameCorpusRunManifest([]),
+    runManifest: buildSameCorpusRunManifest([], null),
     limitations: ['Same-corpus live browser timing against Bilig and Google Sheets has not been captured yet.'],
     cases: [],
   }
@@ -94,7 +94,7 @@ export function buildSameCorpusProof(capture: SameCorpusCapture): UiResponsivene
     requiredCaseCount: requiredSameCorpusWorkloads.length,
     tenXMeanAndP95CaseCount: cases.filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length,
     coveredCorpusCaseIds: [...new Set(cases.map((entry) => entry.corpusCaseId))].toSorted(),
-    runManifest: buildSameCorpusRunManifest(cases),
+    runManifest: buildSameCorpusRunManifest(cases, capture.runManifest.captureRunSignature),
     limitations: sameCorpusProofLimitations(capture.limitations, cases),
     cases,
   }
@@ -165,7 +165,10 @@ export function validateSameCorpusProof(proof: UiResponsivenessSameCorpusProof):
   validateSameCorpusRunManifest(proof)
 }
 
-function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCase[]): UiResponsivenessSameCorpusRunManifest {
+function buildSameCorpusRunManifest(
+  cases: readonly UiResponsivenessSameCorpusCase[],
+  captureRunSignature: string | null,
+): UiResponsivenessSameCorpusRunManifest {
   const capturedWorkloads = cases.map((entry) => entry.workload)
   const corpusCaseIds = [...new Set(cases.map((entry) => entry.corpusCaseId))].toSorted()
   const corpusFingerprints = uniqueCorpusFingerprints(cases)
@@ -217,6 +220,7 @@ function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCa
       (reason) => reason !== 'not every required workload is 10x against Google Sheets',
     ),
     googleSheetsTenXRequirementSatisfied: invalidReasons.length === 0,
+    captureRunSignature,
     invalidReasons,
   }
 }
@@ -444,7 +448,14 @@ function validateSameCorpusRunManifest(proof: UiResponsivenessSameCorpusProof): 
   if (!proof.runManifest) {
     throw new Error('UI responsiveness same-corpus proof is missing run manifest')
   }
-  const expected = buildSameCorpusRunManifest(proof.cases)
+  if (proof.captured) {
+    if (!isSha256Hex(proof.runManifest.captureRunSignature)) {
+      throw new Error('UI responsiveness same-corpus proof run manifest must bind to a captureRunSignature')
+    }
+  } else if (proof.runManifest.captureRunSignature !== null) {
+    throw new Error('UI responsiveness missing same-corpus proof must not claim a captureRunSignature')
+  }
+  const expected = buildSameCorpusRunManifest(proof.cases, proof.runManifest.captureRunSignature)
   if (stableJsonString(proof.runManifest) !== stableJsonString(expected)) {
     throw new Error('UI responsiveness same-corpus run manifest is stale')
   }

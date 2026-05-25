@@ -106,6 +106,7 @@ export interface UiResponsivenessSameCorpusRunManifest {
   readonly tenXMeanAndP95CaseCount: number
   readonly currentContractEvidenceComplete: boolean
   readonly googleSheetsTenXRequirementSatisfied: boolean
+  readonly captureRunSignature: string | null
   readonly invalidReasons: readonly string[]
 }
 

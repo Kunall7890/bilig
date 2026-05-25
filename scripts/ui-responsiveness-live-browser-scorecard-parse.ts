@@ -154,6 +154,7 @@ function parseSameCorpusRunManifest(value: Record<string, unknown>): UiResponsiv
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
     googleSheetsTenXRequirementSatisfied: booleanField(value, 'googleSheetsTenXRequirementSatisfied'),
+    captureRunSignature: nullableStringField(value, 'captureRunSignature'),
     invalidReasons: stringArrayField(value, 'invalidReasons'),
   }
 }

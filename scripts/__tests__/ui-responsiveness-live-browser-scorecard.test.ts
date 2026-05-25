@@ -78,6 +78,7 @@ describe('UI responsiveness live browser scorecard', () => {
       tenXMeanAndP95CaseCount: 1,
       currentContractEvidenceComplete: true,
       googleSheetsTenXRequirementSatisfied: false,
+      captureRunSignature: expect.stringMatching(/^[a-f0-9]{64}$/u),
     })
     expect(scorecard.sameCorpusProof.runManifest?.capturedWorkloads).toEqual(requiredUiResponsivenessSameCorpusWorkloads)
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('not every required workload is 10x against Google Sheets')
@@ -577,6 +578,26 @@ describe('UI responsiveness live browser scorecard', () => {
     )
   })
 
+  it('rejects captured same-corpus proof without a capture run signature', () => {
+    const scorecard = parseUiResponsivenessLiveBrowserScorecard(
+      readJsonObject(resolve(repoRoot, 'packages/benchmarks/baselines/ui-responsiveness-live-browser-scorecard.json')),
+    )
+    const proof = buildSameCorpusProof(buildSameCorpusCapture())
+    const staleScorecard: UiResponsivenessLiveBrowserScorecard = {
+      ...scorecard,
+      sameCorpusProof: {
+        ...proof,
+        runManifest: Object.assign({}, proof.runManifest, {
+          captureRunSignature: null,
+        }),
+      },
+    }
+
+    expect(() => validateUiResponsivenessLiveBrowserScorecard(staleScorecard)).toThrow(
+      'UI responsiveness same-corpus proof run manifest must bind to a captureRunSignature',
+    )
+  })
+
   it('rejects captured same-corpus proof when screenshot artifacts are missing', () => {
     const proof = buildSameCorpusProof(buildSameCorpusCapture())
     const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-missing-artifacts-`)
@@ -629,9 +650,22 @@ describe('UI responsiveness live browser scorecard', () => {
         tenXMeanAndP95CaseCount: proof.tenXMeanAndP95CaseCount + 1,
       },
     }
+    const staleSignatureScorecard: UiResponsivenessLiveBrowserScorecard = {
+      ...matchingScorecard,
+      sameCorpusProof: {
+        ...proof,
+        runManifest: {
+          ...proof.runManifest,
+          captureRunSignature: 'f'.repeat(64),
+        },
+      },
+    }
 
     expect(() => validateSameCorpusCaptureArtifactMatchesScorecard(matchingScorecard, { rootDir, capturePath })).not.toThrow()
     expect(() => validateSameCorpusCaptureArtifactMatchesScorecard(staleScorecard, { rootDir, capturePath })).toThrow(
+      'UI responsiveness same-corpus scorecard proof does not match capture artifact',
+    )
+    expect(() => validateSameCorpusCaptureArtifactMatchesScorecard(staleSignatureScorecard, { rootDir, capturePath })).toThrow(
       'UI responsiveness same-corpus scorecard proof does not match capture artifact',
     )
   })
