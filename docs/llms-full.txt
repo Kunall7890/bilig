@@ -244,6 +244,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - MCP server guide: https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
 - Open WebUI MCP setup: https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html
 - LobeHub MCP setup: https://proompteng.github.io/bilig/lobehub-workpaper-mcp.html
+- AnythingLLM MCP setup: https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
 - XLSX formula clinic: https://proompteng.github.io/bilig/formula-bug-clinic.html
 - Compatibility limits: https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html
 - Repository: https://github.com/proompteng/bilig
@@ -406,6 +407,29 @@ JSON file.
 
 See [LobeHub WorkPaper MCP setup](docs/lobehub-workpaper-mcp.md) for the import
 JSON, local desktop config, expected tool list, and proof object.
+
+## AnythingLLM Agent Skills
+
+Need AnythingLLM Agent Skills to call workbook tools? Add Bilig to
+`plugins/anythingllm_mcp_servers.json` as a hosted Streamable HTTP smoke test or
+as a local stdio server with a writable WorkPaper file:
+
+```json
+{
+  "mcpServers": {
+    "bilig-workpaper": {
+      "type": "streamable",
+      "url": "https://bilig.proompteng.ai/mcp"
+    }
+  }
+}
+```
+
+Use the Desktop or Docker stdio config when the agent needs a private persisted
+WorkPaper JSON file.
+
+See [AnythingLLM WorkPaper MCP setup](docs/anythingllm-workpaper-mcp.md) for the
+storage-path rules, desktop and Docker configs, proof prompt, and limits.
 
 ## Directus Persisted Calculated Fields
 
@@ -3766,6 +3790,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | VS Code and Cline | Project-local MCP config with a writable WorkPaper file. | [MCP client setup](mcp-client-setup.md) |
 | Open WebUI | Native Streamable HTTP MCP for hosted smoke tests, or `mcpo` around the npm stdio server for local writable files. | [Open WebUI WorkPaper MCP setup](open-webui-workpaper-mcp.md) |
 | LobeHub | Custom MCP import JSON for hosted Streamable HTTP, or desktop STDIO for a writable WorkPaper file. | [LobeHub WorkPaper MCP setup](lobehub-workpaper-mcp.md) |
+| AnythingLLM | `anythingllm_mcp_servers.json` with hosted Streamable HTTP, Desktop stdio, or Docker storage-backed stdio. | [AnythingLLM WorkPaper MCP setup](anythingllm-workpaper-mcp.md) |
 | OpenAI Agents SDK | Function tools around WorkPaper read/write/readback. | [OpenAI Agents SDK WorkPaper tool](openai-agents-sdk-workpaper-tool.md) |
 | OpenAI Responses API | Function-call wrapper returning proof objects. | [OpenAI Responses WorkPaper tool call](openai-responses-workpaper-tool-call.md) |
 | Vercel AI SDK | Tool definitions that call a WorkPaper service function. | [Vercel AI SDK spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md) |
@@ -4256,6 +4281,203 @@ STDIO when the agent should own durable workbook state on your machine.
 - If you need Excel desktop parity, macros, pivots, charts, or external links,
   keep Excel or a workbook oracle in the loop and treat this as a WorkPaper API
   proof, not a desktop Excel proof.
+
+## Related Bilig docs
+
+- [Agent MCP workbook evaluator](eval-agent-mcp.md)
+- [MCP client setup](mcp-client-setup.md)
+- [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
+- [Agent framework workbook tools](agent-framework-workbook-tools.md)
+- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+
+---
+
+## AnythingLLM WorkPaper MCP Setup
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/anythingllm-workpaper-mcp.md
+
+# AnythingLLM WorkPaper MCP setup
+
+Use this when an AnythingLLM agent needs spreadsheet-shaped business logic, but
+the formula state should live behind explicit WorkPaper tools instead of Excel
+UI automation, browser grid clicks, or stale XLSX cached values.
+
+AnythingLLM loads MCP servers from `plugins/anythingllm_mcp_servers.json` in the
+AnythingLLM storage directory. Its MCP integration exposes tools to agents; it
+does not expose MCP Resources, Prompts, or Sampling.
+
+Official AnythingLLM references:
+
+- <https://docs.anythingllm.com/mcp-compatibility/overview>
+- <https://docs.anythingllm.com/mcp-compatibility/desktop>
+- <https://docs.anythingllm.com/mcp-compatibility/docker>
+
+## Fastest smoke test: hosted Streamable HTTP
+
+Use this when you only need to prove that AnythingLLM can discover and call the
+Bilig WorkPaper tools.
+
+Edit `plugins/anythingllm_mcp_servers.json`:
+
+```json
+{
+  "mcpServers": {
+    "bilig-workpaper": {
+      "type": "streamable",
+      "url": "https://bilig.proompteng.ai/mcp"
+    }
+  }
+}
+```
+
+Then open **Agent Skills** and refresh MCP servers, or invoke the agent so
+AnythingLLM starts the configured server. The hosted endpoint is stateless and
+request-local. It proves tool discovery and formula readback, but it does not
+persist a private project file.
+
+## Persistent Desktop WorkPaper: stdio
+
+Use this in AnythingLLM Desktop when the WorkPaper JSON file should live on the
+host machine and survive across turns.
+
+```json
+{
+  "mcpServers": {
+    "bilig-workpaper-local": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "--package",
+        "@bilig/workpaper@latest",
+        "bilig-workpaper-mcp",
+        "--workpaper",
+        "./pricing.workpaper.json",
+        "--init-demo-workpaper",
+        "--writable"
+      ]
+    }
+  }
+}
+```
+
+`--init-demo-workpaper` creates the demo file only when it is missing.
+`--writable` persists tool writes back to the same WorkPaper JSON file.
+
+AnythingLLM Desktop runs MCP commands on the host machine. Make sure `npx` works
+from a normal terminal before refreshing Agent Skills.
+
+## Persistent Docker WorkPaper: stdio
+
+Use this when AnythingLLM runs in Docker and the WorkPaper file should persist
+inside AnythingLLM storage. AnythingLLM documents that Docker MCP servers can
+use paths under `/app/server/storage/...`, which map back to the host
+`STORAGE_LOCATION`.
+
+```json
+{
+  "mcpServers": {
+    "bilig-workpaper-docker": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "--package",
+        "@bilig/workpaper@latest",
+        "bilig-workpaper-mcp",
+        "--workpaper",
+        "/app/server/storage/workpapers/pricing.workpaper.json",
+        "--init-demo-workpaper",
+        "--writable"
+      ]
+    }
+  }
+}
+```
+
+Create the `workpapers` directory under the same host `STORAGE_LOCATION` that
+AnythingLLM mounts for `/app/server/storage`.
+
+If startup cost matters, keep the MCP server enabled but opt out of automatic
+startup until the agent needs workbook tools:
+
+```json
+{
+  "mcpServers": {
+    "bilig-workpaper-docker": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "--package",
+        "@bilig/workpaper@latest",
+        "bilig-workpaper-mcp",
+        "--workpaper",
+        "/app/server/storage/workpapers/pricing.workpaper.json",
+        "--init-demo-workpaper",
+        "--writable"
+      ],
+      "anythingllm": {
+        "autoStart": false
+      }
+    }
+  }
+}
+```
+
+## Proof prompt
+
+After refreshing Agent Skills, ask in an agent-enabled thread:
+
+```text
+@agent Use the Bilig WorkPaper MCP tools. List the tools, read the sample sheets,
+set Inputs!B3 to 0.4, read Summary!B3, export the WorkPaper document, and return
+editedCell, before, after, afterRestore, persistedDocumentBytes, verified, and
+limitations.
+```
+
+The Bilig server exposes these tools:
+
+- `list_sheets`
+- `read_range`
+- `read_cell`
+- `set_cell_contents`
+- `get_cell_display_value`
+- `export_workpaper_document`
+- `validate_formula`
+
+Before wiring it into AnythingLLM, you can prove the same local MCP contract from
+a terminal:
+
+```sh
+npx -y --package @bilig/workpaper@latest bilig-mcp-challenge --json
+```
+
+Expected proof fields include:
+
+```json
+{
+  "transport": "stdio-json-rpc",
+  "editedCell": "Inputs!B3",
+  "dependentCell": "Summary!B3",
+  "before": 60000,
+  "after": 96000,
+  "afterRestart": 96000,
+  "verified": true
+}
+```
+
+`verified` should only be true after the dependent formula output is read back
+and the persisted document can be restored.
+
+## Boundaries
+
+- AnythingLLM MCP exposes tools only. Do not rely on MCP Resources, Prompts, or
+  Sampling for this integration.
+- Hosted Streamable HTTP is stateless. Use Desktop or Docker stdio for private
+  writable WorkPaper files.
+- Desktop paths are host paths. Docker paths should live under
+  `/app/server/storage/...` when the file must persist through the mounted
+  storage directory.
+- Keep Excel or another workbook oracle in the loop for macros, pivots, charts,
+  external links, and layout fidelity.
 
 ## Related Bilig docs
 

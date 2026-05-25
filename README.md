@@ -151,6 +151,29 @@ JSON file.
 See [LobeHub WorkPaper MCP setup](docs/lobehub-workpaper-mcp.md) for the import
 JSON, local desktop config, expected tool list, and proof object.
 
+## AnythingLLM Agent Skills
+
+Need AnythingLLM Agent Skills to call workbook tools? Add Bilig to
+`plugins/anythingllm_mcp_servers.json` as a hosted Streamable HTTP smoke test or
+as a local stdio server with a writable WorkPaper file:
+
+```json
+{
+  "mcpServers": {
+    "bilig-workpaper": {
+      "type": "streamable",
+      "url": "https://bilig.proompteng.ai/mcp"
+    }
+  }
+}
+```
+
+Use the Desktop or Docker stdio config when the agent needs a private persisted
+WorkPaper JSON file.
+
+See [AnythingLLM WorkPaper MCP setup](docs/anythingllm-workpaper-mcp.md) for the
+storage-path rules, desktop and Docker configs, proof prompt, and limits.
+
 ## Directus Persisted Calculated Fields
 
 Need a Directus Flow to calculate and persist quote, pricing, payout, or import

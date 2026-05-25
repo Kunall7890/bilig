@@ -149,6 +149,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/mcp-client-setup.html
 - https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html
 - https://proompteng.github.io/bilig/lobehub-workpaper-mcp.html
+- https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
 - https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html
 - https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html
 - https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html
@@ -549,6 +550,17 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   Import the hosted Streamable HTTP endpoint with:
   {"mcpServers":{"bilig-workpaper":{"url":"https://bilig.proompteng.ai/mcp","type":"http"}}}
   Use the desktop STDIO config for private writable WorkPaper JSON files.
+- AnythingLLM MCP setup:
+  https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
+  https://github.com/proompteng/bilig/blob/main/docs/anythingllm-workpaper-mcp.md
+  AnythingLLM loads MCP servers from `plugins/anythingllm_mcp_servers.json` in
+  the AnythingLLM storage directory.
+  Hosted Streamable HTTP smoke config:
+  {"mcpServers":{"bilig-workpaper":{"type":"streamable","url":"https://bilig.proompteng.ai/mcp"}}}
+  Desktop stdio config uses host paths and:
+  npx -y --package @bilig/workpaper@latest bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+  Docker stdio config should persist writable WorkPaper JSON under
+  `/app/server/storage/...`, which maps to the host `STORAGE_LOCATION`.
 - Smithery hosted MCP install:
   https://smithery.ai/servers/gkonushev/bilig-workpaper
   npx -y smithery mcp add gkonushev/bilig-workpaper

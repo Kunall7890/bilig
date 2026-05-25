@@ -172,6 +172,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - MCP server guide: https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
 - Open WebUI MCP setup: https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html
 - LobeHub MCP setup: https://proompteng.github.io/bilig/lobehub-workpaper-mcp.html
+- AnythingLLM MCP setup: https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
 - XLSX formula clinic: https://proompteng.github.io/bilig/formula-bug-clinic.html
 - Compatibility limits: https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html
 - Repository: https://github.com/proompteng/bilig

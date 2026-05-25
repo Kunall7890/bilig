@@ -11,9 +11,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): bind format receipts to ranges (bd36d30e)
 
 ## Internal runtime changes
+
 - test(core): align formula replacement counters (dc369fcf)
 - docs(growth): add LobeHub MCP setup (24672255)
 
