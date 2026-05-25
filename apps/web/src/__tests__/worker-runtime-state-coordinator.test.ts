@@ -14,6 +14,7 @@ function createStateEngine(input: {
       sheetsByName: new Map([['Sheet1', { id: 1, name: 'Sheet1', order: 0 }]]),
     },
     getDefinedNames: () => [],
+    getTables: () => [],
     getLastMetrics: () => ({ ...EMPTY_RUNTIME_METRICS, batchId: 7 }),
     getSyncState: () => input.syncState ?? 'live',
     canUndo: () => input.canUndo === true,

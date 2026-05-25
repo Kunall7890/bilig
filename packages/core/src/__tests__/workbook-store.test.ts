@@ -583,6 +583,26 @@ describe('WorkbookStore', () => {
     expect(workbook.listColumnAxisEntries('Sheet1')).toEqual([{ id: 'column-1', index: 1, size: 120, hidden: false }])
   })
 
+  it('continues generated axis ids after replaying provided axis entries', () => {
+    const workbook = new WorkbookStore('provided-axis-id-bump')
+    workbook.createSheet('Sheet1')
+
+    workbook.insertColumns('Sheet1', 0, 1, [{ id: 'column-7', index: 0 }])
+    workbook.insertRows('Sheet1', 0, 1, [{ id: 'row-4', index: 0 }])
+
+    workbook.insertColumns('Sheet1', 0, 1)
+    workbook.insertRows('Sheet1', 0, 1)
+
+    expect(workbook.listColumnAxisEntries('Sheet1')).toEqual([
+      { id: 'column-8', index: 0 },
+      { id: 'column-7', index: 1 },
+    ])
+    expect(workbook.listRowAxisEntries('Sheet1')).toEqual([
+      { id: 'row-5', index: 0 },
+      { id: 'row-4', index: 1 },
+    ])
+  })
+
   it('mirrors inserted, moved, and deleted column axis ids in lockstep with workbook snapshots', () => {
     const workbook = new WorkbookStore('axis-map-mirror')
     workbook.createSheet('Sheet1')

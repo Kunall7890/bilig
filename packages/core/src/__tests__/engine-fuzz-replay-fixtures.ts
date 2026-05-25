@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import type { LiteralInput } from '@bilig/protocol'
 import { engineSeedNames, type EngineReplayCommand, type EngineSeedName } from './engine-fuzz-helpers.js'
 
 export interface EngineReplayExpectation {
@@ -41,6 +42,20 @@ function parseRange(value: unknown, fileName: string) {
   }
 }
 
+function parseLiteralInput(value: unknown, fileName: string): LiteralInput {
+  if (value === null || typeof value === 'number' || typeof value === 'boolean' || typeof value === 'string') {
+    return value
+  }
+  throw new Error(`Invalid values replay command cell in ${fileName}`)
+}
+
+function parseValues(value: unknown, fileName: string): LiteralInput[][] {
+  if (!Array.isArray(value) || !value.every((row) => Array.isArray(row))) {
+    throw new Error(`Invalid values replay command matrix in ${fileName}`)
+  }
+  return value.map((row) => row.map((cell) => parseLiteralInput(cell, fileName)))
+}
+
 function parseExpectation(value: unknown, fileName: string): EngineReplayExpectation | undefined {
   if (value === undefined) {
     return undefined
@@ -71,6 +86,12 @@ function parseCommand(value: unknown, fileName: string): EngineReplayCommand {
         kind,
         address: value['address'],
         formula: value['formula'],
+      }
+    case 'values':
+      return {
+        kind,
+        range: parseRange(value['range'], fileName),
+        values: parseValues(value['values'], fileName),
       }
     case 'insertRows':
     case 'deleteRows':

@@ -314,7 +314,25 @@ function cacheSharedItem(cache: ParsedPivotCache, fieldIndex: number, itemIndex:
   if (itemIndex === null) {
     return undefined
   }
-  return cache.fields[fieldIndex]?.sharedItems[itemIndex]
+  const sharedItem = cache.fields[fieldIndex]?.sharedItems[itemIndex]
+  if (sharedItem !== undefined) {
+    return sharedItem
+  }
+  const cachedRecords = cache.cachedRecords
+  if (!cachedRecords) {
+    return undefined
+  }
+  const distinctValues: LiteralInput[] = []
+  for (const record of cachedRecords) {
+    const value = record[fieldIndex]
+    if (value === undefined) {
+      continue
+    }
+    if (!distinctValues.some((candidate) => candidate === value)) {
+      distinctValues.push(value)
+    }
+  }
+  return distinctValues[itemIndex]
 }
 
 function parseFieldNames(definition: Record<string, unknown>, fieldGroupName: string, cache: ParsedPivotCache): string[] {

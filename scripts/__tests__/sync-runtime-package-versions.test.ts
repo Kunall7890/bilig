@@ -31,6 +31,7 @@ describe('syncRuntimePackageVersions', () => {
     }
 
     writeFileSync(join(rootDir, '.release-please-manifest.json'), `${JSON.stringify({ 'packages/headless': '0.1.95' }, null, 2)}\n`)
+    writeFileSync(join(rootDir, 'Dockerfile'), 'ARG BILIG_WORKPAPER_VERSION=0.1.95\n')
 
     writeFileSync(
       join(rootDir, 'packages/headless/server.json'),
@@ -84,7 +85,7 @@ describe('syncRuntimePackageVersions', () => {
     const result = syncRuntimePackageVersions({ rootDir, version: '0.14.14' })
 
     expect(result.updatedPackages).toEqual(RUNTIME_PACKAGE_DIRS.map(packageNameForDir))
-    expect(result.updatedFiles).toHaveLength(RUNTIME_PACKAGE_DIRS.length + 3)
+    expect(result.updatedFiles).toHaveLength(RUNTIME_PACKAGE_DIRS.length + 4)
 
     for (const packageDir of RUNTIME_PACKAGE_DIRS) {
       const manifest = JSON.parse(readFileSync(join(rootDir, packageDir, 'package.json'), 'utf8'))
@@ -109,6 +110,7 @@ describe('syncRuntimePackageVersions', () => {
 
     const releasePleaseManifest = JSON.parse(readFileSync(join(rootDir, '.release-please-manifest.json'), 'utf8'))
     expect(releasePleaseManifest['packages/headless']).toBe('0.14.14')
+    expect(readFileSync(join(rootDir, 'Dockerfile'), 'utf8')).toBe('ARG BILIG_WORKPAPER_VERSION=0.14.14\n')
   })
 
   it('rejects non-stable semver versions before writing files', () => {

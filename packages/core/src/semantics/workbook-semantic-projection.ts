@@ -3,6 +3,8 @@ import type {
   CellRangeRef,
   CellStyleRecord,
   LiteralInput,
+  WorkbookChartAnchorSnapshot,
+  WorkbookDrawingAnchorMarkerSnapshot,
   SheetMetadataSnapshot,
   WorkbookAxisEntrySnapshot,
   WorkbookCalculationSettingsSnapshot,
@@ -354,6 +356,7 @@ export function projectWorkbookSemanticSnapshot(snapshot: WorkbookSnapshot): Wor
 }
 
 function projectChartSemantics(chart: WorkbookChartSnapshot): ProjectedWorkbookChartSemantics {
+  const anchor = chart.anchor && !isDefaultChartAnchor(chart, chart.anchor) ? normalizeChartAnchor(chart.anchor) : undefined
   const projected: ProjectedWorkbookChartSemantics = {
     id: chart.id,
     sheetName: chart.sheetName,
@@ -363,7 +366,7 @@ function projectChartSemantics(chart: WorkbookChartSnapshot): ProjectedWorkbookC
     seriesOrientation: chart.seriesOrientation ?? 'columns',
     rows: chart.rows,
     cols: chart.cols,
-    ...(chart.anchor !== undefined ? { anchor: structuredClone(chart.anchor) } : {}),
+    ...(anchor !== undefined ? { anchor } : {}),
   }
   if (chart.firstRowAsHeaders !== undefined) {
     return {
@@ -380,6 +383,55 @@ function projectChartSemantics(chart: WorkbookChartSnapshot): ProjectedWorkbookC
     ...(chart.title !== undefined ? { title: chart.title } : {}),
     ...(chart.legendPosition !== undefined ? { legendPosition: chart.legendPosition } : {}),
   }
+}
+
+function defaultChartAnchor(chart: WorkbookChartSnapshot): WorkbookChartAnchorSnapshot {
+  const cell = parseCellAddress(chart.address, chart.sheetName)
+  return {
+    kind: 'twoCell',
+    editAs: 'twoCell',
+    from: { row: cell.row, col: cell.col },
+    to: {
+      row: cell.row + Math.max(1, chart.rows),
+      col: cell.col + Math.max(1, chart.cols),
+    },
+  }
+}
+
+function normalizeChartMarker(marker: WorkbookDrawingAnchorMarkerSnapshot): WorkbookDrawingAnchorMarkerSnapshot {
+  return {
+    row: marker.row,
+    col: marker.col,
+    ...(marker.rowOffset !== undefined && marker.rowOffset !== 0 ? { rowOffset: marker.rowOffset } : {}),
+    ...(marker.colOffset !== undefined && marker.colOffset !== 0 ? { colOffset: marker.colOffset } : {}),
+  }
+}
+
+function normalizeChartAnchor(anchor: WorkbookChartAnchorSnapshot): WorkbookChartAnchorSnapshot {
+  if (anchor.kind === 'twoCell') {
+    return {
+      kind: 'twoCell',
+      editAs: anchor.editAs ?? 'twoCell',
+      from: normalizeChartMarker(anchor.from),
+      to: normalizeChartMarker(anchor.to),
+    }
+  }
+  if (anchor.kind === 'oneCell') {
+    return {
+      kind: 'oneCell',
+      from: normalizeChartMarker(anchor.from),
+      extent: structuredClone(anchor.extent),
+    }
+  }
+  return {
+    kind: 'absolute',
+    position: structuredClone(anchor.position),
+    extent: structuredClone(anchor.extent),
+  }
+}
+
+function isDefaultChartAnchor(chart: WorkbookChartSnapshot, anchor: WorkbookChartAnchorSnapshot): boolean {
+  return JSON.stringify(normalizeChartAnchor(anchor)) === JSON.stringify(normalizeChartAnchor(defaultChartAnchor(chart)))
 }
 
 function projectPivotValue(value: WorkbookPivotValueSnapshot): WorkbookPivotValueSnapshot {

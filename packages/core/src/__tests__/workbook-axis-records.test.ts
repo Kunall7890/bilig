@@ -62,6 +62,17 @@ describe('workbook axis records', () => {
     expect(listAxisEntries(entries)).toEqual([])
   })
 
+  it('does not let sparse tail inserts materialize later default inserts', () => {
+    const entries: Array<WorkbookAxisEntryRecord | undefined> = []
+    const createEntry = createEntryFactory('column')
+
+    expect(spliceAxisEntries(entries, 3, 0, 1, createEntry)).toEqual([])
+    expect(entries.length).toBe(0)
+
+    expect(spliceAxisEntries(entries, 0, 0, 1, createEntry)).toEqual([])
+    expect(listAxisEntries(entries)).toEqual([])
+  })
+
   it('splices sparse default inserts while preserving existing suffix entries', () => {
     const entries: Array<WorkbookAxisEntryRecord | undefined> = [{ id: 'column-existing', size: null, hidden: null }]
     const createEntry = createEntryFactory('column')
@@ -87,6 +98,7 @@ describe('workbook axis records', () => {
 
     expect(listAxisEntries(generatedEntries)).toEqual([
       { id: 'column-existing', index: 0 },
+      { id: 'column-1', index: 1 },
       { id: 'column-tail', index: 2 },
     ])
     expect(listAxisEntries(providedEntries)).toEqual([

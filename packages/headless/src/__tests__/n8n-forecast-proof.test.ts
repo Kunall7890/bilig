@@ -66,8 +66,6 @@ describe('n8n formula readback proof', () => {
       port: 8787,
     })
     expect(n8nForecastServerHelpText()).toContain('bilig-n8n-formula-server')
-    expect(() => parseN8nForecastServerCliArgs(['--bad'], {})).toThrow(
-      'Unknown bilig-n8n-formula-server argument',
-    )
+    expect(() => parseN8nForecastServerCliArgs(['--bad'], {})).toThrow('Unknown bilig-n8n-formula-server argument')
   })
 })

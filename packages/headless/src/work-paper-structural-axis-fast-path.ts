@@ -13,7 +13,7 @@ export interface WorkPaperStructuralAxisFastPathRuntime {
     sheet: SheetRecord,
     start: number,
     amount: number,
-    options?: { readonly emitTracked?: boolean },
+    options?: { readonly emitTracked?: boolean; readonly recordHistory?: boolean },
   ) => void
   readonly assertNotDisposed: () => void
   readonly batchStructuralChanges: (operations: () => void) => WorkPaperChange[]
@@ -58,7 +58,7 @@ export function editWorkPaperAxisIntervalsWithoutRuntimeAdapters(
   }
   if (indexes.length === 1 && runtime.getBatchUsesTrackedFastPath()) {
     const [start, amount] = indexes[0]!
-    runtime.applyAxisIntervalEditForSheet(axis, mode, runtime.sheetRecord(sheetId), start, amount)
+    runtime.applyAxisIntervalEditForSheet(axis, mode, runtime.sheetRecord(sheetId), start, amount, { recordHistory: true })
     return []
   }
   return runtime.batchStructuralChanges(() => {
@@ -86,7 +86,7 @@ function editSingleAxisIntervalWithoutRuntimeAdapters(
     })
   }
   if (runtime.getBatchUsesTrackedFastPath()) {
-    runtime.applyAxisIntervalEditForSheet(axis, mode, sheet, start, amount)
+    runtime.applyAxisIntervalEditForSheet(axis, mode, sheet, start, amount, { recordHistory: true })
     return []
   }
   return runtime.batchStructuralChanges(() => {

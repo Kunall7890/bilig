@@ -12,6 +12,8 @@ import {
   parseRelationships,
   pivotCacheDefinitionContentType,
   pivotCacheDefinitionRelationshipType,
+  pivotCacheRecordsContentType,
+  pivotCacheRecordsRelationshipType,
   pivotTableContentType,
   pivotTableRelationshipType,
   setZipText,
@@ -164,6 +166,28 @@ function buildCacheFieldXml(field: PivotCacheField): string {
   return [`<cacheField name="${escapeXml(field.name)}" numFmtId="0">`, '<sharedItems/>', '</cacheField>'].join('')
 }
 
+function pivotCacheRecordValueXml(value: LiteralInput): string {
+  if (value === null) {
+    return '<m/>'
+  }
+  if (typeof value === 'number') {
+    return `<n v="${escapeXml(String(value))}"/>`
+  }
+  if (typeof value === 'boolean') {
+    return `<b v="${value ? '1' : '0'}"/>`
+  }
+  return `<s v="${escapeXml(value)}"/>`
+}
+
+function buildPivotCacheRecordsXml(cacheTable: PivotCacheTable): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    `<pivotCacheRecords xmlns="${spreadsheetNamespace}" count="${String(cacheTable.rows.length)}">`,
+    ...cacheTable.rows.map((row) => `<r>${row.map(pivotCacheRecordValueXml).join('')}</r>`),
+    '</pivotCacheRecords>',
+  ].join('')
+}
+
 function buildPivotCacheDefinitionXml(
   pivot: WorkbookPivotSnapshot & { source: CellRangeRef },
   cacheTable: PivotCacheTable,
@@ -171,7 +195,7 @@ function buildPivotCacheDefinitionXml(
 ): string {
   return [
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
-    `<pivotCacheDefinition xmlns="${spreadsheetNamespace}" invalid="1" refreshOnLoad="1" refreshedVersion="8" createdVersion="8" minRefreshableVersion="3" recordCount="0">`,
+    `<pivotCacheDefinition xmlns="${spreadsheetNamespace}" invalid="1" refreshOnLoad="1" refreshedVersion="8" createdVersion="8" minRefreshableVersion="3" recordCount="${String(cacheTable.rows.length)}">`,
     '<cacheSource type="worksheet">',
     `<worksheetSource ref="${escapeXml(rangeRefA1(pivot.source))}" sheet="${escapeXml(exportSourceSheetName)}"/>`,
     '</cacheSource>',
@@ -343,6 +367,8 @@ export function addExportPivotsToXlsxBytes(
         nextPivotCacheIndex += 1
         const pivotTablePath = `xl/pivotTables/pivotTable${String(pivotTableIndex)}.xml`
         const cacheDefinitionPath = `xl/pivotCache/pivotCacheDefinition${String(cacheIndex)}.xml`
+        const cacheRecordsPath = `xl/pivotCache/pivotCacheRecords${String(cacheIndex)}.xml`
+        const cacheDefinitionRelationshipsPath = `xl/pivotCache/_rels/pivotCacheDefinition${String(cacheIndex)}.xml.rels`
 
         const workbookRelationshipId = nextRelationshipId(workbookRelationships)
         workbookRelationships.push({
@@ -354,6 +380,18 @@ export function addExportPivotsToXlsxBytes(
 
         setZipText(zip, pivotTablePath, buildPivotTableDefinitionXml(pivot, cacheIndex, cacheTable))
         setZipText(zip, cacheDefinitionPath, buildPivotCacheDefinitionXml(sourcefulPivot, cacheTable, exportSourceSheetName))
+        setZipText(zip, cacheRecordsPath, buildPivotCacheRecordsXml(cacheTable))
+        setZipText(
+          zip,
+          cacheDefinitionRelationshipsPath,
+          buildRelationshipsXml([
+            {
+              id: 'rId1',
+              type: pivotCacheRecordsRelationshipType,
+              target: `pivotCacheRecords${String(cacheIndex)}.xml`,
+            },
+          ]),
+        )
 
         const sheetRelationshipId = nextRelationshipId(sheetRelationships)
         sheetRelationships.push({
@@ -365,6 +403,7 @@ export function addExportPivotsToXlsxBytes(
 
         contentTypesXml = addContentTypeOverride(contentTypesXml, `/${pivotTablePath}`, pivotTableContentType)
         contentTypesXml = addContentTypeOverride(contentTypesXml, `/${cacheDefinitionPath}`, pivotCacheDefinitionContentType)
+        contentTypesXml = addContentTypeOverride(contentTypesXml, `/${cacheRecordsPath}`, pivotCacheRecordsContentType)
       })
 
       setZipText(zip, sheetRelsPath, buildRelationshipsXml(sheetRelationships))

@@ -104,7 +104,7 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
     sheet: SheetRecord,
     start: number,
     amount: number,
-    options?: { readonly emitTracked?: boolean },
+    options?: { readonly emitTracked?: boolean; readonly recordHistory?: boolean },
   ): void
   protected abstract applyAxisMove(axis: WorkPaperAxisKind, sheetId: number, start: number, count: number, target: number): void
   protected abstract applyMatrixContents(address: WorkPaperCellAddress, content: WorkPaperSheet): void

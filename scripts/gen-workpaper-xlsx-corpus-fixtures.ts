@@ -8,7 +8,8 @@ const fixtureDirectory = resolve('packages/headless/fixtures/xlsx-corpus')
 
 interface XlsxCorpusFixture {
   readonly fileName: string
-  readonly workbook: XLSX.WorkBook
+  readonly sourcePath?: string
+  readonly workbook?: XLSX.WorkBook
 }
 
 function buildFixtures(): readonly XlsxCorpusFixture[] {
@@ -16,6 +17,10 @@ function buildFixtures(): readonly XlsxCorpusFixture[] {
     {
       fileName: 'issue-8-production-regressions.xlsx',
       workbook: buildIssue8ProductionRegressionWorkbook(),
+    },
+    {
+      fileName: 'macos-excel-threaded-comments-source.xlsx',
+      sourcePath: resolve('packages/headless/fixtures/excel-oracle/macos-excel-threaded-comments-source.xlsx'),
     },
   ]
 }
@@ -120,7 +125,7 @@ function run(check: boolean): void {
 
   for (const fixture of buildFixtures()) {
     const path = join(fixtureDirectory, fixture.fileName)
-    const expected = fixtureBytes(fixture.workbook)
+    const expected = fixture.workbook ? fixtureBytes(fixture.workbook) : readFileSync(fixture.sourcePath!)
     if (check) {
       if (!existsSync(path)) {
         throw new Error(`Missing XLSX corpus fixture: ${path}`)

@@ -28,7 +28,11 @@ import type {
 } from '@bilig/protocol'
 import { calculationSettingsEqual, definedNameValuesEqual, normalizeWorkbookCalculationSettings } from '../engine-metadata-utils.js'
 import { buildFormatClearOps, buildFormatPatchOps, buildStyleClearOps, buildStylePatchOps } from '../engine-range-format-ops.js'
-import { hasEngineStructuralDeleteImpact, hasEngineStructuralInsertImpact } from './engine-structural-delete-impact.js'
+import {
+  hasEngineStructuralDeleteImpact,
+  hasEngineStructuralInsertBoundaryPreparationImpact,
+  hasEngineStructuralInsertImpact,
+} from './engine-structural-delete-impact.js'
 import { buildSortRangeOps, buildSortTableOps, type SpreadsheetEngineSortRangeOptions } from './engine-sort-range.js'
 import { buildApplyTableAutoFilterOps, buildClearWorksheetAutoFilterOps, buildSetWorksheetAutoFilterOps } from './engine-autofilter.js'
 import { upsertNumericDefinedNameFast as upsertNumericDefinedNameFastPath } from './engine-numeric-defined-name-fast-path.js'
@@ -80,6 +84,7 @@ import {
   type WorkbookTableRecord,
   type WorkbookVolatileContextRecord,
 } from '../workbook-store.js'
+import { getRuntimeFormulaSource } from './runtime-formula-source.js'
 
 export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEngineRuntimeBase {
   abstract override getCellByIndex(cellIndex: number): CellSnapshot
@@ -210,11 +215,24 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
     return this.workbook.listRowAxisEntries(sheetName)
   }
 
-  insertRows(sheetName: string, start: number, count: number, options: { readonly emitTracked?: boolean } = {}): void {
-    if (count <= 0 || !this.hasStructuralInsertImpact(sheetName, 'row', start, count)) {
+  insertRows(
+    sheetName: string,
+    start: number,
+    count: number,
+    options: { readonly emitTracked?: boolean; readonly recordHistory?: boolean } = {},
+  ): void {
+    if (count <= 0) {
       return
     }
-    this.runtime.mutation.executeLocalSingleStructuralInsertNow({ kind: 'insertRows', sheetName, start, count }, undefined, options)
+    const hasSemanticImpact = this.hasStructuralInsertImpact(sheetName, 'row', start, count)
+    if (!hasSemanticImpact && !this.hasStructuralInsertBoundaryPreparationImpact(sheetName, 'row', start)) {
+      return
+    }
+    this.runtime.mutation.executeLocalSingleStructuralInsertNow(
+      { kind: 'insertRows', sheetName, start, count },
+      undefined,
+      hasSemanticImpact || options.recordHistory === true ? options : { ...options, recordHistory: false },
+    )
   }
 
   deleteRows(sheetName: string, start: number, count: number): void {
@@ -250,11 +268,24 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
     return this.workbook.listColumnAxisEntries(sheetName)
   }
 
-  insertColumns(sheetName: string, start: number, count: number, options: { readonly emitTracked?: boolean } = {}): void {
-    if (count <= 0 || !this.hasStructuralInsertImpact(sheetName, 'column', start, count)) {
+  insertColumns(
+    sheetName: string,
+    start: number,
+    count: number,
+    options: { readonly emitTracked?: boolean; readonly recordHistory?: boolean } = {},
+  ): void {
+    if (count <= 0) {
       return
     }
-    this.runtime.mutation.executeLocalSingleStructuralInsertNow({ kind: 'insertColumns', sheetName, start, count }, undefined, options)
+    const hasSemanticImpact = this.hasStructuralInsertImpact(sheetName, 'column', start, count)
+    if (!hasSemanticImpact && !this.hasStructuralInsertBoundaryPreparationImpact(sheetName, 'column', start)) {
+      return
+    }
+    this.runtime.mutation.executeLocalSingleStructuralInsertNow(
+      { kind: 'insertColumns', sheetName, start, count },
+      undefined,
+      hasSemanticImpact || options.recordHistory === true ? options : { ...options, recordHistory: false },
+    )
   }
 
   deleteColumns(sheetName: string, start: number, count: number): void {
@@ -688,6 +719,12 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
     return hasEngineStructuralDeleteImpact({
       workbook: this.workbook,
       getCellByIndex: (cellIndex) => this.getCellByIndex(cellIndex),
+      getFormulaSourceByIndex: (cellIndex) => {
+        const formula = this.formulas.get(cellIndex)
+        return formula
+          ? getRuntimeFormulaSource(formula, this.runtime.binding.getFormulaFamilyStructuralSourceTransformNow(cellIndex))
+          : undefined
+      },
       sheetName,
       axis,
       start,
@@ -699,10 +736,25 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
     return hasEngineStructuralInsertImpact({
       workbook: this.workbook,
       getCellByIndex: (cellIndex) => this.getCellByIndex(cellIndex),
+      getFormulaSourceByIndex: (cellIndex) => {
+        const formula = this.formulas.get(cellIndex)
+        return formula
+          ? getRuntimeFormulaSource(formula, this.runtime.binding.getFormulaFamilyStructuralSourceTransformNow(cellIndex))
+          : undefined
+      },
       sheetName,
       axis,
       start,
       count,
+    })
+  }
+
+  private hasStructuralInsertBoundaryPreparationImpact(sheetName: string, axis: 'row' | 'column', start: number): boolean {
+    return hasEngineStructuralInsertBoundaryPreparationImpact({
+      workbook: this.workbook,
+      sheetName,
+      axis,
+      start,
     })
   }
 }

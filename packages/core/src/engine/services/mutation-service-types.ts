@@ -25,7 +25,7 @@ export interface EngineMutationService {
   readonly executeLocalSingleStructuralInsertNow: (
     op: Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }>,
     potentialNewCells?: number,
-    options?: { readonly emitTracked?: boolean },
+    options?: { readonly emitTracked?: boolean; readonly recordHistory?: boolean },
   ) => readonly EngineOp[] | null
   readonly executeLocalCellMutationsAtNow: (
     refs: readonly EngineCellMutationRef[],

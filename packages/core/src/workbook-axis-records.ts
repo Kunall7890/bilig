@@ -66,7 +66,7 @@ function makeAxisEntrySnapshot(entry: WorkbookAxisEntryRecord, index: number): W
   if (entry.hidden !== null) {
     snapshot.hidden = entry.hidden
   }
-  if (entry.filterHidden !== null) {
+  if (entry.filterHidden !== undefined && entry.filterHidden !== null) {
     snapshot.filterHidden = entry.filterHidden
   }
   return snapshot
@@ -98,17 +98,20 @@ function makeAxisMetadataRecord(
   count: number,
   entry: WorkbookAxisEntryRecord,
 ): WorkbookAxisMetadataRecord {
-  return {
+  const record: WorkbookAxisMetadataRecord = {
     sheetName,
     start,
     count,
     size: entry.size,
     hidden: entry.hidden,
-    filterHidden: entry.filterHidden,
     ...copyAxisGeometryToMetadata(
       Object.fromEntries(axisGeometryKeys.map((key) => [key, axisGeometryValue(entry, key)])) as AxisGeometryMap,
     ),
   }
+  if (entry.filterHidden !== undefined && entry.filterHidden !== null) {
+    record.filterHidden = entry.filterHidden
+  }
+  return record
 }
 
 export function listAxisEntries(entries: Array<WorkbookAxisEntryRecord | undefined>): WorkbookAxisEntrySnapshot[] {
@@ -198,6 +201,14 @@ export function spliceAxisEntries(
   if (insertCount === 0 && axisEntries.length <= start) {
     return []
   }
+  if (
+    deleteCount === 0 &&
+    insertCount > 0 &&
+    axisEntries.length <= start &&
+    (providedSnapshots === undefined || providedSnapshots.length === 0)
+  ) {
+    return []
+  }
   if (axisEntries.length < start) {
     axisEntries.length = start
   }
@@ -209,10 +220,9 @@ export function spliceAxisEntries(
     if (insertCount === 0) {
       removed = axisEntries.splice(start, deleteCount)
     } else if (insertCount === 1) {
-      removed = axisEntries.splice(start, deleteCount, undefined)
+      removed = axisEntries.splice(start, deleteCount, _createEntry())
     } else {
-      const inserted: Array<WorkbookAxisEntryRecord | undefined> = []
-      inserted.length = insertCount
+      const inserted = Array.from({ length: insertCount }, () => _createEntry())
       removed = axisEntries.splice(start, deleteCount, ...inserted)
     }
     return removed.flatMap((entry, index) => (entry ? [makeAxisEntrySnapshot(entry, start + index)] : []))
@@ -331,15 +341,18 @@ export function getAxisMetadataRecord(
   ) {
     return undefined
   }
-  return {
+  const record: WorkbookAxisMetadataRecord = {
     sheetName,
     start,
     count,
     size: size ?? null,
     hidden: hidden ?? null,
-    filterHidden: filterHidden ?? null,
     ...copyAxisGeometryToMetadata(geometry),
   }
+  if ((filterHidden ?? null) !== null) {
+    record.filterHidden = filterHidden ?? null
+  }
+  return record
 }
 
 export function syncAxisMetadataBucket(

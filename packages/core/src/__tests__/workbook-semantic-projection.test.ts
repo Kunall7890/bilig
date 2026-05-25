@@ -148,6 +148,55 @@ describe('workbook semantic projection', () => {
     expect(workbookSemanticSnapshotsEqual(left, right)).toBe(true)
   })
 
+  it('treats generated default chart anchors as equivalent to omitted anchors', () => {
+    const left: WorkbookSnapshot = {
+      ...baseSnapshot,
+      workbook: {
+        name: 'semantic-fixture',
+        metadata: {
+          charts: [
+            {
+              id: 'chart-1',
+              sheetName: 'Sheet1',
+              address: 'E1',
+              source: { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B2' },
+              chartType: 'line',
+              rows: 8,
+              cols: 4,
+            },
+          ],
+        },
+      },
+    }
+    const right: WorkbookSnapshot = {
+      ...left,
+      workbook: {
+        name: 'semantic-fixture',
+        metadata: {
+          charts: [
+            {
+              id: 'chart-1',
+              sheetName: 'Sheet1',
+              address: 'E1',
+              source: { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B2' },
+              chartType: 'line',
+              rows: 8,
+              cols: 4,
+              anchor: {
+                kind: 'twoCell',
+                editAs: 'twoCell',
+                from: { row: 0, col: 4, rowOffset: 0, colOffset: 0 },
+                to: { row: 8, col: 8, rowOffset: 0, colOffset: 0 },
+              },
+            },
+          ],
+        },
+      },
+    }
+
+    expect(projectWorkbookSemanticSnapshot(left)).toEqual(projectWorkbookSemanticSnapshot(right))
+  })
+
   it('reports stable projection paths for semantic differences', () => {
     const left: WorkbookSnapshot = {
       ...baseSnapshot,

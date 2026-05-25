@@ -84,7 +84,7 @@ export function createEngineMutationService(args: {
   ) => void
   readonly applyLocalSingleStructuralAxisOpWithoutBatchNow?: (
     op: Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }>,
-    options?: { readonly emitTracked?: boolean },
+    options?: { readonly emitTracked?: boolean; readonly recordHistory?: boolean },
   ) => boolean
   readonly applyCellMutationsAtBatchNow: (
     refs: readonly EngineCellMutationRef[],
@@ -629,9 +629,10 @@ export function createEngineMutationService(args: {
     op: Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }>,
     potentialNewCells: number | undefined,
     applyForward: (forward: TransactionRecord) => void,
+    options: { readonly recordHistory?: boolean } = {},
   ): void => {
     applyForward(potentialNewCells === undefined ? { kind: 'single-op', op } : { kind: 'single-op', op, potentialNewCells })
-    if (args.state.getTransactionReplayDepth() === 0) {
+    if (options.recordHistory !== false && args.state.getTransactionReplayDepth() === 0) {
       args.state.undoStack.push({
         forward: createLazySingleOpTransactionRecord(canonicalizeStructuralInsertForwardOp(op), potentialNewCells),
         inverse: createLazySingleOpTransactionRecord(inverseMutationStructuralInsertOp(op)),
@@ -643,11 +644,16 @@ export function createEngineMutationService(args: {
   const executeLocalSingleStructuralInsertNow = (
     op: Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }>,
     potentialNewCells: number | undefined,
-    options: { readonly emitTracked?: boolean } = {},
+    options: { readonly emitTracked?: boolean; readonly recordHistory?: boolean } = {},
   ): readonly EngineOp[] | null => {
-    applyLocalStructuralInsertWithUndo(op, potentialNewCells, (forward) => {
-      executeTransactionNow(forward, 'local', options.emitTracked === undefined ? {} : { emitTracked: options.emitTracked })
-    })
+    applyLocalStructuralInsertWithUndo(
+      op,
+      potentialNewCells,
+      (forward) => {
+        executeTransactionNow(forward, 'local', options.emitTracked === undefined ? {} : { emitTracked: options.emitTracked })
+      },
+      options,
+    )
     return null
   }
 

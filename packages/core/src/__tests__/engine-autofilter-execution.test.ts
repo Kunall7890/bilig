@@ -62,11 +62,11 @@ describe('engine AutoFilter execution', () => {
 })
 
 function rowFlags(
-  metadata: readonly { readonly start: number; readonly hidden: boolean | null; readonly filterHidden: boolean | null }[],
+  metadata: readonly { readonly start: number; readonly hidden: boolean | null; readonly filterHidden?: boolean | null }[],
 ): Array<{ start: number; hidden: boolean | null; filterHidden: boolean | null }> {
   return metadata.map((record) => ({
     start: record.start,
     hidden: record.hidden,
-    filterHidden: record.filterHidden,
+    filterHidden: record.filterHidden ?? null,
   }))
 }

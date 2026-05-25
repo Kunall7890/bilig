@@ -36,15 +36,22 @@ describe('macOS Desktop Excel pivot oracle', () => {
     const cacheDefinitionXml = strFromU8(exportedZip['xl/pivotCache/pivotCacheDefinition1.xml'] ?? new Uint8Array())
     expect(cacheDefinitionXml).toContain('invalid="1"')
     expect(cacheDefinitionXml).toContain('refreshOnLoad="1"')
-    expect(cacheDefinitionXml).toContain('recordCount="0"')
-    expect(exportedZip['xl/pivotCache/pivotCacheRecords1.xml']).toBeUndefined()
+    expect(cacheDefinitionXml).toContain('recordCount="3"')
+    const cacheRecordsXml = strFromU8(exportedZip['xl/pivotCache/pivotCacheRecords1.xml'] ?? new Uint8Array())
+    expect(cacheRecordsXml).toContain('<pivotCacheRecords')
+    expect(cacheRecordsXml).toContain('count="3"')
+    expect(cacheRecordsXml).toContain('<r><s v="East"/><s v="priority"/><s v="Widget"/><n v="20"/></r>')
 
     const roundTrip = importXlsx(exportedBytes, 'headless-pivot-refresh-roundtrip.xlsx')
     expect(roundTrip.snapshot.workbook.metadata?.pivots?.[0]).toMatchObject({
       cacheFields: ['Region', 'Notes', 'Product', 'Sales'],
+      cachedRecords: [
+        ['East', 'priority', 'Widget', 20],
+        ['West', 'priority', 'Widget', 7],
+        ['East', 'priority', 'Gizmo', 5],
+      ],
       source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'D4' },
     })
-    expect(roundTrip.snapshot.workbook.metadata?.pivots?.[0]?.cachedRecords).toBeUndefined()
   })
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(

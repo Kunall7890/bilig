@@ -132,7 +132,8 @@ export function rectangularBatchEditScenario(
   inputCols: number,
 ): WorkPaperUniverScenario {
   return operationScenario({
-    executeUniverMutation: (runtime) => runtime.sheet.getRange(0, 0, rowCount, inputCols).setValues(rectangularEditValues(rowCount, inputCols)),
+    executeUniverMutation: (runtime) =>
+      runtime.sheet.getRange(0, 0, rowCount, inputCols).setValues(rectangularEditValues(rowCount, inputCols)),
     executeWorkPaperMutation: (workbook) => {
       const sheetId = workbook.getSheetId('Bench')!
       return workbook.batch(() => {
@@ -276,7 +277,11 @@ export function rangeReadDenseScenario(workload: WorkPaperUniverWorkload, rows: 
   })
 }
 
-export function rangeReadSparseWideScenario(workload: WorkPaperUniverWorkload, rowCount: number, colCount: number): WorkPaperUniverScenario {
+export function rangeReadSparseWideScenario(
+  workload: WorkPaperUniverWorkload,
+  rowCount: number,
+  colCount: number,
+): WorkPaperUniverScenario {
   const middleCol = Math.floor(colCount / 2)
   return rangeReadScenario({
     executeUniverRead: (runtime) => runtime.sheet.getRange(0, 0, rowCount, colCount).getValues(),
@@ -298,7 +303,8 @@ export function rangeReadFormulaGridScenario(
 ): WorkPaperUniverScenario {
   return rangeReadScenario({
     executeUniverRead: (runtime) => runtime.sheet.getRange(0, inputCols, rowCount, formulaCols).getValues(),
-    executeWorkPaperRead: (workbook, sheetId) => workbook.getRangeValues(range(sheetId, 0, inputCols, rowCount - 1, inputCols + formulaCols - 1)),
+    executeWorkPaperRead: (workbook, sheetId) =>
+      workbook.getRangeValues(range(sheetId, 0, inputCols, rowCount - 1, inputCols + formulaCols - 1)),
     family: 'range-read',
     prepareUniverRead: (runtime) =>
       waitForNonNullCells(runtime, [
@@ -461,7 +467,7 @@ export function operationScenario(args: {
   readonly workload: WorkPaperUniverWorkload
 }): WorkPaperUniverScenario {
   const sheetName = 'Bench'
-  const columnCount = Math.max(1, ...(args.sheet.map((row) => row.length)), ...args.observedCells.map((cell) => cell.col + 1))
+  const columnCount = Math.max(1, ...args.sheet.map((row) => row.length), ...args.observedCells.map((cell) => cell.col + 1))
   const fixture = {
     ...(args.edit
       ? {
@@ -551,9 +557,7 @@ async function setupUniverSheet(runtime: UniverRuntime, sheet: WorkPaperSheet): 
 }
 
 function rectangularEditValues(rowCount: number, inputCols: number): number[][] {
-  return Array.from({ length: rowCount }, (_rowValue, row) =>
-    Array.from({ length: inputCols }, (_colValue, col) => (row + 1) * (col + 2)),
-  )
+  return Array.from({ length: rowCount }, (_rowValue, row) => Array.from({ length: inputCols }, (_colValue, col) => (row + 1) * (col + 2)))
 }
 
 function emptyGrid(rowCount: number, colCount: number): string[][] {
@@ -588,10 +592,13 @@ function collectFormulaRuns(sheet: WorkPaperSheet): { readonly formulas: string[
 }
 
 function nonFormulaValue(value: WorkPaperSheet[number][number] | undefined): UniverEditableValue {
-  return typeof value === 'string' && value.startsWith('=') ? '' : value ?? ''
+  return typeof value === 'string' && value.startsWith('=') ? '' : (value ?? '')
 }
 
-function observeWorkPaper(workbook: WorkPaper, observedCells: readonly (ObservedCell & { readonly value?: number })[]): Record<string, unknown> {
+function observeWorkPaper(
+  workbook: WorkPaper,
+  observedCells: readonly (ObservedCell & { readonly value?: number })[],
+): Record<string, unknown> {
   const sheetId = workbook.getSheetId('Bench')!
   return Object.fromEntries(
     observedCells.map((cell) => [
@@ -601,7 +608,10 @@ function observeWorkPaper(workbook: WorkPaper, observedCells: readonly (Observed
   )
 }
 
-function observeUniver(runtime: UniverRuntime, observedCells: readonly (ObservedCell & { readonly value?: number })[]): Record<string, unknown> {
+function observeUniver(
+  runtime: UniverRuntime,
+  observedCells: readonly (ObservedCell & { readonly value?: number })[],
+): Record<string, unknown> {
   return Object.fromEntries(
     observedCells.map((cell) => [
       cell.key,
@@ -620,11 +630,7 @@ function summarizeDenseRangeRead(values: unknown[][], normalize: (value: unknown
   }
 }
 
-function summarizeSparseWideRead(
-  values: unknown[][],
-  middleCol: number,
-  normalize: (value: unknown) => unknown,
-): Record<string, unknown> {
+function summarizeSparseWideRead(values: unknown[][], middleCol: number, normalize: (value: unknown) => unknown): Record<string, unknown> {
   const lastRow = values.at(-1)
   return {
     emptyValue: normalize(values[0]?.[1]) ?? '',

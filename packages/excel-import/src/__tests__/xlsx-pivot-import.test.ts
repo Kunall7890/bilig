@@ -4,6 +4,12 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { exportXlsx, externalPivotCachesWarning, importXlsx } from '../index.js'
 
+const salesPivotCachedRecords = [
+  ['East', 10],
+  ['West', 7],
+  ['East', 5],
+] as const
+
 describe('xlsx pivot import', () => {
   it('preserves existing pivot table package parts when only worksheet relationships reference them', () => {
     const sourceBytes = buildRelationshipOnlyPivotWorkbook()
@@ -86,6 +92,7 @@ describe('xlsx pivot import', () => {
         address: 'A1',
         cacheId: 1,
         cacheFields: ['Region', 'Sales'],
+        cachedRecords: salesPivotCachedRecords,
         sourceKind: 'worksheet',
         source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'B4' },
         groupBy: ['Region'],
@@ -178,6 +185,7 @@ describe('xlsx pivot import', () => {
         address: 'A1',
         cacheId: 1,
         cacheFields: ['Region', 'Sales'],
+        cachedRecords: salesPivotCachedRecords,
         sourceKind: 'table',
         source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'B4' },
         groupBy: ['Region'],
@@ -260,6 +268,7 @@ describe('xlsx pivot import', () => {
         address: 'A1',
         cacheId: 1,
         cacheFields: ['Region', 'Sales'],
+        cachedRecords: salesPivotCachedRecords,
         sourceKind: 'named-range',
         source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'B4' },
         groupBy: ['Region'],
@@ -346,6 +355,7 @@ describe('xlsx pivot import', () => {
         address: 'A1',
         cacheId: 1,
         cacheFields: ['Region', 'Sales'],
+        cachedRecords: salesPivotCachedRecords,
         sourceKind: 'named-range',
         source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'B4' },
         groupBy: ['Region'],

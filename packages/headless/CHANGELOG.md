@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): prepare canonical action handoff (5eddcfff)
 - feat(workbook): expose prepare subpath (b12bcc94)
 - feat(workbook): validate action names before planning (eaa1f78c)
@@ -20,11 +21,13 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): add features subpath (180d0653)
 
 ## Fixes
+
 - fix(excel-import): preserve null external cache errors (d2315862)
 - fix(excel-oracle): serialize macos excel harness (40b4dc3a)
 - fix(workbook): match Excel active tab on sheet moves (2d19224c)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.97.0 (df8a3278)
 - refactor(workbook): split run proof helpers (69d3184b)
 - chore(release): runtime packages v0.98.0 (3be2efd5)
@@ -42,6 +45,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): prepare canonical action handoff (5eddcfff)
 - feat(workbook): expose prepare subpath (b12bcc94)
 - feat(workbook): validate action names before planning (eaa1f78c)
@@ -49,11 +53,13 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): validate plan run proof handoff (7de2b939)
 
 ## Fixes
+
 - fix(excel-import): preserve null external cache errors (d2315862)
 - fix(excel-oracle): serialize macos excel harness (40b4dc3a)
 - fix(workbook): match Excel active tab on sheet moves (2d19224c)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.97.0 (df8a3278)
 - refactor(workbook): split run proof helpers (69d3184b)
 - chore(release): runtime packages v0.98.0 (3be2efd5)
@@ -70,15 +76,18 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): prepare canonical action handoff (5eddcfff)
 - feat(workbook): expose prepare subpath (b12bcc94)
 - feat(workbook): validate action names before planning (eaa1f78c)
 - feat(workbook): specify run result proof schema (0f6632bd)
 
 ## Fixes
+
 - fix(excel-import): preserve null external cache errors (d2315862)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.97.0 (df8a3278)
 - refactor(workbook): split run proof helpers (69d3184b)
 - chore(release): runtime packages v0.98.0 (3be2efd5)
@@ -90,14 +99,17 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): prepare canonical action handoff (5eddcfff)
 - feat(workbook): expose prepare subpath (b12bcc94)
 - feat(workbook): validate action names before planning (eaa1f78c)
 
 ## Fixes
+
 - fix(excel-import): preserve null external cache errors (d2315862)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.97.0 (df8a3278)
 
 ## 0.97.0
@@ -107,6 +119,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): prepare canonical action handoff (5eddcfff)
 
 ## 0.96.0
@@ -116,17 +129,20 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): verify strict resolved refs (26a703de)
 - feat(workbook): publish agent-focused subpaths (154624da)
 - feat(workbook): publish contract schemas (3417c005)
 
 ## Fixes
+
 - fix(xlsm): keep macro code names aligned on sheet changes (4947ebcb)
 - fix(xlsx): classify data model connections (d3a4173f)
 - fix(release): skip stale post-metadata publishes (f7455cd7)
 - fix(xlsx): hydrate sparse external ranges (459fa22c)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.94.1 (67db3e9f)
 - chore(release): runtime packages v0.95.0 (62fabcc7)
 
@@ -137,15 +153,18 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): verify strict resolved refs (26a703de)
 - feat(workbook): publish agent-focused subpaths (154624da)
 
 ## Fixes
+
 - fix(xlsm): keep macro code names aligned on sheet changes (4947ebcb)
 - fix(xlsx): classify data model connections (d3a4173f)
 - fix(release): skip stale post-metadata publishes (f7455cd7)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.94.1 (67db3e9f)
 
 ## 0.94.1
@@ -155,6 +174,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsm): keep macro code names aligned on sheet changes (4947ebcb)
 
 ## 0.94.0
@@ -164,12 +184,15 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): prove formula readbacks with labels (6255be2a)
 
 ## Fixes
+
 - fix(excel-import): fail closed on ambiguous companions (1270002b)
 
 ## Internal runtime changes
+
 - refactor(excel-import): split external reference formula helpers (c12ea184)
 
 ## 0.93.0
@@ -179,9 +202,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): verify formula labels by tokens (199509e0)
 
 ## Fixes
+
 - fix(excel-import): scope external caches on dense parse (92d4abeb)
 - fix(excel-import): preserve refreshed external cache artifacts (96ea5f21)
 
@@ -192,12 +217,15 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): bind receipts to planned ops (316a9960)
 
 ## Fixes
+
 - fix(xlsx-recalc): hydrate external link caches from companions (e45ac2ec)
 
 ## Internal runtime changes
+
 - refactor(excel-import): split external cache helpers (e858ba86)
 
 ## 0.91.0
@@ -207,6 +235,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): require strict run proof (5ed6f099)
 
 ## 0.90.8
@@ -216,6 +245,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(excel): preopen linked companions before oracle targets (ff925b26)
 - fix(workbook): reject custom ref data records (0c91233a)
 - fix(xlsx): surface unsupported formula cache warnings (83fe836c)
@@ -227,6 +257,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): reject risky defined-name cache passthrough (a52af388)
 
 ## 0.90.6
@@ -236,6 +267,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): reject risky cached formula passthrough (c7ed48fb)
 
 ## 0.90.5
@@ -245,6 +277,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): reject custom-prototype model roots (954ad32f)
 
 ## 0.90.4
@@ -254,6 +287,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): preserve table query ownership (36dc4a9a)
 - fix(workbook): require undo proof data fields (9bc6df4d)
 - fix(workbook): require command result data fields (8cdd388a)
@@ -273,6 +307,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(ci): refresh agent docs after footprint sync (9e34bdc8)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.90.1 (1ff330dc)
 - chore(release): runtime packages v0.90.2 (f4d27d75)
 - chore(release): runtime packages v0.90.3 (c0aec7af)
@@ -284,6 +319,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): preserve table query ownership (36dc4a9a)
 - fix(workbook): require undo proof data fields (9bc6df4d)
 - fix(workbook): require command result data fields (8cdd388a)
@@ -301,6 +337,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(ci): include Dockerfile in runtime release paths (fdd14737)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.90.1 (1ff330dc)
 - chore(release): runtime packages v0.90.2 (f4d27d75)
 
@@ -311,12 +348,14 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): preserve table query ownership (36dc4a9a)
 - fix(workbook): require undo proof data fields (9bc6df4d)
 - fix(workbook): require command result data fields (8cdd388a)
 - fix(xlsx): prune pivot cache sidecars on sheet delete (7f5d6b63)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.90.1 (1ff330dc)
 
 ## 0.90.1
@@ -326,6 +365,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): preserve table query ownership (36dc4a9a)
 - fix(workbook): require undo proof data fields (9bc6df4d)
 
@@ -336,11 +376,13 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): check transported ref data (2a685fd7)
 - feat(workbook): check live refs (998efa61)
 - feat(workbook): canonicalize transported plan data (3dd51d0e)
 
 ## Fixes
+
 - fix(xlsx): preserve legacy comment vml after sheet rename (60706d82)
 - fix(workbook): ignore command envelope scratch fields (047a916d)
 - fix(workbook): allow command scratch metadata (53de4c71)
@@ -348,6 +390,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(engine): block protected direct cell mutations (7983cce8)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.87.0 (b7833b50)
 - chore(release): runtime packages v0.88.0 (ecbea8e9)
 - chore(release): runtime packages v0.89.0 (6c59925a)
@@ -359,17 +402,20 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): check transported ref data (2a685fd7)
 - feat(workbook): check live refs (998efa61)
 - feat(workbook): canonicalize transported plan data (3dd51d0e)
 
 ## Fixes
+
 - fix(xlsx): preserve legacy comment vml after sheet rename (60706d82)
 - fix(workbook): ignore command envelope scratch fields (047a916d)
 - fix(workbook): allow command scratch metadata (53de4c71)
 - fix(workbook): canonicalize receipt ranges (35a7dc53)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.87.0 (b7833b50)
 - chore(release): runtime packages v0.88.0 (ecbea8e9)
 
@@ -380,14 +426,17 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): check transported ref data (2a685fd7)
 - feat(workbook): check live refs (998efa61)
 - feat(workbook): canonicalize transported plan data (3dd51d0e)
 
 ## Fixes
+
 - fix(xlsx): preserve legacy comment vml after sheet rename (60706d82)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.87.0 (b7833b50)
 
 ## 0.87.0
@@ -397,6 +446,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): check transported ref data (2a685fd7)
 
 ## 0.86.1
@@ -406,6 +456,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(core): ignore no-op workbook history entries (60d14724)
 
 ## 0.86.0
@@ -415,17 +466,20 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): execute transported plan data (3ca2740a)
 - feat(workbook): persist plan run proof (b82cdac0)
 - feat(workbook): check run result descriptions (e33d7cb6)
 
 ## Fixes
+
 - fix(xlsx): preserve worksheet query table topology (4d92e1c2)
 - fix(protection): allow unlocked protected-sheet inputs (fa8f9b5e)
 - fix(xlsx): preserve power query package artifacts (81310bb0)
 - fix(workbook): reject unknown result statuses (aa11e19a)
 
 ## Internal runtime changes
+
 - refactor(workbook): keep run handoff inspectable (42a6d8a1)
 - test(headless): unlock protected range oracle edit cell (c74f2cba)
 - chore(release): runtime packages v0.85.0 (3c0cd4b3)
@@ -437,16 +491,19 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): execute transported plan data (3ca2740a)
 - feat(workbook): persist plan run proof (b82cdac0)
 
 ## Fixes
+
 - fix(xlsx): preserve worksheet query table topology (4d92e1c2)
 - fix(protection): allow unlocked protected-sheet inputs (fa8f9b5e)
 - fix(xlsx): preserve power query package artifacts (81310bb0)
 - fix(workbook): reject unknown result statuses (aa11e19a)
 
 ## Internal runtime changes
+
 - refactor(workbook): keep run handoff inspectable (42a6d8a1)
 - test(headless): unlock protected range oracle edit cell (c74f2cba)
 
@@ -457,6 +514,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): freeze runtime requirements (9d2ec121)
 - feat(workbook): freeze agent descriptions (a401b3d9)
 - feat(workbook): freeze proof verdicts (e5298df2)
@@ -470,6 +528,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): require agent apply result proof (44119f8e)
 
 ## Fixes
+
 - perf(headless): skip stable rebuild value materialization (6f01a160)
 - fix(xlsx): prune orphaned external link caches (3abf1875)
 - fix(workbook): enforce protected structure locks (5611d516)
@@ -478,6 +537,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(xlsx): preserve xlsm macro package artifacts (6c6f2a6e)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.79.0 (3f2b5ea0)
 - chore(release): runtime packages v0.80.0 (d53af3bb)
 - chore(release): runtime packages v0.81.0 (70878ea5)
@@ -491,6 +551,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): freeze runtime requirements (9d2ec121)
 - feat(workbook): freeze agent descriptions (a401b3d9)
 - feat(workbook): freeze proof verdicts (e5298df2)
@@ -503,6 +564,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): require strict command proof (bdd25e4b)
 
 ## Fixes
+
 - perf(headless): skip stable rebuild value materialization (6f01a160)
 - fix(xlsx): prune orphaned external link caches (3abf1875)
 - fix(workbook): enforce protected structure locks (5611d516)
@@ -511,6 +573,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(xlsx): preserve xlsm macro package artifacts (6c6f2a6e)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.79.0 (3f2b5ea0)
 - chore(release): runtime packages v0.80.0 (d53af3bb)
 - chore(release): runtime packages v0.81.0 (70878ea5)
@@ -523,6 +586,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): freeze runtime requirements (9d2ec121)
 - feat(workbook): freeze agent descriptions (a401b3d9)
 - feat(workbook): freeze proof verdicts (e5298df2)
@@ -534,6 +598,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): validate transported row selectors (324fde09)
 
 ## Fixes
+
 - perf(headless): skip stable rebuild value materialization (6f01a160)
 - fix(xlsx): prune orphaned external link caches (3abf1875)
 - fix(workbook): enforce protected structure locks (5611d516)
@@ -541,6 +606,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(ui): require visible operation response proof (3b2c9320)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.79.0 (3f2b5ea0)
 - chore(release): runtime packages v0.80.0 (d53af3bb)
 - chore(release): runtime packages v0.81.0 (70878ea5)
@@ -552,6 +618,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): freeze runtime requirements (9d2ec121)
 - feat(workbook): freeze agent descriptions (a401b3d9)
 - feat(workbook): freeze proof verdicts (e5298df2)
@@ -561,6 +628,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): freeze helper namespaces (a780256b)
 
 ## Fixes
+
 - perf(headless): skip stable rebuild value materialization (6f01a160)
 - fix(xlsx): prune orphaned external link caches (3abf1875)
 - fix(workbook): enforce protected structure locks (5611d516)
@@ -568,6 +636,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(ui): require visible operation response proof (3b2c9320)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.79.0 (3f2b5ea0)
 - chore(release): runtime packages v0.80.0 (d53af3bb)
 
@@ -578,6 +647,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): freeze runtime requirements (9d2ec121)
 - feat(workbook): freeze agent descriptions (a401b3d9)
 - feat(workbook): freeze proof verdicts (e5298df2)
@@ -585,11 +655,13 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): freeze run results (8bcb2f8d)
 
 ## Fixes
+
 - perf(headless): skip stable rebuild value materialization (6f01a160)
 - fix(xlsx): prune orphaned external link caches (3abf1875)
 - fix(workbook): enforce protected structure locks (5611d516)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.79.0 (3f2b5ea0)
 
 ## 0.79.0
@@ -599,10 +671,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): freeze runtime requirements (9d2ec121)
 - feat(workbook): freeze agent descriptions (a401b3d9)
 
 ## Fixes
+
 - perf(headless): skip stable rebuild value materialization (6f01a160)
 - fix(xlsx): prune orphaned external link caches (3abf1875)
 
@@ -613,6 +687,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): validate check helper inputs (5a5cc867)
 - feat(workbook): validate formula helper inputs (a6152282)
 - feat(workbook): freeze ref transport data (a3aa8b6b)
@@ -620,11 +695,13 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): validate model verification inputs (d209467a)
 
 ## Fixes
+
 - fix(xlsx): prune deleted pivot package artifacts (ee5ed149)
 - fix(xlsx): preserve formula validation sources (d30fb42e)
 - fix(workbook): preserve defined names after sheet deletes (5a44bee3)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.76.0 (48bbac33)
 - chore(release): runtime packages v0.77.0 (c10cbb2e)
 
@@ -635,16 +712,19 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): validate check helper inputs (5a5cc867)
 - feat(workbook): validate formula helper inputs (a6152282)
 - feat(workbook): freeze ref transport data (a3aa8b6b)
 - feat(workbook): fail closed on invalid plan verification (f23ea256)
 
 ## Fixes
+
 - fix(xlsx): prune deleted pivot package artifacts (ee5ed149)
 - fix(xlsx): preserve formula validation sources (d30fb42e)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.76.0 (48bbac33)
 
 ## 0.76.0
@@ -654,10 +734,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): validate check helper inputs (5a5cc867)
 - feat(workbook): validate formula helper inputs (a6152282)
 
 ## Fixes
+
 - fix(xlsx): prune deleted pivot package artifacts (ee5ed149)
 
 ## 0.75.0
@@ -667,6 +749,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): harden command receipt proof (d56f4488)
 - feat(workbook): add strict run proof mode (a30baf0b)
 - feat(workbook): enforce command result scopes (f9c1bdc1)
@@ -674,12 +757,14 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): reject ambiguous accepted results (bb9f6778)
 
 ## Fixes
+
 - fix(xlsx): prune threaded comments on sheet delete (4ba0445e)
 - fix(xlsx): keep inserted row cells ordered (d299caf5)
 - fix(xlsx): invalidate raw chart refs on sheet delete (dce4427e)
 - fix(xlsx): prune deleted chart sheet artifacts (1489ba0b)
 
 ## Internal runtime changes
+
 - docs: sharpen first-touch WorkPaper path (a93d9e9b)
 - chore(release): runtime packages v0.74.0 (650174af)
 
@@ -690,6 +775,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): harden command receipt proof (d56f4488)
 - feat(workbook): add strict run proof mode (a30baf0b)
 - feat(workbook): enforce command result scopes (f9c1bdc1)
@@ -697,11 +783,13 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): reject ambiguous accepted results (bb9f6778)
 
 ## Fixes
+
 - fix(xlsx): prune threaded comments on sheet delete (4ba0445e)
 - fix(xlsx): keep inserted row cells ordered (d299caf5)
 - fix(xlsx): invalidate raw chart refs on sheet delete (dce4427e)
 
 ## Internal runtime changes
+
 - docs: sharpen first-touch WorkPaper path (a93d9e9b)
 
 ## 0.73.0
@@ -711,12 +799,14 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): bind agent runtime proof (6d3d81cc)
 - feat(workbook): bind command apply receipts (3571060c)
 - feat(workbook): require scoped command ranges (5154145c)
 - feat(workbook): reject duplicate readbacks (027afd87)
 
 ## Fixes
+
 - fix(workbook): rewrite preserved view tabs on sheet delete (572a0edb)
 - fix(xlsx): preserve calc-chain sheet ids (4e137088)
 - fix(ui): serve production same-corpus capture (0e79caba)
@@ -730,6 +820,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(xlsx): preserve shared slicer parts on sheet delete (21cbb192)
 
 ## Internal runtime changes
+
 - docs(growth): remove proof-output star asks (#23) (d3a0761f)
 - test(headless): update HyperFormula surface snapshot (e536e81d)
 - chore(release): runtime packages v0.72.0 (afc93c29)
@@ -741,9 +832,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): bind agent runtime proof (6d3d81cc)
 
 ## Fixes
+
 - fix(workbook): rewrite preserved view tabs on sheet delete (572a0edb)
 - fix(xlsx): preserve calc-chain sheet ids (4e137088)
 - fix(ui): serve production same-corpus capture (0e79caba)
@@ -753,6 +846,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(xlsx): import sheet metadata by workbook relationships (16168d2d)
 
 ## Internal runtime changes
+
 - docs(growth): remove proof-output star asks (#23) (d3a0761f)
 - test(headless): update HyperFormula surface snapshot (e536e81d)
 
@@ -763,9 +857,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): persist agent command proof (a1fcf8b5)
 
 ## Fixes
+
 - fix(workbook): rename raw chart package refs (38f58840)
 - fix(ui): require production same-corpus captures (761dac47)
 
@@ -776,10 +872,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): validate agent command handoff (3249a739)
 - feat(workbook): add command result proof boundary (9cf062eb)
 
 ## Fixes
+
 - fix(workbook): rewrite preserved style artifacts (cb76bf8e)
 - perf(headless): speed up scalar sheet inspection (a18a7f37)
 - fix(workbook): rewrite preserved pivot artifacts (f657279b)
@@ -787,6 +885,7 @@ This package is released as part of the aligned bilig library package set.
 - perf(core): skip recalc payloads for tracked listeners (48e3930c)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.68.1 (d2d0fe4f)
 - chore(release): runtime packages v0.69.0 (cd42d69f)
 
@@ -797,14 +896,17 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): validate agent command handoff (3249a739)
 
 ## Fixes
+
 - fix(workbook): rewrite preserved style artifacts (cb76bf8e)
 - perf(headless): speed up scalar sheet inspection (a18a7f37)
 - fix(workbook): rewrite preserved pivot artifacts (f657279b)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.68.1 (d2d0fe4f)
 
 ## 0.68.1
@@ -814,6 +916,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): rewrite preserved style artifacts (cb76bf8e)
 
 ## 0.68.0
@@ -823,9 +926,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): add command bundle validator (044c0177)
 
 ## Fixes
+
 - perf(core): reuse prefix aggregate templates (43253308)
 - fix(workbook): preserve control artifacts (cbec564a)
 - fix(workbook): preserve imported package metadata (3862603f)
@@ -837,6 +942,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): structure model verification failures (fb51d654)
 - fix(workbook): preserve cell metadata refs (0ea43dd8)
 
@@ -847,6 +953,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): harden model inspection data (7000058d)
 
 ## 0.67.13
@@ -856,6 +963,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): harden model manifest data (003c6164)
 
 ## 0.67.12
@@ -865,6 +973,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): harden readback proof data (a2bedb46)
 - fix(workbook): harden returned check data (04a83841)
 
@@ -875,6 +984,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): harden description data reads (af287709)
 
 ## 0.67.10
@@ -884,6 +994,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): harden ref transport traversal (aff1d5a6)
 - fix(workbook): harden runtime requirement arrays (42fc4528)
 - fix(workbook): harden runtime evidence arrays (df0c913b)
@@ -895,10 +1006,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): harden runtime proof data (0ea4d8c6)
 - fix(workbook): harden low-level op guards (19c8f39c)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.67.8 (9d5e1795)
 
 ## 0.67.8
@@ -908,10 +1021,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): harden feature receipt proof data (1d4db2db)
 - fix(workbook): harden runtime proof data (0ea4d8c6)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.67.7 (2e573247)
 
 ## 0.67.7
@@ -921,11 +1036,13 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): ignore ref accessors during planning (bd84fa1e)
 - fix(workbook): reject accessor-backed action input (36350981)
 - fix(workbook): harden feature receipt proof data (1d4db2db)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.67.6 (03344975)
 
 ## 0.67.6
@@ -935,6 +1052,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): ignore ref accessors during planning (bd84fa1e)
 - fix(workbook): reject accessor-backed action input (36350981)
 
@@ -945,6 +1063,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): ignore inherited model actions (312ade88)
 
 ## 0.67.4
@@ -954,6 +1073,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): canonicalize feature receipt proof (a6d031dd)
 
 ## 0.67.3
@@ -963,6 +1083,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): reduce fresh scalar initialization overhead (be931d09)
 
 ## 0.67.2
@@ -972,6 +1093,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): require own runtime proof fields (275d431f)
 - fix(core): prevent stale structural undo styles (32a80ba5)
 
@@ -982,6 +1104,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): require own transport payload fields (2b300cad)
 - fix(workbook): require own feature payload fields (d5e94db0)
 
@@ -992,9 +1115,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): preserve feature handoff issue paths (a25a9cee)
 
 ## Fixes
+
 - perf(core): batch initial direct scalar bindings (50784028)
 
 ## 0.66.0
@@ -1004,14 +1129,17 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): validate feature plugins (f625484d)
 - feat(workbook): preserve run error issue paths (3c5e911a)
 
 ## Fixes
+
 - fix(workbook): preserve rich text artifacts (a07c402a)
 - perf(core): defer deleted literal undo capture (ae1586c1)
 
 ## Internal runtime changes
+
 - docs(workpaper): expose agent workflow entrypoints (8f0848a1)
 - chore(release): runtime packages v0.65.0 (580bf991)
 
@@ -1022,9 +1150,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): validate feature plugins (f625484d)
 
 ## Fixes
+
 - fix(workbook): preserve rich text artifacts (a07c402a)
 
 ## 0.64.0
@@ -1034,6 +1164,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): report plan data validation issues (359cc188)
 - feat(workbook): validate runtime requirements (d6a6d05c)
 - feat(workpaper): add local n8n formula server (b18fab04)
@@ -1041,6 +1172,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): validate command receipts (42ae649a)
 
 ## Fixes
+
 - fix(workbook): rewrite cross-sheet conditional formats (d341ce28)
 - fix(workbook): rewrite x14 conditional format ranges (17248b55)
 - fix(workpaper): use indexed env access (6e4d8e53)
@@ -1049,6 +1181,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(workbook): rewrite ignored error refs (bdd53ec3)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.63.0 (4d242ce0)
 
 ## 0.63.0
@@ -1058,11 +1191,13 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): report plan data validation issues (359cc188)
 - feat(workbook): validate runtime requirements (d6a6d05c)
 - feat(workpaper): add local n8n formula server (b18fab04)
 
 ## Fixes
+
 - fix(workbook): rewrite cross-sheet conditional formats (d341ce28)
 - fix(workbook): rewrite x14 conditional format ranges (17248b55)
 - fix(workpaper): use indexed env access (6e4d8e53)
@@ -1075,6 +1210,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(engine): refresh source-backed pivot caches (229ff9e5)
 - feat(engine): preserve imported drawing artifacts (9d9a24e4)
 - feat(workbook): add transport-safe refs (05cdf0f4)
@@ -1089,6 +1225,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): check runtime adapter capabilities (d00cd647)
 
 ## Fixes
+
 - fix(corpus): keep threaded comment fixture out of parity sweep (46a1a7b7)
 - fix(formula): skip blank keys in approximate lookups (9c95b946)
 - fix(workbook): rewrite prefixed conditional format artifacts (257fde05)
@@ -1097,6 +1234,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(workbook): honor optional action input metadata (c55399ea)
 
 ## Internal runtime changes
+
 - test(bench): parallelize competitive benchmark generation (942d1782)
 - test(excel): align pivot export cache assertion (d59c936c)
 - chore(release): runtime packages v0.60.0 (8835ff32)
@@ -1115,12 +1253,14 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(engine): refresh source-backed pivot caches (229ff9e5)
 - feat(engine): preserve imported drawing artifacts (9d9a24e4)
 - feat(workbook): add transport-safe refs (05cdf0f4)
 - feat(charts): preserve Excel drawing anchors (34ca1ac3)
 
 ## Internal runtime changes
+
 - test(bench): parallelize competitive benchmark generation (942d1782)
 - test(excel): align pivot export cache assertion (d59c936c)
 - chore(release): runtime packages v0.60.0 (8835ff32)
@@ -1135,9 +1275,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(engine): refresh source-backed pivot caches (229ff9e5)
 
 ## Internal runtime changes
+
 - test(bench): parallelize competitive benchmark generation (942d1782)
 - test(excel): align pivot export cache assertion (d59c936c)
 
@@ -1148,9 +1290,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): preserve failed run proof (b70bd9c9)
 
 ## Fixes
+
 - perf(core): fast translate row-offset scalar templates (21855684)
 
 ## 0.58.0
@@ -1160,6 +1304,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(engine): preserve hyperlink metadata structurally (e2f7f148)
 
 ## 0.57.0
@@ -1169,6 +1314,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(formula): preserve native structured references (9e417452)
 - feat(workbook): avoid mutating model configs (5c42661b)
 - feat(workbook): require own action metadata (be1bfc42)
@@ -1182,10 +1328,12 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): attach readback proof (87638938)
 
 ## Fixes
+
 - perf(headless): skip empty structural insert planning (ed08fc47)
 - perf(headless): append fresh formula family runs (e2569f4c)
 
 ## Internal runtime changes
+
 - refactor(core): split structured reference resolver (f8e83d75)
 - ci(runtime): fix WorkPaper external smoke contract (3da277b8)
 - chore(release): runtime packages v0.56.0 (33e7c2b5)
@@ -1197,6 +1345,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(formula): preserve native structured references (9e417452)
 - feat(workbook): avoid mutating model configs (5c42661b)
 - feat(workbook): require own action metadata (be1bfc42)
@@ -1208,10 +1357,12 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): validate selector contracts (2c15f1d2)
 
 ## Fixes
+
 - perf(headless): skip empty structural insert planning (ed08fc47)
 - perf(headless): append fresh formula family runs (e2569f4c)
 
 ## Internal runtime changes
+
 - refactor(core): split structured reference resolver (f8e83d75)
 - ci(runtime): fix WorkPaper external smoke contract (3da277b8)
 
@@ -1222,6 +1373,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): expose selector contracts (dbbcc196)
 
 ## 0.54.0
@@ -1231,9 +1383,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): freeze model definitions (0428554d)
 
 ## Internal runtime changes
+
 - test(headless): lock Desktop Excel sort oracle (991d1115)
 
 ## 0.53.0
@@ -1243,10 +1397,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): harden runtime proof boundary (1e6f3549)
 - feat(core): add Desktop Excel-backed table sort (679b24f1)
 
 ## Fixes
+
 - perf(headless): compact deferred sheet renames (f5f3556d)
 
 ## 0.52.0
@@ -1256,10 +1412,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): expose action input guards (390bd5e6)
 - feat(workbook): include runtime requirements in model verification (ea3fdc66)
 
 ## Fixes
+
 - fix(excel-import): preserve explicit numeric xlsx cells (99cb4cec)
 - perf(headless): speed up direct aggregate row inserts (baaeac11)
 - perf(headless): preserve simple column delete values (fb32f675)
@@ -1268,6 +1426,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(grid): reject stale visible scene state (9223d224)
 
 ## Internal runtime changes
+
 - docs(agent): add framework tool chooser (c286e060)
 - test(ui): tighten same-corpus grid proof (75d8aad7)
 
@@ -1278,9 +1437,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): route structural inserts directly (22b2556d)
 
 ## Internal runtime changes
+
 - ci(release): prevent runtime release self-trigger (60738a42)
 
 ## 0.51.4
@@ -1290,6 +1451,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(release): retry duplicate npm publish visibility (532f6a51)
 
 ## 0.51.3
@@ -1299,6 +1461,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(release): tolerate duplicate npm publish races (773dc878)
 
 ## 0.51.2
@@ -1308,6 +1471,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(corpus): preserve structural smoke and undo fidelity (2770b185)
 
 ## 0.51.1
@@ -1317,6 +1481,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): skip table metadata on no-table edits (bf1bf013)
 
 ## 0.51.0
@@ -1326,9 +1491,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(excel-import): parse worksheet scalars in wasm (4c0feb4a)
 
 ## Fixes
+
 - fix(core): avoid structural no-op history (1f28239b)
 - fix(ci): use OIDC for runtime npm publishing (401ea159)
 
@@ -1339,6 +1506,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): keep sliding aggregate edits inline (312d1055)
 
 ## 0.50.0
@@ -1348,6 +1516,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): add command bundle handoff (cbdb0bca)
 - feat(workbook): add run receipts (3af2a5d2)
 - feat(workbook): emit core runtime receipts (498ccdde)
@@ -1359,6 +1528,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(excel-import): add wasm worksheet scan storage (62579199)
 
 ## Fixes
+
 - fix(headless): preserve pruned cell history (5cfb183d)
 - fix(core): settle cycle dependents after csv formula import (7c88c8dd)
 - fix(headless): harden fuzz-found formula mutations (a7d6ac5d)
@@ -1398,6 +1568,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(ci): stage workpaper server release metadata (4324a609)
 
 ## Internal runtime changes
+
 - test(fuzz): expand unified fuzz coverage (15cfe495)
 - test(fuzz): cover runtime reducer edge cases (09a7ca79)
 - test(formula): fuzz lookup and datetime families (eadbd6f4)
@@ -1438,6 +1609,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): add command bundle handoff (cbdb0bca)
 - feat(workbook): add run receipts (3af2a5d2)
 - feat(workbook): emit core runtime receipts (498ccdde)
@@ -1449,6 +1621,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(excel-import): add wasm worksheet scan storage (62579199)
 
 ## Fixes
+
 - fix(headless): preserve pruned cell history (5cfb183d)
 - fix(core): settle cycle dependents after csv formula import (7c88c8dd)
 - fix(headless): harden fuzz-found formula mutations (a7d6ac5d)
@@ -1487,6 +1660,7 @@ This package is released as part of the aligned bilig library package set.
 - perf(headless): skip empty validation and dimension metadata work (09148e11)
 
 ## Internal runtime changes
+
 - test(fuzz): expand unified fuzz coverage (15cfe495)
 - test(fuzz): cover runtime reducer edge cases (09a7ca79)
 - test(formula): fuzz lookup and datetime families (eadbd6f4)
@@ -1526,6 +1700,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): publish agent-first workbook API (e2fc16ed)
 - feat(workbook): add structured agent planning (8f14305b)
 - feat(workbook): expose formula inputs in plans (b04ab9ab)
@@ -1560,6 +1735,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): stabilize run error codes (e96bf90c)
 
 ## Fixes
+
 - perf(excel-import): finalize simple sheets earlier (c8c573cd)
 - fix(excel-export): preserve dynamic array spill caches (7e7ef8d6)
 - perf(excel-import): reuse streamed zip read buffers (e553d848)
@@ -1632,6 +1808,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(array-formulas): preserve native metadata (b9c40823)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.40.43 (4c021baa)
 - docs(agent): align WorkPaper MCP discovery (f9934bbd)
 - refactor(core): split live effect runner (3fe3b47c)

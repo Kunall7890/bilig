@@ -41,6 +41,23 @@ export class WorkbookIdAllocator {
     }
   }
 
+  bumpAxisId(axis: WorkbookAxis, id: string): void {
+    const prefix = axis === 'row' ? 'row' : 'column'
+    const match = new RegExp(`^${prefix}-(\\d+)$`).exec(id)
+    if (!match) {
+      return
+    }
+    const numericId = Number.parseInt(match[1]!, 10)
+    if (!Number.isFinite(numericId)) {
+      return
+    }
+    if (axis === 'row') {
+      this.nextRowAxisId = Math.max(this.nextRowAxisId, numericId + 1)
+      return
+    }
+    this.nextColumnAxisId = Math.max(this.nextColumnAxisId, numericId + 1)
+  }
+
   createAxisEntry(axis: WorkbookAxis): WorkbookAxisEntryRecord {
     return {
       id: this.createAxisId(axis),

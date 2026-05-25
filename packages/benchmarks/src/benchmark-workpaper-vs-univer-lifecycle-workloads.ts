@@ -69,7 +69,12 @@ export function runtimeSnapshotBuildScenario(workload: WorkPaperUniverWorkload, 
     setupUniver: (runtime) => setupUniverWorkbookSheets(runtime, serializedSheets),
     verifyUniver: (runtime) => ({
       sheetCount: runtime.workbook.getNumSheets(),
-      benchTerminal: normalizeBenchmarkValue(runtime.workbook.getSheetByName('Bench')!.getRange(formatA1(rowCount - 1, 5)).getValue()),
+      benchTerminal: normalizeBenchmarkValue(
+        runtime.workbook
+          .getSheetByName('Bench')!
+          .getRange(formatA1(rowCount - 1, 5))
+          .getValue(),
+      ),
     }),
     verifyWorkPaper: (workbook) => {
       const benchId = workbook.getSheetId('Bench')!
@@ -168,7 +173,10 @@ function buildSerializedRuntimeSheets(rowCount: number): Record<string, WorkPape
 }
 
 function buildNamedExpressionSheet(): WorkPaperSheet {
-  return [[1, `=${namedExpressionName}+1`, `=${namedExpressionName}*2`], [2, `=${namedExpressionName}`]]
+  return [
+    [1, `=${namedExpressionName}+1`, `=${namedExpressionName}*2`],
+    [2, `=${namedExpressionName}`],
+  ]
 }
 
 function insertUniverDefinedFormula(runtime: UniverRuntime, name: string, formulaWithoutEquals: string): void {
@@ -180,9 +188,7 @@ function insertUniverDefinedFormula(runtime: UniverRuntime, name: string, formul
 function updateUniverDefinedFormula(runtime: UniverRuntime, name: string, formulaWithoutEquals: string): void {
   const existing = runtime.workbook.getDefinedName(name)
   const param = isDefinedNameFacade(existing) ? existing._definedNameParam : existing
-  runtime.workbook.updateDefinedNameBuilder(
-    runtime.workbook.newDefinedNameBuilder().load(param).setFormula(formulaWithoutEquals).build(),
-  )
+  runtime.workbook.updateDefinedNameBuilder(runtime.workbook.newDefinedNameBuilder().load(param).setFormula(formulaWithoutEquals).build())
 }
 
 function isDefinedNameFacade(value: unknown): value is { readonly _definedNameParam: unknown } {

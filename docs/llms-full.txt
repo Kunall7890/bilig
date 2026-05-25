@@ -1285,12 +1285,12 @@ npm install @bilig/workpaper
 
 Pick the path that matches the workflow you are trying to unblock:
 
-| You need... | Run this first | Proof you should get |
-| --- | --- | --- |
-| Formula workbook logic inside a Node service, route, queue, or test | `npm create @bilig/workpaper@latest pricing-workpaper` | Inputs are written, formulas recalculate, JSON persists, restore matches readback, and `verified: true` is printed. |
-| A coding agent or MCP client that needs spreadsheet operations | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | The generated project includes an agent contract, MCP config, and `npm run agent:verify`. |
-| n8n, Dify, or Flowise formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321` | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof. |
-| An existing `.xlsx` file with stale formula results after Node edits | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json` | The file-level path updates inputs and returns fresh formula values without Excel, LibreOffice, or a browser. |
+| You need...                                                              | Run this first                                                                       | Proof you should get                                                                                                |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| Formula workbook logic inside a Node service, route, queue, or test      | `npm create @bilig/workpaper@latest pricing-workpaper`                               | Inputs are written, formulas recalculate, JSON persists, restore matches readback, and `verified: true` is printed. |
+| A coding agent or MCP client that needs spreadsheet operations           | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                        | The generated project includes an agent contract, MCP config, and `npm run agent:verify`.                           |
+| n8n, Dify, or Flowise formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321` | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof.               |
+| An existing `.xlsx` file with stale formula results after Node edits     | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json`                 | The file-level path updates inputs and returns fresh formula values without Excel, LibreOffice, or a browser.       |
 
 ## Use A WorkPaper In Node
 
@@ -1445,7 +1445,7 @@ the search or production bug you actually have:
 | `xlsx-populate` writes formulas but Node reads old values     | `npm install @bilig/xlsx-formula-recalc`                      | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json` updates the cached value.                                                |
 | ExcelJS formula cells need recalculated values                | `npm install exceljs @bilig/exceljs-formula-recalc`           | `npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json` mutates the workbook boundary.                                     |
 | An AI agent needs spreadsheet tools instead of UI automation  | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html) shows the write/recalc/read/persist loop. |
-| Formula workbook state belongs in a service or agent tool     | `npm install @bilig/workpaper`                                | `npm exec --package @bilig/workpaper@0.101.0 -- bilig-agent-challenge` prints `verified: true`.                                                |
+| Formula workbook state belongs in a service or agent tool     | `npm install @bilig/workpaper`                                | `npm exec --package @bilig/workpaper@0.101.0 -- bilig-agent-challenge` prints `verified: true`.                                               |
 | You need the lower-level runtime package and subpaths         | `npm install @bilig/headless`                                 | The examples below prove WorkPaper JSON, XLSX import/export, provenance, and package footprint.                                               |
 
 Use `@bilig/headless` when the spreadsheet is the business logic, but

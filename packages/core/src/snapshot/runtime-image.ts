@@ -509,8 +509,6 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
   const shouldHydrateImportedCachedFormulaValues =
     args.snapshot.workbook.metadata?.calculationSettings?.fullCalcOnLoad === false ||
     args.snapshot.workbook.metadata?.calculationSettings?.mode === 'manual'
-  const definedFormulaNames =
-    shouldHydrateIterativeFormulaValues || !canHydratePreparedCachedFormulaValues ? undefined : collectDefinedFormulaNames(args.snapshot)
   const restoredStringIds = new Map<string, number>()
 
   args.checkEvaluationBudget?.()
@@ -543,11 +541,7 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
           attachFreshCell(coords.row, coords.col, restoredCellIndex, rowId, colId)
           if (cell.formula !== undefined) {
             let hydratedCachedFormula = false
-            const shouldPreserveCachedUnsupportedValue =
-              canHydratePreparedCachedFormulaValues &&
-              cell.value !== undefined &&
-              !shouldHydrateIterativeFormulaValues &&
-              formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc(cell.formula, definedFormulaNames!)
+            const shouldPreserveCachedUnsupportedValue = false
             if (canHydrateImportedCachedFormulaValues && shouldHydrateImportedCachedFormulaValues && cell.value !== undefined) {
               cachedFormulaRefs.push({
                 sheetId,

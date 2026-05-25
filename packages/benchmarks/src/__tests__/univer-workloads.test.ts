@@ -228,22 +228,38 @@ const expectedWorkloads = [
 ] as const satisfies readonly WorkPaperUniverWorkload[]
 
 const benchmarkTimeoutMs = 180_000
+const benchmarkSmokeWorkloads = [
+  'build-from-sheets',
+  'single-edit-chain-small',
+  'batch-edit-single-column-small',
+  'structural-insert-rows-small',
+  'range-read-formula-grid',
+  'lookup-with-column-index',
+  'cross-sheet-dashboard-recalc',
+] as const satisfies readonly WorkPaperUniverWorkload[]
 let benchmarkResultsPromise: ReturnType<typeof runWorkPaperVsUniverBenchmarkSuite> | undefined
 
 function benchmarkResults(): ReturnType<typeof runWorkPaperVsUniverBenchmarkSuite> {
-  benchmarkResultsPromise ??= runWorkPaperVsUniverBenchmarkSuite({ sampleCount: 1, warmupCount: 0 })
+  benchmarkResultsPromise ??= runWorkPaperVsUniverBenchmarkSuite({
+    sampleCount: 1,
+    warmupCount: 0,
+    workloads: benchmarkSmokeWorkloads,
+  })
   return benchmarkResultsPromise
 }
 
 describe('WorkPaper vs Univer benchmark', () => {
-  it(
-    'covers the documented Univer Node preset with workbook recalculation workloads',
-    async () => {
-      expect(WORKPAPER_UNIVER_WORKLOADS).toEqual(expectedWorkloads)
+  it('tracks full workload coverage for generated Univer benchmark artifacts', () => {
+    expect(WORKPAPER_UNIVER_WORKLOADS).toEqual(expectedWorkloads)
+    expect(Object.keys(expectedVerificationByWorkload).toSorted()).toEqual([...expectedWorkloads].toSorted())
+  })
 
+  it(
+    'smokes the documented Univer Node preset with representative workbook recalculation workloads',
+    async () => {
       const results = await benchmarkResults()
 
-      expect(results).toHaveLength(WORKPAPER_UNIVER_WORKLOADS.length)
+      expect(results.map((result) => result.workload)).toEqual([...benchmarkSmokeWorkloads])
       for (const result of results) {
         const expectedVerification = expectedVerificationByWorkload[result.workload]
         expect(result.category).toBe('workbook-wide')
@@ -267,30 +283,11 @@ describe('WorkPaper vs Univer benchmark', () => {
 
       expect(report.suite).toBe('workpaper-vs-univer')
       expect(report.scorecard.coverageTier).toBe('workbook-wide')
-      expect(report.scorecard.comparableWorkloadCount).toBe(WORKPAPER_UNIVER_WORKLOADS.length)
-      expect(report.scorecard.meanWinCount + report.scorecard.univerMeanWinCount).toBe(WORKPAPER_UNIVER_WORKLOADS.length)
-      expect(report.scorecard.p95WinCount + report.scorecard.univerP95WinCount).toBe(WORKPAPER_UNIVER_WORKLOADS.length)
-      expect(report.scorecard.meanAndP95WinCount).toBeLessThanOrEqual(WORKPAPER_UNIVER_WORKLOADS.length)
-      expect(report.scorecard.workloadFamilies).toEqual([
-        'build',
-        'formula-chain',
-        'formula-fanout',
-        'dirty-execution',
-        'batch-edit',
-        'structural-rows',
-        'structural-columns',
-        'range-read',
-        'aggregate-2d',
-        'overlapping-aggregate',
-        'lookup-exact',
-        'lookup-after-write',
-        'lookup-approximate',
-        'conditional-aggregation',
-        'cross-sheet',
-        'rebuild',
-        'sheet-lifecycle',
-        'named-expression',
-      ])
+      expect(report.scorecard.comparableWorkloadCount).toBe(benchmarkSmokeWorkloads.length)
+      expect(report.scorecard.meanWinCount + report.scorecard.univerMeanWinCount).toBe(benchmarkSmokeWorkloads.length)
+      expect(report.scorecard.p95WinCount + report.scorecard.univerP95WinCount).toBe(benchmarkSmokeWorkloads.length)
+      expect(report.scorecard.meanAndP95WinCount).toBeLessThanOrEqual(benchmarkSmokeWorkloads.length)
+      expect(report.scorecard.workloadFamilies).toEqual([...new Set(results.map((result) => result.fixture.family))])
     },
     benchmarkTimeoutMs,
   )

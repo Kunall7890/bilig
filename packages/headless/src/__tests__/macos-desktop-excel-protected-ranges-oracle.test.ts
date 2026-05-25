@@ -142,7 +142,10 @@ function buildProtectedEditableRangeSecurityBytes(): Uint8Array {
 function withUnlockedReviewCell(snapshot: WorkbookSnapshot): WorkbookSnapshot {
   const clone = structuredClone(snapshot)
   clone.workbook.metadata = clone.workbook.metadata ?? {}
-  clone.workbook.metadata.styles = [...(clone.workbook.metadata.styles ?? []), { id: 'review-cell-unlocked', protection: { locked: false } }]
+  clone.workbook.metadata.styles = [
+    ...(clone.workbook.metadata.styles ?? []),
+    { id: 'review-cell-unlocked', protection: { locked: false } },
+  ]
   const protectedSheet = clone.sheets.find((sheet) => sheet.name === 'Protected')
   if (!protectedSheet) {
     throw new Error('Expected Protected sheet to be available')

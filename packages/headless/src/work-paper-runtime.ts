@@ -83,8 +83,18 @@ type MetadataRenameEngine = SpreadsheetEngine & {
 }
 
 type WorkPaperStructuralInsertEngine = SpreadsheetEngine & {
-  insertRows(sheetName: string, start: number, count: number, options?: { readonly emitTracked?: boolean }): void
-  insertColumns(sheetName: string, start: number, count: number, options?: { readonly emitTracked?: boolean }): void
+  insertRows(
+    sheetName: string,
+    start: number,
+    count: number,
+    options?: { readonly emitTracked?: boolean; readonly recordHistory?: boolean },
+  ): void
+  insertColumns(
+    sheetName: string,
+    start: number,
+    count: number,
+    options?: { readonly emitTracked?: boolean; readonly recordHistory?: boolean },
+  ): void
 }
 
 function isCloneRecord(value: unknown): value is Record<string, unknown> {
@@ -464,7 +474,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
       return []
     }
     if (this.batchUsesTrackedFastPath) {
-      this.applyAxisIntervalEditForSheet(axis, 'add', sheet, start, amount)
+      this.applyAxisIntervalEditForSheet(axis, 'add', sheet, start, amount, { recordHistory: true })
       return []
     }
     return this.batchStructuralChanges(() => {
@@ -644,7 +654,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     sheetId: number,
     start: number,
     amount: number,
-    options: { readonly emitTracked?: boolean } = {},
+    options: { readonly emitTracked?: boolean; readonly recordHistory?: boolean } = {},
   ): void {
     this.applyAxisIntervalEditForSheet(axis, mode, this.sheetRecord(sheetId), start, amount, options)
   }
@@ -655,7 +665,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     sheet: SheetRecord,
     start: number,
     amount: number,
-    options: { readonly emitTracked?: boolean } = {},
+    options: { readonly emitTracked?: boolean; readonly recordHistory?: boolean } = {},
   ): void {
     this.preservedImportedSnapshot = undefined
     const sheetName = sheet.name

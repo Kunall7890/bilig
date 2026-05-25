@@ -1,9 +1,4 @@
-import {
-  createWorkPaperFromDocument,
-  exportWorkPaperDocument,
-  parseWorkPaperDocument,
-  serializeWorkPaperDocument,
-} from './persistence.js'
+import { createWorkPaperFromDocument, exportWorkPaperDocument, parseWorkPaperDocument, serializeWorkPaperDocument } from './persistence.js'
 import { WorkPaper } from './work-paper.js'
 
 type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>

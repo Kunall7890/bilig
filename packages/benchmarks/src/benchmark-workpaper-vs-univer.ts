@@ -2,11 +2,7 @@ import { performance } from 'node:perf_hooks'
 import * as UniverPresetModule from '@univerjs/presets'
 import * as UniverSheetsNodeCorePresetModule from '@univerjs/preset-sheets-node-core'
 import sheetsNodeCoreEnUS from '@univerjs/preset-sheets-node-core/locales/en-US'
-import {
-  WorkPaper,
-  type SerializedWorkPaperNamedExpression,
-  type WorkPaperSheet,
-} from '../../headless/src/work-paper.js'
+import { WorkPaper, type SerializedWorkPaperNamedExpression, type WorkPaperSheet } from '../../headless/src/work-paper.js'
 import {
   DEFAULT_COMPETITIVE_SAMPLE_COUNT,
   DEFAULT_COMPETITIVE_WARMUP_COUNT,
@@ -241,9 +237,14 @@ export interface WorkPaperUniverScenario {
   readonly verifyWorkPaper: (workbook: WorkPaper, operationResult?: unknown) => Record<string, unknown>
 }
 
+export interface WorkPaperUniverBenchmarkSuiteOptions extends ComparativeBenchmarkSuiteOptions {
+  readonly workloads?: readonly WorkPaperUniverWorkload[]
+}
+
 interface ResolvedBenchmarkSuiteOptions {
   readonly sampleCount: number
   readonly warmupCount: number
+  readonly workloads: readonly WorkPaperUniverWorkload[]
 }
 
 export interface UniverRuntime {
@@ -418,11 +419,11 @@ export const WORKPAPER_UNIVER_WORKLOADS = [
 const univerCalculationTimeoutMs = 10_000
 
 export async function runWorkPaperVsUniverBenchmarkSuite(
-  options: ComparativeBenchmarkSuiteOptions = {},
+  options: WorkPaperUniverBenchmarkSuiteOptions = {},
 ): Promise<WorkPaperUniverBenchmarkResult[]> {
   const resolvedOptions = resolveSuiteOptions(options)
   const results: WorkPaperUniverBenchmarkResult[] = []
-  for (const workload of WORKPAPER_UNIVER_WORKLOADS) {
+  for (const workload of resolvedOptions.workloads) {
     // oxlint-disable-next-line eslint(no-await-in-loop) -- Competitive benchmark workloads run sequentially to keep timing samples isolated.
     results.push(await runUniverScenario(workload, univerScenario(workload), resolvedOptions))
   }
@@ -513,11 +514,7 @@ function measureWorkPaperSample(scenario: WorkPaperUniverScenario): BenchmarkSam
       scenario.workpaperNamedExpressions,
     )
   }
-  const workbook = WorkPaper.buildFromSheets(
-    scenario.buildWorkPaperSheets(),
-    scenario.workpaperOptions,
-    scenario.workpaperNamedExpressions,
-  )
+  const workbook = WorkPaper.buildFromSheets(scenario.buildWorkPaperSheets(), scenario.workpaperOptions, scenario.workpaperNamedExpressions)
   if (scenario.executeWorkPaperMutation !== undefined) {
     return measureMutationSample(
       workbook,
@@ -762,9 +759,10 @@ function orderedUnique(values: readonly WorkPaperUniverWorkloadFamily[]): WorkPa
   return [...new Set(values)]
 }
 
-function resolveSuiteOptions(options: ComparativeBenchmarkSuiteOptions): ResolvedBenchmarkSuiteOptions {
+function resolveSuiteOptions(options: WorkPaperUniverBenchmarkSuiteOptions): ResolvedBenchmarkSuiteOptions {
   return {
     sampleCount: options.sampleCount ?? DEFAULT_COMPETITIVE_SAMPLE_COUNT,
     warmupCount: options.warmupCount ?? DEFAULT_COMPETITIVE_WARMUP_COUNT,
+    workloads: options.workloads ?? WORKPAPER_UNIVER_WORKLOADS,
   }
 }

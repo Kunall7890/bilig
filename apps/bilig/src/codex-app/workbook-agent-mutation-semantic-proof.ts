@@ -12,6 +12,42 @@ import type { WorkbookVerificationMismatch } from './workbook-agent-rendered-rea
 
 type WorkbookSemanticStyleRecord = NonNullable<NonNullable<WorkbookSnapshot['workbook']['metadata']>['styles']>[number]
 
+export interface WorkbookSemanticReadbackProof {
+  readonly requested: boolean
+  readonly matched: boolean | null
+  readonly incompleteReason: string | null
+}
+
+export function buildWorkbookSemanticReadbackProof(input: {
+  readonly authoritativeReadback: {
+    readonly requested: boolean
+    readonly matched: boolean | null
+    readonly incompleteReason: string | null
+  }
+  readonly renderedReadback: { readonly requested: boolean; readonly matched: boolean | null; readonly incompleteReason: string | null }
+}): WorkbookSemanticReadbackProof {
+  const requested = input.authoritativeReadback.requested || input.renderedReadback.requested
+  if (!requested) {
+    return {
+      requested: false,
+      matched: null,
+      incompleteReason: input.authoritativeReadback.incompleteReason ?? input.renderedReadback.incompleteReason,
+    }
+  }
+  const matched =
+    input.authoritativeReadback.matched === true && (!input.renderedReadback.requested || input.renderedReadback.matched === true)
+  return {
+    requested,
+    matched,
+    incompleteReason:
+      input.authoritativeReadback.matched !== true
+        ? (input.authoritativeReadback.incompleteReason ?? 'Authoritative semantic readback did not match.')
+        : input.renderedReadback.requested && input.renderedReadback.matched !== true
+          ? (input.renderedReadback.incompleteReason ?? 'Rendered semantic readback did not match.')
+          : null,
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }

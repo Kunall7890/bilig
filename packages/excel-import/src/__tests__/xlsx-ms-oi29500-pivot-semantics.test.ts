@@ -60,6 +60,14 @@ describe('MS-OI29500 pivot semantic import', () => {
 
 function buildPivotSemanticsWorkbookBytes(): Uint8Array {
   const zip = unzipSync(exportXlsx(buildPivotWorkbookSnapshot()))
+  const cachePath = 'xl/pivotCache/pivotCacheDefinition1.xml'
+  const cacheXml = strFromU8(zip[cachePath] ?? new Uint8Array())
+  zip[cachePath] = strToU8(
+    cacheXml.replace(
+      '<cacheField name="Status" numFmtId="0"><sharedItems/></cacheField>',
+      '<cacheField name="Status" numFmtId="0"><sharedItems count="2"><s v="Closed"/><s v="Open"/></sharedItems></cacheField>',
+    ),
+  )
   const pivotPath = 'xl/pivotTables/pivotTable1.xml'
   const pivotXml = strFromU8(zip[pivotPath] ?? new Uint8Array())
   zip[pivotPath] = strToU8(

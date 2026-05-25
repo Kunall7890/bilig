@@ -31,10 +31,7 @@ describe('engine no-op history', () => {
   it('does not let a no-op column insert intercept undo for the previous semantic mutation', async () => {
     const engine = await engineFromSnapshot({
       ...blankSheetSnapshot,
-      sheets: [
-        ...blankSheetSnapshot.sheets,
-        { id: 2, name: 'Summary', order: 1, cells: [] },
-      ],
+      sheets: [...blankSheetSnapshot.sheets, { id: 2, name: 'Summary', order: 1, cells: [] }],
     })
 
     engine.setRangeValues({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }, [[0]])
@@ -43,11 +40,25 @@ describe('engine no-op history', () => {
     expect(engine.undo()).toBe(true)
     expect(engine.exportSnapshot()).toEqual({
       ...blankSheetSnapshot,
-      sheets: [
-        ...blankSheetSnapshot.sheets,
-        { id: 2, name: 'Summary', order: 1, cells: [] },
-      ],
+      sheets: [...blankSheetSnapshot.sheets, { id: 2, name: 'Summary', order: 1, cells: [] }],
     })
+    expect(engine.undo()).toBe(false)
+  })
+
+  it('does not let a boundary-only row insert intercept undo for the previous semantic mutation', async () => {
+    const snapshot: WorkbookSnapshot = {
+      ...blankSheetSnapshot,
+      sheets: [{ id: 1, name: 'Sheet1', order: 0, cells: [{ address: 'A3', value: 7 }] }],
+    }
+    const engine = await engineFromSnapshot(snapshot)
+
+    engine.setRangeValues({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }, [[1]])
+    const afterSemanticMutation = engine.exportSnapshot()
+    engine.insertRows('Sheet1', 3, 1)
+
+    expect(engine.exportSnapshot()).toEqual(afterSemanticMutation)
+    expect(engine.undo()).toBe(true)
+    expect(engine.exportSnapshot()).toEqual(snapshot)
     expect(engine.undo()).toBe(false)
   })
 

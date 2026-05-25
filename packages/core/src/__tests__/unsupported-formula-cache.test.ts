@@ -10,16 +10,16 @@ describe('unsupported formula cache preservation', () => {
     expect(formulaMayContainFullRecalcPreservableUnavailableFormulaCall('UNKNOWNFUNC(A1)')).toBe(false)
     expect(formulaMayContainFullRecalcPreservableUnavailableFormulaCall('_FV(A1,"Industry")')).toBe(true)
     expect(formulaMayContainFullRecalcPreservableUnavailableFormulaCall('_fv(A1,"Industry")')).toBe(true)
-    expect(formulaMayContainFullRecalcPreservableUnavailableFormulaCall('_xldudf_WISEPRICE(B1,"Shares Outstanding")')).toBe(true)
+    expect(formulaMayContainFullRecalcPreservableUnavailableFormulaCall('_xldudf_WISEPRICE(B1,"Shares Outstanding")')).toBe(false)
   })
 
-  it('does not preserve unavailable formula caches during full recalculation', () => {
+  it('preserves only runtime-image provider fallback caches during full recalculation', () => {
     const definedNames = new Set<string>()
 
     expect(formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc('SUM(1,2)', definedNames)).toBe(false)
     expect(formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc('UNKNOWNFUNC(42)', definedNames)).toBe(false)
-    expect(formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc('_FV(A1,"Industry")', definedNames)).toBe(false)
-    expect(formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc('_fv(A1,"Industry")', definedNames)).toBe(false)
+    expect(formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc('_FV(A1,"Industry")', definedNames)).toBe(true)
+    expect(formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc('_fv(A1,"Industry")', definedNames)).toBe(true)
     expect(
       formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc('_xldudf_WISEPRICE(B1,"Shares Outstanding")', definedNames),
     ).toBe(false)

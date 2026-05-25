@@ -87,8 +87,10 @@ export function buildRelativeFormulaTemplateAstKey(node: FormulaNode, ownerRow: 
         .join(';')}`
     case 'NameRef':
       return `name:${templateSheetKey(node.sheetName)}:${node.name}`
-    case 'StructuredRef':
-      return `table:${node.tableName}[${node.section ?? 'data'}:${node.columnName}${node.endColumnName === undefined ? '' : `:${node.endColumnName}`}]`
+    case 'StructuredRef': {
+      const sectionPrefix = node.section === undefined ? '' : `${node.section}:`
+      return `table:${node.tableName}[${sectionPrefix}${node.columnName}${node.endColumnName === undefined ? '' : `:${node.endColumnName}`}]`
+    }
     case 'CellRef':
       return `cell:${templateSheetKey(node.sheetName)}:${buildRelativeCellReferenceTextKey(node.ref, ownerRow, ownerCol)}`
     case 'SpillRef':

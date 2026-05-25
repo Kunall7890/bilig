@@ -4368,6 +4368,8 @@ describe('SpreadsheetEngine', () => {
         sheetName: 'Summary',
         address: 'D2',
         source: { sheetName: 'Revenue', startAddress: 'A1', endAddress: 'B2' },
+        cacheFields: ['2', '3'],
+        cachedRecords: [[4, 5]],
         groupBy: ['Q1'],
         values: [{ sourceColumn: 'Q2', summarizeBy: 'sum' }],
         rows: 1,
@@ -5382,6 +5384,12 @@ describe('SpreadsheetEngine', () => {
         sheetName: 'Pivot',
         address: 'B2',
         source: { sheetName: 'Data', startAddress: 'A2', endAddress: 'B5' },
+        cacheFields: ['Region', 'Sales'],
+        cachedRecords: [
+          ['East', 10],
+          ['West', 7],
+          ['East', 5],
+        ],
         groupBy: ['Region'],
         values: [{ sourceColumn: 'Sales', summarizeBy: 'sum' }],
         rows: 3,
@@ -5826,6 +5834,12 @@ describe('SpreadsheetEngine', () => {
         sheetName: 'Pivot',
         address: 'B2',
         source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'D4' },
+        cacheFields: ['Region', 'Notes', 'Product', 'Sales'],
+        cachedRecords: [
+          ['East', 'priority', 'Widget', 10],
+          ['West', 'priority', 'Widget', 7],
+          ['East', 'priority', 'Gizmo', 5],
+        ],
         groupBy: ['Region'],
         values: [
           { sourceColumn: 'Sales', summarizeBy: 'sum' },
@@ -5847,6 +5861,12 @@ describe('SpreadsheetEngine', () => {
         sheetName: 'Pivot',
         address: 'B2',
         source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'D4' },
+        cacheFields: ['Region', 'Notes', 'Product', 'Sales'],
+        cachedRecords: [
+          ['East', 'priority', 'Widget', 10],
+          ['West', 'priority', 'Widget', 9],
+          ['East', 'priority', 'Gizmo', 5],
+        ],
         groupBy: ['Region'],
         values: [
           { sourceColumn: 'Sales', summarizeBy: 'sum' },

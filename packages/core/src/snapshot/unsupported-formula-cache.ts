@@ -9,8 +9,8 @@ type UnavailableCallMatcher = (normalizedName: string) => boolean
 
 const matchAnyUnavailableFormulaCall: UnavailableCallMatcher = () => true
 
-function isFullRecalcPreservableUnavailableFormulaCall(_normalizedName: string): boolean {
-  return false
+function isFullRecalcPreservableUnavailableFormulaCall(normalizedName: string): boolean {
+  return normalizedName === '_FV'
 }
 
 function containsAsciiCaseInsensitive(source: string, needle: string): boolean {
@@ -37,7 +37,7 @@ function containsAsciiCaseInsensitive(source: string, needle: string): boolean {
 }
 
 export function formulaMayContainFullRecalcPreservableUnavailableFormulaCall(source: string): boolean {
-  return source.indexOf('_') !== -1 && (containsAsciiCaseInsensitive(source, '_FV') || containsAsciiCaseInsensitive(source, '_XLDUDF_'))
+  return source.indexOf('_') !== -1 && containsAsciiCaseInsensitive(source, '_FV')
 }
 
 function withLocalFormulaName(localNames: ReadonlySet<string>, name: string): ReadonlySet<string> {

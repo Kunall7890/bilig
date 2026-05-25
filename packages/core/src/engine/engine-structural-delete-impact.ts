@@ -69,6 +69,7 @@ function cellHasSemanticDeleteImpact(args: {
 function hasFormulaReferenceAtOrAfter(args: {
   readonly workbook: WorkbookStore
   readonly getCellByIndex: (cellIndex: number) => CellSnapshot
+  readonly getFormulaSourceByIndex?: (cellIndex: number) => string | undefined
   readonly sheetName: string
   readonly axis: StructuralDeleteAxis
   readonly start: number
@@ -88,11 +89,8 @@ function hasFormulaReferenceAtOrAfter(args: {
       if (formulaId === 0) {
         return
       }
-      const snapshot = args.getCellByIndex(cellIndex)
-      if (
-        snapshot.formula &&
-        formulaWouldRewriteForStructuralTransform(snapshot.formula, args.sheetName, args.axis, args.start, args.count, args.kind)
-      ) {
+      const formula = args.getFormulaSourceByIndex?.(cellIndex) ?? args.getCellByIndex(cellIndex).formula
+      if (formula && formulaWouldRewriteForStructuralTransform(formula, args.sheetName, args.axis, args.start, args.count, args.kind)) {
         found = true
       }
     })
@@ -233,6 +231,7 @@ function dataValidationTouchesAxisInsert(
 export function hasEngineStructuralInsertImpact(args: {
   readonly workbook: WorkbookStore
   readonly getCellByIndex: (cellIndex: number) => CellSnapshot
+  readonly getFormulaSourceByIndex?: (cellIndex: number) => string | undefined
   readonly sheetName: string
   readonly axis: StructuralDeleteAxis
   readonly start: number
@@ -267,6 +266,9 @@ export function hasEngineStructuralInsertImpact(args: {
     return true
   }
   if (args.workbook.listFormatRanges(args.sheetName).some((record) => rangeTouchesAxisDelete(record.range, args.axis, args.start))) {
+    return true
+  }
+  if (args.workbook.listMergeRanges(args.sheetName).some((record) => rangeTouchesAxisDelete(record, args.axis, args.start))) {
     return true
   }
   const freezePane = args.workbook.getFreezePane(args.sheetName)
@@ -401,9 +403,20 @@ export function hasEngineStructuralInsertImpact(args: {
   return hasFormulaReferenceAtOrAfter({ ...args, kind: 'insert' })
 }
 
+export function hasEngineStructuralInsertBoundaryPreparationImpact(args: {
+  readonly workbook: WorkbookStore
+  readonly sheetName: string
+  readonly axis: StructuralDeleteAxis
+  readonly start: number
+}): boolean {
+  const sheet = args.workbook.getSheet(args.sheetName)
+  return !!sheet && args.start > 0 && sheet.grid.someCellInAxisScope(args.axis, { start: args.start - 1, end: args.start }, () => true)
+}
+
 export function hasEngineStructuralDeleteImpact(args: {
   readonly workbook: WorkbookStore
   readonly getCellByIndex: (cellIndex: number) => CellSnapshot
+  readonly getFormulaSourceByIndex?: (cellIndex: number) => string | undefined
   readonly sheetName: string
   readonly axis: StructuralDeleteAxis
   readonly start: number
@@ -438,6 +451,9 @@ export function hasEngineStructuralDeleteImpact(args: {
     return true
   }
   if (args.workbook.listFormatRanges(args.sheetName).some((record) => rangeTouchesAxisDelete(record.range, args.axis, args.start))) {
+    return true
+  }
+  if (args.workbook.listMergeRanges(args.sheetName).some((record) => rangeTouchesAxisDelete(record, args.axis, args.start))) {
     return true
   }
   const freezePane = args.workbook.getFreezePane(args.sheetName)

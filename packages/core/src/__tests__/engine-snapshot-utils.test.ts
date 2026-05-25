@@ -51,12 +51,12 @@ describe('engine snapshot utils', () => {
     expect(metadata).toEqual({
       rows: [
         { id: 'row-1', index: 0, size: 24, hidden: true },
-        { id: 'row-1', index: 2, size: 30, hidden: true, styleIndex: 7, customFormat: true },
-        { id: 'row-2', index: 3, size: 30, hidden: true, styleIndex: 7, customFormat: true },
+        { id: 'row-2', index: 2, size: 30, hidden: true, styleIndex: 7, customFormat: true },
+        { id: 'row-3', index: 3, size: 30, hidden: true, styleIndex: 7, customFormat: true },
       ],
       columns: [
         { id: 'column-2', index: 1, size: 140, hidden: false },
-        { id: 'column-1', index: 3, size: 160, hidden: false, styleIndex: 9, customFormat: true },
+        { id: 'column-3', index: 3, size: 160, hidden: false, styleIndex: 9, customFormat: true },
       ],
       rowMetadata: [
         { start: 0, count: 1, size: 24, hidden: true },
@@ -143,14 +143,14 @@ describe('engine snapshot utils', () => {
         sheetName: 'Sheet1',
         start: 2,
         count: 1,
-        entries: [{ id: 'row-1', index: 2, size: 30, hidden: true }],
+        entries: [{ id: 'row-2', index: 2, size: 30, hidden: true }],
       },
       {
         kind: 'insertRows',
         sheetName: 'Sheet1',
         start: 3,
         count: 1,
-        entries: [{ id: 'row-2', index: 3, size: 30, hidden: true }],
+        entries: [{ id: 'row-3', index: 3, size: 30, hidden: true }],
       },
       {
         kind: 'insertColumns',
@@ -164,7 +164,7 @@ describe('engine snapshot utils', () => {
         sheetName: 'Sheet1',
         start: 3,
         count: 1,
-        entries: [{ id: 'column-1', index: 3, size: 160, hidden: false }],
+        entries: [{ id: 'column-3', index: 3, size: 160, hidden: false }],
       },
       {
         kind: 'updateRowMetadata',

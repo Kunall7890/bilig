@@ -40,11 +40,7 @@ export interface WorkbookAuthoritativeReadbackProof {
   readonly incompleteReason: string | null
 }
 
-export interface WorkbookSemanticReadbackProof {
-  readonly requested: boolean
-  readonly matched: boolean | null
-  readonly incompleteReason: string | null
-}
+export type { WorkbookSemanticReadbackProof } from './workbook-agent-mutation-semantic-proof.js'
 
 export interface WorkbookRecalculationProof {
   readonly requested: boolean

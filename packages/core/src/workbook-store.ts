@@ -588,7 +588,14 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return this.axisEntryStore.materializeAxisEntries(this.getOrCreateSheet(sheetName), 'column', start, count)
   }
 
+  private bumpProvidedAxisEntryIds(axis: 'row' | 'column', entries: readonly Protocol.WorkbookAxisEntrySnapshot[] | undefined): void {
+    entries?.forEach((entry) => {
+      this.idAllocator.bumpAxisId(axis, entry.id)
+    })
+  }
+
   insertRows(sheetName: string, start: number, count: number, entries?: readonly Protocol.WorkbookAxisEntrySnapshot[]): void {
+    this.bumpProvidedAxisEntryIds('row', entries)
     this.structuralAxisOperations.insert('row', sheetName, start, count, entries)
   }
 
@@ -601,6 +608,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
   }
 
   insertColumns(sheetName: string, start: number, count: number, entries?: readonly Protocol.WorkbookAxisEntrySnapshot[]): void {
+    this.bumpProvidedAxisEntryIds('column', entries)
     this.structuralAxisOperations.insert('column', sheetName, start, count, entries)
   }
 

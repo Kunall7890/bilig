@@ -244,7 +244,7 @@ describe('EngineRecalcService', () => {
     expect(counters.nativeDirectLookupRecalcEvaluations).toBeGreaterThanOrEqual(formulaRowCount)
   })
 
-  it('preserves imported cached unsupported formula values during full recalculation', async () => {
+  it('recalculates imported cached unsupported formula values during explicit full recalculation', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'recalc-imported-unsupported-cache' })
     await engine.ready()
     engine.importSnapshot({
@@ -271,9 +271,9 @@ describe('EngineRecalcService', () => {
     const a1Index = engine.workbook.getCellIndex('Sheet1', 'A1')
     const changed = Effect.runSync(getRecalcService(engine).recalculateNow())
 
-    expect(changed).not.toContain(a1Index)
-    expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Number, value: 14935800000 })
-    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 14935.8 })
+    expect(changed).toContain(a1Index)
+    expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Name })
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Name })
 
     engine.setCellValue('Sheet1', 'B1', 'MSFT')
 

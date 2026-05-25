@@ -193,14 +193,19 @@ function buildAgentApplyUndoRoundTripControl(scenario: AgentAuditabilityScenario
 
 function buildAuthoritativeAgentApplyGuardControl(): AuditabilityControl {
   const serviceSource = readFileSync(join(rootDir, 'apps', 'bilig', 'src', 'zero', 'service.ts'), 'utf8')
-  const staleGuardIndex = serviceSource.indexOf('state.headRevision !== bundle.baseRevision')
+  const handoffIndex = serviceSource.indexOf('const commandBundle = assertWorkbookCommandBundleHandoff(bundle)')
+  const staleGuardIndex = firstPresentIndex(serviceSource, [
+    'state.headRevision !== commandBundle.targetRevision',
+    'state.headRevision !== bundle.baseRevision',
+  ])
   const staleErrorIndex = serviceSource.indexOf('WORKBOOK_AGENT_PREVIEW_STALE')
   const authoritativePreviewIndex = serviceSource.indexOf('const authoritativePreview = await buildWorkbookAgentPreview')
   const mismatchGuardIndex = serviceSource.indexOf('areWorkbookAgentPreviewSummariesEqual(preview, authoritativePreview)')
   const mismatchErrorIndex = serviceSource.indexOf('WORKBOOK_AGENT_PREVIEW_MISMATCH')
   const applyIndex = serviceSource.indexOf('applyWorkbookAgentCommandBundleWithUndoCapture(state.engine, bundle)')
   const persistIndex = serviceSource.indexOf('persistWorkbookMutation(client, documentId')
-  const staleGuardBeforeApply = staleGuardIndex >= 0 && staleGuardIndex < applyIndex && staleErrorIndex > staleGuardIndex
+  const staleGuardBeforeApply =
+    handoffIndex >= 0 && handoffIndex < staleGuardIndex && staleGuardIndex < applyIndex && staleErrorIndex > staleGuardIndex
   const previewBuiltBeforeMismatch = authoritativePreviewIndex >= 0 && authoritativePreviewIndex < mismatchGuardIndex
   const mismatchGuardBeforeApply =
     mismatchGuardIndex >= 0 && mismatchGuardIndex < applyIndex && mismatchErrorIndex > mismatchGuardIndex && mismatchErrorIndex < applyIndex
@@ -220,6 +225,11 @@ function buildAuthoritativeAgentApplyGuardControl(): AuditabilityControl {
       ...(applyBeforePersist ? [] : ['agent bundle apply is not ordered before mutation persistence']),
     ],
   })
+}
+
+function firstPresentIndex(source: string, needles: readonly string[]): number {
+  const indexes = needles.map((needle) => source.indexOf(needle)).filter((index) => index >= 0)
+  return indexes.length > 0 ? Math.min(...indexes) : -1
 }
 
 function buildWorkbookHistoryRevertRedoControl(): AuditabilityControl {

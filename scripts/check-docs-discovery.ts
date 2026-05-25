@@ -390,8 +390,16 @@ requireIncludes(readme, 'docs/.well-known/agent.json', 'README.md')
 requireIncludes(headlessReadme, 'https://proompteng.github.io/bilig/.well-known/agent.json', 'packages/headless/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, '## Start Here', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'n8n, Dify, or Flowise formula readback', 'packages/workpaper/README.md')
-requireIncludes(scopedWorkpaperPackageReadme, 'https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html', 'packages/workpaper/README.md')
-requireIncludes(scopedWorkpaperPackageReadme, 'https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html', 'packages/workpaper/README.md')
+requireIncludes(
+  scopedWorkpaperPackageReadme,
+  'https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html',
+  'packages/workpaper/README.md',
+)
+requireIncludes(
+  scopedWorkpaperPackageReadme,
+  'https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html',
+  'packages/workpaper/README.md',
+)
 requireIncludes(llms, 'Do not claim success from a write call alone.', 'docs/llms.txt')
 requireIncludes(llms, 'pnpm --dir bilig/examples/headless-workpaper install --ignore-workspace', 'docs/llms.txt')
 requireIncludes(llms, 'pnpm --dir bilig/examples/headless-workpaper run agent:framework-adapters', 'docs/llms.txt')

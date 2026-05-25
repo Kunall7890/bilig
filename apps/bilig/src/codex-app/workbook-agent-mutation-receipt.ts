@@ -22,6 +22,7 @@ import {
   type WorkbookSemanticReadbackProof,
   type WorkbookAgentMutationProofContext,
 } from './workbook-agent-mutation-proof.js'
+import { buildWorkbookSemanticReadbackProof } from './workbook-agent-mutation-semantic-proof.js'
 import { stringifyJson, textToolResult, type WorkbookAgentStageCommandResult } from './workbook-agent-tool-shared.js'
 
 const MAX_VERIFICATION_RANGES = 3
@@ -147,32 +148,6 @@ function buildAppliedMutationSummary(input: {
   }
   const primaryWarning = input.mutationReceipt.warnings[0] ?? 'Mutation proof is incomplete.'
   return `Verification incomplete for workbook change set at revision r${String(input.appliedRevision)}: ${primaryWarning}`
-}
-
-function buildWorkbookSemanticReadbackProof(input: {
-  readonly authoritativeReadback: WorkbookAuthoritativeReadbackProof
-  readonly renderedReadback: WorkbookRenderedReadbackProof
-}): WorkbookSemanticReadbackProof {
-  const requested = input.authoritativeReadback.requested || input.renderedReadback.requested
-  if (!requested) {
-    return {
-      requested: false,
-      matched: null,
-      incompleteReason: input.authoritativeReadback.incompleteReason ?? input.renderedReadback.incompleteReason,
-    }
-  }
-  const matched =
-    input.authoritativeReadback.matched === true && (!input.renderedReadback.requested || input.renderedReadback.matched === true)
-  return {
-    requested,
-    matched,
-    incompleteReason:
-      input.authoritativeReadback.matched !== true
-        ? (input.authoritativeReadback.incompleteReason ?? 'Authoritative semantic readback did not match.')
-        : input.renderedReadback.requested && input.renderedReadback.matched !== true
-          ? (input.renderedReadback.incompleteReason ?? 'Rendered semantic readback did not match.')
-          : null,
-  }
 }
 
 export async function buildMutationReceipt(input: {
