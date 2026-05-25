@@ -161,7 +161,7 @@ function styleForRect(
   if (rect.role === 'header-fill') {
     return {
       ...base,
-      backgroundColor: workbookThemeColors.selectionHeaderFill,
+      backgroundColor: workbookThemeColors.selectionHeaderOverlayFill,
     }
   }
   if (rect.role === 'header-seam-cover') {

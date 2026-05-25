@@ -307,6 +307,12 @@ function appendColumnHeaderSeamCoverRect(rects: GridSelectionVisualRect[], key: 
     width: bounds.width,
     height: 1,
   })
+  appendRect(rects, 'header-seam-cover', `${key}:right`, {
+    x: bounds.x + Math.max(0, bounds.width - 1),
+    y: bounds.y,
+    width: 1,
+    height: bounds.height,
+  })
 }
 
 function appendRowHeaderFillRect(rects: GridSelectionVisualRect[], key: string, bounds: Rectangle): void {
@@ -319,6 +325,12 @@ function appendRowHeaderSeamCoverRect(rects: GridSelectionVisualRect[], key: str
     y: bounds.y,
     width: 1,
     height: bounds.height,
+  })
+  appendRect(rects, 'header-seam-cover', `${key}:bottom`, {
+    x: bounds.x,
+    y: bounds.y + Math.max(0, bounds.height - 1),
+    width: bounds.width,
+    height: 1,
   })
 }
 

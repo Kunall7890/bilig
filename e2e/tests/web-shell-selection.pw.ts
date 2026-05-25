@@ -412,6 +412,12 @@ test('@browser-ci web app keeps selected row headers and body cells on a single 
   const headerLastPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 1, seamY)
   const bodyFirstPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH, seamY)
   const headerInternalSeamPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 12, internalRowSeamY)
+  const selectedHeaderTextPixels = await countDarkViewportPixels(page, {
+    height: PRODUCT_ROW_HEIGHT,
+    width: PRODUCT_ROW_MARKER_WIDTH - 16,
+    x: grid.x + 8,
+    y: grid.y + PRODUCT_HEADER_HEIGHT + rowTop,
+  })
 
   expect(
     isGridBorderPixel(headerLastPixel),
@@ -432,6 +438,7 @@ test('@browser-ci web app keeps selected row headers and body cells on a single 
     maxPixelChannelDistance(headerInteriorPixel, headerInternalSeamPixel),
     'selected row-header range should cover internal row separators instead of drawing a double border between selected headers',
   ).toBeLessThanOrEqual(4)
+  expect(selectedHeaderTextPixels, 'selected row header numbers should remain above selection fills').toBeGreaterThan(4)
   expect(bodyFirstPixel.green, 'first body pixel should remain selected-row fill, not a border').toBeGreaterThan(bodyFirstPixel.red)
 })
 
@@ -1351,6 +1358,58 @@ async function sampleViewportPixel(
         green: Math.round(green / count),
         red: Math.round(red / count),
       }
+    },
+    { dataUrl: `data:image/png;base64,${buffer.toString('base64')}` },
+  )
+}
+
+async function countDarkViewportPixels(
+  page: Page,
+  clip: {
+    readonly height: number
+    readonly width: number
+    readonly x: number
+    readonly y: number
+  },
+): Promise<number> {
+  const buffer = await page.screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    clip: {
+      height: Math.max(1, Math.round(clip.height)),
+      width: Math.max(1, Math.round(clip.width)),
+      x: Math.round(clip.x),
+      y: Math.round(clip.y),
+    },
+  })
+  return await page.evaluate(
+    async ({ dataUrl }) => {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const element = new Image()
+        element.addEventListener('load', () => resolve(element), { once: true })
+        element.addEventListener('error', () => reject(new Error('Failed to decode dark-pixel screenshot')), { once: true })
+        element.src = dataUrl
+      })
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      const context = canvas.getContext('2d')
+      if (!context) {
+        throw new Error('Missing 2d context for dark-pixel screenshot analysis')
+      }
+      context.drawImage(image, 0, 0)
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+      let darkPixels = 0
+      for (let index = 0; index < pixels.length; index += 4) {
+        const alpha = pixels[index + 3] ?? 0
+        const red = pixels[index] ?? 255
+        const green = pixels[index + 1] ?? 255
+        const blue = pixels[index + 2] ?? 255
+        if (alpha > 200 && red < 120 && green < 120 && blue < 120) {
+          darkPixels += 1
+        }
+      }
+      return darkPixels
     },
     { dataUrl: `data:image/png;base64,${buffer.toString('base64')}` },
   )

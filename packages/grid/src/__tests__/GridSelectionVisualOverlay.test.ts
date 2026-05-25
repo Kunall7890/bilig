@@ -289,7 +289,7 @@ describe('GridSelectionVisualOverlay', () => {
     ).toBe(false)
   })
 
-  test('chrome-only mode keeps a readable body fill and paints crisp selection chrome', async () => {
+  test('chrome-only mode leaves fills to TypeGPU and paints crisp DOM selection chrome', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     const geometry = createGeometry()
     const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
@@ -315,6 +315,7 @@ describe('GridSelectionVisualOverlay', () => {
     const headerFill = queryVisualElement(host, 'header-fill')
     const headerSeamCover = queryVisualElement(host, 'header-seam-cover')
     const selectionFill = queryVisualElement(host, 'selection-fill')
+    const selectionGridline = queryVisualElement(host, 'selection-gridline')
     const selectionBorder = queryVisualElement(host, 'selection-border')
     const activeBorder = queryVisualElement(host, 'active-border')
     const fillHandle = queryVisualElement(host, 'fill-handle')
@@ -329,11 +330,12 @@ describe('GridSelectionVisualOverlay', () => {
     expect(activeBorder).toBeNull()
     expect(fillHandle).toBeInstanceOf(HTMLElement)
     expect(headerFill?.style.opacity).toBe('')
-    expect(headerFill?.style.backgroundColor).toBe('rgb(209, 221, 210)')
+    expect(headerFill?.style.backgroundColor).toBe('rgba(33, 115, 70, 0.16)')
     expect(headerSeamCover?.style.opacity).toBe('')
     expect(headerSeamCover?.style.backgroundColor).toBe('rgb(209, 221, 210)')
     expect(selectionFill?.style.opacity).toBe('')
     expect(selectionFill?.style.backgroundColor).toBe('rgba(33, 115, 70, 0.22)')
+    expect(selectionGridline?.style.opacity).toBe('')
     expect(hoverFill?.style.opacity).toBe('0')
     expect(selectionBorder?.style.opacity).toBe('')
     expect(selectionBorder?.style.borderLeftWidth).toBe('')
