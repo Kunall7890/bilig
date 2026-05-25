@@ -110,6 +110,9 @@ function resolveTargetPath(basePartPath: string, target: string): string {
 }
 
 function sourceKindForConnection(type: string | null, connection: Record<string, unknown>): WorkbookExternalConnectionSourceKind {
+  if (isEmbeddedDataModelConnection(type, connection)) {
+    return 'model'
+  }
   if (recordChild(connection, 'dbPr')) {
     return 'database'
   }
@@ -126,6 +129,38 @@ function sourceKindForConnection(type: string | null, connection: Record<string,
     return 'web-query'
   }
   return 'unknown'
+}
+
+function isEmbeddedDataModelConnection(type: string | null, connection: Record<string, unknown>): boolean {
+  if (booleanValue(connection['model']) === true) {
+    return true
+  }
+
+  const dbPr = recordChild(connection, 'dbPr')
+  const olapPr = recordChild(connection, 'olapPr')
+  const searchableText = [
+    stringValue(connection['name']),
+    stringValue(connection['description']),
+    dbPr ? stringValue(dbPr['connection']) : null,
+    dbPr ? stringValue(dbPr['command']) : null,
+    stringValue(connection['connection']),
+    stringValue(connection['command']),
+  ]
+    .filter((value): value is string => value !== null)
+    .join('\n')
+    .toLowerCase()
+
+  if (
+    searchableText.includes('$workbook$') ||
+    searchableText.includes('thisworkbookdatamodel') ||
+    searchableText.includes('powerpivot') ||
+    searchableText.includes('power pivot') ||
+    searchableText.includes('data model')
+  ) {
+    return true
+  }
+
+  return type === '5' && olapPr !== null && dbPr !== null && stringValue(dbPr['command'])?.trim().toLowerCase() === 'model'
 }
 
 function readConnectionCommand(connection: Record<string, unknown>): {

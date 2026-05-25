@@ -20,6 +20,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-cell-metadata-oracle.test.ts',
   'macos-desktop-excel-conditional-format-artifacts-oracle.test.ts',
   'macos-desktop-excel-control-artifacts-oracle.test.ts',
+  'macos-desktop-excel-data-model-connection-oracle.test.ts',
   'macos-desktop-excel-data-validation-structural-oracle.test.ts',
   'macos-desktop-excel-data-table-structural-oracle.test.ts',
   'macos-desktop-excel-defined-name-structural-oracle.test.ts',
@@ -357,6 +358,17 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('dataModelArtifacts')
     expect(source).toContain('WorkPaper.buildFromSnapshot')
     expect(source).toContain('preserves Power Query package topology after Desktop Excel open/save and headless export')
+  })
+
+  it('keeps the Data Model connection oracle anchored to Desktop Excel connection provenance', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-data-model-connection-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelPackageOpenSaveOracle')
+    expect(source).toContain('externalConnections')
+    expect(source).toContain("sourceKind: 'model'")
+    expect(source).toContain('ThisWorkbookDataModel')
+    expect(source).toContain('classifies Desktop Excel Data Model connections after open/save and headless export')
   })
 
   it('keeps the rich text oracle anchored to Desktop Excel cell run preservation', () => {

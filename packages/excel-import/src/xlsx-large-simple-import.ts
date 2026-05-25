@@ -14,6 +14,7 @@ import { readImportedWorkbookCellMetadataPart } from './xlsx-cell-metadata.js'
 import { legacyCommentThreadSignature, readImportedWorkbookLegacyCommentVmlFromSheetSources } from './xlsx-comment-vml.js'
 import { readImportedWorkbookControlArtifactsFromSheetSources } from './xlsx-control-artifacts.js'
 import { isDataModelPackagePartPath, readImportedWorkbookDataModelArtifacts } from './xlsx-data-model-artifacts.js'
+import { readImportedWorkbookExternalConnections } from './xlsx-external-connections.js'
 import { readImportedWorkbookDrawingArtifactsFromWorksheetRelationships } from './xlsx-drawing-artifacts.js'
 import { readImportedWorkbookExternalLinkArtifacts } from './xlsx-external-link-artifacts.js'
 import { readImportedSheetAutoFilters } from './xlsx-filters.js'
@@ -196,6 +197,8 @@ export function tryImportLargeSimpleXlsx(
   }
   const importedExternalLinkArtifacts =
     materializeCells && hasExternalLinkParts ? readImportedWorkbookExternalLinkArtifacts(zip) : undefined
+  const importedExternalConnections =
+    materializeCells && (hasExternalLinkParts || hasSlicerConnectionParts) ? readImportedWorkbookExternalConnections(zip) : undefined
   const importedDataModelArtifacts = materializeCells && hasDataModelParts ? readImportedWorkbookDataModelArtifacts(zip) : undefined
   const importedWorkbookProperties = materializeCells ? readImportedWorkbookProperties(zip) : undefined
   const importedWorkbookDocumentProperties = materializeCells ? readImportedWorkbookDocumentPropertiesArtifacts(zip) : undefined
@@ -899,6 +902,7 @@ export function tryImportLargeSimpleXlsx(
     importedControlArtifacts?.artifacts ||
     sortedImportedTables ||
     styleCatalog.size > 0 ||
+    importedExternalConnections ||
     importedDataModelArtifacts ||
     importedExternalLinkArtifacts ||
     importedSlicerConnectionArtifacts ||
@@ -924,6 +928,7 @@ export function tryImportLargeSimpleXlsx(
           ...(importedControlArtifacts?.artifacts ? { controlArtifacts: importedControlArtifacts.artifacts } : {}),
           ...(sortedImportedTables ? { tables: sortedImportedTables } : {}),
           ...(styleCatalog.size > 0 ? { styles: [...styleCatalog.values()] } : {}),
+          ...(importedExternalConnections ? { externalConnections: importedExternalConnections } : {}),
           ...(importedDataModelArtifacts ? { dataModelArtifacts: importedDataModelArtifacts } : {}),
           ...(importedExternalLinkArtifacts ? { externalLinkArtifacts: importedExternalLinkArtifacts } : {}),
           ...(importedSlicerConnectionArtifacts ? { slicerConnectionArtifacts: importedSlicerConnectionArtifacts } : {}),
