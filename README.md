@@ -114,6 +114,21 @@ for making n8n's built-in XLSX writer reinterpret text as formulas.
 See [n8n WorkPaper formula readback](docs/n8n-workpaper-formula-readback.md)
 for the community-node install path, proof shape, import steps, and limits.
 
+## Open WebUI MCP Tools
+
+Need Open WebUI to call spreadsheet tools without driving Excel through a
+browser? Use the hosted Streamable HTTP MCP endpoint for a quick smoke test:
+
+```text
+https://bilig.proompteng.ai/mcp
+```
+
+Use `mcpo` when Open WebUI needs an OpenAPI tool server around the local npm
+stdio process and a writable project WorkPaper file.
+
+See [Open WebUI WorkPaper MCP setup](docs/open-webui-workpaper-mcp.md) for the
+native MCP path, the `mcpo` command, Docker URL boundaries, and proof prompt.
+
 ## Directus Persisted Calculated Fields
 
 Need a Directus Flow to calculate and persist quote, pricing, payout, or import

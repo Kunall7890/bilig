@@ -11,10 +11,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): constrain action input metadata (03d2f83c)
 - feat(workbook): publish model manifest contract (a1e6c251)
 
 ## Internal runtime changes
+
 - docs(growth): add Directus WorkPaper flow example (4d8840e4)
 - chore(release): runtime packages v0.104.0 (f429c823)
 
@@ -25,9 +27,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): constrain action input metadata (03d2f83c)
 
 ## Internal runtime changes
+
 - docs(growth): add Directus WorkPaper flow example (4d8840e4)
 
 ## 0.103.0
@@ -37,6 +41,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): prepare canonical action handoff (5eddcfff)
 - feat(workbook): expose prepare subpath (b12bcc94)
 - feat(workbook): validate action names before planning (eaa1f78c)
@@ -47,6 +52,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): publish runtime requirements schema (d59978f6)
 
 ## Fixes
+
 - fix(excel-import): preserve null external cache errors (d2315862)
 - fix(excel-oracle): serialize macos excel harness (40b4dc3a)
 - fix(workbook): match Excel active tab on sheet moves (2d19224c)
@@ -54,6 +60,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(ui): require same-corpus scenario fields (862c3d01)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.97.0 (df8a3278)
 - refactor(workbook): split run proof helpers (69d3184b)
 - chore(release): runtime packages v0.98.0 (3be2efd5)
@@ -74,6 +81,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): prepare canonical action handoff (5eddcfff)
 - feat(workbook): expose prepare subpath (b12bcc94)
 - feat(workbook): validate action names before planning (eaa1f78c)
@@ -83,12 +91,14 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): add features subpath (180d0653)
 
 ## Fixes
+
 - fix(excel-import): preserve null external cache errors (d2315862)
 - fix(excel-oracle): serialize macos excel harness (40b4dc3a)
 - fix(workbook): match Excel active tab on sheet moves (2d19224c)
 - fix(core): restore structural correctness gates (9bea79ca)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.97.0 (df8a3278)
 - refactor(workbook): split run proof helpers (69d3184b)
 - chore(release): runtime packages v0.98.0 (3be2efd5)

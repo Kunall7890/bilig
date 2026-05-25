@@ -172,6 +172,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Agent handbook: https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html
 - Agent workbook challenge: https://proompteng.github.io/bilig/agent-workbook-challenge.html
 - MCP server guide: https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
+- Open WebUI MCP setup: https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html
 - XLSX formula clinic: https://proompteng.github.io/bilig/formula-bug-clinic.html
 - Compatibility limits: https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html
 - Repository: https://github.com/proompteng/bilig

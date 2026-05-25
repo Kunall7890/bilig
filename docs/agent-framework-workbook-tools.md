@@ -70,6 +70,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | Claude Code and Claude Desktop | File-backed MCP server, or MCPB when a desktop extension is easier. | [Claude MCPB guide](claude-desktop-mcpb-workpaper.md) |
 | Cursor | Project-local `.cursor/mcp.json` pointing at `bilig-workpaper-mcp`. | [MCP client setup](mcp-client-setup.md#cursor) |
 | VS Code and Cline | Project-local MCP config with a writable WorkPaper file. | [MCP client setup](mcp-client-setup.md) |
+| Open WebUI | Native Streamable HTTP MCP for hosted smoke tests, or `mcpo` around the npm stdio server for local writable files. | [Open WebUI WorkPaper MCP setup](open-webui-workpaper-mcp.md) |
 | OpenAI Agents SDK | Function tools around WorkPaper read/write/readback. | [OpenAI Agents SDK WorkPaper tool](openai-agents-sdk-workpaper-tool.md) |
 | OpenAI Responses API | Function-call wrapper returning proof objects. | [OpenAI Responses WorkPaper tool call](openai-responses-workpaper-tool-call.md) |
 | Vercel AI SDK | Tool definitions that call a WorkPaper service function. | [Vercel AI SDK spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md) |
@@ -117,6 +118,7 @@ Do not claim success from a write call alone.
 - [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
 - [MCP client setup](mcp-client-setup.md)
+- [Open WebUI WorkPaper MCP setup](open-webui-workpaper-mcp.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
 - [Node framework WorkPaper adapters](node-framework-workpaper-adapters.md)
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)

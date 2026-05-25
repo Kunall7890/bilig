@@ -147,6 +147,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/.well-known/skills/index.json
 - https://proompteng.github.io/bilig/.well-known/skills/bilig-workpaper/SKILL.txt
 - https://proompteng.github.io/bilig/mcp-client-setup.html
+- https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html
 - https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html
 - https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html
 - https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html
@@ -188,6 +189,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md
 - https://github.com/proompteng/bilig/blob/main/docs/openai-responses-workpaper-tool-call.md
 - https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md
+- https://github.com/proompteng/bilig/blob/main/docs/open-webui-workpaper-mcp.md
 - https://github.com/proompteng/bilig/blob/main/docs/agent-spreadsheet-tool-call-loop.md
 - https://github.com/proompteng/bilig/blob/main/docs/local-workpaper-benchmark-walkthrough.md
 - https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md

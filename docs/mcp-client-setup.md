@@ -106,6 +106,19 @@ printf '%s\n' \
 when it is missing, and `--writable` persists `set_cell_contents` changes to
 the same WorkPaper JSON file.
 
+## Open WebUI
+
+Open WebUI can use Bilig in two ways:
+
+- native MCP with the hosted Streamable HTTP endpoint,
+  `https://bilig.proompteng.ai/mcp`;
+- `mcpo` when Open WebUI should consume the local npm stdio server as an
+  OpenAPI tool server.
+
+Use the dedicated [Open WebUI WorkPaper MCP setup](open-webui-workpaper-mcp.md)
+for the exact Open WebUI settings, Docker URL boundary, `mcpo` command, and
+proof prompt.
+
 ## Claude Code
 
 Claude Code can add an MCP server from JSON. Add the server to the current
