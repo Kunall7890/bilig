@@ -59,6 +59,8 @@ flowchart LR
   - transport-neutral run adapters for preview/apply/readback/check proof
   - strict run mode for one-flag agent-safe checks-before-mutation,
     apply/plan/revision/concrete-op/resolved-ref, and passed-check proof
+  - formula label verification against parsed formula reference tokens instead
+    of substring matches
   - runtime adapter capability checks before mutation handoff
   - bundle-scoped receipt changed-range validation for command proof
   - duplicate command-id rejection for inspectable command bundles

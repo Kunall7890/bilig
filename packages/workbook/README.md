@@ -269,6 +269,9 @@ separate. A planned formula write includes the formula string, the refs used to
 build it, and a `labels` array mapping each formula token to the workbook ref it
 represents. Runtime adapters use those labels to materialize table columns,
 filtered rows, names, and ranges without reverse-engineering hidden JS helpers.
+Plan verification parses formula text and checks labels against formula reference
+tokens, so substrings and quoted string literals do not count as dependency
+proof.
 For custom formula text, use `formula.raw(source, { inputs })`; pass
 `labels: [{ name, ref }]` when the raw formula uses custom tokens. For
 spreadsheet string literals, use `formula.text(value)`. Bare strings are not

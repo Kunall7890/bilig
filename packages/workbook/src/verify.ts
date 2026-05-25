@@ -31,6 +31,7 @@ import type { WorkbookOp } from './ops.js'
 import type { WorkbookChangeSummary, WorkbookCheckExpectation, WorkbookCheckResult, WorkbookRunError } from './result.js'
 import { hydratePlanData } from './plan-data.js'
 import { expectedConcreteCommandOp, workbookConcreteOpMatches, workbookOpMatches } from './command-ops.js'
+import { formulaUsesLabel } from './formula-usage.js'
 
 export type WorkbookPlanIssueCode =
   | 'invalid_plan'
@@ -525,8 +526,9 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
 
     if (command.kind === 'writeFormula') {
       const labels = formulaLabelsForCommand(command)
+      let formulaAst: ReturnType<typeof parseFormula> | undefined
       try {
-        parseFormula(command.formula)
+        formulaAst = parseFormula(command.formula)
       } catch (error) {
         issues.push({
           code: 'invalid_formula',
@@ -570,7 +572,7 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
             }),
           )
         }
-        if (!command.formula.includes(label.name)) {
+        if (formulaAst === undefined || !formulaUsesLabel(formulaAst, label.name)) {
           issues.push(
             issue({
               code: 'formula_label_not_used',
@@ -675,8 +677,9 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
     if (check.expectation?.kind === 'formulaEquals') {
       const expectation = check.expectation
       const labels = formulaLabelsForExpectation(expectation)
+      let formulaAst: ReturnType<typeof parseFormula> | undefined
       try {
-        parseFormula(expectation.formula)
+        formulaAst = parseFormula(expectation.formula)
       } catch (error) {
         issues.push({
           code: 'invalid_check_expectation_formula',
@@ -720,7 +723,7 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
             }),
           )
         }
-        if (!expectation.formula.includes(label.name)) {
+        if (formulaAst === undefined || !formulaUsesLabel(formulaAst, label.name)) {
           issues.push(
             issue({
               code: 'check_expectation_label_not_used',

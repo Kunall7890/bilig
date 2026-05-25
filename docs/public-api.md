@@ -547,6 +547,9 @@ dependencies for inspection and verification. Use
 `formula.raw(source, { inputs, labels })` when the raw formula uses custom ref
 tokens. These are declared dependencies and token mappings, not a
 parser-discovered model.
+Plan verification parses formula text and validates label usage against formula
+reference tokens, not substring matches, so labels inside longer identifiers or
+quoted string literals do not count as dependency proof.
 Formula operands intentionally reject bare strings. Consumers use `formula.raw`
 for formula source and `formula.text` for spreadsheet string literals, keeping
 agent-authored formulas explicit instead of overloading a string as either code,
@@ -699,11 +702,12 @@ even when those properties look like valid runtime handoff fields.
 first checks that the plan handoff itself is own data, then flags invalid action
 input, unresolved command targets, unresolved formula inputs, missing formula
 labels, formula labels that do not point at resolved refs or do not appear in
-formula text, duplicate resolved refs, refs used that are not discoverable from
-`refs`, unparsable formulas, and missing concrete ops for write, clear, and
-number-format commands whose target is already known as a single cell. Custom
-check targets and supporting refs must also resolve through `refsUsed`. Formula
-readback expectation inputs and labels must resolve through `refsUsed`, and
+formula reference tokens, duplicate resolved refs, refs used that are not
+discoverable from `refs`, unparsable formulas, and missing concrete ops for
+write, clear, and number-format commands whose target is already known as a
+single cell. Custom check targets and supporting refs must also resolve through
+`refsUsed`. Formula readback expectation inputs and labels must resolve through
+`refsUsed`, and
 formula expectation text must be parseable.
 Checks must start as `planned`; consumer model code cannot mark a check passed
 or failed before runtime proof.

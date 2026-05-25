@@ -142,6 +142,93 @@ describe('@bilig/workbook formula api', () => {
     ])
   })
 
+  it('does not treat formula label substrings or quoted text as used refs', () => {
+    const model = defineModel({
+      name: 'raw-formula-label-token-model',
+      find(workbook) {
+        return {
+          amount: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'C1' }),
+        }
+      },
+      actions: {
+        substring({ refs, workbook }) {
+          workbook.writeFormula(
+            refs.result,
+            formula.raw('DATA+1', {
+              labels: [{ name: 'A', ref: refs.amount }],
+            }),
+          )
+        },
+        quoted({ refs, workbook }) {
+          workbook.writeFormula(
+            refs.result,
+            formula.raw('"A"', {
+              labels: [{ name: 'A', ref: refs.amount }],
+            }),
+          )
+        },
+      },
+    })
+
+    const substring = planWorkbookAction(model, 'substring')
+    const quoted = planWorkbookAction(model, 'quoted')
+
+    expect(substring.status).toBe('planned')
+    expect(quoted.status).toBe('planned')
+    if (substring.status !== 'planned' || quoted.status !== 'planned') {
+      return
+    }
+
+    expect(verifyPlan(substring.plan).issues).toEqual([
+      expect.objectContaining({
+        code: 'formula_label_not_used',
+        path: 'commands[0].labels[0].name',
+      }),
+    ])
+    expect(verifyPlan(quoted.plan).issues).toEqual([
+      expect.objectContaining({
+        code: 'formula_label_not_used',
+        path: 'commands[0].labels[0].name',
+      }),
+    ])
+  })
+
+  it('does not treat check formula label substrings or quoted text as used refs', () => {
+    const model = defineModel({
+      name: 'raw-formula-check-label-token-model',
+      find(workbook) {
+        return {
+          amount: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'C1' }),
+        }
+      },
+      actions: {
+        inspect({ refs, workbook }) {
+          workbook.check.formulaEquals(
+            refs.result,
+            formula.raw('"A"', {
+              labels: [{ name: 'A', ref: refs.amount }],
+            }),
+          )
+        },
+      },
+    })
+
+    const result = planWorkbookAction(model, 'inspect')
+
+    expect(result.status).toBe('planned')
+    if (result.status !== 'planned') {
+      return
+    }
+    expect(verifyPlan(result.plan).issues).toEqual([
+      expect.objectContaining({
+        code: 'check_expectation_label_not_used',
+        path: 'checks[0].expectation.labels[0].name',
+      }),
+    ])
+  })
+
   it('keeps raw formula source behavior backward compatible', () => {
     expect(formula.raw('=1+1')).toEqual({
       kind: 'formula',
