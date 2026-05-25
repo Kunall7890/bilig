@@ -314,12 +314,24 @@ const applyCommandReceiptSchema: WorkbookJsonSchemaValue = {
     appliedOps: { type: 'array', items: engineOp },
     noop: {
       type: 'object',
-      required: ['reason'],
+      required: ['reason', 'proof'],
       additionalProperties: false,
       properties: {
         reason: { enum: ['already_satisfied'] },
         message: { type: 'string', minLength: 1 },
-        proof: actionInput,
+        proof: {
+          type: 'object',
+          required: ['source', 'evidence', 'opCount', 'commandKind', 'commandDigest', 'effect'],
+          additionalProperties: true,
+          properties: {
+            source: { type: 'string', minLength: 1 },
+            evidence: { type: 'string', minLength: 1 },
+            opCount: { const: 0 },
+            commandKind: { type: 'string', minLength: 1 },
+            commandDigest: { type: 'string', minLength: 1 },
+            effect: actionInput,
+          },
+        },
       },
     },
     resolvedRefs: { $ref: '#/$defs/commandResolvedRefs' },

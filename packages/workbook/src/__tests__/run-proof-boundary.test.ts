@@ -506,7 +506,14 @@ describe('@bilig/workbook run proof boundary', () => {
                   reason: 'already_satisfied',
                   proof: {
                     source: 'test',
+                    evidence: 'adapter_zero_ops',
+                    commandKind: receipt.commandKind,
+                    commandDigest: receipt.commandDigest,
                     opCount: 0,
+                    effect: {
+                      kind: 'writeValue',
+                      value: 12,
+                    },
                   },
                 },
               },
@@ -538,6 +545,170 @@ describe('@bilig/workbook run proof boundary', () => {
           },
         ],
       },
+      changed: [],
+    })
+  })
+
+  it('rejects no-op proof that is not bound to the planned command', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => {
+          const receipt = commandReceipt(plan)
+          return {
+            status: 'applied',
+            planId: workbookPlanId(plan),
+            baseRevision: 7,
+            revision: 7,
+            previewOps: [],
+            appliedOps: [],
+            commandReceipts: [
+              {
+                ...receipt,
+                previewOps: [],
+                appliedOps: [],
+                noop: {
+                  reason: 'already_satisfied',
+                  proof: {
+                    source: 'test',
+                    evidence: 'adapter_zero_ops',
+                    commandKind: receipt.commandKind,
+                    commandDigest: 'bilig-command-v1:wrong',
+                    opCount: 0,
+                    effect: {
+                      kind: 'writeValue',
+                      value: 12,
+                    },
+                  },
+                },
+              },
+            ],
+          }
+        },
+        read: (targets) => [{ target: first(targets), value: 12 }],
+        verifyChecks: (checks) => checks.map((check) => ({ ...check, status: 'passed', proof: { source: 'test' } })),
+      },
+      undefined,
+      { strict: true },
+    )
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message:
+            'Workbook action run-value-model.write returned invalid command receipts: commandReceipts[0].noop.proof.commandDigest must match commandDigest',
+        },
+      ],
+      changed: [],
+    })
+  })
+
+  it('rejects no-op proof without command-effect evidence', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => {
+          const receipt = commandReceipt(plan)
+          return {
+            status: 'applied',
+            planId: workbookPlanId(plan),
+            baseRevision: 7,
+            revision: 7,
+            previewOps: [],
+            appliedOps: [],
+            commandReceipts: [
+              {
+                ...receipt,
+                previewOps: [],
+                appliedOps: [],
+                noop: {
+                  reason: 'already_satisfied',
+                  proof: {
+                    source: 'test',
+                    evidence: 'adapter_zero_ops',
+                    commandKind: receipt.commandKind,
+                    commandDigest: receipt.commandDigest,
+                    opCount: 0,
+                  },
+                },
+              },
+            ],
+          }
+        },
+        read: (targets) => [{ target: first(targets), value: 12 }],
+        verifyChecks: (checks) => checks.map((check) => ({ ...check, status: 'passed', proof: { source: 'test' } })),
+      },
+      undefined,
+      { strict: true },
+    )
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message:
+            'Workbook action run-value-model.write returned invalid command receipts: commandReceipts[0].noop.proof.effect must be an object',
+        },
+      ],
+      changed: [],
+    })
+  })
+
+  it('rejects symbol-keyed no-op proof metadata before strict proof accepts it', async () => {
+    const model = valueModel()
+    const symbolKey = Symbol('hidden')
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => {
+          const receipt = commandReceipt(plan)
+          return {
+            status: 'applied',
+            planId: workbookPlanId(plan),
+            baseRevision: 7,
+            revision: 7,
+            previewOps: [],
+            appliedOps: [],
+            commandReceipts: [
+              {
+                ...receipt,
+                previewOps: [],
+                appliedOps: [],
+                noop: {
+                  reason: 'already_satisfied',
+                  [symbolKey]: true,
+                },
+              },
+            ],
+          }
+        },
+        read: (targets) => [{ target: first(targets), value: 12 }],
+        verifyChecks: (checks) => checks.map((check) => ({ ...check, status: 'passed', proof: { source: 'test' } })),
+      },
+      undefined,
+      { strict: true },
+    )
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message:
+            'Workbook action run-value-model.write returned invalid command receipts: commandReceipts[0].noop.Symbol(hidden) is unknown',
+        },
+      ],
       changed: [],
     })
   })

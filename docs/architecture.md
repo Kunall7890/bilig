@@ -118,8 +118,9 @@ flowchart LR
     the materialized preview and applied operations returned by a runtime
   - receipt op validation that rejects self-consistent proof when the materialized
     op does not match the planned command's concrete workbook op
-  - strict command proof that rejects empty materialized ops or resolved-ref
-    evidence that is missing or stale for ref-targeting commands
+  - strict command proof that rejects empty materialized ops unless the receipt
+    carries command-bound no-op and command-effect evidence, and rejects missing or stale
+    resolved-ref evidence for ref-targeting commands
   - failed run ledgers that preserve changed summaries and undo metadata after
     runtime apply, but keep `changed: []` when failed apply proof reports no
     applied ops and no undo

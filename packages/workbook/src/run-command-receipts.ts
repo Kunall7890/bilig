@@ -17,6 +17,10 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+function keyName(key: string | symbol): string {
+  return typeof key === 'symbol' ? key.toString() : key
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return false
@@ -268,38 +272,106 @@ function cloneCommandResolvedRefs(receipt: object, receiptIndex: number): Workbo
   })
 }
 
-function cloneNoopProof(receipt: object, receiptIndex: number): WorkbookRunNoopProof | undefined {
+function inputMatches(left: unknown, right: unknown): boolean {
+  return JSON.stringify(normalizeWorkbookActionInput(left)) === JSON.stringify(normalizeWorkbookActionInput(right))
+}
+
+function assertNoopEffectMatchesCommand(command: WorkbookActionCommand, proof: object, path: string): void {
+  const effect = ownValue(proof, 'effect')
+  if (!isRecord(effect)) {
+    throw new Error(`${path}.proof.effect must be an object`)
+  }
+  if (ownValue(effect, 'kind') !== command.kind) {
+    throw new Error(`${path}.proof.effect.kind must match commandKind`)
+  }
+  if (command.kind === 'writeValue' && !inputMatches(ownValue(effect, 'value'), command.value)) {
+    throw new Error(`${path}.proof.effect.value must match command value`)
+  }
+  if (command.kind === 'writeFormula' && ownValue(effect, 'formula') !== command.formula) {
+    throw new Error(`${path}.proof.effect.formula must match command formula`)
+  }
+  if (command.kind === 'clear' && ownValue(effect, 'cleared') !== true) {
+    throw new Error(`${path}.proof.effect.cleared must be true`)
+  }
+  if (command.kind === 'format') {
+    if (command.style !== undefined && !inputMatches(ownValue(effect, 'style'), command.style)) {
+      throw new Error(`${path}.proof.effect.style must match command style`)
+    }
+    if (command.numberFormat !== undefined && ownValue(effect, 'numberFormat') !== command.numberFormat) {
+      throw new Error(`${path}.proof.effect.numberFormat must match command numberFormat`)
+    }
+  }
+  if (command.kind === 'op' && ownValue(effect, 'opKind') !== command.op.kind) {
+    throw new Error(`${path}.proof.effect.opKind must match command op kind`)
+  }
+}
+
+function cloneNoopProof(
+  receipt: object,
+  receiptIndex: number,
+  expected: { readonly command?: WorkbookActionCommand; readonly commandKind: string; readonly commandDigest: string },
+): WorkbookRunNoopProof | undefined {
   const value = ownValue(receipt, 'noop')
   if (value === undefined) {
     return undefined
   }
+  const path = `commandReceipts[${String(receiptIndex)}].noop`
   if (!isRecord(value)) {
-    throw new Error(`commandReceipts[${String(receiptIndex)}].noop must be an object`)
+    throw new Error(`${path} must be an object`)
   }
-  for (const key of Object.keys(Object.getOwnPropertyDescriptors(value))) {
-    if (key !== 'reason' && key !== 'message' && key !== 'proof') {
-      throw new Error(`commandReceipts[${String(receiptIndex)}].noop.${key} is unknown`)
+  for (const key of Reflect.ownKeys(value)) {
+    const name = keyName(key)
+    if (typeof key === 'symbol' || (key !== 'reason' && key !== 'message' && key !== 'proof')) {
+      throw new Error(`${path}.${name} is unknown`)
     }
   }
   const reason = ownValue(value, 'reason')
   if (reason !== 'already_satisfied') {
-    throw new Error(`commandReceipts[${String(receiptIndex)}].noop.reason is invalid`)
+    throw new Error(`${path}.reason is invalid`)
   }
   const message = ownValue(value, 'message')
   if (message !== undefined && (typeof message !== 'string' || message.trim() === '')) {
-    throw new Error(`commandReceipts[${String(receiptIndex)}].noop.message is invalid`)
+    throw new Error(`${path}.message is invalid`)
   }
   const rawProof = ownValue(value, 'proof')
-  let proof: WorkbookActionInput | undefined
+  if (!isRecord(rawProof)) {
+    throw new Error(`${path}.proof must be an object`)
+  }
+  for (const key of Reflect.ownKeys(rawProof)) {
+    if (typeof key === 'symbol') {
+      throw new Error(`${path}.proof.${keyName(key)} is unknown`)
+    }
+  }
+  const source = ownValue(rawProof, 'source')
+  if (typeof source !== 'string' || source.trim() === '') {
+    throw new Error(`${path}.proof.source is invalid`)
+  }
+  const evidence = ownValue(rawProof, 'evidence')
+  if (typeof evidence !== 'string' || evidence.trim() === '') {
+    throw new Error(`${path}.proof.evidence is invalid`)
+  }
+  if (ownValue(rawProof, 'opCount') !== 0) {
+    throw new Error(`${path}.proof.opCount must be 0`)
+  }
+  if (ownValue(rawProof, 'commandKind') !== expected.commandKind) {
+    throw new Error(`${path}.proof.commandKind must match commandKind`)
+  }
+  if (ownValue(rawProof, 'commandDigest') !== expected.commandDigest) {
+    throw new Error(`${path}.proof.commandDigest must match commandDigest`)
+  }
+  if (expected.command !== undefined) {
+    assertNoopEffectMatchesCommand(expected.command, rawProof, path)
+  }
+  let proof: WorkbookActionInput
   try {
-    proof = rawProof === undefined ? undefined : normalizeWorkbookActionInput(rawProof)
+    proof = normalizeWorkbookActionInput(rawProof)
   } catch (error) {
-    throw new Error(`commandReceipts[${String(receiptIndex)}].noop.proof is invalid: ${errorMessage(error)}`, { cause: error })
+    throw new Error(`${path}.proof is invalid: ${errorMessage(error)}`, { cause: error })
   }
   return Object.freeze({
     reason,
     ...(message !== undefined ? { message } : {}),
-    ...(proof !== undefined ? { proof } : {}),
+    proof,
   })
 }
 
@@ -372,7 +444,7 @@ export function cloneWorkbookRunApplyCommandReceipts(
     if (!commandOpsMatchExpected(command, receiptAppliedOps, formulaLabels, resolvedRefs)) {
       throw new Error(`commandReceipts[${String(receiptIndex)}].appliedOps do not match the planned command`)
     }
-    const noop = cloneNoopProof(receipt, receiptIndex)
+    const noop = cloneNoopProof(receipt, receiptIndex, { command, commandKind, commandDigest })
     if (noop !== undefined && receiptAppliedOps.length > 0) {
       throw new Error(`commandReceipts[${String(receiptIndex)}].noop is only valid for commands with no applied ops`)
     }
@@ -417,7 +489,10 @@ export function cloneWorkbookRunApplyCommandReceiptsForSummary(
       const formulaLabels = receipt.formulaLabels !== undefined ? cloneFormulaLabelReplacements(receipt, index) : undefined
       const resolvedRefs =
         receipt.resolvedRefs === undefined ? undefined : cloneCommandResolvedRefs({ resolvedRefs: receipt.resolvedRefs }, index)
-      const noop = receipt.noop === undefined ? undefined : cloneNoopProof({ noop: receipt.noop }, index)
+      const noop =
+        receipt.noop === undefined
+          ? undefined
+          : cloneNoopProof({ noop: receipt.noop }, index, { commandKind: receipt.commandKind, commandDigest: receipt.commandDigest })
       return Object.freeze({
         commandIndex: receipt.commandIndex,
         commandKind: receipt.commandKind,

@@ -202,6 +202,35 @@ describe('@bilig/workbook run api', () => {
     expect(read).not.toHaveBeenCalled()
   })
 
+  it('fails closed for symbol-keyed run options before runtime work starts', async () => {
+    const model = valueModel()
+    const apply = vi.fn<Required<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>>['apply']>(applied)
+    const read = vi.fn<Required<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>>['read']>((targets) => [
+      { target: first(targets), value: 12 },
+    ])
+    const symbolKey = Symbol('hidden')
+    const options: Record<string | symbol, unknown> = {
+      strict: true,
+      [symbolKey]: true,
+    }
+
+    const result = await Reflect.apply(runWorkbookAction, undefined, [model, 'write', { apply, read }, undefined, options])
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_run_options',
+          message: 'Workbook run option Symbol(hidden) is unknown',
+          path: 'options.Symbol(hidden)',
+          issueCode: 'invalid_run_options',
+        },
+      ],
+    })
+    expect(apply).not.toHaveBeenCalled()
+    expect(read).not.toHaveBeenCalled()
+  })
+
   it('fails closed for accessor-backed runtime adapter methods without invoking getters', async () => {
     const model = valueModel()
     let applyGetterInvoked = false

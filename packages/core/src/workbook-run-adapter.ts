@@ -729,6 +729,25 @@ function resolvedRefsForCommand(engine: SpreadsheetEngine, command: WorkbookActi
   return Object.keys(refs).length === 0 ? undefined : refs
 }
 
+function noopEffectForCommand(command: WorkbookActionCommand): WorkbookActionInput {
+  switch (command.kind) {
+    case 'writeValue':
+      return normalizeWorkbookActionInput({ kind: command.kind, value: command.value })
+    case 'writeFormula':
+      return normalizeWorkbookActionInput({ kind: command.kind, formula: command.formula })
+    case 'clear':
+      return normalizeWorkbookActionInput({ kind: command.kind, cleared: true })
+    case 'format':
+      return normalizeWorkbookActionInput({
+        kind: command.kind,
+        ...(command.style !== undefined ? { style: command.style } : {}),
+        ...(command.numberFormat !== undefined ? { numberFormat: command.numberFormat } : {}),
+      })
+    case 'op':
+      return normalizeWorkbookActionInput({ kind: command.kind, opKind: command.op.kind })
+  }
+}
+
 function materializePlanCommandReceipts(engine: SpreadsheetEngine, plan: WorkbookActionPlan): readonly WorkbookRunApplyCommandReceipt[] {
   if (plan.commands.length === 0) {
     return []
@@ -737,10 +756,11 @@ function materializePlanCommandReceipts(engine: SpreadsheetEngine, plan: Workboo
     const ops = materializeCommandOps(engine, command)
     const resolvedRefs = resolvedRefsForCommand(engine, command)
     const formulaLabels = formulaLabelProofForCommandReceipt(engine, command)
+    const commandDigest = workbookActionCommandDigest(command)
     return {
       commandIndex,
       commandKind: command.kind,
-      commandDigest: workbookActionCommandDigest(command),
+      commandDigest,
       previewOps: ops,
       appliedOps: ops,
       ...(ops.length === 0
@@ -749,7 +769,11 @@ function materializePlanCommandReceipts(engine: SpreadsheetEngine, plan: Workboo
               reason: 'already_satisfied',
               proof: {
                 source: '@bilig/core',
+                evidence: 'materialized_zero_ops',
+                commandKind: command.kind,
+                commandDigest,
                 opCount: 0,
+                effect: noopEffectForCommand(command),
               },
             },
           }

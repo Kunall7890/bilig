@@ -170,7 +170,7 @@ production proof. Strict mode requires:
 - plan id proof
 - base and applied revision proof
 - apply proof with no unverified apply facts
-- concrete applied ops for every planned command
+- concrete applied ops, or command-bound effect proof for already-satisfied commands
 - command receipts bound to planned digests and concrete `resolvedRefs`
 - proof on every passed check
 

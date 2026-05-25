@@ -553,7 +553,14 @@ describe('workbook run adapter', () => {
         reason: 'already_satisfied',
         proof: {
           source: '@bilig/core',
+          evidence: 'materialized_zero_ops',
+          commandKind: 'format',
+          commandDigest: expect.stringMatching(/^bilig-command-v1:/u),
           opCount: 0,
+          effect: {
+            kind: 'format',
+            numberFormat: '0.0',
+          },
         },
       },
     })
@@ -656,7 +663,14 @@ describe('workbook run adapter', () => {
         reason: 'already_satisfied',
         proof: {
           source: '@bilig/core',
+          evidence: 'materialized_zero_ops',
+          commandKind: 'format',
+          commandDigest: expect.stringMatching(/^bilig-command-v1:/u),
           opCount: 0,
+          effect: {
+            kind: 'format',
+            numberFormat: null,
+          },
         },
       },
     })

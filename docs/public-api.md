@@ -823,9 +823,12 @@ command's concrete workbook op, and receipts whose flattened ops do not match
 the apply-level preview or applied ops. With `requireApplyProof: true`, a plan
 with high-level commands fails closed unless those command receipts are present.
 With `strict: true`, each command receipt must also prove concrete applied ops
-and resolved concrete refs for ref-targeting commands; range refs must match the
+or command-bound no-op proof with `source`, `evidence`, `opCount: 0`,
+`commandKind`, `commandDigest`, and command-effect `effect` data; ref-targeting
+commands must also prove resolved concrete refs. Range refs must match the
 planned range exactly, and symbolic refs must materialize to concrete ranges
-before their ops are accepted. Strict runs also require
+before their ops are accepted.
+Strict runs also require
 mutating plans to declare checks before `adapter.apply` is called, require
 `baseRevision` and `revision` on apply proof, fail closed on
 `expectedBaseRevision` mismatches, reject unverified apply summaries, and reject

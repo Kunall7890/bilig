@@ -66,7 +66,7 @@ export type WorkbookRunNoopReason = 'already_satisfied'
 export interface WorkbookRunNoopProof {
   readonly reason: WorkbookRunNoopReason
   readonly message?: string
-  readonly proof?: WorkbookActionInput
+  readonly proof: WorkbookActionInput
 }
 
 export interface WorkbookRunApplySummary {

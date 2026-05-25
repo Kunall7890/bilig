@@ -43,6 +43,10 @@ const RUN_OPTION_KEYS: ReadonlySet<string> = new Set([
   'expectedBaseRevision',
 ])
 
+function keyName(key: string | symbol): string {
+  return typeof key === 'symbol' ? key.toString() : key
+}
+
 class WorkbookRunOptionsError extends Error {
   readonly path: string
 
@@ -160,9 +164,10 @@ function normalizeOptionalRevisionOption(source: object): number | undefined {
 }
 
 function assertKnownRunOptions(source: object): void {
-  for (const key of Object.keys(Object.getOwnPropertyDescriptors(source))) {
-    if (!RUN_OPTION_KEYS.has(key)) {
-      throw new WorkbookRunOptionsError(`options.${key}`, `Workbook run option ${key} is unknown`)
+  for (const key of Reflect.ownKeys(source)) {
+    const name = keyName(key)
+    if (typeof key === 'symbol' || !RUN_OPTION_KEYS.has(key)) {
+      throw new WorkbookRunOptionsError(`options.${name}`, `Workbook run option ${name} is unknown`)
     }
   }
 }
