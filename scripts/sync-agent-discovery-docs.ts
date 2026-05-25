@@ -414,6 +414,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - AnythingLLM MCP setup: ${siteRoot}/anythingllm-workpaper-mcp.html
 - Sim MCP setup: ${siteRoot}/sim-workpaper-mcp.html
 - Windmill TypeScript script: ${siteRoot}/windmill-workpaper-script.html
+- Trigger.dev task: ${siteRoot}/triggerdev-workpaper-task.html
 - XLSX formula clinic: ${siteRoot}/formula-bug-clinic.html
 - Compatibility limits: ${siteRoot}/where-bilig-is-not-excel-compatible-yet.html
 - Repository: ${repositoryUrl}
@@ -516,6 +517,11 @@ const llmsFullSources = [
     title: 'Windmill WorkPaper TypeScript Script',
     relativePath: 'docs/windmill-workpaper-script.md',
     url: `${repositoryUrl}/blob/main/docs/windmill-workpaper-script.md`,
+  },
+  {
+    title: 'Trigger.dev WorkPaper Task',
+    relativePath: 'docs/triggerdev-workpaper-task.md',
+    url: `${repositoryUrl}/blob/main/docs/triggerdev-workpaper-task.md`,
   },
   {
     title: 'Open WebUI WorkPaper MCP Setup',

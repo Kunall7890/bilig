@@ -159,6 +159,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/serverless-workpaper-api-route.html
 - https://proompteng.github.io/bilig/node-framework-workpaper-adapters.html
 - https://proompteng.github.io/bilig/windmill-workpaper-script.html
+- https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
 - https://github.com/proompteng/bilig/blob/main/docs/workbook-automation-examples-node.md
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-framework-adapters
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#mcp-tool-server-shape
@@ -520,6 +521,10 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/windmill-workpaper-script.html
   https://github.com/proompteng/bilig/blob/main/docs/windmill-workpaper-script.md
   https://github.com/proompteng/bilig/tree/main/examples/windmill-workpaper-script
+  Trigger.dev durable task source:
+  https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
+  https://github.com/proompteng/bilig/blob/main/docs/triggerdev-workpaper-task.md
+  https://github.com/proompteng/bilig/tree/main/examples/triggerdev-workpaper-task
   https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html
   https://github.com/proompteng/bilig/blob/main/docs/n8n-workpaper-formula-readback.md
   https://github.com/proompteng/bilig/tree/main/examples/n8n-workpaper-formula-readback
@@ -529,7 +534,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html
   https://github.com/proompteng/bilig/blob/main/docs/flowise-workpaper-formula-readback.md
   https://github.com/proompteng/bilig/tree/main/examples/flowise-workpaper-formula-readback
-  Use this path when Windmill, Directus, n8n, Dify, Flowise, or another workflow builder
+  Use this path when Trigger.dev, Windmill, Directus, n8n, Dify, Flowise, or another workflow builder
   should orchestrate the task while Bilig owns workbook formula state,
   readback, JSON proof, and persistence.
 - MCP spreadsheet tool server guide:

@@ -247,6 +247,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - AnythingLLM MCP setup: https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
 - Sim MCP setup: https://proompteng.github.io/bilig/sim-workpaper-mcp.html
 - Windmill TypeScript script: https://proompteng.github.io/bilig/windmill-workpaper-script.html
+- Trigger.dev task: https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
 - XLSX formula clinic: https://proompteng.github.io/bilig/formula-bug-clinic.html
 - Compatibility limits: https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html
 - Repository: https://github.com/proompteng/bilig
@@ -468,6 +469,24 @@ restores it, and verifies the restored formula output before returning
 See [Windmill WorkPaper TypeScript script](docs/windmill-workpaper-script.md)
 for the script shape, local smoke command, Windmill dependency boundary, and
 outreach note.
+
+## Trigger.dev Durable Formula Tasks
+
+Need a Trigger.dev task to calculate durable workflow fields from reviewable
+formulas? Wrap `@bilig/workpaper` in a `task({ id, run })` and return both the
+field patch and readback proof.
+
+The source example lives in:
+
+```text
+examples/triggerdev-workpaper-task
+```
+
+It keeps the WorkPaper calculation account-free for local smoke tests, then
+wraps the same helper in a Trigger.dev task for deployed durable execution.
+
+See [Trigger.dev WorkPaper task](docs/triggerdev-workpaper-task.md) for the task
+shape, local smoke command, retry boundary, and outreach note.
 
 ## Directus Persisted Calculated Fields
 
@@ -1410,6 +1429,7 @@ Pick the path that matches the workflow you are trying to unblock:
 | Formula workbook logic inside a Node service, route, queue, or test      | `npm create @bilig/workpaper@latest pricing-workpaper`                                                        | Inputs are written, formulas recalculate, JSON persists, restore matches readback, and `verified: true` is printed. |
 | A coding agent or MCP client that needs spreadsheet operations           | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                                 | The generated project includes an agent contract, MCP config, and `npm run agent:verify`.                           |
 | Windmill TypeScript workflow fields                                      | `cd examples/windmill-workpaper-script && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke` | The script returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.        |
+| Trigger.dev durable task fields                                          | `cd examples/triggerdev-workpaper-task && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke` | The task helper returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.   |
 | Directus Flow operation for persisted calculated fields                  | `cd examples/directus-workpaper-flow-operation && npm install && npm run smoke`                               | The operation returns a Directus `patch` plus before/after/restore WorkPaper proof with `verified: true`.           |
 | n8n, Dify, or Flowise formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321`                          | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof.               |
 | Open WebUI needs MCP spreadsheet tools                                   | `npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`                                    | Open WebUI can call the hosted Streamable HTTP endpoint or a local stdio server bridged through `mcpo`.             |
@@ -1497,6 +1517,7 @@ Start from the repo examples:
 
 - `examples/directus-workpaper-flow-operation`
 - `examples/windmill-workpaper-script`
+- `examples/triggerdev-workpaper-task`
 - `examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json`
 - `examples/dify-workpaper-formula-readback`
 - `examples/flowise-workpaper-formula-readback/bilig-workpaper-formula-readback.flowise-tool.json`
@@ -1505,6 +1526,7 @@ Docs:
 
 - <https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html>
 - <https://proompteng.github.io/bilig/windmill-workpaper-script.html>
+- <https://proompteng.github.io/bilig/triggerdev-workpaper-task.html>
 - <https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html>
 - <https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html>
 - <https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html>
@@ -4163,6 +4185,163 @@ the concrete boundary it solves:
 Do not post it as a generic spreadsheet-engine pitch. Link the runnable example
 and smoke output, then ask whether a formula-backed workflow field script would
 be useful as a Windmill Hub example.
+
+---
+
+## Trigger.dev WorkPaper Task
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/triggerdev-workpaper-task.md
+
+# Trigger.dev WorkPaper task
+
+Use this when a Trigger.dev task needs spreadsheet-shaped business logic, but
+the formula state should be edited and verified through a TypeScript API instead
+of Excel UI automation, browser grid clicks, or stale cached XLSX formula
+values.
+
+Trigger.dev's current task API defines resilient TypeScript functions with
+`task({ id, run })`. The docs describe tasks as long-running functions with
+retry settings, dashboard-visible run state, and JSON-serializable return
+values.
+
+Official Trigger.dev references:
+
+- <https://trigger.dev/docs/tasks/overview>
+- <https://trigger.dev/docs/triggering>
+- <https://trigger.dev/docs/runs>
+- <https://trigger.dev/docs/llms.txt>
+
+## Example Artifact
+
+The runnable source lives in:
+
+```text
+examples/triggerdev-workpaper-task
+```
+
+It contains:
+
+- `src/workpaper-quote.ts` for the account-free WorkPaper calculation helper
+- `src/trigger-workpaper-task.ts` for the Trigger.dev `task` wrapper
+- `src/smoke.ts` for a no-Trigger local proof
+
+Run it locally:
+
+```sh
+cd examples/triggerdev-workpaper-task
+pnpm install --ignore-workspace --lockfile=false
+pnpm run typecheck
+pnpm run smoke
+```
+
+The smoke test edits `Inputs!B2`, recalculates quote formulas, serializes the
+WorkPaper document, restores it, and verifies that the restored calculated
+values match.
+
+## Trigger.dev Task
+
+Put this file in your Trigger.dev `trigger/` directory:
+
+```ts
+import { task } from "@trigger.dev/sdk";
+
+import { calculateWorkPaperQuote } from "./workpaper-quote";
+
+export const calculateWorkPaperQuoteTask = task({
+  id: "bilig-workpaper-quote",
+  retry: {
+    maxAttempts: 3,
+    minTimeoutInMs: 500,
+    maxTimeoutInMs: 30_000,
+    factor: 1.8,
+    randomize: true,
+  },
+  run: async (payload) => calculateWorkPaperQuote(payload),
+});
+```
+
+The real example keeps the payload typed and imports from
+`src/workpaper-quote.ts`.
+
+## Task Input
+
+```json
+{
+  "previousQuantity": 12,
+  "quantity": 18,
+  "unitPrice": 125,
+  "discountRate": 0.1,
+  "taxRate": 0.08,
+  "unitCost": 52
+}
+```
+
+## Task Output
+
+```json
+{
+  "patch": {
+    "subtotal": 2250,
+    "discount_amount": 225,
+    "taxable_amount": 2025,
+    "tax_amount": 162,
+    "total": 2187,
+    "margin_amount": 1089
+  },
+  "proof": {
+    "editedCell": "Inputs!B2",
+    "before": {
+      "total": 1458
+    },
+    "after": {
+      "total": 2187
+    },
+    "afterRestore": {
+      "total": 2187
+    },
+    "persistedDocumentBytes": 1208,
+    "verified": true
+  }
+}
+```
+
+The live smoke output prints all calculated summary fields.
+
+## Workflow Shape
+
+1. Trigger `bilig-workpaper-quote` from your app, webhook handler, schedule, or
+   another task.
+2. Pass record values such as `quantity`, `unitPrice`, `discountRate`,
+   `taxRate`, and `unitCost`.
+3. Feed `patch` into the next task or application writeback step.
+4. Store `proof` in run metadata, logs, or an audit table when the workflow
+   needs readback evidence.
+
+That keeps Trigger.dev in charge of durable execution, retries, observability,
+and run history. Bilig owns the formula workbook, recalculation, JSON
+serialization, restore, and readback proof.
+
+## When This Fits
+
+Use it for quote approvals, pricing rules, discount calculations, payout checks,
+import validation, and durable AI workflow steps that should be reviewable as
+formulas but executed inside a Trigger.dev task.
+
+Do not use it to pretend Bilig is desktop Excel. Keep Excel, LibreOffice,
+Microsoft Graph, or a domain oracle in the loop for macros, pivots, charts,
+external links, and exact spreadsheet UI behavior.
+
+## Outreach Note
+
+If this is shared in a Trigger.dev issue, discussion, or examples PR, lead with
+the concrete boundary it solves:
+
+> Trigger.dev owns durable execution. Bilig owns the formula workbook and
+> returns both calculated field values and readback proof.
+
+Do not post it as a generic spreadsheet-engine pitch. Link the runnable example
+and smoke output, then ask whether a formula-backed durable task would be useful
+as a Trigger.dev examples repo contribution.
 
 ---
 

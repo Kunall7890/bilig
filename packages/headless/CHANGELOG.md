@@ -11,9 +11,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): close strict format proof gaps (2da279d3)
 
 ## Internal runtime changes
+
 - docs(growth): add Sim MCP setup (e353fb02)
 
 ## 0.107.8

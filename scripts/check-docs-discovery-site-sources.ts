@@ -28,6 +28,7 @@ export const docsSiteSources = [
   ['agent-workpaper-tool-calling-recipe.html', 'agent-workpaper-tool-calling-recipe.md'],
   ['directus-workpaper-flow-operation.html', 'directus-workpaper-flow-operation.md'],
   ['windmill-workpaper-script.html', 'windmill-workpaper-script.md'],
+  ['triggerdev-workpaper-task.html', 'triggerdev-workpaper-task.md'],
   ['n8n-workpaper-formula-readback.html', 'n8n-workpaper-formula-readback.md'],
   ['dify-workpaper-formula-readback.html', 'dify-workpaper-formula-readback.md'],
   ['flowise-workpaper-formula-readback.html', 'flowise-workpaper-formula-readback.md'],

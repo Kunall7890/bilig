@@ -1,0 +1,19 @@
+{
+  "name": "bilig-triggerdev-workpaper-task",
+  "private": true,
+  "description": "Trigger.dev task example that calculates durable workflow fields with Bilig WorkPaper formulas.",
+  "type": "module",
+  "scripts": {
+    "smoke": "tsx src/smoke.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@bilig/workpaper": "latest",
+    "@trigger.dev/sdk": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.2"
+  }
+}

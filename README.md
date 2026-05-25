@@ -210,6 +210,24 @@ See [Windmill WorkPaper TypeScript script](docs/windmill-workpaper-script.md)
 for the script shape, local smoke command, Windmill dependency boundary, and
 outreach note.
 
+## Trigger.dev Durable Formula Tasks
+
+Need a Trigger.dev task to calculate durable workflow fields from reviewable
+formulas? Wrap `@bilig/workpaper` in a `task({ id, run })` and return both the
+field patch and readback proof.
+
+The source example lives in:
+
+```text
+examples/triggerdev-workpaper-task
+```
+
+It keeps the WorkPaper calculation account-free for local smoke tests, then
+wraps the same helper in a Trigger.dev task for deployed durable execution.
+
+See [Trigger.dev WorkPaper task](docs/triggerdev-workpaper-task.md) for the task
+shape, local smoke command, retry boundary, and outreach note.
+
 ## Directus Persisted Calculated Fields
 
 Need a Directus Flow to calculate and persist quote, pricing, payout, or import

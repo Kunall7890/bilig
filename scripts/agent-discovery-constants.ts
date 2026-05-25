@@ -29,6 +29,7 @@ export const versionedStaticReferenceRoots = [
   'docs/llms.txt',
   'docs/mcp-client-setup.md',
   'docs/windmill-workpaper-script.md',
+  'docs/triggerdev-workpaper-task.md',
   'docs/open-webui-workpaper-mcp.md',
   'docs/lobehub-workpaper-mcp.md',
   'docs/anythingllm-workpaper-mcp.md',
