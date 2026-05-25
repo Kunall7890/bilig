@@ -9,6 +9,7 @@ import {
   parseMacosExcelRecalculationOutput,
   parseMacosExcelRejectedStructuralOperationOutput,
 } from './macos-excel-oracle-output.js'
+import { withMacosExcelOracleLock } from './macos-excel-oracle-lock.js'
 import { cellValueAppleScriptHelpers } from './macos-excel-oracle-cell-value-helpers.js'
 
 import type {
@@ -69,27 +70,29 @@ export function runMacosExcelRecalculationOracle(request: MacosExcelRecalculatio
     throw new Error(`Microsoft Excel app is not installed at ${appPath}`)
   }
 
-  const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-')
-  const scriptPath = join(tempDir, 'recalculate.scpt')
-  try {
-    const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
-    openWorkbooksForMacosExcelOracle(
-      appPath,
-      macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths),
-      request.timeoutMs,
-      request.updateLinks ?? 'never',
-    )
-    writeFileSync(scriptPath, createMacosExcelRecalculationAppleScript(request))
-    const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: request.timeoutMs ?? 60_000,
-    }).trim()
-    copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
-    return parseMacosExcelRecalculationOutput(rawOutput, request.valueCells.length)
-  } finally {
-    removeMacosExcelOracleTempDir(tempDir)
-  }
+  return withMacosExcelOracleLock({ label: 'recalculation', timeoutMs: request.timeoutMs }, () => {
+    const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-')
+    const scriptPath = join(tempDir, 'recalculate.scpt')
+    try {
+      const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
+      openWorkbooksForMacosExcelOracle(
+        appPath,
+        macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths),
+        request.timeoutMs,
+        request.updateLinks ?? 'never',
+      )
+      writeFileSync(scriptPath, createMacosExcelRecalculationAppleScript(request))
+      const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: request.timeoutMs ?? 60_000,
+      }).trim()
+      copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
+      return parseMacosExcelRecalculationOutput(rawOutput, request.valueCells.length)
+    } finally {
+      removeMacosExcelOracleTempDir(tempDir)
+    }
+  })
 }
 
 export function runMacosExcelInspectionOracle(request: MacosExcelInspectionOracleRequest): MacosExcelInspectionOracleResult {
@@ -98,27 +101,29 @@ export function runMacosExcelInspectionOracle(request: MacosExcelInspectionOracl
     throw new Error(`Microsoft Excel app is not installed at ${appPath}`)
   }
 
-  const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-inspect-')
-  const scriptPath = join(tempDir, 'inspect.scpt')
-  try {
-    const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
-    openWorkbooksForMacosExcelOracle(
-      appPath,
-      macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths),
-      request.timeoutMs,
-      request.updateLinks ?? 'never',
-    )
-    writeFileSync(scriptPath, createMacosExcelInspectionAppleScript(request))
-    const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: request.timeoutMs ?? 60_000,
-    }).trim()
-    copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
-    return parseMacosExcelInspectionOutput(rawOutput, request.inspectCells)
-  } finally {
-    removeMacosExcelOracleTempDir(tempDir)
-  }
+  return withMacosExcelOracleLock({ label: 'inspection', timeoutMs: request.timeoutMs }, () => {
+    const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-inspect-')
+    const scriptPath = join(tempDir, 'inspect.scpt')
+    try {
+      const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
+      openWorkbooksForMacosExcelOracle(
+        appPath,
+        macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths),
+        request.timeoutMs,
+        request.updateLinks ?? 'never',
+      )
+      writeFileSync(scriptPath, createMacosExcelInspectionAppleScript(request))
+      const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: request.timeoutMs ?? 60_000,
+      }).trim()
+      copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
+      return parseMacosExcelInspectionOutput(rawOutput, request.inspectCells)
+    } finally {
+      removeMacosExcelOracleTempDir(tempDir)
+    }
+  })
 }
 
 export function runMacosExcelPackageOpenSaveOracle(request: MacosExcelPackageOpenSaveOracleRequest): MacosExcelPackageOpenSaveOracleResult {
@@ -127,27 +132,29 @@ export function runMacosExcelPackageOpenSaveOracle(request: MacosExcelPackageOpe
     throw new Error(`Microsoft Excel app is not installed at ${appPath}`)
   }
 
-  const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-package-')
-  const scriptPath = join(tempDir, 'package-open-save.scpt')
-  try {
-    const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
-    openWorkbooksForMacosExcelOracle(
-      appPath,
-      macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths),
-      request.timeoutMs,
-      request.updateLinks ?? 'never',
-    )
-    writeFileSync(scriptPath, createMacosExcelPackageOpenSaveAppleScript(request))
-    const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: request.timeoutMs ?? 60_000,
-    }).trim()
-    copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
-    return parseMacosExcelPackageOpenSaveOutput(rawOutput)
-  } finally {
-    removeMacosExcelOracleTempDir(tempDir)
-  }
+  return withMacosExcelOracleLock({ label: 'package-open-save', timeoutMs: request.timeoutMs }, () => {
+    const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-package-')
+    const scriptPath = join(tempDir, 'package-open-save.scpt')
+    try {
+      const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
+      openWorkbooksForMacosExcelOracle(
+        appPath,
+        macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths),
+        request.timeoutMs,
+        request.updateLinks ?? 'never',
+      )
+      writeFileSync(scriptPath, createMacosExcelPackageOpenSaveAppleScript(request))
+      const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: request.timeoutMs ?? 60_000,
+      }).trim()
+      copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
+      return parseMacosExcelPackageOpenSaveOutput(rawOutput)
+    } finally {
+      removeMacosExcelOracleTempDir(tempDir)
+    }
+  })
 }
 
 export function runMacosExcelStructuralOperationOracle(
@@ -158,27 +165,29 @@ export function runMacosExcelStructuralOperationOracle(
     throw new Error(`Microsoft Excel app is not installed at ${appPath}`)
   }
 
-  const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-structure-')
-  const scriptPath = join(tempDir, 'structure.scpt')
-  try {
-    const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
-    openWorkbooksForMacosExcelOracle(
-      appPath,
-      macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths),
-      request.timeoutMs,
-      request.updateLinks ?? 'never',
-    )
-    writeFileSync(scriptPath, createMacosExcelStructuralOperationAppleScript(request))
-    const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: request.timeoutMs ?? 60_000,
-    }).trim()
-    copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
-    return parseMacosExcelInspectionOutput(rawOutput, request.inspectCells)
-  } finally {
-    removeMacosExcelOracleTempDir(tempDir)
-  }
+  return withMacosExcelOracleLock({ label: 'structural-operation', timeoutMs: request.timeoutMs }, () => {
+    const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-structure-')
+    const scriptPath = join(tempDir, 'structure.scpt')
+    try {
+      const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
+      openWorkbooksForMacosExcelOracle(
+        appPath,
+        macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths),
+        request.timeoutMs,
+        request.updateLinks ?? 'never',
+      )
+      writeFileSync(scriptPath, createMacosExcelStructuralOperationAppleScript(request))
+      const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: request.timeoutMs ?? 60_000,
+      }).trim()
+      copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
+      return parseMacosExcelInspectionOutput(rawOutput, request.inspectCells)
+    } finally {
+      removeMacosExcelOracleTempDir(tempDir)
+    }
+  })
 }
 
 export function runMacosExcelRejectedStructuralOperationOracle(
@@ -189,26 +198,28 @@ export function runMacosExcelRejectedStructuralOperationOracle(
     throw new Error(`Microsoft Excel app is not installed at ${appPath}`)
   }
 
-  const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-rejected-structure-')
-  const scriptPath = join(tempDir, 'rejected-structure.scpt')
-  try {
-    const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
-    openWorkbooksForMacosExcelOracle(
-      appPath,
-      macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths),
-      request.timeoutMs,
-      request.updateLinks ?? 'never',
-    )
-    writeFileSync(scriptPath, createMacosExcelRejectedStructuralOperationAppleScript(request))
-    const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: request.timeoutMs ?? 60_000,
-    }).trim()
-    return parseMacosExcelRejectedStructuralOperationOutput(rawOutput)
-  } finally {
-    removeMacosExcelOracleTempDir(tempDir)
-  }
+  return withMacosExcelOracleLock({ label: 'rejected-structural-operation', timeoutMs: request.timeoutMs }, () => {
+    const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-rejected-structure-')
+    const scriptPath = join(tempDir, 'rejected-structure.scpt')
+    try {
+      const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
+      openWorkbooksForMacosExcelOracle(
+        appPath,
+        macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths),
+        request.timeoutMs,
+        request.updateLinks ?? 'never',
+      )
+      writeFileSync(scriptPath, createMacosExcelRejectedStructuralOperationAppleScript(request))
+      const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: request.timeoutMs ?? 60_000,
+      }).trim()
+      return parseMacosExcelRejectedStructuralOperationOutput(rawOutput)
+    } finally {
+      removeMacosExcelOracleTempDir(tempDir)
+    }
+  })
 }
 
 function removeMacosExcelOracleTempDir(dirPath: string): void {
@@ -257,11 +268,33 @@ function openWorkbooksForMacosExcelOracle(
   closeStaleMacosExcelOracleWorkbooks()
   startMacosExcelLinkUpdatePromptHandler(updateLinks)
   for (const workbookPath of workbookPaths) {
-    startMacosExcelMacroPromptHandler()
-    execFileSync('open', ['-a', appPath, workbookPath], {
-      timeout: Math.min(timeoutMs ?? 60_000, 30_000),
-    })
+    openWorkbookForMacosExcelOracle(appPath, workbookPath, timeoutMs, updateLinks)
+  }
+}
+
+function openWorkbookForMacosExcelOracle(
+  appPath: string,
+  workbookPath: string,
+  timeoutMs: number | undefined,
+  updateLinks: MacosExcelLinkUpdateMode,
+): void {
+  startMacosExcelMacroPromptHandler()
+  execFileSync('open', ['-a', appPath, workbookPath], {
+    timeout: Math.min(timeoutMs ?? 60_000, 30_000),
+  })
+  try {
     waitForMacosExcelWorkbookOpen(workbookPath, timeoutMs)
+  } catch (openError) {
+    if (restartMacosExcelForOracleOpenRecovery()) {
+      startMacosExcelLinkUpdatePromptHandler(updateLinks)
+      startMacosExcelMacroPromptHandler()
+      execFileSync('open', ['-a', appPath, workbookPath], {
+        timeout: Math.min(timeoutMs ?? 60_000, 30_000),
+      })
+      waitForMacosExcelWorkbookOpen(workbookPath, timeoutMs)
+      return
+    }
+    throw openError
   }
 }
 
@@ -330,6 +363,54 @@ function closeStaleMacosExcelOracleWorkbooks(): void {
   } catch {
     // A modal prompt can block stale workbook cleanup; the prompt handler below will clear it.
   }
+}
+
+function restartMacosExcelForOracleOpenRecovery(): boolean {
+  try {
+    const result = execFileSync('osascript', ['-e', macosExcelQuitIfNoWorkbooksAppleScript()], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 5_000,
+    }).trim()
+    return result === 'quit' && waitForMacosExcelProcessToExit()
+  } catch {
+    return false
+  }
+}
+
+function waitForMacosExcelProcessToExit(): boolean {
+  const deadline = Date.now() + 10_000
+  while (Date.now() < deadline) {
+    try {
+      const isRunning = execFileSync('osascript', ['-e', 'tell application "System Events" to return exists process "Microsoft Excel"'], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 2_000,
+      }).trim()
+      if (isRunning === 'false') {
+        return true
+      }
+    } catch {
+      return true
+    }
+    sleepSync(250)
+  }
+  return false
+}
+
+function macosExcelQuitIfNoWorkbooksAppleScript(): string {
+  return `tell application "Microsoft Excel"
+  try
+    set workbookCount to count of workbooks
+  on error
+    set workbookCount to 0
+  end try
+  if workbookCount is 0 then
+    quit
+    return "quit"
+  end if
+  return "busy"
+end tell`
 }
 
 function macosExcelCloseStaleOracleWorkbooksAppleScript(): string {

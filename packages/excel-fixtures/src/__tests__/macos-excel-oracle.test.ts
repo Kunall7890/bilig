@@ -132,6 +132,16 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(source).toContain("macosExcelButtonPromptHandlerCommand('BILIG_MACRO_PROMPT', 'Disable Macros')")
   })
 
+  it('can recover a workbookless stale Excel process before retrying Launch Services open', () => {
+    const source = readFileSync(new URL('../macos-excel-oracle.ts', import.meta.url), 'utf8')
+
+    expect(source).toContain('restartMacosExcelForOracleOpenRecovery()')
+    expect(source).toContain('macosExcelQuitIfNoWorkbooksAppleScript()')
+    expect(source).toContain('if workbookCount is 0 then')
+    expect(source).toContain('waitForMacosExcelProcessToExit()')
+    expect(source.indexOf('restartMacosExcelForOracleOpenRecovery()')).toBeLessThan(source.indexOf('throw openError'))
+  })
+
   it('builds an inspection runner that reads formulas and values from the opened workbook', () => {
     const script = createMacosExcelInspectionAppleScript({
       worksheetName: 'Cases',

@@ -12,14 +12,18 @@ import { hasPreservedSheetMetadata } from '../../workbook-preserved-metadata.js'
 import type { WorkbookSheetDeletionMetadataContext, WorkbookSheetReorderMetadataContext } from '../../workbook-metadata-service-contract.js'
 
 const cellReferencePattern = /^\$?([A-Z]+)\$?([1-9]\d*)$/iu
+const connectionElementPattern = /<((?:[A-Za-z_][\w.-]*:)?connection)\b([^>]*?)(?:\/>|>[\s\S]*?<\/\1>)/gu
 const pivotTableDefinitionLocationPattern = /<((?:[A-Za-z_][\w.-]*:)?location)\b([^>]*\bref=(["'])([^"']+)\3[^>]*)\/?>/gu
 const pivotTablePartPathPattern = /^xl\/pivotTables\/pivotTable\d+\.xml$/u
 const pivotCacheDefinitionPartPathPattern = /^xl\/pivotCache\/pivotCacheDefinition\d+\.xml$/u
+const dataModelPackagePartPathPattern = /^(?:xl\/model\/|xl\/customData\/|customXml\/)/u
 const worksheetSourcePattern = /<((?:[A-Za-z_][\w.-]*:)?worksheetSource)\b([^>]*\bref=(["'])([^"']+)\3[^>]*)\/?>/gu
 const worksheetSourceElementPattern = /<((?:[A-Za-z_][\w.-]*:)?worksheetSource)\b[^>]*\/?>/gu
+const queryTableElementPattern = /<((?:[A-Za-z_][\w.-]*:)?queryTable)\b([^>]*?)(?:\/>|>[\s\S]*?<\/\1>)/gu
 const workbookViewElementPattern = /<((?:[A-Za-z_][\w.-]*:)?workbookView)\b[^>]*\/?>/gu
 const queryTableRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/queryTable'
 const slicerRelationshipType = 'http://schemas.microsoft.com/office/2007/relationships/slicer'
+const connectionsPackagePath = 'xl/connections.xml'
 type WorkbookViewIndexAttribute = 'activeTab' | 'firstSheet'
 type WorkbookSlicerConnectionArtifactsRecord = NonNullable<WorkbookPreservedMetadataRecord['slicerConnectionArtifacts']>
 type WorkbookSlicerConnectionSheetArtifactRecord = NonNullable<WorkbookSlicerConnectionArtifactsRecord['sheetArtifacts']>[number]
@@ -283,6 +287,7 @@ export function rewritePreservedPivotPackageArtifactsForSheetDeletion(
   const deletedOnlyCacheIds = new Set([...deletedCacheIds].filter((cacheId) => !remainingCacheIds.has(cacheId)))
   const cacheDefinitionPathsToRemove = pivotCacheDefinitionPathsForCacheIds(pivotArtifacts, deletedOnlyCacheIds)
   const cacheSidecarPathsToRemove = pivotCacheSidecarPathsForCacheDefinitions(pivotArtifacts, cacheDefinitionPathsToRemove)
+  const deletedConnectionIds = pivotCacheConnectionIdsForCacheDefinitions(pivotArtifacts, cacheDefinitionPathsToRemove)
   const nextParts = pivotArtifacts.parts.filter((part) => {
     const normalizedPath = normalizePivotPackagePath(part.path)
     return (
@@ -303,7 +308,15 @@ export function rewritePreservedPivotPackageArtifactsForSheetDeletion(
     ...(nextWorkbookRelationships && nextWorkbookRelationships.length > 0 ? { workbookRelationships: nextWorkbookRelationships } : {}),
   }
 
-  const next: WorkbookPreservedMetadataRecord = { ...workbookMetadata }
+  const next = rewriteExternalConnectionArtifactsForRemovedPivotConnections(
+    { ...workbookMetadata },
+    pivotOnlyDeletedConnectionIds({
+      pivotArtifacts,
+      deletedConnectionIds,
+      cacheDefinitionPathsToRemove,
+      slicerConnectionArtifacts: workbookMetadata.slicerConnectionArtifacts,
+    }),
+  )
   if (hasPivotArtifacts(nextPivotArtifacts)) {
     next.pivotArtifacts = nextPivotArtifacts
   } else {
@@ -744,6 +757,248 @@ function pivotCacheSidecarPathsForCacheDefinitions(
   return output
 }
 
+function pivotCacheConnectionIdsForCacheDefinitions(
+  pivotArtifacts: NonNullable<WorkbookPreservedMetadataRecord['pivotArtifacts']>,
+  cacheDefinitionPaths: ReadonlySet<string>,
+): Set<string> {
+  const output = new Set<string>()
+  if (cacheDefinitionPaths.size === 0) {
+    return output
+  }
+  for (const part of pivotArtifacts.parts) {
+    const normalizedPath = normalizePivotPackagePath(part.path)
+    if (!cacheDefinitionPaths.has(normalizedPath)) {
+      continue
+    }
+    for (const connectionId of connectionIdsInPivotCacheDefinitionXml(part.xml)) {
+      output.add(connectionId)
+    }
+  }
+  return output
+}
+
+function pivotOnlyDeletedConnectionIds(input: {
+  readonly pivotArtifacts: NonNullable<WorkbookPreservedMetadataRecord['pivotArtifacts']>
+  readonly deletedConnectionIds: ReadonlySet<string>
+  readonly cacheDefinitionPathsToRemove: ReadonlySet<string>
+  readonly slicerConnectionArtifacts: WorkbookSlicerConnectionArtifactsRecord | undefined
+}): Set<string> {
+  if (input.deletedConnectionIds.size === 0) {
+    return new Set()
+  }
+  const remainingConnectionIds = new Set<string>()
+  for (const part of input.pivotArtifacts.parts) {
+    const normalizedPath = normalizePivotPackagePath(part.path)
+    if (!pivotCacheDefinitionPartPathPattern.test(normalizedPath) || input.cacheDefinitionPathsToRemove.has(normalizedPath)) {
+      continue
+    }
+    for (const connectionId of connectionIdsInPivotCacheDefinitionXml(part.xml)) {
+      remainingConnectionIds.add(connectionId)
+    }
+  }
+  for (const connectionId of connectionIdsInQueryTableArtifacts(input.slicerConnectionArtifacts)) {
+    remainingConnectionIds.add(connectionId)
+  }
+  return new Set([...input.deletedConnectionIds].filter((connectionId) => !remainingConnectionIds.has(connectionId)))
+}
+
+function connectionIdsInPivotCacheDefinitionXml(xml: string): Set<string> {
+  const output = new Set<string>()
+  for (const match of xml.matchAll(/<((?:[A-Za-z_][\w.-]*:)?cacheSource)\b([^>]*?)\/?>/gu)) {
+    const connectionId = readXmlAttribute(match[2] ?? '', 'connectionId')
+    if (connectionId) {
+      output.add(connectionId)
+    }
+  }
+  return output
+}
+
+function connectionIdsInQueryTableArtifacts(artifacts: WorkbookSlicerConnectionArtifactsRecord | undefined): Set<string> {
+  const output = new Set<string>()
+  for (const part of artifacts?.parts ?? []) {
+    const normalizedPath = normalizePackagePath(part.path)
+    if (!normalizedPath.startsWith('xl/queryTables/')) {
+      continue
+    }
+    const xml = preservedPackagePartText(part)
+    if (!xml) {
+      continue
+    }
+    for (const match of xml.matchAll(queryTableElementPattern)) {
+      const connectionId = readXmlAttribute(match[2] ?? '', 'connectionId')
+      if (connectionId) {
+        output.add(connectionId)
+      }
+    }
+  }
+  return output
+}
+
+function rewriteExternalConnectionArtifactsForRemovedPivotConnections(
+  metadata: WorkbookPreservedMetadataRecord,
+  connectionIds: ReadonlySet<string>,
+): WorkbookPreservedMetadataRecord {
+  if (connectionIds.size === 0) {
+    return metadata
+  }
+
+  const removedModelConnection =
+    metadata.externalConnections?.connections?.some(
+      (connection) => connection.sourceKind === 'model' && connectionIds.has(String(connection.id)),
+    ) ?? false
+
+  const externalConnections = rewriteExternalConnectionsForRemovedConnectionIds(metadata.externalConnections, connectionIds)
+  if (externalConnections) {
+    metadata.externalConnections = externalConnections
+  } else {
+    delete metadata.externalConnections
+  }
+
+  const slicerConnectionArtifacts = rewriteSlicerConnectionArtifactsForRemovedConnectionIds(
+    metadata.slicerConnectionArtifacts,
+    connectionIds,
+  )
+  if (slicerConnectionArtifacts) {
+    metadata.slicerConnectionArtifacts = slicerConnectionArtifacts
+  } else {
+    delete metadata.slicerConnectionArtifacts
+  }
+
+  if (removedModelConnection && !metadata.externalConnections?.connections?.some((connection) => connection.sourceKind === 'model')) {
+    const dataModelArtifacts = rewriteDataModelArtifactsForRemovedModelConnection(metadata.dataModelArtifacts)
+    if (dataModelArtifacts) {
+      metadata.dataModelArtifacts = dataModelArtifacts
+    } else {
+      delete metadata.dataModelArtifacts
+    }
+  }
+
+  return metadata
+}
+
+function rewriteExternalConnectionsForRemovedConnectionIds(
+  externalConnections: WorkbookPreservedMetadataRecord['externalConnections'],
+  connectionIds: ReadonlySet<string>,
+): WorkbookPreservedMetadataRecord['externalConnections'] | undefined {
+  if (!externalConnections?.connections?.some((connection) => connectionIds.has(String(connection.id)))) {
+    return externalConnections
+  }
+  const connections = externalConnections.connections.filter((connection) => !connectionIds.has(String(connection.id)))
+  if (connections.length === 0 && (externalConnections.externalLinks?.length ?? 0) === 0) {
+    return undefined
+  }
+  const { connections: _removedConnections, ...rest } = externalConnections
+  return {
+    ...rest,
+    ...(connections.length > 0 ? { connections } : {}),
+  }
+}
+
+function rewriteSlicerConnectionArtifactsForRemovedConnectionIds(
+  artifacts: WorkbookSlicerConnectionArtifactsRecord | undefined,
+  connectionIds: ReadonlySet<string>,
+): WorkbookSlicerConnectionArtifactsRecord | undefined {
+  if (!artifacts) {
+    return undefined
+  }
+
+  let removedConnectionsPart = false
+  const parts = artifacts.parts.flatMap((part) => {
+    if (normalizePackagePath(part.path) !== connectionsPackagePath) {
+      return [part]
+    }
+    const xml = preservedPackagePartText(part)
+    if (!xml) {
+      return [part]
+    }
+    const nextXml = removeConnectionXmlEntries(xml, connectionIds)
+    if (nextXml === xml) {
+      return [part]
+    }
+    if (!hasConnectionXmlEntries(nextXml)) {
+      removedConnectionsPart = true
+      return []
+    }
+    return [rewritePreservedTextPackagePart(part, nextXml)]
+  })
+
+  const contentTypeOverrides = (artifacts.contentTypeOverrides ?? []).filter(
+    (entry) => !removedConnectionsPart || normalizePackagePath(entry.partName) !== connectionsPackagePath,
+  )
+  const workbookRelationships = (artifacts.workbookRelationships ?? []).filter((relationship) => {
+    if (!removedConnectionsPart) {
+      return true
+    }
+    return normalizePackagePath(resolvePackageRelationshipTarget('xl/workbook.xml', relationship.target)) !== connectionsPackagePath
+  })
+
+  const next: WorkbookSlicerConnectionArtifactsRecord = {
+    parts,
+    ...(artifacts.workbookSlicerCachesExtXml ? { workbookSlicerCachesExtXml: artifacts.workbookSlicerCachesExtXml } : {}),
+    ...(workbookRelationships.length > 0 ? { workbookRelationships } : {}),
+    ...(artifacts.sheetArtifacts && artifacts.sheetArtifacts.length > 0 ? { sheetArtifacts: artifacts.sheetArtifacts } : {}),
+    ...(artifacts.tableArtifacts && artifacts.tableArtifacts.length > 0 ? { tableArtifacts: artifacts.tableArtifacts } : {}),
+    ...(artifacts.contentTypeDefaults ? { contentTypeDefaults: artifacts.contentTypeDefaults } : {}),
+    ...(contentTypeOverrides.length > 0 ? { contentTypeOverrides } : {}),
+  }
+
+  return hasSlicerConnectionArtifacts(next) ? next : undefined
+}
+
+function hasConnectionXmlEntries(xml: string): boolean {
+  connectionElementPattern.lastIndex = 0
+  const found = connectionElementPattern.test(xml)
+  connectionElementPattern.lastIndex = 0
+  return found
+}
+
+function removeConnectionXmlEntries(xml: string, connectionIds: ReadonlySet<string>): string {
+  connectionElementPattern.lastIndex = 0
+  const nextXml = xml.replace(connectionElementPattern, (source: string, _tagName: string, attributes: string) => {
+    const id = readXmlAttribute(attributes, 'id')
+    return id && connectionIds.has(id) ? '' : source
+  })
+  return rewriteConnectionsCount(nextXml)
+}
+
+function rewriteConnectionsCount(xml: string): string {
+  connectionElementPattern.lastIndex = 0
+  const count = [...xml.matchAll(connectionElementPattern)].length
+  return xml.replace(/<((?:[A-Za-z_][\w.-]*:)?connections)\b([^>]*?)>/u, (source: string, _tagName: string, attributes: string) => {
+    const countAttribute = readXmlAttributeMatch(attributes, 'count')
+    if (!countAttribute) {
+      return source
+    }
+    return source.replace(countAttribute.raw, `count=${countAttribute.quote}${String(count)}${countAttribute.quote}`)
+  })
+}
+
+function rewriteDataModelArtifactsForRemovedModelConnection(
+  artifacts: WorkbookPreservedMetadataRecord['dataModelArtifacts'],
+): WorkbookPreservedMetadataRecord['dataModelArtifacts'] | undefined {
+  if (!artifacts) {
+    return undefined
+  }
+  const parts = artifacts.parts.filter((part) => !dataModelPackagePartPathPattern.test(normalizePackagePath(part.path)))
+  const partPaths = new Set(parts.map((part) => normalizePackagePath(part.path)))
+  const workbookRelationships = artifacts.workbookRelationships.filter((relationship) => {
+    return partPaths.has(normalizePackagePath(resolvePackageRelationshipTarget('xl/workbook.xml', relationship.target)))
+  })
+  const contentTypeOverrides = (artifacts.contentTypeOverrides ?? []).filter((entry) => partPaths.has(normalizePackagePath(entry.partName)))
+  const contentTypeDefaults = (artifacts.contentTypeDefaults ?? []).filter((entry) => {
+    return parts.some((part) => normalizePackagePath(part.path).toLowerCase().endsWith(`.${entry.extension}`))
+  })
+  if (parts.length === 0) {
+    return undefined
+  }
+  return {
+    parts,
+    workbookRelationships,
+    ...(contentTypeDefaults.length > 0 ? { contentTypeDefaults } : {}),
+    ...(contentTypeOverrides.length > 0 ? { contentTypeOverrides } : {}),
+  }
+}
+
 function relationshipPartPathForPackagePart(partPath: string): string {
   const normalizedPath = normalizePivotPackagePath(partPath)
   const slashIndex = normalizedPath.lastIndexOf('/')
@@ -898,6 +1153,46 @@ function unescapeXmlAttribute(value: string): string {
 
 function escapeXmlAttribute(value: string): string {
   return value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll("'", '&apos;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+}
+
+function preservedPackagePartText(part: { readonly dataBase64: string; readonly byteLength: number }): string | undefined {
+  const bytes = decodeBase64(part.dataBase64)
+  return bytes.byteLength === part.byteLength ? new TextDecoder().decode(bytes) : undefined
+}
+
+function rewritePreservedTextPackagePart<
+  T extends { readonly storage: 'base64'; readonly dataBase64: string; readonly byteLength: number },
+>(part: T, text: string): T {
+  const bytes = new TextEncoder().encode(text)
+  return {
+    ...part,
+    dataBase64: encodeBase64(bytes),
+    byteLength: bytes.byteLength,
+  }
+}
+
+function encodeBase64(bytes: Uint8Array): string {
+  return globalThis.btoa(encodeBinaryString(bytes))
+}
+
+function decodeBase64(dataBase64: string): Uint8Array {
+  return decodeBinaryString(globalThis.atob(dataBase64))
+}
+
+function encodeBinaryString(bytes: Uint8Array): string {
+  let binary = ''
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte)
+  }
+  return binary
+}
+
+function decodeBinaryString(binary: string): Uint8Array {
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index)
+  }
+  return bytes
 }
 
 function renameSheetName(value: string, oldSheetName: string, newSheetName: string): string {
