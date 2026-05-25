@@ -512,6 +512,53 @@ describe('workbook run adapter', () => {
     })
   })
 
+  it('proves idempotent direct single-cell number format commands as no-ops in strict mode', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-idempotent-single-cell-number-format' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 12.5)
+    const numberFormat = engine.workbook.internCellNumberFormat('0.0')
+    engine.workbook.upsertCellNumberFormat(numberFormat)
+    engine.workbook.setFormatRange({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }, numberFormat.id)
+
+    const model = defineModel({
+      name: 'generic-idempotent-single-cell-format',
+      find(workbook) {
+        return {
+          target: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+        }
+      },
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.target)]
+      },
+      actions: {
+        formatNumber({ refs, workbook }) {
+          workbook.format(refs.target, { numberFormat: '0.0' })
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'formatNumber', createWorkbookRunAdapter(engine), undefined, { strict: true })
+
+    expect(result).toMatchObject({ status: 'done' })
+    if (result.status !== 'done') {
+      throw new Error(result.errors.map((error) => error.message).join('\n'))
+    }
+    expect(engine.getCell('Sheet1', 'A1').format).toBe('0.0')
+    expect(result.apply?.commandReceipts?.[0]).toMatchObject({
+      commandKind: 'format',
+      previewOps: [],
+      appliedOps: [],
+      noop: {
+        reason: 'already_satisfied',
+        proof: {
+          source: '@bilig/core',
+          opCount: 0,
+        },
+      },
+    })
+  })
+
   it('proves direct single-cell number format clears with default support records in strict mode', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-single-cell-number-format-clear' })
     await engine.ready()
@@ -568,6 +615,50 @@ describe('workbook run adapter', () => {
           formatId: 'format-0',
         },
       ],
+    })
+  })
+
+  it('proves idempotent direct single-cell number format clears as no-ops in strict mode', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-idempotent-single-cell-number-format-clear' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 12.5)
+
+    const model = defineModel({
+      name: 'generic-idempotent-single-cell-clear-format',
+      find(workbook) {
+        return {
+          target: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+        }
+      },
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.target)]
+      },
+      actions: {
+        clearNumberFormat({ refs, workbook }) {
+          workbook.format(refs.target, { numberFormat: null })
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'clearNumberFormat', createWorkbookRunAdapter(engine), undefined, { strict: true })
+
+    expect(result).toMatchObject({ status: 'done' })
+    if (result.status !== 'done') {
+      throw new Error(result.errors.map((error) => error.message).join('\n'))
+    }
+    expect(engine.getCell('Sheet1', 'A1').format).toBeUndefined()
+    expect(result.apply?.commandReceipts?.[0]).toMatchObject({
+      commandKind: 'format',
+      previewOps: [],
+      appliedOps: [],
+      noop: {
+        reason: 'already_satisfied',
+        proof: {
+          source: '@bilig/core',
+          opCount: 0,
+        },
+      },
     })
   })
 

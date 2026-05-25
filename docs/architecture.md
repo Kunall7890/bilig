@@ -29,7 +29,9 @@ flowchart LR
   - root public barrel plus smaller model/prepare/find/check/formula/verify/runtime/command/schema subpath exports
   - public JSON schema artifacts, deterministic schema hashes, and checked-in
     fixtures for non-TypeScript agent contract inspection
-  - schema/checker parity for row predicates, command bundles, and proof payloads
+  - schema/checker parity for shape-enforceable row predicates, command
+    bundles, and proof payloads, with semantic scope limits enforced by
+    `checkWorkbookCommandBundle`
   - model-manifest schema artifacts for action discovery and input contracts
   - runtime-requirements schema artifacts for adapter handoff inspection
   - exact run-result proof schema for apply summaries, command receipts, undo

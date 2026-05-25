@@ -207,7 +207,8 @@ an unverified apply fact. Agents that need fail-closed execution can call
 `runWorkbookPlan(plan, adapter, { requireApplyProof: true })`, or use
 `{ strict: true }` to require checks before mutation, apply proof, plan-id
 proof, base/applied revision proof, no unverified apply facts, concrete command
-ops, resolved-ref proof, and passed-check proof with one option.
+ops or explicit no-op proof, resolved-ref proof, and passed-check proof with one
+option.
 Plans with no apply requirements skip mutation entirely: a readback-only or
 check-only model can run with only `read` or `verifyChecks`, and the result has
 no `apply` summary because nothing was supposed to mutate.
@@ -251,8 +252,10 @@ the root import path. Ordinary agent models should stay on `defineModel`,
   command ids; canonicalizes declared touched ranges; rejects mutation requests
   and ops unless they set
   `destructive: true`; requires touched ranges for destructive commands when
-  `scope.maxTouchedCells` is present; rejects bundles over that limit; and returns
-  a `WorkbookCommandResult` with normalized touched ranges.
+  `scope.maxTouchedCells` is present; semantically counts touched cells and
+  rejects bundles over that limit; and returns a `WorkbookCommandResult` with
+  normalized touched ranges. JSON Schema covers the transported shape for this
+  field, while the checker is the authority for range cardinality.
 - `normalizeWorkbookCommandBundle(data)` returns the frozen bundle after the
   same validation.
 - `workbookCommandResultForReceipts(bundle, receipts, { revision, undo })`

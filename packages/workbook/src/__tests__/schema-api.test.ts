@@ -189,6 +189,16 @@ describe('@bilig/workbook schema api', () => {
         },
       },
     })
+    expect(commandReceiptProperties['noop']).toEqual({
+      type: 'object',
+      required: ['reason'],
+      additionalProperties: false,
+      properties: {
+        reason: { enum: ['already_satisfied'] },
+        message: { type: 'string', minLength: 1 },
+        proof: { $ref: '#/$defs/actionInput' },
+      },
+    })
 
     expect(objectEntry(defs, 'undo')).toEqual({
       type: 'object',
@@ -756,6 +766,34 @@ describe('@bilig/workbook schema api', () => {
     } as const
     expect(validateWithJsonSchema('commandBundle', scopedConfirmed)).toBe(true)
     expect(checkWorkbookCommandBundle(scopedConfirmed).status).toBe('valid')
+  })
+
+  it('documents maxTouchedCells cardinality as semantic checker validation', () => {
+    const tooWide = {
+      targetRevision: 1,
+      idempotencyKey: 'scoped-cardinality-semantic-check',
+      scope: { maxTouchedCells: 1 },
+      commands: [
+        {
+          kind: 'op',
+          destructive: true,
+          touchedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A2' }],
+          op: { kind: 'clearCell', sheetName: 'Sheet1', address: 'A1' },
+        },
+      ],
+    } as const
+
+    expect(validateWithJsonSchema('commandBundle', tooWide)).toBe(true)
+    expect(checkWorkbookCommandBundle(tooWide)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'too_many_touched_cells',
+          path: 'scope.maxTouchedCells',
+          message: 'Workbook command bundle touches 2 cells, exceeding scope.maxTouchedCells 1',
+        },
+      ],
+    })
   })
 
   it('keeps row-ref JSON Schema constraints aligned with ref-data checks', () => {

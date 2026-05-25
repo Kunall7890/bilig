@@ -481,6 +481,67 @@ describe('@bilig/workbook run proof boundary', () => {
     })
   })
 
+  it('strict mode accepts explicit no-op proof for already satisfied commands', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => {
+          const receipt = commandReceipt(plan)
+          return {
+            status: 'applied',
+            planId: workbookPlanId(plan),
+            baseRevision: 7,
+            revision: 7,
+            previewOps: [],
+            appliedOps: [],
+            commandReceipts: [
+              {
+                ...receipt,
+                previewOps: [],
+                appliedOps: [],
+                noop: {
+                  reason: 'already_satisfied',
+                  proof: {
+                    source: 'test',
+                    opCount: 0,
+                  },
+                },
+              },
+            ],
+          }
+        },
+        read: (targets) => [{ target: first(targets), value: 12 }],
+        verifyChecks: (checks) => checks.map((check) => ({ ...check, status: 'passed', proof: { source: 'test' } })),
+      },
+      undefined,
+      { strict: true },
+    )
+
+    expect(result).toMatchObject({
+      status: 'done',
+      apply: {
+        matched: true,
+        planId: expect.any(String),
+        baseRevision: 7,
+        revision: 7,
+        commandReceipts: [
+          {
+            commandKind: 'writeValue',
+            previewOps: [],
+            appliedOps: [],
+            noop: {
+              reason: 'already_satisfied',
+            },
+          },
+        ],
+      },
+      changed: [],
+    })
+  })
+
   it('rejects command receipts whose concrete ops do not match the planned command', async () => {
     const model = valueModel()
 

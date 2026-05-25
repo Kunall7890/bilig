@@ -315,7 +315,7 @@ export function applyProofErrors(
     return [runError('apply_not_verified', 'Adapter did not bind planned commands to materialized ops')]
   }
   if (options.requireApplyProof && apply.commandReceipts !== undefined) {
-    const unprovedReceipt = apply.commandReceipts.find((receipt) => receipt.appliedOps.length === 0)
+    const unprovedReceipt = apply.commandReceipts.find((receipt) => receipt.appliedOps.length === 0 && receipt.noop === undefined)
     if (unprovedReceipt !== undefined) {
       return [
         runError('apply_not_verified', `Adapter did not bind command ${String(unprovedReceipt.commandIndex)} to concrete applied ops`),

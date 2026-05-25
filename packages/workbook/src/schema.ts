@@ -312,6 +312,16 @@ const applyCommandReceiptSchema: WorkbookJsonSchemaValue = {
     commandDigest: { type: 'string', minLength: 1 },
     previewOps: { type: 'array', items: engineOp },
     appliedOps: { type: 'array', items: engineOp },
+    noop: {
+      type: 'object',
+      required: ['reason'],
+      additionalProperties: false,
+      properties: {
+        reason: { enum: ['already_satisfied'] },
+        message: { type: 'string', minLength: 1 },
+        proof: actionInput,
+      },
+    },
     resolvedRefs: { $ref: '#/$defs/commandResolvedRefs' },
     formulaLabels: {
       type: 'array',
@@ -327,6 +337,18 @@ const applyCommandReceiptSchema: WorkbookJsonSchemaValue = {
     },
     proof: actionInput,
   },
+  allOf: [
+    {
+      if: { required: ['noop'] },
+      // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+      then: {
+        properties: {
+          previewOps: { type: 'array', maxItems: 0, items: engineOp },
+          appliedOps: { type: 'array', maxItems: 0, items: engineOp },
+        },
+      },
+    },
+  ],
 }
 
 export const workbookJsonSchemas = deepFreeze({

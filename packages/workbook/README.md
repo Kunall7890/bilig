@@ -91,8 +91,7 @@ The core flow is deliberately boring:
 The root export keeps the ordinary agent path: models, refs, checks, formulas,
 plans, runtime proof, command results, schemas, and low-level ops. Subpaths are available when an agent wants a smaller import map:
 `@bilig/workbook/model`,
-`@bilig/workbook/prepare`, `@bilig/workbook/find`,
-`@bilig/workbook/check`, `@bilig/workbook/formula`,
+`@bilig/workbook/prepare`, `@bilig/workbook/find`, `@bilig/workbook/check`, `@bilig/workbook/formula`,
 `@bilig/workbook/verify`, `@bilig/workbook/runtime`,
 `@bilig/workbook/command`, `@bilig/workbook/features`,
 `@bilig/workbook/testing`, and `@bilig/workbook/schema`.
@@ -210,10 +209,11 @@ Everything that crosses an agent/runtime boundary is inspectable data:
 - `verifyPlan`, `verifyPlanData`, `verifyModel`, `checkInput`,
   `checkWorkbookModelDescription`, and `checkWorkbookReadbackProof` return frozen validation verdicts.
 - `workbookJsonSchemas`, `workbookJsonSchemaHashes`, and `fixtures/` publish
-  checked model, plan, runtime-requirements, command, run-result, and readback artifacts
-  for non-TypeScript consumers.
-- Schemas stay in parity with validators for row predicates, low-level op
-  destructive confirmation, and command receipt proof.
+  checked model, plan, runtime-requirements, command, run-result, and readback artifacts.
+- Schemas cover transport shape and stay in parity for shape-enforceable
+  constraints such as row predicates, destructive confirmation, and command
+  receipt proof. Workbook-math limits such as `scope.maxTouchedCells` are
+  enforced by `checkWorkbookCommandBundle`.
 
 Public validators read own data properties and reject malformed, sparse,
 accessor-backed, or custom-prototype payloads before hidden consumer code can

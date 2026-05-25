@@ -743,6 +743,17 @@ function materializePlanCommandReceipts(engine: SpreadsheetEngine, plan: Workboo
       commandDigest: workbookActionCommandDigest(command),
       previewOps: ops,
       appliedOps: ops,
+      ...(ops.length === 0
+        ? {
+            noop: {
+              reason: 'already_satisfied',
+              proof: {
+                source: '@bilig/core',
+                opCount: 0,
+              },
+            },
+          }
+        : {}),
       proof: {
         source: '@bilig/core',
         opCount: ops.length,

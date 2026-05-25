@@ -55,8 +55,17 @@ export interface WorkbookRunApplyCommandReceipt {
   readonly commandDigest: string
   readonly previewOps: readonly EngineOp[]
   readonly appliedOps: readonly EngineOp[]
+  readonly noop?: WorkbookRunNoopProof
   readonly resolvedRefs?: WorkbookCommandResolvedRefs
   readonly formulaLabels?: readonly WorkbookFormulaLabelReplacement[]
+  readonly proof?: WorkbookActionInput
+}
+
+export type WorkbookRunNoopReason = 'already_satisfied'
+
+export interface WorkbookRunNoopProof {
+  readonly reason: WorkbookRunNoopReason
+  readonly message?: string
   readonly proof?: WorkbookActionInput
 }
 
