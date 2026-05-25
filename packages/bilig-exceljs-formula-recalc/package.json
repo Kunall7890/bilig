@@ -1,6 +1,6 @@
 {
   "name": "@bilig/exceljs-formula-recalc",
-  "version": "0.107.5",
+  "version": "0.107.6",
   "description": "Scoped ExcelJS formula recalculation package for Node.js without Excel, LibreOffice, or browser automation.",
   "keywords": [
     "bilig",
