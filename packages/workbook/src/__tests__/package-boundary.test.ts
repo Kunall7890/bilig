@@ -242,6 +242,8 @@ describe('@bilig/workbook package boundary', () => {
     expect('workbookUiContributionSlots' in workbookRoot).toBe(false)
     expect('isWorkbookProjectionInterceptorPoint' in workbookRoot).toBe(false)
     expect('isWorkbookUiContributionSlot' in workbookRoot).toBe(false)
+    expect('checkWorkbookCommandRequest' in workbookRoot).toBe(true)
+    expect('checkWorkbookCommandResultForBundle' in workbookRoot).toBe(true)
 
     expect(checkWorkbookCommandRequest({ featureId: 'tables', commandId: 'create' })).toMatchObject({
       status: 'valid',
@@ -278,7 +280,10 @@ describe('@bilig/workbook package boundary', () => {
     expect(readme).toContain('Owning workbook state inside Node')
     expect(readme).toContain('| `@bilig/core`')
     expect(readme).toContain('Implementing calculation or mutation internals')
+    expect(readme).toContain('Generic command request, bundle, result, and receipt validators are available on')
+    expect(readme).toContain('plugin registration, projection interceptors, and UI contribution metadata live')
     expect(readme).not.toContain('The main API is intentionally small')
+    expect(readme).not.toContain('They are intentionally not on the root import path')
     expect(readme.split(/\r?\n/).length).toBeLessThanOrEqual(260)
 
     expect(example).toContain("workbook.findName('input')")

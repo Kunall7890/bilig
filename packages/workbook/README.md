@@ -225,8 +225,6 @@ run. Public results are frozen before they cross the package boundary.
 
 Runtimes can expose workbook extensions with the same data-first contract:
 
-- `defineWorkbookFeaturePlugin`
-- `checkWorkbookFeaturePlugin`
 - `checkWorkbookCommandRequest`
 - `checkWorkbookCommandBundle`
 - `workbookCommandResultForReceipts`
@@ -234,9 +232,11 @@ Runtimes can expose workbook extensions with the same data-first contract:
 - `checkWorkbookCommandResultForBundle`
 - `checkWorkbookCommandReceipt`
 
-Import these from `@bilig/workbook/features` when building runtime-owned
-extensions. They are intentionally not on the root import path. Ordinary models
-should prefer `writeFormula`, `writeValue`, `format`, `clear`, and checks.
+Generic command request, bundle, result, and receipt validators are available on
+the root path because agents may need to inspect runtime handoff proof. Runtime
+plugin registration, projection interceptors, and UI contribution metadata live
+only under `@bilig/workbook/features`. Ordinary models should prefer
+`writeFormula`, `writeValue`, `format`, `clear`, and checks.
 
 ## Low-Level Ops
 
