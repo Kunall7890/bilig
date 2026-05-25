@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.93.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.92.0
+- Manual override: no
+
+## Features
+- feat(workbook): verify formula labels by tokens (199509e0)
+
+## Fixes
+- fix(excel-import): scope external caches on dense parse (92d4abeb)
+- fix(excel-import): preserve refreshed external cache artifacts (96ea5f21)
+
 ## 0.92.0
 
 - Release type: minor
