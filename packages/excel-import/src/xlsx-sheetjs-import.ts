@@ -196,18 +196,30 @@ function createMaterializedExternalCacheRuntimeSheetCells(sheet: WorkbookSnapsho
   })
 }
 
-function collectWorkbookExternalLinkCacheUsage(workbook: XLSX.WorkBook): ImportedExternalLinkCacheUsage | undefined {
+function addExternalLinkCacheFormulaUsage(usage: ImportedExternalLinkCacheUsage, formula: unknown): void {
+  if (typeof formula !== 'string' || formula.trim().length === 0) {
+    return
+  }
+  addImportedFormulaExternalLinkCacheUsage(usage, formula)
+}
+
+function collectWorkbookExternalLinkCacheUsage(
+  workbook: XLSX.WorkBook,
+  worksheetFormulaManifestsBySheet: ReadonlyMap<string, ReadonlyMap<string, { readonly formula: string }>>,
+): ImportedExternalLinkCacheUsage | undefined {
   const usage: ImportedExternalLinkCacheUsage = new Map()
+  for (const manifest of worksheetFormulaManifestsBySheet.values()) {
+    for (const formulaCell of manifest.values()) {
+      addExternalLinkCacheFormulaUsage(usage, formulaCell.formula)
+    }
+  }
   for (const sheetName of workbook.SheetNames) {
     const sheet = workbook.Sheets[sheetName]
     if (!sheet) {
       continue
     }
-    for (const [address, rawCell] of Object.entries(sheet)) {
-      if (address.startsWith('!') || !isRecord(rawCell) || typeof rawCell['f'] !== 'string') {
-        continue
-      }
-      addImportedFormulaExternalLinkCacheUsage(usage, rawCell['f'])
+    for (const { cell } of worksheetCellEntries(sheet)) {
+      addExternalLinkCacheFormulaUsage(usage, cell['f'])
     }
   }
   return usage.size > 0 ? usage : undefined
@@ -367,12 +379,15 @@ function importParsedSheetJsWorkbook(args: {
   const importedTables = workbookZip ? readImportedWorkbookTables(workbookZip, workbook.SheetNames) : undefined
   const importedControlArtifacts = workbookZip ? readImportedWorkbookControlArtifacts(workbookZip, workbook.SheetNames) : undefined
   const importedDataModelArtifacts = workbookZip ? readImportedWorkbookDataModelArtifacts(workbookZip) : undefined
+  const importedWorksheetFormulaManifestsBySheet = workbookZip
+    ? readImportedWorksheetFormulaManifests(workbookZip, workbook.SheetNames, sheetPathsByName, fallbackSheetPaths)
+    : new Map()
   const importedExternalWorkbookReferences = workbookZip ? readImportedExternalWorkbookReferences(workbookZip) : new Map()
   const importedExternalLinkCacheRefresh = refreshImportedExternalLinkCachesFromWorkbooks(
     workbookZip ? readImportedExternalLinkCaches(workbookZip) : new Map(),
     importedExternalWorkbookReferences,
     options?.externalWorkbooks,
-    collectWorkbookExternalLinkCacheUsage(workbook),
+    collectWorkbookExternalLinkCacheUsage(workbook, importedWorksheetFormulaManifestsBySheet),
   )
   const importedExternalLinkCaches = importedExternalLinkCacheRefresh.caches
   const importedExternalLinkArtifacts = refreshImportedWorkbookExternalLinkArtifactCaches(
@@ -419,9 +434,6 @@ function importParsedSheetJsWorkbook(args: {
   const importedRichTextArtifactsBySheet = workbookZip ? readImportedWorkbookRichTextArtifacts(workbookZip, workbook.SheetNames) : new Map()
   const importedWorksheetTextValuesBySheet = workbookZip
     ? readImportedWorksheetTextValues(workbookZip, workbook.SheetNames, sheetPathsByName, fallbackSheetPaths)
-    : new Map()
-  const importedWorksheetFormulaManifestsBySheet = workbookZip
-    ? readImportedWorksheetFormulaManifests(workbookZip, workbook.SheetNames, sheetPathsByName, fallbackSheetPaths)
     : new Map()
   const importedThreadedCommentArtifacts = workbookZip
     ? readImportedWorkbookThreadedCommentArtifacts(workbookZip, workbook.SheetNames)

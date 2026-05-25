@@ -176,6 +176,18 @@ function readExternalLinkCacheXml(bytes: Uint8Array): string {
   return strFromU8(zip['xl/externalLinks/externalLink5.xml'] ?? new Uint8Array())
 }
 
+function inflateXlsxForDenseSheetJsParse(bytes: Uint8Array): Uint8Array {
+  const zip = unzipSync(bytes)
+  const filler = new Uint8Array(1_100_000)
+  let state = 0x12345678
+  for (let index = 0; index < filler.length; index += 1) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0
+    filler[index] = state & 0xff
+  }
+  zip['customXml/dense-parse-filler.bin'] = filler
+  return zipSync(zip, { level: 0 })
+}
+
 function buildExternalGetPivotDataLinkCacheWorkbook(): Uint8Array {
   const workbook = XLSX.utils.book_new()
   const sheet = XLSX.utils.aoa_to_sheet([[]])
@@ -616,6 +628,33 @@ describe('excel import', () => {
     expect(externalLinkXml).toContain('<row r="4">')
     expect(externalLinkXml).toContain('<cell r="B4"><v>40</v></cell>')
     expect(externalLinkXml).not.toContain('<row r="0">')
+  })
+
+  it('keeps companion workbook hydration scoped on the dense SheetJS parse path', () => {
+    const sourceBytes = inflateXlsxForDenseSheetJsParse(buildExternalLinkRangeCacheWorkbook())
+    const imported = importXlsx(sourceBytes, 'external-link-range-cache-dense.xlsx', {
+      externalWorkbooks: [{ fileName: 'rates.xlsx', bytes: buildRatesWorkbook([20, 30, 40]) }],
+    })
+    const cacheSheet = imported.snapshot.sheets.find((sheet) => sheet.name === '__bilig_ext_1_Rates')
+    const cacheCells = new Map(cacheSheet?.cells.map((cell) => [cell.address, cell.value]) ?? [])
+    const externalLinkXml = readExternalLinkCacheXml(exportXlsx(imported.snapshot))
+
+    expect(sourceBytes.byteLength).toBeGreaterThan(1_000_000)
+    expect(cacheCells).toEqual(
+      new Map([
+        ['A2', 'A'],
+        ['B2', 20],
+        ['A3', 'B'],
+        ['B3', 30],
+        ['A4', 'C'],
+        ['B4', 40],
+      ]),
+    )
+    expect(externalLinkXml).not.toContain('<row r="1">')
+    expect(externalLinkXml).toContain('<row r="2">')
+    expect(externalLinkXml).toContain('<cell r="B2"><v>20</v></cell>')
+    expect(externalLinkXml).toContain('<row r="4">')
+    expect(externalLinkXml).toContain('<cell r="B4"><v>40</v></cell>')
   })
 
   it('does not hydrate external-link caches from an explicitly mismatched target', () => {
