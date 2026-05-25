@@ -25,8 +25,6 @@ import {
 import { buildWorkbookSemanticReadbackProof } from './workbook-agent-mutation-semantic-proof.js'
 import { stringifyJson, textToolResult, type WorkbookAgentStageCommandResult } from './workbook-agent-tool-shared.js'
 
-const MAX_VERIFICATION_RANGES = 3
-
 export { buildWorkbookAgentVerificationReport } from './workbook-agent-mutation-proof.js'
 
 export interface WorkbookAgentMutationReceiptRange {
@@ -132,10 +130,7 @@ function receiptRanges(bundle: WorkbookAgentCommandBundle): readonly WorkbookAge
 }
 
 export function selectWorkbookAgentMutationReceiptVerificationRanges(bundle: WorkbookAgentCommandBundle): readonly CellRangeRef[] {
-  return bundle.affectedRanges
-    .filter((range) => range.role === 'target')
-    .slice(0, MAX_VERIFICATION_RANGES)
-    .map((range) => toWorkbookAgentRangeRef(range))
+  return bundle.affectedRanges.filter((range) => range.role === 'target').map((range) => toWorkbookAgentRangeRef(range))
 }
 
 function buildAppliedMutationSummary(input: {
