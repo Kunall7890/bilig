@@ -83,6 +83,67 @@ function rangeSource(range: CellRangeRef): string {
   return range.startAddress === range.endAddress ? `${sheet}!${range.startAddress}` : `${sheet}!${range.startAddress}:${range.endAddress}`
 }
 
+function cellKey(cell: Pick<WorkbookConcreteCell, 'sheetName' | 'address'>): string {
+  return `${cell.sheetName}!${cell.address}`
+}
+
+function cellSet(cells: readonly WorkbookConcreteCell[]): ReadonlySet<string> {
+  return new Set(cells.map(cellKey))
+}
+
+function rangeCellsBindToTarget(range: CellRangeRef, targetCells: ReadonlySet<string>): boolean {
+  const cells = cellsFromRange(range)
+  return cells.length > 0 && cells.every((cell) => targetCells.has(cellKey(cell)))
+}
+
+function formatOpBindsToTarget(
+  command: Extract<WorkbookActionCommand, { readonly kind: 'format' }>,
+  op: WorkbookOp,
+  targetCells: ReadonlySet<string>,
+): {
+  readonly binding: 'target' | 'support'
+} | null {
+  if (op.kind === 'upsertCellStyle' || op.kind === 'upsertCellNumberFormat') {
+    return { binding: 'support' }
+  }
+  if (op.kind === 'setCellFormat') {
+    return command.numberFormat !== undefined && targetCells.has(`${op.sheetName}!${op.address}`) && op.format === command.numberFormat
+      ? { binding: 'target' }
+      : null
+  }
+  if (op.kind === 'setFormatRange') {
+    return command.numberFormat !== undefined && rangeCellsBindToTarget(op.range, targetCells) ? { binding: 'target' } : null
+  }
+  if (op.kind === 'setStyleRange') {
+    return command.style !== undefined && rangeCellsBindToTarget(op.range, targetCells) ? { binding: 'target' } : null
+  }
+  return null
+}
+
+function formatOpsMatchExpected(
+  command: Extract<WorkbookActionCommand, { readonly kind: 'format' }>,
+  ops: readonly WorkbookOp[],
+  resolvedRefs?: WorkbookCommandResolvedRefs,
+): boolean {
+  if (command.style === undefined && command.numberFormat === undefined) {
+    return ops.length === 0
+  }
+  const targetCells = concreteCellsFromResolvedRefs(resolvedRefs)
+  if (targetCells === null || targetCells.length === 0) {
+    return false
+  }
+  const targetCellSet = cellSet(targetCells)
+  let hasTargetBinding = false
+  for (const op of ops) {
+    const binding = formatOpBindsToTarget(command, op, targetCellSet)
+    if (binding === null) {
+      return false
+    }
+    hasTargetBinding ||= binding.binding === 'target'
+  }
+  return hasTargetBinding
+}
+
 function workbookRefKey(ref: WorkbookRef): string {
   return `${ref.kind}:${ref.id}`
 }
@@ -370,7 +431,7 @@ export function commandOpsMatchExpected(
       )
     }
     if (command.kind === 'format') {
-      return (command.style !== undefined || command.numberFormat !== undefined) && ops.length > 0
+      return formatOpsMatchExpected(command, ops, resolvedRefs)
     }
     return false
   }

@@ -402,6 +402,9 @@ describe('workbook run adapter', () => {
           range: workbook.findRange({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B1' }),
         }
       },
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.range)]
+      },
       actions: {
         format({ refs, workbook }) {
           workbook.format(refs.range, {
@@ -412,7 +415,7 @@ describe('workbook run adapter', () => {
       },
     })
 
-    const result = await runWorkbookAction(model, 'format', createWorkbookRunAdapter(engine))
+    const result = await runWorkbookAction(model, 'format', createWorkbookRunAdapter(engine), undefined, { strict: true })
 
     expect(result).toMatchObject({ status: 'done' })
     if (result.status !== 'done') {
@@ -424,6 +427,33 @@ describe('workbook run adapter', () => {
     expect(secondStyle?.id).toBe(firstStyle?.id)
     expect(engine.getCell('Sheet1', 'A1').format).toBe('0.00')
     expect(engine.getCell('Sheet1', 'B1').format).toBe('0.00')
+    expect(result.apply?.commandReceipts?.[0]).toMatchObject({
+      commandKind: 'format',
+      resolvedRefs: {
+        target: expect.objectContaining({
+          kind: 'range',
+          label: 'Sheet1!A1:B1',
+        }),
+      },
+      previewOps: expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'setStyleRange',
+          range: {
+            sheetName: 'Sheet1',
+            startAddress: 'A1',
+            endAddress: 'B1',
+          },
+        }),
+        expect.objectContaining({
+          kind: 'setFormatRange',
+          range: {
+            sheetName: 'Sheet1',
+            startAddress: 'A1',
+            endAddress: 'B1',
+          },
+        }),
+      ]),
+    })
   })
 
   it('materializes row-filtered table formulas only for matching rows', async () => {
