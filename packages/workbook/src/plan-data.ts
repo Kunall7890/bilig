@@ -11,9 +11,8 @@ import {
 } from './describe.js'
 import { hydrateWorkbookRef, isWorkbookRefData, type WorkbookRef } from './find.js'
 import type { WorkbookFormulaLabel } from './formula.js'
-import { isWorkbookOp } from './guards.js'
 import { WorkbookActionInputError, isWorkbookActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
-import { normalizeWorkbookActionFormatOptions } from './model-action-validation.js'
+import { normalizeWorkbookActionFormatOptions, normalizeWorkbookActionOp } from './model-action-validation.js'
 import type { WorkbookActionCommand, WorkbookActionPlan } from './model.js'
 import type { WorkbookOp } from './ops.js'
 import type { WorkbookChangeSummary, WorkbookCheckExpectation, WorkbookCheckResult, WorkbookCheckStatus } from './result.js'
@@ -130,8 +129,17 @@ function isStringValue(value: unknown): value is string {
   return typeof value === 'string'
 }
 
+function isTransportedWorkbookOp(value: unknown): value is WorkbookOp {
+  try {
+    normalizeWorkbookActionOp(value)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function isOpDataArray(value: unknown): value is readonly WorkbookOp[] {
-  return arrayEvery(value, isWorkbookOp)
+  return arrayEvery(value, isTransportedWorkbookOp)
 }
 
 function isCommandDataArray(value: unknown): value is readonly WorkbookActionCommandDescription[] {
@@ -264,7 +272,7 @@ function isWorkbookActionCommandData(value: unknown): value is WorkbookActionCom
       return isWorkbookRefDescription(ownValue(value, 'target'))
     case 'op':
       return (
-        isWorkbookOp(ownValue(value, 'op')) &&
+        isTransportedWorkbookOp(ownValue(value, 'op')) &&
         (!hasOwnValue(value, 'target') || isWorkbookRefDescription(ownValue(value, 'target'))) &&
         hasOptionalString(value, 'message')
       )
@@ -334,7 +342,7 @@ export function isPlanData(value: unknown): value is WorkbookPlanData {
     (!hasOwnValue(value, 'input') || isWorkbookActionInput(input)) &&
     isRefDataArray(refsUsed) &&
     arrayEvery(commands, isWorkbookActionCommandData) &&
-    arrayEvery(ops, isWorkbookOp) &&
+    isOpDataArray(ops) &&
     arrayEvery(changed, isChangeData) &&
     arrayEvery(checks, isCheckData)
   )
@@ -471,7 +479,7 @@ export function checkPlanData(value: unknown): WorkbookPlanDataCheckResult {
   pushOptionalInputIssue(issues, value)
   pushArrayIssues(issues, value, 'refsUsed', isWorkbookRefDescription, 'ref')
   pushArrayIssues(issues, value, 'commands', isWorkbookActionCommandData, 'command')
-  pushArrayIssues(issues, value, 'ops', isWorkbookOp, 'op')
+  pushArrayIssues(issues, value, 'ops', isTransportedWorkbookOp, 'op')
   pushArrayIssues(issues, value, 'changed', isChangeData, 'change')
   pushCheckArrayIssues(issues, value)
 
@@ -555,7 +563,7 @@ function hydrateCommand(command: WorkbookActionCommandDescription): WorkbookActi
       const message = optionalPlanValue(command, 'message', 'a string', isStringValue)
       return Object.freeze({
         kind: 'op',
-        op: Object.freeze(structuredClone(requiredPlanValue(command, 'op', 'a workbook op', isWorkbookOp))),
+        op: normalizeWorkbookActionOp(requiredPlanValue(command, 'op', 'a workbook op', isTransportedWorkbookOp)),
         ...(target !== undefined ? { target: hydrateRef(target) } : {}),
         ...(message !== undefined ? { message } : {}),
       })
@@ -623,7 +631,7 @@ function hydrateCheck(check: WorkbookCheckResultDescription): WorkbookCheckResul
 }
 
 function cloneOp(op: WorkbookOp): WorkbookOp {
-  return Object.freeze(structuredClone(op))
+  return normalizeWorkbookActionOp(op)
 }
 
 function hydrateCheckedPlanData(plan: WorkbookPlanData): WorkbookActionPlan<WorkbookPlanDataRefs> {
@@ -641,7 +649,9 @@ function hydrateCheckedPlanData(plan: WorkbookPlanData): WorkbookActionPlan<Work
     commands: Object.freeze(
       mapArrayData(requiredPlanValue(plan, 'commands', 'a command array', isCommandDataArray), isWorkbookActionCommandData, hydrateCommand),
     ),
-    ops: Object.freeze(mapArrayData(requiredPlanValue(plan, 'ops', 'a workbook op array', isOpDataArray), isWorkbookOp, cloneOp)),
+    ops: Object.freeze(
+      mapArrayData(requiredPlanValue(plan, 'ops', 'a workbook op array', isOpDataArray), isTransportedWorkbookOp, cloneOp),
+    ),
     changed: Object.freeze(
       mapArrayData(requiredPlanValue(plan, 'changed', 'a change array', isChangeDataArray), isChangeData, hydrateChange),
     ),

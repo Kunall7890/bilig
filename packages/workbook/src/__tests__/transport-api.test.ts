@@ -1072,6 +1072,88 @@ describe('@bilig/workbook transport api', () => {
     })
   })
 
+  it('rejects accessor-backed transported low-level ops without invoking getters', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    const planData = {
+      modelName: 'transport-op-accessor-plan-model',
+      actionName: 'op',
+      refsUsed: [target],
+      commands: [
+        {
+          kind: 'op',
+          op: {
+            kind: 'setCellValue',
+            sheetName: 'Sheet1',
+            address: 'A1',
+            value: 1,
+          },
+        },
+      ],
+      ops: [
+        {
+          kind: 'setCellValue',
+          sheetName: 'Sheet1',
+          address: 'A1',
+          value: 1,
+        },
+      ],
+      changed: [],
+      checks: [],
+    }
+
+    const opArrayPlanData = structuredClone(planData)
+
+    let commandOpGetterInvoked = false
+    const [command] = mutableRecordArray(planData.commands)
+    if (command === undefined) {
+      throw new Error('expected command')
+    }
+    Object.defineProperty(mutableRecord(command['op']), 'extra', {
+      enumerable: true,
+      get() {
+        commandOpGetterInvoked = true
+        throw new Error('command op getter must not run')
+      },
+    })
+
+    expect(isPlanData(planData)).toBe(false)
+    expect(checkPlanData(planData)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'commands[0]',
+          message: 'Workbook plan data command at commands[0] is invalid',
+        },
+      ],
+    })
+    expect(() => hydratePlanData(planData)).toThrow('Workbook plan data is invalid: Workbook plan data command at commands[0] is invalid')
+    expect(commandOpGetterInvoked).toBe(false)
+
+    let opGetterInvoked = false
+    Object.defineProperty(mutableRecordArray(opArrayPlanData.ops)[0], 'extra', {
+      enumerable: true,
+      get() {
+        opGetterInvoked = true
+        throw new Error('op getter must not run')
+      },
+    })
+
+    expect(isPlanData(opArrayPlanData)).toBe(false)
+    expect(checkPlanData(opArrayPlanData)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'ops[0]',
+          message: 'Workbook plan data op at ops[0] is invalid',
+        },
+      ],
+    })
+    expect(() => hydratePlanData(opArrayPlanData)).toThrow('Workbook plan data is invalid: Workbook plan data op at ops[0] is invalid')
+    expect(opGetterInvoked).toBe(false)
+  })
+
   it('runs transported plan data without the consumer refs object', async () => {
     const model = defineModel({
       name: 'transport-executable-plan-model',
