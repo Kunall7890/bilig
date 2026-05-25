@@ -117,6 +117,7 @@ const exceljsRecalcPackageReadme = await readFile(join(repoRoot, 'packages', 'ex
 const exceljsRecalcPackageAgentNotes = await readFile(join(repoRoot, 'packages', 'exceljs-formula-recalc', 'AGENTS.md'), 'utf8')
 const exceljsRecalcPackageSkillNotes = await readFile(join(repoRoot, 'packages', 'exceljs-formula-recalc', 'SKILL.md'), 'utf8')
 const exceljsFormulaRecalculationNode = await readFile(join(docsRoot, 'exceljs-formula-recalculation-node.md'), 'utf8')
+const directusWorkpaperFlowOperation = await readFile(join(docsRoot, 'directus-workpaper-flow-operation.md'), 'utf8')
 
 requireHomepageDiscovery(index, siteCss, productCss)
 await requireXlsxCalcAlternativeDiscovery(docsRoot)
@@ -225,6 +226,11 @@ await Promise.all(sourceFilesToVerify.map((sourceFile) => requirePublishedSource
 await Promise.all(
   ['README.md', 'package.json', 'quote-approval-api.ts', 'route.ts', 'smoke.ts'].map((sourceFile) =>
     requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', sourceFile)),
+  ),
+)
+await Promise.all(
+  ['README.md', 'package.json', 'tsconfig.json', 'src/api.ts', 'src/app.ts', 'src/workpaper-calculated-fields.ts', 'src/smoke.ts'].map(
+    (sourceFile) => requireFile(join(repoRoot, 'examples', 'directus-workpaper-flow-operation', sourceFile)),
   ),
 )
 await Promise.all(
@@ -378,6 +384,7 @@ requireIncludes(llms, 'https://proompteng.github.io/bilig/llms-full.txt', 'docs/
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent-skills/index.json', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/skills/index.json', 'docs/llms.txt')
 requireIncludes(llms, 'low-code agent workflow formula readback:', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html', 'docs/llms.txt')
 requireIncludes(llms, 'n8n community node package: @bilig/n8n-nodes-workpaper', 'docs/llms.txt')
 requireIncludes(llms, 'https://www.npmjs.com/package/@bilig/n8n-nodes-workpaper', 'docs/llms.txt')
@@ -385,11 +392,25 @@ requireIncludes(llms, 'https://proompteng.github.io/bilig/dify-workpaper-formula
 requireIncludes(llms, 'https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html', 'docs/llms.txt')
 requireIncludes(llms, `npm exec --package ${workpaperPackageSpec} -- bilig-n8n-formula-server --port 4321`, 'docs/llms.txt')
 requireIncludes(readme, '@bilig/n8n-nodes-workpaper', 'README.md')
+requireIncludes(readme, 'Directus Persisted Calculated Fields', 'README.md')
+requireIncludes(
+  directusWorkpaperFlowOperation,
+  'Run Script executes in an isolated sandbox without access to npm modules',
+  'docs/directus-workpaper-flow-operation.md',
+)
+requireIncludes(directusWorkpaperFlowOperation, 'examples/directus-workpaper-flow-operation', 'docs/directus-workpaper-flow-operation.md')
 requireIncludes(llmsFull, '@bilig/n8n-nodes-workpaper', 'docs/llms-full.txt')
+requireIncludes(llmsFull, 'Directus WorkPaper Flow Operation', 'docs/llms-full.txt')
 requireIncludes(readme, 'docs/.well-known/agent.json', 'README.md')
 requireIncludes(headlessReadme, 'https://proompteng.github.io/bilig/.well-known/agent.json', 'packages/headless/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, '## Start Here', 'packages/workpaper/README.md')
+requireIncludes(scopedWorkpaperPackageReadme, 'Directus Flow operation for persisted calculated fields', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'n8n, Dify, or Flowise formula readback', 'packages/workpaper/README.md')
+requireIncludes(
+  scopedWorkpaperPackageReadme,
+  'https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html',
+  'packages/workpaper/README.md',
+)
 requireIncludes(
   scopedWorkpaperPackageReadme,
   'https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html',

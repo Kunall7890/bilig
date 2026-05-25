@@ -530,6 +530,11 @@ const llmsFullSources = [
     url: `${repositoryUrl}/blob/main/docs/agent-framework-workbook-tools.md`,
   },
   {
+    title: 'Directus WorkPaper Flow Operation',
+    relativePath: 'docs/directus-workpaper-flow-operation.md',
+    url: `${repositoryUrl}/blob/main/docs/directus-workpaper-flow-operation.md`,
+  },
+  {
     title: 'n8n WorkPaper Formula Readback',
     relativePath: 'docs/n8n-workpaper-formula-readback.md',
     url: `${repositoryUrl}/blob/main/docs/n8n-workpaper-formula-readback.md`,

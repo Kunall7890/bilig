@@ -1,0 +1,33 @@
+{
+  "name": "directus-extension-operation-bilig-workpaper-calculated-fields",
+  "private": true,
+  "description": "Directus Flow operation example that calculates persisted fields with Bilig WorkPaper formulas.",
+  "type": "module",
+  "main": "dist/api.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "smoke": "tsx src/smoke.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@bilig/workpaper": "latest",
+    "@directus/extensions-sdk": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.2"
+  },
+  "directus:extension": {
+    "type": "operation",
+    "path": {
+      "app": "dist/app.js",
+      "api": "dist/api.js"
+    },
+    "source": {
+      "app": "src/app.ts",
+      "api": "src/api.ts"
+    },
+    "host": "^11.0.0"
+  }
+}

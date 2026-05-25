@@ -23,6 +23,7 @@ Pick the path that matches the workflow you are trying to unblock:
 | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
 | Formula workbook logic inside a Node service, route, queue, or test      | `npm create @bilig/workpaper@latest pricing-workpaper`                               | Inputs are written, formulas recalculate, JSON persists, restore matches readback, and `verified: true` is printed. |
 | A coding agent or MCP client that needs spreadsheet operations           | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                        | The generated project includes an agent contract, MCP config, and `npm run agent:verify`.                           |
+| Directus Flow operation for persisted calculated fields                  | `cd examples/directus-workpaper-flow-operation && npm install && npm run smoke`       | The operation returns a Directus `patch` plus before/after/restore WorkPaper proof with `verified: true`.          |
 | n8n, Dify, or Flowise formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321` | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof.               |
 | An existing `.xlsx` file with stale formula results after Node edits     | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json`                 | The file-level path updates inputs and returns fresh formula values without Excel, LibreOffice, or a browser.       |
 
@@ -106,12 +107,14 @@ npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 43
 
 Start from the repo examples:
 
+- `examples/directus-workpaper-flow-operation`
 - `examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json`
 - `examples/dify-workpaper-formula-readback`
 - `examples/flowise-workpaper-formula-readback/bilig-workpaper-formula-readback.flowise-tool.json`
 
 Docs:
 
+- <https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html>
 - <https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html>
 - <https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html>
 - <https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html>

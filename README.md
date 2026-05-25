@@ -114,6 +114,25 @@ for making n8n's built-in XLSX writer reinterpret text as formulas.
 See [n8n WorkPaper formula readback](docs/n8n-workpaper-formula-readback.md)
 for the community-node install path, proof shape, import steps, and limits.
 
+## Directus Persisted Calculated Fields
+
+Need a Directus Flow to calculate and persist quote, pricing, payout, or import
+validation fields from formula logic? Use a custom operation extension, not a
+Run Script operation, when the calculation needs `@bilig/workpaper`.
+
+The source example lives in:
+
+```text
+examples/directus-workpaper-flow-operation
+```
+
+It returns both a Directus `patch` object for **Update Data** and a WorkPaper
+proof object with the edited cell, before/after readback, restore readback,
+serialized document bytes, and `verified: true`.
+
+See [Directus WorkPaper Flow operation](docs/directus-workpaper-flow-operation.md)
+for the operation shape, local smoke command, and Directus boundary.
+
 ## Which Package Should I Install?
 
 | Problem you have right now                                                        | Install                                                       | First proof                                                                             |

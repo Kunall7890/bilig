@@ -505,6 +505,10 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   n8n community node package: @bilig/n8n-nodes-workpaper
   https://www.npmjs.com/package/@bilig/n8n-nodes-workpaper
   https://github.com/proompteng/bilig/tree/main/integrations/n8n-nodes-workpaper
+  Directus custom Flow operation source:
+  https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html
+  https://github.com/proompteng/bilig/blob/main/docs/directus-workpaper-flow-operation.md
+  https://github.com/proompteng/bilig/tree/main/examples/directus-workpaper-flow-operation
   https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html
   https://github.com/proompteng/bilig/blob/main/docs/n8n-workpaper-formula-readback.md
   https://github.com/proompteng/bilig/tree/main/examples/n8n-workpaper-formula-readback
@@ -514,9 +518,9 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html
   https://github.com/proompteng/bilig/blob/main/docs/flowise-workpaper-formula-readback.md
   https://github.com/proompteng/bilig/tree/main/examples/flowise-workpaper-formula-readback
-  Use this path when n8n, Dify, Flowise, or another workflow builder should
-  orchestrate the agent task while Bilig owns workbook formula state, readback,
-  JSON proof, and persistence.
+  Use this path when Directus, n8n, Dify, Flowise, or another workflow builder
+  should orchestrate the task while Bilig owns workbook formula state,
+  readback, JSON proof, and persistence.
 - MCP spreadsheet tool server guide:
   https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
   https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md
