@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): close strict format proof gaps (2da279d3)
 - fix(workbook): avoid inherited plan accessors (d280def0)
 - fix(workbook): align comparison schemas (e158c4a7)
@@ -19,6 +20,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(workbook): require full command proof (0d406311)
 
 ## Internal runtime changes
+
 - docs(growth): add Sim MCP setup (e353fb02)
 - docs(growth): add Windmill WorkPaper script (479a394f)
 - chore(release): runtime packages v0.107.9 (383e2bd2)

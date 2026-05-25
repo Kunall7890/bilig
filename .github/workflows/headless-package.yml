@@ -824,6 +824,8 @@ jobs:
             --version "${TARGET_VERSION}" \
             --notes-file build/runtime-release-notes.md
 
+          pnpm workpaper:bench:ironcalc-rust:generate
+          pnpm headless:performance:generate
           bun scripts/sync-public-evidence.ts
           bun scripts/sync-agent-discovery-docs.ts
 
@@ -832,6 +834,8 @@ jobs:
             docs
             docs/headless-package-footprint.json
             docs/public-evidence.json
+            packages/benchmarks/baselines/workpaper-vs-ironcalc-rust.json
+            packages/benchmarks/baselines/headless-performance-leadership-scorecard.json
             README.md
             Dockerfile
             packages/protocol/package.json
