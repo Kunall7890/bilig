@@ -5,6 +5,7 @@ import {
   checkRuntimeRequirements,
   checkWorkbookCommandBundle,
   checkWorkbookCommandResultForBundle,
+  checkWorkbookModelDescription,
   checkWorkbookReadbackProof,
   checkWorkbookRunResultDescription,
   workbookJsonSchemaBundleHash,
@@ -43,6 +44,7 @@ describe('@bilig/workbook schema api', () => {
     expect(workbookJsonSchemaVersion).toBe('bilig-workbook-json-schema-v1')
     expect(workbookJsonSchemaNames).toEqual([
       'refData',
+      'modelDescription',
       'planData',
       'runtimeRequirements',
       'commandBundle',
@@ -131,6 +133,40 @@ describe('@bilig/workbook schema api', () => {
     expect(errorProperties['code']).toEqual({ enum: workbookRunErrorCodes })
   })
 
+  it('publishes model manifest and action input description schemas for agent tool discovery', () => {
+    const schema = workbookJsonSchemas.modelDescription
+    expect(schema).toMatchObject({
+      type: 'object',
+      required: ['name', 'actions', 'actionDetails', 'hasChecks'],
+      additionalProperties: false,
+    })
+    const properties = objectEntry(schema, 'properties')
+    expect(properties['actionDetails']).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/actionInspection' },
+    })
+
+    const defs = objectEntry(schema, '$defs')
+    const actionInspection = objectEntry(defs, 'actionInspection')
+    const actionInspectionProperties = objectEntry(actionInspection, 'properties')
+    expect(actionInspectionProperties['input']).toEqual({ $ref: '#/$defs/actionInputDescription' })
+
+    const actionInputDescription = objectEntry(defs, 'actionInputDescription')
+    const actionInputProperties = objectEntry(actionInputDescription, 'properties')
+    expect(actionInputProperties['kind']).toEqual({ enum: ['json', 'object', 'array', 'string', 'number', 'boolean', 'null'] })
+    expect(actionInputProperties['values']).toEqual({
+      type: 'array',
+      minItems: 1,
+      items: { $ref: '#/$defs/actionInput' },
+    })
+    expect(actionInputProperties['additionalProperties']).toEqual({ type: 'boolean' })
+    expect(actionInputProperties['examples']).toEqual({
+      type: 'array',
+      minItems: 1,
+      items: { $ref: '#/$defs/actionInput' },
+    })
+  })
+
   it('publishes the runtime requirements schema as an adapter handoff contract', () => {
     const schema = workbookJsonSchemas.runtimeRequirements
     expect(schema).toMatchObject({
@@ -170,6 +206,9 @@ describe('@bilig/workbook schema api', () => {
       throw new Error('valid-plan fixture failed validation')
     }
     expect(workbookPlanId(validPlanCheck.plan)).toMatch(/^bilig-plan-v1:[0-9a-f]{32}$/u)
+
+    const modelDescriptionCheck = checkWorkbookModelDescription(readFixture('model-description.json'))
+    expect(modelDescriptionCheck.status).toBe('valid')
 
     const invalidPlanCheck = checkPlanData(readFixture('invalid-plan.json'))
     expect(invalidPlanCheck.status).toBe('invalid')

@@ -84,6 +84,9 @@ prepaid, or other business models in this package.
   `format`, `clear`, or a guarded low-level op.
 - `inspectModel` returns a frozen model manifest without running find, checks,
   or actions.
+- `checkWorkbookModelDescription` validates a transported `describeModel`
+  manifest, including constrained action input descriptions, without loading
+  consumer model code.
 - `planWorkbookAction` returns a frozen result wrapper containing either a
   frozen plan or a frozen structured failure, including `invalid_model` when the
   supplied model manifest is not data-safe.
@@ -114,9 +117,9 @@ readbacks }` proof in one call and returns frozen verified proof or stable
   readback issues. `isWorkbookReadbackProof(data)` is the boolean guard over the
   same proof boundary.
 - `workbookJsonSchemas`, `workbookJsonSchemaHashes`, and package `fixtures/`
-  expose the public ref, plan, runtime-requirements, command, run-result, and
-  readback-proof contract for agents and non-TypeScript consumers without adding
-  a schema framework dependency.
+  expose the public ref, model-manifest, plan, runtime-requirements, command,
+  run-result, and readback-proof contract for agents and non-TypeScript
+  consumers without adding a schema framework dependency.
 - Feature, command, receipt, result, requirements, and adapter check APIs return
   frozen verdict containers too.
 
@@ -362,6 +365,8 @@ Full export surface:
 - `isWorkbookRowValueCompatible`
 - `check`
 - `describeModel`
+- `checkWorkbookModelDescription`
+- `isWorkbookModelDescription`
 - `describeRef`
 - `describePlan`
 - `describePlanResult`
@@ -438,7 +443,7 @@ Full export surface:
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.formulaEquals`, and `check.custom` through the model workbook context and as top-level helpers
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookRef`, `WorkbookRefData`, `WorkbookRefKind`, `WorkbookRefIssueCode`, `WorkbookRefIssue`, `WorkbookRefCheckResult`, `WorkbookRefDataIssueCode`, `WorkbookRefDataIssue`, `WorkbookRefDataCheckResult`, `WorkbookBaseRefData`, `WorkbookRangeRef`, `WorkbookRangeRefData`, `WorkbookNameRef`, `WorkbookNameRefData`, `WorkbookTableRef`, `WorkbookTableRefData`, `WorkbookColumnRef`, `WorkbookColumnRefData`, `WorkbookRowsRef`, `WorkbookRowsRefData`, `WorkbookRowOperator`, `WorkbookRowValueType`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInputIssueCode`, `WorkbookActionInputIssue`, `WorkbookActionInputCheckResult`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookActionPreparation`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookPlanData`, `WorkbookPlanId`, `WorkbookPlanDataRefs`, `WorkbookPlanDataIssueCode`, `WorkbookPlanDataIssue`, `WorkbookPlanDataCheckResult`, `WorkbookExecutablePlan`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRunApplySummaryDescription`, `WorkbookRunUnverifiedDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeRequirementKind`, `WorkbookRuntimeRequirementsIssueCode`, `WorkbookRuntimeRequirementsIssue`, `WorkbookRuntimeRequirementsCheckResult`, `WorkbookRuntimeCapability`, `WorkbookRuntimeAdapterIssueCode`, `WorkbookRuntimeAdapterMethod`, `WorkbookRuntimeAdapterIssue`, `WorkbookRuntimeAdapterCheckResult`, `WorkbookRuntimeAdapterCandidate`, `WorkbookJsonSchema`, `WorkbookJsonSchemaName`, `WorkbookJsonSchemaValue`, `WorkbookJsonSchemaScalar`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunOptions`, `WorkbookRunApplySummary`, `WorkbookRunUnverified`, `WorkbookRunUnverifiedKind`, `WorkbookRunReadback`, `WorkbookReadbackProof`, `WorkbookReadbackProofCheckResult`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookBuiltInCheckKind`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookFormulaExpression`, `WorkbookFormulaLabel`, `WorkbookFormulaLabelDescription`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookRef`, `WorkbookRefData`, `WorkbookRefKind`, `WorkbookRefIssueCode`, `WorkbookRefIssue`, `WorkbookRefCheckResult`, `WorkbookRefDataIssueCode`, `WorkbookRefDataIssue`, `WorkbookRefDataCheckResult`, `WorkbookBaseRefData`, `WorkbookRangeRef`, `WorkbookRangeRefData`, `WorkbookNameRef`, `WorkbookNameRefData`, `WorkbookTableRef`, `WorkbookTableRefData`, `WorkbookColumnRef`, `WorkbookColumnRefData`, `WorkbookRowsRef`, `WorkbookRowsRefData`, `WorkbookRowOperator`, `WorkbookRowValueType`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInputIssueCode`, `WorkbookActionInputIssue`, `WorkbookActionInputCheckResult`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookActionPreparation`, `WorkbookModelDescription`, `WorkbookModelDescriptionIssueCode`, `WorkbookModelDescriptionIssue`, `WorkbookModelDescriptionCheckResult`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookPlanData`, `WorkbookPlanId`, `WorkbookPlanDataRefs`, `WorkbookPlanDataIssueCode`, `WorkbookPlanDataIssue`, `WorkbookPlanDataCheckResult`, `WorkbookExecutablePlan`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRunApplySummaryDescription`, `WorkbookRunUnverifiedDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeRequirementKind`, `WorkbookRuntimeRequirementsIssueCode`, `WorkbookRuntimeRequirementsIssue`, `WorkbookRuntimeRequirementsCheckResult`, `WorkbookRuntimeCapability`, `WorkbookRuntimeAdapterIssueCode`, `WorkbookRuntimeAdapterMethod`, `WorkbookRuntimeAdapterIssue`, `WorkbookRuntimeAdapterCheckResult`, `WorkbookRuntimeAdapterCandidate`, `WorkbookJsonSchema`, `WorkbookJsonSchemaName`, `WorkbookJsonSchemaValue`, `WorkbookJsonSchemaScalar`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunOptions`, `WorkbookRunApplySummary`, `WorkbookRunUnverified`, `WorkbookRunUnverifiedKind`, `WorkbookRunReadback`, `WorkbookReadbackProof`, `WorkbookReadbackProofCheckResult`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookBuiltInCheckKind`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookFormulaExpression`, `WorkbookFormulaLabel`, `WorkbookFormulaLabelDescription`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
 - `WorkbookFeatureId`, `WorkbookCommandCategory`, `WorkbookCommandExecutionMode`, `WorkbookCommandReceiptStatus`, `WorkbookCommandBundleCommandKind`, `WorkbookCommandResultStatus`, `WorkbookOpCommandReceiptIdentity`, `WorkbookOpCommandReceiptOptions`, `WorkbookProjectionInterceptorPoint`, `WorkbookUiContributionSlot`, `WorkbookFeatureLifecycleContext`, `WorkbookCommandDescriptor`, `WorkbookCommandRequest`, `WorkbookCommandRequestIssueCode`, `WorkbookCommandRequestIssue`, `WorkbookCommandRequestCheckResult`, `WorkbookCommandBundleScope`, `WorkbookCommandBundleCommand`, `WorkbookCommandBundle`, `WorkbookCommandResult`, `WorkbookCommandResultIssueCode`, `WorkbookCommandResultIssue`, `WorkbookCommandResultCheckResult`, `WorkbookCommandBundleIssueCode`, `WorkbookCommandBundleIssue`, `WorkbookCommandBundleCheckResult`, `WorkbookCommandReceipt`, `WorkbookCommandReceiptIssueCode`, `WorkbookCommandReceiptIssue`, `WorkbookCommandReceiptCheckResult`, `WorkbookFeaturePluginIssueCode`, `WorkbookFeaturePluginIssue`, `WorkbookFeaturePluginCheckResult`, `WorkbookCellDisplayProjection`, `WorkbookCellStyleProjection`, `WorkbookRangeChromeProjection`, `WorkbookRowVisibilityProjection`, `WorkbookCommandMetadataProjection`, `WorkbookProjectionContext`, `WorkbookProjectionInterceptorRegistration`, `WorkbookUiContribution`, `WorkbookFeatureRegistration`, and `WorkbookFeaturePlugin`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
@@ -677,7 +682,10 @@ checks fail planning without invoking hidden getters.
 `describeModel` returns a JSON-safe model manifest with the model name, optional
 model description, sorted action names, per-action descriptions, optional input
 descriptions, and whether model-level checks exist. It does not run `find`,
-checks, or actions.
+checks, or actions. `checkWorkbookModelDescription(data)` validates the
+transported manifest, rejects sparse/accessor-backed entries, verifies that
+`actionDetails` exactly match `actions`, and normalizes constrained input
+descriptions with the same rules as `checkInput`.
 Model inspection reads own data properties only. Model roots must be object
 records, not arrays or class/custom-prototype objects with attached fields.
 Action maps and action objects may have prototypes, but only own action entries

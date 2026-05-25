@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildWorkbookActionPlan,
+  checkWorkbookModelDescription,
   defineModel,
   describeModel,
   inspectModel,
+  isWorkbookModelDescription,
   normalizeWorkbookActionInputDescription,
   planWorkbookAction,
   verifyModel,
@@ -756,6 +758,84 @@ describe('@bilig/workbook action metadata api', () => {
         },
       ],
       hasChecks: true,
+    })
+  })
+
+  it('checks transported model manifests and constrained action inputs without model code', () => {
+    const model = defineModel({
+      name: 'manifest-contract-model',
+      description: 'Agent-readable manifest',
+      find() {
+        throw new Error('find should not run during manifest checks')
+      },
+      checks() {
+        throw new Error('checks should not run during manifest checks')
+      },
+      actions: {
+        create: {
+          description: 'Create generic workbook intent',
+          input: {
+            kind: 'object',
+            additionalProperties: false,
+            fields: {
+              amount: { kind: 'number', required: true, min: 0, max: 100 },
+              mode: { kind: 'string', values: ['append', 'replace'], default: 'append', examples: ['replace'] },
+            },
+          },
+          run() {
+            throw new Error('action should not run during manifest checks')
+          },
+        },
+      },
+    })
+
+    const description = describeModel(model)
+    expect(checkWorkbookModelDescription(description)).toEqual({
+      status: 'valid',
+      description,
+      issues: [],
+    })
+    expect(isWorkbookModelDescription(JSON.parse(JSON.stringify(description)))).toBe(true)
+
+    const valuesWithGetter: unknown[] = ['append']
+    Object.defineProperty(valuesWithGetter, '0', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        throw new Error('manifest getter should not run')
+      },
+    })
+
+    expect(
+      checkWorkbookModelDescription({
+        name: 'manifest-contract-model',
+        actions: ['create'],
+        actionDetails: [
+          {
+            name: 'other',
+            input: {
+              kind: 'string',
+              values: valuesWithGetter,
+            },
+          },
+        ],
+        hasChecks: true,
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_field',
+          path: 'actionDetails[0].input.values[0]',
+          message:
+            'Workbook model description actionDetails[0].input input is invalid: Action input description at input.values[0] must be a data property',
+        },
+        {
+          code: 'action_mismatch',
+          path: 'actionDetails',
+          message: 'Workbook model description actionDetails names must exactly match actions',
+        },
+      ],
     })
   })
 

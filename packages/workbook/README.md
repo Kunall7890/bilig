@@ -211,10 +211,10 @@ Everything that crosses an agent/runtime boundary is inspectable data:
 - `checkPlanData(data)` reports path-based transport issues before hydration.
 - `hydratePlanData(data)` restores frozen refs and helper methods locally.
 - `verifyPlan`, `verifyPlanData`, and `verifyModel` return frozen verdicts.
-- `checkInput(description, value)` validates constrained action inputs without a schema dependency.
+- `checkInput` and `checkWorkbookModelDescription` validate agent manifests without a schema dependency.
 - `checkWorkbookReadbackProof(data)` validates transported readback proof.
 - `workbookJsonSchemas`, `workbookJsonSchemaHashes`, and `fixtures/` publish
-  checked plan, runtime-requirements, command, run-result, and readback artifacts
+  checked model, plan, runtime-requirements, command, run-result, and readback artifacts
   for non-TypeScript consumers.
 
 Public validators read own data properties and reject malformed, sparse,

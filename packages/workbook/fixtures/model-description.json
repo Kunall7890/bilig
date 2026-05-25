@@ -1,0 +1,29 @@
+{
+  "name": "named-range-formula",
+  "description": "Generic named-range formula model",
+  "actions": ["calculate"],
+  "actionDetails": [
+    {
+      "name": "calculate",
+      "description": "Write a formula using caller-defined refs",
+      "input": {
+        "kind": "object",
+        "additionalProperties": false,
+        "fields": {
+          "mode": {
+            "kind": "string",
+            "values": ["append", "replace"],
+            "default": "replace",
+            "examples": ["append"]
+          },
+          "scale": {
+            "kind": "number",
+            "min": 0,
+            "max": 100
+          }
+        }
+      }
+    }
+  ],
+  "hasChecks": true
+}

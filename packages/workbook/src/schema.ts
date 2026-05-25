@@ -1,4 +1,5 @@
 import { workbookRunErrorCodes } from './result.js'
+import { workbookActionInputDescriptionKinds } from './input.js'
 
 export type WorkbookJsonSchemaScalar = string | number | boolean | null
 export type WorkbookJsonSchemaValue =
@@ -14,6 +15,7 @@ export type WorkbookJsonSchema = {
 
 export type WorkbookJsonSchemaName =
   | 'refData'
+  | 'modelDescription'
   | 'planData'
   | 'runtimeRequirements'
   | 'commandBundle'
@@ -25,6 +27,7 @@ export const workbookJsonSchemaVersion = 'bilig-workbook-json-schema-v1'
 
 export const workbookJsonSchemaNames = Object.freeze([
   'refData',
+  'modelDescription',
   'planData',
   'runtimeRequirements',
   'commandBundle',
@@ -38,6 +41,7 @@ const refData = Object.freeze({ $ref: '#/$defs/refData' })
 const cellRange = Object.freeze({ $ref: '#/$defs/cellRange' })
 const engineOp = Object.freeze({ $ref: '#/$defs/engineOp' })
 const actionInput = Object.freeze({ $ref: '#/$defs/actionInput' })
+const actionInputDescription = Object.freeze({ $ref: '#/$defs/actionInputDescription' })
 
 function defs(extra: Record<string, WorkbookJsonSchemaValue> = {}): WorkbookJsonSchemaValue {
   return {
@@ -52,6 +56,59 @@ function defs(extra: Record<string, WorkbookJsonSchemaValue> = {}): WorkbookJson
       ],
     },
     actionInput: { $ref: '#/$defs/jsonValue' },
+    actionInputDescription: {
+      type: 'object',
+      required: ['kind'],
+      additionalProperties: false,
+      properties: {
+        kind: { enum: workbookActionInputDescriptionKinds },
+        description: { type: 'string', minLength: 1 },
+        required: { type: 'boolean' },
+        fields: {
+          type: 'object',
+          propertyNames: { minLength: 1 },
+          additionalProperties: { $ref: '#/$defs/actionInputDescription' },
+        },
+        items: { $ref: '#/$defs/actionInputDescription' },
+        values: { type: 'array', minItems: 1, items: actionInput },
+        min: { type: 'number' },
+        max: { type: 'number' },
+        minLength: { type: 'integer', minimum: 0 },
+        maxLength: { type: 'integer', minimum: 0 },
+        pattern: { type: 'string' },
+        minItems: { type: 'integer', minimum: 0 },
+        maxItems: { type: 'integer', minimum: 0 },
+        additionalProperties: { type: 'boolean' },
+        default: actionInput,
+        examples: { type: 'array', minItems: 1, items: actionInput },
+      },
+      allOf: [
+        {
+          if: { properties: { kind: { const: 'object' } }, required: ['kind'] },
+          // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+          then: true,
+          else: { not: { anyOf: [{ required: ['fields'] }, { required: ['additionalProperties'] }] } },
+        },
+        {
+          if: { properties: { kind: { const: 'array' } }, required: ['kind'] },
+          // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+          then: true,
+          else: { not: { anyOf: [{ required: ['items'] }, { required: ['minItems'] }, { required: ['maxItems'] }] } },
+        },
+        {
+          if: { properties: { kind: { const: 'number' } }, required: ['kind'] },
+          // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+          then: true,
+          else: { not: { anyOf: [{ required: ['min'] }, { required: ['max'] }] } },
+        },
+        {
+          if: { properties: { kind: { const: 'string' } }, required: ['kind'] },
+          // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+          then: true,
+          else: { not: { anyOf: [{ required: ['minLength'] }, { required: ['maxLength'] }, { required: ['pattern'] }] } },
+        },
+      ],
+    },
     cellRange: {
       type: 'object',
       required: ['sheetName', 'startAddress', 'endAddress'],
@@ -285,6 +342,31 @@ export const workbookJsonSchemas = deepFreeze({
   refData: schema('refData', {
     $defs: defs(),
     ...refData,
+  }),
+
+  modelDescription: schema('modelDescription', {
+    $defs: defs({
+      actionInspection: {
+        type: 'object',
+        required: ['name'],
+        additionalProperties: false,
+        properties: {
+          name: { type: 'string', minLength: 1 },
+          description: { type: 'string', minLength: 1 },
+          input: actionInputDescription,
+        },
+      },
+    }),
+    type: 'object',
+    required: ['name', 'actions', 'actionDetails', 'hasChecks'],
+    additionalProperties: false,
+    properties: {
+      name: { type: 'string', minLength: 1 },
+      description: { type: 'string', minLength: 1 },
+      actions: { type: 'array', items: { type: 'string', minLength: 1 } },
+      actionDetails: { type: 'array', items: { $ref: '#/$defs/actionInspection' } },
+      hasChecks: { type: 'boolean' },
+    },
   }),
 
   planData: schema('planData', {
@@ -597,6 +679,7 @@ function canonicalValue(value: WorkbookJsonSchemaValue): WorkbookJsonSchemaValue
 function createSchemaHashes(): Readonly<Record<WorkbookJsonSchemaName, string>> {
   return deepFreeze({
     refData: workbookJsonSchemaHash(workbookJsonSchemas.refData),
+    modelDescription: workbookJsonSchemaHash(workbookJsonSchemas.modelDescription),
     planData: workbookJsonSchemaHash(workbookJsonSchemas.planData),
     runtimeRequirements: workbookJsonSchemaHash(workbookJsonSchemas.runtimeRequirements),
     commandBundle: workbookJsonSchemaHash(workbookJsonSchemas.commandBundle),

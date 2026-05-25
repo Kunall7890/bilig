@@ -29,6 +29,7 @@ flowchart LR
   - root public barrel plus smaller model/prepare/find/check/formula/verify/runtime/command/schema subpath exports
   - public JSON schema artifacts, deterministic schema hashes, and checked-in
     fixtures for non-TypeScript agent contract inspection
+  - model-manifest schema artifacts for action discovery and input contracts
   - runtime-requirements schema artifacts for adapter handoff inspection
   - exact run-result proof schema for apply summaries, command receipts, undo
     refs, and unverified proof notes
@@ -54,6 +55,7 @@ flowchart LR
     rejected instead of invoked before model code runs
   - action-object metadata, constrained input descriptions, and `checkInput`
     payload checks for agent manifests
+  - transported model-manifest validation through `checkWorkbookModelDescription`
   - data-only action-name validation before model lookup, so malformed runtime
     keys fail without caller-owned coercion
   - frozen model inspection and action-plan result wrappers
