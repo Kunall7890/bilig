@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.107.4
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.107.3
+- Manual override: no
+
+## Fixes
+- fix(workbook): bind format receipts to ranges (bd36d30e)
+
+## Internal runtime changes
+- test(core): align formula replacement counters (dc369fcf)
+- docs(growth): add LobeHub MCP setup (24672255)
+
 ## 0.107.3
 
 - Release type: patch
