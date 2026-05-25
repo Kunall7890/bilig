@@ -297,38 +297,28 @@ function appendSelectionGridlineRect(rects: GridSelectionVisualRect[], key: stri
 }
 
 function appendColumnHeaderFillRect(rects: GridSelectionVisualRect[], key: string, bounds: Rectangle): void {
-  appendRect(rects, 'header-fill', key, {
-    x: bounds.x + 1,
-    y: bounds.y,
-    width: Math.max(0, bounds.width - 2),
-    height: bounds.height,
-  })
+  appendRect(rects, 'header-fill', key, bounds)
 }
 
 function appendColumnHeaderSeamCoverRect(rects: GridSelectionVisualRect[], key: string, bounds: Rectangle): void {
   appendRect(rects, 'header-seam-cover', key, {
-    x: bounds.x + 1,
+    x: bounds.x,
     y: bounds.y + Math.max(0, bounds.height - 1),
-    width: Math.max(0, bounds.width - 2),
+    width: bounds.width,
     height: 1,
   })
 }
 
 function appendRowHeaderFillRect(rects: GridSelectionVisualRect[], key: string, bounds: Rectangle): void {
-  appendRect(rects, 'header-fill', key, {
-    x: bounds.x,
-    y: bounds.y + 1,
-    width: bounds.width,
-    height: Math.max(0, bounds.height - 2),
-  })
+  appendRect(rects, 'header-fill', key, bounds)
 }
 
 function appendRowHeaderSeamCoverRect(rects: GridSelectionVisualRect[], key: string, bounds: Rectangle): void {
   appendRect(rects, 'header-seam-cover', key, {
     x: bounds.x + Math.max(0, bounds.width - 1),
-    y: bounds.y + 1,
+    y: bounds.y,
     width: 1,
-    height: Math.max(0, bounds.height - 2),
+    height: bounds.height,
   })
 }
 

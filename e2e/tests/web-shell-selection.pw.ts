@@ -407,9 +407,11 @@ test('@browser-ci web app keeps selected row headers and body cells on a single 
   }
   const rowTop = await getProductRowTop(page, 7)
   const seamY = grid.y + PRODUCT_HEADER_HEIGHT + rowTop + 10
+  const internalRowSeamY = grid.y + PRODUCT_HEADER_HEIGHT + (await getProductRowTop(page, 8))
   const headerInteriorPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 4, seamY)
   const headerLastPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 1, seamY)
   const bodyFirstPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH, seamY)
+  const headerInternalSeamPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 12, internalRowSeamY)
 
   expect(
     isGridBorderPixel(headerLastPixel),
@@ -425,6 +427,10 @@ test('@browser-ci web app keeps selected row headers and body cells on a single 
   expect(
     maxPixelChannelDistance(headerInteriorPixel, headerLastPixel),
     'selected row-header fill should fully cover the static header seam instead of translucent double-painting it',
+  ).toBeLessThanOrEqual(4)
+  expect(
+    maxPixelChannelDistance(headerInteriorPixel, headerInternalSeamPixel),
+    'selected row-header range should cover internal row separators instead of drawing a double border between selected headers',
   ).toBeLessThanOrEqual(4)
   expect(bodyFirstPixel.green, 'first body pixel should remain selected-row fill, not a border').toBeGreaterThan(bodyFirstPixel.red)
 })
