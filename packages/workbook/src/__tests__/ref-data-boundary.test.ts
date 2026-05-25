@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { checkWorkbookRef, checkWorkbookRefData, isWorkbookRefData } from '../index.js'
+import {
+  checkWorkbookRef,
+  checkWorkbookRefData,
+  collectWorkbookRefData,
+  findRows,
+  hydrateWorkbookRef,
+  hydrateWorkbookRefs,
+  isWorkbookRefData,
+  toWorkbookRefData,
+} from '../index.js'
 
 class RangeData {
   readonly kind = 'range'
@@ -22,6 +31,35 @@ class RowsWhereData {
   readonly column = 'Region'
   readonly op = 'eq'
   readonly value = 'West'
+}
+
+function withThrowingObjectPrototypeGetters(keys: readonly string[], run: () => void): number {
+  const originals = new Map<string, PropertyDescriptor | undefined>()
+  let calls = 0
+  for (const key of keys) {
+    originals.set(key, Object.getOwnPropertyDescriptor(Object.prototype, key))
+    // oxlint-disable-next-line eslint(no-extend-native) -- Prototype pollution is the exact boundary condition under test.
+    Object.defineProperty(Object.prototype, key, {
+      configurable: true,
+      get() {
+        calls += 1
+        throw new Error(`Inherited ${key} getter must not run`)
+      },
+    })
+  }
+  try {
+    run()
+    return calls
+  } finally {
+    for (const [key, descriptor] of originals) {
+      if (descriptor === undefined) {
+        Reflect.deleteProperty(Object.prototype, key)
+      } else {
+        // oxlint-disable-next-line eslint(no-extend-native) -- Restore the native prototype descriptor changed by this regression test.
+        Object.defineProperty(Object.prototype, key, descriptor)
+      }
+    }
+  }
 }
 
 describe('@bilig/workbook ref data boundary', () => {
@@ -127,5 +165,52 @@ describe('@bilig/workbook ref data boundary', () => {
         },
       ],
     })
+  })
+
+  it('normalizes transported refs without invoking inherited optional getters', () => {
+    const table = {
+      kind: 'table',
+      id: 'sales',
+      label: 'Sales',
+    }
+    const rows = {
+      kind: 'rows',
+      id: 'sales_west',
+      label: 'Sales rows where Region eq West',
+      where: {
+        column: 'Region',
+        op: 'eq',
+        value: 'West',
+      },
+    }
+    const column = {
+      kind: 'column',
+      id: 'sales_amount',
+      label: 'Sales.Amount',
+      table,
+      name: 'Amount',
+    }
+
+    const calls = withThrowingObjectPrototypeGetters(['headers', 'name', 'rows', 'sheetName', 'table'], () => {
+      expect(checkWorkbookRefData(table)).toMatchObject({ status: 'valid' })
+      expect(toWorkbookRefData(table)).toEqual(table)
+      expect(hydrateWorkbookRef(table)).toMatchObject(table)
+      expect(collectWorkbookRefData({ column })).toEqual([toWorkbookRefData(column), toWorkbookRefData(table)])
+      expect(hydrateWorkbookRefs({ rows })).toEqual({
+        rows: expect.objectContaining(rows),
+      })
+    })
+
+    expect(calls).toBe(0)
+  })
+
+  it('keeps row helper methods on own data when optional table is absent', () => {
+    const rows = findRows({ sheetName: 'Sheet1', where: { column: 'Region', op: 'eq', value: 'West' } })
+
+    const calls = withThrowingObjectPrototypeGetters(['table'], () => {
+      expect(() => rows.column('Amount')).toThrowError('Rows column selection requires a table-backed row selector')
+    })
+
+    expect(calls).toBe(0)
   })
 })

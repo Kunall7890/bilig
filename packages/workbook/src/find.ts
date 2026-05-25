@@ -196,14 +196,6 @@ export function isWorkbookRefKind(value: unknown): value is WorkbookRefKind {
   return typeof value === 'string' && WORKBOOK_REF_KIND_SET.has(value)
 }
 
-function freezeCellRangeRef(range: CellRangeRef): CellRangeRef {
-  return Object.freeze({
-    sheetName: range.sheetName,
-    startAddress: range.startAddress,
-    endAddress: range.endAddress,
-  })
-}
-
 function hasValidBaseRef(value: object): value is WorkbookBaseRef {
   return hasOwnString(value, 'kind') && isWorkbookRefKind(value.kind) && hasOwnString(value, 'id') && hasOwnString(value, 'label')
 }
@@ -470,11 +462,11 @@ export function collectWorkbookRefs(value: unknown): readonly WorkbookRef[] {
     if (isWorkbookRef(current)) {
       pushRef(current)
       if (current.kind === 'column') {
-        visit(current.rows)
-        visit(current.table)
+        visit(ownDataValue(current, 'rows'))
+        visit(ownDataValue(current, 'table'))
       }
       if (current.kind === 'rows') {
-        visit(current.table)
+        visit(ownDataValue(current, 'table'))
       }
       return
     }
@@ -492,72 +484,11 @@ export function collectWorkbookRefs(value: unknown): readonly WorkbookRef[] {
 }
 
 export function toWorkbookRefData(ref: WorkbookRef | WorkbookRefData): WorkbookRefData {
-  if (!isWorkbookRefData(ref)) {
+  const check = checkWorkbookRefData(ref)
+  if (check.status !== 'valid') {
     throw new Error('Workbook ref data is invalid')
   }
-  switch (ref.kind) {
-    case 'range':
-      return Object.freeze({
-        kind: 'range',
-        id: ref.id,
-        label: ref.label,
-        range: freezeCellRangeRef(ref.range),
-      })
-    case 'name':
-      return Object.freeze({
-        kind: 'name',
-        id: ref.id,
-        label: ref.label,
-        name: ref.name,
-      })
-    case 'table':
-      return Object.freeze({
-        kind: 'table',
-        id: ref.id,
-        label: ref.label,
-        ...(ref.name !== undefined ? { name: ref.name } : {}),
-        ...(ref.sheetName !== undefined ? { sheetName: ref.sheetName } : {}),
-        ...(ref.headers !== undefined ? { headers: Object.freeze(copyStringArrayData(ref.headers)) } : {}),
-      })
-    case 'column':
-      return Object.freeze({
-        kind: 'column',
-        id: ref.id,
-        label: ref.label,
-        table: toWorkbookTableRefData(ref.table),
-        ...(ref.rows !== undefined ? { rows: toWorkbookRowsRefData(ref.rows) } : {}),
-        name: ref.name,
-      })
-    case 'rows':
-      return Object.freeze({
-        kind: 'rows',
-        id: ref.id,
-        label: ref.label,
-        ...(ref.sheetName !== undefined ? { sheetName: ref.sheetName } : {}),
-        ...(ref.table !== undefined ? { table: toWorkbookTableRefData(ref.table) } : {}),
-        where: Object.freeze({
-          column: ref.where.column,
-          op: ref.where.op,
-          value: ref.where.value,
-        }),
-      })
-  }
-}
-
-function toWorkbookTableRefData(ref: WorkbookTableRef | WorkbookTableRefData): WorkbookTableRefData {
-  const data = toWorkbookRefData(ref)
-  if (data.kind !== 'table') {
-    throw new Error('Workbook table ref data is invalid')
-  }
-  return data
-}
-
-function toWorkbookRowsRefData(ref: WorkbookRowsRef | WorkbookRowsRefData): WorkbookRowsRefData {
-  const data = toWorkbookRefData(ref)
-  if (data.kind !== 'rows') {
-    throw new Error('Workbook rows ref data is invalid')
-  }
-  return data
+  return check.ref
 }
 
 export function collectWorkbookRefData(value: unknown): readonly WorkbookRefData[] {
@@ -586,11 +517,11 @@ export function collectWorkbookRefData(value: unknown): readonly WorkbookRefData
       const ref = toWorkbookRefData(current)
       pushRef(ref)
       if (ref.kind === 'column') {
-        visit(ref.rows)
-        visit(ref.table)
+        visit(ownDataValue(ref, 'rows'))
+        visit(ownDataValue(ref, 'table'))
       }
       if (ref.kind === 'rows') {
-        visit(ref.table)
+        visit(ownDataValue(ref, 'table'))
       }
       return
     }
@@ -710,10 +641,11 @@ export function createWorkbookRowsRef(options: FindRowsOptions): WorkbookRowsRef
     ...(table !== undefined ? { table } : {}),
     where,
     column(name) {
-      if (rows.table === undefined) {
+      const rowsTable = optionalLiveTableRef(rows, 'table')
+      if (rowsTable === undefined) {
         throw new Error('Rows column selection requires a table-backed row selector')
       }
-      return createWorkbookColumnRef({ table: rows.table, rows, name })
+      return createWorkbookColumnRef({ table: rowsTable, rows, name })
     },
   }
   hideHelper(rows, 'column')
@@ -728,16 +660,71 @@ function sameRefData(left: WorkbookRefData | undefined, right: WorkbookRefData |
   return left !== undefined && right !== undefined && refDataKey(left) === refDataKey(right)
 }
 
+function optionalStringData(value: object, key: string): string | undefined {
+  const raw = ownDataValue(value, key)
+  if (raw === undefined || typeof raw === 'string') {
+    return raw
+  }
+  throw new Error(`Workbook ref data ${key} is invalid`)
+}
+
+function optionalStringArrayData(value: object, key: string): readonly string[] | undefined {
+  const raw = ownDataValue(value, key)
+  if (raw === undefined) {
+    return undefined
+  }
+  if (!Array.isArray(raw)) {
+    throw new Error(`Workbook ref data ${key} is invalid`)
+  }
+  return copyStringArrayData(raw)
+}
+
+function optionalTableRefData(value: object, key: string): WorkbookTableRefData | undefined {
+  const raw = ownDataValue(value, key)
+  if (raw === undefined) {
+    return undefined
+  }
+  if (!isWorkbookRefData(raw) || raw.kind !== 'table') {
+    throw new Error(`Workbook ref data ${key} is invalid`)
+  }
+  return raw
+}
+
+function optionalRowsRefData(value: object, key: string): WorkbookRowsRefData | undefined {
+  const raw = ownDataValue(value, key)
+  if (raw === undefined) {
+    return undefined
+  }
+  if (!isWorkbookRefData(raw) || raw.kind !== 'rows') {
+    throw new Error(`Workbook ref data ${key} is invalid`)
+  }
+  return raw
+}
+
+function optionalLiveTableRef(value: object, key: string): WorkbookTableRef | undefined {
+  const raw = ownDataValue(value, key)
+  if (raw === undefined) {
+    return undefined
+  }
+  if (!isWorkbookTableRef(raw)) {
+    throw new Error(`Workbook ref ${key} is invalid`)
+  }
+  return raw
+}
+
 function hydrateTableRefData(data: WorkbookTableRefData): WorkbookTableRef {
+  const tableName = optionalStringData(data, 'name')
+  const sheetName = optionalStringData(data, 'sheetName')
+  const headers = optionalStringArrayData(data, 'headers')
   const table: WorkbookTableRef = {
     kind: 'table',
     id: data.id,
     label: data.label,
-    ...(data.name !== undefined ? { name: data.name } : {}),
-    ...(data.sheetName !== undefined ? { sheetName: data.sheetName } : {}),
-    ...(data.headers !== undefined ? { headers: Object.freeze(copyStringArrayData(data.headers)) } : {}),
-    column(name) {
-      return createWorkbookColumnRef({ table, name })
+    ...(tableName !== undefined ? { name: tableName } : {}),
+    ...(sheetName !== undefined ? { sheetName } : {}),
+    ...(headers !== undefined ? { headers: Object.freeze(headers) } : {}),
+    column(columnName) {
+      return createWorkbookColumnRef({ table, name: columnName })
     },
   }
   hideHelper(table, 'column')
@@ -745,12 +732,14 @@ function hydrateTableRefData(data: WorkbookTableRefData): WorkbookTableRef {
 }
 
 function hydrateRowsRefData(data: WorkbookRowsRefData, sharedTable?: WorkbookTableRef): WorkbookRowsRef {
-  const table = data.table === undefined ? undefined : sameRefData(data.table, sharedTable) ? sharedTable : hydrateTableRefData(data.table)
+  const tableData = optionalTableRefData(data, 'table')
+  const sheetName = optionalStringData(data, 'sheetName')
+  const table = tableData === undefined ? undefined : sameRefData(tableData, sharedTable) ? sharedTable : hydrateTableRefData(tableData)
   const rows: WorkbookRowsRef = {
     kind: 'rows',
     id: data.id,
     label: data.label,
-    ...(data.sheetName !== undefined ? { sheetName: data.sheetName } : {}),
+    ...(sheetName !== undefined ? { sheetName } : {}),
     ...(table !== undefined ? { table } : {}),
     where: Object.freeze({
       column: data.where.column,
@@ -758,10 +747,11 @@ function hydrateRowsRefData(data: WorkbookRowsRefData, sharedTable?: WorkbookTab
       value: data.where.value,
     }),
     column(name) {
-      if (rows.table === undefined) {
+      const rowsTable = optionalLiveTableRef(rows, 'table')
+      if (rowsTable === undefined) {
         throw new Error('Rows column selection requires a table-backed row selector')
       }
-      return createWorkbookColumnRef({ table: rows.table, rows, name })
+      return createWorkbookColumnRef({ table: rowsTable, rows, name })
     },
   }
   hideHelper(rows, 'column')
@@ -769,44 +759,47 @@ function hydrateRowsRefData(data: WorkbookRowsRefData, sharedTable?: WorkbookTab
 }
 
 export function hydrateWorkbookRef(data: WorkbookRefData): WorkbookRef {
-  if (!isWorkbookRefData(data)) {
+  const check = checkWorkbookRefData(data)
+  if (check.status !== 'valid') {
     throw new Error('Workbook ref data is invalid')
   }
-  switch (data.kind) {
+  const refData = check.ref
+  switch (refData.kind) {
     case 'range':
       return Object.freeze({
         kind: 'range',
-        id: data.id,
-        label: data.label,
+        id: refData.id,
+        label: refData.label,
         range: Object.freeze({
-          sheetName: data.range.sheetName,
-          startAddress: data.range.startAddress,
-          endAddress: data.range.endAddress,
+          sheetName: refData.range.sheetName,
+          startAddress: refData.range.startAddress,
+          endAddress: refData.range.endAddress,
         }),
       })
     case 'name':
       return Object.freeze({
         kind: 'name',
-        id: data.id,
-        label: data.label,
-        name: data.name,
+        id: refData.id,
+        label: refData.label,
+        name: refData.name,
       })
     case 'table':
-      return hydrateTableRefData(data)
+      return hydrateTableRefData(refData)
     case 'column': {
-      const table = hydrateTableRefData(data.table)
-      const rows = data.rows === undefined ? undefined : hydrateRowsRefData(data.rows, table)
+      const table = hydrateTableRefData(refData.table)
+      const rowsData = optionalRowsRefData(refData, 'rows')
+      const rows = rowsData === undefined ? undefined : hydrateRowsRefData(rowsData, table)
       return Object.freeze({
         kind: 'column',
-        id: data.id,
-        label: data.label,
+        id: refData.id,
+        label: refData.label,
         table,
         ...(rows !== undefined ? { rows } : {}),
-        name: data.name,
+        name: refData.name,
       })
     }
     case 'rows':
-      return hydrateRowsRefData(data)
+      return hydrateRowsRefData(refData)
   }
 }
 
