@@ -433,11 +433,15 @@ test('@browser-ci web app keeps selected row headers and body cells on a single 
   expect(
     maxPixelChannelDistance(headerInteriorPixel, headerLastPixel),
     'selected row-header fill should fully cover the static header seam instead of translucent double-painting it',
-  ).toBeLessThanOrEqual(4)
+  ).toBeLessThanOrEqual(1)
+  expect(
+    maxPixelChannelDistance(headerLastPixel, bodyFirstPixel),
+    'row header and selected body fill should meet as one continuous selected surface without a visible double seam',
+  ).toBeLessThanOrEqual(1)
   expect(
     maxPixelChannelDistance(headerInteriorPixel, headerInternalSeamPixel),
     'selected row-header range should cover internal row separators instead of drawing a double border between selected headers',
-  ).toBeLessThanOrEqual(4)
+  ).toBeLessThanOrEqual(1)
   expect(selectedHeaderTextPixels, 'selected row header numbers should remain above selection fills').toBeGreaterThan(4)
   expect(bodyFirstPixel.green, 'first body pixel should remain selected-row fill, not a border').toBeGreaterThan(bodyFirstPixel.red)
 })
