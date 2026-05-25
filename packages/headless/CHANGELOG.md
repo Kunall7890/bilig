@@ -4,6 +4,24 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.95.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.94.0
+- Manual override: no
+
+## Features
+- feat(workbook): verify strict resolved refs (26a703de)
+- feat(workbook): publish agent-focused subpaths (154624da)
+
+## Fixes
+- fix(xlsm): keep macro code names aligned on sheet changes (4947ebcb)
+- fix(xlsx): classify data model connections (d3a4173f)
+- fix(release): skip stale post-metadata publishes (f7455cd7)
+
+## Internal runtime changes
+- chore(release): runtime packages v0.94.1 (67db3e9f)
+
 ## 0.94.1
 
 - Release type: patch
