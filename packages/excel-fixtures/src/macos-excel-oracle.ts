@@ -257,6 +257,7 @@ function openWorkbooksForMacosExcelOracle(
   closeStaleMacosExcelOracleWorkbooks()
   startMacosExcelLinkUpdatePromptHandler(updateLinks)
   for (const workbookPath of workbookPaths) {
+    startMacosExcelMacroPromptHandler()
     execFileSync('open', ['-a', appPath, workbookPath], {
       timeout: Math.min(timeoutMs ?? 60_000, 30_000),
     })
@@ -358,7 +359,15 @@ end isBiligOracleWorkbookPath`
 
 function startMacosExcelLinkUpdatePromptHandler(updateLinks: MacosExcelLinkUpdateMode): void {
   const buttonName = updateLinks === 'never' ? "Don't Update" : 'Update'
-  const command = `/usr/bin/osascript <<'BILIG_LINK_UPDATE_PROMPT' >/dev/null 2>&1 &
+  execFileSync('/bin/sh', ['-c', macosExcelButtonPromptHandlerCommand('BILIG_LINK_UPDATE_PROMPT', buttonName)], { timeout: 5_000 })
+}
+
+function startMacosExcelMacroPromptHandler(): void {
+  execFileSync('/bin/sh', ['-c', macosExcelButtonPromptHandlerCommand('BILIG_MACRO_PROMPT', 'Disable Macros')], { timeout: 5_000 })
+}
+
+function macosExcelButtonPromptHandlerCommand(heredocName: string, buttonName: string): string {
+  return `/usr/bin/osascript <<'${heredocName}' >/dev/null 2>&1 &
 repeat 120 times
   delay 0.25
   tell application "System Events"
@@ -370,9 +379,7 @@ repeat 120 times
     end tell
   end tell
 end repeat
-BILIG_LINK_UPDATE_PROMPT`
-
-  execFileSync('/bin/sh', ['-c', command], { timeout: 5_000 })
+${heredocName}`
 }
 
 function stageWorkbookForMacosExcelOracle(workbookPath: string, tempDir: string): string {
@@ -435,19 +442,7 @@ function closeCompanionWorkbooksAppleScript(): string {
 }
 
 function macroPromptDisablerAppleScript(): string {
-  const command = `/usr/bin/osascript <<'BILIG_MACRO_PROMPT' >/dev/null 2>&1 &
-repeat 120 times
-  delay 0.25
-  tell application "System Events"
-    tell process "Microsoft Excel"
-      if exists button "Disable Macros" of window 1 then
-        click button "Disable Macros" of window 1
-        return
-      end if
-    end tell
-  end tell
-end repeat
-BILIG_MACRO_PROMPT`
+  const command = macosExcelButtonPromptHandlerCommand('BILIG_MACRO_PROMPT', 'Disable Macros')
 
   return `on startMacroPromptDisabler()
   do shell script ${toAppleScriptString(command)}

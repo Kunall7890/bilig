@@ -122,6 +122,16 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(source).not.toContain('[stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])]')
   })
 
+  it('starts the macro prompt handler before Launch Services workbook opens', () => {
+    const source = readFileSync(new URL('../macos-excel-oracle.ts', import.meta.url), 'utf8')
+
+    expect(source).toContain('startMacosExcelMacroPromptHandler()')
+    expect(source.indexOf('startMacosExcelMacroPromptHandler()')).toBeLessThan(
+      source.indexOf("execFileSync('open', ['-a', appPath, workbookPath]"),
+    )
+    expect(source).toContain("macosExcelButtonPromptHandlerCommand('BILIG_MACRO_PROMPT', 'Disable Macros')")
+  })
+
   it('builds an inspection runner that reads formulas and values from the opened workbook', () => {
     const script = createMacosExcelInspectionAppleScript({
       worksheetName: 'Cases',

@@ -178,6 +178,50 @@ describe('WorkbookMetadataService', () => {
     expect([...metadata.definedNames.keys()]).toEqual(['<workbook>\u0000RATE'])
   })
 
+  it('keeps preserved VBA sheet code names aligned with sheet renames and deletes', () => {
+    const metadata = createWorkbookMetadataRecord()
+    const service = createWorkbookMetadataService(metadata)
+
+    Effect.runSync(
+      service.setMacroPayload({
+        kind: 'vbaProject',
+        storage: 'base64',
+        dataBase64: 'AQIDBA==',
+        byteLength: 4,
+        preservedWithoutExecution: true,
+        workbookCodeName: 'ThisWorkbook',
+        sheetCodeNames: [
+          { sheetName: 'Input', codeName: 'Sheet1' },
+          { sheetName: 'Report', codeName: 'Sheet2' },
+        ],
+      }),
+    )
+
+    Effect.runSync(service.renameSheet('Input', 'Inputs 2026'))
+    expect(Effect.runSync(service.listMacroPayloads())).toEqual([
+      expect.objectContaining({
+        sheetCodeNames: [
+          { sheetName: 'Inputs 2026', codeName: 'Sheet1' },
+          { sheetName: 'Report', codeName: 'Sheet2' },
+        ],
+      }),
+    ])
+
+    Effect.runSync(service.deleteSheetRecords('Report'))
+    expect(Effect.runSync(service.listMacroPayloads())).toEqual([
+      expect.objectContaining({
+        sheetCodeNames: [{ sheetName: 'Inputs 2026', codeName: 'Sheet1' }],
+      }),
+    ])
+
+    Effect.runSync(service.deleteSheetRecords('Inputs 2026'))
+    expect(Effect.runSync(service.listMacroPayloads())).toEqual([
+      expect.not.objectContaining({
+        sheetCodeNames: expect.any(Array),
+      }),
+    ])
+  })
+
   it('clones and normalizes data validation records on write and read', () => {
     const service = createService()
     const input = {

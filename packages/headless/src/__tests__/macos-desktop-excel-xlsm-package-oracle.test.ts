@@ -47,6 +47,23 @@ describe('macOS Desktop Excel XLSM/VBA package oracle', () => {
     expect(macroPayloadSummary(reimported.snapshot)).toEqual(macroPayloadSummary(imported.snapshot))
   })
 
+  it('keeps VBA sheet code names aligned after a headless sheet rename', () => {
+    const sourceBytes = readFixtureBytes()
+    const imported = importXlsx(sourceBytes, 'macos-excel-vba-project-source.xlsm')
+
+    const renamedBytes = exportAfterHeadlessRename(imported.snapshot, 'MacroReview')
+    const reimported = importXlsx(renamedBytes, 'headless-renamed-vba-project.xlsm')
+
+    expect(macroPayloadSummary(reimported.snapshot)).toEqual({
+      byteLength: expectedVbaProjectByteLength,
+      sha256: expectedVbaProjectSha256,
+      workbookCodeName: 'ThisWorkbook',
+      sheetCodeNames: [{ sheetName: 'MacroReview', codeName: 'Sheet1' }],
+    })
+    expect(cellValue(reimported.snapshot, 'MacroReview', 'B1')).toBe('macro sentinel unchanged')
+    expect(xlsmPackageSummary(renamedBytes)).toEqual(expectedXlsmPackageSummary())
+  })
+
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
     'preserves real VBA project and button macro assignment after Desktop Excel open/save and a headless edit',
     () => {
@@ -96,6 +113,40 @@ describe('macOS Desktop Excel XLSM/VBA package oracle', () => {
     },
     180_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'survives Desktop Excel open/save after a headless sheet rename in a macro workbook',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-xlsm-rename-oracle-')
+      try {
+        const renamedPath = join(tempDir, 'headless-renamed-vba-project.xlsm')
+        writeFileSync(renamedPath, exportAfterHeadlessRename(importXlsx(readFixtureBytes(), 'source.xlsm').snapshot, 'MacroReview'))
+
+        const desktopExcel = runMacosExcelPackageOpenSaveOracle({
+          workbookPath: renamedPath,
+          saveWorkbook: true,
+          timeoutMs: 120_000,
+        })
+        expect(desktopExcel.excelVersion).toMatch(/^\d+\./u)
+
+        const excelSavedBytes = new Uint8Array(readFileSync(renamedPath))
+        expect(xlsmPackageSummary(excelSavedBytes)).toEqual(expectedXlsmPackageSummary())
+
+        const reimported = importXlsx(excelSavedBytes, 'excel-saved-headless-renamed-vba-project.xlsm')
+        expect(reimported.warnings).toContain(macroExecutionDeclinedWarning)
+        expect(reimported.snapshot.sheets.map((sheet) => sheet.name)).toEqual(['MacroReview'])
+        expect(cellValue(reimported.snapshot, 'MacroReview', 'B1')).toBe('macro sentinel unchanged')
+        expect(macroPayloadSummary(reimported.snapshot)?.sheetCodeNames).toEqual([{ sheetName: 'MacroReview', codeName: 'Sheet1' }])
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    180_000,
+  )
 })
 
 function readFixtureBytes(): Uint8Array {
@@ -111,6 +162,22 @@ function exportAfterHeadlessEdit(snapshot: WorkbookSnapshot): Uint8Array {
     }
     workpaper.setCellContents({ sheet, row: 0, col: 0 }, 'Headless reviewed')
     return exportXlsx(workpaper.exportSnapshot())
+  } finally {
+    workpaper.dispose()
+  }
+}
+
+function exportAfterHeadlessRename(snapshot: WorkbookSnapshot, nextName: string): Uint8Array {
+  const workpaper = WorkPaper.buildFromSnapshot(snapshot)
+  try {
+    const sheet = workpaper.getSheetId('MacroAudit')
+    if (sheet === undefined) {
+      throw new Error('Expected MacroAudit sheet to be available')
+    }
+    workpaper.renameSheet(sheet, nextName)
+    const renamedSnapshot = workpaper.exportSnapshot()
+    expect(macroPayloadSummary(renamedSnapshot)?.sheetCodeNames).toEqual([{ sheetName: nextName, codeName: 'Sheet1' }])
+    return exportXlsx(renamedSnapshot)
   } finally {
     workpaper.dispose()
   }

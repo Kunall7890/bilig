@@ -100,6 +100,40 @@ import { rewriteThreadedCommentArtifactsForSheetDeletion } from './engine/servic
 export { WorkbookMetadataError, type WorkbookMetadataService } from './workbook-metadata-service-contract.js'
 
 export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord): WorkbookMetadataService {
+  const renameMacroPayloadSheetCodeNames = (oldSheetName: string, newSheetName: string): void => {
+    for (const [key, payload] of metadata.macroPayloads.entries()) {
+      if (!payload.sheetCodeNames?.some((entry) => entry.sheetName === oldSheetName)) {
+        continue
+      }
+      metadata.macroPayloads.set(key, {
+        ...payload,
+        sheetCodeNames: payload.sheetCodeNames.map((entry) =>
+          entry.sheetName === oldSheetName
+            ? { sheetName: newSheetName, codeName: entry.codeName }
+            : { sheetName: entry.sheetName, codeName: entry.codeName },
+        ),
+      })
+    }
+  }
+
+  const deleteMacroPayloadSheetCodeNames = (sheetName: string): void => {
+    for (const [key, payload] of metadata.macroPayloads.entries()) {
+      if (!payload.sheetCodeNames?.some((entry) => entry.sheetName === sheetName)) {
+        continue
+      }
+      const sheetCodeNames = payload.sheetCodeNames
+        .filter((entry) => entry.sheetName !== sheetName)
+        .map((entry) => ({ sheetName: entry.sheetName, codeName: entry.codeName }))
+      const nextPayload = { ...payload }
+      if (sheetCodeNames.length > 0) {
+        nextPayload.sheetCodeNames = sheetCodeNames
+      } else {
+        delete nextPayload.sheetCodeNames
+      }
+      metadata.macroPayloads.set(key, nextPayload)
+    }
+  }
+
   const renameSheetNow = (oldSheetName: string, newSheetName: string): void => {
     rekeyRecords(metadata.freezePanes, (record) => (record.sheetName === oldSheetName ? { ...record, sheetName: newSheetName } : record))
     rekeyRecords(metadata.sheetTabColors, (record) =>
@@ -269,6 +303,7 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
         ? { ...cloneDefinedNameRecord(record), scopeSheetName: newSheetName }
         : cloneDefinedNameRecord(record),
     )
+    renameMacroPayloadSheetCodeNames(oldSheetName, newSheetName)
   }
 
   const deleteSheetRecordsNow = (sheetName: string, context?: WorkbookSheetDeletionMetadataContext): void => {
@@ -339,6 +374,7 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     deleteRecordsBySheet(metadata.hyperlinks, sheetName, (record) => record.sheetName)
     metadata.freezePanes.delete(sheetName)
     metadata.sheetTabColors.delete(sheetName)
+    deleteMacroPayloadSheetCodeNames(sheetName)
   }
 
   const reorderSheetRecordsNow = (context: WorkbookSheetReorderMetadataContext): void => {
