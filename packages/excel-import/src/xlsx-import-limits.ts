@@ -15,8 +15,11 @@ export interface XlsxExternalWorkbookInput {
   readonly target?: string
 }
 
+export type XlsxExternalLinkCacheArtifactMode = 'preserve-existing' | 'replace-refreshed'
+
 export interface XlsxImportOptions {
   readonly externalWorkbooks?: readonly XlsxExternalWorkbookInput[]
+  readonly externalLinkCacheArtifactMode?: XlsxExternalLinkCacheArtifactMode
   limits?: XlsxImportLimits | false
 }
 

@@ -34,6 +34,7 @@ export type ImportedExternalLinkCaches = Map<number, ExternalCachedSheets>
 
 export interface ImportedExternalLinkCacheRefreshResult {
   readonly caches: ImportedExternalLinkCaches
+  readonly artifactCaches: ImportedExternalLinkCaches
   readonly refreshedBookIndices: ReadonlySet<number>
 }
 

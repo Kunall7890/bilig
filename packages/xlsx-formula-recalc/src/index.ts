@@ -40,7 +40,9 @@ export interface XlsxFormulaRecalcResult {
 }
 
 export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, options: XlsxFormulaRecalcOptions = {}): XlsxFormulaRecalcResult {
-  const importOptions = options.externalWorkbooks ? { externalWorkbooks: options.externalWorkbooks } : {}
+  const importOptions = options.externalWorkbooks
+    ? { externalWorkbooks: options.externalWorkbooks, externalLinkCacheArtifactMode: 'replace-refreshed' as const }
+    : {}
   const imported = importXlsx(toUint8Array(input), options.fileName ?? 'workbook.xlsx', importOptions)
   const originalCalculationSettings = imported.snapshot.workbook.metadata?.calculationSettings
   const workbook = WorkPaper.buildFromSnapshot(snapshotForFreshFormulaRecalculation(imported.snapshot), {

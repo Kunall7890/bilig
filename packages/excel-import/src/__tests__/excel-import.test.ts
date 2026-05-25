@@ -616,11 +616,14 @@ describe('excel import', () => {
     const cacheSheet = imported.snapshot.sheets.find((sheet) => sheet.name === '__bilig_ext_1_Rates')
     const cacheCells = new Map(cacheSheet?.cells.map((cell) => [cell.address, cell.value]) ?? [])
 
+    expect(cacheCells.has('A1')).toBe(false)
+    expect(cacheCells.has('B1')).toBe(false)
     expect(cacheCells.get('B2')).toBe(20)
     expect(cacheCells.get('B3')).toBe(30)
     expect(cacheCells.get('B4')).toBe(40)
 
     const externalLinkXml = readExternalLinkCacheXml(exportXlsx(imported.snapshot))
+    expect(externalLinkXml).toContain('<row r="1"><cell r="A1" t="str"><v>SKU</v></cell><cell r="B1" t="str"><v>Rate</v></cell></row>')
     expect(externalLinkXml).toContain('<row r="2">')
     expect(externalLinkXml).toContain('<cell r="B2"><v>20</v></cell>')
     expect(externalLinkXml).toContain('<row r="3">')
@@ -650,7 +653,7 @@ describe('excel import', () => {
         ['B4', 40],
       ]),
     )
-    expect(externalLinkXml).not.toContain('<row r="1">')
+    expect(externalLinkXml).toContain('<row r="1"><cell r="A1" t="str"><v>SKU</v></cell><cell r="B1" t="str"><v>Rate</v></cell></row>')
     expect(externalLinkXml).toContain('<row r="2">')
     expect(externalLinkXml).toContain('<cell r="B2"><v>20</v></cell>')
     expect(externalLinkXml).toContain('<row r="4">')

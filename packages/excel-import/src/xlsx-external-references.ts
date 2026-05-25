@@ -1,6 +1,6 @@
 import { XMLParser } from 'fast-xml-parser'
 import type { WorkbookExternalWorkbookReferenceSnapshot } from '@bilig/protocol'
-import type { XlsxExternalWorkbookInput } from './xlsx-import-limits.js'
+import type { XlsxExternalLinkCacheArtifactMode, XlsxExternalWorkbookInput } from './xlsx-import-limits.js'
 import { getZipText, readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 import {
   buildExternalLinkSheetDataSetXml,
@@ -465,12 +465,14 @@ export function refreshImportedExternalLinkCachesFromWorkbooks(
   references: ImportedExternalWorkbookReferences,
   externalWorkbooks: readonly XlsxExternalWorkbookInput[] | undefined,
   usage?: ImportedExternalLinkCacheUsage,
+  artifactMode: XlsxExternalLinkCacheArtifactMode = 'preserve-existing',
 ): ImportedExternalLinkCacheRefreshResult {
   if (!externalWorkbooks || externalWorkbooks.length === 0 || references.size === 0) {
-    return { caches, refreshedBookIndices: new Set() }
+    return { caches, artifactCaches: caches, refreshedBookIndices: new Set() }
   }
 
   let refreshedCaches: ImportedExternalLinkCaches | undefined
+  let refreshedArtifactCaches: ImportedExternalLinkCaches | undefined
   const refreshedBookIndices = new Set<number>()
   for (const reference of [...references.values()].toSorted((left, right) => left.bookIndex - right.bookIndex)) {
     const input = findExternalWorkbookInputForReference(externalWorkbooks, references, reference)
@@ -483,10 +485,46 @@ export function refreshImportedExternalLinkCachesFromWorkbooks(
     }
     refreshedCaches ??= new Map(caches)
     refreshedCaches.set(reference.bookIndex, linkedWorkbookCache)
+    refreshedArtifactCaches ??= new Map(caches)
+    refreshedArtifactCaches.set(
+      reference.bookIndex,
+      artifactMode === 'replace-refreshed'
+        ? linkedWorkbookCache
+        : mergeExternalLinkCacheSheets(caches.get(reference.bookIndex), linkedWorkbookCache),
+    )
     refreshedBookIndices.add(reference.bookIndex)
   }
 
-  return { caches: refreshedCaches ?? caches, refreshedBookIndices }
+  return {
+    caches: refreshedCaches ?? caches,
+    artifactCaches: refreshedArtifactCaches ?? caches,
+    refreshedBookIndices,
+  }
+}
+
+function cloneExternalLinkCacheSheets(sheets: ExternalCachedSheets | undefined): ExternalCachedSheets {
+  const cloned: ExternalCachedSheets = new Map()
+  for (const [sheetKey, sheet] of sheets ?? []) {
+    cloned.set(sheetKey, { sheetName: sheet.sheetName, cells: new Map(sheet.cells) })
+  }
+  return cloned
+}
+
+function mergeExternalLinkCacheSheets(base: ExternalCachedSheets | undefined, refreshed: ExternalCachedSheets): ExternalCachedSheets {
+  const merged = cloneExternalLinkCacheSheets(base)
+  for (const [sheetKey, sheet] of refreshed) {
+    const existing = merged.get(sheetKey)
+    if (!existing) {
+      merged.set(sheetKey, { sheetName: sheet.sheetName, cells: new Map(sheet.cells) })
+      continue
+    }
+    const cells: ExternalCachedCells = new Map(existing.cells)
+    for (const [address, value] of sheet.cells) {
+      cells.set(address, value)
+    }
+    merged.set(sheetKey, { sheetName: existing.sheetName, cells })
+  }
+  return merged
 }
 
 export function refreshExternalLinkCacheXml(xml: string, sheets: ExternalCachedSheets): string {

@@ -197,6 +197,7 @@ describe('xlsx-formula-recalc', () => {
     expect(readExternalLinkCacheCellValue(result.xlsx, 'B3')).toBe('30')
     expect(readExternalLinkCacheCellValue(result.xlsx, 'B4')).toBe('40')
     const externalLinkCacheXml = readExternalLinkCacheXml(result.xlsx)
+    expect(externalLinkCacheXml).not.toContain('<row r="1">')
     expect(externalLinkCacheXml).toContain('<row r="2">')
     expect(externalLinkCacheXml).toContain('<row r="3">')
     expect(externalLinkCacheXml).toContain('<row r="4">')

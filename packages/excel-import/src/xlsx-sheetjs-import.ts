@@ -388,11 +388,12 @@ function importParsedSheetJsWorkbook(args: {
     importedExternalWorkbookReferences,
     options?.externalWorkbooks,
     collectWorkbookExternalLinkCacheUsage(workbook, importedWorksheetFormulaManifestsBySheet),
+    options?.externalLinkCacheArtifactMode,
   )
   const importedExternalLinkCaches = importedExternalLinkCacheRefresh.caches
   const importedExternalLinkArtifacts = refreshImportedWorkbookExternalLinkArtifactCaches(
     workbookZip ? readImportedWorkbookExternalLinkArtifacts(workbookZip) : undefined,
-    importedExternalLinkCaches,
+    importedExternalLinkCacheRefresh.artifactCaches,
     importedExternalLinkCacheRefresh.refreshedBookIndices,
     importedExternalWorkbookReferences,
   )
