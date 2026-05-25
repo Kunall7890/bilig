@@ -494,7 +494,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         />
         <button
           aria-label="Select entire sheet"
-          className="absolute z-20 flex items-center justify-center border-r border-b border-[var(--wb-border-subtle)] bg-[var(--wb-muted)] text-[var(--wb-text-muted)] outline-none transition-colors hover:bg-[var(--wb-muted-strong)] hover:text-[var(--wb-text)] focus-visible:ring-2 focus-visible:ring-[var(--wb-accent)] focus-visible:ring-offset-0"
+          className="absolute z-20 flex items-center justify-center bg-transparent text-[var(--wb-text-muted)] outline-none transition-colors hover:text-[var(--wb-text)] focus-visible:ring-2 focus-visible:ring-[var(--wb-accent)] focus-visible:ring-offset-0"
           data-testid="grid-select-entire-sheet"
           onClick={interactions.handleSelectEntireSheet}
           style={{

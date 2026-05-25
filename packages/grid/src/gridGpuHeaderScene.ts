@@ -86,8 +86,10 @@ export function buildGridGpuHeaderScene(options: {
     selectionRange ? selectionRange.y + selectionRange.height - 1 : selectedCell[1],
     gridSelection.rows,
   )
+  const hasColumnAxisSelection = gridSelection.columns.length > 0
+  const hasRowAxisSelection = gridSelection.rows.length > 0
 
-  if (gridSelection.columns.length > 0) {
+  if (hasColumnAxisSelection) {
     pushColumnSelectionBodyRects({
       fillRects,
       gridMetrics,
@@ -98,7 +100,7 @@ export function buildGridGpuHeaderScene(options: {
     })
   }
 
-  if (gridSelection.rows.length > 0) {
+  if (hasRowAxisSelection) {
     pushRowSelectionBodyRects({
       fillRects,
       gridMetrics,
@@ -174,22 +176,24 @@ export function buildGridGpuHeaderScene(options: {
             ? palette.headerHoverFillColor
             : palette.headerFillColor,
     })
-    borderRects.push(
-      {
-        x: column.left + column.width - 1,
-        y: 0,
-        width: 1,
-        height: gridMetrics.headerHeight,
-        color: palette.gridLineColor,
-      },
-      {
+    const isExplicitlySelectedColumn =
+      hasColumnAxisSelection && column.index >= selectedColumns.start && column.index <= selectedColumns.end
+    borderRects.push({
+      x: column.left + column.width - 1,
+      y: 0,
+      width: 1,
+      height: gridMetrics.headerHeight,
+      color: palette.gridLineColor,
+    })
+    if (!isExplicitlySelectedColumn) {
+      borderRects.push({
         x: column.left,
         y: gridMetrics.headerHeight - 1,
         width: column.width,
         height: 1,
         color: palette.gridLineColor,
-      },
-    )
+      })
+    }
   }
 
   for (const row of visibleRows) {
@@ -207,22 +211,23 @@ export function buildGridGpuHeaderScene(options: {
             ? palette.headerHoverFillColor
             : palette.headerFillColor,
     })
-    borderRects.push(
-      {
+    const isExplicitlySelectedRow = hasRowAxisSelection && row.index >= selectedRows.start && row.index <= selectedRows.end
+    if (!isExplicitlySelectedRow) {
+      borderRects.push({
         x: gridMetrics.rowMarkerWidth - 1,
         y: row.top,
         width: 1,
         height: row.height,
         color: palette.gridLineColor,
-      },
-      {
-        x: 0,
-        y: row.bottom - 1,
-        width: gridMetrics.rowMarkerWidth,
-        height: 1,
-        color: palette.gridLineColor,
-      },
-    )
+      })
+    }
+    borderRects.push({
+      x: 0,
+      y: row.bottom - 1,
+      width: gridMetrics.rowMarkerWidth,
+      height: 1,
+      color: palette.gridLineColor,
+    })
   }
 
   if (resizeGuideColumn !== null) {
@@ -297,10 +302,10 @@ function pushColumnSelectionBodyRects(options: {
   const top = gridMetrics.headerHeight
   const height = visibleRows.length === 0 ? 0 : visibleRows.at(-1)!.bottom - gridMetrics.headerHeight
   fillRects.push({
-    x: left + 1,
-    y: top + 1,
-    width: Math.max(0, right - left - 2),
-    height: Math.max(0, height - 2),
+    x: left,
+    y: top,
+    width: Math.max(0, right - left),
+    height: Math.max(0, height),
     color: selectionFillColor,
   })
 }
@@ -332,10 +337,10 @@ function pushRowSelectionBodyRects(options: {
   const top = startRow.top
   const height = endRow.bottom - startRow.top
   fillRects.push({
-    x: bodyLeft + 1,
-    y: top + 1,
-    width: Math.max(0, visibleWidth - 2),
-    height: Math.max(0, height - 2),
+    x: bodyLeft,
+    y: top,
+    width: Math.max(0, visibleWidth),
+    height: Math.max(0, height),
     color: selectionFillColor,
   })
 }

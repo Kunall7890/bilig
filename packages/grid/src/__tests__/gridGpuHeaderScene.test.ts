@@ -64,6 +64,109 @@ test('builds GPU-backed header backgrounds and selection highlights', () => {
   })
 })
 
+test('fills selected column axis through the header/body seam without a second border', () => {
+  const scene = buildGridGpuHeaderScene({
+    palette,
+    columnWidths: {},
+    gridMetrics: getGridMetrics(),
+    gridSelection: {
+      columns: CompactSelection.fromSingleSelection([1, 3]),
+      rows: CompactSelection.empty(),
+      current: undefined,
+    },
+    selectedCell: [1, 3],
+    selectionRange: null,
+    visibleItems: [
+      [1, 3],
+      [2, 3],
+    ],
+    visibleRegion: { range: { x: 1, y: 3, width: 2, height: 1 }, tx: 0, ty: 0 },
+    getCellBounds: () => ({ x: 146, y: 90, width: 100, height: 22 }),
+    rowHeights: {},
+    hoveredHeader: null,
+    resizeGuideColumn: null,
+    resizeGuideRow: null,
+    activeHeaderDrag: null,
+  })
+
+  expect(scene.fillRects).toContainEqual({
+    x: 46,
+    y: 24,
+    width: 208,
+    height: 22,
+    color: { r: 31 / 255, g: 122 / 255, b: 67 / 255, a: 0.06 },
+  })
+  expect(scene.borderRects).not.toContainEqual({
+    x: 46,
+    y: 23,
+    width: 104,
+    height: 1,
+    color: { r: 227 / 255, g: 233 / 255, b: 240 / 255, a: 1 },
+  })
+  expect(scene.borderRects).not.toContainEqual({
+    x: 150,
+    y: 23,
+    width: 104,
+    height: 1,
+    color: { r: 227 / 255, g: 233 / 255, b: 240 / 255, a: 1 },
+  })
+})
+
+test('fills selected row axis through the row-header/body seam without a second border', () => {
+  const scene = buildGridGpuHeaderScene({
+    palette,
+    columnWidths: {},
+    gridMetrics: getGridMetrics(),
+    gridSelection: {
+      columns: CompactSelection.empty(),
+      rows: CompactSelection.fromSingleSelection([3, 6]),
+      current: undefined,
+    },
+    selectedCell: [1, 3],
+    selectionRange: null,
+    visibleItems: [
+      [1, 3],
+      [2, 3],
+    ],
+    visibleRegion: { range: { x: 1, y: 3, width: 2, height: 3 }, tx: 0, ty: 0 },
+    getCellBounds: () => ({ x: 146, y: 90, width: 100, height: 22 }),
+    rowHeights: {},
+    hoveredHeader: null,
+    resizeGuideColumn: null,
+    resizeGuideRow: null,
+    activeHeaderDrag: null,
+  })
+
+  expect(scene.fillRects).toContainEqual({
+    x: 46,
+    y: 24,
+    width: 208,
+    height: 66,
+    color: { r: 31 / 255, g: 122 / 255, b: 67 / 255, a: 0.06 },
+  })
+  expect(scene.borderRects).not.toContainEqual({
+    x: 45,
+    y: 24,
+    width: 1,
+    height: 22,
+    color: { r: 227 / 255, g: 233 / 255, b: 240 / 255, a: 1 },
+  })
+  expect(scene.borderRects).not.toContainEqual({
+    x: 45,
+    y: 46,
+    width: 1,
+    height: 22,
+    color: { r: 227 / 255, g: 233 / 255, b: 240 / 255, a: 1 },
+  })
+  expect(scene.borderRects).not.toContainEqual({
+    x: 45,
+    y: 68,
+    width: 1,
+    height: 22,
+    color: { r: 227 / 255, g: 233 / 255, b: 240 / 255, a: 1 },
+  })
+})
+
 test('builds GPU resize guides for hovered columns', () => {
   const scene = buildGridGpuHeaderScene({
     palette,

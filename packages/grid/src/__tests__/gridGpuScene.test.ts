@@ -664,10 +664,10 @@ describe('gridGpuScene', () => {
     })
 
     expect(scene.fillRects).toContainEqual({
-      x: 47,
-      y: 25,
-      width: 206,
-      height: 42,
+      x: 46,
+      y: 24,
+      width: 208,
+      height: 44,
       color: SELECTION_FILL_COLOR,
     })
     expect(
@@ -707,10 +707,10 @@ describe('gridGpuScene', () => {
     })
 
     expect(scene.fillRects).toContainEqual({
-      x: 47,
-      y: 25,
-      width: 206,
-      height: 42,
+      x: 46,
+      y: 24,
+      width: 208,
+      height: 44,
       color: SELECTION_FILL_COLOR,
     })
     expect(

@@ -424,6 +424,29 @@ test('@browser-ci web app keeps selected row headers and body cells on a single 
   expect(bodyFirstPixel.green, 'first body pixel should remain selected-row fill, not a border').toBeGreaterThan(bodyFirstPixel.red)
 })
 
+test('@browser-ci web app leaves the top-left selector transparent so the header seam has one owner', async ({ page }) => {
+  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-corner-header-single-owner'))}&persist=0`)
+  await waitForWorkbookReady(page)
+
+  const cornerButton = page.getByTestId('grid-select-entire-sheet')
+  await expect(cornerButton).toHaveCSS('border-right-width', '0px')
+  await expect(cornerButton).toHaveCSS('border-bottom-width', '0px')
+  await expect(cornerButton).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+
+  const gridLocator = page.getByTestId('sheet-grid')
+  await expect(gridLocator).toBeVisible()
+  const grid = await gridLocator.boundingBox()
+  if (!grid) {
+    throw new Error('sheet grid is not visible')
+  }
+  const headerMidY = grid.y + Math.floor(PRODUCT_HEADER_HEIGHT / 2)
+  const ownedSeamPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 1, headerMidY)
+  const firstColumnHeaderPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH, headerMidY)
+
+  expect(isGridBorderPixel(ownedSeamPixel), 'corner/header seam should have exactly one structural gridline').toBe(true)
+  expect(isGridBorderPixel(firstColumnHeaderPixel), 'column header should not start with a second adjacent gridline').toBe(false)
+})
+
 test('@browser-ci web app keeps the in-cell editor on the same selection chrome', async ({ page }) => {
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-editor-selection-chrome'))}&persist=0`)
   await waitForWorkbookReady(page)
