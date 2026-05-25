@@ -19,6 +19,7 @@ import {
 } from '../index.js'
 
 const fixtureRoot = new URL('../../fixtures/', import.meta.url)
+const sourceRoot = new URL('../', import.meta.url)
 
 function readFixture(name: string): unknown {
   return JSON.parse(readFileSync(new URL(name, fixtureRoot), 'utf8'))
@@ -57,6 +58,17 @@ function constKindFromSchema(value: unknown): string {
     throw new Error('expected schema variant to have a string kind const')
   }
   return kind['const']
+}
+
+function workbookOpKindsFromSource(): readonly string[] {
+  const source = readFileSync(new URL('ops.ts', sourceRoot), 'utf8')
+  return [...source.matchAll(/\bkind:\s*'([^']+)'/gu)].map((match) => {
+    const kind = match[1]
+    if (kind === undefined) {
+      throw new Error('expected WorkbookOp kind match')
+    }
+    return kind
+  })
 }
 
 describe('@bilig/workbook schema api', () => {
@@ -159,69 +171,7 @@ describe('@bilig/workbook schema api', () => {
     const variants = arrayEntry(engineOp, 'oneOf')
     const kinds = variants.map(constKindFromSchema)
 
-    expect(kinds).toEqual([
-      'upsertWorkbook',
-      'setWorkbookMetadata',
-      'setCalculationSettings',
-      'setVolatileContext',
-      'upsertSheet',
-      'renameSheet',
-      'deleteSheet',
-      'insertRows',
-      'deleteRows',
-      'moveRows',
-      'insertColumns',
-      'deleteColumns',
-      'moveColumns',
-      'updateRowMetadata',
-      'updateColumnMetadata',
-      'setFreezePane',
-      'clearFreezePane',
-      'mergeCells',
-      'unmergeCells',
-      'setSheetProtection',
-      'clearSheetProtection',
-      'setFilter',
-      'clearFilter',
-      'setSort',
-      'clearSort',
-      'setDataValidation',
-      'clearDataValidation',
-      'upsertConditionalFormat',
-      'deleteConditionalFormat',
-      'setConditionalFormatArtifacts',
-      'clearConditionalFormatArtifacts',
-      'upsertRangeProtection',
-      'deleteRangeProtection',
-      'upsertCommentThread',
-      'deleteCommentThread',
-      'upsertNote',
-      'deleteNote',
-      'upsertHyperlink',
-      'deleteHyperlink',
-      'setCellValue',
-      'setCellFormula',
-      'setCellFormat',
-      'upsertCellStyle',
-      'upsertCellNumberFormat',
-      'setStyleRange',
-      'setFormatRange',
-      'clearCell',
-      'upsertDefinedName',
-      'deleteDefinedName',
-      'upsertTable',
-      'deleteTable',
-      'upsertSpillRange',
-      'deleteSpillRange',
-      'upsertPivotTable',
-      'deletePivotTable',
-      'upsertChart',
-      'deleteChart',
-      'upsertImage',
-      'deleteImage',
-      'upsertShape',
-      'deleteShape',
-    ])
+    expect(kinds).toEqual(workbookOpKindsFromSource())
 
     const setCellValue = variants.find((entry) => constKindFromSchema(entry) === 'setCellValue')
     expect(setCellValue).toMatchObject({
