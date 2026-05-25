@@ -137,10 +137,10 @@ describe('dynamic overlay batch v3', () => {
 
     expect(readOverlayRects(overlay)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ x: 147, y: 1, width: 48, height: 22 }),
-        expect.objectContaining({ x: 197, y: 1, width: 98, height: 22 }),
-        expect.objectContaining({ x: 297, y: 1, width: 98, height: 22 }),
-        expect.objectContaining({ x: 1, y: 55, width: 44, height: 18 }),
+        expect.objectContaining({ x: 147, y: 0, width: 48, height: 24 }),
+        expect.objectContaining({ x: 197, y: 0, width: 98, height: 24 }),
+        expect.objectContaining({ x: 297, y: 0, width: 98, height: 24 }),
+        expect.objectContaining({ x: 0, y: 55, width: 46, height: 18 }),
         expect.objectContaining({ x: 196, y: 21, width: 100, height: 3 }),
       ]),
     )
@@ -405,10 +405,12 @@ describe('dynamic overlay batch v3', () => {
     expect(readOverlayRects(overlay)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ x: 46, y: 64, width: 474, height: 60 }),
+        expect.objectContaining({ x: 0, y: 65, width: 46, height: 18 }),
         expect.objectContaining({ x: 146, y: 64, width: 1, height: 60 }),
         expect.objectContaining({ x: 46, y: 84, width: 474, height: 1 }),
       ]),
     )
+    expect(readOverlayRects(overlay)).not.toEqual(expect.arrayContaining([expect.objectContaining({ x: 1, y: 65, width: 44, height: 18 })]))
     expect(readOverlayRects(overlay)).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ x: 146, y: 64, width: 100, height: 2 }),

@@ -53,9 +53,9 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(rects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 147, y: 1, width: 98, height: 22 }) }),
-        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 247, y: 1, width: 98, height: 22 }) }),
-        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 347, y: 1, width: 98, height: 22 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 147, y: 0, width: 98, height: 24 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 247, y: 0, width: 98, height: 24 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 347, y: 0, width: 98, height: 24 }) }),
         expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 146, y: 24, width: 300, height: 216 }) }),
         expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 246, y: 24, width: 1, height: 216 }) }),
         expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 146, y: 44, width: 300, height: 1 }) }),
@@ -81,11 +81,14 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(rects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 1, y: 165, width: 44, height: 18 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 0, y: 165, width: 46, height: 18 }) }),
         expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 46, y: 164, width: 514, height: 76 }) }),
       ]),
     )
     expect(rects.some((rect) => rect.role === 'active-border')).toBe(false)
+    expect(rects).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 1, width: 44 }) })]),
+    )
   })
 
   test('clips scrolled axis header fills to their panes', () => {
@@ -102,9 +105,9 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(rects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 147, y: 1, width: 48, height: 22 }) }),
-        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 197, y: 1, width: 98, height: 22 }) }),
-        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 297, y: 1, width: 98, height: 22 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 147, y: 0, width: 48, height: 24 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 197, y: 0, width: 98, height: 24 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 297, y: 0, width: 98, height: 24 }) }),
       ]),
     )
     expect(rects).not.toEqual(

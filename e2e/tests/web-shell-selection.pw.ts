@@ -410,6 +410,10 @@ test('@browser-ci web app keeps selected row headers and body cells on a single 
   const headerLastPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 1, seamY)
   const bodyFirstPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH, seamY)
 
+  expect(
+    isGridBorderPixel(headerLastPixel),
+    'selected row header fill should cover the header/body seam instead of exposing a gray line',
+  ).toBe(false)
   expect(isGridBorderPixel(bodyFirstPixel), 'row selection should not paint a second leading body gridline after the header seam').toBe(
     false,
   )

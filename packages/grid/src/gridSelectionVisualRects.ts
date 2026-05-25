@@ -143,7 +143,7 @@ function appendAxisSelectionVisualRects(
         : paneFrame(input.geometry, 'column-header-body')
     const clipped = bounds && clip ? clipRect(bounds, clip) : null
     if (clipped) {
-      appendInsetRect(rects, 'header-fill', `header-fill:column:${index}`, clipped, 1, 1)
+      appendColumnHeaderFillRect(rects, `header-fill:column:${index}`, clipped)
     }
   }
   for (const index of visibleRowIndexes(input.geometry)) {
@@ -157,7 +157,7 @@ function appendAxisSelectionVisualRects(
         : paneFrame(input.geometry, 'row-header-body')
     const clipped = bounds && clip ? clipRect(bounds, clip) : null
     if (clipped) {
-      appendInsetRect(rects, 'header-fill', `header-fill:row:${index}`, clipped, 1, 1)
+      appendRowHeaderFillRect(rects, `header-fill:row:${index}`, clipped)
     }
   }
 
@@ -293,6 +293,24 @@ function appendSelectionGridlineRect(rects: GridSelectionVisualRect[], key: stri
   }
 }
 
+function appendColumnHeaderFillRect(rects: GridSelectionVisualRect[], key: string, bounds: Rectangle): void {
+  appendRect(rects, 'header-fill', key, {
+    x: bounds.x + 1,
+    y: bounds.y,
+    width: Math.max(0, bounds.width - 2),
+    height: bounds.height,
+  })
+}
+
+function appendRowHeaderFillRect(rects: GridSelectionVisualRect[], key: string, bounds: Rectangle): void {
+  appendRect(rects, 'header-fill', key, {
+    x: bounds.x,
+    y: bounds.y + 1,
+    width: bounds.width,
+    height: Math.max(0, bounds.height - 2),
+  })
+}
+
 function appendCellBorderRects(
   rects: GridSelectionVisualRect[],
   geometry: GridGeometrySnapshot,
@@ -323,14 +341,17 @@ function appendInsetRect(
   insetX: number,
   insetY: number,
 ): void {
-  const insetBounds = {
+  appendRect(rects, role, key, {
     x: bounds.x + insetX,
     y: bounds.y + insetY,
     width: Math.max(0, bounds.width - insetX * 2),
     height: Math.max(0, bounds.height - insetY * 2),
-  }
-  if (insetBounds.width > 0 && insetBounds.height > 0) {
-    rects.push({ role, key, bounds: insetBounds })
+  })
+}
+
+function appendRect(rects: GridSelectionVisualRect[], role: GridSelectionVisualRectRole, key: string, bounds: Rectangle): void {
+  if (bounds.width > 0 && bounds.height > 0) {
+    rects.push({ role, key, bounds })
   }
 }
 
