@@ -58,6 +58,8 @@ prints JSON, and writes `.tmp/workpaper-proof.json`.
 
 The checked-in `flow.yml` uses a Node Commands task:
 
+{% raw %}
+
 ```yaml
 tasks:
   - id: calculate_quote
@@ -75,6 +77,8 @@ tasks:
     commands:
       - npx tsx kestra-workpaper-flow.ts --quantity "{{ inputs.quantity }}" --output workpaper-proof.json
 ```
+
+{% endraw %}
 
 Upload or sync `kestra-workpaper-flow.ts` as a namespace file, import
 `flow.yml`, and run it with the default inputs or quote fields from another
