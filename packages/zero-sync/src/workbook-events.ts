@@ -309,6 +309,41 @@ function matchesMutationArgsSchema(value: Record<string, unknown>, schema: Event
   return schema.safeParse({ ...value, documentId: '__event_payload__' }).success
 }
 
+function planCommandCount(plan: unknown): number {
+  if (!isRecord(plan) || !Array.isArray(plan['commands'])) {
+    return 0
+  }
+  return plan['commands'].length
+}
+
+function workbookPlanRunResultMatchesAppliedOps(
+  plan: unknown,
+  appliedOps: unknown,
+  result: unknown,
+): result is WorkbookRunResultDescription | undefined {
+  if (result === undefined) {
+    return true
+  }
+  if (!isWorkbookRunResultDescription(result)) {
+    return false
+  }
+  if (!Array.isArray(appliedOps) || appliedOps.length === 0) {
+    return true
+  }
+  if (
+    result.apply === undefined ||
+    !isSafeNonNegativeInteger(result.apply.baseRevision) ||
+    !isSafeNonNegativeInteger(result.apply.revision) ||
+    result.apply.revision < result.apply.baseRevision ||
+    !Array.isArray(result.apply.appliedOps) ||
+    result.apply.appliedOps.length === 0
+  ) {
+    return false
+  }
+  const commandCount = planCommandCount(plan)
+  return commandCount === 0 || (Array.isArray(result.apply.commandReceipts) && result.apply.commandReceipts.length === commandCount)
+}
+
 export function isWorkbookEventPayload(value: unknown): value is WorkbookEventPayload {
   if (!isRecord(value) || !isWorkbookEventKind(value['kind'])) {
     return false
@@ -323,7 +358,7 @@ export function isWorkbookEventPayload(value: unknown): value is WorkbookEventPa
       return (
         matchesMutationArgsSchema(value, applyWorkbookPlanDataArgsSchema) &&
         isEngineOps(value['appliedOps']) &&
-        (value['result'] === undefined || isWorkbookRunResultDescription(value['result']))
+        workbookPlanRunResultMatchesAppliedOps(value['plan'], value['appliedOps'], value['result'])
       )
     case 'setCellValue':
       return matchesMutationArgsSchema(value, setCellValueArgsSchema)

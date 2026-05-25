@@ -1,5 +1,6 @@
 import { createWorkbookRunAdapter, type SpreadsheetEngine } from '@bilig/core'
 import {
+  checkWorkbookRunResultDescription,
   describeRunResult,
   runWorkbookPlan,
   type EngineOp,
@@ -28,7 +29,12 @@ export function workbookPlanRunUndoBundle(result: WorkbookRunResult): WorkbookCh
 }
 
 export function workbookPlanRunResultProof(result: WorkbookRunResult): WorkbookRunResultDescription {
-  return describeRunResult(result)
+  const description = describeRunResult(result)
+  const checked = checkWorkbookRunResultDescription(description)
+  if (checked.status === 'invalid') {
+    throw new Error(`Workbook run result proof failed validation: ${checked.issues.map((issue) => issue.message).join('; ')}`)
+  }
+  return checked.description
 }
 
 export async function runStrictWorkbookPlanData(

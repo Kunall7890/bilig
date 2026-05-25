@@ -27,6 +27,10 @@ function buildPlanData() {
   return toPlanData(planned.plan)
 }
 
+function workbookPlanDataAppliedOp() {
+  return { kind: 'setCellValue' as const, sheetName: 'Sheet1', address: 'A1', value: 1 }
+}
+
 function buildAuthoritativeCellEvent(revision: number) {
   return {
     revision,
@@ -56,13 +60,30 @@ describe('workbook event guards', () => {
   })
 
   it('accepts transported workbook plan data payloads with concrete applied ops', () => {
+    const plan = buildPlanData()
     expect(
       isWorkbookEventPayload({
         kind: 'applyWorkbookPlanData',
-        plan: buildPlanData(),
-        appliedOps: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1 }],
+        plan,
+        appliedOps: [workbookPlanDataAppliedOp()],
         result: {
           status: 'done',
+          apply: {
+            matched: true,
+            baseRevision: 0,
+            revision: 1,
+            previewOps: [workbookPlanDataAppliedOp()],
+            appliedOps: [workbookPlanDataAppliedOp()],
+            commandReceipts: [
+              {
+                commandIndex: 0,
+                commandKind: 'writeValue',
+                commandDigest: 'digest',
+                previewOps: [workbookPlanDataAppliedOp()],
+                appliedOps: [workbookPlanDataAppliedOp()],
+              },
+            ],
+          },
           changed: [],
           checks: [],
         },
@@ -78,7 +99,19 @@ describe('workbook event guards', () => {
     expect(
       isWorkbookEventPayload({
         kind: 'applyWorkbookPlanData',
-        plan: buildPlanData(),
+        plan,
+        appliedOps: [workbookPlanDataAppliedOp()],
+        result: {
+          status: 'done',
+          changed: [],
+          checks: [],
+        },
+      }),
+    ).toBe(false)
+    expect(
+      isWorkbookEventPayload({
+        kind: 'applyWorkbookPlanData',
+        plan,
         appliedOps: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1 }],
         result: {
           status: 'failed',
