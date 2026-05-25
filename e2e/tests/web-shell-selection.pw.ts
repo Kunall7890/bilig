@@ -1433,9 +1433,9 @@ async function expectBorderStyle(
     top: '-1px',
   })
   expect(actual.edges.find((edge) => edge.edge === 'right')).toMatchObject({
-    bottom: '0px',
+    bottom: '1px',
     right: '0px',
-    top: '-1px',
+    top: '0px',
     width: expected.width,
   })
   expect(actual.edges.find((edge) => edge.edge === 'bottom')).toMatchObject({
@@ -1445,9 +1445,9 @@ async function expectBorderStyle(
     right: '0px',
   })
   expect(actual.edges.find((edge) => edge.edge === 'left')).toMatchObject({
-    bottom: '0px',
+    bottom: '1px',
     left: '-1px',
-    top: '-1px',
+    top: '0px',
     width: expected.width,
   })
 }

@@ -199,9 +199,9 @@ function styleForSelectionBorderEdge(edge: (typeof SELECTION_BORDER_EDGE_NAMES)[
     case 'right':
       return {
         ...base,
-        bottom: 0,
+        bottom: SELECTION_STROKE_WIDTH,
         right: 0,
-        top: -SELECTION_STROKE_WIDTH,
+        top: 0,
         width: SELECTION_STROKE_WIDTH,
       }
     case 'bottom':
@@ -215,9 +215,9 @@ function styleForSelectionBorderEdge(edge: (typeof SELECTION_BORDER_EDGE_NAMES)[
     case 'left':
       return {
         ...base,
-        bottom: 0,
+        bottom: SELECTION_STROKE_WIDTH,
         left: -SELECTION_STROKE_WIDTH,
-        top: -SELECTION_STROKE_WIDTH,
+        top: 0,
         width: SELECTION_STROKE_WIDTH,
       }
   }
