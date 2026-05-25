@@ -47,7 +47,10 @@ Expected output includes:
     "exportedReimportMatchesAfter": true,
     "formulasSurvivedXlsxRoundTrip": true,
     "verified": true
-  }
+  },
+  "star": "https://github.com/proompteng/bilig/stargazers",
+  "watchReleases": "https://github.com/proompteng/bilig/subscription",
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
 

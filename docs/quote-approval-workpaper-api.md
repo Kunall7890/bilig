@@ -77,6 +77,9 @@ Expected shape:
     }
   },
   "verified": true,
+  "star": "https://github.com/proompteng/bilig/stargazers",
+  "watchReleases": "https://github.com/proompteng/bilig/subscription",
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
   "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```

@@ -79,6 +79,9 @@ Expected shape:
   "sheets": ["Inputs", "Summary"],
   "bytes": 1000,
   "verified": true,
+  "star": "https://github.com/proompteng/bilig/stargazers",
+  "watchReleases": "https://github.com/proompteng/bilig/subscription",
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
   "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
 }
 ```

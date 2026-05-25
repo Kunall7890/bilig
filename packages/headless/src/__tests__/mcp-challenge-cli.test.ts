@@ -43,6 +43,9 @@ describe('bilig-mcp-challenge', () => {
         displayValueRead: true,
       },
       verified: true,
+      star: 'https://github.com/proompteng/bilig/stargazers',
+      watchReleases: 'https://github.com/proompteng/bilig/subscription',
+      adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
     })
   })
 
@@ -62,6 +65,8 @@ describe('bilig-mcp-challenge', () => {
       after: 96_000,
       afterRestart: 96_000,
       verified: true,
+      star: 'https://github.com/proompteng/bilig/stargazers',
+      watchReleases: 'https://github.com/proompteng/bilig/subscription',
     })
     expect(parsed.workpaperPath).toBeUndefined()
   })

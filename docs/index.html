@@ -175,19 +175,25 @@
         <div class="hero-copy">
           <p class="eyebrow">Formula proof paths</p>
           <h1 id="hero-title" class="hero-title">Recalculate XLSX formulas or give agents a workbook API.</h1>
-          <p class="hero-subtitle">Pick the narrow command for the job. Both paths prove fresh formula readback before adoption.</p>
+          <p class="hero-subtitle">Pick the narrow command for the job. All three paths prove fresh formula readback before adoption.</p>
           <div class="hero-proof-grid" aria-label="First commands">
-            <a class="hero-proof-card" href="./xlsx-formula-recalculation-node.html">
-              <span>XLSX formulas stale?</span>
-              <strong>Recalculate in Node</strong>
+            <a class="hero-proof-card" href="./eval-xlsx-recalc.html">
+              <span>I have an XLSX</span>
+              <strong>Recalculate formulas in Node</strong>
               <code>npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json</code>
               <em>Fresh cached values without Excel, LibreOffice, or browser automation.</em>
             </a>
-            <a class="hero-proof-card" href="./ai-agent-spreadsheet-tool-node.html">
-              <span>Agent needs spreadsheet tools?</span>
-              <strong>Create a WorkPaper tool loop</strong>
-              <code>npm create @bilig/workpaper@latest pricing-agent -- --agent</code>
-              <em>Write inputs, recalculate, verify readback, and persist workbook JSON.</em>
+            <a class="hero-proof-card" href="./eval-workpaper-service.html">
+              <span>I want a Node service</span>
+              <strong>Create a WorkPaper proof</strong>
+              <code>npm create @bilig/workpaper@latest pricing-workpaper</code>
+              <em>Write inputs, recalculate, serialize JSON, restore, and verify readback.</em>
+            </a>
+            <a class="hero-proof-card" href="./eval-agent-mcp.html">
+              <span>I want an agent tool</span>
+              <strong>Run the MCP proof</strong>
+              <code>npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json</code>
+              <em>Discover tools, edit a cell, read a formula, persist JSON, and restart.</em>
             </a>
           </div>
           <div class="hero-actions">
@@ -646,6 +652,21 @@ $ curl https://bilig.proompteng.ai/mcp -H 'accept: application/json, text/event-
           </div>
 
           <div class="row-list">
+            <a class="path-link" href="./eval-xlsx-recalc.html">
+              <span>xlsx eval</span>
+              <strong>I have an XLSX file with stale formulas.</strong>
+              <em>Run one command, edit inputs, read recalculated values, and see what the proof does not cover.</em>
+            </a>
+            <a class="path-link" href="./eval-workpaper-service.html">
+              <span>node eval</span>
+              <strong>I want formula workbooks inside a Node service.</strong>
+              <em>Create a starter, write an input, read a formula, serialize JSON, restore, and verify.</em>
+            </a>
+            <a class="path-link" href="./eval-agent-mcp.html">
+              <span>agent eval</span>
+              <strong>I want an agent or MCP client to use workbook tools.</strong>
+              <em>Prove tool discovery, set_cell_contents, formula readback, persistence, and restart readback.</em>
+            </a>
             <a class="path-link" href="./try-bilig-headless-in-node.html">
               <span>try it</span>
               <strong>Try it in a blank Node project.</strong>

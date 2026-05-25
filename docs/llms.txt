@@ -28,6 +28,12 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 
 ## package chooser
 
+- Copy-paste evaluator for XLSX files:
+  https://proompteng.github.io/bilig/eval-xlsx-recalc.html
+- Copy-paste evaluator for Node service formulas:
+  https://proompteng.github.io/bilig/eval-workpaper-service.html
+- Copy-paste evaluator for agent and MCP workbook tools:
+  https://proompteng.github.io/bilig/eval-agent-mcp.html
 - Use `@bilig/workpaper` for formula workbook state inside a Node service,
   queue worker, route handler, test, or agent tool.
 - Use `@bilig/xlsx-formula-recalc` when XLSX inputs changed in Node and formula
@@ -80,6 +86,9 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/stop-driving-spreadsheets-with-screenshots.html
 - https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html
 - https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html
+- https://proompteng.github.io/bilig/eval-xlsx-recalc.html
+- https://proompteng.github.io/bilig/eval-workpaper-service.html
+- https://proompteng.github.io/bilig/eval-agent-mcp.html
 - https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html
 - https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
 - https://github.com/proompteng/bilig/blob/main/docs/agent-framework-workbook-tools.md

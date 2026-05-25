@@ -15,6 +15,8 @@ and prints `verified: true`.
 
 After the smoke proof passes, it prints the adoption-feedback URL for concrete
 blockers or integration notes: <https://github.com/proompteng/bilig/discussions/new?category=general>.
+It also prints the GitHub star and release-watch links after verification, so a
+successful evaluator run has an explicit next action without hiding the proof.
 
 Use this when you want to evaluate `@bilig/workpaper` from a blank directory
 without cloning the full monorepo.

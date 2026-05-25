@@ -46,17 +46,21 @@ Project site: <https://proompteng.github.io/bilig/>
 
 Pick the path that matches the thing in your hands:
 
-| You have...                                                                              | Start with                                                           | You should see                                                                                         |
-| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| An `.xlsx` file with stale formula results after editing inputs in Node                  | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json` | A changed input, a recalculated output, and `verified: true` without opening Excel or LibreOffice.     |
-| Workbook-shaped business logic that should live in a Node service, test, queue, or route | `npm create @bilig/workpaper@latest pricing-workpaper`               | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback. |
-| A coding agent, MCP client, or tool host that needs spreadsheet operations               | `npm create @bilig/workpaper@latest pricing-agent -- --agent`        | An agent contract with read, write, recalc, persist, restore, and a compact proof object.              |
+| You have...                                                                              | Start with                                                         | You should see                                                                                         |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| An `.xlsx` file with stale formula results after editing inputs in Node                  | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)           | A changed input, a recalculated output, and `verified: true` without opening Excel or LibreOffice.     |
+| Workbook-shaped business logic that should live in a Node service, test, queue, or route | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md) | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback. |
+| A coding agent, MCP client, or tool host that needs spreadsheet operations               | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)             | An agent contract with read, write, recalc, persist, restore, and a compact proof object.              |
 
 If you are not sure which one fits, use the file-level XLSX path when a real
 spreadsheet file is already the source of truth. Use `@bilig/workpaper` when
 the calculation model belongs in code and JSON. Use the agent path when another
 assistant needs a tool it can verify instead of a browser session it has to
 trust.
+
+Each evaluator is deliberately small: one command, expected proof, what it
+proves, what it does not prove, and where to star, watch releases, or report the
+adoption blocker after the proof runs.
 
 The shortest no-project checks are:
 
@@ -158,6 +162,9 @@ npm --prefix examples/recalc-bridge-workflows run smoke
 
 | If you are evaluating...      | Start here                                                                                                                                                                                                                | What should be true before you adopt                                                                    |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Existing XLSX files           | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                                                                                                                                                                  | A command edits inputs, reads recalculated values, writes XLSX, and returns `verified: true`.           |
+| Node service formulas         | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)                                                                                                                                                        | A starter writes one input, recalculates, persists JSON, restores, and prints `verified: true`.         |
+| Agent MCP contract            | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)                                                                                                                                                                    | MCP tool discovery, input edit, formula readback, persistence, and restart proof all pass.              |
 | Basic fit                     | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                   | The problem is workbook-shaped business logic that needs API readback and persistence.                  |
 | Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                           | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`. |
 | XLSX or ExcelJS recalculation | [XLSX formula recalculation](docs/xlsx-formula-recalculation-node.md) and [ExcelJS formula recalculation](docs/exceljs-formula-recalculation-node.md)                                                                     | The package updates inputs, reads recalculated values, and exports or mutates the workbook boundary.    |
@@ -225,6 +232,9 @@ Expected output:
   "sheets": ["Inputs", "Summary"],
   "bytes": 999,
   "verified": true,
+  "star": "https://github.com/proompteng/bilig/stargazers",
+  "watchReleases": "https://github.com/proompteng/bilig/subscription",
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
   "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```

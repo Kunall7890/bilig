@@ -300,17 +300,21 @@ Project site: <https://proompteng.github.io/bilig/>
 
 Pick the path that matches the thing in your hands:
 
-| You have...                                                                              | Start with                                                           | You should see                                                                                         |
-| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| An `.xlsx` file with stale formula results after editing inputs in Node                  | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json` | A changed input, a recalculated output, and `verified: true` without opening Excel or LibreOffice.     |
-| Workbook-shaped business logic that should live in a Node service, test, queue, or route | `npm create @bilig/workpaper@latest pricing-workpaper`               | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback. |
-| A coding agent, MCP client, or tool host that needs spreadsheet operations               | `npm create @bilig/workpaper@latest pricing-agent -- --agent`        | An agent contract with read, write, recalc, persist, restore, and a compact proof object.              |
+| You have...                                                                              | Start with                                                         | You should see                                                                                         |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| An `.xlsx` file with stale formula results after editing inputs in Node                  | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)           | A changed input, a recalculated output, and `verified: true` without opening Excel or LibreOffice.     |
+| Workbook-shaped business logic that should live in a Node service, test, queue, or route | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md) | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback. |
+| A coding agent, MCP client, or tool host that needs spreadsheet operations               | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)             | An agent contract with read, write, recalc, persist, restore, and a compact proof object.              |
 
 If you are not sure which one fits, use the file-level XLSX path when a real
 spreadsheet file is already the source of truth. Use `@bilig/workpaper` when
 the calculation model belongs in code and JSON. Use the agent path when another
 assistant needs a tool it can verify instead of a browser session it has to
 trust.
+
+Each evaluator is deliberately small: one command, expected proof, what it
+proves, what it does not prove, and where to star, watch releases, or report the
+adoption blocker after the proof runs.
 
 The shortest no-project checks are:
 
@@ -412,6 +416,9 @@ npm --prefix examples/recalc-bridge-workflows run smoke
 
 | If you are evaluating...      | Start here                                                                                                                                                                                                                | What should be true before you adopt                                                                    |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Existing XLSX files           | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                                                                                                                                                                  | A command edits inputs, reads recalculated values, writes XLSX, and returns `verified: true`.           |
+| Node service formulas         | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)                                                                                                                                                        | A starter writes one input, recalculates, persists JSON, restores, and prints `verified: true`.         |
+| Agent MCP contract            | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)                                                                                                                                                                    | MCP tool discovery, input edit, formula readback, persistence, and restart proof all pass.              |
 | Basic fit                     | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                   | The problem is workbook-shaped business logic that needs API readback and persistence.                  |
 | Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                           | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`. |
 | XLSX or ExcelJS recalculation | [XLSX formula recalculation](docs/xlsx-formula-recalculation-node.md) and [ExcelJS formula recalculation](docs/exceljs-formula-recalculation-node.md)                                                                     | The package updates inputs, reads recalculated values, and exports or mutates the workbook boundary.    |
@@ -479,6 +486,9 @@ Expected output:
   "sheets": ["Inputs", "Summary"],
   "bytes": 999,
   "verified": true,
+  "star": "https://github.com/proompteng/bilig/stargazers",
+  "watchReleases": "https://github.com/proompteng/bilig/subscription",
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
   "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
@@ -992,6 +1002,264 @@ MIT.
 
 ---
 
+## Evaluate XLSX Formula Recalculation
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/eval-xlsx-recalc.md
+
+# Evaluate XLSX formula recalculation
+
+Use this when the thing in your hands is an `.xlsx` file. The narrow question is
+whether Node can edit known input cells, recalculate formulas, write a new XLSX,
+and return a proof object without opening Excel, LibreOffice, or a browser UI.
+
+## One command
+
+```sh
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
+```
+
+## Expected proof
+
+The current demo prints this shape:
+
+```json
+{
+  "mode": "demo",
+  "input": "generated demo workbook",
+  "output": "bilig-formula-recalc-demo.xlsx",
+  "edits": 2,
+  "externalWorkbooks": 0,
+  "reads": {
+    "Summary!B2": {
+      "tag": 1,
+      "value": 72000
+    }
+  },
+  "warnings": [],
+  "verified": true
+}
+```
+
+The exact output file name can change if you pass your own `--out` path. The
+important checks are `verified: true`, an empty or understood `warnings` array,
+and the recalculated cell value under `reads`.
+
+## Try your workbook
+
+```sh
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc pricing.xlsx \
+  --set Inputs!B2=48 \
+  --set Inputs!B3=1500 \
+  --read Summary!B7 \
+  --out pricing.recalculated.xlsx \
+  --json
+```
+
+Use sheet-qualified A1 references. Keep your adapter strict: known input cells,
+known output cells, and tests around the exported workbook.
+
+## What this proves
+
+- the package can import an XLSX workbook in Node
+- known input cells can be edited from a command
+- dependent formulas can be recalculated and read back
+- the edited workbook can be written back to XLSX bytes
+- warnings are visible instead of hidden behind a "success" message
+
+## What this does not prove
+
+This is not a claim of complete Excel parity. It does not prove macros, pivots,
+charts, unsupported formulas, locale-specific Excel behavior, external-link
+freshness, or exact desktop Excel UI behavior. Keep a golden workbook fixture
+and an Excel or LibreOffice oracle test for customer-critical file flows.
+
+## After the proof
+
+- Star Bilig if this solved the XLSX recalculation problem:
+  <https://github.com/proompteng/bilig/stargazers>
+- Watch releases if you want compatibility and formula updates:
+  <https://github.com/proompteng/bilig/subscription>
+- Report the exact adoption blocker:
+  <https://github.com/proompteng/bilig/discussions/new?category=general>
+
+## Related
+
+- [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
+- [Curlable XLSX recalculation proof](xlsx-recalculation-proof.md)
+- [Agent XLSX recalculation without LibreOffice](agent-xlsx-formula-recalculation-without-libreoffice.md)
+- [Where Bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
+
+---
+
+## Evaluate WorkPaper In A Node Service
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/eval-workpaper-service.md
+
+# Evaluate WorkPaper in a Node service
+
+Use this when the calculation model belongs in code, not in a user-edited Excel
+file. The evaluator starts from an empty directory, creates a small WorkPaper
+service, writes one input, reads a dependent formula, serializes the WorkPaper
+document, restores it, and verifies the same result.
+
+## One command
+
+```sh
+npm create @bilig/workpaper@latest pricing-workpaper && cd pricing-workpaper && npm install && npm run smoke
+```
+
+## Expected proof
+
+The starter smoke prints this shape:
+
+```json
+{
+  "before": 24000,
+  "after": 38400,
+  "afterRestore": 38400,
+  "sheets": ["Inputs", "Summary"],
+  "bytes": 999,
+  "verified": true,
+  "star": "https://github.com/proompteng/bilig/stargazers",
+  "watchReleases": "https://github.com/proompteng/bilig/subscription",
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
+  "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
+}
+```
+
+The byte count can change by package version. The invariant is that `after`
+comes from the dependent formula cell and `afterRestore` matches `after`.
+
+## What this proves
+
+- a service can own workbook-shaped business logic as WorkPaper JSON
+- input cells can be changed through an API instead of a UI
+- dependent formulas recalculate before the service responds
+- exported WorkPaper state can be restored and re-read
+- the proof object is small enough for tests, logs, or agent handoff
+
+## What this does not prove
+
+This does not prove full XLSX fidelity, desktop Excel behavior, database
+durability, or a visual spreadsheet editor. Use this path when the service owns
+the formulas and JSON state. Use the XLSX evaluator when a real `.xlsx` file is
+the source of truth.
+
+## After the proof
+
+- Star Bilig if this is the service shape you needed:
+  <https://github.com/proompteng/bilig/stargazers>
+- Watch releases for API and formula runtime updates:
+  <https://github.com/proompteng/bilig/subscription>
+- Report the exact adoption blocker:
+  <https://github.com/proompteng/bilig/discussions/new?category=general>
+
+## Related
+
+- [Try Bilig WorkPaper in Node](try-bilig-headless-in-node.md)
+- [Create a Bilig WorkPaper starter](create-bilig-workpaper.md)
+- [WorkPaper service recipe](node-service-workpaper-recipe.md)
+- [Quote approval WorkPaper API](quote-approval-workpaper-api.md)
+
+---
+
+## Evaluate Bilig As An Agent MCP Workbook Tool
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/eval-agent-mcp.md
+
+# Evaluate Bilig as an agent MCP workbook tool
+
+Use this when an agent is about to drive a spreadsheet UI by screenshots or
+clicks. The narrower contract is better: list workbook tools, write one input
+cell, read the dependent formula output, export WorkPaper JSON, restart from the
+persisted file, and return proof.
+
+## One command
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
+## Expected proof
+
+The current challenge prints this shape:
+
+```json
+{
+  "transport": "stdio-json-rpc",
+  "serverName": "bilig-headless-workpaper",
+  "tools": [
+    "list_sheets",
+    "read_range",
+    "read_cell",
+    "set_cell_contents",
+    "get_cell_display_value",
+    "export_workpaper_document",
+    "validate_formula"
+  ],
+  "editedCell": "Inputs!B3",
+  "dependentCell": "Summary!B3",
+  "before": 60000,
+  "after": 96000,
+  "afterRestart": 96000,
+  "displayValue": "96000",
+  "persistence": {
+    "persisted": true,
+    "serializedBytes": 1162
+  },
+  "checks": {
+    "listedFileBackedTools": true,
+    "listedResourcesAndPrompts": true,
+    "formulaValidationPassed": true,
+    "dependentCellChanged": true,
+    "persistedToDisk": true,
+    "exportContainsWorkPaperDocument": true,
+    "restartReadbackMatchesAfter": true,
+    "displayValueRead": true
+  },
+  "verified": true,
+  "star": "https://github.com/proompteng/bilig/stargazers",
+  "watchReleases": "https://github.com/proompteng/bilig/subscription",
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
+}
+```
+
+The exact byte count can change. The invariants are `dependentCellChanged`,
+`persistedToDisk`, `restartReadbackMatchesAfter`, and `verified: true`.
+
+## What this proves
+
+- the published package exposes a file-backed MCP stdio server
+- an agent can discover spreadsheet tools and prompts
+- an input edit changes a dependent formula result
+- the updated WorkPaper document can be exported and persisted
+- restart readback matches the calculated value after the edit
+
+## What this does not prove
+
+This does not prove arbitrary workbook compatibility, macros, pivots, charts,
+external links, unsupported formulas, or desktop Excel parity. It proves the
+agent tool contract: no screenshot truth, no blind write-only success, and no
+missing persistence proof.
+
+## After the proof
+
+- Star Bilig if this gives your agent the workbook tool contract it needed:
+  <https://github.com/proompteng/bilig/stargazers>
+- Watch releases for MCP and agent-tool updates:
+  <https://github.com/proompteng/bilig/subscription>
+- Report the exact adoption blocker:
+  <https://github.com/proompteng/bilig/discussions/new?category=general>
+
+## Related
+
+- [Agent workbook challenge](agent-workbook-challenge.md)
+- [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
+- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [MCP client setup](mcp-client-setup.md)
+
+---
+
 ## WorkPaper Package README
 
 Source: https://github.com/proompteng/bilig/blob/main/packages/workpaper/README.md
@@ -1387,6 +1655,9 @@ Expected output:
     "This challenge proves the WorkPaper write/read/persist loop, not full Excel desktop compatibility.",
     "For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture."
   ],
+  "star": "https://github.com/proompteng/bilig/stargazers",
+  "watchReleases": "https://github.com/proompteng/bilig/subscription",
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
   "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
@@ -4697,6 +4968,9 @@ Expected output:
   "sheets": ["Inputs", "Summary"],
   "bytes": 999,
   "verified": true,
+  "star": "https://github.com/proompteng/bilig/stargazers",
+  "watchReleases": "https://github.com/proompteng/bilig/subscription",
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
   "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
@@ -4735,6 +5009,9 @@ Expected output (same as above; `verified` must be `true`):
   "sheets": ["Inputs", "Summary"],
   "bytes": 999,
   "verified": true,
+  "star": "https://github.com/proompteng/bilig/stargazers",
+  "watchReleases": "https://github.com/proompteng/bilig/subscription",
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
   "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
@@ -4850,6 +5127,9 @@ Expected shape:
     }
   },
   "verified": true,
+  "star": "https://github.com/proompteng/bilig/stargazers",
+  "watchReleases": "https://github.com/proompteng/bilig/subscription",
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
   "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```

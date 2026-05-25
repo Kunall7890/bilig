@@ -39,6 +39,9 @@ const output = {
   sheets: restored.getSheetNames(),
   bytes: saved.length,
   verified: before === 24000 && after === 38400 && afterRestore === 38400,
+  star: 'https://github.com/proompteng/bilig/stargazers',
+  watchReleases: 'https://github.com/proompteng/bilig/subscription',
+  adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
   nextStep,
 }
 

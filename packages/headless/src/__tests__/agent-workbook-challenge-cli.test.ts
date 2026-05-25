@@ -21,6 +21,9 @@ describe('bilig-agent-challenge', () => {
         restoredMatchesAfter: true,
       },
       verified: true,
+      star: 'https://github.com/proompteng/bilig/stargazers',
+      watchReleases: 'https://github.com/proompteng/bilig/subscription',
+      adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
     })
   })
 
@@ -39,6 +42,8 @@ describe('bilig-agent-challenge', () => {
       editedCell: 'Inputs!B2',
       after: 38_400,
       verified: true,
+      star: 'https://github.com/proompteng/bilig/stargazers',
+      watchReleases: 'https://github.com/proompteng/bilig/subscription',
     })
   })
 

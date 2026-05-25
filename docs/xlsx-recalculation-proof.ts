@@ -79,6 +79,9 @@ async function main(): Promise<void> {
       verified: Object.values(checks).every(Boolean),
     },
     repo: 'https://github.com/proompteng/bilig',
+    star: 'https://github.com/proompteng/bilig/stargazers',
+    watchReleases: 'https://github.com/proompteng/bilig/subscription',
+    adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
   }
 
   if (!result.checks.verified) {

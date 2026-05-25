@@ -18,6 +18,9 @@ export interface AgentWorkbookChallengeProof {
   }
   readonly verified: boolean
   readonly limitations: readonly string[]
+  readonly star: string
+  readonly watchReleases: string
+  readonly adoptionBlocker: string
   readonly nextStep: string
 }
 
@@ -140,6 +143,9 @@ export function buildAgentWorkbookChallengeProof(): AgentWorkbookChallengeProof 
       'This challenge proves the WorkPaper write/read/persist loop, not full Excel desktop compatibility.',
       'For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture.',
     ],
+    star: 'https://github.com/proompteng/bilig/stargazers',
+    watchReleases: 'https://github.com/proompteng/bilig/subscription',
+    adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
     nextStep:
       'If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general',
   }

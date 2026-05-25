@@ -122,7 +122,17 @@ function assertDocs(): void {
     templateSource.includes('https://github.com/proompteng/bilig/discussions/new?category=general'),
     'starter smoke output must include the adoption-feedback link after verification',
   )
-  assert(docs.includes('https://github.com/proompteng/bilig/discussions/new?category=general'), 'starter docs must include the adoption-feedback link')
+  assert(templateSource.includes('https://github.com/proompteng/bilig/stargazers'), 'starter smoke output must include the star link')
+  assert(
+    templateSource.includes('https://github.com/proompteng/bilig/subscription'),
+    'starter smoke output must include the release-watch link',
+  )
+  assert(
+    docs.includes('https://github.com/proompteng/bilig/discussions/new?category=general'),
+    'starter docs must include the adoption-feedback link',
+  )
+  assert(docs.includes('https://github.com/proompteng/bilig/stargazers'), 'starter docs must include the star link')
+  assert(docs.includes('https://github.com/proompteng/bilig/subscription'), 'starter docs must include the release-watch link')
   assert(readme.includes('agent:verify'), 'starter README must document the agent verification script')
   assert(docs.includes('agent:verify'), 'starter docs must document the agent verification script')
 }

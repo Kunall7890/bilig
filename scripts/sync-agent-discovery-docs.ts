@@ -475,6 +475,21 @@ Start by proving the direct WorkPaper loop:`,
 const llmsFullSources = [
   { title: 'Repository README', relativePath: 'README.md', url: `${repositoryUrl}/blob/main/README.md` },
   {
+    title: 'Evaluate XLSX Formula Recalculation',
+    relativePath: 'docs/eval-xlsx-recalc.md',
+    url: `${repositoryUrl}/blob/main/docs/eval-xlsx-recalc.md`,
+  },
+  {
+    title: 'Evaluate WorkPaper In A Node Service',
+    relativePath: 'docs/eval-workpaper-service.md',
+    url: `${repositoryUrl}/blob/main/docs/eval-workpaper-service.md`,
+  },
+  {
+    title: 'Evaluate Bilig As An Agent MCP Workbook Tool',
+    relativePath: 'docs/eval-agent-mcp.md',
+    url: `${repositoryUrl}/blob/main/docs/eval-agent-mcp.md`,
+  },
+  {
     title: 'WorkPaper Package README',
     relativePath: 'packages/workpaper/README.md',
     url: `${repositoryUrl}/blob/main/packages/workpaper/README.md`,
