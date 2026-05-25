@@ -674,6 +674,9 @@ export function commandOpsMatchExpected(
       })
     )
   }
+  if (command.kind === 'format') {
+    return formatOpsMatchExpected(command, ops, resolvedRefs)
+  }
   const expected = expectedCommandOps(command)
   if (expected === null) {
     const concreteCells = concreteCellsFromResolvedRefs(resolvedRefs)
@@ -705,9 +708,6 @@ export function commandOpsMatchExpected(
           )
         })
       )
-    }
-    if (command.kind === 'format') {
-      return formatOpsMatchExpected(command, ops, resolvedRefs)
     }
     return false
   }

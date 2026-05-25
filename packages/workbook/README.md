@@ -175,8 +175,8 @@ production proof. Strict mode requires:
 - command receipts bound to planned digests and concrete `resolvedRefs`
 - proof on every passed check
 
-Runtime authors can run the same contract with `checkWorkbookRunAdapter` or
-`assertWorkbookRunAdapter` from `@bilig/workbook/testing`.
+Runtime authors can run the same own-data-option contract with the
+`@bilig/workbook/testing` adapter helpers.
 
 The returned `WorkbookRunResult` is intentionally plain:
 
@@ -205,17 +205,15 @@ type WorkbookRunResult =
 
 Everything that crosses an agent/runtime boundary is inspectable data:
 
-- `describeModel`, `describePlan`, `describePlanResult`, and
-  `describeRunResult` return JSON-safe descriptions.
-- `toPlanData(plan)` emits executable plan data for transport.
-- `checkPlanData(data)` reports path-based transport issues before hydration.
-- `hydratePlanData(data)` restores frozen refs and helper methods locally.
-- `verifyPlan`, `verifyPlanData`, and `verifyModel` return frozen verdicts.
-- `checkInput` and `checkWorkbookModelDescription` validate agent manifests without a schema dependency.
-- `checkWorkbookReadbackProof(data)` validates transported readback proof.
+- `describeModel`, `describePlan`, `describePlanResult`, and `describeRunResult` return JSON-safe descriptions.
+- `toPlanData`, `checkPlanData`, and `hydratePlanData` transport and restore executable plan data.
+- `verifyPlan`, `verifyPlanData`, `verifyModel`, `checkInput`,
+  `checkWorkbookModelDescription`, and `checkWorkbookReadbackProof` return frozen validation verdicts.
 - `workbookJsonSchemas`, `workbookJsonSchemaHashes`, and `fixtures/` publish
   checked model, plan, runtime-requirements, command, run-result, and readback artifacts
   for non-TypeScript consumers.
+- Schemas stay in parity with validators for row predicates, low-level op
+  destructive confirmation, and command receipt proof.
 
 Public validators read own data properties and reject malformed, sparse,
 accessor-backed, or custom-prototype payloads before hidden consumer code can
@@ -237,6 +235,8 @@ the root path because agents may need to inspect runtime handoff proof. Runtime
 plugin registration, projection interceptors, and UI contribution metadata live
 only under `@bilig/workbook/features`. Ordinary models should prefer
 `writeFormula`, `writeValue`, `format`, `clear`, and checks.
+Format receipts use the same semantic proof path for single cells and ranges:
+each requested style or number-format component must cover every resolved cell.
 
 ## Low-Level Ops
 

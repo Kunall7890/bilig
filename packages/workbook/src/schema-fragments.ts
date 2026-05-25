@@ -142,8 +142,20 @@ export const workbookRefDataDefSchemas: Record<string, WorkbookJsonSchemaValue> 
         properties: {
           column: { type: 'string', minLength: 1 },
           op: { enum: ['eq', 'neq', 'contains', 'startsWith', 'gt', 'gte', 'lt', 'lte'] },
-          value: { $ref: '#/$defs/jsonValue' },
+          value: { $ref: '#/$defs/literalInput' },
         },
+        allOf: [
+          {
+            if: { properties: { op: { enum: ['contains', 'startsWith'] } }, required: ['op'] },
+            // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+            then: { properties: { value: { type: 'string' } } },
+          },
+          {
+            if: { properties: { op: { enum: ['gt', 'gte', 'lt', 'lte'] } }, required: ['op'] },
+            // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+            then: { properties: { value: { oneOf: [{ type: 'number' }, { type: 'string' }] } } },
+          },
+        ],
       },
     },
   },

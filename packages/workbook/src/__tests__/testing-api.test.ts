@@ -303,6 +303,32 @@ function prepareDirectSingleCellFullFormatCommand() {
   return prepared
 }
 
+function prepareDirectSingleCellNumberFormatCommand() {
+  const prepared = prepareWorkbookAction(
+    defineModel({
+      name: 'testing-adapter-direct-number-format-model',
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Resolved', address: 'C1' }),
+        }
+      },
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.result)]
+      },
+      actions: {
+        format({ refs, workbook }) {
+          workbook.format(refs.result, { numberFormat: '0.00' })
+        },
+      },
+    }),
+    'format',
+  )
+  if (prepared.status !== 'prepared') {
+    throw new Error('expected prepared direct number format fixture')
+  }
+  return prepared
+}
+
 describe('@bilig/workbook testing api', () => {
   it('checks a runtime adapter against a strict transported plan', async () => {
     const prepared = prepare()
@@ -955,6 +981,63 @@ describe('@bilig/workbook testing api', () => {
           endAddress: 'C1',
         },
         styleId: 'style_bold',
+      },
+    ]
+
+    const check = await checkWorkbookRunAdapter(prepared.planData, {
+      apply(plan) {
+        return {
+          status: 'applied',
+          planId: workbookPlanId(plan),
+          baseRevision: 4,
+          revision: 5,
+          previewOps: ops,
+          appliedOps: ops,
+          commandReceipts: [
+            {
+              commandIndex: 0,
+              commandKind: command.kind,
+              commandDigest: workbookActionCommandDigest(command),
+              previewOps: ops,
+              appliedOps: ops,
+              resolvedRefs: {
+                target: command.target,
+              },
+            },
+          ],
+        }
+      },
+      verifyChecks(checks) {
+        return checks.map((entry) => ({
+          ...entry,
+          status: 'passed' as const,
+          proof: { source: 'adapter' },
+        }))
+      },
+    })
+
+    expect(check.status).toBe('passed')
+  })
+
+  it('accepts direct single-cell number format receipts through range proof', async () => {
+    const prepared = prepareDirectSingleCellNumberFormatCommand()
+    const command = prepared.plan.commands[0]
+    if (command?.kind !== 'format') {
+      throw new Error('expected format command')
+    }
+    const ops: readonly EngineOp[] = [
+      {
+        kind: 'upsertCellNumberFormat',
+        format: { id: 'format_0_00', code: '0.00', kind: 'number' },
+      },
+      {
+        kind: 'setFormatRange',
+        range: {
+          sheetName: 'Resolved',
+          startAddress: 'C1',
+          endAddress: 'C1',
+        },
+        formatId: 'format_0_00',
       },
     ]
 

@@ -533,6 +533,9 @@ The frozen
 `isWorkbookActionInputDescription(value)`, and `isWorkbookActionInput(value)` let
 agents validate metadata and JSON-safe tool payloads without importing a schema
 framework or string-matching ad hoc kinds.
+The published JSON schemas are expected to reject the same representative
+invalid payloads as the TypeScript checkers, including row predicate value types
+and low-level op commands that omit explicit destructive confirmation.
 
 When agents need to know what an action expects before running workbook code,
 actions may be declared as action objects:
@@ -861,9 +864,10 @@ proof; if `requirePlanId` is true and the adapter omits it, the run fails with
 `plan_not_verified`. `requireRevision` and strict mode require `baseRevision`
 and `revision`; `expectedBaseRevision` rejects stale applies before readback.
 `requireCheckProof` and strict mode reject passed checks without proof. Run
-options and adapter methods are read as own data properties only; accessor-backed
-options fail with `invalid_run_options`, and accessor-backed runtime methods are
-treated as missing capabilities without invoking getters. If a readback
+options, adapter-conformance options, and adapter methods are read as own data
+properties only; accessor-backed options fail with `invalid_run_options`, and
+accessor-backed runtime methods are treated as missing capabilities without
+invoking getters. If a readback
 expectation is missing or mismatched after a reader runs, the run fails with
 deterministic codes such as `readback_missing`, `value_mismatch`, or
 `formula_mismatch`.

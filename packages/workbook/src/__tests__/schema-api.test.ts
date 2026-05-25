@@ -97,6 +97,16 @@ function validateWithJsonSchema(name: keyof typeof workbookJsonSchemas, payload:
   return validate(payload)
 }
 
+function expectInvalidRefDataParity(payload: unknown): void {
+  expect(validateWithJsonSchema('refData', payload)).toBe(false)
+  expect(checkWorkbookRefData(payload).status).toBe('invalid')
+}
+
+function expectInvalidCommandBundleParity(payload: unknown): void {
+  expect(validateWithJsonSchema('commandBundle', payload)).toBe(false)
+  expect(checkWorkbookCommandBundle(payload).status).toBe('invalid')
+}
+
 describe('@bilig/workbook schema api', () => {
   it('exports frozen JSON schema artifacts with deterministic hashes', () => {
     expect(workbookJsonSchemaVersion).toBe('bilig-workbook-json-schema-v1')
@@ -503,6 +513,70 @@ describe('@bilig/workbook schema api', () => {
         },
       ],
     })
+  })
+
+  it('keeps row-ref JSON Schema constraints aligned with ref-data checks', () => {
+    const validRows = {
+      kind: 'rows',
+      id: 'rows-ready',
+      label: 'Ready rows',
+      where: { column: 'Status', op: 'eq', value: 'ready' },
+    } as const
+    expect(validateWithJsonSchema('refData', validRows)).toBe(true)
+    expect(checkWorkbookRefData(validRows).status).toBe('valid')
+
+    expectInvalidRefDataParity({
+      ...validRows,
+      where: { column: 'Status', op: 'contains', value: 123 },
+    })
+    expectInvalidRefDataParity({
+      ...validRows,
+      where: { column: 'Status', op: 'startsWith', value: ['ready'] },
+    })
+    expectInvalidRefDataParity({
+      ...validRows,
+      where: { column: 'Status', op: 'gt', value: false },
+    })
+    expectInvalidRefDataParity({
+      ...validRows,
+      where: { column: 'Status', op: 'lte', value: { amount: 10 } },
+    })
+  })
+
+  it('keeps low-level op command schemas aligned with destructive checks', () => {
+    const opCommand = {
+      targetRevision: 1,
+      idempotencyKey: 'op-schema-parity',
+      commands: [
+        {
+          kind: 'op',
+          op: { kind: 'clearCell', sheetName: 'Sheet1', address: 'A1' },
+        },
+      ],
+    } as const
+
+    expectInvalidCommandBundleParity(opCommand)
+    expect(checkWorkbookCommandBundle(opCommand)).toMatchObject({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'destructive_not_confirmed',
+          path: 'commands[0].destructive',
+        },
+      ],
+    })
+
+    const confirmed = {
+      ...opCommand,
+      commands: [
+        {
+          ...opCommand.commands[0],
+          destructive: true,
+        },
+      ],
+    } as const
+    expect(validateWithJsonSchema('commandBundle', confirmed)).toBe(true)
+    expect(checkWorkbookCommandBundle(confirmed).status).toBe('valid')
   })
 
   it('publishes comparison rule schemas with checker-matching value counts', () => {

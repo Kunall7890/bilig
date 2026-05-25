@@ -29,6 +29,7 @@ flowchart LR
   - root public barrel plus smaller model/prepare/find/check/formula/verify/runtime/command/schema subpath exports
   - public JSON schema artifacts, deterministic schema hashes, and checked-in
     fixtures for non-TypeScript agent contract inspection
+  - schema/checker parity for row predicates, command bundles, and proof payloads
   - model-manifest schema artifacts for action discovery and input contracts
   - runtime-requirements schema artifacts for adapter handoff inspection
   - exact run-result proof schema for apply summaries, command receipts, undo
@@ -79,7 +80,8 @@ flowchart LR
     formula intent can be verified without hardcoded workbook models or
     human-facing cell UI assumptions
   - runtime adapter capability checks before mutation handoff
-  - runtime adapter conformance checks through `@bilig/workbook/testing`
+  - runtime adapter conformance checks through `@bilig/workbook/testing`, with
+    own-data-only option handling before strict proof runs
   - advanced feature/plugin handoff isolated behind `@bilig/workbook/features`
   - bundle-scoped receipt changed-range validation for command proof
   - duplicate command-id rejection for inspectable command bundles

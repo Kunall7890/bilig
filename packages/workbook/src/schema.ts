@@ -471,13 +471,13 @@ export const workbookJsonSchemas = deepFreeze({
           },
           {
             type: 'object',
-            required: ['kind', 'op'],
+            required: ['kind', 'destructive', 'op'],
             additionalProperties: false,
             properties: {
               kind: { const: 'op' },
               id: { type: 'string', minLength: 1 },
               touchedRanges: { type: 'array', items: cellRange },
-              destructive: { type: 'boolean' },
+              destructive: { const: true },
               op: engineOp,
             },
           },

@@ -5,6 +5,7 @@ import type { WorkbookExecutablePlan, WorkbookPlanData, WorkbookPlanDataRefs } f
 import type { WorkbookRunError, WorkbookRunErrorCode, WorkbookRunResult } from './result.js'
 import { checkRuntimeAdapter, type WorkbookRuntimeAdapterIssue } from './requirements.js'
 import { runWorkbookPlan, type WorkbookRunAdapter, type WorkbookRunOptions } from './run.js'
+import { normalizeRunOptions } from './run-runtime-boundary.js'
 import { checkWorkbookRunResultDescription } from './run-description.js'
 
 export type WorkbookRunAdapterCheckIssueCode = WorkbookRunErrorCode | 'invalid_run_result_description'
@@ -68,10 +69,25 @@ function runtimeAdapterIssue(issue: WorkbookRuntimeAdapterIssue): WorkbookRunAda
   return adapterCheckIssue('adapter_missing_capability', issue.method === undefined ? 'adapter' : `adapter.${issue.method}`, issue.message)
 }
 
-function strictOptions(options: WorkbookRunAdapterCheckOptions): WorkbookRunOptions {
+function checkedStrictOptions(options: unknown):
+  | {
+      readonly status: 'valid'
+      readonly options: WorkbookRunOptions
+    }
+  | {
+      readonly status: 'invalid'
+      readonly error: WorkbookRunError
+    } {
+  const normalized = normalizeRunOptions(options)
+  if (normalized.status === 'invalid') {
+    return normalized
+  }
   return Object.freeze({
-    ...options,
-    strict: true,
+    status: 'valid',
+    options: Object.freeze({
+      strict: true,
+      ...(normalized.options.expectedBaseRevision !== undefined ? { expectedBaseRevision: normalized.options.expectedBaseRevision } : {}),
+    }),
   })
 }
 
@@ -90,6 +106,14 @@ export async function checkWorkbookRunAdapter(
   adapter: WorkbookRunAdapter,
   options: WorkbookRunAdapterCheckOptions = {},
 ): Promise<WorkbookRunAdapterCheckResult> {
+  const strictOptionsCheck = checkedStrictOptions(options)
+  if (strictOptionsCheck.status === 'invalid') {
+    return failedAdapterCheck({
+      errors: [strictOptionsCheck.error],
+      issues: [runErrorIssue(strictOptionsCheck.error)],
+    })
+  }
+
   const adapterCheck = checkRuntimeAdapter(plan, adapter)
   if (adapterCheck.status === 'invalid') {
     return failedAdapterCheck({
@@ -97,7 +121,7 @@ export async function checkWorkbookRunAdapter(
     })
   }
 
-  const result = await runWorkbookPlan(plan, adapter, strictOptions(options))
+  const result = await runWorkbookPlan(plan, adapter, strictOptionsCheck.options)
   const description = describeRunResult(result)
   const descriptionCheck = checkWorkbookRunResultDescription(description)
   if (descriptionCheck.status === 'invalid') {
