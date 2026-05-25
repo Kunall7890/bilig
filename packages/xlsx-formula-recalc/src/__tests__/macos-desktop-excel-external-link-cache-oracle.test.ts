@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { isMacosExcelInstalled, runMacosExcelInspectionOracle } from '@bilig/excel-fixtures'
+import { isMacosExcelInstalled, runMacosExcelInspectionOracle, runMacosExcelPackageOpenSaveOracle } from '@bilig/excel-fixtures'
 import { ValueTag } from '@bilig/protocol'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
@@ -105,6 +105,70 @@ describe('macOS Desktop Excel external-link cache recalc oracle', () => {
           { address: 'C2', formula: '=XLOOKUP("B",__bilig_ext_1_Rates!$A$2:$A$4,__bilig_ext_1_Rates!$B$2:$B$4)*B1' },
           { address: 'C3', formula: '=SUMIFS(__bilig_ext_1_Rates!$B$2:$B$4,__bilig_ext_1_Rates!$A$2:$A$4,"C")*B1' },
         ])
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    180_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel native changed-companion package save without explicit calculation',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-xlsx-recalc-external-link-native-update-')
+      try {
+        const linkedSourcePath = join(tempDir, 'rates.xlsx')
+        const sourcePath = join(tempDir, 'external-link-native-update.xlsx')
+        writeFileSync(linkedSourcePath, buildExternalSourceWorkbook([20, 30, 40]))
+
+        const sourceBytes = buildExternalLinkRangeCacheWorkbook(pathToFileURL(linkedSourcePath).href)
+        expect(worksheetFormulaCacheValues(sourceBytes)).toEqual(staleFormulaCacheValues)
+        expect(externalLinkCacheValuesByAddress(sourceBytes, ['B2', 'B3', 'B4'])).toEqual({ B2: '10', B3: '20', B4: '30' })
+        writeFileSync(sourcePath, sourceBytes)
+
+        const excelNativeSave = runMacosExcelPackageOpenSaveOracle({
+          workbookPath: sourcePath,
+          companionWorkbookPaths: [linkedSourcePath],
+          calculationPolicy: 'none',
+          saveWorkbook: true,
+          timeoutMs: 120_000,
+          updateLinks: 'external',
+        })
+        expect(excelNativeSave.excelVersion).toMatch(/^\d+\./u)
+
+        const excelUpdatedBytes = new Uint8Array(readFileSync(sourcePath))
+        expect(worksheetFormulaCacheValues(excelUpdatedBytes)).toEqual(updatedFormulaCacheValues)
+        expect(externalLinkCacheValuesByAddress(excelUpdatedBytes, ['B2', 'B3', 'B4'])).toEqual({
+          B2: '20',
+          B3: '30',
+          B4: '40',
+        })
+
+        const recalculated = recalculateXlsx(sourceBytes, {
+          fileName: 'external-link-native-update.xlsx',
+          externalWorkbooks: [
+            {
+              fileName: 'rates.xlsx',
+              target: pathToFileURL(linkedSourcePath).href,
+              bytes: new Uint8Array(readFileSync(linkedSourcePath)),
+            },
+          ],
+          reads: externalRangeAddresses.map((address) => `Model!${address}`),
+        })
+
+        expect(
+          Object.fromEntries(externalRangeAddresses.map((address) => [address, numberCell(recalculated.reads[`Model!${address}`])])),
+        ).toEqual({
+          C1: 180,
+          C2: 60,
+          C3: 80,
+        })
+        expect(worksheetFormulaCacheValues(recalculated.xlsx)).toEqual(worksheetFormulaCacheValues(excelUpdatedBytes))
+        expect(externalLinkCachePayload(unzipSync(recalculated.xlsx))).toEqual(externalLinkCachePayload(unzipSync(excelUpdatedBytes)))
       } finally {
         rmSync(tempDir, { recursive: true, force: true })
       }
@@ -370,6 +434,11 @@ function worksheetFormulaCacheValuesFor(bytes: Uint8Array, addresses: readonly s
       return [address, /<v>([\s\S]*?)<\/v>/u.exec(cellXml)?.[1] ?? null]
     }),
   )
+}
+
+function externalLinkCacheValuesByAddress(bytes: Uint8Array, addresses: readonly string[]): Readonly<Record<string, string | null>> {
+  const valuesByAddress = new Map(externalLinkCachePayload(unzipSync(bytes)).cells.map((cell) => [cell.address, cell.value]))
+  return Object.fromEntries(addresses.map((address) => [address, valuesByAddress.get(address) ?? null]))
 }
 
 function externalLinkCachePayload(zip: Record<string, Uint8Array>): {
