@@ -108,7 +108,7 @@ The main API is intentionally small:
 - checks: `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.formulaEquals`, `check.custom`
 - formulas: `formula.add`, `formula.subtract`, `formula.multiply`, `formula.divide`, `formula.sum`, `formula.call`, `formula.raw`, `formula.text`, `formula.labels`
 - input: `checkInput`, `normalizeWorkbookActionInputDescription`
-- proof: `verifyPlan`, `verifyModel`, `verifyWorkbookReadbacks`
+- proof: `verifyPlan`, `verifyModel`, `checkWorkbookReadbackProof`, `verifyWorkbookReadbacks`
 - descriptions: `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, `describeRuntimeRequirements`, `checkRuntimeRequirements`, `checkRuntimeAdapter`, `describeRunResult`
 - transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `toPlanData`, `workbookPlanId`, `isPlanData`, `checkPlanData`, `hydratePlanData`, `verifyPlanData`
 - runtime handoff: `runWorkbookPlan`, `runWorkbookAction`, `WorkbookRunAdapter`
@@ -129,7 +129,7 @@ Stable data helpers are exported for generic tool builders:
 - `workbookCommandCategories`, `isWorkbookCommandCategory`, `workbookCommandExecutionModes`, `isWorkbookCommandExecutionMode`, `workbookCommandReceiptStatuses`, `isWorkbookCommandReceiptStatus`, `workbookCommandResultStatuses`, `isWorkbookCommandResultStatus`
 - `workbookProjectionInterceptorPoints`, `isWorkbookProjectionInterceptorPoint`, `workbookUiContributionSlots`, `isWorkbookUiContributionSlot`, `checkWorkbookCommandRequest`
 - `workbookCommandBundleCommandKinds`, `isWorkbookCommandBundleCommandKind`, `checkWorkbookCommandBundle`, `isWorkbookCommandBundle`, `workbookCommandResultFor`, `workbookCommandResultForReceipts`, `workbookOpCommandFeatureId`, `workbookOpCommandReceiptIdentity`, `workbookOpCommandReceipt`, `checkWorkbookCommandResult`, `checkWorkbookCommandResultForBundle`, `isWorkbookCommandResult`, `isWorkbookCommandResultForBundle`
-- `workbookRunErrorCodes`, `isWorkbookRunErrorCode`, `checkWorkbookRunResultDescription`, `isWorkbookRunResultDescription`
+- `workbookRunErrorCodes`, `isWorkbookRunErrorCode`, `checkWorkbookReadbackProof`, `isWorkbookReadbackProof`, `checkWorkbookRunResultDescription`, `isWorkbookRunResultDescription`
 - `workbookJsonSchemaVersion`, `workbookJsonSchemaNames`, `workbookJsonSchemas`, `workbookJsonSchemaHashes`, `workbookJsonSchemaBundleHash`, `workbookJsonSchemaHash`
 
 The package also publishes checked-in JSON fixtures under `fixtures/` and frozen
@@ -164,6 +164,10 @@ Validation and proof results follow the same rule: `checkInput`,
 `checkPlanData`, `verifyPlan`, `verifyModel`, and `verifyWorkbookReadbacks`
 return frozen verdict containers, arrays, generated issues, and readback-derived
 checks.
+`checkWorkbookReadbackProof(data)` validates a transported `{ checks,
+readbacks }` proof object in one call, returning either frozen verified proof or
+stable readback issues. `isWorkbookReadbackProof(data)` is the boolean guard over
+that same proof boundary.
 Ref, ref-data, feature, command, receipt, result, run-result-description, and
 runtime-adapter validators return frozen verdicts too, so every public
 `{ status, issues }` handoff has the same inspect-once behavior.

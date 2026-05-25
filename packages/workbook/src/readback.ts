@@ -1,9 +1,10 @@
 import { parseFormula, serializeFormula } from '@bilig/formula'
 import { isLiteralInput, type LiteralInput } from '@bilig/protocol'
-import { hydrateWorkbookRef, isWorkbookRef, toWorkbookRefData, type WorkbookRef } from './find.js'
+import { hydrateWorkbookRef, type WorkbookRef } from './find.js'
 import { materializeFormulaLabels, type WorkbookFormulaLabelReplacement } from './formula-usage.js'
 import type { WorkbookFormulaLabel } from './formula.js'
 import { normalizeWorkbookActionInput } from './input.js'
+import { checkWorkbookRefData } from './ref-data.js'
 import type { WorkbookCheckExpectation, WorkbookCheckResult } from './result.js'
 
 export interface WorkbookRunReadback {
@@ -35,6 +36,24 @@ export interface WorkbookReadbackVerification {
   readonly checks: readonly WorkbookCheckResult[]
   readonly issues: readonly WorkbookReadbackIssue[]
 }
+
+export interface WorkbookReadbackProof {
+  readonly checks: readonly WorkbookCheckResult[]
+  readonly readbacks: readonly WorkbookRunReadback[]
+}
+
+export type WorkbookReadbackProofCheckResult =
+  | {
+      readonly status: 'valid'
+      readonly proof: WorkbookReadbackProof
+      readonly verification: WorkbookReadbackVerification
+    }
+  | {
+      readonly status: 'invalid'
+      readonly issues: readonly WorkbookReadbackIssue[]
+      readonly proof?: WorkbookReadbackProof
+      readonly verification?: WorkbookReadbackVerification
+    }
 
 function refKey(ref: WorkbookRef): string {
   return `${ref.kind}:${ref.id}`
@@ -229,10 +248,11 @@ function arrayDataValues<T>(
 }
 
 function normalizeRef(value: unknown, path: string): DataValidation<WorkbookRef> {
-  if (!isWorkbookRef(value)) {
-    return invalid(`Workbook reference at ${path} is invalid`)
+  const refDataCheck = checkWorkbookRefData(value)
+  if (refDataCheck.status === 'invalid') {
+    return invalid(refDataCheck.issues[0]?.message ?? `Workbook reference at ${path} is invalid`)
   }
-  return valid(hydrateWorkbookRef(toWorkbookRefData(value)))
+  return valid(hydrateWorkbookRef(refDataCheck.ref))
 }
 
 function normalizeRefArray(value: unknown, path: string): DataValidation<readonly WorkbookRef[]> {
@@ -701,4 +721,71 @@ export function verifyWorkbookReadbacks(
     checks: Object.freeze(verifiedChecks),
     issues: Object.freeze(issues),
   })
+}
+
+function proofCheckResult(input: WorkbookReadbackProofCheckResult): WorkbookReadbackProofCheckResult {
+  return Object.freeze(input)
+}
+
+function invalidProof(
+  issues: readonly WorkbookReadbackIssue[],
+  proof?: WorkbookReadbackProof,
+  verification?: WorkbookReadbackVerification,
+): WorkbookReadbackProofCheckResult {
+  return proofCheckResult({
+    status: 'invalid',
+    issues: Object.freeze([...issues]),
+    ...(proof !== undefined ? { proof } : {}),
+    ...(verification !== undefined ? { verification } : {}),
+  })
+}
+
+function readbackProof(checks: readonly WorkbookCheckResult[], readbacks: readonly WorkbookRunReadback[]): WorkbookReadbackProof {
+  return Object.freeze({
+    checks: Object.freeze([...checks]),
+    readbacks: Object.freeze([...readbacks]),
+  })
+}
+
+export function checkWorkbookReadbackProof(data: unknown): WorkbookReadbackProofCheckResult {
+  if (!isRecord(data)) {
+    return invalidProof([invalidReadback('Workbook readback proof is invalid')])
+  }
+
+  const checksValue = requiredDataValue(data, 'checks', 'proof.checks')
+  if (checksValue.status === 'invalid') {
+    return invalidProof([checksValue.issue])
+  }
+  const readbacksValue = requiredDataValue(data, 'readbacks', 'proof.readbacks')
+  if (readbacksValue.status === 'invalid') {
+    return invalidProof([readbacksValue.issue])
+  }
+
+  const checksValidation = arrayDataValues(checksValue.value, 'proof.checks', normalizeCheck)
+  if (checksValidation.status === 'invalid') {
+    return invalidProof([checksValidation.issue])
+  }
+  const readbacksValidation = arrayDataValues(readbacksValue.value, 'proof.readbacks', normalizeReadback)
+  if (readbacksValidation.status === 'invalid') {
+    return invalidProof([readbacksValidation.issue])
+  }
+
+  const proof = readbackProof(
+    checksValidation.value.map((check) => check.result),
+    readbacksValidation.value.map((readback) => readback.result),
+  )
+  const verification = verifyWorkbookReadbacks(proof.checks, proof.readbacks)
+  if (verification.status === 'failed') {
+    return invalidProof(verification.issues, proof, verification)
+  }
+
+  return proofCheckResult({
+    status: 'valid',
+    proof: readbackProof(verification.checks, proof.readbacks),
+    verification,
+  })
+}
+
+export function isWorkbookReadbackProof(data: unknown): data is WorkbookReadbackProof {
+  return checkWorkbookReadbackProof(data).status === 'valid'
 }

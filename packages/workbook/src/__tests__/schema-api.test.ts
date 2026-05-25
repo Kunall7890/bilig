@@ -4,8 +4,8 @@ import {
   checkPlanData,
   checkWorkbookCommandBundle,
   checkWorkbookCommandResultForBundle,
+  checkWorkbookReadbackProof,
   checkWorkbookRunResultDescription,
-  verifyWorkbookReadbacks,
   workbookJsonSchemaBundleHash,
   workbookJsonSchemaHash,
   workbookJsonSchemaHashes,
@@ -13,64 +13,12 @@ import {
   workbookJsonSchemas,
   workbookJsonSchemaVersion,
   workbookPlanId,
-  type WorkbookCheckResult,
-  type WorkbookRunReadback,
 } from '../index.js'
 
 const fixtureRoot = new URL('../../fixtures/', import.meta.url)
 
 function readFixture(name: string): unknown {
   return JSON.parse(readFileSync(new URL(name, fixtureRoot), 'utf8'))
-}
-
-function requiredArray(value: unknown, path: string): readonly unknown[] {
-  if (!Array.isArray(value)) {
-    throw new Error(`${path} must be an array`)
-  }
-  return value
-}
-
-function requiredRecord(value: unknown, path: string): Record<string, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new Error(`${path} must be an object`)
-  }
-  return value
-}
-
-function requiredArrayOf<T>(value: unknown, path: string, isEntry: (entry: unknown) => entry is T): readonly T[] {
-  return requiredArray(value, path).map((entry, index) => {
-    if (!isEntry(entry)) {
-      throw new Error(`${path}[${index}] has the wrong fixture shape`)
-    }
-    return entry
-  })
-}
-
-function ownDataValue(value: object, key: string): unknown {
-  const descriptor = Object.getOwnPropertyDescriptor(value, key)
-  if (descriptor === undefined || !('value' in descriptor)) {
-    return undefined
-  }
-  return descriptor.value
-}
-
-function isCheckFixture(value: unknown): value is WorkbookCheckResult {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return false
-  }
-  const status = ownDataValue(value, 'status')
-  return (
-    (status === 'planned' || status === 'passed' || status === 'failed') &&
-    typeof ownDataValue(value, 'kind') === 'string' &&
-    typeof ownDataValue(value, 'message') === 'string'
-  )
-}
-
-function isReadbackFixture(value: unknown): value is WorkbookRunReadback {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return false
-  }
-  return Object.hasOwn(value, 'target')
 }
 
 describe('@bilig/workbook schema api', () => {
@@ -122,12 +70,12 @@ describe('@bilig/workbook schema api', () => {
     expect(checkWorkbookRunResultDescription(readFixture('strict-run-success.json')).status).toBe('valid')
     expect(checkWorkbookRunResultDescription(readFixture('strict-run-failure.json')).status).toBe('valid')
 
-    const readbackProof = requiredRecord(readFixture('readback-proof.json'), 'readback-proof')
-    const checks = requiredArrayOf(readbackProof['checks'], 'readback-proof.checks', isCheckFixture)
-    const readbacks = requiredArrayOf(readbackProof['readbacks'], 'readback-proof.readbacks', isReadbackFixture)
-    const readbackVerification = verifyWorkbookReadbacks(checks, readbacks)
-    expect(readbackVerification.status).toBe('passed')
-    expect(readbackVerification.checks).toEqual([
+    const readbackProofCheck = checkWorkbookReadbackProof(readFixture('readback-proof.json'))
+    expect(readbackProofCheck.status).toBe('valid')
+    if (readbackProofCheck.status !== 'valid') {
+      throw new Error('readback-proof fixture failed validation')
+    }
+    expect(readbackProofCheck.proof.checks).toEqual([
       expect.objectContaining({
         status: 'passed',
         kind: 'formulaEquals',

@@ -54,6 +54,7 @@ flowchart LR
   - frozen model inspection and action-plan result wrappers
   - machine-readable readback checks for runtime proof
   - readback proof attached to passed value/formula checks
+  - transported readback-proof validation through `checkWorkbookReadbackProof`
   - exact readback target validation, including duplicate-target rejection
   - frozen validator and readback-proof verdicts for stable agent handoff
   - frozen run results for inspect-once apply/readback/check proof
