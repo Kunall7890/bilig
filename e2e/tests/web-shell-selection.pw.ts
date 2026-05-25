@@ -344,12 +344,11 @@ test('@browser-ci web app keeps reverse-drag range selection chrome geometricall
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="fill-handle"]'), expectedFillHandle, 'fill handle')
   await expectBorderStyle(page.locator('[data-grid-selection-visual-role="selection-border"]'), {
-    bottom: '1px',
-    boxShadow: 'rgb(33, 115, 70) 0px 0px 0px 1px',
+    boxShadow: 'none',
     color: 'rgb(33, 115, 70)',
-    left: '1px',
-    right: '1px',
-    top: '1px',
+    offset: '-1px',
+    style: 'solid',
+    width: '2px',
   })
   await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCSS('background-color', 'rgb(33, 115, 70)')
 })
@@ -1178,28 +1177,26 @@ async function expectCellTextPixels(page: Page, columnIndex: number, rowIndex: n
 async function expectBorderStyle(
   locator: ReturnType<Page['locator']>,
   expected: {
-    readonly bottom: string
     readonly boxShadow: string
     readonly color?: string | undefined
-    readonly left: string
-    readonly right: string
-    readonly top: string
+    readonly offset: string
+    readonly style: string
+    readonly width: string
   },
 ): Promise<void> {
   const actual = await locator.evaluate((node) => {
     const style = window.getComputedStyle(node)
     return {
-      bottom: style.borderBottomWidth,
       boxShadow: style.boxShadow,
-      color: style.borderTopColor,
-      left: style.borderLeftWidth,
-      right: style.borderRightWidth,
-      top: style.borderTopWidth,
+      color: style.outlineColor,
+      offset: style.outlineOffset,
+      style: style.outlineStyle,
+      width: style.outlineWidth,
     }
   })
-  const { color, ...expectedWidths } = expected
-  const { color: actualColor, ...actualWidths } = actual
-  expect(actualWidths).toEqual(expectedWidths)
+  const { color, ...expectedStroke } = expected
+  const { color: actualColor, ...actualStroke } = actual
+  expect(actualStroke).toEqual(expectedStroke)
   if (color !== undefined) {
     expect(actualColor).toBe(color)
   }

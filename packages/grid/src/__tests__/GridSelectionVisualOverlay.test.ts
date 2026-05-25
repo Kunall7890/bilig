@@ -265,8 +265,12 @@ describe('GridSelectionVisualOverlay', () => {
     expect(selectionFill?.style.backgroundColor).toBe('rgba(33, 115, 70, 0.22)')
     expect(hoverFill?.style.opacity).toBe('0')
     expect(selectionBorder?.style.opacity).toBe('')
-    expect(selectionBorder?.style.borderLeftWidth).toBe('1px')
-    expect(selectionBorder?.style.boxShadow).toBe('0 0 0 1px #217346')
+    expect(selectionBorder?.style.borderLeftWidth).toBe('')
+    expect(selectionBorder?.style.boxShadow).toBe('none')
+    expect(selectionBorder?.style.outlineColor).toBe('rgb(33, 115, 70)')
+    expect(selectionBorder?.style.outlineOffset).toBe('-1px')
+    expect(selectionBorder?.style.outlineStyle).toBe('solid')
+    expect(selectionBorder?.style.outlineWidth).toBe('2px')
     expect(fillHandle?.style.opacity).toBe('')
 
     await act(async () => {

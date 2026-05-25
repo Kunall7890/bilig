@@ -124,18 +124,16 @@ function styleForRect(
   }
   if (rect.role === 'selection-border' || rect.role === 'active-border') {
     const strokeWidth = rect.strokeWidth ?? (rect.role === 'active-border' ? 2 : 1)
-    const chromeWidth = Math.max(1, Math.round(strokeWidth / 2))
+    const outlineOffset = -Math.max(1, Math.round(strokeWidth / 2))
     return {
       ...base,
       backgroundColor: 'transparent',
-      borderBottomWidth: chromeWidth,
-      borderColor: workbookThemeColors.selectionAccent,
-      borderLeftWidth: chromeWidth,
-      borderRightWidth: chromeWidth,
-      borderStyle: 'solid',
-      borderTopWidth: chromeWidth,
       boxSizing: 'border-box',
-      boxShadow: `0 0 0 ${chromeWidth}px ${workbookThemeColors.selectionAccent}`,
+      boxShadow: 'none',
+      outlineColor: workbookThemeColors.selectionAccent,
+      outlineOffset,
+      outlineStyle: 'solid',
+      outlineWidth: strokeWidth,
     }
   }
   if (rect.role === 'selection-gridline') {
