@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   defineModel,
   runWorkbookAction,
+  toWorkbookRefData,
   workbookActionCommandDigest,
   workbookPlanId,
   type findRange,
@@ -76,13 +77,20 @@ function commandReceipt<Refs>(plan: WorkbookActionPlan<Refs>, commandIndex = 0):
   if (command === undefined) {
     throw new Error('expected planned command')
   }
+  const resolvedRefs: Record<string, unknown> = {}
+  if (command.target !== undefined) {
+    resolvedRefs['target'] = toWorkbookRefData(command.target)
+  }
+  if (command.kind === 'writeFormula' && command.inputs.length > 0) {
+    resolvedRefs['inputs'] = command.inputs.map((input) => toWorkbookRefData(input))
+  }
   return {
     commandIndex,
     commandKind: command.kind,
     commandDigest: workbookActionCommandDigest(command),
     previewOps: plan.ops,
     appliedOps: plan.ops,
-    resolvedRefs: { commandIndex, target: command.target?.label ?? null },
+    ...(Object.keys(resolvedRefs).length > 0 ? { resolvedRefs } : {}),
   }
 }
 
@@ -140,6 +148,67 @@ describe('@bilig/workbook strict proof api', () => {
       apply: expect.objectContaining({
         matched: true,
         planId: expect.any(String),
+      }),
+      changed: [
+        {
+          kind: 'writeValue',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Write value to Sheet1!B2',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
+    })
+  })
+
+  it('strict mode fails when resolved ref proof does not match the planned command', async () => {
+    const model = valueModel()
+    const read = vi.fn()
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => ({
+          status: 'applied',
+          planId: workbookPlanId(plan),
+          baseRevision: 1,
+          revision: 2,
+          previewOps: plan.ops,
+          appliedOps: plan.ops,
+          commandReceipts: [
+            {
+              ...commandReceipt(plan),
+              resolvedRefs: {
+                target: {
+                  kind: 'range',
+                  id: 'wrong',
+                  label: 'Sheet1!C3',
+                  range: { sheetName: 'Sheet1', startAddress: 'C3', endAddress: 'C3' },
+                },
+              },
+            },
+          ],
+        }),
+        read,
+      },
+      undefined,
+      { strict: true },
+    )
+
+    expect(read).not.toHaveBeenCalled()
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'apply_not_verified',
+          message: 'Adapter resolved ref proof for command 0 does not match the planned command',
+        },
+      ],
+      apply: expect.objectContaining({
+        matched: true,
+        planId: expect.any(String),
+        baseRevision: 1,
+        revision: 2,
       }),
       changed: [
         {

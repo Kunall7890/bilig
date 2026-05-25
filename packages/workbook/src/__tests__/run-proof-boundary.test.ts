@@ -4,6 +4,7 @@ import {
   describeRunResult,
   findRange,
   runWorkbookAction,
+  toWorkbookRefData,
   verifyWorkbookReadbacks,
   type WorkbookActionPlan,
   type WorkbookCheckResult,
@@ -68,15 +69,29 @@ function applied<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRunApplyResult {
     status: 'applied',
     previewOps: plan.ops,
     appliedOps: plan.ops,
-    commandReceipts: plan.commands.map((command, commandIndex) => ({
-      commandIndex,
-      commandKind: command.kind,
-      commandDigest: workbookActionCommandDigest(command),
-      previewOps: plan.ops,
-      appliedOps: plan.ops,
-      resolvedRefs: { commandIndex, target: command.target?.label ?? null },
-    })),
+    commandReceipts: plan.commands.map((command, commandIndex) => {
+      const resolvedRefs = resolvedRefsForCommand(command)
+      return {
+        commandIndex,
+        commandKind: command.kind,
+        commandDigest: workbookActionCommandDigest(command),
+        previewOps: plan.ops,
+        appliedOps: plan.ops,
+        ...(resolvedRefs !== undefined ? { resolvedRefs } : {}),
+      }
+    }),
   }
+}
+
+function resolvedRefsForCommand(command: WorkbookActionPlan['commands'][number]) {
+  const refs: Record<string, unknown> = {}
+  if (command.target !== undefined) {
+    refs['target'] = toWorkbookRefData(command.target)
+  }
+  if (command.kind === 'writeFormula' && command.inputs.length > 0) {
+    refs['inputs'] = command.inputs.map((input) => toWorkbookRefData(input))
+  }
+  return Object.keys(refs).length === 0 ? undefined : refs
 }
 
 function commandReceipt<Refs>(plan: WorkbookActionPlan<Refs>, commandIndex = 0, options: { readonly resolvedRefs?: boolean } = {}) {
@@ -84,13 +99,14 @@ function commandReceipt<Refs>(plan: WorkbookActionPlan<Refs>, commandIndex = 0, 
   if (command === undefined) {
     throw new Error('expected planned command')
   }
+  const resolvedRefs = resolvedRefsForCommand(command)
   return {
     commandIndex,
     commandKind: command.kind,
     commandDigest: workbookActionCommandDigest(command),
     previewOps: plan.ops,
     appliedOps: plan.ops,
-    ...(options.resolvedRefs === false ? {} : { resolvedRefs: { commandIndex, target: command.target?.label ?? null } }),
+    ...(options.resolvedRefs === false || resolvedRefs === undefined ? {} : { resolvedRefs }),
   }
 }
 

@@ -746,7 +746,8 @@ command's concrete workbook op, and receipts whose flattened ops do not match
 the apply-level preview or applied ops. With `requireApplyProof: true`, a plan
 with high-level commands fails closed unless those command receipts are present.
 With `strict: true`, each command receipt must also prove concrete applied ops
-and non-empty resolved refs for ref-targeting commands. Strict runs also require
+and resolved refs that match the planned target/input refs for ref-targeting
+commands. Strict runs also require
 mutating plans to declare checks before `adapter.apply` is called, require
 `baseRevision` and `revision` on apply proof, fail closed on
 `expectedBaseRevision` mismatches, reject unverified apply summaries, and reject
@@ -780,7 +781,7 @@ the plan, the apply adapter is not called and the run fails with
 `apply_mismatch`. If `requireApplyProof` is true and the adapter omits preview
 or applied ops, omits command receipts for a command-based plan, or returns
 command receipts with no concrete applied ops, the run fails with
-`apply_not_verified`. In strict mode, missing resolved-ref proof for a
+`apply_not_verified`. In strict mode, missing or stale resolved-ref proof for a
 ref-targeting command also fails with `apply_not_verified`. Strict mode and
 `requireNoUnverified` reject missing preview/applied op pairs before readback. If
 the adapter returns a stale `planId`, the run fails before readback or check

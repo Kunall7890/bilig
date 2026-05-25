@@ -339,8 +339,9 @@ Use `{ strict: true }` as the single agent-safe option when callers want
 agent-grade proof without remembering multiple flags. Strict mode requires
 at least one planned check before mutating plans apply, apply proof, plan-id
 proof, base and applied workbook revisions, no unverified apply facts, concrete
-applied ops for every planned command, non-empty resolved-ref proof for commands
-that target workbook refs, and proof on every passed check.
+applied ops for every planned command, resolved-ref proof that matches each
+ref-targeting command's planned target/input refs, and proof on every passed
+check.
 Run options are data-only too: accessor-backed or non-boolean proof options
 return `invalid_run_options` before any adapter method is called. Optional
 `expectedBaseRevision` must be a non-negative safe integer and fails closed when
@@ -356,7 +357,7 @@ indexes, mismatched receipt ops, receipts whose ops do not match the planned
 command's concrete workbook op, or receipts whose flattened ops disagree with
 the apply-level ops. With `{ requireApplyProof: true }`, a plan with commands
 fails closed unless those command receipts are present. With `{ strict: true }`,
-empty per-command applied ops or missing resolved-ref proof fail closed too.
+empty per-command applied ops or stale resolved-ref proof fail closed too.
 The repository-owned `@bilig/core` adapter now supplies that strict proof for
 generic model actions: each command receipt includes materialized applied ops and
 the resolved target/input refs that produced them; single-cell formula receipts

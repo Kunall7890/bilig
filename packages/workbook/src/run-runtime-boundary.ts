@@ -1,6 +1,8 @@
+import { toWorkbookRefData } from './find.js'
+import { normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import type { WorkbookActionPlan } from './model.js'
 import type { WorkbookRunAdapter, WorkbookRunOptions } from './run.js'
-import type { WorkbookCheckResult, WorkbookRunApplySummary, WorkbookRunError } from './result.js'
+import type { WorkbookCheckResult, WorkbookRunApplyCommandReceipt, WorkbookRunApplySummary, WorkbookRunError } from './result.js'
 
 export type NormalizedWorkbookRunOptions = {
   readonly requireApplyProof: boolean
@@ -186,12 +188,40 @@ export function normalizeRunOptions(options: unknown): WorkbookRunOptionsNormali
   }
 }
 
-function resolvedRefProofNeedsData(command: WorkbookActionPlan['commands'][number]): boolean {
-  return command.target !== undefined || (command.kind === 'writeFormula' && command.inputs.length > 0)
+function expectedResolvedRefsForCommand(command: WorkbookActionPlan['commands'][number]): WorkbookActionInput | undefined {
+  const refs: Record<string, unknown> = {}
+  if (command.target !== undefined) {
+    refs['target'] = toWorkbookRefData(command.target)
+  }
+  if (command.kind === 'writeFormula' && command.inputs.length > 0) {
+    refs['inputs'] = command.inputs.map((input) => toWorkbookRefData(input))
+  }
+  return Object.keys(refs).length === 0 ? undefined : normalizeWorkbookActionInput(refs)
 }
 
-function hasResolvedRefProofData(value: unknown): boolean {
-  return typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length > 0
+function resolvedRefsMatch(expected: WorkbookActionInput, actual: WorkbookActionInput): boolean {
+  return JSON.stringify(expected) === JSON.stringify(normalizeWorkbookActionInput(actual))
+}
+
+function resolvedRefProofError(plan: WorkbookActionPlan, receipt: WorkbookRunApplyCommandReceipt): WorkbookRunError | undefined {
+  const command = plan.commands[receipt.commandIndex]
+  if (command === undefined) {
+    return undefined
+  }
+  const expected = expectedResolvedRefsForCommand(command)
+  if (expected === undefined) {
+    return undefined
+  }
+  if (receipt.resolvedRefs === undefined) {
+    return runError('apply_not_verified', `Adapter did not return resolved ref proof for command ${String(receipt.commandIndex)}`)
+  }
+  if (!resolvedRefsMatch(expected, receipt.resolvedRefs)) {
+    return runError(
+      'apply_not_verified',
+      `Adapter resolved ref proof for command ${String(receipt.commandIndex)} does not match the planned command`,
+    )
+  }
+  return undefined
 }
 
 export function preApplyProofErrors(
@@ -228,14 +258,11 @@ export function applyProofErrors(
     }
   }
   if (options.requireResolvedRefs && apply.commandReceipts !== undefined) {
-    const missingResolvedRefs = apply.commandReceipts.find((receipt) => {
-      const command = plan.commands[receipt.commandIndex]
-      return command !== undefined && resolvedRefProofNeedsData(command) && !hasResolvedRefProofData(receipt.resolvedRefs)
-    })
-    if (missingResolvedRefs !== undefined) {
-      return [
-        runError('apply_not_verified', `Adapter did not return resolved ref proof for command ${String(missingResolvedRefs.commandIndex)}`),
-      ]
+    const resolvedRefsError = apply.commandReceipts
+      .map((receipt) => resolvedRefProofError(plan, receipt))
+      .find((error) => error !== undefined)
+    if (resolvedRefsError !== undefined) {
+      return [resolvedRefsError]
     }
   }
   if (options.requirePlanId && apply.planId === undefined) {
