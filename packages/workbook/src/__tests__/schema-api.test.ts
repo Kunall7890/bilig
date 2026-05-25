@@ -238,6 +238,82 @@ describe('@bilig/workbook schema api', () => {
     })
   })
 
+  it('publishes comparison rule schemas with checker-matching value counts', () => {
+    const defs = objectEntry(workbookJsonSchemas.planData, '$defs')
+    const variants = arrayEntry(objectEntry(defs, 'engineOp'), 'oneOf')
+    const setDataValidation = workbookOpVariant(variants, 'setDataValidation')
+    const validation = schemaProperty(setDataValidation, 'validation')
+    const validationRule = schemaProperty(validation, 'rule')
+    const validationRuleVariants = arrayEntry(validationRule, 'oneOf')
+    const validationComparisonRules = validationRuleVariants.filter((entry) => {
+      const kind = schemaProperty(entry, 'kind')
+      return isRecord(kind) && Array.isArray(kind['enum']) && kind['enum'].includes('whole')
+    })
+
+    expect(validationComparisonRules).toEqual([
+      expect.objectContaining({
+        properties: expect.objectContaining({
+          operator: { enum: ['between', 'notBetween'] },
+          values: {
+            type: 'array',
+            minItems: 2,
+            maxItems: 2,
+            items: { $ref: '#/$defs/literalInput' },
+          },
+        }),
+      }),
+      expect.objectContaining({
+        properties: expect.objectContaining({
+          operator: {
+            enum: ['equal', 'notEqual', 'greaterThan', 'greaterThanOrEqual', 'lessThan', 'lessThanOrEqual'],
+          },
+          values: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 1,
+            items: { $ref: '#/$defs/literalInput' },
+          },
+        }),
+      }),
+    ])
+
+    const upsertConditionalFormat = workbookOpVariant(variants, 'upsertConditionalFormat')
+    const conditionalFormat = schemaProperty(upsertConditionalFormat, 'format')
+    const conditionalFormatRule = schemaProperty(conditionalFormat, 'rule')
+    const conditionalFormatRuleVariants = arrayEntry(conditionalFormatRule, 'oneOf')
+    const cellIsRules = conditionalFormatRuleVariants.filter((entry) => {
+      const kind = schemaProperty(entry, 'kind')
+      return isRecord(kind) && kind['const'] === 'cellIs'
+    })
+
+    expect(cellIsRules).toEqual([
+      expect.objectContaining({
+        properties: expect.objectContaining({
+          operator: { enum: ['between', 'notBetween'] },
+          values: {
+            type: 'array',
+            minItems: 2,
+            maxItems: 2,
+            items: { $ref: '#/$defs/literalInput' },
+          },
+        }),
+      }),
+      expect.objectContaining({
+        properties: expect.objectContaining({
+          operator: {
+            enum: ['equal', 'notEqual', 'greaterThan', 'greaterThanOrEqual', 'lessThan', 'lessThanOrEqual'],
+          },
+          values: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 1,
+            items: { $ref: '#/$defs/literalInput' },
+          },
+        }),
+      }),
+    ])
+  })
+
   it('publishes transported checks and format commands with checker-shaped payload schemas', () => {
     const defs = objectEntry(workbookJsonSchemas.planData, '$defs')
     expect(objectEntry(defs, 'literalInput')).toEqual({

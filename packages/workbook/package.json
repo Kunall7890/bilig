@@ -9,14 +9,14 @@
     "spreadsheet",
     "workbook"
   ],
-  "homepage": "https://github.com/proompteng/bilig/tree/main/packages/workbook#readme",
+  "homepage": "https://code.proompteng.ai/kalmyk/bilig/src/branch/main/packages/workbook#readme",
   "bugs": {
-    "url": "https://github.com/proompteng/bilig/issues"
+    "url": "https://code.proompteng.ai/kalmyk/bilig/issues"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/proompteng/bilig.git",
+    "url": "git+https://code.proompteng.ai/kalmyk/bilig.git",
     "directory": "packages/workbook"
   },
   "files": [

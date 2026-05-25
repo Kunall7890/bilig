@@ -319,8 +319,26 @@ const validationListSourceSchema: WorkbookJsonSchemaValue = {
   ],
 }
 
-const validationComparisonOperatorSchema = {
-  enum: ['between', 'notBetween', 'equal', 'notEqual', 'greaterThan', 'greaterThanOrEqual', 'lessThan', 'lessThanOrEqual'],
+const rangeComparisonOperatorSchema = {
+  enum: ['between', 'notBetween'],
+} as const
+const singleComparisonOperatorSchema = {
+  enum: ['equal', 'notEqual', 'greaterThan', 'greaterThanOrEqual', 'lessThan', 'lessThanOrEqual'],
+} as const
+const scalarValidationKindSchema = {
+  enum: ['whole', 'decimal', 'date', 'time', 'textLength'],
+} as const
+const twoValueComparisonValuesSchema = {
+  type: 'array',
+  minItems: 2,
+  maxItems: 2,
+  items: literalInputRefSchema,
+} as const
+const oneValueComparisonValuesSchema = {
+  type: 'array',
+  minItems: 1,
+  maxItems: 1,
+  items: literalInputRefSchema,
 } as const
 
 const validationRuleSchema: WorkbookJsonSchemaValue = {
@@ -355,9 +373,19 @@ const validationRuleSchema: WorkbookJsonSchemaValue = {
       required: ['kind', 'operator', 'values'],
       additionalProperties: true,
       properties: {
-        kind: { enum: ['whole', 'decimal', 'date', 'time', 'textLength'] },
-        operator: validationComparisonOperatorSchema,
-        values: { type: 'array', items: literalInputRefSchema },
+        kind: scalarValidationKindSchema,
+        operator: rangeComparisonOperatorSchema,
+        values: twoValueComparisonValuesSchema,
+      },
+    },
+    {
+      type: 'object',
+      required: ['kind', 'operator', 'values'],
+      additionalProperties: true,
+      properties: {
+        kind: scalarValidationKindSchema,
+        operator: singleComparisonOperatorSchema,
+        values: oneValueComparisonValuesSchema,
       },
     },
   ],
@@ -388,8 +416,18 @@ const conditionalFormatRuleSchema: WorkbookJsonSchemaValue = {
       additionalProperties: true,
       properties: {
         kind: { const: 'cellIs' },
-        operator: validationComparisonOperatorSchema,
-        values: { type: 'array', items: literalInputRefSchema },
+        operator: rangeComparisonOperatorSchema,
+        values: twoValueComparisonValuesSchema,
+      },
+    },
+    {
+      type: 'object',
+      required: ['kind', 'operator', 'values'],
+      additionalProperties: true,
+      properties: {
+        kind: { const: 'cellIs' },
+        operator: singleComparisonOperatorSchema,
+        values: oneValueComparisonValuesSchema,
       },
     },
     {
