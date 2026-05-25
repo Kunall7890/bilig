@@ -501,7 +501,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - runnable AI SDK streamText WorkPaper tool smoke:
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/ai-sdk-stream-text-tool-smoke.ts
 - low-code agent workflow formula readback:
-  npm exec --package @bilig/workpaper@0.100.0 -- bilig-n8n-formula-server --port 4321
+  npm exec --package @bilig/workpaper@0.101.0 -- bilig-n8n-formula-server --port 4321
   n8n community node package: @bilig/n8n-nodes-workpaper
   https://www.npmjs.com/package/@bilig/n8n-nodes-workpaper
   https://github.com/proompteng/bilig/tree/main/integrations/n8n-nodes-workpaper
@@ -542,8 +542,8 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - Claude Desktop MCPB bundle guide:
   https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html
   https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md
-  https://github.com/proompteng/bilig/releases/download/libraries-v0.100.0/bilig-workpaper.mcpb
-  https://github.com/proompteng/bilig/releases/download/libraries-v0.100.0/bilig-workpaper.mcpb.sha256
+  https://github.com/proompteng/bilig/releases/download/libraries-v0.101.0/bilig-workpaper.mcpb
+  https://github.com/proompteng/bilig/releases/download/libraries-v0.101.0/bilig-workpaper.mcpb.sha256
   pnpm mcpb:workpaper:build
 - MCP spreadsheet tool server feedback discussion:
   https://github.com/proompteng/bilig/discussions/230
