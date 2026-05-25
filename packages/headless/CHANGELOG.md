@@ -4,6 +4,23 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.107.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.105.0
+- Manual override: no
+
+## Features
+- feat(workbook): bind receipts to resolved ranges (97f727b8)
+
+## Fixes
+- fix(workbook): verify multi-cell formula receipts (726e583e)
+- fix(claims): gate Google Sheets 10x releases (d1b98256)
+
+## Internal runtime changes
+- docs(growth): add Open WebUI MCP setup (7b389b0d)
+- chore(release): runtime packages v0.106.0 (1da50c18)
+
 ## 0.106.0
 
 - Release type: minor
