@@ -117,6 +117,8 @@ export function formatErrorCode(code: ErrorCode): string {
   switch (code) {
     case ErrorCode.None:
       return '#ERROR!'
+    case ErrorCode.Null:
+      return '#NULL!'
     case ErrorCode.Div0:
       return '#DIV/0!'
     case ErrorCode.Ref:

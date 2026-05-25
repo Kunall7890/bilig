@@ -37,6 +37,7 @@ const PRECEDENCE: Record<string, number> = {
 }
 
 const ERROR_LITERAL_CODES: Record<string, ErrorCode> = {
+  '#NULL!': ErrorCode.Null,
   '#REF!': ErrorCode.Ref,
   '#NAME?': ErrorCode.Name,
   '#DIV/0!': ErrorCode.Div0,

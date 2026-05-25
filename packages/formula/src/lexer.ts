@@ -42,7 +42,7 @@ export function lexFormula(input: string): Token[] {
   const source = input.trim()
   const tokens: Token[] = []
   let index = 0
-  const errorLiterals = ['#BLOCKED!', '#CYCLE!', '#SPILL!', '#VALUE!', '#DIV/0!', '#NAME?', '#REF!', '#NUM!', '#N/A']
+  const errorLiterals = ['#BLOCKED!', '#CYCLE!', '#SPILL!', '#VALUE!', '#DIV/0!', '#NAME?', '#NULL!', '#REF!', '#NUM!', '#N/A']
 
   while (index < source.length) {
     const char = source[index]!

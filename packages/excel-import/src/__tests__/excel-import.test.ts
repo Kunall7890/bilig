@@ -183,7 +183,9 @@ function buildSparseRatesWorkbook(): Uint8Array {
   ])
   sheet.A5 = { t: 's', v: 'D' }
   sheet.B5 = { t: 'e', v: 42, w: '#N/A' }
-  sheet['!ref'] = 'A1:B5'
+  sheet.A6 = { t: 's', v: 'E' }
+  sheet.B6 = { t: 'e', v: 0, w: '#NULL!' }
+  sheet['!ref'] = 'A1:B6'
   XLSX.utils.book_append_sheet(workbook, sheet, 'Rates')
   return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
 }
@@ -193,7 +195,8 @@ function buildSparseExternalLinkRangeCacheWorkbook(): Uint8Array {
   const sheet = XLSX.utils.aoa_to_sheet([[null, 1]])
   sheet.C1 = { t: 'n', f: "SUM('[1]Rates'!$B$2:$B$4)*B1", v: 60 }
   sheet.C2 = { t: 'n', f: "IFERROR(SUM('[1]Rates'!$B$2:$B$5),99)", v: 60 }
-  sheet['!ref'] = 'A1:C2'
+  sheet.C3 = { t: 'n', f: "IFERROR(SUM('[1]Rates'!$B$6),88)", v: 60 }
+  sheet['!ref'] = 'A1:C3'
   XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
 
   const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
@@ -758,12 +761,13 @@ describe('excel import', () => {
     expect(cacheCells.get('B3')).toMatchObject({ value: null })
     expect(cacheCells.get('B4')).toMatchObject({ value: 50 })
     expect(cacheCells.get('B5')).toMatchObject({ formula: '#N/A' })
+    expect(cacheCells.get('B6')).toMatchObject({ formula: '#NULL!' })
     expect(imported.diagnostics?.externalWorkbookHydration).toMatchObject({
       externalWorkbookCount: 1,
       externalReferenceCount: 1,
       refreshedBookIndices: [1],
       refreshedSheetCount: 1,
-      refreshedCellCount: 4,
+      refreshedCellCount: 5,
       skippedNoMatchCount: 0,
       skippedAmbiguousMatchCount: 0,
       skippedEmptyRefreshCount: 0,
@@ -778,6 +782,10 @@ describe('excel import', () => {
       formula: "IFERROR(SUM('__bilig_ext_1_Rates'!$B$2:$B$5),99)",
       value: 60,
     })
+    expect(formulaCells.get('C3')).toMatchObject({
+      formula: 'IFERROR(SUM(#NULL!),88)',
+      value: 60,
+    })
 
     const engine = new SpreadsheetEngine({ workbookName: 'external-link-sparse-cache-import' })
     await engine.ready()
@@ -785,13 +793,16 @@ describe('excel import', () => {
 
     expect(engine.getCellValue('Model', 'C1')).toEqual({ tag: ValueTag.Number, value: 70 })
     expect(engine.getCellValue('Model', 'C2')).toEqual({ tag: ValueTag.Number, value: 99 })
+    expect(engine.getCellValue('Model', 'C3')).toEqual({ tag: ValueTag.Number, value: 88 })
     expect(engine.getCellValue('__bilig_ext_1_Rates', 'B5')).toEqual({ tag: ValueTag.Error, code: ErrorCode.NA })
+    expect(engine.getCellValue('__bilig_ext_1_Rates', 'B6')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Null })
 
     const externalLinkXml = readExternalLinkCacheXml(exportXlsx(imported.snapshot))
     expect(externalLinkXml).toContain('<cell r="B2"><v>20</v></cell>')
     expect(externalLinkXml).not.toContain('r="B3"')
     expect(externalLinkXml).toContain('<cell r="B4"><v>50</v></cell>')
     expect(externalLinkXml).toContain('<cell r="B5" t="e"><v>#N/A</v></cell>')
+    expect(externalLinkXml).toContain('<cell r="B6" t="e"><v>#NULL!</v></cell>')
   })
 
   it('does not hydrate external-link caches from an explicitly mismatched target', () => {

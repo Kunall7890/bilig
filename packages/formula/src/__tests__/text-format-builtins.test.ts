@@ -66,6 +66,7 @@ describe('text format builtins', () => {
 
     expect(VALUETOTEXT({ tag: ValueTag.Empty })).toEqual(text(''))
     expect(VALUETOTEXT({ tag: ValueTag.Boolean, value: false })).toEqual(text('FALSE'))
+    expect(VALUETOTEXT(err(ErrorCode.Null))).toEqual(text('#NULL!'))
     expect(VALUETOTEXT(err(ErrorCode.Div0))).toEqual(text('#DIV/0!'))
     expect(VALUETOTEXT(err(ErrorCode.Value))).toEqual(text('#VALUE!'))
     expect(VALUETOTEXT(err(ErrorCode.Name))).toEqual(text('#NAME?'))

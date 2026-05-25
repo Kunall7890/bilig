@@ -70,6 +70,11 @@ describe('formula parser/compiler edges', () => {
       code: ErrorCode.Div0,
     })
 
+    expect(parseFormula('#NULL!')).toEqual({
+      kind: 'ErrorLiteral',
+      code: ErrorCode.Null,
+    })
+
     expect(parseFormula("'Deleted Sheet'!#REF!")).toEqual({
       kind: 'ErrorLiteral',
       code: ErrorCode.Ref,

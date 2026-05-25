@@ -143,6 +143,7 @@ function parseInspectionCell(rawLine: string, expectedAddress: string): MacosExc
 }
 
 const excelErrorCodeByDisplay = new Map<string, ErrorCode>([
+  ['#NULL!', ErrorCode.Null],
   ['#DIV/0!', ErrorCode.Div0],
   ['#REF!', ErrorCode.Ref],
   ['#VALUE!', ErrorCode.Value],

@@ -20,6 +20,7 @@ const BINARY_PRECEDENCE: Record<BinaryExprNode['operator'], number> = {
 }
 
 const ERROR_LITERAL_TEXT: Record<number, string> = {
+  [ErrorCode.Null]: '#NULL!',
   [ErrorCode.Ref]: '#REF!',
   [ErrorCode.Name]: '#NAME?',
   [ErrorCode.Div0]: '#DIV/0!',

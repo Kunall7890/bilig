@@ -5,6 +5,7 @@ import type { StringPool } from '../string-pool.js'
 import type { WorkbookStore } from '../workbook-store.js'
 
 const formulaCacheErrorCodeByText = new Map<string, ErrorCode>([
+  ['#NULL!', ErrorCode.Null],
   ['#DIV/0!', ErrorCode.Div0],
   ['#REF!', ErrorCode.Ref],
   ['#VALUE!', ErrorCode.Value],
@@ -13,6 +14,7 @@ const formulaCacheErrorCodeByText = new Map<string, ErrorCode>([
   ['#SPILL!', ErrorCode.Spill],
   ['#BLOCKED!', ErrorCode.Blocked],
   ['#NUM!', ErrorCode.Num],
+  ['#FIELD!', ErrorCode.Field],
 ])
 
 export function restoreLiteralCell(

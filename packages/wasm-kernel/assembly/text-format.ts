@@ -702,6 +702,7 @@ export function numberValueParseText(input: string, decimalSeparator: string, gr
 }
 
 export function errorLabel(code: i32): string {
+  if (code == ErrorCode.Null) return '#NULL!'
   if (code == ErrorCode.Div0) return '#DIV/0!'
   if (code == ErrorCode.Ref) return '#REF!'
   if (code == ErrorCode.Value) return '#VALUE!'
@@ -711,6 +712,7 @@ export function errorLabel(code: i32): string {
   if (code == ErrorCode.Spill) return '#SPILL!'
   if (code == ErrorCode.Blocked) return '#BLOCKED!'
   if (code == ErrorCode.Num) return '#NUM!'
+  if (code == ErrorCode.Field) return '#FIELD!'
   return '#ERROR!'
 }
 

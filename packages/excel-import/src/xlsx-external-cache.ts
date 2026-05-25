@@ -390,7 +390,9 @@ export function externalCachedValueToLiteralInput(value: ExternalCachedValue): L
 }
 
 function externalCachedErrorFormula(value: string): string {
-  return ['#DIV/0!', '#REF!', '#VALUE!', '#NAME?', '#N/A', '#NUM!', '#SPILL!', '#BLOCKED!', '#CYCLE!'].includes(value) ? value : '#VALUE!'
+  return ['#NULL!', '#DIV/0!', '#REF!', '#VALUE!', '#NAME?', '#N/A', '#NUM!', '#SPILL!', '#BLOCKED!', '#CYCLE!', '#FIELD!'].includes(value)
+    ? value
+    : '#VALUE!'
 }
 
 function sheetNameKey(sheetName: string): string {

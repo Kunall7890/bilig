@@ -126,14 +126,14 @@ describe('macOS Desktop Excel external-link cache recalc oracle', () => {
         writeFileSync(linkedSourcePath, buildSparseExternalSourceWorkbook())
 
         const sourceBytes = buildSparseExternalLinkCacheWorkbook(pathToFileURL(linkedSourcePath).href)
-        expect(worksheetFormulaCacheValuesFor(sourceBytes, ['C1', 'C2'])).toEqual({ C1: '60', C2: '60' })
+        expect(worksheetFormulaCacheValuesFor(sourceBytes, ['C1', 'C2', 'C3'])).toEqual({ C1: '60', C2: '60', C3: '60' })
         writeFileSync(sourcePath, sourceBytes)
 
         const excelTruth = runMacosExcelInspectionOracle({
           workbookPath: sourcePath,
           worksheetName: 'Model',
           formulaCells: [],
-          inspectCells: ['C1', 'C2'],
+          inspectCells: ['C1', 'C2', 'C3'],
           companionWorkbookPaths: [linkedSourcePath],
           saveWorkbook: true,
           timeoutMs: 120_000,
@@ -143,10 +143,11 @@ describe('macOS Desktop Excel external-link cache recalc oracle', () => {
         expect(excelTruth.cells.map(({ address, value }) => ({ address, value }))).toEqual([
           { address: 'C1', value: { kind: 'number', value: 70 } },
           { address: 'C2', value: { kind: 'number', value: 99 } },
+          { address: 'C3', value: { kind: 'number', value: 88 } },
         ])
 
         const excelUpdatedBytes = new Uint8Array(readFileSync(sourcePath))
-        expect(worksheetFormulaCacheValuesFor(excelUpdatedBytes, ['C1', 'C2'])).toEqual({ C1: '70', C2: '99' })
+        expect(worksheetFormulaCacheValuesFor(excelUpdatedBytes, ['C1', 'C2', 'C3'])).toEqual({ C1: '70', C2: '99', C3: '88' })
 
         const recalculated = recalculateXlsx(sourceBytes, {
           fileName: 'external-link-sparse-cache.xlsx',
@@ -157,11 +158,12 @@ describe('macOS Desktop Excel external-link cache recalc oracle', () => {
               bytes: new Uint8Array(readFileSync(linkedSourcePath)),
             },
           ],
-          reads: ['Model!C1', 'Model!C2'],
+          reads: ['Model!C1', 'Model!C2', 'Model!C3'],
         })
         expect(numberCell(recalculated.reads['Model!C1'])).toBe(70)
         expect(numberCell(recalculated.reads['Model!C2'])).toBe(99)
-        expect(worksheetFormulaCacheValuesFor(recalculated.xlsx, ['C1', 'C2'])).toEqual({ C1: '70', C2: '99' })
+        expect(numberCell(recalculated.reads['Model!C3'])).toBe(88)
+        expect(worksheetFormulaCacheValuesFor(recalculated.xlsx, ['C1', 'C2', 'C3'])).toEqual({ C1: '70', C2: '99', C3: '88' })
         expect(externalLinkCachePayload(unzipSync(recalculated.xlsx))).toEqual(externalLinkCachePayload(unzipSync(excelUpdatedBytes)))
       } finally {
         rmSync(tempDir, { recursive: true, force: true })
@@ -195,12 +197,15 @@ function buildSparseExternalSourceWorkbook(): Uint8Array {
       ['B', null],
       ['C', 50],
       ['D', 0],
+      ['E', 0],
     ],
   })
   try {
     const zip = unzipSync(exportXlsx(workbook.exportSnapshot()))
     zip['xl/worksheets/sheet1.xml'] = strToU8(
-      xmlText(zip, 'xl/worksheets/sheet1.xml').replace(/<c\b[^>]*\br=(["'])B5\1[^>]*>[\s\S]*?<\/c>/u, '<c r="B5" t="e"><v>#N/A</v></c>'),
+      xmlText(zip, 'xl/worksheets/sheet1.xml')
+        .replace(/<c\b[^>]*\br=(["'])B5\1[^>]*>[\s\S]*?<\/c>/u, '<c r="B5" t="e"><v>#N/A</v></c>')
+        .replace(/<c\b[^>]*\br=(["'])B6\1[^>]*>[\s\S]*?<\/c>/u, '<c r="B6" t="e"><v>#NULL!</v></c>'),
     )
     return zipSync(zip)
   } finally {
@@ -280,6 +285,7 @@ function buildSparseExternalLinkCacheWorkbook(target: string): Uint8Array {
     Model: [
       [null, 1, 60],
       [null, null, 60],
+      [null, null, 60],
     ],
   })
   try {
@@ -287,7 +293,8 @@ function buildSparseExternalLinkCacheWorkbook(target: string): Uint8Array {
     zip['xl/worksheets/sheet1.xml'] = strToU8(
       xmlText(zip, 'xl/worksheets/sheet1.xml')
         .replace(/<c\b[^>]*\br=(["'])C1\1[^>]*>[\s\S]*?<\/c>/u, '<c r="C1"><f>SUM(\'[1]Rates\'!$B$2:$B$4)*B1</f><v>60</v></c>')
-        .replace(/<c\b[^>]*\br=(["'])C2\1[^>]*>[\s\S]*?<\/c>/u, '<c r="C2"><f>IFERROR(SUM(\'[1]Rates\'!$B$2:$B$5),99)</f><v>60</v></c>'),
+        .replace(/<c\b[^>]*\br=(["'])C2\1[^>]*>[\s\S]*?<\/c>/u, '<c r="C2"><f>IFERROR(SUM(\'[1]Rates\'!$B$2:$B$5),99)</f><v>60</v></c>')
+        .replace(/<c\b[^>]*\br=(["'])C3\1[^>]*>[\s\S]*?<\/c>/u, '<c r="C3"><f>IFERROR(SUM(\'[1]Rates\'!$B$6),88)</f><v>60</v></c>'),
     )
     zip['xl/workbook.xml'] = strToU8(
       ensureRelationshipNamespace(xmlText(zip, 'xl/workbook.xml')).replace(
@@ -312,6 +319,7 @@ function buildSparseExternalLinkCacheWorkbook(target: string): Uint8Array {
         '<row r="3"><cell r="B3"><v>20</v></cell></row>',
         '<row r="4"><cell r="B4"><v>30</v></cell></row>',
         '<row r="5"><cell r="B5"><v>40</v></cell></row>',
+        '<row r="6"><cell r="B6"><v>40</v></cell></row>',
         '</sheetData></sheetDataSet>',
         '</externalBook>',
         '</externalLink>',

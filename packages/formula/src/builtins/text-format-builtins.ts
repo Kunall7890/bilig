@@ -1,4 +1,4 @@
-import { ErrorCode, ValueTag, formatGeneralNumberValue, type CellValue } from '@bilig/protocol'
+import { ErrorCode, ValueTag, formatErrorCode, formatGeneralNumberValue, type CellValue } from '@bilig/protocol'
 import { excelSerialToDateParts, excelSerialWeekdayIndex, type ExcelDateSystem } from './excel-date.js'
 import type { TextBuiltin } from './text.js'
 
@@ -27,29 +27,8 @@ function valueToTextResult(deps: TextFormatBuiltinDeps, value: CellValue, format
       return deps.stringResult(value.value ? 'TRUE' : 'FALSE')
     case ValueTag.String:
       return deps.stringResult(format === 1 ? JSON.stringify(value.value) : value.value)
-    case ValueTag.Error: {
-      const label =
-        value.code === ErrorCode.Div0
-          ? '#DIV/0!'
-          : value.code === ErrorCode.Ref
-            ? '#REF!'
-            : value.code === ErrorCode.Value
-              ? '#VALUE!'
-              : value.code === ErrorCode.Name
-                ? '#NAME?'
-                : value.code === ErrorCode.NA
-                  ? '#N/A'
-                  : value.code === ErrorCode.Cycle
-                    ? '#CYCLE!'
-                    : value.code === ErrorCode.Spill
-                      ? '#SPILL!'
-                      : value.code === ErrorCode.Blocked
-                        ? '#BLOCKED!'
-                        : value.code === ErrorCode.Num
-                          ? '#NUM!'
-                          : '#ERROR!'
-      return deps.stringResult(label)
-    }
+    case ValueTag.Error:
+      return deps.stringResult(formatErrorCode(value.code))
   }
 }
 

@@ -311,6 +311,7 @@ describe('translateFormulaReferences', () => {
   it('serializes literals, structured refs, spill refs, invokes, and precedence-sensitive binaries', () => {
     expect(serializeFormula({ kind: 'BooleanLiteral', value: false })).toBe('FALSE')
     expect(serializeFormula({ kind: 'StringLiteral', value: 'a"b' })).toBe('"a""b"')
+    expect(serializeFormula({ kind: 'ErrorLiteral', code: ErrorCode.Null })).toBe('#NULL!')
     expect(serializeFormula({ kind: 'ErrorLiteral', code: ErrorCode.Spill })).toBe('#SPILL!')
     expect(
       serializeFormula({

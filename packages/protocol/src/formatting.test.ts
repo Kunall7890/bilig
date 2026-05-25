@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { ValueTag } from './enums.js'
+import { ErrorCode, ValueTag } from './enums.js'
 import { formatCellDisplayValue, formatGeneralNumberValue } from './formatting.js'
+import { formatErrorCode } from './types.js'
 
 describe('formatCellDisplayValue', () => {
   it('renders Excel date serials without local timezone drift', () => {
@@ -13,5 +14,10 @@ describe('formatCellDisplayValue', () => {
     expect(formatGeneralNumberValue(1)).toBe('1')
     expect(formatGeneralNumberValue(0.1 + 0.2)).toBe('0.3')
     expect(formatCellDisplayValue({ tag: ValueTag.Number, value: 0.1 + 0.2 }, 'general')).toBe('0.3')
+  })
+
+  it('renders Excel NULL errors without downgrading them', () => {
+    expect(formatErrorCode(ErrorCode.Null)).toBe('#NULL!')
+    expect(formatCellDisplayValue({ tag: ValueTag.Error, code: ErrorCode.Null }, undefined)).toBe('#NULL!')
   })
 })

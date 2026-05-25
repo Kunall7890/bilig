@@ -31,7 +31,8 @@ function isErrorCode(value: unknown): value is ErrorCode {
     value === ErrorCode.Spill ||
     value === ErrorCode.Blocked ||
     value === ErrorCode.Num ||
-    value === ErrorCode.Field
+    value === ErrorCode.Field ||
+    value === ErrorCode.Null
   )
 }
 

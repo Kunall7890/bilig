@@ -1,7 +1,7 @@
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { describe, expect, it, vi } from 'vitest'
 import { CellFlags, CellStore } from '../cell-store.js'
-import { restoreFreshRuntimeLiteralCell } from '../snapshot/runtime-image-literal-restore.js'
+import { formulaCachedLiteralToRestoredValue, restoreFreshRuntimeLiteralCell } from '../snapshot/runtime-image-literal-restore.js'
 import { StringPool } from '../string-pool.js'
 
 describe('restoreFreshRuntimeLiteralCell', () => {
@@ -53,5 +53,13 @@ describe('restoreFreshRuntimeLiteralCell', () => {
 
     expect(intern).toHaveBeenCalledOnce()
     expect(cellStore.stringIds[first]).toBe(cellStore.stringIds[second])
+  })
+
+  it('restores cached Excel formula error literals without string downgrades', () => {
+    const strings = new StringPool()
+    const cache = new Map<string, number>()
+
+    expect(formulaCachedLiteralToRestoredValue('#NULL!', strings, cache)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Null })
+    expect(formulaCachedLiteralToRestoredValue('#FIELD!', strings, cache)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Field })
   })
 })
