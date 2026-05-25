@@ -88,8 +88,9 @@ The core flow is deliberately boring:
 | `@bilig/headless`  | Owning workbook state inside Node with formula recalculation and import/export.               | Publishing generic agent intent contracts.         |
 | `@bilig/core`      | Implementing calculation or mutation internals.                                               | Consumer-facing agent model definitions.           |
 
-The root export keeps the complete contract. Subpath exports are available when
-an agent wants a smaller import map: `@bilig/workbook/model`,
+The root export keeps the ordinary agent path: models, refs, checks, formulas,
+plans, runtime proof, command results, schemas, and low-level ops. Subpaths are available when an agent wants a smaller import map:
+`@bilig/workbook/model`,
 `@bilig/workbook/prepare`, `@bilig/workbook/find`,
 `@bilig/workbook/check`, `@bilig/workbook/formula`,
 `@bilig/workbook/verify`, `@bilig/workbook/runtime`,
@@ -234,8 +235,8 @@ Runtimes can expose workbook extensions with the same data-first contract:
 - `checkWorkbookCommandReceipt`
 
 Import these from `@bilig/workbook/features` when building runtime-owned
-extensions. Ordinary models should prefer `writeFormula`, `writeValue`,
-`format`, `clear`, and checks.
+extensions. They are intentionally not on the root import path. Ordinary models
+should prefer `writeFormula`, `writeValue`, `format`, `clear`, and checks.
 
 ## Low-Level Ops
 

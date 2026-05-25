@@ -19,7 +19,7 @@ import {
   workbookCommandReceiptStatuses,
   workbookProjectionInterceptorPoints,
   workbookUiContributionSlots,
-} from '../index.js'
+} from '../features-public.js'
 
 function sparseArray(length = 1): unknown[] {
   const value: unknown[] = []

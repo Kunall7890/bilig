@@ -6,7 +6,7 @@ import type {
   WorkbookProjectionInterceptorPoint,
   WorkbookProjectionInterceptorRegistration,
   WorkbookRangeChromeProjection,
-} from '@bilig/workbook'
+} from '@bilig/workbook/features'
 import type { SpreadsheetEngine } from './engine.js'
 
 export interface WorkbookProjectionHandlerContext {

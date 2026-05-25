@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkWorkbookFeaturePlugin, defineWorkbookFeaturePlugin, normalizeWorkbookCommandDescriptor } from '../index.js'
+import { checkWorkbookFeaturePlugin, defineWorkbookFeaturePlugin, normalizeWorkbookCommandDescriptor } from '../features-public.js'
 
 class TablesPlugin {
   readonly id = 'tables'

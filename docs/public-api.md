@@ -61,8 +61,9 @@ Package identity is intentionally explicit:
 | `@bilig/headless`  | Owning workbook state inside Node with formula recalculation and import/export.               | Publishing generic agent intent contracts.         |
 | `@bilig/core`      | Implementing calculation or mutation internals.                                               | Consumer-facing agent model definitions.           |
 
-The root export remains the complete compatibility barrel. For agents that want
-smaller import maps, the package also publishes layered subpaths:
+The root export remains the ordinary agent path: models, refs, checks, formulas,
+plans, runtime proof, command results, schemas, and low-level ops. For agents
+that want smaller import maps, the package also publishes layered subpaths:
 `@bilig/workbook/model`, `@bilig/workbook/prepare`,
 `@bilig/workbook/find`, `@bilig/workbook/check`, `@bilig/workbook/formula`,
 `@bilig/workbook/verify`, `@bilig/workbook/runtime`,
@@ -229,8 +230,9 @@ Runtimes may expose workbook extensions as commands, projection interceptors,
 and UI contributions. The public package still stays data-only.
 
 Use `@bilig/workbook/features` for this advanced runtime extension surface.
-Ordinary agent models should stay on `defineModel`, `prepareWorkbookAction`,
-`runWorkbookPlan`, checks, and formulas.
+Feature plugin manifests and UI contribution helpers are intentionally not on
+the root import path. Ordinary agent models should stay on `defineModel`,
+`prepareWorkbookAction`, `runWorkbookPlan`, checks, and formulas.
 
 - `defineWorkbookFeaturePlugin` freezes extension metadata.
 - `checkWorkbookFeaturePlugin(data)` validates consumer-provided feature
@@ -293,9 +295,9 @@ Ordinary agent models should stay on `defineModel`, `prepareWorkbookAction`,
   evidence, rejected receipts cannot claim changed workbook proof, and noop
   receipts cannot claim changed ranges or ops.
 - Frozen vocabularies such as `workbookCommandCategories`,
-  `workbookCommandExecutionModes`, `workbookCommandReceiptStatuses`,
-  `workbookProjectionInterceptorPoints`, and `workbookUiContributionSlots` let
-  tool builders expose exact supported values without a schema framework.
+  `workbookCommandExecutionModes`, and `workbookCommandReceiptStatuses` let tool
+  builders expose exact supported values without a schema framework. Advanced
+  feature-extension vocabularies live under `@bilig/workbook/features`.
 
 Feature command handoff does not move execution into `@bilig/workbook`. The
 runtime owns command semantics. The package only normalizes the manifest,
@@ -404,8 +406,6 @@ Full export surface:
 - `isWorkbookRuntimeRequirementKind`
 - `workbookRuntimeCapabilities`
 - `isWorkbookRuntimeCapability`
-- `defineWorkbookFeaturePlugin`
-- `checkWorkbookFeaturePlugin`
 - `checkWorkbookCommandRequest`
 - `normalizeWorkbookCommandRequest`
 - `isWorkbookCommandRequest`
@@ -432,10 +432,6 @@ Full export surface:
 - `isWorkbookCommandExecutionMode`
 - `workbookCommandReceiptStatuses`
 - `isWorkbookCommandReceiptStatus`
-- `workbookProjectionInterceptorPoints`
-- `isWorkbookProjectionInterceptorPoint`
-- `workbookUiContributionSlots`
-- `isWorkbookUiContributionSlot`
 - `workbookCommandBundleCommandKinds`
 - `isWorkbookCommandBundleCommandKind`
 - `workbookJsonSchemaVersion`, `workbookJsonSchemaNames`, `workbookJsonSchemas`, `workbookJsonSchemaHashes`, `workbookJsonSchemaBundleHash`, and `workbookJsonSchemaHash`
@@ -444,7 +440,8 @@ Full export surface:
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.formulaEquals`, and `check.custom` through the model workbook context and as top-level helpers
 - `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookRef`, `WorkbookRefData`, `WorkbookRefKind`, `WorkbookRefIssueCode`, `WorkbookRefIssue`, `WorkbookRefCheckResult`, `WorkbookRefDataIssueCode`, `WorkbookRefDataIssue`, `WorkbookRefDataCheckResult`, `WorkbookBaseRefData`, `WorkbookRangeRef`, `WorkbookRangeRefData`, `WorkbookNameRef`, `WorkbookNameRefData`, `WorkbookTableRef`, `WorkbookTableRefData`, `WorkbookColumnRef`, `WorkbookColumnRefData`, `WorkbookRowsRef`, `WorkbookRowsRefData`, `WorkbookRowOperator`, `WorkbookRowValueType`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInputIssueCode`, `WorkbookActionInputIssue`, `WorkbookActionInputCheckResult`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookActionPreparation`, `WorkbookModelDescription`, `WorkbookModelDescriptionIssueCode`, `WorkbookModelDescriptionIssue`, `WorkbookModelDescriptionCheckResult`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookPlanData`, `WorkbookPlanId`, `WorkbookPlanDataRefs`, `WorkbookPlanDataIssueCode`, `WorkbookPlanDataIssue`, `WorkbookPlanDataCheckResult`, `WorkbookExecutablePlan`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRunApplySummaryDescription`, `WorkbookRunUnverifiedDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeRequirementKind`, `WorkbookRuntimeRequirementsIssueCode`, `WorkbookRuntimeRequirementsIssue`, `WorkbookRuntimeRequirementsCheckResult`, `WorkbookRuntimeCapability`, `WorkbookRuntimeAdapterIssueCode`, `WorkbookRuntimeAdapterMethod`, `WorkbookRuntimeAdapterIssue`, `WorkbookRuntimeAdapterCheckResult`, `WorkbookRuntimeAdapterCandidate`, `WorkbookJsonSchema`, `WorkbookJsonSchemaName`, `WorkbookJsonSchemaValue`, `WorkbookJsonSchemaScalar`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunOptions`, `WorkbookRunApplySummary`, `WorkbookCommandResolvedRefs`, `WorkbookResolvedRefData`, `WorkbookResolvedRefValue`, `WorkbookRunUnverified`, `WorkbookRunUnverifiedKind`, `WorkbookRunReadback`, `WorkbookReadbackProof`, `WorkbookReadbackProofCheckResult`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookBuiltInCheckKind`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookFormulaExpression`, `WorkbookFormulaLabel`, `WorkbookFormulaLabelDescription`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
-- `WorkbookFeatureId`, `WorkbookCommandCategory`, `WorkbookCommandExecutionMode`, `WorkbookCommandReceiptStatus`, `WorkbookCommandBundleCommandKind`, `WorkbookCommandResultStatus`, `WorkbookOpCommandReceiptIdentity`, `WorkbookOpCommandReceiptOptions`, `WorkbookProjectionInterceptorPoint`, `WorkbookUiContributionSlot`, `WorkbookFeatureLifecycleContext`, `WorkbookCommandDescriptor`, `WorkbookCommandRequest`, `WorkbookCommandRequestIssueCode`, `WorkbookCommandRequestIssue`, `WorkbookCommandRequestCheckResult`, `WorkbookCommandBundleScope`, `WorkbookCommandBundleCommand`, `WorkbookCommandBundle`, `WorkbookCommandResult`, `WorkbookCommandResultIssueCode`, `WorkbookCommandResultIssue`, `WorkbookCommandResultCheckResult`, `WorkbookCommandBundleIssueCode`, `WorkbookCommandBundleIssue`, `WorkbookCommandBundleCheckResult`, `WorkbookCommandReceipt`, `WorkbookCommandReceiptIssueCode`, `WorkbookCommandReceiptIssue`, `WorkbookCommandReceiptCheckResult`, `WorkbookFeaturePluginIssueCode`, `WorkbookFeaturePluginIssue`, `WorkbookFeaturePluginCheckResult`, `WorkbookCellDisplayProjection`, `WorkbookCellStyleProjection`, `WorkbookRangeChromeProjection`, `WorkbookRowVisibilityProjection`, `WorkbookCommandMetadataProjection`, `WorkbookProjectionContext`, `WorkbookProjectionInterceptorRegistration`, `WorkbookUiContribution`, `WorkbookFeatureRegistration`, and `WorkbookFeaturePlugin`
+- `WorkbookFeatureId`, `WorkbookCommandCategory`, `WorkbookCommandExecutionMode`, `WorkbookCommandReceiptStatus`, `WorkbookCommandBundleCommandKind`, `WorkbookCommandResultStatus`, `WorkbookOpCommandReceiptIdentity`, `WorkbookOpCommandReceiptOptions`, `WorkbookCommandRequest`, `WorkbookCommandRequestIssueCode`, `WorkbookCommandRequestIssue`, `WorkbookCommandRequestCheckResult`, `WorkbookCommandBundleScope`, `WorkbookCommandBundleCommand`, `WorkbookCommandBundle`, `WorkbookCommandResult`, `WorkbookCommandResultIssueCode`, `WorkbookCommandResultIssue`, `WorkbookCommandResultCheckResult`, `WorkbookCommandBundleIssueCode`, `WorkbookCommandBundleIssue`, `WorkbookCommandBundleCheckResult`, `WorkbookCommandReceipt`, `WorkbookCommandReceiptIssueCode`, `WorkbookCommandReceiptIssue`, and `WorkbookCommandReceiptCheckResult`
+- the advanced `@bilig/workbook/features` subpath additionally exports `defineWorkbookFeaturePlugin`, `checkWorkbookFeaturePlugin`, `workbookProjectionInterceptorPoints`, `isWorkbookProjectionInterceptorPoint`, `workbookUiContributionSlots`, `isWorkbookUiContributionSlot`, `WorkbookFeatureLifecycleContext`, `WorkbookCommandDescriptor`, `WorkbookProjectionInterceptorPoint`, `WorkbookUiContributionSlot`, `WorkbookFeaturePluginIssueCode`, `WorkbookFeaturePluginIssue`, `WorkbookFeaturePluginCheckResult`, `WorkbookCellDisplayProjection`, `WorkbookCellStyleProjection`, `WorkbookRangeChromeProjection`, `WorkbookRowVisibilityProjection`, `WorkbookCommandMetadataProjection`, `WorkbookProjectionContext`, `WorkbookProjectionInterceptorRegistration`, `WorkbookUiContribution`, `WorkbookFeatureRegistration`, and `WorkbookFeaturePlugin`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the

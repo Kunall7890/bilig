@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import * as workbookRoot from '../index.js'
 import { checkWorkbookCommandRequest, checkWorkbookFeaturePlugin, defineWorkbookFeaturePlugin } from '../features-public.js'
 
 interface PackageManifest {
@@ -235,6 +236,13 @@ describe('@bilig/workbook package boundary', () => {
   })
 
   it('keeps runtime feature extension helpers on the advanced features subpath', () => {
+    expect('defineWorkbookFeaturePlugin' in workbookRoot).toBe(false)
+    expect('checkWorkbookFeaturePlugin' in workbookRoot).toBe(false)
+    expect('workbookProjectionInterceptorPoints' in workbookRoot).toBe(false)
+    expect('workbookUiContributionSlots' in workbookRoot).toBe(false)
+    expect('isWorkbookProjectionInterceptorPoint' in workbookRoot).toBe(false)
+    expect('isWorkbookUiContributionSlot' in workbookRoot).toBe(false)
+
     expect(checkWorkbookCommandRequest({ featureId: 'tables', commandId: 'create' })).toMatchObject({
       status: 'valid',
     })

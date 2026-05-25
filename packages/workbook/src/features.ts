@@ -9,14 +9,6 @@ export type WorkbookFeatureId = string
 export type WorkbookCommandCategory = 'command' | 'operation' | 'mutation'
 export type WorkbookCommandExecutionMode = 'preview' | 'apply' | 'applyAndVerify'
 export type WorkbookCommandReceiptStatus = 'previewed' | 'applied' | 'rejected' | 'noop'
-export type WorkbookProjectionInterceptorPoint =
-  | 'cellDisplay'
-  | 'cellStyle'
-  | 'rangeChrome'
-  | 'rowVisibility'
-  | 'beforeCommand'
-  | 'commandMetadata'
-export type WorkbookUiContributionSlot = 'toolbar' | 'sidePanel' | 'floatingOverlay' | 'status'
 
 export const workbookCommandCategories = Object.freeze([
   'command',
@@ -39,24 +31,6 @@ export const workbookCommandReceiptStatuses = Object.freeze([
   'noop',
 ] as const satisfies readonly WorkbookCommandReceiptStatus[])
 const WORKBOOK_COMMAND_RECEIPT_STATUS_SET = new Set<string>(workbookCommandReceiptStatuses)
-
-export const workbookProjectionInterceptorPoints = Object.freeze([
-  'cellDisplay',
-  'cellStyle',
-  'rangeChrome',
-  'rowVisibility',
-  'beforeCommand',
-  'commandMetadata',
-] as const satisfies readonly WorkbookProjectionInterceptorPoint[])
-const WORKBOOK_PROJECTION_INTERCEPTOR_POINT_SET = new Set<string>(workbookProjectionInterceptorPoints)
-
-export const workbookUiContributionSlots = Object.freeze([
-  'toolbar',
-  'sidePanel',
-  'floatingOverlay',
-  'status',
-] as const satisfies readonly WorkbookUiContributionSlot[])
-const WORKBOOK_UI_CONTRIBUTION_SLOT_SET = new Set<string>(workbookUiContributionSlots)
 
 export interface WorkbookCommandRequest {
   readonly featureId: WorkbookFeatureId
@@ -140,14 +114,6 @@ export function isWorkbookCommandExecutionMode(value: unknown): value is Workboo
 
 export function isWorkbookCommandReceiptStatus(value: unknown): value is WorkbookCommandReceiptStatus {
   return typeof value === 'string' && WORKBOOK_COMMAND_RECEIPT_STATUS_SET.has(value)
-}
-
-export function isWorkbookProjectionInterceptorPoint(value: unknown): value is WorkbookProjectionInterceptorPoint {
-  return typeof value === 'string' && WORKBOOK_PROJECTION_INTERCEPTOR_POINT_SET.has(value)
-}
-
-export function isWorkbookUiContributionSlot(value: unknown): value is WorkbookUiContributionSlot {
-  return typeof value === 'string' && WORKBOOK_UI_CONTRIBUTION_SLOT_SET.has(value)
 }
 
 function commandRequestIssue(path: string, message: string): WorkbookCommandRequestIssue {

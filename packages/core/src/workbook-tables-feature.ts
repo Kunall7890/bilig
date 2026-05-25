@@ -1,15 +1,12 @@
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import { ValueTag, type CellRangeRef, type CellValue, type WorkbookTableSnapshot } from '@bilig/protocol'
+import type { WorkbookActionInput, WorkbookCommandReceipt, WorkbookCommandRequest, EngineOp } from '@bilig/workbook'
 import {
   defineWorkbookFeaturePlugin,
-  type WorkbookActionInput,
   type WorkbookCommandDescriptor,
-  type WorkbookCommandReceipt,
-  type WorkbookCommandRequest,
-  type EngineOp,
   type WorkbookFeaturePlugin,
   type WorkbookRangeChromeProjection,
-} from '@bilig/workbook'
+} from '@bilig/workbook/features'
 import type { SpreadsheetEngine } from './engine.js'
 import { buildDeleteTableOps, buildSetTableOps } from './engine/engine-workbook-object-metadata-ops.js'
 import { excelCompatibleTableColumnName } from './engine/services/table-column-name-helpers.js'

@@ -6,7 +6,7 @@ import {
   type WorkbookFeaturePlugin,
   type WorkbookProjectionInterceptorRegistration,
   type WorkbookUiContribution,
-} from '@bilig/workbook'
+} from '@bilig/workbook/features'
 
 export class WorkbookFeatureRegistry {
   private readonly plugins = new Map<WorkbookFeatureId, WorkbookFeaturePlugin>()

@@ -1,10 +1,5 @@
-import {
-  normalizeWorkbookCommandDescriptor,
-  normalizeWorkbookCommandReceipt,
-  type WorkbookCommandDescriptor,
-  type WorkbookCommandReceipt,
-  type WorkbookCommandRequest,
-} from '@bilig/workbook'
+import { normalizeWorkbookCommandReceipt, type WorkbookCommandReceipt, type WorkbookCommandRequest } from '@bilig/workbook'
+import { normalizeWorkbookCommandDescriptor, type WorkbookCommandDescriptor } from '@bilig/workbook/features'
 import type { SpreadsheetEngine } from './engine.js'
 import type { WorkbookProjectionInterceptorService } from './workbook-projection-interceptors.js'
 
