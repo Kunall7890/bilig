@@ -192,7 +192,7 @@ Agent tools that support skill manifests can start from
 [`skill.md`](docs/skill.md) or the well-known index at
 [`docs/.well-known/agent-skills/index.json`](docs/.well-known/agent-skills/index.json).
 Claude Desktop users can also install the released MCPB bundle directly:
-<https://github.com/proompteng/bilig/releases/download/libraries-v0.94.0/bilig-workpaper.mcpb>.
+<https://github.com/proompteng/bilig/releases/download/libraries-v0.94.1/bilig-workpaper.mcpb>.
 If you need a copy-paste eval for another tool host, use the
 [agent workbook challenge](docs/agent-workbook-challenge.md): one input edit,
 one dependent formula readback, one serialized restore, and a `verified: true`
@@ -312,7 +312,7 @@ matters.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.94.0`:
+Current checked npm footprint for `@bilig/headless@0.94.1`:
 
 - Pack dry run: `795 kB` tarball, `4.87 MB` unpacked, `777` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX

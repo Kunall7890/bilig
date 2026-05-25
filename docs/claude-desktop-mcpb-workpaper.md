@@ -20,8 +20,8 @@ needs no API key.
 Use the release asset when you want the shortest install path:
 
 ```sh
-curl -fsSLO https://github.com/proompteng/bilig/releases/download/libraries-v0.94.0/bilig-workpaper.mcpb
-curl -fsSLO https://github.com/proompteng/bilig/releases/download/libraries-v0.94.0/bilig-workpaper.mcpb.sha256
+curl -fsSLO https://github.com/proompteng/bilig/releases/download/libraries-v0.94.1/bilig-workpaper.mcpb
+curl -fsSLO https://github.com/proompteng/bilig/releases/download/libraries-v0.94.1/bilig-workpaper.mcpb.sha256
 shasum -a 256 -c bilig-workpaper.mcpb.sha256
 open bilig-workpaper.mcpb
 ```
