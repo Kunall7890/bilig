@@ -163,6 +163,17 @@ test('@browser-ci web app keeps a user click selection after opening from a deep
   await expect.poll(() => page.evaluate(() => new URL(window.location.href).searchParams.get('cell') ?? '')).not.toBe('D53')
 })
 
+test('@browser-ci web app refuses a blank Sheet1 fallback for a missing Prepaid deep-link', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-missing-prepaid-deep-link')
+  await page.setViewportSize({ width: 1166, height: 820 })
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Prepaid+Template&cell=B34`)
+
+  await expect(page.getByTestId('missing-sheet-state')).toContainText('Prepaid Template', { timeout: 15_000 })
+  await expect(page.getByTestId('missing-sheet-state')).toContainText('Open Sheet1')
+  await expect(page.getByTestId('sheet-grid')).toHaveCount(0)
+  await expect(page.getByTestId('status-selection')).toHaveCount(0)
+})
+
 test('@browser-ci web app keeps dense accounting-sheet text payloads complete in the native text layer', async ({
   page,
   context,

@@ -346,11 +346,77 @@ test('@browser-ci web app keeps reverse-drag range selection chrome geometricall
   await expectBorderStyle(page.locator('[data-grid-selection-visual-role="selection-border"]'), {
     boxShadow: 'none',
     color: 'rgb(33, 115, 70)',
-    offset: '0px',
-    style: 'solid',
     width: '1px',
   })
   await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCSS('background-color', 'rgb(33, 115, 70)')
+})
+
+test('@browser-ci web app paints active-cell seams as one owned stroke over gridlines', async ({ page }) => {
+  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-active-cell-single-seam'))}&persist=0`)
+  await waitForWorkbookReady(page)
+
+  await selectAddress(page, 'A1')
+  const activeCellBox = await getProductCellRangeBox(page, 0, 0, 0, 0)
+
+  const leftStroke = await sampleViewportPixel(page, activeCellBox.x - 1, activeCellBox.y + 8)
+  const afterLeftStroke = await sampleViewportPixel(page, activeCellBox.x, activeCellBox.y + 8)
+  const topStroke = await sampleViewportPixel(page, activeCellBox.x + 8, activeCellBox.y - 1)
+  const afterTopStroke = await sampleViewportPixel(page, activeCellBox.x + 8, activeCellBox.y)
+  const rightStroke = await sampleViewportPixel(page, activeCellBox.x + activeCellBox.width - 1, activeCellBox.y + 8)
+  const afterRightStroke = await sampleViewportPixel(page, activeCellBox.x + activeCellBox.width, activeCellBox.y + 8)
+  const bottomStroke = await sampleViewportPixel(page, activeCellBox.x + 8, activeCellBox.y + activeCellBox.height - 1)
+  const afterBottomStroke = await sampleViewportPixel(page, activeCellBox.x + 8, activeCellBox.y + activeCellBox.height)
+
+  expect(isSelectionAccentPixel(leftStroke), 'active cell left seam should replace the header/body gridline').toBe(true)
+  expect(isSelectionAccentPixel(afterLeftStroke), 'active cell left seam should not leave a second green line inside the body').toBe(false)
+  expect(isGridBorderPixel(afterLeftStroke), 'active cell left seam should not leave a second body gridline beside the header seam').toBe(
+    false,
+  )
+  expect(isSelectionAccentPixel(topStroke), 'active cell top seam should replace the header/body gridline').toBe(true)
+  expect(isSelectionAccentPixel(afterTopStroke), 'active cell top seam should not leave a second green line inside the body').toBe(false)
+  expect(isGridBorderPixel(afterTopStroke), 'active cell top seam should not leave a second body gridline beside the header seam').toBe(
+    false,
+  )
+  expect(isSelectionAccentPixel(rightStroke), 'active cell right seam should replace the gridline with the selection stroke').toBe(true)
+  expect(isSelectionAccentPixel(afterRightStroke), 'active cell right seam should not leave a second green line outside the cell').toBe(
+    false,
+  )
+  expect(isGridBorderPixel(afterRightStroke), 'active cell right seam should not leave a second body gridline outside the cell').toBe(false)
+  expect(isSelectionAccentPixel(bottomStroke), 'active cell bottom seam should replace the gridline with the selection stroke').toBe(true)
+  expect(isSelectionAccentPixel(afterBottomStroke), 'active cell bottom seam should not leave a second green line outside the cell').toBe(
+    false,
+  )
+  expect(isGridBorderPixel(afterBottomStroke), 'active cell bottom seam should not leave a second body gridline outside the cell').toBe(
+    false,
+  )
+})
+
+test('@browser-ci web app keeps selected row headers and body cells on a single seam', async ({ page }) => {
+  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-row-header-single-seam'))}&persist=0`)
+  await waitForWorkbookReady(page)
+
+  await dragProductHeaderSelection(page, 'row', 7, 14)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!8:15')
+
+  const gridLocator = page.getByTestId('sheet-grid')
+  await expect(gridLocator).toBeVisible()
+  const grid = await gridLocator.boundingBox()
+  if (!grid) {
+    throw new Error('sheet grid is not visible')
+  }
+  const rowTop = await getProductRowTop(page, 7)
+  const seamY = grid.y + PRODUCT_HEADER_HEIGHT + rowTop + 10
+  const headerLastPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 1, seamY)
+  const bodyFirstPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH, seamY)
+
+  expect(isGridBorderPixel(bodyFirstPixel), 'row selection should not paint a second leading body gridline after the header seam').toBe(
+    false,
+  )
+  expect(
+    isGridBorderPixel(headerLastPixel) && isGridBorderPixel(bodyFirstPixel),
+    'row header/body seam should not show adjacent structural gridlines',
+  ).toBe(false)
+  expect(bodyFirstPixel.green, 'first body pixel should remain selected-row fill, not a border').toBeGreaterThan(bodyFirstPixel.red)
 })
 
 test('@browser-ci web app keeps the in-cell editor on the same selection chrome', async ({ page }) => {
@@ -393,8 +459,6 @@ test('@browser-ci web app collapses a locally dragged range when the active addr
   await expectBorderStyle(page.locator('[data-grid-selection-visual-role="active-border"]'), {
     boxShadow: 'none',
     color: 'rgb(33, 115, 70)',
-    offset: '0px',
-    style: 'solid',
     width: '1px',
   })
 })
@@ -1162,6 +1226,77 @@ async function sampleCellInteriorPixel(
   )
 }
 
+async function sampleViewportPixel(
+  page: Page,
+  x: number,
+  y: number,
+): Promise<{
+  readonly blue: number
+  readonly green: number
+  readonly red: number
+}> {
+  const buffer = await page.screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    clip: {
+      height: 1,
+      width: 1,
+      x: Math.round(x),
+      y: Math.round(y),
+    },
+  })
+  return await page.evaluate(
+    async ({ dataUrl }) => {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const element = new Image()
+        element.addEventListener('load', () => resolve(element), { once: true })
+        element.addEventListener('error', () => reject(new Error('Failed to decode active-cell seam screenshot')), { once: true })
+        element.src = dataUrl
+      })
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      const context = canvas.getContext('2d')
+      if (!context) {
+        throw new Error('Missing 2d context for active-cell seam screenshot analysis')
+      }
+      context.drawImage(image, 0, 0)
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+      let red = 0
+      let green = 0
+      let blue = 0
+      let count = 0
+      for (let index = 0; index < pixels.length; index += 4) {
+        const alpha = pixels[index + 3] ?? 0
+        if (alpha <= 200) {
+          continue
+        }
+        red += pixels[index] ?? 255
+        green += pixels[index + 1] ?? 255
+        blue += pixels[index + 2] ?? 255
+        count += 1
+      }
+      if (count === 0) {
+        throw new Error('No opaque active-cell seam screenshot pixels sampled')
+      }
+      return {
+        blue: Math.round(blue / count),
+        green: Math.round(green / count),
+        red: Math.round(red / count),
+      }
+    },
+    { dataUrl: `data:image/png;base64,${buffer.toString('base64')}` },
+  )
+}
+
+function isSelectionAccentPixel(pixel: { readonly blue: number; readonly green: number; readonly red: number }): boolean {
+  return Math.abs(pixel.red - 33) <= 6 && Math.abs(pixel.green - 115) <= 8 && Math.abs(pixel.blue - 70) <= 6
+}
+
+function isGridBorderPixel(pixel: { readonly blue: number; readonly green: number; readonly red: number }): boolean {
+  return Math.abs(pixel.red - 221) <= 8 && Math.abs(pixel.green - 216) <= 8 && Math.abs(pixel.blue - 204) <= 8
+}
+
 async function isTypeGpuCanvasActive(page: Page): Promise<boolean> {
   return (await page.getByTestId('grid-pane-renderer').count()) > 0
 }
@@ -1186,27 +1321,61 @@ async function expectBorderStyle(
   expected: {
     readonly boxShadow: string
     readonly color?: string | undefined
-    readonly offset: string
-    readonly style: string
     readonly width: string
   },
 ): Promise<void> {
   const actual = await locator.evaluate((node) => {
     const style = window.getComputedStyle(node)
+    const edges = Array.from(node.querySelectorAll<HTMLElement>('[data-grid-selection-visual-edge]')).map((edge) => {
+      const edgeStyle = window.getComputedStyle(edge)
+      return {
+        backgroundColor: edgeStyle.backgroundColor,
+        bottom: edgeStyle.bottom,
+        edge: edge.dataset.gridSelectionVisualEdge ?? '',
+        height: edgeStyle.height,
+        left: edgeStyle.left,
+        right: edgeStyle.right,
+        top: edgeStyle.top,
+        width: edgeStyle.width,
+      }
+    })
     return {
       boxShadow: style.boxShadow,
-      color: style.outlineColor,
-      offset: style.outlineOffset,
-      style: style.outlineStyle,
-      width: style.outlineWidth,
+      edges,
+      outlineStyle: style.outlineStyle,
     }
   })
-  const { color, ...expectedStroke } = expected
-  const { color: actualColor, ...actualStroke } = actual
-  expect(actualStroke).toEqual(expectedStroke)
-  if (color !== undefined) {
-    expect(actualColor).toBe(color)
+  expect(actual.boxShadow).toBe(expected.boxShadow)
+  expect(actual.outlineStyle).toBe('none')
+  expect(actual.edges).toHaveLength(4)
+  expect(actual.edges.map((edge) => edge.edge)).toEqual(['top', 'right', 'bottom', 'left'])
+  for (const edge of actual.edges) {
+    expect(edge.backgroundColor).toBe(expected.color)
   }
+  expect(actual.edges.find((edge) => edge.edge === 'top')).toMatchObject({
+    height: expected.width,
+    left: '-1px',
+    right: '0px',
+    top: '-1px',
+  })
+  expect(actual.edges.find((edge) => edge.edge === 'right')).toMatchObject({
+    bottom: '0px',
+    right: '0px',
+    top: '-1px',
+    width: expected.width,
+  })
+  expect(actual.edges.find((edge) => edge.edge === 'bottom')).toMatchObject({
+    bottom: '0px',
+    height: expected.width,
+    left: '-1px',
+    right: '0px',
+  })
+  expect(actual.edges.find((edge) => edge.edge === 'left')).toMatchObject({
+    bottom: '0px',
+    left: '-1px',
+    top: '-1px',
+    width: expected.width,
+  })
 }
 
 async function dragSelectedRangeBorderPreview(

@@ -160,7 +160,9 @@ describe('worker transport', () => {
     const received: Uint8Array[] = []
     const unsubscribe = client.subscribeViewportPatches(
       {
+        sheetId: 1,
         sheetName: 'Sheet1',
+        sheetOrdinal: 0,
         rowStart: 0,
         rowEnd: 10,
         colStart: 0,
@@ -181,7 +183,9 @@ describe('worker transport', () => {
     expect(decodeViewportPatch(firstPatch)).toMatchObject({
       full: true,
       viewport: {
+        sheetId: 1,
         sheetName: 'Sheet1',
+        sheetOrdinal: 0,
         rowStart: 0,
         rowEnd: 10,
         colStart: 0,

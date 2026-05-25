@@ -146,6 +146,171 @@ function createTestEngine(
 }
 
 describe('worker runtime viewport patches', () => {
+  it('returns a typed sheet-id view window for authoritative visible cells', async () => {
+    const runtime = new WorkbookWorkerRuntime()
+    await runtime.bootstrap({
+      documentId: 'viewport-window-ready',
+      replicaId: 'replica-1',
+      persistState: false,
+    })
+    await runtime.ready()
+    await runtime.setCellValue('Sheet1', 'B2', 'ready-window')
+
+    const window = runtime.getWorkbookViewWindow({
+      sheetId: 1,
+      sheetName: 'Sheet1',
+      rowStart: 0,
+      rowEnd: 2,
+      colStart: 0,
+      colEnd: 2,
+    })
+
+    expect(window).toMatchObject({
+      status: 'ready',
+      request: {
+        sheetId: 1,
+        sheetName: 'Sheet1',
+      },
+      sheet: {
+        sheetId: 1,
+        sheetName: 'Sheet1',
+      },
+      renderAck: {
+        status: 'not-requested',
+        reason: 'authoritative-window-built-before-browser-render-ack',
+      },
+    })
+    expect(window.cells).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          row: 1,
+          col: 1,
+          address: 'B2',
+          displayText: 'ready-window',
+          editorText: 'ready-window',
+        }),
+      ]),
+    )
+
+    runtime.dispose()
+  })
+
+  it('returns a typed unavailable view window instead of succeeding with a blank fallback sheet', async () => {
+    const runtime = new WorkbookWorkerRuntime()
+    await runtime.bootstrap({
+      documentId: 'viewport-window-missing-sheet',
+      replicaId: 'replica-1',
+      persistState: false,
+    })
+    await runtime.ready()
+
+    expect(
+      runtime.getWorkbookViewWindow({
+        sheetId: 9999,
+        sheetName: 'Prepaid Template',
+        rowStart: 10,
+        rowEnd: 12,
+        colStart: 1,
+        colEnd: 3,
+      }),
+    ).toMatchObject({
+      status: 'missing-sheet',
+      reason: 'sheet-id-not-found',
+      sheet: null,
+      cells: [],
+      renderAck: {
+        status: 'rejected',
+        reason: 'sheet-id-not-found',
+      },
+    })
+
+    expect(
+      runtime.getWorkbookViewWindow({
+        sheetId: 1,
+        sheetName: 'Prepaid Template',
+        rowStart: 10,
+        rowEnd: 12,
+        colStart: 1,
+        colEnd: 3,
+      }),
+    ).toMatchObject({
+      status: 'identity-mismatch',
+      reason: 'sheet-name-does-not-match-sheet-id',
+      sheet: {
+        sheetId: 1,
+        sheetName: 'Sheet1',
+      },
+      cells: [],
+    })
+
+    runtime.dispose()
+  })
+
+  it('carries sheet identity through runtime viewport patches', async () => {
+    const runtime = new WorkbookWorkerRuntime()
+    await runtime.bootstrap({
+      documentId: 'viewport-patch-sheet-id',
+      replicaId: 'replica-1',
+      persistState: false,
+    })
+    await runtime.ready()
+
+    const patches: ViewportPatch[] = []
+    const unsubscribe = runtime.subscribeViewportPatches(
+      {
+        sheetId: 1,
+        sheetName: 'Sheet1',
+        sheetOrdinal: 0,
+        rowStart: 0,
+        rowEnd: 1,
+        colStart: 0,
+        colEnd: 1,
+      },
+      (bytes) => {
+        patches.push(decodeViewportPatch(bytes))
+      },
+    )
+
+    expect(patches.at(0)?.viewport).toMatchObject({
+      sheetId: 1,
+      sheetName: 'Sheet1',
+      sheetOrdinal: 0,
+    })
+
+    unsubscribe()
+    runtime.dispose()
+  })
+
+  it('rejects sheet-id mismatched viewport subscriptions instead of publishing fallback cells', async () => {
+    const runtime = new WorkbookWorkerRuntime()
+    await runtime.bootstrap({
+      documentId: 'viewport-patch-sheet-id-mismatch',
+      replicaId: 'replica-1',
+      persistState: false,
+    })
+    await runtime.ready()
+
+    const listener = vi.fn()
+    const unsubscribe = runtime.subscribeViewportPatches(
+      {
+        sheetId: 999,
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 1,
+        colStart: 0,
+        colEnd: 1,
+      },
+      listener,
+    )
+
+    await runtime.setCellValue('Sheet1', 'A1', 'must-not-leak')
+
+    expect(listener).not.toHaveBeenCalled()
+
+    unsubscribe()
+    runtime.dispose()
+  })
+
   it('refuses to fabricate a full empty viewport patch when the sheet is missing', () => {
     const state = {
       ...createSubscriptionState(),

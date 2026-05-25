@@ -89,6 +89,8 @@ function sameWorkerRuntimeSelection(left: WorkerRuntimeSelection, right: WorkerR
 }
 
 function shouldAcceptSessionSelection(input: {
+  readonly initialSelection: WorkerRuntimeSelection
+  readonly preserveMissingInitialSelection: boolean
   readonly selection: WorkerRuntimeSelection
   readonly pendingSelection: WorkerRuntimeSelection
   readonly runtimeState: WorkbookWorkerStateSnapshot | null
@@ -100,6 +102,14 @@ function shouldAcceptSessionSelection(input: {
   if (sheetNames.length === 0) {
     return false
   }
+  if (
+    input.preserveMissingInitialSelection &&
+    sameWorkerRuntimeSelection(input.pendingSelection, input.initialSelection) &&
+    !sheetNames.includes(input.pendingSelection.sheetName) &&
+    sheetNames.includes(input.selection.sheetName)
+  ) {
+    return false
+  }
   return !sheetNames.includes(input.pendingSelection.sheetName) && sheetNames.includes(input.selection.sheetName)
 }
 
@@ -107,6 +117,16 @@ function resolveSessionReadySelection(input: {
   readonly context: WorkerRuntimeMachineContext
   readonly event: { readonly controller: WorkerRuntimeSessionController; readonly requestedSelection: WorkerRuntimeSelection }
 }): WorkerRuntimeSelection {
+  const runtimeState = normalizeControllerRuntimeState(input.event.controller)
+  const sheetNames = runtimeState?.sheetNames ?? []
+  if (
+    input.context.sessionInput.preserveMissingInitialSelection === true &&
+    sameWorkerRuntimeSelection(input.context.selection, input.event.requestedSelection) &&
+    sheetNames.length > 0 &&
+    !sheetNames.includes(input.context.selection.sheetName)
+  ) {
+    return input.context.selection
+  }
   if (!sameWorkerRuntimeSelection(input.context.selection, input.event.requestedSelection)) {
     return input.context.selection
   }
@@ -141,6 +161,9 @@ function buildSessionCreateInput(input: WorkerRuntimeMachineInput): CreateWorker
     ...(input.authoritativeSyncEnabled === undefined ? {} : { authoritativeSyncEnabled: input.authoritativeSyncEnabled }),
     ...(input.authoritativeEventSyncEnabled === undefined ? {} : { authoritativeEventSyncEnabled: input.authoritativeEventSyncEnabled }),
     initialSelection: input.initialSelection,
+    ...(input.preserveMissingInitialSelection === undefined
+      ? {}
+      : { preserveMissingInitialSelection: input.preserveMissingInitialSelection }),
     ...(input.perfSession ? { perfSession: input.perfSession } : {}),
     ...(input.zero ? { zero: input.zero } : {}),
     ...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {}),
@@ -190,6 +213,9 @@ function buildRuntimeSessionActorInput(context: WorkerRuntimeMachineContext): Wo
       ? {}
       : { authoritativeEventSyncEnabled: sessionInput.authoritativeEventSyncEnabled }),
     initialSelection: context.selection,
+    ...(sessionInput.preserveMissingInitialSelection === undefined
+      ? {}
+      : { preserveMissingInitialSelection: sessionInput.preserveMissingInitialSelection }),
     connectionStateName: context.connectionStateName,
     ...(sessionInput.createSession ? { createSession: sessionInput.createSession } : {}),
     ...(sessionInput.createWorker ? { createWorker: sessionInput.createWorker } : {}),
@@ -322,6 +348,8 @@ export function createWorkerRuntimeMachine() {
               onSelection(selection) {
                 if (
                   !shouldAcceptSessionSelection({
+                    initialSelection: input.initialSelection,
+                    preserveMissingInitialSelection: input.preserveMissingInitialSelection === true,
                     selection,
                     pendingSelection,
                     runtimeState: latestRuntimeState,

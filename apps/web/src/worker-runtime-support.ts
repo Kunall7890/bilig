@@ -300,7 +300,9 @@ export function normalizeViewport(subscription: ViewportPatchSubscription): View
   const colStart = Math.max(0, Math.min(MAX_COLS - 1, subscription.colStart))
   const colEnd = Math.max(colStart, Math.min(MAX_COLS - 1, subscription.colEnd))
   return {
+    ...(subscription.sheetId === undefined ? {} : { sheetId: subscription.sheetId }),
     sheetName: subscription.sheetName,
+    ...(subscription.sheetOrdinal === undefined ? {} : { sheetOrdinal: subscription.sheetOrdinal }),
     rowStart,
     rowEnd,
     colStart,

@@ -12,6 +12,9 @@ import { workbookThemeColors } from './workbookTheme.js'
 export { buildGridSelectionVisualRects } from './gridSelectionVisualRects.js'
 export type { GridSelectionVisualRect, GridSelectionVisualRectRole } from './gridSelectionVisualRects.js'
 
+const SELECTION_STROKE_WIDTH = 1
+const SELECTION_BORDER_EDGE_NAMES = ['top', 'right', 'bottom', 'left'] as const
+
 export interface GridSelectionVisualOverlayProps {
   readonly geometry?: GridGeometrySnapshot | null | undefined
   readonly getGeometrySnapshot?: (() => GridGeometrySnapshot | null) | undefined
@@ -81,7 +84,13 @@ export function GridSelectionVisualOverlay(props: GridSelectionVisualOverlayProp
           data-grid-selection-visual-role={rect.role}
           key={keyForRect(rect)}
           style={styleForRect(rect, selectionChromeMode)}
-        />
+        >
+          {rect.role === 'selection-border' || rect.role === 'active-border'
+            ? SELECTION_BORDER_EDGE_NAMES.map((edge) => (
+                <div aria-hidden="true" data-grid-selection-visual-edge={edge} key={edge} style={styleForSelectionBorderEdge(edge)} />
+              ))
+            : null}
+        </div>
       ))}
     </div>
   )
@@ -127,11 +136,9 @@ function styleForRect(
       ...base,
       backgroundColor: 'transparent',
       boxSizing: 'border-box',
+      overflow: 'visible',
       boxShadow: 'none',
-      outlineColor: workbookThemeColors.selectionAccent,
-      outlineOffset: 0,
-      outlineStyle: 'solid',
-      outlineWidth: 1,
+      outline: 'none',
     }
   }
   if (rect.role === 'selection-gridline') {
@@ -164,5 +171,46 @@ function styleForRect(
   return {
     ...base,
     backgroundColor: workbookThemeColors.selectionFill,
+  }
+}
+
+function styleForSelectionBorderEdge(edge: (typeof SELECTION_BORDER_EDGE_NAMES)[number]): CSSProperties {
+  const base: CSSProperties = {
+    backgroundColor: workbookThemeColors.selectionAccent,
+    position: 'absolute',
+  }
+  switch (edge) {
+    case 'top':
+      return {
+        ...base,
+        height: SELECTION_STROKE_WIDTH,
+        left: -SELECTION_STROKE_WIDTH,
+        right: 0,
+        top: -SELECTION_STROKE_WIDTH,
+      }
+    case 'right':
+      return {
+        ...base,
+        bottom: 0,
+        right: 0,
+        top: -SELECTION_STROKE_WIDTH,
+        width: SELECTION_STROKE_WIDTH,
+      }
+    case 'bottom':
+      return {
+        ...base,
+        bottom: 0,
+        height: SELECTION_STROKE_WIDTH,
+        left: -SELECTION_STROKE_WIDTH,
+        right: 0,
+      }
+    case 'left':
+      return {
+        ...base,
+        bottom: 0,
+        left: -SELECTION_STROKE_WIDTH,
+        top: -SELECTION_STROKE_WIDTH,
+        width: SELECTION_STROKE_WIDTH,
+      }
   }
 }

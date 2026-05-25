@@ -40,10 +40,16 @@ describe('dynamic overlay batch v3', () => {
     expect(overlay.borderRectCount).toBe(0)
     expect(readOverlayRects(overlay)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ x: 46, y: 24, width: 2, height: 196 }),
-        expect.objectContaining({ x: 144, y: 24, width: 2, height: 196 }),
-        expect.objectContaining({ x: 46, y: 24, width: 474, height: 2 }),
-        expect.objectContaining({ x: 46, y: 42, width: 474, height: 2 }),
+        expect.objectContaining({ x: 145, y: 24, width: 1, height: 196 }),
+        expect.objectContaining({ x: 245, y: 24, width: 1, height: 196 }),
+        expect.objectContaining({ x: 46, y: 43, width: 474, height: 1 }),
+        expect.objectContaining({ x: 46, y: 63, width: 474, height: 1 }),
+      ]),
+    )
+    expect(readOverlayRects(overlay)).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ x: 46, y: 24, width: 1, height: 196 }),
+        expect.objectContaining({ x: 46, y: 24, width: 474, height: 1 }),
       ]),
     )
   })

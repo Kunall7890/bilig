@@ -54,6 +54,7 @@ export interface CreateWorkerRuntimeSessionInput {
   readonly authoritativeSyncEnabled?: boolean
   readonly authoritativeEventSyncEnabled?: boolean
   readonly initialSelection: WorkerRuntimeSelection
+  readonly preserveMissingInitialSelection?: boolean
   readonly perfSession?: WorkbookPerfSession
   readonly zero?: ZeroWorkbookSyncSource
   readonly fetchImpl?: typeof fetch
@@ -220,11 +221,18 @@ function resolveAuthoritativeBackstopIntervalMs(): number {
   return AUTHORITATIVE_BACKSTOP_VISIBLE_INTERVAL_MS
 }
 
-function reconcileSelection(selection: WorkerRuntimeSelection, sheetNames: readonly string[]): WorkerRuntimeSelection {
+function reconcileSelection(
+  selection: WorkerRuntimeSelection,
+  sheetNames: readonly string[],
+  preservedMissingSelection: WorkerRuntimeSelection | null = null,
+): WorkerRuntimeSelection {
   if (sheetNames.length === 0) {
     return selection
   }
   if (sheetNames.includes(selection.sheetName)) {
+    return selection
+  }
+  if (preservedMissingSelection && sameSelection(selection, preservedMissingSelection)) {
     return selection
   }
   return {
@@ -264,6 +272,7 @@ export async function createWorkerRuntimeSessionController(
   }
   const restoredMutationJournal = input.persistState ? loadPersistedWorkbookMutationJournal(mutationJournalScope) : null
   let currentSelection = input.initialSelection
+  const preservedMissingInitialSelection = input.preserveMissingInitialSelection === true ? input.initialSelection : null
   let currentRuntimeState = createInitialRuntimeState(input.documentId)
   viewportStore.setKnownSheets(currentRuntimeState.sheetNames)
   viewportStore.setSheetIdentities(currentRuntimeState.sheets ?? [])
@@ -386,7 +395,7 @@ export async function createWorkerRuntimeSessionController(
   const refreshRuntimeState = async (): Promise<WorkbookWorkerStateSnapshot> => {
     const runtimeState = await invokeWorkerMethod(client, 'getRuntimeState', isWorkbookWorkerStateSnapshot)
     const publishedRuntimeState = publishRuntimeState(runtimeState)
-    const reconciledSelection = reconcileSelection(currentSelection, publishedRuntimeState.sheetNames)
+    const reconciledSelection = reconcileSelection(currentSelection, publishedRuntimeState.sheetNames, preservedMissingInitialSelection)
     if (reconciledSelection.sheetName !== currentSelection.sheetName || reconciledSelection.address !== currentSelection.address) {
       await applySelection(reconciledSelection)
     }
@@ -401,7 +410,7 @@ export async function createWorkerRuntimeSessionController(
       readonly allowOptimisticClearResurrection?: boolean
     } = {},
   ): Promise<void> => {
-    const reconciledSelection = reconcileSelection(currentSelection, runtimeState.sheetNames)
+    const reconciledSelection = reconcileSelection(currentSelection, runtimeState.sheetNames, preservedMissingInitialSelection)
     if (reconciledSelection.sheetName !== currentSelection.sheetName || reconciledSelection.address !== currentSelection.address) {
       await applySelection(reconciledSelection)
       return
@@ -774,7 +783,7 @@ export async function createWorkerRuntimeSessionController(
     if (!authoritativeBootstrapSnapshotFailed) {
       scheduleAuthoritativeBackstop(0)
     }
-    await applySelection(reconcileSelection(currentSelection, currentRuntimeState.sheetNames))
+    await applySelection(reconcileSelection(currentSelection, currentRuntimeState.sheetNames, preservedMissingInitialSelection))
     input.perfSession?.markFirstSelectionVisible()
   } catch (error) {
     clearAuthoritativeBackstop()

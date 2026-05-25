@@ -107,6 +107,7 @@ export class ProjectedViewportStore implements GridEngineLike {
       mergeRangesBySheet: this.mergeRangesBySheet,
       ...(client ? { client } : {}),
       shouldApplyViewportPatch: (patch) => this.patchRevisionGate.shouldApplyViewportPatch(patch),
+      resolveSheetIdentity: (sheetName) => this.resolveSheetIdentity(sheetName),
       onViewportPatchApplied: (patch, result) => this.handleViewportPatchApplied(patch, result),
     })
     this.localDeltaPublisher = new ProjectedWorkbookLocalDeltaPublisher({

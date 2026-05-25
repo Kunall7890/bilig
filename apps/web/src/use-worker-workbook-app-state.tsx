@@ -6,7 +6,7 @@ import type { CellRangeRef, WorkbookTableSnapshot } from '@bilig/protocol'
 import { createWorkerRuntimeMachine, getWorkerRuntimeController, getWorkerRuntimeHandle } from './runtime-machine.js'
 import { createRuntimeFetch, type resolveRuntimeConfig } from './runtime-config.js'
 import type { ZeroClient } from './runtime-session.js'
-import { loadPersistedSelection } from './selection-persistence.js'
+import { loadPersistedSelection, readSelectionFromUrl } from './selection-persistence.js'
 import { type ZeroConnectionState, canAttemptRemoteSync, emptyCellSnapshot } from './worker-workbook-app-model.js'
 import { useWorkbookSync } from './use-workbook-sync.js'
 import { useWorkbookToolbar } from './use-workbook-toolbar.js'
@@ -109,6 +109,7 @@ export function useWorkerWorkbookAppState(input: {
     }),
     [documentId, runtimeConfig.currentUserId],
   )
+  const requestedUrlSelection = readSelectionFromUrl()
   const initialSelection = useMemo(() => loadPersistedSelection(selectionPersistenceScope), [selectionPersistenceScope])
   const perfSession = useMemo(() => createWorkbookPerfSession({ documentId }), [documentId])
 
@@ -126,6 +127,7 @@ export function useWorkerWorkbookAppState(input: {
       perfSession,
       connectionStateName: connectionState.name,
       fetchImpl,
+      preserveMissingInitialSelection: requestedUrlSelection !== null,
       ...(zero ? { zero } : {}),
       initialSelection,
     },

@@ -167,7 +167,7 @@ function appendCellPaneStructuralGridlines(input: {
   if (!pane || pane.frame.width <= 0 || pane.frame.height <= 0) {
     return
   }
-  const thickness = resolveStructuralGridlineThickness(input.geometry.camera.dpr)
+  const thickness = resolveStructuralGridlineThickness()
   const ranges = resolveCellPaneStructuralGridlineRanges(input.geometry, input.paneKind)
   if (!ranges || ranges.colStart >= ranges.colEndExclusive || ranges.rowStart >= ranges.rowEndExclusive) {
     return
@@ -184,12 +184,6 @@ function appendCellPaneStructuralGridlines(input: {
       const rect = input.geometry.cellScreenRectForPane(col, row, input.paneKind)
       if (!rect || rect.width <= 0 || rect.height <= 0) {
         continue
-      }
-      if (row === ranges.rowStart) {
-        input.fillRects.push({ x: rect.x, y: rect.y, width: rect.width, height: Math.min(thickness, rect.height), color: input.color })
-      }
-      if (col === ranges.colStart) {
-        input.fillRects.push({ x: rect.x, y: rect.y, width: Math.min(thickness, rect.width), height: rect.height, color: input.color })
       }
       input.fillRects.push({
         x: rect.x,
@@ -209,9 +203,8 @@ function appendCellPaneStructuralGridlines(input: {
   }
 }
 
-function resolveStructuralGridlineThickness(dpr: number): number {
-  const resolvedDpr = Number.isFinite(dpr) ? Math.max(1, dpr) : 1
-  return 2 / resolvedDpr
+function resolveStructuralGridlineThickness(): number {
+  return 1
 }
 
 function resolveCellPaneStructuralGridlineRanges(

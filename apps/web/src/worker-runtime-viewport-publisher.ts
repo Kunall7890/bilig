@@ -150,7 +150,16 @@ export class WorkerViewportPatchPublisher {
     if (!this.options.hasProjectionEngine()) {
       return false
     }
-    return this.options.getProjectionEngine().workbook.getSheet(state.subscription.sheetName) !== undefined
+    const engine = this.options.getProjectionEngine()
+    const sheet = engine.workbook.getSheet(state.subscription.sheetName)
+    if (!sheet) {
+      return false
+    }
+    const requestedSheetId = state.subscription.sheetId
+    if (requestedSheetId === undefined) {
+      return true
+    }
+    return engine.workbook.getSheetNameById(requestedSheetId) === state.subscription.sheetName
   }
 
   private addViewportSubscription(state: ViewportSubscriptionState): void {

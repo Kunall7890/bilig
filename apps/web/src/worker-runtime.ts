@@ -28,7 +28,16 @@ import {
   formatCellDisplayValue,
   isCellRangeRef,
 } from '@bilig/protocol'
-import type { RenderTileDeltaSubscription, ViewportPatch, ViewportPatchSubscription } from '@bilig/worker-transport'
+import {
+  buildUnavailableWorkbookViewWindow,
+  buildWorkbookViewWindowFromViewportPatch,
+  type RenderTileDeltaSubscription,
+  type ViewportPatch,
+  type ViewportPatchSubscription,
+  type WorkbookViewWindow,
+  type WorkbookViewWindowSheetIdentity,
+  type WorkbookViewWindowSubscription,
+} from '@bilig/worker-transport'
 import { isPendingWorkbookMutationList, type PendingWorkbookMutation, type PendingWorkbookMutationInput } from './workbook-sync.js'
 import { WorkerRuntimeMutationJournal } from './worker-runtime-mutation-journal.js'
 import { acquireProjectionEngine } from './worker-runtime-projection-engine.js'
@@ -50,6 +59,7 @@ import { WorkerRuntimeRenderTileDeltaPublisher } from './worker-runtime-render-t
 import type { WorkerRuntimeRenderTileDiagnostics } from './worker-runtime-render-tile-subscription.js'
 import {
   collectSheetViewportImpacts,
+  normalizeViewport,
   type SheetViewportImpact,
   type ViewportSubscriptionState,
   type WorkerEngine,
@@ -86,6 +96,20 @@ function tableAgentCommandFromOp(op: EngineOp): WorkbookAgentCommand[] {
     return [{ kind: 'deleteTable', name: op.name }]
   }
   return []
+}
+
+function createTransientViewportSubscriptionState(subscription: ViewportPatchSubscription): ViewportSubscriptionState {
+  return {
+    subscription: normalizeViewport(subscription),
+    listener: () => undefined,
+    nextVersion: 1,
+    knownStyleIds: new Set(),
+    lastStyleSignatures: new Map(),
+    lastCellSignatures: new Map(),
+    lastColumnSignatures: new Map(),
+    lastRowSignatures: new Map(),
+    lastMergeSignatures: new Map(),
+  }
 }
 
 export class WorkbookWorkerRuntime {
@@ -522,6 +546,75 @@ export class WorkbookWorkerRuntime {
 
   subscribeViewportPatches(subscription: ViewportPatchSubscription, listener: (patch: Uint8Array) => void): () => void {
     return this.viewportPatchPublisher.subscribe(subscription, listener)
+  }
+
+  getWorkbookViewWindow(subscription: WorkbookViewWindowSubscription): WorkbookViewWindow {
+    const engine = this.requireEngine()
+    const authoritativeRevision = this.authoritativeState.getRevision()
+    const sheetName = engine.workbook.getSheetNameById(subscription.sheetId)
+    if (sheetName.length === 0) {
+      return buildUnavailableWorkbookViewWindow({
+        status: 'missing-sheet',
+        reason: 'sheet-id-not-found',
+        request: subscription,
+        authoritativeRevision,
+      })
+    }
+    const sheet = engine.workbook.getSheet(sheetName)
+    if (!sheet) {
+      return buildUnavailableWorkbookViewWindow({
+        status: 'missing-sheet',
+        reason: 'sheet-name-not-found',
+        request: subscription,
+        authoritativeRevision,
+      })
+    }
+    const identity: WorkbookViewWindowSheetIdentity = {
+      sheetId: sheet.id ?? subscription.sheetId,
+      sheetOrdinal: sheet.order,
+      sheetName: sheet.name,
+    }
+    if (subscription.sheetName !== undefined && subscription.sheetName !== sheet.name) {
+      return buildUnavailableWorkbookViewWindow({
+        status: 'identity-mismatch',
+        reason: 'sheet-name-does-not-match-sheet-id',
+        request: subscription,
+        sheet: identity,
+        authoritativeRevision,
+      })
+    }
+    if (sheet.id !== undefined && sheet.id !== subscription.sheetId) {
+      return buildUnavailableWorkbookViewWindow({
+        status: 'identity-mismatch',
+        reason: 'resolved-sheet-id-does-not-match-request',
+        request: subscription,
+        sheet: identity,
+        authoritativeRevision,
+      })
+    }
+
+    const state = createTransientViewportSubscriptionState({
+      sheetName: sheet.name,
+      rowStart: subscription.rowStart,
+      rowEnd: subscription.rowEnd,
+      colStart: subscription.colStart,
+      colEnd: subscription.colEnd,
+      initialPatch: 'full',
+    })
+    const patch = this.viewportPatchPublisher.buildPatch(state, null, this.getCurrentMetrics(), authoritativeRevision, null)
+    return buildWorkbookViewWindowFromViewportPatch({
+      patch,
+      request: {
+        ...subscription,
+        sheetName: subscription.sheetName ?? sheet.name,
+        sheetOrdinal: subscription.sheetOrdinal ?? sheet.order,
+      },
+      sheet: identity,
+      renderAck: {
+        status: 'not-requested',
+        reason: 'authoritative-window-built-before-browser-render-ack',
+      },
+    })
   }
 
   subscribeWorkbookDeltas(listener: (delta: Uint8Array) => void): () => void {

@@ -267,10 +267,19 @@ describe('GridSelectionVisualOverlay', () => {
     expect(selectionBorder?.style.opacity).toBe('')
     expect(selectionBorder?.style.borderLeftWidth).toBe('')
     expect(selectionBorder?.style.boxShadow).toBe('none')
-    expect(selectionBorder?.style.outlineColor).toBe('rgb(33, 115, 70)')
-    expect(selectionBorder?.style.outlineOffset).toBe('0px')
-    expect(selectionBorder?.style.outlineStyle).toBe('solid')
-    expect(selectionBorder?.style.outlineWidth).toBe('1px')
+    expect(selectionBorder?.style.outline).toBe('none')
+    const strokeEdges = Array.from(selectionBorder?.querySelectorAll<HTMLElement>('[data-grid-selection-visual-edge]') ?? [])
+    expect(strokeEdges.map((edge) => edge.dataset.gridSelectionVisualEdge)).toEqual(['top', 'right', 'bottom', 'left'])
+    expect(strokeEdges.map((edge) => edge.style.backgroundColor)).toEqual([
+      'rgb(33, 115, 70)',
+      'rgb(33, 115, 70)',
+      'rgb(33, 115, 70)',
+      'rgb(33, 115, 70)',
+    ])
+    expect(strokeEdges.find((edge) => edge.dataset.gridSelectionVisualEdge === 'top')?.style.top).toBe('-1px')
+    expect(strokeEdges.find((edge) => edge.dataset.gridSelectionVisualEdge === 'left')?.style.left).toBe('-1px')
+    expect(strokeEdges.find((edge) => edge.dataset.gridSelectionVisualEdge === 'right')?.style.right).toBe('0px')
+    expect(strokeEdges.find((edge) => edge.dataset.gridSelectionVisualEdge === 'bottom')?.style.bottom).toBe('0px')
     expect(fillHandle?.style.opacity).toBe('')
 
     await act(async () => {

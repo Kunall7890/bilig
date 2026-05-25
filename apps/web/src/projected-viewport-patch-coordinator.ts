@@ -6,6 +6,7 @@ import type { ProjectedViewportAxisStore } from './projected-viewport-axis-store
 import { applyProjectedViewportPatch, type ProjectedViewportPatchApplicationResult } from './projected-viewport-patch-application.js'
 
 type CellItem = readonly [number, number]
+type SheetIdentity = { readonly sheetId: number; readonly sheetOrdinal: number }
 export type ProjectedViewportPatchApplied = Pick<
   ProjectedViewportPatchApplicationResult,
   'damage' | 'axisChanged' | 'columnsChanged' | 'rowsChanged' | 'freezeChanged' | 'mergesChanged'
@@ -37,6 +38,7 @@ export class ProjectedViewportPatchCoordinator {
       axisStore: ProjectedViewportAxisStore
       mergeRangesBySheet: Map<string, Map<string, WorkbookMergeRangeSnapshot>>
       shouldApplyViewportPatch?: ((patch: ViewportPatch) => boolean) | undefined
+      resolveSheetIdentity?: ((sheetName: string) => SheetIdentity | null) | undefined
       onViewportPatchApplied?:
         | ((patch: ViewportPatch, result: ProjectedViewportPatchApplied, options: ProjectedViewportSubscriptionOptions) => void)
         | undefined
@@ -102,8 +104,13 @@ export class ProjectedViewportPatchCoordinator {
         }
       }
     }
-    const subscription =
-      options.initialPatch === 'none' ? ({ sheetName, ...viewport, initialPatch: 'none' } as const) : ({ sheetName, ...viewport } as const)
+    const sheetIdentity = this.options.resolveSheetIdentity?.(sheetName) ?? null
+    const subscription = {
+      ...(sheetIdentity ? { sheetId: sheetIdentity.sheetId, sheetOrdinal: sheetIdentity.sheetOrdinal } : {}),
+      sheetName,
+      ...viewport,
+      ...(options.initialPatch === 'none' ? { initialPatch: 'none' as const } : {}),
+    }
     const unsubscribe = this.options.client.subscribeViewportPatches(subscription, (bytes: Uint8Array) => {
       applyPatchBytes(bytes)
       scheduleFlush()

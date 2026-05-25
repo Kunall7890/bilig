@@ -197,6 +197,45 @@ describe('worker runtime machine', () => {
     actor.stop()
   })
 
+  it('preserves URL-requested missing sheets instead of accepting a startup fallback', async () => {
+    const requestedSelection = { sheetName: 'Prepaid Template', address: 'B34' } as const
+    const fallbackSelection = { sheetName: 'Sheet1', address: 'A1' } as const
+    const controller = createController(fallbackSelection)
+    const createSession = vi.fn(
+      async (
+        _input: CreateWorkerRuntimeSessionInput,
+        callbacks: WorkerRuntimeSessionCallbacks,
+      ): Promise<WorkerRuntimeSessionController> => {
+        callbacks.onRuntimeState(controller.runtimeState)
+        callbacks.onSelection(fallbackSelection)
+        return controller
+      },
+    )
+
+    const actor = createActor(createWorkerRuntimeMachine(), {
+      input: {
+        documentId: 'book-1',
+        replicaId: 'browser:test',
+        persistState: true,
+        connectionStateName: 'closed',
+        initialSelection: requestedSelection,
+        preserveMissingInitialSelection: true,
+        createSession,
+      },
+    })
+
+    actor.start()
+    await vi.waitFor(() => {
+      expect(actor.getSnapshot().matches({ active: 'localReady' })).toBe(true)
+    })
+
+    expect(actor.getSnapshot().context.selection).toEqual(requestedSelection)
+    await vi.waitFor(() => {
+      expect(controller.setSelection).toHaveBeenCalledWith(requestedSelection)
+    })
+    actor.stop()
+  })
+
   it('normalizes controller runtime state when the session becomes ready', async () => {
     const controller = {
       ...createController(

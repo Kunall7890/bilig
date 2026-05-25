@@ -99,13 +99,14 @@ describe('ProjectedViewportPatchCoordinator', () => {
       cellCache,
       axisStore,
       mergeRangesBySheet: new Map(),
+      resolveSheetIdentity: (sheetName) => (sheetName === 'Sheet1' ? { sheetId: 1, sheetOrdinal: 0 } : null),
     })
     const listener = vi.fn()
 
     const unsubscribe = coordinator.subscribeViewport('Sheet1', { rowStart: 0, rowEnd: 0, colStart: 0, colEnd: 0 }, listener)
 
     expect(subscribeViewportPatches).toHaveBeenCalledWith(
-      { sheetName: 'Sheet1', rowStart: 0, rowEnd: 0, colStart: 0, colEnd: 0 },
+      { sheetId: 1, sheetName: 'Sheet1', sheetOrdinal: 0, rowStart: 0, rowEnd: 0, colStart: 0, colEnd: 0 },
       expect.any(Function),
     )
     await vi.runAllTimersAsync()

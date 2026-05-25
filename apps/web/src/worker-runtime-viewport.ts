@@ -187,6 +187,19 @@ export function buildViewportPatchFromEngine(input: {
   if (!sheet) {
     throw new Error(`Cannot build viewport patch for missing sheet: ${viewport.sheetName}`)
   }
+  if (viewport.sheetId !== undefined && engine.workbook.getSheetNameById(viewport.sheetId) !== viewport.sheetName) {
+    throw new Error(`Cannot build viewport patch for mismatched sheet identity: ${viewport.sheetName}`)
+  }
+  const patchViewport = {
+    ...(sheet.id === undefined ? {} : { sheetId: sheet.id }),
+    sheetName: viewport.sheetName,
+    ...(sheet.order === undefined ? {} : { sheetOrdinal: sheet.order }),
+    rowStart: viewport.rowStart,
+    rowEnd: viewport.rowEnd,
+    colStart: viewport.colStart,
+    colEnd: viewport.colEnd,
+    ...(viewport.initialPatch === 'none' ? { initialPatch: 'none' as const } : {}),
+  }
   const styles: CellStyleRecord[] = []
   const cells: ViewportPatchedCell[] = []
   const full = event === null || event.invalidation === 'full'
@@ -252,7 +265,7 @@ export function buildViewportPatchFromEngine(input: {
     full,
     freezeRows: engine.getFreezePane(viewport.sheetName)?.rows ?? 0,
     freezeCols: engine.getFreezePane(viewport.sheetName)?.cols ?? 0,
-    viewport,
+    viewport: patchViewport,
     metrics: { ...metrics },
     styles,
     cells,

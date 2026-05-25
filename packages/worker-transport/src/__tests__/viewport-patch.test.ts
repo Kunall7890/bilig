@@ -21,7 +21,9 @@ function createPatch(): ViewportPatch {
     freezeRows: 1,
     freezeCols: 2,
     viewport: {
+      sheetId: 7,
       sheetName: 'Sheet1',
+      sheetOrdinal: 2,
       ...createViewport(),
     },
     metrics: {
@@ -149,6 +151,16 @@ describe('viewport patch codec', () => {
     const decoded = decodeViewportPatch(encodeViewportPatch(patch))
 
     expect(decoded.merges).toEqual([])
+  })
+
+  it('round-trips sheet identity on viewport patches', () => {
+    const decoded = decodeViewportPatch(encodeViewportPatch(createPatch()))
+
+    expect(decoded.viewport).toMatchObject({
+      sheetId: 7,
+      sheetName: 'Sheet1',
+      sheetOrdinal: 2,
+    })
   })
 
   it('rejects legacy JSON viewport patch payloads', () => {

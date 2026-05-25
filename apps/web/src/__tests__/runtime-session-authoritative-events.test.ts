@@ -76,6 +76,76 @@ describe('worker runtime session authoritative event loading', () => {
     host = null
   })
 
+  it('keeps an explicit URL-requested missing sheet selection through startup', async () => {
+    channel = new MessageChannel()
+    const selections: CellSnapshot[] = []
+    const selectionEvents: { sheetName: string; address: string }[] = []
+    host = createWorkerEngineHost(
+      {
+        async bootstrap() {
+          return {
+            runtimeState: runtimeState({
+              sheets: [{ id: 1, name: 'Sheet1', order: 0 }],
+              sheetNames: ['Sheet1'],
+            }),
+            restoredFromPersistence: true,
+            requiresAuthoritativeHydrate: false,
+            localPersistenceMode: 'ephemeral',
+          }
+        },
+        getAuthoritativeRevision() {
+          return 3
+        },
+        getRuntimeState() {
+          return runtimeState({
+            sheets: [{ id: 1, name: 'Sheet1', order: 0 }],
+            sheetNames: ['Sheet1'],
+          })
+        },
+        getCell(sheetName: string, address: string) {
+          const snapshot: CellSnapshot = {
+            sheetName,
+            address,
+            value: { tag: ValueTag.Empty },
+            flags: 0,
+            version: 0,
+          }
+          selections.push(snapshot)
+          return snapshot
+        },
+        subscribeViewportPatches() {
+          return () => undefined
+        },
+      },
+      channel.port1,
+    )
+
+    controller = await createWorkerRuntimeSessionController(
+      {
+        documentId: 'doc-1',
+        replicaId: 'browser:test',
+        persistState: false,
+        authoritativeSyncEnabled: false,
+        initialSelection: { sheetName: 'Prepaid Template', address: 'B34' },
+        preserveMissingInitialSelection: true,
+        createWorker: () => channel!.port2,
+      },
+      {
+        onError: (message) => {
+          throw new Error(message)
+        },
+        onRuntimeState: () => undefined,
+        onSelection: (selection) => {
+          selectionEvents.push(selection)
+        },
+      },
+    )
+
+    expect(controller.selection).toEqual({ sheetName: 'Prepaid Template', address: 'B34' })
+    expect(selectionEvents.at(-1)).toEqual({ sheetName: 'Prepaid Template', address: 'B34' })
+    expect(selections.at(-1)).toMatchObject({ sheetName: 'Prepaid Template', address: 'B34' })
+  })
+
   it('publishes pending mutation state before enqueue resolves', async () => {
     channel = new MessageChannel()
     let state = runtimeState({
