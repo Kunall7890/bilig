@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.107.3
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.107.2
+- Manual override: no
+
+## Fixes
+- perf(headless): defer dense logical indexes (3a79e475)
+
 ## 0.107.2
 
 - Release type: patch
