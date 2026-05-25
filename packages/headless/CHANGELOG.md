@@ -4,6 +4,21 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.94.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.93.0
+- Manual override: no
+
+## Features
+- feat(workbook): prove formula readbacks with labels (6255be2a)
+
+## Fixes
+- fix(excel-import): fail closed on ambiguous companions (1270002b)
+
+## Internal runtime changes
+- refactor(excel-import): split external reference formula helpers (c12ea184)
+
 ## 0.93.0
 
 - Release type: minor
