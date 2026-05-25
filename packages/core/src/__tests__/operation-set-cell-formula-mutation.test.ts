@@ -53,7 +53,7 @@ describe('operation set-cell-formula mutations', () => {
       value: 2 + downstreamCount,
     })
     expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0 })
-    expect(engine.getPerformanceCounters().formulasParsed).toBe(1)
+    expect(engine.getPerformanceCounters().formulasParsed).toBe(0)
     expect(engine.getPerformanceCounters().formulasBound).toBe(0)
     expect(engine.getPerformanceCounters().directScalarDeltaApplications).toBe(downstreamCount)
     expect(engine.getPerformanceCounters().directScalarDeltaOnlyRecalcSkips).toBe(1)
@@ -87,7 +87,7 @@ describe('operation set-cell-formula mutations', () => {
     })
     expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0 })
     expect(engine.getPerformanceCounters()).toMatchObject({
-      formulasParsed: 1,
+      formulasParsed: 0,
       formulasBound: 0,
       directScalarDeltaApplications: downstreamCount,
       directScalarDeltaOnlyRecalcSkips: 1,
