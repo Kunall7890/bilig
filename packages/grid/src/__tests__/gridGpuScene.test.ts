@@ -363,27 +363,27 @@ describe('gridGpuScene', () => {
       visibleItems: [[2, 3]],
       visibleRegion: { range: { x: 2, y: 3, width: 1, height: 1 }, tx: 0, ty: 0 },
       hostBounds: { left: 0, top: 0 },
-      getCellBounds: () => ({ x: 254, y: 90, width: 104, height: 22 }),
+      getCellBounds: () => ({ x: 248, y: 90, width: 104, height: 22 }),
     })
 
     expect(scene.fillRects).toContainEqual({
       x: 0,
       y: 0,
-      width: 46,
-      height: 24,
+      width: 40,
+      height: 22,
       color: HEADER_FILL_COLOR,
     })
     expect(scene.fillRects).toContainEqual({
-      x: 46,
+      x: 40,
       y: 0,
       width: 104,
-      height: 24,
+      height: 22,
       color: HEADER_SELECTED_FILL_COLOR,
     })
     expect(scene.fillRects).toContainEqual({
       x: 0,
-      y: 24,
-      width: 46,
+      y: 22,
+      width: 40,
       height: 22,
       color: HEADER_SELECTED_FILL_COLOR,
     })
@@ -412,38 +412,38 @@ describe('gridGpuScene', () => {
       },
       hostBounds: { left: 0, top: 0 },
       getCellBounds: (col, row) => ({
-        x: col === 0 ? 46 : 150,
-        y: row === 0 ? 24 : 46,
+        x: col === 0 ? 40 : 144,
+        y: row === 0 ? 22 : 44,
         width: 104,
         height: 22,
       }),
     })
 
     expect(scene.fillRects).toContainEqual({
-      x: 46,
+      x: 40,
       y: 0,
       width: 104,
-      height: 24,
+      height: 22,
       color: HEADER_SELECTED_FILL_COLOR,
     })
     expect(scene.fillRects).toContainEqual({
-      x: 150,
+      x: 144,
       y: 0,
       width: 104,
-      height: 24,
+      height: 22,
       color: HEADER_FILL_COLOR,
     })
     expect(scene.fillRects).toContainEqual({
       x: 0,
-      y: 24,
-      width: 46,
+      y: 22,
+      width: 40,
       height: 22,
       color: HEADER_SELECTED_FILL_COLOR,
     })
     expect(scene.fillRects).toContainEqual({
       x: 0,
-      y: 46,
-      width: 46,
+      y: 44,
+      width: 40,
       height: 22,
       color: HEADER_FILL_COLOR,
     })
@@ -462,18 +462,18 @@ describe('gridGpuScene', () => {
       visibleItems: [[2, 3]],
       visibleRegion: { range: { x: 2, y: 3, width: 1, height: 1 }, tx: 0, ty: 0 },
       hostBounds: { left: 0, top: 0 },
-      getCellBounds: () => ({ x: 254, y: 90, width: 104, height: 22 }),
+      getCellBounds: () => ({ x: 248, y: 90, width: 104, height: 22 }),
     })
 
     expect(scene.fillRects).toContainEqual({
-      x: 46,
+      x: 40,
       y: 0,
       width: 104,
-      height: 24,
+      height: 22,
       color: HEADER_HOVER_FILL_COLOR,
     })
     expect(scene.fillRects).toContainEqual({
-      x: 255,
+      x: 249,
       y: 91,
       width: 102,
       height: 20,
@@ -493,21 +493,21 @@ describe('gridGpuScene', () => {
       visibleItems: [[2, 3]],
       visibleRegion: { range: { x: 2, y: 3, width: 1, height: 2 }, tx: 0, ty: 0 },
       hostBounds: { left: 0, top: 0 },
-      getCellBounds: () => ({ x: 254, y: 90, width: 104, height: 22 }),
+      getCellBounds: () => ({ x: 248, y: 90, width: 104, height: 22 }),
     })
 
     expect(scene.fillRects).toContainEqual({
-      x: 148,
+      x: 142,
       y: 0,
       width: 3,
-      height: 68,
+      height: 66,
       color: RESIZE_GUIDE_GLOW_COLOR,
     })
     expect(scene.borderRects).toContainEqual({
-      x: 149,
+      x: 143,
       y: 0,
       width: 1,
-      height: 68,
+      height: 66,
       color: RESIZE_GUIDE_COLOR,
     })
   })
@@ -527,20 +527,20 @@ describe('gridGpuScene', () => {
       ],
       visibleRegion: { range: { x: 2, y: 3, width: 2, height: 1 }, tx: 0, ty: 0 },
       hostBounds: { left: 0, top: 0 },
-      getCellBounds: () => ({ x: 254, y: 90, width: 104, height: 22 }),
+      getCellBounds: () => ({ x: 248, y: 90, width: 104, height: 22 }),
     })
 
     expect(scene.fillRects).toContainEqual({
       x: 0,
-      y: 44,
-      width: 254,
+      y: 42,
+      width: 248,
       height: 3,
       color: RESIZE_GUIDE_GLOW_COLOR,
     })
     expect(scene.borderRects).toContainEqual({
       x: 0,
-      y: 45,
-      width: 254,
+      y: 43,
+      width: 248,
       height: 1,
       color: RESIZE_GUIDE_COLOR,
     })
@@ -569,22 +569,22 @@ describe('gridGpuScene', () => {
     })
 
     expect(scene.borderRects).toContainEqual({
-      x: 46,
+      x: 40,
       y: 0,
       width: 1,
-      height: 68,
+      height: 66,
       color: RESIZE_GUIDE_COLOR,
     })
     expect(scene.borderRects).toContainEqual({
-      x: 253,
+      x: 247,
       y: 0,
       width: 1,
-      height: 68,
+      height: 66,
       color: RESIZE_GUIDE_COLOR,
     })
     expect(scene.fillRects).toContainEqual({
-      x: 46,
-      y: 21,
+      x: 40,
+      y: 19,
       width: 104,
       height: 3,
       color: RESIZE_GUIDE_COLOR,
@@ -669,21 +669,21 @@ describe('gridGpuScene', () => {
 
     expect(scene.borderRects).toContainEqual({
       x: 0,
-      y: 24,
-      width: 254,
+      y: 22,
+      width: 248,
       height: 1,
       color: RESIZE_GUIDE_COLOR,
     })
     expect(scene.borderRects).toContainEqual({
       x: 0,
-      y: 67,
-      width: 254,
+      y: 65,
+      width: 248,
       height: 1,
       color: RESIZE_GUIDE_COLOR,
     })
     expect(scene.fillRects).toContainEqual({
-      x: 43,
-      y: 24,
+      x: 37,
+      y: 22,
       width: 3,
       height: 22,
       color: RESIZE_GUIDE_COLOR,
@@ -714,8 +714,8 @@ describe('gridGpuScene', () => {
     })
 
     expect(scene.fillRects).toContainEqual({
-      x: 46,
-      y: 24,
+      x: 40,
+      y: 22,
       width: 208,
       height: 44,
       color: SELECTION_FILL_COLOR,
@@ -757,8 +757,8 @@ describe('gridGpuScene', () => {
     })
 
     expect(scene.fillRects).toContainEqual({
-      x: 46,
-      y: 24,
+      x: 40,
+      y: 22,
       width: 208,
       height: 44,
       color: SELECTION_FILL_COLOR,

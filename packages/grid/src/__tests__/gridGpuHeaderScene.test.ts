@@ -1,8 +1,19 @@
 import { expect, test } from 'vitest'
 import { CompactSelection } from '../gridTypes.js'
-import { getGridMetrics } from '../gridMetrics.js'
+import {
+  PRODUCT_COLUMN_WIDTH,
+  PRODUCT_HEADER_HEIGHT,
+  PRODUCT_ROW_HEIGHT,
+  PRODUCT_ROW_MARKER_WIDTH,
+  getGridMetrics,
+} from '../gridMetrics.js'
 import { parseGpuColor } from '../gridGpuPrimitives.js'
 import { buildGridGpuHeaderScene } from '../gridGpuHeaderScene.js'
+
+const DATA_LEFT = PRODUCT_ROW_MARKER_WIDTH
+const DATA_TOP = PRODUCT_HEADER_HEIGHT
+const COLUMN_WIDTH = PRODUCT_COLUMN_WIDTH
+const ROW_HEIGHT = PRODUCT_ROW_HEIGHT
 
 const palette = {
   gridLineColor: parseGpuColor('#e3e9f0'),
@@ -33,7 +44,7 @@ test('builds GPU-backed header backgrounds and selection highlights', () => {
     selectionRange: { x: 2, y: 3, width: 1, height: 1 },
     visibleItems: [[2, 3]],
     visibleRegion: { range: { x: 2, y: 3, width: 1, height: 1 }, tx: 0, ty: 0 },
-    getCellBounds: () => ({ x: 254, y: 90, width: 104, height: 22 }),
+    getCellBounds: () => ({ x: DATA_LEFT + 2 * COLUMN_WIDTH, y: DATA_TOP + 3 * ROW_HEIGHT, width: COLUMN_WIDTH, height: ROW_HEIGHT }),
     rowHeights: {},
     hoveredHeader: null,
     resizeGuideColumn: null,
@@ -44,22 +55,22 @@ test('builds GPU-backed header backgrounds and selection highlights', () => {
   expect(scene.fillRects).toContainEqual({
     x: 0,
     y: 0,
-    width: 46,
-    height: 24,
+    width: DATA_LEFT,
+    height: DATA_TOP,
     color: { r: 248 / 255, g: 249 / 255, b: 250 / 255, a: 1 },
   })
   expect(scene.fillRects).toContainEqual({
-    x: 46,
+    x: DATA_LEFT,
     y: 0,
-    width: 104,
-    height: 24,
+    width: COLUMN_WIDTH,
+    height: DATA_TOP,
     color: { r: 230 / 255, g: 244 / 255, b: 234 / 255, a: 1 },
   })
   expect(scene.fillRects).toContainEqual({
     x: 0,
-    y: 24,
-    width: 46,
-    height: 22,
+    y: DATA_TOP,
+    width: DATA_LEFT,
+    height: ROW_HEIGHT,
     color: { r: 230 / 255, g: 244 / 255, b: 234 / 255, a: 1 },
   })
 })
@@ -81,7 +92,7 @@ test('fills selected column axis through the header/body seam without a second b
       [2, 3],
     ],
     visibleRegion: { range: { x: 1, y: 3, width: 2, height: 1 }, tx: 0, ty: 0 },
-    getCellBounds: () => ({ x: 146, y: 90, width: 100, height: 22 }),
+    getCellBounds: () => ({ x: DATA_LEFT + COLUMN_WIDTH, y: DATA_TOP + 3 * ROW_HEIGHT, width: 100, height: ROW_HEIGHT }),
     rowHeights: {},
     hoveredHeader: null,
     resizeGuideColumn: null,
@@ -90,23 +101,23 @@ test('fills selected column axis through the header/body seam without a second b
   })
 
   expect(scene.fillRects).toContainEqual({
-    x: 46,
-    y: 24,
-    width: 208,
-    height: 22,
+    x: DATA_LEFT,
+    y: DATA_TOP,
+    width: 2 * COLUMN_WIDTH,
+    height: ROW_HEIGHT,
     color: { r: 31 / 255, g: 122 / 255, b: 67 / 255, a: 0.06 },
   })
   expect(scene.borderRects).not.toContainEqual({
-    x: 46,
-    y: 23,
-    width: 104,
+    x: DATA_LEFT,
+    y: DATA_TOP - 1,
+    width: COLUMN_WIDTH,
     height: 1,
     color: { r: 227 / 255, g: 233 / 255, b: 240 / 255, a: 1 },
   })
   expect(scene.borderRects).not.toContainEqual({
-    x: 150,
-    y: 23,
-    width: 104,
+    x: DATA_LEFT + COLUMN_WIDTH,
+    y: DATA_TOP - 1,
+    width: COLUMN_WIDTH,
     height: 1,
     color: { r: 227 / 255, g: 233 / 255, b: 240 / 255, a: 1 },
   })
@@ -129,7 +140,7 @@ test('fills selected row axis through the row-header/body seam without a second 
       [2, 3],
     ],
     visibleRegion: { range: { x: 1, y: 3, width: 2, height: 3 }, tx: 0, ty: 0 },
-    getCellBounds: () => ({ x: 146, y: 90, width: 100, height: 22 }),
+    getCellBounds: () => ({ x: DATA_LEFT + COLUMN_WIDTH, y: DATA_TOP + 3 * ROW_HEIGHT, width: 100, height: ROW_HEIGHT }),
     rowHeights: {},
     hoveredHeader: null,
     resizeGuideColumn: null,
@@ -138,31 +149,31 @@ test('fills selected row axis through the row-header/body seam without a second 
   })
 
   expect(scene.fillRects).toContainEqual({
-    x: 46,
-    y: 24,
-    width: 208,
-    height: 66,
+    x: DATA_LEFT,
+    y: DATA_TOP,
+    width: 2 * COLUMN_WIDTH,
+    height: 3 * ROW_HEIGHT,
     color: { r: 31 / 255, g: 122 / 255, b: 67 / 255, a: 0.06 },
   })
   expect(scene.borderRects).not.toContainEqual({
-    x: 45,
-    y: 24,
+    x: DATA_LEFT - 1,
+    y: DATA_TOP,
     width: 1,
-    height: 22,
+    height: ROW_HEIGHT,
     color: { r: 227 / 255, g: 233 / 255, b: 240 / 255, a: 1 },
   })
   expect(scene.borderRects).not.toContainEqual({
-    x: 45,
-    y: 46,
+    x: DATA_LEFT - 1,
+    y: DATA_TOP + ROW_HEIGHT,
     width: 1,
-    height: 22,
+    height: ROW_HEIGHT,
     color: { r: 227 / 255, g: 233 / 255, b: 240 / 255, a: 1 },
   })
   expect(scene.borderRects).not.toContainEqual({
-    x: 45,
-    y: 68,
+    x: DATA_LEFT - 1,
+    y: DATA_TOP + 2 * ROW_HEIGHT,
     width: 1,
-    height: 22,
+    height: ROW_HEIGHT,
     color: { r: 227 / 255, g: 233 / 255, b: 240 / 255, a: 1 },
   })
 })
@@ -177,7 +188,7 @@ test('builds GPU resize guides for hovered columns', () => {
     selectionRange: null,
     visibleItems: [[2, 3]],
     visibleRegion: { range: { x: 2, y: 3, width: 1, height: 2 }, tx: 0, ty: 0 },
-    getCellBounds: () => ({ x: 254, y: 90, width: 104, height: 22 }),
+    getCellBounds: () => ({ x: DATA_LEFT + 2 * COLUMN_WIDTH, y: DATA_TOP + 3 * ROW_HEIGHT, width: COLUMN_WIDTH, height: ROW_HEIGHT }),
     rowHeights: {},
     hoveredHeader: null,
     resizeGuideColumn: 2,
@@ -186,17 +197,17 @@ test('builds GPU resize guides for hovered columns', () => {
   })
 
   expect(scene.fillRects).toContainEqual({
-    x: 148,
+    x: DATA_LEFT + COLUMN_WIDTH - 2,
     y: 0,
     width: 3,
-    height: 68,
+    height: DATA_TOP + 2 * ROW_HEIGHT,
     color: { r: 168 / 255, g: 158 / 255, b: 169 / 255, a: 0.18 },
   })
   expect(scene.borderRects).toContainEqual({
-    x: 149,
+    x: DATA_LEFT + COLUMN_WIDTH - 1,
     y: 0,
     width: 1,
-    height: 68,
+    height: DATA_TOP + 2 * ROW_HEIGHT,
     color: { r: 121 / 255, g: 105 / 255, b: 123 / 255, a: 0.82 },
   })
 })
@@ -218,7 +229,7 @@ test('builds GPU drag guides for active column header drags', () => {
       [2, 2],
     ],
     visibleRegion: { range: { x: 1, y: 2, width: 2, height: 2 }, tx: 0, ty: 0 },
-    getCellBounds: () => ({ x: 146, y: 48, width: 100, height: 24 }),
+    getCellBounds: () => ({ x: DATA_LEFT + COLUMN_WIDTH, y: DATA_TOP + ROW_HEIGHT + 4, width: 100, height: ROW_HEIGHT }),
     rowHeights: {},
     hoveredHeader: null,
     resizeGuideColumn: null,
@@ -227,23 +238,23 @@ test('builds GPU drag guides for active column header drags', () => {
   })
 
   expect(scene.borderRects).toContainEqual({
-    x: 46,
+    x: DATA_LEFT,
     y: 0,
     width: 1,
-    height: 68,
+    height: DATA_TOP + 2 * ROW_HEIGHT,
     color: { r: 121 / 255, g: 105 / 255, b: 123 / 255, a: 0.82 },
   })
   expect(scene.borderRects).toContainEqual({
-    x: 253,
+    x: DATA_LEFT + 2 * COLUMN_WIDTH - 1,
     y: 0,
     width: 1,
-    height: 68,
+    height: DATA_TOP + 2 * ROW_HEIGHT,
     color: { r: 121 / 255, g: 105 / 255, b: 123 / 255, a: 0.82 },
   })
   expect(scene.fillRects).toContainEqual({
-    x: 46,
-    y: 21,
-    width: 104,
+    x: DATA_LEFT,
+    y: DATA_TOP - 3,
+    width: COLUMN_WIDTH,
     height: 3,
     color: { r: 121 / 255, g: 105 / 255, b: 123 / 255, a: 0.82 },
   })

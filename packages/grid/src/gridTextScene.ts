@@ -1,6 +1,6 @@
 import { MAX_COLS, MAX_ROWS, OPTIMISTIC_CELL_SNAPSHOT_FLAG, ValueTag, type CellSnapshot } from '@bilig/protocol'
 import type { GridEngineLike } from './grid-engine.js'
-import { getResolvedCellFontFamily, snapshotToRenderCell } from './gridCells.js'
+import { snapshotToRenderCell } from './gridCells.js'
 import { getVisibleColumnBounds, getVisibleRowBounds, type GridMetrics } from './gridMetrics.js'
 import { indexToColumn } from '@bilig/formula'
 import type { HeaderSelection } from './gridPointer.js'
@@ -8,6 +8,7 @@ import type { Item, Rectangle } from './gridTypes.js'
 import { resolveMergedCell, resolveMergedCellBounds } from './gridMergedRanges.js'
 import { collectVisibleColumnBounds, collectVisibleRowBounds } from './visibleGridAxes.js'
 import {
+  WORKBOOK_HEADER_FONT_SANS,
   WORKBOOK_HEADER_FONT_POINT_SIZE,
   WORKBOOK_HEADER_FONT_WEIGHT,
   workbookHeaderFontPointSizeToCssPx,
@@ -74,7 +75,7 @@ const HEADER_RESIZE_TEXT_COLOR = workbookThemeColors.accentDark
 const MERGED_DISPLAY_FALLBACK_SCAN_CELL_LIMIT = 2048
 
 function buildHeaderFont(fontSizePx: number): string {
-  return `${WORKBOOK_HEADER_FONT_WEIGHT} ${fontSizePx}px ${getResolvedCellFontFamily()}`
+  return `${WORKBOOK_HEADER_FONT_WEIGHT} ${fontSizePx}px ${WORKBOOK_HEADER_FONT_SANS}`
 }
 
 function resolveHeaderFontSizePx(pointSize: number | null | undefined): number {

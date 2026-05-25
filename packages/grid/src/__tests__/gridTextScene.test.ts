@@ -3,9 +3,16 @@ import { MAX_COLS, MAX_ROWS, OPTIMISTIC_CELL_SNAPSHOT_FLAG, ValueTag, type CellS
 import { buildGridTextScene } from '../gridTextScene.js'
 import { getResolvedCellFontFamily } from '../gridCells.js'
 import type { GridEngineLike } from '../grid-engine.js'
-import { getGridMetrics } from '../gridMetrics.js'
+import {
+  PRODUCT_COLUMN_WIDTH,
+  PRODUCT_HEADER_HEIGHT,
+  PRODUCT_ROW_HEIGHT,
+  PRODUCT_ROW_MARKER_WIDTH,
+  getGridMetrics,
+} from '../gridMetrics.js'
 import {
   WORKBOOK_DEFAULT_FONT_SIZE,
+  WORKBOOK_HEADER_FONT_SANS,
   WORKBOOK_HEADER_FONT_WEIGHT,
   workbookFontPointSizeToCssPx,
   workbookHeaderFontPointSizeToCssPx,
@@ -33,14 +40,19 @@ function createCellSnapshot(value: TestCellValue, styleId: string | undefined = 
 
 type TestCellSnapshot = ReturnType<typeof createCellSnapshot>
 const CELL_FONT_FAMILY = getResolvedCellFontFamily()
+const HEADER_FONT_FAMILY = WORKBOOK_HEADER_FONT_SANS
 const CELL_FONT_SIZE = workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)
 const CELL_FONT = `400 ${CELL_FONT_SIZE}px ${CELL_FONT_FAMILY}`
 const HEADER_FONT_SIZE = workbookHeaderFontPointSizeToCssPx()
-const HEADER_FONT = `${WORKBOOK_HEADER_FONT_WEIGHT} ${HEADER_FONT_SIZE}px ${CELL_FONT_FAMILY}`
+const HEADER_FONT = `${WORKBOOK_HEADER_FONT_WEIGHT} ${HEADER_FONT_SIZE}px ${HEADER_FONT_FAMILY}`
 const HEADER_SELECTED_COLOR = workbookThemeColors.accent
 const HEADER_DRAG_COLOR = workbookThemeColors.accentDark
 const HEADER_HOVER_COLOR = workbookThemeColors.text
 const CELL_TEXT_COLOR = workbookThemeColors.text
+const DATA_LEFT = PRODUCT_ROW_MARKER_WIDTH
+const DATA_TOP = PRODUCT_HEADER_HEIGHT
+const COLUMN_WIDTH = PRODUCT_COLUMN_WIDTH
+const ROW_HEIGHT = PRODUCT_ROW_HEIGHT
 
 function makeEngine(
   styles: Record<string, CellStyleRecord>,
@@ -80,18 +92,18 @@ describe('gridTextScene', () => {
       visibleItems: [[0, 0]],
       visibleRegion: { range: { x: 0, y: 0, width: 1, height: 1 }, tx: 0, ty: 0 },
       hostBounds: { left: 100, top: 200, width: 300, height: 200 },
-      getCellBounds: () => ({ x: 110, y: 220, width: 90, height: 22 }),
+      getCellBounds: () => ({ x: 110, y: 220, width: 90, height: ROW_HEIGHT }),
     })
 
     expect(scene.items).toContainEqual({
       x: 10,
       y: 20,
       width: 90,
-      height: 22,
-      clipInsetTop: 4,
+      height: ROW_HEIGHT,
+      clipInsetTop: DATA_TOP - 20,
       clipInsetRight: 0,
       clipInsetBottom: 0,
-      clipInsetLeft: 36,
+      clipInsetLeft: DATA_LEFT - 10,
       col: 0,
       text: 'hello',
       align: 'right',
@@ -130,7 +142,7 @@ describe('gridTextScene', () => {
       ],
       visibleRegion: { range: { x: 0, y: 0, width: 2, height: 1 }, tx: 0, ty: 0 },
       hostBounds: { left: 100, top: 200, width: 300, height: 200 },
-      getCellBounds: (col) => ({ x: 110 + col * 90, y: 220, width: 90, height: 22 }),
+      getCellBounds: (col) => ({ x: 110 + col * 90, y: 220, width: 90, height: ROW_HEIGHT }),
     })
 
     const dataItems = scene.items.filter((item) => item.text === 'merged title')
@@ -141,7 +153,7 @@ describe('gridTextScene', () => {
       x: 10,
       y: 20,
       width: 180,
-      height: 22,
+      height: ROW_HEIGHT,
     })
   })
 
@@ -170,7 +182,7 @@ describe('gridTextScene', () => {
       ],
       visibleRegion: { range: { x: 0, y: 0, width: 2, height: 1 }, tx: 0, ty: 0 },
       hostBounds: { left: 100, top: 200, width: 300, height: 200 },
-      getCellBounds: (col) => ({ x: 110 + col * 90, y: 220, width: 90, height: 22 }),
+      getCellBounds: (col) => ({ x: 110 + col * 90, y: 220, width: 90, height: ROW_HEIGHT }),
     })
 
     const dataItems = scene.items.filter((item) => item.text === 'visible after merge')
@@ -194,14 +206,14 @@ describe('gridTextScene', () => {
       visibleItems: [[2, 3]],
       visibleRegion: { range: { x: 2, y: 3, width: 1, height: 1 }, tx: 0, ty: 0 },
       hostBounds: { left: 0, top: 0, width: 320, height: 240 },
-      getCellBounds: () => ({ x: 254, y: 90, width: 104, height: 22 }),
+      getCellBounds: () => ({ x: DATA_LEFT + 2 * COLUMN_WIDTH, y: DATA_TOP + 3 * ROW_HEIGHT, width: COLUMN_WIDTH, height: ROW_HEIGHT }),
     })
 
     expect(scene.items).toContainEqual({
-      x: 46,
+      x: DATA_LEFT,
       y: 0,
-      width: 104,
-      height: 24,
+      width: COLUMN_WIDTH,
+      height: DATA_TOP,
       clipInsetTop: 0,
       clipInsetRight: 0,
       clipInsetBottom: 0,
@@ -217,9 +229,9 @@ describe('gridTextScene', () => {
     })
     expect(scene.items).toContainEqual({
       x: 0,
-      y: 24,
-      width: 46,
-      height: 22,
+      y: DATA_TOP,
+      width: DATA_LEFT,
+      height: ROW_HEIGHT,
       clipInsetTop: 0,
       clipInsetRight: 0,
       clipInsetBottom: 0,
@@ -248,14 +260,14 @@ describe('gridTextScene', () => {
       visibleItems: [[2, 3]],
       visibleRegion: { range: { x: 2, y: 3, width: 1, height: 2 }, tx: 0, ty: 0 },
       hostBounds: { left: 0, top: 0, width: 320, height: 240 },
-      getCellBounds: () => ({ x: 254, y: 90, width: 104, height: 22 }),
+      getCellBounds: () => ({ x: DATA_LEFT + 2 * COLUMN_WIDTH, y: DATA_TOP + 3 * ROW_HEIGHT, width: COLUMN_WIDTH, height: ROW_HEIGHT }),
     })
 
     expect(scene.items).toContainEqual({
-      x: 46,
+      x: DATA_LEFT,
       y: 0,
-      width: 104,
-      height: 24,
+      width: COLUMN_WIDTH,
+      height: DATA_TOP,
       clipInsetTop: 0,
       clipInsetRight: 0,
       clipInsetBottom: 0,
@@ -271,9 +283,9 @@ describe('gridTextScene', () => {
     })
     expect(scene.items).toContainEqual({
       x: 0,
-      y: 24,
-      width: 46,
-      height: 22,
+      y: DATA_TOP,
+      width: DATA_LEFT,
+      height: ROW_HEIGHT,
       clipInsetTop: 0,
       clipInsetRight: 0,
       clipInsetBottom: 0,
@@ -289,9 +301,9 @@ describe('gridTextScene', () => {
     })
     expect(scene.items).toContainEqual({
       x: 0,
-      y: 46,
-      width: 46,
-      height: 22,
+      y: DATA_TOP + ROW_HEIGHT,
+      width: DATA_LEFT,
+      height: ROW_HEIGHT,
       clipInsetTop: 0,
       clipInsetRight: 0,
       clipInsetBottom: 0,
@@ -330,18 +342,18 @@ describe('gridTextScene', () => {
       },
       hostBounds: { left: 0, top: 0, width: 320, height: 240 },
       getCellBounds: (col, row) => ({
-        x: col === 0 ? 46 : 150,
-        y: row === 0 ? 24 : 46,
-        width: 104,
-        height: 22,
+        x: col === 0 ? DATA_LEFT : DATA_LEFT + COLUMN_WIDTH,
+        y: row === 0 ? DATA_TOP : DATA_TOP + ROW_HEIGHT,
+        width: COLUMN_WIDTH,
+        height: ROW_HEIGHT,
       }),
     })
 
     expect(scene.items).toContainEqual({
-      x: 46,
+      x: DATA_LEFT,
       y: 0,
-      width: 104,
-      height: 24,
+      width: COLUMN_WIDTH,
+      height: DATA_TOP,
       clipInsetTop: 0,
       clipInsetRight: 0,
       clipInsetBottom: 0,
@@ -356,10 +368,10 @@ describe('gridTextScene', () => {
       strike: false,
     })
     expect(scene.items).toContainEqual({
-      x: 150,
+      x: DATA_LEFT + COLUMN_WIDTH,
       y: 0,
-      width: 104,
-      height: 24,
+      width: COLUMN_WIDTH,
+      height: DATA_TOP,
       clipInsetTop: 0,
       clipInsetRight: 0,
       clipInsetBottom: 0,
@@ -375,9 +387,9 @@ describe('gridTextScene', () => {
     })
     expect(scene.items).toContainEqual({
       x: 0,
-      y: 24,
-      width: 46,
-      height: 22,
+      y: DATA_TOP,
+      width: DATA_LEFT,
+      height: ROW_HEIGHT,
       clipInsetTop: 0,
       clipInsetRight: 0,
       clipInsetBottom: 0,
@@ -393,9 +405,9 @@ describe('gridTextScene', () => {
     })
     expect(scene.items).toContainEqual({
       x: 0,
-      y: 46,
-      width: 46,
-      height: 22,
+      y: DATA_TOP + ROW_HEIGHT,
+      width: DATA_LEFT,
+      height: ROW_HEIGHT,
       clipInsetTop: 0,
       clipInsetRight: 0,
       clipInsetBottom: 0,
@@ -422,14 +434,14 @@ describe('gridTextScene', () => {
       visibleItems: [[2, 3]],
       visibleRegion: { range: { x: 2, y: 3, width: 1, height: 1 }, tx: 0, ty: 0 },
       hostBounds: { left: 0, top: 0, width: 320, height: 240 },
-      getCellBounds: () => ({ x: 254, y: 90, width: 104, height: 22 }),
+      getCellBounds: () => ({ x: DATA_LEFT + 2 * COLUMN_WIDTH, y: DATA_TOP + 3 * ROW_HEIGHT, width: COLUMN_WIDTH, height: ROW_HEIGHT }),
     })
 
     expect(scene.items).toContainEqual({
-      x: 46,
+      x: DATA_LEFT,
       y: 0,
-      width: 104,
-      height: 24,
+      width: COLUMN_WIDTH,
+      height: DATA_TOP,
       clipInsetTop: 0,
       clipInsetRight: 0,
       clipInsetBottom: 0,
@@ -456,15 +468,15 @@ describe('gridTextScene', () => {
       visibleItems: [[2, 3]],
       visibleRegion: { range: { x: 2, y: 3, width: 1, height: 1 }, tx: 0, ty: 0 },
       hostBounds: { left: 0, top: 0, width: 320, height: 240 },
-      getCellBounds: () => ({ x: 254, y: 90, width: 104, height: 22 }),
+      getCellBounds: () => ({ x: DATA_LEFT + 2 * COLUMN_WIDTH, y: DATA_TOP + 3 * ROW_HEIGHT, width: COLUMN_WIDTH, height: ROW_HEIGHT }),
     })
 
     expect(scene.items.some((item) => item.text === 'editing')).toBe(false)
     expect(scene.items).toContainEqual({
-      x: 46,
+      x: DATA_LEFT,
       y: 0,
-      width: 104,
-      height: 24,
+      width: COLUMN_WIDTH,
+      height: DATA_TOP,
       clipInsetTop: 0,
       clipInsetRight: 0,
       clipInsetBottom: 0,
@@ -499,16 +511,16 @@ describe('gridTextScene', () => {
       visibleItems: [[2, 4]],
       visibleRegion: { range: { x: 2, y: 4, width: 1, height: 1 }, tx: 0, ty: 0 },
       hostBounds: { left: 0, top: 0, width: 320, height: 240 },
-      getCellBounds: () => ({ x: 254, y: 112, width: 104, height: 22 }),
+      getCellBounds: () => ({ x: DATA_LEFT + 2 * COLUMN_WIDTH, y: DATA_TOP + 4 * ROW_HEIGHT, width: COLUMN_WIDTH, height: ROW_HEIGHT }),
     })
 
     expect(scene.items.find((item) => item.text === 'selected')).toEqual({
-      x: 254,
-      y: 112,
-      width: 104,
-      height: 22,
+      x: DATA_LEFT + 2 * COLUMN_WIDTH,
+      y: DATA_TOP + 4 * ROW_HEIGHT,
+      width: COLUMN_WIDTH,
+      height: ROW_HEIGHT,
       clipInsetTop: 0,
-      clipInsetRight: 38,
+      clipInsetRight: 32,
       clipInsetBottom: 0,
       clipInsetLeft: 0,
       col: 2,
@@ -544,7 +556,7 @@ describe('gridTextScene', () => {
       visibleItems: [[2, 4]],
       visibleRegion: { range: { x: 2, y: 4, width: 1, height: 1 }, tx: 0, ty: 0 },
       hostBounds: { left: 0, top: 0, width: 320, height: 240 },
-      getCellBounds: () => ({ x: 254, y: 112, width: 104, height: 22 }),
+      getCellBounds: () => ({ x: DATA_LEFT + 2 * COLUMN_WIDTH, y: DATA_TOP + 4 * ROW_HEIGHT, width: COLUMN_WIDTH, height: ROW_HEIGHT }),
     })
 
     expect(scene.items.at(-1)?.text).toBe('engine text')
@@ -569,7 +581,7 @@ describe('gridTextScene', () => {
       visibleItems: [[2, 4]],
       visibleRegion: { range: { x: 2, y: 4, width: 1, height: 1 }, tx: 0, ty: 0 },
       hostBounds: { left: 0, top: 0, width: 320, height: 240 },
-      getCellBounds: () => ({ x: 254, y: 112, width: 104, height: 22 }),
+      getCellBounds: () => ({ x: DATA_LEFT + 2 * COLUMN_WIDTH, y: DATA_TOP + 4 * ROW_HEIGHT, width: COLUMN_WIDTH, height: ROW_HEIGHT }),
     })
 
     expect(scene.items.at(-1)?.text).toBe('engine text')
@@ -600,7 +612,7 @@ describe('gridTextScene', () => {
       visibleItems: [[2, 4]],
       visibleRegion: { range: { x: 2, y: 4, width: 1, height: 1 }, tx: 0, ty: 0 },
       hostBounds: { left: 0, top: 0, width: 320, height: 240 },
-      getCellBounds: () => ({ x: 254, y: 112, width: 104, height: 22 }),
+      getCellBounds: () => ({ x: DATA_LEFT + 2 * COLUMN_WIDTH, y: DATA_TOP + 4 * ROW_HEIGHT, width: COLUMN_WIDTH, height: ROW_HEIGHT }),
     })
 
     expect(scene.items.some((item) => item.text === 'engine text')).toBe(false)
@@ -632,7 +644,7 @@ describe('gridTextScene', () => {
       visibleItems: [[2, 4]],
       visibleRegion: { range: { x: 2, y: 4, width: 1, height: 1 }, tx: 0, ty: 0 },
       hostBounds: { left: 0, top: 0, width: 320, height: 240 },
-      getCellBounds: () => ({ x: 254, y: 112, width: 104, height: 22 }),
+      getCellBounds: () => ({ x: DATA_LEFT + 2 * COLUMN_WIDTH, y: DATA_TOP + 4 * ROW_HEIGHT, width: COLUMN_WIDTH, height: ROW_HEIGHT }),
     })
 
     expect(scene.items.some((item) => item.text === 'engine text')).toBe(false)
@@ -666,14 +678,14 @@ describe('gridTextScene', () => {
       visibleItems: [[0, 0]],
       visibleRegion: { range: { x: 0, y: 0, width: 1, height: 1 }, tx: 0, ty: 0 },
       hostBounds: { left: 0, top: 0, width: 320, height: 240 },
-      getCellBounds: () => ({ x: 46, y: 24, width: 104, height: 22 }),
+      getCellBounds: () => ({ x: DATA_LEFT, y: DATA_TOP, width: COLUMN_WIDTH, height: ROW_HEIGHT }),
     })
 
     expect(scene.items).toContainEqual({
-      x: 46,
+      x: DATA_LEFT,
       y: 0,
-      width: 104,
-      height: 24,
+      width: COLUMN_WIDTH,
+      height: DATA_TOP,
       clipInsetTop: 0,
       clipInsetRight: 0,
       clipInsetBottom: 0,
@@ -682,16 +694,16 @@ describe('gridTextScene', () => {
       align: 'center',
       wrap: false,
       color: HEADER_SELECTED_COLOR,
-      font: `${WORKBOOK_HEADER_FONT_WEIGHT} ${workbookFontPointSizeToCssPx(20)}px ${CELL_FONT_FAMILY}`,
+      font: `${WORKBOOK_HEADER_FONT_WEIGHT} ${workbookFontPointSizeToCssPx(20)}px ${HEADER_FONT_FAMILY}`,
       fontSize: workbookFontPointSizeToCssPx(20),
       underline: false,
       strike: false,
     })
     expect(scene.items).toContainEqual({
       x: 0,
-      y: 24,
-      width: 46,
-      height: 22,
+      y: DATA_TOP,
+      width: DATA_LEFT,
+      height: ROW_HEIGHT,
       clipInsetTop: 0,
       clipInsetRight: 0,
       clipInsetBottom: 0,
@@ -700,7 +712,7 @@ describe('gridTextScene', () => {
       align: 'right',
       wrap: false,
       color: HEADER_SELECTED_COLOR,
-      font: `${WORKBOOK_HEADER_FONT_WEIGHT} ${workbookFontPointSizeToCssPx(20)}px ${CELL_FONT_FAMILY}`,
+      font: `${WORKBOOK_HEADER_FONT_WEIGHT} ${workbookFontPointSizeToCssPx(20)}px ${HEADER_FONT_FAMILY}`,
       fontSize: workbookFontPointSizeToCssPx(20),
       underline: false,
       strike: false,
@@ -729,20 +741,20 @@ describe('gridTextScene', () => {
       visibleRegion: { range: { x: 1, y: 11, width: 3, height: 1 }, tx: 0, ty: 0 },
       hostBounds: { left: 0, top: 0, width: 320, height: 240 },
       getCellBounds: (col) => ({
-        x: 46 + col * 104,
+        x: DATA_LEFT + col * COLUMN_WIDTH,
         y: 266,
-        width: 104,
-        height: 22,
+        width: COLUMN_WIDTH,
+        height: ROW_HEIGHT,
       }),
     })
 
     expect(scene.items).toContainEqual({
-      x: 150,
+      x: DATA_LEFT + COLUMN_WIDTH,
       y: 266,
       width: 312,
-      height: 22,
+      height: ROW_HEIGHT,
       clipInsetTop: 0,
-      clipInsetRight: 142,
+      clipInsetRight: 136,
       clipInsetBottom: 48,
       clipInsetLeft: 0,
       col: 1,
@@ -774,15 +786,15 @@ describe('gridTextScene', () => {
       sheetName: 'Sheet1',
       visibleItems: [[1, 1]],
       visibleRegion: { range: { x: 1, y: 1, width: 1, height: 1 }, tx: 0, ty: 0 },
-      hostBounds: { left: 0, top: 0, width: 104, height: 22 },
-      getCellBounds: () => ({ x: 0, y: 0, width: 104, height: 22 }),
+      hostBounds: { left: 0, top: 0, width: COLUMN_WIDTH, height: ROW_HEIGHT },
+      getCellBounds: () => ({ x: 0, y: 0, width: COLUMN_WIDTH, height: ROW_HEIGHT }),
     })
 
     expect(scene.items).toContainEqual({
       x: 0,
       y: 0,
-      width: 104,
-      height: 22,
+      width: COLUMN_WIDTH,
+      height: ROW_HEIGHT,
       clipInsetTop: 0,
       clipInsetRight: 0,
       clipInsetBottom: 0,

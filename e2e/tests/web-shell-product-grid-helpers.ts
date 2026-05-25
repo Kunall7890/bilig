@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import { expect, type Locator, type Page } from '@playwright/test'
 
-export const PRODUCT_ROW_MARKER_WIDTH = 46
+export const PRODUCT_ROW_MARKER_WIDTH = 40
 export const PRODUCT_COLUMN_WIDTH = 104
-export const PRODUCT_HEADER_HEIGHT = 24
+export const PRODUCT_HEADER_HEIGHT = 22
 export const PRODUCT_ROW_HEIGHT = 22
 export const PRIMARY_MODIFIER = process.platform === 'darwin' ? 'Meta' : 'Control'
 export const remoteSyncEnabled = process.env['BILIG_E2E_REMOTE_SYNC'] !== '0'

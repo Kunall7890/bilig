@@ -1,12 +1,16 @@
 import { indexToColumn } from '@bilig/formula'
 import { buildGridGpuHeaderScene } from '../gridGpuHeaderScene.js'
-import { getResolvedCellFontFamily } from '../gridCells.js'
 import { getVisibleColumnBounds, getVisibleRowBounds, type GridMetrics } from '../gridMetrics.js'
 import { buildHeaderPaneStates, type GridHeaderPaneState } from '../gridHeaderPanes.js'
 import { CompactSelection, type GridSelection, type Item, type Rectangle } from '../gridTypes.js'
 import type { GridTextItem, GridTextScene } from '../gridTextScene.js'
 import { collectVisibleColumnBounds, collectVisibleRowBounds } from '../visibleGridAxes.js'
-import { WORKBOOK_HEADER_FONT_WEIGHT, workbookHeaderFontPointSizeToCssPx, workbookThemeColors } from '../workbookTheme.js'
+import {
+  WORKBOOK_HEADER_FONT_SANS,
+  WORKBOOK_HEADER_FONT_WEIGHT,
+  workbookHeaderFontPointSizeToCssPx,
+  workbookThemeColors,
+} from '../workbookTheme.js'
 import { parseGpuColor, type GridGpuScene } from '../gridGpuPrimitives.js'
 
 const STATIC_SELECTED_CELL: Item = Object.freeze([-1, -1] as const)
@@ -95,7 +99,7 @@ function buildWorkbookHeaderGpuSceneV3(input: WorkbookHeaderPaneInputV3): GridGp
 export function buildWorkbookHeaderTextSceneV3(input: WorkbookHeaderPaneInputV3): GridTextScene {
   const items: GridTextItem[] = []
   const headerFontSize = workbookHeaderFontPointSizeToCssPx()
-  const headerFont = `${WORKBOOK_HEADER_FONT_WEIGHT} ${headerFontSize}px ${getResolvedCellFontFamily()}`
+  const headerFont = `${WORKBOOK_HEADER_FONT_WEIGHT} ${headerFontSize}px ${WORKBOOK_HEADER_FONT_SANS}`
   const hasFrozenAxes = input.freezeRows > 0 || input.freezeCols > 0
   const visibleColumns = hasFrozenAxes
     ? collectVisibleColumnBounds(input.residentHeaderItems, input.getHeaderCellLocalBounds, input.gridMetrics)

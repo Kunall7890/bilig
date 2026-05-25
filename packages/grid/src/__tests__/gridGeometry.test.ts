@@ -27,8 +27,8 @@ describe('gridGeometry', () => {
     expect(geometry.camera.frozenHeight).toBe(20)
     expect(geometry.camera.bodyWorldX).toBe(350)
     expect(geometry.camera.bodyWorldY).toBe(60)
-    expect(geometry.camera.bodyViewportWidth).toBe(274)
-    expect(geometry.camera.bodyViewportHeight).toBe(176)
+    expect(geometry.camera.bodyViewportWidth).toBe(280)
+    expect(geometry.camera.bodyViewportHeight).toBe(178)
   })
 
   test('uses one transform model for body and frozen cells', () => {
@@ -57,14 +57,19 @@ describe('gridGeometry', () => {
       x: metrics.rowMarkerWidth + 100 + (200 - 150),
       y: metrics.headerHeight + 20 + (60 - 30),
     })
-    expect(geometry.columnHeaderScreenRect(2)).toMatchObject({ height: metrics.headerHeight, width: 100, x: 196, y: 0 })
-    expect(geometry.rowHeaderScreenRect(3)).toMatchObject({ height: 20, width: metrics.rowMarkerWidth, x: 0, y: 74 })
-    expect(geometry.cellScreenRectForPane(2, 3, 'body')).toEqual({ height: 20, width: 100, x: 196, y: 74 })
+    expect(geometry.columnHeaderScreenRect(2)).toMatchObject({ height: metrics.headerHeight, width: 100, x: 190, y: 0 })
+    expect(geometry.rowHeaderScreenRect(3)).toMatchObject({ height: 20, width: metrics.rowMarkerWidth, x: 0, y: 72 })
+    expect(geometry.cellScreenRectForPane(2, 3, 'body')).toEqual({ height: 20, width: 100, x: 190, y: 72 })
     expect(geometry.cellScreenRectForPane(0, 0, 'body')).toBeNull()
-    expect(geometry.cellScreenRectForPane(0, 0, 'frozen-cells')).toEqual({ height: 20, width: 100, x: 46, y: 24 })
-    expect(geometry.editorScreenRect(2, 3)).toEqual({ height: 20, width: 100, x: 196, y: 74 })
-    expect(geometry.resizeGuideScreenRect({ kind: 'column', index: 2 })).toEqual({ height: 220, width: 1, x: 295, y: 0 })
-    expect(geometry.resizeGuideScreenRect({ kind: 'row', index: 3 })).toEqual({ height: 1, width: 520, x: 0, y: 93 })
+    expect(geometry.cellScreenRectForPane(0, 0, 'frozen-cells')).toEqual({
+      height: 20,
+      width: 100,
+      x: metrics.rowMarkerWidth,
+      y: metrics.headerHeight,
+    })
+    expect(geometry.editorScreenRect(2, 3)).toEqual({ height: 20, width: 100, x: 190, y: 72 })
+    expect(geometry.resizeGuideScreenRect({ kind: 'column', index: 2 })).toEqual({ height: 220, width: 1, x: 289, y: 0 })
+    expect(geometry.resizeGuideScreenRect({ kind: 'row', index: 3 })).toEqual({ height: 1, width: 520, x: 0, y: 91 })
   })
 
   test('hit-tests through body and frozen panes with hidden axes skipped', () => {
@@ -150,17 +155,17 @@ describe('gridGeometry', () => {
     })
 
     expect(geometry.rangeScreenRects({ x: 0, y: 0, width: 3, height: 3 })).toEqual([
-      { height: 20, width: 100, x: 46, y: 24 },
-      { height: 30, width: 100, x: 46, y: 44 },
-      { height: 20, width: 150, x: 146, y: 24 },
-      { height: 30, width: 150, x: 146, y: 44 },
+      { height: 20, width: 100, x: metrics.rowMarkerWidth, y: metrics.headerHeight },
+      { height: 30, width: 100, x: metrics.rowMarkerWidth, y: metrics.headerHeight + 20 },
+      { height: 20, width: 150, x: metrics.rowMarkerWidth + 100, y: metrics.headerHeight },
+      { height: 30, width: 150, x: metrics.rowMarkerWidth + 100, y: metrics.headerHeight + 20 },
     ])
     expect(geometry.rangeWorldRects({ x: 0, y: 0, width: 3, height: 3 })).toEqual([{ height: 60, width: 300, x: 0, y: 0 }])
     expect(geometry.fillHandleScreenRect({ x: 0, y: 0, width: 3, height: 3 })).toEqual({
       height: 8,
       width: 8,
-      x: 292,
-      y: 70,
+      x: 286,
+      y: 68,
     })
   })
 
@@ -206,10 +211,10 @@ describe('gridGeometry', () => {
     })
 
     expect(geometry.fillHandleScreenRect({ x: 1, y: 3, width: 1, height: 1 })).toEqual({
-      height: 4,
+      height: 6,
       width: 8,
-      x: 242,
-      y: 96,
+      x: 236,
+      y: 94,
     })
   })
 
