@@ -41,6 +41,25 @@ npx --package xlsx-formula-recalc xlsx-recalc workbook.xlsx \
   --json
 ```
 
+For linked workbooks, pass companion files:
+
+```sh
+npx --package xlsx-formula-recalc xlsx-recalc workbook.xlsx \
+  --external-workbook rates.xlsx \
+  --read Summary!B7 \
+  --json
+```
+
+Use an exact target binding when the workbook link target differs from the local
+filename:
+
+```sh
+npx --package xlsx-formula-recalc xlsx-recalc workbook.xlsx \
+  --external-workbook-target ./fixtures/rates-current.xlsx file:///tmp/rates.xlsx \
+  --read Summary!B7 \
+  --json
+```
+
 ## TypeScript
 
 ```ts

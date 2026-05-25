@@ -26,6 +26,16 @@ npx --package xlsx-formula-recalc xlsx-recalc quote.xlsx \
   --json
 ```
 
+For external workbook links, pass companion files with `--external-workbook`
+or exact link bindings with `--external-workbook-target <path> <target>`:
+
+```sh
+npx --package xlsx-formula-recalc xlsx-recalc quote.xlsx \
+  --external-workbook-target ./fixtures/rates-current.xlsx file:///tmp/rates.xlsx \
+  --read Summary!B7 \
+  --json
+```
+
 Use the API when code already has workbook bytes:
 
 ```ts

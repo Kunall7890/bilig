@@ -2,7 +2,13 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
 
 import type { RawCellContent } from '@bilig/headless'
+import type { XlsxExternalWorkbookInput } from '@bilig/headless/xlsx'
 import { exportXlsx, recalculateXlsx, WorkPaper, type XlsxFormulaRecalcEdit } from './index.js'
+
+interface CliExternalWorkbook {
+  readonly path: string
+  readonly target?: string
+}
 
 interface CliOptions {
   readonly mode: 'file' | 'demo'
@@ -10,6 +16,7 @@ interface CliOptions {
   readonly outputPath: string
   readonly edits: readonly XlsxFormulaRecalcEdit[]
   readonly reads: readonly string[]
+  readonly externalWorkbooks: readonly CliExternalWorkbook[]
   readonly json: boolean
 }
 
@@ -33,8 +40,10 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
     const options = parseCliArgs(args, commandName)
     const input = options.mode === 'demo' ? buildDemoWorkbookBytes() : readFileSync(requireInputPath(options))
     const inputName = options.mode === 'demo' ? 'bilig-formula-recalc-demo.xlsx' : basename(requireInputPath(options))
+    const externalWorkbooks = readExternalWorkbookInputs(options.externalWorkbooks)
     const result = recalculateXlsx(input, {
       fileName: inputName,
+      ...(externalWorkbooks.length > 0 ? { externalWorkbooks } : {}),
       edits: options.edits,
       reads: options.reads,
     })
@@ -45,6 +54,7 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
       input: options.inputPath ?? 'generated demo workbook',
       output: options.outputPath,
       edits: options.edits.length,
+      externalWorkbooks: externalWorkbooks.length,
       reads: result.reads,
       warnings: result.warnings,
       ...(result.diagnostics ? { diagnostics: result.diagnostics } : {}),
@@ -78,6 +88,7 @@ function parseCliArgs(args: readonly string[], commandName: string): CliOptions 
 
   const edits: XlsxFormulaRecalcEdit[] = []
   const reads: string[] = []
+  const externalWorkbooks: CliExternalWorkbook[] = []
   let outputPath: string | undefined
   let json = false
 
@@ -96,6 +107,17 @@ function parseCliArgs(args: readonly string[], commandName: string): CliOptions 
       case '--read':
         reads.push(requireNextArg(args, index, '--read'))
         index += 1
+        break
+      case '--external-workbook':
+        externalWorkbooks.push({ path: requireNextArg(args, index, '--external-workbook') })
+        index += 1
+        break
+      case '--external-workbook-target':
+        externalWorkbooks.push({
+          path: requireNextArg(args, index, '--external-workbook-target'),
+          target: requireNextArg(args, index + 1, '--external-workbook-target target'),
+        })
+        index += 2
         break
       case '--out':
       case '-o':
@@ -117,8 +139,17 @@ function parseCliArgs(args: readonly string[], commandName: string): CliOptions 
       outputPath ?? (demo ? 'bilig-formula-recalc-demo.xlsx' : defaultOutputPath(requireDefined(inputPath, 'Expected input XLSX path'))),
     edits: edits.length > 0 ? edits : demoDefaultEdits(demo),
     reads: reads.length > 0 ? reads : demoDefaultReads(demo),
+    externalWorkbooks,
     json,
   }
+}
+
+function readExternalWorkbookInputs(workbooks: readonly CliExternalWorkbook[]): XlsxExternalWorkbookInput[] {
+  return workbooks.map((workbook) => ({
+    bytes: readFileSync(workbook.path),
+    fileName: basename(workbook.path),
+    ...(workbook.target ? { target: workbook.target } : {}),
+  }))
 }
 
 function buildDemoWorkbookBytes(): Uint8Array {
@@ -213,6 +244,10 @@ Options:
   --demo                  Generate a tiny workbook, edit inputs, recalculate, and write proof XLSX.
   --set <Sheet!A1=value>  Edit an input cell before recalculation. Repeatable.
   --read <Sheet!A1>       Read a recalculated cell after edits. Repeatable.
+  --external-workbook <path>
+                          Supply a companion XLSX for external-link cache refresh. Repeatable.
+  --external-workbook-target <path> <target>
+                          Supply a companion XLSX for an exact Excel link target. Repeatable.
   --out, -o <path>        Output XLSX path. Defaults to <input>.recalculated.xlsx.
   --json                  Print a JSON summary.
   --help, -h              Show this help.

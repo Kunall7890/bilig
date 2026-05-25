@@ -84,6 +84,31 @@ npx --package xlsx-formula-recalc xlsx-recalc pricing.xlsx \
 
 The CLI writes a recalculated workbook and prints readback values. Cell targets must be sheet-qualified A1 references such as `Inputs!B2` or `'Pricing Model'!F12`.
 
+For workbooks with external links, pass companion workbook files so cached link
+values can be refreshed before recalculation:
+
+```sh
+npx --package xlsx-formula-recalc xlsx-recalc model.xlsx \
+  --external-workbook rates.xlsx \
+  --read Model!C1 \
+  --out model.recalculated.xlsx \
+  --json
+```
+
+When the link target in the workbook is an exact path or URI that does not match
+the local companion filename, bind the companion explicitly:
+
+```sh
+npx --package xlsx-formula-recalc xlsx-recalc model.xlsx \
+  --external-workbook-target ./fixtures/rates-current.xlsx file:///tmp/rates.xlsx \
+  --read Model!C1 \
+  --json
+```
+
+Ambiguous companion matches fail closed: the command preserves existing
+external-link cache values, emits a warning, and includes hydration diagnostics
+in JSON output.
+
 ## API
 
 ```ts
@@ -99,6 +124,23 @@ const result = recalculateXlsx(await fs.promises.readFile('pricing.xlsx'), {
 
 await fs.promises.writeFile('pricing.recalculated.xlsx', result.xlsx)
 console.log(result.reads['Summary!B7'])
+```
+
+External companion workbooks use the same matching rules as the CLI:
+
+```ts
+const result = recalculateXlsx(await fs.promises.readFile('model.xlsx'), {
+  externalWorkbooks: [
+    {
+      bytes: await fs.promises.readFile('rates.xlsx'),
+      fileName: 'rates.xlsx',
+      target: 'file:///tmp/rates.xlsx',
+    },
+  ],
+  reads: ['Model!C1'],
+})
+
+console.log(result.diagnostics?.externalWorkbookHydration)
 ```
 
 If another library already produced the workbook bytes, pass those bytes directly:
