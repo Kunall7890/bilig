@@ -23,9 +23,17 @@ import {
   runMacosExcelStructuralOperationOracle,
 } from '../macos-excel-oracle.js'
 
+function readMacosExcelOracleSource(): string {
+  return readFileSync(new URL('../macos-excel-oracle.ts', import.meta.url), 'utf8')
+}
+
+function readMacosExcelOracleRuntimeSource(): string {
+  return readFileSync(new URL('../macos-excel-oracle-runtime.ts', import.meta.url), 'utf8')
+}
+
 describe('macOS Desktop Excel oracle harness', () => {
   it('uses Excel collection count syntax that works for workbook-open polling', () => {
-    const source = readFileSync(new URL('../macos-excel-oracle.ts', import.meta.url), 'utf8')
+    const source = readMacosExcelOracleRuntimeSource()
 
     expect(source).toContain('set workbookCount to count of workbooks')
     expect(source).toContain('set workbookCount to 0')
@@ -115,7 +123,7 @@ describe('macOS Desktop Excel oracle harness', () => {
   })
 
   it('pre-opens companion workbooks before linked target workbooks', () => {
-    const source = readFileSync(new URL('../macos-excel-oracle.ts', import.meta.url), 'utf8')
+    const source = `${readMacosExcelOracleSource()}\n${readMacosExcelOracleRuntimeSource()}`
 
     expect(source).toContain('macosExcelPreOpenWorkbookPaths(stagedWorkbookPath, request.companionWorkbookPaths)')
     expect(source).toContain('return [...(companionWorkbookPaths ?? []), stagedWorkbookPath]')
@@ -123,7 +131,7 @@ describe('macOS Desktop Excel oracle harness', () => {
   })
 
   it('starts the macro prompt handler before Launch Services workbook opens', () => {
-    const source = readFileSync(new URL('../macos-excel-oracle.ts', import.meta.url), 'utf8')
+    const source = readMacosExcelOracleRuntimeSource()
 
     expect(source).toContain('startMacosExcelMacroPromptHandler()')
     expect(source.indexOf('startMacosExcelMacroPromptHandler()')).toBeLessThan(
@@ -133,7 +141,7 @@ describe('macOS Desktop Excel oracle harness', () => {
   })
 
   it('can recover a workbookless stale Excel process before retrying Launch Services open', () => {
-    const source = readFileSync(new URL('../macos-excel-oracle.ts', import.meta.url), 'utf8')
+    const source = readMacosExcelOracleRuntimeSource()
 
     expect(source).toContain('restartMacosExcelForOracleOpenRecovery()')
     expect(source).toContain('macosExcelQuitIfNoWorkbooksAppleScript()')
