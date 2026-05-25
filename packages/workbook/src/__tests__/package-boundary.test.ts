@@ -133,6 +133,7 @@ describe('@bilig/workbook package boundary', () => {
     expect(exportsMap).toMatchObject({
       '.': expect.any(Object),
       './model': expect.any(Object),
+      './prepare': expect.any(Object),
       './find': expect.any(Object),
       './check': expect.any(Object),
       './formula': expect.any(Object),

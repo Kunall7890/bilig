@@ -80,9 +80,10 @@ simple to define, inspect, transport, and prove.
 
 The root export keeps the full contract. Subpath exports are available for
 agents that want a smaller import map: `@bilig/workbook/model`,
-`@bilig/workbook/find`, `@bilig/workbook/check`, `@bilig/workbook/formula`,
-`@bilig/workbook/verify`, `@bilig/workbook/runtime`, and
-`@bilig/workbook/command`, and `@bilig/workbook/schema`.
+`@bilig/workbook/prepare`, `@bilig/workbook/find`, `@bilig/workbook/check`,
+`@bilig/workbook/formula`, `@bilig/workbook/verify`,
+`@bilig/workbook/runtime`, `@bilig/workbook/command`, and
+`@bilig/workbook/schema`.
 
 ## Public Contract
 

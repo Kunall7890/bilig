@@ -35,6 +35,7 @@
       "@bilig/workbook/find": ["./packages/workbook/src/find.ts"],
       "@bilig/workbook/formula": ["./packages/workbook/src/formula.ts"],
       "@bilig/workbook/model": ["./packages/workbook/src/model.ts"],
+      "@bilig/workbook/prepare": ["./packages/workbook/src/prepare.ts"],
       "@bilig/workbook/runtime": ["./packages/workbook/src/runtime.ts"],
       "@bilig/workbook/schema": ["./packages/workbook/src/schema.ts"],
       "@bilig/workbook/verify": ["./packages/workbook/src/verify.ts"],

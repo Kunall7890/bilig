@@ -40,6 +40,11 @@
       "import": "./dist/model.js",
       "default": "./dist/model.js"
     },
+    "./prepare": {
+      "types": "./dist/prepare.d.ts",
+      "import": "./dist/prepare.js",
+      "default": "./dist/prepare.js"
+    },
     "./find": {
       "types": "./dist/find.d.ts",
       "import": "./dist/find.js",

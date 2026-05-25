@@ -131,6 +131,10 @@
     "packageDir": "packages/workbook",
     "sourceEntry": "packages/workbook/src/model.ts"
   },
+  "@bilig/workbook/prepare": {
+    "packageDir": "packages/workbook",
+    "sourceEntry": "packages/workbook/src/prepare.ts"
+  },
   "@bilig/workbook/runtime": {
     "packageDir": "packages/workbook",
     "sourceEntry": "packages/workbook/src/runtime.ts"

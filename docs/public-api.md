@@ -54,10 +54,10 @@ The stable contract has four layers.
 
 The root export remains the complete compatibility barrel. For agents that want
 smaller import maps, the package also publishes layered subpaths:
-`@bilig/workbook/model`, `@bilig/workbook/find`, `@bilig/workbook/check`,
-`@bilig/workbook/formula`, `@bilig/workbook/verify`,
-`@bilig/workbook/runtime`, `@bilig/workbook/command`, and
-`@bilig/workbook/schema`.
+`@bilig/workbook/model`, `@bilig/workbook/prepare`,
+`@bilig/workbook/find`, `@bilig/workbook/check`, `@bilig/workbook/formula`,
+`@bilig/workbook/verify`, `@bilig/workbook/runtime`,
+`@bilig/workbook/command`, and `@bilig/workbook/schema`.
 
 ### Agent model contract
 
