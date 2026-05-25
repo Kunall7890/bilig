@@ -198,10 +198,10 @@
         "coverageNote": "IronCalc Rust is covered through a generated local sidecar that pins crates.io `ironcalc_base = \"=0.7.1\"` and runs all samples in one release-mode Rust process. This workbook-wide-limited lane uses canonical headless benchmark workload names, times `Model` for workbook construction rows and `UserModel` for single-cell user-operation rows, and records unsupported rows explicitly until Rust operation adapters prove parity.",
         "coverageTier": "workbook-wide-limited",
         "engineName": "IronCalc Rust",
-        "generatedAt": "2026-05-25T10:46:39.587Z",
+        "generatedAt": "2026-05-25T12:13:05.699Z",
         "meanAndP95WinCount": 81,
-        "meanWinCount": 88,
-        "p95WinCount": 81,
+        "meanWinCount": 87,
+        "p95WinCount": 82,
         "version": "0.7.1",
         "workloadFamilies": [
           "build",

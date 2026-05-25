@@ -48,3 +48,41 @@ export function hasStructuralMetadataForSheetRecord(
     (sheet?.formatRanges.length ?? 0) > 0
   )
 }
+
+export function hasWorkbookMetadataForSheetRename(metadata: WorkbookMetadataRecord): boolean {
+  return (
+    metadata.macroPayloads.size > 0 ||
+    metadata.definedNames.size > 0 ||
+    metadata.tables.size > 0 ||
+    metadata.spills.size > 0 ||
+    metadata.pivots.size > 0 ||
+    metadata.charts.size > 0 ||
+    metadata.images.size > 0 ||
+    metadata.shapes.size > 0 ||
+    metadata.drawingArtifacts !== undefined ||
+    metadata.controlArtifacts !== undefined ||
+    metadata.externalLinkArtifacts !== undefined ||
+    metadata.threadedCommentArtifacts !== undefined ||
+    metadata.cellMetadata !== undefined ||
+    hasPreservedWorkbookMetadata(metadata.preservedWorkbookMetadata) ||
+    metadata.preservedSheetMetadata.size > 0 ||
+    metadata.sheetThreadedCommentArtifacts.size > 0 ||
+    metadata.sheetLegacyCommentVml.size > 0 ||
+    metadata.sheetDrawingArtifacts.size > 0 ||
+    metadata.rowMetadata.size > 0 ||
+    metadata.columnMetadata.size > 0 ||
+    metadata.freezePanes.size > 0 ||
+    metadata.sheetTabColors.size > 0 ||
+    metadata.merges.size > 0 ||
+    metadata.sheetProtections.size > 0 ||
+    metadata.filters.size > 0 ||
+    metadata.sorts.size > 0 ||
+    metadata.dataValidations.size > 0 ||
+    metadata.conditionalFormats.size > 0 ||
+    metadata.conditionalFormatArtifacts.size > 0 ||
+    metadata.rangeProtections.size > 0 ||
+    metadata.commentThreads.size > 0 ||
+    metadata.notes.size > 0 ||
+    metadata.hyperlinks.size > 0
+  )
+}

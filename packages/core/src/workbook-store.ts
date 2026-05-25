@@ -72,7 +72,7 @@ import type { SheetRecord } from './workbook-sheet-record.js'
 import { WorkbookSheetRegistryStore } from './workbook-sheet-registry-store.js'
 import { WorkbookStructuralCellStore } from './workbook-structural-cell-store.js'
 import { WorkbookStructuralAxisOperations } from './workbook-structural-axis-operations.js'
-import { hasStructuralMetadataForSheetRecord } from './workbook-store-metadata-presence.js'
+import { hasStructuralMetadataForSheetRecord, hasWorkbookMetadataForSheetRename } from './workbook-store-metadata-presence.js'
 import { WorkbookStoreCommentAccessors } from './workbook-store-comment-accessors.js'
 
 export { makeCellKey, makeLogicalCellKey } from './workbook-cell-key-index.js'
@@ -125,6 +125,9 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
         runWorkbookMetadataEffect(this.metadataService.reorderSheetRecords(context))
       },
       renameSheetRecords: (oldName, nextName) => {
+        if (!hasWorkbookMetadataForSheetRename(this.metadata)) {
+          return
+        }
         runWorkbookMetadataEffect(this.metadataService.renameSheet(oldName, nextName))
       },
     })
