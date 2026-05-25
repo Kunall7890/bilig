@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.91.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.90.8
+- Manual override: no
+
+## Features
+- feat(workbook): require strict run proof (5ed6f099)
+
 ## 0.90.8
 
 - Release type: patch
