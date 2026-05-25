@@ -124,7 +124,7 @@ printf '%s\n' \
 The npm package exposes the demo server as `bilig-workpaper-mcp` by default:
 
 ```sh
-npm exec --package @bilig/workpaper@0.107.13 -- bilig-workpaper-mcp
+npm exec --package @bilig/workpaper@0.107.14 -- bilig-workpaper-mcp
 ```
 
 ## Remote Stateless Endpoint
@@ -166,8 +166,8 @@ For a real agent workflow, point the same binary at a persisted WorkPaper JSON
 document:
 
 ```sh
-npm exec --package @bilig/workpaper@0.107.13 -- bilig-mcp-challenge
-npm exec --package @bilig/workpaper@0.107.13 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@0.107.14 -- bilig-mcp-challenge
+npm exec --package @bilig/workpaper@0.107.14 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 `bilig-mcp-challenge` is the one-command evaluator path. It initializes the
@@ -302,7 +302,7 @@ const client = await createMCPClient({
     args: [
       'exec',
       '--package',
-      '@bilig/workpaper@0.107.13',
+      '@bilig/workpaper@0.107.14',
       '--',
       'bilig-workpaper-mcp',
       '--workpaper',

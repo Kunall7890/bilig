@@ -4,6 +4,42 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.107.14
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.107.8
+- Manual override: no
+
+## Fixes
+- fix(workbook): close strict format proof gaps (2da279d3)
+- fix(workbook): avoid inherited plan accessors (d280def0)
+- fix(workbook): align comparison schemas (e158c4a7)
+- fix(workbook): reject empty format intent (15d15cc5)
+- perf(headless): fast-path suspended literal queueing (6f88495d)
+- fix(workbook): require full command proof (0d406311)
+- fix(workbook): avoid inherited ref getters (fc119be7)
+- fix(release): refresh IronCalc evidence during runtime release (799e4967)
+- fix(workbook): isolate feature plugin surface (55e43e6b)
+- fix(workbook): align schema integer bounds (1146ed8e)
+- fix(workbook): tighten transport schemas (f71695be)
+- fix(workbook): harden transported op hydration (579f7e13)
+- fix(ui): rank same-corpus speed gaps (0855dc45)
+- fix(release): skip stale metadata mutation (39deee59)
+- fix(workbook): reject custom prototype transport data (97885c44)
+- perf(headless): reduce metadata rename versioning overhead (3f40baa7)
+
+## Internal runtime changes
+- docs(growth): add Sim MCP setup (e353fb02)
+- docs(growth): add Windmill WorkPaper script (479a394f)
+- chore(release): runtime packages v0.107.9 (383e2bd2)
+- docs(growth): add Trigger.dev WorkPaper task (98ed4839)
+- chore(release): runtime packages v0.107.10 (16999484)
+- docs(headless): format release package docs (29e558d1)
+- chore(release): runtime packages v0.107.11 (ef648a78)
+- chore(release): runtime packages v0.107.12 (d17ccd46)
+- docs(workbook): clarify feature command imports (c74f2c78)
+- chore(release): runtime packages v0.107.13 (caf12943)
+
 ## 0.107.13
 
 - Release type: patch
