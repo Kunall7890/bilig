@@ -95,8 +95,8 @@ an agent wants a smaller import map: `@bilig/workbook/model`,
 `@bilig/workbook/prepare`, `@bilig/workbook/find`,
 `@bilig/workbook/check`, `@bilig/workbook/formula`,
 `@bilig/workbook/verify`, `@bilig/workbook/runtime`,
-`@bilig/workbook/command`, `@bilig/workbook/testing`, and
-`@bilig/workbook/schema`.
+`@bilig/workbook/command`, `@bilig/workbook/features`,
+`@bilig/workbook/testing`, and `@bilig/workbook/schema`.
 
 ## Mental Model
 
@@ -234,7 +234,9 @@ Runtimes can expose workbook extensions with the same data-first contract:
 - `checkWorkbookCommandResultForBundle`
 - `checkWorkbookCommandReceipt`
 
-Use these for runtime feature handoff, not for ordinary model actions. Ordinary models should prefer `writeFormula`, `writeValue`, `format`, `clear`, and checks.
+Import these from `@bilig/workbook/features` when building runtime-owned
+extensions. Ordinary models should prefer `writeFormula`, `writeValue`,
+`format`, `clear`, and checks.
 
 ## Low-Level Ops
 

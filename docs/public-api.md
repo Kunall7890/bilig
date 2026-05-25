@@ -57,8 +57,8 @@ smaller import maps, the package also publishes layered subpaths:
 `@bilig/workbook/model`, `@bilig/workbook/prepare`,
 `@bilig/workbook/find`, `@bilig/workbook/check`, `@bilig/workbook/formula`,
 `@bilig/workbook/verify`, `@bilig/workbook/runtime`,
-`@bilig/workbook/command`, `@bilig/workbook/testing`, and
-`@bilig/workbook/schema`.
+`@bilig/workbook/command`, `@bilig/workbook/features`,
+`@bilig/workbook/testing`, and `@bilig/workbook/schema`.
 
 ### Agent model contract
 
@@ -215,6 +215,10 @@ facts without relying on rendered spreadsheet state.
 
 Runtimes may expose workbook extensions as commands, projection interceptors,
 and UI contributions. The public package still stays data-only.
+
+Use `@bilig/workbook/features` for this advanced runtime extension surface.
+Ordinary agent models should stay on `defineModel`, `prepareWorkbookAction`,
+`runWorkbookPlan`, checks, and formulas.
 
 - `defineWorkbookFeaturePlugin` freezes extension metadata.
 - `checkWorkbookFeaturePlugin(data)` validates consumer-provided feature

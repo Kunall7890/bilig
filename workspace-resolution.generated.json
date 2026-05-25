@@ -119,6 +119,10 @@
     "packageDir": "packages/workbook",
     "sourceEntry": "packages/workbook/src/command.ts"
   },
+  "@bilig/workbook/features": {
+    "packageDir": "packages/workbook",
+    "sourceEntry": "packages/workbook/src/features-public.ts"
+  },
   "@bilig/workbook/find": {
     "packageDir": "packages/workbook",
     "sourceEntry": "packages/workbook/src/find.ts"

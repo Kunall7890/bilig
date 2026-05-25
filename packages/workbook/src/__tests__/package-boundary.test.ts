@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { checkWorkbookCommandRequest, checkWorkbookFeaturePlugin, defineWorkbookFeaturePlugin } from '../features-public.js'
 
 interface PackageManifest {
   readonly dependencies?: Record<string, string>
@@ -139,12 +140,32 @@ describe('@bilig/workbook package boundary', () => {
       './formula': expect.any(Object),
       './verify': expect.any(Object),
       './runtime': expect.any(Object),
+      './features': expect.any(Object),
       './testing': expect.any(Object),
       './command': expect.any(Object),
       './schema': expect.any(Object),
     })
 
     expect(readPackageManifest().files).toContain('fixtures')
+  })
+
+  it('keeps runtime feature extension helpers on the advanced features subpath', () => {
+    expect(checkWorkbookCommandRequest({ featureId: 'tables', commandId: 'create' })).toMatchObject({
+      status: 'valid',
+    })
+    expect(
+      checkWorkbookFeaturePlugin(
+        defineWorkbookFeaturePlugin({
+          id: 'tables',
+          version: '1',
+          commands: [],
+          projectionInterceptors: [],
+          uiContributions: [],
+        }),
+      ),
+    ).toMatchObject({
+      status: 'valid',
+    })
   })
 
   it('keeps the first README path neutral and strict-proof oriented', () => {

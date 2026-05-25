@@ -76,6 +76,7 @@ flowchart LR
     human-facing cell UI assumptions
   - runtime adapter capability checks before mutation handoff
   - runtime adapter conformance checks through `@bilig/workbook/testing`
+  - advanced feature/plugin handoff isolated behind `@bilig/workbook/features`
   - bundle-scoped receipt changed-range validation for command proof
   - duplicate command-id rejection for inspectable command bundles
   - frozen command/feature/result/receipt validator verdicts for generic

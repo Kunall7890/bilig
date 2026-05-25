@@ -32,6 +32,7 @@
       "@bilig/workbook": ["./packages/workbook/src/index.ts"],
       "@bilig/workbook/check": ["./packages/workbook/src/check.ts"],
       "@bilig/workbook/command": ["./packages/workbook/src/command.ts"],
+      "@bilig/workbook/features": ["./packages/workbook/src/features-public.ts"],
       "@bilig/workbook/find": ["./packages/workbook/src/find.ts"],
       "@bilig/workbook/formula": ["./packages/workbook/src/formula.ts"],
       "@bilig/workbook/model": ["./packages/workbook/src/model.ts"],
