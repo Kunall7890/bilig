@@ -4,6 +4,21 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.92.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.91.0
+- Manual override: no
+
+## Features
+- feat(workbook): bind receipts to planned ops (316a9960)
+
+## Fixes
+- fix(xlsx-recalc): hydrate external link caches from companions (e45ac2ec)
+
+## Internal runtime changes
+- refactor(excel-import): split external cache helpers (e858ba86)
+
 ## 0.91.0
 
 - Release type: minor
