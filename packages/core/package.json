@@ -1,6 +1,6 @@
 {
   "name": "@bilig/core",
-  "version": "0.107.6",
+  "version": "0.107.7",
   "description": "Local-first spreadsheet engine core for bilig with calc, selection, and commit semantics.",
   "keywords": [
     "bilig",
