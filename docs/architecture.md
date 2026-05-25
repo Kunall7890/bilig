@@ -57,8 +57,8 @@ flowchart LR
   - stable run error code union for predictable agent branching
   - null-prototype model action manifests with own-action-only planning
   - transport-neutral run adapters for preview/apply/readback/check proof
-  - strict run mode for one-flag agent-safe apply, plan, concrete-op, and
-    resolved-ref proof
+  - strict run mode for one-flag agent-safe checks-before-mutation,
+    apply/plan/revision/concrete-op/resolved-ref, and passed-check proof
   - runtime adapter capability checks before mutation handoff
   - bundle-scoped receipt changed-range validation for command proof
   - duplicate command-id rejection for inspectable command bundles

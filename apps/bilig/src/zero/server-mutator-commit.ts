@@ -151,7 +151,7 @@ export async function commitWorkbookPlanDataMutation(
     }
     const state = await runtimeManager.loadRuntime(runtimeStore, documentId)
     try {
-      const run = await runStrictWorkbookPlanData(state.engine, plan)
+      const run = await runStrictWorkbookPlanData(state.engine, plan, state.headRevision)
       if (run.status === 'failed') {
         throw new Error(`Workbook plan data failed: ${run.errors.map((error) => error.message).join('; ')}`)
       }

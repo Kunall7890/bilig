@@ -31,8 +31,15 @@ export function workbookPlanRunResultProof(result: WorkbookRunResult): WorkbookR
   return describeRunResult(result)
 }
 
-export async function runStrictWorkbookPlanData(engine: SpreadsheetEngine, plan: WorkbookPlanData): Promise<WorkbookRunResult> {
-  const result = await runWorkbookPlan(plan, createWorkbookRunAdapter(engine), { strict: true })
+export async function runStrictWorkbookPlanData(
+  engine: SpreadsheetEngine,
+  plan: WorkbookPlanData,
+  baseRevision = 0,
+): Promise<WorkbookRunResult> {
+  const result = await runWorkbookPlan(plan, createWorkbookRunAdapter(engine, { baseRevision }), {
+    strict: true,
+    expectedBaseRevision: baseRevision,
+  })
   if (result.status === 'failed') {
     const undoOps = result.undo?.ops
     if (undoOps !== undefined && undoOps.length > 0) {

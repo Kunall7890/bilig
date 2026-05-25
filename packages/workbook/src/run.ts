@@ -21,7 +21,9 @@ import {
   adapterReadMethod,
   adapterVerifyChecksMethod,
   applyProofErrors,
+  checkProofErrors,
   normalizeRunOptions,
+  preApplyProofErrors,
 } from './run-runtime-boundary.js'
 import { freezeWorkbookRunResult } from './run-result.js'
 import {
@@ -56,6 +58,11 @@ export interface WorkbookRunOptions {
   readonly strict?: boolean
   readonly requireApplyProof?: boolean
   readonly requirePlanId?: boolean
+  readonly requireChecks?: boolean
+  readonly requireCheckProof?: boolean
+  readonly requireRevision?: boolean
+  readonly requireNoUnverified?: boolean
+  readonly expectedBaseRevision?: number
 }
 
 export interface WorkbookRunAdapter<Refs = unknown> {
@@ -794,7 +801,15 @@ async function runLiveWorkbookPlan<Refs>(
   let validApplyResult: WorkbookRunApplyResult | undefined
   let apply: WorkbookRunApplySummary | undefined
   let unverified: readonly WorkbookRunUnverified[] = []
-  if (needsApply(adapterCheck.requiredCapabilities)) {
+  const requiresApply = needsApply(adapterCheck.requiredCapabilities)
+  const preApplyErrors = preApplyProofErrors(plan, requiresApply, normalizedOptions.options)
+  if (preApplyErrors.length > 0) {
+    return failedRun({
+      errors: preApplyErrors,
+      checks: plan.checks,
+    })
+  }
+  if (requiresApply) {
     const applyMethod = adapterApplyMethod(adapter)
     let applyResult: unknown
     try {
@@ -880,6 +895,18 @@ async function runLiveWorkbookPlan<Refs>(
   if (checkVerification.errors.length > 0) {
     return failedRun({
       errors: checkVerification.errors,
+      apply,
+      changed: changedAfterOptionalApply(plan, validApplyResult),
+      checks,
+      ...(validApplyResult?.undo !== undefined ? { undo: validApplyResult.undo } : {}),
+      unverified,
+    })
+  }
+
+  const proofErrors = checkProofErrors(checks, normalizedOptions.options)
+  if (proofErrors.length > 0) {
+    return failedRun({
+      errors: proofErrors,
       apply,
       changed: changedAfterOptionalApply(plan, validApplyResult),
       checks,

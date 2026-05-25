@@ -28,6 +28,8 @@ import type { WorkbookTableRecord } from './workbook-store.js'
 export interface WorkbookRunEngineAdapterOptions {
   readonly captureUndo?: boolean
   readonly potentialNewCells?: number
+  readonly baseRevision?: number
+  readonly revision?: number
 }
 
 let undoRefCounter = 0
@@ -68,6 +70,28 @@ function createUndoRef(plan: WorkbookActionPlan, ops: readonly EngineOp[] | null
   }
 }
 
+function isSafeNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function resolveApplyRevisionProof(
+  options: WorkbookRunEngineAdapterOptions,
+  opCount: number,
+): { readonly baseRevision: number; readonly revision: number } {
+  const baseRevision = options.baseRevision ?? 0
+  if (!isSafeNonNegativeInteger(baseRevision)) {
+    throw new Error('Workbook run adapter baseRevision must be a non-negative safe integer')
+  }
+  const revision = options.revision ?? (opCount > 0 ? baseRevision + 1 : baseRevision)
+  if (!isSafeNonNegativeInteger(revision) || revision < baseRevision) {
+    throw new Error('Workbook run adapter revision must be a non-negative safe integer at or after baseRevision')
+  }
+  return {
+    baseRevision,
+    revision,
+  }
+}
+
 function literalFromCellValue(value: CellValue): LiteralInput | undefined {
   switch (value.tag) {
     case ValueTag.Empty:
@@ -81,10 +105,11 @@ function literalFromCellValue(value: CellValue): LiteralInput | undefined {
   }
 }
 
-function checked(check: WorkbookCheckResult, status: WorkbookCheckResult['status']): WorkbookCheckResult {
+function checked(check: WorkbookCheckResult, status: WorkbookCheckResult['status'], proof?: WorkbookActionInput): WorkbookCheckResult {
   return {
     ...check,
     status,
+    ...(proof !== undefined ? { proof: normalizeWorkbookActionInput(proof) } : {}),
   }
 }
 
@@ -657,10 +682,22 @@ function verifyCheck(engine: SpreadsheetEngine, check: WorkbookCheckResult): Wor
     return check
   }
   if (check.kind === 'exists') {
-    return checked(check, refExists(engine, check.target) ? 'passed' : 'failed')
+    const exists = refExists(engine, check.target)
+    return checked(check, exists ? 'passed' : 'failed', {
+      source: '@bilig/core',
+      check: 'exists',
+      target: check.target.label,
+      exists,
+    })
   }
   if (check.kind === 'noFormulaErrors') {
-    return checked(check, verifyNoFormulaErrors(engine, check.target))
+    const status = verifyNoFormulaErrors(engine, check.target)
+    return checked(check, status, {
+      source: '@bilig/core',
+      check: 'noFormulaErrors',
+      target: check.target.label,
+      passed: status === 'passed',
+    })
   }
   return check
 }
@@ -671,6 +708,7 @@ export function createWorkbookRunAdapter(engine: SpreadsheetEngine, options: Wor
       try {
         const commandReceipts = materializePlanCommandReceipts(engine, plan)
         const ops = commandReceipts.length === 0 ? materializePlanOps(engine, plan) : materializeCommandReceiptOps(commandReceipts)
+        const revisionProof = resolveApplyRevisionProof(options, ops.length)
         const undoOps = engine.applyOps(ops, {
           captureUndo: options.captureUndo ?? true,
           ...(options.potentialNewCells !== undefined ? { potentialNewCells: options.potentialNewCells } : {}),
@@ -681,6 +719,8 @@ export function createWorkbookRunAdapter(engine: SpreadsheetEngine, options: Wor
         return {
           status: 'applied',
           planId: workbookPlanId(plan),
+          baseRevision: revisionProof.baseRevision,
+          revision: revisionProof.revision,
           previewOps: ops,
           appliedOps: ops,
           ...(commandReceipts.length > 0 ? { commandReceipts } : {}),

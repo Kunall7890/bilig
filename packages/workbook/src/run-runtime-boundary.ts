@@ -1,11 +1,16 @@
 import type { WorkbookActionPlan } from './model.js'
 import type { WorkbookRunAdapter, WorkbookRunOptions } from './run.js'
-import type { WorkbookRunApplySummary, WorkbookRunError } from './result.js'
+import type { WorkbookCheckResult, WorkbookRunApplySummary, WorkbookRunError } from './result.js'
 
 export type NormalizedWorkbookRunOptions = {
   readonly requireApplyProof: boolean
   readonly requirePlanId: boolean
   readonly requireResolvedRefs: boolean
+  readonly requireChecks: boolean
+  readonly requireCheckProof: boolean
+  readonly requireRevision: boolean
+  readonly requireNoUnverified: boolean
+  readonly expectedBaseRevision?: number
 }
 
 export type WorkbookRunOptionsNormalization =
@@ -113,6 +118,23 @@ function normalizeRunOption(source: object, key: keyof WorkbookRunOptions): bool
   return descriptor.value
 }
 
+function normalizeOptionalRevisionOption(source: object): number | undefined {
+  const descriptor = Object.getOwnPropertyDescriptor(source, 'expectedBaseRevision')
+  if (descriptor === undefined) {
+    return undefined
+  }
+  if (!('value' in descriptor)) {
+    throw new WorkbookRunOptionsError('options.expectedBaseRevision', 'Workbook run option expectedBaseRevision must be a data property')
+  }
+  if (typeof descriptor.value !== 'number' || !Number.isSafeInteger(descriptor.value) || descriptor.value < 0) {
+    throw new WorkbookRunOptionsError(
+      'options.expectedBaseRevision',
+      'Workbook run option expectedBaseRevision must be a non-negative safe integer',
+    )
+  }
+  return descriptor.value
+}
+
 export function normalizeRunOptions(options: unknown): WorkbookRunOptionsNormalization {
   if (options === undefined) {
     return {
@@ -121,6 +143,10 @@ export function normalizeRunOptions(options: unknown): WorkbookRunOptionsNormali
         requireApplyProof: false,
         requirePlanId: false,
         requireResolvedRefs: false,
+        requireChecks: false,
+        requireCheckProof: false,
+        requireRevision: false,
+        requireNoUnverified: false,
       },
     }
   }
@@ -134,12 +160,22 @@ export function normalizeRunOptions(options: unknown): WorkbookRunOptionsNormali
     const strict = normalizeRunOption(options, 'strict')
     const requireApplyProof = normalizeRunOption(options, 'requireApplyProof')
     const requirePlanId = normalizeRunOption(options, 'requirePlanId')
+    const requireChecks = normalizeRunOption(options, 'requireChecks')
+    const requireCheckProof = normalizeRunOption(options, 'requireCheckProof')
+    const requireRevision = normalizeRunOption(options, 'requireRevision')
+    const requireNoUnverified = normalizeRunOption(options, 'requireNoUnverified')
+    const expectedBaseRevision = normalizeOptionalRevisionOption(options)
     return {
       status: 'valid',
       options: {
         requireApplyProof: strict || requireApplyProof,
         requirePlanId: strict || requirePlanId,
         requireResolvedRefs: strict,
+        requireChecks: strict || requireChecks,
+        requireCheckProof: strict || requireCheckProof,
+        requireRevision: strict || requireRevision,
+        requireNoUnverified: strict || requireNoUnverified,
+        ...(expectedBaseRevision !== undefined ? { expectedBaseRevision } : {}),
       },
     }
   } catch (error) {
@@ -158,6 +194,17 @@ function hasResolvedRefProofData(value: unknown): boolean {
   return typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length > 0
 }
 
+export function preApplyProofErrors(
+  plan: WorkbookActionPlan,
+  needsApply: boolean,
+  options: NormalizedWorkbookRunOptions,
+): readonly WorkbookRunError[] {
+  if (needsApply && options.requireChecks && plan.checks.length === 0) {
+    return [runError('check_not_verified', 'Strict workbook runs require at least one check before applying mutating plans')]
+  }
+  return []
+}
+
 export function applyProofErrors(
   plan: WorkbookActionPlan,
   apply: WorkbookRunApplySummary,
@@ -166,10 +213,10 @@ export function applyProofErrors(
   if (apply.matched === false) {
     return [runError('apply_mismatch', 'Adapter applied ops do not match its preview ops')]
   }
-  if (options.requireApplyProof && apply.matched === null) {
+  if ((options.requireApplyProof || options.requireNoUnverified) && apply.matched === null) {
     return [runError('apply_not_verified', 'Adapter did not return both previewOps and appliedOps')]
   }
-  if (options.requireApplyProof && plan.commands.length > 0 && apply.commandReceipts === undefined) {
+  if ((options.requireApplyProof || options.requireNoUnverified) && plan.commands.length > 0 && apply.commandReceipts === undefined) {
     return [runError('apply_not_verified', 'Adapter did not bind planned commands to materialized ops')]
   }
   if (options.requireApplyProof && apply.commandReceipts !== undefined) {
@@ -194,5 +241,40 @@ export function applyProofErrors(
   if (options.requirePlanId && apply.planId === undefined) {
     return [runError('plan_not_verified', 'Adapter did not bind apply proof to a plan id')]
   }
+  if (options.expectedBaseRevision !== undefined && apply.baseRevision === undefined) {
+    return [
+      runError('plan_not_verified', `Adapter did not bind apply proof to expected base revision ${String(options.expectedBaseRevision)}`),
+    ]
+  }
+  if (options.expectedBaseRevision !== undefined && apply.baseRevision !== options.expectedBaseRevision) {
+    return [
+      runError(
+        'plan_not_verified',
+        `Adapter apply proof base revision ${String(apply.baseRevision)} did not match expected base revision ${String(options.expectedBaseRevision)}`,
+      ),
+    ]
+  }
+  if (options.requireRevision && (apply.baseRevision === undefined || apply.revision === undefined)) {
+    return [runError('plan_not_verified', 'Adapter did not bind apply proof to workbook revisions')]
+  }
   return []
+}
+
+export function checkProofErrors(
+  checks: readonly WorkbookCheckResult[],
+  options: NormalizedWorkbookRunOptions,
+): readonly WorkbookRunError[] {
+  if (!options.requireCheckProof) {
+    return []
+  }
+  const checkWithoutProof = checks.find((check) => check.status === 'passed' && check.proof === undefined)
+  if (checkWithoutProof === undefined) {
+    return []
+  }
+  return [
+    runError(
+      'check_not_verified',
+      `${checkWithoutProof.target?.label ?? checkWithoutProof.kind} passed check ${checkWithoutProof.kind} without proof`,
+    ),
+  ]
 }

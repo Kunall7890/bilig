@@ -5,7 +5,6 @@ import {
   findRange,
   runWorkbookAction,
   verifyWorkbookReadbacks,
-  type findTable,
   type WorkbookActionPlan,
   type WorkbookCheckResult,
   type WorkbookModel,
@@ -29,24 +28,6 @@ function valueModel(): WorkbookModel<{ readonly output: ReturnType<typeof findRa
       write({ refs, workbook }) {
         workbook.writeValue(refs.output, 12)
         workbook.check.valueEquals(refs.output, 12)
-      },
-    },
-  })
-}
-
-function semanticTargetModel(): WorkbookModel<{ readonly table: ReturnType<typeof findTable> }> {
-  return defineModel({
-    name: 'run-semantic-target-model',
-
-    find(workbook) {
-      return {
-        table: workbook.findTable({ name: 'Inputs' }),
-      }
-    },
-
-    actions: {
-      write({ refs, workbook }) {
-        workbook.writeValue(refs.table, 'ready')
       },
     },
   })
@@ -339,6 +320,8 @@ describe('@bilig/workbook run proof boundary', () => {
         apply: (plan) => ({
           status: 'applied',
           planId: workbookPlanId(plan),
+          baseRevision: 7,
+          revision: 8,
           previewOps: plan.ops,
           appliedOps: plan.ops,
           commandReceipts: [commandReceipt(plan)],
@@ -375,6 +358,8 @@ describe('@bilig/workbook run proof boundary', () => {
         apply: (plan) => ({
           status: 'applied',
           planId: workbookPlanId(plan),
+          baseRevision: 7,
+          revision: 8,
           previewOps: plan.ops,
           appliedOps: plan.ops,
           commandReceipts: [commandReceipt(plan)],
@@ -438,19 +423,25 @@ describe('@bilig/workbook run proof boundary', () => {
   })
 
   it('strict mode fails closed when command receipts have no concrete applied ops', async () => {
-    const model = semanticTargetModel()
+    const model = valueModel()
 
     const result = await runWorkbookAction(
       model,
       'write',
       {
-        apply: (plan) => ({
-          status: 'applied',
-          planId: workbookPlanId(plan),
-          previewOps: [],
-          appliedOps: [],
-          commandReceipts: [commandReceipt(plan)],
-        }),
+        apply: (plan) => {
+          const receipt = commandReceipt(plan)
+          return {
+            status: 'applied',
+            planId: workbookPlanId(plan),
+            baseRevision: 7,
+            revision: 8,
+            previewOps: [],
+            appliedOps: [],
+            commandReceipts: [{ ...receipt, previewOps: [], appliedOps: [] }],
+          }
+        },
+        read: (targets) => [{ target: first(targets), value: 12 }],
       },
       undefined,
       { strict: true },
@@ -470,7 +461,7 @@ describe('@bilig/workbook run proof boundary', () => {
         commandReceipts: [expect.objectContaining({ commandKind: 'writeValue' })],
       }),
       changed: [],
-      checks: [],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
     })
   })
 

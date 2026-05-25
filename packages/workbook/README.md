@@ -334,10 +334,14 @@ adapter omits that binding. Apply summaries may also carry `baseRevision` and
 claimed to apply against.
 Use `{ strict: true }` as the single agent-safe option when callers want
 agent-grade proof without remembering multiple flags. Strict mode requires
-apply proof, plan-id proof, concrete applied ops for every planned command, and
-non-empty resolved-ref proof for commands that target workbook refs.
+at least one planned check before mutating plans apply, apply proof, plan-id
+proof, base and applied workbook revisions, no unverified apply facts, concrete
+applied ops for every planned command, non-empty resolved-ref proof for commands
+that target workbook refs, and proof on every passed check.
 Run options are data-only too: accessor-backed or non-boolean proof options
-return `invalid_run_options` before any adapter method is called.
+return `invalid_run_options` before any adapter method is called. Optional
+`expectedBaseRevision` must be a non-negative safe integer and fails closed when
+the runtime applies against a different base revision.
 Use `workbookActionCommandDigest(command)` when a runtime needs to bind
 materialized ops to a specific planned command. Adapter apply results can return
 `commandReceipts`, one per planned command, with the command index, command kind,
@@ -349,11 +353,13 @@ fails closed unless those command receipts are present. With `{ strict: true }`,
 empty per-command applied ops or missing resolved-ref proof fail closed too.
 The repository-owned `@bilig/core` adapter now supplies that strict proof for
 generic model actions: each command receipt includes materialized applied ops and
-the resolved target/input refs that produced them. `apps/bilig` can therefore
-accept transported `WorkbookPlanData` directly through its Zero mutation path,
-run it with `strict: true`, persist the original plan, the concrete applied ops,
-and the frozen run-result description, and roll back engine ops if post-apply
-readback or check proof fails.
+the resolved target/input refs that produced them, apply summaries include
+base/applied revisions, and core-owned `exists` / `noFormulaErrors` check
+verification attaches proof to passed checks. `apps/bilig` can therefore accept
+transported `WorkbookPlanData` directly through its Zero mutation path, run it
+with `strict: true` and the current expected base revision, persist the original
+plan, the concrete applied ops, and the frozen run-result description, and roll
+back engine ops if post-apply readback or check proof fails.
 Runtime apply results, undo refs, apply errors, and check verifier output are
 validated from own fields only; prototype-inherited fields are ignored before
 they can become run proof. Apply-result objects and verifier check objects must

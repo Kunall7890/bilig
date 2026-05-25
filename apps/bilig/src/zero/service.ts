@@ -412,7 +412,7 @@ class EnabledZeroSyncService implements ZeroSyncService {
           await acquireWorkbookMutationLock(client, documentId)
           const transactionRuntimeStore = createWorkbookRuntimeStoreConnection(client, createZeroDbProvider(client))
           const state = await this.runtimeManager.loadRuntime(transactionRuntimeStore, documentId)
-          const result = await runStrictWorkbookPlanData(state.engine, plan)
+          const result = await runStrictWorkbookPlanData(state.engine, plan, state.headRevision)
           if (result.status === 'failed') {
             this.runtimeManager.invalidate(documentId)
             await client.query('ROLLBACK').catch(() => undefined)

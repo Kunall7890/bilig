@@ -555,6 +555,7 @@ function createWorkbookPlanData() {
     actions: {
       write({ refs, workbook }) {
         workbook.writeValue(refs.output, 42)
+        workbook.check.valueEquals(refs.output, 42)
       },
     },
   })

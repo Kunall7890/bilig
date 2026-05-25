@@ -168,8 +168,9 @@ When `previewOps` and `appliedOps` are both present, `runWorkbookPlan` reports
 whether runtime apply matched preview. When they are missing, the result reports
 an unverified apply fact. Agents that need fail-closed execution can call
 `runWorkbookPlan(plan, adapter, { requireApplyProof: true })`, or use
-`{ strict: true }` to require apply proof, plan-id proof, concrete command ops,
-and resolved-ref proof with one option.
+`{ strict: true }` to require checks before mutation, apply proof, plan-id
+proof, base/applied revision proof, no unverified apply facts, concrete command
+ops, resolved-ref proof, and passed-check proof with one option.
 Plans with no apply requirements skip mutation entirely: a readback-only or
 check-only model can run with only `read` or `verifyChecks`, and the result has
 no `apply` summary because nothing was supposed to mutate.
@@ -739,7 +740,11 @@ receipt preview/apply mismatches, and receipts whose flattened ops do not match
 the apply-level preview or applied ops. With `requireApplyProof: true`, a plan
 with high-level commands fails closed unless those command receipts are present.
 With `strict: true`, each command receipt must also prove concrete applied ops
-and non-empty resolved refs for ref-targeting commands.
+and non-empty resolved refs for ref-targeting commands. Strict runs also require
+mutating plans to declare checks before `adapter.apply` is called, require
+`baseRevision` and `revision` on apply proof, fail closed on
+`expectedBaseRevision` mismatches, reject unverified apply summaries, and reject
+passed checks that do not carry proof.
 For generic feature-command results, `@bilig/workbook` also derives the settled
 result status, matched flag, changed ranges, and errors from receipts before a
 bundle-bound result can pass validation.
@@ -766,10 +771,13 @@ the plan, the apply adapter is not called and the run fails with
 or applied ops, omits command receipts for a command-based plan, or returns
 command receipts with no concrete applied ops, the run fails with
 `apply_not_verified`. In strict mode, missing resolved-ref proof for a
-ref-targeting command also fails with `apply_not_verified`. If the adapter returns
-a stale `planId`, the run fails before readback or check proof; if
-`requirePlanId` is true and the adapter omits it, the run fails with
-`plan_not_verified`. `{ strict: true }` enables the agent-safe proof bundle. Run
+ref-targeting command also fails with `apply_not_verified`. Strict mode and
+`requireNoUnverified` reject missing preview/applied op pairs before readback. If
+the adapter returns a stale `planId`, the run fails before readback or check
+proof; if `requirePlanId` is true and the adapter omits it, the run fails with
+`plan_not_verified`. `requireRevision` and strict mode require `baseRevision`
+and `revision`; `expectedBaseRevision` rejects stale applies before readback.
+`requireCheckProof` and strict mode reject passed checks without proof. Run
 options and adapter methods are read as own data properties only; accessor-backed
 options fail with `invalid_run_options`, and accessor-backed runtime methods are
 treated as missing capabilities without invoking getters. If a readback
@@ -778,13 +786,14 @@ deterministic codes such as `readback_missing`, `value_mismatch`, or
 `formula_mismatch`.
 The in-repo `@bilig/core` adapter is the reference execution path for this
 contract. It returns plan-bound apply proof, command receipts, concrete applied
-ops, and resolved target/input refs for generic workbook model actions. The
-monolith app accepts transported `WorkbookPlanData` through
-`workbook.applyWorkbookPlanData`, runs it with `{ strict: true }`, persists the
-original plan together with the materialized applied ops for replay and the
-frozen run-result description for later inspection, and applies the run undo ops
-if post-apply proof fails. That keeps `@bilig/workbook` generic while giving
-agents a real app-owned execution path for their own models.
+ops, base/applied revisions, resolved target/input refs, and core-owned proof for
+generic check verification. The monolith app accepts transported
+`WorkbookPlanData` through `workbook.applyWorkbookPlanData`, runs it with
+`{ strict: true }` and the current expected base revision, persists the original
+plan together with the materialized applied ops for replay and the frozen
+run-result description for later inspection, and applies the run undo ops if
+post-apply proof fails. That keeps `@bilig/workbook` generic while giving agents
+a real app-owned execution path for their own models.
 Returned run results are frozen before they cross the public API boundary,
 including nested changed summaries, checks, errors, apply summaries, undo refs,
 and unverified proof notes. That lets an agent inspect a run once and keep the
