@@ -5,7 +5,9 @@ import {
   checkPlanData,
   checkRuntimeRequirements,
   checkWorkbookCommandBundle,
+  checkWorkbookCommandResult,
   checkWorkbookCommandResultForBundle,
+  checkWorkbookRefData,
   checkWorkbookModelDescription,
   checkWorkbookReadbackProof,
   checkWorkbookRunResultDescription,
@@ -306,6 +308,165 @@ describe('@bilig/workbook schema api', () => {
     }
   })
 
+  it('exports ref schemas that external validators enforce nested ref roles', () => {
+    const table = {
+      kind: 'table',
+      id: 'table-sales',
+      label: 'Sales',
+      headers: ['Region', 'Amount'],
+    } as const
+    const rows = {
+      kind: 'rows',
+      id: 'rows-emea',
+      label: 'EMEA rows',
+      table,
+      where: {
+        column: 'Region',
+        op: 'eq',
+        value: 'EMEA',
+      },
+    } as const
+    const range = {
+      kind: 'range',
+      id: 'range-a1',
+      label: 'Sheet1!A1',
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'A1',
+      },
+    } as const
+    const column = {
+      kind: 'column',
+      id: 'column-amount',
+      label: 'Sales.Amount',
+      table,
+      rows,
+      name: 'Amount',
+    } as const
+
+    expect(validateWithJsonSchema('refData', column)).toBe(true)
+    expect(checkWorkbookRefData(column).status).toBe('valid')
+
+    const invalidColumnTable = { ...column, table: range }
+    const invalidColumnRows = { ...column, rows: table }
+    const invalidRowsTable = { ...rows, table: range }
+
+    for (const ref of [invalidColumnTable, invalidColumnRows, invalidRowsTable]) {
+      expect(validateWithJsonSchema('refData', ref), JSON.stringify(ref)).toBe(false)
+      expect(checkWorkbookRefData(ref).status).toBe('invalid')
+    }
+  })
+
+  it('exports plan schemas that reject empty format intent like the checker', () => {
+    const target = {
+      kind: 'range',
+      id: 'range-a1',
+      label: 'Sheet1!A1',
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'A1',
+      },
+    } as const
+    const basePlan = {
+      modelName: 'format-schema-model',
+      actionName: 'format',
+      refsUsed: [target],
+      ops: [],
+      changed: [],
+      checks: [],
+    } as const
+    const invalidPlans = [
+      {
+        ...basePlan,
+        commands: [{ kind: 'format', target }],
+      },
+      {
+        ...basePlan,
+        commands: [{ kind: 'format', target, style: {} }],
+      },
+      {
+        ...basePlan,
+        commands: [{ kind: 'format', target, style: { font: {} } }],
+      },
+      {
+        ...basePlan,
+        commands: [{ kind: 'format', target, style: { borders: { top: {} } } }],
+      },
+    ] as const
+
+    for (const plan of invalidPlans) {
+      expect(validateWithJsonSchema('planData', plan), JSON.stringify(plan)).toBe(false)
+      expect(checkPlanData(plan).status).toBe('invalid')
+    }
+
+    const validPlan = {
+      ...basePlan,
+      commands: [{ kind: 'format', target, style: { font: { bold: true } } }],
+    } as const
+    expect(validateWithJsonSchema('planData', validPlan)).toBe(true)
+    expect(checkPlanData(validPlan).status).toBe('valid')
+  })
+
+  it('exports command-result schemas that reject loose undo and accepted settled fields', () => {
+    const accepted = {
+      status: 'accepted',
+      targetRevision: 7,
+      idempotencyKey: 'result-schema',
+      commandCount: 1,
+      touchedRanges: [],
+      touchedCellCount: 0,
+    } as const
+    expect(validateWithJsonSchema('commandResult', accepted)).toBe(true)
+
+    const acceptedWithUndo = {
+      ...accepted,
+      undo: {
+        id: 'undo-1',
+      },
+    } as const
+    expect(validateWithJsonSchema('commandResult', acceptedWithUndo)).toBe(false)
+    expect(checkWorkbookCommandResult(acceptedWithUndo).status).toBe('invalid')
+
+    const appliedWithLooseRootUndo = {
+      ...accepted,
+      status: 'applied',
+      receipts: [
+        {
+          status: 'applied',
+          featureId: 'cells',
+          commandId: 'cells.setValue',
+          category: 'mutation',
+          changedRanges: [],
+        },
+      ],
+      matched: null,
+      changedRanges: [],
+      undo: {},
+    } as const
+    expect(validateWithJsonSchema('commandResult', appliedWithLooseRootUndo)).toBe(false)
+    expect(checkWorkbookCommandResult(appliedWithLooseRootUndo).status).toBe('invalid')
+
+    const appliedWithLooseReceiptUndo = {
+      ...accepted,
+      status: 'applied',
+      receipts: [
+        {
+          status: 'applied',
+          featureId: 'cells',
+          commandId: 'cells.setValue',
+          category: 'mutation',
+          undo: {},
+        },
+      ],
+      matched: null,
+      changedRanges: [],
+    } as const
+    expect(validateWithJsonSchema('commandResult', appliedWithLooseReceiptUndo)).toBe(false)
+    expect(checkWorkbookCommandResult(appliedWithLooseReceiptUndo).status).toBe('invalid')
+  })
+
   it('publishes command-bundle style record schemas that match op guards', () => {
     const defs = objectEntry(workbookJsonSchemas.commandBundle, '$defs')
     const variants = arrayEntry(objectEntry(defs, 'engineOp'), 'oneOf')
@@ -459,9 +620,20 @@ describe('@bilig/workbook schema api', () => {
       },
     })
     expect(format).toMatchObject({
+      anyOf: [{ required: ['style'] }, { required: ['numberFormat'] }],
       properties: {
-        style: { $ref: '#/$defs/cellStylePatch' },
+        style: { $ref: '#/$defs/actionCellStylePatch' },
       },
+    })
+
+    const actionStylePatch = objectEntry(defs, 'actionCellStylePatch')
+    expect(actionStylePatch).toMatchObject({
+      allOf: [
+        { $ref: '#/$defs/cellStylePatch' },
+        {
+          anyOf: expect.any(Array),
+        },
+      ],
     })
 
     const stylePatch = objectEntry(defs, 'cellStylePatch')

@@ -1,6 +1,13 @@
 import { workbookRunErrorCodes } from './result.js'
 import { workbookActionInputDescriptionKinds } from './input.js'
 import { cellStylePatchSchema, literalInputSchema, workbookOpSchema } from './op-schema.js'
+import {
+  workbookActionCellStylePatchSchema,
+  workbookCommandReceiptSchema,
+  workbookRefDataDefSchemas,
+  workbookRefDataSchemaRefs,
+  workbookUndoRefSchema,
+} from './schema-fragments.js'
 
 export type WorkbookJsonSchemaScalar = string | number | boolean | null
 export type WorkbookJsonSchemaValue =
@@ -128,6 +135,7 @@ function defs(extra: Record<string, WorkbookJsonSchemaValue> = {}): WorkbookJson
       },
     },
     cellStylePatch: cellStylePatchSchema,
+    actionCellStylePatch: workbookActionCellStylePatchSchema,
     formulaLabel: {
       type: 'object',
       required: ['name', 'ref'],
@@ -138,79 +146,9 @@ function defs(extra: Record<string, WorkbookJsonSchemaValue> = {}): WorkbookJson
       },
     },
     engineOp: workbookOpSchema,
+    ...workbookRefDataDefSchemas,
     refData: {
-      oneOf: [
-        {
-          type: 'object',
-          required: ['kind', 'id', 'label', 'range'],
-          additionalProperties: false,
-          properties: {
-            kind: { const: 'range' },
-            id: { type: 'string', minLength: 1 },
-            label: { type: 'string', minLength: 1 },
-            range: { $ref: '#/$defs/cellRange' },
-          },
-        },
-        {
-          type: 'object',
-          required: ['kind', 'id', 'label', 'name'],
-          additionalProperties: false,
-          properties: {
-            kind: { const: 'name' },
-            id: { type: 'string', minLength: 1 },
-            label: { type: 'string', minLength: 1 },
-            name: { type: 'string', minLength: 1 },
-          },
-        },
-        {
-          type: 'object',
-          required: ['kind', 'id', 'label'],
-          additionalProperties: false,
-          properties: {
-            kind: { const: 'table' },
-            id: { type: 'string', minLength: 1 },
-            label: { type: 'string', minLength: 1 },
-            name: { type: 'string', minLength: 1 },
-            sheetName: { type: 'string', minLength: 1 },
-            headers: { type: 'array', items: { type: 'string' } },
-          },
-        },
-        {
-          type: 'object',
-          required: ['kind', 'id', 'label', 'table', 'name'],
-          additionalProperties: false,
-          properties: {
-            kind: { const: 'column' },
-            id: { type: 'string', minLength: 1 },
-            label: { type: 'string', minLength: 1 },
-            table: { $ref: '#/$defs/refData' },
-            rows: { $ref: '#/$defs/refData' },
-            name: { type: 'string', minLength: 1 },
-          },
-        },
-        {
-          type: 'object',
-          required: ['kind', 'id', 'label', 'where'],
-          additionalProperties: false,
-          properties: {
-            kind: { const: 'rows' },
-            id: { type: 'string', minLength: 1 },
-            label: { type: 'string', minLength: 1 },
-            sheetName: { type: 'string', minLength: 1 },
-            table: { $ref: '#/$defs/refData' },
-            where: {
-              type: 'object',
-              required: ['column', 'op', 'value'],
-              additionalProperties: false,
-              properties: {
-                column: { type: 'string', minLength: 1 },
-                op: { enum: ['eq', 'neq', 'contains', 'startsWith', 'gt', 'gte', 'lt', 'lte'] },
-                value: { $ref: '#/$defs/jsonValue' },
-              },
-            },
-          },
-        },
-      ],
+      oneOf: workbookRefDataSchemaRefs,
     },
     concreteRefData: {
       type: 'object',
@@ -295,16 +233,6 @@ const changeDataSchema: WorkbookJsonSchemaValue = {
     kind: { type: 'string', minLength: 1 },
     target: refData,
     message: { type: 'string', minLength: 1 },
-  },
-}
-
-const undoDataSchema: WorkbookJsonSchemaValue = {
-  type: 'object',
-  required: ['id'],
-  additionalProperties: false,
-  properties: {
-    id: { type: 'string', minLength: 1 },
-    ops: { type: 'array', items: engineOp },
   },
 }
 
@@ -458,9 +386,10 @@ export const workbookJsonSchemas = deepFreeze({
             properties: {
               kind: { const: 'format' },
               target: refData,
-              style: { $ref: '#/$defs/cellStylePatch' },
+              style: { $ref: '#/$defs/actionCellStylePatch' },
               numberFormat: { oneOf: [{ type: 'string' }, { type: 'null' }] },
             },
+            anyOf: [{ required: ['style'] }, { required: ['numberFormat'] }],
           },
           {
             type: 'object',
@@ -573,25 +502,8 @@ export const workbookJsonSchemas = deepFreeze({
 
   commandResult: schema('commandResult', {
     $defs: defs({
-      receipt: {
-        type: 'object',
-        required: ['status', 'featureId', 'commandId', 'category'],
-        properties: {
-          status: { enum: ['previewed', 'applied', 'rejected', 'noop'] },
-          featureId: { type: 'string', minLength: 1 },
-          commandId: { type: 'string', minLength: 1 },
-          category: { enum: ['command', 'operation', 'mutation'] },
-          previewOps: { type: 'array', items: engineOp },
-          appliedOps: { type: 'array', items: engineOp },
-          undo: { type: 'object', additionalProperties: true },
-          changedRanges: { type: 'array', items: cellRange },
-          proof: actionInput,
-          message: { type: 'string' },
-          metadata: actionInput,
-          errors: { type: 'array', items: { type: 'string' } },
-        },
-        additionalProperties: false,
-      },
+      undo: workbookUndoRefSchema,
+      receipt: workbookCommandReceiptSchema,
     }),
     type: 'object',
     required: ['status', 'targetRevision', 'idempotencyKey', 'commandCount', 'touchedRanges', 'touchedCellCount'],
@@ -608,9 +520,40 @@ export const workbookJsonSchemas = deepFreeze({
       matched: { oneOf: [{ type: 'boolean' }, { type: 'null' }] },
       changedRanges: { type: 'array', items: cellRange },
       revision: nonNegativeSafeInteger,
-      undo: { type: 'object', additionalProperties: true },
+      undo: { $ref: '#/$defs/undo' },
       errors: { type: 'array', items: { type: 'string' } },
     },
+    allOf: [
+      {
+        if: { properties: { status: { const: 'accepted' } }, required: ['status'] },
+        // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+        then: {
+          not: {
+            anyOf: [
+              { required: ['receipts'] },
+              { required: ['matched'] },
+              { required: ['changedRanges'] },
+              { required: ['revision'] },
+              { required: ['undo'] },
+              { required: ['errors'] },
+            ],
+          },
+        },
+      },
+      {
+        if: {
+          properties: { status: { enum: ['previewed', 'applied', 'rejected', 'noop'] } },
+          required: ['status'],
+        },
+        // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+        then: {
+          required: ['receipts', 'matched', 'changedRanges'],
+          properties: {
+            receipts: { type: 'array', minItems: 1, items: { $ref: '#/$defs/receipt' } },
+          },
+        },
+      },
+    ],
   }),
 
   runResult: schema('runResult', {
@@ -631,7 +574,7 @@ export const workbookJsonSchemas = deepFreeze({
           issueCode: { type: 'string' },
         },
       },
-      undo: undoDataSchema,
+      undo: workbookUndoRefSchema,
       unverified: unverifiedDataSchema,
     }),
     oneOf: [
