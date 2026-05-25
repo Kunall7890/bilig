@@ -27,7 +27,16 @@ interface ExternalCachedError {
   readonly value: string
 }
 
-export type ExternalCachedValue = ExternalCachedNumber | ExternalCachedString | ExternalCachedBoolean | ExternalCachedError
+interface ExternalCachedBlank {
+  readonly kind: 'blank'
+}
+
+export type ExternalCachedValue =
+  | ExternalCachedNumber
+  | ExternalCachedString
+  | ExternalCachedBoolean
+  | ExternalCachedError
+  | ExternalCachedBlank
 export type ExternalCachedCells = Map<string, ExternalCachedValue>
 export interface ExternalCachedSheet {
   readonly sheetName: string
@@ -323,6 +332,11 @@ function readExternalWorkbookSheetCache(sheet: XLSX.WorkSheet, usedAddresses?: R
       cells.set(normalizedAddress, cachedValue)
     }
   }
+  for (const usedAddress of usedAddresses ?? []) {
+    if (parseCachedCellAddress(usedAddress) && !cells.has(usedAddress)) {
+      cells.set(usedAddress, { kind: 'blank' })
+    }
+  }
   return cells
 }
 
@@ -368,9 +382,15 @@ export function externalCachedValueToLiteralInput(value: ExternalCachedValue): L
     case 'string':
     case 'boolean':
       return value.value
+    case 'blank':
+      return null
     case 'error':
       return undefined
   }
+}
+
+function externalCachedErrorFormula(value: string): string {
+  return ['#DIV/0!', '#REF!', '#VALUE!', '#NAME?', '#N/A', '#NUM!', '#SPILL!', '#BLOCKED!', '#CYCLE!'].includes(value) ? value : '#VALUE!'
 }
 
 function sheetNameKey(sheetName: string): string {
@@ -411,7 +431,7 @@ function compareExternalCacheCellAddresses(left: string, right: string): number 
   return leftAddress.row - rightAddress.row || leftAddress.col - rightAddress.col
 }
 
-function externalCachedValueXml(value: ExternalCachedValue): { readonly typeAttribute: string; readonly value: string } {
+function externalCachedValueXml(value: ExternalCachedValue): { readonly typeAttribute: string; readonly value: string } | null {
   switch (value.kind) {
     case 'number':
       return { typeAttribute: '', value: String(value.value) }
@@ -421,6 +441,8 @@ function externalCachedValueXml(value: ExternalCachedValue): { readonly typeAttr
       return { typeAttribute: ' t="e"', value: escapeXmlText(value.value) }
     case 'string':
       return { typeAttribute: ' t="str"', value: escapeXmlText(value.value) }
+    case 'blank':
+      return null
   }
 }
 
@@ -444,15 +466,22 @@ function buildExternalLinkSheetDataXml(sheetId: number, sheet: ExternalCachedShe
     .map(([rowIndex, cells]) => {
       const cellXml = cells
         .toSorted((left, right) => left.col - right.col)
-        .map((cell) => {
+        .flatMap((cell) => {
           const serialized = externalCachedValueXml(cell.value)
+          if (!serialized) {
+            return []
+          }
           return `<cell r="${escapeXmlText(cell.address)}"${serialized.typeAttribute}><v>${serialized.value}</v></cell>`
         })
         .join('')
+      if (cellXml.length === 0) {
+        return null
+      }
       return `<row r="${rowIndex + 1}">${cellXml}</row>`
     })
+    .filter((value): value is string => value !== null)
     .join('')
-  return `<sheetData sheetId="${sheetId}">${rowXml}</sheetData>`
+  return rowXml.length > 0 ? `<sheetData sheetId="${sheetId}">${rowXml}</sheetData>` : null
 }
 
 export function buildExternalLinkSheetDataSetXml(sheetNames: readonly string[], sheets: ExternalCachedSheets): string | null {
@@ -471,23 +500,33 @@ export function externalCacheSheetKey(bookIndex: number, sheetName: string): str
 }
 
 function buildImportedExternalCacheSheetCells(sheet: ExternalCachedSheet): WorkbookSnapshot['sheets'][number]['cells'] {
-  return [...sheet.cells.entries()]
-    .flatMap(([address, value]) => {
-      const literal = externalCachedValueToLiteralInput(value)
-      const parsed = parseCachedCellAddress(address)
-      if (literal === undefined || !parsed) {
-        return []
-      }
-      return [
-        {
-          address: normalizeCellAddress(address),
-          row: parsed.row,
-          col: parsed.col,
-          value: literal,
-        },
-      ]
+  const cells: WorkbookSnapshot['sheets'][number]['cells'] = []
+  for (const [address, value] of sheet.cells) {
+    const parsed = parseCachedCellAddress(address)
+    if (!parsed) {
+      continue
+    }
+    if (value.kind === 'error') {
+      cells.push({
+        address: normalizeCellAddress(address),
+        row: parsed.row,
+        col: parsed.col,
+        formula: externalCachedErrorFormula(value.value),
+      })
+      continue
+    }
+    const literal = externalCachedValueToLiteralInput(value)
+    if (literal === undefined) {
+      continue
+    }
+    cells.push({
+      address: normalizeCellAddress(address),
+      row: parsed.row,
+      col: parsed.col,
+      value: literal,
     })
-    .toSorted((left, right) => compareExternalCacheCellAddresses(left.address, right.address))
+  }
+  return cells.toSorted((left, right) => compareExternalCacheCellAddresses(left.address, right.address))
 }
 
 export function buildImportedExternalCacheSheetPlan(

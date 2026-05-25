@@ -780,7 +780,11 @@ function readMaterializedCachedExternalRange(
   for (let row = rowStart; row <= rowEnd; row += 1) {
     for (let col = colStart; col <= colEnd; col += 1) {
       const value = cachedExternalValue(caches, bookIndex, sheetName, formatA1Address(row, col))
-      if (!value || externalCachedValueToLiteralInput(value) === undefined) {
+      if (value?.kind === 'error') {
+        resolvedCount += 1
+        continue
+      }
+      if (value && externalCachedValueToLiteralInput(value) === undefined) {
         return null
       }
       resolvedCount += 1

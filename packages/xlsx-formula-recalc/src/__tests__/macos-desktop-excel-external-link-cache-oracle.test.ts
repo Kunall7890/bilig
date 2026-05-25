@@ -111,6 +111,64 @@ describe('macOS Desktop Excel external-link cache recalc oracle', () => {
     },
     180_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel sparse blank and error external-link cache recalculation',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-xlsx-recalc-external-link-sparse-cache-oracle-')
+      try {
+        const linkedSourcePath = join(tempDir, 'rates.xlsx')
+        const sourcePath = join(tempDir, 'external-link-sparse-cache.xlsx')
+        writeFileSync(linkedSourcePath, buildSparseExternalSourceWorkbook())
+
+        const sourceBytes = buildSparseExternalLinkCacheWorkbook(pathToFileURL(linkedSourcePath).href)
+        expect(worksheetFormulaCacheValuesFor(sourceBytes, ['C1', 'C2'])).toEqual({ C1: '60', C2: '60' })
+        writeFileSync(sourcePath, sourceBytes)
+
+        const excelTruth = runMacosExcelInspectionOracle({
+          workbookPath: sourcePath,
+          worksheetName: 'Model',
+          formulaCells: [],
+          inspectCells: ['C1', 'C2'],
+          companionWorkbookPaths: [linkedSourcePath],
+          saveWorkbook: true,
+          timeoutMs: 120_000,
+          updateLinks: 'external',
+        })
+        expect(excelTruth.excelVersion).toMatch(/^\d+\./u)
+        expect(excelTruth.cells.map(({ address, value }) => ({ address, value }))).toEqual([
+          { address: 'C1', value: { kind: 'number', value: 70 } },
+          { address: 'C2', value: { kind: 'number', value: 99 } },
+        ])
+
+        const excelUpdatedBytes = new Uint8Array(readFileSync(sourcePath))
+        expect(worksheetFormulaCacheValuesFor(excelUpdatedBytes, ['C1', 'C2'])).toEqual({ C1: '70', C2: '99' })
+
+        const recalculated = recalculateXlsx(sourceBytes, {
+          fileName: 'external-link-sparse-cache.xlsx',
+          externalWorkbooks: [
+            {
+              fileName: 'rates.xlsx',
+              target: pathToFileURL(linkedSourcePath).href,
+              bytes: new Uint8Array(readFileSync(linkedSourcePath)),
+            },
+          ],
+          reads: ['Model!C1', 'Model!C2'],
+        })
+        expect(numberCell(recalculated.reads['Model!C1'])).toBe(70)
+        expect(numberCell(recalculated.reads['Model!C2'])).toBe(99)
+        expect(worksheetFormulaCacheValuesFor(recalculated.xlsx, ['C1', 'C2'])).toEqual({ C1: '70', C2: '99' })
+        expect(externalLinkCachePayload(unzipSync(recalculated.xlsx))).toEqual(externalLinkCachePayload(unzipSync(excelUpdatedBytes)))
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    180_000,
+  )
 })
 
 function buildExternalSourceWorkbook(rates: readonly [number, number, number]): Uint8Array {
@@ -124,6 +182,27 @@ function buildExternalSourceWorkbook(rates: readonly [number, number, number]): 
   })
   try {
     return exportXlsx(workbook.exportSnapshot())
+  } finally {
+    workbook.dispose()
+  }
+}
+
+function buildSparseExternalSourceWorkbook(): Uint8Array {
+  const workbook = WorkPaper.buildFromSheets({
+    Rates: [
+      ['SKU', 'Rate'],
+      ['A', 20],
+      ['B', null],
+      ['C', 50],
+      ['D', 0],
+    ],
+  })
+  try {
+    const zip = unzipSync(exportXlsx(workbook.exportSnapshot()))
+    zip['xl/worksheets/sheet1.xml'] = strToU8(
+      xmlText(zip, 'xl/worksheets/sheet1.xml').replace(/<c\b[^>]*\br=(["'])B5\1[^>]*>[\s\S]*?<\/c>/u, '<c r="B5" t="e"><v>#N/A</v></c>'),
+    )
+    return zipSync(zip)
   } finally {
     workbook.dispose()
   }
@@ -196,6 +275,65 @@ function buildExternalLinkRangeCacheWorkbook(target: string): Uint8Array {
   }
 }
 
+function buildSparseExternalLinkCacheWorkbook(target: string): Uint8Array {
+  const workbook = WorkPaper.buildFromSheets({
+    Model: [
+      [null, 1, 60],
+      [null, null, 60],
+    ],
+  })
+  try {
+    const zip = unzipSync(exportXlsx(workbook.exportSnapshot()))
+    zip['xl/worksheets/sheet1.xml'] = strToU8(
+      xmlText(zip, 'xl/worksheets/sheet1.xml')
+        .replace(/<c\b[^>]*\br=(["'])C1\1[^>]*>[\s\S]*?<\/c>/u, '<c r="C1"><f>SUM(\'[1]Rates\'!$B$2:$B$4)*B1</f><v>60</v></c>')
+        .replace(/<c\b[^>]*\br=(["'])C2\1[^>]*>[\s\S]*?<\/c>/u, '<c r="C2"><f>IFERROR(SUM(\'[1]Rates\'!$B$2:$B$5),99)</f><v>60</v></c>'),
+    )
+    zip['xl/workbook.xml'] = strToU8(
+      ensureRelationshipNamespace(xmlText(zip, 'xl/workbook.xml')).replace(
+        '</sheets>',
+        '</sheets><externalReferences><externalReference r:id="rId99"/></externalReferences>',
+      ),
+    )
+    zip['xl/_rels/workbook.xml.rels'] = strToU8(
+      xmlText(zip, 'xl/_rels/workbook.xml.rels').replace(
+        '</Relationships>',
+        '<Relationship Id="rId99" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLink" Target="externalLinks/externalLink5.xml"/></Relationships>',
+      ),
+    )
+    zip['xl/externalLinks/externalLink5.xml'] = strToU8(
+      [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        `<externalLink xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${officeRelationshipNamespace}">`,
+        '<externalBook r:id="rId1">',
+        '<sheetNames><sheetName val="Rates"/></sheetNames>',
+        '<sheetDataSet><sheetData sheetId="0">',
+        '<row r="2"><cell r="B2"><v>10</v></cell></row>',
+        '<row r="3"><cell r="B3"><v>20</v></cell></row>',
+        '<row r="4"><cell r="B4"><v>30</v></cell></row>',
+        '<row r="5"><cell r="B5"><v>40</v></cell></row>',
+        '</sheetData></sheetDataSet>',
+        '</externalBook>',
+        '</externalLink>',
+      ].join(''),
+    )
+    zip['xl/externalLinks/_rels/externalLink5.xml.rels'] = strToU8(
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLinkPath" Target="${target}" TargetMode="External"/>` +
+        '</Relationships>',
+    )
+    zip['[Content_Types].xml'] = strToU8(
+      upsertContentTypeOverride(xmlText(zip, '[Content_Types].xml'), {
+        partName: '/xl/externalLinks/externalLink5.xml',
+        contentType: externalLinkContentType,
+      }),
+    )
+    return zipSync(zip)
+  } finally {
+    workbook.dispose()
+  }
+}
+
 function numberCell(value: unknown): number {
   if (typeof value === 'object' && value !== null && 'tag' in value && value.tag === ValueTag.Number && 'value' in value) {
     return Number(value.value)
@@ -210,9 +348,13 @@ function createExcelAccessibleTempDir(prefix: string): string {
 }
 
 function worksheetFormulaCacheValues(bytes: Uint8Array): Readonly<Record<string, string | null>> {
+  return worksheetFormulaCacheValuesFor(bytes, externalRangeAddresses)
+}
+
+function worksheetFormulaCacheValuesFor(bytes: Uint8Array, addresses: readonly string[]): Readonly<Record<string, string | null>> {
   const sheetXml = xmlText(unzipSync(bytes), 'xl/worksheets/sheet1.xml')
   return Object.fromEntries(
-    externalRangeAddresses.map((address) => {
+    addresses.map((address) => {
       const cellXml = new RegExp(`<c\\b(?=[^>]*\\br="${address}")[\\s\\S]*?<\\/c>`, 'u').exec(sheetXml)?.[0]
       if (!cellXml) {
         throw new Error(`Missing formula cell ${address}`)

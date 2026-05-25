@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import * as XLSX from 'xlsx'
 
-import { ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
 import { projectWorkbookSemanticSnapshot as projectSupportedSnapshotSemantics, readRuntimeImage, SpreadsheetEngine } from '@bilig/core'
 import {
   CSV_CONTENT_TYPE,
@@ -171,6 +171,69 @@ function buildRatesWorkbook(rates: readonly [number, number, number]): Uint8Arra
   ])
   XLSX.utils.book_append_sheet(workbook, sheet, 'Rates')
   return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+}
+
+function buildSparseRatesWorkbook(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([
+    ['SKU', 'Rate'],
+    ['A', 20],
+    ['B', null],
+    ['C', 50],
+  ])
+  sheet.A5 = { t: 's', v: 'D' }
+  sheet.B5 = { t: 'e', v: 42, w: '#N/A' }
+  sheet['!ref'] = 'A1:B5'
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Rates')
+  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+}
+
+function buildSparseExternalLinkRangeCacheWorkbook(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([[null, 1]])
+  sheet.C1 = { t: 'n', f: "SUM('[1]Rates'!$B$2:$B$4)*B1", v: 60 }
+  sheet.C2 = { t: 'n', f: "IFERROR(SUM('[1]Rates'!$B$2:$B$5),99)", v: 60 }
+  sheet['!ref'] = 'A1:C2'
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
+
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  zip['xl/workbook.xml'] = strToU8(
+    strFromU8(zip['xl/workbook.xml'])
+      .replace(/<workbook\b([^>]*)>/u, (match) =>
+        match.includes('xmlns:r=')
+          ? match
+          : match.replace('>', ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'),
+      )
+      .replace('</workbook>', '<externalReferences><externalReference r:id="rId99"/></externalReferences></workbook>'),
+  )
+  zip['xl/_rels/workbook.xml.rels'] = strToU8(
+    strFromU8(zip['xl/_rels/workbook.xml.rels']).replace(
+      '</Relationships>',
+      '<Relationship Id="rId99" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLink" Target="externalLinks/externalLink5.xml"/></Relationships>',
+    ),
+  )
+  zip['xl/externalLinks/externalLink5.xml'] = strToU8(
+    [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<externalLink xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+      '<externalBook r:id="rId1">',
+      '<sheetNames><sheetName val="Rates"/></sheetNames>',
+      '<sheetDataSet><sheetData sheetId="0">',
+      '<row r="2"><cell r="B2"><v>10</v></cell></row>',
+      '<row r="3"><cell r="B3"><v>20</v></cell></row>',
+      '<row r="4"><cell r="B4"><v>30</v></cell></row>',
+      '<row r="5"><cell r="B5"><v>40</v></cell></row>',
+      '</sheetData></sheetDataSet>',
+      '</externalBook>',
+      '</externalLink>',
+    ].join(''),
+  )
+  zip['xl/externalLinks/_rels/externalLink5.xml.rels'] = strToU8(
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLinkPath" Target="file:///tmp/rates.xlsx" TargetMode="External"/>' +
+      '</Relationships>',
+  )
+  return zipSync(zip)
 }
 
 function readExternalLinkCacheXml(bytes: Uint8Array): string {
@@ -682,6 +745,53 @@ describe('excel import', () => {
     expect(externalLinkXml).toContain('<cell r="B2"><v>20</v></cell>')
     expect(externalLinkXml).toContain('<row r="4">')
     expect(externalLinkXml).toContain('<cell r="B4"><v>40</v></cell>')
+  })
+
+  it('hydrates sparse blank and error external ranges from supplied workbook bytes', async () => {
+    const imported = importXlsx(buildSparseExternalLinkRangeCacheWorkbook(), 'external-link-sparse-cache.xlsx', {
+      externalWorkbooks: [{ fileName: 'rates.xlsx', bytes: buildSparseRatesWorkbook() }],
+    })
+    const cacheSheet = imported.snapshot.sheets.find((sheet) => sheet.name === '__bilig_ext_1_Rates')
+    const cacheCells = new Map(cacheSheet?.cells.map((cell) => [cell.address, cell]) ?? [])
+
+    expect(cacheCells.get('B2')).toMatchObject({ value: 20 })
+    expect(cacheCells.get('B3')).toMatchObject({ value: null })
+    expect(cacheCells.get('B4')).toMatchObject({ value: 50 })
+    expect(cacheCells.get('B5')).toMatchObject({ formula: '#N/A' })
+    expect(imported.diagnostics?.externalWorkbookHydration).toMatchObject({
+      externalWorkbookCount: 1,
+      externalReferenceCount: 1,
+      refreshedBookIndices: [1],
+      refreshedSheetCount: 1,
+      refreshedCellCount: 4,
+      skippedNoMatchCount: 0,
+      skippedAmbiguousMatchCount: 0,
+      skippedEmptyRefreshCount: 0,
+    })
+
+    const formulaCells = new Map(imported.snapshot.sheets[0]?.cells.map((cell) => [cell.address, cell]) ?? [])
+    expect(formulaCells.get('C1')).toMatchObject({
+      formula: "SUM('__bilig_ext_1_Rates'!$B$2:$B$4)*B1",
+      value: 60,
+    })
+    expect(formulaCells.get('C2')).toMatchObject({
+      formula: "IFERROR(SUM('__bilig_ext_1_Rates'!$B$2:$B$5),99)",
+      value: 60,
+    })
+
+    const engine = new SpreadsheetEngine({ workbookName: 'external-link-sparse-cache-import' })
+    await engine.ready()
+    engine.importSnapshot(imported.snapshot)
+
+    expect(engine.getCellValue('Model', 'C1')).toEqual({ tag: ValueTag.Number, value: 70 })
+    expect(engine.getCellValue('Model', 'C2')).toEqual({ tag: ValueTag.Number, value: 99 })
+    expect(engine.getCellValue('__bilig_ext_1_Rates', 'B5')).toEqual({ tag: ValueTag.Error, code: ErrorCode.NA })
+
+    const externalLinkXml = readExternalLinkCacheXml(exportXlsx(imported.snapshot))
+    expect(externalLinkXml).toContain('<cell r="B2"><v>20</v></cell>')
+    expect(externalLinkXml).not.toContain('r="B3"')
+    expect(externalLinkXml).toContain('<cell r="B4"><v>50</v></cell>')
+    expect(externalLinkXml).toContain('<cell r="B5" t="e"><v>#N/A</v></cell>')
   })
 
   it('does not hydrate external-link caches from an explicitly mismatched target', () => {

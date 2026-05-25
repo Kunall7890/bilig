@@ -121,6 +121,8 @@ export function formatFormulaLiteral(value: ExternalCachedValue): string {
       return value.value
     case 'string':
       return `"${value.value.replaceAll('"', '""')}"`
+    case 'blank':
+      return '0'
   }
 }
 
