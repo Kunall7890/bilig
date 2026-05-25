@@ -736,7 +736,8 @@ index, command kind, command digest, preview ops, applied ops, and resolved-ref
 proof, so an agent can inspect which planned command produced which materialized
 operations and which workbook refs the runtime materialized.
 `@bilig/workbook` rejects stale digests, duplicate or missing command indexes,
-receipt preview/apply mismatches, and receipts whose flattened ops do not match
+receipt preview/apply mismatches, receipts whose ops do not match the planned
+command's concrete workbook op, and receipts whose flattened ops do not match
 the apply-level preview or applied ops. With `requireApplyProof: true`, a plan
 with high-level commands fails closed unless those command receipts are present.
 With `strict: true`, each command receipt must also prove concrete applied ops

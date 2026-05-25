@@ -465,6 +465,58 @@ describe('@bilig/workbook run proof boundary', () => {
     })
   })
 
+  it('rejects command receipts whose concrete ops do not match the planned command', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => {
+          const wrongOps = [
+            {
+              kind: 'setCellValue' as const,
+              sheetName: 'Sheet1',
+              address: 'A1',
+              value: 99,
+            },
+          ]
+          return {
+            status: 'applied',
+            planId: workbookPlanId(plan),
+            baseRevision: 7,
+            revision: 8,
+            previewOps: wrongOps,
+            appliedOps: wrongOps,
+            commandReceipts: [
+              {
+                ...commandReceipt(plan),
+                previewOps: wrongOps,
+                appliedOps: wrongOps,
+              },
+            ],
+          }
+        },
+        read: (targets) => [{ target: first(targets), value: 12 }],
+      },
+      undefined,
+      { strict: true },
+    )
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message:
+            'Workbook action run-value-model.write returned invalid command receipts: commandReceipts[0].previewOps do not match the planned command',
+        },
+      ],
+      changed: [],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
+    })
+  })
+
   it('strict mode fails closed when command receipts omit resolved ref proof', async () => {
     const model = valueModel()
 

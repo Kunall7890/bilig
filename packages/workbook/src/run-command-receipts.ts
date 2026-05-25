@@ -1,4 +1,5 @@
 import { isWorkbookOp } from './guards.js'
+import { commandOpsMatchExpected, workbookOpsMatch } from './command-ops.js'
 import { normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import type { WorkbookActionCommand, WorkbookActionPlan } from './model.js'
 import type { EngineOp } from './ops.js'
@@ -150,22 +151,6 @@ function cloneOps(ops: readonly EngineOp[]): readonly EngineOp[] {
   return Object.freeze(entries.map((op) => cloneOp(op)))
 }
 
-function opsMatch(left: readonly EngineOp[], right: readonly EngineOp[]): boolean {
-  const leftOps = arrayDataValues(left, isWorkbookOp)
-  const rightOps = arrayDataValues(right, isWorkbookOp)
-  if (leftOps === null || rightOps === null || leftOps.length !== rightOps.length) {
-    return false
-  }
-  try {
-    return leftOps.every((op, index) => {
-      const other = rightOps[index]
-      return other !== undefined && canonicalJson(op) === canonicalJson(other)
-    })
-  } catch {
-    return false
-  }
-}
-
 function cloneReceiptOps(receipt: Record<string, unknown>, receiptIndex: number, key: 'previewOps' | 'appliedOps'): readonly EngineOp[] {
   const ops = ownValue(receipt, key)
   if (ops === undefined) {
@@ -235,8 +220,14 @@ export function cloneWorkbookRunApplyCommandReceipts(
 
     const receiptPreviewOps = cloneReceiptOps(receipt, receiptIndex, 'previewOps')
     const receiptAppliedOps = cloneReceiptOps(receipt, receiptIndex, 'appliedOps')
-    if (!opsMatch(receiptPreviewOps, receiptAppliedOps)) {
+    if (!workbookOpsMatch(receiptPreviewOps, receiptAppliedOps)) {
       throw new Error(`commandReceipts[${String(receiptIndex)}] previewOps do not match appliedOps`)
+    }
+    if (!commandOpsMatchExpected(command, receiptPreviewOps)) {
+      throw new Error(`commandReceipts[${String(receiptIndex)}].previewOps do not match the planned command`)
+    }
+    if (!commandOpsMatchExpected(command, receiptAppliedOps)) {
+      throw new Error(`commandReceipts[${String(receiptIndex)}].appliedOps do not match the planned command`)
     }
 
     let resolvedRefs: WorkbookActionInput | undefined
@@ -267,10 +258,10 @@ export function cloneWorkbookRunApplyCommandReceipts(
   })
 
   const sortedReceipts = Object.freeze(receipts.toSorted((left, right) => left.commandIndex - right.commandIndex))
-  if (previewOps !== undefined && !opsMatch(flattenedReceiptOps(sortedReceipts, 'previewOps'), previewOps)) {
+  if (previewOps !== undefined && !workbookOpsMatch(flattenedReceiptOps(sortedReceipts, 'previewOps'), previewOps)) {
     throw new Error('commandReceipts previewOps do not match apply previewOps')
   }
-  if (appliedOps !== undefined && !opsMatch(flattenedReceiptOps(sortedReceipts, 'appliedOps'), appliedOps)) {
+  if (appliedOps !== undefined && !workbookOpsMatch(flattenedReceiptOps(sortedReceipts, 'appliedOps'), appliedOps)) {
     throw new Error('commandReceipts appliedOps do not match apply appliedOps')
   }
 

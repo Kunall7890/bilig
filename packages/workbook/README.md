@@ -347,7 +347,8 @@ materialized ops to a specific planned command. Adapter apply results can return
 `commandReceipts`, one per planned command, with the command index, command kind,
 command digest, preview ops, applied ops, and optional `resolvedRefs` proof.
 `@bilig/workbook` rejects stale digests, missing commands, duplicate command
-indexes, mismatched receipt ops, or receipts whose flattened ops disagree with
+indexes, mismatched receipt ops, receipts whose ops do not match the planned
+command's concrete workbook op, or receipts whose flattened ops disagree with
 the apply-level ops. With `{ requireApplyProof: true }`, a plan with commands
 fails closed unless those command receipts are present. With `{ strict: true }`,
 empty per-command applied ops or missing resolved-ref proof fail closed too.

@@ -89,6 +89,8 @@ flowchart LR
     and unverified apply facts
   - command-level apply receipts that bind each planned high-level command to
     the materialized preview and applied operations returned by a runtime
+  - receipt op validation that rejects self-consistent proof when the materialized
+    op does not match the planned command's concrete workbook op
   - strict command proof that rejects empty materialized ops or missing
     resolved-ref evidence for ref-targeting commands
   - failed run ledgers that preserve changed summaries and undo metadata after
