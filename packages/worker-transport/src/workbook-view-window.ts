@@ -7,10 +7,23 @@ export type WorkbookViewWindowStatus = 'ready' | 'missing-sheet' | 'identity-mis
 
 export type WorkbookViewWindowRenderAckStatus = 'not-requested' | 'pending' | 'presented' | 'rejected'
 
+export interface WorkbookViewWindowPresentedRenderAck {
+  readonly batchId?: number | undefined
+  readonly renderRevision?: number | undefined
+  readonly proofSignature?: string | undefined
+}
+
+export interface WorkbookViewWindowRenderAckRequest {
+  readonly required?: boolean | undefined
+  readonly minAuthoritativeRevision?: number | undefined
+  readonly presented?: WorkbookViewWindowPresentedRenderAck | null | undefined
+}
+
 export interface WorkbookViewWindowSubscription extends Viewport {
   sheetId: number
   sheetName?: string | undefined
   sheetOrdinal?: number | undefined
+  renderAckRequest?: WorkbookViewWindowRenderAckRequest | undefined
 }
 
 export interface WorkbookViewWindowSheetIdentity {
@@ -60,6 +73,79 @@ export interface WorkbookViewWindow {
   renderAck: WorkbookViewWindowRenderAck
 }
 
+export function resolveWorkbookViewWindowRenderAck(input: {
+  readonly request: WorkbookViewWindowSubscription
+  readonly authoritativeRevision: number | null | undefined
+}): WorkbookViewWindowRenderAck {
+  const request = input.request.renderAckRequest
+  if (request?.required !== true) {
+    return {
+      status: 'not-requested',
+      reason: 'authoritative-window-built-before-browser-render-ack',
+    }
+  }
+
+  const presented = request.presented ?? null
+  if (!presented) {
+    return {
+      status: 'pending',
+      reason: 'browser-render-ack-required-but-not-supplied',
+    }
+  }
+
+  const minAuthoritativeRevision = normalizeNonNegativeInteger(request.minAuthoritativeRevision ?? input.authoritativeRevision ?? undefined)
+  const renderRevision = normalizeNonNegativeInteger(presented.renderRevision)
+  const batchId = normalizeNonNegativeInteger(presented.batchId)
+  const proofSignature = normalizeProofSignature(presented.proofSignature)
+  const ackBase = {
+    ...(batchId === undefined ? {} : { batchId }),
+    ...(renderRevision === undefined ? {} : { renderRevision }),
+    ...(proofSignature === undefined ? {} : { proofSignature }),
+  }
+
+  if (proofSignature === undefined) {
+    return {
+      status: 'rejected',
+      ...ackBase,
+      reason: 'browser-render-ack-missing-proof-signature',
+    }
+  }
+  if (minAuthoritativeRevision !== undefined && renderRevision === undefined) {
+    return {
+      status: 'rejected',
+      ...ackBase,
+      reason: 'browser-render-ack-missing-render-revision',
+    }
+  }
+  if (minAuthoritativeRevision !== undefined && renderRevision !== undefined && renderRevision < minAuthoritativeRevision) {
+    return {
+      status: 'rejected',
+      ...ackBase,
+      reason: 'browser-render-ack-stale',
+    }
+  }
+
+  return {
+    status: 'presented',
+    ...ackBase,
+  }
+}
+
+function normalizeNonNegativeInteger(value: number | undefined): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return undefined
+  }
+  return Math.max(0, Math.trunc(value))
+}
+
+function normalizeProofSignature(value: string | undefined): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
 export function buildWorkbookViewWindowFromViewportPatch(input: {
   readonly patch: ViewportPatch
   readonly request: WorkbookViewWindowSubscription
@@ -99,7 +185,12 @@ export function buildWorkbookViewWindowFromViewportPatch(input: {
     merges: patch.merges?.map((range) => ({ ...range })) ?? [],
     columns: patch.columns.map(cloneViewportAxisPatch),
     rows: patch.rows.map(cloneViewportAxisPatch),
-    renderAck: input.renderAck ?? { status: 'not-requested' },
+    renderAck:
+      input.renderAck ??
+      resolveWorkbookViewWindowRenderAck({
+        request: input.request,
+        authoritativeRevision: patch.authoritativeRevision ?? null,
+      }),
   }
 }
 

@@ -4,6 +4,7 @@ import {
   WORKBOOK_VIEW_WINDOW_SCHEMA_VERSION,
   buildUnavailableWorkbookViewWindow,
   buildWorkbookViewWindowFromViewportPatch,
+  resolveWorkbookViewWindowRenderAck,
   type WorkbookViewWindowSubscription,
 } from '../workbook-view-window.js'
 
@@ -136,6 +137,89 @@ describe('WorkbookViewWindow contract', () => {
         status: 'rejected',
         reason: 'sheet-id-not-found',
       },
+    })
+  })
+
+  it('keeps requested browser render proof pending until a fresh signed frame is supplied', () => {
+    const request: WorkbookViewWindowSubscription = {
+      ...REQUEST,
+      renderAckRequest: {
+        required: true,
+        minAuthoritativeRevision: 9,
+      },
+    }
+
+    expect(resolveWorkbookViewWindowRenderAck({ request, authoritativeRevision: 9 })).toEqual({
+      status: 'pending',
+      reason: 'browser-render-ack-required-but-not-supplied',
+    })
+
+    expect(
+      resolveWorkbookViewWindowRenderAck({
+        request: {
+          ...request,
+          renderAckRequest: {
+            required: true,
+            minAuthoritativeRevision: 9,
+            presented: {
+              batchId: 12,
+              renderRevision: 9,
+              proofSignature: 'visible-scene:9',
+            },
+          },
+        },
+        authoritativeRevision: 9,
+      }),
+    ).toEqual({
+      status: 'presented',
+      batchId: 12,
+      renderRevision: 9,
+      proofSignature: 'visible-scene:9',
+    })
+
+    expect(
+      resolveWorkbookViewWindowRenderAck({
+        request: {
+          ...request,
+          renderAckRequest: {
+            required: true,
+            minAuthoritativeRevision: 9,
+            presented: {
+              batchId: 11,
+              renderRevision: 8,
+              proofSignature: 'visible-scene:8',
+            },
+          },
+        },
+        authoritativeRevision: 9,
+      }),
+    ).toMatchObject({
+      status: 'rejected',
+      batchId: 11,
+      renderRevision: 8,
+      proofSignature: 'visible-scene:8',
+      reason: 'browser-render-ack-stale',
+    })
+
+    expect(
+      resolveWorkbookViewWindowRenderAck({
+        request: {
+          ...request,
+          renderAckRequest: {
+            required: true,
+            minAuthoritativeRevision: 9,
+            presented: {
+              renderRevision: 9,
+              proofSignature: '   ',
+            },
+          },
+        },
+        authoritativeRevision: 9,
+      }),
+    ).toMatchObject({
+      status: 'rejected',
+      renderRevision: 9,
+      reason: 'browser-render-ack-missing-proof-signature',
     })
   })
 })

@@ -610,10 +610,6 @@ export class WorkbookWorkerRuntime {
         sheetOrdinal: subscription.sheetOrdinal ?? sheet.order,
       },
       sheet: identity,
-      renderAck: {
-        status: 'not-requested',
-        reason: 'authoritative-window-built-before-browser-render-ack',
-      },
     })
   }
 

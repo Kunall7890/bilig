@@ -195,6 +195,114 @@ describe('worker runtime viewport patches', () => {
     runtime.dispose()
   })
 
+  it('requires fresh browser render acknowledgement when the caller requests visible proof', async () => {
+    const runtime = new WorkbookWorkerRuntime()
+    await runtime.bootstrap({
+      documentId: 'viewport-window-render-ack-required',
+      replicaId: 'replica-1',
+      persistState: false,
+    })
+    await runtime.ready()
+    await runtime.setCellValue('Sheet1', 'B2', 'render-ack-window')
+
+    const pending = runtime.getWorkbookViewWindow({
+      sheetId: 1,
+      sheetName: 'Sheet1',
+      rowStart: 0,
+      rowEnd: 2,
+      colStart: 0,
+      colEnd: 2,
+      renderAckRequest: {
+        required: true,
+      },
+    })
+
+    expect(pending).toMatchObject({
+      status: 'ready',
+      renderAck: {
+        status: 'pending',
+        reason: 'browser-render-ack-required-but-not-supplied',
+      },
+    })
+    expect(pending.authoritativeRevision).toEqual(expect.any(Number))
+
+    const authoritativeRevision = pending.authoritativeRevision ?? 0
+    const presented = runtime.getWorkbookViewWindow({
+      sheetId: 1,
+      sheetName: 'Sheet1',
+      rowStart: 0,
+      rowEnd: 2,
+      colStart: 0,
+      colEnd: 2,
+      renderAckRequest: {
+        required: true,
+        minAuthoritativeRevision: authoritativeRevision,
+        presented: {
+          batchId: 44,
+          renderRevision: authoritativeRevision,
+          proofSignature: `visible-scene:${authoritativeRevision}`,
+        },
+      },
+    })
+
+    expect(presented.renderAck).toEqual({
+      status: 'presented',
+      batchId: 44,
+      renderRevision: authoritativeRevision,
+      proofSignature: `visible-scene:${authoritativeRevision}`,
+    })
+
+    const stale = runtime.getWorkbookViewWindow({
+      sheetId: 1,
+      sheetName: 'Sheet1',
+      rowStart: 0,
+      rowEnd: 2,
+      colStart: 0,
+      colEnd: 2,
+      renderAckRequest: {
+        required: true,
+        minAuthoritativeRevision: authoritativeRevision + 1,
+        presented: {
+          batchId: 43,
+          renderRevision: authoritativeRevision,
+          proofSignature: `visible-scene:${authoritativeRevision}`,
+        },
+      },
+    })
+
+    expect(stale.renderAck).toMatchObject({
+      status: 'rejected',
+      batchId: 43,
+      renderRevision: authoritativeRevision,
+      proofSignature: `visible-scene:${authoritativeRevision}`,
+      reason: 'browser-render-ack-stale',
+    })
+
+    const unsigned = runtime.getWorkbookViewWindow({
+      sheetId: 1,
+      sheetName: 'Sheet1',
+      rowStart: 0,
+      rowEnd: 2,
+      colStart: 0,
+      colEnd: 2,
+      renderAckRequest: {
+        required: true,
+        minAuthoritativeRevision: authoritativeRevision,
+        presented: {
+          renderRevision: authoritativeRevision,
+        },
+      },
+    })
+
+    expect(unsigned.renderAck).toMatchObject({
+      status: 'rejected',
+      renderRevision: authoritativeRevision,
+      reason: 'browser-render-ack-missing-proof-signature',
+    })
+
+    runtime.dispose()
+  })
+
   it('returns a typed unavailable view window instead of succeeding with a blank fallback sheet', async () => {
     const runtime = new WorkbookWorkerRuntime()
     await runtime.bootstrap({
