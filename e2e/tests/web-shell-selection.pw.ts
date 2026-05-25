@@ -346,9 +346,9 @@ test('@browser-ci web app keeps reverse-drag range selection chrome geometricall
   await expectBorderStyle(page.locator('[data-grid-selection-visual-role="selection-border"]'), {
     boxShadow: 'none',
     color: 'rgb(33, 115, 70)',
-    offset: '-1px',
+    offset: '0px',
     style: 'solid',
-    width: '2px',
+    width: '1px',
   })
   await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCSS('background-color', 'rgb(33, 115, 70)')
 })
@@ -390,6 +390,13 @@ test('@browser-ci web app collapses a locally dragged range when the active addr
     await getProductCellRangeBox(page, 1, 1, 1, 1),
     'collapsed active cell border',
   )
+  await expectBorderStyle(page.locator('[data-grid-selection-visual-role="active-border"]'), {
+    boxShadow: 'none',
+    color: 'rgb(33, 115, 70)',
+    offset: '0px',
+    style: 'solid',
+    width: '1px',
+  })
 })
 
 test('@browser-ci web app keeps fill-handle hit target aligned and pointer-only', async ({ page }) => {

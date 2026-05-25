@@ -123,17 +123,15 @@ function styleForRect(
     width: rect.bounds.width,
   }
   if (rect.role === 'selection-border' || rect.role === 'active-border') {
-    const strokeWidth = rect.strokeWidth ?? (rect.role === 'active-border' ? 2 : 1)
-    const outlineOffset = -Math.max(1, Math.round(strokeWidth / 2))
     return {
       ...base,
       backgroundColor: 'transparent',
       boxSizing: 'border-box',
       boxShadow: 'none',
       outlineColor: workbookThemeColors.selectionAccent,
-      outlineOffset,
+      outlineOffset: 0,
       outlineStyle: 'solid',
-      outlineWidth: strokeWidth,
+      outlineWidth: 1,
     }
   }
   if (rect.role === 'selection-gridline') {
