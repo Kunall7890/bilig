@@ -27,6 +27,7 @@ import type {
   WorkbookCheckExpectation,
   WorkbookCheckResult,
   WorkbookCheckStatus,
+  WorkbookCommandResolvedRefs,
   WorkbookRunApplySummary,
   WorkbookRunErrorCode,
   WorkbookRunResult,
@@ -197,7 +198,7 @@ export interface WorkbookRunApplySummaryDescription {
     readonly commandDigest: string
     readonly previewOps: readonly WorkbookOp[]
     readonly appliedOps: readonly WorkbookOp[]
-    readonly resolvedRefs?: WorkbookActionInput
+    readonly resolvedRefs?: WorkbookCommandResolvedRefs
     readonly formulaLabels?: readonly WorkbookFormulaLabelReplacement[]
     readonly proof?: WorkbookActionInput
   }[]

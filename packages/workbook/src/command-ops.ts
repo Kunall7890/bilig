@@ -1,8 +1,10 @@
-import { parseFormula, serializeFormula } from '@bilig/formula'
-import type { WorkbookRef } from './find.js'
+import { formatAddress, parseCellAddress, parseFormula, serializeFormula } from '@bilig/formula'
+import type { CellRangeRef } from '@bilig/protocol'
+import type { WorkbookRef, WorkbookRefData } from './find.js'
 import { materializeFormulaLabels, type WorkbookFormulaLabelReplacement } from './formula-usage.js'
 import type { WorkbookActionCommand } from './model.js'
 import type { WorkbookOp } from './ops.js'
+import type { WorkbookCommandResolvedRefs, WorkbookResolvedRefValue } from './result.js'
 
 export type WorkbookConcreteCommandOp = Extract<WorkbookOp, { kind: 'setCellFormula' | 'setCellValue' | 'setCellFormat' | 'clearCell' }>
 
@@ -16,6 +18,52 @@ function concreteSingleCell(target: WorkbookRef): { sheetName: string; address: 
   }
   const range = target.range
   return range.startAddress === range.endAddress ? { sheetName: range.sheetName, address: range.startAddress } : null
+}
+
+function isRangeRefData(value: WorkbookRefData): value is Extract<WorkbookRefData, { readonly kind: 'range' }> {
+  return value.kind === 'range'
+}
+
+function concreteRangesFromResolvedRef(value: WorkbookResolvedRefValue | undefined): readonly CellRangeRef[] | null {
+  if (value === undefined) {
+    return null
+  }
+  const values = Array.isArray(value) ? value : [value]
+  if (!values.every(isRangeRefData)) {
+    return null
+  }
+  return values.map((entry) => entry.range)
+}
+
+function cellsFromRange(range: CellRangeRef): readonly { readonly sheetName: string; readonly address: string }[] {
+  const start = parseCellAddress(range.startAddress)
+  const end = parseCellAddress(range.endAddress)
+  if (end.row < start.row || end.col < start.col) {
+    return []
+  }
+  const cells: { sheetName: string; address: string }[] = []
+  for (let row = start.row; row <= end.row; row += 1) {
+    for (let col = start.col; col <= end.col; col += 1) {
+      cells.push({
+        sheetName: range.sheetName,
+        address: formatAddress(row, col),
+      })
+    }
+  }
+  return cells
+}
+
+function concreteCellsFromResolvedRefs(resolvedRefs: WorkbookCommandResolvedRefs | undefined):
+  | readonly {
+      readonly sheetName: string
+      readonly address: string
+    }[]
+  | null {
+  const ranges = concreteRangesFromResolvedRef(resolvedRefs?.target)
+  if (ranges === null) {
+    return null
+  }
+  return ranges.flatMap(cellsFromRange)
 }
 
 function canonicalValue(value: unknown): unknown {
@@ -152,29 +200,72 @@ export function commandOpsMatchExpected(
   command: WorkbookActionCommand,
   ops: readonly WorkbookOp[],
   formulaLabels: readonly WorkbookFormulaLabelReplacement[] = [],
+  resolvedRefs?: WorkbookCommandResolvedRefs,
 ): boolean {
   if (ops.length === 0) {
     return true
   }
   if (command.kind === 'writeFormula') {
     const expected = expectedConcreteCommandOp(command)
-    if (expected === null) {
-      return true
+    const concreteCells = expected === null ? concreteCellsFromResolvedRefs(resolvedRefs) : null
+    if (expected === null && concreteCells === null) {
+      return false
     }
-    const actual = ops[0]
+    const expectedCells = concreteCells ?? (expected === null ? [] : [{ sheetName: expected.sheetName, address: expected.address }])
     return (
-      ops.length === 1 &&
-      expected.kind === 'setCellFormula' &&
-      actual !== undefined &&
-      actual.kind === 'setCellFormula' &&
-      actual.sheetName === expected.sheetName &&
-      actual.address === expected.address &&
-      formulasMatchExpected(expected.formula, actual.formula, formulaLabels)
+      expectedCells.length === ops.length &&
+      expectedCells.every((cell, index) => {
+        const actual = ops[index]
+        const formulaMatches =
+          expectedCells.length === 1
+            ? actual?.kind === 'setCellFormula' && formulasMatchExpected(command.formula, actual.formula, formulaLabels)
+            : true
+        return (
+          actual !== undefined &&
+          actual.kind === 'setCellFormula' &&
+          actual.sheetName === cell.sheetName &&
+          actual.address === cell.address &&
+          formulaMatches
+        )
+      })
     )
   }
   const expected = expectedCommandOps(command)
   if (expected === null) {
-    return true
+    const concreteCells = concreteCellsFromResolvedRefs(resolvedRefs)
+    if (concreteCells === null) {
+      return false
+    }
+    if (command.kind === 'writeValue') {
+      return (
+        concreteCells.length === ops.length &&
+        concreteCells.every((cell, index) => {
+          const actual = ops[index]
+          return (
+            actual !== undefined &&
+            actual.kind === 'setCellValue' &&
+            actual.sheetName === cell.sheetName &&
+            actual.address === cell.address &&
+            actual.value === command.value
+          )
+        })
+      )
+    }
+    if (command.kind === 'clear') {
+      return (
+        concreteCells.length === ops.length &&
+        concreteCells.every((cell, index) => {
+          const actual = ops[index]
+          return (
+            actual !== undefined && actual.kind === 'clearCell' && actual.sheetName === cell.sheetName && actual.address === cell.address
+          )
+        })
+      )
+    }
+    if (command.kind === 'format') {
+      return (command.style !== undefined || command.numberFormat !== undefined) && ops.length > 0
+    }
+    return false
   }
   return workbookOpsMatch(expected.ops, ops)
 }

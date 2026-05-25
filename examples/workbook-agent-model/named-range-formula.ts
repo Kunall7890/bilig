@@ -4,10 +4,8 @@ import {
   describePlan,
   describeRunResult,
   formula,
-  normalizeWorkbookActionInput,
   prepareWorkbookAction,
   runWorkbookPlan,
-  toWorkbookRefData,
   verifyPlanData,
   workbookActionCommandDigest,
   workbookPlanId,
@@ -74,22 +72,34 @@ function commandReceipt<Refs>(
     throw new Error(`example plan is missing command ${String(commandIndex)}`)
   }
 
-  const rawResolvedRefs: Record<string, unknown> = {}
-  if (command.target !== undefined) {
-    rawResolvedRefs['target'] = toWorkbookRefData(command.target)
-  }
-  if (command.kind === 'writeFormula' && command.inputs.length > 0) {
-    rawResolvedRefs['inputs'] = command.inputs.map((input) => toWorkbookRefData(input))
-  }
-  const resolvedRefs = Object.keys(rawResolvedRefs).length > 0 ? normalizeWorkbookActionInput(rawResolvedRefs) : undefined
-
   return {
     commandIndex,
     commandKind: command.kind,
     commandDigest: workbookActionCommandDigest(command),
     previewOps: ops,
     appliedOps: ops,
-    ...(resolvedRefs !== undefined ? { resolvedRefs } : {}),
+    resolvedRefs: {
+      target: {
+        kind: 'range',
+        id: 'range_Resolved_C1',
+        label: 'Resolved!C1',
+        range: { sheetName: 'Resolved', startAddress: 'C1', endAddress: 'C1' },
+      },
+      inputs: [
+        {
+          kind: 'range',
+          id: 'range_Resolved_A1',
+          label: 'Resolved!A1',
+          range: { sheetName: 'Resolved', startAddress: 'A1', endAddress: 'A1' },
+        },
+        {
+          kind: 'range',
+          id: 'range_Resolved_B1',
+          label: 'Resolved!B1',
+          range: { sheetName: 'Resolved', startAddress: 'B1', endAddress: 'B1' },
+        },
+      ],
+    },
   }
 }
 

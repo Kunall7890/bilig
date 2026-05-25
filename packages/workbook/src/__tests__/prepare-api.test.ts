@@ -3,13 +3,24 @@ import {
   checkPlanData,
   defineModel,
   formula,
-  normalizeWorkbookActionInput,
   prepareWorkbookAction,
   runWorkbookPlan,
-  toWorkbookRefData,
   workbookActionCommandDigest,
   workbookPlanId,
 } from '../index.js'
+
+function rangeRef(label: string, address: string) {
+  return {
+    kind: 'range' as const,
+    id: `range_${label}`,
+    label,
+    range: {
+      sheetName: 'Resolved',
+      startAddress: address,
+      endAddress: address,
+    },
+  }
+}
 
 describe('@bilig/workbook prepare api', () => {
   it('prepares the canonical agent handoff in one generic result', async () => {
@@ -75,20 +86,16 @@ describe('@bilig/workbook prepare api', () => {
               if (op === undefined) {
                 throw new Error(`prepared plan is missing op ${String(commandIndex)}`)
               }
-              const resolvedRefs: Record<string, unknown> = {}
-              if (command.target !== undefined) {
-                resolvedRefs['target'] = toWorkbookRefData(command.target)
-              }
-              if (command.kind === 'writeFormula') {
-                resolvedRefs['inputs'] = command.inputs.map((input) => toWorkbookRefData(input))
-              }
               return {
                 commandIndex,
                 commandKind: command.kind,
                 commandDigest: workbookActionCommandDigest(command),
                 previewOps: [op],
                 appliedOps: [op],
-                resolvedRefs: normalizeWorkbookActionInput(resolvedRefs),
+                resolvedRefs: {
+                  target: rangeRef('Resolved!C1', 'C1'),
+                  inputs: [rangeRef('Resolved!A1', 'A1'), rangeRef('Resolved!B1', 'B1')],
+                },
                 formulaLabels:
                   command.kind === 'writeFormula' ? command.labels.map((label) => ({ name: label.name, source: label.name })) : [],
               }

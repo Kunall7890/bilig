@@ -1,7 +1,7 @@
 import type { LiteralInput } from '@bilig/protocol'
 import type { WorkbookFormulaLabel } from './formula.js'
 import type { WorkbookFormulaLabelReplacement } from './formula-usage.js'
-import type { WorkbookRef } from './find.js'
+import type { WorkbookRef, WorkbookRefData } from './find.js'
 import type { WorkbookActionInput } from './input.js'
 import type { EngineOp } from './ops.js'
 import type { WorkbookPlanId } from './plan-data.js'
@@ -41,13 +41,21 @@ export interface WorkbookUndoRef {
   readonly ops?: readonly EngineOp[]
 }
 
+export type WorkbookResolvedRefData = Extract<WorkbookRefData, { readonly kind: 'range' }>
+export type WorkbookResolvedRefValue = WorkbookResolvedRefData | readonly WorkbookResolvedRefData[]
+
+export interface WorkbookCommandResolvedRefs {
+  readonly target?: WorkbookResolvedRefValue
+  readonly inputs?: readonly WorkbookResolvedRefValue[]
+}
+
 export interface WorkbookRunApplyCommandReceipt {
   readonly commandIndex: number
   readonly commandKind: string
   readonly commandDigest: string
   readonly previewOps: readonly EngineOp[]
   readonly appliedOps: readonly EngineOp[]
-  readonly resolvedRefs?: WorkbookActionInput
+  readonly resolvedRefs?: WorkbookCommandResolvedRefs
   readonly formulaLabels?: readonly WorkbookFormulaLabelReplacement[]
   readonly proof?: WorkbookActionInput
 }

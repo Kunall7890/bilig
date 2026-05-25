@@ -171,8 +171,7 @@ production proof. Strict mode requires:
 - base and applied revision proof
 - apply proof with no unverified apply facts
 - concrete applied ops for every planned command
-- command receipts bound to the planned command digests
-- resolved-ref proof for ref-targeting commands
+- command receipts bound to planned digests and concrete `resolvedRefs`
 - proof on every passed check
 
 Runtime authors can run the same contract with `checkWorkbookRunAdapter` or

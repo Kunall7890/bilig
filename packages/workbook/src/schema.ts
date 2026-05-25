@@ -201,6 +201,28 @@ function defs(extra: Record<string, WorkbookJsonSchemaValue> = {}): WorkbookJson
         },
       ],
     },
+    concreteRefData: {
+      type: 'object',
+      required: ['kind', 'id', 'label', 'range'],
+      additionalProperties: false,
+      properties: {
+        kind: { const: 'range' },
+        id: { type: 'string', minLength: 1 },
+        label: { type: 'string', minLength: 1 },
+        range: { $ref: '#/$defs/cellRange' },
+      },
+    },
+    resolvedRefValue: {
+      oneOf: [{ $ref: '#/$defs/concreteRefData' }, { type: 'array', items: { $ref: '#/$defs/concreteRefData' } }],
+    },
+    commandResolvedRefs: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        target: { $ref: '#/$defs/resolvedRefValue' },
+        inputs: { type: 'array', items: { $ref: '#/$defs/resolvedRefValue' } },
+      },
+    },
     ...extra,
   }
 }
@@ -321,7 +343,7 @@ const applyCommandReceiptSchema: WorkbookJsonSchemaValue = {
     commandDigest: { type: 'string', minLength: 1 },
     previewOps: { type: 'array', items: engineOp },
     appliedOps: { type: 'array', items: engineOp },
-    resolvedRefs: actionInput,
+    resolvedRefs: { $ref: '#/$defs/commandResolvedRefs' },
     formulaLabels: {
       type: 'array',
       items: {

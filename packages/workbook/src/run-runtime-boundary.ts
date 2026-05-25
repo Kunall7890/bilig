@@ -1,8 +1,15 @@
-import { toWorkbookRefData } from './find.js'
-import { normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
+import { toWorkbookRefData, type WorkbookRef } from './find.js'
+import { normalizeWorkbookActionInput } from './input.js'
 import type { WorkbookActionPlan } from './model.js'
 import type { WorkbookRunAdapter, WorkbookRunOptions } from './run.js'
-import type { WorkbookCheckResult, WorkbookRunApplyCommandReceipt, WorkbookRunApplySummary, WorkbookRunError } from './result.js'
+import type {
+  WorkbookCheckResult,
+  WorkbookCommandResolvedRefs,
+  WorkbookResolvedRefValue,
+  WorkbookRunApplyCommandReceipt,
+  WorkbookRunApplySummary,
+  WorkbookRunError,
+} from './result.js'
 
 export type NormalizedWorkbookRunOptions = {
   readonly requireApplyProof: boolean
@@ -188,19 +195,52 @@ export function normalizeRunOptions(options: unknown): WorkbookRunOptionsNormali
   }
 }
 
-function expectedResolvedRefsForCommand(command: WorkbookActionPlan['commands'][number]): WorkbookActionInput | undefined {
-  const refs: Record<string, unknown> = {}
-  if (command.target !== undefined) {
-    refs['target'] = toWorkbookRefData(command.target)
+function isRangeResolvedRefValue(value: WorkbookResolvedRefValue | undefined): boolean {
+  if (value === undefined) {
+    return false
   }
-  if (command.kind === 'writeFormula' && command.inputs.length > 0) {
-    refs['inputs'] = command.inputs.map((input) => toWorkbookRefData(input))
-  }
-  return Object.keys(refs).length === 0 ? undefined : normalizeWorkbookActionInput(refs)
+  const refs = Array.isArray(value) ? value : [value]
+  return refs.every((ref) => ref.kind === 'range')
 }
 
-function resolvedRefsMatch(expected: WorkbookActionInput, actual: WorkbookActionInput): boolean {
-  return JSON.stringify(expected) === JSON.stringify(normalizeWorkbookActionInput(actual))
+function singleResolvedRefValueMatches(value: WorkbookResolvedRefValue | undefined, expected: unknown): boolean {
+  if (value === undefined || Array.isArray(value)) {
+    return false
+  }
+  return JSON.stringify(normalizeWorkbookActionInput(value)) === JSON.stringify(normalizeWorkbookActionInput(expected))
+}
+
+function resolvedInputsForCommand(command: WorkbookActionPlan['commands'][number]): readonly WorkbookRef[] {
+  return command.kind === 'writeFormula' ? command.inputs : []
+}
+
+function resolvedRefsHaveExpectedShape(
+  command: WorkbookActionPlan['commands'][number],
+  resolvedRefs: WorkbookCommandResolvedRefs,
+): boolean {
+  if (command.target !== undefined) {
+    if (!isRangeResolvedRefValue(resolvedRefs.target)) {
+      return false
+    }
+    if (command.target.kind === 'range' && !singleResolvedRefValueMatches(resolvedRefs.target, toWorkbookRefData(command.target))) {
+      return false
+    }
+  }
+
+  const inputs = resolvedInputsForCommand(command)
+  if (inputs.length === 0) {
+    return true
+  }
+  if (resolvedRefs.inputs === undefined || resolvedRefs.inputs.length !== inputs.length) {
+    return false
+  }
+  return resolvedRefs.inputs.every((resolvedInput, index) => {
+    if (!isRangeResolvedRefValue(resolvedInput)) {
+      return false
+    }
+    const plannedInput = inputs[index]
+    return plannedInput?.kind === 'range' ? singleResolvedRefValueMatches(resolvedInput, toWorkbookRefData(plannedInput)) : true
+  })
 }
 
 function resolvedRefProofError(plan: WorkbookActionPlan, receipt: WorkbookRunApplyCommandReceipt): WorkbookRunError | undefined {
@@ -208,17 +248,18 @@ function resolvedRefProofError(plan: WorkbookActionPlan, receipt: WorkbookRunApp
   if (command === undefined) {
     return undefined
   }
-  const expected = expectedResolvedRefsForCommand(command)
-  if (expected === undefined) {
+  const needsTarget = command.target !== undefined
+  const needsInputs = resolvedInputsForCommand(command).length > 0
+  if (!needsTarget && !needsInputs) {
     return undefined
   }
   if (receipt.resolvedRefs === undefined) {
     return runError('apply_not_verified', `Adapter did not return resolved ref proof for command ${String(receipt.commandIndex)}`)
   }
-  if (!resolvedRefsMatch(expected, receipt.resolvedRefs)) {
+  if (!resolvedRefsHaveExpectedShape(command, receipt.resolvedRefs)) {
     return runError(
       'apply_not_verified',
-      `Adapter resolved ref proof for command ${String(receipt.commandIndex)} does not match the planned command`,
+      `Adapter resolved ref proof for command ${String(receipt.commandIndex)} must bind planned refs to concrete ranges`,
     )
   }
   return undefined

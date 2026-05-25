@@ -503,7 +503,91 @@ function pushCommandReceiptDescriptionIssues(
   pushRequiredStringFieldIssue(issues, entry, path, 'commandDigest')
   pushRequiredJsonArrayFieldIssue(issues, entry, path, 'previewOps')
   pushRequiredJsonArrayFieldIssue(issues, entry, path, 'appliedOps')
+  const resolvedRefs = ownJsonDescriptionValue(entry, 'resolvedRefs')
+  if (resolvedRefs !== undefined) {
+    pushCommandResolvedRefsIssues(issues, resolvedRefs, `${path}.resolvedRefs`)
+  }
   pushJsonArrayFieldIssue(issues, entry, path, 'formulaLabels')
+}
+
+function pushConcreteRefDataIssues(issues: WorkbookRunResultDescriptionIssue[], value: unknown, path: string): void {
+  if (!isJsonDescriptionObject(value)) {
+    issues.push(runResultDescriptionIssue('invalid_type', path, `Workbook run result description ${path} must be concrete range ref data`))
+    return
+  }
+  pushUnexpectedObjectFields(issues, value, path, new Set(['kind', 'id', 'label', 'range']))
+  const kind = ownJsonDescriptionValue(value, 'kind')
+  if (kind !== 'range') {
+    issues.push(runResultDescriptionIssue('invalid_field', `${path}.kind`, `Workbook run result description ${path}.kind must be range`))
+  }
+  pushRequiredStringFieldIssue(issues, value, path, 'id')
+  pushRequiredStringFieldIssue(issues, value, path, 'label')
+  const range = ownJsonDescriptionValue(value, 'range')
+  if (!isJsonDescriptionObject(range)) {
+    issues.push(runResultDescriptionIssue('invalid_type', `${path}.range`, `Workbook run result description ${path}.range must be a range`))
+    return
+  }
+  pushUnexpectedObjectFields(issues, range, `${path}.range`, new Set(['sheetName', 'startAddress', 'endAddress']))
+  pushRequiredStringFieldIssue(issues, range, `${path}.range`, 'sheetName')
+  pushRequiredStringFieldIssue(issues, range, `${path}.range`, 'startAddress')
+  pushRequiredStringFieldIssue(issues, range, `${path}.range`, 'endAddress')
+}
+
+function pushResolvedRefValueIssues(issues: WorkbookRunResultDescriptionIssue[], value: unknown, path: string): void {
+  if (Array.isArray(value)) {
+    for (let index = 0; index < value.length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+      if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
+        issues.push(
+          runResultDescriptionIssue(
+            'invalid_field',
+            `${path}[${String(index)}]`,
+            `Workbook run result description ${path}[${String(index)}] must be a data property`,
+          ),
+        )
+        continue
+      }
+      pushConcreteRefDataIssues(issues, descriptor.value, `${path}[${String(index)}]`)
+    }
+    return
+  }
+  pushConcreteRefDataIssues(issues, value, path)
+}
+
+function pushCommandResolvedRefsIssues(issues: WorkbookRunResultDescriptionIssue[], value: unknown, path: string): void {
+  if (!isJsonDescriptionObject(value)) {
+    issues.push(runResultDescriptionIssue('invalid_type', path, `Workbook run result description ${path} must be an object`))
+    return
+  }
+  pushUnexpectedObjectFields(issues, value, path, new Set(['target', 'inputs']))
+  const target = ownJsonDescriptionValue(value, 'target')
+  if (target !== undefined) {
+    pushResolvedRefValueIssues(issues, target, `${path}.target`)
+  }
+  const inputs = ownJsonDescriptionValue(value, 'inputs')
+  if (inputs === undefined) {
+    return
+  }
+  if (!Array.isArray(inputs)) {
+    issues.push(
+      runResultDescriptionIssue('invalid_type', `${path}.inputs`, `Workbook run result description ${path}.inputs must be an array`),
+    )
+    return
+  }
+  for (let index = 0; index < inputs.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(inputs, String(index))
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
+      issues.push(
+        runResultDescriptionIssue(
+          'invalid_field',
+          `${path}.inputs[${String(index)}]`,
+          `Workbook run result description ${path}.inputs[${String(index)}] must be a data property`,
+        ),
+      )
+      continue
+    }
+    pushResolvedRefValueIssues(issues, descriptor.value, `${path}.inputs[${String(index)}]`)
+  }
 }
 
 function pushApplyDescriptionIssues(issues: WorkbookRunResultDescriptionIssue[], value: unknown): void {

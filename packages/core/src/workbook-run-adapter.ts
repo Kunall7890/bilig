@@ -5,7 +5,6 @@ import {
   workbookPlanId,
   materializeFormulaLabels,
   normalizeWorkbookActionInput,
-  toWorkbookRefData,
   type EngineOp,
   type WorkbookActionInput,
   type WorkbookActionCommand,
@@ -13,9 +12,12 @@ import {
   type WorkbookRunApplyCommandReceipt,
   type WorkbookCheckResult,
   type WorkbookColumnRef,
+  type WorkbookCommandResolvedRefs,
   type WorkbookNameRef,
   type WorkbookRangeRef,
   type WorkbookRef,
+  type WorkbookResolvedRefData,
+  type WorkbookResolvedRefValue,
   type WorkbookRowsRef,
   type WorkbookRunAdapter,
   type WorkbookFormulaLabelReplacement,
@@ -689,13 +691,40 @@ function formulaLabelProofForCommandReceipt(
   )
 }
 
-function resolvedRefsForCommand(command: WorkbookActionCommand): WorkbookActionInput | undefined {
-  const refs: Record<string, WorkbookActionInput> = {}
+function rangeResolvedRefData(range: CellRangeRef): WorkbookResolvedRefData {
+  return {
+    kind: 'range',
+    id: `range_${range.sheetName}_${range.startAddress}_${range.endAddress}`.replaceAll(/[^A-Za-z0-9_]+/g, '_'),
+    label: rangeSource(range),
+    range,
+  }
+}
+
+function resolvedRefValueForRef(engine: SpreadsheetEngine, ref: WorkbookRef): WorkbookResolvedRefValue | undefined {
+  const ranges = rangesFromRef(engine, ref)
+  if (ranges === null) {
+    return undefined
+  }
+  const refs = ranges.map(rangeResolvedRefData)
+  return refs.length === 1 ? refs[0] : refs
+}
+
+function resolvedRefsForCommand(engine: SpreadsheetEngine, command: WorkbookActionCommand): WorkbookCommandResolvedRefs | undefined {
+  const refs: { target?: WorkbookResolvedRefValue; inputs?: WorkbookResolvedRefValue[] } = {}
   if (command.target !== undefined) {
-    refs['target'] = normalizeWorkbookActionInput(toWorkbookRefData(command.target))
+    const target = resolvedRefValueForRef(engine, command.target)
+    if (target !== undefined) {
+      refs.target = target
+    }
   }
   if (command.kind === 'writeFormula' && command.inputs.length > 0) {
-    refs['inputs'] = normalizeWorkbookActionInput(command.inputs.map((input) => toWorkbookRefData(input)))
+    const inputs = command.inputs.map((input) => {
+      const resolved = resolvedRefValueForRef(engine, input)
+      return resolved
+    })
+    if (inputs.every((input): input is WorkbookResolvedRefValue => input !== undefined)) {
+      refs.inputs = inputs
+    }
   }
   return Object.keys(refs).length === 0 ? undefined : refs
 }
@@ -706,7 +735,7 @@ function materializePlanCommandReceipts(engine: SpreadsheetEngine, plan: Workboo
   }
   return plan.commands.map((command, commandIndex) => {
     const ops = materializeCommandOps(engine, command)
-    const resolvedRefs = resolvedRefsForCommand(command)
+    const resolvedRefs = resolvedRefsForCommand(engine, command)
     const formulaLabels = formulaLabelProofForCommandReceipt(engine, command)
     return {
       commandIndex,

@@ -71,7 +71,8 @@ flowchart LR
   - null-prototype model action manifests with own-action-only planning
   - transport-neutral run adapters for preview/apply/readback/check proof
   - strict run mode for one-flag agent-safe checks-before-mutation,
-    apply/plan/revision/concrete-op/resolved-ref, and passed-check proof
+    apply/plan/revision/concrete-op/resolved-concrete-ref, and passed-check
+    proof
   - formula label verification against parsed formula reference tokens instead
     of substring matches
   - formula readback proof with parsed label materialization, so symbolic

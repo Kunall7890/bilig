@@ -2,9 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   defineModel,
   formula,
-  normalizeWorkbookActionInput,
   prepareWorkbookAction,
-  toWorkbookRefData,
   workbookActionCommandDigest,
   workbookPlanId,
   type EngineOp,
@@ -13,6 +11,19 @@ import {
   type WorkbookRunApplyCommandReceipt,
 } from '../index.js'
 import { assertWorkbookRunAdapter, checkWorkbookRunAdapter } from '../testing.js'
+
+function rangeRef(label: string, address: string) {
+  return {
+    kind: 'range' as const,
+    id: `range_${label}`,
+    label,
+    range: {
+      sheetName: 'Resolved',
+      startAddress: address,
+      endAddress: address,
+    },
+  }
+}
 
 function model() {
   return defineModel({
@@ -47,10 +58,10 @@ function receipt<Refs>(plan: WorkbookActionPlan<Refs>, commandIndex: number, op:
     commandDigest: workbookActionCommandDigest(command),
     previewOps: [op],
     appliedOps: [op],
-    resolvedRefs: normalizeWorkbookActionInput({
-      target: toWorkbookRefData(command.target),
-      inputs: command.inputs.map((input) => toWorkbookRefData(input)),
-    }),
+    resolvedRefs: {
+      target: rangeRef('Resolved!C1', 'C1'),
+      inputs: [rangeRef('Resolved!A1', 'A1'), rangeRef('Resolved!B1', 'B1')],
+    },
     formulaLabels: command.labels.map((label) => ({ name: label.name, source: label.name })),
   }
 }
@@ -192,6 +203,128 @@ describe('@bilig/workbook testing api', () => {
     ])
     expect(check.result?.status).toBe('failed')
     expect(check.description?.status).toBe('failed')
+  })
+
+  it('rejects symbolic ref receipts that are not bound to concrete ranges', async () => {
+    const prepared = prepare()
+    const command = prepared.plan.commands[0]
+    if (command?.kind !== 'writeFormula') {
+      throw new Error('expected formula command')
+    }
+    const op: EngineOp = {
+      kind: 'setCellFormula',
+      sheetName: 'Resolved',
+      address: 'C1',
+      formula: command.formula,
+    }
+
+    const check = await checkWorkbookRunAdapter(prepared.planData, {
+      apply(plan) {
+        return {
+          status: 'applied',
+          planId: workbookPlanId(plan),
+          baseRevision: 4,
+          revision: 5,
+          previewOps: [op],
+          appliedOps: [op],
+          commandReceipts: [
+            {
+              commandIndex: 0,
+              commandKind: command.kind,
+              commandDigest: workbookActionCommandDigest(command),
+              previewOps: [op],
+              appliedOps: [op],
+              resolvedRefs: {
+                target: {
+                  kind: 'name',
+                  id: 'name_result',
+                  label: 'result',
+                  name: 'result',
+                },
+              },
+            },
+          ],
+        }
+      },
+      read(targets) {
+        return targets.map((target) => ({
+          target,
+          formula: 'input*factor',
+        }))
+      },
+    })
+
+    expect(check.status).toBe('failed')
+    if (check.status !== 'failed') {
+      throw new Error('adapter unexpectedly passed')
+    }
+    expect(check.issues).toEqual([
+      {
+        code: 'runtime_rejected',
+        path: 'result',
+        message:
+          'Workbook action testing-adapter-model.calculate returned invalid command receipts: commandReceipts[0].resolvedRefs.target must be concrete range ref data',
+      },
+    ])
+  })
+
+  it('rejects materialized ops that do not match the resolved concrete target', async () => {
+    const prepared = prepare()
+    const command = prepared.plan.commands[0]
+    if (command?.kind !== 'writeFormula') {
+      throw new Error('expected formula command')
+    }
+    const op: EngineOp = {
+      kind: 'setCellFormula',
+      sheetName: 'Resolved',
+      address: 'D1',
+      formula: command.formula,
+    }
+
+    const check = await checkWorkbookRunAdapter(prepared.planData, {
+      apply(plan) {
+        return {
+          status: 'applied',
+          planId: workbookPlanId(plan),
+          baseRevision: 4,
+          revision: 5,
+          previewOps: [op],
+          appliedOps: [op],
+          commandReceipts: [
+            {
+              commandIndex: 0,
+              commandKind: command.kind,
+              commandDigest: workbookActionCommandDigest(command),
+              previewOps: [op],
+              appliedOps: [op],
+              resolvedRefs: {
+                target: rangeRef('Resolved!C1', 'C1'),
+                inputs: [rangeRef('Resolved!A1', 'A1'), rangeRef('Resolved!B1', 'B1')],
+              },
+            },
+          ],
+        }
+      },
+      read(targets) {
+        return targets.map((target) => ({
+          target,
+          formula: 'input*factor',
+        }))
+      },
+    })
+
+    expect(check.status).toBe('failed')
+    if (check.status !== 'failed') {
+      throw new Error('adapter unexpectedly passed')
+    }
+    expect(check.issues).toEqual([
+      {
+        code: 'runtime_rejected',
+        path: 'result',
+        message:
+          'Workbook action testing-adapter-model.calculate returned invalid command receipts: commandReceipts[0].previewOps do not match the planned command',
+      },
+    ])
   })
 
   it('throws from the assertion helper with the first issue message', async () => {

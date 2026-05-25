@@ -201,7 +201,7 @@ describe('@bilig/workbook strict proof api', () => {
       errors: [
         {
           code: 'apply_not_verified',
-          message: 'Adapter resolved ref proof for command 0 does not match the planned command',
+          message: 'Adapter resolved ref proof for command 0 must bind planned refs to concrete ranges',
         },
       ],
       apply: expect.objectContaining({

@@ -1,10 +1,16 @@
 import { isWorkbookOp } from './guards.js'
 import { commandOpsMatchExpected, workbookOpsMatch } from './command-ops.js'
+import { isWorkbookRefData, toWorkbookRefData } from './find.js'
 import { materializeFormulaLabels, type WorkbookFormulaLabelReplacement } from './formula-usage.js'
 import { normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import type { WorkbookActionCommand, WorkbookActionPlan } from './model.js'
 import type { EngineOp } from './ops.js'
-import type { WorkbookRunApplyCommandReceipt } from './result.js'
+import type {
+  WorkbookCommandResolvedRefs,
+  WorkbookResolvedRefData,
+  WorkbookResolvedRefValue,
+  WorkbookRunApplyCommandReceipt,
+} from './result.js'
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
@@ -199,6 +205,64 @@ function cloneFormulaLabelReplacements(receipt: object, receiptIndex: number): r
   )
 }
 
+function cloneResolvedRangeRef(value: unknown, path: string): WorkbookResolvedRefData {
+  if (!isWorkbookRefData(value)) {
+    throw new Error(`${path} must be workbook ref data`)
+  }
+  const ref = toWorkbookRefData(value)
+  if (ref.kind !== 'range') {
+    throw new Error(`${path} must be concrete range ref data`)
+  }
+  return ref
+}
+
+function cloneResolvedRefValue(value: unknown, path: string): WorkbookResolvedRefValue {
+  if (Array.isArray(value)) {
+    const entries = arrayDataValues(value, isRecord)
+    if (entries === null) {
+      throw new Error(`${path} must contain only concrete range ref data objects`)
+    }
+    return Object.freeze(entries.map((entry, index) => cloneResolvedRangeRef(entry, `${path}[${String(index)}]`)))
+  }
+  return cloneResolvedRangeRef(value, path)
+}
+
+function cloneResolvedInputs(value: unknown, path: string): readonly WorkbookResolvedRefValue[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`${path} must be an array`)
+  }
+  const entries: WorkbookResolvedRefValue[] = []
+  const descriptors = Object.getOwnPropertyDescriptors(value)
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = descriptors[String(index)]
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
+      throw new Error(`${path}[${String(index)}] must be a data property`)
+    }
+    entries.push(cloneResolvedRefValue(descriptor.value, `${path}[${String(index)}]`))
+  }
+  return Object.freeze(entries)
+}
+
+function cloneCommandResolvedRefs(receipt: object, receiptIndex: number): WorkbookCommandResolvedRefs | undefined {
+  const value = ownValue(receipt, 'resolvedRefs')
+  if (value === undefined) {
+    return undefined
+  }
+  if (!isRecord(value)) {
+    throw new Error(`commandReceipts[${String(receiptIndex)}].resolvedRefs must be an object`)
+  }
+  const target = ownValue(value, 'target')
+  const inputs = ownValue(value, 'inputs')
+  return Object.freeze({
+    ...(target !== undefined
+      ? { target: cloneResolvedRefValue(target, `commandReceipts[${String(receiptIndex)}].resolvedRefs.target`) }
+      : {}),
+    ...(inputs !== undefined
+      ? { inputs: cloneResolvedInputs(inputs, `commandReceipts[${String(receiptIndex)}].resolvedRefs.inputs`) }
+      : {}),
+  })
+}
+
 function flattenedReceiptOps(receipts: readonly WorkbookRunApplyCommandReceipt[], key: 'previewOps' | 'appliedOps'): readonly EngineOp[] {
   const ops: EngineOp[] = []
   for (const receipt of receipts) {
@@ -261,19 +325,12 @@ export function cloneWorkbookRunApplyCommandReceipts(
     if (!workbookOpsMatch(receiptPreviewOps, receiptAppliedOps)) {
       throw new Error(`commandReceipts[${String(receiptIndex)}] previewOps do not match appliedOps`)
     }
-    if (!commandOpsMatchExpected(command, receiptPreviewOps, formulaLabels)) {
+    const resolvedRefs = cloneCommandResolvedRefs(receipt, receiptIndex)
+    if (!commandOpsMatchExpected(command, receiptPreviewOps, formulaLabels, resolvedRefs)) {
       throw new Error(`commandReceipts[${String(receiptIndex)}].previewOps do not match the planned command`)
     }
-    if (!commandOpsMatchExpected(command, receiptAppliedOps, formulaLabels)) {
+    if (!commandOpsMatchExpected(command, receiptAppliedOps, formulaLabels, resolvedRefs)) {
       throw new Error(`commandReceipts[${String(receiptIndex)}].appliedOps do not match the planned command`)
-    }
-
-    let resolvedRefs: WorkbookActionInput | undefined
-    const rawResolvedRefs = ownValue(receipt, 'resolvedRefs')
-    try {
-      resolvedRefs = rawResolvedRefs === undefined ? undefined : normalizeWorkbookActionInput(rawResolvedRefs)
-    } catch (error) {
-      throw new Error(`commandReceipts[${String(receiptIndex)}].resolvedRefs is invalid: ${errorMessage(error)}`, { cause: error })
     }
 
     let proof: WorkbookActionInput | undefined
@@ -313,13 +370,15 @@ export function cloneWorkbookRunApplyCommandReceiptsForSummary(
   return Object.freeze(
     receipts.map((receipt, index) => {
       const formulaLabels = receipt.formulaLabels !== undefined ? cloneFormulaLabelReplacements(receipt, index) : undefined
+      const resolvedRefs =
+        receipt.resolvedRefs === undefined ? undefined : cloneCommandResolvedRefs({ resolvedRefs: receipt.resolvedRefs }, index)
       return Object.freeze({
         commandIndex: receipt.commandIndex,
         commandKind: receipt.commandKind,
         commandDigest: receipt.commandDigest,
         previewOps: cloneOps(receipt.previewOps),
         appliedOps: cloneOps(receipt.appliedOps),
-        ...(receipt.resolvedRefs !== undefined ? { resolvedRefs: normalizeWorkbookActionInput(receipt.resolvedRefs) } : {}),
+        ...(resolvedRefs !== undefined ? { resolvedRefs } : {}),
         ...(formulaLabels !== undefined ? { formulaLabels } : {}),
         ...(receipt.proof !== undefined ? { proof: normalizeWorkbookActionInput(receipt.proof) } : {}),
       })

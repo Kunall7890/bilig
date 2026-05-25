@@ -44,23 +44,35 @@
         ],
         "resolvedRefs": {
           "target": {
-            "kind": "name",
-            "id": "name_result",
-            "label": "result",
-            "name": "result"
+            "kind": "range",
+            "id": "range_Resolved_C1",
+            "label": "Resolved!C1",
+            "range": {
+              "sheetName": "Resolved",
+              "startAddress": "C1",
+              "endAddress": "C1"
+            }
           },
           "inputs": [
             {
-              "kind": "name",
-              "id": "name_input",
-              "label": "input",
-              "name": "input"
+              "kind": "range",
+              "id": "range_Resolved_A1",
+              "label": "Resolved!A1",
+              "range": {
+                "sheetName": "Resolved",
+                "startAddress": "A1",
+                "endAddress": "A1"
+              }
             },
             {
-              "kind": "name",
-              "id": "name_factor",
-              "label": "factor",
-              "name": "factor"
+              "kind": "range",
+              "id": "range_Resolved_B1",
+              "label": "Resolved!B1",
+              "range": {
+                "sheetName": "Resolved",
+                "startAddress": "B1",
+                "endAddress": "B1"
+              }
             }
           ]
         }
