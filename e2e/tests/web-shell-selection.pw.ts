@@ -344,12 +344,12 @@ test('@browser-ci web app keeps reverse-drag range selection chrome geometricall
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="fill-handle"]'), expectedFillHandle, 'fill handle')
   await expectBorderStyle(page.locator('[data-grid-selection-visual-role="selection-border"]'), {
-    bottom: '2px',
-    boxShadow: 'none',
+    bottom: '1px',
+    boxShadow: 'rgb(33, 115, 70) 0px 0px 0px 1px',
     color: 'rgb(33, 115, 70)',
-    left: '2px',
-    right: '2px',
-    top: '2px',
+    left: '1px',
+    right: '1px',
+    top: '1px',
   })
   await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCSS('background-color', 'rgb(33, 115, 70)')
 })
