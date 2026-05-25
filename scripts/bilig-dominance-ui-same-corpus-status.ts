@@ -11,6 +11,7 @@ import type {
 import { parseSameCorpusCapture } from './ui-responsiveness-live-browser-scorecard-parse.ts'
 import { buildSameCorpusProof, validateSameCorpusCaptureRunManifest } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import { sameCorpusScenarioSummaryFieldsCurrent } from './ui-responsiveness-same-corpus-scenario-fields.ts'
+import { sameCorpusUiSpeedGaps, type SameCorpusUiSpeedGap } from './ui-responsiveness-same-corpus-speed-gaps.ts'
 import {
   isUiResponsivenessSameCorpusWorkload,
   requiredUiResponsivenessSameCorpusWorkloads,
@@ -38,6 +39,7 @@ export interface UiSameCorpusStatus {
   readonly currentContractEvidenceComplete: boolean
   readonly googleSheetsTenXRequirementSatisfied: boolean
   readonly runManifestInvalidReasons: readonly string[]
+  readonly speedGaps: readonly SameCorpusUiSpeedGap[]
   readonly requiredWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
   readonly missingRequiredWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
   readonly scrollEventEvidenceCaseCount: number
@@ -264,6 +266,7 @@ export function buildUiSameCorpusStatus(
     currentContractEvidenceComplete: runManifest?.currentContractEvidenceComplete ?? false,
     googleSheetsTenXRequirementSatisfied: runManifest?.googleSheetsTenXRequirementSatisfied ?? false,
     runManifestInvalidReasons: runManifest?.invalidReasons ?? ['same-corpus UI proof is missing a run manifest'],
+    speedGaps: sameCorpusUiSpeedGaps(proof),
     requiredWorkloads: requiredUiSameCorpusWorkloads,
     missingRequiredWorkloads,
     scrollEventEvidenceCaseCount,

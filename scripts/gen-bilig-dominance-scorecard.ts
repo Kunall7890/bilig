@@ -28,6 +28,7 @@ import { buildBiligDominanceScorecardSummary } from './bilig-dominance-scorecard
 import { loadOperatorWorkflowEvidence, operatorWorkflowGaps } from './bilig-dominance-operator-workflow.ts'
 import { isFiniteNumber } from './json-scorecard-helpers.ts'
 import { formatJsonForRepo } from './scorecard-format.ts'
+import { formatSameCorpusUiSpeedGap, sameCorpusUiSpeedGaps } from './ui-responsiveness-same-corpus-speed-gaps.ts'
 
 export type { BiligDominanceScorecard, BuildScorecardInput } from './bilig-dominance-scorecard-types.ts'
 
@@ -152,6 +153,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
   const securityUncoveredControls = new Set(input.securityPostureScorecard.summary.uncoveredControls)
   const uiSameCorpusTenXGap = hasUiResponsivenessSameCorpusTenXGap(input.uiResponsivenessLiveBrowserScorecard)
   const uiSameCorpusProof = input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof
+  const uiSameCorpusSpeedGaps = sameCorpusUiSpeedGaps(uiSameCorpusProof)
   const uiSameCorpusRunManifest = uiSameCorpusProof.runManifest
   const uiSameCorpusRunManifestInvalidReasons = uiSameCorpusRunManifest?.invalidReasons ?? [
     'same-corpus UI proof is missing a run manifest',
@@ -489,13 +491,10 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount)}`,
           `same-corpus UI current-contract evidence complete: ${String(uiSameCorpusRunManifest?.currentContractEvidenceComplete ?? false)}`,
           `same-corpus UI run manifest invalid reasons: ${uiSameCorpusRunManifestInvalidReasons.join('; ') || 'none'}`,
+          ...uiSameCorpusSpeedGaps.map((gap) => `same-corpus UI 10x speed gap: ${formatSameCorpusUiSpeedGap(gap)}`),
           ...input.uiResponsivenessLiveBrowserScorecard.cases.map(
             (entry) =>
               `${entry.vendor}: ${entry.workload} scrollResponseMs.p95 ${entry.scrollResponseMs.p95}ms and postScrollFrameMs.p95 ${entry.postScrollFrameMs.p95}ms (${entry.sampleCount} samples, ${entry.accessMode})`,
-          ),
-          ...input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.cases.map(
-            (entry) =>
-              `${entry.corpusCaseId}: ${entry.workload} bilig p95 ratio ${entry.biligToGoogleSheetsP95Ratio} vs Google Sheets and ${entry.biligToMicrosoftExcelWebP95Ratio} vs Excel Web`,
           ),
           ...headedBrowserUiContracts.map(headedBrowserContractSummary),
         ],
@@ -527,6 +526,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
             ? []
             : ['no direct Sheets or Excel browser responsiveness live timing artifact exists in the repo']),
           ...uiSameCorpusRunManifestInvalidReasons.map((reason) => `same-corpus UI run manifest: ${reason}`),
+          ...uiSameCorpusSpeedGaps.map((gap) => `same-corpus UI 10x speed gap: ${formatSameCorpusUiSpeedGap(gap)}`),
           ...(uiSameCorpusTenXGap ? ['live UI browser evidence is direct, but it is not a same-corpus 10x proof against incumbents'] : []),
         ],
       },
@@ -812,6 +812,7 @@ function buildOverallGoogleSheets10xStatus(
   },
 ): OverallGoogleSheets10xStatus {
   const uiSameCorpusProof = input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof
+  const uiSameCorpusSpeedGaps = sameCorpusUiSpeedGaps(uiSameCorpusProof)
   const uiSameCorpusRunManifest = uiSameCorpusProof.runManifest
   const uiSameCorpusRunManifestInvalidReasons = uiSameCorpusRunManifest?.invalidReasons ?? [
     'same-corpus UI proof is missing a run manifest',
@@ -898,10 +899,12 @@ function buildOverallGoogleSheets10xStatus(
           uiSameCorpusLegacyInsufficientRenderedGridProofCaseCount,
         )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount)}`,
         `same-corpus run manifest invalid reasons: ${uiSameCorpusRunManifestInvalidReasons.join('; ') || 'none'}`,
+        ...uiSameCorpusSpeedGaps.map((gap) => `same-corpus UI 10x speed gap: ${formatSameCorpusUiSpeedGap(gap)}`),
       ],
       gaps: [
         ...(signals.uiResponsivenessLiveBrowserPassed ? [] : ['live incumbent browser timing scorecard is not passing']),
         ...uiSameCorpusRunManifestInvalidReasons.map((reason) => `same-corpus UI run manifest: ${reason}`),
+        ...uiSameCorpusSpeedGaps.map((gap) => `same-corpus UI 10x speed gap: ${formatSameCorpusUiSpeedGap(gap)}`),
         ...(signals.uiSameCorpusTenXGap
           ? ['live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof']
           : []),
