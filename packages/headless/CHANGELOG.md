@@ -4,6 +4,26 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.99.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.96.0
+- Manual override: no
+
+## Features
+- feat(workbook): prepare canonical action handoff (5eddcfff)
+- feat(workbook): expose prepare subpath (b12bcc94)
+- feat(workbook): validate action names before planning (eaa1f78c)
+- feat(workbook): specify run result proof schema (0f6632bd)
+
+## Fixes
+- fix(excel-import): preserve null external cache errors (d2315862)
+
+## Internal runtime changes
+- chore(release): runtime packages v0.97.0 (df8a3278)
+- refactor(workbook): split run proof helpers (69d3184b)
+- chore(release): runtime packages v0.98.0 (3be2efd5)
+
 ## 0.98.0
 
 - Release type: minor

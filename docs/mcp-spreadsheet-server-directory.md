@@ -22,7 +22,7 @@ Cursor, VS Code, Codex, or another stdio MCP client.
 ## Canonical Package
 
 ```sh
-npm exec --package @bilig/workpaper@0.98.0 -- bilig-workpaper-mcp
+npm exec --package @bilig/workpaper@0.99.0 -- bilig-workpaper-mcp
 ```
 
 Package metadata:
@@ -93,7 +93,7 @@ same-origin static server-card discovery.
 
 | Directory                       | Status                                                                        | Link                                                                                                            |
 | ------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Official MCP Registry           | Live; latest marker currently lags npm (`0.86.1` while `@bilig/workpaper@0.98.0` is published) | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
+| Official MCP Registry           | Live; latest marker currently lags npm (`0.86.1` while `@bilig/workpaper@0.99.0` is published) | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
 | Hosted Streamable HTTP endpoint | App runtime endpoint for JSON-only stateless MCP smoke tests                  | <https://bilig.proompteng.ai/mcp>                                                                               |
 | Hosted MCP server card          | Same-origin server card for Streamable HTTP scanners                          | <https://bilig.proompteng.ai/.well-known/mcp/server-card.json>                                                  |
 | Static MCP server card          | Live                                                                          | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                           |
@@ -125,7 +125,7 @@ verification pass and should stay closed unless the live listing regresses.
 The Docker MCP Registry pull request was refreshed on May 19, 2026 by updating
 the existing PR body, not by opening a duplicate submission. Docker still points
 at Bilig source commit `a1ecdd52cda3d54e0254afce129a9012c5027826`; the PR body
-now points reviewers at `@bilig/workpaper@0.98.0` and `libraries-v0.98.0`.
+now points reviewers at `@bilig/workpaper@0.99.0` and `libraries-v0.99.0`.
 
 The Goose MCP catalog pull request was closed on May 19, 2026 because Goose is
 paused on adding new MCP servers while it works on a more scalable extensions
@@ -221,7 +221,7 @@ The canonical package metadata in this repo includes:
 
 Latest checked result on May 25, 2026: Live, but the Registry latest marker
 currently lags npm. npm latest and packaged `server.json` are
-`@bilig/workpaper@0.98.0`; the official Registry latest-marked server
+`@bilig/workpaper@0.99.0`; the official Registry latest-marked server
 `io.github.proompteng/bilig-workpaper` is version `0.86.1`, package
 `@bilig/workpaper` is version `0.86.1`, and the entry was updated at
 `2026-05-24T13:47:46.777553Z`. The API also returns historical entries, so
@@ -269,7 +269,7 @@ printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize"}' \
   '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' |
-  npm exec --package @bilig/workpaper@0.98.0 -- \
+  npm exec --package @bilig/workpaper@0.99.0 -- \
     bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
@@ -297,5 +297,5 @@ verify readback, and persist WorkPaper JSON through the published
 `@bilig/workpaper` package.
 
 ```sh
-npm exec --package @bilig/workpaper@0.98.0 -- bilig-workpaper-mcp
+npm exec --package @bilig/workpaper@0.99.0 -- bilig-workpaper-mcp
 ```
