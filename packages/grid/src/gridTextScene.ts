@@ -7,7 +7,12 @@ import type { HeaderSelection } from './gridPointer.js'
 import type { Item, Rectangle } from './gridTypes.js'
 import { resolveMergedCell, resolveMergedCellBounds } from './gridMergedRanges.js'
 import { collectVisibleColumnBounds, collectVisibleRowBounds } from './visibleGridAxes.js'
-import { WORKBOOK_HEADER_FONT_POINT_SIZE, workbookHeaderFontPointSizeToCssPx, workbookThemeColors } from './workbookTheme.js'
+import {
+  WORKBOOK_HEADER_FONT_POINT_SIZE,
+  WORKBOOK_HEADER_FONT_WEIGHT,
+  workbookHeaderFontPointSizeToCssPx,
+  workbookThemeColors,
+} from './workbookTheme.js'
 
 export interface GridTextItem {
   readonly col?: number | undefined
@@ -69,7 +74,7 @@ const HEADER_RESIZE_TEXT_COLOR = workbookThemeColors.accentDark
 const MERGED_DISPLAY_FALLBACK_SCAN_CELL_LIMIT = 2048
 
 function buildHeaderFont(fontSizePx: number): string {
-  return `600 ${fontSizePx}px ${getResolvedCellFontFamily()}`
+  return `${WORKBOOK_HEADER_FONT_WEIGHT} ${fontSizePx}px ${getResolvedCellFontFamily()}`
 }
 
 function resolveHeaderFontSizePx(pointSize: number | null | undefined): number {

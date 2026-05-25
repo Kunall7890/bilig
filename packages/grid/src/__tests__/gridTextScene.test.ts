@@ -6,6 +6,7 @@ import type { GridEngineLike } from '../grid-engine.js'
 import { getGridMetrics } from '../gridMetrics.js'
 import {
   WORKBOOK_DEFAULT_FONT_SIZE,
+  WORKBOOK_HEADER_FONT_WEIGHT,
   workbookFontPointSizeToCssPx,
   workbookHeaderFontPointSizeToCssPx,
   workbookThemeColors,
@@ -35,7 +36,7 @@ const CELL_FONT_FAMILY = getResolvedCellFontFamily()
 const CELL_FONT_SIZE = workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)
 const CELL_FONT = `400 ${CELL_FONT_SIZE}px ${CELL_FONT_FAMILY}`
 const HEADER_FONT_SIZE = workbookHeaderFontPointSizeToCssPx()
-const HEADER_FONT = `600 ${HEADER_FONT_SIZE}px ${CELL_FONT_FAMILY}`
+const HEADER_FONT = `${WORKBOOK_HEADER_FONT_WEIGHT} ${HEADER_FONT_SIZE}px ${CELL_FONT_FAMILY}`
 const HEADER_SELECTED_COLOR = workbookThemeColors.accent
 const HEADER_DRAG_COLOR = workbookThemeColors.accentDark
 const HEADER_HOVER_COLOR = workbookThemeColors.text
@@ -681,7 +682,7 @@ describe('gridTextScene', () => {
       align: 'center',
       wrap: false,
       color: HEADER_SELECTED_COLOR,
-      font: `600 ${workbookFontPointSizeToCssPx(20)}px ${CELL_FONT_FAMILY}`,
+      font: `${WORKBOOK_HEADER_FONT_WEIGHT} ${workbookFontPointSizeToCssPx(20)}px ${CELL_FONT_FAMILY}`,
       fontSize: workbookFontPointSizeToCssPx(20),
       underline: false,
       strike: false,
@@ -699,7 +700,7 @@ describe('gridTextScene', () => {
       align: 'right',
       wrap: false,
       color: HEADER_SELECTED_COLOR,
-      font: `600 ${workbookFontPointSizeToCssPx(20)}px ${CELL_FONT_FAMILY}`,
+      font: `${WORKBOOK_HEADER_FONT_WEIGHT} ${workbookFontPointSizeToCssPx(20)}px ${CELL_FONT_FAMILY}`,
       fontSize: workbookFontPointSizeToCssPx(20),
       underline: false,
       strike: false,
