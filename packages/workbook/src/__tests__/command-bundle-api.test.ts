@@ -1197,6 +1197,80 @@ describe('@bilig/workbook command bundle api', () => {
     })
   })
 
+  it('rejects low-level op receipts that do not prove the planned op', () => {
+    const bundle = normalizeWorkbookCommandBundle({
+      id: 'bundle-op',
+      targetRevision: 7,
+      idempotencyKey: 'bundle-op',
+      commands: [
+        {
+          id: 'op-write-a1',
+          kind: 'op',
+          destructive: true,
+          op: setCellValueOp,
+          touchedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+        },
+      ],
+    })
+    const [command] = bundle.commands
+    if (command === undefined) {
+      throw new Error('expected command')
+    }
+    const wrongOp = {
+      ...setCellValueOp,
+      value: 2,
+    } as const
+
+    expect(() =>
+      workbookCommandResultForReceipts(bundle, [
+        workbookOpCommandReceipt(command, 0, {
+          status: 'applied',
+          changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+        }),
+      ]),
+    ).toThrow('Workbook command result is invalid: Workbook command result receipt 0 appliedOps must equal commands[0].op')
+
+    expect(() =>
+      workbookCommandResultForReceipts(bundle, [
+        workbookOpCommandReceipt(command, 0, {
+          status: 'applied',
+          previewOps: [wrongOp],
+          appliedOps: [wrongOp],
+          changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+        }),
+      ]),
+    ).toThrow('Workbook command result is invalid: Workbook command result receipt 0 previewOps must equal commands[0].op')
+
+    expect(
+      checkWorkbookCommandResultForBundle(bundle, {
+        ...workbookCommandResultFor(bundle),
+        status: 'applied',
+        revision: 8,
+        receipts: [
+          {
+            status: 'applied',
+            featureId: 'workbook-op',
+            commandId: 'op-write-a1',
+            category: 'operation',
+            appliedOps: [wrongOp],
+            changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+          },
+        ],
+        matched: null,
+        changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'receipt_command_mismatch',
+          path: 'receipts[0].appliedOps',
+          message: 'Workbook command result receipt 0 appliedOps must equal commands[0].op',
+        },
+      ],
+    })
+  })
+
   it('rejects command result receipts that do not match request commands', () => {
     const bundle = normalizeWorkbookCommandBundle({
       id: 'bundle-3',

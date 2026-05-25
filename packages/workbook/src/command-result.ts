@@ -354,6 +354,10 @@ function assertReceiptMatchesCommand(command: WorkbookCommandBundleCommand, rece
     if (receipt.featureId !== expected.featureId || receipt.commandId !== expected.commandId || receipt.category !== expected.category) {
       throw new Error(`Workbook command result is invalid: receipts[${String(index)}] does not match commands[${String(index)}].op`)
     }
+    const opProofIssue = opReceiptProofIssue(command, receipt, index)
+    if (opProofIssue !== null) {
+      throw new Error(`Workbook command result is invalid: ${opProofIssue.message}`)
+    }
     return
   }
   if (receipt.featureId !== command.request.featureId || receipt.commandId !== command.request.commandId) {
@@ -429,6 +433,7 @@ function pushReceiptBundleIssues(
           ),
         )
       }
+      pushOpReceiptProofIssues(issues, command, receipt, index)
       pushReceiptChangedRangeScopeIssues(issues, command, receipt, index)
       return
     }
@@ -454,6 +459,69 @@ function pushReceiptBundleIssues(
     }
     pushReceiptChangedRangeScopeIssues(issues, command, receipt, index)
   })
+}
+
+function receiptOpsMatchCommandOp(
+  ops: readonly unknown[] | undefined,
+  command: Extract<WorkbookCommandBundleCommand, { readonly kind: 'op' }>,
+): boolean {
+  if (ops === undefined || ops.length !== 1) {
+    return false
+  }
+  const [op] = ops
+  try {
+    return canonicalJson(op) === canonicalJson(command.op)
+  } catch {
+    return false
+  }
+}
+
+function opReceiptProofIssue(
+  command: Extract<WorkbookCommandBundleCommand, { readonly kind: 'op' }>,
+  receipt: WorkbookCommandReceipt,
+  index: number,
+): WorkbookCommandResultIssue | null {
+  if (receipt.previewOps !== undefined && !receiptOpsMatchCommandOp(receipt.previewOps, command)) {
+    return commandResultIssue(
+      'receipt_command_mismatch',
+      `receipts[${String(index)}].previewOps`,
+      `Workbook command result receipt ${String(index)} previewOps must equal commands[${String(index)}].op`,
+    )
+  }
+  if (receipt.status === 'previewed' && !receiptOpsMatchCommandOp(receipt.previewOps, command)) {
+    return commandResultIssue(
+      'receipt_command_mismatch',
+      `receipts[${String(index)}].previewOps`,
+      `Workbook command result receipt ${String(index)} previewOps must equal commands[${String(index)}].op`,
+    )
+  }
+  if (receipt.appliedOps !== undefined && !receiptOpsMatchCommandOp(receipt.appliedOps, command)) {
+    return commandResultIssue(
+      'receipt_command_mismatch',
+      `receipts[${String(index)}].appliedOps`,
+      `Workbook command result receipt ${String(index)} appliedOps must equal commands[${String(index)}].op`,
+    )
+  }
+  if (receipt.status === 'applied' && !receiptOpsMatchCommandOp(receipt.appliedOps, command)) {
+    return commandResultIssue(
+      'receipt_command_mismatch',
+      `receipts[${String(index)}].appliedOps`,
+      `Workbook command result receipt ${String(index)} appliedOps must equal commands[${String(index)}].op`,
+    )
+  }
+  return null
+}
+
+function pushOpReceiptProofIssues(
+  issues: WorkbookCommandResultIssue[],
+  command: Extract<WorkbookCommandBundleCommand, { readonly kind: 'op' }>,
+  receipt: WorkbookCommandReceipt,
+  index: number,
+): void {
+  const issue = opReceiptProofIssue(command, receipt, index)
+  if (issue !== null) {
+    issues.push(issue)
+  }
 }
 
 function assertReceiptChangedRangesInScope(command: WorkbookCommandBundleCommand, receipt: WorkbookCommandReceipt, index: number): void {
