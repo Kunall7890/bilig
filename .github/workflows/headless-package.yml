@@ -973,8 +973,47 @@ jobs:
             --workflow github-ci \
             --branch main
 
-      - name: Build runtime package chain
+      - name: Verify release metadata is still current
         if: steps.publish_release_alignment.outputs.current == 'true'
+        id: release_metadata_alignment
+        run: |
+          set -euo pipefail
+
+          git fetch --force origin main
+          git fetch --force github main
+
+          head_sha="$(git rev-parse HEAD)"
+          origin_sha="$(git rev-parse origin/main)"
+          github_sha="$(git rev-parse github/main)"
+
+          {
+            echo "head_sha=${head_sha}"
+            echo "origin_sha=${origin_sha}"
+            echo "github_sha=${github_sha}"
+          } >> "$GITHUB_OUTPUT"
+
+          if [[ "${origin_sha}" == "${head_sha}" && "${github_sha}" == "${head_sha}" ]]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+            echo "Release metadata SHA remains current after github-ci."
+            exit 0
+          fi
+
+          echo "current=false" >> "$GITHUB_OUTPUT"
+          echo "reason=release metadata SHA is stale after github-ci; newer main exists" >> "$GITHUB_OUTPUT"
+          {
+            echo "### runtime npm release skipped"
+            echo
+            echo "release metadata SHA is stale after github-ci; newer main exists"
+            echo
+            echo "release metadata SHA: ${head_sha}"
+            echo "Forgejo main: ${origin_sha}"
+            echo "GitHub main: ${github_sha}"
+            echo
+            echo "this stale workflow run will not tag, create a release, or publish packages"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build runtime package chain
+        if: steps.release_metadata_alignment.outputs.current == 'true'
         run: |
           set -euo pipefail
           pnpm --filter @bilig/protocol build
@@ -994,13 +1033,13 @@ jobs:
           pnpm --filter @bilig/exceljs-formula-recalc build
 
       - name: Validate publishable runtime package set
-        if: steps.publish_release_alignment.outputs.current == 'true'
+        if: steps.release_metadata_alignment.outputs.current == 'true'
         run: |
           set -euo pipefail
           pnpm publish:runtime:check
 
       - name: Check npm package name provisioning
-        if: steps.publish_release_alignment.outputs.current == 'true'
+        if: steps.release_metadata_alignment.outputs.current == 'true'
         id: npm_provisioning
         env:
           ALLOW_NEW_NPM_PACKAGES: ${{ needs.plan_release.outputs.allow_new_packages }}
@@ -1011,7 +1050,7 @@ jobs:
           bun scripts/check-runtime-npm-provisioning.ts
 
       - name: Report skipped runtime package release
-        if: steps.publish_release_alignment.outputs.current == 'true' && steps.npm_provisioning.outputs.publish_allowed != 'true'
+        if: steps.release_metadata_alignment.outputs.current == 'true' && steps.npm_provisioning.outputs.publish_allowed != 'true'
         env:
           REASON: ${{ steps.npm_provisioning.outputs.reason }}
           MISSING_PACKAGES: ${{ steps.npm_provisioning.outputs.missing_packages }}
@@ -1029,7 +1068,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Inspect runtime tag state
-        if: steps.npm_provisioning.outputs.publish_allowed == 'true'
+        if: steps.release_metadata_alignment.outputs.current == 'true' && steps.npm_provisioning.outputs.publish_allowed == 'true'
         id: tag_state
         env:
           TAG_NAME: ${{ needs.plan_release.outputs.tag_name }}
@@ -1056,7 +1095,7 @@ jobs:
           echo "exists=false" >> "$GITHUB_OUTPUT"
 
       - name: Create and push authoritative runtime tag
-        if: steps.npm_provisioning.outputs.publish_allowed == 'true' && steps.tag_state.outputs.exists != 'true' && needs.plan_release.outputs.dry_run != 'true'
+        if: steps.release_metadata_alignment.outputs.current == 'true' && steps.npm_provisioning.outputs.publish_allowed == 'true' && steps.tag_state.outputs.exists != 'true' && needs.plan_release.outputs.dry_run != 'true'
         env:
           TAG_NAME: ${{ needs.plan_release.outputs.tag_name }}
           TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
@@ -1088,7 +1127,7 @@ jobs:
           done
 
       - name: Create GitHub release
-        if: steps.npm_provisioning.outputs.publish_allowed == 'true' && needs.plan_release.outputs.dry_run != 'true'
+        if: steps.release_metadata_alignment.outputs.current == 'true' && steps.npm_provisioning.outputs.publish_allowed == 'true' && needs.plan_release.outputs.dry_run != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ needs.plan_release.outputs.tag_name }}
@@ -1106,7 +1145,7 @@ jobs:
             --notes-file build/runtime-release-notes.md
 
       - name: Publish runtime package set to npm
-        if: steps.npm_provisioning.outputs.publish_allowed == 'true'
+        if: steps.release_metadata_alignment.outputs.current == 'true' && steps.npm_provisioning.outputs.publish_allowed == 'true'
         env:
           NPM_DIST_TAG: ${{ needs.plan_release.outputs.npm_tag }}
           DRY_RUN: ${{ needs.plan_release.outputs.dry_run }}
@@ -1121,7 +1160,7 @@ jobs:
           bun scripts/publish-runtime-package-set.ts
 
       - name: Upload WorkPaper MCPB release asset
-        if: steps.npm_provisioning.outputs.publish_allowed == 'true' && needs.plan_release.outputs.dry_run != 'true'
+        if: steps.release_metadata_alignment.outputs.current == 'true' && steps.npm_provisioning.outputs.publish_allowed == 'true' && needs.plan_release.outputs.dry_run != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ needs.plan_release.outputs.tag_name }}

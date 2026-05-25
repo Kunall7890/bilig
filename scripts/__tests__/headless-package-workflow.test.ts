@@ -34,6 +34,16 @@ describe('headless package workflow', () => {
     const greenCiScript = readFileSync(resolve(repoRoot, 'scripts/wait-for-github-ci-green.mjs'), 'utf8')
     const agentDiscoverySource = readFileSync(resolve(repoRoot, 'scripts/sync-agent-discovery-docs.ts'), 'utf8')
     const mcpDirectoryDoc = readFileSync(resolve(repoRoot, 'docs/mcp-spreadsheet-server-directory.md'), 'utf8')
+    const workpaperPackageJson: unknown = JSON.parse(readFileSync(resolve(repoRoot, 'packages/workpaper/package.json'), 'utf8'))
+    if (
+      typeof workpaperPackageJson !== 'object' ||
+      workpaperPackageJson === null ||
+      !('version' in workpaperPackageJson) ||
+      typeof workpaperPackageJson.version !== 'string'
+    ) {
+      throw new Error('packages/workpaper/package.json must define a string version')
+    }
+    const workpaperVersion = workpaperPackageJson.version
 
     expect(source).toMatch(/['"]packages\/excel-import\/\*\*['"]/)
     expect(source).toMatch(/['"]packages\/workbook\/\*\*['"]/)
@@ -95,7 +105,7 @@ describe('headless package workflow', () => {
     expect(agentDiscoverySource).toContain('syncVersionedStaticReferenceLine')
     expect(agentDiscoverySource).toContain("^(\\\\s*)'@bilig/workpaper@${stableSemverPattern}'")
     expect(agentDiscoverySource).not.toContain('replace(new RegExp(`@bilig/headless@${stableSemverPattern}`')
-    expect(mcpDirectoryDoc).toContain('`io.github.proompteng/bilig-workpaper@0.75.0` with package\n`@bilig/workpaper@0.75.0`')
+    expect(mcpDirectoryDoc).toContain(`npm exec --package @bilig/workpaper@${workpaperVersion} -- bilig-workpaper-mcp`)
     expect(source).toContain('.release-please-manifest.json')
     expect(source).toContain('skills/bilig-workpaper/SKILL.md')
     expect(source).toContain('runner needs runtime d.ts outputs rebuilt after the version sync')
@@ -118,9 +128,13 @@ describe('headless package workflow', () => {
     expect(source).toContain('id: publish_release_alignment')
     expect(source).toContain('Report skipped stale runtime release')
     expect(source).toContain('this stale workflow run will not mutate release metadata or publish packages')
+    expect(source).toContain('id: release_metadata_alignment')
+    expect(source).toContain('Verify release metadata is still current')
+    expect(source).toContain('release metadata SHA is stale after github-ci; newer main exists')
+    expect(source).toContain('this stale workflow run will not tag, create a release, or publish packages')
     expect(source).toContain("if: steps.publish_release_alignment.outputs.current == 'true'")
     expect(source).toContain(
-      "if: steps.publish_release_alignment.outputs.current == 'true' && steps.npm_provisioning.outputs.publish_allowed != 'true'",
+      "if: steps.release_metadata_alignment.outputs.current == 'true' && steps.npm_provisioning.outputs.publish_allowed != 'true'",
     )
     expect(source).toContain('git push origin HEAD:main')
     expect(source).toContain('git rebase origin/main')
@@ -138,7 +152,9 @@ describe('headless package workflow', () => {
     expect(runtimeGreenCiGateIndex).toBeLessThan(source.indexOf('Build runtime package chain', runtimeGreenCiGateIndex))
     const releaseMetadataGreenCiGateIndex = source.indexOf('Wait for github-ci success before publishing release metadata')
     expect(releaseMetadataGreenCiGateIndex).toBeGreaterThan(source.indexOf('Release metadata SHA: ${head_sha}'))
-    expect(releaseMetadataGreenCiGateIndex).toBeLessThan(source.indexOf('Build runtime package chain', releaseMetadataGreenCiGateIndex))
+    const releaseMetadataAlignmentIndex = source.indexOf('Verify release metadata is still current')
+    expect(releaseMetadataAlignmentIndex).toBeGreaterThan(releaseMetadataGreenCiGateIndex)
+    expect(releaseMetadataAlignmentIndex).toBeLessThan(source.indexOf('Build runtime package chain', releaseMetadataAlignmentIndex))
     const n8nGreenCiGateIndex = source.indexOf('Wait for github-ci success before publishing n8n node')
     expect(n8nGreenCiGateIndex).toBeLessThan(source.indexOf('Publish n8n community node', n8nGreenCiGateIndex))
     expect(greenCiScript).toContain("const defaultWorkflowName = 'github-ci'")
