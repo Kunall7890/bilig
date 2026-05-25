@@ -174,6 +174,22 @@ WorkPaper JSON file.
 See [AnythingLLM WorkPaper MCP setup](docs/anythingllm-workpaper-mcp.md) for the
 storage-path rules, desktop and Docker configs, proof prompt, and limits.
 
+## Sim MCP Workflows
+
+Need a Sim workflow to call workbook tools from **Settings -> MCP Tools**? Add
+the hosted Streamable HTTP endpoint as an MCP server:
+
+```text
+https://bilig.proompteng.ai/mcp
+```
+
+Use an Agent block when the model should choose tools, or a standalone MCP Tool
+block when the workflow should deterministically read, write, recalculate, and
+export WorkPaper proof.
+
+See [Sim WorkPaper MCP setup](docs/sim-workpaper-mcp.md) for the setup steps,
+Agent-block prompt, MCP Tool block shape, and private-workbook boundary.
+
 ## Directus Persisted Calculated Fields
 
 Need a Directus Flow to calculate and persist quote, pricing, payout, or import

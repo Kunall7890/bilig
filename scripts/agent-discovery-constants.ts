@@ -31,6 +31,7 @@ export const versionedStaticReferenceRoots = [
   'docs/open-webui-workpaper-mcp.md',
   'docs/lobehub-workpaper-mcp.md',
   'docs/anythingllm-workpaper-mcp.md',
+  'docs/sim-workpaper-mcp.md',
   'docs/mcp-spreadsheet-server-directory.md',
   'docs/mcp-workpaper-tool-server.md',
   'docs/spreadsheet-mcp-server-comparison.md',

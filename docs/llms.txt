@@ -150,6 +150,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html
 - https://proompteng.github.io/bilig/lobehub-workpaper-mcp.html
 - https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
+- https://proompteng.github.io/bilig/sim-workpaper-mcp.html
 - https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html
 - https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html
 - https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html
@@ -561,6 +562,13 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   npx -y --package @bilig/workpaper@latest bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
   Docker stdio config should persist writable WorkPaper JSON under
   `/app/server/storage/...`, which maps to the host `STORAGE_LOCATION`.
+- Sim MCP setup:
+  https://proompteng.github.io/bilig/sim-workpaper-mcp.html
+  https://github.com/proompteng/bilig/blob/main/docs/sim-workpaper-mcp.md
+  Add `https://bilig.proompteng.ai/mcp` in Settings -> MCP Tools as a
+  Streamable HTTP server, then use either an Agent block or a standalone MCP
+  Tool block to prove tool discovery, input edit, computed formula readback,
+  and exported WorkPaper state.
 - Smithery hosted MCP install:
   https://smithery.ai/servers/gkonushev/bilig-workpaper
   npx -y smithery mcp add gkonushev/bilig-workpaper

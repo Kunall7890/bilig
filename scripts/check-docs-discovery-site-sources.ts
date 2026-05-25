@@ -33,6 +33,7 @@ export const docsSiteSources = [
   ['open-webui-workpaper-mcp.html', 'open-webui-workpaper-mcp.md'],
   ['lobehub-workpaper-mcp.html', 'lobehub-workpaper-mcp.md'],
   ['anythingllm-workpaper-mcp.html', 'anythingllm-workpaper-mcp.md'],
+  ['sim-workpaper-mcp.html', 'sim-workpaper-mcp.md'],
   ['openai-agents-sdk-workpaper-tool.html', 'openai-agents-sdk-workpaper-tool.md'],
   ['openai-responses-workpaper-tool-call.html', 'openai-responses-workpaper-tool-call.md'],
   ['vercel-ai-sdk-langchain-spreadsheet-tool.html', 'vercel-ai-sdk-langchain-spreadsheet-tool.md'],

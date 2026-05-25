@@ -412,6 +412,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Open WebUI MCP setup: ${siteRoot}/open-webui-workpaper-mcp.html
 - LobeHub MCP setup: ${siteRoot}/lobehub-workpaper-mcp.html
 - AnythingLLM MCP setup: ${siteRoot}/anythingllm-workpaper-mcp.html
+- Sim MCP setup: ${siteRoot}/sim-workpaper-mcp.html
 - XLSX formula clinic: ${siteRoot}/formula-bug-clinic.html
 - Compatibility limits: ${siteRoot}/where-bilig-is-not-excel-compatible-yet.html
 - Repository: ${repositoryUrl}
@@ -524,6 +525,11 @@ const llmsFullSources = [
     title: 'AnythingLLM WorkPaper MCP Setup',
     relativePath: 'docs/anythingllm-workpaper-mcp.md',
     url: `${repositoryUrl}/blob/main/docs/anythingllm-workpaper-mcp.md`,
+  },
+  {
+    title: 'Sim WorkPaper MCP Setup',
+    relativePath: 'docs/sim-workpaper-mcp.md',
+    url: `${repositoryUrl}/blob/main/docs/sim-workpaper-mcp.md`,
   },
   {
     title: 'n8n WorkPaper Formula Readback',
@@ -738,6 +744,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/open-webui-workpaper-mcp.html`,
         `${siteRoot}/lobehub-workpaper-mcp.html`,
         `${siteRoot}/anythingllm-workpaper-mcp.html`,
+        `${siteRoot}/sim-workpaper-mcp.html`,
         remoteMcpEndpoint,
         remoteMcpServerCard,
         `${siteRoot}/agent-workpaper-tool-calling-recipe.html`,

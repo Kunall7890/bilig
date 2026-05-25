@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): bind format receipts to ranges (bd36d30e)
 - fix(workbook): bind format receipts to payloads (2b98c0b4)
 - fix(workbook): prove op command receipts (87c067c8)
@@ -18,6 +19,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(workbook): prove all rendered mutation ranges (33316b6a)
 
 ## Internal runtime changes
+
 - test(core): align formula replacement counters (dc369fcf)
 - docs(growth): add LobeHub MCP setup (24672255)
 - chore(release): runtime packages v0.107.4 (0948540d)
@@ -35,12 +37,14 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): bind format receipts to ranges (bd36d30e)
 - fix(workbook): bind format receipts to payloads (2b98c0b4)
 - fix(workbook): prove op command receipts (87c067c8)
 - fix(workbook): harden public proof contracts (147f8f7f)
 
 ## Internal runtime changes
+
 - test(core): align formula replacement counters (dc369fcf)
 - docs(growth): add LobeHub MCP setup (24672255)
 - chore(release): runtime packages v0.107.4 (0948540d)
@@ -56,11 +60,13 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): bind format receipts to ranges (bd36d30e)
 - fix(workbook): bind format receipts to payloads (2b98c0b4)
 - fix(workbook): prove op command receipts (87c067c8)
 
 ## Internal runtime changes
+
 - test(core): align formula replacement counters (dc369fcf)
 - docs(growth): add LobeHub MCP setup (24672255)
 - chore(release): runtime packages v0.107.4 (0948540d)
@@ -75,11 +81,13 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(workbook): bind format receipts to ranges (bd36d30e)
 - fix(workbook): bind format receipts to payloads (2b98c0b4)
 - fix(workbook): prove op command receipts (87c067c8)
 
 ## Internal runtime changes
+
 - test(core): align formula replacement counters (dc369fcf)
 - docs(growth): add LobeHub MCP setup (24672255)
 - chore(release): runtime packages v0.107.4 (0948540d)
