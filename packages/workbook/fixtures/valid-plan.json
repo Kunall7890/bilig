@@ -1,0 +1,145 @@
+{
+  "modelName": "named-range-formula",
+  "actionName": "calculate",
+  "refsUsed": [
+    {
+      "kind": "name",
+      "id": "name_input",
+      "label": "input",
+      "name": "input"
+    },
+    {
+      "kind": "name",
+      "id": "name_factor",
+      "label": "factor",
+      "name": "factor"
+    },
+    {
+      "kind": "name",
+      "id": "name_result",
+      "label": "result",
+      "name": "result"
+    }
+  ],
+  "commands": [
+    {
+      "kind": "writeFormula",
+      "target": {
+        "kind": "name",
+        "id": "name_result",
+        "label": "result",
+        "name": "result"
+      },
+      "formula": "(input)*(factor)",
+      "inputs": [
+        {
+          "kind": "name",
+          "id": "name_input",
+          "label": "input",
+          "name": "input"
+        },
+        {
+          "kind": "name",
+          "id": "name_factor",
+          "label": "factor",
+          "name": "factor"
+        }
+      ],
+      "labels": [
+        {
+          "name": "input",
+          "ref": {
+            "kind": "name",
+            "id": "name_input",
+            "label": "input",
+            "name": "input"
+          }
+        },
+        {
+          "name": "factor",
+          "ref": {
+            "kind": "name",
+            "id": "name_factor",
+            "label": "factor",
+            "name": "factor"
+          }
+        }
+      ]
+    }
+  ],
+  "ops": [],
+  "changed": [
+    {
+      "kind": "writeFormula",
+      "target": {
+        "kind": "name",
+        "id": "name_result",
+        "label": "result",
+        "name": "result"
+      },
+      "message": "Write formula to result"
+    }
+  ],
+  "checks": [
+    {
+      "status": "planned",
+      "kind": "exists",
+      "target": {
+        "kind": "name",
+        "id": "name_result",
+        "label": "result",
+        "name": "result"
+      },
+      "message": "result exists"
+    },
+    {
+      "status": "planned",
+      "kind": "formulaEquals",
+      "target": {
+        "kind": "name",
+        "id": "name_result",
+        "label": "result",
+        "name": "result"
+      },
+      "message": "result formula equals (input)*(factor)",
+      "expectation": {
+        "kind": "formulaEquals",
+        "formula": "(input)*(factor)",
+        "inputs": [
+          {
+            "kind": "name",
+            "id": "name_input",
+            "label": "input",
+            "name": "input"
+          },
+          {
+            "kind": "name",
+            "id": "name_factor",
+            "label": "factor",
+            "name": "factor"
+          }
+        ],
+        "labels": [
+          {
+            "name": "input",
+            "ref": {
+              "kind": "name",
+              "id": "name_input",
+              "label": "input",
+              "name": "input"
+            }
+          },
+          {
+            "name": "factor",
+            "ref": {
+              "kind": "name",
+              "id": "name_factor",
+              "label": "factor",
+              "name": "factor"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

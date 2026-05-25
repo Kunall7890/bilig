@@ -8,6 +8,7 @@ interface PackageManifest {
   readonly peerDependencies?: Record<string, string>
   readonly optionalDependencies?: Record<string, string>
   readonly exports?: Record<string, unknown>
+  readonly files?: readonly string[]
 }
 
 const sourceRoot = fileURLToPath(new URL('../', import.meta.url))
@@ -138,7 +139,10 @@ describe('@bilig/workbook package boundary', () => {
       './verify': expect.any(Object),
       './runtime': expect.any(Object),
       './command': expect.any(Object),
+      './schema': expect.any(Object),
     })
+
+    expect(readPackageManifest().files).toContain('fixtures')
   })
 
   it('keeps the first README path neutral and strict-proof oriented', () => {

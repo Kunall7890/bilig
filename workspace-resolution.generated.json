@@ -135,6 +135,10 @@
     "packageDir": "packages/workbook",
     "sourceEntry": "packages/workbook/src/runtime.ts"
   },
+  "@bilig/workbook/schema": {
+    "packageDir": "packages/workbook",
+    "sourceEntry": "packages/workbook/src/schema.ts"
+  },
   "@bilig/workbook/verify": {
     "packageDir": "packages/workbook",
     "sourceEntry": "packages/workbook/src/verify.ts"

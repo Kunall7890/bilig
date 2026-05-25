@@ -1,0 +1,11 @@
+{
+  "status": "failed",
+  "errors": [
+    {
+      "code": "apply_not_verified",
+      "message": "Adapter did not return both previewOps and appliedOps"
+    }
+  ],
+  "changed": [],
+  "checks": []
+}

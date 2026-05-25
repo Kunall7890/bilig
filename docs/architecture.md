@@ -26,7 +26,9 @@ flowchart LR
   - snapshot import/export
 - `@bilig/workbook`
   - agent-first public workbook model API
-  - root public barrel plus smaller model/find/check/formula/verify/runtime/command subpath exports
+  - root public barrel plus smaller model/find/check/formula/verify/runtime/command/schema subpath exports
+  - public JSON schema artifacts, deterministic schema hashes, and checked-in
+    fixtures for non-TypeScript agent contract inspection
   - phase-scoped find/check/action contexts
   - frozen workbook refs with non-enumerable ergonomic helpers
   - frozen public helper namespaces for find/check/formula construction

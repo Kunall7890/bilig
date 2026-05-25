@@ -97,7 +97,7 @@ The root export keeps the full contract. Subpath exports are available for
 agents that want a smaller import map: `@bilig/workbook/model`,
 `@bilig/workbook/find`, `@bilig/workbook/check`, `@bilig/workbook/formula`,
 `@bilig/workbook/verify`, `@bilig/workbook/runtime`, and
-`@bilig/workbook/command`.
+`@bilig/workbook/command`, and `@bilig/workbook/schema`.
 
 ## Public Contract
 
@@ -114,6 +114,7 @@ The main API is intentionally small:
 - runtime handoff: `runWorkbookPlan`, `runWorkbookAction`, `WorkbookRunAdapter`
 - apply proof: `workbookPlanId`, `workbookActionCommandDigest`, command-level `commandReceipts`
 - feature handoff: `defineWorkbookFeaturePlugin`, `checkWorkbookFeaturePlugin`, `checkWorkbookCommandRequest`, `normalizeWorkbookCommandRequest`, `checkWorkbookCommandBundle`, `normalizeWorkbookCommandBundle`, `workbookCommandResultFor`, `workbookCommandResultForReceipts`, `workbookOpCommandReceiptIdentity`, `workbookOpCommandReceipt`, `checkWorkbookCommandResult`, `checkWorkbookCommandResultForBundle`, `normalizeWorkbookCommandResult`, `checkWorkbookCommandReceipt`, `normalizeWorkbookCommandReceipt`, `workbookCommandReceiptOpsMatch`
+- schema artifacts: `workbookJsonSchemaVersion`, `workbookJsonSchemaNames`, `workbookJsonSchemas`, `workbookJsonSchemaHashes`, `workbookJsonSchemaBundleHash`, `workbookJsonSchemaHash`
 - low-level language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, `EngineOpBatch`, `isEngineOpBatch`
 
 Stable data helpers are exported for generic tool builders:
@@ -129,6 +130,14 @@ Stable data helpers are exported for generic tool builders:
 - `workbookProjectionInterceptorPoints`, `isWorkbookProjectionInterceptorPoint`, `workbookUiContributionSlots`, `isWorkbookUiContributionSlot`, `checkWorkbookCommandRequest`
 - `workbookCommandBundleCommandKinds`, `isWorkbookCommandBundleCommandKind`, `checkWorkbookCommandBundle`, `isWorkbookCommandBundle`, `workbookCommandResultFor`, `workbookCommandResultForReceipts`, `workbookOpCommandFeatureId`, `workbookOpCommandReceiptIdentity`, `workbookOpCommandReceipt`, `checkWorkbookCommandResult`, `checkWorkbookCommandResultForBundle`, `isWorkbookCommandResult`, `isWorkbookCommandResultForBundle`
 - `workbookRunErrorCodes`, `isWorkbookRunErrorCode`, `checkWorkbookRunResultDescription`, `isWorkbookRunResultDescription`
+- `workbookJsonSchemaVersion`, `workbookJsonSchemaNames`, `workbookJsonSchemas`, `workbookJsonSchemaHashes`, `workbookJsonSchemaBundleHash`, `workbookJsonSchemaHash`
+
+The package also publishes checked-in JSON fixtures under `fixtures/` and frozen
+JSON schema artifacts through `@bilig/workbook/schema`. These are contract
+artifacts for agents and non-TypeScript consumers. They do not replace the
+runtime validators; they make the same ref, plan, command, run-result, and
+readback-proof shapes inspectable, hashable, and testable before a runtime
+mutates workbook state.
 
 Model action manifests are frozen null-prototype maps. Consumers can use normal
 business-agnostic action names, including names such as `toString` or

@@ -1,0 +1,58 @@
+{
+  "status": "applied",
+  "bundleId": "agent-bundle-1",
+  "targetRevision": 12,
+  "idempotencyKey": "agent-bundle-1-on-12",
+  "commandCount": 1,
+  "touchedRanges": [
+    {
+      "sheetName": "Resolved",
+      "startAddress": "C1",
+      "endAddress": "C1"
+    }
+  ],
+  "touchedCellCount": 1,
+  "receipts": [
+    {
+      "status": "applied",
+      "featureId": "workbook-op",
+      "commandId": "write-result",
+      "category": "operation",
+      "previewOps": [
+        {
+          "kind": "setCellFormula",
+          "sheetName": "Resolved",
+          "address": "C1",
+          "formula": "input*factor"
+        }
+      ],
+      "appliedOps": [
+        {
+          "kind": "setCellFormula",
+          "sheetName": "Resolved",
+          "address": "C1",
+          "formula": "input*factor"
+        }
+      ],
+      "changedRanges": [
+        {
+          "sheetName": "Resolved",
+          "startAddress": "C1",
+          "endAddress": "C1"
+        }
+      ],
+      "proof": {
+        "source": "fixture"
+      }
+    }
+  ],
+  "matched": true,
+  "changedRanges": [
+    {
+      "sheetName": "Resolved",
+      "startAddress": "C1",
+      "endAddress": "C1"
+    }
+  ],
+  "revision": 13
+}

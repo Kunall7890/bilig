@@ -1,0 +1,118 @@
+{
+  "status": "done",
+  "apply": {
+    "matched": true,
+    "planId": "bilig-plan-v1:1d10ebcfda99753e809362618290ef8d",
+    "baseRevision": 0,
+    "revision": 1,
+    "previewOps": [
+      {
+        "kind": "setCellFormula",
+        "sheetName": "Resolved",
+        "address": "C1",
+        "formula": "input*factor"
+      }
+    ],
+    "appliedOps": [
+      {
+        "kind": "setCellFormula",
+        "sheetName": "Resolved",
+        "address": "C1",
+        "formula": "input*factor"
+      }
+    ],
+    "commandReceipts": [
+      {
+        "commandIndex": 0,
+        "commandKind": "writeFormula",
+        "commandDigest": "bilig-command-v1:65870d1526258bc9da2e9e6489ddc3ba",
+        "previewOps": [
+          {
+            "kind": "setCellFormula",
+            "sheetName": "Resolved",
+            "address": "C1",
+            "formula": "input*factor"
+          }
+        ],
+        "appliedOps": [
+          {
+            "kind": "setCellFormula",
+            "sheetName": "Resolved",
+            "address": "C1",
+            "formula": "input*factor"
+          }
+        ],
+        "resolvedRefs": {
+          "target": {
+            "kind": "name",
+            "id": "name_result",
+            "label": "result",
+            "name": "result"
+          },
+          "inputs": [
+            {
+              "kind": "name",
+              "id": "name_input",
+              "label": "input",
+              "name": "input"
+            },
+            {
+              "kind": "name",
+              "id": "name_factor",
+              "label": "factor",
+              "name": "factor"
+            }
+          ]
+        }
+      }
+    ],
+    "proof": {
+      "source": "fixture"
+    }
+  },
+  "changed": [
+    {
+      "kind": "writeFormula",
+      "target": {
+        "kind": "name",
+        "id": "name_result",
+        "label": "result",
+        "name": "result"
+      },
+      "message": "Write formula to result"
+    }
+  ],
+  "checks": [
+    {
+      "status": "passed",
+      "kind": "exists",
+      "target": {
+        "kind": "name",
+        "id": "name_result",
+        "label": "result",
+        "name": "result"
+      },
+      "message": "result exists",
+      "proof": {
+        "source": "fixture"
+      }
+    },
+    {
+      "status": "passed",
+      "kind": "formulaEquals",
+      "target": {
+        "kind": "name",
+        "id": "name_result",
+        "label": "result",
+        "name": "result"
+      },
+      "message": "result formula equals input*factor",
+      "proof": {
+        "source": "readback",
+        "formula": "input*factor",
+        "expectedFormula": "input*factor",
+        "materializedFormula": "input*factor"
+      }
+    }
+  ]
+}

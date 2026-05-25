@@ -56,7 +56,8 @@ The root export remains the complete compatibility barrel. For agents that want
 smaller import maps, the package also publishes layered subpaths:
 `@bilig/workbook/model`, `@bilig/workbook/find`, `@bilig/workbook/check`,
 `@bilig/workbook/formula`, `@bilig/workbook/verify`,
-`@bilig/workbook/runtime`, and `@bilig/workbook/command`.
+`@bilig/workbook/runtime`, `@bilig/workbook/command`, and
+`@bilig/workbook/schema`.
 
 ### Agent model contract
 
@@ -94,6 +95,10 @@ prepaid, or other business models in this package.
 - `checkInput`, `checkPlanData`, `verifyPlan`, `verifyModel`, and
   `verifyWorkbookReadbacks` return frozen verdict containers, generated issue
   arrays, and proof checks, so an inspected result stays stable.
+- `workbookJsonSchemas`, `workbookJsonSchemaHashes`, and package `fixtures/`
+  expose the public ref, plan, command, run-result, and readback-proof contract
+  for agents and non-TypeScript consumers without adding a schema framework
+  dependency.
 - Feature, command, receipt, result, requirements, and adapter check APIs return
   frozen verdict containers too.
 

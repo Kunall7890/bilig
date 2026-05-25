@@ -1,0 +1,28 @@
+{
+  "id": "agent-bundle-1",
+  "targetRevision": 12,
+  "idempotencyKey": "agent-bundle-1-on-12",
+  "scope": {
+    "maxTouchedCells": 1
+  },
+  "commands": [
+    {
+      "id": "write-result",
+      "kind": "op",
+      "destructive": true,
+      "touchedRanges": [
+        {
+          "sheetName": "Resolved",
+          "startAddress": "C1",
+          "endAddress": "C1"
+        }
+      ],
+      "op": {
+        "kind": "setCellFormula",
+        "sheetName": "Resolved",
+        "address": "C1",
+        "formula": "input*factor"
+      }
+    }
+  ]
+}
