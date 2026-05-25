@@ -31,6 +31,7 @@ export const docsSiteSources = [
   ['dify-workpaper-formula-readback.html', 'dify-workpaper-formula-readback.md'],
   ['flowise-workpaper-formula-readback.html', 'flowise-workpaper-formula-readback.md'],
   ['open-webui-workpaper-mcp.html', 'open-webui-workpaper-mcp.md'],
+  ['lobehub-workpaper-mcp.html', 'lobehub-workpaper-mcp.md'],
   ['openai-agents-sdk-workpaper-tool.html', 'openai-agents-sdk-workpaper-tool.md'],
   ['openai-responses-workpaper-tool-call.html', 'openai-responses-workpaper-tool-call.md'],
   ['vercel-ai-sdk-langchain-spreadsheet-tool.html', 'vercel-ai-sdk-langchain-spreadsheet-tool.md'],

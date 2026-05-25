@@ -71,6 +71,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | Cursor | Project-local `.cursor/mcp.json` pointing at `bilig-workpaper-mcp`. | [MCP client setup](mcp-client-setup.md#cursor) |
 | VS Code and Cline | Project-local MCP config with a writable WorkPaper file. | [MCP client setup](mcp-client-setup.md) |
 | Open WebUI | Native Streamable HTTP MCP for hosted smoke tests, or `mcpo` around the npm stdio server for local writable files. | [Open WebUI WorkPaper MCP setup](open-webui-workpaper-mcp.md) |
+| LobeHub | Custom MCP import JSON for hosted Streamable HTTP, or desktop STDIO for a writable WorkPaper file. | [LobeHub WorkPaper MCP setup](lobehub-workpaper-mcp.md) |
 | OpenAI Agents SDK | Function tools around WorkPaper read/write/readback. | [OpenAI Agents SDK WorkPaper tool](openai-agents-sdk-workpaper-tool.md) |
 | OpenAI Responses API | Function-call wrapper returning proof objects. | [OpenAI Responses WorkPaper tool call](openai-responses-workpaper-tool-call.md) |
 | Vercel AI SDK | Tool definitions that call a WorkPaper service function. | [Vercel AI SDK spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md) |

@@ -72,7 +72,7 @@ From the machine that can reach the WorkPaper file:
 
 ```sh
 uvx mcpo --host 0.0.0.0 --port 8000 -- \
-  npx -y --package @bilig/workpaper@0.105.0 \
+  npx -y --package @bilig/workpaper@latest \
     bilig-workpaper-mcp \
     --workpaper ./pricing.workpaper.json \
     --init-demo-workpaper \
@@ -153,4 +153,3 @@ Ask the model to return a concrete proof instead of "the cell was updated":
 - [Agent framework workbook tools](agent-framework-workbook-tools.md)
 - [Why agents need workbook APIs](why-agents-need-workbook-apis.md)
 - [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
-

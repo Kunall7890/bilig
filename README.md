@@ -129,6 +129,28 @@ stdio process and a writable project WorkPaper file.
 See [Open WebUI WorkPaper MCP setup](docs/open-webui-workpaper-mcp.md) for the
 native MCP path, the `mcpo` command, Docker URL boundaries, and proof prompt.
 
+## LobeHub Custom MCP
+
+Need a LobeHub agent to call workbook tools from **Skills -> Custom MCP**? Use
+the hosted Streamable HTTP endpoint for a quick remote proof:
+
+```json
+{
+  "mcpServers": {
+    "bilig-workpaper": {
+      "url": "https://bilig.proompteng.ai/mcp",
+      "type": "http"
+    }
+  }
+}
+```
+
+Use the desktop STDIO config when the agent needs a private writable WorkPaper
+JSON file.
+
+See [LobeHub WorkPaper MCP setup](docs/lobehub-workpaper-mcp.md) for the import
+JSON, local desktop config, expected tool list, and proof object.
+
 ## Directus Persisted Calculated Fields
 
 Need a Directus Flow to calculate and persist quote, pricing, payout, or import

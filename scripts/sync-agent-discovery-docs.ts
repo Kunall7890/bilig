@@ -47,6 +47,7 @@ const versionedStaticReferenceRoots = [
   'docs/llms.txt',
   'docs/mcp-client-setup.md',
   'docs/open-webui-workpaper-mcp.md',
+  'docs/lobehub-workpaper-mcp.md',
   'docs/mcp-spreadsheet-server-directory.md',
   'docs/mcp-workpaper-tool-server.md',
   'docs/spreadsheet-mcp-server-comparison.md',
@@ -438,6 +439,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Agent workbook challenge: ${siteRoot}/agent-workbook-challenge.html
 - MCP server guide: ${siteRoot}/mcp-workpaper-tool-server.html
 - Open WebUI MCP setup: ${siteRoot}/open-webui-workpaper-mcp.html
+- LobeHub MCP setup: ${siteRoot}/lobehub-workpaper-mcp.html
 - XLSX formula clinic: ${siteRoot}/formula-bug-clinic.html
 - Compatibility limits: ${siteRoot}/where-bilig-is-not-excel-compatible-yet.html
 - Repository: ${repositoryUrl}
@@ -540,6 +542,11 @@ const llmsFullSources = [
     title: 'Open WebUI WorkPaper MCP Setup',
     relativePath: 'docs/open-webui-workpaper-mcp.md',
     url: `${repositoryUrl}/blob/main/docs/open-webui-workpaper-mcp.md`,
+  },
+  {
+    title: 'LobeHub WorkPaper MCP Setup',
+    relativePath: 'docs/lobehub-workpaper-mcp.md',
+    url: `${repositoryUrl}/blob/main/docs/lobehub-workpaper-mcp.md`,
   },
   {
     title: 'n8n WorkPaper Formula Readback',
@@ -752,6 +759,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/agent-workbook-challenge.html`,
         `${siteRoot}/mcp-workpaper-tool-server.html`,
         `${siteRoot}/open-webui-workpaper-mcp.html`,
+        `${siteRoot}/lobehub-workpaper-mcp.html`,
         remoteMcpEndpoint,
         remoteMcpServerCard,
         `${siteRoot}/agent-workpaper-tool-calling-recipe.html`,

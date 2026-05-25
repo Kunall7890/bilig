@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): defer dense logical indexes (3a79e475)
 
 ## 0.107.2
@@ -20,6 +21,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): skip empty metadata rename rewrite (555263f8)
 
 ## 0.107.1
@@ -29,6 +31,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): add IronCalc Rust benchmark lane (55b35ad3)
 
 ## 0.107.0
@@ -38,13 +41,16 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): bind receipts to resolved ranges (97f727b8)
 
 ## Fixes
+
 - fix(workbook): verify multi-cell formula receipts (726e583e)
 - fix(claims): gate Google Sheets 10x releases (d1b98256)
 
 ## Internal runtime changes
+
 - docs(growth): add Open WebUI MCP setup (7b389b0d)
 - chore(release): runtime packages v0.106.0 (1da50c18)
 
@@ -55,9 +61,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): bind receipts to resolved ranges (97f727b8)
 
 ## Internal runtime changes
+
 - docs(growth): add Open WebUI MCP setup (7b389b0d)
 
 ## 0.105.0
