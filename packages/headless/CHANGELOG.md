@@ -4,6 +4,40 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.102.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.96.0
+- Manual override: no
+
+## Features
+- feat(workbook): prepare canonical action handoff (5eddcfff)
+- feat(workbook): expose prepare subpath (b12bcc94)
+- feat(workbook): validate action names before planning (eaa1f78c)
+- feat(workbook): specify run result proof schema (0f6632bd)
+- feat(workbook): validate plan run proof handoff (7de2b939)
+- feat(workbook): add adapter conformance checks (fc953a49)
+- feat(workbook): add features subpath (180d0653)
+
+## Fixes
+- fix(excel-import): preserve null external cache errors (d2315862)
+- fix(excel-oracle): serialize macos excel harness (40b4dc3a)
+- fix(workbook): match Excel active tab on sheet moves (2d19224c)
+- fix(core): restore structural correctness gates (9bea79ca)
+
+## Internal runtime changes
+- chore(release): runtime packages v0.97.0 (df8a3278)
+- refactor(workbook): split run proof helpers (69d3184b)
+- chore(release): runtime packages v0.98.0 (3be2efd5)
+- chore(release): runtime packages v0.99.0 (91524404)
+- test(xlsx): cover native external-link package refresh (4a8d82b5)
+- docs(workbook): clarify agent first readme (328f04ba)
+- docs(growth): add proof-first evaluator doors (85039328)
+- refactor(core): split oversized preserved metadata helpers (325fe5b4)
+- chore(release): runtime packages v0.100.0 (296d52f5)
+- docs(workbook): clarify package identity (2a39226b)
+- chore(release): runtime packages v0.101.0 (90b4c9bb)
+
 ## 0.101.0
 
 - Release type: minor
