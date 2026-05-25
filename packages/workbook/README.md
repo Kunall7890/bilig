@@ -29,52 +29,44 @@ import {
   toPlanData,
   verifyPlan,
   verifyPlanData,
+  workbookPlanId,
 } from '@bilig/workbook'
 
 export const model = defineModel({
-  name: 'generic-row-calculator',
+  name: 'named-range-formula',
 
   find(workbook) {
-    const table = workbook.findTable({
-      headers: ['Item', 'Quantity', 'Rate', 'Status', 'Total'],
-    })
-    const rows = workbook.findRows({
-      table,
-      where: { column: 'Status', op: 'eq', value: 'ready' },
-    })
-
     return {
-      table,
-      rows,
-      quantity: rows.column('Quantity'),
-      rate: rows.column('Rate'),
-      total: rows.column('Total'),
+      input: workbook.findName('input'),
+      factor: workbook.findName('factor'),
+      result: workbook.findName('result'),
     }
   },
 
   checks({ refs, workbook }) {
-    return [workbook.check.exists(refs.table), workbook.check.noFormulaErrors(refs.total)]
+    return [workbook.check.exists(refs.result), workbook.check.noFormulaErrors(refs.result)]
   },
 
   actions: {
-    recompute({ refs, workbook }) {
-      const expected = formula.multiply(refs.quantity, refs.rate)
-      workbook.writeFormula(refs.total, expected)
-      workbook.check.formulaEquals(refs.total, expected)
+    calculate({ refs, workbook }) {
+      const expected = formula.multiply(refs.input, refs.factor)
+      workbook.writeFormula(refs.result, expected)
+      workbook.check.formulaEquals(refs.result, expected)
     },
   },
 })
 
-const planned = planWorkbookAction(model, 'recompute')
+const planned = planWorkbookAction(model, 'calculate')
 if (planned.status === 'failed') throw new Error(planned.errors[0]?.message)
 
 const staticProof = verifyPlan(planned.plan)
 const requirements = describeRuntimeRequirements(planned.plan)
 const planForLogs = describePlan(planned.plan)
+const planIdForLogs = workbookPlanId(planned.plan)
 const transportedPlan = JSON.parse(JSON.stringify(toPlanData(planned.plan)))
 const transportProof = verifyPlanData(transportedPlan)
 
-const result = await runWorkbookPlan(transportedPlan, adapter)
+const result = await runWorkbookPlan(transportedPlan, adapter, { strict: true })
 const resultForLogs = describeRunResult(result)
 ```
 
@@ -88,7 +80,24 @@ That is the core flow:
 6. `describeRuntimeRequirements` tells an adapter what it must apply, read, and prove.
 7. `toPlanData` makes the plan JSON-safe for handoff.
 8. `workbookPlanId` gives that exact plan a stable id for runtime proof.
-9. `runWorkbookPlan` applies either the in-memory plan or transported plan data through a runtime-owned adapter and returns a boring result with check proof and apply proof when the adapter provides it.
+9. `runWorkbookPlan(..., { strict: true })` applies either the in-memory plan or transported plan data through a runtime-owned adapter and fails closed unless the adapter returns plan-bound apply proof, matching resolved refs, workbook revisions, check proof, and no unverified apply facts.
+
+## Which Package
+
+`@bilig/workbook` is the agent-facing intent package. It defines generic refs,
+checks, formulas, command bundles, plan verification, and runtime handoff data.
+It does not calculate workbook state.
+
+`@bilig/core` owns calculation and engine mutation. `@bilig/headless` owns a
+headless runtime shape. `@bilig/workpaper` is a higher-level workbook product
+surface. Those packages may execute plans; `@bilig/workbook` makes the plans
+simple to define, inspect, transport, and prove.
+
+The root export keeps the full contract. Subpath exports are available for
+agents that want a smaller import map: `@bilig/workbook/model`,
+`@bilig/workbook/find`, `@bilig/workbook/check`, `@bilig/workbook/formula`,
+`@bilig/workbook/verify`, `@bilig/workbook/runtime`, and
+`@bilig/workbook/command`.
 
 ## Public Contract
 
@@ -198,8 +207,8 @@ agents.
 - `findRange` is the escape hatch for an explicit range when the consumer really
   has one. It validates and canonicalizes addresses before runtime handoff.
 
-Refs are frozen data. Helpers such as `table.column("Total")` and
-`rows.column("Total")` are non-enumerable, so JSON descriptions stay data-first.
+Refs are frozen data. Helpers such as `table.column("result")` and
+`rows.column("result")` are non-enumerable, so JSON descriptions stay data-first.
 Use `toWorkbookRefData` or `describeRef` when a ref must cross a JSON boundary.
 Use `hydrateWorkbookRef` or `hydrateWorkbookRefs` after transport to regain the
 local helpers. `verifyPlanData(describePlan(plan))` checks transported plan data
@@ -382,7 +391,7 @@ rejected before any getter can run during validation, cloning, or preview/apply
 comparison.
 Readback checks attach proof to passed checks, such as
 `{ source: "readback", value: 12 }` or
-`{ source: "readback", formula: "Table[Quantity]*Table[Rate]" }`.
+`{ source: "readback", formula: "input*factor" }`.
 Readback proof objects, check objects, expectations, and formula labels must be
 record-shaped payloads, not arrays with attached fields.
 Formula readback proof is parsed with `@bilig/formula` and stored in canonical

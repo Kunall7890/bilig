@@ -4,7 +4,7 @@
   "description": "Generic @bilig/workbook model example for agent-first planning and proof.",
   "type": "module",
   "scripts": {
-    "start": "tsx generic-table-model.ts",
+    "start": "tsx named-range-formula.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -52,6 +52,12 @@ models or human spreadsheet UI assumptions.
 
 The stable contract has four layers.
 
+The root export remains the complete compatibility barrel. For agents that want
+smaller import maps, the package also publishes layered subpaths:
+`@bilig/workbook/model`, `@bilig/workbook/find`, `@bilig/workbook/check`,
+`@bilig/workbook/formula`, `@bilig/workbook/verify`,
+`@bilig/workbook/runtime`, and `@bilig/workbook/command`.
+
 ### Agent model contract
 
 Consumers define models. Bilig does not ship hardcoded revenue, quote, forecast,

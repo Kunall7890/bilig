@@ -111,6 +111,34 @@
     "packageDir": "packages/workbook",
     "sourceEntry": "packages/workbook/src/index.ts"
   },
+  "@bilig/workbook/check": {
+    "packageDir": "packages/workbook",
+    "sourceEntry": "packages/workbook/src/check.ts"
+  },
+  "@bilig/workbook/command": {
+    "packageDir": "packages/workbook",
+    "sourceEntry": "packages/workbook/src/command.ts"
+  },
+  "@bilig/workbook/find": {
+    "packageDir": "packages/workbook",
+    "sourceEntry": "packages/workbook/src/find.ts"
+  },
+  "@bilig/workbook/formula": {
+    "packageDir": "packages/workbook",
+    "sourceEntry": "packages/workbook/src/formula.ts"
+  },
+  "@bilig/workbook/model": {
+    "packageDir": "packages/workbook",
+    "sourceEntry": "packages/workbook/src/model.ts"
+  },
+  "@bilig/workbook/runtime": {
+    "packageDir": "packages/workbook",
+    "sourceEntry": "packages/workbook/src/runtime.ts"
+  },
+  "@bilig/workbook/verify": {
+    "packageDir": "packages/workbook",
+    "sourceEntry": "packages/workbook/src/verify.ts"
+  },
   "@bilig/worker-transport": {
     "packageDir": "packages/worker-transport",
     "sourceEntry": "packages/worker-transport/src/index.ts"
