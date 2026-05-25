@@ -614,6 +614,150 @@ describe('@bilig/workbook schema api', () => {
     })
   })
 
+  it('keeps request command destructive schemas aligned with bundle checks', () => {
+    const missingMutationDestructive = {
+      targetRevision: 1,
+      idempotencyKey: 'request-mutation-schema-parity',
+      commands: [
+        {
+          kind: 'request',
+          request: {
+            featureId: 'cells',
+            commandId: 'cells.setValue',
+            category: 'mutation',
+          },
+        },
+      ],
+    } as const
+
+    expectInvalidCommandBundleParity(missingMutationDestructive)
+    expect(checkWorkbookCommandBundle(missingMutationDestructive)).toMatchObject({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'destructive_not_confirmed',
+          path: 'commands[0].destructive',
+        },
+      ],
+    })
+
+    const missingApplyDestructive = {
+      targetRevision: 1,
+      idempotencyKey: 'request-apply-schema-parity',
+      commands: [
+        {
+          kind: 'request',
+          request: {
+            featureId: 'cells',
+            commandId: 'cells.setValue',
+            mode: 'apply',
+          },
+        },
+      ],
+    } as const
+    expectInvalidCommandBundleParity(missingApplyDestructive)
+
+    const missingApplyAndVerifyDestructive = {
+      targetRevision: 1,
+      idempotencyKey: 'request-apply-verify-schema-parity',
+      commands: [
+        {
+          kind: 'request',
+          request: {
+            featureId: 'cells',
+            commandId: 'cells.setValue',
+            mode: 'applyAndVerify',
+          },
+        },
+      ],
+    } as const
+    expectInvalidCommandBundleParity(missingApplyAndVerifyDestructive)
+
+    const confirmedMutation = {
+      ...missingMutationDestructive,
+      commands: [
+        {
+          ...missingMutationDestructive.commands[0],
+          destructive: true,
+        },
+      ],
+    } as const
+    expect(validateWithJsonSchema('commandBundle', confirmedMutation)).toBe(true)
+    expect(checkWorkbookCommandBundle(confirmedMutation).status).toBe('valid')
+  })
+
+  it('keeps scoped destructive command schemas aligned with touched-range checks', () => {
+    const targetRange = {
+      sheetName: 'Sheet1',
+      startAddress: 'A1',
+      endAddress: 'A1',
+    } as const
+    const scopedDestructiveOp = {
+      targetRevision: 1,
+      idempotencyKey: 'scoped-op-schema-parity',
+      scope: { maxTouchedCells: 10 },
+      commands: [
+        {
+          kind: 'op',
+          destructive: true,
+          op: { kind: 'clearCell', sheetName: 'Sheet1', address: 'A1' },
+        },
+      ],
+    } as const
+
+    expectInvalidCommandBundleParity(scopedDestructiveOp)
+    expect(checkWorkbookCommandBundle(scopedDestructiveOp)).toMatchObject({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'missing_touched_ranges',
+          path: 'commands[0].touchedRanges',
+        },
+      ],
+    })
+
+    const scopedDestructiveRequest = {
+      targetRevision: 1,
+      idempotencyKey: 'scoped-request-schema-parity',
+      scope: { maxTouchedCells: 10 },
+      commands: [
+        {
+          kind: 'request',
+          destructive: true,
+          request: {
+            featureId: 'cells',
+            commandId: 'cells.setValue',
+            category: 'mutation',
+          },
+        },
+      ],
+    } as const
+    expectInvalidCommandBundleParity(scopedDestructiveRequest)
+
+    const scopedDestructiveRequestWithEmptyRanges = {
+      ...scopedDestructiveRequest,
+      commands: [
+        {
+          ...scopedDestructiveRequest.commands[0],
+          touchedRanges: [],
+        },
+      ],
+    } as const
+    expectInvalidCommandBundleParity(scopedDestructiveRequestWithEmptyRanges)
+
+    const scopedConfirmed = {
+      ...scopedDestructiveRequest,
+      commands: [
+        {
+          ...scopedDestructiveRequest.commands[0],
+          touchedRanges: [targetRange],
+        },
+      ],
+    } as const
+    expect(validateWithJsonSchema('commandBundle', scopedConfirmed)).toBe(true)
+    expect(checkWorkbookCommandBundle(scopedConfirmed).status).toBe('valid')
+  })
+
   it('keeps row-ref JSON Schema constraints aligned with ref-data checks', () => {
     const validRows = {
       kind: 'rows',

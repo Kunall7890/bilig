@@ -473,6 +473,42 @@ export const workbookJsonSchemas = deepFreeze({
               destructive: { type: 'boolean' },
               request: { $ref: '#/$defs/commandRequest' },
             },
+            allOf: [
+              {
+                if: {
+                  properties: {
+                    request: {
+                      type: 'object',
+                      properties: { category: { const: 'mutation' } },
+                      required: ['category'],
+                    },
+                  },
+                  required: ['request'],
+                },
+                // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+                then: {
+                  required: ['destructive'],
+                  properties: { destructive: { const: true } },
+                },
+              },
+              {
+                if: {
+                  properties: {
+                    request: {
+                      type: 'object',
+                      properties: { mode: { enum: ['apply', 'applyAndVerify'] } },
+                      required: ['mode'],
+                    },
+                  },
+                  required: ['request'],
+                },
+                // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+                then: {
+                  required: ['destructive'],
+                  properties: { destructive: { const: true } },
+                },
+              },
+            ],
           },
           {
             type: 'object',
@@ -503,6 +539,77 @@ export const workbookJsonSchemas = deepFreeze({
       },
       commands: { type: 'array', minItems: 1, items: { $ref: '#/$defs/bundleCommand' } },
     },
+    allOf: [
+      {
+        if: {
+          properties: {
+            scope: {
+              type: 'object',
+              required: ['maxTouchedCells'],
+            },
+          },
+          required: ['scope'],
+        },
+        // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+        then: {
+          properties: {
+            commands: {
+              items: {
+                allOf: [
+                  {
+                    if: {
+                      properties: { kind: { const: 'op' } },
+                      required: ['kind'],
+                    },
+                    // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+                    then: {
+                      required: ['touchedRanges'],
+                      properties: { touchedRanges: { type: 'array', minItems: 1, items: cellRange } },
+                    },
+                  },
+                  {
+                    if: {
+                      properties: {
+                        kind: { const: 'request' },
+                        request: {
+                          type: 'object',
+                          properties: { category: { const: 'mutation' } },
+                          required: ['category'],
+                        },
+                      },
+                      required: ['kind', 'request'],
+                    },
+                    // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+                    then: {
+                      required: ['touchedRanges'],
+                      properties: { touchedRanges: { type: 'array', minItems: 1, items: cellRange } },
+                    },
+                  },
+                  {
+                    if: {
+                      properties: {
+                        kind: { const: 'request' },
+                        request: {
+                          type: 'object',
+                          properties: { mode: { enum: ['apply', 'applyAndVerify'] } },
+                          required: ['mode'],
+                        },
+                      },
+                      required: ['kind', 'request'],
+                    },
+                    // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- JSON Schema conditional schemas use the standard "then" keyword.
+                    then: {
+                      required: ['touchedRanges'],
+                      properties: { touchedRanges: { type: 'array', minItems: 1, items: cellRange } },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
+    ],
   }),
 
   commandResult: schema('commandResult', {

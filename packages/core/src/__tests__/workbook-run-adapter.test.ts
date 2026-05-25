@@ -456,6 +456,121 @@ describe('workbook run adapter', () => {
     })
   })
 
+  it('proves direct single-cell number format commands in strict mode', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-single-cell-number-format' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 12.5)
+    const range = { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' } as const
+
+    const model = defineModel({
+      name: 'generic-single-cell-format',
+      find(workbook) {
+        return {
+          target: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+        }
+      },
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.target)]
+      },
+      actions: {
+        formatNumber({ refs, workbook }) {
+          workbook.format(refs.target, { numberFormat: '0.0' })
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'formatNumber', createWorkbookRunAdapter(engine), undefined, { strict: true })
+
+    expect(result).toMatchObject({ status: 'done' })
+    if (result.status !== 'done') {
+      throw new Error(result.errors.map((error) => error.message).join('\n'))
+    }
+    expect(engine.getCell('Sheet1', 'A1').format).toBe('0.0')
+    const receipt = result.apply?.commandReceipts?.[0]
+    expect(receipt?.previewOps.map((op) => op.kind)).toEqual(['upsertCellNumberFormat', 'setFormatRange'])
+    expect(receipt).toMatchObject({
+      commandKind: 'format',
+      resolvedRefs: {
+        target: expect.objectContaining({
+          kind: 'range',
+          label: 'Sheet1!A1',
+          range,
+        }),
+      },
+      previewOps: [
+        {
+          kind: 'upsertCellNumberFormat',
+          format: expect.objectContaining({ code: '0.0' }),
+        },
+        {
+          kind: 'setFormatRange',
+          range,
+          formatId: expect.stringMatching(/^format-/u),
+        },
+      ],
+    })
+  })
+
+  it('proves direct single-cell number format clears with default support records in strict mode', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-single-cell-number-format-clear' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 12.5)
+    const range = { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' } as const
+    const numberFormat = engine.workbook.internCellNumberFormat('0.0')
+    engine.workbook.upsertCellNumberFormat(numberFormat)
+    engine.workbook.setFormatRange(range, numberFormat.id)
+
+    const model = defineModel({
+      name: 'generic-single-cell-clear-format',
+      find(workbook) {
+        return {
+          target: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+        }
+      },
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.target)]
+      },
+      actions: {
+        clearNumberFormat({ refs, workbook }) {
+          workbook.format(refs.target, { numberFormat: null })
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'clearNumberFormat', createWorkbookRunAdapter(engine), undefined, { strict: true })
+
+    expect(result).toMatchObject({ status: 'done' })
+    if (result.status !== 'done') {
+      throw new Error(result.errors.map((error) => error.message).join('\n'))
+    }
+    expect(engine.getCell('Sheet1', 'A1').format).toBeUndefined()
+    const receipt = result.apply?.commandReceipts?.[0]
+    expect(receipt?.previewOps.map((op) => op.kind)).toEqual(['upsertCellNumberFormat', 'setFormatRange'])
+    expect(receipt).toMatchObject({
+      commandKind: 'format',
+      resolvedRefs: {
+        target: expect.objectContaining({
+          kind: 'range',
+          label: 'Sheet1!A1',
+          range,
+        }),
+      },
+      previewOps: [
+        {
+          kind: 'upsertCellNumberFormat',
+          format: { id: 'format-0', code: 'general', kind: 'general' },
+        },
+        {
+          kind: 'setFormatRange',
+          range,
+          formatId: 'format-0',
+        },
+      ],
+    })
+  })
+
   it('proves style and number format clears with default support records', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-clear-format' })
     await engine.ready()
