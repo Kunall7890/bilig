@@ -61,6 +61,9 @@ flowchart LR
     apply/plan/revision/concrete-op/resolved-ref, and passed-check proof
   - formula label verification against parsed formula reference tokens instead
     of substring matches
+  - formula readback proof with parsed label materialization, so symbolic
+    formula intent can be verified without hardcoded workbook models or
+    human-facing cell UI assumptions
   - runtime adapter capability checks before mutation handoff
   - bundle-scoped receipt changed-range validation for command proof
   - duplicate command-id rejection for inspectable command bundles

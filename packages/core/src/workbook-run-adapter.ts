@@ -3,6 +3,7 @@ import { formatAddress, parseCellAddress } from '@bilig/formula'
 import {
   workbookActionCommandDigest,
   workbookPlanId,
+  materializeFormulaLabels,
   normalizeWorkbookActionInput,
   toWorkbookRefData,
   type EngineOp,
@@ -17,6 +18,7 @@ import {
   type WorkbookRef,
   type WorkbookRowsRef,
   type WorkbookRunAdapter,
+  type WorkbookFormulaLabelReplacement,
   type WorkbookRunReadback,
   type WorkbookTableRef,
   type WorkbookUndoRef,
@@ -57,6 +59,10 @@ interface ResolvedRows {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+function workbookRefKey(ref: WorkbookRef): string {
+  return `${ref.kind}:${ref.id}`
 }
 
 function createUndoRef(plan: WorkbookActionPlan, ops: readonly EngineOp[] | null): WorkbookUndoRef | undefined {
@@ -451,21 +457,50 @@ function verifyNoFormulaErrors(engine: SpreadsheetEngine, ref: WorkbookRef): 'pa
   return ranges.some((range) => rangeHasFormulaErrors(engine, range)) ? 'failed' : 'passed'
 }
 
-function readbackForRange(engine: SpreadsheetEngine, target: WorkbookRangeRef): WorkbookRunReadback | null {
+function formulaLabelProofForTarget(
+  engine: SpreadsheetEngine,
+  plan: WorkbookActionPlan,
+  target: WorkbookRef,
+): readonly WorkbookFormulaLabelReplacement[] | undefined {
+  const targetCells = cellsFromRef(engine, target)
+  if (targetCells === null || targetCells.length !== 1) {
+    return undefined
+  }
+  const replacements = new Map<string, string>()
+  plan.checks.forEach((check) => {
+    if (check.target === undefined || workbookRefKey(check.target) !== workbookRefKey(target)) {
+      return
+    }
+    if (check.expectation?.kind !== 'formulaEquals') {
+      return
+    }
+    check.expectation.labels.forEach((label) => {
+      replacements.set(label.name, inputReplacementForCell(engine, label.ref, targetCells, 0))
+    })
+  })
+  if (replacements.size === 0) {
+    return undefined
+  }
+  return Object.freeze([...replacements].map(([name, source]) => Object.freeze({ name, source })))
+}
+
+function readbackForRange(engine: SpreadsheetEngine, target: WorkbookRangeRef, plan: WorkbookActionPlan): WorkbookRunReadback | null {
   const range = target.range
   if (range.startAddress !== range.endAddress || !rangeExists(engine, range)) {
     return null
   }
   const cell = engine.getCell(range.sheetName, range.startAddress)
   const value = literalFromCellValue(cell.value)
+  const formulaLabels = formulaLabelProofForTarget(engine, plan, target)
   return {
     target,
     ...(value !== undefined ? { value } : {}),
     formula: cell.formula ?? null,
+    ...(formulaLabels !== undefined ? { formulaLabels } : {}),
   }
 }
 
-function readbackForName(engine: SpreadsheetEngine, target: WorkbookNameRef): WorkbookRunReadback | null {
+function readbackForName(engine: SpreadsheetEngine, target: WorkbookNameRef, plan: WorkbookActionPlan): WorkbookRunReadback | null {
   const definedName = engine.getDefinedName(target.name)
   if (definedName === undefined) {
     return null
@@ -476,14 +511,16 @@ function readbackForName(engine: SpreadsheetEngine, target: WorkbookNameRef): Wo
   }
   const cell = engine.getCell(range.sheetName, range.startAddress)
   const value = literalFromCellValue(cell.value)
+  const formulaLabels = formulaLabelProofForTarget(engine, plan, target)
   return {
     target,
     ...(value !== undefined ? { value } : {}),
     formula: cell.formula ?? null,
+    ...(formulaLabels !== undefined ? { formulaLabels } : {}),
   }
 }
 
-function readbackForColumn(engine: SpreadsheetEngine, target: WorkbookColumnRef): WorkbookRunReadback | null {
+function readbackForColumn(engine: SpreadsheetEngine, target: WorkbookColumnRef, plan: WorkbookActionPlan): WorkbookRunReadback | null {
   const cells = cellsFromRef(engine, target)
   if (cells === null || cells.length !== 1) {
     return null
@@ -491,21 +528,23 @@ function readbackForColumn(engine: SpreadsheetEngine, target: WorkbookColumnRef)
   const targetCell = cells[0]!
   const cell = engine.getCell(targetCell.sheetName, targetCell.address)
   const value = literalFromCellValue(cell.value)
+  const formulaLabels = formulaLabelProofForTarget(engine, plan, target)
   return {
     target,
     ...(value !== undefined ? { value } : {}),
     formula: cell.formula ?? null,
+    ...(formulaLabels !== undefined ? { formulaLabels } : {}),
   }
 }
 
-function readbackForTarget(engine: SpreadsheetEngine, target: WorkbookRef): WorkbookRunReadback | null {
+function readbackForTarget(engine: SpreadsheetEngine, target: WorkbookRef, plan: WorkbookActionPlan): WorkbookRunReadback | null {
   switch (target.kind) {
     case 'range':
-      return readbackForRange(engine, target)
+      return readbackForRange(engine, target, plan)
     case 'name':
-      return readbackForName(engine, target)
+      return readbackForName(engine, target, plan)
     case 'column':
-      return readbackForColumn(engine, target)
+      return readbackForColumn(engine, target, plan)
     case 'table':
     case 'rows':
       return null
@@ -546,15 +585,17 @@ function formulaForCell(
   targetCells: readonly CellTarget[],
   cellIndex: number,
 ): string {
-  let source = command.formula
+  const source = command.formula
   if (command.inputs.length > 0 && command.labels.length === 0) {
     throw new Error(`Formula command for ${command.target.label} has inputs but no labels`)
   }
-  command.labels.forEach((label) => {
-    const replacement = inputReplacementForCell(engine, label.ref, targetCells, cellIndex)
-    source = source.replaceAll(label.name, replacement)
-  })
-  return source
+  return materializeFormulaLabels(
+    source,
+    command.labels.map((label) => ({
+      name: label.name,
+      source: inputReplacementForCell(engine, label.ref, targetCells, cellIndex),
+    })),
+  )
 }
 
 function commandTargetRanges(
@@ -627,6 +668,27 @@ function materializeCommandOps(engine: SpreadsheetEngine, command: WorkbookActio
   }
 }
 
+function formulaLabelProofForCommandReceipt(
+  engine: SpreadsheetEngine,
+  command: WorkbookActionCommand,
+): readonly WorkbookFormulaLabelReplacement[] | undefined {
+  if (command.kind !== 'writeFormula' || command.labels.length === 0) {
+    return undefined
+  }
+  const targetCells = commandTargetCells(engine, command)
+  if (targetCells.length !== 1) {
+    return undefined
+  }
+  return Object.freeze(
+    command.labels.map((label) =>
+      Object.freeze({
+        name: label.name,
+        source: inputReplacementForCell(engine, label.ref, targetCells, 0),
+      }),
+    ),
+  )
+}
+
 function resolvedRefsForCommand(command: WorkbookActionCommand): WorkbookActionInput | undefined {
   const refs: Record<string, WorkbookActionInput> = {}
   if (command.target !== undefined) {
@@ -645,6 +707,7 @@ function materializePlanCommandReceipts(engine: SpreadsheetEngine, plan: Workboo
   return plan.commands.map((command, commandIndex) => {
     const ops = materializeCommandOps(engine, command)
     const resolvedRefs = resolvedRefsForCommand(command)
+    const formulaLabels = formulaLabelProofForCommandReceipt(engine, command)
     return {
       commandIndex,
       commandKind: command.kind,
@@ -656,6 +719,7 @@ function materializePlanCommandReceipts(engine: SpreadsheetEngine, plan: Workboo
         opCount: ops.length,
       },
       ...(resolvedRefs !== undefined ? { resolvedRefs } : {}),
+      ...(formulaLabels !== undefined ? { formulaLabels } : {}),
     }
   })
 }
@@ -742,9 +806,9 @@ export function createWorkbookRunAdapter(engine: SpreadsheetEngine, options: Wor
         }
       }
     },
-    read(targets) {
+    read(targets, plan) {
       return targets.flatMap((target) => {
-        const readback = readbackForTarget(engine, target)
+        const readback = readbackForTarget(engine, target, plan)
         return readback === null ? [] : [readback]
       })
     },

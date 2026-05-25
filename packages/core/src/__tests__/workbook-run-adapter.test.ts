@@ -59,7 +59,7 @@ describe('workbook run adapter', () => {
               kind: 'setCellFormula',
               sheetName: 'Sheet1',
               address: 'C1',
-              formula: '(Sheet1!A1)+(Sheet1!B1)',
+              formula: 'Sheet1!A1+Sheet1!B1',
             },
           ],
           appliedOps: [
@@ -67,7 +67,7 @@ describe('workbook run adapter', () => {
               kind: 'setCellFormula',
               sheetName: 'Sheet1',
               address: 'C1',
-              formula: '(Sheet1!A1)+(Sheet1!B1)',
+              formula: 'Sheet1!A1+Sheet1!B1',
             },
           ],
           resolvedRefs: {
@@ -98,7 +98,7 @@ describe('workbook run adapter', () => {
         opCount: 1,
       },
     })
-    expect(engine.getCell('Sheet1', 'C1').formula).toBe('(Sheet1!A1)+(Sheet1!B1)')
+    expect(engine.getCell('Sheet1', 'C1').formula).toBe('Sheet1!A1+Sheet1!B1')
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 5 })
     expect(result.undo?.id).toMatch(/^generic-calculation\.calculate\.undo\.\d+$/)
     expect(result.undo?.ops?.length).toBeGreaterThan(0)
@@ -113,6 +113,82 @@ describe('workbook run adapter', () => {
 
     expect(engine.getCell('Sheet1', 'C1').formula).toBeUndefined()
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Empty })
+  })
+
+  it('materializes formula labels by tokens and proves formula readback through labels', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-formula-labels' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 2)
+    engine.setCellValue('Sheet1', 'B1', 3)
+
+    const model = defineModel({
+      name: 'generic-token-formula',
+      find(workbook) {
+        return {
+          amount: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+          amountRate: workbook.findRange({ sheetName: 'Sheet1', address: 'B1' }),
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'C1' }),
+        }
+      },
+      actions: {
+        calculate({ refs, workbook }) {
+          const expression = formula.raw('amount_rate+amount', {
+            labels: [
+              { name: 'amount', ref: refs.amount },
+              { name: 'amount_rate', ref: refs.amountRate },
+            ],
+          })
+          workbook.writeFormula(refs.output, expression)
+          workbook.check.formulaEquals(refs.output, expression)
+          workbook.check.valueEquals(refs.output, 5)
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine), undefined, { strict: true })
+
+    expect(result.status).toBe('done')
+    if (result.status !== 'done') {
+      throw new Error(result.errors.map((error) => error.message).join('\n'))
+    }
+    expect(engine.getCell('Sheet1', 'C1').formula).toBe('Sheet1!B1+Sheet1!A1')
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 5 })
+    expect(result.apply?.commandReceipts?.[0]).toMatchObject({
+      commandKind: 'writeFormula',
+      formulaLabels: [
+        { name: 'amount', source: 'Sheet1!A1' },
+        { name: 'amount_rate', source: 'Sheet1!B1' },
+      ],
+      previewOps: [
+        {
+          kind: 'setCellFormula',
+          sheetName: 'Sheet1',
+          address: 'C1',
+          formula: 'Sheet1!B1+Sheet1!A1',
+        },
+      ],
+    })
+    expect(result.checks).toEqual([
+      expect.objectContaining({
+        status: 'passed',
+        kind: 'formulaEquals',
+        proof: {
+          source: 'readback',
+          formula: 'Sheet1!B1+Sheet1!A1',
+          expectedFormula: 'amount_rate+amount',
+          materializedFormula: 'Sheet1!B1+Sheet1!A1',
+          formulaLabels: [
+            { name: 'amount', source: 'Sheet1!A1' },
+            { name: 'amount_rate', source: 'Sheet1!B1' },
+          ],
+        },
+      }),
+      expect.objectContaining({
+        status: 'passed',
+        kind: 'valueEquals',
+      }),
+    ])
   })
 
   it('fails generic noFormulaErrors checks when the engine calculates an error cell', async () => {
@@ -226,9 +302,9 @@ describe('workbook run adapter', () => {
     if (result.status !== 'done') {
       throw new Error(result.errors.map((error) => error.message).join('\n'))
     }
-    expect(engine.getCell('Sheet1', 'C2').formula).toBe('(Sheet1!A2)*(Sheet1!B2)')
+    expect(engine.getCell('Sheet1', 'C2').formula).toBe('Sheet1!A2*Sheet1!B2')
     expect(engine.getCellValue('Sheet1', 'C2')).toEqual({ tag: ValueTag.Number, value: 6 })
-    expect(engine.getCell('Sheet1', 'C3').formula).toBe('(Sheet1!A3)*(Sheet1!B3)')
+    expect(engine.getCell('Sheet1', 'C3').formula).toBe('Sheet1!A3*Sheet1!B3')
     expect(engine.getCellValue('Sheet1', 'C3')).toEqual({ tag: ValueTag.Number, value: 20 })
     expect(result.checks.map((check) => [check.kind, check.status])).toEqual([
       ['exists', 'passed'],
@@ -378,11 +454,11 @@ describe('workbook run adapter', () => {
     if (result.status !== 'done') {
       throw new Error(result.errors.map((error) => error.message).join('\n'))
     }
-    expect(engine.getCell('Sheet1', 'D2').formula).toBe('(Sheet1!B2)*(Sheet1!C2)')
+    expect(engine.getCell('Sheet1', 'D2').formula).toBe('Sheet1!B2*Sheet1!C2')
     expect(engine.getCellValue('Sheet1', 'D2')).toEqual({ tag: ValueTag.Number, value: 6 })
     expect(engine.getCell('Sheet1', 'D3').formula).toBeUndefined()
     expect(engine.getCellValue('Sheet1', 'D3')).toEqual({ tag: ValueTag.Empty })
-    expect(engine.getCell('Sheet1', 'D4').formula).toBe('(Sheet1!B4)*(Sheet1!C4)')
+    expect(engine.getCell('Sheet1', 'D4').formula).toBe('Sheet1!B4*Sheet1!C4')
     expect(engine.getCellValue('Sheet1', 'D4')).toEqual({ tag: ValueTag.Number, value: 20 })
     expect(result.checks.map((check) => [check.kind, check.status])).toEqual([
       ['exists', 'passed'],

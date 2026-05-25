@@ -695,9 +695,65 @@ describe('@bilig/workbook run api', () => {
         proof: {
           source: 'readback',
           formula: canonicalSource,
+          expectedFormula: canonicalSource,
+          materializedFormula: canonicalSource,
         },
       },
     ])
+  })
+
+  it('passes formula readback checks with generic label materialization proof', () => {
+    const amount = findRange({ sheetName: 'Sheet1', address: 'A2' })
+    const result = findRange({ sheetName: 'Sheet1', address: 'C2' })
+    const verification = verifyWorkbookReadbacks(
+      [
+        {
+          status: 'planned',
+          kind: 'formulaEquals',
+          target: result,
+          message: 'Sheet1!C2 formula equals amount_token*2',
+          expectation: {
+            kind: 'formulaEquals',
+            formula: 'amount_token*2',
+            inputs: [amount],
+            labels: [{ name: 'amount_token', ref: amount }],
+          },
+        },
+      ],
+      [
+        {
+          target: result,
+          formula: 'Sheet1!A2*2',
+          formulaLabels: [{ name: 'amount_token', source: 'Sheet1!A2' }],
+        },
+      ],
+    )
+
+    expect(verification).toEqual({
+      status: 'passed',
+      checks: [
+        {
+          status: 'passed',
+          kind: 'formulaEquals',
+          target: result,
+          message: 'Sheet1!C2 formula equals amount_token*2',
+          expectation: {
+            kind: 'formulaEquals',
+            formula: 'amount_token*2',
+            inputs: [amount],
+            labels: [{ name: 'amount_token', ref: amount }],
+          },
+          proof: {
+            source: 'readback',
+            formula: 'Sheet1!A2*2',
+            expectedFormula: 'amount_token*2',
+            materializedFormula: 'Sheet1!A2*2',
+            formulaLabels: [{ name: 'amount_token', source: 'Sheet1!A2' }],
+          },
+        },
+      ],
+      issues: [],
+    })
   })
 
   it('fails before apply when non-readback checks require a missing verifier', async () => {

@@ -1,5 +1,6 @@
 import type { LiteralInput } from '@bilig/protocol'
 import type { WorkbookFormulaLabel } from './formula.js'
+import type { WorkbookFormulaLabelReplacement } from './formula-usage.js'
 import type { WorkbookRef } from './find.js'
 import type { WorkbookActionInput } from './input.js'
 import type { EngineOp } from './ops.js'
@@ -47,6 +48,7 @@ export interface WorkbookRunApplyCommandReceipt {
   readonly previewOps: readonly EngineOp[]
   readonly appliedOps: readonly EngineOp[]
   readonly resolvedRefs?: WorkbookActionInput
+  readonly formulaLabels?: readonly WorkbookFormulaLabelReplacement[]
   readonly proof?: WorkbookActionInput
 }
 

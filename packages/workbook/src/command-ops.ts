@@ -1,4 +1,6 @@
+import { parseFormula, serializeFormula } from '@bilig/formula'
 import type { WorkbookRef } from './find.js'
+import { materializeFormulaLabels, type WorkbookFormulaLabelReplacement } from './formula-usage.js'
 import type { WorkbookActionCommand } from './model.js'
 import type { WorkbookOp } from './ops.js'
 
@@ -137,9 +139,38 @@ export function expectedCommandOps(command: WorkbookActionCommand): WorkbookComm
       }
 }
 
-export function commandOpsMatchExpected(command: WorkbookActionCommand, ops: readonly WorkbookOp[]): boolean {
+function formulasMatchExpected(expected: string, actual: string, formulaLabels: readonly WorkbookFormulaLabelReplacement[] = []): boolean {
+  try {
+    const expectedSource = formulaLabels.length > 0 ? materializeFormulaLabels(expected, formulaLabels) : expected
+    return serializeFormula(parseFormula(expectedSource)) === serializeFormula(parseFormula(actual))
+  } catch {
+    return expected === actual
+  }
+}
+
+export function commandOpsMatchExpected(
+  command: WorkbookActionCommand,
+  ops: readonly WorkbookOp[],
+  formulaLabels: readonly WorkbookFormulaLabelReplacement[] = [],
+): boolean {
   if (ops.length === 0) {
     return true
+  }
+  if (command.kind === 'writeFormula') {
+    const expected = expectedConcreteCommandOp(command)
+    if (expected === null) {
+      return true
+    }
+    const actual = ops[0]
+    return (
+      ops.length === 1 &&
+      expected.kind === 'setCellFormula' &&
+      actual !== undefined &&
+      actual.kind === 'setCellFormula' &&
+      actual.sheetName === expected.sheetName &&
+      actual.address === expected.address &&
+      formulasMatchExpected(expected.formula, actual.formula, formulaLabels)
+    )
   }
   const expected = expectedCommandOps(command)
   if (expected === null) {

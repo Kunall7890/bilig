@@ -484,13 +484,14 @@ function pushCommandReceiptDescriptionIssues(
     issues,
     entry,
     path,
-    new Set(['commandIndex', 'commandKind', 'commandDigest', 'previewOps', 'appliedOps', 'resolvedRefs', 'proof']),
+    new Set(['commandIndex', 'commandKind', 'commandDigest', 'previewOps', 'appliedOps', 'resolvedRefs', 'formulaLabels', 'proof']),
   )
   pushRequiredFiniteNumberFieldIssue(issues, entry, path, 'commandIndex')
   pushRequiredStringFieldIssue(issues, entry, path, 'commandKind')
   pushRequiredStringFieldIssue(issues, entry, path, 'commandDigest')
   pushRequiredJsonArrayFieldIssue(issues, entry, path, 'previewOps')
   pushRequiredJsonArrayFieldIssue(issues, entry, path, 'appliedOps')
+  pushJsonArrayFieldIssue(issues, entry, path, 'formulaLabels')
 }
 
 function pushApplyDescriptionIssues(issues: WorkbookRunResultDescriptionIssue[], value: unknown): void {

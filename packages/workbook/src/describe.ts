@@ -21,6 +21,7 @@ import {
 import type { WorkbookActionInput } from './input.js'
 import type { WorkbookOp } from './ops.js'
 import type { WorkbookPlanId } from './plan-data.js'
+import type { WorkbookFormulaLabelReplacement } from './formula-usage.js'
 import type {
   WorkbookChangeSummary,
   WorkbookCheckExpectation,
@@ -197,6 +198,7 @@ export interface WorkbookRunApplySummaryDescription {
     readonly previewOps: readonly WorkbookOp[]
     readonly appliedOps: readonly WorkbookOp[]
     readonly resolvedRefs?: WorkbookActionInput
+    readonly formulaLabels?: readonly WorkbookFormulaLabelReplacement[]
     readonly proof?: WorkbookActionInput
   }[]
   readonly proof?: WorkbookActionInput
@@ -607,6 +609,7 @@ function describeApply(apply: WorkbookRunApplySummary): WorkbookRunApplySummaryD
             const receiptPreviewOps = requiredOwnDataValue(receipt, 'previewOps', `${entryPath}.previewOps`)
             const receiptAppliedOps = requiredOwnDataValue(receipt, 'appliedOps', `${entryPath}.appliedOps`)
             const resolvedRefs = ownDataValue(receipt, 'resolvedRefs', `${entryPath}.resolvedRefs`)
+            const formulaLabels = ownDataValue(receipt, 'formulaLabels', `${entryPath}.formulaLabels`)
             const receiptProof = ownDataValue(receipt, 'proof', `${entryPath}.proof`)
             return {
               commandIndex: requiredOwnDataValue(receipt, 'commandIndex', `${entryPath}.commandIndex`),
@@ -619,6 +622,13 @@ function describeApply(apply: WorkbookRunApplySummary): WorkbookRunApplySummaryD
                 cloneDescriptionData(op, opPath),
               ),
               ...(resolvedRefs !== undefined ? { resolvedRefs: cloneDescriptionData(resolvedRefs, `${entryPath}.resolvedRefs`) } : {}),
+              ...(formulaLabels !== undefined
+                ? {
+                    formulaLabels: mapArrayData(formulaLabels, `${entryPath}.formulaLabels`, (label, _labelIndex, labelPath) =>
+                      cloneDescriptionData(label, labelPath),
+                    ),
+                  }
+                : {}),
               ...(receiptProof !== undefined ? { proof: cloneDescriptionData(receiptProof, `${entryPath}.proof`) } : {}),
             }
           }),

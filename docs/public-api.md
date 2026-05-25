@@ -736,9 +736,10 @@ action, refs, commands, ops, changes, and checks that were planned. Transported
 plan data is canonicalized through `checkPlanData` before hashing.
 `workbookActionCommandDigest(command)` returns the stable digest for one planned
 high-level command. Apply adapters can return `commandReceipts` with command
-index, command kind, command digest, preview ops, applied ops, and resolved-ref
-proof, so an agent can inspect which planned command produced which materialized
-operations and which workbook refs the runtime materialized.
+index, command kind, command digest, preview ops, applied ops, resolved-ref
+proof, and optional `formulaLabels` proof, so an agent can inspect which planned
+command produced which materialized operations and which workbook refs the
+runtime materialized.
 `@bilig/workbook` rejects stale digests, duplicate or missing command indexes,
 receipt preview/apply mismatches, receipts whose ops do not match the planned
 command's concrete workbook op, and receipts whose flattened ops do not match
@@ -767,8 +768,12 @@ skips mutation and runs those proof steps directly. `@bilig/workbook` compares
 preview ops to applied ops when both are present, compares readbacks against
 `valueEquals` and `formulaEquals` checks, and returns a boring
 `WorkbookRunResult`. Passed readback-backed checks include JSON-safe proof such as
-`{ source: "readback", value }` or `{ source: "readback", formula }`, so the
-result says what the runtime actually read back. If static verification fails,
+`{ source: "readback", value }` or
+`{ source: "readback", formula, expectedFormula, materializedFormula }`, so the
+result says what the runtime actually read back and how symbolic formula labels
+were materialized. Formula readbacks can include `formulaLabels`; those labels
+are applied by parsed formula tokens through `@bilig/formula`, not by substring
+replacement. If static verification fails,
 the apply adapter is not called. If the adapter is missing a required method for
 the plan, the apply adapter is not called and the run fails with
 `adapter_missing_capability`. If preview/apply ops mismatch, the run fails with

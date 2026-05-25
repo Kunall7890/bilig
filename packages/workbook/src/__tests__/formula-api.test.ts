@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defineModel, describePlan, findRange, formula, planWorkbookAction, verifyPlan } from '../index.js'
+import { defineModel, describePlan, findRange, formula, materializeFormulaLabels, planWorkbookAction, verifyPlan } from '../index.js'
 
 function customPrototypeRecord(fields: Record<string, unknown>): Record<string, unknown> {
   const value: Record<string, unknown> = {}
@@ -227,6 +227,15 @@ describe('@bilig/workbook formula api', () => {
         path: 'checks[0].expectation.labels[0].name',
       }),
     ])
+  })
+
+  it('materializes formula labels by parsed formula tokens', () => {
+    expect(
+      materializeFormulaLabels('amount_rate+amount+"amount"+LET(amount,1,amount+amount_rate)', [
+        { name: 'amount', source: 'Sheet1!A1' },
+        { name: 'amount_rate', source: 'Sheet1!B1' },
+      ]),
+    ).toBe('Sheet1!B1+Sheet1!A1+"amount"+LET(amount,1,amount+Sheet1!B1)')
   })
 
   it('keeps raw formula source behavior backward compatible', () => {

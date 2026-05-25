@@ -1,5 +1,6 @@
 import { isWorkbookOp } from './guards.js'
 import { commandOpsMatchExpected, workbookOpsMatch } from './command-ops.js'
+import { materializeFormulaLabels, type WorkbookFormulaLabelReplacement } from './formula-usage.js'
 import { normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import type { WorkbookActionCommand, WorkbookActionPlan } from './model.js'
 import type { EngineOp } from './ops.js'
@@ -17,7 +18,7 @@ function isSafeNonNegativeInteger(value: unknown): value is number {
   return Number.isSafeInteger(value) && typeof value === 'number' && value >= 0
 }
 
-function ownValue(value: Record<string, unknown>, key: string): unknown {
+function ownValue(value: object, key: string): unknown {
   const descriptor = Object.getOwnPropertyDescriptor(value, key)
   if (descriptor === undefined) {
     return undefined
@@ -151,7 +152,7 @@ function cloneOps(ops: readonly EngineOp[]): readonly EngineOp[] {
   return Object.freeze(entries.map((op) => cloneOp(op)))
 }
 
-function cloneReceiptOps(receipt: Record<string, unknown>, receiptIndex: number, key: 'previewOps' | 'appliedOps'): readonly EngineOp[] {
+function cloneReceiptOps(receipt: object, receiptIndex: number, key: 'previewOps' | 'appliedOps'): readonly EngineOp[] {
   const ops = ownValue(receipt, key)
   if (ops === undefined) {
     throw new Error(`commandReceipts[${String(receiptIndex)}].${key} is required`)
@@ -160,6 +161,42 @@ function cloneReceiptOps(receipt: Record<string, unknown>, receiptIndex: number,
     throw new Error(`commandReceipts[${String(receiptIndex)}].${key} is invalid`)
   }
   return cloneOps(ops)
+}
+
+function cloneFormulaLabelReplacements(receipt: object, receiptIndex: number): readonly WorkbookFormulaLabelReplacement[] | undefined {
+  const value = ownValue(receipt, 'formulaLabels')
+  if (value === undefined) {
+    return undefined
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(`commandReceipts[${String(receiptIndex)}].formulaLabels is invalid`)
+  }
+  const entries = arrayDataValues(value, isRecord)
+  if (entries === null) {
+    throw new Error(`commandReceipts[${String(receiptIndex)}].formulaLabels is invalid`)
+  }
+  return Object.freeze(
+    entries.map((entry, labelIndex) => {
+      const name = ownValue(entry, 'name')
+      const source = ownValue(entry, 'source')
+      if (typeof name !== 'string' || typeof source !== 'string') {
+        throw new Error(`commandReceipts[${String(receiptIndex)}].formulaLabels[${String(labelIndex)}] is invalid`)
+      }
+      let normalizedSource: string
+      try {
+        normalizedSource = materializeFormulaLabels(name, [{ name, source }])
+      } catch (error) {
+        throw new Error(
+          `commandReceipts[${String(receiptIndex)}].formulaLabels[${String(labelIndex)}] is invalid: ${errorMessage(error)}`,
+          { cause: error },
+        )
+      }
+      return Object.freeze({
+        name,
+        source: normalizedSource,
+      })
+    }),
+  )
 }
 
 function flattenedReceiptOps(receipts: readonly WorkbookRunApplyCommandReceipt[], key: 'previewOps' | 'appliedOps'): readonly EngineOp[] {
@@ -220,13 +257,14 @@ export function cloneWorkbookRunApplyCommandReceipts(
 
     const receiptPreviewOps = cloneReceiptOps(receipt, receiptIndex, 'previewOps')
     const receiptAppliedOps = cloneReceiptOps(receipt, receiptIndex, 'appliedOps')
+    const formulaLabels = command.kind === 'writeFormula' ? cloneFormulaLabelReplacements(receipt, receiptIndex) : undefined
     if (!workbookOpsMatch(receiptPreviewOps, receiptAppliedOps)) {
       throw new Error(`commandReceipts[${String(receiptIndex)}] previewOps do not match appliedOps`)
     }
-    if (!commandOpsMatchExpected(command, receiptPreviewOps)) {
+    if (!commandOpsMatchExpected(command, receiptPreviewOps, formulaLabels)) {
       throw new Error(`commandReceipts[${String(receiptIndex)}].previewOps do not match the planned command`)
     }
-    if (!commandOpsMatchExpected(command, receiptAppliedOps)) {
+    if (!commandOpsMatchExpected(command, receiptAppliedOps, formulaLabels)) {
       throw new Error(`commandReceipts[${String(receiptIndex)}].appliedOps do not match the planned command`)
     }
 
@@ -253,6 +291,7 @@ export function cloneWorkbookRunApplyCommandReceipts(
       previewOps: receiptPreviewOps,
       appliedOps: receiptAppliedOps,
       ...(resolvedRefs !== undefined ? { resolvedRefs } : {}),
+      ...(formulaLabels !== undefined ? { formulaLabels } : {}),
       ...(proof !== undefined ? { proof } : {}),
     })
   })
@@ -272,16 +311,18 @@ export function cloneWorkbookRunApplyCommandReceiptsForSummary(
   receipts: readonly WorkbookRunApplyCommandReceipt[],
 ): readonly WorkbookRunApplyCommandReceipt[] {
   return Object.freeze(
-    receipts.map((receipt) =>
-      Object.freeze({
+    receipts.map((receipt, index) => {
+      const formulaLabels = receipt.formulaLabels !== undefined ? cloneFormulaLabelReplacements(receipt, index) : undefined
+      return Object.freeze({
         commandIndex: receipt.commandIndex,
         commandKind: receipt.commandKind,
         commandDigest: receipt.commandDigest,
         previewOps: cloneOps(receipt.previewOps),
         appliedOps: cloneOps(receipt.appliedOps),
         ...(receipt.resolvedRefs !== undefined ? { resolvedRefs: normalizeWorkbookActionInput(receipt.resolvedRefs) } : {}),
+        ...(formulaLabels !== undefined ? { formulaLabels } : {}),
         ...(receipt.proof !== undefined ? { proof: normalizeWorkbookActionInput(receipt.proof) } : {}),
-      }),
-    ),
+      })
+    }),
   )
 }

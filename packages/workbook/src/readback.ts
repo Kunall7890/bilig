@@ -1,6 +1,7 @@
 import { parseFormula, serializeFormula } from '@bilig/formula'
 import { isLiteralInput, type LiteralInput } from '@bilig/protocol'
 import { hydrateWorkbookRef, isWorkbookRef, toWorkbookRefData, type WorkbookRef } from './find.js'
+import { materializeFormulaLabels, type WorkbookFormulaLabelReplacement } from './formula-usage.js'
 import type { WorkbookFormulaLabel } from './formula.js'
 import { normalizeWorkbookActionInput } from './input.js'
 import type { WorkbookCheckExpectation, WorkbookCheckResult } from './result.js'
@@ -9,6 +10,7 @@ export interface WorkbookRunReadback {
   readonly target: WorkbookRef
   readonly value?: LiteralInput
   readonly formula?: string | null
+  readonly formulaLabels?: readonly WorkbookFormulaLabelReplacement[]
 }
 
 export type WorkbookReadbackIssueCode =
@@ -148,6 +150,7 @@ interface SafeReadback {
   readonly key: string
   readonly value: SafeReadbackData<LiteralInput>
   readonly formula: SafeReadbackData<string | null>
+  readonly formulaLabels: SafeReadbackData<readonly WorkbookFormulaLabelReplacement[]>
 }
 
 function valid<T>(value: T): DataValidation<T> {
@@ -166,6 +169,10 @@ function invalid<T>(message: string): DataValidation<T> {
 
 function isRecord(value: unknown): value is object {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
 function optionalDataValue(value: object, key: string, path: string): OptionalData {
@@ -261,6 +268,40 @@ function normalizeFormulaLabel(value: unknown, path: string): DataValidation<Wor
 
 function normalizeFormulaLabels(value: unknown, path: string): DataValidation<readonly WorkbookFormulaLabel[]> {
   return arrayDataValues(value, path, normalizeFormulaLabel)
+}
+
+function normalizeFormulaLabelReplacement(value: unknown, path: string): DataValidation<WorkbookFormulaLabelReplacement> {
+  if (!isRecord(value)) {
+    return invalid(`Workbook formula label proof at ${path} is invalid`)
+  }
+  const name = requiredDataValue(value, 'name', `${path}.name`)
+  if (name.status === 'invalid') {
+    return name
+  }
+  if (typeof name.value !== 'string') {
+    return invalid(`Workbook formula label proof at ${path}.name is invalid`)
+  }
+  const source = requiredDataValue(value, 'source', `${path}.source`)
+  if (source.status === 'invalid') {
+    return source
+  }
+  if (typeof source.value !== 'string') {
+    return invalid(`Workbook formula label proof at ${path}.source is invalid`)
+  }
+  const normalizedSource = normalizeFormulaProofSource(source.value, `${path}.source`)
+  if (normalizedSource.status === 'invalid') {
+    return normalizedSource
+  }
+  return valid(
+    Object.freeze({
+      name: name.value,
+      source: normalizedSource.value,
+    }),
+  )
+}
+
+function normalizeFormulaLabelReplacements(value: unknown, path: string): DataValidation<readonly WorkbookFormulaLabelReplacement[]> {
+  return arrayDataValues(value, path, normalizeFormulaLabelReplacement)
 }
 
 function normalizeFormulaProofSource(value: string, path: string): DataValidation<string> {
@@ -486,10 +527,27 @@ function normalizeReadback(value: unknown, path: string): DataValidation<SafeRea
     })
   }
 
+  const formulaLabels = optionalDataValue(value, 'formulaLabels', `${path}.formulaLabels`)
+  if (formulaLabels.status === 'invalid') {
+    return formulaLabels
+  }
+  let safeFormulaLabels: SafeReadbackData<readonly WorkbookFormulaLabelReplacement[]> = Object.freeze({ status: 'missing' })
+  if (formulaLabels.status === 'present') {
+    const normalizedLabels = normalizeFormulaLabelReplacements(formulaLabels.value, `${path}.formulaLabels`)
+    if (normalizedLabels.status === 'invalid') {
+      return normalizedLabels
+    }
+    safeFormulaLabels = Object.freeze({
+      status: 'present',
+      value: normalizedLabels.value,
+    })
+  }
+
   const result: WorkbookRunReadback = Object.freeze({
     target: checkedTarget.value,
     ...(safeValue.status === 'present' ? { value: safeValue.value } : {}),
     ...(safeFormula.status === 'present' ? { formula: safeFormula.value } : {}),
+    ...(safeFormulaLabels.status === 'present' ? { formulaLabels: safeFormulaLabels.value } : {}),
   })
 
   return valid(
@@ -499,6 +557,7 @@ function normalizeReadback(value: unknown, path: string): DataValidation<SafeRea
       key: refKey(checkedTarget.value),
       value: safeValue,
       formula: safeFormula,
+      formulaLabels: safeFormulaLabels,
     }),
   )
 }
@@ -552,17 +611,33 @@ function verifyCheck(
   }
 
   const actual = readback.formula.status === 'present' ? readback.formula.value : undefined
-  if (actual !== check.expectation.formula) {
-    return {
-      check: checked(check, 'failed'),
-      issue: formulaMismatch(check, check.expectation.formula, actual),
+  let expected = check.expectation.formula
+  const formulaLabels = readback.formulaLabels.status === 'present' ? readback.formulaLabels.value : undefined
+  if (formulaLabels !== undefined && formulaLabels.length > 0) {
+    try {
+      expected = materializeFormulaLabels(check.expectation.formula, formulaLabels)
+    } catch (error) {
+      return {
+        check: checked(check, 'failed'),
+        issue: invalidReadback(`Workbook formula proof for ${check.label} is invalid: ${errorMessage(error)}`),
+      }
     }
   }
+  if (actual !== expected) {
+    return {
+      check: checked(check, 'failed'),
+      issue: formulaMismatch(check, expected, actual),
+    }
+  }
+  const proof = normalizeWorkbookActionInput({
+    source: 'readback',
+    formula: actual,
+    expectedFormula: check.expectation.formula,
+    materializedFormula: expected,
+    ...(formulaLabels !== undefined ? { formulaLabels: formulaLabels.map((label) => ({ name: label.name, source: label.source })) } : {}),
+  })
   return {
-    check: checked(check, 'passed', {
-      source: 'readback',
-      formula: actual,
-    }),
+    check: checked(check, 'passed', proof),
   }
 }
 

@@ -348,7 +348,9 @@ the runtime applies against a different base revision.
 Use `workbookActionCommandDigest(command)` when a runtime needs to bind
 materialized ops to a specific planned command. Adapter apply results can return
 `commandReceipts`, one per planned command, with the command index, command kind,
-command digest, preview ops, applied ops, and optional `resolvedRefs` proof.
+command digest, preview ops, applied ops, optional `resolvedRefs` proof, and
+optional `formulaLabels` proof for the parsed formula labels used during
+materialization.
 `@bilig/workbook` rejects stale digests, missing commands, duplicate command
 indexes, mismatched receipt ops, receipts whose ops do not match the planned
 command's concrete workbook op, or receipts whose flattened ops disagree with
@@ -357,9 +359,13 @@ fails closed unless those command receipts are present. With `{ strict: true }`,
 empty per-command applied ops or missing resolved-ref proof fail closed too.
 The repository-owned `@bilig/core` adapter now supplies that strict proof for
 generic model actions: each command receipt includes materialized applied ops and
-the resolved target/input refs that produced them, apply summaries include
-base/applied revisions, and core-owned `exists` / `noFormulaErrors` check
-verification attaches proof to passed checks. `apps/bilig` can therefore accept
+the resolved target/input refs that produced them; single-cell formula receipts
+also include the generic label-to-reference replacements used to materialize the
+formula. Apply summaries include base/applied revisions, and core-owned
+`exists` / `noFormulaErrors` check verification attaches proof to passed checks.
+Formula readback proof uses the same parsed-label materialization, so agents can
+compare symbolic formula intent to runtime formula strings without substring
+replacement or UI-coordinate assumptions. `apps/bilig` can therefore accept
 transported `WorkbookPlanData` directly through its Zero mutation path, run it
 with `strict: true` and the current expected base revision, persist the original
 plan, the concrete applied ops, and the frozen run-result description, and roll
