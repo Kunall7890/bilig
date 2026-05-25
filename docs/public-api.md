@@ -52,6 +52,15 @@ models or human spreadsheet UI assumptions.
 
 The stable contract has four layers.
 
+Package identity is intentionally explicit:
+
+| Package            | Choose when                                                                                   | Do not use for                                     |
+| ------------------ | --------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `@bilig/workbook`  | Defining generic agent intent, refs, formulas, checks, plan data, schemas, and proof handoff. | Calculating formulas or owning workbook state.     |
+| `@bilig/workpaper` | Running workbook tools, MCP, or product workflows around persisted WorkPaper state.           | Designing a reusable model API for other runtimes. |
+| `@bilig/headless`  | Owning workbook state inside Node with formula recalculation and import/export.               | Publishing generic agent intent contracts.         |
+| `@bilig/core`      | Implementing calculation or mutation internals.                                               | Consumer-facing agent model definitions.           |
+
 The root export remains the complete compatibility barrel. For agents that want
 smaller import maps, the package also publishes layered subpaths:
 `@bilig/workbook/model`, `@bilig/workbook/prepare`,

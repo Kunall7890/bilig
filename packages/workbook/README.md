@@ -81,14 +81,12 @@ The core flow is deliberately boring:
 
 ## Which Package
 
-`@bilig/workbook` is the public intent package. It defines generic refs, model
-actions, formulas, checks, command bundles, plan verification, schema fixtures,
-and runtime handoff data. It does not calculate workbook state.
-
-`@bilig/core` owns calculation and engine mutation. `@bilig/headless` owns a
-headless runtime shape. `@bilig/workpaper` is a higher-level workbook product
-surface. Those packages may execute plans; `@bilig/workbook` makes the plans
-simple to define, inspect, transport, and prove.
+| Package            | Choose when                                                                                   | Do not use for                                     |
+| ------------------ | --------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `@bilig/workbook`  | Defining generic agent intent, refs, formulas, checks, plan data, schemas, and proof handoff. | Calculating formulas or owning workbook state.     |
+| `@bilig/workpaper` | Running workbook tools, MCP, or product workflows around persisted WorkPaper state.           | Designing a reusable model API for other runtimes. |
+| `@bilig/headless`  | Owning workbook state inside Node with formula recalculation and import/export.               | Publishing generic agent intent contracts.         |
+| `@bilig/core`      | Implementing calculation or mutation internals.                                               | Consumer-facing agent model definitions.           |
 
 The root export keeps the complete contract. Subpath exports are available when
 an agent wants a smaller import map: `@bilig/workbook/model`,

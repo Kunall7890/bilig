@@ -12,10 +12,16 @@ interface PackageManifest {
   readonly files?: readonly string[]
 }
 
+interface WorkspaceResolutionEntry {
+  readonly packageDir: string
+  readonly sourceEntry: string
+}
+
 const sourceRoot = fileURLToPath(new URL('../', import.meta.url))
 const packageJsonPath = new URL('../../package.json', import.meta.url)
 const readmePath = new URL('../../README.md', import.meta.url)
 const examplePath = new URL('../../../../examples/workbook-agent-model/named-range-formula.ts', import.meta.url)
+const workspaceResolutionPath = new URL('../../../../workspace-resolution.generated.json', import.meta.url)
 
 const bannedRuntimeDependencies = Object.freeze([
   '@bilig/core',
@@ -49,6 +55,31 @@ function readPackageManifest(): PackageManifest {
     throw new Error('package.json did not parse as an object')
   }
   return parsed as PackageManifest
+}
+
+function isWorkspaceResolutionEntry(value: unknown): value is WorkspaceResolutionEntry {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    typeof Reflect.get(value, 'packageDir') === 'string' &&
+    typeof Reflect.get(value, 'sourceEntry') === 'string'
+  )
+}
+
+function readWorkspaceResolution(): Record<string, WorkspaceResolutionEntry> {
+  const parsed: unknown = JSON.parse(readFileSync(workspaceResolutionPath, 'utf8'))
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('workspace-resolution.generated.json did not parse as an object')
+  }
+  const resolution: Record<string, WorkspaceResolutionEntry> = {}
+  for (const [key, value] of Object.entries(parsed)) {
+    if (!isWorkspaceResolutionEntry(value)) {
+      throw new Error(`workspace-resolution.generated.json entry ${key} is invalid`)
+    }
+    resolution[key] = value
+  }
+  return resolution
 }
 
 function walkSourceFiles(root: string): readonly string[] {
@@ -130,6 +161,21 @@ describe('@bilig/workbook package boundary', () => {
 
   it('publishes layered subpath exports without replacing the root barrel', () => {
     const exportsMap = readPackageManifest().exports
+    const workspaceResolution = readWorkspaceResolution()
+    const expectedSubpaths = Object.freeze([
+      '.',
+      './model',
+      './prepare',
+      './find',
+      './check',
+      './formula',
+      './verify',
+      './runtime',
+      './features',
+      './testing',
+      './command',
+      './schema',
+    ] as const)
 
     expect(exportsMap).toMatchObject({
       '.': expect.any(Object),
@@ -146,6 +192,14 @@ describe('@bilig/workbook package boundary', () => {
       './schema': expect.any(Object),
     })
 
+    expect(Object.keys(exportsMap ?? {}).toSorted()).toEqual([...expectedSubpaths].toSorted())
+    for (const subpath of expectedSubpaths) {
+      const packageName = subpath === '.' ? '@bilig/workbook' : `@bilig/workbook/${subpath.slice(2)}`
+      expect(workspaceResolution[packageName], `${packageName} missing from workspace resolution`).toMatchObject({
+        packageDir: 'packages/workbook',
+        sourceEntry: expect.stringMatching(/^packages\/workbook\/src\/.+\.ts$/),
+      })
+    }
     expect(readPackageManifest().files).toContain('fixtures')
   })
 
@@ -174,6 +228,17 @@ describe('@bilig/workbook package boundary', () => {
 
     expect(readme).toContain('## Use These First')
     expect(readme).toContain('## Mental Model')
+    expect(readme).toContain('| Package')
+    expect(readme).toContain('Choose when')
+    expect(readme).toContain('Do not use for')
+    expect(readme).toContain('| `@bilig/workbook`')
+    expect(readme).toContain('Defining generic agent intent')
+    expect(readme).toContain('| `@bilig/workpaper`')
+    expect(readme).toContain('Running workbook tools, MCP, or product workflows')
+    expect(readme).toContain('| `@bilig/headless`')
+    expect(readme).toContain('Owning workbook state inside Node')
+    expect(readme).toContain('| `@bilig/core`')
+    expect(readme).toContain('Implementing calculation or mutation internals')
     expect(readme).not.toContain('The main API is intentionally small')
     expect(readme.split(/\r?\n/).length).toBeLessThanOrEqual(260)
 
