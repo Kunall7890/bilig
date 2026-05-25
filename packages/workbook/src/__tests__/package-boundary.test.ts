@@ -147,7 +147,13 @@ describe('@bilig/workbook package boundary', () => {
   })
 
   it('keeps the first README path neutral and strict-proof oriented', () => {
-    const example = shapeExample(readFileSync(readmePath, 'utf8'))
+    const readme = readFileSync(readmePath, 'utf8')
+    const example = shapeExample(readme)
+
+    expect(readme).toContain('## Use These First')
+    expect(readme).toContain('## Mental Model')
+    expect(readme).not.toContain('The main API is intentionally small')
+    expect(readme.split(/\r?\n/).length).toBeLessThanOrEqual(260)
 
     expect(example).toContain("workbook.findName('input')")
     expect(example).toContain("workbook.findName('factor')")
