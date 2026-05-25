@@ -187,7 +187,11 @@ function invalid<T>(message: string): DataValidation<T> {
 }
 
 function isRecord(value: unknown): value is object {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false
+  }
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
 }
 
 function errorMessage(error: unknown): string {

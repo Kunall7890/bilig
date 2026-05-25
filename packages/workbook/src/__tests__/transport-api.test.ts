@@ -90,6 +90,14 @@ function arrayBackedRecord(fields: Record<string, unknown>): unknown[] {
   return value
 }
 
+function customPrototype(value: object): unknown {
+  const custom = new (class {
+    readonly inherited = true
+  })()
+  Object.defineProperties(custom, Object.getOwnPropertyDescriptors(value))
+  return custom
+}
+
 describe('@bilig/workbook transport api', () => {
   it('round-trips refs as plain JSON data and hydrates ergonomic helpers back', () => {
     const table = findTable({ name: 'Inputs', sheetName: 'Model', headers: ['Amount', 'Status'] })
@@ -723,23 +731,39 @@ describe('@bilig/workbook transport api', () => {
     expect(isPlanData(inheritedData)).toBe(false)
     expect(checkPlanData(inheritedData)).toEqual({
       status: 'invalid',
-      issues: expect.arrayContaining([
+      issues: [
         {
           code: 'invalid_plan_data',
-          path: 'modelName',
-          message: 'Workbook plan data modelName must be a string',
+          path: 'plan',
+          message: 'Workbook plan data must be an object',
         },
+      ],
+    })
+  })
+
+  it('rejects custom-prototype transported plan data', () => {
+    const model = defineModel({
+      name: 'transport-custom-prototype-plan-model',
+      find() {
+        return {}
+      },
+      actions: {
+        seed({ workbook }) {
+          workbook.writeValue(findRange({ sheetName: 'Sheet1', address: 'A1' }), 1)
+        },
+      },
+    })
+    const plan = buildWorkbookActionPlan(model, 'seed')
+
+    expect(checkPlanData(customPrototype(describePlan(plan)))).toEqual({
+      status: 'invalid',
+      issues: [
         {
           code: 'invalid_plan_data',
-          path: 'actionName',
-          message: 'Workbook plan data actionName must be a string',
+          path: 'plan',
+          message: 'Workbook plan data must be an object',
         },
-        {
-          code: 'invalid_plan_data',
-          path: 'refsUsed',
-          message: 'Workbook plan data refsUsed must be an array',
-        },
-      ]),
+      ],
     })
   })
 
@@ -821,61 +845,16 @@ describe('@bilig/workbook transport api', () => {
     )
 
     expect(checkPlanData(data)).toEqual({
-      status: 'valid',
-      plan: {
-        modelName: 'transport-inherited-optional-plan-model',
-        actionName: 'format',
-        refsUsed: [target],
-        commands: [
-          {
-            kind: 'format',
-            target,
-            numberFormat: '0.00',
-          },
-        ],
-        ops: [],
-        changed: [
-          {
-            kind: 'format',
-            message: 'formatted range',
-          },
-        ],
-        checks: [
-          {
-            status: 'planned',
-            kind: 'exists',
-            message: 'range exists',
-          },
-        ],
-      },
-      issues: [],
-    })
-    expect(describePlan(hydratePlanData(data))).toEqual({
-      modelName: 'transport-inherited-optional-plan-model',
-      actionName: 'format',
-      refsUsed: [target],
-      commands: [
+      status: 'invalid',
+      issues: [
         {
-          kind: 'format',
-          target,
-          numberFormat: '0.00',
-        },
-      ],
-      ops: [],
-      changed: [
-        {
-          kind: 'format',
-          message: 'formatted range',
-        },
-      ],
-      checks: [
-        {
-          status: 'planned',
-          kind: 'exists',
-          message: 'range exists',
+          code: 'invalid_plan_data',
+          path: 'plan',
+          message: 'Workbook plan data must be an object',
         },
       ],
     })
+    expect(() => hydratePlanData(data)).toThrow('Workbook plan data is invalid: Workbook plan data must be an object')
     expect(getterInvoked).toBe(false)
   })
 

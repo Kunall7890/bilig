@@ -33,7 +33,11 @@ function canonicalValue(value: unknown): unknown {
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false
+  }
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
 }
 
 export function ownDataDescriptor(value: object, key: string): PropertyDescriptor | undefined {
@@ -88,7 +92,7 @@ export function cloneData(value: unknown, seen = new WeakMap<object, unknown>())
     }
     return cloned
   }
-  const cloned: Record<string, unknown> = Object.create(Object.getPrototypeOf(value))
+  const cloned: Record<string, unknown> = {}
   seen.set(value, cloned)
   Object.entries(Object.getOwnPropertyDescriptors(value)).forEach(([key, descriptor]) => {
     if (!descriptor.enumerable) {

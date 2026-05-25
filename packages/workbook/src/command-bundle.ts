@@ -553,7 +553,11 @@ function ownValue(value: Record<string, unknown>, key: string): unknown {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false
+  }
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
 }
 
 function isSafeNonNegativeInteger(value: unknown): value is number {
@@ -621,7 +625,7 @@ function cloneData(value: unknown, seen = new WeakMap<object, unknown>()): unkno
     }
     return cloned
   }
-  const cloned: Record<string, unknown> = Object.create(Object.getPrototypeOf(value))
+  const cloned: Record<string, unknown> = {}
   seen.set(value, cloned)
   Object.entries(Object.getOwnPropertyDescriptors(value)).forEach(([key, descriptor]) => {
     if (descriptor.enumerable && 'value' in descriptor) {

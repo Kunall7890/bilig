@@ -40,6 +40,14 @@ function accessorArray(get: () => unknown): unknown[] {
   return value
 }
 
+function customPrototype(value: object): unknown {
+  const custom = new (class {
+    readonly inherited = true
+  })()
+  Object.defineProperties(custom, Object.getOwnPropertyDescriptors(value))
+  return custom
+}
+
 function arrayBackedRuntimeRequirements(): unknown[] {
   const value: unknown[] = []
   Object.defineProperties(value, {
@@ -289,6 +297,27 @@ describe('@bilig/workbook runtime requirements api', () => {
     expect(Object.isFrozen(result.issues)).toBe(true)
   })
 
+  it('rejects custom-prototype runtime requirement payloads', () => {
+    expect(
+      checkRuntimeRequirements(
+        customPrototype({
+          modelName: 'custom-prototype-requirements-model',
+          actionName: 'seed',
+          requirements: [],
+        }),
+      ),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'requirements',
+          message: 'Workbook runtime requirements must be an object',
+        },
+      ],
+    })
+  })
+
   it('returns frozen normalized runtime requirements from transported data', () => {
     const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
     const input = {
@@ -363,23 +392,13 @@ describe('@bilig/workbook runtime requirements api', () => {
 
     expect(checkRuntimeRequirements(inheritedRequirements)).toEqual({
       status: 'invalid',
-      issues: expect.arrayContaining([
-        {
-          code: 'invalid_runtime_requirements',
-          path: 'modelName',
-          message: 'Workbook runtime requirements modelName must be a string',
-        },
-        {
-          code: 'invalid_runtime_requirements',
-          path: 'actionName',
-          message: 'Workbook runtime requirements actionName must be a string',
-        },
+      issues: [
         {
           code: 'invalid_runtime_requirements',
           path: 'requirements',
-          message: 'Workbook runtime requirements requirements must be an array',
+          message: 'Workbook runtime requirements must be an object',
         },
-      ]),
+      ],
     })
   })
 

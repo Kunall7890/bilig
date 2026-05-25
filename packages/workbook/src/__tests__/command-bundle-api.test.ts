@@ -38,6 +38,14 @@ const setCellValueOp = {
   value: 1,
 } as const
 
+function customPrototype(value: object): unknown {
+  const custom = new (class {
+    readonly inherited = true
+  })()
+  Object.defineProperties(custom, Object.getOwnPropertyDescriptors(value))
+  return custom
+}
+
 describe('@bilig/workbook command bundle api', () => {
   it('exports frozen command bundle vocabulary', () => {
     expect(workbookCommandBundleCommandKinds).toEqual(['request', 'op'])
@@ -148,6 +156,55 @@ describe('@bilig/workbook command bundle api', () => {
       touchedCellCount: 5,
     })
     expect(workbookCommandResultFor(check.bundle)).toEqual(check.result)
+  })
+
+  it('rejects custom-prototype command bundle and result payloads', () => {
+    expect(
+      checkWorkbookCommandBundle(
+        customPrototype({
+          targetRevision: 1,
+          idempotencyKey: 'custom-prototype-bundle',
+          commands: [
+            {
+              kind: 'op',
+              destructive: true,
+              op: setCellValueOp,
+            },
+          ],
+        }),
+      ),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_bundle',
+          path: 'bundle',
+          message: 'Workbook command bundle must be an object',
+        },
+      ],
+    })
+
+    expect(
+      checkWorkbookCommandResult(
+        customPrototype({
+          status: 'accepted',
+          targetRevision: 1,
+          idempotencyKey: 'custom-prototype-result',
+          commandCount: 1,
+          touchedRanges: [],
+          touchedCellCount: 0,
+        }),
+      ),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_result',
+          path: 'result',
+          message: 'Workbook command result must be an object',
+        },
+      ],
+    })
   })
 
   it('ignores command bundle envelope scratch fields without invoking getters', () => {

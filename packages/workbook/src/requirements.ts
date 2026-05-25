@@ -410,7 +410,11 @@ export function describeRuntimeRequirements<Refs>(plan: WorkbookExecutablePlan<R
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false
+  }
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
 }
 
 function ownValue(value: object, key: string): unknown {

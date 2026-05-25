@@ -22,6 +22,14 @@ function requiredArray(value: unknown, path: string): unknown[] {
   return value
 }
 
+function customPrototype(value: object): unknown {
+  const custom = new (class {
+    readonly inherited = true
+  })()
+  Object.defineProperties(custom, Object.getOwnPropertyDescriptors(value))
+  return custom
+}
+
 describe('@bilig/workbook readback proof api', () => {
   it('validates transported readback proof into frozen verified checks', () => {
     const proof = readFixture('readback-proof.json')
@@ -49,6 +57,18 @@ describe('@bilig/workbook readback proof api', () => {
         }),
       }),
     ])
+  })
+
+  it('rejects custom-prototype readback proof payloads', () => {
+    expect(checkWorkbookReadbackProof(customPrototype({ checks: [], readbacks: [] }))).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'readback_invalid',
+          message: 'Workbook readback proof is invalid',
+        },
+      ],
+    })
   })
 
   it('accepts transported nested refs without live helper methods', () => {

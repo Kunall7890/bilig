@@ -301,7 +301,7 @@ describe('@bilig/workbook run api', () => {
       errors: [
         {
           code: 'runtime_rejected',
-          message: 'Workbook action run-value-model.write returned an invalid apply status',
+          message: 'Workbook action run-value-model.write returned an invalid apply result',
         },
       ],
       checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
@@ -1045,7 +1045,7 @@ describe('@bilig/workbook run api', () => {
       errors: [
         {
           code: 'invalid_check_verification',
-          message: 'Check verifier returned an invalid status at index 0',
+          message: 'Check verifier returned an invalid check at index 0',
         },
       ],
       checks: [expect.objectContaining({ status: 'planned', kind: 'exists', message: 'Sheet1!C2 exists' })],

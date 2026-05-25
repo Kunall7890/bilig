@@ -36,6 +36,14 @@ function accessorArray(get: () => unknown): unknown[] {
   return value
 }
 
+function customPrototype(value: object): unknown {
+  const custom = new (class {
+    readonly inherited = true
+  })()
+  Object.defineProperties(custom, Object.getOwnPropertyDescriptors(value))
+  return custom
+}
+
 describe('@bilig/workbook feature api', () => {
   it('exports frozen command vocabulary for agent tools', () => {
     expect(workbookCommandCategories).toEqual(['command', 'operation', 'mutation'])
@@ -186,18 +194,54 @@ describe('@bilig/workbook feature api', () => {
     expect(isWorkbookCommandRequest(inheritedRequest)).toBe(false)
     expect(checkWorkbookCommandRequest(inheritedRequest)).toEqual({
       status: 'invalid',
-      issues: expect.arrayContaining([
+      issues: [
         {
           code: 'invalid_command_request',
-          path: 'featureId',
-          message: 'Workbook command request feature id must be a string',
+          path: 'request',
+          message: 'Workbook command request must be an object',
         },
+      ],
+    })
+  })
+
+  it('rejects custom-prototype command request and receipt payloads', () => {
+    expect(
+      checkWorkbookCommandRequest(
+        customPrototype({
+          featureId: 'tables',
+          commandId: 'tables.create',
+        }),
+      ),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
         {
           code: 'invalid_command_request',
-          path: 'commandId',
-          message: 'Workbook command request command id must be a string',
+          path: 'request',
+          message: 'Workbook command request must be an object',
         },
-      ]),
+      ],
+    })
+
+    expect(
+      checkWorkbookCommandReceipt(
+        customPrototype({
+          status: 'previewed',
+          featureId: 'tables',
+          commandId: 'tables.create',
+          category: 'command',
+          previewOps: [],
+        }),
+      ),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_receipt',
+          path: 'receipt',
+          message: 'Workbook command receipt must be an object',
+        },
+      ],
     })
   })
 
@@ -1233,7 +1277,7 @@ describe('@bilig/workbook feature api', () => {
         {
           code: 'invalid_command_receipt',
           path: 'changedRanges[0]',
-          message: 'Workbook command receipt changedRanges[0] must include sheetName, startAddress, and endAddress strings',
+          message: 'Workbook command receipt changedRanges[0] must be an object',
         },
       ],
     })
@@ -1251,23 +1295,13 @@ describe('@bilig/workbook feature api', () => {
     expect(isWorkbookCommandReceipt(inheritedReceipt)).toBe(false)
     expect(checkWorkbookCommandReceipt(inheritedReceipt)).toEqual({
       status: 'invalid',
-      issues: expect.arrayContaining([
+      issues: [
         {
           code: 'invalid_command_receipt',
-          path: 'status',
-          message: 'Workbook command receipt status is invalid',
+          path: 'receipt',
+          message: 'Workbook command receipt must be an object',
         },
-        {
-          code: 'invalid_command_receipt',
-          path: 'featureId',
-          message: 'Workbook command receipt feature id must be a string',
-        },
-        {
-          code: 'invalid_command_receipt',
-          path: 'commandId',
-          message: 'Workbook command receipt command id must be a string',
-        },
-      ]),
+      ],
     })
   })
 })
