@@ -726,6 +726,168 @@ describe('workbook agent mutation receipt helpers', () => {
     expect(payload.mutationReceipt.semanticReadback.incompleteReason).toContain('Rendered')
   })
 
+  it('does not report applied when only the first mutated target range is visibly proven', async () => {
+    const engine = await createEngine()
+    const firstCommand: WorkbookAgentCommand = {
+      kind: 'writeRange',
+      sheetName: 'Sheet1',
+      startAddress: 'B2',
+      values: [['First visible target']],
+    }
+    const secondCommand: WorkbookAgentCommand = {
+      kind: 'writeRange',
+      sheetName: 'Sheet1',
+      startAddress: 'C3',
+      values: [['Second hidden target']],
+    }
+    const bundle = createWorkbookAgentCommandBundle({
+      bundleId: 'bundle-multi-range-render-proof',
+      documentId: 'doc-1',
+      threadId: 'thr-1',
+      turnId: 'turn-1',
+      goalText: 'mutation receipt test',
+      baseRevision: 1,
+      now: 1,
+      context: null,
+      commands: [firstCommand, secondCommand],
+    })
+    const undoBundle = applyWorkbookAgentCommandBundleWithUndoCapture(engine, bundle)
+    const { zeroSyncService } = createZeroSyncHarness(engine, {
+      headRevision: 2,
+      calculatedRevision: 2,
+      changes: [
+        {
+          revision: 2,
+          actorUserId: 'alex@example.com',
+          clientMutationId: null,
+          eventKind: 'applyAgentCommandBundle',
+          summary: 'Write cells in Sheet1!B2 and Sheet1!C3',
+          sheetId: null,
+          sheetName: 'Sheet1',
+          anchorAddress: 'B2',
+          range: {
+            sheetName: 'Sheet1',
+            startAddress: 'B2',
+            endAddress: 'C3',
+          },
+          rangeInvalid: false,
+          undoBundle,
+          revertedByRevision: null,
+          revertsRevision: null,
+          createdAtUnixMs: 2,
+        },
+      ],
+    })
+
+    const result = await stageWorkbookAgentCommandResult(
+      {
+        documentId: 'doc-1',
+        session: { userID: 'alex@example.com', roles: ['editor'] },
+        uiContext: createRenderedContext({
+          address: 'B2',
+          value: 'First visible target',
+          capturedRevision: 2,
+        }),
+        zeroSyncService,
+        stageCommand: async () => ({
+          bundle,
+          executionRecord: {
+            id: `run-${bundle.id}`,
+            bundleId: bundle.id,
+            documentId: bundle.documentId,
+            threadId: bundle.threadId,
+            turnId: bundle.turnId,
+            actorUserId: 'alex@example.com',
+            goalText: bundle.goalText,
+            planText: null,
+            summary: bundle.summary,
+            scope: bundle.scope,
+            riskClass: bundle.riskClass,
+            acceptedScope: 'full',
+            appliedBy: 'auto',
+            baseRevision: bundle.baseRevision,
+            appliedRevision: 2,
+            context: bundle.context,
+            commands: bundle.commands,
+            preview: {
+              ranges: bundle.affectedRanges,
+              structuralChanges: [],
+              cellDiffs: [
+                {
+                  sheetName: 'Sheet1',
+                  address: 'B2',
+                  beforeInput: null,
+                  beforeFormula: null,
+                  afterInput: 'First visible target',
+                  afterFormula: null,
+                  changeKinds: ['input'],
+                },
+                {
+                  sheetName: 'Sheet1',
+                  address: 'C3',
+                  beforeInput: null,
+                  beforeFormula: null,
+                  afterInput: 'Second hidden target',
+                  afterFormula: null,
+                  changeKinds: ['input'],
+                },
+              ],
+              effectSummary: {
+                displayedCellDiffCount: 2,
+                truncatedCellDiffs: false,
+                inputChangeCount: 2,
+                formulaChangeCount: 0,
+                styleChangeCount: 0,
+                numberFormatChangeCount: 0,
+                structuralChangeCount: 0,
+              },
+            },
+            createdAtUnixMs: 2,
+            appliedAtUnixMs: 2,
+          },
+        }),
+      },
+      firstCommand,
+      'writeRange',
+    )
+
+    const payload = z
+      .object({
+        applied: z.literal(false),
+        status: z.literal('verification_incomplete'),
+        mutationReceipt: z.object({
+          status: z.literal('verification_incomplete'),
+          authoritativeReadback: z.object({
+            matched: z.literal(true),
+          }),
+          renderedReadback: z.object({
+            matched: z.null(),
+            available: z.literal(false),
+            rangeProofs: z.array(
+              z.object({
+                requestedRange: z.object({
+                  sheetName: z.literal('Sheet1'),
+                  startAddress: z.string(),
+                  endAddress: z.string(),
+                }),
+                matched: z.union([z.literal(true), z.null()]),
+              }),
+            ),
+            incompleteReason: z.string(),
+          }),
+          semanticReadback: z.object({
+            matched: z.literal(false),
+          }),
+        }),
+      })
+      .parse(parsePayload(result))
+    expect(payload.mutationReceipt.renderedReadback.rangeProofs).toHaveLength(2)
+    expect(payload.mutationReceipt.renderedReadback.rangeProofs[0]?.matched).toBe(true)
+    expect(payload.mutationReceipt.renderedReadback.rangeProofs[1]?.requestedRange.startAddress).toBe('C3')
+    expect(payload.mutationReceipt.renderedReadback.rangeProofs[1]?.matched).toBeNull()
+    expect(payload.mutationReceipt.renderedReadback.incompleteReason).toContain('Requested range was not captured')
+  })
+
   it('does not report applied when undo proof is missing even if readbacks agree', async () => {
     const engine = await createEngine()
     const appliedValue = 'Undo proof required'

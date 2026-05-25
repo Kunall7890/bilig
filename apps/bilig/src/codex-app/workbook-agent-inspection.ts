@@ -46,6 +46,45 @@ function orderedSheetNames(runtime: WorkbookRuntime): readonly string[] {
     .map((sheet) => sheet.name)
 }
 
+function sheetIdForName(runtime: WorkbookRuntime, sheetName: string): number | null {
+  return runtime.engine.workbook.getSheet(sheetName)?.id ?? null
+}
+
+function finiteSheetId(value: unknown): number | null {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null
+}
+
+function normalizeRenderedRangeSheetIdentity(
+  runtime: WorkbookRuntime,
+  range: NonNullable<NonNullable<WorkbookAgentUiContext['rendered']>['selection']>,
+): NonNullable<NonNullable<WorkbookAgentUiContext['rendered']>['selection']> | null {
+  const expectedSheetId = sheetIdForName(runtime, range.range.sheetName)
+  const capturedSheetId = finiteSheetId(range.range.sheetId)
+  if (expectedSheetId !== null && capturedSheetId !== null && capturedSheetId !== expectedSheetId) {
+    return null
+  }
+  return {
+    ...structuredClone(range),
+    range: {
+      ...(expectedSheetId === null ? {} : { sheetId: expectedSheetId }),
+      sheetName: range.range.sheetName,
+      startAddress: range.range.startAddress,
+      endAddress: range.range.endAddress,
+    },
+  }
+}
+
+function normalizeRenderedContextSheetIdentity(
+  runtime: WorkbookRuntime,
+  rendered: NonNullable<WorkbookAgentUiContext['rendered']>,
+): NonNullable<WorkbookAgentUiContext['rendered']> {
+  return {
+    ...structuredClone(rendered),
+    selection: rendered.selection ? normalizeRenderedRangeSheetIdentity(runtime, rendered.selection) : null,
+    visibleRange: rendered.visibleRange ? normalizeRenderedRangeSheetIdentity(runtime, rendered.visibleRange) : null,
+  }
+}
+
 function normalizeAddressOrFallback(sheetName: string, address: string): string {
   try {
     const parsed = parseCellAddress(address, sheetName)
@@ -68,6 +107,9 @@ export function normalizeWorkbookAgentUiContext(
   }
   const selectionSheetExists = sheetNames.includes(context.selection.sheetName)
   const sheetName = selectionSheetExists ? context.selection.sheetName : sheetNames[0]!
+  const sheetId = sheetIdForName(runtime, sheetName)
+  const capturedSelectionSheetId = finiteSheetId(context.selection.sheetId)
+  const selectionSheetIdentityMatches = sheetId === null || capturedSelectionSheetId === null || capturedSelectionSheetId === sheetId
   const address = normalizeAddressOrFallback(sheetName, context.selection.address)
   const range =
     context.selection.range === undefined
@@ -78,6 +120,7 @@ export function normalizeWorkbookAgentUiContext(
         }
   return {
     selection: {
+      ...(sheetId === null ? {} : { sheetId }),
       sheetName,
       address,
       ...(range ? { range } : {}),
@@ -88,7 +131,9 @@ export function normalizeWorkbookAgentUiContext(
       colStart: Math.max(0, Math.trunc(context.viewport.colStart)),
       colEnd: Math.max(0, Math.trunc(context.viewport.colEnd)),
     },
-    ...(selectionSheetExists && context.rendered !== undefined ? { rendered: structuredClone(context.rendered) } : {}),
+    ...(selectionSheetExists && selectionSheetIdentityMatches && context.rendered !== undefined
+      ? { rendered: normalizeRenderedContextSheetIdentity(runtime, context.rendered) }
+      : {}),
   }
 }
 
@@ -310,6 +355,7 @@ export function inspectWorkbookRange(
   readonly rows: readonly JsonValue[]
 } {
   const normalizedRange = normalizeWorkbookAgentRange(range)
+  const sheetId = runtime.engine.workbook.getSheet(normalizedRange.sheetName)?.id
   const styleIds = new Set<string>()
   const numberFormatIds = new Set<string>()
   const rows: JsonValue[] = []
@@ -339,6 +385,7 @@ export function inspectWorkbookRange(
 
   return {
     range: {
+      ...(typeof sheetId === 'number' ? { sheetId } : {}),
       sheetName: normalizedRange.sheetName,
       startAddress: normalizedRange.startAddress,
       endAddress: normalizedRange.endAddress,

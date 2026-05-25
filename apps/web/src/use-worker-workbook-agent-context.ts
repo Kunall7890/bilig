@@ -55,6 +55,7 @@ function normalizeCellRangeRef(range: CellRangeRef): CellRangeRef & {
   const startCol = Math.min(start.col, end.col)
   const endCol = Math.max(start.col, end.col)
   return {
+    ...(typeof range.sheetId === 'number' && Number.isSafeInteger(range.sheetId) ? { sheetId: range.sheetId } : {}),
     sheetName: range.sheetName,
     startAddress: formatAddress(startRow, startCol),
     endAddress: formatAddress(endRow, endCol),
@@ -73,6 +74,7 @@ function buildRenderedRangeSnapshot(
     return null
   }
   const normalized = normalizeCellRangeRef(range)
+  const sheetIdentity = viewportStore.getSheetIdentity(normalized.sheetName)
   const rowCount = normalized.endRow - normalized.startRow + 1
   const columnCount = normalized.endCol - normalized.startCol + 1
   const cellCount = rowCount * columnCount
@@ -102,6 +104,7 @@ function buildRenderedRangeSnapshot(
   }
   return {
     range: {
+      ...(sheetIdentity === null ? {} : { sheetId: sheetIdentity.sheetId }),
       sheetName: normalized.sheetName,
       startAddress: normalized.startAddress,
       endAddress: normalized.endAddress,
@@ -230,6 +233,7 @@ export function useWorkerWorkbookAgentContext(input: {
   const buildCurrentAgentContext = useCallback((): WorkbookAgentUiContext => {
     const activeSelection = selectionSnapshotRef.current
     const activeViewport = visibleViewportRef.current
+    const activeSheetIdentity = workerHandleRef.current?.viewportStore.getSheetIdentity(activeSelection.sheetName) ?? null
     const viewportRange = {
       sheetName: activeSelection.sheetName,
       startAddress: formatAddress(activeViewport.rowStart, activeViewport.colStart),
@@ -237,6 +241,7 @@ export function useWorkerWorkbookAgentContext(input: {
     }
     return buildWorkbookAgentContext({
       selection: activeSelection,
+      ...(activeSheetIdentity === null ? {} : { selectionSheetId: activeSheetIdentity.sheetId }),
       viewport: activeViewport,
       rendered: {
         capturedAtUnixMs: Date.now(),

@@ -22,7 +22,7 @@ export interface WorkbookVerificationMismatch {
   readonly source: 'authoritative' | 'rendered'
 }
 
-export interface WorkbookRenderedReadbackProof {
+export interface WorkbookRenderedRangeReadbackProof {
   readonly requested: boolean
   readonly requestedRange: CellRangeRef | null
   readonly available: boolean
@@ -41,6 +41,10 @@ export interface WorkbookRenderedReadbackProof {
   readonly incompleteReason: string | null
   readonly nextChunk: WorkbookAgentRangeChunk | null
   readonly range: WorkbookAgentRenderedRange | null
+}
+
+export interface WorkbookRenderedReadbackProof extends WorkbookRenderedRangeReadbackProof {
+  readonly rangeProofs: readonly WorkbookRenderedRangeReadbackProof[]
 }
 
 export interface WorkbookRenderedVisibleSceneProofStatus {
@@ -112,6 +116,19 @@ function hasText(value: string | null | undefined): value is string {
 
 function proofRevisionMatches(current: string | null | undefined, presented: string | null | undefined): boolean {
   return hasText(current) && hasText(presented) && current === presented
+}
+
+function rangeSheetId(range: CellRangeRef): number | null {
+  return typeof range.sheetId === 'number' && Number.isSafeInteger(range.sheetId) && range.sheetId >= 0 ? range.sheetId : null
+}
+
+function sameSheetIdentity(source: CellRangeRef, requested: CellRangeRef): boolean {
+  const sourceSheetId = rangeSheetId(source)
+  const requestedSheetId = rangeSheetId(requested)
+  if (requestedSheetId !== null) {
+    return sourceSheetId === requestedSheetId
+  }
+  return source.sheetName === requested.sheetName
 }
 
 function isRenderedValueTag(value: unknown): value is ValueTag {
@@ -282,7 +299,7 @@ function rangeContains(container: CellRangeRef, requested: CellRangeRef): boolea
   const source = normalizeWorkbookAgentRange(container)
   const target = normalizeWorkbookAgentRange(requested)
   return (
-    source.sheetName === target.sheetName &&
+    sameSheetIdentity(source, target) &&
     source.startRow <= target.startRow &&
     source.endRow >= target.endRow &&
     source.startCol <= target.startCol &&
@@ -306,7 +323,7 @@ function pickRenderedRange(
     candidates.find((entry) => {
       const source = toWorkbookAgentRangeRef(entry.range)
       const target = toWorkbookAgentRangeRef(requestedRange)
-      return source.sheetName === target.sheetName && source.startAddress === target.startAddress && source.endAddress === target.endAddress
+      return sameSheetIdentity(source, target) && source.startAddress === target.startAddress && source.endAddress === target.endAddress
     }) ??
     candidates.find((entry) => rangeContains(entry.range, requestedRange)) ??
     null
@@ -494,6 +511,16 @@ export function selectWorkbookRenderedReadback(input: {
   readonly minRevision?: number | null
   readonly nextChunk?: WorkbookAgentRangeChunk | null
 }): WorkbookRenderedReadbackProof {
+  return withRangeProofs(selectWorkbookRenderedRangeReadback(input))
+}
+
+function selectWorkbookRenderedRangeReadback(input: {
+  readonly renderedContext: WorkbookAgentRenderedContext | null | undefined
+  readonly requestedRange: CellRangeRef
+  readonly authoritativeRows?: readonly (readonly unknown[])[]
+  readonly minRevision?: number | null
+  readonly nextChunk?: WorkbookAgentRangeChunk | null
+}): WorkbookRenderedRangeReadbackProof {
   const requestedRange = toWorkbookAgentRangeRef(input.requestedRange)
   const renderedContext = input.renderedContext ?? null
   const selectedRange = pickRenderedRange(renderedContext, requestedRange)
@@ -556,12 +583,64 @@ export function selectWorkbookRenderedReadback(input: {
   }
 }
 
+function firstNonNullReason(proofs: readonly WorkbookRenderedRangeReadbackProof[]): string | null {
+  return proofs.find((proof) => proof.incompleteReason !== null)?.incompleteReason ?? null
+}
+
+function aggregateMatch(proofs: readonly WorkbookRenderedRangeReadbackProof[]): boolean | null {
+  if (proofs.length === 0) {
+    return null
+  }
+  if (proofs.every((proof) => proof.matched === true)) {
+    return true
+  }
+  if (proofs.some((proof) => proof.matched === false)) {
+    return false
+  }
+  return null
+}
+
+function withRangeProofs(proof: WorkbookRenderedRangeReadbackProof): WorkbookRenderedReadbackProof {
+  return {
+    ...proof,
+    rangeProofs: [proof],
+  }
+}
+
+export function combineWorkbookRenderedReadbackProofs(
+  proofs: readonly WorkbookRenderedRangeReadbackProof[],
+): WorkbookRenderedReadbackProof {
+  const primary = proofs[0] ?? null
+  if (!primary) {
+    return emptyWorkbookRenderedReadbackProof({
+      requested: false,
+      reason: 'No target cell range was available for rendered readback.',
+    })
+  }
+  const matched = aggregateMatch(proofs)
+  const incompleteReason =
+    matched === true ? null : (firstNonNullReason(proofs) ?? 'Rendered readback did not prove every target range in the mutation.')
+  return {
+    ...primary,
+    available: proofs.every((proof) => proof.available),
+    matched,
+    stale: proofs.some((proof) => proof.stale),
+    truncated: proofs.some((proof) => proof.truncated),
+    sourceTruncated: proofs.some((proof) => proof.sourceTruncated),
+    missingCells: proofs.flatMap((proof) => proof.missingCells),
+    mismatches: proofs.flatMap((proof) => proof.mismatches),
+    incompleteReason,
+    nextChunk: proofs.find((proof) => proof.nextChunk !== null)?.nextChunk ?? null,
+    rangeProofs: proofs,
+  }
+}
+
 export function emptyWorkbookRenderedReadbackProof(input: {
   readonly requested: boolean
   readonly requestedRange?: CellRangeRef | null
   readonly reason: string
 }): WorkbookRenderedReadbackProof {
-  return {
+  const proof: WorkbookRenderedRangeReadbackProof = {
     requested: input.requested,
     requestedRange: input.requestedRange ? toWorkbookAgentRangeRef(input.requestedRange) : null,
     available: false,
@@ -582,5 +661,9 @@ export function emptyWorkbookRenderedReadbackProof(input: {
     incompleteReason: input.reason,
     nextChunk: null,
     range: null,
+  }
+  return {
+    ...proof,
+    rangeProofs: input.requestedRange ? [proof] : [],
   }
 }

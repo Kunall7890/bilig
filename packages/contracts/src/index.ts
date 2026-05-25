@@ -40,6 +40,7 @@ export const SnapshotMetadataSchema = Schema.Struct({
 export type SnapshotMetadata = Schema.Schema.Type<typeof SnapshotMetadataSchema>
 
 export const WorkbookAgentUiSelectionSchema = Schema.Struct({
+  sheetId: Schema.optionalWith(Schema.Number, {}),
   sheetName: Schema.String,
   address: Schema.String,
   range: Schema.optionalWith(
@@ -74,6 +75,7 @@ export type WorkbookAgentRenderedCell = Schema.Schema.Type<typeof WorkbookAgentR
 
 export const WorkbookAgentRenderedRangeSchema = Schema.Struct({
   range: Schema.Struct({
+    sheetId: Schema.optionalWith(Schema.Number, {}),
     sheetName: Schema.String,
     startAddress: Schema.String,
     endAddress: Schema.String,

@@ -12,6 +12,7 @@ const COMMAND_EXECUTION_TOOL_NAME = 'command_execution'
 
 const workbookAgentRenderedRangeSchema = z.object({
   range: z.object({
+    sheetId: z.number().int().nonnegative().optional(),
     sheetName: z.string().min(1),
     startAddress: z.string().min(1),
     endAddress: z.string().min(1),
@@ -73,6 +74,7 @@ const workbookAgentRenderedVisibleSceneProofSchema = z.object({
 
 const workbookAgentUiContextSchema: z.ZodType<WorkbookAgentUiContext> = z.object({
   selection: z.object({
+    sheetId: z.number().int().nonnegative().optional(),
     sheetName: z.string().min(1),
     address: z.string().min(1),
     range: z

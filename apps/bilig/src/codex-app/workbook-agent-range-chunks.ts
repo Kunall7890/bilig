@@ -38,6 +38,7 @@ export function normalizeWorkbookAgentRange(range: CellRangeRef): NormalizedWork
   const startCol = Math.min(start.col, end.col)
   const endCol = Math.max(start.col, end.col)
   return {
+    ...(typeof range.sheetId === 'number' && Number.isSafeInteger(range.sheetId) ? { sheetId: range.sheetId } : {}),
     sheetName: range.sheetName,
     startAddress: formatAddress(startRow, startCol),
     endAddress: formatAddress(endRow, endCol),
@@ -81,6 +82,7 @@ export function enumerateWorkbookAgentRangeAddresses(range: CellRangeRef, limit 
 export function toWorkbookAgentRangeRef(range: CellRangeRef): CellRangeRef {
   const normalized = normalizeWorkbookAgentRange(range)
   return {
+    ...(typeof normalized.sheetId === 'number' && Number.isSafeInteger(normalized.sheetId) ? { sheetId: normalized.sheetId } : {}),
     sheetName: normalized.sheetName,
     startAddress: normalized.startAddress,
     endAddress: normalized.endAddress,

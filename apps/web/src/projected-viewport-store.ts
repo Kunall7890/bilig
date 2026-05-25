@@ -577,6 +577,10 @@ export class ProjectedViewportStore implements GridEngineLike {
     return this.sheetIdentitiesByName.get(sheetName) ?? null
   }
 
+  getSheetIdentity(sheetName: string): SheetIdentity | null {
+    return this.resolveSheetIdentity(sheetName)
+  }
+
   private noteObservedBatchId(batchId: number): void {
     this.patchRevisionGate.noteObservedBatchId(batchId)
   }

@@ -221,6 +221,7 @@ export interface EngineEvent {
 }
 
 export interface CellRangeRef {
+  sheetId?: number | undefined
   sheetName: string
   startAddress: string
   endAddress: string

@@ -15,6 +15,7 @@ import { findWorkbookFormulaIssues } from './workbook-agent-comprehension.js'
 import { inspectWorkbookRange, normalizeWorkbookAgentUiContext } from './workbook-agent-inspection.js'
 import { countWorkbookAgentRangeCells, createWorkbookAgentRangeChunkPlan, toWorkbookAgentRangeRef } from './workbook-agent-range-chunks.js'
 import {
+  combineWorkbookRenderedReadbackProofs,
   emptyWorkbookRenderedReadbackProof,
   selectWorkbookRenderedReadback,
   type WorkbookRenderedReadbackProof,
@@ -523,12 +524,12 @@ export async function buildWorkbookAuthoritativeReadbackProof(input: {
   }
 }
 
-function firstAuthoritativeRows(readback: WorkbookAuthoritativeReadbackProof): readonly (readonly unknown[])[] | undefined {
-  const first = readback.ranges[0]
-  if (!isRecord(first) || !Array.isArray(first['rows'])) {
+function authoritativeRowsAt(readback: WorkbookAuthoritativeReadbackProof, index: number): readonly (readonly unknown[])[] | undefined {
+  const range = readback.ranges[index]
+  if (!isRecord(range) || !Array.isArray(range['rows'])) {
     return undefined
   }
-  return first['rows'].filter((row): row is readonly unknown[] => Array.isArray(row))
+  return range['rows'].filter((row): row is readonly unknown[] => Array.isArray(row))
 }
 
 function asReadonlyRows(rows: readonly unknown[]): readonly (readonly unknown[])[] {
@@ -548,21 +549,25 @@ export async function buildWorkbookRenderedReadbackProof(input: {
       reason: 'No target cell range was available for rendered readback.',
     })
   }
-  const nextChunk =
-    countWorkbookAgentRangeCells(range) > MAX_RECEIPT_READBACK_CELLS
-      ? (createWorkbookAgentRangeChunkPlan(range, MAX_RECEIPT_READBACK_CELLS).chunks[1] ?? null)
-      : null
   const uiContext = await input.context.zeroSyncService.inspectWorkbook(input.context.documentId, (runtime) =>
     normalizeWorkbookAgentUiContext(runtime, input.context.uiContext),
   )
-  const authoritativeRows = firstAuthoritativeRows(input.authoritativeReadback)
-  return selectWorkbookRenderedReadback({
-    renderedContext: uiContext?.rendered,
-    requestedRange: range,
-    minRevision: input.appliedRevision,
-    nextChunk,
-    ...(authoritativeRows !== undefined ? { authoritativeRows } : {}),
-  })
+  return combineWorkbookRenderedReadbackProofs(
+    input.ranges.map((targetRange, index) => {
+      const nextChunk =
+        countWorkbookAgentRangeCells(targetRange) > MAX_RECEIPT_READBACK_CELLS
+          ? (createWorkbookAgentRangeChunkPlan(targetRange, MAX_RECEIPT_READBACK_CELLS).chunks[1] ?? null)
+          : null
+      const authoritativeRows = authoritativeRowsAt(input.authoritativeReadback, index)
+      return selectWorkbookRenderedReadback({
+        renderedContext: uiContext?.rendered,
+        requestedRange: targetRange,
+        minRevision: input.appliedRevision,
+        nextChunk,
+        ...(authoritativeRows !== undefined ? { authoritativeRows } : {}),
+      })
+    }),
+  )
 }
 
 export async function buildWorkbookAgentVerificationReport(input: {

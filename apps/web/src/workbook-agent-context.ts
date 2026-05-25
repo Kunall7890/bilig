@@ -17,11 +17,13 @@ export function createSingleCellSelectionSnapshot(selection: WorkerRuntimeSelect
 
 export function buildWorkbookAgentContext(input: {
   readonly selection: GridSelectionSnapshot
+  readonly selectionSheetId?: number | undefined
   readonly viewport: Viewport
   readonly rendered?: WorkbookAgentUiContext['rendered']
 }): WorkbookAgentUiContext {
   return {
     selection: {
+      ...(input.selectionSheetId === undefined ? {} : { sheetId: input.selectionSheetId }),
       sheetName: input.selection.sheetName,
       address: input.selection.address,
       range: {

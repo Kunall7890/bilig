@@ -6,6 +6,7 @@ import { selectWorkbookRenderedReadback } from './workbook-agent-rendered-readba
 function renderedContext(input: {
   readonly capturedRevision?: number | null
   readonly batchId: number | null
+  readonly sheetId?: number
   readonly sceneProof?: Partial<NonNullable<WorkbookAgentRenderedContext['visibleSceneProof']>> | null
   readonly value?: string
 }): WorkbookAgentRenderedContext {
@@ -16,6 +17,7 @@ function renderedContext(input: {
     visibleSceneProof: input.sceneProof === null ? null : visibleSceneProof(input.sceneProof ?? {}),
     selection: {
       range: {
+        ...(input.sheetId === undefined ? {} : { sheetId: input.sheetId }),
         sheetName: 'Sheet1',
         startAddress: 'A1',
         endAddress: 'A1',
@@ -176,6 +178,29 @@ describe('selectWorkbookRenderedReadback', () => {
     expect(proof.stale).toBe(true)
     expect(proof.matched).toBeNull()
     expect(proof.incompleteReason).toContain('visible-scene proof')
+  })
+
+  it('requires rendered proof to match the requested sheet identity when sheet id is known', () => {
+    const proof = selectWorkbookRenderedReadback({
+      renderedContext: renderedContext({
+        capturedRevision: 4,
+        batchId: 4,
+        sheetId: 9,
+      }),
+      requestedRange: {
+        sheetId: 10,
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'A1',
+      },
+      authoritativeRows: [[{ address: 'A1', input: 'ok', value: 'ok', formula: null, styleId: null, numberFormatId: null }]],
+      minRevision: 4,
+    })
+
+    expect(proof.available).toBe(false)
+    expect(proof.matched).toBeNull()
+    expect(proof.incompleteReason).toContain('Requested range was not captured')
+    expect(proof.missingCells).toContain('Sheet1!A1')
   })
 
   it('rejects stale semantic mutation ownership even when rendered cells match', () => {
