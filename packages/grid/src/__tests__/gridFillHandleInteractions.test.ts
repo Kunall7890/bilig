@@ -240,6 +240,75 @@ describe('beginWorkbookGridFillHandleDrag', () => {
     expect(preventDefault).toHaveBeenCalledTimes(2)
     expect(stopPropagation).toHaveBeenCalledTimes(2)
   })
+
+  it('batches pointer-up selection commit with preview cleanup so the selected area cannot blink away', () => {
+    const target = new PointerTarget()
+    const cleanupRef = { current: null as (() => void) | null }
+    const batches: string[][] = []
+    let activeBatch: string[] | null = null
+    const record = (label: string) => {
+      if (activeBatch) {
+        activeBatch.push(label)
+        return
+      }
+      batches.push([`unbatched:${label}`])
+    }
+
+    beginWorkbookGridFillHandleDrag({
+      cleanupRef,
+      listenerTarget: target,
+      pointerId: 7,
+      sourceRange: { x: 1, y: 1, width: 1, height: 1 },
+      gridSelection: createRectangleSelectionFromRange({ x: 1, y: 1, width: 1, height: 1 }),
+      resolvePointerCell: (clientX, clientY) => [clientX, clientY],
+      setGridSelection: () => {
+        record('setGridSelection')
+      },
+      onSelectionChange: () => {
+        record('onSelectionChange')
+      },
+      onFillRange: () => {
+        record('onFillRange')
+      },
+      setFillPreviewRange: (range) => {
+        record(range ? 'setFillPreviewRange:preview' : 'setFillPreviewRange:null')
+      },
+      setFillPreviewRangeRef: (range) => {
+        record(range ? 'setFillPreviewRangeRef:preview' : 'setFillPreviewRangeRef:null')
+      },
+      setIsFillHandleDragging: (isDragging) => {
+        record(`setIsFillHandleDragging:${String(isDragging)}`)
+      },
+      resetHoverState: () => {
+        record('resetHoverState')
+      },
+      batchUpdates: (callback) => {
+        const previousBatch = activeBatch
+        const batch: string[] = []
+        activeBatch = batch
+        callback()
+        activeBatch = previousBatch
+        batches.push(batch)
+      },
+    })
+
+    batches.length = 0
+    target.emit('pointermove', { pointerId: 7, clientX: 1, clientY: 3 })
+    batches.length = 0
+    target.emit('pointerup', { pointerId: 7, clientX: 1, clientY: 3 })
+
+    expect(batches.flat().filter((label) => label.startsWith('unbatched:') && label !== 'unbatched:onFillRange')).toEqual([])
+    expect(batches.at(-3)).toEqual(['setFillPreviewRangeRef:preview', 'setFillPreviewRange:preview'])
+    expect(batches.at(-2)).toEqual([
+      'setGridSelection',
+      'onSelectionChange',
+      'setFillPreviewRangeRef:null',
+      'setFillPreviewRange:null',
+      'setIsFillHandleDragging:false',
+      'resetHoverState',
+    ])
+    expect(batches.at(-1)).toEqual(['unbatched:onFillRange'])
+  })
 })
 
 function createScrollViewport(): {

@@ -94,6 +94,13 @@ test('@browser-ci web app keeps the source selection visible while fill-dragging
   )
 
   await page.mouse.up()
+  await expect(page.locator('[data-grid-fill-preview="true"]')).toHaveCount(0)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:C6')
+  await expectVisualRectNear(
+    page.locator('[data-grid-selection-visual-role="selection-border"]'),
+    await getProductCellRangeBox(page, 1, 1, 2, 5),
+    'committed downward fill selection',
+  )
 })
 
 test('@browser-ci web app keeps the source selection visible while fill-dragging rightward inside the grid', async ({ page }) => {
@@ -121,6 +128,13 @@ test('@browser-ci web app keeps the source selection visible while fill-dragging
   )
 
   await page.mouse.up()
+  await expect(page.locator('[data-grid-fill-preview="true"]')).toHaveCount(0)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D3')
+  await expectVisualRectNear(
+    page.locator('[data-grid-selection-visual-role="selection-border"]'),
+    await getProductCellRangeBox(page, 1, 1, 3, 2),
+    'committed rightward fill selection',
+  )
 })
 
 test('@browser-ci web app keeps the fill preview visible while fill-dragging below the grid', async ({ page }) => {

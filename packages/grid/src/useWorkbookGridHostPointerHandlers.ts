@@ -1,4 +1,5 @@
 import { useCallback, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { unstable_batchedUpdates } from 'react-dom'
 import { resolveSelectionMoveAnchorCellFromPointerCell } from './gridRangeMove.js'
 import { sameGridHoverState, type GridHoverState } from './gridHover.js'
 import {
@@ -161,6 +162,7 @@ export function useWorkbookGridHostPointerHandlers(input: {
         },
         setIsFillHandleDragging,
         scrollViewport: renderState.scrollViewportRef.current,
+        batchUpdates: unstable_batchedUpdates,
         resetHoverState: () => {
           setHoverState(resetGridHoverState)
         },

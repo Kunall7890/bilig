@@ -48,8 +48,10 @@ export function beginWorkbookGridFillHandleDrag(input: {
   scrollViewport?: GridDragScrollViewport | null | undefined
   requestAnimationFrame?: RequestGridDragFrame | undefined
   cancelAnimationFrame?: CancelGridDragFrame | undefined
+  batchUpdates?: ((callback: () => void) => void) | undefined
 }): void {
   const {
+    batchUpdates,
     cancelAnimationFrame = resolveDefaultCancelAnimationFrame(),
     cleanupRef,
     gridSelection,
@@ -71,6 +73,14 @@ export function beginWorkbookGridFillHandleDrag(input: {
   let lastPointerEvent: FillHandlePointerEventLike | null = null
   let autoScrollFrame: number | null = null
 
+  const applyVisualUpdates = (callback: () => void) => {
+    if (batchUpdates) {
+      batchUpdates(callback)
+      return
+    }
+    callback()
+  }
+
   const claimPointerEvent = (nativeEvent: FillHandlePointerEventLike): boolean => {
     if (nativeEvent.pointerId !== pointerId) {
       return false
@@ -81,10 +91,12 @@ export function beginWorkbookGridFillHandleDrag(input: {
   }
 
   cleanupRef.current?.()
-  setFillPreviewRangeRef(null)
-  setFillPreviewRange(null)
-  setIsFillHandleDragging(true)
-  resetHoverState()
+  applyVisualUpdates(() => {
+    setFillPreviewRangeRef(null)
+    setFillPreviewRange(null)
+    setIsFillHandleDragging(true)
+    resetHoverState()
+  })
 
   const updatePreview = (nativeEvent: FillHandlePointerEventLike): boolean => {
     if (!claimPointerEvent(nativeEvent)) {
@@ -92,8 +104,10 @@ export function beginWorkbookGridFillHandleDrag(input: {
     }
     const pointerCell = resolvePointerCell(nativeEvent.clientX, nativeEvent.clientY)
     activePreviewRange = pointerCell ? resolveFillHandlePreviewRange(sourceRange, pointerCell) : null
-    setFillPreviewRangeRef(activePreviewRange)
-    setFillPreviewRange(activePreviewRange)
+    applyVisualUpdates(() => {
+      setFillPreviewRangeRef(activePreviewRange)
+      setFillPreviewRange(activePreviewRange)
+    })
     return true
   }
 
@@ -142,27 +156,29 @@ export function beginWorkbookGridFillHandleDrag(input: {
 
   const finish = () => {
     const previewRange = activePreviewRange
-    if (previewRange) {
-      const source = rectangleToAddresses(sourceRange)
-      const target = rectangleToAddresses(previewRange)
-      const nextSelectionRange = resolveFillHandleSelectionRange(sourceRange, previewRange)
-      const nextSelection = createRectangleSelectionFromRange(nextSelectionRange)
-      if (gridSelection.current?.cell && nextSelection.current) {
-        nextSelection.current = {
-          ...nextSelection.current,
-          cell: gridSelection.current.cell,
+    const source = rectangleToAddresses(sourceRange)
+    const target = previewRange ? rectangleToAddresses(previewRange) : null
+    applyVisualUpdates(() => {
+      if (previewRange) {
+        const nextSelectionRange = resolveFillHandleSelectionRange(sourceRange, previewRange)
+        const nextSelection = createRectangleSelectionFromRange(nextSelectionRange)
+        if (gridSelection.current?.cell && nextSelection.current) {
+          nextSelection.current = {
+            ...nextSelection.current,
+            cell: gridSelection.current.cell,
+          }
         }
+        setGridSelection(nextSelection)
+        onSelectionChange(nextSelection)
       }
-      setGridSelection(nextSelection)
-      onSelectionChange(nextSelection)
-      if (source.startAddress !== target.startAddress || source.endAddress !== target.endAddress) {
-        onFillRange(source.startAddress, source.endAddress, target.startAddress, target.endAddress)
-      }
+      activePreviewRange = null
+      setFillPreviewRangeRef(null)
+      setFillPreviewRange(null)
+      cleanup()
+    })
+    if (target && (source.startAddress !== target.startAddress || source.endAddress !== target.endAddress)) {
+      onFillRange(source.startAddress, source.endAddress, target.startAddress, target.endAddress)
     }
-    activePreviewRange = null
-    setFillPreviewRangeRef(null)
-    setFillPreviewRange(null)
-    cleanup()
   }
 
   const handlePointerUp = (nativeEvent: FillHandlePointerEventLike) => {
@@ -177,10 +193,12 @@ export function beginWorkbookGridFillHandleDrag(input: {
     if (!claimPointerEvent(nativeEvent)) {
       return
     }
-    activePreviewRange = null
-    setFillPreviewRangeRef(null)
-    setFillPreviewRange(null)
-    cleanup()
+    applyVisualUpdates(() => {
+      activePreviewRange = null
+      setFillPreviewRangeRef(null)
+      setFillPreviewRange(null)
+      cleanup()
+    })
   }
 
   cleanupRef.current = cleanup
