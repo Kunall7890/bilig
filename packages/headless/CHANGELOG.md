@@ -4,6 +4,21 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.107.10
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.107.8
+- Manual override: no
+
+## Fixes
+- fix(workbook): close strict format proof gaps (2da279d3)
+- fix(workbook): avoid inherited plan accessors (d280def0)
+
+## Internal runtime changes
+- docs(growth): add Sim MCP setup (e353fb02)
+- docs(growth): add Windmill WorkPaper script (479a394f)
+- chore(release): runtime packages v0.107.9 (383e2bd2)
+
 ## 0.107.9
 
 - Release type: patch
