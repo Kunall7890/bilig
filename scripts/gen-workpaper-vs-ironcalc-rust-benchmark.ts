@@ -82,6 +82,8 @@ if (isCheckMode) {
   const rawArtifact = readJsonObject(outputPath)
   assertEngineSourcePath(rawArtifact, 'workpaper', workpaperSourcePath)
   assertEngineSourcePath(rawArtifact, 'ironCalcRust', ironCalcRustSourcePath)
+  assertEngineVersion(rawArtifact, 'workpaper', readPackageVersion(join(rootDir, 'packages', 'headless', 'package.json')))
+  assertEngineVersion(rawArtifact, 'ironCalcRust', IRONCALC_RUST_CRATE_VERSION)
   const artifact = parseWorkPaperIronCalcRustArtifact(rawArtifact)
   const benchmark = objectField(rawArtifact, 'benchmark')
   const artifactSampleCount = numberField(benchmark, 'sampleCount')
@@ -207,6 +209,16 @@ function assertEngineSourcePath(artifactRecord: Record<string, unknown>, engineN
   if (actualSourcePath !== expectedSourcePath) {
     throw new Error(
       `WorkPaper vs IronCalc Rust ${engineName} sourcePath is stale. Expected ${expectedSourcePath}, got ${actualSourcePath}. Run: pnpm workpaper:bench:ironcalc-rust:generate`,
+    )
+  }
+}
+
+function assertEngineVersion(artifactRecord: Record<string, unknown>, engineName: string, expectedVersion: string): void {
+  const engine = objectField(objectField(artifactRecord, 'engines'), engineName)
+  const actualVersion = stringField(engine, 'version')
+  if (actualVersion !== expectedVersion) {
+    throw new Error(
+      `WorkPaper vs IronCalc Rust ${engineName} version is stale. Expected ${expectedVersion}, got ${actualVersion}. Run: pnpm workpaper:bench:ironcalc-rust:generate`,
     )
   }
 }
