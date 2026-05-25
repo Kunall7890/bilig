@@ -4,6 +4,28 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.107.11
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.107.8
+- Manual override: no
+
+## Fixes
+- fix(workbook): close strict format proof gaps (2da279d3)
+- fix(workbook): avoid inherited plan accessors (d280def0)
+- fix(workbook): align comparison schemas (e158c4a7)
+- fix(workbook): reject empty format intent (15d15cc5)
+- perf(headless): fast-path suspended literal queueing (6f88495d)
+- fix(workbook): require full command proof (0d406311)
+
+## Internal runtime changes
+- docs(growth): add Sim MCP setup (e353fb02)
+- docs(growth): add Windmill WorkPaper script (479a394f)
+- chore(release): runtime packages v0.107.9 (383e2bd2)
+- docs(growth): add Trigger.dev WorkPaper task (98ed4839)
+- chore(release): runtime packages v0.107.10 (16999484)
+- docs(headless): format release package docs (29e558d1)
+
 ## 0.107.10
 
 - Release type: patch
