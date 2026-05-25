@@ -10,6 +10,7 @@ interface PackageManifest {
   readonly optionalDependencies?: Record<string, string>
   readonly exports?: Record<string, unknown>
   readonly files?: readonly string[]
+  readonly scripts?: Record<string, string>
 }
 
 interface WorkspaceResolutionEntry {
@@ -18,6 +19,7 @@ interface WorkspaceResolutionEntry {
 }
 
 const sourceRoot = fileURLToPath(new URL('../', import.meta.url))
+const testRoot = fileURLToPath(new URL('./', import.meta.url))
 const packageJsonPath = new URL('../../package.json', import.meta.url)
 const readmePath = new URL('../../README.md', import.meta.url)
 const examplePath = new URL('../../../../examples/workbook-agent-model/named-range-formula.ts', import.meta.url)
@@ -95,6 +97,21 @@ function walkSourceFiles(root: string): readonly string[] {
       continue
     }
     if (entry.isFile() && entry.name.endsWith('.ts')) {
+      files.push(path)
+    }
+  }
+  return files
+}
+
+function walkTestFiles(root: string): readonly string[] {
+  const files: string[] = []
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const path = `${root}/${entry.name}`
+    if (entry.isDirectory()) {
+      files.push(...walkTestFiles(path))
+      continue
+    }
+    if (entry.isFile() && entry.name.endsWith('.test.ts')) {
       files.push(path)
     }
   }
@@ -201,6 +218,20 @@ describe('@bilig/workbook package boundary', () => {
       })
     }
     expect(readPackageManifest().files).toContain('fixtures')
+  })
+
+  it('runs every package-local test from the package test script', () => {
+    const manifest = readPackageManifest()
+    const testScript = manifest.scripts?.['test'] ?? ''
+    const testFiles = walkTestFiles(testRoot)
+      .map((file) => file.slice(sourceRoot.length).replaceAll('\\', '/').replaceAll('//', '/'))
+      .toSorted()
+
+    expect(testScript).toContain('scripts/run-vitest.ts --run')
+    expect(testFiles.length).toBeGreaterThan(0)
+    for (const file of testFiles) {
+      expect(testScript, `${file} is missing from the package-local test script`).toContain(`packages/workbook/src/${file}`)
+    }
   })
 
   it('keeps runtime feature extension helpers on the advanced features subpath', () => {
