@@ -275,7 +275,8 @@ export function createMathBuiltins({
       if (divisor === 0) {
         return div0Error()
       }
-      return numberResult((toNumber(left) ?? 0) % divisor)
+      const dividend = toNumber(left) ?? 0
+      return numberResult(dividend - divisor * Math.floor(dividend / divisor))
     },
     BITAND: (...args) => {
       if (args.length < 2) {

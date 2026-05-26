@@ -168,6 +168,36 @@ describe('wasm kernel scalar math dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(1, 14, width)]).toBe(300)
   })
 
+  it('matches Desktop Excel MOD sign semantics for negative operands on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 3, 1, 1, 1)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Mod, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Mod, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Mod, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width)]),
+    )
+    const constants = packConstants([
+      [-3, 2],
+      [3, -2],
+      [-3, -2],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width)]))
+
+    expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBe(1)
+    expect(kernel.readNumbers()[cellIndex(1, 1, width)]).toBe(-1)
+    expect(kernel.readNumbers()[cellIndex(1, 2, width)]).toBe(-1)
+  })
+
   it('keeps trigonometric and transcendental dispatch stable across refactors', async () => {
     const kernel = await createKernel()
     const width = 32

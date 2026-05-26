@@ -21,4 +21,10 @@ describe('math builtins', () => {
     expect(getBuiltin('MROUND')?.(num(10), num(3))).toEqual(num(9))
     expect(getBuiltin('BITLSHIFT')?.(num(3), num(2))).toEqual(num(12))
   })
+
+  it('matches Desktop Excel MOD sign semantics for negative operands', () => {
+    expect(getBuiltin('MOD')?.(num(-3), num(2))).toEqual(num(1))
+    expect(getBuiltin('MOD')?.(num(3), num(-2))).toEqual(num(-1))
+    expect(getBuiltin('MOD')?.(num(-3), num(-2))).toEqual(num(-1))
+  })
 })

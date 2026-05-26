@@ -208,9 +208,10 @@ export function tryApplyScalarMathBuiltin(
     if (divisor == 0.0) {
       return writeScalarMathError(base, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    const dividend = toNumberOrZero(tagStack[base], valueStack[base])
     return writeScalarMathNumber(
       base,
-      toNumberOrZero(tagStack[base], valueStack[base]) % divisor,
+      dividend - divisor * Math.floor(dividend / divisor),
       rangeIndexStack,
       valueStack,
       tagStack,
