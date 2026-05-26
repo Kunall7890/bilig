@@ -16,6 +16,7 @@ import {
   productionBiligSameCorpusUrl,
   type CaptureArgs,
   type EmitXlsxArgs,
+  type PreflightArgs,
 } from './ui-responsiveness-same-corpus-args.ts'
 import type { SameCorpusCapture } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import {
@@ -75,6 +76,7 @@ async function main(): Promise<void> {
   const args = parseCaptureArgs(process.argv.slice(2))
   assertProductionBiligEvidenceSource(args)
   assertSameCorpusBrowserRunAllowed()
+  await assertClaimGradeCaptureIncumbentsReady(args)
   const servedBilig = args.biligUrlSource === 'served-production' ? await startServedBiligProductionRuntime(args) : null
   try {
     const capture = await captureSameCorpusUiResponsiveness(args)
@@ -134,6 +136,37 @@ export function assertSameCorpusPreflightReady(preflight: SameCorpusPreflight): 
         .map((product) => `- ${product.product}: ${product.blocker ?? 'blocked without diagnostic'}`),
     ].join('\n'),
   )
+}
+
+type SameCorpusPreflightRunner = (args: PreflightArgs) => Promise<SameCorpusPreflight>
+
+export function preflightArgsForClaimGradeCapture(args: CaptureArgs): PreflightArgs | null {
+  if (args.allowIncompleteEvidence) {
+    return null
+  }
+  return {
+    corpusId: args.corpusId,
+    googleSheetsUrl: args.googleSheetsUrl,
+    googleSheetsStorageStatePath: args.googleSheetsStorageStatePath,
+    headless: args.headless,
+    microsoftExcelWebUrl: args.microsoftExcelWebUrl,
+    microsoftExcelWebStorageStatePath: args.microsoftExcelWebStorageStatePath,
+    outputPath: null,
+    readyTimeoutMs: args.readyTimeoutMs,
+    storageStatePath: args.storageStatePath,
+  }
+}
+
+export async function assertClaimGradeCaptureIncumbentsReady(
+  args: CaptureArgs,
+  runPreflight: SameCorpusPreflightRunner = preflightSameCorpusIncumbentAccess,
+): Promise<void> {
+  const preflightArgs = preflightArgsForClaimGradeCapture(args)
+  if (!preflightArgs) {
+    return
+  }
+  const preflight = await runPreflight(preflightArgs)
+  assertSameCorpusPreflightReady(preflight)
 }
 
 export function assertSameCorpusCaptureCurrentContractEvidenceReady(capture: SameCorpusCapture): void {
