@@ -24,6 +24,21 @@ describe('math builtins', () => {
     expect(getBuiltin('BITLSHIFT')?.(num(3), num(2))).toEqual(num(12))
   })
 
+  it('matches Excel scalar math text coercion and overflow errors', () => {
+    expect(getBuiltin('SIN')?.(str('bad'))).toEqual(valueError)
+    expect(getBuiltin('COS')?.(str('bad'))).toEqual(valueError)
+    expect(getBuiltin('POWER')?.(str('bad'), num(2))).toEqual(valueError)
+
+    expect(getBuiltin('SIN')?.(str('1'))).toEqual(num(Math.sin(1)))
+    expect(getBuiltin('POWER')?.(str('2'), str('3'))).toEqual(num(8))
+    expect(getBuiltin('EXP')?.(str(''))).toEqual(num(1))
+
+    expect(getBuiltin('EXP')?.(num(1000))).toEqual(numError)
+    expect(getBuiltin('POWER')?.(num(10), num(400))).toEqual(numError)
+    expect(getBuiltin('SINH')?.(num(1000))).toEqual(numError)
+    expect(getBuiltin('COSH')?.(num(1000))).toEqual(numError)
+  })
+
   it('matches Microsoft Excel GCD and LCM domain errors', () => {
     expect(getBuiltin('GCD')?.(num(-18), num(24))).toEqual(numError)
     expect(getBuiltin('GCD')?.(num(2 ** 53), num(2))).toEqual(numError)

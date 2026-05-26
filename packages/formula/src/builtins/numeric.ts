@@ -1,11 +1,12 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import type { ArrayValue } from '../runtime-values.js'
+import { parseArithmeticNumericText } from '../numeric-text.js'
 
 interface NumericBuiltinDependencies {
   toNumber: (value: CellValue) => number | undefined
   numberResult: (value: number) => CellValue
   valueError: () => CellValue
-  numericResultOrError: (value: number) => CellValue
+  numError: () => CellValue
 }
 
 export interface NumericBuiltinHelpers {
@@ -20,10 +21,17 @@ export function createNumericBuiltinHelpers({
   toNumber,
   numberResult,
   valueError,
-  numericResultOrError,
+  numError,
 }: NumericBuiltinDependencies): NumericBuiltinHelpers {
   const firstError = (args: readonly (CellValue | undefined)[]): CellValue | undefined =>
     args.find((arg): arg is CellValue => arg?.tag === ValueTag.Error)
+  const toScalarMathNumber = (value: CellValue): number | undefined => {
+    if (value.tag === ValueTag.String) {
+      return parseArithmeticNumericText(value.value)
+    }
+    return toNumber(value)
+  }
+  const scalarMathResult = (value: number): CellValue => (Number.isFinite(value) ? numberResult(value) : numError())
 
   return {
     roundWith: (value: CellValue, digits: CellValue | undefined): CellValue => {
@@ -75,14 +83,17 @@ export function createNumericBuiltinHelpers({
       if (value.tag === ValueTag.Error) {
         return value
       }
-      return numericResultOrError(evaluate(toNumber(value) ?? 0))
+      const numeric = toScalarMathNumber(value)
+      return numeric === undefined ? valueError() : scalarMathResult(evaluate(numeric))
     },
     binaryMath: (left: CellValue, right: CellValue, evaluate: (left: number, right: number) => number): CellValue => {
       const error = firstError([left, right])
       if (error) {
         return error
       }
-      return numericResultOrError(evaluate(toNumber(left) ?? 0, toNumber(right) ?? 0))
+      const leftNumeric = toScalarMathNumber(left)
+      const rightNumeric = toScalarMathNumber(right)
+      return leftNumeric === undefined || rightNumeric === undefined ? valueError() : scalarMathResult(evaluate(leftNumeric, rightNumeric))
     },
   }
 }

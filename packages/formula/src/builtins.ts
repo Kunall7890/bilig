@@ -224,7 +224,7 @@ const numericBuiltinHelpers = createNumericBuiltinHelpers({
   toNumber,
   numberResult,
   valueError,
-  numericResultOrError,
+  numError,
 })
 const { binaryMath, ceilingWith, floorWith, roundWith, unaryMath } = numericBuiltinHelpers
 const radixBuiltins = createRadixBuiltins({
