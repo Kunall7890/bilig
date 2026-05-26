@@ -36,6 +36,7 @@ describe('same-corpus mutation target proof summary', () => {
           samples: expect.arrayContaining([
             expect.objectContaining({
               sampleIndex: 0,
+              product: 'bilig',
               committedTargetProofMs: 40,
               sheetName: 'WideGrid',
               sheetId: 'sheet-wide-grid',
@@ -70,6 +71,7 @@ describe('same-corpus mutation target proof summary', () => {
             expect.objectContaining({
               sampleIndex: 0,
               present: false,
+              product: null,
               committedTargetProofMs: null,
               sheetName: null,
               sheetId: null,
@@ -297,6 +299,7 @@ function mutationTargetProof(
   const value = `${product}-same-corpus-${String(sampleIndex + 1)}`
   const afterValue = corruptProof ? 'stale-value' : value
   return {
+    product,
     sampleIndex,
     committedTargetProofMs: 40 + sampleIndex,
     workload: 'edit-visible-cell',

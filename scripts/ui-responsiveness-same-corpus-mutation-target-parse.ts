@@ -10,6 +10,7 @@ import { isUiResponsivenessSameCorpusWorkload, type UiResponsivenessSameCorpusWo
 export function parseSameCorpusMutationTargetProof(value: unknown): SameCorpusMutationTargetProof {
   const record = asObject(value, 'UI responsiveness same-corpus mutation target proof')
   return {
+    product: parseSameCorpusProduct(stringField(record, 'product')),
     sampleIndex: numberField(record, 'sampleIndex'),
     committedTargetProofMs: optionalNumberField(record, 'committedTargetProofMs') ?? Number.NaN,
     workload: parseSameCorpusWorkload(stringField(record, 'workload')),
@@ -130,6 +131,7 @@ function parseSameCorpusMutationTargetProofSampleSummary(value: unknown): SameCo
     sampleIndex: numberField(record, 'sampleIndex'),
     present: booleanField(record, 'present'),
     accepted: booleanField(record, 'accepted'),
+    product: Object.hasOwn(record, 'product') ? nullableSameCorpusProduct(record, 'product') : null,
     committedTargetProofMs: Object.hasOwn(record, 'committedTargetProofMs') ? nullableNumberField(record, 'committedTargetProofMs') : null,
     sheetName: nullableStringField(record, 'sheetName'),
     sheetId: Object.hasOwn(record, 'sheetId') ? nullableStringField(record, 'sheetId') : null,
@@ -159,6 +161,10 @@ function parseSameCorpusMutationTargetProofSampleSummary(value: unknown): SameCo
     undoRestoreStatus: nullableSameCorpusMutationUndoRestoreStatus(record, 'undoRestoreStatus'),
     invalidReasons: Object.hasOwn(record, 'invalidReasons') ? stringArrayField(record, 'invalidReasons') : [],
   }
+}
+
+function nullableSameCorpusProduct(record: Record<string, unknown>, key: string): UiResponsivenessSameCorpusProduct | null {
+  return record[key] === null ? null : parseSameCorpusProduct(stringField(record, key))
 }
 
 function parseSameCorpusMutationTargetIntendedPayload(value: Record<string, unknown>): SameCorpusMutationTargetProof['intendedPayload'] {

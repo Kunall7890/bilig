@@ -74,6 +74,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     committedTargetProofMs,
     intendedOperation: args.workload,
     intendedPayload: intendedMutationTargetPayload(args.product, args.workload, args.sampleIndex),
+    product: args.product,
     restored,
     sampleIndex: args.sampleIndex,
     screenshotPath: afterScreenshot.screenshotPath,

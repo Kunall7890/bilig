@@ -193,6 +193,7 @@ export interface SameCorpusMutationTargetProofSampleSummary {
   readonly sampleIndex: number
   readonly present: boolean
   readonly accepted: boolean
+  readonly product: UiResponsivenessSameCorpusProduct | null
   readonly committedTargetProofMs: number | null
   readonly sheetName: string | null
   readonly sheetId: string | null

@@ -1051,6 +1051,36 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     )
   })
 
+  it('rejects mutation target proof whose top-level product drifts from the visual product', () => {
+    const proof = buildCaptureScenarioProof({
+      workload: 'edit-visible-cell',
+      bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'edit-visible-cell'),
+      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export', 'edit-visible-cell'),
+      visualProofs: [
+        sameCorpusVisualProofWithMutationProofs(
+          'bilig',
+          'typegpu-visible-canvas',
+          'same-corpus-wide-mixed-250k-edit-visible-cell',
+          'edit-visible-cell',
+          driftMutationTargetProofProduct,
+        ),
+      ],
+    })
+
+    expect(proof.semanticUiProof).toMatchObject({
+      captured: false,
+      missingProducts: ['bilig', 'google-sheets'],
+    })
+    expect(proof.semanticUiProof.productVerdicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          product: 'bilig',
+          invalidReasons: expect.arrayContaining(['semantic UI mutation target proof for edit-visible-cell has mismatched product']),
+        }),
+      ]),
+    )
+  })
+
   it('normalizes same-corpus mutation target selections to an explicit cell range', () => {
     expect(normalizeSameCorpusMutationTargetSelection('WideGrid!$C$5:$D$7', 'WideGrid')).toEqual({
       endAddress: 'D7',
@@ -1836,6 +1866,7 @@ function sameCorpusMutationTargetProofs(product: SameCorpusProductVisualProof['p
     return []
   }
   return [0, 1, 2].map((sampleIndex) => ({
+    product,
     sampleIndex,
     committedTargetProofMs: 40 + sampleIndex,
     workload,
@@ -2002,6 +2033,13 @@ function moveMutationTargetAwayFromRenderedSelection(proof: SameCorpusMutationTa
   return {
     ...proof,
     targetRange: 'B2',
+  }
+}
+
+function driftMutationTargetProofProduct(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  return {
+    ...proof,
+    product: 'google-sheets',
   }
 }
 

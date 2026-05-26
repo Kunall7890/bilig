@@ -143,6 +143,25 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('rejects mutation target proof whose top-level product drifts from the semantic proof', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 ? Object.assign({}, proof, { product: 'google-sheets' as const }) : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining(['semantic UI mutation target proof for edit-visible-cell has mismatched product']),
+    })
+  })
+
   it('rejects rendered selection text that merely contains the target range', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validSemanticProof({
@@ -420,6 +439,7 @@ function mutationTargetProof(
   sampleIndex: number,
 ): SameCorpusMutationTargetProof {
   return {
+    product,
     sampleIndex,
     committedTargetProofMs: 40 + sampleIndex,
     workload,
@@ -487,6 +507,7 @@ function fillMutationTargetProof(
 ): SameCorpusMutationTargetProof {
   const fillColor = fillColorForSample(sampleIndex)
   return {
+    product: 'bilig',
     sampleIndex,
     committedTargetProofMs: 60 + sampleIndex,
     workload: 'fill-format-change',

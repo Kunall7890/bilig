@@ -34,6 +34,7 @@ export interface SameCorpusProductSemanticUiProof {
 }
 
 export interface SameCorpusMutationTargetProof {
+  readonly product: UiResponsivenessSameCorpusProduct
   readonly sampleIndex: number
   readonly committedTargetProofMs: number
   readonly workload: UiResponsivenessSameCorpusWorkload
@@ -313,6 +314,9 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
   }
   if (sample.workload !== workload || sample.intendedOperation !== workload) {
     invalidReasons.push(`semantic UI mutation target proof operation does not match ${workload}`)
+  }
+  if (sample.product !== proof.product) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} has mismatched product`)
   }
   invalidReasons.push(...sameCorpusMutationTargetPayloadInvalidReasons(workload, sample))
   if (sample.sheetName.trim().length === 0 || sample.sheetName !== proof.sheetName) {

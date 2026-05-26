@@ -1261,6 +1261,7 @@ function sameCorpusMutationTargetProofs(
     return []
   }
   return [0, 1, 2].map((sampleIndex) => ({
+    product,
     sampleIndex,
     committedTargetProofMs: 40 + sampleIndex,
     workload,
