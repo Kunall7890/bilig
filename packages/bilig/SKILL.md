@@ -44,7 +44,7 @@ Start by proving the direct WorkPaper loop:
 ```json
 {
   "command": "npm",
-  "args": ["exec", "--package", "bilig-workpaper@0.107.15", "--", "bilig-agent-challenge"]
+  "args": ["exec", "--package", "bilig-workpaper@0.107.16", "--", "bilig-agent-challenge"]
 }
 ```
 
@@ -53,7 +53,7 @@ Use MCP only when the host specifically needs an MCP client boundary. For that p
 ```json
 {
   "command": "npm",
-  "args": ["exec", "--package", "bilig-workpaper@0.107.15", "--", "bilig-mcp-challenge"]
+  "args": ["exec", "--package", "bilig-workpaper@0.107.16", "--", "bilig-mcp-challenge"]
 }
 ```
 
@@ -63,7 +63,7 @@ Use MCP only when the host specifically needs an MCP client boundary. For that p
   "args": [
     "exec",
     "--package",
-    "bilig-workpaper@0.107.15",
+    "bilig-workpaper@0.107.16",
     "--",
     "bilig-workpaper-mcp",
     "--workpaper",
@@ -140,7 +140,7 @@ When the user has a reduced XLSX formula/import bug, generate a local report thr
   "args": [
     "exec",
     "--package",
-    "bilig-workpaper@0.107.15",
+    "bilig-workpaper@0.107.16",
     "--",
     "bilig-formula-clinic",
     "./reduced.xlsx",

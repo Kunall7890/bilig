@@ -1,6 +1,6 @@
 {
   "name": "@bilig/protocol",
-  "version": "0.107.15",
+  "version": "0.107.16",
   "description": "Shared protocol types, enums, opcodes, and spreadsheet limits for bilig.",
   "keywords": [
     "bilig",
