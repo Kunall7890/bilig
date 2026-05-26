@@ -5,6 +5,7 @@ import { getBuiltin } from '../builtins.js'
 const num = (value: number): CellValue => ({ tag: ValueTag.Number, value })
 const str = (value: string, stringId = 1): CellValue => ({ tag: ValueTag.String, value, stringId })
 const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
+const div0Error = { tag: ValueTag.Error, code: ErrorCode.Div0 } as const
 
 describe('math builtins', () => {
   it('rejects invalid scalar coercions instead of defaulting to zero or base 10', () => {
@@ -26,5 +27,11 @@ describe('math builtins', () => {
     expect(getBuiltin('MOD')?.(num(-3), num(2))).toEqual(num(1))
     expect(getBuiltin('MOD')?.(num(3), num(-2))).toEqual(num(-1))
     expect(getBuiltin('MOD')?.(num(-3), num(-2))).toEqual(num(-1))
+  })
+
+  it('matches Microsoft Excel ATAN2 coordinate argument order and zero-origin error', () => {
+    expect(getBuiltin('ATAN2')?.(num(-1), num(1))).toEqual(num((3 * Math.PI) / 4))
+    expect(getBuiltin('ATAN2')?.(num(1), num(-1))).toEqual(num(-Math.PI / 4))
+    expect(getBuiltin('ATAN2')?.(num(0), num(0))).toEqual(div0Error)
   })
 })

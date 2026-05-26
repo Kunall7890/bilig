@@ -99,7 +99,18 @@ export function createMathBuiltins({
     ASIN: (value) => unaryMath(value, Math.asin),
     ACOS: (value) => unaryMath(value, Math.acos),
     ATAN: (value) => unaryMath(value, Math.atan),
-    ATAN2: (left, right) => binaryMath(left, right, Math.atan2),
+    ATAN2: (left, right) => {
+      const error = firstError([left, right])
+      if (error) {
+        return error
+      }
+      const x = toNumber(left) ?? 0
+      const y = toNumber(right) ?? 0
+      if (x === 0 && y === 0) {
+        return div0Error()
+      }
+      return numberResult(Math.atan2(y, x))
+    },
     DEGREES: (value) => unaryMath(value, (numeric) => (numeric * 180) / Math.PI),
     RADIANS: (value) => unaryMath(value, (numeric) => (numeric * Math.PI) / 180),
     EXP: (value) => unaryMath(value, Math.exp),

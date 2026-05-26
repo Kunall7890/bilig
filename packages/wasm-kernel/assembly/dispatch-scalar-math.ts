@@ -338,14 +338,16 @@ export function tryApplyScalarMathBuiltin(
     )
   }
   if (builtinId == BuiltinId.Atan2 && argc == 2) {
-    return writeScalarMathNumber(
-      base,
-      Math.atan2(toNumberOrZero(tagStack[base], valueStack[base]), toNumberOrZero(tagStack[base + 1], valueStack[base + 1])),
-      rangeIndexStack,
-      valueStack,
-      tagStack,
-      kindStack,
-    )
+    const error = firstScalarMathError(base, argc, valueStack, tagStack)
+    if (error != ErrorCode.None) {
+      return writeScalarMathError(base, error, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const x = toNumberOrZero(tagStack[base], valueStack[base])
+    const y = toNumberOrZero(tagStack[base + 1], valueStack[base + 1])
+    if (x == 0.0 && y == 0.0) {
+      return writeScalarMathError(base, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    return writeScalarMathNumber(base, Math.atan2(y, x), rangeIndexStack, valueStack, tagStack, kindStack)
   }
   if (builtinId == BuiltinId.Degrees && argc == 1) {
     return writeScalarMathNumber(
