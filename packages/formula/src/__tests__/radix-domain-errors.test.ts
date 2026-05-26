@@ -1,0 +1,44 @@
+import { describe, expect, it } from 'vitest'
+import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
+import { getBuiltin } from '../builtins.js'
+
+const num = (value: number): CellValue => ({ tag: ValueTag.Number, value })
+const text = (value: string): CellValue => ({ tag: ValueTag.String, value, stringId: 0 })
+
+const numError = { tag: ValueTag.Error, code: ErrorCode.Num } as const
+const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
+
+describe('radix conversion domain errors', () => {
+  it('returns #NUM! for invalid signed-radix source text and width overflows', () => {
+    expect(getBuiltin('BIN2DEC')?.(text('102'))).toEqual(numError)
+    expect(getBuiltin('BIN2DEC')?.(text('11111111111'))).toEqual(numError)
+    expect(getBuiltin('HEX2DEC')?.(text('G'))).toEqual(numError)
+    expect(getBuiltin('OCT2DEC')?.(text('8'))).toEqual(numError)
+
+    expect(getBuiltin('BIN2HEX')?.(text('102'))).toEqual(numError)
+    expect(getBuiltin('BIN2OCT')?.(text('11111111111'))).toEqual(numError)
+    expect(getBuiltin('HEX2BIN')?.(text('G'))).toEqual(numError)
+    expect(getBuiltin('OCT2HEX')?.(text('8'))).toEqual(numError)
+  })
+
+  it('returns #NUM! for signed-radix output range and places-domain errors', () => {
+    expect(getBuiltin('DEC2BIN')?.(num(512))).toEqual(numError)
+    expect(getBuiltin('DEC2HEX')?.(num(549755813888))).toEqual(numError)
+    expect(getBuiltin('DEC2OCT')?.(num(536870912))).toEqual(numError)
+    expect(getBuiltin('HEX2BIN')?.(text('200'))).toEqual(numError)
+    expect(getBuiltin('HEX2OCT')?.(text('20000000'))).toEqual(numError)
+    expect(getBuiltin('OCT2BIN')?.(text('1000'))).toEqual(numError)
+
+    expect(getBuiltin('DEC2HEX')?.(num(64), num(1))).toEqual(numError)
+    expect(getBuiltin('BIN2HEX')?.(text('1110'), num(0))).toEqual(numError)
+    expect(getBuiltin('OCT2HEX')?.(text('100'), num(1))).toEqual(numError)
+    expect(getBuiltin('DEC2BIN')?.(num(10), num(-1))).toEqual(numError)
+  })
+
+  it('keeps nonnumeric signed-radix decimal inputs and places as #VALUE!', () => {
+    expect(getBuiltin('DEC2BIN')?.(text('bad'))).toEqual(valueError)
+    expect(getBuiltin('DEC2BIN')?.(num(10), text('bad'))).toEqual(valueError)
+    expect(getBuiltin('BIN2HEX')?.(text('1010'), text('bad'))).toEqual(valueError)
+    expect(getBuiltin('HEX2BIN')?.(text('F'), text('bad'))).toEqual(valueError)
+  })
+})

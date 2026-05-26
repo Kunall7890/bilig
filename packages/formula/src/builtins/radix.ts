@@ -11,13 +11,7 @@ interface RadixBuiltinHelpers {
   numberResult(this: void, value: number): CellValue
 }
 
-export function createRadixBuiltins({
-  toNumber,
-  integerValue,
-  nonNegativeIntegerValue,
-  valueError,
-  numberResult,
-}: RadixBuiltinHelpers): Record<string, Builtin> {
+export function createRadixBuiltins({ toNumber, integerValue, valueError, numberResult }: RadixBuiltinHelpers): Record<string, Builtin> {
   const baseMaxNumber = 2 ** 53
   const baseMaxMinLength = 255
 
@@ -27,45 +21,54 @@ export function createRadixBuiltins({
     BASE: (numberArg, radixArg, minLengthArg) => baseString(numberArg, radixArg, minLengthArg),
     DECIMAL: (textArg, radixArg) => decimalValue(textArg, radixArg),
     BIN2DEC: (valueArg) => {
-      const numeric = parseSignedRadixText(valueArg, 2, 10, toNumber)
-      return numeric === undefined ? valueError() : numberResult(numeric)
+      const numeric = signedRadixNumber(valueArg, 2, 10)
+      return typeof numeric === 'number' ? numberResult(numeric) : numeric
     },
     BIN2HEX: (valueArg, placesArg) => convertSignedRadixToRadix(valueArg, 2, 16, 10, 10, -549755813888, 549755813887, placesArg),
     BIN2OCT: (valueArg, placesArg) => convertSignedRadixToRadix(valueArg, 2, 8, 10, 10, -536870912, 536870911, placesArg),
     DEC2BIN: (valueArg, placesArg) => {
       const numeric = integerValue(valueArg)
-      const places = toPositivePlaces(placesArg)
-      if (numeric === undefined || places === undefined) {
+      if (numeric === undefined) {
         return valueError()
+      }
+      const places = coercePlaces(placesArg)
+      if (typeof places !== 'number') {
+        return places
       }
       return formatSignedRadixValue(numeric, 2, places, 10, -512, 511)
     },
     DEC2HEX: (valueArg, placesArg) => {
       const numeric = integerValue(valueArg)
-      const places = toPositivePlaces(placesArg)
-      if (numeric === undefined || places === undefined) {
+      if (numeric === undefined) {
         return valueError()
+      }
+      const places = coercePlaces(placesArg)
+      if (typeof places !== 'number') {
+        return places
       }
       return formatSignedRadixValue(numeric, 16, places, 10, -549755813888, 549755813887)
     },
     DEC2OCT: (valueArg, placesArg) => {
       const numeric = integerValue(valueArg)
-      const places = toPositivePlaces(placesArg)
-      if (numeric === undefined || places === undefined) {
+      if (numeric === undefined) {
         return valueError()
+      }
+      const places = coercePlaces(placesArg)
+      if (typeof places !== 'number') {
+        return places
       }
       return formatSignedRadixValue(numeric, 8, places, 10, -536870912, 536870911)
     },
     HEX2BIN: (valueArg, placesArg) => convertSignedRadixToRadix(valueArg, 16, 2, 10, 10, -512, 511, placesArg),
     HEX2DEC: (valueArg) => {
-      const numeric = parseSignedRadixText(valueArg, 16, 10, toNumber)
-      return numeric === undefined ? valueError() : numberResult(numeric)
+      const numeric = signedRadixNumber(valueArg, 16, 10)
+      return typeof numeric === 'number' ? numberResult(numeric) : numeric
     },
     HEX2OCT: (valueArg, placesArg) => convertSignedRadixToRadix(valueArg, 16, 8, 10, 10, -536870912, 536870911, placesArg),
     OCT2BIN: (valueArg, placesArg) => convertSignedRadixToRadix(valueArg, 8, 2, 10, 10, -512, 511, placesArg),
     OCT2DEC: (valueArg) => {
-      const numeric = parseSignedRadixText(valueArg, 8, 10, toNumber)
-      return numeric === undefined ? valueError() : numberResult(numeric)
+      const numeric = signedRadixNumber(valueArg, 8, 10)
+      return typeof numeric === 'number' ? numberResult(numeric) : numeric
     },
     OCT2HEX: (valueArg, placesArg) => convertSignedRadixToRadix(valueArg, 8, 16, 10, 10, -549755813888, 549755813887, placesArg),
     ROMAN: (value) => {
@@ -120,8 +123,23 @@ export function createRadixBuiltins({
     return numberResult(Number.parseInt(raw, radixValue))
   }
 
-  function toPositivePlaces(value: CellValue | undefined): number | undefined {
-    return nonNegativeIntegerValue(value, 0)
+  function coercePlaces(value: CellValue | undefined): number | CellValue {
+    if (value === undefined) {
+      return 0
+    }
+    const places = integerValue(value)
+    if (places === undefined) {
+      return valueError()
+    }
+    return places < 0 ? numError() : places
+  }
+
+  function signedRadixNumber(valueArg: CellValue, radix: 2 | 8 | 16, width: number): number | CellValue {
+    if (valueArg.tag === ValueTag.Error) {
+      return valueError()
+    }
+    const numeric = parseSignedRadixText(valueArg, radix, width, toNumber)
+    return numeric === undefined ? numError() : numeric
   }
 
   function convertSignedRadixToRadix(
@@ -134,10 +152,13 @@ export function createRadixBuiltins({
     max: number,
     placesArg?: CellValue,
   ): CellValue {
-    const numeric = parseSignedRadixText(textArg, fromRadix, inputWidth, toNumber)
-    const places = toPositivePlaces(placesArg)
-    if (numeric === undefined || places === undefined) {
-      return valueError()
+    const numeric = signedRadixNumber(textArg, fromRadix, inputWidth)
+    if (typeof numeric !== 'number') {
+      return numeric
+    }
+    const places = coercePlaces(placesArg)
+    if (typeof places !== 'number') {
+      return places
     }
     return formatSignedRadixValue(numeric, toRadix, places, negativeWidth, min, max)
   }
@@ -151,7 +172,7 @@ export function createRadixBuiltins({
     max: number,
   ): CellValue {
     if (!Number.isSafeInteger(numeric) || numeric < min || numeric > max) {
-      return valueError()
+      return numError()
     }
     if (numeric < 0) {
       const encoded = numeric + radix ** negativeWidth
@@ -163,7 +184,7 @@ export function createRadixBuiltins({
     }
     const raw = numeric.toString(radix).toUpperCase()
     if (minLength < raw.length) {
-      return valueError()
+      return numError()
     }
     return {
       tag: ValueTag.String,

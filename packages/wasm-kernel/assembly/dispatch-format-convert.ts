@@ -1,7 +1,6 @@
 import { BuiltinId, ErrorCode, ValueTag } from './protocol'
 import { scalarText, trimAsciiWhitespace } from './text-codec'
 import { formatFixedText } from './text-format'
-import { coerceNonNegativeShift } from './numeric-core'
 import { formatSignedRadixText, isValidBaseText, parseBaseText, parseSignedRadixText, toBaseText } from './radix'
 import {
   CONVERT_GROUP_TEMPERATURE,
@@ -19,6 +18,8 @@ import { STACK_KIND_SCALAR, writeResult, writeStringResult } from './result-io'
 const MAX_SAFE_INTEGER_F64: f64 = 9007199254740991.0
 const BASE_LIMIT_F64: f64 = 9007199254740992.0
 const BASE_MAX_MIN_LENGTH: i32 = 255
+const RADIX_PLACES_VALUE_ERROR: i64 = i64.MIN_VALUE
+const RADIX_PLACES_NUM_ERROR: i64 = i64.MIN_VALUE + 1
 
 function columnLabelText(column: i32): string | null {
   if (column < 1) {
@@ -131,6 +132,18 @@ function signedRadixInputText(
     return null
   }
   return (<i64>numeric).toString().toUpperCase()
+}
+
+function coerceRadixPlaces(tag: u8, value: f64): i64 {
+  const numeric = toNumberExact(tag, value)
+  if (!isFinite(numeric)) {
+    return RADIX_PLACES_VALUE_ERROR
+  }
+  const truncated = Math.trunc(numeric)
+  if (truncated < 0.0 || truncated > MAX_SAFE_INTEGER_F64) {
+    return RADIX_PLACES_NUM_ERROR
+  }
+  return <i64>truncated
 }
 
 function roundToPlacesNative(value: f64, places: i32): f64 {
@@ -393,7 +406,7 @@ export function tryApplyFormatConvertBuiltin(
     }
     const numeric = parseSignedRadixText(raw, radix, 10)
     if (numeric == i64.MIN_VALUE) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, <f64>numeric, rangeIndexStack, valueStack, tagStack, kindStack)
   }
@@ -415,6 +428,8 @@ export function tryApplyFormatConvertBuiltin(
     let negativeWidth = 10
     let minValue: i64 = -549755813888
     let maxValue: i64 = 549755813887
+    let valueError = false
+    let numError = false
 
     if (builtinId == BuiltinId.Bin2hex || builtinId == BuiltinId.Bin2oct) {
       const raw = signedRadixInputText(
@@ -429,6 +444,11 @@ export function tryApplyFormatConvertBuiltin(
       )
       if (raw != null) {
         numeric = parseSignedRadixText(raw, 2, 10)
+        if (numeric == i64.MIN_VALUE) {
+          numError = true
+        }
+      } else {
+        valueError = true
       }
       if (builtinId == BuiltinId.Bin2oct) {
         radix = 8
@@ -450,6 +470,11 @@ export function tryApplyFormatConvertBuiltin(
       )
       if (raw != null) {
         numeric = parseSignedRadixText(raw, 16, 10)
+        if (numeric == i64.MIN_VALUE) {
+          numError = true
+        }
+      } else {
+        valueError = true
       }
       if (builtinId == BuiltinId.Hex2bin) {
         radix = 2
@@ -473,6 +498,11 @@ export function tryApplyFormatConvertBuiltin(
       )
       if (raw != null) {
         numeric = parseSignedRadixText(raw, 8, 10)
+        if (numeric == i64.MIN_VALUE) {
+          numError = true
+        }
+      } else {
+        valueError = true
       }
       if (builtinId == BuiltinId.Oct2bin) {
         radix = 2
@@ -483,7 +513,11 @@ export function tryApplyFormatConvertBuiltin(
       }
     } else {
       const inputNumeric = toNumberExact(tagStack[base], valueStack[base])
-      if (isFinite(inputNumeric) && Math.abs(inputNumeric) <= MAX_SAFE_INTEGER_F64) {
+      if (!isFinite(inputNumeric)) {
+        valueError = true
+      } else if (Math.abs(inputNumeric) > MAX_SAFE_INTEGER_F64) {
+        numError = true
+      } else {
         numeric = <i64>inputNumeric
       }
       if (builtinId == BuiltinId.Dec2bin) {
@@ -499,13 +533,16 @@ export function tryApplyFormatConvertBuiltin(
       }
     }
 
-    const places = argc == 2 ? coerceNonNegativeShift(tagStack[base + 1], valueStack[base + 1]) : 0
-    if (numeric == i64.MIN_VALUE || places == i64.MIN_VALUE) {
+    const places = argc == 2 ? coerceRadixPlaces(tagStack[base + 1], valueStack[base + 1]) : 0
+    if (valueError || places == RADIX_PLACES_VALUE_ERROR) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (numError || places == RADIX_PLACES_NUM_ERROR || numeric == i64.MIN_VALUE) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const text = formatSignedRadixText(numeric, radix, <i32>places, negativeWidth, minValue, maxValue)
     if (text == null) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeStringResult(base, text, rangeIndexStack, valueStack, tagStack, kindStack)
   }
