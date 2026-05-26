@@ -2230,7 +2230,7 @@ describe('formula builtins', () => {
     })
     expect(
       STANDARDIZE({ tag: ValueTag.Number, value: 42 }, { tag: ValueTag.Number, value: 40 }, { tag: ValueTag.Number, value: 0 }),
-    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
 
     expect(MODE({ tag: ValueTag.Number, value: 3 }, { tag: ValueTag.Number, value: 3 }, { tag: ValueTag.Number, value: 2 })).toEqual({
       tag: ValueTag.Number,
@@ -2563,7 +2563,7 @@ describe('formula builtins', () => {
     })
     expect(LOGINV({ tag: ValueTag.Number, value: 0.5 }, { tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Number, value: 0 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       LOGINV({ tag: ValueTag.Number, value: 0.5 }, { tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Number, value: 1 }),
@@ -2609,7 +2609,7 @@ describe('formula builtins', () => {
     expect(LOGNORMDIST({ tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Number, value: 1 })).toEqual(
       {
         tag: ValueTag.Error,
-        code: ErrorCode.Value,
+        code: ErrorCode.Num,
       },
     )
 
@@ -4684,7 +4684,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       INTRATE(
@@ -4710,7 +4710,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       INTRATE(
@@ -4736,7 +4736,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       RECEIVED(
@@ -4762,7 +4762,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       PRICEDISC(
@@ -4788,7 +4788,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       YIELDDISC(
@@ -4814,7 +4814,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       PRICEMAT(
@@ -5066,7 +5066,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       TBILLYIELD(
@@ -5090,7 +5090,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       TBILLEQ(
@@ -5114,7 +5114,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       RECEIVED(
@@ -5140,7 +5140,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
   })
 
@@ -5410,7 +5410,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       LOGNORMDIST(
@@ -5421,7 +5421,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       LOGNORM_DOT_DIST(
@@ -5432,7 +5432,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       NPV({ tag: ValueTag.Number, value: 0.1 }, { tag: ValueTag.Number, value: 100 }, { tag: ValueTag.String, value: 'bad', stringId: 95 }),

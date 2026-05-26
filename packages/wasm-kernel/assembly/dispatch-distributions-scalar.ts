@@ -26,6 +26,19 @@ function coerceBoolean(tag: u8, value: f64): i32 {
   return -1
 }
 
+function isNumericScalarTag(tag: u8): bool {
+  return tag == ValueTag.Number || tag == ValueTag.Boolean || tag == ValueTag.Empty
+}
+
+function numericScalarTagsAt(base: i32, argc: i32, tagStack: Uint8Array): bool {
+  for (let index = 0; index < argc; index += 1) {
+    if (!isNumericScalarTag(tagStack[base + index])) {
+      return false
+    }
+  }
+  return true
+}
+
 export function tryApplyScalarDistributionBuiltin(
   builtinId: i32,
   argc: i32,
@@ -204,53 +217,99 @@ export function tryApplyScalarDistributionBuiltin(
 
     let result = NaN
     if (builtinId == BuiltinId.Standardize) {
+      if (!numericScalarTagsAt(base, 3, tagStack)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       const x = toNumberExact(tagStack[base], valueStack[base])
       const mean = toNumberExact(tagStack[base + 1], valueStack[base + 1])
       const standardDeviation = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-      result = isNaN(x) || isNaN(mean) || isNaN(standardDeviation) || !(standardDeviation > 0.0) ? NaN : (x - mean) / standardDeviation
+      if (isNaN(x) || isNaN(mean) || isNaN(standardDeviation)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
+      if (!(standardDeviation > 0.0)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
+      result = (x - mean) / standardDeviation
     } else if (builtinId == BuiltinId.Normdist || builtinId == BuiltinId.NormDist) {
+      if (!numericScalarTagsAt(base, 4, tagStack)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       const x = toNumberExact(tagStack[base], valueStack[base])
       const mean = toNumberExact(tagStack[base + 1], valueStack[base + 1])
       const standardDeviation = toNumberExact(tagStack[base + 2], valueStack[base + 2])
       const cumulative = coerceBoolean(tagStack[base + 3], valueStack[base + 3])
+      if (isNaN(x) || isNaN(mean) || isNaN(standardDeviation) || cumulative < 0) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
+      if (!(standardDeviation > 0.0)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       result =
-        isNaN(x) || isNaN(mean) || isNaN(standardDeviation) || cumulative < 0 || !(standardDeviation > 0.0)
-          ? NaN
-          : cumulative == 1
-            ? standardNormalCdf((x - mean) / standardDeviation)
-            : standardNormalPdf((x - mean) / standardDeviation) / standardDeviation
+        cumulative == 1
+          ? standardNormalCdf((x - mean) / standardDeviation)
+          : standardNormalPdf((x - mean) / standardDeviation) / standardDeviation
     } else if (builtinId == BuiltinId.Norminv || builtinId == BuiltinId.NormInv) {
+      if (!numericScalarTagsAt(base, 3, tagStack)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       const probability = toNumberExact(tagStack[base], valueStack[base])
       const mean = toNumberExact(tagStack[base + 1], valueStack[base + 1])
       const standardDeviation = toNumberExact(tagStack[base + 2], valueStack[base + 2])
+      if (isNaN(probability) || isNaN(mean) || isNaN(standardDeviation)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
+      if (probability <= 0.0 || probability >= 1.0 || !(standardDeviation > 0.0)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       const inverse = inverseStandardNormal(probability)
-      result =
-        isNaN(mean) || isNaN(standardDeviation) || !(standardDeviation > 0.0) || isNaN(inverse) ? NaN : mean + standardDeviation * inverse
+      result = isNaN(inverse) ? NaN : mean + standardDeviation * inverse
     } else if (builtinId == BuiltinId.Normsdist || builtinId == BuiltinId.NormSDist) {
       const value = toNumberExact(tagStack[base], valueStack[base])
       const cumulative = builtinId == BuiltinId.NormSDist && argc == 2 ? coerceBoolean(tagStack[base + 1], valueStack[base + 1]) : 1
       result = isNaN(value) || cumulative < 0 ? NaN : cumulative == 1 ? standardNormalCdf(value) : standardNormalPdf(value)
     } else if (builtinId == BuiltinId.Normsinv || builtinId == BuiltinId.NormSInv) {
-      result = inverseStandardNormal(toNumberExact(tagStack[base], valueStack[base]))
+      if (!numericScalarTagsAt(base, 1, tagStack)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
+      const probability = toNumberExact(tagStack[base], valueStack[base])
+      if (isNaN(probability)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
+      if (probability <= 0.0 || probability >= 1.0) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
+      result = inverseStandardNormal(probability)
     } else if (builtinId == BuiltinId.Loginv || builtinId == BuiltinId.LognormInv) {
+      if (!numericScalarTagsAt(base, 3, tagStack)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       const probability = toNumberExact(tagStack[base], valueStack[base])
       const mean = toNumberExact(tagStack[base + 1], valueStack[base + 1])
       const standardDeviation = toNumberExact(tagStack[base + 2], valueStack[base + 2])
+      if (isNaN(probability) || isNaN(mean) || isNaN(standardDeviation)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
+      if (probability <= 0.0 || probability >= 1.0 || !(standardDeviation > 0.0)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       const inverse = inverseStandardNormal(probability)
-      result =
-        isNaN(mean) || isNaN(standardDeviation) || !(standardDeviation > 0.0) || isNaN(inverse)
-          ? NaN
-          : Math.exp(mean + standardDeviation * inverse)
+      result = isNaN(inverse) ? NaN : Math.exp(mean + standardDeviation * inverse)
     } else {
+      if (!numericScalarTagsAt(base, argc, tagStack)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       const x = toNumberExact(tagStack[base], valueStack[base])
       const mean = toNumberExact(tagStack[base + 1], valueStack[base + 1])
       const standardDeviation = toNumberExact(tagStack[base + 2], valueStack[base + 2])
       const cumulative = argc == 4 ? coerceBoolean(tagStack[base + 3], valueStack[base + 3]) : 1
-      const z =
-        isNaN(x) || isNaN(mean) || isNaN(standardDeviation) || x <= 0.0 || !(standardDeviation > 0.0)
-          ? NaN
-          : (Math.log(x) - mean) / standardDeviation
-      result = isNaN(z) || cumulative < 0 ? NaN : cumulative == 1 ? standardNormalCdf(z) : standardNormalPdf(z) / (x * standardDeviation)
+      if (isNaN(x) || isNaN(mean) || isNaN(standardDeviation) || cumulative < 0) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
+      if (x <= 0.0 || !(standardDeviation > 0.0)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
+      const z = (Math.log(x) - mean) / standardDeviation
+      result = cumulative == 1 ? standardNormalCdf(z) : standardNormalPdf(z) / (x * standardDeviation)
     }
 
     return writeResult(

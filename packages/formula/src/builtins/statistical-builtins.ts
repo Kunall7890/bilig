@@ -30,6 +30,7 @@ interface StatisticalBuiltinDeps {
   numberResult: (value: number) => EvaluationResult
   numericResultOrError: (value: number) => EvaluationResult
   valueError: () => EvaluationResult
+  numError: () => EvaluationResult
 }
 
 function naError(): EvaluationResult {
@@ -47,6 +48,7 @@ export function createStatisticalBuiltins({
   numberResult,
   numericResultOrError,
   valueError,
+  numError,
 }: StatisticalBuiltinDeps): Record<string, Builtin> {
   const builtins: Record<string, Builtin> = {
     GAUSS: (value) => {
@@ -61,8 +63,11 @@ export function createStatisticalBuiltins({
       const x = toNumber(xArg)
       const mean = toNumber(meanArg)
       const standardDeviation = toNumber(standardDeviationArg)
-      if (x === undefined || mean === undefined || standardDeviation === undefined || standardDeviation <= 0) {
+      if (x === undefined || mean === undefined || standardDeviation === undefined) {
         return valueError()
+      }
+      if (!Number.isFinite(standardDeviation) || standardDeviation <= 0) {
+        return numError()
       }
       return numberResult((x - mean) / standardDeviation)
     },
@@ -173,8 +178,11 @@ export function createStatisticalBuiltins({
       const mean = toNumber(meanArg)
       const standardDeviation = toNumber(standardDeviationArg)
       const cumulative = coerceBoolean(cumulativeArg, false)
-      if (x === undefined || mean === undefined || standardDeviation === undefined || cumulative === undefined || standardDeviation <= 0) {
+      if (x === undefined || mean === undefined || standardDeviation === undefined || cumulative === undefined) {
         return valueError()
+      }
+      if (!Number.isFinite(standardDeviation) || standardDeviation <= 0) {
+        return numError()
       }
       return numberResult(
         cumulative ? percentileNormal(mean, standardDeviation, x) : standardNormalPdf((x - mean) / standardDeviation) / standardDeviation,
@@ -186,8 +194,17 @@ export function createStatisticalBuiltins({
       const probability = toNumber(probabilityArg)
       const mean = toNumber(meanArg)
       const standardDeviation = toNumber(standardDeviationArg)
-      if (probability === undefined || mean === undefined || standardDeviation === undefined || standardDeviation <= 0) {
+      if (probability === undefined || mean === undefined || standardDeviation === undefined) {
         return valueError()
+      }
+      if (
+        !Number.isFinite(probability) ||
+        probability <= 0 ||
+        probability >= 1 ||
+        !Number.isFinite(standardDeviation) ||
+        standardDeviation <= 0
+      ) {
+        return numError()
       }
       const result = inverseNormal(probability, mean, standardDeviation)
       return result === undefined ? valueError() : numberResult(result)
@@ -211,6 +228,9 @@ export function createStatisticalBuiltins({
       if (numeric === undefined) {
         return valueError()
       }
+      if (!Number.isFinite(numeric) || numeric <= 0 || numeric >= 1) {
+        return numError()
+      }
       const result = inverseStandardNormal(numeric)
       return result === undefined ? valueError() : numberResult(result)
     },
@@ -220,8 +240,17 @@ export function createStatisticalBuiltins({
       const probability = toNumber(probabilityArg)
       const mean = toNumber(meanArg)
       const standardDeviation = toNumber(standardDeviationArg)
-      if (probability === undefined || mean === undefined || standardDeviation === undefined || standardDeviation <= 0) {
+      if (probability === undefined || mean === undefined || standardDeviation === undefined) {
         return valueError()
+      }
+      if (
+        !Number.isFinite(probability) ||
+        probability <= 0 ||
+        probability >= 1 ||
+        !Number.isFinite(standardDeviation) ||
+        standardDeviation <= 0
+      ) {
+        return numError()
       }
       const normal = inverseNormal(probability, mean, standardDeviation)
       return normal === undefined ? valueError() : numberResult(Math.exp(normal))
@@ -231,8 +260,11 @@ export function createStatisticalBuiltins({
       const x = toNumber(xArg)
       const mean = toNumber(meanArg)
       const standardDeviation = toNumber(standardDeviationArg)
-      if (x === undefined || mean === undefined || standardDeviation === undefined || standardDeviation <= 0 || x <= 0) {
+      if (x === undefined || mean === undefined || standardDeviation === undefined) {
         return valueError()
+      }
+      if (!Number.isFinite(x) || x <= 0 || !Number.isFinite(standardDeviation) || standardDeviation <= 0) {
+        return numError()
       }
       return numberResult(percentileNormal(mean, standardDeviation, Math.log(x)))
     },
@@ -241,15 +273,11 @@ export function createStatisticalBuiltins({
       const mean = toNumber(meanArg)
       const standardDeviation = toNumber(standardDeviationArg)
       const cumulative = coerceBoolean(cumulativeArg, true)
-      if (
-        x === undefined ||
-        mean === undefined ||
-        standardDeviation === undefined ||
-        cumulative === undefined ||
-        standardDeviation <= 0 ||
-        x <= 0
-      ) {
+      if (x === undefined || mean === undefined || standardDeviation === undefined || cumulative === undefined) {
         return valueError()
+      }
+      if (!Number.isFinite(x) || x <= 0 || !Number.isFinite(standardDeviation) || standardDeviation <= 0) {
+        return numError()
       }
       const z = (Math.log(x) - mean) / standardDeviation
       return numberResult(cumulative ? standardNormalCdf(z) : standardNormalPdf(z) / (x * standardDeviation))

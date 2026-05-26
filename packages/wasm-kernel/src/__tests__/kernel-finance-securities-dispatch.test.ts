@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BuiltinId, Opcode, ValueTag } from '@bilig/protocol'
+import { BuiltinId, ErrorCode, Opcode, ValueTag } from '@bilig/protocol'
 import { createKernel } from '../index.js'
 
 function encodeCall(builtinId: number, argc: number): number {
@@ -8,6 +8,10 @@ function encodeCall(builtinId: number, argc: number): number {
 
 function encodePushNumber(constantIndex: number): number {
   return (Opcode.PushNumber << 24) | constantIndex
+}
+
+function encodePushString(stringId: number): number {
+  return (Opcode.PushString << 24) | stringId
 }
 
 function encodeRet(): number {
@@ -62,6 +66,30 @@ function packConstants(constantsByProgram: number[][]): {
   }
 }
 
+function packStrings(strings: readonly string[]): {
+  data: Uint16Array
+  offsets: Uint32Array
+  lengths: Uint32Array
+} {
+  const data: number[] = []
+  const offsets: number[] = []
+  const lengths: number[] = []
+
+  for (const value of strings) {
+    offsets.push(data.length)
+    lengths.push(value.length)
+    for (let index = 0; index < value.length; index += 1) {
+      data.push(value.charCodeAt(index))
+    }
+  }
+
+  return {
+    data: Uint16Array.from(data),
+    offsets: Uint32Array.from(offsets),
+    lengths: Uint32Array.from(lengths),
+  }
+}
+
 function cellIndex(row: number, col: number, width: number): number {
   return row * width + col
 }
@@ -69,6 +97,11 @@ function cellIndex(row: number, col: number, width: number): number {
 function expectNumberCell(kernel: Awaited<ReturnType<typeof createKernel>>, index: number, expected: number, digits = 12): void {
   expect(kernel.readTags()[index]).toBe(ValueTag.Number)
   expect(kernel.readNumbers()[index]).toBeCloseTo(expected, digits)
+}
+
+function expectErrorCell(kernel: Awaited<ReturnType<typeof createKernel>>, index: number, expected: ErrorCode): void {
+  expect(kernel.readTags()[index]).toBe(ValueTag.Error)
+  expect(kernel.readErrors()[index]).toBe(expected)
 }
 
 describe('wasm kernel finance/security dispatch', () => {
@@ -339,5 +372,120 @@ describe('wasm kernel finance/security dispatch', () => {
 
     expectNumberCell(kernel, cellIndex(1, 0, width), 0.12)
     expectNumberCell(kernel, cellIndex(1, 1, width), 1030.9278350515465)
+  })
+
+  it('uses #NUM! for discounted security and Treasury bill numeric-domain errors', async () => {
+    const kernel = await createKernel()
+    const width = 16
+    kernel.init(32, 12, 6, 2, 1)
+    const strings = packStrings(['bad'])
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+    kernel.writeCells(new Uint8Array(32), new Float64Array(32), new Uint32Array(32), new Uint16Array(32))
+
+    const settlement = 44927
+    const maturity = 45017
+    const laterMaturity = 45444
+    const programs = packPrograms([
+      [
+        encodePushNumber(1),
+        encodePushNumber(0),
+        encodePushNumber(2),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodeCall(BuiltinId.Disc, 5),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(5),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodeCall(BuiltinId.Disc, 5),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushString(0),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodeCall(BuiltinId.Disc, 5),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(5),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodeCall(BuiltinId.Intrate, 5),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushNumber(5),
+        encodePushNumber(4),
+        encodeCall(BuiltinId.Received, 5),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(1),
+        encodePushNumber(0),
+        encodePushNumber(2),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodeCall(BuiltinId.Pricedisc, 5),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(1),
+        encodePushNumber(0),
+        encodePushNumber(2),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodeCall(BuiltinId.Yielddisc, 5),
+        encodeRet(),
+      ],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(4), encodeCall(BuiltinId.Tbillprice, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(2), encodePushNumber(3), encodeCall(BuiltinId.Tbillprice, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(4), encodeCall(BuiltinId.Tbillyield, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(2), encodePushNumber(3), encodeCall(BuiltinId.Tbilleq, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushString(0), encodeCall(BuiltinId.Tbilleq, 3), encodeRet()],
+    ])
+    const targetCells = Uint32Array.from(Array.from({ length: 12 }, (_, index) => cellIndex(1, index, width)))
+    kernel.uploadPrograms(programs.programs, programs.offsets, programs.lengths, targetCells)
+    const constants = packConstants([
+      [settlement, maturity, 97, 100, 2, 0],
+      [settlement, maturity, 97, 100, 2, 0],
+      [settlement, maturity, 100, 2],
+      [settlement, maturity, 1000, 1030, 2, 0],
+      [settlement, maturity, 1000, 0.12, 2, 0],
+      [settlement, maturity, 0.0525, 100, 2],
+      [settlement, maturity, 99.795, 100, 2],
+      [settlement, maturity, laterMaturity, 0.09, 0, 98.45],
+      [settlement, maturity, laterMaturity, 0.09, 0, 98.45],
+      [settlement, maturity, laterMaturity, 0.09, 0, 98.45],
+      [settlement, maturity, laterMaturity, 0.0914, 0, 98.45],
+      [settlement, maturity],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(targetCells)
+
+    expectErrorCell(kernel, cellIndex(1, 0, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 1, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 2, width), ErrorCode.Value)
+    expectErrorCell(kernel, cellIndex(1, 3, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 4, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 5, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 6, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 7, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 8, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 9, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 10, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 11, width), ErrorCode.Value)
   })
 })

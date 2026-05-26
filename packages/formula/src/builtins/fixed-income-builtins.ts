@@ -29,6 +29,7 @@ interface FixedIncomeBuiltinDeps {
   integerValue: (value: CellValue | undefined, fallback?: number) => number | undefined
   numberResult: (value: number) => EvaluationResult
   valueError: () => EvaluationResult
+  numError: () => EvaluationResult
 }
 
 function isValidBasisValue(basis: number | undefined): basis is number {
@@ -47,6 +48,7 @@ export function createFixedIncomeBuiltins({
   integerValue,
   numberResult,
   valueError,
+  numError,
 }: FixedIncomeBuiltinDeps): Record<string, Builtin> {
   return {
     ACCRINT: (issueArg, firstInterestArg, settlementArg, rateArg, parArg, frequencyArg, basisArg, calcMethodArg) => {
@@ -172,16 +174,11 @@ export function createFixedIncomeBuiltins({
       const price = toNumber(priceArg)
       const redemption = toNumber(redemptionArg)
       const basis = integerValue(basisArg, 0)
-      if (
-        settlement === undefined ||
-        maturity === undefined ||
-        price === undefined ||
-        redemption === undefined ||
-        price <= 0 ||
-        redemption <= 0 ||
-        !isValidBasisValue(basis)
-      ) {
+      if (settlement === undefined || maturity === undefined || price === undefined || redemption === undefined || basis === undefined) {
         return valueError()
+      }
+      if (price <= 0 || redemption <= 0 || !isValidBasisValue(basis) || settlement >= maturity) {
+        return numError()
       }
       const years = securityAnnualizedYearFraction(settlement, maturity, basis)
       return years === undefined ? valueError() : numberResult((redemption - price) / redemption / years)
@@ -197,11 +194,12 @@ export function createFixedIncomeBuiltins({
         maturity === undefined ||
         investment === undefined ||
         redemption === undefined ||
-        investment <= 0 ||
-        redemption <= 0 ||
-        !isValidBasisValue(basis)
+        basis === undefined
       ) {
         return valueError()
+      }
+      if (investment <= 0 || redemption <= 0 || !isValidBasisValue(basis) || settlement >= maturity) {
+        return numError()
       }
       const years = securityAnnualizedYearFraction(settlement, maturity, basis)
       return years === undefined ? valueError() : numberResult((redemption - investment) / investment / years)
@@ -212,23 +210,18 @@ export function createFixedIncomeBuiltins({
       const investment = toNumber(investmentArg)
       const discount = toNumber(discountArg)
       const basis = integerValue(basisArg, 0)
-      if (
-        settlement === undefined ||
-        maturity === undefined ||
-        investment === undefined ||
-        discount === undefined ||
-        investment <= 0 ||
-        discount <= 0 ||
-        !isValidBasisValue(basis)
-      ) {
+      if (settlement === undefined || maturity === undefined || investment === undefined || discount === undefined || basis === undefined) {
         return valueError()
+      }
+      if (investment <= 0 || discount <= 0 || !isValidBasisValue(basis) || settlement >= maturity) {
+        return numError()
       }
       const years = securityAnnualizedYearFraction(settlement, maturity, basis)
       if (years === undefined) {
         return valueError()
       }
       const denominator = 1 - discount * years
-      return denominator <= 0 ? valueError() : numberResult(investment / denominator)
+      return denominator <= 0 ? numError() : numberResult(investment / denominator)
     },
     PRICEDISC: (settlementArg, maturityArg, discountArg, redemptionArg, basisArg) => {
       const settlement = coerceDateSerial(settlementArg)
@@ -236,16 +229,11 @@ export function createFixedIncomeBuiltins({
       const discount = toNumber(discountArg)
       const redemption = toNumber(redemptionArg)
       const basis = integerValue(basisArg, 0)
-      if (
-        settlement === undefined ||
-        maturity === undefined ||
-        discount === undefined ||
-        redemption === undefined ||
-        discount <= 0 ||
-        redemption <= 0 ||
-        !isValidBasisValue(basis)
-      ) {
+      if (settlement === undefined || maturity === undefined || discount === undefined || redemption === undefined || basis === undefined) {
         return valueError()
+      }
+      if (discount <= 0 || redemption <= 0 || !isValidBasisValue(basis) || settlement >= maturity) {
+        return numError()
       }
       const years = securityAnnualizedYearFraction(settlement, maturity, basis)
       return years === undefined ? valueError() : numberResult(redemption * (1 - discount * years))
@@ -256,16 +244,11 @@ export function createFixedIncomeBuiltins({
       const price = toNumber(priceArg)
       const redemption = toNumber(redemptionArg)
       const basis = integerValue(basisArg, 0)
-      if (
-        settlement === undefined ||
-        maturity === undefined ||
-        price === undefined ||
-        redemption === undefined ||
-        price <= 0 ||
-        redemption <= 0 ||
-        !isValidBasisValue(basis)
-      ) {
+      if (settlement === undefined || maturity === undefined || price === undefined || redemption === undefined || basis === undefined) {
         return valueError()
+      }
+      if (price <= 0 || redemption <= 0 || !isValidBasisValue(basis) || settlement >= maturity) {
+        return numError()
       }
       const years = securityAnnualizedYearFraction(settlement, maturity, basis)
       return years === undefined ? valueError() : numberResult((redemption - price) / price / years)
@@ -274,35 +257,44 @@ export function createFixedIncomeBuiltins({
       const settlement = coerceDateSerial(settlementArg)
       const maturity = coerceDateSerial(maturityArg)
       const discount = toNumber(discountArg)
-      if (settlement === undefined || maturity === undefined || discount === undefined || discount <= 0) {
+      if (settlement === undefined || maturity === undefined || discount === undefined) {
         return valueError()
       }
+      if (discount <= 0) {
+        return numError()
+      }
       const days = treasuryBillDays(settlement, maturity)
-      return days === undefined ? valueError() : numberResult(100 * (1 - (discount * days) / 360))
+      return days === undefined ? numError() : numberResult(100 * (1 - (discount * days) / 360))
     },
     TBILLYIELD: (settlementArg, maturityArg, priceArg) => {
       const settlement = coerceDateSerial(settlementArg)
       const maturity = coerceDateSerial(maturityArg)
       const price = toNumber(priceArg)
-      if (settlement === undefined || maturity === undefined || price === undefined || price <= 0) {
+      if (settlement === undefined || maturity === undefined || price === undefined) {
         return valueError()
       }
+      if (price <= 0) {
+        return numError()
+      }
       const days = treasuryBillDays(settlement, maturity)
-      return days === undefined ? valueError() : numberResult(((100 - price) * 360) / (price * days))
+      return days === undefined ? numError() : numberResult(((100 - price) * 360) / (price * days))
     },
     TBILLEQ: (settlementArg, maturityArg, discountArg) => {
       const settlement = coerceDateSerial(settlementArg)
       const maturity = coerceDateSerial(maturityArg)
       const discount = toNumber(discountArg)
-      if (settlement === undefined || maturity === undefined || discount === undefined || discount <= 0) {
+      if (settlement === undefined || maturity === undefined || discount === undefined) {
         return valueError()
+      }
+      if (discount <= 0) {
+        return numError()
       }
       const days = treasuryBillDays(settlement, maturity)
       if (days === undefined) {
-        return valueError()
+        return numError()
       }
       const denominator = 360 - discount * days
-      return denominator === 0 ? valueError() : numberResult((365 * discount) / denominator)
+      return denominator === 0 ? numError() : numberResult((365 * discount) / denominator)
     },
     PRICEMAT: (settlementArg, maturityArg, issueArg, rateArg, yieldArg, basisArg) => {
       const settlement = coerceDateSerial(settlementArg)

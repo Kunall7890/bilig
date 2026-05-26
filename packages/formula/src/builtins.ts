@@ -242,6 +242,7 @@ const fixedIncomeBuiltins = createFixedIncomeBuiltins({
   integerValue,
   numberResult,
   valueError,
+  numError,
 })
 const statisticalBuiltins = createStatisticalBuiltins({
   toNumber,
@@ -250,6 +251,7 @@ const statisticalBuiltins = createStatisticalBuiltins({
   numberResult,
   numericResultOrError,
   valueError,
+  numError,
 })
 const distributionBuiltins = createDistributionBuiltins({
   toNumber,

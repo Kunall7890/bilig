@@ -24,6 +24,27 @@ import { toNumberExact } from './operands'
 import { scalarErrorAt } from './builtin-args'
 import { STACK_KIND_SCALAR, writeResult } from './result-io'
 
+function hasScalarCoercionFailure(base: i32, argc: i32, tagStack: Uint8Array, valueStack: Float64Array): bool {
+  for (let index = 0; index < argc; index += 1) {
+    const numeric = toNumberExact(tagStack[base + index], valueStack[base + index])
+    if (!isFinite(numeric)) {
+      return true
+    }
+  }
+  return false
+}
+
+function writeFinanceError(
+  base: i32,
+  errorCode: i32,
+  rangeIndexStack: Uint32Array,
+  valueStack: Float64Array,
+  tagStack: Uint8Array,
+  kindStack: Uint8Array,
+): i32 {
+  return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
+}
+
 export function tryApplyFinanceSecuritiesBuiltin(
   builtinId: i32,
   argc: i32,
@@ -38,17 +59,20 @@ export function tryApplyFinanceSecuritiesBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (hasScalarCoercionFailure(base, argc, tagStack, valueStack)) {
+      return writeFinanceError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const settlement = excelSerialWhole(tagStack[base], valueStack[base])
     const maturity = excelSerialWhole(tagStack[base + 1], valueStack[base + 1])
     const price = toNumberExact(tagStack[base + 2], valueStack[base + 2])
     const redemption = toNumberExact(tagStack[base + 3], valueStack[base + 3])
     const basis = argc == 5 ? truncToInt(tagStack[base + 4], valueStack[base + 4]) : 0
+    if (price <= 0.0 || redemption <= 0.0 || basis < 0 || basis > 4 || settlement >= maturity) {
+      return writeFinanceError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const years =
       settlement == i32.MIN_VALUE || maturity == i32.MIN_VALUE ? NaN : securityAnnualizedYearfracValue(settlement, maturity, basis)
-    const value =
-      isNaN(price) || isNaN(redemption) || redemption <= 0.0 || price <= 0.0 || isNaN(years)
-        ? NaN
-        : (redemption - price) / redemption / years
+    const value = isNaN(years) ? NaN : (redemption - price) / redemption / years
     return isNaN(value)
       ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, value, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -111,17 +135,20 @@ export function tryApplyFinanceSecuritiesBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (hasScalarCoercionFailure(base, argc, tagStack, valueStack)) {
+      return writeFinanceError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const settlement = excelSerialWhole(tagStack[base], valueStack[base])
     const maturity = excelSerialWhole(tagStack[base + 1], valueStack[base + 1])
     const investment = toNumberExact(tagStack[base + 2], valueStack[base + 2])
     const redemption = toNumberExact(tagStack[base + 3], valueStack[base + 3])
     const basis = argc == 5 ? truncToInt(tagStack[base + 4], valueStack[base + 4]) : 0
+    if (investment <= 0.0 || redemption <= 0.0 || basis < 0 || basis > 4 || settlement >= maturity) {
+      return writeFinanceError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const years =
       settlement == i32.MIN_VALUE || maturity == i32.MIN_VALUE ? NaN : securityAnnualizedYearfracValue(settlement, maturity, basis)
-    const value =
-      isNaN(investment) || isNaN(redemption) || investment <= 0.0 || redemption <= 0.0 || isNaN(years)
-        ? NaN
-        : (redemption - investment) / investment / years
+    const value = isNaN(years) ? NaN : (redemption - investment) / investment / years
     return isNaN(value)
       ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, value, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -132,18 +159,24 @@ export function tryApplyFinanceSecuritiesBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (hasScalarCoercionFailure(base, argc, tagStack, valueStack)) {
+      return writeFinanceError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const settlement = excelSerialWhole(tagStack[base], valueStack[base])
     const maturity = excelSerialWhole(tagStack[base + 1], valueStack[base + 1])
     const investment = toNumberExact(tagStack[base + 2], valueStack[base + 2])
     const discount = toNumberExact(tagStack[base + 3], valueStack[base + 3])
     const basis = argc == 5 ? truncToInt(tagStack[base + 4], valueStack[base + 4]) : 0
+    if (investment <= 0.0 || discount <= 0.0 || basis < 0 || basis > 4 || settlement >= maturity) {
+      return writeFinanceError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const years =
       settlement == i32.MIN_VALUE || maturity == i32.MIN_VALUE ? NaN : securityAnnualizedYearfracValue(settlement, maturity, basis)
     const denominator = isNaN(years) ? NaN : 1.0 - discount * years
-    const value =
-      isNaN(investment) || isNaN(discount) || investment <= 0.0 || discount <= 0.0 || !isFinite(denominator) || denominator <= 0.0
-        ? NaN
-        : investment / denominator
+    if (!isNaN(years) && (!isFinite(denominator) || denominator <= 0.0)) {
+      return writeFinanceError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const value = isNaN(years) ? NaN : investment / denominator
     return isNaN(value)
       ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, value, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -154,17 +187,20 @@ export function tryApplyFinanceSecuritiesBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (hasScalarCoercionFailure(base, argc, tagStack, valueStack)) {
+      return writeFinanceError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const settlement = excelSerialWhole(tagStack[base], valueStack[base])
     const maturity = excelSerialWhole(tagStack[base + 1], valueStack[base + 1])
     const discount = toNumberExact(tagStack[base + 2], valueStack[base + 2])
     const redemption = toNumberExact(tagStack[base + 3], valueStack[base + 3])
     const basis = argc == 5 ? truncToInt(tagStack[base + 4], valueStack[base + 4]) : 0
+    if (discount <= 0.0 || redemption <= 0.0 || basis < 0 || basis > 4 || settlement >= maturity) {
+      return writeFinanceError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const years =
       settlement == i32.MIN_VALUE || maturity == i32.MIN_VALUE ? NaN : securityAnnualizedYearfracValue(settlement, maturity, basis)
-    const value =
-      isNaN(discount) || isNaN(redemption) || discount <= 0.0 || redemption <= 0.0 || isNaN(years)
-        ? NaN
-        : redemption * (1.0 - discount * years)
+    const value = isNaN(years) ? NaN : redemption * (1.0 - discount * years)
     return isNaN(value)
       ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, value, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -175,15 +211,20 @@ export function tryApplyFinanceSecuritiesBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (hasScalarCoercionFailure(base, argc, tagStack, valueStack)) {
+      return writeFinanceError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const settlement = excelSerialWhole(tagStack[base], valueStack[base])
     const maturity = excelSerialWhole(tagStack[base + 1], valueStack[base + 1])
     const price = toNumberExact(tagStack[base + 2], valueStack[base + 2])
     const redemption = toNumberExact(tagStack[base + 3], valueStack[base + 3])
     const basis = argc == 5 ? truncToInt(tagStack[base + 4], valueStack[base + 4]) : 0
+    if (price <= 0.0 || redemption <= 0.0 || basis < 0 || basis > 4 || settlement >= maturity) {
+      return writeFinanceError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const years =
       settlement == i32.MIN_VALUE || maturity == i32.MIN_VALUE ? NaN : securityAnnualizedYearfracValue(settlement, maturity, basis)
-    const value =
-      isNaN(price) || isNaN(redemption) || price <= 0.0 || redemption <= 0.0 || isNaN(years) ? NaN : (redemption - price) / price / years
+    const value = isNaN(years) ? NaN : (redemption - price) / price / years
     return isNaN(value)
       ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, value, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -194,11 +235,17 @@ export function tryApplyFinanceSecuritiesBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (hasScalarCoercionFailure(base, argc, tagStack, valueStack)) {
+      return writeFinanceError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const settlement = excelSerialWhole(tagStack[base], valueStack[base])
     const maturity = excelSerialWhole(tagStack[base + 1], valueStack[base + 1])
     const discount = toNumberExact(tagStack[base + 2], valueStack[base + 2])
     const days = settlement == i32.MIN_VALUE || maturity == i32.MIN_VALUE ? NaN : treasuryBillDaysValue(settlement, maturity)
-    const value = isNaN(discount) || discount <= 0.0 || isNaN(days) ? NaN : 100.0 * (1.0 - (discount * days) / 360.0)
+    if (discount <= 0.0 || isNaN(days)) {
+      return writeFinanceError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const value = 100.0 * (1.0 - (discount * days) / 360.0)
     return isNaN(value)
       ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, value, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -209,11 +256,17 @@ export function tryApplyFinanceSecuritiesBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (hasScalarCoercionFailure(base, argc, tagStack, valueStack)) {
+      return writeFinanceError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const settlement = excelSerialWhole(tagStack[base], valueStack[base])
     const maturity = excelSerialWhole(tagStack[base + 1], valueStack[base + 1])
     const price = toNumberExact(tagStack[base + 2], valueStack[base + 2])
     const days = settlement == i32.MIN_VALUE || maturity == i32.MIN_VALUE ? NaN : treasuryBillDaysValue(settlement, maturity)
-    const value = isNaN(price) || price <= 0.0 || isNaN(days) ? NaN : ((100.0 - price) * 360.0) / (price * days)
+    if (price <= 0.0 || isNaN(days)) {
+      return writeFinanceError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const value = ((100.0 - price) * 360.0) / (price * days)
     return isNaN(value)
       ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, value, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -224,13 +277,18 @@ export function tryApplyFinanceSecuritiesBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (hasScalarCoercionFailure(base, argc, tagStack, valueStack)) {
+      return writeFinanceError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const settlement = excelSerialWhole(tagStack[base], valueStack[base])
     const maturity = excelSerialWhole(tagStack[base + 1], valueStack[base + 1])
     const discount = toNumberExact(tagStack[base + 2], valueStack[base + 2])
     const days = settlement == i32.MIN_VALUE || maturity == i32.MIN_VALUE ? NaN : treasuryBillDaysValue(settlement, maturity)
     const denominator = isNaN(days) ? NaN : 360.0 - discount * days
-    const value =
-      isNaN(discount) || discount <= 0.0 || !isFinite(denominator) || denominator == 0.0 ? NaN : (365.0 * discount) / denominator
+    if (discount <= 0.0 || isNaN(days) || !isFinite(denominator) || denominator == 0.0) {
+      return writeFinanceError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const value = (365.0 * discount) / denominator
     return isNaN(value)
       ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, value, rangeIndexStack, valueStack, tagStack, kindStack)
