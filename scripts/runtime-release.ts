@@ -58,12 +58,21 @@ export interface RuntimeReleaseCommit {
 }
 
 const CONVENTIONAL_HEADER_PATTERN = /^(?<type>[a-z][a-z0-9-]*)(?:\((?<scope>[^()\r\n]+)\))?(?<breaking>!)?: (?<description>.+)$/u
+const GIT_REVERT_HEADER_PATTERN = /^Revert "(?<subject>.+)"$/u
+const GIT_REVERT_BODY_PATTERN = /(^|\n)This reverts commit [0-9a-f]{40}\./u
 
 const NO_RELEASE_TYPES = new Set(['build', 'chore', 'ci', 'docs', 'refactor', 'style', 'test'])
 const PATCH_TYPES = new Set(['fix', 'perf', 'revert'])
 
 export function parseConventionalCommit(input: { subject: string; body: string }): ConventionalCommit | null {
-  const match = CONVENTIONAL_HEADER_PATTERN.exec(input.subject.trim())
+  const subject = input.subject.trim()
+  const body = input.body.trim()
+  const gitRevert = parseGitGeneratedRevertCommit({ subject, body })
+  if (gitRevert) {
+    return gitRevert
+  }
+
+  const match = CONVENTIONAL_HEADER_PATTERN.exec(subject)
   if (!match?.groups) {
     return null
   }
@@ -72,12 +81,31 @@ export function parseConventionalCommit(input: { subject: string; body: string }
   if (!type || !description) {
     return null
   }
-  const body = input.body.trim()
   return {
     type,
     scope: match.groups.scope?.trim() || null,
     description,
     breaking: Boolean(match.groups.breaking) || /(^|\n)BREAKING CHANGE:\s+/u.test(body),
+  }
+}
+
+function parseGitGeneratedRevertCommit(input: { subject: string; body: string }): ConventionalCommit | null {
+  const match = GIT_REVERT_HEADER_PATTERN.exec(input.subject)
+  const revertedSubject = match?.groups?.subject?.trim()
+  if (!revertedSubject || !GIT_REVERT_BODY_PATTERN.test(input.body)) {
+    return null
+  }
+
+  const revertedCommit = parseConventionalCommit({ subject: revertedSubject, body: '' })
+  if (!revertedCommit) {
+    return null
+  }
+
+  return {
+    type: 'revert',
+    scope: revertedCommit.scope,
+    description: revertedSubject,
+    breaking: false,
   }
 }
 

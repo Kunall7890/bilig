@@ -53,6 +53,30 @@ describe('runtime release helpers', () => {
     expect(footer?.breaking).toBe(true)
   })
 
+  it('normalizes git-generated reverts of conventional commits', () => {
+    const parsed = parseConventionalCommit({
+      subject: 'Revert "perf(headless): reduce formula build overhead"',
+      body: 'This reverts commit dc0093f2d909674c859a4fb0fbe8f33c317e23f7.',
+    })
+
+    expect(parsed).toEqual({
+      type: 'revert',
+      scope: 'headless',
+      description: 'perf(headless): reduce formula build overhead',
+      breaking: false,
+    })
+    expect(parsed && releaseTypeForConventionalCommit(parsed)).toBe('patch')
+  })
+
+  it('rejects git-generated reverts of non-conventional commits', () => {
+    expect(
+      parseConventionalCommit({
+        subject: 'Revert "reduce formula build overhead"',
+        body: 'This reverts commit dc0093f2d909674c859a4fb0fbe8f33c317e23f7.',
+      }),
+    ).toBeNull()
+  })
+
   it('maps conventional commit kinds to semantic release types', () => {
     expect(
       releaseTypeForConventionalCommit({
