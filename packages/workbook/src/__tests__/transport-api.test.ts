@@ -69,6 +69,12 @@ function accessorArray(get: () => unknown): unknown[] {
   return value
 }
 
+function arraySubclass<T>(entries: readonly T[]): T[] {
+  const value = new (class extends Array<T> {})()
+  value.push(...entries)
+  return value
+}
+
 function nonEnumerableArray(value: unknown): unknown[] {
   const values: unknown[] = []
   Object.defineProperty(values, '0', {
@@ -1105,6 +1111,95 @@ describe('@bilig/workbook transport api', () => {
           code: 'invalid_plan_data',
           path: 'changed[0]',
           message: 'Workbook plan data change at changed[0] is invalid',
+        },
+      ],
+    })
+  })
+
+  it('rejects non-plain transported plan arrays as uninspectable handoff data', () => {
+    const model = defineModel({
+      name: 'transport-plain-array-plan-model',
+
+      find(workbook) {
+        return {
+          input: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'D2' }),
+        }
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeFormula(refs.result, formula.add(refs.input, 1))
+        },
+      },
+    })
+    const data = structuredClone(toPlanData(buildWorkbookActionPlan(model, 'write')))
+
+    const subclassCommands = {
+      ...data,
+      commands: arraySubclass(data.commands),
+    }
+    expect(isPlanData(subclassCommands)).toBe(false)
+    expect(checkPlanData(subclassCommands)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'commands',
+          message: 'Workbook plan data commands must be a plain array',
+        },
+      ],
+    })
+    expect(() => hydratePlanData(subclassCommands)).toThrow(
+      'Workbook plan data is invalid: Workbook plan data commands must be a plain array',
+    )
+
+    const extraCommandArray = [...data.commands]
+    Object.defineProperty(extraCommandArray, 'meta', {
+      enumerable: true,
+      value: 'caller-owned',
+    })
+    expect(checkPlanData({ ...data, commands: extraCommandArray })).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'commands.meta',
+          message: 'Workbook plan data commands must not contain extra properties',
+        },
+      ],
+    })
+
+    const symbolRefs = [...data.refsUsed]
+    Object.defineProperty(symbolRefs, Symbol('meta'), {
+      enumerable: true,
+      value: 'caller-owned',
+    })
+    expect(checkPlanData({ ...data, refsUsed: symbolRefs })).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'refsUsed',
+          message: 'Workbook plan data refsUsed must not contain extra properties',
+        },
+      ],
+    })
+
+    const nestedInputData = structuredClone(data)
+    const [firstCommand] = mutableRecordArray(nestedInputData.commands)
+    const firstCommandInputs = firstCommand['inputs']
+    if (!Array.isArray(firstCommandInputs)) {
+      throw new Error('expected formula command inputs')
+    }
+    firstCommand['inputs'] = arraySubclass(firstCommandInputs)
+    expect(checkPlanData(nestedInputData)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'commands[0]',
+          message: 'Workbook plan data command at commands[0] is invalid',
         },
       ],
     })

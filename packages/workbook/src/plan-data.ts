@@ -12,6 +12,7 @@ import {
 import { collectWorkbookRefs, hydrateWorkbookRef, isWorkbookRefData, type WorkbookRef } from './find.js'
 import type { WorkbookFormulaLabel } from './formula.js'
 import { WorkbookActionInputError, isWorkbookActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
+import { isPlainArray } from './data-properties.js'
 import { normalizeWorkbookActionFormatOptions, normalizeWorkbookActionOp } from './model-action-validation.js'
 import type { WorkbookActionCommand, WorkbookActionPlan } from './model.js'
 import type { WorkbookOp } from './ops.js'
@@ -58,6 +59,7 @@ function canonicalJson(value: unknown): string {
 
 function canonicalValue(value: unknown): unknown {
   if (Array.isArray(value)) {
+    assertPlainPlanArray(value)
     const descriptors = Object.getOwnPropertyDescriptors(value)
     return Array.from({ length: value.length }, (_entry, index) => {
       const descriptor = descriptors[String(index)]
@@ -184,7 +186,7 @@ function optionalPlanValue<T>(value: object, key: string, expected: string, guar
 function arrayEvery<T>(value: unknown, predicate: (entry: unknown) => entry is T): value is readonly T[]
 function arrayEvery(value: unknown, predicate: (entry: unknown) => boolean): boolean
 function arrayEvery(value: unknown, predicate: (entry: unknown) => boolean): boolean {
-  if (!Array.isArray(value)) {
+  if (!isPlainPlanArray(value)) {
     return false
   }
 
@@ -203,6 +205,9 @@ function mapArrayData<T, Result>(
   guard: (entry: unknown) => entry is T,
   mapper: (entry: T) => Result,
 ): readonly Result[] {
+  if (!isPlainPlanArray(value)) {
+    throw new Error('Workbook plan data arrays must be plain arrays')
+  }
   const mapped: Result[] = []
   for (let index = 0; index < value.length; index += 1) {
     const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
@@ -212,6 +217,35 @@ function mapArrayData<T, Result>(
     mapped.push(mapper(descriptor.value))
   }
   return mapped
+}
+
+function isPlanArrayIndexKey(key: string): boolean {
+  return key === 'length' || /^\d+$/.test(key)
+}
+
+function planArrayExtraPropertyPath(value: readonly unknown[], path: string): string | null {
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    return path
+  }
+  for (const key of Object.keys(Object.getOwnPropertyDescriptors(value))) {
+    if (!isPlanArrayIndexKey(key)) {
+      return `${path}.${key}`
+    }
+  }
+  return null
+}
+
+function isPlainPlanArray(value: unknown): value is readonly unknown[] {
+  return isPlainArray(value) && planArrayExtraPropertyPath(value, 'array') === null
+}
+
+function assertPlainPlanArray(value: readonly unknown[]): void {
+  if (!isPlainArray(value)) {
+    throw new Error('Workbook plan data arrays must be plain arrays')
+  }
+  if (planArrayExtraPropertyPath(value, 'array') !== null) {
+    throw new Error('Workbook plan data arrays must not contain extra properties')
+  }
 }
 
 function isWorkbookRefDescription(value: unknown): value is WorkbookRefDescription {
@@ -414,6 +448,15 @@ function pushArrayIssues<T>(
     issues.push(planDataIssue(key, `Workbook plan data ${key} must be an array`))
     return
   }
+  if (!isPlainArray(array)) {
+    issues.push(planDataIssue(key, `Workbook plan data ${key} must be a plain array`))
+    return
+  }
+  const extraPath = planArrayExtraPropertyPath(array, key)
+  if (extraPath !== null) {
+    issues.push(planDataIssue(extraPath, `Workbook plan data ${key} must not contain extra properties`))
+    return
+  }
   for (let index = 0; index < array.length; index += 1) {
     const descriptor = Object.getOwnPropertyDescriptor(array, String(index))
     if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
@@ -464,6 +507,15 @@ function pushCheckArrayIssues(issues: WorkbookPlanDataIssue[], value: Record<str
   const checks = ownValue(value, 'checks')
   if (!Array.isArray(checks)) {
     issues.push(planDataIssue('checks', 'Workbook plan data checks must be an array'))
+    return
+  }
+  if (!isPlainArray(checks)) {
+    issues.push(planDataIssue('checks', 'Workbook plan data checks must be a plain array'))
+    return
+  }
+  const extraPath = planArrayExtraPropertyPath(checks, 'checks')
+  if (extraPath !== null) {
+    issues.push(planDataIssue(extraPath, 'Workbook plan data checks must not contain extra properties'))
     return
   }
   for (let index = 0; index < checks.length; index += 1) {
