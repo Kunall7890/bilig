@@ -20,8 +20,8 @@ describe('gridScrollSurface', () => {
         gridMetrics,
       }),
     ).toEqual({
-      width: 2046,
-      height: 624,
+      width: columnAxis.totalSize + gridMetrics.rowMarkerWidth,
+      height: rowAxis.totalSize + gridMetrics.headerHeight,
     })
   })
 

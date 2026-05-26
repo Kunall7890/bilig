@@ -123,6 +123,7 @@ describe('workbook agent inspection helpers', () => {
       }),
     ).toEqual({
       selection: {
+        sheetId: 1,
         sheetName: 'Sheet1',
         address: 'A1',
         range: {
@@ -199,6 +200,7 @@ describe('workbook agent inspection helpers', () => {
     })
 
     expect(inspection.range).toEqual({
+      sheetId: 1,
       sheetName: 'Sheet1',
       startAddress: 'B3',
       endAddress: 'D4',

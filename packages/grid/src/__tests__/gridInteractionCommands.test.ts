@@ -110,6 +110,7 @@ describe('gridInteractionCommands', () => {
   it('should open the keyboard header context menu against the resolved header target', () => {
     // Arrange
     const openContextMenuForTarget = vi.fn(() => true)
+    const gridMetrics = getGridMetrics()
 
     // Act
     const opened = openWorkbookGridHeaderContextMenuFromKeyboard({
@@ -121,7 +122,7 @@ describe('gridInteractionCommands', () => {
       },
       selectedCell: [2, 3],
       getCellScreenBounds: () => ({ x: 300, y: 400, width: 104, height: 22 }),
-      gridMetrics: getGridMetrics(),
+      gridMetrics,
       openContextMenuForTarget,
     })
 
@@ -130,7 +131,7 @@ describe('gridInteractionCommands', () => {
     expect(openContextMenuForTarget).toHaveBeenCalledWith({
       target: { kind: 'column', index: 2 },
       x: 352,
-      y: 212,
+      y: 200 + gridMetrics.headerHeight / 2,
     })
   })
 

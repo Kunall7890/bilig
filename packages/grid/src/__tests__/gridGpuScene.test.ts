@@ -352,10 +352,11 @@ describe('gridGpuScene', () => {
   })
 
   test('adds GPU-backed header backgrounds and selection highlights', () => {
+    const gridMetrics = getGridMetrics()
     const scene = buildGridGpuScene({
       engine: makeEngine({}),
       columnWidths: {},
-      gridMetrics: getGridMetrics(),
+      gridMetrics,
       gridSelection: createSelection(),
       selectedCell: [2, 3],
       selectionRange: { x: 2, y: 3, width: 1, height: 1 },
@@ -369,31 +370,32 @@ describe('gridGpuScene', () => {
     expect(scene.fillRects).toContainEqual({
       x: 0,
       y: 0,
-      width: 40,
-      height: 22,
+      width: gridMetrics.rowMarkerWidth,
+      height: gridMetrics.headerHeight,
       color: HEADER_FILL_COLOR,
     })
     expect(scene.fillRects).toContainEqual({
-      x: 40,
+      x: gridMetrics.rowMarkerWidth,
       y: 0,
       width: 104,
-      height: 22,
+      height: gridMetrics.headerHeight,
       color: HEADER_SELECTED_FILL_COLOR,
     })
     expect(scene.fillRects).toContainEqual({
       x: 0,
-      y: 22,
-      width: 40,
+      y: gridMetrics.headerHeight,
+      width: gridMetrics.rowMarkerWidth,
       height: 22,
       color: HEADER_SELECTED_FILL_COLOR,
     })
   })
 
   test('renders frozen row and column headers alongside the scrollable pane', () => {
+    const gridMetrics = getGridMetrics()
     const scene = buildGridGpuScene({
       engine: makeEngine({}),
       columnWidths: {},
-      gridMetrics: getGridMetrics(),
+      gridMetrics,
       gridSelection: createSelection(),
       selectedCell: [0, 0],
       sheetName: 'Sheet1',
@@ -412,48 +414,49 @@ describe('gridGpuScene', () => {
       },
       hostBounds: { left: 0, top: 0 },
       getCellBounds: (col, row) => ({
-        x: col === 0 ? 40 : 144,
-        y: row === 0 ? 22 : 44,
+        x: col === 0 ? gridMetrics.rowMarkerWidth : gridMetrics.rowMarkerWidth + 104,
+        y: row === 0 ? gridMetrics.headerHeight : gridMetrics.headerHeight + 22,
         width: 104,
         height: 22,
       }),
     })
 
     expect(scene.fillRects).toContainEqual({
-      x: 40,
+      x: gridMetrics.rowMarkerWidth,
       y: 0,
       width: 104,
-      height: 22,
+      height: gridMetrics.headerHeight,
       color: HEADER_SELECTED_FILL_COLOR,
     })
     expect(scene.fillRects).toContainEqual({
-      x: 144,
+      x: gridMetrics.rowMarkerWidth + 104,
       y: 0,
       width: 104,
-      height: 22,
+      height: gridMetrics.headerHeight,
       color: HEADER_FILL_COLOR,
     })
     expect(scene.fillRects).toContainEqual({
       x: 0,
-      y: 22,
-      width: 40,
+      y: gridMetrics.headerHeight,
+      width: gridMetrics.rowMarkerWidth,
       height: 22,
       color: HEADER_SELECTED_FILL_COLOR,
     })
     expect(scene.fillRects).toContainEqual({
       x: 0,
-      y: 44,
-      width: 40,
+      y: gridMetrics.headerHeight + 22,
+      width: gridMetrics.rowMarkerWidth,
       height: 22,
       color: HEADER_FILL_COLOR,
     })
   })
 
   test('adds GPU-backed header and body hover affordances', () => {
+    const gridMetrics = getGridMetrics()
     const scene = buildGridGpuScene({
       engine: makeEngine({}),
       columnWidths: {},
-      gridMetrics: getGridMetrics(),
+      gridMetrics,
       gridSelection: createSelection(),
       hoveredCell: [2, 3],
       hoveredHeader: { kind: 'column', index: 2 },
@@ -466,10 +469,10 @@ describe('gridGpuScene', () => {
     })
 
     expect(scene.fillRects).toContainEqual({
-      x: 40,
+      x: gridMetrics.rowMarkerWidth,
       y: 0,
       width: 104,
-      height: 22,
+      height: gridMetrics.headerHeight,
       color: HEADER_HOVER_FILL_COLOR,
     })
     expect(scene.fillRects).toContainEqual({
@@ -482,10 +485,11 @@ describe('gridGpuScene', () => {
   })
 
   test('adds a GPU resize guide for hovered or active column resize', () => {
+    const gridMetrics = getGridMetrics()
     const scene = buildGridGpuScene({
       engine: makeEngine({}),
       columnWidths: {},
-      gridMetrics: getGridMetrics(),
+      gridMetrics,
       gridSelection: createSelection(),
       resizeGuideColumn: 2,
       selectedCell: [0, 0],
@@ -497,26 +501,27 @@ describe('gridGpuScene', () => {
     })
 
     expect(scene.fillRects).toContainEqual({
-      x: 142,
+      x: gridMetrics.rowMarkerWidth + 104 - 2,
       y: 0,
       width: 3,
-      height: 66,
+      height: gridMetrics.headerHeight + 44,
       color: RESIZE_GUIDE_GLOW_COLOR,
     })
     expect(scene.borderRects).toContainEqual({
-      x: 143,
+      x: gridMetrics.rowMarkerWidth + 104 - 1,
       y: 0,
       width: 1,
-      height: 66,
+      height: gridMetrics.headerHeight + 44,
       color: RESIZE_GUIDE_COLOR,
     })
   })
 
   test('adds a GPU resize guide for hovered or active row resize', () => {
+    const gridMetrics = getGridMetrics()
     const scene = buildGridGpuScene({
       engine: makeEngine({}),
       columnWidths: {},
-      gridMetrics: getGridMetrics(),
+      gridMetrics,
       gridSelection: createSelection(),
       resizeGuideRow: 3,
       selectedCell: [0, 0],
@@ -532,25 +537,26 @@ describe('gridGpuScene', () => {
 
     expect(scene.fillRects).toContainEqual({
       x: 0,
-      y: 42,
-      width: 248,
+      y: gridMetrics.headerHeight + 22 - 2,
+      width: gridMetrics.rowMarkerWidth + 208,
       height: 3,
       color: RESIZE_GUIDE_GLOW_COLOR,
     })
     expect(scene.borderRects).toContainEqual({
       x: 0,
-      y: 43,
-      width: 248,
+      y: gridMetrics.headerHeight + 22 - 1,
+      width: gridMetrics.rowMarkerWidth + 208,
       height: 1,
       color: RESIZE_GUIDE_COLOR,
     })
   })
 
   test('adds GPU drag guides for active column header drags', () => {
+    const gridMetrics = getGridMetrics()
     const scene = buildGridGpuScene({
       engine: makeEngine({}),
       columnWidths: {},
-      gridMetrics: getGridMetrics(),
+      gridMetrics,
       gridSelection: {
         columns: CompactSelection.fromSingleSelection([1, 3]),
         rows: CompactSelection.empty(),
@@ -569,22 +575,22 @@ describe('gridGpuScene', () => {
     })
 
     expect(scene.borderRects).toContainEqual({
-      x: 40,
+      x: gridMetrics.rowMarkerWidth,
       y: 0,
       width: 1,
-      height: 66,
+      height: gridMetrics.headerHeight + 44,
       color: RESIZE_GUIDE_COLOR,
     })
     expect(scene.borderRects).toContainEqual({
-      x: 247,
+      x: gridMetrics.rowMarkerWidth + 207,
       y: 0,
       width: 1,
-      height: 66,
+      height: gridMetrics.headerHeight + 44,
       color: RESIZE_GUIDE_COLOR,
     })
     expect(scene.fillRects).toContainEqual({
-      x: 40,
-      y: 19,
+      x: gridMetrics.rowMarkerWidth,
+      y: gridMetrics.headerHeight - 3,
       width: 104,
       height: 3,
       color: RESIZE_GUIDE_COLOR,
@@ -646,10 +652,11 @@ describe('gridGpuScene', () => {
   })
 
   test('adds GPU drag guides for active row header drags', () => {
+    const gridMetrics = getGridMetrics()
     const scene = buildGridGpuScene({
       engine: makeEngine({}),
       columnWidths: {},
-      gridMetrics: getGridMetrics(),
+      gridMetrics,
       gridSelection: {
         columns: CompactSelection.empty(),
         rows: CompactSelection.fromSingleSelection([2, 4]),
@@ -669,21 +676,21 @@ describe('gridGpuScene', () => {
 
     expect(scene.borderRects).toContainEqual({
       x: 0,
-      y: 22,
-      width: 248,
+      y: gridMetrics.headerHeight,
+      width: gridMetrics.rowMarkerWidth + 208,
       height: 1,
       color: RESIZE_GUIDE_COLOR,
     })
     expect(scene.borderRects).toContainEqual({
       x: 0,
-      y: 65,
-      width: 248,
+      y: gridMetrics.headerHeight + 43,
+      width: gridMetrics.rowMarkerWidth + 208,
       height: 1,
       color: RESIZE_GUIDE_COLOR,
     })
     expect(scene.fillRects).toContainEqual({
-      x: 37,
-      y: 22,
+      x: gridMetrics.rowMarkerWidth - 3,
+      y: gridMetrics.headerHeight,
       width: 3,
       height: 22,
       color: RESIZE_GUIDE_COLOR,
@@ -691,10 +698,11 @@ describe('gridGpuScene', () => {
   })
 
   test('adds GPU body highlights for column slice selections without inner borders', () => {
+    const gridMetrics = getGridMetrics()
     const scene = buildGridGpuScene({
       engine: makeEngine({}),
       columnWidths: {},
-      gridMetrics: getGridMetrics(),
+      gridMetrics,
       gridSelection: {
         columns: CompactSelection.fromSingleSelection([1, 3]),
         rows: CompactSelection.empty(),
@@ -714,8 +722,8 @@ describe('gridGpuScene', () => {
     })
 
     expect(scene.fillRects).toContainEqual({
-      x: 40,
-      y: 22,
+      x: gridMetrics.rowMarkerWidth,
+      y: gridMetrics.headerHeight,
       width: 208,
       height: 44,
       color: SELECTION_FILL_COLOR,
@@ -734,10 +742,11 @@ describe('gridGpuScene', () => {
   })
 
   test('adds GPU body highlights for row slice selections without inner borders', () => {
+    const gridMetrics = getGridMetrics()
     const scene = buildGridGpuScene({
       engine: makeEngine({}),
       columnWidths: {},
-      gridMetrics: getGridMetrics(),
+      gridMetrics,
       gridSelection: {
         columns: CompactSelection.empty(),
         rows: CompactSelection.fromSingleSelection([2, 4]),
@@ -757,8 +766,8 @@ describe('gridGpuScene', () => {
     })
 
     expect(scene.fillRects).toContainEqual({
-      x: 40,
-      y: 22,
+      x: gridMetrics.rowMarkerWidth,
+      y: gridMetrics.headerHeight,
       width: 208,
       height: 44,
       color: SELECTION_FILL_COLOR,

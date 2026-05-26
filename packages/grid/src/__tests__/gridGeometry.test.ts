@@ -27,8 +27,8 @@ describe('gridGeometry', () => {
     expect(geometry.camera.frozenHeight).toBe(20)
     expect(geometry.camera.bodyWorldX).toBe(350)
     expect(geometry.camera.bodyWorldY).toBe(60)
-    expect(geometry.camera.bodyViewportWidth).toBe(280)
-    expect(geometry.camera.bodyViewportHeight).toBe(178)
+    expect(geometry.camera.bodyViewportWidth).toBe(520 - metrics.rowMarkerWidth - geometry.camera.frozenWidth)
+    expect(geometry.camera.bodyViewportHeight).toBe(220 - metrics.headerHeight - geometry.camera.frozenHeight)
   })
 
   test('uses one transform model for body and frozen cells', () => {
@@ -57,9 +57,10 @@ describe('gridGeometry', () => {
       x: metrics.rowMarkerWidth + 100 + (200 - 150),
       y: metrics.headerHeight + 20 + (60 - 30),
     })
-    expect(geometry.columnHeaderScreenRect(2)).toMatchObject({ height: metrics.headerHeight, width: 100, x: 190, y: 0 })
-    expect(geometry.rowHeaderScreenRect(3)).toMatchObject({ height: 20, width: metrics.rowMarkerWidth, x: 0, y: 72 })
-    expect(geometry.cellScreenRectForPane(2, 3, 'body')).toEqual({ height: 20, width: 100, x: 190, y: 72 })
+    const bodyCell = { height: 20, width: 100, x: metrics.rowMarkerWidth + 100 + (200 - 150), y: metrics.headerHeight + 20 + (60 - 30) }
+    expect(geometry.columnHeaderScreenRect(2)).toMatchObject({ height: metrics.headerHeight, width: 100, x: bodyCell.x, y: 0 })
+    expect(geometry.rowHeaderScreenRect(3)).toMatchObject({ height: 20, width: metrics.rowMarkerWidth, x: 0, y: bodyCell.y })
+    expect(geometry.cellScreenRectForPane(2, 3, 'body')).toEqual(bodyCell)
     expect(geometry.cellScreenRectForPane(0, 0, 'body')).toBeNull()
     expect(geometry.cellScreenRectForPane(0, 0, 'frozen-cells')).toEqual({
       height: 20,
@@ -67,9 +68,19 @@ describe('gridGeometry', () => {
       x: metrics.rowMarkerWidth,
       y: metrics.headerHeight,
     })
-    expect(geometry.editorScreenRect(2, 3)).toEqual({ height: 20, width: 100, x: 190, y: 72 })
-    expect(geometry.resizeGuideScreenRect({ kind: 'column', index: 2 })).toEqual({ height: 220, width: 1, x: 289, y: 0 })
-    expect(geometry.resizeGuideScreenRect({ kind: 'row', index: 3 })).toEqual({ height: 1, width: 520, x: 0, y: 91 })
+    expect(geometry.editorScreenRect(2, 3)).toEqual(bodyCell)
+    expect(geometry.resizeGuideScreenRect({ kind: 'column', index: 2 })).toEqual({
+      height: 220,
+      width: 1,
+      x: bodyCell.x + bodyCell.width - 1,
+      y: 0,
+    })
+    expect(geometry.resizeGuideScreenRect({ kind: 'row', index: 3 })).toEqual({
+      height: 1,
+      width: 520,
+      x: 0,
+      y: bodyCell.y + bodyCell.height - 1,
+    })
   })
 
   test('hit-tests through body and frozen panes with hidden axes skipped', () => {
@@ -105,8 +116,18 @@ describe('gridGeometry', () => {
     expect(geometry.hitTestHeaderScreenPoint({ x: 20, y: 80 })).toEqual({ kind: 'row', index: 4 })
     expect(geometry.hitTestHeaderDragScreenPoint('column', { x: 205, y: 120 })).toEqual({ kind: 'column', index: 3 })
     expect(geometry.hitTestHeaderDragScreenPoint('row', { x: 205, y: 80 })).toEqual({ kind: 'row', index: 4 })
-    expect(geometry.hitTestResizeHandleScreenPoint({ x: 295, y: 12 })).toEqual({ kind: 'column', index: 3 })
-    expect(geometry.hitTestResizeHandleScreenPoint({ x: 20, y: 93 })).toEqual({ kind: 'row', index: 4 })
+    const columnResizeTarget = geometry.columnHeaderScreenRect(3)
+    const rowResizeTarget = geometry.rowHeaderScreenRect(4)
+    expect(columnResizeTarget).not.toBeNull()
+    expect(rowResizeTarget).not.toBeNull()
+    expect(geometry.hitTestResizeHandleScreenPoint({ x: columnResizeTarget!.x + columnResizeTarget!.width - 1, y: 12 })).toEqual({
+      kind: 'column',
+      index: 3,
+    })
+    expect(geometry.hitTestResizeHandleScreenPoint({ x: 20, y: rowResizeTarget!.y + rowResizeTarget!.height - 1 })).toEqual({
+      kind: 'row',
+      index: 4,
+    })
   })
 
   test('does not resolve scrolled body hits outside the mounted viewport', () => {
@@ -164,8 +185,8 @@ describe('gridGeometry', () => {
     expect(geometry.fillHandleScreenRect({ x: 0, y: 0, width: 3, height: 3 })).toEqual({
       height: 8,
       width: 8,
-      x: 286,
-      y: 68,
+      x: metrics.rowMarkerWidth + 100 + 150 - 4,
+      y: metrics.headerHeight + 20 + 30 - 4,
     })
   })
 
@@ -211,10 +232,10 @@ describe('gridGeometry', () => {
     })
 
     expect(geometry.fillHandleScreenRect({ x: 1, y: 3, width: 1, height: 1 })).toEqual({
-      height: 6,
+      height: 8,
       width: 8,
-      x: 236,
-      y: 94,
+      x: metrics.rowMarkerWidth + 200 - 4,
+      y: metrics.headerHeight + (60 - 4) + 20 - 4,
     })
   })
 

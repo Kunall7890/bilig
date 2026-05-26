@@ -31,14 +31,14 @@ describe('GridFillPreviewOverlay', () => {
     })
 
     const preview = () => rootHost.querySelector<HTMLElement>('[data-grid-fill-preview="true"]')
-    expect(preview()?.style.left).toBe('246px')
+    expect(preview()?.style.left).toBe('236px')
 
     scrollLeft = 100
     await act(async () => {
       scrollStore.setSnapshot({ scrollLeft, scrollTop: 0, tx: -scrollLeft, ty: 0 })
     })
 
-    expect(preview()?.style.left).toBe('146px')
+    expect(preview()?.style.left).toBe('136px')
 
     await act(async () => {
       root.unmount()
