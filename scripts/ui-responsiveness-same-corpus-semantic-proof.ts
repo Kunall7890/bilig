@@ -14,6 +14,7 @@ import {
   type SameCorpusMutationTargetCommittedStateProof,
 } from './ui-responsiveness-same-corpus-committed-state-proof.ts'
 import { sameCorpusMutationTargetTimingInvalidReasons } from './ui-responsiveness-same-corpus-mutation-target-timing.ts'
+import { sameCorpusMutationTargetRangeForSample } from './ui-responsiveness-same-corpus-mutation-target-spec.ts'
 import { uiSameCorpusWorkloadMutatesWorkbook, type UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export interface SameCorpusSemanticUiProof {
@@ -357,6 +358,11 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
   }
   if (sample.targetRange.trim().length === 0) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing the target range`)
+  } else if (
+    uiSameCorpusWorkloadMutatesWorkbook(workload) &&
+    !sameCorpusSelectedRangeMatchesTarget(sample.targetRange, sameCorpusMutationTargetRangeForSample(workload, sample.sampleIndex))
+  ) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} target range does not match the declared sample target`)
   }
   if (
     sample.sampleIndex === 0 &&

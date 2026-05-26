@@ -11,6 +11,7 @@ import {
 } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import { readBiligRenderedSurfaceState } from './ui-responsiveness-same-corpus-surface-page.ts'
 import { settleFrames } from './ui-responsiveness-same-corpus-page-utils.ts'
+import { sameCorpusMutationTargetRangeForSample } from './ui-responsiveness-same-corpus-mutation-target-spec.ts'
 import { sameCorpusFillColorExpectedColors } from './ui-responsiveness-same-corpus-workload-runner.ts'
 import type { UiResponsivenessSameCorpusMutatingWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
@@ -32,14 +33,7 @@ export interface SameCorpusMutationTargetRevisionProof {
   readonly visibleRenderRevision: string | null
 }
 
-export function sameCorpusMutationTargetRangeForSample(workload: UiResponsivenessSameCorpusMutatingWorkload, sampleIndex: number): string {
-  const columnByWorkload: Record<UiResponsivenessSameCorpusMutatingWorkload, string> = {
-    'edit-visible-cell': 'C',
-    'fill-format-change': 'E',
-    'formula-edit': 'D',
-  }
-  return `${columnByWorkload[workload]}${String(sampleIndex + 5)}`
-}
+export { sameCorpusMutationTargetRangeForSample } from './ui-responsiveness-same-corpus-mutation-target-spec.ts'
 
 export async function readSameCorpusDeclaredMutationTargetSelection(args: {
   readonly page: Page
