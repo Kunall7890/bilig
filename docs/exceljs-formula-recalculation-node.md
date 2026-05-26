@@ -79,13 +79,13 @@ If step 3 happens later in Excel, the backend never owned the decision.
 
 ## Decision table
 
-| Job                                                                        | Better starting point                       |
-| -------------------------------------------------------------------------- | ------------------------------------------- |
-| Generate an XLSX report with styles, sheets, tables, and formula strings   | ExcelJS                                     |
-| Open a file later in Excel and let Excel calculate formulas                | ExcelJS                                     |
-| Preserve formula records and cached values from an existing workbook       | ExcelJS or SheetJS-style tooling            |
-| Existing ExcelJS workbook needs recalculated values inside Node            | `@bilig/exceljs-formula-recalc`                    |
-| Raw XLSX bytes need recalculated values inside Node                        | `@bilig/xlsx-formula-recalc`                       |
+| Job                                                                        | Better starting point                        |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| Generate an XLSX report with styles, sheets, tables, and formula strings   | ExcelJS                                      |
+| Open a file later in Excel and let Excel calculate formulas                | ExcelJS                                      |
+| Preserve formula records and cached values from an existing workbook       | ExcelJS or SheetJS-style tooling             |
+| Existing ExcelJS workbook needs recalculated values inside Node            | `@bilig/exceljs-formula-recalc`              |
+| Raw XLSX bytes need recalculated values inside Node                        | `@bilig/xlsx-formula-recalc`                 |
 | Recalculate workbook formulas inside a Node.js request, job, or agent tool | A formula runtime such as `@bilig/workpaper` |
 | Persist formula-backed state as JSON and verify it after restore           | `@bilig/workpaper` WorkPaper                 |
 
@@ -227,6 +227,16 @@ chart, pivot table, macro, or workbook artifact. Check the
 - [Persist formula-backed WorkPaper documents in Node](persisting-formula-backed-workpaper-documents-in-node.md)
 - [90-second Node quickstart](try-bilig-headless-in-node.md)
 
-If this saves you an ExcelJS recalculation workaround, star the repository so
-the project is easier for the next backend developer to find:
+## After the proof
+
+If the demo or a reduced ExcelJS workbook gives the fresh formula values your
+service needs, star or bookmark Bilig so the recalculation boundary is easy to
+find later:
 <https://github.com/proompteng/bilig/stargazers>.
+
+Watch releases if this package is close to a production path:
+<https://github.com/proompteng/bilig/subscription>.
+
+If a real ExcelJS workbook still blocks adoption, open the smallest fixture
+with the formula, input cells, output cells, and warning output:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.

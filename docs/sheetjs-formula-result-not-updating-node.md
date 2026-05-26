@@ -119,16 +119,16 @@ library and add recalculation, instead of rewriting the whole workbook pipeline.
 
 ## Decision table
 
-| Job | Use |
-| --- | --- |
-| Read or write many spreadsheet formats | SheetJS / `xlsx` |
-| Generate a styled XLSX report for a human to open later | SheetJS, ExcelJS, or `xlsx-populate` |
-| Ask Excel to recalculate when someone opens the file | workbook calc properties or Excel itself |
-| Recalculate SheetJS / `xlsx` bytes inside Node after changing inputs | `@bilig/sheetjs-formula-recalc` |
-| Recalculate generic XLSX bytes from another writer | `@bilig/xlsx-formula-recalc` |
-| Keep an ExcelJS workbook and add fresh formula readback | `@bilig/exceljs-formula-recalc` |
-| Own formula-backed workbook state as JSON in a service | `@bilig/workpaper` |
-| Need commercial SheetJS formula calculation support | evaluate SheetJS Pro |
+| Job                                                                  | Use                                      |
+| -------------------------------------------------------------------- | ---------------------------------------- |
+| Read or write many spreadsheet formats                               | SheetJS / `xlsx`                         |
+| Generate a styled XLSX report for a human to open later              | SheetJS, ExcelJS, or `xlsx-populate`     |
+| Ask Excel to recalculate when someone opens the file                 | workbook calc properties or Excel itself |
+| Recalculate SheetJS / `xlsx` bytes inside Node after changing inputs | `@bilig/sheetjs-formula-recalc`          |
+| Recalculate generic XLSX bytes from another writer                   | `@bilig/xlsx-formula-recalc`             |
+| Keep an ExcelJS workbook and add fresh formula readback              | `@bilig/exceljs-formula-recalc`          |
+| Own formula-backed workbook state as JSON in a service               | `@bilig/workpaper`                       |
+| Need commercial SheetJS formula calculation support                  | evaluate SheetJS Pro                     |
 
 ## Production checks
 
@@ -156,9 +156,18 @@ cells, and export a workbook with tests around that boundary.
 - [@bilig/sheetjs-formula-recalc package](https://www.npmjs.com/package/@bilig/sheetjs-formula-recalc)
 - [SheetJS, xlsx-populate, and ExcelJS bridge example](https://github.com/proompteng/bilig/tree/main/examples/recalc-bridge-workflows)
 
-If this saves you from opening Excel in a backend job just to refresh formula
-values, star the repository so the fix is easier for the next SheetJS user to
-find: <https://github.com/proompteng/bilig/stargazers>.
+## After the proof
+
+If the demo or a reduced SheetJS workbook returns the fresh formula values you
+needed, star or bookmark Bilig so the boundary is easy to find later:
+<https://github.com/proompteng/bilig/stargazers>.
+
+Watch releases if this is close to a production workflow:
+<https://github.com/proompteng/bilig/subscription>.
+
+If a SheetJS workbook still fails after a reduced test case, open the blocker
+with the formula, input cells, output cells, and warning output:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.
 
 ## Sources
 

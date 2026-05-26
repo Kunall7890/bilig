@@ -172,6 +172,16 @@ XLSX boundary around the parts it owns.
 - [Stale XLSX cache and Excel oracle checks](xlsx-corpus-verifier-walkthrough.md)
 - [Compatibility limits](where-bilig-is-not-excel-compatible-yet.md)
 
-If this saves you from opening Excel in a backend job just to refresh formulas,
-star the repository so the project is easier for the next Node developer to
-find: <https://github.com/proompteng/bilig/stargazers>.
+## After the proof
+
+If `verified: true` matches your Node/XLSX workflow, star or bookmark Bilig so
+the recalculation path is easy to find again:
+<https://github.com/proompteng/bilig/stargazers>.
+
+Watch releases if this is close to a production dependency:
+<https://github.com/proompteng/bilig/subscription>.
+
+If a real workbook is close but blocked by a formula, external-link, import,
+export, or round-trip edge case, open the smallest adoption blocker you can
+share:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.
