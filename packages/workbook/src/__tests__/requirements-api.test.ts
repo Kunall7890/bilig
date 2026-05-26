@@ -40,6 +40,12 @@ function accessorArray(get: () => unknown): unknown[] {
   return value
 }
 
+function arraySubclass<T>(entries: readonly T[]): T[] {
+  const value = new (class extends Array<T> {})()
+  value.push(...entries)
+  return value
+}
+
 function customPrototype(value: object): unknown {
   const custom = new (class {
     readonly inherited = true
@@ -491,6 +497,104 @@ describe('@bilig/workbook runtime requirements api', () => {
       ],
     })
     expect(refGetterInvoked).toBe(false)
+  })
+
+  it('rejects non-plain runtime requirement arrays as uninspectable handoff data', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    const requirement = {
+      kind: 'verify',
+      capability: 'verifyCheck',
+      refs: [target],
+      message: 'Verify custom check',
+    } as const
+
+    expect(
+      checkRuntimeRequirements({
+        modelName: 'runtime-plain-array-model',
+        actionName: 'verify',
+        requirements: arraySubclass([requirement]),
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'requirements',
+          message: 'Workbook runtime requirements requirements must be a plain array',
+        },
+      ],
+    })
+
+    const extraRequirements = [requirement]
+    Object.defineProperty(extraRequirements, 'meta', {
+      enumerable: true,
+      value: 'caller-owned',
+    })
+    expect(
+      checkRuntimeRequirements({
+        modelName: 'runtime-extra-array-model',
+        actionName: 'verify',
+        requirements: extraRequirements,
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'requirements.meta',
+          message: 'Workbook runtime requirements requirements must not contain extra properties',
+        },
+      ],
+    })
+
+    expect(
+      checkRuntimeRequirements({
+        modelName: 'runtime-ref-subclass-model',
+        actionName: 'verify',
+        requirements: [
+          {
+            ...requirement,
+            refs: arraySubclass([target]),
+          },
+        ],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'requirements[0].refs',
+          message: 'Workbook runtime requirement refs must be a plain array',
+        },
+      ],
+    })
+
+    const symbolRefs = [target]
+    Object.defineProperty(symbolRefs, Symbol('meta'), {
+      enumerable: true,
+      value: 'caller-owned',
+    })
+    expect(
+      checkRuntimeRequirements({
+        modelName: 'runtime-symbol-ref-array-model',
+        actionName: 'verify',
+        requirements: [
+          {
+            ...requirement,
+            refs: symbolRefs,
+          },
+        ],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'requirements[0].refs',
+          message: 'Workbook runtime requirement refs must not contain extra properties',
+        },
+      ],
+    })
   })
 
   it('checks runtime adapter capabilities before mutation handoff', () => {

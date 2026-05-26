@@ -2,6 +2,7 @@ import { describeRef, type WorkbookRefDescription } from './describe.js'
 import { isWorkbookRefData, toWorkbookRefData, type WorkbookRef } from './find.js'
 import type { WorkbookActionCommand, WorkbookActionPlan } from './model.js'
 import type { WorkbookOp } from './ops.js'
+import { isPlainArray } from './data-properties.js'
 import { hydratePlanData, isHydratedPlan, type WorkbookExecutablePlan } from './plan-data.js'
 import type { WorkbookCheckResult } from './result.js'
 
@@ -168,7 +169,7 @@ function normalizeRuntimeRequirement(requirement: WorkbookRuntimeRequirement): W
   const checkKind = optionalStringValue(requirement, 'checkKind')
   const target = ownValue(requirement, 'target')
   const refs = ownValue(requirement, 'refs')
-  const normalizedRefs = refs !== undefined && Array.isArray(refs) ? Object.freeze(refs.map(normalizedRefDescription)) : undefined
+  const normalizedRefs = refs !== undefined && isPlainRuntimeArray(refs) ? Object.freeze(refs.map(normalizedRefDescription)) : undefined
 
   return Object.freeze({
     kind,
@@ -437,7 +438,7 @@ function hasOptionalString(value: Record<string, unknown>, key: string): boolean
 function arrayEveryData<T>(value: unknown, predicate: (entry: unknown) => entry is T): value is readonly T[]
 function arrayEveryData(value: unknown, predicate: (entry: unknown) => boolean): boolean
 function arrayEveryData(value: unknown, predicate: (entry: unknown) => boolean): boolean {
-  if (!Array.isArray(value)) {
+  if (!isPlainRuntimeArray(value)) {
     return false
   }
 
@@ -449,6 +450,26 @@ function arrayEveryData(value: unknown, predicate: (entry: unknown) => boolean):
   }
 
   return true
+}
+
+function isRuntimeArrayIndexKey(key: string): boolean {
+  return key === 'length' || /^\d+$/.test(key)
+}
+
+function runtimeArrayExtraPropertyPath(value: readonly unknown[], path: string): string | null {
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    return path
+  }
+  for (const key of Object.keys(Object.getOwnPropertyDescriptors(value))) {
+    if (!isRuntimeArrayIndexKey(key)) {
+      return `${path}.${key}`
+    }
+  }
+  return null
+}
+
+function isPlainRuntimeArray(value: unknown): value is readonly unknown[] {
+  return isPlainArray(value) && runtimeArrayExtraPropertyPath(value, 'array') === null
 }
 
 function hasOptionalIndex(value: Record<string, unknown>, key: string): boolean {
@@ -592,6 +613,15 @@ function pushRequirementIssues(issues: WorkbookRuntimeRequirementsIssue[], value
       issues.push(runtimeRequirementsIssue(`${path}.refs`, 'Workbook runtime requirement refs must be an array'))
       return
     }
+    if (!isPlainArray(refs)) {
+      issues.push(runtimeRequirementsIssue(`${path}.refs`, 'Workbook runtime requirement refs must be a plain array'))
+      return
+    }
+    const extraPath = runtimeArrayExtraPropertyPath(refs, `${path}.refs`)
+    if (extraPath !== null) {
+      issues.push(runtimeRequirementsIssue(extraPath, 'Workbook runtime requirement refs must not contain extra properties'))
+      return
+    }
     for (let refIndex = 0; refIndex < refs.length; refIndex += 1) {
       const descriptor = Object.getOwnPropertyDescriptor(refs, String(refIndex))
       const ref = descriptor !== undefined && descriptor.enumerable && 'value' in descriptor ? descriptor.value : undefined
@@ -616,6 +646,13 @@ export function checkRuntimeRequirements(value: unknown): WorkbookRuntimeRequire
   const requirements = ownValue(value, 'requirements')
   if (!Array.isArray(requirements)) {
     issues.push(runtimeRequirementsIssue('requirements', 'Workbook runtime requirements requirements must be an array'))
+  } else if (!isPlainArray(requirements)) {
+    issues.push(runtimeRequirementsIssue('requirements', 'Workbook runtime requirements requirements must be a plain array'))
+  } else if (runtimeArrayExtraPropertyPath(requirements, 'requirements') !== null) {
+    const extraPath = runtimeArrayExtraPropertyPath(requirements, 'requirements')
+    issues.push(
+      runtimeRequirementsIssue(extraPath ?? 'requirements', 'Workbook runtime requirements requirements must not contain extra properties'),
+    )
   } else {
     for (let index = 0; index < requirements.length; index += 1) {
       const descriptor = Object.getOwnPropertyDescriptor(requirements, String(index))
