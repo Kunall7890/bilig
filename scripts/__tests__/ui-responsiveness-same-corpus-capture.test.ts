@@ -10,6 +10,7 @@ import {
   assertSameCorpusBrowserRunAllowed,
   assertSameCorpusCaptureCurrentContractEvidenceReady,
   assertSameCorpusCaptureEvidenceReady,
+  assertSameCorpusPreflightReady,
   assertProductionBiligEvidenceSource,
   buildSameCorpusFingerprint,
   buildSameCorpusCaptureArtifact,
@@ -273,6 +274,34 @@ describe('same-corpus UI responsiveness capture CLI', () => {
 
   it('rejects same-corpus preflight with no incumbent URL', () => {
     expect(() => parsePreflightArgs(['--preflight'])).toThrow('Same-corpus preflight requires')
+  })
+
+  it('keeps incumbent preflight blockers structured before failing readiness', () => {
+    expect(() =>
+      assertSameCorpusPreflightReady({
+        mode: 'preflight',
+        corpusCaseId: 'wide-mixed-250k',
+        materializedCells: 250_000,
+        requiredProductCount: 2,
+        checkedProductCount: 1,
+        readyProductCount: 0,
+        blockedProductCount: 1,
+        allCheckedProductsReady: false,
+        products: [
+          {
+            product: 'google-sheets',
+            source: 'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+            finalUrl: 'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+            title: 'Google Sheets',
+            status: 'blocked',
+            blocker:
+              'Cannot preflight same-corpus editable workloads on google-sheets: Google Sheets page is not authenticated; provide an authenticated storage state.',
+            corpusVerification: null,
+            limitations: ['storage state was not provided'],
+          },
+        ],
+      }),
+    ).toThrow('Google Sheets page is not authenticated')
   })
 
   it('parses XLSX emission mode for same-corpus setup', () => {

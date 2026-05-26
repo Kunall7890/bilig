@@ -23,6 +23,7 @@ import {
   preflightSameCorpusIncumbentAccess,
   saveStorageState,
 } from './ui-responsiveness-same-corpus-page.ts'
+import type { SameCorpusPreflight } from './ui-responsiveness-same-corpus-preflight.ts'
 
 export { parseCaptureArgs, parseEmitXlsxArgs, parsePreflightArgs, parseSaveStorageStateArgs } from './ui-responsiveness-same-corpus-args.ts'
 export { buildSameCorpusFingerprint, verifyXlsxCorpusFingerprint } from './ui-responsiveness-same-corpus-fingerprint.ts'
@@ -67,6 +68,7 @@ async function main(): Promise<void> {
       )
     }
     console.log(serializedJson.trim())
+    assertSameCorpusPreflightReady(preflight)
     return
   }
 
@@ -118,6 +120,20 @@ export function assertSameCorpusBrowserRunAllowed(
 
 export function assertSameCorpusCaptureEvidenceReady(capture: SameCorpusCapture): void {
   assertSameCorpusCaptureClaimReady(capture)
+}
+
+export function assertSameCorpusPreflightReady(preflight: SameCorpusPreflight): void {
+  if (preflight.allCheckedProductsReady) {
+    return
+  }
+  throw new Error(
+    [
+      'Same-corpus UI incumbent preflight is not ready for claim-grade capture.',
+      ...preflight.products
+        .filter((product) => product.status === 'blocked')
+        .map((product) => `- ${product.product}: ${product.blocker ?? 'blocked without diagnostic'}`),
+    ].join('\n'),
+  )
 }
 
 export function assertSameCorpusCaptureCurrentContractEvidenceReady(capture: SameCorpusCapture): void {

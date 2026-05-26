@@ -56,30 +56,13 @@ import {
   sameCorpusFillColorSwatchLabel,
   type ProductOperationSample,
 } from './ui-responsiveness-same-corpus-workload-runner.ts'
+import type { PreflightProductResult, SameCorpusPreflight } from './ui-responsiveness-same-corpus-preflight.ts'
 
 interface ProductSampleCollection {
   readonly corpusVerification: SameCorpusCaptureCorpusVerification
   readonly biligRuntimeProof?: SameCorpusBiligRuntimeProof
   readonly mutationTargetProofs: readonly SameCorpusMutationTargetProof[]
   readonly samples: readonly ProductOperationSample[]
-}
-
-interface PreflightProductResult {
-  readonly product: Exclude<UiResponsivenessSameCorpusProduct, 'bilig'>
-  readonly source: string
-  readonly finalUrl: string
-  readonly title: string
-  readonly corpusVerification: SameCorpusCaptureCorpusVerification
-  readonly limitations: string[]
-}
-
-interface SameCorpusPreflight {
-  readonly mode: 'preflight'
-  readonly corpusCaseId: string
-  readonly materializedCells: number
-  readonly requiredProductCount: 2
-  readonly checkedProductCount: number
-  readonly products: readonly PreflightProductResult[]
 }
 
 interface SameCorpusProductMeasurementUrls {
@@ -310,6 +293,9 @@ export async function preflightSameCorpusIncumbentAccess(args: PreflightArgs): P
       materializedCells: corpus.materializedCellCount,
       requiredProductCount: 2,
       checkedProductCount: products.length,
+      readyProductCount: products.filter((product) => product.status === 'ready').length,
+      blockedProductCount: products.filter((product) => product.status === 'blocked').length,
+      allCheckedProductsReady: products.length > 0 && products.every((product) => product.status === 'ready'),
       products,
     }
   } finally {
@@ -356,11 +342,23 @@ async function preflightIncumbentProduct(
       source: url,
       finalUrl: page.url(),
       title: await page.title(),
+      status: 'ready',
+      blocker: null,
       corpusVerification,
       limitations: productLimitations(product, storageStatePathForPreflightProduct(product, args)),
     }
   } catch (error: unknown) {
-    throw new Error(await productReadyFailureMessage(page, product, url, 0, error), { cause: error })
+    const diagnostic = await collectPageDiagnostic(page)
+    return {
+      product,
+      source: url,
+      finalUrl: diagnostic.finalUrl,
+      title: diagnostic.title,
+      status: 'blocked',
+      blocker: await productReadyFailureMessage(page, product, url, 0, error),
+      corpusVerification: null,
+      limitations: productLimitations(product, storageStatePathForPreflightProduct(product, args)),
+    }
   } finally {
     await context.close()
   }
