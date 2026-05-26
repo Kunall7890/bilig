@@ -442,4 +442,38 @@ describe('wasm kernel scalar math dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(1, 11, width)]).toBe(-4)
     expect(kernel.readNumbers()[cellIndex(1, 12, width)]).toBe(-5)
   })
+
+  it('returns Excel-compatible numeric-domain errors for combinatorics through wasm dispatch', async () => {
+    const kernel = await createKernel()
+    const width = 32
+    kernel.init(96, 0, 8, 1, 1)
+    kernel.writeCells(new Uint8Array(96), new Float64Array(96), new Uint32Array(96), new Uint16Array(96))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodeCall(BuiltinId.Fact, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Factdouble, 1), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Combin, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Combin, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Combina, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Combina, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Permut, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Permut, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Permutationa, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Permutationa, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 10 }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([[-1], [-1], [-1, 0], [2, 3], [-1, 1], [1, -1], [0, 1], [3, 4], [0, 1], [-1, 1]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 10 }, (_, index) => cellIndex(1, index, width))))
+
+    for (let index = 0; index < 10; index += 1) {
+      expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Error)
+      expect(kernel.readErrors()[cellIndex(1, index, width)]).toBe(ErrorCode.Num)
+    }
+  })
 })

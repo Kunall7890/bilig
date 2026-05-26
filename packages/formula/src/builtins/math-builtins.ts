@@ -13,7 +13,6 @@ interface MathBuiltinDeps {
   toBitwiseUnsigned: (value: CellValue | undefined) => number | undefined
   coerceShiftAmount: (value: CellValue | undefined) => number | undefined
   integerValue: (value: CellValue | undefined, fallback?: number) => number | undefined
-  nonNegativeIntegerValue: (value: CellValue | undefined, fallback?: number) => number | undefined
   firstError: (args: readonly (CellValue | undefined)[]) => CellValue | undefined
   numberResult: (value: number) => EvaluationResult
   valueError: () => EvaluationResult
@@ -71,7 +70,6 @@ export function createMathBuiltins({
   toBitwiseUnsigned,
   coerceShiftAmount,
   integerValue,
-  nonNegativeIntegerValue,
   firstError,
   numberResult,
   valueError,
@@ -456,31 +454,49 @@ export function createMathBuiltins({
       return numberValue === undefined ? valueError() : numberResult(oddValue(numberValue))
     },
     FACT: (value) => {
-      const factorial = factorialValue(toNumber(value) ?? Number.NaN)
-      return factorial === undefined ? valueError() : numberResult(factorial)
+      const numberValue = toNumber(value)
+      if (numberValue === undefined) {
+        return valueError()
+      }
+      const factorial = factorialValue(numberValue)
+      return factorial === undefined ? numError() : numberResult(factorial)
     },
     FACTDOUBLE: (value) => {
-      const factorial = doubleFactorialValue(toNumber(value) ?? Number.NaN)
-      return factorial === undefined ? valueError() : numberResult(factorial)
+      const numberValue = toNumber(value)
+      if (numberValue === undefined) {
+        return valueError()
+      }
+      const factorial = doubleFactorialValue(numberValue)
+      return factorial === undefined ? numError() : numberResult(factorial)
     },
     COMBIN: (numberArg, chosenArg) => {
-      const numberValue = nonNegativeIntegerValue(numberArg)
-      const chosenValue = nonNegativeIntegerValue(chosenArg)
-      if (numberValue === undefined || chosenValue === undefined || chosenValue > numberValue) {
+      const numberRaw = toNumber(numberArg)
+      const chosenRaw = toNumber(chosenArg)
+      if (numberRaw === undefined || chosenRaw === undefined) {
         return valueError()
+      }
+      const numberValue = Math.trunc(numberRaw)
+      const chosenValue = Math.trunc(chosenRaw)
+      if (!Number.isFinite(numberRaw) || !Number.isFinite(chosenRaw) || numberValue < 0 || chosenValue < 0 || chosenValue > numberValue) {
+        return numError()
       }
       const numerator = factorialValue(numberValue)
       const denominator = factorialValue(chosenValue)
       const remainder = factorialValue(numberValue - chosenValue)
       return numerator === undefined || denominator === undefined || remainder === undefined
-        ? valueError()
+        ? numError()
         : numberResult(numerator / (denominator * remainder))
     },
     COMBINA: (numberArg, chosenArg) => {
-      const numberValue = nonNegativeIntegerValue(numberArg)
-      const chosenValue = nonNegativeIntegerValue(chosenArg)
-      if (numberValue === undefined || chosenValue === undefined) {
+      const numberRaw = toNumber(numberArg)
+      const chosenRaw = toNumber(chosenArg)
+      if (numberRaw === undefined || chosenRaw === undefined) {
         return valueError()
+      }
+      const numberValue = Math.trunc(numberRaw)
+      const chosenValue = Math.trunc(chosenRaw)
+      if (!Number.isFinite(numberRaw) || !Number.isFinite(chosenRaw) || numberValue < 0 || chosenValue < 0) {
+        return numError()
       }
       if (chosenValue === 0) {
         return numberResult(1)
@@ -493,7 +509,7 @@ export function createMathBuiltins({
       const denominator = factorialValue(chosenValue)
       const remainder = factorialValue(numberValue - 1)
       return numerator === undefined || denominator === undefined || remainder === undefined
-        ? valueError()
+        ? numError()
         : numberResult(numerator / (denominator * remainder))
     },
     GCD: (...args) => {
@@ -526,13 +542,27 @@ export function createMathBuiltins({
       return numberResult(Math.round(numberValue / multipleValue) * multipleValue)
     },
     MULTINOMIAL: (...args) => {
-      const numbers = collectNumericArgs(args, toNumber).map((value) => Math.trunc(value))
+      const error = firstError(args)
+      if (error) {
+        return error
+      }
+      const numbers: number[] = []
+      for (const arg of args) {
+        const numberValue = toNumber(arg)
+        if (numberValue === undefined) {
+          return valueError()
+        }
+        if (!Number.isFinite(numberValue)) {
+          return numError()
+        }
+        numbers.push(Math.trunc(numberValue))
+      }
       if (numbers.some((value) => value < 0)) {
-        return valueError()
+        return numError()
       }
       const numerator = factorialValue(numbers.reduce((sum, value) => sum + value, 0))
       const denominator = numbers.reduce((product, value) => product * (factorialValue(value) ?? Number.NaN), 1)
-      return numerator === undefined || Number.isNaN(denominator) ? valueError() : numberResult(numerator / denominator)
+      return numerator === undefined || Number.isNaN(denominator) ? numError() : numberResult(numerator / denominator)
     },
     PRODUCT: (...args) => {
       const error = firstError(args)

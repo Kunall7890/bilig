@@ -505,6 +505,9 @@ export function tryApplyScalarMathBuiltin(
     if (!isFinite(numeric)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if ((builtinId == BuiltinId.Fact || builtinId == BuiltinId.Factdouble) && numeric < 0.0) {
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
 
     let result = 0.0
     let errorCode = ErrorCode.None
@@ -577,7 +580,14 @@ export function tryApplyScalarMathBuiltin(
       return writeScalarMathError(base, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return !isFinite(result)
-      ? writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      ? writeScalarMathError(
+          base,
+          builtinId == BuiltinId.Fact || builtinId == BuiltinId.Factdouble ? ErrorCode.Num : ErrorCode.Value,
+          rangeIndexStack,
+          valueStack,
+          tagStack,
+          kindStack,
+        )
       : writeScalarMathNumber(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
@@ -595,13 +605,13 @@ export function tryApplyScalarMathBuiltin(
       return writeScalarMathNumber(base, Math.trunc(left / right), rangeIndexStack, valueStack, tagStack, kindStack)
     }
 
-    const numberValue = left < 0.0 ? NaN : Math.floor(left)
-    const chosenValue = right < 0.0 ? NaN : Math.floor(right)
-    if (!isFinite(numberValue) || !isFinite(chosenValue)) {
-      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    const numberValue = Math.trunc(left)
+    const chosenValue = Math.trunc(right)
+    if (numberValue < 0.0 || chosenValue < 0.0) {
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (builtinId == BuiltinId.Combin && chosenValue > numberValue) {
-      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
 
     let result = 0.0
@@ -616,20 +626,26 @@ export function tryApplyScalarMathBuiltin(
       result = factorialCalc(combined) / (factorialCalc(chosenValue) * factorialCalc(numberValue - 1.0))
     }
     return !isFinite(result)
-      ? writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      ? writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeScalarMathNumber(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if ((builtinId == BuiltinId.Permut || builtinId == BuiltinId.Permutationa) && argc == 2) {
     const left = toNumberExact(tagStack[base], valueStack[base])
     const right = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const numberValue = !isFinite(left) || left < 0.0 ? NaN : Math.floor(left)
-    const chosenValue = !isFinite(right) || right < 0.0 ? NaN : Math.floor(right)
-    if (!isFinite(numberValue) || !isFinite(chosenValue)) {
+    if (!isFinite(left) || !isFinite(right)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    if (builtinId == BuiltinId.Permut && chosenValue > numberValue) {
-      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    const numberValue = Math.trunc(left)
+    const chosenValue = Math.trunc(right)
+    if (numberValue < 0.0 || chosenValue < 0.0) {
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (builtinId == BuiltinId.Permut && (numberValue <= 0.0 || chosenValue > numberValue)) {
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (builtinId == BuiltinId.Permutationa && numberValue == 0.0 && chosenValue > 0.0) {
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     let result = 0.0
     if (builtinId == BuiltinId.Permut) {

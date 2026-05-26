@@ -278,7 +278,6 @@ const mathBuiltins = createMathBuiltins({
   toBitwiseUnsigned,
   coerceShiftAmount,
   integerValue,
-  nonNegativeIntegerValue,
   firstError,
   numberResult,
   valueError,
@@ -720,10 +719,15 @@ const scalarBuiltins: Record<string, Builtin> = {
   ...statisticalBuiltins,
   ...financialBuiltins,
   PERMUT: (numberArg, chosenArg) => {
-    const numberValue = nonNegativeIntegerValue(numberArg)
-    const chosenValue = nonNegativeIntegerValue(chosenArg)
-    if (numberValue === undefined || chosenValue === undefined || chosenValue > numberValue) {
+    const numberRaw = toNumber(numberArg)
+    const chosenRaw = toNumber(chosenArg)
+    if (numberRaw === undefined || chosenRaw === undefined) {
       return valueError()
+    }
+    const numberValue = Math.trunc(numberRaw)
+    const chosenValue = Math.trunc(chosenRaw)
+    if (!Number.isFinite(numberRaw) || !Number.isFinite(chosenRaw) || numberValue <= 0 || chosenValue < 0 || chosenValue > numberValue) {
+      return numError()
     }
     let result = 1
     for (let index = 0; index < chosenValue; index += 1) {
@@ -732,10 +736,21 @@ const scalarBuiltins: Record<string, Builtin> = {
     return numberResult(result)
   },
   PERMUTATIONA: (numberArg, chosenArg) => {
-    const numberValue = nonNegativeIntegerValue(numberArg)
-    const chosenValue = nonNegativeIntegerValue(chosenArg)
-    if (numberValue === undefined || chosenValue === undefined) {
+    const numberRaw = toNumber(numberArg)
+    const chosenRaw = toNumber(chosenArg)
+    if (numberRaw === undefined || chosenRaw === undefined) {
       return valueError()
+    }
+    const numberValue = Math.trunc(numberRaw)
+    const chosenValue = Math.trunc(chosenRaw)
+    if (
+      !Number.isFinite(numberRaw) ||
+      !Number.isFinite(chosenRaw) ||
+      numberValue < 0 ||
+      chosenValue < 0 ||
+      (numberValue === 0 && chosenValue > 0)
+    ) {
+      return numError()
     }
     return numberResult(numberValue ** chosenValue)
   },

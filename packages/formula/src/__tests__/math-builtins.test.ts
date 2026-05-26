@@ -41,4 +41,18 @@ describe('math builtins', () => {
     expect(getBuiltin('FLOOR')?.(num(-2.5), num(2))).toEqual(num(-4))
     expect(getBuiltin('FLOOR')?.(num(-2.5), num(-2))).toEqual(num(-2))
   })
+
+  it('matches Microsoft Excel numeric-domain errors for combinatoric functions', () => {
+    expect(getBuiltin('FACT')?.(num(-1))).toEqual(numError)
+    expect(getBuiltin('FACTDOUBLE')?.(num(-1))).toEqual(numError)
+    expect(getBuiltin('COMBIN')?.(num(-1), num(0))).toEqual(numError)
+    expect(getBuiltin('COMBIN')?.(num(2), num(3))).toEqual(numError)
+    expect(getBuiltin('COMBINA')?.(num(-1), num(1))).toEqual(numError)
+    expect(getBuiltin('COMBINA')?.(num(1), num(-1))).toEqual(numError)
+    expect(getBuiltin('PERMUT')?.(num(0), num(1))).toEqual(numError)
+    expect(getBuiltin('PERMUT')?.(num(3), num(4))).toEqual(numError)
+    expect(getBuiltin('PERMUTATIONA')?.(num(0), num(1))).toEqual(numError)
+    expect(getBuiltin('PERMUTATIONA')?.(num(-1), num(1))).toEqual(numError)
+    expect(getBuiltin('MULTINOMIAL')?.(num(1), num(-1))).toEqual(numError)
+  })
 })

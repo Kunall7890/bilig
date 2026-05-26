@@ -941,7 +941,7 @@ describe('formula builtins', () => {
     })
     expect(getBuiltin('FACT')?.({ tag: ValueTag.Number, value: -1 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('FACTDOUBLE')?.({ tag: ValueTag.Number, value: 6 })).toEqual({
       tag: ValueTag.Number,
@@ -949,7 +949,7 @@ describe('formula builtins', () => {
     })
     expect(getBuiltin('COMBIN')?.({ tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Number, value: 3 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('COMBINA')?.({ tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Number, value: 2 })).toEqual({
       tag: ValueTag.Number,
@@ -963,7 +963,7 @@ describe('formula builtins', () => {
     })
     expect(getBuiltin('MULTINOMIAL')?.({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: -1 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('QUOTIENT')?.({ tag: ValueTag.String, value: 'bad', stringId: 1 }, { tag: ValueTag.Number, value: 1 })).toEqual({
       tag: ValueTag.Error,
@@ -1739,15 +1739,15 @@ describe('formula builtins', () => {
     })
     expect(getBuiltin('FACT')?.({ tag: ValueTag.Number, value: -1 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('FACTDOUBLE')?.({ tag: ValueTag.Number, value: -3 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('COMBIN')?.({ tag: ValueTag.Number, value: 3 }, { tag: ValueTag.Number, value: 4 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('COMBINA')?.({ tag: ValueTag.Number, value: 3 }, { tag: ValueTag.Number, value: 2 })).toEqual({
       tag: ValueTag.Number,
@@ -2607,7 +2607,7 @@ describe('formula builtins', () => {
     })
     expect(PERMUT({ tag: ValueTag.Number, value: 3 }, { tag: ValueTag.Number, value: 4 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
 
     expect(getBuiltinId('norm.dist')).toBe(BuiltinId.NormDist)
