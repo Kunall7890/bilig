@@ -184,6 +184,7 @@ export interface SameCorpusMutationTargetProofSampleSummary {
   readonly present: boolean
   readonly accepted: boolean
   readonly sheetName: string | null
+  readonly sheetId: string | null
   readonly targetRange: string | null
   readonly intendedOperation: SameCorpusMutationTargetProof['intendedOperation'] | null
   readonly intendedPayload: SameCorpusMutationTargetProof['intendedPayload'] | null

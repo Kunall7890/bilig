@@ -57,6 +57,27 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('rejects mutation target proof whose sheet id does not match the semantic proof', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 ? Object.assign({}, proof, { sheetId: 'stale-sheet-id' }) : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell target sheet id does not match semantic UI proof',
+      ]),
+    })
+  })
+
   it('rejects mutation screenshots that are not tied to the workload and sample', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validSemanticProof({
@@ -243,6 +264,7 @@ function mutationTargetProof(
       value: `${product}-same-corpus-${String(sampleIndex + 1)}`,
     },
     sheetName: 'WideGrid',
+    sheetId: 'sheet-wide-grid',
     targetRange: 'A1',
     before: {
       value: 'metric-1',
@@ -306,6 +328,7 @@ function fillMutationTargetProof(
       swatchLabel: `swatch-${String(sampleIndex + 1)}`,
     },
     sheetName: 'WideGrid',
+    sheetId: 'sheet-wide-grid',
     targetRange: 'A1',
     before: {
       value: 'metric-1',

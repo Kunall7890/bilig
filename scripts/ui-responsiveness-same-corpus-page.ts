@@ -629,6 +629,7 @@ function mutationTargetSelectionFromProof(proof: SameCorpusMutationTargetProof):
   return {
     endAddress,
     sheetName: proof.sheetName,
+    sheetId: proof.sheetId,
     startAddress,
     targetRange: proof.targetRange,
   }
@@ -692,6 +693,7 @@ async function captureSameCorpusMutationTargetProofForSample(args: {
     sampleIndex: args.sampleIndex,
     screenshotPath: screenshotProof.screenshotPath,
     screenshotSha256: screenshotProof.screenshotSha256,
+    sheetId: args.target.sheetId,
     sheetName: args.target.sheetName,
     targetRange: args.target.targetRange,
     undoRestoreStatus: sameCorpusMutationReadbacksEqual(args.before, restored) ? 'verified' : 'failed',

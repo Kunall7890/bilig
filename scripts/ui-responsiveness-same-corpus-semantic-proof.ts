@@ -39,6 +39,7 @@ export interface SameCorpusMutationTargetProof {
   readonly intendedOperation: 'edit-visible-cell' | 'formula-edit' | 'fill-format-change'
   readonly intendedPayload: SameCorpusMutationTargetIntendedPayload
   readonly sheetName: string
+  readonly sheetId: string | null
   readonly targetRange: string
   readonly before: SameCorpusMutationTargetReadback
   readonly after: SameCorpusMutationTargetReadback
@@ -290,6 +291,9 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
   invalidReasons.push(...sameCorpusMutationTargetPayloadInvalidReasons(workload, sample))
   if (sample.sheetName.trim().length === 0 || sample.sheetName !== proof.sheetName) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing the target sheet`)
+  }
+  if (sample.sheetId === null || sample.sheetId.trim().length === 0 || sample.sheetId !== proof.sheetId) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} target sheet id does not match semantic UI proof`)
   }
   if (sample.targetRange.trim().length === 0) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing the target range`)
@@ -630,7 +634,7 @@ export async function readSameCorpusVisibleSelectedRange(page: Page, product: Ui
   })
 }
 
-async function readSameCorpusVisibleSheetId(
+export async function readSameCorpusVisibleSheetId(
   page: Page,
   product: UiResponsivenessSameCorpusProduct,
   sheetName: string,

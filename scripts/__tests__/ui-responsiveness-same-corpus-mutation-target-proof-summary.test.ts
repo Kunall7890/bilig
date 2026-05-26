@@ -37,6 +37,7 @@ describe('same-corpus mutation target proof summary', () => {
             expect.objectContaining({
               sampleIndex: 0,
               sheetName: 'WideGrid',
+              sheetId: 'sheet-wide-grid',
               targetRange: 'A1',
               intendedOperation: 'edit-visible-cell',
               intendedPayload: {
@@ -67,6 +68,7 @@ describe('same-corpus mutation target proof summary', () => {
               sampleIndex: 0,
               present: false,
               sheetName: null,
+              sheetId: null,
               targetRange: null,
               intendedOperation: null,
               before: null,
@@ -297,6 +299,7 @@ function mutationTargetProof(
       value,
     },
     sheetName: 'WideGrid',
+    sheetId: productSemanticSheetId(product),
     targetRange: 'A1',
     before: readback(product, 'metric-1', sampleIndex, 'before'),
     after: readback(product, afterValue, sampleIndex, 'after'),

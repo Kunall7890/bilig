@@ -5,6 +5,7 @@ import type { Page } from '@playwright/test'
 import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import { captureProductScreenshot } from './ui-responsiveness-same-corpus-pixel-proof-page.ts'
 import {
+  readSameCorpusVisibleSheetId,
   readSameCorpusVisibleSelectedRange,
   type SameCorpusMutationTargetReadback,
 } from './ui-responsiveness-same-corpus-semantic-proof.ts'
@@ -21,6 +22,7 @@ const BILIG_ROW_HEIGHT = 22
 export interface SameCorpusMutationTargetSelection {
   readonly endAddress: string
   readonly sheetName: string
+  readonly sheetId: string | null
   readonly startAddress: string
   readonly targetRange: string
 }
@@ -41,7 +43,8 @@ export async function readSameCorpusMutationTargetSelection(args: {
   readonly sheetName: string
 }): Promise<SameCorpusMutationTargetSelection> {
   const selectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
-  return normalizeSameCorpusMutationTargetSelection(selectedRange, args.sheetName)
+  const sheetId = await readSameCorpusVisibleSheetId(args.page, args.product, args.sheetName)
+  return normalizeSameCorpusMutationTargetSelection(selectedRange, args.sheetName, sheetId)
 }
 
 export async function selectSameCorpusMutationTargetRange(args: {
@@ -188,6 +191,7 @@ export async function readSameCorpusMutationTargetRevisionProof(args: {
 export function normalizeSameCorpusMutationTargetSelection(
   selectedRange: string | null,
   sheetName: string,
+  sheetId: string | null = null,
 ): SameCorpusMutationTargetSelection {
   const rawRange = selectedRange?.split('!').at(-1)?.replace(/\$/gu, '').trim().toUpperCase() ?? ''
   const match = rawRange.match(/^[A-Z]+[0-9]+(?::[A-Z]+[0-9]+)?$/u)
@@ -199,6 +203,7 @@ export function normalizeSameCorpusMutationTargetSelection(
   return {
     endAddress,
     sheetName,
+    sheetId,
     startAddress,
     targetRange,
   }

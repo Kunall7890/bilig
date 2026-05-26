@@ -1020,6 +1020,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(normalizeSameCorpusMutationTargetSelection('WideGrid!$C$5:$D$7', 'WideGrid')).toEqual({
       endAddress: 'D7',
       sheetName: 'WideGrid',
+      sheetId: null,
       startAddress: 'C5',
       targetRange: 'C5:D7',
     })
@@ -1798,6 +1799,7 @@ function sameCorpusMutationTargetProofs(product: SameCorpusProductVisualProof['p
     intendedOperation: workload,
     intendedPayload: sameCorpusMutationTargetIntendedPayload(product, workload, sampleIndex),
     sheetName: 'WideGrid',
+    sheetId: sameCorpusFixtureSheetId(product),
     targetRange: 'A1',
     before: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
     after: sameCorpusMutationReadback(product, workload, 'after', sampleIndex),

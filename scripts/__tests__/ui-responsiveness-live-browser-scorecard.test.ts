@@ -1113,6 +1113,7 @@ function sameCorpusMutationTargetProofs(
     intendedOperation: workload,
     intendedPayload: sameCorpusMutationTargetIntendedPayload(product, workload, sampleIndex),
     sheetName: 'WideGrid',
+    sheetId: sameCorpusFixtureSheetId(product),
     targetRange: 'A1',
     before: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
     after: sameCorpusMutationReadback(product, workload, 'after', sampleIndex),
