@@ -40,6 +40,7 @@ interface DistributionBuiltinDeps {
   numberResult: (value: number) => EvaluationResult
   numericResultOrError: (value: number) => EvaluationResult
   valueError: () => EvaluationResult
+  numError: () => EvaluationResult
 }
 
 function naError(): EvaluationResult {
@@ -56,6 +57,7 @@ export function createDistributionBuiltins({
   numberResult,
   numericResultOrError,
   valueError,
+  numError,
 }: DistributionBuiltinDeps): Record<string, Builtin> {
   const builtins: Record<string, Builtin> = {
     'CONFIDENCE.NORM': (alphaArg, standardDeviationArg, sizeArg) => {
@@ -183,18 +185,25 @@ export function createDistributionBuiltins({
       const x = toNumber(xArg)
       const lambda = toNumber(lambdaArg)
       const cumulative = coerceBoolean(cumulativeArg, false)
-      if (x === undefined || lambda === undefined || cumulative === undefined || x < 0 || lambda <= 0) {
+      if (x === undefined || lambda === undefined || cumulative === undefined) {
         return valueError()
+      }
+      if (!Number.isFinite(x) || !Number.isFinite(lambda) || x < 0 || lambda <= 0) {
+        return numError()
       }
       return numberResult(cumulative ? 1 - Math.exp(-lambda * x) : lambda * Math.exp(-lambda * x))
     },
     'EXPON.DIST': (xArg, lambdaArg, cumulativeArg) => builtins['EXPONDIST']!(xArg, lambdaArg, cumulativeArg),
     POISSON: (eventsArg, meanArg, cumulativeArg) => {
-      const events = nonNegativeIntegerValue(eventsArg)
+      const eventsRaw = toNumber(eventsArg)
       const mean = toNumber(meanArg)
       const cumulative = coerceBoolean(cumulativeArg, false)
-      if (events === undefined || mean === undefined || cumulative === undefined || mean < 0) {
+      if (eventsRaw === undefined || mean === undefined || cumulative === undefined) {
         return valueError()
+      }
+      const events = Math.trunc(eventsRaw)
+      if (!Number.isFinite(eventsRaw) || !Number.isFinite(mean) || events < 0 || mean < 0) {
+        return numError()
       }
       if (!cumulative) {
         return numericResultOrError(poissonProbability(events, mean))
@@ -211,8 +220,11 @@ export function createDistributionBuiltins({
       const alpha = toNumber(alphaArg)
       const beta = toNumber(betaArg)
       const cumulative = coerceBoolean(cumulativeArg, false)
-      if (x === undefined || alpha === undefined || beta === undefined || cumulative === undefined || x < 0 || alpha <= 0 || beta <= 0) {
+      if (x === undefined || alpha === undefined || beta === undefined || cumulative === undefined) {
         return valueError()
+      }
+      if (!Number.isFinite(x) || !Number.isFinite(alpha) || !Number.isFinite(beta) || x < 0 || alpha <= 0 || beta <= 0) {
+        return numError()
       }
       if (cumulative) {
         return numberResult(1 - Math.exp(-((x / beta) ** alpha)))
@@ -228,8 +240,11 @@ export function createDistributionBuiltins({
       const alpha = toNumber(alphaArg)
       const beta = toNumber(betaArg)
       const cumulative = coerceBoolean(cumulativeArg, false)
-      if (x === undefined || alpha === undefined || beta === undefined || cumulative === undefined || x < 0 || alpha <= 0 || beta <= 0) {
+      if (x === undefined || alpha === undefined || beta === undefined || cumulative === undefined) {
         return valueError()
+      }
+      if (!Number.isFinite(x) || !Number.isFinite(alpha) || !Number.isFinite(beta) || x < 0 || alpha <= 0 || beta <= 0) {
+        return numError()
       }
       return numberResult(cumulative ? gammaDistributionCdf(x, alpha, beta) : gammaDistributionDensity(x, alpha, beta))
     },

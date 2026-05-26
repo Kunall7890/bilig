@@ -59,22 +59,28 @@ export function tryApplyExtendedDistributionBuiltin(
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     let result = NaN
+    let errorCode = ErrorCode.None
     if (builtinId == BuiltinId.Expondist || builtinId == BuiltinId.ExponDist) {
       const x = toNumberExact(tagStack[base], valueStack[base])
       const lambda = toNumberExact(tagStack[base + 1], valueStack[base + 1])
       const cumulative = coerceBoolean(tagStack[base + 2], valueStack[base + 2])
-      result =
-        isNaN(x) || isNaN(lambda) || cumulative < 0 || x < 0.0 || lambda <= 0.0
-          ? NaN
-          : cumulative == 1
-            ? 1.0 - Math.exp(-lambda * x)
-            : lambda * Math.exp(-lambda * x)
+      if (isNaN(x) || isNaN(lambda) || cumulative < 0) {
+        errorCode = ErrorCode.Value
+      } else if (x < 0.0 || lambda <= 0.0) {
+        errorCode = ErrorCode.Num
+      } else {
+        result = cumulative == 1 ? 1.0 - Math.exp(-lambda * x) : lambda * Math.exp(-lambda * x)
+      }
     } else if (builtinId == BuiltinId.Poisson || builtinId == BuiltinId.PoissonDist) {
       const eventsRaw = toNumberExact(tagStack[base], valueStack[base])
       const mean = toNumberExact(tagStack[base + 1], valueStack[base + 1])
       const cumulative = coerceBoolean(tagStack[base + 2], valueStack[base + 2])
       const events = <i32>eventsRaw
-      if (!isNaN(eventsRaw) && mean >= 0.0 && cumulative >= 0 && events >= 0) {
+      if (isNaN(eventsRaw) || isNaN(mean) || cumulative < 0) {
+        errorCode = ErrorCode.Value
+      } else if (events < 0 || mean < 0.0) {
+        errorCode = ErrorCode.Num
+      } else {
         if (cumulative == 1) {
           result = 0.0
           for (let index = 0; index <= events; index += 1) {
@@ -93,6 +99,9 @@ export function tryApplyExtendedDistributionBuiltin(
       if (!isNaN(failuresRaw) && !isNaN(successesRaw)) {
         result = negativeBinomialProbability(failures, successes, probability)
       }
+    }
+    if (errorCode != ErrorCode.None) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeResult(
       base,
@@ -124,12 +133,17 @@ export function tryApplyExtendedDistributionBuiltin(
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     let result = NaN
+    let errorCode = ErrorCode.None
     if (builtinId == BuiltinId.Weibull || builtinId == BuiltinId.WeibullDist) {
       const x = toNumberExact(tagStack[base], valueStack[base])
       const alpha = toNumberExact(tagStack[base + 1], valueStack[base + 1])
       const beta = toNumberExact(tagStack[base + 2], valueStack[base + 2])
       const cumulative = coerceBoolean(tagStack[base + 3], valueStack[base + 3])
-      if (!isNaN(x) && !isNaN(alpha) && !isNaN(beta) && cumulative >= 0 && x >= 0.0 && alpha > 0.0 && beta > 0.0) {
+      if (isNaN(x) || isNaN(alpha) || isNaN(beta) || cumulative < 0) {
+        errorCode = ErrorCode.Value
+      } else if (x < 0.0 || alpha <= 0.0 || beta <= 0.0) {
+        errorCode = ErrorCode.Num
+      } else {
         if (cumulative == 1) {
           result = 1.0 - Math.exp(-Math.pow(x / beta, alpha))
         } else if (x == 0.0) {
@@ -143,7 +157,11 @@ export function tryApplyExtendedDistributionBuiltin(
       const alpha = toNumberExact(tagStack[base + 1], valueStack[base + 1])
       const beta = toNumberExact(tagStack[base + 2], valueStack[base + 2])
       const cumulative = coerceBoolean(tagStack[base + 3], valueStack[base + 3])
-      if (!isNaN(x) && !isNaN(alpha) && !isNaN(beta) && cumulative >= 0 && x >= 0.0 && alpha > 0.0 && beta > 0.0) {
+      if (isNaN(x) || isNaN(alpha) || isNaN(beta) || cumulative < 0) {
+        errorCode = ErrorCode.Value
+      } else if (x < 0.0 || alpha <= 0.0 || beta <= 0.0) {
+        errorCode = ErrorCode.Num
+      } else {
         result = cumulative == 1 ? gammaDistributionCdf(x, alpha, beta) : gammaDistributionDensity(x, alpha, beta)
       }
     } else if (builtinId == BuiltinId.Binomdist || builtinId == BuiltinId.BinomDist) {
@@ -180,6 +198,9 @@ export function tryApplyExtendedDistributionBuiltin(
           result = negativeBinomialProbability(failures, successes, probability)
         }
       }
+    }
+    if (errorCode != ErrorCode.None) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeResult(
       base,

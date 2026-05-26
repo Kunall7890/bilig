@@ -2814,6 +2814,22 @@ describe('formula builtins', () => {
       EXPONDIST({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Boolean, value: false }),
     ).toEqual({
       tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(
+      EXPONDIST({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Boolean, value: false }),
+    ).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(
+      EXPON_DIST(
+        { tag: ValueTag.String, value: 'bad', stringId: 1 },
+        { tag: ValueTag.Number, value: 2 },
+        { tag: ValueTag.Boolean, value: true },
+      ),
+    ).toEqual({
+      tag: ValueTag.Error,
       code: ErrorCode.Value,
     })
     expect(
@@ -2830,6 +2846,22 @@ describe('formula builtins', () => {
     })
     expect(
       POISSON({ tag: ValueTag.Number, value: 3 }, { tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Boolean, value: false }),
+    ).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(
+      POISSON_DIST({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 2.5 }, { tag: ValueTag.Boolean, value: true }),
+    ).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(
+      POISSON(
+        { tag: ValueTag.Number, value: 3 },
+        { tag: ValueTag.String, value: 'bad', stringId: 1 },
+        { tag: ValueTag.Boolean, value: false },
+      ),
     ).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,
@@ -2868,6 +2900,39 @@ describe('formula builtins', () => {
       WEIBULL(
         { tag: ValueTag.Number, value: 1 },
         { tag: ValueTag.Number, value: 0 },
+        { tag: ValueTag.Number, value: 2 },
+        { tag: ValueTag.Boolean, value: false },
+      ),
+    ).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(
+      WEIBULL_DIST(
+        { tag: ValueTag.Number, value: -1 },
+        { tag: ValueTag.Number, value: 2 },
+        { tag: ValueTag.Number, value: 3 },
+        { tag: ValueTag.Boolean, value: true },
+      ),
+    ).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(
+      WEIBULL(
+        { tag: ValueTag.Number, value: 1 },
+        { tag: ValueTag.Number, value: 2 },
+        { tag: ValueTag.Number, value: 0 },
+        { tag: ValueTag.Boolean, value: false },
+      ),
+    ).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(
+      WEIBULL(
+        { tag: ValueTag.Number, value: 1 },
+        { tag: ValueTag.String, value: 'bad', stringId: 1 },
         { tag: ValueTag.Number, value: 2 },
         { tag: ValueTag.Boolean, value: false },
       ),
@@ -3300,13 +3365,35 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       GAMMA_DIST(
         { tag: ValueTag.Number, value: 2 },
         { tag: ValueTag.Number, value: 0 },
         { tag: ValueTag.Number, value: 2 },
+        { tag: ValueTag.Boolean, value: true },
+      ),
+    ).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(
+      GAMMADIST(
+        { tag: ValueTag.Number, value: 2 },
+        { tag: ValueTag.Number, value: 3 },
+        { tag: ValueTag.Number, value: 0 },
+        { tag: ValueTag.Boolean, value: false },
+      ),
+    ).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(
+      GAMMA_DIST(
+        { tag: ValueTag.Number, value: 2 },
+        { tag: ValueTag.Number, value: 3 },
+        { tag: ValueTag.String, value: 'bad', stringId: 1 },
         { tag: ValueTag.Boolean, value: true },
       ),
     ).toEqual({

@@ -261,6 +261,7 @@ const distributionBuiltins = createDistributionBuiltins({
   numberResult,
   numericResultOrError,
   valueError,
+  numError,
 })
 const financialBuiltins = createFinancialBuiltins({
   toNumber,

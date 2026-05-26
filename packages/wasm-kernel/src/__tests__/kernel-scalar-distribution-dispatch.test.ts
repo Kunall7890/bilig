@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BuiltinId, Opcode, ValueTag } from '@bilig/protocol'
+import { BuiltinId, ErrorCode, Opcode, ValueTag } from '@bilig/protocol'
 import { createKernel } from '../index.js'
 
 function encodeCall(builtinId: number, argc: number): number {
@@ -73,6 +73,11 @@ function cellIndex(row: number, col: number, width: number): number {
 function expectNumberCell(kernel: Awaited<ReturnType<typeof createKernel>>, index: number, expected: number, digits = 12): void {
   expect(kernel.readTags()[index]).toBe(ValueTag.Number)
   expect(kernel.readNumbers()[index]).toBeCloseTo(expected, digits)
+}
+
+function expectErrorCell(kernel: Awaited<ReturnType<typeof createKernel>>, index: number, expected: ErrorCode): void {
+  expect(kernel.readTags()[index]).toBe(ValueTag.Error)
+  expect(kernel.readErrors()[index]).toBe(expected)
 }
 
 describe('wasm kernel scalar distribution dispatch', () => {
@@ -180,5 +185,153 @@ describe('wasm kernel scalar distribution dispatch', () => {
     expectNumberCell(kernel, cellIndex(1, 14, width), 4.140475417393, 10)
     expectNumberCell(kernel, cellIndex(1, 15, width), 0.578174100803, 12)
     expectNumberCell(kernel, cellIndex(1, 16, width), 2, 10)
+  })
+
+  it('returns Excel-compatible domain errors for scalar distribution dispatch', async () => {
+    const kernel = await createKernel()
+    const width = 20
+    const cases = [
+      {
+        program: [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Expondist, 3), encodeRet()],
+        constants: [-1, 2, 0],
+        error: ErrorCode.Num,
+      },
+      {
+        program: [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.ExponDist, 3), encodeRet()],
+        constants: [1, 0, 1],
+        error: ErrorCode.Num,
+      },
+      {
+        program: [encodePushString(0), encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Expondist, 3), encodeRet()],
+        constants: [2, 0],
+        error: ErrorCode.Value,
+      },
+      {
+        program: [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Poisson, 3), encodeRet()],
+        constants: [-1, 2.5, 0],
+        error: ErrorCode.Num,
+      },
+      {
+        program: [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.PoissonDist, 3), encodeRet()],
+        constants: [3, -1, 1],
+        error: ErrorCode.Num,
+      },
+      {
+        program: [encodePushNumber(0), encodePushString(0), encodePushNumber(1), encodeCall(BuiltinId.Poisson, 3), encodeRet()],
+        constants: [3, 0],
+        error: ErrorCode.Value,
+      },
+      {
+        program: [
+          encodePushNumber(0),
+          encodePushNumber(1),
+          encodePushNumber(2),
+          encodePushNumber(3),
+          encodeCall(BuiltinId.Weibull, 4),
+          encodeRet(),
+        ],
+        constants: [-1, 2, 3, 0],
+        error: ErrorCode.Num,
+      },
+      {
+        program: [
+          encodePushNumber(0),
+          encodePushNumber(1),
+          encodePushNumber(2),
+          encodePushNumber(3),
+          encodeCall(BuiltinId.WeibullDist, 4),
+          encodeRet(),
+        ],
+        constants: [1, 0, 3, 1],
+        error: ErrorCode.Num,
+      },
+      {
+        program: [
+          encodePushNumber(0),
+          encodePushNumber(1),
+          encodePushNumber(2),
+          encodePushNumber(3),
+          encodeCall(BuiltinId.Weibull, 4),
+          encodeRet(),
+        ],
+        constants: [1, 2, 0, 0],
+        error: ErrorCode.Num,
+      },
+      {
+        program: [
+          encodePushNumber(0),
+          encodePushString(0),
+          encodePushNumber(1),
+          encodePushNumber(2),
+          encodeCall(BuiltinId.Weibull, 4),
+          encodeRet(),
+        ],
+        constants: [1, 2, 0],
+        error: ErrorCode.Value,
+      },
+      {
+        program: [
+          encodePushNumber(0),
+          encodePushNumber(1),
+          encodePushNumber(2),
+          encodePushNumber(3),
+          encodeCall(BuiltinId.Gammadist, 4),
+          encodeRet(),
+        ],
+        constants: [-1, 3, 2, 0],
+        error: ErrorCode.Num,
+      },
+      {
+        program: [
+          encodePushNumber(0),
+          encodePushNumber(1),
+          encodePushNumber(2),
+          encodePushNumber(3),
+          encodeCall(BuiltinId.GammaDist, 4),
+          encodeRet(),
+        ],
+        constants: [2, 0, 2, 1],
+        error: ErrorCode.Num,
+      },
+      {
+        program: [
+          encodePushNumber(0),
+          encodePushNumber(1),
+          encodePushNumber(2),
+          encodePushNumber(3),
+          encodeCall(BuiltinId.Gammadist, 4),
+          encodeRet(),
+        ],
+        constants: [2, 3, 0, 0],
+        error: ErrorCode.Num,
+      },
+      {
+        program: [
+          encodePushNumber(0),
+          encodePushNumber(1),
+          encodePushString(0),
+          encodePushNumber(2),
+          encodeCall(BuiltinId.GammaDist, 4),
+          encodeRet(),
+        ],
+        constants: [2, 3, 1],
+        error: ErrorCode.Value,
+      },
+    ]
+
+    kernel.init(64, 1, cases.length, 1, 1)
+    kernel.uploadStrings(Uint32Array.from([0]), Uint32Array.from([3]), Uint16Array.from([98, 97, 100]))
+    kernel.writeCells(new Uint8Array(64), new Float64Array(64), new Uint32Array(64), new Uint16Array(64))
+
+    const packed = packPrograms(cases.map((item) => item.program))
+    const targets = Uint32Array.from(cases.map((_, index) => cellIndex(1, index, width)))
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targets)
+    const constants = packConstants(cases.map((item) => item.constants))
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(targets)
+
+    for (const [index, item] of cases.entries()) {
+      expectErrorCell(kernel, cellIndex(1, index, width), item.error)
+    }
   })
 })
