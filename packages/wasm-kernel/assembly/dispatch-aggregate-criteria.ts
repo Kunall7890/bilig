@@ -44,6 +44,29 @@ function lcmPairOrNaN(left: f64, right: f64): f64 {
   return !isFinite(result) || result >= EXCEL_INTEGER_LIMIT ? NaN : result
 }
 
+function directScalarNumberLikeText(
+  slot: i32,
+  valueStack: Float64Array,
+  tagStack: Uint8Array,
+  stringOffsets: Uint32Array,
+  stringLengths: Uint32Array,
+  stringData: Uint16Array,
+  outputStringOffsets: Uint32Array,
+  outputStringLengths: Uint32Array,
+  outputStringData: Uint16Array,
+): f64 {
+  return coerceScalarNumberLikeText(
+    tagStack[slot],
+    valueStack[slot],
+    stringOffsets,
+    stringLengths,
+    stringData,
+    outputStringOffsets,
+    outputStringLengths,
+    outputStringData,
+  )
+}
+
 export function tryApplyAggregateCriteriaBuiltin(
   builtinId: i32,
   argc: i32,
@@ -225,7 +248,19 @@ export function tryApplyAggregateCriteriaBuiltin(
   }
 
   if (builtinId == BuiltinId.Min) {
+    const scalarError = <i32>scalarErrorAt(base, argc, kindStack, tagStack, valueStack)
+    if (scalarError >= 0) {
+      return writeAggregateError(base, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const rangeError = <i32>(
+      rangeErrorAt(base, argc, kindStack, rangeIndexStack, rangeOffsets, rangeLengths, rangeMembers, cellTags, cellErrors)
+    )
+    if (rangeError >= 0) {
+      return writeAggregateError(base, rangeError, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+
     let minValue = Infinity
+    let count = 0
     for (let index = 0; index < argc; index += 1) {
       const slot = base + index
       if (kindStack[slot] == STACK_KIND_RANGE) {
@@ -237,6 +272,7 @@ export function tryApplyAggregateCriteriaBuiltin(
           const numeric = toNumberOrNaN(cellTags[memberIndex], cellNumbers[memberIndex])
           if (!isNaN(numeric) && numeric < minValue) {
             minValue = numeric
+            count += 1
           }
         }
         continue
@@ -248,20 +284,56 @@ export function tryApplyAggregateCriteriaBuiltin(
           const numeric = readSpillArrayNumber(arrayIndex, cursor)
           if (!isNaN(numeric) && numeric < minValue) {
             minValue = numeric
+            count += 1
           }
         }
         continue
       }
-      const numeric = toNumberOrNaN(tagStack[slot], valueStack[slot])
+      const numeric = directScalarNumberLikeText(
+        slot,
+        valueStack,
+        tagStack,
+        stringOffsets,
+        stringLengths,
+        stringData,
+        outputStringOffsets,
+        outputStringLengths,
+        outputStringData,
+      )
+      if (isNaN(numeric) && tagStack[slot] == ValueTag.String) {
+        return writeAggregateError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       if (!isNaN(numeric) && numeric < minValue) {
         minValue = numeric
+        count += 1
       }
     }
-    return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, minValue, rangeIndexStack, valueStack, tagStack, kindStack)
+    return writeResult(
+      base,
+      STACK_KIND_SCALAR,
+      <u8>ValueTag.Number,
+      count == 0 ? 0.0 : minValue,
+      rangeIndexStack,
+      valueStack,
+      tagStack,
+      kindStack,
+    )
   }
 
   if (builtinId == BuiltinId.Max) {
+    const scalarError = <i32>scalarErrorAt(base, argc, kindStack, tagStack, valueStack)
+    if (scalarError >= 0) {
+      return writeAggregateError(base, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const rangeError = <i32>(
+      rangeErrorAt(base, argc, kindStack, rangeIndexStack, rangeOffsets, rangeLengths, rangeMembers, cellTags, cellErrors)
+    )
+    if (rangeError >= 0) {
+      return writeAggregateError(base, rangeError, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+
     let maxValue = -Infinity
+    let count = 0
     for (let index = 0; index < argc; index += 1) {
       const slot = base + index
       if (kindStack[slot] == STACK_KIND_RANGE) {
@@ -273,6 +345,7 @@ export function tryApplyAggregateCriteriaBuiltin(
           const numeric = toNumberOrNaN(cellTags[memberIndex], cellNumbers[memberIndex])
           if (!isNaN(numeric) && numeric > maxValue) {
             maxValue = numeric
+            count += 1
           }
         }
         continue
@@ -284,16 +357,40 @@ export function tryApplyAggregateCriteriaBuiltin(
           const numeric = readSpillArrayNumber(arrayIndex, cursor)
           if (!isNaN(numeric) && numeric > maxValue) {
             maxValue = numeric
+            count += 1
           }
         }
         continue
       }
-      const numeric = toNumberOrNaN(tagStack[slot], valueStack[slot])
+      const numeric = directScalarNumberLikeText(
+        slot,
+        valueStack,
+        tagStack,
+        stringOffsets,
+        stringLengths,
+        stringData,
+        outputStringOffsets,
+        outputStringLengths,
+        outputStringData,
+      )
+      if (isNaN(numeric) && tagStack[slot] == ValueTag.String) {
+        return writeAggregateError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       if (!isNaN(numeric) && numeric > maxValue) {
         maxValue = numeric
+        count += 1
       }
     }
-    return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, maxValue, rangeIndexStack, valueStack, tagStack, kindStack)
+    return writeResult(
+      base,
+      STACK_KIND_SCALAR,
+      <u8>ValueTag.Number,
+      count == 0 ? 0.0 : maxValue,
+      rangeIndexStack,
+      valueStack,
+      tagStack,
+      kindStack,
+    )
   }
 
   if (builtinId == BuiltinId.Count) {
@@ -316,7 +413,21 @@ export function tryApplyAggregateCriteriaBuiltin(
         count += readSpillArrayLength(rangeIndexStack[slot])
         continue
       }
-      if (!isNaN(toNumberOrNaN(tagStack[slot], valueStack[slot]))) {
+      if (
+        !isNaN(
+          directScalarNumberLikeText(
+            slot,
+            valueStack,
+            tagStack,
+            stringOffsets,
+            stringLengths,
+            stringData,
+            outputStringOffsets,
+            outputStringLengths,
+            outputStringData,
+          ),
+        )
+      ) {
         count += 1
       }
     }
@@ -512,9 +623,25 @@ export function tryApplyAggregateCriteriaBuiltin(
         continue
       }
 
-      const numeric = toNumberOrNaN(tagStack[slot], valueStack[slot])
+      const numeric = directScalarNumberLikeText(
+        slot,
+        valueStack,
+        tagStack,
+        stringOffsets,
+        stringLengths,
+        stringData,
+        outputStringOffsets,
+        outputStringLengths,
+        outputStringData,
+      )
       if (isNaN(numeric)) {
-        if (builtinId == BuiltinId.Gcd || builtinId == BuiltinId.Lcm) {
+        if (
+          tagStack[slot] == ValueTag.String ||
+          builtinId == BuiltinId.Gcd ||
+          builtinId == BuiltinId.Lcm ||
+          builtinId == BuiltinId.Product ||
+          builtinId == BuiltinId.Sumsq
+        ) {
           return writeAggregateError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
         }
         continue

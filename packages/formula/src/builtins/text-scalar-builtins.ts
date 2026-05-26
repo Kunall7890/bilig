@@ -52,8 +52,21 @@ function firstCodePoint(deps: TextScalarBuiltinDeps, value: CellValue | undefine
   if (text.length === 0) {
     return deps.error(ErrorCode.Value)
   }
-  const codePoint = text.codePointAt(0)
-  return codePoint === undefined ? deps.error(ErrorCode.Value) : codePoint
+  const first = text.charCodeAt(0)
+  if (first >= 0xd800 && first <= 0xdbff) {
+    if (text.length < 2) {
+      return deps.error(ErrorCode.Value)
+    }
+    const next = text.charCodeAt(1)
+    if (next < 0xdc00 || next > 0xdfff) {
+      return deps.error(ErrorCode.Value)
+    }
+    return 0x10000 + ((first - 0xd800) << 10) + (next - 0xdc00)
+  }
+  if (first >= 0xdc00 && first <= 0xdfff) {
+    return deps.error(ErrorCode.Value)
+  }
+  return first
 }
 
 export function createTextScalarBuiltins(deps: TextScalarBuiltinDeps): Record<string, TextBuiltin> {

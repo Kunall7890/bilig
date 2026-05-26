@@ -1,7 +1,7 @@
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import type { CellValue } from '@bilig/protocol'
 import { besselIValue, besselJValue, besselKValue, besselYValue } from './distributions.js'
-import { collectNumericArgs } from './numeric.js'
+import { coerceScalarMathNumber, collectNumericArgs } from './numeric.js'
 import { excelPower } from '../excel-power.js'
 import { parseNumericText } from '../numeric-text.js'
 import type { EvaluationResult } from '../runtime-values.js'
@@ -89,6 +89,8 @@ export function createMathBuiltins({
   gcdPair,
   lcmPair,
 }: MathBuiltinDeps): Record<string, Builtin> {
+  const toScalarMathNumber = (value: CellValue): number | undefined => coerceScalarMathNumber(value, toNumber)
+
   const coerceBitwiseOperand = (value: CellValue | undefined): bigint | EvaluationResult => {
     if (value === undefined) {
       return valueError()
@@ -96,7 +98,7 @@ export function createMathBuiltins({
     if (value.tag === ValueTag.Error) {
       return value
     }
-    const numeric = toNumber(value)
+    const numeric = toScalarMathNumber(value)
     if (numeric === undefined) {
       return valueError()
     }
@@ -113,7 +115,7 @@ export function createMathBuiltins({
     if (value.tag === ValueTag.Error) {
       return value
     }
-    const numeric = toNumber(value)
+    const numeric = toScalarMathNumber(value)
     if (numeric === undefined) {
       return valueError()
     }
@@ -132,7 +134,7 @@ export function createMathBuiltins({
     if (error) {
       return error
     }
-    const numeric = toNumber(value)
+    const numeric = toScalarMathNumber(value)
     if (numeric === undefined) {
       return valueError()
     }
@@ -151,8 +153,11 @@ export function createMathBuiltins({
       if (error) {
         return error
       }
-      const x = toNumber(left) ?? 0
-      const y = toNumber(right) ?? 0
+      const x = toScalarMathNumber(left)
+      const y = toScalarMathNumber(right)
+      if (x === undefined || y === undefined) {
+        return valueError()
+      }
       if (x === 0 && y === 0) {
         return div0Error()
       }
@@ -166,7 +171,7 @@ export function createMathBuiltins({
       if (error) {
         return error
       }
-      const numeric = toNumber(value)
+      const numeric = toScalarMathNumber(value)
       if (numeric === undefined) {
         return valueError()
       }
@@ -177,7 +182,7 @@ export function createMathBuiltins({
       if (error) {
         return error
       }
-      const numeric = toNumber(value)
+      const numeric = toScalarMathNumber(value)
       if (numeric === undefined) {
         return valueError()
       }
@@ -188,11 +193,11 @@ export function createMathBuiltins({
       if (error) {
         return error
       }
-      const numeric = toNumber(value)
+      const numeric = toScalarMathNumber(value)
       if (numeric === undefined) {
         return valueError()
       }
-      const baseValue = base === undefined ? 10 : toNumber(base)
+      const baseValue = base === undefined ? 10 : toScalarMathNumber(base)
       if (baseValue === undefined) {
         return valueError()
       }
@@ -208,7 +213,7 @@ export function createMathBuiltins({
       if (error) {
         return error
       }
-      const numeric = toNumber(value)
+      const numeric = toScalarMathNumber(value)
       if (numeric === undefined) {
         return valueError()
       }
@@ -222,7 +227,7 @@ export function createMathBuiltins({
     ACOSH: (value) => domainCheckedUnaryMath(value, (numeric) => numeric >= 1, Math.acosh),
     ATANH: (value) => domainCheckedUnaryMath(value, (numeric) => numeric > -1 && numeric < 1, Math.atanh),
     ACOT: (value) => {
-      const numeric = toNumber(value)
+      const numeric = toScalarMathNumber(value)
       if (numeric === undefined) {
         return valueError()
       }
@@ -235,7 +240,7 @@ export function createMathBuiltins({
         (numeric) => 0.5 * Math.log((numeric + 1) / (numeric - 1)),
       ),
     COT: (value) => {
-      const numeric = toNumber(value)
+      const numeric = toScalarMathNumber(value)
       if (numeric === undefined) {
         return valueError()
       }
@@ -243,7 +248,7 @@ export function createMathBuiltins({
       return tangent === 0 ? div0Error() : numberResult(1 / tangent)
     },
     COTH: (value) => {
-      const numeric = toNumber(value)
+      const numeric = toScalarMathNumber(value)
       if (numeric === undefined) {
         return valueError()
       }
@@ -251,7 +256,7 @@ export function createMathBuiltins({
       return hyperbolic === 0 ? div0Error() : numberResult(1 / hyperbolic)
     },
     CSC: (value) => {
-      const numeric = toNumber(value)
+      const numeric = toScalarMathNumber(value)
       if (numeric === undefined) {
         return valueError()
       }
@@ -259,7 +264,7 @@ export function createMathBuiltins({
       return sine === 0 ? div0Error() : numberResult(1 / sine)
     },
     CSCH: (value) => {
-      const numeric = toNumber(value)
+      const numeric = toScalarMathNumber(value)
       if (numeric === undefined) {
         return valueError()
       }
@@ -267,7 +272,7 @@ export function createMathBuiltins({
       return hyperbolic === 0 ? div0Error() : numberResult(1 / hyperbolic)
     },
     SEC: (value) => {
-      const numeric = toNumber(value)
+      const numeric = toScalarMathNumber(value)
       if (numeric === undefined) {
         return valueError()
       }
@@ -276,7 +281,7 @@ export function createMathBuiltins({
     },
     SECH: (value) => unaryMath(value, (numeric) => 1 / Math.cosh(numeric)),
     SIGN: (value) => {
-      const numeric = toNumber(value)
+      const numeric = toScalarMathNumber(value)
       if (numeric === undefined) {
         return valueError()
       }
@@ -286,12 +291,13 @@ export function createMathBuiltins({
     FLOOR: (value, significance) => floorWith(value, significance),
     CEILING: (value, significance) => ceilingWith(value, significance),
     'FLOOR.MATH': (value, significance, mode) => {
-      const numberValue = toNumber(value)
-      const significanceValue = Math.abs(toNumber(significance ?? { tag: ValueTag.Number, value: 1 }) ?? 1)
-      const modeValue = toNumber(mode ?? { tag: ValueTag.Number, value: 0 }) ?? 0
-      if (numberValue === undefined || significanceValue === 0) {
+      const numberValue = toScalarMathNumber(value)
+      const significanceRaw = significance === undefined ? 1 : toScalarMathNumber(significance)
+      const modeValue = mode === undefined ? 0 : toScalarMathNumber(mode)
+      if (numberValue === undefined || significanceRaw === undefined || modeValue === undefined || significanceRaw === 0) {
         return valueError()
       }
+      const significanceValue = Math.abs(significanceRaw)
       if (numberValue >= 0) {
         return numberResult(Math.floor(numberValue / significanceValue) * significanceValue)
       }
@@ -300,20 +306,22 @@ export function createMathBuiltins({
       return numberResult(-magnitude * significanceValue)
     },
     'FLOOR.PRECISE': (value, significance) => {
-      const numberValue = toNumber(value)
-      const significanceValue = Math.abs(toNumber(significance ?? { tag: ValueTag.Number, value: 1 }) ?? 1)
-      if (numberValue === undefined || significanceValue === 0) {
+      const numberValue = toScalarMathNumber(value)
+      const significanceRaw = significance === undefined ? 1 : toScalarMathNumber(significance)
+      if (numberValue === undefined || significanceRaw === undefined || significanceRaw === 0) {
         return valueError()
       }
+      const significanceValue = Math.abs(significanceRaw)
       return numberResult(Math.floor(numberValue / significanceValue) * significanceValue)
     },
     'CEILING.MATH': (value, significance, mode) => {
-      const numberValue = toNumber(value)
-      const significanceValue = Math.abs(toNumber(significance ?? { tag: ValueTag.Number, value: 1 }) ?? 1)
-      const modeValue = toNumber(mode ?? { tag: ValueTag.Number, value: 0 }) ?? 0
-      if (numberValue === undefined || significanceValue === 0) {
+      const numberValue = toScalarMathNumber(value)
+      const significanceRaw = significance === undefined ? 1 : toScalarMathNumber(significance)
+      const modeValue = mode === undefined ? 0 : toScalarMathNumber(mode)
+      if (numberValue === undefined || significanceRaw === undefined || modeValue === undefined || significanceRaw === 0) {
         return valueError()
       }
+      const significanceValue = Math.abs(significanceRaw)
       if (numberValue >= 0) {
         return numberResult(Math.ceil(numberValue / significanceValue) * significanceValue)
       }
@@ -322,27 +330,32 @@ export function createMathBuiltins({
       return numberResult(-magnitude * significanceValue)
     },
     'CEILING.PRECISE': (value, significance) => {
-      const numberValue = toNumber(value)
-      const significanceValue = Math.abs(toNumber(significance ?? { tag: ValueTag.Number, value: 1 }) ?? 1)
-      if (numberValue === undefined || significanceValue === 0) {
+      const numberValue = toScalarMathNumber(value)
+      const significanceRaw = significance === undefined ? 1 : toScalarMathNumber(significance)
+      if (numberValue === undefined || significanceRaw === undefined || significanceRaw === 0) {
         return valueError()
       }
+      const significanceValue = Math.abs(significanceRaw)
       return numberResult(Math.ceil(numberValue / significanceValue) * significanceValue)
     },
     'ISO.CEILING': (value, significance) => {
-      const numberValue = toNumber(value)
-      const significanceValue = Math.abs(toNumber(significance ?? { tag: ValueTag.Number, value: 1 }) ?? 1)
-      if (numberValue === undefined || significanceValue === 0) {
+      const numberValue = toScalarMathNumber(value)
+      const significanceRaw = significance === undefined ? 1 : toScalarMathNumber(significance)
+      if (numberValue === undefined || significanceRaw === undefined || significanceRaw === 0) {
         return valueError()
       }
+      const significanceValue = Math.abs(significanceRaw)
       return numberResult(Math.ceil(numberValue / significanceValue) * significanceValue)
     },
     MOD: (left, right) => {
-      const divisor = toNumber(right) ?? 0
+      const divisor = toScalarMathNumber(right)
+      const dividend = toScalarMathNumber(left)
+      if (divisor === undefined || dividend === undefined) {
+        return valueError()
+      }
       if (divisor === 0) {
         return div0Error()
       }
-      const dividend = toNumber(left) ?? 0
       return numberResult(dividend - divisor * Math.floor(dividend / divisor))
     },
     BITAND: (...args) => {
@@ -483,8 +496,8 @@ export function createMathBuiltins({
       if (error) {
         return error
       }
-      const numberValue = toNumber(value)
-      const digitValue = digits === undefined ? 0 : toNumber(digits)
+      const numberValue = toScalarMathNumber(value)
+      const digitValue = digits === undefined ? 0 : toScalarMathNumber(digits)
       if (numberValue === undefined || digitValue === undefined) {
         return valueError()
       }
@@ -495,8 +508,8 @@ export function createMathBuiltins({
       if (error) {
         return error
       }
-      const numberValue = toNumber(value)
-      const digitValue = digits === undefined ? 0 : toNumber(digits)
+      const numberValue = toScalarMathNumber(value)
+      const digitValue = digits === undefined ? 0 : toScalarMathNumber(digits)
       if (numberValue === undefined || digitValue === undefined) {
         return valueError()
       }
@@ -507,23 +520,23 @@ export function createMathBuiltins({
       if (error) {
         return error
       }
-      const numberValue = toNumber(value)
-      const digitValue = digits === undefined ? 0 : toNumber(digits)
+      const numberValue = toScalarMathNumber(value)
+      const digitValue = digits === undefined ? 0 : toScalarMathNumber(digits)
       if (numberValue === undefined || digitValue === undefined) {
         return valueError()
       }
       return numberResult(roundTowardZero(numberValue, Math.trunc(digitValue)))
     },
     EVEN: (value) => {
-      const numberValue = toNumber(value)
+      const numberValue = toScalarMathNumber(value)
       return numberValue === undefined ? valueError() : numberResult(evenValue(numberValue))
     },
     ODD: (value) => {
-      const numberValue = toNumber(value)
+      const numberValue = toScalarMathNumber(value)
       return numberValue === undefined ? valueError() : numberResult(oddValue(numberValue))
     },
     FACT: (value) => {
-      const numberValue = toNumber(value)
+      const numberValue = toScalarMathNumber(value)
       if (numberValue === undefined) {
         return valueError()
       }
@@ -531,7 +544,7 @@ export function createMathBuiltins({
       return factorial === undefined ? numError() : numberResult(factorial)
     },
     FACTDOUBLE: (value) => {
-      const numberValue = toNumber(value)
+      const numberValue = toScalarMathNumber(value)
       if (numberValue === undefined) {
         return valueError()
       }
@@ -539,8 +552,8 @@ export function createMathBuiltins({
       return factorial === undefined ? numError() : numberResult(factorial)
     },
     COMBIN: (numberArg, chosenArg) => {
-      const numberRaw = toNumber(numberArg)
-      const chosenRaw = toNumber(chosenArg)
+      const numberRaw = toScalarMathNumber(numberArg)
+      const chosenRaw = toScalarMathNumber(chosenArg)
       if (numberRaw === undefined || chosenRaw === undefined) {
         return valueError()
       }
@@ -557,8 +570,8 @@ export function createMathBuiltins({
         : numberResult(numerator / (denominator * remainder))
     },
     COMBINA: (numberArg, chosenArg) => {
-      const numberRaw = toNumber(numberArg)
-      const chosenRaw = toNumber(chosenArg)
+      const numberRaw = toScalarMathNumber(numberArg)
+      const chosenRaw = toScalarMathNumber(chosenArg)
       if (numberRaw === undefined || chosenRaw === undefined) {
         return valueError()
       }
@@ -588,7 +601,7 @@ export function createMathBuiltins({
       }
       const numbers: number[] = []
       for (const arg of args) {
-        const numeric = toNumber(arg)
+        const numeric = toScalarMathNumber(arg)
         if (numeric === undefined) {
           return valueError()
         }
@@ -609,7 +622,7 @@ export function createMathBuiltins({
       }
       const numbers: number[] = []
       for (const arg of args) {
-        const numeric = toNumber(arg)
+        const numeric = toScalarMathNumber(arg)
         if (numeric === undefined) {
           return valueError()
         }
@@ -635,8 +648,8 @@ export function createMathBuiltins({
       if (error) {
         return error
       }
-      const numberValue = toNumber(value)
-      const multipleValue = toNumber(multiple)
+      const numberValue = toScalarMathNumber(value)
+      const multipleValue = toScalarMathNumber(multiple)
       if (numberValue === undefined || multipleValue === undefined || multipleValue === 0) {
         return valueError()
       }
@@ -652,7 +665,7 @@ export function createMathBuiltins({
       }
       const numbers: number[] = []
       for (const arg of args) {
-        const numberValue = toNumber(arg)
+        const numberValue = toScalarMathNumber(arg)
         if (numberValue === undefined) {
           return valueError()
         }
@@ -677,8 +690,8 @@ export function createMathBuiltins({
       return numberResult(numbers.length === 0 ? 0 : numbers.reduce((product, value) => product * value, 1))
     },
     QUOTIENT: (numeratorArg, denominatorArg) => {
-      const numerator = toNumber(numeratorArg)
-      const denominator = toNumber(denominatorArg)
+      const numerator = toScalarMathNumber(numeratorArg)
+      const denominator = toScalarMathNumber(denominatorArg)
       if (numerator === undefined || denominator === undefined) {
         return valueError()
       }

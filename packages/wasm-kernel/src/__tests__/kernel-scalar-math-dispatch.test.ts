@@ -435,6 +435,52 @@ describe('wasm kernel scalar math dispatch', () => {
     }
   })
 
+  it('coerces direct numeric text across scalar math dispatch', async () => {
+    const kernel = await createKernel()
+    const width = 32
+    kernel.init(96, 11, 8, 1, 1)
+    const strings = packStrings(['-2', '2.5', '5.5', '2', '7', '10', '3', '100', '12.34', '4', '5'])
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+    kernel.writeCells(new Uint8Array(96), new Float64Array(96), new Uint32Array(96), new Uint16Array(96))
+
+    const packed = packPrograms([
+      [encodePushString(0), encodeCall(BuiltinId.Abs, 1), encodeRet()],
+      [encodePushString(1), encodePushNumber(0), encodeCall(BuiltinId.Round, 2), encodeRet()],
+      [encodePushString(2), encodePushString(3), encodeCall(BuiltinId.Floor, 2), encodeRet()],
+      [encodePushString(2), encodePushString(3), encodeCall(BuiltinId.Ceiling, 2), encodeRet()],
+      [encodePushString(4), encodePushString(3), encodeCall(BuiltinId.Mod, 2), encodeRet()],
+      [encodePushString(4), encodePushString(3), encodeCall(BuiltinId.Quotient, 2), encodeRet()],
+      [encodePushString(5), encodePushString(6), encodeCall(BuiltinId.Mround, 2), encodeRet()],
+      [encodePushString(3), encodeCall(BuiltinId.Ln, 1), encodeRet()],
+      [encodePushString(7), encodePushString(5), encodeCall(BuiltinId.Log, 2), encodeRet()],
+      [encodePushString(9), encodeCall(BuiltinId.Sqrt, 1), encodeRet()],
+      [encodePushString(8), encodePushNumber(0), encodeCall(BuiltinId.RoundUp, 2), encodeRet()],
+      [encodePushString(8), encodePushNumber(0), encodeCall(BuiltinId.RoundDown, 2), encodeRet()],
+      [encodePushString(8), encodePushNumber(0), encodeCall(BuiltinId.Trunc, 2), encodeRet()],
+      [encodePushString(6), encodeCall(BuiltinId.Even, 1), encodeRet()],
+      [encodePushString(6), encodeCall(BuiltinId.Odd, 1), encodeRet()],
+      [encodePushString(10), encodeCall(BuiltinId.Fact, 1), encodeRet()],
+      [encodePushString(10), encodePushString(3), encodeCall(BuiltinId.Combin, 2), encodeRet()],
+      [encodePushString(9), encodePushString(6), encodeCall(BuiltinId.Combina, 2), encodeRet()],
+      [encodePushString(10), encodePushString(3), encodeCall(BuiltinId.Permut, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 19 }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([[], [0], [], [], [], [], [], [], [], [], [1], [1], [1], [], [], [], [], [], []])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 19 }, (_, index) => cellIndex(1, index, width))))
+
+    const expected = [2, 3, 4, 6, 1, 3, 9, Math.log(2), 2, 2, 12.4, 12.3, 12.3, 4, 3, 120, 10, 20, 20]
+    for (const [index, value] of expected.entries()) {
+      expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Number)
+      expect(kernel.readNumbers()[cellIndex(1, index, width)]).toBeCloseTo(value, 12)
+    }
+  })
+
   it('returns Excel-compatible log errors through wasm dispatch', async () => {
     const kernel = await createKernel()
     const width = 16

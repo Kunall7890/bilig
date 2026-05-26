@@ -72,6 +72,40 @@ describe('formula builtins and JS evaluator', () => {
     expect(evaluateAst(parseFormula('SUM(A2)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
   })
 
+  it('coerces direct numeric text for eligible aggregates without coercing referenced text cells', () => {
+    const context = {
+      sheetName: 'Sheet1',
+      resolveCell: (_sheetName: string, address: string): CellValue => {
+        if (address === 'A1') {
+          return { tag: ValueTag.String, value: '2', stringId: 1 }
+        }
+        if (address === 'A2') {
+          return { tag: ValueTag.String, value: 'bad', stringId: 2 }
+        }
+        return { tag: ValueTag.Empty }
+      },
+      resolveRange: (_sheetName: string, start: string, end: string): CellValue[] => {
+        if (start === 'A1' && end === 'A2') {
+          return [
+            { tag: ValueTag.String, value: '2', stringId: 1 },
+            { tag: ValueTag.String, value: 'bad', stringId: 2 },
+          ]
+        }
+        return []
+      },
+    }
+
+    expect(evaluateAst(parseFormula('PRODUCT("2","3")'), context)).toEqual({ tag: ValueTag.Number, value: 6 })
+    expect(evaluateAst(parseFormula('MIN("2","3")'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(evaluateAst(parseFormula('MAX("2","3")'), context)).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(evaluateAst(parseFormula('COUNT("2","bad")'), context)).toEqual({ tag: ValueTag.Number, value: 1 })
+
+    expect(evaluateAst(parseFormula('PRODUCT("2",A1)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(evaluateAst(parseFormula('COUNT(A1:A2)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(evaluateAst(parseFormula('MIN(A1:A2)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(evaluateAst(parseFormula('MAX(A1:A2)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+  })
+
   it('coerces comma-grouped numeric text in arithmetic expressions', () => {
     const context = {
       sheetName: 'Sheet1',

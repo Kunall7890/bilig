@@ -607,4 +607,55 @@ describe('wasm kernel aggregate and criteria dispatch', () => {
     expect(kernel.readTags()[cellIndex(1, 5, width)]).toBe(ValueTag.Error)
     expect(kernel.readErrors()[cellIndex(1, 5, width)]).toBe(ErrorCode.Value)
   })
+
+  it('coerces direct numeric text for eligible aggregates without coercing range text on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 16
+    kernel.init(48, 7, 8, 1, 1)
+    const strings = packStrings(['2', '3', 'bad', '18', '24', '6', '8'])
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+
+    const cellTags = new Uint8Array(48)
+    const cellNumbers = new Float64Array(48)
+    const cellStringIds = new Uint32Array(48)
+    const cellErrors = new Uint16Array(48)
+    for (let index = 0; index < 3; index += 1) {
+      cellTags[index] = ValueTag.String
+      cellStringIds[index] = index
+    }
+    kernel.writeCells(cellTags, cellNumbers, cellStringIds, cellErrors)
+    kernel.uploadRangeMembers(Uint32Array.from([0, 1, 2]), Uint32Array.from([0]), Uint32Array.from([3]))
+    kernel.uploadRangeShapes(Uint32Array.from([3]), Uint32Array.from([1]))
+
+    const packed = packPrograms([
+      [encodePushString(0), encodePushString(1), encodeCall(BuiltinId.Product, 2), encodeRet()],
+      [encodePushString(0), encodePushString(1), encodeCall(BuiltinId.Min, 2), encodeRet()],
+      [encodePushString(0), encodePushString(1), encodeCall(BuiltinId.Max, 2), encodeRet()],
+      [encodePushString(0), encodePushString(2), encodePushString(1), encodeCall(BuiltinId.Count, 3), encodeRet()],
+      [encodePushString(3), encodePushString(4), encodeCall(BuiltinId.Gcd, 2), encodeRet()],
+      [encodePushString(5), encodePushString(6), encodeCall(BuiltinId.Lcm, 2), encodeRet()],
+      [encodePushString(0), encodePushString(1), encodeCall(BuiltinId.Sumsq, 2), encodeRet()],
+      [encodePushString(0), encodePushRange(0), encodeCall(BuiltinId.Product, 2), encodeRet()],
+      [encodePushRange(0), encodeCall(BuiltinId.Count, 1), encodeRet()],
+      [encodePushRange(0), encodeCall(BuiltinId.Min, 1), encodeRet()],
+      [encodePushRange(0), encodeCall(BuiltinId.Max, 1), encodeRet()],
+      [encodePushString(2), encodeCall(BuiltinId.Min, 1), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 12 }, (_, index) => cellIndex(1, index, width))),
+    )
+    kernel.uploadConstants(new Float64Array(), new Uint32Array(12), new Uint32Array(12))
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 12 }, (_, index) => cellIndex(1, index, width))))
+
+    const expected = [6, 2, 3, 2, 6, 24, 13, 2, 0, 0, 0]
+    for (const [index, value] of expected.entries()) {
+      expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Number)
+      expect(kernel.readNumbers()[cellIndex(1, index, width)]).toBe(value)
+    }
+    expect(kernel.readTags()[cellIndex(1, 11, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 11, width)]).toBe(ErrorCode.Value)
+  })
 })

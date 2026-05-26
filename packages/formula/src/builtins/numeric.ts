@@ -17,6 +17,13 @@ export interface NumericBuiltinHelpers {
   binaryMath: (left: CellValue, right: CellValue, evaluate: (left: number, right: number) => number) => CellValue
 }
 
+export function coerceScalarMathNumber(value: CellValue, toNumber: (value: CellValue) => number | undefined): number | undefined {
+  if (value.tag === ValueTag.String) {
+    return parseArithmeticNumericText(value.value)
+  }
+  return toNumber(value)
+}
+
 export function createNumericBuiltinHelpers({
   toNumber,
   numberResult,
@@ -25,12 +32,7 @@ export function createNumericBuiltinHelpers({
 }: NumericBuiltinDependencies): NumericBuiltinHelpers {
   const firstError = (args: readonly (CellValue | undefined)[]): CellValue | undefined =>
     args.find((arg): arg is CellValue => arg?.tag === ValueTag.Error)
-  const toScalarMathNumber = (value: CellValue): number | undefined => {
-    if (value.tag === ValueTag.String) {
-      return parseArithmeticNumericText(value.value)
-    }
-    return toNumber(value)
-  }
+  const toScalarMathNumber = (value: CellValue): number | undefined => coerceScalarMathNumber(value, toNumber)
   const scalarMathResult = (value: number): CellValue => (Number.isFinite(value) ? numberResult(value) : numError())
 
   return {
@@ -39,8 +41,8 @@ export function createNumericBuiltinHelpers({
       if (error) {
         return error
       }
-      const numberValue = toNumber(value)
-      const digitValue = digits === undefined ? 0 : toNumber(digits)
+      const numberValue = toScalarMathNumber(value)
+      const digitValue = digits === undefined ? 0 : toScalarMathNumber(digits)
       if (numberValue === undefined || digitValue === undefined) {
         return valueError()
       }
@@ -51,8 +53,8 @@ export function createNumericBuiltinHelpers({
       if (error) {
         return error
       }
-      const numberValue = toNumber(value)
-      const significanceValue = significance === undefined ? 1 : toNumber(significance)
+      const numberValue = toScalarMathNumber(value)
+      const significanceValue = significance === undefined ? 1 : toScalarMathNumber(significance)
       if (numberValue === undefined || significanceValue === undefined) {
         return valueError()
       }
@@ -69,8 +71,8 @@ export function createNumericBuiltinHelpers({
       if (error) {
         return error
       }
-      const numberValue = toNumber(value)
-      const significanceValue = significance === undefined ? 1 : toNumber(significance)
+      const numberValue = toScalarMathNumber(value)
+      const significanceValue = significance === undefined ? 1 : toScalarMathNumber(significance)
       if (numberValue === undefined || significanceValue === undefined) {
         return valueError()
       }

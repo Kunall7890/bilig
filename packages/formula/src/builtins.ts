@@ -9,6 +9,7 @@ import { countLeadingZeros, formatFixed, isValidDollarFraction, parseDollarDecim
 import {
   buildIdentityMatrix,
   collectNumericArgs,
+  coerceScalarMathNumber,
   createNumericBuiltinHelpers,
   doubleFactorialValue,
   evenValue,
@@ -30,6 +31,7 @@ import { logicalBuiltins } from './builtins/logical.js'
 import { lookupBuiltins } from './builtins/lookup.js'
 import { createBlockedBuiltinMap, scalarPlaceholderBuiltinNames } from './builtins/placeholder.js'
 import { getExternalScalarFunction, hasExternalFunction } from './external-function-adapter.js'
+import { parseNumericText } from './numeric-text.js'
 import type { ArrayValue, EvaluationResult } from './runtime-values.js'
 import { createTextBuiltins, textBuiltins } from './builtins/text.js'
 
@@ -68,6 +70,17 @@ function toAverageNumber(value: CellValue): number | undefined {
     default:
       return undefined
   }
+}
+
+function toScalarMathNumber(value: CellValue): number | undefined {
+  return coerceScalarMathNumber(value, toNumber)
+}
+
+function toDirectAggregateNumber(value: CellValue): number | undefined {
+  if (value.tag === ValueTag.String) {
+    return parseNumericText(value.value)
+  }
+  return toNumber(value)
 }
 
 function numberResult(value: number): CellValue {
@@ -418,8 +431,32 @@ const scalarBuiltins: Record<string, Builtin> = {
     }
     return value
   },
-  MIN: (...args) => numberResult(Math.min(...args.map((arg) => toNumber(arg) ?? Number.POSITIVE_INFINITY))),
-  MAX: (...args) => numberResult(Math.max(...args.map((arg) => toNumber(arg) ?? Number.NEGATIVE_INFINITY))),
+  MIN: (...args) => {
+    const error = firstError(args)
+    if (error) return error
+    const values: number[] = []
+    for (const arg of args) {
+      const numeric = toDirectAggregateNumber(arg)
+      if (numeric === undefined) {
+        return valueError()
+      }
+      values.push(numeric)
+    }
+    return values.length === 0 ? numberResult(0) : numberResult(Math.min(...values))
+  },
+  MAX: (...args) => {
+    const error = firstError(args)
+    if (error) return error
+    const values: number[] = []
+    for (const arg of args) {
+      const numeric = toDirectAggregateNumber(arg)
+      if (numeric === undefined) {
+        return valueError()
+      }
+      values.push(numeric)
+    }
+    return values.length === 0 ? numberResult(0) : numberResult(Math.max(...values))
+  },
   MAXA: (...args) => {
     const error = firstError(args)
     if (error) return error
@@ -447,7 +484,7 @@ const scalarBuiltins: Record<string, Builtin> = {
     if (value.tag === ValueTag.Error) {
       return value
     }
-    const numeric = toNumber(value)
+    const numeric = toScalarMathNumber(value)
     return numeric === undefined ? valueError() : numberResult(Math.abs(numeric))
   },
   ADDRESS: (
@@ -628,7 +665,7 @@ const scalarBuiltins: Record<string, Builtin> = {
     if (value.tag === ValueTag.Error) {
       return value
     }
-    const numeric = toNumber(value)
+    const numeric = toScalarMathNumber(value)
     if (numeric === undefined) {
       return valueError()
     }
@@ -699,8 +736,8 @@ const scalarBuiltins: Record<string, Builtin> = {
   ...statisticalBuiltins,
   ...financialBuiltins,
   PERMUT: (numberArg, chosenArg) => {
-    const numberRaw = toNumber(numberArg)
-    const chosenRaw = toNumber(chosenArg)
+    const numberRaw = toScalarMathNumber(numberArg)
+    const chosenRaw = toScalarMathNumber(chosenArg)
     if (numberRaw === undefined || chosenRaw === undefined) {
       return valueError()
     }
@@ -716,8 +753,8 @@ const scalarBuiltins: Record<string, Builtin> = {
     return numberResult(result)
   },
   PERMUTATIONA: (numberArg, chosenArg) => {
-    const numberRaw = toNumber(numberArg)
-    const chosenRaw = toNumber(chosenArg)
+    const numberRaw = toScalarMathNumber(numberArg)
+    const chosenRaw = toScalarMathNumber(chosenArg)
     if (numberRaw === undefined || chosenRaw === undefined) {
       return valueError()
     }

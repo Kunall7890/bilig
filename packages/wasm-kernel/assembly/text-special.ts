@@ -255,11 +255,18 @@ export function firstUnicodeCodePoint(text: string): i32 {
     return -1
   }
   const first = text.charCodeAt(0)
-  if ((first & 0xfc00) == 0xd800 && text.length > 1) {
+  if ((first & 0xfc00) == 0xd800) {
+    if (text.length <= 1) {
+      return -1
+    }
     const next = text.charCodeAt(1)
     if ((next & 0xfc00) == 0xdc00) {
       return 0x10000 + ((first - 0xd800) << 10) + (next - 0xdc00)
     }
+    return -1
+  }
+  if ((first & 0xfc00) == 0xdc00) {
+    return -1
   }
   return first
 }

@@ -381,16 +381,11 @@ export function tryApplyTextFormattingBuiltin(
     if (text == null || text.length == 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    return writeResult(
-      base,
-      STACK_KIND_SCALAR,
-      <u8>ValueTag.Number,
-      <f64>firstUnicodeCodePoint(text),
-      rangeIndexStack,
-      valueStack,
-      tagStack,
-      kindStack,
-    )
+    const codePoint = firstUnicodeCodePoint(text)
+    if (codePoint < 0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, <f64>codePoint, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.Unichar && argc == 1) {
@@ -408,8 +403,11 @@ export function tryApplyTextFormattingBuiltin(
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const integerCode = <i32>numeric
-    if (integerCode < 0 || integerCode > 0x10ffff) {
+    if (integerCode < 1 || integerCode > 0x10ffff) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (integerCode >= 0xd800 && integerCode <= 0xdfff) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.NA, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeStringResult(base, stringFromUnicodeCodePoint(integerCode), rangeIndexStack, valueStack, tagStack, kindStack)
   }

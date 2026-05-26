@@ -49,6 +49,7 @@ import {
   vectorIntegerArgument,
 } from './js-evaluator-runtime-helpers.js'
 import { evaluateWorkbookSpecialCall } from './js-evaluator-workbook-special-calls.js'
+import { parseNumericText } from './numeric-text.js'
 import type { EvaluationContext, JsPlanInstruction, ReferenceOperand, StackValue } from './js-evaluator-types.js'
 import { lowerToPlan } from './js-plan-lowering.js'
 import { isArrayValue, scalarFromEvaluationResult, type EvaluationResult } from './runtime-values.js'
@@ -205,11 +206,22 @@ function evaluateSpecialCall(
 }
 
 function coerceDirectNumericTextAggregateArgument(callee: string, value: CellValue, argRef: ReferenceOperand | undefined): CellValue {
-  if (callee !== 'SUM' || argRef !== undefined || value.tag !== ValueTag.String) {
+  if (argRef !== undefined || value.tag !== ValueTag.String) {
     return value
   }
-  const numeric = toArithmeticNumber(value)
-  return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
+  if (callee === 'COUNT') {
+    const numeric = parseNumericText(value.value)
+    return numeric === undefined ? value : numberValue(numeric)
+  }
+  if (callee === 'SUM') {
+    const numeric = toArithmeticNumber(value)
+    return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
+  }
+  if (callee === 'PRODUCT' || callee === 'MIN' || callee === 'MAX' || callee === 'SUMSQ') {
+    const numeric = parseNumericText(value.value)
+    return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
+  }
+  return value
 }
 
 function scalarBuiltinRangeValues(callee: string, rawArg: StackValue): readonly CellValue[] {

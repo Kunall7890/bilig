@@ -1,78 +1,16 @@
-import { BuiltinId, ErrorCode, ValueTag } from './protocol'
-import { doubleFactorialCalc, evenCalc, factorialCalc, oddCalc, roundToDigits, roundTowardZeroDigits, truncToInt } from './numeric-core'
+import { BuiltinId, ErrorCode } from './protocol'
+import { doubleFactorialCalc, evenCalc, factorialCalc, oddCalc, truncToInt } from './numeric-core'
 import { toNumberExact, toNumberOrZero } from './operands'
 import { besselIValue, besselJValue, besselKValue, besselYValue } from './distributions'
-import { STACK_KIND_SCALAR, writeResult } from './result-io'
+import { tryApplyScalarRoundingMathBuiltin } from './dispatch-scalar-rounding-math'
 import { excelPower } from './vm-core-helpers'
-import { coerceScalarNumberLikeText } from './text-special'
-
-function writeScalarMathError(
-  base: i32,
-  error: ErrorCode,
-  rangeIndexStack: Uint32Array,
-  valueStack: Float64Array,
-  tagStack: Uint8Array,
-  kindStack: Uint8Array,
-): i32 {
-  return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, error, rangeIndexStack, valueStack, tagStack, kindStack)
-}
-
-function writeScalarMathNumber(
-  base: i32,
-  value: f64,
-  rangeIndexStack: Uint32Array,
-  valueStack: Float64Array,
-  tagStack: Uint8Array,
-  kindStack: Uint8Array,
-): i32 {
-  return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, value, rangeIndexStack, valueStack, tagStack, kindStack)
-}
-
-function writeScalarMathFiniteNumberOrNum(
-  base: i32,
-  value: f64,
-  rangeIndexStack: Uint32Array,
-  valueStack: Float64Array,
-  tagStack: Uint8Array,
-  kindStack: Uint8Array,
-): i32 {
-  return isFinite(value)
-    ? writeScalarMathNumber(base, value, rangeIndexStack, valueStack, tagStack, kindStack)
-    : writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
-}
-
-function scalarMathNumberLikeText(
-  slot: i32,
-  valueStack: Float64Array,
-  tagStack: Uint8Array,
-  stringOffsets: Uint32Array,
-  stringLengths: Uint32Array,
-  stringData: Uint16Array,
-  outputStringOffsets: Uint32Array,
-  outputStringLengths: Uint32Array,
-  outputStringData: Uint16Array,
-): f64 {
-  return coerceScalarNumberLikeText(
-    tagStack[slot],
-    valueStack[slot],
-    stringOffsets,
-    stringLengths,
-    stringData,
-    outputStringOffsets,
-    outputStringLengths,
-    outputStringData,
-  )
-}
-
-function firstScalarMathError(base: i32, argc: i32, valueStack: Float64Array, tagStack: Uint8Array): ErrorCode {
-  for (let index = 0; index < argc; index += 1) {
-    const slot = base + index
-    if (tagStack[slot] == ValueTag.Error) {
-      return <ErrorCode>valueStack[slot]
-    }
-  }
-  return ErrorCode.None
-}
+import {
+  firstScalarMathError,
+  scalarMathNumberLikeText,
+  writeScalarMathError,
+  writeScalarMathFiniteNumberOrNum,
+  writeScalarMathNumber,
+} from './dispatch-scalar-math-helpers'
 
 export function tryApplyScalarMathBuiltin(
   builtinId: i32,
@@ -123,197 +61,23 @@ export function tryApplyScalarMathBuiltin(
       : writeScalarMathNumber(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
-  if (builtinId == BuiltinId.Abs && argc == 1) {
-    return writeScalarMathNumber(
-      base,
-      Math.abs(toNumberOrZero(tagStack[base], valueStack[base])),
-      rangeIndexStack,
-      valueStack,
-      tagStack,
-      kindStack,
-    )
-  }
-
-  if (builtinId == BuiltinId.Round && argc == 1) {
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
-    return isNaN(numeric)
-      ? writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-      : writeScalarMathNumber(base, roundToDigits(numeric, 0), rangeIndexStack, valueStack, tagStack, kindStack)
-  }
-
-  if (builtinId == BuiltinId.Round && argc == 2) {
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
-    const digits = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    return isNaN(numeric) || isNaN(digits)
-      ? writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-      : writeScalarMathNumber(base, roundToDigits(numeric, <i32>digits), rangeIndexStack, valueStack, tagStack, kindStack)
-  }
-
-  if (builtinId == BuiltinId.Floor && argc == 1) {
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
-    return isNaN(numeric)
-      ? writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-      : writeScalarMathNumber(base, Math.floor(numeric), rangeIndexStack, valueStack, tagStack, kindStack)
-  }
-
-  if (builtinId == BuiltinId.Floor && argc == 2) {
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
-    const significance = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    if (isNaN(numeric) || isNaN(significance)) {
-      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-    }
-    if (significance == 0.0) {
-      return writeScalarMathError(base, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
-    }
-    if (numeric > 0.0 && significance < 0.0) {
-      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
-    }
-    return writeScalarMathNumber(base, Math.floor(numeric / significance) * significance, rangeIndexStack, valueStack, tagStack, kindStack)
-  }
-
-  if (builtinId == BuiltinId.Ceiling && argc == 1) {
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
-    return isNaN(numeric)
-      ? writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-      : writeScalarMathNumber(base, Math.ceil(numeric), rangeIndexStack, valueStack, tagStack, kindStack)
-  }
-
-  if (builtinId == BuiltinId.Ceiling && argc == 2) {
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
-    const significance = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    if (isNaN(numeric) || isNaN(significance)) {
-      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-    }
-    if (significance == 0.0) {
-      return writeScalarMathError(base, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
-    }
-    return writeScalarMathNumber(base, Math.ceil(numeric / significance) * significance, rangeIndexStack, valueStack, tagStack, kindStack)
-  }
-
-  if (builtinId == BuiltinId.FloorMath && (argc == 1 || argc == 2 || argc == 3)) {
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
-    const significanceRaw = argc >= 2 ? toNumberExact(tagStack[base + 1], valueStack[base + 1]) : 1.0
-    const significance = isNaN(significanceRaw) ? 1.0 : Math.abs(significanceRaw)
-    const modeRaw = argc == 3 ? toNumberExact(tagStack[base + 2], valueStack[base + 2]) : 0.0
-    const mode = isNaN(modeRaw) ? 0.0 : modeRaw
-    if (isNaN(numeric) || significance == 0.0) {
-      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-    }
-    const result =
-      numeric >= 0.0
-        ? Math.floor(numeric / significance) * significance
-        : -(mode == 0.0 ? Math.ceil(Math.abs(numeric) / significance) : Math.floor(Math.abs(numeric) / significance)) * significance
-    return writeScalarMathNumber(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
-  }
-
-  if (builtinId == BuiltinId.FloorPrecise && (argc == 1 || argc == 2)) {
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
-    const significanceRaw = argc == 2 ? toNumberExact(tagStack[base + 1], valueStack[base + 1]) : 1.0
-    const significance = isNaN(significanceRaw) ? 1.0 : Math.abs(significanceRaw)
-    if (isNaN(numeric) || significance == 0.0) {
-      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-    }
-    return writeScalarMathNumber(base, Math.floor(numeric / significance) * significance, rangeIndexStack, valueStack, tagStack, kindStack)
-  }
-
-  if (builtinId == BuiltinId.CeilingMath && (argc == 1 || argc == 2 || argc == 3)) {
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
-    const significanceRaw = argc >= 2 ? toNumberExact(tagStack[base + 1], valueStack[base + 1]) : 1.0
-    const significance = isNaN(significanceRaw) ? 1.0 : Math.abs(significanceRaw)
-    const modeRaw = argc == 3 ? toNumberExact(tagStack[base + 2], valueStack[base + 2]) : 0.0
-    const mode = isNaN(modeRaw) ? 0.0 : modeRaw
-    if (isNaN(numeric) || significance == 0.0) {
-      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-    }
-    const result =
-      numeric >= 0.0
-        ? Math.ceil(numeric / significance) * significance
-        : -(mode == 0.0 ? Math.floor(Math.abs(numeric) / significance) : Math.ceil(Math.abs(numeric) / significance)) * significance
-    return writeScalarMathNumber(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
-  }
-
-  if ((builtinId == BuiltinId.CeilingPrecise || builtinId == BuiltinId.IsoCeiling) && (argc == 1 || argc == 2)) {
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
-    const significanceRaw = argc == 2 ? toNumberExact(tagStack[base + 1], valueStack[base + 1]) : 1.0
-    const significance = isNaN(significanceRaw) ? 1.0 : Math.abs(significanceRaw)
-    if (isNaN(numeric) || significance == 0.0) {
-      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-    }
-    return writeScalarMathNumber(base, Math.ceil(numeric / significance) * significance, rangeIndexStack, valueStack, tagStack, kindStack)
-  }
-
-  if (builtinId == BuiltinId.Mod && argc == 2) {
-    const divisor = toNumberOrZero(tagStack[base + 1], valueStack[base + 1])
-    if (divisor == 0.0) {
-      return writeScalarMathError(base, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
-    }
-    const dividend = toNumberOrZero(tagStack[base], valueStack[base])
-    return writeScalarMathNumber(
-      base,
-      dividend - divisor * Math.floor(dividend / divisor),
-      rangeIndexStack,
-      valueStack,
-      tagStack,
-      kindStack,
-    )
-  }
-
-  if (builtinId == BuiltinId.Int && argc == 1) {
-    const numeric = coerceScalarNumberLikeText(
-      tagStack[base],
-      valueStack[base],
-      stringOffsets,
-      stringLengths,
-      stringData,
-      outputStringOffsets,
-      outputStringLengths,
-      outputStringData,
-    )
-    return isNaN(numeric)
-      ? writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-      : writeScalarMathNumber(base, Math.floor(numeric), rangeIndexStack, valueStack, tagStack, kindStack)
-  }
-
-  if ((builtinId == BuiltinId.RoundUp || builtinId == BuiltinId.RoundDown) && (argc == 1 || argc == 2)) {
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
-    const digits = argc == 2 ? truncToInt(tagStack[base + 1], valueStack[base + 1]) : 0
-    if (isNaN(numeric) || digits == i32.MIN_VALUE) {
-      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-    }
-    let result = 0.0
-    if (digits >= 0) {
-      const factor = Math.pow(10.0, <f64>digits)
-      const scaled = numeric * factor
-      result =
-        (builtinId == BuiltinId.RoundUp
-          ? numeric >= 0.0
-            ? Math.ceil(scaled)
-            : Math.floor(scaled)
-          : numeric >= 0.0
-            ? Math.floor(scaled)
-            : Math.ceil(scaled)) / factor
-    } else {
-      const factor = Math.pow(10.0, <f64>-digits)
-      const scaled = numeric / factor
-      result =
-        (builtinId == BuiltinId.RoundUp
-          ? numeric >= 0.0
-            ? Math.ceil(scaled)
-            : Math.floor(scaled)
-          : numeric >= 0.0
-            ? Math.floor(scaled)
-            : Math.ceil(scaled)) * factor
-    }
-    return writeScalarMathNumber(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
-  }
-
-  if (builtinId == BuiltinId.Trunc && (argc == 1 || argc == 2)) {
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
-    const digits = argc == 2 ? truncToInt(tagStack[base + 1], valueStack[base + 1]) : 0
-    if (isNaN(numeric) || digits == i32.MIN_VALUE) {
-      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-    }
-    return writeScalarMathNumber(base, roundTowardZeroDigits(numeric, digits), rangeIndexStack, valueStack, tagStack, kindStack)
+  const scalarRoundingMathResult = tryApplyScalarRoundingMathBuiltin(
+    builtinId,
+    argc,
+    base,
+    rangeIndexStack,
+    valueStack,
+    tagStack,
+    kindStack,
+    stringOffsets,
+    stringLengths,
+    stringData,
+    outputStringOffsets,
+    outputStringLengths,
+    outputStringData,
+  )
+  if (scalarRoundingMathResult >= 0) {
+    return scalarRoundingMathResult
   }
 
   if (builtinId == BuiltinId.Sin && argc == 1) {
@@ -365,7 +129,17 @@ export function tryApplyScalarMathBuiltin(
       : writeScalarMathFiniteNumberOrNum(base, Math.tan(numeric), rangeIndexStack, valueStack, tagStack, kindStack)
   }
   if (builtinId == BuiltinId.Asin && argc == 1) {
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
+    const numeric = scalarMathNumberLikeText(
+      base,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     if (!isFinite(numeric)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -375,7 +149,17 @@ export function tryApplyScalarMathBuiltin(
     return writeScalarMathNumber(base, Math.asin(numeric), rangeIndexStack, valueStack, tagStack, kindStack)
   }
   if (builtinId == BuiltinId.Acos && argc == 1) {
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
+    const numeric = scalarMathNumberLikeText(
+      base,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     if (!isFinite(numeric)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -405,8 +189,31 @@ export function tryApplyScalarMathBuiltin(
     if (error != ErrorCode.None) {
       return writeScalarMathError(base, error, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const x = toNumberOrZero(tagStack[base], valueStack[base])
-    const y = toNumberOrZero(tagStack[base + 1], valueStack[base + 1])
+    const x = scalarMathNumberLikeText(
+      base,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const y = scalarMathNumberLikeText(
+      base + 1,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    if (isNaN(x) || isNaN(y)) {
+      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     if (x == 0.0 && y == 0.0) {
       return writeScalarMathError(base, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -465,7 +272,17 @@ export function tryApplyScalarMathBuiltin(
     if (error != ErrorCode.None) {
       return writeScalarMathError(base, error, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
+    const numeric = scalarMathNumberLikeText(
+      base,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     if (isNaN(numeric)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -482,7 +299,17 @@ export function tryApplyScalarMathBuiltin(
     if (error != ErrorCode.None) {
       return writeScalarMathError(base, error, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
+    const numeric = scalarMathNumberLikeText(
+      base,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     if (isNaN(numeric)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -499,8 +326,31 @@ export function tryApplyScalarMathBuiltin(
     if (error != ErrorCode.None) {
       return writeScalarMathError(base, error, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const num = toNumberExact(tagStack[base], valueStack[base])
-    const baseVal = argc == 2 ? toNumberExact(tagStack[base + 1], valueStack[base + 1]) : 10.0
+    const num = scalarMathNumberLikeText(
+      base,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const baseVal =
+      argc == 2
+        ? scalarMathNumberLikeText(
+            base + 1,
+            valueStack,
+            tagStack,
+            stringOffsets,
+            stringLengths,
+            stringData,
+            outputStringOffsets,
+            outputStringLengths,
+            outputStringData,
+          )
+        : 10.0
     if (isNaN(num) || isNaN(baseVal)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -545,7 +395,17 @@ export function tryApplyScalarMathBuiltin(
     if (error != ErrorCode.None) {
       return writeScalarMathError(base, error, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
+    const numeric = scalarMathNumberLikeText(
+      base,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     if (isNaN(numeric)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -573,7 +433,17 @@ export function tryApplyScalarMathBuiltin(
     if (error != ErrorCode.None) {
       return writeScalarMathError(base, error, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
+    const numeric = scalarMathNumberLikeText(
+      base,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     if (isNaN(numeric)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -614,19 +484,17 @@ export function tryApplyScalarMathBuiltin(
       builtinId == BuiltinId.Tanh ||
       builtinId == BuiltinId.Asinh ||
       builtinId == BuiltinId.Sech
-    const numeric = isGenericTranscendental
-      ? scalarMathNumberLikeText(
-          base,
-          valueStack,
-          tagStack,
-          stringOffsets,
-          stringLengths,
-          stringData,
-          outputStringOffsets,
-          outputStringLengths,
-          outputStringData,
-        )
-      : toNumberExact(tagStack[base], valueStack[base])
+    const numeric = scalarMathNumberLikeText(
+      base,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     if (!isFinite(numeric)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -724,8 +592,28 @@ export function tryApplyScalarMathBuiltin(
   }
 
   if ((builtinId == BuiltinId.Combin || builtinId == BuiltinId.Combina || builtinId == BuiltinId.Quotient) && argc == 2) {
-    const left = toNumberExact(tagStack[base], valueStack[base])
-    const right = toNumberExact(tagStack[base + 1], valueStack[base + 1])
+    const left = scalarMathNumberLikeText(
+      base,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const right = scalarMathNumberLikeText(
+      base + 1,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     if (!isFinite(left) || !isFinite(right)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -763,8 +651,28 @@ export function tryApplyScalarMathBuiltin(
   }
 
   if ((builtinId == BuiltinId.Permut || builtinId == BuiltinId.Permutationa) && argc == 2) {
-    const left = toNumberExact(tagStack[base], valueStack[base])
-    const right = toNumberExact(tagStack[base + 1], valueStack[base + 1])
+    const left = scalarMathNumberLikeText(
+      base,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const right = scalarMathNumberLikeText(
+      base + 1,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     if (!isFinite(left) || !isFinite(right)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -794,8 +702,28 @@ export function tryApplyScalarMathBuiltin(
   }
 
   if (builtinId == BuiltinId.Mround && argc == 2) {
-    const numeric = toNumberExact(tagStack[base], valueStack[base])
-    const multiple = toNumberExact(tagStack[base + 1], valueStack[base + 1])
+    const numeric = scalarMathNumberLikeText(
+      base,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const multiple = scalarMathNumberLikeText(
+      base + 1,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     if (isNaN(numeric) || isNaN(multiple) || multiple == 0.0) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
