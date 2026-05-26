@@ -27,8 +27,13 @@ export function readFastRangeValues(engine: SpreadsheetEngine, range: WorkPaperC
     row.length = width
     rows[rowOffset] = row
   }
-  const readCellValue = createFastCellValueReader(engine)
-  let filledCells = 0
+  const cellStore = engine.workbook.cellStore
+  const cellTags = cellStore.tags
+  const cellNumbers = cellStore.numbers
+  const cellStringIds = cellStore.stringIds
+  const cellErrors = cellStore.errors
+  const strings = engine.strings
+  let needsEmptyFill = false
   const blockRowStart = Math.floor(range.start.row / BLOCK_ROWS)
   const blockRowEnd = Math.floor(range.end.row / BLOCK_ROWS)
   const blockColStart = Math.floor(range.start.col / BLOCK_COLS)
@@ -40,6 +45,7 @@ export function readFastRangeValues(engine: SpreadsheetEngine, range: WorkPaperC
     for (let blockCol = blockColStart; blockCol <= blockColEnd; blockCol += 1) {
       const block = sheet.grid.blocks.get(blockRow * 1_000_000 + blockCol)
       if (!block) {
+        needsEmptyFill = true
         continue
       }
       const absoluteBlockCol = blockCol * BLOCK_COLS
@@ -51,17 +57,47 @@ export function readFastRangeValues(engine: SpreadsheetEngine, range: WorkPaperC
         for (let localCol = localColStart; localCol <= localColEnd; localCol += 1) {
           const encodedCellIndex = block[blockRowOffset + localCol]!
           if (encodedCellIndex === 0) {
+            needsEmptyFill = true
             continue
           }
           const cellIndex = encodedCellIndex - 1
           const outputCol = absoluteBlockCol + localCol - range.start.col
-          row[outputCol] = readCellValue(cellIndex)
-          filledCells += 1
+          const tag = (cellTags[cellIndex] as ValueTag | undefined) ?? ValueTag.Empty
+          switch (tag) {
+            case ValueTag.Number:
+              row[outputCol] = { tag, value: cellNumbers[cellIndex] ?? 0 }
+              break
+            case ValueTag.Boolean:
+              row[outputCol] = {
+                tag,
+                value: (cellNumbers[cellIndex] ?? 0) !== 0,
+              }
+              break
+            case ValueTag.String: {
+              const stringId = cellStringIds[cellIndex] ?? 0
+              row[outputCol] = {
+                tag,
+                value: stringId === 0 ? '' : strings.get(stringId),
+                stringId,
+              }
+              break
+            }
+            case ValueTag.Error:
+              row[outputCol] = {
+                tag,
+                code: (cellErrors[cellIndex] as ErrorCode | undefined) ?? ErrorCode.None,
+              }
+              break
+            case ValueTag.Empty:
+            default:
+              row[outputCol] = EMPTY_CELL_VALUE
+              break
+          }
         }
       }
     }
   }
-  if (filledCells < height * width) {
+  if (needsEmptyFill) {
     for (let rowOffset = 0; rowOffset < height; rowOffset += 1) {
       const row = rows[rowOffset]!
       for (let colOffset = 0; colOffset < width; colOffset += 1) {
