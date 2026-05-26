@@ -206,6 +206,34 @@ describe('engine fuzz regressions', () => {
     expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(normalizeSnapshotForSemanticComparison(seedSnapshot))
   })
 
+  it('preserves sheet-qualified invalid defined-name refs when undoing later structure changes', async () => {
+    const seedSnapshot = await createEngineSeedSnapshot('named-structures', 'defined-name-ref-qualified-error-undo-regression')
+    const engine = new SpreadsheetEngine({
+      workbookName: seedSnapshot.workbook.name,
+      replicaId: 'defined-name-ref-qualified-error-undo-regression',
+    })
+    await engine.ready()
+    engine.importSnapshot(structuredClone(seedSnapshot))
+
+    engine.deleteColumns('Sheet1', 0, 2)
+    expect(engine.getDefinedName('SalesRange')).toEqual({
+      name: 'SalesRange',
+      value: { kind: 'formula', formula: '=Sheet1!#REF!' },
+    })
+
+    engine.insertRows('Sheet1', 0, 1)
+    expect(engine.undo()).toBe(true)
+
+    const expectedSnapshot = await exportReplaySnapshot(seedSnapshot, [{ kind: 'deleteColumns', start: 0, count: 2 }])
+    expect(engine.getDefinedName('SalesRange')).toEqual({
+      name: 'SalesRange',
+      value: { kind: 'formula', formula: '=Sheet1!#REF!' },
+    })
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(
+      normalizeSnapshotForSemanticComparison(expectedSnapshot),
+    )
+  })
+
   it('preserves inherited format ranges when undoing deleted string rows', async () => {
     const seedSnapshot = await createEngineSeedSnapshot('pivot-analytics', 'delete-string-row-format-undo-regression')
     const engine = new SpreadsheetEngine({

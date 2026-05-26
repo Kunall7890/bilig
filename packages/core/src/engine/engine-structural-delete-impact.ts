@@ -8,7 +8,11 @@ import {
   preservedChartPackageArtifactsTouchStructuralDelete,
 } from './services/structure-chart-artifact-rewrite.js'
 import { preservedSheetMetadataTouchesStructuralDelete } from './services/structure-preserved-sheet-metadata-rewrite.js'
-import { rewriteTableForStructuralTransform, workbookTableRecordsEqual } from './services/structure-metadata-rewrite.js'
+import {
+  isQualifiedRefErrorFormulaSource,
+  rewriteTableForStructuralTransform,
+  workbookTableRecordsEqual,
+} from './services/structure-metadata-rewrite.js'
 
 type StructuralDeleteAxis = 'row' | 'column'
 type StructuralAxisTransformKind = 'insert' | 'delete'
@@ -21,6 +25,9 @@ function formulaWouldRewriteForStructuralTransform(
   count: number,
   kind: StructuralAxisTransformKind,
 ): boolean {
+  if (isQualifiedRefErrorFormulaSource(formula)) {
+    return false
+  }
   const hasLeadingEquals = formula.startsWith('=')
   const source = hasLeadingEquals ? formula.slice(1) : formula
   const rewritten = rewriteFormulaForStructuralTransform(source, sheetName, sheetName, {

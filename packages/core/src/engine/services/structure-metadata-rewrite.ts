@@ -65,6 +65,12 @@ export interface DeletedTableColumnReference {
 
 type WorkbookTableColumnRecord = NonNullable<WorkbookTableRecord['columns']>[number]
 const METADATA_CELL_REF_RE = /^\$?([A-Z]+)\$?([1-9]\d*)$/i
+const QUALIFIED_REF_ERROR_FORMULA_RE = /^(?:'(?:''|[^'])+'|[A-Za-z0-9_.$]+)!#REF!$/iu
+
+export function isQualifiedRefErrorFormulaSource(formula: string): boolean {
+  const source = formula.startsWith('=') ? formula.slice(1) : formula
+  return QUALIFIED_REF_ERROR_FORMULA_RE.test(source)
+}
 
 function quoteFormulaSheetName(sheetName: string): string {
   return /^[A-Za-z0-9_.$]+$/u.test(sheetName) ? sheetName : `'${sheetName.replaceAll("'", "''")}'`
@@ -187,6 +193,9 @@ function rewriteDefinedNameFormulaOrNull(
   transform: StructuralAxisTransform,
   deletedTableColumns: readonly DeletedTableColumnReference[],
 ): string | null {
+  if (isQualifiedRefErrorFormulaSource(formula)) {
+    return formula
+  }
   try {
     const structuralFormula = rewriteFormulaForStructuralTransform(formula, sheetName, sheetName, transform)
     return rewriteFormulaSourceForDeletedStructuredReferences(structuralFormula, deletedTableColumns) ?? structuralFormula
