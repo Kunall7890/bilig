@@ -10,7 +10,10 @@ import {
   buildPublicWorkbookCorpusResourceLimitPlanFromArgs,
   validatePublicWorkbookCorpusResourceLimitPlan,
 } from '../public-workbook-corpus-resource-limit-plan.ts'
-import { publicWorkbookResourceLimitClassifierEvidence } from '../public-workbook-corpus-evidence.ts'
+import {
+  publicWorkbookImportWarningClassifierEvidence,
+  publicWorkbookResourceLimitClassifierEvidence,
+} from '../public-workbook-corpus-evidence.ts'
 import { asRecord, createEmptyPublicWorkbookManifest } from '../public-workbook-corpus-json.ts'
 import type { PublicWorkbookArtifact, PublicWorkbookCorpusCase, PublicWorkbookManifest } from '../public-workbook-corpus-types.ts'
 
@@ -18,13 +21,22 @@ describe('public workbook corpus resource-limit plan', () => {
   it('splits current resource-limit blockers from stale unsupported scorecard evidence', () => {
     const currentArtifact = workbookArtifact('workbook-current', 2_000)
     const staleArtifact = workbookArtifact('workbook-stale', 1_000)
+    const currentCase = {
+      ...resourceLimitedCase(currentArtifact),
+      unsupportedFeatureClassifications: [
+        'xlsx.publicCorpus.resourceLimit:rss>1536MiB',
+        'xlsx.externalLinks.workbookReferencesPreserved',
+        'xlsx.import.warning:External workbook links were preserved but not recalculated during XLSX import.',
+      ],
+      evidence: [...resourceLimitedCase(currentArtifact).evidence, publicWorkbookImportWarningClassifierEvidence],
+    }
     const plan = buildPublicWorkbookCorpusResourceLimitPlan({
       cacheDir: '/repo/.cache/public-workbook-corpus',
       displayRootDir: '/repo',
       generatedAt: '2026-05-08T10:00:00.000Z',
       manifest: manifestWithArtifacts([currentArtifact, staleArtifact]),
       manifestPath: '/repo/.cache/public-workbook-corpus/manifest.json',
-      recordedCases: [resourceLimitedCase(currentArtifact), staleResourceLimitedCase(staleArtifact)],
+      recordedCases: [currentCase, staleResourceLimitedCase(staleArtifact)],
       sampleLimit: 10,
       scorecardPath: '/repo/packages/benchmarks/baselines/public-workbook-corpus-scorecard.json',
       stopMarkerActive: true,

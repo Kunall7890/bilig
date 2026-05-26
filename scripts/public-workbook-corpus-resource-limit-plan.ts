@@ -198,8 +198,8 @@ export function buildPublicWorkbookCorpusResourceLimitPlan(args: {
       resourceLimitCaseCount: resourceLimitEntries.length,
       currentResourceLimitCaseCount: currentEntries.length,
       staleResourceLimitCaseCount: staleEntries.length,
-      currentClassifications: buildUnsupportedClassificationCounts(currentEntries.map((entry) => entry.recordedCase)),
-      staleClassifications: buildUnsupportedClassificationCounts(staleEntries.map((entry) => entry.recordedCase)),
+      currentClassifications: buildResourceLimitClassificationCounts(currentEntries.map((entry) => entry.recordedCase)),
+      staleClassifications: buildResourceLimitClassificationCounts(staleEntries.map((entry) => entry.recordedCase)),
     },
     currentSamples: samplePlanEntries(currentEntries, args),
     staleSamples: samplePlanEntries(staleEntries, args),
@@ -255,6 +255,21 @@ export function validatePublicWorkbookCorpusResourceLimitPlan(plan: PublicWorkbo
     }
   }
   return findings
+}
+
+function buildResourceLimitClassificationCounts(
+  cases: readonly PublicWorkbookCorpusCase[],
+): PublicWorkbookCorpusUnsupportedClassificationCount[] {
+  return buildUnsupportedClassificationCounts(
+    cases.map((entry) => ({
+      ...entry,
+      unsupportedFeatureClassifications: entry.unsupportedFeatureClassifications.filter(isResourceLimitClassification),
+    })),
+  )
+}
+
+function isResourceLimitClassification(classification: string): boolean {
+  return classification.startsWith(resourceLimitClassificationPrefix)
 }
 
 function samplePlanEntries(
