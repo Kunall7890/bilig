@@ -409,6 +409,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - AnythingLLM MCP setup: ${siteRoot}/anythingllm-workpaper-mcp.html
 - Sim MCP setup: ${siteRoot}/sim-workpaper-mcp.html
 - FastMCP Python client: ${siteRoot}/fastmcp-workpaper-client.html
+- smolagents WorkPaper tool: ${siteRoot}/smolagents-workpaper-tool.html
 - Windmill TypeScript script: ${siteRoot}/windmill-workpaper-script.html
 - Trigger.dev task: ${siteRoot}/triggerdev-workpaper-task.html
 - Temporal Activity: ${siteRoot}/temporal-workpaper-activity.html
@@ -540,6 +541,7 @@ const llmsFullSources = [
   llmsSource('LobeHub WorkPaper MCP Setup', 'docs/lobehub-workpaper-mcp.md'),
   llmsSource('AnythingLLM WorkPaper MCP Setup', 'docs/anythingllm-workpaper-mcp.md'),
   llmsSource('FastMCP WorkPaper Client', 'docs/fastmcp-workpaper-client.md'),
+  llmsSource('smolagents WorkPaper Tool', 'docs/smolagents-workpaper-tool.md'),
   {
     title: 'Sim WorkPaper MCP Setup',
     relativePath: 'docs/sim-workpaper-mcp.md',
@@ -745,6 +747,14 @@ function agentJsonManifest(): string {
           source: `${repositoryUrl}/tree/main/examples/fastmcp-workpaper-client`,
         },
         {
+          name: 'smolagents-workpaper-tool',
+          type: 'python-agent-tool-smoke-test',
+          framework: 'smolagents',
+          command: 'uv run --python 3.12 --with smolagents python examples/smolagents-workpaper-tool/smolagents_workpaper_tool.py',
+          docs: `${siteRoot}/smolagents-workpaper-tool.html`,
+          source: `${repositoryUrl}/tree/main/examples/smolagents-workpaper-tool`,
+        },
+        {
           name: 'formula-clinic',
           type: 'local-cli',
           command: `npm exec --package ${workpaperPackageSpec} -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"`,
@@ -778,6 +788,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/anythingllm-workpaper-mcp.html`,
         `${siteRoot}/sim-workpaper-mcp.html`,
         `${siteRoot}/fastmcp-workpaper-client.html`,
+        `${siteRoot}/smolagents-workpaper-tool.html`,
         remoteMcpEndpoint,
         remoteMcpServerCard,
         `${siteRoot}/agent-workpaper-tool-calling-recipe.html`,

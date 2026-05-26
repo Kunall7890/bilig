@@ -43,6 +43,7 @@ export const docsSiteSources = [
   ['anythingllm-workpaper-mcp.html', 'anythingllm-workpaper-mcp.md'],
   ['sim-workpaper-mcp.html', 'sim-workpaper-mcp.md'],
   ['fastmcp-workpaper-client.html', 'fastmcp-workpaper-client.md'],
+  ['smolagents-workpaper-tool.html', 'smolagents-workpaper-tool.md'],
   ['openai-agents-sdk-workpaper-tool.html', 'openai-agents-sdk-workpaper-tool.md'],
   ['openai-responses-workpaper-tool-call.html', 'openai-responses-workpaper-tool-call.md'],
   ['vercel-ai-sdk-langchain-spreadsheet-tool.html', 'vercel-ai-sdk-langchain-spreadsheet-tool.md'],

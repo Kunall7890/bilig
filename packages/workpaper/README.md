@@ -34,6 +34,7 @@ Pick the path that matches the workflow you are trying to unblock:
 | n8n, Dify, or Flowise formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321`                                                                                       | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof.               |
 | Open WebUI needs MCP spreadsheet tools                                   | `npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`                                                                                                 | Open WebUI can call the hosted Streamable HTTP endpoint or a local stdio server bridged through `mcpo`.             |
 | FastMCP Python client for hosted MCP smoke tests                         | `cd examples/fastmcp-workpaper-client && uv run --python 3.12 --with 'fastmcp-slim[client]' python fastmcp_workpaper_client.py --output .tmp/fastmcp-workpaper-proof.json` | FastMCP lists Bilig tools, writes `Inputs!B3`, checks restore proof, and exports WorkPaper JSON.                    |
+| Hugging Face smolagents tool                                             | `cd examples/smolagents-workpaper-tool && uv run --python 3.12 --with smolagents python smolagents_workpaper_tool.py --output .tmp/smolagents-workpaper-proof.json`        | A smolagents `Tool` runs Bilig formula readback proof and returns a structured `verified: true` object.             |
 | An existing `.xlsx` file with stale formula results after Node edits     | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json`                                                                                                       | The file-level path updates inputs and returns fresh formula values without Excel, LibreOffice, or a browser.       |
 
 ## Use A WorkPaper In Node
@@ -128,6 +129,7 @@ Start from the repo examples:
 - `examples/dify-workpaper-formula-readback`
 - `examples/flowise-workpaper-formula-readback/bilig-workpaper-formula-readback.flowise-tool.json`
 - `examples/fastmcp-workpaper-client`
+- `examples/smolagents-workpaper-tool`
 
 Docs:
 
@@ -144,6 +146,7 @@ Docs:
 - <https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html>
 - <https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html>
 - <https://proompteng.github.io/bilig/fastmcp-workpaper-client.html>
+- <https://proompteng.github.io/bilig/smolagents-workpaper-tool.html>
 
 ## XLSX Import And Export
 

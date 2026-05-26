@@ -161,6 +161,9 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/fastmcp-workpaper-client.html
 - https://github.com/proompteng/bilig/blob/main/docs/fastmcp-workpaper-client.md
 - https://github.com/proompteng/bilig/tree/main/examples/fastmcp-workpaper-client
+- https://proompteng.github.io/bilig/smolagents-workpaper-tool.html
+- https://github.com/proompteng/bilig/blob/main/docs/smolagents-workpaper-tool.md
+- https://github.com/proompteng/bilig/tree/main/examples/smolagents-workpaper-tool
 - https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html
 - https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html
 - https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html
@@ -572,7 +575,11 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html
   https://github.com/proompteng/bilig/blob/main/docs/flowise-workpaper-formula-readback.md
   https://github.com/proompteng/bilig/tree/main/examples/flowise-workpaper-formula-readback
-  Use this path when Trigger.dev, Windmill, Directus, n8n, Dify, Flowise, or another workflow builder
+  smolagents tool source:
+  https://proompteng.github.io/bilig/smolagents-workpaper-tool.html
+  https://github.com/proompteng/bilig/blob/main/docs/smolagents-workpaper-tool.md
+  https://github.com/proompteng/bilig/tree/main/examples/smolagents-workpaper-tool
+  Use this path when Trigger.dev, Windmill, Directus, n8n, Dify, Flowise, smolagents, or another workflow builder
   should orchestrate the task while Bilig owns workbook formula state,
   readback, JSON proof, and persistence.
 - MCP spreadsheet tool server guide:

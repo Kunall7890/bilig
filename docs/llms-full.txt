@@ -248,6 +248,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - AnythingLLM MCP setup: https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
 - Sim MCP setup: https://proompteng.github.io/bilig/sim-workpaper-mcp.html
 - FastMCP Python client: https://proompteng.github.io/bilig/fastmcp-workpaper-client.html
+- smolagents WorkPaper tool: https://proompteng.github.io/bilig/smolagents-workpaper-tool.html
 - Windmill TypeScript script: https://proompteng.github.io/bilig/windmill-workpaper-script.html
 - Trigger.dev task: https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
 - Temporal Activity: https://proompteng.github.io/bilig/temporal-workpaper-activity.html
@@ -481,6 +482,24 @@ to a private WorkPaper file.
 See [FastMCP WorkPaper client](docs/fastmcp-workpaper-client.md) for the proof
 shape, hosted-endpoint boundary, and FastMCP references.
 
+## Hugging Face smolagents Tool
+
+Need a `smolagents` tool that proves workbook formula readback before an agent
+trusts a calculation? Use the no-key recipe:
+
+```sh
+cd examples/smolagents-workpaper-tool
+uv run --python 3.12 --with smolagents \
+  python smolagents_workpaper_tool.py --output .tmp/smolagents-workpaper-proof.json
+```
+
+The tool runs `@bilig/workpaper@latest`, edits one input cell, recalculates a
+dependent formula, serializes and restores WorkPaper JSON, and returns a
+structured `verified: true` object that a smolagents `CodeAgent` can inspect.
+
+See [smolagents WorkPaper tool](docs/smolagents-workpaper-tool.md) for the tool
+class, proof shape, and private-workbook boundary.
+
 ## Windmill Formula Workflows
 
 Need a Windmill TypeScript script to calculate workflow fields from reviewable
@@ -683,23 +702,23 @@ npm --prefix examples/recalc-bridge-workflows run smoke
 
 ## Choose An Evaluation Path
 
-| If you are evaluating...      | Start here                                                                                                                                                                                                                | What should be true before you adopt                                                                    |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Existing XLSX files           | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                                                                                                                                                                  | A command edits inputs, reads recalculated values, writes XLSX, and returns `verified: true`.           |
-| Node service formulas         | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)                                                                                                                                                        | A starter writes one input, recalculates, persists JSON, restores, and prints `verified: true`.         |
-| Agent MCP contract            | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)                                                                                                                                                                    | MCP tool discovery, input edit, formula readback, persistence, and restart proof all pass.              |
-| Agent intent/runtime adapters | [Workbook agent intent API](docs/workbook-agent-intent-api.md) and [workbook-agent-model example](https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model)                                             | A model prepares transport-neutral plan data, strict runtime proof, command receipts, and check evidence. |
-| Basic fit                     | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                   | The problem is workbook-shaped business logic that needs API readback and persistence.                  |
-| Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                           | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`. |
-| XLSX or ExcelJS recalculation | [XLSX formula recalculation](docs/xlsx-formula-recalculation-node.md) and [ExcelJS formula recalculation](docs/exceljs-formula-recalculation-node.md)                                                                     | The package updates inputs, reads recalculated values, and exports or mutates the workbook boundary.    |
-| Backend service shape         | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                                                                                      | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.             |
-| Agent or MCP tools            | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md) | The agent installs a tool path, gets a copy-paste handoff prompt, then proves write/readback/persist.   |
-| Agent-owned XLSX files        | [Agent XLSX recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md)                                                                                                              | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.                |
-| Public technical review       | [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.                 |
-| Trust and performance         | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                  | npm shows SLSA provenance, and benchmark claims match the checked artifact.                             |
-| Almost a fit                  | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                             | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.                |
-| Formula or XLSX bug           | [formula bug clinic](docs/formula-bug-clinic.md)                                                                                                                                                                          | Share a reduced public case that can become a test, example, corpus fixture, or docs proof.             |
-| Real workbook blocked         | [submit a workbook fixture](docs/submit-workbook-fixture.md)                                                                                                                                                              | Use the structured form when a reduced workbook is ready.                                               |
+| If you are evaluating...      | Start here                                                                                                                                                                                                                | What should be true before you adopt                                                                      |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Existing XLSX files           | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                                                                                                                                                                  | A command edits inputs, reads recalculated values, writes XLSX, and returns `verified: true`.             |
+| Node service formulas         | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)                                                                                                                                                        | A starter writes one input, recalculates, persists JSON, restores, and prints `verified: true`.           |
+| Agent MCP contract            | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)                                                                                                                                                                    | MCP tool discovery, input edit, formula readback, persistence, and restart proof all pass.                |
+| Agent intent/runtime adapters | [Workbook agent intent API](docs/workbook-agent-intent-api.md) and [workbook-agent-model example](https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model)                                            | A model prepares transport-neutral plan data, strict runtime proof, command receipts, and check evidence. |
+| Basic fit                     | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                   | The problem is workbook-shaped business logic that needs API readback and persistence.                    |
+| Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                           | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`.   |
+| XLSX or ExcelJS recalculation | [XLSX formula recalculation](docs/xlsx-formula-recalculation-node.md) and [ExcelJS formula recalculation](docs/exceljs-formula-recalculation-node.md)                                                                     | The package updates inputs, reads recalculated values, and exports or mutates the workbook boundary.      |
+| Backend service shape         | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                                                                                      | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.               |
+| Agent or MCP tools            | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md) | The agent installs a tool path, gets a copy-paste handoff prompt, then proves write/readback/persist.     |
+| Agent-owned XLSX files        | [Agent XLSX recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md)                                                                                                              | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.                  |
+| Public technical review       | [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.                   |
+| Trust and performance         | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                  | npm shows SLSA provenance, and benchmark claims match the checked artifact.                               |
+| Almost a fit                  | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                             | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.                  |
+| Formula or XLSX bug           | [formula bug clinic](docs/formula-bug-clinic.md)                                                                                                                                                                          | Share a reduced public case that can become a test, example, corpus fixture, or docs proof.               |
+| Real workbook blocked         | [submit a workbook fixture](docs/submit-workbook-fixture.md)                                                                                                                                                              | Use the structured form when a reduced workbook is ready.                                                 |
 
 Reduced workbook already in hand? Generate the paste-ready fixture report in
 one command:
@@ -1574,6 +1593,7 @@ Pick the path that matches the workflow you are trying to unblock:
 | n8n, Dify, or Flowise formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321`                                                                                       | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof.               |
 | Open WebUI needs MCP spreadsheet tools                                   | `npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`                                                                                                 | Open WebUI can call the hosted Streamable HTTP endpoint or a local stdio server bridged through `mcpo`.             |
 | FastMCP Python client for hosted MCP smoke tests                         | `cd examples/fastmcp-workpaper-client && uv run --python 3.12 --with 'fastmcp-slim[client]' python fastmcp_workpaper_client.py --output .tmp/fastmcp-workpaper-proof.json` | FastMCP lists Bilig tools, writes `Inputs!B3`, checks restore proof, and exports WorkPaper JSON.                    |
+| Hugging Face smolagents tool                                             | `cd examples/smolagents-workpaper-tool && uv run --python 3.12 --with smolagents python smolagents_workpaper_tool.py --output .tmp/smolagents-workpaper-proof.json`        | A smolagents `Tool` runs Bilig formula readback proof and returns a structured `verified: true` object.             |
 | An existing `.xlsx` file with stale formula results after Node edits     | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json`                                                                                                       | The file-level path updates inputs and returns fresh formula values without Excel, LibreOffice, or a browser.       |
 
 ## Use A WorkPaper In Node
@@ -1668,6 +1688,7 @@ Start from the repo examples:
 - `examples/dify-workpaper-formula-readback`
 - `examples/flowise-workpaper-formula-readback/bilig-workpaper-formula-readback.flowise-tool.json`
 - `examples/fastmcp-workpaper-client`
+- `examples/smolagents-workpaper-tool`
 
 Docs:
 
@@ -1684,6 +1705,7 @@ Docs:
 - <https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html>
 - <https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html>
 - <https://proompteng.github.io/bilig/fastmcp-workpaper-client.html>
+- <https://proompteng.github.io/bilig/smolagents-workpaper-tool.html>
 
 ## XLSX Import And Export
 
@@ -6360,6 +6382,147 @@ Official FastMCP references:
 
 - FastMCP client docs: <https://gofastmcp.com/clients/client>
 - FastMCP community showcase: <https://gofastmcp.com/community/showcase>
+
+---
+
+## smolagents WorkPaper Tool
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/smolagents-workpaper-tool.md
+
+# smolagents WorkPaper Tool
+
+Use this when a Hugging Face `smolagents` agent needs spreadsheet-style
+business logic, but the spreadsheet work should be a small verified tool call
+instead of browser automation.
+
+`smolagents` tools are Python classes with a name, description, input schema,
+output type, and a `forward()` method. This example keeps the tool surface
+deliberately narrow: one tool runs Bilig's WorkPaper proof command and returns
+structured evidence that the formula readback changed and survived JSON
+restore.
+
+Official smolagents references:
+
+- <https://huggingface.co/docs/smolagents/main/en/tutorials/tools>
+- <https://huggingface.co/docs/smolagents/main/en/guided_tour>
+- <https://github.com/huggingface/smolagents>
+
+## Example Artifact
+
+The runnable source lives in:
+
+```text
+examples/smolagents-workpaper-tool
+```
+
+It contains:
+
+- `smolagents_workpaper_tool.py` for the `Tool` subclass
+- `scripts/check-smolagents-recipe.py` for a static recipe guard
+- `README.md` with the no-key smoke command
+
+Run the proof locally:
+
+```sh
+cd examples/smolagents-workpaper-tool
+uv run --python 3.12 --with smolagents \
+  python smolagents_workpaper_tool.py --output .tmp/smolagents-workpaper-proof.json
+```
+
+Expected top-level result:
+
+```json
+{
+  "framework": "smolagents",
+  "toolName": "verify_workpaper_formula_readback",
+  "packageSpec": "@bilig/workpaper@latest",
+  "verified": true
+}
+```
+
+## Tool Shape
+
+The checked-in tool is a normal smolagents tool:
+
+```python
+from smolagents import Tool
+
+
+class BiligWorkPaperFormulaProofTool(Tool):
+    name = "verify_workpaper_formula_readback"
+    output_type = "object"
+
+    def forward(self, package_spec: str):
+        ...
+```
+
+The tool runs:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+```
+
+That command edits `Inputs!B2`, recalculates `Summary!B2`, serializes the
+WorkPaper document, restores it, and returns `verified: true` with explicit
+checks.
+
+## Why This Fits smolagents
+
+`smolagents` is code-first. The agent can call a compact workbook proof tool,
+inspect the returned object, and decide what to do next from Python. Bilig keeps
+spreadsheet state behind a deterministic API:
+
+- exact sheet and cell addresses;
+- read-after-write formula proof;
+- WorkPaper JSON persistence;
+- restore proof before trusting the result;
+- no screenshot or desktop spreadsheet session.
+
+Use this for formula-backed quote approval, payout rules, budget gates, import
+validation, and forecast checks where a spreadsheet is the reviewable business
+logic but the runtime belongs in code.
+
+## Agent Wiring
+
+After the smoke proof passes, wire the tool into a `CodeAgent`:
+
+```python
+from smolagents import CodeAgent, InferenceClientModel
+from smolagents_workpaper_tool import BiligWorkPaperFormulaProofTool
+
+model = InferenceClientModel()
+agent = CodeAgent(
+    tools=[BiligWorkPaperFormulaProofTool()],
+    model=model,
+)
+```
+
+Ask the agent to call `verify_workpaper_formula_readback` before relying on a
+formula-backed decision. The tool returns the edited cell, dependent cell,
+before/after values, restore result, serialized document size, limitations, and
+links for starring, watching releases, or filing an adoption blocker.
+
+## Boundary
+
+This proof uses `@bilig/workpaper@latest` from npm and verifies the WorkPaper
+write/recalc/read/persist loop. It does not claim full desktop Excel
+compatibility, Office macro support, or mutation of a private workbook file.
+
+For private persisted workbook state, use Bilig's file-backed MCP server:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- \
+  bilig-workpaper-mcp \
+  --workpaper ./pricing.workpaper.json \
+  --init-demo-workpaper \
+  --writable
+```
+
+For `.xlsx` files, use the XLSX-specific evaluator:
+
+```sh
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
+```
 
 ---
 

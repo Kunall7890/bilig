@@ -22,6 +22,7 @@ import { homepageRequiredLinks, llmsRequiredLinks } from './check-docs-discovery
 import { requireAgentPublicSurfaceDiscovery } from './check-docs-discovery-agent-surfaces.ts'
 import { requireTemporalWorkpaperActivityDiscovery } from './check-docs-discovery-temporal.ts'
 import { requireFastMcpWorkpaperClientDiscovery } from './check-docs-discovery-fastmcp.ts'
+import { requireSmolagentsWorkpaperToolDiscovery } from './check-docs-discovery-smolagents.ts'
 
 const docsDiscoveryContext = await loadDocsDiscoveryContext()
 const {
@@ -531,6 +532,7 @@ requireIncludes(
   'packages/workpaper/README.md',
 )
 await requireFastMcpWorkpaperClientDiscovery({ repoRoot, docsRoot, index, llms, llmsFull, scopedWorkpaperPackageReadme })
+await requireSmolagentsWorkpaperToolDiscovery({ repoRoot, docsRoot, index, llms, llmsFull, scopedWorkpaperPackageReadme })
 requireIncludes(
   scopedWorkpaperPackageReadme,
   'https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html',

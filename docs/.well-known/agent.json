@@ -115,6 +115,14 @@
       "source": "https://github.com/proompteng/bilig/tree/main/examples/fastmcp-workpaper-client"
     },
     {
+      "name": "smolagents-workpaper-tool",
+      "type": "python-agent-tool-smoke-test",
+      "framework": "smolagents",
+      "command": "uv run --python 3.12 --with smolagents python examples/smolagents-workpaper-tool/smolagents_workpaper_tool.py",
+      "docs": "https://proompteng.github.io/bilig/smolagents-workpaper-tool.html",
+      "source": "https://github.com/proompteng/bilig/tree/main/examples/smolagents-workpaper-tool"
+    },
+    {
       "name": "formula-clinic",
       "type": "local-cli",
       "command": "npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells \"Summary!B7,Inputs!B2\"",
@@ -148,6 +156,7 @@
     "https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html",
     "https://proompteng.github.io/bilig/sim-workpaper-mcp.html",
     "https://proompteng.github.io/bilig/fastmcp-workpaper-client.html",
+    "https://proompteng.github.io/bilig/smolagents-workpaper-tool.html",
     "https://bilig.proompteng.ai/mcp",
     "https://bilig.proompteng.ai/.well-known/mcp/server-card.json",
     "https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html",
