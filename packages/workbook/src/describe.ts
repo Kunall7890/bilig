@@ -28,6 +28,7 @@ import type {
   WorkbookCheckResult,
   WorkbookCheckStatus,
   WorkbookCommandResolvedRefs,
+  WorkbookRunNoopProof,
   WorkbookRunApplySummary,
   WorkbookRunErrorCode,
   WorkbookRunResult,
@@ -185,6 +186,12 @@ export interface WorkbookUndoRefDescription {
   readonly ops?: readonly WorkbookOp[]
 }
 
+export interface WorkbookRunNoopProofDescription {
+  readonly reason: 'already_satisfied'
+  readonly message?: string
+  readonly proof: WorkbookActionInput
+}
+
 export interface WorkbookRunApplySummaryDescription {
   readonly matched: boolean | null
   readonly planId?: WorkbookPlanId
@@ -198,6 +205,7 @@ export interface WorkbookRunApplySummaryDescription {
     readonly commandDigest: string
     readonly previewOps: readonly WorkbookOp[]
     readonly appliedOps: readonly WorkbookOp[]
+    readonly noop?: WorkbookRunNoopProofDescription
     readonly resolvedRefs?: WorkbookCommandResolvedRefs
     readonly formulaLabels?: readonly WorkbookFormulaLabelReplacement[]
     readonly proof?: WorkbookActionInput
@@ -585,6 +593,15 @@ function describeUndo(undo: WorkbookUndoRef): WorkbookUndoRefDescription {
   }
 }
 
+function describeNoop(noop: WorkbookRunNoopProof, path: string): WorkbookRunNoopProofDescription {
+  const message = ownDataValue(noop, 'message', `${path}.message`)
+  return {
+    reason: requiredOwnDataValue(noop, 'reason', `${path}.reason`),
+    ...(message !== undefined ? { message } : {}),
+    proof: cloneDescriptionData(requiredOwnDataValue(noop, 'proof', `${path}.proof`), `${path}.proof`),
+  }
+}
+
 function describeApply(apply: WorkbookRunApplySummary): WorkbookRunApplySummaryDescription {
   const planId = ownDataValue(apply, 'planId', 'apply.planId')
   const baseRevision = ownDataValue(apply, 'baseRevision', 'apply.baseRevision')
@@ -609,6 +626,7 @@ function describeApply(apply: WorkbookRunApplySummary): WorkbookRunApplySummaryD
           commandReceipts: mapArrayData(commandReceipts, 'apply.commandReceipts', (receipt, _index, entryPath) => {
             const receiptPreviewOps = requiredOwnDataValue(receipt, 'previewOps', `${entryPath}.previewOps`)
             const receiptAppliedOps = requiredOwnDataValue(receipt, 'appliedOps', `${entryPath}.appliedOps`)
+            const noop = ownDataValue(receipt, 'noop', `${entryPath}.noop`)
             const resolvedRefs = ownDataValue(receipt, 'resolvedRefs', `${entryPath}.resolvedRefs`)
             const formulaLabels = ownDataValue(receipt, 'formulaLabels', `${entryPath}.formulaLabels`)
             const receiptProof = ownDataValue(receipt, 'proof', `${entryPath}.proof`)
@@ -622,6 +640,7 @@ function describeApply(apply: WorkbookRunApplySummary): WorkbookRunApplySummaryD
               appliedOps: mapArrayData(receiptAppliedOps, `${entryPath}.appliedOps`, (op, _opIndex, opPath) =>
                 cloneDescriptionData(op, opPath),
               ),
+              ...(noop !== undefined ? { noop: describeNoop(noop, `${entryPath}.noop`) } : {}),
               ...(resolvedRefs !== undefined ? { resolvedRefs: cloneDescriptionData(resolvedRefs, `${entryPath}.resolvedRefs`) } : {}),
               ...(formulaLabels !== undefined
                 ? {

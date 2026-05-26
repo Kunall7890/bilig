@@ -739,7 +739,7 @@ behavior as the nested plan objects.
 failed action planning results.
 `describeRunResult` applies the same JSON-safe description layer after
 execution, preserving `done`/`failed` status, changed summaries, checks, errors,
-apply proof, command receipts, undo ops, and unverified proof notes while
+apply proof, command receipts, command-bound `noop` proof, undo ops, and unverified proof notes while
 removing ref helper functions from the public result. The returned run
 description is frozen before it crosses the agent boundary.
 `checkWorkbookRunResultDescription` validates persisted run-result descriptions

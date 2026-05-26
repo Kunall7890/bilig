@@ -529,18 +529,137 @@ function pushCommandReceiptDescriptionIssues(
     issues,
     entry,
     path,
-    new Set(['commandIndex', 'commandKind', 'commandDigest', 'previewOps', 'appliedOps', 'resolvedRefs', 'formulaLabels', 'proof']),
+    new Set(['commandIndex', 'commandKind', 'commandDigest', 'previewOps', 'appliedOps', 'noop', 'resolvedRefs', 'formulaLabels', 'proof']),
   )
   pushRequiredSafeNonNegativeIntegerFieldIssue(issues, entry, path, 'commandIndex')
   pushRequiredStringFieldIssue(issues, entry, path, 'commandKind')
   pushRequiredStringFieldIssue(issues, entry, path, 'commandDigest')
   pushRequiredJsonArrayFieldIssue(issues, entry, path, 'previewOps')
   pushRequiredJsonArrayFieldIssue(issues, entry, path, 'appliedOps')
+  const noop = ownJsonDescriptionValue(entry, 'noop')
+  if (noop !== undefined) {
+    pushNoopDescriptionIssues(issues, noop, `${path}.noop`)
+  }
   const resolvedRefs = ownJsonDescriptionValue(entry, 'resolvedRefs')
   if (resolvedRefs !== undefined) {
     pushCommandResolvedRefsIssues(issues, resolvedRefs, `${path}.resolvedRefs`)
   }
   pushJsonArrayFieldIssue(issues, entry, path, 'formulaLabels')
+}
+
+function pushNoopDescriptionIssues(issues: WorkbookRunResultDescriptionIssue[], value: unknown, path: string): void {
+  if (!isJsonDescriptionObject(value)) {
+    issues.push(runResultDescriptionIssue('invalid_type', path, `Workbook run result description ${path} must be a plain object`))
+    return
+  }
+  pushUnexpectedObjectFields(issues, value, path, new Set(['reason', 'message', 'proof']))
+
+  const reasonDescriptor = Object.getOwnPropertyDescriptor(value, 'reason')
+  if (reasonDescriptor === undefined) {
+    issues.push(runResultDescriptionIssue('missing_field', `${path}.reason`, `Workbook run result description ${path}.reason is required`))
+  } else if (!('value' in reasonDescriptor)) {
+    issues.push(
+      runResultDescriptionIssue(
+        'invalid_field',
+        `${path}.reason`,
+        `Workbook run result description ${path}.reason must be a data property`,
+      ),
+    )
+  } else if (reasonDescriptor.value !== 'already_satisfied') {
+    issues.push(
+      runResultDescriptionIssue(
+        'invalid_field',
+        `${path}.reason`,
+        `Workbook run result description ${path}.reason must be already_satisfied`,
+      ),
+    )
+  }
+
+  pushOptionalStringFieldIssue(issues, value, path, 'message')
+
+  const proofDescriptor = Object.getOwnPropertyDescriptor(value, 'proof')
+  if (proofDescriptor === undefined) {
+    issues.push(runResultDescriptionIssue('missing_field', `${path}.proof`, `Workbook run result description ${path}.proof is required`))
+    return
+  }
+  if (!('value' in proofDescriptor)) {
+    issues.push(
+      runResultDescriptionIssue('invalid_field', `${path}.proof`, `Workbook run result description ${path}.proof must be a data property`),
+    )
+    return
+  }
+  if (!isJsonDescriptionObject(proofDescriptor.value)) {
+    issues.push(
+      runResultDescriptionIssue('invalid_type', `${path}.proof`, `Workbook run result description ${path}.proof must be a plain object`),
+    )
+    return
+  }
+
+  const proof = proofDescriptor.value
+  pushRequiredExactStringFieldIssue(issues, proof, `${path}.proof`, 'source')
+  pushRequiredExactStringFieldIssue(issues, proof, `${path}.proof`, 'evidence')
+  pushRequiredExactStringFieldIssue(issues, proof, `${path}.proof`, 'commandKind')
+  pushRequiredExactStringFieldIssue(issues, proof, `${path}.proof`, 'commandDigest')
+
+  const opCountDescriptor = Object.getOwnPropertyDescriptor(proof, 'opCount')
+  if (opCountDescriptor === undefined) {
+    issues.push(
+      runResultDescriptionIssue(
+        'missing_field',
+        `${path}.proof.opCount`,
+        `Workbook run result description ${path}.proof.opCount is required`,
+      ),
+    )
+  } else if (!('value' in opCountDescriptor)) {
+    issues.push(
+      runResultDescriptionIssue(
+        'invalid_field',
+        `${path}.proof.opCount`,
+        `Workbook run result description ${path}.proof.opCount must be a data property`,
+      ),
+    )
+  } else if (opCountDescriptor.value !== 0) {
+    issues.push(
+      runResultDescriptionIssue(
+        'invalid_field',
+        `${path}.proof.opCount`,
+        `Workbook run result description ${path}.proof.opCount must be 0`,
+      ),
+    )
+  }
+
+  const effectDescriptor = Object.getOwnPropertyDescriptor(proof, 'effect')
+  if (effectDescriptor === undefined) {
+    issues.push(
+      runResultDescriptionIssue(
+        'missing_field',
+        `${path}.proof.effect`,
+        `Workbook run result description ${path}.proof.effect is required`,
+      ),
+    )
+    return
+  }
+  if (!('value' in effectDescriptor)) {
+    issues.push(
+      runResultDescriptionIssue(
+        'invalid_field',
+        `${path}.proof.effect`,
+        `Workbook run result description ${path}.proof.effect must be a data property`,
+      ),
+    )
+    return
+  }
+  if (!isJsonDescriptionObject(effectDescriptor.value)) {
+    issues.push(
+      runResultDescriptionIssue(
+        'invalid_type',
+        `${path}.proof.effect`,
+        `Workbook run result description ${path}.proof.effect must be a plain object`,
+      ),
+    )
+    return
+  }
+  pushJsonDescriptionValueIssues(issues, effectDescriptor.value, `${path}.proof.effect`)
 }
 
 function pushConcreteRefDataIssues(issues: WorkbookRunResultDescriptionIssue[], value: unknown, path: string): void {

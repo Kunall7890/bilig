@@ -737,6 +737,40 @@ describe('@bilig/workbook run api', () => {
     })
   })
 
+  it('requires run-result description no-op receipts to preserve proof', () => {
+    expect(
+      checkWorkbookRunResultDescription({
+        status: 'done',
+        apply: {
+          matched: true,
+          commandReceipts: [
+            {
+              commandIndex: 0,
+              commandKind: 'writeValue',
+              commandDigest: 'bilig-command-v1:test',
+              previewOps: [],
+              appliedOps: [],
+              noop: {
+                reason: 'already_satisfied',
+              },
+            },
+          ],
+        },
+        changed: [],
+        checks: [],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'missing_field',
+          path: 'apply.commandReceipts[0].noop.proof',
+          message: 'Workbook run result description apply.commandReceipts[0].noop.proof is required',
+        },
+      ],
+    })
+  })
+
   it('runs readback-only plans without requiring an apply adapter', async () => {
     const model = defineModel({
       name: 'run-readback-only-model',

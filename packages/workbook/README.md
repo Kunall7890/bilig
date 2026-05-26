@@ -177,7 +177,7 @@ production proof. Strict mode requires:
 Runtime authors can run the same plain-object, known-key, own-data-option
 contract with the `@bilig/workbook/testing` adapter helpers.
 
-The returned `WorkbookRunResult` is intentionally plain:
+The returned `WorkbookRunResult` is intentionally plain; `describeRunResult` preserves command-bound `noop` proof for logs and reviews:
 
 ```ts
 type WorkbookRunResult =

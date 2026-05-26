@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  checkWorkbookRunResultDescription,
   defineModel,
   describeRunResult,
   findRange,
@@ -547,6 +548,30 @@ describe('@bilig/workbook run proof boundary', () => {
       },
       changed: [],
     })
+
+    const description = describeRunResult(result)
+    const receipt = description.apply?.commandReceipts?.[0]
+    expect(receipt?.noop).toEqual({
+      reason: 'already_satisfied',
+      proof: {
+        source: 'test',
+        evidence: 'adapter_zero_ops',
+        commandKind: 'writeValue',
+        commandDigest: expect.stringMatching(/^bilig-command-v1:/),
+        opCount: 0,
+        effect: {
+          kind: 'writeValue',
+          value: 12,
+        },
+      },
+    })
+    expect(checkWorkbookRunResultDescription(description)).toEqual({
+      status: 'valid',
+      description,
+      issues: [],
+    })
+    expect(Object.isFrozen(receipt?.noop)).toBe(true)
+    expect(Object.isFrozen(receipt?.noop?.proof)).toBe(true)
   })
 
   it('rejects no-op proof that is not bound to the planned command', async () => {
