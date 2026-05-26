@@ -74,7 +74,6 @@ export function createMathBuiltins({
   numberResult,
   valueError,
   numError,
-  numericResultOrError,
   unaryMath,
   binaryMath,
   ceilingWith,
@@ -90,12 +89,28 @@ export function createMathBuiltins({
   gcdPair,
   lcmPair,
 }: MathBuiltinDeps): Record<string, Builtin> {
+  const domainCheckedUnaryMath = (
+    value: CellValue,
+    isValid: (numeric: number) => boolean,
+    operation: (numeric: number) => number,
+  ): EvaluationResult => {
+    const error = firstError([value])
+    if (error) {
+      return error
+    }
+    const numeric = toNumber(value)
+    if (numeric === undefined) {
+      return valueError()
+    }
+    return isValid(numeric) ? finiteNumberOrNumError(operation(numeric), numberResult, numError) : numError()
+  }
+
   return {
     SIN: (value) => unaryMath(value, Math.sin),
     COS: (value) => unaryMath(value, Math.cos),
     TAN: (value) => unaryMath(value, Math.tan),
-    ASIN: (value) => unaryMath(value, Math.asin),
-    ACOS: (value) => unaryMath(value, Math.acos),
+    ASIN: (value) => domainCheckedUnaryMath(value, (numeric) => numeric >= -1 && numeric <= 1, Math.asin),
+    ACOS: (value) => domainCheckedUnaryMath(value, (numeric) => numeric >= -1 && numeric <= 1, Math.acos),
     ATAN: (value) => unaryMath(value, Math.atan),
     ATAN2: (left, right) => {
       const error = firstError([left, right])
@@ -170,8 +185,8 @@ export function createMathBuiltins({
     COSH: (value) => unaryMath(value, Math.cosh),
     TANH: (value) => unaryMath(value, Math.tanh),
     ASINH: (value) => unaryMath(value, Math.asinh),
-    ACOSH: (value) => unaryMath(value, Math.acosh),
-    ATANH: (value) => unaryMath(value, Math.atanh),
+    ACOSH: (value) => domainCheckedUnaryMath(value, (numeric) => numeric >= 1, Math.acosh),
+    ATANH: (value) => domainCheckedUnaryMath(value, (numeric) => numeric > -1 && numeric < 1, Math.atanh),
     ACOT: (value) => {
       const numeric = toNumber(value)
       if (numeric === undefined) {
@@ -179,13 +194,12 @@ export function createMathBuiltins({
       }
       return numberResult(numeric === 0 ? Math.PI / 2 : Math.atan(1 / numeric))
     },
-    ACOTH: (value) => {
-      const numeric = toNumber(value)
-      if (numeric === undefined) {
-        return valueError()
-      }
-      return numericResultOrError(0.5 * Math.log((numeric + 1) / (numeric - 1)))
-    },
+    ACOTH: (value) =>
+      domainCheckedUnaryMath(
+        value,
+        (numeric) => Math.abs(numeric) > 1,
+        (numeric) => 0.5 * Math.log((numeric + 1) / (numeric - 1)),
+      ),
     COT: (value) => {
       const numeric = toNumber(value)
       if (numeric === undefined) {

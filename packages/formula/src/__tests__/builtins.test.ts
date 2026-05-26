@@ -1792,7 +1792,7 @@ describe('formula builtins', () => {
     ).toEqual({ tag: ValueTag.Number, value: Math.PI / 2 })
     expect(getBuiltin('ACOTH')?.({ tag: ValueTag.Number, value: 0.5 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('COT')?.({ tag: ValueTag.Number, value: 0 })).toEqual({
       tag: ValueTag.Error,
@@ -1844,6 +1844,14 @@ describe('formula builtins', () => {
     expect(getBuiltin('ACOS')?.({ tag: ValueTag.Number, value: 1 })).toEqual({
       tag: ValueTag.Number,
       value: 0,
+    })
+    expect(getBuiltin('ASIN')?.({ tag: ValueTag.Number, value: 2 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(getBuiltin('ACOS')?.({ tag: ValueTag.Number, value: 2 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('ATAN')?.({ tag: ValueTag.Number, value: 1 })).toMatchObject({
       tag: ValueTag.Number,
@@ -1904,6 +1912,14 @@ describe('formula builtins', () => {
     expect(getBuiltin('ATANH')?.({ tag: ValueTag.Number, value: 0 })).toEqual({
       tag: ValueTag.Number,
       value: 0,
+    })
+    expect(getBuiltin('ACOSH')?.({ tag: ValueTag.Number, value: 0.5 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(getBuiltin('ATANH')?.({ tag: ValueTag.Number, value: 1 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
     })
 
     expect(getBuiltin('FLOOR.MATH')?.({ tag: ValueTag.Number, value: 5.5 }, { tag: ValueTag.Number, value: 2 })).toEqual({

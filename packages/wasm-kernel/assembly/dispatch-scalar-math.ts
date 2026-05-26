@@ -311,24 +311,24 @@ export function tryApplyScalarMathBuiltin(
     )
   }
   if (builtinId == BuiltinId.Asin && argc == 1) {
-    return writeScalarMathNumber(
-      base,
-      Math.asin(toNumberOrZero(tagStack[base], valueStack[base])),
-      rangeIndexStack,
-      valueStack,
-      tagStack,
-      kindStack,
-    )
+    const numeric = toNumberExact(tagStack[base], valueStack[base])
+    if (!isFinite(numeric)) {
+      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (numeric < -1.0 || numeric > 1.0) {
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    return writeScalarMathNumber(base, Math.asin(numeric), rangeIndexStack, valueStack, tagStack, kindStack)
   }
   if (builtinId == BuiltinId.Acos && argc == 1) {
-    return writeScalarMathNumber(
-      base,
-      Math.acos(toNumberOrZero(tagStack[base], valueStack[base])),
-      rangeIndexStack,
-      valueStack,
-      tagStack,
-      kindStack,
-    )
+    const numeric = toNumberExact(tagStack[base], valueStack[base])
+    if (!isFinite(numeric)) {
+      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (numeric < -1.0 || numeric > 1.0) {
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    return writeScalarMathNumber(base, Math.acos(numeric), rangeIndexStack, valueStack, tagStack, kindStack)
   }
   if (builtinId == BuiltinId.Atan && argc == 1) {
     return writeScalarMathNumber(
@@ -517,6 +517,13 @@ export function tryApplyScalarMathBuiltin(
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if ((builtinId == BuiltinId.Fact || builtinId == BuiltinId.Factdouble) && numeric < 0.0) {
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (
+      (builtinId == BuiltinId.Acosh && numeric < 1.0) ||
+      (builtinId == BuiltinId.Atanh && (numeric <= -1.0 || numeric >= 1.0)) ||
+      (builtinId == BuiltinId.Acoth && Math.abs(numeric) <= 1.0)
+    ) {
       return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
 

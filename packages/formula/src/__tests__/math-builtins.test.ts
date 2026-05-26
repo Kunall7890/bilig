@@ -49,6 +49,22 @@ describe('math builtins', () => {
     expect(getBuiltin('SQRTPI')?.(str('bad'))).toEqual(valueError)
   })
 
+  it('matches Microsoft Excel inverse trigonometric numeric-domain errors', () => {
+    expect(getBuiltin('ASIN')?.(num(2))).toEqual(numError)
+    expect(getBuiltin('ACOS')?.(num(2))).toEqual(numError)
+    expect(getBuiltin('ACOSH')?.(num(0.5))).toEqual(numError)
+    expect(getBuiltin('ATANH')?.(num(1))).toEqual(numError)
+    expect(getBuiltin('ATANH')?.(num(-1))).toEqual(numError)
+    expect(getBuiltin('ACOTH')?.(num(0.5))).toEqual(numError)
+    expect(getBuiltin('ACOTH')?.(num(-0.5))).toEqual(numError)
+
+    expect(getBuiltin('ASIN')?.(str('bad'))).toEqual(valueError)
+    expect(getBuiltin('ACOS')?.(str('bad'))).toEqual(valueError)
+    expect(getBuiltin('ACOSH')?.(str('bad'))).toEqual(valueError)
+    expect(getBuiltin('ATANH')?.(str('bad'))).toEqual(valueError)
+    expect(getBuiltin('ACOTH')?.(str('bad'))).toEqual(valueError)
+  })
+
   it('matches Microsoft Excel numeric-domain errors for combinatoric functions', () => {
     expect(getBuiltin('FACT')?.(num(-1))).toEqual(numError)
     expect(getBuiltin('FACTDOUBLE')?.(num(-1))).toEqual(numError)
