@@ -442,14 +442,6 @@ export function createOperationDirectPostRecalcMarkers(args: {
     let oldNumber: number | undefined = oldRootNumber
     let newNumber: number | undefined = newRootNumber
     let inputDelta = newRootNumber - oldRootNumber
-    let closureCount = 0
-    let cellIndices = new Uint32Array(initialDirectScalarLinearDeltaClosureCapacity(args.scalarDeltaClosureLimit))
-    let deltas: number[] | undefined
-    let commonDelta: number | undefined
-    let canUseValidatedTerminalWrites = true
-    let canUseCleanTerminalWrites = true
-    let sortedClosureCellIndices = true
-    let previousClosureCellIndex = -1
     const canSkipAllDirectFormulaColumnVersions = args.canSkipAllDirectFormulaColumnVersions?.() === true
     const cellStore = args.state.workbook.cellStore
     const formulas = args.state.formulas
@@ -480,6 +472,15 @@ export function createOperationDirectPostRecalcMarkers(args: {
     ) {
       return true
     }
+
+    let closureCount = 0
+    let cellIndices = new Uint32Array(initialDirectScalarLinearDeltaClosureCapacity(args.scalarDeltaClosureLimit))
+    let deltas: number[] | undefined
+    let commonDelta: number | undefined
+    let canUseValidatedTerminalWrites = true
+    let canUseCleanTerminalWrites = true
+    let sortedClosureCellIndices = true
+    let previousClosureCellIndex = -1
 
     for (;;) {
       if (closureCount > args.scalarDeltaClosureLimit) {
