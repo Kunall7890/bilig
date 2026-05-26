@@ -112,6 +112,17 @@ describe('math builtins', () => {
     expect(getBuiltin('MROUND')?.(num(5), num(-2))).toEqual(numError)
   })
 
+  it('matches spreadsheet zero-multiple rounding semantics', () => {
+    expect(getBuiltin('FLOOR')?.(num(2.5), num(0))).toEqual(div0Error)
+    expect(getBuiltin('CEILING')?.(num(2.5), num(0))).toEqual(div0Error)
+    expect(getBuiltin('FLOOR.MATH')?.(num(2.5), num(0))).toEqual(num(0))
+    expect(getBuiltin('FLOOR.PRECISE')?.(num(2.5), num(0))).toEqual(num(0))
+    expect(getBuiltin('CEILING.MATH')?.(num(2.5), num(0))).toEqual(num(0))
+    expect(getBuiltin('CEILING.PRECISE')?.(num(2.5), num(0))).toEqual(num(0))
+    expect(getBuiltin('ISO.CEILING')?.(num(2.5), num(0))).toEqual(num(0))
+    expect(getBuiltin('MROUND')?.(num(10), num(0))).toEqual(num(0))
+  })
+
   it('matches Desktop Excel MOD sign semantics for negative operands', () => {
     expect(getBuiltin('MOD')?.(num(-3), num(2))).toEqual(num(1))
     expect(getBuiltin('MOD')?.(num(3), num(-2))).toEqual(num(-1))

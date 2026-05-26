@@ -223,8 +223,11 @@ export function tryApplyScalarRoundingMathBuiltin(
             outputStringData,
           )
         : 0.0
-    if (isNaN(numeric) || isNaN(significanceRaw) || isNaN(mode) || significanceRaw == 0.0) {
+    if (isNaN(numeric) || isNaN(significanceRaw) || isNaN(mode)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (significanceRaw == 0.0) {
+      return writeScalarMathNumber(base, 0.0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const significance = Math.abs(significanceRaw)
     const result =
@@ -260,8 +263,11 @@ export function tryApplyScalarRoundingMathBuiltin(
             outputStringData,
           )
         : 1.0
-    if (isNaN(numeric) || isNaN(significanceRaw) || significanceRaw == 0.0) {
+    if (isNaN(numeric) || isNaN(significanceRaw)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (significanceRaw == 0.0) {
+      return writeScalarMathNumber(base, 0.0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const significance = Math.abs(significanceRaw)
     return writeScalarMathNumber(base, Math.floor(numeric / significance) * significance, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -307,8 +313,11 @@ export function tryApplyScalarRoundingMathBuiltin(
             outputStringData,
           )
         : 0.0
-    if (isNaN(numeric) || isNaN(significanceRaw) || isNaN(mode) || significanceRaw == 0.0) {
+    if (isNaN(numeric) || isNaN(significanceRaw) || isNaN(mode)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (significanceRaw == 0.0) {
+      return writeScalarMathNumber(base, 0.0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const significance = Math.abs(significanceRaw)
     const result =
@@ -344,8 +353,11 @@ export function tryApplyScalarRoundingMathBuiltin(
             outputStringData,
           )
         : 1.0
-    if (isNaN(numeric) || isNaN(significanceRaw) || significanceRaw == 0.0) {
+    if (isNaN(numeric) || isNaN(significanceRaw)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (significanceRaw == 0.0) {
+      return writeScalarMathNumber(base, 0.0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const significance = Math.abs(significanceRaw)
     return writeScalarMathNumber(base, Math.ceil(numeric / significance) * significance, rangeIndexStack, valueStack, tagStack, kindStack)

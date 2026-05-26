@@ -326,8 +326,11 @@ export function createMathBuiltins({
       const numberValue = toScalarMathNumber(value)
       const significanceRaw = significance === undefined ? 1 : toScalarMathNumber(significance)
       const modeValue = mode === undefined ? 0 : toScalarMathNumber(mode)
-      if (numberValue === undefined || significanceRaw === undefined || modeValue === undefined || significanceRaw === 0) {
+      if (numberValue === undefined || significanceRaw === undefined || modeValue === undefined) {
         return valueError()
+      }
+      if (significanceRaw === 0) {
+        return numberResult(0)
       }
       const significanceValue = Math.abs(significanceRaw)
       if (numberValue >= 0) {
@@ -344,8 +347,11 @@ export function createMathBuiltins({
       }
       const numberValue = toScalarMathNumber(value)
       const significanceRaw = significance === undefined ? 1 : toScalarMathNumber(significance)
-      if (numberValue === undefined || significanceRaw === undefined || significanceRaw === 0) {
+      if (numberValue === undefined || significanceRaw === undefined) {
         return valueError()
+      }
+      if (significanceRaw === 0) {
+        return numberResult(0)
       }
       const significanceValue = Math.abs(significanceRaw)
       return numberResult(Math.floor(numberValue / significanceValue) * significanceValue)
@@ -358,8 +364,11 @@ export function createMathBuiltins({
       const numberValue = toScalarMathNumber(value)
       const significanceRaw = significance === undefined ? 1 : toScalarMathNumber(significance)
       const modeValue = mode === undefined ? 0 : toScalarMathNumber(mode)
-      if (numberValue === undefined || significanceRaw === undefined || modeValue === undefined || significanceRaw === 0) {
+      if (numberValue === undefined || significanceRaw === undefined || modeValue === undefined) {
         return valueError()
+      }
+      if (significanceRaw === 0) {
+        return numberResult(0)
       }
       const significanceValue = Math.abs(significanceRaw)
       if (numberValue >= 0) {
@@ -376,8 +385,11 @@ export function createMathBuiltins({
       }
       const numberValue = toScalarMathNumber(value)
       const significanceRaw = significance === undefined ? 1 : toScalarMathNumber(significance)
-      if (numberValue === undefined || significanceRaw === undefined || significanceRaw === 0) {
+      if (numberValue === undefined || significanceRaw === undefined) {
         return valueError()
+      }
+      if (significanceRaw === 0) {
+        return numberResult(0)
       }
       const significanceValue = Math.abs(significanceRaw)
       return numberResult(Math.ceil(numberValue / significanceValue) * significanceValue)
@@ -389,8 +401,11 @@ export function createMathBuiltins({
       }
       const numberValue = toScalarMathNumber(value)
       const significanceRaw = significance === undefined ? 1 : toScalarMathNumber(significance)
-      if (numberValue === undefined || significanceRaw === undefined || significanceRaw === 0) {
+      if (numberValue === undefined || significanceRaw === undefined) {
         return valueError()
+      }
+      if (significanceRaw === 0) {
+        return numberResult(0)
       }
       const significanceValue = Math.abs(significanceRaw)
       return numberResult(Math.ceil(numberValue / significanceValue) * significanceValue)
@@ -746,8 +761,11 @@ export function createMathBuiltins({
       }
       const numberValue = toScalarMathNumber(value)
       const multipleValue = toScalarMathNumber(multiple)
-      if (numberValue === undefined || multipleValue === undefined || multipleValue === 0) {
+      if (numberValue === undefined || multipleValue === undefined) {
         return valueError()
+      }
+      if (multipleValue === 0) {
+        return numberResult(0)
       }
       if (numberValue !== 0 && Math.sign(numberValue) !== Math.sign(multipleValue)) {
         return numError()

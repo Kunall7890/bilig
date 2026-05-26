@@ -918,8 +918,8 @@ describe('formula builtins', () => {
       code: ErrorCode.Value,
     })
     expect(getBuiltin('ISO.CEILING')?.({ tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Number, value: 0 })).toEqual({
-      tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      tag: ValueTag.Number,
+      value: 0,
     })
     expect(getBuiltin('ROUNDUP')?.({ tag: ValueTag.Number, value: 5 }, { tag: ValueTag.String, value: 'bad', stringId: 1 })).toEqual({
       tag: ValueTag.Error,
@@ -1586,8 +1586,8 @@ describe('formula builtins', () => {
       getBuiltin('LCM')?.({ tag: ValueTag.Number, value: 4 }, { tag: ValueTag.Number, value: 6 }, { tag: ValueTag.Number, value: 3.8 }),
     ).toEqual({ tag: ValueTag.Number, value: 12 })
     expect(getBuiltin('MROUND')?.({ tag: ValueTag.Number, value: 10 }, { tag: ValueTag.Number, value: 0 })).toEqual({
-      tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      tag: ValueTag.Number,
+      value: 0,
     })
     expect(getBuiltin('MROUND')?.({ tag: ValueTag.Number, value: 10 }, { tag: ValueTag.Number, value: 4 })).toEqual({
       tag: ValueTag.Number,
@@ -1738,8 +1738,8 @@ describe('formula builtins', () => {
       getBuiltin('CEILING.PRECISE')?.({ tag: ValueTag.String, value: 'bad', stringId: 9 }, { tag: ValueTag.Number, value: 2 }),
     ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(getBuiltin('ISO.CEILING')?.({ tag: ValueTag.Number, value: 4 }, { tag: ValueTag.Number, value: 0 })).toEqual({
-      tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      tag: ValueTag.Number,
+      value: 0,
     })
 
     expect(getBuiltin('BITAND')?.({ tag: ValueTag.Number, value: 3 })).toEqual({
@@ -1957,12 +1957,12 @@ describe('formula builtins', () => {
       value: 6,
     })
     expect(getBuiltin('FLOOR.PRECISE')?.({ tag: ValueTag.Number, value: 4 }, { tag: ValueTag.Number, value: 0 })).toEqual({
-      tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      tag: ValueTag.Number,
+      value: 0,
     })
     expect(getBuiltin('CEILING.PRECISE')?.({ tag: ValueTag.Number, value: 4 }, { tag: ValueTag.Number, value: 0 })).toEqual({
-      tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      tag: ValueTag.Number,
+      value: 0,
     })
     expect(getBuiltin('BITAND')?.({ tag: ValueTag.String, value: 'bad', stringId: 13 }, { tag: ValueTag.Number, value: 1 })).toEqual({
       tag: ValueTag.Error,

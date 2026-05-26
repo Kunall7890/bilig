@@ -728,8 +728,11 @@ export function tryApplyScalarMathBuiltin(
       outputStringLengths,
       outputStringData,
     )
-    if (isNaN(numeric) || isNaN(multiple) || multiple == 0.0) {
+    if (isNaN(numeric) || isNaN(multiple)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (multiple == 0.0) {
+      return writeScalarMathNumber(base, 0.0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (numeric != 0.0 && Math.sign(numeric) != Math.sign(multiple)) {
       return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)

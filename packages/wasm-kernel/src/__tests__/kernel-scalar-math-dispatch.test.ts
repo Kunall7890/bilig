@@ -337,6 +337,40 @@ describe('wasm kernel scalar math dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(1, 2, width)]).toBe(-9)
   })
 
+  it('matches spreadsheet zero-multiple rounding semantics on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 3, 1, 1, 1)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Floor, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Ceiling, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.FloorMath, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.FloorPrecise, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.CeilingMath, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.CeilingPrecise, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.IsoCeiling, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Mround, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 8 }, (_value, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants(Array.from({ length: 8 }, () => [2.5, 0]))
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 8 }, (_value, index) => cellIndex(1, index, width))))
+
+    expectKernelError(kernel, cellIndex(1, 0, width), ErrorCode.Div0)
+    expectKernelError(kernel, cellIndex(1, 1, width), ErrorCode.Div0)
+    for (let index = 2; index < 8; index += 1) {
+      expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Number)
+      expect(kernel.readNumbers()[cellIndex(1, index, width)]).toBe(0)
+    }
+  })
+
   it('keeps trigonometric and transcendental dispatch stable across refactors', async () => {
     const kernel = await createKernel()
     const width = 32
