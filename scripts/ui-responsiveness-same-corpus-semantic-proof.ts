@@ -42,6 +42,8 @@ export interface SameCorpusMutationTargetProof {
   readonly before: SameCorpusMutationTargetReadback
   readonly after: SameCorpusMutationTargetReadback
   readonly restored: SameCorpusMutationTargetReadback
+  readonly visibleAfter: SameCorpusMutationTargetReadback
+  readonly visibleRestored: SameCorpusMutationTargetReadback
   readonly authoritativeReadbackRevision: string | null
   readonly visibleRenderRevision: string | null
   readonly screenshotSha256: string | null
@@ -143,6 +145,8 @@ export async function readProductSemanticUiProof(args: {
         before: { ...sample.before },
         after: { ...sample.after },
         restored: { ...sample.restored },
+        visibleAfter: { ...sample.visibleAfter },
+        visibleRestored: { ...sample.visibleRestored },
       })) ?? [],
     evidence,
   }
@@ -253,6 +257,7 @@ function sameCorpusMutationTargetProofInvalidReasons(
       invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing screenshot SHA256`)
     }
     invalidReasons.push(...sameCorpusMutationTargetReadbackSourceInvalidReasons(proof.product, workload, sample))
+    invalidReasons.push(...sameCorpusMutationTargetVisibleReadbackInvalidReasons(proof.product, workload, sample))
     if (workload === 'formula-edit' && (sample.after.formula === null || !sample.after.formula.trim().startsWith('='))) {
       invalidReasons.push('semantic UI mutation target proof for formula-edit is missing the edited formula')
     }
@@ -261,6 +266,9 @@ function sameCorpusMutationTargetProofInvalidReasons(
     }
     if (workload === 'fill-format-change' && sample.before.fillColor === sample.after.fillColor) {
       invalidReasons.push('semantic UI mutation target proof for fill-format-change did not prove a fill color change')
+    }
+    if (workload === 'fill-format-change' && (sample.after.fillColor === null || sample.visibleAfter.fillColor === null)) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing rendered post-mutation fill color`)
     }
   }
   return invalidReasons
@@ -279,6 +287,44 @@ function sameCorpusMutationTargetReadbackSourceInvalidReasons(
     return [`semantic UI mutation target proof for ${workload} used visible editor text instead of Bilig authoritative range readback`]
   }
   return []
+}
+
+function sameCorpusMutationTargetVisibleReadbackInvalidReasons(
+  product: UiResponsivenessSameCorpusProduct,
+  workload: UiResponsivenessSameCorpusWorkload,
+  sample: SameCorpusMutationTargetProof,
+): string[] {
+  const readbacks = [sample.visibleAfter, sample.visibleRestored]
+  if (readbacks.some((readback) => readback.source === 'unknown')) {
+    return [`semantic UI mutation target proof for ${workload} is missing visible render readback source`]
+  }
+  if (readbacks.some((readback) => readback.source !== 'visible-formula-bar')) {
+    return [`semantic UI mutation target proof for ${workload} visible render readback did not come from the browser-visible surface`]
+  }
+  if (product !== 'bilig') {
+    return []
+  }
+  if (!sameCorpusVisibleReadbackMatchesAuthoritative(workload, sample.after, sample.visibleAfter)) {
+    return [`semantic UI mutation target proof for ${workload} rendered readback does not match Bilig authoritative range readback`]
+  }
+  if (!sameCorpusVisibleReadbackMatchesAuthoritative(workload, sample.restored, sample.visibleRestored)) {
+    return [`semantic UI mutation target proof for ${workload} rendered restore readback does not match Bilig authoritative range readback`]
+  }
+  return []
+}
+
+function sameCorpusVisibleReadbackMatchesAuthoritative(
+  workload: UiResponsivenessSameCorpusWorkload,
+  authoritative: SameCorpusMutationTargetReadback,
+  visible: SameCorpusMutationTargetReadback,
+): boolean {
+  if (workload === 'formula-edit') {
+    return authoritative.formula === visible.formula
+  }
+  if (workload === 'fill-format-change') {
+    return authoritative.fillColor === visible.fillColor
+  }
+  return authoritative.value === visible.value || authoritative.visibleText === visible.visibleText
 }
 
 function sameCorpusReadbacksEqual(left: SameCorpusMutationTargetReadback, right: SameCorpusMutationTargetReadback): boolean {

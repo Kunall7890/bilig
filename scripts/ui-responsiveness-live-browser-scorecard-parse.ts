@@ -568,10 +568,26 @@ function parseSameCorpusMutationTargetProof(value: unknown): SameCorpusMutationT
     before: parseSameCorpusMutationTargetReadback(objectField(record, 'before')),
     after: parseSameCorpusMutationTargetReadback(objectField(record, 'after')),
     restored: parseSameCorpusMutationTargetReadback(objectField(record, 'restored')),
+    visibleAfter: Object.hasOwn(record, 'visibleAfter')
+      ? parseSameCorpusMutationTargetReadback(objectField(record, 'visibleAfter'))
+      : missingSameCorpusMutationTargetReadback(),
+    visibleRestored: Object.hasOwn(record, 'visibleRestored')
+      ? parseSameCorpusMutationTargetReadback(objectField(record, 'visibleRestored'))
+      : missingSameCorpusMutationTargetReadback(),
     authoritativeReadbackRevision: nullableStringField(record, 'authoritativeReadbackRevision'),
     visibleRenderRevision: nullableStringField(record, 'visibleRenderRevision'),
     screenshotSha256: nullableStringField(record, 'screenshotSha256'),
     undoRestoreStatus: parseSameCorpusMutationUndoRestoreStatus(stringField(record, 'undoRestoreStatus')),
+  }
+}
+
+function missingSameCorpusMutationTargetReadback(): SameCorpusMutationTargetReadback {
+  return {
+    fillColor: null,
+    formula: null,
+    source: 'unknown',
+    value: null,
+    visibleText: null,
   }
 }
 

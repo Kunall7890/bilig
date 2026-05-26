@@ -67,6 +67,13 @@ export async function readSameCorpusMutationTargetReadback(args: {
       return biligReadback
     }
   }
+  return await readSameCorpusVisibleMutationTargetReadback(args)
+}
+
+export async function readSameCorpusVisibleMutationTargetReadback(args: {
+  readonly page: Page
+  readonly product: UiResponsivenessSameCorpusProduct
+}): Promise<SameCorpusMutationTargetReadback> {
   const formulaBarText = await readVisibleFormulaBarText(args.page, args.product)
   const fillColor = await readSelectedFillColor(args.page, args.product)
   const text = normalizeNullableText(formulaBarText)

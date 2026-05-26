@@ -851,6 +851,76 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     )
   })
 
+  it('rejects Bilig mutation target proof whose rendered readback does not match authoritative readback', () => {
+    const proof = buildCaptureScenarioProof({
+      workload: 'edit-visible-cell',
+      bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'edit-visible-cell'),
+      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export', 'edit-visible-cell'),
+      visualProofs: [
+        sameCorpusVisualProofWithMutationProofs(
+          'bilig',
+          'typegpu-visible-canvas',
+          'same-corpus-wide-mixed-250k-edit-visible-cell',
+          'edit-visible-cell',
+          driftVisibleTargetReadback,
+        ),
+        sameCorpusVisualProof(
+          'google-sheets',
+          'google-sheets-visible-grid',
+          'same-corpus-wide-mixed-250k-edit-visible-cell',
+          'edit-visible-cell',
+        ),
+      ],
+    })
+
+    expect(proof.semanticUiProof).toMatchObject({
+      captured: false,
+      missingProducts: ['bilig'],
+    })
+    expect(proof.semanticUiProof.productVerdicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          product: 'bilig',
+          invalidReasons: expect.arrayContaining([
+            'semantic UI mutation target proof for edit-visible-cell rendered readback does not match Bilig authoritative range readback',
+          ]),
+        }),
+      ]),
+    )
+  })
+
+  it('rejects fill-format mutation target proof without a rendered post-mutation fill color', () => {
+    const proof = buildCaptureScenarioProof({
+      workload: 'fill-format-change',
+      bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'fill-format-change'),
+      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export', 'fill-format-change'),
+      visualProofs: [
+        sameCorpusVisualProofWithMutationProofs(
+          'bilig',
+          'typegpu-visible-canvas',
+          'same-corpus-wide-mixed-250k-fill-format-change',
+          'fill-format-change',
+          removeRenderedPostMutationFill,
+        ),
+      ],
+    })
+
+    expect(proof.semanticUiProof).toMatchObject({
+      captured: false,
+      missingProducts: ['bilig', 'google-sheets'],
+    })
+    expect(proof.semanticUiProof.productVerdicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          product: 'bilig',
+          invalidReasons: expect.arrayContaining([
+            'semantic UI mutation target proof for fill-format-change is missing rendered post-mutation fill color',
+          ]),
+        }),
+      ]),
+    )
+  })
+
   it('normalizes same-corpus mutation target selections to an explicit cell range', () => {
     expect(normalizeSameCorpusMutationTargetSelection('WideGrid!$C$5:$D$7', 'WideGrid')).toEqual({
       endAddress: 'D7',
@@ -896,7 +966,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       artifactGenerator: 'scripts/capture-ui-responsiveness-same-corpus.ts',
       biligAuthoritativeRenderProofCaseCount: 1,
       caseCount: 1,
-      contractVersion: 'same-corpus-ui-v5',
+      contractVersion: 'same-corpus-ui-v6',
       currentContractEvidenceComplete: false,
       googleSheetsTenXRequirementSatisfied: false,
       requiredProducts: ['bilig', 'google-sheets'],
@@ -1476,7 +1546,7 @@ function sameCorpusVisualProof(
               'devicePixelRatio=2',
               'expectedPixelWidth=1440',
               'expectedPixelHeight=900',
-              'contractVersion=same-corpus-ui-v5',
+              'contractVersion=same-corpus-ui-v6',
               'gridAuthoritativeRevision=rev-3',
               'gridLocalRevision=rev-local-2',
               'gridProjectedRevision=rev-3',
@@ -1593,6 +1663,8 @@ function sameCorpusMutationTargetProofs(product: SameCorpusProductVisualProof['p
     before: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
     after: sameCorpusMutationReadback(product, workload, 'after', sampleIndex),
     restored: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
+    visibleAfter: sameCorpusVisibleMutationReadback(workload, 'after', sampleIndex),
+    visibleRestored: sameCorpusVisibleMutationReadback(workload, 'before', sampleIndex),
     authoritativeReadbackRevision: `authoritative-readback-${sampleIndex + 1}`,
     visibleRenderRevision: `visible-render-${sampleIndex + 1}`,
     screenshotSha256: 'a'.repeat(64),
@@ -1611,6 +1683,8 @@ function corruptFirstMutationTargetProof(proof: SameCorpusMutationTargetProof): 
     restored: { ...proof.after },
     targetRange: '',
     undoRestoreStatus: 'failed',
+    visibleAfter: { ...proof.visibleAfter, value: proof.before.value, visibleText: proof.before.visibleText },
+    visibleRestored: { ...proof.visibleAfter },
     visibleRenderRevision: null,
   }
 }
@@ -1624,10 +1698,44 @@ function forceVisibleEditorReadbackSource(proof: SameCorpusMutationTargetProof):
   }
 }
 
+function driftVisibleTargetReadback(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  if (proof.sampleIndex !== 0) {
+    return proof
+  }
+  return {
+    ...proof,
+    visibleAfter: {
+      ...proof.visibleAfter,
+      value: 'editor-only-ghost',
+      visibleText: 'editor-only-ghost',
+    },
+  }
+}
+
+function removeRenderedPostMutationFill(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  if (proof.sampleIndex !== 0) {
+    return proof
+  }
+  return {
+    ...proof,
+    before: { ...proof.before, fillColor: '#34a853' },
+    restored: { ...proof.before, fillColor: '#34a853' },
+    visibleRestored: { ...proof.visibleRestored, fillColor: '#34a853' },
+    visibleAfter: { ...proof.visibleAfter, fillColor: null },
+  }
+}
+
 function moveMutationTargetAwayFromRenderedSelection(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
   return {
     ...proof,
     targetRange: 'B2',
+  }
+}
+
+function sameCorpusVisibleMutationReadback(workload: UiResponsivenessSameCorpusWorkload, phase: 'before' | 'after', sampleIndex: number) {
+  return {
+    ...sameCorpusMutationReadback('google-sheets', workload, phase, sampleIndex),
+    source: 'visible-formula-bar' as const,
   }
 }
 

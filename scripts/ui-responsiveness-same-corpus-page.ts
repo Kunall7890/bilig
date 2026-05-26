@@ -37,6 +37,7 @@ import {
   readSameCorpusMutationTargetReadback,
   readSameCorpusMutationTargetRevisionProof,
   readSameCorpusMutationTargetSelection,
+  readSameCorpusVisibleMutationTargetReadback,
   selectSameCorpusMutationTargetRange,
   type SameCorpusMutationTargetSelection,
 } from './ui-responsiveness-same-corpus-mutation-proof-page.ts'
@@ -641,6 +642,7 @@ async function captureSameCorpusMutationTargetProofForSample(args: {
 }): Promise<SameCorpusMutationTargetProof> {
   await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
   const after = await readSameCorpusMutationTargetReadback({ page: args.page, product: args.product, target: args.target })
+  const visibleAfter = await readSameCorpusVisibleMutationTargetReadback({ page: args.page, product: args.product })
   const screenshotSha256 = await captureSameCorpusMutationTargetScreenshotSha256(args.page, args.product)
   const revisions = await readSameCorpusMutationTargetRevisionProof({
     page: args.page,
@@ -652,6 +654,7 @@ async function captureSameCorpusMutationTargetProofForSample(args: {
   await restoreProductWorkbookMutation(args.page, args.workload)
   await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
   const restored = await readSameCorpusMutationTargetReadback({ page: args.page, product: args.product, target: args.target })
+  const visibleRestored = await readSameCorpusVisibleMutationTargetReadback({ page: args.page, product: args.product })
   return {
     after,
     authoritativeReadbackRevision: revisions.authoritativeReadbackRevision,
@@ -663,7 +666,9 @@ async function captureSameCorpusMutationTargetProofForSample(args: {
     sheetName: args.target.sheetName,
     targetRange: args.target.targetRange,
     undoRestoreStatus: sameCorpusMutationReadbacksEqual(args.before, restored) ? 'verified' : 'failed',
+    visibleAfter,
     visibleRenderRevision: revisions.visibleRenderRevision,
+    visibleRestored,
     workload: args.workload,
   }
 }

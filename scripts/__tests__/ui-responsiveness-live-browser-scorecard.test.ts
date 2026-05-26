@@ -70,7 +70,7 @@ describe('UI responsiveness live browser scorecard', () => {
     )
     expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(0)
     expect(scorecard.sameCorpusProof.runManifest).toMatchObject({
-      contractVersion: 'same-corpus-ui-v5',
+      contractVersion: 'same-corpus-ui-v6',
       caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       scenarioSummaryFieldCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
@@ -155,7 +155,7 @@ describe('UI responsiveness live browser scorecard', () => {
       tenXMeanAndP95CaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       coveredCorpusCaseIds: ['wide-mixed-250k'],
       runManifest: {
-        contractVersion: 'same-corpus-ui-v5',
+        contractVersion: 'same-corpus-ui-v6',
         requiredProducts: ['bilig', 'google-sheets'],
         requiredWorkloads: requiredUiResponsivenessSameCorpusWorkloads,
         capturedWorkloads: requiredUiResponsivenessSameCorpusWorkloads,
@@ -895,7 +895,7 @@ function sameCorpusScenarioProof(
         'devicePixelRatio=2',
         'expectedPixelWidth=1440',
         'expectedPixelHeight=900',
-        'contractVersion=same-corpus-ui-v5',
+        'contractVersion=same-corpus-ui-v6',
         'gridAuthoritativeRevision=rev-3',
         'gridLocalRevision=rev-local-2',
         'gridProjectedRevision=rev-3',
@@ -1031,11 +1031,20 @@ function sameCorpusMutationTargetProofs(
     before: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
     after: sameCorpusMutationReadback(product, workload, 'after', sampleIndex),
     restored: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
+    visibleAfter: sameCorpusVisibleMutationReadback(workload, 'after', sampleIndex),
+    visibleRestored: sameCorpusVisibleMutationReadback(workload, 'before', sampleIndex),
     authoritativeReadbackRevision: `authoritative-readback-${sampleIndex + 1}`,
     visibleRenderRevision: `visible-render-${sampleIndex + 1}`,
     screenshotSha256: 'a'.repeat(64),
     undoRestoreStatus: 'verified' as const,
   }))
+}
+
+function sameCorpusVisibleMutationReadback(workload: UiResponsivenessSameCorpusWorkload, phase: 'before' | 'after', sampleIndex: number) {
+  return {
+    ...sameCorpusMutationReadback('google-sheets', workload, phase, sampleIndex),
+    source: 'visible-formula-bar' as const,
+  }
 }
 
 function sameCorpusMutationReadback(
