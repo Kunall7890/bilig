@@ -35,7 +35,7 @@ describe('radix builtins', () => {
     expect(DECIMAL(text('10'), num(37))).toEqual(valueError)
 
     expect(BIN2DEC(text('1111111111'))).toEqual(num(-1))
-    expect(BIN2DEC(err(ErrorCode.NA))).toEqual(valueError)
+    expect(BIN2DEC(err(ErrorCode.NA))).toEqual(err(ErrorCode.NA))
     expect(BIN2DEC(text(''))).toEqual(numError)
     expect(BIN2DEC(text('102'))).toEqual(numError)
     expect(BIN2DEC(text('11111111111'))).toEqual(numError)

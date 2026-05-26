@@ -4,6 +4,7 @@ import { getBuiltin } from '../builtins.js'
 
 const num = (value: number): CellValue => ({ tag: ValueTag.Number, value })
 const text = (value: string): CellValue => ({ tag: ValueTag.String, value, stringId: 0 })
+const err = (code: ErrorCode): CellValue => ({ tag: ValueTag.Error, code })
 
 const numError = { tag: ValueTag.Error, code: ErrorCode.Num } as const
 const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
@@ -40,5 +41,16 @@ describe('radix conversion domain errors', () => {
     expect(getBuiltin('DEC2BIN')?.(num(10), text('bad'))).toEqual(valueError)
     expect(getBuiltin('BIN2HEX')?.(text('1010'), text('bad'))).toEqual(valueError)
     expect(getBuiltin('HEX2BIN')?.(text('F'), text('bad'))).toEqual(valueError)
+  })
+
+  it('preserves incoming radix errors before coercion and domain checks', () => {
+    expect(getBuiltin('BASE')?.(err(ErrorCode.Ref), num(2))).toEqual(err(ErrorCode.Ref))
+    expect(getBuiltin('DECIMAL')?.(text('10'), err(ErrorCode.NA))).toEqual(err(ErrorCode.NA))
+    expect(getBuiltin('BIN2DEC')?.(err(ErrorCode.Name))).toEqual(err(ErrorCode.Name))
+    expect(getBuiltin('HEX2DEC')?.(err(ErrorCode.NA))).toEqual(err(ErrorCode.NA))
+    expect(getBuiltin('OCT2HEX')?.(text('10'), err(ErrorCode.Ref))).toEqual(err(ErrorCode.Ref))
+    expect(getBuiltin('DEC2BIN')?.(err(ErrorCode.Div0))).toEqual(err(ErrorCode.Div0))
+    expect(getBuiltin('ROMAN')?.(err(ErrorCode.NA))).toEqual(err(ErrorCode.NA))
+    expect(getBuiltin('ARABIC')?.(err(ErrorCode.Ref))).toEqual(err(ErrorCode.Ref))
   })
 })

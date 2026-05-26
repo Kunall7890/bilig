@@ -32,6 +32,10 @@ describe('lookup array-shape builtins', () => {
     expect(ARRAYTOTEXT(matrix, cellRange([num(1)], 1, 1))).toEqual(err(ErrorCode.Value))
 
     expect(INDEX(matrix, num(2), num(3))).toEqual(text('b'))
+    expect(INDEX(num(7), num(1))).toEqual(num(7))
+    expect(INDEX(text('scalar'), num(1))).toEqual(text('scalar'))
+    expect(INDEX(err(ErrorCode.NA), num(1))).toEqual(err(ErrorCode.NA))
+    expect(INDEX(num(7), num(1), num(1))).toEqual(num(7))
     expect(INDEX(cellRange([num(1), num(2), num(3)], 1, 3), num(2))).toEqual(num(2))
     expect(INDEX(cellRange([bool(false), bool(false), bool(true), bool(true)], 1, 4), undefined)).toEqual({
       kind: 'array',

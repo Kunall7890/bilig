@@ -229,13 +229,15 @@ const numericBuiltinHelpers = createNumericBuiltinHelpers({
   numError,
 })
 const { binaryMath, ceilingWith, floorWith, roundWith, unaryMath } = numericBuiltinHelpers
-const radixBuiltins = createRadixBuiltins({
-  toNumber,
-  integerValue,
-  nonNegativeIntegerValue,
-  valueError,
-  numberResult,
-})
+const radixBuiltins = preserveIncomingErrors(
+  createRadixBuiltins({
+    toNumber,
+    integerValue,
+    nonNegativeIntegerValue,
+    valueError,
+    numberResult,
+  }),
+)
 const fixedIncomeBuiltins = preserveIncomingErrors(
   createFixedIncomeBuiltins({
     toNumber,

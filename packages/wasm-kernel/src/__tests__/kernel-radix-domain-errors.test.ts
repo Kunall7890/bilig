@@ -14,6 +14,10 @@ function encodePushString(stringId: number): number {
   return (Opcode.PushString << 24) | stringId
 }
 
+function encodePushError(code: ErrorCode): number {
+  return (Opcode.PushError << 24) | code
+}
+
 function encodeRet(): number {
   return Opcode.Ret << 24
 }
@@ -171,6 +175,34 @@ describe('wasm kernel radix conversion error semantics', () => {
     for (const output of outputs) {
       expect(kernel.readTags()[output]).toBe(ValueTag.Error)
       expect(kernel.readErrors()[output]).toBe(ErrorCode.Value)
+    }
+  })
+
+  it('preserves incoming radix conversion errors before coercion and domain checks', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 2, 8, 2, 1)
+    const strings = packStrings(['10'])
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const programs = packPrograms([
+      [encodePushError(ErrorCode.Ref), encodePushNumber(0), encodeCall(BuiltinId.Base, 2), encodeRet()],
+      [encodePushString(0), encodePushError(ErrorCode.NA), encodeCall(BuiltinId.Decimal, 2), encodeRet()],
+      [encodePushError(ErrorCode.Name), encodeCall(BuiltinId.Bin2dec, 1), encodeRet()],
+      [encodePushString(0), encodePushError(ErrorCode.Ref), encodeCall(BuiltinId.Oct2hex, 2), encodeRet()],
+      [encodePushError(ErrorCode.Div0), encodeCall(BuiltinId.Dec2bin, 1), encodeRet()],
+    ])
+    const outputs = Uint32Array.from(Array.from({ length: 5 }, (_, index) => cellIndex(1, index, width)))
+    kernel.uploadPrograms(programs.programs, programs.offsets, programs.lengths, outputs)
+    const constants = packConstants([[2], [], [], [], []])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(outputs)
+
+    const expectedErrors = [ErrorCode.Ref, ErrorCode.NA, ErrorCode.Name, ErrorCode.Ref, ErrorCode.Div0]
+    for (let index = 0; index < expectedErrors.length; index += 1) {
+      expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Error)
+      expect(kernel.readErrors()[cellIndex(1, index, width)]).toBe(expectedErrors[index])
     }
   })
 })

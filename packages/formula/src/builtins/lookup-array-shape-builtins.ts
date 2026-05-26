@@ -222,9 +222,10 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
       }
       return { tag: ValueTag.Number, value: range.rows }
     },
-    INDEX: (array, rowNumValue, colNumValue) => {
-      if (!deps.isRangeArg(array) || array.refKind !== 'cells') {
-        return deps.errorValue(ErrorCode.Value)
+    INDEX: (arrayArg, rowNumValue, colNumValue) => {
+      const array = deps.toCellRange(arrayArg)
+      if (!deps.isRangeArg(array)) {
+        return array
       }
       if (deps.isRangeArg(rowNumValue) || deps.isRangeArg(colNumValue)) {
         return deps.errorValue(ErrorCode.Value)
