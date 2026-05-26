@@ -97,6 +97,14 @@
       "docs": "https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html#remote-stateless-endpoint"
     },
     {
+      "name": "fastmcp-workpaper-client",
+      "type": "python-mcp-client-smoke-test",
+      "endpoint": "https://bilig.proompteng.ai/mcp",
+      "client": "FastMCP",
+      "docs": "https://proompteng.github.io/bilig/fastmcp-workpaper-client.html",
+      "source": "https://github.com/proompteng/bilig/tree/main/examples/fastmcp-workpaper-client"
+    },
+    {
       "name": "formula-clinic",
       "type": "local-cli",
       "command": "npm exec --package @bilig/workpaper@0.107.16 -- bilig-formula-clinic ./reduced.xlsx --cells \"Summary!B7,Inputs!B2\"",
@@ -129,6 +137,7 @@
     "https://proompteng.github.io/bilig/lobehub-workpaper-mcp.html",
     "https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html",
     "https://proompteng.github.io/bilig/sim-workpaper-mcp.html",
+    "https://proompteng.github.io/bilig/fastmcp-workpaper-client.html",
     "https://bilig.proompteng.ai/mcp",
     "https://bilig.proompteng.ai/.well-known/mcp/server-card.json",
     "https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html",

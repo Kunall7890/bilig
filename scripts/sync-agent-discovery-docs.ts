@@ -413,6 +413,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - LobeHub MCP setup: ${siteRoot}/lobehub-workpaper-mcp.html
 - AnythingLLM MCP setup: ${siteRoot}/anythingllm-workpaper-mcp.html
 - Sim MCP setup: ${siteRoot}/sim-workpaper-mcp.html
+- FastMCP Python client: ${siteRoot}/fastmcp-workpaper-client.html
 - Windmill TypeScript script: ${siteRoot}/windmill-workpaper-script.html
 - Trigger.dev task: ${siteRoot}/triggerdev-workpaper-task.html
 - Temporal Activity: ${siteRoot}/temporal-workpaper-activity.html
@@ -528,6 +529,7 @@ const llmsFullSources = [
   llmsSource('Open WebUI WorkPaper MCP Setup', 'docs/open-webui-workpaper-mcp.md'),
   llmsSource('LobeHub WorkPaper MCP Setup', 'docs/lobehub-workpaper-mcp.md'),
   llmsSource('AnythingLLM WorkPaper MCP Setup', 'docs/anythingllm-workpaper-mcp.md'),
+  llmsSource('FastMCP WorkPaper Client', 'docs/fastmcp-workpaper-client.md'),
   {
     title: 'Sim WorkPaper MCP Setup',
     relativePath: 'docs/sim-workpaper-mcp.md',
@@ -715,6 +717,14 @@ function agentJsonManifest(): string {
           docs: `${siteRoot}/mcp-workpaper-tool-server.html#remote-stateless-endpoint`,
         },
         {
+          name: 'fastmcp-workpaper-client',
+          type: 'python-mcp-client-smoke-test',
+          endpoint: remoteMcpEndpoint,
+          client: 'FastMCP',
+          docs: `${siteRoot}/fastmcp-workpaper-client.html`,
+          source: `${repositoryUrl}/tree/main/examples/fastmcp-workpaper-client`,
+        },
+        {
           name: 'formula-clinic',
           type: 'local-cli',
           command: `npm exec --package ${workpaperPackageSpec} -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"`,
@@ -747,6 +757,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/lobehub-workpaper-mcp.html`,
         `${siteRoot}/anythingllm-workpaper-mcp.html`,
         `${siteRoot}/sim-workpaper-mcp.html`,
+        `${siteRoot}/fastmcp-workpaper-client.html`,
         remoteMcpEndpoint,
         remoteMcpServerCard,
         `${siteRoot}/agent-workpaper-tool-calling-recipe.html`,

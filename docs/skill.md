@@ -174,6 +174,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - LobeHub MCP setup: https://proompteng.github.io/bilig/lobehub-workpaper-mcp.html
 - AnythingLLM MCP setup: https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
 - Sim MCP setup: https://proompteng.github.io/bilig/sim-workpaper-mcp.html
+- FastMCP Python client: https://proompteng.github.io/bilig/fastmcp-workpaper-client.html
 - Windmill TypeScript script: https://proompteng.github.io/bilig/windmill-workpaper-script.html
 - Trigger.dev task: https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
 - Temporal Activity: https://proompteng.github.io/bilig/temporal-workpaper-activity.html

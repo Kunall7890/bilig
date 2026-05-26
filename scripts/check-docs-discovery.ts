@@ -21,6 +21,7 @@ import { requireSharedPublicDocsDiscovery } from './check-docs-discovery-public-
 import { homepageRequiredLinks, llmsRequiredLinks } from './check-docs-discovery-public-link-manifest.ts'
 import { requireAgentPublicSurfaceDiscovery } from './check-docs-discovery-agent-surfaces.ts'
 import { requireTemporalWorkpaperActivityDiscovery } from './check-docs-discovery-temporal.ts'
+import { requireFastMcpWorkpaperClientDiscovery } from './check-docs-discovery-fastmcp.ts'
 
 const docsDiscoveryContext = await loadDocsDiscoveryContext()
 const {
@@ -529,6 +530,7 @@ requireIncludes(
   'https://proompteng.github.io/bilig/prefect-workpaper-flow.html',
   'packages/workpaper/README.md',
 )
+await requireFastMcpWorkpaperClientDiscovery({ repoRoot, docsRoot, index, llms, llmsFull, scopedWorkpaperPackageReadme })
 requireIncludes(
   scopedWorkpaperPackageReadme,
   'https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html',

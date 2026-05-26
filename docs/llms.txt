@@ -151,6 +151,9 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/lobehub-workpaper-mcp.html
 - https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
 - https://proompteng.github.io/bilig/sim-workpaper-mcp.html
+- https://proompteng.github.io/bilig/fastmcp-workpaper-client.html
+- https://github.com/proompteng/bilig/blob/main/docs/fastmcp-workpaper-client.md
+- https://github.com/proompteng/bilig/tree/main/examples/fastmcp-workpaper-client
 - https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html
 - https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html
 - https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html

@@ -190,6 +190,25 @@ export WorkPaper proof.
 See [Sim WorkPaper MCP setup](docs/sim-workpaper-mcp.md) for the setup steps,
 Agent-block prompt, MCP Tool block shape, and private-workbook boundary.
 
+## FastMCP Python Client
+
+Need a Python MCP client to smoke-test workbook tools before wiring a private
+agent? Use FastMCP against the hosted Streamable HTTP endpoint:
+
+```sh
+cd examples/fastmcp-workpaper-client
+uv run --python 3.12 --with 'fastmcp-slim[client]' \
+  python fastmcp_workpaper_client.py --output .tmp/fastmcp-workpaper-proof.json
+```
+
+The script lists the Bilig tools, reads `Summary!B2:B3`, writes `Inputs!B3`,
+checks request-local restore proof, and exports WorkPaper JSON. The hosted
+endpoint is stateless; use the file-backed stdio server when edits must persist
+to a private WorkPaper file.
+
+See [FastMCP WorkPaper client](docs/fastmcp-workpaper-client.md) for the proof
+shape, hosted-endpoint boundary, and FastMCP references.
+
 ## Windmill Formula Workflows
 
 Need a Windmill TypeScript script to calculate workflow fields from reviewable
@@ -632,6 +651,7 @@ the [MCP server guide](docs/mcp-workpaper-tool-server.md),
 [spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md),
 [MCP directory status](docs/mcp-spreadsheet-server-directory.md),
 [MCP client setup](docs/mcp-client-setup.md),
+[FastMCP Python client](docs/fastmcp-workpaper-client.md),
 [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md),
 [npm provenance and package trust](docs/npm-provenance-package-trust.md),
 [JavaScript library comparison](docs/javascript-spreadsheet-library-headless-node.md),
