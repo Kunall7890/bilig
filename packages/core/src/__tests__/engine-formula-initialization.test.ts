@@ -366,6 +366,37 @@ describe('SpreadsheetEngine formula initialization', () => {
     expect(engine.getPerformanceCounters().regionQueryIndexBuilds).toBe(0)
   })
 
+  it('materializes sparse physical prefix aggregate families without full-row scans', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-sparse-physical-prefix-aggregate-family' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    engine.setCellValue('Sheet1', 'A1', 1)
+    engine.setCellValue('Sheet1', 'A3', 3)
+    engine.setCellValue('Sheet1', 'A6', true)
+
+    engine.resetPerformanceCounters()
+    engine.initializeCellFormulasAt(
+      [
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 1, formula: 'SUM(A1:A1)' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 2, col: 1, formula: 'SUM(A1:A3)' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 5, col: 1, formula: 'SUM(A1:A6)' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 5, col: 2, formula: 'COUNT(A1:A6)' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 5, col: 3, formula: 'AVERAGE(A1:A6)' } },
+      ],
+      5,
+    )
+
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Number, value: 4 })
+    expect(engine.getCellValue('Sheet1', 'B6')).toEqual({ tag: ValueTag.Number, value: 5 })
+    expect(engine.getCellValue('Sheet1', 'C6')).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(engine.getCellValue('Sheet1', 'D6')).toEqual({ tag: ValueTag.Number, value: 5 / 3 })
+    expect(engine.getPerformanceCounters().directFormulaInitialEvaluations).toBe(5)
+    expect(engine.getPerformanceCounters().directAggregateScanEvaluations).toBe(0)
+    expect(engine.getPerformanceCounters().regionQueryIndexBuilds).toBe(0)
+  })
+
   it('uses native anchored prefix aggregate initialization beyond the JS direct limit', async () => {
     const rowCount = 20_000
     const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-native-prefix-aggregate-family' })

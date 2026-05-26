@@ -237,6 +237,9 @@ function evaluateInitialPrefixAggregateGroupInJs(
   pushChangedCellIndex: (cellIndex: number) => void,
   writeFormulaValue: (cellIndex: number, value: CellValue) => void,
 ): void {
+  if (tryEvaluatePhysicalSingleColumnPrefixAggregateGroupInJs(args, group, handled, pushChangedCellIndex, writeFormulaValue)) {
+    return
+  }
   const sheet = args.state.workbook.getSheet(group.sheetName)
   if (!sheet) {
     return
@@ -297,6 +300,98 @@ function evaluateInitialPrefixAggregateGroupInJs(
       formulaIndex += 1
     }
   }
+}
+
+function tryEvaluatePhysicalSingleColumnPrefixAggregateGroupInJs(
+  args: InitialPrefixAggregateArgs,
+  group: InitialPrefixAggregateGroup,
+  handled: Set<number>,
+  pushChangedCellIndex: (cellIndex: number) => void,
+  writeFormulaValue: (cellIndex: number, value: CellValue) => void,
+): boolean {
+  if (
+    group.col !== group.colEnd ||
+    (group.aggregateKind !== 'sum' && group.aggregateKind !== 'count' && group.aggregateKind !== 'average')
+  ) {
+    return false
+  }
+  const sheet = args.state.workbook.getSheet(group.sheetName)
+  if (!sheet || sheet.structureVersion !== 1) {
+    return false
+  }
+  const formulas = orderedGroupFormulas(group)
+  const computedValues: CellValue[] = []
+  let formulaIndex = 0
+  let sum = 0
+  let count = 0
+  let averageCount = 0
+  let errorCode = ErrorCode.None
+  let errorCount = 0
+  let encounteredFormulaMember = false
+  const emitThroughRow = (row: number): void => {
+    while (formulaIndex < formulas.length && formulas[formulaIndex]!.rowEnd <= row) {
+      const formula = formulas[formulaIndex]!
+      const aggregateValue = aggregateValueFromState(
+        group.aggregateKind,
+        sum,
+        count,
+        averageCount,
+        errorCode,
+        errorCount,
+        Number.POSITIVE_INFINITY,
+        Number.NEGATIVE_INFINITY,
+      )
+      computedValues.push(
+        formula.resultOffset !== undefined && aggregateValue.tag === ValueTag.Number
+          ? { tag: ValueTag.Number as const, value: aggregateValue.value + formula.resultOffset }
+          : aggregateValue,
+      )
+      formulaIndex += 1
+    }
+  }
+
+  sheet.grid.forEachPhysicalRangeEntry(0, group.col, group.maxRowEnd, group.col, (memberCellIndex, row) => {
+    if (encounteredFormulaMember) {
+      return
+    }
+    args.checkEvaluationBudget()
+    emitThroughRow(row - 1)
+    if (((args.state.workbook.cellStore.flags[memberCellIndex] ?? 0) & CellFlags.HasFormula) !== 0) {
+      encounteredFormulaMember = true
+      return
+    }
+    const tag = (args.state.workbook.cellStore.tags[memberCellIndex] as ValueTag | undefined) ?? ValueTag.Empty
+    if (tag === ValueTag.Number) {
+      const numeric = args.state.workbook.cellStore.numbers[memberCellIndex] ?? 0
+      sum += numeric
+      count += 1
+      averageCount += 1
+    } else if (tag === ValueTag.Boolean) {
+      const numeric = (args.state.workbook.cellStore.numbers[memberCellIndex] ?? 0) !== 0 ? 1 : 0
+      sum += numeric
+      count += 1
+      averageCount += 1
+    } else if (tag === ValueTag.Error) {
+      errorCode ||= (args.state.workbook.cellStore.errors[memberCellIndex] as ErrorCode | undefined) ?? ErrorCode.None
+      errorCount += 1
+    }
+    emitThroughRow(row)
+  })
+  if (encounteredFormulaMember) {
+    return false
+  }
+  emitThroughRow(group.maxRowEnd)
+  if (computedValues.length !== formulas.length) {
+    return false
+  }
+
+  for (let index = 0; index < formulas.length; index += 1) {
+    const formula = formulas[index]!
+    writeFormulaValue(formula.cellIndex, computedValues[index]!)
+    handled.add(formula.cellIndex)
+    pushChangedCellIndex(formula.cellIndex)
+  }
+  return true
 }
 
 function orderedGroupFormulas(group: InitialPrefixAggregateGroup): readonly InitialPrefixAggregateGroup['formulas'][number][] {
