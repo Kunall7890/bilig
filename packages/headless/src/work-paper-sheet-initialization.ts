@@ -97,6 +97,10 @@ export function initializeWorkPaperFromSheetEntries(args: {
       args.engine.importSnapshot(runtimeSnapshot)
       reapplyConfiguredCalculationSettings(args.engine, args.config)
     } else {
+      const initialMaterializedCellCount = inspectedSheets.reduce((total, inspected) => total + inspected.materializedCellCount, 0)
+      if (initialMaterializedCellCount > 0) {
+        args.engine.workbook.cellStore.ensureCapacity(args.engine.workbook.cellStore.size + initialMaterializedCellCount)
+      }
       const sheetIds = sheetEntries.map(([sheetName]) => args.engine.createSheetForInitialization(sheetName))
       args.namedExpressions.forEach((expression) => {
         args.upsertNamedExpression(expression, { duringInitialization: true })
