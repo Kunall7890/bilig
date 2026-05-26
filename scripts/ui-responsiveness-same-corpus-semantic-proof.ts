@@ -49,9 +49,24 @@ export interface SameCorpusMutationTargetProof {
   readonly visibleRestored: SameCorpusMutationTargetReadback
   readonly authoritativeReadbackRevision: string | null
   readonly visibleRenderRevision: string | null
+  readonly targetScreenshots: SameCorpusMutationTargetScreenshotProofSet | null
   readonly screenshotSha256: string | null
   readonly screenshotPath: string | null
   readonly undoRestoreStatus: 'verified' | 'missing' | 'failed'
+}
+
+export interface SameCorpusMutationTargetScreenshotProofSet {
+  readonly before: SameCorpusMutationTargetScreenshotProof
+  readonly after: SameCorpusMutationTargetScreenshotProof
+  readonly restored: SameCorpusMutationTargetScreenshotProof
+}
+
+export interface SameCorpusMutationTargetScreenshotProof {
+  readonly phase: 'before' | 'after' | 'restored'
+  readonly scope: 'target-cell' | 'visible-grid-fallback'
+  readonly targetRange: string
+  readonly screenshotPath: string | null
+  readonly screenshotSha256: string | null
 }
 
 export type SameCorpusMutationTargetIntendedPayload =
@@ -332,6 +347,7 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
     }
     invalidReasons.push(...sameCorpusMutationTargetScreenshotPathInvalidReasons(proof.product, workload, sample, screenshotPath))
   }
+  invalidReasons.push(...sameCorpusMutationTargetScreenshotSetInvalidReasons(proof.product, workload, sample))
   invalidReasons.push(...sameCorpusMutationTargetReadbackSourceInvalidReasons(proof.product, workload, sample))
   invalidReasons.push(...sameCorpusMutationTargetVisibleReadbackInvalidReasons(proof.product, workload, sample))
   invalidReasons.push(...sameCorpusMutationTargetRevisionInvalidReasons(proof.product, workload, sample))
@@ -341,6 +357,58 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
   }
   if (workload === 'fill-format-change' && (sample.after.fillColor === null || sample.visibleAfter.fillColor === null)) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing rendered post-mutation fill color`)
+  }
+  return invalidReasons
+}
+
+function sameCorpusMutationTargetScreenshotSetInvalidReasons(
+  product: UiResponsivenessSameCorpusProduct,
+  workload: UiResponsivenessSameCorpusWorkload,
+  sample: SameCorpusMutationTargetProof,
+): string[] {
+  const invalidReasons: string[] = []
+  const screenshots = sample.targetScreenshots
+  if (!screenshots) {
+    return [`semantic UI mutation target proof for ${workload} is missing target-cell screenshots`]
+  }
+  for (const phase of ['before', 'after', 'restored'] as const) {
+    const screenshot = screenshots[phase]
+    if (screenshot.phase !== phase) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} has mismatched ${phase} screenshot phase`)
+    }
+    if (screenshot.scope !== 'target-cell') {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} ${phase} screenshot is not target-cell scoped`)
+    }
+    if (!sameCorpusSelectedRangeMatchesTarget(screenshot.targetRange, sample.targetRange)) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} ${phase} screenshot target does not match sample target`)
+    }
+    if (screenshot.screenshotSha256 === null || !/^[a-f0-9]{64}$/u.test(screenshot.screenshotSha256)) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing ${phase} target screenshot SHA256`)
+    }
+    if (screenshot.screenshotPath === null || screenshot.screenshotPath.trim().length === 0) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing ${phase} target screenshot artifact path`)
+      continue
+    }
+    invalidReasons.push(
+      ...sameCorpusMutationTargetScreenshotPathInvalidReasons(product, workload, sample, screenshot.screenshotPath, phase),
+    )
+  }
+  if (
+    sample.screenshotPath !== null &&
+    screenshots.after.screenshotPath !== null &&
+    normalizeSameCorpusMutationTargetScreenshotPath(sample.screenshotPath) !==
+      normalizeSameCorpusMutationTargetScreenshotPath(screenshots.after.screenshotPath)
+  ) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} top-level screenshot does not match after target screenshot`)
+  }
+  if (
+    sample.screenshotSha256 !== null &&
+    screenshots.after.screenshotSha256 !== null &&
+    sample.screenshotSha256 !== screenshots.after.screenshotSha256
+  ) {
+    invalidReasons.push(
+      `semantic UI mutation target proof for ${workload} top-level screenshot hash does not match after target screenshot`,
+    )
   }
   return invalidReasons
 }
@@ -432,13 +500,14 @@ function sameCorpusMutationTargetScreenshotPathInvalidReasons(
   workload: UiResponsivenessSameCorpusWorkload,
   sample: SameCorpusMutationTargetProof,
   screenshotPath: string,
+  phase: 'before' | 'after' | 'restored' = 'after',
 ): string[] {
   const invalidReasons: string[] = []
   const segments = screenshotPath.split('/').filter((segment) => segment.length > 0)
   const mutationTargetIndex = segments.lastIndexOf('mutation-target')
   const caseSegment = mutationTargetIndex > 0 ? segments[mutationTargetIndex - 1] : ''
   const fileName = mutationTargetIndex >= 0 ? (segments[mutationTargetIndex + 1] ?? '') : (segments.at(-1) ?? '')
-  const expectedFileName = `${product}-sample-${String(sample.sampleIndex + 1)}-after.png`
+  const expectedFileName = `${product}-sample-${String(sample.sampleIndex + 1)}-${phase}.png`
   if (mutationTargetIndex < 1 || (caseSegment !== workload && !caseSegment.endsWith(`-${workload}`))) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} screenshot artifact path is not tied to the workload`)
   }

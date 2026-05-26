@@ -48,6 +48,7 @@ import {
   requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount,
   requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount,
 } from './ui-responsiveness-same-corpus-mutation-target-proof-summary.ts'
+import { parseSameCorpusMutationTargetScreenshotProofSet } from './ui-responsiveness-same-corpus-mutation-target-parse.ts'
 import { sameCorpusUiCaptureToolVersion } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import type { SameCorpusOperationResponseProof } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import { isUiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
@@ -605,6 +606,9 @@ function parseSameCorpusMutationTargetProof(value: unknown): SameCorpusMutationT
       : missingSameCorpusMutationTargetReadback(),
     authoritativeReadbackRevision: nullableStringField(record, 'authoritativeReadbackRevision'),
     visibleRenderRevision: nullableStringField(record, 'visibleRenderRevision'),
+    targetScreenshots: Object.hasOwn(record, 'targetScreenshots')
+      ? parseSameCorpusMutationTargetScreenshotProofSet(objectField(record, 'targetScreenshots'))
+      : null,
     screenshotPath: nullableStringField(record, 'screenshotPath'),
     screenshotSha256: nullableStringField(record, 'screenshotSha256'),
     undoRestoreStatus: parseSameCorpusMutationUndoRestoreStatus(stringField(record, 'undoRestoreStatus')),
@@ -758,6 +762,11 @@ function parseSameCorpusMutationTargetProofSampleSummary(value: unknown): SameCo
     visibleRestored: nullableSameCorpusMutationTargetReadback(record, 'visibleRestored'),
     authoritativeReadbackRevision: nullableStringField(record, 'authoritativeReadbackRevision'),
     visibleRenderRevision: nullableStringField(record, 'visibleRenderRevision'),
+    targetScreenshots: Object.hasOwn(record, 'targetScreenshots')
+      ? record.targetScreenshots === null
+        ? null
+        : parseSameCorpusMutationTargetScreenshotProofSet(objectField(record, 'targetScreenshots'))
+      : null,
     screenshotPath: nullableStringField(record, 'screenshotPath'),
     screenshotSha256: nullableStringField(record, 'screenshotSha256'),
     undoRestoreStatus: nullableSameCorpusMutationUndoRestoreStatus(record, 'undoRestoreStatus'),

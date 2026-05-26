@@ -42,6 +42,27 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('rejects mutation target proof without before, after, and restored target-cell screenshots', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 ? Object.assign({}, proof, { targetScreenshots: null }) : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell is missing target-cell screenshots',
+      ]),
+    })
+  })
+
   it('rejects rendered selection text that merely contains the target range', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validSemanticProof({
@@ -329,6 +350,7 @@ function mutationTargetProof(
     },
     authoritativeReadbackRevision: authoritativeReadbackRevision(sampleIndex),
     visibleRenderRevision: visibleRenderRevision(sampleIndex),
+    targetScreenshots: mutationTargetScreenshots(product, workload, sampleIndex),
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${String(sampleIndex + 1)}-after.png`,
     screenshotSha256: 'a'.repeat(64),
     undoRestoreStatus: 'verified',
@@ -394,9 +416,37 @@ function fillMutationTargetProof(
     },
     authoritativeReadbackRevision: authoritativeReadbackRevision(sampleIndex),
     visibleRenderRevision: visibleRenderRevision(sampleIndex),
+    targetScreenshots: mutationTargetScreenshots('bilig', 'fill-format-change', sampleIndex),
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-fill-format-change/mutation-target/bilig-sample-${String(sampleIndex + 1)}-after.png`,
     screenshotSha256: 'a'.repeat(64),
     undoRestoreStatus: 'verified',
+  }
+}
+
+function mutationTargetScreenshots(
+  product: UiResponsivenessSameCorpusProduct,
+  workload: UiResponsivenessSameCorpusWorkload,
+  sampleIndex: number,
+): SameCorpusMutationTargetProof['targetScreenshots'] {
+  return {
+    before: mutationTargetScreenshot(product, workload, sampleIndex, 'before'),
+    after: mutationTargetScreenshot(product, workload, sampleIndex, 'after'),
+    restored: mutationTargetScreenshot(product, workload, sampleIndex, 'restored'),
+  }
+}
+
+function mutationTargetScreenshot(
+  product: UiResponsivenessSameCorpusProduct,
+  workload: UiResponsivenessSameCorpusWorkload,
+  sampleIndex: number,
+  phase: 'before' | 'after' | 'restored',
+): NonNullable<SameCorpusMutationTargetProof['targetScreenshots']>['before'] {
+  return {
+    phase,
+    scope: 'target-cell',
+    targetRange: 'A1',
+    screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${String(sampleIndex + 1)}-${phase}.png`,
+    screenshotSha256: 'a'.repeat(64),
   }
 }
 

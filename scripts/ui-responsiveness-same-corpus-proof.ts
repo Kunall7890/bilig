@@ -13,6 +13,8 @@ import {
   type SameCorpusSemanticUiProof,
   type SameCorpusMutationTargetProof,
   type SameCorpusMutationTargetReadback,
+  type SameCorpusMutationTargetScreenshotProof,
+  type SameCorpusMutationTargetScreenshotProofSet,
 } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import type {
   SameCorpusCaptureMeasurement,
@@ -32,6 +34,8 @@ export {
   type SameCorpusSemanticUiProof,
   type SameCorpusMutationTargetProof,
   type SameCorpusMutationTargetReadback,
+  type SameCorpusMutationTargetScreenshotProof,
+  type SameCorpusMutationTargetScreenshotProofSet,
 } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 
 export interface SameCorpusScenarioProof {

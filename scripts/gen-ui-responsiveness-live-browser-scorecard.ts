@@ -366,28 +366,55 @@ function validateSameCorpusMutationTargetScreenshotArtifactHashes(validationRoot
   for (const entry of proof.cases) {
     for (const productProof of entry.scenarioProof.semanticUiProof.products) {
       for (const mutationProof of productProof.mutationTargetProofs) {
-        if (mutationProof.screenshotPath === null) {
-          continue
-        }
-        const repoRelativePath = validateScreenshotArtifactPath(validationRootDir, mutationProof.screenshotPath)
-        const expectedHash = mutationProof.screenshotSha256?.trim().toLowerCase() ?? ''
-        if (!/^[a-f0-9]{64}$/u.test(expectedHash)) {
-          throw new Error(`UI responsiveness same-corpus mutation screenshot artifact is missing SHA256: ${repoRelativePath}`)
-        }
-        const previousHash = expectedHashesByPath.get(repoRelativePath)
-        if (previousHash && previousHash !== expectedHash) {
-          throw new Error(`UI responsiveness same-corpus mutation screenshot artifact has conflicting SHA256 values: ${repoRelativePath}`)
-        }
-        expectedHashesByPath.set(repoRelativePath, expectedHash)
-        const actualHash = createHash('sha256')
-          .update(readFileSync(resolve(validationRootDir, repoRelativePath)))
-          .digest('hex')
-        if (actualHash !== expectedHash) {
-          throw new Error(`UI responsiveness same-corpus mutation screenshot artifact SHA256 mismatch: ${repoRelativePath}`)
+        for (const artifact of sameCorpusMutationTargetScreenshotArtifacts(mutationProof)) {
+          const repoRelativePath = validateScreenshotArtifactPath(validationRootDir, artifact.screenshotPath)
+          const expectedHash = artifact.screenshotSha256.trim().toLowerCase()
+          if (!/^[a-f0-9]{64}$/u.test(expectedHash)) {
+            throw new Error(`UI responsiveness same-corpus mutation screenshot artifact is missing SHA256: ${repoRelativePath}`)
+          }
+          const previousHash = expectedHashesByPath.get(repoRelativePath)
+          if (previousHash && previousHash !== expectedHash) {
+            throw new Error(`UI responsiveness same-corpus mutation screenshot artifact has conflicting SHA256 values: ${repoRelativePath}`)
+          }
+          expectedHashesByPath.set(repoRelativePath, expectedHash)
+          const actualHash = createHash('sha256')
+            .update(readFileSync(resolve(validationRootDir, repoRelativePath)))
+            .digest('hex')
+          if (actualHash !== expectedHash) {
+            throw new Error(`UI responsiveness same-corpus mutation screenshot artifact SHA256 mismatch: ${repoRelativePath}`)
+          }
         }
       }
     }
   }
+}
+
+function sameCorpusMutationTargetScreenshotArtifacts(mutationProof: {
+  readonly screenshotPath: string | null
+  readonly screenshotSha256: string | null
+  readonly targetScreenshots?: {
+    readonly before: { readonly screenshotPath: string | null; readonly screenshotSha256: string | null }
+    readonly after: { readonly screenshotPath: string | null; readonly screenshotSha256: string | null }
+    readonly restored: { readonly screenshotPath: string | null; readonly screenshotSha256: string | null }
+  } | null
+}): readonly { readonly screenshotPath: string; readonly screenshotSha256: string }[] {
+  const artifacts = [
+    mutationProof.targetScreenshots?.before,
+    mutationProof.targetScreenshots?.after,
+    mutationProof.targetScreenshots?.restored,
+  ]
+    .filter((entry): entry is { readonly screenshotPath: string | null; readonly screenshotSha256: string | null } => Boolean(entry))
+    .flatMap((entry) =>
+      entry.screenshotPath && entry.screenshotSha256
+        ? [{ screenshotPath: entry.screenshotPath, screenshotSha256: entry.screenshotSha256 }]
+        : [],
+    )
+  if (artifacts.length > 0) {
+    return artifacts
+  }
+  return mutationProof.screenshotPath && mutationProof.screenshotSha256
+    ? [{ screenshotPath: mutationProof.screenshotPath, screenshotSha256: mutationProof.screenshotSha256 }]
+    : []
 }
 
 function uniqueScreenshotArtifactPaths(proof: UiResponsivenessSameCorpusProof): string[] {

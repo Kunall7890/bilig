@@ -8,6 +8,7 @@ import {
   readSameCorpusVisibleSheetId,
   readSameCorpusVisibleSelectedRange,
   type SameCorpusMutationTargetReadback,
+  type SameCorpusMutationTargetScreenshotProof,
 } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import { readBiligRenderedSurfaceState } from './ui-responsiveness-same-corpus-surface-page.ts'
 import { settleFrames } from './ui-responsiveness-same-corpus-page-utils.ts'
@@ -144,17 +145,51 @@ export async function readSameCorpusVisibleMutationTargetReadback(args: {
   }
 }
 
-export async function captureSameCorpusMutationTargetScreenshotProof(
-  page: Page,
-  product: UiResponsivenessSameCorpusProduct,
-  screenshotPath: string,
-  relativeScreenshotPath: string,
-): Promise<SameCorpusMutationTargetScreenshotProof> {
-  const screenshot = await captureProductScreenshot(page, product, screenshotPath)
+export async function captureSameCorpusMutationTargetScreenshotProof(args: {
+  readonly page: Page
+  readonly product: UiResponsivenessSameCorpusProduct
+  readonly target: SameCorpusMutationTargetSelection
+  readonly phase: SameCorpusMutationTargetScreenshotProof['phase']
+  readonly screenshotPath: string
+  readonly relativeScreenshotPath: string
+}): Promise<SameCorpusMutationTargetScreenshotProof> {
+  const screenshot = await captureMutationTargetScreenshot(args.page, args.product, args.target, args.screenshotPath)
   return {
-    screenshotPath: screenshot.captured ? relativeScreenshotPath : null,
+    phase: args.phase,
+    scope: screenshot.scope,
+    targetRange: args.target.targetRange,
+    screenshotPath: screenshot.captured ? args.relativeScreenshotPath : null,
     screenshotSha256: screenshot.buffer ? screenshotBufferSha256(screenshot.buffer) : null,
   }
+}
+
+async function captureMutationTargetScreenshot(
+  page: Page,
+  product: UiResponsivenessSameCorpusProduct,
+  target: SameCorpusMutationTargetSelection,
+  screenshotPath: string,
+): Promise<{
+  readonly buffer: ScreenshotBuffer | null
+  readonly captured: boolean
+  readonly scope: SameCorpusMutationTargetScreenshotProof['scope']
+}> {
+  if (product === 'bilig') {
+    const address = sameCorpusCellAddressCoordinates(target.startAddress)
+    const buffer = address ? await captureBiligCellInteriorScreenshot(page, address.columnIndex, address.rowIndex, screenshotPath) : null
+    return { buffer, captured: Boolean(buffer), scope: 'target-cell' }
+  }
+  const selectedTargetBox = await firstVisibleTargetBox(page, product)
+  if (selectedTargetBox) {
+    const buffer = await page.screenshot({
+      animations: 'disabled',
+      caret: 'hide',
+      clip: selectedTargetBox,
+      path: screenshotPath,
+    })
+    return { buffer, captured: true, scope: 'target-cell' }
+  }
+  const screenshot = await captureProductScreenshot(page, product, screenshotPath)
+  return { ...screenshot, scope: 'visible-grid-fallback' }
 }
 
 export async function readSameCorpusMutationTargetRevisionProof(args: {
@@ -251,7 +286,12 @@ async function readBiligVisibleGridCellFillColor(page: Page, target: SameCorpusM
   return screenshot ? await readExpectedFillColorFromScreenshot(page, screenshot) : null
 }
 
-async function captureBiligCellInteriorScreenshot(page: Page, columnIndex: number, rowIndex: number): Promise<ScreenshotBuffer | null> {
+async function captureBiligCellInteriorScreenshot(
+  page: Page,
+  columnIndex: number,
+  rowIndex: number,
+  screenshotPath?: string,
+): Promise<ScreenshotBuffer | null> {
   const gridLocator = page.getByTestId('sheet-grid')
   if ((await gridLocator.count().catch(() => 0)) === 0) {
     return null
@@ -329,7 +369,49 @@ async function captureBiligCellInteriorScreenshot(page: Page, columnIndex: numbe
     animations: 'disabled',
     caret: 'hide',
     clip: { height: y1 - y0, width: x1 - x0, x: x0, y: y0 },
+    ...(screenshotPath ? { path: screenshotPath } : {}),
   })
+}
+
+async function firstVisibleTargetBox(
+  page: Page,
+  product: UiResponsivenessSameCorpusProduct,
+): Promise<{ readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null> {
+  const selectors =
+    product === 'google-sheets'
+      ? [
+          '.waffle-cell-input',
+          '.waffle-active-cell',
+          '.waffle-border-cell-active',
+          '[class*="active-cell" i]',
+          '[class*="selected-cell" i]',
+        ]
+      : ['.ewr-selection', '.ewr-active-cell', '[class*="active-cell" i]', '[class*="selected-cell" i]']
+  const frames = page.frames()
+  const targetBoxPromises = selectors.flatMap((selector) =>
+    [visibleLocatorBox(page.locator(selector).first())].concat(frames.map((frame) => visibleLocatorBox(frame.locator(selector).first()))),
+  )
+  const boxes = await Promise.all(targetBoxPromises)
+  return boxes.find((box): box is NonNullable<(typeof boxes)[number]> => box !== null) ?? null
+}
+
+async function visibleLocatorBox(locator: {
+  boundingBox(): Promise<{ x: number; y: number; width: number; height: number } | null>
+  count(): Promise<number>
+}) {
+  if ((await locator.count().catch(() => 0)) === 0) {
+    return null
+  }
+  const box = await locator.boundingBox().catch(() => null)
+  if (!box || box.width <= 2 || box.height <= 2) {
+    return null
+  }
+  return {
+    x: Math.max(0, Math.floor(box.x)),
+    y: Math.max(0, Math.floor(box.y)),
+    width: Math.max(1, Math.ceil(box.width)),
+    height: Math.max(1, Math.ceil(box.height)),
+  }
 }
 
 async function readExpectedFillColorFromScreenshot(page: Page, screenshot: ScreenshotBuffer): Promise<string | null> {

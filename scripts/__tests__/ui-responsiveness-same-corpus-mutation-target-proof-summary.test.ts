@@ -326,11 +326,37 @@ function mutationTargetProof(
       product === 'bilig'
         ? `bilig-visible-scene-sha256:${visibleSceneProofSha256(sampleIndex)}`
         : `google-sheets-screenshot-sha256:${'b'.repeat(64)}`,
+    targetScreenshots: targetScreenshots(product, sampleIndex),
     screenshotSha256: 'b'.repeat(64),
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/${product}-sample-${String(
       sampleIndex + 1,
     )}-after.png`,
     undoRestoreStatus: 'verified',
+  }
+}
+
+function targetScreenshots(
+  product: UiResponsivenessSameCorpusProduct,
+  sampleIndex: number,
+): SameCorpusMutationTargetProof['targetScreenshots'] {
+  return {
+    before: targetScreenshot(product, sampleIndex, 'before'),
+    after: targetScreenshot(product, sampleIndex, 'after'),
+    restored: targetScreenshot(product, sampleIndex, 'restored'),
+  }
+}
+
+function targetScreenshot(
+  product: UiResponsivenessSameCorpusProduct,
+  sampleIndex: number,
+  phase: 'before' | 'after' | 'restored',
+): NonNullable<SameCorpusMutationTargetProof['targetScreenshots']>['before'] {
+  return {
+    phase,
+    scope: 'target-cell',
+    targetRange: 'A1',
+    screenshotPath: `tmp/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/${product}-sample-${String(sampleIndex + 1)}-${phase}.png`,
+    screenshotSha256: 'b'.repeat(64),
   }
 }
 

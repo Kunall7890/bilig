@@ -860,7 +860,12 @@ function sameCorpusMutationTargetScreenshotArtifactPaths(proof: UiResponsiveness
     ...new Set(
       proof.cases.flatMap((entry) =>
         entry.scenarioProof.semanticUiProof.products.flatMap((productProof) =>
-          productProof.mutationTargetProofs.flatMap((mutationProof) => mutationProof.screenshotPath ?? []),
+          productProof.mutationTargetProofs.flatMap((mutationProof) => [
+            ...(mutationProof.screenshotPath ? [mutationProof.screenshotPath] : []),
+            ...(mutationProof.targetScreenshots?.before.screenshotPath ? [mutationProof.targetScreenshots.before.screenshotPath] : []),
+            ...(mutationProof.targetScreenshots?.after.screenshotPath ? [mutationProof.targetScreenshots.after.screenshotPath] : []),
+            ...(mutationProof.targetScreenshots?.restored.screenshotPath ? [mutationProof.targetScreenshots.restored.screenshotPath] : []),
+          ]),
         ),
       ),
     ),
@@ -1169,10 +1174,38 @@ function sameCorpusMutationTargetProofs(
     visibleRestored: sameCorpusVisibleMutationReadback(product, workload, 'before', sampleIndex),
     authoritativeReadbackRevision: sameCorpusAuthoritativeReadbackRevision(product, sampleIndex),
     visibleRenderRevision: sameCorpusVisibleRenderRevision(product, sampleIndex),
+    targetScreenshots: sameCorpusMutationTargetScreenshots(product, workload, sampleIndex),
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-after.png`,
     screenshotSha256: fixtureScreenshotSha256,
     undoRestoreStatus: 'verified' as const,
   }))
+}
+
+function sameCorpusMutationTargetScreenshots(
+  product: 'bilig' | 'google-sheets' | 'microsoft-excel-web',
+  workload: UiResponsivenessSameCorpusWorkload,
+  sampleIndex: number,
+) {
+  return {
+    before: sameCorpusMutationTargetScreenshot(product, workload, sampleIndex, 'before'),
+    after: sameCorpusMutationTargetScreenshot(product, workload, sampleIndex, 'after'),
+    restored: sameCorpusMutationTargetScreenshot(product, workload, sampleIndex, 'restored'),
+  }
+}
+
+function sameCorpusMutationTargetScreenshot(
+  product: 'bilig' | 'google-sheets' | 'microsoft-excel-web',
+  workload: UiResponsivenessSameCorpusWorkload,
+  sampleIndex: number,
+  phase: 'before' | 'after' | 'restored',
+) {
+  return {
+    phase,
+    scope: 'target-cell' as const,
+    targetRange: 'A1',
+    screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-${phase}.png`,
+    screenshotSha256: fixtureScreenshotSha256,
+  }
 }
 
 function sameCorpusMutationTargetIntendedPayload(

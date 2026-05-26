@@ -1810,10 +1810,38 @@ function sameCorpusMutationTargetProofs(product: SameCorpusProductVisualProof['p
     visibleRestored: sameCorpusVisibleMutationReadback(product, workload, 'before', sampleIndex),
     authoritativeReadbackRevision: sameCorpusAuthoritativeReadbackRevision(product, sampleIndex),
     visibleRenderRevision: sameCorpusVisibleRenderRevision(product, sampleIndex),
+    targetScreenshots: sameCorpusMutationTargetScreenshots(product, workload, sampleIndex),
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-after.png`,
     screenshotSha256: 'a'.repeat(64),
     undoRestoreStatus: 'verified' as const,
   }))
+}
+
+function sameCorpusMutationTargetScreenshots(
+  product: SameCorpusProductVisualProof['product'],
+  workload: UiResponsivenessSameCorpusWorkload,
+  sampleIndex: number,
+): SameCorpusMutationTargetProof['targetScreenshots'] {
+  return {
+    before: sameCorpusMutationTargetScreenshot(product, workload, sampleIndex, 'before'),
+    after: sameCorpusMutationTargetScreenshot(product, workload, sampleIndex, 'after'),
+    restored: sameCorpusMutationTargetScreenshot(product, workload, sampleIndex, 'restored'),
+  }
+}
+
+function sameCorpusMutationTargetScreenshot(
+  product: SameCorpusProductVisualProof['product'],
+  workload: UiResponsivenessSameCorpusWorkload,
+  sampleIndex: number,
+  phase: 'before' | 'after' | 'restored',
+): NonNullable<SameCorpusMutationTargetProof['targetScreenshots']>['before'] {
+  return {
+    phase,
+    scope: 'target-cell',
+    targetRange: 'A1',
+    screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-${phase}.png`,
+    screenshotSha256: 'a'.repeat(64),
+  }
 }
 
 function sameCorpusMutationTargetIntendedPayload(

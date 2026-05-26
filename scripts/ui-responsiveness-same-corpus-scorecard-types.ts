@@ -198,6 +198,7 @@ export interface SameCorpusMutationTargetProofSampleSummary {
   readonly visibleRestored: SameCorpusMutationTargetProof['visibleRestored'] | null
   readonly authoritativeReadbackRevision: string | null
   readonly visibleRenderRevision: string | null
+  readonly targetScreenshots: SameCorpusMutationTargetProof['targetScreenshots'] | null
   readonly screenshotPath: string | null
   readonly screenshotSha256: string | null
   readonly undoRestoreStatus: SameCorpusMutationTargetProof['undoRestoreStatus'] | null
