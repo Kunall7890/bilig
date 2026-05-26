@@ -44,6 +44,7 @@ import {
   requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount,
   requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount,
 } from './ui-responsiveness-same-corpus-mutation-target-proof-summary.ts'
+import { requiredUiResponsivenessSameCorpusProofArchiveArtifactCount } from './ui-responsiveness-same-corpus-proof-archive.ts'
 import {
   requiredUiResponsivenessSameCorpusCommittedTargetProofTimingCaseCount,
   requiredUiResponsivenessSameCorpusCommittedTargetProofTimingSampleCount,
@@ -186,6 +187,10 @@ function parseSameCorpusRunManifest(value: Record<string, unknown>): UiResponsiv
     mutationTargetProofProductSummaries: Object.hasOwn(value, 'mutationTargetProofProductSummaries')
       ? arrayField(value, 'mutationTargetProofProductSummaries').map(parseSameCorpusMutationTargetProofProductSummary)
       : [],
+    requiredProofArchiveArtifactCount:
+      optionalNumberField(value, 'requiredProofArchiveArtifactCount') ??
+      requiredUiResponsivenessSameCorpusProofArchiveArtifactCount(numberField(value, 'sampleCount')),
+    proofArchiveArtifactCount: optionalNumberField(value, 'proofArchiveArtifactCount') ?? 0,
     legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
@@ -241,6 +246,10 @@ function parseSameCorpusCaptureRunManifest(value: Record<string, unknown>): Same
     mutationTargetProofProductSummaries: Object.hasOwn(value, 'mutationTargetProofProductSummaries')
       ? arrayField(value, 'mutationTargetProofProductSummaries').map(parseSameCorpusMutationTargetProofProductSummary)
       : [],
+    requiredProofArchiveArtifactCount:
+      optionalNumberField(value, 'requiredProofArchiveArtifactCount') ??
+      requiredUiResponsivenessSameCorpusProofArchiveArtifactCount(numberField(value, 'sampleCount')),
+    proofArchiveArtifactCount: optionalNumberField(value, 'proofArchiveArtifactCount') ?? 0,
     legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),

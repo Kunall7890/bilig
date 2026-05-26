@@ -26,6 +26,7 @@ import {
 } from './ui-responsiveness-same-corpus-page.ts'
 import type { SameCorpusPreflight } from './ui-responsiveness-same-corpus-preflight.ts'
 import { sameCorpusPreflightProductInvalidReasons } from './ui-responsiveness-same-corpus-preflight.ts'
+import { writeSameCorpusProofArchiveManifest } from './ui-responsiveness-same-corpus-proof-archive.ts'
 
 export { parseCaptureArgs, parseEmitXlsxArgs, parsePreflightArgs, parseSaveStorageStateArgs } from './ui-responsiveness-same-corpus-args.ts'
 export { buildSameCorpusFingerprint, verifyXlsxCorpusFingerprint } from './ui-responsiveness-same-corpus-fingerprint.ts'
@@ -90,10 +91,13 @@ async function main(): Promise<void> {
         tempPrefix: 'ui-responsiveness-same-corpus-capture',
       }),
     )
+    const proofArchiveManifest = writeSameCorpusProofArchiveManifest(capture, args.outputPath)
     console.log(
       JSON.stringify(
         {
           outputPath: args.outputPath,
+          proofArchiveManifestPath: `${args.outputPath}.proof/proof-archive-manifest.json`,
+          proofArchiveComplete: proofArchiveManifest.complete,
           corpusCaseId: args.corpusId,
           sampleCount: args.sampleCount,
           workloads: capture.cases.map((entry) => entry.workload),

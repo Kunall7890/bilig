@@ -118,6 +118,8 @@ export interface UiResponsivenessSameCorpusRunManifest {
   readonly requiredCommittedTargetProofTimingSampleCount: number
   readonly committedTargetProofTimingSampleCount: number
   readonly mutationTargetProofProductSummaries: readonly SameCorpusMutationTargetProofProductSummary[]
+  readonly requiredProofArchiveArtifactCount: number
+  readonly proofArchiveArtifactCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
   readonly currentContractEvidenceComplete: boolean
@@ -170,6 +172,8 @@ export interface SameCorpusCaptureRunManifest {
   readonly requiredCommittedTargetProofTimingSampleCount: number
   readonly committedTargetProofTimingSampleCount: number
   readonly mutationTargetProofProductSummaries: readonly SameCorpusMutationTargetProofProductSummary[]
+  readonly requiredProofArchiveArtifactCount: number
+  readonly proofArchiveArtifactCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
   readonly currentContractEvidenceComplete: boolean

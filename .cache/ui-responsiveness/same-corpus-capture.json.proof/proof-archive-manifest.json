@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "suite": "ui-responsiveness-same-corpus-proof-archive",
+  "captureRunSignature": "a9781daaabf37b33f80cf9f75242368f1d6d99a492c3e000a7a520e49f413633",
+  "requiredArtifactCount": 99,
+  "artifactCount": 18,
+  "complete": false,
+  "artifacts": [
+    {
+      "kind": "scenario-screenshot",
+      "product": "bilig",
+      "workload": "open-workbook",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-open-workbook/bilig-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "open-workbook",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-open-workbook/google-sheets-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "bilig",
+      "workload": "select-cell",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-select-cell/bilig-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "select-cell",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-select-cell/google-sheets-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "bilig",
+      "workload": "edit-visible-cell",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/bilig-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/google-sheets-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "bilig",
+      "workload": "scroll-vertical",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-scroll-vertical/bilig-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "scroll-vertical",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-scroll-vertical/google-sheets-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "bilig",
+      "workload": "scroll-horizontal",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-scroll-horizontal/bilig-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "scroll-horizontal",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-scroll-horizontal/google-sheets-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "bilig",
+      "workload": "jump-deep-row",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-jump-deep-row/bilig-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "jump-deep-row",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-jump-deep-row/google-sheets-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "bilig",
+      "workload": "formula-edit",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/bilig-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/google-sheets-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "bilig",
+      "workload": "fill-format-change",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-fill-format-change/bilig-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "fill-format-change",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-fill-format-change/google-sheets-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "bilig",
+      "workload": "wide-sheet-navigation",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-wide-sheet-navigation/bilig-sample-1.png"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "wide-sheet-navigation",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-wide-sheet-navigation/google-sheets-sample-1.png"
+    }
+  ]
+}

@@ -23,6 +23,8 @@ export function sameCorpusManifestInvalidReasons(args: {
   readonly committedTargetProofTimingCaseCount: number
   readonly requiredCommittedTargetProofTimingSampleCount: number
   readonly committedTargetProofTimingSampleCount: number
+  readonly requiredProofArchiveArtifactCount: number
+  readonly proofArchiveArtifactCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly materializedCellCounts: readonly number[]
   readonly strictRenderedGridProofCaseCount: number
@@ -107,6 +109,11 @@ export function sameCorpusManifestInvalidReasons(args: {
       `committed target proof timing covers ${String(args.committedTargetProofTimingSampleCount)}/${String(
         args.requiredCommittedTargetProofTimingSampleCount,
       )} required per-sample product timings`,
+    )
+  }
+  if (args.proofArchiveArtifactCount !== args.requiredProofArchiveArtifactCount) {
+    invalidReasons.push(
+      `proof archive covers ${String(args.proofArchiveArtifactCount)}/${String(args.requiredProofArchiveArtifactCount)} required proof artifacts`,
     )
   }
   if (args.legacyInsufficientRenderedGridProofCaseCount > 0) {
