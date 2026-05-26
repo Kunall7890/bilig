@@ -368,6 +368,7 @@ function validateSameCorpusMutationTargetScreenshotArtifactHashes(validationRoot
       for (const mutationProof of productProof.mutationTargetProofs) {
         for (const artifact of sameCorpusMutationTargetScreenshotArtifacts(mutationProof)) {
           const repoRelativePath = validateScreenshotArtifactPath(validationRootDir, artifact.screenshotPath)
+          validateSameCorpusMutationTargetScreenshotArtifactPathForCase(entry.id, repoRelativePath)
           const expectedHash = artifact.screenshotSha256.trim().toLowerCase()
           if (!/^[a-f0-9]{64}$/u.test(expectedHash)) {
             throw new Error(`UI responsiveness same-corpus mutation screenshot artifact is missing SHA256: ${repoRelativePath}`)
@@ -415,6 +416,14 @@ function sameCorpusMutationTargetScreenshotArtifacts(mutationProof: {
   return mutationProof.screenshotPath && mutationProof.screenshotSha256
     ? [{ screenshotPath: mutationProof.screenshotPath, screenshotSha256: mutationProof.screenshotSha256 }]
     : []
+}
+
+function validateSameCorpusMutationTargetScreenshotArtifactPathForCase(caseId: string, artifactPath: string): void {
+  const segments = artifactPath.split('/').filter((segment) => segment.length > 0)
+  const mutationTargetIndex = segments.lastIndexOf('mutation-target')
+  if (mutationTargetIndex < 1 || segments[mutationTargetIndex - 1] !== caseId || mutationTargetIndex !== segments.length - 2) {
+    throw new Error(`UI responsiveness same-corpus mutation screenshot artifact path is not tied to scenario: ${artifactPath}`)
+  }
 }
 
 function uniqueScreenshotArtifactPaths(proof: UiResponsivenessSameCorpusProof): string[] {

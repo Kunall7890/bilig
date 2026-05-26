@@ -755,6 +755,20 @@ describe('UI responsiveness live browser scorecard', () => {
     ).toThrow('UI responsiveness same-corpus screenshot artifact is not tracked by git')
   })
 
+  it('rejects semantic mutation target screenshots that are not tied to the exact scenario', () => {
+    const proof = buildSameCorpusProof(buildSameCorpusCapture())
+    const staleProof: UiResponsivenessSameCorpusProof = {
+      ...proof,
+      cases: proof.cases.map((entry) => (entry.workload === 'edit-visible-cell' ? mutationTargetScreenshotScenarioDrift(entry) : entry)),
+    }
+    const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-mutation-scenario-artifacts-`)
+    writeSameCorpusScreenshotArtifacts(rootDir, staleProof)
+
+    expect(() => validateSameCorpusScreenshotArtifacts(staleProof, { rootDir })).toThrow(
+      'UI responsiveness same-corpus mutation screenshot artifact path is not tied to scenario',
+    )
+  })
+
   it('requires checked-in same-corpus scorecard proof to match the capture artifact', () => {
     const capture = buildSameCorpusCapture()
     const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-capture-artifact-`)
@@ -854,6 +868,37 @@ describe('UI responsiveness live browser scorecard', () => {
     )
   })
 })
+
+function mutationTargetScreenshotScenarioDrift(
+  entry: UiResponsivenessSameCorpusProof['cases'][number],
+): UiResponsivenessSameCorpusProof['cases'][number] {
+  return {
+    ...entry,
+    scenarioProof: {
+      ...entry.scenarioProof,
+      semanticUiProof: {
+        ...entry.scenarioProof.semanticUiProof,
+        products: entry.scenarioProof.semanticUiProof.products.map((productProof) => ({
+          ...productProof,
+          mutationTargetProofs: productProof.mutationTargetProofs.map((mutationProof) => ({
+            ...mutationProof,
+            targetScreenshots: mutationProof.targetScreenshots
+              ? {
+                  ...mutationProof.targetScreenshots,
+                  before: {
+                    ...mutationProof.targetScreenshots.before,
+                    screenshotPath:
+                      mutationProof.targetScreenshots.before.screenshotPath?.replace(entry.id, 'same-corpus-wide-mixed-250k-other-case') ??
+                      null,
+                  },
+                }
+              : null,
+          })),
+        })),
+      },
+    },
+  }
+}
 
 function writeSameCorpusScreenshotArtifacts(rootDir: string, proof: UiResponsivenessSameCorpusProof): void {
   for (const artifactPath of sameCorpusScreenshotArtifactPaths(proof)) {
