@@ -664,6 +664,65 @@ describe('@bilig/workbook transport api', () => {
     expect(extraGetterInvoked).toBe(false)
   })
 
+  it('runs transported plan data when ignored scratchpad uses a reserved live-plan key', async () => {
+    const model = defineModel({
+      name: 'transport-reserved-scratchpad-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'D2' }),
+        }
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeValue(refs.result, 1)
+        },
+      },
+    })
+    const plan = buildWorkbookActionPlan(model, 'write')
+    const data = structuredClone(toPlanData(plan))
+    const noisy = mutableRecord(structuredClone(data))
+    noisy['refs'] = { ignored: true }
+    const apply = vi.fn((executedPlan: typeof plan) => ({
+      status: 'applied' as const,
+      previewOps: executedPlan.ops,
+      appliedOps: executedPlan.ops,
+    }))
+
+    expect(checkPlanData(noisy)).toEqual({
+      status: 'valid',
+      plan: data,
+      issues: [],
+    })
+
+    const result = await runWorkbookPlan(noisy, { apply })
+
+    expect(apply).toHaveBeenCalledOnce()
+    expect(result).toEqual({
+      status: 'done',
+      apply: {
+        matched: true,
+        previewOps: plan.ops,
+        appliedOps: plan.ops,
+      },
+      changed: [
+        {
+          kind: 'writeValue',
+          target: plan.refs.result,
+          message: 'Write value to Sheet1!D2',
+        },
+      ],
+      checks: [],
+      unverified: [
+        {
+          kind: 'apply',
+          message: 'Adapter did not return commandReceipts, so planned commands are not bound to materialized ops',
+        },
+      ],
+    })
+  })
+
   it('returns failed run results for invalid transported plan data without applying', async () => {
     let commandGetterInvoked = false
     const commands = accessorArray(() => {

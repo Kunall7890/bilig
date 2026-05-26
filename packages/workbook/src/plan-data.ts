@@ -9,7 +9,7 @@ import {
   type WorkbookFormulaLabelDescription,
   type WorkbookRefDescription,
 } from './describe.js'
-import { hydrateWorkbookRef, isWorkbookRefData, type WorkbookRef } from './find.js'
+import { collectWorkbookRefs, hydrateWorkbookRef, isWorkbookRefData, type WorkbookRef } from './find.js'
 import type { WorkbookFormulaLabel } from './formula.js'
 import { WorkbookActionInputError, isWorkbookActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import { normalizeWorkbookActionFormatOptions, normalizeWorkbookActionOp } from './model-action-validation.js'
@@ -116,6 +116,10 @@ function ownValue(value: object, key: string): unknown {
 
 function hasOwnValue(value: object, key: string): boolean {
   return Object.getOwnPropertyDescriptor(value, key) !== undefined
+}
+
+function refKey(ref: Pick<WorkbookRef, 'kind' | 'id'>): string {
+  return `${ref.kind}:${ref.id}`
 }
 
 function hasString(value: Record<string, unknown>, key: string): boolean {
@@ -677,7 +681,26 @@ export function hydratePlanData(data: unknown): WorkbookActionPlan<WorkbookPlanD
 }
 
 export function isHydratedPlan<Refs>(value: unknown): value is WorkbookActionPlan<Refs> {
-  return isRecord(value) && isRecord(ownValue(value, 'refs'))
+  if (!isRecord(value)) {
+    return false
+  }
+  const refs = ownValue(value, 'refs')
+  const refsUsed = ownValue(value, 'refsUsed')
+  if (!isRecord(refs) || !Array.isArray(refsUsed)) {
+    return false
+  }
+
+  const refsInShape = new Set(collectWorkbookRefs(refs).map(refKey))
+  for (let index = 0; index < refsUsed.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(refsUsed, String(index))
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor) || !isWorkbookRefData(descriptor.value)) {
+      return false
+    }
+    if (!refsInShape.has(refKey(descriptor.value))) {
+      return false
+    }
+  }
+  return true
 }
 
 export function executablePlan<Refs>(
