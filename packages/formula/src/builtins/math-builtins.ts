@@ -9,11 +9,11 @@ import type { EvaluationResult } from '../runtime-values.js'
 type Builtin = (...args: CellValue[]) => EvaluationResult
 
 const EXCEL_INTEGER_LIMIT = 2 ** 53
+const EXCEL_BITWISE_LIMIT = 2 ** 48 - 1
+const EXCEL_BITWISE_SHIFT_LIMIT = 53
 
 interface MathBuiltinDeps {
   toNumber: (value: CellValue) => number | undefined
-  toBitwiseUnsigned: (value: CellValue | undefined) => number | undefined
-  coerceShiftAmount: (value: CellValue | undefined) => number | undefined
   integerValue: (value: CellValue | undefined, fallback?: number) => number | undefined
   firstError: (args: readonly (CellValue | undefined)[]) => CellValue | undefined
   numberResult: (value: number) => EvaluationResult
@@ -69,8 +69,6 @@ function toIntegerFunctionNumber(value: CellValue): number | undefined {
 
 export function createMathBuiltins({
   toNumber,
-  toBitwiseUnsigned,
-  coerceShiftAmount,
   integerValue,
   firstError,
   numberResult,
@@ -91,6 +89,40 @@ export function createMathBuiltins({
   gcdPair,
   lcmPair,
 }: MathBuiltinDeps): Record<string, Builtin> {
+  const coerceBitwiseOperand = (value: CellValue | undefined): bigint | EvaluationResult => {
+    if (value === undefined) {
+      return valueError()
+    }
+    if (value.tag === ValueTag.Error) {
+      return value
+    }
+    const numeric = toNumber(value)
+    if (numeric === undefined) {
+      return valueError()
+    }
+    if (!Number.isFinite(numeric) || !Number.isInteger(numeric) || numeric < 0 || numeric > EXCEL_BITWISE_LIMIT) {
+      return numError()
+    }
+    return BigInt(numeric)
+  }
+
+  const coerceBitwiseShift = (value: CellValue | undefined): number | EvaluationResult => {
+    if (value === undefined) {
+      return valueError()
+    }
+    if (value.tag === ValueTag.Error) {
+      return value
+    }
+    const numeric = toNumber(value)
+    if (numeric === undefined) {
+      return valueError()
+    }
+    if (!Number.isFinite(numeric) || !Number.isInteger(numeric) || Math.abs(numeric) > EXCEL_BITWISE_SHIFT_LIMIT) {
+      return numError()
+    }
+    return numeric
+  }
+
   const domainCheckedUnaryMath = (
     value: CellValue,
     isValid: (numeric: number) => boolean,
@@ -317,68 +349,79 @@ export function createMathBuiltins({
       if (args.length < 2) {
         return valueError()
       }
-      let value = toBitwiseUnsigned(args[0])
-      if (value === undefined) {
-        return valueError()
+      const first = coerceBitwiseOperand(args[0])
+      if (typeof first !== 'bigint') {
+        return first
       }
+      let value = first
       for (let index = 1; index < args.length; index += 1) {
-        const current = toBitwiseUnsigned(args[index])
-        if (current === undefined) {
-          return valueError()
+        const current = coerceBitwiseOperand(args[index])
+        if (typeof current !== 'bigint') {
+          return current
         }
         value &= current
       }
-      return numberResult(value >>> 0)
+      return numberResult(Number(value))
     },
     BITOR: (...args) => {
       if (args.length < 2) {
         return valueError()
       }
-      let value = toBitwiseUnsigned(args[0])
-      if (value === undefined) {
-        return valueError()
+      const first = coerceBitwiseOperand(args[0])
+      if (typeof first !== 'bigint') {
+        return first
       }
+      let value = first
       for (let index = 1; index < args.length; index += 1) {
-        const current = toBitwiseUnsigned(args[index])
-        if (current === undefined) {
-          return valueError()
+        const current = coerceBitwiseOperand(args[index])
+        if (typeof current !== 'bigint') {
+          return current
         }
         value |= current
       }
-      return numberResult(value >>> 0)
+      return numberResult(Number(value))
     },
     BITXOR: (...args) => {
       if (args.length < 2) {
         return valueError()
       }
-      let value = toBitwiseUnsigned(args[0])
-      if (value === undefined) {
-        return valueError()
+      const first = coerceBitwiseOperand(args[0])
+      if (typeof first !== 'bigint') {
+        return first
       }
+      let value = first
       for (let index = 1; index < args.length; index += 1) {
-        const current = toBitwiseUnsigned(args[index])
-        if (current === undefined) {
-          return valueError()
+        const current = coerceBitwiseOperand(args[index])
+        if (typeof current !== 'bigint') {
+          return current
         }
         value ^= current
       }
-      return numberResult(value >>> 0)
+      return numberResult(Number(value))
     },
     BITLSHIFT: (valueArg, shiftArg) => {
-      const value = toBitwiseUnsigned(valueArg)
-      const shift = coerceShiftAmount(shiftArg)
-      if (value === undefined || shift === undefined) {
-        return valueError()
+      const value = coerceBitwiseOperand(valueArg)
+      if (typeof value !== 'bigint') {
+        return value
       }
-      return numberResult((value << (shift & 31)) >>> 0)
+      const shift = coerceBitwiseShift(shiftArg)
+      if (typeof shift !== 'number') {
+        return shift
+      }
+      const numeric = Number(value)
+      return numberResult(shift >= 0 ? numeric * 2 ** shift : Math.floor(numeric / 2 ** -shift))
     },
     BITRSHIFT: (valueArg, shiftArg) => {
-      const value = toBitwiseUnsigned(valueArg)
-      const shift = coerceShiftAmount(shiftArg)
-      if (value === undefined || shift === undefined) {
-        return valueError()
+      const value = coerceBitwiseOperand(valueArg)
+      if (typeof value !== 'bigint') {
+        return value
       }
-      return numberResult((value >>> (shift & 31)) >>> 0)
+      const shift = coerceBitwiseShift(shiftArg)
+      if (typeof shift !== 'number') {
+        return shift
+      }
+      const numeric = Number(value)
+      return numberResult(shift >= 0 ? Math.floor(numeric / 2 ** shift) : numeric * 2 ** -shift)
     },
     BESSELI: (xArg, orderArg) => {
       const x = toNumber(xArg)

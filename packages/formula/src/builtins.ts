@@ -70,33 +70,6 @@ function toAverageNumber(value: CellValue): number | undefined {
   }
 }
 
-function toBitwiseUnsigned(value: CellValue | undefined): number | undefined {
-  if (value === undefined) {
-    return undefined
-  }
-  const numeric = toNumber(value)
-  if (numeric === undefined || !Number.isFinite(numeric)) {
-    return undefined
-  }
-  const truncated = Math.trunc(numeric)
-  if (!Number.isSafeInteger(truncated)) {
-    return undefined
-  }
-  return truncated >>> 0
-}
-
-function coerceShiftAmount(value: CellValue | undefined): number | undefined {
-  if (value === undefined) {
-    return undefined
-  }
-  const numeric = toNumber(value)
-  if (numeric === undefined || !Number.isFinite(numeric)) {
-    return undefined
-  }
-  const truncated = Math.trunc(numeric)
-  return truncated >= 0 ? truncated : undefined
-}
-
 function numberResult(value: number): CellValue {
   return { tag: ValueTag.Number, value }
 }
@@ -277,8 +250,6 @@ const financialBuiltins = createFinancialBuiltins({
 })
 const mathBuiltins = createMathBuiltins({
   toNumber,
-  toBitwiseUnsigned,
-  coerceShiftAmount,
   integerValue,
   firstError,
   numberResult,

@@ -1,7 +1,7 @@
 import { BuiltinId, ErrorCode, ValueTag } from './protocol'
 import { coerceLogical } from './builtin-args'
 import { compareScalarValues } from './comparison'
-import { coerceBitwiseUnsigned, coerceNonNegativeShift } from './numeric-core'
+import { BITWISE_NUM_ERROR, BITWISE_VALUE_ERROR, coerceBitwiseInteger, coerceBitwiseShift } from './numeric-core'
 import { copySlotResult, STACK_KIND_SCALAR, writeResult } from './result-io'
 
 function writeLogicInfoError(
@@ -37,6 +37,12 @@ function writeLogicInfoNumber(
   return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, value, rangeIndexStack, valueStack, tagStack, kindStack)
 }
 
+function bitwiseErrorCode(value: i64): i32 {
+  if (value == BITWISE_VALUE_ERROR) return ErrorCode.Value
+  if (value == BITWISE_NUM_ERROR) return ErrorCode.Num
+  return 0
+}
+
 export function tryApplyLogicInfoBuiltin(
   builtinId: i32,
   argc: i32,
@@ -53,38 +59,46 @@ export function tryApplyLogicInfoBuiltin(
   outputStringData: Uint16Array,
 ): i32 {
   if ((builtinId == BuiltinId.Bitand || builtinId == BuiltinId.Bitor || builtinId == BuiltinId.Bitxor) && argc >= 2) {
-    let accumulatorValue = coerceBitwiseUnsigned(tagStack[base], valueStack[base])
-    if (accumulatorValue == i64.MIN_VALUE) {
-      return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    let accumulatorValue = coerceBitwiseInteger(tagStack[base], valueStack[base])
+    let errorCode = bitwiseErrorCode(accumulatorValue)
+    if (errorCode != 0) {
+      return writeLogicInfoError(base, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    let accumulator = <u32>accumulatorValue
+    let accumulator = accumulatorValue
     for (let index = 1; index < argc; index += 1) {
-      const currentValue = coerceBitwiseUnsigned(tagStack[base + index], valueStack[base + index])
-      if (currentValue == i64.MIN_VALUE) {
-        return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      const currentValue = coerceBitwiseInteger(tagStack[base + index], valueStack[base + index])
+      errorCode = bitwiseErrorCode(currentValue)
+      if (errorCode != 0) {
+        return writeLogicInfoError(base, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
       }
-      const current = <u32>currentValue
       if (builtinId == BuiltinId.Bitand) {
-        accumulator &= current
+        accumulator &= currentValue
       } else if (builtinId == BuiltinId.Bitor) {
-        accumulator |= current
+        accumulator |= currentValue
       } else {
-        accumulator ^= current
+        accumulator ^= currentValue
       }
     }
     return writeLogicInfoNumber(base, <f64>accumulator, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if ((builtinId == BuiltinId.Bitlshift || builtinId == BuiltinId.Bitrshift) && argc == 2) {
-    const value = coerceBitwiseUnsigned(tagStack[base], valueStack[base])
-    const shift = coerceNonNegativeShift(tagStack[base + 1], valueStack[base + 1])
-    if (value == i64.MIN_VALUE || shift == i64.MIN_VALUE) {
-      return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    const value = coerceBitwiseInteger(tagStack[base], valueStack[base])
+    let errorCode = bitwiseErrorCode(value)
+    if (errorCode != 0) {
+      return writeLogicInfoError(base, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const shiftAmount = <i32>(shift & 31)
-    const numeric = <u32>value
-    const result = builtinId == BuiltinId.Bitlshift ? <u32>(numeric << shiftAmount) : <u32>(numeric >>> shiftAmount)
-    return writeLogicInfoNumber(base, <f64>result, rangeIndexStack, valueStack, tagStack, kindStack)
+    const shift = coerceBitwiseShift(tagStack[base + 1], valueStack[base + 1])
+    errorCode = bitwiseErrorCode(shift)
+    if (errorCode != 0) {
+      return writeLogicInfoError(base, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const numeric = <f64>value
+    const shiftMagnitude = <f64>Math.abs(<f64>shift)
+    const factor = Math.pow(2.0, shiftMagnitude)
+    const shiftsLeft = builtinId == BuiltinId.Bitlshift ? shift >= 0 : shift < 0
+    const result = shiftsLeft ? numeric * factor : Math.floor(numeric / factor)
+    return writeLogicInfoNumber(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.And) {

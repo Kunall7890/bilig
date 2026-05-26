@@ -6222,7 +6222,7 @@ describe('wasm kernel', () => {
 
     expectErrorCell(kernel, cellIndex(1, 0, width), ErrorCode.Value)
     expectErrorCell(kernel, cellIndex(1, 1, width), ErrorCode.Value)
-    expectErrorCell(kernel, cellIndex(1, 2, width), ErrorCode.Value)
+    expectErrorCell(kernel, cellIndex(1, 2, width), ErrorCode.Num)
     expectErrorCell(kernel, cellIndex(1, 3, width), ErrorCode.Value)
     expectErrorCell(kernel, cellIndex(1, 4, width), ErrorCode.Ref)
   })

@@ -87,28 +87,31 @@ export function roundTowardZeroDigits(value: f64, digits: i32): f64 {
   return Math.trunc(value / factor) * factor
 }
 
-const MAX_SAFE_INTEGER_F64: f64 = 9007199254740991.0
+const MAX_BITWISE_INTEGER_F64: f64 = 281474976710655.0
+const MAX_BITWISE_SHIFT_F64: f64 = 53.0
+export const BITWISE_VALUE_ERROR: i64 = i64.MIN_VALUE
+export const BITWISE_NUM_ERROR: i64 = i64.MIN_VALUE + 1
 
-export function coerceBitwiseUnsigned(tag: u8, value: f64): i64 {
+export function coerceBitwiseInteger(tag: u8, value: f64): i64 {
   const numeric = toNumberExact(tag, value)
   if (!isFinite(numeric)) {
-    return i64.MIN_VALUE
+    return BITWISE_VALUE_ERROR
   }
   const truncated = Math.trunc(numeric)
-  if (Math.abs(truncated) > MAX_SAFE_INTEGER_F64) {
-    return i64.MIN_VALUE
+  if (numeric != truncated || truncated < 0.0 || truncated > MAX_BITWISE_INTEGER_F64) {
+    return BITWISE_NUM_ERROR
   }
-  return <i64>(<u32>(<i64>truncated))
+  return <i64>truncated
 }
 
-export function coerceNonNegativeShift(tag: u8, value: f64): i64 {
+export function coerceBitwiseShift(tag: u8, value: f64): i64 {
   const numeric = toNumberExact(tag, value)
   if (!isFinite(numeric)) {
-    return i64.MIN_VALUE
+    return BITWISE_VALUE_ERROR
   }
   const truncated = Math.trunc(numeric)
-  if (truncated < 0.0 || truncated > MAX_SAFE_INTEGER_F64) {
-    return i64.MIN_VALUE
+  if (numeric != truncated || Math.abs(truncated) > MAX_BITWISE_SHIFT_F64) {
+    return BITWISE_NUM_ERROR
   }
   return <i64>truncated
 }
