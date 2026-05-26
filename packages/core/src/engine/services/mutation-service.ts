@@ -120,6 +120,7 @@ export function createEngineMutationService(args: {
     createLazyInverseCellMutationRecord,
     tryCreateSingleExistingNumericInverseCellMutationRecord,
     tryCreateExistingNumericInverseCellMutationRecord,
+    tryCreateExistingNumericMutationHistoryRecords,
     buildFastMutationHistoryFromRefs,
   } = createMutationCellRestoreHistoryHelpers({
     workbook: args.state.workbook,
@@ -429,6 +430,19 @@ export function createEngineMutationService(args: {
     const nextPotentialNewCells = potentialNewCells ?? countPotentialNewCellsForMutationRefs(nextRefs)
     const shouldCreateBatch = shouldCreateLocalBatch()
     if (options.returnUndoOps === false) {
+      const typedNumericHistory =
+        !shouldCreateBatch && nextPotentialNewCells === 0 ? tryCreateExistingNumericMutationHistoryRecords(nextRefs) : null
+      if (
+        typedNumericHistory !== null &&
+        typedNumericHistory.forward.kind === 'existing-numeric-cell-mutations' &&
+        args.applyExistingNumericCellMutationsAtBatchNow?.(typedNumericHistory.forward, null, 'local')
+      ) {
+        if (args.state.getTransactionReplayDepth() === 0) {
+          args.state.undoStack.push(typedNumericHistory)
+          args.state.redoStack.length = 0
+        }
+        return null
+      }
       const inverse =
         tryCreateSingleExistingNumericInverseCellMutationRecord(nextRefs) ??
         tryCreateExistingNumericInverseCellMutationRecord(nextRefs) ??

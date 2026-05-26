@@ -16,6 +16,7 @@ import {
   createExistingNumericCellMutationsTransactionRecord,
   createLazyCellMutationTransactionRecord,
   createLazyMaterializedCellMutationTransactionRecord,
+  createLazyReversedExistingNumericCellMutationsTransactionRecord,
   createLazySingleOpTransactionRecord,
 } from './mutation-transaction-records.js'
 import { isWorkbookTableHeaderCell } from './operation-table-header-rename.js'
@@ -41,6 +42,9 @@ export interface MutationCellRestoreHistoryHelpers {
   readonly createLazyInverseCellMutationRecord: (refs: readonly EngineCellMutationRef[]) => TransactionRecord
   readonly tryCreateSingleExistingNumericInverseCellMutationRecord: (refs: readonly EngineCellMutationRef[]) => TransactionRecord | null
   readonly tryCreateExistingNumericInverseCellMutationRecord: (refs: readonly EngineCellMutationRef[]) => TransactionRecord | null
+  readonly tryCreateExistingNumericMutationHistoryRecords: (
+    refs: readonly EngineCellMutationRef[],
+  ) => { readonly forward: TransactionRecord; readonly inverse: TransactionRecord } | null
   readonly buildFastMutationHistoryFromRefs: (
     refs: readonly EngineCellMutationRef[],
     potentialNewCells: number,
@@ -341,15 +345,23 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
   }
 
   const tryCreateExistingNumericInverseCellMutationRecord = (refs: readonly EngineCellMutationRef[]): TransactionRecord | null => {
+    return tryCreateExistingNumericMutationHistoryRecords(refs)?.inverse ?? null
+  }
+
+  const tryCreateExistingNumericMutationHistoryRecords = (
+    refs: readonly EngineCellMutationRef[],
+  ): { readonly forward: TransactionRecord; readonly inverse: TransactionRecord } | null => {
     const count = refs.length
     if (count === 0) {
       return null
     }
-    const sheetIds = new Uint32Array(count)
-    const cellIndexPlusOnes = new Uint32Array(count)
-    const rows = new Uint32Array(count)
-    const cols = new Uint32Array(count)
-    const numbers = new Float64Array(count)
+    const forwardMetadata = new Uint32Array(count * 4)
+    const forwardSheetIds = forwardMetadata.subarray(0, count)
+    const forwardCellIndexPlusOnes = forwardMetadata.subarray(count, count * 2)
+    const forwardRows = forwardMetadata.subarray(count * 2, count * 3)
+    const forwardCols = forwardMetadata.subarray(count * 3, count * 4)
+    const forwardNumbers = new Float64Array(count)
+    const oldNumbers = new Float64Array(count)
     const cellStore = args.workbook.cellStore
     let cachedSheetId = -1
     let cachedSheet: ReturnType<WorkbookStore['getSheetById']> | undefined
@@ -384,24 +396,36 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
       ) {
         return null
       }
-      const targetIndex = count - 1 - index
-      sheetIds[targetIndex] = sheetId
-      cellIndexPlusOnes[targetIndex] = existingCellIndex + 1
-      rows[targetIndex] = mutation.row
-      cols[targetIndex] = mutation.col
-      numbers[targetIndex] = cellStore.numbers[existingCellIndex] ?? 0
+      forwardSheetIds[index] = sheetId
+      forwardCellIndexPlusOnes[index] = existingCellIndex + 1
+      forwardRows[index] = mutation.row
+      forwardCols[index] = mutation.col
+      forwardNumbers[index] = mutation.value
+      oldNumbers[index] = cellStore.numbers[existingCellIndex] ?? 0
     }
 
-    return createExistingNumericCellMutationsTransactionRecord(
-      {
-        sheetIds,
-        cellIndexPlusOnes,
-        rows,
-        cols,
-        numbers,
-      },
-      0,
-    )
+    return {
+      forward: createExistingNumericCellMutationsTransactionRecord(
+        {
+          sheetIds: forwardSheetIds,
+          cellIndexPlusOnes: forwardCellIndexPlusOnes,
+          rows: forwardRows,
+          cols: forwardCols,
+          numbers: forwardNumbers,
+        },
+        0,
+      ),
+      inverse: createLazyReversedExistingNumericCellMutationsTransactionRecord(
+        {
+          sheetIds: forwardSheetIds,
+          cellIndexPlusOnes: forwardCellIndexPlusOnes,
+          rows: forwardRows,
+          cols: forwardCols,
+        },
+        oldNumbers,
+        0,
+      ),
+    }
   }
 
   const buildFastMutationHistoryFromRefs = (
@@ -445,6 +469,7 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
     createLazyInverseCellMutationRecord,
     tryCreateSingleExistingNumericInverseCellMutationRecord,
     tryCreateExistingNumericInverseCellMutationRecord,
+    tryCreateExistingNumericMutationHistoryRecords,
     buildFastMutationHistoryFromRefs,
   }
 }

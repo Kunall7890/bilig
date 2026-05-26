@@ -1008,6 +1008,7 @@ describe('EngineMutationService', () => {
       }
     })
 
+    engine.resetPerformanceCounters()
     engine.applyCellMutationsAtWithOptions(refs, {
       captureUndo: true,
       potentialNewCells: 0,
@@ -1017,6 +1018,11 @@ describe('EngineMutationService', () => {
     })
     const latest = getUndoStack(engine).at(-1)
     expect(latest?.inverse.kind).toBe('existing-numeric-cell-mutations')
+    expect(engine.getPerformanceCounters().directScalarDeltaApplications).toBe(count)
+    expect(engine.getPerformanceCounters().directScalarDeltaOnlyRecalcSkips).toBe(1)
+    expect(engine.getPerformanceCounters().changedCellPayloadsBuilt).toBe(0)
+    expect(engine.getCellValue('Sheet1', 'A40')).toEqual({ tag: ValueTag.Number, value: 400 })
+    expect(engine.getCellValue('Sheet1', 'B40')).toEqual({ tag: ValueTag.Number, value: 801 })
 
     engine.resetPerformanceCounters()
     expect(engine.undo()).toBe(true)

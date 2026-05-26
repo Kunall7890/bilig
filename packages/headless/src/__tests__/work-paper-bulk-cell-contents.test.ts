@@ -58,6 +58,23 @@ function hasWorkbookStore(value: unknown): value is Pick<SpreadsheetEngine, 'wor
   return typeof value === 'object' && value !== null && 'workbook' in value
 }
 
+interface NumericBatchOperations {
+  applyExistingNumericCellMutationsAtNow: (...args: unknown[]) => boolean
+}
+
+function hasNumericBatchOperations(value: unknown): value is NumericBatchOperations {
+  return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'applyExistingNumericCellMutationsAtNow') === 'function'
+}
+
+function numericBatchOperations(workbook: WorkPaper): NumericBatchOperations {
+  const engine = Reflect.get(workbook, 'engine')
+  const operations = Reflect.get(Reflect.get(engine, 'runtime'), 'operations')
+  if (!hasNumericBatchOperations(operations)) {
+    throw new Error('Expected existing numeric batch operation')
+  }
+  return operations
+}
+
 function getWorkbookSheetRecord(workbook: WorkPaper, sheetId: number): SheetRecord {
   const engine: unknown = Reflect.get(workbook, 'engine')
   if (!hasWorkbookStore(engine)) {
@@ -128,6 +145,7 @@ describe('bulk cell values', () => {
     const captureVisibilitySnapshot = vi.spyOn(workbook, 'captureVisibilitySnapshot').mockImplementation(() => {
       throw new Error('public literal batches should not rebuild visibility snapshots')
     })
+    const typedNumericBatch = vi.spyOn(numericBatchOperations(workbook), 'applyExistingNumericCellMutationsAtNow')
 
     try {
       workbook.resetPerformanceCounters()
@@ -139,6 +157,7 @@ describe('bulk cell values', () => {
 
       expect(changes).toHaveLength(rowCount * 2)
       expect(hasDeferredTrackedIndexChanges(changes)).toBe(true)
+      expect(typedNumericBatch).toHaveReturnedWith(true)
       expect(workbook.getCellValue(cell(sheetId, rowCount - 1, 1))).toEqual({
         tag: ValueTag.Number,
         value: (rowCount - 1) * 6,
@@ -150,6 +169,7 @@ describe('bulk cell values', () => {
       })
     } finally {
       captureVisibilitySnapshot.mockRestore()
+      typedNumericBatch.mockRestore()
     }
   })
 

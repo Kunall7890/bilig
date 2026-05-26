@@ -103,6 +103,62 @@ export function createExistingNumericCellMutationsTransactionRecord(
   }
 }
 
+export function createLazyReversedExistingNumericCellMutationsTransactionRecord(
+  captured: {
+    readonly sheetIds: Uint32Array
+    readonly cellIndexPlusOnes: Uint32Array
+    readonly rows: Uint32Array
+    readonly cols: Uint32Array
+  },
+  numbers: Float64Array,
+  potentialNewCells: number,
+): TransactionRecord {
+  const count = captured.sheetIds.length
+  let sheetIds: Uint32Array | undefined
+  let cellIndexPlusOnes: Uint32Array | undefined
+  let rows: Uint32Array | undefined
+  let cols: Uint32Array | undefined
+  let reversedNumbers: Float64Array | undefined
+  const reverseUint32 = (source: Uint32Array): Uint32Array => {
+    const reversed = new Uint32Array(count)
+    for (let index = 0; index < count; index += 1) {
+      reversed[index] = source[count - 1 - index]!
+    }
+    return reversed
+  }
+  const reverseFloat64 = (source: Float64Array): Float64Array => {
+    const reversed = new Float64Array(count)
+    for (let index = 0; index < count; index += 1) {
+      reversed[index] = source[count - 1 - index]!
+    }
+    return reversed
+  }
+  return {
+    kind: 'existing-numeric-cell-mutations',
+    get sheetIds() {
+      sheetIds ??= reverseUint32(captured.sheetIds)
+      return sheetIds
+    },
+    get cellIndexPlusOnes() {
+      cellIndexPlusOnes ??= reverseUint32(captured.cellIndexPlusOnes)
+      return cellIndexPlusOnes
+    },
+    get rows() {
+      rows ??= reverseUint32(captured.rows)
+      return rows
+    },
+    get cols() {
+      cols ??= reverseUint32(captured.cols)
+      return cols
+    },
+    get numbers() {
+      reversedNumbers ??= reverseFloat64(numbers)
+      return reversedNumbers
+    },
+    potentialNewCells,
+  }
+}
+
 export function existingNumericCellMutationsRecordToRefs(
   record: Extract<TransactionRecord, { kind: 'existing-numeric-cell-mutations' }>,
 ): EngineCellMutationRef[] {
