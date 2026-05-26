@@ -1,7 +1,7 @@
 import type { CellRangeRef, CellSnapshot, WorkbookDataValidationSnapshot, WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
 import { ValueTag } from '@bilig/protocol'
 import { parseCellAddress, rewriteFormulaForStructuralTransform } from '@bilig/formula'
-import type { WorkbookStore, WorkbookTableRecord } from '../workbook-store.js'
+import type { WorkbookSortRecord, WorkbookStore, WorkbookTableRecord } from '../workbook-store.js'
 import { drawingArtifactsTouchStructuralDelete } from './services/structure-drawing-artifact-rewrite.js'
 import {
   drawingChartPackageArtifactsTouchStructuralDelete,
@@ -145,6 +145,34 @@ function definedNameTouchesAxisDelete(
 function rangeTouchesAxisDelete(range: CellRangeRef, axis: StructuralDeleteAxis, start: number): boolean {
   const end = parseCellAddress(range.endAddress, range.sheetName)
   return axis === 'row' ? end.row >= start : end.col >= start
+}
+
+function addressShiftsAfterAxisDelete(
+  sheetName: string,
+  address: string,
+  axis: StructuralDeleteAxis,
+  start: number,
+  count: number,
+): boolean {
+  const parsed = parseCellAddress(address, sheetName)
+  return axis === 'row' ? parsed.row >= start + count : parsed.col >= start + count
+}
+
+function sortTouchesAxisTransform(
+  sort: WorkbookSortRecord,
+  axis: StructuralDeleteAxis,
+  start: number,
+  count: number,
+  kind: StructuralAxisTransformKind,
+): boolean {
+  if (rangeTouchesAxisDelete(sort.range, axis, start)) {
+    return true
+  }
+  return sort.keys.some((key) =>
+    kind === 'insert'
+      ? addressTouchesAxisDelete(sort.sheetName, key.keyAddress, axis, start)
+      : addressShiftsAfterAxisDelete(sort.sheetName, key.keyAddress, axis, start, count),
+  )
 }
 
 function dataValidationTouchesAxisDelete(
@@ -305,7 +333,9 @@ export function hasEngineStructuralInsertImpact(args: {
   if (args.workbook.listFilters(args.sheetName).some((record) => rangeTouchesAxisDelete(record.range, args.axis, args.start))) {
     return true
   }
-  if (args.workbook.listSorts(args.sheetName).some((record) => rangeTouchesAxisDelete(record.range, args.axis, args.start))) {
+  if (
+    args.workbook.listSorts(args.sheetName).some((record) => sortTouchesAxisTransform(record, args.axis, args.start, args.count, 'insert'))
+  ) {
     return true
   }
   if (args.workbook.listDataValidations(args.sheetName).some((record) => rangeTouchesAxisDelete(record.range, args.axis, args.start))) {
@@ -490,7 +520,9 @@ export function hasEngineStructuralDeleteImpact(args: {
   if (args.workbook.listFilters(args.sheetName).some((record) => rangeTouchesAxisDelete(record.range, args.axis, args.start))) {
     return true
   }
-  if (args.workbook.listSorts(args.sheetName).some((record) => rangeTouchesAxisDelete(record.range, args.axis, args.start))) {
+  if (
+    args.workbook.listSorts(args.sheetName).some((record) => sortTouchesAxisTransform(record, args.axis, args.start, args.count, 'delete'))
+  ) {
     return true
   }
   if (args.workbook.listDataValidations(args.sheetName).some((record) => rangeTouchesAxisDelete(record.range, args.axis, args.start))) {

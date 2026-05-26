@@ -234,6 +234,31 @@ describe('engine fuzz regressions', () => {
     )
   })
 
+  it('records insert history when sort keys move outside the sorted range', async () => {
+    const seedSnapshot = await createEngineSeedSnapshot('pivot-analytics', 'sort-key-insert-history-regression')
+    const engine = new SpreadsheetEngine({
+      workbookName: seedSnapshot.workbook.name,
+      replicaId: 'sort-key-insert-history-regression',
+    })
+    await engine.ready()
+    engine.importSnapshot(structuredClone(seedSnapshot))
+
+    engine.deleteColumns('Sheet1', 2, 1)
+    engine.insertColumns('Sheet1', 2, 1)
+    expect(engine.getSorts('Sheet1')).toEqual([
+      {
+        sheetName: 'Sheet1',
+        range: { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B5' },
+        keys: [{ keyAddress: 'D1', direction: 'desc' }],
+      },
+    ])
+
+    expect(engine.undo()).toBe(true)
+    expect(engine.undo()).toBe(true)
+    expect(engine.undo()).toBe(false)
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(normalizeSnapshotForSemanticComparison(seedSnapshot))
+  })
+
   it('preserves inherited format ranges when undoing deleted string rows', async () => {
     const seedSnapshot = await createEngineSeedSnapshot('pivot-analytics', 'delete-string-row-format-undo-regression')
     const engine = new SpreadsheetEngine({
