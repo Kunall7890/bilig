@@ -1,6 +1,7 @@
 import { isLiteralInput } from '@bilig/protocol'
 import type { WorkbookRunResultDescriptionIssue } from './run-description.js'
 import { isWorkbookOp } from './guards.js'
+import { isCellStylePatchValue, stylePatchHasRequestedField } from './model-action-validation.js'
 
 function issue(code: WorkbookRunResultDescriptionIssue['code'], path: string, message: string): WorkbookRunResultDescriptionIssue {
   return {
@@ -253,6 +254,12 @@ function pushFormatEffectIssues(issues: WorkbookRunResultDescriptionIssue[], eff
       issues.push(issue('invalid_field', `${path}.style`, `Workbook run result description ${path}.style must be a data property`))
     } else if (!isPlainObject(style.value)) {
       issues.push(issue('invalid_type', `${path}.style`, `Workbook run result description ${path}.style must be a plain object`))
+    } else if (!isCellStylePatchValue(style.value)) {
+      issues.push(issue('invalid_field', `${path}.style`, `Workbook run result description ${path}.style must be a valid cell style patch`))
+    } else if (!stylePatchHasRequestedField(style.value)) {
+      issues.push(
+        issue('invalid_field', `${path}.style`, `Workbook run result description ${path}.style must request at least one style field`),
+      )
     }
   }
   if (numberFormat !== undefined) {

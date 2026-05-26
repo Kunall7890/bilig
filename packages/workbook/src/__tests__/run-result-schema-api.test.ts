@@ -50,6 +50,9 @@ describe('@bilig/workbook run-result schema api', () => {
       runDescriptionWithNoopEffect('writeFormula', { kind: 'writeFormula' }),
       runDescriptionWithNoopEffect('clear', { kind: 'clear' }),
       runDescriptionWithNoopEffect('format', { kind: 'format' }),
+      runDescriptionWithNoopEffect('format', { kind: 'format', style: {} }),
+      runDescriptionWithNoopEffect('format', { kind: 'format', style: { font: {} } }),
+      runDescriptionWithNoopEffect('format', { kind: 'format', style: { font: { bold: 'yes' } } }),
       runDescriptionWithNoopEffect('writeValue', { kind: 'writeFormula', formula: 'SUM(A1:A3)' }),
       runDescriptionWithNoopEffect('writeValue', { kind: 'writeValue', value: 12 }, { proofCommandKind: 'writeFormula' }),
       runDescriptionWithNoopEffect('op', { kind: 'op', opKind: 'setCellValue' }),
@@ -70,6 +73,7 @@ describe('@bilig/workbook run-result schema api', () => {
       runDescriptionWithNoopEffect('writeFormula', { kind: 'writeFormula', formula: 'SUM(A1:A3)' }),
       runDescriptionWithNoopEffect('clear', { kind: 'clear', cleared: true }),
       runDescriptionWithNoopEffect('format', { kind: 'format', numberFormat: '0.00' }),
+      runDescriptionWithNoopEffect('format', { kind: 'format', style: { font: { bold: true } } }),
       runDescriptionWithNoopEffect('op', {
         kind: 'op',
         opKind: 'setCellValue',

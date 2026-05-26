@@ -132,7 +132,7 @@ export function normalizeWorkbookActionOp(op: unknown): WorkbookOp {
   return clonedOp
 }
 
-function isCellStylePatchValue(value: unknown): value is CellStylePatch {
+export function isCellStylePatchValue(value: unknown): value is CellStylePatch {
   if (!isPlainRecord(value)) {
     return false
   }
@@ -199,7 +199,7 @@ function isCellStylePatchValue(value: unknown): value is CellStylePatch {
   return true
 }
 
-function stylePatchHasRequestedField(value: CellStylePatch): boolean {
+export function stylePatchHasRequestedField(value: CellStylePatch): boolean {
   return (
     sectionPatchHasRequestedField(value.fill, STYLE_FILL_PATCH_KEYS) ||
     sectionPatchHasRequestedField(value.font, STYLE_FONT_PATCH_KEYS) ||

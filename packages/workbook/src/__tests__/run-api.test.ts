@@ -946,6 +946,27 @@ describe('@bilig/workbook run api', () => {
         message: `Workbook run result description ${effectPath} must include style or numberFormat`,
       },
       {
+        commandKind: 'format',
+        effect: { kind: 'format', style: {} },
+        code: 'invalid_field',
+        path: `${effectPath}.style`,
+        message: `Workbook run result description ${effectPath}.style must request at least one style field`,
+      },
+      {
+        commandKind: 'format',
+        effect: { kind: 'format', style: { font: {} } },
+        code: 'invalid_field',
+        path: `${effectPath}.style`,
+        message: `Workbook run result description ${effectPath}.style must request at least one style field`,
+      },
+      {
+        commandKind: 'format',
+        effect: { kind: 'format', style: { font: { bold: 'yes' } } },
+        code: 'invalid_field',
+        path: `${effectPath}.style`,
+        message: `Workbook run result description ${effectPath}.style must be a valid cell style patch`,
+      },
+      {
         commandKind: 'op',
         effect: { kind: 'op', opKind: 'setCellValue', op: { kind: 'setCellValue' } },
         code: 'invalid_field',
