@@ -245,6 +245,11 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk',
     'docs/agent-workpaper-tool-calling-recipe.md',
   )
+  requireIncludes(
+    agentToolCallingDoc,
+    'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-mcp',
+    'docs/agent-workpaper-tool-calling-recipe.md',
+  )
   requireIncludes(agentToolCallingDoc, 'openai-agents-sdk-workpaper-tool.md', 'docs/agent-workpaper-tool-calling-recipe.md')
   requireIncludes(agentToolCallingDoc, 'function_call_output', 'docs/agent-workpaper-tool-calling-recipe.md')
   for (const [path, content] of [
@@ -263,9 +268,13 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'description: Wrap @bilig/headless workbook reads and verified edits as OpenAI Agents SDK function tools.',
     'image: /assets/github-social-preview.png',
     'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk',
+    'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-mcp',
     'examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts',
+    'examples/headless-workpaper/openai-agents-sdk-mcp-smoke.ts',
     'https://openai.github.io/openai-agents-js/guides/tools/',
     'OpenAI Agents SDK Agent -> tool() -> invokeFunctionTool()',
+    'OpenAI Agents SDK Agent -> MCPServerStdio -> getAllMcpTools() -> invokeFunctionTool()',
+    'MCPServerStdio',
     'restoredMatchesAfter',
   ] as const) {
     requireIncludes(openAiAgentsSdkDoc, required, 'docs/openai-agents-sdk-workpaper-tool.md')

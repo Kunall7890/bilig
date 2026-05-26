@@ -12,7 +12,13 @@ image: /assets/github-social-preview.png
 
 Use this path when an OpenAI Agents SDK app needs a workbook tool it can call
 from Node without opening Excel, LibreOffice, Google Sheets, or a screenshot UI.
-The agent gets two ordinary function tools:
+There are two maintained integration shapes:
+
+- function tools for apps that want WorkPaper in the same Node process.
+- an MCP stdio server for apps that want the Agents SDK to discover WorkPaper
+  tools through `MCPServerStdio`.
+
+The direct function-tool path gives the agent two ordinary function tools:
 
 - `read_workpaper_summary` reads computed WorkPaper values and serialized cells.
 - `set_workpaper_input_cell` writes one validated input cell and returns
@@ -30,6 +36,13 @@ pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk
 The OpenAI Agents SDK documents function tools as local functions wrapped with a
 schema through `tool()`, and the same tools can be attached to an `Agent`:
 <https://openai.github.io/openai-agents-js/guides/tools/>.
+
+The same guide documents MCP servers as attachable tool sources through
+`MCPServerStdio`; Bilig keeps a provider-free smoke for that path too:
+
+```sh
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-mcp
+```
 
 ## Minimal Tool Shape
 
@@ -112,6 +125,56 @@ For a production adapter, use the full example instead of this short snippet:
 It also verifies persisted formulas by exporting a WorkPaper document, restoring
 it, and comparing the computed readback after restore.
 
+## MCP Server Shape
+
+Use this when your OpenAI Agents SDK app already manages MCP servers or when you
+want the same Bilig WorkPaper server available to other agent clients:
+
+```ts
+import { Agent, MCPServerStdio, RunContext, getAllMcpTools, invokeFunctionTool } from '@openai/agents'
+
+const server = new MCPServerStdio({
+  name: 'bilig-workpaper-stdio',
+  fullCommand: 'npm run --silent agent:mcp-stdio',
+  cwd: 'examples/headless-workpaper',
+})
+
+await server.connect()
+try {
+  const agent = new Agent({
+    name: 'WorkPaper MCP verification agent',
+    instructions: 'Answer only from computed WorkPaper MCP readback.',
+    mcpServers: [server],
+  })
+  const runContext = new RunContext()
+  const tools = await getAllMcpTools({
+    mcpServers: [server],
+    runContext,
+    agent,
+    convertSchemasToStrict: true,
+  })
+  const setInput = tools.find((tool) => tool.name === 'set_workpaper_input_cell')
+  if (setInput === undefined) {
+    throw new Error('Missing set_workpaper_input_cell')
+  }
+
+  const result = await invokeFunctionTool({
+    tool: setInput,
+    runContext,
+    input: JSON.stringify({ sheetName: 'Inputs', address: 'B3', value: 0.4 }),
+  })
+  console.log(result)
+} finally {
+  await server.close()
+}
+```
+
+The maintained proof file is
+[`examples/headless-workpaper/openai-agents-sdk-mcp-smoke.ts`](../examples/headless-workpaper/openai-agents-sdk-mcp-smoke.ts).
+It starts the Bilig stdio server, lists MCP tools, converts them into Agents SDK
+function tools with `getAllMcpTools()`, invokes `set_workpaper_input_cell`, and
+asserts formula readback plus JSON restore.
+
 ## Expected Proof
 
 The smoke output includes this shape:
@@ -126,6 +189,30 @@ The smoke output includes this shape:
     "editedCell": "Inputs!B3",
     "before": { "expectedArr": 60000, "targetGap": -34000 },
     "after": { "expectedArr": 96000, "targetGap": 5600 },
+    "checks": {
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "expectedArrChanged": true
+    }
+  }
+}
+```
+
+The MCP smoke output includes this shape:
+
+```json
+{
+  "apiShape": "OpenAI Agents SDK Agent -> MCPServerStdio -> getAllMcpTools() -> invokeFunctionTool()",
+  "package": "@openai/agents",
+  "agentName": "WorkPaper MCP verification agent",
+  "mcpServerName": "bilig-workpaper-stdio",
+  "rawMcpToolNames": ["read_workpaper_summary", "set_workpaper_input_cell"],
+  "functionToolNames": ["read_workpaper_summary", "set_workpaper_input_cell"],
+  "writeResult": {
+    "editedCell": "Inputs!B3",
+    "before": { "expectedArr": 60000, "targetGap": -34000 },
+    "after": { "expectedArr": 96000, "targetGap": 5600 },
+    "restored": { "expectedArr": 96000, "targetGap": 5600 },
     "checks": {
       "formulasPersisted": true,
       "restoredMatchesAfter": true,

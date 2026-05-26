@@ -191,6 +191,7 @@ function createMcpWorkPaperToolServer(workbook: WorkPaper): McpWorkPaperToolServ
       description: 'Read computed WorkPaper summary values for a small range.',
       inputSchema: {
         type: 'object',
+        required: [],
         properties: {
           range: {
             type: 'string',

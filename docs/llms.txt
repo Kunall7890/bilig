@@ -242,6 +242,7 @@ pnpm --dir bilig/examples/headless-workpaper install --ignore-workspace
 pnpm --dir bilig/examples/headless-workpaper run start
 pnpm --dir bilig/examples/headless-workpaper run agent:tool-call
 pnpm --dir bilig/examples/headless-workpaper run agent:openai-agents-sdk
+pnpm --dir bilig/examples/headless-workpaper run agent:openai-agents-sdk-mcp
 pnpm --dir bilig/examples/headless-workpaper run agent:openai-responses
 pnpm --dir bilig/examples/headless-workpaper run agent:ai-sdk-generate-text
 pnpm --dir bilig/examples/headless-workpaper run agent:ai-sdk-stream-text
@@ -487,9 +488,11 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md
 - OpenAI Agents SDK WorkPaper tools:
   pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk
+  pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-mcp
   https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html
   https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts
+  https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/openai-agents-sdk-mcp-smoke.ts
 - OpenAI Responses WorkPaper tool-call recipe:
   pnpm --dir examples/headless-workpaper run agent:openai-responses
   https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html

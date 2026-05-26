@@ -738,6 +738,7 @@ For agent tools:
 pnpm --dir examples/headless-workpaper run agent:verify
 pnpm --dir examples/headless-workpaper run agent:tool-call
 pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-mcp
 pnpm --dir examples/headless-workpaper run agent:openai-responses
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text
@@ -751,6 +752,8 @@ The AI SDK example uses
 [`ai-sdk-generate-text-tool-smoke.ts`](examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts).
 The OpenAI Agents SDK guide is
 [`docs/openai-agents-sdk-workpaper-tool.md`](docs/openai-agents-sdk-workpaper-tool.md).
+It includes both direct `tool()` wrapping and `MCPServerStdio` discovery through
+the same WorkPaper MCP tool loop.
 The OpenAI Responses guide is
 [`docs/openai-responses-workpaper-tool-call.md`](docs/openai-responses-workpaper-tool-call.md).
 The agent framework guide is

@@ -68,6 +68,7 @@ job you are evaluating:
 | Can MCP drive a real WorkPaper tool loop?  | `npm run agent:mcp-transcript`      | You want a JSON-RPC transcript for list tools, set input, and read output.      |
 | Can MCP edit a saved WorkPaper JSON file?  | `npm run agent:mcp-file-transcript` | You want proof that the packaged binary writes a real file-backed workbook.     |
 | Does this fit OpenAI Agents SDK?           | `npm run agent:openai-agents-sdk`   | You want real `Agent` and `tool()` objects with provider-free invocation proof. |
+| Can OpenAI Agents SDK discover MCP tools?  | `npm run agent:openai-agents-sdk-mcp` | You want `MCPServerStdio` discovery plus verified WorkPaper write/readback.     |
 | Does this fit framework/server code?       | `npm run agent:framework-adapters`  | You want wrapper shapes for AI SDK, LangChain, Mastra, LlamaIndex, and more.    |
 
 From the repo root, run those scripts as
@@ -86,6 +87,7 @@ expected formula family, persistence requirement, or import/export constraint.
 | Quick revenue workbook   | `npm start`                          | formulas, named expressions, persistence                                                                                  |
 | Agent tool call loop     | `npm run agent:tool-call`            | read, edit, verify, serialize, restore                                                                                    |
 | OpenAI Agents SDK tools  | `npm run agent:openai-agents-sdk`    | real `Agent`, `tool()`, and `invokeFunctionTool()` objects with verified WorkPaper readback                               |
+| OpenAI Agents SDK MCP    | `npm run agent:openai-agents-sdk-mcp` | `MCPServerStdio`, `getAllMcpTools()`, and converted MCP tool invocation with verified WorkPaper readback                  |
 | OpenAI Responses wrapper | `npm run agent:openai-responses`     | `function_call` dispatch, `function_call_output`, verified WorkPaper readback                                             |
 | AI SDK generateText      | `npm run agent:ai-sdk-generate-text` | real `generateText()` and `tool()` calls with verified WorkPaper readback                                                 |
 | AI SDK streamText        | `npm run agent:ai-sdk-stream-text`   | real `streamText()` and streamed tool calls with verified WorkPaper readback                                              |
@@ -249,6 +251,49 @@ Expected proof:
 Use [`openai-agents-sdk-tool-smoke.ts`](openai-agents-sdk-tool-smoke.ts) with
 the [OpenAI Agents SDK guide](../../docs/openai-agents-sdk-workpaper-tool.md)
 when your agent app wants WorkPaper tools directly on an `Agent`.
+
+## OpenAI Agents SDK MCP Smoke
+
+Run this when your app uses OpenAI Agents SDK MCP integration and you want the
+Bilig WorkPaper stdio server discovered through `MCPServerStdio`:
+
+```sh
+npm run agent:openai-agents-sdk-mcp
+```
+
+The script starts `agent:mcp-stdio`, lists the Bilig MCP tools, converts them to
+Agents SDK function tools with `getAllMcpTools()`, invokes
+`set_workpaper_input_cell`, and verifies that setting `Inputs!B3 = 0.4` changes
+expected ARR from `60000` to `96000` after JSON persistence restore.
+
+Expected proof:
+
+```json
+{
+  "apiShape": "OpenAI Agents SDK Agent -> MCPServerStdio -> getAllMcpTools() -> invokeFunctionTool()",
+  "package": "@openai/agents",
+  "agentName": "WorkPaper MCP verification agent",
+  "mcpServerName": "bilig-workpaper-stdio",
+  "rawMcpToolNames": ["read_workpaper_summary", "set_workpaper_input_cell"],
+  "functionToolNames": ["read_workpaper_summary", "set_workpaper_input_cell"],
+  "writeResult": {
+    "editedCell": "Inputs!B3",
+    "before": { "expectedArr": 60000, "targetGap": -34000 },
+    "after": { "expectedArr": 96000, "targetGap": 5600 },
+    "restored": { "expectedArr": 96000, "targetGap": 5600 },
+    "checks": {
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "expectedArrChanged": true
+    }
+  }
+}
+```
+
+Use [`openai-agents-sdk-mcp-smoke.ts`](openai-agents-sdk-mcp-smoke.ts) with the
+[OpenAI Agents SDK guide](../../docs/openai-agents-sdk-workpaper-tool.md) when
+your agent app wants WorkPaper tools through the same MCP server used by other
+agent clients.
 
 ## OpenAI Responses Tool Wrapper
 

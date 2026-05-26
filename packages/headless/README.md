@@ -377,6 +377,9 @@ Agent and tool-call examples:
 - `npm run agent:openai-agents-sdk` creates real `@openai/agents` `Agent`
   and `tool()` objects, then invokes them locally with WorkPaper readback:
   <https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md>.
+- `npm run agent:openai-agents-sdk-mcp` starts the WorkPaper MCP stdio server
+  through `MCPServerStdio`, converts its tools with `getAllMcpTools()`, and
+  verifies computed readback through the Agents SDK.
 - `npm run agent:openai-responses` shows the
   [OpenAI Responses tool-call loop](https://github.com/proompteng/bilig/blob/main/docs/openai-responses-workpaper-tool-call.md).
 - `npm run agent:ai-sdk-generate-text` uses the real Vercel AI SDK

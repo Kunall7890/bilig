@@ -250,6 +250,17 @@ The dedicated guide is
 It links back to the official OpenAI Agents SDK tool docs:
 <https://openai.github.io/openai-agents-js/guides/tools/>.
 
+If your OpenAI Agents SDK app uses MCP servers instead of direct function tools,
+run the MCP smoke:
+
+```sh
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-mcp
+```
+
+It starts the Bilig WorkPaper stdio server with `MCPServerStdio`, converts the
+MCP tools with `getAllMcpTools()`, invokes `set_workpaper_input_cell`, and
+verifies computed readback plus restore.
+
 Expected proof:
 
 ```json
