@@ -67,7 +67,7 @@ export function tryApplyScalarMathBuiltin(
     }
     const order = <i32>orderNumeric
     if (order < 0) {
-      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if ((builtinId == BuiltinId.Besselk || builtinId == BuiltinId.Bessely) && x <= 0.0) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)

@@ -78,4 +78,16 @@ describe('math builtins', () => {
     expect(getBuiltin('PERMUTATIONA')?.(num(-1), num(1))).toEqual(numError)
     expect(getBuiltin('MULTINOMIAL')?.(num(1), num(-1))).toEqual(numError)
   })
+
+  it('matches Microsoft Excel Bessel order-domain errors', () => {
+    expect(getBuiltin('BESSELI')?.(num(1), num(-1))).toEqual(numError)
+    expect(getBuiltin('BESSELJ')?.(num(1), num(-1))).toEqual(numError)
+    expect(getBuiltin('BESSELK')?.(num(1), num(-1))).toEqual(numError)
+    expect(getBuiltin('BESSELY')?.(num(1), num(-1))).toEqual(numError)
+
+    expect(getBuiltin('BESSELI')?.(str('bad'), num(1))).toEqual(valueError)
+    expect(getBuiltin('BESSELJ')?.(num(1), str('bad'))).toEqual(valueError)
+    expect(getBuiltin('BESSELK')?.(str('bad'), num(1))).toEqual(valueError)
+    expect(getBuiltin('BESSELY')?.(num(1), str('bad'))).toEqual(valueError)
+  })
 })
