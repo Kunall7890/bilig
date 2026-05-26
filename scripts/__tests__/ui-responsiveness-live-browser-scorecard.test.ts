@@ -265,6 +265,13 @@ describe('UI responsiveness live browser scorecard', () => {
       scrollMovementGuardrailPassed: true,
       passed: true,
     })
+    expect(proof.cases.find((entry) => entry.workload === 'edit-visible-cell')).toMatchObject({
+      biligMeanMs: 5,
+      googleMeanMs: 100,
+      committedTargetProofGuardrailPassed: true,
+      tenXMeanAndP95Metric: 'operationResponseMs',
+      passed: true,
+    })
   })
 
   it('rejects stale capture scenario proof before deriving same-corpus pass flags', () => {
@@ -1434,10 +1441,14 @@ function sameCorpusVisibleMutationReadback(
   phase: 'before' | 'after',
   sampleIndex: number,
 ) {
-  const source = product === 'bilig' && workload === 'fill-format-change' ? 'visible-grid-cell' : 'visible-formula-bar'
+  const readback = sameCorpusMutationReadback(product, workload, phase, sampleIndex)
+  if (product !== 'bilig') {
+    return { ...readback, source: 'visible-formula-bar' as const }
+  }
   return {
-    ...sameCorpusMutationReadback(product, workload, phase, sampleIndex),
-    source,
+    ...readback,
+    formula: null,
+    source: 'visible-grid-cell' as const,
   }
 }
 

@@ -22,7 +22,7 @@ import type {
   UiResponsivenessSameCorpusMeasurement,
   UiResponsivenessSameCorpusProduct,
 } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
-import { uiSameCorpusWorkloadMutatesWorkbook, type UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
+import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 export const sameCorpusUiRenderProofContractVersion = 'same-corpus-ui-v8'
@@ -417,11 +417,9 @@ export function buildCaptureScenarioProof(args: {
   readonly workload?: UiResponsivenessSameCorpusWorkload
 }): SameCorpusScenarioProof {
   return buildScenarioProof({
-    biligTiming: summarizeNumbers(primaryCaptureTimingSamples(args.bilig, args.workload)),
-    googleSheetsTiming: summarizeNumbers(primaryCaptureTimingSamples(args.googleSheets, args.workload)),
-    microsoftExcelWebTiming: args.microsoftExcelWeb
-      ? summarizeNumbers(primaryCaptureTimingSamples(args.microsoftExcelWeb, args.workload))
-      : null,
+    biligTiming: summarizeNumbers(primaryCaptureTimingSamples(args.bilig)),
+    googleSheetsTiming: summarizeNumbers(primaryCaptureTimingSamples(args.googleSheets)),
+    microsoftExcelWebTiming: args.microsoftExcelWeb ? summarizeNumbers(primaryCaptureTimingSamples(args.microsoftExcelWeb)) : null,
     visualProofs: args.visualProofs,
     workload: args.workload ?? 'open-workbook',
     sampleCount: Math.min(
@@ -441,9 +439,9 @@ export function buildScorecardScenarioProof(args: {
   readonly sampleCount?: number
 }): SameCorpusScenarioProof {
   return buildScenarioProof({
-    biligTiming: primaryScorecardTiming(args.bilig, args.workload),
-    googleSheetsTiming: primaryScorecardTiming(args.googleSheets, args.workload),
-    microsoftExcelWebTiming: args.microsoftExcelWeb ? primaryScorecardTiming(args.microsoftExcelWeb, args.workload) : null,
+    biligTiming: primaryScorecardTiming(args.bilig),
+    googleSheetsTiming: primaryScorecardTiming(args.googleSheets),
+    microsoftExcelWebTiming: args.microsoftExcelWeb ? primaryScorecardTiming(args.microsoftExcelWeb) : null,
     visualProofs: args.visualProofs,
     workload: args.workload ?? 'open-workbook',
     sampleCount:
@@ -738,23 +736,11 @@ function hasStrictScreenshotPixelGridEvidence(evidence: ReadonlyMap<string, stri
   )
 }
 
-function primaryCaptureTimingSamples(
-  measurement: SameCorpusCaptureMeasurement,
-  workload: UiResponsivenessSameCorpusWorkload | undefined,
-): readonly number[] {
-  if (workload && uiSameCorpusWorkloadMutatesWorkbook(workload) && measurement.committedTargetProofMsSamples) {
-    return measurement.committedTargetProofMsSamples
-  }
+function primaryCaptureTimingSamples(measurement: SameCorpusCaptureMeasurement): readonly number[] {
   return measurement.scrollEventResponseMsSamples ?? measurement.operationResponseMsSamples
 }
 
-function primaryScorecardTiming(
-  measurement: UiResponsivenessSameCorpusMeasurement,
-  workload: UiResponsivenessSameCorpusWorkload | undefined,
-): NumericSummary {
-  if (workload && uiSameCorpusWorkloadMutatesWorkbook(workload) && measurement.committedTargetProofMs) {
-    return measurement.committedTargetProofMs
-  }
+function primaryScorecardTiming(measurement: UiResponsivenessSameCorpusMeasurement): NumericSummary {
   return measurement.scrollEventResponseMs ?? measurement.operationResponseMs
 }
 

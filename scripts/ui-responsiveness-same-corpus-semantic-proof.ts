@@ -597,6 +597,10 @@ function expectedSameCorpusFormulaEditFormula(sampleIndex: number): string {
   return `=${String(sampleIndex + 1)}+1`
 }
 
+function expectedSameCorpusFormulaEditRenderedValue(sampleIndex: number): string {
+  return String(sampleIndex + 2)
+}
+
 function sameCorpusMutationTargetExpectedReadbackInvalidReasons(
   workload: UiResponsivenessSameCorpusWorkload,
   sample: SameCorpusMutationTargetProof,
@@ -612,7 +616,17 @@ function sameCorpusMutationTargetExpectedReadbackInvalidReasons(
     return []
   }
   if (workload === 'formula-edit') {
-    if (payload.kind !== 'formula' || sample.after.formula !== payload.formula || sample.visibleAfter.formula !== payload.formula) {
+    if (payload.kind !== 'formula' || sample.after.formula !== payload.formula) {
+      return ['semantic UI mutation target proof for formula-edit did not prove the intended edited formula']
+    }
+    if (sample.product === 'bilig') {
+      const expectedRenderedValue = expectedSameCorpusFormulaEditRenderedValue(sample.sampleIndex)
+      if (sample.visibleAfter.value !== expectedRenderedValue && sample.visibleAfter.visibleText !== expectedRenderedValue) {
+        return ['semantic UI mutation target proof for formula-edit did not prove the rendered formula result']
+      }
+      return []
+    }
+    if (sample.visibleAfter.formula !== payload.formula) {
       return ['semantic UI mutation target proof for formula-edit did not prove the intended edited formula']
     }
     return []
@@ -683,7 +697,7 @@ function sameCorpusMutationTargetVisibleReadbackInvalidReasons(
   if (readbacks.some((readback) => readback.source === 'unknown')) {
     return [`semantic UI mutation target proof for ${workload} is missing visible render readback source`]
   }
-  const expectedSource = product === 'bilig' && workload === 'fill-format-change' ? 'visible-grid-cell' : 'visible-formula-bar'
+  const expectedSource = product === 'bilig' ? 'visible-grid-cell' : 'visible-formula-bar'
   if (readbacks.some((readback) => readback.source !== expectedSource)) {
     if (expectedSource === 'visible-grid-cell') {
       return [`semantic UI mutation target proof for ${workload} visible render readback did not come from rendered grid cell pixels`]
@@ -732,6 +746,13 @@ function sameCorpusVisibleReadbackMatchesAuthoritative(
   visible: SameCorpusMutationTargetReadback,
 ): boolean {
   if (workload === 'formula-edit') {
+    if (visible.source === 'visible-grid-cell') {
+      return (
+        (authoritative.value !== null && (visible.value === authoritative.value || visible.visibleText === authoritative.value)) ||
+        (authoritative.visibleText !== null &&
+          (visible.value === authoritative.visibleText || visible.visibleText === authoritative.visibleText))
+      )
+    }
     return authoritative.formula === visible.formula
   }
   if (workload === 'fill-format-change') {

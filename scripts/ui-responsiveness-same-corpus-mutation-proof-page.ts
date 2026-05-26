@@ -143,14 +143,8 @@ export async function readSameCorpusVisibleMutationTargetReadback(args: {
   readonly target?: SameCorpusMutationTargetSelection
   readonly workload?: UiResponsivenessSameCorpusMutatingWorkload
 }): Promise<SameCorpusMutationTargetReadback> {
-  if (args.product === 'bilig' && args.workload === 'fill-format-change' && args.target) {
-    return {
-      value: null,
-      formula: null,
-      fillColor: await readBiligVisibleGridCellFillColor(args.page, args.target),
-      visibleText: null,
-      source: 'visible-grid-cell',
-    }
+  if (args.product === 'bilig' && args.target) {
+    return await readBiligVisibleGridCellReadback(args.page, args.target)
   }
   const formulaBarText = await readVisibleFormulaBarText(args.page, args.product)
   const fillColor = await readSelectedFillColor(args.page, args.product)
@@ -310,6 +304,47 @@ async function readBiligVisibleGridCellFillColor(page: Page, target: SameCorpusM
   }
   const screenshot = await captureBiligCellInteriorScreenshot(page, address.columnIndex, address.rowIndex)
   return screenshot ? await readExpectedFillColorFromScreenshot(page, screenshot) : null
+}
+
+async function readBiligVisibleGridCellReadback(
+  page: Page,
+  target: SameCorpusMutationTargetSelection,
+): Promise<SameCorpusMutationTargetReadback> {
+  const [visibleText, fillColor] = await Promise.all([
+    readBiligVisibleGridCellText(page, target),
+    readBiligVisibleGridCellFillColor(page, target),
+  ])
+  const text = normalizeNullableText(visibleText)
+  return {
+    value: text && !text.startsWith('=') ? text : null,
+    formula: text?.startsWith('=') ? text : null,
+    fillColor,
+    visibleText: text,
+    source: 'visible-grid-cell',
+  }
+}
+
+async function readBiligVisibleGridCellText(page: Page, target: SameCorpusMutationTargetSelection): Promise<string | null> {
+  const address = sameCorpusCellAddressCoordinates(target.startAddress)
+  if (!address) {
+    return null
+  }
+  return await page.evaluate(({ columnIndex, rowIndex }) => {
+    const layer = document.querySelector('[data-testid="grid-native-text-layer"]')
+    if (!(layer instanceof HTMLElement)) {
+      return null
+    }
+    const runs = Array.from(layer.querySelectorAll<HTMLElement>('[data-native-text-run]')).filter(
+      (run) =>
+        run.getAttribute('data-native-text-run-col') === String(columnIndex) &&
+        run.getAttribute('data-native-text-run-row') === String(rowIndex),
+    )
+    const text = runs
+      .map((run) => run.textContent ?? '')
+      .join('')
+      .trim()
+    return text.length > 0 ? text : null
+  }, address)
 }
 
 async function captureBiligCellInteriorScreenshot(

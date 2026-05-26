@@ -332,7 +332,7 @@ function mutationTargetProof(
       formula: null,
       fillColor: null,
       visibleText: afterValue,
-      source: 'visible-formula-bar',
+      source: product === 'bilig' ? 'visible-grid-cell' : 'visible-formula-bar',
     },
     visibleAfterSelectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
     visibleRestored: {
@@ -340,7 +340,7 @@ function mutationTargetProof(
       formula: null,
       fillColor: null,
       visibleText: 'metric-1',
-      source: 'visible-formula-bar',
+      source: product === 'bilig' ? 'visible-grid-cell' : 'visible-formula-bar',
     },
     visibleRestoredSelectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
     authoritativeReadbackRevision: authoritativeReadbackRevision(sampleIndex),

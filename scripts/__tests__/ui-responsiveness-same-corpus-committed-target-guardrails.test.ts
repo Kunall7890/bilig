@@ -196,9 +196,9 @@ function sameCorpusMutationTargetProofs(product: 'bilig' | 'google-sheets'): Sam
       before: sameCorpusReadback(product, sampleIndex, 'metric-1'),
       after: sameCorpusReadback(product, sampleIndex, targetValue),
       restored: sameCorpusReadback(product, sampleIndex, 'metric-1'),
-      visibleAfter: sameCorpusVisibleReadback(targetValue),
+      visibleAfter: sameCorpusVisibleReadback(product, targetValue),
       visibleAfterSelectedRange: targetRange,
-      visibleRestored: sameCorpusVisibleReadback('metric-1'),
+      visibleRestored: sameCorpusVisibleReadback(product, 'metric-1'),
       visibleRestoredSelectedRange: targetRange,
       authoritativeReadbackRevision:
         product === 'bilig' ? `after-readback-${String(sampleIndex + 1)}` : `readback-${String(sampleIndex + 1)}`,
@@ -285,13 +285,13 @@ function sameCorpusReadback(product: UiResponsivenessSameCorpusProduct, sampleIn
   }
 }
 
-function sameCorpusVisibleReadback(value: string) {
+function sameCorpusVisibleReadback(product: 'bilig' | 'google-sheets', value: string) {
   return {
     value,
     formula: null,
     fillColor: null,
     visibleText: value,
-    source: 'visible-formula-bar' as const,
+    source: product === 'bilig' ? ('visible-grid-cell' as const) : ('visible-formula-bar' as const),
   }
 }
 

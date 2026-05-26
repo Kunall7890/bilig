@@ -8,7 +8,7 @@ import {
 import { sameCorpusMutationTargetRangeForSample } from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
 import type { UiResponsivenessSameCorpusProduct } from '../ui-responsiveness-same-corpus-scorecard-proof.ts'
 import type { UiResponsivenessSameCorpusMutatingWorkload } from '../ui-responsiveness-same-corpus-workloads.ts'
-import { sameCorpusEditVisibleCellValue } from '../ui-responsiveness-same-corpus-workload-runner.ts'
+import { sameCorpusEditVisibleCellValue, sameCorpusFormulaEditFormula } from '../ui-responsiveness-same-corpus-workload-runner.ts'
 
 describe('same-corpus semantic UI mutation proof validation', () => {
   it('accepts mutation target proof tied to exact workload and sample screenshots', () => {
@@ -459,36 +459,73 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
-  it('requires Bilig fill-format visible proof to come from rendered grid cell pixels', () => {
-    const accepted = validateSameCorpusProductSemanticUiProof(
+  it.each(['edit-visible-cell', 'formula-edit', 'fill-format-change'] as const)(
+    'requires Bilig %s visible proof to come from rendered grid cell pixels',
+    (workload) => {
+      const accepted = validateSameCorpusProductSemanticUiProof(
+        validSemanticProof({
+          selectedRange: sameCorpusMutationTargetRangeForSample(workload, 0),
+          mutationTargetProofs: [0, 1, 2].map((sampleIndex) => mutationTargetProof('bilig', workload, sampleIndex)),
+        }),
+        {
+          workload,
+          sampleCount: 3,
+        },
+      )
+      const rejected = validateSameCorpusProductSemanticUiProof(
+        validSemanticProof({
+          selectedRange: sameCorpusMutationTargetRangeForSample(workload, 0),
+          mutationTargetProofs: [0, 1, 2].map((sampleIndex) =>
+            biligMutationTargetProofWithVisibleSource(workload, sampleIndex, 'visible-formula-bar'),
+          ),
+        }),
+        {
+          workload,
+          sampleCount: 3,
+        },
+      )
+
+      expect(accepted).toMatchObject({
+        acceptedForCurrentScorecard: true,
+        invalidReasons: [],
+      })
+      expect(rejected).toMatchObject({
+        acceptedForCurrentScorecard: false,
+        invalidReasons: expect.arrayContaining([
+          `semantic UI mutation target proof for ${workload} visible render readback did not come from rendered grid cell pixels`,
+        ]),
+      })
+    },
+  )
+
+  it('rejects Bilig formula proof when the rendered grid cell text is stale', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
       validSemanticProof({
-        selectedRange: sameCorpusMutationTargetRangeForSample('fill-format-change', 0),
-        mutationTargetProofs: [0, 1, 2].map((sampleIndex) => fillMutationTargetProof(sampleIndex, 'visible-grid-cell')),
+        selectedRange: sameCorpusMutationTargetRangeForSample('formula-edit', 0),
+        mutationTargetProofs: [0, 1, 2].map((sampleIndex) =>
+          sampleIndex === 0
+            ? Object.assign({}, mutationTargetProof('bilig', 'formula-edit', sampleIndex), {
+                visibleAfter: {
+                  value: 'stale result',
+                  formula: null,
+                  fillColor: null,
+                  visibleText: 'stale result',
+                  source: 'visible-grid-cell' as const,
+                },
+              })
+            : mutationTargetProof('bilig', 'formula-edit', sampleIndex),
+        ),
       }),
       {
-        workload: 'fill-format-change',
-        sampleCount: 3,
-      },
-    )
-    const rejected = validateSameCorpusProductSemanticUiProof(
-      validSemanticProof({
-        selectedRange: sameCorpusMutationTargetRangeForSample('fill-format-change', 0),
-        mutationTargetProofs: [0, 1, 2].map((sampleIndex) => fillMutationTargetProof(sampleIndex, 'visible-formula-bar')),
-      }),
-      {
-        workload: 'fill-format-change',
+        workload: 'formula-edit',
         sampleCount: 3,
       },
     )
 
-    expect(accepted).toMatchObject({
-      acceptedForCurrentScorecard: true,
-      invalidReasons: [],
-    })
-    expect(rejected).toMatchObject({
+    expect(verdict).toMatchObject({
       acceptedForCurrentScorecard: false,
       invalidReasons: expect.arrayContaining([
-        'semantic UI mutation target proof for fill-format-change visible render readback did not come from rendered grid cell pixels',
+        'semantic UI mutation target proof for formula-edit did not prove the rendered formula result',
       ]),
     })
   })
@@ -770,6 +807,7 @@ function mutationTargetProof(
 ): SameCorpusMutationTargetProof {
   const operationStartedAtMs = 1000 + sampleIndex * 100
   const committedTargetProofMs = 40 + sampleIndex
+  const authoritativeSource = product === 'bilig' ? 'bilig-authoritative-range' : 'visible-formula-bar'
   return {
     product,
     sampleIndex,
@@ -778,61 +816,129 @@ function mutationTargetProof(
     postMutationProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs,
     restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs + 80,
     workload,
-    intendedOperation: 'edit-visible-cell',
-    intendedPayload: {
-      kind: 'cell-value',
-      value: sameCorpusEditVisibleCellValue(sampleIndex),
-    },
+    intendedOperation: workload,
+    intendedPayload: mutationTargetIntendedPayload(workload, sampleIndex),
     sheetName: 'WideGrid',
     sheetId: product === 'google-sheets' ? 'gid:12345' : 'sheet-wide-grid',
-    targetRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
+    targetRange: sameCorpusMutationTargetRangeForSample(workload, sampleIndex),
     before: {
-      value: 'metric-1',
+      value: mutationTargetBeforeValue(workload),
       formula: null,
       fillColor: null,
-      visibleText: 'metric-1',
-      source: 'bilig-authoritative-range',
+      visibleText: mutationTargetBeforeValue(workload),
+      source: authoritativeSource,
       capturedRevision: `before-readback-${String(sampleIndex + 1)}`,
     },
-    after: {
-      value: sameCorpusEditVisibleCellValue(sampleIndex),
-      formula: null,
-      fillColor: null,
-      visibleText: sameCorpusEditVisibleCellValue(sampleIndex),
-      source: 'bilig-authoritative-range',
+    after: Object.assign(mutationTargetAfterReadback(workload, sampleIndex), {
+      source: authoritativeSource,
       capturedRevision: authoritativeReadbackRevision(sampleIndex),
       visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex),
-    },
+    }),
     restored: {
-      value: 'metric-1',
+      value: mutationTargetBeforeValue(workload),
       formula: null,
       fillColor: null,
-      visibleText: 'metric-1',
-      source: 'bilig-authoritative-range',
+      visibleText: mutationTargetBeforeValue(workload),
+      source: authoritativeSource,
       capturedRevision: `restored-readback-${String(sampleIndex + 1)}`,
     },
-    visibleAfter: {
-      value: sameCorpusEditVisibleCellValue(sampleIndex),
-      formula: null,
-      fillColor: null,
-      visibleText: sameCorpusEditVisibleCellValue(sampleIndex),
-      source: 'visible-formula-bar',
-    },
-    visibleAfterSelectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
-    visibleRestored: {
-      value: 'metric-1',
-      formula: null,
-      fillColor: null,
-      visibleText: 'metric-1',
-      source: 'visible-formula-bar',
-    },
-    visibleRestoredSelectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
+    visibleAfter: mutationTargetVisibleReadback(product, workload, 'after', sampleIndex),
+    visibleAfterSelectedRange: sameCorpusMutationTargetRangeForSample(workload, sampleIndex),
+    visibleRestored: mutationTargetVisibleReadback(product, workload, 'before', sampleIndex),
+    visibleRestoredSelectedRange: sameCorpusMutationTargetRangeForSample(workload, sampleIndex),
     authoritativeReadbackRevision: authoritativeReadbackRevision(sampleIndex),
     visibleRenderRevision: visibleRenderRevision(sampleIndex),
     targetScreenshots: mutationTargetScreenshots(product, workload, sampleIndex),
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${String(sampleIndex + 1)}-after.png`,
     screenshotSha256: mutationTargetScreenshotSha256(sampleIndex, 'after'),
     undoRestoreStatus: 'verified',
+  }
+}
+
+function biligMutationTargetProofWithVisibleSource(
+  workload: UiResponsivenessSameCorpusMutatingWorkload,
+  sampleIndex: number,
+  source: 'visible-formula-bar' | 'visible-grid-cell',
+): SameCorpusMutationTargetProof {
+  const proof = mutationTargetProof('bilig', workload, sampleIndex)
+  return {
+    ...proof,
+    visibleAfter: { ...proof.visibleAfter, source },
+    visibleRestored: { ...proof.visibleRestored, source },
+  }
+}
+
+function mutationTargetIntendedPayload(
+  workload: UiResponsivenessSameCorpusMutatingWorkload,
+  sampleIndex: number,
+): SameCorpusMutationTargetProof['intendedPayload'] {
+  if (workload === 'formula-edit') {
+    return { kind: 'formula', formula: sameCorpusFormulaEditFormula(sampleIndex) }
+  }
+  if (workload === 'fill-format-change') {
+    const fillColor = fillColorForSample(sampleIndex)
+    return { kind: 'fill-color', expectedFillColor: fillColor, swatchLabel: `swatch-${String(sampleIndex + 1)}` }
+  }
+  return { kind: 'cell-value', value: sameCorpusEditVisibleCellValue(sampleIndex) }
+}
+
+function mutationTargetBeforeValue(workload: UiResponsivenessSameCorpusMutatingWorkload): string {
+  return workload === 'formula-edit' ? '1' : 'metric-1'
+}
+
+function mutationTargetAfterReadback(
+  workload: UiResponsivenessSameCorpusMutatingWorkload,
+  sampleIndex: number,
+): Pick<SameCorpusMutationTargetProof['after'], 'fillColor' | 'formula' | 'value' | 'visibleText'> {
+  if (workload === 'formula-edit') {
+    const value = String(sampleIndex + 2)
+    return {
+      value,
+      formula: sameCorpusFormulaEditFormula(sampleIndex),
+      fillColor: null,
+      visibleText: value,
+    }
+  }
+  if (workload === 'fill-format-change') {
+    return {
+      value: 'metric-1',
+      formula: null,
+      fillColor: fillColorForSample(sampleIndex),
+      visibleText: 'metric-1',
+    }
+  }
+  return {
+    value: sameCorpusEditVisibleCellValue(sampleIndex),
+    formula: null,
+    fillColor: null,
+    visibleText: sameCorpusEditVisibleCellValue(sampleIndex),
+  }
+}
+
+function mutationTargetVisibleReadback(
+  product: UiResponsivenessSameCorpusProduct,
+  workload: UiResponsivenessSameCorpusMutatingWorkload,
+  phase: 'before' | 'after',
+  sampleIndex: number,
+): SameCorpusMutationTargetProof['visibleAfter'] {
+  const source = product === 'bilig' ? 'visible-grid-cell' : 'visible-formula-bar'
+  if (phase === 'before') {
+    const value = mutationTargetBeforeValue(workload)
+    return {
+      value,
+      formula: null,
+      fillColor: null,
+      visibleText: value,
+      source,
+    }
+  }
+  const after = mutationTargetAfterReadback(workload, sampleIndex)
+  return {
+    value: after.value,
+    formula: product === 'bilig' ? null : after.formula,
+    fillColor: after.fillColor,
+    visibleText: after.visibleText,
+    source,
   }
 }
 

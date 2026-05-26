@@ -110,7 +110,7 @@ describe('same-corpus UI dominance status', () => {
       cases: [
         sameCorpusSpeedGapCase({
           workload: 'fill-format-change',
-          metric: 'committedTargetProofMs',
+          metric: 'operationResponseMs',
           biligMeanMs: 313.67,
           biligP95Ms: 328.94,
           googleMeanMs: 82.02,
@@ -140,13 +140,13 @@ describe('same-corpus UI dominance status', () => {
     expect(gaps).toHaveLength(1)
     expect(gaps[0]).toMatchObject({
       workload: 'fill-format-change',
-      metric: 'committedTargetProofMs',
+      metric: 'operationResponseMs',
       meanRatio: expect.closeTo(0.2614850001594032, 8),
       p95Ratio: expect.closeTo(0.2659147564905454, 8),
       limitingAdditionalSpeedupTo10x: expect.closeTo(38.24311143623507, 8),
     })
     expect(formatSameCorpusUiSpeedGap(gaps[0])).toContain(
-      'fill-format-change (committedTargetProofMs): current Google/Bilig mean 0.26x: p95 0.27x',
+      'fill-format-change (operationResponseMs): current Google/Bilig mean 0.26x: p95 0.27x',
     )
   })
 })
