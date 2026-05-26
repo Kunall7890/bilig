@@ -56,7 +56,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     nodeSpreadsheetFormulaEngine,
   } = input.context
   const { headlessSpreadsheetEngineNodeServicesAgents, spreadsheetMcpServerComparison } = input
-  const workpaperPackageSpec = `@bilig/workpaper@${headlessPackageVersion}`
+  const workpaperPackageSpec = '@bilig/workpaper@latest'
   const mcpbReleaseAssetUrl = `https://github.com/proompteng/bilig/releases/download/libraries-v${headlessPackageVersion}/bilig-workpaper.mcpb`
   const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
   const officialRegistryLatestMarkedVersion = '0.86.1'
@@ -444,7 +444,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'Cline MCP Marketplace           | Submitted for maintainer review; issue body refreshed on May 19',
     'The Docker MCP Registry pull request was refreshed on May 19, 2026',
     '`a1ecdd52cda3d54e0254afce129a9012c5027826`',
-    `the PR body\nnow points reviewers at \`@bilig/workpaper@${headlessPackageVersion}\` and \`libraries-v${headlessPackageVersion}\``,
+    `the PR body\nnow points reviewers at \`${workpaperPackageSpec}\` and \`libraries-v${headlessPackageVersion}\``,
     'The Goose MCP catalog pull request was closed on May 19, 2026',
     'Do not resubmit there until maintainers reopen that path',
     'The mcp.so and Cline MCP Marketplace submissions were refreshed on May 19, 2026',
@@ -462,7 +462,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'https://mcprepository.com/proompteng/bilig',
     'MCPRepository search returns a live Bilig page',
     'Live; `smithery mcp add` smoke connected and listed demo workbook sheets',
-    `Live; latest marker currently lags npm (\`${officialRegistryLatestMarkedVersion}\` while \`@bilig/workpaper@${headlessPackageVersion}\` is published)`,
+    `Live; latest marker currently lags npm (\`${officialRegistryLatestMarkedVersion}\` while \`${workpaperPackageSpec}\` is published)`,
     'Live with `Try in Browser`; seven tools indexed with A-grade TDQS',
     'Live in PulseMCP-backed lookup as `Bilig WorkPaper`',
     'https://www.pulsemcp.com/servers?search=bilig&q=bilig',
@@ -475,7 +475,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'A-grade Tool Definition Quality',
     "Glama's source crawl, hosted smoke build, and JSON\nAPI can refresh on different cadences",
     'Latest checked result on May 25, 2026: Live, but the Registry latest marker',
-    `npm latest and packaged \`server.json\` are\n\`@bilig/workpaper@${headlessPackageVersion}\``,
+    `npm latest and packaged \`server.json\` are\n\`${workpaperPackageSpec}\``,
     `official Registry latest-marked server\n\`io.github.proompteng/bilig-workpaper\` is version \`${officialRegistryLatestMarkedVersion}\`, package`,
     `\`@bilig/workpaper\` is version \`${officialRegistryLatestMarkedVersion}\``,
     `entry was updated at\n\`${officialRegistryLatestMarkedUpdatedAt}\``,

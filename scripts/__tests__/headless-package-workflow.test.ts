@@ -33,18 +33,8 @@ describe('headless package workflow', () => {
     const source = readFileSync(resolve(repoRoot, '.github/workflows/headless-package.yml'), 'utf8')
     const greenCiScript = readFileSync(resolve(repoRoot, 'scripts/wait-for-github-ci-green.mjs'), 'utf8')
     const agentDiscoverySource = readFileSync(resolve(repoRoot, 'scripts/sync-agent-discovery-docs.ts'), 'utf8')
+    const staticReferenceSource = readFileSync(resolve(repoRoot, 'scripts/sync-agent-static-references.ts'), 'utf8')
     const mcpDirectoryDoc = readFileSync(resolve(repoRoot, 'docs/mcp-spreadsheet-server-directory.md'), 'utf8')
-    const workpaperPackageJson: unknown = JSON.parse(readFileSync(resolve(repoRoot, 'packages/workpaper/package.json'), 'utf8'))
-    if (
-      typeof workpaperPackageJson !== 'object' ||
-      workpaperPackageJson === null ||
-      !('version' in workpaperPackageJson) ||
-      typeof workpaperPackageJson.version !== 'string'
-    ) {
-      throw new Error('packages/workpaper/package.json must define a string version')
-    }
-    const workpaperVersion = workpaperPackageJson.version
-
     expect(source).toMatch(/['"]packages\/excel-import\/\*\*['"]/)
     expect(source).toMatch(/['"]packages\/workbook\/\*\*['"]/)
     expect(source).toMatch(/['"]packages\/bilig\/\*\*['"]/)
@@ -102,10 +92,11 @@ describe('headless package workflow', () => {
     expect(source).toContain('SKIP_UNPROVISIONED_NPM_PACKAGES')
     expect(source).toContain('bun scripts/sync-runtime-release-metadata.ts')
     expect(source).toContain('bun scripts/sync-agent-discovery-docs.ts')
-    expect(agentDiscoverySource).toContain('syncVersionedStaticReferenceLine')
-    expect(agentDiscoverySource).toContain("^(\\\\s*)'@bilig/workpaper@${stableSemverPattern}'")
+    expect(agentDiscoverySource).toContain('syncVersionedStaticReferences')
+    expect(staticReferenceSource).toContain('syncVersionedStaticReferenceLine')
+    expect(staticReferenceSource).toContain("^(\\\\s*)'@bilig/workpaper@${stableSemverPattern}'")
     expect(agentDiscoverySource).not.toContain('replace(new RegExp(`@bilig/headless@${stableSemverPattern}`')
-    expect(mcpDirectoryDoc).toContain(`npm exec --package @bilig/workpaper@${workpaperVersion} -- bilig-workpaper-mcp`)
+    expect(mcpDirectoryDoc).toContain('npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp')
     expect(source).toContain('.release-please-manifest.json')
     expect(source).toContain('skills/bilig-workpaper/SKILL.md')
     expect(source).toContain('runner needs runtime d.ts outputs rebuilt after the version sync')

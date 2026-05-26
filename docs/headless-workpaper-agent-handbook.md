@@ -27,7 +27,7 @@ logic that can run through @bilig/headless. If it is, use WorkPaper state as the
 source of truth.
 
 If you have an MCP client, start with:
-npm exec --package @bilig/workpaper@0.108.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
 If you are writing Node or TypeScript, import @bilig/headless directly. Your
 minimum proof is: read the relevant range, write one small input or formula,
@@ -99,7 +99,7 @@ File-backed mode is the useful production shape because it gives the agent real
 state instead of the built-in demo workbook:
 
 ```sh
-npm exec --package @bilig/workpaper@0.108.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 Expose the same command from an MCP client config:
@@ -112,7 +112,7 @@ Expose the same command from an MCP client config:
       "args": [
         "exec",
         "--package",
-        "@bilig/workpaper@0.108.0",
+        "@bilig/workpaper@latest",
         "--",
         "bilig-workpaper-mcp",
         "--workpaper",
@@ -177,7 +177,7 @@ Use the package-owned challenge when the agent needs to prove the runtime before
 adopting it:
 
 ```sh
-npm exec --package @bilig/workpaper@0.108.0 -- bilig-agent-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge
 ```
 
 A good run prints `verified: true`. That means one input changed, a dependent

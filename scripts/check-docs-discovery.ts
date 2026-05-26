@@ -77,7 +77,7 @@ const {
   evaluateExcelFormulasInNodeTypescript,
 } = docsDiscoveryContext
 const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
-const workpaperPackageSpec = `@bilig/workpaper@${headlessPackageVersion}`
+const workpaperPackageSpec = '@bilig/workpaper@latest'
 const fileBackedMcpArgsNeedles = [
   `"--package",\n      "${workpaperPackageSpec}",\n      "--",\n      "bilig-workpaper-mcp",\n      "--workpaper",\n      "./pricing.workpaper.json",\n      "--init-demo-workpaper",\n      "--writable"`,
   `"--package",\n        "${workpaperPackageSpec}",\n        "--",\n        "bilig-workpaper-mcp",\n        "--workpaper",\n        "./pricing.workpaper.json",\n        "--init-demo-workpaper",\n        "--writable"`,

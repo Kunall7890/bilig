@@ -13,13 +13,11 @@ const remoteMcpServerCard = 'https://bilig.proompteng.ai/.well-known/mcp/server-
 const repositoryUrl = 'https://github.com/proompteng/bilig'
 const skillName = 'bilig-workpaper'
 const headlessPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'))
-const workpaperPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'workpaper', 'package.json'), 'utf8'))
 const workbookPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'workbook', 'package.json'), 'utf8'))
-const unscopedWorkpaperPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'bilig', 'package.json'), 'utf8'))
 const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
-const workpaperPackageSpec = `@bilig/workpaper@${workpaperPackageVersion}`
-const workbookPackageSpec = `@bilig/workbook@${workbookPackageVersion}`
-const unscopedWorkpaperPackageSpec = `bilig-workpaper@${unscopedWorkpaperPackageVersion}`
+const workpaperPackageSpec = '@bilig/workpaper@latest'
+const workbookPackageSpec = '@bilig/workbook@latest'
+const unscopedWorkpaperPackageSpec = 'bilig-workpaper@latest'
 const mcpbReleaseTag = `libraries-v${headlessPackageVersion}`
 const mcpbReleaseAssetUrl = `${repositoryUrl}/releases/download/${mcpbReleaseTag}/bilig-workpaper.mcpb`
 const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
@@ -426,8 +424,8 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 const workpaperPackageAgentInstructions = headlessPackageAgentInstructions
   .replace('# @bilig/headless agent notes', '# bilig-workpaper agent notes')
   .replace('agent inspecting `node_modules/@bilig/headless`', 'agent inspecting `node_modules/bilig-workpaper`')
-  .replace(/@bilig\/headless/g, 'bilig-workpaper')
   .replaceAll(headlessPackageSpec, unscopedWorkpaperPackageSpec)
+  .replace(/@bilig\/headless/g, 'bilig-workpaper')
 
 const workpaperPackageSkillDocument = skillDocument
   .replace(/@bilig\/workpaper/g, 'bilig-workpaper')

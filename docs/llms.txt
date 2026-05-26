@@ -526,7 +526,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - runnable AI SDK streamText WorkPaper tool smoke:
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/ai-sdk-stream-text-tool-smoke.ts
 - low-code agent workflow formula readback:
-  npm exec --package @bilig/workpaper@0.108.0 -- bilig-n8n-formula-server --port 4321
+  npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321
   n8n community node package: @bilig/n8n-nodes-workpaper
   https://www.npmjs.com/package/@bilig/n8n-nodes-workpaper
   https://github.com/proompteng/bilig/tree/main/integrations/n8n-nodes-workpaper

@@ -38,10 +38,10 @@ Do not claim success from a write call alone. The proof is computed readback plu
 ## Fast Commands
 
 ```sh
-npm exec --package @bilig/workpaper@0.108.0 -- bilig-agent-challenge
-npm exec --package @bilig/workpaper@0.108.0 -- bilig-mcp-challenge
-npm exec --package @bilig/workpaper@0.108.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
-npm exec --package @bilig/workpaper@0.108.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Claude Desktop users can install the released MCPB bundle from:
