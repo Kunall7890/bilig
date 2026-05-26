@@ -359,8 +359,13 @@ function targetScreenshot(
 ): NonNullable<SameCorpusMutationTargetProof['targetScreenshots']>['before'] {
   return {
     phase,
+    product,
     scope: 'target-cell',
+    sampleIndex,
+    sheetId: productSemanticSheetId(product),
+    sheetName: 'WideGrid',
     targetRange: 'A1',
+    workload: 'edit-visible-cell',
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/${product}-sample-${String(sampleIndex + 1)}-${phase}.png`,
     screenshotSha256: targetScreenshotSha256(sampleIndex, phase),
   }

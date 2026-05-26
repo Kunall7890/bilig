@@ -113,8 +113,10 @@ export async function captureSameCorpusMutationTargetPhaseScreenshot(args: {
     phase: args.phase,
     product: args.product,
     relativeScreenshotPath: repoRelativePath(screenshotPath),
+    sampleIndex: args.sampleIndex,
     screenshotPath,
     target: args.target,
+    workload: args.workload,
   })
 }
 

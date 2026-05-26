@@ -11,6 +11,7 @@ import type {
 import { sameCorpusScenarioCaseFields } from '../gen-ui-responsiveness-live-browser-scorecard.ts'
 import { buildBiligDominanceScorecard } from '../gen-bilig-dominance-scorecard.ts'
 import {
+  sameCorpusUiRenderProofContractVersion,
   validateSameCorpusProductPixelGridProof,
   type SameCorpusPixelGridProof,
   type SameCorpusProductPixelGridProof,
@@ -162,7 +163,7 @@ describe('bilig dominance prompt-to-artifact audit', () => {
         `live same-corpus UI 10x cases: 0/${String(requiredUiResponsivenessSameCorpusWorkloads.length)}`,
         `live same-corpus UI required workloads: ${requiredUiSameCorpusWorkloadList}`,
         `live same-corpus UI missing required workloads: ${requiredUiSameCorpusWorkloadList}`,
-        'live same-corpus UI render proof contract: same-corpus-ui-v7',
+        `live same-corpus UI render proof contract: ${sameCorpusUiRenderProofContractVersion}`,
         `live same-corpus UI strict rendered-grid proof cases: 0/${String(requiredUiResponsivenessSameCorpusWorkloads.length)}`,
         `live same-corpus UI visible operation-response proof cases: 0/${String(requiredUiResponsivenessSameCorpusWorkloads.length)}`,
         `live same-corpus UI Bilig authoritative render proof cases: 0/${String(requiredUiResponsivenessSameCorpusWorkloads.length)}`,

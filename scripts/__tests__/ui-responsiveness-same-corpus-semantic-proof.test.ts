@@ -105,6 +105,44 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('rejects mutation target screenshots whose explicit identity drifts from the sample', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 && proof.targetScreenshots
+            ? Object.assign({}, proof, {
+                targetScreenshots: {
+                  ...proof.targetScreenshots,
+                  after: {
+                    ...proof.targetScreenshots.after,
+                    product: 'google-sheets',
+                    sampleIndex: 2,
+                    sheetId: 'other-sheet-id',
+                    sheetName: 'OtherSheet',
+                    workload: 'formula-edit',
+                  },
+                },
+              })
+            : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell has mismatched after screenshot product',
+        'semantic UI mutation target proof for edit-visible-cell has mismatched after screenshot workload',
+        'semantic UI mutation target proof for edit-visible-cell has mismatched after screenshot sample',
+        'semantic UI mutation target proof for edit-visible-cell has mismatched after screenshot sheet identity',
+      ]),
+    })
+  })
+
   it('rejects rendered selection text that merely contains the target range', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validSemanticProof({
@@ -531,8 +569,13 @@ function mutationTargetScreenshot(
 ): NonNullable<SameCorpusMutationTargetProof['targetScreenshots']>['before'] {
   return {
     phase,
+    product,
     scope: 'target-cell',
+    sampleIndex,
+    sheetId: 'sheet-wide-grid',
+    sheetName: 'WideGrid',
     targetRange: 'A1',
+    workload,
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${String(sampleIndex + 1)}-${phase}.png`,
     screenshotSha256: mutationTargetScreenshotSha256(sampleIndex, phase),
   }

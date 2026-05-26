@@ -72,8 +72,13 @@ function parseSameCorpusMutationTargetScreenshotProof(
 ): NonNullable<SameCorpusMutationTargetProof['targetScreenshots']>['before'] {
   return {
     phase: parseSameCorpusMutationTargetScreenshotPhase(stringField(value, 'phase')),
+    product: parseSameCorpusProduct(stringField(value, 'product')),
     scope: parseSameCorpusMutationTargetScreenshotScope(stringField(value, 'scope')),
+    sampleIndex: numberField(value, 'sampleIndex'),
+    sheetId: Object.hasOwn(value, 'sheetId') ? nullableStringField(value, 'sheetId') : null,
+    sheetName: stringField(value, 'sheetName'),
     targetRange: stringField(value, 'targetRange'),
+    workload: parseSameCorpusWorkload(stringField(value, 'workload')),
     screenshotPath: nullableStringField(value, 'screenshotPath'),
     screenshotSha256: nullableStringField(value, 'screenshotSha256'),
   }

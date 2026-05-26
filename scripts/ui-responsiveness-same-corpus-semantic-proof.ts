@@ -65,8 +65,13 @@ export interface SameCorpusMutationTargetScreenshotProofSet {
 
 export interface SameCorpusMutationTargetScreenshotProof {
   readonly phase: 'before' | 'after' | 'restored'
+  readonly product: UiResponsivenessSameCorpusProduct
   readonly scope: 'target-cell' | 'visible-grid-fallback'
+  readonly sampleIndex: number
+  readonly sheetId: string | null
+  readonly sheetName: string
   readonly targetRange: string
+  readonly workload: UiResponsivenessSameCorpusWorkload
   readonly screenshotPath: string | null
   readonly screenshotSha256: string | null
 }
@@ -404,6 +409,18 @@ function sameCorpusMutationTargetScreenshotSetInvalidReasons(
     const screenshot = screenshots[phase]
     if (screenshot.phase !== phase) {
       invalidReasons.push(`semantic UI mutation target proof for ${workload} has mismatched ${phase} screenshot phase`)
+    }
+    if (screenshot.product !== product) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} has mismatched ${phase} screenshot product`)
+    }
+    if (screenshot.workload !== workload) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} has mismatched ${phase} screenshot workload`)
+    }
+    if (screenshot.sampleIndex !== sample.sampleIndex) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} has mismatched ${phase} screenshot sample`)
+    }
+    if (screenshot.sheetName !== sample.sheetName || screenshot.sheetId !== sample.sheetId) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} has mismatched ${phase} screenshot sheet identity`)
     }
     if (screenshot.scope !== 'target-cell') {
       invalidReasons.push(`semantic UI mutation target proof for ${workload} ${phase} screenshot is not target-cell scoped`)

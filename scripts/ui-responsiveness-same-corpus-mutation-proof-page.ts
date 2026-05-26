@@ -33,11 +33,6 @@ export interface SameCorpusMutationTargetRevisionProof {
   readonly visibleRenderRevision: string | null
 }
 
-export interface SameCorpusMutationTargetScreenshotProof {
-  readonly screenshotPath: string | null
-  readonly screenshotSha256: string | null
-}
-
 export async function readSameCorpusMutationTargetSelection(args: {
   readonly page: Page
   readonly product: UiResponsivenessSameCorpusProduct
@@ -147,17 +142,24 @@ export async function readSameCorpusVisibleMutationTargetReadback(args: {
 
 export async function captureSameCorpusMutationTargetScreenshotProof(args: {
   readonly page: Page
+  readonly sampleIndex: number
   readonly product: UiResponsivenessSameCorpusProduct
   readonly target: SameCorpusMutationTargetSelection
   readonly phase: SameCorpusMutationTargetScreenshotProof['phase']
   readonly screenshotPath: string
   readonly relativeScreenshotPath: string
+  readonly workload: UiResponsivenessSameCorpusMutatingWorkload
 }): Promise<SameCorpusMutationTargetScreenshotProof> {
   const screenshot = await captureMutationTargetScreenshot(args.page, args.product, args.target, args.screenshotPath)
   return {
     phase: args.phase,
+    product: args.product,
     scope: screenshot.scope,
+    sampleIndex: args.sampleIndex,
+    sheetId: args.target.sheetId,
+    sheetName: args.target.sheetName,
     targetRange: args.target.targetRange,
+    workload: args.workload,
     screenshotPath: screenshot.captured ? args.relativeScreenshotPath : null,
     screenshotSha256: screenshot.buffer ? screenshotBufferSha256(screenshot.buffer) : null,
   }

@@ -45,7 +45,7 @@
           "direct live browser timing passed: true",
           "same-corpus capture kind: same-corpus-browser-capture",
           "same-corpus UI 10x cases: 0/9",
-          "same-corpus render proof contract: same-corpus-ui-v7",
+          "same-corpus render proof contract: same-corpus-ui-v8",
           "same-corpus first-class scenario summary fields: 9/9",
           "same-corpus strict rendered-grid proof cases: 9/9",
           "same-corpus visible operation-response proof cases: 9/9",
@@ -212,7 +212,7 @@
         "evidence": [
           "live browser vendors: google-sheets, microsoft-excel-web",
           "headed browser contracts passed: true",
-          "same-corpus render proof contract: same-corpus-ui-v7",
+          "same-corpus render proof contract: same-corpus-ui-v8",
           "same-corpus first-class scenario summary fields: 9/9",
           "same-corpus strict rendered-grid proof cases: 9/9",
           "same-corpus visible operation-response proof cases: 9/9",
@@ -714,7 +714,7 @@
         "live incumbent browser timing scorecard passes: true",
         "same-corpus UI 10x proof captured: true",
         "same-corpus UI 10x cases: 0/9",
-        "same-corpus UI render proof contract: same-corpus-ui-v7",
+        "same-corpus UI render proof contract: same-corpus-ui-v8",
         "same-corpus UI first-class scenario summary fields: 9/9",
         "same-corpus UI strict rendered-grid proof cases: 9/9",
         "same-corpus UI visible operation-response proof cases: 9/9",
@@ -731,8 +731,8 @@
         "same-corpus UI 10x speed gap: jump-deep-row (operationResponseMs): current Google/Bilig mean 1.06x: p95 1.15x: needs 9.41x additional Bilig speedup to satisfy 10x mean+p95",
         "same-corpus UI 10x speed gap: wide-sheet-navigation (scrollEventResponseMs): current Google/Bilig mean 2.20x: p95 2.31x: needs 4.55x additional Bilig speedup to satisfy 10x mean+p95",
         "same-corpus UI 10x speed gap: select-cell (operationResponseMs): current Google/Bilig mean 3.11x: p95 3.18x: needs 3.22x additional Bilig speedup to satisfy 10x mean+p95",
-        "google-sheets: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 130.88495899999998ms and postScrollFrameMs.p95 10ms (3 samples, public-comment-only)",
-        "microsoft-excel-web: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 101.63991700000042ms and postScrollFrameMs.p95 10ms (3 samples, public-office-web-viewer)",
+        "google-sheets: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 147.7241670000003ms and postScrollFrameMs.p95 9.199999999999818ms (3 samples, public-comment-only)",
+        "microsoft-excel-web: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 99.7378749999989ms and postScrollFrameMs.p95 9.300000000000182ms (3 samples, public-office-web-viewer)",
         "headedWide250kVisibleEditCommit: mutationToVisibleMs.p95 budget 50ms on 250000 materialized cells via pnpm test:browser:full"
       ],
       "evidenceArtifacts": [

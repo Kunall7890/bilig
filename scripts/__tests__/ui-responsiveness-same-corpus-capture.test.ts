@@ -1016,6 +1016,41 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     )
   })
 
+  it('rejects mutation target screenshots whose embedded identity drifts from the timed sample', () => {
+    const proof = buildCaptureScenarioProof({
+      workload: 'edit-visible-cell',
+      bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'edit-visible-cell'),
+      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export', 'edit-visible-cell'),
+      visualProofs: [
+        sameCorpusVisualProofWithMutationProofs(
+          'bilig',
+          'typegpu-visible-canvas',
+          'same-corpus-wide-mixed-250k-edit-visible-cell',
+          'edit-visible-cell',
+          driftMutationTargetScreenshotIdentity,
+        ),
+      ],
+    })
+
+    expect(proof.semanticUiProof).toMatchObject({
+      captured: false,
+      missingProducts: ['bilig', 'google-sheets'],
+    })
+    expect(proof.semanticUiProof.productVerdicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          product: 'bilig',
+          invalidReasons: expect.arrayContaining([
+            'semantic UI mutation target proof for edit-visible-cell has mismatched before screenshot product',
+            'semantic UI mutation target proof for edit-visible-cell has mismatched before screenshot workload',
+            'semantic UI mutation target proof for edit-visible-cell has mismatched before screenshot sample',
+            'semantic UI mutation target proof for edit-visible-cell has mismatched before screenshot sheet identity',
+          ]),
+        }),
+      ]),
+    )
+  })
+
   it('normalizes same-corpus mutation target selections to an explicit cell range', () => {
     expect(normalizeSameCorpusMutationTargetSelection('WideGrid!$C$5:$D$7', 'WideGrid')).toEqual({
       endAddress: 'D7',
@@ -1084,7 +1119,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       artifactGenerator: 'scripts/capture-ui-responsiveness-same-corpus.ts',
       biligAuthoritativeRenderProofCaseCount: 1,
       caseCount: 1,
-      contractVersion: 'same-corpus-ui-v7',
+      contractVersion: 'same-corpus-ui-v8',
       currentContractEvidenceComplete: false,
       googleSheetsTenXRequirementSatisfied: false,
       requiredProducts: ['bilig', 'google-sheets'],
@@ -1681,7 +1716,7 @@ function sameCorpusVisualProof(
               'devicePixelRatio=2',
               'expectedPixelWidth=1440',
               'expectedPixelHeight=900',
-              'contractVersion=same-corpus-ui-v7',
+              'contractVersion=same-corpus-ui-v8',
               'gridAuthoritativeRevision=rev-3',
               'gridLocalRevision=rev-local-2',
               'gridProjectedRevision=rev-3',
@@ -1845,8 +1880,13 @@ function sameCorpusMutationTargetScreenshot(
 ): NonNullable<SameCorpusMutationTargetProof['targetScreenshots']>['before'] {
   return {
     phase,
+    product,
     scope: 'target-cell',
+    sampleIndex,
+    sheetId: sameCorpusFixtureSheetId(product),
+    sheetName: 'WideGrid',
     targetRange: 'A1',
+    workload,
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-${phase}.png`,
     screenshotSha256: sameCorpusMutationTargetScreenshotSha256(sampleIndex, phase),
   }
@@ -1962,6 +2002,26 @@ function moveMutationTargetAwayFromRenderedSelection(proof: SameCorpusMutationTa
   return {
     ...proof,
     targetRange: 'B2',
+  }
+}
+
+function driftMutationTargetScreenshotIdentity(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  if (proof.sampleIndex !== 0 || !proof.targetScreenshots) {
+    return proof
+  }
+  return {
+    ...proof,
+    targetScreenshots: {
+      ...proof.targetScreenshots,
+      before: {
+        ...proof.targetScreenshots.before,
+        product: 'google-sheets',
+        sampleIndex: proof.sampleIndex + 1,
+        sheetId: 'gid:drifted',
+        sheetName: 'DriftedSheet',
+        workload: 'formula-edit',
+      },
+    },
   }
 }
 

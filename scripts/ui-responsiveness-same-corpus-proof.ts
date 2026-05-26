@@ -25,7 +25,7 @@ import type {
 import { uiSameCorpusWorkloadMutatesWorkbook, type UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
-export const sameCorpusUiRenderProofContractVersion = 'same-corpus-ui-v7'
+export const sameCorpusUiRenderProofContractVersion = 'same-corpus-ui-v8'
 
 export {
   validateSameCorpusProductSemanticUiProof,

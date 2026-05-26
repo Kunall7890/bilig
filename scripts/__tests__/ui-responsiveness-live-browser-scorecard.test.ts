@@ -75,7 +75,7 @@ describe('UI responsiveness live browser scorecard', () => {
     )
     expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(0)
     expect(scorecard.sameCorpusProof.runManifest).toMatchObject({
-      contractVersion: 'same-corpus-ui-v7',
+      contractVersion: 'same-corpus-ui-v8',
       caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       scenarioSummaryFieldCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
@@ -167,7 +167,7 @@ describe('UI responsiveness live browser scorecard', () => {
       tenXMeanAndP95CaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       coveredCorpusCaseIds: ['wide-mixed-250k'],
       runManifest: {
-        contractVersion: 'same-corpus-ui-v7',
+        contractVersion: 'same-corpus-ui-v8',
         requiredProducts: ['bilig', 'google-sheets'],
         requiredWorkloads: requiredUiResponsivenessSameCorpusWorkloads,
         capturedWorkloads: requiredUiResponsivenessSameCorpusWorkloads,
@@ -1122,7 +1122,7 @@ function sameCorpusScenarioProof(
         'devicePixelRatio=2',
         'expectedPixelWidth=1440',
         'expectedPixelHeight=900',
-        'contractVersion=same-corpus-ui-v7',
+        'contractVersion=same-corpus-ui-v8',
         'gridAuthoritativeRevision=rev-3',
         'gridLocalRevision=rev-local-2',
         'gridProjectedRevision=rev-3',
@@ -1305,8 +1305,13 @@ function sameCorpusMutationTargetScreenshot(
 ) {
   return {
     phase,
+    product,
     scope: 'target-cell' as const,
+    sampleIndex,
+    sheetId: sameCorpusFixtureSheetId(product),
+    sheetName: 'WideGrid',
     targetRange: 'A1',
+    workload,
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-${phase}.png`,
     screenshotSha256: sameCorpusMutationTargetScreenshotSha256(sampleIndex, phase),
   }
