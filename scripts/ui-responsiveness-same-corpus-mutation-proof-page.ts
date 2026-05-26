@@ -156,6 +156,7 @@ export async function readSameCorpusVisibleMutationTargetReadback(args: {
     if (targetCellReadback) {
       return targetCellReadback
     }
+    return missingSameCorpusVisibleTargetCellReadback()
   }
   const formulaBarText = await readVisibleFormulaBarText(args.page, args.product)
   const fillColor = await readSelectedFillColor(args.page, args.product)
@@ -166,6 +167,16 @@ export async function readSameCorpusVisibleMutationTargetReadback(args: {
     fillColor,
     visibleText: text,
     source: 'visible-formula-bar',
+  }
+}
+
+function missingSameCorpusVisibleTargetCellReadback(): SameCorpusMutationTargetReadback {
+  return {
+    value: null,
+    formula: null,
+    fillColor: null,
+    visibleText: null,
+    source: 'unknown',
   }
 }
 

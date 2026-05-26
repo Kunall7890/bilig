@@ -1,8 +1,12 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it } from 'vitest'
+import type { Page } from '@playwright/test'
 
-import { readSameCorpusVisibleTargetCellReadbackFromPage } from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
+import {
+  readSameCorpusVisibleMutationTargetReadback,
+  readSameCorpusVisibleTargetCellReadbackFromPage,
+} from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
 
 describe('same-corpus mutation target page proof helpers', () => {
   afterEach(() => {
@@ -80,7 +84,48 @@ describe('same-corpus mutation target page proof helpers', () => {
       visibleText: null,
     })
   })
+
+  it('does not fall back to formula-bar chrome when external target-cell evidence is absent', async () => {
+    const page = fakePageWithoutTargetBox()
+
+    await expect(
+      readSameCorpusVisibleMutationTargetReadback({
+        page,
+        product: 'google-sheets',
+        target: {
+          endAddress: 'C5',
+          sheetId: 'sheet-id',
+          sheetName: 'Sheet1',
+          startAddress: 'C5',
+          targetRange: 'C5',
+        },
+      }),
+    ).resolves.toEqual({
+      fillColor: null,
+      formula: null,
+      source: 'unknown',
+      value: null,
+      visibleText: null,
+    })
+  })
 })
+
+function fakePageWithoutTargetBox(): Page {
+  // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- Unit test only exercises this narrow no-target-box page surface.
+  return {
+    frames: () => [],
+    locator: () => ({
+      boundingBox: async () => null,
+      count: async () => 0,
+      first() {
+        return this
+      },
+    }),
+    evaluate: async () => {
+      throw new Error('Formula bar fallback must not be used for external target-cell proof')
+    },
+  } as unknown as Page
+}
 
 function setRect(
   element: HTMLElement,
