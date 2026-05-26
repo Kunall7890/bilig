@@ -744,6 +744,9 @@ removing ref helper functions from the public result. The returned run
 description is frozen before it crosses the agent boundary.
 `checkWorkbookRunResultDescription` validates persisted run-result descriptions
 with stable path issues before a sync event or later agent treats them as proof.
+For persisted command no-op proof, the checker requires empty
+`previewOps`/`appliedOps`, matching receipt `commandKind` and `commandDigest`,
+matching `effect.kind`, and full `effect.op` data for low-level `op` commands.
 `isWorkbookRunResultDescription` is the boolean guard over the same boundary.
 The published run-result JSON schema mirrors those proof fields, so
 non-TypeScript agents do not have to treat apply or undo proof as opaque blobs.
@@ -828,7 +831,9 @@ or command-bound no-op proof with `source`, `evidence`, `opCount: 0`,
 commands must also prove resolved concrete refs, and low-level `op` commands
 must prove the full planned op, not only the op kind. Range refs must match the
 planned range exactly, and symbolic refs must materialize to concrete ranges
-before their ops are accepted.
+before their ops are accepted. The persisted run-result description checker
+keeps that proof inspectable by rejecting no-op descriptions whose proof fields
+do not match the enclosing command receipt.
 Strict runs also require
 mutating plans to declare checks before `adapter.apply` is called, require
 `baseRevision` and `revision` on apply proof, fail closed on

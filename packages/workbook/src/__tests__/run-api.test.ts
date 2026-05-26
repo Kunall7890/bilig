@@ -771,6 +771,118 @@ describe('@bilig/workbook run api', () => {
     })
   })
 
+  it('requires run-result description no-op proof to stay bound to the receipt', () => {
+    const mutationOp = { kind: 'setCellValue', sheetId: 'sheet-1', row: 0, col: 0, value: 12 }
+
+    expect(
+      checkWorkbookRunResultDescription({
+        status: 'done',
+        apply: {
+          matched: true,
+          commandReceipts: [
+            {
+              commandIndex: 0,
+              commandKind: 'writeValue',
+              commandDigest: 'bilig-command-v1:actual',
+              previewOps: [{ ...mutationOp }],
+              appliedOps: [{ ...mutationOp }],
+              noop: {
+                reason: 'already_satisfied',
+                proof: {
+                  source: 'test',
+                  evidence: 'adapter_zero_ops',
+                  commandKind: 'format',
+                  commandDigest: 'bilig-command-v1:wrong',
+                  opCount: 0,
+                  effect: {
+                    kind: 'format',
+                    numberFormat: '0.00',
+                  },
+                },
+              },
+            },
+          ],
+        },
+        changed: [],
+        checks: [],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_field',
+          path: 'apply.commandReceipts[0].noop.proof.commandKind',
+          message: 'Workbook run result description apply.commandReceipts[0].noop.proof.commandKind must match receipt commandKind',
+        },
+        {
+          code: 'invalid_field',
+          path: 'apply.commandReceipts[0].noop.proof.commandDigest',
+          message: 'Workbook run result description apply.commandReceipts[0].noop.proof.commandDigest must match receipt commandDigest',
+        },
+        {
+          code: 'invalid_field',
+          path: 'apply.commandReceipts[0].noop.proof.effect.kind',
+          message: 'Workbook run result description apply.commandReceipts[0].noop.proof.effect.kind must match receipt commandKind',
+        },
+        {
+          code: 'invalid_field',
+          path: 'apply.commandReceipts[0].previewOps',
+          message: 'Workbook run result description apply.commandReceipts[0].previewOps must be empty when noop is present',
+        },
+        {
+          code: 'invalid_field',
+          path: 'apply.commandReceipts[0].appliedOps',
+          message: 'Workbook run result description apply.commandReceipts[0].appliedOps must be empty when noop is present',
+        },
+      ],
+    })
+  })
+
+  it('requires low-level no-op descriptions to preserve full op effect data', () => {
+    expect(
+      checkWorkbookRunResultDescription({
+        status: 'done',
+        apply: {
+          matched: true,
+          commandReceipts: [
+            {
+              commandIndex: 0,
+              commandKind: 'op',
+              commandDigest: 'bilig-command-v1:op',
+              previewOps: [],
+              appliedOps: [],
+              noop: {
+                reason: 'already_satisfied',
+                proof: {
+                  source: 'test',
+                  evidence: 'adapter_zero_ops',
+                  commandKind: 'op',
+                  commandDigest: 'bilig-command-v1:op',
+                  opCount: 0,
+                  effect: {
+                    kind: 'op',
+                    opKind: 'setCellValue',
+                  },
+                },
+              },
+            },
+          ],
+        },
+        changed: [],
+        checks: [],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'missing_field',
+          path: 'apply.commandReceipts[0].noop.proof.effect.op',
+          message: 'Workbook run result description apply.commandReceipts[0].noop.proof.effect.op is required',
+        },
+      ],
+    })
+  })
+
   it('runs readback-only plans without requiring an apply adapter', async () => {
     const model = defineModel({
       name: 'run-readback-only-model',

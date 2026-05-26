@@ -123,7 +123,10 @@ flowchart LR
     resolved-ref evidence for ref-targeting commands; low-level `op` commands
     must prove the full planned op, not only the op kind
   - run-result descriptions that preserve command-bound no-op proof instead of
-    collapsing already-satisfied commands into unprovable empty receipt data
+    collapsing already-satisfied commands into unprovable empty receipt data,
+    with persisted-description validation that rejects no-op proof detached from
+    the receipt command kind, digest, effect kind, empty-op invariant, or full
+    low-level op effect
   - failed run ledgers that preserve changed summaries and undo metadata after
     runtime apply, but keep `changed: []` when failed apply proof reports no
     applied ops and no undo
