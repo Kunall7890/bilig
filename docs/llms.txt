@@ -40,6 +40,8 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 - Use `@bilig/xlsx-formula-recalc` when XLSX inputs changed in Node and formula
   outputs must be recalculated before returning. Start with this command:
   `npx --package @bilig/xlsx-formula-recalc xlsx-recalc pricing.xlsx --set Inputs!B2=48 --read Summary!B7 --out pricing.recalculated.xlsx --json`.
+- For stale external workbook caches, run the companion-workbook proof:
+  https://proompteng.github.io/bilig/external-workbook-recalc-proof.html
 - Use `@bilig/exceljs-formula-recalc` when an existing ExcelJS workbook needs
   fresh formula results instead of stale cached values.
 - Use `@bilig/workpaper` when the caller needs WorkPaper APIs, agent-tool
@@ -112,6 +114,8 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/xlsx-populate-formula-result-node.html
 - https://proompteng.github.io/bilig/xlsx-recalculation-proof.html
 - https://proompteng.github.io/bilig/xlsx-recalculation-proof.ts
+- https://proompteng.github.io/bilig/external-workbook-recalc-proof.html
+- https://proompteng.github.io/bilig/external-workbook-recalc-proof.ts
 - https://proompteng.github.io/bilig/agent-xlsx-formula-recalculation-without-libreoffice.html
 - https://github.com/proompteng/bilig/tree/main/packages/headless#readme
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper

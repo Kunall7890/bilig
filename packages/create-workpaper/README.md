@@ -13,10 +13,11 @@ The generated starter builds a quote-approval workbook, writes inputs through an
 API-style handler, recalculates formulas, persists JSON, restores the workbook,
 and prints `verified: true`.
 
-After the smoke proof passes, it prints the adoption-feedback URL for concrete
-blockers or integration notes: <https://github.com/proompteng/bilig/discussions/new?category=general>.
-It also prints the GitHub star and release-watch links after verification, so a
-successful evaluator run has an explicit next action without hiding the proof.
+After the smoke proof passes, the output includes the adoption-feedback URL,
+repo star URL, and release-watch URL. Use the star URL as a bookmark only when
+the proof matches your workflow; otherwise open one concrete blocker or
+integration note:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.
 
 Use this when you want to evaluate `@bilig/workpaper` from a blank directory
 without cloning the full monorepo.

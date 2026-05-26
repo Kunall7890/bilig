@@ -318,6 +318,7 @@ Pick the path that matches the thing in your hands:
 | You have...                                                                              | Start with                                                         | You should see                                                                                         |
 | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
 | An `.xlsx` file with stale formula results after editing inputs in Node                  | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)           | A changed input, a recalculated output, and `verified: true` without opening Excel or LibreOffice.     |
+| An `.xlsx` model with stale external-link cache values                                  | [External workbook recalculation proof](docs/external-workbook-recalc-proof.md) | Companion workbook hydration diagnostics, fresh formula readback, and `verified: true`.                |
 | Workbook-shaped business logic that should live in a Node service, test, queue, or route | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md) | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback. |
 | A coding agent, MCP client, or tool host that needs spreadsheet operations               | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)             | An agent contract with read, write, recalc, persist, restore, and a compact proof object.              |
 
@@ -685,6 +686,7 @@ for the operation shape, local smoke command, and Directus boundary.
 | Agent framework or product runtime needs workbook plan/check/proof data           | `npm install @bilig/workbook`                                 | [Workbook agent intent API](docs/workbook-agent-intent-api.md)                          |
 | SheetJS / `xlsx` pipeline returns stale formula values after input edits          | `npm install @bilig/sheetjs-formula-recalc`                   | [SheetJS formula result not updating](docs/sheetjs-formula-result-not-updating-node.md) |
 | Generic XLSX bytes changed in Node; formula outputs must refresh before returning | `npm install @bilig/xlsx-formula-recalc`                      | [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md)        |
+| XLSX formulas depend on another workbook with stale link caches                   | `npm install @bilig/xlsx-formula-recalc`                      | [External workbook recalculation proof](docs/external-workbook-recalc-proof.md)         |
 | Existing ExcelJS workflow needs recalculated values, not stale cached results     | `npm install exceljs @bilig/exceljs-formula-recalc`           | [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md)  |
 | Advanced runtime subpaths, provenance docs, and package-boundary audits           | `npm install @bilig/headless`                                 | [npm provenance and package trust](docs/npm-provenance-package-trust.md)                |
 
@@ -920,9 +922,10 @@ Repository security posture is tracked by
 [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 and uploaded to GitHub code scanning on every `main` update.
 
-## Start Here
+## Deeper Evaluation Paths
 
-Use the shortest path that proves the package against a real job.
+After the first proof in [Start Here](#start-here), use the deeper guide that
+matches the next job.
 
 1. Run the [90-second npm eval](#try-it-in-90-seconds) in a blank project.
 2. Run the flagship
@@ -1350,13 +1353,19 @@ The current demo prints this shape:
     }
   },
   "warnings": [],
-  "verified": true
+  "verified": true,
+  "star": "https://github.com/proompteng/bilig/stargazers",
+  "watchReleases": "https://github.com/proompteng/bilig/subscription",
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
+  "nextStep": "If this XLSX recalculation proof matches your workflow, star or bookmark Bilig; if it almost works, open the concrete workbook blocker."
 }
 ```
 
 The exact output file name can change if you pass your own `--out` path. The
 important checks are `verified: true`, an empty or understood `warnings` array,
-and the recalculated cell value under `reads`.
+and the recalculated cell value under `reads`. The star, release-watch, and
+adoption-blocker links are deliberately after the proof fields so evaluators can
+choose the next action from evidence, not from a launch pitch.
 
 ## Try your workbook
 
@@ -1400,8 +1409,101 @@ and an Excel or LibreOffice oracle test for customer-critical file flows.
 
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [Curlable XLSX recalculation proof](xlsx-recalculation-proof.md)
+- [External workbook recalculation proof](external-workbook-recalc-proof.md)
 - [Agent XLSX recalculation without LibreOffice](agent-xlsx-formula-recalculation-without-libreoffice.md)
 - [Where Bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
+
+---
+
+## External Workbook Recalculation Proof
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/external-workbook-recalc-proof.md
+
+# External workbook recalculation proof in Node.js
+
+Use this when an `.xlsx` model references another workbook and the saved
+external-link cache is stale. The proof builds a model workbook with cached
+external values, builds a companion rates workbook with newer values, binds the
+companion to the exact Excel link target, recalculates formulas, and writes a
+new XLSX without opening Excel, LibreOffice, or a browser.
+
+## Run it in a blank folder
+
+```sh
+mkdir bilig-external-workbook-proof
+cd bilig-external-workbook-proof
+npm init -y >/dev/null
+npm pkg set type=module
+npm install @bilig/xlsx-formula-recalc tsx
+curl -fsSLO https://proompteng.github.io/bilig/external-workbook-recalc-proof.ts
+npx tsx external-workbook-recalc-proof.ts
+```
+
+Expected output includes:
+
+```json
+{
+  "proof": "Bilig refreshed an XLSX external-link cache from a companion workbook, recalculated formulas, and wrote a new XLSX without Excel.",
+  "verified": true,
+  "sum": 180,
+  "lookup": 60,
+  "externalTarget": "file:///bilig-proof/rates.xlsx",
+  "reads": {
+    "Model!C1": {
+      "value": 180
+    },
+    "Model!C2": {
+      "value": 60
+    }
+  },
+  "checks": {
+    "externalWorkbookMatched": true,
+    "refreshedExternalCells": true,
+    "recalculatedExternalSum": true,
+    "recalculatedExternalLookup": true,
+    "outputXlsxWritten": true,
+    "verified": true
+  },
+  "star": "https://github.com/proompteng/bilig/stargazers",
+  "watchReleases": "https://github.com/proompteng/bilig/subscription",
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
+  "nextStep": "If external workbook cache refresh is the XLSX blocker in your service, star or bookmark Bilig; if the matching rules are not enough, open the exact workbook-link blocker."
+}
+```
+
+The script writes inspectable files to
+`bilig-external-workbook-proof-output/`:
+
+- `model-with-stale-external-cache.xlsx`
+- `rates-current.xlsx`
+- `model-recalculated.xlsx`
+
+## What this proves
+
+- a companion XLSX can be supplied to `@bilig/xlsx-formula-recalc`;
+- the companion can be matched to an exact Excel external-link target;
+- stale external cache cells can be refreshed before formula recalculation;
+- formulas that read the external cache can return fresh values in Node;
+- the recalculated workbook can be written as a new XLSX file;
+- hydration diagnostics are visible in JSON instead of hidden behind success.
+
+## What this does not prove
+
+This is not full Excel parity. It does not prove every external-link layout,
+network path, password-protected workbook, volatile formula, data connection,
+pivot cache, macro, or desktop Excel UI behavior. For customer-critical models,
+keep a golden workbook fixture and an Excel, LibreOffice, or Microsoft Graph
+oracle test around the exact files you accept.
+
+## Source
+
+- [downloadable external-workbook proof script](external-workbook-recalc-proof.ts)
+- [package README](https://github.com/proompteng/bilig/tree/main/packages/bilig-xlsx-formula-recalc#readme)
+- [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
+
+If this is the XLSX blocker you need to remove from a backend workflow, star or
+bookmark Bilig so the next Node developer can find the proof:
+<https://github.com/proompteng/bilig/stargazers>.
 
 ---
 

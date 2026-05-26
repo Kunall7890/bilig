@@ -12,7 +12,9 @@ WorkPaper as JSON, restores it, and checks that the restored formula output
 matches the live output.
 
 Expected output includes `verified: true`. After that verification passes, the
-starter prints a repo star/bookmark link so Bilig is easier to find later.
+output includes the repo star URL, release-watch URL, and adoption-feedback URL.
+Use the star URL as a bookmark only when this workflow is relevant, or open a
+concrete blocker if it is not.
 
 Run a local API:
 

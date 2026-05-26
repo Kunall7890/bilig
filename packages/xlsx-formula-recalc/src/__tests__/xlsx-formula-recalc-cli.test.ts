@@ -28,6 +28,10 @@ describe('xlsx-recalc CLI', () => {
       const summary = readCliSummary(stdout)
       expect(summary.mode).toBe('demo')
       expect(summary.verified).toBe(true)
+      expect(summary.star).toBe('https://github.com/proompteng/bilig/stargazers')
+      expect(summary.watchReleases).toBe('https://github.com/proompteng/bilig/subscription')
+      expect(summary.adoptionBlocker).toBe('https://github.com/proompteng/bilig/discussions/new?category=general')
+      expect(summary.nextStep).toContain('XLSX recalculation proof')
       expect(summary.reads['Summary!B2']?.value).toBe(72_000)
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
@@ -157,6 +161,10 @@ interface CliSummary {
     readonly externalWorkbookHydration?: Record<string, unknown>
   }
   readonly verified: boolean
+  readonly star: string
+  readonly watchReleases: string
+  readonly adoptionBlocker: string
+  readonly nextStep: string
 }
 
 function readCliSummary(stdout: string): CliSummary {
@@ -170,13 +178,21 @@ function readCliSummary(stdout: string): CliSummary {
   const warnings = Reflect.get(parsed, 'warnings')
   const diagnostics = Reflect.get(parsed, 'diagnostics')
   const verified = Reflect.get(parsed, 'verified')
+  const star = Reflect.get(parsed, 'star')
+  const watchReleases = Reflect.get(parsed, 'watchReleases')
+  const adoptionBlocker = Reflect.get(parsed, 'adoptionBlocker')
+  const nextStep = Reflect.get(parsed, 'nextStep')
   if (
     typeof mode !== 'string' ||
     typeof externalWorkbooks !== 'number' ||
     typeof reads !== 'object' ||
     reads === null ||
     !Array.isArray(warnings) ||
-    typeof verified !== 'boolean'
+    typeof verified !== 'boolean' ||
+    typeof star !== 'string' ||
+    typeof watchReleases !== 'string' ||
+    typeof adoptionBlocker !== 'string' ||
+    typeof nextStep !== 'string'
   ) {
     throw new Error(`Unexpected CLI summary shape: ${stdout}`)
   }
@@ -188,6 +204,10 @@ function readCliSummary(stdout: string): CliSummary {
     warnings: warnings.filter((warning): warning is string => typeof warning === 'string'),
     ...(parsedDiagnostics ? { diagnostics: parsedDiagnostics } : {}),
     verified,
+    star,
+    watchReleases,
+    adoptionBlocker,
+    nextStep,
   }
 }
 

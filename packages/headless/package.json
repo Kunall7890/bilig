@@ -91,6 +91,7 @@
     "@bilig/core": "workspace:*",
     "@bilig/formula": "workspace:*",
     "@bilig/protocol": "workspace:*",
+    "@bilig/wasm-kernel": "workspace:*",
     "fast-xml-parser": "5.7.3",
     "fflate": "0.3.11",
     "fflate-stream": "npm:fflate@0.8.3",

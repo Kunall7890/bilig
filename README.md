@@ -49,6 +49,7 @@ Pick the path that matches the thing in your hands:
 | You have...                                                                              | Start with                                                         | You should see                                                                                         |
 | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
 | An `.xlsx` file with stale formula results after editing inputs in Node                  | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)           | A changed input, a recalculated output, and `verified: true` without opening Excel or LibreOffice.     |
+| An `.xlsx` model with stale external-link cache values                                  | [External workbook recalculation proof](docs/external-workbook-recalc-proof.md) | Companion workbook hydration diagnostics, fresh formula readback, and `verified: true`.                |
 | Workbook-shaped business logic that should live in a Node service, test, queue, or route | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md) | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback. |
 | A coding agent, MCP client, or tool host that needs spreadsheet operations               | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)             | An agent contract with read, write, recalc, persist, restore, and a compact proof object.              |
 
@@ -416,6 +417,7 @@ for the operation shape, local smoke command, and Directus boundary.
 | Agent framework or product runtime needs workbook plan/check/proof data           | `npm install @bilig/workbook`                                 | [Workbook agent intent API](docs/workbook-agent-intent-api.md)                          |
 | SheetJS / `xlsx` pipeline returns stale formula values after input edits          | `npm install @bilig/sheetjs-formula-recalc`                   | [SheetJS formula result not updating](docs/sheetjs-formula-result-not-updating-node.md) |
 | Generic XLSX bytes changed in Node; formula outputs must refresh before returning | `npm install @bilig/xlsx-formula-recalc`                      | [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md)        |
+| XLSX formulas depend on another workbook with stale link caches                   | `npm install @bilig/xlsx-formula-recalc`                      | [External workbook recalculation proof](docs/external-workbook-recalc-proof.md)         |
 | Existing ExcelJS workflow needs recalculated values, not stale cached results     | `npm install exceljs @bilig/exceljs-formula-recalc`           | [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md)  |
 | Advanced runtime subpaths, provenance docs, and package-boundary audits           | `npm install @bilig/headless`                                 | [npm provenance and package trust](docs/npm-provenance-package-trust.md)                |
 
@@ -651,9 +653,10 @@ Repository security posture is tracked by
 [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 and uploaded to GitHub code scanning on every `main` update.
 
-## Start Here
+## Deeper Evaluation Paths
 
-Use the shortest path that proves the package against a real job.
+After the first proof in [Start Here](#start-here), use the deeper guide that
+matches the next job.
 
 1. Run the [90-second npm eval](#try-it-in-90-seconds) in a blank project.
 2. Run the flagship

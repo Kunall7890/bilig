@@ -250,7 +250,8 @@
               <strong>SheetJS or XLSX inputs changed and formulas are stale?</strong>
               <p>
                 Start with the SheetJS-named package before moving to a full workbook runtime. The bridge example covers SheetJS,
-                xlsx-populate, and ExcelJS with one workbook. This is the highest-traffic entry for file-level formula readback.
+                xlsx-populate, and ExcelJS with one workbook. For external links, use the companion-workbook proof with hydration
+                diagnostics.
               </p>
             </div>
             <pre><code>npx --package @bilig/sheetjs-formula-recalc sheetjs-recalc --demo --json
@@ -288,7 +289,7 @@ npx --package @bilig/sheetjs-formula-recalc sheetjs-recalc pricing.xlsx \
             <a class="path-link" href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">
               <span>xlsx</span>
               <strong><code>npm install @bilig/xlsx-formula-recalc</code></strong>
-              <em>Edit XLSX inputs, recalculate formulas in Node, read proof values, and export the updated workbook.</em>
+              <em>Edit XLSX inputs, refresh companion workbook caches, recalculate formulas, and export the updated workbook.</em>
             </a>
             <a class="path-link" href="./sheetjs-formula-result-not-updating-node.html">
               <span>sheetjs</span>
@@ -907,7 +908,9 @@ $ curl https://bilig.proompteng.ai/mcp -H 'accept: application/json, text/event-
                   >
                 </li>
                 <li><a href="./xlsx-recalculation-proof.html">curlable XLSX recalculation proof</a></li>
+                <li><a href="./external-workbook-recalc-proof.html">external workbook recalculation proof</a></li>
                 <li><a href="./xlsx-recalculation-proof.ts">downloadable proof script</a></li>
+                <li><a href="./external-workbook-recalc-proof.ts">downloadable external-workbook proof script</a></li>
               </ul>
             </div>
 
@@ -972,7 +975,9 @@ $ curl https://bilig.proompteng.ai/mcp -H 'accept: application/json, text/event-
                 <li><a href="./agent-framework-workbook-tools.html">agent framework workbook tool chooser</a></li>
                 <li><a href="./node-spreadsheet-formula-engine.html">Node spreadsheet formula engine</a></li>
                 <li><a href="./xlsx-recalculation-proof.html">curlable XLSX recalculation proof</a></li>
+                <li><a href="./external-workbook-recalc-proof.html">external workbook recalculation proof</a></li>
                 <li><a href="./xlsx-recalculation-proof.ts">downloadable proof script</a></li>
+                <li><a href="./external-workbook-recalc-proof.ts">downloadable external-workbook proof script</a></li>
                 <li><a href="./xlsx-formula-recalculation-node.html">XLSX formula recalculation in Node.js</a></li>
                 <li>
                   <a href="./agent-xlsx-formula-recalculation-without-libreoffice.html"

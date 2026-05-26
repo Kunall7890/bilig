@@ -58,7 +58,27 @@ npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json
 
 That command creates a tiny workbook, changes `Inputs!B2` and `Inputs!B3`,
 recalculates `Summary!B2`, writes `bilig-formula-recalc-demo.xlsx`, and prints
-`verified: true` with the recalculated value.
+a proof object with `verified: true`, the recalculated value, and explicit next
+actions:
+
+```json
+{
+  "reads": {
+    "Summary!B2": {
+      "value": 72000
+    }
+  },
+  "warnings": [],
+  "verified": true,
+  "star": "https://github.com/proompteng/bilig/stargazers",
+  "watchReleases": "https://github.com/proompteng/bilig/subscription",
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
+  "nextStep": "If this XLSX recalculation proof matches your workflow, star or bookmark Bilig; if it almost works, open the concrete workbook blocker."
+}
+```
+
+Keep the proof first: use the star or release-watch links only after the
+recalculated value and warnings match the workflow you are evaluating.
 
 For an existing workbook:
 
@@ -99,6 +119,10 @@ npx --package @bilig/xlsx-formula-recalc xlsx-recalc model.xlsx \
 Ambiguous companion matches fail closed: the command preserves existing
 external-link cache values, emits a warning, and includes hydration diagnostics
 in JSON output.
+
+For a maintained external-workbook proof with companion hydration diagnostics,
+run
+[external workbook recalculation proof in Node.js](https://proompteng.github.io/bilig/external-workbook-recalc-proof.html).
 
 ## API
 

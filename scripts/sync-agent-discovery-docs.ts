@@ -466,6 +466,11 @@ const llmsFullSources = [
     url: `${repositoryUrl}/blob/main/docs/eval-xlsx-recalc.md`,
   },
   {
+    title: 'External Workbook Recalculation Proof',
+    relativePath: 'docs/external-workbook-recalc-proof.md',
+    url: `${repositoryUrl}/blob/main/docs/external-workbook-recalc-proof.md`,
+  },
+  {
     title: 'Evaluate WorkPaper In A Node Service',
     relativePath: 'docs/eval-workpaper-service.md',
     url: `${repositoryUrl}/blob/main/docs/eval-workpaper-service.md`,

@@ -38,13 +38,19 @@ The current demo prints this shape:
     }
   },
   "warnings": [],
-  "verified": true
+  "verified": true,
+  "star": "https://github.com/proompteng/bilig/stargazers",
+  "watchReleases": "https://github.com/proompteng/bilig/subscription",
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
+  "nextStep": "If this XLSX recalculation proof matches your workflow, star or bookmark Bilig; if it almost works, open the concrete workbook blocker."
 }
 ```
 
 The exact output file name can change if you pass your own `--out` path. The
 important checks are `verified: true`, an empty or understood `warnings` array,
-and the recalculated cell value under `reads`.
+and the recalculated cell value under `reads`. The star, release-watch, and
+adoption-blocker links are deliberately after the proof fields so evaluators can
+choose the next action from evidence, not from a launch pitch.
 
 ## Try your workbook
 
@@ -88,5 +94,6 @@ and an Excel or LibreOffice oracle test for customer-critical file flows.
 
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [Curlable XLSX recalculation proof](xlsx-recalculation-proof.md)
+- [External workbook recalculation proof](external-workbook-recalc-proof.md)
 - [Agent XLSX recalculation without LibreOffice](agent-xlsx-formula-recalculation-without-libreoffice.md)
 - [Where Bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
