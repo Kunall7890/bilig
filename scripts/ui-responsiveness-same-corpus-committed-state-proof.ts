@@ -1,13 +1,30 @@
 import { createHash } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
-import type { Page } from '@playwright/test'
 import * as XLSX from 'xlsx'
 
 import type { SameCorpusMutationTargetSelection } from './ui-responsiveness-same-corpus-mutation-proof-page.ts'
 import type { UiResponsivenessSameCorpusProduct } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import type { SameCorpusMutationTargetProof, SameCorpusMutationTargetReadback } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
+
+export interface SameCorpusCommittedStatePage {
+  context(): {
+    readonly request: {
+      get(
+        url: string,
+        options?: { readonly timeout?: number },
+      ): Promise<{
+        body(): Promise<Uint8Array>
+        ok(): boolean
+        status(): number
+        text(): Promise<string>
+      }>
+    }
+  }
+  url(): string
+  waitForTimeout(timeoutMs: number): Promise<void>
+}
 
 export interface SameCorpusMutationTargetCommittedStateProof {
   readonly product: UiResponsivenessSameCorpusProduct
@@ -39,17 +56,59 @@ export interface SameCorpusMutationTargetCommittedStatePhaseProof {
 
 export async function captureSameCorpusCommittedStatePhaseProof(args: {
   readonly expectedReadback: SameCorpusMutationTargetReadback
-  readonly page: Page
+  readonly page: SameCorpusCommittedStatePage
   readonly phase: SameCorpusMutationTargetCommittedStatePhaseProof['phase']
+  readonly pollIntervalMs?: number
   readonly product: UiResponsivenessSameCorpusProduct
   readonly sampleIndex: number
   readonly target: SameCorpusMutationTargetSelection
+  readonly timeoutMs?: number
   readonly workload: UiResponsivenessSameCorpusWorkload
 }): Promise<SameCorpusMutationTargetCommittedStatePhaseProof | null> {
   if (args.product !== 'google-sheets') {
     return null
   }
   const exportUrl = googleSheetsExportUrl(args.page.url())
+  const timeoutMs = Math.max(0, args.timeoutMs ?? 30_000)
+  const pollIntervalMs = Math.max(0, args.pollIntervalMs ?? 500)
+  const maxAttempts = Math.max(1, Math.ceil(timeoutMs / Math.max(1, pollIntervalMs)) + 1)
+  return await captureGoogleSheetsCommittedStatePhaseProofUntilMatched(args, exportUrl, maxAttempts, pollIntervalMs)
+}
+
+async function captureGoogleSheetsCommittedStatePhaseProofUntilMatched(
+  args: Parameters<typeof captureSameCorpusCommittedStatePhaseProof>[0],
+  exportUrl: string,
+  attemptsRemaining: number,
+  pollIntervalMs: number,
+): Promise<SameCorpusMutationTargetCommittedStatePhaseProof> {
+  const proof = await captureGoogleSheetsCommittedStatePhaseProofSnapshot(args, exportUrl)
+  if (sameCorpusCommittedReadbackMatches(args.workload, args.expectedReadback, proof.readback)) {
+    return proof
+  }
+  if (attemptsRemaining <= 1) {
+    throw new Error(
+      `Google Sheets committed-state XLSX export did not match expected ${args.phase} target readback for ${args.workload} ${
+        args.target.targetRange
+      }: expected ${sameCorpusCommittedStateReadbackSummary(args.expectedReadback)}, last export ${sameCorpusCommittedStateReadbackSummary(
+        proof.readback,
+      )}`,
+    )
+  }
+  await args.page.waitForTimeout(pollIntervalMs)
+  return await captureGoogleSheetsCommittedStatePhaseProofUntilMatched(args, exportUrl, attemptsRemaining - 1, pollIntervalMs)
+}
+
+async function captureGoogleSheetsCommittedStatePhaseProofSnapshot(
+  args: {
+    readonly page: SameCorpusCommittedStatePage
+    readonly phase: SameCorpusMutationTargetCommittedStatePhaseProof['phase']
+    readonly product: UiResponsivenessSameCorpusProduct
+    readonly sampleIndex: number
+    readonly target: SameCorpusMutationTargetSelection
+    readonly workload: UiResponsivenessSameCorpusWorkload
+  },
+  exportUrl: string,
+): Promise<SameCorpusMutationTargetCommittedStatePhaseProof> {
   const bytes = await fetchGoogleSheetsXlsxExport(args.page, exportUrl)
   return {
     product: args.product,
@@ -65,6 +124,19 @@ export async function captureSameCorpusCommittedStatePhaseProof(args: {
     workbookSha256: sha256Hex(bytes),
     readback: readGoogleSheetsExportTargetReadback(bytes, args.target),
   }
+}
+
+function sameCorpusCommittedStateReadbackSummary(readback: SameCorpusMutationTargetReadback | null): string {
+  if (!readback) {
+    return 'missing'
+  }
+  return JSON.stringify({
+    fillColor: readback.fillColor,
+    formula: readback.formula,
+    source: readback.source,
+    value: readback.value,
+    visibleText: readback.visibleText,
+  })
 }
 
 export function buildSameCorpusCommittedStateProof(args: {
@@ -271,7 +343,7 @@ function sameCorpusCommittedReadbackMatches(
   return left.value === right.value || left.visibleText === right.visibleText
 }
 
-async function fetchGoogleSheetsXlsxExport(page: Page, exportUrl: string): Promise<Uint8Array> {
+async function fetchGoogleSheetsXlsxExport(page: SameCorpusCommittedStatePage, exportUrl: string): Promise<Uint8Array> {
   const response = await page.context().request.get(exportUrl, { timeout: 60_000 })
   if (!response.ok()) {
     const bodySnippet = (await response.text().catch(() => '')).replace(/\s+/g, ' ').trim().slice(0, 300)
