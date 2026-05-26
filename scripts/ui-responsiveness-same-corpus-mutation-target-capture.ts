@@ -21,8 +21,10 @@ import type {
 import { readSameCorpusVisibleSelectedRange } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import {
   restoreProductWorkbookMutation,
+  sameCorpusEditVisibleCellValue,
   sameCorpusFillColorExpectedColor,
   sameCorpusFillColorSwatchLabel,
+  sameCorpusFormulaEditFormula,
 } from './ui-responsiveness-same-corpus-workload-runner.ts'
 import type { UiResponsivenessSameCorpusMutatingWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
@@ -38,62 +40,76 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
   readonly target: SameCorpusMutationTargetSelection
   readonly workload: UiResponsivenessSameCorpusMutatingWorkload
 }): Promise<SameCorpusMutationTargetProof> {
-  await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
-  const after = await readSameCorpusMutationTargetReadback({ page: args.page, product: args.product, target: args.target })
-  const visibleAfter = await readSameCorpusVisibleMutationTargetReadback({
-    page: args.page,
-    product: args.product,
-    target: args.target,
-    workload: args.workload,
-  })
-  const visibleAfterSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
-  const afterScreenshot = await captureTargetScreenshot(args, 'after')
-  const revisions = await readSameCorpusMutationTargetRevisionProof({
-    page: args.page,
-    product: args.product,
-    readback: after,
-    screenshotSha256: afterScreenshot.screenshotSha256,
-    target: args.target,
-  })
-  const committedTargetProofMs = Math.max(0, performance.now() - args.operationStartedAt)
-  await restoreProductWorkbookMutation(args.page, args.workload)
-  await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
-  const restored = await readSameCorpusMutationTargetReadback({ page: args.page, product: args.product, target: args.target })
-  const visibleRestored = await readSameCorpusVisibleMutationTargetReadback({
-    page: args.page,
-    product: args.product,
-    target: args.target,
-    workload: args.workload,
-  })
-  const visibleRestoredSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
-  const restoredScreenshot = await captureTargetScreenshot(args, 'restored')
-  return {
-    after,
-    authoritativeReadbackRevision: revisions.authoritativeReadbackRevision,
-    before: args.before,
-    committedTargetProofMs,
-    intendedOperation: args.workload,
-    intendedPayload: intendedMutationTargetPayload(args.product, args.workload, args.sampleIndex),
-    product: args.product,
-    restored,
-    sampleIndex: args.sampleIndex,
-    screenshotPath: afterScreenshot.screenshotPath,
-    screenshotSha256: afterScreenshot.screenshotSha256,
-    sheetId: args.target.sheetId,
-    sheetName: args.target.sheetName,
-    targetRange: args.target.targetRange,
-    targetScreenshots: {
-      after: afterScreenshot,
-      before: args.beforeScreenshot,
-      restored: restoredScreenshot,
-    },
-    undoRestoreStatus: sameCorpusMutationReadbacksEqual(args.before, restored) ? 'verified' : 'failed',
-    visibleAfter,
-    visibleAfterSelectedRange,
-    visibleRenderRevision: revisions.visibleRenderRevision,
-    visibleRestored,
-    visibleRestoredSelectedRange,
-    workload: args.workload,
+  let restoredAfterMutation = false
+  try {
+    await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
+    const after = await readSameCorpusMutationTargetReadback({ page: args.page, product: args.product, target: args.target })
+    const visibleAfter = await readSameCorpusVisibleMutationTargetReadback({
+      page: args.page,
+      product: args.product,
+      target: args.target,
+      workload: args.workload,
+    })
+    const visibleAfterSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
+    const afterScreenshot = await captureTargetScreenshot(args, 'after')
+    const revisions = await readSameCorpusMutationTargetRevisionProof({
+      page: args.page,
+      product: args.product,
+      readback: after,
+      screenshotSha256: afterScreenshot.screenshotSha256,
+      target: args.target,
+    })
+    const postMutationProofCapturedAtMs = performance.now()
+    const committedTargetProofMs = Math.max(0, postMutationProofCapturedAtMs - args.operationStartedAt)
+    await restoreProductWorkbookMutation(args.page, args.workload)
+    restoredAfterMutation = true
+    await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
+    const restored = await readSameCorpusMutationTargetReadback({ page: args.page, product: args.product, target: args.target })
+    const visibleRestored = await readSameCorpusVisibleMutationTargetReadback({
+      page: args.page,
+      product: args.product,
+      target: args.target,
+      workload: args.workload,
+    })
+    const visibleRestoredSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
+    const restoredScreenshot = await captureTargetScreenshot(args, 'restored')
+    const restoreProofCapturedAtMs = performance.now()
+    return {
+      after,
+      authoritativeReadbackRevision: revisions.authoritativeReadbackRevision,
+      before: args.before,
+      committedTargetProofMs,
+      intendedOperation: args.workload,
+      intendedPayload: intendedMutationTargetPayload(args.workload, args.sampleIndex),
+      operationStartedAtMs: args.operationStartedAt,
+      postMutationProofCapturedAtMs,
+      product: args.product,
+      restored,
+      restoreProofCapturedAtMs,
+      sampleIndex: args.sampleIndex,
+      screenshotPath: afterScreenshot.screenshotPath,
+      screenshotSha256: afterScreenshot.screenshotSha256,
+      sheetId: args.target.sheetId,
+      sheetName: args.target.sheetName,
+      targetRange: args.target.targetRange,
+      targetScreenshots: {
+        after: afterScreenshot,
+        before: args.beforeScreenshot,
+        restored: restoredScreenshot,
+      },
+      undoRestoreStatus: sameCorpusMutationReadbacksEqual(args.before, restored) ? 'verified' : 'failed',
+      visibleAfter,
+      visibleAfterSelectedRange,
+      visibleRenderRevision: revisions.visibleRenderRevision,
+      visibleRestored,
+      visibleRestoredSelectedRange,
+      workload: args.workload,
+    }
+  } finally {
+    if (!restoredAfterMutation) {
+      await restoreProductWorkbookMutation(args.page, args.workload).catch(() => undefined)
+      await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target }).catch(() => undefined)
+    }
   }
 }
 
@@ -129,12 +145,11 @@ function captureTargetScreenshot(
 }
 
 function intendedMutationTargetPayload(
-  product: UiResponsivenessSameCorpusProduct,
   workload: UiResponsivenessSameCorpusMutatingWorkload,
   sampleIndex: number,
 ): SameCorpusMutationTargetProof['intendedPayload'] {
   if (workload === 'formula-edit') {
-    return { kind: 'formula', formula: `=${String(sampleIndex + 1)}+1` }
+    return { kind: 'formula', formula: sameCorpusFormulaEditFormula(sampleIndex) }
   }
   if (workload === 'fill-format-change') {
     return {
@@ -143,7 +158,7 @@ function intendedMutationTargetPayload(
       swatchLabel: sameCorpusFillColorSwatchLabel(sampleIndex),
     }
   }
-  return { kind: 'cell-value', value: `${product}-same-corpus-${String(sampleIndex + 1)}` }
+  return { kind: 'cell-value', value: sameCorpusEditVisibleCellValue(sampleIndex) }
 }
 
 function mutationTargetScreenshotArtifactPath(args: {

@@ -5,8 +5,10 @@ import {
   type SameCorpusMutationTargetProof,
   type SameCorpusProductSemanticUiProof,
 } from '../ui-responsiveness-same-corpus-proof.ts'
+import { sameCorpusMutationTargetRangeForSample } from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
 import type { UiResponsivenessSameCorpusProduct } from '../ui-responsiveness-same-corpus-scorecard-proof.ts'
-import type { UiResponsivenessSameCorpusWorkload } from '../ui-responsiveness-same-corpus-workloads.ts'
+import type { UiResponsivenessSameCorpusMutatingWorkload } from '../ui-responsiveness-same-corpus-workloads.ts'
+import { sameCorpusEditVisibleCellValue } from '../ui-responsiveness-same-corpus-workload-runner.ts'
 
 describe('same-corpus semantic UI mutation proof validation', () => {
   it('accepts mutation target proof tied to exact workload and sample screenshots', () => {
@@ -38,6 +40,69 @@ describe('same-corpus semantic UI mutation proof validation', () => {
       acceptedForCurrentScorecard: false,
       invalidReasons: expect.arrayContaining([
         'semantic UI mutation target proof for edit-visible-cell is missing committed target proof timing',
+      ]),
+    })
+  })
+
+  it('rejects mutation target proof without explicit operation timing bounds', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 ? Object.assign({}, proof, { operationStartedAtMs: Number.NaN }) : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell is missing operation proof timing bounds',
+      ]),
+    })
+  })
+
+  it('rejects mutation target proof with non-monotonic operation timing bounds', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 ? Object.assign({}, proof, { postMutationProofCapturedAtMs: proof.operationStartedAtMs - 1 }) : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell has non-monotonic operation proof timing bounds',
+      ]),
+    })
+  })
+
+  it('rejects mutation target proof whose committed timing drifts from the proof window', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 ? Object.assign({}, proof, { committedTargetProofMs: proof.committedTargetProofMs + 20 }) : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell committed target timing does not match proof window',
       ]),
     })
   })
@@ -165,7 +230,7 @@ describe('same-corpus semantic UI mutation proof validation', () => {
   it('rejects rendered selection text that merely contains the target range', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validSemanticProof({
-        selectedRange: 'visible selection A1 after editor commit',
+        selectedRange: 'visible selection C5 after editor commit',
       }),
       {
         workload: 'edit-visible-cell',
@@ -177,6 +242,33 @@ describe('same-corpus semantic UI mutation proof validation', () => {
       acceptedForCurrentScorecard: false,
       invalidReasons: expect.arrayContaining([
         'semantic UI mutation target proof for edit-visible-cell target range does not match the rendered selection',
+      ]),
+    })
+  })
+
+  it('rejects product-branded mutation payloads instead of product-neutral edits', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0
+            ? Object.assign({}, proof, {
+                intendedPayload: { kind: 'cell-value' as const, value: 'bilig-same-corpus-1' },
+                after: Object.assign({}, proof.after, { value: 'bilig-same-corpus-1', visibleText: 'bilig-same-corpus-1' }),
+                visibleAfter: Object.assign({}, proof.visibleAfter, { value: 'bilig-same-corpus-1', visibleText: 'bilig-same-corpus-1' }),
+              })
+            : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell uses a non-neutral intended value payload',
       ]),
     })
   })
@@ -370,6 +462,7 @@ describe('same-corpus semantic UI mutation proof validation', () => {
   it('requires Bilig fill-format visible proof to come from rendered grid cell pixels', () => {
     const accepted = validateSameCorpusProductSemanticUiProof(
       validSemanticProof({
+        selectedRange: sameCorpusMutationTargetRangeForSample('fill-format-change', 0),
         mutationTargetProofs: [0, 1, 2].map((sampleIndex) => fillMutationTargetProof(sampleIndex, 'visible-grid-cell')),
       }),
       {
@@ -379,6 +472,7 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     )
     const rejected = validateSameCorpusProductSemanticUiProof(
       validSemanticProof({
+        selectedRange: sameCorpusMutationTargetRangeForSample('fill-format-change', 0),
         mutationTargetProofs: [0, 1, 2].map((sampleIndex) => fillMutationTargetProof(sampleIndex, 'visible-formula-bar')),
       }),
       {
@@ -407,7 +501,7 @@ function validSemanticProof(overrides: Partial<SameCorpusProductSemanticUiProof>
     method: 'bilig-visible-semantic-readback',
     sheetName: 'WideGrid',
     sheetId: 'sheet-wide-grid',
-    selectedRange: 'A1',
+    selectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', 0),
     checkedCells: [
       { address: 'A1', expected: 'metric-1', actual: 'metric-1' },
       { address: 'B1', expected: 'metric-2', actual: 'metric-2' },
@@ -419,7 +513,7 @@ function validSemanticProof(overrides: Partial<SameCorpusProductSemanticUiProof>
     mutationTargetProofs: validMutationTargetProofs(),
     evidence: [
       'sheetName=WideGrid',
-      'selectedRange=A1',
+      `selectedRange=${sameCorpusMutationTargetRangeForSample('edit-visible-cell', 0)}`,
       'checkedCellCount=3',
       `screenshotSha256=${'a'.repeat(64)}`,
       'authoritativeRenderRevision=rev-3',
@@ -435,22 +529,27 @@ function validMutationTargetProofs(): SameCorpusMutationTargetProof[] {
 
 function mutationTargetProof(
   product: UiResponsivenessSameCorpusProduct,
-  workload: UiResponsivenessSameCorpusWorkload,
+  workload: UiResponsivenessSameCorpusMutatingWorkload,
   sampleIndex: number,
 ): SameCorpusMutationTargetProof {
+  const operationStartedAtMs = 1000 + sampleIndex * 100
+  const committedTargetProofMs = 40 + sampleIndex
   return {
     product,
     sampleIndex,
-    committedTargetProofMs: 40 + sampleIndex,
+    committedTargetProofMs,
+    operationStartedAtMs,
+    postMutationProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs,
+    restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs + 80,
     workload,
     intendedOperation: 'edit-visible-cell',
     intendedPayload: {
       kind: 'cell-value',
-      value: `${product}-same-corpus-${String(sampleIndex + 1)}`,
+      value: sameCorpusEditVisibleCellValue(sampleIndex),
     },
     sheetName: 'WideGrid',
     sheetId: 'sheet-wide-grid',
-    targetRange: 'A1',
+    targetRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
     before: {
       value: 'metric-1',
       formula: null,
@@ -460,10 +559,10 @@ function mutationTargetProof(
       capturedRevision: `before-readback-${String(sampleIndex + 1)}`,
     },
     after: {
-      value: `${product}-same-corpus-${String(sampleIndex + 1)}`,
+      value: sameCorpusEditVisibleCellValue(sampleIndex),
       formula: null,
       fillColor: null,
-      visibleText: `${product}-same-corpus-${String(sampleIndex + 1)}`,
+      visibleText: sameCorpusEditVisibleCellValue(sampleIndex),
       source: 'bilig-authoritative-range',
       capturedRevision: authoritativeReadbackRevision(sampleIndex),
       visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex),
@@ -477,13 +576,13 @@ function mutationTargetProof(
       capturedRevision: `restored-readback-${String(sampleIndex + 1)}`,
     },
     visibleAfter: {
-      value: `${product}-same-corpus-${String(sampleIndex + 1)}`,
+      value: sameCorpusEditVisibleCellValue(sampleIndex),
       formula: null,
       fillColor: null,
-      visibleText: `${product}-same-corpus-${String(sampleIndex + 1)}`,
+      visibleText: sameCorpusEditVisibleCellValue(sampleIndex),
       source: 'visible-formula-bar',
     },
-    visibleAfterSelectedRange: 'A1',
+    visibleAfterSelectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
     visibleRestored: {
       value: 'metric-1',
       formula: null,
@@ -491,7 +590,7 @@ function mutationTargetProof(
       visibleText: 'metric-1',
       source: 'visible-formula-bar',
     },
-    visibleRestoredSelectedRange: 'A1',
+    visibleRestoredSelectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
     authoritativeReadbackRevision: authoritativeReadbackRevision(sampleIndex),
     visibleRenderRevision: visibleRenderRevision(sampleIndex),
     targetScreenshots: mutationTargetScreenshots(product, workload, sampleIndex),
@@ -506,10 +605,16 @@ function fillMutationTargetProof(
   visibleSource: 'visible-formula-bar' | 'visible-grid-cell',
 ): SameCorpusMutationTargetProof {
   const fillColor = fillColorForSample(sampleIndex)
+  const operationStartedAtMs = 2000 + sampleIndex * 100
+  const committedTargetProofMs = 60 + sampleIndex
+  const targetRange = sameCorpusMutationTargetRangeForSample('fill-format-change', sampleIndex)
   return {
     product: 'bilig',
     sampleIndex,
-    committedTargetProofMs: 60 + sampleIndex,
+    committedTargetProofMs,
+    operationStartedAtMs,
+    postMutationProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs,
+    restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs + 80,
     workload: 'fill-format-change',
     intendedOperation: 'fill-format-change',
     intendedPayload: {
@@ -519,7 +624,7 @@ function fillMutationTargetProof(
     },
     sheetName: 'WideGrid',
     sheetId: 'sheet-wide-grid',
-    targetRange: 'A1',
+    targetRange,
     before: {
       value: 'metric-1',
       formula: null,
@@ -552,7 +657,7 @@ function fillMutationTargetProof(
       visibleText: null,
       source: visibleSource,
     },
-    visibleAfterSelectedRange: 'A1',
+    visibleAfterSelectedRange: targetRange,
     visibleRestored: {
       value: null,
       formula: null,
@@ -560,7 +665,7 @@ function fillMutationTargetProof(
       visibleText: null,
       source: visibleSource,
     },
-    visibleRestoredSelectedRange: 'A1',
+    visibleRestoredSelectedRange: targetRange,
     authoritativeReadbackRevision: authoritativeReadbackRevision(sampleIndex),
     visibleRenderRevision: visibleRenderRevision(sampleIndex),
     targetScreenshots: mutationTargetScreenshots('bilig', 'fill-format-change', sampleIndex),
@@ -572,7 +677,7 @@ function fillMutationTargetProof(
 
 function mutationTargetScreenshots(
   product: UiResponsivenessSameCorpusProduct,
-  workload: UiResponsivenessSameCorpusWorkload,
+  workload: UiResponsivenessSameCorpusMutatingWorkload,
   sampleIndex: number,
 ): SameCorpusMutationTargetProof['targetScreenshots'] {
   return {
@@ -584,7 +689,7 @@ function mutationTargetScreenshots(
 
 function mutationTargetScreenshot(
   product: UiResponsivenessSameCorpusProduct,
-  workload: UiResponsivenessSameCorpusWorkload,
+  workload: UiResponsivenessSameCorpusMutatingWorkload,
   sampleIndex: number,
   phase: 'before' | 'after' | 'restored',
 ): NonNullable<SameCorpusMutationTargetProof['targetScreenshots']>['before'] {
@@ -595,7 +700,7 @@ function mutationTargetScreenshot(
     sampleIndex,
     sheetId: 'sheet-wide-grid',
     sheetName: 'WideGrid',
-    targetRange: 'A1',
+    targetRange: sameCorpusMutationTargetRangeForSample(workload, sampleIndex),
     workload,
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${String(sampleIndex + 1)}-${phase}.png`,
     screenshotSha256: mutationTargetScreenshotSha256(sampleIndex, phase),

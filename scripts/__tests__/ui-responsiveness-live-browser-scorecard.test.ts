@@ -34,12 +34,15 @@ import {
   type SameCorpusProductVisualProof,
   type SameCorpusScenarioProof,
 } from '../ui-responsiveness-same-corpus-proof.ts'
+import { sameCorpusMutationTargetRangeForSample } from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadMutatesWorkbook,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
+  type UiResponsivenessSameCorpusMutatingWorkload,
   type UiResponsivenessSameCorpusWorkload,
 } from '../ui-responsiveness-same-corpus-workloads.ts'
+import { sameCorpusEditVisibleCellValue, sameCorpusFormulaEditFormula } from '../ui-responsiveness-same-corpus-workload-runner.ts'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const sameCorpusFixtureFingerprint = buildSameCorpusFingerprint(buildWorkbookBenchmarkCorpus('wide-mixed-250k')).corpusFingerprint
@@ -1226,7 +1229,7 @@ function semanticUiProofFixture(
           : ('excel-web-visible-semantic-readback' as const),
     sheetName: verification.sheetName,
     sheetId: sameCorpusFixtureSheetId(product),
-    selectedRange: 'A1',
+    selectedRange: sameCorpusSemanticSelectedRange(workload),
     checkedCells: verification.checkedCells,
     authoritativeRenderRevision: product === 'bilig' ? 'rev-3' : null,
     visibleRenderRevision: product === 'bilig' ? 'scene-7' : null,
@@ -1235,7 +1238,7 @@ function semanticUiProofFixture(
     evidence: [
       `sheetName=${verification.sheetName}`,
       `sheetId=${sameCorpusFixtureSheetId(product)}`,
-      'selectedRange=A1',
+      `selectedRange=${sameCorpusSemanticSelectedRange(workload)}`,
       `checkedCellCount=${String(verification.checkedCells.length)}`,
       `screenshotSha256=${fixtureScreenshotSha256}`,
       ...(product === 'bilig' ? ['authoritativeRenderRevision=rev-3', 'visibleRenderRevision=scene-7'] : []),
@@ -1253,6 +1256,10 @@ function sameCorpusFixtureSheetId(product: 'bilig' | 'google-sheets' | 'microsof
   return 'excel-web-sheet-wide-grid'
 }
 
+function sameCorpusSemanticSelectedRange(workload: UiResponsivenessSameCorpusWorkload): string {
+  return uiSameCorpusWorkloadMutatesWorkbook(workload) ? sameCorpusMutationTargetRangeForSample(workload, 0) : 'A1'
+}
+
 function sameCorpusMutationTargetProofs(
   product: 'bilig' | 'google-sheets' | 'microsoft-excel-web',
   workload: UiResponsivenessSameCorpusWorkload,
@@ -1260,35 +1267,42 @@ function sameCorpusMutationTargetProofs(
   if (!uiSameCorpusWorkloadMutatesWorkbook(workload)) {
     return []
   }
-  return [0, 1, 2].map((sampleIndex) => ({
-    product,
-    sampleIndex,
-    committedTargetProofMs: 40 + sampleIndex,
-    workload,
-    intendedOperation: workload,
-    intendedPayload: sameCorpusMutationTargetIntendedPayload(product, workload, sampleIndex),
-    sheetName: 'WideGrid',
-    sheetId: sameCorpusFixtureSheetId(product),
-    targetRange: 'A1',
-    before: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
-    after: sameCorpusMutationReadback(product, workload, 'after', sampleIndex),
-    restored: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
-    visibleAfter: sameCorpusVisibleMutationReadback(product, workload, 'after', sampleIndex),
-    visibleAfterSelectedRange: 'A1',
-    visibleRestored: sameCorpusVisibleMutationReadback(product, workload, 'before', sampleIndex),
-    visibleRestoredSelectedRange: 'A1',
-    authoritativeReadbackRevision: sameCorpusAuthoritativeReadbackRevision(product, sampleIndex),
-    visibleRenderRevision: sameCorpusVisibleRenderRevision(product, sampleIndex),
-    targetScreenshots: sameCorpusMutationTargetScreenshots(product, workload, sampleIndex),
-    screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-after.png`,
-    screenshotSha256: sameCorpusMutationTargetScreenshotSha256(sampleIndex, 'after'),
-    undoRestoreStatus: 'verified' as const,
-  }))
+  return [0, 1, 2].map((sampleIndex) => {
+    const committedTargetProofMs = 40 + sampleIndex
+    const operationStartedAtMs = 1000 + sampleIndex * 100
+    return {
+      product,
+      sampleIndex,
+      committedTargetProofMs,
+      operationStartedAtMs,
+      postMutationProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs,
+      restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs + 80,
+      workload,
+      intendedOperation: workload,
+      intendedPayload: sameCorpusMutationTargetIntendedPayload(workload, sampleIndex),
+      sheetName: 'WideGrid',
+      sheetId: sameCorpusFixtureSheetId(product),
+      targetRange: sameCorpusMutationTargetRangeForSample(workload, sampleIndex),
+      before: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
+      after: sameCorpusMutationReadback(product, workload, 'after', sampleIndex),
+      restored: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
+      visibleAfter: sameCorpusVisibleMutationReadback(product, workload, 'after', sampleIndex),
+      visibleAfterSelectedRange: sameCorpusMutationTargetRangeForSample(workload, sampleIndex),
+      visibleRestored: sameCorpusVisibleMutationReadback(product, workload, 'before', sampleIndex),
+      visibleRestoredSelectedRange: sameCorpusMutationTargetRangeForSample(workload, sampleIndex),
+      authoritativeReadbackRevision: sameCorpusAuthoritativeReadbackRevision(product, sampleIndex),
+      visibleRenderRevision: sameCorpusVisibleRenderRevision(product, sampleIndex),
+      targetScreenshots: sameCorpusMutationTargetScreenshots(product, workload, sampleIndex),
+      screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-after.png`,
+      screenshotSha256: sameCorpusMutationTargetScreenshotSha256(sampleIndex, 'after'),
+      undoRestoreStatus: 'verified' as const,
+    }
+  })
 }
 
 function sameCorpusMutationTargetScreenshots(
   product: 'bilig' | 'google-sheets' | 'microsoft-excel-web',
-  workload: UiResponsivenessSameCorpusWorkload,
+  workload: UiResponsivenessSameCorpusMutatingWorkload,
   sampleIndex: number,
 ) {
   return {
@@ -1300,7 +1314,7 @@ function sameCorpusMutationTargetScreenshots(
 
 function sameCorpusMutationTargetScreenshot(
   product: 'bilig' | 'google-sheets' | 'microsoft-excel-web',
-  workload: UiResponsivenessSameCorpusWorkload,
+  workload: UiResponsivenessSameCorpusMutatingWorkload,
   sampleIndex: number,
   phase: 'before' | 'after' | 'restored',
 ) {
@@ -1311,7 +1325,7 @@ function sameCorpusMutationTargetScreenshot(
     sampleIndex,
     sheetId: sameCorpusFixtureSheetId(product),
     sheetName: 'WideGrid',
-    targetRange: 'A1',
+    targetRange: sameCorpusMutationTargetRangeForSample(workload, sampleIndex),
     workload,
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-${phase}.png`,
     screenshotSha256: sameCorpusMutationTargetScreenshotSha256(sampleIndex, phase),
@@ -1326,13 +1340,9 @@ function sameCorpusMutationTargetScreenshotBytes(sampleIndex: number, phase: 'be
   return `mutation-target:${String(sampleIndex + 1)}:${phase}`
 }
 
-function sameCorpusMutationTargetIntendedPayload(
-  product: 'bilig' | 'google-sheets' | 'microsoft-excel-web',
-  workload: UiResponsivenessSameCorpusWorkload,
-  sampleIndex: number,
-) {
+function sameCorpusMutationTargetIntendedPayload(workload: UiResponsivenessSameCorpusWorkload, sampleIndex: number) {
   if (workload === 'formula-edit') {
-    return { kind: 'formula' as const, formula: `=${sampleIndex + 1}+1` }
+    return { kind: 'formula' as const, formula: sameCorpusFormulaEditFormula(sampleIndex) }
   }
   if (workload === 'fill-format-change') {
     const swatches = [
@@ -1343,7 +1353,7 @@ function sameCorpusMutationTargetIntendedPayload(
     const swatch = swatches[sampleIndex % swatches.length]
     return { kind: 'fill-color' as const, expectedFillColor: swatch.value, swatchLabel: swatch.label }
   }
-  return { kind: 'cell-value' as const, value: `${product}-same-corpus-${sampleIndex + 1}` }
+  return { kind: 'cell-value' as const, value: sameCorpusEditVisibleCellValue(sampleIndex) }
 }
 
 function sameCorpusExpectedFillColor(sampleIndex: number): string {
@@ -1393,10 +1403,10 @@ function sameCorpusMutationReadback(
     }
   }
   return {
-    value: after ? `${product}-same-corpus-${String(sampleIndex + 1)}` : 'metric-1',
+    value: after ? sameCorpusEditVisibleCellValue(sampleIndex) : 'metric-1',
     formula: null,
     fillColor: null,
-    visibleText: after ? `${product}-same-corpus-${String(sampleIndex + 1)}` : 'metric-1',
+    visibleText: after ? sameCorpusEditVisibleCellValue(sampleIndex) : 'metric-1',
     source,
     ...sameCorpusBiligRevisionReadbackFields(product, phase, sampleIndex),
   }

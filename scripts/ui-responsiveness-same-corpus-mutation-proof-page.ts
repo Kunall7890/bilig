@@ -33,6 +33,30 @@ export interface SameCorpusMutationTargetRevisionProof {
   readonly visibleRenderRevision: string | null
 }
 
+export function sameCorpusMutationTargetRangeForSample(workload: UiResponsivenessSameCorpusMutatingWorkload, sampleIndex: number): string {
+  const columnByWorkload: Record<UiResponsivenessSameCorpusMutatingWorkload, string> = {
+    'edit-visible-cell': 'C',
+    'fill-format-change': 'E',
+    'formula-edit': 'D',
+  }
+  return `${columnByWorkload[workload]}${String(sampleIndex + 5)}`
+}
+
+export async function readSameCorpusDeclaredMutationTargetSelection(args: {
+  readonly page: Page
+  readonly product: UiResponsivenessSameCorpusProduct
+  readonly sampleIndex: number
+  readonly sheetName: string
+  readonly workload: UiResponsivenessSameCorpusMutatingWorkload
+}): Promise<SameCorpusMutationTargetSelection> {
+  const sheetId = await readSameCorpusVisibleSheetId(args.page, args.product, args.sheetName)
+  return normalizeSameCorpusMutationTargetSelection(
+    sameCorpusMutationTargetRangeForSample(args.workload, args.sampleIndex),
+    args.sheetName,
+    sheetId,
+  )
+}
+
 export async function readSameCorpusMutationTargetSelection(args: {
   readonly page: Page
   readonly product: UiResponsivenessSameCorpusProduct

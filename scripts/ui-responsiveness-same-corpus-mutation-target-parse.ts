@@ -13,6 +13,9 @@ export function parseSameCorpusMutationTargetProof(value: unknown): SameCorpusMu
     product: parseSameCorpusProduct(stringField(record, 'product')),
     sampleIndex: numberField(record, 'sampleIndex'),
     committedTargetProofMs: optionalNumberField(record, 'committedTargetProofMs') ?? Number.NaN,
+    operationStartedAtMs: optionalNumberField(record, 'operationStartedAtMs') ?? Number.NaN,
+    postMutationProofCapturedAtMs: optionalNumberField(record, 'postMutationProofCapturedAtMs') ?? Number.NaN,
+    restoreProofCapturedAtMs: optionalNumberField(record, 'restoreProofCapturedAtMs') ?? Number.NaN,
     workload: parseSameCorpusWorkload(stringField(record, 'workload')),
     intendedOperation: parseSameCorpusMutatingWorkload(stringField(record, 'intendedOperation')),
     intendedPayload: parseSameCorpusMutationTargetIntendedPayload(objectField(record, 'intendedPayload')),
@@ -133,6 +136,13 @@ function parseSameCorpusMutationTargetProofSampleSummary(value: unknown): SameCo
     accepted: booleanField(record, 'accepted'),
     product: Object.hasOwn(record, 'product') ? nullableSameCorpusProduct(record, 'product') : null,
     committedTargetProofMs: Object.hasOwn(record, 'committedTargetProofMs') ? nullableNumberField(record, 'committedTargetProofMs') : null,
+    operationStartedAtMs: Object.hasOwn(record, 'operationStartedAtMs') ? nullableNumberField(record, 'operationStartedAtMs') : null,
+    postMutationProofCapturedAtMs: Object.hasOwn(record, 'postMutationProofCapturedAtMs')
+      ? nullableNumberField(record, 'postMutationProofCapturedAtMs')
+      : null,
+    restoreProofCapturedAtMs: Object.hasOwn(record, 'restoreProofCapturedAtMs')
+      ? nullableNumberField(record, 'restoreProofCapturedAtMs')
+      : null,
     sheetName: nullableStringField(record, 'sheetName'),
     sheetId: Object.hasOwn(record, 'sheetId') ? nullableStringField(record, 'sheetId') : null,
     targetRange: nullableStringField(record, 'targetRange'),

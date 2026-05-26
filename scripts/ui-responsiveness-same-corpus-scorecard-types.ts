@@ -195,6 +195,9 @@ export interface SameCorpusMutationTargetProofSampleSummary {
   readonly accepted: boolean
   readonly product: UiResponsivenessSameCorpusProduct | null
   readonly committedTargetProofMs: number | null
+  readonly operationStartedAtMs: number | null
+  readonly postMutationProofCapturedAtMs: number | null
+  readonly restoreProofCapturedAtMs: number | null
   readonly sheetName: string | null
   readonly sheetId: string | null
   readonly targetRange: string | null

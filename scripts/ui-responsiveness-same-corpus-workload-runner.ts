@@ -126,7 +126,7 @@ async function performProductUiOperation(
     await performSameCorpusFillColorOperation(page, product, sampleIndex)
     return
   }
-  await performSameCorpusKeyboardOperations(page, sameCorpusKeyboardOperations(product, workload, sampleIndex))
+  await performSameCorpusKeyboardOperations(page, sameCorpusKeyboardOperations(workload, sampleIndex))
 }
 
 export function sameCorpusFillColorSwatchLabel(sampleIndex: number): string {
@@ -142,7 +142,6 @@ export function sameCorpusFillColorExpectedColors(): readonly string[] {
 }
 
 export function sameCorpusKeyboardOperations(
-  product: UiResponsivenessSameCorpusProduct,
   workload: NonScrollWorkload,
   sampleIndex: number,
   platform: NodeJS.Platform = process.platform,
@@ -156,11 +155,19 @@ export function sameCorpusKeyboardOperations(
   if (workload === 'fill-format-change') {
     return []
   }
-  const value = workload === 'formula-edit' ? `=${String(sampleIndex + 1)}+1` : `${product}-same-corpus-${String(sampleIndex + 1)}`
+  const value = workload === 'formula-edit' ? sameCorpusFormulaEditFormula(sampleIndex) : sameCorpusEditVisibleCellValue(sampleIndex)
   return [
     { kind: 'type', text: value },
     { kind: 'press', key: 'Enter' },
   ]
+}
+
+export function sameCorpusEditVisibleCellValue(sampleIndex: number): string {
+  return `same-corpus-edit-${String(sampleIndex + 1)}`
+}
+
+export function sameCorpusFormulaEditFormula(sampleIndex: number): string {
+  return `=${String(sampleIndex + 1)}+1`
 }
 
 export function sameCorpusWorkbookRestoreOperations(

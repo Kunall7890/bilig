@@ -10,8 +10,10 @@ import {
   sameCorpusMutationTargetProofProductGapLines,
 } from '../ui-responsiveness-same-corpus-mutation-target-proof-gaps.ts'
 import type { SameCorpusMutationTargetProof, SameCorpusScenarioProof } from '../ui-responsiveness-same-corpus-proof.ts'
+import { sameCorpusMutationTargetRangeForSample } from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
 import type { SameCorpusProductSemanticUiProof } from '../ui-responsiveness-same-corpus-semantic-proof.ts'
 import type { UiResponsivenessSameCorpusProduct } from '../ui-responsiveness-same-corpus-scorecard-proof.ts'
+import { sameCorpusEditVisibleCellValue } from '../ui-responsiveness-same-corpus-workload-runner.ts'
 
 describe('same-corpus mutation target proof summary', () => {
   it('counts accepted per-product mutation samples even when the whole mutating case is incomplete', () => {
@@ -38,21 +40,24 @@ describe('same-corpus mutation target proof summary', () => {
               sampleIndex: 0,
               product: 'bilig',
               committedTargetProofMs: 40,
+              operationStartedAtMs: 1000,
+              postMutationProofCapturedAtMs: 1040,
+              restoreProofCapturedAtMs: 1120,
               sheetName: 'WideGrid',
               sheetId: 'sheet-wide-grid',
-              targetRange: 'A1',
+              targetRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', 0),
               intendedOperation: 'edit-visible-cell',
               intendedPayload: {
                 kind: 'cell-value',
-                value: 'bilig-same-corpus-1',
+                value: sameCorpusEditVisibleCellValue(0),
               },
               before: expect.objectContaining({ source: 'bilig-authoritative-range', value: 'metric-1' }),
-              after: expect.objectContaining({ capturedRevision: 'authoritative-readback-1', value: 'bilig-same-corpus-1' }),
+              after: expect.objectContaining({ capturedRevision: 'authoritative-readback-1', value: sameCorpusEditVisibleCellValue(0) }),
               restored: expect.objectContaining({ value: 'metric-1' }),
-              visibleAfter: expect.objectContaining({ value: 'bilig-same-corpus-1' }),
-              visibleAfterSelectedRange: 'A1',
+              visibleAfter: expect.objectContaining({ value: sameCorpusEditVisibleCellValue(0) }),
+              visibleAfterSelectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', 0),
               visibleRestored: expect.objectContaining({ value: 'metric-1' }),
-              visibleRestoredSelectedRange: 'A1',
+              visibleRestoredSelectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', 0),
               authoritativeReadbackRevision: 'authoritative-readback-1',
               visibleRenderRevision: `bilig-visible-scene-sha256:${visibleSceneProofSha256(0)}`,
               screenshotSha256: 'b'.repeat(64),
@@ -73,6 +78,9 @@ describe('same-corpus mutation target proof summary', () => {
               present: false,
               product: null,
               committedTargetProofMs: null,
+              operationStartedAtMs: null,
+              postMutationProofCapturedAtMs: null,
+              restoreProofCapturedAtMs: null,
               sheetName: null,
               sheetId: null,
               targetRange: null,
@@ -267,7 +275,7 @@ function productSemanticProof(
     method: product === 'bilig' ? 'bilig-visible-semantic-readback' : 'google-sheets-visible-semantic-readback',
     sheetName: 'WideGrid',
     sheetId: productSemanticSheetId(product),
-    selectedRange: 'A1',
+    selectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', 0),
     checkedCells: [
       { address: 'A1', expected: 'metric-1', actual: 'metric-1' },
       { address: 'B1', expected: 'metric-2', actual: 'metric-2' },
@@ -296,12 +304,17 @@ function mutationTargetProof(
   sampleIndex: number,
   corruptProof: boolean,
 ): SameCorpusMutationTargetProof {
-  const value = `${product}-same-corpus-${String(sampleIndex + 1)}`
+  const value = sameCorpusEditVisibleCellValue(sampleIndex)
   const afterValue = corruptProof ? 'stale-value' : value
+  const committedTargetProofMs = 40 + sampleIndex
+  const operationStartedAtMs = 1000 + sampleIndex * 100
   return {
     product,
     sampleIndex,
-    committedTargetProofMs: 40 + sampleIndex,
+    committedTargetProofMs,
+    operationStartedAtMs,
+    postMutationProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs,
+    restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs + 80,
     workload: 'edit-visible-cell',
     intendedOperation: 'edit-visible-cell',
     intendedPayload: {
@@ -310,7 +323,7 @@ function mutationTargetProof(
     },
     sheetName: 'WideGrid',
     sheetId: productSemanticSheetId(product),
-    targetRange: 'A1',
+    targetRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
     before: readback(product, 'metric-1', sampleIndex, 'before'),
     after: readback(product, afterValue, sampleIndex, 'after'),
     restored: readback(product, 'metric-1', sampleIndex, 'restored'),
@@ -321,7 +334,7 @@ function mutationTargetProof(
       visibleText: afterValue,
       source: 'visible-formula-bar',
     },
-    visibleAfterSelectedRange: 'A1',
+    visibleAfterSelectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
     visibleRestored: {
       value: 'metric-1',
       formula: null,
@@ -329,7 +342,7 @@ function mutationTargetProof(
       visibleText: 'metric-1',
       source: 'visible-formula-bar',
     },
-    visibleRestoredSelectedRange: 'A1',
+    visibleRestoredSelectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
     authoritativeReadbackRevision: authoritativeReadbackRevision(sampleIndex),
     visibleRenderRevision:
       product === 'bilig'
@@ -367,7 +380,7 @@ function targetScreenshot(
     sampleIndex,
     sheetId: productSemanticSheetId(product),
     sheetName: 'WideGrid',
-    targetRange: 'A1',
+    targetRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
     workload: 'edit-visible-cell',
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/${product}-sample-${String(sampleIndex + 1)}-${phase}.png`,
     screenshotSha256: targetScreenshotSha256(sampleIndex, phase),

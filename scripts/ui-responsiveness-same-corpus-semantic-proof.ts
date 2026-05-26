@@ -37,6 +37,9 @@ export interface SameCorpusMutationTargetProof {
   readonly product: UiResponsivenessSameCorpusProduct
   readonly sampleIndex: number
   readonly committedTargetProofMs: number
+  readonly operationStartedAtMs: number
+  readonly postMutationProofCapturedAtMs: number
+  readonly restoreProofCapturedAtMs: number
   readonly workload: UiResponsivenessSameCorpusWorkload
   readonly intendedOperation: 'edit-visible-cell' | 'formula-edit' | 'fill-format-change'
   readonly intendedPayload: SameCorpusMutationTargetIntendedPayload
@@ -312,6 +315,7 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
   if (!Number.isFinite(sample.committedTargetProofMs) || sample.committedTargetProofMs < 0) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing committed target proof timing`)
   }
+  invalidReasons.push(...sameCorpusMutationTargetTimingInvalidReasons(workload, sample))
   if (sample.workload !== workload || sample.intendedOperation !== workload) {
     invalidReasons.push(`semantic UI mutation target proof operation does not match ${workload}`)
   }
@@ -328,7 +332,11 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
   if (sample.targetRange.trim().length === 0) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing the target range`)
   }
-  if (sample.targetRange.trim().length > 0 && !sameCorpusSelectedRangeMatchesTarget(proof.selectedRange, sample.targetRange)) {
+  if (
+    sample.sampleIndex === 0 &&
+    sample.targetRange.trim().length > 0 &&
+    !sameCorpusSelectedRangeMatchesTarget(proof.selectedRange, sample.targetRange)
+  ) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} target range does not match the rendered selection`)
   }
   invalidReasons.push(...sameCorpusMutationTargetVisibleSelectionInvalidReasons(workload, sample))
@@ -369,6 +377,32 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
   }
   if (workload === 'fill-format-change' && (sample.after.fillColor === null || sample.visibleAfter.fillColor === null)) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing rendered post-mutation fill color`)
+  }
+  return invalidReasons
+}
+
+function sameCorpusMutationTargetTimingInvalidReasons(
+  workload: UiResponsivenessSameCorpusWorkload,
+  sample: SameCorpusMutationTargetProof,
+): string[] {
+  const timings = [sample.operationStartedAtMs, sample.postMutationProofCapturedAtMs, sample.restoreProofCapturedAtMs]
+  if (timings.some((value) => !Number.isFinite(value) || value < 0)) {
+    return [`semantic UI mutation target proof for ${workload} is missing operation proof timing bounds`]
+  }
+  const invalidReasons: string[] = []
+  if (
+    sample.postMutationProofCapturedAtMs < sample.operationStartedAtMs ||
+    sample.restoreProofCapturedAtMs < sample.postMutationProofCapturedAtMs
+  ) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} has non-monotonic operation proof timing bounds`)
+  }
+  const expectedCommittedTargetProofMs = sample.postMutationProofCapturedAtMs - sample.operationStartedAtMs
+  if (
+    Number.isFinite(sample.committedTargetProofMs) &&
+    sample.committedTargetProofMs >= 0 &&
+    Math.abs(sample.committedTargetProofMs - expectedCommittedTargetProofMs) > 1
+  ) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} committed target timing does not match proof window`)
   }
   return invalidReasons
 }
@@ -519,14 +553,20 @@ function sameCorpusMutationTargetPayloadInvalidReasons(
     return [`semantic UI mutation target proof for ${workload} is missing intended operation payload`]
   }
   if (workload === 'edit-visible-cell') {
-    return payload.kind === 'cell-value' && payload.value.trim().length > 0
+    if (payload.kind !== 'cell-value' || payload.value.trim().length === 0) {
+      return ['semantic UI mutation target proof for edit-visible-cell is missing intended value payload']
+    }
+    return payload.value === expectedSameCorpusEditVisibleCellValue(sample.sampleIndex)
       ? []
-      : ['semantic UI mutation target proof for edit-visible-cell is missing intended value payload']
+      : ['semantic UI mutation target proof for edit-visible-cell uses a non-neutral intended value payload']
   }
   if (workload === 'formula-edit') {
-    return payload.kind === 'formula' && payload.formula.trim().startsWith('=')
+    if (payload.kind !== 'formula' || !payload.formula.trim().startsWith('=')) {
+      return ['semantic UI mutation target proof for formula-edit is missing intended formula payload']
+    }
+    return payload.formula === expectedSameCorpusFormulaEditFormula(sample.sampleIndex)
       ? []
-      : ['semantic UI mutation target proof for formula-edit is missing intended formula payload']
+      : ['semantic UI mutation target proof for formula-edit uses an unexpected intended formula payload']
   }
   if (workload === 'fill-format-change') {
     return payload.kind === 'fill-color' &&
@@ -536,6 +576,14 @@ function sameCorpusMutationTargetPayloadInvalidReasons(
       : ['semantic UI mutation target proof for fill-format-change is missing intended fill payload']
   }
   return []
+}
+
+function expectedSameCorpusEditVisibleCellValue(sampleIndex: number): string {
+  return `same-corpus-edit-${String(sampleIndex + 1)}`
+}
+
+function expectedSameCorpusFormulaEditFormula(sampleIndex: number): string {
+  return `=${String(sampleIndex + 1)}+1`
 }
 
 function sameCorpusMutationTargetExpectedReadbackInvalidReasons(

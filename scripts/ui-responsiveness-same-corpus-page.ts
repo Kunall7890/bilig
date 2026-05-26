@@ -32,8 +32,8 @@ import {
   type SameCorpusProductVisualProof,
 } from './ui-responsiveness-same-corpus-proof.ts'
 import {
+  readSameCorpusDeclaredMutationTargetSelection,
   readSameCorpusMutationTargetReadback,
-  readSameCorpusMutationTargetSelection,
   selectSameCorpusMutationTargetRange,
   type SameCorpusMutationTargetSelection,
 } from './ui-responsiveness-same-corpus-mutation-proof-page.ts'
@@ -517,8 +517,17 @@ async function measureProductSamples(
       ? workload
       : null
     const mutationTarget = mutatingWorkload
-      ? await readSameCorpusMutationTargetSelection({ page, product, sheetName: nextCorpusVerification.sheetName })
+      ? await readSameCorpusDeclaredMutationTargetSelection({
+          page,
+          product,
+          sampleIndex,
+          sheetName: nextCorpusVerification.sheetName,
+          workload: mutatingWorkload,
+        })
       : null
+    if (mutationTarget !== null) {
+      await selectSameCorpusMutationTargetRange({ page, product, target: mutationTarget })
+    }
     const mutationTargetBefore =
       mutationTarget === null ? null : await readSameCorpusMutationTargetReadback({ page, product, target: mutationTarget })
     const mutationTargetBeforeScreenshot =
