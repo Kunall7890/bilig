@@ -77,6 +77,27 @@ describe('AxisMap', () => {
     expect(axisMap.indexOf('row-missing')).toBe(-1)
   })
 
+  it('ensures dense ids from a batched allocator while preserving existing ids', () => {
+    const axisMap = new AxisMap()
+    let nextId = 1
+    const createIds = (count: number): string[] =>
+      Array.from({ length: count }, () => {
+        const id = `row-${nextId}`
+        nextId += 1
+        return id
+      })
+
+    expect(axisMap.ensureDenseIdsFrom(0, 3, createIds)).toEqual(['row-1', 'row-2', 'row-3'])
+    expect(axisMap.ensureDenseIdsFrom(1, 3, createIds)).toEqual(['row-2', 'row-3', 'row-4'])
+    expect(axisMap.list()).toEqual([
+      { id: 'row-1', index: 0 },
+      { id: 'row-2', index: 1 },
+      { id: 'row-3', index: 2 },
+      { id: 'row-4', index: 3 },
+    ])
+    expect(axisMap.indexOf('row-4')).toBe(3)
+  })
+
   it('reports length and no-ops for empty snapshots or moves', () => {
     const axisMap = new AxisMap()
 

@@ -75,6 +75,58 @@ export class AxisMap {
     return ids
   }
 
+  ensureDenseIdsFrom(start: number, count: number, createIds: (count: number) => readonly string[]): string[] {
+    if (count <= 0) {
+      return []
+    }
+    const ids: string[] = []
+    ids.length = count
+    const end = start + count
+    if (this.entries.length <= start) {
+      if (this.entries.length < end) {
+        this.entries.length = end
+      }
+      const created = createIds(count)
+      if (created.length !== count) {
+        throw new Error(`Expected ${String(count)} dense axis ids, got ${String(created.length)}`)
+      }
+      for (let offset = 0; offset < count; offset += 1) {
+        const index = start + offset
+        const id = created[offset]!
+        this.entries[index] = id
+        this.idToIndex.set(id, index)
+        ids[offset] = id
+      }
+      return ids
+    }
+    if (this.entries.length < end) {
+      this.entries.length = end
+    }
+    let missingCount = 0
+    for (let offset = 0; offset < count; offset += 1) {
+      if (this.entries[start + offset] === undefined) {
+        missingCount += 1
+      }
+    }
+    const created = missingCount > 0 ? createIds(missingCount) : []
+    if (created.length !== missingCount) {
+      throw new Error(`Expected ${String(missingCount)} dense axis ids, got ${String(created.length)}`)
+    }
+    let createdIndex = 0
+    for (let offset = 0; offset < count; offset += 1) {
+      const index = start + offset
+      let id = this.entries[index]
+      if (id === undefined) {
+        id = created[createdIndex]!
+        createdIndex += 1
+        this.entries[index] = id
+        this.idToIndex.set(id, index)
+      }
+      ids[offset] = id
+    }
+    return ids
+  }
+
   indexOf(id: string): number {
     return this.idToIndex.get(id) ?? -1
   }

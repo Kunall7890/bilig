@@ -30,6 +30,10 @@ export class SheetAxisMap {
     return this.get(axis).ensureDenseIds(start, count, createId)
   }
 
+  ensureDenseIdsFrom(axis: AxisKind, start: number, count: number, createIds: (count: number) => readonly string[]): string[] {
+    return this.get(axis).ensureDenseIdsFrom(start, count, createIds)
+  }
+
   indexOf(axis: AxisKind, id: string): number {
     return this.get(axis).indexOf(id)
   }

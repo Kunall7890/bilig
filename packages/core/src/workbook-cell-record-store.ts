@@ -20,6 +20,7 @@ export class WorkbookCellRecordStore {
       readonly getSheetById: (sheetId: number) => SheetRecord | undefined
       readonly getSheetNameById: (sheetId: number) => string
       readonly createLogicalAxisId: (axis: 'row' | 'column') => string
+      readonly createLogicalAxisIds: (axis: 'row' | 'column', count: number) => readonly string[]
     },
   ) {}
 
@@ -92,7 +93,9 @@ export class WorkbookCellRecordStore {
     if (!sheet) {
       throw new Error(`Unknown sheet id: ${sheetId}`)
     }
-    return sheet.logicalAxisMap.ensureDenseIds(axis, start, count, () => this.options.createLogicalAxisId(axis))
+    return sheet.logicalAxisMap.ensureDenseIdsFrom(axis, start, count, (missingCount) =>
+      this.options.createLogicalAxisIds(axis, missingCount),
+    )
   }
 
   attachAllocatedCellWithLogicalAxisIds(sheetId: number, row: number, col: number, cellIndex: number, rowId: string, colId: string): void {

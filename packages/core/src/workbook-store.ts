@@ -140,6 +140,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
       getSheetById: (sheetId) => this.getSheetById(sheetId),
       getSheetNameById: (sheetId) => this.getSheetNameById(sheetId),
       createLogicalAxisId: (axis) => this.createLogicalAxisId(axis),
+      createLogicalAxisIds: (axis, count) => this.createLogicalAxisIds(axis, count),
     })
     this.axisEntryStore = new WorkbookAxisEntryStore({
       counters: this.counters,
@@ -964,5 +965,9 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
 
   private createLogicalAxisId(axis: 'row' | 'column'): string {
     return this.idAllocator.createLogicalAxisId(axis)
+  }
+
+  private createLogicalAxisIds(axis: 'row' | 'column', count: number): readonly string[] {
+    return this.idAllocator.createLogicalAxisIds(axis, count)
   }
 }

@@ -71,6 +71,28 @@ export class WorkbookIdAllocator {
     return axis === 'row' ? `lr${this.nextLogicalRowAxisId++}` : `lc${this.nextLogicalColumnAxisId++}`
   }
 
+  createLogicalAxisIds(axis: WorkbookAxis, count: number): string[] {
+    if (count <= 0) {
+      return []
+    }
+    const ids: string[] = []
+    ids.length = count
+    if (axis === 'row') {
+      let next = this.nextLogicalRowAxisId
+      this.nextLogicalRowAxisId += count
+      for (let index = 0; index < count; index += 1) {
+        ids[index] = `lr${next++}`
+      }
+      return ids
+    }
+    let next = this.nextLogicalColumnAxisId
+    this.nextLogicalColumnAxisId += count
+    for (let index = 0; index < count; index += 1) {
+      ids[index] = `lc${next++}`
+    }
+    return ids
+  }
+
   private createAxisId(axis: WorkbookAxis): string {
     return axis === 'row' ? `row-${this.nextRowAxisId++}` : `column-${this.nextColumnAxisId++}`
   }
