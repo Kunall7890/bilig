@@ -230,8 +230,8 @@ chart, pivot table, macro, or workbook artifact. Check the
 ## After the proof
 
 If the demo or a reduced ExcelJS workbook gives the fresh formula values your
-service needs, star or bookmark Bilig so the recalculation boundary is easy to
-find later:
+service needs, star the repository or bookmark Bilig so the recalculation
+boundary is easy to find later:
 <https://github.com/proompteng/bilig/stargazers>.
 
 Watch releases if this package is close to a production path:
