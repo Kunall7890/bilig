@@ -8,6 +8,7 @@ import {
   workbookRefDataSchemaRefs,
   workbookUndoRefSchema,
 } from './schema-fragments.js'
+import { createNoopEffectSchema, noopEffectCommandKindConditions } from './schema-noop.js'
 
 export type WorkbookJsonSchemaScalar = string | number | boolean | null
 export type WorkbookJsonSchemaValue =
@@ -324,12 +325,12 @@ const applyCommandReceiptSchema: WorkbookJsonSchemaValue = {
           required: ['source', 'evidence', 'opCount', 'commandKind', 'commandDigest', 'effect'],
           additionalProperties: true,
           properties: {
-            source: { type: 'string', minLength: 1 },
-            evidence: { type: 'string', minLength: 1 },
+            source: exactString,
+            evidence: exactString,
             opCount: { const: 0 },
-            commandKind: { type: 'string', minLength: 1 },
-            commandDigest: { type: 'string', minLength: 1 },
-            effect: actionInput,
+            commandKind: exactString,
+            commandDigest: exactString,
+            effect: { $ref: '#/$defs/noopEffect' },
           },
         },
       },
@@ -360,6 +361,7 @@ const applyCommandReceiptSchema: WorkbookJsonSchemaValue = {
         },
       },
     },
+    ...noopEffectCommandKindConditions(),
   ],
 }
 
@@ -704,6 +706,12 @@ export const workbookJsonSchemas = deepFreeze({
 
   runResult: schema('runResult', {
     $defs: defs({
+      noopEffect: createNoopEffectSchema({
+        literalInput,
+        exactString,
+        engineOp,
+        actionCellStylePatch: { $ref: '#/$defs/actionCellStylePatch' },
+      }),
       checkExpectation: checkExpectationSchema,
       apply: applySummarySchema,
       applyCommandReceipt: applyCommandReceiptSchema,
