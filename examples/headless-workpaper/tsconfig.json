@@ -4,6 +4,9 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "noEmit": true,
+    "paths": {
+      "@bilig/workpaper/ai-sdk": ["../../packages/workpaper/src/ai-sdk.ts"]
+    },
     "skipLibCheck": true,
     "strict": true,
     "target": "ES2022",

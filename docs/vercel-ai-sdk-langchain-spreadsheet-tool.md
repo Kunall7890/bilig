@@ -14,10 +14,37 @@ This page is for agent builders who already have an AI SDK, LangChain,
 Mastra, LlamaIndex.TS, LangGraph.js, CopilotKit, or Cloudflare Agents loop and
 need a spreadsheet tool that can do more than return a screenshot.
 
-`@bilig/headless` gives the agent a WorkPaper object: sheets, addresses,
-formulas, computed readback, and JSON persistence. The framework wrapper should
-stay thin. Keep the workbook behavior in ordinary Node functions, then expose
-those functions through the tool shape your agent framework expects.
+`@bilig/workpaper/ai-sdk` gives Vercel AI SDK users a ready `tool()` map for
+WorkPaper reads and verified input-cell edits. Other frameworks can use the
+same handler contract directly: sheets, addresses, formulas, computed readback,
+and JSON persistence stay in ordinary Node functions while the framework wrapper
+stays thin.
+
+```ts
+import { WorkPaper } from '@bilig/workpaper'
+import { createAiSdkWorkPaperTools } from '@bilig/workpaper/ai-sdk'
+
+const workpaper = WorkPaper.buildFromSheets({
+  Inputs: [
+    ['Metric', 'Value'],
+    ['Qualified opportunities', 20],
+    ['Win rate', 0.25],
+    ['Average ARR', 12000],
+  ],
+  Summary: [
+    ['Metric', 'Value'],
+    ['Expected customers', '=Inputs!B2*Inputs!B3'],
+    ['Expected ARR', '=B2*Inputs!B4'],
+  ],
+})
+
+const tools = createAiSdkWorkPaperTools({
+  workpaper,
+  defaultReadRange: 'Summary!A1:B3',
+  proofRange: 'Summary!A1:B3',
+  writableSheets: ['Inputs'],
+})
+```
 
 ## Real AI SDK `generateText()` Smoke
 

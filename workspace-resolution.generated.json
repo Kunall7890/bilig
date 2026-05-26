@@ -163,6 +163,10 @@
     "packageDir": "packages/workpaper",
     "sourceEntry": "packages/workpaper/src/index.ts"
   },
+  "@bilig/workpaper/ai-sdk": {
+    "packageDir": "packages/workpaper",
+    "sourceEntry": "packages/workpaper/src/ai-sdk.ts"
+  },
   "@bilig/workpaper/mcp": {
     "packageDir": "packages/workpaper",
     "sourceEntry": "packages/workpaper/src/mcp.ts"

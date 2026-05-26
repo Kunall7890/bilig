@@ -4,13 +4,12 @@ import {
   exportWorkPaperDocument,
   parseWorkPaperDocument,
   serializeWorkPaperDocument,
-} from '@bilig/headless'
-import { tool } from 'ai'
+} from 'bilig-workpaper'
+import { createAiSdkWorkPaperTools as createPublishedAiSdkWorkPaperTools } from '@bilig/workpaper/ai-sdk'
 import { z } from 'zod'
 
 type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
 type CellAddress = NonNullable<ReturnType<WorkPaperInstance['simpleCellAddressFromString']>>
-type WorkPaperToolSet = ReturnType<typeof createWorkPaperTools>
 
 export type SetInputCellArgs = {
   sheetName: string
@@ -74,10 +73,6 @@ export type AiSdkWorkPaperSmokeProof = {
   text: string
 }
 
-const readSummaryInputSchema = z.object({
-  range: z.string().default('Summary!A1:B5'),
-})
-
 const setInputCellInputSchema = z.object({
   sheetName: z.literal('Inputs'),
   address: z.string().regex(/^[A-Z]+[1-9][0-9]*$/),
@@ -118,7 +113,12 @@ export function buildWorkbook() {
 }
 
 export function createAiSdkWorkPaperTools(workpaper = buildWorkbook()) {
-  return createAiSdkTools(createWorkPaperTools(workpaper))
+  return createPublishedAiSdkWorkPaperTools({
+    workpaper,
+    defaultReadRange: 'Summary!A1:B5',
+    proofRange: 'Summary!A1:B5',
+    writableSheets: ['Inputs'],
+  })
 }
 
 export function createWorkPaperToolHandlers(workpaper = buildWorkbook()) {
@@ -140,15 +140,7 @@ export function requireToolOutput(
 }
 
 export function requireWorkPaperReadResult(value: unknown): WorkPaperReadResult {
-  if (
-    isRecord(value) &&
-    'range' in value &&
-    typeof value.range === 'string' &&
-    'values' in value &&
-    Array.isArray(value.values) &&
-    'serialized' in value &&
-    Array.isArray(value.serialized)
-  ) {
+  if (isWorkPaperReadResult(value)) {
     return {
       range: value.range,
       values: value.values,
@@ -180,6 +172,11 @@ export function requireWorkPaperWriteResult(value: unknown): WorkPaperWriteResul
       afterContracts: value.afterContracts,
       checks: value.checks,
     }
+  }
+
+  const coerced = coerceAiSdkPackageWriteResult(value)
+  if (coerced !== undefined) {
+    return coerced
   }
 
   throw new Error(`Expected WorkPaper write result, received ${JSON.stringify(value)}`)
@@ -222,22 +219,6 @@ export function assertAiSdkWorkPaperSmokeProof(output: AiSdkWorkPaperSmokeProof,
 
   if (!output.text.includes('Edited Inputs!B3')) {
     throw new Error(`Unexpected final AI SDK text: ${output.text}`)
-  }
-}
-
-function createAiSdkTools(localWorkPaperTools: WorkPaperToolSet) {
-  return {
-    readWorkPaperSummary: tool({
-      description: 'Read computed WorkPaper summary values for a small range.',
-      inputSchema: readSummaryInputSchema,
-      execute: async ({ range = 'Summary!A1:B5' }: ReadSummaryArgs = {}) => localWorkPaperTools.readWorkPaperSummary(range),
-    }),
-
-    setWorkPaperInputCell: tool({
-      description: 'Set one validated WorkPaper input cell and return formula readback.',
-      inputSchema: setInputCellInputSchema,
-      execute: async (args: SetInputCellArgs) => localWorkPaperTools.setWorkPaperInputCell(args),
-    }),
   }
 }
 
@@ -301,6 +282,36 @@ function createWorkPaperTools(workpaper: WorkPaperInstance) {
   }
 }
 
+function coerceAiSdkPackageWriteResult(value: unknown): WorkPaperWriteResult | undefined {
+  if (
+    !isRecord(value) ||
+    typeof value.editedCell !== 'string' ||
+    !isWorkPaperReadResult(value.before) ||
+    !isWorkPaperReadResult(value.after) ||
+    !isWorkPaperReadResult(value.restored) ||
+    !isAiSdkPackageWriteChecks(value.checks)
+  ) {
+    return undefined
+  }
+
+  return {
+    editedCell: value.editedCell,
+    before: readSummaryFromRange(value.before),
+    after: readSummaryFromRange(value.after),
+    restored: readSummaryFromRange(value.restored),
+    beforeContracts: readFormulaContractsFromRange(value.before),
+    afterContracts: readFormulaContractsFromRange(value.after),
+    checks: {
+      previousValue: value.checks.previousValue,
+      newValue: value.checks.newValue,
+      formulasPersisted: value.checks.formulasPersisted,
+      restoredMatchesAfter: value.checks.restoredMatchesAfter,
+      expectedArrChanged: value.checks.proofRangeChanged,
+      serializedBytes: value.checks.serializedBytes,
+    },
+  }
+}
+
 function requireCellAddress(workpaper: WorkPaperInstance, sheetName: string, address: string): CellAddress {
   const sheetId = requireSheet(workpaper, sheetName)
   const parsedAddress = workpaper.simpleCellAddressFromString(address, sheetId)
@@ -338,6 +349,24 @@ function readFormulaContracts(workpaper: WorkPaperInstance, summarySheet: number
   }
 }
 
+function readSummaryFromRange(result: WorkPaperReadResult): SummaryReadback {
+  return {
+    expectedCustomers: readGridNumber(result.values, 1, 1, 'expected customers'),
+    expectedArr: readGridNumber(result.values, 2, 1, 'expected ARR'),
+    expansionArr: readGridNumber(result.values, 3, 1, 'expansion ARR'),
+    targetGap: readGridNumber(result.values, 4, 1, 'target gap'),
+  }
+}
+
+function readFormulaContractsFromRange(result: WorkPaperReadResult): FormulaContracts {
+  return {
+    expectedCustomers: readFormulaFromSerialized(result.serialized, 1, 1, 'expected customers'),
+    expectedArr: readFormulaFromSerialized(result.serialized, 2, 1, 'expected ARR'),
+    expansionArr: readFormulaFromSerialized(result.serialized, 3, 1, 'expansion ARR'),
+    targetGap: readFormulaFromSerialized(result.serialized, 4, 1, 'target gap'),
+  }
+}
+
 function readNumber(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
   const cell = workpaper.getCellValue({ sheet, row, col })
   if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
@@ -350,6 +379,14 @@ function readFormula(workpaper: WorkPaperInstance, sheet: number, row: number, c
   const formula = workpaper.getCellFormula({ sheet, row, col })
   if (formula === undefined) {
     throw new Error(`Expected ${label} to be a formula`)
+  }
+  return formula
+}
+
+function readFormulaFromSerialized(serialized: unknown[][], row: number, col: number, label: string): string {
+  const formula = serialized[row]?.[col]
+  if (typeof formula !== 'string' || !formula.startsWith('=')) {
+    throw new Error(`Expected ${label} to be a serialized formula, received ${JSON.stringify(formula)}`)
   }
   return formula
 }
@@ -368,6 +405,10 @@ function readGridNumber(values: WorkPaperReadResult['values'], row: number, col:
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
+}
+
+function isWorkPaperReadResult(value: unknown): value is WorkPaperReadResult {
+  return isRecord(value) && typeof value.range === 'string' && Array.isArray(value.values) && Array.isArray(value.serialized)
 }
 
 function isSummaryReadback(value: unknown): value is SummaryReadback {
@@ -398,6 +439,25 @@ function isWriteChecks(value: unknown): value is WorkPaperWriteResult['checks'] 
     typeof value.formulasPersisted === 'boolean' &&
     typeof value.restoredMatchesAfter === 'boolean' &&
     typeof value.expectedArrChanged === 'boolean' &&
+    typeof value.serializedBytes === 'number'
+  )
+}
+
+function isAiSdkPackageWriteChecks(value: unknown): value is {
+  previousValue: unknown
+  newValue: unknown
+  formulasPersisted: boolean
+  restoredMatchesAfter: boolean
+  proofRangeChanged: boolean
+  serializedBytes: number
+} {
+  return (
+    isRecord(value) &&
+    'previousValue' in value &&
+    'newValue' in value &&
+    typeof value.formulasPersisted === 'boolean' &&
+    typeof value.restoredMatchesAfter === 'boolean' &&
+    typeof value.proofRangeChanged === 'boolean' &&
     typeof value.serializedBytes === 'number'
   )
 }

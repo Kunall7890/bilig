@@ -41,12 +41,15 @@ export async function requireAiSdkStreamTextDiscovery({
 }: AiSdkStreamTextDiscoveryInput): Promise<void> {
   const scriptPath = join(repoRoot, 'examples', 'headless-workpaper', 'ai-sdk-stream-text-tool-smoke.ts')
   const sharedScriptPath = join(repoRoot, 'examples', 'headless-workpaper', 'ai-sdk-workpaper-tool-smoke-shared.ts')
+  const aiSdkPackagePath = join(repoRoot, 'packages', 'workpaper', 'src', 'ai-sdk.ts')
   const script = await readFile(scriptPath, 'utf8')
   const sharedScript = await readFile(sharedScriptPath, 'utf8')
+  const aiSdkPackage = await readFile(aiSdkPackagePath, 'utf8')
   const aiSdkDoc = await readFile(join(docsRoot, 'vercel-ai-sdk-langchain-spreadsheet-tool.md'), 'utf8')
 
   await requireFile(scriptPath)
   await requireFile(sharedScriptPath)
+  await requireFile(aiSdkPackagePath)
 
   for (const [path, content] of [
     ['README.md', readme],
@@ -85,15 +88,12 @@ export async function requireAiSdkStreamTextDiscovery({
     requireIncludes(script, required, 'examples/headless-workpaper/ai-sdk-stream-text-tool-smoke.ts')
   }
 
-  for (const required of [
-    'createAiSdkWorkPaperTools',
-    'assertAiSdkWorkPaperSmokeProof',
-    'tool(',
-    'inputSchema',
-    'formulasPersisted',
-    'restoredMatchesAfter',
-  ]) {
+  for (const required of ['createAiSdkWorkPaperTools', 'assertAiSdkWorkPaperSmokeProof', '@bilig/workpaper/ai-sdk']) {
     requireIncludes(sharedScript, required, 'examples/headless-workpaper/ai-sdk-workpaper-tool-smoke-shared.ts')
+  }
+
+  for (const required of ['tool(', 'inputSchema', 'formulasPersisted', 'restoredMatchesAfter']) {
+    requireIncludes(aiSdkPackage, required, 'packages/workpaper/src/ai-sdk.ts')
   }
 
   for (const required of [

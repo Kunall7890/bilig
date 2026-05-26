@@ -21,6 +21,10 @@ describe('workspace resolution', () => {
       packageDir: 'packages/workpaper',
       sourceEntry: 'packages/workpaper/src/index.ts',
     })
+    expect(resolution['@bilig/workpaper/ai-sdk']).toEqual({
+      packageDir: 'packages/workpaper',
+      sourceEntry: 'packages/workpaper/src/ai-sdk.ts',
+    })
     expect(resolution['@bilig/workpaper/xlsx']).toEqual({
       packageDir: 'packages/workpaper',
       sourceEntry: 'packages/workpaper/src/xlsx.ts',

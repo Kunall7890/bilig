@@ -1725,6 +1725,7 @@ Pick the path that matches the workflow you are trying to unblock:
 | Prefect flow fields                                                      | `cd examples/prefect-workpaper-flow && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                                 | The Node step writes a `workpaper-proof.json` artifact that a Prefect task can validate and return.                 |
 | Directus Flow operation for persisted calculated fields                  | `cd examples/directus-workpaper-flow-operation && npm install && npm run smoke`                                                                                            | The operation returns a Directus `patch` plus before/after/restore WorkPaper proof with `verified: true`.           |
 | n8n, Dify, or Flowise formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321`                                                                                       | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof.               |
+| Vercel AI SDK `generateText()` or `streamText()` tools                   | Import `createAiSdkWorkPaperTools` from `@bilig/workpaper/ai-sdk`                                                                                                          | The tool call returns before/after/restore formula readback instead of a blind write result.                        |
 | Open WebUI needs MCP spreadsheet tools                                   | `npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`                                                                                                 | Open WebUI can call the hosted Streamable HTTP endpoint or a local stdio server bridged through `mcpo`.             |
 | FastMCP Python client for hosted MCP smoke tests                         | `cd examples/fastmcp-workpaper-client && uv run --python 3.12 --with 'fastmcp-slim[client]' python fastmcp_workpaper_client.py --output .tmp/fastmcp-workpaper-proof.json` | FastMCP lists Bilig tools, writes `Inputs!B3`, checks restore proof, and exports WorkPaper JSON.                    |
 | LangGraph.js ToolNode should keep formula proof in state                 | `cd examples/langgraph-workpaper-tool-state && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                         | Real `@langchain/langgraph` `ToolNode` returns `ToolMessage` readback proof after a WorkPaper mutation.             |
@@ -1785,6 +1786,56 @@ console.log({
 
 workbook.dispose()
 ```
+
+## Use WorkPaper Tools With The Vercel AI SDK
+
+Install the AI SDK and Zod in the application that owns the agent loop:
+
+```sh
+npm install @bilig/workpaper ai zod
+```
+
+Then expose a WorkPaper as normal AI SDK tools:
+
+```ts
+import { generateText, stepCountIs } from 'ai'
+import { WorkPaper } from '@bilig/workpaper'
+import { createAiSdkWorkPaperTools } from '@bilig/workpaper/ai-sdk'
+
+const workpaper = WorkPaper.buildFromSheets({
+  Inputs: [
+    ['Metric', 'Value'],
+    ['Qualified opportunities', 20],
+    ['Win rate', 0.25],
+    ['Average ARR', 12000],
+  ],
+  Summary: [
+    ['Metric', 'Value'],
+    ['Expected customers', '=Inputs!B2*Inputs!B3'],
+    ['Expected ARR', '=B2*Inputs!B4'],
+  ],
+})
+
+const tools = createAiSdkWorkPaperTools({
+  workpaper,
+  defaultReadRange: 'Summary!A1:B3',
+  proofRange: 'Summary!A1:B3',
+  writableSheets: ['Inputs'],
+})
+
+const result = await generateText({
+  model,
+  tools,
+  stopWhen: stepCountIs(2),
+  prompt: 'Read the summary, set Inputs!B3 to 0.4, then report the computed ARR change.',
+})
+
+console.log(result.text)
+```
+
+The mutating tool returns `editedCell`, `before`, `after`, `restored`, and
+`checks`. Keep `writableSheets` narrow so the model can edit inputs without
+rewriting formula sheets.
 
 ## Prove The Agent Loop Without Cloning
 
