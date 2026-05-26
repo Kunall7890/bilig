@@ -4,6 +4,89 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.110.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.107.8
+- Manual override: no
+
+## Features
+- feat(n8n): evaluate WorkPaper JSON documents (1520edf9)
+- feat(xlsx): add external workbook proof conversion (5f4525c7)
+
+## Fixes
+- fix(workbook): close strict format proof gaps (2da279d3)
+- fix(workbook): avoid inherited plan accessors (d280def0)
+- fix(workbook): align comparison schemas (e158c4a7)
+- fix(workbook): reject empty format intent (15d15cc5)
+- perf(headless): fast-path suspended literal queueing (6f88495d)
+- fix(workbook): require full command proof (0d406311)
+- fix(workbook): avoid inherited ref getters (fc119be7)
+- fix(release): refresh IronCalc evidence during runtime release (799e4967)
+- fix(workbook): isolate feature plugin surface (55e43e6b)
+- fix(workbook): align schema integer bounds (1146ed8e)
+- fix(workbook): tighten transport schemas (f71695be)
+- fix(workbook): harden transported op hydration (579f7e13)
+- fix(ui): rank same-corpus speed gaps (0855dc45)
+- fix(release): skip stale metadata mutation (39deee59)
+- fix(workbook): reject custom prototype transport data (97885c44)
+- perf(headless): reduce metadata rename versioning overhead (3f40baa7)
+- fix(workbook): close oracle proof blockers (7b094e5b)
+- perf(headless): split constant scalar delta hot path (45e869c1)
+- fix(workbook): harden run option and command schemas (82559f78)
+- fix(workbook): align command bundle schema guards (2e42a437)
+- fix(workbook): prove idempotent command noops (546a136d)
+- perf(headless): bound scalar closure preallocation (1e1bbf1a)
+- fix(workbook): require command-bound noop proof (bfab4a7b)
+- fix(workbook): preserve noop run descriptions (80c09654)
+- fix(workbook): bind noop proof to full ops (062719e6)
+- fix(workbook): bind noop descriptions to receipts (b3f402bd)
+- fix(grid): harden native text proof (e1bb2d4f)
+- perf(core): reuse empty dependency arrays (4f9f8d1b)
+- fix(workbook): validate noop effect descriptions (1e806a8b)
+- fix(workbook): align noop proof schema (060d80d5)
+- fix(workbook): validate noop format effects (470d0216)
+- perf(core): short-circuit sorted direct delta probes (bd5c757f)
+- perf(headless): reserve initial sheet cells once (7b225d02)
+- perf(core): use sparse formula init membership (cb1815cd)
+- perf(core): propagate affine scalar deltas (d57e4633)
+- fix(formula): match excel MOD sign semantics (7f9f8e2d)
+- perf(core): batch dense logical axis ids (407d1d93)
+- fix(formula): match excel ATAN2 coordinates (30cf27ae)
+- fix(release): use workflow token for GitHub API waits (e46138a3)
+- fix(docs): avoid unpublished MCPB links (fee18c69)
+- fix(docs): refresh headless footprint evidence (c0098efb)
+- perf(headless): skip redundant scalar mutation checks (276c3b2d)
+
+## Internal runtime changes
+- docs(growth): add Sim MCP setup (e353fb02)
+- docs(growth): add Windmill WorkPaper script (479a394f)
+- chore(release): runtime packages v0.107.9 (383e2bd2)
+- docs(growth): add Trigger.dev WorkPaper task (98ed4839)
+- chore(release): runtime packages v0.107.10 (16999484)
+- docs(headless): format release package docs (29e558d1)
+- chore(release): runtime packages v0.107.11 (ef648a78)
+- chore(release): runtime packages v0.107.12 (d17ccd46)
+- docs(workbook): clarify feature command imports (c74f2c78)
+- chore(release): runtime packages v0.107.13 (caf12943)
+- chore(release): runtime packages v0.107.14 (0561ed73)
+- docs(growth): add Kestra WorkPaper flow (57e0694a)
+- docs(growth): add Prefect WorkPaper flow (638893e0)
+- docs(growth): add Airflow WorkPaper DAG (969b7dc3)
+- docs(growth): add Dagster WorkPaper asset (b9caf0f3)
+- test(workbook): remove business-specific labels (e0fcb106)
+- chore(release): runtime packages v0.107.15 (32641948)
+- docs(growth): add Temporal WorkPaper activity (29de7b8a)
+- chore(release): runtime packages v0.107.16 (f1eb2738)
+- docs(growth): add FastMCP WorkPaper client (148a7a21)
+- docs(agent): prove OpenAI Agents MCP tools (c0ac6d47)
+- chore(release): runtime packages v0.108.0 (e005aeab)
+- docs(workbook): expose agent intent API (65b27cae)
+- docs(agent): prefer latest package coordinate (a23cb3be)
+- docs(growth): add smolagents WorkPaper proof (5f7170ba)
+- docs(growth): add Inngest WorkPaper step proof (16aa5aec)
+- chore(release): runtime packages v0.109.0 (b2b814c4)
+
 ## 0.109.0
 
 - Release type: minor

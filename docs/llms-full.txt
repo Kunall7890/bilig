@@ -888,7 +888,7 @@ matters.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.109.0`:
+Current checked npm footprint for `@bilig/headless@0.110.0`:
 
 - Pack dry run: `801 kB` tarball, `4.91 MB` unpacked, `780` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
@@ -1947,14 +1947,14 @@ fixture report without uploading workbook contents.
 Reduced workbook already in hand?
 
 ```sh
-npm exec --package @bilig/headless@0.109.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.110.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Handing a spreadsheet task to another coding agent?
 
 ```sh
-npm exec --package @bilig/headless@0.109.0 -- bilig-agent-challenge
-npm exec --package @bilig/headless@0.109.0 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.110.0 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.110.0 -- bilig-mcp-challenge
 ```
 
 The first command proves the direct WorkPaper API. The second command proves
@@ -1996,7 +1996,7 @@ mcp:server`.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.109.0`:
+Current checked npm footprint for `@bilig/headless@0.110.0`:
 
 - Pack dry run: `801 kB` tarball, `4.91 MB` unpacked, `780` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
@@ -2081,8 +2081,8 @@ building a workbook, changing an input, saving the document, restoring it, and
 checking that the dependent formula still reads back correctly.
 
 ```sh
-npm exec --package @bilig/headless@0.109.0 -- bilig-agent-challenge
-npm exec --package @bilig/headless@0.109.0 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.110.0 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.110.0 -- bilig-mcp-challenge
 ```
 
 Expected output:
@@ -2290,9 +2290,9 @@ MCP examples:
 - The package ships npm-executable binaries:
 
 ```sh
-npm exec --package @bilig/headless@0.109.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/headless@0.109.0 -- bilig-workpaper-mcp
-npm exec --package @bilig/headless@0.109.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.110.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.110.0 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.110.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 
@@ -2753,8 +2753,8 @@ logic that can run through @bilig/headless. If it is, use WorkPaper state as the
 source of truth.
 
 For MCP, start with:
-npm exec --package @bilig/headless@0.109.0 -- bilig-mcp-challenge
-npm exec --package @bilig/headless@0.109.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.110.0 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.110.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
 For Node or TypeScript, import @bilig/headless directly. Prove the edit by
 reading the relevant range, writing one small input or formula, reading the
@@ -2784,7 +2784,7 @@ Do not report success from a write call alone.
 For MCP clients, use the published stdio server:
 
 ```sh
-npm exec --package @bilig/headless@0.109.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.110.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 Expected file-backed tools:
@@ -2847,8 +2847,8 @@ console.log({ revenue, savedBytes: saved.length })
 From a clean project, run the package-owned challenge:
 
 ```sh
-npm exec --package @bilig/headless@0.109.0 -- bilig-agent-challenge
-npm exec --package @bilig/headless@0.109.0 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.110.0 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.110.0 -- bilig-mcp-challenge
 ```
 
 `bilig-agent-challenge` proves the direct WorkPaper API loop.
@@ -8022,7 +8022,7 @@ cd bilig-agent-xlsx-proof
 curl -fsSLO https://proompteng.github.io/bilig/xlsx-recalculation-proof.ts
 npm init -y >/dev/null
 npm pkg set type=module
-npm install @bilig/headless@0.109.0 tsx@4.21.0
+npm install @bilig/headless@0.110.0 tsx@4.21.0
 npx --no-install tsx xlsx-recalculation-proof.ts
 ```
 
@@ -8136,7 +8136,7 @@ the Markdown output into the fixture form. It reads the file on your machine and
 does not upload workbook contents.
 
 ```sh
-npm exec --package @bilig/headless@0.109.0 -- bilig-formula-clinic ./reduced.xlsx \
+npm exec --package @bilig/headless@0.110.0 -- bilig-formula-clinic ./reduced.xlsx \
   --cells "Summary!B7,Inputs!B2"
 ```
 
