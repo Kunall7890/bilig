@@ -13,6 +13,7 @@ import {
   sameCorpusMutationTargetCommittedStateInvalidReasons,
   type SameCorpusMutationTargetCommittedStateProof,
 } from './ui-responsiveness-same-corpus-committed-state-proof.ts'
+import { sameCorpusMutationTargetTimingInvalidReasons } from './ui-responsiveness-same-corpus-mutation-target-timing.ts'
 import { uiSameCorpusWorkloadMutatesWorkbook, type UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export interface SameCorpusSemanticUiProof {
@@ -42,7 +43,11 @@ export interface SameCorpusMutationTargetProof {
   readonly product: UiResponsivenessSameCorpusProduct
   readonly sampleIndex: number
   readonly committedTargetProofMs: number
+  readonly visibleTargetRenderMs: number
+  readonly committedStateValidationMs: number
+  readonly restoreValidationMs: number
   readonly operationStartedAtMs: number
+  readonly visibleTargetRenderCapturedAtMs: number
   readonly postMutationProofCapturedAtMs: number
   readonly restoreProofCapturedAtMs: number
   readonly workload: UiResponsivenessSameCorpusWorkload
@@ -327,6 +332,15 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
   if (!Number.isFinite(sample.committedTargetProofMs) || sample.committedTargetProofMs < 0) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing committed target proof timing`)
   }
+  if (!Number.isFinite(sample.visibleTargetRenderMs) || sample.visibleTargetRenderMs < 0) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing visible target render timing`)
+  }
+  if (!Number.isFinite(sample.committedStateValidationMs) || sample.committedStateValidationMs < 0) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing committed-state validation timing`)
+  }
+  if (!Number.isFinite(sample.restoreValidationMs) || sample.restoreValidationMs < 0) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing restore validation timing`)
+  }
   invalidReasons.push(...sameCorpusMutationTargetTimingInvalidReasons(workload, sample))
   if (sample.workload !== workload || sample.intendedOperation !== workload) {
     invalidReasons.push(`semantic UI mutation target proof operation does not match ${workload}`)
@@ -391,32 +405,6 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
   }
   if (workload === 'fill-format-change' && (sample.after.fillColor === null || sample.visibleAfter.fillColor === null)) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing rendered post-mutation fill color`)
-  }
-  return invalidReasons
-}
-
-function sameCorpusMutationTargetTimingInvalidReasons(
-  workload: UiResponsivenessSameCorpusWorkload,
-  sample: SameCorpusMutationTargetProof,
-): string[] {
-  const timings = [sample.operationStartedAtMs, sample.postMutationProofCapturedAtMs, sample.restoreProofCapturedAtMs]
-  if (timings.some((value) => !Number.isFinite(value) || value < 0)) {
-    return [`semantic UI mutation target proof for ${workload} is missing operation proof timing bounds`]
-  }
-  const invalidReasons: string[] = []
-  if (
-    sample.postMutationProofCapturedAtMs < sample.operationStartedAtMs ||
-    sample.restoreProofCapturedAtMs < sample.postMutationProofCapturedAtMs
-  ) {
-    invalidReasons.push(`semantic UI mutation target proof for ${workload} has non-monotonic operation proof timing bounds`)
-  }
-  const expectedCommittedTargetProofMs = sample.postMutationProofCapturedAtMs - sample.operationStartedAtMs
-  if (
-    Number.isFinite(sample.committedTargetProofMs) &&
-    sample.committedTargetProofMs >= 0 &&
-    Math.abs(sample.committedTargetProofMs - expectedCommittedTargetProofMs) > 1
-  ) {
-    invalidReasons.push(`semantic UI mutation target proof for ${workload} committed target timing does not match proof window`)
   }
   return invalidReasons
 }

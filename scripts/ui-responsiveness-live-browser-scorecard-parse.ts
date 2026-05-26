@@ -319,6 +319,9 @@ function parseSameCorpusMeasurement(value: Record<string, unknown>): UiResponsiv
   const scrollMovementPx = optionalNumericSummary(value, 'scrollMovementPx')
   const authoritativeRenderProofMs = optionalNumericSummary(value, 'authoritativeRenderProofMs')
   const committedTargetProofMs = optionalNumericSummary(value, 'committedTargetProofMs')
+  const visibleTargetRenderMs = optionalNumericSummary(value, 'visibleTargetRenderMs')
+  const committedStateValidationMs = optionalNumericSummary(value, 'committedStateValidationMs')
+  const restoreValidationMs = optionalNumericSummary(value, 'restoreValidationMs')
   const biligRuntimeProof = Object.hasOwn(value, 'biligRuntimeProof')
     ? parseBiligRuntimeProof(objectField(value, 'biligRuntimeProof'))
     : undefined
@@ -329,6 +332,9 @@ function parseSameCorpusMeasurement(value: Record<string, unknown>): UiResponsiv
     operationResponseProofs: stringArrayField(value, 'operationResponseProofs').map(parseSameCorpusOperationResponseProof),
     ...(authoritativeRenderProofMs ? { authoritativeRenderProofMs } : {}),
     ...(committedTargetProofMs ? { committedTargetProofMs } : {}),
+    ...(visibleTargetRenderMs ? { visibleTargetRenderMs } : {}),
+    ...(committedStateValidationMs ? { committedStateValidationMs } : {}),
+    ...(restoreValidationMs ? { restoreValidationMs } : {}),
     postOperationFrameMs: parseNumericSummary(objectField(value, 'postOperationFrameMs')),
     ...(scrollEventResponseMs ? { scrollEventResponseMs } : {}),
     ...(scrollMovementPx ? { scrollMovementPx } : {}),
@@ -397,6 +403,15 @@ function parseSameCorpusCaptureMeasurement(
       : {}),
     ...(Object.hasOwn(value, 'committedTargetProofMsSamples')
       ? { committedTargetProofMsSamples: numericArrayField(value, 'committedTargetProofMsSamples') }
+      : {}),
+    ...(Object.hasOwn(value, 'visibleTargetRenderMsSamples')
+      ? { visibleTargetRenderMsSamples: numericArrayField(value, 'visibleTargetRenderMsSamples') }
+      : {}),
+    ...(Object.hasOwn(value, 'committedStateValidationMsSamples')
+      ? { committedStateValidationMsSamples: numericArrayField(value, 'committedStateValidationMsSamples') }
+      : {}),
+    ...(Object.hasOwn(value, 'restoreValidationMsSamples')
+      ? { restoreValidationMsSamples: numericArrayField(value, 'restoreValidationMsSamples') }
       : {}),
     postOperationFrameMsSamples: numericArrayField(value, 'postOperationFrameMsSamples'),
     ...(Object.hasOwn(value, 'scrollEventResponseMsSamples')
@@ -729,7 +744,12 @@ function optionalSameCorpusTenXMetric(
     return undefined
   }
   const metric = stringField(value, key)
-  if (metric === 'operationResponseMs' || metric === 'scrollEventResponseMs' || metric === 'committedTargetProofMs') {
+  if (
+    metric === 'operationResponseMs' ||
+    metric === 'scrollEventResponseMs' ||
+    metric === 'visibleTargetRenderMs' ||
+    metric === 'committedTargetProofMs'
+  ) {
     return metric
   }
   throw new Error(`Unexpected UI responsiveness same-corpus 10x metric: ${metric}`)

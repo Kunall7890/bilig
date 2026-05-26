@@ -1676,7 +1676,14 @@ function sameCorpusCaptureMeasurement(
     operationResponseMsSamples: [10, 11, 12],
     operationResponseProofs: [operationResponseProof, operationResponseProof, operationResponseProof],
     ...(product === 'bilig' ? { authoritativeRenderProofMsSamples: [15, 16, 17] } : {}),
-    ...(uiSameCorpusWorkloadMutatesWorkbook(workload) ? { committedTargetProofMsSamples: [40, 41, 42] } : {}),
+    ...(uiSameCorpusWorkloadMutatesWorkbook(workload)
+      ? {
+          committedTargetProofMsSamples: [40, 41, 42],
+          visibleTargetRenderMsSamples: [12, 13, 14],
+          committedStateValidationMsSamples: [28, 28, 28],
+          restoreValidationMsSamples: [80, 80, 80],
+        }
+      : {}),
     postOperationFrameMsSamples: [8, 9, 10],
     corpusVerification: {
       verified: true,
@@ -1912,14 +1919,21 @@ function sameCorpusMutationTargetProofs(product: SameCorpusProductVisualProof['p
   }
   return [0, 1, 2].map((sampleIndex) => {
     const committedTargetProofMs = 40 + sampleIndex
+    const visibleTargetRenderMs = 12 + sampleIndex
+    const committedStateValidationMs = committedTargetProofMs - visibleTargetRenderMs
+    const restoreValidationMs = 80
     const operationStartedAtMs = 1000 + sampleIndex * 100
     const proof: SameCorpusMutationTargetProof = {
       product,
       sampleIndex,
       committedTargetProofMs,
+      visibleTargetRenderMs,
+      committedStateValidationMs,
+      restoreValidationMs,
       operationStartedAtMs,
+      visibleTargetRenderCapturedAtMs: operationStartedAtMs + visibleTargetRenderMs,
       postMutationProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs,
-      restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs + 80,
+      restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs + restoreValidationMs,
       workload,
       intendedOperation: workload,
       intendedPayload: sameCorpusMutationTargetIntendedPayload(workload, sampleIndex),

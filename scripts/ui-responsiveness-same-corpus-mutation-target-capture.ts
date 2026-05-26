@@ -58,6 +58,8 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     })
     const visibleAfterSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
     const afterScreenshot = await captureTargetScreenshot({ ...args, semanticReadback: visibleAfter }, 'after')
+    const visibleTargetRenderCapturedAtMs = performance.now()
+    const visibleTargetRenderMs = Math.max(0, visibleTargetRenderCapturedAtMs - args.operationStartedAt)
     const afterCommittedStateProof = await captureSameCorpusCommittedStatePhaseProof({
       expectedReadback: after,
       page: args.page,
@@ -76,6 +78,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     })
     const postMutationProofCapturedAtMs = performance.now()
     const committedTargetProofMs = Math.max(0, postMutationProofCapturedAtMs - args.operationStartedAt)
+    const committedStateValidationMs = Math.max(0, postMutationProofCapturedAtMs - visibleTargetRenderCapturedAtMs)
     await restoreProductWorkbookMutation(args.page, args.workload)
     restoredAfterMutation = true
     await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
@@ -98,10 +101,12 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       workload: args.workload,
     })
     const restoreProofCapturedAtMs = performance.now()
+    const restoreValidationMs = Math.max(0, restoreProofCapturedAtMs - postMutationProofCapturedAtMs)
     return {
       after,
       authoritativeReadbackRevision: revisions.authoritativeReadbackRevision,
       before: args.before,
+      committedStateValidationMs,
       committedTargetProofMs,
       committedStateProof: buildSameCorpusCommittedStateProof({
         after: afterCommittedStateProof,
@@ -118,6 +123,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       postMutationProofCapturedAtMs,
       product: args.product,
       restored,
+      restoreValidationMs,
       restoreProofCapturedAtMs,
       sampleIndex: args.sampleIndex,
       screenshotPath: afterScreenshot.screenshotPath,
@@ -134,6 +140,8 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       visibleAfter,
       visibleAfterSelectedRange,
       visibleRenderRevision: revisions.visibleRenderRevision,
+      visibleTargetRenderCapturedAtMs,
+      visibleTargetRenderMs,
       visibleRestored,
       visibleRestoredSelectedRange,
       workload: args.workload,

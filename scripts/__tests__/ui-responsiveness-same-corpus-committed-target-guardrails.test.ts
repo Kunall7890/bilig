@@ -43,6 +43,19 @@ describe('same-corpus committed target proof guardrails', () => {
     })
   })
 
+  it('rejects legacy cumulative timing without separated visible and committed-state timings', () => {
+    const entry = sameCorpusEditVisibleCellCase({
+      biligProofs: sameCorpusMutationTargetProofs('bilig').map(removeSeparatedMutationTimings),
+    })
+
+    expect(hasAcceptedCommittedTargetProofTiming(entry, entry.bilig, 3)).toBe(false)
+    expect(hasAcceptedCommittedTargetProofTiming(entry, entry.googleSheets, 3)).toBe(true)
+    expect(sameCorpusCommittedTargetProofTimingCounts([entry], 3)).toMatchObject({
+      committedTargetProofTimingCaseCount: 0,
+      committedTargetProofTimingSampleCount: 3,
+    })
+  })
+
   it('rejects stale target proof samples even when raw timing samples are present', () => {
     const cases = [
       sameCorpusEditVisibleCellCase({
@@ -147,6 +160,9 @@ function sameCorpusMeasurement(product: 'bilig' | 'google-sheets'): SameCorpusCo
   return {
     product,
     committedTargetProofMsSamples: [0, 1, 2].map((sampleIndex) => committedTargetProofMs(product, sampleIndex)),
+    visibleTargetRenderMsSamples: [0, 1, 2].map((sampleIndex) => visibleTargetRenderMs(product, sampleIndex)),
+    committedStateValidationMsSamples: [0, 1, 2].map((sampleIndex) => committedStateValidationMs(product, sampleIndex)),
+    restoreValidationMsSamples: [0, 1, 2].map((sampleIndex) => restoreValidationMs(product, sampleIndex)),
   }
 }
 
@@ -180,13 +196,20 @@ function sameCorpusMutationTargetProofs(product: 'bilig' | 'google-sheets'): Sam
     const targetValue = sameCorpusEditVisibleCellValue(sampleIndex)
     const operationStartedAtMs = 1000 + sampleIndex * 100
     const committedTargetProofMsValue = committedTargetProofMs(product, sampleIndex)
+    const visibleTargetRenderMsValue = visibleTargetRenderMs(product, sampleIndex)
+    const committedStateValidationMsValue = committedStateValidationMs(product, sampleIndex)
+    const restoreValidationMsValue = restoreValidationMs(product, sampleIndex)
     const proof: SameCorpusMutationTargetProof = {
       product,
       sampleIndex,
       committedTargetProofMs: committedTargetProofMsValue,
+      visibleTargetRenderMs: visibleTargetRenderMsValue,
+      committedStateValidationMs: committedStateValidationMsValue,
+      restoreValidationMs: restoreValidationMsValue,
       operationStartedAtMs,
+      visibleTargetRenderCapturedAtMs: operationStartedAtMs + visibleTargetRenderMsValue,
       postMutationProofCapturedAtMs: operationStartedAtMs + committedTargetProofMsValue,
-      restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMsValue + 40,
+      restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMsValue + restoreValidationMsValue,
       workload: 'edit-visible-cell',
       intendedOperation: 'edit-visible-cell',
       intendedPayload: { kind: 'cell-value', value: targetValue },
@@ -321,6 +344,28 @@ function sameCorpusTargetScreenshot(product: 'bilig' | 'google-sheets', sampleIn
 
 function committedTargetProofMs(product: 'bilig' | 'google-sheets', sampleIndex: number): number {
   return product === 'bilig' ? 40 + sampleIndex : 400 + sampleIndex * 10
+}
+
+function visibleTargetRenderMs(product: 'bilig' | 'google-sheets', sampleIndex: number): number {
+  return product === 'bilig' ? 12 + sampleIndex : 72 + sampleIndex * 4
+}
+
+function committedStateValidationMs(product: 'bilig' | 'google-sheets', sampleIndex: number): number {
+  return committedTargetProofMs(product, sampleIndex) - visibleTargetRenderMs(product, sampleIndex)
+}
+
+function restoreValidationMs(product: 'bilig' | 'google-sheets', sampleIndex: number): number {
+  return product === 'bilig' ? 18 + sampleIndex : 110 + sampleIndex * 3
+}
+
+function removeSeparatedMutationTimings(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  return {
+    ...proof,
+    committedStateValidationMs: Number.NaN,
+    restoreValidationMs: Number.NaN,
+    visibleTargetRenderCapturedAtMs: Number.NaN,
+    visibleTargetRenderMs: Number.NaN,
+  }
 }
 
 function sheetId(product: 'bilig' | 'google-sheets'): string {

@@ -40,7 +40,11 @@ describe('same-corpus mutation target proof summary', () => {
               sampleIndex: 0,
               product: 'bilig',
               committedTargetProofMs: 40,
+              visibleTargetRenderMs: 12,
+              committedStateValidationMs: 28,
+              restoreValidationMs: 80,
               operationStartedAtMs: 1000,
+              visibleTargetRenderCapturedAtMs: 1012,
               postMutationProofCapturedAtMs: 1040,
               restoreProofCapturedAtMs: 1120,
               sheetName: 'WideGrid',
@@ -78,7 +82,11 @@ describe('same-corpus mutation target proof summary', () => {
               present: false,
               product: null,
               committedTargetProofMs: null,
+              visibleTargetRenderMs: null,
+              committedStateValidationMs: null,
+              restoreValidationMs: null,
               operationStartedAtMs: null,
+              visibleTargetRenderCapturedAtMs: null,
               postMutationProofCapturedAtMs: null,
               restoreProofCapturedAtMs: null,
               sheetName: null,
@@ -307,14 +315,21 @@ function mutationTargetProof(
   const value = sameCorpusEditVisibleCellValue(sampleIndex)
   const afterValue = corruptProof ? 'stale-value' : value
   const committedTargetProofMs = 40 + sampleIndex
+  const visibleTargetRenderMs = 12 + sampleIndex
+  const committedStateValidationMs = committedTargetProofMs - visibleTargetRenderMs
+  const restoreValidationMs = 80
   const operationStartedAtMs = 1000 + sampleIndex * 100
   const proof: SameCorpusMutationTargetProof = {
     product,
     sampleIndex,
     committedTargetProofMs,
+    visibleTargetRenderMs,
+    committedStateValidationMs,
+    restoreValidationMs,
     operationStartedAtMs,
+    visibleTargetRenderCapturedAtMs: operationStartedAtMs + visibleTargetRenderMs,
     postMutationProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs,
-    restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs + 80,
+    restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs + restoreValidationMs,
     workload: 'edit-visible-cell',
     intendedOperation: 'edit-visible-cell',
     intendedPayload: {

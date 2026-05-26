@@ -20,6 +20,9 @@ export interface UiResponsivenessSameCorpusMeasurement {
   readonly operationResponseProofs: readonly SameCorpusOperationResponseProof[]
   readonly authoritativeRenderProofMs?: NumericSummary
   readonly committedTargetProofMs?: NumericSummary
+  readonly visibleTargetRenderMs?: NumericSummary
+  readonly committedStateValidationMs?: NumericSummary
+  readonly restoreValidationMs?: NumericSummary
   readonly postOperationFrameMs: NumericSummary
   readonly scrollEventResponseMs?: NumericSummary
   readonly scrollMovementPx?: NumericSummary
@@ -65,7 +68,7 @@ export interface UiResponsivenessSameCorpusCase extends SameCorpusScenarioCaseFi
   readonly biligToGoogleSheetsScrollEventP95Ratio?: number
   readonly biligToMicrosoftExcelWebScrollEventMeanRatio?: number
   readonly biligToMicrosoftExcelWebScrollEventP95Ratio?: number
-  readonly tenXMeanAndP95Metric?: 'operationResponseMs' | 'scrollEventResponseMs' | 'committedTargetProofMs'
+  readonly tenXMeanAndP95Metric?: 'operationResponseMs' | 'scrollEventResponseMs' | 'visibleTargetRenderMs' | 'committedTargetProofMs'
   readonly scenarioProof: SameCorpusScenarioProof
   readonly tenXMeanAndP95AgainstGoogleSheets: boolean
   readonly tenXMeanAndP95AgainstMicrosoftExcelWeb?: boolean | undefined
@@ -199,7 +202,11 @@ export interface SameCorpusMutationTargetProofSampleSummary {
   readonly accepted: boolean
   readonly product: UiResponsivenessSameCorpusProduct | null
   readonly committedTargetProofMs: number | null
+  readonly visibleTargetRenderMs: number | null
+  readonly committedStateValidationMs: number | null
+  readonly restoreValidationMs: number | null
   readonly operationStartedAtMs: number | null
+  readonly visibleTargetRenderCapturedAtMs: number | null
   readonly postMutationProofCapturedAtMs: number | null
   readonly restoreProofCapturedAtMs: number | null
   readonly sheetName: string | null
@@ -242,6 +249,9 @@ export interface SameCorpusCaptureMeasurement {
   readonly operationResponseProofs: SameCorpusOperationResponseProof[]
   readonly authoritativeRenderProofMsSamples?: number[]
   readonly committedTargetProofMsSamples?: number[]
+  readonly visibleTargetRenderMsSamples?: number[]
+  readonly committedStateValidationMsSamples?: number[]
+  readonly restoreValidationMsSamples?: number[]
   readonly postOperationFrameMsSamples: number[]
   readonly scrollEventResponseMsSamples?: number[]
   readonly scrollMovementPxSamples?: number[]

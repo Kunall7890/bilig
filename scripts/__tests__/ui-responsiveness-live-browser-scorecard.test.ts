@@ -269,7 +269,7 @@ describe('UI responsiveness live browser scorecard', () => {
       biligMeanMs: 5,
       googleMeanMs: 100,
       committedTargetProofGuardrailPassed: true,
-      tenXMeanAndP95Metric: 'operationResponseMs',
+      tenXMeanAndP95Metric: 'visibleTargetRenderMs',
       passed: true,
     })
   })
@@ -363,7 +363,7 @@ describe('UI responsiveness live browser scorecard', () => {
 
     expect(proof.cases.find((entry) => entry.workload === 'edit-visible-cell')).toMatchObject({
       committedTargetProofGuardrailPassed: false,
-      tenXMeanAndP95Metric: 'operationResponseMs',
+      tenXMeanAndP95Metric: 'visibleTargetRenderMs',
       tenXMeanAndP95AgainstGoogleSheets: false,
       passed: false,
     })
@@ -1059,6 +1059,13 @@ function sameCorpusCaptureMeasurementFixture(
     ...(uiSameCorpusWorkloadMutatesWorkbook(workload)
       ? {
           committedTargetProofMsSamples: [0, 1, 2].map((sampleIndex) => sameCorpusMutationTargetCommittedProofMs(product, sampleIndex)),
+          visibleTargetRenderMsSamples: [0, 1, 2].map((sampleIndex) => sameCorpusMutationTargetVisibleRenderMs(product, sampleIndex)),
+          committedStateValidationMsSamples: [0, 1, 2].map(
+            (sampleIndex) =>
+              sameCorpusMutationTargetCommittedProofMs(product, sampleIndex) -
+              sameCorpusMutationTargetVisibleRenderMs(product, sampleIndex),
+          ),
+          restoreValidationMsSamples: [80, 80, 80],
         }
       : {}),
     postOperationFrameMsSamples: product === 'bilig' ? [8, 9, 10] : [14, 15, 16],
@@ -1277,14 +1284,21 @@ function sameCorpusMutationTargetProofs(
   }
   return [0, 1, 2].map((sampleIndex) => {
     const committedTargetProofMs = sameCorpusMutationTargetCommittedProofMs(product, sampleIndex)
+    const visibleTargetRenderMs = sameCorpusMutationTargetVisibleRenderMs(product, sampleIndex)
+    const committedStateValidationMs = committedTargetProofMs - visibleTargetRenderMs
+    const restoreValidationMs = 80
     const operationStartedAtMs = 1000 + sampleIndex * 100
     const proof: SameCorpusMutationTargetProof = {
       product,
       sampleIndex,
       committedTargetProofMs,
+      visibleTargetRenderMs,
+      committedStateValidationMs,
+      restoreValidationMs,
       operationStartedAtMs,
+      visibleTargetRenderCapturedAtMs: operationStartedAtMs + visibleTargetRenderMs,
       postMutationProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs,
-      restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs + 80,
+      restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs + restoreValidationMs,
       workload,
       intendedOperation: workload,
       intendedPayload: sameCorpusMutationTargetIntendedPayload(workload, sampleIndex),
@@ -1372,6 +1386,16 @@ function sameCorpusMutationTargetCommittedProofMs(product: 'bilig' | 'google-she
     return 400 + sampleIndex * 10
   }
   return 440 + sampleIndex * 10
+}
+
+function sameCorpusMutationTargetVisibleRenderMs(product: 'bilig' | 'google-sheets' | 'microsoft-excel-web', sampleIndex: number): number {
+  if (product === 'bilig') {
+    return 5 + sampleIndex
+  }
+  if (product === 'google-sheets') {
+    return 100 + sampleIndex * 2
+  }
+  return 80 + sampleIndex * 2
 }
 
 function sameCorpusMutationTargetScreenshots(
@@ -1533,8 +1557,17 @@ function withProductPixelGridVerdicts(proof: Omit<SameCorpusPixelGridProof, 'pro
 }
 
 function withoutCommittedTargetProofTiming(measurement: SameCorpusCaptureMeasurement): SameCorpusCaptureMeasurement {
-  const { committedTargetProofMsSamples, ...rest } = measurement
+  const {
+    committedStateValidationMsSamples,
+    committedTargetProofMsSamples,
+    restoreValidationMsSamples,
+    visibleTargetRenderMsSamples,
+    ...rest
+  } = measurement
+  void committedStateValidationMsSamples
   void committedTargetProofMsSamples
+  void restoreValidationMsSamples
+  void visibleTargetRenderMsSamples
   return rest
 }
 

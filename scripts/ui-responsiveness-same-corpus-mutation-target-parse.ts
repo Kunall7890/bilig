@@ -13,7 +13,11 @@ export function parseSameCorpusMutationTargetProof(value: unknown): SameCorpusMu
     product: parseSameCorpusProduct(stringField(record, 'product')),
     sampleIndex: numberField(record, 'sampleIndex'),
     committedTargetProofMs: optionalNumberField(record, 'committedTargetProofMs') ?? Number.NaN,
+    visibleTargetRenderMs: optionalNumberField(record, 'visibleTargetRenderMs') ?? Number.NaN,
+    committedStateValidationMs: optionalNumberField(record, 'committedStateValidationMs') ?? Number.NaN,
+    restoreValidationMs: optionalNumberField(record, 'restoreValidationMs') ?? Number.NaN,
     operationStartedAtMs: optionalNumberField(record, 'operationStartedAtMs') ?? Number.NaN,
+    visibleTargetRenderCapturedAtMs: optionalNumberField(record, 'visibleTargetRenderCapturedAtMs') ?? Number.NaN,
     postMutationProofCapturedAtMs: optionalNumberField(record, 'postMutationProofCapturedAtMs') ?? Number.NaN,
     restoreProofCapturedAtMs: optionalNumberField(record, 'restoreProofCapturedAtMs') ?? Number.NaN,
     workload: parseSameCorpusWorkload(stringField(record, 'workload')),
@@ -147,7 +151,15 @@ function parseSameCorpusMutationTargetProofSampleSummary(value: unknown): SameCo
     accepted: booleanField(record, 'accepted'),
     product: Object.hasOwn(record, 'product') ? nullableSameCorpusProduct(record, 'product') : null,
     committedTargetProofMs: Object.hasOwn(record, 'committedTargetProofMs') ? nullableNumberField(record, 'committedTargetProofMs') : null,
+    visibleTargetRenderMs: Object.hasOwn(record, 'visibleTargetRenderMs') ? nullableNumberField(record, 'visibleTargetRenderMs') : null,
+    committedStateValidationMs: Object.hasOwn(record, 'committedStateValidationMs')
+      ? nullableNumberField(record, 'committedStateValidationMs')
+      : null,
+    restoreValidationMs: Object.hasOwn(record, 'restoreValidationMs') ? nullableNumberField(record, 'restoreValidationMs') : null,
     operationStartedAtMs: Object.hasOwn(record, 'operationStartedAtMs') ? nullableNumberField(record, 'operationStartedAtMs') : null,
+    visibleTargetRenderCapturedAtMs: Object.hasOwn(record, 'visibleTargetRenderCapturedAtMs')
+      ? nullableNumberField(record, 'visibleTargetRenderCapturedAtMs')
+      : null,
     postMutationProofCapturedAtMs: Object.hasOwn(record, 'postMutationProofCapturedAtMs')
       ? nullableNumberField(record, 'postMutationProofCapturedAtMs')
       : null,

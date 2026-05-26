@@ -1,7 +1,7 @@
 import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 const requiredGoogleSheetsSpeedup = 10
-export type SameCorpusUiSpeedMetric = 'operationResponseMs' | 'scrollEventResponseMs' | 'committedTargetProofMs'
+export type SameCorpusUiSpeedMetric = 'operationResponseMs' | 'scrollEventResponseMs' | 'visibleTargetRenderMs' | 'committedTargetProofMs'
 
 export interface SameCorpusUiSpeedSummary {
   readonly mean: number
@@ -11,6 +11,7 @@ export interface SameCorpusUiSpeedSummary {
 export interface SameCorpusUiSpeedMeasurement {
   readonly operationResponseMs: SameCorpusUiSpeedSummary
   readonly scrollEventResponseMs?: SameCorpusUiSpeedSummary
+  readonly visibleTargetRenderMs?: SameCorpusUiSpeedSummary
   readonly committedTargetProofMs?: SameCorpusUiSpeedSummary
 }
 
@@ -93,6 +94,9 @@ function sameCorpusTimingForMetric(
   }
   if (metric === 'committedTargetProofMs') {
     return measurement.committedTargetProofMs
+  }
+  if (metric === 'visibleTargetRenderMs') {
+    return measurement.visibleTargetRenderMs
   }
   return measurement.operationResponseMs
 }

@@ -11,6 +11,9 @@ export interface ProductOperationSample {
   readonly operationResponseProof: SameCorpusOperationResponseProof
   readonly authoritativeRenderProofMs?: number
   readonly committedTargetProofMs?: number
+  readonly visibleTargetRenderMs?: number
+  readonly committedStateValidationMs?: number
+  readonly restoreValidationMs?: number
   readonly postOperationFrameMs: number
   readonly scrollEventResponseMs?: number
   readonly scrollMovementPx?: number

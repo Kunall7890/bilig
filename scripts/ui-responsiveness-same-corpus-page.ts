@@ -475,7 +475,12 @@ async function measureProduct(
       ? { authoritativeRenderProofMsSamples: collection.samples.map((entry) => entry.authoritativeRenderProofMs ?? Number.NaN) }
       : {}),
     ...(uiSameCorpusWorkloadMutatesWorkbook(workload)
-      ? { committedTargetProofMsSamples: collection.samples.map((entry) => entry.committedTargetProofMs ?? Number.NaN) }
+      ? {
+          committedTargetProofMsSamples: collection.samples.map((entry) => entry.committedTargetProofMs ?? Number.NaN),
+          visibleTargetRenderMsSamples: collection.samples.map((entry) => entry.visibleTargetRenderMs ?? Number.NaN),
+          committedStateValidationMsSamples: collection.samples.map((entry) => entry.committedStateValidationMs ?? Number.NaN),
+          restoreValidationMsSamples: collection.samples.map((entry) => entry.restoreValidationMs ?? Number.NaN),
+        }
       : {}),
     postOperationFrameMsSamples: collection.samples.map((entry) => entry.postOperationFrameMs),
     ...(uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
@@ -616,7 +621,13 @@ async function measureProductSamples(
         workload: mutatingWorkload,
       })
       mutationTargetProofs.push(mutationTargetProof)
-      samples.push({ ...sampleWithRenderProof, committedTargetProofMs: mutationTargetProof.committedTargetProofMs })
+      samples.push({
+        ...sampleWithRenderProof,
+        committedStateValidationMs: mutationTargetProof.committedStateValidationMs,
+        committedTargetProofMs: mutationTargetProof.committedTargetProofMs,
+        restoreValidationMs: mutationTargetProof.restoreValidationMs,
+        visibleTargetRenderMs: mutationTargetProof.visibleTargetRenderMs,
+      })
     } else {
       samples.push(sampleWithRenderProof)
       await restoreProductWorkbookMutation(page, workload)
