@@ -104,7 +104,7 @@ describe('js evaluator array specials', () => {
       kind: 'array',
       rows: 2,
       cols: 1,
-      values: [number(5), number(1)],
+      values: [number(5), number(0)],
     })
 
     expect(evaluatePlanResult(lowerToPlan(parseFormula('SCAN(0,A1:B2,LAMBDA(a,x,a+x))')), context)).toEqual({

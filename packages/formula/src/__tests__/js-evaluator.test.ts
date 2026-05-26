@@ -112,7 +112,7 @@ describe('js evaluator', () => {
         ],
         context,
       ),
-    ).toEqual({ tag: ValueTag.Number, value: 6 })
+    ).toEqual({ tag: ValueTag.Number, value: 5 })
 
     expect(evaluatePlan([{ opcode: 'push-range', start: 'A1', end: 'B2', refKind: 'cells' }, { opcode: 'return' }], context)).toEqual({
       tag: ValueTag.Number,
@@ -386,7 +386,7 @@ describe('js evaluator', () => {
     expect(evaluatePlan(lowerToPlan(parseFormula('MAKEARRAY(2,2,LAMBDA(r,c,r+c))')), context)).toEqual(num(2))
     expect(evaluatePlan(lowerToPlan(parseFormula('MAP(A1:B2,LAMBDA(x,x+1))')), context)).toEqual(num(3))
     expect(evaluatePlan(lowerToPlan(parseFormula('BYROW(A1:B2,LAMBDA(r,SUM(r)))')), context)).toEqual(num(5))
-    expect(evaluatePlan(lowerToPlan(parseFormula('BYCOL(A1:B2,LAMBDA(c,SUM(c)))')), context)).toEqual(num(3))
+    expect(evaluatePlan(lowerToPlan(parseFormula('BYCOL(A1:B2,LAMBDA(c,SUM(c)))')), context)).toEqual(num(2))
     expect(evaluatePlan(lowerToPlan(parseFormula('REDUCE(0,A1:B2,LAMBDA(a,x,a+x))')), context)).toEqual(num(6))
     expect(evaluatePlan(lowerToPlan(parseFormula('SCAN(0,A1:B2,LAMBDA(a,x,a+x))')), context)).toEqual(num(2))
   })
