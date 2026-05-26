@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 
 import type { SameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
+import { validateSameCorpusProductSemanticUiProof } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import type { SameCorpusCapture, UiResponsivenessSameCorpusProduct } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import { requiredUiResponsivenessSameCorpusMutationTargetProofWorkloads } from './ui-responsiveness-same-corpus-mutation-target-proof-summary.ts'
 import {
@@ -35,6 +36,7 @@ export interface SameCorpusScenarioScreenshotArchiveArtifact {
   readonly product: UiResponsivenessSameCorpusProduct
   readonly workload: UiResponsivenessSameCorpusWorkload
   readonly path: string
+  readonly screenshotSha256: string
 }
 
 export interface SameCorpusMutationTargetScreenshotArchiveArtifact {
@@ -57,8 +59,6 @@ export interface SameCorpusGoogleSheetsCommittedStateArchiveArtifact {
   readonly workbookByteSize: number
   readonly workbookSha256: string
 }
-
-type SameCorpusMutationTargetProof = SameCorpusScenarioProof['semanticUiProof']['products'][number]['mutationTargetProofs'][number]
 
 const requiredProofArchiveProducts = ['bilig', 'google-sheets'] as const satisfies readonly UiResponsivenessSameCorpusProduct[]
 const mutationTargetScreenshotPhaseCount = 3
@@ -102,15 +102,15 @@ export function requiredUiResponsivenessSameCorpusProofArchiveArtifactCount(samp
 
 export function sameCorpusProofArchiveArtifactCount(cases: readonly SameCorpusProofArchiveSummaryCase[], sampleCount: number): number {
   return (
-    sameCorpusScenarioScreenshotArtifactCount(cases) +
+    sameCorpusScenarioScreenshotArtifactCount(cases, sampleCount) +
     sameCorpusMutationTargetScreenshotArtifactCount(cases, sampleCount) +
     sameCorpusGoogleSheetsCommittedStateArtifactCount(cases, sampleCount)
   )
 }
 
-function sameCorpusScenarioScreenshotArtifactCount(cases: readonly SameCorpusProofArchiveSummaryCase[]): number {
+function sameCorpusScenarioScreenshotArtifactCount(cases: readonly SameCorpusProofArchiveSummaryCase[], sampleCount: number): number {
   return cases.reduce((total, entry) => {
-    return total + sameCorpusScenarioScreenshotArchiveArtifacts(entry).length
+    return total + sameCorpusScenarioScreenshotArchiveArtifacts(entry, sampleCount).length
   }, 0)
 }
 
@@ -119,7 +119,7 @@ function sameCorpusProofArchiveArtifacts(
   sampleCount: number,
 ): SameCorpusProofArchiveArtifact[] {
   return cases.flatMap((entry) => [
-    ...sameCorpusScenarioScreenshotArchiveArtifacts(entry),
+    ...sameCorpusScenarioScreenshotArchiveArtifacts(entry, sampleCount),
     ...sameCorpusMutationTargetScreenshotArchiveArtifacts(entry, sampleCount),
     ...sameCorpusGoogleSheetsCommittedStateArchiveArtifacts(entry, sampleCount),
   ])
@@ -127,18 +127,25 @@ function sameCorpusProofArchiveArtifacts(
 
 function sameCorpusScenarioScreenshotArchiveArtifacts(
   entry: SameCorpusProofArchiveSummaryCase,
+  sampleCount: number,
 ): SameCorpusScenarioScreenshotArchiveArtifact[] {
   return requiredProofArchiveProducts.flatMap((product) => {
     const path = entry.scenarioProof.screenshotProof.artifactPaths.find((artifactPath) =>
       artifactPath.replaceAll('\\', '/').endsWith(`/${product}-sample-1.png`),
     )
-    return hasText(path)
+    const proof = entry.scenarioProof.semanticUiProof.products.find((candidate) => candidate.product === product)
+    const screenshotSha256 = proof?.screenshotSha256 ?? null
+    const semanticProofAccepted =
+      proof !== undefined &&
+      validateSameCorpusProductSemanticUiProof(proof, { workload: entry.workload, sampleCount }).acceptedForCurrentScorecard
+    return hasText(path) && isSha256(screenshotSha256) && semanticProofAccepted
       ? [
           {
             kind: 'scenario-screenshot',
             product,
             workload: entry.workload,
             path,
+            screenshotSha256,
           },
         ]
       : []
@@ -157,7 +164,7 @@ function sameCorpusMutationTargetScreenshotArtifactCount(cases: readonly SameCor
         if (!proof) {
           return productTotal
         }
-        return productTotal + sameCorpusTargetScreenshotArtifactCountForProduct(proof.mutationTargetProofs, sampleCount)
+        return productTotal + sameCorpusTargetScreenshotArtifactCountForProduct(proof, entry.workload, sampleCount)
       }, 0)
     )
   }, 0)
@@ -172,7 +179,7 @@ function sameCorpusMutationTargetScreenshotArchiveArtifacts(
   }
   return requiredProofArchiveProducts.flatMap((product) => {
     const proof = entry.scenarioProof.semanticUiProof.products.find((candidate) => candidate.product === product)
-    return proof ? sameCorpusTargetScreenshotArchiveArtifactsForProduct(proof.mutationTargetProofs, sampleCount) : []
+    return proof ? sameCorpusTargetScreenshotArchiveArtifactsForProduct(proof, entry.workload, sampleCount) : []
   })
 }
 
@@ -188,7 +195,7 @@ function sameCorpusGoogleSheetsCommittedStateArtifactCount(
     if (!proof) {
       return total
     }
-    return total + sameCorpusCommittedStateArtifactCountForProduct(proof.mutationTargetProofs, sampleCount)
+    return total + sameCorpusCommittedStateArtifactCountForProduct(proof, entry.workload, sampleCount)
   }, 0)
 }
 
@@ -200,18 +207,25 @@ function sameCorpusGoogleSheetsCommittedStateArchiveArtifacts(
     return []
   }
   const proof = entry.scenarioProof.semanticUiProof.products.find((candidate) => candidate.product === 'google-sheets')
-  return proof ? sameCorpusCommittedStateArchiveArtifactsForProduct(proof.mutationTargetProofs, sampleCount) : []
+  return proof ? sameCorpusCommittedStateArchiveArtifactsForProduct(proof, entry.workload, sampleCount) : []
 }
 
-function sameCorpusTargetScreenshotArtifactCountForProduct(proofs: readonly SameCorpusMutationTargetProof[], sampleCount: number): number {
+function sameCorpusTargetScreenshotArtifactCountForProduct(
+  proof: SameCorpusScenarioProof['semanticUiProof']['products'][number],
+  workload: UiResponsivenessSameCorpusWorkload,
+  sampleCount: number,
+): number {
+  if (!sameCorpusProductSemanticProofAccepted(proof, workload, sampleCount)) {
+    return 0
+  }
   let artifactCount = 0
   for (const sampleIndex of sampleIndexes(sampleCount)) {
-    const proof = proofs.find((candidate) => candidate.sampleIndex === sampleIndex)
-    if (!proof?.targetScreenshots) {
+    const sample = proof.mutationTargetProofs.find((candidate) => candidate.sampleIndex === sampleIndex)
+    if (!sample?.targetScreenshots) {
       continue
     }
     for (const phase of ['before', 'after', 'restored'] as const) {
-      const screenshot = proof.targetScreenshots[phase]
+      const screenshot = sample.targetScreenshots[phase]
       if (hasText(screenshot.screenshotPath) && isSha256(screenshot.screenshotSha256)) {
         artifactCount += 1
       }
@@ -221,17 +235,21 @@ function sameCorpusTargetScreenshotArtifactCountForProduct(proofs: readonly Same
 }
 
 function sameCorpusTargetScreenshotArchiveArtifactsForProduct(
-  proofs: readonly SameCorpusMutationTargetProof[],
+  proof: SameCorpusScenarioProof['semanticUiProof']['products'][number],
+  workload: UiResponsivenessSameCorpusWorkload,
   sampleCount: number,
 ): SameCorpusMutationTargetScreenshotArchiveArtifact[] {
+  if (!sameCorpusProductSemanticProofAccepted(proof, workload, sampleCount)) {
+    return []
+  }
   const artifacts: SameCorpusMutationTargetScreenshotArchiveArtifact[] = []
   for (const sampleIndex of sampleIndexes(sampleCount)) {
-    const proof = proofs.find((candidate) => candidate.sampleIndex === sampleIndex)
-    if (!proof?.targetScreenshots) {
+    const sample = proof.mutationTargetProofs.find((candidate) => candidate.sampleIndex === sampleIndex)
+    if (!sample?.targetScreenshots) {
       continue
     }
     for (const phase of ['before', 'after', 'restored'] as const) {
-      const screenshot = proof.targetScreenshots[phase]
+      const screenshot = sample.targetScreenshots[phase]
       if (hasText(screenshot.screenshotPath) && isSha256(screenshot.screenshotSha256)) {
         artifacts.push({
           kind: 'mutation-target-screenshot',
@@ -248,15 +266,22 @@ function sameCorpusTargetScreenshotArchiveArtifactsForProduct(
   return artifacts
 }
 
-function sameCorpusCommittedStateArtifactCountForProduct(proofs: readonly SameCorpusMutationTargetProof[], sampleCount: number): number {
+function sameCorpusCommittedStateArtifactCountForProduct(
+  proof: SameCorpusScenarioProof['semanticUiProof']['products'][number],
+  workload: UiResponsivenessSameCorpusWorkload,
+  sampleCount: number,
+): number {
+  if (!sameCorpusProductSemanticProofAccepted(proof, workload, sampleCount)) {
+    return 0
+  }
   let artifactCount = 0
   for (const sampleIndex of sampleIndexes(sampleCount)) {
-    const proof = proofs.find((candidate) => candidate.sampleIndex === sampleIndex)
-    if (!proof?.committedStateProof) {
+    const sample = proof.mutationTargetProofs.find((candidate) => candidate.sampleIndex === sampleIndex)
+    if (!sample?.committedStateProof) {
       continue
     }
     for (const phase of ['before', 'after', 'restored'] as const) {
-      const phaseProof = proof.committedStateProof[phase]
+      const phaseProof = sample.committedStateProof[phase]
       if (hasText(phaseProof.exportUrl) && phaseProof.workbookByteSize > 0 && isSha256(phaseProof.workbookSha256)) {
         artifactCount += 1
       }
@@ -266,17 +291,21 @@ function sameCorpusCommittedStateArtifactCountForProduct(proofs: readonly SameCo
 }
 
 function sameCorpusCommittedStateArchiveArtifactsForProduct(
-  proofs: readonly SameCorpusMutationTargetProof[],
+  proof: SameCorpusScenarioProof['semanticUiProof']['products'][number],
+  workload: UiResponsivenessSameCorpusWorkload,
   sampleCount: number,
 ): SameCorpusGoogleSheetsCommittedStateArchiveArtifact[] {
+  if (!sameCorpusProductSemanticProofAccepted(proof, workload, sampleCount)) {
+    return []
+  }
   const artifacts: SameCorpusGoogleSheetsCommittedStateArchiveArtifact[] = []
   for (const sampleIndex of sampleIndexes(sampleCount)) {
-    const proof = proofs.find((candidate) => candidate.sampleIndex === sampleIndex)
-    if (!proof?.committedStateProof) {
+    const sample = proof.mutationTargetProofs.find((candidate) => candidate.sampleIndex === sampleIndex)
+    if (!sample?.committedStateProof) {
       continue
     }
     for (const phase of ['before', 'after', 'restored'] as const) {
-      const phaseProof = proof.committedStateProof[phase]
+      const phaseProof = sample.committedStateProof[phase]
       if (hasText(phaseProof.exportUrl) && phaseProof.workbookByteSize > 0 && isSha256(phaseProof.workbookSha256)) {
         artifacts.push({
           kind: 'google-sheets-committed-state-export',
@@ -292,6 +321,14 @@ function sameCorpusCommittedStateArchiveArtifactsForProduct(
     }
   }
   return artifacts
+}
+
+function sameCorpusProductSemanticProofAccepted(
+  proof: SameCorpusScenarioProof['semanticUiProof']['products'][number],
+  workload: UiResponsivenessSameCorpusWorkload,
+  sampleCount: number,
+): boolean {
+  return validateSameCorpusProductSemanticUiProof(proof, { workload, sampleCount }).acceptedForCurrentScorecard
 }
 
 function sampleIndexes(sampleCount: number): number[] {

@@ -11,7 +11,7 @@ import {
   proofArchiveManifestPath,
   writeSameCorpusProofArchiveManifest,
 } from '../ui-responsiveness-same-corpus-proof-archive.ts'
-import type { SameCorpusScenarioProof } from '../ui-responsiveness-same-corpus-proof.ts'
+import type { SameCorpusProductSemanticUiProof, SameCorpusScenarioProof } from '../ui-responsiveness-same-corpus-proof.ts'
 import type {
   SameCorpusCaptureCase,
   SameCorpusCaptureMeasurement,
@@ -64,6 +64,7 @@ describe('same-corpus proof archive manifest', () => {
       product: 'bilig',
       workload: 'open-workbook',
       path: 'tmp/same-corpus-wide-mixed-250k-open-workbook/bilig-sample-1.png',
+      screenshotSha256: 'a'.repeat(64),
     })
     expect(writtenManifest).toEqual(manifest)
     expect(written).toMatchObject({
@@ -72,10 +73,32 @@ describe('same-corpus proof archive manifest', () => {
       complete: false,
     })
   })
+
+  it('does not count path-only screenshots that lack accepted semantic screenshot proof', () => {
+    const capture = buildSameCorpusCaptureArtifact({
+      sampleCount: 3,
+      limitations: ['test limitation'],
+      cases: [sameCorpusCaptureCase('open-workbook', { includeSemanticScreenshotProof: false })],
+    })
+
+    expect(capture.runManifest).toMatchObject({
+      requiredProofArchiveArtifactCount: 99,
+      proofArchiveArtifactCount: 0,
+    })
+    expect(capture.runManifest.invalidReasons).toContain('proof archive covers 0/99 required proof artifacts')
+    expect(buildSameCorpusProofArchiveManifest(capture)).toMatchObject({
+      artifactCount: 0,
+      complete: false,
+      artifacts: [],
+    })
+  })
 })
 
-function sameCorpusCaptureCase(workload: UiResponsivenessSameCorpusWorkload): SameCorpusCaptureCase {
-  const scenarioProof = sameCorpusScenarioProof(workload)
+function sameCorpusCaptureCase(
+  workload: UiResponsivenessSameCorpusWorkload,
+  options: { readonly includeSemanticScreenshotProof?: boolean } = {},
+): SameCorpusCaptureCase {
+  const scenarioProof = sameCorpusScenarioProof(workload, options)
   return {
     id: `same-corpus-wide-mixed-250k-${workload}`,
     corpusCaseId: 'wide-mixed-250k',
@@ -96,8 +119,12 @@ function sameCorpusCaptureCase(workload: UiResponsivenessSameCorpusWorkload): Sa
   }
 }
 
-function sameCorpusScenarioProof(workload: UiResponsivenessSameCorpusWorkload): SameCorpusScenarioProof {
+function sameCorpusScenarioProof(
+  workload: UiResponsivenessSameCorpusWorkload,
+  options: { readonly includeSemanticScreenshotProof?: boolean } = {},
+): SameCorpusScenarioProof {
   const artifactPaths = requiredProducts.map((product) => `tmp/same-corpus-wide-mixed-250k-${workload}/${product}-sample-1.png`)
+  const includeSemanticScreenshotProof = options.includeSemanticScreenshotProof ?? true
   return {
     biligMeanMs: 10,
     biligP95Ms: 12,
@@ -119,12 +146,33 @@ function sameCorpusScenarioProof(workload: UiResponsivenessSameCorpusWorkload): 
       missingProducts: [...requiredProducts],
     },
     semanticUiProof: {
-      captured: false,
+      captured: includeSemanticScreenshotProof,
       requiredProducts,
-      products: [],
+      products: includeSemanticScreenshotProof ? requiredProducts.map((product) => sameCorpusSemanticUiProof(product)) : [],
       productVerdicts: [],
-      missingProducts: [...requiredProducts],
+      missingProducts: includeSemanticScreenshotProof ? [] : [...requiredProducts],
     },
+  }
+}
+
+function sameCorpusSemanticUiProof(product: UiResponsivenessSameCorpusProduct): SameCorpusProductSemanticUiProof {
+  return {
+    product,
+    captured: true,
+    method: product === 'bilig' ? 'bilig-visible-semantic-readback' : 'google-sheets-visible-semantic-readback',
+    sheetName: 'WideGrid',
+    sheetId: product === 'bilig' ? 'sheet-wide-grid' : 'gid:0',
+    selectedRange: 'A1',
+    checkedCells: [
+      { address: 'A1', expected: 'metric-1', actual: 'metric-1' },
+      { address: 'B1', expected: 'metric-2', actual: 'metric-2' },
+      { address: 'F2', expected: 'note-1-5', actual: 'note-1-5' },
+    ],
+    authoritativeRenderRevision: product === 'bilig' ? 'authoritative-1' : null,
+    visibleRenderRevision: product === 'bilig' ? 'visible-1' : null,
+    screenshotSha256: product === 'bilig' ? 'a'.repeat(64) : 'b'.repeat(64),
+    mutationTargetProofs: [],
+    evidence: ['semanticUiProofVersion=semantic-ui-v1'],
   }
 }
 

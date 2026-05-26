@@ -807,14 +807,21 @@ function mutationTargetProof(
 ): SameCorpusMutationTargetProof {
   const operationStartedAtMs = 1000 + sampleIndex * 100
   const committedTargetProofMs = 40 + sampleIndex
+  const visibleTargetRenderMs = 8 + sampleIndex
+  const committedStateValidationMs = committedTargetProofMs - visibleTargetRenderMs
+  const restoreValidationMs = 80
   const authoritativeSource = product === 'bilig' ? 'bilig-authoritative-range' : 'visible-formula-bar'
   return {
     product,
     sampleIndex,
     committedTargetProofMs,
+    visibleTargetRenderMs,
+    committedStateValidationMs,
+    restoreValidationMs,
     operationStartedAtMs,
+    visibleTargetRenderCapturedAtMs: operationStartedAtMs + visibleTargetRenderMs,
     postMutationProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs,
-    restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs + 80,
+    restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs + restoreValidationMs,
     workload,
     intendedOperation: workload,
     intendedPayload: mutationTargetIntendedPayload(workload, sampleIndex),
@@ -949,14 +956,21 @@ function fillMutationTargetProof(
   const fillColor = fillColorForSample(sampleIndex)
   const operationStartedAtMs = 2000 + sampleIndex * 100
   const committedTargetProofMs = 60 + sampleIndex
+  const visibleTargetRenderMs = 12 + sampleIndex
+  const committedStateValidationMs = committedTargetProofMs - visibleTargetRenderMs
+  const restoreValidationMs = 80
   const targetRange = sameCorpusMutationTargetRangeForSample('fill-format-change', sampleIndex)
   return {
     product: 'bilig',
     sampleIndex,
     committedTargetProofMs,
+    visibleTargetRenderMs,
+    committedStateValidationMs,
+    restoreValidationMs,
     operationStartedAtMs,
+    visibleTargetRenderCapturedAtMs: operationStartedAtMs + visibleTargetRenderMs,
     postMutationProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs,
-    restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs + 80,
+    restoreProofCapturedAtMs: operationStartedAtMs + committedTargetProofMs + restoreValidationMs,
     workload: 'fill-format-change',
     intendedOperation: 'fill-format-change',
     intendedPayload: {
