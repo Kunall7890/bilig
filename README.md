@@ -228,6 +228,25 @@ wraps the same helper in a Trigger.dev task for deployed durable execution.
 See [Trigger.dev WorkPaper task](docs/triggerdev-workpaper-task.md) for the task
 shape, local smoke command, retry boundary, and outreach note.
 
+## Airflow Formula DAGs
+
+Need an Apache Airflow DAG to calculate task outputs from reviewable formulas?
+Keep Airflow in charge of scheduling, retries, task state, and XCom summaries,
+then call a small Node WorkPaper step that writes the full readback proof.
+
+The source example lives in:
+
+```text
+examples/airflow-workpaper-dag
+```
+
+It keeps the Airflow metadata database small by returning a compact XCom summary
+while the TypeScript step writes `.tmp/workpaper-proof.json` with before, after,
+restore, persisted-document, and `verified: true` evidence.
+
+See [Airflow WorkPaper DAG](docs/airflow-workpaper-dag.md) for the TaskFlow
+shape, local smoke command, deployment boundary, and outreach note.
+
 ## Kestra Formula Flows
 
 Need a Kestra Node Commands flow to calculate workflow fields from reviewable

@@ -160,6 +160,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/node-framework-workpaper-adapters.html
 - https://proompteng.github.io/bilig/windmill-workpaper-script.html
 - https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
+- https://proompteng.github.io/bilig/airflow-workpaper-dag.html
 - https://proompteng.github.io/bilig/kestra-workpaper-flow.html
 - https://github.com/proompteng/bilig/blob/main/docs/workbook-automation-examples-node.md
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-framework-adapters
@@ -526,6 +527,10 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
   https://github.com/proompteng/bilig/blob/main/docs/triggerdev-workpaper-task.md
   https://github.com/proompteng/bilig/tree/main/examples/triggerdev-workpaper-task
+  Airflow DAG source:
+  https://proompteng.github.io/bilig/airflow-workpaper-dag.html
+  https://github.com/proompteng/bilig/blob/main/docs/airflow-workpaper-dag.md
+  https://github.com/proompteng/bilig/tree/main/examples/airflow-workpaper-dag
   Kestra Node Commands flow source:
   https://proompteng.github.io/bilig/kestra-workpaper-flow.html
   https://github.com/proompteng/bilig/blob/main/docs/kestra-workpaper-flow.md

@@ -25,6 +25,7 @@ Pick the path that matches the workflow you are trying to unblock:
 | A coding agent or MCP client that needs spreadsheet operations           | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                                 | The generated project includes an agent contract, MCP config, and `npm run agent:verify`.                           |
 | Windmill TypeScript workflow fields                                      | `cd examples/windmill-workpaper-script && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke` | The script returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.        |
 | Trigger.dev durable task fields                                          | `cd examples/triggerdev-workpaper-task && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke` | The task helper returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.   |
+| Apache Airflow DAG task outputs                                          | `cd examples/airflow-workpaper-dag && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`     | The Node step writes a full proof file while the DAG returns a compact XCom summary for downstream tasks.           |
 | Kestra Node Commands flow fields                                         | `cd examples/kestra-workpaper-flow && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`     | The flow script writes a `workpaper-proof.json` artifact with before/after/restore proof and `verified: true`.      |
 | Prefect flow fields                                                      | `cd examples/prefect-workpaper-flow && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`    | The Node step writes a `workpaper-proof.json` artifact that a Prefect task can validate and return.                 |
 | Directus Flow operation for persisted calculated fields                  | `cd examples/directus-workpaper-flow-operation && npm install && npm run smoke`                               | The operation returns a Directus `patch` plus before/after/restore WorkPaper proof with `verified: true`.           |
@@ -115,6 +116,7 @@ Start from the repo examples:
 - `examples/directus-workpaper-flow-operation`
 - `examples/windmill-workpaper-script`
 - `examples/triggerdev-workpaper-task`
+- `examples/airflow-workpaper-dag`
 - `examples/kestra-workpaper-flow`
 - `examples/prefect-workpaper-flow`
 - `examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json`
@@ -126,6 +128,7 @@ Docs:
 - <https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html>
 - <https://proompteng.github.io/bilig/windmill-workpaper-script.html>
 - <https://proompteng.github.io/bilig/triggerdev-workpaper-task.html>
+- <https://proompteng.github.io/bilig/airflow-workpaper-dag.html>
 - <https://proompteng.github.io/bilig/kestra-workpaper-flow.html>
 - <https://proompteng.github.io/bilig/prefect-workpaper-flow.html>
 - <https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html>

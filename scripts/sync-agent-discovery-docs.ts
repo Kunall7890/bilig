@@ -415,6 +415,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Sim MCP setup: ${siteRoot}/sim-workpaper-mcp.html
 - Windmill TypeScript script: ${siteRoot}/windmill-workpaper-script.html
 - Trigger.dev task: ${siteRoot}/triggerdev-workpaper-task.html
+- Airflow DAG: ${siteRoot}/airflow-workpaper-dag.html
 - Kestra Node flow: ${siteRoot}/kestra-workpaper-flow.html
 - Prefect flow: ${siteRoot}/prefect-workpaper-flow.html
 - XLSX formula clinic: ${siteRoot}/formula-bug-clinic.html
@@ -514,30 +515,15 @@ const llmsFullSources = [
     relativePath: 'docs/agent-framework-workbook-tools.md',
     url: `${repositoryUrl}/blob/main/docs/agent-framework-workbook-tools.md`,
   },
-  {
-    title: 'Directus WorkPaper Flow Operation',
-    relativePath: 'docs/directus-workpaper-flow-operation.md',
-    url: `${repositoryUrl}/blob/main/docs/directus-workpaper-flow-operation.md`,
-  },
-  {
-    title: 'Windmill WorkPaper TypeScript Script',
-    relativePath: 'docs/windmill-workpaper-script.md',
-    url: `${repositoryUrl}/blob/main/docs/windmill-workpaper-script.md`,
-  },
+  llmsSource('Directus WorkPaper Flow Operation', 'docs/directus-workpaper-flow-operation.md'),
+  llmsSource('Windmill WorkPaper TypeScript Script', 'docs/windmill-workpaper-script.md'),
   llmsSource('Trigger.dev WorkPaper Task', 'docs/triggerdev-workpaper-task.md'),
+  llmsSource('Airflow WorkPaper DAG', 'docs/airflow-workpaper-dag.md'),
   llmsSource('Kestra WorkPaper Node Flow', 'docs/kestra-workpaper-flow.md'),
   llmsSource('Prefect WorkPaper Flow', 'docs/prefect-workpaper-flow.md'),
   llmsSource('Open WebUI WorkPaper MCP Setup', 'docs/open-webui-workpaper-mcp.md'),
-  {
-    title: 'LobeHub WorkPaper MCP Setup',
-    relativePath: 'docs/lobehub-workpaper-mcp.md',
-    url: `${repositoryUrl}/blob/main/docs/lobehub-workpaper-mcp.md`,
-  },
-  {
-    title: 'AnythingLLM WorkPaper MCP Setup',
-    relativePath: 'docs/anythingllm-workpaper-mcp.md',
-    url: `${repositoryUrl}/blob/main/docs/anythingllm-workpaper-mcp.md`,
-  },
+  llmsSource('LobeHub WorkPaper MCP Setup', 'docs/lobehub-workpaper-mcp.md'),
+  llmsSource('AnythingLLM WorkPaper MCP Setup', 'docs/anythingllm-workpaper-mcp.md'),
   {
     title: 'Sim WorkPaper MCP Setup',
     relativePath: 'docs/sim-workpaper-mcp.md',
@@ -763,6 +749,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/agent-framework-workbook-tools.html`,
         `${siteRoot}/openai-agents-sdk-workpaper-tool.html`,
         `${siteRoot}/node-framework-workpaper-adapters.html`,
+        `${siteRoot}/airflow-workpaper-dag.html`,
         `${siteRoot}/kestra-workpaper-flow.html`,
         `${siteRoot}/prefect-workpaper-flow.html`,
         `${siteRoot}/npm-provenance-package-trust.html`,
