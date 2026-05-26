@@ -648,7 +648,12 @@ async function captureSameCorpusMutationTargetProofForSample(args: {
 }): Promise<SameCorpusMutationTargetProof> {
   await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
   const after = await readSameCorpusMutationTargetReadback({ page: args.page, product: args.product, target: args.target })
-  const visibleAfter = await readSameCorpusVisibleMutationTargetReadback({ page: args.page, product: args.product })
+  const visibleAfter = await readSameCorpusVisibleMutationTargetReadback({
+    page: args.page,
+    product: args.product,
+    target: args.target,
+    workload: args.workload,
+  })
   const screenshotPath = mutationTargetScreenshotArtifactPath({
     caseId: args.caseId,
     outputPath: args.outputPath,
@@ -673,7 +678,12 @@ async function captureSameCorpusMutationTargetProofForSample(args: {
   await restoreProductWorkbookMutation(args.page, args.workload)
   await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
   const restored = await readSameCorpusMutationTargetReadback({ page: args.page, product: args.product, target: args.target })
-  const visibleRestored = await readSameCorpusVisibleMutationTargetReadback({ page: args.page, product: args.product })
+  const visibleRestored = await readSameCorpusVisibleMutationTargetReadback({
+    page: args.page,
+    product: args.product,
+    target: args.target,
+    workload: args.workload,
+  })
   return {
     after,
     authoritativeReadbackRevision: revisions.authoritativeReadbackRevision,

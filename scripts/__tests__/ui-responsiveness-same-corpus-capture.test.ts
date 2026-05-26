@@ -1916,9 +1916,10 @@ function sameCorpusVisibleMutationReadback(
   phase: 'before' | 'after',
   sampleIndex: number,
 ) {
+  const source = product === 'bilig' && workload === 'fill-format-change' ? 'visible-grid-cell' : 'visible-formula-bar'
   return {
     ...sameCorpusMutationReadback(product, workload, phase, sampleIndex),
-    source: 'visible-formula-bar' as const,
+    source,
   }
 }
 

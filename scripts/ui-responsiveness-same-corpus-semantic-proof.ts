@@ -68,7 +68,7 @@ export interface SameCorpusMutationTargetReadback {
   readonly visibleSceneProofSha256?: string | null
 }
 
-export type SameCorpusMutationTargetReadbackSource = 'bilig-authoritative-range' | 'visible-formula-bar' | 'unknown'
+export type SameCorpusMutationTargetReadbackSource = 'bilig-authoritative-range' | 'visible-formula-bar' | 'visible-grid-cell' | 'unknown'
 
 export type SameCorpusProductSemanticUiProofEvidenceStatus = 'current-contract' | 'missing' | 'invalid'
 
@@ -404,7 +404,11 @@ function sameCorpusMutationTargetVisibleReadbackInvalidReasons(
   if (readbacks.some((readback) => readback.source === 'unknown')) {
     return [`semantic UI mutation target proof for ${workload} is missing visible render readback source`]
   }
-  if (readbacks.some((readback) => readback.source !== 'visible-formula-bar')) {
+  const expectedSource = product === 'bilig' && workload === 'fill-format-change' ? 'visible-grid-cell' : 'visible-formula-bar'
+  if (readbacks.some((readback) => readback.source !== expectedSource)) {
+    if (expectedSource === 'visible-grid-cell') {
+      return [`semantic UI mutation target proof for ${workload} visible render readback did not come from rendered grid cell pixels`]
+    }
     return [`semantic UI mutation target proof for ${workload} visible render readback did not come from the browser-visible surface`]
   }
   if (product !== 'bilig') {
@@ -452,7 +456,10 @@ function sameCorpusVisibleReadbackMatchesAuthoritative(
     return authoritative.formula === visible.formula
   }
   if (workload === 'fill-format-change') {
-    return authoritative.fillColor === visible.fillColor
+    if (authoritative.fillColor === null || visible.fillColor === null) {
+      return authoritative.fillColor === visible.fillColor
+    }
+    return sameCorpusColorsMatch(visible.fillColor, authoritative.fillColor)
   }
   return authoritative.value === visible.value || authoritative.visibleText === visible.visibleText
 }

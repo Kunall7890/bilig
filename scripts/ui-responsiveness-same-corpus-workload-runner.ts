@@ -136,6 +136,10 @@ export function sameCorpusFillColorExpectedColor(sampleIndex: number): string {
   return sameCorpusFillColorSwatches[sampleIndex % sameCorpusFillColorSwatches.length].value
 }
 
+export function sameCorpusFillColorExpectedColors(): readonly string[] {
+  return sameCorpusFillColorSwatches.map((swatch) => swatch.value)
+}
+
 export function sameCorpusKeyboardOperations(
   product: UiResponsivenessSameCorpusProduct,
   workload: NonScrollWorkload,

@@ -145,6 +145,38 @@ describe('same-corpus semantic UI mutation proof validation', () => {
       ]),
     })
   })
+
+  it('requires Bilig fill-format visible proof to come from rendered grid cell pixels', () => {
+    const accepted = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: [0, 1, 2].map((sampleIndex) => fillMutationTargetProof(sampleIndex, 'visible-grid-cell')),
+      }),
+      {
+        workload: 'fill-format-change',
+        sampleCount: 3,
+      },
+    )
+    const rejected = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: [0, 1, 2].map((sampleIndex) => fillMutationTargetProof(sampleIndex, 'visible-formula-bar')),
+      }),
+      {
+        workload: 'fill-format-change',
+        sampleCount: 3,
+      },
+    )
+
+    expect(accepted).toMatchObject({
+      acceptedForCurrentScorecard: true,
+      invalidReasons: [],
+    })
+    expect(rejected).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for fill-format-change visible render readback did not come from rendered grid cell pixels',
+      ]),
+    })
+  })
 })
 
 function validSemanticProof(overrides: Partial<SameCorpusProductSemanticUiProof> = {}): SameCorpusProductSemanticUiProof {
@@ -240,6 +272,74 @@ function mutationTargetProof(
     screenshotSha256: 'a'.repeat(64),
     undoRestoreStatus: 'verified',
   }
+}
+
+function fillMutationTargetProof(
+  sampleIndex: number,
+  visibleSource: 'visible-formula-bar' | 'visible-grid-cell',
+): SameCorpusMutationTargetProof {
+  const fillColor = fillColorForSample(sampleIndex)
+  return {
+    sampleIndex,
+    workload: 'fill-format-change',
+    intendedOperation: 'fill-format-change',
+    intendedPayload: {
+      kind: 'fill-color',
+      expectedFillColor: fillColor,
+      swatchLabel: `swatch-${String(sampleIndex + 1)}`,
+    },
+    sheetName: 'WideGrid',
+    targetRange: 'A1',
+    before: {
+      value: 'metric-1',
+      formula: null,
+      fillColor: null,
+      visibleText: 'metric-1',
+      source: 'bilig-authoritative-range',
+      capturedRevision: `before-readback-${String(sampleIndex + 1)}`,
+    },
+    after: {
+      value: 'metric-1',
+      formula: null,
+      fillColor,
+      visibleText: 'metric-1',
+      source: 'bilig-authoritative-range',
+      capturedRevision: authoritativeReadbackRevision(sampleIndex),
+      visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex),
+    },
+    restored: {
+      value: 'metric-1',
+      formula: null,
+      fillColor: null,
+      visibleText: 'metric-1',
+      source: 'bilig-authoritative-range',
+      capturedRevision: `restored-readback-${String(sampleIndex + 1)}`,
+    },
+    visibleAfter: {
+      value: null,
+      formula: null,
+      fillColor,
+      visibleText: null,
+      source: visibleSource,
+    },
+    visibleRestored: {
+      value: null,
+      formula: null,
+      fillColor: null,
+      visibleText: null,
+      source: visibleSource,
+    },
+    authoritativeReadbackRevision: authoritativeReadbackRevision(sampleIndex),
+    visibleRenderRevision: visibleRenderRevision(sampleIndex),
+    screenshotPath: `tmp/same-corpus-wide-mixed-250k-fill-format-change/mutation-target/bilig-sample-${String(sampleIndex + 1)}-after.png`,
+    screenshotSha256: 'a'.repeat(64),
+    undoRestoreStatus: 'verified',
+  }
+}
+
+function fillColorForSample(sampleIndex: number): string {
+  const colors = ['#c9daf8', '#34a853', '#a4c2f4'] as const
+  return colors[sampleIndex % colors.length]
 }
 
 function authoritativeReadbackRevision(sampleIndex: number): string {

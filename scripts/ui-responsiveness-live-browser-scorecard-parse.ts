@@ -649,7 +649,7 @@ function parseSameCorpusMutationTargetReadback(value: Record<string, unknown>): 
 }
 
 function parseSameCorpusMutationTargetReadbackSource(value: string): SameCorpusMutationTargetReadback['source'] {
-  if (value === 'bilig-authoritative-range' || value === 'visible-formula-bar' || value === 'unknown') {
+  if (value === 'bilig-authoritative-range' || value === 'visible-formula-bar' || value === 'visible-grid-cell' || value === 'unknown') {
     return value
   }
   throw new Error(`Unexpected UI responsiveness same-corpus mutation readback source: ${value}`)

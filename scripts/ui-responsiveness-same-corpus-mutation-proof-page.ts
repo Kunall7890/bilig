@@ -10,6 +10,13 @@ import {
 } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import { readBiligRenderedSurfaceState } from './ui-responsiveness-same-corpus-surface-page.ts'
 import { settleFrames } from './ui-responsiveness-same-corpus-page-utils.ts'
+import { sameCorpusFillColorExpectedColors } from './ui-responsiveness-same-corpus-workload-runner.ts'
+import type { UiResponsivenessSameCorpusMutatingWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
+
+const BILIG_ROW_MARKER_WIDTH = 36
+const BILIG_COLUMN_WIDTH = 104
+const BILIG_COLUMN_HEADER_HEIGHT = 20
+const BILIG_ROW_HEIGHT = 22
 
 export interface SameCorpusMutationTargetSelection {
   readonly endAddress: string
@@ -110,7 +117,18 @@ export async function readSameCorpusMutationTargetReadback(args: {
 export async function readSameCorpusVisibleMutationTargetReadback(args: {
   readonly page: Page
   readonly product: UiResponsivenessSameCorpusProduct
+  readonly target?: SameCorpusMutationTargetSelection
+  readonly workload?: UiResponsivenessSameCorpusMutatingWorkload
 }): Promise<SameCorpusMutationTargetReadback> {
+  if (args.product === 'bilig' && args.workload === 'fill-format-change' && args.target) {
+    return {
+      value: null,
+      formula: null,
+      fillColor: await readBiligVisibleGridCellFillColor(args.page, args.target),
+      visibleText: null,
+      source: 'visible-grid-cell',
+    }
+  }
   const formulaBarText = await readVisibleFormulaBarText(args.page, args.product)
   const fillColor = await readSelectedFillColor(args.page, args.product)
   const text = normalizeNullableText(formulaBarText)
@@ -217,6 +235,178 @@ async function readBiligMutationTargetReadback(
     source: 'bilig-authoritative-range',
     visibleSceneProofSha256: range.visibleSceneProof ? sha256Hex(stableJsonBytes(range.visibleSceneProof)) : null,
   }
+}
+
+async function readBiligVisibleGridCellFillColor(page: Page, target: SameCorpusMutationTargetSelection): Promise<string | null> {
+  const address = sameCorpusCellAddressCoordinates(target.startAddress)
+  if (!address) {
+    return null
+  }
+  const screenshot = await captureBiligCellInteriorScreenshot(page, address.columnIndex, address.rowIndex)
+  return screenshot ? await readExpectedFillColorFromScreenshot(page, screenshot) : null
+}
+
+async function captureBiligCellInteriorScreenshot(page: Page, columnIndex: number, rowIndex: number): Promise<ScreenshotBuffer | null> {
+  const gridLocator = page.getByTestId('sheet-grid')
+  if ((await gridLocator.count().catch(() => 0)) === 0) {
+    return null
+  }
+  const grid = await gridLocator.boundingBox()
+  if (!grid) {
+    return null
+  }
+  const geometry = await page.evaluate(
+    ({ columnIndex: targetColumnIndex, columnWidthFallback, rowHeightFallback, rowIndex: targetRowIndex, rowMarkerWidth }) => {
+      const gridElement = document.querySelector('[data-testid="sheet-grid"]')
+      if (!(gridElement instanceof HTMLElement)) {
+        return null
+      }
+      const scrollViewport = document.querySelector('[data-testid="grid-scroll-viewport"]')
+      const scrollElement = scrollViewport instanceof HTMLElement ? scrollViewport : null
+      // oxlint-disable-next-line eslint-plugin-unicorn(consistent-function-scoping) -- Playwright evaluates this helper inside the browser context.
+      const parseOverrides = (raw: string | null): Record<string, number> => {
+        if (!raw) {
+          return {}
+        }
+        try {
+          const parsed: unknown = JSON.parse(raw)
+          if (!parsed || typeof parsed !== 'object') {
+            return {}
+          }
+          return Object.fromEntries(Object.entries(parsed).filter((entry): entry is [string, number] => typeof entry[1] === 'number'))
+        } catch {
+          return {}
+        }
+      }
+      const columnWidthDefault = Number(gridElement.getAttribute('data-default-column-width') ?? String(columnWidthFallback))
+      const rowHeightDefault = Number(gridElement.getAttribute('data-default-row-height') ?? String(rowHeightFallback))
+      const columnOverrides = parseOverrides(gridElement.getAttribute('data-column-width-overrides'))
+      const rowOverrides = parseOverrides(gridElement.getAttribute('data-row-height-overrides'))
+      const columnWidth = (index: number) => columnOverrides[String(index)] ?? columnWidthDefault
+      const rowHeight = (index: number) => rowOverrides[String(index)] ?? rowHeightDefault
+      const columnLeft =
+        rowMarkerWidth +
+        Array.from({ length: targetColumnIndex }, (_, index) => columnWidth(index)).reduce((total, width) => total + width, 0)
+      const rowTop = Array.from({ length: targetRowIndex }, (_, index) => rowHeight(index)).reduce((total, height) => total + height, 0)
+      return {
+        columnLeft,
+        columnWidth: columnWidth(targetColumnIndex),
+        rowHeight: rowHeight(targetRowIndex),
+        rowTop,
+        scrollLeft: scrollElement?.scrollLeft ?? 0,
+        scrollTop: scrollElement?.scrollTop ?? 0,
+      }
+    },
+    {
+      columnIndex,
+      columnWidthFallback: BILIG_COLUMN_WIDTH,
+      rowHeightFallback: BILIG_ROW_HEIGHT,
+      rowIndex,
+      rowMarkerWidth: BILIG_ROW_MARKER_WIDTH,
+    },
+  )
+  if (!geometry) {
+    return null
+  }
+  const viewport = page.viewportSize() ?? (await page.evaluate(() => ({ height: window.innerHeight, width: window.innerWidth })))
+  const clipX = Math.round(grid.x + geometry.columnLeft - geometry.scrollLeft + 8)
+  const clipY = Math.round(grid.y + BILIG_COLUMN_HEADER_HEIGHT + geometry.rowTop - geometry.scrollTop + 5)
+  const clipWidth = Math.max(1, Math.round(geometry.columnWidth - 16))
+  const clipHeight = Math.max(1, Math.round(geometry.rowHeight - 10))
+  const x0 = Math.max(0, clipX)
+  const y0 = Math.max(0, clipY)
+  const x1 = Math.min(viewport.width, clipX + clipWidth)
+  const y1 = Math.min(viewport.height, clipY + clipHeight)
+  if (x1 <= x0 || y1 <= y0) {
+    return null
+  }
+  return await page.screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    clip: { height: y1 - y0, width: x1 - x0, x: x0, y: y0 },
+  })
+}
+
+async function readExpectedFillColorFromScreenshot(page: Page, screenshot: ScreenshotBuffer): Promise<string | null> {
+  return await page.evaluate(
+    async ({ dataUrl, expectedColors }) => {
+      const image = await new Promise<HTMLImageElement>((resolveImage, reject) => {
+        const element = new Image()
+        element.addEventListener('load', () => resolveImage(element), { once: true })
+        element.addEventListener('error', () => reject(new Error('Failed to decode rendered fill proof screenshot')), { once: true })
+        element.src = dataUrl
+      })
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      const context = canvas.getContext('2d', { willReadFrequently: true })
+      if (!context) {
+        throw new Error('Missing 2d context for rendered fill proof screenshot analysis')
+      }
+      context.drawImage(image, 0, 0)
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+      const targetColors = expectedColors
+        .map((hexColor) => {
+          const match = hexColor.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/iu)
+          return match
+            ? {
+                blue: Number.parseInt(match[3] ?? '0', 16),
+                green: Number.parseInt(match[2] ?? '0', 16),
+                hex: hexColor.toLowerCase(),
+                red: Number.parseInt(match[1] ?? '0', 16),
+              }
+            : null
+        })
+        .filter(
+          (color): color is { readonly blue: number; readonly green: number; readonly hex: string; readonly red: number } => color !== null,
+        )
+      const counts = Array.from({ length: targetColors.length }, () => 0)
+      let colorfulPixels = 0
+      for (let index = 0; index < pixels.length; index += 4) {
+        const alpha = pixels[index + 3] ?? 0
+        const red = pixels[index] ?? 255
+        const green = pixels[index + 1] ?? 255
+        const blue = pixels[index + 2] ?? 255
+        if (alpha <= 220 || Math.max(red, green, blue) - Math.min(red, green, blue) < 28) {
+          continue
+        }
+        colorfulPixels += 1
+        for (const [targetIndex, target] of targetColors.entries()) {
+          const distance = Math.hypot(red - target.red, green - target.green, blue - target.blue)
+          if (distance <= 72) {
+            counts[targetIndex] = (counts[targetIndex] ?? 0) + 1
+          }
+        }
+      }
+      const best = counts.reduce((currentBest, count, index) => (count > currentBest.count ? { count, index } : currentBest), {
+        count: 0,
+        index: -1,
+      })
+      const minimumPixels = Math.max(12, Math.ceil(colorfulPixels * 0.5))
+      return best.index >= 0 && best.count >= minimumPixels ? (targetColors[best.index]?.hex ?? null) : null
+    },
+    {
+      dataUrl: `data:image/png;base64,${screenshot.toString('base64')}`,
+      expectedColors: sameCorpusFillColorExpectedColors(),
+    },
+  )
+}
+
+function sameCorpusCellAddressCoordinates(address: string): { readonly columnIndex: number; readonly rowIndex: number } | null {
+  const match = address
+    .trim()
+    .toUpperCase()
+    .match(/^([A-Z]+)([0-9]+)$/u)
+  if (!match) {
+    return null
+  }
+  const columnLetters = match[1] ?? ''
+  const rowIndex = Number(match[2]) - 1
+  let columnIndex = 0
+  for (const letter of columnLetters) {
+    columnIndex = columnIndex * 26 + letter.charCodeAt(0) - 64
+  }
+  return columnIndex > 0 && rowIndex >= 0 ? { columnIndex: columnIndex - 1, rowIndex } : null
 }
 
 async function readVisibleFormulaBarText(page: Page, product: UiResponsivenessSameCorpusProduct): Promise<string | null> {
