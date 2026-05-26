@@ -1,5 +1,6 @@
 import { isWorkbookOp } from './guards.js'
 import { commandOpsMatchExpected, workbookOpsMatch } from './command-ops.js'
+import { isPlainArray } from './data-properties.js'
 import { isWorkbookRefData, toWorkbookRefData } from './find.js'
 import { materializeFormulaLabels, type WorkbookFormulaLabelReplacement } from './formula-usage.js'
 import { normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
@@ -45,7 +46,7 @@ function ownValue(value: object, key: string): unknown {
 }
 
 function arrayDataValues<T>(value: readonly T[], guard: (entry: unknown) => entry is T): readonly T[] | null {
-  if (!Array.isArray(value)) {
+  if (!isPlainArray(value)) {
     return null
   }
   const entries: T[] = []
@@ -240,6 +241,9 @@ function cloneResolvedInputs(value: unknown, path: string): readonly WorkbookRes
   if (!Array.isArray(value)) {
     throw new Error(`${path} must be an array`)
   }
+  if (!isPlainArray(value)) {
+    throw new Error(`${path} must be a plain array`)
+  }
   const entries: WorkbookResolvedRefValue[] = []
   const descriptors = Object.getOwnPropertyDescriptors(value)
   for (let index = 0; index < value.length; index += 1) {
@@ -402,6 +406,9 @@ export function cloneWorkbookRunApplyCommandReceipts(
 ): readonly WorkbookRunApplyCommandReceipt[] {
   if (!Array.isArray(value)) {
     throw new Error('commandReceipts must be an array')
+  }
+  if (!isPlainArray(value)) {
+    throw new Error('commandReceipts must be a plain array')
   }
   const entries = arrayDataValues(value, isRecord)
   if (entries === null) {

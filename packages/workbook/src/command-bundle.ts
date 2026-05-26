@@ -1,6 +1,7 @@
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import type { CellRangeRef } from '@bilig/protocol'
 import { workbookCommandResultFor, type WorkbookCommandResult } from './command-result.js'
+import { isPlainArray } from './data-properties.js'
 import { isWorkbookOp } from './guards.js'
 import type { EngineOp } from './ops.js'
 import { checkWorkbookCommandRequest, normalizeWorkbookCommandRequest, type WorkbookCommandRequest } from './features.js'
@@ -105,6 +106,8 @@ export function checkWorkbookCommandBundle(value: unknown): WorkbookCommandBundl
   const commands = ownValue(value, 'commands')
   if (!Array.isArray(commands) || commands.length === 0) {
     issues.push(commandBundleIssue('missing_commands', 'commands', 'Workbook command bundle commands must be a non-empty array'))
+  } else if (!isPlainArray(commands)) {
+    issues.push(commandBundleIssue('invalid_bundle', 'commands', 'Workbook command bundle commands must be a plain array'))
   } else {
     pushArrayDataIssues(issues, commands, 'commands', 'Workbook command bundle commands')
     for (let index = 0; index < commands.length; index += 1) {
@@ -306,6 +309,10 @@ function pushTouchedRangesIssues(issues: WorkbookCommandBundleIssue[], value: un
     issues.push(commandBundleIssue('invalid_range', path, 'Workbook command bundle touched ranges must be an array'))
     return
   }
+  if (!isPlainArray(value)) {
+    issues.push(commandBundleIssue('invalid_range', path, 'Workbook command bundle touched ranges must be a plain array'))
+    return
+  }
   pushArrayDataIssues(issues, value, path, 'Workbook command bundle touched ranges')
   for (let index = 0; index < value.length; index += 1) {
     const range = arrayDataValue(value, index)
@@ -418,7 +425,7 @@ function normalizeWorkbookCommandBundleData(value: Record<string, unknown>): Wor
   if (typeof idempotencyKey !== 'string') {
     throw new Error('Workbook command bundle idempotencyKey is invalid')
   }
-  if (!Array.isArray(commands)) {
+  if (!isPlainArray(commands)) {
     throw new Error('Workbook command bundle commands are invalid')
   }
 
@@ -474,6 +481,9 @@ function normalizeOp(value: unknown): EngineOp {
 function normalizeTouchedRanges(value: unknown): readonly CellRangeRef[] {
   if (!Array.isArray(value)) {
     return Object.freeze([])
+  }
+  if (!isPlainArray(value)) {
+    throw new Error('Workbook command bundle touched ranges are invalid')
   }
   return Object.freeze(value.map((range, index) => normalizeRange(range, `touchedRanges[${index}]`).range))
 }

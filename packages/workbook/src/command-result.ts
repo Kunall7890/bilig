@@ -1,6 +1,7 @@
 import type { CellRangeRef } from '@bilig/protocol'
 import { commandRangeBounds, commandRangeContains, commandRangeLabel, normalizeCommandRange } from './command-ranges.js'
 import { normalizeCommandResultUndoRef } from './command-result-undo.js'
+import { isPlainArray } from './data-properties.js'
 import {
   checkWorkbookCommandReceipt,
   normalizeWorkbookCommandReceipt,
@@ -332,6 +333,9 @@ export function isWorkbookCommandResultForBundle(bundle: WorkbookCommandBundle, 
 function normalizeReceiptArrayForResult(receipts: readonly WorkbookCommandReceipt[]): readonly WorkbookCommandReceipt[] {
   if (!Array.isArray(receipts)) {
     throw new Error('Workbook command result is invalid: receipts must be an array')
+  }
+  if (!isPlainArray(receipts)) {
+    throw new Error('Workbook command result is invalid: receipts must be a plain array')
   }
   const normalizedReceipts: WorkbookCommandReceipt[] = []
   for (let index = 0; index < receipts.length; index += 1) {
@@ -709,6 +713,10 @@ function pushResultReceiptsIssues(issues: WorkbookCommandResultIssue[], value: u
     issues.push(commandResultIssue('invalid_command_result', 'receipts', 'Workbook command result receipts must be a non-empty array'))
     return
   }
+  if (!isPlainArray(value)) {
+    issues.push(commandResultIssue('invalid_command_result', 'receipts', 'Workbook command result receipts must be a plain array'))
+    return
+  }
   pushResultArrayDataIssues(issues, value, 'receipts', 'Workbook command result receipts')
   for (let index = 0; index < value.length; index += 1) {
     const receipt = arrayDataValue(value, index)
@@ -737,6 +745,10 @@ function pushResultRangesIssues(issues: WorkbookCommandResultIssue[], value: unk
     issues.push(commandResultIssue('invalid_command_result', path, `Workbook command result ${label} must be an array`))
     return
   }
+  if (!isPlainArray(value)) {
+    issues.push(commandResultIssue('invalid_command_result', path, `Workbook command result ${label} must be a plain array`))
+    return
+  }
   pushResultArrayDataIssues(issues, value, path, `Workbook command result ${label}`)
   for (let index = 0; index < value.length; index += 1) {
     const range = arrayDataValue(value, index)
@@ -757,6 +769,10 @@ function pushResultErrorsIssues(issues: WorkbookCommandResultIssue[], value: unk
   }
   if (!Array.isArray(value)) {
     issues.push(commandResultIssue('invalid_command_result', 'errors', 'Workbook command result errors must be an array'))
+    return
+  }
+  if (!isPlainArray(value)) {
+    issues.push(commandResultIssue('invalid_command_result', 'errors', 'Workbook command result errors must be a plain array'))
     return
   }
   pushResultArrayDataIssues(issues, value, 'errors', 'Workbook command result errors')
@@ -875,20 +891,23 @@ function normalizeWorkbookCommandResultData(value: Record<string, unknown>): Wor
 }
 
 function normalizeResultReceipts(value: unknown): readonly WorkbookCommandReceipt[] {
-  if (!Array.isArray(value)) {
+  if (!isPlainArray(value)) {
     throw new Error('Workbook command result receipts are invalid')
   }
   return value.map((receipt) => normalizeWorkbookCommandReceipt(receipt))
 }
 
 function normalizeResultRanges(value: unknown, path: string): readonly CellRangeRef[] {
-  if (!Array.isArray(value)) {
+  if (!isPlainArray(value)) {
     throw new Error(`Workbook command result ${path} is invalid`)
   }
   return value.map((range, index) => normalizeCommandRange(range, `${path}[${String(index)}]`, 'Workbook command result').range)
 }
 
 function normalizeResultErrors(errors: readonly unknown[]): readonly string[] {
+  if (!isPlainArray(errors)) {
+    throw new Error('Workbook command result errors are invalid')
+  }
   return errors.map((entry, index) => {
     if (typeof entry !== 'string') {
       throw new Error(`Workbook command result errors[${String(index)}] must be a string`)

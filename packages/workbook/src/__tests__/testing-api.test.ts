@@ -76,6 +76,12 @@ function receipt<Refs>(plan: WorkbookActionPlan<Refs>, commandIndex: number, op:
   }
 }
 
+function arraySubclass<T>(entries: readonly T[]): T[] {
+  const value = new (class extends Array<T> {})()
+  value.push(...entries)
+  return value
+}
+
 function passingAdapter(): WorkbookRunAdapter<{ readonly refsUsed: ReturnType<typeof prepare>['plan']['refsUsed'] }> {
   return {
     apply(plan) {
@@ -430,6 +436,45 @@ describe('@bilig/workbook testing api', () => {
     ])
     expect(check.result?.status).toBe('failed')
     expect(check.description?.status).toBe('failed')
+  })
+
+  it('rejects array-subclass runtime command receipts as uninspectable data', async () => {
+    const prepared = prepare()
+
+    const check = await checkWorkbookRunAdapter(prepared.planData, {
+      apply(plan) {
+        const op: EngineOp = {
+          kind: 'setCellFormula',
+          sheetName: 'Resolved',
+          address: 'C1',
+          formula: 'Resolved!A1*Resolved!B1',
+        }
+        return {
+          status: 'applied',
+          planId: workbookPlanId(plan),
+          baseRevision: 4,
+          revision: 5,
+          previewOps: [op],
+          appliedOps: [op],
+          commandReceipts: arraySubclass([receipt(plan, 0, op)]),
+        }
+      },
+      read() {
+        return []
+      },
+    })
+
+    expect(check.status).toBe('failed')
+    if (check.status !== 'failed') {
+      throw new Error('adapter unexpectedly passed')
+    }
+    expect(check.issues).toEqual([
+      {
+        code: 'runtime_rejected',
+        path: 'result',
+        message: 'Workbook action testing-adapter-model.calculate returned invalid command receipts: commandReceipts must be a plain array',
+      },
+    ])
   })
 
   it('rejects symbolic ref receipts that are not bound to concrete ranges', async () => {

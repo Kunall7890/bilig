@@ -19,6 +19,10 @@ export function isObjectRecord(value: unknown): value is object {
   return prototype === Object.prototype || prototype === null
 }
 
+export function isPlainArray(value: unknown): value is readonly unknown[] {
+  return Array.isArray(value) && Object.getPrototypeOf(value) === Array.prototype
+}
+
 export function optionalDataProperty(value: object, key: string, label: string): OptionalDataValue {
   const descriptor = Object.getOwnPropertyDescriptor(value, key)
   if (descriptor === undefined) {

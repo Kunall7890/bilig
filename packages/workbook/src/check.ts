@@ -1,7 +1,7 @@
 import { isLiteralInput, type LiteralInput } from '@bilig/protocol'
 import { isWorkbookRef, type WorkbookRef } from './find.js'
 import { formula, type WorkbookFormulaOperand } from './formula.js'
-import { isObjectRecord, optionalDataProperty, requiredDataProperty } from './data-properties.js'
+import { isObjectRecord, isPlainArray, optionalDataProperty, requiredDataProperty } from './data-properties.js'
 import type { WorkbookCheckExpectation, WorkbookCheckResult } from './result.js'
 
 export interface WorkbookCustomCheckOptions {
@@ -76,6 +76,9 @@ function checkTarget(kind: string, target: unknown): WorkbookRef {
 function dataArrayValues(value: unknown, label: string): readonly unknown[] {
   if (!Array.isArray(value)) {
     throw new Error(`${label} must be an array`)
+  }
+  if (!isPlainArray(value)) {
+    throw new Error(`${label} must be a plain array`)
   }
   const entries: unknown[] = []
   for (let index = 0; index < value.length; index += 1) {

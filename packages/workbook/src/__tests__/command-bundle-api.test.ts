@@ -46,6 +46,12 @@ function customPrototype(value: object): unknown {
   return custom
 }
 
+function arraySubclass<T>(entries: readonly T[]): T[] {
+  const value = new (class extends Array<T> {})()
+  value.push(...entries)
+  return value
+}
+
 describe('@bilig/workbook command bundle api', () => {
   it('exports frozen command bundle vocabulary', () => {
     expect(workbookCommandBundleCommandKinds).toEqual(['request', 'op'])
@@ -518,6 +524,62 @@ describe('@bilig/workbook command bundle api', () => {
     })
   })
 
+  it('rejects array-subclass command bundle arrays', () => {
+    const commands = arraySubclass([
+      {
+        kind: 'request',
+        request: previewRequest,
+      },
+    ])
+
+    expect(
+      checkWorkbookCommandBundle({
+        targetRevision: 1,
+        idempotencyKey: 'agent-run-1',
+        commands,
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_bundle',
+          path: 'commands',
+          message: 'Workbook command bundle commands must be a plain array',
+        },
+      ],
+    })
+    expect(() =>
+      normalizeWorkbookCommandBundle({
+        targetRevision: 1,
+        idempotencyKey: 'agent-run-1',
+        commands,
+      }),
+    ).toThrow('Workbook command bundle is invalid: Workbook command bundle commands must be a plain array')
+
+    expect(
+      checkWorkbookCommandBundle({
+        targetRevision: 1,
+        idempotencyKey: 'agent-run-1',
+        commands: [
+          {
+            kind: 'request',
+            request: previewRequest,
+            touchedRanges: arraySubclass([{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }]),
+          },
+        ],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_range',
+          path: 'commands[0].touchedRanges',
+          message: 'Workbook command bundle touched ranges must be a plain array',
+        },
+      ],
+    })
+  })
+
   it('rejects unknown command kinds before runtime handoff', () => {
     expect(
       checkWorkbookCommandBundle({
@@ -954,6 +1016,66 @@ describe('@bilig/workbook command bundle api', () => {
         receipts: [],
       }),
     ).toThrow('Workbook command result is invalid: Accepted workbook command result must not include receipts')
+  })
+
+  it('rejects array-subclass command result proof arrays', () => {
+    const bundle = normalizeWorkbookCommandBundle({
+      id: 'bundle-proof-arrays',
+      targetRevision: 7,
+      idempotencyKey: 'bundle-proof-arrays',
+      commands: [
+        {
+          id: 'bundle-proof-arrays:0:write',
+          kind: 'request',
+          destructive: true,
+          request: mutationRequest,
+          touchedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+        },
+      ],
+    })
+    const receipt = {
+      status: 'applied',
+      featureId: 'cells',
+      commandId: 'cells.setValue',
+      category: 'mutation',
+      changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+    } as const
+    const result = workbookCommandResultForReceipts(bundle, [receipt], { revision: 8 })
+
+    expect(() => workbookCommandResultForReceipts(bundle, arraySubclass([receipt]), { revision: 8 })).toThrow(
+      'Workbook command result is invalid: receipts must be a plain array',
+    )
+
+    expect(
+      checkWorkbookCommandResult({
+        ...result,
+        receipts: arraySubclass(result.receipts),
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_result',
+          path: 'receipts',
+          message: 'Workbook command result receipts must be a plain array',
+        },
+      ],
+    })
+    expect(
+      checkWorkbookCommandResult({
+        ...result,
+        changedRanges: arraySubclass(result.changedRanges),
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_result',
+          path: 'changedRanges',
+          message: 'Workbook command result changed ranges must be a plain array',
+        },
+      ],
+    })
   })
 
   it('rejects command results that are not bound to the bundle', () => {

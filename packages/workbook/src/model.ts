@@ -10,7 +10,14 @@ import {
   type WorkbookActionInput,
   type WorkbookActionInputDescription,
 } from './input.js'
-import { isObject, isObjectRecord, optionalDataProperty, requiredDataProperty, type OptionalDataValue } from './data-properties.js'
+import {
+  isObject,
+  isObjectRecord,
+  isPlainArray,
+  optionalDataProperty,
+  requiredDataProperty,
+  type OptionalDataValue,
+} from './data-properties.js'
 import {
   errorMessage,
   failedInvalidActionNamePlan,
@@ -306,6 +313,9 @@ function requiredDataValue(value: object, key: string, path: string): unknown {
 function dataArrayEntries(value: unknown, path: string): readonly (readonly [unknown, string])[] {
   if (!Array.isArray(value)) {
     throw new Error(`Workbook check at ${path} must be an array`)
+  }
+  if (!isPlainArray(value)) {
+    throw new Error(`Workbook check at ${path} must be a plain array`)
   }
 
   const entries: (readonly [unknown, string])[] = []

@@ -175,6 +175,17 @@ describe('@bilig/workbook check api', () => {
       'Workbook custom check options.refs must be a data property',
     )
     expect(refsGetterInvoked).toBe(false)
+    const subclassRefs = new (class extends Array<typeof output> {})()
+    subclassRefs.push(output)
+    expect(() =>
+      Reflect.apply(check.custom, undefined, [
+        {
+          kind: 'contract',
+          message: 'Contract stays valid',
+          refs: subclassRefs,
+        },
+      ]),
+    ).toThrowError('Workbook custom check refs must be a plain array')
     expect(() =>
       Reflect.apply(check.custom, undefined, [
         customPrototypeRecord({
@@ -183,6 +194,44 @@ describe('@bilig/workbook check api', () => {
         }),
       ]),
     ).toThrowError('Workbook custom check options must be an object')
+  })
+
+  it('rejects array-subclass returned check payloads as uninspectable data', () => {
+    const model = defineModel({
+      name: 'returned-check-array-subclass-proof-model',
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+      checks({ refs }) {
+        const returned = new (class extends Array<unknown> {})()
+        returned.push({
+          status: 'planned',
+          kind: 'exists',
+          target: refs.output,
+          message: 'Output exists',
+        })
+        // @ts-expect-error exercising JS callers that bypass the returned check array type
+        return returned
+      },
+      actions: {
+        inspect() {},
+      },
+    })
+
+    expect(planWorkbookAction(model, 'inspect')).toEqual({
+      status: 'failed',
+      modelName: 'returned-check-array-subclass-proof-model',
+      actionName: 'inspect',
+      checks: [],
+      errors: [
+        {
+          code: 'checks_failed',
+          message: 'Workbook check at checks must be a plain array',
+        },
+      ],
+    })
   })
 
   it('plans and describes readback checks through model actions', () => {
