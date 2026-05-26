@@ -1,6 +1,8 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import { CellFlags } from '../../cell-store.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
+import { BLOCK_COLS, BLOCK_ROWS } from '../../sheet-grid.js'
+import type { SheetRecord } from '../../workbook-sheet-record.js'
 import type { InitialFormulaCellIndexList } from './formula-initialization-refs.js'
 import type { EngineFormulaInitializationServiceArgs } from './formula-initialization-service-types.js'
 
@@ -241,6 +243,9 @@ function evaluateInitialPrefixAggregateGroupInJs(
   if (!sheet) {
     return
   }
+  if (evaluatePhysicalSingleColumnPrefixAggregateGroupInJs(args, sheet, group, handled, pushChangedCellIndex, writeFormulaValue)) {
+    return
+  }
   const formulas = orderedGroupFormulas(group)
   let sum = 0
   let count = 0
@@ -297,6 +302,113 @@ function evaluateInitialPrefixAggregateGroupInJs(
       formulaIndex += 1
     }
   }
+}
+
+function evaluatePhysicalSingleColumnPrefixAggregateGroupInJs(
+  args: InitialPrefixAggregateArgs,
+  sheet: SheetRecord,
+  group: InitialPrefixAggregateGroup,
+  handled: Set<number>,
+  pushChangedCellIndex: (cellIndex: number) => void,
+  writeFormulaValue: (cellIndex: number, value: CellValue) => void,
+): boolean {
+  if (sheet.structureVersion !== 1 || group.col !== group.colEnd) {
+    return false
+  }
+  const formulas = orderedGroupFormulas(group)
+  let sum = 0
+  let count = 0
+  let averageCount = 0
+  let errorCode = ErrorCode.None
+  let errorCount = 0
+  let minimum = Number.POSITIVE_INFINITY
+  let maximum = Number.NEGATIVE_INFINITY
+  let formulaIndex = 0
+  const blockCol = Math.floor(group.col / BLOCK_COLS)
+  const localCol = group.col % BLOCK_COLS
+  const blockRowEnd = Math.floor(group.maxRowEnd / BLOCK_ROWS)
+
+  for (let blockRow = 0; blockRow <= blockRowEnd; blockRow += 1) {
+    args.checkEvaluationBudget()
+    const absoluteBlockRow = blockRow * BLOCK_ROWS
+    const localRowEnd = Math.min(group.maxRowEnd - absoluteBlockRow, BLOCK_ROWS - 1)
+    const block = sheet.grid.blocks.get(blockRow * 1_000_000 + blockCol)
+    for (let localRow = 0; localRow <= localRowEnd; localRow += 1) {
+      const row = absoluteBlockRow + localRow
+      const encodedCellIndex = block?.[localRow * BLOCK_COLS + localCol] ?? 0
+      if (encodedCellIndex !== 0) {
+        const cellIndex = encodedCellIndex - 1
+        if (((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.HasFormula) !== 0) {
+          while (formulaIndex < formulas.length && formulas[formulaIndex]!.rowEnd <= row) {
+            const formula = formulas[formulaIndex]!
+            const aggregateValue = aggregateValueFromState(
+              group.aggregateKind,
+              sum,
+              count,
+              averageCount,
+              errorCode,
+              errorCount,
+              minimum,
+              maximum,
+            )
+            const value =
+              formula.resultOffset !== undefined && aggregateValue.tag === ValueTag.Number
+                ? { tag: ValueTag.Number as const, value: aggregateValue.value + formula.resultOffset }
+                : aggregateValue
+            writeFormulaValue(formula.cellIndex, value)
+            handled.add(formula.cellIndex)
+            pushChangedCellIndex(formula.cellIndex)
+            formulaIndex += 1
+          }
+          return true
+        }
+        const tag = (args.state.workbook.cellStore.tags[cellIndex] as ValueTag | undefined) ?? ValueTag.Empty
+        if (tag === ValueTag.Number) {
+          const numeric = args.state.workbook.cellStore.numbers[cellIndex] ?? 0
+          sum += numeric
+          count += 1
+          averageCount += 1
+          minimum = Math.min(minimum, numeric)
+          maximum = Math.max(maximum, numeric)
+        } else if (tag === ValueTag.Boolean) {
+          const numeric = (args.state.workbook.cellStore.numbers[cellIndex] ?? 0) !== 0 ? 1 : 0
+          sum += numeric
+          count += 1
+          averageCount += 1
+          minimum = Math.min(minimum, numeric)
+          maximum = Math.max(maximum, numeric)
+        } else if (tag === ValueTag.Empty) {
+          minimum = Math.min(minimum, 0)
+          maximum = Math.max(maximum, 0)
+        } else if (tag === ValueTag.Error) {
+          errorCode ||= (args.state.workbook.cellStore.errors[cellIndex] as ErrorCode | undefined) ?? ErrorCode.None
+          errorCount += 1
+        }
+      }
+      while (formulaIndex < formulas.length && formulas[formulaIndex]!.rowEnd <= row) {
+        const formula = formulas[formulaIndex]!
+        const aggregateValue = aggregateValueFromState(
+          group.aggregateKind,
+          sum,
+          count,
+          averageCount,
+          errorCode,
+          errorCount,
+          minimum,
+          maximum,
+        )
+        const value =
+          formula.resultOffset !== undefined && aggregateValue.tag === ValueTag.Number
+            ? { tag: ValueTag.Number as const, value: aggregateValue.value + formula.resultOffset }
+            : aggregateValue
+        writeFormulaValue(formula.cellIndex, value)
+        handled.add(formula.cellIndex)
+        pushChangedCellIndex(formula.cellIndex)
+        formulaIndex += 1
+      }
+    }
+  }
+  return true
 }
 
 function orderedGroupFormulas(group: InitialPrefixAggregateGroup): readonly InitialPrefixAggregateGroup['formulas'][number][] {
