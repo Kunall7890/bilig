@@ -57,6 +57,37 @@ function accessorArray<T>(getter: () => T): readonly T[] {
   return values
 }
 
+function runDescriptionWithNoopEffect(commandKind: string, effect: Record<string, unknown>): Record<string, unknown> {
+  return {
+    status: 'done',
+    apply: {
+      matched: true,
+      commandReceipts: [
+        {
+          commandIndex: 0,
+          commandKind,
+          commandDigest: `bilig-command-v1:${commandKind}`,
+          previewOps: [],
+          appliedOps: [],
+          noop: {
+            reason: 'already_satisfied',
+            proof: {
+              source: 'test',
+              evidence: 'adapter_zero_ops',
+              commandKind,
+              commandDigest: `bilig-command-v1:${commandKind}`,
+              opCount: 0,
+              effect,
+            },
+          },
+        },
+      ],
+    },
+    changed: [],
+    checks: [],
+  }
+}
+
 function applied<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRunApplyResult {
   return {
     status: 'applied',
@@ -881,6 +912,71 @@ describe('@bilig/workbook run api', () => {
         },
       ],
     })
+  })
+
+  it('requires no-op descriptions to preserve command-specific effect fields', () => {
+    const effectPath = 'apply.commandReceipts[0].noop.proof.effect'
+    const cases = [
+      {
+        commandKind: 'writeValue',
+        effect: { kind: 'writeValue' },
+        code: 'missing_field',
+        path: `${effectPath}.value`,
+        message: `Workbook run result description ${effectPath}.value is required`,
+      },
+      {
+        commandKind: 'writeFormula',
+        effect: { kind: 'writeFormula' },
+        code: 'missing_field',
+        path: `${effectPath}.formula`,
+        message: `Workbook run result description ${effectPath}.formula is required`,
+      },
+      {
+        commandKind: 'clear',
+        effect: { kind: 'clear' },
+        code: 'missing_field',
+        path: `${effectPath}.cleared`,
+        message: `Workbook run result description ${effectPath}.cleared is required`,
+      },
+      {
+        commandKind: 'format',
+        effect: { kind: 'format' },
+        code: 'missing_field',
+        path: effectPath,
+        message: `Workbook run result description ${effectPath} must include style or numberFormat`,
+      },
+      {
+        commandKind: 'op',
+        effect: { kind: 'op', opKind: 'setCellValue', op: { kind: 'setCellValue' } },
+        code: 'invalid_field',
+        path: `${effectPath}.op`,
+        message: `Workbook run result description ${effectPath}.op must be a valid WorkbookOp`,
+      },
+      {
+        commandKind: 'op',
+        effect: {
+          kind: 'op',
+          opKind: 'setCellFormula',
+          op: { kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 12 },
+        },
+        code: 'invalid_field',
+        path: `${effectPath}.opKind`,
+        message: `Workbook run result description ${effectPath}.opKind must match effect.op.kind`,
+      },
+    ]
+
+    for (const entry of cases) {
+      expect(checkWorkbookRunResultDescription(runDescriptionWithNoopEffect(entry.commandKind, entry.effect))).toMatchObject({
+        status: 'invalid',
+        issues: expect.arrayContaining([
+          {
+            code: entry.code,
+            path: entry.path,
+            message: entry.message,
+          },
+        ]),
+      })
+    }
   })
 
   it('runs readback-only plans without requiring an apply adapter', async () => {

@@ -1,4 +1,6 @@
+import { isLiteralInput } from '@bilig/protocol'
 import type { WorkbookRunResultDescriptionIssue } from './run-description.js'
+import { isWorkbookOp } from './guards.js'
 
 function issue(code: WorkbookRunResultDescriptionIssue['code'], path: string, message: string): WorkbookRunResultDescriptionIssue {
   return {
@@ -167,6 +169,7 @@ function pushNoopOpsIssues(
 }
 
 function pushOpEffectIssues(issues: WorkbookRunResultDescriptionIssue[], effect: Record<string, unknown>, path: string): void {
+  let opKindValue: unknown
   const opKind = Object.getOwnPropertyDescriptor(effect, 'opKind')
   if (opKind === undefined) {
     issues.push(issue('missing_field', `${path}.opKind`, `Workbook run result description ${path}.opKind is required`))
@@ -180,6 +183,8 @@ function pushOpEffectIssues(issues: WorkbookRunResultDescriptionIssue[], effect:
         `Workbook run result description ${path}.opKind must not be empty or have leading or trailing whitespace`,
       ),
     )
+  } else {
+    opKindValue = opKind.value
   }
 
   const op = Object.getOwnPropertyDescriptor(effect, 'op')
@@ -189,6 +194,77 @@ function pushOpEffectIssues(issues: WorkbookRunResultDescriptionIssue[], effect:
     issues.push(issue('invalid_field', `${path}.op`, `Workbook run result description ${path}.op must be a data property`))
   } else if (!isPlainObject(op.value)) {
     issues.push(issue('invalid_type', `${path}.op`, `Workbook run result description ${path}.op must be a plain object`))
+  } else if (!isWorkbookOp(op.value)) {
+    issues.push(issue('invalid_field', `${path}.op`, `Workbook run result description ${path}.op must be a valid WorkbookOp`))
+  } else if (typeof opKindValue === 'string' && ownValue(op.value, 'kind') !== opKindValue) {
+    issues.push(issue('invalid_field', `${path}.opKind`, `Workbook run result description ${path}.opKind must match effect.op.kind`))
+  }
+}
+
+function pushRequiredEffectDataProperty(
+  issues: WorkbookRunResultDescriptionIssue[],
+  effect: Record<string, unknown>,
+  path: string,
+  key: string,
+): { readonly status: 'present'; readonly value: unknown } | { readonly status: 'missing' | 'invalid' } {
+  const fieldPath = `${path}.${key}`
+  const descriptor = Object.getOwnPropertyDescriptor(effect, key)
+  if (descriptor === undefined) {
+    issues.push(issue('missing_field', fieldPath, `Workbook run result description ${fieldPath} is required`))
+    return { status: 'missing' }
+  }
+  if (!('value' in descriptor)) {
+    issues.push(issue('invalid_field', fieldPath, `Workbook run result description ${fieldPath} must be a data property`))
+    return { status: 'invalid' }
+  }
+  return { status: 'present', value: descriptor.value }
+}
+
+function pushWriteValueEffectIssues(issues: WorkbookRunResultDescriptionIssue[], effect: Record<string, unknown>, path: string): void {
+  const value = pushRequiredEffectDataProperty(issues, effect, path, 'value')
+  if (value.status === 'present' && !isLiteralInput(value.value)) {
+    issues.push(issue('invalid_field', `${path}.value`, `Workbook run result description ${path}.value must be a finite JSON literal`))
+  }
+}
+
+function pushWriteFormulaEffectIssues(issues: WorkbookRunResultDescriptionIssue[], effect: Record<string, unknown>, path: string): void {
+  const formula = pushRequiredEffectDataProperty(issues, effect, path, 'formula')
+  if (formula.status === 'present' && (typeof formula.value !== 'string' || formula.value === '')) {
+    issues.push(issue('invalid_field', `${path}.formula`, `Workbook run result description ${path}.formula must be a non-empty string`))
+  }
+}
+
+function pushClearEffectIssues(issues: WorkbookRunResultDescriptionIssue[], effect: Record<string, unknown>, path: string): void {
+  const cleared = pushRequiredEffectDataProperty(issues, effect, path, 'cleared')
+  if (cleared.status === 'present' && cleared.value !== true) {
+    issues.push(issue('invalid_field', `${path}.cleared`, `Workbook run result description ${path}.cleared must be true`))
+  }
+}
+
+function pushFormatEffectIssues(issues: WorkbookRunResultDescriptionIssue[], effect: Record<string, unknown>, path: string): void {
+  const style = Object.getOwnPropertyDescriptor(effect, 'style')
+  const numberFormat = Object.getOwnPropertyDescriptor(effect, 'numberFormat')
+  if (style === undefined && numberFormat === undefined) {
+    issues.push(issue('missing_field', path, `Workbook run result description ${path} must include style or numberFormat`))
+    return
+  }
+  if (style !== undefined) {
+    if (!('value' in style)) {
+      issues.push(issue('invalid_field', `${path}.style`, `Workbook run result description ${path}.style must be a data property`))
+    } else if (!isPlainObject(style.value)) {
+      issues.push(issue('invalid_type', `${path}.style`, `Workbook run result description ${path}.style must be a plain object`))
+    }
+  }
+  if (numberFormat !== undefined) {
+    if (!('value' in numberFormat)) {
+      issues.push(
+        issue('invalid_field', `${path}.numberFormat`, `Workbook run result description ${path}.numberFormat must be a data property`),
+      )
+    } else if (numberFormat.value !== null && typeof numberFormat.value !== 'string') {
+      issues.push(
+        issue('invalid_field', `${path}.numberFormat`, `Workbook run result description ${path}.numberFormat must be a string or null`),
+      )
+    }
   }
 }
 
@@ -214,8 +290,25 @@ function pushEffectIssues(
   if (typeof expectedCommandKind === 'string' && kind.value !== expectedCommandKind) {
     issues.push(issue('invalid_field', `${path}.kind`, `Workbook run result description ${path}.kind must match receipt commandKind`))
   }
-  if (expectedCommandKind === 'op') {
-    pushOpEffectIssues(issues, effect, path)
+  if (kind.value !== expectedCommandKind) {
+    return
+  }
+  switch (expectedCommandKind) {
+    case 'writeValue':
+      pushWriteValueEffectIssues(issues, effect, path)
+      return
+    case 'writeFormula':
+      pushWriteFormulaEffectIssues(issues, effect, path)
+      return
+    case 'clear':
+      pushClearEffectIssues(issues, effect, path)
+      return
+    case 'format':
+      pushFormatEffectIssues(issues, effect, path)
+      return
+    case 'op':
+      pushOpEffectIssues(issues, effect, path)
+      return
   }
 }
 
