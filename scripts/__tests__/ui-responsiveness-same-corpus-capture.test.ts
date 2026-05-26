@@ -301,6 +301,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
             blocker:
               'Cannot preflight same-corpus editable workloads on google-sheets: Google Sheets page is not authenticated; provide an authenticated storage state.',
             corpusVerification: null,
+            editableMutationProof: null,
             limitations: ['storage state was not provided'],
           },
         ],

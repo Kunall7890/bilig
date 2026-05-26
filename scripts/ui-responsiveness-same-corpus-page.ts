@@ -54,7 +54,12 @@ import {
   restoreProductWorkbookMutation,
   type ProductOperationSample,
 } from './ui-responsiveness-same-corpus-workload-runner.ts'
-import type { PreflightProductResult, SameCorpusPreflight } from './ui-responsiveness-same-corpus-preflight.ts'
+import {
+  sameCorpusPreflightProductReady,
+  type PreflightProductResult,
+  type SameCorpusPreflight,
+} from './ui-responsiveness-same-corpus-preflight.ts'
+import { captureSameCorpusPreflightEditableMutationProof } from './ui-responsiveness-same-corpus-preflight-editable-proof.ts'
 
 interface ProductSampleCollection {
   readonly corpusVerification: SameCorpusCaptureCorpusVerification
@@ -291,9 +296,9 @@ export async function preflightSameCorpusIncumbentAccess(args: PreflightArgs): P
       materializedCells: corpus.materializedCellCount,
       requiredProductCount: 2,
       checkedProductCount: products.length,
-      readyProductCount: products.filter((product) => product.status === 'ready').length,
+      readyProductCount: products.filter(sameCorpusPreflightProductReady).length,
       blockedProductCount: products.filter((product) => product.status === 'blocked').length,
-      allCheckedProductsReady: products.length > 0 && products.every((product) => product.status === 'ready'),
+      allCheckedProductsReady: products.length > 0 && products.every(sameCorpusPreflightProductReady),
       products,
     }
   } finally {
@@ -335,6 +340,7 @@ async function preflightIncumbentProduct(
     await waitForProductReady(page, product, captureArgsForPreflight(args, product, url))
     await assertIncumbentEditableForPreflight(page, product)
     const corpusVerification = await verifyProductCorpus(page, product, url, corpus)
+    const editableMutationProof = await captureSameCorpusPreflightEditableMutationProof({ corpusVerification, page, product })
     return {
       product,
       source: url,
@@ -343,6 +349,7 @@ async function preflightIncumbentProduct(
       status: 'ready',
       blocker: null,
       corpusVerification,
+      editableMutationProof,
       limitations: productLimitations(product, storageStatePathForPreflightProduct(product, args)),
     }
   } catch (error: unknown) {
@@ -355,6 +362,7 @@ async function preflightIncumbentProduct(
       status: 'blocked',
       blocker: await productReadyFailureMessage(page, product, url, 0, error),
       corpusVerification: null,
+      editableMutationProof: null,
       limitations: productLimitations(product, storageStatePathForPreflightProduct(product, args)),
     }
   } finally {

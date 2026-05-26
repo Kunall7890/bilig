@@ -25,6 +25,7 @@ import {
   saveStorageState,
 } from './ui-responsiveness-same-corpus-page.ts'
 import type { SameCorpusPreflight } from './ui-responsiveness-same-corpus-preflight.ts'
+import { sameCorpusPreflightProductInvalidReasons } from './ui-responsiveness-same-corpus-preflight.ts'
 
 export { parseCaptureArgs, parseEmitXlsxArgs, parsePreflightArgs, parseSaveStorageStateArgs } from './ui-responsiveness-same-corpus-args.ts'
 export { buildSameCorpusFingerprint, verifyXlsxCorpusFingerprint } from './ui-responsiveness-same-corpus-fingerprint.ts'
@@ -125,17 +126,13 @@ export function assertSameCorpusCaptureEvidenceReady(capture: SameCorpusCapture)
 }
 
 export function assertSameCorpusPreflightReady(preflight: SameCorpusPreflight): void {
-  if (preflight.allCheckedProductsReady) {
+  const invalidLines = preflight.products.flatMap((product) =>
+    sameCorpusPreflightProductInvalidReasons(product).map((reason) => `- ${product.product}: ${reason}`),
+  )
+  if (preflight.allCheckedProductsReady && invalidLines.length === 0) {
     return
   }
-  throw new Error(
-    [
-      'Same-corpus UI incumbent preflight is not ready for claim-grade capture.',
-      ...preflight.products
-        .filter((product) => product.status === 'blocked')
-        .map((product) => `- ${product.product}: ${product.blocker ?? 'blocked without diagnostic'}`),
-    ].join('\n'),
-  )
+  throw new Error(['Same-corpus UI incumbent preflight is not ready for claim-grade capture.', ...invalidLines].join('\n'))
 }
 
 type SameCorpusPreflightRunner = (args: PreflightArgs) => Promise<SameCorpusPreflight>
