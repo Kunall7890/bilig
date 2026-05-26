@@ -176,6 +176,9 @@ production proof. Strict mode requires:
 - command receipts bound to planned digests and concrete `resolvedRefs`
 - proof on every passed check
 
+Use `{ requireResolvedRefs: true }` when an agent only needs concrete ref
+materialization without every strict-mode gate.
+
 Runtime authors can run the same plain-object, known-key, own-data-option
 contract with the `@bilig/workbook/testing` adapter helpers.
 

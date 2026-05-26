@@ -36,6 +36,7 @@ const RUN_OPTION_KEYS: ReadonlySet<string> = new Set([
   'strict',
   'requireApplyProof',
   'requirePlanId',
+  'requireResolvedRefs',
   'requireChecks',
   'requireCheckProof',
   'requireRevision',
@@ -198,6 +199,7 @@ export function normalizeRunOptions(options: unknown): WorkbookRunOptionsNormali
     const strict = normalizeRunOption(options, 'strict')
     const requireApplyProof = normalizeRunOption(options, 'requireApplyProof')
     const requirePlanId = normalizeRunOption(options, 'requirePlanId')
+    const requireResolvedRefs = normalizeRunOption(options, 'requireResolvedRefs')
     const requireChecks = normalizeRunOption(options, 'requireChecks')
     const requireCheckProof = normalizeRunOption(options, 'requireCheckProof')
     const requireRevision = normalizeRunOption(options, 'requireRevision')
@@ -208,7 +210,7 @@ export function normalizeRunOptions(options: unknown): WorkbookRunOptionsNormali
       options: {
         requireApplyProof: strict || requireApplyProof,
         requirePlanId: strict || requirePlanId,
-        requireResolvedRefs: strict,
+        requireResolvedRefs: strict || requireResolvedRefs,
         requireChecks: strict || requireChecks,
         requireCheckProof: strict || requireCheckProof,
         requireRevision: strict || requireRevision,
@@ -241,6 +243,10 @@ function singleResolvedRefValueMatches(value: WorkbookResolvedRefValue | undefin
 
 function resolvedInputsForCommand(command: WorkbookActionPlan['commands'][number]): readonly WorkbookRef[] {
   return command.kind === 'writeFormula' ? command.inputs : []
+}
+
+function commandNeedsResolvedRefs(command: WorkbookActionPlan['commands'][number]): boolean {
+  return command.target !== undefined || resolvedInputsForCommand(command).length > 0
 }
 
 function resolvedRefsHaveExpectedShape(
@@ -318,6 +324,9 @@ export function applyProofErrors(
   }
   if ((options.requireApplyProof || options.requireNoUnverified) && plan.commands.length > 0 && apply.commandReceipts === undefined) {
     return [runError('apply_not_verified', 'Adapter did not bind planned commands to materialized ops')]
+  }
+  if (options.requireResolvedRefs && apply.commandReceipts === undefined && plan.commands.some(commandNeedsResolvedRefs)) {
+    return [runError('apply_not_verified', 'Adapter did not bind planned commands to resolved ref proof')]
   }
   if (options.requireApplyProof && apply.commandReceipts !== undefined) {
     const unprovedReceipt = apply.commandReceipts.find((receipt) => receipt.appliedOps.length === 0 && receipt.noop === undefined)

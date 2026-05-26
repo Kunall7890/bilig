@@ -391,6 +391,141 @@ describe('@bilig/workbook run proof boundary', () => {
     )
   })
 
+  it('can require resolved ref proof without requiring every strict proof field', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => ({
+          status: 'applied',
+          previewOps: plan.ops,
+          appliedOps: plan.ops,
+          commandReceipts: [commandReceipt(plan)],
+        }),
+        read: (targets) => [{ target: first(targets), value: 12 }],
+      },
+      undefined,
+      { requireResolvedRefs: true },
+    )
+
+    expect(result).toEqual({
+      status: 'done',
+      apply: expect.objectContaining({
+        matched: true,
+        commandReceipts: [
+          expect.objectContaining({
+            commandIndex: 0,
+            commandKind: 'writeValue',
+            resolvedRefs: {
+              target: expect.objectContaining({
+                kind: 'range',
+                label: 'Sheet1!B2',
+              }),
+            },
+          }),
+        ],
+      }),
+      changed: [
+        {
+          kind: 'writeValue',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Write value to Sheet1!B2',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'passed', kind: 'valueEquals' })],
+    })
+  })
+
+  it('requires command receipts when resolved ref proof is required for ref-targeting commands', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => ({
+          status: 'applied',
+          previewOps: plan.ops,
+          appliedOps: plan.ops,
+        }),
+        read: (targets) => [{ target: first(targets), value: 12 }],
+      },
+      undefined,
+      { requireResolvedRefs: true },
+    )
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'apply_not_verified',
+          message: 'Adapter did not bind planned commands to resolved ref proof',
+        },
+      ],
+      apply: expect.objectContaining({
+        matched: true,
+      }),
+      changed: [
+        {
+          kind: 'writeValue',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Write value to Sheet1!B2',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
+      unverified: [
+        {
+          kind: 'apply',
+          message: 'Adapter did not return commandReceipts, so planned commands are not bound to materialized ops',
+        },
+      ],
+    })
+  })
+
+  it('requires concrete command refs when resolved ref proof is required', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => ({
+          status: 'applied',
+          previewOps: plan.ops,
+          appliedOps: plan.ops,
+          commandReceipts: [commandReceipt(plan, 0, { resolvedRefs: false })],
+        }),
+        read: (targets) => [{ target: first(targets), value: 12 }],
+      },
+      undefined,
+      { requireResolvedRefs: true },
+    )
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'apply_not_verified',
+          message: 'Adapter did not return resolved ref proof for command 0',
+        },
+      ],
+      apply: expect.objectContaining({
+        matched: true,
+        commandReceipts: [expect.objectContaining({ commandKind: 'writeValue' })],
+      }),
+      changed: [
+        {
+          kind: 'writeValue',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Write value to Sheet1!B2',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
+    })
+  })
+
   it('uses strict mode as the single agent-safe proof option', async () => {
     const model = valueModel()
 

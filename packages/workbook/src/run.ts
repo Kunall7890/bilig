@@ -61,6 +61,7 @@ export interface WorkbookRunOptions {
   readonly strict?: boolean
   readonly requireApplyProof?: boolean
   readonly requirePlanId?: boolean
+  readonly requireResolvedRefs?: boolean
   readonly requireChecks?: boolean
   readonly requireCheckProof?: boolean
   readonly requireRevision?: boolean

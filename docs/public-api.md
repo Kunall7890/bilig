@@ -825,6 +825,9 @@ receipt preview/apply mismatches, receipts whose ops do not match the planned
 command's concrete workbook op, and receipts whose flattened ops do not match
 the apply-level preview or applied ops. With `requireApplyProof: true`, a plan
 with high-level commands fails closed unless those command receipts are present.
+With `requireResolvedRefs: true`, a plan with ref-targeting commands fails
+closed unless those command receipts also bind planned refs to concrete range
+refs.
 With `strict: true`, each command receipt must also prove concrete applied ops
 or command-bound no-op proof with `source`, `evidence`, `opCount: 0`,
 `commandKind`, `commandDigest`, and command-effect `effect` data; ref-targeting
