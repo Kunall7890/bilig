@@ -54,6 +54,7 @@ function createMarkers(input: {
   readonly entityDependents?: Map<number, Uint32Array>
   readonly canSkipAllDirectFormulaColumnVersions?: () => boolean
   readonly canSkipDirectFormulaColumnVersion?: (cellIndex: number) => boolean
+  readonly directScalarCellNumericValue?: (cellIndex: number) => number | undefined
 }) {
   const tags: ValueTag[] = []
   input.numbers.forEach((_value, cellIndex) => {
@@ -83,7 +84,7 @@ function createMarkers(input: {
     canSkipAllDirectFormulaColumnVersions: input.canSkipAllDirectFormulaColumnVersions,
     canSkipDirectFormulaColumnVersion: input.canSkipDirectFormulaColumnVersion ?? (() => true),
     readDirectScalarCellNumber: (cellIndex) => input.numbers.get(cellIndex) ?? 0,
-    directScalarCellNumericValue: (cellIndex) => input.numbers.get(cellIndex),
+    directScalarCellNumericValue: input.directScalarCellNumericValue ?? ((cellIndex) => input.numbers.get(cellIndex)),
     directScalarCurrentResultMatchesCell: () => false,
     lookupCurrent: {
       canEvaluateDirectUniformLookupCurrentResultFromNumeric: () => false,
@@ -173,6 +174,7 @@ describe('operation direct post-recalc markers', () => {
   })
 
   it('marks right-input affine scalar closures without falling back to graph traversal', () => {
+    let numericReads = 0
     const formulas = new Map([
       [20, formula(binaryScalarWithOperands('-', { kind: 'literal-number', value: 10 }, { kind: 'cell', cellIndex: 10 }))],
       [30, formula(binaryScalar('*', 20, { kind: 'literal-number', value: 2 }))],
@@ -188,11 +190,16 @@ describe('operation direct post-recalc markers', () => {
         [makeCellEntity(20), 30],
         [makeCellEntity(30), -1],
       ]),
+      directScalarCellNumericValue: (cellIndex) => {
+        numericReads += 1
+        return cellIndex === 20 ? 8 : 16
+      },
     })
     const collection = new DirectFormulaIndexCollection()
 
     expect(markers.tryMarkDirectScalarLinearDeltaClosure(10, numberValue(2), numberValue(5), collection)).toBe(true)
 
+    expect(numericReads).toBe(0)
     expect(collection.size).toBe(2)
     expect(collection.getDelta(20)).toBe(-3)
     expect(collection.getDelta(30)).toBe(-6)

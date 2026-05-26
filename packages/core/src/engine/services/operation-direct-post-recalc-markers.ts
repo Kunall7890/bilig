@@ -43,6 +43,42 @@ export function initialDirectScalarLinearDeltaClosureCapacity(scalarDeltaClosure
   return Math.max(1, Math.min(Math.trunc(scalarDeltaClosureLimit) + 1, 2_048))
 }
 
+function affineDirectScalarDeltaFromInputDelta(
+  directScalar: RuntimeDirectScalarDescriptor,
+  inputCellIndex: number,
+  inputDelta: number,
+): number | undefined {
+  if (directScalar.kind === 'abs') {
+    return undefined
+  }
+  const left = directScalar.left
+  const right = directScalar.right
+  if (left.kind === 'cell' && left.cellIndex === inputCellIndex && right.kind === 'literal-number') {
+    switch (directScalar.operator) {
+      case '+':
+      case '-':
+        return inputDelta
+      case '*':
+        return inputDelta * right.value
+      case '/':
+        return right.value === 0 ? undefined : inputDelta / right.value
+    }
+  }
+  if (right.kind === 'cell' && right.cellIndex === inputCellIndex && left.kind === 'literal-number') {
+    switch (directScalar.operator) {
+      case '+':
+        return inputDelta
+      case '-':
+        return -inputDelta
+      case '*':
+        return left.value * inputDelta
+      case '/':
+        return undefined
+    }
+  }
+  return undefined
+}
+
 export function createOperationDirectPostRecalcMarkers(args: {
   readonly state: OperationDirectPostRecalcMarkerState
   readonly getSingleEntityDependent: (entityId: number) => number
@@ -391,8 +427,9 @@ export function createOperationDirectPostRecalcMarkers(args: {
       return false
     }
     let currentCellIndex = rootCellIndex
-    let oldNumber = oldRootNumber
-    let newNumber = newRootNumber
+    let oldNumber: number | undefined = oldRootNumber
+    let newNumber: number | undefined = newRootNumber
+    let inputDelta = newRootNumber - oldRootNumber
     let closureCount = 0
     let cellIndices = new Uint32Array(initialDirectScalarLinearDeltaClosureCapacity(args.scalarDeltaClosureLimit))
     let deltas: number[] | undefined
@@ -439,7 +476,30 @@ export function createOperationDirectPostRecalcMarkers(args: {
       let formulaNewNumber: number | undefined
       let formulaDelta: number | undefined
       const directScalar = formula.directScalar
-      if (directScalar.kind !== 'abs') {
+      const affineFormulaDelta = affineDirectScalarDeltaFromInputDelta(directScalar, currentCellIndex, inputDelta)
+      if (affineFormulaDelta !== undefined) {
+        if (tags[formulaCellIndex] !== ValueTag.Number) {
+          return false
+        }
+        formulaDelta = affineFormulaDelta
+      } else {
+        if (oldNumber === undefined) {
+          oldNumber = directScalarCellNumericValue(currentCellIndex)
+          if (oldNumber === undefined) {
+            return false
+          }
+          newNumber = oldNumber + inputDelta
+        }
+        if (newNumber === undefined) {
+          return false
+        }
+      }
+      if (formulaDelta === undefined && directScalar.kind !== 'abs') {
+        if (oldNumber === undefined || newNumber === undefined) {
+          return false
+        }
+        const currentOldNumber: number = oldNumber
+        const currentNewNumber: number = newNumber
         const resultOffset = directScalar.resultOffset ?? 0
         const left = directScalar.left
         const right = directScalar.right
@@ -448,56 +508,61 @@ export function createOperationDirectPostRecalcMarkers(args: {
         if (leftIsInput && right.kind === 'literal-number') {
           switch (directScalar.operator) {
             case '+':
-              formulaOldNumber = oldNumber + right.value + resultOffset
-              formulaNewNumber = newNumber + right.value + resultOffset
+              formulaOldNumber = currentOldNumber + right.value + resultOffset
+              formulaNewNumber = currentNewNumber + right.value + resultOffset
               break
             case '-':
-              formulaOldNumber = oldNumber - right.value + resultOffset
-              formulaNewNumber = newNumber - right.value + resultOffset
+              formulaOldNumber = currentOldNumber - right.value + resultOffset
+              formulaNewNumber = currentNewNumber - right.value + resultOffset
               break
             case '*':
-              formulaOldNumber = oldNumber * right.value + resultOffset
-              formulaNewNumber = newNumber * right.value + resultOffset
+              formulaOldNumber = currentOldNumber * right.value + resultOffset
+              formulaNewNumber = currentNewNumber * right.value + resultOffset
               break
             case '/':
               if (right.value !== 0) {
-                formulaOldNumber = oldNumber / right.value + resultOffset
-                formulaNewNumber = newNumber / right.value + resultOffset
+                formulaOldNumber = currentOldNumber / right.value + resultOffset
+                formulaNewNumber = currentNewNumber / right.value + resultOffset
               }
               break
           }
         } else if (rightIsInput && left.kind === 'literal-number') {
           switch (directScalar.operator) {
             case '+':
-              formulaOldNumber = left.value + oldNumber + resultOffset
-              formulaNewNumber = left.value + newNumber + resultOffset
+              formulaOldNumber = left.value + currentOldNumber + resultOffset
+              formulaNewNumber = left.value + currentNewNumber + resultOffset
               break
             case '-':
-              formulaOldNumber = left.value - oldNumber + resultOffset
-              formulaNewNumber = left.value - newNumber + resultOffset
+              formulaOldNumber = left.value - currentOldNumber + resultOffset
+              formulaNewNumber = left.value - currentNewNumber + resultOffset
               break
             case '*':
-              formulaOldNumber = left.value * oldNumber + resultOffset
-              formulaNewNumber = left.value * newNumber + resultOffset
+              formulaOldNumber = left.value * currentOldNumber + resultOffset
+              formulaNewNumber = left.value * currentNewNumber + resultOffset
               break
             case '/':
               break
           }
         }
       }
-      if (formulaOldNumber === undefined || formulaNewNumber === undefined) {
-        formulaOldNumber = directScalarCellNumericValue(formulaCellIndex)
-        formulaDelta = tryDirectScalarNumericDeltaFromNumbers(directScalar, currentCellIndex, oldNumber, newNumber)
-      } else {
-        if (tags[formulaCellIndex] !== ValueTag.Number) {
-          return false
+      if (formulaDelta === undefined) {
+        if (formulaOldNumber === undefined || formulaNewNumber === undefined) {
+          if (oldNumber === undefined || newNumber === undefined) {
+            return false
+          }
+          formulaOldNumber = directScalarCellNumericValue(formulaCellIndex)
+          formulaDelta = tryDirectScalarNumericDeltaFromNumbers(directScalar, currentCellIndex, oldNumber, newNumber)
+        } else {
+          if (tags[formulaCellIndex] !== ValueTag.Number) {
+            return false
+          }
+          formulaDelta = formulaNewNumber - formulaOldNumber
         }
-        formulaDelta = formulaNewNumber - formulaOldNumber
-      }
-      if (formulaOldNumber === undefined) {
-        return false
       }
       if (formulaDelta === undefined) {
+        return false
+      }
+      if (formulaOldNumber === undefined && formulaNewNumber !== undefined) {
         return false
       }
       if (canUseValidatedTerminalWrites && !canSkipAllDirectFormulaColumnVersions && !canSkipDirectFormulaColumnVersion(formulaCellIndex)) {
@@ -534,8 +599,14 @@ export function createOperationDirectPostRecalcMarkers(args: {
         deltas.push(formulaDelta)
       }
       currentCellIndex = formulaCellIndex
-      oldNumber = formulaOldNumber
-      newNumber = formulaNewNumber ?? formulaOldNumber + formulaDelta
+      if (formulaOldNumber === undefined) {
+        oldNumber = undefined
+        newNumber = undefined
+      } else {
+        oldNumber = formulaOldNumber
+        newNumber = formulaNewNumber ?? formulaOldNumber + formulaDelta
+      }
+      inputDelta = formulaDelta
       closureCount += 1
     }
     if (closureCount === 0) {
