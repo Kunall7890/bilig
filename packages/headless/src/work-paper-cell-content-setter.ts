@@ -112,9 +112,6 @@ export function setWorkPaperCellContents(
     if (runtime.isCellContentProtected?.(address)) {
       throwProtectedCellContents()
     }
-    if (!runtime.isItPossibleToSetCellContents(address, content)) {
-      throw new WorkPaperOperationError('Cell contents cannot be set')
-    }
     const visibleCellIndex = runtime.getVisibleCellIndexInSheet(sheet, address.row, address.col)
     if (
       runtime.isEvaluationSuspended() &&

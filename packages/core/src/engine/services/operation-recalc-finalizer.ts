@@ -164,6 +164,7 @@ export function finalizeOperationRecalcAndEvents(input: FinalizeOperationRecalcA
     const canSkipKernelSyncOnlyRecalc = canUseKernelSyncOnlyRecalc && input.postRecalcDirectFormulaIndices.size > 0
     const canSkipRecalcForDirectDeltas = canSkipKernelSyncOnlyRecalc && hasCompleteDirectFormulaDeltas(input.postRecalcDirectFormulaIndices)
     const canSkipRecalcForDirectEvaluation =
+      !canSkipRecalcForDirectDeltas &&
       canSkipKernelSyncOnlyRecalc &&
       canEvaluatePostRecalcDirectFormulasWithoutKernel(input.serviceArgs.state.formulas, input.postRecalcDirectFormulaIndices)
     const canUseDisjointDirectEventChanges =

@@ -110,28 +110,32 @@ export function applySetCellFormulaMutation(request: ApplySetCellFormulaMutation
     }
     request.clearTrackedColumnDependencyFlagCache()
     changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
-    const freshDirectAggregateAnalysis = analyzeFreshDirectAggregateFormula(args, {
-      priorHadFormula,
-      formulaCellIndex: cellIndex,
-      formula: runtimeFormula,
-    })
-    const canSkipTopoRepair = freshDirectAggregateAnalysis.canSkipTopoRepair
-    const freshDirectFormulaResult = freshDirectAggregateAnalysis.currentResult
-    const evaluatedFreshDirectFormula =
-      freshDirectFormulaResult !== undefined
-        ? (() => {
-            request.postRecalcDirectFormulaIndices.addCurrentResult(cellIndex, freshDirectFormulaResult)
-            const applied = request.applyDirectFormulaCurrentResult(cellIndex, freshDirectFormulaResult)
-            if (applied && request.batchMayNeedFreshAggregateInputCoverage) {
-              markFreshDirectAggregateInputsCovered(args, {
-                formulaCellIndex: cellIndex,
-                formula: runtimeFormula,
-                postRecalcDirectFormulaIndices: request.postRecalcDirectFormulaIndices,
-              })
-            }
-            return applied
-          })()
-        : canSkipTopoRepair && args.evaluateDirectFormula(cellIndex) !== undefined
+    let canSkipTopoRepair = false
+    let evaluatedFreshDirectFormula = false
+    if (!priorHadFormula) {
+      const freshDirectAggregateAnalysis = analyzeFreshDirectAggregateFormula(args, {
+        priorHadFormula,
+        formulaCellIndex: cellIndex,
+        formula: runtimeFormula,
+      })
+      canSkipTopoRepair = freshDirectAggregateAnalysis.canSkipTopoRepair
+      const freshDirectFormulaResult = freshDirectAggregateAnalysis.currentResult
+      evaluatedFreshDirectFormula =
+        freshDirectFormulaResult !== undefined
+          ? (() => {
+              request.postRecalcDirectFormulaIndices.addCurrentResult(cellIndex, freshDirectFormulaResult)
+              const applied = request.applyDirectFormulaCurrentResult(cellIndex, freshDirectFormulaResult)
+              if (applied && request.batchMayNeedFreshAggregateInputCoverage) {
+                markFreshDirectAggregateInputsCovered(args, {
+                  formulaCellIndex: cellIndex,
+                  formula: runtimeFormula,
+                  postRecalcDirectFormulaIndices: request.postRecalcDirectFormulaIndices,
+                })
+              }
+              return applied
+            })()
+          : canSkipTopoRepair && args.evaluateDirectFormula(cellIndex) !== undefined
+    }
     const handledFormulaReplacementAsDirectDelta =
       priorHadFormula &&
       !hasExactLookupDependents &&

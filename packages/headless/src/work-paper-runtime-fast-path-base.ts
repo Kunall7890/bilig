@@ -434,7 +434,7 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
     if (this.cellContentIsProtected(address)) {
       throw new WorkPaperOperationError('Workbook protection blocks this change: cell is protected')
     }
-    if (!this.isItPossibleToSetCellContents(address, content)) {
+    if (isWorkPaperSheetMatrix(content) && !this.isItPossibleToSetCellContents(address, content)) {
       throw new WorkPaperOperationError('Cell contents cannot be set')
     }
     const directChanges = trySetExistingLiteralWorkPaperCellContentsDirectFastPath(
