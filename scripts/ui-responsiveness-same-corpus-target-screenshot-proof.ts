@@ -31,6 +31,9 @@ function sameCorpusMutationTargetScreenshotPhaseSemanticInvalidReasons(
   if (!readback) {
     return [`semantic UI mutation target proof for ${workload} ${phase} screenshot is missing semantic target readback`]
   }
+  if (readback.source !== 'visible-grid-cell') {
+    return [`semantic UI mutation target proof for ${workload} ${phase} screenshot semantic readback did not come from target-cell pixels`]
+  }
   if (!sameCorpusScreenshotReadbackMatches(product, workload, expectedReadback, readback)) {
     return [`semantic UI mutation target proof for ${workload} ${phase} screenshot semantic readback does not match target readback`]
   }
@@ -46,7 +49,7 @@ function sameCorpusScreenshotReadbackMatches(
   if (workload === 'fill-format-change') {
     return sameCorpusFillColorMatches(actual.fillColor, expected.fillColor)
   }
-  if (workload === 'formula-edit' && product === 'bilig') {
+  if (workload === 'formula-edit' && actual.source === 'visible-grid-cell') {
     return sameCorpusTextMatches(actual.value, expected.value) || sameCorpusTextMatches(actual.visibleText, expected.visibleText)
   }
   if (workload === 'formula-edit') {

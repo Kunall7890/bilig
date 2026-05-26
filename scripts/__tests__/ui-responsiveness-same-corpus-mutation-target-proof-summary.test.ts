@@ -347,7 +347,7 @@ function mutationTargetProof(
       formula: null,
       fillColor: null,
       visibleText: afterValue,
-      source: product === 'bilig' ? 'visible-grid-cell' : 'visible-formula-bar',
+      source: 'visible-grid-cell',
     },
     visibleAfterSelectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
     visibleRestored: {
@@ -355,7 +355,7 @@ function mutationTargetProof(
       formula: null,
       fillColor: null,
       visibleText: 'metric-1',
-      source: product === 'bilig' ? 'visible-grid-cell' : 'visible-formula-bar',
+      source: 'visible-grid-cell',
     },
     visibleRestoredSelectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
     authoritativeReadbackRevision: authoritativeReadbackRevision(sampleIndex),
@@ -457,7 +457,10 @@ function targetScreenshot(
     workload: 'edit-visible-cell',
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/${product}-sample-${String(sampleIndex + 1)}-${phase}.png`,
     screenshotSha256: targetScreenshotSha256(sampleIndex, phase),
-    semanticReadback: readback(product, phase === 'after' ? sameCorpusEditVisibleCellValue(sampleIndex) : 'metric-1', sampleIndex, phase),
+    semanticReadback: {
+      ...readback(product, phase === 'after' ? sameCorpusEditVisibleCellValue(sampleIndex) : 'metric-1', sampleIndex, phase),
+      source: 'visible-grid-cell',
+    },
   }
 }
 

@@ -656,6 +656,63 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('rejects Google Sheets mutation proof when visible readback only comes from the formula bar', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validGoogleSheetsSemanticProof({
+        mutationTargetProofs: validGoogleSheetsMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0
+            ? Object.assign({}, proof, {
+                visibleAfter: { ...proof.visibleAfter, source: 'visible-formula-bar' },
+                visibleRestored: { ...proof.visibleRestored, source: 'visible-formula-bar' },
+              })
+            : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell visible render readback did not come from rendered grid cell pixels',
+      ]),
+    })
+  })
+
+  it('rejects Google Sheets target screenshots backed by formula-bar semantic readback', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validGoogleSheetsSemanticProof({
+        mutationTargetProofs: validGoogleSheetsMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 && proof.targetScreenshots
+            ? Object.assign({}, proof, {
+                targetScreenshots: {
+                  ...proof.targetScreenshots,
+                  after: {
+                    ...proof.targetScreenshots.after,
+                    semanticReadback: { ...proof.targetScreenshots.after.semanticReadback, source: 'visible-formula-bar' },
+                  },
+                },
+              })
+            : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell after screenshot semantic readback did not come from target-cell pixels',
+      ]),
+    })
+  })
+
   it('rejects Google Sheets committed-state exports captured outside the mutation proof windows', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validGoogleSheetsSemanticProof({
@@ -860,7 +917,7 @@ function googleSheetsMutationTargetProof(sampleIndex: number): SameCorpusMutatio
 
 function googleSheetsFillMutationTargetProof(sampleIndex: number): SameCorpusMutationTargetProof {
   const proof = {
-    ...fillMutationTargetProof(sampleIndex, 'visible-formula-bar'),
+    ...fillMutationTargetProof(sampleIndex, 'visible-grid-cell'),
     product: 'google-sheets' as const,
     sheetId: 'gid:12345',
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-fill-format-change/mutation-target/google-sheets-sample-${String(
@@ -999,7 +1056,7 @@ function mutationTargetVisibleReadback(
   phase: 'before' | 'after',
   sampleIndex: number,
 ): SameCorpusMutationTargetProof['visibleAfter'] {
-  const source = product === 'bilig' ? 'visible-grid-cell' : 'visible-formula-bar'
+  const source = 'visible-grid-cell'
   if (phase === 'before') {
     const value = mutationTargetBeforeValue(workload)
     return {
@@ -1013,7 +1070,7 @@ function mutationTargetVisibleReadback(
   const after = mutationTargetAfterReadback(workload, sampleIndex)
   return {
     value: after.value,
-    formula: product === 'bilig' ? null : after.formula,
+    formula: null,
     fillColor: after.fillColor,
     visibleText: after.visibleText,
     source,

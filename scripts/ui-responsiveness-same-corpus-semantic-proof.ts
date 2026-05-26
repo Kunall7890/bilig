@@ -610,15 +610,9 @@ function sameCorpusMutationTargetExpectedReadbackInvalidReasons(
     if (payload.kind !== 'formula' || sample.after.formula !== payload.formula) {
       return ['semantic UI mutation target proof for formula-edit did not prove the intended edited formula']
     }
-    if (sample.product === 'bilig') {
-      const expectedRenderedValue = expectedSameCorpusFormulaEditRenderedValue(sample.sampleIndex)
-      if (sample.visibleAfter.value !== expectedRenderedValue && sample.visibleAfter.visibleText !== expectedRenderedValue) {
-        return ['semantic UI mutation target proof for formula-edit did not prove the rendered formula result']
-      }
-      return []
-    }
-    if (sample.visibleAfter.formula !== payload.formula) {
-      return ['semantic UI mutation target proof for formula-edit did not prove the intended edited formula']
+    const expectedRenderedValue = expectedSameCorpusFormulaEditRenderedValue(sample.sampleIndex)
+    if (sample.visibleAfter.value !== expectedRenderedValue && sample.visibleAfter.visibleText !== expectedRenderedValue) {
+      return ['semantic UI mutation target proof for formula-edit did not prove the rendered formula result']
     }
     return []
   }
@@ -688,12 +682,8 @@ function sameCorpusMutationTargetVisibleReadbackInvalidReasons(
   if (readbacks.some((readback) => readback.source === 'unknown')) {
     return [`semantic UI mutation target proof for ${workload} is missing visible render readback source`]
   }
-  const expectedSource = product === 'bilig' ? 'visible-grid-cell' : 'visible-formula-bar'
-  if (readbacks.some((readback) => readback.source !== expectedSource)) {
-    if (expectedSource === 'visible-grid-cell') {
-      return [`semantic UI mutation target proof for ${workload} visible render readback did not come from rendered grid cell pixels`]
-    }
-    return [`semantic UI mutation target proof for ${workload} visible render readback did not come from the browser-visible surface`]
+  if (readbacks.some((readback) => readback.source !== 'visible-grid-cell')) {
+    return [`semantic UI mutation target proof for ${workload} visible render readback did not come from rendered grid cell pixels`]
   }
   if (product !== 'bilig') {
     return []

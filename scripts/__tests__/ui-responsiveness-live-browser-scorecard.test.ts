@@ -1472,9 +1472,6 @@ function sameCorpusVisibleMutationReadback(
   sampleIndex: number,
 ) {
   const readback = sameCorpusMutationReadback(product, workload, phase, sampleIndex)
-  if (product !== 'bilig') {
-    return { ...readback, source: 'visible-formula-bar' as const }
-  }
   return {
     ...readback,
     formula: null,

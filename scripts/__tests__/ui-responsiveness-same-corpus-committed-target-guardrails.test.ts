@@ -318,7 +318,7 @@ function sameCorpusVisibleReadback(product: 'bilig' | 'google-sheets', value: st
     formula: null,
     fillColor: null,
     visibleText: value,
-    source: product === 'bilig' ? ('visible-grid-cell' as const) : ('visible-formula-bar' as const),
+    source: 'visible-grid-cell' as const,
   }
 }
 
