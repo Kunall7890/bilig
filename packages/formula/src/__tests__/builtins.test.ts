@@ -4339,9 +4339,25 @@ describe('formula builtins', () => {
 
     expect(EFFECT({ tag: ValueTag.Number, value: 0.1 }, { tag: ValueTag.Number, value: 0 })).toEqual({
       tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(EFFECT({ tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Number, value: 12 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(EFFECT({ tag: ValueTag.String, value: 'bad', stringId: 106 }, { tag: ValueTag.Number, value: 12 })).toEqual({
+      tag: ValueTag.Error,
       code: ErrorCode.Value,
     })
     expect(NOMINAL({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 12 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(NOMINAL({ tag: ValueTag.Number, value: 0.1 }, { tag: ValueTag.Number, value: 0 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(NOMINAL({ tag: ValueTag.Number, value: 0.1 }, { tag: ValueTag.String, value: 'bad', stringId: 107 })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,
     })
@@ -4349,9 +4365,39 @@ describe('formula builtins', () => {
       PDURATION({ tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Number, value: 100 }, { tag: ValueTag.Number, value: 121 }),
     ).toEqual({
       tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(
+      PDURATION({ tag: ValueTag.Number, value: 0.1 }, { tag: ValueTag.Number, value: -100 }, { tag: ValueTag.Number, value: 121 }),
+    ).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(
+      PDURATION(
+        { tag: ValueTag.Number, value: 0.1 },
+        { tag: ValueTag.String, value: 'bad', stringId: 108 },
+        { tag: ValueTag.Number, value: 121 },
+      ),
+    ).toEqual({
+      tag: ValueTag.Error,
       code: ErrorCode.Value,
     })
     expect(RRI({ tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Number, value: 100 }, { tag: ValueTag.Number, value: 121 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(RRI({ tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Number, value: 121 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(RRI({ tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Number, value: 100 }, { tag: ValueTag.Number, value: -121 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(
+      RRI({ tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Number, value: 100 }, { tag: ValueTag.String, value: 'bad', stringId: 109 }),
+    ).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,
     })

@@ -22,10 +22,9 @@ interface FinancialBuiltinDeps {
   coerceNumber: (value: CellValue | undefined, fallback: number) => number | undefined
   coercePaymentType: (value: CellValue | undefined, fallback: number) => number | undefined
   integerValue: (value: CellValue | undefined, fallback?: number) => number | undefined
-  positiveIntegerValue: (value: CellValue | undefined, fallback?: number) => number | undefined
   numberResult: (value: number) => EvaluationResult
-  numericResultOrError: (value: number) => EvaluationResult
   valueError: () => EvaluationResult
+  numError: () => EvaluationResult
 }
 
 export function createFinancialBuiltins({
@@ -34,45 +33,61 @@ export function createFinancialBuiltins({
   coerceNumber,
   coercePaymentType,
   integerValue,
-  positiveIntegerValue,
   numberResult,
-  numericResultOrError,
   valueError,
+  numError,
 }: FinancialBuiltinDeps): Record<string, Builtin> {
   return {
     EFFECT: (nominalRateArg, periodsArg) => {
       const nominalRate = toNumber(nominalRateArg)
-      const periods = positiveIntegerValue(periodsArg)
-      if (nominalRate === undefined || periods === undefined) {
+      const periodsRaw = toNumber(periodsArg)
+      if (nominalRate === undefined || periodsRaw === undefined) {
         return valueError()
+      }
+      const periods = Math.trunc(periodsRaw)
+      if (!Number.isFinite(nominalRate) || !Number.isFinite(periodsRaw) || nominalRate <= 0 || periods < 1) {
+        return numError()
       }
       return numberResult((1 + nominalRate / periods) ** periods - 1)
     },
     NOMINAL: (effectiveRateArg, periodsArg) => {
       const effectiveRate = toNumber(effectiveRateArg)
-      const periods = positiveIntegerValue(periodsArg)
-      if (effectiveRate === undefined || periods === undefined || effectiveRate <= -1) {
+      const periodsRaw = toNumber(periodsArg)
+      if (effectiveRate === undefined || periodsRaw === undefined) {
         return valueError()
       }
-      return numberResult(periods * ((1 + effectiveRate) ** (1 / periods) - 1))
+      const periods = Math.trunc(periodsRaw)
+      if (!Number.isFinite(effectiveRate) || !Number.isFinite(periodsRaw) || effectiveRate <= 0 || periods < 1) {
+        return numError()
+      }
+      const result = periods * ((1 + effectiveRate) ** (1 / periods) - 1)
+      return Number.isFinite(result) ? numberResult(result) : numError()
     },
     PDURATION: (rateArg, presentArg, futureArg) => {
       const rate = toNumber(rateArg)
       const present = toNumber(presentArg)
       const future = toNumber(futureArg)
-      if (rate === undefined || present === undefined || future === undefined || rate <= 0 || present <= 0 || future <= 0) {
+      if (rate === undefined || present === undefined || future === undefined) {
         return valueError()
       }
-      return numberResult(Math.log(future / present) / Math.log(1 + rate))
+      if (!Number.isFinite(rate) || !Number.isFinite(present) || !Number.isFinite(future) || rate <= 0 || present <= 0 || future <= 0) {
+        return numError()
+      }
+      const result = Math.log(future / present) / Math.log(1 + rate)
+      return Number.isFinite(result) ? numberResult(result) : numError()
     },
     RRI: (periodsArg, presentArg, futureArg) => {
       const periods = toNumber(periodsArg)
       const present = toNumber(presentArg)
       const future = toNumber(futureArg)
-      if (periods === undefined || present === undefined || future === undefined || periods <= 0 || present === 0) {
+      if (periods === undefined || present === undefined || future === undefined) {
         return valueError()
       }
-      return numericResultOrError((future / present) ** (1 / periods) - 1)
+      if (!Number.isFinite(periods) || !Number.isFinite(present) || !Number.isFinite(future) || periods <= 0 || present === 0) {
+        return numError()
+      }
+      const result = (future / present) ** (1 / periods) - 1
+      return Number.isFinite(result) ? numberResult(result) : numError()
     },
     FV: (rateArg, periodsArg, paymentArg, presentArg, typeArg) => {
       const rate = toNumber(rateArg)

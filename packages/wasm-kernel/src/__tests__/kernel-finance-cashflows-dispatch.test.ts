@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BuiltinId, Opcode, ValueTag } from '@bilig/protocol'
+import { BuiltinId, ErrorCode, Opcode, ValueTag } from '@bilig/protocol'
 import { createKernel } from '../index.js'
 
 function encodeCall(builtinId: number, argc: number): number {
@@ -8,6 +8,10 @@ function encodeCall(builtinId: number, argc: number): number {
 
 function encodePushNumber(constantIndex: number): number {
   return (Opcode.PushNumber << 24) | constantIndex
+}
+
+function encodePushString(stringId: number): number {
+  return (Opcode.PushString << 24) | stringId
 }
 
 function encodeRet(): number {
@@ -65,6 +69,11 @@ function cellIndex(row: number, col: number, width: number): number {
 function expectNumberCell(kernel: Awaited<ReturnType<typeof createKernel>>, index: number, expected: number, digits = 12): void {
   expect(kernel.readTags()[index]).toBe(ValueTag.Number)
   expect(kernel.readNumbers()[index]).toBeCloseTo(expected, digits)
+}
+
+function expectErrorCell(kernel: Awaited<ReturnType<typeof createKernel>>, index: number, expected: ErrorCode): void {
+  expect(kernel.readTags()[index]).toBe(ValueTag.Error)
+  expect(kernel.readErrors()[index]).toBe(expected)
 }
 
 describe('wasm kernel finance/cashflow dispatch', () => {
@@ -234,5 +243,62 @@ describe('wasm kernel finance/cashflow dispatch', () => {
     expectNumberCell(kernel, cellIndex(1, 1, width), 0.12)
     expectNumberCell(kernel, cellIndex(1, 2, width), 2)
     expectNumberCell(kernel, cellIndex(1, 3, width), 0.1)
+  })
+
+  it('returns Excel-compatible domain errors for rate-conversion helpers', async () => {
+    const kernel = await createKernel()
+    const width = 16
+    kernel.init(48, 13, 32, 1, 1)
+    kernel.uploadStrings(Uint32Array.from([0]), Uint32Array.from([3]), Uint16Array.from([98, 97, 100]))
+    kernel.writeCells(new Uint8Array(48), new Float64Array(48), new Uint32Array(48), new Uint16Array(48))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Effect, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Effect, 2), encodeRet()],
+      [encodePushString(0), encodePushNumber(0), encodeCall(BuiltinId.Effect, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Nominal, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Nominal, 2), encodeRet()],
+      [encodePushNumber(0), encodePushString(0), encodeCall(BuiltinId.Nominal, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Pduration, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Pduration, 3), encodeRet()],
+      [encodePushNumber(0), encodePushString(0), encodePushNumber(1), encodeCall(BuiltinId.Pduration, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Rri, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Rri, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Rri, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushString(0), encodeCall(BuiltinId.Rri, 3), encodeRet()],
+    ])
+    const targets = Uint32Array.from(Array.from({ length: 13 }, (_, index) => cellIndex(1, index, width)))
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targets)
+    const constants = packConstants([
+      [0, 12],
+      [0.1, 0],
+      [12],
+      [0, 12],
+      [0.1, 0],
+      [0.1],
+      [0, 100, 121],
+      [0.1, -100, 121],
+      [0.1, 121],
+      [0, 100, 121],
+      [2, 0, 121],
+      [2, 100, -121],
+      [2, 100],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(targets)
+
+    expectErrorCell(kernel, cellIndex(1, 0, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 1, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 2, width), ErrorCode.Value)
+    expectErrorCell(kernel, cellIndex(1, 3, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 4, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 5, width), ErrorCode.Value)
+    expectErrorCell(kernel, cellIndex(1, 6, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 7, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 8, width), ErrorCode.Value)
+    expectErrorCell(kernel, cellIndex(1, 9, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 10, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 11, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 12, width), ErrorCode.Value)
   })
 })

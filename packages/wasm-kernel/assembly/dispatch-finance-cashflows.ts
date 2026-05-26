@@ -254,13 +254,16 @@ export function tryApplyFinanceCashflowBuiltin(
     const rate = toNumberExact(tagStack[base], valueStack[base])
     const periodsNumeric = toNumberExact(tagStack[base + 1], valueStack[base + 1])
     const periods = Math.trunc(periodsNumeric)
-    if (isNaN(rate) || isNaN(periodsNumeric) || !isFinite(periods) || periods < 1.0 || (builtinId == BuiltinId.Nominal && rate <= -1.0)) {
+    if (isNaN(rate) || isNaN(periodsNumeric)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (!isFinite(rate) || !isFinite(periodsNumeric) || periods < 1.0 || rate <= 0.0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const result =
       builtinId == BuiltinId.Effect ? Math.pow(1.0 + rate / periods, periods) - 1.0 : periods * (Math.pow(1.0 + rate, 1.0 / periods) - 1.0)
     return !isFinite(result)
-      ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, result, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
@@ -272,12 +275,15 @@ export function tryApplyFinanceCashflowBuiltin(
     const rate = toNumberExact(tagStack[base], valueStack[base])
     const present = toNumberExact(tagStack[base + 1], valueStack[base + 1])
     const future = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-    const result =
-      isNaN(rate) || isNaN(present) || isNaN(future) || rate <= 0.0 || present <= 0.0 || future <= 0.0
-        ? NaN
-        : Math.log(future / present) / Math.log(1.0 + rate)
+    if (isNaN(rate) || isNaN(present) || isNaN(future)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (!isFinite(rate) || !isFinite(present) || !isFinite(future) || rate <= 0.0 || present <= 0.0 || future <= 0.0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const result = Math.log(future / present) / Math.log(1.0 + rate)
     return !isFinite(result)
-      ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, result, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
@@ -289,12 +295,15 @@ export function tryApplyFinanceCashflowBuiltin(
     const periods = toNumberExact(tagStack[base], valueStack[base])
     const present = toNumberExact(tagStack[base + 1], valueStack[base + 1])
     const future = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-    const result =
-      isNaN(periods) || isNaN(present) || isNaN(future) || periods <= 0.0 || present == 0.0
-        ? NaN
-        : Math.pow(future / present, 1.0 / periods) - 1.0
+    if (isNaN(periods) || isNaN(present) || isNaN(future)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (!isFinite(periods) || !isFinite(present) || !isFinite(future) || periods <= 0.0 || present == 0.0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const result = Math.pow(future / present, 1.0 / periods) - 1.0
     return !isFinite(result)
-      ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, result, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 

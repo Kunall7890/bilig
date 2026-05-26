@@ -269,10 +269,9 @@ const financialBuiltins = createFinancialBuiltins({
   coerceNumber,
   coercePaymentType,
   integerValue,
-  positiveIntegerValue,
   numberResult,
-  numericResultOrError,
   valueError,
+  numError,
 })
 const mathBuiltins = createMathBuiltins({
   toNumber,
