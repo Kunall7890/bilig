@@ -114,4 +114,4 @@ refresh, or mutation of arbitrary private spreadsheets without your own
 WorkPaper JSON file.
 
 Runnable source:
-[`examples/semantic-kernel-workpaper-mcp`](../examples/semantic-kernel-workpaper-mcp).
+[`examples/semantic-kernel-workpaper-mcp`](https://github.com/proompteng/bilig/tree/main/examples/semantic-kernel-workpaper-mcp).
