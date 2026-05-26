@@ -29,6 +29,7 @@ export const docsSiteSources = [
   ['directus-workpaper-flow-operation.html', 'directus-workpaper-flow-operation.md'],
   ['windmill-workpaper-script.html', 'windmill-workpaper-script.md'],
   ['triggerdev-workpaper-task.html', 'triggerdev-workpaper-task.md'],
+  ['temporal-workpaper-activity.html', 'temporal-workpaper-activity.md'],
   ['airflow-workpaper-dag.html', 'airflow-workpaper-dag.md'],
   ['dagster-workpaper-asset.html', 'dagster-workpaper-asset.md'],
   ['kestra-workpaper-flow.html', 'kestra-workpaper-flow.md'],

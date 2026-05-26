@@ -19,20 +19,21 @@ npm install @bilig/workpaper
 
 Pick the path that matches the workflow you are trying to unblock:
 
-| You need...                                                              | Run this first                                                                                                | Proof you should get                                                                                                |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Formula workbook logic inside a Node service, route, queue, or test      | `npm create @bilig/workpaper@latest pricing-workpaper`                                                        | Inputs are written, formulas recalculate, JSON persists, restore matches readback, and `verified: true` is printed. |
-| A coding agent or MCP client that needs spreadsheet operations           | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                                 | The generated project includes an agent contract, MCP config, and `npm run agent:verify`.                           |
-| Windmill TypeScript workflow fields                                      | `cd examples/windmill-workpaper-script && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke` | The script returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.        |
-| Trigger.dev durable task fields                                          | `cd examples/triggerdev-workpaper-task && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke` | The task helper returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.   |
-| Apache Airflow DAG task outputs                                          | `cd examples/airflow-workpaper-dag && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`     | The Node step writes a full proof file while the DAG returns a compact XCom summary for downstream tasks.           |
-| Dagster asset materialization metadata                                   | `cd examples/dagster-workpaper-asset && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`   | The Node subprocess writes WorkPaper proof and emits compact Dagster Pipes materialization metadata.                |
-| Kestra Node Commands flow fields                                         | `cd examples/kestra-workpaper-flow && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`     | The flow script writes a `workpaper-proof.json` artifact with before/after/restore proof and `verified: true`.      |
-| Prefect flow fields                                                      | `cd examples/prefect-workpaper-flow && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`    | The Node step writes a `workpaper-proof.json` artifact that a Prefect task can validate and return.                 |
-| Directus Flow operation for persisted calculated fields                  | `cd examples/directus-workpaper-flow-operation && npm install && npm run smoke`                               | The operation returns a Directus `patch` plus before/after/restore WorkPaper proof with `verified: true`.           |
-| n8n, Dify, or Flowise formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321`                          | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof.               |
-| Open WebUI needs MCP spreadsheet tools                                   | `npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`                                    | Open WebUI can call the hosted Streamable HTTP endpoint or a local stdio server bridged through `mcpo`.             |
-| An existing `.xlsx` file with stale formula results after Node edits     | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json`                                          | The file-level path updates inputs and returns fresh formula values without Excel, LibreOffice, or a browser.       |
+| You need...                                                              | Run this first                                                                                                  | Proof you should get                                                                                                |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Formula workbook logic inside a Node service, route, queue, or test      | `npm create @bilig/workpaper@latest pricing-workpaper`                                                          | Inputs are written, formulas recalculate, JSON persists, restore matches readback, and `verified: true` is printed. |
+| A coding agent or MCP client that needs spreadsheet operations           | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                                   | The generated project includes an agent contract, MCP config, and `npm run agent:verify`.                           |
+| Windmill TypeScript workflow fields                                      | `cd examples/windmill-workpaper-script && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`   | The script returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.        |
+| Trigger.dev durable task fields                                          | `cd examples/triggerdev-workpaper-task && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`   | The task helper returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.   |
+| Temporal TypeScript Activity decisions                                   | `cd examples/temporal-workpaper-activity && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke` | The Activity owns WorkPaper formula work while Workflow code stays free of workbook imports.                        |
+| Apache Airflow DAG task outputs                                          | `cd examples/airflow-workpaper-dag && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`       | The Node step writes a full proof file while the DAG returns a compact XCom summary for downstream tasks.           |
+| Dagster asset materialization metadata                                   | `cd examples/dagster-workpaper-asset && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`     | The Node subprocess writes WorkPaper proof and emits compact Dagster Pipes materialization metadata.                |
+| Kestra Node Commands flow fields                                         | `cd examples/kestra-workpaper-flow && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`       | The flow script writes a `workpaper-proof.json` artifact with before/after/restore proof and `verified: true`.      |
+| Prefect flow fields                                                      | `cd examples/prefect-workpaper-flow && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`      | The Node step writes a `workpaper-proof.json` artifact that a Prefect task can validate and return.                 |
+| Directus Flow operation for persisted calculated fields                  | `cd examples/directus-workpaper-flow-operation && npm install && npm run smoke`                                 | The operation returns a Directus `patch` plus before/after/restore WorkPaper proof with `verified: true`.           |
+| n8n, Dify, or Flowise formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321`                            | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof.               |
+| Open WebUI needs MCP spreadsheet tools                                   | `npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`                                      | Open WebUI can call the hosted Streamable HTTP endpoint or a local stdio server bridged through `mcpo`.             |
+| An existing `.xlsx` file with stale formula results after Node edits     | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json`                                            | The file-level path updates inputs and returns fresh formula values without Excel, LibreOffice, or a browser.       |
 
 ## Use A WorkPaper In Node
 
@@ -117,6 +118,7 @@ Start from the repo examples:
 - `examples/directus-workpaper-flow-operation`
 - `examples/windmill-workpaper-script`
 - `examples/triggerdev-workpaper-task`
+- `examples/temporal-workpaper-activity`
 - `examples/airflow-workpaper-dag`
 - `examples/dagster-workpaper-asset`
 - `examples/kestra-workpaper-flow`
@@ -130,6 +132,7 @@ Docs:
 - <https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html>
 - <https://proompteng.github.io/bilig/windmill-workpaper-script.html>
 - <https://proompteng.github.io/bilig/triggerdev-workpaper-task.html>
+- <https://proompteng.github.io/bilig/temporal-workpaper-activity.html>
 - <https://proompteng.github.io/bilig/airflow-workpaper-dag.html>
 - <https://proompteng.github.io/bilig/dagster-workpaper-asset.html>
 - <https://proompteng.github.io/bilig/kestra-workpaper-flow.html>

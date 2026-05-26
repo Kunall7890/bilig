@@ -529,6 +529,12 @@
     <priority>0.72</priority>
   </url>
   <url>
+    <loc>https://proompteng.github.io/bilig/temporal-workpaper-activity.html</loc>
+    <lastmod>2026-05-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.72</priority>
+  </url>
+  <url>
     <loc>https://proompteng.github.io/bilig/airflow-workpaper-dag.html</loc>
     <lastmod>2026-05-25</lastmod>
     <changefreq>weekly</changefreq>

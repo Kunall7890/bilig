@@ -248,6 +248,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Sim MCP setup: https://proompteng.github.io/bilig/sim-workpaper-mcp.html
 - Windmill TypeScript script: https://proompteng.github.io/bilig/windmill-workpaper-script.html
 - Trigger.dev task: https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
+- Temporal Activity: https://proompteng.github.io/bilig/temporal-workpaper-activity.html
 - Airflow DAG: https://proompteng.github.io/bilig/airflow-workpaper-dag.html
 - Dagster asset: https://proompteng.github.io/bilig/dagster-workpaper-asset.html
 - Kestra Node flow: https://proompteng.github.io/bilig/kestra-workpaper-flow.html
@@ -491,6 +492,27 @@ wraps the same helper in a Trigger.dev task for deployed durable execution.
 
 See [Trigger.dev WorkPaper task](docs/triggerdev-workpaper-task.md) for the task
 shape, local smoke command, retry boundary, and outreach note.
+
+## Temporal Formula Activities
+
+Need a Temporal TypeScript Workflow to make durable formula-backed decisions
+without putting workbook state into replay code? Keep Temporal in charge of the
+Workflow, history, retries, and replay, then call a WorkPaper Activity that
+returns a compact patch plus proof.
+
+The source example lives in:
+
+```text
+examples/temporal-workpaper-activity
+```
+
+It keeps `@bilig/workpaper` out of `src/workflows.ts`, runs the WorkPaper
+calculation inside a Temporal Activity, writes `Inputs!B2`, recalculates quote
+formulas, exports WorkPaper JSON, restores it, and returns
+`workflowImportsWorkPaper: false` plus `verified: true`.
+
+See [Temporal WorkPaper Activity](docs/temporal-workpaper-activity.md) for the
+workflow/activity boundary, local smoke command, replay gate, and outreach note.
 
 ## Airflow Formula DAGs
 
@@ -1505,20 +1527,21 @@ npm install @bilig/workpaper
 
 Pick the path that matches the workflow you are trying to unblock:
 
-| You need...                                                              | Run this first                                                                                                | Proof you should get                                                                                                |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Formula workbook logic inside a Node service, route, queue, or test      | `npm create @bilig/workpaper@latest pricing-workpaper`                                                        | Inputs are written, formulas recalculate, JSON persists, restore matches readback, and `verified: true` is printed. |
-| A coding agent or MCP client that needs spreadsheet operations           | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                                 | The generated project includes an agent contract, MCP config, and `npm run agent:verify`.                           |
-| Windmill TypeScript workflow fields                                      | `cd examples/windmill-workpaper-script && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke` | The script returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.        |
-| Trigger.dev durable task fields                                          | `cd examples/triggerdev-workpaper-task && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke` | The task helper returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.   |
-| Apache Airflow DAG task outputs                                          | `cd examples/airflow-workpaper-dag && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`     | The Node step writes a full proof file while the DAG returns a compact XCom summary for downstream tasks.           |
-| Dagster asset materialization metadata                                   | `cd examples/dagster-workpaper-asset && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`   | The Node subprocess writes WorkPaper proof and emits compact Dagster Pipes materialization metadata.                |
-| Kestra Node Commands flow fields                                         | `cd examples/kestra-workpaper-flow && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`     | The flow script writes a `workpaper-proof.json` artifact with before/after/restore proof and `verified: true`.      |
-| Prefect flow fields                                                      | `cd examples/prefect-workpaper-flow && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`    | The Node step writes a `workpaper-proof.json` artifact that a Prefect task can validate and return.                 |
-| Directus Flow operation for persisted calculated fields                  | `cd examples/directus-workpaper-flow-operation && npm install && npm run smoke`                               | The operation returns a Directus `patch` plus before/after/restore WorkPaper proof with `verified: true`.           |
-| n8n, Dify, or Flowise formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321`                          | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof.               |
-| Open WebUI needs MCP spreadsheet tools                                   | `npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`                                    | Open WebUI can call the hosted Streamable HTTP endpoint or a local stdio server bridged through `mcpo`.             |
-| An existing `.xlsx` file with stale formula results after Node edits     | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json`                                          | The file-level path updates inputs and returns fresh formula values without Excel, LibreOffice, or a browser.       |
+| You need...                                                              | Run this first                                                                                                  | Proof you should get                                                                                                |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Formula workbook logic inside a Node service, route, queue, or test      | `npm create @bilig/workpaper@latest pricing-workpaper`                                                          | Inputs are written, formulas recalculate, JSON persists, restore matches readback, and `verified: true` is printed. |
+| A coding agent or MCP client that needs spreadsheet operations           | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                                   | The generated project includes an agent contract, MCP config, and `npm run agent:verify`.                           |
+| Windmill TypeScript workflow fields                                      | `cd examples/windmill-workpaper-script && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`   | The script returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.        |
+| Trigger.dev durable task fields                                          | `cd examples/triggerdev-workpaper-task && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`   | The task helper returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.   |
+| Temporal TypeScript Activity decisions                                   | `cd examples/temporal-workpaper-activity && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke` | The Activity owns WorkPaper formula work while Workflow code stays free of workbook imports.                        |
+| Apache Airflow DAG task outputs                                          | `cd examples/airflow-workpaper-dag && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`       | The Node step writes a full proof file while the DAG returns a compact XCom summary for downstream tasks.           |
+| Dagster asset materialization metadata                                   | `cd examples/dagster-workpaper-asset && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`     | The Node subprocess writes WorkPaper proof and emits compact Dagster Pipes materialization metadata.                |
+| Kestra Node Commands flow fields                                         | `cd examples/kestra-workpaper-flow && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`       | The flow script writes a `workpaper-proof.json` artifact with before/after/restore proof and `verified: true`.      |
+| Prefect flow fields                                                      | `cd examples/prefect-workpaper-flow && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`      | The Node step writes a `workpaper-proof.json` artifact that a Prefect task can validate and return.                 |
+| Directus Flow operation for persisted calculated fields                  | `cd examples/directus-workpaper-flow-operation && npm install && npm run smoke`                                 | The operation returns a Directus `patch` plus before/after/restore WorkPaper proof with `verified: true`.           |
+| n8n, Dify, or Flowise formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321`                            | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof.               |
+| Open WebUI needs MCP spreadsheet tools                                   | `npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`                                      | Open WebUI can call the hosted Streamable HTTP endpoint or a local stdio server bridged through `mcpo`.             |
+| An existing `.xlsx` file with stale formula results after Node edits     | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json`                                            | The file-level path updates inputs and returns fresh formula values without Excel, LibreOffice, or a browser.       |
 
 ## Use A WorkPaper In Node
 
@@ -1603,6 +1626,7 @@ Start from the repo examples:
 - `examples/directus-workpaper-flow-operation`
 - `examples/windmill-workpaper-script`
 - `examples/triggerdev-workpaper-task`
+- `examples/temporal-workpaper-activity`
 - `examples/airflow-workpaper-dag`
 - `examples/dagster-workpaper-asset`
 - `examples/kestra-workpaper-flow`
@@ -1616,6 +1640,7 @@ Docs:
 - <https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html>
 - <https://proompteng.github.io/bilig/windmill-workpaper-script.html>
 - <https://proompteng.github.io/bilig/triggerdev-workpaper-task.html>
+- <https://proompteng.github.io/bilig/temporal-workpaper-activity.html>
 - <https://proompteng.github.io/bilig/airflow-workpaper-dag.html>
 - <https://proompteng.github.io/bilig/dagster-workpaper-asset.html>
 - <https://proompteng.github.io/bilig/kestra-workpaper-flow.html>
@@ -4435,6 +4460,157 @@ the concrete boundary it solves:
 Do not post it as a generic spreadsheet-engine pitch. Link the runnable example
 and smoke output, then ask whether a formula-backed durable task would be useful
 as a Trigger.dev examples repo contribution.
+
+---
+
+## Temporal WorkPaper Activity
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/temporal-workpaper-activity.md
+
+# Temporal WorkPaper Activity
+
+Use this when a Temporal TypeScript Workflow needs formula-backed decisions, but
+the calculation should run through an Activity instead of Workflow replay code.
+
+Temporal's TypeScript guide separates deterministic Workflow code from
+Activities. Activities are the right boundary for WorkPaper state, file I/O,
+Excel/XLSX import, object storage, and formula recalculation. This example keeps
+that boundary: Temporal owns durable orchestration, retries, workflow history,
+and replay; Bilig owns formula workbook state, recalculation, JSON
+serialization, restore, and readback proof.
+
+Official Temporal references:
+
+- <https://docs.temporal.io/develop/typescript/>
+- <https://docs.temporal.io/develop/typescript/best-practices/testing-suite>
+- <https://github.com/temporalio/samples-typescript#external-apps--libraries>
+- <https://github.com/temporalio/samples-typescript#contributing>
+
+## Example Artifact
+
+The runnable source lives in:
+
+```text
+examples/temporal-workpaper-activity
+```
+
+It contains:
+
+- `src/workflows.ts` for the deterministic Workflow boundary
+- `src/activities.ts` for the WorkPaper formula Activity
+- `src/smoke.ts` for a local Activity smoke through `MockActivityEnvironment`
+- `scripts/check-temporal-boundary.ts` for import-boundary checks
+
+Run the proof locally:
+
+```sh
+cd examples/temporal-workpaper-activity
+pnpm install --ignore-workspace --lockfile=false
+pnpm run check
+pnpm run smoke
+```
+
+The smoke edits `Inputs!B2`, recalculates quote formulas, serializes the
+WorkPaper document, restores it, verifies restored calculated values match,
+prints JSON, and writes `.tmp/workpaper-proof.json`.
+
+## Workflow Shape
+
+The checked-in Workflow never imports Bilig:
+
+```ts
+import { proxyActivities } from '@temporalio/workflow'
+import type { TemporalWorkPaperActivities } from './types'
+
+const { calculateWorkPaperQuoteActivity } = proxyActivities<TemporalWorkPaperActivities>({
+  startToCloseTimeout: '30 seconds',
+  retry: {
+    maximumAttempts: 3,
+  },
+})
+
+export async function quoteApprovalWorkflow(input) {
+  return await calculateWorkPaperQuoteActivity(input)
+}
+```
+
+The Activity imports `@bilig/workpaper`, writes one input, recalculates formulas,
+exports WorkPaper JSON, restores the document, and returns a compact
+serializable proof.
+
+## Activity Output
+
+The proof contains:
+
+```json
+{
+  "patch": {
+    "subtotal": 2250,
+    "discount_amount": 225,
+    "taxable_amount": 2025,
+    "tax_amount": 162,
+    "total": 2187,
+    "margin_amount": 1089
+  },
+  "proof": {
+    "editedCell": "Inputs!B2",
+    "before": {
+      "total": 1458
+    },
+    "after": {
+      "total": 2187
+    },
+    "afterRestore": {
+      "total": 2187
+    },
+    "verified": true
+  },
+  "temporalBoundary": {
+    "workflowImportsWorkPaper": false,
+    "activityOwnsWorkPaper": true,
+    "payloadShape": "serializable-patch-and-proof"
+  }
+}
+```
+
+Keep the full WorkPaper document in an artifact path, database, or object store
+when it grows beyond a compact Activity result.
+
+## Production Gate
+
+Before using this pattern for customer-critical Workflows:
+
+1. Run a real Worker against a local Temporal dev server or Temporal Cloud.
+2. Keep `@bilig/workpaper`, XLSX import/export, file I/O, network calls, and
+   object-store writes in Activities.
+3. Use Activity retry/idempotency design for external writes and proof-artifact
+   paths.
+4. Use `WorkflowReplayer` against captured histories when Workflow code changes.
+5. Keep Excel, LibreOffice, Microsoft Graph, or a domain oracle in the loop for
+   macros, pivots, external links, and exact spreadsheet behavior.
+
+## When This Fits
+
+Use it for quote approvals, pricing rules, payout checks, import validation,
+order-review gates, and durable workflows where spreadsheet formulas are the
+most reviewable representation of business logic.
+
+Do not use it to pretend Bilig is desktop Excel. Use Temporal for orchestration
+and replay, Activities for WorkPaper formula work, and external oracles for
+Excel-specific behavior.
+
+## Outreach Note
+
+If this is shared in a Temporal issue, forum thread, or sample request, lead with
+the concrete boundary it solves:
+
+> Temporal owns durable orchestration and replay. Bilig owns formula workbook
+> recalculation inside an Activity and returns both calculated values and
+> readback proof.
+
+Do not post it as a generic spreadsheet-engine pitch. Link the runnable example
+and smoke output, then ask whether a formula-backed Activity boundary would be
+useful to TypeScript SDK users.
 
 ---
 

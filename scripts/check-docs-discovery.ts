@@ -20,6 +20,7 @@ import { requireXlsxCalcAlternativeDiscovery } from './check-docs-discovery-xlsx
 import { requireSharedPublicDocsDiscovery } from './check-docs-discovery-public-docs.ts'
 import { homepageRequiredLinks, llmsRequiredLinks } from './check-docs-discovery-public-link-manifest.ts'
 import { requireAgentPublicSurfaceDiscovery } from './check-docs-discovery-agent-surfaces.ts'
+import { requireTemporalWorkpaperActivityDiscovery } from './check-docs-discovery-temporal.ts'
 
 const docsDiscoveryContext = await loadDocsDiscoveryContext()
 const {
@@ -435,6 +436,7 @@ requireIncludes(llms, 'low-code agent workflow formula readback:', 'docs/llms.tx
 requireIncludes(llms, 'https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/windmill-workpaper-script.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/triggerdev-workpaper-task.html', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/temporal-workpaper-activity.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/airflow-workpaper-dag.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/dagster-workpaper-asset.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/kestra-workpaper-flow.html', 'docs/llms.txt')
@@ -460,6 +462,7 @@ requireIncludes(windmillWorkpaperScript, 'Windmill can infer inputs from the `ma
 requireIncludes(triggerdevWorkpaperTask, 'examples/triggerdev-workpaper-task', 'docs/triggerdev-workpaper-task.md')
 requireIncludes(triggerdevWorkpaperTask, 'task({ id, run })', 'docs/triggerdev-workpaper-task.md')
 requireIncludes(triggerdevWorkpaperTask, 'Trigger.dev owns durable execution.', 'docs/triggerdev-workpaper-task.md')
+await requireTemporalWorkpaperActivityDiscovery({ repoRoot, docsRoot, llmsFull, scopedWorkpaperPackageReadme })
 requireIncludes(airflowWorkpaperDag, 'examples/airflow-workpaper-dag', 'docs/airflow-workpaper-dag.md')
 requireIncludes(airflowWorkpaperDag, 'from airflow.sdk import dag, task', 'docs/airflow-workpaper-dag.md')
 requireIncludes(airflowWorkpaperDag, 'npx --no-install tsx workpaper-quote.ts', 'docs/airflow-workpaper-dag.md')

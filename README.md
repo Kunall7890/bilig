@@ -228,6 +228,27 @@ wraps the same helper in a Trigger.dev task for deployed durable execution.
 See [Trigger.dev WorkPaper task](docs/triggerdev-workpaper-task.md) for the task
 shape, local smoke command, retry boundary, and outreach note.
 
+## Temporal Formula Activities
+
+Need a Temporal TypeScript Workflow to make durable formula-backed decisions
+without putting workbook state into replay code? Keep Temporal in charge of the
+Workflow, history, retries, and replay, then call a WorkPaper Activity that
+returns a compact patch plus proof.
+
+The source example lives in:
+
+```text
+examples/temporal-workpaper-activity
+```
+
+It keeps `@bilig/workpaper` out of `src/workflows.ts`, runs the WorkPaper
+calculation inside a Temporal Activity, writes `Inputs!B2`, recalculates quote
+formulas, exports WorkPaper JSON, restores it, and returns
+`workflowImportsWorkPaper: false` plus `verified: true`.
+
+See [Temporal WorkPaper Activity](docs/temporal-workpaper-activity.md) for the
+workflow/activity boundary, local smoke command, replay gate, and outreach note.
+
 ## Airflow Formula DAGs
 
 Need an Apache Airflow DAG to calculate task outputs from reviewable formulas?

@@ -160,6 +160,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/node-framework-workpaper-adapters.html
 - https://proompteng.github.io/bilig/windmill-workpaper-script.html
 - https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
+- https://proompteng.github.io/bilig/temporal-workpaper-activity.html
 - https://proompteng.github.io/bilig/airflow-workpaper-dag.html
 - https://proompteng.github.io/bilig/dagster-workpaper-asset.html
 - https://proompteng.github.io/bilig/kestra-workpaper-flow.html
@@ -528,6 +529,10 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
   https://github.com/proompteng/bilig/blob/main/docs/triggerdev-workpaper-task.md
   https://github.com/proompteng/bilig/tree/main/examples/triggerdev-workpaper-task
+  Temporal WorkPaper Activity source:
+  https://proompteng.github.io/bilig/temporal-workpaper-activity.html
+  https://github.com/proompteng/bilig/blob/main/docs/temporal-workpaper-activity.md
+  https://github.com/proompteng/bilig/tree/main/examples/temporal-workpaper-activity
   Airflow DAG source:
   https://proompteng.github.io/bilig/airflow-workpaper-dag.html
   https://github.com/proompteng/bilig/blob/main/docs/airflow-workpaper-dag.md

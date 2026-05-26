@@ -415,6 +415,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Sim MCP setup: ${siteRoot}/sim-workpaper-mcp.html
 - Windmill TypeScript script: ${siteRoot}/windmill-workpaper-script.html
 - Trigger.dev task: ${siteRoot}/triggerdev-workpaper-task.html
+- Temporal Activity: ${siteRoot}/temporal-workpaper-activity.html
 - Airflow DAG: ${siteRoot}/airflow-workpaper-dag.html
 - Dagster asset: ${siteRoot}/dagster-workpaper-asset.html
 - Kestra Node flow: ${siteRoot}/kestra-workpaper-flow.html
@@ -519,6 +520,7 @@ const llmsFullSources = [
   llmsSource('Directus WorkPaper Flow Operation', 'docs/directus-workpaper-flow-operation.md'),
   llmsSource('Windmill WorkPaper TypeScript Script', 'docs/windmill-workpaper-script.md'),
   llmsSource('Trigger.dev WorkPaper Task', 'docs/triggerdev-workpaper-task.md'),
+  llmsSource('Temporal WorkPaper Activity', 'docs/temporal-workpaper-activity.md'),
   llmsSource('Airflow WorkPaper DAG', 'docs/airflow-workpaper-dag.md'),
   llmsSource('Dagster WorkPaper Asset', 'docs/dagster-workpaper-asset.md'),
   llmsSource('Kestra WorkPaper Node Flow', 'docs/kestra-workpaper-flow.md'),
@@ -751,6 +753,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/agent-framework-workbook-tools.html`,
         `${siteRoot}/openai-agents-sdk-workpaper-tool.html`,
         `${siteRoot}/node-framework-workpaper-adapters.html`,
+        `${siteRoot}/temporal-workpaper-activity.html`,
         `${siteRoot}/airflow-workpaper-dag.html`,
         `${siteRoot}/dagster-workpaper-asset.html`,
         `${siteRoot}/kestra-workpaper-flow.html`,
