@@ -718,6 +718,26 @@ if (
 ) {
   throw new Error('docs/.well-known/agent.json must advertise the Claude Desktop MCPB release asset')
 }
+const agentJsonPublicEntrypoints = Reflect.get(parsedAgentJson, 'public_entrypoints')
+if (!Array.isArray(agentJsonPublicEntrypoints) || !agentJsonPublicEntrypoints.every((entrypoint) => typeof entrypoint === 'string')) {
+  throw new Error('docs/.well-known/agent.json public_entrypoints must be a string array')
+}
+for (const requiredEntrypoint of [
+  'https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html',
+  'https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html',
+  'https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html',
+  'https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html',
+  'https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html',
+  'https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html',
+  'https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html',
+  'https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html',
+  'https://proompteng.github.io/bilig/triggerdev-workpaper-task.html',
+  'https://proompteng.github.io/bilig/temporal-workpaper-activity.html',
+]) {
+  if (!agentJsonPublicEntrypoints.includes(requiredEntrypoint)) {
+    throw new Error(`docs/.well-known/agent.json public_entrypoints is missing ${requiredEntrypoint}`)
+  }
+}
 requireIncludes(
   agentSkillsIndex,
   'https://proompteng.github.io/bilig/.well-known/agent-skills/bilig-workpaper/SKILL.txt',
