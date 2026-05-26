@@ -47,6 +47,8 @@ export interface SameCorpusMutationTargetProof {
   readonly restored: SameCorpusMutationTargetReadback
   readonly visibleAfter: SameCorpusMutationTargetReadback
   readonly visibleRestored: SameCorpusMutationTargetReadback
+  readonly visibleAfterSelectedRange: string | null
+  readonly visibleRestoredSelectedRange: string | null
   readonly authoritativeReadbackRevision: string | null
   readonly visibleRenderRevision: string | null
   readonly targetScreenshots: SameCorpusMutationTargetScreenshotProofSet | null
@@ -320,6 +322,7 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
   if (sample.targetRange.trim().length > 0 && !sameCorpusSelectedRangeMatchesTarget(proof.selectedRange, sample.targetRange)) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} target range does not match the rendered selection`)
   }
+  invalidReasons.push(...sameCorpusMutationTargetVisibleSelectionInvalidReasons(workload, sample))
   if (!sameCorpusReadbacksDiffer(sample.before, sample.after)) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} did not prove a before/after target change`)
   }
@@ -357,6 +360,32 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
   }
   if (workload === 'fill-format-change' && (sample.after.fillColor === null || sample.visibleAfter.fillColor === null)) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing rendered post-mutation fill color`)
+  }
+  return invalidReasons
+}
+
+function sameCorpusMutationTargetVisibleSelectionInvalidReasons(
+  workload: UiResponsivenessSameCorpusWorkload,
+  sample: SameCorpusMutationTargetProof,
+): string[] {
+  const invalidReasons: string[] = []
+  if (!hasSameCorpusText(sample.visibleAfterSelectedRange)) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing post-mutation visible selected range`)
+  } else if (
+    sample.targetRange.trim().length > 0 &&
+    !sameCorpusSelectedRangeMatchesTarget(sample.visibleAfterSelectedRange, sample.targetRange)
+  ) {
+    invalidReasons.push(
+      `semantic UI mutation target proof for ${workload} post-mutation visible selected range does not match target range`,
+    )
+  }
+  if (!hasSameCorpusText(sample.visibleRestoredSelectedRange)) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing restored visible selected range`)
+  } else if (
+    sample.targetRange.trim().length > 0 &&
+    !sameCorpusSelectedRangeMatchesTarget(sample.visibleRestoredSelectedRange, sample.targetRange)
+  ) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} restored visible selected range does not match target range`)
   }
   return invalidReasons
 }

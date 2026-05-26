@@ -604,6 +604,12 @@ function parseSameCorpusMutationTargetProof(value: unknown): SameCorpusMutationT
     visibleRestored: Object.hasOwn(record, 'visibleRestored')
       ? parseSameCorpusMutationTargetReadback(objectField(record, 'visibleRestored'))
       : missingSameCorpusMutationTargetReadback(),
+    visibleAfterSelectedRange: Object.hasOwn(record, 'visibleAfterSelectedRange')
+      ? nullableStringField(record, 'visibleAfterSelectedRange')
+      : null,
+    visibleRestoredSelectedRange: Object.hasOwn(record, 'visibleRestoredSelectedRange')
+      ? nullableStringField(record, 'visibleRestoredSelectedRange')
+      : null,
     authoritativeReadbackRevision: nullableStringField(record, 'authoritativeReadbackRevision'),
     visibleRenderRevision: nullableStringField(record, 'visibleRenderRevision'),
     targetScreenshots: Object.hasOwn(record, 'targetScreenshots')
@@ -760,6 +766,12 @@ function parseSameCorpusMutationTargetProofSampleSummary(value: unknown): SameCo
     restored: nullableSameCorpusMutationTargetReadback(record, 'restored'),
     visibleAfter: nullableSameCorpusMutationTargetReadback(record, 'visibleAfter'),
     visibleRestored: nullableSameCorpusMutationTargetReadback(record, 'visibleRestored'),
+    visibleAfterSelectedRange: Object.hasOwn(record, 'visibleAfterSelectedRange')
+      ? nullableStringField(record, 'visibleAfterSelectedRange')
+      : null,
+    visibleRestoredSelectedRange: Object.hasOwn(record, 'visibleRestoredSelectedRange')
+      ? nullableStringField(record, 'visibleRestoredSelectedRange')
+      : null,
     authoritativeReadbackRevision: nullableStringField(record, 'authoritativeReadbackRevision'),
     visibleRenderRevision: nullableStringField(record, 'visibleRenderRevision'),
     targetScreenshots: Object.hasOwn(record, 'targetScreenshots')

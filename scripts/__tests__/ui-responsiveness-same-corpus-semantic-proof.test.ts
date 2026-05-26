@@ -124,6 +124,48 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('rejects mutation target proof whose post-mutation visible selection drifted away from the target', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 ? Object.assign({}, proof, { visibleAfterSelectedRange: 'B2' }) : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell post-mutation visible selected range does not match target range',
+      ]),
+    })
+  })
+
+  it('rejects mutation target proof whose restored visible selection drifted away from the target', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 ? Object.assign({}, proof, { visibleRestoredSelectedRange: 'B2' }) : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell restored visible selected range does not match target range',
+      ]),
+    })
+  })
+
   it('rejects semantic UI proof without a concrete sheet id', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validSemanticProof({
@@ -383,6 +425,7 @@ function mutationTargetProof(
       visibleText: `${product}-same-corpus-${String(sampleIndex + 1)}`,
       source: 'visible-formula-bar',
     },
+    visibleAfterSelectedRange: 'A1',
     visibleRestored: {
       value: 'metric-1',
       formula: null,
@@ -390,6 +433,7 @@ function mutationTargetProof(
       visibleText: 'metric-1',
       source: 'visible-formula-bar',
     },
+    visibleRestoredSelectedRange: 'A1',
     authoritativeReadbackRevision: authoritativeReadbackRevision(sampleIndex),
     visibleRenderRevision: visibleRenderRevision(sampleIndex),
     targetScreenshots: mutationTargetScreenshots(product, workload, sampleIndex),
@@ -449,6 +493,7 @@ function fillMutationTargetProof(
       visibleText: null,
       source: visibleSource,
     },
+    visibleAfterSelectedRange: 'A1',
     visibleRestored: {
       value: null,
       formula: null,
@@ -456,6 +501,7 @@ function fillMutationTargetProof(
       visibleText: null,
       source: visibleSource,
     },
+    visibleRestoredSelectedRange: 'A1',
     authoritativeReadbackRevision: authoritativeReadbackRevision(sampleIndex),
     visibleRenderRevision: visibleRenderRevision(sampleIndex),
     targetScreenshots: mutationTargetScreenshots('bilig', 'fill-format-change', sampleIndex),

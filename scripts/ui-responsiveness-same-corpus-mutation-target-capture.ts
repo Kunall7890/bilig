@@ -18,6 +18,7 @@ import type {
   SameCorpusMutationTargetReadback,
   SameCorpusMutationTargetScreenshotProof,
 } from './ui-responsiveness-same-corpus-proof.ts'
+import { readSameCorpusVisibleSelectedRange } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import {
   restoreProductWorkbookMutation,
   sameCorpusFillColorExpectedColor,
@@ -45,6 +46,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     target: args.target,
     workload: args.workload,
   })
+  const visibleAfterSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
   const afterScreenshot = await captureTargetScreenshot(args, 'after')
   const revisions = await readSameCorpusMutationTargetRevisionProof({
     page: args.page,
@@ -63,6 +65,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     target: args.target,
     workload: args.workload,
   })
+  const visibleRestoredSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
   const restoredScreenshot = await captureTargetScreenshot(args, 'restored')
   return {
     after,
@@ -85,8 +88,10 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     },
     undoRestoreStatus: sameCorpusMutationReadbacksEqual(args.before, restored) ? 'verified' : 'failed',
     visibleAfter,
+    visibleAfterSelectedRange,
     visibleRenderRevision: revisions.visibleRenderRevision,
     visibleRestored,
+    visibleRestoredSelectedRange,
     workload: args.workload,
   }
 }

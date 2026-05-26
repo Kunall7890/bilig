@@ -49,7 +49,9 @@ describe('same-corpus mutation target proof summary', () => {
               after: expect.objectContaining({ capturedRevision: 'authoritative-readback-1', value: 'bilig-same-corpus-1' }),
               restored: expect.objectContaining({ value: 'metric-1' }),
               visibleAfter: expect.objectContaining({ value: 'bilig-same-corpus-1' }),
+              visibleAfterSelectedRange: 'A1',
               visibleRestored: expect.objectContaining({ value: 'metric-1' }),
+              visibleRestoredSelectedRange: 'A1',
               authoritativeReadbackRevision: 'authoritative-readback-1',
               visibleRenderRevision: `bilig-visible-scene-sha256:${visibleSceneProofSha256(0)}`,
               screenshotSha256: 'b'.repeat(64),
@@ -77,7 +79,9 @@ describe('same-corpus mutation target proof summary', () => {
               after: null,
               restored: null,
               visibleAfter: null,
+              visibleAfterSelectedRange: null,
               visibleRestored: null,
+              visibleRestoredSelectedRange: null,
               authoritativeReadbackRevision: null,
               visibleRenderRevision: null,
               undoRestoreStatus: null,
@@ -314,6 +318,7 @@ function mutationTargetProof(
       visibleText: afterValue,
       source: 'visible-formula-bar',
     },
+    visibleAfterSelectedRange: 'A1',
     visibleRestored: {
       value: 'metric-1',
       formula: null,
@@ -321,6 +326,7 @@ function mutationTargetProof(
       visibleText: 'metric-1',
       source: 'visible-formula-bar',
     },
+    visibleRestoredSelectedRange: 'A1',
     authoritativeReadbackRevision: authoritativeReadbackRevision(sampleIndex),
     visibleRenderRevision:
       product === 'bilig'
