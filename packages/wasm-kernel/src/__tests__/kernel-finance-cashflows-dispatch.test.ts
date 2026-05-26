@@ -14,6 +14,10 @@ function encodePushString(stringId: number): number {
   return (Opcode.PushString << 24) | stringId
 }
 
+function encodePushError(code: ErrorCode): number {
+  return (Opcode.PushError << 24) | code
+}
+
 function encodeRet(): number {
   return Opcode.Ret << 24
 }
@@ -210,6 +214,21 @@ describe('wasm kernel finance/cashflow dispatch', () => {
     expectNumberCell(kernel, cellIndex(1, 2, width), 1420)
     expectNumberCell(kernel, cellIndex(1, 3, width), 481.5927873779113)
     expectNumberCell(kernel, cellIndex(1, 4, width), 1330.89)
+  })
+
+  it('preserves incoming NPV rate errors before scalar coercion', async () => {
+    const kernel = await createKernel()
+    const width = 4
+    kernel.init(8, 1, 1, 1, 1)
+    kernel.writeCells(new Uint8Array(8), new Float64Array(8), new Uint32Array(8), new Uint16Array(8))
+
+    const packed = packPrograms([[encodePushError(ErrorCode.NA), encodePushNumber(0), encodeCall(BuiltinId.Npv, 2), encodeRet()]])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, Uint32Array.from([cellIndex(1, 0, width)]))
+    const constants = packConstants([[100]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width)]))
+
+    expectErrorCell(kernel, cellIndex(1, 0, width), ErrorCode.NA)
   })
 
   it('matches Microsoft Excel CUMIPMT and CUMPRINC numeric domain errors on the wasm path', async () => {

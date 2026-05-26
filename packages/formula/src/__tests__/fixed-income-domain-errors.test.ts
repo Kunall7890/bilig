@@ -13,6 +13,10 @@ function text(value: string, stringId = 1): CellValue {
   return { tag: ValueTag.String, value, stringId }
 }
 
+function err(code: ErrorCode): CellValue {
+  return { tag: ValueTag.Error, code }
+}
+
 function date(year: number, month: number, day: number): CellValue {
   const result = getBuiltin('DATE')!(num(year), num(month), num(day))
   if (result.tag !== ValueTag.Number) {
@@ -72,5 +76,18 @@ describe('fixed-income formula domain errors', () => {
     expect(TBILLEQ(settlement, maturity, num(0))).toEqual(numError)
     expect(TBILLEQ(settlement, moreThanOneYear, num(0.0914))).toEqual(numError)
     expect(TBILLEQ(settlement, maturity, text('bad'))).toEqual(valueError)
+  })
+
+  it('preserves incoming fixed-income errors before scalar coercion', () => {
+    const COUPDAYBS = getBuiltin('COUPDAYBS')!
+    const DISC = getBuiltin('DISC')!
+    const TBILLPRICE = getBuiltin('TBILLPRICE')!
+
+    const settlement = date(2023, 1, 1)
+    const maturity = date(2023, 4, 1)
+
+    expect(DISC(settlement, maturity, err(ErrorCode.Name), num(100), num(2))).toEqual(err(ErrorCode.Name))
+    expect(TBILLPRICE(settlement, maturity, err(ErrorCode.NA))).toEqual(err(ErrorCode.NA))
+    expect(COUPDAYBS(err(ErrorCode.Ref), maturity, num(2), num(0))).toEqual(err(ErrorCode.Ref))
   })
 })

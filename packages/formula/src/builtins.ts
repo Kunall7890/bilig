@@ -236,16 +236,18 @@ const radixBuiltins = createRadixBuiltins({
   valueError,
   numberResult,
 })
-const fixedIncomeBuiltins = createFixedIncomeBuiltins({
-  toNumber,
-  coerceBoolean,
-  coerceDateSerial,
-  coerceNumber,
-  integerValue,
-  numberResult,
-  valueError,
-  numError,
-})
+const fixedIncomeBuiltins = preserveIncomingErrors(
+  createFixedIncomeBuiltins({
+    toNumber,
+    coerceBoolean,
+    coerceDateSerial,
+    coerceNumber,
+    integerValue,
+    numberResult,
+    valueError,
+    numError,
+  }),
+)
 const statisticalBuiltins = preserveIncomingErrors(
   createStatisticalBuiltins({
     toNumber,
@@ -271,16 +273,18 @@ const distributionBuiltins = preserveIncomingErrors(
     numError,
   }),
 )
-const financialBuiltins = createFinancialBuiltins({
-  toNumber,
-  coerceBoolean,
-  coerceNumber,
-  coercePaymentType,
-  integerValue,
-  numberResult,
-  valueError,
-  numError,
-})
+const financialBuiltins = preserveIncomingErrors(
+  createFinancialBuiltins({
+    toNumber,
+    coerceBoolean,
+    coerceNumber,
+    coercePaymentType,
+    integerValue,
+    numberResult,
+    valueError,
+    numError,
+  }),
+)
 const mathBuiltins = createMathBuiltins({
   toNumber,
   integerValue,
