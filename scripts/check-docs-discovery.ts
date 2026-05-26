@@ -123,6 +123,7 @@ const exceljsFormulaRecalculationNode = await readFile(join(docsRoot, 'exceljs-f
 const directusWorkpaperFlowOperation = await readFile(join(docsRoot, 'directus-workpaper-flow-operation.md'), 'utf8')
 const windmillWorkpaperScript = await readFile(join(docsRoot, 'windmill-workpaper-script.md'), 'utf8')
 const triggerdevWorkpaperTask = await readFile(join(docsRoot, 'triggerdev-workpaper-task.md'), 'utf8')
+const inngestWorkpaperStep = await readFile(join(docsRoot, 'inngest-workpaper-step.md'), 'utf8')
 const airflowWorkpaperDag = await readFile(join(docsRoot, 'airflow-workpaper-dag.md'), 'utf8')
 const dagsterWorkpaperAsset = await readFile(join(docsRoot, 'dagster-workpaper-asset.md'), 'utf8')
 const kestraWorkpaperFlow = await readFile(join(docsRoot, 'kestra-workpaper-flow.md'), 'utf8')
@@ -251,6 +252,17 @@ await Promise.all(
   ['README.md', 'package.json', 'tsconfig.json', 'src/workpaper-quote.ts', 'src/trigger-workpaper-task.ts', 'src/smoke.ts'].map(
     (sourceFile) => requireFile(join(repoRoot, 'examples', 'triggerdev-workpaper-task', sourceFile)),
   ),
+)
+await Promise.all(
+  [
+    'README.md',
+    'package.json',
+    'tsconfig.json',
+    'src/workpaper-quote.ts',
+    'src/inngest-workpaper-function.ts',
+    'src/smoke.ts',
+    'scripts/check-inngest-recipe.ts',
+  ].map((sourceFile) => requireFile(join(repoRoot, 'examples', 'inngest-workpaper-step', sourceFile))),
 )
 await Promise.all(
   [
@@ -438,6 +450,7 @@ requireIncludes(llms, 'low-code agent workflow formula readback:', 'docs/llms.tx
 requireIncludes(llms, 'https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/windmill-workpaper-script.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/triggerdev-workpaper-task.html', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/inngest-workpaper-step.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/temporal-workpaper-activity.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/airflow-workpaper-dag.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/dagster-workpaper-asset.html', 'docs/llms.txt')
@@ -464,6 +477,9 @@ requireIncludes(windmillWorkpaperScript, 'Windmill can infer inputs from the `ma
 requireIncludes(triggerdevWorkpaperTask, 'examples/triggerdev-workpaper-task', 'docs/triggerdev-workpaper-task.md')
 requireIncludes(triggerdevWorkpaperTask, 'task({ id, run })', 'docs/triggerdev-workpaper-task.md')
 requireIncludes(triggerdevWorkpaperTask, 'Trigger.dev owns durable execution.', 'docs/triggerdev-workpaper-task.md')
+requireIncludes(inngestWorkpaperStep, 'examples/inngest-workpaper-step', 'docs/inngest-workpaper-step.md')
+requireIncludes(inngestWorkpaperStep, "step.run('calculate-workpaper-quote'", 'docs/inngest-workpaper-step.md')
+requireIncludes(inngestWorkpaperStep, 'Inngest owns event delivery, durable step execution', 'docs/inngest-workpaper-step.md')
 await requireTemporalWorkpaperActivityDiscovery({ repoRoot, docsRoot, llmsFull, scopedWorkpaperPackageReadme })
 requireIncludes(airflowWorkpaperDag, 'examples/airflow-workpaper-dag', 'docs/airflow-workpaper-dag.md')
 requireIncludes(airflowWorkpaperDag, 'from airflow.sdk import dag, task', 'docs/airflow-workpaper-dag.md')
@@ -491,6 +507,7 @@ requireIncludes(llmsFull, '@bilig/n8n-nodes-workpaper', 'docs/llms-full.txt')
 requireIncludes(llmsFull, 'Directus WorkPaper Flow Operation', 'docs/llms-full.txt')
 requireIncludes(llmsFull, 'Windmill WorkPaper TypeScript script', 'docs/llms-full.txt')
 requireIncludes(llmsFull, 'Trigger.dev WorkPaper task', 'docs/llms-full.txt')
+requireIncludes(llmsFull, 'Inngest WorkPaper Step', 'docs/llms-full.txt')
 requireIncludes(llmsFull, 'Airflow WorkPaper DAG', 'docs/llms-full.txt')
 requireIncludes(llmsFull, 'Dagster WorkPaper Asset', 'docs/llms-full.txt')
 requireIncludes(llmsFull, 'Kestra WorkPaper Node flow', 'docs/llms-full.txt')
@@ -500,6 +517,7 @@ requireIncludes(headlessReadme, 'https://proompteng.github.io/bilig/.well-known/
 requireIncludes(scopedWorkpaperPackageReadme, '## Start Here', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Windmill TypeScript workflow fields', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Trigger.dev durable task fields', 'packages/workpaper/README.md')
+requireIncludes(scopedWorkpaperPackageReadme, 'Inngest durable step fields', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Apache Airflow DAG task outputs', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Dagster asset materialization metadata', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Kestra Node Commands flow fields', 'packages/workpaper/README.md')

@@ -123,6 +123,14 @@
       "source": "https://github.com/proompteng/bilig/tree/main/examples/smolagents-workpaper-tool"
     },
     {
+      "name": "inngest-workpaper-step",
+      "type": "durable-workflow-step-smoke-test",
+      "framework": "Inngest",
+      "command": "cd examples/inngest-workpaper-step && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke",
+      "docs": "https://proompteng.github.io/bilig/inngest-workpaper-step.html",
+      "source": "https://github.com/proompteng/bilig/tree/main/examples/inngest-workpaper-step"
+    },
+    {
       "name": "formula-clinic",
       "type": "local-cli",
       "command": "npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells \"Summary!B7,Inputs!B2\"",
@@ -164,6 +172,7 @@
     "https://proompteng.github.io/bilig/workbook-agent-intent-api.html",
     "https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html",
     "https://proompteng.github.io/bilig/node-framework-workpaper-adapters.html",
+    "https://proompteng.github.io/bilig/inngest-workpaper-step.html",
     "https://proompteng.github.io/bilig/temporal-workpaper-activity.html",
     "https://proompteng.github.io/bilig/airflow-workpaper-dag.html",
     "https://proompteng.github.io/bilig/dagster-workpaper-asset.html",

@@ -545,6 +545,10 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
   https://github.com/proompteng/bilig/blob/main/docs/triggerdev-workpaper-task.md
   https://github.com/proompteng/bilig/tree/main/examples/triggerdev-workpaper-task
+  Inngest durable step source:
+  https://proompteng.github.io/bilig/inngest-workpaper-step.html
+  https://github.com/proompteng/bilig/blob/main/docs/inngest-workpaper-step.md
+  https://github.com/proompteng/bilig/tree/main/examples/inngest-workpaper-step
   Temporal WorkPaper Activity source:
   https://proompteng.github.io/bilig/temporal-workpaper-activity.html
   https://github.com/proompteng/bilig/blob/main/docs/temporal-workpaper-activity.md
@@ -579,7 +583,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/smolagents-workpaper-tool.html
   https://github.com/proompteng/bilig/blob/main/docs/smolagents-workpaper-tool.md
   https://github.com/proompteng/bilig/tree/main/examples/smolagents-workpaper-tool
-  Use this path when Trigger.dev, Windmill, Directus, n8n, Dify, Flowise, smolagents, or another workflow builder
+  Use this path when Inngest, Trigger.dev, Windmill, Directus, n8n, Dify, Flowise, smolagents, or another workflow builder
   should orchestrate the task while Bilig owns workbook formula state,
   readback, JSON proof, and persistence.
 - MCP spreadsheet tool server guide:

@@ -270,6 +270,26 @@ wraps the same helper in a Trigger.dev task for deployed durable execution.
 See [Trigger.dev WorkPaper task](docs/triggerdev-workpaper-task.md) for the task
 shape, local smoke command, retry boundary, and outreach note.
 
+## Inngest Durable Formula Steps
+
+Need an Inngest function to calculate durable workflow fields from reviewable
+formulas? Wrap `@bilig/workpaper` in a single `step.run()` so Inngest owns
+event delivery, retries, and run history while Bilig returns the field patch and
+readback proof.
+
+The source example lives in:
+
+```text
+examples/inngest-workpaper-step
+```
+
+It keeps the WorkPaper calculation account-free for local smoke tests, then
+wraps the same helper in an Inngest `createFunction` handler for deployed
+durable execution.
+
+See [Inngest WorkPaper Step](docs/inngest-workpaper-step.md) for the function
+shape, local smoke command, step boundary, and outreach note.
+
 ## Temporal Formula Activities
 
 Need a Temporal TypeScript Workflow to make durable formula-backed decisions
