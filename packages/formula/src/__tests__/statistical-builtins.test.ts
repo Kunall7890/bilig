@@ -7,6 +7,7 @@ const text = (value: string, stringId = 1): CellValue => ({ tag: ValueTag.String
 const bool = (value: boolean): CellValue => ({ tag: ValueTag.Boolean, value })
 
 const numError = { tag: ValueTag.Error, code: ErrorCode.Num } as const
+const naError = { tag: ValueTag.Error, code: ErrorCode.NA } as const
 const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
 
 describe('statistical builtins', () => {
@@ -35,5 +36,25 @@ describe('statistical builtins', () => {
     expect(getBuiltin('LOGINV')?.(text('bad'), num(0), num(1))).toEqual(valueError)
     expect(getBuiltin('LOGNORMDIST')?.(text('bad'), num(0), num(1))).toEqual(valueError)
     expect(getBuiltin('LOGNORM.DIST')?.(num(1), num(0), num(1), text('bad'))).toEqual(valueError)
+  })
+
+  it('preserves incoming errors before statistical distribution coercion', () => {
+    const cases = [
+      getBuiltin('GAUSS')?.(naError),
+      getBuiltin('PHI')?.(naError),
+      getBuiltin('STANDARDIZE')?.(num(4), naError, num(2)),
+      getBuiltin('NORMINV')?.(num(0.5), num(0), naError),
+      getBuiltin('NORM.INV')?.(naError, num(0), num(1)),
+      getBuiltin('NORMSDIST')?.(naError),
+      getBuiltin('NORMSINV')?.(naError),
+      getBuiltin('NORM.S.INV')?.(naError),
+      getBuiltin('LOGINV')?.(num(0.5), naError, num(1)),
+      getBuiltin('LOGNORM.INV')?.(num(0.5), num(0), naError),
+      getBuiltin('LOGNORMDIST')?.(num(1), naError, num(1)),
+    ]
+
+    for (const actual of cases) {
+      expect(actual).toEqual(naError)
+    }
   })
 })

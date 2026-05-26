@@ -390,6 +390,9 @@ export function tryApplyArrayInfoBuiltin(
   }
 
   if (builtinId == BuiltinId.Choose && argc >= 2) {
+    if (kindStack[base] == STACK_KIND_SCALAR && tagStack[base] == ValueTag.Error) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, valueStack[base], rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const choice = truncToInt(tagStack[base], valueStack[base])
     if (choice == i32.MIN_VALUE || choice < 1 || choice >= argc) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)

@@ -13,6 +13,16 @@ import type { RegionId } from './region-node-store.js'
 const PREFIX_LITERAL_DELTA_MAX_SUFFIX_LENGTH = 128
 const STALE_PREFIX_VERSION = -1
 
+function preferAggregateErrorCode(current: ErrorCode, incoming: ErrorCode): ErrorCode {
+  if (incoming === ErrorCode.None) {
+    return current
+  }
+  if (incoming === ErrorCode.Cycle) {
+    return ErrorCode.Cycle
+  }
+  return current === ErrorCode.None ? incoming : current
+}
+
 export interface AggregateStateEntry {
   readonly regionId: RegionId
   readonly sheetName: string
@@ -242,9 +252,7 @@ function addRawAggregateContribution(
       break
     case ValueTag.Error:
       summary.errorCount += 1
-      if (summary.errorCode === ErrorCode.None) {
-        summary.errorCode = (errorCode as ErrorCode | undefined) ?? ErrorCode.None
-      }
+      summary.errorCode = preferAggregateErrorCode(summary.errorCode, (errorCode as ErrorCode | undefined) ?? ErrorCode.None)
       break
     case ValueTag.Empty:
     case ValueTag.String:
@@ -263,9 +271,7 @@ function addPageSummary(target: MutableAggregateColumnWindowSummary, page: Aggre
   target.minimum = Math.min(target.minimum, page.minimum)
   target.maximum = Math.max(target.maximum, page.maximum)
   target.errorCount += page.errorCount
-  if (target.errorCode === ErrorCode.None && page.errorCode !== ErrorCode.None) {
-    target.errorCode = page.errorCode
-  }
+  target.errorCode = preferAggregateErrorCode(target.errorCode, page.errorCode)
 }
 
 function summarizePage(page: RuntimeColumnPage): AggregatePageSummary {
@@ -542,7 +548,7 @@ export function createAggregateStateStore(args: {
         case ValueTag.Empty:
           break
         case ValueTag.Error:
-          runningErrorCode ||= view.readErrorAt(offset) ?? ErrorCode.None
+          runningErrorCode = preferAggregateErrorCode(runningErrorCode, view.readErrorAt(offset) ?? ErrorCode.None)
           runningErrorCount += 1
           break
         case ValueTag.String:

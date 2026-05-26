@@ -207,15 +207,14 @@ export function evaluateContextSpecialCall(
         return evaluateChooseArrayIndex(rawArgs, deps)
       }
       const indexValue = deps.isSingleCellValue(rawArgs[0]!)
-      const choice = indexValue ? deps.toNumber(indexValue) : undefined
-      if (choice === undefined || !Number.isFinite(choice)) {
+      if (!indexValue) {
         return deps.stackScalar(deps.error(ErrorCode.Value))
       }
-      const truncated = Math.trunc(choice)
-      if (truncated < 1 || truncated >= rawArgs.length) {
-        return deps.stackScalar(deps.error(ErrorCode.Value))
+      const choice = chooseIndexValue(indexValue, rawArgs.length - 1)
+      if (typeof choice !== 'number') {
+        return deps.stackScalar(choice)
       }
-      return deps.cloneStackValue(rawArgs[truncated]!)
+      return deps.cloneStackValue(rawArgs[choice]!)
     }
     case 'OFFSET': {
       if (rawArgs.length < 3 || rawArgs.length > 5) {

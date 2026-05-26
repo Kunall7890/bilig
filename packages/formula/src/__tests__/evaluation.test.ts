@@ -253,6 +253,7 @@ describe('formula builtins and JS evaluator', () => {
       'MUNIT(NA())',
       'RANDARRAY(NA(),1)',
       'RANDARRAY(1,NA())',
+      'CHOOSE(NA(),10,20)',
     ]
 
     for (const formula of cases) {

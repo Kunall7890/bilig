@@ -79,6 +79,9 @@ export function createNumericBuiltinHelpers({
       if (significanceValue === 0) {
         return { tag: ValueTag.Error, code: ErrorCode.Div0 }
       }
+      if (numberValue > 0 && significanceValue < 0) {
+        return { tag: ValueTag.Error, code: ErrorCode.Num }
+      }
       return numberResult(Math.ceil(numberValue / significanceValue) * significanceValue)
     },
     unaryMath: (value: CellValue, evaluate: (numeric: number) => number): CellValue => {
@@ -101,12 +104,14 @@ export function createNumericBuiltinHelpers({
 }
 
 export function roundToDigits(value: number, digits: number): number {
+  const sign = value < 0 ? -1 : 1
+  const absolute = Math.abs(value)
   if (digits >= 0) {
     const factor = 10 ** digits
-    return Math.round(value * factor) / factor
+    return (sign * Math.round(absolute * factor)) / factor
   }
   const factor = 10 ** -digits
-  return Math.round(value / factor) * factor
+  return sign * Math.round(absolute / factor) * factor
 }
 
 export function roundUpToDigits(value: number, digits: number): number {

@@ -7,6 +7,7 @@ const text = (value: string, stringId = 1): CellValue => ({ tag: ValueTag.String
 const bool = (value: boolean): CellValue => ({ tag: ValueTag.Boolean, value })
 
 const numError = { tag: ValueTag.Error, code: ErrorCode.Num } as const
+const naError = { tag: ValueTag.Error, code: ErrorCode.NA } as const
 const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
 
 describe('distribution builtins domain errors', () => {
@@ -81,5 +82,30 @@ describe('distribution builtins domain errors', () => {
     expect(getBuiltin('CRITBINOM')?.(text('bad'), num(0.5), num(0.7))).toEqual(valueError)
     expect(getBuiltin('HYPGEOM.DIST')?.(text('bad'), num(4), num(3), num(10), bool(true))).toEqual(valueError)
     expect(getBuiltin('NEGBINOM.DIST')?.(text('bad'), num(3), num(0.5), bool(true))).toEqual(valueError)
+  })
+
+  it('preserves incoming errors before distribution coercion and domain checks', () => {
+    const cases = [
+      getBuiltin('CONFIDENCE.NORM')?.(naError, num(2), num(30)),
+      getBuiltin('CONFIDENCE.T')?.(num(0.05), num(2), naError),
+      getBuiltin('ERF')?.(num(0), naError),
+      getBuiltin('ERFC')?.(naError),
+      getBuiltin('FISHER')?.(naError),
+      getBuiltin('GAMMALN')?.(naError),
+      getBuiltin('GAMMA')?.(naError),
+      getBuiltin('BETA.INV')?.(num(0.5), naError, num(3)),
+      getBuiltin('GAMMA.INV')?.(num(0.5), num(2), naError),
+      getBuiltin('CHIDIST')?.(num(1), naError),
+      getBuiltin('CHISQ.INV')?.(naError, num(2)),
+      getBuiltin('F.INV')?.(num(0.5), naError, num(3)),
+      getBuiltin('T.INV')?.(naError, num(2)),
+      getBuiltin('CRITBINOM')?.(num(3), num(0.5), naError),
+      getBuiltin('HYPGEOMDIST')?.(num(1), num(2), num(3), naError),
+      getBuiltin('NEGBINOMDIST')?.(num(2), num(3), naError),
+    ]
+
+    for (const actual of cases) {
+      expect(actual).toEqual(naError)
+    }
   })
 })

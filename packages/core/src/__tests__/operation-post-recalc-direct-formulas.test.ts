@@ -177,6 +177,33 @@ describe('operation post-recalc direct formula helpers', () => {
     expect(evaluateDirectFormula).toHaveBeenCalledWith(3)
   })
 
+  it('does not overwrite recalc-set cycle dependency results from the post-recalc direct path', () => {
+    const collection = new DirectFormulaIndexCollection()
+    collection.add(2)
+    collection.add(3)
+    const formulas = new Map([
+      [2, formula({ cellIndex: 2 })],
+      [3, formula({ cellIndex: 3 })],
+    ])
+    const evaluateDirectFormula = vi.fn((cellIndex: number) => [cellIndex + 100])
+
+    const changed = applyPostRecalcDirectFormulaChanges(
+      makeArgs({
+        state: makeState(formulas),
+        collection,
+        recalculated: Uint32Array.of(1, 3),
+        didRunRecalc: true,
+        applyDirectScalarCurrentValue: vi.fn(() => false),
+        evaluateDirectFormula,
+        hasCycleDependency: (cellIndex) => cellIndex === 3,
+      }),
+    )
+
+    expect(Array.from(changed)).toEqual([1, 3, 2, 102])
+    expect(evaluateDirectFormula).toHaveBeenCalledOnce()
+    expect(evaluateDirectFormula).toHaveBeenCalledWith(2)
+  })
+
   it('reuses evaluated direct criteria results for copied formula shapes in one post-recalc pass', () => {
     const collection = new DirectFormulaIndexCollection()
     collection.add(2)

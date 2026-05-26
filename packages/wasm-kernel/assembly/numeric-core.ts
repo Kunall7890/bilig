@@ -70,12 +70,14 @@ export function truncToInt(tag: u8, value: f64): i32 {
 }
 
 export function roundToDigits(value: f64, digits: i32): f64 {
+  const sign = value < 0.0 ? -1.0 : 1.0
+  const absolute = Math.abs(value)
   if (digits >= 0) {
     const factor = Math.pow(10.0, <f64>digits)
-    return Math.round(value * factor) / factor
+    return (sign * Math.round(absolute * factor)) / factor
   }
   const factor = Math.pow(10.0, <f64>-digits)
-  return Math.round(value / factor) * factor
+  return sign * Math.round(absolute / factor) * factor
 }
 
 export function roundTowardZeroDigits(value: f64, digits: i32): f64 {

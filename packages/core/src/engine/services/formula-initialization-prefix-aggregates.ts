@@ -28,6 +28,16 @@ const NATIVE_DIRECT_AGGREGATE_OP_MAX = 5
 
 type InitialPrefixAggregateArgs = Pick<EngineFormulaInitializationServiceArgs, 'state' | 'checkEvaluationBudget'>
 
+function preferAggregateErrorCode(current: ErrorCode, incoming: ErrorCode): ErrorCode {
+  if (incoming === ErrorCode.None) {
+    return current
+  }
+  if (incoming === ErrorCode.Cycle) {
+    return ErrorCode.Cycle
+  }
+  return current === ErrorCode.None ? incoming : current
+}
+
 export function canEvaluateInitialPrefixAggregateGroupsNatively(
   args: InitialPrefixAggregateArgs,
   orderedCellIndices: InitialFormulaCellIndexList,
@@ -282,7 +292,10 @@ function evaluateInitialPrefixAggregateGroupInJs(
           minimum = Math.min(minimum, 0)
           maximum = Math.max(maximum, 0)
         } else if (tag === ValueTag.Error) {
-          errorCode ||= (args.state.workbook.cellStore.errors[memberCellIndex] as ErrorCode | undefined) ?? ErrorCode.None
+          errorCode = preferAggregateErrorCode(
+            errorCode,
+            (args.state.workbook.cellStore.errors[memberCellIndex] as ErrorCode | undefined) ?? ErrorCode.None,
+          )
           errorCount += 1
         }
       }
@@ -372,7 +385,10 @@ function tryEvaluatePhysicalSingleColumnPrefixAggregateGroupInJs(
       count += 1
       averageCount += 1
     } else if (tag === ValueTag.Error) {
-      errorCode ||= (args.state.workbook.cellStore.errors[memberCellIndex] as ErrorCode | undefined) ?? ErrorCode.None
+      errorCode = preferAggregateErrorCode(
+        errorCode,
+        (args.state.workbook.cellStore.errors[memberCellIndex] as ErrorCode | undefined) ?? ErrorCode.None,
+      )
       errorCount += 1
     }
     emitThroughRow(row)

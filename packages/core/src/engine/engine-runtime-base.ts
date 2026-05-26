@@ -359,6 +359,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
         repairTopoRanks: () => false,
         getEntityDependents: () => new Uint32Array(),
         getSingleEntityDependent: () => -1,
+        forEachFormulaDependencyCell: (cellIndex, fn) => this.runtime.traversal.forEachFormulaDependencyCellNow(cellIndex, fn),
         collectFormulaDependents: () => new Uint32Array(),
         collectFormulaCellsForTables: () => [],
         clearSpillForCell: () => ({ changedCellIndices: [], ownerCellIndex: undefined }),

@@ -1,5 +1,6 @@
 import type { CellRangeRef, EngineEvent } from '@bilig/protocol'
 import { addEngineCounter } from '../../perf/engine-counters.js'
+import { CellFlags } from '../../cell-store.js'
 import type { U32 } from '../runtime-state.js'
 import type { DirectFormulaIndexCollection } from './direct-formula-index-collection.js'
 import {
@@ -104,6 +105,15 @@ export function finalizeOperationRecalcAndEvents(input: FinalizeOperationRecalcA
   let didRunRecalc = false
   let didFastDeferKernelSyncOnly = false
   let canComposeDisjointEventChanges = false
+  const hasCycleDependency = (cellIndex: number): boolean => {
+    let found = false
+    input.serviceArgs.forEachFormulaDependencyCell(cellIndex, (dependencyCellIndex) => {
+      if (!found && ((input.serviceArgs.state.workbook.cellStore.flags[dependencyCellIndex] ?? 0) & CellFlags.InCycle) !== 0) {
+        found = true
+      }
+    })
+    return found
+  }
 
   const canFastDeferPrecomputedStructuralKernelSync =
     hasActiveFormulas &&
@@ -209,6 +219,7 @@ export function finalizeOperationRecalcAndEvents(input: FinalizeOperationRecalcA
         metrics: input.postRecalcDirectFormulaMetrics,
         ...input.directFormulaCallbacks,
         evaluateDirectFormula: input.serviceArgs.evaluateDirectFormula,
+        hasCycleDependency,
       })
     }
 

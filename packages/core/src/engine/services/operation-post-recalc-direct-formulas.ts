@@ -61,6 +61,7 @@ export interface ApplyPostRecalcDirectFormulaChangesArgs {
   readonly tryApplyDirectFormulaDeltas: (collection: DirectFormulaIndexCollection, captureChanged?: boolean) => U32 | undefined
   readonly countPostRecalcDirectFormulaMetric: (cellIndex: number, counts: DirectFormulaMetricCounts) => void
   readonly evaluateDirectFormula: (cellIndex: number) => readonly number[] | undefined
+  readonly hasCycleDependency?: (cellIndex: number) => boolean
 }
 
 export function applyPostRecalcDirectFormulaChanges(args: ApplyPostRecalcDirectFormulaChangesArgs): U32 {
@@ -68,11 +69,14 @@ export function applyPostRecalcDirectFormulaChanges(args: ApplyPostRecalcDirectF
     return args.recalculated
   }
   const captureChanged = args.captureChanged ?? true
-  const constantScalarChanged = !args.didRunRecalc ? args.tryApplyDirectScalarDeltas(args.collection, captureChanged) : undefined
+  const hasCycleSensitiveFormula = hasAnyCycleSensitiveFormulaCell(args)
+  const constantScalarChanged =
+    !args.didRunRecalc && !hasCycleSensitiveFormula ? args.tryApplyDirectScalarDeltas(args.collection, captureChanged) : undefined
   if (constantScalarChanged !== undefined) {
     return mergeChangedCellIndices(args.recalculated, constantScalarChanged)
   }
-  const directDeltaChanged = !args.didRunRecalc ? args.tryApplyDirectFormulaDeltas(args.collection, captureChanged) : undefined
+  const directDeltaChanged =
+    !args.didRunRecalc && !hasCycleSensitiveFormula ? args.tryApplyDirectFormulaDeltas(args.collection, captureChanged) : undefined
   if (directDeltaChanged !== undefined) {
     return mergeChangedCellIndices(args.recalculated, directDeltaChanged)
   }
@@ -109,7 +113,7 @@ export function tryApplySinglePostRecalcDirectFormula(
     return undefined
   }
   const cellIndex = args.collection.getCellIndexAt(0)
-  if (isCycleFormulaCell(args, cellIndex)) {
+  if (isCycleSensitiveFormulaCell(args, cellIndex)) {
     return undefined
   }
   const currentResult = args.collection.getCurrentResultAt(0)
@@ -152,7 +156,7 @@ function applyDirectFormulaFallbacks(args: ApplyPostRecalcDirectFormulaChangesAr
   const directCriteriaCurrentResults = !args.didRunRecalc ? new Map<string, DirectScalarCurrentOperand>() : undefined
   args.state.workbook.withBatchedColumnVersionUpdates(() => {
     args.collection.forEachIndexed((cellIndex, directIndex) => {
-      if (isCycleFormulaCell(args, cellIndex)) {
+      if (isCycleSensitiveFormulaCell(args, cellIndex)) {
         return
       }
       const formula = args.state.formulas.get(cellIndex)
@@ -314,6 +318,19 @@ function readDirectScalarCurrentOperand(
 
 function isCycleFormulaCell(args: Pick<ApplyPostRecalcDirectFormulaChangesArgs, 'state'>, cellIndex: number): boolean {
   return ((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0
+}
+
+function isCycleSensitiveFormulaCell(args: ApplyPostRecalcDirectFormulaChangesArgs, cellIndex: number): boolean {
+  return isCycleFormulaCell(args, cellIndex) || args.hasCycleDependency?.(cellIndex) === true
+}
+
+function hasAnyCycleSensitiveFormulaCell(args: ApplyPostRecalcDirectFormulaChangesArgs): boolean {
+  for (let index = 0; index < args.collection.size; index += 1) {
+    if (isCycleSensitiveFormulaCell(args, args.collection.getCellIndexAt(index))) {
+      return true
+    }
+  }
+  return false
 }
 
 function countDirectDeltaApplication(

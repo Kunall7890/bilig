@@ -130,6 +130,15 @@ describe('math builtins', () => {
     expect(getBuiltin('FLOOR')?.(num(-2.5), num(-2))).toEqual(num(-2))
   })
 
+  it('matches Microsoft Excel ROUND and CEILING negative-number edge semantics', () => {
+    expect(getBuiltin('ROUND')?.(num(-2.5), num(0))).toEqual(num(-3))
+    expect(getBuiltin('ROUND')?.(num(-1.475), num(2))).toEqual(num(-1.48))
+    expect(getBuiltin('ROUND')?.(num(-50.55), num(-2))).toEqual(num(-100))
+    expect(getBuiltin('CEILING')?.(num(2.5), num(-2))).toEqual(numError)
+    expect(getBuiltin('CEILING')?.(num(-2.5), num(2))).toEqual(num(-2))
+    expect(getBuiltin('CEILING')?.(num(-2.5), num(-2))).toEqual(num(-4))
+  })
+
   it('matches Microsoft Excel square-root negative-domain errors', () => {
     expect(getBuiltin('SQRT')?.(num(-1))).toEqual(numError)
     expect(getBuiltin('SQRTPI')?.(num(-1))).toEqual(numError)

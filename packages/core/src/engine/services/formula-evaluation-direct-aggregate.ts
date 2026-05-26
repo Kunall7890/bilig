@@ -11,6 +11,16 @@ const DIRECT_AGGREGATE_SCAN_MAX_LENGTH = 64
 const DIRECT_AGGREGATE_PREFIX_MIN_LENGTH = 16
 const DIRECT_AGGREGATE_PAGE_SHIFT_MIN_ROWS = BLOCK_ROWS * 16
 
+function preferAggregateErrorCode(current: ErrorCode, incoming: ErrorCode): ErrorCode {
+  if (incoming === ErrorCode.None) {
+    return current
+  }
+  if (incoming === ErrorCode.Cycle) {
+    return ErrorCode.Cycle
+  }
+  return current === ErrorCode.None ? incoming : current
+}
+
 export function tryEvaluateDirectAggregate(input: {
   readonly formula: RuntimeFormula
   readonly workbook: Pick<WorkbookStore, 'getSheet'>
@@ -64,9 +74,7 @@ export function tryEvaluateDirectAggregate(input: {
       errorCount += summary.errorCount
       fullPageHits += summary.fullPageHits
       edgeCellScans += summary.edgeCellScans
-      if (errorCode === ErrorCode.None && summary.errorCode !== ErrorCode.None) {
-        errorCode = summary.errorCode
-      }
+      errorCode = preferAggregateErrorCode(errorCode, summary.errorCode)
     }
     if (resolved) {
       addEngineCounter(input.counters, 'directAggregatePageEvaluations')
@@ -110,6 +118,7 @@ export function tryEvaluateDirectAggregate(input: {
     let averageCount = 0
     let minimum = Number.POSITIVE_INFINITY
     let maximum = Number.NEGATIVE_INFINITY
+    let errorCode = ErrorCode.None
     for (let col = directAggregate.col; col <= directAggregate.colEnd; col += 1) {
       for (let row = directAggregate.rowStart; row <= directAggregate.rowEnd; row += 1) {
         const memberCellIndex =
@@ -136,13 +145,16 @@ export function tryEvaluateDirectAggregate(input: {
             break
           case ValueTag.Error:
             if (directAggregate.aggregateKind === 'sum' || directAggregate.aggregateKind === 'average') {
-              return directErrorResult(value.code)
+              errorCode = preferAggregateErrorCode(errorCode, value.code)
             }
             break
           case ValueTag.String:
             break
         }
       }
+    }
+    if (errorCode !== ErrorCode.None && (directAggregate.aggregateKind === 'sum' || directAggregate.aggregateKind === 'average')) {
+      return directErrorResult(errorCode)
     }
     if (directAggregate.aggregateKind === 'sum') {
       return offsetDirectAggregateResult(directAggregate, directNumberResult(sum))
@@ -199,8 +211,8 @@ export function tryEvaluateDirectAggregate(input: {
     averageCount += startOffset >= 0 ? prefixAverageCount - (prefix.prefixAverageCount[startOffset] ?? 0) : prefixAverageCount
     errorCount += startOffset >= 0 ? prefixErrorCount - (prefix.prefixErrorCounts[startOffset] ?? 0) : prefixErrorCount
     const nextErrorCode = prefix.prefixErrorCodes[endOffset]
-    if (errorCode === ErrorCode.None && nextErrorCode !== undefined && nextErrorCode !== Number(ErrorCode.None)) {
-      errorCode = decodeErrorCode(nextErrorCode)
+    if (nextErrorCode !== undefined) {
+      errorCode = preferAggregateErrorCode(errorCode, decodeErrorCode(nextErrorCode))
     }
     minimum = Math.min(minimum, prefix.prefixMinimums[endOffset] ?? Number.POSITIVE_INFINITY)
     maximum = Math.max(maximum, prefix.prefixMaximums[endOffset] ?? Number.NEGATIVE_INFINITY)
@@ -210,7 +222,7 @@ export function tryEvaluateDirectAggregate(input: {
     errorCount > 0 &&
     (directAggregate.aggregateKind === 'sum' || directAggregate.aggregateKind === 'average')
   ) {
-    return hasShiftedPrefixStart ? undefined : directErrorResult(decodeErrorCode(errorCode))
+    return hasShiftedPrefixStart ? undefined : directErrorResult(errorCode)
   }
   if (directAggregate.aggregateKind === 'sum') {
     return offsetDirectAggregateResult(directAggregate, directNumberResult(sum))

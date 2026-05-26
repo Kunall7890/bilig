@@ -107,6 +107,18 @@ function firstError(args: readonly (CellValue | undefined)[]): CellValue | undef
   return args.find((arg): arg is CellValue => arg?.tag === ValueTag.Error)
 }
 
+function preserveIncomingErrors(map: Record<string, Builtin>): Record<string, Builtin> {
+  return Object.fromEntries(
+    Object.entries(map).map(([name, builtin]) => [
+      name,
+      (...args: CellValue[]): EvaluationResult => {
+        const error = firstError(args)
+        return error ?? builtin(...args)
+      },
+    ]),
+  )
+}
+
 function coercePositiveInteger(value: CellValue | undefined, fallback: number): number | undefined {
   if (value === undefined) {
     return fallback
@@ -234,27 +246,31 @@ const fixedIncomeBuiltins = createFixedIncomeBuiltins({
   valueError,
   numError,
 })
-const statisticalBuiltins = createStatisticalBuiltins({
-  toNumber,
-  coerceBoolean,
-  firstError,
-  numberResult,
-  numericResultOrError,
-  valueError,
-  numError,
-})
-const distributionBuiltins = createDistributionBuiltins({
-  toNumber,
-  coerceBoolean,
-  coerceNumber,
-  integerValue,
-  nonNegativeIntegerValue,
-  positiveIntegerValue,
-  numberResult,
-  numericResultOrError,
-  valueError,
-  numError,
-})
+const statisticalBuiltins = preserveIncomingErrors(
+  createStatisticalBuiltins({
+    toNumber,
+    coerceBoolean,
+    firstError,
+    numberResult,
+    numericResultOrError,
+    valueError,
+    numError,
+  }),
+)
+const distributionBuiltins = preserveIncomingErrors(
+  createDistributionBuiltins({
+    toNumber,
+    coerceBoolean,
+    coerceNumber,
+    integerValue,
+    nonNegativeIntegerValue,
+    positiveIntegerValue,
+    numberResult,
+    numericResultOrError,
+    valueError,
+    numError,
+  }),
+)
 const financialBuiltins = createFinancialBuiltins({
   toNumber,
   coerceBoolean,
@@ -422,6 +438,9 @@ const scalarBuiltins: Record<string, Builtin> = {
     return numberResult(numbers.reduce((sum, value) => sum + value, 0) / numbers.length)
   },
   CHOOSE: (indexValue, ...values) => {
+    if (indexValue?.tag === ValueTag.Error) {
+      return indexValue
+    }
     const index = integerValue(indexValue)
     if (index === undefined || index < 1 || index > values.length) {
       return valueError()

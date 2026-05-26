@@ -44,6 +44,12 @@ describe('formula builtins', () => {
       tag: ValueTag.Error,
       code: ErrorCode.Value,
     })
+    expect(
+      CHOOSE({ tag: ValueTag.Error, code: ErrorCode.NA }, { tag: ValueTag.Number, value: 10 }, { tag: ValueTag.Number, value: 20 }),
+    ).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
+    })
 
     expect(
       COUNTBLANK(

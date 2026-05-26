@@ -336,4 +336,23 @@ describe('wasm kernel array/info dispatch', () => {
       value: 0,
     })
   })
+
+  it('preserves CHOOSE index errors before index validation', async () => {
+    const kernel = await createKernel()
+    const ownerBase = 8
+    kernel.init(16, 0, 1, 4, 0)
+
+    const packed = packPrograms([
+      [encodePushError(ErrorCode.NA), encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Choose, 3), encodeRet()],
+    ])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, Uint32Array.from([ownerBase]))
+    const constants = packConstants([[10, 20]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from([ownerBase]))
+
+    expect(readScalarValue(kernel, ownerBase, [])).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
+    })
+  })
 })

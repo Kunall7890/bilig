@@ -10,6 +10,17 @@ const VALUE_TAG_ERROR: u8 = <u8>ValueTag.Error
 const ERROR_CODE_NONE: u16 = <u16>ErrorCode.None
 const ERROR_CODE_DIV0: u16 = <u16>ErrorCode.Div0
 const ERROR_CODE_VALUE: u16 = <u16>ErrorCode.Value
+const ERROR_CODE_CYCLE: u16 = <u16>ErrorCode.Cycle
+
+function preferAggregateErrorCode(current: u16, incoming: u16): u16 {
+  if (incoming == ERROR_CODE_NONE) {
+    return current
+  }
+  if (incoming == ERROR_CODE_CYCLE) {
+    return ERROR_CODE_CYCLE
+  }
+  return current == ERROR_CODE_NONE ? incoming : current
+}
 
 export function evalDenseNumericRowAggregateBatch(
   aggregateKind: u8,
@@ -116,9 +127,7 @@ export function evalAnchoredPrefixAggregateBatch(
           maximum = numeric
         }
       } else if (tag == VALUE_TAG_ERROR) {
-        if (errorCode == ERROR_CODE_NONE) {
-          errorCode = errors[valueOffset]
-        }
+        errorCode = preferAggregateErrorCode(errorCode, errors[valueOffset])
         errorCount += 1
       }
     }

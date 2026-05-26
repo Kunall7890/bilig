@@ -760,6 +760,46 @@ describe('engine fuzz regressions', () => {
     })
   })
 
+  it('preserves shared cycle errors for dependent range formulas after CSV roundtrip import', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'csv-shared-cycle-roundtrip-regression' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    engine.setCellFormula('Sheet1', 'A1', 'IF(C1>0,"text:yes","text:no")')
+    engine.setCellFormula('Sheet1', 'B1', 'C1+B3')
+    engine.setRangeValues({ sheetName: 'Sheet1', startAddress: 'C1', endAddress: 'C1' }, [[false]])
+    engine.setCellFormula('Sheet1', 'A2', 'SUM(C1:C1)')
+    engine.setCellFormula('Sheet1', 'B2', 'SUM(B1:C3)')
+    engine.setRangeValues({ sheetName: 'Sheet1', startAddress: 'C2', endAddress: 'C3' }, [['text:toStri'], ['text:b']])
+    engine.setCellFormula('Sheet1', 'A3', 'SUM(B1:C3)')
+    engine.setRangeValues({ sheetName: 'Sheet1', startAddress: 'B3', endAddress: 'B3' }, [['text:key']])
+    engine.recalculateNow()
+    engine.recalculateNow()
+
+    expect(engine.getCell('Sheet1', 'B2').value).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Cycle,
+    })
+    expect(engine.getCell('Sheet1', 'A3').value).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Cycle,
+    })
+
+    const restored = new SpreadsheetEngine({ workbookName: 'csv-shared-cycle-roundtrip-regression-restored' })
+    await restored.ready()
+    restored.createSheet('Sheet1')
+    restored.importSheetCsv('Sheet1', engine.exportSheetCsv('Sheet1'))
+
+    expect(restored.getCell('Sheet1', 'B2').value).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Cycle,
+    })
+    expect(restored.getCell('Sheet1', 'A3').value).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Cycle,
+    })
+  })
+
   it('preserves shifted range sum precision after CSV roundtrip import', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'csv-shifted-sum-precision-regression' })
     await engine.ready()

@@ -769,6 +769,7 @@ export function createEngineServiceRuntime(args: {
       getSingleEntityDependent: (entityId) => traversal.getSingleEntityDependentNow(entityId),
       getCellDependents: (cellIndex) => traversal.getCellDependentsNow(cellIndex),
       getSingleCellDependent: (cellIndex) => traversal.getSingleCellDependentNow(cellIndex),
+      forEachFormulaDependencyCell: (cellIndex, fn) => traversal.forEachFormulaDependencyCellNow(cellIndex, fn),
       collectFormulaDependents: (entityId) => traversal.collectFormulaDependentsNow(entityId),
       noteExactLookupLiteralWrite: (request) => exactLookup.recordLiteralWrite(request),
       noteAggregateLiteralWrite: (request) => aggregateStateStore.noteLiteralWrite(request),
