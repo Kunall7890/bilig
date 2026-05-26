@@ -150,6 +150,11 @@ function sameCorpusCommittedStatePhaseInvalidReasons(
     if (!phaseProof.exportUrl.includes('/spreadsheets/d/') || !phaseProof.exportUrl.includes('format=xlsx')) {
       invalidReasons.push(`semantic UI mutation target proof for ${workload} committed-state ${phase} proof is missing export URL`)
     }
+    if (!sameGoogleSheetsExportWorkbook(proof.before.exportUrl, phaseProof.exportUrl)) {
+      invalidReasons.push(
+        `semantic UI mutation target proof for ${workload} committed-state ${phase} proof is from a different spreadsheet export URL`,
+      )
+    }
     if (!Number.isFinite(phaseProof.capturedAtMs) || phaseProof.capturedAtMs < 0) {
       invalidReasons.push(`semantic UI mutation target proof for ${workload} committed-state ${phase} proof is missing capture timing`)
     }
@@ -194,6 +199,23 @@ function sameCorpusCommittedStatePhaseTimingInvalidReasons(
     )
   }
   return invalidReasons
+}
+
+function sameGoogleSheetsExportWorkbook(leftUrl: string, rightUrl: string): boolean {
+  const leftId = googleSheetsSpreadsheetId(leftUrl)
+  const rightId = googleSheetsSpreadsheetId(rightUrl)
+  return leftId !== null && leftId === rightId
+}
+
+function googleSheetsSpreadsheetId(exportUrl: string): string | null {
+  try {
+    const url = new URL(exportUrl)
+    const match = /^\/spreadsheets\/d\/([^/]+)\/export$/u.exec(url.pathname)
+    const format = url.searchParams.get('format')
+    return match && format === 'xlsx' ? decodeURIComponent(match[1] ?? '') : null
+  } catch {
+    return null
+  }
 }
 
 function sameCorpusCommittedStateReadbackInvalidReasons(

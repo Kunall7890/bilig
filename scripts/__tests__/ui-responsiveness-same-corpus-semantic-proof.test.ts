@@ -594,6 +594,37 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('rejects Google Sheets committed-state exports from a different spreadsheet', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validGoogleSheetsSemanticProof({
+        mutationTargetProofs: validGoogleSheetsMutationTargetProofs().map((proof) => {
+          if (proof.sampleIndex !== 0 || !proof.committedStateProof) {
+            return proof
+          }
+          return Object.assign({}, proof, {
+            committedStateProof: {
+              ...proof.committedStateProof,
+              after: Object.assign({}, proof.committedStateProof.after, {
+                exportUrl: 'https://docs.google.com/spreadsheets/d/other-spreadsheet/export?format=xlsx',
+              }),
+            },
+          })
+        }),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell committed-state after proof is from a different spreadsheet export URL',
+      ]),
+    })
+  })
+
   it('rejects Google Sheets fill proof when toolbar fill changes but exported target fill does not', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validGoogleSheetsSemanticProof({
