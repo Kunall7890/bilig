@@ -26,6 +26,7 @@ import { cloneEngineCounters, resetEngineCounters, type EngineCounters } from '.
 import type { CommitOp, EngineReplicaSnapshot, EngineSyncClient } from './engine/runtime-state.js'
 import { runEngineEffect, runEngineEffectPromise } from './engine/live.js'
 import { SpreadsheetEngineWorkbookFacadeBase } from './engine/engine-workbook-facade-base.js'
+import { createTrustedExistingNumericDirectScalarFastPath } from './engine/services/trusted-existing-numeric-direct-scalar-fast-path.js'
 
 export type {
   CommitOp,
@@ -62,6 +63,24 @@ function cellStoreValueToLiteralInput(
 }
 
 export class SpreadsheetEngine extends SpreadsheetEngineWorkbookFacadeBase {
+  private readonly trustedExistingNumericDirectScalarFastPath = createTrustedExistingNumericDirectScalarFastPath({
+    workbook: this.workbook,
+    formulas: this.formulas,
+    events: this.events,
+    counters: this.performanceCounters,
+    traversal: this.runtime.traversal,
+    deferKernelSync: this.runtime.deferKernelSync,
+    hasVolatileFormulas: this.runtime.hasVolatileFormulas,
+    hasRegionFormulaSubscriptions: this.runtime.hasRegionFormulaSubscriptions,
+    reverseExactLookupColumnEdges: this.reverseExactLookupColumnEdges,
+    reverseSortedLookupColumnEdges: this.reverseSortedLookupColumnEdges,
+    reverseAggregateColumnEdges: this.reverseAggregateColumnEdges,
+    getLastMetrics: () => this.lastMetrics,
+    setLastMetrics: (metrics) => {
+      this.lastMetrics = metrics
+    },
+  })
+
   async ready(): Promise<void> {
     await this.wasm.init()
   }
@@ -242,7 +261,9 @@ export class SpreadsheetEngine extends SpreadsheetEngineWorkbookFacadeBase {
       request.trustedExistingNumericLiteral && request.oldNumericValue !== undefined
         ? request.oldNumericValue
         : (cellStore.numbers[cellIndex] ?? 0)
-    const result = this.runtime.operations.applyExistingNumericCellMutationAtNow(request)
+    const result =
+      this.trustedExistingNumericDirectScalarFastPath.tryApply(request, oldNumericValue) ??
+      this.runtime.operations.applyExistingNumericCellMutationAtNow(request)
     if (!result) {
       return null
     }

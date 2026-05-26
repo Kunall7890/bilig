@@ -2,11 +2,12 @@ import { ValueTag, type CellSnapshot, type WorkbookSnapshot } from '@bilig/proto
 import { CellFlags } from '../cell-store.js'
 import { createColumnIndexStore } from '../indexes/column-index-store.js'
 import type { EngineRuntimeState } from './runtime-state.js'
-import { createEngineCellStateService, type EngineCellStateService } from './services/cell-state-service.js'
-import { createEngineEventService, type EngineEventService } from './services/event-service.js'
+import type { EngineServiceRuntime } from './service-runtime.js'
+import { createEngineCellStateService } from './services/cell-state-service.js'
+import { createEngineEventService } from './services/event-service.js'
 import { createEngineChangeSetEmitterService } from './services/change-set-emitter-service.js'
 import { createEnginePatchEmitterService } from '../patches/patch-emitter.js'
-import { createEngineFormulaEvaluationService, type EngineFormulaEvaluationService } from './services/formula-evaluation-service.js'
+import { createEngineFormulaEvaluationService } from './services/formula-evaluation-service.js'
 import { createCriterionRangeCacheService } from './services/criterion-range-cache-service.js'
 import { createExactColumnIndexService } from './services/exact-column-index-service.js'
 import { createRangeAggregateCacheService } from './services/range-aggregate-cache-service.js'
@@ -21,13 +22,13 @@ import { createEngineCompiledPlanService } from './services/compiled-plan-servic
 import { createAggregateStateStore } from '../deps/aggregate-state-store.js'
 import { createDepPatternStore } from '../deps/dep-pattern-store.js'
 import { createRegionGraph } from '../deps/region-graph.js'
-import { createFormulaFamilyStore, type FormulaFamilyStore } from '../formula/formula-family-store.js'
+import { createFormulaFamilyStore } from '../formula/formula-family-store.js'
 import { createFormulaInstanceTable } from '../formula/formula-instance-table.js'
-import { createEngineFormulaGraphService, type EngineFormulaGraphService } from './services/formula-graph-service.js'
+import { createEngineFormulaGraphService } from './services/formula-graph-service.js'
 import { createEngineHistoryService, type EngineHistoryService } from './services/history-service.js'
-import { createEngineMaintenanceService, type EngineMaintenanceService } from './services/maintenance-service.js'
+import { createEngineMaintenanceService } from './services/maintenance-service.js'
 import { createEngineMutationService, type EngineMutationService } from './services/mutation-service.js'
-import { createEngineMutationSupportService, type EngineMutationSupportService } from './services/mutation-support-service.js'
+import { createEngineMutationSupportService } from './services/mutation-support-service.js'
 import { createEngineOperationService, type EngineOperationService } from './services/operation-service.js'
 import { createEnginePivotService, type EnginePivotService } from './services/pivot-service.js'
 import {
@@ -36,42 +37,20 @@ import {
 } from './services/dirty-frontier-scheduler-service.js'
 import { createEngineRuntimeColumnStoreService } from './services/runtime-column-store-service.js'
 import { createEngineReplicaSyncService, type EngineReplicaSyncService } from './services/replica-sync-service.js'
-import { createEngineReadService, type EngineReadService } from './services/read-service.js'
+import { createEngineReadService } from './services/read-service.js'
 import { createEngineRecalcService, type EngineRecalcService } from './services/recalc-service.js'
 import { createEngineRuntimeScratchService } from './services/runtime-scratch-service.js'
 import { createEngineSelectionService, type EngineSelectionService } from './services/selection-service.js'
 import { createEngineSnapshotService, type EngineSnapshotService } from './services/snapshot-service.js'
-import { createEngineStructureService, type EngineStructureService } from './services/structure-service.js'
-import { createEngineTraversalService, type EngineTraversalService } from './services/traversal-service.js'
+import { createEngineStructureService } from './services/structure-service.js'
+import { createEngineTraversalService } from './services/traversal-service.js'
 import { getRuntimeFormulaSource } from './runtime-formula-source.js'
 import { deferKernelSyncNow } from './services/live-kernel-sync-state.js'
 import { createEngineFullInvalidationService } from './services/full-invalidation-service.js'
 import { runEngineEffect } from './live-effect.js'
 
 export { runEngineEffect, runEngineEffectPromise } from './live-effect.js'
-
-export interface EngineServiceRuntime {
-  readonly cellState: EngineCellStateService
-  readonly maintenance: EngineMaintenanceService
-  readonly traversal: EngineTraversalService
-  readonly events: EngineEventService
-  readonly evaluation: EngineFormulaEvaluationService
-  readonly selection: EngineSelectionService
-  readonly binding: EngineFormulaBindingService
-  readonly formulaFamilies: FormulaFamilyStore
-  readonly formulaInitialization: EngineFormulaInitializationService
-  readonly graph: EngineFormulaGraphService
-  readonly history: EngineHistoryService
-  readonly mutation: EngineMutationService
-  readonly support: EngineMutationSupportService
-  readonly operations: EngineOperationService
-  readonly pivot: EnginePivotService
-  readonly read: EngineReadService
-  readonly recalc: EngineRecalcService
-  readonly structure: EngineStructureService
-  readonly snapshot: EngineSnapshotService
-  readonly sync: EngineReplicaSyncService
-}
+export type { EngineServiceRuntime } from './service-runtime.js'
 
 type EngineMutationSupportRuntimeConfig = Omit<
   Parameters<typeof createEngineMutationSupportService>[0],
@@ -959,6 +938,9 @@ export function createEngineServiceRuntime(args: {
     cellState,
     maintenance,
     traversal,
+    deferKernelSync,
+    hasVolatileFormulas: () => volatileFormulaCells.size > 0,
+    hasRegionFormulaSubscriptions: () => regionGraph.hasFormulaSubscriptions(),
     events: createEngineEventService(args.state),
     evaluation,
     get selection() {

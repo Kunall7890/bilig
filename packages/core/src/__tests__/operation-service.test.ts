@@ -64,6 +64,28 @@ function getRuntimeMaintenanceService(engine: SpreadsheetEngine): RuntimeMainten
   return maintenance
 }
 
+function withOperationServiceBlocked<T>(engine: SpreadsheetEngine, callback: () => T): T {
+  const runtime = Reflect.get(engine, 'runtime')
+  if (typeof runtime !== 'object' || runtime === null) {
+    throw new TypeError('Expected engine runtime')
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(runtime, 'operations')
+  if (!descriptor) {
+    throw new TypeError('Expected runtime operations descriptor')
+  }
+  Object.defineProperty(runtime, 'operations', {
+    configurable: true,
+    get() {
+      throw new Error('operation service should not be initialized')
+    },
+  })
+  try {
+    return callback()
+  } finally {
+    Object.defineProperty(runtime, 'operations', descriptor)
+  }
+}
+
 function expectBatch<Batch>(batch: Batch | undefined): Batch {
   expect(batch).toBeDefined()
   return batch
@@ -1296,6 +1318,43 @@ describe('EngineOperationService', () => {
       value: 99 + downstreamCount,
     })
     expect(engine.getPerformanceCounters().directScalarDeltaApplications).toBe(downstreamCount)
+    expect(engine.getPerformanceCounters().directScalarDeltaOnlyRecalcSkips).toBe(1)
+  })
+
+  it('applies trusted existing numeric direct scalar chains before operation runtime initialization', async () => {
+    const engine = new SpreadsheetEngine({
+      workbookName: 'operation-existing-numeric-direct-scalar-pre-ops',
+      trackReplicaVersions: false,
+    })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 3)
+    engine.setCellFormula('Sheet1', 'B1', 'A1*4')
+    engine.setCellFormula('Sheet1', 'C1', 'B1-2')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const inputIndex = engine.workbook.getCellIndex('Sheet1', 'A1')!
+
+    engine.resetPerformanceCounters()
+    const result = withOperationServiceBlocked(engine, () =>
+      engine.tryApplyExistingNumericCellMutationAt({
+        sheetId,
+        row: 0,
+        col: 0,
+        cellIndex: inputIndex,
+        value: 6,
+        emitTracked: false,
+        trustedExistingNumericLiteral: true,
+        oldNumericValue: 3,
+      }),
+    )
+
+    expect(result?.explicitChangedCount).toBe(1)
+    expect(result?.changedCellIndices).toEqual(
+      Uint32Array.from([inputIndex, engine.workbook.getCellIndex('Sheet1', 'B1')!, engine.workbook.getCellIndex('Sheet1', 'C1')!]),
+    )
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 24 })
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 22 })
+    expect(engine.getPerformanceCounters().directScalarDeltaApplications).toBe(2)
     expect(engine.getPerformanceCounters().directScalarDeltaOnlyRecalcSkips).toBe(1)
   })
 
