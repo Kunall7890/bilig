@@ -641,6 +641,35 @@ describe('UI responsiveness live browser scorecard', () => {
     ).not.toThrow()
   })
 
+  it('requires semantic mutation target screenshot artifacts to exist', () => {
+    const proof = buildSameCorpusProof(buildSameCorpusCapture())
+    const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-mutation-artifacts-`)
+    for (const artifactPath of sameCorpusScenarioScreenshotArtifactPaths(proof)) {
+      writeSameCorpusScreenshotArtifact(rootDir, artifactPath)
+    }
+
+    expect(() => validateSameCorpusScreenshotArtifacts(proof, { rootDir })).toThrow(
+      'UI responsiveness same-corpus screenshot artifact is missing',
+    )
+  })
+
+  it('requires semantic mutation target screenshot artifacts to be tracked for checked-in proof', () => {
+    const proof = buildSameCorpusProof(buildSameCorpusCapture())
+    const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-tracked-mutation-artifacts-`)
+    writeSameCorpusScreenshotArtifacts(rootDir, proof)
+    const artifactPaths = sameCorpusScreenshotArtifactPaths(proof)
+    const mutationArtifactPath = sameCorpusMutationTargetScreenshotArtifactPaths(proof)[0]
+
+    expect(mutationArtifactPath).toContain('/mutation-target/')
+    expect(() =>
+      validateSameCorpusScreenshotArtifacts(proof, {
+        requireGitTracked: true,
+        rootDir,
+        trackedArtifactPaths: artifactPaths.filter((artifactPath) => artifactPath !== mutationArtifactPath),
+      }),
+    ).toThrow('UI responsiveness same-corpus screenshot artifact is not tracked by git')
+  })
+
   it('requires checked-in same-corpus scorecard proof to match the capture artifact', () => {
     const capture = buildSameCorpusCapture()
     const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-capture-artifact-`)
@@ -743,14 +772,36 @@ describe('UI responsiveness live browser scorecard', () => {
 
 function writeSameCorpusScreenshotArtifacts(rootDir: string, proof: UiResponsivenessSameCorpusProof): void {
   for (const artifactPath of sameCorpusScreenshotArtifactPaths(proof)) {
-    const absolutePath = resolve(rootDir, artifactPath)
-    mkdirSync(dirname(absolutePath), { recursive: true })
-    writeFileSync(absolutePath, 'png')
+    writeSameCorpusScreenshotArtifact(rootDir, artifactPath)
   }
 }
 
+function writeSameCorpusScreenshotArtifact(rootDir: string, artifactPath: string): void {
+  const absolutePath = resolve(rootDir, artifactPath)
+  mkdirSync(dirname(absolutePath), { recursive: true })
+  writeFileSync(absolutePath, 'png')
+}
+
 function sameCorpusScreenshotArtifactPaths(proof: UiResponsivenessSameCorpusProof): string[] {
+  return [
+    ...new Set([...sameCorpusScenarioScreenshotArtifactPaths(proof), ...sameCorpusMutationTargetScreenshotArtifactPaths(proof)]),
+  ].toSorted()
+}
+
+function sameCorpusScenarioScreenshotArtifactPaths(proof: UiResponsivenessSameCorpusProof): string[] {
   return [...new Set(proof.cases.flatMap((entry) => [...entry.scenarioProof.screenshotProof.artifactPaths]))].toSorted()
+}
+
+function sameCorpusMutationTargetScreenshotArtifactPaths(proof: UiResponsivenessSameCorpusProof): string[] {
+  return [
+    ...new Set(
+      proof.cases.flatMap((entry) =>
+        entry.scenarioProof.semanticUiProof.products.flatMap((productProof) =>
+          productProof.mutationTargetProofs.flatMap((mutationProof) => mutationProof.screenshotPath ?? []),
+        ),
+      ),
+    ),
+  ].toSorted()
 }
 
 function buildSameCorpusCapture(

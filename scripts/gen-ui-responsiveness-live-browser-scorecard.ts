@@ -362,9 +362,12 @@ export function validateSameCorpusCaptureArtifactMatchesScorecard(
 function uniqueScreenshotArtifactPaths(proof: UiResponsivenessSameCorpusProof): string[] {
   return [
     ...new Set(
-      proof.cases.flatMap((entry) =>
-        entry.scenarioProof.screenshotProof.captured ? [...entry.scenarioProof.screenshotProof.artifactPaths] : [],
-      ),
+      proof.cases.flatMap((entry) => [
+        ...(entry.scenarioProof.screenshotProof.captured ? [...entry.scenarioProof.screenshotProof.artifactPaths] : []),
+        ...entry.scenarioProof.semanticUiProof.products.flatMap((productProof) =>
+          productProof.mutationTargetProofs.flatMap((mutationProof) => mutationProof.screenshotPath ?? []),
+        ),
+      ]),
     ),
   ].toSorted()
 }
