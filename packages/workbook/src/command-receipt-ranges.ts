@@ -1,5 +1,6 @@
 import type { CellRangeRef } from '@bilig/protocol'
 import { normalizeCommandRange } from './command-ranges.js'
+import { isPlainArray } from './data-properties.js'
 
 export interface WorkbookCommandReceiptRangeIssue {
   readonly path: string
@@ -11,6 +12,9 @@ const commandReceiptRangeDataFields = Object.freeze(['sheetName', 'startAddress'
 export function commandReceiptChangedRangeIssues(value: unknown): readonly WorkbookCommandReceiptRangeIssue[] {
   if (!Array.isArray(value)) {
     return Object.freeze([rangeIssue('changedRanges', 'Workbook command receipt changed ranges must be an array')])
+  }
+  if (!isPlainArray(value)) {
+    return Object.freeze([rangeIssue('changedRanges', 'Workbook command receipt changed ranges must be a plain array')])
   }
 
   const issues: WorkbookCommandReceiptRangeIssue[] = []
@@ -49,7 +53,7 @@ function firstRangeDataFieldIssue(value: unknown, path: string): WorkbookCommand
 }
 
 export function normalizeCommandReceiptChangedRanges(value: unknown): readonly CellRangeRef[] | null {
-  if (commandReceiptChangedRangeIssues(value).length > 0 || !Array.isArray(value)) {
+  if (commandReceiptChangedRangeIssues(value).length > 0 || !isPlainArray(value)) {
     return null
   }
 

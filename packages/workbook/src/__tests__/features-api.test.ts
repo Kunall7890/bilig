@@ -36,6 +36,12 @@ function accessorArray(get: () => unknown): unknown[] {
   return value
 }
 
+function arraySubclass<T>(entries: readonly T[]): T[] {
+  const value = new (class extends Array<T> {})()
+  value.push(...entries)
+  return value
+}
+
 function customPrototype(value: object): unknown {
   const custom = new (class {
     readonly inherited = true
@@ -908,6 +914,74 @@ describe('@bilig/workbook feature api', () => {
         },
       ],
     })
+  })
+
+  it('rejects array-subclass command receipt arrays as uninspectable proof', () => {
+    const op = {
+      kind: 'setCellValue',
+      sheetName: 'Sheet1',
+      address: 'A1',
+      value: 1,
+    } as const
+    const range = { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' } as const
+
+    expect(
+      checkWorkbookCommandReceipt({
+        status: 'applied',
+        featureId: 'tables',
+        commandId: 'tables.createFromSelection',
+        category: 'command',
+        previewOps: arraySubclass([op]),
+        appliedOps: arraySubclass([op]),
+        undo: { id: 'undo-1', ops: arraySubclass([op]) },
+        changedRanges: arraySubclass([range]),
+        errors: arraySubclass(['failed']),
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_receipt',
+          path: 'previewOps',
+          message: 'Workbook command receipt preview ops must be a plain array',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'appliedOps',
+          message: 'Workbook command receipt applied ops must be a plain array',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'undo.ops',
+          message: 'Workbook command receipt undo ops must be a plain array',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'changedRanges',
+          message: 'Workbook command receipt changed ranges must be a plain array',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'errors',
+          message: 'Workbook command receipt errors must be a plain array',
+        },
+      ],
+    })
+    expect(() =>
+      normalizeWorkbookCommandReceipt({
+        status: 'applied',
+        featureId: 'tables',
+        commandId: 'tables.createFromSelection',
+        category: 'command',
+        previewOps: arraySubclass([op]),
+      }),
+    ).toThrowError('Workbook command receipt is invalid: Workbook command receipt preview ops must be a plain array')
+    expect(
+      workbookCommandReceiptOpsMatch({
+        previewOps: arraySubclass([op]),
+        appliedOps: [op],
+      }),
+    ).toBe(false)
   })
 
   it('rejects command receipts whose status contradicts their proof fields', () => {

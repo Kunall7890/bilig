@@ -1,5 +1,6 @@
 import type { CellRangeRef } from '@bilig/protocol'
 import { commandReceiptChangedRangeIssues, normalizeCommandReceiptChangedRanges } from './command-receipt-ranges.js'
+import { isPlainArray } from './data-properties.js'
 import { isWorkbookOp } from './guards.js'
 import { WorkbookActionInputError, isWorkbookActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import type { EngineOp } from './ops.js'
@@ -160,7 +161,7 @@ function ownAccessorKeys(value: object, keys: readonly string[]): readonly strin
 }
 
 function arrayDataValues<T>(value: unknown, guard: (entry: unknown) => entry is T): readonly T[] | null {
-  if (!Array.isArray(value)) {
+  if (!isPlainArray(value)) {
     return null
   }
   if (firstAccessorPath(value, 'array') !== null) {
@@ -374,6 +375,10 @@ function pushCommandReceiptOpsIssues(issues: WorkbookCommandReceiptIssue[], valu
     issues.push(commandReceiptIssue(path, `Workbook command receipt ${label} ops must be an array`))
     return
   }
+  if (!isPlainArray(value)) {
+    issues.push(commandReceiptIssue(path, `Workbook command receipt ${label} ops must be a plain array`))
+    return
+  }
   const accessorPath = firstAccessorPath(value, path)
   if (accessorPath !== null) {
     issues.push(commandReceiptIssue(accessorPath, `Workbook command receipt ${label} ops must contain only data properties`))
@@ -432,6 +437,10 @@ function pushCommandReceiptErrorsIssues(issues: WorkbookCommandReceiptIssue[], v
     issues.push(commandReceiptIssue('errors', 'Workbook command receipt errors must be an array'))
     return
   }
+  if (!isPlainArray(value)) {
+    issues.push(commandReceiptIssue('errors', 'Workbook command receipt errors must be a plain array'))
+    return
+  }
   const accessorPath = firstAccessorPath(value, 'errors')
   if (accessorPath !== null) {
     issues.push(commandReceiptIssue(accessorPath, 'Workbook command receipt errors must contain only data properties'))
@@ -448,7 +457,7 @@ function pushCommandReceiptErrorsIssues(issues: WorkbookCommandReceiptIssue[], v
 }
 
 function dataArrayLength(value: unknown): number | null {
-  if (!Array.isArray(value)) {
+  if (!isPlainArray(value)) {
     return null
   }
   for (let index = 0; index < value.length; index += 1) {
