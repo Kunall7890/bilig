@@ -1,6 +1,7 @@
 import type { NumericSummary } from '../packages/benchmarks/src/stats.js'
 import type { SameCorpusCaptureCorpusFingerprint } from './ui-responsiveness-same-corpus-fingerprint.ts'
 import type {
+  SameCorpusMutationTargetProof,
   SameCorpusPixelGridProof,
   SameCorpusScenarioProof,
   SameCorpusSemanticUiProof,
@@ -182,9 +183,20 @@ export interface SameCorpusMutationTargetProofSampleSummary {
   readonly sampleIndex: number
   readonly present: boolean
   readonly accepted: boolean
+  readonly sheetName: string | null
   readonly targetRange: string | null
+  readonly intendedOperation: SameCorpusMutationTargetProof['intendedOperation'] | null
+  readonly intendedPayload: SameCorpusMutationTargetProof['intendedPayload'] | null
+  readonly before: SameCorpusMutationTargetProof['before'] | null
+  readonly after: SameCorpusMutationTargetProof['after'] | null
+  readonly restored: SameCorpusMutationTargetProof['restored'] | null
+  readonly visibleAfter: SameCorpusMutationTargetProof['visibleAfter'] | null
+  readonly visibleRestored: SameCorpusMutationTargetProof['visibleRestored'] | null
+  readonly authoritativeReadbackRevision: string | null
+  readonly visibleRenderRevision: string | null
   readonly screenshotPath: string | null
   readonly screenshotSha256: string | null
+  readonly undoRestoreStatus: SameCorpusMutationTargetProof['undoRestoreStatus'] | null
   readonly invalidReasons: readonly string[]
 }
 

@@ -669,6 +669,53 @@ function parseSameCorpusMutationUndoRestoreStatus(value: string): SameCorpusMuta
   throw new Error(`Unexpected UI responsiveness same-corpus mutation undo restore status: ${value}`)
 }
 
+function nullableSameCorpusMutatingWorkload(
+  value: Record<string, unknown>,
+  key: string,
+): SameCorpusMutationTargetProof['intendedOperation'] | null {
+  const fieldValue = value[key]
+  if (fieldValue === null) {
+    return null
+  }
+  if (typeof fieldValue !== 'string') {
+    throw new Error(`Expected ${key} to be a same-corpus mutating workload or null`)
+  }
+  return parseSameCorpusMutatingWorkload(fieldValue)
+}
+
+function nullableSameCorpusMutationTargetIntendedPayload(
+  value: Record<string, unknown>,
+  key: string,
+): SameCorpusMutationTargetProof['intendedPayload'] | null {
+  const fieldValue = value[key]
+  if (fieldValue === null) {
+    return null
+  }
+  return parseSameCorpusMutationTargetIntendedPayload(asObject(fieldValue, key))
+}
+
+function nullableSameCorpusMutationTargetReadback(value: Record<string, unknown>, key: string): SameCorpusMutationTargetReadback | null {
+  const fieldValue = value[key]
+  if (fieldValue === null) {
+    return null
+  }
+  return parseSameCorpusMutationTargetReadback(asObject(fieldValue, key))
+}
+
+function nullableSameCorpusMutationUndoRestoreStatus(
+  value: Record<string, unknown>,
+  key: string,
+): SameCorpusMutationTargetProof['undoRestoreStatus'] | null {
+  const fieldValue = value[key]
+  if (fieldValue === null) {
+    return null
+  }
+  if (typeof fieldValue !== 'string') {
+    throw new Error(`Expected ${key} to be a same-corpus mutation undo status or null`)
+  }
+  return parseSameCorpusMutationUndoRestoreStatus(fieldValue)
+}
+
 function parseSameCorpusMutationTargetProofProductSummary(value: unknown): SameCorpusMutationTargetProofProductSummary {
   const record = asObject(value, 'UI responsiveness same-corpus mutation target proof product summary')
   return {
@@ -689,9 +736,20 @@ function parseSameCorpusMutationTargetProofSampleSummary(value: unknown): SameCo
     sampleIndex: numberField(record, 'sampleIndex'),
     present: booleanField(record, 'present'),
     accepted: booleanField(record, 'accepted'),
+    sheetName: nullableStringField(record, 'sheetName'),
     targetRange: nullableStringField(record, 'targetRange'),
+    intendedOperation: nullableSameCorpusMutatingWorkload(record, 'intendedOperation'),
+    intendedPayload: nullableSameCorpusMutationTargetIntendedPayload(record, 'intendedPayload'),
+    before: nullableSameCorpusMutationTargetReadback(record, 'before'),
+    after: nullableSameCorpusMutationTargetReadback(record, 'after'),
+    restored: nullableSameCorpusMutationTargetReadback(record, 'restored'),
+    visibleAfter: nullableSameCorpusMutationTargetReadback(record, 'visibleAfter'),
+    visibleRestored: nullableSameCorpusMutationTargetReadback(record, 'visibleRestored'),
+    authoritativeReadbackRevision: nullableStringField(record, 'authoritativeReadbackRevision'),
+    visibleRenderRevision: nullableStringField(record, 'visibleRenderRevision'),
     screenshotPath: nullableStringField(record, 'screenshotPath'),
     screenshotSha256: nullableStringField(record, 'screenshotSha256'),
+    undoRestoreStatus: nullableSameCorpusMutationUndoRestoreStatus(record, 'undoRestoreStatus'),
     invalidReasons: Object.hasOwn(record, 'invalidReasons') ? stringArrayField(record, 'invalidReasons') : [],
   }
 }
