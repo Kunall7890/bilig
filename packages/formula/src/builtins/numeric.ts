@@ -51,6 +51,9 @@ export function createNumericBuiltinHelpers({
       if (significanceValue === 0) {
         return { tag: ValueTag.Error, code: ErrorCode.Div0 }
       }
+      if (numberValue > 0 && significanceValue < 0) {
+        return { tag: ValueTag.Error, code: ErrorCode.Num }
+      }
       return numberResult(Math.floor(numberValue / significanceValue) * significanceValue)
     },
     ceilingWith: (value: CellValue, significance?: CellValue): CellValue => {

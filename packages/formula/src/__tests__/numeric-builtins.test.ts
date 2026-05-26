@@ -59,6 +59,10 @@ describe('numeric builtin helpers', () => {
       tag: ValueTag.Error,
       code: ErrorCode.Div0,
     })
+    expect(helpers.floorWith({ tag: ValueTag.Number, value: 2.5 }, { tag: ValueTag.Number, value: -2 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
     expect(helpers.ceilingWith({ tag: ValueTag.Number, value: 2 }, { tag: ValueTag.String, value: 'bad', stringId: 1 })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,

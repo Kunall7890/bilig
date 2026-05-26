@@ -6,6 +6,7 @@ const num = (value: number): CellValue => ({ tag: ValueTag.Number, value })
 const str = (value: string, stringId = 1): CellValue => ({ tag: ValueTag.String, value, stringId })
 const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
 const div0Error = { tag: ValueTag.Error, code: ErrorCode.Div0 } as const
+const numError = { tag: ValueTag.Error, code: ErrorCode.Num } as const
 
 describe('math builtins', () => {
   it('rejects invalid scalar coercions instead of defaulting to zero or base 10', () => {
@@ -33,5 +34,11 @@ describe('math builtins', () => {
     expect(getBuiltin('ATAN2')?.(num(-1), num(1))).toEqual(num((3 * Math.PI) / 4))
     expect(getBuiltin('ATAN2')?.(num(1), num(-1))).toEqual(num(-Math.PI / 4))
     expect(getBuiltin('ATAN2')?.(num(0), num(0))).toEqual(div0Error)
+  })
+
+  it('matches Microsoft Excel FLOOR positive-number negative-significance error semantics', () => {
+    expect(getBuiltin('FLOOR')?.(num(2.5), num(-2))).toEqual(numError)
+    expect(getBuiltin('FLOOR')?.(num(-2.5), num(2))).toEqual(num(-4))
+    expect(getBuiltin('FLOOR')?.(num(-2.5), num(-2))).toEqual(num(-2))
   })
 })

@@ -129,6 +129,9 @@ export function tryApplyScalarMathBuiltin(
     if (significance == 0.0) {
       return writeScalarMathError(base, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (numeric > 0.0 && significance < 0.0) {
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     return writeScalarMathNumber(base, Math.floor(numeric / significance) * significance, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
