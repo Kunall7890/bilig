@@ -581,7 +581,15 @@ function parseSameCorpusMutationTargetReadback(value: Record<string, unknown>): 
     formula: nullableStringField(value, 'formula'),
     fillColor: nullableStringField(value, 'fillColor'),
     visibleText: nullableStringField(value, 'visibleText'),
+    source: Object.hasOwn(value, 'source') ? parseSameCorpusMutationTargetReadbackSource(stringField(value, 'source')) : 'unknown',
   }
+}
+
+function parseSameCorpusMutationTargetReadbackSource(value: string): SameCorpusMutationTargetReadback['source'] {
+  if (value === 'bilig-authoritative-range' || value === 'visible-formula-bar' || value === 'unknown') {
+    return value
+  }
+  throw new Error(`Unexpected UI responsiveness same-corpus mutation readback source: ${value}`)
 }
 
 function parseSameCorpusMutatingWorkload(value: string): SameCorpusMutationTargetProof['intendedOperation'] {

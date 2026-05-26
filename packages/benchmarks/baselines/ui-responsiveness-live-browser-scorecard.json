@@ -164,7 +164,7 @@
     "coveredCorpusCaseIds": ["wide-mixed-250k"],
     "runManifest": {
       "artifactGenerator": "scripts/gen-ui-responsiveness-live-browser-scorecard.ts",
-      "contractVersion": "same-corpus-ui-v4",
+      "contractVersion": "same-corpus-ui-v5",
       "requiredProducts": ["bilig", "google-sheets"],
       "requiredWorkloads": [
         "open-workbook",
@@ -235,7 +235,7 @@
       "tenXMeanAndP95CaseCount": 0,
       "currentContractEvidenceComplete": false,
       "googleSheetsTenXRequirementSatisfied": false,
-      "captureRunSignature": "fc674fb071178b986b33aaa13d427265b6a2c16cd867550f89bf4020055bc4bc",
+      "captureRunSignature": "410ccab2a9be97ded1817ccff658389c45de90a50bedfb7fa479e40d1a177f89",
       "invalidReasons": [
         "semantic UI proof covers 0/9 cases",
         "mutation target proof covers 0/3 mutating cases",
@@ -523,7 +523,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v4",
+                "contractVersion=same-corpus-ui-v5",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -630,8 +630,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v4",
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "contractVersion": "same-corpus-ui-v5",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             },
             {
@@ -639,7 +639,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             }
           ],
@@ -735,7 +735,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v4",
+                  "contractVersion=same-corpus-ui-v5",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -842,8 +842,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v4",
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "contractVersion": "same-corpus-ui-v5",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               },
               {
@@ -851,7 +851,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               }
             ],
@@ -1202,7 +1202,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v4",
+                "contractVersion=same-corpus-ui-v5",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -1309,8 +1309,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v4",
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "contractVersion": "same-corpus-ui-v5",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             },
             {
@@ -1318,7 +1318,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             }
           ],
@@ -1414,7 +1414,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v4",
+                  "contractVersion=same-corpus-ui-v5",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -1521,8 +1521,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v4",
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "contractVersion": "same-corpus-ui-v5",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               },
               {
@@ -1530,7 +1530,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               }
             ],
@@ -1881,7 +1881,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v4",
+                "contractVersion=same-corpus-ui-v5",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -1988,8 +1988,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v4",
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "contractVersion": "same-corpus-ui-v5",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             },
             {
@@ -1997,7 +1997,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             }
           ],
@@ -2093,7 +2093,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v4",
+                  "contractVersion=same-corpus-ui-v5",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -2200,8 +2200,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v4",
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "contractVersion": "same-corpus-ui-v5",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               },
               {
@@ -2209,7 +2209,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               }
             ],
@@ -2623,7 +2623,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v4",
+                "contractVersion=same-corpus-ui-v5",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -2730,8 +2730,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v4",
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "contractVersion": "same-corpus-ui-v5",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             },
             {
@@ -2739,7 +2739,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             }
           ],
@@ -2835,7 +2835,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v4",
+                  "contractVersion=same-corpus-ui-v5",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -2942,8 +2942,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v4",
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "contractVersion": "same-corpus-ui-v5",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               },
               {
@@ -2951,7 +2951,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               }
             ],
@@ -3365,7 +3365,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v4",
+                "contractVersion=same-corpus-ui-v5",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -3472,8 +3472,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v4",
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "contractVersion": "same-corpus-ui-v5",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             },
             {
@@ -3481,7 +3481,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             }
           ],
@@ -3577,7 +3577,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v4",
+                  "contractVersion=same-corpus-ui-v5",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -3684,8 +3684,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v4",
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "contractVersion": "same-corpus-ui-v5",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               },
               {
@@ -3693,7 +3693,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               }
             ],
@@ -4044,7 +4044,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v4",
+                "contractVersion=same-corpus-ui-v5",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -4151,8 +4151,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v4",
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "contractVersion": "same-corpus-ui-v5",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             },
             {
@@ -4160,7 +4160,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             }
           ],
@@ -4256,7 +4256,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v4",
+                  "contractVersion=same-corpus-ui-v5",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -4363,8 +4363,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v4",
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "contractVersion": "same-corpus-ui-v5",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               },
               {
@@ -4372,7 +4372,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               }
             ],
@@ -4723,7 +4723,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v4",
+                "contractVersion=same-corpus-ui-v5",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -4830,8 +4830,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v4",
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "contractVersion": "same-corpus-ui-v5",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             },
             {
@@ -4839,7 +4839,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             }
           ],
@@ -4935,7 +4935,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v4",
+                  "contractVersion=same-corpus-ui-v5",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -5042,8 +5042,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v4",
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "contractVersion": "same-corpus-ui-v5",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               },
               {
@@ -5051,7 +5051,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               }
             ],
@@ -5402,7 +5402,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v4",
+                "contractVersion=same-corpus-ui-v5",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -5509,8 +5509,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v4",
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "contractVersion": "same-corpus-ui-v5",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             },
             {
@@ -5518,7 +5518,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             }
           ],
@@ -5614,7 +5614,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v4",
+                  "contractVersion=same-corpus-ui-v5",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -5721,8 +5721,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v4",
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "contractVersion": "same-corpus-ui-v5",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               },
               {
@@ -5730,7 +5730,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               }
             ],
@@ -6144,7 +6144,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v4",
+                "contractVersion=same-corpus-ui-v5",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -6251,8 +6251,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v4",
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "contractVersion": "same-corpus-ui-v5",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             },
             {
@@ -6260,7 +6260,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v4",
+              "requiredContractVersion": "same-corpus-ui-v5",
               "invalidReasons": []
             }
           ],
@@ -6356,7 +6356,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v4",
+                  "contractVersion=same-corpus-ui-v5",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -6463,8 +6463,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v4",
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "contractVersion": "same-corpus-ui-v5",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               },
               {
@@ -6472,7 +6472,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v4",
+                "requiredContractVersion": "same-corpus-ui-v5",
                 "invalidReasons": []
               }
             ],

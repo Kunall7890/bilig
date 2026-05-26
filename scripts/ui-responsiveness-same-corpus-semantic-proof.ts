@@ -53,7 +53,10 @@ export interface SameCorpusMutationTargetReadback {
   readonly formula: string | null
   readonly fillColor: string | null
   readonly visibleText: string | null
+  readonly source: SameCorpusMutationTargetReadbackSource
 }
+
+export type SameCorpusMutationTargetReadbackSource = 'bilig-authoritative-range' | 'visible-formula-bar' | 'unknown'
 
 export type SameCorpusProductSemanticUiProofEvidenceStatus = 'current-contract' | 'missing' | 'invalid'
 
@@ -228,6 +231,9 @@ function sameCorpusMutationTargetProofInvalidReasons(
     if (sample.targetRange.trim().length === 0) {
       invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing the target range`)
     }
+    if (sample.targetRange.trim().length > 0 && !sameCorpusSelectedRangeMatchesTarget(proof.selectedRange, sample.targetRange)) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} target range does not match the rendered selection`)
+    }
     if (!sameCorpusReadbacksDiffer(sample.before, sample.after)) {
       invalidReasons.push(`semantic UI mutation target proof for ${workload} did not prove a before/after target change`)
     }
@@ -246,6 +252,7 @@ function sameCorpusMutationTargetProofInvalidReasons(
     if (sample.screenshotSha256 === null || !/^[a-f0-9]{64}$/u.test(sample.screenshotSha256)) {
       invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing screenshot SHA256`)
     }
+    invalidReasons.push(...sameCorpusMutationTargetReadbackSourceInvalidReasons(proof.product, workload, sample))
     if (workload === 'formula-edit' && (sample.after.formula === null || !sample.after.formula.trim().startsWith('='))) {
       invalidReasons.push('semantic UI mutation target proof for formula-edit is missing the edited formula')
     }
@@ -259,17 +266,43 @@ function sameCorpusMutationTargetProofInvalidReasons(
   return invalidReasons
 }
 
+function sameCorpusMutationTargetReadbackSourceInvalidReasons(
+  product: UiResponsivenessSameCorpusProduct,
+  workload: UiResponsivenessSameCorpusWorkload,
+  sample: SameCorpusMutationTargetProof,
+): string[] {
+  const readbacks = [sample.before, sample.after, sample.restored]
+  if (readbacks.some((readback) => readback.source === 'unknown')) {
+    return [`semantic UI mutation target proof for ${workload} is missing readback source`]
+  }
+  if (product === 'bilig' && readbacks.some((readback) => readback.source !== 'bilig-authoritative-range')) {
+    return [`semantic UI mutation target proof for ${workload} used visible editor text instead of Bilig authoritative range readback`]
+  }
+  return []
+}
+
 function sameCorpusReadbacksEqual(left: SameCorpusMutationTargetReadback, right: SameCorpusMutationTargetReadback): boolean {
   return (
     left.value === right.value &&
     left.formula === right.formula &&
     left.fillColor === right.fillColor &&
-    left.visibleText === right.visibleText
+    left.visibleText === right.visibleText &&
+    left.source === right.source
   )
 }
 
 function sameCorpusReadbacksDiffer(left: SameCorpusMutationTargetReadback, right: SameCorpusMutationTargetReadback): boolean {
   return !sameCorpusReadbacksEqual(left, right)
+}
+
+function sameCorpusSelectedRangeMatchesTarget(selectedRange: string | null, targetRange: string): boolean {
+  return normalizeSameCorpusRenderedSelectionRange(selectedRange) === normalizeSameCorpusRenderedSelectionRange(targetRange)
+}
+
+function normalizeSameCorpusRenderedSelectionRange(range: string | null): string {
+  const rawRange = range?.split('!').at(-1)?.replace(/\$/gu, '').trim().toUpperCase() ?? ''
+  const match = rawRange.match(/[A-Z]+[0-9]+(?::[A-Z]+[0-9]+)?/u)
+  return match?.[0] ?? ''
 }
 
 export async function readSameCorpusVisibleSelectedRange(page: Page, product: UiResponsivenessSameCorpusProduct): Promise<string | null> {

@@ -70,7 +70,7 @@ describe('UI responsiveness live browser scorecard', () => {
     )
     expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(0)
     expect(scorecard.sameCorpusProof.runManifest).toMatchObject({
-      contractVersion: 'same-corpus-ui-v4',
+      contractVersion: 'same-corpus-ui-v5',
       caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       scenarioSummaryFieldCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
@@ -155,7 +155,7 @@ describe('UI responsiveness live browser scorecard', () => {
       tenXMeanAndP95CaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       coveredCorpusCaseIds: ['wide-mixed-250k'],
       runManifest: {
-        contractVersion: 'same-corpus-ui-v4',
+        contractVersion: 'same-corpus-ui-v5',
         requiredProducts: ['bilig', 'google-sheets'],
         requiredWorkloads: requiredUiResponsivenessSameCorpusWorkloads,
         capturedWorkloads: requiredUiResponsivenessSameCorpusWorkloads,
@@ -895,7 +895,7 @@ function sameCorpusScenarioProof(
         'devicePixelRatio=2',
         'expectedPixelWidth=1440',
         'expectedPixelHeight=900',
-        'contractVersion=same-corpus-ui-v4',
+        'contractVersion=same-corpus-ui-v5',
         'gridAuthoritativeRevision=rev-3',
         'gridLocalRevision=rev-local-2',
         'gridProjectedRevision=rev-3',
@@ -1004,7 +1004,7 @@ function semanticUiProofFixture(
     authoritativeRenderRevision: product === 'bilig' ? 'rev-3' : null,
     visibleRenderRevision: product === 'bilig' ? 'scene-7' : null,
     screenshotSha256: 'a'.repeat(64),
-    mutationTargetProofs: sameCorpusMutationTargetProofs(workload),
+    mutationTargetProofs: sameCorpusMutationTargetProofs(product, workload),
     evidence: [
       `sheetName=${verification.sheetName}`,
       'selectedRange=A1',
@@ -1015,7 +1015,10 @@ function semanticUiProofFixture(
   }
 }
 
-function sameCorpusMutationTargetProofs(workload: UiResponsivenessSameCorpusWorkload) {
+function sameCorpusMutationTargetProofs(
+  product: 'bilig' | 'google-sheets' | 'microsoft-excel-web',
+  workload: UiResponsivenessSameCorpusWorkload,
+) {
   if (!uiSameCorpusWorkloadMutatesWorkbook(workload)) {
     return []
   }
@@ -1025,9 +1028,9 @@ function sameCorpusMutationTargetProofs(workload: UiResponsivenessSameCorpusWork
     intendedOperation: workload,
     sheetName: 'WideGrid',
     targetRange: 'A1',
-    before: sameCorpusMutationReadback(workload, 'before', sampleIndex),
-    after: sameCorpusMutationReadback(workload, 'after', sampleIndex),
-    restored: sameCorpusMutationReadback(workload, 'before', sampleIndex),
+    before: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
+    after: sameCorpusMutationReadback(product, workload, 'after', sampleIndex),
+    restored: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
     authoritativeReadbackRevision: `authoritative-readback-${sampleIndex + 1}`,
     visibleRenderRevision: `visible-render-${sampleIndex + 1}`,
     screenshotSha256: 'a'.repeat(64),
@@ -1035,14 +1038,21 @@ function sameCorpusMutationTargetProofs(workload: UiResponsivenessSameCorpusWork
   }))
 }
 
-function sameCorpusMutationReadback(workload: UiResponsivenessSameCorpusWorkload, phase: 'before' | 'after', sampleIndex: number) {
+function sameCorpusMutationReadback(
+  product: 'bilig' | 'google-sheets' | 'microsoft-excel-web',
+  workload: UiResponsivenessSameCorpusWorkload,
+  phase: 'before' | 'after',
+  sampleIndex: number,
+) {
   const after = phase === 'after'
+  const source = product === 'bilig' ? ('bilig-authoritative-range' as const) : ('visible-formula-bar' as const)
   if (workload === 'formula-edit') {
     return {
       value: after ? String(sampleIndex + 2) : 'metric-1',
       formula: after ? `=${String(sampleIndex + 1)}+1` : null,
       fillColor: null,
       visibleText: after ? String(sampleIndex + 2) : 'metric-1',
+      source,
     }
   }
   if (workload === 'fill-format-change') {
@@ -1051,6 +1061,7 @@ function sameCorpusMutationReadback(workload: UiResponsivenessSameCorpusWorkload
       formula: null,
       fillColor: after ? '#c9daf8' : null,
       visibleText: 'metric-1',
+      source,
     }
   }
   return {
@@ -1058,6 +1069,7 @@ function sameCorpusMutationReadback(workload: UiResponsivenessSameCorpusWorkload
     formula: null,
     fillColor: null,
     visibleText: after ? `same-corpus-${String(sampleIndex + 1)}` : 'metric-1',
+    source,
   }
 }
 

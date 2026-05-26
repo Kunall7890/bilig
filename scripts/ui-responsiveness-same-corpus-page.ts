@@ -599,6 +599,10 @@ async function captureSameCorpusProductVisualProofFromFreshPage(input: {
   try {
     await page.goto(input.url, { waitUntil: 'domcontentloaded', timeout: 60_000 })
     await waitForProductReady(page, input.product, input.args)
+    const target = input.mutationTargetProofs[0] ? mutationTargetSelectionFromProof(input.mutationTargetProofs[0]) : null
+    if (target) {
+      await selectSameCorpusMutationTargetRange({ page, product: input.product, target })
+    }
     return await captureSameCorpusProductVisualProof({
       caseId: input.caseId,
       corpusVerification: input.corpusVerification,
@@ -614,6 +618,16 @@ async function captureSameCorpusProductVisualProofFromFreshPage(input: {
     throw new Error(await productReadyFailureMessage(page, input.product, input.url, 0, error), { cause: error })
   } finally {
     await context.close()
+  }
+}
+
+function mutationTargetSelectionFromProof(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetSelection {
+  const [startAddress, endAddress = startAddress] = proof.targetRange.split(':')
+  return {
+    endAddress,
+    sheetName: proof.sheetName,
+    startAddress,
+    targetRange: proof.targetRange,
   }
 }
 
@@ -659,7 +673,8 @@ function sameCorpusMutationReadbacksEqual(left: SameCorpusMutationTargetReadback
     left.value === right.value &&
     left.formula === right.formula &&
     left.fillColor === right.fillColor &&
-    left.visibleText === right.visibleText
+    left.visibleText === right.visibleText &&
+    left.source === right.source
   )
 }
 

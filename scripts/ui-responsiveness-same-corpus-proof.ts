@@ -23,7 +23,7 @@ import type {
 import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
-export const sameCorpusUiRenderProofContractVersion = 'same-corpus-ui-v4'
+export const sameCorpusUiRenderProofContractVersion = 'same-corpus-ui-v5'
 
 export {
   validateSameCorpusProductSemanticUiProof,

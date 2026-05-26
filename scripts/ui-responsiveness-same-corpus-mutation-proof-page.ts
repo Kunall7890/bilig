@@ -75,6 +75,7 @@ export async function readSameCorpusMutationTargetReadback(args: {
     formula: text?.startsWith('=') ? text : null,
     fillColor,
     visibleText: text,
+    source: 'visible-formula-bar',
   }
 }
 
@@ -154,6 +155,7 @@ async function readBiligMutationTargetReadback(
     formula,
     fillColor,
     visibleText: value ?? formula,
+    source: 'bilig-authoritative-range',
   }
 }
 

@@ -768,6 +768,89 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     )
   })
 
+  it('rejects Bilig mutation target proof backed only by visible editor text', () => {
+    const proof = buildCaptureScenarioProof({
+      workload: 'edit-visible-cell',
+      bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'edit-visible-cell'),
+      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export', 'edit-visible-cell'),
+      visualProofs: [
+        sameCorpusVisualProofWithMutationProofs(
+          'bilig',
+          'typegpu-visible-canvas',
+          'same-corpus-wide-mixed-250k-edit-visible-cell',
+          'edit-visible-cell',
+          forceVisibleEditorReadbackSource,
+        ),
+        sameCorpusVisualProof(
+          'google-sheets',
+          'google-sheets-visible-grid',
+          'same-corpus-wide-mixed-250k-edit-visible-cell',
+          'edit-visible-cell',
+        ),
+      ],
+    })
+
+    expect(proof.semanticUiProof).toMatchObject({
+      captured: false,
+      missingProducts: ['bilig'],
+    })
+    expect(proof.semanticUiProof.productVerdicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          product: 'bilig',
+          invalidReasons: expect.arrayContaining([
+            'semantic UI mutation target proof for edit-visible-cell used visible editor text instead of Bilig authoritative range readback',
+          ]),
+        }),
+      ]),
+    )
+  })
+
+  it('rejects mutation target proof whose target range does not match the rendered selection', () => {
+    const proof = buildCaptureScenarioProof({
+      workload: 'fill-format-change',
+      bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'fill-format-change'),
+      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export', 'fill-format-change'),
+      visualProofs: [
+        sameCorpusVisualProofWithMutationProofs(
+          'bilig',
+          'typegpu-visible-canvas',
+          'same-corpus-wide-mixed-250k-fill-format-change',
+          'fill-format-change',
+          moveMutationTargetAwayFromRenderedSelection,
+        ),
+        sameCorpusVisualProofWithMutationProofs(
+          'google-sheets',
+          'google-sheets-visible-grid',
+          'same-corpus-wide-mixed-250k-fill-format-change',
+          'fill-format-change',
+          moveMutationTargetAwayFromRenderedSelection,
+        ),
+      ],
+    })
+
+    expect(proof.semanticUiProof).toMatchObject({
+      captured: false,
+      missingProducts: ['bilig', 'google-sheets'],
+    })
+    expect(proof.semanticUiProof.productVerdicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          product: 'bilig',
+          invalidReasons: expect.arrayContaining([
+            'semantic UI mutation target proof for fill-format-change target range does not match the rendered selection',
+          ]),
+        }),
+        expect.objectContaining({
+          product: 'google-sheets',
+          invalidReasons: expect.arrayContaining([
+            'semantic UI mutation target proof for fill-format-change target range does not match the rendered selection',
+          ]),
+        }),
+      ]),
+    )
+  })
+
   it('normalizes same-corpus mutation target selections to an explicit cell range', () => {
     expect(normalizeSameCorpusMutationTargetSelection('WideGrid!$C$5:$D$7', 'WideGrid')).toEqual({
       endAddress: 'D7',
@@ -813,7 +896,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       artifactGenerator: 'scripts/capture-ui-responsiveness-same-corpus.ts',
       biligAuthoritativeRenderProofCaseCount: 1,
       caseCount: 1,
-      contractVersion: 'same-corpus-ui-v4',
+      contractVersion: 'same-corpus-ui-v5',
       currentContractEvidenceComplete: false,
       googleSheetsTenXRequirementSatisfied: false,
       requiredProducts: ['bilig', 'google-sheets'],
@@ -1393,7 +1476,7 @@ function sameCorpusVisualProof(
               'devicePixelRatio=2',
               'expectedPixelWidth=1440',
               'expectedPixelHeight=900',
-              'contractVersion=same-corpus-ui-v4',
+              'contractVersion=same-corpus-ui-v5',
               'gridAuthoritativeRevision=rev-3',
               'gridLocalRevision=rev-local-2',
               'gridProjectedRevision=rev-3',
@@ -1464,7 +1547,7 @@ function sameCorpusVisualProof(
       authoritativeRenderRevision: product === 'bilig' ? 'rev-3' : null,
       visibleRenderRevision: product === 'bilig' ? 'scene-7' : null,
       screenshotSha256: 'a'.repeat(64),
-      mutationTargetProofs: sameCorpusMutationTargetProofs(workload),
+      mutationTargetProofs: sameCorpusMutationTargetProofs(product, workload),
       evidence: [
         'sheetName=WideGrid',
         'selectedRange=A1',
@@ -1497,7 +1580,7 @@ function sameCorpusVisualProofWithMutationProofs(
   }
 }
 
-function sameCorpusMutationTargetProofs(workload: UiResponsivenessSameCorpusWorkload) {
+function sameCorpusMutationTargetProofs(product: SameCorpusProductVisualProof['product'], workload: UiResponsivenessSameCorpusWorkload) {
   if (!uiSameCorpusWorkloadMutatesWorkbook(workload)) {
     return []
   }
@@ -1507,9 +1590,9 @@ function sameCorpusMutationTargetProofs(workload: UiResponsivenessSameCorpusWork
     intendedOperation: workload,
     sheetName: 'WideGrid',
     targetRange: 'A1',
-    before: sameCorpusMutationReadback(workload, 'before', sampleIndex),
-    after: sameCorpusMutationReadback(workload, 'after', sampleIndex),
-    restored: sameCorpusMutationReadback(workload, 'before', sampleIndex),
+    before: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
+    after: sameCorpusMutationReadback(product, workload, 'after', sampleIndex),
+    restored: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
     authoritativeReadbackRevision: `authoritative-readback-${sampleIndex + 1}`,
     visibleRenderRevision: `visible-render-${sampleIndex + 1}`,
     screenshotSha256: 'a'.repeat(64),
@@ -1532,14 +1615,37 @@ function corruptFirstMutationTargetProof(proof: SameCorpusMutationTargetProof): 
   }
 }
 
-function sameCorpusMutationReadback(workload: UiResponsivenessSameCorpusWorkload, phase: 'before' | 'after', sampleIndex: number) {
+function forceVisibleEditorReadbackSource(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  return {
+    ...proof,
+    before: { ...proof.before, source: 'visible-formula-bar' },
+    after: { ...proof.after, source: 'visible-formula-bar' },
+    restored: { ...proof.restored, source: 'visible-formula-bar' },
+  }
+}
+
+function moveMutationTargetAwayFromRenderedSelection(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  return {
+    ...proof,
+    targetRange: 'B2',
+  }
+}
+
+function sameCorpusMutationReadback(
+  product: SameCorpusProductVisualProof['product'],
+  workload: UiResponsivenessSameCorpusWorkload,
+  phase: 'before' | 'after',
+  sampleIndex: number,
+) {
   const after = phase === 'after'
+  const source = product === 'bilig' ? ('bilig-authoritative-range' as const) : ('visible-formula-bar' as const)
   if (workload === 'formula-edit') {
     return {
       value: after ? String(sampleIndex + 2) : 'metric-1',
       formula: after ? `=${String(sampleIndex + 1)}+1` : null,
       fillColor: null,
       visibleText: after ? String(sampleIndex + 2) : 'metric-1',
+      source,
     }
   }
   if (workload === 'fill-format-change') {
@@ -1548,6 +1654,7 @@ function sameCorpusMutationReadback(workload: UiResponsivenessSameCorpusWorkload
       formula: null,
       fillColor: after ? '#c9daf8' : null,
       visibleText: 'metric-1',
+      source,
     }
   }
   return {
@@ -1555,6 +1662,7 @@ function sameCorpusMutationReadback(workload: UiResponsivenessSameCorpusWorkload
     formula: null,
     fillColor: null,
     visibleText: after ? `bilig-same-corpus-${String(sampleIndex + 1)}` : 'metric-1',
+    source,
   }
 }
 
