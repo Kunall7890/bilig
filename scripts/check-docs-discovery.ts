@@ -121,6 +121,7 @@ const directusWorkpaperFlowOperation = await readFile(join(docsRoot, 'directus-w
 const windmillWorkpaperScript = await readFile(join(docsRoot, 'windmill-workpaper-script.md'), 'utf8')
 const triggerdevWorkpaperTask = await readFile(join(docsRoot, 'triggerdev-workpaper-task.md'), 'utf8')
 const airflowWorkpaperDag = await readFile(join(docsRoot, 'airflow-workpaper-dag.md'), 'utf8')
+const dagsterWorkpaperAsset = await readFile(join(docsRoot, 'dagster-workpaper-asset.md'), 'utf8')
 const kestraWorkpaperFlow = await readFile(join(docsRoot, 'kestra-workpaper-flow.md'), 'utf8')
 const prefectWorkpaperFlow = await readFile(join(docsRoot, 'prefect-workpaper-flow.md'), 'utf8')
 
@@ -258,6 +259,17 @@ await Promise.all(
     'workpaper-quote.ts',
     'scripts/check-dag.ts',
   ].map((sourceFile) => requireFile(join(repoRoot, 'examples', 'airflow-workpaper-dag', sourceFile))),
+)
+await Promise.all(
+  [
+    'README.md',
+    'package.json',
+    'requirements.txt',
+    'tsconfig.json',
+    'defs/bilig_workpaper_asset.py',
+    'workpaper-asset.ts',
+    'scripts/check-asset.ts',
+  ].map((sourceFile) => requireFile(join(repoRoot, 'examples', 'dagster-workpaper-asset', sourceFile))),
 )
 await Promise.all(
   ['README.md', 'package.json', 'tsconfig.json', 'flow.yml', 'kestra-workpaper-flow.ts', 'scripts/check-flow.ts'].map((sourceFile) =>
@@ -424,6 +436,7 @@ requireIncludes(llms, 'https://proompteng.github.io/bilig/directus-workpaper-flo
 requireIncludes(llms, 'https://proompteng.github.io/bilig/windmill-workpaper-script.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/triggerdev-workpaper-task.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/airflow-workpaper-dag.html', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/dagster-workpaper-asset.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/kestra-workpaper-flow.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/prefect-workpaper-flow.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html', 'docs/llms.txt')
@@ -435,6 +448,7 @@ requireIncludes(llms, `npm exec --package ${workpaperPackageSpec} -- bilig-n8n-f
 requireIncludes(readme, '@bilig/n8n-nodes-workpaper', 'README.md')
 requireIncludes(readme, 'Directus Persisted Calculated Fields', 'README.md')
 requireIncludes(readme, 'Trigger.dev Durable Formula Tasks', 'README.md')
+requireIncludes(readme, 'Dagster Formula Assets', 'README.md')
 requireIncludes(
   directusWorkpaperFlowOperation,
   'Run Script executes in an isolated sandbox without access to npm modules',
@@ -454,6 +468,14 @@ requireIncludes(
   'Airflow owns scheduling, retries, dependency graph state, XCom summary',
   'docs/airflow-workpaper-dag.md',
 )
+requireIncludes(dagsterWorkpaperAsset, 'examples/dagster-workpaper-asset', 'docs/dagster-workpaper-asset.md')
+requireIncludes(dagsterWorkpaperAsset, 'PipesSubprocessClient', 'docs/dagster-workpaper-asset.md')
+requireIncludes(dagsterWorkpaperAsset, 'report_asset_materialization', 'docs/dagster-workpaper-asset.md')
+requireIncludes(
+  dagsterWorkpaperAsset,
+  'Dagster owns orchestration, asset state, run history, and materialization',
+  'docs/dagster-workpaper-asset.md',
+)
 requireIncludes(kestraWorkpaperFlow, 'examples/kestra-workpaper-flow', 'docs/kestra-workpaper-flow.md')
 requireIncludes(kestraWorkpaperFlow, 'io.kestra.plugin.scripts.node.Commands', 'docs/kestra-workpaper-flow.md')
 requireIncludes(kestraWorkpaperFlow, 'Kestra owns orchestration and output-file routing.', 'docs/kestra-workpaper-flow.md')
@@ -465,6 +487,7 @@ requireIncludes(llmsFull, 'Directus WorkPaper Flow Operation', 'docs/llms-full.t
 requireIncludes(llmsFull, 'Windmill WorkPaper TypeScript script', 'docs/llms-full.txt')
 requireIncludes(llmsFull, 'Trigger.dev WorkPaper task', 'docs/llms-full.txt')
 requireIncludes(llmsFull, 'Airflow WorkPaper DAG', 'docs/llms-full.txt')
+requireIncludes(llmsFull, 'Dagster WorkPaper Asset', 'docs/llms-full.txt')
 requireIncludes(llmsFull, 'Kestra WorkPaper Node flow', 'docs/llms-full.txt')
 requireIncludes(llmsFull, 'Prefect WorkPaper flow', 'docs/llms-full.txt')
 requireIncludes(readme, 'docs/.well-known/agent.json', 'README.md')
@@ -473,6 +496,7 @@ requireIncludes(scopedWorkpaperPackageReadme, '## Start Here', 'packages/workpap
 requireIncludes(scopedWorkpaperPackageReadme, 'Windmill TypeScript workflow fields', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Trigger.dev durable task fields', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Apache Airflow DAG task outputs', 'packages/workpaper/README.md')
+requireIncludes(scopedWorkpaperPackageReadme, 'Dagster asset materialization metadata', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Kestra Node Commands flow fields', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Prefect flow fields', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Directus Flow operation for persisted calculated fields', 'packages/workpaper/README.md')
@@ -485,6 +509,11 @@ requireIncludes(
 requireIncludes(
   scopedWorkpaperPackageReadme,
   'https://proompteng.github.io/bilig/airflow-workpaper-dag.html',
+  'packages/workpaper/README.md',
+)
+requireIncludes(
+  scopedWorkpaperPackageReadme,
+  'https://proompteng.github.io/bilig/dagster-workpaper-asset.html',
   'packages/workpaper/README.md',
 )
 requireIncludes(

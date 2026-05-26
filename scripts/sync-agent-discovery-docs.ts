@@ -416,6 +416,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Windmill TypeScript script: ${siteRoot}/windmill-workpaper-script.html
 - Trigger.dev task: ${siteRoot}/triggerdev-workpaper-task.html
 - Airflow DAG: ${siteRoot}/airflow-workpaper-dag.html
+- Dagster asset: ${siteRoot}/dagster-workpaper-asset.html
 - Kestra Node flow: ${siteRoot}/kestra-workpaper-flow.html
 - Prefect flow: ${siteRoot}/prefect-workpaper-flow.html
 - XLSX formula clinic: ${siteRoot}/formula-bug-clinic.html
@@ -519,6 +520,7 @@ const llmsFullSources = [
   llmsSource('Windmill WorkPaper TypeScript Script', 'docs/windmill-workpaper-script.md'),
   llmsSource('Trigger.dev WorkPaper Task', 'docs/triggerdev-workpaper-task.md'),
   llmsSource('Airflow WorkPaper DAG', 'docs/airflow-workpaper-dag.md'),
+  llmsSource('Dagster WorkPaper Asset', 'docs/dagster-workpaper-asset.md'),
   llmsSource('Kestra WorkPaper Node Flow', 'docs/kestra-workpaper-flow.md'),
   llmsSource('Prefect WorkPaper Flow', 'docs/prefect-workpaper-flow.md'),
   llmsSource('Open WebUI WorkPaper MCP Setup', 'docs/open-webui-workpaper-mcp.md'),
@@ -750,6 +752,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/openai-agents-sdk-workpaper-tool.html`,
         `${siteRoot}/node-framework-workpaper-adapters.html`,
         `${siteRoot}/airflow-workpaper-dag.html`,
+        `${siteRoot}/dagster-workpaper-asset.html`,
         `${siteRoot}/kestra-workpaper-flow.html`,
         `${siteRoot}/prefect-workpaper-flow.html`,
         `${siteRoot}/npm-provenance-package-trust.html`,

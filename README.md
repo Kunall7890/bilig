@@ -247,6 +247,26 @@ restore, persisted-document, and `verified: true` evidence.
 See [Airflow WorkPaper DAG](docs/airflow-workpaper-dag.md) for the TaskFlow
 shape, local smoke command, deployment boundary, and outreach note.
 
+## Dagster Formula Assets
+
+Need a Dagster asset to materialize formula-backed values from a reviewable
+workbook model? Keep Dagster in charge of assets, resources, run history, and
+materialization metadata, then call a small Node WorkPaper subprocess through
+Dagster Pipes.
+
+The source example lives in:
+
+```text
+examples/dagster-workpaper-asset
+```
+
+It writes `Inputs!B2`, recalculates quote formulas, exports WorkPaper JSON,
+restores it, verifies restored readback, and emits compact Dagster Pipes
+metadata while keeping the full proof file as an artifact.
+
+See [Dagster WorkPaper asset](docs/dagster-workpaper-asset.md) for the asset
+shape, local smoke command, Pipes boundary, and outreach note.
+
 ## Kestra Formula Flows
 
 Need a Kestra Node Commands flow to calculate workflow fields from reviewable

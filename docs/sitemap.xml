@@ -535,6 +535,12 @@
     <priority>0.72</priority>
   </url>
   <url>
+    <loc>https://proompteng.github.io/bilig/dagster-workpaper-asset.html</loc>
+    <lastmod>2026-05-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.72</priority>
+  </url>
+  <url>
     <loc>https://proompteng.github.io/bilig/kestra-workpaper-flow.html</loc>
     <lastmod>2026-05-25</lastmod>
     <changefreq>weekly</changefreq>

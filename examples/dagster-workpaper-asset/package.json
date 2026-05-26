@@ -1,0 +1,18 @@
+{
+  "name": "bilig-dagster-workpaper-asset",
+  "private": true,
+  "description": "Dagster asset example that materializes Bilig WorkPaper formula proof from a Node subprocess.",
+  "type": "module",
+  "scripts": {
+    "check": "tsc -p tsconfig.json --noEmit && tsx scripts/check-asset.ts && python3 -m py_compile defs/bilig_workpaper_asset.py",
+    "smoke": "tsx workpaper-asset.ts --output .tmp/workpaper-proof.json"
+  },
+  "dependencies": {
+    "@bilig/workpaper": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.2"
+  }
+}

@@ -31,6 +31,7 @@ export const versionedStaticReferenceRoots = [
   'docs/windmill-workpaper-script.md',
   'docs/triggerdev-workpaper-task.md',
   'docs/airflow-workpaper-dag.md',
+  'docs/dagster-workpaper-asset.md',
   'docs/kestra-workpaper-flow.md',
   'docs/prefect-workpaper-flow.md',
   'docs/open-webui-workpaper-mcp.md',
