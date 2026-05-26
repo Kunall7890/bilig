@@ -25,9 +25,9 @@ import {
   type UiResponsivenessSameCorpusRunManifest,
 } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import {
+  hasAcceptedCommittedTargetProofTiming,
   hasBiligAuthoritativeRenderProofTiming,
   hasBiligProductionRuntimeProof,
-  hasCommittedTargetProofTiming,
   sameCorpusCaptureCaseOperationResponseProofGuardrailPassed,
   sameCorpusCaseOperationResponseProofGuardrailPassed,
   sameCorpusCommittedTargetProofTimingCounts,
@@ -568,9 +568,19 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
   const sourceWorkbookFingerprintGuardrailPassed = comparedProducts.every(hasCapturedSourceWorkbookFingerprint)
   const biligRuntimeProofGuardrailPassed = hasBiligProductionRuntimeProof(bilig)
   const authoritativeRenderProofGuardrailPassed = hasBiligAuthoritativeRenderProofTiming(bilig, captureCaseSampleCount(captureCase))
+  const scenarioProof = buildScorecardScenarioProof({
+    bilig,
+    googleSheets,
+    microsoftExcelWeb,
+    workload: captureCase.workload,
+    sampleCount: captureCaseSampleCount(captureCase),
+    visualProofs: scenarioProofVisualProofs(captureCase.scenarioProof),
+  })
   const committedTargetProofGuardrailPassed =
     uiSameCorpusWorkloadMutatesWorkbook(captureCase.workload) &&
-    comparedProducts.every((entry) => hasCommittedTargetProofTiming(entry, captureCaseSampleCount(captureCase)))
+    comparedProducts.every((entry) =>
+      hasAcceptedCommittedTargetProofTiming({ workload: captureCase.workload, scenarioProof }, entry, captureCaseSampleCount(captureCase)),
+    )
   const scrollMovementGuardrailPassed =
     scrollEventMetrics !== null && comparedProducts.every((entry) => (entry.scrollMovementPx?.min ?? 0) >= 1)
   const requiresScrollEventMetric = uiSameCorpusWorkloadRequiresScrollEventEvidence(captureCase.workload)
@@ -596,14 +606,6 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
         : (biligToMicrosoftExcelWebMeanRatio ?? Number.POSITIVE_INFINITY) <= 0.1 &&
           (biligToMicrosoftExcelWebP95Ratio ?? Number.POSITIVE_INFINITY) <= 0.1
     : undefined
-  const scenarioProof = buildScorecardScenarioProof({
-    bilig,
-    googleSheets,
-    microsoftExcelWeb,
-    workload: captureCase.workload,
-    sampleCount: captureCaseSampleCount(captureCase),
-    visualProofs: scenarioProofVisualProofs(captureCase.scenarioProof),
-  })
   const visualProofGuardrailPassed = scenarioProof.screenshotProof.captured && scenarioProof.pixelGridProof.captured
   const semanticUiProofGuardrailPassed = scenarioProof.semanticUiProof.captured
   const tenXMeanAndP95AgainstGoogleSheets =
@@ -792,7 +794,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
   const authoritativeRenderProofGuardrailPassed = hasBiligAuthoritativeRenderProofTiming(entry.bilig, entry.sampleCount)
   const committedTargetProofGuardrailPassed =
     uiSameCorpusWorkloadMutatesWorkbook(entry.workload) &&
-    comparedProducts.every((measurement) => hasCommittedTargetProofTiming(measurement, entry.sampleCount))
+    comparedProducts.every((measurement) => hasAcceptedCommittedTargetProofTiming(entry, measurement, entry.sampleCount))
   const scrollMovementGuardrailPassed =
     scrollEventMetrics !== null && comparedProducts.every((measurement) => (measurement.scrollMovementPx?.min ?? 0) >= 1)
   const committedTargetMetrics = committedTargetProofGuardrailPassed

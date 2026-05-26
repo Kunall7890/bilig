@@ -1050,7 +1050,7 @@ function sameCorpusCaptureMeasurementFixture(
     ...(product === 'bilig' ? { authoritativeRenderProofMsSamples: [9, 10, 11] } : {}),
     ...(uiSameCorpusWorkloadMutatesWorkbook(workload)
       ? {
-          committedTargetProofMsSamples: product === 'bilig' ? [5, 6, 7] : product === 'google-sheets' ? [100, 100, 100] : [80, 85, 90],
+          committedTargetProofMsSamples: [0, 1, 2].map((sampleIndex) => sameCorpusMutationTargetCommittedProofMs(product, sampleIndex)),
         }
       : {}),
     postOperationFrameMsSamples: product === 'bilig' ? [8, 9, 10] : [14, 15, 16],
@@ -1268,7 +1268,7 @@ function sameCorpusMutationTargetProofs(
     return []
   }
   return [0, 1, 2].map((sampleIndex) => {
-    const committedTargetProofMs = 40 + sampleIndex
+    const committedTargetProofMs = sameCorpusMutationTargetCommittedProofMs(product, sampleIndex)
     const operationStartedAtMs = 1000 + sampleIndex * 100
     return {
       product,
@@ -1298,6 +1298,16 @@ function sameCorpusMutationTargetProofs(
       undoRestoreStatus: 'verified' as const,
     }
   })
+}
+
+function sameCorpusMutationTargetCommittedProofMs(product: 'bilig' | 'google-sheets' | 'microsoft-excel-web', sampleIndex: number): number {
+  if (product === 'bilig') {
+    return 40 + sampleIndex
+  }
+  if (product === 'google-sheets') {
+    return 400 + sampleIndex * 10
+  }
+  return 440 + sampleIndex * 10
 }
 
 function sameCorpusMutationTargetScreenshots(

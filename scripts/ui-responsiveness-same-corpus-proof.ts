@@ -28,8 +28,10 @@ const rootDir = resolve(new URL('..', import.meta.url).pathname)
 export const sameCorpusUiRenderProofContractVersion = 'same-corpus-ui-v8'
 
 export {
+  validateSameCorpusMutationTargetProofSample,
   validateSameCorpusProductSemanticUiProof,
   type SameCorpusProductSemanticUiProof,
+  type SameCorpusMutationTargetProofSampleVerdict,
   type SameCorpusProductSemanticUiProofVerdict,
   type SameCorpusSemanticUiProof,
   type SameCorpusMutationTargetProof,

@@ -4,7 +4,13 @@ import type {
   SameCorpusOperationResponseProof,
   UiResponsivenessSameCorpusCase,
   UiResponsivenessSameCorpusMeasurement,
+  UiResponsivenessSameCorpusProduct,
 } from './ui-responsiveness-same-corpus-scorecard-types.ts'
+import {
+  validateSameCorpusMutationTargetProofSample,
+  type SameCorpusMutationTargetProof,
+  type SameCorpusProductSemanticUiProof,
+} from './ui-responsiveness-same-corpus-proof.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadMutatesWorkbook,
@@ -13,6 +19,23 @@ import {
 } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export const sameCorpusSampleCount = 3
+
+export interface SameCorpusCommittedTargetProofTimingMeasurement {
+  readonly product: UiResponsivenessSameCorpusProduct
+  readonly committedTargetProofMs?: { readonly samples: readonly number[] } | undefined
+  readonly committedTargetProofMsSamples?: readonly number[] | undefined
+}
+
+export interface SameCorpusCommittedTargetProofTimingCase {
+  readonly workload: UiResponsivenessSameCorpusWorkload
+  readonly scenarioProof: {
+    readonly semanticUiProof: {
+      readonly products: readonly SameCorpusProductSemanticUiProof[]
+    }
+  }
+  readonly bilig: SameCorpusCommittedTargetProofTimingMeasurement
+  readonly googleSheets: SameCorpusCommittedTargetProofTimingMeasurement
+}
 
 export function sameCorpusCaseOperationResponseProofGuardrailPassed(entry: UiResponsivenessSameCorpusCase): boolean {
   return sameCorpusMeasurementOperationResponseProofsPassed(entry.workload, entry.sampleCount, [
@@ -72,10 +95,7 @@ export function hasBiligAuthoritativeRenderProofTiming(
   return Boolean(samples && samples.length >= sampleCount && samples.every((value) => Number.isFinite(value) && value >= 0))
 }
 
-export function hasCommittedTargetProofTiming(
-  measurement: UiResponsivenessSameCorpusMeasurement | SameCorpusCaptureMeasurement,
-  sampleCount: number,
-): boolean {
+export function hasCommittedTargetProofTiming(measurement: SameCorpusCommittedTargetProofTimingMeasurement, sampleCount: number): boolean {
   if ('committedTargetProofMs' in measurement && measurement.committedTargetProofMs) {
     return (
       measurement.committedTargetProofMs.samples.length >= sampleCount &&
@@ -84,6 +104,14 @@ export function hasCommittedTargetProofTiming(
   }
   const samples = 'committedTargetProofMsSamples' in measurement ? measurement.committedTargetProofMsSamples : undefined
   return Boolean(samples && samples.length >= sampleCount && samples.every((value) => Number.isFinite(value) && value >= 0))
+}
+
+export function hasAcceptedCommittedTargetProofTiming(
+  entry: Pick<SameCorpusCommittedTargetProofTimingCase, 'scenarioProof' | 'workload'>,
+  measurement: SameCorpusCommittedTargetProofTimingMeasurement,
+  sampleCount: number,
+): boolean {
+  return acceptedCommittedTargetProofTimingSampleCount(entry, measurement, sampleCount) === sampleCount
 }
 
 export function requiredUiResponsivenessSameCorpusCommittedTargetProofTimingCaseCount(): number {
@@ -95,7 +123,7 @@ export function requiredUiResponsivenessSameCorpusCommittedTargetProofTimingSamp
 }
 
 export function sameCorpusCommittedTargetProofTimingCounts(
-  cases: readonly (UiResponsivenessSameCorpusCase | SameCorpusCaptureCase)[],
+  cases: readonly SameCorpusCommittedTargetProofTimingCase[],
   sampleCount: number,
 ): {
   readonly requiredCommittedTargetProofTimingCaseCount: number
@@ -112,7 +140,7 @@ export function sameCorpusCommittedTargetProofTimingCounts(
 }
 
 export function sameCorpusCommittedTargetProofTimingCaseCount(
-  cases: readonly (UiResponsivenessSameCorpusCase | SameCorpusCaptureCase)[],
+  cases: readonly SameCorpusCommittedTargetProofTimingCase[],
   sampleCount: number,
 ): number {
   return requiredUiResponsivenessSameCorpusWorkloads.filter(
@@ -121,13 +149,13 @@ export function sameCorpusCommittedTargetProofTimingCaseCount(
       cases.some(
         (entry) =>
           entry.workload === workload &&
-          [entry.bilig, entry.googleSheets].every((measurement) => hasCommittedTargetProofTiming(measurement, sampleCount)),
+          [entry.bilig, entry.googleSheets].every((measurement) => hasAcceptedCommittedTargetProofTiming(entry, measurement, sampleCount)),
       ),
   ).length
 }
 
 export function sameCorpusCommittedTargetProofTimingSampleCount(
-  cases: readonly (UiResponsivenessSameCorpusCase | SameCorpusCaptureCase)[],
+  cases: readonly SameCorpusCommittedTargetProofTimingCase[],
   sampleCount: number,
 ): number {
   return requiredUiResponsivenessSameCorpusWorkloads.reduce((total, workload) => {
@@ -140,23 +168,113 @@ export function sameCorpusCommittedTargetProofTimingSampleCount(
     }
     return (
       total +
-      committedTargetProofTimingSampleCount(entry.bilig, sampleCount) +
-      committedTargetProofTimingSampleCount(entry.googleSheets, sampleCount)
+      acceptedCommittedTargetProofTimingSampleCount(entry, entry.bilig, sampleCount) +
+      acceptedCommittedTargetProofTimingSampleCount(entry, entry.googleSheets, sampleCount)
     )
   }, 0)
 }
 
-function committedTargetProofTimingSampleCount(
-  measurement: UiResponsivenessSameCorpusMeasurement | SameCorpusCaptureMeasurement,
+function acceptedCommittedTargetProofTimingSampleCount(
+  entry: Pick<SameCorpusCommittedTargetProofTimingCase, 'scenarioProof' | 'workload'>,
+  measurement: SameCorpusCommittedTargetProofTimingMeasurement,
   sampleCount: number,
 ): number {
-  const samples =
-    'committedTargetProofMs' in measurement && measurement.committedTargetProofMs
-      ? measurement.committedTargetProofMs.samples
-      : 'committedTargetProofMsSamples' in measurement
-        ? measurement.committedTargetProofMsSamples
-        : undefined
-  return samples?.slice(0, sampleCount).filter((value) => Number.isFinite(value) && value >= 0).length ?? 0
+  if (!uiSameCorpusWorkloadMutatesWorkbook(entry.workload) || !hasCommittedTargetProofTiming(measurement, sampleCount)) {
+    return 0
+  }
+  const productProof = sameCorpusSemanticProductProof(entry.scenarioProof, measurement.product)
+  if (!productProof) {
+    return 0
+  }
+  const duplicateSampleIndexes = sameCorpusDuplicateMutationSampleIndexes(productProof.mutationTargetProofs)
+  const duplicateScreenshotPaths = sameCorpusDuplicateMutationScreenshotPaths(productProof.mutationTargetProofs)
+  let acceptedSampleCount = 0
+  for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex += 1) {
+    const sample = productProof.mutationTargetProofs.find((candidate) => candidate.sampleIndex === sampleIndex)
+    if (!sample || !committedTargetProofTimingMatchesMeasurement(measurement, sample, sampleIndex)) {
+      continue
+    }
+    const verdict = validateSameCorpusMutationTargetProofSample(productProof, entry.workload, sample, {
+      duplicateSampleIndex: duplicateSampleIndexes.has(sample.sampleIndex),
+      duplicateScreenshotPath:
+        sample.screenshotPath !== null &&
+        duplicateScreenshotPaths.has(normalizeSameCorpusMutationTargetScreenshotPath(sample.screenshotPath)),
+      sampleCount,
+    })
+    if (verdict.acceptedForCurrentScorecard) {
+      acceptedSampleCount += 1
+    }
+  }
+  return acceptedSampleCount
+}
+
+function committedTargetProofTimingMatchesMeasurement(
+  measurement: SameCorpusCommittedTargetProofTimingMeasurement,
+  sample: SameCorpusMutationTargetProof,
+  sampleIndex: number,
+): boolean {
+  const samples = committedTargetProofTimingSamples(measurement)
+  if (!samples || samples.length <= sampleIndex) {
+    return false
+  }
+  const timing =
+    'committedTargetProofMsSamples' in measurement
+      ? samples[sampleIndex]
+      : samples.find((value) => sameCorpusTimingValuesMatch(value, sample.committedTargetProofMs))
+  return timing !== undefined && sameCorpusTimingValuesMatch(timing, sample.committedTargetProofMs)
+}
+
+function committedTargetProofTimingSamples(measurement: SameCorpusCommittedTargetProofTimingMeasurement): readonly number[] | undefined {
+  if ('committedTargetProofMs' in measurement && measurement.committedTargetProofMs) {
+    return measurement.committedTargetProofMs.samples
+  }
+  if ('committedTargetProofMsSamples' in measurement) {
+    return measurement.committedTargetProofMsSamples
+  }
+  return undefined
+}
+
+function sameCorpusTimingValuesMatch(left: number, right: number): boolean {
+  return Number.isFinite(left) && left >= 0 && Number.isFinite(right) && right >= 0 && Math.abs(left - right) <= 1
+}
+
+function sameCorpusSemanticProductProof(
+  scenarioProof: SameCorpusCommittedTargetProofTimingCase['scenarioProof'],
+  product: UiResponsivenessSameCorpusProduct,
+): SameCorpusProductSemanticUiProof | undefined {
+  return scenarioProof.semanticUiProof.products.find((entry) => entry.product === product)
+}
+
+function sameCorpusDuplicateMutationSampleIndexes(samples: readonly SameCorpusMutationTargetProof[]): Set<number> {
+  const seen = new Set<number>()
+  const duplicates = new Set<number>()
+  for (const sample of samples) {
+    if (seen.has(sample.sampleIndex)) {
+      duplicates.add(sample.sampleIndex)
+    }
+    seen.add(sample.sampleIndex)
+  }
+  return duplicates
+}
+
+function sameCorpusDuplicateMutationScreenshotPaths(samples: readonly SameCorpusMutationTargetProof[]): Set<string> {
+  const seen = new Set<string>()
+  const duplicates = new Set<string>()
+  for (const sample of samples) {
+    if (sample.screenshotPath === null || sample.screenshotPath === undefined || sample.screenshotPath.trim().length === 0) {
+      continue
+    }
+    const screenshotPath = normalizeSameCorpusMutationTargetScreenshotPath(sample.screenshotPath)
+    if (seen.has(screenshotPath)) {
+      duplicates.add(screenshotPath)
+    }
+    seen.add(screenshotPath)
+  }
+  return duplicates
+}
+
+function normalizeSameCorpusMutationTargetScreenshotPath(path: string): string {
+  return path.trim().replaceAll('\\', '/')
 }
 
 export function sameCorpusCommittedTargetProofMetrics(
