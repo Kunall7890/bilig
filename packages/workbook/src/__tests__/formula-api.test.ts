@@ -346,9 +346,60 @@ describe('@bilig/workbook formula api', () => {
     ).toThrowError('Formula expression inputs[0] must be a data property')
     expect(operandGetterInvoked).toBe(false)
 
+    let extraInputGetterInvoked = false
+    const expressionInputsWithExtraAccessor = [input]
+    Object.defineProperty(expressionInputsWithExtraAccessor, 'hidden', {
+      enumerable: true,
+      get() {
+        extraInputGetterInvoked = true
+        throw new Error('extra input getter must not run')
+      },
+    })
+    expect(() =>
+      formula.inputs({
+        kind: 'formula',
+        source: 'Sheet1!A1',
+        inputs: expressionInputsWithExtraAccessor,
+        labels: [],
+      }),
+    ).toThrowError('Formula expression inputs.hidden must be a data property')
+    expect(extraInputGetterInvoked).toBe(false)
+
+    const expressionInputSubclass = new (class extends Array<unknown> {})()
+    expressionInputSubclass.push(input)
+    expect(() =>
+      formula.inputs({
+        kind: 'formula',
+        source: 'Sheet1!A1',
+        inputs: expressionInputSubclass,
+        labels: [],
+      }),
+    ).toThrowError('Formula expression inputs must be a plain array')
+
     const sparseArgs: unknown[] = []
     sparseArgs.length = 1
     expect(() => Reflect.apply(formula.call, undefined, ['SUM', sparseArgs])).toThrowError('Formula arguments[0] must be a data property')
+
+    const symbolArgs = [input]
+    const secret = Symbol('secret')
+    Object.defineProperty(symbolArgs, secret, {
+      enumerable: true,
+      value: input,
+    })
+    expect(() => Reflect.apply(formula.call, undefined, ['SUM', symbolArgs])).toThrowError(
+      'Formula arguments[Symbol(secret)] must be a data property',
+    )
+
+    expect(() =>
+      formula.source(
+        customPrototypeRecord({
+          kind: 'formula',
+          source: 'Sheet1!A1',
+          inputs: [input],
+          labels: [],
+        }),
+      ),
+    ).toThrowError('Formula operands must be formula expressions, workbook refs, finite numbers, booleans, or formula.text/raw wrappers')
   })
 
   it('flags raw formula inputs that are not part of resolved model refs', () => {

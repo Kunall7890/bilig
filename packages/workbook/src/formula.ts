@@ -56,6 +56,10 @@ function dataArrayValues(value: unknown, path: string): readonly unknown[] {
   if (!Array.isArray(value)) {
     throw new Error(`${path} must be an array`)
   }
+  if (Object.getPrototypeOf(value) !== Array.prototype) {
+    throw new Error(`${path} must be a plain array`)
+  }
+  assertOnlyDataProperties(value, path)
   const entries: unknown[] = []
   for (let index = 0; index < value.length; index += 1) {
     const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
@@ -210,8 +214,7 @@ function createFormulaExpression(
 
 function isFormulaExpression(value: unknown): value is WorkbookFormulaExpression {
   return (
-    typeof value === 'object' &&
-    value !== null &&
+    isObjectRecord(value) &&
     dataValue(value, 'kind') === 'formula' &&
     typeof dataValue(value, 'source') === 'string' &&
     Array.isArray(dataValue(value, 'inputs')) &&
