@@ -17,6 +17,8 @@ export function sameCorpusManifestInvalidReasons(args: {
   readonly semanticUiProofCaseCount: number
   readonly requiredMutationTargetProofCaseCount: number
   readonly mutationTargetProofCaseCount: number
+  readonly requiredMutationTargetProofSampleCount: number
+  readonly mutationTargetProofSampleCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly materializedCellCounts: readonly number[]
   readonly strictRenderedGridProofCaseCount: number
@@ -80,6 +82,13 @@ export function sameCorpusManifestInvalidReasons(args: {
       `mutation target proof covers ${String(args.mutationTargetProofCaseCount)}/${String(
         args.requiredMutationTargetProofCaseCount,
       )} mutating cases`,
+    )
+  }
+  if (args.mutationTargetProofSampleCount !== args.requiredMutationTargetProofSampleCount) {
+    invalidReasons.push(
+      `mutation target proof covers ${String(args.mutationTargetProofSampleCount)}/${String(
+        args.requiredMutationTargetProofSampleCount,
+      )} required per-sample product proofs`,
     )
   }
   if (args.legacyInsufficientRenderedGridProofCaseCount > 0) {

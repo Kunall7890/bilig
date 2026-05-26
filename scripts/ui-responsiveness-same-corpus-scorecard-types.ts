@@ -108,6 +108,8 @@ export interface UiResponsivenessSameCorpusRunManifest {
   readonly semanticUiProofCaseCount: number
   readonly requiredMutationTargetProofCaseCount: number
   readonly mutationTargetProofCaseCount: number
+  readonly requiredMutationTargetProofSampleCount: number
+  readonly mutationTargetProofSampleCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
   readonly currentContractEvidenceComplete: boolean
@@ -153,6 +155,8 @@ export interface SameCorpusCaptureRunManifest {
   readonly semanticUiProofCaseCount: number
   readonly requiredMutationTargetProofCaseCount: number
   readonly mutationTargetProofCaseCount: number
+  readonly requiredMutationTargetProofSampleCount: number
+  readonly mutationTargetProofSampleCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
   readonly currentContractEvidenceComplete: boolean

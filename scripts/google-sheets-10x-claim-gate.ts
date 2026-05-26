@@ -4,7 +4,10 @@ import { pathToFileURL } from 'node:url'
 
 import { loadBiligDominanceScorecardInput } from './bilig-dominance-scorecard-input.ts'
 import { buildBiligDominanceScorecard } from './gen-bilig-dominance-scorecard.ts'
-import { requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount } from './ui-responsiveness-same-corpus-mutation-target-proof-summary.ts'
+import {
+  requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount,
+  requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount,
+} from './ui-responsiveness-same-corpus-mutation-target-proof-summary.ts'
 import { requiredUiResponsivenessSameCorpusWorkloads } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export interface GoogleSheetsTenXClaimGateReport {
@@ -151,6 +154,17 @@ function sameCorpusUiProofFailures(uiScorecard: unknown, requiredWorkloadCount: 
       `same-corpus UI mutation target proof covers ${String(runManifest['mutationTargetProofCaseCount'])}/${String(
         requiredMutationTargetProofCaseCount,
       )} mutating cases`,
+    )
+  }
+  const requiredMutationTargetProofSampleCount =
+    typeof runManifest['requiredMutationTargetProofSampleCount'] === 'number'
+      ? runManifest['requiredMutationTargetProofSampleCount']
+      : requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount(Number(runManifest['sampleCount'] ?? 0))
+  if (runManifest['mutationTargetProofSampleCount'] !== requiredMutationTargetProofSampleCount) {
+    failures.push(
+      `same-corpus UI mutation target proof covers ${String(runManifest['mutationTargetProofSampleCount'])}/${String(
+        requiredMutationTargetProofSampleCount,
+      )} required per-sample product proofs`,
     )
   }
   if (runManifest['legacyInsufficientRenderedGridProofCaseCount'] !== 0) {

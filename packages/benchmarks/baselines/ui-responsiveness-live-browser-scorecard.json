@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "ui-responsiveness-live-browser-timing",
-  "generatedAt": "2026-05-25T23:35:48.453Z",
+  "generatedAt": "2026-05-26T08:21:10.968Z",
   "host": {
     "arch": "arm64",
     "platform": "darwin"
@@ -43,48 +43,48 @@
       "workload": "open-public-workbook-and-scroll-viewport",
       "sampleCount": 3,
       "loadToReadyMs": {
-        "samples": [2958.9181659999995, 2978.1589159999994, 3539.143125],
-        "min": 2958.9181659999995,
-        "median": 2978.1589159999994,
-        "p95": 3539.143125,
-        "max": 3539.143125,
-        "mean": 3158.7400689999995,
-        "standardDeviation": 269.1002482046981,
-        "relativeStandardDeviation": 0.0851922736048017,
-        "standardError": 155.36510073997758,
+        "samples": [2865.204334, 2867.1330000000007, 2935.367542],
+        "min": 2865.204334,
+        "median": 2867.1330000000007,
+        "p95": 2935.367542,
+        "max": 2935.367542,
+        "mean": 2889.2349586666664,
+        "standardDeviation": 32.63016367197769,
+        "relativeStandardDeviation": 0.011293703744688166,
+        "standardError": 18.83903377971787,
         "confidence95": {
-          "low": 2854.2244715496436,
-          "high": 3463.2556664503554
+          "low": 2852.3104524584196,
+          "high": 2926.1594648749133
         }
       },
       "scrollResponseMs": {
-        "samples": [126.67995900000005, 134.3694579999992, 139.18283399999927],
-        "min": 126.67995900000005,
-        "median": 134.3694579999992,
-        "p95": 139.18283399999927,
-        "max": 139.18283399999927,
-        "mean": 133.41075033333286,
-        "standardDeviation": 5.149097727369009,
-        "relativeStandardDeviation": 0.038595823158956474,
-        "standardError": 2.9728329589801876,
+        "samples": [116.4248749999997, 137.0080420000013, 138.077542],
+        "min": 116.4248749999997,
+        "median": 137.0080420000013,
+        "p95": 138.077542,
+        "max": 138.077542,
+        "mean": 130.50348633333365,
+        "standardDeviation": 9.964651871116185,
+        "relativeStandardDeviation": 0.07635544575157437,
+        "standardError": 5.753094440169838,
         "confidence95": {
-          "low": 127.58399773373169,
-          "high": 139.23750293293404
+          "low": 119.22742123060077,
+          "high": 141.77955143606653
         }
       },
       "postScrollFrameMs": {
-        "samples": [8.799999999999727, 8.800000000000182, 9.099999999999909],
-        "min": 8.799999999999727,
-        "median": 8.800000000000182,
-        "p95": 9.099999999999909,
-        "max": 9.099999999999909,
-        "mean": 8.89999999999994,
-        "standardDeviation": 0.14142135623728808,
-        "relativeStandardDeviation": 0.015890040026661688,
-        "standardError": 0.08164965809276023,
+        "samples": [9.099999999999909, 9.199999999999818, 9.200000000000273],
+        "min": 9.099999999999909,
+        "median": 9.199999999999818,
+        "p95": 9.200000000000273,
+        "max": 9.200000000000273,
+        "mean": 9.166666666666666,
+        "standardDeviation": 0.04714045207916748,
+        "relativeStandardDeviation": 0.005142594772272816,
+        "standardError": 0.027216552697628,
         "confidence95": {
-          "low": 8.73996667013813,
-          "high": 9.06003332986175
+          "low": 9.113322223379315,
+          "high": 9.220011109954017
         }
       },
       "passed": true,
@@ -104,48 +104,48 @@
       "workload": "open-public-workbook-and-scroll-viewport",
       "sampleCount": 3,
       "loadToReadyMs": {
-        "samples": [5068.412375, 5720.104625, 6814.355041999999],
-        "min": 5068.412375,
-        "median": 5720.104625,
-        "p95": 6814.355041999999,
-        "max": 6814.355041999999,
-        "mean": 5867.624014,
-        "standardDeviation": 720.370472609276,
-        "relativeStandardDeviation": 0.12277038727950029,
-        "standardError": 415.9060862772235,
+        "samples": [5082.340333000002, 5126.195833, 5128.877375],
+        "min": 5082.340333000002,
+        "median": 5126.195833,
+        "p95": 5128.877375,
+        "max": 5128.877375,
+        "mean": 5112.471180333334,
+        "standardDeviation": 21.333832873987753,
+        "relativeStandardDeviation": 0.0041729003688186625,
+        "standardError": 12.317094152643318,
         "confidence95": {
-          "low": 5052.448084896642,
-          "high": 6682.799943103358
+          "low": 5088.329675794153,
+          "high": 5136.612684872514
         }
       },
       "scrollResponseMs": {
-        "samples": [96.38445800000045, 99.02733300000182, 102.15362499999901],
-        "min": 96.38445800000045,
-        "median": 99.02733300000182,
-        "p95": 102.15362499999901,
-        "max": 102.15362499999901,
-        "mean": 99.18847200000043,
-        "standardDeviation": 2.358007110741118,
-        "relativeStandardDeviation": 0.0237729956233332,
-        "standardError": 1.361396040137436,
+        "samples": [99.1805000000004, 101.02887499999997, 101.82066599999962],
+        "min": 99.1805000000004,
+        "median": 101.02887499999997,
+        "p95": 101.82066599999962,
+        "max": 101.82066599999962,
+        "mean": 100.67668033333332,
+        "standardDeviation": 1.1062398592557583,
+        "relativeStandardDeviation": 0.0109880446553569,
+        "standardError": 0.6386878805296058,
         "confidence95": {
-          "low": 96.52013576133106,
-          "high": 101.8568082386698
+          "low": 99.4248520874953,
+          "high": 101.92850857917135
         }
       },
       "postScrollFrameMs": {
-        "samples": [9, 9.199999999999818, 9.300000000000182],
-        "min": 9,
-        "median": 9.199999999999818,
+        "samples": [9.199999999999818, 9.300000000000182, 9.300000000000182],
+        "min": 9.199999999999818,
+        "median": 9.300000000000182,
         "p95": 9.300000000000182,
         "max": 9.300000000000182,
-        "mean": 9.166666666666666,
-        "standardDeviation": 0.12472191289251333,
-        "relativeStandardDeviation": 0.013606026861001454,
-        "standardError": 0.07200822998233763,
+        "mean": 9.266666666666728,
+        "standardDeviation": 0.04714045207927466,
+        "relativeStandardDeviation": 0.005087099145245433,
+        "standardError": 0.027216552697689883,
         "confidence95": {
-          "low": 9.025530535901284,
-          "high": 9.307802797432048
+          "low": 9.213322223379256,
+          "high": 9.3200111099542
         }
       },
       "passed": true,
@@ -231,6 +231,8 @@
       "semanticUiProofCaseCount": 0,
       "requiredMutationTargetProofCaseCount": 3,
       "mutationTargetProofCaseCount": 0,
+      "requiredMutationTargetProofSampleCount": 18,
+      "mutationTargetProofSampleCount": 0,
       "legacyInsufficientRenderedGridProofCaseCount": 0,
       "tenXMeanAndP95CaseCount": 0,
       "currentContractEvidenceComplete": false,
@@ -239,6 +241,7 @@
       "invalidReasons": [
         "semantic UI proof covers 0/9 cases",
         "mutation target proof covers 0/3 mutating cases",
+        "mutation target proof covers 0/18 required per-sample product proofs",
         "not every required workload is 10x against Google Sheets"
       ]
     },

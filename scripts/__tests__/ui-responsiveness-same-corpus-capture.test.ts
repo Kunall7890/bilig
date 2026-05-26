@@ -1036,6 +1036,8 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       semanticUiProofCaseCount: 1,
       requiredMutationTargetProofCaseCount: 3,
       mutationTargetProofCaseCount: 0,
+      requiredMutationTargetProofSampleCount: 18,
+      mutationTargetProofSampleCount: 0,
       tenXMeanAndP95CaseCount: 0,
     })
     expect(capture.runManifest.captureRunSignature).toMatch(/^[a-f0-9]{64}$/u)
@@ -1044,6 +1046,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     )
     expect(capture.runManifest.invalidReasons).toContain('Bilig production runtime proof covers 0/9 cases')
     expect(capture.runManifest.invalidReasons).toContain('mutation target proof covers 0/3 mutating cases')
+    expect(capture.runManifest.invalidReasons).toContain('mutation target proof covers 0/18 required per-sample product proofs')
     expect(capture.runManifest.invalidReasons).toContain('not every required workload is 10x against Google Sheets')
     expect(capture.cases[0]).toMatchObject({
       biligMeanMs: scenarioProof.biligMeanMs,

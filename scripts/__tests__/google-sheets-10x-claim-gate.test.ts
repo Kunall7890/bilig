@@ -110,6 +110,8 @@ function passingUiScorecard(): unknown {
         semanticUiProofCaseCount: requiredWorkloadCount,
         requiredMutationTargetProofCaseCount: 3,
         mutationTargetProofCaseCount: 3,
+        requiredMutationTargetProofSampleCount: 18,
+        mutationTargetProofSampleCount: 18,
         legacyInsufficientRenderedGridProofCaseCount: 0,
         tenXMeanAndP95CaseCount: requiredWorkloadCount,
       },

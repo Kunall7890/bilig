@@ -39,7 +39,9 @@ import {
 } from './ui-responsiveness-same-corpus-scenario-fields.ts'
 import {
   requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount,
+  requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount,
   sameCorpusMutationTargetProofCaseCount,
+  sameCorpusMutationTargetProofSampleCount,
 } from './ui-responsiveness-same-corpus-mutation-target-proof-summary.ts'
 import { sameCorpusManifestInvalidReasons } from './ui-responsiveness-same-corpus-manifest-invalid-reasons.ts'
 import {
@@ -177,6 +179,9 @@ function buildSameCorpusRunManifest(
   const semanticUiProofCaseCount = cases.filter((entry) => entry.scenarioProof.semanticUiProof.captured).length
   const requiredMutationTargetProofCaseCount = requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount()
   const mutationTargetProofCaseCount = sameCorpusMutationTargetProofCaseCount(cases)
+  const sampleCount = manifestSampleCount(cases)
+  const requiredMutationTargetProofSampleCount = requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount(sampleCount)
+  const mutationTargetProofSampleCount = sameCorpusMutationTargetProofSampleCount(cases)
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
   ).length
@@ -193,6 +198,8 @@ function buildSameCorpusRunManifest(
     semanticUiProofCaseCount,
     requiredMutationTargetProofCaseCount,
     mutationTargetProofCaseCount,
+    requiredMutationTargetProofSampleCount,
+    mutationTargetProofSampleCount,
     legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
     strictRenderedGridProofCaseCount,
@@ -210,7 +217,7 @@ function buildSameCorpusRunManifest(
     productSourceWorkbookFingerprints,
     materializedCellCounts,
     biligProductionRuntimeProofCaseCount,
-    sampleCount: manifestSampleCount(cases),
+    sampleCount,
     caseCount: cases.length,
     scenarioSummaryFieldCaseCount,
     strictRenderedGridProofCaseCount,
@@ -219,6 +226,8 @@ function buildSameCorpusRunManifest(
     semanticUiProofCaseCount,
     requiredMutationTargetProofCaseCount,
     mutationTargetProofCaseCount,
+    requiredMutationTargetProofSampleCount,
+    mutationTargetProofSampleCount,
     legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
     currentContractEvidenceComplete: !invalidReasons.some(
@@ -251,6 +260,8 @@ export function buildSameCorpusCaptureRunManifest(
   const semanticUiProofCaseCount = cases.filter((entry) => entry.scenarioProof.semanticUiProof.captured).length
   const requiredMutationTargetProofCaseCount = requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount()
   const mutationTargetProofCaseCount = sameCorpusMutationTargetProofCaseCount(cases)
+  const requiredMutationTargetProofSampleCount = requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount(sampleCount)
+  const mutationTargetProofSampleCount = sameCorpusMutationTargetProofSampleCount(cases)
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
   ).length
@@ -267,6 +278,8 @@ export function buildSameCorpusCaptureRunManifest(
     semanticUiProofCaseCount,
     requiredMutationTargetProofCaseCount,
     mutationTargetProofCaseCount,
+    requiredMutationTargetProofSampleCount,
+    mutationTargetProofSampleCount,
     legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
     strictRenderedGridProofCaseCount,
@@ -294,6 +307,8 @@ export function buildSameCorpusCaptureRunManifest(
     semanticUiProofCaseCount,
     requiredMutationTargetProofCaseCount,
     mutationTargetProofCaseCount,
+    requiredMutationTargetProofSampleCount,
+    mutationTargetProofSampleCount,
     legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
     currentContractEvidenceComplete: !invalidReasons.some(

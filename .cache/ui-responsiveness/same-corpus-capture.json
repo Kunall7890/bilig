@@ -72,6 +72,8 @@
     "semanticUiProofCaseCount": 0,
     "requiredMutationTargetProofCaseCount": 3,
     "mutationTargetProofCaseCount": 0,
+    "requiredMutationTargetProofSampleCount": 18,
+    "mutationTargetProofSampleCount": 0,
     "legacyInsufficientRenderedGridProofCaseCount": 0,
     "tenXMeanAndP95CaseCount": 0,
     "currentContractEvidenceComplete": false,
@@ -80,6 +82,7 @@
     "invalidReasons": [
       "semantic UI proof covers 0/9 cases",
       "mutation target proof covers 0/3 mutating cases",
+      "mutation target proof covers 0/18 required per-sample product proofs",
       "not every required workload is 10x against Google Sheets"
     ]
   },
