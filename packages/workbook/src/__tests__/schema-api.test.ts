@@ -249,7 +249,7 @@ describe('@bilig/workbook schema api', () => {
         value: { $ref: '#/$defs/literalInput' },
       },
     })
-    const unknownKindSchema = variants.find((entry) => constKindFromSchema(entry) === 'makeRevenueModel')
+    const unknownKindSchema = variants.find((entry) => constKindFromSchema(entry) === 'makeCustomModel')
     expect(unknownKindSchema).toBeUndefined()
   })
 

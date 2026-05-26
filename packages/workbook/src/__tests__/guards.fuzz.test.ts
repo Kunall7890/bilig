@@ -42,7 +42,7 @@ describe('workbook guard fuzz', () => {
 // Helpers
 
 const engineOpArbitrary = fc.oneof<GuardedOp>(
-  fc.constantFrom('Book', 'Spec', 'Revenue').map((name) => ({ kind: 'upsertWorkbook', name })),
+  fc.constantFrom('Book', 'Spec', 'Model').map((name) => ({ kind: 'upsertWorkbook', name })),
   fc
     .record({
       name: fc.constantFrom('Sheet1', 'Sheet2'),

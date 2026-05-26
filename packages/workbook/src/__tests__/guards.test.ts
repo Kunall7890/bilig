@@ -157,7 +157,7 @@ describe('workbook guards', () => {
               sourceUrl: 'https://example.com/chart.png',
               rows: 8,
               cols: 5,
-              altText: 'Revenue image',
+              altText: 'Workbook image',
             },
           },
           {
