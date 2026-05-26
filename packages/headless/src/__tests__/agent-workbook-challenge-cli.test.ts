@@ -24,6 +24,13 @@ describe('bilig-agent-challenge', () => {
       star: 'https://github.com/proompteng/bilig/stargazers',
       watchReleases: 'https://github.com/proompteng/bilig/subscription',
       adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
+      nextStep: {
+        ifUseful: 'If this agent workbook proof matched your workflow, star or bookmark Bilig so you can find it again.',
+        star: 'https://github.com/proompteng/bilig/stargazers',
+        watchReleases: 'https://github.com/proompteng/bilig/subscription',
+        ifBlocked: 'If it almost worked, open the concrete workbook or agent blocker.',
+        adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
+      },
     })
   })
 
@@ -44,6 +51,10 @@ describe('bilig-agent-challenge', () => {
       verified: true,
       star: 'https://github.com/proompteng/bilig/stargazers',
       watchReleases: 'https://github.com/proompteng/bilig/subscription',
+      nextStep: {
+        star: 'https://github.com/proompteng/bilig/stargazers',
+        watchReleases: 'https://github.com/proompteng/bilig/subscription',
+      },
     })
   })
 

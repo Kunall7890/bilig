@@ -1,4 +1,5 @@
 import { createWorkPaperFromDocument, exportWorkPaperDocument, parseWorkPaperDocument, serializeWorkPaperDocument } from './persistence.js'
+import { createProofNextStep, proofAdoptionBlockerUrl, proofStarUrl, proofWatchReleasesUrl, type ProofNextStep } from './proof-next-step.js'
 import { WorkPaper } from './work-paper.js'
 
 type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
@@ -21,7 +22,7 @@ export interface AgentWorkbookChallengeProof {
   readonly star: string
   readonly watchReleases: string
   readonly adoptionBlocker: string
-  readonly nextStep: string
+  readonly nextStep: ProofNextStep
 }
 
 export interface AgentWorkbookChallengeCliHost {
@@ -143,11 +144,10 @@ export function buildAgentWorkbookChallengeProof(): AgentWorkbookChallengeProof 
       'This challenge proves the WorkPaper write/read/persist loop, not full Excel desktop compatibility.',
       'For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture.',
     ],
-    star: 'https://github.com/proompteng/bilig/stargazers',
-    watchReleases: 'https://github.com/proompteng/bilig/subscription',
-    adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
-    nextStep:
-      'If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general',
+    star: proofStarUrl,
+    watchReleases: proofWatchReleasesUrl,
+    adoptionBlocker: proofAdoptionBlockerUrl,
+    nextStep: createProofNextStep('agent workbook'),
   }
 }
 

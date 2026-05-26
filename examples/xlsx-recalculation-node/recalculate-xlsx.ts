@@ -8,6 +8,10 @@ import { recalculateXlsx } from 'xlsx-formula-recalc'
 
 type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
 
+const star = 'https://github.com/proompteng/bilig/stargazers'
+const watchReleases = 'https://github.com/proompteng/bilig/subscription'
+const adoptionBlocker = 'https://github.com/proompteng/bilig/discussions/new?category=general'
+
 type QuoteSummary = {
   readonly listRevenue: number
   readonly discountAmount: number
@@ -73,7 +77,16 @@ const output = {
     formulasSurvivedXlsxRoundTrip: formulaStillThere,
     verified: false,
   },
-  nextStep: 'If this is the Node/XLSX workflow you need, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers',
+  star,
+  watchReleases,
+  adoptionBlocker,
+  nextStep: {
+    ifUseful: 'If this Node/XLSX proof matched your workflow, star or bookmark Bilig so you can find it again.',
+    star,
+    watchReleases,
+    ifBlocked: 'If it almost worked, open the concrete workbook blocker.',
+    adoptionBlocker,
+  },
 }
 output.checks.verified =
   output.checks.decisionChanged && output.checks.exportedReimportMatchesAfter && output.checks.formulasSurvivedXlsxRoundTrip

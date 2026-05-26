@@ -13,10 +13,10 @@ The generated starter builds a quote-approval workbook, writes inputs through an
 API-style handler, recalculates formulas, persists JSON, restores the workbook,
 and prints `verified: true`.
 
-After the smoke proof passes, the output includes the adoption-feedback URL,
-repo star URL, and release-watch URL. Use the star URL as a bookmark only when
-the proof matches your workflow; otherwise open one concrete blocker or
-integration note:
+After the smoke proof passes, the output includes a `nextStep` object with the
+repo star URL, release-watch URL, and adoption-blocker URL. Use the star URL as
+a bookmark only when the proof matches your workflow; if it almost works, open
+one concrete blocker or integration note:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 
 Use this when you want to evaluate `@bilig/workpaper` from a blank directory

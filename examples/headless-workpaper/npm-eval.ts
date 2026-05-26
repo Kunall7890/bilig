@@ -29,8 +29,9 @@ const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { inc
 const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved))
 const restoredSummary = requireSheet(restored, 'Summary')
 const afterRestore = numberValue(restored.getCellValue({ sheet: restoredSummary, row: 1, col: 1 }))
-const nextStep =
-  'If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general'
+const star = 'https://github.com/proompteng/bilig/stargazers'
+const watchReleases = 'https://github.com/proompteng/bilig/subscription'
+const adoptionBlocker = 'https://github.com/proompteng/bilig/discussions/new?category=general'
 
 const output = {
   before,
@@ -39,10 +40,16 @@ const output = {
   sheets: restored.getSheetNames(),
   bytes: saved.length,
   verified: before === 24000 && after === 38400 && afterRestore === 38400,
-  star: 'https://github.com/proompteng/bilig/stargazers',
-  watchReleases: 'https://github.com/proompteng/bilig/subscription',
-  adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
-  nextStep,
+  star,
+  watchReleases,
+  adoptionBlocker,
+  nextStep: {
+    ifUseful: 'If this proof matched your workflow, star or bookmark Bilig so you can find it again.',
+    star,
+    watchReleases,
+    ifBlocked: 'If it almost worked, open the concrete workbook or agent blocker.',
+    adoptionBlocker,
+  },
 }
 
 if (!output.verified) {

@@ -46,6 +46,13 @@ describe('bilig-mcp-challenge', () => {
       star: 'https://github.com/proompteng/bilig/stargazers',
       watchReleases: 'https://github.com/proompteng/bilig/subscription',
       adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
+      nextStep: {
+        ifUseful: 'If this file-backed MCP proof matched your workflow, star or bookmark Bilig so you can find it again.',
+        star: 'https://github.com/proompteng/bilig/stargazers',
+        watchReleases: 'https://github.com/proompteng/bilig/subscription',
+        ifBlocked: 'If it almost worked, open the concrete workbook or agent blocker.',
+        adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
+      },
     })
   })
 
@@ -67,6 +74,10 @@ describe('bilig-mcp-challenge', () => {
       verified: true,
       star: 'https://github.com/proompteng/bilig/stargazers',
       watchReleases: 'https://github.com/proompteng/bilig/subscription',
+      nextStep: {
+        star: 'https://github.com/proompteng/bilig/stargazers',
+        watchReleases: 'https://github.com/proompteng/bilig/subscription',
+      },
     })
     expect(parsed.workpaperPath).toBeUndefined()
   })

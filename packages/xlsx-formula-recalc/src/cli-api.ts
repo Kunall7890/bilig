@@ -20,10 +20,32 @@ interface CliOptions {
   readonly json: boolean
 }
 
+interface CliProofNextStep {
+  readonly ifUseful: string
+  readonly star: string
+  readonly watchReleases: string
+  readonly ifBlocked: string
+  readonly adoptionBlocker: string
+}
+
 export interface XlsxFormulaRecalcCliContext {
   readonly commandName?: string
   readonly stdout?: (text: string) => void
   readonly stderr?: (text: string) => void
+}
+
+const repoStarUrl = 'https://github.com/proompteng/bilig/stargazers'
+const releaseWatchUrl = 'https://github.com/proompteng/bilig/subscription'
+const adoptionBlockerUrl = 'https://github.com/proompteng/bilig/discussions/new?category=general'
+
+function createCliProofNextStep(): CliProofNextStep {
+  return {
+    ifUseful: 'If this XLSX recalculation proof fixed a stale formula path, star or bookmark Bilig so you can find it again.',
+    star: repoStarUrl,
+    watchReleases: releaseWatchUrl,
+    ifBlocked: 'If it almost worked, open the concrete workbook blocker.',
+    adoptionBlocker: adoptionBlockerUrl,
+  }
 }
 
 export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFormulaRecalcCliContext = {}): number {
@@ -59,11 +81,10 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
       warnings: result.warnings,
       ...(result.diagnostics ? { diagnostics: result.diagnostics } : {}),
       verified: true,
-      star: 'https://github.com/proompteng/bilig/stargazers',
-      watchReleases: 'https://github.com/proompteng/bilig/subscription',
-      adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
-      nextStep:
-        'If this XLSX recalculation proof matches your workflow, star or bookmark Bilig; if it almost works, open the concrete workbook blocker.',
+      star: repoStarUrl,
+      watchReleases: releaseWatchUrl,
+      adoptionBlocker: adoptionBlockerUrl,
+      nextStep: createCliProofNextStep(),
     }
 
     if (options.json) {

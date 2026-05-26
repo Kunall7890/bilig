@@ -31,7 +31,13 @@ describe('xlsx-recalc CLI', () => {
       expect(summary.star).toBe('https://github.com/proompteng/bilig/stargazers')
       expect(summary.watchReleases).toBe('https://github.com/proompteng/bilig/subscription')
       expect(summary.adoptionBlocker).toBe('https://github.com/proompteng/bilig/discussions/new?category=general')
-      expect(summary.nextStep).toContain('XLSX recalculation proof')
+      expect(summary.nextStep).toMatchObject({
+        ifUseful: 'If this XLSX recalculation proof fixed a stale formula path, star or bookmark Bilig so you can find it again.',
+        star: 'https://github.com/proompteng/bilig/stargazers',
+        watchReleases: 'https://github.com/proompteng/bilig/subscription',
+        ifBlocked: 'If it almost worked, open the concrete workbook blocker.',
+        adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
+      })
       expect(summary.reads['Summary!B2']?.value).toBe(72_000)
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
@@ -164,7 +170,13 @@ interface CliSummary {
   readonly star: string
   readonly watchReleases: string
   readonly adoptionBlocker: string
-  readonly nextStep: string
+  readonly nextStep: {
+    readonly ifUseful: string
+    readonly star: string
+    readonly watchReleases: string
+    readonly ifBlocked: string
+    readonly adoptionBlocker: string
+  }
 }
 
 function readCliSummary(stdout: string): CliSummary {
@@ -192,7 +204,7 @@ function readCliSummary(stdout: string): CliSummary {
     typeof star !== 'string' ||
     typeof watchReleases !== 'string' ||
     typeof adoptionBlocker !== 'string' ||
-    typeof nextStep !== 'string'
+    !isCliNextStep(nextStep)
   ) {
     throw new Error(`Unexpected CLI summary shape: ${stdout}`)
   }
@@ -209,6 +221,19 @@ function readCliSummary(stdout: string): CliSummary {
     adoptionBlocker,
     nextStep,
   }
+}
+
+function isCliNextStep(value: unknown): value is CliSummary['nextStep'] {
+  if (!isRecord(value)) {
+    return false
+  }
+  return (
+    typeof value['ifUseful'] === 'string' &&
+    typeof value['star'] === 'string' &&
+    typeof value['watchReleases'] === 'string' &&
+    typeof value['ifBlocked'] === 'string' &&
+    typeof value['adoptionBlocker'] === 'string'
+  )
 }
 
 function readCliSummaryDiagnostics(value: unknown): CliSummary['diagnostics'] | undefined {

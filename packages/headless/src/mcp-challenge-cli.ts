@@ -8,6 +8,7 @@ import {
   dispatchWorkPaperMcpJsonRpc,
   type WorkPaperMcpJsonRpcDispatchResult,
 } from './work-paper-mcp-json-rpc.js'
+import { createProofNextStep, proofAdoptionBlockerUrl, proofStarUrl, proofWatchReleasesUrl, type ProofNextStep } from './proof-next-step.js'
 import type { WorkPaperMcpToolServer } from './work-paper-mcp-server.js'
 
 type JsonObject = Record<string, unknown>
@@ -45,7 +46,7 @@ export interface McpChallengeProof {
   readonly star: string
   readonly watchReleases: string
   readonly adoptionBlocker: string
-  readonly nextStep: string
+  readonly nextStep: ProofNextStep
 }
 
 export interface McpChallengeCliHost {
@@ -290,11 +291,10 @@ export function buildMcpChallengeProof(options: McpChallengeBuildOptions = {}): 
         'This challenge proves the file-backed MCP WorkPaper tool surface, not Excel desktop UI automation.',
         'For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture.',
       ],
-      star: 'https://github.com/proompteng/bilig/stargazers',
-      watchReleases: 'https://github.com/proompteng/bilig/subscription',
-      adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
-      nextStep:
-        'If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general',
+      star: proofStarUrl,
+      watchReleases: proofWatchReleasesUrl,
+      adoptionBlocker: proofAdoptionBlockerUrl,
+      nextStep: createProofNextStep('file-backed MCP'),
     }
 
     return keepTemp ? { ...proof, workpaperPath } : proof
