@@ -221,7 +221,7 @@ function coerceBoolean(value: CellValue | undefined, fallback: boolean): boolean
   return numeric === undefined ? undefined : numeric !== 0
 }
 
-const complexBuiltins = createComplexBuiltins({ toNumber, numberResult, valueError })
+const complexBuiltins = preserveIncomingErrors(createComplexBuiltins({ toNumber, numberResult, valueError }))
 const numericBuiltinHelpers = createNumericBuiltinHelpers({
   toNumber,
   numberResult,
