@@ -410,7 +410,34 @@ function sameCorpusMutationTargetScreenshotSetInvalidReasons(
       `semantic UI mutation target proof for ${workload} top-level screenshot hash does not match after target screenshot`,
     )
   }
+  invalidReasons.push(...sameCorpusMutationTargetScreenshotTransitionInvalidReasons(workload, sample))
   return invalidReasons
+}
+
+function sameCorpusMutationTargetScreenshotTransitionInvalidReasons(
+  workload: UiResponsivenessSameCorpusWorkload,
+  sample: SameCorpusMutationTargetProof,
+): string[] {
+  const screenshots = sample.targetScreenshots
+  if (!screenshots) {
+    return []
+  }
+  const beforeHash = normalizeSameCorpusScreenshotHash(screenshots.before.screenshotSha256)
+  const afterHash = normalizeSameCorpusScreenshotHash(screenshots.after.screenshotSha256)
+  const restoredHash = normalizeSameCorpusScreenshotHash(screenshots.restored.screenshotSha256)
+  const invalidReasons: string[] = []
+  if (beforeHash && afterHash && beforeHash === afterHash) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} before and after target screenshots are identical`)
+  }
+  if (afterHash && restoredHash && afterHash === restoredHash) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} after and restored target screenshots are identical`)
+  }
+  return invalidReasons
+}
+
+function normalizeSameCorpusScreenshotHash(value: string | null | undefined): string | null {
+  const hash = value?.trim().toLowerCase() ?? ''
+  return /^[a-f0-9]{64}$/u.test(hash) ? hash : null
 }
 
 function sameCorpusMutationSampleIndexCounts(samples: readonly SameCorpusMutationTargetProof[]): Map<number, number> {

@@ -327,7 +327,7 @@ function mutationTargetProof(
         ? `bilig-visible-scene-sha256:${visibleSceneProofSha256(sampleIndex)}`
         : `google-sheets-screenshot-sha256:${'b'.repeat(64)}`,
     targetScreenshots: targetScreenshots(product, sampleIndex),
-    screenshotSha256: 'b'.repeat(64),
+    screenshotSha256: targetScreenshotSha256(sampleIndex, 'after'),
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/${product}-sample-${String(
       sampleIndex + 1,
     )}-after.png`,
@@ -356,8 +356,14 @@ function targetScreenshot(
     scope: 'target-cell',
     targetRange: 'A1',
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/${product}-sample-${String(sampleIndex + 1)}-${phase}.png`,
-    screenshotSha256: 'b'.repeat(64),
+    screenshotSha256: targetScreenshotSha256(sampleIndex, phase),
   }
+}
+
+function targetScreenshotSha256(sampleIndex: number, phase: 'before' | 'after' | 'restored'): string {
+  const hexChars = '0123456789abcdef'
+  const phaseOffset = phase === 'before' ? 1 : phase === 'after' ? 11 : 2
+  return hexChars[(sampleIndex * 3 + phaseOffset) % hexChars.length]?.repeat(64) ?? '0'.repeat(64)
 }
 
 function readback(

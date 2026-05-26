@@ -906,10 +906,27 @@ function writeSameCorpusScreenshotArtifacts(rootDir: string, proof: UiResponsive
   }
 }
 
-function writeSameCorpusScreenshotArtifact(rootDir: string, artifactPath: string, contents = fixtureScreenshotBytes): void {
+function writeSameCorpusScreenshotArtifact(
+  rootDir: string,
+  artifactPath: string,
+  contents = sameCorpusScreenshotArtifactContents(artifactPath),
+): void {
   const absolutePath = resolve(rootDir, artifactPath)
   mkdirSync(dirname(absolutePath), { recursive: true })
   writeFileSync(absolutePath, contents)
+}
+
+function sameCorpusScreenshotArtifactContents(artifactPath: string): string {
+  const match = artifactPath.match(/\/mutation-target\/[^/]+-sample-(\d+)-(before|after|restored)\.png$/u)
+  if (!match) {
+    return fixtureScreenshotBytes
+  }
+  const phase = sameCorpusMutationTargetScreenshotPhase(match[2])
+  return phase ? sameCorpusMutationTargetScreenshotBytes(Number(match[1]) - 1, phase) : fixtureScreenshotBytes
+}
+
+function sameCorpusMutationTargetScreenshotPhase(value: string | undefined): 'before' | 'after' | 'restored' | null {
+  return value === 'before' || value === 'after' || value === 'restored' ? value : null
 }
 
 function sameCorpusScreenshotArtifactPaths(proof: UiResponsivenessSameCorpusProof): string[] {
@@ -1243,7 +1260,7 @@ function sameCorpusMutationTargetProofs(
     visibleRenderRevision: sameCorpusVisibleRenderRevision(product, sampleIndex),
     targetScreenshots: sameCorpusMutationTargetScreenshots(product, workload, sampleIndex),
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-after.png`,
-    screenshotSha256: fixtureScreenshotSha256,
+    screenshotSha256: sameCorpusMutationTargetScreenshotSha256(sampleIndex, 'after'),
     undoRestoreStatus: 'verified' as const,
   }))
 }
@@ -1271,8 +1288,16 @@ function sameCorpusMutationTargetScreenshot(
     scope: 'target-cell' as const,
     targetRange: 'A1',
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-${phase}.png`,
-    screenshotSha256: fixtureScreenshotSha256,
+    screenshotSha256: sameCorpusMutationTargetScreenshotSha256(sampleIndex, phase),
   }
+}
+
+function sameCorpusMutationTargetScreenshotSha256(sampleIndex: number, phase: 'before' | 'after' | 'restored'): string {
+  return createHash('sha256').update(sameCorpusMutationTargetScreenshotBytes(sampleIndex, phase)).digest('hex')
+}
+
+function sameCorpusMutationTargetScreenshotBytes(sampleIndex: number, phase: 'before' | 'after' | 'restored'): string {
+  return `mutation-target:${String(sampleIndex + 1)}:${phase}`
 }
 
 function sameCorpusMutationTargetIntendedPayload(

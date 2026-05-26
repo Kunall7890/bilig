@@ -1812,7 +1812,7 @@ function sameCorpusMutationTargetProofs(product: SameCorpusProductVisualProof['p
     visibleRenderRevision: sameCorpusVisibleRenderRevision(product, sampleIndex),
     targetScreenshots: sameCorpusMutationTargetScreenshots(product, workload, sampleIndex),
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-after.png`,
-    screenshotSha256: 'a'.repeat(64),
+    screenshotSha256: sameCorpusMutationTargetScreenshotSha256(sampleIndex, 'after'),
     undoRestoreStatus: 'verified' as const,
   }))
 }
@@ -1840,8 +1840,14 @@ function sameCorpusMutationTargetScreenshot(
     scope: 'target-cell',
     targetRange: 'A1',
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-${phase}.png`,
-    screenshotSha256: 'a'.repeat(64),
+    screenshotSha256: sameCorpusMutationTargetScreenshotSha256(sampleIndex, phase),
   }
+}
+
+function sameCorpusMutationTargetScreenshotSha256(sampleIndex: number, phase: 'before' | 'after' | 'restored'): string {
+  const hexChars = '0123456789abcdef'
+  const phaseOffset = phase === 'before' ? 1 : phase === 'after' ? 5 : 9
+  return hexChars[(sampleIndex + phaseOffset) % hexChars.length]?.repeat(64) ?? '0'.repeat(64)
 }
 
 function sameCorpusMutationTargetIntendedPayload(

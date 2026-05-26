@@ -63,6 +63,48 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('rejects mutation target screenshots that do not visibly change after mutation', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 ? staleAfterMutationTargetScreenshotProof(proof) : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell before and after target screenshots are identical',
+      ]),
+    })
+  })
+
+  it('rejects mutation target screenshots that do not visibly restore after undo', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 ? staleRestoredMutationTargetScreenshotProof(proof) : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell after and restored target screenshots are identical',
+      ]),
+    })
+  })
+
   it('rejects rendered selection text that merely contains the target range', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validSemanticProof({
@@ -352,7 +394,7 @@ function mutationTargetProof(
     visibleRenderRevision: visibleRenderRevision(sampleIndex),
     targetScreenshots: mutationTargetScreenshots(product, workload, sampleIndex),
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${String(sampleIndex + 1)}-after.png`,
-    screenshotSha256: 'a'.repeat(64),
+    screenshotSha256: mutationTargetScreenshotSha256(sampleIndex, 'after'),
     undoRestoreStatus: 'verified',
   }
 }
@@ -418,7 +460,7 @@ function fillMutationTargetProof(
     visibleRenderRevision: visibleRenderRevision(sampleIndex),
     targetScreenshots: mutationTargetScreenshots('bilig', 'fill-format-change', sampleIndex),
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-fill-format-change/mutation-target/bilig-sample-${String(sampleIndex + 1)}-after.png`,
-    screenshotSha256: 'a'.repeat(64),
+    screenshotSha256: mutationTargetScreenshotSha256(sampleIndex, 'after'),
     undoRestoreStatus: 'verified',
   }
 }
@@ -446,8 +488,48 @@ function mutationTargetScreenshot(
     scope: 'target-cell',
     targetRange: 'A1',
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${String(sampleIndex + 1)}-${phase}.png`,
-    screenshotSha256: 'a'.repeat(64),
+    screenshotSha256: mutationTargetScreenshotSha256(sampleIndex, phase),
   }
+}
+
+function staleAfterMutationTargetScreenshotProof(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  if (!proof.targetScreenshots) {
+    return proof
+  }
+  const beforeHash = proof.targetScreenshots.before.screenshotSha256
+  return {
+    ...proof,
+    screenshotSha256: beforeHash,
+    targetScreenshots: {
+      ...proof.targetScreenshots,
+      after: {
+        ...proof.targetScreenshots.after,
+        screenshotSha256: beforeHash,
+      },
+    },
+  }
+}
+
+function staleRestoredMutationTargetScreenshotProof(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  if (!proof.targetScreenshots) {
+    return proof
+  }
+  return {
+    ...proof,
+    targetScreenshots: {
+      ...proof.targetScreenshots,
+      restored: {
+        ...proof.targetScreenshots.restored,
+        screenshotSha256: proof.targetScreenshots.after.screenshotSha256,
+      },
+    },
+  }
+}
+
+function mutationTargetScreenshotSha256(sampleIndex: number, phase: 'before' | 'after' | 'restored'): string {
+  const hexChars = '0123456789abcdef'
+  const phaseOffset = phase === 'before' ? 1 : phase === 'after' ? 5 : 9
+  return hexChars[(sampleIndex + phaseOffset) % hexChars.length]?.repeat(64) ?? '0'.repeat(64)
 }
 
 function fillColorForSample(sampleIndex: number): string {
