@@ -256,7 +256,7 @@ function productSemanticProof(
     captured: true,
     method: product === 'bilig' ? 'bilig-visible-semantic-readback' : 'google-sheets-visible-semantic-readback',
     sheetName: 'WideGrid',
-    sheetId: null,
+    sheetId: productSemanticSheetId(product),
     selectedRange: 'A1',
     checkedCells: [
       { address: 'A1', expected: 'metric-1', actual: 'metric-1' },
@@ -267,8 +267,18 @@ function productSemanticProof(
     visibleRenderRevision: product === 'bilig' ? 'visible-1' : null,
     screenshotSha256: 'a'.repeat(64),
     mutationTargetProofs: sampleIndexes.map((sampleIndex) => mutationTargetProof(product, sampleIndex, corruptProof && sampleIndex === 0)),
-    evidence: ['semanticUiProofVersion=semantic-ui-v1'],
+    evidence: ['semanticUiProofVersion=semantic-ui-v1', `sheetId=${productSemanticSheetId(product)}`],
   }
+}
+
+function productSemanticSheetId(product: UiResponsivenessSameCorpusProduct): string {
+  if (product === 'bilig') {
+    return 'sheet-wide-grid'
+  }
+  if (product === 'google-sheets') {
+    return 'gid:160971404'
+  }
+  return 'excel-web-sheet-wide-grid'
 }
 
 function mutationTargetProof(

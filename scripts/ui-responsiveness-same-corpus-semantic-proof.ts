@@ -152,7 +152,8 @@ export async function readProductSemanticUiProof(args: {
   readonly mutationTargetProofs?: readonly SameCorpusMutationTargetProof[]
 }): Promise<SameCorpusProductSemanticUiProof> {
   const selectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
-  const evidence = sameCorpusSemanticUiEvidence(args.product, args.pixelGridProof, args.corpusVerification, selectedRange)
+  const sheetId = await readSameCorpusVisibleSheetId(args.page, args.product, args.corpusVerification.sheetName)
+  const evidence = sameCorpusSemanticUiEvidence(args.product, args.pixelGridProof, args.corpusVerification, selectedRange, sheetId)
   const screenshotSha256 = args.screenshot.buffer ? screenshotBufferSha256(args.screenshot.buffer) : null
   const proof: SameCorpusProductSemanticUiProof = {
     product: args.product,
@@ -160,12 +161,13 @@ export async function readProductSemanticUiProof(args: {
       args.screenshot.captured &&
       args.corpusVerification.verified &&
       selectedRange !== null &&
+      sheetId !== null &&
       screenshotSha256 !== null &&
       args.corpusVerification.checkedCells.length >= 3 &&
       args.corpusVerification.checkedCells.every((cell) => cell.expected === cell.actual),
     method: semanticUiProofMethod(args.product),
     sheetName: args.corpusVerification.sheetName,
-    sheetId: null,
+    sheetId,
     selectedRange,
     checkedCells: args.corpusVerification.checkedCells.map((cell) => ({ ...cell })),
     authoritativeRenderRevision: sameCorpusEvidenceMap(args.pixelGridProof.evidence).get('gridAuthoritativeRevision') ?? null,
@@ -195,6 +197,9 @@ function sameCorpusProductSemanticUiInvalidReasons(
   }
   if (proof.sheetName.trim().length === 0) {
     invalidReasons.push('semantic UI proof is missing sheet name')
+  }
+  if (proof.sheetId === null || proof.sheetId.trim().length === 0) {
+    invalidReasons.push('semantic UI proof is missing sheet id')
   }
   if (proof.selectedRange === null || proof.selectedRange.trim().length === 0) {
     invalidReasons.push('semantic UI proof is missing selected range')
@@ -625,6 +630,33 @@ export async function readSameCorpusVisibleSelectedRange(page: Page, product: Ui
   })
 }
 
+async function readSameCorpusVisibleSheetId(
+  page: Page,
+  product: UiResponsivenessSameCorpusProduct,
+  sheetName: string,
+): Promise<string | null> {
+  if (product === 'bilig') {
+    const sheetIdentity = await page.evaluate((name) => window.__biligSameCorpusProof?.readSheetIdentity?.(name) ?? null, sheetName)
+    return typeof sheetIdentity?.sheetId === 'number' && Number.isSafeInteger(sheetIdentity.sheetId) ? String(sheetIdentity.sheetId) : null
+  }
+  if (product === 'google-sheets') {
+    return googleSheetsVisibleSheetId(page.url())
+  }
+  return null
+}
+
+function googleSheetsVisibleSheetId(url: string): string | null {
+  try {
+    const parsed = new URL(url)
+    const searchGid = parsed.searchParams.get('gid')?.trim()
+    const hashGid = parsed.hash.match(/(?:^#|[&#])gid=([^&#]+)/u)?.[1]?.trim()
+    const gid = searchGid || hashGid
+    return gid && /^\d+$/u.test(gid) ? `gid:${gid}` : null
+  } catch {
+    return null
+  }
+}
+
 export interface SameCorpusNameBoxReaderPage {
   readonly keyboard: {
     press(key: string): Promise<void>
@@ -667,12 +699,14 @@ function sameCorpusSemanticUiEvidence(
   pixelGridProof: SameCorpusProductPixelGridProof,
   corpusVerification: SameCorpusCaptureCorpusVerification,
   selectedRange: string | null,
+  sheetId: string | null,
 ): string[] {
   const evidence = sameCorpusEvidenceMap(pixelGridProof.evidence)
   return [
     'semanticUiProofVersion=semantic-ui-v1',
     `product=${product}`,
     `sheetName=${corpusVerification.sheetName}`,
+    `sheetId=${sheetId ?? ''}`,
     `selectedRange=${selectedRange ?? ''}`,
     `checkedCellCount=${String(corpusVerification.checkedCells.length)}`,
     `corpusVerified=${String(corpusVerification.verified)}`,

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "ui-responsiveness-live-browser-timing",
-  "generatedAt": "2026-05-26T10:39:02.915Z",
+  "generatedAt": "2026-05-26T10:45:42.464Z",
   "host": {
     "arch": "arm64",
     "platform": "darwin"
@@ -43,48 +43,48 @@
       "workload": "open-public-workbook-and-scroll-viewport",
       "sampleCount": 3,
       "loadToReadyMs": {
-        "samples": [2986.732209, 2994.733959000001, 3137.59225],
-        "min": 2986.732209,
-        "median": 2994.733959000001,
-        "p95": 3137.59225,
-        "max": 3137.59225,
-        "mean": 3039.6861393333334,
-        "standardDeviation": 69.3071034366646,
-        "relativeStandardDeviation": 0.02280074332011959,
-        "standardError": 40.01447482591155,
+        "samples": [2831.8846249999997, 2859.9768329999997, 3207.741959],
+        "min": 2831.8846249999997,
+        "median": 2859.9768329999997,
+        "p95": 3207.741959,
+        "max": 3207.741959,
+        "mean": 2966.534472333333,
+        "standardDeviation": 170.9445948362929,
+        "relativeStandardDeviation": 0.05762434127449601,
+        "standardError": 98.69490784524523,
         "confidence95": {
-          "low": 2961.2577686745467,
-          "high": 3118.11450999212
+          "low": 2773.0924529566523,
+          "high": 3159.9764917100133
         }
       },
       "scrollResponseMs": {
-        "samples": [118.24316700000054, 123.81124999999975, 136.0088340000002],
-        "min": 118.24316700000054,
-        "median": 123.81124999999975,
-        "p95": 136.0088340000002,
-        "max": 136.0088340000002,
-        "mean": 126.02108366666683,
-        "standardDeviation": 7.419220741401833,
-        "relativeStandardDeviation": 0.05887285306184248,
-        "standardError": 4.2834890922256035,
+        "samples": [119.69245799999953, 123.29849999999988, 127.41233399999874],
+        "min": 119.69245799999953,
+        "median": 123.29849999999988,
+        "p95": 127.41233399999874,
+        "max": 127.41233399999874,
+        "mean": 123.46776399999938,
+        "standardDeviation": 3.1538980209800487,
+        "relativeStandardDeviation": 0.025544303377682168,
+        "standardError": 1.8209038714094592,
         "confidence95": {
-          "low": 117.62544504590464,
-          "high": 134.416722287429
+          "low": 119.89879241203684,
+          "high": 127.03673558796191
         }
       },
       "postScrollFrameMs": {
-        "samples": [9.199999999999818, 9.199999999999818, 9.399999999999636],
-        "min": 9.199999999999818,
-        "median": 9.199999999999818,
-        "p95": 9.399999999999636,
-        "max": 9.399999999999636,
-        "mean": 9.266666666666424,
-        "standardDeviation": 0.09428090415812058,
-        "relativeStandardDeviation": 0.010174198290444934,
-        "standardError": 0.05443310539513223,
+        "samples": [8.400000000000091, 9, 9.099999999999909],
+        "min": 8.400000000000091,
+        "median": 9,
+        "p95": 9.099999999999909,
+        "max": 9.099999999999909,
+        "mean": 8.833333333333334,
+        "standardDeviation": 0.3091206165164548,
+        "relativeStandardDeviation": 0.034994786775447706,
+        "standardError": 0.17847087115783825,
         "confidence95": {
-          "low": 9.159977780091966,
-          "high": 9.373355553240883
+          "low": 8.483530425863972,
+          "high": 9.183136240802696
         }
       },
       "passed": true,
@@ -104,48 +104,48 @@
       "workload": "open-public-workbook-and-scroll-viewport",
       "sampleCount": 3,
       "loadToReadyMs": {
-        "samples": [5072.767917000001, 5083.804209000002, 5094.942166999999],
-        "min": 5072.767917000001,
-        "median": 5083.804209000002,
-        "p95": 5094.942166999999,
-        "max": 5094.942166999999,
-        "mean": 5083.838097666668,
-        "standardDeviation": 9.052631370561137,
-        "relativeStandardDeviation": 0.0017806686988549123,
-        "standardError": 5.226539158667924,
+        "samples": [5093.842957999999, 5138.365958, 6298.699333999997],
+        "min": 5093.842957999999,
+        "median": 5138.365958,
+        "p95": 6298.699333999997,
+        "max": 6298.699333999997,
+        "mean": 5510.302749999999,
+        "standardDeviation": 557.7768099813161,
+        "relativeStandardDeviation": 0.10122434923948892,
+        "standardError": 322.0325913904436,
         "confidence95": {
-          "low": 5073.594080915678,
-          "high": 5094.082114417657
+          "low": 4879.1188708747295,
+          "high": 6141.486629125268
         }
       },
       "scrollResponseMs": {
-        "samples": [97.6630409999998, 97.67283399999724, 97.8680000000004],
-        "min": 97.6630409999998,
-        "median": 97.67283399999724,
-        "p95": 97.8680000000004,
-        "max": 97.8680000000004,
-        "mean": 97.73462499999914,
-        "standardDeviation": 0.09439506936712976,
-        "relativeStandardDeviation": 0.0009658303734948651,
-        "standardError": 0.054499018709285765,
+        "samples": [98.80462500000067, 100.52200000000084, 101.70400000000154],
+        "min": 98.80462500000067,
+        "median": 100.52200000000084,
+        "p95": 101.70400000000154,
+        "max": 101.70400000000154,
+        "mean": 100.34354166666769,
+        "standardDeviation": 1.1903723171651106,
+        "relativeStandardDeviation": 0.011862968930471096,
+        "standardError": 0.6872617777511553,
         "confidence95": {
-          "low": 97.62780692332895,
-          "high": 97.84144307666934
+          "low": 98.99650858227542,
+          "high": 101.69057475105996
         }
       },
       "postScrollFrameMs": {
-        "samples": [8.699999999999818, 9, 9.100000000000364],
-        "min": 8.699999999999818,
+        "samples": [8.5, 9, 9.400000000000546],
+        "min": 8.5,
         "median": 9,
-        "p95": 9.100000000000364,
-        "max": 9.100000000000364,
-        "mean": 8.933333333333394,
-        "standardDeviation": 0.16996731711996166,
-        "relativeStandardDeviation": 0.019026192214920953,
-        "standardError": 0.09813067629264835,
+        "p95": 9.400000000000546,
+        "max": 9.400000000000546,
+        "mean": 8.966666666666848,
+        "standardDeviation": 0.36817870057312274,
+        "relativeStandardDeviation": 0.04106082162525449,
+        "standardError": 0.21256807188577906,
         "confidence95": {
-          "low": 8.740997207799802,
-          "high": 9.125669458866986
+          "low": 8.55003324577072,
+          "high": 9.383300087562976
         }
       },
       "passed": true,
@@ -306,6 +306,7 @@
           "invalidReasons": [
             "semantic UI proof is not marked captured",
             "semantic UI proof is missing sheet name",
+            "semantic UI proof is missing sheet id",
             "semantic UI proof is missing selected range",
             "semantic UI proof checks fewer than 3 cells",
             "semantic UI proof is missing screenshot SHA256",
@@ -385,6 +386,7 @@
           "invalidReasons": [
             "semantic UI proof is not marked captured",
             "semantic UI proof is missing sheet name",
+            "semantic UI proof is missing sheet id",
             "semantic UI proof is missing selected range",
             "semantic UI proof checks fewer than 3 cells",
             "semantic UI proof is missing screenshot SHA256"
@@ -462,6 +464,7 @@
           "invalidReasons": [
             "semantic UI proof is not marked captured",
             "semantic UI proof is missing sheet name",
+            "semantic UI proof is missing sheet id",
             "semantic UI proof is missing selected range",
             "semantic UI proof checks fewer than 3 cells",
             "semantic UI proof is missing screenshot SHA256",
@@ -541,6 +544,7 @@
           "invalidReasons": [
             "semantic UI proof is not marked captured",
             "semantic UI proof is missing sheet name",
+            "semantic UI proof is missing sheet id",
             "semantic UI proof is missing selected range",
             "semantic UI proof checks fewer than 3 cells",
             "semantic UI proof is missing screenshot SHA256"
@@ -618,6 +622,7 @@
           "invalidReasons": [
             "semantic UI proof is not marked captured",
             "semantic UI proof is missing sheet name",
+            "semantic UI proof is missing sheet id",
             "semantic UI proof is missing selected range",
             "semantic UI proof checks fewer than 3 cells",
             "semantic UI proof is missing screenshot SHA256",
@@ -697,6 +702,7 @@
           "invalidReasons": [
             "semantic UI proof is not marked captured",
             "semantic UI proof is missing sheet name",
+            "semantic UI proof is missing sheet id",
             "semantic UI proof is missing selected range",
             "semantic UI proof checks fewer than 3 cells",
             "semantic UI proof is missing screenshot SHA256"
@@ -707,7 +713,7 @@
       "tenXMeanAndP95CaseCount": 0,
       "currentContractEvidenceComplete": false,
       "googleSheetsTenXRequirementSatisfied": false,
-      "captureRunSignature": "0fa56324af417fb09ba80d1586043e867be91c5a29599433f9777d85469f3d43",
+      "captureRunSignature": "3a866e89563c12806481f332f7512103e12f82f76ad97608b25c2b649024e070",
       "invalidReasons": [
         "semantic UI proof covers 0/9 cases",
         "mutation target proof covers 0/3 mutating cases",
@@ -1159,6 +1165,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256",
@@ -1173,6 +1180,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256"
@@ -1371,6 +1379,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256",
@@ -1385,6 +1394,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256"
@@ -1838,6 +1848,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256",
@@ -1852,6 +1863,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256"
@@ -2050,6 +2062,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256",
@@ -2064,6 +2077,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256"
@@ -2517,6 +2531,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256",
@@ -2531,6 +2546,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256"
@@ -2729,6 +2745,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256",
@@ -2743,6 +2760,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256"
@@ -3259,6 +3277,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256",
@@ -3273,6 +3292,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256"
@@ -3471,6 +3491,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256",
@@ -3485,6 +3506,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256"
@@ -4001,6 +4023,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256",
@@ -4015,6 +4038,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256"
@@ -4213,6 +4237,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256",
@@ -4227,6 +4252,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256"
@@ -4680,6 +4706,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256",
@@ -4694,6 +4721,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256"
@@ -4892,6 +4920,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256",
@@ -4906,6 +4935,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256"
@@ -5359,6 +5389,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256",
@@ -5373,6 +5404,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256"
@@ -5571,6 +5603,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256",
@@ -5585,6 +5618,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256"
@@ -6038,6 +6072,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256",
@@ -6052,6 +6087,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256"
@@ -6250,6 +6286,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256",
@@ -6264,6 +6301,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256"
@@ -6780,6 +6818,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256",
@@ -6794,6 +6833,7 @@
               "invalidReasons": [
                 "semantic UI proof is not marked captured",
                 "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing sheet id",
                 "semantic UI proof is missing selected range",
                 "semantic UI proof checks fewer than 3 cells",
                 "semantic UI proof is missing screenshot SHA256"
@@ -6992,6 +7032,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256",
@@ -7006,6 +7047,7 @@
                 "invalidReasons": [
                   "semantic UI proof is not marked captured",
                   "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing sheet id",
                   "semantic UI proof is missing selected range",
                   "semantic UI proof checks fewer than 3 cells",
                   "semantic UI proof is missing screenshot SHA256"

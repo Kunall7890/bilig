@@ -40,6 +40,23 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('rejects semantic UI proof without a concrete sheet id', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        sheetId: null,
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining(['semantic UI proof is missing sheet id']),
+    })
+  })
+
   it('rejects mutation screenshots that are not tied to the workload and sample', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validSemanticProof({

@@ -1072,7 +1072,7 @@ function semanticUiProofFixture(
           ? ('google-sheets-visible-semantic-readback' as const)
           : ('excel-web-visible-semantic-readback' as const),
     sheetName: verification.sheetName,
-    sheetId: product === 'bilig' ? 'sheet-wide-grid' : null,
+    sheetId: sameCorpusFixtureSheetId(product),
     selectedRange: 'A1',
     checkedCells: verification.checkedCells,
     authoritativeRenderRevision: product === 'bilig' ? 'rev-3' : null,
@@ -1081,12 +1081,23 @@ function semanticUiProofFixture(
     mutationTargetProofs: sameCorpusMutationTargetProofs(product, workload),
     evidence: [
       `sheetName=${verification.sheetName}`,
+      `sheetId=${sameCorpusFixtureSheetId(product)}`,
       'selectedRange=A1',
       `checkedCellCount=${String(verification.checkedCells.length)}`,
       `screenshotSha256=${fixtureScreenshotSha256}`,
       ...(product === 'bilig' ? ['authoritativeRenderRevision=rev-3', 'visibleRenderRevision=scene-7'] : []),
     ],
   }
+}
+
+function sameCorpusFixtureSheetId(product: 'bilig' | 'google-sheets' | 'microsoft-excel-web'): string {
+  if (product === 'bilig') {
+    return 'sheet-wide-grid'
+  }
+  if (product === 'google-sheets') {
+    return 'gid:160971404'
+  }
+  return 'excel-web-sheet-wide-grid'
 }
 
 function sameCorpusMutationTargetProofs(

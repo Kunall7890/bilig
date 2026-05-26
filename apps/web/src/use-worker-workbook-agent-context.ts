@@ -50,6 +50,7 @@ type BiligSameCorpusRenderedRangeProof = Pick<
 }
 
 interface BiligSameCorpusProofApi {
+  readonly readSheetIdentity: (sheetName: string) => { readonly sheetId: number } | null
   readonly readRange: (sheetName: string, startAddress: string, endAddress?: string | null) => BiligSameCorpusRenderedRangeProof
 }
 
@@ -290,6 +291,7 @@ export function useWorkerWorkbookAgentContext(input: {
       return
     }
     const api: BiligSameCorpusProofApi = {
+      readSheetIdentity: (sheetName: string) => readViewportStoreSheetIdentity(workerHandleRef.current?.viewportStore, sheetName),
       readRange: (sheetName: string, startAddress: string, endAddress?: string | null) => {
         const viewportStore = workerHandleRef.current?.viewportStore
         return {

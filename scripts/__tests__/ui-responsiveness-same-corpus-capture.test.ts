@@ -1738,7 +1738,7 @@ function sameCorpusVisualProof(
             ? 'google-sheets-visible-semantic-readback'
             : 'excel-web-visible-semantic-readback',
       sheetName: 'WideGrid',
-      sheetId: product === 'bilig' ? 'sheet-wide-grid' : null,
+      sheetId: sameCorpusFixtureSheetId(product),
       selectedRange: 'A1',
       checkedCells: sameCorpusFixtureCheckedCells,
       authoritativeRenderRevision: product === 'bilig' ? 'rev-3' : null,
@@ -1747,6 +1747,7 @@ function sameCorpusVisualProof(
       mutationTargetProofs: sameCorpusMutationTargetProofs(product, workload),
       evidence: [
         'sheetName=WideGrid',
+        `sheetId=${sameCorpusFixtureSheetId(product)}`,
         'selectedRange=A1',
         `checkedCellCount=${String(sameCorpusFixtureCheckedCells.length)}`,
         'screenshotSha256=' + 'a'.repeat(64),
@@ -1754,6 +1755,16 @@ function sameCorpusVisualProof(
       ],
     },
   }
+}
+
+function sameCorpusFixtureSheetId(product: SameCorpusProductVisualProof['product']): string {
+  if (product === 'bilig') {
+    return 'sheet-wide-grid'
+  }
+  if (product === 'google-sheets') {
+    return 'gid:160971404'
+  }
+  return 'excel-web-sheet-wide-grid'
 }
 
 function sameCorpusVisualProofWithMutationProofs(
