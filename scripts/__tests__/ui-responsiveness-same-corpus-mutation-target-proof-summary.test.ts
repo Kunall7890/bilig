@@ -80,7 +80,7 @@ describe('same-corpus mutation target proof summary', () => {
     ]
 
     expect(sameCorpusMutationTargetProofCaseCount(cases, 3)).toBe(0)
-    expect(sameCorpusMutationTargetProofSampleCount(cases, 3)).toBe(0)
+    expect(sameCorpusMutationTargetProofSampleCount(cases, 3)).toBe(2)
     expect(sameCorpusMutationTargetProofProductSummaries(cases, 3)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -88,10 +88,10 @@ describe('same-corpus mutation target proof summary', () => {
           product: 'bilig',
           requiredSampleCount: 3,
           rawSampleCount: 1,
-          acceptedSampleCount: 0,
+          acceptedSampleCount: 1,
           accepted: false,
           samples: [
-            expect.objectContaining({ sampleIndex: 0, present: true, accepted: false }),
+            expect.objectContaining({ sampleIndex: 0, present: true, accepted: true }),
             expect.objectContaining({ sampleIndex: 1, present: false, accepted: false }),
             expect.objectContaining({ sampleIndex: 2, present: false, accepted: false }),
           ],
@@ -111,15 +111,26 @@ describe('same-corpus mutation target proof summary', () => {
     ]
 
     expect(sameCorpusMutationTargetProofCaseCount(cases, 3)).toBe(0)
-    expect(sameCorpusMutationTargetProofSampleCount(cases, 3)).toBe(3)
+    expect(sameCorpusMutationTargetProofSampleCount(cases, 3)).toBe(5)
     expect(sameCorpusMutationTargetProofProductSummaries(cases, 3)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           workload: 'edit-visible-cell',
           product: 'google-sheets',
           rawSampleCount: 3,
-          acceptedSampleCount: 0,
+          acceptedSampleCount: 2,
           accepted: false,
+          samples: [
+            expect.objectContaining({
+              sampleIndex: 0,
+              accepted: false,
+              invalidReasons: expect.arrayContaining([
+                'semantic UI mutation target proof for edit-visible-cell did not prove the intended committed target value',
+              ]),
+            }),
+            expect.objectContaining({ sampleIndex: 1, accepted: true, invalidReasons: [] }),
+            expect.objectContaining({ sampleIndex: 2, accepted: true, invalidReasons: [] }),
+          ],
           invalidReasons: expect.arrayContaining([
             'semantic UI mutation target proof for edit-visible-cell did not prove the intended committed target value',
           ]),
@@ -141,7 +152,7 @@ describe('same-corpus mutation target proof summary', () => {
 
     expect(sameCorpusMutationTargetProofProductEvidenceLines(summaries)).toEqual(
       expect.arrayContaining([
-        expect.stringContaining('edit-visible-cell/bilig accepted 0/3 samples (raw 1); missing samples: 1, 2; rejected samples: 0'),
+        expect.stringContaining('edit-visible-cell/bilig accepted 1/3 samples (raw 1); missing samples: 1, 2; rejected samples: none'),
         expect.stringContaining(
           'edit-visible-cell/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none',
         ),
@@ -149,7 +160,7 @@ describe('same-corpus mutation target proof summary', () => {
     )
     expect(sameCorpusMutationTargetProofProductGapLines(summaries)).toEqual(
       expect.arrayContaining([
-        expect.stringContaining('same-corpus mutation target proof gap: edit-visible-cell/bilig accepted 0/3 samples (raw 1)'),
+        expect.stringContaining('same-corpus mutation target proof gap: edit-visible-cell/bilig accepted 1/3 samples (raw 1)'),
         expect.stringContaining('same-corpus mutation target proof gap: edit-visible-cell/google-sheets accepted 0/3 samples (raw 0)'),
       ]),
     )

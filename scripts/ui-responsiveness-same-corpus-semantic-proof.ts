@@ -79,6 +79,11 @@ export interface SameCorpusProductSemanticUiProofVerdict {
   readonly invalidReasons: readonly string[]
 }
 
+export interface SameCorpusMutationTargetProofSampleVerdict {
+  readonly acceptedForCurrentScorecard: boolean
+  readonly invalidReasons: readonly string[]
+}
+
 export interface SameCorpusScreenshotBuffer {
   toString(encoding: 'base64'): string
 }
@@ -98,6 +103,23 @@ export function validateSameCorpusProductSemanticUiProof(
     product: proof.product,
     evidenceStatus: acceptedForCurrentScorecard ? 'current-contract' : proof.captured ? 'invalid' : 'missing',
     acceptedForCurrentScorecard,
+    invalidReasons,
+  }
+}
+
+export function validateSameCorpusMutationTargetProofSample(
+  proof: SameCorpusProductSemanticUiProof,
+  workload: UiResponsivenessSameCorpusWorkload,
+  sample: SameCorpusMutationTargetProof,
+  options: {
+    readonly duplicateSampleIndex?: boolean
+    readonly duplicateScreenshotPath?: boolean
+    readonly sampleCount: number
+  },
+): SameCorpusMutationTargetProofSampleVerdict {
+  const invalidReasons = sameCorpusMutationTargetProofSampleInvalidReasons(proof, workload, sample, options)
+  return {
+    acceptedForCurrentScorecard: invalidReasons.length === 0,
     invalidReasons,
   }
 }
@@ -226,69 +248,108 @@ function sameCorpusMutationTargetProofInvalidReasons(
       `semantic UI mutation target proof for ${workload} covers ${String(mutationProofs.length)}/${String(sampleCount)} samples`,
     )
   }
-  const seenSamples = new Set<number>()
-  const seenScreenshotPaths = new Set<string>()
+  const sampleIndexCounts = sameCorpusMutationSampleIndexCounts(mutationProofs)
+  const screenshotPathCounts = sameCorpusMutationScreenshotPathCounts(mutationProofs)
   for (const sample of mutationProofs) {
-    if (!Number.isInteger(sample.sampleIndex) || sample.sampleIndex < 0 || sample.sampleIndex >= sampleCount) {
-      invalidReasons.push(`semantic UI mutation target proof for ${workload} has invalid sample index`)
-    } else if (seenSamples.has(sample.sampleIndex)) {
-      invalidReasons.push(`semantic UI mutation target proof for ${workload} duplicates sample ${String(sample.sampleIndex + 1)}`)
-    } else {
-      seenSamples.add(sample.sampleIndex)
-    }
-    if (sample.workload !== workload || sample.intendedOperation !== workload) {
-      invalidReasons.push(`semantic UI mutation target proof operation does not match ${workload}`)
-    }
-    invalidReasons.push(...sameCorpusMutationTargetPayloadInvalidReasons(workload, sample))
-    if (sample.sheetName.trim().length === 0 || sample.sheetName !== proof.sheetName) {
-      invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing the target sheet`)
-    }
-    if (sample.targetRange.trim().length === 0) {
-      invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing the target range`)
-    }
-    if (sample.targetRange.trim().length > 0 && !sameCorpusSelectedRangeMatchesTarget(proof.selectedRange, sample.targetRange)) {
-      invalidReasons.push(`semantic UI mutation target proof for ${workload} target range does not match the rendered selection`)
-    }
-    if (!sameCorpusReadbacksDiffer(sample.before, sample.after)) {
-      invalidReasons.push(`semantic UI mutation target proof for ${workload} did not prove a before/after target change`)
-    }
-    if (!sameCorpusReadbacksEqual(sample.before, sample.restored)) {
-      invalidReasons.push(`semantic UI mutation target proof for ${workload} did not prove undo restore`)
-    }
-    if (sample.undoRestoreStatus !== 'verified') {
-      invalidReasons.push(`semantic UI mutation target proof for ${workload} has unverified undo restore status`)
-    }
-    if (sample.authoritativeReadbackRevision === null || sample.authoritativeReadbackRevision.trim().length === 0) {
-      invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing authoritative readback revision`)
-    }
-    if (sample.visibleRenderRevision === null || sample.visibleRenderRevision.trim().length === 0) {
-      invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing visible render revision`)
-    }
-    if (sample.screenshotSha256 === null || !/^[a-f0-9]{64}$/u.test(sample.screenshotSha256)) {
-      invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing screenshot SHA256`)
-    }
-    if (sample.screenshotPath === null || sample.screenshotPath === undefined || sample.screenshotPath.trim().length === 0) {
-      invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing screenshot artifact path`)
-    } else {
-      const screenshotPath = normalizeSameCorpusMutationTargetScreenshotPath(sample.screenshotPath)
-      if (seenScreenshotPaths.has(screenshotPath)) {
-        invalidReasons.push(`semantic UI mutation target proof for ${workload} duplicates screenshot artifact path`)
-      }
-      seenScreenshotPaths.add(screenshotPath)
-      invalidReasons.push(...sameCorpusMutationTargetScreenshotPathInvalidReasons(proof.product, workload, sample, screenshotPath))
-    }
-    invalidReasons.push(...sameCorpusMutationTargetReadbackSourceInvalidReasons(proof.product, workload, sample))
-    invalidReasons.push(...sameCorpusMutationTargetVisibleReadbackInvalidReasons(proof.product, workload, sample))
-    invalidReasons.push(...sameCorpusMutationTargetRevisionInvalidReasons(proof.product, workload, sample))
-    invalidReasons.push(...sameCorpusMutationTargetExpectedReadbackInvalidReasons(workload, sample))
-    if (workload === 'fill-format-change' && sample.before.fillColor === sample.after.fillColor) {
-      invalidReasons.push('semantic UI mutation target proof for fill-format-change did not prove a fill color change')
-    }
-    if (workload === 'fill-format-change' && (sample.after.fillColor === null || sample.visibleAfter.fillColor === null)) {
-      invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing rendered post-mutation fill color`)
-    }
+    const screenshotPath = sample.screenshotPath ? normalizeSameCorpusMutationTargetScreenshotPath(sample.screenshotPath) : null
+    invalidReasons.push(
+      ...sameCorpusMutationTargetProofSampleInvalidReasons(proof, workload, sample, {
+        duplicateSampleIndex: (sampleIndexCounts.get(sample.sampleIndex) ?? 0) > 1,
+        duplicateScreenshotPath: screenshotPath !== null && (screenshotPathCounts.get(screenshotPath) ?? 0) > 1,
+        sampleCount,
+      }),
+    )
   }
   return invalidReasons
+}
+
+function sameCorpusMutationTargetProofSampleInvalidReasons(
+  proof: SameCorpusProductSemanticUiProof,
+  workload: UiResponsivenessSameCorpusWorkload,
+  sample: SameCorpusMutationTargetProof,
+  options: {
+    readonly duplicateSampleIndex?: boolean
+    readonly duplicateScreenshotPath?: boolean
+    readonly sampleCount: number
+  },
+): string[] {
+  const invalidReasons: string[] = []
+  if (!Number.isInteger(sample.sampleIndex) || sample.sampleIndex < 0 || sample.sampleIndex >= options.sampleCount) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} has invalid sample index`)
+  } else if (options.duplicateSampleIndex === true) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} duplicates sample ${String(sample.sampleIndex + 1)}`)
+  }
+  if (sample.workload !== workload || sample.intendedOperation !== workload) {
+    invalidReasons.push(`semantic UI mutation target proof operation does not match ${workload}`)
+  }
+  invalidReasons.push(...sameCorpusMutationTargetPayloadInvalidReasons(workload, sample))
+  if (sample.sheetName.trim().length === 0 || sample.sheetName !== proof.sheetName) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing the target sheet`)
+  }
+  if (sample.targetRange.trim().length === 0) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing the target range`)
+  }
+  if (sample.targetRange.trim().length > 0 && !sameCorpusSelectedRangeMatchesTarget(proof.selectedRange, sample.targetRange)) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} target range does not match the rendered selection`)
+  }
+  if (!sameCorpusReadbacksDiffer(sample.before, sample.after)) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} did not prove a before/after target change`)
+  }
+  if (!sameCorpusReadbacksEqual(sample.before, sample.restored)) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} did not prove undo restore`)
+  }
+  if (sample.undoRestoreStatus !== 'verified') {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} has unverified undo restore status`)
+  }
+  if (sample.authoritativeReadbackRevision === null || sample.authoritativeReadbackRevision.trim().length === 0) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing authoritative readback revision`)
+  }
+  if (sample.visibleRenderRevision === null || sample.visibleRenderRevision.trim().length === 0) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing visible render revision`)
+  }
+  if (sample.screenshotSha256 === null || !/^[a-f0-9]{64}$/u.test(sample.screenshotSha256)) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing screenshot SHA256`)
+  }
+  if (sample.screenshotPath === null || sample.screenshotPath === undefined || sample.screenshotPath.trim().length === 0) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing screenshot artifact path`)
+  } else {
+    const screenshotPath = normalizeSameCorpusMutationTargetScreenshotPath(sample.screenshotPath)
+    if (options.duplicateScreenshotPath === true) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} duplicates screenshot artifact path`)
+    }
+    invalidReasons.push(...sameCorpusMutationTargetScreenshotPathInvalidReasons(proof.product, workload, sample, screenshotPath))
+  }
+  invalidReasons.push(...sameCorpusMutationTargetReadbackSourceInvalidReasons(proof.product, workload, sample))
+  invalidReasons.push(...sameCorpusMutationTargetVisibleReadbackInvalidReasons(proof.product, workload, sample))
+  invalidReasons.push(...sameCorpusMutationTargetRevisionInvalidReasons(proof.product, workload, sample))
+  invalidReasons.push(...sameCorpusMutationTargetExpectedReadbackInvalidReasons(workload, sample))
+  if (workload === 'fill-format-change' && sample.before.fillColor === sample.after.fillColor) {
+    invalidReasons.push('semantic UI mutation target proof for fill-format-change did not prove a fill color change')
+  }
+  if (workload === 'fill-format-change' && (sample.after.fillColor === null || sample.visibleAfter.fillColor === null)) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing rendered post-mutation fill color`)
+  }
+  return invalidReasons
+}
+
+function sameCorpusMutationSampleIndexCounts(samples: readonly SameCorpusMutationTargetProof[]): Map<number, number> {
+  const counts = new Map<number, number>()
+  for (const sample of samples) {
+    counts.set(sample.sampleIndex, (counts.get(sample.sampleIndex) ?? 0) + 1)
+  }
+  return counts
+}
+
+function sameCorpusMutationScreenshotPathCounts(samples: readonly SameCorpusMutationTargetProof[]): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const sample of samples) {
+    if (sample.screenshotPath === null || sample.screenshotPath === undefined || sample.screenshotPath.trim().length === 0) {
+      continue
+    }
+    const path = normalizeSameCorpusMutationTargetScreenshotPath(sample.screenshotPath)
+    counts.set(path, (counts.get(path) ?? 0) + 1)
+  }
+  return counts
 }
 
 function sameCorpusMutationTargetPayloadInvalidReasons(

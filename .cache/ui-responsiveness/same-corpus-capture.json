@@ -89,7 +89,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for edit-visible-cell is missing sample 1"]
           },
           {
             "sampleIndex": 1,
@@ -97,7 +98,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for edit-visible-cell is missing sample 2"]
           },
           {
             "sampleIndex": 2,
@@ -105,7 +107,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for edit-visible-cell is missing sample 3"]
           }
         ],
         "invalidReasons": [
@@ -132,7 +135,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for edit-visible-cell is missing sample 1"]
           },
           {
             "sampleIndex": 1,
@@ -140,7 +144,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for edit-visible-cell is missing sample 2"]
           },
           {
             "sampleIndex": 2,
@@ -148,7 +153,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for edit-visible-cell is missing sample 3"]
           }
         ],
         "invalidReasons": [
@@ -173,7 +179,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for formula-edit is missing sample 1"]
           },
           {
             "sampleIndex": 1,
@@ -181,7 +188,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for formula-edit is missing sample 2"]
           },
           {
             "sampleIndex": 2,
@@ -189,7 +197,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for formula-edit is missing sample 3"]
           }
         ],
         "invalidReasons": [
@@ -216,7 +225,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for formula-edit is missing sample 1"]
           },
           {
             "sampleIndex": 1,
@@ -224,7 +234,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for formula-edit is missing sample 2"]
           },
           {
             "sampleIndex": 2,
@@ -232,7 +243,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for formula-edit is missing sample 3"]
           }
         ],
         "invalidReasons": [
@@ -257,7 +269,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for fill-format-change is missing sample 1"]
           },
           {
             "sampleIndex": 1,
@@ -265,7 +278,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for fill-format-change is missing sample 2"]
           },
           {
             "sampleIndex": 2,
@@ -273,7 +287,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for fill-format-change is missing sample 3"]
           }
         ],
         "invalidReasons": [
@@ -300,7 +315,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for fill-format-change is missing sample 1"]
           },
           {
             "sampleIndex": 1,
@@ -308,7 +324,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for fill-format-change is missing sample 2"]
           },
           {
             "sampleIndex": 2,
@@ -316,7 +333,8 @@
             "accepted": false,
             "targetRange": null,
             "screenshotPath": null,
-            "screenshotSha256": null
+            "screenshotSha256": null,
+            "invalidReasons": ["semantic UI mutation target proof for fill-format-change is missing sample 3"]
           }
         ],
         "invalidReasons": [

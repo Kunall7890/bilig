@@ -692,6 +692,7 @@ function parseSameCorpusMutationTargetProofSampleSummary(value: unknown): SameCo
     targetRange: nullableStringField(record, 'targetRange'),
     screenshotPath: nullableStringField(record, 'screenshotPath'),
     screenshotSha256: nullableStringField(record, 'screenshotSha256'),
+    invalidReasons: Object.hasOwn(record, 'invalidReasons') ? stringArrayField(record, 'invalidReasons') : [],
   }
 }
 

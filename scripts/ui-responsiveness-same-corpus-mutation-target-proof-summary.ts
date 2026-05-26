@@ -1,5 +1,9 @@
 import type { SameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
-import { validateSameCorpusProductSemanticUiProof } from './ui-responsiveness-same-corpus-semantic-proof.ts'
+import {
+  validateSameCorpusMutationTargetProofSample,
+  validateSameCorpusProductSemanticUiProof,
+} from './ui-responsiveness-same-corpus-semantic-proof.ts'
+import type { SameCorpusMutationTargetProof, SameCorpusProductSemanticUiProof } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import type { SameCorpusMutationTargetProofProductSummary } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
@@ -47,13 +51,7 @@ export function sameCorpusMutationTargetProofSampleCount(
     return (
       total +
       requiredMutationTargetProofProducts.reduce((productTotal, product) => {
-        const productProof = entry.scenarioProof.semanticUiProof.products.find((proof) => proof.product === product)
-        return (
-          productTotal +
-          (sameCorpusMutationTargetProductProofComplete(entry, product, expectedSampleCount)
-            ? (productProof?.mutationTargetProofs.length ?? 0)
-            : 0)
-        )
+        return productTotal + sameCorpusMutationTargetProductProofSummary(entry, product, workload, expectedSampleCount).acceptedSampleCount
       }, 0)
     )
   }, 0)
@@ -104,27 +102,91 @@ function sameCorpusMutationTargetProductProofSummary(
     sampleCount: requiredSampleCount,
     workload,
   })
-  const accepted = verdict.acceptedForCurrentScorecard
+  const baseVerdict = validateSameCorpusProductSemanticUiProof(productProof)
+  const sampleSummaries = sameCorpusMutationTargetProofSampleSummaries(
+    productProof,
+    workload,
+    requiredSampleCount,
+    baseVerdict.invalidReasons,
+  )
+  const acceptedSampleCount = sampleSummaries.filter((sample) => sample.accepted).length
+  const accepted = acceptedSampleCount === requiredSampleCount && verdict.acceptedForCurrentScorecard
   return {
     workload,
     product,
     requiredSampleCount,
     rawSampleCount: productProof.mutationTargetProofs.length,
-    acceptedSampleCount: accepted ? productProof.mutationTargetProofs.length : 0,
+    acceptedSampleCount,
     accepted,
-    samples: Array.from({ length: requiredSampleCount }, (_, sampleIndex) => {
-      const sample = productProof.mutationTargetProofs.find((candidate) => candidate.sampleIndex === sampleIndex)
-      return {
-        sampleIndex,
-        present: sample !== undefined,
-        accepted: accepted && sample !== undefined,
-        targetRange: sample?.targetRange ?? null,
-        screenshotPath: sample?.screenshotPath ?? null,
-        screenshotSha256: sample?.screenshotSha256 ?? null,
-      }
-    }),
+    samples: sampleSummaries,
     invalidReasons: verdict.invalidReasons,
   }
+}
+
+function sameCorpusMutationTargetProofSampleSummaries(
+  productProof: SameCorpusProductSemanticUiProof,
+  workload: UiResponsivenessSameCorpusWorkload,
+  requiredSampleCount: number,
+  baseInvalidReasons: readonly string[],
+): SameCorpusMutationTargetProofProductSummary['samples'] {
+  const duplicateSampleIndexes = duplicateSameCorpusSampleIndexes(productProof.mutationTargetProofs)
+  const duplicateScreenshotPaths = duplicateSameCorpusScreenshotPaths(productProof.mutationTargetProofs)
+  return Array.from({ length: requiredSampleCount }, (_, sampleIndex) => {
+    const sample = productProof.mutationTargetProofs.find((candidate) => candidate.sampleIndex === sampleIndex)
+    if (!sample) {
+      return {
+        sampleIndex,
+        present: false,
+        accepted: false,
+        targetRange: null,
+        screenshotPath: null,
+        screenshotSha256: null,
+        invalidReasons: [`semantic UI mutation target proof for ${workload} is missing sample ${String(sampleIndex + 1)}`],
+      }
+    }
+    const sampleVerdict = validateSameCorpusMutationTargetProofSample(productProof, workload, sample, {
+      duplicateSampleIndex: duplicateSampleIndexes.has(sample.sampleIndex),
+      duplicateScreenshotPath:
+        sample.screenshotPath !== null && sample.screenshotPath !== undefined
+          ? duplicateScreenshotPaths.has(normalizeSameCorpusMutationTargetScreenshotPath(sample.screenshotPath))
+          : false,
+      sampleCount: requiredSampleCount,
+    })
+    const invalidReasons = [...baseInvalidReasons, ...sampleVerdict.invalidReasons]
+    return {
+      sampleIndex,
+      present: true,
+      accepted: invalidReasons.length === 0,
+      targetRange: sample.targetRange,
+      screenshotPath: sample.screenshotPath,
+      screenshotSha256: sample.screenshotSha256,
+      invalidReasons,
+    }
+  })
+}
+
+function duplicateSameCorpusSampleIndexes(samples: readonly SameCorpusMutationTargetProof[]): ReadonlySet<number> {
+  const counts = new Map<number, number>()
+  for (const sample of samples) {
+    counts.set(sample.sampleIndex, (counts.get(sample.sampleIndex) ?? 0) + 1)
+  }
+  return new Set([...counts].filter((entry) => entry[1] > 1).map((entry) => entry[0]))
+}
+
+function duplicateSameCorpusScreenshotPaths(samples: readonly SameCorpusMutationTargetProof[]): ReadonlySet<string> {
+  const counts = new Map<string, number>()
+  for (const sample of samples) {
+    if (sample.screenshotPath === null || sample.screenshotPath === undefined || sample.screenshotPath.trim().length === 0) {
+      continue
+    }
+    const path = normalizeSameCorpusMutationTargetScreenshotPath(sample.screenshotPath)
+    counts.set(path, (counts.get(path) ?? 0) + 1)
+  }
+  return new Set([...counts].filter((entry) => entry[1] > 1).map((entry) => entry[0]))
+}
+
+function normalizeSameCorpusMutationTargetScreenshotPath(path: string): string {
+  return path.trim().replaceAll('\\', '/')
 }
 
 function sameCorpusMutationTargetProductProofComplete(
@@ -150,5 +212,6 @@ function sameCorpusMissingMutationTargetSamples(requiredSampleCount: number): Sa
     targetRange: null,
     screenshotPath: null,
     screenshotSha256: null,
+    invalidReasons: ['semantic UI mutation target proof sample is missing'],
   }))
 }

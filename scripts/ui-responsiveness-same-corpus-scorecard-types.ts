@@ -185,6 +185,7 @@ export interface SameCorpusMutationTargetProofSampleSummary {
   readonly targetRange: string | null
   readonly screenshotPath: string | null
   readonly screenshotSha256: string | null
+  readonly invalidReasons: readonly string[]
 }
 
 export interface SameCorpusCaptureCase extends SameCorpusScenarioCaseFields {

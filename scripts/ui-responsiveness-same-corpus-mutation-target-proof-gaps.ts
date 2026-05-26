@@ -25,11 +25,14 @@ function formatMutationTargetProofProductSummary(summary: SameCorpusMutationTarg
   const rejectedSampleIndexes = summary.samples
     .filter((sample) => sample.present && !sample.accepted)
     .map((sample) => String(sample.sampleIndex))
+  const sampleInvalidReasons = summary.samples.flatMap((sample) =>
+    sample.present && !sample.accepted ? sample.invalidReasons.map((reason) => `sample ${String(sample.sampleIndex)}: ${reason}`) : [],
+  )
   return [
     `${summary.workload}/${summary.product} accepted ${String(summary.acceptedSampleCount)}/${String(summary.requiredSampleCount)} samples (raw ${String(summary.rawSampleCount)})`,
     `missing samples: ${missingSampleIndexes.join(', ') || 'none'}`,
     `rejected samples: ${rejectedSampleIndexes.join(', ') || 'none'}`,
-    `invalid reasons: ${formatInvalidReasons(summary.invalidReasons)}`,
+    `invalid reasons: ${formatInvalidReasons([...sampleInvalidReasons, ...summary.invalidReasons])}`,
   ].join('; ')
 }
 
