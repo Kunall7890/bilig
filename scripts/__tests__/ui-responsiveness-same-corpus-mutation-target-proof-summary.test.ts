@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   sameCorpusMutationTargetProofCaseCount,
+  sameCorpusMutationTargetProofProductSummaries,
   sameCorpusMutationTargetProofSampleCount,
 } from '../ui-responsiveness-same-corpus-mutation-target-proof-summary.ts'
 import type { SameCorpusMutationTargetProof, SameCorpusScenarioProof } from '../ui-responsiveness-same-corpus-proof.ts'
@@ -19,6 +20,27 @@ describe('same-corpus mutation target proof summary', () => {
 
     expect(sameCorpusMutationTargetProofCaseCount(cases, 3)).toBe(0)
     expect(sameCorpusMutationTargetProofSampleCount(cases, 3)).toBe(3)
+    expect(sameCorpusMutationTargetProofProductSummaries(cases, 3)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          workload: 'edit-visible-cell',
+          product: 'bilig',
+          requiredSampleCount: 3,
+          rawSampleCount: 3,
+          acceptedSampleCount: 3,
+          accepted: true,
+        }),
+        expect.objectContaining({
+          workload: 'edit-visible-cell',
+          product: 'google-sheets',
+          requiredSampleCount: 3,
+          rawSampleCount: 0,
+          acceptedSampleCount: 0,
+          accepted: false,
+          invalidReasons: expect.arrayContaining(['semantic UI mutation target proof for edit-visible-cell covers 0/3 samples']),
+        }),
+      ]),
+    )
   })
 
   it('counts a mutating case only when both required products have claim-grade target proof for every sample', () => {
@@ -31,6 +53,18 @@ describe('same-corpus mutation target proof summary', () => {
 
     expect(sameCorpusMutationTargetProofCaseCount(cases, 3)).toBe(1)
     expect(sameCorpusMutationTargetProofSampleCount(cases, 3)).toBe(6)
+    expect(
+      sameCorpusMutationTargetProofProductSummaries(cases, 3)
+        .filter((entry) => entry.workload === 'edit-visible-cell')
+        .map((entry) => ({
+          accepted: entry.accepted,
+          acceptedSampleCount: entry.acceptedSampleCount,
+          product: entry.product,
+        })),
+    ).toEqual([
+      { product: 'bilig', accepted: true, acceptedSampleCount: 3 },
+      { product: 'google-sheets', accepted: true, acceptedSampleCount: 3 },
+    ])
   })
 
   it('does not count short product proof as complete when the run manifest expects more samples', () => {
@@ -43,6 +77,24 @@ describe('same-corpus mutation target proof summary', () => {
 
     expect(sameCorpusMutationTargetProofCaseCount(cases, 3)).toBe(0)
     expect(sameCorpusMutationTargetProofSampleCount(cases, 3)).toBe(0)
+    expect(sameCorpusMutationTargetProofProductSummaries(cases, 3)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          workload: 'edit-visible-cell',
+          product: 'bilig',
+          requiredSampleCount: 3,
+          rawSampleCount: 1,
+          acceptedSampleCount: 0,
+          accepted: false,
+          samples: [
+            expect.objectContaining({ sampleIndex: 0, present: true, accepted: false }),
+            expect.objectContaining({ sampleIndex: 1, present: false, accepted: false }),
+            expect.objectContaining({ sampleIndex: 2, present: false, accepted: false }),
+          ],
+          invalidReasons: expect.arrayContaining(['semantic UI mutation target proof for edit-visible-cell covers 1/3 samples']),
+        }),
+      ]),
+    )
   })
 
   it('does not count stale target proof samples just because raw proof objects exist', () => {
@@ -56,6 +108,20 @@ describe('same-corpus mutation target proof summary', () => {
 
     expect(sameCorpusMutationTargetProofCaseCount(cases, 3)).toBe(0)
     expect(sameCorpusMutationTargetProofSampleCount(cases, 3)).toBe(3)
+    expect(sameCorpusMutationTargetProofProductSummaries(cases, 3)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          workload: 'edit-visible-cell',
+          product: 'google-sheets',
+          rawSampleCount: 3,
+          acceptedSampleCount: 0,
+          accepted: false,
+          invalidReasons: expect.arrayContaining([
+            'semantic UI mutation target proof for edit-visible-cell did not prove the intended committed target value',
+          ]),
+        }),
+      ]),
+    )
   })
 })
 

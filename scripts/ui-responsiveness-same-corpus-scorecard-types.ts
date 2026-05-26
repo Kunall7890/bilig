@@ -110,6 +110,7 @@ export interface UiResponsivenessSameCorpusRunManifest {
   readonly mutationTargetProofCaseCount: number
   readonly requiredMutationTargetProofSampleCount: number
   readonly mutationTargetProofSampleCount: number
+  readonly mutationTargetProofProductSummaries: readonly SameCorpusMutationTargetProofProductSummary[]
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
   readonly currentContractEvidenceComplete: boolean
@@ -157,12 +158,33 @@ export interface SameCorpusCaptureRunManifest {
   readonly mutationTargetProofCaseCount: number
   readonly requiredMutationTargetProofSampleCount: number
   readonly mutationTargetProofSampleCount: number
+  readonly mutationTargetProofProductSummaries: readonly SameCorpusMutationTargetProofProductSummary[]
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
   readonly currentContractEvidenceComplete: boolean
   readonly googleSheetsTenXRequirementSatisfied: boolean
   readonly captureRunSignature: string
   readonly invalidReasons: readonly string[]
+}
+
+export interface SameCorpusMutationTargetProofProductSummary {
+  readonly workload: UiResponsivenessSameCorpusWorkload
+  readonly product: UiResponsivenessSameCorpusProduct
+  readonly requiredSampleCount: number
+  readonly rawSampleCount: number
+  readonly acceptedSampleCount: number
+  readonly accepted: boolean
+  readonly samples: readonly SameCorpusMutationTargetProofSampleSummary[]
+  readonly invalidReasons: readonly string[]
+}
+
+export interface SameCorpusMutationTargetProofSampleSummary {
+  readonly sampleIndex: number
+  readonly present: boolean
+  readonly accepted: boolean
+  readonly targetRange: string | null
+  readonly screenshotPath: string | null
+  readonly screenshotSha256: string | null
 }
 
 export interface SameCorpusCaptureCase extends SameCorpusScenarioCaseFields {

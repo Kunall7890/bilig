@@ -19,6 +19,8 @@ import type {
   SameCorpusCaptureRunManifest,
   SameCorpusProductSourceWorkbookFingerprint,
   SameCorpusCaptureVerifiedCell,
+  SameCorpusMutationTargetProofProductSummary,
+  SameCorpusMutationTargetProofSampleSummary,
   SameCorpusScenarioCaseFields,
   UiResponsivenessLiveBrowserCase,
   UiResponsivenessLiveBrowserScorecard,
@@ -169,6 +171,9 @@ function parseSameCorpusRunManifest(value: Record<string, unknown>): UiResponsiv
       optionalNumberField(value, 'requiredMutationTargetProofSampleCount') ??
       requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount(numberField(value, 'sampleCount')),
     mutationTargetProofSampleCount: optionalNumberField(value, 'mutationTargetProofSampleCount') ?? 0,
+    mutationTargetProofProductSummaries: Object.hasOwn(value, 'mutationTargetProofProductSummaries')
+      ? arrayField(value, 'mutationTargetProofProductSummaries').map(parseSameCorpusMutationTargetProofProductSummary)
+      : [],
     legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
@@ -213,6 +218,9 @@ function parseSameCorpusCaptureRunManifest(value: Record<string, unknown>): Same
       optionalNumberField(value, 'requiredMutationTargetProofSampleCount') ??
       requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount(numberField(value, 'sampleCount')),
     mutationTargetProofSampleCount: optionalNumberField(value, 'mutationTargetProofSampleCount') ?? 0,
+    mutationTargetProofProductSummaries: Object.hasOwn(value, 'mutationTargetProofProductSummaries')
+      ? arrayField(value, 'mutationTargetProofProductSummaries').map(parseSameCorpusMutationTargetProofProductSummary)
+      : [],
     legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
@@ -655,6 +663,32 @@ function parseSameCorpusMutationUndoRestoreStatus(value: string): SameCorpusMuta
     return value
   }
   throw new Error(`Unexpected UI responsiveness same-corpus mutation undo restore status: ${value}`)
+}
+
+function parseSameCorpusMutationTargetProofProductSummary(value: unknown): SameCorpusMutationTargetProofProductSummary {
+  const record = asObject(value, 'UI responsiveness same-corpus mutation target proof product summary')
+  return {
+    workload: parseSameCorpusWorkload(stringField(record, 'workload')),
+    product: parseSameCorpusProduct(stringField(record, 'product')),
+    requiredSampleCount: numberField(record, 'requiredSampleCount'),
+    rawSampleCount: numberField(record, 'rawSampleCount'),
+    acceptedSampleCount: numberField(record, 'acceptedSampleCount'),
+    accepted: booleanField(record, 'accepted'),
+    samples: arrayField(record, 'samples').map(parseSameCorpusMutationTargetProofSampleSummary),
+    invalidReasons: stringArrayField(record, 'invalidReasons'),
+  }
+}
+
+function parseSameCorpusMutationTargetProofSampleSummary(value: unknown): SameCorpusMutationTargetProofSampleSummary {
+  const record = asObject(value, 'UI responsiveness same-corpus mutation target proof sample summary')
+  return {
+    sampleIndex: numberField(record, 'sampleIndex'),
+    present: booleanField(record, 'present'),
+    accepted: booleanField(record, 'accepted'),
+    targetRange: nullableStringField(record, 'targetRange'),
+    screenshotPath: nullableStringField(record, 'screenshotPath'),
+    screenshotSha256: nullableStringField(record, 'screenshotSha256'),
+  }
 }
 
 function parseSameCorpusProductSemanticUiProofVerdict(value: unknown): SameCorpusProductSemanticUiProofVerdict {

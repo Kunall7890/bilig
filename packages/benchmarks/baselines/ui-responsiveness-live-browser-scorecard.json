@@ -233,6 +233,260 @@
       "mutationTargetProofCaseCount": 0,
       "requiredMutationTargetProofSampleCount": 18,
       "mutationTargetProofSampleCount": 0,
+      "mutationTargetProofProductSummaries": [
+        {
+          "workload": "edit-visible-cell",
+          "product": "bilig",
+          "requiredSampleCount": 3,
+          "rawSampleCount": 0,
+          "acceptedSampleCount": 0,
+          "accepted": false,
+          "samples": [
+            {
+              "sampleIndex": 0,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            },
+            {
+              "sampleIndex": 1,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            },
+            {
+              "sampleIndex": 2,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            }
+          ],
+          "invalidReasons": [
+            "semantic UI proof is not marked captured",
+            "semantic UI proof is missing sheet name",
+            "semantic UI proof is missing selected range",
+            "semantic UI proof checks fewer than 3 cells",
+            "semantic UI proof is missing screenshot SHA256",
+            "Bilig semantic UI proof is missing authoritative render revision",
+            "Bilig semantic UI proof is missing visible render revision"
+          ]
+        },
+        {
+          "workload": "edit-visible-cell",
+          "product": "google-sheets",
+          "requiredSampleCount": 3,
+          "rawSampleCount": 0,
+          "acceptedSampleCount": 0,
+          "accepted": false,
+          "samples": [
+            {
+              "sampleIndex": 0,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            },
+            {
+              "sampleIndex": 1,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            },
+            {
+              "sampleIndex": 2,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            }
+          ],
+          "invalidReasons": [
+            "semantic UI proof is not marked captured",
+            "semantic UI proof is missing sheet name",
+            "semantic UI proof is missing selected range",
+            "semantic UI proof checks fewer than 3 cells",
+            "semantic UI proof is missing screenshot SHA256"
+          ]
+        },
+        {
+          "workload": "formula-edit",
+          "product": "bilig",
+          "requiredSampleCount": 3,
+          "rawSampleCount": 0,
+          "acceptedSampleCount": 0,
+          "accepted": false,
+          "samples": [
+            {
+              "sampleIndex": 0,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            },
+            {
+              "sampleIndex": 1,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            },
+            {
+              "sampleIndex": 2,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            }
+          ],
+          "invalidReasons": [
+            "semantic UI proof is not marked captured",
+            "semantic UI proof is missing sheet name",
+            "semantic UI proof is missing selected range",
+            "semantic UI proof checks fewer than 3 cells",
+            "semantic UI proof is missing screenshot SHA256",
+            "Bilig semantic UI proof is missing authoritative render revision",
+            "Bilig semantic UI proof is missing visible render revision"
+          ]
+        },
+        {
+          "workload": "formula-edit",
+          "product": "google-sheets",
+          "requiredSampleCount": 3,
+          "rawSampleCount": 0,
+          "acceptedSampleCount": 0,
+          "accepted": false,
+          "samples": [
+            {
+              "sampleIndex": 0,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            },
+            {
+              "sampleIndex": 1,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            },
+            {
+              "sampleIndex": 2,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            }
+          ],
+          "invalidReasons": [
+            "semantic UI proof is not marked captured",
+            "semantic UI proof is missing sheet name",
+            "semantic UI proof is missing selected range",
+            "semantic UI proof checks fewer than 3 cells",
+            "semantic UI proof is missing screenshot SHA256"
+          ]
+        },
+        {
+          "workload": "fill-format-change",
+          "product": "bilig",
+          "requiredSampleCount": 3,
+          "rawSampleCount": 0,
+          "acceptedSampleCount": 0,
+          "accepted": false,
+          "samples": [
+            {
+              "sampleIndex": 0,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            },
+            {
+              "sampleIndex": 1,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            },
+            {
+              "sampleIndex": 2,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            }
+          ],
+          "invalidReasons": [
+            "semantic UI proof is not marked captured",
+            "semantic UI proof is missing sheet name",
+            "semantic UI proof is missing selected range",
+            "semantic UI proof checks fewer than 3 cells",
+            "semantic UI proof is missing screenshot SHA256",
+            "Bilig semantic UI proof is missing authoritative render revision",
+            "Bilig semantic UI proof is missing visible render revision"
+          ]
+        },
+        {
+          "workload": "fill-format-change",
+          "product": "google-sheets",
+          "requiredSampleCount": 3,
+          "rawSampleCount": 0,
+          "acceptedSampleCount": 0,
+          "accepted": false,
+          "samples": [
+            {
+              "sampleIndex": 0,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            },
+            {
+              "sampleIndex": 1,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            },
+            {
+              "sampleIndex": 2,
+              "present": false,
+              "accepted": false,
+              "targetRange": null,
+              "screenshotPath": null,
+              "screenshotSha256": null
+            }
+          ],
+          "invalidReasons": [
+            "semantic UI proof is not marked captured",
+            "semantic UI proof is missing sheet name",
+            "semantic UI proof is missing selected range",
+            "semantic UI proof checks fewer than 3 cells",
+            "semantic UI proof is missing screenshot SHA256"
+          ]
+        }
+      ],
       "legacyInsufficientRenderedGridProofCaseCount": 0,
       "tenXMeanAndP95CaseCount": 0,
       "currentContractEvidenceComplete": false,

@@ -41,6 +41,7 @@ import {
   requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount,
   requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount,
   sameCorpusMutationTargetProofCaseCount,
+  sameCorpusMutationTargetProofProductSummaries,
   sameCorpusMutationTargetProofSampleCount,
 } from './ui-responsiveness-same-corpus-mutation-target-proof-summary.ts'
 import { sameCorpusManifestInvalidReasons } from './ui-responsiveness-same-corpus-manifest-invalid-reasons.ts'
@@ -182,6 +183,7 @@ function buildSameCorpusRunManifest(
   const mutationTargetProofCaseCount = sameCorpusMutationTargetProofCaseCount(cases, sampleCount)
   const requiredMutationTargetProofSampleCount = requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount(sampleCount)
   const mutationTargetProofSampleCount = sameCorpusMutationTargetProofSampleCount(cases, sampleCount)
+  const mutationTargetProofProductSummaries = sameCorpusMutationTargetProofProductSummaries(cases, sampleCount)
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
   ).length
@@ -228,6 +230,7 @@ function buildSameCorpusRunManifest(
     mutationTargetProofCaseCount,
     requiredMutationTargetProofSampleCount,
     mutationTargetProofSampleCount,
+    mutationTargetProofProductSummaries,
     legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
     currentContractEvidenceComplete: !invalidReasons.some(
@@ -262,6 +265,7 @@ export function buildSameCorpusCaptureRunManifest(
   const requiredMutationTargetProofSampleCount = requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount(sampleCount)
   const mutationTargetProofCaseCount = sameCorpusMutationTargetProofCaseCount(cases, sampleCount)
   const mutationTargetProofSampleCount = sameCorpusMutationTargetProofSampleCount(cases, sampleCount)
+  const mutationTargetProofProductSummaries = sameCorpusMutationTargetProofProductSummaries(cases, sampleCount)
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
   ).length
@@ -309,6 +313,7 @@ export function buildSameCorpusCaptureRunManifest(
     mutationTargetProofCaseCount,
     requiredMutationTargetProofSampleCount,
     mutationTargetProofSampleCount,
+    mutationTargetProofProductSummaries,
     legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
     currentContractEvidenceComplete: !invalidReasons.some(
