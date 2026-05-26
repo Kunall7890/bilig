@@ -216,30 +216,6 @@ export function createOperationDirectFormulaValues(args: { readonly state: Pick<
     }
   }
 
-  const readDirectScalarCurrentNumericOperand = (operand: RuntimeDirectScalarOperand): number | undefined => {
-    switch (operand.kind) {
-      case 'literal-number':
-        return operand.value
-      case 'error':
-        return undefined
-      case 'cell': {
-        const cellStore = args.state.workbook.cellStore
-        switch ((cellStore.tags[operand.cellIndex] as ValueTag | undefined) ?? ValueTag.Empty) {
-          case ValueTag.Number:
-            return cellStore.numbers[operand.cellIndex] ?? 0
-          case ValueTag.Boolean:
-            return (cellStore.numbers[operand.cellIndex] ?? 0) !== 0 ? 1 : 0
-          case ValueTag.Empty:
-            return 0
-          case ValueTag.Error:
-            return undefined
-          case ValueTag.String:
-            return readCellTextNumber(operand.cellIndex)
-        }
-      }
-    }
-  }
-
   const evaluateDirectScalarCurrentValue = (directScalar: RuntimeDirectScalarDescriptor): DirectScalarCurrentOperand | undefined => {
     if (directScalar.kind === 'abs') {
       const operand = readDirectScalarCurrentOperand(directScalar.operand)
@@ -275,37 +251,6 @@ export function createOperationDirectFormulaValues(args: { readonly state: Pick<
         break
     }
     return { kind: 'number', value: result + (directScalar.resultOffset ?? 0) }
-  }
-
-  const evaluateDirectScalarCurrentNumericValue = (directScalar: RuntimeDirectScalarDescriptor): number | undefined => {
-    if (directScalar.kind === 'abs') {
-      const operand = readDirectScalarCurrentNumericOperand(directScalar.operand)
-      return operand === undefined ? undefined : Math.abs(operand)
-    }
-    const left = readDirectScalarCurrentNumericOperand(directScalar.left)
-    const right = readDirectScalarCurrentNumericOperand(directScalar.right)
-    if (left === undefined || right === undefined) {
-      return undefined
-    }
-    let result: number
-    switch (directScalar.operator) {
-      case '+':
-        result = left + right
-        break
-      case '-':
-        result = left - right
-        break
-      case '*':
-        result = left * right
-        break
-      case '/':
-        if (right === 0) {
-          return undefined
-        }
-        result = left / right
-        break
-    }
-    return result + (directScalar.resultOffset ?? 0)
   }
 
   const applyDirectScalarCurrentValue = (cellIndex: number, directScalar: RuntimeDirectScalarDescriptor): boolean => {
@@ -461,7 +406,6 @@ export function createOperationDirectFormulaValues(args: { readonly state: Pick<
     applyTerminalDirectFormulaAffineNumericResultsFromRefs,
     writeNumericLiteralToCellStore,
     evaluateDirectScalarCurrentValue,
-    evaluateDirectScalarCurrentNumericValue,
     applyDirectScalarCurrentValue,
     tryEvaluateDirectScalarWithPendingNumbers,
     tryEvaluateDirectScalarNumericWithPendingNumbers,

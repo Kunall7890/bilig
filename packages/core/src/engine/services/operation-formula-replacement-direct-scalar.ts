@@ -7,7 +7,7 @@ import type { DirectFormulaIndexCollection, DirectScalarCurrentOperand } from '.
 interface OperationFormulaReplacementDirectScalarArgs {
   readonly state: Pick<EngineRuntimeState, 'formulas' | 'workbook'>
   readonly getSingleEntityDependent: (entityId: number) => number
-  readonly evaluateDirectScalarCurrentNumericValue: (directScalar: RuntimeDirectScalarDescriptor) => number | undefined
+  readonly evaluateDirectScalarCurrentValue: (directScalar: RuntimeDirectScalarDescriptor) => DirectScalarCurrentOperand | undefined
   readonly canSkipFormulaColumnVersion: (cellIndex: number) => boolean
   readonly applyTerminalDirectFormulaNumericResult: (cellIndex: number, value: number) => void
   readonly tryMarkDirectScalarLinearDeltaClosure: (
@@ -43,8 +43,8 @@ export function tryApplyOperationFormulaReplacementAsDirectScalarDeltaRoot(
   ) {
     return false
   }
-  const result = args.evaluateDirectScalarCurrentNumericValue(formula.directScalar)
-  if (result === undefined) {
+  const result = args.evaluateDirectScalarCurrentValue(formula.directScalar)
+  if (result?.kind !== 'number') {
     return false
   }
   const dependent = args.getSingleEntityDependent(makeCellEntity(request.cellIndex))
@@ -53,15 +53,15 @@ export function tryApplyOperationFormulaReplacementAsDirectScalarDeltaRoot(
     !args.tryMarkDirectScalarLinearDeltaClosure(
       request.cellIndex,
       { tag: ValueTag.Number, value: request.oldNumber },
-      { tag: ValueTag.Number, value: result },
+      { tag: ValueTag.Number, value: result.value },
       request.postRecalcDirectFormulaIndices,
     )
   ) {
     return false
   }
   if (args.canSkipFormulaColumnVersion(request.cellIndex)) {
-    args.applyTerminalDirectFormulaNumericResult(request.cellIndex, result)
-  } else if (!args.applyDirectFormulaCurrentResult(request.cellIndex, { kind: 'number', value: result })) {
+    args.applyTerminalDirectFormulaNumericResult(request.cellIndex, result.value)
+  } else if (!args.applyDirectFormulaCurrentResult(request.cellIndex, result)) {
     return false
   }
   return true

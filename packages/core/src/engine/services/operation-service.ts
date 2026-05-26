@@ -206,7 +206,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     applyTerminalDirectFormulaAffineNumericResults,
     applyTerminalDirectFormulaAffineNumericResultsFromRefs,
     writeNumericLiteralToCellStore,
-    evaluateDirectScalarCurrentNumericValue,
+    evaluateDirectScalarCurrentValue,
     applyDirectScalarCurrentValue,
     tryEvaluateDirectScalarWithPendingNumbers,
     tryEvaluateDirectScalarNumericWithPendingNumbers,
@@ -635,7 +635,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
       {
         state: args.state,
         getSingleEntityDependent: args.getSingleEntityDependent,
-        evaluateDirectScalarCurrentNumericValue,
+        evaluateDirectScalarCurrentValue,
         canSkipFormulaColumnVersion,
         applyTerminalDirectFormulaNumericResult,
         tryMarkDirectScalarLinearDeltaClosure,
