@@ -959,7 +959,7 @@ describe('formula builtins', () => {
     expect(getBuiltin('LCM')?.()).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(getBuiltin('MROUND')?.({ tag: ValueTag.Number, value: -10 }, { tag: ValueTag.Number, value: 3 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('MULTINOMIAL')?.({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: -1 })).toEqual({
       tag: ValueTag.Error,

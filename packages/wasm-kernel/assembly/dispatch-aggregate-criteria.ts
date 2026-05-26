@@ -1,7 +1,7 @@
 import { BuiltinId, ErrorCode, ValueTag } from './protocol'
 import { tryApplyCriteriaConditionalBuiltin } from './dispatch-criteria-conditional'
 import { scalarErrorAt, rangeErrorAt } from './builtin-args'
-import { gcdPairCalc, lcmPairCalc, truncAbs } from './numeric-core'
+import { gcdPairCalc, lcmPairCalc } from './numeric-core'
 import { toNumberOrNaN } from './operands'
 import { STACK_KIND_ARRAY, STACK_KIND_RANGE, STACK_KIND_SCALAR, writeResult } from './result-io'
 import { textLength } from './text-codec'
@@ -28,6 +28,20 @@ function writeAggregateError(
 
 function isCountblankBlank(tag: u8, value: f64, stringLengths: Uint32Array, outputStringLengths: Uint32Array): bool {
   return tag == ValueTag.Empty || (tag == ValueTag.String && textLength(tag, value, stringLengths, outputStringLengths) == 0)
+}
+
+const EXCEL_INTEGER_LIMIT: f64 = 9007199254740992.0
+
+function gcdLcmIntegerOrNaN(value: f64): f64 {
+  if (!isFinite(value) || value < 0.0 || value >= EXCEL_INTEGER_LIMIT) {
+    return NaN
+  }
+  return Math.floor(value)
+}
+
+function lcmPairOrNaN(left: f64, right: f64): f64 {
+  const result = lcmPairCalc(left, right)
+  return !isFinite(result) || result >= EXCEL_INTEGER_LIMIT ? NaN : result
 }
 
 export function tryApplyAggregateCriteriaBuiltin(
@@ -429,9 +443,20 @@ export function tryApplyAggregateCriteriaBuiltin(
             }
             reciprocalSum += 1.0 / numeric
           } else if (builtinId == BuiltinId.Gcd) {
-            gcdValue = count == 0 ? truncAbs(numeric) : gcdPairCalc(gcdValue, numeric)
+            const integer = gcdLcmIntegerOrNaN(numeric)
+            if (isNaN(integer)) {
+              return writeAggregateError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+            }
+            gcdValue = count == 0 ? integer : gcdPairCalc(gcdValue, integer)
           } else if (builtinId == BuiltinId.Lcm) {
-            lcmValue = count == 0 ? truncAbs(numeric) : lcmPairCalc(lcmValue, numeric)
+            const integer = gcdLcmIntegerOrNaN(numeric)
+            if (isNaN(integer)) {
+              return writeAggregateError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+            }
+            lcmValue = count == 0 ? integer : lcmPairOrNaN(lcmValue, integer)
+            if (isNaN(lcmValue)) {
+              return writeAggregateError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+            }
           } else if (builtinId == BuiltinId.Product) {
             product *= numeric
           } else if (builtinId == BuiltinId.Sumsq) {
@@ -463,9 +488,20 @@ export function tryApplyAggregateCriteriaBuiltin(
             }
             reciprocalSum += 1.0 / numeric
           } else if (builtinId == BuiltinId.Gcd) {
-            gcdValue = count == 0 ? truncAbs(numeric) : gcdPairCalc(gcdValue, numeric)
+            const integer = gcdLcmIntegerOrNaN(numeric)
+            if (isNaN(integer)) {
+              return writeAggregateError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+            }
+            gcdValue = count == 0 ? integer : gcdPairCalc(gcdValue, integer)
           } else if (builtinId == BuiltinId.Lcm) {
-            lcmValue = count == 0 ? truncAbs(numeric) : lcmPairCalc(lcmValue, numeric)
+            const integer = gcdLcmIntegerOrNaN(numeric)
+            if (isNaN(integer)) {
+              return writeAggregateError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+            }
+            lcmValue = count == 0 ? integer : lcmPairOrNaN(lcmValue, integer)
+            if (isNaN(lcmValue)) {
+              return writeAggregateError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+            }
           } else if (builtinId == BuiltinId.Product) {
             product *= numeric
           } else if (builtinId == BuiltinId.Sumsq) {
@@ -478,6 +514,9 @@ export function tryApplyAggregateCriteriaBuiltin(
 
       const numeric = toNumberOrNaN(tagStack[slot], valueStack[slot])
       if (isNaN(numeric)) {
+        if (builtinId == BuiltinId.Gcd || builtinId == BuiltinId.Lcm) {
+          return writeAggregateError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+        }
         continue
       }
       if (builtinId == BuiltinId.Geomean) {
@@ -494,9 +533,20 @@ export function tryApplyAggregateCriteriaBuiltin(
         }
         reciprocalSum += 1.0 / numeric
       } else if (builtinId == BuiltinId.Gcd) {
-        gcdValue = count == 0 ? truncAbs(numeric) : gcdPairCalc(gcdValue, numeric)
+        const integer = gcdLcmIntegerOrNaN(numeric)
+        if (isNaN(integer)) {
+          return writeAggregateError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+        }
+        gcdValue = count == 0 ? integer : gcdPairCalc(gcdValue, integer)
       } else if (builtinId == BuiltinId.Lcm) {
-        lcmValue = count == 0 ? truncAbs(numeric) : lcmPairCalc(lcmValue, numeric)
+        const integer = gcdLcmIntegerOrNaN(numeric)
+        if (isNaN(integer)) {
+          return writeAggregateError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+        }
+        lcmValue = count == 0 ? integer : lcmPairOrNaN(lcmValue, integer)
+        if (isNaN(lcmValue)) {
+          return writeAggregateError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+        }
       } else if (builtinId == BuiltinId.Product) {
         product *= numeric
       } else if (builtinId == BuiltinId.Sumsq) {

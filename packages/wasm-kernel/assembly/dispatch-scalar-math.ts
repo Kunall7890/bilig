@@ -686,7 +686,7 @@ export function tryApplyScalarMathBuiltin(
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (numeric != 0.0 && Math.sign(numeric) != Math.sign(multiple)) {
-      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeScalarMathNumber(base, Math.round(numeric / multiple) * multiple, rangeIndexStack, valueStack, tagStack, kindStack)
   }

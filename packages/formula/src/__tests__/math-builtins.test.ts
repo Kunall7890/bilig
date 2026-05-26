@@ -24,6 +24,21 @@ describe('math builtins', () => {
     expect(getBuiltin('BITLSHIFT')?.(num(3), num(2))).toEqual(num(12))
   })
 
+  it('matches Microsoft Excel GCD and LCM domain errors', () => {
+    expect(getBuiltin('GCD')?.(num(-18), num(24))).toEqual(numError)
+    expect(getBuiltin('GCD')?.(num(2 ** 53), num(2))).toEqual(numError)
+    expect(getBuiltin('GCD')?.(num(18), str('bad'))).toEqual(valueError)
+
+    expect(getBuiltin('LCM')?.(num(6), num(-8))).toEqual(numError)
+    expect(getBuiltin('LCM')?.(num(2 ** 52), num(3))).toEqual(numError)
+    expect(getBuiltin('LCM')?.(num(6), str('bad'))).toEqual(valueError)
+  })
+
+  it('matches Microsoft Excel MROUND sign-domain errors', () => {
+    expect(getBuiltin('MROUND')?.(num(-10), num(3))).toEqual(numError)
+    expect(getBuiltin('MROUND')?.(num(5), num(-2))).toEqual(numError)
+  })
+
   it('matches Desktop Excel MOD sign semantics for negative operands', () => {
     expect(getBuiltin('MOD')?.(num(-3), num(2))).toEqual(num(1))
     expect(getBuiltin('MOD')?.(num(3), num(-2))).toEqual(num(-1))

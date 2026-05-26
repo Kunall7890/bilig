@@ -8,6 +8,8 @@ import type { EvaluationResult } from '../runtime-values.js'
 
 type Builtin = (...args: CellValue[]) => EvaluationResult
 
+const EXCEL_INTEGER_LIMIT = 2 ** 53
+
 interface MathBuiltinDeps {
   toNumber: (value: CellValue) => number | undefined
   toBitwiseUnsigned: (value: CellValue | undefined) => number | undefined
@@ -537,18 +539,53 @@ export function createMathBuiltins({
         : numberResult(numerator / (denominator * remainder))
     },
     GCD: (...args) => {
-      const numbers = collectNumericArgs(args, toNumber).map((value) => Math.abs(Math.trunc(value)))
+      const error = firstError(args)
+      if (error) {
+        return error
+      }
+      const numbers: number[] = []
+      for (const arg of args) {
+        const numeric = toNumber(arg)
+        if (numeric === undefined) {
+          return valueError()
+        }
+        if (!Number.isFinite(numeric) || numeric < 0 || numeric >= EXCEL_INTEGER_LIMIT) {
+          return numError()
+        }
+        numbers.push(Math.trunc(numeric))
+      }
       if (numbers.length === 0) {
         return valueError()
       }
       return numberResult(numbers.reduce((acc, value) => gcdPair(acc, value)))
     },
     LCM: (...args) => {
-      const numbers = collectNumericArgs(args, toNumber).map((value) => Math.abs(Math.trunc(value)))
+      const error = firstError(args)
+      if (error) {
+        return error
+      }
+      const numbers: number[] = []
+      for (const arg of args) {
+        const numeric = toNumber(arg)
+        if (numeric === undefined) {
+          return valueError()
+        }
+        if (!Number.isFinite(numeric) || numeric < 0 || numeric >= EXCEL_INTEGER_LIMIT) {
+          return numError()
+        }
+        numbers.push(Math.trunc(numeric))
+      }
       if (numbers.length === 0) {
         return valueError()
       }
-      return numberResult(numbers.reduce((acc, value) => lcmPair(acc, value)))
+      let result = numbers[0] ?? 0
+      for (let index = 1; index < numbers.length; index += 1) {
+        result = lcmPair(result, numbers[index] ?? 0)
+        if (!Number.isFinite(result) || result >= EXCEL_INTEGER_LIMIT) {
+          return numError()
+        }
+      }
+      return numberResult(result)
     },
     MROUND: (value, multiple) => {
       const error = firstError([value, multiple])
@@ -561,7 +598,7 @@ export function createMathBuiltins({
         return valueError()
       }
       if (numberValue !== 0 && Math.sign(numberValue) !== Math.sign(multipleValue)) {
-        return valueError()
+        return numError()
       }
       return numberResult(Math.round(numberValue / multipleValue) * multipleValue)
     },

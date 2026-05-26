@@ -260,6 +260,38 @@ describe('wasm kernel scalar math dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(1, 2, width)]).toBe(-2)
   })
 
+  it('matches Microsoft Excel MROUND sign-domain errors on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 3, 1, 1, 1)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Mround, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Mround, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Mround, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width)]),
+    )
+    const constants = packConstants([
+      [-10, 3],
+      [5, -2],
+      [-10, -3],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width)]))
+
+    expect(kernel.readTags()[cellIndex(1, 0, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 0, width)]).toBe(ErrorCode.Num)
+    expect(kernel.readTags()[cellIndex(1, 1, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 1, width)]).toBe(ErrorCode.Num)
+    expect(kernel.readNumbers()[cellIndex(1, 2, width)]).toBe(-9)
+  })
+
   it('keeps trigonometric and transcendental dispatch stable across refactors', async () => {
     const kernel = await createKernel()
     const width = 32

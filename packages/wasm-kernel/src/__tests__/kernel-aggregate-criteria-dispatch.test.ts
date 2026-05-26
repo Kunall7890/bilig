@@ -548,4 +548,63 @@ describe('wasm kernel aggregate and criteria dispatch', () => {
     expect(kernel.readTags()[cellIndex(1, 21, width)]).toBe(ValueTag.Error)
     expect(kernel.readErrors()[cellIndex(1, 21, width)]).toBe(ErrorCode.Div0)
   })
+
+  it('matches Microsoft Excel GCD and LCM domain errors on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 16
+    kernel.init(48, 6, 8, 4, 4)
+
+    const cellTags = new Uint8Array(48)
+    const cellNumbers = new Float64Array(48)
+    const cellStringIds = new Uint32Array(48)
+    const cellErrors = new Uint16Array(48)
+    const numericCells = [
+      [0, -18],
+      [1, 24],
+      [2, 6],
+      [3, -8],
+    ] as const
+    for (const [index, value] of numericCells) {
+      cellTags[index] = ValueTag.Number
+      cellNumbers[index] = value
+    }
+
+    kernel.writeCells(cellTags, cellNumbers, cellStringIds, cellErrors)
+    kernel.uploadRangeMembers(Uint32Array.from([0, 1, 2, 3]), Uint32Array.from([0, 2]), Uint32Array.from([2, 2]))
+    kernel.uploadRangeShapes(Uint32Array.from([2, 2]), Uint32Array.from([1, 1]))
+
+    const strings = packStrings(['bad'])
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+
+    const packed = packPrograms([
+      [encodePushRange(0), encodeCall(BuiltinId.Gcd, 1), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Gcd, 2), encodeRet()],
+      [encodePushString(0), encodePushNumber(0), encodeCall(BuiltinId.Gcd, 2), encodeRet()],
+      [encodePushRange(1), encodeCall(BuiltinId.Lcm, 1), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Lcm, 2), encodeRet()],
+      [encodePushString(0), encodePushNumber(0), encodeCall(BuiltinId.Lcm, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 6 }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([[], [2 ** 53, 2], [18], [], [2 ** 52, 3], [6]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 6 }, (_, index) => cellIndex(1, index, width))))
+
+    expect(kernel.readTags()[cellIndex(1, 0, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 0, width)]).toBe(ErrorCode.Num)
+    expect(kernel.readTags()[cellIndex(1, 1, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 1, width)]).toBe(ErrorCode.Num)
+    expect(kernel.readTags()[cellIndex(1, 2, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 2, width)]).toBe(ErrorCode.Value)
+    expect(kernel.readTags()[cellIndex(1, 3, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 3, width)]).toBe(ErrorCode.Num)
+    expect(kernel.readTags()[cellIndex(1, 4, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 4, width)]).toBe(ErrorCode.Num)
+    expect(kernel.readTags()[cellIndex(1, 5, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 5, width)]).toBe(ErrorCode.Value)
+  })
 })
