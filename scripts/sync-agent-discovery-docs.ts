@@ -431,6 +431,19 @@ const workpaperPackageSkillDocument = skillDocument
   .replace(/@bilig\/workpaper/g, 'bilig-workpaper')
   .replaceAll(workpaperPackageSpec, unscopedWorkpaperPackageSpec)
   .replace(
+    `"args": [
+    "exec",
+    "--package",
+    "${unscopedWorkpaperPackageSpec}",
+    "--",
+    "bilig-formula-clinic",
+    "./reduced.xlsx",
+    "--cells",
+    "Summary!B7,Inputs!B2"
+  ]`,
+    `"args": ["exec", "--package", "${unscopedWorkpaperPackageSpec}", "--", "bilig-formula-clinic", "./reduced.xlsx", "--cells", "Summary!B7,Inputs!B2"]`,
+  )
+  .replace(
     `## First Choice: MCP
 
 Use MCP when the host can run a stdio server or call a Streamable HTTP server.
