@@ -1,6 +1,7 @@
 import { CellFlags } from '../../cell-store.js'
 import type { EngineRuntimeState, RuntimeFormula, U32 } from '../runtime-state.js'
 import type { InitialFormulaCellIndexList } from './formula-initialization-refs.js'
+import { createInitialFormulaCellMembership, type InitialFormulaCellMembership } from './formula-initialization-membership.js'
 
 export interface InitialDirectScalarPreEvaluationTracker {
   readonly cellCount: number
@@ -20,7 +21,7 @@ export function createInitialDirectScalarPreEvaluationTracker(args: {
 }): InitialDirectScalarPreEvaluationTracker {
   let cellBuffer: Uint32Array | undefined
   let cellCount = 0
-  let reusableCells: Uint8Array | undefined
+  let reusableCells: InitialFormulaCellMembership | undefined
   let allCellsReusable = true
 
   const materializeCellBuffer = (): Uint32Array => {
@@ -46,11 +47,14 @@ export function createInitialDirectScalarPreEvaluationTracker(args: {
     buffer[cellCount] = cellIndex
     cellCount += 1
   }
-  const materializeReusableCells = (): Uint8Array => {
+  const materializeReusableCells = (): InitialFormulaCellMembership => {
     if (reusableCells) {
       return reusableCells
     }
-    reusableCells = new Uint8Array(args.maxTargetCellIndex + 1)
+    reusableCells = createInitialFormulaCellMembership({
+      maxCellIndex: args.maxTargetCellIndex,
+      expectedCellCount: args.refsLength,
+    })
     return reusableCells
   }
   const noteCell = (cellIndex: number, runtimeFormula: RuntimeFormula): void => {
@@ -61,14 +65,14 @@ export function createInitialDirectScalarPreEvaluationTracker(args: {
       const dependencyCellIndex = runtimeFormula.dependencyIndices[index]!
       if (
         ((args.state.workbook.cellStore.flags[dependencyCellIndex] ?? 0) & CellFlags.HasFormula) !== 0 &&
-        reusable[dependencyCellIndex] !== 1
+        !reusable.has(dependencyCellIndex)
       ) {
         canReuse = false
         break
       }
     }
     if (canReuse) {
-      reusable[cellIndex] = 1
+      reusable.add(cellIndex)
     } else {
       allCellsReusable = false
     }
@@ -79,15 +83,18 @@ export function createInitialDirectScalarPreEvaluationTracker(args: {
     }
     const reusable = materializeReusableCells()
     for (let index = 0; index < cellIndices.length; index += 1) {
-      reusable[cellIndices[index]!] = 1
+      reusable.add(cellIndices[index]!)
     }
     const existingPreEvaluated = cellCount > 0 ? (cellBuffer ?? args.targetCellIndices) : undefined
-    const preEvaluatedCells = new Uint8Array(args.maxTargetCellIndex + 1)
+    const preEvaluatedCells = createInitialFormulaCellMembership({
+      maxCellIndex: args.maxTargetCellIndex,
+      expectedCellCount: cellCount + cellIndices.length,
+    })
     for (let index = 0; index < cellCount; index += 1) {
-      preEvaluatedCells[existingPreEvaluated![index]!] = 1
+      preEvaluatedCells.add(existingPreEvaluated![index]!)
     }
     for (let index = 0; index < cellIndices.length; index += 1) {
-      preEvaluatedCells[cellIndices[index]!] = 1
+      preEvaluatedCells.add(cellIndices[index]!)
     }
     let preEvaluatedCount = 0
     const orderedPreparedCells = args.orderedPreparedCellList()
@@ -95,7 +102,7 @@ export function createInitialDirectScalarPreEvaluationTracker(args: {
     const orderedPreEvaluatedCells = new Uint32Array(cellCount + cellIndices.length)
     for (let index = 0; index < orderedPreparedCellCount; index += 1) {
       const cellIndex = orderedPreparedCells[index]!
-      if (preEvaluatedCells[cellIndex] === 1) {
+      if (preEvaluatedCells.has(cellIndex)) {
         orderedPreEvaluatedCells[preEvaluatedCount] = cellIndex
         preEvaluatedCount += 1
       }

@@ -7,6 +7,7 @@ import { canEvaluateInitialDirectRuntimeFormula } from './formula-initialization
 import type { EngineFormulaInitializationServiceArgs } from './formula-initialization-service-types.js'
 import type { InitialFormulaCellIndexList } from './formula-initialization-refs.js'
 import { createInitialFormulaValueWriter } from './formula-initialization-value-writer.js'
+import { createInitialFormulaCellMembership, type InitialFormulaCellMembership } from './formula-initialization-membership.js'
 
 export const INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT = 16_384
 
@@ -41,7 +42,7 @@ export function evaluateInitialDirectFormulas(
   )
   const preEvaluatedCellsAreReusable = options?.preEvaluatedCellsAreReusable === true
   let preEvaluatedCellIndex = 0
-  let preEvaluatedCells: Uint8Array | undefined
+  let preEvaluatedCells: InitialFormulaCellMembership | undefined
   const pushChangedCellIndex = (cellIndex: number): void => {
     if (changedCellCount === changedCellBuffer.length) {
       const next = new Uint32Array(changedCellBuffer.length * 2)
@@ -56,12 +57,13 @@ export function evaluateInitialDirectFormulas(
       return false
     }
     if (!preEvaluatedCells) {
-      preEvaluatedCells = new Uint8Array(args.state.workbook.cellStore.size + 1)
-      for (let index = 0; index < preEvaluatedCellCount; index += 1) {
-        preEvaluatedCells[preEvaluatedCellIndices[index]!] = 1
-      }
+      preEvaluatedCells = createInitialFormulaCellMembership({
+        cellIndices: preEvaluatedCellIndices,
+        cellCount: preEvaluatedCellCount,
+        expectedCellCount: preEvaluatedCellCount,
+      })
     }
-    return preEvaluatedCells[cellIndex] === 1
+    return preEvaluatedCells.has(cellIndex)
   }
   const canReusePreEvaluatedFormula = (cellIndex: number): boolean => {
     const formula = args.state.formulas.get(cellIndex)

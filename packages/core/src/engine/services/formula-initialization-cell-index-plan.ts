@@ -1,11 +1,12 @@
 import { initialFormulaEntryRefAt, type InitialFormulaEntryRefSource } from './formula-initialization-refs.js'
+import { createInitialFormulaCellMembership, type InitialFormulaCellMembership } from './formula-initialization-membership.js'
 
 const EMPTY_U32 = new Uint32Array(0)
 
 export interface InitialFormulaCellIndexPlan {
   readonly targetCellIndices: Uint32Array
   readonly pendingInitialFormulaCellIndices: Uint32Array
-  readonly pendingFormulaCells: Uint8Array | undefined
+  readonly pendingFormulaCells: InitialFormulaCellMembership | undefined
   readonly maxTargetCellIndex: number
 }
 
@@ -32,13 +33,12 @@ export function createInitialFormulaCellIndexPlan<Entry>(args: {
     }
   }
 
-  const pendingFormulaCells = args.hadExistingFormulas ? undefined : new Uint8Array(maxTargetCellIndex + 1)
-  if (pendingFormulaCells) {
-    for (let index = 0; index < targetCellIndices.length; index += 1) {
-      args.checkEvaluationBudget()
-      pendingFormulaCells[targetCellIndices[index]!] = 1
-    }
-  }
+  const pendingFormulaCells = args.hadExistingFormulas
+    ? undefined
+    : createInitialFormulaCellMembership({
+        cellIndices: targetCellIndices,
+        maxCellIndex: maxTargetCellIndex,
+      })
 
   return {
     targetCellIndices,

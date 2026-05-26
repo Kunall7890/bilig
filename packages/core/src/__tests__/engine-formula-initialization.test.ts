@@ -295,6 +295,42 @@ describe('SpreadsheetEngine formula initialization', () => {
     expect(engine.getPerformanceCounters().directFormulaInitialEvaluations).toBe(4)
   })
 
+  it('keeps sparse formula initialization ordered after large literal sheets', async () => {
+    const literalRows = 512
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-sparse-pending-membership' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    for (let row = 1; row <= literalRows; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+      engine.setCellValue('Sheet1', `B${row}`, row * 2)
+      engine.setCellValue('Sheet1', `C${row}`, row * 3)
+      engine.setCellValue('Sheet1', `D${row}`, row * 4)
+    }
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+
+    engine.resetPerformanceCounters()
+    engine.initializeCellFormulasAt(
+      [
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 4, formula: 'A1+B1' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 5, formula: 'E1+C1' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 6, formula: 'F1+D1' } },
+      ],
+      3,
+    )
+
+    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(engine.getCellValue('Sheet1', 'F1')).toEqual({
+      tag: ValueTag.Number,
+      value: 6,
+    })
+    expect(engine.getCellValue('Sheet1', 'G1')).toEqual({
+      tag: ValueTag.Number,
+      value: 10,
+    })
+    expect(engine.getPerformanceCounters().topoRebuilds).toBe(0)
+    expect(engine.getPerformanceCounters().directFormulaInitialEvaluations).toBe(3)
+  })
+
   it('materializes anchored prefix aggregate families during initial direct evaluation', async () => {
     const rowCount = 128
     const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-prefix-aggregate-family' })

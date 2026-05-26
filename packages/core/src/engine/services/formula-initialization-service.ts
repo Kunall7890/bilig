@@ -353,7 +353,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         readRuntimeFormula: (cellIndex) => args.state.formulas.get(cellIndex),
         clearPendingFormulaCell: (cellIndex) => {
           if (pendingFormulaCells) {
-            pendingFormulaCells[cellIndex] = 0
+            pendingFormulaCells.delete(cellIndex)
           }
         },
       })
@@ -418,7 +418,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
                 changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
               }
               if (pendingFormulaCells) {
-                pendingFormulaCells[cellIndex] = 0
+                pendingFormulaCells.delete(cellIndex)
               }
             }
             initialFreshDirectScalarRunQueue.flush()
@@ -880,7 +880,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
               }
             }
             if (pendingFormulaCells) {
-              pendingFormulaCells[cellIndex] = 0
+              pendingFormulaCells.delete(cellIndex)
             }
           }
           if (
