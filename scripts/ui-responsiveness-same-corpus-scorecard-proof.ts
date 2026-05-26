@@ -178,10 +178,10 @@ function buildSameCorpusRunManifest(
   ).length
   const semanticUiProofCaseCount = cases.filter((entry) => entry.scenarioProof.semanticUiProof.captured).length
   const requiredMutationTargetProofCaseCount = requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount()
-  const mutationTargetProofCaseCount = sameCorpusMutationTargetProofCaseCount(cases)
   const sampleCount = manifestSampleCount(cases)
+  const mutationTargetProofCaseCount = sameCorpusMutationTargetProofCaseCount(cases, sampleCount)
   const requiredMutationTargetProofSampleCount = requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount(sampleCount)
-  const mutationTargetProofSampleCount = sameCorpusMutationTargetProofSampleCount(cases)
+  const mutationTargetProofSampleCount = sameCorpusMutationTargetProofSampleCount(cases, sampleCount)
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
   ).length
@@ -259,9 +259,9 @@ export function buildSameCorpusCaptureRunManifest(
   ).length
   const semanticUiProofCaseCount = cases.filter((entry) => entry.scenarioProof.semanticUiProof.captured).length
   const requiredMutationTargetProofCaseCount = requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount()
-  const mutationTargetProofCaseCount = sameCorpusMutationTargetProofCaseCount(cases)
   const requiredMutationTargetProofSampleCount = requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount(sampleCount)
-  const mutationTargetProofSampleCount = sameCorpusMutationTargetProofSampleCount(cases)
+  const mutationTargetProofCaseCount = sameCorpusMutationTargetProofCaseCount(cases, sampleCount)
+  const mutationTargetProofSampleCount = sameCorpusMutationTargetProofSampleCount(cases, sampleCount)
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
   ).length
