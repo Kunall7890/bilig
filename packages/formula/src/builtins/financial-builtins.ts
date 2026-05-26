@@ -180,12 +180,26 @@ export function createFinancialBuiltins({
       const salvage = toNumber(salvageArg)
       const life = toNumber(lifeArg)
       const period = toNumber(periodArg)
-      const factor = coerceNumber(factorArg, 2)
+      const factor = factorArg === undefined ? 2 : toNumber(factorArg)
       if (cost === undefined || salvage === undefined || life === undefined || period === undefined || factor === undefined) {
         return valueError()
       }
+      if (
+        !Number.isFinite(cost) ||
+        !Number.isFinite(salvage) ||
+        !Number.isFinite(life) ||
+        !Number.isFinite(period) ||
+        !Number.isFinite(factor) ||
+        cost <= 0 ||
+        salvage < 0 ||
+        life <= 0 ||
+        period <= 0 ||
+        factor <= 0
+      ) {
+        return numError()
+      }
       const depreciation = ddbDepreciation(cost, salvage, life, period, factor)
-      return depreciation === undefined ? valueError() : numberResult(depreciation)
+      return depreciation === undefined ? numError() : numberResult(depreciation)
     },
     VDB: (costArg, salvageArg, lifeArg, startArg, endArg, factorArg, noSwitchArg) => {
       const cost = toNumber(costArg)
@@ -193,7 +207,7 @@ export function createFinancialBuiltins({
       const life = toNumber(lifeArg)
       const start = toNumber(startArg)
       const end = toNumber(endArg)
-      const factor = coerceNumber(factorArg, 2)
+      const factor = factorArg === undefined ? 2 : toNumber(factorArg)
       const noSwitch = coerceBoolean(noSwitchArg, false)
       if (
         cost === undefined ||
@@ -206,8 +220,24 @@ export function createFinancialBuiltins({
       ) {
         return valueError()
       }
+      if (
+        !Number.isFinite(cost) ||
+        !Number.isFinite(salvage) ||
+        !Number.isFinite(life) ||
+        !Number.isFinite(start) ||
+        !Number.isFinite(end) ||
+        !Number.isFinite(factor) ||
+        cost <= 0 ||
+        salvage < 0 ||
+        life <= 0 ||
+        start < 0 ||
+        end < start ||
+        factor <= 0
+      ) {
+        return numError()
+      }
       const depreciation = vdbDepreciation(cost, salvage, life, start, end, factor, noSwitch)
-      return depreciation === undefined ? valueError() : numberResult(depreciation)
+      return depreciation === undefined ? numError() : numberResult(depreciation)
     },
     PV: (rateArg, periodsArg, paymentArg, futureArg, typeArg) => {
       const rate = toNumber(rateArg)

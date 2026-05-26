@@ -3189,7 +3189,7 @@ describe('formula builtins', () => {
     })
     expect(T_DIST_2T({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 1 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(TDIST({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 1 })).toMatchObject(
       {
@@ -3267,7 +3267,7 @@ describe('formula builtins', () => {
     ).toEqual({ tag: ValueTag.Number, value: 1 })
     expect(T_DIST_2T({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 1 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       BINOMDIST(
@@ -3406,13 +3406,13 @@ describe('formula builtins', () => {
     })
     expect(CHIDIST({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 4 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       CHISQ_DIST({ tag: ValueTag.Number, value: 3 }, { tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Boolean, value: true }),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       BETA_DIST(
@@ -3425,11 +3425,11 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(F_DIST_RT({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Number, value: 4 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       F_INV({ tag: ValueTag.Number, value: 0.5 }, { tag: ValueTag.String, value: 'bad', stringId: 71 }, { tag: ValueTag.Number, value: 4 }),
@@ -3456,7 +3456,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       BINOM_DIST_RANGE(
@@ -3467,12 +3467,12 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(CRITBINOM({ tag: ValueTag.Number, value: 6 }, { tag: ValueTag.Number, value: 0.5 }, { tag: ValueTag.Number, value: 1 })).toEqual(
       {
         tag: ValueTag.Error,
-        code: ErrorCode.Value,
+        code: ErrorCode.Num,
       },
     )
     expect(
@@ -3484,7 +3484,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       HYPGEOM_DIST(
@@ -3502,7 +3502,7 @@ describe('formula builtins', () => {
       NEGBINOMDIST({ tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Number, value: 3 }, { tag: ValueTag.Number, value: 1.5 }),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       NEGBINOM_DIST(
@@ -3530,23 +3530,23 @@ describe('formula builtins', () => {
 
     expect(T_DIST_RT({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 0 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(T_INV({ tag: ValueTag.String, value: 'bad', stringId: 401 }, { tag: ValueTag.Number, value: 1 })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,
     })
     expect(T_INV_2T({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 1 })).toEqual({
-      tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      tag: ValueTag.Number,
+      value: 0,
     })
     expect(TDIST({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 1 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(TDIST({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 3 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       BINOMDIST(
@@ -3557,7 +3557,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       BINOM_DIST_RANGE(
@@ -3568,7 +3568,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
   })
 
@@ -4495,7 +4495,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       DDB(
@@ -4518,7 +4518,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       VDB(

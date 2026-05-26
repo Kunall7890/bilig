@@ -34,6 +34,33 @@ function coerceBoolean(tag: u8, value: f64): i32 {
   return -1
 }
 
+function isInvalidHypergeometricDomain(
+  sampleSuccesses: i32,
+  sampleSize: i32,
+  populationSuccesses: i32,
+  populationSize: i32,
+  sampleSuccessesRaw: f64,
+  sampleSizeRaw: f64,
+  populationSuccessesRaw: f64,
+  populationSizeRaw: f64,
+): bool {
+  const minimumSampleSuccesses = max<i32>(0, sampleSize - populationSize + populationSuccesses)
+  const maximumSampleSuccesses = min<i32>(sampleSize, populationSuccesses)
+  return (
+    !isFinite(sampleSuccessesRaw) ||
+    !isFinite(sampleSizeRaw) ||
+    !isFinite(populationSuccessesRaw) ||
+    !isFinite(populationSizeRaw) ||
+    sampleSuccesses < minimumSampleSuccesses ||
+    sampleSuccesses > maximumSampleSuccesses ||
+    sampleSize <= 0 ||
+    sampleSize > populationSize ||
+    populationSuccesses <= 0 ||
+    populationSuccesses > populationSize ||
+    populationSize <= 0
+  )
+}
+
 export function tryApplyExtendedDistributionBuiltin(
   builtinId: i32,
   argc: i32,
@@ -66,7 +93,7 @@ export function tryApplyExtendedDistributionBuiltin(
       const cumulative = coerceBoolean(tagStack[base + 2], valueStack[base + 2])
       if (isNaN(x) || isNaN(lambda) || cumulative < 0) {
         errorCode = ErrorCode.Value
-      } else if (x < 0.0 || lambda <= 0.0) {
+      } else if (!isFinite(x) || !isFinite(lambda) || x < 0.0 || lambda <= 0.0) {
         errorCode = ErrorCode.Num
       } else {
         result = cumulative == 1 ? 1.0 - Math.exp(-lambda * x) : lambda * Math.exp(-lambda * x)
@@ -78,7 +105,7 @@ export function tryApplyExtendedDistributionBuiltin(
       const events = <i32>eventsRaw
       if (isNaN(eventsRaw) || isNaN(mean) || cumulative < 0) {
         errorCode = ErrorCode.Value
-      } else if (events < 0 || mean < 0.0) {
+      } else if (!isFinite(eventsRaw) || !isFinite(mean) || events < 0 || mean < 0.0) {
         errorCode = ErrorCode.Num
       } else {
         if (cumulative == 1) {
@@ -96,7 +123,19 @@ export function tryApplyExtendedDistributionBuiltin(
       const probability = toNumberExact(tagStack[base + 2], valueStack[base + 2])
       const failures = <i32>failuresRaw
       const successes = <i32>successesRaw
-      if (!isNaN(failuresRaw) && !isNaN(successesRaw)) {
+      if (isNaN(failuresRaw) || isNaN(successesRaw) || isNaN(probability)) {
+        errorCode = ErrorCode.Value
+      } else if (
+        !isFinite(failuresRaw) ||
+        !isFinite(successesRaw) ||
+        !isFinite(probability) ||
+        failures < 0 ||
+        successes < 1 ||
+        probability < 0.0 ||
+        probability > 1.0
+      ) {
+        errorCode = ErrorCode.Num
+      } else {
         result = negativeBinomialProbability(failures, successes, probability)
       }
     }
@@ -141,7 +180,7 @@ export function tryApplyExtendedDistributionBuiltin(
       const cumulative = coerceBoolean(tagStack[base + 3], valueStack[base + 3])
       if (isNaN(x) || isNaN(alpha) || isNaN(beta) || cumulative < 0) {
         errorCode = ErrorCode.Value
-      } else if (x < 0.0 || alpha <= 0.0 || beta <= 0.0) {
+      } else if (!isFinite(x) || !isFinite(alpha) || !isFinite(beta) || x < 0.0 || alpha <= 0.0 || beta <= 0.0) {
         errorCode = ErrorCode.Num
       } else {
         if (cumulative == 1) {
@@ -159,7 +198,7 @@ export function tryApplyExtendedDistributionBuiltin(
       const cumulative = coerceBoolean(tagStack[base + 3], valueStack[base + 3])
       if (isNaN(x) || isNaN(alpha) || isNaN(beta) || cumulative < 0) {
         errorCode = ErrorCode.Value
-      } else if (x < 0.0 || alpha <= 0.0 || beta <= 0.0) {
+      } else if (!isFinite(x) || !isFinite(alpha) || !isFinite(beta) || x < 0.0 || alpha <= 0.0 || beta <= 0.0) {
         errorCode = ErrorCode.Num
       } else {
         result = cumulative == 1 ? gammaDistributionCdf(x, alpha, beta) : gammaDistributionDensity(x, alpha, beta)
@@ -171,7 +210,20 @@ export function tryApplyExtendedDistributionBuiltin(
       const cumulative = coerceBoolean(tagStack[base + 3], valueStack[base + 3])
       const successes = <i32>successesRaw
       const trials = <i32>trialsRaw
-      if (!isNaN(successesRaw) && !isNaN(trialsRaw) && cumulative >= 0) {
+      if (isNaN(successesRaw) || isNaN(trialsRaw) || isNaN(probability) || cumulative < 0) {
+        errorCode = ErrorCode.Value
+      } else if (
+        !isFinite(successesRaw) ||
+        !isFinite(trialsRaw) ||
+        !isFinite(probability) ||
+        successes < 0 ||
+        trials < 0 ||
+        successes > trials ||
+        probability < 0.0 ||
+        probability > 1.0
+      ) {
+        errorCode = ErrorCode.Num
+      } else {
         if (cumulative == 1) {
           result = 0.0
           for (let index = 0; index <= successes; index += 1) {
@@ -188,7 +240,19 @@ export function tryApplyExtendedDistributionBuiltin(
       const cumulative = coerceBoolean(tagStack[base + 3], valueStack[base + 3])
       const failures = <i32>failuresRaw
       const successes = <i32>successesRaw
-      if (!isNaN(failuresRaw) && !isNaN(successesRaw) && cumulative >= 0) {
+      if (isNaN(failuresRaw) || isNaN(successesRaw) || isNaN(probability) || cumulative < 0) {
+        errorCode = ErrorCode.Value
+      } else if (
+        !isFinite(failuresRaw) ||
+        !isFinite(successesRaw) ||
+        !isFinite(probability) ||
+        failures < 0 ||
+        successes < 1 ||
+        probability < 0.0 ||
+        probability > 1.0
+      ) {
+        errorCode = ErrorCode.Num
+      } else {
         if (cumulative == 1) {
           result = 0.0
           for (let index = 0; index <= failures; index += 1) {
@@ -229,8 +293,20 @@ export function tryApplyExtendedDistributionBuiltin(
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const x = toNumberExact(tagStack[base], valueStack[base])
-    const degrees = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const result = !isNaN(x) && !isNaN(degrees) && x >= 0.0 && degrees >= 1.0 ? regularizedUpperGamma(degrees / 2.0, x / 2.0) : NaN
+    const degreesRaw = toNumberExact(tagStack[base + 1], valueStack[base + 1])
+    const degrees = <i32>degreesRaw
+    let result = NaN
+    let errorCode = ErrorCode.None
+    if (isNaN(x) || isNaN(degreesRaw)) {
+      errorCode = ErrorCode.Value
+    } else if (!isFinite(x) || !isFinite(degreesRaw) || x < 0.0 || degrees < 1 || degreesRaw > 1.0e10) {
+      errorCode = ErrorCode.Num
+    } else {
+      result = regularizedUpperGamma(<f64>degrees / 2.0, x / 2.0)
+    }
+    if (errorCode != ErrorCode.None) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     return writeResult(
       base,
       STACK_KIND_SCALAR,
@@ -252,14 +328,21 @@ export function tryApplyExtendedDistributionBuiltin(
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const x = toNumberExact(tagStack[base], valueStack[base])
-    const degrees = toNumberExact(tagStack[base + 1], valueStack[base + 1])
+    const degreesRaw = toNumberExact(tagStack[base + 1], valueStack[base + 1])
     const cumulative = coerceBoolean(tagStack[base + 2], valueStack[base + 2])
-    const result =
-      !isNaN(x) && !isNaN(degrees) && cumulative >= 0 && x >= 0.0 && degrees >= 1.0
-        ? cumulative == 1
-          ? chiSquareCdf(x, degrees)
-          : chiSquareDensity(x, degrees)
-        : NaN
+    const degrees = <i32>degreesRaw
+    let result = NaN
+    let errorCode = ErrorCode.None
+    if (isNaN(x) || isNaN(degreesRaw) || cumulative < 0) {
+      errorCode = ErrorCode.Value
+    } else if (!isFinite(x) || !isFinite(degreesRaw) || x < 0.0 || degrees < 1 || degreesRaw > 1.0e10) {
+      errorCode = ErrorCode.Num
+    } else {
+      result = cumulative == 1 ? chiSquareCdf(x, <f64>degrees) : chiSquareDensity(x, <f64>degrees)
+    }
+    if (errorCode != ErrorCode.None) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     return writeResult(
       base,
       STACK_KIND_SCALAR,
@@ -287,14 +370,30 @@ export function tryApplyExtendedDistributionBuiltin(
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const probability = toNumberExact(tagStack[base], valueStack[base])
-    const degrees = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const valid = !isNaN(probability) && !isNaN(degrees) && probability > 0.0 && probability < 1.0 && degrees >= 1.0
+    const degreesRaw = toNumberExact(tagStack[base + 1], valueStack[base + 1])
+    const degrees = <i32>degreesRaw
+    let errorCode = ErrorCode.None
+    if (isNaN(probability) || isNaN(degreesRaw)) {
+      errorCode = ErrorCode.Value
+    } else if (
+      !isFinite(probability) ||
+      !isFinite(degreesRaw) ||
+      probability < 0.0 ||
+      probability > 1.0 ||
+      degrees < 1 ||
+      degreesRaw > 1.0e10
+    ) {
+      errorCode = ErrorCode.Num
+    }
     let result = NaN
-    if (valid) {
-      result = inverseChiSquare(1.0 - probability, degrees)
+    if (errorCode == ErrorCode.None && probability > 0.0 && probability < 1.0) {
+      result = inverseChiSquare(1.0 - probability, <f64>degrees)
+    }
+    if (errorCode != ErrorCode.None) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const resultTag = isNumericResult(result) ? <u8>ValueTag.Number : <u8>ValueTag.Error
-    const resultValue = isNumericResult(result) ? result : valid ? ErrorCode.NA : ErrorCode.Value
+    const resultValue = isNumericResult(result) ? result : ErrorCode.NA
     return writeResult(base, STACK_KIND_SCALAR, resultTag, resultValue, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
@@ -307,14 +406,30 @@ export function tryApplyExtendedDistributionBuiltin(
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const probability = toNumberExact(tagStack[base], valueStack[base])
-    const degrees = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const valid = !isNaN(probability) && !isNaN(degrees) && probability > 0.0 && probability < 1.0 && degrees >= 1.0
+    const degreesRaw = toNumberExact(tagStack[base + 1], valueStack[base + 1])
+    const degrees = <i32>degreesRaw
+    let errorCode = ErrorCode.None
+    if (isNaN(probability) || isNaN(degreesRaw)) {
+      errorCode = ErrorCode.Value
+    } else if (
+      !isFinite(probability) ||
+      !isFinite(degreesRaw) ||
+      probability < 0.0 ||
+      probability > 1.0 ||
+      degrees < 1 ||
+      degreesRaw > 1.0e10
+    ) {
+      errorCode = ErrorCode.Num
+    }
     let result = NaN
-    if (valid) {
-      result = inverseChiSquare(probability, degrees)
+    if (errorCode == ErrorCode.None && probability > 0.0 && probability < 1.0) {
+      result = inverseChiSquare(probability, <f64>degrees)
+    }
+    if (errorCode != ErrorCode.None) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const resultTag = isNumericResult(result) ? <u8>ValueTag.Number : <u8>ValueTag.Error
-    const resultValue = isNumericResult(result) ? result : valid ? ErrorCode.NA : ErrorCode.Value
+    const resultValue = isNumericResult(result) ? result : ErrorCode.NA
     return writeResult(base, STACK_KIND_SCALAR, resultTag, resultValue, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
@@ -345,12 +460,32 @@ export function tryApplyExtendedDistributionBuiltin(
       : argc >= 5
         ? toNumberExact(tagStack[base + 4], valueStack[base + 4])
         : 1.0
-    const result =
-      !isNaN(x) && !isNaN(alpha) && !isNaN(beta) && cumulative >= 0 && !isNaN(lowerBound) && !isNaN(upperBound)
-        ? cumulative == 1 || !modern
+    let result = NaN
+    let errorCode = ErrorCode.None
+    if (isNaN(x) || isNaN(alpha) || isNaN(beta) || cumulative < 0 || isNaN(lowerBound) || isNaN(upperBound)) {
+      errorCode = ErrorCode.Value
+    } else if (
+      !isFinite(x) ||
+      !isFinite(alpha) ||
+      !isFinite(beta) ||
+      !isFinite(lowerBound) ||
+      !isFinite(upperBound) ||
+      alpha <= 0.0 ||
+      beta <= 0.0 ||
+      x < lowerBound ||
+      x > upperBound ||
+      lowerBound >= upperBound
+    ) {
+      errorCode = ErrorCode.Num
+    } else {
+      result =
+        cumulative == 1 || !modern
           ? betaDistributionCdf(x, alpha, beta, lowerBound, upperBound)
           : betaDistributionDensity(x, alpha, beta, lowerBound, upperBound)
-        : NaN
+    }
+    if (errorCode != ErrorCode.None) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     return writeResult(
       base,
       STACK_KIND_SCALAR,
@@ -376,7 +511,31 @@ export function tryApplyExtendedDistributionBuiltin(
     const beta = toNumberExact(tagStack[base + 2], valueStack[base + 2])
     const lowerBound = argc >= 4 ? toNumberExact(tagStack[base + 3], valueStack[base + 3]) : 0.0
     const upperBound = argc >= 5 ? toNumberExact(tagStack[base + 4], valueStack[base + 4]) : 1.0
-    const result = betaDistributionInverse(probability, alpha, beta, lowerBound, upperBound)
+    let result = NaN
+    let errorCode = ErrorCode.None
+    if (isNaN(probability) || isNaN(alpha) || isNaN(beta) || isNaN(lowerBound) || isNaN(upperBound)) {
+      errorCode = ErrorCode.Value
+    } else if (
+      !isFinite(probability) ||
+      !isFinite(alpha) ||
+      !isFinite(beta) ||
+      !isFinite(lowerBound) ||
+      !isFinite(upperBound) ||
+      probability <= 0.0 ||
+      probability > 1.0 ||
+      alpha <= 0.0 ||
+      beta <= 0.0 ||
+      lowerBound >= upperBound
+    ) {
+      errorCode = ErrorCode.Num
+    } else if (probability == 1.0) {
+      result = upperBound
+    } else {
+      result = betaDistributionInverse(probability, alpha, beta, lowerBound, upperBound)
+    }
+    if (errorCode != ErrorCode.None) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     return writeResult(
       base,
       STACK_KIND_SCALAR,
@@ -401,14 +560,20 @@ export function tryApplyExtendedDistributionBuiltin(
     const degrees1Raw = toNumberExact(tagStack[base + 1], valueStack[base + 1])
     const degrees2Raw = toNumberExact(tagStack[base + 2], valueStack[base + 2])
     const cumulative = coerceBoolean(tagStack[base + 3], valueStack[base + 3])
-    const degrees1 = Math.floor(degrees1Raw)
-    const degrees2 = Math.floor(degrees2Raw)
-    const result =
-      !isNaN(x) && !isNaN(degrees1Raw) && !isNaN(degrees2Raw) && cumulative >= 0
-        ? cumulative == 1
-          ? fDistributionCdf(x, degrees1, degrees2)
-          : fDistributionDensity(x, degrees1, degrees2)
-        : NaN
+    const degrees1 = <i32>degrees1Raw
+    const degrees2 = <i32>degrees2Raw
+    let result = NaN
+    let errorCode = ErrorCode.None
+    if (isNaN(x) || isNaN(degrees1Raw) || isNaN(degrees2Raw) || cumulative < 0) {
+      errorCode = ErrorCode.Value
+    } else if (!isFinite(x) || !isFinite(degrees1Raw) || !isFinite(degrees2Raw) || x < 0.0 || degrees1 < 1 || degrees2 < 1) {
+      errorCode = ErrorCode.Num
+    } else {
+      result = cumulative == 1 ? fDistributionCdf(x, <f64>degrees1, <f64>degrees2) : fDistributionDensity(x, <f64>degrees1, <f64>degrees2)
+    }
+    if (errorCode != ErrorCode.None) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     return writeResult(
       base,
       STACK_KIND_SCALAR,
@@ -432,10 +597,21 @@ export function tryApplyExtendedDistributionBuiltin(
     const x = toNumberExact(tagStack[base], valueStack[base])
     const degrees1Raw = toNumberExact(tagStack[base + 1], valueStack[base + 1])
     const degrees2Raw = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-    const degrees1 = Math.floor(degrees1Raw)
-    const degrees2 = Math.floor(degrees2Raw)
-    const cdf = fDistributionCdf(x, degrees1, degrees2)
-    const result = !isNaN(x) && !isNaN(degrees1Raw) && !isNaN(degrees2Raw) && isFinite(cdf) ? 1.0 - cdf : NaN
+    const degrees1 = <i32>degrees1Raw
+    const degrees2 = <i32>degrees2Raw
+    let result = NaN
+    let errorCode = ErrorCode.None
+    if (isNaN(x) || isNaN(degrees1Raw) || isNaN(degrees2Raw)) {
+      errorCode = ErrorCode.Value
+    } else if (!isFinite(x) || !isFinite(degrees1Raw) || !isFinite(degrees2Raw) || x < 0.0 || degrees1 < 1 || degrees2 < 1) {
+      errorCode = ErrorCode.Num
+    } else {
+      const cdf = fDistributionCdf(x, <f64>degrees1, <f64>degrees2)
+      result = isFinite(cdf) ? 1.0 - cdf : NaN
+    }
+    if (errorCode != ErrorCode.None) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     return writeResult(
       base,
       STACK_KIND_SCALAR,
@@ -462,10 +638,29 @@ export function tryApplyExtendedDistributionBuiltin(
     const probabilityRaw = toNumberExact(tagStack[base], valueStack[base])
     const degrees1Raw = toNumberExact(tagStack[base + 1], valueStack[base + 1])
     const degrees2Raw = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-    const degrees1 = Math.floor(degrees1Raw)
-    const degrees2 = Math.floor(degrees2Raw)
+    const degrees1 = <i32>degrees1Raw
+    const degrees2 = <i32>degrees2Raw
     const probability = builtinId == BuiltinId.FInv ? probabilityRaw : 1.0 - probabilityRaw
-    const result = inverseFDistribution(probability, degrees1, degrees2)
+    let result = NaN
+    let errorCode = ErrorCode.None
+    if (isNaN(probabilityRaw) || isNaN(degrees1Raw) || isNaN(degrees2Raw)) {
+      errorCode = ErrorCode.Value
+    } else if (
+      !isFinite(probabilityRaw) ||
+      !isFinite(degrees1Raw) ||
+      !isFinite(degrees2Raw) ||
+      probabilityRaw < 0.0 ||
+      probabilityRaw > 1.0 ||
+      degrees1 < 1 ||
+      degrees2 < 1
+    ) {
+      errorCode = ErrorCode.Num
+    } else {
+      result = inverseFDistribution(probability, <f64>degrees1, <f64>degrees2)
+    }
+    if (errorCode != ErrorCode.None) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     return writeResult(
       base,
       STACK_KIND_SCALAR,
@@ -489,9 +684,19 @@ export function tryApplyExtendedDistributionBuiltin(
     const x = toNumberExact(tagStack[base], valueStack[base])
     const degreesRaw = toNumberExact(tagStack[base + 1], valueStack[base + 1])
     const cumulative = coerceBoolean(tagStack[base + 2], valueStack[base + 2])
-    const degrees = Math.floor(degreesRaw)
-    const result =
-      !isNaN(x) && !isNaN(degreesRaw) && cumulative >= 0 ? (cumulative == 1 ? studentTCdf(x, degrees) : studentTDensity(x, degrees)) : NaN
+    const degrees = <i32>degreesRaw
+    let result = NaN
+    let errorCode = ErrorCode.None
+    if (isNaN(x) || isNaN(degreesRaw) || cumulative < 0) {
+      errorCode = ErrorCode.Value
+    } else if (!isFinite(x) || !isFinite(degreesRaw) || degrees < 1) {
+      errorCode = ErrorCode.Num
+    } else {
+      result = cumulative == 1 ? studentTCdf(x, <f64>degrees) : studentTDensity(x, <f64>degrees)
+    }
+    if (errorCode != ErrorCode.None) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     return writeResult(
       base,
       STACK_KIND_SCALAR,
@@ -514,14 +719,20 @@ export function tryApplyExtendedDistributionBuiltin(
     }
     const x = toNumberExact(tagStack[base], valueStack[base])
     const degreesRaw = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const degrees = Math.floor(degreesRaw)
-    const upperTail = 1.0 - studentTCdf(x, degrees)
-    const result =
-      !isNaN(x) && !isNaN(degreesRaw) && (builtinId != BuiltinId.TDist2T || x >= 0.0) && isFinite(upperTail)
-        ? builtinId == BuiltinId.TDistRt
-          ? upperTail
-          : min(1.0, upperTail * 2.0)
-        : NaN
+    const degrees = <i32>degreesRaw
+    let result = NaN
+    let errorCode = ErrorCode.None
+    if (isNaN(x) || isNaN(degreesRaw)) {
+      errorCode = ErrorCode.Value
+    } else if (!isFinite(x) || !isFinite(degreesRaw) || degrees < 1 || (builtinId == BuiltinId.TDist2T && x < 0.0)) {
+      errorCode = ErrorCode.Num
+    } else {
+      const upperTail = 1.0 - studentTCdf(x, <f64>degrees)
+      result = isFinite(upperTail) ? (builtinId == BuiltinId.TDistRt ? upperTail : min(1.0, upperTail * 2.0)) : NaN
+    }
+    if (errorCode != ErrorCode.None) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     return writeResult(
       base,
       STACK_KIND_SCALAR,
@@ -545,21 +756,21 @@ export function tryApplyExtendedDistributionBuiltin(
     const x = toNumberExact(tagStack[base], valueStack[base])
     const degreesRaw = toNumberExact(tagStack[base + 1], valueStack[base + 1])
     const tailsRaw = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-    const degrees = Math.floor(degreesRaw)
+    const degrees = <i32>degreesRaw
     const tails = <i32>tailsRaw
-    const upperTail = 1.0 - studentTCdf(x, degrees)
-    const result =
-      !isNaN(x) &&
-      !isNaN(degreesRaw) &&
-      !isNaN(tailsRaw) &&
-      tailsRaw == <f64>tails &&
-      x >= 0.0 &&
-      (tails == 1 || tails == 2) &&
-      isFinite(upperTail)
-        ? tails == 1
-          ? upperTail
-          : min(1.0, upperTail * 2.0)
-        : NaN
+    let result = NaN
+    let errorCode = ErrorCode.None
+    if (isNaN(x) || isNaN(degreesRaw) || isNaN(tailsRaw)) {
+      errorCode = ErrorCode.Value
+    } else if (!isFinite(x) || !isFinite(degreesRaw) || !isFinite(tailsRaw) || x < 0.0 || degrees < 1 || (tails != 1 && tails != 2)) {
+      errorCode = ErrorCode.Num
+    } else {
+      const upperTail = 1.0 - studentTCdf(x, <f64>degrees)
+      result = isFinite(upperTail) ? (tails == 1 ? upperTail : min(1.0, upperTail * 2.0)) : NaN
+    }
+    if (errorCode != ErrorCode.None) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     return writeResult(
       base,
       STACK_KIND_SCALAR,
@@ -582,9 +793,20 @@ export function tryApplyExtendedDistributionBuiltin(
     }
     const probabilityRaw = toNumberExact(tagStack[base], valueStack[base])
     const degreesRaw = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const degrees = Math.floor(degreesRaw)
+    const degrees = <i32>degreesRaw
     const probability = builtinId == BuiltinId.TInv ? probabilityRaw : 1.0 - probabilityRaw / 2.0
-    const result = inverseStudentT(probability, degrees)
+    let result = NaN
+    let errorCode = ErrorCode.None
+    if (isNaN(probabilityRaw) || isNaN(degreesRaw)) {
+      errorCode = ErrorCode.Value
+    } else if (!isFinite(probabilityRaw) || !isFinite(degreesRaw) || probabilityRaw <= 0.0 || probabilityRaw > 1.0 || degrees < 1) {
+      errorCode = ErrorCode.Num
+    } else {
+      result = inverseStudentT(probability, <f64>degrees)
+    }
+    if (errorCode != ErrorCode.None) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     return writeResult(
       base,
       STACK_KIND_SCALAR,
@@ -612,6 +834,7 @@ export function tryApplyExtendedDistributionBuiltin(
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     let result = NaN
+    let errorCode = ErrorCode.None
     if (builtinId == BuiltinId.BinomDistRange) {
       const trialsRaw = toNumberExact(tagStack[base], valueStack[base])
       const probability = toNumberExact(tagStack[base + 1], valueStack[base + 1])
@@ -620,7 +843,23 @@ export function tryApplyExtendedDistributionBuiltin(
       const trials = <i32>trialsRaw
       const lower = <i32>lowerRaw
       const upper = <i32>upperRaw
-      if (!isNaN(trialsRaw) && !isNaN(lowerRaw) && !isNaN(upperRaw) && lower <= upper) {
+      if (isNaN(trialsRaw) || isNaN(probability) || isNaN(lowerRaw) || isNaN(upperRaw)) {
+        errorCode = ErrorCode.Value
+      } else if (
+        !isFinite(trialsRaw) ||
+        !isFinite(probability) ||
+        !isFinite(lowerRaw) ||
+        !isFinite(upperRaw) ||
+        trials < 0 ||
+        lower < 0 ||
+        upper < 0 ||
+        lower > upper ||
+        upper > trials ||
+        probability < 0.0 ||
+        probability > 1.0
+      ) {
+        errorCode = ErrorCode.Num
+      } else {
         result = 0.0
         for (let index = lower; index <= upper; index += 1) {
           result += binomialProbability(index, trials, probability)
@@ -631,16 +870,20 @@ export function tryApplyExtendedDistributionBuiltin(
       const probability = toNumberExact(tagStack[base + 1], valueStack[base + 1])
       const alpha = toNumberExact(tagStack[base + 2], valueStack[base + 2])
       const trials = <i32>trialsRaw
-      if (
-        !isNaN(trialsRaw) &&
-        !isNaN(probability) &&
-        !isNaN(alpha) &&
-        trials >= 0 &&
-        probability >= 0.0 &&
-        probability <= 1.0 &&
-        alpha > 0.0 &&
-        alpha < 1.0
+      if (isNaN(trialsRaw) || isNaN(probability) || isNaN(alpha)) {
+        errorCode = ErrorCode.Value
+      } else if (
+        !isFinite(trialsRaw) ||
+        !isFinite(probability) ||
+        !isFinite(alpha) ||
+        trials < 0 ||
+        probability <= 0.0 ||
+        probability >= 1.0 ||
+        alpha <= 0.0 ||
+        alpha >= 1.0
       ) {
+        errorCode = ErrorCode.Num
+      } else {
         let cumulative = 0.0
         for (let index = 0; index <= trials; index += 1) {
           cumulative += binomialProbability(index, trials, probability)
@@ -658,8 +901,27 @@ export function tryApplyExtendedDistributionBuiltin(
       const sampleSizeRaw = toNumberExact(tagStack[base + 1], valueStack[base + 1])
       const populationSuccessesRaw = toNumberExact(tagStack[base + 2], valueStack[base + 2])
       const populationSizeRaw = toNumberExact(tagStack[base + 3], valueStack[base + 3])
-      if (!isNaN(sampleSuccessesRaw) && !isNaN(sampleSizeRaw) && !isNaN(populationSuccessesRaw) && !isNaN(populationSizeRaw)) {
-        result = hypergeometricProbability(<i32>sampleSuccessesRaw, <i32>sampleSizeRaw, <i32>populationSuccessesRaw, <i32>populationSizeRaw)
+      const sampleSuccesses = <i32>sampleSuccessesRaw
+      const sampleSize = <i32>sampleSizeRaw
+      const populationSuccesses = <i32>populationSuccessesRaw
+      const populationSize = <i32>populationSizeRaw
+      if (isNaN(sampleSuccessesRaw) || isNaN(sampleSizeRaw) || isNaN(populationSuccessesRaw) || isNaN(populationSizeRaw)) {
+        errorCode = ErrorCode.Value
+      } else if (
+        isInvalidHypergeometricDomain(
+          sampleSuccesses,
+          sampleSize,
+          populationSuccesses,
+          populationSize,
+          sampleSuccessesRaw,
+          sampleSizeRaw,
+          populationSuccessesRaw,
+          populationSizeRaw,
+        )
+      ) {
+        errorCode = ErrorCode.Num
+      } else {
+        result = hypergeometricProbability(sampleSuccesses, sampleSize, populationSuccesses, populationSize)
       }
     } else {
       const sampleSuccessesRaw = toNumberExact(tagStack[base], valueStack[base])
@@ -672,12 +934,27 @@ export function tryApplyExtendedDistributionBuiltin(
       const populationSuccesses = <i32>populationSuccessesRaw
       const populationSize = <i32>populationSizeRaw
       if (
-        !isNaN(sampleSuccessesRaw) &&
-        !isNaN(sampleSizeRaw) &&
-        !isNaN(populationSuccessesRaw) &&
-        !isNaN(populationSizeRaw) &&
-        cumulative >= 0
+        isNaN(sampleSuccessesRaw) ||
+        isNaN(sampleSizeRaw) ||
+        isNaN(populationSuccessesRaw) ||
+        isNaN(populationSizeRaw) ||
+        cumulative < 0
       ) {
+        errorCode = ErrorCode.Value
+      } else if (
+        isInvalidHypergeometricDomain(
+          sampleSuccesses,
+          sampleSize,
+          populationSuccesses,
+          populationSize,
+          sampleSuccessesRaw,
+          sampleSizeRaw,
+          populationSuccessesRaw,
+          populationSizeRaw,
+        )
+      ) {
+        errorCode = ErrorCode.Num
+      } else {
         if (cumulative == 1) {
           result = 0.0
           const minimum = max<i32>(0, sampleSize - (populationSize - populationSuccesses))
@@ -688,6 +965,9 @@ export function tryApplyExtendedDistributionBuiltin(
           result = hypergeometricProbability(sampleSuccesses, sampleSize, populationSuccesses, populationSize)
         }
       }
+    }
+    if (errorCode != ErrorCode.None) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeResult(
       base,
