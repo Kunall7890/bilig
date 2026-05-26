@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 
-import type { Locator, Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
 import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import { captureProductScreenshot } from './ui-responsiveness-same-corpus-pixel-proof-page.ts'
@@ -44,6 +44,11 @@ export async function selectSameCorpusMutationTargetRange(args: {
     await settleFrames(args.page, 8)
     return
   }
+  if (args.product === 'google-sheets') {
+    await selectGoogleSheetsTargetRange(args.page, args.target.targetRange)
+    await settleFrames(args.page, 8)
+    return
+  }
   await fillFirstAvailableLocator(
     [
       args.page.locator('#t-name-box input'),
@@ -54,6 +59,33 @@ export async function selectSameCorpusMutationTargetRange(args: {
     `Cannot select same-corpus target range ${args.target.targetRange} on ${args.product}`,
   )
   await settleFrames(args.page, 8)
+}
+
+export interface SameCorpusNameBoxPage {
+  readonly keyboard: {
+    press(key: string): Promise<void>
+  }
+  locator(selector: string): SameCorpusFillableLocator
+}
+
+interface SameCorpusFillableLocator {
+  first(): SameCorpusFillableLocator
+  fill(value: string, options?: { readonly timeout?: number }): Promise<void>
+  press(key: string, options?: { readonly timeout?: number }): Promise<void>
+}
+
+export async function selectGoogleSheetsTargetRange(page: SameCorpusNameBoxPage, targetRange: string): Promise<void> {
+  await page.keyboard.press(primaryShortcut('J'))
+  await fillFirstAvailableLocator(
+    [
+      page.locator('#t-name-box'),
+      page.locator('input.waffle-name-box'),
+      page.locator('input[aria-label="Name box"]'),
+      page.locator('[aria-label^="Name box"] input'),
+    ],
+    targetRange,
+    `Cannot select same-corpus target range ${targetRange} on google-sheets`,
+  )
 }
 
 export async function readSameCorpusMutationTargetReadback(args: {
@@ -234,7 +266,7 @@ async function readSelectedFillColor(page: Page, product: UiResponsivenessSameCo
 }
 
 async function fillFirstAvailableLocator(
-  locators: readonly Locator[],
+  locators: readonly SameCorpusFillableLocator[],
   value: string,
   errorMessage: string,
   index = 0,
@@ -281,6 +313,10 @@ function normalizeUnknownCellValue(value: unknown): string | null {
 function normalizeNullableText(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? ''
   return trimmed.length > 0 ? trimmed : null
+}
+
+function primaryShortcut(key: string, platform: NodeJS.Platform = process.platform): string {
+  return platform === 'darwin' ? `Meta+${key}` : `Control+${key}`
 }
 
 interface ScreenshotBuffer {

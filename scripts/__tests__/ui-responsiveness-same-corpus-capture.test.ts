@@ -37,9 +37,14 @@ import {
   type SameCorpusMutationTargetProof,
   type SameCorpusProductVisualProof,
 } from '../ui-responsiveness-same-corpus-proof.ts'
-import { normalizeSameCorpusMutationTargetSelection } from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
+import {
+  normalizeSameCorpusMutationTargetSelection,
+  selectGoogleSheetsTargetRange,
+  type SameCorpusNameBoxPage,
+} from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
 import { sameCorpusChromiumLaunchOptions } from '../ui-responsiveness-same-corpus-page-utils.ts'
 import { sameCorpusScrollProbeSelectorsForProduct } from '../ui-responsiveness-same-corpus-scroll-page.ts'
+import { readGoogleSheetsNameBoxSelection, type SameCorpusNameBoxReaderPage } from '../ui-responsiveness-same-corpus-semantic-proof.ts'
 import {
   incumbentEditableWorkloadBlocker,
   measureProductWorkload,
@@ -936,6 +941,31 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     })
   })
 
+  it('selects Google Sheets target ranges through the visible name-box shortcut', async () => {
+    const calls: string[] = []
+    const page = fakeGoogleSheetsNameBoxPage(calls, 'A1')
+
+    await selectGoogleSheetsTargetRange(page, 'C7')
+
+    expect(calls).toEqual([
+      `${testPrimaryShortcut()}+J`,
+      'locator:#t-name-box',
+      'locator:input.waffle-name-box',
+      'locator:input[aria-label="Name box"]',
+      'locator:[aria-label^="Name box"] input',
+      'fill:C7',
+      'press:Enter',
+    ])
+  })
+
+  it('reads Google Sheets selected ranges through the visible name-box shortcut', async () => {
+    const calls: string[] = []
+    const page = fakeGoogleSheetsNameBoxPage(calls, 'D9')
+
+    await expect(readGoogleSheetsNameBoxSelection(page)).resolves.toBe('D9')
+    expect(calls).toEqual([`${testPrimaryShortcut()}+J`, 'locator:#t-name-box', 'inputValue', 'keyboard:Escape'])
+  })
+
   it('writes same-corpus capture artifacts with a fresh run manifest', () => {
     const scenarioProof = buildCaptureScenarioProof({
       bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state'),
@@ -1328,6 +1358,13 @@ describe('same-corpus UI responsiveness capture CLI', () => {
         'Excel workbook viewer',
       ),
     ).toContain('read-only Office viewer')
+    expect(
+      incumbentEditableWorkloadBlocker(
+        'google-sheets',
+        'https://docs.google.com/spreadsheets/d/example/edit',
+        'File Edit Insert Format Data Tools Extensions Help Share Sign in',
+      ),
+    ).toContain('authenticated')
     expect(
       incumbentEditableWorkloadBlocker(
         'google-sheets',
@@ -1730,6 +1767,37 @@ function moveMutationTargetAwayFromRenderedSelection(proof: SameCorpusMutationTa
     ...proof,
     targetRange: 'B2',
   }
+}
+
+function fakeGoogleSheetsNameBoxPage(calls: string[], selectedRange: string): SameCorpusNameBoxPage & SameCorpusNameBoxReaderPage {
+  const locator = {
+    fill: async (value: string) => {
+      calls.push(`fill:${value}`)
+    },
+    first: () => locator,
+    inputValue: async () => {
+      calls.push('inputValue')
+      return selectedRange
+    },
+    press: async (key: string) => {
+      calls.push(`press:${key}`)
+    },
+  }
+  return {
+    keyboard: {
+      press: async (key: string) => {
+        calls.push(key === 'Escape' ? 'keyboard:Escape' : key)
+      },
+    },
+    locator: (selector: string) => {
+      calls.push(`locator:${selector}`)
+      return locator
+    },
+  }
+}
+
+function testPrimaryShortcut(): 'Meta' | 'Control' {
+  return process.platform === 'darwin' ? 'Meta' : 'Control'
 }
 
 function sameCorpusVisibleMutationReadback(workload: UiResponsivenessSameCorpusWorkload, phase: 'before' | 'after', sampleIndex: number) {

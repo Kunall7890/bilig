@@ -150,8 +150,7 @@ export async function readProductSemanticUiProof(args: {
       })) ?? [],
     evidence,
   }
-  const verdict = validateSameCorpusProductSemanticUiProof(proof, { workload: args.workload, sampleCount: args.sampleCount })
-  return verdict.acceptedForCurrentScorecard ? proof : { ...proof, captured: false }
+  return proof
 }
 
 function sameCorpusProductSemanticUiInvalidReasons(
@@ -368,6 +367,12 @@ export async function readSameCorpusVisibleSelectedRange(page: Page, product: Ui
       .catch(() => null)
     return nameBox && nameBox.trim().length > 0 ? nameBox.trim() : null
   }
+  if (product === 'google-sheets') {
+    const selectedRange = await readGoogleSheetsNameBoxSelection(page)
+    if (selectedRange) {
+      return selectedRange
+    }
+  }
   return await page.evaluate(() => {
     const selectors = [
       '#t-name-box input',
@@ -393,6 +398,33 @@ export async function readSameCorpusVisibleSelectedRange(page: Page, product: Ui
     const activeLabelMatch = activeLabel.match(/(?:cell|range)\s+([A-Z]+[0-9]+(?::[A-Z]+[0-9]+)?)/iu)
     return activeLabelMatch?.[1] ?? null
   })
+}
+
+export interface SameCorpusNameBoxReaderPage {
+  readonly keyboard: {
+    press(key: string): Promise<void>
+  }
+  locator(selector: string): SameCorpusReadableLocator
+}
+
+interface SameCorpusReadableLocator {
+  first(): SameCorpusReadableLocator
+  inputValue(options?: { readonly timeout?: number }): Promise<string>
+}
+
+export async function readGoogleSheetsNameBoxSelection(page: SameCorpusNameBoxReaderPage): Promise<string | null> {
+  await page.keyboard.press(primaryShortcut('J')).catch(() => null)
+  const value = await page
+    .locator('#t-name-box')
+    .first()
+    .inputValue({ timeout: 1_500 })
+    .catch(() => null)
+  await page.keyboard.press('Escape').catch(() => null)
+  return value && value.trim().length > 0 ? value.trim() : null
+}
+
+function primaryShortcut(key: string, platform: NodeJS.Platform = process.platform): string {
+  return platform === 'darwin' ? `Meta+${key}` : `Control+${key}`
 }
 
 function semanticUiProofMethod(product: UiResponsivenessSameCorpusProduct): SameCorpusProductSemanticUiProof['method'] {

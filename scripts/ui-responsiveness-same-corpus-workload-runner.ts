@@ -264,6 +264,9 @@ export function incumbentEditableWorkloadBlocker(
     if (normalizedBody.includes('view only') || normalizedBody.includes('comment only') || normalizedBody.includes('request edit access')) {
       return 'Google Sheets page is read-only; provide an editable same-corpus Google Sheet URL or authenticated storage state.'
     }
+    if (normalizedBody.includes(' sign in') || normalizedBody.endsWith('sign in')) {
+      return 'Google Sheets page is not authenticated; provide an authenticated storage state for editable same-corpus workloads.'
+    }
     return null
   }
   if (pageUrl.includes('view.officeapps.live.com/op/view.aspx')) {
