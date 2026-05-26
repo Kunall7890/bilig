@@ -773,6 +773,27 @@ describe('engine fuzz regressions', () => {
     expect(normalizeSnapshotForSemanticComparison(restored.exportSnapshot())).toEqual(normalizeSnapshotForSemanticComparison(snapshot))
   })
 
+  it('does not record history for table minimum data body row delete no-ops', async () => {
+    const seedSnapshot = await createEngineSeedSnapshot('named-structures', 'minimum-table-row-delete-noop-regression')
+    const engine = new SpreadsheetEngine({
+      workbookName: seedSnapshot.workbook.name,
+      replicaId: 'minimum-table-row-delete-noop-regression',
+    })
+    await engine.ready()
+    engine.importSnapshot(structuredClone(seedSnapshot))
+
+    const firstDelete = applyActionAndCaptureResult(engine, { kind: 'deleteRows', start: 0, count: 2 })
+    expect(firstDelete.accepted).toBe(true)
+
+    const secondDelete = applyActionAndCaptureResult(engine, { kind: 'deleteRows', start: 1, count: 1 })
+    expect(secondDelete.accepted).toBe(false)
+    expect(normalizeSnapshotForSemanticComparison(secondDelete.after)).toEqual(normalizeSnapshotForSemanticComparison(firstDelete.after))
+
+    expect(engine.undo()).toBe(true)
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(normalizeSnapshotForSemanticComparison(seedSnapshot))
+    expect(engine.undo()).toBe(false)
+  })
+
   it('normalizes sparse style metadata by covered cells after undo replay', async () => {
     const seedSnapshot = await createEngineSeedSnapshot('sparse-format', 'history-style-run-normalization-regression')
     const engine = new SpreadsheetEngine({

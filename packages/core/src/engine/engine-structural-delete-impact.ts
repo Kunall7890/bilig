@@ -1,13 +1,14 @@
 import type { CellRangeRef, CellSnapshot, WorkbookDataValidationSnapshot, WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
 import { ValueTag } from '@bilig/protocol'
 import { parseCellAddress, rewriteFormulaForStructuralTransform } from '@bilig/formula'
-import type { WorkbookStore } from '../workbook-store.js'
+import type { WorkbookStore, WorkbookTableRecord } from '../workbook-store.js'
 import { drawingArtifactsTouchStructuralDelete } from './services/structure-drawing-artifact-rewrite.js'
 import {
   drawingChartPackageArtifactsTouchStructuralDelete,
   preservedChartPackageArtifactsTouchStructuralDelete,
 } from './services/structure-chart-artifact-rewrite.js'
 import { preservedSheetMetadataTouchesStructuralDelete } from './services/structure-preserved-sheet-metadata-rewrite.js'
+import { rewriteTableForStructuralTransform, workbookTableRecordsEqual } from './services/structure-metadata-rewrite.js'
 
 type StructuralDeleteAxis = 'row' | 'column'
 type StructuralAxisTransformKind = 'insert' | 'delete'
@@ -161,6 +162,25 @@ function dataValidationTouchesAxisDelete(
     case 'structured-ref':
       return false
   }
+}
+
+function tableTouchesAxisDelete(
+  table: WorkbookTableRecord,
+  sheetName: string,
+  axis: StructuralDeleteAxis,
+  start: number,
+  count: number,
+): boolean {
+  if (table.sheetName !== sheetName) {
+    return false
+  }
+  const rewrite = rewriteTableForStructuralTransform(table, { kind: 'delete', axis, start, count })
+  return (
+    !rewrite ||
+    !workbookTableRecordsEqual(table, rewrite.table) ||
+    rewrite.headerCellWrites.length > 0 ||
+    rewrite.deletedColumnNames.length > 0
+  )
 }
 
 function addressTouchesAxisDelete(sheetName: string, address: string, axis: StructuralDeleteAxis, start: number): boolean {
@@ -489,19 +509,7 @@ export function hasEngineStructuralDeleteImpact(args: {
   ) {
     return true
   }
-  if (
-    args.workbook
-      .listTables()
-      .some(
-        (table) =>
-          table.sheetName === args.sheetName &&
-          rangeTouchesAxisDelete(
-            { sheetName: args.sheetName, startAddress: table.startAddress, endAddress: table.endAddress },
-            args.axis,
-            args.start,
-          ),
-      )
-  ) {
+  if (args.workbook.listTables().some((table) => tableTouchesAxisDelete(table, args.sheetName, args.axis, args.start, args.count))) {
     return true
   }
   if (

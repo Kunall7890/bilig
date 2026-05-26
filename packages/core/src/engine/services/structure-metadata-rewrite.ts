@@ -357,10 +357,16 @@ export function rewriteWorkbookMetadataForStructuralTransform(
       workbook.deleteTable(table.name)
       return
     }
+    const tableChanged = !workbookTableRecordsEqual(table, rewrite.table)
+    if (!tableChanged && rewrite.headerCellWrites.length === 0 && rewrite.deletedColumnNames.length === 0) {
+      return
+    }
     changedTableNames.add(table.name)
     tableHeaderCellWrites.push(...rewrite.headerCellWrites)
     deletedTableColumns.push(...rewrite.deletedColumnNames.map((columnName) => ({ tableName: table.name, columnName })))
-    workbook.setTable(rewrite.table)
+    if (tableChanged) {
+      workbook.setTable(rewrite.table)
+    }
   })
   const rewrittenMergeRanges: CellRangeRef[] = []
   workbook.listMergeRanges(sheetName).forEach((merge) => {
@@ -714,7 +720,23 @@ function withRewrittenMetadataRange<T extends MetadataRangeLike>(range: T, rewri
   }
 }
 
-function rewriteTableForStructuralTransform(
+export function workbookTableRecordsEqual(left: WorkbookTableRecord, right: WorkbookTableRecord): boolean {
+  return (
+    left.name === right.name &&
+    left.sheetName === right.sheetName &&
+    left.startAddress === right.startAddress &&
+    left.endAddress === right.endAddress &&
+    left.headerRow === right.headerRow &&
+    left.totalsRow === right.totalsRow &&
+    left.sortState === right.sortState &&
+    JSON.stringify(left.columnNames) === JSON.stringify(right.columnNames) &&
+    JSON.stringify(left.columns ?? null) === JSON.stringify(right.columns ?? null) &&
+    JSON.stringify(left.style ?? null) === JSON.stringify(right.style ?? null) &&
+    JSON.stringify(left.autoFilter ?? null) === JSON.stringify(right.autoFilter ?? null)
+  )
+}
+
+export function rewriteTableForStructuralTransform(
   table: WorkbookTableRecord,
   transform: StructuralAxisTransform,
 ): { table: WorkbookTableRecord; headerCellWrites: StructuralTableHeaderCellWrite[]; deletedColumnNames: string[] } | undefined {
