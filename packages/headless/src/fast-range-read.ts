@@ -63,10 +63,11 @@ export function readFastRangeValues(engine: SpreadsheetEngine, range: WorkPaperC
           const cellIndex = encodedCellIndex - 1
           const outputCol = absoluteBlockCol + localCol - range.start.col
           const tag = (cellTags[cellIndex] as ValueTag | undefined) ?? ValueTag.Empty
+          if (tag === ValueTag.Number) {
+            row[outputCol] = { tag: ValueTag.Number, value: cellNumbers[cellIndex] ?? 0 }
+            continue
+          }
           switch (tag) {
-            case ValueTag.Number:
-              row[outputCol] = { tag, value: cellNumbers[cellIndex] ?? 0 }
-              break
             case ValueTag.Boolean:
               row[outputCol] = {
                 tag,
