@@ -160,12 +160,37 @@ function sameCorpusCommittedStatePhaseInvalidReasons(
       invalidReasons.push(`semantic UI mutation target proof for ${workload} committed-state ${phase} readback is not from XLSX export`)
     }
   }
+  invalidReasons.push(...sameCorpusCommittedStatePhaseTimingInvalidReasons(workload, sample, proof))
   if (proof.before.workbookSha256 === proof.after.workbookSha256) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} committed-state export reused the pre-mutation workbook hash`)
   }
   if (proof.after.workbookSha256 === proof.restored.workbookSha256) {
     invalidReasons.push(
       `semantic UI mutation target proof for ${workload} committed-state export reused the post-mutation workbook hash after restore`,
+    )
+  }
+  return invalidReasons
+}
+
+function sameCorpusCommittedStatePhaseTimingInvalidReasons(
+  workload: UiResponsivenessSameCorpusWorkload,
+  sample: SameCorpusMutationTargetProof,
+  proof: SameCorpusMutationTargetCommittedStateProof,
+): string[] {
+  const invalidReasons: string[] = []
+  if (proof.before.capturedAtMs >= sample.operationStartedAtMs) {
+    invalidReasons.push(
+      `semantic UI mutation target proof for ${workload} committed-state before export was not captured before mutation started`,
+    )
+  }
+  if (proof.after.capturedAtMs < sample.operationStartedAtMs || proof.after.capturedAtMs > sample.postMutationProofCapturedAtMs) {
+    invalidReasons.push(
+      `semantic UI mutation target proof for ${workload} committed-state after export was not captured inside the post-mutation proof window`,
+    )
+  }
+  if (proof.restored.capturedAtMs < sample.postMutationProofCapturedAtMs || proof.restored.capturedAtMs > sample.restoreProofCapturedAtMs) {
+    invalidReasons.push(
+      `semantic UI mutation target proof for ${workload} committed-state restored export was not captured inside the restore proof window`,
     )
   }
   return invalidReasons

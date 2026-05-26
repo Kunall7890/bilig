@@ -555,6 +555,45 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('rejects Google Sheets committed-state exports captured outside the mutation proof windows', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validGoogleSheetsSemanticProof({
+        mutationTargetProofs: validGoogleSheetsMutationTargetProofs().map((proof) => {
+          if (proof.sampleIndex !== 0 || !proof.committedStateProof) {
+            return proof
+          }
+          return Object.assign({}, proof, {
+            committedStateProof: {
+              ...proof.committedStateProof,
+              after: Object.assign({}, proof.committedStateProof.after, {
+                capturedAtMs: proof.operationStartedAtMs - 1,
+              }),
+              before: Object.assign({}, proof.committedStateProof.before, {
+                capturedAtMs: proof.operationStartedAtMs + 1,
+              }),
+              restored: Object.assign({}, proof.committedStateProof.restored, {
+                capturedAtMs: proof.postMutationProofCapturedAtMs - 1,
+              }),
+            },
+          })
+        }),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell committed-state before export was not captured before mutation started',
+        'semantic UI mutation target proof for edit-visible-cell committed-state after export was not captured inside the post-mutation proof window',
+        'semantic UI mutation target proof for edit-visible-cell committed-state restored export was not captured inside the restore proof window',
+      ]),
+    })
+  })
+
   it('rejects Google Sheets fill proof when toolbar fill changes but exported target fill does not', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validGoogleSheetsSemanticProof({
@@ -900,9 +939,14 @@ function googleCommittedStatePhaseProof(
   phase: 'before' | 'after' | 'restored',
   readback: SameCorpusMutationTargetProof['before'],
 ): NonNullable<SameCorpusMutationTargetProof['committedStateProof']>['before'] {
-  const phaseOffset = phase === 'before' ? 10 : phase === 'after' ? 20 : 30
+  const capturedAtMs =
+    phase === 'before'
+      ? sample.operationStartedAtMs - 10
+      : phase === 'after'
+        ? sample.operationStartedAtMs + Math.max(1, sample.committedTargetProofMs / 2)
+        : sample.postMutationProofCapturedAtMs + 10
   return {
-    capturedAtMs: sample.operationStartedAtMs + phaseOffset,
+    capturedAtMs,
     exportUrl: 'https://docs.google.com/spreadsheets/d/test-spreadsheet/export?format=xlsx',
     phase,
     product: 'google-sheets',

@@ -378,7 +378,13 @@ function committedStatePhaseProof(
   phase: 'before' | 'after' | 'restored',
   readbackValue: SameCorpusMutationTargetProof['before'],
 ): NonNullable<SameCorpusMutationTargetProof['committedStateProof']>['before'] {
-  const phaseOffset = phase === 'before' ? 3 : phase === 'after' ? 7 : 11
+  const hashOffset = phase === 'before' ? 3 : phase === 'after' ? 7 : 11
+  const capturedAtMs =
+    phase === 'before'
+      ? proof.operationStartedAtMs - 3
+      : phase === 'after'
+        ? proof.operationStartedAtMs + Math.max(1, proof.committedTargetProofMs / 2)
+        : proof.postMutationProofCapturedAtMs + 11
   return {
     product: 'google-sheets',
     phase,
@@ -388,9 +394,9 @@ function committedStatePhaseProof(
     sheetId: proof.sheetId,
     targetRange: proof.targetRange,
     exportUrl: 'https://docs.google.com/spreadsheets/d/test-spreadsheet/export?format=xlsx',
-    capturedAtMs: proof.operationStartedAtMs + phaseOffset,
+    capturedAtMs,
     workbookByteSize: 123456 + proof.sampleIndex,
-    workbookSha256: ((proof.sampleIndex + phaseOffset) % 16).toString(16).repeat(64),
+    workbookSha256: ((proof.sampleIndex + hashOffset) % 16).toString(16).repeat(64),
     readback: { ...readbackValue, source: 'google-sheets-xlsx-export' },
   }
 }
