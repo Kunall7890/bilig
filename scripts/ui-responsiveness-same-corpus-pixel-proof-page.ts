@@ -30,7 +30,7 @@ interface ScreenshotGridPixelAnalysis {
 export async function captureProductScreenshot(
   page: Page,
   product: UiResponsivenessSameCorpusProduct,
-  path: string,
+  path?: string,
 ): Promise<CapturedProductScreenshot> {
   const selector =
     product === 'bilig' ? '[data-testid="sheet-grid"]' : product === 'google-sheets' ? '.grid-scrollable-wrapper' : '.ewr-grdcontarea-grid'
@@ -44,7 +44,7 @@ export async function captureProductScreenshot(
     const candidate = candidates.find((entry) => entry.count > 0)
     if (candidate) {
       return {
-        buffer: await candidate.locator.screenshot({ path }),
+        buffer: await candidate.locator.screenshot(path ? { path } : {}),
         captured: true,
       }
     }
@@ -55,7 +55,7 @@ export async function captureProductScreenshot(
     return { buffer: null, captured: false }
   }
   return {
-    buffer: await locator.screenshot({ path }),
+    buffer: await locator.screenshot(path ? { path } : {}),
     captured: true,
   }
 }

@@ -34,8 +34,10 @@ import {
 import {
   buildCaptureScenarioProof,
   isSameCorpusProductPixelGridProofComplete,
+  type SameCorpusMutationTargetProof,
   type SameCorpusProductVisualProof,
 } from '../ui-responsiveness-same-corpus-proof.ts'
+import { normalizeSameCorpusMutationTargetSelection } from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
 import { sameCorpusChromiumLaunchOptions } from '../ui-responsiveness-same-corpus-page-utils.ts'
 import { sameCorpusScrollProbeSelectorsForProduct } from '../ui-responsiveness-same-corpus-scroll-page.ts'
 import {
@@ -720,6 +722,65 @@ describe('same-corpus UI responsiveness capture CLI', () => {
         }),
       ]),
     )
+  })
+
+  it('rejects mutating semantic UI proof with stale target values, missing restore, and revision drift', () => {
+    const proof = buildCaptureScenarioProof({
+      workload: 'edit-visible-cell',
+      bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'edit-visible-cell'),
+      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export', 'edit-visible-cell'),
+      visualProofs: [
+        sameCorpusVisualProofWithMutationProofs(
+          'bilig',
+          'typegpu-visible-canvas',
+          'same-corpus-wide-mixed-250k-edit-visible-cell',
+          'edit-visible-cell',
+          corruptFirstMutationTargetProof,
+        ),
+        sameCorpusVisualProofWithMutationProofs(
+          'google-sheets',
+          'google-sheets-visible-grid',
+          'same-corpus-wide-mixed-250k-edit-visible-cell',
+          'edit-visible-cell',
+          corruptFirstMutationTargetProof,
+        ),
+      ],
+    })
+
+    expect(proof.semanticUiProof).toMatchObject({
+      captured: false,
+      missingProducts: ['bilig', 'google-sheets'],
+    })
+    expect(proof.semanticUiProof.productVerdicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          product: 'bilig',
+          invalidReasons: expect.arrayContaining([
+            'semantic UI mutation target proof for edit-visible-cell is missing the target range',
+            'semantic UI mutation target proof for edit-visible-cell did not prove undo restore',
+            'semantic UI mutation target proof for edit-visible-cell has unverified undo restore status',
+            'semantic UI mutation target proof for edit-visible-cell is missing authoritative readback revision',
+            'semantic UI mutation target proof for edit-visible-cell is missing visible render revision',
+            'semantic UI mutation target proof for edit-visible-cell did not prove a committed target value change',
+          ]),
+        }),
+      ]),
+    )
+  })
+
+  it('normalizes same-corpus mutation target selections to an explicit cell range', () => {
+    expect(normalizeSameCorpusMutationTargetSelection('WideGrid!$C$5:$D$7', 'WideGrid')).toEqual({
+      endAddress: 'D7',
+      sheetName: 'WideGrid',
+      startAddress: 'C5',
+      targetRange: 'C5:D7',
+    })
+    expect(normalizeSameCorpusMutationTargetSelection('selected row', 'WideGrid')).toEqual({
+      endAddress: 'A1',
+      sheetName: 'WideGrid',
+      startAddress: 'A1',
+      targetRange: 'A1',
+    })
   })
 
   it('writes same-corpus capture artifacts with a fresh run manifest', () => {
@@ -1412,6 +1473,27 @@ function sameCorpusVisualProof(
   }
 }
 
+function sameCorpusVisualProofWithMutationProofs(
+  product: SameCorpusProductVisualProof['product'],
+  method: SameCorpusProductVisualProof['pixelGridProof']['method'],
+  caseId: string,
+  workload: UiResponsivenessSameCorpusWorkload,
+  mapProof: (proof: SameCorpusMutationTargetProof) => SameCorpusMutationTargetProof,
+): SameCorpusProductVisualProof {
+  const visualProof = sameCorpusVisualProof(product, method, caseId, workload)
+  const semanticUiProof = visualProof.semanticUiProof
+  if (!semanticUiProof) {
+    throw new Error('Expected semantic UI proof fixture')
+  }
+  return {
+    ...visualProof,
+    semanticUiProof: {
+      ...semanticUiProof,
+      mutationTargetProofs: semanticUiProof.mutationTargetProofs.map(mapProof),
+    },
+  }
+}
+
 function sameCorpusMutationTargetProofs(workload: UiResponsivenessSameCorpusWorkload) {
   if (!uiSameCorpusWorkloadMutatesWorkbook(workload)) {
     return []
@@ -1430,6 +1512,21 @@ function sameCorpusMutationTargetProofs(workload: UiResponsivenessSameCorpusWork
     screenshotSha256: 'a'.repeat(64),
     undoRestoreStatus: 'verified' as const,
   }))
+}
+
+function corruptFirstMutationTargetProof(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  if (proof.sampleIndex !== 0) {
+    return proof
+  }
+  return {
+    ...proof,
+    after: { ...proof.before },
+    authoritativeReadbackRevision: null,
+    restored: { ...proof.after },
+    targetRange: '',
+    undoRestoreStatus: 'failed',
+    visibleRenderRevision: null,
+  }
 }
 
 function sameCorpusMutationReadback(workload: UiResponsivenessSameCorpusWorkload, phase: 'before' | 'after', sampleIndex: number) {

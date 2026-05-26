@@ -42,6 +42,23 @@ function expandProjectionViewport(viewport: Viewport): Viewport {
 
 const MAX_AGENT_RENDERED_CONTEXT_CELLS = 200
 
+type BiligSameCorpusRenderedRangeProof = Pick<
+  NonNullable<WorkbookAgentUiContext['rendered']>,
+  'batchId' | 'capturedAtUnixMs' | 'capturedRevision' | 'visibleSceneProof'
+> & {
+  readonly range: WorkbookAgentRenderedRange | null
+}
+
+interface BiligSameCorpusProofApi {
+  readonly readRange: (sheetName: string, startAddress: string, endAddress?: string | null) => BiligSameCorpusRenderedRangeProof
+}
+
+declare global {
+  interface Window {
+    __biligSameCorpusProof?: BiligSameCorpusProofApi
+  }
+}
+
 function normalizeCellRangeRef(range: CellRangeRef): CellRangeRef & {
   readonly startRow: number
   readonly endRow: number
@@ -74,7 +91,7 @@ function buildRenderedRangeSnapshot(
     return null
   }
   const normalized = normalizeCellRangeRef(range)
-  const sheetIdentity = viewportStore.getSheetIdentity(normalized.sheetName)
+  const sheetIdentity = readViewportStoreSheetIdentity(viewportStore, normalized.sheetName)
   const rowCount = normalized.endRow - normalized.startRow + 1
   const columnCount = normalized.endCol - normalized.startCol + 1
   const cellCount = rowCount * columnCount
@@ -115,6 +132,13 @@ function buildRenderedRangeSnapshot(
     truncated: emittedCells < cellCount,
     rows,
   }
+}
+
+function readViewportStoreSheetIdentity(
+  viewportStore: ProjectedViewportStore | null | undefined,
+  sheetName: string,
+): { readonly sheetId: number } | null {
+  return typeof viewportStore?.getSheetIdentity === 'function' ? viewportStore.getSheetIdentity(sheetName) : null
 }
 
 function hasText(value: string | null | undefined): value is string {
@@ -206,6 +230,13 @@ function readWorkbookAgentVisibleSceneProof(): WorkbookAgentRenderedVisibleScene
   }
 }
 
+function canExposeSameCorpusProofApi(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
+  return new URLSearchParams(window.location.search).has('benchmarkCorpus')
+}
+
 export function useWorkerWorkbookAgentContext(input: {
   selection: WorkerRuntimeSelection
   selectionRangeRef: MutableRefObject<CellRangeRef>
@@ -233,7 +264,7 @@ export function useWorkerWorkbookAgentContext(input: {
   const buildCurrentAgentContext = useCallback((): WorkbookAgentUiContext => {
     const activeSelection = selectionSnapshotRef.current
     const activeViewport = visibleViewportRef.current
-    const activeSheetIdentity = workerHandleRef.current?.viewportStore.getSheetIdentity(activeSelection.sheetName) ?? null
+    const activeSheetIdentity = readViewportStoreSheetIdentity(workerHandleRef.current?.viewportStore, activeSelection.sheetName)
     const viewportRange = {
       sheetName: activeSelection.sheetName,
       startAddress: formatAddress(activeViewport.rowStart, activeViewport.colStart),
@@ -253,6 +284,34 @@ export function useWorkerWorkbookAgentContext(input: {
       },
     })
   }, [selectionRangeRef, selectionSnapshotRef, workerHandleRef])
+
+  useEffect(() => {
+    if (!canExposeSameCorpusProofApi()) {
+      return
+    }
+    const api: BiligSameCorpusProofApi = {
+      readRange: (sheetName: string, startAddress: string, endAddress?: string | null) => {
+        const viewportStore = workerHandleRef.current?.viewportStore
+        return {
+          batchId: viewportStore?.getLastMetrics().batchId ?? null,
+          capturedAtUnixMs: Date.now(),
+          capturedRevision: viewportStore?.getLastAuthoritativeRevision() ?? null,
+          range: buildRenderedRangeSnapshot(viewportStore, {
+            sheetName,
+            startAddress,
+            endAddress: endAddress?.trim() ? endAddress : startAddress,
+          }),
+          visibleSceneProof: readWorkbookAgentVisibleSceneProof(),
+        }
+      },
+    }
+    window.__biligSameCorpusProof = api
+    return () => {
+      if (window.__biligSameCorpusProof === api) {
+        delete window.__biligSameCorpusProof
+      }
+    }
+  }, [workerHandleRef])
 
   const rememberCurrentRenderedAgentContext = useCallback(() => {
     const context = buildCurrentAgentContext()

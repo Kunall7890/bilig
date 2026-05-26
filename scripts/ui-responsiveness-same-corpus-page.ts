@@ -19,15 +19,27 @@ import { defaultViewport } from './ui-responsiveness-same-corpus-args.ts'
 import { buildSameCorpusCaptureRunManifest, sameCorpusScenarioCaseFields } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
+  uiSameCorpusWorkloadMutatesWorkbook,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
+  type UiResponsivenessSameCorpusMutatingWorkload,
   type UiResponsivenessSameCorpusWorkload,
 } from './ui-responsiveness-same-corpus-workloads.ts'
 import { verifyProductCorpus, waitForVerifiedBiligRenderedSurface } from './ui-responsiveness-same-corpus-verification.ts'
 import {
   buildCaptureScenarioProof,
   captureSameCorpusProductVisualProof,
+  type SameCorpusMutationTargetProof,
+  type SameCorpusMutationTargetReadback,
   type SameCorpusProductVisualProof,
 } from './ui-responsiveness-same-corpus-proof.ts'
+import {
+  captureSameCorpusMutationTargetScreenshotSha256,
+  readSameCorpusMutationTargetReadback,
+  readSameCorpusMutationTargetRevisionProof,
+  readSameCorpusMutationTargetSelection,
+  selectSameCorpusMutationTargetRange,
+  type SameCorpusMutationTargetSelection,
+} from './ui-responsiveness-same-corpus-mutation-proof-page.ts'
 import { productLimitations, sameCorpusChromiumLaunchOptions, settleFrames } from './ui-responsiveness-same-corpus-page-utils.ts'
 import {
   measureVisibleScrollResponseWithRetries,
@@ -45,6 +57,7 @@ import {
 interface ProductSampleCollection {
   readonly corpusVerification: SameCorpusCaptureCorpusVerification
   readonly biligRuntimeProof?: SameCorpusBiligRuntimeProof
+  readonly mutationTargetProofs: readonly SameCorpusMutationTargetProof[]
   readonly samples: readonly ProductOperationSample[]
 }
 
@@ -420,6 +433,20 @@ async function measureProduct(
   visualProofs?: SameCorpusProductVisualProof[],
 ): Promise<SameCorpusCaptureMeasurement> {
   const collection = await measureProductSamples(browser, product, url, corpus, args, workload, caseId, visualProofs)
+  if (caseId && visualProofs && uiSameCorpusWorkloadMutatesWorkbook(workload)) {
+    visualProofs.push(
+      await captureSameCorpusProductVisualProofFromFreshPage({
+        args,
+        browser,
+        caseId,
+        corpusVerification: collection.corpusVerification,
+        mutationTargetProofs: collection.mutationTargetProofs,
+        product,
+        url,
+        workload,
+      }),
+    )
+  }
 
   return {
     product,
@@ -455,6 +482,7 @@ async function measureProductSamples(
   samples: ProductOperationSample[] = [],
   corpusVerification: SameCorpusCaptureCorpusVerification | null = null,
   runtimeProofSamples: SameCorpusBiligRuntimeProofSample[] = [],
+  mutationTargetProofs: SameCorpusMutationTargetProof[] = [],
 ): Promise<ProductSampleCollection> {
   if (sampleIndex >= args.sampleCount) {
     if (!corpusVerification) {
@@ -463,6 +491,7 @@ async function measureProductSamples(
     return {
       corpusVerification,
       ...(product === 'bilig' ? { biligRuntimeProof: buildBiligRuntimeProof(url, runtimeProofSamples) } : {}),
+      mutationTargetProofs,
       samples,
     }
   }
@@ -482,6 +511,14 @@ async function measureProductSamples(
       await resetProductScrollPosition(page, product)
       await settleFrames(page, 3)
     }
+    const mutatingWorkload: UiResponsivenessSameCorpusMutatingWorkload | null = uiSameCorpusWorkloadMutatesWorkbook(workload)
+      ? workload
+      : null
+    const mutationTarget = mutatingWorkload
+      ? await readSameCorpusMutationTargetSelection({ page, product, sheetName: nextCorpusVerification.sheetName })
+      : null
+    const mutationTargetBefore =
+      mutationTarget === null ? null : await readSameCorpusMutationTargetReadback({ page, product, target: mutationTarget })
     const operationStartedAt = workload === 'open-workbook' ? loadStartedAt : performance.now()
     const sample = await measureProductWorkload({
       page,
@@ -497,7 +534,21 @@ async function measureProductSamples(
       },
     })
     samples.push(await withAuthoritativeRenderProofTiming(page, product, sample, operationStartedAt, args.readyTimeoutMs))
-    if (caseId && visualProofs && sampleIndex === 0) {
+    if (mutationTarget && mutationTargetBefore && mutatingWorkload) {
+      mutationTargetProofs.push(
+        await captureSameCorpusMutationTargetProofForSample({
+          before: mutationTargetBefore,
+          page,
+          product,
+          sampleIndex,
+          target: mutationTarget,
+          workload: mutatingWorkload,
+        }),
+      )
+    } else {
+      await restoreProductWorkbookMutation(page, workload)
+    }
+    if (caseId && visualProofs && sampleIndex === 0 && !uiSameCorpusWorkloadMutatesWorkbook(workload)) {
       visualProofs.push(
         await captureSameCorpusProductVisualProof({
           caseId,
@@ -511,7 +562,6 @@ async function measureProductSamples(
         }),
       )
     }
-    await restoreProductWorkbookMutation(page, workload)
   } catch (error: unknown) {
     throw new Error(await productReadyFailureMessage(page, product, url, sampleIndex, error), { cause: error })
   } finally {
@@ -530,6 +580,86 @@ async function measureProductSamples(
     samples,
     nextCorpusVerification,
     runtimeProofSamples,
+    mutationTargetProofs,
+  )
+}
+
+async function captureSameCorpusProductVisualProofFromFreshPage(input: {
+  readonly args: CaptureArgs
+  readonly browser: Browser
+  readonly caseId: string
+  readonly corpusVerification: SameCorpusCaptureCorpusVerification
+  readonly mutationTargetProofs: readonly SameCorpusMutationTargetProof[]
+  readonly product: UiResponsivenessSameCorpusProduct
+  readonly url: string
+  readonly workload: UiResponsivenessSameCorpusWorkload
+}): Promise<SameCorpusProductVisualProof> {
+  const context = await input.browser.newContext(browserContextOptionsForProduct(input.product, input.args))
+  const page = await context.newPage()
+  try {
+    await page.goto(input.url, { waitUntil: 'domcontentloaded', timeout: 60_000 })
+    await waitForProductReady(page, input.product, input.args)
+    return await captureSameCorpusProductVisualProof({
+      caseId: input.caseId,
+      corpusVerification: input.corpusVerification,
+      mutationTargetProofs: input.mutationTargetProofs,
+      outputPath: input.args.outputPath,
+      page,
+      product: input.product,
+      sampleCount: input.args.sampleCount,
+      sampleIndex: 0,
+      workload: input.workload,
+    })
+  } catch (error: unknown) {
+    throw new Error(await productReadyFailureMessage(page, input.product, input.url, 0, error), { cause: error })
+  } finally {
+    await context.close()
+  }
+}
+
+async function captureSameCorpusMutationTargetProofForSample(args: {
+  readonly before: SameCorpusMutationTargetReadback
+  readonly page: Page
+  readonly product: UiResponsivenessSameCorpusProduct
+  readonly sampleIndex: number
+  readonly target: SameCorpusMutationTargetSelection
+  readonly workload: UiResponsivenessSameCorpusMutatingWorkload
+}): Promise<SameCorpusMutationTargetProof> {
+  await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
+  const after = await readSameCorpusMutationTargetReadback({ page: args.page, product: args.product, target: args.target })
+  const screenshotSha256 = await captureSameCorpusMutationTargetScreenshotSha256(args.page, args.product)
+  const revisions = await readSameCorpusMutationTargetRevisionProof({
+    page: args.page,
+    product: args.product,
+    readback: after,
+    screenshotSha256,
+    target: args.target,
+  })
+  await restoreProductWorkbookMutation(args.page, args.workload)
+  await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
+  const restored = await readSameCorpusMutationTargetReadback({ page: args.page, product: args.product, target: args.target })
+  return {
+    after,
+    authoritativeReadbackRevision: revisions.authoritativeReadbackRevision,
+    before: args.before,
+    intendedOperation: args.workload,
+    restored,
+    sampleIndex: args.sampleIndex,
+    screenshotSha256,
+    sheetName: args.target.sheetName,
+    targetRange: args.target.targetRange,
+    undoRestoreStatus: sameCorpusMutationReadbacksEqual(args.before, restored) ? 'verified' : 'failed',
+    visibleRenderRevision: revisions.visibleRenderRevision,
+    workload: args.workload,
+  }
+}
+
+function sameCorpusMutationReadbacksEqual(left: SameCorpusMutationTargetReadback, right: SameCorpusMutationTargetReadback): boolean {
+  return (
+    left.value === right.value &&
+    left.formula === right.formula &&
+    left.fillColor === right.fillColor &&
+    left.visibleText === right.visibleText
   )
 }
 

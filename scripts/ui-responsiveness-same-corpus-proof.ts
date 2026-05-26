@@ -457,6 +457,7 @@ export async function captureSameCorpusProductVisualProof(args: {
   readonly sampleIndex: number
   readonly sampleCount: number
   readonly workload: UiResponsivenessSameCorpusWorkload
+  readonly mutationTargetProofs?: readonly SameCorpusMutationTargetProof[]
 }): Promise<SameCorpusProductVisualProof> {
   const screenshotPath = screenshotArtifactPath(args.outputPath, args.caseId, args.product, args.sampleIndex)
   mkdirSync(dirname(screenshotPath), { recursive: true })
@@ -470,6 +471,7 @@ export async function captureSameCorpusProductVisualProof(args: {
     pixelGridProof,
     workload: args.workload,
     sampleCount: args.sampleCount,
+    mutationTargetProofs: args.mutationTargetProofs,
   })
   return {
     product: args.product,

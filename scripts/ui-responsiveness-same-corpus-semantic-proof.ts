@@ -112,8 +112,9 @@ export async function readProductSemanticUiProof(args: {
   readonly pixelGridProof: SameCorpusProductPixelGridProof
   readonly workload: UiResponsivenessSameCorpusWorkload
   readonly sampleCount: number
+  readonly mutationTargetProofs?: readonly SameCorpusMutationTargetProof[]
 }): Promise<SameCorpusProductSemanticUiProof> {
-  const selectedRange = await readVisibleSelectedRange(args.page, args.product)
+  const selectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
   const evidence = sameCorpusSemanticUiEvidence(args.product, args.pixelGridProof, args.corpusVerification, selectedRange)
   const screenshotSha256 = args.screenshot.buffer ? screenshotBufferSha256(args.screenshot.buffer) : null
   const proof: SameCorpusProductSemanticUiProof = {
@@ -133,7 +134,13 @@ export async function readProductSemanticUiProof(args: {
     authoritativeRenderRevision: sameCorpusEvidenceMap(args.pixelGridProof.evidence).get('gridAuthoritativeRevision') ?? null,
     visibleRenderRevision: sameCorpusEvidenceMap(args.pixelGridProof.evidence).get('visibleRenderRevision') ?? null,
     screenshotSha256,
-    mutationTargetProofs: [],
+    mutationTargetProofs:
+      args.mutationTargetProofs?.map((sample) => ({
+        ...sample,
+        before: { ...sample.before },
+        after: { ...sample.after },
+        restored: { ...sample.restored },
+      })) ?? [],
     evidence,
   }
   const verdict = validateSameCorpusProductSemanticUiProof(proof, { workload: args.workload, sampleCount: args.sampleCount })
@@ -242,6 +249,9 @@ function sameCorpusMutationTargetProofInvalidReasons(
     if (workload === 'formula-edit' && (sample.after.formula === null || !sample.after.formula.trim().startsWith('='))) {
       invalidReasons.push('semantic UI mutation target proof for formula-edit is missing the edited formula')
     }
+    if (workload === 'edit-visible-cell' && (sample.after.value === null || sample.after.value === sample.before.value)) {
+      invalidReasons.push('semantic UI mutation target proof for edit-visible-cell did not prove a committed target value change')
+    }
     if (workload === 'fill-format-change' && sample.before.fillColor === sample.after.fillColor) {
       invalidReasons.push('semantic UI mutation target proof for fill-format-change did not prove a fill color change')
     }
@@ -262,7 +272,7 @@ function sameCorpusReadbacksDiffer(left: SameCorpusMutationTargetReadback, right
   return !sameCorpusReadbacksEqual(left, right)
 }
 
-async function readVisibleSelectedRange(page: Page, product: UiResponsivenessSameCorpusProduct): Promise<string | null> {
+export async function readSameCorpusVisibleSelectedRange(page: Page, product: UiResponsivenessSameCorpusProduct): Promise<string | null> {
   if (product === 'bilig') {
     const status = await page
       .locator('[data-testid="status-selection"]')
