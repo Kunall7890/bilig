@@ -186,6 +186,9 @@ function acceptedCommittedTargetProofTimingSampleCount(
   if (!productProof) {
     return 0
   }
+  if (!sameCorpusSemanticProductContainerAccepted(productProof)) {
+    return 0
+  }
   const duplicateSampleIndexes = sameCorpusDuplicateMutationSampleIndexes(productProof.mutationTargetProofs)
   const duplicateScreenshotPaths = sameCorpusDuplicateMutationScreenshotPaths(productProof.mutationTargetProofs)
   let acceptedSampleCount = 0
@@ -243,6 +246,40 @@ function sameCorpusSemanticProductProof(
   product: UiResponsivenessSameCorpusProduct,
 ): SameCorpusProductSemanticUiProof | undefined {
   return scenarioProof.semanticUiProof.products.find((entry) => entry.product === product)
+}
+
+function sameCorpusSemanticProductContainerAccepted(proof: SameCorpusProductSemanticUiProof): boolean {
+  if (!proof.captured) {
+    return false
+  }
+  if (proof.sheetName.trim().length === 0 || proof.sheetId === null || proof.sheetId.trim().length === 0) {
+    return false
+  }
+  if (proof.selectedRange === null || proof.selectedRange.trim().length === 0) {
+    return false
+  }
+  if (proof.screenshotSha256 === null || !/^[a-f0-9]{64}$/u.test(proof.screenshotSha256)) {
+    return false
+  }
+  if (
+    proof.checkedCells.length < 3 ||
+    proof.checkedCells.some((cell) => cell.address.trim().length === 0 || cell.expected !== cell.actual)
+  ) {
+    return false
+  }
+  if (proof.product === 'bilig') {
+    return (
+      proof.method === 'bilig-visible-semantic-readback' &&
+      proof.authoritativeRenderRevision !== null &&
+      proof.authoritativeRenderRevision.trim().length > 0 &&
+      proof.visibleRenderRevision !== null &&
+      proof.visibleRenderRevision.trim().length > 0
+    )
+  }
+  if (proof.product === 'google-sheets') {
+    return proof.method === 'google-sheets-visible-semantic-readback'
+  }
+  return proof.method === 'excel-web-visible-semantic-readback'
 }
 
 function sameCorpusDuplicateMutationSampleIndexes(samples: readonly SameCorpusMutationTargetProof[]): Set<number> {

@@ -1643,7 +1643,7 @@ function sameCorpusCaptureMeasurement(
     operationResponseMsSamples: [10, 11, 12],
     operationResponseProofs: [operationResponseProof, operationResponseProof, operationResponseProof],
     ...(product === 'bilig' ? { authoritativeRenderProofMsSamples: [15, 16, 17] } : {}),
-    ...(uiSameCorpusWorkloadMutatesWorkbook(workload) ? { committedTargetProofMsSamples: [20, 21, 22] } : {}),
+    ...(uiSameCorpusWorkloadMutatesWorkbook(workload) ? { committedTargetProofMsSamples: [40, 41, 42] } : {}),
     postOperationFrameMsSamples: [8, 9, 10],
     corpusVerification: {
       verified: true,

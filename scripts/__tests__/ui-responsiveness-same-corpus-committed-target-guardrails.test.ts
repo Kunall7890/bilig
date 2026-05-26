@@ -12,6 +12,19 @@ import type { SameCorpusMutationTargetProof, SameCorpusProductSemanticUiProof } 
 import { sameCorpusEditVisibleCellValue } from '../ui-responsiveness-same-corpus-workload-runner.ts'
 
 describe('same-corpus committed target proof guardrails', () => {
+  it('counts committed mutation timing only when every expected sample is accepted', () => {
+    const entry = sameCorpusEditVisibleCellCase()
+
+    expect(hasAcceptedCommittedTargetProofTiming(entry, entry.bilig, 3)).toBe(true)
+    expect(hasAcceptedCommittedTargetProofTiming(entry, entry.googleSheets, 3)).toBe(true)
+    expect(sameCorpusCommittedTargetProofTimingCounts([entry], 3)).toMatchObject({
+      requiredCommittedTargetProofTimingCaseCount: 3,
+      committedTargetProofTimingCaseCount: 1,
+      requiredCommittedTargetProofTimingSampleCount: 18,
+      committedTargetProofTimingSampleCount: 6,
+    })
+  })
+
   it('counts committed mutation timing only when it is bound to accepted target proof', () => {
     const entry = sameCorpusEditVisibleCellCase({
       googleProofs: sameCorpusMutationTargetProofs('google-sheets').map((proof) =>
@@ -29,15 +42,97 @@ describe('same-corpus committed target proof guardrails', () => {
       committedTargetProofTimingSampleCount: 5,
     })
   })
+
+  it('rejects stale target proof samples even when raw timing samples are present', () => {
+    const cases = [
+      sameCorpusEditVisibleCellCase({
+        biligProofs: sameCorpusMutationTargetProofs('bilig').map((proof) =>
+          proof.sampleIndex === 0
+            ? Object.assign({}, proof, {
+                visibleAfter: Object.assign({}, proof.visibleAfter, {
+                  value: 'editor-only-ghost',
+                  visibleText: 'editor-only-ghost',
+                }),
+              })
+            : proof,
+        ),
+      }),
+      sameCorpusEditVisibleCellCase({
+        googleProofs: sameCorpusMutationTargetProofs('google-sheets').map((proof) =>
+          proof.sampleIndex === 1
+            ? Object.assign({}, proof, {
+                restored: Object.assign({}, proof.after),
+                undoRestoreStatus: 'failed',
+              })
+            : proof,
+        ),
+      }),
+      sameCorpusEditVisibleCellCase({
+        biligProofs: sameCorpusMutationTargetProofs('bilig').map((proof) =>
+          proof.sampleIndex === 2
+            ? Object.assign({}, proof, {
+                targetRange: 'Z99',
+                visibleAfterSelectedRange: 'Z99',
+                visibleRestoredSelectedRange: 'Z99',
+              })
+            : proof,
+        ),
+      }),
+      sameCorpusEditVisibleCellCase({
+        biligProofs: sameCorpusMutationTargetProofs('bilig').map((proof) =>
+          proof.sampleIndex === 0
+            ? Object.assign({}, proof, {
+                visibleRenderRevision: 'bilig-visible-scene-sha256:stale',
+              })
+            : proof,
+        ),
+      }),
+    ]
+
+    for (const entry of cases) {
+      expect([
+        hasAcceptedCommittedTargetProofTiming(entry, entry.bilig, 3),
+        hasAcceptedCommittedTargetProofTiming(entry, entry.googleSheets, 3),
+      ]).toContain(false)
+      expect(sameCorpusCommittedTargetProofTimingCounts([entry], 3)).toMatchObject({
+        committedTargetProofTimingCaseCount: 0,
+        committedTargetProofTimingSampleCount: 5,
+      })
+    }
+  })
+
+  it('rejects timing when the semantic proof container itself is not captured', () => {
+    const entry = sameCorpusEditVisibleCellCase({
+      mapBiligProductProof: (proof) => ({ ...proof, captured: false }),
+    })
+
+    expect(hasAcceptedCommittedTargetProofTiming(entry, entry.bilig, 3)).toBe(false)
+    expect(hasAcceptedCommittedTargetProofTiming(entry, entry.googleSheets, 3)).toBe(true)
+    expect(sameCorpusCommittedTargetProofTimingCounts([entry], 3)).toMatchObject({
+      committedTargetProofTimingCaseCount: 0,
+      committedTargetProofTimingSampleCount: 3,
+    })
+  })
 })
 
-function sameCorpusEditVisibleCellCase(args: {
-  readonly googleProofs: readonly SameCorpusMutationTargetProof[]
-}): SameCorpusCommittedTargetProofTimingCase {
-  const biligProofs = sameCorpusMutationTargetProofs('bilig')
+function sameCorpusEditVisibleCellCase(
+  args: {
+    readonly biligProofs?: readonly SameCorpusMutationTargetProof[]
+    readonly googleProofs?: readonly SameCorpusMutationTargetProof[]
+    readonly mapBiligProductProof?: (proof: SameCorpusProductSemanticUiProof) => SameCorpusProductSemanticUiProof
+    readonly mapGoogleSheetsProductProof?: (proof: SameCorpusProductSemanticUiProof) => SameCorpusProductSemanticUiProof
+  } = {},
+): SameCorpusCommittedTargetProofTimingCase {
+  const biligProofs = args.biligProofs ?? sameCorpusMutationTargetProofs('bilig')
+  const googleProofs = args.googleProofs ?? sameCorpusMutationTargetProofs('google-sheets')
+  const biligProductProof = sameCorpusProductSemanticProof('bilig', biligProofs)
+  const googleSheetsProductProof = sameCorpusProductSemanticProof('google-sheets', googleProofs)
   const scenarioProof = {
     semanticUiProof: {
-      products: [sameCorpusProductSemanticProof('bilig', biligProofs), sameCorpusProductSemanticProof('google-sheets', args.googleProofs)],
+      products: [
+        args.mapBiligProductProof ? args.mapBiligProductProof(biligProductProof) : biligProductProof,
+        args.mapGoogleSheetsProductProof ? args.mapGoogleSheetsProductProof(googleSheetsProductProof) : googleSheetsProductProof,
+      ],
     },
   }
   return {
@@ -66,7 +161,11 @@ function sameCorpusProductSemanticProof(
     sheetName: 'WideGrid',
     sheetId: sheetId(product),
     selectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', 0),
-    checkedCells: [],
+    checkedCells: [
+      { address: 'A1', expected: 'metric-1', actual: 'metric-1' },
+      { address: 'B1', expected: 'metric-2', actual: 'metric-2' },
+      { address: 'C1', expected: 'metric-3', actual: 'metric-3' },
+    ],
     authoritativeRenderRevision: product === 'bilig' ? 'rev-1' : null,
     visibleRenderRevision: product === 'bilig' ? 'bilig-visible-scene-sha256:'.concat(visibleSceneProofSha256(0)) : null,
     screenshotSha256: 'a'.repeat(64),
