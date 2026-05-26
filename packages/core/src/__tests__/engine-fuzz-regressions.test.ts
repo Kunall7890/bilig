@@ -259,6 +259,25 @@ describe('engine fuzz regressions', () => {
     expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(normalizeSnapshotForSemanticComparison(seedSnapshot))
   })
 
+  it('does not record delete history when stale sort keys do not move', async () => {
+    const seedSnapshot = await createEngineSeedSnapshot('pivot-analytics', 'stale-sort-key-delete-history-regression')
+    const engine = new SpreadsheetEngine({
+      workbookName: seedSnapshot.workbook.name,
+      replicaId: 'stale-sort-key-delete-history-regression',
+    })
+    await engine.ready()
+    engine.importSnapshot(structuredClone(seedSnapshot))
+
+    engine.deleteColumns('Sheet1', 2, 1)
+    const beforeNoOp = engine.exportSnapshot()
+    engine.deleteColumns('Sheet1', 2, 1)
+
+    expect(engine.exportSnapshot()).toEqual(beforeNoOp)
+    expect(engine.undo()).toBe(true)
+    expect(engine.undo()).toBe(false)
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(normalizeSnapshotForSemanticComparison(seedSnapshot))
+  })
+
   it('preserves inherited format ranges when undoing deleted string rows', async () => {
     const seedSnapshot = await createEngineSeedSnapshot('pivot-analytics', 'delete-string-row-format-undo-regression')
     const engine = new SpreadsheetEngine({
