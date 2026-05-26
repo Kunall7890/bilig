@@ -18,7 +18,7 @@ import { selectWorkbookRenderedReadback } from './workbook-agent-rendered-readba
 import { shouldWaitForRenderedTool, waitForWorkbookAgentRenderedContext } from './workbook-agent-rendered-context-wait.js'
 import { assertWorkbookAgentToolCallOwnsTurn } from './workbook-agent-turn-lifecycle.js'
 
-export function selectWorkbookAgentRenderedVerificationRanges(
+function selectWorkbookAgentRenderedVerificationRanges(
   bundle: ReturnType<typeof appendWorkbookAgentCommandToBundle>,
 ): readonly CellRangeRef[] {
   return bundle.affectedRanges.filter((range) => range.role === 'target').map((range) => toWorkbookAgentRangeRef(range))

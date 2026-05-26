@@ -18,7 +18,7 @@ export interface WorkbookAgentVisibleCommitBarrierOutcome {
   readonly appliedRevision: number | null
 }
 
-export function summarizeWorkbookAgentVisibleCommitBarrierOutcome(input: {
+function summarizeWorkbookAgentVisibleCommitBarrierOutcome(input: {
   readonly bundle: WorkbookAgentCommandBundle
   readonly normalized: WorkbookAgentStageCommandResult
   readonly mutationReceipt: WorkbookToolMutationReceipt
