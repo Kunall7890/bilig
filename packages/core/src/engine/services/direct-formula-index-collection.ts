@@ -41,6 +41,8 @@ export class DirectFormulaIndexCollection {
   private cleanScalarDeltaSize = -1
   private trustedDirectScalarDeltaSize = -1
   private linearHasProbeCount = 0
+  private sortedCellIndexMin: number | undefined
+  private sortedCellIndexMax: number | undefined
 
   get size(): number {
     return this.sharedCellIndices?.length ?? this.cellIndices.length
@@ -50,6 +52,7 @@ export class DirectFormulaIndexCollection {
     this.validatedScalarDeltaSize = -1
     this.cleanScalarDeltaSize = -1
     this.trustedDirectScalarDeltaSize = -1
+    this.clearSortedCellIndexBounds()
     this.materializeConstantDeltas()
     if (this.indexByCell) {
       if (this.indexByCell.has(cellIndex)) {
@@ -98,13 +101,27 @@ export class DirectFormulaIndexCollection {
 
   hasAny(cellIndices: readonly number[] | U32, count = cellIndices.length): boolean {
     const length = Math.min(count, cellIndices.length)
-    if (length <= 0 || this.size === 0) {
+    const size = this.size
+    if (length <= 0 || size === 0) {
       return false
     }
-    if (!this.indexByCell && (length <= 4 || this.size <= 16)) {
+    if (this.sortedCellIndexMin !== undefined && this.sortedCellIndexMax !== undefined) {
+      let mayOverlap = false
       for (let inputIndex = 0; inputIndex < length; inputIndex += 1) {
         const cellIndex = cellIndices[inputIndex]!
-        for (let collectionIndex = 0; collectionIndex < this.size; collectionIndex += 1) {
+        if (cellIndex >= this.sortedCellIndexMin && cellIndex <= this.sortedCellIndexMax) {
+          mayOverlap = true
+          break
+        }
+      }
+      if (!mayOverlap) {
+        return false
+      }
+    }
+    if (!this.indexByCell && (length <= 4 || size <= 16)) {
+      for (let inputIndex = 0; inputIndex < length; inputIndex += 1) {
+        const cellIndex = cellIndices[inputIndex]!
+        for (let collectionIndex = 0; collectionIndex < size; collectionIndex += 1) {
           if (this.getCellIndexAt(collectionIndex) === cellIndex) {
             return true
           }
@@ -132,6 +149,7 @@ export class DirectFormulaIndexCollection {
     this.validatedScalarDeltaSize = -1
     this.cleanScalarDeltaSize = -1
     this.trustedDirectScalarDeltaSize = -1
+    this.clearSortedCellIndexBounds()
     if (this.constantDelta !== undefined) {
       const existingIndex = this.findIndex(cellIndex)
       if (existingIndex === -1 && Object.is(this.constantDelta, delta)) {
@@ -170,13 +188,28 @@ export class DirectFormulaIndexCollection {
   }
 
   appendDeltas(cellIndices: readonly number[] | U32, deltas: readonly number[], kind?: 'scalar'): void {
+    this.appendDeltasWithOptions(cellIndices, deltas, kind, false)
+  }
+
+  appendSortedDeltas(cellIndices: readonly number[] | U32, deltas: readonly number[], kind?: 'scalar'): void {
+    this.appendDeltasWithOptions(cellIndices, deltas, kind, true)
+  }
+
+  private appendDeltasWithOptions(
+    cellIndices: readonly number[] | U32,
+    deltas: readonly number[],
+    kind: 'scalar' | undefined,
+    sortedAscending: boolean,
+  ): void {
     if (cellIndices.length === 0) {
       return
     }
     this.validatedScalarDeltaSize = -1
     this.cleanScalarDeltaSize = -1
     this.trustedDirectScalarDeltaSize = -1
+    this.updateSortedCellIndexBoundsForAppend(cellIndices, sortedAscending)
     if (this.size !== 0) {
+      this.clearSortedCellIndexBounds()
       if (cellIndices.length > 16 || this.size > 16) {
         this.appendPreparedDeltas(cellIndices, deltas, kind)
         return
@@ -202,13 +235,28 @@ export class DirectFormulaIndexCollection {
   }
 
   appendConstantDelta(cellIndices: readonly number[] | U32, delta: number, kind?: 'scalar'): void {
+    this.appendConstantDeltaWithOptions(cellIndices, delta, kind, false)
+  }
+
+  appendSortedConstantDelta(cellIndices: readonly number[] | U32, delta: number, kind?: 'scalar'): void {
+    this.appendConstantDeltaWithOptions(cellIndices, delta, kind, true)
+  }
+
+  private appendConstantDeltaWithOptions(
+    cellIndices: readonly number[] | U32,
+    delta: number,
+    kind: 'scalar' | undefined,
+    sortedAscending: boolean,
+  ): void {
     if (cellIndices.length === 0) {
       return
     }
     this.validatedScalarDeltaSize = -1
     this.cleanScalarDeltaSize = -1
     this.trustedDirectScalarDeltaSize = -1
+    this.updateSortedCellIndexBoundsForAppend(cellIndices, sortedAscending)
     if (this.size !== 0) {
+      this.clearSortedCellIndexBounds()
       if (cellIndices.length > 16 || this.size > 16) {
         this.appendPreparedConstantDelta(cellIndices, delta, kind)
         return
@@ -581,6 +629,7 @@ export class DirectFormulaIndexCollection {
     if (!sharedCellIndices) {
       return
     }
+    this.clearSortedCellIndexBounds()
     this.cellIndices.length = sharedCellIndices.length
     for (let index = 0; index < sharedCellIndices.length; index += 1) {
       this.cellIndices[index] = sharedCellIndices[index]!
@@ -608,5 +657,19 @@ export class DirectFormulaIndexCollection {
     }
     this.deltaCount = size
     this.scalarDeltaCount = this.scalarDeltaAssigned ? size : 0
+  }
+
+  private updateSortedCellIndexBoundsForAppend(cellIndices: readonly number[] | U32, sortedAscending: boolean): void {
+    if (!sortedAscending || this.size !== 0 || cellIndices.length === 0) {
+      this.clearSortedCellIndexBounds()
+      return
+    }
+    this.sortedCellIndexMin = cellIndices[0]
+    this.sortedCellIndexMax = cellIndices[cellIndices.length - 1]
+  }
+
+  private clearSortedCellIndexBounds(): void {
+    this.sortedCellIndexMin = undefined
+    this.sortedCellIndexMax = undefined
   }
 }

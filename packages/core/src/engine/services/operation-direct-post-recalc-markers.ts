@@ -399,6 +399,8 @@ export function createOperationDirectPostRecalcMarkers(args: {
     let commonDelta: number | undefined
     let canUseValidatedTerminalWrites = true
     let canUseCleanTerminalWrites = true
+    let sortedClosureCellIndices = true
+    let previousClosureCellIndex = -1
     const canSkipAllDirectFormulaColumnVersions = args.canSkipAllDirectFormulaColumnVersions?.() === true
     const cellStore = args.state.workbook.cellStore
     const formulas = args.state.formulas
@@ -523,6 +525,10 @@ export function createOperationDirectPostRecalcMarkers(args: {
         nextCellIndices.set(cellIndices)
         cellIndices = nextCellIndices
       }
+      if (formulaCellIndex <= previousClosureCellIndex) {
+        sortedClosureCellIndices = false
+      }
+      previousClosureCellIndex = formulaCellIndex
       cellIndices[closureCount] = formulaCellIndex
       if (deltas) {
         deltas.push(formulaDelta)
@@ -537,9 +543,17 @@ export function createOperationDirectPostRecalcMarkers(args: {
     }
     const closureCellIndices = cellIndices.subarray(0, closureCount)
     if (deltas) {
-      postRecalcDirectFormulaIndices.appendDeltas(closureCellIndices, deltas, 'scalar')
+      if (sortedClosureCellIndices) {
+        postRecalcDirectFormulaIndices.appendSortedDeltas(closureCellIndices, deltas, 'scalar')
+      } else {
+        postRecalcDirectFormulaIndices.appendDeltas(closureCellIndices, deltas, 'scalar')
+      }
     } else if (commonDelta !== undefined) {
-      postRecalcDirectFormulaIndices.appendConstantDelta(closureCellIndices, commonDelta, 'scalar')
+      if (sortedClosureCellIndices) {
+        postRecalcDirectFormulaIndices.appendSortedConstantDelta(closureCellIndices, commonDelta, 'scalar')
+      } else {
+        postRecalcDirectFormulaIndices.appendConstantDelta(closureCellIndices, commonDelta, 'scalar')
+      }
     }
     if (canUseValidatedTerminalWrites) {
       postRecalcDirectFormulaIndices.markScalarDeltaCellsValidated()

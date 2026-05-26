@@ -134,4 +134,17 @@ describe('direct formula index collection', () => {
     expect(bulk.getDelta(120)).toBe(5)
     expect(bulk.getScalarDeltaAt(19)).toBeUndefined()
   })
+
+  it('keeps sorted scalar delta closure bounds coherent for overlap probes', () => {
+    const indices = new DirectFormulaIndexCollection()
+    indices.appendSortedConstantDelta(new Uint32Array([20, 21, 22, 23]), 1, 'scalar')
+
+    expect(indices.hasAny(new Uint32Array([4]), 1)).toBe(false)
+    expect(indices.hasAny(new Uint32Array([24]), 1)).toBe(false)
+    expect(indices.hasAny(new Uint32Array([21]), 1)).toBe(true)
+
+    indices.addScalarDelta(25, 1)
+
+    expect(indices.hasAny(new Uint32Array([25]), 1)).toBe(true)
+  })
 })
