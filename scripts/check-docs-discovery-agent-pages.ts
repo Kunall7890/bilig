@@ -5,6 +5,7 @@ export const agentFrameworkLlmsRequiredLinks = [
   'https://proompteng.github.io/bilig/copilotkit-workpaper-spreadsheet-action.html',
   'https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html',
+  'https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html',
 ] as const
 
 export const agentFrameworkDocRequirements = [
@@ -49,5 +50,9 @@ export const agentFrameworkDocRequirements = [
   {
     path: 'docs/crewai-workpaper-spreadsheet-tool.md',
     includes: ['CrewAI WorkPaper spreadsheet tool', 'JSON contract', 'pnpm --dir examples/headless-workpaper run agent:framework-adapters'],
+  },
+  {
+    path: 'docs/semantic-kernel-workpaper-mcp.md',
+    includes: ['Semantic Kernel WorkPaper MCP Plugin', 'MCPStdioPlugin', 'examples/semantic-kernel-workpaper-mcp', 'verified'],
   },
 ] as const

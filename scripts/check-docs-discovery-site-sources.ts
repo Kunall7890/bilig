@@ -55,6 +55,7 @@ export const docsSiteSources = [
   ['copilotkit-workpaper-spreadsheet-action.html', 'copilotkit-workpaper-spreadsheet-action.md'],
   ['cloudflare-agents-workpaper-spreadsheet-tool.html', 'cloudflare-agents-workpaper-spreadsheet-tool.md'],
   ['crewai-workpaper-spreadsheet-tool.html', 'crewai-workpaper-spreadsheet-tool.md'],
+  ['semantic-kernel-workpaper-mcp.html', 'semantic-kernel-workpaper-mcp.md'],
   ['mcp-workpaper-tool-server.html', 'mcp-workpaper-tool-server.md'],
   ['spreadsheet-mcp-server-comparison.html', 'spreadsheet-mcp-server-comparison.md'],
   ['.well-known/mcp/server-card.json', '.well-known/mcp/server-card.json'],

@@ -331,8 +331,9 @@ function createFileBackedToolDefinitions(writable: boolean): WorkPaperMcpToolDef
             description: 'Single A1 cell address such as B3. Ranges are not accepted.',
           },
           value: {
-            type: ['string', 'number', 'boolean', 'null'],
-            description: 'Raw cell content. Formula strings must start with =; plain strings are stored as literals.',
+            type: 'string',
+            description:
+              'Raw cell content. Formula strings must start with =; plain strings are stored as literals. Strict MCP hosts such as Semantic Kernel require a single parameter type, so pass evaluated numbers/booleans as formulas such as =0.4 or =TRUE(). The server still accepts JSON number, boolean, or null arguments from clients that support them.',
           },
         },
         additionalProperties: false,
@@ -748,7 +749,7 @@ function cellReadOutputSchema(): JsonObject {
       },
       serialized: rawCellContentSchema(),
       formula: {
-        type: ['string', 'null'],
+        anyOf: [{ type: 'string' }, { type: 'null' }],
         description: 'Formula text without losing the original calculated value context, or null for literal cells.',
       },
       displayValue: {
@@ -762,7 +763,7 @@ function cellReadOutputSchema(): JsonObject {
 
 function rawCellContentSchema(): JsonObject {
   return {
-    type: ['string', 'number', 'boolean', 'null'],
+    anyOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }, { type: 'null' }],
     description: 'Raw serialized cell content; formulas are strings that start with =.',
   }
 }

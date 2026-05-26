@@ -152,6 +152,9 @@ describe('WorkPaper MCP server', () => {
         },
       }),
     ])
+    for (const tool of output.listResponse.result.tools) {
+      expectNoArrayTypesInInputSchema(tool)
+    }
     expect(output.writeResponse.result.structuredContent).toMatchObject({
       editedCell: 'Inputs!B3',
       after: {
@@ -225,6 +228,9 @@ describe('WorkPaper MCP server', () => {
       'checks',
     ])
     expect(readToolOutputSchemaRequired(tools.result, 'validate_formula')).toEqual(['formula', 'valid'])
+    for (const tool of readTools(tools.result)) {
+      expectNoArrayTypesInInputSchema(tool)
+    }
     expect(server.capabilities).toMatchObject({
       resources: {
         listChanged: false,
@@ -622,16 +628,48 @@ describe('WorkPaper MCP server', () => {
 })
 
 function readToolNames(value: unknown): string[] {
-  if (!isRecord(value) || !Array.isArray(value['tools'])) {
-    throw new Error(`Expected tools/list result, received ${JSON.stringify(value)}`)
-  }
-
-  return value['tools'].map((tool) => {
+  return readTools(value).map((tool) => {
     if (!isRecord(tool) || typeof tool['name'] !== 'string') {
       throw new Error(`Expected MCP tool definition, received ${JSON.stringify(tool)}`)
     }
     return tool['name']
   })
+}
+
+function readTools(value: unknown): unknown[] {
+  if (!isRecord(value) || !Array.isArray(value['tools'])) {
+    throw new Error(`Expected tools/list result, received ${JSON.stringify(value)}`)
+  }
+  return value['tools']
+}
+
+function expectNoArrayTypesInInputSchema(tool: unknown): void {
+  if (!isRecord(tool) || typeof tool['name'] !== 'string') {
+    throw new Error(`Expected MCP tool definition, received ${JSON.stringify(tool)}`)
+  }
+  const inputSchema = tool['inputSchema']
+  if (!isRecord(inputSchema)) {
+    throw new Error(`Expected ${tool['name']} input schema, received ${JSON.stringify(tool)}`)
+  }
+  expectSchemaHasNoArrayTypes(inputSchema, `input schema for ${tool['name']}`)
+}
+
+function expectSchemaHasNoArrayTypes(value: unknown, label: string): void {
+  if (Array.isArray(value)) {
+    for (const [index, item] of value.entries()) {
+      expectSchemaHasNoArrayTypes(item, `${label}[${index}]`)
+    }
+    return
+  }
+  if (!isRecord(value)) {
+    return
+  }
+  if (Array.isArray(value['type'])) {
+    throw new Error(`${label} uses a JSON Schema type array, which breaks strict MCP importers such as Semantic Kernel`)
+  }
+  for (const [key, child] of Object.entries(value)) {
+    expectSchemaHasNoArrayTypes(child, `${label}.${key}`)
+  }
 }
 
 function readToolOutputSchemaRequired(value: unknown, toolName: string): string[] {

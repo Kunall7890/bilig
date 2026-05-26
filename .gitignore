@@ -8,6 +8,9 @@ artifacts/fuzz/
 .copilot/logs/
 .vite/
 .cache/
+.tmp/
+__pycache__/
+*.pyc
 .agent-coordination/
 .playwright-mcp/
 *.tsbuildinfo

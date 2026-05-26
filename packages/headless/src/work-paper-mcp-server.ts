@@ -241,8 +241,9 @@ function createWorkPaperMcpToolServer(workbook: WorkPaper): WorkPaperMcpToolServ
             description: 'Single A1 cell address in the Inputs sheet, for example B3.',
           },
           value: {
-            type: ['string', 'number', 'boolean', 'null'],
-            description: 'Raw replacement value. Formula strings must start with =.',
+            type: 'string',
+            description:
+              'Raw replacement value. Formula strings must start with =. Strict MCP hosts such as Semantic Kernel require a single parameter type, so pass evaluated numbers/booleans as formulas such as =0.4 or =TRUE(). The server still accepts JSON number, boolean, or null arguments from clients that support them.',
           },
         },
         additionalProperties: false,
@@ -564,7 +565,7 @@ function workPaperSummaryOutputSchema(): JsonObject {
 
 function rawCellContentSchema(): JsonObject {
   return {
-    type: ['string', 'number', 'boolean', 'null'],
+    anyOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }, { type: 'null' }],
     description: 'Raw serialized cell content; formulas are strings that start with =.',
   }
 }
