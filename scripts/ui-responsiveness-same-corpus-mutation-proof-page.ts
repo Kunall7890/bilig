@@ -3,7 +3,6 @@ import { createHash } from 'node:crypto'
 import type { Page } from '@playwright/test'
 
 import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-live-browser-scorecard.ts'
-import { captureProductScreenshot } from './ui-responsiveness-same-corpus-pixel-proof-page.ts'
 import {
   readSameCorpusVisibleSheetId,
   readSameCorpusVisibleSelectedRange,
@@ -370,8 +369,7 @@ async function captureMutationTargetScreenshot(
     })
     return { buffer, captured: true, scope: 'target-cell' }
   }
-  const screenshot = await captureProductScreenshot(page, product, screenshotPath)
-  return { ...screenshot, scope: 'visible-grid-fallback' }
+  return { buffer: null, captured: false, scope: 'visible-grid-fallback' }
 }
 
 export async function readSameCorpusMutationTargetRevisionProof(args: {

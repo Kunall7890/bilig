@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { Page } from '@playwright/test'
 
 import {
+  captureSameCorpusMutationTargetScreenshotProof,
   readSameCorpusVisibleMutationTargetReadback,
   readSameCorpusVisibleTargetCellReadbackFromPage,
 } from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
@@ -108,6 +109,40 @@ describe('same-corpus mutation target page proof helpers', () => {
       visibleText: null,
     })
   })
+
+  it('does not write a misleading external target screenshot when the selected cell box is missing', async () => {
+    const page = fakePageWithExternalGridButNoTargetBox()
+
+    await expect(
+      captureSameCorpusMutationTargetScreenshotProof({
+        page,
+        phase: 'after',
+        product: 'google-sheets',
+        relativeScreenshotPath: 'same-corpus/google-sheets/missing-target.png',
+        sampleIndex: 0,
+        screenshotPath: '/tmp/bilig-missing-target-should-not-be-written.png',
+        semanticReadback: {
+          fillColor: null,
+          formula: null,
+          source: 'unknown',
+          value: null,
+          visibleText: null,
+        },
+        target: {
+          endAddress: 'C5',
+          sheetId: 'sheet-id',
+          sheetName: 'Sheet1',
+          startAddress: 'C5',
+          targetRange: 'C5',
+        },
+        workload: 'edit-visible-cell',
+      }),
+    ).resolves.toMatchObject({
+      scope: 'visible-grid-fallback',
+      screenshotPath: null,
+      screenshotSha256: null,
+    })
+  })
 })
 
 function fakePageWithoutTargetBox(): Page {
@@ -124,6 +159,26 @@ function fakePageWithoutTargetBox(): Page {
     evaluate: async () => {
       throw new Error('Formula bar fallback must not be used for external target-cell proof')
     },
+    screenshot: async () => {
+      throw new Error('Whole-grid fallback screenshot must not be written for missing external target-cell proof')
+    },
+  } as unknown as Page
+}
+
+function fakePageWithExternalGridButNoTargetBox(): Page {
+  // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- Unit test only exercises missing target box plus present grid surface.
+  return {
+    frames: () => [],
+    locator: (selector: string) => ({
+      boundingBox: async () => null,
+      count: async () => (selector === '.grid-scrollable-wrapper' ? 1 : 0),
+      first() {
+        return this
+      },
+      screenshot: async () => {
+        throw new Error('Whole-grid fallback screenshot must not be written for missing external target-cell proof')
+      },
+    }),
   } as unknown as Page
 }
 
