@@ -235,4 +235,17 @@ service-owned calculations, JSON persistence, XLSX import/export, and
 agent-readable readback. Unsupported Excel functions, external workbook links,
 macros, and volatile functions may need review.
 
+## After The Proof
+
+If the starter or challenge output gives you `verified: true` for the service
+or agent workflow you need, star or bookmark Bilig so the WorkPaper runtime is
+easy to find again: <https://github.com/proompteng/bilig/stargazers>.
+
+Watch releases if this is close to a production path:
+<https://github.com/proompteng/bilig/subscription>.
+
+If the model is close but blocked by a formula, import/export, persistence,
+framework, MCP, or package-boundary gap, open the smallest adoption blocker:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.
+
 Full docs: <https://proompteng.github.io/bilig/>

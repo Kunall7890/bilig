@@ -344,51 +344,6 @@ Those commands are intentionally small. If one matches your workflow, continue
 into the package matrix below; if none match, Bilig is probably not the first
 tool to evaluate.
 
-## n8n Formula Readback
-
-Need an n8n workflow to write workbook inputs, recalculate formulas, and verify
-the computed value before the workflow continues? If you want the n8n-native
-community node, install:
-
-```text
-@bilig/n8n-nodes-workpaper
-```
-
-It has two operations: `Forecast` -> `Verify Formula Readback` for a hosted
-smoke test, and `WorkPaper JSON` -> `Evaluate Document` for workflows that send
-their own WorkPaper JSON, apply edits, read formula outputs, and receive the
-updated document.
-
-If you want a zero-install proof first, import the built-in-node workflow:
-
-```text
-examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json
-```
-
-Run the same proof locally without cloning the repo:
-
-```sh
-npm exec --package @bilig/workpaper -- bilig-n8n-formula-server --port 4321
-```
-
-Then point the self-hosted workflow at `http://host.docker.internal:4321` from
-n8n Docker, or `http://localhost:4321` when n8n and Bilig share the same host
-network. You can also hit the hosted proof route directly:
-
-```sh
-curl -sS -X POST https://bilig.proompteng.ai/api/workpaper/n8n/forecast \
-  -H 'content-type: application/json' \
-  --data '{"sheetName":"Inputs","address":"B3","value":0.4}'
-```
-
-Use this when n8n owns the workbook/calculation state and needs formula-backed
-readback without opening Excel, LibreOffice, Google Sheets, or a browser UI. Do
-not use it as a patch for Microsoft Excel 365 / Graph append-row behavior or
-for making n8n's built-in XLSX writer reinterpret text as formulas.
-
-See [n8n WorkPaper formula readback](docs/n8n-workpaper-formula-readback.md)
-for the community-node install path, proof shape, import steps, and limits.
-
 ## Open WebUI MCP Tools
 
 Need Open WebUI to call spreadsheet tools without driving Excel through a
@@ -689,6 +644,51 @@ for the operation shape, local smoke command, and Directus boundary.
 | XLSX formulas depend on another workbook with stale link caches                   | `npm install @bilig/xlsx-formula-recalc`                      | [External workbook recalculation proof](docs/external-workbook-recalc-proof.md)         |
 | Existing ExcelJS workflow needs recalculated values, not stale cached results     | `npm install exceljs @bilig/exceljs-formula-recalc`           | [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md)  |
 | Advanced runtime subpaths, provenance docs, and package-boundary audits           | `npm install @bilig/headless`                                 | [npm provenance and package trust](docs/npm-provenance-package-trust.md)                |
+
+## n8n Formula Readback
+
+Need an n8n workflow to write workbook inputs, recalculate formulas, and verify
+the computed value before the workflow continues? If you want the n8n-native
+community node, install:
+
+```text
+@bilig/n8n-nodes-workpaper
+```
+
+It has two operations: `Forecast` -> `Verify Formula Readback` for a hosted
+smoke test, and `WorkPaper JSON` -> `Evaluate Document` for workflows that send
+their own WorkPaper JSON, apply edits, read formula outputs, and receive the
+updated document.
+
+If you want a zero-install proof first, import the built-in-node workflow:
+
+```text
+examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json
+```
+
+Run the same proof locally without cloning the repo:
+
+```sh
+npm exec --package @bilig/workpaper -- bilig-n8n-formula-server --port 4321
+```
+
+Then point the self-hosted workflow at `http://host.docker.internal:4321` from
+n8n Docker, or `http://localhost:4321` when n8n and Bilig share the same host
+network. You can also hit the hosted proof route directly:
+
+```sh
+curl -sS -X POST https://bilig.proompteng.ai/api/workpaper/n8n/forecast \
+  -H 'content-type: application/json' \
+  --data '{"sheetName":"Inputs","address":"B3","value":0.4}'
+```
+
+Use this when n8n owns the workbook/calculation state and needs formula-backed
+readback without opening Excel, LibreOffice, Google Sheets, or a browser UI. Do
+not use it as a patch for Microsoft Excel 365 / Graph append-row behavior or
+for making n8n's built-in XLSX writer reinterpret text as formulas.
+
+See [n8n WorkPaper formula readback](docs/n8n-workpaper-formula-readback.md)
+for the community-node install path, proof shape, import steps, and limits.
 
 ### Stale XLSX Formula Values? Run This First
 
@@ -1926,6 +1926,19 @@ Bilig is not a desktop Excel clone. It is a formula workbook runtime for
 service-owned calculations, JSON persistence, XLSX import/export, and
 agent-readable readback. Unsupported Excel functions, external workbook links,
 macros, and volatile functions may need review.
+
+## After The Proof
+
+If the starter or challenge output gives you `verified: true` for the service
+or agent workflow you need, star or bookmark Bilig so the WorkPaper runtime is
+easy to find again: <https://github.com/proompteng/bilig/stargazers>.
+
+Watch releases if this is close to a production path:
+<https://github.com/proompteng/bilig/subscription>.
+
+If the model is close but blocked by a formula, import/export, persistence,
+framework, MCP, or package-boundary gap, open the smallest adoption blocker:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.
 
 Full docs: <https://proompteng.github.io/bilig/>
 

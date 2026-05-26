@@ -107,6 +107,19 @@ workflow.
 Review `result.warnings` and keep fixtures for unsupported functions, external
 workbook links, macros, volatile functions, and customer-critical templates.
 
+## After The Proof
+
+If the demo or a reduced SheetJS workbook returns the fresh formula values you
+needed, star or bookmark Bilig so the boundary is easy to find later:
+<https://github.com/proompteng/bilig/stargazers>.
+
+Watch releases if this is close to a production workflow:
+<https://github.com/proompteng/bilig/subscription>.
+
+If a SheetJS workbook still fails after a reduced test case, open the blocker
+with the formula, input cells, output cells, and warning output:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.
+
 ## Related
 
 - [SheetJS formula result not updating in Node.js](https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html)

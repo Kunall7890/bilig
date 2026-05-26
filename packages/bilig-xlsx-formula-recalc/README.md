@@ -74,7 +74,13 @@ actions:
   "star": "https://github.com/proompteng/bilig/stargazers",
   "watchReleases": "https://github.com/proompteng/bilig/subscription",
   "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": "If this XLSX recalculation proof matches your workflow, star or bookmark Bilig; if it almost works, open the concrete workbook blocker."
+  "nextStep": {
+    "ifUseful": "If this proof fixed your stale XLSX formula workflow, star or bookmark Bilig so you can find it again.",
+    "star": "https://github.com/proompteng/bilig/stargazers",
+    "watchReleases": "https://github.com/proompteng/bilig/subscription",
+    "ifBlocked": "If this is close but blocked by a workbook edge case, open an adoption blocker with a reduced fixture.",
+    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
+  }
 }
 ```
 
@@ -182,6 +188,19 @@ from `@bilig/workpaper`.
 | ExcelJS                             | styled reports, sheets, tables, and ExcelJS workbooks  | use `@bilig/exceljs-formula-recalc`              |
 | Excel, LibreOffice, Microsoft Graph | exact spreadsheet application behavior                 | you cannot depend on an external app or API call |
 | `@bilig/workpaper`                  | service-owned formula workbook state with JSON storage | the workbook does not have to stay XLSX-first    |
+
+## After The Proof
+
+If `verified: true` matches the Node/XLSX workflow you need, star or bookmark
+the repo so you can find it again:
+<https://github.com/proompteng/bilig/stargazers>.
+
+Watch releases if the package is close to a production path:
+<https://github.com/proompteng/bilig/subscription>.
+
+If a real workbook edge case blocks adoption, open the smallest reduced
+workbook blocker:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.
 
 ## Scope
 

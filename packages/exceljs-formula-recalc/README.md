@@ -104,6 +104,19 @@ import { recalculateExceljsBuffer, recalculateExceljsWorkbook } from 'exceljs-fo
 
 Cell targets must be sheet-qualified A1 references such as `Inputs!B2` or `'Pricing Model'!F12`.
 
+## After The Proof
+
+If the demo or a reduced ExcelJS workbook gives the fresh formula values your
+service needs, star or bookmark Bilig so the recalculation boundary is easy to
+find later: <https://github.com/proompteng/bilig/stargazers>.
+
+Watch releases if this package is close to a production path:
+<https://github.com/proompteng/bilig/subscription>.
+
+If a real ExcelJS workbook still blocks adoption, open the smallest fixture
+with the formula, input cells, output cells, and warning output:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.
+
 ## Scope
 
 Use this when a Node service already uses ExcelJS for workbook I/O but needs deterministic formula readback after changing inputs. It is not a full Excel clone: unsupported Excel functions, external workbook links, macros, and volatile functions may need review. Import warnings are returned in `result.warnings`.
