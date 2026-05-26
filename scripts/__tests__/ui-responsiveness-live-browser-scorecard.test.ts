@@ -32,6 +32,7 @@ import {
   type SameCorpusPixelGridProof,
   type SameCorpusProductPixelGridProof,
   type SameCorpusProductVisualProof,
+  type SameCorpusScenarioProof,
 } from '../ui-responsiveness-same-corpus-proof.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
@@ -306,6 +307,46 @@ describe('UI responsiveness live browser scorecard', () => {
     })
 
     expect(() => buildSameCorpusProof(staleCapture)).toThrow('UI responsiveness same-corpus capture scenario summary fields are stale')
+  })
+
+  it('does not count mutating workloads as claim-ready without committed target proof timing', () => {
+    const capture = buildSameCorpusCapture()
+    const cases = capture.cases.map((entry) => {
+      if (entry.workload !== 'edit-visible-cell') {
+        return entry
+      }
+      const bilig = withoutCommittedTargetProofTiming(entry.bilig)
+      const googleSheets = withoutCommittedTargetProofTiming(entry.googleSheets)
+      const microsoftExcelWeb = entry.microsoftExcelWeb ? withoutCommittedTargetProofTiming(entry.microsoftExcelWeb) : undefined
+      const scenarioProof = buildCaptureScenarioProof({
+        bilig,
+        googleSheets,
+        microsoftExcelWeb,
+        workload: entry.workload,
+        visualProofs: scenarioProofVisualProofs(entry.scenarioProof),
+      })
+      return {
+        ...entry,
+        ...sameCorpusScenarioCaseFields(scenarioProof),
+        scenarioProof,
+        bilig,
+        googleSheets,
+        ...(microsoftExcelWeb ? { microsoftExcelWeb } : {}),
+      }
+    })
+    const proof = buildSameCorpusProof(
+      withCaptureRunManifest({
+        ...capture,
+        cases,
+      }),
+    )
+
+    expect(proof.cases.find((entry) => entry.workload === 'edit-visible-cell')).toMatchObject({
+      committedTargetProofGuardrailPassed: false,
+      tenXMeanAndP95Metric: 'operationResponseMs',
+      tenXMeanAndP95AgainstGoogleSheets: false,
+      passed: false,
+    })
   })
 
   it('keeps the same-corpus blocker for honestly reported weak Bilig pixel proof', () => {
@@ -897,6 +938,11 @@ function sameCorpusCaptureMeasurementFixture(
     operationResponseMsSamples,
     operationResponseProofs: sameCorpusOperationResponseProofSamples(workload),
     ...(product === 'bilig' ? { authoritativeRenderProofMsSamples: [9, 10, 11] } : {}),
+    ...(uiSameCorpusWorkloadMutatesWorkbook(workload)
+      ? {
+          committedTargetProofMsSamples: product === 'bilig' ? [5, 6, 7] : product === 'google-sheets' ? [100, 100, 100] : [80, 85, 90],
+        }
+      : {}),
     postOperationFrameMsSamples: product === 'bilig' ? [8, 9, 10] : [14, 15, 16],
     ...(requiresScrollEventSamples
       ? { scrollEventResponseMsSamples: operationResponseMsSamples, scrollMovementPxSamples: [720, 720, 720] }
@@ -1109,6 +1155,7 @@ function sameCorpusMutationTargetProofs(
   }
   return [0, 1, 2].map((sampleIndex) => ({
     sampleIndex,
+    committedTargetProofMs: 40 + sampleIndex,
     workload,
     intendedOperation: workload,
     intendedPayload: sameCorpusMutationTargetIntendedPayload(product, workload, sampleIndex),
@@ -1243,6 +1290,22 @@ function withProductPixelGridVerdicts(proof: Omit<SameCorpusPixelGridProof, 'pro
     ...proof,
     productVerdicts: proof.products.map((entry: SameCorpusProductPixelGridProof) => validateSameCorpusProductPixelGridProof(entry)),
   }
+}
+
+function withoutCommittedTargetProofTiming(measurement: SameCorpusCaptureMeasurement): SameCorpusCaptureMeasurement {
+  const { committedTargetProofMsSamples, ...rest } = measurement
+  void committedTargetProofMsSamples
+  return rest
+}
+
+function scenarioProofVisualProofs(proof: SameCorpusScenarioProof): SameCorpusProductVisualProof[] {
+  return proof.pixelGridProof.products.map((entry) => ({
+    product: entry.product,
+    screenshotPath: proof.screenshotProof.artifactPaths.find((artifact) => artifact.includes(`${entry.product}-`)) ?? null,
+    screenshotCaptured: !proof.screenshotProof.missingProducts.includes(entry.product),
+    pixelGridProof: entry,
+    semanticUiProof: proof.semanticUiProof.products.find((semanticProof) => semanticProof.product === entry.product),
+  }))
 }
 
 function corpusVerification(

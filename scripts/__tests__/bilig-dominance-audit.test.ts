@@ -190,13 +190,13 @@ describe('bilig dominance prompt-to-artifact audit', () => {
     const uiItem = audit.checklist.find((entry) => entry.id === 'ui-responsiveness')
 
     const productGap =
-      'same-corpus mutation target proof gap: edit-visible-cell/bilig accepted 0/3 samples (raw 1); missing samples: 1, 2; rejected samples: 0; invalid reasons: semantic UI mutation target proof for edit-visible-cell covers 1/3 samples'
+      'same-corpus mutation target proof gap: edit-visible-cell/bilig accepted 0/3 samples (raw 1); missing samples: 1, 2; rejected samples: 0; invalid reasons: sample 0: semantic UI mutation target proof for edit-visible-cell is missing committed target proof timing; semantic UI mutation target proof for edit-visible-cell covers 1/3 samples'
     expect(uiItem).toMatchObject({
       passed: false,
       liveBlockers: expect.arrayContaining([productGap]),
       gaps: expect.arrayContaining([productGap]),
       evidence: expect.arrayContaining([
-        'live same-corpus UI mutation target product proof: edit-visible-cell/bilig accepted 0/3 samples (raw 1); missing samples: 1, 2; rejected samples: 0; invalid reasons: semantic UI mutation target proof for edit-visible-cell covers 1/3 samples',
+        'live same-corpus UI mutation target product proof: edit-visible-cell/bilig accepted 0/3 samples (raw 1); missing samples: 1, 2; rejected samples: 0; invalid reasons: sample 0: semantic UI mutation target proof for edit-visible-cell is missing committed target proof timing; semantic UI mutation target proof for edit-visible-cell covers 1/3 samples',
       ]),
     })
     expect(validateBiligDominancePromptArtifactAudit(audit)).toEqual([])
@@ -470,25 +470,31 @@ function mutationTargetProductSummary(): SameCorpusMutationTargetProofProductSum
         sampleIndex: 0,
         present: true,
         accepted: false,
+        committedTargetProofMs: 42,
         targetRange: 'WideGrid!A1',
         screenshotPath: 'tmp/edit-visible-cell/bilig-sample-1-after.png',
         screenshotSha256: 'a'.repeat(64),
+        invalidReasons: ['semantic UI mutation target proof for edit-visible-cell is missing committed target proof timing'],
       },
       {
         sampleIndex: 1,
         present: false,
         accepted: false,
+        committedTargetProofMs: null,
         targetRange: null,
         screenshotPath: null,
         screenshotSha256: null,
+        invalidReasons: ['semantic UI mutation target proof sample is missing'],
       },
       {
         sampleIndex: 2,
         present: false,
         accepted: false,
+        committedTargetProofMs: null,
         targetRange: null,
         screenshotPath: null,
         screenshotSha256: null,
+        invalidReasons: ['semantic UI mutation target proof sample is missing'],
       },
     ],
     invalidReasons: ['semantic UI mutation target proof for edit-visible-cell covers 1/3 samples'],

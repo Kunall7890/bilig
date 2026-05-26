@@ -245,6 +245,7 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
   const postOperationFrameGuardrailPassed = optionalBooleanField(record, 'postOperationFrameGuardrailPassed')
   const operationResponseProofGuardrailPassed = optionalBooleanField(record, 'operationResponseProofGuardrailPassed')
   const authoritativeRenderProofGuardrailPassed = optionalBooleanField(record, 'authoritativeRenderProofGuardrailPassed')
+  const committedTargetProofGuardrailPassed = optionalBooleanField(record, 'committedTargetProofGuardrailPassed')
   const biligRuntimeProofGuardrailPassed = optionalBooleanField(record, 'biligRuntimeProofGuardrailPassed')
   const scrollMovementGuardrailPassed = optionalBooleanField(record, 'scrollMovementGuardrailPassed')
   const sourceWorkbookFingerprintGuardrailPassed = optionalBooleanField(record, 'sourceWorkbookFingerprintGuardrailPassed')
@@ -276,6 +277,7 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
     ...(postOperationFrameGuardrailPassed !== undefined ? { postOperationFrameGuardrailPassed } : {}),
     ...(operationResponseProofGuardrailPassed !== undefined ? { operationResponseProofGuardrailPassed } : {}),
     ...(authoritativeRenderProofGuardrailPassed !== undefined ? { authoritativeRenderProofGuardrailPassed } : {}),
+    ...(committedTargetProofGuardrailPassed !== undefined ? { committedTargetProofGuardrailPassed } : {}),
     ...(biligRuntimeProofGuardrailPassed !== undefined ? { biligRuntimeProofGuardrailPassed } : {}),
     ...(scrollMovementGuardrailPassed !== undefined ? { scrollMovementGuardrailPassed } : {}),
     ...(sourceWorkbookFingerprintGuardrailPassed !== undefined ? { sourceWorkbookFingerprintGuardrailPassed } : {}),
@@ -287,6 +289,7 @@ function parseSameCorpusMeasurement(value: Record<string, unknown>): UiResponsiv
   const scrollEventResponseMs = optionalNumericSummary(value, 'scrollEventResponseMs')
   const scrollMovementPx = optionalNumericSummary(value, 'scrollMovementPx')
   const authoritativeRenderProofMs = optionalNumericSummary(value, 'authoritativeRenderProofMs')
+  const committedTargetProofMs = optionalNumericSummary(value, 'committedTargetProofMs')
   const biligRuntimeProof = Object.hasOwn(value, 'biligRuntimeProof')
     ? parseBiligRuntimeProof(objectField(value, 'biligRuntimeProof'))
     : undefined
@@ -296,6 +299,7 @@ function parseSameCorpusMeasurement(value: Record<string, unknown>): UiResponsiv
     operationResponseMs: parseNumericSummary(objectField(value, 'operationResponseMs')),
     operationResponseProofs: stringArrayField(value, 'operationResponseProofs').map(parseSameCorpusOperationResponseProof),
     ...(authoritativeRenderProofMs ? { authoritativeRenderProofMs } : {}),
+    ...(committedTargetProofMs ? { committedTargetProofMs } : {}),
     postOperationFrameMs: parseNumericSummary(objectField(value, 'postOperationFrameMs')),
     ...(scrollEventResponseMs ? { scrollEventResponseMs } : {}),
     ...(scrollMovementPx ? { scrollMovementPx } : {}),
@@ -361,6 +365,9 @@ function parseSameCorpusCaptureMeasurement(
     operationResponseProofs: stringArrayField(value, 'operationResponseProofs').map(parseSameCorpusOperationResponseProof),
     ...(Object.hasOwn(value, 'authoritativeRenderProofMsSamples')
       ? { authoritativeRenderProofMsSamples: numericArrayField(value, 'authoritativeRenderProofMsSamples') }
+      : {}),
+    ...(Object.hasOwn(value, 'committedTargetProofMsSamples')
+      ? { committedTargetProofMsSamples: numericArrayField(value, 'committedTargetProofMsSamples') }
       : {}),
     postOperationFrameMsSamples: numericArrayField(value, 'postOperationFrameMsSamples'),
     ...(Object.hasOwn(value, 'scrollEventResponseMsSamples')
@@ -580,6 +587,7 @@ function parseSameCorpusMutationTargetProof(value: unknown): SameCorpusMutationT
   const record = asObject(value, 'UI responsiveness same-corpus mutation target proof')
   return {
     sampleIndex: numberField(record, 'sampleIndex'),
+    committedTargetProofMs: optionalNumberField(record, 'committedTargetProofMs') ?? Number.NaN,
     workload: parseSameCorpusWorkload(stringField(record, 'workload')),
     intendedOperation: parseSameCorpusMutatingWorkload(stringField(record, 'intendedOperation')),
     intendedPayload: parseSameCorpusMutationTargetIntendedPayload(objectField(record, 'intendedPayload')),
@@ -737,6 +745,7 @@ function parseSameCorpusMutationTargetProofSampleSummary(value: unknown): SameCo
     sampleIndex: numberField(record, 'sampleIndex'),
     present: booleanField(record, 'present'),
     accepted: booleanField(record, 'accepted'),
+    committedTargetProofMs: Object.hasOwn(record, 'committedTargetProofMs') ? nullableNumberField(record, 'committedTargetProofMs') : null,
     sheetName: nullableStringField(record, 'sheetName'),
     sheetId: Object.hasOwn(record, 'sheetId') ? nullableStringField(record, 'sheetId') : null,
     targetRange: nullableStringField(record, 'targetRange'),
@@ -843,6 +852,17 @@ function optionalBooleanField(value: Record<string, unknown>, key: string): bool
   return Object.hasOwn(value, key) ? booleanField(value, key) : undefined
 }
 
+function nullableNumberField(value: Record<string, unknown>, key: string): number | null {
+  const fieldValue = value[key]
+  if (fieldValue === null) {
+    return null
+  }
+  if (typeof fieldValue !== 'number' || !Number.isFinite(fieldValue) || fieldValue < 0) {
+    throw new Error(`Expected ${key} to be a finite non-negative number or null`)
+  }
+  return fieldValue
+}
+
 function nullableStringField(value: Record<string, unknown>, key: string): string | null {
   const fieldValue = value[key]
   if (fieldValue === null) {
@@ -873,7 +893,7 @@ function optionalSameCorpusTenXMetric(
     return undefined
   }
   const metric = stringField(value, key)
-  if (metric === 'operationResponseMs' || metric === 'scrollEventResponseMs') {
+  if (metric === 'operationResponseMs' || metric === 'scrollEventResponseMs' || metric === 'committedTargetProofMs') {
     return metric
   }
   throw new Error(`Unexpected UI responsiveness same-corpus 10x metric: ${metric}`)

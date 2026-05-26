@@ -35,6 +35,7 @@ export interface SameCorpusProductSemanticUiProof {
 
 export interface SameCorpusMutationTargetProof {
   readonly sampleIndex: number
+  readonly committedTargetProofMs: number
   readonly workload: UiResponsivenessSameCorpusWorkload
   readonly intendedOperation: 'edit-visible-cell' | 'formula-edit' | 'fill-format-change'
   readonly intendedPayload: SameCorpusMutationTargetIntendedPayload
@@ -284,6 +285,9 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
     invalidReasons.push(`semantic UI mutation target proof for ${workload} has invalid sample index`)
   } else if (options.duplicateSampleIndex === true) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} duplicates sample ${String(sample.sampleIndex + 1)}`)
+  }
+  if (!Number.isFinite(sample.committedTargetProofMs) || sample.committedTargetProofMs < 0) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing committed target proof timing`)
   }
   if (sample.workload !== workload || sample.intendedOperation !== workload) {
     invalidReasons.push(`semantic UI mutation target proof operation does not match ${workload}`)

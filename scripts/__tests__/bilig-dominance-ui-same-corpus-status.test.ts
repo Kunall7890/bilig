@@ -110,11 +110,15 @@ describe('same-corpus UI dominance status', () => {
       cases: [
         sameCorpusSpeedGapCase({
           workload: 'fill-format-change',
-          metric: 'operationResponseMs',
+          metric: 'committedTargetProofMs',
           biligMeanMs: 313.67,
           biligP95Ms: 328.94,
           googleMeanMs: 82.02,
           googleP95Ms: 87.47,
+          biligCommittedMeanMs: 313.67,
+          biligCommittedP95Ms: 328.94,
+          googleCommittedMeanMs: 82.02,
+          googleCommittedP95Ms: 87.47,
         }),
         sameCorpusSpeedGapCase({
           workload: 'scroll-horizontal',
@@ -136,13 +140,13 @@ describe('same-corpus UI dominance status', () => {
     expect(gaps).toHaveLength(1)
     expect(gaps[0]).toMatchObject({
       workload: 'fill-format-change',
-      metric: 'operationResponseMs',
+      metric: 'committedTargetProofMs',
       meanRatio: expect.closeTo(0.2614850001594032, 8),
       p95Ratio: expect.closeTo(0.2659147564905454, 8),
       limitingAdditionalSpeedupTo10x: expect.closeTo(38.24311143623507, 8),
     })
     expect(formatSameCorpusUiSpeedGap(gaps[0])).toContain(
-      'fill-format-change (operationResponseMs): current Google/Bilig mean 0.26x: p95 0.27x',
+      'fill-format-change (committedTargetProofMs): current Google/Bilig mean 0.26x: p95 0.27x',
     )
   })
 })
@@ -154,8 +158,12 @@ function sameCorpusSpeedGapCase(args: {
   readonly biligP95Ms: number
   readonly googleMeanMs: number
   readonly googleP95Ms: number
+  readonly biligCommittedMeanMs?: number
+  readonly biligCommittedP95Ms?: number
   readonly biligScrollMeanMs?: number
   readonly biligScrollP95Ms?: number
+  readonly googleCommittedMeanMs?: number
+  readonly googleCommittedP95Ms?: number
   readonly googleScrollMeanMs?: number
   readonly googleScrollP95Ms?: number
 }): SameCorpusUiSpeedGapCase {
@@ -175,6 +183,14 @@ function sameCorpusSpeedGapCase(args: {
             },
           }
         : {}),
+      ...(args.biligCommittedMeanMs !== undefined && args.biligCommittedP95Ms !== undefined
+        ? {
+            committedTargetProofMs: {
+              mean: args.biligCommittedMeanMs,
+              p95: args.biligCommittedP95Ms,
+            },
+          }
+        : {}),
     },
     googleSheets: {
       operationResponseMs: {
@@ -186,6 +202,14 @@ function sameCorpusSpeedGapCase(args: {
             scrollEventResponseMs: {
               mean: args.googleScrollMeanMs,
               p95: args.googleScrollP95Ms,
+            },
+          }
+        : {}),
+      ...(args.googleCommittedMeanMs !== undefined && args.googleCommittedP95Ms !== undefined
+        ? {
+            committedTargetProofMs: {
+              mean: args.googleCommittedMeanMs,
+              p95: args.googleCommittedP95Ms,
             },
           }
         : {}),

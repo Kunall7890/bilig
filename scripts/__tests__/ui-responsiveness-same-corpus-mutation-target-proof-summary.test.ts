@@ -36,6 +36,7 @@ describe('same-corpus mutation target proof summary', () => {
           samples: expect.arrayContaining([
             expect.objectContaining({
               sampleIndex: 0,
+              committedTargetProofMs: 40,
               sheetName: 'WideGrid',
               sheetId: 'sheet-wide-grid',
               targetRange: 'A1',
@@ -67,6 +68,7 @@ describe('same-corpus mutation target proof summary', () => {
             expect.objectContaining({
               sampleIndex: 0,
               present: false,
+              committedTargetProofMs: null,
               sheetName: null,
               sheetId: null,
               targetRange: null,
@@ -292,6 +294,7 @@ function mutationTargetProof(
   const afterValue = corruptProof ? 'stale-value' : value
   return {
     sampleIndex,
+    committedTargetProofMs: 40 + sampleIndex,
     workload: 'edit-visible-cell',
     intendedOperation: 'edit-visible-cell',
     intendedPayload: {

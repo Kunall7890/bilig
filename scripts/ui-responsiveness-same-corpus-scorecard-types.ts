@@ -19,6 +19,7 @@ export interface UiResponsivenessSameCorpusMeasurement {
   readonly operationResponseMs: NumericSummary
   readonly operationResponseProofs: readonly SameCorpusOperationResponseProof[]
   readonly authoritativeRenderProofMs?: NumericSummary
+  readonly committedTargetProofMs?: NumericSummary
   readonly postOperationFrameMs: NumericSummary
   readonly scrollEventResponseMs?: NumericSummary
   readonly scrollMovementPx?: NumericSummary
@@ -64,7 +65,7 @@ export interface UiResponsivenessSameCorpusCase extends SameCorpusScenarioCaseFi
   readonly biligToGoogleSheetsScrollEventP95Ratio?: number
   readonly biligToMicrosoftExcelWebScrollEventMeanRatio?: number
   readonly biligToMicrosoftExcelWebScrollEventP95Ratio?: number
-  readonly tenXMeanAndP95Metric?: 'operationResponseMs' | 'scrollEventResponseMs'
+  readonly tenXMeanAndP95Metric?: 'operationResponseMs' | 'scrollEventResponseMs' | 'committedTargetProofMs'
   readonly scenarioProof: SameCorpusScenarioProof
   readonly tenXMeanAndP95AgainstGoogleSheets: boolean
   readonly tenXMeanAndP95AgainstMicrosoftExcelWeb?: boolean | undefined
@@ -74,6 +75,7 @@ export interface UiResponsivenessSameCorpusCase extends SameCorpusScenarioCaseFi
   readonly sourceWorkbookFingerprintGuardrailPassed?: boolean
   readonly operationResponseProofGuardrailPassed?: boolean
   readonly authoritativeRenderProofGuardrailPassed?: boolean
+  readonly committedTargetProofGuardrailPassed?: boolean
   readonly passed: boolean
 }
 
@@ -183,6 +185,7 @@ export interface SameCorpusMutationTargetProofSampleSummary {
   readonly sampleIndex: number
   readonly present: boolean
   readonly accepted: boolean
+  readonly committedTargetProofMs: number | null
   readonly sheetName: string | null
   readonly sheetId: string | null
   readonly targetRange: string | null
@@ -218,6 +221,7 @@ export interface SameCorpusCaptureMeasurement {
   readonly operationResponseMsSamples: number[]
   readonly operationResponseProofs: SameCorpusOperationResponseProof[]
   readonly authoritativeRenderProofMsSamples?: number[]
+  readonly committedTargetProofMsSamples?: number[]
   readonly postOperationFrameMsSamples: number[]
   readonly scrollEventResponseMsSamples?: number[]
   readonly scrollMovementPxSamples?: number[]
@@ -270,4 +274,4 @@ export interface SameCorpusCaptureCorpusVerification {
   readonly checkedCells: readonly SameCorpusCaptureVerifiedCell[]
 }
 
-export const sameCorpusUiCaptureToolVersion = 'same-corpus-capture-v5'
+export const sameCorpusUiCaptureToolVersion = 'same-corpus-capture-v6'

@@ -457,6 +457,9 @@ async function measureProduct(
     ...(product === 'bilig'
       ? { authoritativeRenderProofMsSamples: collection.samples.map((entry) => entry.authoritativeRenderProofMs ?? Number.NaN) }
       : {}),
+    ...(uiSameCorpusWorkloadMutatesWorkbook(workload)
+      ? { committedTargetProofMsSamples: collection.samples.map((entry) => entry.committedTargetProofMs ?? Number.NaN) }
+      : {}),
     postOperationFrameMsSamples: collection.samples.map((entry) => entry.postOperationFrameMs),
     ...(uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
       ? {
@@ -534,21 +537,23 @@ async function measureProductSamples(
         movePointerToProductViewport,
       },
     })
-    samples.push(await withAuthoritativeRenderProofTiming(page, product, sample, operationStartedAt, args.readyTimeoutMs))
+    const sampleWithRenderProof = await withAuthoritativeRenderProofTiming(page, product, sample, operationStartedAt, args.readyTimeoutMs)
     if (mutationTarget && mutationTargetBefore && mutatingWorkload) {
-      mutationTargetProofs.push(
-        await captureSameCorpusMutationTargetProofForSample({
-          before: mutationTargetBefore,
-          caseId,
-          outputPath: args.outputPath,
-          page,
-          product,
-          sampleIndex,
-          target: mutationTarget,
-          workload: mutatingWorkload,
-        }),
-      )
+      const mutationTargetProof = await captureSameCorpusMutationTargetProofForSample({
+        before: mutationTargetBefore,
+        caseId,
+        operationStartedAt,
+        outputPath: args.outputPath,
+        page,
+        product,
+        sampleIndex,
+        target: mutationTarget,
+        workload: mutatingWorkload,
+      })
+      mutationTargetProofs.push(mutationTargetProof)
+      samples.push({ ...sampleWithRenderProof, committedTargetProofMs: mutationTargetProof.committedTargetProofMs })
     } else {
+      samples.push(sampleWithRenderProof)
       await restoreProductWorkbookMutation(page, workload)
     }
     if (caseId && visualProofs && sampleIndex === 0 && !uiSameCorpusWorkloadMutatesWorkbook(workload)) {
@@ -638,6 +643,7 @@ function mutationTargetSelectionFromProof(proof: SameCorpusMutationTargetProof):
 async function captureSameCorpusMutationTargetProofForSample(args: {
   readonly before: SameCorpusMutationTargetReadback
   readonly caseId?: string
+  readonly operationStartedAt: number
   readonly outputPath: string
   readonly page: Page
   readonly product: UiResponsivenessSameCorpusProduct
@@ -674,6 +680,7 @@ async function captureSameCorpusMutationTargetProofForSample(args: {
     screenshotSha256: screenshotProof.screenshotSha256,
     target: args.target,
   })
+  const committedTargetProofMs = Math.max(0, performance.now() - args.operationStartedAt)
   await restoreProductWorkbookMutation(args.page, args.workload)
   await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
   const restored = await readSameCorpusMutationTargetReadback({ page: args.page, product: args.product, target: args.target })
@@ -687,6 +694,7 @@ async function captureSameCorpusMutationTargetProofForSample(args: {
     after,
     authoritativeReadbackRevision: revisions.authoritativeReadbackRevision,
     before: args.before,
+    committedTargetProofMs,
     intendedOperation: args.workload,
     intendedPayload: intendedMutationTargetPayload(args.product, args.workload, args.sampleIndex),
     restored,

@@ -27,8 +27,10 @@ import {
 import {
   hasBiligAuthoritativeRenderProofTiming,
   hasBiligProductionRuntimeProof,
+  hasCommittedTargetProofTiming,
   sameCorpusCaptureCaseOperationResponseProofGuardrailPassed,
   sameCorpusCaseOperationResponseProofGuardrailPassed,
+  sameCorpusCommittedTargetProofMetrics,
   sameCorpusMeasurementOperationResponseProofsPassed,
   sameCorpusSampleCount,
 } from './ui-responsiveness-same-corpus-guardrails.ts'
@@ -47,6 +49,7 @@ import {
 import { sameCorpusManifestInvalidReasons } from './ui-responsiveness-same-corpus-manifest-invalid-reasons.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
+  uiSameCorpusWorkloadMutatesWorkbook,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
 } from './ui-responsiveness-same-corpus-workloads.ts'
 import {
@@ -464,6 +467,16 @@ function validateSameCorpusCapture(capture: SameCorpusCapture): void {
           }
         }
       }
+      if (measurement.committedTargetProofMsSamples) {
+        if (measurement.committedTargetProofMsSamples.length < capture.sampleCount) {
+          throw new Error(`UI responsiveness same-corpus capture has too few committed target proof timing samples for ${entry.id}`)
+        }
+        for (const value of measurement.committedTargetProofMsSamples) {
+          if (!Number.isFinite(value) || value < 0) {
+            throw new Error(`UI responsiveness same-corpus capture has invalid committed target proof timing for ${entry.id}`)
+          }
+        }
+      }
       if (
         requiresScrollEventSamples &&
         ((measurement.scrollEventResponseMsSamples?.length ?? 0) < capture.sampleCount ||
@@ -548,23 +561,33 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
   const sourceWorkbookFingerprintGuardrailPassed = comparedProducts.every(hasCapturedSourceWorkbookFingerprint)
   const biligRuntimeProofGuardrailPassed = hasBiligProductionRuntimeProof(bilig)
   const authoritativeRenderProofGuardrailPassed = hasBiligAuthoritativeRenderProofTiming(bilig, captureCaseSampleCount(captureCase))
+  const committedTargetProofGuardrailPassed =
+    uiSameCorpusWorkloadMutatesWorkbook(captureCase.workload) &&
+    comparedProducts.every((entry) => hasCommittedTargetProofTiming(entry, captureCaseSampleCount(captureCase)))
   const scrollMovementGuardrailPassed =
     scrollEventMetrics !== null && comparedProducts.every((entry) => (entry.scrollMovementPx?.min ?? 0) >= 1)
   const requiresScrollEventMetric = uiSameCorpusWorkloadRequiresScrollEventEvidence(captureCase.workload)
+  const committedTargetMetrics = committedTargetProofGuardrailPassed
+    ? sameCorpusCommittedTargetProofMetrics(bilig, googleSheets, microsoftExcelWeb)
+    : null
   const timingMetricPassedAgainstGoogleSheets = requiresScrollEventMetric
     ? scrollEventMetrics !== null &&
       scrollEventMetrics.biligToGoogleSheetsMeanRatio <= 0.1 &&
       scrollEventMetrics.biligToGoogleSheetsP95Ratio <= 0.1 &&
       scrollMovementGuardrailPassed
-    : biligToGoogleSheetsMeanRatio <= 0.1 && biligToGoogleSheetsP95Ratio <= 0.1
+    : committedTargetMetrics
+      ? committedTargetMetrics.biligToGoogleSheetsMeanRatio <= 0.1 && committedTargetMetrics.biligToGoogleSheetsP95Ratio <= 0.1
+      : biligToGoogleSheetsMeanRatio <= 0.1 && biligToGoogleSheetsP95Ratio <= 0.1
   const timingMetricPassedAgainstMicrosoftExcelWeb = microsoftExcelWeb
     ? requiresScrollEventMetric
       ? scrollEventMetrics !== null &&
         scrollEventMetrics.biligToMicrosoftExcelWebMeanRatio <= 0.1 &&
         scrollEventMetrics.biligToMicrosoftExcelWebP95Ratio <= 0.1 &&
         scrollMovementGuardrailPassed
-      : (biligToMicrosoftExcelWebMeanRatio ?? Number.POSITIVE_INFINITY) <= 0.1 &&
-        (biligToMicrosoftExcelWebP95Ratio ?? Number.POSITIVE_INFINITY) <= 0.1
+      : committedTargetMetrics
+        ? committedTargetMetrics.biligToMicrosoftExcelWebMeanRatio <= 0.1 && committedTargetMetrics.biligToMicrosoftExcelWebP95Ratio <= 0.1
+        : (biligToMicrosoftExcelWebMeanRatio ?? Number.POSITIVE_INFINITY) <= 0.1 &&
+          (biligToMicrosoftExcelWebP95Ratio ?? Number.POSITIVE_INFINITY) <= 0.1
     : undefined
   const scenarioProof = buildScorecardScenarioProof({
     bilig,
@@ -583,6 +606,7 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
     postOperationFrameGuardrailPassed &&
     visualProofGuardrailPassed &&
     semanticUiProofGuardrailPassed &&
+    (!uiSameCorpusWorkloadMutatesWorkbook(captureCase.workload) || committedTargetProofGuardrailPassed) &&
     biligRuntimeProofGuardrailPassed &&
     sourceWorkbookFingerprintGuardrailPassed
   const tenXMeanAndP95AgainstMicrosoftExcelWeb =
@@ -594,6 +618,7 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
         postOperationFrameGuardrailPassed &&
         visualProofGuardrailPassed &&
         semanticUiProofGuardrailPassed &&
+        (!uiSameCorpusWorkloadMutatesWorkbook(captureCase.workload) || committedTargetProofGuardrailPassed) &&
         biligRuntimeProofGuardrailPassed &&
         sourceWorkbookFingerprintGuardrailPassed
   return {
@@ -626,12 +651,15 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
           tenXMeanAndP95Metric: 'scrollEventResponseMs' as const,
           scrollMovementGuardrailPassed,
         }
-      : { tenXMeanAndP95Metric: 'operationResponseMs' as const }),
+      : committedTargetMetrics
+        ? { tenXMeanAndP95Metric: 'committedTargetProofMs' as const, committedTargetProofGuardrailPassed }
+        : { tenXMeanAndP95Metric: 'operationResponseMs' as const }),
     ...sameCorpusScenarioCaseFields(scenarioProof),
     scenarioProof,
     postOperationFrameGuardrailPassed,
     operationResponseProofGuardrailPassed,
     authoritativeRenderProofGuardrailPassed,
+    ...(uiSameCorpusWorkloadMutatesWorkbook(captureCase.workload) ? { committedTargetProofGuardrailPassed } : {}),
     biligRuntimeProofGuardrailPassed,
     sourceWorkbookFingerprintGuardrailPassed,
     tenXMeanAndP95AgainstGoogleSheets,
@@ -659,6 +687,7 @@ function buildSameCorpusMeasurement(capture: SameCorpusCaptureMeasurement): UiRe
     ...(capture.authoritativeRenderProofMsSamples
       ? { authoritativeRenderProofMs: summarizeNumbers(capture.authoritativeRenderProofMsSamples) }
       : {}),
+    ...(capture.committedTargetProofMsSamples ? { committedTargetProofMs: summarizeNumbers(capture.committedTargetProofMsSamples) } : {}),
     postOperationFrameMs: summarizeNumbers(capture.postOperationFrameMsSamples),
     ...(capture.scrollEventResponseMsSamples ? { scrollEventResponseMs: summarizeNumbers(capture.scrollEventResponseMsSamples) } : {}),
     ...(capture.scrollMovementPxSamples ? { scrollMovementPx: summarizeNumbers(capture.scrollMovementPxSamples) } : {}),
@@ -754,8 +783,14 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
   const sourceWorkbookFingerprintGuardrailPassed = comparedProducts.every(hasCapturedSourceWorkbookFingerprint)
   const biligRuntimeProofGuardrailPassed = hasBiligProductionRuntimeProof(entry.bilig)
   const authoritativeRenderProofGuardrailPassed = hasBiligAuthoritativeRenderProofTiming(entry.bilig, entry.sampleCount)
+  const committedTargetProofGuardrailPassed =
+    uiSameCorpusWorkloadMutatesWorkbook(entry.workload) &&
+    comparedProducts.every((measurement) => hasCommittedTargetProofTiming(measurement, entry.sampleCount))
   const scrollMovementGuardrailPassed =
     scrollEventMetrics !== null && comparedProducts.every((measurement) => (measurement.scrollMovementPx?.min ?? 0) >= 1)
+  const committedTargetMetrics = committedTargetProofGuardrailPassed
+    ? sameCorpusCommittedTargetProofMetrics(entry.bilig, entry.googleSheets, entry.microsoftExcelWeb)
+    : null
   if (scrollEventMetrics) {
     if (
       entry.biligToGoogleSheetsScrollEventMeanRatio !== scrollEventMetrics.biligToGoogleSheetsMeanRatio ||
@@ -794,11 +829,21 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
   ) {
     throw new Error(`UI responsiveness same-corpus authoritative render proof guardrail is stale: ${entry.id}`)
   }
+  if (
+    entry.committedTargetProofGuardrailPassed !== undefined &&
+    entry.committedTargetProofGuardrailPassed !== committedTargetProofGuardrailPassed
+  ) {
+    throw new Error(`UI responsiveness same-corpus committed target proof guardrail is stale: ${entry.id}`)
+  }
   if (entry.scrollMovementGuardrailPassed !== undefined && entry.scrollMovementGuardrailPassed !== scrollMovementGuardrailPassed) {
     throw new Error(`UI responsiveness same-corpus scroll-movement guardrail is stale: ${entry.id}`)
   }
   const requiresScrollEventMetric = uiSameCorpusWorkloadRequiresScrollEventEvidence(entry.workload)
-  const expectedMetric = requiresScrollEventMetric ? 'scrollEventResponseMs' : 'operationResponseMs'
+  const expectedMetric = requiresScrollEventMetric
+    ? 'scrollEventResponseMs'
+    : committedTargetMetrics
+      ? 'committedTargetProofMs'
+      : 'operationResponseMs'
   if (entry.tenXMeanAndP95Metric !== expectedMetric) {
     throw new Error(`UI responsiveness same-corpus metric is stale: ${entry.id}`)
   }
@@ -811,14 +856,18 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
       scrollEventMetrics.biligToGoogleSheetsMeanRatio <= 0.1 &&
       scrollEventMetrics.biligToGoogleSheetsP95Ratio <= 0.1 &&
       scrollMovementGuardrailPassed
-    : googleSheetsMeanRatio <= 0.1 && googleSheetsP95Ratio <= 0.1
+    : committedTargetMetrics
+      ? committedTargetMetrics.biligToGoogleSheetsMeanRatio <= 0.1 && committedTargetMetrics.biligToGoogleSheetsP95Ratio <= 0.1
+      : googleSheetsMeanRatio <= 0.1 && googleSheetsP95Ratio <= 0.1
   const timingMetricPassedAgainstMicrosoftExcelWeb = entry.microsoftExcelWeb
     ? requiresScrollEventMetric
       ? scrollEventMetrics !== null &&
         scrollEventMetrics.biligToMicrosoftExcelWebMeanRatio <= 0.1 &&
         scrollEventMetrics.biligToMicrosoftExcelWebP95Ratio <= 0.1 &&
         scrollMovementGuardrailPassed
-      : (microsoftExcelWebMeanRatio ?? Number.POSITIVE_INFINITY) <= 0.1 && (microsoftExcelWebP95Ratio ?? Number.POSITIVE_INFINITY) <= 0.1
+      : committedTargetMetrics
+        ? committedTargetMetrics.biligToMicrosoftExcelWebMeanRatio <= 0.1 && committedTargetMetrics.biligToMicrosoftExcelWebP95Ratio <= 0.1
+        : (microsoftExcelWebMeanRatio ?? Number.POSITIVE_INFINITY) <= 0.1 && (microsoftExcelWebP95Ratio ?? Number.POSITIVE_INFINITY) <= 0.1
     : undefined
   const tenXAgainstGoogleSheets =
     timingMetricPassedAgainstGoogleSheets &&
@@ -827,6 +876,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
     postOperationFrameGuardrailPassed &&
     visualProofGuardrailPassed &&
     semanticUiProofGuardrailPassed &&
+    (!uiSameCorpusWorkloadMutatesWorkbook(entry.workload) || committedTargetProofGuardrailPassed) &&
     biligRuntimeProofGuardrailPassed &&
     sourceWorkbookFingerprintGuardrailPassed
   const tenXAgainstMicrosoftExcelWeb =
@@ -838,6 +888,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
         postOperationFrameGuardrailPassed &&
         visualProofGuardrailPassed &&
         semanticUiProofGuardrailPassed &&
+        (!uiSameCorpusWorkloadMutatesWorkbook(entry.workload) || committedTargetProofGuardrailPassed) &&
         biligRuntimeProofGuardrailPassed &&
         sourceWorkbookFingerprintGuardrailPassed
   if (
@@ -892,6 +943,9 @@ function validateSameCorpusMeasurement(
   }
   if (measurement.authoritativeRenderProofMs) {
     validateSummary(measurement.authoritativeRenderProofMs, `${caseId} ${product} authoritativeRenderProofMs`, sameCorpusSampleCount)
+  }
+  if (measurement.committedTargetProofMs) {
+    validateSummary(measurement.committedTargetProofMs, `${caseId} ${product} committedTargetProofMs`, sameCorpusSampleCount)
   }
   validateSummary(measurement.postOperationFrameMs, `${caseId} ${product} postOperationFrameMs`, sameCorpusSampleCount)
   if (measurement.scrollEventResponseMs) {

@@ -1,7 +1,7 @@
 import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 const requiredGoogleSheetsSpeedup = 10
-export type SameCorpusUiSpeedMetric = 'operationResponseMs' | 'scrollEventResponseMs'
+export type SameCorpusUiSpeedMetric = 'operationResponseMs' | 'scrollEventResponseMs' | 'committedTargetProofMs'
 
 export interface SameCorpusUiSpeedSummary {
   readonly mean: number
@@ -11,6 +11,7 @@ export interface SameCorpusUiSpeedSummary {
 export interface SameCorpusUiSpeedMeasurement {
   readonly operationResponseMs: SameCorpusUiSpeedSummary
   readonly scrollEventResponseMs?: SameCorpusUiSpeedSummary
+  readonly committedTargetProofMs?: SameCorpusUiSpeedSummary
 }
 
 export interface SameCorpusUiSpeedGapCase {
@@ -56,12 +57,12 @@ export function formatSameCorpusUiSpeedGap(gap: SameCorpusUiSpeedGap): string {
 
 function sameCorpusCaseSpeedGap(entry: SameCorpusUiSpeedGapCase): SameCorpusUiSpeedGap {
   const metric = entry.tenXMeanAndP95Metric ?? 'operationResponseMs'
-  const biligMeanMs = metric === 'scrollEventResponseMs' ? entry.bilig.scrollEventResponseMs?.mean : entry.bilig.operationResponseMs.mean
-  const biligP95Ms = metric === 'scrollEventResponseMs' ? entry.bilig.scrollEventResponseMs?.p95 : entry.bilig.operationResponseMs.p95
-  const googleMeanMs =
-    metric === 'scrollEventResponseMs' ? entry.googleSheets.scrollEventResponseMs?.mean : entry.googleSheets.operationResponseMs.mean
-  const googleP95Ms =
-    metric === 'scrollEventResponseMs' ? entry.googleSheets.scrollEventResponseMs?.p95 : entry.googleSheets.operationResponseMs.p95
+  const biligTiming = sameCorpusTimingForMetric(entry.bilig, metric)
+  const googleTiming = sameCorpusTimingForMetric(entry.googleSheets, metric)
+  const biligMeanMs = biligTiming?.mean
+  const biligP95Ms = biligTiming?.p95
+  const googleMeanMs = googleTiming?.mean
+  const googleP95Ms = googleTiming?.p95
   const meanRatio = speedupRatio(googleMeanMs, biligMeanMs)
   const p95Ratio = speedupRatio(googleP95Ms, biligP95Ms)
   const meanAdditionalSpeedupTo10x = additionalSpeedupTo10x(meanRatio)
@@ -81,6 +82,19 @@ function sameCorpusCaseSpeedGap(entry: SameCorpusUiSpeedGapCase): SameCorpusUiSp
     p95AdditionalSpeedupTo10x,
     limitingAdditionalSpeedupTo10x: Math.max(meanAdditionalSpeedupTo10x, p95AdditionalSpeedupTo10x),
   }
+}
+
+function sameCorpusTimingForMetric(
+  measurement: SameCorpusUiSpeedMeasurement,
+  metric: SameCorpusUiSpeedMetric,
+): SameCorpusUiSpeedSummary | undefined {
+  if (metric === 'scrollEventResponseMs') {
+    return measurement.scrollEventResponseMs
+  }
+  if (metric === 'committedTargetProofMs') {
+    return measurement.committedTargetProofMs
+  }
+  return measurement.operationResponseMs
 }
 
 function speedupRatio(googleMs: number | undefined, biligMs: number | undefined): number {

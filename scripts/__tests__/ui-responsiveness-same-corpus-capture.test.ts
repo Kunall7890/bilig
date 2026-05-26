@@ -1564,6 +1564,7 @@ function sameCorpusCaptureMeasurement(
     operationResponseMsSamples: [10, 11, 12],
     operationResponseProofs: [operationResponseProof, operationResponseProof, operationResponseProof],
     ...(product === 'bilig' ? { authoritativeRenderProofMsSamples: [15, 16, 17] } : {}),
+    ...(uiSameCorpusWorkloadMutatesWorkbook(workload) ? { committedTargetProofMsSamples: [20, 21, 22] } : {}),
     postOperationFrameMsSamples: [8, 9, 10],
     corpusVerification: {
       verified: true,
@@ -1795,6 +1796,7 @@ function sameCorpusMutationTargetProofs(product: SameCorpusProductVisualProof['p
   }
   return [0, 1, 2].map((sampleIndex) => ({
     sampleIndex,
+    committedTargetProofMs: 40 + sampleIndex,
     workload,
     intendedOperation: workload,
     intendedPayload: sameCorpusMutationTargetIntendedPayload(product, workload, sampleIndex),

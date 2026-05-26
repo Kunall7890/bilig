@@ -21,6 +21,27 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('rejects mutation target proof without committed target proof timing', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 ? Object.assign({}, proof, { committedTargetProofMs: Number.NaN }) : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell is missing committed target proof timing',
+      ]),
+    })
+  })
+
   it('rejects rendered selection text that merely contains the target range', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validSemanticProof({
@@ -257,6 +278,7 @@ function mutationTargetProof(
 ): SameCorpusMutationTargetProof {
   return {
     sampleIndex,
+    committedTargetProofMs: 40 + sampleIndex,
     workload,
     intendedOperation: 'edit-visible-cell',
     intendedPayload: {
@@ -320,6 +342,7 @@ function fillMutationTargetProof(
   const fillColor = fillColorForSample(sampleIndex)
   return {
     sampleIndex,
+    committedTargetProofMs: 60 + sampleIndex,
     workload: 'fill-format-change',
     intendedOperation: 'fill-format-change',
     intendedPayload: {
