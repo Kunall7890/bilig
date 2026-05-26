@@ -47,6 +47,7 @@ import {
   sameCorpusCommittedStateProofArtifactPath,
 } from './ui-responsiveness-same-corpus-committed-state-proof.ts'
 import { withSameCorpusMutationFailureRestore } from './ui-responsiveness-same-corpus-mutation-failure-restore.ts'
+import { assertSameCorpusMutationTargetPreflightProof } from './ui-responsiveness-same-corpus-mutation-preflight.ts'
 import { productLimitations, sameCorpusChromiumLaunchOptions, settleFrames } from './ui-responsiveness-same-corpus-page-utils.ts'
 import {
   measureVisibleScrollResponseWithRetries,
@@ -594,6 +595,18 @@ async function measureProductSamples(
             target: mutationTarget,
             workload: mutatingWorkload,
           })
+    if (mutatingWorkload) {
+      assertSameCorpusMutationTargetPreflightProof({
+        before: mutationTargetBefore,
+        beforeCommittedStateProof: mutationTargetBeforeCommittedState,
+        beforeScreenshot: mutationTargetBeforeScreenshot,
+        product,
+        sampleIndex,
+        target: mutationTarget,
+        visibleBefore: mutationTargetVisibleBefore,
+        workload: mutatingWorkload,
+      })
+    }
     const operationStartedAt = workload === 'open-workbook' ? loadStartedAt : performance.now()
     const sampleWithRenderProof = await withSameCorpusMutationFailureRestore({
       workload,
