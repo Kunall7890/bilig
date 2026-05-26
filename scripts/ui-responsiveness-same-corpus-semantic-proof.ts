@@ -8,6 +8,10 @@ import type {
   UiResponsivenessSameCorpusProduct,
 } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import type { SameCorpusProductPixelGridProof } from './ui-responsiveness-same-corpus-proof.ts'
+import {
+  sameCorpusMutationTargetCommittedStateInvalidReasons,
+  type SameCorpusMutationTargetCommittedStateProof,
+} from './ui-responsiveness-same-corpus-committed-state-proof.ts'
 import { uiSameCorpusWorkloadMutatesWorkbook, type UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export interface SameCorpusSemanticUiProof {
@@ -51,6 +55,7 @@ export interface SameCorpusMutationTargetProof {
   readonly restored: SameCorpusMutationTargetReadback
   readonly visibleAfter: SameCorpusMutationTargetReadback
   readonly visibleRestored: SameCorpusMutationTargetReadback
+  readonly committedStateProof?: SameCorpusMutationTargetCommittedStateProof | null
   readonly visibleAfterSelectedRange: string | null
   readonly visibleRestoredSelectedRange: string | null
   readonly authoritativeReadbackRevision: string | null
@@ -96,7 +101,12 @@ export interface SameCorpusMutationTargetReadback {
   readonly visibleSceneProofSha256?: string | null
 }
 
-export type SameCorpusMutationTargetReadbackSource = 'bilig-authoritative-range' | 'visible-formula-bar' | 'visible-grid-cell' | 'unknown'
+export type SameCorpusMutationTargetReadbackSource =
+  | 'bilig-authoritative-range'
+  | 'google-sheets-xlsx-export'
+  | 'visible-formula-bar'
+  | 'visible-grid-cell'
+  | 'unknown'
 
 export type SameCorpusProductSemanticUiProofEvidenceStatus = 'current-contract' | 'missing' | 'invalid'
 
@@ -372,6 +382,7 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
   invalidReasons.push(...sameCorpusMutationTargetVisibleReadbackInvalidReasons(proof.product, workload, sample))
   invalidReasons.push(...sameCorpusMutationTargetRevisionInvalidReasons(proof.product, workload, sample))
   invalidReasons.push(...sameCorpusMutationTargetExpectedReadbackInvalidReasons(workload, sample))
+  invalidReasons.push(...sameCorpusMutationTargetCommittedStateInvalidReasons(proof.product, sample.intendedOperation, sample))
   if (workload === 'fill-format-change' && sample.before.fillColor === sample.after.fillColor) {
     invalidReasons.push('semantic UI mutation target proof for fill-format-change did not prove a fill color change')
   }

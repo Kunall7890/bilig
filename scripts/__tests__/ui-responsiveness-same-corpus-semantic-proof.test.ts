@@ -492,6 +492,98 @@ describe('same-corpus semantic UI mutation proof validation', () => {
       ]),
     })
   })
+
+  it('accepts Google Sheets mutation proof only when an independent XLSX export proves committed state', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(validGoogleSheetsSemanticProof(), {
+      workload: 'edit-visible-cell',
+      sampleCount: 3,
+    })
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: true,
+      invalidReasons: [],
+    })
+  })
+
+  it('rejects Google Sheets mutation proof without independent committed-state export proof', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validGoogleSheetsSemanticProof({
+        mutationTargetProofs: validGoogleSheetsMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 ? Object.assign({}, proof, { committedStateProof: null }) : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell is missing independent Google Sheets committed-state proof',
+      ]),
+    })
+  })
+
+  it('rejects Google Sheets editor-only text proof when exported committed target value is stale', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validGoogleSheetsSemanticProof({
+        mutationTargetProofs: validGoogleSheetsMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 && proof.committedStateProof
+            ? Object.assign({}, proof, {
+                committedStateProof: {
+                  ...proof.committedStateProof,
+                  after: googleCommittedStatePhaseProof(proof, 'after', proof.before),
+                },
+              })
+            : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell committed-state export did not prove a before/after change',
+        'semantic UI mutation target proof for edit-visible-cell committed-state after readback does not match target proof',
+      ]),
+    })
+  })
+
+  it('rejects Google Sheets fill proof when toolbar fill changes but exported target fill does not', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validGoogleSheetsSemanticProof({
+        selectedRange: sameCorpusMutationTargetRangeForSample('fill-format-change', 0),
+        mutationTargetProofs: validGoogleSheetsFillMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 && proof.committedStateProof
+            ? Object.assign({}, proof, {
+                committedStateProof: {
+                  ...proof.committedStateProof,
+                  after: googleCommittedStatePhaseProof(proof, 'after', Object.assign({}, proof.after, { fillColor: null })),
+                },
+              })
+            : proof,
+        ),
+      }),
+      {
+        workload: 'fill-format-change',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for fill-format-change committed-state export did not prove a before/after change',
+        'semantic UI mutation target proof for fill-format-change committed-state after readback does not match target proof',
+      ]),
+    })
+  })
 })
 
 function validSemanticProof(overrides: Partial<SameCorpusProductSemanticUiProof> = {}): SameCorpusProductSemanticUiProof {
@@ -527,6 +619,45 @@ function validMutationTargetProofs(): SameCorpusMutationTargetProof[] {
   return [0, 1, 2].map((sampleIndex) => mutationTargetProof('bilig', 'edit-visible-cell', sampleIndex))
 }
 
+function validGoogleSheetsSemanticProof(overrides: Partial<SameCorpusProductSemanticUiProof> = {}): SameCorpusProductSemanticUiProof {
+  return validSemanticProof({
+    authoritativeRenderRevision: null,
+    method: 'google-sheets-visible-semantic-readback',
+    mutationTargetProofs: validGoogleSheetsMutationTargetProofs(),
+    product: 'google-sheets',
+    selectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', 0),
+    sheetId: 'gid:12345',
+    visibleRenderRevision: null,
+    ...overrides,
+  })
+}
+
+function validGoogleSheetsMutationTargetProofs(): SameCorpusMutationTargetProof[] {
+  return [0, 1, 2].map((sampleIndex) => googleSheetsMutationTargetProof(sampleIndex))
+}
+
+function validGoogleSheetsFillMutationTargetProofs(): SameCorpusMutationTargetProof[] {
+  return [0, 1, 2].map((sampleIndex) => googleSheetsFillMutationTargetProof(sampleIndex))
+}
+
+function googleSheetsMutationTargetProof(sampleIndex: number): SameCorpusMutationTargetProof {
+  const proof = mutationTargetProof('google-sheets', 'edit-visible-cell', sampleIndex)
+  return { ...proof, committedStateProof: googleCommittedStateProof(proof) }
+}
+
+function googleSheetsFillMutationTargetProof(sampleIndex: number): SameCorpusMutationTargetProof {
+  const proof = {
+    ...fillMutationTargetProof(sampleIndex, 'visible-formula-bar'),
+    product: 'google-sheets' as const,
+    sheetId: 'gid:12345',
+    screenshotPath: `tmp/same-corpus-wide-mixed-250k-fill-format-change/mutation-target/google-sheets-sample-${String(
+      sampleIndex + 1,
+    )}-after.png`,
+    targetScreenshots: mutationTargetScreenshots('google-sheets', 'fill-format-change', sampleIndex),
+  }
+  return { ...proof, committedStateProof: googleCommittedStateProof(proof) }
+}
+
 function mutationTargetProof(
   product: UiResponsivenessSameCorpusProduct,
   workload: UiResponsivenessSameCorpusMutatingWorkload,
@@ -548,7 +679,7 @@ function mutationTargetProof(
       value: sameCorpusEditVisibleCellValue(sampleIndex),
     },
     sheetName: 'WideGrid',
-    sheetId: 'sheet-wide-grid',
+    sheetId: product === 'google-sheets' ? 'gid:12345' : 'sheet-wide-grid',
     targetRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
     before: {
       value: 'metric-1',
@@ -698,7 +829,7 @@ function mutationTargetScreenshot(
     product,
     scope: 'target-cell',
     sampleIndex,
-    sheetId: 'sheet-wide-grid',
+    sheetId: product === 'google-sheets' ? 'gid:12345' : 'sheet-wide-grid',
     sheetName: 'WideGrid',
     targetRange: sameCorpusMutationTargetRangeForSample(workload, sampleIndex),
     workload,
@@ -745,6 +876,45 @@ function mutationTargetScreenshotSha256(sampleIndex: number, phase: 'before' | '
   const hexChars = '0123456789abcdef'
   const phaseOffset = phase === 'before' ? 1 : phase === 'after' ? 5 : 9
   return hexChars[(sampleIndex + phaseOffset) % hexChars.length]?.repeat(64) ?? '0'.repeat(64)
+}
+
+function googleCommittedStateProof(
+  sample: SameCorpusMutationTargetProof,
+): NonNullable<SameCorpusMutationTargetProof['committedStateProof']> {
+  return {
+    after: googleCommittedStatePhaseProof(sample, 'after', sample.after),
+    before: googleCommittedStatePhaseProof(sample, 'before', sample.before),
+    product: 'google-sheets',
+    restored: googleCommittedStatePhaseProof(sample, 'restored', sample.restored),
+    sampleIndex: sample.sampleIndex,
+    sheetId: sample.sheetId,
+    sheetName: sample.sheetName,
+    source: 'google-sheets-xlsx-export',
+    targetRange: sample.targetRange,
+    workload: sample.intendedOperation,
+  }
+}
+
+function googleCommittedStatePhaseProof(
+  sample: SameCorpusMutationTargetProof,
+  phase: 'before' | 'after' | 'restored',
+  readback: SameCorpusMutationTargetProof['before'],
+): NonNullable<SameCorpusMutationTargetProof['committedStateProof']>['before'] {
+  const phaseOffset = phase === 'before' ? 10 : phase === 'after' ? 20 : 30
+  return {
+    capturedAtMs: sample.operationStartedAtMs + phaseOffset,
+    exportUrl: 'https://docs.google.com/spreadsheets/d/test-spreadsheet/export?format=xlsx',
+    phase,
+    product: 'google-sheets',
+    readback: { ...readback, source: 'google-sheets-xlsx-export' },
+    sampleIndex: sample.sampleIndex,
+    sheetId: sample.sheetId,
+    sheetName: sample.sheetName,
+    targetRange: sample.targetRange,
+    workbookByteSize: 123456 + sample.sampleIndex,
+    workbookSha256: mutationTargetScreenshotSha256(sample.sampleIndex, phase),
+    workload: sample.intendedOperation,
+  }
 }
 
 function fillColorForSample(sampleIndex: number): string {

@@ -30,6 +30,7 @@ import {
   buildCaptureScenarioProof,
   validateSameCorpusProductPixelGridProof,
   type SameCorpusPixelGridProof,
+  type SameCorpusMutationTargetProof,
   type SameCorpusProductPixelGridProof,
   type SameCorpusProductVisualProof,
   type SameCorpusScenarioProof,
@@ -1270,7 +1271,7 @@ function sameCorpusMutationTargetProofs(
   return [0, 1, 2].map((sampleIndex) => {
     const committedTargetProofMs = sameCorpusMutationTargetCommittedProofMs(product, sampleIndex)
     const operationStartedAtMs = 1000 + sampleIndex * 100
-    return {
+    const proof: SameCorpusMutationTargetProof = {
       product,
       sampleIndex,
       committedTargetProofMs,
@@ -1297,7 +1298,47 @@ function sameCorpusMutationTargetProofs(
       screenshotSha256: sameCorpusMutationTargetScreenshotSha256(sampleIndex, 'after'),
       undoRestoreStatus: 'verified' as const,
     }
+    return product === 'google-sheets' ? Object.assign(proof, { committedStateProof: sameCorpusCommittedStateProof(proof) }) : proof
   })
+}
+
+function sameCorpusCommittedStateProof(
+  proof: SameCorpusMutationTargetProof,
+): NonNullable<SameCorpusMutationTargetProof['committedStateProof']> {
+  return {
+    product: 'google-sheets',
+    source: 'google-sheets-xlsx-export',
+    sampleIndex: proof.sampleIndex,
+    workload: proof.workload,
+    sheetName: proof.sheetName,
+    sheetId: proof.sheetId,
+    targetRange: proof.targetRange,
+    before: sameCorpusCommittedStatePhaseProof(proof, 'before', proof.before),
+    after: sameCorpusCommittedStatePhaseProof(proof, 'after', proof.after),
+    restored: sameCorpusCommittedStatePhaseProof(proof, 'restored', proof.restored),
+  }
+}
+
+function sameCorpusCommittedStatePhaseProof(
+  proof: SameCorpusMutationTargetProof,
+  phase: 'before' | 'after' | 'restored',
+  readback: SameCorpusMutationTargetProof['before'],
+): NonNullable<SameCorpusMutationTargetProof['committedStateProof']>['before'] {
+  const phaseOffset = phase === 'before' ? 3 : phase === 'after' ? 7 : 11
+  return {
+    product: 'google-sheets',
+    phase,
+    sampleIndex: proof.sampleIndex,
+    workload: proof.workload,
+    sheetName: proof.sheetName,
+    sheetId: proof.sheetId,
+    targetRange: proof.targetRange,
+    exportUrl: 'https://docs.google.com/spreadsheets/d/test-spreadsheet/export?format=xlsx',
+    capturedAtMs: proof.operationStartedAtMs + phaseOffset,
+    workbookByteSize: 123456 + proof.sampleIndex,
+    workbookSha256: ((proof.sampleIndex + phaseOffset) % 16).toString(16).repeat(64),
+    readback: { ...readback, source: 'google-sheets-xlsx-export' },
+  }
 }
 
 function sameCorpusMutationTargetCommittedProofMs(product: 'bilig' | 'google-sheets' | 'microsoft-excel-web', sampleIndex: number): number {

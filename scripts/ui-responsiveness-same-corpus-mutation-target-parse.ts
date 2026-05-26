@@ -31,6 +31,14 @@ export function parseSameCorpusMutationTargetProof(value: unknown): SameCorpusMu
     visibleRestored: Object.hasOwn(record, 'visibleRestored')
       ? parseSameCorpusMutationTargetReadback(objectField(record, 'visibleRestored'))
       : missingSameCorpusMutationTargetReadback(),
+    ...(Object.hasOwn(record, 'committedStateProof')
+      ? {
+          committedStateProof:
+            record.committedStateProof === null
+              ? null
+              : parseSameCorpusMutationTargetCommittedStateProof(objectField(record, 'committedStateProof')),
+        }
+      : {}),
     visibleAfterSelectedRange: Object.hasOwn(record, 'visibleAfterSelectedRange')
       ? nullableStringField(record, 'visibleAfterSelectedRange')
       : null,
@@ -153,6 +161,11 @@ function parseSameCorpusMutationTargetProofSampleSummary(value: unknown): SameCo
     restored: nullableSameCorpusMutationTargetReadback(record, 'restored'),
     visibleAfter: nullableSameCorpusMutationTargetReadback(record, 'visibleAfter'),
     visibleRestored: nullableSameCorpusMutationTargetReadback(record, 'visibleRestored'),
+    committedStateProof: Object.hasOwn(record, 'committedStateProof')
+      ? record.committedStateProof === null
+        ? null
+        : parseSameCorpusMutationTargetCommittedStateProof(objectField(record, 'committedStateProof'))
+      : null,
     visibleAfterSelectedRange: Object.hasOwn(record, 'visibleAfterSelectedRange')
       ? nullableStringField(record, 'visibleAfterSelectedRange')
       : null,
@@ -223,8 +236,66 @@ function parseSameCorpusMutationTargetReadback(value: Record<string, unknown>): 
   }
 }
 
+function parseSameCorpusMutationTargetCommittedStateProof(
+  value: Record<string, unknown>,
+): NonNullable<SameCorpusMutationTargetProof['committedStateProof']> {
+  return {
+    product: parseSameCorpusProduct(stringField(value, 'product')),
+    source: parseSameCorpusCommittedStateSource(stringField(value, 'source')),
+    sampleIndex: numberField(value, 'sampleIndex'),
+    workload: parseSameCorpusWorkload(stringField(value, 'workload')),
+    sheetName: stringField(value, 'sheetName'),
+    sheetId: Object.hasOwn(value, 'sheetId') ? nullableStringField(value, 'sheetId') : null,
+    targetRange: stringField(value, 'targetRange'),
+    before: parseSameCorpusMutationCommittedStatePhaseProof(objectField(value, 'before')),
+    after: parseSameCorpusMutationCommittedStatePhaseProof(objectField(value, 'after')),
+    restored: parseSameCorpusMutationCommittedStatePhaseProof(objectField(value, 'restored')),
+  }
+}
+
+function parseSameCorpusCommittedStateSource(value: string): NonNullable<SameCorpusMutationTargetProof['committedStateProof']>['source'] {
+  if (value === 'google-sheets-xlsx-export') {
+    return value
+  }
+  throw new Error(`Unexpected UI responsiveness same-corpus mutation committed-state source: ${value}`)
+}
+
+function parseSameCorpusMutationCommittedStatePhaseProof(
+  value: Record<string, unknown>,
+): NonNullable<SameCorpusMutationTargetProof['committedStateProof']>['before'] {
+  return {
+    product: parseSameCorpusProduct(stringField(value, 'product')),
+    phase: parseSameCorpusMutationCommittedStatePhase(stringField(value, 'phase')),
+    sampleIndex: numberField(value, 'sampleIndex'),
+    workload: parseSameCorpusWorkload(stringField(value, 'workload')),
+    sheetName: stringField(value, 'sheetName'),
+    sheetId: Object.hasOwn(value, 'sheetId') ? nullableStringField(value, 'sheetId') : null,
+    targetRange: stringField(value, 'targetRange'),
+    exportUrl: stringField(value, 'exportUrl'),
+    capturedAtMs: optionalNumberField(value, 'capturedAtMs') ?? Number.NaN,
+    workbookByteSize: optionalNumberField(value, 'workbookByteSize') ?? Number.NaN,
+    workbookSha256: stringField(value, 'workbookSha256'),
+    readback: parseSameCorpusMutationTargetReadback(objectField(value, 'readback')),
+  }
+}
+
+function parseSameCorpusMutationCommittedStatePhase(
+  value: string,
+): NonNullable<SameCorpusMutationTargetProof['committedStateProof']>['before']['phase'] {
+  if (value === 'before' || value === 'after' || value === 'restored') {
+    return value
+  }
+  throw new Error(`Unexpected UI responsiveness same-corpus mutation committed-state phase: ${value}`)
+}
+
 function parseSameCorpusMutationTargetReadbackSource(value: string): SameCorpusMutationTargetReadback['source'] {
-  if (value === 'bilig-authoritative-range' || value === 'visible-formula-bar' || value === 'visible-grid-cell' || value === 'unknown') {
+  if (
+    value === 'bilig-authoritative-range' ||
+    value === 'google-sheets-xlsx-export' ||
+    value === 'visible-formula-bar' ||
+    value === 'visible-grid-cell' ||
+    value === 'unknown'
+  ) {
     return value
   }
   throw new Error(`Unexpected UI responsiveness same-corpus mutation readback source: ${value}`)

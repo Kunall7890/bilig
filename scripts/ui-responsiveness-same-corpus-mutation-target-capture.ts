@@ -6,6 +6,11 @@ import type { Page } from '@playwright/test'
 
 import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import {
+  buildSameCorpusCommittedStateProof,
+  captureSameCorpusCommittedStatePhaseProof,
+  type SameCorpusMutationTargetCommittedStatePhaseProof,
+} from './ui-responsiveness-same-corpus-committed-state-proof.ts'
+import {
   captureSameCorpusMutationTargetScreenshotProof,
   readSameCorpusMutationTargetReadback,
   readSameCorpusMutationTargetRevisionProof,
@@ -30,6 +35,7 @@ import type { UiResponsivenessSameCorpusMutatingWorkload } from './ui-responsive
 
 export async function captureSameCorpusMutationTargetProofForSample(args: {
   readonly before: SameCorpusMutationTargetReadback
+  readonly beforeCommittedStateProof?: SameCorpusMutationTargetCommittedStatePhaseProof | null
   readonly beforeScreenshot: SameCorpusMutationTargetScreenshotProof
   readonly caseId?: string
   readonly operationStartedAt: number
@@ -52,6 +58,15 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     })
     const visibleAfterSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
     const afterScreenshot = await captureTargetScreenshot(args, 'after')
+    const afterCommittedStateProof = await captureSameCorpusCommittedStatePhaseProof({
+      expectedReadback: after,
+      page: args.page,
+      phase: 'after',
+      product: args.product,
+      sampleIndex: args.sampleIndex,
+      target: args.target,
+      workload: args.workload,
+    })
     const revisions = await readSameCorpusMutationTargetRevisionProof({
       page: args.page,
       product: args.product,
@@ -73,12 +88,30 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     })
     const visibleRestoredSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
     const restoredScreenshot = await captureTargetScreenshot(args, 'restored')
+    const restoredCommittedStateProof = await captureSameCorpusCommittedStatePhaseProof({
+      expectedReadback: restored,
+      page: args.page,
+      phase: 'restored',
+      product: args.product,
+      sampleIndex: args.sampleIndex,
+      target: args.target,
+      workload: args.workload,
+    })
     const restoreProofCapturedAtMs = performance.now()
     return {
       after,
       authoritativeReadbackRevision: revisions.authoritativeReadbackRevision,
       before: args.before,
       committedTargetProofMs,
+      committedStateProof: buildSameCorpusCommittedStateProof({
+        after: afterCommittedStateProof,
+        before: args.beforeCommittedStateProof ?? null,
+        product: args.product,
+        restored: restoredCommittedStateProof,
+        sampleIndex: args.sampleIndex,
+        target: args.target,
+        workload: args.workload,
+      }),
       intendedOperation: args.workload,
       intendedPayload: intendedMutationTargetPayload(args.workload, args.sampleIndex),
       operationStartedAtMs: args.operationStartedAt,

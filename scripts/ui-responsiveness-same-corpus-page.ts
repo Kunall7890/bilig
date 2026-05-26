@@ -41,6 +41,7 @@ import {
   captureSameCorpusMutationTargetPhaseScreenshot,
   captureSameCorpusMutationTargetProofForSample,
 } from './ui-responsiveness-same-corpus-mutation-target-capture.ts'
+import { captureSameCorpusCommittedStatePhaseProof } from './ui-responsiveness-same-corpus-committed-state-proof.ts'
 import { withSameCorpusMutationFailureRestore } from './ui-responsiveness-same-corpus-mutation-failure-restore.ts'
 import { productLimitations, sameCorpusChromiumLaunchOptions, settleFrames } from './ui-responsiveness-same-corpus-page-utils.ts'
 import {
@@ -547,6 +548,18 @@ async function measureProductSamples(
     }
     const mutationTargetBefore =
       mutationTarget === null ? null : await readSameCorpusMutationTargetReadback({ page, product, target: mutationTarget })
+    const mutationTargetBeforeCommittedState =
+      mutationTarget === null || mutationTargetBefore === null || mutatingWorkload === null
+        ? null
+        : await captureSameCorpusCommittedStatePhaseProof({
+            expectedReadback: mutationTargetBefore,
+            page,
+            phase: 'before',
+            product,
+            sampleIndex,
+            target: mutationTarget,
+            workload: mutatingWorkload,
+          })
     const mutationTargetBeforeScreenshot =
       mutationTarget === null || mutatingWorkload === null
         ? null
@@ -585,6 +598,7 @@ async function measureProductSamples(
     if (mutationTarget && mutationTargetBefore && mutationTargetBeforeScreenshot && mutatingWorkload) {
       const mutationTargetProof = await captureSameCorpusMutationTargetProofForSample({
         before: mutationTargetBefore,
+        beforeCommittedStateProof: mutationTargetBeforeCommittedState,
         beforeScreenshot: mutationTargetBeforeScreenshot,
         caseId,
         operationStartedAt,

@@ -308,7 +308,7 @@ function mutationTargetProof(
   const afterValue = corruptProof ? 'stale-value' : value
   const committedTargetProofMs = 40 + sampleIndex
   const operationStartedAtMs = 1000 + sampleIndex * 100
-  return {
+  const proof: SameCorpusMutationTargetProof = {
     product,
     sampleIndex,
     committedTargetProofMs,
@@ -354,6 +354,44 @@ function mutationTargetProof(
       sampleIndex + 1,
     )}-after.png`,
     undoRestoreStatus: 'verified',
+  }
+  return product === 'google-sheets' ? { ...proof, committedStateProof: committedStateProof(proof) } : proof
+}
+
+function committedStateProof(proof: SameCorpusMutationTargetProof): NonNullable<SameCorpusMutationTargetProof['committedStateProof']> {
+  return {
+    product: 'google-sheets',
+    source: 'google-sheets-xlsx-export',
+    sampleIndex: proof.sampleIndex,
+    workload: proof.workload,
+    sheetName: proof.sheetName,
+    sheetId: proof.sheetId,
+    targetRange: proof.targetRange,
+    before: committedStatePhaseProof(proof, 'before', proof.before),
+    after: committedStatePhaseProof(proof, 'after', proof.after),
+    restored: committedStatePhaseProof(proof, 'restored', proof.restored),
+  }
+}
+
+function committedStatePhaseProof(
+  proof: SameCorpusMutationTargetProof,
+  phase: 'before' | 'after' | 'restored',
+  readbackValue: SameCorpusMutationTargetProof['before'],
+): NonNullable<SameCorpusMutationTargetProof['committedStateProof']>['before'] {
+  const phaseOffset = phase === 'before' ? 3 : phase === 'after' ? 7 : 11
+  return {
+    product: 'google-sheets',
+    phase,
+    sampleIndex: proof.sampleIndex,
+    workload: proof.workload,
+    sheetName: proof.sheetName,
+    sheetId: proof.sheetId,
+    targetRange: proof.targetRange,
+    exportUrl: 'https://docs.google.com/spreadsheets/d/test-spreadsheet/export?format=xlsx',
+    capturedAtMs: proof.operationStartedAtMs + phaseOffset,
+    workbookByteSize: 123456 + proof.sampleIndex,
+    workbookSha256: ((proof.sampleIndex + phaseOffset) % 16).toString(16).repeat(64),
+    readback: { ...readbackValue, source: 'google-sheets-xlsx-export' },
   }
 }
 
