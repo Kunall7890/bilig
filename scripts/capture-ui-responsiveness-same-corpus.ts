@@ -117,10 +117,14 @@ export function assertSameCorpusBrowserRunAllowed(
 }
 
 export function assertSameCorpusCaptureEvidenceReady(capture: SameCorpusCapture): void {
-  const blockingReasons = capture.runManifest.invalidReasons.filter(
+  assertSameCorpusCaptureClaimReady(capture)
+}
+
+export function assertSameCorpusCaptureCurrentContractEvidenceReady(capture: SameCorpusCapture): void {
+  const currentContractBlockingReasons = capture.runManifest.invalidReasons.filter(
     (reason) => reason !== 'not every required workload is 10x against Google Sheets',
   )
-  if (blockingReasons.length === 0) {
+  if (currentContractBlockingReasons.length === 0) {
     return
   }
   throw new Error(
@@ -128,7 +132,21 @@ export function assertSameCorpusCaptureEvidenceReady(capture: SameCorpusCapture)
       'Same-corpus UI capture artifact is not valid evidence for the dominance scorecard.',
       'The artifact was written for diagnosis, but the capture command exits non-zero until browser-visible proof satisfies the current contract.',
       'Use --allow-incomplete-evidence only for exploratory captures that must not be fed into a public 10x claim.',
-      ...blockingReasons.map((reason) => `- ${reason}`),
+      ...currentContractBlockingReasons.map((reason) => `- ${reason}`),
+    ].join('\n'),
+  )
+}
+
+export function assertSameCorpusCaptureClaimReady(capture: SameCorpusCapture): void {
+  if (capture.runManifest.invalidReasons.length === 0) {
+    return
+  }
+  throw new Error(
+    [
+      'Same-corpus UI capture artifact is not valid claim-grade Google Sheets 10x evidence.',
+      'The artifact was written for diagnosis, but the capture command exits non-zero until every claimed workload has current proof and 10x mean+p95 against live Google Sheets.',
+      'Use --allow-incomplete-evidence only for exploratory captures that must not be fed into a public 10x claim.',
+      ...capture.runManifest.invalidReasons.map((reason) => `- ${reason}`),
     ].join('\n'),
   )
 }

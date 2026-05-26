@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 
 import type { CaptureArgs } from './ui-responsiveness-same-corpus-args.ts'
 import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-live-browser-scorecard.ts'
@@ -41,6 +41,8 @@ export type NonScrollWorkload = Exclude<
 
 type SameCorpusKeyboardOperation = { kind: 'press'; key: string } | { kind: 'type'; text: string }
 type MutatingSameCorpusWorkload = Extract<NonScrollWorkload, 'edit-visible-cell' | 'formula-edit' | 'fill-format-change'>
+
+const sameCorpusFillColorSwatches = ['light cornflower blue 3', 'theme green', 'light cornflower blue 2'] as const
 
 export async function measureProductWorkload(args: {
   readonly page: Page
@@ -115,7 +117,15 @@ async function performProductUiOperation(
   if (product !== 'bilig') {
     await assertIncumbentEditableForWorkload(page, product, workload)
   }
+  if (workload === 'fill-format-change') {
+    await performSameCorpusFillColorOperation(page, product, sampleIndex)
+    return
+  }
   await performSameCorpusKeyboardOperations(page, sameCorpusKeyboardOperations(product, workload, sampleIndex))
+}
+
+export function sameCorpusFillColorSwatchLabel(sampleIndex: number): string {
+  return sameCorpusFillColorSwatches[sampleIndex % sameCorpusFillColorSwatches.length]
 }
 
 export function sameCorpusKeyboardOperations(
@@ -131,7 +141,7 @@ export function sameCorpusKeyboardOperations(
     return [{ kind: 'press', key: primaryShortcut('ArrowDown', platform) }]
   }
   if (workload === 'fill-format-change') {
-    return [{ kind: 'press', key: primaryShortcut('B', platform) }]
+    return []
   }
   const value = workload === 'formula-edit' ? `=${String(sampleIndex + 1)}+1` : `${product}-same-corpus-${String(sampleIndex + 1)}`
   return [
@@ -170,6 +180,63 @@ async function performSameCorpusKeyboardOperations(
     await page.keyboard.press(operation.key)
   }
   await performSameCorpusKeyboardOperations(page, operations, index + 1)
+}
+
+async function performSameCorpusFillColorOperation(
+  page: Page,
+  product: UiResponsivenessSameCorpusProduct,
+  sampleIndex: number,
+): Promise<void> {
+  const swatchLabel = sameCorpusFillColorSwatchLabel(sampleIndex)
+  const swatchCandidateLabels = sameCorpusFillColorCandidateLabels(swatchLabel)
+  await clickFirstAvailableLocator(
+    [
+      page.getByLabel('Fill color', { exact: true }),
+      page.getByRole('button', { name: /^Fill color$/u }),
+      page.locator('[aria-label="Fill color"]'),
+    ],
+    `Cannot open ${product} fill color control`,
+  )
+  await clickFirstAvailableLocator(
+    swatchCandidateLabels.flatMap((label) => [
+      page.getByLabel(`Fill color ${label}`, { exact: true }),
+      page.getByLabel(new RegExp(`^${escapeRegExp(label)}$`, 'iu')),
+      page.getByRole('button', { name: new RegExp(escapeRegExp(label), 'iu') }),
+      page.locator(`[aria-label="${label}"]`),
+    ]),
+    `Cannot choose ${product} fill color swatch "${swatchLabel}"`,
+  )
+}
+
+async function clickFirstAvailableLocator(
+  locators: readonly Locator[],
+  errorMessage: string,
+  index = 0,
+  lastError: unknown = null,
+): Promise<void> {
+  const locator = locators[index]
+  if (!locator) {
+    throw new Error(errorMessage, { cause: lastError })
+  }
+  try {
+    await locator.first().click({ timeout: 1_500 })
+  } catch (error: unknown) {
+    await clickFirstAvailableLocator(locators, errorMessage, index + 1, error)
+  }
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+}
+
+function sameCorpusFillColorCandidateLabels(swatchLabel: string): readonly string[] {
+  if (swatchLabel === 'theme green') {
+    return ['theme green', 'green']
+  }
+  if (swatchLabel === 'light cornflower blue 2') {
+    return ['light cornflower blue 2', 'light blue 2', 'blue']
+  }
+  return [swatchLabel, 'light cornflower blue', 'blue']
 }
 
 async function assertIncumbentEditableForWorkload(

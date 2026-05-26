@@ -8,6 +8,7 @@ import { exportXlsx } from '../../packages/excel-import/src/index.js'
 import { buildWorkbookBenchmarkCorpus } from '../../packages/benchmarks/src/workbook-corpus.js'
 import {
   assertSameCorpusBrowserRunAllowed,
+  assertSameCorpusCaptureCurrentContractEvidenceReady,
   assertSameCorpusCaptureEvidenceReady,
   assertProductionBiligEvidenceSource,
   buildSameCorpusFingerprint,
@@ -39,6 +40,7 @@ import { sameCorpusScrollProbeSelectorsForProduct } from '../ui-responsiveness-s
 import {
   incumbentEditableWorkloadBlocker,
   measureProductWorkload,
+  sameCorpusFillColorSwatchLabel,
   sameCorpusKeyboardOperations,
   sameCorpusWorkbookRestoreOperations,
   sameCorpusWorkloadMutatesWorkbook,
@@ -404,7 +406,9 @@ describe('same-corpus UI responsiveness capture CLI', () => {
   it('uses grid keyboard parity for same-corpus non-scroll Bilig workloads', () => {
     expect(sameCorpusKeyboardOperations('bilig', 'select-cell', 0, 'darwin')).toEqual([{ kind: 'press', key: 'ArrowRight' }])
     expect(sameCorpusKeyboardOperations('bilig', 'jump-deep-row', 0, 'darwin')).toEqual([{ kind: 'press', key: 'Meta+ArrowDown' }])
-    expect(sameCorpusKeyboardOperations('bilig', 'fill-format-change', 0, 'linux')).toEqual([{ kind: 'press', key: 'Control+B' }])
+    expect(sameCorpusKeyboardOperations('bilig', 'fill-format-change', 0, 'linux')).toEqual([])
+    expect(sameCorpusFillColorSwatchLabel(0)).toBe('light cornflower blue 3')
+    expect(sameCorpusFillColorSwatchLabel(1)).toBe('theme green')
     expect(sameCorpusKeyboardOperations('bilig', 'formula-edit', 1, 'darwin')).toEqual([
       { kind: 'type', text: '=2+1' },
       { kind: 'press', key: 'Enter' },
@@ -818,12 +822,12 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     })
 
     expect(() => assertSameCorpusCaptureEvidenceReady(capture)).toThrow(
-      /Same-corpus UI capture artifact is not valid evidence for the dominance scorecard/u,
+      /Same-corpus UI capture artifact is not valid claim-grade Google Sheets 10x evidence/u,
     )
     expect(() => assertSameCorpusCaptureEvidenceReady(capture)).toThrow(/Bilig production runtime proof covers 0\/9 cases/u)
   })
 
-  it('allows complete current-contract captures even when the measured result is not 10x yet', () => {
+  it('separates current-contract diagnostics from claim-grade Google Sheets 10x readiness', () => {
     const capture = buildSameCorpusCaptureArtifact({
       sampleCount: 3,
       limitations: ['test limitation'],
@@ -838,7 +842,8 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(capture.runManifest.currentContractEvidenceComplete).toBe(true)
     expect(capture.runManifest.googleSheetsTenXRequirementSatisfied).toBe(false)
     expect(capture.runManifest.invalidReasons).toEqual(['not every required workload is 10x against Google Sheets'])
-    expect(() => assertSameCorpusCaptureEvidenceReady(capture)).not.toThrow()
+    expect(() => assertSameCorpusCaptureCurrentContractEvidenceReady(capture)).not.toThrow()
+    expect(() => assertSameCorpusCaptureEvidenceReady(capture)).toThrow(/not every required workload is 10x against Google Sheets/u)
   })
 
   it('downgrades legacy Bilig canvas evidence that lacks strict rendered-frame proof', () => {
