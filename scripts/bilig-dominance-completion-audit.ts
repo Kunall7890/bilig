@@ -1,5 +1,9 @@
 import type { BuildScorecardInput, DominanceCompletionAudit, DominanceCompletionCriterion } from './bilig-dominance-scorecard-types.ts'
 import type { UiResponsivenessLiveBrowserScorecard } from './gen-ui-responsiveness-live-browser-scorecard.ts'
+import {
+  sameCorpusMutationTargetProofProductEvidenceLines,
+  sameCorpusMutationTargetProofProductGapLines,
+} from './ui-responsiveness-same-corpus-mutation-target-proof-gaps.ts'
 import { validateSameCorpusProof } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import { requiredUiResponsivenessSameCorpusWorkloads } from './ui-responsiveness-same-corpus-workloads.ts'
 
@@ -20,6 +24,11 @@ export interface CompletionAuditSignals {
 export function buildBiligDominanceCompletionAudit(input: BuildScorecardInput, signals: CompletionAuditSignals): DominanceCompletionAudit {
   const uiSameCorpusValidationError = sameCorpusProofValidationError(input.uiResponsivenessLiveBrowserScorecard)
   const uiSameCorpusTenXGap = hasUiResponsivenessSameCorpusTenXGap(input.uiResponsivenessLiveBrowserScorecard)
+  const uiSameCorpusMutationTargetProofProductSummaries =
+    input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.mutationTargetProofProductSummaries ?? []
+  const uiSameCorpusMutationTargetProofProductGaps = sameCorpusMutationTargetProofProductGapLines(
+    uiSameCorpusMutationTargetProofProductSummaries,
+  )
   const criteria = [
     criterion({
       id: 'calculation-correctness',
@@ -139,6 +148,9 @@ export function buildBiligDominanceCompletionAudit(input: BuildScorecardInput, s
         `same-corpus mutation target proof samples: ${String(
           input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.mutationTargetProofSampleCount ?? 0,
         )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.requiredMutationTargetProofSampleCount ?? 0)}`,
+        ...sameCorpusMutationTargetProofProductEvidenceLines(uiSameCorpusMutationTargetProofProductSummaries).map(
+          (entry) => `same-corpus mutation target product proof: ${entry}`,
+        ),
       ],
       gaps: [
         ...(signals.uiResponsivenessLiveBrowserPassed ? [] : ['live incumbent browser timing scorecard is not passing']),
@@ -146,6 +158,7 @@ export function buildBiligDominanceCompletionAudit(input: BuildScorecardInput, s
           ? []
           : ['headed browser frame p95 contracts are not all passing']),
         ...(uiSameCorpusValidationError ? [`same-corpus proof validation failed: ${uiSameCorpusValidationError}`] : []),
+        ...uiSameCorpusMutationTargetProofProductGaps,
         ...(uiSameCorpusTenXGap ? ['live UI browser evidence is not a same-corpus 10x proof against incumbents'] : []),
       ],
     }),

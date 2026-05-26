@@ -16,6 +16,7 @@ import {
   type SameCorpusProductPixelGridProof,
 } from '../ui-responsiveness-same-corpus-proof.ts'
 import type { PublicWorkbookCorpusStatus } from '../public-workbook-corpus-status.ts'
+import type { SameCorpusMutationTargetProofProductSummary } from '../ui-responsiveness-same-corpus-scorecard-types.ts'
 import { requiredUiResponsivenessSameCorpusWorkloads } from '../ui-responsiveness-same-corpus-workloads.ts'
 import { buildFixtureInput } from './bilig-dominance-scorecard.fixture.ts'
 
@@ -168,6 +169,34 @@ describe('bilig dominance prompt-to-artifact audit', () => {
         'live same-corpus UI current-contract evidence complete: false',
         `live same-corpus UI missing inputs: ${requiredUiSameCorpusInputList}`,
         'live same-corpus UI browser capture guard active: true',
+      ]),
+    })
+    expect(validateBiligDominancePromptArtifactAudit(audit)).toEqual([])
+  })
+
+  it('surfaces per-product mutation target proof gaps in the UI checklist', () => {
+    const input = inputWithMutationTargetProductSummary()
+    const status = buildBiligDominanceStatus({
+      input,
+      publicWorkbookCorpusStatus: publicWorkbookCorpusStatusFixture(),
+      stopMarkerActive: false,
+      stopMarkerPath: '/repo/.agent-coordination/stop.md',
+      uiSameCorpusGoogleSheetsUrl: 'https://docs.google.com/spreadsheets/d/sameCorpusSheet/edit',
+    })
+    const audit = buildBiligDominancePromptArtifactAudit({
+      scorecard: buildBiligDominanceScorecard(input),
+      status,
+    })
+    const uiItem = audit.checklist.find((entry) => entry.id === 'ui-responsiveness')
+
+    const productGap =
+      'same-corpus mutation target proof gap: edit-visible-cell/bilig accepted 0/3 samples (raw 1); missing samples: 1, 2; rejected samples: 0; invalid reasons: semantic UI mutation target proof for edit-visible-cell covers 1/3 samples'
+    expect(uiItem).toMatchObject({
+      passed: false,
+      liveBlockers: expect.arrayContaining([productGap]),
+      gaps: expect.arrayContaining([productGap]),
+      evidence: expect.arrayContaining([
+        'live same-corpus UI mutation target product proof: edit-visible-cell/bilig accepted 0/3 samples (raw 1); missing samples: 1, 2; rejected samples: 0; invalid reasons: semantic UI mutation target proof for edit-visible-cell covers 1/3 samples',
       ]),
     })
     expect(validateBiligDominancePromptArtifactAudit(audit)).toEqual([])
@@ -400,6 +429,69 @@ function publicWorkbookCorpusStatusFixture(overrides: Partial<PublicWorkbookCorp
     targetComplete: true,
     gaps: [],
     ...overrides,
+  }
+}
+
+function inputWithMutationTargetProductSummary(): ReturnType<typeof buildFixtureInput> {
+  const input = buildFixtureInput()
+  const runManifest = input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest
+  if (!runManifest) {
+    throw new Error('fixture same-corpus proof is missing run manifest')
+  }
+  return {
+    ...input,
+    uiResponsivenessLiveBrowserScorecard: {
+      ...input.uiResponsivenessLiveBrowserScorecard,
+      sameCorpusProof: {
+        ...input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof,
+        runManifest: {
+          ...runManifest,
+          sampleCount: 3,
+          requiredMutationTargetProofSampleCount: 18,
+          mutationTargetProofSampleCount: 0,
+          mutationTargetProofProductSummaries: [mutationTargetProductSummary()],
+          invalidReasons: ['mutation target proof covers 0/18 required per-sample product proofs'],
+        },
+      },
+    },
+  }
+}
+
+function mutationTargetProductSummary(): SameCorpusMutationTargetProofProductSummary {
+  return {
+    workload: 'edit-visible-cell',
+    product: 'bilig',
+    requiredSampleCount: 3,
+    rawSampleCount: 1,
+    acceptedSampleCount: 0,
+    accepted: false,
+    samples: [
+      {
+        sampleIndex: 0,
+        present: true,
+        accepted: false,
+        targetRange: 'WideGrid!A1',
+        screenshotPath: 'tmp/edit-visible-cell/bilig-sample-1-after.png',
+        screenshotSha256: 'a'.repeat(64),
+      },
+      {
+        sampleIndex: 1,
+        present: false,
+        accepted: false,
+        targetRange: null,
+        screenshotPath: null,
+        screenshotSha256: null,
+      },
+      {
+        sampleIndex: 2,
+        present: false,
+        accepted: false,
+        targetRange: null,
+        screenshotPath: null,
+        screenshotSha256: null,
+      },
+    ],
+    invalidReasons: ['semantic UI mutation target proof for edit-visible-cell covers 1/3 samples'],
   }
 }
 

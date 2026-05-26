@@ -5,6 +5,10 @@ import {
   sameCorpusMutationTargetProofProductSummaries,
   sameCorpusMutationTargetProofSampleCount,
 } from '../ui-responsiveness-same-corpus-mutation-target-proof-summary.ts'
+import {
+  sameCorpusMutationTargetProofProductEvidenceLines,
+  sameCorpusMutationTargetProofProductGapLines,
+} from '../ui-responsiveness-same-corpus-mutation-target-proof-gaps.ts'
 import type { SameCorpusMutationTargetProof, SameCorpusScenarioProof } from '../ui-responsiveness-same-corpus-proof.ts'
 import type { SameCorpusProductSemanticUiProof } from '../ui-responsiveness-same-corpus-semantic-proof.ts'
 import type { UiResponsivenessSameCorpusProduct } from '../ui-responsiveness-same-corpus-scorecard-proof.ts'
@@ -120,6 +124,33 @@ describe('same-corpus mutation target proof summary', () => {
             'semantic UI mutation target proof for edit-visible-cell did not prove the intended committed target value',
           ]),
         }),
+      ]),
+    )
+  })
+
+  it('formats actionable product-level target proof gaps for the dominance audit', () => {
+    const summaries = sameCorpusMutationTargetProofProductSummaries(
+      [
+        mutationTargetCase({
+          biligSamples: [0],
+          googleSamples: [],
+        }),
+      ],
+      3,
+    )
+
+    expect(sameCorpusMutationTargetProofProductEvidenceLines(summaries)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('edit-visible-cell/bilig accepted 0/3 samples (raw 1); missing samples: 1, 2; rejected samples: 0'),
+        expect.stringContaining(
+          'edit-visible-cell/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none',
+        ),
+      ]),
+    )
+    expect(sameCorpusMutationTargetProofProductGapLines(summaries)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('same-corpus mutation target proof gap: edit-visible-cell/bilig accepted 0/3 samples (raw 1)'),
+        expect.stringContaining('same-corpus mutation target proof gap: edit-visible-cell/google-sheets accepted 0/3 samples (raw 0)'),
       ]),
     )
   })

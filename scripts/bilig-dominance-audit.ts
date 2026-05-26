@@ -8,6 +8,10 @@ import type { BiligDominanceScorecard, DominanceCategory, DominanceCompletionCri
 import { buildBiligDominanceStatusFromArgs, type BiligDominanceStatus } from './bilig-dominance-status.ts'
 import { loadBiligDominanceScorecardInput } from './bilig-dominance-scorecard-input.ts'
 import { buildBiligDominanceScorecard } from './gen-bilig-dominance-scorecard.ts'
+import {
+  sameCorpusMutationTargetProofProductEvidenceLines,
+  sameCorpusMutationTargetProofProductGapLines,
+} from './ui-responsiveness-same-corpus-mutation-target-proof-gaps.ts'
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 
@@ -270,6 +274,9 @@ function buildChecklistItem(args: {
               `live same-corpus UI mutation target proof samples: ${String(
                 args.liveUiSameCorpus.mutationTargetProofSampleCount,
               )}/${String(args.liveUiSameCorpus.requiredMutationTargetProofSampleCount)}`,
+              ...sameCorpusMutationTargetProofProductEvidenceLines(args.liveUiSameCorpus.mutationTargetProofProductSummaries).map(
+                (entry) => `live same-corpus UI mutation target product proof: ${entry}`,
+              ),
               `live same-corpus UI current-contract evidence complete: ${String(args.liveUiSameCorpus.currentContractEvidenceComplete)}`,
               `live same-corpus UI run manifest invalid reasons: ${args.liveUiSameCorpus.runManifestInvalidReasons.join('; ') || 'none'}`,
               `live same-corpus UI missing inputs: ${args.liveUiSameCorpus.missingInputs.join(', ') || 'none'}`,
@@ -359,6 +366,7 @@ function uiSameCorpusLiveBlockers(status: BiligDominanceStatus['uiSameCorpus']):
       )} mutation target proof samples`,
     )
   }
+  blockers.push(...sameCorpusMutationTargetProofProductGapLines(status.mutationTargetProofProductSummaries))
   for (const reason of status.runManifestInvalidReasons) {
     blockers.push(`same-corpus UI run manifest: ${reason}`)
   }

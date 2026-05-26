@@ -9,6 +9,7 @@ import type {
   UiResponsivenessSameCorpusWorkload,
 } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import { parseSameCorpusCapture } from './ui-responsiveness-live-browser-scorecard-parse.ts'
+import type { SameCorpusMutationTargetProofProductSummary } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import { buildSameCorpusProof, validateSameCorpusCaptureRunManifest } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import { sameCorpusScenarioSummaryFieldsCurrent } from './ui-responsiveness-same-corpus-scenario-fields.ts'
 import { sameCorpusUiSpeedGaps, type SameCorpusUiSpeedGap } from './ui-responsiveness-same-corpus-speed-gaps.ts'
@@ -40,6 +41,7 @@ export interface UiSameCorpusStatus {
   readonly mutationTargetProofCaseCount: number
   readonly requiredMutationTargetProofSampleCount: number
   readonly mutationTargetProofSampleCount: number
+  readonly mutationTargetProofProductSummaries: readonly SameCorpusMutationTargetProofProductSummary[]
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly currentContractEvidenceComplete: boolean
   readonly googleSheetsTenXRequirementSatisfied: boolean
@@ -277,6 +279,7 @@ export function buildUiSameCorpusStatus(
     mutationTargetProofCaseCount: runManifest?.mutationTargetProofCaseCount ?? 0,
     requiredMutationTargetProofSampleCount: runManifest?.requiredMutationTargetProofSampleCount ?? 0,
     mutationTargetProofSampleCount: runManifest?.mutationTargetProofSampleCount ?? 0,
+    mutationTargetProofProductSummaries: runManifest?.mutationTargetProofProductSummaries ?? [],
     legacyInsufficientRenderedGridProofCaseCount:
       runManifest?.legacyInsufficientRenderedGridProofCaseCount ?? proof.cases.filter(hasLegacyInsufficientRenderedGridProof).length,
     currentContractEvidenceComplete: runManifest?.currentContractEvidenceComplete ?? false,

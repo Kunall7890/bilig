@@ -105,7 +105,9 @@
       "Security controls must pass with no uncovered generated controls.",
       "Operator workflow must preserve one-command verification and prevent unverifiable blanket claims."
     ],
-    "unmetRequirements": ["ui-responsiveness: live UI browser evidence is not a same-corpus 10x proof against incumbents"],
+    "unmetRequirements": [
+      "ui-responsiveness: same-corpus mutation target proof gap: edit-visible-cell/bilig accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +4 more; same-corpus mutation target proof gap: edit-visible-cell/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +2 more; same-corpus mutation target proof gap: formula-edit/bilig accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +4 more; same-corpus mutation target proof gap: formula-edit/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +2 more; same-corpus mutation target proof gap: fill-format-change/bilig accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +4 more; same-corpus mutation target proof gap: fill-format-change/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +2 more; live UI browser evidence is not a same-corpus 10x proof against incumbents"
+    ],
     "workloadSpecificTenXWins": [
       {
         "workload": "rebuild-config-toggle",
@@ -159,7 +161,9 @@
   },
   "completionAudit": {
     "allCriteriaPassed": false,
-    "unmetRequirements": ["ui-responsiveness: live UI browser evidence is not a same-corpus 10x proof against incumbents"],
+    "unmetRequirements": [
+      "ui-responsiveness: same-corpus mutation target proof gap: edit-visible-cell/bilig accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +4 more; same-corpus mutation target proof gap: edit-visible-cell/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +2 more; same-corpus mutation target proof gap: formula-edit/bilig accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +4 more; same-corpus mutation target proof gap: formula-edit/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +2 more; same-corpus mutation target proof gap: fill-format-change/bilig accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +4 more; same-corpus mutation target proof gap: fill-format-change/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +2 more; live UI browser evidence is not a same-corpus 10x proof against incumbents"
+    ],
     "criteria": [
       {
         "id": "calculation-correctness",
@@ -212,9 +216,23 @@
           "same-corpus visible operation-response proof cases: 9/9",
           "same-corpus semantic UI proof cases: 0/9",
           "same-corpus mutation target proof cases: 0/3",
-          "same-corpus mutation target proof samples: 0/18"
+          "same-corpus mutation target proof samples: 0/18",
+          "same-corpus mutation target product proof: edit-visible-cell/bilig accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +4 more",
+          "same-corpus mutation target product proof: edit-visible-cell/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +2 more",
+          "same-corpus mutation target product proof: formula-edit/bilig accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +4 more",
+          "same-corpus mutation target product proof: formula-edit/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +2 more",
+          "same-corpus mutation target product proof: fill-format-change/bilig accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +4 more",
+          "same-corpus mutation target product proof: fill-format-change/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +2 more"
         ],
-        "gaps": ["live UI browser evidence is not a same-corpus 10x proof against incumbents"]
+        "gaps": [
+          "same-corpus mutation target proof gap: edit-visible-cell/bilig accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +4 more",
+          "same-corpus mutation target proof gap: edit-visible-cell/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +2 more",
+          "same-corpus mutation target proof gap: formula-edit/bilig accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +4 more",
+          "same-corpus mutation target proof gap: formula-edit/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +2 more",
+          "same-corpus mutation target proof gap: fill-format-change/bilig accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +4 more",
+          "same-corpus mutation target proof gap: fill-format-change/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI proof is not marked captured; semantic UI proof is missing sheet name; semantic UI proof is missing selected range; +2 more",
+          "live UI browser evidence is not a same-corpus 10x proof against incumbents"
+        ]
       },
       {
         "id": "collaboration",
