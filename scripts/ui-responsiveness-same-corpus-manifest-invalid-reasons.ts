@@ -19,6 +19,10 @@ export function sameCorpusManifestInvalidReasons(args: {
   readonly mutationTargetProofCaseCount: number
   readonly requiredMutationTargetProofSampleCount: number
   readonly mutationTargetProofSampleCount: number
+  readonly requiredCommittedTargetProofTimingCaseCount: number
+  readonly committedTargetProofTimingCaseCount: number
+  readonly requiredCommittedTargetProofTimingSampleCount: number
+  readonly committedTargetProofTimingSampleCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly materializedCellCounts: readonly number[]
   readonly strictRenderedGridProofCaseCount: number
@@ -89,6 +93,20 @@ export function sameCorpusManifestInvalidReasons(args: {
       `mutation target proof covers ${String(args.mutationTargetProofSampleCount)}/${String(
         args.requiredMutationTargetProofSampleCount,
       )} required per-sample product proofs`,
+    )
+  }
+  if (args.committedTargetProofTimingCaseCount !== args.requiredCommittedTargetProofTimingCaseCount) {
+    invalidReasons.push(
+      `committed target proof timing covers ${String(args.committedTargetProofTimingCaseCount)}/${String(
+        args.requiredCommittedTargetProofTimingCaseCount,
+      )} mutating cases`,
+    )
+  }
+  if (args.committedTargetProofTimingSampleCount !== args.requiredCommittedTargetProofTimingSampleCount) {
+    invalidReasons.push(
+      `committed target proof timing covers ${String(args.committedTargetProofTimingSampleCount)}/${String(
+        args.requiredCommittedTargetProofTimingSampleCount,
+      )} required per-sample product timings`,
     )
   }
   if (args.legacyInsufficientRenderedGridProofCaseCount > 0) {

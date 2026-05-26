@@ -75,7 +75,7 @@ describe('UI responsiveness live browser scorecard', () => {
     )
     expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(0)
     expect(scorecard.sameCorpusProof.runManifest).toMatchObject({
-      contractVersion: 'same-corpus-ui-v6',
+      contractVersion: 'same-corpus-ui-v7',
       caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       scenarioSummaryFieldCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
@@ -86,6 +86,10 @@ describe('UI responsiveness live browser scorecard', () => {
       mutationTargetProofCaseCount: 0,
       requiredMutationTargetProofSampleCount: 18,
       mutationTargetProofSampleCount: 0,
+      requiredCommittedTargetProofTimingCaseCount: 3,
+      committedTargetProofTimingCaseCount: 0,
+      requiredCommittedTargetProofTimingSampleCount: 18,
+      committedTargetProofTimingSampleCount: 0,
       legacyInsufficientRenderedGridProofCaseCount: 0,
       tenXMeanAndP95CaseCount: 0,
       currentContractEvidenceComplete: false,
@@ -95,6 +99,7 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(scorecard.sameCorpusProof.runManifest?.capturedWorkloads).toEqual(requiredUiResponsivenessSameCorpusWorkloads)
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('semantic UI proof covers 0/9 cases')
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('mutation target proof covers 0/3 mutating cases')
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('committed target proof timing covers 0/3 mutating cases')
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('not every required workload is 10x against Google Sheets')
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).not.toContain('Bilig authoritative render proof timing covers 0/9 cases')
     expect(scorecard.sameCorpusProof.limitations).toContain(
@@ -162,7 +167,7 @@ describe('UI responsiveness live browser scorecard', () => {
       tenXMeanAndP95CaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       coveredCorpusCaseIds: ['wide-mixed-250k'],
       runManifest: {
-        contractVersion: 'same-corpus-ui-v6',
+        contractVersion: 'same-corpus-ui-v7',
         requiredProducts: ['bilig', 'google-sheets'],
         requiredWorkloads: requiredUiResponsivenessSameCorpusWorkloads,
         capturedWorkloads: requiredUiResponsivenessSameCorpusWorkloads,
@@ -200,6 +205,10 @@ describe('UI responsiveness live browser scorecard', () => {
         mutationTargetProofCaseCount: 3,
         requiredMutationTargetProofSampleCount: 18,
         mutationTargetProofSampleCount: 18,
+        requiredCommittedTargetProofTimingCaseCount: 3,
+        committedTargetProofTimingCaseCount: 3,
+        requiredCommittedTargetProofTimingSampleCount: 18,
+        committedTargetProofTimingSampleCount: 18,
         legacyInsufficientRenderedGridProofCaseCount: 0,
         tenXMeanAndP95CaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
         currentContractEvidenceComplete: true,
@@ -347,6 +356,15 @@ describe('UI responsiveness live browser scorecard', () => {
       tenXMeanAndP95AgainstGoogleSheets: false,
       passed: false,
     })
+    expect(proof.runManifest).toMatchObject({
+      requiredCommittedTargetProofTimingCaseCount: 3,
+      committedTargetProofTimingCaseCount: 2,
+      requiredCommittedTargetProofTimingSampleCount: 18,
+      committedTargetProofTimingSampleCount: 12,
+      currentContractEvidenceComplete: false,
+    })
+    expect(proof.runManifest?.invalidReasons).toContain('committed target proof timing covers 2/3 mutating cases')
+    expect(proof.runManifest?.invalidReasons).toContain('committed target proof timing covers 12/18 required per-sample product timings')
   })
 
   it('keeps the same-corpus blocker for honestly reported weak Bilig pixel proof', () => {
@@ -1104,7 +1122,7 @@ function sameCorpusScenarioProof(
         'devicePixelRatio=2',
         'expectedPixelWidth=1440',
         'expectedPixelHeight=900',
-        'contractVersion=same-corpus-ui-v6',
+        'contractVersion=same-corpus-ui-v7',
         'gridAuthoritativeRevision=rev-3',
         'gridLocalRevision=rev-local-2',
         'gridProjectedRevision=rev-3',

@@ -113,6 +113,10 @@ export interface UiResponsivenessSameCorpusRunManifest {
   readonly mutationTargetProofCaseCount: number
   readonly requiredMutationTargetProofSampleCount: number
   readonly mutationTargetProofSampleCount: number
+  readonly requiredCommittedTargetProofTimingCaseCount: number
+  readonly committedTargetProofTimingCaseCount: number
+  readonly requiredCommittedTargetProofTimingSampleCount: number
+  readonly committedTargetProofTimingSampleCount: number
   readonly mutationTargetProofProductSummaries: readonly SameCorpusMutationTargetProofProductSummary[]
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
@@ -161,6 +165,10 @@ export interface SameCorpusCaptureRunManifest {
   readonly mutationTargetProofCaseCount: number
   readonly requiredMutationTargetProofSampleCount: number
   readonly mutationTargetProofSampleCount: number
+  readonly requiredCommittedTargetProofTimingCaseCount: number
+  readonly committedTargetProofTimingCaseCount: number
+  readonly requiredCommittedTargetProofTimingSampleCount: number
+  readonly committedTargetProofTimingSampleCount: number
   readonly mutationTargetProofProductSummaries: readonly SameCorpusMutationTargetProofProductSummary[]
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
@@ -277,4 +285,4 @@ export interface SameCorpusCaptureCorpusVerification {
   readonly checkedCells: readonly SameCorpusCaptureVerifiedCell[]
 }
 
-export const sameCorpusUiCaptureToolVersion = 'same-corpus-capture-v6'
+export const sameCorpusUiCaptureToolVersion = 'same-corpus-capture-v7'

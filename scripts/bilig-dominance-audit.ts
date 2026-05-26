@@ -274,6 +274,12 @@ function buildChecklistItem(args: {
               `live same-corpus UI mutation target proof samples: ${String(
                 args.liveUiSameCorpus.mutationTargetProofSampleCount,
               )}/${String(args.liveUiSameCorpus.requiredMutationTargetProofSampleCount)}`,
+              `live same-corpus UI committed target proof timing cases: ${String(
+                args.liveUiSameCorpus.committedTargetProofTimingCaseCount,
+              )}/${String(args.liveUiSameCorpus.requiredCommittedTargetProofTimingCaseCount)}`,
+              `live same-corpus UI committed target proof timing samples: ${String(
+                args.liveUiSameCorpus.committedTargetProofTimingSampleCount,
+              )}/${String(args.liveUiSameCorpus.requiredCommittedTargetProofTimingSampleCount)}`,
               ...sameCorpusMutationTargetProofProductEvidenceLines(args.liveUiSameCorpus.mutationTargetProofProductSummaries).map(
                 (entry) => `live same-corpus UI mutation target product proof: ${entry}`,
               ),
@@ -364,6 +370,20 @@ function uiSameCorpusLiveBlockers(status: BiligDominanceStatus['uiSameCorpus']):
       `same-corpus UI proof has ${String(status.mutationTargetProofSampleCount)}/${String(
         status.requiredMutationTargetProofSampleCount,
       )} mutation target proof samples`,
+    )
+  }
+  if (status.committedTargetProofTimingCaseCount !== status.requiredCommittedTargetProofTimingCaseCount) {
+    blockers.push(
+      `same-corpus UI proof has ${String(status.committedTargetProofTimingCaseCount)}/${String(
+        status.requiredCommittedTargetProofTimingCaseCount,
+      )} committed target proof timing cases`,
+    )
+  }
+  if (status.committedTargetProofTimingSampleCount !== status.requiredCommittedTargetProofTimingSampleCount) {
+    blockers.push(
+      `same-corpus UI proof has ${String(status.committedTargetProofTimingSampleCount)}/${String(
+        status.requiredCommittedTargetProofTimingSampleCount,
+      )} committed target proof timing samples`,
     )
   }
   blockers.push(...sameCorpusMutationTargetProofProductGapLines(status.mutationTargetProofProductSummaries))

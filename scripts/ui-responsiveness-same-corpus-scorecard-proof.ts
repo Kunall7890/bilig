@@ -30,6 +30,7 @@ import {
   hasCommittedTargetProofTiming,
   sameCorpusCaptureCaseOperationResponseProofGuardrailPassed,
   sameCorpusCaseOperationResponseProofGuardrailPassed,
+  sameCorpusCommittedTargetProofTimingCounts,
   sameCorpusCommittedTargetProofMetrics,
   sameCorpusMeasurementOperationResponseProofsPassed,
   sameCorpusSampleCount,
@@ -186,6 +187,7 @@ function buildSameCorpusRunManifest(
   const mutationTargetProofCaseCount = sameCorpusMutationTargetProofCaseCount(cases, sampleCount)
   const requiredMutationTargetProofSampleCount = requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount(sampleCount)
   const mutationTargetProofSampleCount = sameCorpusMutationTargetProofSampleCount(cases, sampleCount)
+  const committedTargetProofTimingCounts = sameCorpusCommittedTargetProofTimingCounts(cases, sampleCount)
   const mutationTargetProofProductSummaries = sameCorpusMutationTargetProofProductSummaries(cases, sampleCount)
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
@@ -205,6 +207,7 @@ function buildSameCorpusRunManifest(
     mutationTargetProofCaseCount,
     requiredMutationTargetProofSampleCount,
     mutationTargetProofSampleCount,
+    ...committedTargetProofTimingCounts,
     legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
     strictRenderedGridProofCaseCount,
@@ -233,6 +236,7 @@ function buildSameCorpusRunManifest(
     mutationTargetProofCaseCount,
     requiredMutationTargetProofSampleCount,
     mutationTargetProofSampleCount,
+    ...committedTargetProofTimingCounts,
     mutationTargetProofProductSummaries,
     legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
@@ -268,6 +272,7 @@ export function buildSameCorpusCaptureRunManifest(
   const requiredMutationTargetProofSampleCount = requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount(sampleCount)
   const mutationTargetProofCaseCount = sameCorpusMutationTargetProofCaseCount(cases, sampleCount)
   const mutationTargetProofSampleCount = sameCorpusMutationTargetProofSampleCount(cases, sampleCount)
+  const committedTargetProofTimingCounts = sameCorpusCommittedTargetProofTimingCounts(cases, sampleCount)
   const mutationTargetProofProductSummaries = sameCorpusMutationTargetProofProductSummaries(cases, sampleCount)
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
@@ -287,6 +292,7 @@ export function buildSameCorpusCaptureRunManifest(
     mutationTargetProofCaseCount,
     requiredMutationTargetProofSampleCount,
     mutationTargetProofSampleCount,
+    ...committedTargetProofTimingCounts,
     legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
     strictRenderedGridProofCaseCount,
@@ -316,6 +322,7 @@ export function buildSameCorpusCaptureRunManifest(
     mutationTargetProofCaseCount,
     requiredMutationTargetProofSampleCount,
     mutationTargetProofSampleCount,
+    ...committedTargetProofTimingCounts,
     mutationTargetProofProductSummaries,
     legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,

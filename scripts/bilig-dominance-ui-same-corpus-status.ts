@@ -41,6 +41,10 @@ export interface UiSameCorpusStatus {
   readonly mutationTargetProofCaseCount: number
   readonly requiredMutationTargetProofSampleCount: number
   readonly mutationTargetProofSampleCount: number
+  readonly requiredCommittedTargetProofTimingCaseCount: number
+  readonly committedTargetProofTimingCaseCount: number
+  readonly requiredCommittedTargetProofTimingSampleCount: number
+  readonly committedTargetProofTimingSampleCount: number
   readonly mutationTargetProofProductSummaries: readonly SameCorpusMutationTargetProofProductSummary[]
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly currentContractEvidenceComplete: boolean
@@ -113,6 +117,10 @@ export interface UiSameCorpusCaptureArtifactStatus {
   readonly mutationTargetProofCaseCount: number | null
   readonly requiredMutationTargetProofSampleCount: number | null
   readonly mutationTargetProofSampleCount: number | null
+  readonly requiredCommittedTargetProofTimingCaseCount: number | null
+  readonly committedTargetProofTimingCaseCount: number | null
+  readonly requiredCommittedTargetProofTimingSampleCount: number | null
+  readonly committedTargetProofTimingSampleCount: number | null
   readonly legacyInsufficientRenderedGridProofCaseCount: number | null
   readonly tenXMeanAndP95CaseCount: number | null
   readonly currentContractEvidenceComplete: boolean | null
@@ -279,6 +287,10 @@ export function buildUiSameCorpusStatus(
     mutationTargetProofCaseCount: runManifest?.mutationTargetProofCaseCount ?? 0,
     requiredMutationTargetProofSampleCount: runManifest?.requiredMutationTargetProofSampleCount ?? 0,
     mutationTargetProofSampleCount: runManifest?.mutationTargetProofSampleCount ?? 0,
+    requiredCommittedTargetProofTimingCaseCount: runManifest?.requiredCommittedTargetProofTimingCaseCount ?? 0,
+    committedTargetProofTimingCaseCount: runManifest?.committedTargetProofTimingCaseCount ?? 0,
+    requiredCommittedTargetProofTimingSampleCount: runManifest?.requiredCommittedTargetProofTimingSampleCount ?? 0,
+    committedTargetProofTimingSampleCount: runManifest?.committedTargetProofTimingSampleCount ?? 0,
     mutationTargetProofProductSummaries: runManifest?.mutationTargetProofProductSummaries ?? [],
     legacyInsufficientRenderedGridProofCaseCount:
       runManifest?.legacyInsufficientRenderedGridProofCaseCount ?? proof.cases.filter(hasLegacyInsufficientRenderedGridProof).length,
@@ -395,6 +407,10 @@ function buildUiSameCorpusCaptureArtifactStatus(path: string, capture: SameCorpu
       mutationTargetProofCaseCount: runManifest?.mutationTargetProofCaseCount ?? null,
       requiredMutationTargetProofSampleCount: runManifest?.requiredMutationTargetProofSampleCount ?? null,
       mutationTargetProofSampleCount: runManifest?.mutationTargetProofSampleCount ?? null,
+      requiredCommittedTargetProofTimingCaseCount: runManifest?.requiredCommittedTargetProofTimingCaseCount ?? null,
+      committedTargetProofTimingCaseCount: runManifest?.committedTargetProofTimingCaseCount ?? null,
+      requiredCommittedTargetProofTimingSampleCount: runManifest?.requiredCommittedTargetProofTimingSampleCount ?? null,
+      committedTargetProofTimingSampleCount: runManifest?.committedTargetProofTimingSampleCount ?? null,
       legacyInsufficientRenderedGridProofCaseCount: runManifest?.legacyInsufficientRenderedGridProofCaseCount ?? null,
       tenXMeanAndP95CaseCount: proof.tenXMeanAndP95CaseCount,
       currentContractEvidenceComplete: runManifest?.currentContractEvidenceComplete ?? null,
@@ -445,6 +461,10 @@ function buildParsedUiSameCorpusCaptureArtifactStatus(
     mutationTargetProofCaseCount: capture.runManifest.mutationTargetProofCaseCount,
     requiredMutationTargetProofSampleCount: capture.runManifest.requiredMutationTargetProofSampleCount,
     mutationTargetProofSampleCount: capture.runManifest.mutationTargetProofSampleCount,
+    requiredCommittedTargetProofTimingCaseCount: capture.runManifest.requiredCommittedTargetProofTimingCaseCount,
+    committedTargetProofTimingCaseCount: capture.runManifest.committedTargetProofTimingCaseCount,
+    requiredCommittedTargetProofTimingSampleCount: capture.runManifest.requiredCommittedTargetProofTimingSampleCount,
+    committedTargetProofTimingSampleCount: capture.runManifest.committedTargetProofTimingSampleCount,
     legacyInsufficientRenderedGridProofCaseCount: capture.runManifest.legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount: capture.runManifest.tenXMeanAndP95CaseCount,
     currentContractEvidenceComplete: capture.runManifest.currentContractEvidenceComplete,
@@ -482,6 +502,10 @@ function buildInvalidUiSameCorpusCaptureArtifactStatus(
     mutationTargetProofCaseCount: null,
     requiredMutationTargetProofSampleCount: null,
     mutationTargetProofSampleCount: null,
+    requiredCommittedTargetProofTimingCaseCount: null,
+    committedTargetProofTimingCaseCount: null,
+    requiredCommittedTargetProofTimingSampleCount: null,
+    committedTargetProofTimingSampleCount: null,
     legacyInsufficientRenderedGridProofCaseCount: null,
     tenXMeanAndP95CaseCount: null,
     currentContractEvidenceComplete: null,
@@ -676,6 +700,8 @@ function uiSameCorpusTenXRequirementSatisfied(
     proof.runManifest.visibleOperationResponseProofCaseCount === proof.requiredCaseCount &&
     proof.runManifest.mutationTargetProofCaseCount === proof.runManifest.requiredMutationTargetProofCaseCount &&
     proof.runManifest.mutationTargetProofSampleCount === proof.runManifest.requiredMutationTargetProofSampleCount &&
+    proof.runManifest.committedTargetProofTimingCaseCount === proof.runManifest.requiredCommittedTargetProofTimingCaseCount &&
+    proof.runManifest.committedTargetProofTimingSampleCount === proof.runManifest.requiredCommittedTargetProofTimingSampleCount &&
     proof.requiredProductCount === 2 &&
     proof.requiredCaseCount > 0 &&
     proof.cases.length === proof.requiredCaseCount &&

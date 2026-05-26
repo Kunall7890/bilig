@@ -19,8 +19,6 @@ import type {
   SameCorpusCaptureRunManifest,
   SameCorpusProductSourceWorkbookFingerprint,
   SameCorpusCaptureVerifiedCell,
-  SameCorpusMutationTargetProofProductSummary,
-  SameCorpusMutationTargetProofSampleSummary,
   SameCorpusScenarioCaseFields,
   UiResponsivenessLiveBrowserCase,
   UiResponsivenessLiveBrowserScorecard,
@@ -40,15 +38,20 @@ import type {
   SameCorpusProductSemanticUiProofVerdict,
   SameCorpusSemanticUiProof,
   SameCorpusScreenshotProof,
-  SameCorpusMutationTargetProof,
-  SameCorpusMutationTargetReadback,
 } from './ui-responsiveness-same-corpus-proof.ts'
 import { sameCorpusUiRenderProofContractVersion, validateSameCorpusProductSemanticUiProof } from './ui-responsiveness-same-corpus-proof.ts'
 import {
   requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount,
   requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount,
 } from './ui-responsiveness-same-corpus-mutation-target-proof-summary.ts'
-import { parseSameCorpusMutationTargetScreenshotProofSet } from './ui-responsiveness-same-corpus-mutation-target-parse.ts'
+import {
+  requiredUiResponsivenessSameCorpusCommittedTargetProofTimingCaseCount,
+  requiredUiResponsivenessSameCorpusCommittedTargetProofTimingSampleCount,
+} from './ui-responsiveness-same-corpus-guardrails.ts'
+import {
+  parseSameCorpusMutationTargetProof,
+  parseSameCorpusMutationTargetProofProductSummary,
+} from './ui-responsiveness-same-corpus-mutation-target-parse.ts'
 import { sameCorpusUiCaptureToolVersion } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import type { SameCorpusOperationResponseProof } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import { isUiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
@@ -172,6 +175,14 @@ function parseSameCorpusRunManifest(value: Record<string, unknown>): UiResponsiv
       optionalNumberField(value, 'requiredMutationTargetProofSampleCount') ??
       requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount(numberField(value, 'sampleCount')),
     mutationTargetProofSampleCount: optionalNumberField(value, 'mutationTargetProofSampleCount') ?? 0,
+    requiredCommittedTargetProofTimingCaseCount:
+      optionalNumberField(value, 'requiredCommittedTargetProofTimingCaseCount') ??
+      requiredUiResponsivenessSameCorpusCommittedTargetProofTimingCaseCount(),
+    committedTargetProofTimingCaseCount: optionalNumberField(value, 'committedTargetProofTimingCaseCount') ?? 0,
+    requiredCommittedTargetProofTimingSampleCount:
+      optionalNumberField(value, 'requiredCommittedTargetProofTimingSampleCount') ??
+      requiredUiResponsivenessSameCorpusCommittedTargetProofTimingSampleCount(numberField(value, 'sampleCount')),
+    committedTargetProofTimingSampleCount: optionalNumberField(value, 'committedTargetProofTimingSampleCount') ?? 0,
     mutationTargetProofProductSummaries: Object.hasOwn(value, 'mutationTargetProofProductSummaries')
       ? arrayField(value, 'mutationTargetProofProductSummaries').map(parseSameCorpusMutationTargetProofProductSummary)
       : [],
@@ -219,6 +230,14 @@ function parseSameCorpusCaptureRunManifest(value: Record<string, unknown>): Same
       optionalNumberField(value, 'requiredMutationTargetProofSampleCount') ??
       requiredUiResponsivenessSameCorpusMutationTargetProofSampleCount(numberField(value, 'sampleCount')),
     mutationTargetProofSampleCount: optionalNumberField(value, 'mutationTargetProofSampleCount') ?? 0,
+    requiredCommittedTargetProofTimingCaseCount:
+      optionalNumberField(value, 'requiredCommittedTargetProofTimingCaseCount') ??
+      requiredUiResponsivenessSameCorpusCommittedTargetProofTimingCaseCount(),
+    committedTargetProofTimingCaseCount: optionalNumberField(value, 'committedTargetProofTimingCaseCount') ?? 0,
+    requiredCommittedTargetProofTimingSampleCount:
+      optionalNumberField(value, 'requiredCommittedTargetProofTimingSampleCount') ??
+      requiredUiResponsivenessSameCorpusCommittedTargetProofTimingSampleCount(numberField(value, 'sampleCount')),
+    committedTargetProofTimingSampleCount: optionalNumberField(value, 'committedTargetProofTimingSampleCount') ?? 0,
     mutationTargetProofProductSummaries: Object.hasOwn(value, 'mutationTargetProofProductSummaries')
       ? arrayField(value, 'mutationTargetProofProductSummaries').map(parseSameCorpusMutationTargetProofProductSummary)
       : [],
@@ -584,208 +603,6 @@ function parseSameCorpusProductSemanticUiProof(value: unknown): SameCorpusProduc
   }
 }
 
-function parseSameCorpusMutationTargetProof(value: unknown): SameCorpusMutationTargetProof {
-  const record = asObject(value, 'UI responsiveness same-corpus mutation target proof')
-  return {
-    sampleIndex: numberField(record, 'sampleIndex'),
-    committedTargetProofMs: optionalNumberField(record, 'committedTargetProofMs') ?? Number.NaN,
-    workload: parseSameCorpusWorkload(stringField(record, 'workload')),
-    intendedOperation: parseSameCorpusMutatingWorkload(stringField(record, 'intendedOperation')),
-    intendedPayload: parseSameCorpusMutationTargetIntendedPayload(objectField(record, 'intendedPayload')),
-    sheetName: stringField(record, 'sheetName'),
-    sheetId: Object.hasOwn(record, 'sheetId') ? nullableStringField(record, 'sheetId') : null,
-    targetRange: stringField(record, 'targetRange'),
-    before: parseSameCorpusMutationTargetReadback(objectField(record, 'before')),
-    after: parseSameCorpusMutationTargetReadback(objectField(record, 'after')),
-    restored: parseSameCorpusMutationTargetReadback(objectField(record, 'restored')),
-    visibleAfter: Object.hasOwn(record, 'visibleAfter')
-      ? parseSameCorpusMutationTargetReadback(objectField(record, 'visibleAfter'))
-      : missingSameCorpusMutationTargetReadback(),
-    visibleRestored: Object.hasOwn(record, 'visibleRestored')
-      ? parseSameCorpusMutationTargetReadback(objectField(record, 'visibleRestored'))
-      : missingSameCorpusMutationTargetReadback(),
-    visibleAfterSelectedRange: Object.hasOwn(record, 'visibleAfterSelectedRange')
-      ? nullableStringField(record, 'visibleAfterSelectedRange')
-      : null,
-    visibleRestoredSelectedRange: Object.hasOwn(record, 'visibleRestoredSelectedRange')
-      ? nullableStringField(record, 'visibleRestoredSelectedRange')
-      : null,
-    authoritativeReadbackRevision: nullableStringField(record, 'authoritativeReadbackRevision'),
-    visibleRenderRevision: nullableStringField(record, 'visibleRenderRevision'),
-    targetScreenshots: Object.hasOwn(record, 'targetScreenshots')
-      ? parseSameCorpusMutationTargetScreenshotProofSet(objectField(record, 'targetScreenshots'))
-      : null,
-    screenshotPath: nullableStringField(record, 'screenshotPath'),
-    screenshotSha256: nullableStringField(record, 'screenshotSha256'),
-    undoRestoreStatus: parseSameCorpusMutationUndoRestoreStatus(stringField(record, 'undoRestoreStatus')),
-  }
-}
-
-function parseSameCorpusMutationTargetIntendedPayload(value: Record<string, unknown>): SameCorpusMutationTargetProof['intendedPayload'] {
-  const kind = stringField(value, 'kind')
-  if (kind === 'cell-value') {
-    return { kind, value: stringField(value, 'value') }
-  }
-  if (kind === 'formula') {
-    return { kind, formula: stringField(value, 'formula') }
-  }
-  if (kind === 'fill-color') {
-    return {
-      kind,
-      expectedFillColor: Object.hasOwn(value, 'expectedFillColor') ? stringField(value, 'expectedFillColor') : '',
-      swatchLabel: stringField(value, 'swatchLabel'),
-    }
-  }
-  throw new Error(`Unexpected UI responsiveness same-corpus mutation target payload kind: ${kind}`)
-}
-
-function missingSameCorpusMutationTargetReadback(): SameCorpusMutationTargetReadback {
-  return {
-    fillColor: null,
-    formula: null,
-    source: 'unknown',
-    value: null,
-    visibleText: null,
-  }
-}
-
-function parseSameCorpusMutationTargetReadback(value: Record<string, unknown>): SameCorpusMutationTargetReadback {
-  const batchId = optionalNumberField(value, 'batchId')
-  const capturedRevision = Object.hasOwn(value, 'capturedRevision') ? nullableStringField(value, 'capturedRevision') : undefined
-  const visibleSceneProofSha256 = Object.hasOwn(value, 'visibleSceneProofSha256')
-    ? nullableStringField(value, 'visibleSceneProofSha256')
-    : undefined
-  return {
-    value: nullableStringField(value, 'value'),
-    formula: nullableStringField(value, 'formula'),
-    fillColor: nullableStringField(value, 'fillColor'),
-    visibleText: nullableStringField(value, 'visibleText'),
-    source: Object.hasOwn(value, 'source') ? parseSameCorpusMutationTargetReadbackSource(stringField(value, 'source')) : 'unknown',
-    ...(batchId !== undefined ? { batchId } : {}),
-    ...(capturedRevision !== undefined ? { capturedRevision } : {}),
-    ...(visibleSceneProofSha256 !== undefined ? { visibleSceneProofSha256 } : {}),
-  }
-}
-
-function parseSameCorpusMutationTargetReadbackSource(value: string): SameCorpusMutationTargetReadback['source'] {
-  if (value === 'bilig-authoritative-range' || value === 'visible-formula-bar' || value === 'visible-grid-cell' || value === 'unknown') {
-    return value
-  }
-  throw new Error(`Unexpected UI responsiveness same-corpus mutation readback source: ${value}`)
-}
-
-function parseSameCorpusMutatingWorkload(value: string): SameCorpusMutationTargetProof['intendedOperation'] {
-  if (value === 'edit-visible-cell' || value === 'formula-edit' || value === 'fill-format-change') {
-    return value
-  }
-  throw new Error(`Unexpected UI responsiveness same-corpus mutating workload: ${value}`)
-}
-
-function parseSameCorpusMutationUndoRestoreStatus(value: string): SameCorpusMutationTargetProof['undoRestoreStatus'] {
-  if (value === 'verified' || value === 'missing' || value === 'failed') {
-    return value
-  }
-  throw new Error(`Unexpected UI responsiveness same-corpus mutation undo restore status: ${value}`)
-}
-
-function nullableSameCorpusMutatingWorkload(
-  value: Record<string, unknown>,
-  key: string,
-): SameCorpusMutationTargetProof['intendedOperation'] | null {
-  const fieldValue = value[key]
-  if (fieldValue === null) {
-    return null
-  }
-  if (typeof fieldValue !== 'string') {
-    throw new Error(`Expected ${key} to be a same-corpus mutating workload or null`)
-  }
-  return parseSameCorpusMutatingWorkload(fieldValue)
-}
-
-function nullableSameCorpusMutationTargetIntendedPayload(
-  value: Record<string, unknown>,
-  key: string,
-): SameCorpusMutationTargetProof['intendedPayload'] | null {
-  const fieldValue = value[key]
-  if (fieldValue === null) {
-    return null
-  }
-  return parseSameCorpusMutationTargetIntendedPayload(asObject(fieldValue, key))
-}
-
-function nullableSameCorpusMutationTargetReadback(value: Record<string, unknown>, key: string): SameCorpusMutationTargetReadback | null {
-  const fieldValue = value[key]
-  if (fieldValue === null) {
-    return null
-  }
-  return parseSameCorpusMutationTargetReadback(asObject(fieldValue, key))
-}
-
-function nullableSameCorpusMutationUndoRestoreStatus(
-  value: Record<string, unknown>,
-  key: string,
-): SameCorpusMutationTargetProof['undoRestoreStatus'] | null {
-  const fieldValue = value[key]
-  if (fieldValue === null) {
-    return null
-  }
-  if (typeof fieldValue !== 'string') {
-    throw new Error(`Expected ${key} to be a same-corpus mutation undo status or null`)
-  }
-  return parseSameCorpusMutationUndoRestoreStatus(fieldValue)
-}
-
-function parseSameCorpusMutationTargetProofProductSummary(value: unknown): SameCorpusMutationTargetProofProductSummary {
-  const record = asObject(value, 'UI responsiveness same-corpus mutation target proof product summary')
-  return {
-    workload: parseSameCorpusWorkload(stringField(record, 'workload')),
-    product: parseSameCorpusProduct(stringField(record, 'product')),
-    requiredSampleCount: numberField(record, 'requiredSampleCount'),
-    rawSampleCount: numberField(record, 'rawSampleCount'),
-    acceptedSampleCount: numberField(record, 'acceptedSampleCount'),
-    accepted: booleanField(record, 'accepted'),
-    samples: arrayField(record, 'samples').map(parseSameCorpusMutationTargetProofSampleSummary),
-    invalidReasons: stringArrayField(record, 'invalidReasons'),
-  }
-}
-
-function parseSameCorpusMutationTargetProofSampleSummary(value: unknown): SameCorpusMutationTargetProofSampleSummary {
-  const record = asObject(value, 'UI responsiveness same-corpus mutation target proof sample summary')
-  return {
-    sampleIndex: numberField(record, 'sampleIndex'),
-    present: booleanField(record, 'present'),
-    accepted: booleanField(record, 'accepted'),
-    committedTargetProofMs: Object.hasOwn(record, 'committedTargetProofMs') ? nullableNumberField(record, 'committedTargetProofMs') : null,
-    sheetName: nullableStringField(record, 'sheetName'),
-    sheetId: Object.hasOwn(record, 'sheetId') ? nullableStringField(record, 'sheetId') : null,
-    targetRange: nullableStringField(record, 'targetRange'),
-    intendedOperation: nullableSameCorpusMutatingWorkload(record, 'intendedOperation'),
-    intendedPayload: nullableSameCorpusMutationTargetIntendedPayload(record, 'intendedPayload'),
-    before: nullableSameCorpusMutationTargetReadback(record, 'before'),
-    after: nullableSameCorpusMutationTargetReadback(record, 'after'),
-    restored: nullableSameCorpusMutationTargetReadback(record, 'restored'),
-    visibleAfter: nullableSameCorpusMutationTargetReadback(record, 'visibleAfter'),
-    visibleRestored: nullableSameCorpusMutationTargetReadback(record, 'visibleRestored'),
-    visibleAfterSelectedRange: Object.hasOwn(record, 'visibleAfterSelectedRange')
-      ? nullableStringField(record, 'visibleAfterSelectedRange')
-      : null,
-    visibleRestoredSelectedRange: Object.hasOwn(record, 'visibleRestoredSelectedRange')
-      ? nullableStringField(record, 'visibleRestoredSelectedRange')
-      : null,
-    authoritativeReadbackRevision: nullableStringField(record, 'authoritativeReadbackRevision'),
-    visibleRenderRevision: nullableStringField(record, 'visibleRenderRevision'),
-    targetScreenshots: Object.hasOwn(record, 'targetScreenshots')
-      ? record.targetScreenshots === null
-        ? null
-        : parseSameCorpusMutationTargetScreenshotProofSet(objectField(record, 'targetScreenshots'))
-      : null,
-    screenshotPath: nullableStringField(record, 'screenshotPath'),
-    screenshotSha256: nullableStringField(record, 'screenshotSha256'),
-    undoRestoreStatus: nullableSameCorpusMutationUndoRestoreStatus(record, 'undoRestoreStatus'),
-    invalidReasons: Object.hasOwn(record, 'invalidReasons') ? stringArrayField(record, 'invalidReasons') : [],
-  }
-}
-
 function parseSameCorpusProductSemanticUiProofVerdict(value: unknown): SameCorpusProductSemanticUiProofVerdict {
   const record = asObject(value, 'UI responsiveness same-corpus product semantic UI proof verdict')
   return {
@@ -871,17 +688,6 @@ function optionalNumberField(value: Record<string, unknown>, key: string): numbe
 
 function optionalBooleanField(value: Record<string, unknown>, key: string): boolean | undefined {
   return Object.hasOwn(value, key) ? booleanField(value, key) : undefined
-}
-
-function nullableNumberField(value: Record<string, unknown>, key: string): number | null {
-  const fieldValue = value[key]
-  if (fieldValue === null) {
-    return null
-  }
-  if (typeof fieldValue !== 'number' || !Number.isFinite(fieldValue) || fieldValue < 0) {
-    throw new Error(`Expected ${key} to be a finite non-negative number or null`)
-  }
-  return fieldValue
 }
 
 function nullableStringField(value: Record<string, unknown>, key: string): string | null {

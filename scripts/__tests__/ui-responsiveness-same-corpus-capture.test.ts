@@ -1084,7 +1084,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       artifactGenerator: 'scripts/capture-ui-responsiveness-same-corpus.ts',
       biligAuthoritativeRenderProofCaseCount: 1,
       caseCount: 1,
-      contractVersion: 'same-corpus-ui-v6',
+      contractVersion: 'same-corpus-ui-v7',
       currentContractEvidenceComplete: false,
       googleSheetsTenXRequirementSatisfied: false,
       requiredProducts: ['bilig', 'google-sheets'],
@@ -1096,6 +1096,10 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       mutationTargetProofCaseCount: 0,
       requiredMutationTargetProofSampleCount: 18,
       mutationTargetProofSampleCount: 0,
+      requiredCommittedTargetProofTimingCaseCount: 3,
+      committedTargetProofTimingCaseCount: 0,
+      requiredCommittedTargetProofTimingSampleCount: 18,
+      committedTargetProofTimingSampleCount: 0,
       tenXMeanAndP95CaseCount: 0,
     })
     expect(capture.runManifest.captureRunSignature).toMatch(/^[a-f0-9]{64}$/u)
@@ -1105,6 +1109,8 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(capture.runManifest.invalidReasons).toContain('Bilig production runtime proof covers 0/9 cases')
     expect(capture.runManifest.invalidReasons).toContain('mutation target proof covers 0/3 mutating cases')
     expect(capture.runManifest.invalidReasons).toContain('mutation target proof covers 0/18 required per-sample product proofs')
+    expect(capture.runManifest.invalidReasons).toContain('committed target proof timing covers 0/3 mutating cases')
+    expect(capture.runManifest.invalidReasons).toContain('committed target proof timing covers 0/18 required per-sample product timings')
     expect(capture.runManifest.invalidReasons).toContain('not every required workload is 10x against Google Sheets')
     expect(capture.cases[0]).toMatchObject({
       biligMeanMs: scenarioProof.biligMeanMs,
@@ -1675,7 +1681,7 @@ function sameCorpusVisualProof(
               'devicePixelRatio=2',
               'expectedPixelWidth=1440',
               'expectedPixelHeight=900',
-              'contractVersion=same-corpus-ui-v6',
+              'contractVersion=same-corpus-ui-v7',
               'gridAuthoritativeRevision=rev-3',
               'gridLocalRevision=rev-local-2',
               'gridProjectedRevision=rev-3',

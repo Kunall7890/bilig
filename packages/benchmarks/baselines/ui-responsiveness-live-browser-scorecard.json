@@ -164,7 +164,7 @@
     "coveredCorpusCaseIds": ["wide-mixed-250k"],
     "runManifest": {
       "artifactGenerator": "scripts/gen-ui-responsiveness-live-browser-scorecard.ts",
-      "contractVersion": "same-corpus-ui-v6",
+      "contractVersion": "same-corpus-ui-v7",
       "requiredProducts": ["bilig", "google-sheets"],
       "requiredWorkloads": [
         "open-workbook",
@@ -233,6 +233,10 @@
       "mutationTargetProofCaseCount": 0,
       "requiredMutationTargetProofSampleCount": 18,
       "mutationTargetProofSampleCount": 0,
+      "requiredCommittedTargetProofTimingCaseCount": 3,
+      "committedTargetProofTimingCaseCount": 0,
+      "requiredCommittedTargetProofTimingSampleCount": 18,
+      "committedTargetProofTimingSampleCount": 0,
       "mutationTargetProofProductSummaries": [
         {
           "workload": "edit-visible-cell",
@@ -257,8 +261,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -279,8 +286,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -301,8 +311,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -343,8 +356,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -365,8 +381,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -387,8 +406,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -427,8 +449,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -449,8 +474,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -471,8 +499,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -513,8 +544,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -535,8 +569,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -557,8 +594,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -597,8 +637,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -619,8 +662,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -641,8 +687,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -683,8 +732,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -705,8 +757,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -727,8 +782,11 @@
               "restored": null,
               "visibleAfter": null,
               "visibleRestored": null,
+              "visibleAfterSelectedRange": null,
+              "visibleRestoredSelectedRange": null,
               "authoritativeReadbackRevision": null,
               "visibleRenderRevision": null,
+              "targetScreenshots": null,
               "screenshotPath": null,
               "screenshotSha256": null,
               "undoRestoreStatus": null,
@@ -749,11 +807,13 @@
       "tenXMeanAndP95CaseCount": 0,
       "currentContractEvidenceComplete": false,
       "googleSheetsTenXRequirementSatisfied": false,
-      "captureRunSignature": "3a866e89563c12806481f332f7512103e12f82f76ad97608b25c2b649024e070",
+      "captureRunSignature": "e5e5301863d5062aaff71dec3ed5fbeb67ca8efca1842cf00ad916cf5bc37914",
       "invalidReasons": [
         "semantic UI proof covers 0/9 cases",
         "mutation target proof covers 0/3 mutating cases",
         "mutation target proof covers 0/18 required per-sample product proofs",
+        "committed target proof timing covers 0/3 mutating cases",
+        "committed target proof timing covers 0/18 required per-sample product timings",
         "not every required workload is 10x against Google Sheets"
       ]
     },
@@ -1038,7 +1098,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v6",
+                "contractVersion=same-corpus-ui-v7",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -1145,8 +1205,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v6",
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "contractVersion": "same-corpus-ui-v7",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             },
             {
@@ -1154,7 +1214,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             }
           ],
@@ -1252,7 +1312,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v6",
+                  "contractVersion=same-corpus-ui-v7",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -1359,8 +1419,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v6",
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "contractVersion": "same-corpus-ui-v7",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               },
               {
@@ -1368,7 +1428,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               }
             ],
@@ -1721,7 +1781,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v6",
+                "contractVersion=same-corpus-ui-v7",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -1828,8 +1888,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v6",
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "contractVersion": "same-corpus-ui-v7",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             },
             {
@@ -1837,7 +1897,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             }
           ],
@@ -1935,7 +1995,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v6",
+                  "contractVersion=same-corpus-ui-v7",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -2042,8 +2102,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v6",
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "contractVersion": "same-corpus-ui-v7",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               },
               {
@@ -2051,7 +2111,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               }
             ],
@@ -2404,7 +2464,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v6",
+                "contractVersion=same-corpus-ui-v7",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -2511,8 +2571,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v6",
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "contractVersion": "same-corpus-ui-v7",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             },
             {
@@ -2520,7 +2580,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             }
           ],
@@ -2618,7 +2678,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v6",
+                  "contractVersion=same-corpus-ui-v7",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -2725,8 +2785,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v6",
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "contractVersion": "same-corpus-ui-v7",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               },
               {
@@ -2734,7 +2794,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               }
             ],
@@ -3151,7 +3211,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v6",
+                "contractVersion=same-corpus-ui-v7",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -3258,8 +3318,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v6",
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "contractVersion": "same-corpus-ui-v7",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             },
             {
@@ -3267,7 +3327,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             }
           ],
@@ -3365,7 +3425,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v6",
+                  "contractVersion=same-corpus-ui-v7",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -3472,8 +3532,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v6",
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "contractVersion": "same-corpus-ui-v7",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               },
               {
@@ -3481,7 +3541,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               }
             ],
@@ -3897,7 +3957,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v6",
+                "contractVersion=same-corpus-ui-v7",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -4004,8 +4064,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v6",
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "contractVersion": "same-corpus-ui-v7",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             },
             {
@@ -4013,7 +4073,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             }
           ],
@@ -4111,7 +4171,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v6",
+                  "contractVersion=same-corpus-ui-v7",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -4218,8 +4278,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v6",
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "contractVersion": "same-corpus-ui-v7",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               },
               {
@@ -4227,7 +4287,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               }
             ],
@@ -4580,7 +4640,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v6",
+                "contractVersion=same-corpus-ui-v7",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -4687,8 +4747,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v6",
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "contractVersion": "same-corpus-ui-v7",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             },
             {
@@ -4696,7 +4756,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             }
           ],
@@ -4794,7 +4854,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v6",
+                  "contractVersion=same-corpus-ui-v7",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -4901,8 +4961,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v6",
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "contractVersion": "same-corpus-ui-v7",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               },
               {
@@ -4910,7 +4970,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               }
             ],
@@ -5263,7 +5323,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v6",
+                "contractVersion=same-corpus-ui-v7",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -5370,8 +5430,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v6",
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "contractVersion": "same-corpus-ui-v7",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             },
             {
@@ -5379,7 +5439,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             }
           ],
@@ -5477,7 +5537,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v6",
+                  "contractVersion=same-corpus-ui-v7",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -5584,8 +5644,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v6",
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "contractVersion": "same-corpus-ui-v7",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               },
               {
@@ -5593,7 +5653,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               }
             ],
@@ -5947,7 +6007,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v6",
+                "contractVersion=same-corpus-ui-v7",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -6054,8 +6114,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v6",
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "contractVersion": "same-corpus-ui-v7",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             },
             {
@@ -6063,7 +6123,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             }
           ],
@@ -6161,7 +6221,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v6",
+                  "contractVersion=same-corpus-ui-v7",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -6268,8 +6328,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v6",
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "contractVersion": "same-corpus-ui-v7",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               },
               {
@@ -6277,7 +6337,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               }
             ],
@@ -6694,7 +6754,7 @@
               "viewportPixelWidth": 1120,
               "viewportPixelHeight": 766,
               "evidence": [
-                "contractVersion=same-corpus-ui-v6",
+                "contractVersion=same-corpus-ui-v7",
                 "gridCssWidth=1120",
                 "gridCssHeight=766",
                 "devicePixelRatio=1",
@@ -6801,8 +6861,8 @@
               "product": "bilig",
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
-              "contractVersion": "same-corpus-ui-v6",
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "contractVersion": "same-corpus-ui-v7",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             },
             {
@@ -6810,7 +6870,7 @@
               "evidenceStatus": "current-contract",
               "acceptedForCurrentScorecard": true,
               "contractVersion": null,
-              "requiredContractVersion": "same-corpus-ui-v6",
+              "requiredContractVersion": "same-corpus-ui-v7",
               "invalidReasons": []
             }
           ],
@@ -6908,7 +6968,7 @@
                 "viewportPixelWidth": 1120,
                 "viewportPixelHeight": 766,
                 "evidence": [
-                  "contractVersion=same-corpus-ui-v6",
+                  "contractVersion=same-corpus-ui-v7",
                   "gridCssWidth=1120",
                   "gridCssHeight=766",
                   "devicePixelRatio=1",
@@ -7015,8 +7075,8 @@
                 "product": "bilig",
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
-                "contractVersion": "same-corpus-ui-v6",
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "contractVersion": "same-corpus-ui-v7",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               },
               {
@@ -7024,7 +7084,7 @@
                 "evidenceStatus": "current-contract",
                 "acceptedForCurrentScorecard": true,
                 "contractVersion": null,
-                "requiredContractVersion": "same-corpus-ui-v6",
+                "requiredContractVersion": "same-corpus-ui-v7",
                 "invalidReasons": []
               }
             ],

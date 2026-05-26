@@ -148,6 +148,16 @@ export function buildBiligDominanceCompletionAudit(input: BuildScorecardInput, s
         `same-corpus mutation target proof samples: ${String(
           input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.mutationTargetProofSampleCount ?? 0,
         )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.requiredMutationTargetProofSampleCount ?? 0)}`,
+        `same-corpus committed target proof timing cases: ${String(
+          input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.committedTargetProofTimingCaseCount ?? 0,
+        )}/${String(
+          input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.requiredCommittedTargetProofTimingCaseCount ?? 0,
+        )}`,
+        `same-corpus committed target proof timing samples: ${String(
+          input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.committedTargetProofTimingSampleCount ?? 0,
+        )}/${String(
+          input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.requiredCommittedTargetProofTimingSampleCount ?? 0,
+        )}`,
         ...sameCorpusMutationTargetProofProductEvidenceLines(uiSameCorpusMutationTargetProofProductSummaries).map(
           (entry) => `same-corpus mutation target product proof: ${entry}`,
         ),
@@ -249,6 +259,8 @@ export function hasUiResponsivenessSameCorpusTenXGap(scorecard: UiResponsiveness
     runManifest.semanticUiProofCaseCount !== scorecard.sameCorpusProof.requiredCaseCount ||
     runManifest.mutationTargetProofCaseCount !== runManifest.requiredMutationTargetProofCaseCount ||
     runManifest.mutationTargetProofSampleCount !== runManifest.requiredMutationTargetProofSampleCount ||
+    runManifest.committedTargetProofTimingCaseCount !== runManifest.requiredCommittedTargetProofTimingCaseCount ||
+    runManifest.committedTargetProofTimingSampleCount !== runManifest.requiredCommittedTargetProofTimingSampleCount ||
     requiredUiResponsivenessSameCorpusWorkloads.some(
       (workload) => !scorecard.sameCorpusProof.cases.some((entry) => entry.workload === workload),
     ) ||

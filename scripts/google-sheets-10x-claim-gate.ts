@@ -167,6 +167,28 @@ function sameCorpusUiProofFailures(uiScorecard: unknown, requiredWorkloadCount: 
       )} required per-sample product proofs`,
     )
   }
+  const requiredCommittedTargetProofTimingCaseCount =
+    typeof runManifest['requiredCommittedTargetProofTimingCaseCount'] === 'number'
+      ? runManifest['requiredCommittedTargetProofTimingCaseCount']
+      : requiredMutationTargetProofCaseCount
+  if (runManifest['committedTargetProofTimingCaseCount'] !== requiredCommittedTargetProofTimingCaseCount) {
+    failures.push(
+      `same-corpus UI committed target proof timing covers ${String(runManifest['committedTargetProofTimingCaseCount'])}/${String(
+        requiredCommittedTargetProofTimingCaseCount,
+      )} mutating cases`,
+    )
+  }
+  const requiredCommittedTargetProofTimingSampleCount =
+    typeof runManifest['requiredCommittedTargetProofTimingSampleCount'] === 'number'
+      ? runManifest['requiredCommittedTargetProofTimingSampleCount']
+      : requiredMutationTargetProofSampleCount
+  if (runManifest['committedTargetProofTimingSampleCount'] !== requiredCommittedTargetProofTimingSampleCount) {
+    failures.push(
+      `same-corpus UI committed target proof timing covers ${String(runManifest['committedTargetProofTimingSampleCount'])}/${String(
+        requiredCommittedTargetProofTimingSampleCount,
+      )} required per-sample product timings`,
+    )
+  }
   if (runManifest['legacyInsufficientRenderedGridProofCaseCount'] !== 0) {
     failures.push(
       `same-corpus UI legacy-insufficient rendered-grid proof covers ${String(
