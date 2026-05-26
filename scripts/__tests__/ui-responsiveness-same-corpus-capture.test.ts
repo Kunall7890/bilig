@@ -1985,7 +1985,17 @@ function sameCorpusCommittedStatePhaseProof(
     capturedAtMs,
     workbookByteSize: 123456 + proof.sampleIndex,
     workbookSha256: ((proof.sampleIndex + hashOffset) % 16).toString(16).repeat(64),
-    readback: { ...readback, source: 'google-sheets-xlsx-export' },
+    readback: sameCorpusCommittedStateReadback(readback),
+  }
+}
+
+function sameCorpusCommittedStateReadback(readback: SameCorpusMutationTargetProof['before']): SameCorpusMutationTargetProof['before'] {
+  return {
+    value: readback.value,
+    formula: readback.formula,
+    fillColor: readback.fillColor,
+    visibleText: readback.visibleText,
+    source: 'google-sheets-xlsx-export',
   }
 }
 

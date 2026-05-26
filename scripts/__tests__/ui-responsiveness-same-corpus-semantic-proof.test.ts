@@ -625,6 +625,41 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('rejects Google Sheets committed-state readback carrying browser-only proof metadata', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validGoogleSheetsSemanticProof({
+        mutationTargetProofs: validGoogleSheetsMutationTargetProofs().map((proof) => {
+          if (proof.sampleIndex !== 0 || !proof.committedStateProof) {
+            return proof
+          }
+          return Object.assign({}, proof, {
+            committedStateProof: {
+              ...proof.committedStateProof,
+              after: Object.assign({}, proof.committedStateProof.after, {
+                readback: {
+                  ...proof.committedStateProof.after.readback,
+                  capturedRevision: 'browser-authoritative-revision',
+                  visibleSceneProofSha256: 'f'.repeat(64),
+                },
+              }),
+            },
+          })
+        }),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell committed-state after readback carries browser-only proof metadata',
+      ]),
+    })
+  })
+
   it('rejects Google Sheets fill proof when toolbar fill changes but exported target fill does not', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validGoogleSheetsSemanticProof({
@@ -981,7 +1016,7 @@ function googleCommittedStatePhaseProof(
     exportUrl: 'https://docs.google.com/spreadsheets/d/test-spreadsheet/export?format=xlsx',
     phase,
     product: 'google-sheets',
-    readback: { ...readback, source: 'google-sheets-xlsx-export' },
+    readback: googleCommittedStateReadback(readback),
     sampleIndex: sample.sampleIndex,
     sheetId: sample.sheetId,
     sheetName: sample.sheetName,
@@ -989,6 +1024,16 @@ function googleCommittedStatePhaseProof(
     workbookByteSize: 123456 + sample.sampleIndex,
     workbookSha256: mutationTargetScreenshotSha256(sample.sampleIndex, phase),
     workload: sample.intendedOperation,
+  }
+}
+
+function googleCommittedStateReadback(readback: SameCorpusMutationTargetProof['before']): SameCorpusMutationTargetProof['before'] {
+  return {
+    value: readback.value,
+    formula: readback.formula,
+    fillColor: readback.fillColor,
+    visibleText: readback.visibleText,
+    source: 'google-sheets-xlsx-export',
   }
 }
 

@@ -164,6 +164,11 @@ function sameCorpusCommittedStatePhaseInvalidReasons(
     if (phaseProof.readback.source !== 'google-sheets-xlsx-export') {
       invalidReasons.push(`semantic UI mutation target proof for ${workload} committed-state ${phase} readback is not from XLSX export`)
     }
+    if (sameCorpusCommittedStateReadbackCarriesBrowserMetadata(phaseProof.readback)) {
+      invalidReasons.push(
+        `semantic UI mutation target proof for ${workload} committed-state ${phase} readback carries browser-only proof metadata`,
+      )
+    }
   }
   invalidReasons.push(...sameCorpusCommittedStatePhaseTimingInvalidReasons(workload, sample, proof))
   if (proof.before.workbookSha256 === proof.after.workbookSha256) {
@@ -175,6 +180,12 @@ function sameCorpusCommittedStatePhaseInvalidReasons(
     )
   }
   return invalidReasons
+}
+
+function sameCorpusCommittedStateReadbackCarriesBrowserMetadata(readback: SameCorpusMutationTargetReadback): boolean {
+  return (
+    Object.hasOwn(readback, 'batchId') || Object.hasOwn(readback, 'capturedRevision') || Object.hasOwn(readback, 'visibleSceneProofSha256')
+  )
 }
 
 function sameCorpusCommittedStatePhaseTimingInvalidReasons(

@@ -397,7 +397,17 @@ function committedStatePhaseProof(
     capturedAtMs,
     workbookByteSize: 123456 + proof.sampleIndex,
     workbookSha256: ((proof.sampleIndex + hashOffset) % 16).toString(16).repeat(64),
-    readback: { ...readbackValue, source: 'google-sheets-xlsx-export' },
+    readback: committedStateReadback(readbackValue),
+  }
+}
+
+function committedStateReadback(sourceReadback: SameCorpusMutationTargetProof['before']): SameCorpusMutationTargetProof['before'] {
+  return {
+    value: sourceReadback.value,
+    formula: sourceReadback.formula,
+    fillColor: sourceReadback.fillColor,
+    visibleText: sourceReadback.visibleText,
+    source: 'google-sheets-xlsx-export',
   }
 }
 
