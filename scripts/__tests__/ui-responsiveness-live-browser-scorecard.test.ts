@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
@@ -43,6 +44,8 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const sameCorpusFixtureFingerprint = buildSameCorpusFingerprint(buildWorkbookBenchmarkCorpus('wide-mixed-250k')).corpusFingerprint
 const googleSheetsSourceWorkbookSha256 = '1'.repeat(64)
 const microsoftExcelWebSourceWorkbookSha256 = '2'.repeat(64)
+const fixtureScreenshotBytes = 'png'
+const fixtureScreenshotSha256 = createHash('sha256').update(fixtureScreenshotBytes).digest('hex')
 
 describe('UI responsiveness live browser scorecard', () => {
   it('validates the checked-in browser timing artifact', () => {
@@ -657,6 +660,21 @@ describe('UI responsiveness live browser scorecard', () => {
     )
   })
 
+  it('requires semantic mutation target screenshot artifacts to match declared SHA256 values', () => {
+    const proof = buildSameCorpusProof(buildSameCorpusCapture())
+    const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-mutation-hash-`)
+    writeSameCorpusScreenshotArtifacts(rootDir, proof)
+    const mutationArtifactPath = sameCorpusMutationTargetScreenshotArtifactPaths(proof)[0]
+    if (!mutationArtifactPath) {
+      throw new Error('test fixture is missing mutation screenshot artifacts')
+    }
+    writeSameCorpusScreenshotArtifact(rootDir, mutationArtifactPath, 'stale-pixels')
+
+    expect(() => validateSameCorpusScreenshotArtifacts(proof, { rootDir })).toThrow(
+      'UI responsiveness same-corpus mutation screenshot artifact SHA256 mismatch',
+    )
+  })
+
   it('requires semantic mutation target screenshot artifacts to be tracked for checked-in proof', () => {
     const proof = buildSameCorpusProof(buildSameCorpusCapture())
     const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-tracked-mutation-artifacts-`)
@@ -780,10 +798,10 @@ function writeSameCorpusScreenshotArtifacts(rootDir: string, proof: UiResponsive
   }
 }
 
-function writeSameCorpusScreenshotArtifact(rootDir: string, artifactPath: string): void {
+function writeSameCorpusScreenshotArtifact(rootDir: string, artifactPath: string, contents = fixtureScreenshotBytes): void {
   const absolutePath = resolve(rootDir, artifactPath)
   mkdirSync(dirname(absolutePath), { recursive: true })
-  writeFileSync(absolutePath, 'png')
+  writeFileSync(absolutePath, contents)
 }
 
 function sameCorpusScreenshotArtifactPaths(proof: UiResponsivenessSameCorpusProof): string[] {
@@ -1059,13 +1077,13 @@ function semanticUiProofFixture(
     checkedCells: verification.checkedCells,
     authoritativeRenderRevision: product === 'bilig' ? 'rev-3' : null,
     visibleRenderRevision: product === 'bilig' ? 'scene-7' : null,
-    screenshotSha256: 'a'.repeat(64),
+    screenshotSha256: fixtureScreenshotSha256,
     mutationTargetProofs: sameCorpusMutationTargetProofs(product, workload),
     evidence: [
       `sheetName=${verification.sheetName}`,
       'selectedRange=A1',
       `checkedCellCount=${String(verification.checkedCells.length)}`,
-      'screenshotSha256=' + 'a'.repeat(64),
+      `screenshotSha256=${fixtureScreenshotSha256}`,
       ...(product === 'bilig' ? ['authoritativeRenderRevision=rev-3', 'visibleRenderRevision=scene-7'] : []),
     ],
   }
@@ -1093,7 +1111,7 @@ function sameCorpusMutationTargetProofs(
     authoritativeReadbackRevision: sameCorpusAuthoritativeReadbackRevision(product, sampleIndex),
     visibleRenderRevision: sameCorpusVisibleRenderRevision(product, sampleIndex),
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-after.png`,
-    screenshotSha256: 'a'.repeat(64),
+    screenshotSha256: fixtureScreenshotSha256,
     undoRestoreStatus: 'verified' as const,
   }))
 }

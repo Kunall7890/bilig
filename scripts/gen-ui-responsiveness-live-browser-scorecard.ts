@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 
@@ -323,6 +324,7 @@ export function validateSameCorpusScreenshotArtifacts(
   }
 
   const repoRelativePaths = artifactPaths.map((artifactPath) => validateScreenshotArtifactPath(validationRootDir, artifactPath))
+  validateSameCorpusMutationTargetScreenshotArtifactHashes(validationRootDir, proof)
   if (options.requireGitTracked !== true) {
     return
   }
@@ -356,6 +358,35 @@ export function validateSameCorpusCaptureArtifactMatchesScorecard(
   const expectedProof = buildSameCorpusProof(capture)
   if (stableJsonString(scorecard.sameCorpusProof) !== stableJsonString(expectedProof)) {
     throw new Error(`UI responsiveness same-corpus scorecard proof does not match capture artifact: ${repoRelativePath}`)
+  }
+}
+
+function validateSameCorpusMutationTargetScreenshotArtifactHashes(validationRootDir: string, proof: UiResponsivenessSameCorpusProof): void {
+  const expectedHashesByPath = new Map<string, string>()
+  for (const entry of proof.cases) {
+    for (const productProof of entry.scenarioProof.semanticUiProof.products) {
+      for (const mutationProof of productProof.mutationTargetProofs) {
+        if (mutationProof.screenshotPath === null) {
+          continue
+        }
+        const repoRelativePath = validateScreenshotArtifactPath(validationRootDir, mutationProof.screenshotPath)
+        const expectedHash = mutationProof.screenshotSha256?.trim().toLowerCase() ?? ''
+        if (!/^[a-f0-9]{64}$/u.test(expectedHash)) {
+          throw new Error(`UI responsiveness same-corpus mutation screenshot artifact is missing SHA256: ${repoRelativePath}`)
+        }
+        const previousHash = expectedHashesByPath.get(repoRelativePath)
+        if (previousHash && previousHash !== expectedHash) {
+          throw new Error(`UI responsiveness same-corpus mutation screenshot artifact has conflicting SHA256 values: ${repoRelativePath}`)
+        }
+        expectedHashesByPath.set(repoRelativePath, expectedHash)
+        const actualHash = createHash('sha256')
+          .update(readFileSync(resolve(validationRootDir, repoRelativePath)))
+          .digest('hex')
+        if (actualHash !== expectedHash) {
+          throw new Error(`UI responsiveness same-corpus mutation screenshot artifact SHA256 mismatch: ${repoRelativePath}`)
+        }
+      }
+    }
   }
 }
 
