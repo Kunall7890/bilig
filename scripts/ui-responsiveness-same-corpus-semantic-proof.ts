@@ -55,7 +55,7 @@ export interface SameCorpusMutationTargetProof {
 export type SameCorpusMutationTargetIntendedPayload =
   | { readonly kind: 'cell-value'; readonly value: string }
   | { readonly kind: 'formula'; readonly formula: string }
-  | { readonly kind: 'fill-color'; readonly swatchLabel: string }
+  | { readonly kind: 'fill-color'; readonly expectedFillColor: string; readonly swatchLabel: string }
 
 export interface SameCorpusMutationTargetReadback {
   readonly value: string | null
@@ -310,7 +310,9 @@ function sameCorpusMutationTargetPayloadInvalidReasons(
       : ['semantic UI mutation target proof for formula-edit is missing intended formula payload']
   }
   if (workload === 'fill-format-change') {
-    return payload.kind === 'fill-color' && payload.swatchLabel.trim().length > 0
+    return payload.kind === 'fill-color' &&
+      payload.swatchLabel.trim().length > 0 &&
+      sameCorpusFillColorValue(payload.expectedFillColor) !== null
       ? []
       : ['semantic UI mutation target proof for fill-format-change is missing intended fill payload']
   }
@@ -339,6 +341,12 @@ function sameCorpusMutationTargetExpectedReadbackInvalidReasons(
   }
   if (workload === 'fill-format-change') {
     if (payload.kind !== 'fill-color') {
+      return ['semantic UI mutation target proof for fill-format-change did not prove the intended fill color']
+    }
+    if (
+      !sameCorpusColorsMatch(sample.after.fillColor, payload.expectedFillColor) ||
+      !sameCorpusColorsMatch(sample.visibleAfter.fillColor, payload.expectedFillColor)
+    ) {
       return ['semantic UI mutation target proof for fill-format-change did not prove the intended fill color']
     }
   }
@@ -475,6 +483,28 @@ function normalizeSameCorpusRenderedSelectionRange(range: string | null): string
 
 function hasSameCorpusText(value: string | null | undefined): value is string {
   return value !== null && value !== undefined && value.trim().length > 0
+}
+
+function sameCorpusColorsMatch(actual: string | null, expected: string): boolean {
+  const actualColor = sameCorpusFillColorValue(actual)
+  const expectedColor = sameCorpusFillColorValue(expected)
+  return actualColor !== null && expectedColor !== null && actualColor === expectedColor
+}
+
+function sameCorpusFillColorValue(value: string | null | undefined): string | null {
+  const trimmed = value?.trim().toLowerCase() ?? ''
+  if (/^#[0-9a-f]{6}$/u.test(trimmed)) {
+    return trimmed
+  }
+  const rgbMatch = trimmed.match(/^rgba?\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})(?:,\s*(?:0|0?\.\d+|1(?:\.0)?))?\)$/u)
+  if (!rgbMatch) {
+    return null
+  }
+  const channels = rgbMatch.slice(1, 4).map((channel) => Number(channel))
+  if (channels.some((channel) => !Number.isInteger(channel) || channel < 0 || channel > 255)) {
+    return null
+  }
+  return `#${channels.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`
 }
 
 export async function readSameCorpusVisibleSelectedRange(page: Page, product: UiResponsivenessSameCorpusProduct): Promise<string | null> {

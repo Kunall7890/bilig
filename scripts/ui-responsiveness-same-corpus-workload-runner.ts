@@ -42,7 +42,11 @@ export type NonScrollWorkload = Exclude<
 type SameCorpusKeyboardOperation = { kind: 'press'; key: string } | { kind: 'type'; text: string }
 type MutatingSameCorpusWorkload = Extract<NonScrollWorkload, 'edit-visible-cell' | 'formula-edit' | 'fill-format-change'>
 
-const sameCorpusFillColorSwatches = ['light cornflower blue 3', 'theme green', 'light cornflower blue 2'] as const
+const sameCorpusFillColorSwatches = [
+  { label: 'light cornflower blue 3', value: '#c9daf8' },
+  { label: 'theme green', value: '#34a853' },
+  { label: 'light cornflower blue 2', value: '#a4c2f4' },
+] as const
 
 export async function measureProductWorkload(args: {
   readonly page: Page
@@ -125,7 +129,11 @@ async function performProductUiOperation(
 }
 
 export function sameCorpusFillColorSwatchLabel(sampleIndex: number): string {
-  return sameCorpusFillColorSwatches[sampleIndex % sameCorpusFillColorSwatches.length]
+  return sameCorpusFillColorSwatches[sampleIndex % sameCorpusFillColorSwatches.length].label
+}
+
+export function sameCorpusFillColorExpectedColor(sampleIndex: number): string {
+  return sameCorpusFillColorSwatches[sampleIndex % sameCorpusFillColorSwatches.length].value
 }
 
 export function sameCorpusKeyboardOperations(

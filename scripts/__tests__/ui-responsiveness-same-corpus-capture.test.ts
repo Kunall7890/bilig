@@ -927,6 +927,34 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     )
   })
 
+  it('rejects fill-format mutation target proof whose rendered color does not match the intended swatch', () => {
+    const proof = buildCaptureScenarioProof({
+      workload: 'fill-format-change',
+      bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'fill-format-change'),
+      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export', 'fill-format-change'),
+      visualProofs: [
+        sameCorpusVisualProofWithMutationProofs(
+          'bilig',
+          'typegpu-visible-canvas',
+          'same-corpus-wide-mixed-250k-fill-format-change',
+          'fill-format-change',
+          driftIntendedFillColor,
+        ),
+      ],
+    })
+
+    expect(proof.semanticUiProof.productVerdicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          product: 'bilig',
+          invalidReasons: expect.arrayContaining([
+            'semantic UI mutation target proof for fill-format-change did not prove the intended fill color',
+          ]),
+        }),
+      ]),
+    )
+  })
+
   it('rejects mutation target proof that does not prove the intended operation payload', () => {
     const proof = buildCaptureScenarioProof({
       workload: 'formula-edit',
@@ -1753,10 +1781,20 @@ function sameCorpusMutationTargetIntendedPayload(
     return { kind: 'formula', formula: `=${sampleIndex + 1}+1` }
   }
   if (workload === 'fill-format-change') {
-    const labels = ['light cornflower blue 3', 'theme green', 'light cornflower blue 2'] as const
-    return { kind: 'fill-color', swatchLabel: labels[sampleIndex % labels.length] }
+    const swatches = [
+      { label: 'light cornflower blue 3', value: '#c9daf8' },
+      { label: 'theme green', value: '#34a853' },
+      { label: 'light cornflower blue 2', value: '#a4c2f4' },
+    ] as const
+    const swatch = swatches[sampleIndex % swatches.length]
+    return { kind: 'fill-color', expectedFillColor: swatch.value, swatchLabel: swatch.label }
   }
   return { kind: 'cell-value', value: `${product}-same-corpus-${sampleIndex + 1}` }
+}
+
+function sameCorpusExpectedFillColor(sampleIndex: number): string {
+  const colors = ['#c9daf8', '#34a853', '#a4c2f4'] as const
+  return colors[sampleIndex % colors.length]
 }
 
 function corruptFirstMutationTargetProof(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
@@ -1820,6 +1858,17 @@ function removeRenderedPostMutationFill(proof: SameCorpusMutationTargetProof): S
     restored: { ...proof.before, fillColor: '#34a853' },
     visibleRestored: { ...proof.visibleRestored, fillColor: '#34a853' },
     visibleAfter: { ...proof.visibleAfter, fillColor: null },
+  }
+}
+
+function driftIntendedFillColor(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  if (proof.sampleIndex !== 0) {
+    return proof
+  }
+  return {
+    ...proof,
+    after: { ...proof.after, fillColor: '#34a853' },
+    visibleAfter: { ...proof.visibleAfter, fillColor: '#34a853' },
   }
 }
 
@@ -1895,7 +1944,7 @@ function sameCorpusMutationReadback(
     return {
       value: 'metric-1',
       formula: null,
-      fillColor: after ? '#c9daf8' : null,
+      fillColor: after ? sameCorpusExpectedFillColor(sampleIndex) : null,
       visibleText: 'metric-1',
       source,
       ...sameCorpusBiligRevisionReadbackFields(product, phase, sampleIndex),

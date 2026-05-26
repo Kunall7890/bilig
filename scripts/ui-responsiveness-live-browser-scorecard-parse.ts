@@ -611,7 +611,11 @@ function parseSameCorpusMutationTargetIntendedPayload(value: Record<string, unkn
     return { kind, formula: stringField(value, 'formula') }
   }
   if (kind === 'fill-color') {
-    return { kind, swatchLabel: stringField(value, 'swatchLabel') }
+    return {
+      kind,
+      expectedFillColor: Object.hasOwn(value, 'expectedFillColor') ? stringField(value, 'expectedFillColor') : '',
+      swatchLabel: stringField(value, 'swatchLabel'),
+    }
   }
   throw new Error(`Unexpected UI responsiveness same-corpus mutation target payload kind: ${kind}`)
 }

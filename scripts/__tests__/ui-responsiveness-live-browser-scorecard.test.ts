@@ -1107,10 +1107,20 @@ function sameCorpusMutationTargetIntendedPayload(
     return { kind: 'formula' as const, formula: `=${sampleIndex + 1}+1` }
   }
   if (workload === 'fill-format-change') {
-    const labels = ['light cornflower blue 3', 'theme green', 'light cornflower blue 2'] as const
-    return { kind: 'fill-color' as const, swatchLabel: labels[sampleIndex % labels.length] }
+    const swatches = [
+      { label: 'light cornflower blue 3', value: '#c9daf8' },
+      { label: 'theme green', value: '#34a853' },
+      { label: 'light cornflower blue 2', value: '#a4c2f4' },
+    ] as const
+    const swatch = swatches[sampleIndex % swatches.length]
+    return { kind: 'fill-color' as const, expectedFillColor: swatch.value, swatchLabel: swatch.label }
   }
   return { kind: 'cell-value' as const, value: `${product}-same-corpus-${sampleIndex + 1}` }
+}
+
+function sameCorpusExpectedFillColor(sampleIndex: number): string {
+  const colors = ['#c9daf8', '#34a853', '#a4c2f4'] as const
+  return colors[sampleIndex % colors.length]
 }
 
 function sameCorpusVisibleMutationReadback(
@@ -1147,7 +1157,7 @@ function sameCorpusMutationReadback(
     return {
       value: 'metric-1',
       formula: null,
-      fillColor: after ? '#c9daf8' : null,
+      fillColor: after ? sameCorpusExpectedFillColor(sampleIndex) : null,
       visibleText: 'metric-1',
       source,
       ...sameCorpusBiligRevisionReadbackFields(product, phase, sampleIndex),

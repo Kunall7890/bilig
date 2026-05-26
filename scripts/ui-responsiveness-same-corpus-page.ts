@@ -52,6 +52,7 @@ import {
   incumbentEditableWorkloadBlocker,
   measureProductWorkload,
   restoreProductWorkbookMutation,
+  sameCorpusFillColorExpectedColor,
   sameCorpusFillColorSwatchLabel,
   type ProductOperationSample,
 } from './ui-responsiveness-same-corpus-workload-runner.ts'
@@ -702,7 +703,11 @@ function intendedMutationTargetPayload(
     return { kind: 'formula', formula: `=${String(sampleIndex + 1)}+1` }
   }
   if (workload === 'fill-format-change') {
-    return { kind: 'fill-color', swatchLabel: sameCorpusFillColorSwatchLabel(sampleIndex) }
+    return {
+      kind: 'fill-color',
+      expectedFillColor: sameCorpusFillColorExpectedColor(sampleIndex),
+      swatchLabel: sameCorpusFillColorSwatchLabel(sampleIndex),
+    }
   }
   return { kind: 'cell-value', value: `${product}-same-corpus-${String(sampleIndex + 1)}` }
 }
