@@ -797,7 +797,7 @@ jobs:
       - name: Wait for github-ci success before release mutation
         if: steps.publish_release_alignment.outputs.current == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -996,7 +996,7 @@ jobs:
       - name: Wait for github-ci success before publishing release metadata
         if: steps.publish_release_alignment.outputs.current == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -1162,7 +1162,7 @@ jobs:
       - name: Create GitHub release
         if: steps.release_metadata_alignment.outputs.current == 'true' && steps.npm_provisioning.outputs.publish_allowed == 'true' && needs.plan_release.outputs.dry_run != 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ needs.plan_release.outputs.tag_name }}
         run: |
           set -euo pipefail
@@ -1195,7 +1195,7 @@ jobs:
       - name: Upload WorkPaper MCPB release asset
         if: steps.release_metadata_alignment.outputs.current == 'true' && steps.npm_provisioning.outputs.publish_allowed == 'true' && needs.plan_release.outputs.dry_run != 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ needs.plan_release.outputs.tag_name }}
           TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
         run: |
@@ -1310,7 +1310,7 @@ jobs:
       - name: Wait for github-ci success before publishing n8n node
         if: steps.n8n_package.outputs.already_published != 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
