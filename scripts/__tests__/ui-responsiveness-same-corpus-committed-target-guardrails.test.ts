@@ -315,6 +315,7 @@ function sameCorpusTargetScreenshot(product: 'bilig' | 'google-sheets', sampleIn
     workload: 'edit-visible-cell' as const,
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/${product}-sample-${String(sampleIndex + 1)}-${phase}.png`,
     screenshotSha256: screenshotSha256(sampleIndex, phase),
+    semanticReadback: sameCorpusVisibleReadback(product, phase === 'after' ? sameCorpusEditVisibleCellValue(sampleIndex) : 'metric-1'),
   }
 }
 

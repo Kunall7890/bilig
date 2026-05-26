@@ -162,6 +162,7 @@ export async function captureSameCorpusMutationTargetScreenshotProof(args: {
   readonly page: Page
   readonly sampleIndex: number
   readonly product: UiResponsivenessSameCorpusProduct
+  readonly semanticReadback: SameCorpusMutationTargetReadback
   readonly target: SameCorpusMutationTargetSelection
   readonly phase: SameCorpusMutationTargetScreenshotProof['phase']
   readonly screenshotPath: string
@@ -180,6 +181,7 @@ export async function captureSameCorpusMutationTargetScreenshotProof(args: {
     workload: args.workload,
     screenshotPath: screenshot.captured ? args.relativeScreenshotPath : null,
     screenshotSha256: screenshot.buffer ? screenshotBufferSha256(screenshot.buffer) : null,
+    semanticReadback: args.semanticReadback,
   }
 }
 

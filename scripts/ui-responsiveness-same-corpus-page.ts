@@ -34,6 +34,7 @@ import {
 import {
   readSameCorpusDeclaredMutationTargetSelection,
   readSameCorpusMutationTargetReadback,
+  readSameCorpusVisibleMutationTargetReadback,
   selectSameCorpusMutationTargetRange,
   type SameCorpusMutationTargetSelection,
 } from './ui-responsiveness-same-corpus-mutation-proof-page.ts'
@@ -548,6 +549,10 @@ async function measureProductSamples(
     }
     const mutationTargetBefore =
       mutationTarget === null ? null : await readSameCorpusMutationTargetReadback({ page, product, target: mutationTarget })
+    const mutationTargetVisibleBefore =
+      mutationTarget === null || mutatingWorkload === null
+        ? null
+        : await readSameCorpusVisibleMutationTargetReadback({ page, product, target: mutationTarget, workload: mutatingWorkload })
     const mutationTargetBeforeCommittedState =
       mutationTarget === null || mutationTargetBefore === null || mutatingWorkload === null
         ? null
@@ -561,7 +566,7 @@ async function measureProductSamples(
             workload: mutatingWorkload,
           })
     const mutationTargetBeforeScreenshot =
-      mutationTarget === null || mutatingWorkload === null
+      mutationTarget === null || mutatingWorkload === null || mutationTargetVisibleBefore === null
         ? null
         : await captureSameCorpusMutationTargetPhaseScreenshot({
             caseId,
@@ -570,6 +575,7 @@ async function measureProductSamples(
             phase: 'before',
             product,
             sampleIndex,
+            semanticReadback: mutationTargetVisibleBefore,
             target: mutationTarget,
             workload: mutatingWorkload,
           })

@@ -57,7 +57,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       workload: args.workload,
     })
     const visibleAfterSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
-    const afterScreenshot = await captureTargetScreenshot(args, 'after')
+    const afterScreenshot = await captureTargetScreenshot({ ...args, semanticReadback: visibleAfter }, 'after')
     const afterCommittedStateProof = await captureSameCorpusCommittedStatePhaseProof({
       expectedReadback: after,
       page: args.page,
@@ -87,7 +87,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       workload: args.workload,
     })
     const visibleRestoredSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
-    const restoredScreenshot = await captureTargetScreenshot(args, 'restored')
+    const restoredScreenshot = await captureTargetScreenshot({ ...args, semanticReadback: visibleRestored }, 'restored')
     const restoredCommittedStateProof = await captureSameCorpusCommittedStatePhaseProof({
       expectedReadback: restored,
       page: args.page,
@@ -153,6 +153,7 @@ export async function captureSameCorpusMutationTargetPhaseScreenshot(args: {
   readonly phase: SameCorpusMutationTargetScreenshotProof['phase']
   readonly product: UiResponsivenessSameCorpusProduct
   readonly sampleIndex: number
+  readonly semanticReadback: SameCorpusMutationTargetReadback
   readonly target: SameCorpusMutationTargetSelection
   readonly workload: UiResponsivenessSameCorpusMutatingWorkload
 }): Promise<SameCorpusMutationTargetScreenshotProof> {
@@ -164,6 +165,7 @@ export async function captureSameCorpusMutationTargetPhaseScreenshot(args: {
     product: args.product,
     relativeScreenshotPath: repoRelativePath(screenshotPath),
     sampleIndex: args.sampleIndex,
+    semanticReadback: args.semanticReadback,
     screenshotPath,
     target: args.target,
     workload: args.workload,

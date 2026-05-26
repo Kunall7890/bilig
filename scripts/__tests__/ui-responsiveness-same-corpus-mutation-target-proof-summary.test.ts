@@ -438,6 +438,7 @@ function targetScreenshot(
     workload: 'edit-visible-cell',
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/${product}-sample-${String(sampleIndex + 1)}-${phase}.png`,
     screenshotSha256: targetScreenshotSha256(sampleIndex, phase),
+    semanticReadback: readback(product, phase === 'after' ? sameCorpusEditVisibleCellValue(sampleIndex) : 'metric-1', sampleIndex, phase),
   }
 }
 

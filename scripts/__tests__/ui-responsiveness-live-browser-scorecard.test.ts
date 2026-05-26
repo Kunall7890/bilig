@@ -1403,6 +1403,7 @@ function sameCorpusMutationTargetScreenshot(
     workload,
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-${phase}.png`,
     screenshotSha256: sameCorpusMutationTargetScreenshotSha256(sampleIndex, phase),
+    semanticReadback: sameCorpusVisibleMutationReadback(product, workload, phase === 'after' ? 'after' : 'before', sampleIndex),
   }
 }
 

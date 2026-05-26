@@ -93,6 +93,9 @@ function parseSameCorpusMutationTargetScreenshotProof(
     workload: parseSameCorpusWorkload(stringField(value, 'workload')),
     screenshotPath: nullableStringField(value, 'screenshotPath'),
     screenshotSha256: nullableStringField(value, 'screenshotSha256'),
+    semanticReadback: Object.hasOwn(value, 'semanticReadback')
+      ? parseSameCorpusMutationTargetReadback(objectField(value, 'semanticReadback'))
+      : missingSameCorpusMutationTargetReadback(),
   }
 }
 

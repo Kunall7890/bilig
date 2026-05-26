@@ -7,6 +7,7 @@ import type {
   SameCorpusCaptureVerifiedCell,
   UiResponsivenessSameCorpusProduct,
 } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
+import { sameCorpusMutationTargetScreenshotSemanticInvalidReasons } from './ui-responsiveness-same-corpus-target-screenshot-proof.ts'
 import type { SameCorpusProductPixelGridProof } from './ui-responsiveness-same-corpus-proof.ts'
 import {
   sameCorpusMutationTargetCommittedStateInvalidReasons,
@@ -83,6 +84,7 @@ export interface SameCorpusMutationTargetScreenshotProof {
   readonly workload: UiResponsivenessSameCorpusWorkload
   readonly screenshotPath: string | null
   readonly screenshotSha256: string | null
+  readonly semanticReadback: SameCorpusMutationTargetReadback
 }
 
 export type SameCorpusMutationTargetIntendedPayload =
@@ -378,6 +380,7 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
     invalidReasons.push(...sameCorpusMutationTargetScreenshotPathInvalidReasons(proof.product, workload, sample, screenshotPath))
   }
   invalidReasons.push(...sameCorpusMutationTargetScreenshotSetInvalidReasons(proof.product, workload, sample))
+  invalidReasons.push(...sameCorpusMutationTargetScreenshotSemanticInvalidReasons(proof.product, workload, sample))
   invalidReasons.push(...sameCorpusMutationTargetReadbackSourceInvalidReasons(proof.product, workload, sample))
   invalidReasons.push(...sameCorpusMutationTargetVisibleReadbackInvalidReasons(proof.product, workload, sample))
   invalidReasons.push(...sameCorpusMutationTargetRevisionInvalidReasons(proof.product, workload, sample))

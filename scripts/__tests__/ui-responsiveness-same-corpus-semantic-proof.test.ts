@@ -1046,6 +1046,7 @@ function mutationTargetScreenshot(
     workload,
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${String(sampleIndex + 1)}-${phase}.png`,
     screenshotSha256: mutationTargetScreenshotSha256(sampleIndex, phase),
+    semanticReadback: mutationTargetVisibleReadback(product, workload, phase === 'after' ? 'after' : 'before', sampleIndex),
   }
 }
 
