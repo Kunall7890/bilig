@@ -1956,7 +1956,7 @@ the search or production bug you actually have:
 | `xlsx-populate` writes formulas but Node reads old values     | `npm install @bilig/xlsx-formula-recalc`                      | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json` updates the cached value.                                                |
 | ExcelJS formula cells need recalculated values                | `npm install exceljs @bilig/exceljs-formula-recalc`           | `npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json` mutates the workbook boundary.                                     |
 | An AI agent needs spreadsheet tools instead of UI automation  | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html) shows the write/recalc/read/persist loop. |
-| Formula workbook state belongs in a service or agent tool     | `npm install @bilig/workpaper`                                | `npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge` prints `verified: true`.                                               |
+| Formula workbook state belongs in a service or agent tool     | `npm install @bilig/workpaper`                                | `npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge` prints `verified: true`.                                                |
 | You need the lower-level runtime package and subpaths         | `npm install @bilig/headless`                                 | The examples below prove WorkPaper JSON, XLSX import/export, provenance, and package footprint.                                               |
 
 Use `@bilig/headless` when the spreadsheet is the business logic, but
@@ -4238,6 +4238,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | LangChain.js | Tool wrappers around the same WorkPaper contract. | [Vercel AI SDK and LangChain spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md) |
 | LangGraph.js | `ToolNode` with verified readback after mutation. | [LangGraph WorkPaper ToolNode](langgraph-workpaper-toolnode-spreadsheet.md) |
 | LlamaIndex.TS | `tool(fn, { parameters })` with a compact proof return. | [LlamaIndex.TS WorkPaper tool](llamaindex-workpaper-spreadsheet-tool.md) |
+| Open Multi-Agent | `connectMCPTools()` with the file-backed WorkPaper MCP server registered on an `Agent`. | [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md) |
 | Mastra | `createTool()` wrapper for formula-backed workbook edits. | [Mastra WorkPaper tool](mastra-workpaper-spreadsheet-tool.md) |
 | Cloudflare Agents | Agent tool calling a Node-compatible WorkPaper boundary. | [Cloudflare Agents WorkPaper tool](cloudflare-agents-workpaper-spreadsheet-tool.md) |
 | Runtime adapter authors | `@bilig/workbook` models, plan data, checks, schemas, command receipts, and strict proof. | [Workbook agent intent API](workbook-agent-intent-api.md) |
@@ -4282,6 +4283,7 @@ Do not claim success from a write call alone.
 - [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
 - [MCP client setup](mcp-client-setup.md)
 - [Open WebUI WorkPaper MCP setup](open-webui-workpaper-mcp.md)
+- [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
 - [Node framework WorkPaper adapters](node-framework-workpaper-adapters.md)
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
@@ -6838,6 +6840,99 @@ Ask the model to return a concrete proof instead of "the cell was updated":
 - [Agent framework workbook tools](agent-framework-workbook-tools.md)
 - [Why agents need workbook APIs](why-agents-need-workbook-apis.md)
 - [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+
+---
+
+## Open Multi-Agent WorkPaper MCP Example
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/open-multi-agent-workpaper-mcp.md
+
+# Open Multi-Agent WorkPaper MCP example
+
+Use this when an Open Multi-Agent workflow needs spreadsheet formulas but should
+not drive Excel, Google Sheets, or a browser UI. Bilig keeps the workbook as a
+file-backed WorkPaper and exposes only explicit MCP tools for reads, writes,
+formula validation, display-value readback, and JSON export.
+
+## Open Multi-Agent example
+
+The Open Multi-Agent integration example is under review here:
+
+- <https://github.com/open-multi-agent/open-multi-agent/pull/247>
+
+It uses Open Multi-Agent's `connectMCPTools()` helper to launch
+`bilig-workpaper-mcp` over stdio, registers the returned tools with an
+`Agent`, and asks the agent to:
+
+1. list the workbook sheets;
+2. read a calculated summary cell;
+3. set one input cell;
+4. read the calculated summary cell again;
+5. report whether the WorkPaper recalculated and persisted the edit.
+
+The example pins the Bilig package version in the command instead of exposing
+the npm package spec to the model.
+
+## Local command shape
+
+The MCP server command used by the example is:
+
+```sh
+npm exec --yes --package @bilig/workpaper@0.96.0 -- \
+  bilig-workpaper-mcp \
+  --workpaper ./pricing.workpaper.json \
+  --init-demo-workpaper \
+  --writable
+```
+
+For your own project, pin a current `@bilig/workpaper` version and keep the
+WorkPaper file under the application's normal data directory.
+
+## Agent contract
+
+Give the agent a narrow tool contract:
+
+```text
+Use Bilig WorkPaper MCP tools to inspect and edit formula workbooks. Always
+verify a write by reading the recalculated output cell afterward. Keep the
+final answer short and include the before and after values.
+```
+
+Do not let the model claim success from a write call alone. A valid result
+needs both mutation and readback evidence.
+
+## Proof shape
+
+Ask for a proof object like this:
+
+```json
+{
+  "editedCell": "Inputs!B3",
+  "before": {
+    "Summary!B3": "60000"
+  },
+  "after": {
+    "Summary!B3": "96000"
+  },
+  "persistedDocumentBytes": 1000,
+  "verified": true,
+  "limitations": [
+    "Pinned @bilig/workpaper version should be refreshed deliberately.",
+    "The demo WorkPaper is local to the process unless you choose a stable file path."
+  ]
+}
+```
+
+`verified` should only be true after the dependent formula output was read back
+from the WorkPaper after the input edit.
+
+## Related Bilig docs
+
+- [Agent framework workbook tools](agent-framework-workbook-tools.md)
+- [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
+- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
+- [Why agents need workbook APIs](why-agents-need-workbook-apis.md)
 
 ---
 

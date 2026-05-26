@@ -144,6 +144,8 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html
 - https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html
 - https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html
+- https://proompteng.github.io/bilig/open-multi-agent-workpaper-mcp.html
+- https://github.com/proompteng/bilig/blob/main/docs/open-multi-agent-workpaper-mcp.md
 - https://proompteng.github.io/bilig/copilotkit-workpaper-spreadsheet-action.html
 - https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html
 - https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html
@@ -522,6 +524,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html
   https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html
   https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html
+  https://proompteng.github.io/bilig/open-multi-agent-workpaper-mcp.html
   https://proompteng.github.io/bilig/copilotkit-workpaper-spreadsheet-action.html
   https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html
   https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html

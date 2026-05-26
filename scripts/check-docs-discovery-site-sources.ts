@@ -41,6 +41,7 @@ export const docsSiteSources = [
   ['dify-workpaper-formula-readback.html', 'dify-workpaper-formula-readback.md'],
   ['flowise-workpaper-formula-readback.html', 'flowise-workpaper-formula-readback.md'],
   ['open-webui-workpaper-mcp.html', 'open-webui-workpaper-mcp.md'],
+  ['open-multi-agent-workpaper-mcp.html', 'open-multi-agent-workpaper-mcp.md'],
   ['lobehub-workpaper-mcp.html', 'lobehub-workpaper-mcp.md'],
   ['anythingllm-workpaper-mcp.html', 'anythingllm-workpaper-mcp.md'],
   ['sim-workpaper-mcp.html', 'sim-workpaper-mcp.md'],

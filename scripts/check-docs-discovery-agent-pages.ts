@@ -2,6 +2,7 @@ export const agentFrameworkLlmsRequiredLinks = [
   'https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html',
+  'https://proompteng.github.io/bilig/open-multi-agent-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/copilotkit-workpaper-spreadsheet-action.html',
   'https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html',
@@ -30,6 +31,10 @@ export const agentFrameworkDocRequirements = [
       'examples/langgraph-workpaper-tool-state',
       'pnpm run smoke',
     ],
+  },
+  {
+    path: 'docs/open-multi-agent-workpaper-mcp.md',
+    includes: ['Open Multi-Agent WorkPaper MCP example', 'connectMCPTools()', '@bilig/workpaper@0.96.0', 'verified'],
   },
   {
     path: 'docs/copilotkit-workpaper-spreadsheet-action.md',
