@@ -1,4 +1,5 @@
 import {
+  appendWorkbookAgentCommandToBundle,
   toAppliedWorkbookCommandResult,
   type CodexDynamicToolCallResult,
   type CodexServerNotification,
@@ -7,13 +8,14 @@ import {
 } from '@bilig/agent-api'
 import { SpreadsheetEngine } from '@bilig/core'
 import { ValueTag } from '@bilig/protocol'
-import type { WorkbookAgentUiContext } from '@bilig/contracts'
+import type { WorkbookAgentRenderedCell, WorkbookAgentUiContext } from '@bilig/contracts'
 import { describe, expect, it, vi } from 'vitest'
 import { buildWorkbookSourceProjectionFromEngine } from '../zero/projection.js'
 import { applyWorkbookAgentCommandBundleWithUndoCapture } from '../zero/workbook-agent-apply.js'
 import type { ZeroSyncService } from '../zero/service.js'
 import type { WorkbookRuntime } from '../workbook-runtime/runtime-manager.js'
 import type { CodexAppServerClientOptions, CodexAppServerTransport } from './codex-app-server-client.js'
+import { workbookAgentRenderedVerificationRangesMatch } from './workbook-agent-dynamic-tool-handler.js'
 import { createWorkbookAgentService } from './workbook-agent-service.js'
 
 class FakeCodexTransport implements CodexAppServerTransport {
@@ -327,7 +329,158 @@ function renderedContext(input: { readonly value: string | null; readonly captur
   }
 }
 
+function renderedStringCell(address: string, value: string): WorkbookAgentRenderedCell {
+  return {
+    address,
+    input: value,
+    value: {
+      tag: ValueTag.String,
+      value,
+    },
+    formula: null,
+    displayFormat: value,
+    styleId: null,
+    numberFormatId: null,
+    style: null,
+  }
+}
+
+function renderedEmptyCell(address: string): WorkbookAgentRenderedCell {
+  return {
+    address,
+    input: null,
+    value: { tag: ValueTag.Empty },
+    formula: null,
+    displayFormat: null,
+    styleId: null,
+    numberFormatId: null,
+    style: null,
+  }
+}
+
+function renderedMultiRangeContext(input: {
+  readonly capturedRevision: number
+  readonly includeVisibleRange: boolean
+}): WorkbookAgentUiContext {
+  return {
+    selection: {
+      sheetName: 'Sheet1',
+      address: 'B2',
+      range: {
+        startAddress: 'B2',
+        endAddress: 'B2',
+      },
+    },
+    viewport: {
+      rowStart: 1,
+      rowEnd: 4,
+      colStart: 1,
+      colEnd: 4,
+    },
+    rendered: {
+      capturedAtUnixMs: Date.now(),
+      capturedRevision: input.capturedRevision,
+      batchId: input.capturedRevision,
+      visibleSceneProof: createVisibleSceneProof(input.capturedRevision),
+      selection: {
+        range: {
+          sheetName: 'Sheet1',
+          startAddress: 'B2',
+          endAddress: 'B2',
+        },
+        rowCount: 1,
+        columnCount: 1,
+        cellCount: 1,
+        truncated: false,
+        rows: [[renderedStringCell('B2', 'first')]],
+      },
+      visibleRange: input.includeVisibleRange
+        ? {
+            range: {
+              sheetName: 'Sheet1',
+              startAddress: 'B2',
+              endAddress: 'C3',
+            },
+            rowCount: 2,
+            columnCount: 2,
+            cellCount: 4,
+            truncated: false,
+            rows: [
+              [renderedStringCell('B2', 'first'), renderedEmptyCell('C2')],
+              [renderedEmptyCell('B3'), renderedStringCell('C3', 'second')],
+            ],
+          }
+        : null,
+    },
+  }
+}
+
 describe('workbook agent rendered freshness', () => {
+  it('requires every target range to be present before rendered mutation verification passes', async () => {
+    const engine = await createEngine()
+    engine.setCellValue('Sheet1', 'B2', 'first')
+    engine.setCellValue('Sheet1', 'C3', 'second')
+    const revisionRef = { current: 7 }
+    const zeroSyncService = createZeroSyncService(engine, { revisionRef })
+    const firstBundle = appendWorkbookAgentCommandToBundle({
+      previousBundle: null,
+      documentId: 'doc-1',
+      threadId: 'thr-rendered-freshness',
+      turnId: 'turn-1',
+      goalText: 'Write two separate cells',
+      baseRevision: 6,
+      context: null,
+      command: {
+        kind: 'writeRange',
+        sheetName: 'Sheet1',
+        startAddress: 'B2',
+        values: [['first']],
+      },
+      now: 100,
+    })
+    const bundle = appendWorkbookAgentCommandToBundle({
+      previousBundle: firstBundle,
+      documentId: 'doc-1',
+      threadId: 'thr-rendered-freshness',
+      turnId: 'turn-1',
+      goalText: 'Write two separate cells',
+      baseRevision: 6,
+      context: null,
+      command: {
+        kind: 'writeRange',
+        sheetName: 'Sheet1',
+        startAddress: 'C3',
+        values: [['second']],
+      },
+      now: 100,
+    })
+
+    await expect(
+      workbookAgentRenderedVerificationRangesMatch({
+        zeroSyncService,
+        documentId: 'doc-1',
+        latestContext: renderedMultiRangeContext({
+          capturedRevision: 7,
+          includeVisibleRange: false,
+        }),
+        bundle,
+        minRevision: 7,
+      }),
+    ).resolves.toBe(false)
+    await expect(
+      workbookAgentRenderedVerificationRangesMatch({
+        zeroSyncService,
+        documentId: 'doc-1',
+        latestContext: renderedMultiRangeContext({
+          capturedRevision: 7,
+          includeVisibleRange: true,
+        }),
+        bundle,
+        minRevision: 7,
+      }),
+    ).resolves.toBe(true)
+  })
+
   it('fails closed for rendered tools when the authoritative head revision cannot be loaded', async () => {
     const engine = await createEngine()
     const revisionRef = { current: 5 }

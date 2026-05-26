@@ -6,25 +6,49 @@ import {
   type WorkbookAgentExecutionRecord,
 } from '@bilig/agent-api'
 import type { WorkbookAgentThreadSnapshot } from '@bilig/contracts'
+import type { CellRangeRef } from '@bilig/protocol'
 import type { SessionIdentity } from '../http/session.js'
 import type { ZeroSyncService } from '../zero/service.js'
 import { handleWorkbookAgentToolCall, type WorkbookAgentStartWorkflowRequest } from './workbook-agent-tools.js'
 import { createWorkbookAgentServiceError } from '../workbook-agent-errors.js'
 import { cloneUiContext, type WorkbookAgentThreadState, toContextRef } from './workbook-agent-service-shared.js'
 import { inspectWorkbookRange, normalizeWorkbookAgentUiContext } from './workbook-agent-inspection.js'
+import { toWorkbookAgentRangeRef } from './workbook-agent-range-chunks.js'
 import { selectWorkbookRenderedReadback } from './workbook-agent-rendered-readback.js'
 import { shouldWaitForRenderedTool, waitForWorkbookAgentRenderedContext } from './workbook-agent-rendered-context-wait.js'
 import { assertWorkbookAgentToolCallOwnsTurn } from './workbook-agent-turn-lifecycle.js'
 
-function firstRenderedVerificationRange(bundle: ReturnType<typeof appendWorkbookAgentCommandToBundle>) {
-  const targetRange = bundle.affectedRanges.find((range) => range.role === 'target') ?? null
-  return targetRange
-    ? {
-        sheetName: targetRange.sheetName,
-        startAddress: targetRange.startAddress,
-        endAddress: targetRange.endAddress,
-      }
-    : null
+export function selectWorkbookAgentRenderedVerificationRanges(
+  bundle: ReturnType<typeof appendWorkbookAgentCommandToBundle>,
+): readonly CellRangeRef[] {
+  return bundle.affectedRanges.filter((range) => range.role === 'target').map((range) => toWorkbookAgentRangeRef(range))
+}
+
+export async function workbookAgentRenderedVerificationRangesMatch(input: {
+  readonly zeroSyncService: ZeroSyncService
+  readonly documentId: string
+  readonly latestContext: WorkbookAgentThreadState['durable']['context']
+  readonly bundle: ReturnType<typeof appendWorkbookAgentCommandToBundle>
+  readonly minRevision: number
+}): Promise<boolean> {
+  const targetRanges = selectWorkbookAgentRenderedVerificationRanges(input.bundle)
+  if (targetRanges.length === 0) {
+    return true
+  }
+  return await input.zeroSyncService.inspectWorkbook(input.documentId, (runtime) => {
+    const normalizedContext = normalizeWorkbookAgentUiContext(runtime, input.latestContext)
+    return targetRanges.every((targetRange) => {
+      const authoritativeReadback = inspectWorkbookRange(runtime, targetRange)
+      const authoritativeRows = authoritativeReadback.rows.filter(Array.isArray) as readonly (readonly unknown[])[]
+      const renderedReadback = selectWorkbookRenderedReadback({
+        renderedContext: normalizedContext?.rendered,
+        requestedRange: targetRange,
+        authoritativeRows,
+        minRevision: input.minRevision,
+      })
+      return renderedReadback.matched === true
+    })
+  })
 }
 
 export function createWorkbookAgentDynamicToolHandler(input: {
@@ -97,29 +121,6 @@ export function createWorkbookAgentDynamicToolHandler(input: {
       })
     }
 
-    const renderedVerificationRangeMatches = async (
-      latestContext: WorkbookAgentThreadState['durable']['context'],
-      bundle: ReturnType<typeof appendWorkbookAgentCommandToBundle>,
-      minRevision: number,
-    ): Promise<boolean> => {
-      const targetRange = firstRenderedVerificationRange(bundle)
-      if (!targetRange) {
-        return true
-      }
-      return await input.zeroSyncService.inspectWorkbook(sessionState.documentId, (runtime) => {
-        const normalizedContext = normalizeWorkbookAgentUiContext(runtime, latestContext)
-        const authoritativeReadback = inspectWorkbookRange(runtime, targetRange)
-        const authoritativeRows = authoritativeReadback.rows.filter(Array.isArray) as readonly (readonly unknown[])[]
-        const renderedReadback = selectWorkbookRenderedReadback({
-          renderedContext: normalizedContext?.rendered,
-          requestedRange: targetRange,
-          authoritativeRows,
-          minRevision,
-        })
-        return renderedReadback.matched === true
-      })
-    }
-
     requestContext = await refreshRequestContext()
     if (shouldWaitForRenderedTool(request.tool)) {
       const headRevision = await input.zeroSyncService.getWorkbookHeadRevision(sessionState.documentId)
@@ -177,7 +178,14 @@ export function createWorkbookAgentDynamicToolHandler(input: {
             if (executionRecord && requestContext !== null) {
               requestContext = await waitForRenderedContext(
                 executionRecord.appliedRevision,
-                async (latestContext) => await renderedVerificationRangeMatches(latestContext, bundle, executionRecord.appliedRevision),
+                async (latestContext) =>
+                  await workbookAgentRenderedVerificationRangesMatch({
+                    zeroSyncService: input.zeroSyncService,
+                    documentId: sessionState.documentId,
+                    latestContext,
+                    bundle,
+                    minRevision: executionRecord.appliedRevision,
+                  }),
               )
             }
             return {
