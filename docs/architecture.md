@@ -120,7 +120,8 @@ flowchart LR
     op does not match the planned command's concrete workbook op
   - strict command proof that rejects empty materialized ops unless the receipt
     carries command-bound no-op and command-effect evidence, and rejects missing or stale
-    resolved-ref evidence for ref-targeting commands
+    resolved-ref evidence for ref-targeting commands; low-level `op` commands
+    must prove the full planned op, not only the op kind
   - run-result descriptions that preserve command-bound no-op proof instead of
     collapsing already-satisfied commands into unprovable empty receipt data
   - failed run ledgers that preserve changed summaries and undo metadata after

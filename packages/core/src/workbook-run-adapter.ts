@@ -744,7 +744,7 @@ function noopEffectForCommand(command: WorkbookActionCommand): WorkbookActionInp
         ...(command.numberFormat !== undefined ? { numberFormat: command.numberFormat } : {}),
       })
     case 'op':
-      return normalizeWorkbookActionInput({ kind: command.kind, opKind: command.op.kind })
+      return normalizeWorkbookActionInput({ kind: command.kind, opKind: command.op.kind, op: command.op })
   }
 }
 

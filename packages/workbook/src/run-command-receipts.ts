@@ -273,7 +273,11 @@ function cloneCommandResolvedRefs(receipt: object, receiptIndex: number): Workbo
 }
 
 function inputMatches(left: unknown, right: unknown): boolean {
-  return JSON.stringify(normalizeWorkbookActionInput(left)) === JSON.stringify(normalizeWorkbookActionInput(right))
+  try {
+    return JSON.stringify(normalizeWorkbookActionInput(left)) === JSON.stringify(normalizeWorkbookActionInput(right))
+  } catch {
+    return false
+  }
 }
 
 function assertNoopEffectMatchesCommand(command: WorkbookActionCommand, proof: object, path: string): void {
@@ -301,8 +305,13 @@ function assertNoopEffectMatchesCommand(command: WorkbookActionCommand, proof: o
       throw new Error(`${path}.proof.effect.numberFormat must match command numberFormat`)
     }
   }
-  if (command.kind === 'op' && ownValue(effect, 'opKind') !== command.op.kind) {
-    throw new Error(`${path}.proof.effect.opKind must match command op kind`)
+  if (command.kind === 'op') {
+    if (ownValue(effect, 'opKind') !== command.op.kind) {
+      throw new Error(`${path}.proof.effect.opKind must match command op kind`)
+    }
+    if (!inputMatches(ownValue(effect, 'op'), command.op)) {
+      throw new Error(`${path}.proof.effect.op must match command op`)
+    }
   }
 }
 

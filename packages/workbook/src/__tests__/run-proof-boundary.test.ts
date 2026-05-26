@@ -35,6 +35,32 @@ function valueModel(): WorkbookModel<{ readonly output: ReturnType<typeof findRa
   })
 }
 
+const lowLevelSetCellValueOp = Object.freeze({
+  kind: 'setCellValue',
+  sheetName: 'Sheet1',
+  address: 'B2',
+  value: 12,
+} as const)
+
+function opModel(): WorkbookModel<{ readonly output: ReturnType<typeof findRange> }> {
+  return defineModel({
+    name: 'run-op-model',
+
+    find(workbook) {
+      return {
+        output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+      }
+    },
+
+    actions: {
+      write({ refs, workbook }) {
+        workbook.addOp(lowLevelSetCellValueOp, { target: refs.output })
+        workbook.check.valueEquals(refs.output, 12)
+      },
+    },
+  })
+}
+
 function proofModel(): WorkbookModel<{ readonly result: ReturnType<typeof findRange> }> {
   return defineModel({
     name: 'run-proof-model',
@@ -572,6 +598,136 @@ describe('@bilig/workbook run proof boundary', () => {
     })
     expect(Object.isFrozen(receipt?.noop)).toBe(true)
     expect(Object.isFrozen(receipt?.noop?.proof)).toBe(true)
+  })
+
+  it('strict mode accepts low-level op no-op proof only when bound to the full op', async () => {
+    const model = opModel()
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => {
+          const receipt = commandReceipt(plan)
+          return {
+            status: 'applied',
+            planId: workbookPlanId(plan),
+            baseRevision: 7,
+            revision: 7,
+            previewOps: [],
+            appliedOps: [],
+            commandReceipts: [
+              {
+                ...receipt,
+                previewOps: [],
+                appliedOps: [],
+                noop: {
+                  reason: 'already_satisfied',
+                  proof: {
+                    source: 'test',
+                    evidence: 'adapter_zero_ops',
+                    commandKind: receipt.commandKind,
+                    commandDigest: receipt.commandDigest,
+                    opCount: 0,
+                    effect: {
+                      kind: 'op',
+                      opKind: 'setCellValue',
+                      op: lowLevelSetCellValueOp,
+                    },
+                  },
+                },
+              },
+            ],
+          }
+        },
+        read: (targets) => [{ target: first(targets), value: 12 }],
+        verifyChecks: (checks) => checks.map((check) => ({ ...check, status: 'passed', proof: { source: 'test' } })),
+      },
+      undefined,
+      { strict: true },
+    )
+
+    expect(result).toMatchObject({
+      status: 'done',
+      apply: {
+        matched: true,
+        planId: expect.any(String),
+        commandReceipts: [
+          {
+            commandKind: 'op',
+            noop: {
+              proof: {
+                effect: {
+                  kind: 'op',
+                  opKind: 'setCellValue',
+                  op: lowLevelSetCellValueOp,
+                },
+              },
+            },
+          },
+        ],
+      },
+      changed: [],
+    })
+  })
+
+  it('rejects low-level op no-op proof that only proves the op kind', async () => {
+    const model = opModel()
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => {
+          const receipt = commandReceipt(plan)
+          return {
+            status: 'applied',
+            planId: workbookPlanId(plan),
+            baseRevision: 7,
+            revision: 7,
+            previewOps: [],
+            appliedOps: [],
+            commandReceipts: [
+              {
+                ...receipt,
+                previewOps: [],
+                appliedOps: [],
+                noop: {
+                  reason: 'already_satisfied',
+                  proof: {
+                    source: 'test',
+                    evidence: 'adapter_zero_ops',
+                    commandKind: receipt.commandKind,
+                    commandDigest: receipt.commandDigest,
+                    opCount: 0,
+                    effect: {
+                      kind: 'op',
+                      opKind: 'setCellValue',
+                    },
+                  },
+                },
+              },
+            ],
+          }
+        },
+        read: (targets) => [{ target: first(targets), value: 12 }],
+        verifyChecks: (checks) => checks.map((check) => ({ ...check, status: 'passed', proof: { source: 'test' } })),
+      },
+      undefined,
+      { strict: true },
+    )
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message:
+            'Workbook action run-op-model.write returned invalid command receipts: commandReceipts[0].noop.proof.effect.op must match command op',
+        },
+      ],
+      changed: [],
+    })
   })
 
   it('rejects no-op proof that is not bound to the planned command', async () => {

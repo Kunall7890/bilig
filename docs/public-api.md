@@ -825,7 +825,8 @@ with high-level commands fails closed unless those command receipts are present.
 With `strict: true`, each command receipt must also prove concrete applied ops
 or command-bound no-op proof with `source`, `evidence`, `opCount: 0`,
 `commandKind`, `commandDigest`, and command-effect `effect` data; ref-targeting
-commands must also prove resolved concrete refs. Range refs must match the
+commands must also prove resolved concrete refs, and low-level `op` commands
+must prove the full planned op, not only the op kind. Range refs must match the
 planned range exactly, and symbolic refs must materialize to concrete ranges
 before their ops are accepted.
 Strict runs also require
