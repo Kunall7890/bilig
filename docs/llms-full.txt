@@ -59,8 +59,8 @@ npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xls
 
 Claude Desktop users can install the released MCPB bundle from:
 
-- https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb
-- https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb.sha256
+- https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb
+- https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb.sha256
 
 ## Direct TypeScript
 
@@ -765,7 +765,7 @@ Agent tools that support skill manifests can start from
 [`skill.md`](docs/skill.md) or the well-known index at
 [`docs/.well-known/agent-skills/index.json`](docs/.well-known/agent-skills/index.json).
 Claude Desktop users can also install the released MCPB bundle directly:
-<https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb>.
+<https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb>.
 If you need a copy-paste eval for another tool host, use the
 [agent workbook challenge](docs/agent-workbook-challenge.md): one input edit,
 one dependent formula readback, one serialized restore, and a `verified: true`
@@ -2344,7 +2344,7 @@ For setup details, use the
 and
 [Claude Desktop MCPB guide](https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md).
 The released Claude Desktop bundle is published at
-<https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb>.
+<https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb>.
 Smithery users can install the hosted demo with
 `npx -y smithery mcp add gkonushev/bilig-workpaper`.
 
@@ -2660,7 +2660,7 @@ When the sanity check passes, these are the next useful pages.
   [MCP directory page](https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-server-directory.md),
   [MCP client setup](https://github.com/proompteng/bilig/blob/main/docs/mcp-client-setup.md),
   and [Claude Desktop MCPB bundle](https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md)
-  ([download](https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb)).
+  ([download](https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb)).
 - Choosing the stack:
   [screenshot automation boundary](https://github.com/proompteng/bilig/blob/main/docs/stop-driving-spreadsheets-with-screenshots.md),
   [Node spreadsheet formula engine](https://github.com/proompteng/bilig/blob/main/docs/node-spreadsheet-formula-engine.md),
@@ -2805,8 +2805,8 @@ file.
 Claude Desktop users can skip manual JSON config by installing the released
 MCPB bundle:
 
-- https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb
-- https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb.sha256
+- https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb
+- https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb.sha256
 
 ## Direct TypeScript entrypoint
 

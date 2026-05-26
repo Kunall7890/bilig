@@ -67,7 +67,6 @@
       "name": "workbook-agent-intent-api",
       "type": "npm-library",
       "package": "@bilig/workbook",
-      "package_version": "0.108.0",
       "runtime": "Node.js >=22",
       "install": "npm install @bilig/workbook",
       "docs": "https://proompteng.github.io/bilig/workbook-agent-intent-api.html",
@@ -91,9 +90,8 @@
     {
       "name": "claude-desktop-mcpb",
       "type": "mcpb-desktop-extension",
-      "package_version": "0.108.0",
-      "download_url": "https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb",
-      "checksum_url": "https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb.sha256",
+      "download_url": "https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb",
+      "checksum_url": "https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb.sha256",
       "docs": "https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html"
     },
     {

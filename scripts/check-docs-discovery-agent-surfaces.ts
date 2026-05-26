@@ -57,7 +57,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   } = input.context
   const { headlessSpreadsheetEngineNodeServicesAgents, spreadsheetMcpServerComparison } = input
   const workpaperPackageSpec = '@bilig/workpaper@latest'
-  const mcpbReleaseAssetUrl = `https://github.com/proompteng/bilig/releases/download/libraries-v${headlessPackageVersion}/bilig-workpaper.mcpb`
+  const mcpbReleaseAssetUrl = 'https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb'
   const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
   const officialRegistryLatestMarkedVersion = '0.86.1'
   const officialRegistryLatestMarkedUpdatedAt = '2026-05-24T13:47:46.777553Z'
@@ -444,7 +444,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'Cline MCP Marketplace           | Submitted for maintainer review; issue body refreshed on May 19',
     'The Docker MCP Registry pull request was refreshed on May 19, 2026',
     '`a1ecdd52cda3d54e0254afce129a9012c5027826`',
-    `the PR body\nnow points reviewers at \`${workpaperPackageSpec}\` and \`libraries-v${headlessPackageVersion}\``,
+    `the PR body\nnow points reviewers at \`${workpaperPackageSpec}\` and the latest release MCPB asset`,
     'The Goose MCP catalog pull request was closed on May 19, 2026',
     'Do not resubmit there until maintainers reopen that path',
     'The mcp.so and Cline MCP Marketplace submissions were refreshed on May 19, 2026',

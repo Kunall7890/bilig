@@ -469,7 +469,7 @@ For setup details, use the
 and
 [Claude Desktop MCPB guide](https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md).
 The released Claude Desktop bundle is published at
-<https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb>.
+<https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb>.
 Smithery users can install the hosted demo with
 `npx -y smithery mcp add gkonushev/bilig-workpaper`.
 
@@ -785,7 +785,7 @@ When the sanity check passes, these are the next useful pages.
   [MCP directory page](https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-server-directory.md),
   [MCP client setup](https://github.com/proompteng/bilig/blob/main/docs/mcp-client-setup.md),
   and [Claude Desktop MCPB bundle](https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md)
-  ([download](https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb)).
+  ([download](https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb)).
 - Choosing the stack:
   [screenshot automation boundary](https://github.com/proompteng/bilig/blob/main/docs/stop-driving-spreadsheets-with-screenshots.md),
   [Node spreadsheet formula engine](https://github.com/proompteng/bilig/blob/main/docs/node-spreadsheet-formula-engine.md),

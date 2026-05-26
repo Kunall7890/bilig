@@ -13,13 +13,11 @@ const remoteMcpServerCard = 'https://bilig.proompteng.ai/.well-known/mcp/server-
 const repositoryUrl = 'https://github.com/proompteng/bilig'
 const skillName = 'bilig-workpaper'
 const headlessPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'))
-const workbookPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'workbook', 'package.json'), 'utf8'))
 const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
 const workpaperPackageSpec = '@bilig/workpaper@latest'
 const workbookPackageSpec = '@bilig/workbook@latest'
 const unscopedWorkpaperPackageSpec = 'bilig-workpaper@latest'
-const mcpbReleaseTag = `libraries-v${headlessPackageVersion}`
-const mcpbReleaseAssetUrl = `${repositoryUrl}/releases/download/${mcpbReleaseTag}/bilig-workpaper.mcpb`
+const mcpbReleaseAssetUrl = `${repositoryUrl}/releases/latest/download/bilig-workpaper.mcpb`
 const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
 const checkOnly = process.argv.includes('--check')
 
@@ -706,7 +704,6 @@ function agentJsonManifest(): string {
           name: 'workbook-agent-intent-api',
           type: 'npm-library',
           package: '@bilig/workbook',
-          package_version: workbookPackageVersion,
           runtime: 'Node.js >=22',
           install: 'npm install @bilig/workbook',
           docs: `${siteRoot}/workbook-agent-intent-api.html`,
@@ -730,7 +727,6 @@ function agentJsonManifest(): string {
         {
           name: 'claude-desktop-mcpb',
           type: 'mcpb-desktop-extension',
-          package_version: headlessPackageVersion,
           download_url: mcpbReleaseAssetUrl,
           checksum_url: mcpbReleaseChecksumUrl,
           docs: `${siteRoot}/claude-desktop-mcpb-workpaper.html`,
@@ -927,7 +923,8 @@ const staticReferenceMismatches = await syncVersionedStaticReferences({
   checkOnly,
   headlessPackageSpec,
   headlessPackageVersion,
-  mcpbReleaseTag,
+  mcpbReleaseAssetUrl,
+  mcpbReleaseChecksumUrl,
   repoRoot,
   workbookPackageSpec,
   workpaperPackageSpec,

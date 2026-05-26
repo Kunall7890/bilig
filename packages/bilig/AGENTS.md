@@ -78,8 +78,8 @@ file.
 Claude Desktop users can skip manual JSON config by installing the released
 MCPB bundle:
 
-- https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb
-- https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb.sha256
+- https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb
+- https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb.sha256
 
 ## Direct TypeScript entrypoint
 

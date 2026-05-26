@@ -184,13 +184,13 @@ so you know whether the issue is the client config or the npm server command.
 If you prefer a Claude Desktop bundle, download the released MCPB asset:
 
 ```text
-https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb
+https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb
 ```
 
 The checksum is published beside it:
 
 ```text
-https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb.sha256
+https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb.sha256
 ```
 
 You can also reproduce the same MCPB package from this repository:

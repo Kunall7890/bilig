@@ -1,22 +1,4 @@
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const headlessPackageVersion = readHeadlessPackageVersion()
-const mcpbReleaseAssetUrl = `https://github.com/proompteng/bilig/releases/download/libraries-v${headlessPackageVersion}/bilig-workpaper.mcpb`
-
-function readHeadlessPackageVersion(): string {
-  const parsed: unknown = JSON.parse(readFileSync(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'))
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new Error('packages/headless/package.json must be an object')
-  }
-  const version = Reflect.get(parsed, 'version')
-  if (typeof version !== 'string') {
-    throw new Error('packages/headless/package.json must define a string version')
-  }
-  return version
-}
+const mcpbReleaseAssetUrl = 'https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb'
 
 export const homepageRequiredLinks = [
   'https://context7.com/proompteng/bilig',

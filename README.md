@@ -496,7 +496,7 @@ Agent tools that support skill manifests can start from
 [`skill.md`](docs/skill.md) or the well-known index at
 [`docs/.well-known/agent-skills/index.json`](docs/.well-known/agent-skills/index.json).
 Claude Desktop users can also install the released MCPB bundle directly:
-<https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb>.
+<https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb>.
 If you need a copy-paste eval for another tool host, use the
 [agent workbook challenge](docs/agent-workbook-challenge.md): one input edit,
 one dependent formula readback, one serialized restore, and a `verified: true`

@@ -6,7 +6,8 @@ interface StaticReferenceSyncOptions {
   readonly checkOnly: boolean
   readonly headlessPackageSpec: string
   readonly headlessPackageVersion: string
-  readonly mcpbReleaseTag: string
+  readonly mcpbReleaseAssetUrl: string
+  readonly mcpbReleaseChecksumUrl: string
   readonly repoRoot: string
   readonly workbookPackageSpec: string
   readonly workpaperPackageSpec: string
@@ -47,7 +48,14 @@ async function collectVersionedStaticReferenceFiles(repoRoot: string, relativePa
 
 function syncVersionedStaticReferenceLine(line: string, options: StaticReferenceSyncOptions): string {
   const stableSemverPattern = String.raw`\d+\.\d+\.\d+`
-  const { headlessPackageSpec, headlessPackageVersion, mcpbReleaseTag, workbookPackageSpec, workpaperPackageSpec } = options
+  const {
+    headlessPackageSpec,
+    headlessPackageVersion,
+    mcpbReleaseAssetUrl,
+    mcpbReleaseChecksumUrl,
+    workbookPackageSpec,
+    workpaperPackageSpec,
+  } = options
   return line
     .replace(new RegExp(`(npm exec --package )@bilig/headless@${stableSemverPattern}`, 'g'), `$1${headlessPackageSpec}`)
     .replace(new RegExp(`(npm exec --package )@bilig/workpaper@${stableSemverPattern}`, 'g'), `$1${workpaperPackageSpec}`)
@@ -80,7 +88,17 @@ function syncVersionedStaticReferenceLine(line: string, options: StaticReference
     )
     .replace(new RegExp(`(now points reviewers at \`)@bilig/headless@${stableSemverPattern}(\`)`, 'g'), `$1${workpaperPackageSpec}$2`)
     .replace(new RegExp(`(now points reviewers at \`)@bilig/workpaper@${stableSemverPattern}(\`)`, 'g'), `$1${workpaperPackageSpec}$2`)
-    .replace(new RegExp(`libraries-v${stableSemverPattern}`, 'g'), mcpbReleaseTag)
+    .replace(
+      new RegExp(
+        `https://github\\.com/proompteng/bilig/releases/download/libraries-v${stableSemverPattern}/bilig-workpaper\\.mcpb\\.sha256`,
+        'g',
+      ),
+      mcpbReleaseChecksumUrl,
+    )
+    .replace(
+      new RegExp(`https://github\\.com/proompteng/bilig/releases/download/libraries-v${stableSemverPattern}/bilig-workpaper\\.mcpb`, 'g'),
+      mcpbReleaseAssetUrl,
+    )
 }
 
 function syncVersionedStaticReferenceContent(content: string, options: StaticReferenceSyncOptions): string {

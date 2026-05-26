@@ -1,6 +1,7 @@
 # @bilig/xlsx-formula-recalc
 
-Scoped XLSX formula recalculation package for Node.js without Excel, LibreOffice, or browser automation.
+Recalculate XLSX formula values in Node.js after SheetJS, ExcelJS, or
+xlsx-populate edits without Excel, LibreOffice, or browser automation.
 
 This package is the canonical scoped Bilig entrypoint for the high-friction Node
 XLSX workflow:

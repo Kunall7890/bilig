@@ -84,7 +84,7 @@ const fileBackedMcpArgsNeedles = [
   `"--package",\n      "${workpaperPackageSpec}",\n      "--",\n      "bilig-workpaper-mcp",\n      "--workpaper",\n      "./pricing.workpaper.json",\n      "--init-demo-workpaper",\n      "--writable"`,
   `"--package",\n        "${workpaperPackageSpec}",\n        "--",\n        "bilig-workpaper-mcp",\n        "--workpaper",\n        "./pricing.workpaper.json",\n        "--init-demo-workpaper",\n        "--writable"`,
 ] as const
-const mcpbReleaseAssetUrl = `https://github.com/proompteng/bilig/releases/download/libraries-v${headlessPackageVersion}/bilig-workpaper.mcpb`
+const mcpbReleaseAssetUrl = 'https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb'
 const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
 const xlsxRecalcCli = 'npx --package @bilig/xlsx-formula-recalc xlsx-recalc'
 const liveSheetjsRecalcCli = 'npx --package @bilig/sheetjs-formula-recalc sheetjs-recalc'
@@ -711,7 +711,6 @@ if (
       capability !== null &&
       Reflect.get(capability, 'name') === 'claude-desktop-mcpb' &&
       Reflect.get(capability, 'type') === 'mcpb-desktop-extension' &&
-      Reflect.get(capability, 'package_version') === headlessPackageVersion &&
       Reflect.get(capability, 'download_url') === mcpbReleaseAssetUrl &&
       Reflect.get(capability, 'checksum_url') === mcpbReleaseChecksumUrl,
   )

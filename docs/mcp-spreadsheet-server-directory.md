@@ -125,7 +125,7 @@ verification pass and should stay closed unless the live listing regresses.
 The Docker MCP Registry pull request was refreshed on May 19, 2026 by updating
 the existing PR body, not by opening a duplicate submission. Docker still points
 at Bilig source commit `a1ecdd52cda3d54e0254afce129a9012c5027826`; the PR body
-now points reviewers at `@bilig/workpaper@latest` and `libraries-v0.108.0`.
+now points reviewers at `@bilig/workpaper@latest` and the latest release MCPB asset.
 
 The Goose MCP catalog pull request was closed on May 19, 2026 because Goose is
 paused on adding new MCP servers while it works on a more scalable extensions

@@ -46,8 +46,8 @@ npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xls
 
 Claude Desktop users can install the released MCPB bundle from:
 
-- https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb
-- https://github.com/proompteng/bilig/releases/download/libraries-v0.108.0/bilig-workpaper.mcpb.sha256
+- https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb
+- https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb.sha256
 
 ## Direct TypeScript
 

@@ -1,17 +1,22 @@
 {
   "name": "xlsx-formula-recalc",
   "version": "0.108.0",
-  "description": "Recalculate XLSX formulas in Node.js without Excel, LibreOffice, or browser automation.",
+  "description": "Recalculate XLSX formula values in Node.js after SheetJS, ExcelJS, or xlsx-populate edits without Excel, LibreOffice, or browser automation.",
   "keywords": [
     "excel",
     "excel-formulas",
     "exceljs",
     "formula-engine",
     "formula-recalculation",
+    "formula-result-not-updating",
+    "libreoffice-alternative",
     "node",
+    "recalculate-xlsx",
     "sheetjs",
+    "sheetjs-recalc",
     "spreadsheet",
     "spreadsheet-formulas",
+    "stale-xlsx-cache",
     "workbook",
     "workpaper",
     "xlsx",
@@ -22,7 +27,7 @@
     "xlsx-recalc",
     "xlsx-recalculation"
   ],
-  "homepage": "https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html",
+  "homepage": "https://proompteng.github.io/bilig/eval-xlsx-recalc.html",
   "bugs": {
     "url": "https://github.com/proompteng/bilig/issues"
   },

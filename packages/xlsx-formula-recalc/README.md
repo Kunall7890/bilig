@@ -1,6 +1,7 @@
 # xlsx-formula-recalc
 
-Recalculate XLSX formulas in Node.js without opening Excel, LibreOffice, or a browser.
+Recalculate XLSX formula values in Node.js after SheetJS, ExcelJS, or
+xlsx-populate edits without opening Excel, LibreOffice, or a browser.
 
 This package is a narrow wrapper around Bilig WorkPaper for the high-friction Node XLSX workflow:
 
