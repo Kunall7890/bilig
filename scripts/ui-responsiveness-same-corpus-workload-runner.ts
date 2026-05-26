@@ -3,7 +3,7 @@ import type { Locator, Page } from '@playwright/test'
 import type { CaptureArgs } from './ui-responsiveness-same-corpus-args.ts'
 import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import type { SameCorpusOperationResponseProof } from './ui-responsiveness-same-corpus-scorecard-types.ts'
-import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
+import { uiSameCorpusWorkloadMutatesWorkbook, type UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 import { collectFrameIntervals, settleFrames, waitForNextFrame } from './ui-responsiveness-same-corpus-page-utils.ts'
 
 export interface ProductOperationSample {
@@ -158,7 +158,7 @@ export function sameCorpusWorkbookRestoreOperations(
 }
 
 export function sameCorpusWorkloadMutatesWorkbook(workload: UiResponsivenessSameCorpusWorkload): workload is MutatingSameCorpusWorkload {
-  return workload === 'edit-visible-cell' || workload === 'formula-edit' || workload === 'fill-format-change'
+  return uiSameCorpusWorkloadMutatesWorkbook(workload)
 }
 
 function primaryShortcut(key: string, platform: NodeJS.Platform): string {

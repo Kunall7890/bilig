@@ -8,6 +8,7 @@ import type {
   UiResponsivenessSameCorpusProduct,
 } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import type { SameCorpusProductPixelGridProof } from './ui-responsiveness-same-corpus-proof.ts'
+import { uiSameCorpusWorkloadMutatesWorkbook, type UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export interface SameCorpusSemanticUiProof {
   readonly captured: boolean
@@ -28,7 +29,30 @@ export interface SameCorpusProductSemanticUiProof {
   readonly authoritativeRenderRevision: string | null
   readonly visibleRenderRevision: string | null
   readonly screenshotSha256: string | null
+  readonly mutationTargetProofs: readonly SameCorpusMutationTargetProof[]
   readonly evidence: readonly string[]
+}
+
+export interface SameCorpusMutationTargetProof {
+  readonly sampleIndex: number
+  readonly workload: UiResponsivenessSameCorpusWorkload
+  readonly intendedOperation: 'edit-visible-cell' | 'formula-edit' | 'fill-format-change'
+  readonly sheetName: string
+  readonly targetRange: string
+  readonly before: SameCorpusMutationTargetReadback
+  readonly after: SameCorpusMutationTargetReadback
+  readonly restored: SameCorpusMutationTargetReadback
+  readonly authoritativeReadbackRevision: string | null
+  readonly visibleRenderRevision: string | null
+  readonly screenshotSha256: string | null
+  readonly undoRestoreStatus: 'verified' | 'missing' | 'failed'
+}
+
+export interface SameCorpusMutationTargetReadback {
+  readonly value: string | null
+  readonly formula: string | null
+  readonly fillColor: string | null
+  readonly visibleText: string | null
 }
 
 export type SameCorpusProductSemanticUiProofEvidenceStatus = 'current-contract' | 'missing' | 'invalid'
@@ -49,8 +73,11 @@ export interface SameCorpusCapturedProductScreenshot {
   readonly captured: boolean
 }
 
-export function validateSameCorpusProductSemanticUiProof(proof: SameCorpusProductSemanticUiProof): SameCorpusProductSemanticUiProofVerdict {
-  const invalidReasons = sameCorpusProductSemanticUiInvalidReasons(proof)
+export function validateSameCorpusProductSemanticUiProof(
+  proof: SameCorpusProductSemanticUiProof,
+  options: { readonly workload?: UiResponsivenessSameCorpusWorkload; readonly sampleCount?: number } = {},
+): SameCorpusProductSemanticUiProofVerdict {
+  const invalidReasons = sameCorpusProductSemanticUiInvalidReasons(proof, options)
   const acceptedForCurrentScorecard = invalidReasons.length === 0
   return {
     product: proof.product,
@@ -72,6 +99,7 @@ export function missingSemanticUiProof(product: UiResponsivenessSameCorpusProduc
     authoritativeRenderRevision: null,
     visibleRenderRevision: null,
     screenshotSha256: null,
+    mutationTargetProofs: [],
     evidence: ['semantic UI proof missing'],
   }
 }
@@ -82,6 +110,8 @@ export async function readProductSemanticUiProof(args: {
   readonly product: UiResponsivenessSameCorpusProduct
   readonly screenshot: SameCorpusCapturedProductScreenshot
   readonly pixelGridProof: SameCorpusProductPixelGridProof
+  readonly workload: UiResponsivenessSameCorpusWorkload
+  readonly sampleCount: number
 }): Promise<SameCorpusProductSemanticUiProof> {
   const selectedRange = await readVisibleSelectedRange(args.page, args.product)
   const evidence = sameCorpusSemanticUiEvidence(args.product, args.pixelGridProof, args.corpusVerification, selectedRange)
@@ -103,13 +133,17 @@ export async function readProductSemanticUiProof(args: {
     authoritativeRenderRevision: sameCorpusEvidenceMap(args.pixelGridProof.evidence).get('gridAuthoritativeRevision') ?? null,
     visibleRenderRevision: sameCorpusEvidenceMap(args.pixelGridProof.evidence).get('visibleRenderRevision') ?? null,
     screenshotSha256,
+    mutationTargetProofs: [],
     evidence,
   }
-  const verdict = validateSameCorpusProductSemanticUiProof(proof)
+  const verdict = validateSameCorpusProductSemanticUiProof(proof, { workload: args.workload, sampleCount: args.sampleCount })
   return verdict.acceptedForCurrentScorecard ? proof : { ...proof, captured: false }
 }
 
-function sameCorpusProductSemanticUiInvalidReasons(proof: SameCorpusProductSemanticUiProof): string[] {
+function sameCorpusProductSemanticUiInvalidReasons(
+  proof: SameCorpusProductSemanticUiProof,
+  options: { readonly workload?: UiResponsivenessSameCorpusWorkload; readonly sampleCount?: number },
+): string[] {
   const invalidReasons: string[] = []
   if (!proof.captured) {
     invalidReasons.push('semantic UI proof is not marked captured')
@@ -148,7 +182,84 @@ function sameCorpusProductSemanticUiInvalidReasons(proof: SameCorpusProductSeman
   } else if (proof.method !== 'excel-web-visible-semantic-readback') {
     invalidReasons.push('Excel Web semantic UI proof method is not excel-web-visible-semantic-readback')
   }
+  if (invalidReasons.length === 0 && options.workload && uiSameCorpusWorkloadMutatesWorkbook(options.workload)) {
+    invalidReasons.push(...sameCorpusMutationTargetProofInvalidReasons(proof, options.workload, options.sampleCount ?? 0))
+  }
   return [...new Set(invalidReasons)]
+}
+
+function sameCorpusMutationTargetProofInvalidReasons(
+  proof: SameCorpusProductSemanticUiProof,
+  workload: UiResponsivenessSameCorpusWorkload,
+  sampleCount: number,
+): string[] {
+  const invalidReasons: string[] = []
+  const mutationProofs = proof.mutationTargetProofs
+  if (sampleCount <= 0) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing sample count`)
+  }
+  if (mutationProofs.length < sampleCount) {
+    invalidReasons.push(
+      `semantic UI mutation target proof for ${workload} covers ${String(mutationProofs.length)}/${String(sampleCount)} samples`,
+    )
+  }
+  const seenSamples = new Set<number>()
+  for (const sample of mutationProofs) {
+    if (!Number.isInteger(sample.sampleIndex) || sample.sampleIndex < 0 || sample.sampleIndex >= sampleCount) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} has invalid sample index`)
+    } else if (seenSamples.has(sample.sampleIndex)) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} duplicates sample ${String(sample.sampleIndex + 1)}`)
+    } else {
+      seenSamples.add(sample.sampleIndex)
+    }
+    if (sample.workload !== workload || sample.intendedOperation !== workload) {
+      invalidReasons.push(`semantic UI mutation target proof operation does not match ${workload}`)
+    }
+    if (sample.sheetName.trim().length === 0 || sample.sheetName !== proof.sheetName) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing the target sheet`)
+    }
+    if (sample.targetRange.trim().length === 0) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing the target range`)
+    }
+    if (!sameCorpusReadbacksDiffer(sample.before, sample.after)) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} did not prove a before/after target change`)
+    }
+    if (!sameCorpusReadbacksEqual(sample.before, sample.restored)) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} did not prove undo restore`)
+    }
+    if (sample.undoRestoreStatus !== 'verified') {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} has unverified undo restore status`)
+    }
+    if (sample.authoritativeReadbackRevision === null || sample.authoritativeReadbackRevision.trim().length === 0) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing authoritative readback revision`)
+    }
+    if (sample.visibleRenderRevision === null || sample.visibleRenderRevision.trim().length === 0) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing visible render revision`)
+    }
+    if (sample.screenshotSha256 === null || !/^[a-f0-9]{64}$/u.test(sample.screenshotSha256)) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing screenshot SHA256`)
+    }
+    if (workload === 'formula-edit' && (sample.after.formula === null || !sample.after.formula.trim().startsWith('='))) {
+      invalidReasons.push('semantic UI mutation target proof for formula-edit is missing the edited formula')
+    }
+    if (workload === 'fill-format-change' && sample.before.fillColor === sample.after.fillColor) {
+      invalidReasons.push('semantic UI mutation target proof for fill-format-change did not prove a fill color change')
+    }
+  }
+  return invalidReasons
+}
+
+function sameCorpusReadbacksEqual(left: SameCorpusMutationTargetReadback, right: SameCorpusMutationTargetReadback): boolean {
+  return (
+    left.value === right.value &&
+    left.formula === right.formula &&
+    left.fillColor === right.fillColor &&
+    left.visibleText === right.visibleText
+  )
+}
+
+function sameCorpusReadbacksDiffer(left: SameCorpusMutationTargetReadback, right: SameCorpusMutationTargetReadback): boolean {
+  return !sameCorpusReadbacksEqual(left, right)
 }
 
 async function readVisibleSelectedRange(page: Page, product: UiResponsivenessSameCorpusProduct): Promise<string | null> {

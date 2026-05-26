@@ -74,7 +74,7 @@
     "tenXMeanAndP95CaseCount": 0,
     "currentContractEvidenceComplete": false,
     "googleSheetsTenXRequirementSatisfied": false,
-    "captureRunSignature": "3c63da11d8fc8875f8985cb67e997f17052cad18ae2407aece35c746d4d94665",
+    "captureRunSignature": "fc674fb071178b986b33aaa13d427265b6a2c16cd867550f89bf4020055bc4bc",
     "invalidReasons": ["semantic UI proof covers 0/9 cases", "not every required workload is 10x against Google Sheets"]
   },
   "limitations": [
@@ -253,6 +253,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           },
           {
@@ -266,6 +267,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           }
         ],
@@ -463,6 +465,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             },
             {
@@ -476,6 +479,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             }
           ],
@@ -847,6 +851,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           },
           {
@@ -860,6 +865,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           }
         ],
@@ -1057,6 +1063,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             },
             {
@@ -1070,6 +1077,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             }
           ],
@@ -1441,6 +1449,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           },
           {
@@ -1454,6 +1463,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           }
         ],
@@ -1651,6 +1661,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             },
             {
@@ -1664,6 +1675,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             }
           ],
@@ -2035,6 +2047,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           },
           {
@@ -2048,6 +2061,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           }
         ],
@@ -2245,6 +2259,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             },
             {
@@ -2258,6 +2273,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             }
           ],
@@ -2633,6 +2649,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           },
           {
@@ -2646,6 +2663,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           }
         ],
@@ -2843,6 +2861,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             },
             {
@@ -2856,6 +2875,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             }
           ],
@@ -3231,6 +3251,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           },
           {
@@ -3244,6 +3265,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           }
         ],
@@ -3441,6 +3463,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             },
             {
@@ -3454,6 +3477,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             }
           ],
@@ -3825,6 +3849,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           },
           {
@@ -3838,6 +3863,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           }
         ],
@@ -4035,6 +4061,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             },
             {
@@ -4048,6 +4075,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             }
           ],
@@ -4419,6 +4447,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           },
           {
@@ -4432,6 +4461,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           }
         ],
@@ -4629,6 +4659,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             },
             {
@@ -4642,6 +4673,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             }
           ],
@@ -5013,6 +5045,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           },
           {
@@ -5026,6 +5059,7 @@
             "authoritativeRenderRevision": null,
             "visibleRenderRevision": null,
             "screenshotSha256": null,
+            "mutationTargetProofs": [],
             "evidence": ["semantic UI proof was not captured"]
           }
         ],
@@ -5223,6 +5257,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             },
             {
@@ -5236,6 +5271,7 @@
               "authoritativeRenderRevision": null,
               "visibleRenderRevision": null,
               "screenshotSha256": null,
+              "mutationTargetProofs": [],
               "evidence": ["semantic UI proof was not captured"]
             }
           ],

@@ -38,6 +38,8 @@ import type {
   SameCorpusProductSemanticUiProofVerdict,
   SameCorpusSemanticUiProof,
   SameCorpusScreenshotProof,
+  SameCorpusMutationTargetProof,
+  SameCorpusMutationTargetReadback,
 } from './ui-responsiveness-same-corpus-proof.ts'
 import { sameCorpusUiRenderProofContractVersion, validateSameCorpusProductSemanticUiProof } from './ui-responsiveness-same-corpus-proof.ts'
 import { sameCorpusUiCaptureToolVersion } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
@@ -539,8 +541,52 @@ function parseSameCorpusProductSemanticUiProof(value: unknown): SameCorpusProduc
     authoritativeRenderRevision: nullableStringField(record, 'authoritativeRenderRevision'),
     visibleRenderRevision: nullableStringField(record, 'visibleRenderRevision'),
     screenshotSha256: nullableStringField(record, 'screenshotSha256'),
+    mutationTargetProofs: Object.hasOwn(record, 'mutationTargetProofs')
+      ? arrayField(record, 'mutationTargetProofs').map(parseSameCorpusMutationTargetProof)
+      : [],
     evidence: stringArrayField(record, 'evidence'),
   }
+}
+
+function parseSameCorpusMutationTargetProof(value: unknown): SameCorpusMutationTargetProof {
+  const record = asObject(value, 'UI responsiveness same-corpus mutation target proof')
+  return {
+    sampleIndex: numberField(record, 'sampleIndex'),
+    workload: parseSameCorpusWorkload(stringField(record, 'workload')),
+    intendedOperation: parseSameCorpusMutatingWorkload(stringField(record, 'intendedOperation')),
+    sheetName: stringField(record, 'sheetName'),
+    targetRange: stringField(record, 'targetRange'),
+    before: parseSameCorpusMutationTargetReadback(objectField(record, 'before')),
+    after: parseSameCorpusMutationTargetReadback(objectField(record, 'after')),
+    restored: parseSameCorpusMutationTargetReadback(objectField(record, 'restored')),
+    authoritativeReadbackRevision: nullableStringField(record, 'authoritativeReadbackRevision'),
+    visibleRenderRevision: nullableStringField(record, 'visibleRenderRevision'),
+    screenshotSha256: nullableStringField(record, 'screenshotSha256'),
+    undoRestoreStatus: parseSameCorpusMutationUndoRestoreStatus(stringField(record, 'undoRestoreStatus')),
+  }
+}
+
+function parseSameCorpusMutationTargetReadback(value: Record<string, unknown>): SameCorpusMutationTargetReadback {
+  return {
+    value: nullableStringField(value, 'value'),
+    formula: nullableStringField(value, 'formula'),
+    fillColor: nullableStringField(value, 'fillColor'),
+    visibleText: nullableStringField(value, 'visibleText'),
+  }
+}
+
+function parseSameCorpusMutatingWorkload(value: string): SameCorpusMutationTargetProof['intendedOperation'] {
+  if (value === 'edit-visible-cell' || value === 'formula-edit' || value === 'fill-format-change') {
+    return value
+  }
+  throw new Error(`Unexpected UI responsiveness same-corpus mutating workload: ${value}`)
+}
+
+function parseSameCorpusMutationUndoRestoreStatus(value: string): SameCorpusMutationTargetProof['undoRestoreStatus'] {
+  if (value === 'verified' || value === 'missing' || value === 'failed') {
+    return value
+  }
+  throw new Error(`Unexpected UI responsiveness same-corpus mutation undo restore status: ${value}`)
 }
 
 function parseSameCorpusProductSemanticUiProofVerdict(value: unknown): SameCorpusProductSemanticUiProofVerdict {
@@ -571,6 +617,7 @@ function missingSameCorpusSemanticUiProductProof(product: UiResponsivenessSameCo
     authoritativeRenderRevision: null,
     visibleRenderRevision: null,
     screenshotSha256: null,
+    mutationTargetProofs: [],
     evidence: ['semantic UI proof was not captured'],
   }
 }

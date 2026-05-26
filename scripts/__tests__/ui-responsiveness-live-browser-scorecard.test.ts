@@ -33,6 +33,7 @@ import {
 } from '../ui-responsiveness-same-corpus-proof.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
+  uiSameCorpusWorkloadMutatesWorkbook,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
   type UiResponsivenessSameCorpusWorkload,
 } from '../ui-responsiveness-same-corpus-workloads.ts'
@@ -971,14 +972,16 @@ function sameCorpusScenarioProof(
         : pixelGridProof.product === 'google-sheets'
           ? googleSheets.corpusVerification
           : microsoftExcelWeb.corpusVerification,
+      workload,
     ),
   }))
-  return buildCaptureScenarioProof({ bilig, googleSheets, microsoftExcelWeb, visualProofs })
+  return buildCaptureScenarioProof({ bilig, googleSheets, microsoftExcelWeb, visualProofs, workload })
 }
 
 function semanticUiProofFixture(
   product: 'bilig' | 'google-sheets' | 'microsoft-excel-web',
   verification: SameCorpusCaptureMeasurement['corpusVerification'],
+  workload: UiResponsivenessSameCorpusWorkload,
 ) {
   return {
     product,
@@ -996,6 +999,7 @@ function semanticUiProofFixture(
     authoritativeRenderRevision: product === 'bilig' ? 'rev-3' : null,
     visibleRenderRevision: product === 'bilig' ? 'scene-7' : null,
     screenshotSha256: 'a'.repeat(64),
+    mutationTargetProofs: sameCorpusMutationTargetProofs(workload),
     evidence: [
       `sheetName=${verification.sheetName}`,
       'selectedRange=A1',
@@ -1003,6 +1007,52 @@ function semanticUiProofFixture(
       'screenshotSha256=' + 'a'.repeat(64),
       ...(product === 'bilig' ? ['authoritativeRenderRevision=rev-3', 'visibleRenderRevision=scene-7'] : []),
     ],
+  }
+}
+
+function sameCorpusMutationTargetProofs(workload: UiResponsivenessSameCorpusWorkload) {
+  if (!uiSameCorpusWorkloadMutatesWorkbook(workload)) {
+    return []
+  }
+  return [0, 1, 2].map((sampleIndex) => ({
+    sampleIndex,
+    workload,
+    intendedOperation: workload,
+    sheetName: 'WideGrid',
+    targetRange: 'A1',
+    before: sameCorpusMutationReadback(workload, 'before', sampleIndex),
+    after: sameCorpusMutationReadback(workload, 'after', sampleIndex),
+    restored: sameCorpusMutationReadback(workload, 'before', sampleIndex),
+    authoritativeReadbackRevision: `authoritative-readback-${sampleIndex + 1}`,
+    visibleRenderRevision: `visible-render-${sampleIndex + 1}`,
+    screenshotSha256: 'a'.repeat(64),
+    undoRestoreStatus: 'verified' as const,
+  }))
+}
+
+function sameCorpusMutationReadback(workload: UiResponsivenessSameCorpusWorkload, phase: 'before' | 'after', sampleIndex: number) {
+  const after = phase === 'after'
+  if (workload === 'formula-edit') {
+    return {
+      value: after ? String(sampleIndex + 2) : 'metric-1',
+      formula: after ? `=${String(sampleIndex + 1)}+1` : null,
+      fillColor: null,
+      visibleText: after ? String(sampleIndex + 2) : 'metric-1',
+    }
+  }
+  if (workload === 'fill-format-change') {
+    return {
+      value: 'metric-1',
+      formula: null,
+      fillColor: after ? '#c9daf8' : null,
+      visibleText: 'metric-1',
+    }
+  }
+  return {
+    value: after ? `same-corpus-${String(sampleIndex + 1)}` : 'metric-1',
+    formula: null,
+    fillColor: null,
+    visibleText: after ? `same-corpus-${String(sampleIndex + 1)}` : 'metric-1',
   }
 }
 

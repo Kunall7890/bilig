@@ -180,7 +180,7 @@ async function captureSameCorpusWorkloadCases(
     (product, url, measuredWorkload) => measureProduct(browser, product, url, corpus, args, measuredWorkload, caseId, visualProofs),
     workload,
   )
-  const scenarioProof = buildCaptureScenarioProof({ bilig, googleSheets, microsoftExcelWeb, visualProofs })
+  const scenarioProof = buildCaptureScenarioProof({ bilig, googleSheets, microsoftExcelWeb, visualProofs, workload })
   if (!scenarioProof.screenshotProof.captured || !scenarioProof.pixelGridProof.captured) {
     throw new Error(`same-corpus UI capture is missing browser-visible proof for ${caseId}: ${JSON.stringify(scenarioProof)}`)
   }
@@ -506,6 +506,8 @@ async function measureProductSamples(
           page,
           product,
           sampleIndex,
+          sampleCount: args.sampleCount,
+          workload,
         }),
       )
     }

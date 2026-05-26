@@ -547,6 +547,7 @@ function validateSameCorpusCapture(capture: SameCorpusCapture): void {
       entry.id,
       buildSameCorpusMeasurement(entry.bilig),
       buildSameCorpusMeasurement(entry.googleSheets),
+      entry.workload,
       entry.microsoftExcelWeb ? buildSameCorpusMeasurement(entry.microsoftExcelWeb) : undefined,
     )
     validateSameCorpusScenarioCaseFields(entry, 'capture')
@@ -629,6 +630,8 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
     bilig,
     googleSheets,
     microsoftExcelWeb,
+    workload: captureCase.workload,
+    sampleCount: captureCaseSampleCount(captureCase),
     visualProofs: scenarioProofVisualProofs(captureCase.scenarioProof),
   })
   const visualProofGuardrailPassed = scenarioProof.screenshotProof.captured && scenarioProof.pixelGridProof.captured
@@ -859,7 +862,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
   if (entry.tenXMeanAndP95Metric !== expectedMetric) {
     throw new Error(`UI responsiveness same-corpus metric is stale: ${entry.id}`)
   }
-  validateSameCorpusScenarioProof(entry.scenarioProof, entry.id, entry.bilig, entry.googleSheets, entry.microsoftExcelWeb)
+  validateSameCorpusScenarioProof(entry.scenarioProof, entry.id, entry.bilig, entry.googleSheets, entry.workload, entry.microsoftExcelWeb)
   validateSameCorpusScenarioCaseFields(entry, 'scorecard')
   const visualProofGuardrailPassed = entry.scenarioProof.screenshotProof.captured && entry.scenarioProof.pixelGridProof.captured
   const semanticUiProofGuardrailPassed = entry.scenarioProof.semanticUiProof.captured
