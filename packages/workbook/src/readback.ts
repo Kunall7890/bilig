@@ -226,6 +226,37 @@ function requiredDataValue(value: object, key: string, path: string): DataValida
   return valid(property.value)
 }
 
+function dataPropertyPath(parent: object, path: string, key: string | symbol): string {
+  if (typeof key === 'symbol') {
+    return `${path}[${String(key)}]`
+  }
+  return Array.isArray(parent) && /^\d+$/.test(key) ? `${path}[${key}]` : `${path}.${key}`
+}
+
+function assertOnlyDataProperties(value: object, path: string, seen = new WeakSet<object>()): WorkbookReadbackIssue | undefined {
+  if (seen.has(value)) {
+    return undefined
+  }
+  seen.add(value)
+  for (const key of Reflect.ownKeys(value)) {
+    const childPath = dataPropertyPath(value, path, key)
+    if (typeof key === 'symbol') {
+      return invalidReadback(`Workbook readback proof at ${childPath} must be a data property`)
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(value, key)
+    if (descriptor === undefined || !('value' in descriptor)) {
+      return invalidReadback(`Workbook readback proof at ${childPath} must be a data property`)
+    }
+    if (typeof descriptor.value === 'object' && descriptor.value !== null) {
+      const childIssue = assertOnlyDataProperties(descriptor.value, childPath, seen)
+      if (childIssue !== undefined) {
+        return childIssue
+      }
+    }
+  }
+  return undefined
+}
+
 function arrayDataValues<T>(
   value: unknown,
   path: string,
@@ -233,6 +264,16 @@ function arrayDataValues<T>(
 ): DataValidation<readonly T[]> {
   if (!Array.isArray(value)) {
     return invalid(`Workbook readback proof at ${path} must be an array`)
+  }
+  if (Object.getPrototypeOf(value) !== Array.prototype) {
+    return invalid(`Workbook readback proof at ${path} must be a plain array`)
+  }
+  const unsafeProperty = assertOnlyDataProperties(value, path)
+  if (unsafeProperty !== undefined) {
+    return Object.freeze({
+      status: 'invalid',
+      issue: unsafeProperty,
+    })
   }
 
   const entries: T[] = []

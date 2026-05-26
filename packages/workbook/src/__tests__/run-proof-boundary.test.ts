@@ -1670,7 +1670,7 @@ describe('@bilig/workbook run proof boundary', () => {
       errors: [
         {
           code: 'readback_invalid',
-          message: 'Workbook readback proof at readbacks[0] is invalid',
+          message: 'Workbook readback proof at readbacks[0] must be a data property',
         },
       ],
       apply: expect.objectContaining({ matched: true }),
@@ -1821,7 +1821,7 @@ describe('@bilig/workbook run proof boundary', () => {
       issues: [
         {
           code: 'readback_invalid',
-          message: 'Workbook readback proof at readbacks[0] is invalid',
+          message: 'Workbook readback proof at readbacks[0] must be a data property',
         },
       ],
     })

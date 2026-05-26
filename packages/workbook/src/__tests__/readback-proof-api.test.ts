@@ -171,4 +171,58 @@ describe('@bilig/workbook readback proof api', () => {
       }),
     ])
   })
+
+  it('rejects unsafe proof arrays without invoking getters', () => {
+    let getterInvoked = false
+    const checksWithAccessor = []
+    Object.defineProperty(checksWithAccessor, 'hidden', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('array getter must not run')
+      },
+    })
+
+    expect(checkWorkbookReadbackProof({ checks: checksWithAccessor, readbacks: [] })).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'readback_invalid',
+          message: 'Workbook readback proof at proof.checks.hidden must be a data property',
+        },
+      ],
+    })
+    expect(getterInvoked).toBe(false)
+
+    const subclassedReadbacks = new (class extends Array<unknown> {})()
+    expect(checkWorkbookReadbackProof({ checks: [], readbacks: subclassedReadbacks })).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'readback_invalid',
+          message: 'Workbook readback proof at proof.readbacks must be a plain array',
+        },
+      ],
+    })
+
+    const symbolChecks = []
+    const secret = Symbol('secret')
+    Object.defineProperty(symbolChecks, secret, {
+      enumerable: true,
+      value: {
+        status: 'planned',
+        kind: 'exists',
+        message: 'hidden check',
+      },
+    })
+    expect(checkWorkbookReadbackProof({ checks: symbolChecks, readbacks: [] })).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'readback_invalid',
+          message: 'Workbook readback proof at proof.checks[Symbol(secret)] must be a data property',
+        },
+      ],
+    })
+  })
 })
