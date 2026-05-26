@@ -11,6 +11,7 @@ import {
   WorkbookPaneRendererV3,
   resolveWorkbookPaneSelectionOccludedTilePanesV3,
   resolveWorkbookPanePresentedRevisionV3,
+  resolveWorkbookPaneSuppressedTextCellTilePanesV3,
   resolveWorkbookPaneTextLayerModeV3,
   resolveWorkbookPaneTileSceneCameraSeqV3,
   resolveWorkbookPaneTileSceneRevisionV3,
@@ -628,6 +629,44 @@ describe('WorkbookPaneRendererV3', () => {
     expect(occludedRun?.clipWidth).toBe(metrics.columnWidth * 2)
     expect(occludedPanes[0]?.tile.textCount).toBe(1)
     expect(occludedPanes[0]?.tile.textSignature).toBeUndefined()
+  })
+
+  test('drops active editor cell text runs before TypeGPU source proof sees them', () => {
+    const pane = createTextTilePane()
+    const baseRun = pane.tile.textRuns[0]
+    const activeRun = {
+      ...baseRun,
+      col: 127,
+      row: 2,
+      text: 'overflow-editor-ghost',
+    }
+    const survivorRun = {
+      ...baseRun,
+      col: 126,
+      row: 2,
+      text: 'neighbor value',
+      x: 0,
+    }
+    const textPane: WorkbookRenderTilePaneState = {
+      ...pane,
+      tile: {
+        ...pane.tile,
+        textCount: 2,
+        textRuns: [activeRun, survivorRun],
+        textSignature: 'active-editor-and-neighbor',
+      },
+    }
+
+    const suppressedPanes = resolveWorkbookPaneSuppressedTextCellTilePanesV3({
+      suppressedTextCell: { col: 127, row: 2 },
+      tilePanes: [textPane],
+    })
+
+    expect(suppressedPanes[0]).not.toBe(textPane)
+    expect(suppressedPanes[0]?.tile.textCount).toBe(1)
+    expect(suppressedPanes[0]?.tile.textRuns.map((run) => run.text)).toEqual(['neighbor value'])
+    expect(suppressedPanes[0]?.tile.textMetrics.length).toBeGreaterThan(0)
+    expect(suppressedPanes[0]?.tile.textSignature).not.toBe('active-editor-and-neighbor')
   })
 
   test('defers V3 preload resource sync only while scroll input or camera velocity is fresh', () => {

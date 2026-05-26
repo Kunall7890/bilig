@@ -168,6 +168,9 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
   const uiSameCorpusBiligAuthoritativeRenderProofCaseCount =
     uiSameCorpusRunManifest?.biligAuthoritativeRenderProofCaseCount ??
     uiSameCorpusProof.cases.filter((entry) => entry.authoritativeRenderProofGuardrailPassed === true).length
+  const uiSameCorpusSemanticUiProofCaseCount =
+    uiSameCorpusRunManifest?.semanticUiProofCaseCount ??
+    uiSameCorpusProof.cases.filter((entry) => entry.scenarioProof.semanticUiProof.captured).length
   const uiSameCorpusLegacyInsufficientRenderedGridProofCaseCount =
     uiSameCorpusRunManifest?.legacyInsufficientRenderedGridProofCaseCount ??
     uiSameCorpusProof.cases.filter(hasLegacyInsufficientRenderedGridProof).length
@@ -484,6 +487,9 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
             input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount,
           )}`,
           `same-corpus UI Bilig authoritative render proof cases: ${String(uiSameCorpusBiligAuthoritativeRenderProofCaseCount)}/${String(
+            input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount,
+          )}`,
+          `same-corpus UI semantic proof cases: ${String(uiSameCorpusSemanticUiProofCaseCount)}/${String(
             input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount,
           )}`,
           `same-corpus UI legacy-insufficient rendered-grid proof cases: ${String(
@@ -827,6 +833,9 @@ function buildOverallGoogleSheets10xStatus(
   const uiSameCorpusBiligAuthoritativeRenderProofCaseCount =
     uiSameCorpusRunManifest?.biligAuthoritativeRenderProofCaseCount ??
     uiSameCorpusProof.cases.filter((entry) => entry.authoritativeRenderProofGuardrailPassed === true).length
+  const uiSameCorpusSemanticUiProofCaseCount =
+    uiSameCorpusRunManifest?.semanticUiProofCaseCount ??
+    uiSameCorpusProof.cases.filter((entry) => entry.scenarioProof.semanticUiProof.captured).length
   const uiSameCorpusLegacyInsufficientRenderedGridProofCaseCount =
     uiSameCorpusRunManifest?.legacyInsufficientRenderedGridProofCaseCount ??
     uiSameCorpusProof.cases.filter(hasLegacyInsufficientRenderedGridProof).length
@@ -893,6 +902,9 @@ function buildOverallGoogleSheets10xStatus(
           input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount,
         )}`,
         `same-corpus Bilig authoritative render proof cases: ${String(uiSameCorpusBiligAuthoritativeRenderProofCaseCount)}/${String(
+          input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount,
+        )}`,
+        `same-corpus semantic UI proof cases: ${String(uiSameCorpusSemanticUiProofCaseCount)}/${String(
           input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount,
         )}`,
         `same-corpus legacy-insufficient rendered-grid proof cases: ${String(

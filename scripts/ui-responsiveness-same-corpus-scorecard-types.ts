@@ -3,6 +3,7 @@ import type { SameCorpusCaptureCorpusFingerprint } from './ui-responsiveness-sam
 import type {
   SameCorpusPixelGridProof,
   SameCorpusScenarioProof,
+  SameCorpusSemanticUiProof,
   SameCorpusScreenshotProof,
   sameCorpusUiRenderProofContractVersion,
 } from './ui-responsiveness-same-corpus-proof.ts'
@@ -42,6 +43,7 @@ export interface SameCorpusScenarioCaseFields {
   readonly microsoftExcelWebP95Ratio?: number
   readonly screenshotProof: SameCorpusScreenshotProof
   readonly pixelGridProof: SameCorpusPixelGridProof
+  readonly semanticUiProof: SameCorpusSemanticUiProof
 }
 
 export interface UiResponsivenessSameCorpusCase extends SameCorpusScenarioCaseFields {
@@ -103,6 +105,7 @@ export interface UiResponsivenessSameCorpusRunManifest {
   readonly strictRenderedGridProofCaseCount: number
   readonly visibleOperationResponseProofCaseCount: number
   readonly biligAuthoritativeRenderProofCaseCount: number
+  readonly semanticUiProofCaseCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
   readonly currentContractEvidenceComplete: boolean
@@ -145,6 +148,7 @@ export interface SameCorpusCaptureRunManifest {
   readonly strictRenderedGridProofCaseCount: number
   readonly visibleOperationResponseProofCaseCount: number
   readonly biligAuthoritativeRenderProofCaseCount: number
+  readonly semanticUiProofCaseCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
   readonly currentContractEvidenceComplete: boolean

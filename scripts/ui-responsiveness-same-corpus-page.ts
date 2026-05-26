@@ -498,7 +498,16 @@ async function measureProductSamples(
     })
     samples.push(await withAuthoritativeRenderProofTiming(page, product, sample, operationStartedAt, args.readyTimeoutMs))
     if (caseId && visualProofs && sampleIndex === 0) {
-      visualProofs.push(await captureSameCorpusProductVisualProof({ caseId, outputPath: args.outputPath, page, product, sampleIndex }))
+      visualProofs.push(
+        await captureSameCorpusProductVisualProof({
+          caseId,
+          corpusVerification: nextCorpusVerification,
+          outputPath: args.outputPath,
+          page,
+          product,
+          sampleIndex,
+        }),
+      )
     }
     await restoreProductWorkbookMutation(page, workload)
   } catch (error: unknown) {

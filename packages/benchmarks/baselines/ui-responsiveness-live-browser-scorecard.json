@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "ui-responsiveness-live-browser-timing",
-  "generatedAt": "2026-05-25T01:46:04.221Z",
+  "generatedAt": "2026-05-25T23:35:48.453Z",
   "host": {
     "arch": "arm64",
     "platform": "darwin"
@@ -43,48 +43,48 @@
       "workload": "open-public-workbook-and-scroll-viewport",
       "sampleCount": 3,
       "loadToReadyMs": {
-        "samples": [3050.753208, 3447.3019999999997, 3717.3523750000004],
-        "min": 3050.753208,
-        "median": 3447.3019999999997,
-        "p95": 3717.3523750000004,
-        "max": 3717.3523750000004,
-        "mean": 3405.135861,
-        "standardDeviation": 273.7664452532475,
-        "relativeStandardDeviation": 0.08039809758805025,
-        "standardError": 158.05913086204941,
+        "samples": [2958.9181659999995, 2978.1589159999994, 3539.143125],
+        "min": 2958.9181659999995,
+        "median": 2978.1589159999994,
+        "p95": 3539.143125,
+        "max": 3539.143125,
+        "mean": 3158.7400689999995,
+        "standardDeviation": 269.1002482046981,
+        "relativeStandardDeviation": 0.0851922736048017,
+        "standardError": 155.36510073997758,
         "confidence95": {
-          "low": 3095.339964510383,
-          "high": 3714.931757489617
+          "low": 2854.2244715496436,
+          "high": 3463.2556664503554
         }
       },
       "scrollResponseMs": {
-        "samples": [167.6242089999996, 167.99866699999984, 175.51137500000004],
-        "min": 167.6242089999996,
-        "median": 167.99866699999984,
-        "p95": 175.51137500000004,
-        "max": 175.51137500000004,
-        "mean": 170.3780836666665,
-        "standardDeviation": 3.6330028565085577,
-        "relativeStandardDeviation": 0.02132318182200176,
-        "standardError": 2.0975151771718954,
+        "samples": [126.67995900000005, 134.3694579999992, 139.18283399999927],
+        "min": 126.67995900000005,
+        "median": 134.3694579999992,
+        "p95": 139.18283399999927,
+        "max": 139.18283399999927,
+        "mean": 133.41075033333286,
+        "standardDeviation": 5.149097727369009,
+        "relativeStandardDeviation": 0.038595823158956474,
+        "standardError": 2.9728329589801876,
         "confidence95": {
-          "low": 166.2669539194096,
-          "high": 174.4892134139234
+          "low": 127.58399773373169,
+          "high": 139.23750293293404
         }
       },
       "postScrollFrameMs": {
-        "samples": [8.5, 8.599999999999909, 8.799999999999727],
-        "min": 8.5,
-        "median": 8.599999999999909,
-        "p95": 8.799999999999727,
-        "max": 8.799999999999727,
-        "mean": 8.633333333333212,
-        "standardDeviation": 0.12472191289235128,
-        "relativeStandardDeviation": 0.014446553616874868,
-        "standardError": 0.07200822998224407,
+        "samples": [8.799999999999727, 8.800000000000182, 9.099999999999909],
+        "min": 8.799999999999727,
+        "median": 8.800000000000182,
+        "p95": 9.099999999999909,
+        "max": 9.099999999999909,
+        "mean": 8.89999999999994,
+        "standardDeviation": 0.14142135623728808,
+        "relativeStandardDeviation": 0.015890040026661688,
+        "standardError": 0.08164965809276023,
         "confidence95": {
-          "low": 8.492197202568013,
-          "high": 8.774469464098411
+          "low": 8.73996667013813,
+          "high": 9.06003332986175
         }
       },
       "passed": true,
@@ -104,48 +104,48 @@
       "workload": "open-public-workbook-and-scroll-viewport",
       "sampleCount": 3,
       "loadToReadyMs": {
-        "samples": [5071.002041, 5548.484042, 6466.444375000003],
-        "min": 5071.002041,
-        "median": 5548.484042,
-        "p95": 6466.444375000003,
-        "max": 6466.444375000003,
-        "mean": 5695.310152666668,
-        "standardDeviation": 579.0700918771805,
-        "relativeStandardDeviation": 0.10167490028722094,
-        "standardError": 334.3262734249515,
+        "samples": [5068.412375, 5720.104625, 6814.355041999999],
+        "min": 5068.412375,
+        "median": 5720.104625,
+        "p95": 6814.355041999999,
+        "max": 6814.355041999999,
+        "mean": 5867.624014,
+        "standardDeviation": 720.370472609276,
+        "relativeStandardDeviation": 0.12277038727950029,
+        "standardError": 415.9060862772235,
         "confidence95": {
-          "low": 5040.030656753763,
-          "high": 6350.589648579573
+          "low": 5052.448084896642,
+          "high": 6682.799943103358
         }
       },
       "scrollResponseMs": {
-        "samples": [97.3817080000008, 100.95887500000026, 101.95387499999924],
-        "min": 97.3817080000008,
-        "median": 100.95887500000026,
-        "p95": 101.95387499999924,
-        "max": 101.95387499999924,
-        "mean": 100.09815266666676,
-        "standardDeviation": 1.9632982402567682,
-        "relativeStandardDeviation": 0.01961373100255583,
-        "standardError": 1.1335107675117637,
+        "samples": [96.38445800000045, 99.02733300000182, 102.15362499999901],
+        "min": 96.38445800000045,
+        "median": 99.02733300000182,
+        "p95": 102.15362499999901,
+        "max": 102.15362499999901,
+        "mean": 99.18847200000043,
+        "standardDeviation": 2.358007110741118,
+        "relativeStandardDeviation": 0.0237729956233332,
+        "standardError": 1.361396040137436,
         "confidence95": {
-          "low": 97.87647156234371,
-          "high": 102.31983377098982
+          "low": 96.52013576133106,
+          "high": 101.8568082386698
         }
       },
       "postScrollFrameMs": {
-        "samples": [9.200000000000728, 9.300000000000182, 9.300000000000182],
-        "min": 9.200000000000728,
-        "median": 9.300000000000182,
+        "samples": [9, 9.199999999999818, 9.300000000000182],
+        "min": 9,
+        "median": 9.199999999999818,
         "p95": 9.300000000000182,
         "max": 9.300000000000182,
-        "mean": 9.26666666666703,
-        "standardDeviation": 0.04714045207884592,
-        "relativeStandardDeviation": 0.005087099145199001,
-        "standardError": 0.02721655269744235,
+        "mean": 9.166666666666666,
+        "standardDeviation": 0.12472191289251333,
+        "relativeStandardDeviation": 0.013606026861001454,
+        "standardError": 0.07200822998233763,
         "confidence95": {
-          "low": 9.213322223380043,
-          "high": 9.320011109954017
+          "low": 9.025530535901284,
+          "high": 9.307802797432048
         }
       },
       "passed": true,
@@ -160,7 +160,7 @@
     "evidenceKind": "same-corpus-browser-capture",
     "requiredProductCount": 2,
     "requiredCaseCount": 9,
-    "tenXMeanAndP95CaseCount": 1,
+    "tenXMeanAndP95CaseCount": 0,
     "coveredCorpusCaseIds": ["wide-mixed-250k"],
     "runManifest": {
       "artifactGenerator": "scripts/gen-ui-responsiveness-live-browser-scorecard.ts",
@@ -228,12 +228,13 @@
       "strictRenderedGridProofCaseCount": 9,
       "visibleOperationResponseProofCaseCount": 9,
       "biligAuthoritativeRenderProofCaseCount": 9,
+      "semanticUiProofCaseCount": 0,
       "legacyInsufficientRenderedGridProofCaseCount": 0,
-      "tenXMeanAndP95CaseCount": 1,
-      "currentContractEvidenceComplete": true,
+      "tenXMeanAndP95CaseCount": 0,
+      "currentContractEvidenceComplete": false,
       "googleSheetsTenXRequirementSatisfied": false,
-      "captureRunSignature": "0bb6f8b7d9e7287589670ac7bd04801277c62b2a4e6315c63a15b9a5dd4032f4",
-      "invalidReasons": ["not every required workload is 10x against Google Sheets"]
+      "captureRunSignature": "3c63da11d8fc8875f8985cb67e997f17052cad18ae2407aece35c746d4d94665",
+      "invalidReasons": ["semantic UI proof covers 0/9 cases", "not every required workload is 10x against Google Sheets"]
     },
     "limitations": [
       "Caller must supply a Google Sheets URL for the same exported Bilig benchmark corpus.",
@@ -638,6 +639,67 @@
           ],
           "missingProducts": []
         },
+        "semanticUiProof": {
+          "captured": false,
+          "requiredProducts": ["bilig", "google-sheets"],
+          "products": [
+            {
+              "product": "bilig",
+              "captured": false,
+              "method": "bilig-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            },
+            {
+              "product": "google-sheets",
+              "captured": false,
+              "method": "google-sheets-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            }
+          ],
+          "productVerdicts": [
+            {
+              "product": "bilig",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256",
+                "Bilig semantic UI proof is missing authoritative render revision",
+                "Bilig semantic UI proof is missing visible render revision"
+              ]
+            },
+            {
+              "product": "google-sheets",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256"
+              ]
+            }
+          ],
+          "missingProducts": ["bilig", "google-sheets"]
+        },
         "scenarioProof": {
           "biligMeanMs": 2439.795304999999,
           "biligP95Ms": 2477.386208,
@@ -786,6 +848,67 @@
               }
             ],
             "missingProducts": []
+          },
+          "semanticUiProof": {
+            "captured": false,
+            "requiredProducts": ["bilig", "google-sheets"],
+            "products": [
+              {
+                "product": "bilig",
+                "captured": false,
+                "method": "bilig-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              },
+              {
+                "product": "google-sheets",
+                "captured": false,
+                "method": "google-sheets-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              }
+            ],
+            "productVerdicts": [
+              {
+                "product": "bilig",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256",
+                  "Bilig semantic UI proof is missing authoritative render revision",
+                  "Bilig semantic UI proof is missing visible render revision"
+                ]
+              },
+              {
+                "product": "google-sheets",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256"
+                ]
+              }
+            ],
+            "missingProducts": ["bilig", "google-sheets"]
           }
         },
         "postOperationFrameGuardrailPassed": true,
@@ -1191,6 +1314,67 @@
           ],
           "missingProducts": []
         },
+        "semanticUiProof": {
+          "captured": false,
+          "requiredProducts": ["bilig", "google-sheets"],
+          "products": [
+            {
+              "product": "bilig",
+              "captured": false,
+              "method": "bilig-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            },
+            {
+              "product": "google-sheets",
+              "captured": false,
+              "method": "google-sheets-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            }
+          ],
+          "productVerdicts": [
+            {
+              "product": "bilig",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256",
+                "Bilig semantic UI proof is missing authoritative render revision",
+                "Bilig semantic UI proof is missing visible render revision"
+              ]
+            },
+            {
+              "product": "google-sheets",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256"
+              ]
+            }
+          ],
+          "missingProducts": ["bilig", "google-sheets"]
+        },
         "scenarioProof": {
           "biligMeanMs": 19.4289586666661,
           "biligP95Ms": 22.113334000001487,
@@ -1339,6 +1523,67 @@
               }
             ],
             "missingProducts": []
+          },
+          "semanticUiProof": {
+            "captured": false,
+            "requiredProducts": ["bilig", "google-sheets"],
+            "products": [
+              {
+                "product": "bilig",
+                "captured": false,
+                "method": "bilig-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              },
+              {
+                "product": "google-sheets",
+                "captured": false,
+                "method": "google-sheets-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              }
+            ],
+            "productVerdicts": [
+              {
+                "product": "bilig",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256",
+                  "Bilig semantic UI proof is missing authoritative render revision",
+                  "Bilig semantic UI proof is missing visible render revision"
+                ]
+              },
+              {
+                "product": "google-sheets",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256"
+                ]
+              }
+            ],
+            "missingProducts": ["bilig", "google-sheets"]
           }
         },
         "postOperationFrameGuardrailPassed": true,
@@ -1744,6 +1989,67 @@
           ],
           "missingProducts": []
         },
+        "semanticUiProof": {
+          "captured": false,
+          "requiredProducts": ["bilig", "google-sheets"],
+          "products": [
+            {
+              "product": "bilig",
+              "captured": false,
+              "method": "bilig-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            },
+            {
+              "product": "google-sheets",
+              "captured": false,
+              "method": "google-sheets-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            }
+          ],
+          "productVerdicts": [
+            {
+              "product": "bilig",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256",
+                "Bilig semantic UI proof is missing authoritative render revision",
+                "Bilig semantic UI proof is missing visible render revision"
+              ]
+            },
+            {
+              "product": "google-sheets",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256"
+              ]
+            }
+          ],
+          "missingProducts": ["bilig", "google-sheets"]
+        },
         "scenarioProof": {
           "biligMeanMs": 180.38605566666715,
           "biligP95Ms": 182.19429200000013,
@@ -1892,6 +2198,67 @@
               }
             ],
             "missingProducts": []
+          },
+          "semanticUiProof": {
+            "captured": false,
+            "requiredProducts": ["bilig", "google-sheets"],
+            "products": [
+              {
+                "product": "bilig",
+                "captured": false,
+                "method": "bilig-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              },
+              {
+                "product": "google-sheets",
+                "captured": false,
+                "method": "google-sheets-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              }
+            ],
+            "productVerdicts": [
+              {
+                "product": "bilig",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256",
+                  "Bilig semantic UI proof is missing authoritative render revision",
+                  "Bilig semantic UI proof is missing visible render revision"
+                ]
+              },
+              {
+                "product": "google-sheets",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256"
+                ]
+              }
+            ],
+            "missingProducts": ["bilig", "google-sheets"]
           }
         },
         "postOperationFrameGuardrailPassed": false,
@@ -2360,6 +2727,67 @@
           ],
           "missingProducts": []
         },
+        "semanticUiProof": {
+          "captured": false,
+          "requiredProducts": ["bilig", "google-sheets"],
+          "products": [
+            {
+              "product": "bilig",
+              "captured": false,
+              "method": "bilig-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            },
+            {
+              "product": "google-sheets",
+              "captured": false,
+              "method": "google-sheets-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            }
+          ],
+          "productVerdicts": [
+            {
+              "product": "bilig",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256",
+                "Bilig semantic UI proof is missing authoritative render revision",
+                "Bilig semantic UI proof is missing visible render revision"
+              ]
+            },
+            {
+              "product": "google-sheets",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256"
+              ]
+            }
+          ],
+          "missingProducts": ["bilig", "google-sheets"]
+        },
         "scenarioProof": {
           "biligMeanMs": 3.8000000019868216,
           "biligP95Ms": 3.8199999928474426,
@@ -2508,6 +2936,67 @@
               }
             ],
             "missingProducts": []
+          },
+          "semanticUiProof": {
+            "captured": false,
+            "requiredProducts": ["bilig", "google-sheets"],
+            "products": [
+              {
+                "product": "bilig",
+                "captured": false,
+                "method": "bilig-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              },
+              {
+                "product": "google-sheets",
+                "captured": false,
+                "method": "google-sheets-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              }
+            ],
+            "productVerdicts": [
+              {
+                "product": "bilig",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256",
+                  "Bilig semantic UI proof is missing authoritative render revision",
+                  "Bilig semantic UI proof is missing visible render revision"
+                ]
+              },
+              {
+                "product": "google-sheets",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256"
+                ]
+              }
+            ],
+            "missingProducts": ["bilig", "google-sheets"]
           }
         },
         "postOperationFrameGuardrailPassed": true,
@@ -2515,8 +3004,8 @@
         "authoritativeRenderProofGuardrailPassed": true,
         "biligRuntimeProofGuardrailPassed": true,
         "sourceWorkbookFingerprintGuardrailPassed": true,
-        "tenXMeanAndP95AgainstGoogleSheets": true,
-        "passed": true
+        "tenXMeanAndP95AgainstGoogleSheets": false,
+        "passed": false
       },
       {
         "id": "same-corpus-wide-mixed-250k-scroll-horizontal",
@@ -2976,6 +3465,67 @@
           ],
           "missingProducts": []
         },
+        "semanticUiProof": {
+          "captured": false,
+          "requiredProducts": ["bilig", "google-sheets"],
+          "products": [
+            {
+              "product": "bilig",
+              "captured": false,
+              "method": "bilig-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            },
+            {
+              "product": "google-sheets",
+              "captured": false,
+              "method": "google-sheets-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            }
+          ],
+          "productVerdicts": [
+            {
+              "product": "bilig",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256",
+                "Bilig semantic UI proof is missing authoritative render revision",
+                "Bilig semantic UI proof is missing visible render revision"
+              ]
+            },
+            {
+              "product": "google-sheets",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256"
+              ]
+            }
+          ],
+          "missingProducts": ["bilig", "google-sheets"]
+        },
         "scenarioProof": {
           "biligMeanMs": 6.783333321412404,
           "biligP95Ms": 12.504999995231628,
@@ -3124,6 +3674,67 @@
               }
             ],
             "missingProducts": []
+          },
+          "semanticUiProof": {
+            "captured": false,
+            "requiredProducts": ["bilig", "google-sheets"],
+            "products": [
+              {
+                "product": "bilig",
+                "captured": false,
+                "method": "bilig-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              },
+              {
+                "product": "google-sheets",
+                "captured": false,
+                "method": "google-sheets-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              }
+            ],
+            "productVerdicts": [
+              {
+                "product": "bilig",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256",
+                  "Bilig semantic UI proof is missing authoritative render revision",
+                  "Bilig semantic UI proof is missing visible render revision"
+                ]
+              },
+              {
+                "product": "google-sheets",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256"
+                ]
+              }
+            ],
+            "missingProducts": ["bilig", "google-sheets"]
           }
         },
         "postOperationFrameGuardrailPassed": true,
@@ -3529,6 +4140,67 @@
           ],
           "missingProducts": []
         },
+        "semanticUiProof": {
+          "captured": false,
+          "requiredProducts": ["bilig", "google-sheets"],
+          "products": [
+            {
+              "product": "bilig",
+              "captured": false,
+              "method": "bilig-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            },
+            {
+              "product": "google-sheets",
+              "captured": false,
+              "method": "google-sheets-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            }
+          ],
+          "productVerdicts": [
+            {
+              "product": "bilig",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256",
+                "Bilig semantic UI proof is missing authoritative render revision",
+                "Bilig semantic UI proof is missing visible render revision"
+              ]
+            },
+            {
+              "product": "google-sheets",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256"
+              ]
+            }
+          ],
+          "missingProducts": ["bilig", "google-sheets"]
+        },
         "scenarioProof": {
           "biligMeanMs": 214.89979133333932,
           "biligP95Ms": 224.85379100000137,
@@ -3677,6 +4349,67 @@
               }
             ],
             "missingProducts": []
+          },
+          "semanticUiProof": {
+            "captured": false,
+            "requiredProducts": ["bilig", "google-sheets"],
+            "products": [
+              {
+                "product": "bilig",
+                "captured": false,
+                "method": "bilig-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              },
+              {
+                "product": "google-sheets",
+                "captured": false,
+                "method": "google-sheets-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              }
+            ],
+            "productVerdicts": [
+              {
+                "product": "bilig",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256",
+                  "Bilig semantic UI proof is missing authoritative render revision",
+                  "Bilig semantic UI proof is missing visible render revision"
+                ]
+              },
+              {
+                "product": "google-sheets",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256"
+                ]
+              }
+            ],
+            "missingProducts": ["bilig", "google-sheets"]
           }
         },
         "postOperationFrameGuardrailPassed": false,
@@ -4082,6 +4815,67 @@
           ],
           "missingProducts": []
         },
+        "semanticUiProof": {
+          "captured": false,
+          "requiredProducts": ["bilig", "google-sheets"],
+          "products": [
+            {
+              "product": "bilig",
+              "captured": false,
+              "method": "bilig-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            },
+            {
+              "product": "google-sheets",
+              "captured": false,
+              "method": "google-sheets-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            }
+          ],
+          "productVerdicts": [
+            {
+              "product": "bilig",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256",
+                "Bilig semantic UI proof is missing authoritative render revision",
+                "Bilig semantic UI proof is missing visible render revision"
+              ]
+            },
+            {
+              "product": "google-sheets",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256"
+              ]
+            }
+          ],
+          "missingProducts": ["bilig", "google-sheets"]
+        },
         "scenarioProof": {
           "biligMeanMs": 209.1354856666585,
           "biligP95Ms": 281.2870829999738,
@@ -4230,6 +5024,67 @@
               }
             ],
             "missingProducts": []
+          },
+          "semanticUiProof": {
+            "captured": false,
+            "requiredProducts": ["bilig", "google-sheets"],
+            "products": [
+              {
+                "product": "bilig",
+                "captured": false,
+                "method": "bilig-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              },
+              {
+                "product": "google-sheets",
+                "captured": false,
+                "method": "google-sheets-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              }
+            ],
+            "productVerdicts": [
+              {
+                "product": "bilig",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256",
+                  "Bilig semantic UI proof is missing authoritative render revision",
+                  "Bilig semantic UI proof is missing visible render revision"
+                ]
+              },
+              {
+                "product": "google-sheets",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256"
+                ]
+              }
+            ],
+            "missingProducts": ["bilig", "google-sheets"]
           }
         },
         "postOperationFrameGuardrailPassed": true,
@@ -4635,6 +5490,67 @@
           ],
           "missingProducts": []
         },
+        "semanticUiProof": {
+          "captured": false,
+          "requiredProducts": ["bilig", "google-sheets"],
+          "products": [
+            {
+              "product": "bilig",
+              "captured": false,
+              "method": "bilig-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            },
+            {
+              "product": "google-sheets",
+              "captured": false,
+              "method": "google-sheets-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            }
+          ],
+          "productVerdicts": [
+            {
+              "product": "bilig",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256",
+                "Bilig semantic UI proof is missing authoritative render revision",
+                "Bilig semantic UI proof is missing visible render revision"
+              ]
+            },
+            {
+              "product": "google-sheets",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256"
+              ]
+            }
+          ],
+          "missingProducts": ["bilig", "google-sheets"]
+        },
         "scenarioProof": {
           "biligMeanMs": 313.6782503333331,
           "biligP95Ms": 328.94691699999385,
@@ -4783,6 +5699,67 @@
               }
             ],
             "missingProducts": []
+          },
+          "semanticUiProof": {
+            "captured": false,
+            "requiredProducts": ["bilig", "google-sheets"],
+            "products": [
+              {
+                "product": "bilig",
+                "captured": false,
+                "method": "bilig-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              },
+              {
+                "product": "google-sheets",
+                "captured": false,
+                "method": "google-sheets-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              }
+            ],
+            "productVerdicts": [
+              {
+                "product": "bilig",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256",
+                  "Bilig semantic UI proof is missing authoritative render revision",
+                  "Bilig semantic UI proof is missing visible render revision"
+                ]
+              },
+              {
+                "product": "google-sheets",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256"
+                ]
+              }
+            ],
+            "missingProducts": ["bilig", "google-sheets"]
           }
         },
         "postOperationFrameGuardrailPassed": true,
@@ -5251,6 +6228,67 @@
           ],
           "missingProducts": []
         },
+        "semanticUiProof": {
+          "captured": false,
+          "requiredProducts": ["bilig", "google-sheets"],
+          "products": [
+            {
+              "product": "bilig",
+              "captured": false,
+              "method": "bilig-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            },
+            {
+              "product": "google-sheets",
+              "captured": false,
+              "method": "google-sheets-visible-semantic-readback",
+              "sheetName": "",
+              "sheetId": null,
+              "selectedRange": null,
+              "checkedCells": [],
+              "authoritativeRenderRevision": null,
+              "visibleRenderRevision": null,
+              "screenshotSha256": null,
+              "evidence": ["semantic UI proof was not captured"]
+            }
+          ],
+          "productVerdicts": [
+            {
+              "product": "bilig",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256",
+                "Bilig semantic UI proof is missing authoritative render revision",
+                "Bilig semantic UI proof is missing visible render revision"
+              ]
+            },
+            {
+              "product": "google-sheets",
+              "evidenceStatus": "missing",
+              "acceptedForCurrentScorecard": false,
+              "invalidReasons": [
+                "semantic UI proof is not marked captured",
+                "semantic UI proof is missing sheet name",
+                "semantic UI proof is missing selected range",
+                "semantic UI proof checks fewer than 3 cells",
+                "semantic UI proof is missing screenshot SHA256"
+              ]
+            }
+          ],
+          "missingProducts": ["bilig", "google-sheets"]
+        },
         "scenarioProof": {
           "biligMeanMs": 3.773333340883255,
           "biligP95Ms": 3.8900000154972076,
@@ -5399,6 +6437,67 @@
               }
             ],
             "missingProducts": []
+          },
+          "semanticUiProof": {
+            "captured": false,
+            "requiredProducts": ["bilig", "google-sheets"],
+            "products": [
+              {
+                "product": "bilig",
+                "captured": false,
+                "method": "bilig-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              },
+              {
+                "product": "google-sheets",
+                "captured": false,
+                "method": "google-sheets-visible-semantic-readback",
+                "sheetName": "",
+                "sheetId": null,
+                "selectedRange": null,
+                "checkedCells": [],
+                "authoritativeRenderRevision": null,
+                "visibleRenderRevision": null,
+                "screenshotSha256": null,
+                "evidence": ["semantic UI proof was not captured"]
+              }
+            ],
+            "productVerdicts": [
+              {
+                "product": "bilig",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256",
+                  "Bilig semantic UI proof is missing authoritative render revision",
+                  "Bilig semantic UI proof is missing visible render revision"
+                ]
+              },
+              {
+                "product": "google-sheets",
+                "evidenceStatus": "missing",
+                "acceptedForCurrentScorecard": false,
+                "invalidReasons": [
+                  "semantic UI proof is not marked captured",
+                  "semantic UI proof is missing sheet name",
+                  "semantic UI proof is missing selected range",
+                  "semantic UI proof checks fewer than 3 cells",
+                  "semantic UI proof is missing screenshot SHA256"
+                ]
+              }
+            ],
+            "missingProducts": ["bilig", "google-sheets"]
           }
         },
         "postOperationFrameGuardrailPassed": true,

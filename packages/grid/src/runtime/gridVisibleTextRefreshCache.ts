@@ -74,7 +74,7 @@ export class GridVisibleTextRefreshCache {
       return false
     }
 
-    const renderRevisionKey = resolveRenderRevisionKey(input.engine)
+    const renderRevisionKey = resolveRenderRevisionKey(input.engine, tile)
     const layoutKey = resolveVisibleTextLayoutKey(input)
     const cached = this.entries.get(tileKey)
     if (
@@ -207,17 +207,25 @@ function tileVisibleTextNeedsLocalRefresh(
   return needsCurrentStyleProof
 }
 
-function resolveRenderRevisionKey(engine: GridEngineLike): string {
+function resolveRenderRevisionKey(engine: GridEngineLike, tile: GridRenderTile): string {
   const revision = engine.getRenderRevisionSnapshot?.()
   if (!revision) {
     return 'untracked'
   }
-  return [
-    revision.authoritativeRevision ?? 'none',
-    revision.localRevision ?? 'none',
-    revision.projectedRevision ?? 'none',
-    revision.tileSceneRevision ?? 'none',
-  ].join('|')
+  const authoritativeRevision = normalizeNonNegativeInteger(revision.authoritativeRevision)
+  const localRevision = normalizeNonNegativeInteger(revision.localRevision)
+  const projectedRevision = normalizeNonNegativeInteger(revision.projectedRevision)
+  const hasPendingLocalProjection =
+    localRevision !== null &&
+    localRevision > 0 &&
+    projectedRevision !== null &&
+    (authoritativeRevision === null || projectedRevision > authoritativeRevision)
+  const visibleProofRevision = hasPendingLocalProjection ? Math.max(authoritativeRevision ?? 0, tile.lastBatchId) : projectedRevision
+  return [authoritativeRevision ?? 'none', visibleProofRevision ?? 'none', revision.tileSceneRevision ?? 'none'].join('|')
+}
+
+function normalizeNonNegativeInteger(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null
 }
 
 function resolveVisibleTextLayoutKey(

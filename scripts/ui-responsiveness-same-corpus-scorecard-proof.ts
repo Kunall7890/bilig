@@ -170,6 +170,7 @@ function buildSameCorpusRunManifest(
   const biligAuthoritativeRenderProofCaseCount = cases.filter((entry) =>
     hasBiligAuthoritativeRenderProofTiming(entry.bilig, entry.sampleCount),
   ).length
+  const semanticUiProofCaseCount = cases.filter((entry) => entry.scenarioProof.semanticUiProof.captured).length
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
   ).length
@@ -183,6 +184,7 @@ function buildSameCorpusRunManifest(
     biligProductionRuntimeProofCaseCount,
     scenarioSummaryFieldCaseCount,
     biligAuthoritativeRenderProofCaseCount,
+    semanticUiProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
     strictRenderedGridProofCaseCount,
@@ -206,6 +208,7 @@ function buildSameCorpusRunManifest(
     strictRenderedGridProofCaseCount,
     visibleOperationResponseProofCaseCount,
     biligAuthoritativeRenderProofCaseCount,
+    semanticUiProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
     currentContractEvidenceComplete: !invalidReasons.some(
@@ -235,6 +238,7 @@ export function buildSameCorpusCaptureRunManifest(
   const biligAuthoritativeRenderProofCaseCount = cases.filter((entry) =>
     hasBiligAuthoritativeRenderProofTiming(entry.bilig, sampleCount),
   ).length
+  const semanticUiProofCaseCount = cases.filter((entry) => entry.scenarioProof.semanticUiProof.captured).length
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
   ).length
@@ -248,6 +252,7 @@ export function buildSameCorpusCaptureRunManifest(
     biligProductionRuntimeProofCaseCount,
     scenarioSummaryFieldCaseCount,
     biligAuthoritativeRenderProofCaseCount,
+    semanticUiProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
     strictRenderedGridProofCaseCount,
@@ -272,6 +277,7 @@ export function buildSameCorpusCaptureRunManifest(
     strictRenderedGridProofCaseCount,
     visibleOperationResponseProofCaseCount,
     biligAuthoritativeRenderProofCaseCount,
+    semanticUiProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
     currentContractEvidenceComplete: !invalidReasons.some(
@@ -292,6 +298,7 @@ function sameCorpusManifestInvalidReasons(args: {
   readonly biligProductionRuntimeProofCaseCount: number
   readonly scenarioSummaryFieldCaseCount: number
   readonly biligAuthoritativeRenderProofCaseCount: number
+  readonly semanticUiProofCaseCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly materializedCellCounts: readonly number[]
   readonly strictRenderedGridProofCaseCount: number
@@ -352,6 +359,11 @@ function sameCorpusManifestInvalidReasons(args: {
       `Bilig authoritative render proof timing covers ${String(args.biligAuthoritativeRenderProofCaseCount)}/${String(
         requiredSameCorpusWorkloads.length,
       )} cases`,
+    )
+  }
+  if (args.semanticUiProofCaseCount !== requiredSameCorpusWorkloads.length) {
+    invalidReasons.push(
+      `semantic UI proof covers ${String(args.semanticUiProofCaseCount)}/${String(requiredSameCorpusWorkloads.length)} cases`,
     )
   }
   if (args.legacyInsufficientRenderedGridProofCaseCount > 0) {
@@ -620,12 +632,14 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
     visualProofs: scenarioProofVisualProofs(captureCase.scenarioProof),
   })
   const visualProofGuardrailPassed = scenarioProof.screenshotProof.captured && scenarioProof.pixelGridProof.captured
+  const semanticUiProofGuardrailPassed = scenarioProof.semanticUiProof.captured
   const tenXMeanAndP95AgainstGoogleSheets =
     timingMetricPassedAgainstGoogleSheets &&
     operationResponseProofGuardrailPassed &&
     authoritativeRenderProofGuardrailPassed &&
     postOperationFrameGuardrailPassed &&
     visualProofGuardrailPassed &&
+    semanticUiProofGuardrailPassed &&
     biligRuntimeProofGuardrailPassed &&
     sourceWorkbookFingerprintGuardrailPassed
   const tenXMeanAndP95AgainstMicrosoftExcelWeb =
@@ -636,6 +650,7 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
         authoritativeRenderProofGuardrailPassed &&
         postOperationFrameGuardrailPassed &&
         visualProofGuardrailPassed &&
+        semanticUiProofGuardrailPassed &&
         biligRuntimeProofGuardrailPassed &&
         sourceWorkbookFingerprintGuardrailPassed
   return {
@@ -688,6 +703,7 @@ function scenarioProofVisualProofs(proof: SameCorpusScenarioProof): SameCorpusPr
     screenshotPath: proof.screenshotProof.artifactPaths.find((artifact) => artifact.includes(`${entry.product}-`)) ?? null,
     screenshotCaptured: !proof.screenshotProof.missingProducts.includes(entry.product),
     pixelGridProof: entry,
+    semanticUiProof: proof.semanticUiProof.products.find((semanticProof) => semanticProof.product === entry.product),
   }))
 }
 
@@ -846,6 +862,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
   validateSameCorpusScenarioProof(entry.scenarioProof, entry.id, entry.bilig, entry.googleSheets, entry.microsoftExcelWeb)
   validateSameCorpusScenarioCaseFields(entry, 'scorecard')
   const visualProofGuardrailPassed = entry.scenarioProof.screenshotProof.captured && entry.scenarioProof.pixelGridProof.captured
+  const semanticUiProofGuardrailPassed = entry.scenarioProof.semanticUiProof.captured
   const timingMetricPassedAgainstGoogleSheets = requiresScrollEventMetric
     ? scrollEventMetrics !== null &&
       scrollEventMetrics.biligToGoogleSheetsMeanRatio <= 0.1 &&
@@ -866,6 +883,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
     authoritativeRenderProofGuardrailPassed &&
     postOperationFrameGuardrailPassed &&
     visualProofGuardrailPassed &&
+    semanticUiProofGuardrailPassed &&
     biligRuntimeProofGuardrailPassed &&
     sourceWorkbookFingerprintGuardrailPassed
   const tenXAgainstMicrosoftExcelWeb =
@@ -876,6 +894,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
         authoritativeRenderProofGuardrailPassed &&
         postOperationFrameGuardrailPassed &&
         visualProofGuardrailPassed &&
+        semanticUiProofGuardrailPassed &&
         biligRuntimeProofGuardrailPassed &&
         sourceWorkbookFingerprintGuardrailPassed
   if (

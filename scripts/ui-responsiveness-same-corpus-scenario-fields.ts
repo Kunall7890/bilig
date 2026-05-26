@@ -15,6 +15,7 @@ export function sameCorpusScenarioCaseFields(proof: SameCorpusScenarioProof): Sa
     ...(proof.microsoftExcelWebP95Ratio !== undefined ? { microsoftExcelWebP95Ratio: proof.microsoftExcelWebP95Ratio } : {}),
     screenshotProof: proof.screenshotProof,
     pixelGridProof: proof.pixelGridProof,
+    semanticUiProof: proof.semanticUiProof,
   }
 }
 
@@ -47,6 +48,7 @@ function sameCorpusScenarioFieldsFromCase(entry: SameCorpusScenarioCaseFields): 
     ...(entry.microsoftExcelWebP95Ratio !== undefined ? { microsoftExcelWebP95Ratio: entry.microsoftExcelWebP95Ratio } : {}),
     screenshotProof: entry.screenshotProof,
     pixelGridProof: entry.pixelGridProof,
+    semanticUiProof: entry.semanticUiProof,
   }
 }
 

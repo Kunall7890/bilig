@@ -27,11 +27,11 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(rects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 140, y: 42, width: 300, height: 60 }) }),
-        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 240, y: 42, width: 1, height: 60 }) }),
-        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 140, y: 62, width: 300, height: 1 }) }),
-        expect.objectContaining({ role: 'selection-border', bounds: expect.objectContaining({ x: 140, y: 42, width: 300, height: 60 }) }),
-        expect.objectContaining({ role: 'fill-handle', bounds: expect.objectContaining({ x: 436, y: 98, width: 8, height: 8 }) }),
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 136, y: 40, width: 300, height: 60 }) }),
+        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 236, y: 40, width: 1, height: 60 }) }),
+        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 136, y: 60, width: 300, height: 1 }) }),
+        expect.objectContaining({ role: 'selection-border', bounds: expect.objectContaining({ x: 136, y: 40, width: 300, height: 60 }) }),
+        expect.objectContaining({ role: 'fill-handle', bounds: expect.objectContaining({ x: 432, y: 96, width: 8, height: 8 }) }),
       ]),
     )
     expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(1)
@@ -53,12 +53,12 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(rects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 140, y: 0, width: 100, height: 22 }) }),
-        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 240, y: 0, width: 100, height: 22 }) }),
-        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 340, y: 0, width: 100, height: 22 }) }),
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 140, y: 22, width: 300, height: 218 }) }),
-        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 240, y: 22, width: 1, height: 218 }) }),
-        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 140, y: 42, width: 300, height: 1 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 136, y: 0, width: 100, height: 20 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 236, y: 0, width: 100, height: 20 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 336, y: 0, width: 100, height: 20 }) }),
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 136, y: 20, width: 300, height: 220 }) }),
+        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 236, y: 20, width: 1, height: 220 }) }),
+        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 136, y: 40, width: 300, height: 1 }) }),
       ]),
     )
     expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(1)
@@ -81,9 +81,9 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(rects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 0, y: 162, width: 40, height: 20 }) }),
-        expect.objectContaining({ role: 'header-seam-cover', bounds: expect.objectContaining({ x: 39, y: 162, width: 1, height: 20 }) }),
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 40, y: 162, width: 520, height: 78 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 0, y: 160, width: 36, height: 20 }) }),
+        expect.objectContaining({ role: 'header-seam-cover', bounds: expect.objectContaining({ x: 35, y: 160, width: 1, height: 20 }) }),
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 36, y: 160, width: 524, height: 80 }) }),
       ]),
     )
     expect(rects.some((rect) => rect.role === 'active-border')).toBe(false)
@@ -114,19 +114,19 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(columnRects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ key: 'header-fill:column:1', bounds: expect.objectContaining({ x: 140, y: 0, width: 100, height: 22 }) }),
+        expect.objectContaining({ key: 'header-fill:column:1', bounds: expect.objectContaining({ x: 136, y: 0, width: 100, height: 20 }) }),
         expect.objectContaining({
           key: 'header-seam-cover:column:1',
-          bounds: expect.objectContaining({ x: 140, y: 21, width: 100, height: 1 }),
+          bounds: expect.objectContaining({ x: 136, y: 19, width: 100, height: 1 }),
         }),
       ]),
     )
     expect(rowRects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ key: 'header-fill:row:7', bounds: expect.objectContaining({ x: 0, y: 162, width: 40, height: 20 }) }),
+        expect.objectContaining({ key: 'header-fill:row:7', bounds: expect.objectContaining({ x: 0, y: 160, width: 36, height: 20 }) }),
         expect.objectContaining({
           key: 'header-seam-cover:row:7',
-          bounds: expect.objectContaining({ x: 39, y: 162, width: 1, height: 20 }),
+          bounds: expect.objectContaining({ x: 35, y: 160, width: 1, height: 20 }),
         }),
       ]),
     )
@@ -146,14 +146,14 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(rects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 140, y: 0, width: 50, height: 22 }) }),
-        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 190, y: 0, width: 100, height: 22 }) }),
-        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 290, y: 0, width: 100, height: 22 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 136, y: 0, width: 50, height: 20 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 186, y: 0, width: 100, height: 20 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 286, y: 0, width: 100, height: 20 }) }),
       ]),
     )
     expect(rects).not.toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 97, y: 1, width: 98, height: 22 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 97, y: 1, width: 98, height: 20 }) }),
       ]),
     )
   })
@@ -197,8 +197,8 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(rects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: 'active-border', bounds: expect.objectContaining({ x: 240, y: 102, width: 100, height: 20 }) }),
-        expect.objectContaining({ role: 'fill-handle', bounds: expect.objectContaining({ x: 336, y: 118, width: 8, height: 8 }) }),
+        expect.objectContaining({ role: 'active-border', bounds: expect.objectContaining({ x: 236, y: 100, width: 100, height: 20 }) }),
+        expect.objectContaining({ role: 'fill-handle', bounds: expect.objectContaining({ x: 332, y: 116, width: 8, height: 8 }) }),
       ]),
     )
     expect(rects.some((rect) => rect.role === 'selection-border')).toBe(false)
@@ -247,10 +247,10 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(rects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 140, y: 42, width: 200, height: 40 }) }),
-        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 240, y: 42, width: 1, height: 40 }) }),
-        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 140, y: 62, width: 200, height: 1 }) }),
-        expect.objectContaining({ role: 'selection-border', bounds: expect.objectContaining({ x: 140, y: 42, width: 200, height: 40 }) }),
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 136, y: 40, width: 200, height: 40 }) }),
+        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 236, y: 40, width: 1, height: 40 }) }),
+        expect.objectContaining({ role: 'selection-gridline', bounds: expect.objectContaining({ x: 136, y: 60, width: 200, height: 1 }) }),
+        expect.objectContaining({ role: 'selection-border', bounds: expect.objectContaining({ x: 136, y: 40, width: 200, height: 40 }) }),
       ]),
     )
     expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(1)
@@ -273,7 +273,7 @@ describe('GridSelectionVisualOverlay', () => {
       }),
     ).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: 'hover-fill', bounds: expect.objectContaining({ x: 441, y: 123, width: 98, height: 18 }) }),
+        expect.objectContaining({ role: 'hover-fill', bounds: expect.objectContaining({ x: 437, y: 121, width: 98, height: 18 }) }),
       ]),
     )
 

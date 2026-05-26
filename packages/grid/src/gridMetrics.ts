@@ -28,8 +28,8 @@ export interface VisibleRowBound {
 
 export const PRODUCT_COLUMN_WIDTH = 104
 export const PRODUCT_ROW_HEIGHT = 22
-export const PRODUCT_HEADER_HEIGHT = 22
-export const PRODUCT_ROW_MARKER_WIDTH = 40
+export const PRODUCT_HEADER_HEIGHT = 20
+export const PRODUCT_ROW_MARKER_WIDTH = 36
 export const SCROLLBAR_GUTTER = 18
 export const COLUMN_RESIZE_HANDLE_THRESHOLD = 6
 export const MIN_COLUMN_WIDTH = 44

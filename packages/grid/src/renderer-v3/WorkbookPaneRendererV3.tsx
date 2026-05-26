@@ -11,6 +11,7 @@ import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import type { WorkbookPaneSurfaceBackendStatusV3 } from './workbook-pane-surface-runtime.js'
 import { WorkbookPaneNativeRectLayerV3 } from './WorkbookPaneNativeRectLayerV3.js'
+import { packGridTextRunsBufferV3 } from './text-run-buffer.js'
 import {
   WorkbookPaneNativeTextLayerV3,
   resolveNativeTextRunSelectionOccludedClipV3,
@@ -223,21 +224,29 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     [hostRuntime],
   )
   const headerTextRunCount = countHeaderPaneTextRunsV3(headerPanes)
+  const suppressedTextTilePanes = useMemo(
+    () =>
+      resolveWorkbookPaneSuppressedTextCellTilePanesV3({
+        suppressedTextCell,
+        tilePanes,
+      }),
+    [suppressedTextCell, tilePanes],
+  )
   const typeGpuTilePanes = useMemo(
     () =>
       resolveWorkbookPaneSelectionOccludedTilePanesV3({
         geometry,
         selectionOcclusionRanges,
-        tilePanes,
+        tilePanes: suppressedTextTilePanes,
       }),
-    [geometry, selectionOcclusionRanges, tilePanes],
+    [geometry, selectionOcclusionRanges, suppressedTextTilePanes],
   )
   const tileTextRunCount = countTilePaneTextRunsV3(typeGpuTilePanes)
   const textLayerMode = resolveWorkbookPaneTextLayerModeV3({
     active,
     backendStatus,
     headerPanes,
-    tilePanes,
+    tilePanes: suppressedTextTilePanes,
   })
   const { showTypeGpuCanvas, typeGpuDrawText, nativeLayerSource, nativeHeaderPanes, nativeTilePanes, showNativeTextLayer } = textLayerMode
   const presentedHeaderPanes = presentedVisualFrame?.headerPanes ?? []
@@ -497,6 +506,44 @@ export function resolveWorkbookPaneSelectionOccludedTilePanesV3(input: {
         textCount: nextTextRuns.length,
         textRuns: nextTextRuns,
         textSignature: undefined,
+      },
+    }
+  })
+
+  return panesChanged ? nextPanes : input.tilePanes
+}
+
+export function resolveWorkbookPaneSuppressedTextCellTilePanesV3(input: {
+  readonly suppressedTextCell?: SuppressedNativeTextCellV3 | null | undefined
+  readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+}): readonly WorkbookRenderTilePaneState[] {
+  const suppressedTextCell = input.suppressedTextCell ?? null
+  if (!suppressedTextCell) {
+    return input.tilePanes
+  }
+
+  let panesChanged = false
+  const nextPanes = input.tilePanes.map((pane) => {
+    if (pane.tile.textRuns.length === 0) {
+      return pane
+    }
+
+    const nextTextRuns = pane.tile.textRuns.filter((run) => run.row !== suppressedTextCell.row || run.col !== suppressedTextCell.col)
+    if (nextTextRuns.length === pane.tile.textRuns.length) {
+      return pane
+    }
+
+    panesChanged = true
+    const textBuffer = packGridTextRunsBufferV3(nextTextRuns)
+    return {
+      ...pane,
+      tile: {
+        ...pane.tile,
+        dirty: undefined,
+        textCount: textBuffer.textCount,
+        textMetrics: textBuffer.textMetrics,
+        textRuns: textBuffer.textRuns,
+        textSignature: textBuffer.textSignature,
       },
     }
   })

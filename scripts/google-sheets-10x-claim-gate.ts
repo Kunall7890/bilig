@@ -134,6 +134,7 @@ function sameCorpusUiProofFailures(uiScorecard: unknown, requiredWorkloadCount: 
     ['strictRenderedGridProofCaseCount', 'strict rendered-grid proof'],
     ['visibleOperationResponseProofCaseCount', 'visible operation-response proof'],
     ['biligAuthoritativeRenderProofCaseCount', 'Bilig authoritative render proof timing'],
+    ['semanticUiProofCaseCount', 'semantic UI proof'],
     ['tenXMeanAndP95CaseCount', '10x mean+p95 cases'],
   ] as const) {
     if (runManifest[field] !== requiredWorkloadCount) {

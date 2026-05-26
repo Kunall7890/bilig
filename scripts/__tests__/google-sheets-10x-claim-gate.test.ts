@@ -106,6 +106,7 @@ function passingUiScorecard(): unknown {
         strictRenderedGridProofCaseCount: requiredWorkloadCount,
         visibleOperationResponseProofCaseCount: requiredWorkloadCount,
         biligAuthoritativeRenderProofCaseCount: requiredWorkloadCount,
+        semanticUiProofCaseCount: requiredWorkloadCount,
         legacyInsufficientRenderedGridProofCaseCount: 0,
         tenXMeanAndP95CaseCount: requiredWorkloadCount,
       },

@@ -513,10 +513,10 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         >
           <span
             aria-hidden="true"
-            className="block h-0 w-0 border-t-[11px] border-r-[11px] border-t-transparent border-r-current opacity-80"
+            className="block h-0 w-0 border-t-[8px] border-r-[8px] border-t-transparent border-r-current opacity-75"
             style={{
               color: renderState.isEntireSheetSelected ? 'var(--wb-accent)' : 'currentColor',
-              transform: 'translate(2px, 1px)',
+              transform: 'translate(1px, 1px)',
             }}
           />
         </button>

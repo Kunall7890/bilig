@@ -67,7 +67,7 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(
       scorecard.sameCorpusProof.cases.filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length,
     )
-    expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(1)
+    expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(0)
     expect(scorecard.sameCorpusProof.runManifest).toMatchObject({
       contractVersion: 'same-corpus-ui-v4',
       caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
@@ -75,13 +75,15 @@ describe('UI responsiveness live browser scorecard', () => {
       strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       visibleOperationResponseProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       biligAuthoritativeRenderProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+      semanticUiProofCaseCount: 0,
       legacyInsufficientRenderedGridProofCaseCount: 0,
-      tenXMeanAndP95CaseCount: 1,
-      currentContractEvidenceComplete: true,
+      tenXMeanAndP95CaseCount: 0,
+      currentContractEvidenceComplete: false,
       googleSheetsTenXRequirementSatisfied: false,
       captureRunSignature: expect.stringMatching(/^[a-f0-9]{64}$/u),
     })
     expect(scorecard.sameCorpusProof.runManifest?.capturedWorkloads).toEqual(requiredUiResponsivenessSameCorpusWorkloads)
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('semantic UI proof covers 0/9 cases')
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('not every required workload is 10x against Google Sheets')
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).not.toContain('Bilig authoritative render proof timing covers 0/9 cases')
     expect(scorecard.sameCorpusProof.limitations).toContain(
@@ -182,6 +184,7 @@ describe('UI responsiveness live browser scorecard', () => {
         strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
         visibleOperationResponseProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
         biligAuthoritativeRenderProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+        semanticUiProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
         legacyInsufficientRenderedGridProofCaseCount: 0,
         tenXMeanAndP95CaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
         currentContractEvidenceComplete: true,
@@ -961,8 +964,46 @@ function sameCorpusScenarioProof(
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/${pixelGridProof.product}-sample-1.png`,
     screenshotCaptured: true,
     pixelGridProof,
+    semanticUiProof: semanticUiProofFixture(
+      pixelGridProof.product,
+      pixelGridProof.product === 'bilig'
+        ? bilig.corpusVerification
+        : pixelGridProof.product === 'google-sheets'
+          ? googleSheets.corpusVerification
+          : microsoftExcelWeb.corpusVerification,
+    ),
   }))
   return buildCaptureScenarioProof({ bilig, googleSheets, microsoftExcelWeb, visualProofs })
+}
+
+function semanticUiProofFixture(
+  product: 'bilig' | 'google-sheets' | 'microsoft-excel-web',
+  verification: SameCorpusCaptureMeasurement['corpusVerification'],
+) {
+  return {
+    product,
+    captured: true,
+    method:
+      product === 'bilig'
+        ? ('bilig-visible-semantic-readback' as const)
+        : product === 'google-sheets'
+          ? ('google-sheets-visible-semantic-readback' as const)
+          : ('excel-web-visible-semantic-readback' as const),
+    sheetName: verification.sheetName,
+    sheetId: product === 'bilig' ? 'sheet-wide-grid' : null,
+    selectedRange: 'A1',
+    checkedCells: verification.checkedCells,
+    authoritativeRenderRevision: product === 'bilig' ? 'rev-3' : null,
+    visibleRenderRevision: product === 'bilig' ? 'scene-7' : null,
+    screenshotSha256: 'a'.repeat(64),
+    evidence: [
+      `sheetName=${verification.sheetName}`,
+      'selectedRange=A1',
+      `checkedCellCount=${String(verification.checkedCells.length)}`,
+      'screenshotSha256=' + 'a'.repeat(64),
+      ...(product === 'bilig' ? ['authoritativeRenderRevision=rev-3', 'visibleRenderRevision=scene-7'] : []),
+    ],
+  }
 }
 
 function withProductPixelGridVerdicts(proof: Omit<SameCorpusPixelGridProof, 'productVerdicts'>): SameCorpusPixelGridProof {

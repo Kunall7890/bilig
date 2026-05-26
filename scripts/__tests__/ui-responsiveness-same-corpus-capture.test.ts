@@ -681,6 +681,11 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       requiredProducts: ['bilig', 'google-sheets'],
       missingProducts: [],
     })
+    expect(proof.semanticUiProof).toMatchObject({
+      captured: true,
+      requiredProducts: ['bilig', 'google-sheets'],
+      missingProducts: [],
+    })
   })
 
   it('writes same-corpus capture artifacts with a fresh run manifest', () => {
@@ -720,6 +725,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       sampleCount: 3,
       scenarioSummaryFieldCaseCount: 1,
       strictRenderedGridProofCaseCount: 1,
+      semanticUiProofCaseCount: 1,
       tenXMeanAndP95CaseCount: 0,
     })
     expect(capture.runManifest.captureRunSignature).toMatch(/^[a-f0-9]{64}$/u)
@@ -776,6 +782,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(capture.runManifest.biligProductionRuntimeProofCaseCount).toBe(1)
     expect(capture.runManifest.scenarioSummaryFieldCaseCount).toBe(1)
     expect(capture.runManifest.biligAuthoritativeRenderProofCaseCount).toBe(1)
+    expect(capture.runManifest.semanticUiProofCaseCount).toBe(1)
     expect(capture.runManifest.invalidReasons).toContain('Bilig production runtime proof covers 1/9 cases')
     expect(parseSameCorpusCapture(capture).cases[0]?.bilig.biligRuntimeProof?.verified).toBe(true)
   })
@@ -1339,6 +1346,30 @@ function sameCorpusVisualProof(
               ...strictPixelGridEvidence(),
             ]
           : strictPixelGridEvidence(),
+    },
+    semanticUiProof: {
+      product,
+      captured: true,
+      method:
+        product === 'bilig'
+          ? 'bilig-visible-semantic-readback'
+          : product === 'google-sheets'
+            ? 'google-sheets-visible-semantic-readback'
+            : 'excel-web-visible-semantic-readback',
+      sheetName: 'WideGrid',
+      sheetId: product === 'bilig' ? 'sheet-wide-grid' : null,
+      selectedRange: 'A1',
+      checkedCells: sameCorpusFixtureCheckedCells,
+      authoritativeRenderRevision: product === 'bilig' ? 'rev-3' : null,
+      visibleRenderRevision: product === 'bilig' ? 'scene-7' : null,
+      screenshotSha256: 'a'.repeat(64),
+      evidence: [
+        'sheetName=WideGrid',
+        'selectedRange=A1',
+        `checkedCellCount=${String(sameCorpusFixtureCheckedCells.length)}`,
+        'screenshotSha256=' + 'a'.repeat(64),
+        ...(product === 'bilig' ? ['authoritativeRenderRevision=rev-3', 'visibleRenderRevision=scene-7'] : []),
+      ],
     },
   }
 }

@@ -34,9 +34,12 @@ import type {
   SameCorpusPixelGridProof,
   SameCorpusProductPixelGridProof,
   SameCorpusScenarioProof,
+  SameCorpusProductSemanticUiProof,
+  SameCorpusProductSemanticUiProofVerdict,
+  SameCorpusSemanticUiProof,
   SameCorpusScreenshotProof,
 } from './ui-responsiveness-same-corpus-proof.ts'
-import { sameCorpusUiRenderProofContractVersion } from './ui-responsiveness-same-corpus-proof.ts'
+import { sameCorpusUiRenderProofContractVersion, validateSameCorpusProductSemanticUiProof } from './ui-responsiveness-same-corpus-proof.ts'
 import { sameCorpusUiCaptureToolVersion } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import type { SameCorpusOperationResponseProof } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import { isUiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
@@ -151,6 +154,7 @@ function parseSameCorpusRunManifest(value: Record<string, unknown>): UiResponsiv
     strictRenderedGridProofCaseCount: numberField(value, 'strictRenderedGridProofCaseCount'),
     visibleOperationResponseProofCaseCount: numberField(value, 'visibleOperationResponseProofCaseCount'),
     biligAuthoritativeRenderProofCaseCount: optionalNumberField(value, 'biligAuthoritativeRenderProofCaseCount') ?? 0,
+    semanticUiProofCaseCount: optionalNumberField(value, 'semanticUiProofCaseCount') ?? 0,
     legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
@@ -186,6 +190,7 @@ function parseSameCorpusCaptureRunManifest(value: Record<string, unknown>): Same
     strictRenderedGridProofCaseCount: numberField(value, 'strictRenderedGridProofCaseCount'),
     visibleOperationResponseProofCaseCount: numberField(value, 'visibleOperationResponseProofCaseCount'),
     biligAuthoritativeRenderProofCaseCount: optionalNumberField(value, 'biligAuthoritativeRenderProofCaseCount') ?? 0,
+    semanticUiProofCaseCount: optionalNumberField(value, 'semanticUiProofCaseCount') ?? 0,
     legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
@@ -307,6 +312,7 @@ function parseSameCorpusScenarioCaseFields(value: Record<string, unknown>): Same
     ...(microsoftExcelWebP95Ratio !== undefined ? { microsoftExcelWebP95Ratio } : {}),
     screenshotProof: parseSameCorpusScreenshotProof(objectField(value, 'screenshotProof')),
     pixelGridProof: parseSameCorpusPixelGridProof(objectField(value, 'pixelGridProof')),
+    semanticUiProof: parseOptionalSameCorpusSemanticUiProof(value),
   }
 }
 
@@ -448,6 +454,22 @@ function parseSameCorpusScenarioProof(value: Record<string, unknown>): SameCorpu
     ...(microsoftExcelWebP95Ratio !== undefined ? { microsoftExcelWebP95Ratio } : {}),
     screenshotProof: parseSameCorpusScreenshotProof(objectField(value, 'screenshotProof')),
     pixelGridProof: parseSameCorpusPixelGridProof(objectField(value, 'pixelGridProof')),
+    semanticUiProof: parseOptionalSameCorpusSemanticUiProof(value),
+  }
+}
+
+function parseOptionalSameCorpusSemanticUiProof(value: Record<string, unknown>): SameCorpusSemanticUiProof {
+  if (Object.hasOwn(value, 'semanticUiProof')) {
+    return parseSameCorpusSemanticUiProof(objectField(value, 'semanticUiProof'))
+  }
+  const pixelGridProof = parseSameCorpusPixelGridProof(objectField(value, 'pixelGridProof'))
+  const products = pixelGridProof.products.map((entry) => missingSameCorpusSemanticUiProductProof(entry.product))
+  return {
+    captured: false,
+    requiredProducts: pixelGridProof.requiredProducts,
+    products,
+    productVerdicts: products.map(validateSameCorpusProductSemanticUiProof),
+    missingProducts: [...pixelGridProof.requiredProducts],
   }
 }
 
@@ -491,6 +513,65 @@ function parseSameCorpusProductPixelGridProofVerdict(value: unknown) {
     contractVersion: nullableStringField(record, 'contractVersion'),
     requiredContractVersion: literalField(record, 'requiredContractVersion', sameCorpusUiRenderProofContractVersion),
     invalidReasons: stringArrayField(record, 'invalidReasons'),
+  }
+}
+
+function parseSameCorpusSemanticUiProof(value: Record<string, unknown>): SameCorpusSemanticUiProof {
+  return {
+    captured: booleanField(value, 'captured'),
+    requiredProducts: stringArrayField(value, 'requiredProducts').map(parseSameCorpusProduct),
+    products: arrayField(value, 'products').map(parseSameCorpusProductSemanticUiProof),
+    productVerdicts: arrayField(value, 'productVerdicts').map(parseSameCorpusProductSemanticUiProofVerdict),
+    missingProducts: stringArrayField(value, 'missingProducts').map(parseSameCorpusProduct),
+  }
+}
+
+function parseSameCorpusProductSemanticUiProof(value: unknown): SameCorpusProductSemanticUiProof {
+  const record = asObject(value, 'UI responsiveness same-corpus product semantic UI proof')
+  return {
+    product: parseSameCorpusProduct(stringField(record, 'product')),
+    captured: booleanField(record, 'captured'),
+    method: parseSameCorpusSemanticUiProofMethod(stringField(record, 'method')),
+    sheetName: stringField(record, 'sheetName'),
+    sheetId: nullableStringField(record, 'sheetId'),
+    selectedRange: nullableStringField(record, 'selectedRange'),
+    checkedCells: arrayField(record, 'checkedCells').map(parseSameCorpusVerifiedCell),
+    authoritativeRenderRevision: nullableStringField(record, 'authoritativeRenderRevision'),
+    visibleRenderRevision: nullableStringField(record, 'visibleRenderRevision'),
+    screenshotSha256: nullableStringField(record, 'screenshotSha256'),
+    evidence: stringArrayField(record, 'evidence'),
+  }
+}
+
+function parseSameCorpusProductSemanticUiProofVerdict(value: unknown): SameCorpusProductSemanticUiProofVerdict {
+  const record = asObject(value, 'UI responsiveness same-corpus product semantic UI proof verdict')
+  return {
+    product: parseSameCorpusProduct(stringField(record, 'product')),
+    evidenceStatus: parseSameCorpusProductSemanticUiEvidenceStatus(stringField(record, 'evidenceStatus')),
+    acceptedForCurrentScorecard: booleanField(record, 'acceptedForCurrentScorecard'),
+    invalidReasons: stringArrayField(record, 'invalidReasons'),
+  }
+}
+
+function missingSameCorpusSemanticUiProductProof(product: UiResponsivenessSameCorpusProduct): SameCorpusProductSemanticUiProof {
+  return {
+    product,
+    captured: false,
+    method: parseSameCorpusSemanticUiProofMethod(
+      product === 'bilig'
+        ? 'bilig-visible-semantic-readback'
+        : product === 'google-sheets'
+          ? 'google-sheets-visible-semantic-readback'
+          : 'excel-web-visible-semantic-readback',
+    ),
+    sheetName: '',
+    sheetId: null,
+    selectedRange: null,
+    checkedCells: [],
+    authoritativeRenderRevision: null,
+    visibleRenderRevision: null,
+    screenshotSha256: null,
+    evidence: ['semantic UI proof was not captured'],
   }
 }
 
@@ -624,6 +705,24 @@ function parseSameCorpusProductPixelGridEvidenceStatus(value: string): 'current-
     return value
   }
   throw new Error(`Unexpected UI responsiveness same-corpus pixel grid proof evidence status: ${value}`)
+}
+
+function parseSameCorpusSemanticUiProofMethod(value: string): SameCorpusProductSemanticUiProof['method'] {
+  if (
+    value === 'bilig-visible-semantic-readback' ||
+    value === 'google-sheets-visible-semantic-readback' ||
+    value === 'excel-web-visible-semantic-readback'
+  ) {
+    return value
+  }
+  throw new Error(`Unexpected UI responsiveness same-corpus semantic UI proof method: ${value}`)
+}
+
+function parseSameCorpusProductSemanticUiEvidenceStatus(value: string): 'current-contract' | 'missing' | 'invalid' {
+  if (value === 'current-contract' || value === 'missing' || value === 'invalid') {
+    return value
+  }
+  throw new Error(`Unexpected UI responsiveness same-corpus semantic UI proof evidence status: ${value}`)
 }
 
 function parseSameCorpusWorkload(value: string): UiResponsivenessSameCorpusWorkload {

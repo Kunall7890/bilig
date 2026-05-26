@@ -6,14 +6,29 @@ import type { Page } from '@playwright/test'
 import { summarizeNumbers, type NumericSummary } from '../packages/benchmarks/src/stats.js'
 import { biligRenderedSurfaceReadiness } from './ui-responsiveness-same-corpus-surface.ts'
 import { readBiligRenderedSurfaceState } from './ui-responsiveness-same-corpus-surface-page.ts'
+import {
+  missingSemanticUiProof,
+  readProductSemanticUiProof,
+  validateSameCorpusProductSemanticUiProof,
+  type SameCorpusProductSemanticUiProof,
+  type SameCorpusSemanticUiProof,
+} from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import type {
   SameCorpusCaptureMeasurement,
+  SameCorpusCaptureCorpusVerification,
   UiResponsivenessSameCorpusMeasurement,
   UiResponsivenessSameCorpusProduct,
 } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 export const sameCorpusUiRenderProofContractVersion = 'same-corpus-ui-v4'
+
+export {
+  validateSameCorpusProductSemanticUiProof,
+  type SameCorpusProductSemanticUiProof,
+  type SameCorpusProductSemanticUiProofVerdict,
+  type SameCorpusSemanticUiProof,
+} from './ui-responsiveness-same-corpus-semantic-proof.ts'
 
 export interface SameCorpusScenarioProof {
   readonly biligMeanMs: number
@@ -32,6 +47,7 @@ export interface SameCorpusScenarioProof {
   readonly microsoftExcelWebP95Ratio?: number
   readonly screenshotProof: SameCorpusScreenshotProof
   readonly pixelGridProof: SameCorpusPixelGridProof
+  readonly semanticUiProof: SameCorpusSemanticUiProof
 }
 
 export interface SameCorpusScreenshotProof {
@@ -54,6 +70,7 @@ export interface SameCorpusProductVisualProof {
   readonly screenshotPath: string | null
   readonly screenshotCaptured: boolean
   readonly pixelGridProof: SameCorpusProductPixelGridProof
+  readonly semanticUiProof?: SameCorpusProductSemanticUiProof | undefined
 }
 
 export interface SameCorpusProductPixelGridProof {
@@ -412,6 +429,7 @@ export function buildScorecardScenarioProof(args: {
 
 export async function captureSameCorpusProductVisualProof(args: {
   readonly caseId: string
+  readonly corpusVerification: SameCorpusCaptureCorpusVerification
   readonly outputPath: string
   readonly page: Page
   readonly product: UiResponsivenessSameCorpusProduct
@@ -421,11 +439,19 @@ export async function captureSameCorpusProductVisualProof(args: {
   mkdirSync(dirname(screenshotPath), { recursive: true })
   const screenshot = await captureProductScreenshot(args.page, args.product, screenshotPath)
   const pixelGridProof = await readProductPixelGridProof(args.page, args.product, screenshot.buffer)
+  const semanticUiProof = await readProductSemanticUiProof({
+    corpusVerification: args.corpusVerification,
+    page: args.page,
+    product: args.product,
+    screenshot,
+    pixelGridProof,
+  })
   return {
     product: args.product,
     screenshotPath: screenshot.captured ? repoRelativePath(screenshotPath) : null,
     screenshotCaptured: screenshot.captured,
     pixelGridProof,
+    semanticUiProof,
   }
 }
 
@@ -448,6 +474,7 @@ export function validateSameCorpusScenarioProof(
         null,
       screenshotCaptured: !proof.screenshotProof.missingProducts.includes(entry.product),
       pixelGridProof: entry,
+      semanticUiProof: proof.semanticUiProof.products.find((semanticProof) => semanticProof.product === entry.product),
     })),
   })
   if (
@@ -478,6 +505,15 @@ export function validateSameCorpusScenarioProof(
     JSON.stringify(proof.pixelGridProof.productVerdicts) !== JSON.stringify(expected.pixelGridProof.productVerdicts)
   ) {
     throw new Error(`UI responsiveness same-corpus pixel grid proof is stale: ${caseId}`)
+  }
+  if (
+    proof.semanticUiProof.captured !== expected.semanticUiProof.captured ||
+    JSON.stringify(proof.semanticUiProof.requiredProducts) !== JSON.stringify(expected.semanticUiProof.requiredProducts) ||
+    JSON.stringify(proof.semanticUiProof.products) !== JSON.stringify(expected.semanticUiProof.products) ||
+    JSON.stringify(proof.semanticUiProof.missingProducts) !== JSON.stringify(expected.semanticUiProof.missingProducts) ||
+    JSON.stringify(proof.semanticUiProof.productVerdicts) !== JSON.stringify(expected.semanticUiProof.productVerdicts)
+  ) {
+    throw new Error(`UI responsiveness same-corpus semantic UI proof is stale: ${caseId}`)
   }
   if (!proof.screenshotProof.captured) {
     throw new Error(`UI responsiveness same-corpus scenario proof is missing screenshot proof: ${caseId}`)
@@ -544,6 +580,12 @@ function buildScenarioProof(args: {
     args.visualProofs.filter((entry) => isSameCorpusProductPixelGridProofComplete(entry.pixelGridProof)).map((entry) => entry.product),
   )
   const productVerdicts = args.visualProofs.map((entry) => validateSameCorpusProductPixelGridProof(entry.pixelGridProof))
+  const semanticProducts = args.visualProofs.map((entry) => entry.semanticUiProof ?? missingSemanticUiProof(entry.product))
+  const semanticProductSet = new Set(
+    semanticProducts
+      .filter((entry) => validateSameCorpusProductSemanticUiProof(entry).acceptedForCurrentScorecard)
+      .map((entry) => entry.product),
+  )
   return {
     biligMeanMs: args.biligTiming.mean,
     biligP95Ms: args.biligTiming.p95,
@@ -571,6 +613,13 @@ function buildScenarioProof(args: {
       products: args.visualProofs.map((entry) => entry.pixelGridProof),
       productVerdicts,
       missingProducts: requiredProducts.filter((product) => !pixelProducts.has(product)),
+    },
+    semanticUiProof: {
+      captured: requiredProducts.every((product) => semanticProductSet.has(product)),
+      requiredProducts,
+      products: semanticProducts,
+      productVerdicts: semanticProducts.map((entry) => validateSameCorpusProductSemanticUiProof(entry)),
+      missingProducts: requiredProducts.filter((product) => !semanticProductSet.has(product)),
     },
   }
 }

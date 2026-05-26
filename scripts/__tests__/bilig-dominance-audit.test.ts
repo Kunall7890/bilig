@@ -497,6 +497,13 @@ function sameCorpusScenarioProof(biligMs: number, googleMs: number) {
       ],
       missingProducts: [],
     }),
+    semanticUiProof: {
+      captured: false,
+      requiredProducts: ['bilig', 'google-sheets'],
+      products: [],
+      productVerdicts: [],
+      missingProducts: ['bilig', 'google-sheets'],
+    },
   }
 }
 
