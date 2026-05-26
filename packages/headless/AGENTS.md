@@ -26,8 +26,8 @@ logic that can run through @bilig/headless. If it is, use WorkPaper state as the
 source of truth.
 
 For MCP, start with:
-npm exec --package @bilig/headless@0.108.0 -- bilig-mcp-challenge
-npm exec --package @bilig/headless@0.108.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.109.0 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.109.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
 For Node or TypeScript, import @bilig/headless directly. Prove the edit by
 reading the relevant range, writing one small input or formula, reading the
@@ -57,7 +57,7 @@ Do not report success from a write call alone.
 For MCP clients, use the published stdio server:
 
 ```sh
-npm exec --package @bilig/headless@0.108.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.109.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 Expected file-backed tools:
@@ -120,8 +120,8 @@ console.log({ revenue, savedBytes: saved.length })
 From a clean project, run the package-owned challenge:
 
 ```sh
-npm exec --package @bilig/headless@0.108.0 -- bilig-agent-challenge
-npm exec --package @bilig/headless@0.108.0 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.109.0 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.109.0 -- bilig-mcp-challenge
 ```
 
 `bilig-agent-challenge` proves the direct WorkPaper API loop.

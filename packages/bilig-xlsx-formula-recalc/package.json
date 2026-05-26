@@ -1,6 +1,6 @@
 {
   "name": "@bilig/xlsx-formula-recalc",
-  "version": "0.108.0",
+  "version": "0.109.0",
   "description": "Recalculate XLSX formula values in Node.js after SheetJS, ExcelJS, or xlsx-populate edits without Excel, LibreOffice, or browser automation.",
   "keywords": [
     "bilig",

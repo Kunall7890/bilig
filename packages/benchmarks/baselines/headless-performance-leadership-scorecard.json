@@ -11,7 +11,7 @@
       "Every comparable headless workload must be faster on both mean and p95 latency against every direct headless competitor.",
       "Performance multiple reporting must include geomean ratios, worst-case rows, holdouts, and 10x workload count."
     ],
-    "unmetRequirements": ["per-workload-mean-and-p95-wins: IronCalc Rust workbook-wide-limited comparison has 84/90 mean+p95 wins"]
+    "unmetRequirements": ["per-workload-mean-and-p95-wins: IronCalc Rust workbook-wide-limited comparison has 67/90 mean+p95 wins"]
   },
   "sourceArtifacts": {
     "primaryCompetitiveBenchmark": {
@@ -198,10 +198,10 @@
         "coverageNote": "IronCalc Rust is covered through a generated local sidecar that pins crates.io `ironcalc_base = \"=0.7.1\"` and runs all samples in one release-mode Rust process. This workbook-wide-limited lane uses canonical headless benchmark workload names, times `Model` for workbook construction rows and `UserModel` for single-cell user-operation rows, and records unsupported rows explicitly until Rust operation adapters prove parity.",
         "coverageTier": "workbook-wide-limited",
         "engineName": "IronCalc Rust",
-        "generatedAt": "2026-05-26T07:26:14.833Z",
-        "meanAndP95WinCount": 84,
-        "meanWinCount": 88,
-        "p95WinCount": 84,
+        "generatedAt": "2026-05-26T14:22:10.963Z",
+        "meanAndP95WinCount": 67,
+        "meanWinCount": 82,
+        "p95WinCount": 67,
         "version": "0.7.1",
         "workloadFamilies": [
           "build",
@@ -414,7 +414,7 @@
       },
       {
         "evidence": ["HyperFormula mean wins: 100/100", "HyperFormula p95 wins: 100/100", "HyperFormula mean+p95 wins: 100/100"],
-        "gaps": ["IronCalc Rust workbook-wide-limited comparison has 84/90 mean+p95 wins"],
+        "gaps": ["IronCalc Rust workbook-wide-limited comparison has 67/90 mean+p95 wins"],
         "id": "per-workload-mean-and-p95-wins",
         "passed": false,
         "requirement": "Every comparable headless workload must be faster on both mean and p95 latency against every direct headless competitor."
@@ -433,6 +433,6 @@
         "requirement": "Performance multiple reporting must include geomean ratios, worst-case rows, holdouts, and 10x workload count."
       }
     ],
-    "unmetRequirements": ["per-workload-mean-and-p95-wins: IronCalc Rust workbook-wide-limited comparison has 84/90 mean+p95 wins"]
+    "unmetRequirements": ["per-workload-mean-and-p95-wins: IronCalc Rust workbook-wide-limited comparison has 67/90 mean+p95 wins"]
   }
 }
