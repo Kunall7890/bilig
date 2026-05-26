@@ -41,6 +41,7 @@ import {
   captureSameCorpusMutationTargetPhaseScreenshot,
   captureSameCorpusMutationTargetProofForSample,
 } from './ui-responsiveness-same-corpus-mutation-target-capture.ts'
+import { withSameCorpusMutationFailureRestore } from './ui-responsiveness-same-corpus-mutation-failure-restore.ts'
 import { productLimitations, sameCorpusChromiumLaunchOptions, settleFrames } from './ui-responsiveness-same-corpus-page-utils.ts'
 import {
   measureVisibleScrollResponseWithRetries,
@@ -560,20 +561,27 @@ async function measureProductSamples(
             workload: mutatingWorkload,
           })
     const operationStartedAt = workload === 'open-workbook' ? loadStartedAt : performance.now()
-    const sample = await measureProductWorkload({
-      page,
-      product,
-      captureArgs: args,
+    const sampleWithRenderProof = await withSameCorpusMutationFailureRestore({
       workload,
-      sampleIndex,
-      loadToReadyMs,
-      hooks: {
-        measureVisibleScrollResponseWithRetries,
-        measureVisibleNonScrollResponse,
-        movePointerToProductViewport,
+      run: async () => {
+        const sample = await measureProductWorkload({
+          page,
+          product,
+          captureArgs: args,
+          workload,
+          sampleIndex,
+          loadToReadyMs,
+          hooks: {
+            measureVisibleScrollResponseWithRetries,
+            measureVisibleNonScrollResponse,
+            movePointerToProductViewport,
+          },
+        })
+        return await withAuthoritativeRenderProofTiming(page, product, sample, operationStartedAt, args.readyTimeoutMs)
       },
+      restore: () => restoreProductWorkbookMutation(page, workload),
+      reselectTarget: mutationTarget ? () => selectSameCorpusMutationTargetRange({ page, product, target: mutationTarget }) : undefined,
     })
-    const sampleWithRenderProof = await withAuthoritativeRenderProofTiming(page, product, sample, operationStartedAt, args.readyTimeoutMs)
     if (mutationTarget && mutationTargetBefore && mutationTargetBeforeScreenshot && mutatingWorkload) {
       const mutationTargetProof = await captureSameCorpusMutationTargetProofForSample({
         before: mutationTargetBefore,
