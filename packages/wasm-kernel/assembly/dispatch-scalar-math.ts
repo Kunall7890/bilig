@@ -44,7 +44,7 @@ export function tryApplyScalarMathBuiltin(
       return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if ((builtinId == BuiltinId.Besselk || builtinId == BuiltinId.Bessely) && x <= 0.0) {
-      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     let result = NaN
     if (builtinId == BuiltinId.Besseli) {
@@ -57,7 +57,7 @@ export function tryApplyScalarMathBuiltin(
       result = besselYValue(x, order)
     }
     return !isFinite(result)
-      ? writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      ? writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeScalarMathNumber(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 

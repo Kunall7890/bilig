@@ -224,8 +224,26 @@ function coerceDirectNumericTextAggregateArgument(callee: string, value: CellVal
   return value
 }
 
+const numericReferenceAggregateCallees = new Set(['SUM', 'AVERAGE', 'AVG', 'MIN', 'MAX', 'PRODUCT', 'SUMSQ', 'GCD', 'LCM'])
+
+function referencedScalarBuiltinAggregateValues(callee: string, value: CellValue): readonly CellValue[] | undefined {
+  if (callee === 'COUNT') {
+    return value.tag === ValueTag.Number ? [value] : []
+  }
+  if (!numericReferenceAggregateCallees.has(callee)) {
+    return undefined
+  }
+  return value.tag === ValueTag.Number || value.tag === ValueTag.Error ? [value] : []
+}
+
 function scalarBuiltinRangeValues(callee: string, rawArg: StackValue): readonly CellValue[] {
   const values = rawArg.kind === 'range' || rawArg.kind === 'array' ? rawArg.values : []
+  if (callee === 'COUNT') {
+    return values.filter((value) => value.tag === ValueTag.Number)
+  }
+  if (numericReferenceAggregateCallees.has(callee)) {
+    return values.filter((value) => value.tag === ValueTag.Number || value.tag === ValueTag.Error)
+  }
   if (callee !== 'MIN' && callee !== 'MAX') {
     if (callee === 'COUNTA' && rawArg.kind === 'array') {
       return values.map((value) => (value.tag === ValueTag.Empty ? stringValue('') : value))
@@ -596,7 +614,15 @@ function executePlan(
         const args: CellValue[] = []
         for (const [index, rawArg] of rawArgs.entries()) {
           if (rawArg.kind === 'scalar') {
-            args.push(coerceDirectNumericTextAggregateArgument(instruction.callee, rawArg.value, instruction.argRefs?.[index]))
+            const argRef = instruction.argRefs?.[index]
+            if (argRef !== undefined) {
+              const referencedValues = referencedScalarBuiltinAggregateValues(instruction.callee, rawArg.value)
+              if (referencedValues) {
+                args.push(...referencedValues)
+                continue
+              }
+            }
+            args.push(coerceDirectNumericTextAggregateArgument(instruction.callee, rawArg.value, argRef))
             continue
           }
           if (rawArg.kind === 'omitted') {

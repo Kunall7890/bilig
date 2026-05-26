@@ -106,6 +106,40 @@ describe('formula builtins and JS evaluator', () => {
     expect(evaluateAst(parseFormula('MAX(A1:A2)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
   })
 
+  it('ignores referenced non-numeric aggregate values without changing direct literal coercion', () => {
+    const valuesByAddress: Record<string, CellValue> = {
+      A1: { tag: ValueTag.Number, value: 2 },
+      A2: { tag: ValueTag.Number, value: 4 },
+      A3: { tag: ValueTag.String, value: '5', stringId: 1 },
+      A4: { tag: ValueTag.String, value: 'bad', stringId: 2 },
+      A5: { tag: ValueTag.Boolean, value: true },
+      A6: { tag: ValueTag.Empty },
+    }
+    const context = {
+      sheetName: 'Sheet1',
+      resolveCell: (_sheetName: string, address: string): CellValue => valuesByAddress[address] ?? { tag: ValueTag.Empty },
+      resolveRange: (_sheetName: string, start: string, end: string): CellValue[] => {
+        if (start === 'A1' && end === 'A6') {
+          return ['A1', 'A2', 'A3', 'A4', 'A5', 'A6'].map((address) => valuesByAddress[address])
+        }
+        return []
+      },
+    }
+
+    expect(evaluateAst(parseFormula('SUM(A1:A6)'), context)).toEqual({ tag: ValueTag.Number, value: 6 })
+    expect(evaluateAst(parseFormula('SUM(A5)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(evaluateAst(parseFormula('PRODUCT(A1:A6)'), context)).toEqual({ tag: ValueTag.Number, value: 8 })
+    expect(evaluateAst(parseFormula('MIN(A1:A6)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(evaluateAst(parseFormula('MIN(A3)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(evaluateAst(parseFormula('MIN(A5,2)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(evaluateAst(parseFormula('MAX(A3)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(evaluateAst(parseFormula('MAX(A5,0)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(evaluateAst(parseFormula('COUNT(A1:A6)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(evaluateAst(parseFormula('COUNT("2",A3,A5,A6)'), context)).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(evaluateAst(parseFormula('AVERAGE(A1:A6)'), context)).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(evaluateAst(parseFormula('AVERAGE(2,A3,A5,A6)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
+  })
+
   it('coerces comma-grouped numeric text in arithmetic expressions', () => {
     const context = {
       sheetName: 'Sheet1',

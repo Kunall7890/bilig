@@ -376,6 +376,61 @@ describe('wasm kernel aggregate and criteria dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(1, 1, width)]).toBe(15)
   })
 
+  it('uses only numeric cells for aggregate range references', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    const strings = packStrings(['5', 'bad'])
+    kernel.init(32, 1, 6, 2, 8)
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+
+    const cellTags = new Uint8Array(32)
+    const cellNumbers = new Float64Array(32)
+    const cellStringIds = new Uint32Array(32)
+    const cellErrors = new Uint16Array(32)
+
+    cellTags[0] = ValueTag.Number
+    cellNumbers[0] = 2
+    cellTags[1] = ValueTag.Number
+    cellNumbers[1] = 4
+    cellTags[2] = ValueTag.String
+    cellStringIds[2] = 0
+    cellTags[3] = ValueTag.String
+    cellStringIds[3] = 1
+    cellTags[4] = ValueTag.Boolean
+    cellNumbers[4] = 1
+    cellTags[5] = ValueTag.Empty
+
+    kernel.writeCells(cellTags, cellNumbers, cellStringIds, cellErrors)
+    kernel.uploadRangeMembers(Uint32Array.from([0, 1, 2, 3, 4, 5]), Uint32Array.from([0]), Uint32Array.from([6]))
+    kernel.uploadRangeShapes(Uint32Array.from([6]), Uint32Array.from([1]))
+
+    const packed = packPrograms([
+      [encodePushRange(0), encodeCall(BuiltinId.Sum, 1), encodeRet()],
+      [encodePushRange(0), encodeCall(BuiltinId.Product, 1), encodeRet()],
+      [encodePushRange(0), encodeCall(BuiltinId.Min, 1), encodeRet()],
+      [encodePushRange(0), encodeCall(BuiltinId.Max, 1), encodeRet()],
+      [encodePushRange(0), encodeCall(BuiltinId.Count, 1), encodeRet()],
+      [encodePushRange(0), encodeCall(BuiltinId.Avg, 1), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 6 }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([[], [], [], [], [], []])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 6 }, (_, index) => cellIndex(1, index, width))))
+
+    expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBe(6)
+    expect(kernel.readNumbers()[cellIndex(1, 1, width)]).toBe(8)
+    expect(kernel.readNumbers()[cellIndex(1, 2, width)]).toBe(2)
+    expect(kernel.readNumbers()[cellIndex(1, 3, width)]).toBe(4)
+    expect(kernel.readNumbers()[cellIndex(1, 4, width)]).toBe(2)
+    expect(kernel.readNumbers()[cellIndex(1, 5, width)]).toBe(3)
+  })
+
   it('keeps aggregate and criteria builtins stable across refactors', async () => {
     const kernel = await createKernel()
     const width = 32
@@ -525,15 +580,15 @@ describe('wasm kernel aggregate and criteria dispatch', () => {
     kernel.evalBatch(Uint32Array.from(Array.from({ length: 22 }, (_, index) => cellIndex(1, index, width))))
 
     expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBe(18)
-    expect(kernel.readNumbers()[cellIndex(1, 1, width)]).toBeCloseTo(3, 12)
+    expect(kernel.readNumbers()[cellIndex(1, 1, width)]).toBeCloseTo(3.6, 12)
     expect(kernel.readNumbers()[cellIndex(1, 2, width)]).toBe(-4)
     expect(kernel.readNumbers()[cellIndex(1, 3, width)]).toBe(9)
-    expect(kernel.readNumbers()[cellIndex(1, 4, width)]).toBe(6)
+    expect(kernel.readNumbers()[cellIndex(1, 4, width)]).toBe(5)
     expect(kernel.readNumbers()[cellIndex(1, 5, width)]).toBe(5)
     expect(kernel.readNumbers()[cellIndex(1, 6, width)]).toBe(1)
     expect(kernel.readNumbers()[cellIndex(1, 7, width)]).toBe(12)
     expect(kernel.readNumbers()[cellIndex(1, 8, width)]).toBe(168)
-    expect(kernel.readNumbers()[cellIndex(1, 9, width)]).toBe(0)
+    expect(kernel.readNumbers()[cellIndex(1, 9, width)]).toBe(105)
     expect(kernel.readNumbers()[cellIndex(1, 10, width)]).toBe(3)
     expect(kernel.readNumbers()[cellIndex(1, 11, width)]).toBeCloseTo(12 / 7, 12)
     expect(kernel.readNumbers()[cellIndex(1, 12, width)]).toBe(35)

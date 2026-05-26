@@ -736,6 +736,10 @@ const scalarBuiltins: Record<string, Builtin> = {
   ...statisticalBuiltins,
   ...financialBuiltins,
   PERMUT: (numberArg, chosenArg) => {
+    const error = firstError([numberArg, chosenArg])
+    if (error) {
+      return error
+    }
     const numberRaw = toScalarMathNumber(numberArg)
     const chosenRaw = toScalarMathNumber(chosenArg)
     if (numberRaw === undefined || chosenRaw === undefined) {
@@ -753,6 +757,10 @@ const scalarBuiltins: Record<string, Builtin> = {
     return numberResult(result)
   },
   PERMUTATIONA: (numberArg, chosenArg) => {
+    const error = firstError([numberArg, chosenArg])
+    if (error) {
+      return error
+    }
     const numberRaw = toScalarMathNumber(numberArg)
     const chosenRaw = toScalarMathNumber(chosenArg)
     if (numberRaw === undefined || chosenRaw === undefined) {

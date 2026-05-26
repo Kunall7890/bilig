@@ -6,8 +6,6 @@ const DIRECT_AGGREGATE_OP_COUNT: u8 = 3
 const DIRECT_AGGREGATE_OP_MIN: u8 = 4
 const DIRECT_AGGREGATE_OP_MAX: u8 = 5
 const VALUE_TAG_NUMBER: u8 = <u8>ValueTag.Number
-const VALUE_TAG_BOOLEAN: u8 = <u8>ValueTag.Boolean
-const VALUE_TAG_EMPTY: u8 = <u8>ValueTag.Empty
 const VALUE_TAG_ERROR: u8 = <u8>ValueTag.Error
 const ERROR_CODE_NONE: u16 = <u16>ErrorCode.None
 const ERROR_CODE_DIV0: u16 = <u16>ErrorCode.Div0
@@ -116,24 +114,6 @@ export function evalAnchoredPrefixAggregateBatch(
         }
         if (numeric > maximum) {
           maximum = numeric
-        }
-      } else if (tag == VALUE_TAG_BOOLEAN) {
-        const numeric: f64 = numbers[valueOffset] != 0 ? 1 : 0
-        sum += numeric
-        count += 1
-        averageCount += 1
-        if (numeric < minimum) {
-          minimum = numeric
-        }
-        if (numeric > maximum) {
-          maximum = numeric
-        }
-      } else if (tag == VALUE_TAG_EMPTY) {
-        if (0 < minimum) {
-          minimum = 0
-        }
-        if (0 > maximum) {
-          maximum = 0
         }
       } else if (tag == VALUE_TAG_ERROR) {
         if (errorCode == ERROR_CODE_NONE) {

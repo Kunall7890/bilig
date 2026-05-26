@@ -7,6 +7,8 @@ const str = (value: string, stringId = 1): CellValue => ({ tag: ValueTag.String,
 const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
 const div0Error = { tag: ValueTag.Error, code: ErrorCode.Div0 } as const
 const numError = { tag: ValueTag.Error, code: ErrorCode.Num } as const
+const nameError = { tag: ValueTag.Error, code: ErrorCode.Name } as const
+const naError = { tag: ValueTag.Error, code: ErrorCode.NA } as const
 
 describe('math builtins', () => {
   it('rejects invalid scalar coercions instead of defaulting to zero or base 10', () => {
@@ -61,6 +63,34 @@ describe('math builtins', () => {
     expect(getBuiltin('PERMUT')?.(str('5'), str('2'))).toEqual(num(20))
     expect(getBuiltin('GCD')?.(str('18'), str('24'))).toEqual(num(6))
     expect(getBuiltin('LCM')?.(str('6'), str('8'))).toEqual(num(24))
+  })
+
+  it('propagates scalar math argument errors before coercion and domain checks', () => {
+    expect(getBuiltin('ACOT')?.(nameError)).toEqual(nameError)
+    expect(getBuiltin('COT')?.(nameError)).toEqual(nameError)
+    expect(getBuiltin('COTH')?.(nameError)).toEqual(nameError)
+    expect(getBuiltin('CSC')?.(nameError)).toEqual(nameError)
+    expect(getBuiltin('CSCH')?.(nameError)).toEqual(nameError)
+    expect(getBuiltin('SEC')?.(nameError)).toEqual(nameError)
+    expect(getBuiltin('SIGN')?.(nameError)).toEqual(nameError)
+    expect(getBuiltin('FLOOR.MATH')?.(num(1), naError)).toEqual(naError)
+    expect(getBuiltin('CEILING.MATH')?.(num(1), num(1), naError)).toEqual(naError)
+    expect(getBuiltin('FLOOR.PRECISE')?.(nameError)).toEqual(nameError)
+    expect(getBuiltin('CEILING.PRECISE')?.(num(1), nameError)).toEqual(nameError)
+    expect(getBuiltin('ISO.CEILING')?.(nameError)).toEqual(nameError)
+    expect(getBuiltin('MOD')?.(nameError, num(0))).toEqual(nameError)
+    expect(getBuiltin('INT')?.(nameError)).toEqual(nameError)
+    expect(getBuiltin('EVEN')?.(nameError)).toEqual(nameError)
+    expect(getBuiltin('ODD')?.(nameError)).toEqual(nameError)
+    expect(getBuiltin('FACT')?.(nameError)).toEqual(nameError)
+    expect(getBuiltin('FACTDOUBLE')?.(nameError)).toEqual(nameError)
+    expect(getBuiltin('COMBIN')?.(nameError, num(-1))).toEqual(nameError)
+    expect(getBuiltin('COMBINA')?.(num(1), naError)).toEqual(naError)
+    expect(getBuiltin('QUOTIENT')?.(nameError, num(0))).toEqual(nameError)
+    expect(getBuiltin('BESSELK')?.(nameError, num(-1))).toEqual(nameError)
+    expect(getBuiltin('BESSELY')?.(num(0), naError)).toEqual(naError)
+    expect(getBuiltin('PERMUT')?.(nameError, num(1))).toEqual(nameError)
+    expect(getBuiltin('PERMUTATIONA')?.(num(1), naError)).toEqual(naError)
   })
 
   it('matches Microsoft Excel GCD and LCM domain errors', () => {

@@ -98,6 +98,11 @@ function cellIndex(row: number, col: number, width: number): number {
   return row * width + col
 }
 
+function expectKernelError(kernel: Awaited<ReturnType<typeof createKernel>>, index: number, code: ErrorCode): void {
+  expect(kernel.readTags()[index]).toBe(ValueTag.Error)
+  expect(kernel.readErrors()[index]).toBe(code)
+}
+
 describe('wasm kernel scalar math dispatch', () => {
   it('keeps rounding and core scalar math dispatch stable across refactors', async () => {
     const kernel = await createKernel()
@@ -481,6 +486,57 @@ describe('wasm kernel scalar math dispatch', () => {
     }
   })
 
+  it('propagates scalar math argument errors before coercion and domain checks on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 32
+    kernel.init(96, 0, 8, 1, 1)
+    kernel.writeCells(new Uint8Array(96), new Float64Array(96), new Uint32Array(96), new Uint16Array(96))
+
+    const packed = packPrograms([
+      [encodePushError(ErrorCode.Name), encodeCall(BuiltinId.Abs, 1), encodeRet()],
+      [encodePushNumber(0), encodePushError(ErrorCode.NA), encodeCall(BuiltinId.Round, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushError(ErrorCode.NA), encodeCall(BuiltinId.FloorMath, 3), encodeRet()],
+      [encodePushError(ErrorCode.Name), encodePushNumber(1), encodeCall(BuiltinId.Mod, 2), encodeRet()],
+      [encodePushError(ErrorCode.Name), encodeCall(BuiltinId.Int, 1), encodeRet()],
+      [encodePushError(ErrorCode.Name), encodeCall(BuiltinId.Acot, 1), encodeRet()],
+      [encodePushError(ErrorCode.Name), encodeCall(BuiltinId.Cot, 1), encodeRet()],
+      [encodePushError(ErrorCode.Name), encodeCall(BuiltinId.Sign, 1), encodeRet()],
+      [encodePushError(ErrorCode.Name), encodePushNumber(0), encodeCall(BuiltinId.Combin, 2), encodeRet()],
+      [encodePushNumber(0), encodePushError(ErrorCode.NA), encodeCall(BuiltinId.Permut, 2), encodeRet()],
+      [encodePushError(ErrorCode.Name), encodePushNumber(1), encodeCall(BuiltinId.Mround, 2), encodeRet()],
+      [encodePushError(ErrorCode.Name), encodePushNumber(0), encodeCall(BuiltinId.Besselk, 2), encodeRet()],
+      [encodePushNumber(0), encodePushError(ErrorCode.NA), encodeCall(BuiltinId.Bessely, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 13 }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([[], [1], [1, 1], [0], [], [], [], [], [1], [1], [1], [1], [1]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 13 }, (_, index) => cellIndex(1, index, width))))
+
+    const expectedErrors = [
+      ErrorCode.Name,
+      ErrorCode.NA,
+      ErrorCode.NA,
+      ErrorCode.Name,
+      ErrorCode.Name,
+      ErrorCode.Name,
+      ErrorCode.Name,
+      ErrorCode.Name,
+      ErrorCode.Name,
+      ErrorCode.NA,
+      ErrorCode.Name,
+      ErrorCode.Name,
+      ErrorCode.NA,
+    ]
+    for (const [index, code] of expectedErrors.entries()) {
+      expectKernelError(kernel, cellIndex(1, index, width), code)
+    }
+  })
+
   it('returns Excel-compatible log errors through wasm dispatch', async () => {
     const kernel = await createKernel()
     const width = 16
@@ -672,7 +728,7 @@ describe('wasm kernel scalar math dispatch', () => {
     }
   })
 
-  it('returns Excel-compatible Bessel order-domain errors through wasm dispatch', async () => {
+  it('returns Excel-compatible Bessel domain errors through wasm dispatch', async () => {
     const kernel = await createKernel()
     const width = 16
     kernel.init(32, 1, 8, 1, 1)
@@ -687,24 +743,27 @@ describe('wasm kernel scalar math dispatch', () => {
       [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Bessely, 2), encodeRet()],
       [encodePushString(0), encodePushNumber(0), encodeCall(BuiltinId.Besseli, 2), encodeRet()],
       [encodePushNumber(0), encodePushString(0), encodeCall(BuiltinId.Besselj, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Besselk, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Bessely, 2), encodeRet()],
     ])
     kernel.uploadPrograms(
       packed.programs,
       packed.offsets,
       packed.lengths,
-      Uint32Array.from(Array.from({ length: 6 }, (_, index) => cellIndex(1, index, width))),
+      Uint32Array.from(Array.from({ length: 8 }, (_, index) => cellIndex(1, index, width))),
     )
-    const constants = packConstants([[1, -1], [1, -1], [1, -1], [1, -1], [1], [1]])
+    const constants = packConstants([[1, -1], [1, -1], [1, -1], [1, -1], [1], [1], [0, 1], [0, 1]])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
-    kernel.evalBatch(Uint32Array.from(Array.from({ length: 6 }, (_, index) => cellIndex(1, index, width))))
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 8 }, (_, index) => cellIndex(1, index, width))))
 
     for (let index = 0; index < 4; index += 1) {
-      expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Error)
-      expect(kernel.readErrors()[cellIndex(1, index, width)]).toBe(ErrorCode.Num)
+      expectKernelError(kernel, cellIndex(1, index, width), ErrorCode.Num)
     }
     for (let index = 4; index < 6; index += 1) {
-      expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Error)
-      expect(kernel.readErrors()[cellIndex(1, index, width)]).toBe(ErrorCode.Value)
+      expectKernelError(kernel, cellIndex(1, index, width), ErrorCode.Value)
+    }
+    for (let index = 6; index < 8; index += 1) {
+      expectKernelError(kernel, cellIndex(1, index, width), ErrorCode.Num)
     }
   })
 })

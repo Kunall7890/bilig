@@ -67,6 +67,14 @@ function directScalarNumberLikeText(
   )
 }
 
+function referencedNumberOrNaN(tag: u8, value: f64): f64 {
+  return tag == ValueTag.Number ? value : NaN
+}
+
+function spillReferencedNumberOrNaN(arrayIndex: u32, cursor: i32): f64 {
+  return readSpillArrayTag(arrayIndex, cursor) == ValueTag.Number ? readSpillArrayNumber(arrayIndex, cursor) : NaN
+}
+
 export function tryApplyAggregateCriteriaBuiltin(
   builtinId: i32,
   argc: i32,
@@ -119,7 +127,7 @@ export function tryApplyAggregateCriteriaBuiltin(
           writeCachedRangeSum(rangeIndex, <u8>ValueTag.Error, errorCode)
           return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
         }
-        const numeric = toNumberOrNaN(memberTag, cellNumbers[memberIndex])
+        const numeric = referencedNumberOrNaN(memberTag, cellNumbers[memberIndex])
         if (!isNaN(numeric)) {
           sum += numeric
         }
@@ -149,7 +157,7 @@ export function tryApplyAggregateCriteriaBuiltin(
         const length = <i32>rangeLengths[rangeIndex]
         for (let cursor = 0; cursor < length; cursor += 1) {
           const memberIndex = rangeMembers[start + cursor]
-          const numeric = toNumberOrNaN(cellTags[memberIndex], cellNumbers[memberIndex])
+          const numeric = referencedNumberOrNaN(cellTags[memberIndex], cellNumbers[memberIndex])
           if (!isNaN(numeric)) {
             sum += numeric
           }
@@ -160,7 +168,7 @@ export function tryApplyAggregateCriteriaBuiltin(
         const arrayIndex = rangeIndexStack[slot]
         const length = readSpillArrayLength(arrayIndex)
         for (let cursor = 0; cursor < length; cursor += 1) {
-          const numeric = readSpillArrayNumber(arrayIndex, cursor)
+          const numeric = spillReferencedNumberOrNaN(arrayIndex, cursor)
           if (!isNaN(numeric)) {
             sum += numeric
           }
@@ -209,7 +217,7 @@ export function tryApplyAggregateCriteriaBuiltin(
         const length = <i32>rangeLengths[rangeIndex]
         for (let cursor = 0; cursor < length; cursor += 1) {
           const memberIndex = rangeMembers[start + cursor]
-          const numeric = toNumberOrNaN(cellTags[memberIndex], cellNumbers[memberIndex])
+          const numeric = referencedNumberOrNaN(cellTags[memberIndex], cellNumbers[memberIndex])
           if (!isNaN(numeric)) {
             sum += numeric
             count += 1
@@ -221,7 +229,7 @@ export function tryApplyAggregateCriteriaBuiltin(
         const arrayIndex = rangeIndexStack[slot]
         const length = readSpillArrayLength(arrayIndex)
         for (let cursor = 0; cursor < length; cursor += 1) {
-          const numeric = readSpillArrayNumber(arrayIndex, cursor)
+          const numeric = spillReferencedNumberOrNaN(arrayIndex, cursor)
           if (!isNaN(numeric)) {
             sum += numeric
             count += 1
@@ -269,7 +277,7 @@ export function tryApplyAggregateCriteriaBuiltin(
         const length = <i32>rangeLengths[rangeIndex]
         for (let cursor = 0; cursor < length; cursor += 1) {
           const memberIndex = rangeMembers[start + cursor]
-          const numeric = toNumberOrNaN(cellTags[memberIndex], cellNumbers[memberIndex])
+          const numeric = referencedNumberOrNaN(cellTags[memberIndex], cellNumbers[memberIndex])
           if (!isNaN(numeric) && numeric < minValue) {
             minValue = numeric
             count += 1
@@ -281,7 +289,7 @@ export function tryApplyAggregateCriteriaBuiltin(
         const arrayIndex = rangeIndexStack[slot]
         const length = readSpillArrayLength(arrayIndex)
         for (let cursor = 0; cursor < length; cursor += 1) {
-          const numeric = readSpillArrayNumber(arrayIndex, cursor)
+          const numeric = spillReferencedNumberOrNaN(arrayIndex, cursor)
           if (!isNaN(numeric) && numeric < minValue) {
             minValue = numeric
             count += 1
@@ -342,7 +350,7 @@ export function tryApplyAggregateCriteriaBuiltin(
         const length = <i32>rangeLengths[rangeIndex]
         for (let cursor = 0; cursor < length; cursor += 1) {
           const memberIndex = rangeMembers[start + cursor]
-          const numeric = toNumberOrNaN(cellTags[memberIndex], cellNumbers[memberIndex])
+          const numeric = referencedNumberOrNaN(cellTags[memberIndex], cellNumbers[memberIndex])
           if (!isNaN(numeric) && numeric > maxValue) {
             maxValue = numeric
             count += 1
@@ -354,7 +362,7 @@ export function tryApplyAggregateCriteriaBuiltin(
         const arrayIndex = rangeIndexStack[slot]
         const length = readSpillArrayLength(arrayIndex)
         for (let cursor = 0; cursor < length; cursor += 1) {
-          const numeric = readSpillArrayNumber(arrayIndex, cursor)
+          const numeric = spillReferencedNumberOrNaN(arrayIndex, cursor)
           if (!isNaN(numeric) && numeric > maxValue) {
             maxValue = numeric
             count += 1
@@ -403,14 +411,20 @@ export function tryApplyAggregateCriteriaBuiltin(
         const length = <i32>rangeLengths[rangeIndex]
         for (let cursor = 0; cursor < length; cursor += 1) {
           const memberIndex = rangeMembers[start + cursor]
-          if (!isNaN(toNumberOrNaN(cellTags[memberIndex], cellNumbers[memberIndex]))) {
+          if (cellTags[memberIndex] == ValueTag.Number) {
             count += 1
           }
         }
         continue
       }
       if (kindStack[slot] == STACK_KIND_ARRAY) {
-        count += readSpillArrayLength(rangeIndexStack[slot])
+        const arrayIndex = rangeIndexStack[slot]
+        const length = readSpillArrayLength(arrayIndex)
+        for (let cursor = 0; cursor < length; cursor += 1) {
+          if (readSpillArrayTag(arrayIndex, cursor) == ValueTag.Number) {
+            count += 1
+          }
+        }
         continue
       }
       if (
@@ -536,7 +550,7 @@ export function tryApplyAggregateCriteriaBuiltin(
         const length = <i32>rangeLengths[rangeIndex]
         for (let cursor = 0; cursor < length; cursor += 1) {
           const memberIndex = rangeMembers[start + cursor]
-          const numeric = toNumberOrNaN(cellTags[memberIndex], cellNumbers[memberIndex])
+          const numeric = referencedNumberOrNaN(cellTags[memberIndex], cellNumbers[memberIndex])
           if (isNaN(numeric)) {
             continue
           }
@@ -581,7 +595,7 @@ export function tryApplyAggregateCriteriaBuiltin(
         const arrayIndex = rangeIndexStack[slot]
         const length = readSpillArrayLength(arrayIndex)
         for (let cursor = 0; cursor < length; cursor += 1) {
-          const numeric = readSpillArrayNumber(arrayIndex, cursor)
+          const numeric = spillReferencedNumberOrNaN(arrayIndex, cursor)
           if (isNaN(numeric)) {
             continue
           }
