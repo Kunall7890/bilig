@@ -288,6 +288,8 @@ function parseSameCorpusMutationCommittedStatePhaseProof(
     targetRange: stringField(value, 'targetRange'),
     exportUrl: stringField(value, 'exportUrl'),
     capturedAtMs: optionalNumberField(value, 'capturedAtMs') ?? Number.NaN,
+    artifactPath: Object.hasOwn(value, 'artifactPath') ? nullableStringField(value, 'artifactPath') : null,
+    artifactSha256: Object.hasOwn(value, 'artifactSha256') ? nullableStringField(value, 'artifactSha256') : null,
     workbookByteSize: optionalNumberField(value, 'workbookByteSize') ?? Number.NaN,
     workbookSha256: stringField(value, 'workbookSha256'),
     readback: parseSameCorpusMutationTargetReadback(objectField(value, 'readback')),

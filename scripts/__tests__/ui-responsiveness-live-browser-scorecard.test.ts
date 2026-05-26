@@ -60,6 +60,7 @@ describe('UI responsiveness live browser scorecard', () => {
 
     expect(scorecard.summary).toMatchObject({
       directBrowserTimingCaptured: true,
+      directBrowserTimingCasesPassed: true,
       allRequiredCasesPassed: true,
       requiredVendorCount: 2,
       capturedVendors: ['google-sheets', 'microsoft-excel-web'],
@@ -1362,6 +1363,10 @@ function sameCorpusCommittedStatePhaseProof(
     targetRange: proof.targetRange,
     exportUrl: 'https://docs.google.com/spreadsheets/d/test-spreadsheet/export?format=xlsx',
     capturedAtMs,
+    artifactPath: `tmp/same-corpus-wide-mixed-250k-${proof.workload}/committed-state/google-sheets-sample-${String(
+      proof.sampleIndex + 1,
+    )}-${phase}.json`,
+    artifactSha256: sameCorpusMutationTargetScreenshotSha256(proof.sampleIndex, phase),
     workbookByteSize: 123456 + proof.sampleIndex,
     workbookSha256: ((proof.sampleIndex + hashOffset) % 16).toString(16).repeat(64),
     readback: sameCorpusCommittedStateReadback(readback),

@@ -163,7 +163,7 @@ export function buildBiligDominanceCompletionAudit(input: BuildScorecardInput, s
         ),
       ],
       gaps: [
-        ...(signals.uiResponsivenessLiveBrowserPassed ? [] : ['live incumbent browser timing scorecard is not passing']),
+        ...(signals.uiResponsivenessLiveBrowserPassed ? [] : ['direct incumbent browser timing scorecard is not passing']),
         ...(input.largeWorkbookSloScorecard.summary.headedBrowserFrameP95ContractsPassed
           ? []
           : ['headed browser frame p95 contracts are not all passing']),

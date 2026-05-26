@@ -144,7 +144,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
   const structuralDirectTargetsTenXPassed = microsoftExcelStructuralTenXPassed && googleSheetsStructuralTenXPassed
   const largeWorkbookDirectTargetsTenXPassed = microsoftExcelLargeWorkbookTenXPassed && googleSheetsLargeWorkbookTenXPassed
   const calculationSemanticsPassed = input.calculationSemanticsScorecard.summary.allCommittedFormulaSemanticsCovered
-  const uiResponsivenessLiveBrowserPassed = input.uiResponsivenessLiveBrowserScorecard.summary.allRequiredCasesPassed
+  const uiResponsivenessLiveBrowserPassed = input.uiResponsivenessLiveBrowserScorecard.summary.directBrowserTimingCasesPassed
   const totalSurfaceMembers =
     input.surfaceSnapshot.classSurface.staticMembers.length +
     input.surfaceSnapshot.classSurface.staticMethods.length +
@@ -471,7 +471,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           `external UI responsiveness comparison dimensions pass: ${String(
             input.largeWorkbookSloScorecard.uiResponsivenessExternalSheetsExcelComparison.requiredDimensionsPassed,
           )}`,
-          `live incumbent browser timing scorecard passes: ${String(uiResponsivenessLiveBrowserPassed)}`,
+          `direct incumbent browser timing scorecard passes: ${String(uiResponsivenessLiveBrowserPassed)}`,
           `same-corpus UI 10x proof captured: ${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.captured)}`,
           `same-corpus UI 10x cases: ${String(
             input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.tenXMeanAndP95CaseCount,
@@ -886,7 +886,7 @@ function buildOverallGoogleSheets10xStatus(
         'Claimed UI responsiveness must have live same-corpus browser proof against Google Sheets with 10x better mean and p95 plus rendered-grid proof.',
       passed: signals.uiResponsivenessLiveBrowserPassed && !signals.uiSameCorpusTenXGap,
       evidence: [
-        `direct live browser timing passed: ${String(signals.uiResponsivenessLiveBrowserPassed)}`,
+        `direct incumbent browser timing passed: ${String(signals.uiResponsivenessLiveBrowserPassed)}`,
         `same-corpus capture kind: ${input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.evidenceKind}`,
         `same-corpus UI 10x cases: ${String(
           input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.tenXMeanAndP95CaseCount,
@@ -914,7 +914,7 @@ function buildOverallGoogleSheets10xStatus(
         ...uiSameCorpusSpeedGaps.map((gap) => `same-corpus UI 10x speed gap: ${formatSameCorpusUiSpeedGap(gap)}`),
       ],
       gaps: [
-        ...(signals.uiResponsivenessLiveBrowserPassed ? [] : ['live incumbent browser timing scorecard is not passing']),
+        ...(signals.uiResponsivenessLiveBrowserPassed ? [] : ['direct incumbent browser timing scorecard is not passing']),
         ...uiSameCorpusRunManifestInvalidReasons.map((reason) => `same-corpus UI run manifest: ${reason}`),
         ...uiSameCorpusSpeedGaps.map((gap) => `same-corpus UI 10x speed gap: ${formatSameCorpusUiSpeedGap(gap)}`),
         ...(signals.uiSameCorpusTenXGap

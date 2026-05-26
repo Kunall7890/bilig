@@ -304,4 +304,4 @@ export interface SameCorpusCaptureCorpusVerification {
   readonly checkedCells: readonly SameCorpusCaptureVerifiedCell[]
 }
 
-export const sameCorpusUiCaptureToolVersion = 'same-corpus-capture-v8'
+export const sameCorpusUiCaptureToolVersion = 'same-corpus-capture-v9'

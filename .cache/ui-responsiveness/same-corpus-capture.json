@@ -4,7 +4,7 @@
   "sampleCount": 3,
   "runManifest": {
     "artifactGenerator": "scripts/capture-ui-responsiveness-same-corpus.ts",
-    "captureToolVersion": "same-corpus-capture-v8",
+    "captureToolVersion": "same-corpus-capture-v9",
     "contractVersion": "same-corpus-ui-v8",
     "requiredProducts": ["bilig", "google-sheets"],
     "requiredWorkloads": [

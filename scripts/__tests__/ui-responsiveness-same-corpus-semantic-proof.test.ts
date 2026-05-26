@@ -542,6 +542,39 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('rejects Google Sheets formula proof when XLSX export lacks the rendered formula result', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validGoogleSheetsSemanticProof({
+        selectedRange: sameCorpusMutationTargetRangeForSample('formula-edit', 0),
+        mutationTargetProofs: validGoogleSheetsFormulaMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 && proof.committedStateProof
+            ? Object.assign({}, proof, {
+                committedStateProof: {
+                  ...proof.committedStateProof,
+                  after: googleCommittedStatePhaseProof(
+                    proof,
+                    'after',
+                    Object.assign({}, proof.after, { value: null, visibleText: proof.after.formula }),
+                  ),
+                },
+              })
+            : proof,
+        ),
+      }),
+      {
+        workload: 'formula-edit',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for formula-edit committed-state after readback did not prove formula result',
+      ]),
+    })
+  })
+
   it('rejects Google Sheets mutation proof without independent committed-state export proof', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validGoogleSheetsSemanticProof({
@@ -559,6 +592,37 @@ describe('same-corpus semantic UI mutation proof validation', () => {
       acceptedForCurrentScorecard: false,
       invalidReasons: expect.arrayContaining([
         'semantic UI mutation target proof for edit-visible-cell is missing independent Google Sheets committed-state proof',
+      ]),
+    })
+  })
+
+  it('rejects Google Sheets committed-state proof without archived JSON artifacts', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validGoogleSheetsSemanticProof({
+        mutationTargetProofs: validGoogleSheetsMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 && proof.committedStateProof
+            ? Object.assign({}, proof, {
+                committedStateProof: {
+                  ...proof.committedStateProof,
+                  after: Object.assign({}, proof.committedStateProof.after, {
+                    artifactPath: null,
+                    artifactSha256: null,
+                  }),
+                },
+              })
+            : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell committed-state after proof is missing archive JSON artifact',
       ]),
     })
   })
@@ -776,6 +840,13 @@ function validGoogleSheetsSemanticProof(overrides: Partial<SameCorpusProductSema
 
 function validGoogleSheetsMutationTargetProofs(): SameCorpusMutationTargetProof[] {
   return [0, 1, 2].map((sampleIndex) => googleSheetsMutationTargetProof(sampleIndex))
+}
+
+function validGoogleSheetsFormulaMutationTargetProofs(): SameCorpusMutationTargetProof[] {
+  return [0, 1, 2].map((sampleIndex) => {
+    const proof = mutationTargetProof('google-sheets', 'formula-edit', sampleIndex)
+    return Object.assign(proof, { committedStateProof: googleCommittedStateProof(proof) })
+  })
 }
 
 function validGoogleSheetsFillMutationTargetProofs(): SameCorpusMutationTargetProof[] {
@@ -1133,6 +1204,10 @@ function googleCommittedStatePhaseProof(
         ? sample.operationStartedAtMs + Math.max(1, sample.committedTargetProofMs / 2)
         : sample.postMutationProofCapturedAtMs + 10
   return {
+    artifactPath: `tmp/same-corpus-wide-mixed-250k-${sample.intendedOperation}/committed-state/google-sheets-sample-${String(
+      sample.sampleIndex + 1,
+    )}-${phase}.json`,
+    artifactSha256: mutationTargetScreenshotSha256(sample.sampleIndex, phase),
     capturedAtMs,
     exportUrl: 'https://docs.google.com/spreadsheets/d/test-spreadsheet/export?format=xlsx',
     phase,

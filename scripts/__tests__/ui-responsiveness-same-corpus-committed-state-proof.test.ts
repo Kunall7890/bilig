@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 import {
   captureSameCorpusCommittedStatePhaseProof,
@@ -35,6 +38,58 @@ describe('same-corpus committed-state proof capture', () => {
         value: 'same-corpus-edit-1',
         source: 'google-sheets-xlsx-export',
       },
+    })
+  })
+
+  it('writes a per-phase committed-state JSON artifact for accepted Google Sheets export proof', async () => {
+    const committedBytes = xlsxBytesForTargetValue('WideGrid', 'C5', 'same-corpus-edit-1')
+    const page = mockGoogleSheetsExportPage([committedBytes])
+    const artifactPath = join(mkdtempSync(join(tmpdir(), 'bilig-committed-proof-')), 'after.json')
+
+    const proof = await captureSameCorpusCommittedStatePhaseProof({
+      artifactPath,
+      expectedReadback: sameCorpusGoogleReadback('same-corpus-edit-1'),
+      page: page.page,
+      phase: 'after',
+      product: 'google-sheets',
+      sampleIndex: 0,
+      target: sameCorpusTargetSelection(),
+      timeoutMs: 1_000,
+      pollIntervalMs: 0,
+      workload: 'edit-visible-cell',
+    })
+
+    expect(proof?.artifactPath).toBeTruthy()
+    expect(proof?.artifactSha256).toMatch(/^[a-f0-9]{64}$/u)
+    expect(existsSync(artifactPath)).toBe(true)
+    expect(readFileSync(artifactPath, 'utf8')).toContain('"source": "google-sheets-xlsx-export"')
+  })
+
+  it('keeps cached formula results in XLSX readback instead of formula text only', async () => {
+    const page = mockGoogleSheetsExportPage([xlsxBytesForFormulaResult('WideGrid', 'D5', '1+1', 2)])
+
+    const proof = await captureSameCorpusCommittedStatePhaseProof({
+      expectedReadback: { ...sameCorpusGoogleReadback('2'), formula: '=1+1' },
+      page: page.page,
+      phase: 'after',
+      product: 'google-sheets',
+      sampleIndex: 0,
+      target: {
+        ...sameCorpusTargetSelection(),
+        endAddress: 'D5',
+        startAddress: 'D5',
+        targetRange: 'D5',
+      },
+      timeoutMs: 1_000,
+      pollIntervalMs: 0,
+      workload: 'formula-edit',
+    })
+
+    expect(proof?.readback).toMatchObject({
+      formula: '=1+1',
+      value: '2',
+      visibleText: '2',
+      source: 'google-sheets-xlsx-export',
     })
   })
 
@@ -107,6 +162,15 @@ function xlsxBytesForTargetValue(sheetName: string, address: string, value: stri
   const workbook = XLSX.utils.book_new()
   const worksheet = XLSX.utils.aoa_to_sheet([[]])
   worksheet[address] = { t: 's', v: value }
+  worksheet['!ref'] = `A1:${address}`
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
+  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+}
+
+function xlsxBytesForFormulaResult(sheetName: string, address: string, formula: string, value: number): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const worksheet = XLSX.utils.aoa_to_sheet([[]])
+  worksheet[address] = { f: formula, t: 'n', v: value }
   worksheet['!ref'] = `A1:${address}`
   XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
   return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })

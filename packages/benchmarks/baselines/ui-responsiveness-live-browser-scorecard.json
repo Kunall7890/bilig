@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "ui-responsiveness-live-browser-timing",
-  "generatedAt": "2026-05-26T21:15:31.133Z",
+  "generatedAt": "2026-05-26T21:56:12.269Z",
   "host": {
     "arch": "arm64",
     "platform": "darwin"
@@ -22,6 +22,7 @@
   },
   "summary": {
     "directBrowserTimingCaptured": true,
+    "directBrowserTimingCasesPassed": true,
     "allRequiredCasesPassed": true,
     "requiredVendorCount": 2,
     "capturedVendors": ["google-sheets", "microsoft-excel-web"],
@@ -43,48 +44,48 @@
       "workload": "open-public-workbook-and-scroll-viewport",
       "sampleCount": 3,
       "loadToReadyMs": {
-        "samples": [3041.7615000000005, 3190.8279999999995, 3960.17],
-        "min": 3041.7615000000005,
-        "median": 3190.8279999999995,
-        "p95": 3960.17,
-        "max": 3960.17,
-        "mean": 3397.5865,
-        "standardDeviation": 402.43455054600696,
-        "relativeStandardDeviation": 0.11844718318312336,
-        "standardError": 232.34569608894319,
+        "samples": [2834.4574170000005, 3041.720042, 3535.774958],
+        "min": 2834.4574170000005,
+        "median": 3041.720042,
+        "p95": 3535.774958,
+        "max": 3535.774958,
+        "mean": 3137.3174723333336,
+        "standardDeviation": 294.18330435668156,
+        "relativeStandardDeviation": 0.09376905810488062,
+        "standardError": 169.8468099614237,
         "confidence95": {
-          "low": 2942.188935665671,
-          "high": 3852.9840643343287
+          "low": 2804.417724808943,
+          "high": 3470.217219857724
         }
       },
       "scrollResponseMs": {
-        "samples": [114.97500000000036, 119.86016699999891, 125.49804200000017],
-        "min": 114.97500000000036,
-        "median": 119.86016699999891,
-        "p95": 125.49804200000017,
-        "max": 125.49804200000017,
-        "mean": 120.11106966666648,
-        "standardDeviation": 4.299675750917786,
-        "relativeStandardDeviation": 0.035797497789756536,
-        "standardError": 2.4824189522204905,
+        "samples": [118.00641700000051, 120.43695900000057, 121.7221669999999],
+        "min": 118.00641700000051,
+        "median": 120.43695900000057,
+        "p95": 121.7221669999999,
+        "max": 121.7221669999999,
+        "mean": 120.05518100000033,
+        "standardDeviation": 1.5407823438299137,
+        "relativeStandardDeviation": 0.012833951279702868,
+        "standardError": 0.8895711009728233,
         "confidence95": {
-          "low": 115.24552852031432,
-          "high": 124.97661081301864
+          "low": 118.3116216420936,
+          "high": 121.79874035790706
         }
       },
       "postScrollFrameMs": {
-        "samples": [9.199999999999818, 9.199999999999818, 9.400000000000091],
-        "min": 9.199999999999818,
-        "median": 9.199999999999818,
-        "p95": 9.400000000000091,
-        "max": 9.400000000000091,
-        "mean": 9.266666666666575,
-        "standardDeviation": 0.09428090415833495,
-        "relativeStandardDeviation": 0.010174198290467902,
-        "standardError": 0.054433105395256,
+        "samples": [8.699999999999818, 9.099999999999909, 9.299999999999727],
+        "min": 8.699999999999818,
+        "median": 9.099999999999909,
+        "p95": 9.299999999999727,
+        "max": 9.299999999999727,
+        "mean": 9.033333333333152,
+        "standardDeviation": 0.24944382578490512,
+        "relativeStandardDeviation": 0.027613707651466066,
+        "standardError": 0.1440164599646051,
         "confidence95": {
-          "low": 9.159977780091873,
-          "high": 9.373355553241277
+          "low": 8.751061071802527,
+          "high": 9.315605594863777
         }
       },
       "passed": true,
@@ -104,48 +105,48 @@
       "workload": "open-public-workbook-and-scroll-viewport",
       "sampleCount": 3,
       "loadToReadyMs": {
-        "samples": [5079.9185, 5088.398042000001, 5866.414792000001],
-        "min": 5079.9185,
-        "median": 5088.398042000001,
-        "p95": 5866.414792000001,
-        "max": 5866.414792000001,
-        "mean": 5344.910444666667,
-        "standardDeviation": 368.7755088341302,
-        "relativeStandardDeviation": 0.06899563849607751,
-        "standardError": 212.9126392959263,
+        "samples": [5074.006041999997, 5095.211708000001, 5154.121541999999],
+        "min": 5074.006041999997,
+        "median": 5095.211708000001,
+        "p95": 5154.121541999999,
+        "max": 5154.121541999999,
+        "mean": 5107.779763999999,
+        "standardDeviation": 33.892873968597854,
+        "relativeStandardDeviation": 0.006635539419196826,
+        "standardError": 19.568059909380032,
         "confidence95": {
-          "low": 4927.601671646651,
-          "high": 5762.219217686683
+          "low": 5069.426366577614,
+          "high": 5146.133161422384
         }
       },
       "scrollResponseMs": {
-        "samples": [96.12120800000048, 101.01650000000154, 104.78099999999904],
-        "min": 96.12120800000048,
-        "median": 101.01650000000154,
-        "p95": 104.78099999999904,
-        "max": 104.78099999999904,
-        "mean": 100.63956933333368,
-        "standardDeviation": 3.545377922160605,
-        "relativeStandardDeviation": 0.03522846873894869,
-        "standardError": 2.0469248977383816,
+        "samples": [97.29062500000146, 99.44483299999956, 101.45483299999978],
+        "min": 97.29062500000146,
+        "median": 99.44483299999956,
+        "p95": 101.45483299999978,
+        "max": 101.45483299999978,
+        "mean": 99.39676366666693,
+        "standardDeviation": 1.700370560087378,
+        "relativeStandardDeviation": 0.017106900641047768,
+        "standardError": 0.9817094005885625,
         "confidence95": {
-          "low": 96.62759653376645,
-          "high": 104.65154213290091
+          "low": 97.47261324151334,
+          "high": 101.32091409182051
         }
       },
       "postScrollFrameMs": {
-        "samples": [9.100000000000364, 9.100000000000364, 9.300000000000182],
-        "min": 9.100000000000364,
-        "median": 9.100000000000364,
+        "samples": [9.199999999999818, 9.300000000000182, 9.300000000000182],
+        "min": 9.199999999999818,
+        "median": 9.300000000000182,
         "p95": 9.300000000000182,
         "max": 9.300000000000182,
-        "mean": 9.16666666666697,
-        "standardDeviation": 0.09428090415812058,
-        "relativeStandardDeviation": 0.010285189544521905,
-        "standardError": 0.05443310539513223,
+        "mean": 9.266666666666728,
+        "standardDeviation": 0.04714045207927466,
+        "relativeStandardDeviation": 0.005087099145245433,
+        "standardError": 0.027216552697689883,
         "confidence95": {
-          "low": 9.059977780092511,
-          "high": 9.273355553241428
+          "low": 9.213322223379256,
+          "high": 9.3200111099542
         }
       },
       "passed": true,

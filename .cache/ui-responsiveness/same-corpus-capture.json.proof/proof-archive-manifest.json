@@ -4,6 +4,16 @@
   "captureRunSignature": "a9781daaabf37b33f80cf9f75242368f1d6d99a492c3e000a7a520e49f413633",
   "requiredArtifactCount": 99,
   "artifactCount": 0,
+  "filesVerified": false,
   "complete": false,
+  "fileVerification": {
+    "schemaVersion": 1,
+    "checkedArtifactCount": 0,
+    "verifiedArtifactCount": 0,
+    "missingArtifactCount": 0,
+    "mismatchedArtifactCount": 0,
+    "complete": true,
+    "entries": []
+  },
   "artifacts": []
 }

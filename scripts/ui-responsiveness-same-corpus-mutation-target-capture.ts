@@ -8,6 +8,7 @@ import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-
 import {
   buildSameCorpusCommittedStateProof,
   captureSameCorpusCommittedStatePhaseProof,
+  sameCorpusCommittedStateProofArtifactPath,
   type SameCorpusMutationTargetCommittedStatePhaseProof,
 } from './ui-responsiveness-same-corpus-committed-state-proof.ts'
 import {
@@ -61,6 +62,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     const visibleTargetRenderCapturedAtMs = performance.now()
     const visibleTargetRenderMs = Math.max(0, visibleTargetRenderCapturedAtMs - args.operationStartedAt)
     const afterCommittedStateProof = await captureSameCorpusCommittedStatePhaseProof({
+      artifactPath: committedStateArtifactPath(args, 'after'),
       expectedReadback: after,
       page: args.page,
       phase: 'after',
@@ -92,6 +94,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     const visibleRestoredSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
     const restoredScreenshot = await captureTargetScreenshot({ ...args, semanticReadback: visibleRestored }, 'restored')
     const restoredCommittedStateProof = await captureSameCorpusCommittedStatePhaseProof({
+      artifactPath: committedStateArtifactPath(args, 'restored'),
       expectedReadback: restored,
       page: args.page,
       phase: 'restored',
@@ -185,6 +188,19 @@ function captureTargetScreenshot(
   phase: SameCorpusMutationTargetScreenshotProof['phase'],
 ): Promise<SameCorpusMutationTargetScreenshotProof> {
   return captureSameCorpusMutationTargetPhaseScreenshot({ ...args, phase })
+}
+
+function committedStateArtifactPath(
+  args: Pick<Parameters<typeof captureSameCorpusMutationTargetProofForSample>[0], 'caseId' | 'outputPath' | 'sampleIndex' | 'workload'>,
+  phase: SameCorpusMutationTargetCommittedStatePhaseProof['phase'],
+): string {
+  return sameCorpusCommittedStateProofArtifactPath({
+    caseId: args.caseId,
+    outputPath: args.outputPath,
+    phase,
+    sampleIndex: args.sampleIndex,
+    workload: args.workload,
+  })
 }
 
 function intendedMutationTargetPayload(

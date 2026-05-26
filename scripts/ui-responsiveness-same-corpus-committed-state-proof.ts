@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname, relative, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 
 import * as XLSX from 'xlsx'
@@ -49,6 +51,8 @@ export interface SameCorpusMutationTargetCommittedStatePhaseProof {
   readonly targetRange: string
   readonly exportUrl: string
   readonly capturedAtMs: number
+  readonly artifactPath?: string | null
+  readonly artifactSha256?: string | null
   readonly workbookByteSize: number
   readonly workbookSha256: string
   readonly readback: SameCorpusMutationTargetReadback
@@ -56,6 +60,7 @@ export interface SameCorpusMutationTargetCommittedStatePhaseProof {
 
 export async function captureSameCorpusCommittedStatePhaseProof(args: {
   readonly expectedReadback: SameCorpusMutationTargetReadback
+  readonly artifactPath?: string | null
   readonly page: SameCorpusCommittedStatePage
   readonly phase: SameCorpusMutationTargetCommittedStatePhaseProof['phase']
   readonly pollIntervalMs?: number
@@ -73,6 +78,22 @@ export async function captureSameCorpusCommittedStatePhaseProof(args: {
   const pollIntervalMs = Math.max(0, args.pollIntervalMs ?? 500)
   const maxAttempts = Math.max(1, Math.ceil(timeoutMs / Math.max(1, pollIntervalMs)) + 1)
   return await captureGoogleSheetsCommittedStatePhaseProofUntilMatched(args, exportUrl, maxAttempts, pollIntervalMs)
+}
+
+export function sameCorpusCommittedStateProofArtifactPath(args: {
+  readonly caseId?: string
+  readonly outputPath: string
+  readonly phase: SameCorpusMutationTargetCommittedStatePhaseProof['phase']
+  readonly sampleIndex: number
+  readonly workload: UiResponsivenessSameCorpusWorkload
+}): string {
+  const caseId = args.caseId ?? `same-corpus-${args.workload}`
+  return resolve(
+    `${args.outputPath}.proof`,
+    caseId,
+    'committed-state',
+    `google-sheets-sample-${String(args.sampleIndex + 1)}-${args.phase}.json`,
+  )
 }
 
 async function captureGoogleSheetsCommittedStatePhaseProofUntilMatched(
@@ -100,6 +121,7 @@ async function captureGoogleSheetsCommittedStatePhaseProofUntilMatched(
 
 async function captureGoogleSheetsCommittedStatePhaseProofSnapshot(
   args: {
+    readonly artifactPath?: string | null
     readonly page: SameCorpusCommittedStatePage
     readonly phase: SameCorpusMutationTargetCommittedStatePhaseProof['phase']
     readonly product: UiResponsivenessSameCorpusProduct
@@ -110,7 +132,7 @@ async function captureGoogleSheetsCommittedStatePhaseProofSnapshot(
   exportUrl: string,
 ): Promise<SameCorpusMutationTargetCommittedStatePhaseProof> {
   const bytes = await fetchGoogleSheetsXlsxExport(args.page, exportUrl)
-  return {
+  const proof = {
     product: args.product,
     phase: args.phase,
     sampleIndex: args.sampleIndex,
@@ -124,6 +146,7 @@ async function captureGoogleSheetsCommittedStatePhaseProofSnapshot(
     workbookSha256: sha256Hex(bytes),
     readback: readGoogleSheetsExportTargetReadback(bytes, args.target),
   }
+  return args.artifactPath ? writeCommittedStateProofArtifact(proof, args.artifactPath) : proof
 }
 
 function sameCorpusCommittedStateReadbackSummary(readback: SameCorpusMutationTargetReadback | null): string {
@@ -222,6 +245,7 @@ function sameCorpusCommittedStatePhaseInvalidReasons(
     if (!phaseProof.exportUrl.includes('/spreadsheets/d/') || !phaseProof.exportUrl.includes('format=xlsx')) {
       invalidReasons.push(`semantic UI mutation target proof for ${workload} committed-state ${phase} proof is missing export URL`)
     }
+    invalidReasons.push(...sameCorpusCommittedStateArtifactInvalidReasons(workload, sample, phaseProof))
     if (!sameGoogleSheetsExportWorkbook(proof.before.exportUrl, phaseProof.exportUrl)) {
       invalidReasons.push(
         `semantic UI mutation target proof for ${workload} committed-state ${phase} proof is from a different spreadsheet export URL`,
@@ -249,6 +273,30 @@ function sameCorpusCommittedStatePhaseInvalidReasons(
   if (proof.after.workbookSha256 === proof.restored.workbookSha256) {
     invalidReasons.push(
       `semantic UI mutation target proof for ${workload} committed-state export reused the post-mutation workbook hash after restore`,
+    )
+  }
+  return invalidReasons
+}
+
+function sameCorpusCommittedStateArtifactInvalidReasons(
+  workload: UiResponsivenessSameCorpusWorkload,
+  sample: SameCorpusMutationTargetProof,
+  phaseProof: SameCorpusMutationTargetCommittedStatePhaseProof,
+): string[] {
+  const artifactPath = phaseProof.artifactPath?.trim() ?? ''
+  const artifactSha256 = phaseProof.artifactSha256?.trim().toLowerCase() ?? ''
+  const invalidReasons: string[] = []
+  if (!artifactPath || !isSha256(artifactSha256)) {
+    invalidReasons.push(
+      `semantic UI mutation target proof for ${workload} committed-state ${phaseProof.phase} proof is missing archive JSON artifact`,
+    )
+    return invalidReasons
+  }
+  const normalizedPath = artifactPath.replaceAll('\\', '/')
+  const expectedFile = `google-sheets-sample-${String(sample.sampleIndex + 1)}-${phaseProof.phase}.json`
+  if (!normalizedPath.includes('/committed-state/') || !normalizedPath.endsWith(`/${expectedFile}`)) {
+    invalidReasons.push(
+      `semantic UI mutation target proof for ${workload} committed-state ${phaseProof.phase} artifact path is not tied to the sample`,
     )
   }
   return invalidReasons
@@ -326,6 +374,12 @@ function sameCorpusCommittedStateReadbackInvalidReasons(
       `semantic UI mutation target proof for ${workload} committed-state restore readback does not match pre-mutation export`,
     )
   }
+  if (workload === 'formula-edit') {
+    const expectedRenderedValue = String(sample.sampleIndex + 2)
+    if (proof.after.readback.value !== expectedRenderedValue && proof.after.readback.visibleText !== expectedRenderedValue) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} committed-state after readback did not prove formula result`)
+    }
+  }
   return invalidReasons
 }
 
@@ -380,12 +434,12 @@ function readGoogleSheetsExportTargetReadback(
   }
   const cell = worksheet[normalizeTargetStartAddress(target.startAddress)]
   const formula = typeof cell?.f === 'string' && cell.f.trim().length > 0 ? `=${cell.f.trim().replace(/^=/u, '')}` : null
-  const value = formula ? null : normalizeSpreadsheetValue(cell?.v)
+  const value = normalizeSpreadsheetValue(cell?.v)
   return {
     value,
     formula,
     fillColor: readXlsxCellFillColor(cell),
-    visibleText: formula ?? value,
+    visibleText: value ?? formula,
     source: 'google-sheets-xlsx-export',
   }
 }
@@ -455,6 +509,40 @@ function normalizeSpreadsheetValue(value: unknown): string | null {
   }
   const serialized = JSON.stringify(value)
   return serialized === undefined ? null : serialized
+}
+
+function writeCommittedStateProofArtifact(
+  proof: SameCorpusMutationTargetCommittedStatePhaseProof,
+  artifactPath: string,
+): SameCorpusMutationTargetCommittedStatePhaseProof {
+  const artifactPayload = { ...proof, artifactPath: repoRelativePath(artifactPath) }
+  const artifactJson = `${JSON.stringify(stableJsonValue(artifactPayload), null, 2)}\n`
+  mkdirSync(dirname(artifactPath), { recursive: true })
+  writeFileSync(artifactPath, artifactJson)
+  return {
+    ...proof,
+    artifactPath: artifactPayload.artifactPath,
+    artifactSha256: sha256Hex(new TextEncoder().encode(artifactJson)),
+  }
+}
+
+function repoRelativePath(path: string): string {
+  return relative(process.cwd(), path)
+}
+
+function stableJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(stableJsonValue)
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, entryValue]) => entryValue !== undefined)
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([key, entryValue]) => [key, stableJsonValue(entryValue)]),
+    )
+  }
+  return value
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

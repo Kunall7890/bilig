@@ -87,6 +87,7 @@ export function parseUiResponsivenessLiveBrowserScorecard(value: Record<string, 
     },
     summary: {
       directBrowserTimingCaptured: booleanField(summary, 'directBrowserTimingCaptured'),
+      directBrowserTimingCasesPassed: booleanField(summary, 'directBrowserTimingCasesPassed'),
       allRequiredCasesPassed: booleanField(summary, 'allRequiredCasesPassed'),
       requiredVendorCount: numberField(summary, 'requiredVendorCount'),
       capturedVendors: stringArrayField(summary, 'capturedVendors').map(parseVendor),

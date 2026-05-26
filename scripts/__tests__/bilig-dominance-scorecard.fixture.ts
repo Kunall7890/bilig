@@ -880,6 +880,7 @@ export function buildFixtureInput(): BuildScorecardInput {
       },
       summary: {
         directBrowserTimingCaptured: true,
+        directBrowserTimingCasesPassed: true,
         allRequiredCasesPassed: true,
         requiredVendorCount: 2,
         capturedVendors: ['google-sheets', 'microsoft-excel-web'],

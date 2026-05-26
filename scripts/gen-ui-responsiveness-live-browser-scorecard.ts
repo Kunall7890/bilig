@@ -86,6 +86,7 @@ export interface UiResponsivenessLiveBrowserScorecard {
   }
   readonly summary: {
     readonly directBrowserTimingCaptured: boolean
+    readonly directBrowserTimingCasesPassed: boolean
     readonly allRequiredCasesPassed: boolean
     readonly requiredVendorCount: number
     readonly capturedVendors: UiResponsivenessLiveBrowserVendor[]
@@ -209,6 +210,7 @@ export async function buildUiResponsivenessLiveBrowserScorecard(
       },
       summary: {
         directBrowserTimingCaptured: cases.length === caseSpecs.length,
+        directBrowserTimingCasesPassed: cases.every((entry) => entry.passed),
         allRequiredCasesPassed: cases.every((entry) => entry.passed),
         requiredVendorCount: caseSpecs.length,
         capturedVendors: caseSpecs.map((entry) => entry.vendor),
@@ -275,7 +277,11 @@ export function validateUiResponsivenessLiveBrowserScorecard(scorecard: UiRespon
   if (scorecard.benchmark.sampleCount < 3) {
     throw new Error('UI responsiveness live browser scorecard must contain at least 3 samples per case')
   }
-  if (!scorecard.summary.directBrowserTimingCaptured || !scorecard.summary.allRequiredCasesPassed) {
+  if (
+    scorecard.summary.directBrowserTimingCasesPassed !== scorecard.summary.allRequiredCasesPassed ||
+    !scorecard.summary.directBrowserTimingCaptured ||
+    !scorecard.summary.directBrowserTimingCasesPassed
+  ) {
     throw new Error('UI responsiveness live browser scorecard summary reports missing or failed browser timing evidence')
   }
   for (const spec of caseSpecs) {
@@ -620,7 +626,7 @@ function logResult(mode: 'check' | 'write', scorecard: UiResponsivenessLiveBrows
       {
         mode,
         outputPath,
-        allRequiredCasesPassed: scorecard.summary.allRequiredCasesPassed,
+        directBrowserTimingCasesPassed: scorecard.summary.directBrowserTimingCasesPassed,
         capturedVendors: scorecard.summary.capturedVendors,
         caseCount: scorecard.cases.length,
         sameCorpusProofCaptured: scorecard.sameCorpusProof.captured,

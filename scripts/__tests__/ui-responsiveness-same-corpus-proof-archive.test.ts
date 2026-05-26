@@ -1,4 +1,5 @@
-import { mkdtempSync, readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -9,6 +10,8 @@ import { buildSameCorpusFingerprint } from '../ui-responsiveness-same-corpus-fin
 import {
   buildSameCorpusProofArchiveManifest,
   proofArchiveManifestPath,
+  verifySameCorpusProofArchiveFiles,
+  verifySameCorpusProofArchiveManifestPath,
   writeSameCorpusProofArchiveManifest,
 } from '../ui-responsiveness-same-corpus-proof-archive.ts'
 import type { SameCorpusProductSemanticUiProof, SameCorpusScenarioProof } from '../ui-responsiveness-same-corpus-proof.ts'
@@ -58,6 +61,13 @@ describe('same-corpus proof archive manifest', () => {
       requiredArtifactCount: 99,
       artifactCount: 2,
       complete: false,
+      fileVerification: {
+        checkedArtifactCount: 2,
+        verifiedArtifactCount: 0,
+        missingArtifactCount: 2,
+        mismatchedArtifactCount: 0,
+        complete: false,
+      },
     })
     expect(manifest.artifacts).toContainEqual({
       kind: 'scenario-screenshot',
@@ -71,6 +81,11 @@ describe('same-corpus proof archive manifest', () => {
       captureRunSignature: capture.runManifest.captureRunSignature,
       artifactCount: 2,
       complete: false,
+      fileVerification: {
+        checkedArtifactCount: 2,
+        missingArtifactCount: 2,
+        complete: false,
+      },
     })
   })
 
@@ -90,6 +105,105 @@ describe('same-corpus proof archive manifest', () => {
       artifactCount: 0,
       complete: false,
       artifacts: [],
+    })
+  })
+
+  it('verifies file-backed archive artifacts by reading bytes and matching sha256 digests', () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'bilig-same-corpus-proof-archive-'))
+    const scenarioBytes = 'scenario screenshot bytes'
+    const committedBytes = '{"committed":true}\n'
+    writeFileSync(join(rootDir, 'bilig-sample-1.png'), scenarioBytes)
+    writeFileSync(join(rootDir, 'google-sheets-sample-1-after.json'), committedBytes)
+
+    const verification = verifySameCorpusProofArchiveFiles(
+      [
+        {
+          kind: 'scenario-screenshot',
+          product: 'bilig',
+          workload: 'open-workbook',
+          path: 'bilig-sample-1.png',
+          screenshotSha256: sha256Hex(scenarioBytes),
+        },
+        {
+          kind: 'google-sheets-committed-state-export',
+          product: 'google-sheets',
+          workload: 'edit-visible-cell',
+          sampleIndex: 0,
+          phase: 'after',
+          artifactPath: 'google-sheets-sample-1-after.json',
+          artifactSha256: sha256Hex(committedBytes),
+          exportUrl: 'https://docs.google.com/spreadsheets/d/example/export?format=xlsx',
+          workbookByteSize: 123,
+          workbookSha256: 'c'.repeat(64),
+        },
+      ],
+      { artifactBaseDir: rootDir },
+    )
+
+    expect(verification).toMatchObject({
+      checkedArtifactCount: 2,
+      verifiedArtifactCount: 2,
+      missingArtifactCount: 0,
+      mismatchedArtifactCount: 0,
+      complete: true,
+    })
+    expect(verification.entries.map((entry) => entry.status)).toEqual(['verified', 'verified'])
+  })
+
+  it('rejects missing and mismatched proof archive files', () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'bilig-same-corpus-proof-archive-'))
+    writeFileSync(join(rootDir, 'stale.png'), 'stale bytes')
+
+    const verification = verifySameCorpusProofArchiveFiles(
+      [
+        {
+          kind: 'scenario-screenshot',
+          product: 'bilig',
+          workload: 'open-workbook',
+          path: 'missing.png',
+          screenshotSha256: sha256Hex('missing bytes'),
+        },
+        {
+          kind: 'scenario-screenshot',
+          product: 'google-sheets',
+          workload: 'open-workbook',
+          path: 'stale.png',
+          screenshotSha256: sha256Hex('fresh bytes'),
+        },
+      ],
+      { artifactBaseDir: rootDir },
+    )
+
+    expect(verification).toMatchObject({
+      checkedArtifactCount: 2,
+      verifiedArtifactCount: 0,
+      missingArtifactCount: 1,
+      mismatchedArtifactCount: 1,
+      complete: false,
+    })
+    expect(verification.entries.map((entry) => entry.status)).toEqual(['missing', 'hash-mismatch'])
+  })
+
+  it('recomputes manifest completeness from file verification when reading a written manifest', () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'bilig-same-corpus-proof-archive-'))
+    const outputPath = join(rootDir, 'capture.json')
+    const capture = buildSameCorpusCaptureArtifact({
+      sampleCount: 3,
+      limitations: ['test limitation'],
+      cases: [sameCorpusCaptureCase('open-workbook')],
+    })
+    writeSameCorpusProofArchiveManifest(capture, outputPath)
+
+    const verified = verifySameCorpusProofArchiveManifestPath(proofArchiveManifestPath(outputPath))
+
+    expect(verified).toMatchObject({
+      artifactCount: 2,
+      complete: false,
+      fileVerification: {
+        checkedArtifactCount: 2,
+        missingArtifactCount: 2,
+        complete: false,
+      },
     })
   })
 })
@@ -202,4 +316,8 @@ function sameCorpusMeasurement(
     },
     limitations: [],
   }
+}
+
+function sha256Hex(value: string): string {
+  return createHash('sha256').update(value).digest('hex')
 }

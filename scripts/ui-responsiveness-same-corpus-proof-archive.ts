@@ -1,11 +1,14 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { createHash } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, isAbsolute, resolve } from 'node:path'
 
 import type { SameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
 import { validateSameCorpusProductSemanticUiProof } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import type { SameCorpusCapture, UiResponsivenessSameCorpusProduct } from './ui-responsiveness-same-corpus-scorecard-types.ts'
+import { arrayField, asObject, booleanField, literalField, numberField, stringField } from './json-scorecard-helpers.ts'
 import { requiredUiResponsivenessSameCorpusMutationTargetProofWorkloads } from './ui-responsiveness-same-corpus-mutation-target-proof-summary.ts'
 import {
+  isUiResponsivenessSameCorpusWorkload,
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadMutatesWorkbook,
   type UiResponsivenessSameCorpusWorkload,
@@ -22,7 +25,9 @@ export interface SameCorpusProofArchiveManifest {
   readonly captureRunSignature: string
   readonly requiredArtifactCount: number
   readonly artifactCount: number
+  readonly filesVerified: boolean
   readonly complete: boolean
+  readonly fileVerification: SameCorpusProofArchiveFileVerification
   readonly artifacts: readonly SameCorpusProofArchiveArtifact[]
 }
 
@@ -55,25 +60,61 @@ export interface SameCorpusGoogleSheetsCommittedStateArchiveArtifact {
   readonly workload: UiResponsivenessSameCorpusWorkload
   readonly sampleIndex: number
   readonly phase: 'before' | 'after' | 'restored'
+  readonly artifactPath: string
+  readonly artifactSha256: string
   readonly exportUrl: string
   readonly workbookByteSize: number
   readonly workbookSha256: string
+}
+
+export interface SameCorpusProofArchiveBuildOptions {
+  readonly artifactBaseDir?: string
+}
+
+export interface SameCorpusProofArchiveFileVerification {
+  readonly schemaVersion: 1
+  readonly checkedArtifactCount: number
+  readonly verifiedArtifactCount: number
+  readonly missingArtifactCount: number
+  readonly mismatchedArtifactCount: number
+  readonly complete: boolean
+  readonly entries: readonly SameCorpusProofArchiveFileVerificationEntry[]
+}
+
+export interface SameCorpusProofArchiveFileVerificationEntry {
+  readonly status: 'verified' | 'missing' | 'hash-mismatch'
+  readonly kind: SameCorpusProofArchiveArtifact['kind']
+  readonly product: UiResponsivenessSameCorpusProduct
+  readonly workload: UiResponsivenessSameCorpusWorkload
+  readonly sampleIndex?: number
+  readonly phase?: 'before' | 'after' | 'restored'
+  readonly path: string
+  readonly resolvedPath: string
+  readonly expectedSha256: string
+  readonly actualSha256?: string
 }
 
 const requiredProofArchiveProducts = ['bilig', 'google-sheets'] as const satisfies readonly UiResponsivenessSameCorpusProduct[]
 const mutationTargetScreenshotPhaseCount = 3
 const googleSheetsCommittedStatePhaseCount = 3
 
-export function buildSameCorpusProofArchiveManifest(capture: SameCorpusCapture): SameCorpusProofArchiveManifest {
+export function buildSameCorpusProofArchiveManifest(
+  capture: SameCorpusCapture,
+  options: SameCorpusProofArchiveBuildOptions = {},
+): SameCorpusProofArchiveManifest {
   const artifacts = sameCorpusProofArchiveArtifacts(capture.cases, capture.sampleCount)
   const requiredArtifactCount = capture.runManifest.requiredProofArchiveArtifactCount
+  const fileVerification = verifySameCorpusProofArchiveFiles(artifacts, options)
+  const allRequiredArtifactsPresent = artifacts.length === requiredArtifactCount
   return {
     schemaVersion: 1,
     suite: 'ui-responsiveness-same-corpus-proof-archive',
     captureRunSignature: capture.runManifest.captureRunSignature,
     requiredArtifactCount,
     artifactCount: artifacts.length,
-    complete: artifacts.length === requiredArtifactCount,
+    filesVerified: allRequiredArtifactsPresent && fileVerification.complete,
+    complete: allRequiredArtifactsPresent && fileVerification.complete,
+    fileVerification,
     artifacts,
   }
 }
@@ -88,6 +129,162 @@ export function writeSameCorpusProofArchiveManifest(capture: SameCorpusCapture, 
   mkdirSync(dirname(manifestPath), { recursive: true })
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
   return manifest
+}
+
+export function readSameCorpusProofArchiveManifest(manifestPath: string): SameCorpusProofArchiveManifest {
+  return parseSameCorpusProofArchiveManifest(JSON.parse(readFileSync(manifestPath, 'utf8')) as unknown)
+}
+
+function parseSameCorpusProofArchiveManifest(value: unknown): SameCorpusProofArchiveManifest {
+  const record = asObject(value, 'same-corpus proof archive manifest')
+  return {
+    schemaVersion: literalField(record, 'schemaVersion', 1),
+    suite: literalField(record, 'suite', 'ui-responsiveness-same-corpus-proof-archive'),
+    captureRunSignature: stringField(record, 'captureRunSignature'),
+    requiredArtifactCount: numberField(record, 'requiredArtifactCount'),
+    artifactCount: numberField(record, 'artifactCount'),
+    filesVerified: booleanField(record, 'filesVerified'),
+    complete: booleanField(record, 'complete'),
+    fileVerification: parseSameCorpusProofArchiveFileVerification(record.fileVerification),
+    artifacts: arrayField(record, 'artifacts').map(parseSameCorpusProofArchiveArtifact),
+  }
+}
+
+function parseSameCorpusProofArchiveFileVerification(value: unknown): SameCorpusProofArchiveFileVerification {
+  const record = asObject(value, 'same-corpus proof archive file verification')
+  return {
+    schemaVersion: literalField(record, 'schemaVersion', 1),
+    checkedArtifactCount: numberField(record, 'checkedArtifactCount'),
+    verifiedArtifactCount: numberField(record, 'verifiedArtifactCount'),
+    missingArtifactCount: numberField(record, 'missingArtifactCount'),
+    mismatchedArtifactCount: numberField(record, 'mismatchedArtifactCount'),
+    complete: booleanField(record, 'complete'),
+    entries: arrayField(record, 'entries').map(parseSameCorpusProofArchiveFileVerificationEntry),
+  }
+}
+
+function parseSameCorpusProofArchiveFileVerificationEntry(value: unknown): SameCorpusProofArchiveFileVerificationEntry {
+  const record = asObject(value, 'same-corpus proof archive file verification entry')
+  const actualSha256 = Object.hasOwn(record, 'actualSha256') ? { actualSha256: stringField(record, 'actualSha256') } : {}
+  return {
+    status: parseSameCorpusProofArchiveFileVerificationStatus(stringField(record, 'status')),
+    kind: parseSameCorpusProofArchiveArtifactKind(stringField(record, 'kind')),
+    product: parseSameCorpusProofArchiveProduct(stringField(record, 'product')),
+    workload: parseSameCorpusProofArchiveWorkload(stringField(record, 'workload')),
+    ...(Object.hasOwn(record, 'sampleIndex') ? { sampleIndex: numberField(record, 'sampleIndex') } : {}),
+    ...(Object.hasOwn(record, 'phase') ? { phase: parseSameCorpusProofArchivePhase(stringField(record, 'phase')) } : {}),
+    path: stringField(record, 'path'),
+    resolvedPath: stringField(record, 'resolvedPath'),
+    expectedSha256: stringField(record, 'expectedSha256'),
+    ...actualSha256,
+  }
+}
+
+function parseSameCorpusProofArchiveArtifact(value: unknown): SameCorpusProofArchiveArtifact {
+  const record = asObject(value, 'same-corpus proof archive artifact')
+  const kind = parseSameCorpusProofArchiveArtifactKind(stringField(record, 'kind'))
+  const workload = parseSameCorpusProofArchiveWorkload(stringField(record, 'workload'))
+  if (kind === 'scenario-screenshot') {
+    return {
+      kind,
+      product: parseSameCorpusProofArchiveProduct(stringField(record, 'product')),
+      workload,
+      path: stringField(record, 'path'),
+      screenshotSha256: stringField(record, 'screenshotSha256'),
+    }
+  }
+  if (kind === 'mutation-target-screenshot') {
+    return {
+      kind,
+      product: parseSameCorpusProofArchiveProduct(stringField(record, 'product')),
+      workload,
+      sampleIndex: numberField(record, 'sampleIndex'),
+      phase: parseSameCorpusProofArchivePhase(stringField(record, 'phase')),
+      path: stringField(record, 'path'),
+      screenshotSha256: stringField(record, 'screenshotSha256'),
+    }
+  }
+  return {
+    kind,
+    product: literalField(record, 'product', 'google-sheets'),
+    workload,
+    sampleIndex: numberField(record, 'sampleIndex'),
+    phase: parseSameCorpusProofArchivePhase(stringField(record, 'phase')),
+    artifactPath: stringField(record, 'artifactPath'),
+    artifactSha256: stringField(record, 'artifactSha256'),
+    exportUrl: stringField(record, 'exportUrl'),
+    workbookByteSize: numberField(record, 'workbookByteSize'),
+    workbookSha256: stringField(record, 'workbookSha256'),
+  }
+}
+
+function parseSameCorpusProofArchiveArtifactKind(value: string): SameCorpusProofArchiveArtifact['kind'] {
+  if (value === 'scenario-screenshot' || value === 'mutation-target-screenshot' || value === 'google-sheets-committed-state-export') {
+    return value
+  }
+  throw new Error(`Unexpected same-corpus proof archive artifact kind: ${value}`)
+}
+
+function parseSameCorpusProofArchiveFileVerificationStatus(value: string): SameCorpusProofArchiveFileVerificationEntry['status'] {
+  if (value === 'verified' || value === 'missing' || value === 'hash-mismatch') {
+    return value
+  }
+  throw new Error(`Unexpected same-corpus proof archive artifact verification status: ${value}`)
+}
+
+function parseSameCorpusProofArchiveProduct(value: string): UiResponsivenessSameCorpusProduct {
+  if (value === 'bilig' || value === 'google-sheets' || value === 'microsoft-excel-web') {
+    return value
+  }
+  throw new Error(`Unexpected same-corpus proof archive product: ${value}`)
+}
+
+function parseSameCorpusProofArchiveWorkload(value: string): UiResponsivenessSameCorpusWorkload {
+  if (isUiResponsivenessSameCorpusWorkload(value)) {
+    return value
+  }
+  throw new Error(`Unexpected same-corpus proof archive workload: ${value}`)
+}
+
+function parseSameCorpusProofArchivePhase(value: string): 'before' | 'after' | 'restored' {
+  if (value === 'before' || value === 'after' || value === 'restored') {
+    return value
+  }
+  throw new Error(`Unexpected same-corpus proof archive phase: ${value}`)
+}
+
+export function verifySameCorpusProofArchiveManifestPath(
+  manifestPath: string,
+  options: SameCorpusProofArchiveBuildOptions = {},
+): SameCorpusProofArchiveManifest {
+  const manifest = readSameCorpusProofArchiveManifest(manifestPath)
+  const fileVerification = verifySameCorpusProofArchiveFiles(manifest.artifacts, options)
+  const allRequiredArtifactsPresent = manifest.artifactCount === manifest.requiredArtifactCount
+  return {
+    ...manifest,
+    filesVerified: allRequiredArtifactsPresent && fileVerification.complete,
+    complete: allRequiredArtifactsPresent && fileVerification.complete,
+    fileVerification,
+  }
+}
+
+export function verifySameCorpusProofArchiveFiles(
+  artifacts: readonly SameCorpusProofArchiveArtifact[],
+  options: SameCorpusProofArchiveBuildOptions = {},
+): SameCorpusProofArchiveFileVerification {
+  const entries = artifacts.map((artifact) => verifySameCorpusProofArchiveFile(artifact, options))
+  const verifiedArtifactCount = entries.filter((entry) => entry.status === 'verified').length
+  const missingArtifactCount = entries.filter((entry) => entry.status === 'missing').length
+  const mismatchedArtifactCount = entries.filter((entry) => entry.status === 'hash-mismatch').length
+  return {
+    schemaVersion: 1,
+    checkedArtifactCount: entries.length,
+    verifiedArtifactCount,
+    missingArtifactCount,
+    mismatchedArtifactCount,
+    complete: entries.length === verifiedArtifactCount,
+    entries,
+  }
 }
 
 export function requiredUiResponsivenessSameCorpusProofArchiveArtifactCount(sampleCount: number): number {
@@ -282,7 +479,13 @@ function sameCorpusCommittedStateArtifactCountForProduct(
     }
     for (const phase of ['before', 'after', 'restored'] as const) {
       const phaseProof = sample.committedStateProof[phase]
-      if (hasText(phaseProof.exportUrl) && phaseProof.workbookByteSize > 0 && isSha256(phaseProof.workbookSha256)) {
+      if (
+        hasText(phaseProof.artifactPath) &&
+        isSha256(phaseProof.artifactSha256) &&
+        hasText(phaseProof.exportUrl) &&
+        phaseProof.workbookByteSize > 0 &&
+        isSha256(phaseProof.workbookSha256)
+      ) {
         artifactCount += 1
       }
     }
@@ -306,13 +509,21 @@ function sameCorpusCommittedStateArchiveArtifactsForProduct(
     }
     for (const phase of ['before', 'after', 'restored'] as const) {
       const phaseProof = sample.committedStateProof[phase]
-      if (hasText(phaseProof.exportUrl) && phaseProof.workbookByteSize > 0 && isSha256(phaseProof.workbookSha256)) {
+      if (
+        hasText(phaseProof.artifactPath) &&
+        isSha256(phaseProof.artifactSha256) &&
+        hasText(phaseProof.exportUrl) &&
+        phaseProof.workbookByteSize > 0 &&
+        isSha256(phaseProof.workbookSha256)
+      ) {
         artifacts.push({
           kind: 'google-sheets-committed-state-export',
           product: 'google-sheets',
           workload: phaseProof.workload,
           sampleIndex,
           phase,
+          artifactPath: phaseProof.artifactPath,
+          artifactSha256: phaseProof.artifactSha256,
           exportUrl: phaseProof.exportUrl,
           workbookByteSize: phaseProof.workbookByteSize,
           workbookSha256: phaseProof.workbookSha256,
@@ -329,6 +540,47 @@ function sameCorpusProductSemanticProofAccepted(
   sampleCount: number,
 ): boolean {
   return validateSameCorpusProductSemanticUiProof(proof, { workload, sampleCount }).acceptedForCurrentScorecard
+}
+
+function verifySameCorpusProofArchiveFile(
+  artifact: SameCorpusProofArchiveArtifact,
+  options: SameCorpusProofArchiveBuildOptions,
+): SameCorpusProofArchiveFileVerificationEntry {
+  const path = sameCorpusProofArchiveArtifactPath(artifact)
+  const resolvedPath = resolveSameCorpusProofArchiveArtifactPath(path, options.artifactBaseDir)
+  const expectedSha256 = sameCorpusProofArchiveArtifactSha256(artifact)
+  const baseEntry = {
+    kind: artifact.kind,
+    product: artifact.product,
+    workload: artifact.workload,
+    ...('sampleIndex' in artifact ? { sampleIndex: artifact.sampleIndex, phase: artifact.phase } : {}),
+    path,
+    resolvedPath,
+    expectedSha256,
+  }
+  if (!existsSync(resolvedPath)) {
+    return { ...baseEntry, status: 'missing' }
+  }
+  const actualSha256 = sha256Hex(readFileSync(resolvedPath))
+  return actualSha256 === expectedSha256
+    ? { ...baseEntry, status: 'verified', actualSha256 }
+    : { ...baseEntry, status: 'hash-mismatch', actualSha256 }
+}
+
+function sameCorpusProofArchiveArtifactPath(artifact: SameCorpusProofArchiveArtifact): string {
+  return artifact.kind === 'google-sheets-committed-state-export' ? artifact.artifactPath : artifact.path
+}
+
+function sameCorpusProofArchiveArtifactSha256(artifact: SameCorpusProofArchiveArtifact): string {
+  return artifact.kind === 'google-sheets-committed-state-export' ? artifact.artifactSha256 : artifact.screenshotSha256
+}
+
+function resolveSameCorpusProofArchiveArtifactPath(path: string, artifactBaseDir: string | undefined): string {
+  return isAbsolute(path) ? path : resolve(artifactBaseDir ?? process.cwd(), path)
+}
+
+function sha256Hex(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex')
 }
 
 function sampleIndexes(sampleCount: number): number[] {
