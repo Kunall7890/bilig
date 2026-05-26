@@ -4,6 +4,60 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.107.15
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.107.8
+- Manual override: no
+
+## Fixes
+- fix(workbook): close strict format proof gaps (2da279d3)
+- fix(workbook): avoid inherited plan accessors (d280def0)
+- fix(workbook): align comparison schemas (e158c4a7)
+- fix(workbook): reject empty format intent (15d15cc5)
+- perf(headless): fast-path suspended literal queueing (6f88495d)
+- fix(workbook): require full command proof (0d406311)
+- fix(workbook): avoid inherited ref getters (fc119be7)
+- fix(release): refresh IronCalc evidence during runtime release (799e4967)
+- fix(workbook): isolate feature plugin surface (55e43e6b)
+- fix(workbook): align schema integer bounds (1146ed8e)
+- fix(workbook): tighten transport schemas (f71695be)
+- fix(workbook): harden transported op hydration (579f7e13)
+- fix(ui): rank same-corpus speed gaps (0855dc45)
+- fix(release): skip stale metadata mutation (39deee59)
+- fix(workbook): reject custom prototype transport data (97885c44)
+- perf(headless): reduce metadata rename versioning overhead (3f40baa7)
+- fix(workbook): close oracle proof blockers (7b094e5b)
+- perf(headless): split constant scalar delta hot path (45e869c1)
+- fix(workbook): harden run option and command schemas (82559f78)
+- fix(workbook): align command bundle schema guards (2e42a437)
+- fix(workbook): prove idempotent command noops (546a136d)
+- perf(headless): bound scalar closure preallocation (1e1bbf1a)
+- fix(workbook): require command-bound noop proof (bfab4a7b)
+- fix(workbook): preserve noop run descriptions (80c09654)
+- fix(workbook): bind noop proof to full ops (062719e6)
+- fix(workbook): bind noop descriptions to receipts (b3f402bd)
+- fix(grid): harden native text proof (e1bb2d4f)
+- perf(core): reuse empty dependency arrays (4f9f8d1b)
+
+## Internal runtime changes
+- docs(growth): add Sim MCP setup (e353fb02)
+- docs(growth): add Windmill WorkPaper script (479a394f)
+- chore(release): runtime packages v0.107.9 (383e2bd2)
+- docs(growth): add Trigger.dev WorkPaper task (98ed4839)
+- chore(release): runtime packages v0.107.10 (16999484)
+- docs(headless): format release package docs (29e558d1)
+- chore(release): runtime packages v0.107.11 (ef648a78)
+- chore(release): runtime packages v0.107.12 (d17ccd46)
+- docs(workbook): clarify feature command imports (c74f2c78)
+- chore(release): runtime packages v0.107.13 (caf12943)
+- chore(release): runtime packages v0.107.14 (0561ed73)
+- docs(growth): add Kestra WorkPaper flow (57e0694a)
+- docs(growth): add Prefect WorkPaper flow (638893e0)
+- docs(growth): add Airflow WorkPaper DAG (969b7dc3)
+- docs(growth): add Dagster WorkPaper asset (b9caf0f3)
+- test(workbook): remove business-specific labels (e0fcb106)
+
 ## 0.107.14
 
 - Release type: patch
