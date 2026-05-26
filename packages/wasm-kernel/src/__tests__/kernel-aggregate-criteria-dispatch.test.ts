@@ -713,4 +713,50 @@ describe('wasm kernel aggregate and criteria dispatch', () => {
     expect(kernel.readTags()[cellIndex(1, 11, width)]).toBe(ValueTag.Error)
     expect(kernel.readErrors()[cellIndex(1, 11, width)]).toBe(ErrorCode.Value)
   })
+
+  it('coerces direct numeric text for AVERAGE without coercing range text on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(32, 4, 4, 1, 1)
+    const strings = packStrings(['2', '6', '', 'bad'])
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+
+    const cellTags = new Uint8Array(32)
+    const cellNumbers = new Float64Array(32)
+    const cellStringIds = new Uint32Array(32)
+    const cellErrors = new Uint16Array(32)
+    cellTags[0] = ValueTag.String
+    cellStringIds[0] = 0
+    cellTags[1] = ValueTag.Number
+    cellNumbers[1] = 4
+
+    kernel.writeCells(cellTags, cellNumbers, cellStringIds, cellErrors)
+    kernel.uploadRangeMembers(Uint32Array.from([0, 1]), Uint32Array.from([0]), Uint32Array.from([2]))
+    kernel.uploadRangeShapes(Uint32Array.from([2]), Uint32Array.from([1]))
+
+    const packed = packPrograms([
+      [encodePushString(0), encodePushString(1), encodeCall(BuiltinId.Avg, 2), encodeRet()],
+      [encodePushString(2), encodePushNumber(0), encodeCall(BuiltinId.Avg, 2), encodeRet()],
+      [encodePushString(3), encodePushNumber(0), encodeCall(BuiltinId.Avg, 2), encodeRet()],
+      [encodePushRange(0), encodeCall(BuiltinId.Avg, 1), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 4 }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([[], [4], [4], []])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 4 }, (_, index) => cellIndex(1, index, width))))
+
+    expect(kernel.readTags()[cellIndex(1, 0, width)]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBe(4)
+    expect(kernel.readTags()[cellIndex(1, 1, width)]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[cellIndex(1, 1, width)]).toBe(2)
+    expect(kernel.readTags()[cellIndex(1, 2, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 2, width)]).toBe(ErrorCode.Value)
+    expect(kernel.readTags()[cellIndex(1, 3, width)]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[cellIndex(1, 3, width)]).toBe(4)
+  })
 })

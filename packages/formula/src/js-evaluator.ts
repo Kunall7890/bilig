@@ -213,7 +213,7 @@ function coerceDirectNumericTextAggregateArgument(callee: string, value: CellVal
     const numeric = parseNumericText(value.value)
     return numeric === undefined ? value : numberValue(numeric)
   }
-  if (callee === 'SUM') {
+  if (callee === 'SUM' || callee === 'AVERAGE' || callee === 'AVG') {
     const numeric = toArithmeticNumber(value)
     return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
   }

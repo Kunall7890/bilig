@@ -2,7 +2,6 @@ import { BuiltinId, ErrorCode, ValueTag } from './protocol'
 import { tryApplyCriteriaConditionalBuiltin } from './dispatch-criteria-conditional'
 import { scalarErrorAt, rangeErrorAt } from './builtin-args'
 import { gcdPairCalc, lcmPairCalc } from './numeric-core'
-import { toNumberOrNaN } from './operands'
 import { STACK_KIND_ARRAY, STACK_KIND_RANGE, STACK_KIND_SCALAR, writeResult } from './result-io'
 import { textLength } from './text-codec'
 import { coerceScalarNumberLikeText } from './text-special'
@@ -237,7 +236,20 @@ export function tryApplyAggregateCriteriaBuiltin(
         }
         continue
       }
-      const numeric = toNumberOrNaN(tagStack[slot], valueStack[slot])
+      const numeric = directScalarNumberLikeText(
+        slot,
+        valueStack,
+        tagStack,
+        stringOffsets,
+        stringLengths,
+        stringData,
+        outputStringOffsets,
+        outputStringLengths,
+        outputStringData,
+      )
+      if (isNaN(numeric) && tagStack[slot] == ValueTag.String) {
+        return writeAggregateError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       if (!isNaN(numeric)) {
         sum += numeric
         count += 1
