@@ -88,6 +88,15 @@
       "challenge_command": "npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge"
     },
     {
+      "name": "gemini-cli-workpaper-extension",
+      "type": "gemini-cli-extension",
+      "install": "https://github.com/proompteng/bilig",
+      "install_command": "gemini extensions install https://github.com/proompteng/bilig --ref main",
+      "manifest": "https://github.com/proompteng/bilig/blob/main/gemini-extension.json",
+      "context": "https://github.com/proompteng/bilig/blob/main/gemini-workpaper-context.md",
+      "docs": "https://proompteng.github.io/bilig/gemini-cli-workpaper-extension.html"
+    },
+    {
       "name": "claude-desktop-mcpb",
       "type": "mcpb-desktop-extension",
       "download_url": "https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb",
@@ -174,6 +183,7 @@
     "https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html",
     "https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html",
     "https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html",
+    "https://proompteng.github.io/bilig/gemini-cli-workpaper-extension.html",
     "https://proompteng.github.io/bilig/node-framework-workpaper-adapters.html",
     "https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html",
     "https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html",

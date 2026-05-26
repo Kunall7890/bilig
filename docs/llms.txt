@@ -526,6 +526,11 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html
   https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html
   https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html
+- Gemini CLI WorkPaper extension:
+  gemini extensions install https://github.com/proompteng/bilig --ref main
+  https://proompteng.github.io/bilig/gemini-cli-workpaper-extension.html
+  https://github.com/proompteng/bilig/blob/main/gemini-extension.json
+  https://github.com/proompteng/bilig/blob/main/gemini-workpaper-context.md
 - runnable AI SDK, LangChain, Mastra, LlamaIndex.TS, LangGraph.js, CopilotKit,
   Cloudflare Agents, and CrewAI adapter example:
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/agent-framework-adapters.ts

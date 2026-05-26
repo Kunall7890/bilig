@@ -729,6 +729,7 @@ for (const requiredEntrypoint of [
   'https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html',
+  'https://proompteng.github.io/bilig/gemini-cli-workpaper-extension.html',
   'https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html',
   'https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html',
   'https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html',
