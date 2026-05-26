@@ -1736,8 +1736,8 @@ function sameCorpusMutationTargetProofs(product: SameCorpusProductVisualProof['p
     restored: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
     visibleAfter: sameCorpusVisibleMutationReadback(product, workload, 'after', sampleIndex),
     visibleRestored: sameCorpusVisibleMutationReadback(product, workload, 'before', sampleIndex),
-    authoritativeReadbackRevision: `authoritative-readback-${sampleIndex + 1}`,
-    visibleRenderRevision: `visible-render-${sampleIndex + 1}`,
+    authoritativeReadbackRevision: sameCorpusAuthoritativeReadbackRevision(product, sampleIndex),
+    visibleRenderRevision: sameCorpusVisibleRenderRevision(product, sampleIndex),
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-after.png`,
     screenshotSha256: 'a'.repeat(64),
     undoRestoreStatus: 'verified' as const,
@@ -1888,6 +1888,7 @@ function sameCorpusMutationReadback(
       fillColor: null,
       visibleText: after ? String(sampleIndex + 2) : 'metric-1',
       source,
+      ...sameCorpusBiligRevisionReadbackFields(product, phase, sampleIndex),
     }
   }
   if (workload === 'fill-format-change') {
@@ -1897,6 +1898,7 @@ function sameCorpusMutationReadback(
       fillColor: after ? '#c9daf8' : null,
       visibleText: 'metric-1',
       source,
+      ...sameCorpusBiligRevisionReadbackFields(product, phase, sampleIndex),
     }
   }
   return {
@@ -1905,7 +1907,42 @@ function sameCorpusMutationReadback(
     fillColor: null,
     visibleText: after ? `${product}-same-corpus-${String(sampleIndex + 1)}` : 'metric-1',
     source,
+    ...sameCorpusBiligRevisionReadbackFields(product, phase, sampleIndex),
   }
+}
+
+function sameCorpusAuthoritativeReadbackRevision(product: SameCorpusProductVisualProof['product'], sampleIndex: number): string {
+  return product === 'bilig' ? sameCorpusBiligCapturedRevision('after', sampleIndex) : `authoritative-readback-${sampleIndex + 1}`
+}
+
+function sameCorpusVisibleRenderRevision(product: SameCorpusProductVisualProof['product'], sampleIndex: number): string {
+  return product === 'bilig'
+    ? `bilig-visible-scene-sha256:${sameCorpusBiligVisibleSceneSha256(sampleIndex)}`
+    : `visible-render-${sampleIndex + 1}`
+}
+
+function sameCorpusBiligRevisionReadbackFields(
+  product: SameCorpusProductVisualProof['product'],
+  phase: 'before' | 'after',
+  sampleIndex: number,
+): { readonly capturedRevision?: string; readonly visibleSceneProofSha256?: string } {
+  if (product !== 'bilig') {
+    return {}
+  }
+  return {
+    capturedRevision: sameCorpusBiligCapturedRevision(phase, sampleIndex),
+    ...(phase === 'after' ? { visibleSceneProofSha256: sameCorpusBiligVisibleSceneSha256(sampleIndex) } : {}),
+  }
+}
+
+function sameCorpusBiligCapturedRevision(phase: 'before' | 'after', sampleIndex: number): string {
+  return `${phase}-readback-${sampleIndex + 1}`
+}
+
+function sameCorpusBiligVisibleSceneSha256(sampleIndex: number): string {
+  return String(sampleIndex + 1)
+    .repeat(64)
+    .slice(0, 64)
 }
 
 function strictPixelGridEvidence(): string[] {

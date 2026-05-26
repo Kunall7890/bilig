@@ -91,6 +91,60 @@ describe('same-corpus semantic UI mutation proof validation', () => {
       ]),
     })
   })
+
+  it('rejects Bilig mutation proof whose revisions are not bound to the target readback and scene proof', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0
+            ? Object.assign({}, proof, {
+                after: Object.assign({}, proof.after, {
+                  capturedRevision: 'stale-readback-revision',
+                  visibleSceneProofSha256: null,
+                }),
+              })
+            : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell authoritative revision does not match target readback',
+        'semantic UI mutation target proof for edit-visible-cell is missing Bilig visible scene proof',
+      ]),
+    })
+  })
+
+  it('rejects Bilig mutation proof whose visible render revision does not match the target scene proof', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0
+            ? Object.assign({}, proof, {
+                visibleRenderRevision: `bilig-visible-scene-sha256:${'f'.repeat(64)}`,
+              })
+            : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell visible render revision does not match target scene proof',
+      ]),
+    })
+  })
 })
 
 function validSemanticProof(overrides: Partial<SameCorpusProductSemanticUiProof> = {}): SameCorpusProductSemanticUiProof {
@@ -147,6 +201,7 @@ function mutationTargetProof(
       fillColor: null,
       visibleText: 'metric-1',
       source: 'bilig-authoritative-range',
+      capturedRevision: `before-readback-${String(sampleIndex + 1)}`,
     },
     after: {
       value: `${product}-same-corpus-${String(sampleIndex + 1)}`,
@@ -154,6 +209,8 @@ function mutationTargetProof(
       fillColor: null,
       visibleText: `${product}-same-corpus-${String(sampleIndex + 1)}`,
       source: 'bilig-authoritative-range',
+      capturedRevision: authoritativeReadbackRevision(sampleIndex),
+      visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex),
     },
     restored: {
       value: 'metric-1',
@@ -161,6 +218,7 @@ function mutationTargetProof(
       fillColor: null,
       visibleText: 'metric-1',
       source: 'bilig-authoritative-range',
+      capturedRevision: `restored-readback-${String(sampleIndex + 1)}`,
     },
     visibleAfter: {
       value: `${product}-same-corpus-${String(sampleIndex + 1)}`,
@@ -176,10 +234,24 @@ function mutationTargetProof(
       visibleText: 'metric-1',
       source: 'visible-formula-bar',
     },
-    authoritativeReadbackRevision: `authoritative-readback-${String(sampleIndex + 1)}`,
-    visibleRenderRevision: `visible-render-${String(sampleIndex + 1)}`,
+    authoritativeReadbackRevision: authoritativeReadbackRevision(sampleIndex),
+    visibleRenderRevision: visibleRenderRevision(sampleIndex),
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${String(sampleIndex + 1)}-after.png`,
     screenshotSha256: 'a'.repeat(64),
     undoRestoreStatus: 'verified',
   }
+}
+
+function authoritativeReadbackRevision(sampleIndex: number): string {
+  return `authoritative-readback-${String(sampleIndex + 1)}`
+}
+
+function visibleRenderRevision(sampleIndex: number): string {
+  return `bilig-visible-scene-sha256:${visibleSceneProofSha256(sampleIndex)}`
+}
+
+function visibleSceneProofSha256(sampleIndex: number): string {
+  return String(sampleIndex + 1)
+    .repeat(64)
+    .slice(0, 64)
 }

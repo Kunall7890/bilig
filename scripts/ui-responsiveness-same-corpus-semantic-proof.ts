@@ -279,6 +279,7 @@ function sameCorpusMutationTargetProofInvalidReasons(
     }
     invalidReasons.push(...sameCorpusMutationTargetReadbackSourceInvalidReasons(proof.product, workload, sample))
     invalidReasons.push(...sameCorpusMutationTargetVisibleReadbackInvalidReasons(proof.product, workload, sample))
+    invalidReasons.push(...sameCorpusMutationTargetRevisionInvalidReasons(proof.product, workload, sample))
     invalidReasons.push(...sameCorpusMutationTargetExpectedReadbackInvalidReasons(workload, sample))
     if (workload === 'fill-format-change' && sample.before.fillColor === sample.after.fillColor) {
       invalidReasons.push('semantic UI mutation target proof for fill-format-change did not prove a fill color change')
@@ -410,6 +411,30 @@ function sameCorpusMutationTargetVisibleReadbackInvalidReasons(
   return []
 }
 
+function sameCorpusMutationTargetRevisionInvalidReasons(
+  product: UiResponsivenessSameCorpusProduct,
+  workload: UiResponsivenessSameCorpusWorkload,
+  sample: SameCorpusMutationTargetProof,
+): string[] {
+  if (product !== 'bilig') {
+    return []
+  }
+  const invalidReasons: string[] = []
+  const readbacks = [sample.before, sample.after, sample.restored]
+  if (readbacks.some((readback) => !hasSameCorpusText(readback.capturedRevision))) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing Bilig authoritative readback revision`)
+  }
+  if (hasSameCorpusText(sample.after.capturedRevision) && sample.authoritativeReadbackRevision !== sample.after.capturedRevision) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} authoritative revision does not match target readback`)
+  }
+  if (!hasSameCorpusText(sample.after.visibleSceneProofSha256)) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing Bilig visible scene proof`)
+  } else if (sample.visibleRenderRevision !== `bilig-visible-scene-sha256:${sample.after.visibleSceneProofSha256}`) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} visible render revision does not match target scene proof`)
+  }
+  return invalidReasons
+}
+
 function sameCorpusVisibleReadbackMatchesAuthoritative(
   workload: UiResponsivenessSameCorpusWorkload,
   authoritative: SameCorpusMutationTargetReadback,
@@ -446,6 +471,10 @@ function normalizeSameCorpusRenderedSelectionRange(range: string | null): string
   const rawRange = range?.split('!').at(-1)?.replace(/\$/gu, '').trim().toUpperCase() ?? ''
   const match = rawRange.match(/^[A-Z]+[0-9]+(?::[A-Z]+[0-9]+)?$/u)
   return match?.[0] ?? ''
+}
+
+function hasSameCorpusText(value: string | null | undefined): value is string {
+  return value !== null && value !== undefined && value.trim().length > 0
 }
 
 export async function readSameCorpusVisibleSelectedRange(page: Page, product: UiResponsivenessSameCorpusProduct): Promise<string | null> {
