@@ -4578,7 +4578,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       CUMIPMT(
@@ -4604,7 +4604,33 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
+    })
+    expect(
+      CUMIPMT(
+        { tag: ValueTag.Number, value: 0.09 / 12 },
+        { tag: ValueTag.Number, value: 30 * 12 },
+        { tag: ValueTag.Number, value: 125000 },
+        { tag: ValueTag.Number, value: 13 },
+        { tag: ValueTag.Number, value: 24 },
+        { tag: ValueTag.Number, value: 2 },
+      ),
+    ).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(
+      CUMPRINC(
+        { tag: ValueTag.Number, value: 0.09 / 12 },
+        { tag: ValueTag.Number, value: 30 * 12 },
+        { tag: ValueTag.Number, value: 125000 },
+        { tag: ValueTag.Number, value: 0 },
+        { tag: ValueTag.Number, value: 24 },
+        { tag: ValueTag.Number, value: 0 },
+      ),
+    ).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
     })
     expect(
       CUMPRINC(

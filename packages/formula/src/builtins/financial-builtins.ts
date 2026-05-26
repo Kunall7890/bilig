@@ -37,6 +37,54 @@ export function createFinancialBuiltins({
   valueError,
   numError,
 }: FinancialBuiltinDeps): Record<string, Builtin> {
+  const cumulativePeriodicPaymentResult = (
+    rateArg: CellValue,
+    periodsArg: CellValue,
+    presentArg: CellValue,
+    startPeriodArg: CellValue,
+    endPeriodArg: CellValue,
+    typeArg: CellValue,
+    principalOnly: boolean,
+  ): EvaluationResult => {
+    const rate = toNumber(rateArg)
+    const periods = toNumber(periodsArg)
+    const present = toNumber(presentArg)
+    const startPeriod = integerValue(startPeriodArg)
+    const endPeriod = integerValue(endPeriodArg)
+    const typeRaw = toNumber(typeArg)
+    if (
+      rate === undefined ||
+      periods === undefined ||
+      present === undefined ||
+      startPeriod === undefined ||
+      endPeriod === undefined ||
+      typeRaw === undefined
+    ) {
+      return valueError()
+    }
+
+    const type = Math.trunc(typeRaw)
+    if (
+      !Number.isFinite(rate) ||
+      !Number.isFinite(periods) ||
+      !Number.isFinite(present) ||
+      !Number.isFinite(typeRaw) ||
+      rate <= 0 ||
+      periods <= 0 ||
+      present <= 0 ||
+      startPeriod < 1 ||
+      endPeriod < 1 ||
+      startPeriod > endPeriod ||
+      type < 0 ||
+      type > 1
+    ) {
+      return numError()
+    }
+
+    const total = cumulativePeriodicPayment(rate, periods, present, startPeriod, endPeriod, type, principalOnly)
+    return total === undefined ? valueError() : numberResult(total)
+  }
+
   return {
     EFFECT: (nominalRateArg, periodsArg) => {
       const nominalRate = toNumber(nominalRateArg)
@@ -317,44 +365,10 @@ export function createFinancialBuiltins({
       return numberResult(present * rate * (period / periods - 1))
     },
     CUMIPMT: (rateArg, periodsArg, presentArg, startPeriodArg, endPeriodArg, typeArg) => {
-      const rate = toNumber(rateArg)
-      const periods = toNumber(periodsArg)
-      const present = toNumber(presentArg)
-      const startPeriod = integerValue(startPeriodArg)
-      const endPeriod = integerValue(endPeriodArg)
-      const type = coercePaymentType(typeArg, 0)
-      if (
-        rate === undefined ||
-        periods === undefined ||
-        present === undefined ||
-        startPeriod === undefined ||
-        endPeriod === undefined ||
-        type === undefined
-      ) {
-        return valueError()
-      }
-      const total = cumulativePeriodicPayment(rate, periods, present, startPeriod, endPeriod, type, false)
-      return total === undefined ? valueError() : numberResult(total)
+      return cumulativePeriodicPaymentResult(rateArg, periodsArg, presentArg, startPeriodArg, endPeriodArg, typeArg, false)
     },
     CUMPRINC: (rateArg, periodsArg, presentArg, startPeriodArg, endPeriodArg, typeArg) => {
-      const rate = toNumber(rateArg)
-      const periods = toNumber(periodsArg)
-      const present = toNumber(presentArg)
-      const startPeriod = integerValue(startPeriodArg)
-      const endPeriod = integerValue(endPeriodArg)
-      const type = coercePaymentType(typeArg, 0)
-      if (
-        rate === undefined ||
-        periods === undefined ||
-        present === undefined ||
-        startPeriod === undefined ||
-        endPeriod === undefined ||
-        type === undefined
-      ) {
-        return valueError()
-      }
-      const total = cumulativePeriodicPayment(rate, periods, present, startPeriod, endPeriod, type, true)
-      return total === undefined ? valueError() : numberResult(total)
+      return cumulativePeriodicPaymentResult(rateArg, periodsArg, presentArg, startPeriodArg, endPeriodArg, typeArg, true)
     },
   }
 }

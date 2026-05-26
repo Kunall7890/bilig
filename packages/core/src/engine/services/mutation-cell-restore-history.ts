@@ -18,6 +18,7 @@ import {
   createLazyMaterializedCellMutationTransactionRecord,
   createLazySingleOpTransactionRecord,
 } from './mutation-transaction-records.js'
+import { isWorkbookTableHeaderCell } from './operation-table-header-rename.js'
 
 interface MutationFormulaStore {
   get(cellIndex: number): RuntimeFormula | undefined
@@ -463,6 +464,9 @@ export function tryMutationCellRefsFromOps(workbook: WorkbookStore, ops: readonl
       return null
     }
     const parsed = parseCellAddress(op.address, op.sheetName)
+    if (isWorkbookTableHeaderCell(workbook, op.sheetName, parsed.row, parsed.col)) {
+      return null
+    }
     const cellIndex = workbook.getCellIndex(op.sheetName, op.address)
     refs[index] = {
       sheetId: sheet.id,

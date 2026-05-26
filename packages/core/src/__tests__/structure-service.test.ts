@@ -403,6 +403,37 @@ describe('EngineStructureService', () => {
     expect(engine.exportSnapshot()).toEqual(initialSnapshot)
   })
 
+  it('restores table metadata when undoing a moved formula header cell', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'structure-table-header-formula-move-undo' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'C3' }, [
+      ['Region', 'Amount', 'Margin'],
+      ['East', 10, 2],
+      ['West', 20, 3],
+    ])
+    engine.setTable({
+      name: 'Sales',
+      sheetName: 'Data',
+      startAddress: 'A1',
+      endAddress: 'C3',
+      columnNames: ['Region', 'Amount', 'Margin'],
+      headerRow: true,
+      totalsRow: false,
+    })
+    engine.setCellFormula('Data', 'A1', 'A1+A1')
+    const initialSnapshot = engine.exportSnapshot()
+
+    engine.moveRange(
+      { sheetName: 'Data', startAddress: 'A1', endAddress: 'A1' },
+      { sheetName: 'Data', startAddress: 'A2', endAddress: 'A2' },
+    )
+    expect(engine.getTable('Sales')).toMatchObject({ columnNames: ['Column1', 'Amount', 'Margin'] })
+
+    expect(engine.undo()).toBe(true)
+    expect(engine.exportSnapshot()).toEqual(initialSnapshot)
+  })
+
   it('renames table-column defined names when editing a header cell', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'structure-table-header-rename-defined-names' })
     await engine.ready()

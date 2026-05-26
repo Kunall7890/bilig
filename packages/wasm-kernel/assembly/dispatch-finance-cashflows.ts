@@ -9,7 +9,6 @@ import {
   solveRateCalc,
   totalPeriodsCalc,
 } from './cashflows'
-import { truncToInt } from './numeric-core'
 import { toNumberExact } from './operands'
 import { collectNumericValuesFromArgs, orderStatisticErrorCode } from './statistics-tests'
 import { paymentType, scalarErrorAt } from './builtin-args'
@@ -198,13 +197,49 @@ export function tryApplyFinanceCashflowBuiltin(
     const rate = toNumberExact(tagStack[base], valueStack[base])
     const periods = toNumberExact(tagStack[base + 1], valueStack[base + 1])
     const present = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-    const startPeriod = truncToInt(tagStack[base + 3], valueStack[base + 3])
-    const endPeriod = truncToInt(tagStack[base + 4], valueStack[base + 4])
-    const paymentTypeValue = paymentType(tagStack[base + 5], valueStack[base + 5], true)
-    const total =
-      startPeriod == i32.MIN_VALUE || endPeriod == i32.MIN_VALUE || paymentTypeValue < 0
-        ? NaN
-        : cumulativePeriodicPaymentCalc(rate, periods, present, startPeriod, endPeriod, paymentTypeValue, builtinId == BuiltinId.Cumprinc)
+    const startPeriodNumeric = toNumberExact(tagStack[base + 3], valueStack[base + 3])
+    const endPeriodNumeric = toNumberExact(tagStack[base + 4], valueStack[base + 4])
+    const paymentTypeNumeric = toNumberExact(tagStack[base + 5], valueStack[base + 5])
+    if (
+      isNaN(rate) ||
+      isNaN(periods) ||
+      isNaN(present) ||
+      isNaN(startPeriodNumeric) ||
+      isNaN(endPeriodNumeric) ||
+      isNaN(paymentTypeNumeric)
+    ) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const startPeriod = <i32>startPeriodNumeric
+    const endPeriod = <i32>endPeriodNumeric
+    const paymentTypeValue = <i32>paymentTypeNumeric
+    if (
+      !isFinite(rate) ||
+      !isFinite(periods) ||
+      !isFinite(present) ||
+      !isFinite(startPeriodNumeric) ||
+      !isFinite(endPeriodNumeric) ||
+      !isFinite(paymentTypeNumeric) ||
+      rate <= 0.0 ||
+      periods <= 0.0 ||
+      present <= 0.0 ||
+      startPeriod < 1 ||
+      endPeriod < 1 ||
+      startPeriod > endPeriod ||
+      paymentTypeValue < 0 ||
+      paymentTypeValue > 1
+    ) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const total = cumulativePeriodicPaymentCalc(
+      rate,
+      periods,
+      present,
+      startPeriod,
+      endPeriod,
+      paymentTypeValue,
+      builtinId == BuiltinId.Cumprinc,
+    )
     return isNaN(total)
       ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, total, rangeIndexStack, valueStack, tagStack, kindStack)

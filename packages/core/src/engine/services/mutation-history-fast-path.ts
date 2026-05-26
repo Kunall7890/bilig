@@ -1,8 +1,10 @@
+import { parseCellAddress } from '@bilig/formula'
 import { ValueTag, type CellSnapshot } from '@bilig/protocol'
 import type { EngineOp } from '@bilig/workbook'
 import { CellFlags } from '../../cell-store.js'
 import { makeCellKey, type WorkbookStore } from '../../workbook-store.js'
 import type { PreparedCellAddress, TransactionRecord } from '../runtime-state.js'
+import { isWorkbookTableHeaderCell } from './operation-table-header-rename.js'
 
 type FastHistoryOp = Extract<
   EngineOp,
@@ -185,6 +187,9 @@ function buildFastInverseOp(
     case 'setCellValue':
     case 'setCellFormula':
     case 'clearCell':
+      if (isFastHistoryTableHeaderCell(workbook, op, preparedCellAddress)) {
+        return null
+      }
       return restoreCellOpFromSnapshot(workbook, getCellByIndex, op.sheetName, op.address, preparedCellAddress)
     case 'setCellFormat': {
       const sheet = workbook.getSheet(op.sheetName)
@@ -202,6 +207,15 @@ function buildFastInverseOp(
     default:
       return null
   }
+}
+
+function isFastHistoryTableHeaderCell(
+  workbook: WorkbookStore,
+  op: Extract<FastHistoryOp, { kind: 'setCellValue' | 'setCellFormula' | 'clearCell' }>,
+  preparedCellAddress: PreparedCellAddress | null,
+): boolean {
+  const parsed = preparedCellAddress ?? parseCellAddress(op.address, op.sheetName)
+  return isWorkbookTableHeaderCell(workbook, op.sheetName, parsed.row, parsed.col)
 }
 
 function collectCreatedSheetNames(workbook: WorkbookStore, ops: readonly FastHistoryOp[]): ReadonlySet<string> {

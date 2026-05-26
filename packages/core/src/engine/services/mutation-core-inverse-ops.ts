@@ -1,9 +1,11 @@
+import { parseCellAddress } from '@bilig/formula'
 import type { EngineOp } from '@bilig/workbook'
 import { structuralTransformForOp } from '../../engine-structural-utils.js'
 import { sheetMetadataToOps } from '../../engine-snapshot-utils.js'
 import type { WorkbookStore } from '../../workbook-store.js'
 import { buildMutationMetadataInverseOps } from './mutation-inverse-metadata-ops.js'
 import { captureStructuralWorkbookMetadataOps, clearStructuralSheetMetadataOps } from './mutation-structural-metadata-ops.js'
+import { findTableHeaderCell } from './operation-table-header-rename.js'
 
 export type MutationCoreCapturedInverseKind =
   | 'deleteSheet'
@@ -28,6 +30,31 @@ const mutationCoreCapturedInverseKinds: ReadonlySet<EngineOp['kind']> = new Set(
 
 function isMutationCoreCapturedInverseOp(op: EngineOp): op is MutationCoreCapturedInverseOp {
   return mutationCoreCapturedInverseKinds.has(op.kind)
+}
+
+function restoreCellOpsWithTableHeaderRename(args: {
+  readonly workbook: WorkbookStore
+  readonly op: Extract<EngineOp, { kind: 'setCellValue' | 'setCellFormula' | 'clearCell' }>
+  readonly restoreOps: readonly EngineOp[]
+}): EngineOp[] {
+  const parsed = parseCellAddress(args.op.address, args.op.sheetName)
+  const header = findTableHeaderCell(args.workbook.listTables(), args.op.sheetName, parsed.row, parsed.col)
+  if (!header) {
+    return [...args.restoreOps]
+  }
+
+  const formulaRestoreIndex = args.restoreOps.findIndex(
+    (restoreOp) =>
+      restoreOp.kind === 'setCellFormula' && restoreOp.sheetName === args.op.sheetName && restoreOp.address === args.op.address,
+  )
+  if (formulaRestoreIndex < 0) {
+    return [...args.restoreOps]
+  }
+
+  const headerName = header.table.columnNames[header.columnIndex] ?? ''
+  // Formula restores do not rename table headers, so replay the previous header label first.
+  const headerRenameOp: EngineOp = { kind: 'setCellValue', sheetName: args.op.sheetName, address: args.op.address, value: headerName }
+  return [...args.restoreOps.slice(0, formulaRestoreIndex), headerRenameOp, ...args.restoreOps.slice(formulaRestoreIndex)]
 }
 
 function captureDeletedSheetInverseOps(
@@ -179,7 +206,11 @@ export function createMutationCoreInverseOps(args: {
       case 'setCellValue':
       case 'setCellFormula':
       case 'clearCell':
-        return args.restoreCellOps(op.sheetName, op.address)
+        return restoreCellOpsWithTableHeaderRename({
+          workbook: args.workbook,
+          op,
+          restoreOps: args.restoreCellOps(op.sheetName, op.address),
+        })
       default: {
         const exhaustive: never = op
         return exhaustive

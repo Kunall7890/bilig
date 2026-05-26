@@ -212,6 +212,109 @@ describe('wasm kernel finance/cashflow dispatch', () => {
     expectNumberCell(kernel, cellIndex(1, 4, width), 1330.89)
   })
 
+  it('matches Microsoft Excel CUMIPMT and CUMPRINC numeric domain errors on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 1, 7, 1, 1)
+    kernel.uploadStrings(Uint32Array.from([0]), Uint32Array.from([3]), Uint16Array.from(Array.from('bad', (char) => char.charCodeAt(0))))
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodePushNumber(5),
+        encodeCall(BuiltinId.Cumipmt, 6),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodePushNumber(5),
+        encodeCall(BuiltinId.Cumipmt, 6),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodePushNumber(5),
+        encodeCall(BuiltinId.Cumprinc, 6),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodePushNumber(5),
+        encodeCall(BuiltinId.Cumipmt, 6),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodePushNumber(5),
+        encodeCall(BuiltinId.Cumprinc, 6),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodePushNumber(5),
+        encodeCall(BuiltinId.Cumipmt, 6),
+        encodeRet(),
+      ],
+      [
+        encodePushString(0),
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodeCall(BuiltinId.Cumipmt, 6),
+        encodeRet(),
+      ],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 7 }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([
+      [0, 30 * 12, 125000, 13, 24, 0],
+      [0.09 / 12, 0, 125000, 13, 24, 0],
+      [0.09 / 12, 30 * 12, 0, 13, 24, 0],
+      [0.09 / 12, 30 * 12, 125000, 24, 13, 0],
+      [0.09 / 12, 30 * 12, 125000, 0, 24, 0],
+      [0.09 / 12, 30 * 12, 125000, 13, 24, 2],
+      [30 * 12, 125000, 13, 24, 0],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 7 }, (_, index) => cellIndex(1, index, width))))
+
+    for (let index = 0; index < 6; index += 1) {
+      expectErrorCell(kernel, cellIndex(1, index, width), ErrorCode.Num)
+    }
+    expectErrorCell(kernel, cellIndex(1, 6, width), ErrorCode.Value)
+  })
+
   it('keeps rate-conversion helpers stable across refactors', async () => {
     const kernel = await createKernel()
     const width = 8
