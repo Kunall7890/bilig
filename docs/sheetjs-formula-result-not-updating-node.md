@@ -159,7 +159,8 @@ cells, and export a workbook with tests around that boundary.
 ## After the proof
 
 If the demo or a reduced SheetJS workbook returns the fresh formula values you
-needed, star or bookmark Bilig so the boundary is easy to find later:
+needed, star the repository or bookmark Bilig so the boundary is easy to find
+later:
 <https://github.com/proompteng/bilig/stargazers>.
 
 Watch releases if this is close to a production workflow:
