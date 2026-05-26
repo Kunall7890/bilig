@@ -5,6 +5,7 @@
 Repository: https://github.com/proompteng/bilig
 Site: https://proompteng.github.io/bilig/
 npm: https://www.npmjs.com/package/@bilig/workpaper
+npm workbook: https://www.npmjs.com/package/@bilig/workbook
 Agent instructions: https://proompteng.github.io/bilig/AGENTS.md
 Skill manifest: https://proompteng.github.io/bilig/skill.txt
 Compact index: https://proompteng.github.io/bilig/llms.txt
@@ -641,6 +642,7 @@ for the operation shape, local smoke command, and Directus boundary.
 | --------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | Formula workbook state inside a Node service or agent tool                        | `npm install @bilig/workpaper`                                | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                         |
 | AI agent needs to edit workbook inputs and verify formula readback                | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](docs/ai-agent-spreadsheet-tool-node.md)                     |
+| Agent framework or product runtime needs workbook plan/check/proof data           | `npm install @bilig/workbook`                                 | [Workbook agent intent API](docs/workbook-agent-intent-api.md)                          |
 | SheetJS / `xlsx` pipeline returns stale formula values after input edits          | `npm install @bilig/sheetjs-formula-recalc`                   | [SheetJS formula result not updating](docs/sheetjs-formula-result-not-updating-node.md) |
 | Generic XLSX bytes changed in Node; formula outputs must refresh before returning | `npm install @bilig/xlsx-formula-recalc`                      | [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md)        |
 | Existing ExcelJS workflow needs recalculated values, not stale cached results     | `npm install exceljs @bilig/exceljs-formula-recalc`           | [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md)  |
@@ -686,6 +688,7 @@ npm --prefix examples/recalc-bridge-workflows run smoke
 | Existing XLSX files           | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                                                                                                                                                                  | A command edits inputs, reads recalculated values, writes XLSX, and returns `verified: true`.           |
 | Node service formulas         | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)                                                                                                                                                        | A starter writes one input, recalculates, persists JSON, restores, and prints `verified: true`.         |
 | Agent MCP contract            | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)                                                                                                                                                                    | MCP tool discovery, input edit, formula readback, persistence, and restart proof all pass.              |
+| Agent intent/runtime adapters | [Workbook agent intent API](docs/workbook-agent-intent-api.md) and [workbook-agent-model example](https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model)                                             | A model prepares transport-neutral plan data, strict runtime proof, command receipts, and check evidence. |
 | Basic fit                     | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                   | The problem is workbook-shaped business logic that needs API readback and persistence.                  |
 | Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                           | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`. |
 | XLSX or ExcelJS recalculation | [XLSX formula recalculation](docs/xlsx-formula-recalculation-node.md) and [ExcelJS formula recalculation](docs/exceljs-formula-recalculation-node.md)                                                                     | The package updates inputs, reads recalculated values, and exports or mutates the workbook boundary.    |
@@ -1745,7 +1748,7 @@ the search or production bug you actually have:
 | `xlsx-populate` writes formulas but Node reads old values     | `npm install @bilig/xlsx-formula-recalc`                      | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json` updates the cached value.                                                |
 | ExcelJS formula cells need recalculated values                | `npm install exceljs @bilig/exceljs-formula-recalc`           | `npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json` mutates the workbook boundary.                                     |
 | An AI agent needs spreadsheet tools instead of UI automation  | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html) shows the write/recalc/read/persist loop. |
-| Formula workbook state belongs in a service or agent tool     | `npm install @bilig/workpaper`                                | `npm exec --package @bilig/workpaper@0.108.0 -- bilig-agent-challenge` prints `verified: true`.                                              |
+| Formula workbook state belongs in a service or agent tool     | `npm install @bilig/workpaper`                                | `npm exec --package @bilig/workpaper@0.108.0 -- bilig-agent-challenge` prints `verified: true`.                                               |
 | You need the lower-level runtime package and subpaths         | `npm install @bilig/headless`                                 | The examples below prove WorkPaper JSON, XLSX import/export, provenance, and package footprint.                                               |
 
 Use `@bilig/headless` when the spreadsheet is the business logic, but
@@ -1780,19 +1783,20 @@ fixture report without uploading workbook contents.
 
 ## Choose An Evaluation Path
 
-| If you are evaluating... | Start here                                                                                                                                                                                                          | What should be true before you star, watch, or adopt                                         |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Basic fit                | [Why use Bilig?](https://proompteng.github.io/bilig/why-use-bilig.html)                                                                                                                                             | The problem is workbook-shaped business logic that needs API readback and persistence.       |
-| Published npm package    | [90-second Node quickstart](https://proompteng.github.io/bilig/try-bilig-headless-in-node.html)                                                                                                                     | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`.      |
-| Backend service shape    | [Quote approval WorkPaper API](https://proompteng.github.io/bilig/quote-approval-workpaper-api.html)                                                                                                                | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.  |
-| XLSX import/export       | [XLSX formula recalculation example](https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node)                                                                                                | It imports XLSX, edits inputs, recalculates, exports XLSX, reimports, and verifies formulas. |
-| Agent or MCP tools       | [Headless WorkPaper agent handbook](https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html) and [MCP spreadsheet tool server](https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html) | The agent can pick MCP, direct TypeScript, or route tools and prove write/readback/persist.  |
-| Agent-owned XLSX files   | [Agent XLSX recalculation without LibreOffice](https://proompteng.github.io/bilig/agent-xlsx-formula-recalculation-without-libreoffice.html)                                                                        | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.     |
-| Public technical review  | [Show HN maintainer note](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html)                                                                                                          | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.      |
-| Trust and performance    | [npm provenance](https://proompteng.github.io/bilig/npm-provenance-package-trust.html) and [benchmark evidence](https://proompteng.github.io/bilig/what-workpaper-benchmark-proves.html)                            | npm shows SLSA provenance, and benchmark claims match the checked artifact.                  |
-| Almost a fit             | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                       | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.     |
-| Formula or XLSX bug      | [formula bug clinic](https://proompteng.github.io/bilig/formula-bug-clinic.html)                                                                                                                                    | Share a reduced public case that can become a test, example, corpus fixture, or docs proof.  |
-| Real workbook blocked    | [submit a workbook fixture](https://proompteng.github.io/bilig/submit-workbook-fixture.html)                                                                                                                        | Use the structured form when a reduced workbook is ready.                                    |
+| If you are evaluating... | Start here                                                                                                                                                                                                          | What should be true before you star, watch, or adopt                                           |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Basic fit                | [Why use Bilig?](https://proompteng.github.io/bilig/why-use-bilig.html)                                                                                                                                             | The problem is workbook-shaped business logic that needs API readback and persistence.         |
+| Published npm package    | [90-second Node quickstart](https://proompteng.github.io/bilig/try-bilig-headless-in-node.html)                                                                                                                     | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`.        |
+| Backend service shape    | [Quote approval WorkPaper API](https://proompteng.github.io/bilig/quote-approval-workpaper-api.html)                                                                                                                | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.    |
+| XLSX import/export       | [XLSX formula recalculation example](https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node)                                                                                                | It imports XLSX, edits inputs, recalculates, exports XLSX, reimports, and verifies formulas.   |
+| Agent or MCP tools       | [Headless WorkPaper agent handbook](https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html) and [MCP spreadsheet tool server](https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html) | The agent can pick MCP, direct TypeScript, or route tools and prove write/readback/persist.    |
+| Agent intent contracts   | [Workbook agent intent API](https://proompteng.github.io/bilig/workbook-agent-intent-api.html)                                                                                                                      | `@bilig/workbook` can describe plans, receipts, and strict runtime proof without owning state. |
+| Agent-owned XLSX files   | [Agent XLSX recalculation without LibreOffice](https://proompteng.github.io/bilig/agent-xlsx-formula-recalculation-without-libreoffice.html)                                                                        | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.       |
+| Public technical review  | [Show HN maintainer note](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html)                                                                                                          | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.        |
+| Trust and performance    | [npm provenance](https://proompteng.github.io/bilig/npm-provenance-package-trust.html) and [benchmark evidence](https://proompteng.github.io/bilig/what-workpaper-benchmark-proves.html)                            | npm shows SLSA provenance, and benchmark claims match the checked artifact.                    |
+| Almost a fit             | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                       | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.       |
+| Formula or XLSX bug      | [formula bug clinic](https://proompteng.github.io/bilig/formula-bug-clinic.html)                                                                                                                                    | Share a reduced public case that can become a test, example, corpus fixture, or docs proof.    |
+| Real workbook blocked    | [submit a workbook fixture](https://proompteng.github.io/bilig/submit-workbook-fixture.html)                                                                                                                        | Use the structured form when a reduced workbook is ready.                                      |
 
 Reduced workbook already in hand?
 
@@ -1839,9 +1843,10 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 
 That command is published through `@bilig/create-workpaper`. The publish gate is documented at
 <https://proompteng.github.io/bilig/create-bilig-workpaper.html>.
-The `--agent` starter adds `AGENTS.md`, `CLAUDE.md`, Cursor and VS Code MCP
-configs, `mcp/bilig-workpaper.mcp.json`, `npm run agent:verify`, and
-`npm run mcp:server`.
+The `--agent` starter adds `AGENTS.md`, `CLAUDE.md`, project-root `.mcp.json`
+for Claude Code, Cursor and VS Code MCP configs,
+`mcp/bilig-workpaper.mcp.json`, `npm run agent:verify`, and `npm run
+mcp:server`.
 
 <!-- headless-package-footprint:start -->
 
@@ -2764,10 +2769,11 @@ npm run agent:verify
 npm run mcp:server
 ```
 
-The generated project includes `AGENTS.md`, `CLAUDE.md`, Cursor and VS Code MCP
-configs, `mcp/bilig-workpaper.mcp.json`, a quote approval service smoke test,
-and a file-backed MCP challenge. `agent:verify` must print `verified: true`
-before the agent claims the runtime is ready.
+The generated project includes `AGENTS.md`, `CLAUDE.md`, project-root
+`.mcp.json` for Claude Code, Cursor and VS Code MCP configs,
+`mcp/bilig-workpaper.mcp.json`, a quote approval service smoke test, and a
+file-backed MCP challenge. `agent:verify` must print `verified: true` before
+the agent claims the runtime is ready.
 
 ## The First Decision
 
@@ -4026,6 +4032,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | LlamaIndex.TS | `tool(fn, { parameters })` with a compact proof return. | [LlamaIndex.TS WorkPaper tool](llamaindex-workpaper-spreadsheet-tool.md) |
 | Mastra | `createTool()` wrapper for formula-backed workbook edits. | [Mastra WorkPaper tool](mastra-workpaper-spreadsheet-tool.md) |
 | Cloudflare Agents | Agent tool calling a Node-compatible WorkPaper boundary. | [Cloudflare Agents WorkPaper tool](cloudflare-agents-workpaper-spreadsheet-tool.md) |
+| Runtime adapter authors | `@bilig/workbook` models, plan data, checks, schemas, command receipts, and strict proof. | [Workbook agent intent API](workbook-agent-intent-api.md) |
 | MCP directories and remote clients | Hosted server card or local file-backed server. | [MCP WorkPaper server](mcp-workpaper-tool-server.md) |
 
 ## Proof object
@@ -4062,6 +4069,7 @@ Do not claim success from a write call alone.
 ## Links
 
 - [AI spreadsheet agent tool for Node.js](ai-agent-spreadsheet-tool-node.md)
+- [Workbook agent intent API](workbook-agent-intent-api.md)
 - [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
 - [MCP client setup](mcp-client-setup.md)
@@ -4071,6 +4079,466 @@ Do not claim success from a write call alone.
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [GitHub repo](https://github.com/proompteng/bilig)
 - [Adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)
+
+---
+
+## Workbook Agent Intent API
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/workbook-agent-intent-api.md
+
+# Workbook agent intent API
+
+Use `@bilig/workbook` when your product or agent framework already owns the
+runtime, but needs a stable way to describe workbook intent before anything is
+mutated.
+
+This is the package for model authors, adapter authors, and agent tool hosts
+that need plan data, requirements, command receipts, checks, schemas, and
+readback proof. It does not calculate formulas or own WorkPaper state. Use
+`@bilig/workpaper` when Bilig should run the workbook. Use `@bilig/workbook`
+when another runtime should run the workbook but still needs an agent-safe
+contract.
+
+## Run The Proof
+
+From a cloned Bilig checkout:
+
+```sh
+pnpm --dir examples/workbook-agent-model install
+pnpm --dir examples/workbook-agent-model start
+pnpm --dir examples/workbook-agent-model run typecheck
+```
+
+From an app that wants the package:
+
+```sh
+npm install @bilig/workbook
+```
+
+The example defines a generic named-range model, prepares an action, transports
+the plan as JSON-safe data, runs it through a strict adapter, and prints the
+model description, plan requirements, command receipts, changed cells, checks,
+and proof. No quote, revenue, payout, or other domain template is built into
+the package.
+
+## Use It When
+
+- an agent needs to inspect workbook intent before a runtime mutates state;
+- a framework wants plain JSON plan data instead of callback closures;
+- a runtime adapter needs to prove `planId`, revision, applied ops, resolved
+  refs, command receipts, and check results;
+- a product wants workbook operations to cross process or service boundaries;
+- the calculation engine is not Bilig, but the handoff still needs proof.
+
+## Do Not Use It When
+
+- you want Bilig to own workbook state and formula recalculation; use
+  `@bilig/workpaper`;
+- you only have stale formulas in an `.xlsx` file; use
+  `@bilig/xlsx-formula-recalc`, `@bilig/sheetjs-formula-recalc`, or
+  `@bilig/exceljs-formula-recalc`;
+- you need desktop Excel features such as macros, pivots, charts, add-ins, or
+  exact UI layout.
+
+## Agent Contract
+
+An agent-facing integration should be able to answer these questions without
+asking a human to inspect a spreadsheet UI:
+
+1. Which model and action were selected?
+2. Which refs did selectors bind?
+3. Which commands and low-level ops were planned?
+4. Did `prepareWorkbookAction` produce valid plan data?
+5. Did the plan survive JSON transport?
+6. Which runtime capabilities are required?
+7. Did apply proof match preview proof?
+8. Are command receipts bound to the planned digests?
+9. Which checks passed, and what evidence proved them?
+
+`runWorkbookPlan(planData, adapter, { strict: true })` fails closed unless the
+adapter returns the required proof. That is the main distinction from a thin
+"call this function and trust the result" wrapper.
+
+## Minimal Shape
+
+```ts
+import {
+  defineModel,
+  describeRunResult,
+  formula,
+  prepareWorkbookAction,
+  runWorkbookPlan,
+} from "@bilig/workbook";
+
+const model = defineModel({
+  name: "named-range-formula",
+  find(workbook) {
+    return {
+      input: workbook.findName("input"),
+      factor: workbook.findName("factor"),
+      result: workbook.findName("result"),
+    };
+  },
+  checks({ refs, workbook }) {
+    return [workbook.check.exists(refs.result), workbook.check.noFormulaErrors(refs.result)];
+  },
+  actions: {
+    calculate({ refs, workbook }) {
+      const expected = formula.multiply(refs.input, refs.factor);
+      workbook.writeFormula(refs.result, expected);
+      workbook.check.formulaEquals(refs.result, expected);
+    },
+  },
+});
+
+const prepared = prepareWorkbookAction(model, "calculate");
+if (prepared.status === "failed") {
+  throw new Error(prepared.errors[0]?.message ?? "workbook plan failed");
+}
+
+const result = await runWorkbookPlan(prepared.planData, adapter, { strict: true });
+console.log(describeRunResult(result));
+```
+
+## Package Boundary
+
+| Package | Owns | Best first proof |
+| --- | --- | --- |
+| `@bilig/workbook` | Agent intent, plan data, requirements, checks, schemas, and runtime proof. | [workbook-agent-model](https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model) |
+| `@bilig/workpaper` | WorkPaper state, recalculation, JSON persistence, MCP, and service tools. | [AI spreadsheet agent tool](ai-agent-spreadsheet-tool-node.md) |
+| `@bilig/xlsx-formula-recalc` | File-level XLSX formula recalculation after input edits. | [XLSX recalculation evaluator](eval-xlsx-recalc.md) |
+
+## Handoff Prompt
+
+```text
+Use @bilig/workbook when the runtime owns calculation but the agent needs a
+transport-neutral workbook plan. Define a model, prepare the action, inspect
+the plan data, run it through a strict adapter, and return model/action,
+resolved refs, applied ops, command receipts, checks, verified proof, and known
+limitations. Do not claim success from a write call alone.
+```
+
+See the package README for the full API surface:
+[`packages/workbook`](https://github.com/proompteng/bilig/tree/main/packages/workbook#readme).
+
+---
+
+## Workbook Package README
+
+Source: https://github.com/proompteng/bilig/blob/main/packages/workbook/README.md
+
+# @bilig/workbook
+
+Generic workbook intent for agents and runtimes.
+
+Build `@bilig/workbook` so an agent would love using it: simple, generic,
+predictable, inspectable, verifiable, and never dependent on hardcoded business
+models or human spreadsheet UI assumptions.
+
+Use this package when a consumer wants to define their own workbook model and
+hand a runtime a portable plan. Bilig supplies the generic model API, selectors,
+formula helpers, checks, JSON-safe transport data, validators, and run-result
+proof shapes. It does not import an engine, start a server, calculate formulas,
+ship business templates, or depend on `@bilig/core`, `@bilig/headless`,
+`@bilig/agent-api`, `zod`, or `effect`.
+
+```sh
+pnpm add @bilig/workbook
+```
+
+Public evaluator: [Workbook agent intent API](https://proompteng.github.io/bilig/workbook-agent-intent-api.html).
+
+## Use These First
+
+Most consumers should start with only these names:
+
+- `defineModel`
+- `formula`
+- `prepareWorkbookAction`
+- `runWorkbookPlan`
+- `describeModel`, `describePlan`, `describeRunResult`
+
+That path lets an agent define intent, inspect it before execution, transport it
+as plain data, run it through a runtime-owned adapter, and verify the returned
+proof without knowing anything about a rendered spreadsheet UI.
+
+## The Shape
+
+```ts
+import { defineModel, describeRunResult, formula, prepareWorkbookAction, runWorkbookPlan } from '@bilig/workbook'
+
+export const model = defineModel({
+  name: 'named-range-formula',
+
+  find(workbook) {
+    return {
+      input: workbook.findName('input'),
+      factor: workbook.findName('factor'),
+      result: workbook.findName('result'),
+    }
+  },
+
+  checks({ refs, workbook }) {
+    return [workbook.check.exists(refs.result), workbook.check.noFormulaErrors(refs.result)]
+  },
+
+  actions: {
+    calculate({ refs, workbook }) {
+      const expected = formula.multiply(refs.input, refs.factor)
+      workbook.writeFormula(refs.result, expected)
+      workbook.check.formulaEquals(refs.result, expected)
+    },
+  },
+})
+
+const prepared = prepareWorkbookAction(model, 'calculate')
+if (prepared.status === 'failed') throw new Error(prepared.errors[0]?.message)
+
+const result = await runWorkbookPlan(prepared.planData, adapter, { strict: true })
+const resultForLogs = describeRunResult(result)
+```
+
+The core flow is deliberately boring:
+
+1. `defineModel` freezes a consumer-defined model.
+2. `find` returns generic refs.
+3. `checks` declares facts the runtime must prove.
+4. An action builds workbook intent.
+5. `prepareWorkbookAction` verifies the plan, computes requirements, emits
+   JSON-safe `planData`, and gives the exact plan a stable id.
+6. `runWorkbookPlan(..., { strict: true })` fails closed unless the adapter
+   returns plan-bound apply proof, revision proof, resolved refs, command
+   receipts, check proof, and no unverified apply facts.
+
+## Which Package
+
+| Package            | Choose when                                                                                   | Do not use for                                     |
+| ------------------ | --------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `@bilig/workbook`  | Defining generic agent intent, refs, formulas, checks, plan data, schemas, and proof handoff. | Calculating formulas or owning workbook state.     |
+| `@bilig/workpaper` | Running workbook tools, MCP, or product workflows around persisted WorkPaper state.           | Designing a reusable model API for other runtimes. |
+| `@bilig/headless`  | Owning workbook state inside Node with formula recalculation and import/export.               | Publishing generic agent intent contracts.         |
+| `@bilig/core`      | Implementing calculation or mutation internals.                                               | Consumer-facing agent model definitions.           |
+
+The root export keeps the ordinary agent path: models, refs, checks, formulas,
+plans, runtime proof, command results, schemas, and low-level ops. Subpaths are available when an agent wants a smaller import map:
+`@bilig/workbook/model`,
+`@bilig/workbook/prepare`, `@bilig/workbook/find`, `@bilig/workbook/check`, `@bilig/workbook/formula`,
+`@bilig/workbook/verify`, `@bilig/workbook/runtime`,
+`@bilig/workbook/command`, `@bilig/workbook/features`,
+`@bilig/workbook/testing`, and `@bilig/workbook/schema`.
+
+## Mental Model
+
+Consumers define models. Bilig does not ship hardcoded business models in this
+package.
+
+Models are plain:
+
+- `find(workbook)` binds the workbook parts the model needs.
+- `checks({ refs, workbook })` declares proof the runtime must provide.
+- `actions` publish constrained input metadata and write workbook intent.
+- `prepareWorkbookAction(model, action)` is the canonical preflight for agents.
+
+Refs are generic:
+
+- `findName(name)` binds a named workbook ref.
+- `findTable({ name, sheetName, headers })` binds a table by stable traits.
+- `findColumn({ table, name })` and `table.column(name)` bind columns.
+- `findRows({ table, where })` binds filtered rows.
+- `findRange(input)` exists for explicit ranges when a consumer truly has one.
+
+Formulas stay symbolic until a runtime materializes them:
+
+- `formula.multiply(refs.input, refs.factor)` builds formula intent.
+- `formula.raw(source, { inputs, labels })` accepts custom formula text.
+- `formula.text(value)` creates a spreadsheet string literal.
+- `@bilig/formula` parses and normalizes the formula language.
+- `@bilig/core` or an app runtime calculates formulas.
+
+Checks are part of the plan, not comments:
+
+- `check.exists(ref)` proves the ref resolved.
+- `check.noFormulaErrors(ref)` proves a formula target is clean.
+- `check.valueEquals(ref, value)` proves a runtime value.
+- `check.formulaEquals(ref, formula)` proves the runtime formula matches intent.
+- `check.custom(options)` carries a runtime-owned proof contract.
+
+## Agent-Safe Runtime
+
+`@bilig/workbook` never mutates a workbook by itself. A runtime provides an
+adapter:
+
+```ts
+const adapter = {
+  apply(plan) {
+    const ops = materializeForThisRuntime(plan)
+    return {
+      status: 'applied',
+      planId: workbookPlanId(plan),
+      baseRevision: currentRevision,
+      revision: currentRevision + 1,
+      previewOps: ops,
+      appliedOps: ops,
+      commandReceipts: receiptsFor(plan, ops),
+      undo: { id: 'undo-1' },
+    }
+  },
+  read(targets, plan) {
+    return readTargetsFromRuntime(targets, plan)
+  },
+  verifyChecks(checks, plan) {
+    return proveChecksFromRuntime(checks, plan)
+  },
+}
+```
+
+Use `runWorkbookPlan(planOrData, adapter, { strict: true })` when an agent needs
+production proof. Strict mode requires:
+
+- a valid plan before mutation
+- at least one planned check before mutating actions
+- adapter capabilities for the planned work
+- plan id proof
+- base and applied revision proof
+- apply proof with no unverified apply facts
+- concrete applied ops, or command-bound effect proof for already-satisfied commands, including full low-level ops
+- command receipts bound to planned digests and concrete `resolvedRefs`
+- proof on every passed check
+
+Runtime authors can run the same plain-object, known-key, own-data-option
+contract with the `@bilig/workbook/testing` adapter helpers.
+
+The returned `WorkbookRunResult` is intentionally plain; `describeRunResult` preserves receipt-bound `noop` proof for logs and reviews:
+
+```ts
+type WorkbookRunResult =
+  | {
+      status: 'done'
+      apply?: WorkbookRunApplySummary
+      changed: WorkbookChangeSummary[]
+      checks: WorkbookCheckResult[]
+      undo?: WorkbookUndoRef
+      unverified?: WorkbookRunUnverified[]
+    }
+  | {
+      status: 'failed'
+      errors: WorkbookRunError[]
+      apply?: WorkbookRunApplySummary
+      changed: WorkbookChangeSummary[]
+      checks: WorkbookCheckResult[]
+      undo?: WorkbookUndoRef
+      unverified?: WorkbookRunUnverified[]
+    }
+```
+
+## Data Boundaries
+
+Everything that crosses an agent/runtime boundary is inspectable data:
+
+- `describeModel`, `describePlan`, `describePlanResult`, and `describeRunResult` return JSON-safe descriptions.
+- `toPlanData`, `checkPlanData`, and `hydratePlanData` transport and restore executable plan data.
+- `verifyPlan`, `verifyPlanData`, `verifyModel`, `checkInput`,
+  `checkWorkbookModelDescription`, and `checkWorkbookReadbackProof` return frozen validation verdicts.
+- `workbookJsonSchemas`, `workbookJsonSchemaHashes`, and `fixtures/` publish
+  checked model, plan, runtime-requirements, command, run-result, and readback artifacts.
+- Schemas cover transport shape and stay in parity for shape-enforceable
+  constraints such as row predicates, destructive confirmation, and command
+  receipt proof. Workbook-math limits such as `scope.maxTouchedCells` are
+  enforced by `checkWorkbookCommandBundle`.
+
+Public validators read own data properties and reject malformed, sparse,
+accessor-backed, or custom-prototype payloads before hidden consumer code can
+run. Public results are frozen before they cross the package boundary.
+
+## Feature Commands
+
+Runtimes can expose workbook extensions with the same data-first contract:
+
+- `checkWorkbookCommandRequest`
+- `checkWorkbookCommandBundle`
+- `workbookCommandResultForReceipts`
+- `checkWorkbookCommandResult`
+- `checkWorkbookCommandResultForBundle`
+- `checkWorkbookCommandReceipt`
+
+Generic command request, bundle, result, and receipt validators are available on
+the root path because agents may need to inspect runtime handoff proof. Runtime
+plugin registration, projection interceptors, and UI contribution metadata live
+only under `@bilig/workbook/features`. Ordinary models should prefer
+`writeFormula`, `writeValue`, `format`, `clear`, and checks.
+Format receipts use the same semantic proof path for single cells and ranges:
+each requested style or number-format component must cover every resolved cell.
+Low-level `WorkbookOp`, `WorkbookTxn`, `EngineOp`, `EngineOpBatch`, and related
+guards stay public for runtimes that need them. Most models should start with
+`writeFormula`, `writeValue`, `format`, `clear`, and checks instead.
+
+## Example
+
+See [examples/workbook-agent-model](../../examples/workbook-agent-model) for a
+generic model that plans, verifies, describes, transports, runs, and prints proof
+without depending on a hardcoded business model:
+
+```sh
+pnpm --dir examples/workbook-agent-model install
+pnpm --dir examples/workbook-agent-model start
+pnpm --dir examples/workbook-agent-model run typecheck
+```
+
+---
+
+## Workbook Agent Model Example
+
+Source: https://github.com/proompteng/bilig/blob/main/examples/workbook-agent-model/README.md
+
+# Named-Range Workbook Agent Model
+
+This example shows the intended `@bilig/workbook` shape without a built-in
+business model. The consumer defines the model. Bilig supplies generic selectors,
+formula helpers, `prepareWorkbookAction` preflight, runtime requirements, and a
+proof-shaped run result.
+
+```sh
+npm install
+npm start
+```
+
+From the repository root:
+
+```sh
+pnpm --dir examples/workbook-agent-model install
+pnpm --dir examples/workbook-agent-model start
+pnpm --dir examples/workbook-agent-model run typecheck
+```
+
+The model binds three named refs, writes a formula to the result ref, and
+declares checks. The adapter in this folder is a tiny proof fixture for
+`runWorkbookPlan(..., { strict: true })`: it returns plan id, revision,
+preview/apply op proof, command receipts with matching resolved refs, formula
+readback, and check proof. Real runtimes such as `@bilig/core` provide those
+facts from an engine; this example only shows the shape.
+
+The output answers the questions an agent needs before it trusts a workbook
+mutation:
+
+- what model and action were selected
+- which refs the selectors bound
+- which commands and low-level ops were planned
+- whether `prepareWorkbookAction` produced verified plan data
+- whether the plan survives JSON transport and `verifyPlanData`
+- which adapter capabilities are required
+- whether the transported plan data can be run without the consumer's private
+  `refs` object shape
+- whether apply matched preview with strict command proof
+- what changed, and whether undo evidence exists
+- which checks passed
+- what proof supported each check
+
+No revenue, quote, forecast, or other domain-specific model is built into
+`@bilig/workbook`.
+
+Use this example when you are building an adapter for an agent framework or
+product runtime that already owns calculation. Use `@bilig/workpaper` instead
+when Bilig should own WorkPaper state, recalculation, JSON persistence, or MCP.
 
 ---
 

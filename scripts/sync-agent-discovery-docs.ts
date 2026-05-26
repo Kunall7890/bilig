@@ -1,14 +1,9 @@
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, extname, join } from 'node:path'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import {
-  agentNotAFitBoundaries,
-  mcpPromptNames,
-  skillTags,
-  versionedStaticReferenceExtensions,
-  versionedStaticReferenceRoots,
-} from './agent-discovery-constants.ts'
+import { agentNotAFitBoundaries, mcpPromptNames, skillTags } from './agent-discovery-constants.ts'
 import { mcpServerCardManifest } from './agent-discovery-mcp-card.ts'
+import { syncVersionedStaticReferences } from './sync-agent-static-references.ts'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const siteRoot = 'https://proompteng.github.io/bilig'
@@ -19,9 +14,11 @@ const repositoryUrl = 'https://github.com/proompteng/bilig'
 const skillName = 'bilig-workpaper'
 const headlessPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'))
 const workpaperPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'workpaper', 'package.json'), 'utf8'))
+const workbookPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'workbook', 'package.json'), 'utf8'))
 const unscopedWorkpaperPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'bilig', 'package.json'), 'utf8'))
 const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
 const workpaperPackageSpec = `@bilig/workpaper@${workpaperPackageVersion}`
+const workbookPackageSpec = `@bilig/workbook@${workbookPackageVersion}`
 const unscopedWorkpaperPackageSpec = `bilig-workpaper@${unscopedWorkpaperPackageVersion}`
 const mcpbReleaseTag = `libraries-v${headlessPackageVersion}`
 const mcpbReleaseAssetUrl = `${repositoryUrl}/releases/download/${mcpbReleaseTag}/bilig-workpaper.mcpb`
@@ -518,6 +515,21 @@ const llmsFullSources = [
     relativePath: 'docs/agent-framework-workbook-tools.md',
     url: `${repositoryUrl}/blob/main/docs/agent-framework-workbook-tools.md`,
   },
+  {
+    title: 'Workbook Agent Intent API',
+    relativePath: 'docs/workbook-agent-intent-api.md',
+    url: `${repositoryUrl}/blob/main/docs/workbook-agent-intent-api.md`,
+  },
+  {
+    title: 'Workbook Package README',
+    relativePath: 'packages/workbook/README.md',
+    url: `${repositoryUrl}/blob/main/packages/workbook/README.md`,
+  },
+  {
+    title: 'Workbook Agent Model Example',
+    relativePath: 'examples/workbook-agent-model/README.md',
+    url: `${repositoryUrl}/blob/main/examples/workbook-agent-model/README.md`,
+  },
   llmsSource('Directus WorkPaper Flow Operation', 'docs/directus-workpaper-flow-operation.md'),
   llmsSource('Windmill WorkPaper TypeScript Script', 'docs/windmill-workpaper-script.md'),
   llmsSource('Trigger.dev WorkPaper Task', 'docs/triggerdev-workpaper-task.md'),
@@ -684,6 +696,16 @@ function agentJsonManifest(): string {
       },
       capabilities: [
         {
+          name: 'workbook-agent-intent-api',
+          type: 'npm-library',
+          package: '@bilig/workbook',
+          package_version: workbookPackageVersion,
+          runtime: 'Node.js >=22',
+          install: 'npm install @bilig/workbook',
+          docs: `${siteRoot}/workbook-agent-intent-api.html`,
+          source: `${repositoryUrl}/tree/main/examples/workbook-agent-model`,
+        },
+        {
           name: 'workpaper-formula-runtime',
           type: 'npm-library',
           package: '@bilig/workpaper',
@@ -762,6 +784,7 @@ function agentJsonManifest(): string {
         remoteMcpServerCard,
         `${siteRoot}/agent-workpaper-tool-calling-recipe.html`,
         `${siteRoot}/agent-framework-workbook-tools.html`,
+        `${siteRoot}/workbook-agent-intent-api.html`,
         `${siteRoot}/openai-agents-sdk-workpaper-tool.html`,
         `${siteRoot}/node-framework-workpaper-adapters.html`,
         `${siteRoot}/temporal-workpaper-activity.html`,
@@ -801,6 +824,7 @@ async function buildLlmsFull(): Promise<string> {
     `Repository: ${repositoryUrl}`,
     `Site: ${siteRoot}/`,
     `npm: https://www.npmjs.com/package/@bilig/workpaper`,
+    `npm workbook: https://www.npmjs.com/package/@bilig/workbook`,
     `Agent instructions: ${siteRoot}/AGENTS.md`,
     `Skill manifest: ${siteRoot}/skill.txt`,
     `Compact index: ${siteRoot}/llms.txt`,
@@ -874,102 +898,15 @@ async function readIfExists(path: string): Promise<string | undefined> {
   }
 }
 
-async function collectVersionedStaticReferenceFiles(relativePath: string): Promise<string[]> {
-  const absolutePath = join(repoRoot, relativePath)
-  try {
-    const entries = await readdir(absolutePath, { withFileTypes: true })
-    const nested = await Promise.all(
-      entries.map((entry) => {
-        const entryRelativePath = `${relativePath}/${entry.name}`
-        return entry.isDirectory() ? collectVersionedStaticReferenceFiles(entryRelativePath) : [entryRelativePath]
-      }),
-    )
-    return nested.flat().filter((entryRelativePath) => versionedStaticReferenceExtensions.has(extname(entryRelativePath)))
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOTDIR') {
-      return versionedStaticReferenceExtensions.has(extname(relativePath)) ? [relativePath] : []
-    }
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      return []
-    }
-    throw error
-  }
-}
-
-function syncVersionedStaticReferenceLine(line: string): string {
-  const stableSemverPattern = String.raw`\d+\.\d+\.\d+`
-  return line
-    .replace(new RegExp(`(npm exec --package )@bilig/headless@${stableSemverPattern}`, 'g'), `$1${headlessPackageSpec}`)
-    .replace(new RegExp(`(npm exec --package )@bilig/workpaper@${stableSemverPattern}`, 'g'), `$1${workpaperPackageSpec}`)
-    .replace(new RegExp(`(npm install )@bilig/headless@${stableSemverPattern}`, 'g'), `$1${headlessPackageSpec}`)
-    .replace(new RegExp(`(npm install )@bilig/workpaper@${stableSemverPattern}`, 'g'), `$1${workpaperPackageSpec}`)
-    .replace(new RegExp(`("--package",\\s*")@bilig/headless@${stableSemverPattern}(")`, 'g'), `$1${headlessPackageSpec}$2`)
-    .replace(new RegExp(`("--package",\\s*")@bilig/workpaper@${stableSemverPattern}(")`, 'g'), `$1${workpaperPackageSpec}$2`)
-    .replace(new RegExp(`('--package',\\s*')@bilig/headless@${stableSemverPattern}(')`, 'g'), `$1${headlessPackageSpec}$2`)
-    .replace(new RegExp(`('--package',\\s*')@bilig/workpaper@${stableSemverPattern}(')`, 'g'), `$1${workpaperPackageSpec}$2`)
-    .replace(new RegExp(`^(\\s*)"@bilig/headless@${stableSemverPattern}"(,?\\s*)$`, 'g'), `$1"${headlessPackageSpec}"$2`)
-    .replace(new RegExp(`^(\\s*)"@bilig/workpaper@${stableSemverPattern}"(,?\\s*)$`, 'g'), `$1"${workpaperPackageSpec}"$2`)
-    .replace(new RegExp(`^(\\s*)'@bilig/headless@${stableSemverPattern}'(,?\\s*)$`, 'g'), `$1'${headlessPackageSpec}'$2`)
-    .replace(new RegExp(`^(\\s*)'@bilig/workpaper@${stableSemverPattern}'(,?\\s*)$`, 'g'), `$1'${workpaperPackageSpec}'$2`)
-    .replace(
-      new RegExp(`(Current checked npm footprint for \`)@bilig/headless@${stableSemverPattern}(\`)`, 'g'),
-      `$1${headlessPackageSpec}$2`,
-    )
-    .replace(new RegExp(`npm latest is \`${stableSemverPattern}\``, 'g'), `npm latest is \`${headlessPackageVersion}\``)
-    .replace(new RegExp(`npm latest is \`@bilig/headless@${stableSemverPattern}\``, 'g'), `npm latest is \`${headlessPackageSpec}\``)
-    .replace(new RegExp(`npm latest is \`@bilig/workpaper@${stableSemverPattern}\``, 'g'), `npm latest is \`${workpaperPackageSpec}\``)
-    .replace(new RegExp(`npm latest \`@bilig/headless@${stableSemverPattern}\``, 'g'), `npm latest \`${headlessPackageSpec}\``)
-    .replace(new RegExp(`npm latest \`@bilig/workpaper@${stableSemverPattern}\``, 'g'), `npm latest \`${workpaperPackageSpec}\``)
-    .replace(new RegExp(`\`@bilig/headless@${stableSemverPattern}\``, 'g'), `\`${headlessPackageSpec}\``)
-    .replace(new RegExp(`\`@bilig/workpaper@${stableSemverPattern}\``, 'g'), `\`${workpaperPackageSpec}\``)
-    .replace(
-      new RegExp(`io\\.github\\.proompteng/bilig-workpaper@${stableSemverPattern}`, 'g'),
-      `io.github.proompteng/bilig-workpaper@${headlessPackageVersion}`,
-    )
-    .replace(new RegExp(`(now points reviewers at \`)@bilig/headless@${stableSemverPattern}(\`)`, 'g'), `$1${workpaperPackageSpec}$2`)
-    .replace(new RegExp(`(now points reviewers at \`)@bilig/workpaper@${stableSemverPattern}(\`)`, 'g'), `$1${workpaperPackageSpec}$2`)
-    .replace(new RegExp(`libraries-v${stableSemverPattern}`, 'g'), mcpbReleaseTag)
-}
-
-function syncVersionedStaticReferenceContent(content: string): string {
-  return content
-    .split(/(?<=\n)/)
-    .map(syncVersionedStaticReferenceLine)
-    .join('')
-}
-
-async function syncVersionedStaticReferences(): Promise<string[]> {
-  const targetFiles = [
-    ...new Set((await Promise.all(versionedStaticReferenceRoots.map(collectVersionedStaticReferenceFiles))).flat()),
-  ].toSorted()
-  const staleTargets: string[] = []
-
-  await Promise.all(
-    targetFiles.map(async (relativePath) => {
-      const absolutePath = join(repoRoot, relativePath)
-      const existing = await readIfExists(absolutePath)
-      if (existing === undefined) {
-        return
-      }
-
-      const nextContent = syncVersionedStaticReferenceContent(existing)
-      if (nextContent === existing) {
-        return
-      }
-
-      if (checkOnly) {
-        staleTargets.push(relativePath)
-        return
-      }
-
-      await writeFile(absolutePath, nextContent)
-    }),
-  )
-
-  return staleTargets.toSorted()
-}
-
-const staticReferenceMismatches = await syncVersionedStaticReferences()
+const staticReferenceMismatches = await syncVersionedStaticReferences({
+  checkOnly,
+  headlessPackageSpec,
+  headlessPackageVersion,
+  mcpbReleaseTag,
+  repoRoot,
+  workbookPackageSpec,
+  workpaperPackageSpec,
+})
 const targetResults = await Promise.all(
   (await generatedTargets()).map(async ([relativePath, content]): Promise<string | undefined> => {
     const absolutePath = join(repoRoot, relativePath)

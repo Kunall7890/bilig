@@ -178,6 +178,23 @@ export async function requireSharedPublicDocsDiscovery(args: {
       'node-framework-workpaper-adapters',
       'submit-workbook-fixture',
       'mcp-spreadsheet-server-directory',
+      'workbook-agent-intent-api',
+    ],
+  )
+
+  requireDocumentsInclude(
+    [
+      { path: 'README.md', content: args.readme },
+      { path: 'docs/index.html', content: args.index },
+      { path: 'docs/llms.txt', content: args.llms },
+      { path: 'docs/workbook-agent-intent-api.md', content: await readFile(join(args.docsRoot, 'workbook-agent-intent-api.md'), 'utf8') },
+    ],
+    [
+      '@bilig/workbook',
+      'transport-neutral',
+      'plan data',
+      'command receipts',
+      'https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model',
     ],
   )
 

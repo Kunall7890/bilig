@@ -51,13 +51,13 @@ function requiredFormula<Refs>(plan: WorkbookActionPlan<Refs>): string {
   return command.formula
 }
 
-function materializedOps(formulaText: string): readonly EngineOp[] {
+function materializedOps(): readonly EngineOp[] {
   return [
     {
       kind: 'setCellFormula',
       sheetName: 'Resolved',
       address: 'C1',
-      formula: formulaText,
+      formula: 'Resolved!A1*Resolved!B1',
     },
   ]
 }
@@ -111,7 +111,7 @@ if (prepared.status === 'failed') {
 const plannedFormula = requiredFormula(prepared.plan)
 const describedPlan = describePlan(prepared.plan)
 const transportedPlan = JSON.parse(JSON.stringify(prepared.planData))
-const ops = materializedOps(plannedFormula)
+const ops = materializedOps()
 const adapter: WorkbookRunAdapter<{ readonly refsUsed: typeof prepared.plan.refsUsed }> = {
   apply(plan) {
     return {
@@ -148,10 +148,14 @@ const adapter: WorkbookRunAdapter<{ readonly refsUsed: typeof prepared.plan.refs
 }
 
 const result = await runWorkbookPlan(transportedPlan, adapter, { strict: true })
+if (result.status !== 'done') {
+  throw new Error(JSON.stringify(describeRunResult(result), null, 2))
+}
 
 console.log(
   JSON.stringify(
     {
+      verified: true,
       model: describeModel(model),
       plan: describedPlan,
       verification: prepared.verification,

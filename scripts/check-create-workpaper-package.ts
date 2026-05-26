@@ -150,6 +150,7 @@ function assertPackedTarball(): void {
   for (const entry of [
     'package/package.json',
     'package/README.md',
+    'package/agent-overlay/.mcp.json',
     'package/agent-overlay/.cursor/mcp.json',
     'package/agent-overlay/.vscode/mcp.json',
     'package/agent-overlay/AGENTS.md',
@@ -199,7 +200,7 @@ function assertGeneratedStarters(): void {
     'generated agent starter must include the file-backed MCP server script',
   )
 
-  for (const expected of ['AGENTS.md', 'CLAUDE.md', '.cursor/mcp.json', '.vscode/mcp.json', 'mcp/bilig-workpaper.mcp.json']) {
+  for (const expected of ['AGENTS.md', 'CLAUDE.md', '.mcp.json', '.cursor/mcp.json', '.vscode/mcp.json', 'mcp/bilig-workpaper.mcp.json']) {
     assert(existsSync(join(agentDir, expected)), `generated agent starter is missing ${expected}`)
   }
 }

@@ -35,8 +35,9 @@ npm run mcp:server
 
 The server owns `./pricing.workpaper.json`, initializes it when missing, writes
 through MCP tools, recalculates formulas, and persists edits back to disk.
-Project MCP configs are included for Cursor and VS Code. Other clients can use
-the same command from `mcp/bilig-workpaper.mcp.json`.
+Project MCP configs are included for Claude Code (`.mcp.json`), Cursor, and VS
+Code. Other clients can use the same command from
+`mcp/bilig-workpaper.mcp.json`.
 
 Agent handoff:
 

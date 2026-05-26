@@ -81,6 +81,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | LlamaIndex.TS | `tool(fn, { parameters })` with a compact proof return. | [LlamaIndex.TS WorkPaper tool](llamaindex-workpaper-spreadsheet-tool.md) |
 | Mastra | `createTool()` wrapper for formula-backed workbook edits. | [Mastra WorkPaper tool](mastra-workpaper-spreadsheet-tool.md) |
 | Cloudflare Agents | Agent tool calling a Node-compatible WorkPaper boundary. | [Cloudflare Agents WorkPaper tool](cloudflare-agents-workpaper-spreadsheet-tool.md) |
+| Runtime adapter authors | `@bilig/workbook` models, plan data, checks, schemas, command receipts, and strict proof. | [Workbook agent intent API](workbook-agent-intent-api.md) |
 | MCP directories and remote clients | Hosted server card or local file-backed server. | [MCP WorkPaper server](mcp-workpaper-tool-server.md) |
 
 ## Proof object
@@ -117,6 +118,7 @@ Do not claim success from a write call alone.
 ## Links
 
 - [AI spreadsheet agent tool for Node.js](ai-agent-spreadsheet-tool-node.md)
+- [Workbook agent intent API](workbook-agent-intent-api.md)
 - [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
 - [MCP client setup](mcp-client-setup.md)

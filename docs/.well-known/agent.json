@@ -64,6 +64,16 @@
   },
   "capabilities": [
     {
+      "name": "workbook-agent-intent-api",
+      "type": "npm-library",
+      "package": "@bilig/workbook",
+      "package_version": "0.108.0",
+      "runtime": "Node.js >=22",
+      "install": "npm install @bilig/workbook",
+      "docs": "https://proompteng.github.io/bilig/workbook-agent-intent-api.html",
+      "source": "https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model"
+    },
+    {
       "name": "workpaper-formula-runtime",
       "type": "npm-library",
       "package": "@bilig/workpaper",
@@ -142,6 +152,7 @@
     "https://bilig.proompteng.ai/.well-known/mcp/server-card.json",
     "https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html",
     "https://proompteng.github.io/bilig/agent-framework-workbook-tools.html",
+    "https://proompteng.github.io/bilig/workbook-agent-intent-api.html",
     "https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html",
     "https://proompteng.github.io/bilig/node-framework-workpaper-adapters.html",
     "https://proompteng.github.io/bilig/temporal-workpaper-activity.html",

@@ -8,6 +8,7 @@ repository: https://github.com/proompteng/bilig
 context7 indexed docs: https://context7.com/proompteng/bilig
 context7 library id: /proompteng/bilig
 npm workpaper package: https://www.npmjs.com/package/@bilig/workpaper
+npm workbook package: https://www.npmjs.com/package/@bilig/workbook
 npm xlsx recalculation package: https://www.npmjs.com/package/@bilig/xlsx-formula-recalc
 npm SheetJS recalculation package: https://www.npmjs.com/package/@bilig/sheetjs-formula-recalc
 npm ExcelJS recalculation package: https://www.npmjs.com/package/@bilig/exceljs-formula-recalc
@@ -44,6 +45,10 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 - Use `@bilig/workpaper` when the caller needs WorkPaper APIs, agent-tool
   helpers, the MCP binary, or proof commands. Use `@bilig/headless` only for
   lower-level runtime subpaths or package-boundary audits.
+- Use `@bilig/workbook` when another runtime owns calculation but an agent
+  framework needs transport-neutral model, plan data, command receipts, checks,
+  and proof data. Example:
+  https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model
 
 ## agent handoff prompt
 
@@ -91,6 +96,8 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/eval-agent-mcp.html
 - https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html
 - https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
+- https://proompteng.github.io/bilig/workbook-agent-intent-api.html
+- https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model
 - https://github.com/proompteng/bilig/blob/main/docs/agent-framework-workbook-tools.md
 - https://proompteng.github.io/bilig/headless-spreadsheet-engine-node-services-agents.html
 - https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html

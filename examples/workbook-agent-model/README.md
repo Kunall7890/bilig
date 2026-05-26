@@ -10,6 +10,14 @@ npm install
 npm start
 ```
 
+From the repository root:
+
+```sh
+pnpm --dir examples/workbook-agent-model install
+pnpm --dir examples/workbook-agent-model start
+pnpm --dir examples/workbook-agent-model run typecheck
+```
+
 The model binds three named refs, writes a formula to the result ref, and
 declares checks. The adapter in this folder is a tiny proof fixture for
 `runWorkbookPlan(..., { strict: true })`: it returns plan id, revision,
@@ -35,3 +43,7 @@ mutation:
 
 No revenue, quote, forecast, or other domain-specific model is built into
 `@bilig/workbook`.
+
+Use this example when you are building an adapter for an agent framework or
+product runtime that already owns calculation. Use `@bilig/workpaper` instead
+when Bilig should own WorkPaper state, recalculation, JSON persistence, or MCP.

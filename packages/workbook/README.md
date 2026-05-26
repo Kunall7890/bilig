@@ -17,6 +17,8 @@ ship business templates, or depend on `@bilig/core`, `@bilig/headless`,
 pnpm add @bilig/workbook
 ```
 
+Public evaluator: [Workbook agent intent API](https://proompteng.github.io/bilig/workbook-agent-intent-api.html).
+
 ## Use These First
 
 Most consumers should start with only these names:
@@ -237,23 +239,18 @@ only under `@bilig/workbook/features`. Ordinary models should prefer
 `writeFormula`, `writeValue`, `format`, `clear`, and checks.
 Format receipts use the same semantic proof path for single cells and ranges:
 each requested style or number-format component must cover every resolved cell.
-
-## Low-Level Ops
-
-The existing workbook operation language remains public:
-
-- `WorkbookOp`
-- `WorkbookTxn`
-- `EngineOp`
-- `EngineOpBatch`
-- guards such as `isEngineOpBatch`
-
-Most models should not start there. Use `workbook.addOp(op, { target, message })`
-inside an action only when the generic action helpers cannot express the
-required workbook intent.
+Low-level `WorkbookOp`, `WorkbookTxn`, `EngineOp`, `EngineOpBatch`, and related
+guards stay public for runtimes that need them. Most models should start with
+`writeFormula`, `writeValue`, `format`, `clear`, and checks instead.
 
 ## Example
 
 See [examples/workbook-agent-model](../../examples/workbook-agent-model) for a
 generic model that plans, verifies, describes, transports, runs, and prints proof
-without depending on a hardcoded business model.
+without depending on a hardcoded business model:
+
+```sh
+pnpm --dir examples/workbook-agent-model install
+pnpm --dir examples/workbook-agent-model start
+pnpm --dir examples/workbook-agent-model run typecheck
+```

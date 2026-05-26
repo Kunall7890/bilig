@@ -9,6 +9,7 @@ export const docsSiteSources = [
   ['eval-agent-mcp.html', 'eval-agent-mcp.md'],
   ['ai-agent-spreadsheet-tool-node.html', 'ai-agent-spreadsheet-tool-node.md'],
   ['agent-framework-workbook-tools.html', 'agent-framework-workbook-tools.md'],
+  ['workbook-agent-intent-api.html', 'workbook-agent-intent-api.md'],
   ['headless-spreadsheet-engine-node-services-agents.html', 'headless-spreadsheet-engine-node-services-agents.md'],
   ['exceljs-formula-recalculation-node.html', 'exceljs-formula-recalculation-node.md'],
   ['exceljs-shared-formula-recalculation-node.html', 'exceljs-shared-formula-recalculation-node.md'],

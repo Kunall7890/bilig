@@ -4,19 +4,26 @@
   "description": "Agent-first workbook model API and transport-neutral workbook operation language for bilig.",
   "keywords": [
     "agent-first",
+    "agent-tools",
+    "ai-agents",
     "bilig",
+    "command-receipts",
+    "model-context-protocol",
     "models",
+    "plan-data",
     "spreadsheet",
+    "spreadsheet-agent",
+    "transport-neutral",
     "workbook"
   ],
-  "homepage": "https://code.proompteng.ai/kalmyk/bilig/src/branch/main/packages/workbook#readme",
+  "homepage": "https://proompteng.github.io/bilig/workbook-agent-intent-api.html",
   "bugs": {
-    "url": "https://code.proompteng.ai/kalmyk/bilig/issues"
+    "url": "https://github.com/proompteng/bilig/issues"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://code.proompteng.ai/kalmyk/bilig.git",
+    "url": "git+https://github.com/proompteng/bilig.git",
     "directory": "packages/workbook"
   },
   "files": [
