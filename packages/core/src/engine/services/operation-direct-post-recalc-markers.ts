@@ -79,6 +79,18 @@ function affineDirectScalarDeltaFromInputDelta(
   return undefined
 }
 
+function directScalarPreservesInputDelta(directScalar: RuntimeDirectScalarDescriptor, inputCellIndex: number): boolean {
+  if (directScalar.kind === 'abs') {
+    return false
+  }
+  const left = directScalar.left
+  const right = directScalar.right
+  if (left.kind === 'cell' && left.cellIndex === inputCellIndex && right.kind === 'literal-number') {
+    return directScalar.operator === '+' || directScalar.operator === '-'
+  }
+  return directScalar.operator === '+' && right.kind === 'cell' && right.cellIndex === inputCellIndex && left.kind === 'literal-number'
+}
+
 export function createOperationDirectPostRecalcMarkers(args: {
   readonly state: OperationDirectPostRecalcMarkerState
   readonly getSingleEntityDependent: (entityId: number) => number
@@ -448,6 +460,27 @@ export function createOperationDirectPostRecalcMarkers(args: {
     const formulaOutputFlags = CellFlags.SpillChild | CellFlags.PivotOutput
     const directScalarCellNumericValue = args.directScalarCellNumericValue
     const canSkipDirectFormulaColumnVersion = args.canSkipDirectFormulaColumnVersion
+
+    if (
+      tryMarkCleanSameDeltaDirectScalarClosure({
+        rootCellIndex,
+        inputDelta,
+        getSingleCellDependent,
+        formulas,
+        flags,
+        tags,
+        stringIds,
+        errors,
+        formulaOutputFlags,
+        canSkipAllDirectFormulaColumnVersions,
+        canSkipDirectFormulaColumnVersion,
+        postRecalcDirectFormulaIndices,
+        scalarDeltaClosureLimit: args.scalarDeltaClosureLimit,
+      })
+    ) {
+      return true
+    }
+
     for (;;) {
       if (closureCount > args.scalarDeltaClosureLimit) {
         return false
@@ -711,4 +744,81 @@ export function createOperationDirectPostRecalcMarkers(args: {
     tryDirectScalarNumericDeltaFromNumbers,
     tryMarkDirectScalarLinearDeltaClosure,
   } as const
+}
+
+function tryMarkCleanSameDeltaDirectScalarClosure(args: {
+  readonly rootCellIndex: number
+  readonly inputDelta: number
+  readonly getSingleCellDependent: (cellIndex: number) => number
+  readonly formulas: OperationDirectPostRecalcMarkerState['formulas']
+  readonly flags: ArrayLike<number | undefined>
+  readonly tags: ArrayLike<ValueTag | undefined>
+  readonly stringIds: ArrayLike<number | undefined>
+  readonly errors: ArrayLike<ErrorCode | undefined>
+  readonly formulaOutputFlags: number
+  readonly canSkipAllDirectFormulaColumnVersions: boolean
+  readonly canSkipDirectFormulaColumnVersion: (cellIndex: number) => boolean
+  readonly postRecalcDirectFormulaIndices: DirectFormulaIndexCollection
+  readonly scalarDeltaClosureLimit: number
+}): boolean {
+  let currentCellIndex = args.rootCellIndex
+  let closureCount = 0
+  let sortedClosureCellIndices = true
+  let previousClosureCellIndex = -1
+  let cellIndices = new Uint32Array(initialDirectScalarLinearDeltaClosureCapacity(args.scalarDeltaClosureLimit))
+
+  for (;;) {
+    if (closureCount > args.scalarDeltaClosureLimit) {
+      return false
+    }
+    const formulaCellIndex = args.getSingleCellDependent(currentCellIndex)
+    if (formulaCellIndex === -1) {
+      break
+    }
+    if (formulaCellIndex < 0 || formulaCellIndex === args.rootCellIndex) {
+      return false
+    }
+    const formula = args.formulas.get(formulaCellIndex)
+    if (
+      !formula ||
+      formula.directScalar === undefined ||
+      formula.compiled.volatile ||
+      formula.compiled.producesSpill ||
+      ((args.flags[formulaCellIndex] ?? 0) & CellFlags.InCycle) !== 0 ||
+      !directScalarPreservesInputDelta(formula.directScalar, currentCellIndex) ||
+      args.tags[formulaCellIndex] !== ValueTag.Number ||
+      (args.stringIds[formulaCellIndex] ?? 0) !== 0 ||
+      (args.errors[formulaCellIndex] ?? ErrorCode.None) !== ErrorCode.None ||
+      ((args.flags[formulaCellIndex] ?? 0) & args.formulaOutputFlags) !== 0 ||
+      (!args.canSkipAllDirectFormulaColumnVersions && !args.canSkipDirectFormulaColumnVersion(formulaCellIndex))
+    ) {
+      return false
+    }
+    if (closureCount >= cellIndices.length) {
+      const nextCellIndices = new Uint32Array(cellIndices.length * 2)
+      nextCellIndices.set(cellIndices)
+      cellIndices = nextCellIndices
+    }
+    if (formulaCellIndex <= previousClosureCellIndex) {
+      sortedClosureCellIndices = false
+    }
+    previousClosureCellIndex = formulaCellIndex
+    cellIndices[closureCount] = formulaCellIndex
+    closureCount += 1
+    currentCellIndex = formulaCellIndex
+  }
+
+  if (closureCount === 0) {
+    return false
+  }
+  const closureCellIndices = cellIndices.subarray(0, closureCount)
+  if (sortedClosureCellIndices) {
+    args.postRecalcDirectFormulaIndices.appendSortedConstantDelta(closureCellIndices, args.inputDelta, 'scalar')
+  } else {
+    args.postRecalcDirectFormulaIndices.appendConstantDelta(closureCellIndices, args.inputDelta, 'scalar')
+  }
+  args.postRecalcDirectFormulaIndices.markScalarDeltaCellsValidated()
+  args.postRecalcDirectFormulaIndices.markScalarDeltaCellsTrustedDirectScalarFormulas()
+  args.postRecalcDirectFormulaIndices.markScalarDeltaCellsCleanNumber()
+  return true
 }

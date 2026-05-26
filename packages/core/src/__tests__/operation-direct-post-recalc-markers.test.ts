@@ -65,6 +65,8 @@ function createMarkers(input: {
       cellStore: {
         flags: [],
         tags,
+        stringIds: [],
+        errors: [],
         getValue: (cellIndex: number) => numberValue(input.numbers.get(cellIndex) ?? 0),
       },
     },
@@ -130,6 +132,7 @@ describe('operation direct post-recalc markers', () => {
     expect(collection.getDelta(30)).toBe(3)
     expect(collection.hasCompleteScalarDeltas()).toBe(true)
     expect(collection.hasValidatedScalarDeltaCells()).toBe(true)
+    expect(collection.hasCleanScalarDeltaCells()).toBe(true)
     expect(collection.hasTrustedDirectScalarDeltaCells()).toBe(true)
   })
 
@@ -170,6 +173,7 @@ describe('operation direct post-recalc markers', () => {
     expect(allSkipCalls).toBe(1)
     expect(perCellSkipCalls).toBe(0)
     expect(collection.hasValidatedScalarDeltaCells()).toBe(true)
+    expect(collection.hasCleanScalarDeltaCells()).toBe(true)
     expect(collection.hasTrustedDirectScalarDeltaCells()).toBe(true)
   })
 

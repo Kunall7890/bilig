@@ -173,23 +173,30 @@ export class SheetGrid {
   }
 
   setDenseRowMajor(rowStart: number, colStart: number, rowCount: number, colCount: number, firstCellIndex: number): void {
-    let cachedKey = -1
-    let cachedBlock: Uint32Array | undefined
+    const colEnd = colStart + colCount
     for (let rowOffset = 0; rowOffset < rowCount; rowOffset += 1) {
       const row = rowStart + rowOffset
+      const blockRow = Math.floor(row / BLOCK_ROWS)
+      const blockRowBase = blockRow * BLOCK_ROWS
+      const rowBlockKeyBase = blockRow * 1_000_000
+      const rowBlockOffset = (row - blockRowBase) * BLOCK_COLS
       const rowBaseCellIndex = firstCellIndex + rowOffset * colCount
-      for (let colOffset = 0; colOffset < colCount; colOffset += 1) {
-        const col = colStart + colOffset
-        const key = blockKey(row, col)
-        let block = key === cachedKey ? cachedBlock : this.blocks.get(key)
+      let col = colStart
+      while (col < colEnd) {
+        const blockCol = Math.floor(col / BLOCK_COLS)
+        const blockColBase = blockCol * BLOCK_COLS
+        const localColStart = col - blockColBase
+        const localColEnd = Math.min(BLOCK_COLS, colEnd - blockColBase)
+        const key = rowBlockKeyBase + blockCol
+        let block = this.blocks.get(key)
         if (!block) {
           block = new Uint32Array(BLOCK_ROWS * BLOCK_COLS)
           this.blocks.set(key, block)
         }
-        cachedKey = key
-        cachedBlock = block
-        const offset = (row % BLOCK_ROWS) * BLOCK_COLS + (col % BLOCK_COLS)
-        block[offset] = rowBaseCellIndex + colOffset + 1
+        for (let localCol = localColStart; localCol < localColEnd; localCol += 1) {
+          block[rowBlockOffset + localCol] = rowBaseCellIndex + blockColBase + localCol - colStart + 1
+        }
+        col = blockColBase + localColEnd
       }
     }
   }

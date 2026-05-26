@@ -90,14 +90,14 @@ export class AxisMap {
       if (created.length !== count) {
         throw new Error(`Expected ${String(count)} dense axis ids, got ${String(created.length)}`)
       }
+      const createdIds = Array.isArray(created) ? created : [...created]
       for (let offset = 0; offset < count; offset += 1) {
         const index = start + offset
-        const id = created[offset]!
+        const id = createdIds[offset]!
         this.entries[index] = id
         this.idToIndex.set(id, index)
-        ids[offset] = id
       }
-      return ids
+      return createdIds
     }
     if (this.entries.length < end) {
       this.entries.length = end
