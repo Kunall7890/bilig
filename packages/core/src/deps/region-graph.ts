@@ -42,6 +42,7 @@ const POINT_IMPACT_MAX_REGION_LENGTH = 256
 const POINT_IMPACT_MAX_CELLS = 65_536
 const POINT_IMPACT_MAX_ROW_INDEX = 131_072
 const DEPENDENT_DEDUP_SET_THRESHOLD = 32
+const EMPTY_U32 = new Uint32Array(0)
 
 export interface RegionGraph {
   readonly internSingleColumnRegion: (args: {
@@ -178,7 +179,7 @@ function regionSubscriberSize(subscription: RegionSubscriberSubscription): numbe
 
 function regionSubscribersToUint32(subscription: RegionSubscriberSubscription | undefined): Uint32Array {
   if (subscription === undefined) {
-    return new Uint32Array()
+    return EMPTY_U32
   }
   return typeof subscription === 'number' ? Uint32Array.of(subscription) : Uint32Array.from(subscription)
 }
@@ -873,7 +874,7 @@ export function createRegionGraph(args: {
       const matchingRegions: RegionId[] = []
       const subscriptions = getColumnSubscriptions(sheetId, col)
       if (!rowCanIntersectSubscriptions(subscriptions, row)) {
-        return new Uint32Array()
+        return EMPTY_U32
       }
       if (
         subscriptions.dirty &&
@@ -886,7 +887,7 @@ export function createRegionGraph(args: {
         collectIntervalsContainingRow(ensureIntervalTree(sheetId, col), row, matchingRegions)
       }
       if (matchingRegions.length === 0) {
-        return new Uint32Array()
+        return EMPTY_U32
       }
       if (matchingRegions.length === 1) {
         const subscribers = regionSubscribers.get(matchingRegions[0]!)

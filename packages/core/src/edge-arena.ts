@@ -5,6 +5,7 @@ export interface EdgeSlice {
 }
 
 const EMPTY_SLICE: EdgeSlice = { ptr: -1, len: 0, cap: 0 }
+const EMPTY_U32 = new Uint32Array(0)
 
 export class EdgeArena {
   private buffer = new Uint32Array(64)
@@ -92,14 +93,14 @@ export class EdgeArena {
 
   read(slice: EdgeSlice): Uint32Array {
     if (slice.ptr < 0 || slice.len <= 0) {
-      return new Uint32Array()
+      return EMPTY_U32
     }
     return this.buffer.slice(slice.ptr, slice.ptr + slice.len)
   }
 
   readView(slice: EdgeSlice): Uint32Array {
     if (slice.ptr < 0 || slice.len <= 0) {
-      return new Uint32Array()
+      return EMPTY_U32
     }
     return this.buffer.subarray(slice.ptr, slice.ptr + slice.len)
   }
