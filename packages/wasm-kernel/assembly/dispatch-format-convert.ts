@@ -17,6 +17,8 @@ import { coercePositiveIntegerArg } from './builtin-args'
 import { STACK_KIND_SCALAR, writeResult, writeStringResult } from './result-io'
 
 const MAX_SAFE_INTEGER_F64: f64 = 9007199254740991.0
+const BASE_LIMIT_F64: f64 = 9007199254740992.0
+const BASE_MAX_MIN_LENGTH: i32 = 255
 
 function columnLabelText(column: i32): string | null {
   if (column < 1) {
@@ -312,11 +314,14 @@ export function tryApplyFormatConvertBuiltin(
     if (!isFinite(numberNumeric) || !isFinite(radixNumeric) || !isFinite(minLengthNumeric)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (numberNumeric < -1.0 || numberNumeric >= BASE_LIMIT_F64 || radixNumeric < 2.0 || radixNumeric >= 37.0 || minLengthNumeric < -1.0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const numberValue = <i64>numberNumeric
     const radixValue = <i32>radixNumeric
     const minLength = <i32>minLengthNumeric
-    if (numberValue < 0 || radixValue < 2 || radixValue > 36 || minLength < 0) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    if (numberValue < 0 || radixValue < 2 || radixValue > 36 || minLength < 0 || minLength > BASE_MAX_MIN_LENGTH) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeStringResult(base, toBaseText(numberValue, radixValue, minLength), rangeIndexStack, valueStack, tagStack, kindStack)
   }

@@ -979,7 +979,7 @@ describe('formula builtins', () => {
     })
     expect(getBuiltin('BASE')?.({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 2 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('DECIMAL')?.({ tag: ValueTag.String, value: '1Z', stringId: 1 }, { tag: ValueTag.Number, value: 10 })).toEqual({
       tag: ValueTag.Error,

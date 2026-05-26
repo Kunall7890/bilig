@@ -197,6 +197,43 @@ describe('wasm kernel format and conversion dispatch', () => {
     expect(kernel.readErrors()[cellIndex(1, 1, width)]).toBe(ErrorCode.Value)
   })
 
+  it('matches Microsoft Excel BASE numeric domain errors on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 0, 6, 1, 1)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Base, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Base, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Base, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Base, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Base, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Base, 3), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 6 }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([
+      [-1, 16],
+      [2 ** 53, 16],
+      [31, 1],
+      [31, 37],
+      [31, 16, -1],
+      [31, 16, 256],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 6 }, (_, index) => cellIndex(1, index, width))))
+
+    for (let index = 0; index < 6; index += 1) {
+      expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Error)
+      expect(kernel.readErrors()[cellIndex(1, index, width)]).toBe(ErrorCode.Num)
+    }
+  })
+
   it('renders NULL error labels on the wasm VALUETOTEXT path', async () => {
     const kernel = await createKernel()
     const width = 2

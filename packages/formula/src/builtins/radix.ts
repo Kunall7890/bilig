@@ -1,4 +1,4 @@
-import { ValueTag, type CellValue } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import type { EvaluationResult } from '../runtime-values.js'
 
 type Builtin = (...args: CellValue[]) => EvaluationResult
@@ -18,6 +18,11 @@ export function createRadixBuiltins({
   valueError,
   numberResult,
 }: RadixBuiltinHelpers): Record<string, Builtin> {
+  const baseMaxNumber = 2 ** 53
+  const baseMaxMinLength = 255
+
+  const numError = (): CellValue => ({ tag: ValueTag.Error, code: ErrorCode.Num })
+
   return {
     BASE: (numberArg, radixArg, minLengthArg) => baseString(numberArg, radixArg, minLengthArg),
     DECIMAL: (textArg, radixArg) => decimalValue(textArg, radixArg),
@@ -79,16 +84,19 @@ export function createRadixBuiltins({
   function baseString(numberArg: CellValue, radixArg: CellValue, minLengthArg?: CellValue): CellValue {
     const numberValue = integerValue(numberArg)
     const radixValue = integerValue(radixArg)
-    const minLengthValue = nonNegativeIntegerValue(minLengthArg, 0)
+    const minLengthValue = integerValue(minLengthArg, 0)
+    if (numberValue === undefined || radixValue === undefined || minLengthValue === undefined) {
+      return valueError()
+    }
     if (
-      numberValue === undefined ||
       numberValue < 0 ||
-      radixValue === undefined ||
+      numberValue >= baseMaxNumber ||
       radixValue < 2 ||
       radixValue > 36 ||
-      minLengthValue === undefined
+      minLengthValue < 0 ||
+      minLengthValue > baseMaxMinLength
     ) {
-      return valueError()
+      return numError()
     }
     return {
       tag: ValueTag.String,

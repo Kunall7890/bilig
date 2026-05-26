@@ -6,6 +6,7 @@ const num = (value: number): CellValue => ({ tag: ValueTag.Number, value })
 const text = (value: string): CellValue => ({ tag: ValueTag.String, value, stringId: 0 })
 const err = (code: ErrorCode): CellValue => ({ tag: ValueTag.Error, code })
 const valueError = err(ErrorCode.Value)
+const numError = err(ErrorCode.Num)
 
 describe('radix builtins', () => {
   it('covers base, decimal, signed radix, and roman validation branches', () => {
@@ -21,9 +22,9 @@ describe('radix builtins', () => {
     const ARABIC = getBuiltin('ARABIC')!
 
     expect(BASE(num(31), num(16), num(4))).toEqual(text('001F'))
-    expect(BASE(num(-1), num(16))).toEqual(valueError)
-    expect(BASE(num(31), num(1))).toEqual(valueError)
-    expect(BASE(num(31), num(37))).toEqual(valueError)
+    expect(BASE(num(-1), num(16))).toEqual(numError)
+    expect(BASE(num(31), num(1))).toEqual(numError)
+    expect(BASE(num(31), num(37))).toEqual(numError)
     expect(BASE(num(31), num(16), text('bad'))).toEqual(valueError)
 
     expect(DECIMAL(err(ErrorCode.Ref), num(2))).toEqual(err(ErrorCode.Ref))
@@ -53,5 +54,17 @@ describe('radix builtins', () => {
     expect(ARABIC(text(''))).toEqual(valueError)
     expect(ARABIC(text('IIV'))).toEqual(valueError)
     expect(ARABIC(num(44))).toEqual(valueError)
+  })
+
+  it('matches Microsoft Excel BASE numeric domain errors', () => {
+    const BASE = getBuiltin('BASE')!
+
+    expect(BASE(num(-1), num(16))).toEqual(numError)
+    expect(BASE(num(2 ** 53), num(16))).toEqual(numError)
+    expect(BASE(num(31), num(1))).toEqual(numError)
+    expect(BASE(num(31), num(37))).toEqual(numError)
+    expect(BASE(num(31), num(16), num(-1))).toEqual(numError)
+    expect(BASE(num(31), num(16), num(256))).toEqual(numError)
+    expect(BASE(num(31), num(16), text('bad'))).toEqual(valueError)
   })
 })
