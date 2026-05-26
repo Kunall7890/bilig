@@ -19,7 +19,15 @@ const deadline = Date.now() + timeoutSeconds * 1000
 
 let attempt = 1
 while (Date.now() <= deadline) {
-  const run = latestMatchingRun(listRuns({ repo: targetRepo, sha: targetSha, workflow: workflowName, branch: branchName }), targetSha)
+  const runsResult = listRuns({ repo: targetRepo, sha: targetSha, workflow: workflowName, branch: branchName })
+  if (!runsResult.ok) {
+    console.log(`${workflowName} run lookup failed for ${targetSha}: ${runsResult.error}; attempt ${attempt}`)
+    sleep(pollSeconds)
+    attempt += 1
+    continue
+  }
+
+  const run = latestMatchingRun(runsResult.runs, targetSha, workflowName)
   if (!run) {
     console.log(`No ${workflowName} run found yet for ${targetSha}; attempt ${attempt}`)
     sleep(pollSeconds)
@@ -90,24 +98,21 @@ function parsePositiveInteger(value, fallback) {
   return parsed
 }
 
-function listRuns({ repo, sha, workflow, branch }) {
+function listRuns({ repo, sha, branch }) {
+  const [owner, repoName] = repo.split('/', 2)
+  if (!owner || !repoName) {
+    fail(`Expected --repo in owner/name form, received: ${repo}`)
+  }
+
+  const path = `repos/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/actions/runs`
+  const query = `branch=${encodeURIComponent(branch)}&head_sha=${encodeURIComponent(sha)}&per_page=20`
   const result = spawnSync(
     'gh',
     [
-      'run',
-      'list',
-      '--repo',
-      repo,
-      '--workflow',
-      workflow,
-      '--commit',
-      sha,
-      '--branch',
-      branch,
-      '--limit',
-      '20',
-      '--json',
-      'databaseId,status,conclusion,url,headSha,workflowName,displayTitle,createdAt',
+      'api',
+      `${path}?${query}`,
+      '--jq',
+      '.workflow_runs | map({databaseId: .id, status, conclusion, url: .html_url, headSha: .head_sha, workflowName: .name, displayTitle: .display_title, createdAt: .created_at})',
     ],
     {
       encoding: 'utf8',
@@ -115,26 +120,26 @@ function listRuns({ repo, sha, workflow, branch }) {
   )
 
   if (result.error) {
-    fail(`Failed to execute gh: ${result.error.message}`)
+    return { ok: false, error: `failed to execute gh: ${result.error.message}` }
   }
 
   if (result.status !== 0) {
-    fail(`gh run list failed with exit ${result.status}: ${result.stderr.trim()}`)
+    return { ok: false, error: `gh api failed with exit ${result.status}: ${result.stderr.trim()}` }
   }
 
   try {
     const runs = JSON.parse(result.stdout)
     if (!Array.isArray(runs)) {
-      fail('gh run list returned a non-array JSON payload')
+      return { ok: false, error: 'gh api returned a non-array JSON payload' }
     }
-    return runs
+    return { ok: true, runs }
   } catch (error) {
-    fail(`Could not parse gh run list JSON: ${error instanceof Error ? error.message : String(error)}`)
+    return { ok: false, error: `could not parse gh api JSON: ${error instanceof Error ? error.message : String(error)}` }
   }
 }
 
-function latestMatchingRun(runs, sha) {
-  return runs.find((run) => run && typeof run === 'object' && run.headSha === sha)
+function latestMatchingRun(runs, sha, workflow) {
+  return runs.find((run) => run && typeof run === 'object' && run.headSha === sha && run.workflowName === workflow)
 }
 
 function sleep(seconds) {
