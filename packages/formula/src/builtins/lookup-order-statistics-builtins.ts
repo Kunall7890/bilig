@@ -1,5 +1,6 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import type { ArrayValue } from '../runtime-values.js'
+import { parseNumericText } from '../numeric-text.js'
 import type { LookupBuiltin, LookupBuiltinArgument, RangeBuiltinArgument } from './lookup.js'
 
 interface LookupOrderStatisticsBuiltinDeps {
@@ -14,11 +15,31 @@ interface LookupOrderStatisticsBuiltinDeps {
   flattenNumbers: (arg: LookupBuiltinArgument) => number[] | CellValue
 }
 
-function flattenNumbersOrValueError(
-  arg: LookupBuiltinArgument | undefined,
-  { errorValue, flattenNumbers }: LookupOrderStatisticsBuiltinDeps,
-): number[] | CellValue {
-  return arg === undefined ? errorValue(ErrorCode.Value) : flattenNumbers(arg)
+function flattenNumbersOrValueError(arg: LookupBuiltinArgument | undefined, deps: LookupOrderStatisticsBuiltinDeps): number[] | CellValue {
+  if (arg === undefined) {
+    return deps.errorValue(ErrorCode.Value)
+  }
+  if (deps.isRangeArg(arg)) {
+    const values: number[] = []
+    for (const value of arg.values) {
+      if (value.tag === ValueTag.Error) {
+        return value
+      }
+      if (value.tag === ValueTag.Number) {
+        values.push(value.value)
+      }
+    }
+    return values
+  }
+  if (arg.tag === ValueTag.Error) {
+    return arg
+  }
+  if (arg.tag === ValueTag.String) {
+    const numeric = parseNumericText(arg.value)
+    return numeric === undefined ? deps.errorValue(ErrorCode.Value) : [numeric]
+  }
+  const numeric = deps.toNumber(arg)
+  return numeric === undefined ? deps.errorValue(ErrorCode.Value) : [numeric]
 }
 
 function flattenNumericArguments(args: readonly LookupBuiltinArgument[], deps: LookupOrderStatisticsBuiltinDeps): number[] | CellValue {

@@ -25,6 +25,8 @@ describe('convert builtins', () => {
     expectNumber(CONVERT(empty(), text('m'), text('cm')), 0)
     expect(CONVERT(text('bad'), text('m'), text('cm'))).toEqual(err(ErrorCode.Value))
     expect(CONVERT(num(1), num(1), text('cm'))).toEqual(err(ErrorCode.Value))
+    expect(CONVERT(err(ErrorCode.NA), text('m'), text('cm'))).toEqual(err(ErrorCode.NA))
+    expect(CONVERT(num(1), err(ErrorCode.Name), text('cm'))).toEqual(err(ErrorCode.Name))
 
     expectNumber(CONVERT(num(1), text('km'), text('m')), 1000)
     expectNumber(CONVERT(num(1), text('Mbyte'), text('byte')), 1_000_000)
@@ -38,6 +40,8 @@ describe('convert builtins', () => {
 
     expect(EUROCONVERT(num(1), text('DEM'), text('EUR'), text('true'))).toEqual(err(ErrorCode.Value))
     expect(EUROCONVERT(num(1), text('DEM'), text('EUR'), bool(false), text('bad'))).toEqual(err(ErrorCode.Value))
+    expect(EUROCONVERT(num(1), text('DEM'), err(ErrorCode.NA))).toEqual(err(ErrorCode.NA))
+    expect(EUROCONVERT(num(1), text('DEM'), text('EUR'), bool(false), err(ErrorCode.Name))).toEqual(err(ErrorCode.Name))
     expectNumber(EUROCONVERT(num(1), text('EUR'), text('ITL')), 1936)
   })
 })

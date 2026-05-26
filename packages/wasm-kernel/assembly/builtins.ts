@@ -398,6 +398,12 @@ export function applyBuiltin(
     rangeRowCounts,
     rangeColCounts,
     rangeMembers,
+    stringOffsets,
+    stringLengths,
+    stringData,
+    outputStringOffsets,
+    outputStringLengths,
+    outputStringData,
   )
   if (statisticsSummaryResult >= 0) {
     return statisticsSummaryResult

@@ -168,7 +168,7 @@ describe('wasm kernel format and conversion dispatch', () => {
 
   it('preserves error codes for invalid conversion inputs', async () => {
     const kernel = await createKernel()
-    const width = 4
+    const width = 8
     kernel.init(16, 3, 2, 1, 1)
     kernel.uploadStrings(
       Uint32Array.from([0, 2, 5]),
@@ -180,21 +180,41 @@ describe('wasm kernel format and conversion dispatch', () => {
     const packed = packPrograms([
       [encodePushNumber(0), encodePushString(0), encodePushString(1), encodeCall(BuiltinId.Convert, 3), encodeRet()],
       [encodePushNumber(1), encodePushString(2), encodePushString(1), encodeCall(BuiltinId.Euroconvert, 3), encodeRet()],
+      [encodePushError(ErrorCode.Ref), encodePushString(0), encodePushString(1), encodeCall(BuiltinId.Convert, 3), encodeRet()],
+      [encodePushNumber(1), encodePushError(ErrorCode.Name), encodePushString(1), encodeCall(BuiltinId.Convert, 3), encodeRet()],
+      [encodePushNumber(1), encodePushError(ErrorCode.NA), encodePushString(1), encodeCall(BuiltinId.Euroconvert, 3), encodeRet()],
+      [
+        encodePushNumber(1),
+        encodePushString(2),
+        encodePushString(1),
+        encodePushBoolean(false),
+        encodePushError(ErrorCode.Name),
+        encodeCall(BuiltinId.Euroconvert, 5),
+        encodeRet(),
+      ],
     ])
     kernel.uploadPrograms(
       packed.programs,
       packed.offsets,
       packed.lengths,
-      Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width)]),
+      Uint32Array.from(Array.from({ length: 6 }, (_, index) => cellIndex(1, index, width))),
     )
-    const constants = packConstants([[2.5], [1]])
+    const constants = packConstants([[2.5], [1], [], [1], [1], [1]])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
-    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width)]))
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 6 }, (_, index) => cellIndex(1, index, width))))
 
     expect(kernel.readTags()[cellIndex(1, 0, width)]).toBe(ValueTag.Error)
     expect(kernel.readErrors()[cellIndex(1, 0, width)]).toBe(ErrorCode.NA)
     expect(kernel.readTags()[cellIndex(1, 1, width)]).toBe(ValueTag.Error)
     expect(kernel.readErrors()[cellIndex(1, 1, width)]).toBe(ErrorCode.Value)
+    expect(kernel.readTags()[cellIndex(1, 2, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 2, width)]).toBe(ErrorCode.Ref)
+    expect(kernel.readTags()[cellIndex(1, 3, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 3, width)]).toBe(ErrorCode.Name)
+    expect(kernel.readTags()[cellIndex(1, 4, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 4, width)]).toBe(ErrorCode.NA)
+    expect(kernel.readTags()[cellIndex(1, 5, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 5, width)]).toBe(ErrorCode.Name)
   })
 
   it('matches Microsoft Excel BASE numeric domain errors on the wasm path', async () => {

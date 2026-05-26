@@ -1,6 +1,7 @@
 import { ErrorCode, ValueTag } from './protocol'
 import { inputCellScalarValue, inputCellTag, inputColsFromSlot, inputRowsFromSlot, toNumberExact } from './operands'
 import { STACK_KIND_RANGE, STACK_KIND_SCALAR, UNRESOLVED_WASM_OPERAND } from './result-io'
+import { coerceScalarNumberLikeText } from './text-special'
 
 let statCollectionErrorCode = 0
 
@@ -140,6 +141,12 @@ export function collectStatValuesFromArgs(
   cellNumbers: Float64Array,
   cellStringIds: Uint32Array,
   cellErrors: Uint16Array,
+  stringOffsets: Uint32Array,
+  stringLengths: Uint32Array,
+  stringData: Uint16Array,
+  outputStringOffsets: Uint32Array,
+  outputStringLengths: Uint32Array,
+  outputStringData: Uint16Array,
   includeStringsAsZero: bool,
 ): Array<f64> | null {
   statCollectionErrorCode = 0
@@ -155,8 +162,26 @@ export function collectStatValuesFromArgs(
       }
       if (tag == ValueTag.Number || tag == ValueTag.Boolean) {
         values.push(raw)
-      } else if (tag == ValueTag.String && includeStringsAsZero) {
-        values.push(0.0)
+      } else if (tag == ValueTag.String) {
+        if (includeStringsAsZero) {
+          values.push(0.0)
+        } else {
+          const numeric = coerceScalarNumberLikeText(
+            tag,
+            raw,
+            stringOffsets,
+            stringLengths,
+            stringData,
+            outputStringOffsets,
+            outputStringLengths,
+            outputStringData,
+          )
+          if (isNaN(numeric)) {
+            statCollectionErrorCode = ErrorCode.Value
+            return null
+          }
+          values.push(numeric)
+        }
       }
       continue
     }

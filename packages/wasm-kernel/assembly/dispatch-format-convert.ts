@@ -12,7 +12,7 @@ import {
   resolvedConvertTemperature,
 } from './unit-convert'
 import { toNumberExact } from './operands'
-import { coercePositiveIntegerArg } from './builtin-args'
+import { coercePositiveIntegerArg, scalarErrorAt } from './builtin-args'
 import { STACK_KIND_SCALAR, writeResult, writeStringResult } from './result-io'
 
 const MAX_SAFE_INTEGER_F64: f64 = 9007199254740991.0
@@ -548,6 +548,10 @@ export function tryApplyFormatConvertBuiltin(
   }
 
   if (builtinId == BuiltinId.Convert && argc == 3) {
+    const scalarError = scalarErrorAt(base, argc, kindStack, tagStack, valueStack)
+    if (scalarError >= 0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const numeric = toNumberExact(tagStack[base], valueStack[base])
     if (!isFinite(numeric) || tagStack[base + 1] != ValueTag.String || tagStack[base + 2] != ValueTag.String) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -603,6 +607,10 @@ export function tryApplyFormatConvertBuiltin(
   }
 
   if (builtinId == BuiltinId.Euroconvert && argc >= 3 && argc <= 5) {
+    const scalarError = scalarErrorAt(base, argc, kindStack, tagStack, valueStack)
+    if (scalarError >= 0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const numeric = toNumberExact(tagStack[base], valueStack[base])
     if (!isFinite(numeric) || tagStack[base + 1] != ValueTag.String || tagStack[base + 2] != ValueTag.String) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)

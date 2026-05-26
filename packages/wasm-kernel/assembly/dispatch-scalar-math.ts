@@ -415,6 +415,10 @@ export function tryApplyScalarMathBuiltin(
     return writeScalarMathNumber(base, Math.sqrt(numeric), rangeIndexStack, valueStack, tagStack, kindStack)
   }
   if (builtinId == BuiltinId.Seriessum && argc >= 3) {
+    const error = firstScalarMathError(base, argc, valueStack, tagStack)
+    if (error != ErrorCode.None) {
+      return writeScalarMathError(base, error, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const x = toNumberExact(tagStack[base], valueStack[base])
     const n = truncToInt(tagStack[base + 1], valueStack[base + 1])
     const m = truncToInt(tagStack[base + 2], valueStack[base + 2])

@@ -506,16 +506,24 @@ describe('wasm kernel scalar math dispatch', () => {
       [encodePushError(ErrorCode.Name), encodePushNumber(1), encodeCall(BuiltinId.Mround, 2), encodeRet()],
       [encodePushError(ErrorCode.Name), encodePushNumber(0), encodeCall(BuiltinId.Besselk, 2), encodeRet()],
       [encodePushNumber(0), encodePushError(ErrorCode.NA), encodeCall(BuiltinId.Bessely, 2), encodeRet()],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushError(ErrorCode.NA),
+        encodeCall(BuiltinId.Seriessum, 4),
+        encodeRet(),
+      ],
     ])
     kernel.uploadPrograms(
       packed.programs,
       packed.offsets,
       packed.lengths,
-      Uint32Array.from(Array.from({ length: 13 }, (_, index) => cellIndex(1, index, width))),
+      Uint32Array.from(Array.from({ length: 14 }, (_, index) => cellIndex(1, index, width))),
     )
-    const constants = packConstants([[], [1], [1, 1], [0], [], [], [], [], [1], [1], [1], [1], [1]])
+    const constants = packConstants([[], [1], [1, 1], [0], [], [], [], [], [1], [1], [1], [1], [1], [1, 1, 1]])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
-    kernel.evalBatch(Uint32Array.from(Array.from({ length: 13 }, (_, index) => cellIndex(1, index, width))))
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 14 }, (_, index) => cellIndex(1, index, width))))
 
     const expectedErrors = [
       ErrorCode.Name,
@@ -530,6 +538,7 @@ describe('wasm kernel scalar math dispatch', () => {
       ErrorCode.NA,
       ErrorCode.Name,
       ErrorCode.Name,
+      ErrorCode.NA,
       ErrorCode.NA,
     ]
     for (const [index, code] of expectedErrors.entries()) {

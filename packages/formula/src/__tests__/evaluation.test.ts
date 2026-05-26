@@ -140,6 +140,61 @@ describe('formula builtins and JS evaluator', () => {
     expect(evaluateAst(parseFormula('AVERAGE(2,A3,A5,A6)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
   })
 
+  it('applies direct-versus-reference numeric rules for statistical summaries', () => {
+    const valuesByAddress: Record<string, CellValue> = {
+      A1: { tag: ValueTag.Number, value: 2 },
+      A2: { tag: ValueTag.Number, value: 4 },
+      A3: { tag: ValueTag.String, value: '5', stringId: 1 },
+      A4: { tag: ValueTag.String, value: 'bad', stringId: 2 },
+      A5: { tag: ValueTag.Boolean, value: true },
+      A6: { tag: ValueTag.Empty },
+      A7: { tag: ValueTag.Boolean, value: false },
+      A8: { tag: ValueTag.Number, value: 0 },
+      B1: { tag: ValueTag.Number, value: 2 },
+      B2: { tag: ValueTag.Empty },
+      C1: { tag: ValueTag.Number, value: -2 },
+      C2: { tag: ValueTag.Empty },
+    }
+    const context = {
+      sheetName: 'Sheet1',
+      resolveCell: (_sheetName: string, address: string): CellValue => valuesByAddress[address] ?? { tag: ValueTag.Empty },
+      resolveRange: (_sheetName: string, start: string, end: string): CellValue[] => {
+        const addresses = ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'B1', 'B2', 'C1', 'C2']
+        const startIndex = addresses.indexOf(start)
+        const endIndex = addresses.indexOf(end)
+        if (startIndex >= 0 && endIndex >= startIndex) {
+          return addresses.slice(startIndex, endIndex + 1).map((address) => valuesByAddress[address])
+        }
+        return []
+      },
+    }
+
+    expect(evaluateAst(parseFormula('STDEV(A1:A8)'), context)).toMatchObject({
+      tag: ValueTag.Number,
+      value: expect.closeTo(2, 12),
+    })
+    expect(evaluateAst(parseFormula('STDEVP(A1:A8)'), context)).toMatchObject({
+      tag: ValueTag.Number,
+      value: expect.closeTo(Math.sqrt(8 / 3), 12),
+    })
+    expect(evaluateAst(parseFormula('VAR(A1:A8)'), context)).toEqual({ tag: ValueTag.Number, value: 4 })
+    expect(evaluateAst(parseFormula('VARP(A1:A8)'), context)).toEqual({ tag: ValueTag.Number, value: 8 / 3 })
+    expect(evaluateAst(parseFormula('STDEV("2","4")'), context)).toMatchObject({
+      tag: ValueTag.Number,
+      value: expect.closeTo(Math.sqrt(2), 12),
+    })
+    expect(evaluateAst(parseFormula('VAR("2","4")'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
+
+    expect(evaluateAst(parseFormula('MEDIAN(A1:A8)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(evaluateAst(parseFormula('LARGE(A1:A8,1)'), context)).toEqual({ tag: ValueTag.Number, value: 4 })
+    expect(evaluateAst(parseFormula('SMALL(A1:A8,1)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(evaluateAst(parseFormula('MEDIAN("2","4")'), context)).toEqual({ tag: ValueTag.Number, value: 3 })
+
+    expect(evaluateAst(parseFormula('AVERAGEA(A1:A8)'), context)).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(evaluateAst(parseFormula('MINA(B1:B2)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(evaluateAst(parseFormula('MAXA(C1:C2)'), context)).toEqual({ tag: ValueTag.Number, value: -2 })
+  })
+
   it('coerces comma-grouped numeric text in arithmetic expressions', () => {
     const context = {
       sheetName: 'Sheet1',
@@ -537,9 +592,17 @@ describe('formula builtins and JS evaluator', () => {
       tag: ValueTag.Number,
       value: 1,
     })
+    expect(evaluateAst(parseFormula('DELTA(NA(),0)'), context)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
+    })
     expect(evaluateAst(parseFormula('GESTEP(-1)'), context)).toEqual({
       tag: ValueTag.Number,
       value: 0,
+    })
+    expect(evaluateAst(parseFormula('GESTEP(1,NA())'), context)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
     })
     expect(evaluateAst(parseFormula('GAUSS(0)'), context)).toMatchObject({
       tag: ValueTag.Number,
@@ -718,9 +781,17 @@ describe('formula builtins and JS evaluator', () => {
       throw new Error('Expected BESSELY result to be numeric')
     }
     expect(bessely.value).toBeCloseTo(0.145918138, 7)
+    expect(evaluateAst(parseFormula('SERIESSUM(1,1,1,NA())'), context)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
+    })
     expect(evaluateAst(parseFormula('CONVERT(6,"mi","km")'), context)).toEqual({
       tag: ValueTag.Number,
       value: 9.656064,
+    })
+    expect(evaluateAst(parseFormula('CONVERT(NA(),"ft","m")'), context)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
     })
     expect(evaluateAst(parseFormula('CONVERT(68,"F","C")'), context)).toEqual({
       tag: ValueTag.Number,
@@ -732,6 +803,10 @@ describe('formula builtins and JS evaluator', () => {
       throw new Error('Expected EUROCONVERT result to be numeric')
     }
     expect(euroconvert.value).toBeCloseTo(0.29728616, 12)
+    expect(evaluateAst(parseFormula('EUROCONVERT(NA(),"FRF","DEM")'), context)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
+    })
     expect(evaluateAst(parseFormula('COMPLEX(3,-4,"j")'), context)).toEqual({
       tag: ValueTag.String,
       value: '3-4j',

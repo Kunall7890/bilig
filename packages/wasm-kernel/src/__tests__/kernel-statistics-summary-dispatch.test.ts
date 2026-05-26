@@ -232,6 +232,29 @@ describe('wasm kernel ordered statistics dispatch slab', () => {
     ])
   })
 
+  it('ignores referenced non-numeric values for MEDIAN on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 4
+    kernel.init(8, 1, 0, 1, 2)
+
+    const cellTags = new Uint8Array(8)
+    const cellNumbers = new Float64Array(8)
+    cellTags[0] = ValueTag.String
+    cellTags[1] = ValueTag.Number
+    cellNumbers[1] = 1
+    kernel.writeCells(cellTags, cellNumbers, new Uint32Array(8), new Uint16Array(8))
+    kernel.uploadRangeMembers(Uint32Array.from([0, 1]), Uint32Array.from([0]), Uint32Array.from([2]))
+    kernel.uploadRangeShapes(Uint32Array.from([1]), Uint32Array.from([2]))
+
+    const packed = packPrograms([[encodePushRange(0), encodeCall(BuiltinId.Median, 1), encodeRet()]])
+    const target = cellIndex(1, 0, width)
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, Uint32Array.from([target]))
+    kernel.uploadConstants(Float64Array.from([]), Uint32Array.from([0]), Uint32Array.from([0]))
+    kernel.evalBatch(Uint32Array.from([target]))
+
+    expectNumberCell(kernel, target, 1, 12)
+  })
+
   it('returns Excel-compatible division errors for insufficient variance samples', async () => {
     const kernel = await createKernel()
     const width = 8

@@ -17,8 +17,9 @@ import {
 } from './statistics-core'
 import {
   collectNumericCellRangeSeriesFromSlot,
-  collectNumericValuesFromArgs,
   collectNumericValuesFromSlot,
+  collectNumericValuesFromArgsWithText,
+  collectNumericValuesFromSlotWithText,
   collectSampleNumbersFromSlot,
   orderStatisticErrorCode,
   sampleCollectionErrorCode,
@@ -60,6 +61,12 @@ export function tryApplyStatisticsSummaryBuiltin(
   rangeRowCounts: Uint32Array,
   rangeColCounts: Uint32Array,
   rangeMembers: Uint32Array,
+  stringOffsets: Uint32Array,
+  stringLengths: Uint32Array,
+  stringData: Uint16Array,
+  outputStringOffsets: Uint32Array,
+  outputStringLengths: Uint32Array,
+  outputStringData: Uint16Array,
 ): i32 {
   const rankResult = tryApplyStatisticsRankBuiltin(
     builtinId,
@@ -117,6 +124,12 @@ export function tryApplyStatisticsSummaryBuiltin(
       cellNumbers,
       cellStringIds,
       cellErrors,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
       builtinId == BuiltinId.Stdeva || builtinId == BuiltinId.Stdevpa || builtinId == BuiltinId.Vara || builtinId == BuiltinId.Varpa,
     )
     if (values === null) {
@@ -180,7 +193,7 @@ export function tryApplyStatisticsSummaryBuiltin(
   }
 
   if (builtinId == BuiltinId.Median && argc >= 1) {
-    const values = collectNumericValuesFromArgs(
+    const values = collectNumericValuesFromArgsWithText(
       base,
       argc,
       kindStack,
@@ -196,6 +209,12 @@ export function tryApplyStatisticsSummaryBuiltin(
       cellNumbers,
       cellStringIds,
       cellErrors,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
     )
     if (values === null) {
       return writeResult(
@@ -238,7 +257,7 @@ export function tryApplyStatisticsSummaryBuiltin(
     if (hasEmptyInputShape(base, kindStack, rangeIndexStack, rangeRowCounts, rangeColCounts)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const values = collectNumericValuesFromSlot(
+    const values = collectNumericValuesFromSlotWithText(
       base,
       kindStack,
       valueStack,
@@ -253,6 +272,12 @@ export function tryApplyStatisticsSummaryBuiltin(
       cellNumbers,
       cellStringIds,
       cellErrors,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
     )
     if (values === null) {
       return writeResult(
@@ -310,7 +335,7 @@ export function tryApplyStatisticsSummaryBuiltin(
     if (hasEmptyInputShape(base, kindStack, rangeIndexStack, rangeRowCounts, rangeColCounts)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const values = collectNumericValuesFromSlot(
+    const values = collectNumericValuesFromSlotWithText(
       base,
       kindStack,
       valueStack,
@@ -325,6 +350,12 @@ export function tryApplyStatisticsSummaryBuiltin(
       cellNumbers,
       cellStringIds,
       cellErrors,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
     )
     if (values === null) {
       return writeResult(
@@ -425,7 +456,7 @@ export function tryApplyStatisticsSummaryBuiltin(
     if (hasEmptyInputShape(base, kindStack, rangeIndexStack, rangeRowCounts, rangeColCounts)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const values = collectNumericValuesFromSlot(
+    const values = collectNumericValuesFromSlotWithText(
       base,
       kindStack,
       valueStack,
@@ -440,6 +471,12 @@ export function tryApplyStatisticsSummaryBuiltin(
       cellNumbers,
       cellStringIds,
       cellErrors,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
     )
     if (values === null) {
       return writeResult(

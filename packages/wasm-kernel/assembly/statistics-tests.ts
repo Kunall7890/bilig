@@ -11,6 +11,7 @@ import {
   toNumberOrNaN,
 } from './operands'
 import { meanOf, sampleVarianceOf } from './statistics-core'
+import { coerceScalarNumberLikeText } from './text-special'
 
 const STACK_KIND_SCALAR: u8 = 0
 const STACK_KIND_RANGE: u8 = 1
@@ -490,6 +491,9 @@ export function collectNumericValuesFromSlot(
         orderStatisticErrorCode = <i32>raw
         return null
       }
+      if (kindStack[slot] != STACK_KIND_SCALAR && tag != ValueTag.Number) {
+        continue
+      }
       const numeric = toNumberOrNaN(tag, raw)
       if (isNaN(numeric)) {
         orderStatisticErrorCode = ErrorCode.Value
@@ -536,6 +540,122 @@ export function collectNumericValuesFromArgs(
       cellNumbers,
       cellStringIds,
       cellErrors,
+    )
+    if (collected === null) {
+      return null
+    }
+    for (let cursor = 0; cursor < collected.length; cursor += 1) {
+      values.push(unchecked(collected[cursor]))
+    }
+  }
+  return values
+}
+
+export function collectNumericValuesFromSlotWithText(
+  slot: i32,
+  kindStack: Uint8Array,
+  valueStack: Float64Array,
+  tagStack: Uint8Array,
+  rangeIndexStack: Uint32Array,
+  rangeOffsets: Uint32Array,
+  rangeLengths: Uint32Array,
+  rangeRowCounts: Uint32Array,
+  rangeColCounts: Uint32Array,
+  rangeMembers: Uint32Array,
+  cellTags: Uint8Array,
+  cellNumbers: Float64Array,
+  cellStringIds: Uint32Array,
+  cellErrors: Uint16Array,
+  stringOffsets: Uint32Array,
+  stringLengths: Uint32Array,
+  stringData: Uint16Array,
+  outputStringOffsets: Uint32Array,
+  outputStringLengths: Uint32Array,
+  outputStringData: Uint16Array,
+): Array<f64> | null {
+  if (kindStack[slot] == STACK_KIND_SCALAR && tagStack[slot] == ValueTag.String) {
+    orderStatisticErrorCode = 0
+    const numeric = coerceScalarNumberLikeText(
+      tagStack[slot],
+      valueStack[slot],
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    if (isNaN(numeric)) {
+      orderStatisticErrorCode = ErrorCode.Value
+      return null
+    }
+    return [numeric]
+  }
+  return collectNumericValuesFromSlot(
+    slot,
+    kindStack,
+    valueStack,
+    tagStack,
+    rangeIndexStack,
+    rangeOffsets,
+    rangeLengths,
+    rangeRowCounts,
+    rangeColCounts,
+    rangeMembers,
+    cellTags,
+    cellNumbers,
+    cellStringIds,
+    cellErrors,
+  )
+}
+
+export function collectNumericValuesFromArgsWithText(
+  base: i32,
+  argc: i32,
+  kindStack: Uint8Array,
+  valueStack: Float64Array,
+  tagStack: Uint8Array,
+  rangeIndexStack: Uint32Array,
+  rangeOffsets: Uint32Array,
+  rangeLengths: Uint32Array,
+  rangeRowCounts: Uint32Array,
+  rangeColCounts: Uint32Array,
+  rangeMembers: Uint32Array,
+  cellTags: Uint8Array,
+  cellNumbers: Float64Array,
+  cellStringIds: Uint32Array,
+  cellErrors: Uint16Array,
+  stringOffsets: Uint32Array,
+  stringLengths: Uint32Array,
+  stringData: Uint16Array,
+  outputStringOffsets: Uint32Array,
+  outputStringLengths: Uint32Array,
+  outputStringData: Uint16Array,
+): Array<f64> | null {
+  orderStatisticErrorCode = 0
+  const values = new Array<f64>()
+  for (let index = 0; index < argc; index += 1) {
+    const collected = collectNumericValuesFromSlotWithText(
+      base + index,
+      kindStack,
+      valueStack,
+      tagStack,
+      rangeIndexStack,
+      rangeOffsets,
+      rangeLengths,
+      rangeRowCounts,
+      rangeColCounts,
+      rangeMembers,
+      cellTags,
+      cellNumbers,
+      cellStringIds,
+      cellErrors,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
     )
     if (collected === null) {
       return null

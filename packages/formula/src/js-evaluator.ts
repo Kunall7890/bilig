@@ -225,6 +225,29 @@ function coerceDirectNumericTextAggregateArgument(callee: string, value: CellVal
 }
 
 const numericReferenceAggregateCallees = new Set(['SUM', 'AVERAGE', 'AVG', 'MIN', 'MAX', 'PRODUCT', 'SUMSQ', 'GCD', 'LCM'])
+const numericReferenceStatisticCallees = new Set([
+  'STDEV',
+  'STDEV.S',
+  'STDEVP',
+  'STDEV.P',
+  'VAR',
+  'VAR.S',
+  'VARP',
+  'VAR.P',
+  'SKEW',
+  'SKEW.P',
+  'SKEWP',
+  'KURT',
+])
+const aStyleReferenceCallees = new Set(['AVERAGEA', 'MINA', 'MAXA'])
+
+function coerceDirectNumericTextStatisticArgument(callee: string, value: CellValue, argRef: ReferenceOperand | undefined): CellValue {
+  if (argRef !== undefined || value.tag !== ValueTag.String || !numericReferenceStatisticCallees.has(callee)) {
+    return value
+  }
+  const numeric = parseNumericText(value.value)
+  return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
+}
 
 function referencedScalarBuiltinAggregateValues(callee: string, value: CellValue): readonly CellValue[] | undefined {
   if (callee === 'COUNT') {
@@ -236,6 +259,16 @@ function referencedScalarBuiltinAggregateValues(callee: string, value: CellValue
   return value.tag === ValueTag.Number || value.tag === ValueTag.Error ? [value] : []
 }
 
+function referencedScalarBuiltinStatisticValues(callee: string, value: CellValue): readonly CellValue[] | undefined {
+  if (numericReferenceStatisticCallees.has(callee)) {
+    return value.tag === ValueTag.Number || value.tag === ValueTag.Error ? [value] : []
+  }
+  if (aStyleReferenceCallees.has(callee)) {
+    return value.tag === ValueTag.Empty ? [] : [value]
+  }
+  return undefined
+}
+
 function scalarBuiltinRangeValues(callee: string, rawArg: StackValue): readonly CellValue[] {
   const values = rawArg.kind === 'range' || rawArg.kind === 'array' ? rawArg.values : []
   if (callee === 'COUNT') {
@@ -243,6 +276,12 @@ function scalarBuiltinRangeValues(callee: string, rawArg: StackValue): readonly 
   }
   if (numericReferenceAggregateCallees.has(callee)) {
     return values.filter((value) => value.tag === ValueTag.Number || value.tag === ValueTag.Error)
+  }
+  if (numericReferenceStatisticCallees.has(callee)) {
+    return values.filter((value) => value.tag === ValueTag.Number || value.tag === ValueTag.Error)
+  }
+  if (aStyleReferenceCallees.has(callee)) {
+    return values.filter((value) => value.tag !== ValueTag.Empty)
   }
   if (callee !== 'MIN' && callee !== 'MAX') {
     if (callee === 'COUNTA' && rawArg.kind === 'array') {
@@ -621,8 +660,19 @@ function executePlan(
                 args.push(...referencedValues)
                 continue
               }
+              const referencedStatisticValues = referencedScalarBuiltinStatisticValues(instruction.callee, rawArg.value)
+              if (referencedStatisticValues) {
+                args.push(...referencedStatisticValues)
+                continue
+              }
             }
-            args.push(coerceDirectNumericTextAggregateArgument(instruction.callee, rawArg.value, argRef))
+            args.push(
+              coerceDirectNumericTextStatisticArgument(
+                instruction.callee,
+                coerceDirectNumericTextAggregateArgument(instruction.callee, rawArg.value, argRef),
+                argRef,
+              ),
+            )
             continue
           }
           if (rawArg.kind === 'omitted') {

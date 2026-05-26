@@ -6027,6 +6027,63 @@ describe('wasm kernel', () => {
     expectNumberCell(kernel, cellIndex(1, 12, width), 0.5, 8)
   })
 
+  it('uses Excel direct-versus-reference numeric rules for statistical summaries on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 12
+    kernel.init(48, 10, 8, 2, 8)
+    kernel.uploadStrings(Uint32Array.from([0, 1, 2, 3]), Uint32Array.from([1, 1, 1, 3]), asciiCodes('254bad'))
+    kernel.writeCells(
+      new Uint8Array([
+        ValueTag.Number,
+        ValueTag.Number,
+        ValueTag.String,
+        ValueTag.String,
+        ValueTag.Boolean,
+        ValueTag.Empty,
+        ValueTag.Boolean,
+        ValueTag.Number,
+      ]),
+      new Float64Array([2, 4, 0, 0, 1, 0, 0, 0]),
+      new Uint32Array([0, 0, 0, 3, 0, 0, 0, 0]),
+      new Uint16Array(48),
+    )
+    kernel.uploadRangeMembers(Uint32Array.from([0, 1, 2, 3, 4, 5, 6, 7]), Uint32Array.from([0]), Uint32Array.from([8]))
+    kernel.uploadRangeShapes(Uint32Array.from([8]), Uint32Array.from([1]))
+
+    const packed = packPrograms([
+      [encodePushRange(0), encodeCall(BUILTIN.STDEV, 1), encodeRet()],
+      [encodePushRange(0), encodeCall(BUILTIN.STDEVP, 1), encodeRet()],
+      [encodePushRange(0), encodeCall(BUILTIN.VAR, 1), encodeRet()],
+      [encodePushRange(0), encodeCall(BUILTIN.VARP, 1), encodeRet()],
+      [encodePushString(0), encodePushString(2), encodeCall(BUILTIN.STDEV, 2), encodeRet()],
+      [encodePushString(0), encodePushString(2), encodeCall(BUILTIN.VAR, 2), encodeRet()],
+      [encodePushRange(0), encodeCall(BUILTIN.MEDIAN, 1), encodeRet()],
+      [encodePushRange(0), encodePushNumber(0), encodeCall(BUILTIN.LARGE, 2), encodeRet()],
+      [encodePushRange(0), encodePushNumber(0), encodeCall(BUILTIN.SMALL, 2), encodeRet()],
+      [encodePushString(0), encodePushString(2), encodeCall(BUILTIN.MEDIAN, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 10 }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([[], [], [], [], [], [], [], [1], [1], []])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 10 }, (_, index) => cellIndex(1, index, width))))
+
+    expectNumberCell(kernel, cellIndex(1, 0, width), 2, 12)
+    expectNumberCell(kernel, cellIndex(1, 1, width), Math.sqrt(8 / 3), 12)
+    expectNumberCell(kernel, cellIndex(1, 2, width), 4, 12)
+    expectNumberCell(kernel, cellIndex(1, 3, width), 8 / 3, 12)
+    expectNumberCell(kernel, cellIndex(1, 4, width), Math.sqrt(2), 12)
+    expectNumberCell(kernel, cellIndex(1, 5, width), 2, 12)
+    expectNumberCell(kernel, cellIndex(1, 6, width), 2, 12)
+    expectNumberCell(kernel, cellIndex(1, 7, width), 4, 12)
+    expectNumberCell(kernel, cellIndex(1, 8, width), 0, 12)
+    expectNumberCell(kernel, cellIndex(1, 9, width), 3, 12)
+  })
+
   it('evaluates statistical distribution builtins and aliases on the wasm path', async () => {
     const kernel = await createKernel()
     const width = 12

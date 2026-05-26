@@ -91,6 +91,10 @@ describe('math builtins', () => {
     expect(getBuiltin('BESSELY')?.(num(0), naError)).toEqual(naError)
     expect(getBuiltin('PERMUT')?.(nameError, num(1))).toEqual(nameError)
     expect(getBuiltin('PERMUTATIONA')?.(num(1), naError)).toEqual(naError)
+    expect(getBuiltin('SERIESSUM')?.(naError, num(1), num(1), num(1))).toEqual(naError)
+    expect(getBuiltin('SERIESSUM')?.(num(1), num(1), num(1), naError)).toEqual(naError)
+    expect(getBuiltin('DELTA')?.(naError, num(0))).toEqual(naError)
+    expect(getBuiltin('GESTEP')?.(num(1), naError)).toEqual(naError)
   })
 
   it('matches Microsoft Excel GCD and LCM domain errors', () => {

@@ -648,6 +648,10 @@ const scalarBuiltins: Record<string, Builtin> = {
     return size === undefined ? valueError() : buildIdentityMatrix(size, numberResult)
   },
   SERIESSUM: (xArg, nArg, mArg, ...coefficientArgs) => {
+    const error = firstError([xArg, nArg, mArg, ...coefficientArgs])
+    if (error) {
+      return error
+    }
     const x = toNumber(xArg)
     const n = integerValue(nArg)
     const m = integerValue(mArg)
@@ -718,6 +722,10 @@ const scalarBuiltins: Record<string, Builtin> = {
     }
   },
   DELTA: (leftArg, rightArg = { tag: ValueTag.Number, value: 0 }) => {
+    const error = firstError([leftArg, rightArg])
+    if (error) {
+      return error
+    }
     const left = toNumber(leftArg)
     const right = toNumber(rightArg)
     if (left === undefined || right === undefined) {
@@ -726,6 +734,10 @@ const scalarBuiltins: Record<string, Builtin> = {
     return numberResult(left === right ? 1 : 0)
   },
   GESTEP: (numberArg, stepArg = { tag: ValueTag.Number, value: 0 }) => {
+    const error = firstError([numberArg, stepArg])
+    if (error) {
+      return error
+    }
     const numberValue = toNumber(numberArg)
     const stepValue = toNumber(stepArg)
     if (numberValue === undefined || stepValue === undefined) {

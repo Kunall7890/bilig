@@ -256,6 +256,10 @@ function errorResult(code: ErrorCode): CellValue {
   return { tag: ValueTag.Error, code }
 }
 
+function firstError(values: readonly (CellValue | undefined)[]): CellValue | undefined {
+  return values.find((value): value is CellValue & { tag: ValueTag.Error } => value?.tag === ValueTag.Error)
+}
+
 function toNumber(value: CellValue | undefined): number | undefined {
   if (value === undefined) {
     return undefined
@@ -392,6 +396,10 @@ export function convertBuiltin(
   fromUnitArg: CellValue | undefined,
   toUnitArg: CellValue | undefined,
 ): CellValue {
+  const error = firstError([numberArg, fromUnitArg, toUnitArg])
+  if (error) {
+    return error
+  }
   const numeric = toNumber(numberArg)
   const fromUnitCode = unitText(fromUnitArg)
   const toUnitCode = unitText(toUnitArg)
@@ -422,6 +430,10 @@ export function euroconvertBuiltin(
   fullPrecisionArg?: CellValue,
   triangulationPrecisionArg?: CellValue,
 ): CellValue {
+  const error = firstError([numberArg, sourceArg, targetArg, fullPrecisionArg, triangulationPrecisionArg])
+  if (error) {
+    return error
+  }
   const numeric = toNumber(numberArg)
   const sourceCode = unitText(sourceArg)
   const targetCode = unitText(targetArg)
