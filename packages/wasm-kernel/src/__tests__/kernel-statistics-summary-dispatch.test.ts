@@ -270,4 +270,114 @@ describe('wasm kernel ordered statistics dispatch slab', () => {
     expectErrorCell(kernel, cellIndex(2, 3, width), ErrorCode.Div0)
     expectNumberCell(kernel, cellIndex(2, 4, width), 0)
   })
+
+  it('returns Excel-compatible domain errors for ordered statistics helpers', async () => {
+    const kernel = await createKernel()
+    const width = 20
+    const targetRow = 8
+    kernel.init(220, 17, 17, 7, 22)
+
+    const cellTags = new Uint8Array(220)
+    const cellNumbers = new Float64Array(220)
+    ;[1, 2, 4, 7, 8, 9, 10, 12].forEach((value, index) => {
+      cellTags[index] = ValueTag.Number
+      cellNumbers[index] = value
+    })
+    ;[1, 2, 3].forEach((value, index) => {
+      cellTags[20 + index] = ValueTag.Number
+      cellNumbers[20 + index] = value
+    })
+    ;[0.2, 0.2, -0.1].forEach((value, index) => {
+      cellTags[30 + index] = ValueTag.Number
+      cellNumbers[30 + index] = value
+    })
+    ;[0, 0.5, 0.5].forEach((value, index) => {
+      cellTags[40 + index] = ValueTag.Number
+      cellNumbers[40 + index] = value
+    })
+    ;[0.2, 0.2, 0.2].forEach((value, index) => {
+      cellTags[50 + index] = ValueTag.Number
+      cellNumbers[50 + index] = value
+    })
+    ;[0.5, 0.5].forEach((value, index) => {
+      cellTags[60 + index] = ValueTag.Number
+      cellNumbers[60 + index] = value
+    })
+    kernel.writeCells(cellTags, cellNumbers, new Uint32Array(220), new Uint16Array(220))
+
+    kernel.uploadRangeMembers(
+      Uint32Array.from([0, 1, 2, 3, 4, 5, 6, 7, 20, 21, 22, 30, 31, 32, 40, 41, 42, 50, 51, 52, 60, 61]),
+      Uint32Array.from([0, 8, 11, 14, 17, 20, 22]),
+      Uint32Array.from([8, 3, 3, 3, 3, 2, 0]),
+    )
+    kernel.uploadRangeShapes(Uint32Array.from([8, 3, 3, 3, 3, 2, 0]), Uint32Array.from([1, 1, 1, 1, 1, 1, 0]))
+
+    const packed = packPrograms([
+      [encodePushRange(0), encodePushNumber(0), encodeCall(BuiltinId.Small, 2), encodeRet()],
+      [encodePushRange(0), encodePushNumber(0), encodeCall(BuiltinId.Large, 2), encodeRet()],
+      [encodePushRange(6), encodePushNumber(0), encodeCall(BuiltinId.Small, 2), encodeRet()],
+      [encodePushRange(0), encodePushNumber(0), encodeCall(BuiltinId.Percentile, 2), encodeRet()],
+      [encodePushRange(0), encodePushNumber(0), encodeCall(BuiltinId.PercentileExc, 2), encodeRet()],
+      [encodePushRange(6), encodePushNumber(0), encodeCall(BuiltinId.Percentile, 2), encodeRet()],
+      [encodePushRange(0), encodePushNumber(0), encodeCall(BuiltinId.Quartile, 2), encodeRet()],
+      [encodePushRange(0), encodePushNumber(0), encodeCall(BuiltinId.QuartileExc, 2), encodeRet()],
+      [encodePushRange(6), encodePushNumber(0), encodeCall(BuiltinId.Quartile, 2), encodeRet()],
+      [encodePushRange(6), encodePushNumber(0), encodeCall(BuiltinId.Percentrank, 2), encodeRet()],
+      [encodePushRange(0), encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Percentrank, 3), encodeRet()],
+      [encodePushRange(1), encodePushRange(2), encodePushNumber(0), encodeCall(BuiltinId.Prob, 3), encodeRet()],
+      [encodePushRange(1), encodePushRange(3), encodePushNumber(0), encodeCall(BuiltinId.Prob, 3), encodeRet()],
+      [encodePushRange(1), encodePushRange(4), encodePushNumber(0), encodeCall(BuiltinId.Prob, 3), encodeRet()],
+      [encodePushRange(1), encodePushRange(5), encodePushNumber(0), encodeCall(BuiltinId.Prob, 3), encodeRet()],
+      [encodePushRange(0), encodePushNumber(0), encodeCall(BuiltinId.Trimmean, 2), encodeRet()],
+      [encodePushRange(0), encodePushNumber(0), encodeCall(BuiltinId.Trimmean, 2), encodeRet()],
+    ])
+    const constants = packConstants([
+      [0],
+      [99],
+      [1],
+      [-0.01],
+      [0.01],
+      [0.5],
+      [-1],
+      [0],
+      [1],
+      [1],
+      [8, 0],
+      [1],
+      [1],
+      [1],
+      [1],
+      [-0.1],
+      [1.1],
+    ])
+    const targets = Uint32Array.from(Array.from({ length: 17 }, (_, index) => cellIndex(targetRow, index, width)))
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targets)
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(targets)
+
+    const expectedErrors = [
+      ErrorCode.Num,
+      ErrorCode.Num,
+      ErrorCode.Num,
+      ErrorCode.Num,
+      ErrorCode.Num,
+      ErrorCode.Num,
+      ErrorCode.Num,
+      ErrorCode.Num,
+      ErrorCode.Num,
+      ErrorCode.Num,
+      ErrorCode.Num,
+      ErrorCode.Num,
+      ErrorCode.Num,
+      ErrorCode.Num,
+      ErrorCode.NA,
+      ErrorCode.Num,
+      ErrorCode.Num,
+    ]
+    expectedErrors.forEach((expectedError, index) => {
+      const target = cellIndex(targetRow, index, width)
+      expect(kernel.readTags()[target]).toBe(ValueTag.Error)
+      expect({ index, code: kernel.readErrors()[target] }).toEqual({ index, code: expectedError })
+    })
+  })
 })

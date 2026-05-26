@@ -112,12 +112,15 @@ function nthValue(
     return values
   }
   if (values.length === 0) {
-    return deps.errorValue(ErrorCode.Value)
+    return deps.errorValue(ErrorCode.Num)
   }
 
   const position = deps.toInteger(positionArg)
-  if (position === undefined || position < 1 || position > values.length) {
+  if (position === undefined) {
     return deps.errorValue(ErrorCode.Value)
+  }
+  if (position < 1 || position > values.length) {
+    return deps.errorValue(ErrorCode.Num)
   }
 
   const sortedValues = values.toSorted(ascending ? (a, b) => a - b : (a, b) => b - a)
@@ -189,7 +192,7 @@ function percentileFromValues(
     return values
   }
   if (values.length === 0) {
-    return deps.errorValue(ErrorCode.Value)
+    return deps.errorValue(ErrorCode.Num)
   }
 
   const percentile = deps.toNumber(percentileArg)
@@ -199,7 +202,7 @@ function percentileFromValues(
 
   const sortedValues = values.toSorted((left, right) => left - right)
   const interpolated = interpolatePercentile(sortedValues, percentile, exclusive)
-  return interpolated === undefined ? deps.errorValue(ErrorCode.Value) : deps.numberResult(interpolated)
+  return interpolated === undefined ? deps.errorValue(ErrorCode.Num) : deps.numberResult(interpolated)
 }
 
 function truncateToSignificance(value: number, significance: number): number {
@@ -287,6 +290,9 @@ function percentRankFromValues(
   if (!Array.isArray(values)) {
     return values
   }
+  if (values.length === 0) {
+    return deps.errorValue(ErrorCode.Num)
+  }
   if (values.length < 2) {
     return deps.errorValue(ErrorCode.Value)
   }
@@ -297,8 +303,11 @@ function percentRankFromValues(
   }
 
   const significance = significanceArg === undefined ? 3 : deps.toInteger(significanceArg)
-  if (significance === undefined || significance < 1) {
+  if (significance === undefined) {
     return deps.errorValue(ErrorCode.Value)
+  }
+  if (significance < 1) {
+    return deps.errorValue(ErrorCode.Num)
   }
 
   const sortedValues = values.toSorted((left, right) => left - right)
@@ -330,7 +339,7 @@ function quartileFromValues(
     return values
   }
   if (values.length === 0) {
-    return deps.errorValue(ErrorCode.Value)
+    return deps.errorValue(ErrorCode.Num)
   }
 
   const quartile = deps.toInteger(quartArg)
@@ -343,14 +352,14 @@ function quartileFromValues(
     return deps.numberResult(sortedValues[quartile === 0 ? 0 : sortedValues.length - 1] ?? 0)
   }
   if (exclusive && (quartile <= 0 || quartile >= 4)) {
-    return deps.errorValue(ErrorCode.Value)
+    return deps.errorValue(ErrorCode.Num)
   }
   if (!exclusive && (quartile < 0 || quartile > 4)) {
-    return deps.errorValue(ErrorCode.Value)
+    return deps.errorValue(ErrorCode.Num)
   }
 
   const interpolated = interpolatePercentile(sortedValues, quartile / 4, exclusive)
-  return interpolated === undefined ? deps.errorValue(ErrorCode.Value) : deps.numberResult(interpolated)
+  return interpolated === undefined ? deps.errorValue(ErrorCode.Num) : deps.numberResult(interpolated)
 }
 
 function collectPlainNumericValues(
@@ -404,7 +413,10 @@ function validateProbabilityInputs(
   if (!deps.isRangeArg(probabilityRange)) {
     return probabilityRange
   }
-  if (xRange.rows !== probabilityRange.rows || xRange.cols !== probabilityRange.cols || xRange.values.length === 0) {
+  if (xRange.rows !== probabilityRange.rows || xRange.cols !== probabilityRange.cols) {
+    return deps.errorValue(ErrorCode.NA)
+  }
+  if (xRange.values.length === 0) {
     return deps.errorValue(ErrorCode.Value)
   }
 
@@ -423,15 +435,15 @@ function validateProbabilityInputs(
     if (xValue.tag !== ValueTag.Number || probability.tag !== ValueTag.Number) {
       return deps.errorValue(ErrorCode.Value)
     }
-    if (!Number.isFinite(probability.value) || probability.value < 0 || probability.value > 1) {
-      return deps.errorValue(ErrorCode.Value)
+    if (!Number.isFinite(probability.value) || probability.value <= 0 || probability.value > 1) {
+      return deps.errorValue(ErrorCode.Num)
     }
     xValues.push(xValue.value)
     probabilityValues.push(probability.value)
     probabilitySum += probability.value
   }
   if (Math.abs(probabilitySum - 1) > 1e-9) {
-    return deps.errorValue(ErrorCode.Value)
+    return deps.errorValue(ErrorCode.Num)
   }
   return { xValues, probabilityValues }
 }
@@ -501,8 +513,11 @@ function trimMeanFromValues(
   }
 
   const percent = deps.toNumber(percentArg)
-  if (percent === undefined || percent < 0 || percent >= 1) {
+  if (percent === undefined) {
     return deps.errorValue(ErrorCode.Value)
+  }
+  if (!Number.isFinite(percent) || percent < 0 || percent > 1) {
+    return deps.errorValue(ErrorCode.Num)
   }
 
   let excluded = Math.floor(values.length * percent)

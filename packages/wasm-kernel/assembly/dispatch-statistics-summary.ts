@@ -26,6 +26,23 @@ import {
 import { STACK_KIND_SCALAR, writeArrayResult, writeResult } from './result-io'
 import { allocateSpillArrayResult, readSpillArrayNumber, writeSpillArrayNumber } from './vm'
 
+function isNumberishScalarTag(tag: u8): bool {
+  return tag == ValueTag.Number || tag == ValueTag.Boolean || tag == ValueTag.Empty
+}
+
+function hasEmptyInputShape(
+  slot: i32,
+  kindStack: Uint8Array,
+  rangeIndexStack: Uint32Array,
+  rangeRowCounts: Uint32Array,
+  rangeColCounts: Uint32Array,
+): bool {
+  return (
+    inputRowsFromSlot(slot, kindStack, rangeIndexStack, rangeRowCounts) < 1 ||
+    inputColsFromSlot(slot, kindStack, rangeIndexStack, rangeColCounts) < 1
+  )
+}
+
 export function tryApplyStatisticsSummaryBuiltin(
   builtinId: i32,
   argc: i32,
@@ -214,7 +231,13 @@ export function tryApplyStatisticsSummaryBuiltin(
         kindStack,
       )
     }
+    if (!isNumberishScalarTag(tagStack[base + 1])) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const position = coerceInteger(tagStack[base + 1], valueStack[base + 1])
+    if (hasEmptyInputShape(base, kindStack, rangeIndexStack, rangeRowCounts, rangeColCounts)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const values = collectNumericValuesFromSlot(
       base,
       kindStack,
@@ -244,7 +267,7 @@ export function tryApplyStatisticsSummaryBuiltin(
       )
     }
     if (position < 1 || position > values.length) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     sortNumericValues(values)
     const index = builtinId == BuiltinId.Small ? position - 1 : values.length - position
@@ -281,6 +304,12 @@ export function tryApplyStatisticsSummaryBuiltin(
         kindStack,
       )
     }
+    if (!isNumberishScalarTag(tagStack[base + 1])) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (hasEmptyInputShape(base, kindStack, rangeIndexStack, rangeRowCounts, rangeColCounts)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const values = collectNumericValuesFromSlot(
       base,
       kindStack,
@@ -310,7 +339,7 @@ export function tryApplyStatisticsSummaryBuiltin(
       )
     }
     if (values.length == 0) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     sortNumericValues(values)
 
@@ -318,7 +347,7 @@ export function tryApplyStatisticsSummaryBuiltin(
       const quartile = coerceInteger(tagStack[base + 1], valueStack[base + 1])
       const exclusive = builtinId == BuiltinId.QuartileExc
       if (quartile < 0 || quartile > 4 || (exclusive && (quartile <= 0 || quartile >= 4))) {
-        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
       }
       if (!exclusive && quartile == 0) {
         return writeResult(
@@ -346,7 +375,7 @@ export function tryApplyStatisticsSummaryBuiltin(
       }
       const quartileValue = interpolateSortedPercentile(values, <f64>quartile / 4.0, exclusive)
       if (isNaN(quartileValue)) {
-        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
       }
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, quartileValue, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -354,7 +383,7 @@ export function tryApplyStatisticsSummaryBuiltin(
     const percentile = toNumberOrNaN(tagStack[base + 1], valueStack[base + 1])
     const percentileValue = interpolateSortedPercentile(values, percentile, builtinId == BuiltinId.PercentileExc)
     if (isNaN(percentileValue)) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, percentileValue, rangeIndexStack, valueStack, tagStack, kindStack)
   }
@@ -375,6 +404,9 @@ export function tryApplyStatisticsSummaryBuiltin(
         kindStack,
       )
     }
+    if (!isNumberishScalarTag(tagStack[base + 1])) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     if (argc == 3 && (kindStack[base + 2] != STACK_KIND_SCALAR || tagStack[base + 2] == ValueTag.Error)) {
       return writeResult(
         base,
@@ -386,6 +418,12 @@ export function tryApplyStatisticsSummaryBuiltin(
         tagStack,
         kindStack,
       )
+    }
+    if (argc == 3 && !isNumberishScalarTag(tagStack[base + 2])) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (hasEmptyInputShape(base, kindStack, rangeIndexStack, rangeRowCounts, rangeColCounts)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const values = collectNumericValuesFromSlot(
       base,
@@ -415,13 +453,19 @@ export function tryApplyStatisticsSummaryBuiltin(
         kindStack,
       )
     }
+    if (values.length == 0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     if (values.length < 2) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const target = toNumberOrNaN(tagStack[base + 1], valueStack[base + 1])
     const significance = argc == 3 ? coerceInteger(tagStack[base + 2], valueStack[base + 2]) : 3
-    if (!isFinite(target) || significance < 1) {
+    if (!isFinite(target)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (significance < 1) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     sortNumericValues(values)
     const percentRank = interpolateSortedPercentRank(values, target, builtinId == BuiltinId.PercentrankExc)
@@ -655,6 +699,9 @@ export function tryApplyStatisticsSummaryBuiltin(
         kindStack,
       )
     }
+    if (!isNumberishScalarTag(tagStack[base + 2]) || (argc == 4 && !isNumberishScalarTag(tagStack[base + 3]))) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
 
     const lower = toNumberOrNaN(tagStack[base + 2], valueStack[base + 2])
     const upper = argc == 4 ? toNumberOrNaN(tagStack[base + 3], valueStack[base + 3]) : lower
@@ -666,7 +713,10 @@ export function tryApplyStatisticsSummaryBuiltin(
     const xCols = inputColsFromSlot(base, kindStack, rangeIndexStack, rangeColCounts)
     const probabilityRows = inputRowsFromSlot(base + 1, kindStack, rangeIndexStack, rangeRowCounts)
     const probabilityCols = inputColsFromSlot(base + 1, kindStack, rangeIndexStack, rangeColCounts)
-    if (xRows < 1 || xCols < 1 || probabilityRows < 1 || probabilityCols < 1 || xRows != probabilityRows || xCols != probabilityCols) {
+    if (xRows != probabilityRows || xCols != probabilityCols) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.NA, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (xRows < 1 || xCols < 1 || probabilityRows < 1 || probabilityCols < 1) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
 
@@ -760,8 +810,8 @@ export function tryApplyStatisticsSummaryBuiltin(
         if (xTag != ValueTag.Number || probabilityTag != ValueTag.Number) {
           return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
         }
-        if (!isFinite(probabilityValue) || probabilityValue < 0 || probabilityValue > 1) {
-          return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+        if (!isFinite(probabilityValue) || probabilityValue <= 0 || probabilityValue > 1) {
+          return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
         }
         probabilitySum += probabilityValue
         if (xValue >= lower && xValue <= upper) {
@@ -771,7 +821,7 @@ export function tryApplyStatisticsSummaryBuiltin(
     }
 
     if (Math.abs(probabilitySum - 1.0) > 1e-9) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
 
     return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, total, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -793,10 +843,13 @@ export function tryApplyStatisticsSummaryBuiltin(
         kindStack,
       )
     }
+    if (!isNumberishScalarTag(tagStack[base + 1])) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
 
     const percent = toNumberOrNaN(tagStack[base + 1], valueStack[base + 1])
-    if (!isFinite(percent) || percent < 0.0 || percent >= 1.0) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    if (!isFinite(percent) || percent < 0.0 || percent > 1.0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
 
     const values = collectNumericCellRangeSeriesFromSlot(
