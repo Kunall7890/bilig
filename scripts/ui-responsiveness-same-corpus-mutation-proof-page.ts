@@ -146,6 +146,17 @@ export async function readSameCorpusVisibleMutationTargetReadback(args: {
   if (args.product === 'bilig' && args.target) {
     return await readBiligVisibleGridCellReadback(args.page, args.target)
   }
+  if (args.product !== 'bilig' && args.target) {
+    const targetCellReadback = await readExternalVisibleGridCellReadback({
+      page: args.page,
+      product: args.product,
+      target: args.target,
+      workload: args.workload,
+    })
+    if (targetCellReadback) {
+      return targetCellReadback
+    }
+  }
   const formulaBarText = await readVisibleFormulaBarText(args.page, args.product)
   const fillColor = await readSelectedFillColor(args.page, args.product)
   const text = normalizeNullableText(formulaBarText)
@@ -155,6 +166,144 @@ export async function readSameCorpusVisibleMutationTargetReadback(args: {
     fillColor,
     visibleText: text,
     source: 'visible-formula-bar',
+  }
+}
+
+export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
+  readonly targetBox: { readonly x: number; readonly y: number; readonly width: number; readonly height: number }
+}): SameCorpusMutationTargetReadback {
+  const targetBox = args.targetBox
+  const candidates = targetCellCandidates()
+    .map((element) => ({ element, score: targetOverlapScore(element) }))
+    .filter((candidate) => candidate.score > 0)
+    .toSorted((left, right) => right.score - left.score)
+  const targetText = normalizeText(
+    candidates.map((candidate) => textFromElement(candidate.element)).find((candidateText) => candidateText !== null),
+  )
+  const fillColor =
+    candidates.map((candidate) => visibleBackgroundColor(candidate.element)).find((color): color is string => color !== null) ?? null
+  const source = candidates.length > 0 ? 'visible-grid-cell' : 'unknown'
+  return {
+    value: targetText && !targetText.startsWith('=') ? targetText : null,
+    formula: targetText?.startsWith('=') ? targetText : null,
+    fillColor,
+    visibleText: targetText,
+    source,
+  }
+
+  function targetCellCandidates(): HTMLElement[] {
+    const seen = new Set<HTMLElement>()
+    const add = (element: Element | null | undefined): void => {
+      if (!(element instanceof HTMLElement) || seen.has(element) || isExcludedChromeElement(element)) {
+        return
+      }
+      seen.add(element)
+      for (const child of Array.from(element.querySelectorAll<HTMLElement>('input, textarea, [contenteditable="true"]'))) {
+        if (!isExcludedChromeElement(child)) {
+          seen.add(child)
+        }
+      }
+    }
+    for (const selector of [
+      '.waffle-cell-input',
+      '.waffle-cell',
+      '.waffle-border-cell-active',
+      '[role="gridcell"]',
+      '[aria-selected="true"]',
+      '[class*="active-cell" i]',
+      '[class*="selected-cell" i]',
+      '[class*="waffle" i][class*="cell" i]',
+      '[contenteditable="true"]',
+    ]) {
+      for (const element of Array.from(document.querySelectorAll(selector))) {
+        add(element)
+      }
+    }
+    const points = [
+      { x: targetBox.x + targetBox.width / 2, y: targetBox.y + targetBox.height / 2 },
+      { x: targetBox.x + 3, y: targetBox.y + 3 },
+      { x: targetBox.x + targetBox.width - 3, y: targetBox.y + 3 },
+      { x: targetBox.x + 3, y: targetBox.y + targetBox.height - 3 },
+      { x: targetBox.x + targetBox.width - 3, y: targetBox.y + targetBox.height - 3 },
+    ]
+    if (typeof document.elementsFromPoint === 'function') {
+      for (const point of points) {
+        for (const element of document.elementsFromPoint(point.x, point.y)) {
+          add(element)
+        }
+      }
+    }
+    return [...seen]
+  }
+
+  function targetOverlapScore(element: HTMLElement): number {
+    const rect = element.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) {
+      return 0
+    }
+    const overlapWidth = Math.max(0, Math.min(rect.right, targetBox.x + targetBox.width) - Math.max(rect.left, targetBox.x))
+    const overlapHeight = Math.max(0, Math.min(rect.bottom, targetBox.y + targetBox.height) - Math.max(rect.top, targetBox.y))
+    const overlapArea = overlapWidth * overlapHeight
+    if (overlapArea <= 0) {
+      return 0
+    }
+    const smallerArea = Math.max(1, Math.min(rect.width * rect.height, targetBox.width * targetBox.height))
+    const overlapRatio = overlapArea / smallerArea
+    const className = element.className.toString().toLowerCase()
+    const roleBoost = /active|selected|waffle-cell-input/u.test(className) || element.getAttribute('aria-selected') === 'true' ? 20 : 0
+    const textBoost = textFromElement(element) !== null ? 5 : 0
+    return overlapRatio * 100 + roleBoost + textBoost
+  }
+
+  function textFromElement(element: HTMLElement): string | null {
+    if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+      return normalizeText(element.value)
+    }
+    const editable = element.matches('[contenteditable="true"]')
+      ? element
+      : element.querySelector<HTMLElement>('[contenteditable="true"], input, textarea')
+    if (editable && editable !== element) {
+      return textFromElement(editable)
+    }
+    return normalizeText(element.textContent ?? '')
+  }
+
+  function visibleBackgroundColor(element: HTMLElement): string | null {
+    for (const candidate of [element, ...Array.from(element.querySelectorAll<HTMLElement>('*'))]) {
+      const color = normalizeBackgroundColor(getComputedStyle(candidate).backgroundColor)
+      if (color !== null) {
+        return color
+      }
+    }
+    return null
+  }
+
+  // oxlint-disable-next-line eslint-plugin-unicorn(consistent-function-scoping) -- Playwright serializes this helper with the page function.
+  function normalizeText(value: string | null | undefined): string | null {
+    const trimmedText =
+      value
+        ?.replace(/[\u200b-\u200f\ufeff]/gu, '')
+        .replace(/\s+/gu, ' ')
+        .trim() ?? ''
+    return trimmedText.length > 0 ? trimmedText : null
+  }
+
+  // oxlint-disable-next-line eslint-plugin-unicorn(consistent-function-scoping) -- Playwright serializes this helper with the page function.
+  function normalizeBackgroundColor(value: string | null | undefined): string | null {
+    const color = value?.trim() ?? ''
+    if (!color || color === 'transparent' || color === 'rgba(0, 0, 0, 0)' || color === 'rgb(255, 255, 255)') {
+      return null
+    }
+    return color
+  }
+
+  // oxlint-disable-next-line eslint-plugin-unicorn(consistent-function-scoping) -- Playwright serializes this helper with the page function.
+  function isExcludedChromeElement(element: HTMLElement): boolean {
+    return Boolean(
+      element.closest(
+        '#t-formula-bar-input, #t-formula-bar, #t-name-box, input.waffle-name-box, [aria-label="Formula bar"], [aria-label="Name box"], .docs-toolbar, .waffle-menu',
+      ),
+    )
   }
 }
 
@@ -297,6 +446,60 @@ async function readBiligMutationTargetReadback(
     source: 'bilig-authoritative-range',
     visibleSceneProofSha256: range.visibleSceneProof ? sha256Hex(stableJsonBytes(range.visibleSceneProof)) : null,
   }
+}
+
+async function readExternalVisibleGridCellReadback(args: {
+  readonly page: Page
+  readonly product: UiResponsivenessSameCorpusProduct
+  readonly target: SameCorpusMutationTargetSelection
+  readonly workload?: UiResponsivenessSameCorpusMutatingWorkload
+}): Promise<SameCorpusMutationTargetReadback | null> {
+  const selectedTargetBox = await firstVisibleTargetBox(args.page, args.product)
+  if (!selectedTargetBox) {
+    return null
+  }
+  const targetCellReadback = await args.page
+    .evaluate(readSameCorpusVisibleTargetCellReadbackFromPage, { targetBox: selectedTargetBox })
+    .catch(
+      (): SameCorpusMutationTargetReadback => ({
+        fillColor: null,
+        formula: null,
+        source: 'unknown',
+        value: null,
+        visibleText: null,
+      }),
+    )
+  const screenshotFillColor =
+    targetCellReadback.fillColor ??
+    (args.workload === 'fill-format-change' ? await readExternalVisibleGridCellFillColor(args.page, selectedTargetBox) : null)
+  if (targetCellReadback.source !== 'visible-grid-cell' && screenshotFillColor === null) {
+    return null
+  }
+  return {
+    ...targetCellReadback,
+    fillColor: screenshotFillColor,
+    source: 'visible-grid-cell',
+  }
+}
+
+async function readExternalVisibleGridCellFillColor(
+  page: Page,
+  targetBox: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
+): Promise<string | null> {
+  const viewport = page.viewportSize() ?? (await page.evaluate(() => ({ height: window.innerHeight, width: window.innerWidth })))
+  const x0 = Math.max(0, Math.floor(targetBox.x + 3))
+  const y0 = Math.max(0, Math.floor(targetBox.y + 3))
+  const x1 = Math.min(viewport.width, Math.ceil(targetBox.x + targetBox.width - 3))
+  const y1 = Math.min(viewport.height, Math.ceil(targetBox.y + targetBox.height - 3))
+  if (x1 <= x0 || y1 <= y0) {
+    return null
+  }
+  const screenshot = await page.screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    clip: { height: y1 - y0, width: x1 - x0, x: x0, y: y0 },
+  })
+  return await readExpectedFillColorFromScreenshot(page, screenshot)
 }
 
 async function readBiligVisibleGridCellFillColor(page: Page, target: SameCorpusMutationTargetSelection): Promise<string | null> {

@@ -14,7 +14,7 @@ describe('same-corpus mutation target screenshot semantic proof', () => {
         ...proof().targetScreenshots!,
         after: {
           ...proof().targetScreenshots!.after,
-          semanticReadback: readback('stale'),
+          semanticReadback: readback('stale', { source: 'visible-grid-cell' }),
         },
       },
     })
@@ -99,7 +99,7 @@ function screenshot(
     workload,
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/bilig-sample-1-${phase}.png`,
     screenshotSha256: (phase === 'before' ? 'a' : phase === 'after' ? 'b' : 'c').repeat(64),
-    semanticReadback,
+    semanticReadback: { ...semanticReadback, source: 'visible-grid-cell' },
   }
 }
 
