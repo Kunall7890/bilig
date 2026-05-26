@@ -733,6 +733,28 @@ describe('UI responsiveness live browser scorecard', () => {
     ).toThrow('UI responsiveness same-corpus screenshot artifact is not tracked by git')
   })
 
+  it('requires every semantic mutation target screenshot phase to be tracked for checked-in proof', () => {
+    const proof = buildSameCorpusProof(buildSameCorpusCapture())
+    const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-tracked-mutation-phase-artifacts-`)
+    writeSameCorpusScreenshotArtifacts(rootDir, proof)
+    const artifactPaths = sameCorpusScreenshotArtifactPaths(proof)
+    const phaseArtifactPath = sameCorpusMutationTargetScreenshotArtifactPaths(proof).find(
+      (artifactPath) => artifactPath.endsWith('-before.png') || artifactPath.endsWith('-restored.png'),
+    )
+
+    if (!phaseArtifactPath) {
+      throw new Error('test fixture is missing before/restored mutation screenshot artifacts')
+    }
+    expect(phaseArtifactPath).toContain('/mutation-target/')
+    expect(() =>
+      validateSameCorpusScreenshotArtifacts(proof, {
+        requireGitTracked: true,
+        rootDir,
+        trackedArtifactPaths: artifactPaths.filter((artifactPath) => artifactPath !== phaseArtifactPath),
+      }),
+    ).toThrow('UI responsiveness same-corpus screenshot artifact is not tracked by git')
+  })
+
   it('requires checked-in same-corpus scorecard proof to match the capture artifact', () => {
     const capture = buildSameCorpusCapture()
     const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-capture-artifact-`)

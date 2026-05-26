@@ -423,7 +423,9 @@ function uniqueScreenshotArtifactPaths(proof: UiResponsivenessSameCorpusProof): 
       proof.cases.flatMap((entry) => [
         ...(entry.scenarioProof.screenshotProof.captured ? [...entry.scenarioProof.screenshotProof.artifactPaths] : []),
         ...entry.scenarioProof.semanticUiProof.products.flatMap((productProof) =>
-          productProof.mutationTargetProofs.flatMap((mutationProof) => mutationProof.screenshotPath ?? []),
+          productProof.mutationTargetProofs.flatMap((mutationProof) =>
+            sameCorpusMutationTargetScreenshotArtifacts(mutationProof).map((artifact) => artifact.screenshotPath),
+          ),
         ),
       ]),
     ),
