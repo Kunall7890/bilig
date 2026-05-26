@@ -46,12 +46,12 @@ Project site: <https://proompteng.github.io/bilig/>
 
 Pick the path that matches the thing in your hands:
 
-| You have...                                                                              | Start with                                                         | You should see                                                                                         |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| An `.xlsx` file with stale formula results after editing inputs in Node                  | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)           | A changed input, a recalculated output, and `verified: true` without opening Excel or LibreOffice.     |
-| An `.xlsx` model with stale external-link cache values                                  | [External workbook recalculation proof](docs/external-workbook-recalc-proof.md) | Companion workbook hydration diagnostics, fresh formula readback, and `verified: true`.                |
-| Workbook-shaped business logic that should live in a Node service, test, queue, or route | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md) | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback. |
-| A coding agent, MCP client, or tool host that needs spreadsheet operations               | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)             | An agent contract with read, write, recalc, persist, restore, and a compact proof object.              |
+| You have...                                                                              | Start with                                                                      | You should see                                                                                         |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| An `.xlsx` file with stale formula results after editing inputs in Node                  | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                        | A changed input, a recalculated output, and `verified: true` without opening Excel or LibreOffice.     |
+| An `.xlsx` model with stale external-link cache values                                   | [External workbook recalculation proof](docs/external-workbook-recalc-proof.md) | Companion workbook hydration diagnostics, fresh formula readback, and `verified: true`.                |
+| Workbook-shaped business logic that should live in a Node service, test, queue, or route | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)              | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback. |
+| A coding agent, MCP client, or tool host that needs spreadsheet operations               | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)                          | An agent contract with read, write, recalc, persist, restore, and a compact proof object.              |
 
 If you are not sure which one fits, use the file-level XLSX path when a real
 spreadsheet file is already the source of truth. Use `@bilig/workpaper` when
@@ -786,6 +786,7 @@ pnpm --dir examples/headless-workpaper run agent:openai-responses
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text
 pnpm --dir examples/headless-workpaper run agent:framework-adapters
+pnpm --dir examples/langgraph-workpaper-tool-state run smoke
 pnpm --dir examples/headless-workpaper run agent:mcp-tools
 pnpm --dir examples/headless-workpaper run agent:mcp-file-transcript
 pnpm --dir examples/headless-workpaper run agent:mcp-stdio
@@ -801,6 +802,8 @@ The OpenAI Responses guide is
 [`docs/openai-responses-workpaper-tool-call.md`](docs/openai-responses-workpaper-tool-call.md).
 The agent framework guide is
 [`docs/vercel-ai-sdk-langchain-spreadsheet-tool.md`](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md).
+The LangGraph.js ToolNode proof is
+[`docs/langgraph-workpaper-toolnode-spreadsheet.md`](docs/langgraph-workpaper-toolnode-spreadsheet.md).
 
 The package also ships the MCP stdio binary:
 

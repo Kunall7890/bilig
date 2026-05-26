@@ -24,8 +24,10 @@ export const agentFrameworkDocRequirements = [
     path: 'docs/langgraph-workpaper-toolnode-spreadsheet.md',
     includes: [
       'LangGraph.js WorkPaper ToolNode spreadsheet tool',
-      'ToolNode',
-      'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
+      '@langchain/langgraph',
+      'new ToolNode(tools)',
+      'examples/langgraph-workpaper-tool-state',
+      'pnpm run smoke',
     ],
   },
   {

@@ -1,0 +1,21 @@
+{
+  "name": "bilig-langgraph-workpaper-tool-state",
+  "private": true,
+  "description": "LangGraph.js ToolNode example that edits a Bilig WorkPaper and returns formula readback proof.",
+  "type": "module",
+  "scripts": {
+    "smoke": "tsx src/smoke.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@bilig/workpaper": "latest",
+    "@langchain/core": "latest",
+    "@langchain/langgraph": "latest",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.2"
+  }
+}
