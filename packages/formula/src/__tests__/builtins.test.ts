@@ -1639,7 +1639,7 @@ describe('formula builtins', () => {
     })
     expect(getBuiltin('BITLSHIFT')?.({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 33 })).toEqual({
       tag: ValueTag.Number,
-      value: 2,
+      value: 2 ** 33,
     })
     expect(getBuiltin('BITRSHIFT')?.({ tag: ValueTag.String, value: 'bad', stringId: 4 }, { tag: ValueTag.Number, value: 1 })).toEqual({
       tag: ValueTag.Error,

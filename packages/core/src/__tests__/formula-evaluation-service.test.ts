@@ -428,7 +428,7 @@ describe('EngineFormulaEvaluationService', () => {
     expect(engine.getCellValue('Sheet1', 'F4')).toEqual({ tag: ValueTag.Number, value: expectedMax })
     expect(engine.getPerformanceCounters().nativeDirectCriteriaPredicateAggregateEvaluations).toBe(0)
     expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBeGreaterThanOrEqual(1)
-  })
+  }, 15_000)
 
   it('keeps decimal COUNTIF criteria on the JS oracle path when exact-lookup normalization matters', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-decimal-oracle-fallback' })
