@@ -1735,7 +1735,7 @@ function sameCorpusMutationTargetProofs(product: SameCorpusProductVisualProof['p
     visibleRestored: sameCorpusVisibleMutationReadback(product, workload, 'before', sampleIndex),
     authoritativeReadbackRevision: `authoritative-readback-${sampleIndex + 1}`,
     visibleRenderRevision: `visible-render-${sampleIndex + 1}`,
-    screenshotPath: `tmp/mutation-target/${product}-sample-${sampleIndex + 1}.png`,
+    screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${sampleIndex + 1}-after.png`,
     screenshotSha256: 'a'.repeat(64),
     undoRestoreStatus: 'verified' as const,
   }))

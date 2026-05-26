@@ -227,6 +227,7 @@ function sameCorpusMutationTargetProofInvalidReasons(
     )
   }
   const seenSamples = new Set<number>()
+  const seenScreenshotPaths = new Set<string>()
   for (const sample of mutationProofs) {
     if (!Number.isInteger(sample.sampleIndex) || sample.sampleIndex < 0 || sample.sampleIndex >= sampleCount) {
       invalidReasons.push(`semantic UI mutation target proof for ${workload} has invalid sample index`)
@@ -268,6 +269,13 @@ function sameCorpusMutationTargetProofInvalidReasons(
     }
     if (sample.screenshotPath === null || sample.screenshotPath === undefined || sample.screenshotPath.trim().length === 0) {
       invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing screenshot artifact path`)
+    } else {
+      const screenshotPath = normalizeSameCorpusMutationTargetScreenshotPath(sample.screenshotPath)
+      if (seenScreenshotPaths.has(screenshotPath)) {
+        invalidReasons.push(`semantic UI mutation target proof for ${workload} duplicates screenshot artifact path`)
+      }
+      seenScreenshotPaths.add(screenshotPath)
+      invalidReasons.push(...sameCorpusMutationTargetScreenshotPathInvalidReasons(proof.product, workload, sample, screenshotPath))
     }
     invalidReasons.push(...sameCorpusMutationTargetReadbackSourceInvalidReasons(proof.product, workload, sample))
     invalidReasons.push(...sameCorpusMutationTargetVisibleReadbackInvalidReasons(proof.product, workload, sample))
@@ -334,6 +342,33 @@ function sameCorpusMutationTargetExpectedReadbackInvalidReasons(
     }
   }
   return []
+}
+
+function sameCorpusMutationTargetScreenshotPathInvalidReasons(
+  product: UiResponsivenessSameCorpusProduct,
+  workload: UiResponsivenessSameCorpusWorkload,
+  sample: SameCorpusMutationTargetProof,
+  screenshotPath: string,
+): string[] {
+  const invalidReasons: string[] = []
+  const segments = screenshotPath.split('/').filter((segment) => segment.length > 0)
+  const mutationTargetIndex = segments.lastIndexOf('mutation-target')
+  const caseSegment = mutationTargetIndex > 0 ? segments[mutationTargetIndex - 1] : ''
+  const fileName = mutationTargetIndex >= 0 ? (segments[mutationTargetIndex + 1] ?? '') : (segments.at(-1) ?? '')
+  const expectedFileName = `${product}-sample-${String(sample.sampleIndex + 1)}-after.png`
+  if (mutationTargetIndex < 1 || (caseSegment !== workload && !caseSegment.endsWith(`-${workload}`))) {
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} screenshot artifact path is not tied to the workload`)
+  }
+  if (fileName !== expectedFileName || mutationTargetIndex !== segments.length - 2) {
+    invalidReasons.push(
+      `semantic UI mutation target proof for ${workload} screenshot artifact path is not tied to the mutation target sample`,
+    )
+  }
+  return invalidReasons
+}
+
+function normalizeSameCorpusMutationTargetScreenshotPath(path: string): string {
+  return path.trim().replaceAll('\\', '/')
 }
 
 function sameCorpusMutationTargetReadbackSourceInvalidReasons(
@@ -409,7 +444,7 @@ function sameCorpusSelectedRangeMatchesTarget(selectedRange: string | null, targ
 
 function normalizeSameCorpusRenderedSelectionRange(range: string | null): string {
   const rawRange = range?.split('!').at(-1)?.replace(/\$/gu, '').trim().toUpperCase() ?? ''
-  const match = rawRange.match(/[A-Z]+[0-9]+(?::[A-Z]+[0-9]+)?/u)
+  const match = rawRange.match(/^[A-Z]+[0-9]+(?::[A-Z]+[0-9]+)?$/u)
   return match?.[0] ?? ''
 }
 
