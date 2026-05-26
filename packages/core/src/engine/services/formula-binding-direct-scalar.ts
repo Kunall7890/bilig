@@ -123,12 +123,6 @@ export function buildDirectScalarDescriptor(args: {
   if (args.compiled.symbolicNames.length > 0 || args.compiled.symbolicTables.length > 0 || args.compiled.symbolicSpills.length > 0) {
     return undefined
   }
-  if (args.compiled.astMatchesSource === false) {
-    const translated = tryBuildTranslatedDirectScalarDescriptor(args)
-    if (translated) {
-      return translated
-    }
-  }
   let translatedCellRefIndex = 0
   const nextTranslatedCellRef =
     args.compiled.astMatchesSource === false
@@ -195,89 +189,4 @@ export function buildDirectScalarDescriptor(args: {
     }
   }
   return undefined
-}
-
-function tryBuildTranslatedDirectScalarDescriptor(args: {
-  readonly compiled: DirectScalarCompiledFormula
-  readonly ownerSheetName: string
-  readonly ownerSheetId: number | undefined
-  readonly workbook: DirectScalarWorkbook
-  readonly ensureCellTrackedByCoords: (sheetId: number, row: number, col: number) => number
-}): RuntimeDirectScalarDescriptor | undefined {
-  const parsedRefs = args.compiled.parsedSymbolicRefs
-  if (parsedRefs === undefined) {
-    return undefined
-  }
-  let translatedCellRefIndex = 0
-  const unwrapped = unwrapDirectScalarBinaryNode(args.compiled.optimizedAst)
-  const node = unwrapped.node
-  if (node.kind === 'BinaryExpr' && (node.operator === '+' || node.operator === '-' || node.operator === '*' || node.operator === '/')) {
-    const left = buildTranslatedDirectScalarOperand(args, node.left, parsedRefs[translatedCellRefIndex])
-    if (node.left.kind === 'CellRef') {
-      translatedCellRefIndex += 1
-    }
-    const right = buildTranslatedDirectScalarOperand(args, node.right, parsedRefs[translatedCellRefIndex])
-    if (node.right.kind === 'CellRef') {
-      translatedCellRefIndex += 1
-    }
-    if (left && right && translatedCellRefIndex === parsedRefs.length) {
-      return {
-        kind: 'binary',
-        operator: node.operator,
-        left,
-        right,
-        ...(unwrapped.resultOffset !== undefined ? { resultOffset: unwrapped.resultOffset } : {}),
-      }
-    }
-    return undefined
-  }
-  if (node.kind === 'CallExpr' && node.callee.trim().toUpperCase() === 'ABS' && node.args.length === 1) {
-    const operandNode = node.args[0]!
-    const operand = buildTranslatedDirectScalarOperand(args, operandNode, parsedRefs[translatedCellRefIndex])
-    if (operandNode.kind === 'CellRef') {
-      translatedCellRefIndex += 1
-    }
-    if (operand && translatedCellRefIndex === parsedRefs.length) {
-      return {
-        kind: 'abs',
-        operand,
-      }
-    }
-  }
-  return undefined
-}
-
-function buildTranslatedDirectScalarOperand(
-  args: {
-    readonly ownerSheetName: string
-    readonly ownerSheetId: number | undefined
-    readonly workbook: DirectScalarWorkbook
-    readonly ensureCellTrackedByCoords: (sheetId: number, row: number, col: number) => number
-  },
-  node: FormulaNode,
-  parsed: ParsedCellReferenceInfo | undefined,
-): RuntimeDirectScalarOperand | undefined {
-  if (node.kind === 'NumberLiteral') {
-    return { kind: 'literal-number', value: node.value }
-  }
-  if (node.kind !== 'CellRef') {
-    return undefined
-  }
-  if (parsed === undefined || parsed.row === undefined || parsed.col === undefined) {
-    return undefined
-  }
-  const sheetName = parsed.sheetName ?? node.sheetName ?? args.ownerSheetName
-  const sheetId = sheetName === args.ownerSheetName ? args.ownerSheetId : args.workbook.getSheet(sheetName)?.id
-  if (sheetId === undefined) {
-    return {
-      kind: 'error',
-      code: ErrorCode.Ref,
-    }
-  }
-  const existingCellIndex =
-    args.workbook.getFreshCellIndexAt?.(sheetId, parsed.row, parsed.col) ?? args.workbook.getCellIndexAt?.(sheetId, parsed.row, parsed.col)
-  return {
-    kind: 'cell',
-    cellIndex: existingCellIndex ?? args.ensureCellTrackedByCoords(sheetId, parsed.row, parsed.col),
-  }
 }
