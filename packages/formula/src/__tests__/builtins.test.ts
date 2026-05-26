@@ -461,7 +461,12 @@ describe('formula builtins', () => {
         { tag: ValueTag.Number, value: 3 },
         { tag: ValueTag.Boolean, value: true },
       ),
-    ).toEqual({ tag: ValueTag.Number, value: 3 })
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+
+    expect(getBuiltin('MAX')?.({ tag: ValueTag.Number, value: 3 }, { tag: ValueTag.Boolean, value: true })).toEqual({
+      tag: ValueTag.Number,
+      value: 3,
+    })
 
     expect(
       getBuiltin('COUNT')?.(
