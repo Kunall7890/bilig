@@ -226,6 +226,8 @@ function coerceDirectNumericTextAggregateArgument(callee: string, value: CellVal
 
 const numericReferenceAggregateCallees = new Set(['SUM', 'AVERAGE', 'AVG', 'MIN', 'MAX', 'PRODUCT', 'SUMSQ', 'GCD', 'LCM'])
 const numericReferenceStatisticCallees = new Set([
+  'MODE',
+  'MODE.SNGL',
   'STDEV',
   'STDEV.S',
   'STDEVP',

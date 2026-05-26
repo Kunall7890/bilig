@@ -26,6 +26,7 @@ import {
 } from './statistics-tests'
 import { STACK_KIND_SCALAR, writeArrayResult, writeResult } from './result-io'
 import { allocateSpillArrayResult, readSpillArrayNumber, writeSpillArrayNumber } from './vm'
+import { coerceScalarNumberLikeText } from './text-special'
 
 function isNumberishScalarTag(tag: u8): bool {
   return tag == ValueTag.Number || tag == ValueTag.Boolean || tag == ValueTag.Empty
@@ -524,8 +525,26 @@ export function tryApplyStatisticsSummaryBuiltin(
   if ((builtinId == BuiltinId.Mode || builtinId == BuiltinId.ModeSngl) && argc >= 1) {
     const values = new Array<f64>()
     for (let index = 0; index < argc; index += 1) {
+      const slot = base + index
+      if (kindStack[slot] == STACK_KIND_SCALAR && tagStack[slot] == ValueTag.String) {
+        const numeric = coerceScalarNumberLikeText(
+          tagStack[slot],
+          valueStack[slot],
+          stringOffsets,
+          stringLengths,
+          stringData,
+          outputStringOffsets,
+          outputStringLengths,
+          outputStringData,
+        )
+        if (isNaN(numeric)) {
+          return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+        }
+        values.push(numeric)
+        continue
+      }
       const collected = collectSampleNumbersFromSlot(
-        base + index,
+        slot,
         kindStack,
         valueStack,
         tagStack,

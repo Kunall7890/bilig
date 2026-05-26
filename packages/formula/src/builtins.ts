@@ -166,6 +166,10 @@ function sequenceResult(
   startArg: CellValue | undefined,
   stepArg: CellValue | undefined,
 ): ArrayValue | CellValue {
+  const error = firstError([rowsArg, colsArg, startArg, stepArg])
+  if (error) {
+    return error
+  }
   const rows = coercePositiveInteger(rowsArg, 1)
   const cols = coercePositiveInteger(colsArg, 1)
   const start = coerceNumber(startArg, 1)
@@ -494,6 +498,10 @@ const scalarBuiltins: Record<string, Builtin> = {
     refStyleArg = { tag: ValueTag.Number, value: 1 },
     sheetTextArg,
   ) => {
+    const error = firstError([rowArg, columnArg, absNumArg, refStyleArg, sheetTextArg])
+    if (error) {
+      return error
+    }
     const row = positiveIntegerValue(rowArg)
     const column = positiveIntegerValue(columnArg)
     const absNum = integerValue(absNumArg, 1)
@@ -533,6 +541,10 @@ const scalarBuiltins: Record<string, Builtin> = {
     }
   },
   DOLLAR: (valueArg, decimalsArg = { tag: ValueTag.Number, value: 2 }, noCommasArg) => {
+    const error = firstError([valueArg, decimalsArg, noCommasArg])
+    if (error) {
+      return error
+    }
     const value = toNumber(valueArg)
     const decimals = toInteger(decimalsArg, 2)
     const noCommasValue = noCommasArg === undefined ? 0 : (toNumber(noCommasArg) ?? 0)
@@ -551,6 +563,10 @@ const scalarBuiltins: Record<string, Builtin> = {
     }
   },
   FIXED: (valueArg, decimalsArg = { tag: ValueTag.Number, value: 2 }, noCommasArg) => {
+    const error = firstError([valueArg, decimalsArg, noCommasArg])
+    if (error) {
+      return error
+    }
     const value = toNumber(valueArg)
     const decimals = toInteger(decimalsArg, 2)
     const noCommasValue = noCommasArg === undefined ? 0 : (toNumber(noCommasArg) ?? 0)
@@ -561,6 +577,10 @@ const scalarBuiltins: Record<string, Builtin> = {
     return text === '' ? valueError() : { tag: ValueTag.String, value: text, stringId: 0 }
   },
   DOLLARDE: (valueArg, fractionArg) => {
+    const error = firstError([valueArg, fractionArg])
+    if (error) {
+      return error
+    }
     const value = toNumber(valueArg)
     const fraction = toInteger(fractionArg)
     if (value === undefined || fraction === undefined || !isValidDollarFraction(fraction)) {
@@ -574,6 +594,10 @@ const scalarBuiltins: Record<string, Builtin> = {
     return numberResult(sign * (integerPart + fractionalNumerator / fraction))
   },
   DOLLARFR: (valueArg, fractionArg) => {
+    const error = firstError([valueArg, fractionArg])
+    if (error) {
+      return error
+    }
     const value = toNumber(valueArg)
     const fraction = toInteger(fractionArg)
     if (value === undefined || fraction === undefined || !isValidDollarFraction(fraction)) {
@@ -618,6 +642,10 @@ const scalarBuiltins: Record<string, Builtin> = {
   ...mathBuiltins,
   ...fixedIncomeBuiltins,
   RANDBETWEEN: (bottomArg, topArg) => {
+    const error = firstError([bottomArg, topArg])
+    if (error) {
+      return error
+    }
     const bottom = integerValue(bottomArg)
     const top = integerValue(topArg)
     if (bottom === undefined || top === undefined || top < bottom) {
@@ -626,6 +654,10 @@ const scalarBuiltins: Record<string, Builtin> = {
     return numberResult(Math.floor(Math.random() * (top - bottom + 1)) + bottom)
   },
   RANDARRAY: (rowsArg, colsArg, minArg, maxArg, wholeArg) => {
+    const error = firstError([rowsArg, colsArg, minArg, maxArg, wholeArg])
+    if (error) {
+      return error
+    }
     const rows = coercePositiveInteger(rowsArg, 1)
     const cols = coercePositiveInteger(colsArg, 1)
     const min = coerceNumber(minArg, 0)
@@ -644,6 +676,9 @@ const scalarBuiltins: Record<string, Builtin> = {
     return { kind: 'array', rows, cols, values }
   },
   MUNIT: (sizeArg) => {
+    if (sizeArg?.tag === ValueTag.Error) {
+      return sizeArg
+    }
     const size = positiveIntegerValue(sizeArg)
     return size === undefined ? valueError() : buildIdentityMatrix(size, numberResult)
   },

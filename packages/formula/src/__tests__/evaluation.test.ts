@@ -195,6 +195,74 @@ describe('formula builtins and JS evaluator', () => {
     expect(evaluateAst(parseFormula('MAXA(C1:C2)'), context)).toEqual({ tag: ValueTag.Number, value: -2 })
   })
 
+  it('applies direct-versus-reference numeric rules for MODE.SNGL', () => {
+    const valuesByAddress: Record<string, CellValue> = {
+      A1: { tag: ValueTag.Number, value: 2 },
+      A2: { tag: ValueTag.Number, value: 4 },
+      A3: { tag: ValueTag.String, value: '2', stringId: 1 },
+      A4: { tag: ValueTag.Boolean, value: true },
+      A5: { tag: ValueTag.Empty },
+      B1: { tag: ValueTag.Number, value: 2 },
+      B2: { tag: ValueTag.Number, value: 4 },
+      B3: { tag: ValueTag.String, value: 'ignored', stringId: 2 },
+      B4: { tag: ValueTag.Empty },
+    }
+    const context = {
+      sheetName: 'Sheet1',
+      resolveCell: (_sheetName: string, address: string): CellValue => valuesByAddress[address] ?? { tag: ValueTag.Empty },
+      resolveRange: (_sheetName: string, start: string, end: string): CellValue[] => {
+        const addresses = ['A1', 'A2', 'A3', 'A4', 'A5', 'B1', 'B2', 'B3', 'B4']
+        const startIndex = addresses.indexOf(start)
+        const endIndex = addresses.indexOf(end)
+        if (startIndex >= 0 && endIndex >= startIndex) {
+          return addresses.slice(startIndex, endIndex + 1).map((address) => valuesByAddress[address])
+        }
+        return []
+      },
+    }
+
+    expect(evaluateAst(parseFormula('MODE.SNGL("2","4","2")'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(evaluateAst(parseFormula('MODE("2","bad")'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(evaluateAst(parseFormula('MODE.SNGL(A1:A5)'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.NA })
+    expect(evaluateAst(parseFormula('MODE.SNGL(A1:B2)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(evaluateAst(parseFormula('MODE(B1:B4)'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.NA })
+  })
+
+  it('preserves incoming formula errors before helper argument validation', () => {
+    const context = {
+      sheetName: 'Sheet1',
+      resolveCell: (): CellValue => ({ tag: ValueTag.Empty }),
+      resolveRange: (): CellValue[] => [],
+    }
+
+    const cases = [
+      'ADDRESS(NA(),1)',
+      'ADDRESS(1,NA())',
+      'DOLLAR(NA(),2)',
+      'DOLLAR(1,NA())',
+      'FIXED(NA(),2)',
+      'FIXED(1,NA())',
+      'DOLLARDE(NA(),16)',
+      'DOLLARDE(1.08,NA())',
+      'DOLLARFR(NA(),16)',
+      'DOLLARFR(1.5,NA())',
+      'RANDBETWEEN(NA(),1)',
+      'RANDBETWEEN(1,NA())',
+      'SEQUENCE(NA())',
+      'SEQUENCE(1,NA())',
+      'MUNIT(NA())',
+      'RANDARRAY(NA(),1)',
+      'RANDARRAY(1,NA())',
+    ]
+
+    for (const formula of cases) {
+      expect(evaluateAstResult(parseFormula(formula), context)).toEqual({
+        tag: ValueTag.Error,
+        code: ErrorCode.NA,
+      })
+    }
+  })
+
   it('coerces comma-grouped numeric text in arithmetic expressions', () => {
     const context = {
       sheetName: 'Sheet1',

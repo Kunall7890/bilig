@@ -212,6 +212,10 @@ export function tryApplyFormatConvertBuiltin(
   outputStringData: Uint16Array,
 ): i32 {
   if (builtinId == BuiltinId.Address && argc >= 2 && argc <= 5) {
+    const scalarError = scalarErrorAt(base, argc, kindStack, tagStack, valueStack)
+    if (scalarError >= 0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const row = coercePositiveIntegerArg(tagStack[base], valueStack[base], true, 1)
     const column = coercePositiveIntegerArg(tagStack[base + 1], valueStack[base + 1], true, 1)
     if (row == i32.MIN_VALUE || column == i32.MIN_VALUE) {
@@ -262,6 +266,10 @@ export function tryApplyFormatConvertBuiltin(
   }
 
   if (builtinId == BuiltinId.Dollar && argc >= 1 && argc <= 3) {
+    const scalarError = scalarErrorAt(base, argc, kindStack, tagStack, valueStack)
+    if (scalarError >= 0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const value = toNumberExact(tagStack[base], valueStack[base])
     const decimalsNumeric = argc >= 2 ? toNumberExact(tagStack[base + 1], valueStack[base + 1]) : 2.0
     let noCommasValue = 0.0
@@ -281,6 +289,10 @@ export function tryApplyFormatConvertBuiltin(
   }
 
   if ((builtinId == BuiltinId.Dollarde || builtinId == BuiltinId.Dollarfr) && argc == 2) {
+    const scalarError = scalarErrorAt(base, argc, kindStack, tagStack, valueStack)
+    if (scalarError >= 0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const value = toNumberExact(tagStack[base], valueStack[base])
     const fractionNumeric = toNumberExact(tagStack[base + 1], valueStack[base + 1])
     if (!isFinite(value) || !isFinite(fractionNumeric)) {

@@ -217,6 +217,37 @@ describe('wasm kernel format and conversion dispatch', () => {
     expect(kernel.readErrors()[cellIndex(1, 5, width)]).toBe(ErrorCode.Name)
   })
 
+  it('preserves error codes for address and dollar-format inputs on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 4, 0, 1, 1)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushError(ErrorCode.Ref), encodePushNumber(0), encodeCall(BuiltinId.Address, 2), encodeRet()],
+      [encodePushNumber(0), encodePushError(ErrorCode.NA), encodeCall(BuiltinId.Address, 2), encodeRet()],
+      [encodePushError(ErrorCode.Name), encodePushNumber(1), encodeCall(BuiltinId.Dollar, 2), encodeRet()],
+      [encodePushNumber(0), encodePushError(ErrorCode.Ref), encodeCall(BuiltinId.Dollar, 2), encodeRet()],
+      [encodePushError(ErrorCode.NA), encodePushNumber(2), encodeCall(BuiltinId.Dollarde, 2), encodeRet()],
+      [encodePushNumber(3), encodePushError(ErrorCode.Name), encodeCall(BuiltinId.Dollarfr, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 6 }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([[1], [2], [16], [1.5]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 6 }, (_, index) => cellIndex(1, index, width))))
+
+    const expectedErrors = [ErrorCode.Ref, ErrorCode.NA, ErrorCode.Name, ErrorCode.Ref, ErrorCode.NA, ErrorCode.Name]
+    for (let index = 0; index < expectedErrors.length; index += 1) {
+      expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Error)
+      expect(kernel.readErrors()[cellIndex(1, index, width)]).toBe(expectedErrors[index])
+    }
+  })
+
   it('matches Microsoft Excel BASE numeric domain errors on the wasm path', async () => {
     const kernel = await createKernel()
     const width = 8

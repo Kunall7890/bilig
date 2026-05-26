@@ -4666,11 +4666,11 @@ describe('wasm kernel', () => {
   it('evaluates MODE, CONFIDENCE.NORM, IFS, SWITCH, and XOR on the wasm path', async () => {
     const kernel = await createKernel()
     const width = 8
-    kernel.init(24, 6, 5, 1, 6)
-    const pooledStrings = ['', 'big', 'small', 'one', 'other'] as const
+    kernel.init(24, 8, 6, 2, 12)
+    const pooledStrings = ['', 'big', 'small', 'one', 'other', '2'] as const
     kernel.uploadStringLengths(Uint32Array.from(pooledStrings.map((value) => value.length)))
     kernel.uploadStrings(
-      Uint32Array.from([0, 0, 3, 8, 11]),
+      Uint32Array.from([0, 0, 3, 8, 11, 16]),
       Uint32Array.from(pooledStrings.map((value) => value.length)),
       asciiCodes(pooledStrings.join('')),
     )
@@ -4682,9 +4682,9 @@ describe('wasm kernel', () => {
         ValueTag.Number,
         ValueTag.Number,
         ValueTag.Number,
-        0,
-        0,
-        0,
+        ValueTag.String,
+        ValueTag.Boolean,
+        ValueTag.Boolean,
         0,
         0,
         0,
@@ -4701,16 +4701,18 @@ describe('wasm kernel', () => {
         0,
         0,
       ]),
-      new Float64Array([1, 2, 2, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
-      new Uint32Array(24),
+      new Float64Array([1, 2, 2, 3, 3, 3, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+      new Uint32Array([0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
       new Uint16Array(24),
     )
-    kernel.uploadRangeMembers(Uint32Array.from([0, 1, 2, 3, 4, 5]), Uint32Array.from([0]), Uint32Array.from([6]))
-    kernel.uploadRangeShapes(Uint32Array.from([6]), Uint32Array.from([1]))
+    kernel.uploadRangeMembers(Uint32Array.from([0, 1, 2, 3, 4, 5, 0, 1, 6, 7, 8]), Uint32Array.from([0, 6]), Uint32Array.from([6, 5]))
+    kernel.uploadRangeShapes(Uint32Array.from([6, 5]), Uint32Array.from([1, 1]))
 
     const packed = packPrograms([
       [encodePushRange(0), encodeCall(BUILTIN.MODE, 1), encodeRet()],
       [encodePushRange(0), encodeCall(BUILTIN.MODE_SNGL, 1), encodeRet()],
+      [encodePushString(5), encodePushNumber(0), encodePushString(5), encodeCall(BUILTIN.MODE_SNGL, 3), encodeRet()],
+      [encodePushRange(1), encodeCall(BUILTIN.MODE_SNGL, 1), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BUILTIN.CONFIDENCE_NORM, 3), encodeRet()],
       [
         encodePushBoolean(false),
@@ -4723,7 +4725,7 @@ describe('wasm kernel', () => {
       [encodePushNumber(3), encodePushNumber(4), encodePushString(3), encodePushString(4), encodeCall(BUILTIN.SWITCH, 4), encodeRet()],
       [encodePushBoolean(true), encodePushBoolean(false), encodePushBoolean(true), encodeCall(BUILTIN.XOR, 3), encodeRet()],
     ])
-    const constants = packConstants([[], [], [0.05, 1, 100], [], [1, 1], []])
+    const constants = packConstants([[], [], [4], [], [0.05, 1, 100], [], [1, 1], []])
     const outputCells = Uint32Array.from([
       cellIndex(1, 0, width),
       cellIndex(1, 1, width),
@@ -4731,6 +4733,8 @@ describe('wasm kernel', () => {
       cellIndex(1, 3, width),
       cellIndex(1, 4, width),
       cellIndex(1, 5, width),
+      cellIndex(1, 6, width),
+      cellIndex(1, 7, width),
     ])
     kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, outputCells)
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
@@ -4741,13 +4745,16 @@ describe('wasm kernel', () => {
     expect(kernel.readTags()[cellIndex(1, 1, width)]).toBe(ValueTag.Number)
     expect(kernel.readNumbers()[cellIndex(1, 1, width)]).toBe(3)
     expect(kernel.readTags()[cellIndex(1, 2, width)]).toBe(ValueTag.Number)
-    expect(kernel.readNumbers()[cellIndex(1, 2, width)]).toBeCloseTo(0.1959963986120195, 12)
-    expect(kernel.readTags()[cellIndex(1, 3, width)]).toBe(ValueTag.String)
-    expect(pooledStrings[kernel.readStringIds()[cellIndex(1, 3, width)]] ?? '').toBe('small')
-    expect(kernel.readTags()[cellIndex(1, 4, width)]).toBe(ValueTag.String)
-    expect(pooledStrings[kernel.readStringIds()[cellIndex(1, 4, width)]] ?? '').toBe('one')
-    expect(kernel.readTags()[cellIndex(1, 5, width)]).toBe(ValueTag.Boolean)
-    expect(kernel.readNumbers()[cellIndex(1, 5, width)]).toBe(0)
+    expect(kernel.readNumbers()[cellIndex(1, 2, width)]).toBe(2)
+    expectErrorCell(kernel, cellIndex(1, 3, width), ErrorCode.NA)
+    expect(kernel.readTags()[cellIndex(1, 4, width)]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[cellIndex(1, 4, width)]).toBeCloseTo(0.1959963986120195, 12)
+    expect(kernel.readTags()[cellIndex(1, 5, width)]).toBe(ValueTag.String)
+    expect(pooledStrings[kernel.readStringIds()[cellIndex(1, 5, width)]] ?? '').toBe('small')
+    expect(kernel.readTags()[cellIndex(1, 6, width)]).toBe(ValueTag.String)
+    expect(pooledStrings[kernel.readStringIds()[cellIndex(1, 6, width)]] ?? '').toBe('one')
+    expect(kernel.readTags()[cellIndex(1, 7, width)]).toBe(ValueTag.Boolean)
+    expect(kernel.readNumbers()[cellIndex(1, 7, width)]).toBe(0)
   })
 
   it('evaluates PROB and TRIMMEAN on the wasm path', async () => {

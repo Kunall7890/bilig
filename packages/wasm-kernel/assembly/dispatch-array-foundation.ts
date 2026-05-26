@@ -1,6 +1,6 @@
 import { BuiltinId, ErrorCode, ValueTag } from './protocol'
 import { inputCellScalarValue, inputCellTag, inputColsFromSlot, inputRowsFromSlot, toNumberOrNaN, toNumberOrZero } from './operands'
-import { coerceNumberArg, coercePositiveIntegerArg } from './builtin-args'
+import { coerceNumberArg, coercePositiveIntegerArg, scalarErrorAt } from './builtin-args'
 import { STACK_KIND_ARRAY, STACK_KIND_RANGE, STACK_KIND_SCALAR, writeArrayResult, writeResult } from './result-io'
 import { allocateSpillArrayResult, writeSpillArrayNumber, writeSpillArrayValue } from './vm'
 import {
@@ -40,6 +40,10 @@ export function tryApplyArrayFoundationBuiltin(
   if (builtinId == BuiltinId.Sequence) {
     if (argc < 1 || argc > 4) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const scalarError = scalarErrorAt(base, argc, kindStack, tagStack, valueStack)
+    if (scalarError >= 0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const rows = coercePositiveIntegerArg(tagStack[base], valueStack[base], argc >= 1, 1)
     const cols = coercePositiveIntegerArg(tagStack[base + 1], valueStack[base + 1], argc >= 2, 1)

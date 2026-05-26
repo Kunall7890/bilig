@@ -154,6 +154,10 @@ describe('formula builtins', () => {
       tag: ValueTag.Error,
       code: ErrorCode.Value,
     })
+    expect(SEQUENCE({ tag: ValueTag.Error, code: ErrorCode.NA })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
+    })
   })
 
   it('supports Bessel engineering builtins', () => {
@@ -462,7 +466,6 @@ describe('formula builtins', () => {
         { tag: ValueTag.Boolean, value: true },
       ),
     ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
-
     expect(getBuiltin('MAX')?.({ tag: ValueTag.Number, value: 3 }, { tag: ValueTag.Boolean, value: true })).toEqual({
       tag: ValueTag.Number,
       value: 3,
@@ -982,6 +985,10 @@ describe('formula builtins', () => {
       tag: ValueTag.Error,
       code: ErrorCode.Value,
     })
+    expect(getBuiltin('RANDBETWEEN')?.({ tag: ValueTag.Error, code: ErrorCode.NA }, { tag: ValueTag.Number, value: 1 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
+    })
     expect(getBuiltin('BASE')?.({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 2 })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Num,
@@ -1022,6 +1029,14 @@ describe('formula builtins', () => {
     expect(getBuiltin('MUNIT')?.({ tag: ValueTag.Number, value: 0 })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,
+    })
+    expect(getBuiltin('MUNIT')?.({ tag: ValueTag.Error, code: ErrorCode.NA })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
+    })
+    expect(getBuiltin('RANDARRAY')?.({ tag: ValueTag.Error, code: ErrorCode.NA }, { tag: ValueTag.Number, value: 1 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
     })
     expect(
       getBuiltin('SERIESSUM')?.(
@@ -2032,6 +2047,10 @@ describe('formula builtins', () => {
     expect(
       getBuiltin('ADDRESS')?.({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 5 }),
     ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(getBuiltin('ADDRESS')?.({ tag: ValueTag.Error, code: ErrorCode.NA }, { tag: ValueTag.Number, value: 1 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
+    })
     expect(
       getBuiltin('ADDRESS')?.(
         { tag: ValueTag.Number, value: 1 },
@@ -2054,6 +2073,14 @@ describe('formula builtins', () => {
       tag: ValueTag.Error,
       code: ErrorCode.Value,
     })
+    expect(getBuiltin('DOLLAR')?.({ tag: ValueTag.Error, code: ErrorCode.NA }, { tag: ValueTag.Number, value: 2 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
+    })
+    expect(getBuiltin('FIXED')?.({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Error, code: ErrorCode.NA })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
+    })
     expect(getBuiltin('DOLLAR')?.({ tag: ValueTag.Number, value: 10 }, { tag: ValueTag.Number, value: 1.5 })).toEqual({
       tag: ValueTag.String,
       value: '$10.0',
@@ -2062,6 +2089,14 @@ describe('formula builtins', () => {
     expect(getBuiltin('DOLLARDE')?.({ tag: ValueTag.Number, value: 1.5 }, { tag: ValueTag.Number, value: 0 })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,
+    })
+    expect(getBuiltin('DOLLARDE')?.({ tag: ValueTag.Error, code: ErrorCode.NA }, { tag: ValueTag.Number, value: 16 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
+    })
+    expect(getBuiltin('DOLLARFR')?.({ tag: ValueTag.Number, value: 1.5 }, { tag: ValueTag.Error, code: ErrorCode.NA })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
     })
     expect(getBuiltin('DOLLARDE')?.({ tag: ValueTag.Number, value: 1.6 }, { tag: ValueTag.Number, value: 2 })).toEqual({
       tag: ValueTag.Error,

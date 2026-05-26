@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BuiltinId, Opcode, ValueTag, type CellValue } from '@bilig/protocol'
+import { BuiltinId, ErrorCode, Opcode, ValueTag, type CellValue } from '@bilig/protocol'
 import { createKernel, type KernelInstance } from '../index.js'
 
 const OUTPUT_STRING_BASE = 2147483648
@@ -10,6 +10,10 @@ function encodeCall(builtinId: number, argc: number): number {
 
 function encodePushNumber(constantIndex: number): number {
   return (Opcode.PushNumber << 24) | constantIndex
+}
+
+function encodePushError(code: ErrorCode): number {
+  return (Opcode.PushError << 24) | code
 }
 
 function encodePushRange(rangeIndex: number): number {
@@ -200,6 +204,42 @@ describe('wasm kernel array dispatch slab', () => {
       { tag: ValueTag.Number, value: 15 },
       { tag: ValueTag.Number, value: 21 },
     ])
+  })
+
+  it('preserves error codes for SEQUENCE inputs on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 6
+    kernel.init(24, 3, 0, 1, 1)
+    kernel.writeCells(new Uint8Array(24), new Float64Array(24), new Uint32Array(24), new Uint16Array(24))
+
+    const packed = packPrograms([
+      [encodePushError(ErrorCode.NA), encodeCall(BuiltinId.Sequence, 1), encodeRet()],
+      [encodePushNumber(0), encodePushError(ErrorCode.Ref), encodeCall(BuiltinId.Sequence, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(0), encodePushError(ErrorCode.Name), encodeCall(BuiltinId.Sequence, 3), encodeRet()],
+      [
+        encodePushNumber(0),
+        encodePushNumber(0),
+        encodePushNumber(0),
+        encodePushError(ErrorCode.Num),
+        encodeCall(BuiltinId.Sequence, 4),
+        encodeRet(),
+      ],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 4 }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([[1], [1], [1], [1]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 4 }, (_, index) => cellIndex(1, index, width))))
+
+    const expectedErrors = [ErrorCode.NA, ErrorCode.Ref, ErrorCode.Name, ErrorCode.Num]
+    for (let index = 0; index < expectedErrors.length; index += 1) {
+      expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Error)
+      expect(kernel.readErrors()[cellIndex(1, index, width)]).toBe(expectedErrors[index])
+    }
   })
 
   it('keeps array window builtins stable on the wasm path', async () => {
