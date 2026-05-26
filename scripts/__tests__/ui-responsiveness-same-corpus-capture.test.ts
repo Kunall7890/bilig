@@ -392,7 +392,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     ).rejects.toThrow('same-corpus UI measurement for bilig is missing scroll-event response samples')
   })
 
-  it('allows operation-only measurements for non-scroll same-corpus workloads', async () => {
+  it('allows operation-only measurements for non-scroll non-mutating same-corpus workloads', async () => {
     const measuredWorkloads: string[] = []
     const measurements = await collectSameCorpusProductMeasurements(
       {
@@ -423,12 +423,45 @@ describe('same-corpus UI responsiveness capture CLI', () => {
           limitations: [],
         }
       },
-      'edit-visible-cell',
+      'select-cell',
     )
 
-    expect(measuredWorkloads).toEqual(['edit-visible-cell', 'edit-visible-cell', 'edit-visible-cell'])
+    expect(measuredWorkloads).toEqual(['select-cell', 'select-cell', 'select-cell'])
     expect(measurements.bilig.source).toBe('http://127.0.0.1:5173/?benchmarkCorpus=wide-mixed-250k')
     expect(measurements.googleSheets.scrollEventResponseMsSamples).toBeUndefined()
+  })
+
+  it('rejects mutating measurements without committed target proof samples', async () => {
+    await expect(
+      collectSameCorpusProductMeasurements(
+        {
+          biligUrl: 'http://127.0.0.1:5173/?benchmarkCorpus=wide-mixed-250k',
+          googleSheetsUrl: 'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+          microsoftExcelWebUrl: 'https://view.officeapps.live.com/op/view.aspx?src=example.xlsx',
+        },
+        async (product, url) => ({
+          product,
+          source: url,
+          operationResponseMsSamples: [10, 11, 12],
+          ...(product === 'bilig' ? { authoritativeRenderProofMsSamples: [14, 15, 16] } : {}),
+          postOperationFrameMsSamples: [8, 9, 10],
+          corpusVerification: {
+            verified: true,
+            method:
+              product === 'bilig'
+                ? 'bilig-benchmark-state'
+                : product === 'google-sheets'
+                  ? 'google-sheets-xlsx-export'
+                  : 'microsoft-excel-web-source-xlsx',
+            sheetName: 'WideGrid',
+            materializedCells: 250000,
+            checkedCells: [],
+          },
+          limitations: [],
+        }),
+        'edit-visible-cell',
+      ),
+    ).rejects.toThrow('same-corpus UI measurement for bilig is missing committed target proof samples')
   })
 
   it('declares the fixed same-corpus workload suite in capture order', () => {

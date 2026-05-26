@@ -258,6 +258,14 @@ function assertSameCorpusProductMeasurement(
       measurement.operationResponseMsSamples.length,
     )
   }
+  if (uiSameCorpusWorkloadMutatesWorkbook(workload)) {
+    assertSameCorpusSampleArray(
+      product,
+      'committed target proof',
+      measurement.committedTargetProofMsSamples,
+      measurement.operationResponseMsSamples.length,
+    )
+  }
 }
 
 function assertSameCorpusSampleArray(
