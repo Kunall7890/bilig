@@ -42,6 +42,13 @@ describe('math builtins', () => {
     expect(getBuiltin('FLOOR')?.(num(-2.5), num(-2))).toEqual(num(-2))
   })
 
+  it('matches Microsoft Excel square-root negative-domain errors', () => {
+    expect(getBuiltin('SQRT')?.(num(-1))).toEqual(numError)
+    expect(getBuiltin('SQRTPI')?.(num(-1))).toEqual(numError)
+    expect(getBuiltin('SQRT')?.(str('bad'))).toEqual(valueError)
+    expect(getBuiltin('SQRTPI')?.(str('bad'))).toEqual(valueError)
+  })
+
   it('matches Microsoft Excel numeric-domain errors for combinatoric functions', () => {
     expect(getBuiltin('FACT')?.(num(-1))).toEqual(numError)
     expect(getBuiltin('FACTDOUBLE')?.(num(-1))).toEqual(numError)

@@ -154,7 +154,17 @@ export function createMathBuiltins({
       return finiteNumberOrNumError(result, numberResult, numError)
     },
     POWER: (base, exponent) => binaryMath(base, exponent, excelPower),
-    SQRT: (value) => unaryMath(value, Math.sqrt),
+    SQRT: (value) => {
+      const error = firstError([value])
+      if (error) {
+        return error
+      }
+      const numeric = toNumber(value)
+      if (numeric === undefined) {
+        return valueError()
+      }
+      return numeric < 0 ? numError() : finiteNumberOrNumError(Math.sqrt(numeric), numberResult, numError)
+    },
     PI: () => numberResult(Math.PI),
     SINH: (value) => unaryMath(value, Math.sinh),
     COSH: (value) => unaryMath(value, Math.cosh),

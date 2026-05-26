@@ -445,14 +445,18 @@ export function tryApplyScalarMathBuiltin(
     )
   }
   if (builtinId == BuiltinId.Sqrt && argc == 1) {
-    return writeScalarMathNumber(
-      base,
-      Math.sqrt(toNumberOrZero(tagStack[base], valueStack[base])),
-      rangeIndexStack,
-      valueStack,
-      tagStack,
-      kindStack,
-    )
+    const error = firstScalarMathError(base, argc, valueStack, tagStack)
+    if (error != ErrorCode.None) {
+      return writeScalarMathError(base, error, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const numeric = toNumberExact(tagStack[base], valueStack[base])
+    if (isNaN(numeric)) {
+      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (numeric < 0.0) {
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    return writeScalarMathNumber(base, Math.sqrt(numeric), rangeIndexStack, valueStack, tagStack, kindStack)
   }
   if (builtinId == BuiltinId.Seriessum && argc >= 3) {
     const x = toNumberExact(tagStack[base], valueStack[base])
@@ -469,10 +473,17 @@ export function tryApplyScalarMathBuiltin(
     return writeScalarMathNumber(base, sum, rangeIndexStack, valueStack, tagStack, kindStack)
   }
   if (builtinId == BuiltinId.Sqrtpi && argc == 1) {
+    const error = firstScalarMathError(base, argc, valueStack, tagStack)
+    if (error != ErrorCode.None) {
+      return writeScalarMathError(base, error, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const numeric = toNumberExact(tagStack[base], valueStack[base])
-    const result = isNaN(numeric) ? NaN : Math.sqrt(numeric * Math.PI)
+    if (isNaN(numeric)) {
+      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const result = Math.sqrt(numeric * Math.PI)
     return !isFinite(result)
-      ? writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      ? writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeScalarMathNumber(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
   }
   if (builtinId == BuiltinId.Pi && argc == 0) {

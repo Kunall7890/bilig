@@ -929,7 +929,7 @@ describe('formula builtins', () => {
     })
     expect(getBuiltin('SQRT')?.({ tag: ValueTag.Number, value: -1 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('COT')?.({ tag: ValueTag.Number, value: 0 })).toEqual({
       tag: ValueTag.Error,
@@ -1029,6 +1029,10 @@ describe('formula builtins', () => {
     expect(getBuiltin('SQRTPI')?.({ tag: ValueTag.String, value: 'bad', stringId: 1 })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,
+    })
+    expect(getBuiltin('SQRTPI')?.({ tag: ValueTag.Number, value: -1 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
     })
     expect(
       getBuiltin('SUBTOTAL')?.({ tag: ValueTag.Number, value: 9 }, { tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Number, value: 3 }),

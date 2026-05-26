@@ -652,8 +652,15 @@ const scalarBuiltins: Record<string, Builtin> = {
     return numberResult(sum)
   },
   SQRTPI: (value) => {
+    if (value.tag === ValueTag.Error) {
+      return value
+    }
     const numeric = toNumber(value)
-    return numeric === undefined ? valueError() : numericResultOrError(Math.sqrt(numeric * Math.PI))
+    if (numeric === undefined) {
+      return valueError()
+    }
+    const result = Math.sqrt(numeric * Math.PI)
+    return numeric < 0 || !Number.isFinite(result) ? numError() : numberResult(result)
   },
   SUMSQ: (...args) => {
     const error = firstError(args)

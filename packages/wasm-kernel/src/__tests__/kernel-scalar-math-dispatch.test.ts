@@ -397,6 +397,40 @@ describe('wasm kernel scalar math dispatch', () => {
     expect(kernel.readErrors()[cellIndex(1, 4, width)]).toBe(ErrorCode.Value)
   })
 
+  it('returns Excel-compatible square-root domain errors through wasm dispatch', async () => {
+    const kernel = await createKernel()
+    const width = 16
+    kernel.init(32, 1, 8, 1, 1)
+    const strings = packStrings(['bad'])
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+    kernel.writeCells(new Uint8Array(32), new Float64Array(32), new Uint32Array(32), new Uint16Array(32))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodeCall(BuiltinId.Sqrt, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Sqrtpi, 1), encodeRet()],
+      [encodePushString(0), encodeCall(BuiltinId.Sqrt, 1), encodeRet()],
+      [encodePushString(0), encodeCall(BuiltinId.Sqrtpi, 1), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 4 }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([[-1], [-1], [], []])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 4 }, (_, index) => cellIndex(1, index, width))))
+
+    for (let index = 0; index < 2; index += 1) {
+      expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Error)
+      expect(kernel.readErrors()[cellIndex(1, index, width)]).toBe(ErrorCode.Num)
+    }
+    for (let index = 2; index < 4; index += 1) {
+      expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Error)
+      expect(kernel.readErrors()[cellIndex(1, index, width)]).toBe(ErrorCode.Value)
+    }
+  })
+
   it('keeps bessel and combinatorics dispatch stable across refactors', async () => {
     const kernel = await createKernel()
     const width = 32
