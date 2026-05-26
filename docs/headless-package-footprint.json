@@ -36,6 +36,7 @@
       "@bilig/core",
       "@bilig/formula",
       "@bilig/protocol",
+      "@bilig/wasm-kernel",
       "fast-xml-parser",
       "fflate",
       "fflate-stream",
@@ -47,11 +48,11 @@
     "hasMcpBinary": true
   },
   "npmPackDryRun": {
-    "tarballBytes": 800645,
-    "unpackedBytes": 4910678,
-    "entryCount": 780,
-    "readmeBytes": 47547,
-    "packageJsonBytes": 3063
+    "tarballBytes": 812407,
+    "unpackedBytes": 4975848,
+    "entryCount": 801,
+    "readmeBytes": 47955,
+    "packageJsonBytes": 3104
   },
   "coldStartProbe": {
     "runtime": "node",
