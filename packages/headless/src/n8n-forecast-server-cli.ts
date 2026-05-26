@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 
-import { createN8nForecastProof, type N8nForecastRequestBody } from './n8n-forecast-proof.js'
+import { createN8nForecastProof } from './n8n-forecast-proof.js'
+import { createN8nWorkPaperEvaluationProof } from './n8n-workpaper-evaluation-proof.js'
 
 export type N8nForecastServerCliHost = {
   argv: string[]
@@ -39,6 +40,7 @@ export function runN8nForecastServerCli(host: N8nForecastServerCliHost): number 
       const baseUrl = `http://${options.host}:${options.port}`
       writeStdout(`Bilig n8n formula server listening on ${baseUrl}\n`)
       writeStdout(`POST ${baseUrl}/api/workpaper/n8n/forecast\n`)
+      writeStdout(`POST ${baseUrl}/api/workpaper/n8n/evaluate\n`)
       writeStdout('Use host.docker.internal from n8n Docker when this server runs on the host.\n')
     })
     return 0
@@ -85,12 +87,16 @@ export function n8nForecastServerHelpText(): string {
     '',
     'Endpoint:',
     '  POST /api/workpaper/n8n/forecast',
+    '  POST /api/workpaper/n8n/evaluate',
     '',
     'Example:',
     '  npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321',
     '  curl -sS -X POST http://localhost:4321/api/workpaper/n8n/forecast \\',
     "    -H 'content-type: application/json' \\",
     '    --data \'{"sheetName":"Inputs","address":"B3","value":0.4}\'',
+    '  curl -sS -X POST http://localhost:4321/api/workpaper/n8n/evaluate \\',
+    "    -H 'content-type: application/json' \\",
+    '    --data \'{"document":{"format":"bilig.headless.work-paper.document.v1","sheets":[{"name":"Inputs","content":[["Metric","Value"],["Win rate",0.25]]},{"name":"Summary","content":[["Metric","Value"],["Expected customers","=Inputs!B2*20"]]}],"namedExpressions":[]},"edits":[{"cell":"Inputs!B2","value":0.4}],"readCells":["Summary!B2"]}\'',
     '',
     'Environment:',
     '  BILIG_N8N_HOST   Override the listen host. Defaults to 127.0.0.1.',
@@ -113,16 +119,20 @@ async function handleN8nForecastHttpRequest(request: IncomingMessage, response: 
     return
   }
 
-  if (request.method !== 'POST' || request.url !== '/api/workpaper/n8n/forecast') {
+  if (request.method !== 'POST' || !isN8nPostEndpoint(request.url)) {
     writeJson(response, 404, {
       verified: false,
-      error: 'Use POST /api/workpaper/n8n/forecast',
+      error: 'Use POST /api/workpaper/n8n/forecast or POST /api/workpaper/n8n/evaluate',
     })
     return
   }
 
   try {
     const body = await readJsonBody(request)
+    if (request.url === '/api/workpaper/n8n/evaluate') {
+      writeJson(response, 200, createN8nWorkPaperEvaluationProof(body))
+      return
+    }
     writeJson(response, 200, createN8nForecastProof(body))
   } catch (error) {
     writeJson(response, 400, {
@@ -132,7 +142,11 @@ async function handleN8nForecastHttpRequest(request: IncomingMessage, response: 
   }
 }
 
-async function readJsonBody(request: IncomingMessage): Promise<N8nForecastRequestBody> {
+function isN8nPostEndpoint(url: string | undefined): boolean {
+  return url === '/api/workpaper/n8n/forecast' || url === '/api/workpaper/n8n/evaluate'
+}
+
+async function readJsonBody(request: IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = []
   let totalBytes = 0
 
@@ -155,10 +169,14 @@ async function readJsonBody(request: IncomingMessage): Promise<N8nForecastReques
   }
 
   const parsed: unknown = JSON.parse(text)
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+  if (!isJsonObject(parsed)) {
     throw new Error('Request body must be a JSON object')
   }
-  return parsed as N8nForecastRequestBody
+  return parsed
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function writeJson(response: ServerResponse, statusCode: number, body: unknown): void {

@@ -4,7 +4,7 @@ import { WorkPaper } from './work-paper.js'
 type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
 type CellAddress = NonNullable<ReturnType<WorkPaperInstance['simpleCellAddressFromString']>>
 
-export type N8nForecastRequestBody = {
+export type N8nForecastRequestBody = Record<string, unknown> & {
   sheetName?: unknown
   address?: unknown
   value?: unknown

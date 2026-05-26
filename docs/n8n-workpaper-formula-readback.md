@@ -25,6 +25,17 @@ The node is a thin HTTP integration around the same formula-readback endpoint.
 It has no credentials for the hosted demo path; point `Bilig Base URL` at your
 own Bilig deployment for production data.
 
+The community node also has a `WorkPaper JSON` -> `Evaluate Document` operation
+for user-owned workbook state. That operation posts a WorkPaper JSON document,
+cell edits, and readback cells to:
+
+```text
+POST /api/workpaper/n8n/evaluate
+```
+
+Use it when the workflow already owns the workbook model and needs the next n8n
+node to receive both formula readback proof and the updated WorkPaper JSON.
+
 ## Importable Workflow
 
 The example workflows live in:
@@ -58,6 +69,13 @@ Start the local formula-readback server from npm; no Bilig checkout is needed:
 
 ```sh
 npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321
+```
+
+The same server exposes both endpoints:
+
+```text
+POST /api/workpaper/n8n/forecast
+POST /api/workpaper/n8n/evaluate
 ```
 
 The self-hosted workflow defaults to that local Bilig endpoint:
@@ -134,6 +152,10 @@ inspectable proof with only built-in nodes.
 
 The hosted workflow is a demo. It sends the selected sheet name, cell address,
 and value to `bilig.proompteng.ai`.
+
+The generic `Evaluate Document` operation sends the provided WorkPaper JSON
+document to the configured Bilig base URL. For private workbook data, run the
+server inside your own network and point the n8n node at that internal URL.
 
 For production data, use the self-hosted workflow and keep the Bilig route on
 your own network. That removes the public hosted dependency while keeping the

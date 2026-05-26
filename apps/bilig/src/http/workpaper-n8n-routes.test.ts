@@ -1,5 +1,6 @@
 import Fastify from 'fastify'
 import { describe, expect, it } from 'vitest'
+import { buildN8nForecastWorkPaper, exportWorkPaperDocument } from '@bilig/headless'
 import { registerWorkPaperN8nRoutes } from './workpaper-n8n-routes.js'
 
 describe('workpaper n8n forecast route', () => {
@@ -71,6 +72,63 @@ describe('workpaper n8n forecast route', () => {
         verified: false,
         error: 'Editable input address must be one of B2, B3, B4, B5',
       })
+    } finally {
+      await app.close()
+    }
+  })
+
+  it('evaluates caller-provided WorkPaper documents', async () => {
+    const app = Fastify({ logger: false })
+    registerWorkPaperN8nRoutes(app)
+
+    try {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/workpaper/n8n/evaluate',
+        payload: {
+          document: exportWorkPaperDocument(buildN8nForecastWorkPaper(), { includeConfig: true }),
+          edits: [
+            {
+              cell: 'Inputs!B3',
+              value: 0.4,
+            },
+          ],
+          readCells: ['Summary!B3'],
+          includeUpdatedDocument: false,
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json()).toMatchObject({
+        verified: true,
+        editedCells: [
+          {
+            cell: 'Inputs!B3',
+            previousValue: 0.25,
+            newValue: 0.4,
+          },
+        ],
+        readback: {
+          before: [
+            {
+              cell: 'Summary!B3',
+              displayValue: '60000',
+            },
+          ],
+          after: [
+            {
+              cell: 'Summary!B3',
+              displayValue: '96000',
+            },
+          ],
+        },
+        checks: {
+          restoredMatchesAfter: true,
+          formulasPersisted: true,
+          computedOutputChanged: true,
+        },
+      })
+      expect(response.json()).not.toHaveProperty('updatedDocument')
     } finally {
       await app.close()
     }

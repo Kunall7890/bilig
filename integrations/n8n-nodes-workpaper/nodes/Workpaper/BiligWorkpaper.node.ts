@@ -4,9 +4,18 @@ const forecastResource = {
   resource: ['forecast'],
 }
 
+const workpaperResource = {
+  resource: ['workpaper'],
+}
+
 const verifyForecastReadback = {
   resource: ['forecast'],
   operation: ['verifyReadback'],
+}
+
+const evaluateWorkpaperDocument = {
+  resource: ['workpaper'],
+  operation: ['evaluateDocument'],
 }
 
 export class BiligWorkpaper implements INodeType {
@@ -43,6 +52,10 @@ export class BiligWorkpaper implements INodeType {
             name: 'Forecast',
             value: 'forecast',
           },
+          {
+            name: 'WorkPaper JSON',
+            value: 'workpaper',
+          },
         ],
         default: 'forecast',
       },
@@ -69,6 +82,30 @@ export class BiligWorkpaper implements INodeType {
           },
         ],
         default: 'verifyReadback',
+      },
+      {
+        displayName: 'Operation',
+        name: 'operation',
+        type: 'options',
+        noDataExpression: true,
+        displayOptions: {
+          show: workpaperResource,
+        },
+        options: [
+          {
+            name: 'Evaluate Document',
+            value: 'evaluateDocument',
+            action: 'Evaluate workpaper document',
+            description: 'Apply cell edits to a WorkPaper JSON document and return formula readback proof',
+            routing: {
+              request: {
+                method: 'POST',
+                url: '/api/workpaper/n8n/evaluate',
+              },
+            },
+          },
+        ],
+        default: 'evaluateDocument',
       },
       {
         displayName: 'Bilig Base URL',
@@ -144,6 +181,74 @@ export class BiligWorkpaper implements INodeType {
           send: {
             type: 'body',
             property: 'value',
+          },
+        },
+      },
+      {
+        displayName: 'Document JSON',
+        name: 'document',
+        type: 'json',
+        default:
+          '{"format":"bilig.headless.work-paper.document.v1","sheets":[{"name":"Inputs","content":[["Metric","Value"],["Win rate",0.25]]},{"name":"Summary","content":[["Metric","Value"],["Expected customers","=Inputs!B2*20"]]}],"namedExpressions":[]}',
+        required: true,
+        displayOptions: {
+          show: evaluateWorkpaperDocument,
+        },
+        description: 'Bilig WorkPaper JSON document to evaluate',
+        routing: {
+          send: {
+            type: 'body',
+            property: 'document',
+          },
+        },
+      },
+      {
+        displayName: 'Edits JSON',
+        name: 'edits',
+        type: 'json',
+        default: '[{"cell":"Inputs!B2","value":0.4}]',
+        required: true,
+        displayOptions: {
+          show: evaluateWorkpaperDocument,
+        },
+        description: 'Cell edits to apply before readback, for example [{"cell":"Inputs!B2","value":0.4}]',
+        routing: {
+          send: {
+            type: 'body',
+            property: 'edits',
+          },
+        },
+      },
+      {
+        displayName: 'Read Cells',
+        name: 'readCells',
+        type: 'string',
+        default: 'Summary!B2',
+        required: true,
+        displayOptions: {
+          show: evaluateWorkpaperDocument,
+        },
+        description: 'Comma-separated cells to read before, after, and after JSON restore',
+        routing: {
+          send: {
+            type: 'body',
+            property: 'readCells',
+          },
+        },
+      },
+      {
+        displayName: 'Include Updated Document',
+        name: 'includeUpdatedDocument',
+        type: 'boolean',
+        default: true,
+        displayOptions: {
+          show: evaluateWorkpaperDocument,
+        },
+        description: 'Whether to include the updated WorkPaper JSON document in the output',
+        routing: {
+          send: {
+            type: 'body',
+            property: 'includeUpdatedDocument',
           },
         },
       },

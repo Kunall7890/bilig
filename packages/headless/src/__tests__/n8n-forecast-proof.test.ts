@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { createN8nForecastProof } from '../n8n-forecast-proof.js'
+import { exportWorkPaperDocument } from '../persistence.js'
+import { buildN8nForecastWorkPaper, createN8nForecastProof } from '../n8n-forecast-proof.js'
 import { n8nForecastServerHelpText, parseN8nForecastServerCliArgs } from '../n8n-forecast-server-cli.js'
+import { createN8nWorkPaperEvaluationProof } from '../n8n-workpaper-evaluation-proof.js'
 
 describe('n8n formula readback proof', () => {
   it('returns formula readback and restore proof for one input edit', () => {
@@ -66,6 +68,72 @@ describe('n8n formula readback proof', () => {
       port: 8787,
     })
     expect(n8nForecastServerHelpText()).toContain('bilig-n8n-formula-server')
+    expect(n8nForecastServerHelpText()).toContain('/api/workpaper/n8n/evaluate')
     expect(() => parseN8nForecastServerCliArgs(['--bad'], {})).toThrow('Unknown bilig-n8n-formula-server argument')
+  })
+
+  it('evaluates a caller-provided WorkPaper document for n8n workflows', () => {
+    const proof = createN8nWorkPaperEvaluationProof({
+      document: exportWorkPaperDocument(buildN8nForecastWorkPaper(), { includeConfig: true }),
+      edits: [
+        {
+          cell: 'Inputs!B3',
+          value: 0.4,
+        },
+      ],
+      readCells: ['Summary!B3'],
+    })
+
+    expect(proof).toMatchObject({
+      verified: true,
+      editedCells: [
+        {
+          cell: 'Inputs!B3',
+          previousValue: 0.25,
+          newValue: 0.4,
+        },
+      ],
+      readback: {
+        before: [
+          {
+            cell: 'Summary!B3',
+            displayValue: '60000',
+          },
+        ],
+        after: [
+          {
+            cell: 'Summary!B3',
+            displayValue: '96000',
+          },
+        ],
+        restored: [
+          {
+            cell: 'Summary!B3',
+            displayValue: '96000',
+          },
+        ],
+      },
+      checks: {
+        restoredMatchesAfter: true,
+        formulasPersisted: true,
+        computedOutputChanged: true,
+      },
+      updatedDocument: {
+        format: 'bilig.headless.work-paper.document.v1',
+      },
+    })
+  })
+
+  it('rejects generic n8n evaluation without a WorkPaper document', () => {
+    expect(() =>
+      createN8nWorkPaperEvaluationProof({
+        edits: [
+          {
+            cell: 'Inputs!B3',
+            value: 0.4,
+          },
+        ],
+      }),
+    ).toThrow('document is required')
   })
 })

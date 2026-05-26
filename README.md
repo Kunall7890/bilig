@@ -84,6 +84,11 @@ community node, install:
 @bilig/n8n-nodes-workpaper
 ```
 
+It has two operations: `Forecast` -> `Verify Formula Readback` for a hosted
+smoke test, and `WorkPaper JSON` -> `Evaluate Document` for workflows that send
+their own WorkPaper JSON, apply edits, read formula outputs, and receive the
+updated document.
+
 If you want a zero-install proof first, import the built-in-node workflow:
 
 ```text

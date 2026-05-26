@@ -2,10 +2,11 @@
 
 This is a Bilig WorkPaper community node for n8n.
 
-It gives an n8n workflow one small spreadsheet-shaped operation:
+It gives an n8n workflow two spreadsheet-shaped operations:
 
-1. write a forecast input cell;
-2. recalculate dependent formulas in Bilig;
+1. run the hosted forecast proof for a no-setup smoke test;
+2. send your own WorkPaper JSON document, apply cell edits, and read formula
+   outputs back;
 3. return before/after values plus proof that formula output changed and the
    exported WorkPaper JSON restores to the same result.
 
@@ -53,6 +54,52 @@ Default parameters:
 }
 ```
 
+### WorkPaper JSON: Evaluate Document
+
+Posts to:
+
+```text
+POST https://bilig.proompteng.ai/api/workpaper/n8n/evaluate
+```
+
+Default request shape:
+
+```json
+{
+  "document": {
+    "format": "bilig.headless.work-paper.document.v1",
+    "sheets": [
+      {
+        "name": "Inputs",
+        "content": [
+          ["Metric", "Value"],
+          ["Win rate", 0.25]
+        ]
+      },
+      {
+        "name": "Summary",
+        "content": [
+          ["Metric", "Value"],
+          ["Expected customers", "=Inputs!B2*20"]
+        ]
+      }
+    ],
+    "namedExpressions": []
+  },
+  "edits": [
+    {
+      "cell": "Inputs!B2",
+      "value": 0.4
+    }
+  ],
+  "readCells": "Summary!B2",
+  "includeUpdatedDocument": true
+}
+```
+
+The response includes before, after, and restored readback records plus an
+updated WorkPaper document when `includeUpdatedDocument` is enabled.
+
 The response includes:
 
 ```json
@@ -87,16 +134,18 @@ community nodes.
 ## Usage
 
 1. Add the Bilig WorkPaper node to a workflow.
-2. Choose `Forecast` as the resource.
-3. Choose `Verify Formula Readback` as the operation.
+2. Choose `Forecast` for the hosted smoke test or `WorkPaper JSON` for a custom
+   document.
+3. Choose `Verify Formula Readback` or `Evaluate Document`.
 4. Keep the default hosted base URL or point `Bilig Base URL` at your own Bilig
    app.
-5. Pick an editable input cell:
+5. For the forecast smoke test, pick an editable input cell:
    - `B2`: qualified opportunities
    - `B3`: win rate
    - `B4`: average ARR
    - `B5`: expansion multiplier
-6. Use the returned `verified` and `checks` fields as a gate before the workflow
+6. For custom documents, set `Document JSON`, `Edits JSON`, and `Read Cells`.
+7. Use the returned `verified` and `checks` fields as a gate before the workflow
    continues.
 
 For a no-install workflow, see:
@@ -114,6 +163,8 @@ examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.jso
 
 ## Version history
 
+- `0.2.0`: add a generic WorkPaper JSON evaluation operation for user-owned
+  documents.
 - `0.1.2`: align the node codex category with n8n's supported `Development`
   category.
 - `0.1.1`: publish through the shared trusted-publishing workflow.
