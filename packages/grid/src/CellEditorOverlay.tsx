@@ -736,7 +736,7 @@ export function CellEditorOverlay({
     input.setSelectionRange(start, end, restore.direction)
   })
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (completionRef.current !== 'idle') {
       return
     }
@@ -757,7 +757,24 @@ export function CellEditorOverlay({
         }
         draftValueRef.current = value
         rememberEditorHistoryCurrent({ selection: mirroredSelection, value })
+        return
       }
+      if (!value.startsWith(localValue) || value.length <= localValue.length) {
+        return
+      }
+      const rawSelectionStart = input.selectionStart ?? localValue.length
+      const rawSelectionEnd = input.selectionEnd ?? localValue.length
+      const nextSelection = {
+        direction: input.selectionDirection ?? 'none',
+        end: rawSelectionEnd >= localValue.length ? value.length : clampTextOffset(rawSelectionEnd, value.length),
+        start: rawSelectionStart >= localValue.length ? value.length : clampTextOffset(rawSelectionStart, value.length),
+      } as const
+      draftValueRef.current = value
+      pendingKeyboardSelectionRef.current = nextSelection
+      input.value = value
+      input.setSelectionRange(nextSelection.start, nextSelection.end, nextSelection.direction)
+      syncTextareaHeight(input)
+      rememberEditorHistoryCurrent({ selection: nextSelection, value })
       return
     }
     if (input && document.activeElement === input) {

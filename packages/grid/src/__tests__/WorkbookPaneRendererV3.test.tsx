@@ -631,7 +631,7 @@ describe('WorkbookPaneRendererV3', () => {
     expect(occludedPanes[0]?.tile.textSignature).toBeUndefined()
   })
 
-  test('drops active editor cell text runs before TypeGPU source proof sees them', () => {
+  test('filters active editor cell text runs for native editor overlay rendering', () => {
     const pane = createTextTilePane()
     const baseRun = pane.tile.textRuns[0]
     const activeRun = {

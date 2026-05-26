@@ -563,6 +563,7 @@ function parseSameCorpusMutationTargetProof(value: unknown): SameCorpusMutationT
     sampleIndex: numberField(record, 'sampleIndex'),
     workload: parseSameCorpusWorkload(stringField(record, 'workload')),
     intendedOperation: parseSameCorpusMutatingWorkload(stringField(record, 'intendedOperation')),
+    intendedPayload: parseSameCorpusMutationTargetIntendedPayload(objectField(record, 'intendedPayload')),
     sheetName: stringField(record, 'sheetName'),
     targetRange: stringField(record, 'targetRange'),
     before: parseSameCorpusMutationTargetReadback(objectField(record, 'before')),
@@ -576,9 +577,24 @@ function parseSameCorpusMutationTargetProof(value: unknown): SameCorpusMutationT
       : missingSameCorpusMutationTargetReadback(),
     authoritativeReadbackRevision: nullableStringField(record, 'authoritativeReadbackRevision'),
     visibleRenderRevision: nullableStringField(record, 'visibleRenderRevision'),
+    screenshotPath: nullableStringField(record, 'screenshotPath'),
     screenshotSha256: nullableStringField(record, 'screenshotSha256'),
     undoRestoreStatus: parseSameCorpusMutationUndoRestoreStatus(stringField(record, 'undoRestoreStatus')),
   }
+}
+
+function parseSameCorpusMutationTargetIntendedPayload(value: Record<string, unknown>): SameCorpusMutationTargetProof['intendedPayload'] {
+  const kind = stringField(value, 'kind')
+  if (kind === 'cell-value') {
+    return { kind, value: stringField(value, 'value') }
+  }
+  if (kind === 'formula') {
+    return { kind, formula: stringField(value, 'formula') }
+  }
+  if (kind === 'fill-color') {
+    return { kind, swatchLabel: stringField(value, 'swatchLabel') }
+  }
+  throw new Error(`Unexpected UI responsiveness same-corpus mutation target payload kind: ${kind}`)
 }
 
 function missingSameCorpusMutationTargetReadback(): SameCorpusMutationTargetReadback {
@@ -592,12 +608,20 @@ function missingSameCorpusMutationTargetReadback(): SameCorpusMutationTargetRead
 }
 
 function parseSameCorpusMutationTargetReadback(value: Record<string, unknown>): SameCorpusMutationTargetReadback {
+  const batchId = optionalNumberField(value, 'batchId')
+  const capturedRevision = Object.hasOwn(value, 'capturedRevision') ? nullableStringField(value, 'capturedRevision') : undefined
+  const visibleSceneProofSha256 = Object.hasOwn(value, 'visibleSceneProofSha256')
+    ? nullableStringField(value, 'visibleSceneProofSha256')
+    : undefined
   return {
     value: nullableStringField(value, 'value'),
     formula: nullableStringField(value, 'formula'),
     fillColor: nullableStringField(value, 'fillColor'),
     visibleText: nullableStringField(value, 'visibleText'),
     source: Object.hasOwn(value, 'source') ? parseSameCorpusMutationTargetReadbackSource(stringField(value, 'source')) : 'unknown',
+    ...(batchId !== undefined ? { batchId } : {}),
+    ...(capturedRevision !== undefined ? { capturedRevision } : {}),
+    ...(visibleSceneProofSha256 !== undefined ? { visibleSceneProofSha256 } : {}),
   }
 }
 

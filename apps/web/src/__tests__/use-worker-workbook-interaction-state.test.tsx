@@ -206,6 +206,65 @@ describe('useWorkerWorkbookInteractionState', () => {
     })
   })
 
+  it('refreshes visible text when a mounted cell-editor no-op commit closes on click-away', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const selectedCell = stringCell('Sheet1', 'B2', 'editor-z-order')
+    const workerHandle = {
+      viewportStore: createViewportStoreMapStub([selectedCell, stringCell('Sheet1', 'C2', '')]),
+    }
+    const invokeMutation = vi.fn(async () => undefined)
+    const sendSelectionChanged = vi.fn()
+    const editor = document.createElement('textarea')
+    editor.dataset['testid'] = 'cell-editor-input'
+    editor.value = 'editor-z-order'
+    document.body.appendChild(editor)
+    const harness = mountHarness()
+    let captured: ReturnType<typeof useWorkerWorkbookInteractionState> | null = null
+
+    await harness.render({
+      documentId: 'doc-1',
+      selection: { sheetName: 'Sheet1', address: 'B2' },
+      selectedCell,
+      workerHandle,
+      invokeMutation,
+      sendSelectionChanged,
+      capture: (value) => {
+        captured = value
+      },
+    })
+    if (!captured) {
+      throw new Error('Expected interaction state capture')
+    }
+
+    await act(async () => {
+      captured?.beginEditing()
+      captured?.handleSelectionChange(singleCellSnapshot('Sheet1', 'C2'))
+      await Promise.resolve()
+    })
+
+    expect(invokeMutation).not.toHaveBeenCalled()
+    expect(workerHandle.viewportStore.setCellSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sheetName: 'Sheet1',
+        address: 'B2',
+        input: 'editor-z-order',
+        value: { tag: ValueTag.String, value: 'editor-z-order' },
+        version: expect.any(Number),
+      }),
+      expect.objectContaining({ localDirtyMask: expect.any(Number) }),
+    )
+    const refreshedCell = workerHandle.viewportStore.getCell('Sheet1', 'B2')
+    expect(refreshedCell.input).toBe('editor-z-order')
+    expect(refreshedCell.version).toBeGreaterThan(selectedCell.version)
+    expect(captured?.selectionRef.current).toEqual({ sheetName: 'Sheet1', address: 'C2' })
+    expect(sendSelectionChanged).toHaveBeenCalledWith({ sheetName: 'Sheet1', address: 'C2' })
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
+
   it('commits a cleared formula bar draft before applying a click-away selection', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 

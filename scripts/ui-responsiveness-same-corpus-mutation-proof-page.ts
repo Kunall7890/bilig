@@ -23,6 +23,11 @@ export interface SameCorpusMutationTargetRevisionProof {
   readonly visibleRenderRevision: string | null
 }
 
+export interface SameCorpusMutationTargetScreenshotProof {
+  readonly screenshotPath: string | null
+  readonly screenshotSha256: string | null
+}
+
 export async function readSameCorpusMutationTargetSelection(args: {
   readonly page: Page
   readonly product: UiResponsivenessSameCorpusProduct
@@ -118,12 +123,17 @@ export async function readSameCorpusVisibleMutationTargetReadback(args: {
   }
 }
 
-export async function captureSameCorpusMutationTargetScreenshotSha256(
+export async function captureSameCorpusMutationTargetScreenshotProof(
   page: Page,
   product: UiResponsivenessSameCorpusProduct,
-): Promise<string | null> {
-  const screenshot = await captureProductScreenshot(page, product)
-  return screenshot.buffer ? screenshotBufferSha256(screenshot.buffer) : null
+  screenshotPath: string,
+  relativeScreenshotPath: string,
+): Promise<SameCorpusMutationTargetScreenshotProof> {
+  const screenshot = await captureProductScreenshot(page, product, screenshotPath)
+  return {
+    screenshotPath: screenshot.captured ? relativeScreenshotPath : null,
+    screenshotSha256: screenshot.buffer ? screenshotBufferSha256(screenshot.buffer) : null,
+  }
 }
 
 export async function readSameCorpusMutationTargetRevisionProof(args: {
@@ -137,12 +147,17 @@ export async function readSameCorpusMutationTargetRevisionProof(args: {
     const surface = await readBiligRenderedSurfaceState(args.page)
     return {
       authoritativeReadbackRevision:
+        args.readback.capturedRevision ??
         surface?.gridAuthoritativeRenderRevision ??
         surface?.typeGpu?.authoritativeRenderRevision ??
         surface?.typeGpu?.currentWorkbookRevision ??
         null,
       visibleRenderRevision:
-        surface?.typeGpu?.visibleRenderRevision ?? surface?.typeGpu?.tileSceneRevision ?? surface?.gridProjectedRenderRevision ?? null,
+        (args.readback.visibleSceneProofSha256 ? `bilig-visible-scene-sha256:${args.readback.visibleSceneProofSha256}` : null) ??
+        surface?.typeGpu?.visibleRenderRevision ??
+        surface?.typeGpu?.tileSceneRevision ??
+        surface?.gridProjectedRenderRevision ??
+        null,
     }
   }
   const readbackHash = sha256Hex(stableJsonBytes({ product: args.product, readback: args.readback, target: args.target }))
@@ -157,8 +172,11 @@ export function normalizeSameCorpusMutationTargetSelection(
   sheetName: string,
 ): SameCorpusMutationTargetSelection {
   const rawRange = selectedRange?.split('!').at(-1)?.replace(/\$/gu, '').trim().toUpperCase() ?? ''
-  const match = rawRange.match(/[A-Z]+[0-9]+(?::[A-Z]+[0-9]+)?/u)
-  const targetRange = match?.[0] ?? 'A1'
+  const match = rawRange.match(/^[A-Z]+[0-9]+(?::[A-Z]+[0-9]+)?$/u)
+  if (!match) {
+    throw new Error(`Cannot derive same-corpus mutation target range from visible selection: ${selectedRange ?? 'missing'}`)
+  }
+  const targetRange = match[0]
   const [startAddress, endAddress = startAddress] = targetRange.split(':')
   return {
     endAddress,
@@ -190,11 +208,14 @@ async function readBiligMutationTargetReadback(
   const value = normalizeUnknownCellValue(cell.value ?? cell.input)
   const fillColor = normalizeNullableText(readCellFillColor(cell.style))
   return {
+    batchId: readNullableNumber(range.batchId),
+    capturedRevision: normalizeNullableText(normalizeUnknownCellValue(range.capturedRevision)),
     value,
     formula,
     fillColor,
     visibleText: value ?? formula,
     source: 'bilig-authoritative-range',
+    visibleSceneProofSha256: range.visibleSceneProof ? sha256Hex(stableJsonBytes(range.visibleSceneProof)) : null,
   }
 }
 
@@ -308,6 +329,10 @@ function normalizeUnknownCellValue(value: unknown): string | null {
   }
   const serialized = JSON.stringify(value)
   return serialized === undefined ? null : serialized
+}
+
+function readNullableNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
 function normalizeNullableText(value: string | null | undefined): string | null {

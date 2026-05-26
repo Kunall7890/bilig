@@ -1,5 +1,5 @@
 import { mkdirSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { dirname, relative, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 
 import { chromium, type Browser, type BrowserContextOptions, type Page } from '@playwright/test'
@@ -33,7 +33,7 @@ import {
   type SameCorpusProductVisualProof,
 } from './ui-responsiveness-same-corpus-proof.ts'
 import {
-  captureSameCorpusMutationTargetScreenshotSha256,
+  captureSameCorpusMutationTargetScreenshotProof,
   readSameCorpusMutationTargetReadback,
   readSameCorpusMutationTargetRevisionProof,
   readSameCorpusMutationTargetSelection,
@@ -52,6 +52,7 @@ import {
   incumbentEditableWorkloadBlocker,
   measureProductWorkload,
   restoreProductWorkbookMutation,
+  sameCorpusFillColorSwatchLabel,
   type ProductOperationSample,
 } from './ui-responsiveness-same-corpus-workload-runner.ts'
 
@@ -539,6 +540,8 @@ async function measureProductSamples(
       mutationTargetProofs.push(
         await captureSameCorpusMutationTargetProofForSample({
           before: mutationTargetBefore,
+          caseId,
+          outputPath: args.outputPath,
           page,
           product,
           sampleIndex,
@@ -634,6 +637,8 @@ function mutationTargetSelectionFromProof(proof: SameCorpusMutationTargetProof):
 
 async function captureSameCorpusMutationTargetProofForSample(args: {
   readonly before: SameCorpusMutationTargetReadback
+  readonly caseId?: string
+  readonly outputPath: string
   readonly page: Page
   readonly product: UiResponsivenessSameCorpusProduct
   readonly sampleIndex: number
@@ -643,12 +648,25 @@ async function captureSameCorpusMutationTargetProofForSample(args: {
   await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
   const after = await readSameCorpusMutationTargetReadback({ page: args.page, product: args.product, target: args.target })
   const visibleAfter = await readSameCorpusVisibleMutationTargetReadback({ page: args.page, product: args.product })
-  const screenshotSha256 = await captureSameCorpusMutationTargetScreenshotSha256(args.page, args.product)
+  const screenshotPath = mutationTargetScreenshotArtifactPath({
+    caseId: args.caseId,
+    outputPath: args.outputPath,
+    product: args.product,
+    sampleIndex: args.sampleIndex,
+    workload: args.workload,
+  })
+  mkdirSync(dirname(screenshotPath), { recursive: true })
+  const screenshotProof = await captureSameCorpusMutationTargetScreenshotProof(
+    args.page,
+    args.product,
+    screenshotPath,
+    repoRelativePath(screenshotPath),
+  )
   const revisions = await readSameCorpusMutationTargetRevisionProof({
     page: args.page,
     product: args.product,
     readback: after,
-    screenshotSha256,
+    screenshotSha256: screenshotProof.screenshotSha256,
     target: args.target,
   })
   await restoreProductWorkbookMutation(args.page, args.workload)
@@ -660,9 +678,11 @@ async function captureSameCorpusMutationTargetProofForSample(args: {
     authoritativeReadbackRevision: revisions.authoritativeReadbackRevision,
     before: args.before,
     intendedOperation: args.workload,
+    intendedPayload: intendedMutationTargetPayload(args.product, args.workload, args.sampleIndex),
     restored,
     sampleIndex: args.sampleIndex,
-    screenshotSha256,
+    screenshotPath: screenshotProof.screenshotPath,
+    screenshotSha256: screenshotProof.screenshotSha256,
     sheetName: args.target.sheetName,
     targetRange: args.target.targetRange,
     undoRestoreStatus: sameCorpusMutationReadbacksEqual(args.before, restored) ? 'verified' : 'failed',
@@ -671,6 +691,35 @@ async function captureSameCorpusMutationTargetProofForSample(args: {
     visibleRestored,
     workload: args.workload,
   }
+}
+
+function intendedMutationTargetPayload(
+  product: UiResponsivenessSameCorpusProduct,
+  workload: UiResponsivenessSameCorpusMutatingWorkload,
+  sampleIndex: number,
+): SameCorpusMutationTargetProof['intendedPayload'] {
+  if (workload === 'formula-edit') {
+    return { kind: 'formula', formula: `=${String(sampleIndex + 1)}+1` }
+  }
+  if (workload === 'fill-format-change') {
+    return { kind: 'fill-color', swatchLabel: sameCorpusFillColorSwatchLabel(sampleIndex) }
+  }
+  return { kind: 'cell-value', value: `${product}-same-corpus-${String(sampleIndex + 1)}` }
+}
+
+function mutationTargetScreenshotArtifactPath(args: {
+  readonly caseId?: string
+  readonly outputPath: string
+  readonly product: UiResponsivenessSameCorpusProduct
+  readonly sampleIndex: number
+  readonly workload: UiResponsivenessSameCorpusMutatingWorkload
+}): string {
+  const caseId = args.caseId ?? `same-corpus-${args.workload}`
+  return resolve(`${args.outputPath}.proof`, caseId, 'mutation-target', `${args.product}-sample-${String(args.sampleIndex + 1)}-after.png`)
+}
+
+function repoRelativePath(path: string): string {
+  return relative(process.cwd(), path)
 }
 
 function sameCorpusMutationReadbacksEqual(left: SameCorpusMutationTargetReadback, right: SameCorpusMutationTargetReadback): boolean {

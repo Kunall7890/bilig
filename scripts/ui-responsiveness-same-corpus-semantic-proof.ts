@@ -37,6 +37,7 @@ export interface SameCorpusMutationTargetProof {
   readonly sampleIndex: number
   readonly workload: UiResponsivenessSameCorpusWorkload
   readonly intendedOperation: 'edit-visible-cell' | 'formula-edit' | 'fill-format-change'
+  readonly intendedPayload: SameCorpusMutationTargetIntendedPayload
   readonly sheetName: string
   readonly targetRange: string
   readonly before: SameCorpusMutationTargetReadback
@@ -47,8 +48,14 @@ export interface SameCorpusMutationTargetProof {
   readonly authoritativeReadbackRevision: string | null
   readonly visibleRenderRevision: string | null
   readonly screenshotSha256: string | null
+  readonly screenshotPath: string | null
   readonly undoRestoreStatus: 'verified' | 'missing' | 'failed'
 }
+
+export type SameCorpusMutationTargetIntendedPayload =
+  | { readonly kind: 'cell-value'; readonly value: string }
+  | { readonly kind: 'formula'; readonly formula: string }
+  | { readonly kind: 'fill-color'; readonly swatchLabel: string }
 
 export interface SameCorpusMutationTargetReadback {
   readonly value: string | null
@@ -56,6 +63,9 @@ export interface SameCorpusMutationTargetReadback {
   readonly fillColor: string | null
   readonly visibleText: string | null
   readonly source: SameCorpusMutationTargetReadbackSource
+  readonly batchId?: number | null
+  readonly capturedRevision?: string | null
+  readonly visibleSceneProofSha256?: string | null
 }
 
 export type SameCorpusMutationTargetReadbackSource = 'bilig-authoritative-range' | 'visible-formula-bar' | 'unknown'
@@ -228,6 +238,7 @@ function sameCorpusMutationTargetProofInvalidReasons(
     if (sample.workload !== workload || sample.intendedOperation !== workload) {
       invalidReasons.push(`semantic UI mutation target proof operation does not match ${workload}`)
     }
+    invalidReasons.push(...sameCorpusMutationTargetPayloadInvalidReasons(workload, sample))
     if (sample.sheetName.trim().length === 0 || sample.sheetName !== proof.sheetName) {
       invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing the target sheet`)
     }
@@ -255,14 +266,12 @@ function sameCorpusMutationTargetProofInvalidReasons(
     if (sample.screenshotSha256 === null || !/^[a-f0-9]{64}$/u.test(sample.screenshotSha256)) {
       invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing screenshot SHA256`)
     }
+    if (sample.screenshotPath === null || sample.screenshotPath === undefined || sample.screenshotPath.trim().length === 0) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing screenshot artifact path`)
+    }
     invalidReasons.push(...sameCorpusMutationTargetReadbackSourceInvalidReasons(proof.product, workload, sample))
     invalidReasons.push(...sameCorpusMutationTargetVisibleReadbackInvalidReasons(proof.product, workload, sample))
-    if (workload === 'formula-edit' && (sample.after.formula === null || !sample.after.formula.trim().startsWith('='))) {
-      invalidReasons.push('semantic UI mutation target proof for formula-edit is missing the edited formula')
-    }
-    if (workload === 'edit-visible-cell' && (sample.after.value === null || sample.after.value === sample.before.value)) {
-      invalidReasons.push('semantic UI mutation target proof for edit-visible-cell did not prove a committed target value change')
-    }
+    invalidReasons.push(...sameCorpusMutationTargetExpectedReadbackInvalidReasons(workload, sample))
     if (workload === 'fill-format-change' && sample.before.fillColor === sample.after.fillColor) {
       invalidReasons.push('semantic UI mutation target proof for fill-format-change did not prove a fill color change')
     }
@@ -271,6 +280,60 @@ function sameCorpusMutationTargetProofInvalidReasons(
     }
   }
   return invalidReasons
+}
+
+function sameCorpusMutationTargetPayloadInvalidReasons(
+  workload: UiResponsivenessSameCorpusWorkload,
+  sample: SameCorpusMutationTargetProof,
+): string[] {
+  const payload = sample.intendedPayload
+  if (!payload) {
+    return [`semantic UI mutation target proof for ${workload} is missing intended operation payload`]
+  }
+  if (workload === 'edit-visible-cell') {
+    return payload.kind === 'cell-value' && payload.value.trim().length > 0
+      ? []
+      : ['semantic UI mutation target proof for edit-visible-cell is missing intended value payload']
+  }
+  if (workload === 'formula-edit') {
+    return payload.kind === 'formula' && payload.formula.trim().startsWith('=')
+      ? []
+      : ['semantic UI mutation target proof for formula-edit is missing intended formula payload']
+  }
+  if (workload === 'fill-format-change') {
+    return payload.kind === 'fill-color' && payload.swatchLabel.trim().length > 0
+      ? []
+      : ['semantic UI mutation target proof for fill-format-change is missing intended fill payload']
+  }
+  return []
+}
+
+function sameCorpusMutationTargetExpectedReadbackInvalidReasons(
+  workload: UiResponsivenessSameCorpusWorkload,
+  sample: SameCorpusMutationTargetProof,
+): string[] {
+  const payload = sample.intendedPayload
+  if (!payload) {
+    return []
+  }
+  if (workload === 'edit-visible-cell') {
+    if (payload.kind !== 'cell-value' || sample.after.value !== payload.value || sample.visibleAfter.value !== payload.value) {
+      return ['semantic UI mutation target proof for edit-visible-cell did not prove the intended committed target value']
+    }
+    return []
+  }
+  if (workload === 'formula-edit') {
+    if (payload.kind !== 'formula' || sample.after.formula !== payload.formula || sample.visibleAfter.formula !== payload.formula) {
+      return ['semantic UI mutation target proof for formula-edit did not prove the intended edited formula']
+    }
+    return []
+  }
+  if (workload === 'fill-format-change') {
+    if (payload.kind !== 'fill-color') {
+      return ['semantic UI mutation target proof for fill-format-change did not prove the intended fill color']
+    }
+  }
+  return []
 }
 
 function sameCorpusMutationTargetReadbackSourceInvalidReasons(

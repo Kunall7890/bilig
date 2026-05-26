@@ -10,6 +10,7 @@ import {
   buildSameCorpusCaptureRunManifest,
   buildSameCorpusProof,
   assertUiResponsivenessLiveBrowserRunAllowed,
+  parseSameCorpusCapture,
   parseUiResponsivenessLiveBrowserCliArgs,
   parseUiResponsivenessLiveBrowserScorecard,
   sameCorpusScenarioCaseFields,
@@ -642,11 +643,11 @@ describe('UI responsiveness live browser scorecard', () => {
 
   it('requires checked-in same-corpus scorecard proof to match the capture artifact', () => {
     const capture = buildSameCorpusCapture()
-    const proof = buildSameCorpusProof(capture)
     const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-capture-artifact-`)
     const capturePath = '.cache/ui-responsiveness/same-corpus-capture.json'
     mkdirSync(dirname(resolve(rootDir, capturePath)), { recursive: true })
     writeFileSync(resolve(rootDir, capturePath), `${JSON.stringify(capture, null, 2)}\n`)
+    const proof = buildSameCorpusProof(parseSameCorpusCapture(readJsonObject(resolve(rootDir, capturePath))))
     const scorecard = parseUiResponsivenessLiveBrowserScorecard(
       readJsonObject(resolve(repoRoot, 'packages/benchmarks/baselines/ui-responsiveness-live-browser-scorecard.json')),
     )
@@ -1026,23 +1027,45 @@ function sameCorpusMutationTargetProofs(
     sampleIndex,
     workload,
     intendedOperation: workload,
+    intendedPayload: sameCorpusMutationTargetIntendedPayload(product, workload, sampleIndex),
     sheetName: 'WideGrid',
     targetRange: 'A1',
     before: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
     after: sameCorpusMutationReadback(product, workload, 'after', sampleIndex),
     restored: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
-    visibleAfter: sameCorpusVisibleMutationReadback(workload, 'after', sampleIndex),
-    visibleRestored: sameCorpusVisibleMutationReadback(workload, 'before', sampleIndex),
+    visibleAfter: sameCorpusVisibleMutationReadback(product, workload, 'after', sampleIndex),
+    visibleRestored: sameCorpusVisibleMutationReadback(product, workload, 'before', sampleIndex),
     authoritativeReadbackRevision: `authoritative-readback-${sampleIndex + 1}`,
     visibleRenderRevision: `visible-render-${sampleIndex + 1}`,
+    screenshotPath: `tmp/mutation-target/${product}-sample-${sampleIndex + 1}.png`,
     screenshotSha256: 'a'.repeat(64),
     undoRestoreStatus: 'verified' as const,
   }))
 }
 
-function sameCorpusVisibleMutationReadback(workload: UiResponsivenessSameCorpusWorkload, phase: 'before' | 'after', sampleIndex: number) {
+function sameCorpusMutationTargetIntendedPayload(
+  product: 'bilig' | 'google-sheets' | 'microsoft-excel-web',
+  workload: UiResponsivenessSameCorpusWorkload,
+  sampleIndex: number,
+) {
+  if (workload === 'formula-edit') {
+    return { kind: 'formula' as const, formula: `=${sampleIndex + 1}+1` }
+  }
+  if (workload === 'fill-format-change') {
+    const labels = ['light cornflower blue 3', 'theme green', 'light cornflower blue 2'] as const
+    return { kind: 'fill-color' as const, swatchLabel: labels[sampleIndex % labels.length] }
+  }
+  return { kind: 'cell-value' as const, value: `${product}-same-corpus-${sampleIndex + 1}` }
+}
+
+function sameCorpusVisibleMutationReadback(
+  product: 'bilig' | 'google-sheets' | 'microsoft-excel-web',
+  workload: UiResponsivenessSameCorpusWorkload,
+  phase: 'before' | 'after',
+  sampleIndex: number,
+) {
   return {
-    ...sameCorpusMutationReadback('google-sheets', workload, phase, sampleIndex),
+    ...sameCorpusMutationReadback(product, workload, phase, sampleIndex),
     source: 'visible-formula-bar' as const,
   }
 }
@@ -1074,10 +1097,10 @@ function sameCorpusMutationReadback(
     }
   }
   return {
-    value: after ? `same-corpus-${String(sampleIndex + 1)}` : 'metric-1',
+    value: after ? `${product}-same-corpus-${String(sampleIndex + 1)}` : 'metric-1',
     formula: null,
     fillColor: null,
-    visibleText: after ? `same-corpus-${String(sampleIndex + 1)}` : 'metric-1',
+    visibleText: after ? `${product}-same-corpus-${String(sampleIndex + 1)}` : 'metric-1',
     source,
   }
 }

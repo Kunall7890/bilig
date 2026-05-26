@@ -809,6 +809,60 @@ describe('CellEditorOverlay', () => {
     }
   })
 
+  it('repairs a focused editor when parent draft catches up past a partial DOM value', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const onChange = vi.fn()
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    let setParentValue: ((next: string) => void) | null = null
+
+    function ParentCatchUpHarness() {
+      const [parentValue, setValue] = useState('')
+      setParentValue = setValue
+      return (
+        <CellEditorOverlay
+          label="Sheet1!B2"
+          targetSelection={makeTargetSelection()}
+          onCancel={() => {}}
+          onChange={onChange}
+          onCommit={() => {}}
+          resolvedValue=""
+          value={parentValue}
+        />
+      )
+    }
+
+    try {
+      await act(async () => {
+        root.render(<ParentCatchUpHarness />)
+      })
+
+      const textarea = host.querySelector<HTMLTextAreaElement>("[data-testid='cell-editor-input']")
+      expect(textarea).not.toBeNull()
+      if (!textarea) {
+        throw new Error('Expected mounted cell editor input')
+      }
+
+      await act(async () => {
+        textarea.focus()
+        textarea.value = 'rend'
+        textarea.setSelectionRange(4, 4)
+        setParentValue?.('rendered-table-stakes')
+      })
+
+      expect(textarea.value).toBe('rendered-table-stakes')
+      expect(textarea.selectionStart).toBe('rendered-table-stakes'.length)
+      expect(textarea.selectionEnd).toBe('rendered-table-stakes'.length)
+      expect(onChange).not.toHaveBeenCalled()
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+    }
+  })
+
   it('commits local draft text after immediate parent sync', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 

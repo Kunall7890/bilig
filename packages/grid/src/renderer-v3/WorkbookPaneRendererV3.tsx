@@ -224,29 +224,21 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     [hostRuntime],
   )
   const headerTextRunCount = countHeaderPaneTextRunsV3(headerPanes)
-  const suppressedTextTilePanes = useMemo(
-    () =>
-      resolveWorkbookPaneSuppressedTextCellTilePanesV3({
-        suppressedTextCell,
-        tilePanes,
-      }),
-    [suppressedTextCell, tilePanes],
-  )
   const typeGpuTilePanes = useMemo(
     () =>
       resolveWorkbookPaneSelectionOccludedTilePanesV3({
         geometry,
         selectionOcclusionRanges,
-        tilePanes: suppressedTextTilePanes,
+        tilePanes,
       }),
-    [geometry, selectionOcclusionRanges, suppressedTextTilePanes],
+    [geometry, selectionOcclusionRanges, tilePanes],
   )
   const tileTextRunCount = countTilePaneTextRunsV3(typeGpuTilePanes)
   const textLayerMode = resolveWorkbookPaneTextLayerModeV3({
     active,
     backendStatus,
     headerPanes,
-    tilePanes: suppressedTextTilePanes,
+    tilePanes,
   })
   const { showTypeGpuCanvas, typeGpuDrawText, nativeLayerSource, nativeHeaderPanes, nativeTilePanes, showNativeTextLayer } = textLayerMode
   const presentedHeaderPanes = presentedVisualFrame?.headerPanes ?? []

@@ -401,6 +401,22 @@ export function useWorkerWorkbookInteractionState(input: {
     [selectedCell, workerHandleRef],
   )
 
+  const refreshMountedEditorTargetSnapshot = useCallback(
+    (targetSelection: EditTargetSelection, snapshot: CellSnapshot) => {
+      workerHandleRef.current?.viewportStore.setCellSnapshot(createSupersedingCellSnapshot(snapshot, snapshot.version + 1), {
+        force: true,
+        forceOptimistic: true,
+        localDirtyMask: LOCAL_CELL_CONTENT_DIRTY_MASK,
+      })
+      const key = optimisticCellKey(targetSelection.sheetName, targetSelection.address)
+      optimisticCellSnapshotsRef.current.delete(key)
+      optimisticCellSeedsRef.current.delete(key)
+      optimisticCellResolvedValuesRef.current.delete(key)
+      bumpOptimisticSeedRevision((revision) => revision + 1)
+    },
+    [workerHandleRef],
+  )
+
   const reconcileOptimisticCellSeeds = useCallback(
     (visible?: { readonly key: string; readonly cell: CellSnapshot }) => {
       const active = workerHandleRef.current
@@ -618,6 +634,9 @@ export function useWorkerWorkbookInteractionState(input: {
       }
 
       if (draftMatchesLiveSnapshot) {
+        if (editingModeRef.current === 'cell' && mountedCellEditorValue !== null) {
+          refreshMountedEditorTargetSnapshot(targetSelection, liveSnapshot)
+        }
         pendingEditCommitSessionRef.current = null
         pendingEditCommitMovementAppliedRef.current = Boolean(movement)
         finishEditingWithAuthoritative(targetSelection, movement)
@@ -673,6 +692,7 @@ export function useWorkerWorkbookInteractionState(input: {
       finishEditingAtSelection,
       finishEditingWithAuthoritative,
       getLiveSelectedCell,
+      refreshMountedEditorTargetSnapshot,
       reportRuntimeError,
       selectedCell,
       writesAllowed,

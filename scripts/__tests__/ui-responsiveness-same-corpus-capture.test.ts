@@ -766,7 +766,8 @@ describe('same-corpus UI responsiveness capture CLI', () => {
             'semantic UI mutation target proof for edit-visible-cell has unverified undo restore status',
             'semantic UI mutation target proof for edit-visible-cell is missing authoritative readback revision',
             'semantic UI mutation target proof for edit-visible-cell is missing visible render revision',
-            'semantic UI mutation target proof for edit-visible-cell did not prove a committed target value change',
+            'semantic UI mutation target proof for edit-visible-cell is missing screenshot artifact path',
+            'semantic UI mutation target proof for edit-visible-cell did not prove the intended committed target value',
           ]),
         }),
       ]),
@@ -926,6 +927,38 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     )
   })
 
+  it('rejects mutation target proof that does not prove the intended operation payload', () => {
+    const proof = buildCaptureScenarioProof({
+      workload: 'formula-edit',
+      bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'formula-edit'),
+      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export', 'formula-edit'),
+      visualProofs: [
+        sameCorpusVisualProofWithMutationProofs(
+          'bilig',
+          'typegpu-visible-canvas',
+          'same-corpus-wide-mixed-250k-formula-edit',
+          'formula-edit',
+          driftIntendedFormulaPayload,
+        ),
+      ],
+    })
+
+    expect(proof.semanticUiProof).toMatchObject({
+      captured: false,
+      missingProducts: ['bilig', 'google-sheets'],
+    })
+    expect(proof.semanticUiProof.productVerdicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          product: 'bilig',
+          invalidReasons: expect.arrayContaining([
+            'semantic UI mutation target proof for formula-edit did not prove the intended edited formula',
+          ]),
+        }),
+      ]),
+    )
+  })
+
   it('normalizes same-corpus mutation target selections to an explicit cell range', () => {
     expect(normalizeSameCorpusMutationTargetSelection('WideGrid!$C$5:$D$7', 'WideGrid')).toEqual({
       endAddress: 'D7',
@@ -933,12 +966,9 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       startAddress: 'C5',
       targetRange: 'C5:D7',
     })
-    expect(normalizeSameCorpusMutationTargetSelection('selected row', 'WideGrid')).toEqual({
-      endAddress: 'A1',
-      sheetName: 'WideGrid',
-      startAddress: 'A1',
-      targetRange: 'A1',
-    })
+    expect(() => normalizeSameCorpusMutationTargetSelection('selected row', 'WideGrid')).toThrow(
+      'Cannot derive same-corpus mutation target range from visible selection: selected row',
+    )
   })
 
   it('selects Google Sheets target ranges through the visible name-box shortcut', async () => {
@@ -1695,18 +1725,35 @@ function sameCorpusMutationTargetProofs(product: SameCorpusProductVisualProof['p
     sampleIndex,
     workload,
     intendedOperation: workload,
+    intendedPayload: sameCorpusMutationTargetIntendedPayload(product, workload, sampleIndex),
     sheetName: 'WideGrid',
     targetRange: 'A1',
     before: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
     after: sameCorpusMutationReadback(product, workload, 'after', sampleIndex),
     restored: sameCorpusMutationReadback(product, workload, 'before', sampleIndex),
-    visibleAfter: sameCorpusVisibleMutationReadback(workload, 'after', sampleIndex),
-    visibleRestored: sameCorpusVisibleMutationReadback(workload, 'before', sampleIndex),
+    visibleAfter: sameCorpusVisibleMutationReadback(product, workload, 'after', sampleIndex),
+    visibleRestored: sameCorpusVisibleMutationReadback(product, workload, 'before', sampleIndex),
     authoritativeReadbackRevision: `authoritative-readback-${sampleIndex + 1}`,
     visibleRenderRevision: `visible-render-${sampleIndex + 1}`,
+    screenshotPath: `tmp/mutation-target/${product}-sample-${sampleIndex + 1}.png`,
     screenshotSha256: 'a'.repeat(64),
     undoRestoreStatus: 'verified' as const,
   }))
+}
+
+function sameCorpusMutationTargetIntendedPayload(
+  product: SameCorpusProductVisualProof['product'],
+  workload: UiResponsivenessSameCorpusWorkload,
+  sampleIndex: number,
+): SameCorpusMutationTargetProof['intendedPayload'] {
+  if (workload === 'formula-edit') {
+    return { kind: 'formula', formula: `=${sampleIndex + 1}+1` }
+  }
+  if (workload === 'fill-format-change') {
+    const labels = ['light cornflower blue 3', 'theme green', 'light cornflower blue 2'] as const
+    return { kind: 'fill-color', swatchLabel: labels[sampleIndex % labels.length] }
+  }
+  return { kind: 'cell-value', value: `${product}-same-corpus-${sampleIndex + 1}` }
 }
 
 function corruptFirstMutationTargetProof(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
@@ -1718,6 +1765,7 @@ function corruptFirstMutationTargetProof(proof: SameCorpusMutationTargetProof): 
     after: { ...proof.before },
     authoritativeReadbackRevision: null,
     restored: { ...proof.after },
+    screenshotPath: null,
     targetRange: '',
     undoRestoreStatus: 'failed',
     visibleAfter: { ...proof.visibleAfter, value: proof.before.value, visibleText: proof.before.visibleText },
@@ -1746,6 +1794,16 @@ function driftVisibleTargetReadback(proof: SameCorpusMutationTargetProof): SameC
       value: 'editor-only-ghost',
       visibleText: 'editor-only-ghost',
     },
+  }
+}
+
+function driftIntendedFormulaPayload(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  if (proof.sampleIndex !== 0) {
+    return proof
+  }
+  return {
+    ...proof,
+    intendedPayload: { kind: 'formula', formula: '=999+1' },
   }
 }
 
@@ -1800,9 +1858,14 @@ function testPrimaryShortcut(): 'Meta' | 'Control' {
   return process.platform === 'darwin' ? 'Meta' : 'Control'
 }
 
-function sameCorpusVisibleMutationReadback(workload: UiResponsivenessSameCorpusWorkload, phase: 'before' | 'after', sampleIndex: number) {
+function sameCorpusVisibleMutationReadback(
+  product: SameCorpusProductVisualProof['product'],
+  workload: UiResponsivenessSameCorpusWorkload,
+  phase: 'before' | 'after',
+  sampleIndex: number,
+) {
   return {
-    ...sameCorpusMutationReadback('google-sheets', workload, phase, sampleIndex),
+    ...sameCorpusMutationReadback(product, workload, phase, sampleIndex),
     source: 'visible-formula-bar' as const,
   }
 }
@@ -1834,10 +1897,10 @@ function sameCorpusMutationReadback(
     }
   }
   return {
-    value: after ? `bilig-same-corpus-${String(sampleIndex + 1)}` : 'metric-1',
+    value: after ? `${product}-same-corpus-${String(sampleIndex + 1)}` : 'metric-1',
     formula: null,
     fillColor: null,
-    visibleText: after ? `bilig-same-corpus-${String(sampleIndex + 1)}` : 'metric-1',
+    visibleText: after ? `${product}-same-corpus-${String(sampleIndex + 1)}` : 'metric-1',
     source,
   }
 }
