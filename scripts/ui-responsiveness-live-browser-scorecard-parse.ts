@@ -42,6 +42,7 @@ import type {
   SameCorpusMutationTargetReadback,
 } from './ui-responsiveness-same-corpus-proof.ts'
 import { sameCorpusUiRenderProofContractVersion, validateSameCorpusProductSemanticUiProof } from './ui-responsiveness-same-corpus-proof.ts'
+import { requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount } from './ui-responsiveness-same-corpus-mutation-target-proof-summary.ts'
 import { sameCorpusUiCaptureToolVersion } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import type { SameCorpusOperationResponseProof } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import { isUiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
@@ -157,6 +158,10 @@ function parseSameCorpusRunManifest(value: Record<string, unknown>): UiResponsiv
     visibleOperationResponseProofCaseCount: numberField(value, 'visibleOperationResponseProofCaseCount'),
     biligAuthoritativeRenderProofCaseCount: optionalNumberField(value, 'biligAuthoritativeRenderProofCaseCount') ?? 0,
     semanticUiProofCaseCount: optionalNumberField(value, 'semanticUiProofCaseCount') ?? 0,
+    requiredMutationTargetProofCaseCount:
+      optionalNumberField(value, 'requiredMutationTargetProofCaseCount') ??
+      requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount(),
+    mutationTargetProofCaseCount: optionalNumberField(value, 'mutationTargetProofCaseCount') ?? 0,
     legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
@@ -193,6 +198,10 @@ function parseSameCorpusCaptureRunManifest(value: Record<string, unknown>): Same
     visibleOperationResponseProofCaseCount: numberField(value, 'visibleOperationResponseProofCaseCount'),
     biligAuthoritativeRenderProofCaseCount: optionalNumberField(value, 'biligAuthoritativeRenderProofCaseCount') ?? 0,
     semanticUiProofCaseCount: optionalNumberField(value, 'semanticUiProofCaseCount') ?? 0,
+    requiredMutationTargetProofCaseCount:
+      optionalNumberField(value, 'requiredMutationTargetProofCaseCount') ??
+      requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount(),
+    mutationTargetProofCaseCount: optionalNumberField(value, 'mutationTargetProofCaseCount') ?? 0,
     legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),

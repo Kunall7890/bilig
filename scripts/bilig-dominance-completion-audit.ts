@@ -133,6 +133,9 @@ export function buildBiligDominanceCompletionAudit(input: BuildScorecardInput, s
         `same-corpus semantic UI proof cases: ${String(
           input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.semanticUiProofCaseCount ?? 0,
         )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount)}`,
+        `same-corpus mutation target proof cases: ${String(
+          input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.mutationTargetProofCaseCount ?? 0,
+        )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.requiredMutationTargetProofCaseCount ?? 0)}`,
       ],
       gaps: [
         ...(signals.uiResponsivenessLiveBrowserPassed ? [] : ['live incumbent browser timing scorecard is not passing']),
@@ -228,6 +231,7 @@ export function hasUiResponsivenessSameCorpusTenXGap(scorecard: UiResponsiveness
     runManifest.strictRenderedGridProofCaseCount !== scorecard.sameCorpusProof.requiredCaseCount ||
     runManifest.visibleOperationResponseProofCaseCount !== scorecard.sameCorpusProof.requiredCaseCount ||
     runManifest.semanticUiProofCaseCount !== scorecard.sameCorpusProof.requiredCaseCount ||
+    runManifest.mutationTargetProofCaseCount !== runManifest.requiredMutationTargetProofCaseCount ||
     requiredUiResponsivenessSameCorpusWorkloads.some(
       (workload) => !scorecard.sameCorpusProof.cases.some((entry) => entry.workload === workload),
     ) ||

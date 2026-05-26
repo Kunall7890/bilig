@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url'
 
 import { loadBiligDominanceScorecardInput } from './bilig-dominance-scorecard-input.ts'
 import { buildBiligDominanceScorecard } from './gen-bilig-dominance-scorecard.ts'
+import { requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount } from './ui-responsiveness-same-corpus-mutation-target-proof-summary.ts'
 import { requiredUiResponsivenessSameCorpusWorkloads } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export interface GoogleSheetsTenXClaimGateReport {
@@ -140,6 +141,17 @@ function sameCorpusUiProofFailures(uiScorecard: unknown, requiredWorkloadCount: 
     if (runManifest[field] !== requiredWorkloadCount) {
       failures.push(`same-corpus UI ${label} covers ${String(runManifest[field])}/${String(requiredWorkloadCount)} cases`)
     }
+  }
+  const requiredMutationTargetProofCaseCount =
+    typeof runManifest['requiredMutationTargetProofCaseCount'] === 'number'
+      ? runManifest['requiredMutationTargetProofCaseCount']
+      : requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount()
+  if (runManifest['mutationTargetProofCaseCount'] !== requiredMutationTargetProofCaseCount) {
+    failures.push(
+      `same-corpus UI mutation target proof covers ${String(runManifest['mutationTargetProofCaseCount'])}/${String(
+        requiredMutationTargetProofCaseCount,
+      )} mutating cases`,
+    )
   }
   if (runManifest['legacyInsufficientRenderedGridProofCaseCount'] !== 0) {
     failures.push(

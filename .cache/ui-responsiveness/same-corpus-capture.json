@@ -70,12 +70,18 @@
     "visibleOperationResponseProofCaseCount": 9,
     "biligAuthoritativeRenderProofCaseCount": 9,
     "semanticUiProofCaseCount": 0,
+    "requiredMutationTargetProofCaseCount": 3,
+    "mutationTargetProofCaseCount": 0,
     "legacyInsufficientRenderedGridProofCaseCount": 0,
     "tenXMeanAndP95CaseCount": 0,
     "currentContractEvidenceComplete": false,
     "googleSheetsTenXRequirementSatisfied": false,
     "captureRunSignature": "fc674fb071178b986b33aaa13d427265b6a2c16cd867550f89bf4020055bc4bc",
-    "invalidReasons": ["semantic UI proof covers 0/9 cases", "not every required workload is 10x against Google Sheets"]
+    "invalidReasons": [
+      "semantic UI proof covers 0/9 cases",
+      "mutation target proof covers 0/3 mutating cases",
+      "not every required workload is 10x against Google Sheets"
+    ]
   },
   "limitations": [
     "Caller must supply a Google Sheets URL for the same exported Bilig benchmark corpus.",

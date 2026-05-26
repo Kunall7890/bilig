@@ -38,9 +38,13 @@ import {
   validateSameCorpusScenarioCaseFields,
 } from './ui-responsiveness-same-corpus-scenario-fields.ts'
 import {
+  requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount,
+  sameCorpusMutationTargetProofCaseCount,
+} from './ui-responsiveness-same-corpus-mutation-target-proof-summary.ts'
+import { sameCorpusManifestInvalidReasons } from './ui-responsiveness-same-corpus-manifest-invalid-reasons.ts'
+import {
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
-  type UiResponsivenessSameCorpusWorkload,
 } from './ui-responsiveness-same-corpus-workloads.ts'
 import {
   cloneSameCorpusVerification,
@@ -171,6 +175,8 @@ function buildSameCorpusRunManifest(
     hasBiligAuthoritativeRenderProofTiming(entry.bilig, entry.sampleCount),
   ).length
   const semanticUiProofCaseCount = cases.filter((entry) => entry.scenarioProof.semanticUiProof.captured).length
+  const requiredMutationTargetProofCaseCount = requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount()
+  const mutationTargetProofCaseCount = sameCorpusMutationTargetProofCaseCount(cases)
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
   ).length
@@ -185,6 +191,8 @@ function buildSameCorpusRunManifest(
     scenarioSummaryFieldCaseCount,
     biligAuthoritativeRenderProofCaseCount,
     semanticUiProofCaseCount,
+    requiredMutationTargetProofCaseCount,
+    mutationTargetProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
     strictRenderedGridProofCaseCount,
@@ -209,6 +217,8 @@ function buildSameCorpusRunManifest(
     visibleOperationResponseProofCaseCount,
     biligAuthoritativeRenderProofCaseCount,
     semanticUiProofCaseCount,
+    requiredMutationTargetProofCaseCount,
+    mutationTargetProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
     currentContractEvidenceComplete: !invalidReasons.some(
@@ -239,6 +249,8 @@ export function buildSameCorpusCaptureRunManifest(
     hasBiligAuthoritativeRenderProofTiming(entry.bilig, sampleCount),
   ).length
   const semanticUiProofCaseCount = cases.filter((entry) => entry.scenarioProof.semanticUiProof.captured).length
+  const requiredMutationTargetProofCaseCount = requiredUiResponsivenessSameCorpusMutationTargetProofCaseCount()
+  const mutationTargetProofCaseCount = sameCorpusMutationTargetProofCaseCount(cases)
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
   ).length
@@ -253,6 +265,8 @@ export function buildSameCorpusCaptureRunManifest(
     scenarioSummaryFieldCaseCount,
     biligAuthoritativeRenderProofCaseCount,
     semanticUiProofCaseCount,
+    requiredMutationTargetProofCaseCount,
+    mutationTargetProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
     strictRenderedGridProofCaseCount,
@@ -278,6 +292,8 @@ export function buildSameCorpusCaptureRunManifest(
     visibleOperationResponseProofCaseCount,
     biligAuthoritativeRenderProofCaseCount,
     semanticUiProofCaseCount,
+    requiredMutationTargetProofCaseCount,
+    mutationTargetProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
     currentContractEvidenceComplete: !invalidReasons.some(
@@ -287,96 +303,6 @@ export function buildSameCorpusCaptureRunManifest(
     captureRunSignature: sameCorpusCaptureRunSignature(cases),
     invalidReasons,
   }
-}
-
-function sameCorpusManifestInvalidReasons(args: {
-  readonly capturedWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
-  readonly caseCount: number
-  readonly corpusCaseIds: readonly string[]
-  readonly corpusFingerprints: readonly SameCorpusCaptureCorpusFingerprint[]
-  readonly productSourceWorkbookFingerprints: readonly SameCorpusProductSourceWorkbookFingerprint[]
-  readonly biligProductionRuntimeProofCaseCount: number
-  readonly scenarioSummaryFieldCaseCount: number
-  readonly biligAuthoritativeRenderProofCaseCount: number
-  readonly semanticUiProofCaseCount: number
-  readonly legacyInsufficientRenderedGridProofCaseCount: number
-  readonly materializedCellCounts: readonly number[]
-  readonly strictRenderedGridProofCaseCount: number
-  readonly visibleOperationResponseProofCaseCount: number
-  readonly tenXMeanAndP95CaseCount: number
-}): string[] {
-  const invalidReasons: string[] = []
-  if (args.caseCount !== requiredSameCorpusWorkloads.length) {
-    invalidReasons.push('required workload count is incomplete')
-  }
-  const missingWorkloads = requiredSameCorpusWorkloads.filter((workload) => !args.capturedWorkloads.includes(workload))
-  if (missingWorkloads.length > 0) {
-    invalidReasons.push(`missing required workloads: ${missingWorkloads.join(', ')}`)
-  }
-  if (new Set(args.capturedWorkloads).size !== args.capturedWorkloads.length) {
-    invalidReasons.push('duplicate workload evidence is present')
-  }
-  if (args.corpusCaseIds.length !== 1) {
-    invalidReasons.push('same-corpus evidence must use exactly one corpus case')
-  }
-  if (args.corpusFingerprints.length !== 1) {
-    invalidReasons.push('same-corpus evidence must use exactly one benchmark workbook fingerprint')
-  }
-  if (!requiredProductSourceWorkbookFingerprintsPresent(args.productSourceWorkbookFingerprints)) {
-    invalidReasons.push('source workbook fingerprint must be stable for every required product')
-  }
-  if (args.materializedCellCounts.length > 1) {
-    invalidReasons.push('same-corpus evidence has mixed materialized cell counts')
-  }
-  if (args.biligProductionRuntimeProofCaseCount !== requiredSameCorpusWorkloads.length) {
-    invalidReasons.push(
-      `Bilig production runtime proof covers ${String(args.biligProductionRuntimeProofCaseCount)}/${String(
-        requiredSameCorpusWorkloads.length,
-      )} cases`,
-    )
-  }
-  if (args.scenarioSummaryFieldCaseCount !== requiredSameCorpusWorkloads.length) {
-    invalidReasons.push(
-      `first-class scenario summary fields cover ${String(args.scenarioSummaryFieldCaseCount)}/${String(
-        requiredSameCorpusWorkloads.length,
-      )} cases`,
-    )
-  }
-  if (args.strictRenderedGridProofCaseCount !== requiredSameCorpusWorkloads.length) {
-    invalidReasons.push(
-      `strict rendered-grid proof covers ${String(args.strictRenderedGridProofCaseCount)}/${String(requiredSameCorpusWorkloads.length)} cases`,
-    )
-  }
-  if (args.visibleOperationResponseProofCaseCount !== requiredSameCorpusWorkloads.length) {
-    invalidReasons.push(
-      `visible operation-response proof covers ${String(args.visibleOperationResponseProofCaseCount)}/${String(
-        requiredSameCorpusWorkloads.length,
-      )} cases`,
-    )
-  }
-  if (args.biligAuthoritativeRenderProofCaseCount !== requiredSameCorpusWorkloads.length) {
-    invalidReasons.push(
-      `Bilig authoritative render proof timing covers ${String(args.biligAuthoritativeRenderProofCaseCount)}/${String(
-        requiredSameCorpusWorkloads.length,
-      )} cases`,
-    )
-  }
-  if (args.semanticUiProofCaseCount !== requiredSameCorpusWorkloads.length) {
-    invalidReasons.push(
-      `semantic UI proof covers ${String(args.semanticUiProofCaseCount)}/${String(requiredSameCorpusWorkloads.length)} cases`,
-    )
-  }
-  if (args.legacyInsufficientRenderedGridProofCaseCount > 0) {
-    invalidReasons.push(
-      `legacy-insufficient rendered-grid proof covers ${String(args.legacyInsufficientRenderedGridProofCaseCount)}/${String(
-        requiredSameCorpusWorkloads.length,
-      )} cases`,
-    )
-  }
-  if (args.tenXMeanAndP95CaseCount !== requiredSameCorpusWorkloads.length) {
-    invalidReasons.push('not every required workload is 10x against Google Sheets')
-  }
-  return invalidReasons
 }
 
 function uniqueCorpusFingerprints(cases: readonly UiResponsivenessSameCorpusCase[]): readonly SameCorpusCaptureCorpusFingerprint[] {
@@ -439,12 +365,6 @@ function uniqueByStableJson<T>(values: readonly T[]): T[] {
     byKey.set(JSON.stringify(value), value)
   }
   return [...byKey.values()]
-}
-
-function requiredProductSourceWorkbookFingerprintsPresent(fingerprints: readonly SameCorpusProductSourceWorkbookFingerprint[]): boolean {
-  return (['bilig', 'google-sheets'] as const satisfies readonly UiResponsivenessSameCorpusProduct[]).every(
-    (product) => fingerprints.filter((entry) => entry.product === product && entry.sourceWorkbookSha256 !== null).length === 1,
-  )
 }
 
 function manifestSampleCount(cases: readonly UiResponsivenessSameCorpusCase[]): number {

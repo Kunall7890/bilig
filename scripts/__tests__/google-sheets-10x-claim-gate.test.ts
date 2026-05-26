@@ -27,6 +27,7 @@ describe('Google Sheets 10x claim gate', () => {
         'same-corpus UI proof is not captured',
         `same-corpus UI proof has 0/${String(requiredUiResponsivenessSameCorpusWorkloads.length)} required cases`,
         `same-corpus UI proof has 0/${String(requiredUiResponsivenessSameCorpusWorkloads.length)} 10x mean+p95 cases`,
+        'same-corpus UI mutation target proof covers 0/3 mutating cases',
       ]),
     )
   })
@@ -107,6 +108,8 @@ function passingUiScorecard(): unknown {
         visibleOperationResponseProofCaseCount: requiredWorkloadCount,
         biligAuthoritativeRenderProofCaseCount: requiredWorkloadCount,
         semanticUiProofCaseCount: requiredWorkloadCount,
+        requiredMutationTargetProofCaseCount: 3,
+        mutationTargetProofCaseCount: 3,
         legacyInsufficientRenderedGridProofCaseCount: 0,
         tenXMeanAndP95CaseCount: requiredWorkloadCount,
       },

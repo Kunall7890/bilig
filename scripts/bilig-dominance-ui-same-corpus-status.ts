@@ -36,6 +36,8 @@ export interface UiSameCorpusStatus {
   readonly visibleOperationResponseProofCaseCount: number
   readonly biligAuthoritativeRenderProofCaseCount: number
   readonly semanticUiProofCaseCount: number
+  readonly requiredMutationTargetProofCaseCount: number
+  readonly mutationTargetProofCaseCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly currentContractEvidenceComplete: boolean
   readonly googleSheetsTenXRequirementSatisfied: boolean
@@ -103,6 +105,8 @@ export interface UiSameCorpusCaptureArtifactStatus {
   readonly visibleOperationResponseProofCaseCount: number | null
   readonly biligAuthoritativeRenderProofCaseCount: number | null
   readonly semanticUiProofCaseCount: number | null
+  readonly requiredMutationTargetProofCaseCount: number | null
+  readonly mutationTargetProofCaseCount: number | null
   readonly legacyInsufficientRenderedGridProofCaseCount: number | null
   readonly tenXMeanAndP95CaseCount: number | null
   readonly currentContractEvidenceComplete: boolean | null
@@ -265,6 +269,8 @@ export function buildUiSameCorpusStatus(
       proof.cases.filter((entry) => entry.authoritativeRenderProofGuardrailPassed === true).length,
     semanticUiProofCaseCount:
       runManifest?.semanticUiProofCaseCount ?? proof.cases.filter((entry) => entry.scenarioProof.semanticUiProof.captured).length,
+    requiredMutationTargetProofCaseCount: runManifest?.requiredMutationTargetProofCaseCount ?? 0,
+    mutationTargetProofCaseCount: runManifest?.mutationTargetProofCaseCount ?? 0,
     legacyInsufficientRenderedGridProofCaseCount:
       runManifest?.legacyInsufficientRenderedGridProofCaseCount ?? proof.cases.filter(hasLegacyInsufficientRenderedGridProof).length,
     currentContractEvidenceComplete: runManifest?.currentContractEvidenceComplete ?? false,
@@ -376,6 +382,8 @@ function buildUiSameCorpusCaptureArtifactStatus(path: string, capture: SameCorpu
       visibleOperationResponseProofCaseCount: runManifest?.visibleOperationResponseProofCaseCount ?? null,
       biligAuthoritativeRenderProofCaseCount: runManifest?.biligAuthoritativeRenderProofCaseCount ?? null,
       semanticUiProofCaseCount: runManifest?.semanticUiProofCaseCount ?? null,
+      requiredMutationTargetProofCaseCount: runManifest?.requiredMutationTargetProofCaseCount ?? null,
+      mutationTargetProofCaseCount: runManifest?.mutationTargetProofCaseCount ?? null,
       legacyInsufficientRenderedGridProofCaseCount: runManifest?.legacyInsufficientRenderedGridProofCaseCount ?? null,
       tenXMeanAndP95CaseCount: proof.tenXMeanAndP95CaseCount,
       currentContractEvidenceComplete: runManifest?.currentContractEvidenceComplete ?? null,
@@ -422,6 +430,8 @@ function buildParsedUiSameCorpusCaptureArtifactStatus(
     visibleOperationResponseProofCaseCount: capture.runManifest.visibleOperationResponseProofCaseCount,
     biligAuthoritativeRenderProofCaseCount: capture.runManifest.biligAuthoritativeRenderProofCaseCount,
     semanticUiProofCaseCount: capture.runManifest.semanticUiProofCaseCount,
+    requiredMutationTargetProofCaseCount: capture.runManifest.requiredMutationTargetProofCaseCount,
+    mutationTargetProofCaseCount: capture.runManifest.mutationTargetProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount: capture.runManifest.legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount: capture.runManifest.tenXMeanAndP95CaseCount,
     currentContractEvidenceComplete: capture.runManifest.currentContractEvidenceComplete,
@@ -455,6 +465,8 @@ function buildInvalidUiSameCorpusCaptureArtifactStatus(
     visibleOperationResponseProofCaseCount: null,
     biligAuthoritativeRenderProofCaseCount: null,
     semanticUiProofCaseCount: null,
+    requiredMutationTargetProofCaseCount: null,
+    mutationTargetProofCaseCount: null,
     legacyInsufficientRenderedGridProofCaseCount: null,
     tenXMeanAndP95CaseCount: null,
     currentContractEvidenceComplete: null,
@@ -647,6 +659,7 @@ function uiSameCorpusTenXRequirementSatisfied(
     proof.runManifest.scenarioSummaryFieldCaseCount === proof.requiredCaseCount &&
     proof.runManifest.strictRenderedGridProofCaseCount === proof.requiredCaseCount &&
     proof.runManifest.visibleOperationResponseProofCaseCount === proof.requiredCaseCount &&
+    proof.runManifest.mutationTargetProofCaseCount === proof.runManifest.requiredMutationTargetProofCaseCount &&
     proof.requiredProductCount === 2 &&
     proof.requiredCaseCount > 0 &&
     proof.cases.length === proof.requiredCaseCount &&
