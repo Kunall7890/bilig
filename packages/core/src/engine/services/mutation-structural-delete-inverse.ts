@@ -34,6 +34,12 @@ interface MutationStructuralDeleteInverseRuntime {
 
 export interface MutationStructuralDeleteInverseHelpers {
   readonly captureFormulaCellStateForStructuralUndo: (sheetName: string, axis: 'row' | 'column', start: number, count: number) => EngineOp[]
+  readonly captureFormulaCellStateForStructuralInsertUndo: (
+    sheetName: string,
+    axis: 'row' | 'column',
+    start: number,
+    count: number,
+  ) => EngineOp[]
   readonly buildStructuralDeleteInverseRecord: (
     op: Extract<EngineOp, { kind: 'deleteRows' | 'deleteColumns' }>,
     options?: { readonly includeStandaloneFormulaUndoOps?: boolean },
@@ -326,6 +332,61 @@ export function createMutationStructuralDeleteInverseHelpers(
   const captureFormulaCellStateForStructuralUndo = (sheetName: string, axis: 'row' | 'column', start: number, count: number): EngineOp[] =>
     captureFormulaCellRecordsForStructuralUndo(sheetName, axis, start, count).map(structuralFormulaUndoCaptureToOp)
 
+  const captureFormulaCellRecordsForStructuralInsertUndo = (
+    sheetName: string,
+    axis: 'row' | 'column',
+    start: number,
+  ): StructuralFormulaUndoCapture[] => {
+    const captured: StructuralFormulaUndoCapture[] = []
+    const hasFamilyTransforms = args.hasFormulaFamilyStructuralSourceTransforms?.() === true
+    const getSheetNameById = createSheetNameReader()
+    const readCellPosition = createCellPositionReader()
+    args.state.formulas.forEach((formula, cellIndex) => {
+      const ownerSheetId = args.state.workbook.cellStore.sheetIds[cellIndex]
+      if (ownerSheetId === undefined) {
+        return
+      }
+      const ownerSheetName = getSheetNameById(ownerSheetId)
+      if (!ownerSheetName) {
+        return
+      }
+      const ownerPosition = readCellPosition(cellIndex)
+      const axisIndex = axis === 'row' ? ownerPosition?.row : ownerPosition?.col
+      const ownerPositionAffected = ownerSheetName === sheetName && axisIndex !== undefined && axisIndex >= start
+      let dependencyPositionAffected = false
+      if (!ownerPositionAffected) {
+        if (formula.compiled.deps.length > 0) {
+          addEngineCounter(args.state.counters, 'structuralUndoFormulaDependencyScans')
+        }
+        dependencyPositionAffected = formula.compiled.deps.some((dependency) =>
+          dependencyTouchesStructuralDeleteSpan(dependency, ownerSheetName, sheetName, axis, start),
+        )
+      }
+      const directFormulaRangeAffected = directFormulaRangeTouchesStructuralDeleteSpan(formula, sheetName, axis, start, 1)
+      const metadataSensitive =
+        formula.compiled.symbolicNames.length > 0 ||
+        formula.compiled.symbolicTables.length > 0 ||
+        formula.compiled.symbolicSpills.length > 0
+      if (!ownerPositionAffected && !dependencyPositionAffected && !directFormulaRangeAffected && !metadataSensitive) {
+        return
+      }
+      captured.push({
+        sheetName: ownerSheetName,
+        row: ownerPosition?.row ?? 0,
+        col: ownerPosition?.col ?? 0,
+        source: captureRuntimeFormulaSourceHandle(args, cellIndex, formula, hasFamilyTransforms),
+      })
+    })
+    return captured
+  }
+
+  const captureFormulaCellStateForStructuralInsertUndo = (
+    sheetName: string,
+    axis: 'row' | 'column',
+    start: number,
+    _count: number,
+  ): EngineOp[] => captureFormulaCellRecordsForStructuralInsertUndo(sheetName, axis, start).map(structuralFormulaUndoCaptureToOp)
+
   const captureDeletedCellUndoRecord = (
     cellIndex: number,
     sheetName: string,
@@ -545,6 +606,7 @@ export function createMutationStructuralDeleteInverseHelpers(
 
   return {
     captureFormulaCellStateForStructuralUndo,
+    captureFormulaCellStateForStructuralInsertUndo,
     buildStructuralDeleteInverseRecord,
   }
 }

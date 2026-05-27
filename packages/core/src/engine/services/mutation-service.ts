@@ -136,17 +136,18 @@ export function createEngineMutationService(args: {
       ? { hasFormulaFamilyStructuralSourceTransforms: args.hasFormulaFamilyStructuralSourceTransforms }
       : {}),
   })
-  const { captureFormulaCellStateForStructuralUndo, buildStructuralDeleteInverseRecord } = createMutationStructuralDeleteInverseHelpers({
-    state: args.state,
-    getCellByIndex: args.getCellByIndex,
-    toCellStateOps: (sheetName, address, snapshot) => args.toCellStateOps(sheetName, address, snapshot),
-    ...(args.getFormulaFamilyStructuralSourceTransform
-      ? { getFormulaFamilyStructuralSourceTransform: args.getFormulaFamilyStructuralSourceTransform }
-      : {}),
-    ...(args.hasFormulaFamilyStructuralSourceTransforms
-      ? { hasFormulaFamilyStructuralSourceTransforms: args.hasFormulaFamilyStructuralSourceTransforms }
-      : {}),
-  })
+  const { captureFormulaCellStateForStructuralUndo, captureFormulaCellStateForStructuralInsertUndo, buildStructuralDeleteInverseRecord } =
+    createMutationStructuralDeleteInverseHelpers({
+      state: args.state,
+      getCellByIndex: args.getCellByIndex,
+      toCellStateOps: (sheetName, address, snapshot) => args.toCellStateOps(sheetName, address, snapshot),
+      ...(args.getFormulaFamilyStructuralSourceTransform
+        ? { getFormulaFamilyStructuralSourceTransform: args.getFormulaFamilyStructuralSourceTransform }
+        : {}),
+      ...(args.hasFormulaFamilyStructuralSourceTransforms
+        ? { hasFormulaFamilyStructuralSourceTransforms: args.hasFormulaFamilyStructuralSourceTransforms }
+        : {}),
+    })
   const { buildInverseOps } = createMutationCoreInverseOps({
     workbook: args.state.workbook,
     captureSheetCellState: args.captureSheetCellState,
@@ -738,11 +739,19 @@ export function createEngineMutationService(args: {
     applyForward: (forward: TransactionRecord) => void,
     options: { readonly recordHistory?: boolean } = {},
   ): void => {
+    const inverseStructuralDeleteOp = inverseMutationStructuralInsertOp(op)
+    const formulaUndoOps =
+      args.state.formulas.size === 0
+        ? []
+        : captureFormulaCellStateForStructuralInsertUndo(op.sheetName, op.kind === 'insertRows' ? 'row' : 'column', op.start, op.count)
     applyForward(potentialNewCells === undefined ? { kind: 'single-op', op } : { kind: 'single-op', op, potentialNewCells })
     if (options.recordHistory !== false && args.state.getTransactionReplayDepth() === 0) {
       args.state.undoStack.push({
         forward: createLazySingleOpTransactionRecord(canonicalizeStructuralInsertForwardOp(op), potentialNewCells),
-        inverse: createLazySingleOpTransactionRecord(inverseMutationStructuralInsertOp(op)),
+        inverse:
+          formulaUndoOps.length === 0
+            ? createLazySingleOpTransactionRecord(inverseStructuralDeleteOp)
+            : createOpsTransactionRecord([inverseStructuralDeleteOp, ...formulaUndoOps], formulaUndoOps.length),
       })
       args.state.redoStack.length = 0
     }

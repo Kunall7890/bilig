@@ -413,6 +413,27 @@ describe('engine correctness', () => {
     expect(engine.getCell(sheetName, 'E1').formula).toBe('C1+D2')
   })
 
+  it('restores copied formula sources after undoing a row insert', async () => {
+    const initialSnapshot = await createEngineSeedSnapshot('formula-graph', 'correctness-copied-formula-row-insert-undo')
+    const engine = new SpreadsheetEngine({
+      workbookName: 'correctness-copied-formula-row-insert-undo',
+      replicaId: 'correctness-copied-formula-row-insert-undo',
+    })
+    await engine.ready()
+    engine.importSnapshot(initialSnapshot)
+
+    engine.copyRange({ sheetName, startAddress: 'D1', endAddress: 'D2' }, { sheetName, startAddress: 'D3', endAddress: 'D4' })
+    expect(engine.getCell(sheetName, 'D4').formula).toBe('C3*A4')
+    const afterCopySnapshot = engine.exportSnapshot()
+
+    engine.insertRows(sheetName, 1, 1)
+    expect(engine.getCell(sheetName, 'D5').formula).toBe('C3*A5')
+
+    expect(engine.undo()).toBe(true)
+    expect(engine.getCell(sheetName, 'D4').formula).toBe('C3*A4')
+    expect(engine.exportSnapshot()).toEqual(afterCopySnapshot)
+  })
+
   it('restores named-range structures after delete-row undo', async () => {
     const engine = new SpreadsheetEngine({
       workbookName: 'correctness-structural-named-range-delete-row-undo',
