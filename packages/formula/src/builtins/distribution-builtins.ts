@@ -134,8 +134,11 @@ export function createDistributionBuiltins({
     },
     FISHER: (valueArg) => {
       const value = toNumber(valueArg)
-      if (value === undefined || value <= -1 || value >= 1) {
+      if (value === undefined) {
         return valueError()
+      }
+      if (hasNonFinite(value) || value <= -1 || value >= 1) {
+        return numError()
       }
       return numberResult(0.5 * Math.log((1 + value) / (1 - value)))
     },
@@ -149,12 +152,26 @@ export function createDistributionBuiltins({
     },
     GAMMALN: (valueArg) => {
       const value = toNumber(valueArg)
-      return value === undefined ? valueError() : numericResultOrError(logGamma(value))
+      if (value === undefined) {
+        return valueError()
+      }
+      if (hasNonFinite(value) || value <= 0) {
+        return numError()
+      }
+      const result = logGamma(value)
+      return Number.isFinite(result) ? numberResult(result) : numError()
     },
     'GAMMALN.PRECISE': (valueArg) => builtins['GAMMALN']!(valueArg),
     GAMMA: (valueArg) => {
       const value = toNumber(valueArg)
-      return value === undefined ? valueError() : numericResultOrError(gammaFunction(value))
+      if (value === undefined) {
+        return valueError()
+      }
+      if (hasNonFinite(value) || (value <= 0 && Number.isInteger(value))) {
+        return numError()
+      }
+      const result = gammaFunction(value)
+      return Number.isFinite(result) ? numberResult(result) : numError()
     },
     CONFIDENCE: (alphaArg, standardDeviationArg, sizeArg) => builtins['CONFIDENCE.NORM']!(alphaArg, standardDeviationArg, sizeArg),
     'CONFIDENCE.T': (alphaArg, standardDeviationArg, sizeArg) => {

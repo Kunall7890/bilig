@@ -59,6 +59,25 @@ describe('distribution builtins domain errors', () => {
     expect(getBuiltin('GAMMA.INV')?.(num(0.5), text('bad'), num(2))).toEqual(valueError)
   })
 
+  it('separates scalar distribution numeric-domain errors from coercion errors', () => {
+    expect(getBuiltin('FISHER')?.(num(-1))).toEqual(numError)
+    expect(getBuiltin('FISHER')?.(num(1))).toEqual(numError)
+    expect(getBuiltin('FISHER')?.(text('bad'))).toEqual(valueError)
+
+    expect(getBuiltin('GAMMA')?.(num(0))).toEqual(numError)
+    expect(getBuiltin('GAMMA')?.(num(-1))).toEqual(numError)
+    expect(getBuiltin('GAMMA')?.(text('bad'))).toEqual(valueError)
+    expect(getBuiltin('GAMMA')?.(num(-0.5))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(-3.5449077018, 8),
+    })
+
+    expect(getBuiltin('GAMMALN')?.(num(0))).toEqual(numError)
+    expect(getBuiltin('GAMMALN')?.(num(-0.5))).toEqual(numError)
+    expect(getBuiltin('GAMMALN.PRECISE')?.(num(0))).toEqual(numError)
+    expect(getBuiltin('GAMMALN')?.(text('bad'))).toEqual(valueError)
+  })
+
   it('separates confidence numeric-domain errors from coercion errors', () => {
     expect(getBuiltin('CONFIDENCE.NORM')?.(num(0), num(1), num(10))).toEqual(numError)
     expect(getBuiltin('CONFIDENCE.NORM')?.(num(0.05), num(0), num(10))).toEqual(numError)

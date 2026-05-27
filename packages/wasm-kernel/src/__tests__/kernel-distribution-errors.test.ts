@@ -71,6 +71,32 @@ function cellIndex(row: number, col: number, width: number): number {
 }
 
 describe('wasm scalar distribution error semantics', () => {
+  it('returns #NUM for documented scalar distribution numeric-domain errors', async () => {
+    const kernel = await createKernel()
+    const width = 6
+    kernel.init(width, 2, 16, 16, 0)
+
+    const programs = packPrograms([
+      [encodePushNumber(0), encodeCall(BuiltinId.Fisher, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Fisher, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Gamma, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Gamma, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Gammaln, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.GammalnPrecise, 1), encodeRet()],
+    ])
+    const outputs = Uint32Array.from(Array.from({ length: width }, (_, index) => cellIndex(1, index, width)))
+    kernel.uploadPrograms(programs.programs, programs.offsets, programs.lengths, outputs)
+
+    const constants = packConstants([[-1], [1], [0], [-1], [0], [-0.5]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(outputs)
+
+    for (const output of outputs) {
+      expect(kernel.readTags()[output]).toBe(ValueTag.Error)
+      expect(kernel.readErrors()[output]).toBe(ErrorCode.Num)
+    }
+  })
+
   it('returns #NUM for documented normal and lognormal numeric-domain errors', async () => {
     const kernel = await createKernel()
     const width = 8

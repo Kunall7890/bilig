@@ -140,14 +140,29 @@ export function tryApplyScalarDistributionBuiltin(
     } else if (builtinId == BuiltinId.Erfc || builtinId == BuiltinId.ErfcPrecise) {
       result = 1.0 - erfApprox(value)
     } else if (builtinId == BuiltinId.Fisher) {
-      result = value <= -1.0 || value >= 1.0 ? NaN : 0.5 * Math.log((1.0 + value) / (1.0 - value))
+      if (!isFinite(value) || value <= -1.0 || value >= 1.0) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
+      result = 0.5 * Math.log((1.0 + value) / (1.0 - value))
     } else if (builtinId == BuiltinId.Fisherinv) {
       const exponent = Math.exp(2.0 * value)
       result = (exponent - 1.0) / (exponent + 1.0)
     } else if (builtinId == BuiltinId.Gammaln || builtinId == BuiltinId.GammalnPrecise) {
+      if (!isFinite(value) || value <= 0.0) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       result = logGamma(value)
+      if (!isFinite(result)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
     } else if (builtinId == BuiltinId.Gamma) {
+      if (!isFinite(value) || (value <= 0.0 && value == Math.floor(value))) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       result = gammaFunction(value)
+      if (!isFinite(result)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
     }
     return writeResult(
       base,
