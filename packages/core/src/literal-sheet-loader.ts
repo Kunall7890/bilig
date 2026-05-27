@@ -133,7 +133,7 @@ export function loadDenseLiteralSheetIntoEmptySheet(
     return 0
   }
 
-  if (inspection?.allMaterializedCellsAreNumbers === true) {
+  if (inspection?.allMaterializedCellsAreNumbers === true && potentialCellCount === content.length * maxColumnCount) {
     return loadDenseNumericLiteralSheetIntoEmptySheet(workbook, sheet, sheetId, content, maxColumnCount)
   }
 

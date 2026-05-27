@@ -160,6 +160,22 @@ describe('loadLiteralSheetIntoEmptySheet', () => {
     expect(engine.workbook.getCellIndex('Sheet1', 'B2')).toBe(3)
   })
 
+  it('falls back from dense numeric metadata for ragged numeric sheets', () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'literal-dense-ragged-numeric-load' })
+    engine.workbook.createSheet('Sheet1')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+
+    const loaded = loadDenseLiteralSheetIntoEmptySheet(engine.workbook, engine.strings, sheetId, [[1, 2], [3]], {
+      materializedCellCount: 3,
+      maxColumnCount: 2,
+      allMaterializedCellsAreNumbers: true,
+    })
+
+    expect(loaded).toBe(4)
+    expect(engine.getCellValue('Sheet1', 'A2')).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.Empty })
+  })
+
   it('keeps dense numeric loads indexed for visible and resident lookups', () => {
     const engine = new SpreadsheetEngine({ workbookName: 'literal-dense-numeric-indexed-load' })
     engine.workbook.createSheet('Sheet1')

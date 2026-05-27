@@ -1,6 +1,7 @@
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import {
   DEFAULT_COMPETITIVE_WARMUP_COUNT,
   DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT,
@@ -59,7 +60,7 @@ interface WorkPaperVsIronCalcRustBenchmarkArtifact {
 }
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
-const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-ironcalc-rust.json')
+const canonicalOutputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-ironcalc-rust.json')
 const cacheDir = join(rootDir, '.cache', 'ironcalc-rust-bench')
 const sidecarSrcDir = join(cacheDir, 'src')
 const sidecarInputPath = join(cacheDir, 'input.json')
@@ -69,19 +70,30 @@ const sidecarMainPath = join(sidecarSrcDir, 'main.rs')
 const cargoTargetDir = join(rootDir, '.cache', 'ironcalc-rust-target')
 const lockPath = join(cacheDir, 'artifact.lock')
 const isCheckMode = process.argv.slice(2).includes('--check')
+if (isCheckMode && process.env['BILIG_IRONCALC_RUST_WORKLOADS']) {
+  throw new Error('BILIG_IRONCALC_RUST_WORKLOADS is only supported in generate mode, not --check')
+}
+if (isCheckMode && process.env['BILIG_IRONCALC_RUST_OUTPUT_PATH']) {
+  throw new Error('BILIG_IRONCALC_RUST_OUTPUT_PATH is only supported in generate mode, not --check')
+}
 const sampleCount = Number.parseInt(process.env['BILIG_IRONCALC_RUST_SAMPLE_COUNT'] ?? '', 10) || DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT
 const warmupCount = DEFAULT_COMPETITIVE_WARMUP_COUNT
 const workpaperSourcePath = 'packages/headless'
 const ironCalcRustSourcePath = '.cache/ironcalc-rust-bench'
-const ironCalcRustWorkloadNames: readonly string[] = WORKPAPER_IRONCALC_RUST_WORKLOADS
+const allIronCalcRustWorkloadNames = new Set<string>(WORKPAPER_IRONCALC_RUST_WORKLOADS)
+const selectedIronCalcRustWorkloads = parseSelectedIronCalcRustWorkloads(process.env['BILIG_IRONCALC_RUST_WORKLOADS'])
+const ironCalcRustWorkloadNames: readonly string[] = selectedIronCalcRustWorkloads
+const outputPath = process.env['BILIG_IRONCALC_RUST_OUTPUT_PATH']
+  ? resolve(rootDir, process.env['BILIG_IRONCALC_RUST_OUTPUT_PATH'])
+  : canonicalOutputPath
 const rustSidecarChunkSize = Number.parseInt(process.env['BILIG_IRONCALC_RUST_CHUNK_SIZE'] ?? '', 10) || 1
 
 if (isCheckMode) {
-  if (!existsSync(outputPath)) {
+  if (!existsSync(canonicalOutputPath)) {
     throw new Error('WorkPaper vs IronCalc Rust benchmark artifact is missing. Run: pnpm workpaper:bench:ironcalc-rust:generate')
   }
 
-  const rawArtifact = readJsonObject(outputPath)
+  const rawArtifact = readJsonObject(canonicalOutputPath)
   assertEngineSourcePath(rawArtifact, 'workpaper', workpaperSourcePath)
   assertEngineSourcePath(rawArtifact, 'ironCalcRust', ironCalcRustSourcePath)
   assertEngineVersion(rawArtifact, 'workpaper', readPackageVersion(join(rootDir, 'packages', 'headless', 'package.json')))
@@ -122,7 +134,7 @@ if (isCheckMode) {
     JSON.stringify(
       {
         mode: 'check',
-        outputPath,
+        outputPath: canonicalOutputPath,
         workloads: actualWorkloads,
       },
       null,
@@ -136,7 +148,10 @@ const releaseLock = acquireArtifactLock()
 process.once('exit', releaseLock)
 
 writeSidecarProject()
-writeFileSync(sidecarInputPath, `${JSON.stringify(buildIronCalcRustRunnerInput({ sampleCount, warmupCount }), null, 2)}\n`)
+writeFileSync(
+  sidecarInputPath,
+  `${JSON.stringify(buildIronCalcRustRunnerInput({ sampleCount, warmupCount, workloads: selectedIronCalcRustWorkloads }), null, 2)}\n`,
+)
 const runnerOutput = await runIronCalcRustSidecarChunks()
 if (runnerOutput.engine.crate !== IRONCALC_RUST_CRATE_NAME || runnerOutput.engine.version !== IRONCALC_RUST_CRATE_VERSION) {
   throw new Error(
@@ -149,6 +164,7 @@ const report = buildWorkPaperVsIronCalcRustBenchmarkReport(
       console.log(`WorkPaper IronCalc workload ${String(index + 1)}/${String(total)}: ${workload}`)
     },
     sampleCount,
+    workloads: selectedIronCalcRustWorkloads,
     warmupCount,
   }),
 )
@@ -261,19 +277,22 @@ function writeSidecarProject(): void {
 
 async function runIronCalcRustSidecarChunks(): Promise<IronCalcRustRunnerOutput> {
   const chunkSize = Number.isFinite(rustSidecarChunkSize) && rustSidecarChunkSize > 0 ? Math.trunc(rustSidecarChunkSize) : 1
-  const chunks = chunkArray(WORKPAPER_IRONCALC_RUST_WORKLOADS, chunkSize)
+  const chunks = chunkArray(selectedIronCalcRustWorkloads, chunkSize)
   const results: IronCalcRustRunnerOutput['results'] = []
   for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex += 1) {
     const workloads = chunks[chunkIndex]
     const inputPath = join(cacheDir, `input-${String(chunkIndex + 1)}.json`)
     const chunkOutputPath = join(cacheDir, `output-${String(chunkIndex + 1)}.json`)
-    writeFileSync(inputPath, `${JSON.stringify(buildIronCalcRustRunnerInput({ sampleCount, warmupCount, workloads }), null, 2)}\n`)
+    const chunkMetadataPath = join(cacheDir, `output-${String(chunkIndex + 1)}.meta.json`)
+    const inputText = `${JSON.stringify(buildIronCalcRustRunnerInput({ sampleCount, warmupCount, workloads }), null, 2)}\n`
+    writeFileSync(inputPath, inputText)
+    const expectedChunkMetadata = buildIronCalcRustChunkCacheMetadata(workloads, inputText)
     console.log(
       `IronCalc Rust chunk ${String(chunkIndex + 1)}/${String(chunks.length)} (${String(workloads.length)} workloads): ${workloads.join(
         ', ',
       )}`,
     )
-    const reusableOutput = readReusableIronCalcRustChunkOutput(chunkOutputPath, workloads)
+    const reusableOutput = readReusableIronCalcRustChunkOutput(chunkOutputPath, chunkMetadataPath, expectedChunkMetadata)
     if (reusableOutput !== undefined) {
       console.log(`IronCalc Rust chunk ${String(chunkIndex + 1)}/${String(chunks.length)} reused`)
       results.push(...reusableOutput.results)
@@ -282,10 +301,11 @@ async function runIronCalcRustSidecarChunks(): Promise<IronCalcRustRunnerOutput>
     // oxlint-disable-next-line eslint(no-await-in-loop) -- Chunks run sequentially so timing samples stay isolated and artifact ordering remains deterministic.
     await runIronCalcRustSidecar(inputPath, chunkOutputPath, `chunk ${String(chunkIndex + 1)}/${String(chunks.length)}`)
     const output = parseIronCalcRustRunnerOutput(readJsonObject(chunkOutputPath))
+    writeIronCalcRustChunkCacheMetadata(chunkMetadataPath, buildIronCalcRustChunkCacheMetadata(workloads, inputText))
     results.push(...output.results)
   }
   const byWorkload = new Map(results.map((result) => [result.workload, result]))
-  const orderedResults = WORKPAPER_IRONCALC_RUST_WORKLOADS.map((workload) => {
+  const orderedResults = selectedIronCalcRustWorkloads.map((workload) => {
     const result = byWorkload.get(workload)
     if (result === undefined) {
       throw new Error(`IronCalc Rust sidecar chunking did not return workload ${workload}`)
@@ -305,20 +325,91 @@ async function runIronCalcRustSidecarChunks(): Promise<IronCalcRustRunnerOutput>
 
 function readReusableIronCalcRustChunkOutput(
   chunkOutputPath: string,
-  workloads: readonly WorkPaperIronCalcRustWorkload[],
+  metadataPath: string,
+  expectedMetadata: IronCalcRustChunkCacheMetadata,
 ): IronCalcRustRunnerOutput | undefined {
-  if (!existsSync(chunkOutputPath)) {
+  if (!existsSync(chunkOutputPath) || !ironCalcRustChunkCacheMetadataMatches(metadataPath, expectedMetadata)) {
     return undefined
   }
   const output = parseIronCalcRustRunnerOutput(readJsonObject(chunkOutputPath))
   const actualWorkloads = output.results.map((result) => result.workload)
-  if (JSON.stringify(actualWorkloads) !== JSON.stringify(workloads)) {
+  if (JSON.stringify(actualWorkloads) !== JSON.stringify(expectedMetadata.workloads)) {
     return undefined
   }
   if (output.results.some((result) => result.elapsedMs.length !== sampleCount)) {
     return undefined
   }
   return output
+}
+
+interface IronCalcRustChunkCacheMetadata {
+  readonly schemaVersion: 1
+  readonly cacheKey: string
+  readonly crate: string
+  readonly version: string
+  readonly sampleCount: number
+  readonly warmupCount: number
+  readonly workloads: readonly WorkPaperIronCalcRustWorkload[]
+  readonly host: {
+    readonly arch: string
+    readonly nodeVersion: string
+    readonly platform: string
+  }
+  readonly hashes: {
+    readonly cargoLock: string | null
+    readonly cargoToml: string
+    readonly inputJson: string
+    readonly sidecarMain: string
+  }
+}
+
+function buildIronCalcRustChunkCacheMetadata(
+  workloads: readonly WorkPaperIronCalcRustWorkload[],
+  inputText: string,
+): IronCalcRustChunkCacheMetadata {
+  const cargoToml = ironCalcRustSidecarCargoToml()
+  const sidecarMain = ironCalcRustSidecarMainRs()
+  const cargoLockPath = join(cacheDir, 'Cargo.lock')
+  const hashes = {
+    cargoLock: existsSync(cargoLockPath) ? sha256(readFileSync(cargoLockPath, 'utf8')) : null,
+    cargoToml: sha256(cargoToml),
+    inputJson: sha256(inputText),
+    sidecarMain: sha256(sidecarMain),
+  }
+  const keyPayload = {
+    schemaVersion: 1,
+    crate: IRONCALC_RUST_CRATE_NAME,
+    version: IRONCALC_RUST_CRATE_VERSION,
+    sampleCount,
+    warmupCount,
+    workloads,
+    host: {
+      arch: process.arch,
+      nodeVersion: process.version,
+      platform: process.platform,
+    },
+    hashes,
+  }
+  return {
+    ...keyPayload,
+    cacheKey: sha256(JSON.stringify(keyPayload)),
+  }
+}
+
+function ironCalcRustChunkCacheMetadataMatches(metadataPath: string, expected: IronCalcRustChunkCacheMetadata): boolean {
+  if (!existsSync(metadataPath)) {
+    return false
+  }
+  const actual = readJsonObject(metadataPath)
+  return stringField(actual, 'cacheKey') === expected.cacheKey
+}
+
+function writeIronCalcRustChunkCacheMetadata(metadataPath: string, metadata: IronCalcRustChunkCacheMetadata): void {
+  writeFileSync(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`)
+}
+
+function sha256(content: string): string {
+  return createHash('sha256').update(content).digest('hex')
 }
 
 function runIronCalcRustSidecar(inputPath: string, chunkOutputPath: string, label: string): Promise<void> {
@@ -432,6 +523,31 @@ function parseIronCalcRustWorkload(workload: string): WorkPaperIronCalcRustWorkl
 
 function isIronCalcRustWorkload(workload: string): workload is WorkPaperIronCalcRustWorkload {
   return ironCalcRustWorkloadNames.includes(workload)
+}
+
+function parseSelectedIronCalcRustWorkloads(raw: string | undefined): readonly WorkPaperIronCalcRustWorkload[] {
+  if (raw === undefined || raw.trim().length === 0) {
+    return WORKPAPER_IRONCALC_RUST_WORKLOADS
+  }
+  const selectedNames = raw
+    .split(/[\s,]+/u)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+  if (selectedNames.length === 0) {
+    throw new Error('BILIG_IRONCALC_RUST_WORKLOADS did not contain any workload names')
+  }
+  const selected: WorkPaperIronCalcRustWorkload[] = []
+  for (const workload of selectedNames) {
+    if (!isKnownIronCalcRustWorkload(workload)) {
+      throw new Error(`Unknown IronCalc Rust workload in BILIG_IRONCALC_RUST_WORKLOADS: ${workload}`)
+    }
+    selected.push(workload)
+  }
+  return selected
+}
+
+function isKnownIronCalcRustWorkload(workload: string): workload is WorkPaperIronCalcRustWorkload {
+  return allIronCalcRustWorkloadNames.has(workload)
 }
 
 function compactRawBenchmarkSampleArrays(value: unknown): unknown {

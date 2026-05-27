@@ -10,7 +10,7 @@ import type { OperationDirectScalarBatchFastPathArgs } from './operation-direct-
 import {
   directScalarCellNumber,
   evaluateDirectScalarWithReplacementNumbers,
-  singleInputAffineDirectScalar,
+  writeSingleInputAffineDirectScalar,
 } from './direct-scalar-helpers.js'
 import { tagTrustedPhysicalTrackedChanges } from './operation-change-helpers.js'
 import { emitCellMutationFastPathBatchResult } from './operation-fast-path-batch-result.js'
@@ -236,6 +236,7 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
     let previousFormulaCol = -1
     let affineScale: number | undefined
     let affineOffset: number | undefined
+    const affine = { scale: 0, offset: 0 }
     for (let refIndex = 0; refIndex < refs.length; refIndex += 1) {
       const ref = refs[refIndex]!
       const mutation = ref.mutation
@@ -284,8 +285,7 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
       ) {
         return false
       }
-      const affine = singleInputAffineDirectScalar(formula.directScalar, existingIndex)
-      if (affine === null) {
+      if (!writeSingleInputAffineDirectScalar(formula.directScalar, existingIndex, affine)) {
         return false
       }
       if (affineScale === undefined) {
@@ -414,6 +414,7 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
     let previousFormulaCol = -1
     let affineScale: number | undefined
     let affineOffset: number | undefined
+    const affine = { scale: 0, offset: 0 }
     for (let refIndex = 0; refIndex < count; refIndex += 1) {
       const row = record.rows[refIndex]!
       const col = record.cols[refIndex]!
@@ -460,8 +461,7 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
       ) {
         return false
       }
-      const affine = singleInputAffineDirectScalar(formula.directScalar, existingIndex)
-      if (affine === null) {
+      if (!writeSingleInputAffineDirectScalar(formula.directScalar, existingIndex, affine)) {
         return false
       }
       if (affineScale === undefined) {

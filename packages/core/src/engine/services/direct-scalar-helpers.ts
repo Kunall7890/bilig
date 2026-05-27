@@ -289,8 +289,17 @@ export function singleInputAffineDirectScalar(
   directScalar: RuntimeDirectScalarDescriptor,
   inputCellIndex: number,
 ): { readonly scale: number; readonly offset: number } | null {
+  const affine = { scale: 0, offset: 0 }
+  return writeSingleInputAffineDirectScalar(directScalar, inputCellIndex, affine) ? affine : null
+}
+
+export function writeSingleInputAffineDirectScalar(
+  directScalar: RuntimeDirectScalarDescriptor,
+  inputCellIndex: number,
+  target: { scale: number; offset: number },
+): boolean {
   if (directScalar.kind === 'abs') {
-    return null
+    return false
   }
   const leftIsInput = directScalar.left.kind === 'cell' && directScalar.left.cellIndex === inputCellIndex
   const rightIsInput = directScalar.right.kind === 'cell' && directScalar.right.cellIndex === inputCellIndex
@@ -300,29 +309,46 @@ export function singleInputAffineDirectScalar(
     const resultOffset = directScalar.resultOffset ?? 0
     switch (directScalar.operator) {
       case '+':
-        return { scale: 1, offset: rightLiteral + resultOffset }
+        target.scale = 1
+        target.offset = rightLiteral + resultOffset
+        return true
       case '-':
-        return { scale: 1, offset: -rightLiteral + resultOffset }
+        target.scale = 1
+        target.offset = -rightLiteral + resultOffset
+        return true
       case '*':
-        return { scale: rightLiteral, offset: resultOffset }
+        target.scale = rightLiteral
+        target.offset = resultOffset
+        return true
       case '/':
-        return rightLiteral === 0 ? null : { scale: 1 / rightLiteral, offset: resultOffset }
+        if (rightLiteral === 0) {
+          return false
+        }
+        target.scale = 1 / rightLiteral
+        target.offset = resultOffset
+        return true
     }
   }
   if (rightIsInput && leftLiteral !== undefined) {
     const resultOffset = directScalar.resultOffset ?? 0
     switch (directScalar.operator) {
       case '+':
-        return { scale: 1, offset: leftLiteral + resultOffset }
+        target.scale = 1
+        target.offset = leftLiteral + resultOffset
+        return true
       case '-':
-        return { scale: -1, offset: leftLiteral + resultOffset }
+        target.scale = -1
+        target.offset = leftLiteral + resultOffset
+        return true
       case '*':
-        return { scale: leftLiteral, offset: resultOffset }
+        target.scale = leftLiteral
+        target.offset = resultOffset
+        return true
       case '/':
-        return null
+        return false
     }
   }
-  return null
+  return false
 }
 
 export function rowPairDirectScalarCode(
