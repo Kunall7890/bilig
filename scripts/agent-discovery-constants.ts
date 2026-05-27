@@ -30,6 +30,7 @@ export const versionedStaticReferenceRoots = [
   'docs/mcp-client-setup.md',
   'docs/windmill-workpaper-script.md',
   'docs/triggerdev-workpaper-task.md',
+  'docs/airbyte-workpaper-validation.md',
   'docs/temporal-workpaper-activity.md',
   'docs/airflow-workpaper-dag.md',
   'docs/dagster-workpaper-asset.md',

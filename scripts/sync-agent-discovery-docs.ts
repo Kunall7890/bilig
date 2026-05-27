@@ -417,6 +417,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Windmill TypeScript script: ${siteRoot}/windmill-workpaper-script.html
 - Trigger.dev task: ${siteRoot}/triggerdev-workpaper-task.html
 - Inngest step: ${siteRoot}/inngest-workpaper-step.html
+- Airbyte validation: ${siteRoot}/airbyte-workpaper-validation.html
 - Temporal Activity: ${siteRoot}/temporal-workpaper-activity.html
 - Airflow DAG: ${siteRoot}/airflow-workpaper-dag.html
 - Dagster asset: ${siteRoot}/dagster-workpaper-asset.html
@@ -530,6 +531,7 @@ const llmsFullSources = [
   llmsSource('Windmill WorkPaper TypeScript Script', 'docs/windmill-workpaper-script.md'),
   llmsSource('Trigger.dev WorkPaper Task', 'docs/triggerdev-workpaper-task.md'),
   llmsSource('Inngest WorkPaper Step', 'docs/inngest-workpaper-step.md'),
+  llmsSource('Airbyte WorkPaper Validation', 'docs/airbyte-workpaper-validation.md'),
   llmsSource('Temporal WorkPaper Activity', 'docs/temporal-workpaper-activity.md'),
   llmsSource('Airflow WorkPaper DAG', 'docs/airflow-workpaper-dag.md'),
   llmsSource('Dagster WorkPaper Asset', 'docs/dagster-workpaper-asset.md'),
@@ -770,6 +772,14 @@ function agentJsonManifest(): string {
           source: `${repositoryUrl}/tree/main/examples/inngest-workpaper-step`,
         },
         {
+          name: 'airbyte-workpaper-validation',
+          type: 'post-sync-validation-smoke-test',
+          framework: 'Airbyte',
+          command: 'cd examples/airbyte-workpaper-validation && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke',
+          docs: `${siteRoot}/airbyte-workpaper-validation.html`,
+          source: `${repositoryUrl}/tree/main/examples/airbyte-workpaper-validation`,
+        },
+        {
           name: 'formula-clinic',
           type: 'local-cli',
           command: `npm exec --package ${workpaperPackageSpec} -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"`,
@@ -823,6 +833,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/flowise-workpaper-formula-readback.html`,
         `${siteRoot}/triggerdev-workpaper-task.html`,
         `${siteRoot}/inngest-workpaper-step.html`,
+        `${siteRoot}/airbyte-workpaper-validation.html`,
         `${siteRoot}/temporal-workpaper-activity.html`,
         `${siteRoot}/airflow-workpaper-dag.html`,
         `${siteRoot}/dagster-workpaper-asset.html`,

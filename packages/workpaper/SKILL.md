@@ -182,6 +182,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Windmill TypeScript script: https://proompteng.github.io/bilig/windmill-workpaper-script.html
 - Trigger.dev task: https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
 - Inngest step: https://proompteng.github.io/bilig/inngest-workpaper-step.html
+- Airbyte validation: https://proompteng.github.io/bilig/airbyte-workpaper-validation.html
 - Temporal Activity: https://proompteng.github.io/bilig/temporal-workpaper-activity.html
 - Airflow DAG: https://proompteng.github.io/bilig/airflow-workpaper-dag.html
 - Dagster asset: https://proompteng.github.io/bilig/dagster-workpaper-asset.html

@@ -255,6 +255,28 @@ durable execution.
 See [Inngest WorkPaper Step](docs/inngest-workpaper-step.md) for the function
 shape, local smoke command, step boundary, and outreach note.
 
+## Airbyte Post-Sync Formula Validation
+
+Need to validate Airbyte records and checkpoint state after a sync finishes?
+Keep Airbyte in charge of extraction, replication, sync modes, and state, then
+run a WorkPaper validation step that returns both a compact patch and readback
+proof.
+
+The source example lives in:
+
+```text
+examples/airbyte-workpaper-validation
+```
+
+It reads Airbyte-style `RECORD` and `STATE` JSONL messages, writes the committed
+state cursor and expected totals into `Inputs!B2:B5`, recalculates summary
+formulas, exports WorkPaper JSON, restores it, and returns
+`validation_passed: true` only when the restored proof matches.
+
+See [Airbyte WorkPaper Validation](docs/airbyte-workpaper-validation.md) for
+the post-sync boundary, local smoke command, official Airbyte references, and
+outreach note.
+
 ## Temporal Formula Activities
 
 Need a Temporal TypeScript Workflow to make durable formula-backed decisions

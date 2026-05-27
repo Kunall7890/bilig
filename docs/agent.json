@@ -139,6 +139,14 @@
       "source": "https://github.com/proompteng/bilig/tree/main/examples/inngest-workpaper-step"
     },
     {
+      "name": "airbyte-workpaper-validation",
+      "type": "post-sync-validation-smoke-test",
+      "framework": "Airbyte",
+      "command": "cd examples/airbyte-workpaper-validation && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke",
+      "docs": "https://proompteng.github.io/bilig/airbyte-workpaper-validation.html",
+      "source": "https://github.com/proompteng/bilig/tree/main/examples/airbyte-workpaper-validation"
+    },
+    {
       "name": "formula-clinic",
       "type": "local-cli",
       "command": "npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells \"Summary!B7,Inputs!B2\"",
@@ -192,6 +200,7 @@
     "https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html",
     "https://proompteng.github.io/bilig/triggerdev-workpaper-task.html",
     "https://proompteng.github.io/bilig/inngest-workpaper-step.html",
+    "https://proompteng.github.io/bilig/airbyte-workpaper-validation.html",
     "https://proompteng.github.io/bilig/temporal-workpaper-activity.html",
     "https://proompteng.github.io/bilig/airflow-workpaper-dag.html",
     "https://proompteng.github.io/bilig/dagster-workpaper-asset.html",

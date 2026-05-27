@@ -1,0 +1,19 @@
+{
+  "name": "bilig-airbyte-workpaper-validation",
+  "private": true,
+  "description": "Airbyte post-sync validation example that verifies record and state outputs with Bilig WorkPaper formulas.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx scripts/check-airbyte-recipe.ts",
+    "smoke": "tsx src/smoke.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@bilig/workpaper": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.2"
+  }
+}

@@ -179,6 +179,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/node-framework-workpaper-adapters.html
 - https://proompteng.github.io/bilig/windmill-workpaper-script.html
 - https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
+- https://proompteng.github.io/bilig/airbyte-workpaper-validation.html
 - https://proompteng.github.io/bilig/temporal-workpaper-activity.html
 - https://proompteng.github.io/bilig/airflow-workpaper-dag.html
 - https://proompteng.github.io/bilig/dagster-workpaper-asset.html
@@ -562,6 +563,10 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/inngest-workpaper-step.html
   https://github.com/proompteng/bilig/blob/main/docs/inngest-workpaper-step.md
   https://github.com/proompteng/bilig/tree/main/examples/inngest-workpaper-step
+  Airbyte post-sync validation source:
+  https://proompteng.github.io/bilig/airbyte-workpaper-validation.html
+  https://github.com/proompteng/bilig/blob/main/docs/airbyte-workpaper-validation.md
+  https://github.com/proompteng/bilig/tree/main/examples/airbyte-workpaper-validation
   Temporal WorkPaper Activity source:
   https://proompteng.github.io/bilig/temporal-workpaper-activity.html
   https://github.com/proompteng/bilig/blob/main/docs/temporal-workpaper-activity.md
