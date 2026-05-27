@@ -6,6 +6,8 @@ import { parseCsv, parseCsvCellInput, resolveCsvParseOptions, type CsvParseOptio
 import { normalizeRange } from '../../engine-range-utils.js'
 import { WorkbookStore } from '../../workbook-store.js'
 import { EngineMutationError } from '../errors.js'
+import { findTableHeaderCell } from './operation-table-header-rename.js'
+import { excelCompatibleTableColumnName } from './table-column-name-helpers.js'
 import { getMutationMatrixCell } from './mutation-cell-content-helpers.js'
 import {
   hasMutationCellContent,
@@ -86,6 +88,22 @@ export function createMutationRangeOperations(args: MutationRangeOperationsRunti
     return args.workbook.getCellNumberFormat(formatId)?.code ?? null
   }
 
+  const generatedTableHeaderNameForBlankState = (
+    targetSheetName: string,
+    targetAddress: string,
+    snapshot: CellSnapshot,
+  ): string | undefined => {
+    if (snapshot.formula !== undefined || (snapshot.value.tag !== ValueTag.Empty && snapshot.value.tag !== ValueTag.Error)) {
+      return undefined
+    }
+    const bounds = normalizeRange({ sheetName: targetSheetName, startAddress: targetAddress, endAddress: targetAddress })
+    const header = findTableHeaderCell(args.workbook.listTables(), targetSheetName, bounds.startRow, bounds.startCol)
+    if (!header) {
+      return undefined
+    }
+    return excelCompatibleTableColumnName('', header.table.columnNames, header.columnIndex)
+  }
+
   const readDesiredCellState = (
     targetSheetName: string,
     targetAddress: string,
@@ -94,8 +112,8 @@ export function createMutationRangeOperations(args: MutationRangeOperationsRunti
     sourceAddress?: string,
     formatOverride: string | null = snapshot.format ?? null,
     styleIdOverride = snapshot.styleId ?? WorkbookStore.defaultStyleId,
-  ): ComparableMutationCellState =>
-    readDesiredMutationCellState({
+  ): ComparableMutationCellState => {
+    const desired = readDesiredMutationCellState({
       targetSheetName,
       targetAddress,
       snapshot,
@@ -104,6 +122,12 @@ export function createMutationRangeOperations(args: MutationRangeOperationsRunti
       formatOverride,
       styleIdOverride,
     })
+    const generatedHeaderName = generatedTableHeaderNameForBlankState(targetSheetName, targetAddress, snapshot)
+    if (generatedHeaderName === undefined || desired.formula !== undefined) {
+      return desired
+    }
+    return { ...desired, value: generatedHeaderName, authoredBlank: false }
+  }
 
   const hasStoredCellState = (sheetName: string, address: string): boolean => {
     const bounds = normalizeRange({ sheetName, startAddress: address, endAddress: address })

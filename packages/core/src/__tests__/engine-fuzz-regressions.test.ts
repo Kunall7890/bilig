@@ -906,6 +906,34 @@ describe('engine fuzz regressions', () => {
     expect(engine.undo()).toBe(false)
   })
 
+  it('does not record history when empty fill preserves a generated table header', async () => {
+    const seedSnapshot = await createEngineSeedSnapshot('named-structures', 'generated-table-header-empty-fill-noop-regression')
+    const engine = new SpreadsheetEngine({
+      workbookName: seedSnapshot.workbook.name,
+      replicaId: 'generated-table-header-empty-fill-noop-regression',
+    })
+    await engine.ready()
+    engine.importSnapshot(structuredClone(seedSnapshot))
+
+    const clearResult = applyActionAndCaptureResult(engine, {
+      kind: 'clear',
+      range: { sheetName: 'Sheet1', startAddress: 'B1', endAddress: 'B1' },
+    })
+    expect(clearResult.accepted).toBe(true)
+    expect(engine.getTable('Sales')?.columnNames).toEqual(['Qty', 'Column1'])
+
+    const fillResult = applyActionAndCaptureResult(engine, {
+      kind: 'fill',
+      source: { sheetName: 'Sheet1', startAddress: 'E6', endAddress: 'E6' },
+      target: { sheetName: 'Sheet1', startAddress: 'B1', endAddress: 'B1' },
+    })
+    expect(fillResult.accepted).toBe(false)
+
+    expect(engine.undo()).toBe(true)
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(normalizeSnapshotForSemanticComparison(seedSnapshot))
+    expect(engine.undo()).toBe(false)
+  })
+
   it('normalizes sparse style metadata by covered cells after undo replay', async () => {
     const seedSnapshot = await createEngineSeedSnapshot('sparse-format', 'history-style-run-normalization-regression')
     const engine = new SpreadsheetEngine({
