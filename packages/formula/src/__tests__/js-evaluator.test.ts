@@ -106,6 +106,22 @@ describe('js evaluator', () => {
     })
   })
 
+  it('coerces direct empty text as zero for numeric aggregate argument lists', () => {
+    expect(evaluatePlan(lowerToPlan(parseFormula('COUNT("")')), context)).toEqual(num(1))
+    expect(evaluatePlan(lowerToPlan(parseFormula('MIN("")')), context)).toEqual(num(0))
+    expect(evaluatePlan(lowerToPlan(parseFormula('MAX("",-1)')), context)).toEqual(num(0))
+    expect(evaluatePlan(lowerToPlan(parseFormula('PRODUCT("")')), context)).toEqual(num(0))
+    expect(evaluatePlan(lowerToPlan(parseFormula('SUMSQ("")')), context)).toEqual(num(0))
+    expect(evaluatePlan(lowerToPlan(parseFormula('GEOMEAN("")')), context)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(evaluatePlan(lowerToPlan(parseFormula('HARMEAN("")')), context)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+  })
+
   it('evaluates direct plans for ranges, jumps, and fallback stack handling', () => {
     expect(
       evaluatePlan(

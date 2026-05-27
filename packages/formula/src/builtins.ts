@@ -79,11 +79,23 @@ function toScalarMathNumber(value: CellValue): number | undefined {
   return coerceScalarMathNumber(value, toNumber)
 }
 
+function parseDirectAggregateNumericText(value: string): number | undefined {
+  return value === '' ? 0 : parseNumericText(value)
+}
+
 function toDirectAggregateNumber(value: CellValue): number | undefined {
   if (value.tag === ValueTag.String) {
-    return parseNumericText(value.value)
+    return parseDirectAggregateNumericText(value.value)
   }
   return toNumber(value)
+}
+
+function isCountedDirectNumber(value: CellValue): boolean {
+  return (
+    value.tag === ValueTag.Number ||
+    value.tag === ValueTag.Boolean ||
+    (value.tag === ValueTag.String && toDirectAggregateNumber(value) !== undefined)
+  )
 }
 
 function numberResult(value: number): CellValue {
@@ -521,7 +533,9 @@ const scalarBuiltins: Record<string, Builtin> = {
     const values = args.map((arg) => toZeroNumericValue(arg)).filter((value): value is number => value !== undefined)
     return values.length === 0 ? numberResult(0) : numberResult(Math.min(...values))
   },
-  COUNT: (...args) => numberResult(args.filter((arg) => arg.tag === ValueTag.Number || arg.tag === ValueTag.Boolean).length),
+  COUNT: (...args) => {
+    return numberResult(args.filter(isCountedDirectNumber).length)
+  },
   COUNTA: (...args) => numberResult(args.filter((arg) => arg.tag !== ValueTag.Empty).length),
   COUNTBLANK: (...args) => {
     let blanks = 0

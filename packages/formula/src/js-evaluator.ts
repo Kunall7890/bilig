@@ -209,21 +209,19 @@ function coerceDirectNumericTextAggregateArgument(callee: string, value: CellVal
   if (argRef !== undefined || value.tag !== ValueTag.String) {
     return value
   }
+  const directNumericText = value.value === '' ? 0 : parseNumericText(value.value)
   if (callee === 'COUNT') {
-    const numeric = parseNumericText(value.value)
-    return numeric === undefined ? value : numberValue(numeric)
+    return directNumericText === undefined ? value : numberValue(directNumericText)
   }
   if (callee === 'SUM' || callee === 'AVERAGE' || callee === 'AVG') {
     const numeric = toArithmeticNumber(value)
     return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
   }
   if (callee === 'PRODUCT' || callee === 'MIN' || callee === 'MAX' || callee === 'SUMSQ') {
-    const numeric = parseNumericText(value.value)
-    return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
+    return directNumericText === undefined ? error(ErrorCode.Value) : numberValue(directNumericText)
   }
   if (callee === 'GEOMEAN' || callee === 'HARMEAN') {
-    const numeric = parseNumericText(value.value)
-    return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
+    return directNumericText === undefined ? error(ErrorCode.Value) : numberValue(directNumericText)
   }
   return value
 }

@@ -83,6 +83,22 @@ describe('formula builtins', () => {
     })
   })
 
+  it('coerces direct empty text aggregate arguments consistently with Excel numeric argument lists', () => {
+    const COUNT = getBuiltin('COUNT')!
+    const MIN = getBuiltin('MIN')!
+    const MAX = getBuiltin('MAX')!
+    const GEOMEAN = getBuiltin('GEOMEAN')!
+    const HARMEAN = getBuiltin('HARMEAN')!
+
+    const emptyText = { tag: ValueTag.String, value: '', stringId: 1 } as const
+
+    expect(COUNT(emptyText)).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(MIN(emptyText)).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(MAX(emptyText, { tag: ValueTag.Number, value: -1 })).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(GEOMEAN(emptyText)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+    expect(HARMEAN(emptyText)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+  })
+
   it('supports numeric aggregates and error propagation', () => {
     const sum = getBuiltin('SUM')
     const avg = getBuiltin('AVG')

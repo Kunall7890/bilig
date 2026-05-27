@@ -233,6 +233,31 @@ describe('Workpaper formula regressions', () => {
     expectString(cellValue(workbook, 'Summary', 0, 5), 'x')
   })
 
+  it.each([false, true])('coerces direct empty text numeric aggregate arguments with useColumnIndex=%s', (useColumnIndex) => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Summary: [
+          ['count', '=COUNT("")'],
+          ['min', '=MIN("")'],
+          ['max', '=MAX("",-1)'],
+          ['product', '=PRODUCT("")'],
+          ['sumsq', '=SUMSQ("")'],
+          ['geomean', '=GEOMEAN("")'],
+          ['harmean', '=HARMEAN("")'],
+        ],
+      },
+      { maxRows: 20, maxColumns: 8, useColumnIndex },
+    )
+
+    expectNumber(cellValue(workbook, 'Summary', 0, 1), 1)
+    expectNumber(cellValue(workbook, 'Summary', 1, 1), 0)
+    expectNumber(cellValue(workbook, 'Summary', 2, 1), 0)
+    expectNumber(cellValue(workbook, 'Summary', 3, 1), 0)
+    expectNumber(cellValue(workbook, 'Summary', 4, 1), 0)
+    expect(cellValue(workbook, 'Summary', 5, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+    expect(cellValue(workbook, 'Summary', 6, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+  })
+
   it('evaluates whole-column criteria ranges in conditional aggregates', () => {
     const workbook = WorkPaper.buildFromSheets(
       {

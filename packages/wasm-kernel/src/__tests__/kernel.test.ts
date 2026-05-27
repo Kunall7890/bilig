@@ -9,6 +9,9 @@ const BUILTIN = {
   ISNUMBER: BuiltinId.IsNumber,
   ISTEXT: BuiltinId.IsText,
   DATE: BuiltinId.Date,
+  COUNT: BuiltinId.Count,
+  MIN: BuiltinId.Min,
+  MAX: BuiltinId.Max,
   YEAR: BuiltinId.Year,
   MONTH: BuiltinId.Month,
   DAY: BuiltinId.Day,
@@ -1959,6 +1962,45 @@ describe('wasm kernel', () => {
     expectNumberCell(kernel, cellIndex(3, 7, width), 60, 12)
     expectNumberCell(kernel, cellIndex(4, 0, width), 8, 12)
     expectNumberCell(kernel, cellIndex(4, 1, width), 18, 12)
+  })
+
+  it('coerces direct empty text aggregate arguments on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 7, 1, 0, 0)
+    kernel.uploadStrings(Uint32Array.from([0]), Uint32Array.from([0]), asciiCodes(''))
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushString(0), encodeCall(BUILTIN.COUNT, 1), encodeRet()],
+      [encodePushString(0), encodeCall(BUILTIN.MIN, 1), encodeRet()],
+      [encodePushString(0), encodePushNumber(0), encodeCall(BUILTIN.MAX, 2), encodeRet()],
+      [encodePushString(0), encodeCall(BUILTIN.PRODUCT, 1), encodeRet()],
+      [encodePushString(0), encodeCall(BUILTIN.SUMSQ, 1), encodeRet()],
+      [encodePushString(0), encodeCall(BUILTIN.GEOMEAN, 1), encodeRet()],
+      [encodePushString(0), encodeCall(BUILTIN.HARMEAN, 1), encodeRet()],
+    ])
+    const constants = packConstants([[], [], [-1], [], [], [], []])
+    const outputCells = Uint32Array.from([
+      cellIndex(0, 0, width),
+      cellIndex(0, 1, width),
+      cellIndex(0, 2, width),
+      cellIndex(0, 3, width),
+      cellIndex(0, 4, width),
+      cellIndex(0, 5, width),
+      cellIndex(0, 6, width),
+    ])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, outputCells)
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(outputCells)
+
+    expectNumberCell(kernel, cellIndex(0, 0, width), 1, 12)
+    expectNumberCell(kernel, cellIndex(0, 1, width), 0, 12)
+    expectNumberCell(kernel, cellIndex(0, 2, width), 0, 12)
+    expectNumberCell(kernel, cellIndex(0, 3, width), 0, 12)
+    expectNumberCell(kernel, cellIndex(0, 4, width), 0, 12)
+    expectErrorCell(kernel, cellIndex(0, 5, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(0, 6, width), ErrorCode.Num)
   })
 
   it('evaluates exact-parity information and threshold helpers on the wasm path', async () => {
