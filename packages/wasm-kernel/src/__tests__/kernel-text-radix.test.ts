@@ -140,15 +140,15 @@ describe('wasm kernel text/radix helpers', () => {
 
   it('keeps radix conversion helpers stable across refactors', async () => {
     const kernel = await createKernel()
-    const width = 8
-    kernel.init(16, 5, 2, 1, 1)
-    const pooledStrings = ['1010', '1F']
+    const width = 12
+    kernel.init(24, 11, 4, 1, 1)
+    const pooledStrings = ['1010', '1F', 'B7', '17']
     kernel.uploadStrings(
-      Uint32Array.from([0, 4]),
-      Uint32Array.from([4, 2]),
-      Uint16Array.from(Array.from('10101F', (char) => char.charCodeAt(0))),
+      Uint32Array.from([0, 4, 6, 8]),
+      Uint32Array.from([4, 2, 2, 2]),
+      Uint16Array.from(Array.from('10101FB717', (char) => char.charCodeAt(0))),
     )
-    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+    kernel.writeCells(new Uint8Array(24), new Float64Array(24), new Uint32Array(24), new Uint16Array(24))
 
     const packed = packPrograms([
       [encodePushString(0), encodeCall(BuiltinId.Bin2dec, 1), encodeRet()],
@@ -156,6 +156,12 @@ describe('wasm kernel text/radix helpers', () => {
       [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Base, 3), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Dec2hex, 2), encodeRet()],
       [encodePushString(1), encodePushNumber(0), encodeCall(BuiltinId.Decimal, 2), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Dec2bin, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Dec2hex, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Dec2oct, 1), encodeRet()],
+      [encodePushString(0), encodeCall(BuiltinId.Bin2hex, 1), encodeRet()],
+      [encodePushString(2), encodeCall(BuiltinId.Hex2bin, 1), encodeRet()],
+      [encodePushString(3), encodeCall(BuiltinId.Oct2hex, 1), encodeRet()],
     ])
     kernel.uploadPrograms(
       packed.programs,
@@ -167,9 +173,15 @@ describe('wasm kernel text/radix helpers', () => {
         cellIndex(1, 2, width),
         cellIndex(1, 3, width),
         cellIndex(1, 4, width),
+        cellIndex(1, 5, width),
+        cellIndex(1, 6, width),
+        cellIndex(1, 7, width),
+        cellIndex(1, 8, width),
+        cellIndex(1, 9, width),
+        cellIndex(1, 10, width),
       ]),
     )
-    const constants = packConstants([[255], [], [255, 16, 4], [255, 4], [16]])
+    const constants = packConstants([[255], [], [255, 16, 4], [255, 4], [16], [9], [28], [58], [], [], []])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
     kernel.evalBatch(
       Uint32Array.from([
@@ -178,6 +190,12 @@ describe('wasm kernel text/radix helpers', () => {
         cellIndex(1, 2, width),
         cellIndex(1, 3, width),
         cellIndex(1, 4, width),
+        cellIndex(1, 5, width),
+        cellIndex(1, 6, width),
+        cellIndex(1, 7, width),
+        cellIndex(1, 8, width),
+        cellIndex(1, 9, width),
+        cellIndex(1, 10, width),
       ]),
     )
 
@@ -186,5 +204,11 @@ describe('wasm kernel text/radix helpers', () => {
     expect(kernel.readNumbers()[cellIndex(1, 4, width)]).toBe(31)
     expect(readStringCell(kernel, cellIndex(1, 2, width), pooledStrings)).toBe('00FF')
     expect(readStringCell(kernel, cellIndex(1, 3, width), pooledStrings)).toBe('00FF')
+    expect(readStringCell(kernel, cellIndex(1, 5, width), pooledStrings)).toBe('1001')
+    expect(readStringCell(kernel, cellIndex(1, 6, width), pooledStrings)).toBe('1C')
+    expect(readStringCell(kernel, cellIndex(1, 7, width), pooledStrings)).toBe('72')
+    expect(readStringCell(kernel, cellIndex(1, 8, width), pooledStrings)).toBe('A')
+    expect(readStringCell(kernel, cellIndex(1, 9, width), pooledStrings)).toBe('10110111')
+    expect(readStringCell(kernel, cellIndex(1, 10, width), pooledStrings)).toBe('F')
   })
 })

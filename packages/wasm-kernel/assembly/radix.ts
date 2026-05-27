@@ -100,8 +100,9 @@ export function formatSignedRadixText(
     return toBaseText(encoded, radix, negativeWidth)
   }
   const raw = toBaseText(numeric, radix, 0)
-  if (minLength < raw.length) {
+  const targetMinLength = minLength < 0 ? raw.length : minLength
+  if (targetMinLength < raw.length) {
     return null
   }
-  return toBaseText(numeric, radix, minLength)
+  return toBaseText(numeric, radix, targetMinLength)
 }

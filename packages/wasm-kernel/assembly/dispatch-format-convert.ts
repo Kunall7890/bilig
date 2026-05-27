@@ -20,6 +20,7 @@ const BASE_LIMIT_F64: f64 = 9007199254740992.0
 const BASE_MAX_MIN_LENGTH: i32 = 255
 const RADIX_PLACES_VALUE_ERROR: i64 = i64.MIN_VALUE
 const RADIX_PLACES_NUM_ERROR: i64 = i64.MIN_VALUE + 1
+const RADIX_PLACES_OMITTED: i64 = -1
 
 function columnLabelText(column: i32): string | null {
   if (column < 1) {
@@ -538,7 +539,7 @@ export function tryApplyFormatConvertBuiltin(
       }
     }
 
-    const places = argc == 2 ? coerceRadixPlaces(tagStack[base + 1], valueStack[base + 1]) : 0
+    const places = argc == 2 ? coerceRadixPlaces(tagStack[base + 1], valueStack[base + 1]) : RADIX_PLACES_OMITTED
     if (valueError || places == RADIX_PLACES_VALUE_ERROR) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }

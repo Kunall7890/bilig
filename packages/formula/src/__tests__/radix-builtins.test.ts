@@ -87,4 +87,18 @@ describe('radix builtins', () => {
     expect(BASE(num(31), num(16), num(256))).toEqual(numError)
     expect(BASE(num(31), num(16), text('bad'))).toEqual(valueError)
   })
+
+  it('uses the minimum necessary output length when radix places are omitted', () => {
+    expect(getBuiltin('DEC2BIN')?.(num(9))).toEqual(text('1001'))
+    expect(getBuiltin('DEC2HEX')?.(num(28))).toEqual(text('1C'))
+    expect(getBuiltin('DEC2OCT')?.(num(58))).toEqual(text('72'))
+    expect(getBuiltin('DEC2HEX')?.(num(0))).toEqual(text('0'))
+
+    expect(getBuiltin('BIN2HEX')?.(text('1010'))).toEqual(text('A'))
+    expect(getBuiltin('BIN2OCT')?.(text('1010'))).toEqual(text('12'))
+    expect(getBuiltin('HEX2BIN')?.(text('B7'))).toEqual(text('10110111'))
+    expect(getBuiltin('HEX2OCT')?.(text('F'))).toEqual(text('17'))
+    expect(getBuiltin('OCT2BIN')?.(text('17'))).toEqual(text('1111'))
+    expect(getBuiltin('OCT2HEX')?.(text('17'))).toEqual(text('F'))
+  })
 })

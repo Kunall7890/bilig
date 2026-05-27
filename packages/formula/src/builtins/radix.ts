@@ -32,7 +32,7 @@ export function createRadixBuiltins({ toNumber, integerValue, valueError, number
         return valueError()
       }
       const places = coercePlaces(placesArg)
-      if (typeof places !== 'number') {
+      if (places !== undefined && typeof places !== 'number') {
         return places
       }
       return formatSignedRadixValue(numeric, 2, places, 10, -512, 511)
@@ -43,7 +43,7 @@ export function createRadixBuiltins({ toNumber, integerValue, valueError, number
         return valueError()
       }
       const places = coercePlaces(placesArg)
-      if (typeof places !== 'number') {
+      if (places !== undefined && typeof places !== 'number') {
         return places
       }
       return formatSignedRadixValue(numeric, 16, places, 10, -549755813888, 549755813887)
@@ -54,7 +54,7 @@ export function createRadixBuiltins({ toNumber, integerValue, valueError, number
         return valueError()
       }
       const places = coercePlaces(placesArg)
-      if (typeof places !== 'number') {
+      if (places !== undefined && typeof places !== 'number') {
         return places
       }
       return formatSignedRadixValue(numeric, 8, places, 10, -536870912, 536870911)
@@ -128,9 +128,9 @@ export function createRadixBuiltins({ toNumber, integerValue, valueError, number
     return numberResult(Number.parseInt(raw, radixValue))
   }
 
-  function coercePlaces(value: CellValue | undefined): number | CellValue {
+  function coercePlaces(value: CellValue | undefined): number | undefined | CellValue {
     if (value === undefined) {
-      return 0
+      return undefined
     }
     const places = integerValue(value)
     if (places === undefined) {
@@ -162,7 +162,7 @@ export function createRadixBuiltins({ toNumber, integerValue, valueError, number
       return numeric
     }
     const places = coercePlaces(placesArg)
-    if (typeof places !== 'number') {
+    if (places !== undefined && typeof places !== 'number') {
       return places
     }
     return formatSignedRadixValue(numeric, toRadix, places, negativeWidth, min, max)
@@ -171,7 +171,7 @@ export function createRadixBuiltins({ toNumber, integerValue, valueError, number
   function formatSignedRadixValue(
     numeric: number,
     radix: 2 | 8 | 16,
-    minLength: number,
+    minLength: number | undefined,
     negativeWidth: number,
     min: number,
     max: number,
@@ -188,12 +188,13 @@ export function createRadixBuiltins({ toNumber, integerValue, valueError, number
       }
     }
     const raw = numeric.toString(radix).toUpperCase()
-    if (minLength < raw.length) {
+    const targetLength = minLength ?? raw.length
+    if (targetLength < raw.length) {
       return numError()
     }
     return {
       tag: ValueTag.String,
-      value: raw.padStart(minLength, '0'),
+      value: raw.padStart(targetLength, '0'),
       stringId: 0,
     }
   }
