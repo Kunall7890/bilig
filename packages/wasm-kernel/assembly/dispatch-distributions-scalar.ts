@@ -171,19 +171,28 @@ export function tryApplyScalarDistributionBuiltin(
     }
     const alpha = toNumberExact(tagStack[base], valueStack[base])
     const standardDeviation = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const size = toNumberExact(tagStack[base + 2], valueStack[base + 2])
+    const sizeRaw = toNumberExact(tagStack[base + 2], valueStack[base + 2])
     const useNormal = builtinId == BuiltinId.ConfidenceNorm || builtinId == BuiltinId.Confidence
-    const critical = useNormal ? inverseStandardNormal(1.0 - alpha / 2.0) : inverseStudentT(1.0 - alpha / 2.0, size - 1.0)
-    const result =
-      isNaN(alpha) ||
-      isNaN(standardDeviation) ||
-      isNaN(size) ||
-      !(alpha > 0.0 && alpha < 1.0) ||
+    if (isNaN(alpha) || isNaN(standardDeviation) || isNaN(sizeRaw)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const size = <i32>sizeRaw
+    if (
+      !isFinite(alpha) ||
+      !isFinite(standardDeviation) ||
+      !isFinite(sizeRaw) ||
+      alpha <= 0.0 ||
+      alpha >= 1.0 ||
       standardDeviation <= 0.0 ||
-      (useNormal ? size < 1.0 : size < 2.0) ||
-      isNaN(critical)
-        ? NaN
-        : (critical * standardDeviation) / Math.sqrt(size)
+      size < 1
+    ) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (!useNormal && size == 1) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const critical = useNormal ? inverseStandardNormal(1.0 - alpha / 2.0) : inverseStudentT(1.0 - alpha / 2.0, <f64>(size - 1))
+    const result = isNaN(critical) ? NaN : (critical * standardDeviation) / Math.sqrt(<f64>size)
     return writeResult(
       base,
       STACK_KIND_SCALAR,

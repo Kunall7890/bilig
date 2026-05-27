@@ -270,7 +270,6 @@ const distributionBuiltins = preserveIncomingErrors(
     toNumber,
     coerceBoolean,
     coerceNumber,
-    integerValue,
     nonNegativeIntegerValue,
     positiveIntegerValue,
     numberResult,

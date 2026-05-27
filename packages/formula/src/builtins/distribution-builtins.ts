@@ -34,7 +34,6 @@ interface DistributionBuiltinDeps {
   toNumber: (value: CellValue) => number | undefined
   coerceBoolean: (value: CellValue | undefined, fallback: boolean) => boolean | undefined
   coerceNumber: (value: CellValue | undefined, fallback: number) => number | undefined
-  integerValue: (value: CellValue | undefined, fallback?: number) => number | undefined
   nonNegativeIntegerValue: (value: CellValue | undefined, fallback?: number) => number | undefined
   positiveIntegerValue: (value: CellValue | undefined, fallback?: number) => number | undefined
   numberResult: (value: number) => EvaluationResult
@@ -45,6 +44,10 @@ interface DistributionBuiltinDeps {
 
 function naError(): EvaluationResult {
   return { tag: ValueTag.Error, code: ErrorCode.NA }
+}
+
+function div0Error(): EvaluationResult {
+  return { tag: ValueTag.Error, code: ErrorCode.Div0 }
 }
 
 function hasNonFinite(...values: number[]): boolean {
@@ -78,7 +81,6 @@ function isInvalidHypergeometricDomain(
 export function createDistributionBuiltins({
   toNumber,
   coerceBoolean,
-  integerValue,
   numberResult,
   numericResultOrError,
   valueError,
@@ -96,16 +98,13 @@ export function createDistributionBuiltins({
     'CONFIDENCE.NORM': (alphaArg, standardDeviationArg, sizeArg) => {
       const alpha = toNumber(alphaArg)
       const standardDeviation = toNumber(standardDeviationArg)
-      const size = toNumber(sizeArg)
-      if (
-        alpha === undefined ||
-        standardDeviation === undefined ||
-        size === undefined ||
-        !(alpha > 0 && alpha < 1) ||
-        standardDeviation <= 0 ||
-        size < 1
-      ) {
+      const sizeRaw = toNumber(sizeArg)
+      if (alpha === undefined || standardDeviation === undefined || sizeRaw === undefined) {
         return valueError()
+      }
+      const size = Math.trunc(sizeRaw)
+      if (hasNonFinite(alpha, standardDeviation, sizeRaw) || alpha <= 0 || alpha >= 1 || standardDeviation <= 0 || size < 1) {
+        return numError()
       }
       const criticalValue = inverseStandardNormal(1 - alpha / 2)
       return criticalValue === undefined ? valueError() : numberResult((criticalValue * standardDeviation) / Math.sqrt(size))
@@ -161,16 +160,16 @@ export function createDistributionBuiltins({
     'CONFIDENCE.T': (alphaArg, standardDeviationArg, sizeArg) => {
       const alpha = toNumber(alphaArg)
       const standardDeviation = toNumber(standardDeviationArg)
-      const size = integerValue(sizeArg)
-      if (
-        alpha === undefined ||
-        standardDeviation === undefined ||
-        size === undefined ||
-        !(alpha > 0 && alpha < 1) ||
-        !(standardDeviation > 0) ||
-        size < 2
-      ) {
+      const sizeRaw = toNumber(sizeArg)
+      if (alpha === undefined || standardDeviation === undefined || sizeRaw === undefined) {
         return valueError()
+      }
+      const size = Math.trunc(sizeRaw)
+      if (hasNonFinite(alpha, standardDeviation, sizeRaw) || alpha <= 0 || alpha >= 1 || standardDeviation <= 0 || size < 1) {
+        return numError()
+      }
+      if (size === 1) {
+        return div0Error()
       }
       const critical = inverseStudentT(1 - alpha / 2, size - 1)
       return critical === undefined ? valueError() : numericResultOrError((critical * standardDeviation) / Math.sqrt(size))

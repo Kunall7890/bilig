@@ -130,8 +130,11 @@ describe('wasm kernel extended distribution error semantics', () => {
       ],
       [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.GammaInv, 3), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Gammainv, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.ConfidenceNorm, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Confidence, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.ConfidenceT, 3), encodeRet()],
     ])
-    const outputs = Uint32Array.from(Array.from({ length: 18 }, (_, index) => cellIndex(1, index, width)))
+    const outputs = Uint32Array.from(Array.from({ length: 21 }, (_, index) => cellIndex(1, index, width)))
     kernel.uploadPrograms(programs.programs, programs.offsets, programs.lengths, outputs)
 
     const constants = packConstants([
@@ -153,6 +156,9 @@ describe('wasm kernel extended distribution error semantics', () => {
       [1, 0, 0.5],
       [-0.1, 3, 2],
       [0.5, 3, 0],
+      [0, 1, 10],
+      [0.05, 0, 10],
+      [0.05, 1, 0],
     ])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
     kernel.evalBatch(outputs)
@@ -185,11 +191,13 @@ describe('wasm kernel extended distribution error semantics', () => {
       ],
       [encodePushString(0), encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Negbinomdist, 3), encodeRet()],
       [encodePushString(0), encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.GammaInv, 3), encodeRet()],
+      [encodePushString(0), encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.ConfidenceNorm, 3), encodeRet()],
+      [encodePushNumber(0), encodePushString(0), encodePushNumber(1), encodeCall(BuiltinId.ConfidenceT, 3), encodeRet()],
     ])
-    const outputs = Uint32Array.from(Array.from({ length: 7 }, (_, index) => cellIndex(1, index, width)))
+    const outputs = Uint32Array.from(Array.from({ length: 9 }, (_, index) => cellIndex(1, index, width)))
     kernel.uploadPrograms(programs.programs, programs.offsets, programs.lengths, outputs)
 
-    const constants = packConstants([[1], [1, 1], [1, 1], [1], [3, 0.5], [3, 0.5], [3, 2]])
+    const constants = packConstants([[1], [1, 1], [1, 1], [1], [3, 0.5], [3, 0.5], [3, 2], [1, 10], [0.05, 10]])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
     kernel.evalBatch(outputs)
 
@@ -197,5 +205,39 @@ describe('wasm kernel extended distribution error semantics', () => {
       expect(kernel.readTags()[output]).toBe(ValueTag.Error)
       expect(kernel.readErrors()[output]).toBe(ErrorCode.Value)
     }
+  })
+
+  it('truncates confidence sizes and returns #DIV/0 for size-one Student-t confidence on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 4
+    kernel.init(16, 2, 8, 8, 1)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const programs = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.ConfidenceNorm, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Confidence, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.ConfidenceT, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.ConfidenceT, 3), encodeRet()],
+    ])
+    const outputs = Uint32Array.from(Array.from({ length: 4 }, (_, index) => cellIndex(1, index, width)))
+    kernel.uploadPrograms(programs.programs, programs.offsets, programs.lengths, outputs)
+
+    const constants = packConstants([
+      [0.05, 1, 1.9],
+      [0.05, 1, 1.9],
+      [0.05, 1, 2.9],
+      [0.05, 1, 1.9],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(outputs)
+
+    expect(kernel.readTags()[outputs[0]]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[outputs[0]]).toBeCloseTo(1.959963984540054, 8)
+    expect(kernel.readTags()[outputs[1]]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[outputs[1]]).toBeCloseTo(1.959963984540054, 8)
+    expect(kernel.readTags()[outputs[2]]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[outputs[2]]).toBeCloseTo(8.984643532093735, 12)
+    expect(kernel.readTags()[outputs[3]]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[outputs[3]]).toBe(ErrorCode.Div0)
   })
 })

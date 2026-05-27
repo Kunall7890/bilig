@@ -2659,7 +2659,7 @@ describe('formula builtins', () => {
       CONFIDENCE_NORM({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 1.5 }, { tag: ValueTag.Number, value: 100 }),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(LOGNORMDIST({ tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Number, value: 1 })).toEqual(
       {
@@ -2845,13 +2845,13 @@ describe('formula builtins', () => {
       CONFIDENCE_T({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Number, value: 4 }),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       CONFIDENCE_T({ tag: ValueTag.Number, value: 0.5 }, { tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Number, value: 1 }),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Div0,
     })
     expect(
       EXPONDIST({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Boolean, value: false }),

@@ -59,6 +59,33 @@ describe('distribution builtins domain errors', () => {
     expect(getBuiltin('GAMMA.INV')?.(num(0.5), text('bad'), num(2))).toEqual(valueError)
   })
 
+  it('separates confidence numeric-domain errors from coercion errors', () => {
+    expect(getBuiltin('CONFIDENCE.NORM')?.(num(0), num(1), num(10))).toEqual(numError)
+    expect(getBuiltin('CONFIDENCE.NORM')?.(num(0.05), num(0), num(10))).toEqual(numError)
+    expect(getBuiltin('CONFIDENCE.NORM')?.(num(0.05), num(1), num(0))).toEqual(numError)
+    expect(getBuiltin('CONFIDENCE')?.(num(1), num(1), num(10))).toEqual(numError)
+    expect(getBuiltin('CONFIDENCE.T')?.(num(0), num(1), num(10))).toEqual(numError)
+    expect(getBuiltin('CONFIDENCE.T')?.(num(0.05), num(0), num(10))).toEqual(numError)
+    expect(getBuiltin('CONFIDENCE.T')?.(num(0.05), num(1), num(0))).toEqual(numError)
+    expect(getBuiltin('CONFIDENCE.T')?.(num(0.05), num(1), num(1))).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
+
+    expect(getBuiltin('CONFIDENCE.NORM')?.(text('bad'), num(1), num(10))).toEqual(valueError)
+    expect(getBuiltin('CONFIDENCE.T')?.(num(0.05), text('bad'), num(10))).toEqual(valueError)
+  })
+
+  it('truncates confidence size arguments before applying numeric-domain checks', () => {
+    expect(getBuiltin('CONFIDENCE.NORM')?.(num(0.05), num(1), num(1.9))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(1.959963984540054, 8),
+    })
+    expect(getBuiltin('CONFIDENCE')?.(num(0.05), num(1), num(1.9))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(1.959963984540054, 8),
+    })
+    expect(getBuiltin('CONFIDENCE.NORM')?.(num(0.05), num(1), num(0.9))).toEqual(numError)
+    expect(getBuiltin('CONFIDENCE.T')?.(num(0.05), num(1), num(1.9))).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
+  })
+
   it('separates student-t numeric-domain errors from coercion errors', () => {
     expect(getBuiltin('T.DIST')?.(num(1), num(0), bool(true))).toEqual(numError)
     expect(getBuiltin('T.DIST.RT')?.(num(1), num(0))).toEqual(numError)
