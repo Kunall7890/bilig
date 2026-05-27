@@ -405,6 +405,13 @@ describe('lookup builtins', () => {
 
     expect(LOOKUP(num(2), lookupValues, resultValues)).toEqual(num(20))
     expect(LOOKUP(num(4), lookupValues, resultValues)).toEqual(num(30))
+    expect(
+      LOOKUP(
+        text('office'),
+        axisRange([text('agency'), text('office'), text('port')], 'cols', 3, 1),
+        axisRange([text('AGY'), text('AUD'), text('PRT')], 'cols', 3, 1),
+      ),
+    ).toEqual(text('AUD'))
     expect(LOOKUP(num(0.6666666666666666), publicCorpusThresholds, publicCorpusScores)).toEqual(num(4))
     expect(LOOKUP(num(2048), publicCorpusThresholds, publicCorpusScores)).toEqual(err(ErrorCode.NA))
     expect(

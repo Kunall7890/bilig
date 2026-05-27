@@ -33,6 +33,13 @@ function coerceLookupReturnValue(value: CellValue, deps: LookupReferenceBuiltinD
   return value.tag === ValueTag.Empty ? deps.numberResult(0) : value
 }
 
+function toLookupVectorRange(arg: LookupBuiltinArgument, deps: LookupReferenceBuiltinDeps): RangeBuiltinArgument | CellValue {
+  if (arg === undefined) {
+    return deps.errorValue(ErrorCode.Value)
+  }
+  return deps.isRangeArg(arg) ? arg : deps.toCellRange(arg)
+}
+
 function isBlankLookupKey(value: CellValue): boolean {
   return value.tag === ValueTag.Empty
 }
@@ -208,8 +215,8 @@ export function createLookupReferenceBuiltins(deps: LookupReferenceBuiltinDeps):
         return existingError
       }
 
-      const lookupRangeOrError = deps.toCellRange(lookupVectorArg)
-      const resultRangeOrError = deps.toCellRange(resultVectorArg)
+      const lookupRangeOrError = toLookupVectorRange(lookupVectorArg, deps)
+      const resultRangeOrError = toLookupVectorRange(resultVectorArg, deps)
       if (!deps.isRangeArg(lookupRangeOrError)) {
         return lookupRangeOrError
       }

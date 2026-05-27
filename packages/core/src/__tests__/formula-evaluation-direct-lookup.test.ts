@@ -59,6 +59,37 @@ describe('direct lookup evaluation', () => {
     expect(engine.getCellValue('Sheet1', 'D2')).toEqual({ tag: ValueTag.Number, value: 2 })
   })
 
+  it('evaluates LOOKUP with whole-column lookup and result vectors', async () => {
+    const engine = new SpreadsheetEngine({
+      workbookName: 'evaluation-lookup-whole-column-vectors',
+      useColumnIndex: true,
+    })
+    await engine.ready()
+    engine.createSheet('Summary')
+    engine.createSheet('Institutions List')
+
+    engine.setCellValue('Summary', 'F5', 'Office of the Auditor General of Canada')
+    engine.setCellValue('Institutions List', 'A1', 'Air Canada')
+    engine.setCellValue('Institutions List', 'B1', 'AIR')
+    engine.setCellValue('Institutions List', 'A2', 'Bank of Canada')
+    engine.setCellValue('Institutions List', 'B2', 'BNK')
+    engine.setCellValue('Institutions List', 'A3', 'Office of the Auditor General of Canada')
+    engine.setCellValue('Institutions List', 'B3', 'AUD')
+    engine.setCellFormula('Summary', 'F6', "LOOKUP(F5,'Institutions List'!A:A,'Institutions List'!B:B)")
+
+    expect(engine.getCellValue('Summary', 'F6')).toEqual({
+      tag: ValueTag.String,
+      value: 'AUD',
+      stringId: expect.any(Number),
+    })
+
+    engine.setCellValue('Institutions List', 'B3', 'AUDIT')
+    expect(engine.getCellValue('Summary', 'F6')).toMatchObject({
+      tag: ValueTag.String,
+      value: 'AUDIT',
+    })
+  })
+
   it('evaluates approximate numeric MATCH formulas across uniform, refreshed, and descending columns', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-approx' })
     await engine.ready()

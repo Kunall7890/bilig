@@ -128,9 +128,14 @@ describe('logical/info builtins', () => {
     expect(ISREF(text('x'))).toEqual(bool(false))
     expect(ISREF(empty())).toEqual(bool(false))
 
-    expect(ERROR_TYPE(err(ErrorCode.Div0))).toEqual(number(1))
-    expect(ERROR_TYPE(err(ErrorCode.Ref))).toEqual(number(2))
-    expect(ERROR_TYPE(err(ErrorCode.NA))).toEqual(number(5))
+    expect(ERROR_TYPE(err(ErrorCode.Null))).toEqual(number(1))
+    expect(ERROR_TYPE(err(ErrorCode.Div0))).toEqual(number(2))
+    expect(ERROR_TYPE(err(ErrorCode.Value))).toEqual(number(3))
+    expect(ERROR_TYPE(err(ErrorCode.Ref))).toEqual(number(4))
+    expect(ERROR_TYPE(err(ErrorCode.Name))).toEqual(number(5))
+    expect(ERROR_TYPE(err(ErrorCode.Num))).toEqual(number(6))
+    expect(ERROR_TYPE(err(ErrorCode.NA))).toEqual(number(7))
+    expect(ERROR_TYPE(err(ErrorCode.Cycle))).toEqual(err(ErrorCode.NA))
     expect(ERROR_TYPE(num(0))).toEqual(err(ErrorCode.NA))
   })
 

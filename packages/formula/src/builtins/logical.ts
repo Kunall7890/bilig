@@ -67,8 +67,30 @@ function coerceNumberLike(value: CellValue): number | undefined {
   }
 }
 
-function errorTypeCode(code: ErrorCode): number {
-  return code
+function errorTypeCode(code: ErrorCode): number | undefined {
+  switch (code) {
+    case ErrorCode.Null:
+      return 1
+    case ErrorCode.Div0:
+      return 2
+    case ErrorCode.Value:
+      return 3
+    case ErrorCode.Ref:
+      return 4
+    case ErrorCode.Name:
+      return 5
+    case ErrorCode.Num:
+      return 6
+    case ErrorCode.NA:
+      return 7
+    case ErrorCode.None:
+    case ErrorCode.Cycle:
+    case ErrorCode.Spill:
+    case ErrorCode.Blocked:
+    case ErrorCode.Field:
+    default:
+      return undefined
+  }
 }
 
 const logicalPlaceholderBuiltins = createBlockedBuiltinMap(logicalPlaceholderBuiltinNames)
@@ -245,7 +267,8 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
     if (value.tag !== ValueTag.Error) {
       return errorValue(ErrorCode.NA)
     }
-    return { tag: ValueTag.Number, value: errorTypeCode(value.code) }
+    const code = errorTypeCode(value.code)
+    return code === undefined ? errorValue(ErrorCode.NA) : { tag: ValueTag.Number, value: code }
   },
   ...logicalPlaceholderBuiltins,
 }
