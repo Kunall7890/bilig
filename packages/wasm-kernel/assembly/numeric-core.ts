@@ -1,5 +1,7 @@
 import { toNumberExact } from './operands'
 
+const ROUND_HALF_TOLERANCE: f64 = 1e-12
+
 export function truncAbs(value: f64): f64 {
   if (!isFinite(value)) {
     return NaN
@@ -120,10 +122,16 @@ export function roundToDigits(value: f64, digits: i32): f64 {
   const absolute = Math.abs(value)
   if (digits >= 0) {
     const factor = Math.pow(10.0, <f64>digits)
-    return (sign * Math.round(absolute * factor)) / factor
+    return (sign * roundScaledHalfAwayFromZero(absolute * factor)) / factor
   }
   const factor = Math.pow(10.0, <f64>-digits)
-  return sign * Math.round(absolute / factor) * factor
+  return sign * roundScaledHalfAwayFromZero(absolute / factor) * factor
+}
+
+function roundScaledHalfAwayFromZero(value: f64): f64 {
+  const floor = Math.floor(value)
+  const fraction = value - floor
+  return Math.abs(fraction - 0.5) <= ROUND_HALF_TOLERANCE ? floor + 1.0 : Math.round(value)
 }
 
 export function roundTowardZeroDigits(value: f64, digits: i32): f64 {

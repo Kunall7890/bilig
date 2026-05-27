@@ -54,6 +54,12 @@ describe('existing numeric tracked fast path', () => {
         expected: { tag: ValueTag.Number, value: 11 },
       },
       {
+        name: 'math-round-decimal-tie',
+        sheet: [[0, 0.1, null, '=ROUND(A1/1000/1000/B1,0)*B1']],
+        edit: { row: 0, col: 0, value: 16150000 },
+        expected: { tag: ValueTag.Number, value: 16.2 },
+      },
+      {
         name: 'text-concat',
         sheet: [['foo', 'bar', null, '=CONCATENATE(A1,"-",B1)']],
         edit: { row: 0, col: 0, value: 'baz' },

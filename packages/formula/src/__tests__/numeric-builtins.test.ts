@@ -40,6 +40,7 @@ describe('numeric builtin helpers', () => {
     expect(roundToDigits(1499, -2)).toBe(1500)
     expect(roundToDigits(-2.5, 0)).toBe(-3)
     expect(roundToDigits(-50.55, -2)).toBe(-100)
+    expect(roundToDigits(16150000 / 1000 / 1000 / 0.1, 0)).toBe(162)
     expect(roundUpToDigits(-12.341, 2)).toBe(-12.35)
     expect(roundDownToDigits(-12.341, 2)).toBe(-12.34)
     expect(roundTowardZero(-1234.56, -2)).toBe(-1200)

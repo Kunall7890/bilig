@@ -546,6 +546,27 @@ describe('EngineFormulaEvaluationService', () => {
     })
   })
 
+  it('matches cached workbook ROUND tie behavior after binary arithmetic precision drift', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-round-decimal-tie' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 16150000)
+    engine.setCellValue('Sheet1', 'B1', 0.1)
+    engine.setCellFormula('Sheet1', 'C1', 'ROUND(A1/1000/1000/B1,0)*B1')
+
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({
+      tag: ValueTag.Number,
+      value: 16.2,
+    })
+
+    engine.recalculateNow()
+
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({
+      tag: ValueTag.Number,
+      value: 16.2,
+    })
+  })
+
   it('preserves explicit reference errors through numeric wrappers', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'evaluation-ref-error-numeric-wrapper' })
     await engine.ready()

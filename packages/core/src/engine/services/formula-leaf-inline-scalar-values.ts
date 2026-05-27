@@ -1,6 +1,8 @@
 import { ValueTag, formatErrorCode, formatGeneralNumberValue, type CellValue } from '@bilig/protocol'
 import { parseArithmeticNumericText } from '@bilig/formula'
 
+const ROUND_HALF_TOLERANCE = 1e-12
+
 export function inlineRequiredNumber(value: CellValue): number | undefined {
   return value.tag === ValueTag.Error ? undefined : inlineNumber(value)
 }
@@ -21,10 +23,19 @@ export function inlinePaymentType(value: CellValue | undefined, fallback: number
 export function roundInlineToDigits(value: number, digits: number): number {
   if (digits >= 0) {
     const factor = 10 ** digits
-    return Math.round(value * factor) / factor
+    return roundScaledHalfAwayFromZero(value * factor) / factor
   }
   const factor = 10 ** -digits
-  return Math.round(value / factor) * factor
+  return roundScaledHalfAwayFromZero(value / factor) * factor
+}
+
+function roundScaledHalfAwayFromZero(value: number): number {
+  const sign = value < 0 ? -1 : 1
+  const absolute = Math.abs(value)
+  const floor = Math.floor(absolute)
+  const fraction = absolute - floor
+  const rounded = Math.abs(fraction - 0.5) <= ROUND_HALF_TOLERANCE ? floor + 1 : Math.round(absolute)
+  return sign * rounded
 }
 
 export function inlineNumber(value: CellValue): number | undefined {

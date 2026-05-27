@@ -17,6 +17,8 @@ export interface NumericBuiltinHelpers {
   binaryMath: (left: CellValue | undefined, right: CellValue | undefined, evaluate: (left: number, right: number) => number) => CellValue
 }
 
+const ROUND_HALF_TOLERANCE = 1e-12
+
 export function coerceScalarMathNumber(
   value: CellValue | undefined,
   toNumber: (value: CellValue | undefined) => number | undefined,
@@ -118,10 +120,16 @@ export function roundToDigits(value: number, digits: number): number {
   const absolute = Math.abs(value)
   if (digits >= 0) {
     const factor = 10 ** digits
-    return (sign * Math.round(absolute * factor)) / factor
+    return (sign * roundScaledHalfAwayFromZero(absolute * factor)) / factor
   }
   const factor = 10 ** -digits
-  return sign * Math.round(absolute / factor) * factor
+  return sign * roundScaledHalfAwayFromZero(absolute / factor) * factor
+}
+
+function roundScaledHalfAwayFromZero(value: number): number {
+  const floor = Math.floor(value)
+  const fraction = value - floor
+  return Math.abs(fraction - 0.5) <= ROUND_HALF_TOLERANCE ? floor + 1 : Math.round(value)
 }
 
 export function roundUpToDigits(value: number, digits: number): number {

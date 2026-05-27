@@ -25,6 +25,7 @@ import {
 } from '../runtime-state.js'
 import { cellValuesEqual } from './formula-evaluation-helpers.js'
 import { tryEvaluateFormulaLeafInlineScalar } from './formula-leaf-inline-scalar-evaluator.js'
+import { roundInlineToDigits } from './formula-leaf-inline-scalar-values.js'
 import { tryEvaluateFormulaLeafStaticAggregateExpression } from './formula-leaf-static-aggregate-expression.js'
 import { tryEvaluateFormulaLeafStaticTableLookup } from './formula-leaf-static-table-lookup.js'
 import { makeCompactExistingNumericMutationResult } from './operation-change-helpers.js'
@@ -633,15 +634,6 @@ function compareFastInlineNumbers(
     default:
       return undefined
   }
-}
-
-function roundInlineToDigits(value: number, digits: number): number {
-  if (digits >= 0) {
-    const factor = 10 ** digits
-    return Math.round(value * factor) / factor
-  }
-  const factor = 10 ** -digits
-  return Math.round(value / factor) * factor
 }
 
 function storeInlineFormulaLeafNumberResult(
