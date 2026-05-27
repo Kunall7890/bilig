@@ -125,6 +125,15 @@ export const canonicalExpansionFixtures: readonly ExcelFixtureCase[] = [
   ),
   fixture(
     'text',
+    'substitute-empty-old-text-returns-original',
+    'SUBSTITUTE empty old text returns original text',
+    '=SUBSTITUTE("abc","","Z")',
+    [],
+    [output('A1', stringExpected('abc'))],
+    'TrueCalc and xlsx-calc agree that empty old_text leaves the text unchanged.',
+  ),
+  fixture(
+    'text',
     'value-basic',
     'VALUE text-to-number coercion',
     '=VALUE("42")',

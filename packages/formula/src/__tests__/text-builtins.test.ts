@@ -224,13 +224,16 @@ describe('text builtins', () => {
     expect(getTextBuiltin('REPLACE')?.(text('alphabet'), number(3), number(2), text('Z'))).toEqual(text('alZabet'))
     expect(getTextBuiltin('SUBSTITUTE')?.(text('banana'), text('an'), text('oo'))).toEqual(text('booooa'))
     expect(getTextBuiltin('SUBSTITUTE')?.(text('banana'), text('an'), text('oo'), number(2))).toEqual(text('banooa'))
+    expect(getTextBuiltin('SUBSTITUTE')?.(text('abc'), text(''), text('z'))).toEqual(text('abc'))
+    expect(getTextBuiltin('SUBSTITUTE')?.(text('abc'), text(''), text('z'), number(1))).toEqual(text('abc'))
+    expect(getTextBuiltin('SUBSTITUTE')?.(text(''), text(''), text('z'))).toEqual(text(''))
     expect(getTextBuiltin('REPT')?.(text('xo'), number(3))).toEqual(text('xoxoxo'))
   })
 
   it('returns REPLACE, SUBSTITUTE, and REPT validation errors when arguments are invalid', () => {
     expect(getTextBuiltin('REPLACE')?.(text('abc'), number(0), number(1), text('z'))).toEqual(valueError())
-    expect(getTextBuiltin('SUBSTITUTE')?.(text('abc'), text(''), text('z'))).toEqual(valueError())
     expect(getTextBuiltin('SUBSTITUTE')?.(text('abc'), text('a'), text('z'), number(0))).toEqual(valueError())
+    expect(getTextBuiltin('SUBSTITUTE')?.(text('abc'), text(''), text('z'), number(0))).toEqual(valueError())
     expect(getTextBuiltin('REPT')?.(text('abc'), number(-1))).toEqual(valueError())
     expect(getTextBuiltin('REPT')?.(err(ErrorCode.Ref), number(2))).toEqual(err(ErrorCode.Ref))
   })
@@ -428,6 +431,7 @@ describe('text builtins', () => {
     // SUBSTITUTE instance not found
     expect(SUBSTITUTE(text('abc'), text('z'), text('x'))).toEqual(text('abc'))
     expect(SUBSTITUTE(text('abc'), text('a'), text('x'), number(2))).toEqual(text('abc'))
+    expect(SUBSTITUTE(text('abc'), text(''), text('x'), number(2))).toEqual(text('abc'))
 
     // TEXTJOIN with mixed empty values
     expect(TEXTJOIN(text(','), { tag: ValueTag.Boolean, value: true }, text('a'), { tag: ValueTag.Empty }, text(''), text('b'))).toEqual(

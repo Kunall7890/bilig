@@ -119,7 +119,7 @@ export function tryApplyTextMutationBuiltin(
       outputStringLengths,
       outputStringData,
     )
-    if (text == null || oldText == null || newText == null || oldText.length == 0) {
+    if (text == null || oldText == null || newText == null) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (argc == 3) {

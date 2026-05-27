@@ -29,6 +29,9 @@ export function substituteText(text: string, oldText: string, newText: string): 
 }
 
 export function substituteNthText(text: string, oldText: string, newText: string, instance: i32): string {
+  if (oldText.length == 0) {
+    return text
+  }
   let count = 0
   let searchIndex = 0
   while (searchIndex <= text.length) {

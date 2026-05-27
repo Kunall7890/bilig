@@ -6,6 +6,7 @@ import type {
   ExcelFixtureFamily,
   ExcelFixtureInputCell,
 } from './index.js'
+import { SUBSTITUTE_TEXT_FIXTURES } from './text-substitute-fixtures.js'
 
 export interface TextFixtureCase {
   name: string
@@ -35,6 +36,7 @@ export interface TextFixtureGroup {
     | 'SEARCHB'
     | 'REPLACE'
     | 'REPLACEB'
+    | 'SUBSTITUTE'
     | 'REPT'
     | 'ASC'
     | 'JIS'
@@ -413,6 +415,7 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
       },
     ],
   },
+  SUBSTITUTE_TEXT_FIXTURES,
   {
     builtin: 'REPT',
     cases: [

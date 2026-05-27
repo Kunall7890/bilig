@@ -83,11 +83,11 @@ describe('wasm kernel text mutation dispatch', () => {
   it('keeps replace and substitute builtin dispatch stable across refactors', async () => {
     const kernel = await createKernel()
     const width = 16
-    const pooledStrings = ['abcdef', 'Z', 'banana', 'na', 'X', 'ab']
-    kernel.init(48, 9, 9, 1, 1)
+    const pooledStrings = ['abcdef', 'Z', 'banana', 'na', 'X', 'ab', '']
+    kernel.init(48, 12, 12, 1, 1)
     kernel.uploadStrings(
-      Uint32Array.from([0, 6, 7, 13, 15, 16]),
-      Uint32Array.from([6, 1, 6, 2, 1, 2]),
+      Uint32Array.from([0, 6, 7, 13, 15, 16, 18]),
+      Uint32Array.from([6, 1, 6, 2, 1, 2, 0]),
       Uint16Array.from(Array.from('abcdefZbanananaXab', (char) => char.charCodeAt(0))),
     )
     kernel.writeCells(new Uint8Array(48), new Float64Array(48), new Uint32Array(48), new Uint16Array(48))
@@ -105,6 +105,23 @@ describe('wasm kernel text mutation dispatch', () => {
         encodeRet(),
       ],
       [encodePushString(5), encodePushNumber(0), encodeCall(BuiltinId.Rept, 2), encodeRet()],
+      [encodePushString(0), encodePushString(6), encodePushString(1), encodeCall(BuiltinId.Substitute, 3), encodeRet()],
+      [
+        encodePushString(0),
+        encodePushString(6),
+        encodePushString(1),
+        encodePushNumber(0),
+        encodeCall(BuiltinId.Substitute, 4),
+        encodeRet(),
+      ],
+      [
+        encodePushString(0),
+        encodePushString(6),
+        encodePushString(1),
+        encodePushNumber(0),
+        encodeCall(BuiltinId.Substitute, 4),
+        encodeRet(),
+      ],
       [
         encodePushError(ErrorCode.Ref),
         encodePushNumber(0),
@@ -128,22 +145,26 @@ describe('wasm kernel text mutation dispatch', () => {
       packed.programs,
       packed.offsets,
       packed.lengths,
-      Uint32Array.from(Array.from({ length: 9 }, (_, index) => cellIndex(1, index, width))),
+      Uint32Array.from(Array.from({ length: 12 }, (_, index) => cellIndex(1, index, width))),
     )
-    const constants = packConstants([[2, 3], [3, 2], [], [2], [3], [2, 3], [3, 2], [8, 1], [8, 1]])
+    const constants = packConstants([[2, 3], [3, 2], [], [2], [3], [], [1], [0], [2, 3], [3, 2], [8, 1], [8, 1]])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
-    kernel.evalBatch(Uint32Array.from(Array.from({ length: 9 }, (_, index) => cellIndex(1, index, width))))
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 12 }, (_, index) => cellIndex(1, index, width))))
 
     expect(readStringCell(kernel, cellIndex(1, 0, width), pooledStrings)).toBe('aZef')
     expect(readStringCell(kernel, cellIndex(1, 1, width), pooledStrings)).toBe('abZef')
     expect(readStringCell(kernel, cellIndex(1, 2, width), pooledStrings)).toBe('baXX')
     expect(readStringCell(kernel, cellIndex(1, 3, width), pooledStrings)).toBe('banaX')
     expect(readStringCell(kernel, cellIndex(1, 4, width), pooledStrings)).toBe('ababab')
-    expect(kernel.readTags()[cellIndex(1, 5, width)]).toBe(ValueTag.Error)
-    expect(kernel.readErrors()[cellIndex(1, 5, width)]).toBe(ErrorCode.Ref)
-    expect(kernel.readTags()[cellIndex(1, 6, width)]).toBe(ValueTag.Error)
-    expect(kernel.readErrors()[cellIndex(1, 6, width)]).toBe(ErrorCode.Ref)
-    expect(readStringCell(kernel, cellIndex(1, 7, width), pooledStrings)).toBe('abcdefZ')
-    expect(readStringCell(kernel, cellIndex(1, 8, width), pooledStrings)).toBe('abcdefZ')
+    expect(readStringCell(kernel, cellIndex(1, 5, width), pooledStrings)).toBe('abcdef')
+    expect(readStringCell(kernel, cellIndex(1, 6, width), pooledStrings)).toBe('abcdef')
+    expect(kernel.readTags()[cellIndex(1, 7, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 7, width)]).toBe(ErrorCode.Value)
+    expect(kernel.readTags()[cellIndex(1, 8, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 8, width)]).toBe(ErrorCode.Ref)
+    expect(kernel.readTags()[cellIndex(1, 9, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 9, width)]).toBe(ErrorCode.Ref)
+    expect(readStringCell(kernel, cellIndex(1, 10, width), pooledStrings)).toBe('abcdefZ')
+    expect(readStringCell(kernel, cellIndex(1, 11, width), pooledStrings)).toBe('abcdefZ')
   })
 })

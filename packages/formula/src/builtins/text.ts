@@ -205,9 +205,6 @@ function createSubstituteBuiltin(): TextBuiltin {
     }
     const text = coerceText(textValue)
     const oldText = coerceText(oldValue)
-    if (oldText === '') {
-      return error(ErrorCode.Value)
-    }
     const newText = coerceText(newValue)
     if (instanceValue === undefined) {
       return stringResult(substituteText(text, oldText, newText))

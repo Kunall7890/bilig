@@ -574,6 +574,9 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('text:replace-negative-fractional-count', 'text', '=REPLACE("abc",1,-0.5,"Z")', 'implemented-wasm-production'),
   entry('text:replaceb-inserts-into-empty-text', 'text', '=REPLACEB("",1,0,"Z")', 'implemented-wasm-production'),
   entry('text:replaceb-appends-when-start-past-text', 'text', '=REPLACEB("abc",8,1,"Z")', 'implemented-wasm-production'),
+  entry('text:substitute-empty-old-text-returns-original', 'text', '=SUBSTITUTE("abc","","Z")', 'implemented-wasm-production', {
+    notes: 'TrueCalc and xlsx-calc agree that empty old_text leaves the text unchanged.',
+  }),
   entry('text:rept-negative-fractional-count', 'text', '=REPT("x",-0.5)', 'implemented-wasm-production'),
   entry('text:rept-over-cell-text-limit', 'text', '=REPT("x",32768)', 'implemented-wasm-production'),
   entry('text:concat-over-cell-text-limit', 'text', '=CONCAT(REPT("x",32767),"x")', 'implemented-wasm-production'),
