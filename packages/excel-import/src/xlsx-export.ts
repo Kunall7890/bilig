@@ -59,7 +59,8 @@ import {
   worksheetCellElementPattern,
   worksheetCellOpeningTagPattern,
 } from './xlsx-style-xml.js'
-import { readImportedXlsxSourceBytes } from './xlsx-source-bytes.js'
+import { readImportedXlsxSourceBytes, readImportedXlsxSourceCellPatches } from './xlsx-source-bytes.js'
+import { tryExportSourcePreservingXlsx } from './xlsx-source-preserving-export.js'
 
 function buildExportColumns(columns: readonly WorkbookAxisEntrySnapshot[] | undefined): XLSX.ColInfo[] | undefined {
   if (!columns || columns.length === 0) {
@@ -715,7 +716,14 @@ function applyMacroCodeNamesToWorkbook(
 export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   const importedSourceBytes = readImportedXlsxSourceBytes(snapshot)
   if (importedSourceBytes !== undefined) {
-    return new Uint8Array(importedSourceBytes)
+    const sourceCellPatches = readImportedXlsxSourceCellPatches(snapshot)
+    if (sourceCellPatches.length === 0) {
+      return new Uint8Array(importedSourceBytes)
+    }
+    const sourcePreservingBytes = tryExportSourcePreservingXlsx(snapshot, importedSourceBytes)
+    if (sourcePreservingBytes !== null) {
+      return sourcePreservingBytes
+    }
   }
   const workbook = XLSX.utils.book_new()
   const usedNames = new Set<string>()

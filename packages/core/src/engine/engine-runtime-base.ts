@@ -26,6 +26,7 @@ import {
 } from './runtime-state.js'
 import { createEngineServiceRuntime, runEngineEffect, type EngineServiceRuntime } from './live.js'
 import { EngineEvaluationTimeoutError } from './errors.js'
+import type { EngineSnapshotExportOptions } from './services/snapshot-service.js'
 
 const INITIAL_ENGINE_WORK_BUFFER_CAPACITY = 16
 
@@ -563,7 +564,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
     },
   ): void
   abstract getCellByIndex(cellIndex: number): CellSnapshot
-  abstract exportSnapshot(): WorkbookSnapshot
+  abstract exportSnapshot(options?: EngineSnapshotExportOptions): WorkbookSnapshot
   abstract importSnapshot(snapshot: WorkbookSnapshot): void
 
   protected executeLocalTransaction(

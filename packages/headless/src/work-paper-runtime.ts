@@ -64,18 +64,19 @@ import { WorkPaperEngineEventTracker } from './work-paper-engine-event-tracker.j
 import { WorkPaperRuntimeLifecycleBase } from './work-paper-runtime-lifecycle-base.js'
 import { tryChangeSimpleNumericNamedExpressionFastPath } from './work-paper-named-expression-fast-path-runtime.js'
 import { createWorkPaperEngine, workPaperEvaluationTimeoutErrorFrom } from './work-paper-runtime-construction.js'
+import {
+  attachImportedXlsxSourceMetadata,
+  canRecordImportedXlsxLiteralPatch,
+  readImportedXlsxSource,
+  readImportedXlsxSourceCellPatches,
+  setImportedXlsxLiteralPatch,
+  type ImportedXlsxSourceCellPatch,
+  type ImportedXlsxSourceReference,
+} from './work-paper-imported-xlsx-source.js'
 
 type NamedExpressionValueSnapshot = WorkPaperNamedExpressionValueSnapshot
 
 let nextWorkbookId = 1
-const importedXlsxSourceBytes = Symbol.for('bilig.importedXlsxSourceBytes')
-type ImportedXlsxSourceReader = {
-  readonly byteLength: number
-  readBytes(): Uint8Array
-}
-type SnapshotWithImportedXlsxSource = WorkbookSnapshot & {
-  readonly [importedXlsxSourceBytes]?: Uint8Array | ImportedXlsxSourceReader
-}
 type WorkbookSnapshotWorkbook = WorkbookSnapshot['workbook']
 type WorkbookSnapshotSheetMetadata = NonNullable<WorkbookSnapshot['sheets'][number]['metadata']>
 type MetadataRenameEngine = SpreadsheetEngine & {
@@ -166,14 +167,9 @@ function clonePreservedImportedSnapshot(snapshot: WorkbookSnapshot): WorkbookSna
       cells: sheet.cells,
     })),
   }
-  const sourceBytes = (snapshot as SnapshotWithImportedXlsxSource)[importedXlsxSourceBytes]
-  if (sourceBytes !== undefined) {
-    Object.defineProperty(cloned, importedXlsxSourceBytes, {
-      configurable: true,
-      enumerable: false,
-      value: sourceBytes,
-    })
-  }
+  const sourceBytes = readImportedXlsxSource(snapshot)
+  const sourcePatches = readImportedXlsxSourceCellPatches(snapshot)
+  attachImportedXlsxSourceMetadata(cloned, sourceBytes, sourcePatches)
   return attachWorkPaperRuntimeImage(snapshot, cloned)
 }
 
@@ -206,6 +202,9 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
   protected engineEventsAttached = false
   protected disposed = false
   private preservedImportedSnapshot: WorkbookSnapshot | undefined
+  private importedXlsxSource: ImportedXlsxSourceReference | undefined
+  private readonly importedXlsxSourceCellPatches = new Map<string, ImportedXlsxSourceCellPatch>()
+  private recordingSourcePreservingImportedXlsxEdit = false
   protected readonly mutationQueues = new WorkPaperMutationQueues({
     applyCellMutationsAtWithOptions: (refs, options) => {
       this.engine.applyCellMutationsAtWithOptions(refs, options)
@@ -261,23 +260,49 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     return this.workPaperInternalsCache
   }
 
+  private invalidateImportedXlsxSource(): void {
+    this.preservedImportedSnapshot = undefined
+    this.importedXlsxSource = undefined
+    this.importedXlsxSourceCellPatches.clear()
+  }
+
   override exportSnapshot(): WorkbookSnapshot {
     this.assertNotDisposed()
     this.engineEvents.materializePendingLazyChanges()
     if (this.preservedImportedSnapshot !== undefined) {
       return clonePreservedImportedSnapshot(this.preservedImportedSnapshot)
     }
+    if (this.importedXlsxSource !== undefined && this.importedXlsxSourceCellPatches.size > 0) {
+      return attachImportedXlsxSourceMetadata(this.engine.exportSnapshot({ includeRuntimeImage: false }), this.importedXlsxSource, [
+        ...this.importedXlsxSourceCellPatches.values(),
+      ])
+    }
     return cloneWorkPaperSnapshotWithRuntimeImage(this.engine.exportSnapshot())
   }
 
   override rebuildAndRecalculate(): WorkPaperChange[] {
-    this.preservedImportedSnapshot = undefined
+    this.invalidateImportedXlsxSource()
     return super.rebuildAndRecalculate()
   }
 
   override setCellContents(address: WorkPaperCellAddress, content: RawCellContent | WorkPaperSheet): WorkPaperChange[] {
-    this.preservedImportedSnapshot = undefined
-    return super.setCellContents(address, content)
+    const shouldRecordPatch = canRecordImportedXlsxLiteralPatch(this.importedXlsxSource, content)
+    if (shouldRecordPatch) {
+      this.preservedImportedSnapshot = undefined
+    } else {
+      this.invalidateImportedXlsxSource()
+    }
+    this.recordingSourcePreservingImportedXlsxEdit = shouldRecordPatch
+    try {
+      const changes = super.setCellContents(address, content)
+      if (shouldRecordPatch) {
+        this.preservedImportedSnapshot = undefined
+        setImportedXlsxLiteralPatch(this.importedXlsxSourceCellPatches, this.sheetName(address.sheet), this.a1(address), content)
+      }
+      return changes
+    } finally {
+      this.recordingSourcePreservingImportedXlsxEdit = false
+    }
   }
 
   protected override captureChanges(
@@ -285,7 +310,11 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     mutate: () => void,
     options: { readonly preservePendingTrackedPositions?: boolean } = {},
   ): WorkPaperChange[] {
-    this.preservedImportedSnapshot = undefined
+    if (this.recordingSourcePreservingImportedXlsxEdit) {
+      this.preservedImportedSnapshot = undefined
+    } else {
+      this.invalidateImportedXlsxSource()
+    }
     return super.captureChanges(semanticEvent, mutate, options)
   }
 
@@ -308,7 +337,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     this.assertWorkbookStructureEditable()
 
     const oldName = sheet.name
-    this.preservedImportedSnapshot = undefined
+    this.invalidateImportedXlsxSource()
     if (
       this.batchDepth === 0 &&
       !this.evaluationSuspended &&
@@ -457,7 +486,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
   protected override tryRenameSheetWithoutVisibilitySnapshots(oldName: string, newName: string): WorkPaperChange[] | null {
     const changes = super.tryRenameSheetWithoutVisibilitySnapshots(oldName, newName)
     if (changes !== null) {
-      this.preservedImportedSnapshot = undefined
+      this.invalidateImportedXlsxSource()
     }
     return changes
   }
@@ -476,7 +505,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     if (amount <= 0 || start + amount > limit) {
       throw new WorkPaperOperationError(`${axis === 'row' ? 'Rows' : 'Columns'} cannot be added`)
     }
-    this.preservedImportedSnapshot = undefined
+    this.invalidateImportedXlsxSource()
     if (this.batchDepth === 0 && !this.evaluationSuspended && this.visibilityCache === null && this.namedExpressions.size === 0) {
       if (this.engineEvents.hasPendingLazyChanges) {
         this.engineEvents.materializePendingLazyChanges()
@@ -662,6 +691,10 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
       throw error
     }
     workbook.preservedImportedSnapshot = snapshot
+    workbook.importedXlsxSource = readImportedXlsxSource(snapshot)
+    for (const patch of readImportedXlsxSourceCellPatches(snapshot)) {
+      workbook.importedXlsxSourceCellPatches.set(`${patch.sheetName}!${patch.address}`, patch)
+    }
     return workbook
   }
 
@@ -696,7 +729,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     amount: number,
     options: { readonly emitTracked?: boolean; readonly recordHistory?: boolean } = {},
   ): void {
-    this.preservedImportedSnapshot = undefined
+    this.invalidateImportedXlsxSource()
     const sheetName = sheet.name
     const structuralInsertEngine = this.engine as WorkPaperStructuralInsertEngine
     if (axis === 'row') {
@@ -714,7 +747,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
   }
 
   protected applyAxisMove(axis: WorkPaperAxisKind, sheetId: number, start: number, count: number, target: number): void {
-    this.preservedImportedSnapshot = undefined
+    this.invalidateImportedXlsxSource()
     if (axis === 'row') {
       this.engine.moveRows(this.sheetName(sheetId), start, count, target)
     } else {

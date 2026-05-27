@@ -1,4 +1,4 @@
-import type { WorkbookSnapshot } from '@bilig/protocol'
+import type { LiteralInput, WorkbookSnapshot } from '@bilig/protocol'
 import { randomUUID } from 'node:crypto'
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, unlinkSync, writeSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import type { XlsxZipByteSource } from './xlsx-zip.js'
 
 const importedXlsxSourceBytes = Symbol.for('bilig.importedXlsxSourceBytes')
+const importedXlsxSourceCellPatches = Symbol.for('bilig.importedXlsxSourceCellPatches')
 const tempSourceDirectoryName = 'bilig-imported-xlsx-sources'
 const tempSourceWriteChunkSize = 1024 * 1024
 
@@ -17,12 +18,21 @@ export interface ImportedXlsxSourceReader {
 
 type ImportedXlsxSourceReference = Uint8Array | ImportedXlsxSourceReader
 
+export interface ImportedXlsxSourceCellPatch {
+  readonly kind: 'literal'
+  readonly sheetName: string
+  readonly address: string
+  readonly value: LiteralInput
+}
+
 type SnapshotWithImportedXlsxSource = WorkbookSnapshot & {
   readonly [importedXlsxSourceBytes]?: ImportedXlsxSourceReference
+  readonly [importedXlsxSourceCellPatches]?: readonly ImportedXlsxSourceCellPatch[]
 }
 
 type MutableSnapshotWithImportedXlsxSource = WorkbookSnapshot & {
   [importedXlsxSourceBytes]?: ImportedXlsxSourceReference
+  [importedXlsxSourceCellPatches]?: readonly ImportedXlsxSourceCellPatch[]
 }
 
 export function attachImportedXlsxSourceBytes(snapshot: WorkbookSnapshot, bytes: Uint8Array): WorkbookSnapshot {
@@ -42,9 +52,25 @@ function attachImportedXlsxSourceReference(snapshot: WorkbookSnapshot, source: I
   return snapshot
 }
 
+export function attachImportedXlsxSourceCellPatches(
+  snapshot: WorkbookSnapshot,
+  patches: readonly ImportedXlsxSourceCellPatch[],
+): WorkbookSnapshot {
+  Object.defineProperty(snapshot, importedXlsxSourceCellPatches, {
+    configurable: true,
+    enumerable: false,
+    value: patches,
+  })
+  return snapshot
+}
+
 export function readImportedXlsxSourceBytes(snapshot: WorkbookSnapshot): Uint8Array | undefined {
   const source = (snapshot as SnapshotWithImportedXlsxSource)[importedXlsxSourceBytes]
   return source instanceof Uint8Array ? source : source?.readBytes()
+}
+
+export function readImportedXlsxSourceCellPatches(snapshot: WorkbookSnapshot): readonly ImportedXlsxSourceCellPatch[] {
+  return (snapshot as SnapshotWithImportedXlsxSource)[importedXlsxSourceCellPatches] ?? []
 }
 
 export function detachImportedXlsxSourceBytes(snapshot: WorkbookSnapshot): boolean {
@@ -56,6 +82,7 @@ export function detachImportedXlsxSourceBytes(snapshot: WorkbookSnapshot): boole
     source.release?.()
   }
   delete (snapshot as MutableSnapshotWithImportedXlsxSource)[importedXlsxSourceBytes]
+  delete (snapshot as MutableSnapshotWithImportedXlsxSource)[importedXlsxSourceCellPatches]
   return true
 }
 

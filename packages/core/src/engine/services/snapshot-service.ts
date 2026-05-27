@@ -28,8 +28,12 @@ import type { WorkbookPivotRecord } from '../../workbook-store.js'
 import type { InitialFormulaEntryRefSource } from './formula-initialization-refs.js'
 import { clonePreservedWorkbookMetadata, hasPreservedWorkbookMetadata } from '../../workbook-preserved-metadata.js'
 
+export interface EngineSnapshotExportOptions {
+  readonly includeRuntimeImage?: boolean
+}
+
 export interface EngineSnapshotService {
-  readonly exportWorkbook: () => Effect.Effect<WorkbookSnapshot, EngineSnapshotError>
+  readonly exportWorkbook: (options?: EngineSnapshotExportOptions) => Effect.Effect<WorkbookSnapshot, EngineSnapshotError>
   readonly importWorkbook: (snapshot: WorkbookSnapshot) => Effect.Effect<void, EngineSnapshotError>
   readonly exportReplica: () => Effect.Effect<EngineReplicaSnapshot, EngineSnapshotError>
   readonly importReplica: (snapshot: EngineReplicaSnapshot) => Effect.Effect<void, EngineSnapshotError>
@@ -143,9 +147,11 @@ export function createEngineSnapshotService(args: {
   readonly emitFullInvalidation?: (options: { readonly incrementMetrics: boolean }) => void
 }): EngineSnapshotService {
   return {
-    exportWorkbook() {
+    exportWorkbook(options = {}) {
       return Effect.try({
         try: () => {
+          const includeRuntimeImage =
+            options.includeRuntimeImage !== false && args.exportTemplateBank !== undefined && args.exportFormulaInstances !== undefined
           const workbook: WorkbookSnapshot['workbook'] = {
             name: args.state.workbook.workbookName,
           }
@@ -315,7 +321,7 @@ export function createEngineSnapshotService(args: {
                 sheet.grid.forEachCellEntry((cellIndex, row, col) => {
                   const cellSnapshot = args.getCellByIndex(cellIndex)
                   const explicitFormat = args.state.workbook.getCellFormat(cellIndex)
-                  if (cellSnapshot.value.tag !== ValueTag.Empty) {
+                  if (includeRuntimeImage && cellSnapshot.value.tag !== ValueTag.Empty) {
                     runtimeImageCellValues.push({
                       sheetName: sheet.name,
                       row,
@@ -342,6 +348,17 @@ export function createEngineSnapshotService(args: {
                   }
                   if (cellSnapshot.formula) {
                     cell.formula = cellSnapshot.formula
+                    if (!includeRuntimeImage) {
+                      if (cellSnapshot.value.tag === ValueTag.Number) {
+                        cell.value = cellSnapshot.value.value
+                      } else if (cellSnapshot.value.tag === ValueTag.Boolean) {
+                        cell.value = cellSnapshot.value.value
+                      } else if (cellSnapshot.value.tag === ValueTag.String) {
+                        cell.value = cellSnapshot.value.value
+                      } else if (cellSnapshot.value.tag === ValueTag.Empty) {
+                        cell.value = null
+                      }
+                    }
                   } else if (cellSnapshot.value.tag === ValueTag.Number) {
                     cell.value = cellSnapshot.value.value
                   } else if (cellSnapshot.value.tag === ValueTag.Boolean) {
@@ -352,30 +369,34 @@ export function createEngineSnapshotService(args: {
                     cell.value = null
                   }
                   cells.push(cell)
-                  sheetCellCoords.push({ row, col })
-                  materializedHeight = Math.max(materializedHeight, row + 1)
-                  materializedWidth = Math.max(materializedWidth, col + 1)
+                  if (includeRuntimeImage) {
+                    sheetCellCoords.push({ row, col })
+                    materializedHeight = Math.max(materializedHeight, row + 1)
+                    materializedWidth = Math.max(materializedWidth, col + 1)
+                  }
                 })
-                const coordinateOrder = runtimeImageSheetCellsAreDenseRowMajor({
-                  coords: sheetCellCoords,
-                  width: materializedWidth,
-                  height: materializedHeight,
-                })
-                  ? 'dense-row-major'
-                  : undefined
-                runtimeImageSheetCells.push({
-                  sheetName: sheet.name,
-                  coords: sheetCellCoords,
-                  ...(coordinateOrder === undefined ? {} : { coordinateOrder }),
-                  dimensions: { width: materializedWidth, height: materializedHeight },
-                  cellCount: sheetCellCoords.length,
-                })
+                if (includeRuntimeImage) {
+                  const coordinateOrder = runtimeImageSheetCellsAreDenseRowMajor({
+                    coords: sheetCellCoords,
+                    width: materializedWidth,
+                    height: materializedHeight,
+                  })
+                    ? 'dense-row-major'
+                    : undefined
+                  runtimeImageSheetCells.push({
+                    sheetName: sheet.name,
+                    coords: sheetCellCoords,
+                    ...(coordinateOrder === undefined ? {} : { coordinateOrder }),
+                    dimensions: { width: materializedWidth, height: materializedHeight },
+                    cellCount: sheetCellCoords.length,
+                  })
+                }
                 return metadata
                   ? { id: sheet.id, name: sheet.name, order: sheet.order, metadata, cells }
                   : { id: sheet.id, name: sheet.name, order: sheet.order, cells }
               }),
           }
-          if (args.exportTemplateBank && args.exportFormulaInstances) {
+          if (includeRuntimeImage) {
             const formulaInstances = args.exportFormulaInstances()
             attachRuntimeImage(workbookSnapshot, {
               version: 1,

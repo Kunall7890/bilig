@@ -27,6 +27,7 @@ import type { CommitOp, EngineReplicaSnapshot, EngineSyncClient } from './engine
 import { runEngineEffect, runEngineEffectPromise } from './engine/live.js'
 import { SpreadsheetEngineWorkbookFacadeBase } from './engine/engine-workbook-facade-base.js'
 import { createTrustedExistingNumericDirectScalarFastPath } from './engine/services/trusted-existing-numeric-direct-scalar-fast-path.js'
+import type { EngineSnapshotExportOptions } from './engine/services/snapshot-service.js'
 
 export type {
   CommitOp,
@@ -467,8 +468,8 @@ export class SpreadsheetEngine extends SpreadsheetEngineWorkbookFacadeBase {
     return runEngineEffect(this.runtime.read.explainCell(sheetName, address))
   }
 
-  exportSnapshot(): WorkbookSnapshot {
-    return runEngineEffect(this.runtime.snapshot.exportWorkbook())
+  exportSnapshot(options?: EngineSnapshotExportOptions): WorkbookSnapshot {
+    return runEngineEffect(this.runtime.snapshot.exportWorkbook(options))
   }
 
   importSnapshot(snapshot: WorkbookSnapshot): void {
