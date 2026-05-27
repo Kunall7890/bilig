@@ -35,6 +35,7 @@ export interface BuildImportedFormulaSnapshotCellArgs {
   readonly externalLinkCaches: ImportedExternalLinkCaches
   readonly externalCacheSheetNames?: ImportedExternalCacheSheetMap
   readonly externalWorkbookReferences: ImportedExternalWorkbookReferences
+  readonly refreshedExternalWorkbookBookIndices?: ReadonlySet<number>
 }
 
 export function buildImportedFormulaSnapshotCell(
@@ -70,6 +71,14 @@ export function buildImportedFormulaSnapshotCell(
   const cachedLiteral = args.formulaManifest?.cachedValue !== undefined ? args.formulaManifest.cachedValue : args.cachedLiteral
   const importedFormulaStillReferencesExternalWorkbook =
     externalReferenceTranslation.unresolvedCount > 0 || formulaReferencesExternalWorkbook(importedFormula)
+  const linkedWorkbooks = collectImportedFormulaExternalWorkbookReferences(normalizedFormula, args.externalWorkbookReferences)
+  const allLinkedWorkbooksWereRefreshed =
+    linkedWorkbooks.length > 0 &&
+    linkedWorkbooks.every((workbook) => args.refreshedExternalWorkbookBookIndices?.has(workbook.bookIndex) === true)
+  const shouldPreserveCachedFormulaValue =
+    cachedLiteral !== undefined &&
+    importedFormulaStillReferencesExternalWorkbook &&
+    !(allLinkedWorkbooksWereRefreshed && externalReferenceTranslation.unresolvedCount === 0)
   const formulaCell: ImportedFormulaCellSnapshot = {
     address: args.address,
     formula: importedFormula,
@@ -83,9 +92,9 @@ export function buildImportedFormulaSnapshotCell(
         address: args.address,
         formula: normalizedFormula,
         importedFormula,
-        linkedWorkbooks: [...collectImportedFormulaExternalWorkbookReferences(normalizedFormula, args.externalWorkbookReferences)],
+        linkedWorkbooks: [...linkedWorkbooks],
         cachedValuesUsed: cachedLiteral !== undefined || externalReferenceTranslation.resolvedCount > 0,
-        cachedFormulaValuePreserved: cachedLiteral !== undefined && importedFormulaStillReferencesExternalWorkbook,
+        cachedFormulaValuePreserved: shouldPreserveCachedFormulaValue,
         cachedExternalReferenceValuesUsed: externalReferenceTranslation.resolvedCount > 0,
         resolvedExternalReferenceCount: externalReferenceTranslation.resolvedCount,
         unresolvedExternalReferenceCount: externalReferenceTranslation.unresolvedCount,

@@ -11,6 +11,7 @@ import type { WorkbookStore } from '../../workbook-store.js'
 import type { PreparedCellAddress, TransactionRecord } from '../runtime-state.js'
 
 type OpsTransactionRecord = Extract<TransactionRecord, { kind: 'ops' }>
+type ExistingNumericCellMutationsTransactionRecord = Extract<TransactionRecord, { kind: 'existing-numeric-cell-mutations' }>
 
 export function createOpsTransactionRecord(
   ops: EngineOp[],
@@ -95,7 +96,7 @@ export function createExistingNumericCellMutationsTransactionRecord(
     readonly numbers: Float64Array
   },
   potentialNewCells: number,
-): TransactionRecord {
+): ExistingNumericCellMutationsTransactionRecord {
   return {
     kind: 'existing-numeric-cell-mutations',
     sheetIds: captured.sheetIds,
@@ -116,7 +117,7 @@ export function createLazyReversedExistingNumericCellMutationsTransactionRecord(
   },
   numbers: Float64Array,
   potentialNewCells: number,
-): TransactionRecord {
+): ExistingNumericCellMutationsTransactionRecord {
   const count = captured.sheetIds.length
   let sheetIds: Uint32Array | undefined
   let cellIndexPlusOnes: Uint32Array | undefined

@@ -95,12 +95,14 @@ describe('bulk cell values', () => {
     const captureVisibilitySnapshot = vi.spyOn(workbook, 'captureVisibilitySnapshot').mockImplementation(() => {
       throw new Error('bulk sparse updates should not rebuild visibility snapshots')
     })
+    const typedNumericBatch = vi.spyOn(numericBatchOperations(workbook), 'applyExistingNumericCellMutationsAtNow')
 
     try {
       const changes = workbook.setCellValues(buildTwoColumnUpdates(sheetId, rowCount))
 
       expect(changes).toHaveLength(rowCount * 4)
       expect(hasDeferredTrackedIndexChanges(changes)).toBe(true)
+      expect(typedNumericBatch).toHaveReturnedWith(true)
       expect(workbook.getCellValue(cell(sheetId, rowCount - 1, 2))).toEqual({
         tag: ValueTag.Number,
         value: (rowCount - 1) * 8,
@@ -115,6 +117,7 @@ describe('bulk cell values', () => {
       })
     } finally {
       captureVisibilitySnapshot.mockRestore()
+      typedNumericBatch.mockRestore()
     }
   })
 

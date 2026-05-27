@@ -5,6 +5,7 @@ import type {
   EngineCellMutationRef,
   EngineExistingLiteralCellMutationRef,
   EngineExistingNumericCellMutationRef,
+  EngineExistingNumericCellMutationsRef,
   EngineExistingNumericCellMutationResult,
 } from '../../cell-mutations-at.js'
 import type { CsvParseOptions } from '../../csv.js'
@@ -41,6 +42,12 @@ export interface EngineMutationService {
       returnUndoOps?: boolean
     },
   ) => EngineExistingNumericCellMutationResult | null
+  readonly executeLocalExistingNumericCellMutationsAtNow: (
+    request: EngineExistingNumericCellMutationsRef,
+    options?: {
+      returnUndoOps?: boolean
+    },
+  ) => boolean
   readonly executeLocalExistingLiteralCellMutationAtNow: (
     request: EngineExistingLiteralCellMutationRef,
     options?: {

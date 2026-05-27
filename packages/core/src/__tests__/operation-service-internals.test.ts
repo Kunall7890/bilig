@@ -276,7 +276,7 @@ describe('operation-service internals', () => {
 
   it('normalizes lookup values and computes lookup row results across exact and approximate uniform paths', () => {
     expect(directAggregateNumericContribution({ tag: ValueTag.Number, value: 3 })).toBe(3)
-    expect(directAggregateNumericContribution({ tag: ValueTag.Boolean, value: true })).toBe(1)
+    expect(directAggregateNumericContribution({ tag: ValueTag.Boolean, value: true })).toBe(0)
     expect(directAggregateNumericContribution({ tag: ValueTag.Boolean, value: false })).toBe(0)
     expect(directAggregateNumericContribution({ tag: ValueTag.Empty })).toBe(0)
     expect(directAggregateNumericContribution({ tag: ValueTag.String, value: 'x' })).toBe(0)

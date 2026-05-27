@@ -3,6 +3,7 @@ export type {
   EngineCellMutationRef,
   EngineExistingLiteralCellMutationRef,
   EngineExistingNumericCellMutationRef,
+  EngineExistingNumericCellMutationsRef,
   EngineExistingNumericCellMutationResult,
   EngineFormulaSourceRef,
   EngineFormulaSourceRefs,

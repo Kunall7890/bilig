@@ -1,4 +1,6 @@
 import {
+  BLOCK_COLS,
+  BLOCK_ROWS,
   CellFlags,
   type EngineExistingNumericCellMutationResult,
   type SheetRecord,
@@ -93,6 +95,9 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
   private runtimeAdaptersCache: WorkPaperRuntimeAdapters | undefined
   private deferredBatchLiteralSheetId = -1
   private deferredBatchLiteralSheet: SheetRecord | undefined
+  private deferredBatchPhysicalBlockSheetId = -1
+  private deferredBatchPhysicalBlockKey = -1
+  private deferredBatchPhysicalBlock: Uint32Array | undefined
   private batchUnprotectedSheetNamesById: Map<number, string> | undefined
 
   protected abstract applyAxisIntervalEdit(
@@ -209,7 +214,17 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
   private clearBatchWriteCaches(): void {
     this.deferredBatchLiteralSheetId = -1
     this.deferredBatchLiteralSheet = undefined
+    this.deferredBatchPhysicalBlockSheetId = -1
+    this.deferredBatchPhysicalBlockKey = -1
+    this.deferredBatchPhysicalBlock = undefined
     this.batchUnprotectedSheetNamesById?.clear()
+  }
+
+  protected override flushPendingBatchOps(): void {
+    super.flushPendingBatchOps()
+    this.deferredBatchPhysicalBlockSheetId = -1
+    this.deferredBatchPhysicalBlockKey = -1
+    this.deferredBatchPhysicalBlock = undefined
   }
 
   private batchLiteralSheetRecord(sheetId: number): SheetRecord {
@@ -220,6 +235,25 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
     this.deferredBatchLiteralSheetId = sheetId
     this.deferredBatchLiteralSheet = sheet
     return sheet
+  }
+
+  private getDeferredBatchLiteralCellIndexInSheet(sheet: SheetRecord, row: number, col: number): number | undefined {
+    if (sheet.structureVersion !== 1) {
+      return this.getVisibleCellIndexInSheet(sheet, row, col)
+    }
+    const blockKey = Math.floor(row / BLOCK_ROWS) * 1_000_000 + Math.floor(col / BLOCK_COLS)
+    const block =
+      sheet.id === this.deferredBatchPhysicalBlockSheetId && blockKey === this.deferredBatchPhysicalBlockKey
+        ? this.deferredBatchPhysicalBlock
+        : sheet.grid.blocks.get(blockKey)
+    this.deferredBatchPhysicalBlockSheetId = sheet.id
+    this.deferredBatchPhysicalBlockKey = blockKey
+    this.deferredBatchPhysicalBlock = block
+    if (!block) {
+      return undefined
+    }
+    const value = block[(row % BLOCK_ROWS) * BLOCK_COLS + (col % BLOCK_COLS)]!
+    return value === 0 ? undefined : value - 1
   }
 
   private trySetExistingNumericCellContentsInlineDirectFastPath(
@@ -405,7 +439,7 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
     if (this.cellContentInSheetIsProtected(sheet, address.row, address.col)) {
       throw new WorkPaperOperationError('Workbook protection blocks this change: cell is protected')
     }
-    const visibleCellIndex = this.getVisibleCellIndexInSheet(sheet, address.row, address.col)
+    const visibleCellIndex = this.getDeferredBatchLiteralCellIndexInSheet(sheet, address.row, address.col)
     return this.enqueueValidatedDeferredBatchLiteral(address.sheet, address.row, address.col, content, visibleCellIndex)
       ? EMPTY_DEFERRED_CHANGES
       : null

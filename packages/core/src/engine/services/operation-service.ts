@@ -701,8 +701,8 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
   const tryApplyFreshDenseRectangularNumericLiteralBatch: DirectScalarBatchFastPaths['tryApplyFreshDenseRectangularNumericLiteralBatch'] = (
     ...input
   ) => getDirectScalarBatchFastPaths().tryApplyFreshDenseRectangularNumericLiteralBatch(...input)
-  const tryApplyDenseSingleColumnAffineExistingNumericBatch: DirectScalarBatchFastPaths['tryApplyDenseSingleColumnAffineExistingNumericBatch'] =
-    (...input) => getDirectScalarBatchFastPaths().tryApplyDenseSingleColumnAffineExistingNumericBatch(...input)
+  const tryApplyExistingNumericDirectScalarBatch: DirectScalarBatchFastPaths['tryApplyExistingNumericDirectScalarBatch'] = (...input) =>
+    getDirectScalarBatchFastPaths().tryApplyExistingNumericDirectScalarBatch(...input)
 
   let singleExistingLiteralFastPath: ReturnType<typeof createOperationSingleExistingLiteralFastPath> | undefined
   const getSingleExistingLiteralFastPath = (): ReturnType<typeof createOperationSingleExistingLiteralFastPath> =>
@@ -895,8 +895,8 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
   })
   const applyCellMutationsAtNow = (...input: Parameters<typeof applyCellMutationsAtNowCore>) =>
     withOperationEvaluationBudget(() => applyCellMutationsAtNowCore(...input))
-  const applyExistingNumericCellMutationsAtNow = (...input: Parameters<typeof tryApplyDenseSingleColumnAffineExistingNumericBatch>) =>
-    withOperationEvaluationBudget(() => tryApplyDenseSingleColumnAffineExistingNumericBatch(...input))
+  const applyExistingNumericCellMutationsAtNow = (...input: Parameters<typeof tryApplyExistingNumericDirectScalarBatch>) =>
+    withOperationEvaluationBudget(() => tryApplyExistingNumericDirectScalarBatch(...input))
 
   const __testHooks: Record<string, unknown> = ENGINE_OPERATION_TEST_HOOKS_ENABLED
     ? {

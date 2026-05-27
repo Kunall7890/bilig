@@ -147,7 +147,10 @@ export function makeInternalScopedName(scope: number, name: string): string {
 }
 
 export function isFormulaContent(content: RawCellContent): content is string {
-  return typeof content === 'string' && content.trim().startsWith('=')
+  if (typeof content !== 'string') {
+    return false
+  }
+  return formulaStartIndex(content) !== -1
 }
 
 export function isBlankRawCellContent(content: RawCellContent | undefined): content is null | undefined {
@@ -167,7 +170,42 @@ export function isDeferredBatchLiteralContent(content: RawCellContent): boolean 
 }
 
 export function stripLeadingEquals(formula: string): string {
-  return formula.trim().startsWith('=') ? formula.trim().slice(1) : formula.trim()
+  const formulaStart = formulaStartIndex(formula)
+  if (formulaStart !== -1) {
+    const asciiTrimmedEnd = trimAsciiFormulaWhitespaceEnd(formula)
+    const body = formula.slice(formulaStart + 1, asciiTrimmedEnd)
+    return formula.length > 0 && formula.charCodeAt(formula.length - 1) > 127 ? body.trimEnd() : body
+  }
+  return formula.trim()
+}
+
+function formulaStartIndex(value: string): number {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index)
+    if (code === 61) {
+      return index
+    }
+    if (!isAsciiFormulaWhitespace(code)) {
+      if (code > 127) {
+        const trimmedStart = value.trimStart()
+        return trimmedStart.charCodeAt(0) === 61 ? value.length - trimmedStart.length : -1
+      }
+      return -1
+    }
+  }
+  return -1
+}
+
+function trimAsciiFormulaWhitespaceEnd(value: string): number {
+  let end = value.length
+  while (end > 0 && isAsciiFormulaWhitespace(value.charCodeAt(end - 1))) {
+    end -= 1
+  }
+  return end
+}
+
+function isAsciiFormulaWhitespace(code: number): boolean {
+  return code === 32 || code === 9 || code === 10 || code === 13
 }
 
 export function assertRowAndColumn(value: number, label: string): void {

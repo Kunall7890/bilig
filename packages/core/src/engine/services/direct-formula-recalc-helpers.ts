@@ -15,7 +15,6 @@ export function directAggregateNumericContribution(value: CellValue): number | u
     case ValueTag.Number:
       return value.value
     case ValueTag.Boolean:
-      return value.value ? 1 : 0
     case ValueTag.Empty:
     case ValueTag.String:
       return 0

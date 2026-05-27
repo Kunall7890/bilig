@@ -148,6 +148,10 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
     record: Extract<TransactionRecord, { kind: 'existing-numeric-cell-mutations' }>,
     batch: EngineOpBatch | null,
   ) => boolean
+  readonly tryApplyExistingNumericDirectScalarBatch: (
+    record: Extract<TransactionRecord, { kind: 'existing-numeric-cell-mutations' }>,
+    batch: EngineOpBatch | null,
+  ) => boolean
 } {
   const {
     emitBatch,
@@ -174,31 +178,40 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
     tryApplyDenseSingleColumnAffineExistingNumericBatch,
   } = createOperationDirectScalarSingleColumnBatchFastPaths(args)
 
-  const { tryApplyDenseRowPairSimpleDirectScalarLiteralBatch, tryApplyDenseRowPairDirectScalarLiteralBatch } =
-    createOperationDirectScalarRowPairBatchFastPaths({
-      state: args.state,
-      emitBatch,
-      hasTrackedExactLookupDependents,
-      hasTrackedSortedLookupDependents,
-      hasTrackedDirectRangeDependents,
-      canFastPathLiteralOverwrite,
-      canUseDirectFormulaPostRecalc,
-      canSkipFormulaColumnVersion,
-      applyTerminalDirectFormulaNumericResults: args.applyTerminalDirectFormulaNumericResults,
-      getEntityDependents: args.getEntityDependents,
-      materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
-      beginMutationCollection: args.beginMutationCollection,
-      ensureRecalcScratchCapacity: args.ensureRecalcScratchCapacity,
-      resetMaterializedCellScratch: args.resetMaterializedCellScratch,
-      getBatchMutationDepth: args.getBatchMutationDepth,
-      setBatchMutationDepth: args.setBatchMutationDepth,
-      markInputChanged: args.markInputChanged,
-      markExplicitChanged: args.markExplicitChanged,
-      getChangedInputBuffer: args.getChangedInputBuffer,
-      deferKernelSync: args.deferKernelSync,
-      composeDisjointEventChanges: args.composeDisjointEventChanges,
-      captureChangedCells: args.captureChangedCells,
-    })
+  const {
+    tryApplyDenseRowPairSimpleDirectScalarLiteralBatch,
+    tryApplyDenseRowPairDirectScalarLiteralBatch,
+    tryApplyDenseRowPairExistingNumericBatch,
+  } = createOperationDirectScalarRowPairBatchFastPaths({
+    state: args.state,
+    emitBatch,
+    hasTrackedExactLookupDependents,
+    hasTrackedSortedLookupDependents,
+    hasTrackedDirectRangeDependents,
+    canFastPathLiteralOverwrite,
+    canUseDirectFormulaPostRecalc,
+    canSkipFormulaColumnVersion,
+    applyTerminalDirectFormulaNumericResults: args.applyTerminalDirectFormulaNumericResults,
+    getEntityDependents: args.getEntityDependents,
+    materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
+    beginMutationCollection: args.beginMutationCollection,
+    ensureRecalcScratchCapacity: args.ensureRecalcScratchCapacity,
+    resetMaterializedCellScratch: args.resetMaterializedCellScratch,
+    getBatchMutationDepth: args.getBatchMutationDepth,
+    setBatchMutationDepth: args.setBatchMutationDepth,
+    markInputChanged: args.markInputChanged,
+    markExplicitChanged: args.markExplicitChanged,
+    getChangedInputBuffer: args.getChangedInputBuffer,
+    deferKernelSync: args.deferKernelSync,
+    composeDisjointEventChanges: args.composeDisjointEventChanges,
+    captureChangedCells: args.captureChangedCells,
+  })
+
+  const tryApplyExistingNumericDirectScalarBatch = (
+    record: Extract<TransactionRecord, { kind: 'existing-numeric-cell-mutations' }>,
+    batch: EngineOpBatch | null,
+  ): boolean =>
+    tryApplyDenseSingleColumnAffineExistingNumericBatch(record, batch) || tryApplyDenseRowPairExistingNumericBatch(record, batch)
 
   const { tryApplyDenseRectangularDirectAggregateLiteralBatch } = createOperationDirectAggregateRectangularBatchFastPath({
     state: args.state,
@@ -700,5 +713,6 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
     tryApplyDenseRectangularDirectAggregateLiteralBatch,
     tryApplyFreshDenseRectangularNumericLiteralBatch,
     tryApplyDenseSingleColumnAffineExistingNumericBatch,
+    tryApplyExistingNumericDirectScalarBatch,
   }
 }

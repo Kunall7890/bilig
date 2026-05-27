@@ -594,6 +594,7 @@ function importParsedSheetJsWorkbook(args: {
           externalLinkCaches: importedExternalLinkCaches,
           externalCacheSheetNames: importedExternalCacheSheetPlan.sheetNamesByExternalSheet,
           externalWorkbookReferences: importedExternalWorkbookReferences,
+          refreshedExternalWorkbookBookIndices: importedExternalLinkCacheRefresh.refreshedBookIndices,
         })
         if (formulaResult) {
           Object.assign(nextCell, formulaResult.formulaCell)
@@ -634,6 +635,7 @@ function importParsedSheetJsWorkbook(args: {
         externalLinkCaches: importedExternalLinkCaches,
         externalCacheSheetNames: importedExternalCacheSheetPlan.sheetNamesByExternalSheet,
         externalWorkbookReferences: importedExternalWorkbookReferences,
+        refreshedExternalWorkbookBookIndices: importedExternalLinkCacheRefresh.refreshedBookIndices,
       })
       if (!formulaResult) {
         continue
@@ -668,6 +670,7 @@ function importParsedSheetJsWorkbook(args: {
         externalLinkCaches: importedExternalLinkCaches,
         externalCacheSheetNames: importedExternalCacheSheetPlan.sheetNamesByExternalSheet,
         externalWorkbookReferences: importedExternalWorkbookReferences,
+        refreshedExternalWorkbookBookIndices: importedExternalLinkCacheRefresh.refreshedBookIndices,
       })
       if (!formulaResult) {
         continue

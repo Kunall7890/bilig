@@ -102,17 +102,6 @@ export class CellStore {
     this.errors.fill(ErrorCode.None, firstIndex, firstIndex + count)
     this.flags.fill(CellFlags.Materialized, firstIndex, firstIndex + count)
 
-    if (colCount <= 16) {
-      for (let row = 0; row < rowCount; row += 1) {
-        const rowBase = firstIndex + row * colCount
-        this.rows.fill(rowStart + row, rowBase, rowBase + colCount)
-        for (let col = 0; col < colCount; col += 1) {
-          this.cols[rowBase + col] = colStart + col
-        }
-      }
-      return firstIndex
-    }
-
     const colPattern = materializeDenseColumnPattern(colStart, colCount)
     for (let row = 0; row < rowCount; row += 1) {
       const rowBase = firstIndex + row * colCount

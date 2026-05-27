@@ -40,6 +40,15 @@ export interface EngineExistingNumericCellMutationRef {
   oldNumericValue?: number
 }
 
+export interface EngineExistingNumericCellMutationsRef {
+  readonly sheetIds: Uint32Array
+  readonly cellIndexPlusOnes: Uint32Array
+  readonly rows: Uint32Array
+  readonly cols: Uint32Array
+  readonly numbers: Float64Array
+  readonly potentialNewCells?: number
+}
+
 export interface EngineExistingLiteralCellMutationRef {
   sheetId: number
   row: number

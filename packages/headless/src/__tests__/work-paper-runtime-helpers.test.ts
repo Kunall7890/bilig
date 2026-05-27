@@ -70,11 +70,15 @@ describe('work paper runtime helpers', () => {
     expect(makeNamedExpressionKey(' rate ')).toBe('workbook:RATE')
     expect(makeInternalScopedName(4, 'rate')).toBe('__BILIG_WORKPAPER_SCOPE_4_RATE')
     expect(isFormulaContent(' =A1 ')).toBe(true)
+    expect(isFormulaContent('=A1')).toBe(true)
+    expect(isFormulaContent(' label = A1')).toBe(false)
     expect(isFormulaContent('A1')).toBe(false)
     expect(isDeferredBatchLiteralContent('=A1')).toBe(true)
     expect(isWorkPaperSheetMatrix([[null]])).toBe(true)
     expect(matrixContainsFormulaContent([[null, '=A1']])).toBe(true)
+    expect(stripLeadingEquals('=A1 ')).toBe('A1')
     expect(stripLeadingEquals(' = A1 ')).toBe(' A1')
+    expect(stripLeadingEquals(' value ')).toBe('value')
   })
 
   it('validates same-sheet ranges and range-like values', () => {

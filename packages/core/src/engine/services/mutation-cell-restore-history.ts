@@ -360,8 +360,9 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
     const forwardCellIndexPlusOnes = forwardMetadata.subarray(count, count * 2)
     const forwardRows = forwardMetadata.subarray(count * 2, count * 3)
     const forwardCols = forwardMetadata.subarray(count * 3, count * 4)
-    const forwardNumbers = new Float64Array(count)
-    const oldNumbers = new Float64Array(count)
+    const numberBuffer = new Float64Array(count * 2)
+    const forwardNumbers = numberBuffer.subarray(0, count)
+    const oldNumbers = numberBuffer.subarray(count)
     const cellStore = args.workbook.cellStore
     let cachedSheetId = -1
     let cachedSheet: ReturnType<WorkbookStore['getSheetById']> | undefined

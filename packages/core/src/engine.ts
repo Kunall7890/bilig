@@ -19,6 +19,7 @@ import type {
   EngineCellMutationRef,
   EngineExistingLiteralCellMutationRef,
   EngineExistingNumericCellMutationRef,
+  EngineExistingNumericCellMutationsRef,
   EngineExistingNumericCellMutationResult,
   EngineFormulaSourceRefs,
 } from './cell-mutations-at.js'
@@ -292,6 +293,13 @@ export class SpreadsheetEngine extends SpreadsheetEngineWorkbookFacadeBase {
       this.redoStack.length = 0
     }
     return result
+  }
+
+  tryApplyExistingNumericCellMutationsAt(request: EngineExistingNumericCellMutationsRef): boolean {
+    if (this.state.trackReplicaVersions || this.batchListeners.size > 0 || this.syncClientConnection !== null) {
+      return false
+    }
+    return this.runtime.mutation.executeLocalExistingNumericCellMutationsAtNow(request, { returnUndoOps: false })
   }
 
   tryApplyExistingLiteralCellMutationAt(request: EngineExistingLiteralCellMutationRef): EngineExistingNumericCellMutationResult | null {

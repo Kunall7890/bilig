@@ -20,8 +20,10 @@ import {
   type SameCorpusPixelGridProof,
   type SameCorpusProductPixelGridProof,
 } from '../ui-responsiveness-same-corpus-proof.ts'
+import { sameCorpusMutationTargetRangeForSample } from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
+  uiSameCorpusWorkloadMutatesWorkbook,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
 } from '../ui-responsiveness-same-corpus-workloads.ts'
 import { buildFixtureInput } from './bilig-dominance-scorecard.fixture.ts'
@@ -29,6 +31,8 @@ import { buildFixtureInput } from './bilig-dominance-scorecard.fixture.ts'
 const sameCorpusFixtureFingerprint = buildSameCorpusFingerprint(buildWorkbookBenchmarkCorpus('wide-mixed-250k')).corpusFingerprint
 const googleSheetsSourceWorkbookSha256 = '1'.repeat(64)
 const microsoftExcelWebSourceWorkbookSha256 = '2'.repeat(64)
+type SameCorpusFixtureWorkload = (typeof requiredUiResponsivenessSameCorpusWorkloads)[number]
+type SameCorpusFixtureMeasurement = SameCorpusCapture['cases'][number]['bilig']
 
 describe('bilig dominance status', () => {
   it('exposes actionable same-corpus UI proof setup commands', () => {
@@ -838,6 +842,9 @@ function failingSameCorpusCapture(
       microsoftExcelWeb.scrollEventResponseMsSamples = [100, 100, 100]
       microsoftExcelWeb.scrollMovementPxSamples = [720, 720, 720]
     }
+    addSameCorpusMutationTimingSamples(bilig, workload)
+    addSameCorpusMutationTimingSamples(googleSheets, workload)
+    addSameCorpusMutationTimingSamples(microsoftExcelWeb, workload)
     const scenarioProof = sameCorpusScenarioProof(workload, bilig, googleSheets, microsoftExcelWeb)
     return Object.assign(
       {
@@ -863,7 +870,47 @@ function failingSameCorpusCapture(
   }
 }
 
-function sameCorpusOperationResponseProofSamples(workload: (typeof requiredUiResponsivenessSameCorpusWorkloads)[number]) {
+function addSameCorpusMutationTimingSamples(measurement: SameCorpusFixtureMeasurement, workload: SameCorpusFixtureWorkload): void {
+  if (!uiSameCorpusWorkloadMutatesWorkbook(workload)) {
+    return
+  }
+  const committedTargetProofMsSamples =
+    measurement.product === 'bilig' ? [40, 41, 42] : measurement.product === 'google-sheets' ? [400, 410, 420] : [440, 450, 460]
+  const visibleTargetRenderMsSamples =
+    measurement.product === 'bilig' ? [5, 6, 7] : measurement.product === 'google-sheets' ? [100, 102, 104] : [80, 82, 84]
+  const committedStateValidationMsSamples = committedTargetProofMsSamples.map(
+    (value, index) => value - (visibleTargetRenderMsSamples[index] ?? 0),
+  )
+  const restoreValidationMsSamples = [80, 80, 80]
+  measurement.committedTargetProofMsSamples = committedTargetProofMsSamples
+  measurement.visibleTargetRenderMsSamples = visibleTargetRenderMsSamples
+  measurement.committedStateValidationMsSamples = committedStateValidationMsSamples
+  measurement.restoreValidationMsSamples = restoreValidationMsSamples
+  measurement.committedTargetProofTimingSamples = committedTargetProofMsSamples.map((committedTargetProofMs, sampleIndex) => ({
+    sampleIndex,
+    product: measurement.product,
+    sheetName: 'WideGrid',
+    sheetId: sameCorpusFixtureSheetId(measurement.product),
+    targetRange: sameCorpusMutationTargetRangeForSample(workload, sampleIndex),
+    targetProofSignature: `${measurement.product}-${workload}-${sampleIndex}-proof`,
+    committedTargetProofMs,
+    visibleTargetRenderMs: visibleTargetRenderMsSamples[sampleIndex] ?? 0,
+    committedStateValidationMs: committedStateValidationMsSamples[sampleIndex] ?? 0,
+    restoreValidationMs: restoreValidationMsSamples[sampleIndex] ?? 0,
+  }))
+}
+
+function sameCorpusFixtureSheetId(product: SameCorpusFixtureMeasurement['product']): string {
+  if (product === 'bilig') {
+    return 'sheet-wide-grid'
+  }
+  if (product === 'google-sheets') {
+    return 'gid:160971404'
+  }
+  return 'excel-web-sheet-wide-grid'
+}
+
+function sameCorpusOperationResponseProofSamples(workload: SameCorpusFixtureWorkload) {
   const proof =
     workload === 'open-workbook'
       ? 'load-to-ready'
@@ -980,6 +1027,7 @@ function sameCorpusScenarioProof(
     bilig,
     googleSheets,
     microsoftExcelWeb,
+    workload,
     visualProofs: pixelGridProof.products.map((productProof) => ({
       product: productProof.product,
       screenshotCaptured: true,

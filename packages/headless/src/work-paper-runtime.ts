@@ -60,6 +60,7 @@ import {
 import { attachWorkPaperRuntimeImage, cloneWorkPaperSnapshotWithRuntimeImage } from './work-paper-snapshot-clone.js'
 import { buildWorkPaperRawCellMutation } from './work-paper-literal-mutation-queue.js'
 import { WorkPaperMutationQueues } from './work-paper-mutation-queues.js'
+import { tryApplyExistingNumericCellMutationsAtWithOptions } from './work-paper-existing-numeric-mutation-fast-path.js'
 import { WorkPaperEngineEventTracker } from './work-paper-engine-event-tracker.js'
 import { WorkPaperRuntimeLifecycleBase } from './work-paper-runtime-lifecycle-base.js'
 import { tryChangeSimpleNumericNamedExpressionFastPath } from './work-paper-named-expression-fast-path-runtime.js'
@@ -209,6 +210,8 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     applyCellMutationsAtWithOptions: (refs, options) => {
       this.engine.applyCellMutationsAtWithOptions(refs, options)
     },
+    applyExistingNumericCellMutationsAtWithOptions: (record, options) =>
+      tryApplyExistingNumericCellMutationsAtWithOptions(this.engine, record, options),
     updateSheetDimensionsAfterCellMutationRefs: (refs) => this.updateSheetDimensionsAfterCellMutationRefs(refs),
   })
   private constructor(configInput: WorkPaperConfig = {}) {
@@ -342,7 +345,9 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     this.assertWorkbookStructureEditable()
 
     const oldName = sheet.name
-    this.invalidateImportedXlsxSource()
+    if (this.preservedImportedSnapshot || this.importedXlsxSource || this.importedXlsxSourceCellPatches.size) {
+      this.invalidateImportedXlsxSource()
+    }
     if (
       this.batchDepth === 0 &&
       !this.evaluationSuspended &&

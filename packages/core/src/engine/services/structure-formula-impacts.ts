@@ -8,6 +8,7 @@ import { addEngineCounter } from '../../perf/engine-counters.js'
 import { dependencyTouchesSheet, rangeDependencyAxisAffected, runtimeDirectRangeAxisAffected } from './structure-formula-rewrite-guards.js'
 import { canDeferSimpleStructuralFormulaSource, classifySimpleDeleteStructuralFormulaSource } from './structure-formula-source-deferral.js'
 import { isCellIndexMapped, structuralAxisIndexAffected } from './structure-runtime-cleanup.js'
+import { directAggregateNumericContribution } from './direct-formula-recalc-helpers.js'
 import type { CreateEngineStructureServiceArgs } from './structure-service-types.js'
 
 export interface CollectStructuralFormulaImpactsOptions {
@@ -332,19 +333,11 @@ export function collectStructuralFormulaImpacts(
         continue
       }
       const memberValue = args.state.workbook.cellStore.getValue(memberCellIndex, () => '')
-      switch (memberValue.tag) {
-        case ValueTag.Number:
-          deletedContribution += memberValue.value
-          break
-        case ValueTag.Boolean:
-          deletedContribution += memberValue.value ? 1 : 0
-          break
-        case ValueTag.Empty:
-        case ValueTag.String:
-          break
-        case ValueTag.Error:
-          return false
+      const contribution = directAggregateNumericContribution(memberValue)
+      if (contribution === undefined) {
+        return false
       }
+      deletedContribution += contribution
     }
     args.state.workbook.cellStore.setValue(cellIndex, {
       tag: ValueTag.Number,

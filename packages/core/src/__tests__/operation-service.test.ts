@@ -103,7 +103,7 @@ function lookupTestString(id: number): string {
 describe('EngineOperationService', () => {
   it('covers operation helper branches used by direct formulas and lookup tracking', () => {
     expect(operationServiceTestHooks.directAggregateNumericContribution({ tag: ValueTag.Number, value: 4 })).toBe(4)
-    expect(operationServiceTestHooks.directAggregateNumericContribution({ tag: ValueTag.Boolean, value: true })).toBe(1)
+    expect(operationServiceTestHooks.directAggregateNumericContribution({ tag: ValueTag.Boolean, value: true })).toBe(0)
     expect(operationServiceTestHooks.directAggregateNumericContribution({ tag: ValueTag.Boolean, value: false })).toBe(0)
     expect(operationServiceTestHooks.directAggregateNumericContribution({ tag: ValueTag.Empty })).toBe(0)
     expect(operationServiceTestHooks.directAggregateNumericContribution({ tag: ValueTag.String, value: 'x' })).toBe(0)
