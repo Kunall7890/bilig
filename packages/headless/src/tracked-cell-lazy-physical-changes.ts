@@ -10,6 +10,8 @@ import type { WorkPaperCellChange } from './work-paper-types.js'
 
 const COLUMN_LABEL_CACHE: string[] = []
 const DEFERRED_TRACKED_INDEX_CHANGES = new WeakMap<readonly WorkPaperCellChange[], DeferredTrackedIndexChanges>()
+const ZERO_CHAR_CODE = 48
+const NINE_CHAR_CODE = 57
 
 export interface TrackedIndexDetachOptions {
   readonly preservePositions?: boolean
@@ -125,7 +127,7 @@ export function createLazyPhysicalTrackedIndexChanges(
   let detached: DetachedPhysicalTrackedIndexChanges | undefined
   let fullyMaterialized = false
   let orderedCellIndices: Uint32Array | undefined
-  const hasMaterializedIndex = (index: number): boolean => Object.prototype.hasOwnProperty.call(cache, index)
+  const hasMaterializedIndex = (index: number): boolean => cache[index] !== undefined
   const orderedCellIndexAt = (index: number): number => {
     if (sortedSliceSplit === undefined) {
       return changedCellIndicesForMaterialization[index]!
@@ -270,20 +272,13 @@ export function createLazyPhysicalTrackedIndexChanges(
     }
     fullyMaterialized = true
   }
-  const numericIndexOf = (property: string | symbol): number | undefined => {
-    if (typeof property !== 'string' || property.length === 0) {
-      return undefined
-    }
-    const index = Number(property)
-    return Number.isInteger(index) && index >= 0 && index < length && String(index) === property ? index : undefined
-  }
   const proxy = new Proxy(cache, {
     get(target, property, receiver) {
-      const index = numericIndexOf(property)
+      const index = trackedNumericIndexProperty(property, length)
       return index === undefined ? Reflect.get(target, property, receiver) : materialize(index)
     },
     getOwnPropertyDescriptor(target, property) {
-      const index = numericIndexOf(property)
+      const index = trackedNumericIndexProperty(property, length)
       if (index === undefined) {
         return Reflect.getOwnPropertyDescriptor(target, property)
       }
@@ -295,12 +290,12 @@ export function createLazyPhysicalTrackedIndexChanges(
       }
     },
     has(target, property) {
-      return numericIndexOf(property) !== undefined || Reflect.has(target, property)
+      return trackedNumericIndexProperty(property, length) !== undefined || Reflect.has(target, property)
     },
     ownKeys(target) {
       return [
         ...Array.from({ length }, (_value, index) => String(index)),
-        ...Reflect.ownKeys(target).filter((key) => typeof key !== 'string' || numericIndexOf(key) === undefined),
+        ...Reflect.ownKeys(target).filter((key) => typeof key !== 'string' || trackedNumericIndexProperty(key, length) === undefined),
       ]
     },
   })
@@ -321,7 +316,7 @@ export function createPrefixedLazyTrackedIndexChanges(
     cache[index] = prefixChanges[index]!
   }
   let fullyMaterialized = false
-  const hasMaterializedIndex = (index: number): boolean => Object.prototype.hasOwnProperty.call(cache, index)
+  const hasMaterializedIndex = (index: number): boolean => cache[index] !== undefined
   const materialize = (index: number): WorkPaperCellChange => {
     if (hasMaterializedIndex(index)) {
       return cache[index]!
@@ -344,20 +339,13 @@ export function createPrefixedLazyTrackedIndexChanges(
   const detach = (options: TrackedIndexDetachOptions = {}): void => {
     detachTrackedIndexChanges(lazyTailChanges, options)
   }
-  const numericIndexOf = (property: string | symbol): number | undefined => {
-    if (typeof property !== 'string' || property.length === 0) {
-      return undefined
-    }
-    const index = Number(property)
-    return Number.isInteger(index) && index >= 0 && index < length && String(index) === property ? index : undefined
-  }
   const proxy = new Proxy(cache, {
     get(target, property, receiver) {
-      const index = numericIndexOf(property)
+      const index = trackedNumericIndexProperty(property, length)
       return index === undefined ? Reflect.get(target, property, receiver) : materialize(index)
     },
     getOwnPropertyDescriptor(target, property) {
-      const index = numericIndexOf(property)
+      const index = trackedNumericIndexProperty(property, length)
       if (index === undefined) {
         return Reflect.getOwnPropertyDescriptor(target, property)
       }
@@ -369,17 +357,42 @@ export function createPrefixedLazyTrackedIndexChanges(
       }
     },
     has(target, property) {
-      return numericIndexOf(property) !== undefined || Reflect.has(target, property)
+      return trackedNumericIndexProperty(property, length) !== undefined || Reflect.has(target, property)
     },
     ownKeys(target) {
       return [
         ...Array.from({ length }, (_value, index) => String(index)),
-        ...Reflect.ownKeys(target).filter((key) => typeof key !== 'string' || numericIndexOf(key) === undefined),
+        ...Reflect.ownKeys(target).filter((key) => typeof key !== 'string' || trackedNumericIndexProperty(key, length) === undefined),
       ]
     },
   })
   DEFERRED_TRACKED_INDEX_CHANGES.set(proxy, { forceMaterialize, detach })
   return proxy
+}
+
+function trackedNumericIndexProperty(property: string | symbol, length: number): number | undefined {
+  if (typeof property !== 'string' || property.length === 0) {
+    return undefined
+  }
+  const firstCode = property.charCodeAt(0)
+  if (firstCode < ZERO_CHAR_CODE || firstCode > NINE_CHAR_CODE) {
+    return undefined
+  }
+  if (property.length > 1 && property.charCodeAt(0) === ZERO_CHAR_CODE) {
+    return undefined
+  }
+  let index = 0
+  for (let charIndex = 0; charIndex < property.length; charIndex += 1) {
+    const code = property.charCodeAt(charIndex)
+    if (code < ZERO_CHAR_CODE || code > NINE_CHAR_CODE) {
+      return undefined
+    }
+    index = index * 10 + code - ZERO_CHAR_CODE
+    if (index >= length) {
+      return undefined
+    }
+  }
+  return index
 }
 
 export function tryCreateLazyPhysicalTrackedIndexChanges(
