@@ -514,6 +514,9 @@ function parseCurrencyValueText(input: string): number | undefined {
 }
 
 function parseValueText(input: string): number | undefined {
+  if (input.trim() === '') {
+    return undefined
+  }
   const numeric = parseNumberValueText(input, '.', ',')
   if (numeric !== undefined) {
     return numeric

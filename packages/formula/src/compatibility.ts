@@ -203,6 +203,12 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('text:char-basic', 'text', '=CHAR(65)', 'implemented-wasm-production'),
   entry('text:code-basic', 'text', '=CODE("A")', 'implemented-wasm-production'),
   entry('text:clean-basic', 'text', '=CLEAN(CHAR(97)&CHAR(1)&CHAR(98))', 'implemented-wasm-production'),
+  entry(
+    'text:clean-preserves-delete-character',
+    'text',
+    '=CLEAN(CHAR(97)&CHAR(1)&CHAR(98)&CHAR(127)&CHAR(99))',
+    'implemented-wasm-production',
+  ),
   entry('text:asc-basic', 'text', '=ASC("ＡＢＣ　１２３")', 'implemented-wasm-production'),
   entry('text:jis-basic', 'text', '=JIS("ABC 123")', 'implemented-wasm-production'),
   entry('text:dbcs-basic', 'text', '=DBCS("ABC 123")', 'implemented-wasm-production'),

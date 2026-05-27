@@ -160,13 +160,23 @@ export function evalAnchoredPrefixAggregateBatch(
           outErrors[formulaIndex] = ERROR_CODE_NONE
         }
       } else if (aggregateKind == DIRECT_AGGREGATE_OP_MIN) {
-        outTags[formulaIndex] = VALUE_TAG_NUMBER
-        outNumbers[formulaIndex] = (minimum == Infinity ? 0 : minimum) + resultOffset
-        outErrors[formulaIndex] = ERROR_CODE_NONE
+        if (errorCount > 0 && errorCode != ERROR_CODE_NONE) {
+          outTags[formulaIndex] = VALUE_TAG_ERROR
+          outErrors[formulaIndex] = errorCode
+        } else {
+          outTags[formulaIndex] = VALUE_TAG_NUMBER
+          outNumbers[formulaIndex] = (minimum == Infinity ? 0 : minimum) + resultOffset
+          outErrors[formulaIndex] = ERROR_CODE_NONE
+        }
       } else if (aggregateKind == DIRECT_AGGREGATE_OP_MAX) {
-        outTags[formulaIndex] = VALUE_TAG_NUMBER
-        outNumbers[formulaIndex] = (maximum == -Infinity ? 0 : maximum) + resultOffset
-        outErrors[formulaIndex] = ERROR_CODE_NONE
+        if (errorCount > 0 && errorCode != ERROR_CODE_NONE) {
+          outTags[formulaIndex] = VALUE_TAG_ERROR
+          outErrors[formulaIndex] = errorCode
+        } else {
+          outTags[formulaIndex] = VALUE_TAG_NUMBER
+          outNumbers[formulaIndex] = (maximum == -Infinity ? 0 : maximum) + resultOffset
+          outErrors[formulaIndex] = ERROR_CODE_NONE
+        }
       } else {
         outTags[formulaIndex] = VALUE_TAG_ERROR
         outErrors[formulaIndex] = ERROR_CODE_VALUE

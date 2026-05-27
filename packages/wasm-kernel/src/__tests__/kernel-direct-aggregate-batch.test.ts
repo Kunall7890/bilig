@@ -83,4 +83,70 @@ describe('wasm kernel direct aggregate batch', () => {
       expect([...outErrors]).toEqual([0, 0, 0, 0, 0])
     }
   })
+
+  it('propagates prefix errors for numeric direct aggregate kinds except count', async () => {
+    const kernel = await createKernel()
+    const tags = Uint8Array.from([ValueTag.Number, ValueTag.Error, ValueTag.Number])
+    const numbers = Float64Array.from([5, 0, -2])
+    const errors = Uint16Array.from([0, ErrorCode.NA, 0])
+    const formulaRowEnds = Uint32Array.from([0, 1, 2])
+    const resultOffsets = new Float64Array(3)
+
+    const cases = [
+      {
+        aggregateKind: DIRECT_AGGREGATE_OP_SUM,
+        expectedTags: [ValueTag.Number, ValueTag.Error, ValueTag.Error],
+        expectedNumbers: [5, 0, 0],
+        expectedErrors: [0, ErrorCode.NA, ErrorCode.NA],
+      },
+      {
+        aggregateKind: DIRECT_AGGREGATE_OP_AVERAGE,
+        expectedTags: [ValueTag.Number, ValueTag.Error, ValueTag.Error],
+        expectedNumbers: [5, 0, 0],
+        expectedErrors: [0, ErrorCode.NA, ErrorCode.NA],
+      },
+      {
+        aggregateKind: DIRECT_AGGREGATE_OP_COUNT,
+        expectedTags: [ValueTag.Number, ValueTag.Number, ValueTag.Number],
+        expectedNumbers: [1, 1, 2],
+        expectedErrors: [0, 0, 0],
+      },
+      {
+        aggregateKind: DIRECT_AGGREGATE_OP_MIN,
+        expectedTags: [ValueTag.Number, ValueTag.Error, ValueTag.Error],
+        expectedNumbers: [5, 0, 0],
+        expectedErrors: [0, ErrorCode.NA, ErrorCode.NA],
+      },
+      {
+        aggregateKind: DIRECT_AGGREGATE_OP_MAX,
+        expectedTags: [ValueTag.Number, ValueTag.Error, ValueTag.Error],
+        expectedNumbers: [5, 0, 0],
+        expectedErrors: [0, ErrorCode.NA, ErrorCode.NA],
+      },
+    ]
+
+    for (const { aggregateKind, expectedTags, expectedNumbers, expectedErrors } of cases) {
+      const outTags = new Uint8Array(3)
+      const outNumbers = new Float64Array(3)
+      const outErrors = new Uint16Array(3)
+
+      kernel.evalAnchoredPrefixAggregateBatch(
+        aggregateKind,
+        tags,
+        numbers,
+        errors,
+        3,
+        1,
+        formulaRowEnds,
+        resultOffsets,
+        outTags,
+        outNumbers,
+        outErrors,
+      )
+
+      expect([...outTags]).toEqual(expectedTags)
+      expect([...outNumbers]).toEqual(expectedNumbers)
+      expect([...outErrors]).toEqual(expectedErrors)
+    }
+  })
 })

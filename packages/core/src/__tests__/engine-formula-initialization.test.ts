@@ -389,9 +389,9 @@ describe('SpreadsheetEngine formula initialization', () => {
 
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 1 })
     expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Number, value: 4 })
-    expect(engine.getCellValue('Sheet1', 'B6')).toEqual({ tag: ValueTag.Number, value: 5 })
-    expect(engine.getCellValue('Sheet1', 'C6')).toEqual({ tag: ValueTag.Number, value: 3 })
-    expect(engine.getCellValue('Sheet1', 'D6')).toEqual({ tag: ValueTag.Number, value: 5 / 3 })
+    expect(engine.getCellValue('Sheet1', 'B6')).toEqual({ tag: ValueTag.Number, value: 4 })
+    expect(engine.getCellValue('Sheet1', 'C6')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.getCellValue('Sheet1', 'D6')).toEqual({ tag: ValueTag.Number, value: 2 })
     expect(engine.getPerformanceCounters().directFormulaInitialEvaluations).toBe(5)
     expect(engine.getPerformanceCounters().directAggregateScanEvaluations).toBe(0)
     expect(engine.getPerformanceCounters().regionQueryIndexBuilds).toBe(0)
@@ -528,9 +528,9 @@ describe('SpreadsheetEngine formula initialization', () => {
       10,
     )
 
-    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 5 })
-    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 3 })
-    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 5 / 3 })
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 4 })
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 2 })
     expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 1 })
     expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: 3 })
     expect(engine.getCellValue('Sheet1', 'G1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })

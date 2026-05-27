@@ -192,7 +192,7 @@ function stripControlCharacters(input: string): string {
   let output = ''
   for (let index = 0; index < input.length; index += 1) {
     const char = input.charCodeAt(index)
-    if ((char >= 0 && char <= 31) || char === 127) {
+    if (char >= 0 && char <= 31) {
       continue
     }
     output += input[index] ?? ''

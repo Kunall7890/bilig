@@ -177,20 +177,12 @@ function evaluateDirectAggregateFromCellStore(
           maximum = Math.max(maximum, value)
           break
         }
-        case ValueTag.Boolean: {
-          const value = (cellStore.numbers[memberCellIndex] ?? 0) !== 0 ? 1 : 0
-          sum += value
-          count += 1
-          averageCount += 1
-          minimum = Math.min(minimum, value)
-          maximum = Math.max(maximum, value)
-          break
-        }
         case ValueTag.Error:
-          if (directAggregate.aggregateKind === 'sum' || directAggregate.aggregateKind === 'average') {
+          if (directAggregate.aggregateKind !== 'count') {
             return { kind: 'error', code: (cellStore.errors[memberCellIndex] as ErrorCode | undefined) ?? ErrorCode.None }
           }
           break
+        case ValueTag.Boolean:
         case ValueTag.Empty:
         case ValueTag.String:
           break
@@ -261,20 +253,12 @@ function analyzeFreshDirectAggregateDependencies(
           maximum = Math.max(maximum, value)
           break
         }
-        case ValueTag.Boolean: {
-          const value = (cellStore.numbers[memberCellIndex] ?? 0) !== 0 ? 1 : 0
-          sum += value
-          count += 1
-          averageCount += 1
-          minimum = Math.min(minimum, value)
-          maximum = Math.max(maximum, value)
-          break
-        }
         case ValueTag.Error:
-          if (directAggregate.aggregateKind === 'sum' || directAggregate.aggregateKind === 'average') {
+          if (directAggregate.aggregateKind !== 'count') {
             return { kind: 'error', code: (cellStore.errors[memberCellIndex] as ErrorCode | undefined) ?? ErrorCode.None }
           }
           break
+        case ValueTag.Boolean:
         case ValueTag.Empty:
         case ValueTag.String:
           break

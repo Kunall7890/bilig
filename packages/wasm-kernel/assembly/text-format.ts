@@ -725,6 +725,9 @@ function currencyValueParseText(input: string): f64 {
 }
 
 export function valueParseText(input: string): f64 {
+  if (removeAsciiWhitespace(input).length == 0) {
+    return NaN
+  }
   let parsed = numberValueParseText(input, '.', ',')
   if (isFinite(parsed)) {
     return parsed

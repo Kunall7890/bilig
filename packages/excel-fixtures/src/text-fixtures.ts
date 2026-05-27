@@ -25,6 +25,7 @@ export interface TextFixtureGroup {
     | 'RIGHTB'
     | 'MID'
     | 'MIDB'
+    | 'CLEAN'
     | 'TRIM'
     | 'UPPER'
     | 'LOWER'
@@ -108,6 +109,7 @@ export const TEXT_FIXTURE_METADATA = {
     'RIGHTB',
     'MID',
     'MIDB',
+    'CLEAN',
     'TRIM',
     'UPPER',
     'LOWER',
@@ -237,6 +239,16 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
         name: 'extracts byte-based substring from one-based start',
         args: [text('alphabet'), number(2), number(3)],
         expected: text('lph'),
+      },
+    ],
+  },
+  {
+    builtin: 'CLEAN',
+    cases: [
+      {
+        name: 'removes ASCII controls but preserves DEL',
+        args: [text('a\u0001b\u007fc')],
+        expected: text('ab\u007fc'),
       },
     ],
   },
@@ -514,6 +526,14 @@ export const canonicalTextFixtures: readonly ExcelFixtureCase[] = [
     '=MID("alpha",2,A1)',
     [input('A1', null)],
     [output('A2', stringExpected(''))],
+  ),
+  fixture(
+    'clean-preserves-delete-character',
+    'CLEAN removes ASCII controls but preserves DEL',
+    '=CLEAN(CHAR(97)&CHAR(1)&CHAR(98)&CHAR(127)&CHAR(99))',
+    [],
+    [output('A1', stringExpected('ab\u007fc'))],
+    'Microsoft documents CLEAN as removing values 0 through 31; DEL (127) requires explicit SUBSTITUTE-style handling.',
   ),
   fixture(
     'trim-collapses-internal-spaces',

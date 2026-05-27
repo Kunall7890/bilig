@@ -1342,7 +1342,7 @@ describe('wasm kernel', () => {
     expectNumberCell(kernel, cellIndex(1, 2, width), 65)
     expect(kernel.readTags()[cellIndex(1, 3, width)]).toBe(ValueTag.String)
     expect(kernel.readTags()[cellIndex(1, 4, width)]).toBe(ValueTag.String)
-    expect(kernel.readOutputStrings()).toEqual(['A', 'B', 'abc'])
+    expect(kernel.readOutputStrings()).toEqual(['A', 'B', 'ab\u007fc'])
   })
 
   it('evaluates ASC, JIS, and DBCS on the wasm path', async () => {

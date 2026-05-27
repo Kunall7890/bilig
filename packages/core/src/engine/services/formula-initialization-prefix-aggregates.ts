@@ -281,16 +281,8 @@ function evaluateInitialPrefixAggregateGroupInJs(
           averageCount += 1
           minimum = Math.min(minimum, numeric)
           maximum = Math.max(maximum, numeric)
-        } else if (tag === ValueTag.Boolean) {
-          const numeric = (args.state.workbook.cellStore.numbers[memberCellIndex] ?? 0) !== 0 ? 1 : 0
-          sum += numeric
-          count += 1
-          averageCount += 1
-          minimum = Math.min(minimum, numeric)
-          maximum = Math.max(maximum, numeric)
-        } else if (tag === ValueTag.Empty) {
-          minimum = Math.min(minimum, 0)
-          maximum = Math.max(maximum, 0)
+        } else if (tag === ValueTag.Boolean || tag === ValueTag.Empty) {
+          // Reference aggregates ignore logical and blank cells.
         } else if (tag === ValueTag.Error) {
           errorCode = preferAggregateErrorCode(
             errorCode,
@@ -380,10 +372,7 @@ function tryEvaluatePhysicalSingleColumnPrefixAggregateGroupInJs(
       count += 1
       averageCount += 1
     } else if (tag === ValueTag.Boolean) {
-      const numeric = (args.state.workbook.cellStore.numbers[memberCellIndex] ?? 0) !== 0 ? 1 : 0
-      sum += numeric
-      count += 1
-      averageCount += 1
+      // Reference aggregates ignore logical cells.
     } else if (tag === ValueTag.Error) {
       errorCode = preferAggregateErrorCode(
         errorCode,
@@ -436,9 +425,11 @@ function aggregateValueFromState(
           : averageCount === 0
             ? { tag: ValueTag.Error as const, code: ErrorCode.Div0 }
             : { tag: ValueTag.Number as const, value: sum / averageCount }
-        : aggregateKind === 'min'
-          ? { tag: ValueTag.Number as const, value: minimum === Number.POSITIVE_INFINITY ? 0 : minimum }
-          : { tag: ValueTag.Number as const, value: maximum === Number.NEGATIVE_INFINITY ? 0 : maximum }
+        : errorCount > 0 && errorCode !== ErrorCode.None
+          ? { tag: ValueTag.Error as const, code: errorCode }
+          : aggregateKind === 'min'
+            ? { tag: ValueTag.Number as const, value: minimum === Number.POSITIVE_INFINITY ? 0 : minimum }
+            : { tag: ValueTag.Number as const, value: maximum === Number.NEGATIVE_INFINITY ? 0 : maximum }
 }
 
 function nativeDirectAggregateKind(kind: InitialPrefixAggregateKind): number {

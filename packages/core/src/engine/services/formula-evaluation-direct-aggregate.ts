@@ -80,7 +80,7 @@ export function tryEvaluateDirectAggregate(input: {
       addEngineCounter(input.counters, 'directAggregatePageEvaluations')
       addEngineCounter(input.counters, 'directAggregatePageFullHits', fullPageHits)
       addEngineCounter(input.counters, 'directAggregatePageEdgeCells', edgeCellScans)
-      if (errorCount > 0 && (directAggregate.aggregateKind === 'sum' || directAggregate.aggregateKind === 'average')) {
+      if (errorCount > 0 && directAggregate.aggregateKind !== 'count') {
         return directErrorResult(errorCode)
       }
       if (directAggregate.aggregateKind === 'sum') {
@@ -132,28 +132,18 @@ export function tryEvaluateDirectAggregate(input: {
             minimum = Math.min(minimum, value.value)
             maximum = Math.max(maximum, value.value)
             break
-          case ValueTag.Boolean: {
-            const booleanNumber = value.value ? 1 : 0
-            sum += booleanNumber
-            count += 1
-            averageCount += 1
-            minimum = Math.min(minimum, booleanNumber)
-            maximum = Math.max(maximum, booleanNumber)
-            break
-          }
           case ValueTag.Empty:
+          case ValueTag.Boolean:
             break
           case ValueTag.Error:
-            if (directAggregate.aggregateKind === 'sum' || directAggregate.aggregateKind === 'average') {
-              errorCode = preferAggregateErrorCode(errorCode, value.code)
-            }
+            errorCode = preferAggregateErrorCode(errorCode, value.code)
             break
           case ValueTag.String:
             break
         }
       }
     }
-    if (errorCode !== ErrorCode.None && (directAggregate.aggregateKind === 'sum' || directAggregate.aggregateKind === 'average')) {
+    if (errorCode !== ErrorCode.None && directAggregate.aggregateKind !== 'count') {
       return directErrorResult(errorCode)
     }
     if (directAggregate.aggregateKind === 'sum') {
@@ -217,11 +207,7 @@ export function tryEvaluateDirectAggregate(input: {
     minimum = Math.min(minimum, prefix.prefixMinimums[endOffset] ?? Number.POSITIVE_INFINITY)
     maximum = Math.max(maximum, prefix.prefixMaximums[endOffset] ?? Number.NEGATIVE_INFINITY)
   }
-  if (
-    errorCode !== ErrorCode.None &&
-    errorCount > 0 &&
-    (directAggregate.aggregateKind === 'sum' || directAggregate.aggregateKind === 'average')
-  ) {
+  if (errorCode !== ErrorCode.None && errorCount > 0 && directAggregate.aggregateKind !== 'count') {
     return hasShiftedPrefixStart ? undefined : directErrorResult(errorCode)
   }
   if (directAggregate.aggregateKind === 'sum') {

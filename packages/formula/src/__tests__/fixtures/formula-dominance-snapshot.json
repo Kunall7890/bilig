@@ -15,8 +15,8 @@
   },
   "canonical": {
     "summary": {
-      "production": 301,
-      "total": 301,
+      "production": 302,
+      "total": 302,
       "percent": 100
     },
     "statusCounts": {
@@ -24,7 +24,7 @@
       "seeded": 0,
       "implemented-js": 0,
       "implemented-js-and-wasm-shadow": 0,
-      "implemented-wasm-production": 301,
+      "implemented-wasm-production": 302,
       "blocked": 0
     },
     "nonProductionRows": []
@@ -118,8 +118,8 @@
     {
       "family": "text",
       "summary": {
-        "production": 30,
-        "total": 30,
+        "production": 31,
+        "total": 31,
         "percent": 100
       },
       "statusCounts": {
@@ -127,7 +127,7 @@
         "seeded": 0,
         "implemented-js": 0,
         "implemented-js-and-wasm-shadow": 0,
-        "implemented-wasm-production": 30,
+        "implemented-wasm-production": 31,
         "blocked": 0
       },
       "nonProductionRows": []

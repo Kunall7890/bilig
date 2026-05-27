@@ -309,7 +309,7 @@ export function stripControlCharacters(text: string): string {
   let output = ''
   for (let index = 0; index < text.length; index += 1) {
     const code = text.charCodeAt(index)
-    if ((code >= 0 && code <= 31) || code == 127) {
+    if (code >= 0 && code <= 31) {
       continue
     }
     output += String.fromCharCode(code)

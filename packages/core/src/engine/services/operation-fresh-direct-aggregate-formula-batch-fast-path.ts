@@ -835,21 +835,13 @@ function evaluateFreshDirectAggregateRow(
         maximum = Math.max(maximum, value)
         break
       }
-      case ValueTag.Boolean: {
-        const value = (cellStore.numbers[memberCellIndex] ?? 0) !== 0 ? 1 : 0
-        sum += value
-        count += 1
-        averageCount += 1
-        minimum = Math.min(minimum, value)
-        maximum = Math.max(maximum, value)
-        break
-      }
       case ValueTag.Error:
-        if (request.aggregateKind === 'sum' || request.aggregateKind === 'average') {
+        if (request.aggregateKind !== 'count') {
           return { kind: 'error', code: (cellStore.errors[memberCellIndex] as ErrorCode | undefined) ?? ErrorCode.None }
         }
         break
       case ValueTag.Empty:
+      case ValueTag.Boolean:
       case ValueTag.String:
         break
     }

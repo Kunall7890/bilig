@@ -21,7 +21,7 @@ describe('text core builtins', () => {
     const trimmed = TRIM(text('  alpha   beta  '))
 
     // Assert
-    expect(cleaned).toEqual(text('abc'))
+    expect(cleaned).toEqual(text('ab\u007fc'))
     expect(concatenated).toEqual(text('a1b'))
     expect(concatenatedLegacy).toEqual(text('xy'))
     expect(proper).toEqual(text('Hello, World'))

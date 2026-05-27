@@ -194,9 +194,8 @@ function numericContribution(value: CellValue): number {
   switch (value.tag) {
     case ValueTag.Number:
       return value.value
-    case ValueTag.Boolean:
-      return value.value ? 1 : 0
     case ValueTag.Empty:
+    case ValueTag.Boolean:
     case ValueTag.String:
     case ValueTag.Error:
     default:
@@ -205,11 +204,11 @@ function numericContribution(value: CellValue): number {
 }
 
 function countContribution(value: CellValue): number {
-  return value.tag === ValueTag.Number || value.tag === ValueTag.Boolean ? 1 : 0
+  return value.tag === ValueTag.Number ? 1 : 0
 }
 
 function averageCountContribution(value: CellValue): number {
-  return value.tag === ValueTag.Number || value.tag === ValueTag.Boolean ? 1 : 0
+  return value.tag === ValueTag.Number ? 1 : 0
 }
 
 function emptyWindowSummary(): MutableAggregateColumnWindowSummary {
@@ -240,21 +239,12 @@ function addRawAggregateContribution(
       summary.minimum = Math.min(summary.minimum, numeric)
       summary.maximum = Math.max(summary.maximum, numeric)
       break
-    case ValueTag.Boolean:
-      {
-        const booleanNumber = numeric !== 0 ? 1 : 0
-        summary.sum += booleanNumber
-        summary.minimum = Math.min(summary.minimum, booleanNumber)
-        summary.maximum = Math.max(summary.maximum, booleanNumber)
-      }
-      summary.count += 1
-      summary.averageCount += 1
-      break
     case ValueTag.Error:
       summary.errorCount += 1
       summary.errorCode = preferAggregateErrorCode(summary.errorCode, (errorCode as ErrorCode | undefined) ?? ErrorCode.None)
       break
     case ValueTag.Empty:
+    case ValueTag.Boolean:
     case ValueTag.String:
     default:
       break
@@ -536,16 +526,8 @@ export function createAggregateStateStore(args: {
           runningMaximum = Math.max(runningMaximum, numeric)
           break
         }
-        case ValueTag.Boolean: {
-          const booleanNumber = view.readNumberAt(offset) !== 0 ? 1 : 0
-          runningSum += booleanNumber
-          runningCount += 1
-          runningAverageCount += 1
-          runningMinimum = Math.min(runningMinimum, booleanNumber)
-          runningMaximum = Math.max(runningMaximum, booleanNumber)
-          break
-        }
         case ValueTag.Empty:
+        case ValueTag.Boolean:
           break
         case ValueTag.Error:
           runningErrorCode = preferAggregateErrorCode(runningErrorCode, view.readErrorAt(offset) ?? ErrorCode.None)

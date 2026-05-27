@@ -41,6 +41,8 @@ describe('text format builtins', () => {
     expect(TEXT(err(ErrorCode.Ref), text('0.00'))).toEqual(err(ErrorCode.Ref))
     expect(VALUE()).toEqual(valueError())
     expect(VALUE(err(ErrorCode.Name))).toEqual(err(ErrorCode.Name))
+    expect(VALUE(text(''))).toEqual(valueError())
+    expect(VALUE(text('   '))).toEqual(valueError())
     expect(NUMBERVALUE(text('1.2.3'), text('.'), text(','))).toEqual(valueError())
     expect(VALUETOTEXT(text('alpha'), number(2))).toEqual(valueError())
   })

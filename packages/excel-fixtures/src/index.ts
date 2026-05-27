@@ -246,6 +246,7 @@ const canonicalBaseFixtureIds = new Set<string>([
   'text:char-basic',
   'text:code-basic',
   'text:clean-basic',
+  'text:clean-preserves-delete-character',
   'text:unichar-basic',
   'text:dollar-basic',
   'text:text-basic',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BuiltinId, Opcode, ValueTag, type CellValue } from '@bilig/protocol'
+import { BuiltinId, ErrorCode, Opcode, ValueTag, type CellValue } from '@bilig/protocol'
 import { createKernel, type KernelInstance } from '../index.js'
 
 const OUTPUT_STRING_BASE = 2147483648
@@ -151,6 +151,8 @@ describe('wasm kernel text-formatting dispatch', () => {
       'ABCD',
       '$1,000',
       '16:48:00',
+      '',
+      '   ',
     ]
     const packedStrings = packStrings(pooledStrings)
     kernel.init(64, pooledStrings.length, 8, 1, 1)
@@ -178,9 +180,34 @@ describe('wasm kernel text-formatting dispatch', () => {
       [encodePushString(15), encodeCall(BuiltinId.Phonetic, 1), encodeRet()],
       [encodePushString(16), encodeCall(BuiltinId.Value, 1), encodeRet()],
       [encodePushString(17), encodeCall(BuiltinId.Value, 1), encodeRet()],
+      [encodePushString(18), encodeCall(BuiltinId.Value, 1), encodeRet()],
+      [encodePushString(19), encodeCall(BuiltinId.Value, 1), encodeRet()],
     ])
-    const constants = packConstants([[], [-1], [], [], [65], [], [], [66], [], [], [], [], [21.25], [], [1], [1234.567], [], [], [], []])
-    const targets = Uint32Array.from(Array.from({ length: 20 }, (_, index) => cellIndex(1, index, width)))
+    const constants = packConstants([
+      [],
+      [-1],
+      [],
+      [],
+      [65],
+      [],
+      [],
+      [66],
+      [],
+      [],
+      [],
+      [],
+      [21.25],
+      [],
+      [1],
+      [1234.567],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+    ])
+    const targets = Uint32Array.from(Array.from({ length: 22 }, (_, index) => cellIndex(1, index, width)))
     kernel.ensureFormulaCapacity(packed.offsets.length)
     kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targets)
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
@@ -212,5 +239,9 @@ describe('wasm kernel text-formatting dispatch', () => {
     expect(readStringCell(kernel, cellIndex(1, 17, width), pooledStrings)).toBe('ABCD')
     expect(kernel.readNumbers()[cellIndex(1, 18, width)]).toBe(1000)
     expect(kernel.readNumbers()[cellIndex(1, 19, width)]).toBeCloseTo(0.7, 12)
+    expect(kernel.readTags()[cellIndex(1, 20, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 20, width)]).toBe(ErrorCode.Value)
+    expect(kernel.readTags()[cellIndex(1, 21, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 21, width)]).toBe(ErrorCode.Value)
   })
 })

@@ -93,9 +93,9 @@ describe('RangeAggregateCacheService', () => {
       rowEnd: 1,
       col: 0,
     })
-    expect(first.prefixSums.subarray(0, 2)).toEqual(Float64Array.from([2, 3]))
-    expect(first.prefixCount.subarray(0, 2)).toEqual(Uint32Array.from([1, 2]))
-    expect(first.prefixAverageCount.subarray(0, 2)).toEqual(Uint32Array.from([1, 2]))
+    expect(first.prefixSums.subarray(0, 2)).toEqual(Float64Array.from([2, 2]))
+    expect(first.prefixCount.subarray(0, 2)).toEqual(Uint32Array.from([1, 1]))
+    expect(first.prefixAverageCount.subarray(0, 2)).toEqual(Uint32Array.from([1, 1]))
     expect(first.prefixErrorCodes.subarray(0, 2)).toEqual(Uint16Array.from([0, 0]))
 
     const extended = service.getOrBuildPrefix({
@@ -110,9 +110,9 @@ describe('RangeAggregateCacheService', () => {
       rowEnd: 3,
       col: 0,
     })
-    expect(extended.prefixSums.subarray(0, 4)).toEqual(Float64Array.from([2, 3, 3, 3]))
-    expect(extended.prefixCount.subarray(0, 4)).toEqual(Uint32Array.from([1, 2, 2, 2]))
-    expect(extended.prefixAverageCount.subarray(0, 4)).toEqual(Uint32Array.from([1, 2, 2, 2]))
+    expect(extended.prefixSums.subarray(0, 4)).toEqual(Float64Array.from([2, 2, 2, 2]))
+    expect(extended.prefixCount.subarray(0, 4)).toEqual(Uint32Array.from([1, 1, 1, 1]))
+    expect(extended.prefixAverageCount.subarray(0, 4)).toEqual(Uint32Array.from([1, 1, 1, 1]))
     expect(extended.prefixErrorCodes.subarray(0, 4)).toEqual(Uint16Array.from([0, 0, 0, ErrorCode.NA]))
 
     const reused = service.getOrBuildPrefix({
@@ -173,7 +173,7 @@ describe('RangeAggregateCacheService', () => {
     expect(getColumnSlice).toHaveBeenCalledTimes(2)
   })
 
-  it('extends prefixes across number and boolean deltas', () => {
+  it('extends prefixes across number deltas while ignoring booleans', () => {
     const values: CellValue[] = [
       { tag: ValueTag.Number, value: 1 },
       { tag: ValueTag.Boolean, value: true },
@@ -216,8 +216,8 @@ describe('RangeAggregateCacheService', () => {
       col: 0,
     })
 
-    expect(extended.prefixSums.subarray(0, 3)).toEqual(Float64Array.from([1, 2, 4]))
-    expect(extended.prefixCount.subarray(0, 3)).toEqual(Uint32Array.from([1, 2, 3]))
+    expect(extended.prefixSums.subarray(0, 3)).toEqual(Float64Array.from([1, 1, 3]))
+    expect(extended.prefixCount.subarray(0, 3)).toEqual(Uint32Array.from([1, 1, 2]))
   })
 
   it('grows aggregate prefix buffers when an existing prefix extends past capacity', () => {

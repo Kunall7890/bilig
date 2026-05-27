@@ -194,21 +194,13 @@ function evaluateStaticAggregateRange(
           minimum = Math.min(minimum, value.value)
           maximum = Math.max(maximum, value.value)
           break
-        case ValueTag.Boolean: {
-          const booleanNumber = value.value ? 1 : 0
-          sum += booleanNumber
-          count += 1
-          averageCount += 1
-          minimum = Math.min(minimum, booleanNumber)
-          maximum = Math.max(maximum, booleanNumber)
-          break
-        }
         case ValueTag.Error:
-          if (aggregateKind === 'sum' || aggregateKind === 'average') {
+          if (aggregateKind !== 'count') {
             return value
           }
           break
         case ValueTag.Empty:
+        case ValueTag.Boolean:
         case ValueTag.String:
           break
       }
