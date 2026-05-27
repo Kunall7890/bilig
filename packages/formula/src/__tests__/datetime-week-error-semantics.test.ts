@@ -3,6 +3,37 @@ import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { datetimeBuiltins, excelDatePartsToSerial } from '../builtins/datetime.js'
 
 describe('datetime week error semantics', () => {
+  it('preserves Excel 1900-system WEEKDAY compatibility before March 1 1900', () => {
+    expect(datetimeBuiltins.WEEKDAY({ tag: ValueTag.Number, value: 0 })).toEqual({
+      tag: ValueTag.Number,
+      value: 7,
+    })
+    expect(datetimeBuiltins.WEEKDAY({ tag: ValueTag.Number, value: 1 })).toEqual({
+      tag: ValueTag.Number,
+      value: 1,
+    })
+    expect(datetimeBuiltins.WEEKDAY({ tag: ValueTag.Number, value: 59 })).toEqual({
+      tag: ValueTag.Number,
+      value: 3,
+    })
+    expect(datetimeBuiltins.WEEKDAY({ tag: ValueTag.Number, value: 60 })).toEqual({
+      tag: ValueTag.Number,
+      value: 4,
+    })
+    expect(datetimeBuiltins.WEEKDAY({ tag: ValueTag.Number, value: 61 })).toEqual({
+      tag: ValueTag.Number,
+      value: 5,
+    })
+    expect(datetimeBuiltins.WEEKDAY({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 2 })).toEqual({
+      tag: ValueTag.Number,
+      value: 7,
+    })
+    expect(datetimeBuiltins.WEEKDAY({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 3 })).toEqual({
+      tag: ValueTag.Number,
+      value: 6,
+    })
+  })
+
   it('returns #NUM for DATE year domains documented by Excel', () => {
     expect(
       datetimeBuiltins.DATE({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 1 }),

@@ -255,7 +255,7 @@ function excelWeekdayIndexFromSerial(tag: u8, value: f64): i32 {
   if (whole == i32.MIN_VALUE || whole < 0) {
     return i32.MIN_VALUE
   }
-  const adjustedWhole = whole < 60 ? whole : whole - 1
+  const adjustedWhole = whole - 1
   return ((adjustedWhole % 7) + 7) % 7
 }
 

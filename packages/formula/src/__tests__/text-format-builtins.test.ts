@@ -65,6 +65,9 @@ describe('text format builtins', () => {
 
     expect(TEXT(number(45356.52425925926), text('dddd, mmmm d, yyyy h:m:s a/p'))).toEqual(text('Tuesday, March 5, 2024 12:34:56 p'))
     expect(TEXT(number(45356), text('ddd mmm dd yy'))).toEqual(text('Tue Mar 05 24'))
+    expect(TEXT(number(1), text('dddd'))).toEqual(text('Sunday'))
+    expect(TEXT(number(59), text('ddd'))).toEqual(text('Tue'))
+    expect(TEXT(number(61), text('dddd'))).toEqual(text('Thursday'))
     expect(TEXT(number(Number.POSITIVE_INFINITY), text('yyyy-mm-dd'))).toEqual(valueError())
   })
 

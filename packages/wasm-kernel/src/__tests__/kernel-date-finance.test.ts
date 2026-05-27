@@ -136,6 +136,61 @@ describe('wasm kernel date/finance helpers', () => {
     expectNumberCell(kernel, cellIndex(1, 0, width), 53)
   })
 
+  it('keeps ISOWEEKNUM on the calendar path instead of the 1900 WEEKDAY compatibility path', async () => {
+    const kernel = await createKernel()
+    const width = 4
+    kernel.init(8, 1, 0, 1, 1)
+    kernel.writeCells(new Uint8Array(8), new Float64Array(8), new Uint32Array(8), new Uint16Array(8))
+
+    const packed = packPrograms([[encodePushNumber(0), encodeCall(BuiltinId.Isoweeknum, 1), encodeRet()]])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, Uint32Array.from([cellIndex(1, 0, width)]))
+    const constants = packConstants([[1]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width)]))
+
+    expectNumberCell(kernel, cellIndex(1, 0, width), 1)
+  })
+
+  it('preserves Excel 1900-system WEEKDAY compatibility before March 1 1900 on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 7, 0, 1, 1)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodeCall(BuiltinId.Weekday, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Weekday, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Weekday, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Weekday, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Weekday, 1), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Weekday, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Weekday, 2), encodeRet()],
+    ])
+    const targetCells = Uint32Array.from([
+      cellIndex(1, 0, width),
+      cellIndex(1, 1, width),
+      cellIndex(1, 2, width),
+      cellIndex(1, 3, width),
+      cellIndex(1, 4, width),
+      cellIndex(1, 5, width),
+      cellIndex(1, 6, width),
+    ])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targetCells)
+    const constants = packConstants([[0], [1], [59], [60], [61], [1, 2], [1, 3]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(targetCells)
+
+    expectNumberCell(kernel, cellIndex(1, 0, width), 7)
+    expectNumberCell(kernel, cellIndex(1, 1, width), 1)
+    expectNumberCell(kernel, cellIndex(1, 2, width), 3)
+    expectNumberCell(kernel, cellIndex(1, 3, width), 4)
+    expectNumberCell(kernel, cellIndex(1, 4, width), 5)
+    expectNumberCell(kernel, cellIndex(1, 5, width), 7)
+    expectNumberCell(kernel, cellIndex(1, 6, width), 6)
+  })
+
   it('returns #NUM for invalid WEEKDAY and WEEKNUM date domains on the wasm path', async () => {
     const kernel = await createKernel()
     const width = 8

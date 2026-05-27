@@ -357,7 +357,7 @@ export function excelWeekdayFromSerial(tag: u8, value: f64, returnType: i32): i3
   if (whole == i32.MIN_VALUE || !isExcelDateSerialInRange(whole)) {
     return i32.MIN_VALUE
   }
-  const adjustedWhole = whole < 60 ? whole : whole - 1
+  const adjustedWhole = whole - 1
   const sundayOne = (((adjustedWhole % 7) + 7) % 7) + 1
   if (returnType == 1) {
     return sundayOne
@@ -427,8 +427,7 @@ export function excelWeeknumFromSerial(tag: u8, value: f64, returnType: i32): i3
     return i32.MIN_VALUE
   }
 
-  let adjustedJan1 = <i32>Math.floor(jan1Serial)
-  adjustedJan1 = adjustedJan1 < 60 ? adjustedJan1 : adjustedJan1 - 1
+  const adjustedJan1 = <i32>Math.floor(jan1Serial) - 1
   const jan1Weekday = ((adjustedJan1 % 7) + 7) % 7
   const shift = (jan1Weekday - weekStartDay + 7) % 7
 
@@ -790,11 +789,9 @@ export function excelIsoWeeknumValue(whole: i32): i32 {
   if (whole < 0) {
     return i32.MIN_VALUE
   }
-  const weekday = excelWeekdayFromSerial(<u8>ValueTag.Number, <f64>whole, 2)
-  if (weekday == i32.MIN_VALUE) {
-    return i32.MIN_VALUE
-  }
   const adjustedWhole = whole < 60 ? whole : whole - 1
+  const sundayOne = (((adjustedWhole % 7) + 7) % 7) + 1
+  const weekday = sundayOne == 1 ? 7 : sundayOne - 1
   const shiftedWhole = adjustedWhole + 4 - weekday
   const shiftedDays = EXCEL_EPOCH_DAYS + shiftedWhole
   const shiftedYear = civilYear(shiftedDays)

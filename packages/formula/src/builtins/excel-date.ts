@@ -136,7 +136,7 @@ export function excelSerialWeekdayIndex(serial: number, dateSystem: ExcelDateSys
     return undefined
   }
   if (dateSystem === '1900') {
-    const adjustedWhole = whole < 60 ? whole : whole - 1
+    const adjustedWhole = whole - 1
     return ((adjustedWhole % 7) + 7) % 7
   }
   const parts = excelSerialToDateParts(serial, dateSystem)

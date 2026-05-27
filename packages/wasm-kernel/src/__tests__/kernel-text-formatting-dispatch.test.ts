@@ -157,11 +157,13 @@ describe('wasm kernel text-formatting dispatch', () => {
       '16:48:00',
       '',
       '   ',
+      'dddd',
+      'ddd',
     ]
     const packedStrings = packStrings(pooledStrings)
-    kernel.init(64, pooledStrings.length, 8, 1, 1)
+    kernel.init(80, pooledStrings.length, 8, 1, 1)
     kernel.uploadStrings(packedStrings.offsets, packedStrings.lengths, packedStrings.data)
-    kernel.writeCells(new Uint8Array(64), new Float64Array(64), new Uint32Array(64), new Uint16Array(64))
+    kernel.writeCells(new Uint8Array(80), new Float64Array(80), new Uint32Array(80), new Uint16Array(80))
 
     const packed = packPrograms([
       [encodePushString(0), encodePushString(1), encodeCall(BuiltinId.Textbefore, 2), encodeRet()],
@@ -188,6 +190,9 @@ describe('wasm kernel text-formatting dispatch', () => {
       [encodePushString(19), encodeCall(BuiltinId.Value, 1), encodeRet()],
       [encodePushBoolean(true), encodeCall(BuiltinId.Value, 1), encodeRet()],
       [encodePushBoolean(false), encodeCall(BuiltinId.Value, 1), encodeRet()],
+      [encodePushNumber(0), encodePushString(20), encodeCall(BuiltinId.Text, 2), encodeRet()],
+      [encodePushNumber(0), encodePushString(21), encodeCall(BuiltinId.Text, 2), encodeRet()],
+      [encodePushNumber(0), encodePushString(20), encodeCall(BuiltinId.Text, 2), encodeRet()],
     ])
     const constants = packConstants([
       [],
@@ -214,8 +219,11 @@ describe('wasm kernel text-formatting dispatch', () => {
       [],
       [],
       [],
+      [1],
+      [59],
+      [61],
     ])
-    const targets = Uint32Array.from(Array.from({ length: 24 }, (_, index) => cellIndex(1, index, width)))
+    const targets = Uint32Array.from(Array.from({ length: 27 }, (_, index) => cellIndex(1, index, width)))
     kernel.ensureFormulaCapacity(packed.offsets.length)
     kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targets)
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
@@ -255,5 +263,8 @@ describe('wasm kernel text-formatting dispatch', () => {
     expect(kernel.readErrors()[cellIndex(1, 22, width)]).toBe(ErrorCode.Value)
     expect(kernel.readTags()[cellIndex(1, 23, width)]).toBe(ValueTag.Error)
     expect(kernel.readErrors()[cellIndex(1, 23, width)]).toBe(ErrorCode.Value)
+    expect(readStringCell(kernel, cellIndex(1, 24, width), pooledStrings)).toBe('Sunday')
+    expect(readStringCell(kernel, cellIndex(1, 25, width), pooledStrings)).toBe('Tue')
+    expect(readStringCell(kernel, cellIndex(1, 26, width), pooledStrings)).toBe('Thursday')
   })
 })

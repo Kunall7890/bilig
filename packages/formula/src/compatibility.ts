@@ -247,6 +247,7 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('text:dollarfr-negative-fraction-num', 'text', '=DOLLARFR(1.5,-1)', 'implemented-wasm-production'),
   entry('text:text-basic', 'text', '=TEXT(1234.567,"#,##0.00")', 'implemented-wasm-production'),
   entry('text:text-date-basic', 'text', '=TEXT(DATE(2024,3,5),"yyyy-mm-dd")', 'implemented-wasm-production'),
+  entry('text:text-weekday-1900-leap-bug', 'text', '=TEXT(A1,"dddd")', 'implemented-wasm-production'),
   entry('text:phonetic-basic', 'text', '=PHONETIC("カタカナ")', 'implemented-wasm-production'),
   entry('text:bahttext-basic', 'text', '=BAHTTEXT(1234)', 'implemented-wasm-production'),
   entry('information:t-basic', 'information', '=T("alpha")', 'implemented-wasm-production'),
@@ -719,6 +720,7 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('date-time:tbilleq-basic', 'date-time', '=TBILLEQ(DATE(2008,3,31),DATE(2008,6,1),0.0914)', 'implemented-wasm-production'),
   entry('date-time:networkdays-intl-basic', 'date-time', '=NETWORKDAYS.INTL(A1,A2,7,B1)', 'implemented-wasm-production'),
   entry('date-time:weekday-basic', 'date-time', '=WEEKDAY(DATE(2026,3,15))', 'implemented-wasm-production'),
+  entry('date-time:weekday-1900-leap-bug', 'date-time', '=WEEKDAY(A1)', 'implemented-wasm-production'),
   entry('aggregation:cross-sheet-range-sum', 'aggregation', '=SUM(Sheet2!A1:A2)', 'implemented-wasm-production', {
     scope: 'extended',
     prerequisites: ['core:value-model', 'core:range-iterators', 'core:reference-model'],
