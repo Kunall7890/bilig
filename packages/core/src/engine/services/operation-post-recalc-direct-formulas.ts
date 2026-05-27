@@ -69,7 +69,7 @@ export function applyPostRecalcDirectFormulaChanges(args: ApplyPostRecalcDirectF
     return args.recalculated
   }
   const captureChanged = args.captureChanged ?? true
-  const hasCycleSensitiveFormula = hasAnyCycleSensitiveFormulaCell(args)
+  const hasCycleSensitiveFormula = args.collection.hasCycleIndependentScalarDeltaCells() ? false : hasAnyCycleSensitiveFormulaCell(args)
   const constantScalarChanged =
     !args.didRunRecalc && !hasCycleSensitiveFormula ? args.tryApplyDirectScalarDeltas(args.collection, captureChanged) : undefined
   if (constantScalarChanged !== undefined) {

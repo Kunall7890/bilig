@@ -89,6 +89,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
   private wasmRangeColCounts: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
   private topoIndegree: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
   private topoQueue: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private readonly directScalarDeltaInputCellIndices: Array<number | undefined> = []
   protected batchMutationDepth = 0
   private wasmProgramSyncPending = false
   protected lastMetrics: RecalcMetrics = createInitialRecalcMetrics()
@@ -97,7 +98,13 @@ export abstract class SpreadsheetEngineRuntimeBase {
 
   constructor(options: SpreadsheetEngineOptions = {}) {
     this.workbook = new WorkbookStore(options.workbookName ?? 'Workbook', this.performanceCounters)
-    this.formulas = new FormulaTable(this.workbook.cellStore)
+    this.formulas = new FormulaTable(this.workbook.cellStore, {
+      deltaInputCellIndices: this.directScalarDeltaInputCellIndices,
+      readDeltaInputCellIndex: (formula) =>
+        formula.directScalar?.kind === 'binary' && !formula.compiled.volatile && !formula.compiled.producesSpill
+          ? formula.directScalar.deltaInputCellIndex
+          : undefined,
+    })
     this.replicaState = createReplicaState(options.replicaId ?? 'local')
     this.useColumnIndexEnabled = options.useColumnIndex ?? true
     this.evaluationTimeoutMs = options.evaluationTimeoutMs
@@ -109,6 +116,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
       scheduler: this.scheduler,
       wasm: this.wasm,
       formulas: this.formulas,
+      directScalarDeltaInputCellIndices: this.directScalarDeltaInputCellIndices,
       replicaState: this.replicaState,
       entityVersions: this.entityVersions,
       sheetDeleteVersions: this.sheetDeleteVersions,
@@ -337,6 +345,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
       },
       operation: {
         state: this.state,
+        edgeArena: this.edgeArena,
         reverseState: {
           reverseCellEdges: this.reverseCellEdges,
           reverseSpillEdges: this.reverseSpillEdges,

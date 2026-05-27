@@ -122,6 +122,10 @@ export class EdgeArena {
     return this.buffer[slice.ptr + index] ?? -1
   }
 
+  singletonValue(slice: EdgeSlice): number {
+    return slice.ptr < 0 || slice.len !== 1 ? -1 : (this.buffer[slice.ptr] ?? -1)
+  }
+
   view(): Uint32Array {
     return this.buffer.subarray(0, this.nextPtr)
   }

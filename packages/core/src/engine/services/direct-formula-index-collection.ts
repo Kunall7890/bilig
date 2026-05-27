@@ -40,6 +40,7 @@ export class DirectFormulaIndexCollection {
   private validatedScalarDeltaSize = -1
   private cleanScalarDeltaSize = -1
   private trustedDirectScalarDeltaSize = -1
+  private cycleIndependentScalarDeltaSize = -1
   private linearHasProbeCount = 0
   private sortedCellIndexMin: number | undefined
   private sortedCellIndexMax: number | undefined
@@ -52,6 +53,7 @@ export class DirectFormulaIndexCollection {
     this.validatedScalarDeltaSize = -1
     this.cleanScalarDeltaSize = -1
     this.trustedDirectScalarDeltaSize = -1
+    this.cycleIndependentScalarDeltaSize = -1
     this.clearSortedCellIndexBounds()
     this.materializeConstantDeltas()
     if (this.indexByCell) {
@@ -149,6 +151,7 @@ export class DirectFormulaIndexCollection {
     this.validatedScalarDeltaSize = -1
     this.cleanScalarDeltaSize = -1
     this.trustedDirectScalarDeltaSize = -1
+    this.cycleIndependentScalarDeltaSize = -1
     this.clearSortedCellIndexBounds()
     if (this.constantDelta !== undefined) {
       const existingIndex = this.findIndex(cellIndex)
@@ -207,6 +210,7 @@ export class DirectFormulaIndexCollection {
     this.validatedScalarDeltaSize = -1
     this.cleanScalarDeltaSize = -1
     this.trustedDirectScalarDeltaSize = -1
+    this.cycleIndependentScalarDeltaSize = -1
     this.updateSortedCellIndexBoundsForAppend(cellIndices, sortedAscending)
     if (this.size !== 0) {
       this.clearSortedCellIndexBounds()
@@ -254,6 +258,7 @@ export class DirectFormulaIndexCollection {
     this.validatedScalarDeltaSize = -1
     this.cleanScalarDeltaSize = -1
     this.trustedDirectScalarDeltaSize = -1
+    this.cycleIndependentScalarDeltaSize = -1
     this.updateSortedCellIndexBoundsForAppend(cellIndices, sortedAscending)
     if (this.size !== 0) {
       this.clearSortedCellIndexBounds()
@@ -305,6 +310,7 @@ export class DirectFormulaIndexCollection {
     this.validatedScalarDeltaSize = -1
     this.cleanScalarDeltaSize = -1
     this.trustedDirectScalarDeltaSize = -1
+    this.cycleIndependentScalarDeltaSize = -1
     this.materializeConstantDeltas()
     const index = this.ensureIndex(cellIndex)
     this.currentResults ??= []
@@ -363,6 +369,10 @@ export class DirectFormulaIndexCollection {
     this.trustedDirectScalarDeltaSize = this.size
   }
 
+  markScalarDeltaCellsCycleIndependent(): void {
+    this.cycleIndependentScalarDeltaSize = this.size
+  }
+
   hasValidatedScalarDeltaCells(): boolean {
     return this.validatedScalarDeltaSize === this.size && this.hasCompleteScalarDeltas()
   }
@@ -373,6 +383,10 @@ export class DirectFormulaIndexCollection {
 
   hasTrustedDirectScalarDeltaCells(): boolean {
     return this.trustedDirectScalarDeltaSize === this.size && this.hasCompleteScalarDeltas()
+  }
+
+  hasCycleIndependentScalarDeltaCells(): boolean {
+    return this.cycleIndependentScalarDeltaSize === this.size && this.hasCompleteScalarDeltas()
   }
 
   getScalarDeltaAt(index: number): number | undefined {

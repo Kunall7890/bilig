@@ -51,4 +51,34 @@ describe('FormulaTable', () => {
     expect(formulas.get(cellIndex)).toEqual({ cellIndex, source: 'A1*3' })
     expect(formulas.size).toBe(1)
   })
+
+  it('tracks and clears direct scalar delta-input metadata', () => {
+    const store = new CellStore()
+    const cellIndex = store.allocate(0, 0, 0)
+    const deltaInputCellIndices: Array<number | undefined> = []
+    const formulas = new FormulaTable<{ cellIndex: number; deltaInputCellIndex?: number }>(store, {
+      deltaInputCellIndices,
+      readDeltaInputCellIndex: (record) => record.deltaInputCellIndex,
+    })
+
+    formulas.set(cellIndex, { cellIndex, deltaInputCellIndex: 7 })
+    expect(deltaInputCellIndices[cellIndex]).toBe(7)
+
+    formulas.get(cellIndex)!.deltaInputCellIndex = 9
+    formulas.refreshTrackedMetadata(cellIndex)
+    expect(deltaInputCellIndices[cellIndex]).toBe(9)
+
+    formulas.set(cellIndex, { cellIndex })
+    expect(deltaInputCellIndices[cellIndex]).toBeUndefined()
+
+    formulas.set(cellIndex, { cellIndex, deltaInputCellIndex: 11 })
+    expect(deltaInputCellIndices[cellIndex]).toBe(11)
+
+    formulas.delete(cellIndex)
+    expect(deltaInputCellIndices[cellIndex]).toBeUndefined()
+
+    formulas.set(cellIndex, { cellIndex, deltaInputCellIndex: 13 })
+    formulas.clear()
+    expect(deltaInputCellIndices).toHaveLength(0)
+  })
 })

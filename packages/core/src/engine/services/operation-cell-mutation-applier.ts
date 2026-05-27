@@ -180,91 +180,103 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
     normalizeHistoryDependencyPlaceholder,
   } = input
 
-  const freshDirectAggregateFormulaBatchFastPath =
-    args.bindPreparedFormula === undefined || args.compileTemplateFormula === undefined
-      ? undefined
-      : createOperationFreshDirectAggregateFormulaBatchFastPath({
-          state: args.state,
-          emitBatch,
-          setCellEntityVersion,
-          hasTrackedExactLookupDependents,
-          hasTrackedSortedLookupDependents,
-          hasTrackedDirectRangeDependents,
-          ...(args.hasRegionFormulaSubscriptionsOverlappingRange === undefined
-            ? {}
-            : { hasRegionFormulaSubscriptionsOverlappingRange: args.hasRegionFormulaSubscriptionsOverlappingRange }),
-          ...(args.getRegionFormulaSubscriptionCount === undefined
-            ? {}
-            : { getRegionFormulaSubscriptionCount: args.getRegionFormulaSubscriptionCount }),
-          hasRegionFormulaSubscriptionsIntersectingRect: args.hasRegionFormulaSubscriptionsIntersectingRect,
-          bindPreparedFormula: args.bindPreparedFormula,
-          bindFreshDirectAggregateFormulaRun: args.bindFreshDirectAggregateFormulaRun,
-          registerFreshFormulaFamilyRun: args.registerFreshFormulaFamilyRun,
-          upsertFormulaFamilyRun: args.upsertFormulaFamilyRun,
-          upsertFreshFormulaInstances: args.upsertFreshFormulaInstances,
-          compileTemplateFormula: args.compileTemplateFormula,
-          materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
-          checkEvaluationBudget: args.checkEvaluationBudget,
-          beginMutationCollection: args.beginMutationCollection,
-          ensureRecalcScratchCapacity: args.ensureRecalcScratchCapacity,
-          resetMaterializedCellScratch: args.resetMaterializedCellScratch,
-          getBatchMutationDepth: args.getBatchMutationDepth,
-          setBatchMutationDepth: args.setBatchMutationDepth,
-          markInputChanged: args.markInputChanged,
-          markExplicitChanged: args.markExplicitChanged,
-          getChangedInputBuffer: args.getChangedInputBuffer,
-          deferKernelSync: args.deferKernelSync,
-          captureChangedCells: args.captureChangedCells,
-          applyDirectFormulaCurrentResult,
-          applyDirectFormulaNumericResult,
-        })
-  const freshDirectScalarFormulaBatchFastPath =
-    args.bindFreshDirectScalarFormulaRun === undefined || args.compileTemplateFormula === undefined
-      ? undefined
-      : createOperationFreshDirectScalarFormulaBatchFastPath({
-          state: args.state,
-          emitBatch,
-          setCellEntityVersion,
-          hasTrackedExactLookupDependents,
-          hasTrackedSortedLookupDependents,
-          hasTrackedDirectRangeDependents,
-          ...(args.hasRegionFormulaSubscriptionsOverlappingRange === undefined
-            ? {}
-            : { hasRegionFormulaSubscriptionsOverlappingRange: args.hasRegionFormulaSubscriptionsOverlappingRange }),
-          ...(args.getRegionFormulaSubscriptionCount === undefined
-            ? {}
-            : { getRegionFormulaSubscriptionCount: args.getRegionFormulaSubscriptionCount }),
-          hasRegionFormulaSubscriptionsIntersectingRect: args.hasRegionFormulaSubscriptionsIntersectingRect,
-          bindFreshDirectScalarFormulaRun: args.bindFreshDirectScalarFormulaRun,
-          registerFreshFormulaFamilyRun: args.registerFreshFormulaFamilyRun,
-          upsertFormulaFamilyRun: args.upsertFormulaFamilyRun,
-          upsertFreshFormulaInstances: args.upsertFreshFormulaInstances,
-          compileTemplateFormula: args.compileTemplateFormula,
-          materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
-          checkEvaluationBudget: args.checkEvaluationBudget,
-          beginMutationCollection: args.beginMutationCollection,
-          ensureRecalcScratchCapacity: args.ensureRecalcScratchCapacity,
-          resetMaterializedCellScratch: args.resetMaterializedCellScratch,
-          getBatchMutationDepth: args.getBatchMutationDepth,
-          setBatchMutationDepth: args.setBatchMutationDepth,
-          markInputChanged: args.markInputChanged,
-          markExplicitChanged: args.markExplicitChanged,
-          getChangedInputBuffer: args.getChangedInputBuffer,
-          deferKernelSync: args.deferKernelSync,
-          captureChangedCells: args.captureChangedCells,
-          applyDirectFormulaCurrentResult,
-        })
-  const existingRectangularLiteralBatchFastPath = createOperationExistingRectangularLiteralBatchFastPath({
-    state: args.state,
-    emitBatch,
-    canFastPathLiteralOverwrite,
-    writeNumericLiteralToCellStore,
-    materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
-    getBatchMutationDepth: args.getBatchMutationDepth,
-    setBatchMutationDepth: args.setBatchMutationDepth,
-    deferKernelSync: args.deferKernelSync,
-    captureChangedCells: args.captureChangedCells,
-  })
+  let freshDirectAggregateFormulaBatchFastPath: ReturnType<typeof createOperationFreshDirectAggregateFormulaBatchFastPath> | undefined
+  const getFreshDirectAggregateFormulaBatchFastPath = ():
+    | ReturnType<typeof createOperationFreshDirectAggregateFormulaBatchFastPath>
+    | undefined => {
+    if (args.bindPreparedFormula === undefined || args.compileTemplateFormula === undefined) {
+      return undefined
+    }
+    return (freshDirectAggregateFormulaBatchFastPath ??= createOperationFreshDirectAggregateFormulaBatchFastPath({
+      state: args.state,
+      emitBatch,
+      setCellEntityVersion,
+      hasTrackedExactLookupDependents,
+      hasTrackedSortedLookupDependents,
+      hasTrackedDirectRangeDependents,
+      ...(args.hasRegionFormulaSubscriptionsOverlappingRange === undefined
+        ? {}
+        : { hasRegionFormulaSubscriptionsOverlappingRange: args.hasRegionFormulaSubscriptionsOverlappingRange }),
+      ...(args.getRegionFormulaSubscriptionCount === undefined
+        ? {}
+        : { getRegionFormulaSubscriptionCount: args.getRegionFormulaSubscriptionCount }),
+      hasRegionFormulaSubscriptionsIntersectingRect: args.hasRegionFormulaSubscriptionsIntersectingRect,
+      bindPreparedFormula: args.bindPreparedFormula,
+      bindFreshDirectAggregateFormulaRun: args.bindFreshDirectAggregateFormulaRun,
+      registerFreshFormulaFamilyRun: args.registerFreshFormulaFamilyRun,
+      upsertFormulaFamilyRun: args.upsertFormulaFamilyRun,
+      upsertFreshFormulaInstances: args.upsertFreshFormulaInstances,
+      compileTemplateFormula: args.compileTemplateFormula,
+      materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
+      checkEvaluationBudget: args.checkEvaluationBudget,
+      beginMutationCollection: args.beginMutationCollection,
+      ensureRecalcScratchCapacity: args.ensureRecalcScratchCapacity,
+      resetMaterializedCellScratch: args.resetMaterializedCellScratch,
+      getBatchMutationDepth: args.getBatchMutationDepth,
+      setBatchMutationDepth: args.setBatchMutationDepth,
+      markInputChanged: args.markInputChanged,
+      markExplicitChanged: args.markExplicitChanged,
+      getChangedInputBuffer: args.getChangedInputBuffer,
+      deferKernelSync: args.deferKernelSync,
+      captureChangedCells: args.captureChangedCells,
+      applyDirectFormulaCurrentResult,
+      applyDirectFormulaNumericResult,
+    }))
+  }
+  let freshDirectScalarFormulaBatchFastPath: ReturnType<typeof createOperationFreshDirectScalarFormulaBatchFastPath> | undefined
+  const getFreshDirectScalarFormulaBatchFastPath = ():
+    | ReturnType<typeof createOperationFreshDirectScalarFormulaBatchFastPath>
+    | undefined => {
+    if (args.bindFreshDirectScalarFormulaRun === undefined || args.compileTemplateFormula === undefined) {
+      return undefined
+    }
+    return (freshDirectScalarFormulaBatchFastPath ??= createOperationFreshDirectScalarFormulaBatchFastPath({
+      state: args.state,
+      emitBatch,
+      setCellEntityVersion,
+      hasTrackedExactLookupDependents,
+      hasTrackedSortedLookupDependents,
+      hasTrackedDirectRangeDependents,
+      ...(args.hasRegionFormulaSubscriptionsOverlappingRange === undefined
+        ? {}
+        : { hasRegionFormulaSubscriptionsOverlappingRange: args.hasRegionFormulaSubscriptionsOverlappingRange }),
+      ...(args.getRegionFormulaSubscriptionCount === undefined
+        ? {}
+        : { getRegionFormulaSubscriptionCount: args.getRegionFormulaSubscriptionCount }),
+      hasRegionFormulaSubscriptionsIntersectingRect: args.hasRegionFormulaSubscriptionsIntersectingRect,
+      bindFreshDirectScalarFormulaRun: args.bindFreshDirectScalarFormulaRun,
+      registerFreshFormulaFamilyRun: args.registerFreshFormulaFamilyRun,
+      upsertFormulaFamilyRun: args.upsertFormulaFamilyRun,
+      upsertFreshFormulaInstances: args.upsertFreshFormulaInstances,
+      compileTemplateFormula: args.compileTemplateFormula,
+      materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
+      checkEvaluationBudget: args.checkEvaluationBudget,
+      beginMutationCollection: args.beginMutationCollection,
+      ensureRecalcScratchCapacity: args.ensureRecalcScratchCapacity,
+      resetMaterializedCellScratch: args.resetMaterializedCellScratch,
+      getBatchMutationDepth: args.getBatchMutationDepth,
+      setBatchMutationDepth: args.setBatchMutationDepth,
+      markInputChanged: args.markInputChanged,
+      markExplicitChanged: args.markExplicitChanged,
+      getChangedInputBuffer: args.getChangedInputBuffer,
+      deferKernelSync: args.deferKernelSync,
+      captureChangedCells: args.captureChangedCells,
+      applyDirectFormulaCurrentResult,
+    }))
+  }
+  let existingRectangularLiteralBatchFastPath: ReturnType<typeof createOperationExistingRectangularLiteralBatchFastPath> | undefined
+  const getExistingRectangularLiteralBatchFastPath = (): ReturnType<typeof createOperationExistingRectangularLiteralBatchFastPath> =>
+    (existingRectangularLiteralBatchFastPath ??= createOperationExistingRectangularLiteralBatchFastPath({
+      state: args.state,
+      emitBatch,
+      canFastPathLiteralOverwrite,
+      writeNumericLiteralToCellStore,
+      materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
+      getBatchMutationDepth: args.getBatchMutationDepth,
+      setBatchMutationDepth: args.setBatchMutationDepth,
+      deferKernelSync: args.deferKernelSync,
+      captureChangedCells: args.captureChangedCells,
+    }))
 
   return function applyCellMutationsAtNow(
     refs: readonly EngineCellMutationRef[],
@@ -276,33 +288,49 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
     if (!isRestore && source !== 'undo' && source !== 'redo') {
       assertProtectionAllowsCellMutationRefs(args.state.workbook, refs)
     }
-    if (tryApplySingleExistingDirectLiteralMutation(refs, batch, source)) {
+    const hasLiteralMutations = refs.some((ref) => ref.mutation.kind === 'setCellValue' || ref.mutation.kind === 'clearCell')
+    const hasFormulaMutations = refs.some((ref) => ref.mutation.kind === 'setCellFormula')
+    if (hasLiteralMutations && tryApplySingleExistingDirectLiteralMutation(refs, batch, source)) {
       return
     }
-    if (freshDirectAggregateFormulaBatchFastPath?.tryApplyFreshDirectAggregateFormulaMatrixBatch(refs, batch, source, potentialNewCells)) {
-      return
+    const mayContainFreshCells = (potentialNewCells ?? refs.length) > 0
+    if (mayContainFreshCells && hasFormulaMutations) {
+      if (
+        getFreshDirectAggregateFormulaBatchFastPath()?.tryApplyFreshDirectAggregateFormulaMatrixBatch(
+          refs,
+          batch,
+          source,
+          potentialNewCells,
+        )
+      ) {
+        return
+      }
+      if (getFreshDirectScalarFormulaBatchFastPath()?.tryApplyFreshDirectScalarFormulaMatrixBatch(refs, batch, source, potentialNewCells)) {
+        return
+      }
     }
-    if (freshDirectScalarFormulaBatchFastPath?.tryApplyFreshDirectScalarFormulaMatrixBatch(refs, batch, source, potentialNewCells)) {
-      return
-    }
-    const triedFormulaLiteralBatchFastPath = source === 'local' && args.state.formulas.size !== 0
+    const triedFormulaLiteralBatchFastPath = hasLiteralMutations && source === 'local' && args.state.formulas.size !== 0
     if (triedFormulaLiteralBatchFastPath && tryApplyCoalescedDirectScalarLiteralBatch(refs, batch, source, potentialNewCells)) {
       return
     }
     if (
       source === 'local' &&
-      existingRectangularLiteralBatchFastPath.tryApplyExistingDenseRectangularNumericLiteralBatch(refs, batch, potentialNewCells)
+      hasLiteralMutations &&
+      refs.length > 1 &&
+      getExistingRectangularLiteralBatchFastPath().tryApplyExistingDenseRectangularNumericLiteralBatch(refs, batch, potentialNewCells)
     ) {
       return
     }
-    if (source === 'local' && tryApplyFreshDenseRectangularNumericLiteralBatch(refs, batch, potentialNewCells)) {
+    if (hasLiteralMutations && source === 'local' && tryApplyFreshDenseRectangularNumericLiteralBatch(refs, batch, potentialNewCells)) {
       return
     }
     if (!triedFormulaLiteralBatchFastPath && tryApplyCoalescedDirectScalarLiteralBatch(refs, batch, source, potentialNewCells)) {
       return
     }
-    if (freshDirectAggregateFormulaBatchFastPath?.tryApplyFreshDirectAggregateFormulaBatch(refs, batch, source, potentialNewCells)) {
-      return
+    if (mayContainFreshCells && hasFormulaMutations) {
+      if (getFreshDirectAggregateFormulaBatchFastPath()?.tryApplyFreshDirectAggregateFormulaBatch(refs, batch, source, potentialNewCells)) {
+        return
+      }
     }
     args.materializeDeferredStructuralFormulaSources()
     args.beginMutationCollection()

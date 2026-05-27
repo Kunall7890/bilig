@@ -570,6 +570,33 @@ describe('SpreadsheetEngine formula initialization', () => {
     ])
   })
 
+  it('defers family-index rebuild for wide same-row singleton run hints', async () => {
+    const formulaCount = 320
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-wide-row-singletons' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    engine.setCellValue('Sheet1', 'A1', 1)
+    const refs: EngineCellMutationRef[] = []
+    for (let index = 0; index < formulaCount; index += 1) {
+      refs.push({
+        sheetId,
+        mutation: { kind: 'setCellFormula', row: 0, col: index + 1, formula: `A1+${index + 1}` },
+      })
+    }
+
+    engine.initializeCellFormulasAt(refs, refs.length)
+
+    expect(engine.getCellValue('Sheet1', 'LI1')).toEqual({ tag: ValueTag.Number, value: 321 })
+    const formulaForEach = vi.spyOn(getRuntimeFormulaStore(engine), 'forEach')
+    try {
+      expect(readFormulaFamilyStatsWithoutHelperEnsure(engine).memberCount).toBe(formulaCount)
+      expect(formulaForEach).toHaveBeenCalled()
+    } finally {
+      formulaForEach.mockRestore()
+    }
+  })
+
   it(
     'replays over-cap fresh formula family runs without a full family-index rebuild',
     async () => {

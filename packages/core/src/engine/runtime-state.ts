@@ -326,6 +326,7 @@ export type RuntimeDirectScalarDescriptor =
       operator: '+' | '-' | '*' | '/'
       left: RuntimeDirectScalarOperand
       right: RuntimeDirectScalarOperand
+      deltaInputCellIndex?: number
       resultOffset?: number
     }
   | {
@@ -422,6 +423,7 @@ export interface EngineRuntimeState {
   readonly scheduler: RecalcScheduler
   readonly wasm: WasmKernelFacade
   readonly formulas: FormulaTable<RuntimeFormula>
+  readonly directScalarDeltaInputCellIndices: ArrayLike<number | undefined>
   readonly replicaState: ReplicaState
   readonly entityVersions: Map<string, OpOrder>
   readonly sheetDeleteVersions: Map<string, OpOrder>
@@ -457,6 +459,7 @@ export interface EngineRuntimeStateController {
   readonly scheduler: RecalcScheduler
   readonly wasm: WasmKernelFacade
   readonly formulas: FormulaTable<RuntimeFormula>
+  readonly directScalarDeltaInputCellIndices: Array<number | undefined>
   readonly replicaState: ReplicaState
   readonly entityVersions: Map<string, OpOrder>
   readonly sheetDeleteVersions: Map<string, OpOrder>

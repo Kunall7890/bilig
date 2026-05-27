@@ -84,6 +84,39 @@ describe('formula binding direct scalar helpers', () => {
     expect(ensureByCoords).toHaveBeenCalledWith(sheet.id, 2, 2)
   })
 
+  it('annotates binary descriptors that preserve dependency deltas', () => {
+    const workbook = new WorkbookStore('scalar')
+    const sheet = workbook.createSheet('Sheet1')
+    const descriptor = buildDirectScalarDescriptor({
+      compiled: compiled(parseFormula('A1+2')),
+      ownerSheetName: 'Sheet1',
+      ownerSheetId: sheet.id,
+      workbook,
+      ensureCellTracked: vi.fn(() => 11),
+      ensureCellTrackedByCoords: vi.fn(() => 99),
+    })
+    expect(descriptor?.kind).toBe('binary')
+    if (descriptor?.kind !== 'binary') {
+      throw new Error('Expected binary descriptor')
+    }
+    expect(descriptor.deltaInputCellIndex).toBe(11)
+    expect(Object.keys(descriptor)).not.toContain('deltaInputCellIndex')
+
+    const inverted = buildDirectScalarDescriptor({
+      compiled: compiled(parseFormula('2-A1')),
+      ownerSheetName: 'Sheet1',
+      ownerSheetId: sheet.id,
+      workbook,
+      ensureCellTracked: vi.fn(() => 11),
+      ensureCellTrackedByCoords: vi.fn(() => 99),
+    })
+    expect(inverted?.kind).toBe('binary')
+    if (inverted?.kind !== 'binary') {
+      throw new Error('Expected binary descriptor')
+    }
+    expect(inverted.deltaInputCellIndex).toBeUndefined()
+  })
+
   it('reuses existing coordinate-resolved dependency cells before ensuring new ones', () => {
     const ensureByCoords = vi.fn(() => 44)
     const getFreshCellIndexAt = vi.fn(() => 77)

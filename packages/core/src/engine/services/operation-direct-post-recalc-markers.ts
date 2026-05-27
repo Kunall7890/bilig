@@ -1,6 +1,7 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import { CellFlags } from '../../cell-store.js'
 import { makeCellEntity } from '../../entity-ids.js'
+import type { EdgeArena, EdgeSlice } from '../../edge-arena.js'
 import type { RuntimeDirectLookupDescriptor, RuntimeDirectScalarDescriptor } from '../runtime-state.js'
 import type { DirectFormulaIndexCollection, DirectScalarCurrentOperand } from './direct-formula-index-collection.js'
 import type { OperationDirectLookupCurrentService } from './operation-direct-lookup-current.js'
@@ -31,6 +32,7 @@ export interface OperationDirectPostRecalcMarkerState {
   readonly formulas: {
     readonly get: (cellIndex: number) => OperationDirectPostRecalcFormula | undefined
   }
+  readonly directScalarDeltaInputCellIndices?: ArrayLike<number | undefined>
   readonly strings: {
     readonly get: (id: number) => string
   }
@@ -79,10 +81,10 @@ function affineDirectScalarDeltaFromInputDelta(
   return undefined
 }
 
-function directScalarPreservesInputDelta(directScalar: RuntimeDirectScalarDescriptor, inputCellIndex: number): boolean {
-  if (directScalar.kind === 'abs') {
-    return false
-  }
+function directScalarPreservesInputDelta(
+  directScalar: Extract<RuntimeDirectScalarDescriptor, { kind: 'binary' }>,
+  inputCellIndex: number,
+): boolean {
   const left = directScalar.left
   const right = directScalar.right
   if (left.kind === 'cell' && left.cellIndex === inputCellIndex && right.kind === 'literal-number') {
@@ -97,6 +99,8 @@ export function createOperationDirectPostRecalcMarkers(args: {
   readonly getEntityDependents: (entityId: number) => Uint32Array
   readonly getSingleCellDependent?: (cellIndex: number) => number
   readonly getCellDependents?: (cellIndex: number) => Uint32Array
+  readonly reverseCellEdges?: Array<EdgeSlice | undefined>
+  readonly edgeArena?: Pick<EdgeArena, 'empty' | 'singletonValue'>
   readonly hasNoCellDependents: (cellIndex: number) => boolean
   readonly canSkipAllDirectFormulaColumnVersions?: () => boolean
   readonly canSkipDirectFormulaColumnVersion: (cellIndex: number) => boolean
@@ -112,11 +116,23 @@ export function createOperationDirectPostRecalcMarkers(args: {
   >
   readonly scalarDeltaClosureLimit: number
 }) {
+  const reverseCellEdges = args.reverseCellEdges
+  const edgeArena = args.edgeArena
   const getSingleCellDependent =
-    args.getSingleCellDependent ?? ((cellIndex: number): number => args.getSingleEntityDependent(makeCellEntity(cellIndex)))
+    reverseCellEdges !== undefined && edgeArena !== undefined
+      ? (cellIndex: number): number => {
+          const slice = reverseCellEdges[cellIndex] ?? edgeArena.empty()
+          if (slice.len === 0 || slice.ptr < 0) {
+            return -1
+          }
+          return slice.len === 1 ? edgeArena.singletonValue(slice) : -2
+        }
+      : (args.getSingleCellDependent ?? ((cellIndex: number): number => args.getSingleEntityDependent(makeCellEntity(cellIndex))))
 
   const getCellDependents =
     args.getCellDependents ?? ((cellIndex: number): Uint32Array => args.getEntityDependents(makeCellEntity(cellIndex)))
+
+  const cleanScalarClosureScratch: { cellIndices?: Uint32Array } = {}
 
   const tryDirectScalarNumericDelta = (
     directScalar: RuntimeDirectScalarDescriptor,
@@ -459,6 +475,9 @@ export function createOperationDirectPostRecalcMarkers(args: {
         inputDelta,
         getSingleCellDependent,
         formulas,
+        ...(args.state.directScalarDeltaInputCellIndices === undefined
+          ? {}
+          : { directScalarDeltaInputCellIndices: args.state.directScalarDeltaInputCellIndices }),
         flags,
         tags,
         stringIds,
@@ -468,6 +487,7 @@ export function createOperationDirectPostRecalcMarkers(args: {
         canSkipDirectFormulaColumnVersion,
         postRecalcDirectFormulaIndices,
         scalarDeltaClosureLimit: args.scalarDeltaClosureLimit,
+        scratch: cleanScalarClosureScratch,
       })
     ) {
       return true
@@ -752,6 +772,7 @@ function tryMarkCleanSameDeltaDirectScalarClosure(args: {
   readonly inputDelta: number
   readonly getSingleCellDependent: (cellIndex: number) => number
   readonly formulas: OperationDirectPostRecalcMarkerState['formulas']
+  readonly directScalarDeltaInputCellIndices?: ArrayLike<number | undefined>
   readonly flags: ArrayLike<number | undefined>
   readonly tags: ArrayLike<ValueTag | undefined>
   readonly stringIds: ArrayLike<number | undefined>
@@ -761,12 +782,17 @@ function tryMarkCleanSameDeltaDirectScalarClosure(args: {
   readonly canSkipDirectFormulaColumnVersion: (cellIndex: number) => boolean
   readonly postRecalcDirectFormulaIndices: DirectFormulaIndexCollection
   readonly scalarDeltaClosureLimit: number
+  readonly scratch?: { cellIndices?: Uint32Array }
 }): boolean {
   let currentCellIndex = args.rootCellIndex
   let closureCount = 0
   let sortedClosureCellIndices = true
   let previousClosureCellIndex = -1
-  let cellIndices = new Uint32Array(initialDirectScalarLinearDeltaClosureCapacity(args.scalarDeltaClosureLimit))
+  const scratch = args.scratch
+  const usingScratch = args.postRecalcDirectFormulaIndices.size === 0 && scratch !== undefined
+  let cellIndices = usingScratch
+    ? (scratch.cellIndices ??= new Uint32Array(initialDirectScalarLinearDeltaClosureCapacity(args.scalarDeltaClosureLimit)))
+    : new Uint32Array(initialDirectScalarLinearDeltaClosureCapacity(args.scalarDeltaClosureLimit))
 
   for (;;) {
     if (closureCount > args.scalarDeltaClosureLimit) {
@@ -779,14 +805,23 @@ function tryMarkCleanSameDeltaDirectScalarClosure(args: {
     if (formulaCellIndex < 0 || formulaCellIndex === args.rootCellIndex) {
       return false
     }
-    const formula = args.formulas.get(formulaCellIndex)
+    let preservesInputDelta = args.directScalarDeltaInputCellIndices?.[formulaCellIndex] === currentCellIndex
+    let formula: OperationDirectPostRecalcFormula | undefined
+    let directScalar: RuntimeDirectScalarDescriptor | undefined
+    if (!preservesInputDelta) {
+      formula = args.formulas.get(formulaCellIndex)
+      directScalar = formula?.directScalar
+      preservesInputDelta =
+        formula !== undefined &&
+        !formula.compiled.volatile &&
+        !formula.compiled.producesSpill &&
+        directScalar?.kind === 'binary' &&
+        (directScalar.deltaInputCellIndex === currentCellIndex ||
+          (directScalar.deltaInputCellIndex === undefined && directScalarPreservesInputDelta(directScalar, currentCellIndex)))
+    }
     if (
-      !formula ||
-      formula.directScalar === undefined ||
-      formula.compiled.volatile ||
-      formula.compiled.producesSpill ||
+      !preservesInputDelta ||
       ((args.flags[formulaCellIndex] ?? 0) & CellFlags.InCycle) !== 0 ||
-      !directScalarPreservesInputDelta(formula.directScalar, currentCellIndex) ||
       args.tags[formulaCellIndex] !== ValueTag.Number ||
       (args.stringIds[formulaCellIndex] ?? 0) !== 0 ||
       (args.errors[formulaCellIndex] ?? ErrorCode.None) !== ErrorCode.None ||
@@ -799,6 +834,9 @@ function tryMarkCleanSameDeltaDirectScalarClosure(args: {
       const nextCellIndices = new Uint32Array(cellIndices.length * 2)
       nextCellIndices.set(cellIndices)
       cellIndices = nextCellIndices
+      if (usingScratch) {
+        scratch.cellIndices = nextCellIndices
+      }
     }
     if (formulaCellIndex <= previousClosureCellIndex) {
       sortedClosureCellIndices = false
@@ -821,5 +859,6 @@ function tryMarkCleanSameDeltaDirectScalarClosure(args: {
   args.postRecalcDirectFormulaIndices.markScalarDeltaCellsValidated()
   args.postRecalcDirectFormulaIndices.markScalarDeltaCellsTrustedDirectScalarFormulas()
   args.postRecalcDirectFormulaIndices.markScalarDeltaCellsCleanNumber()
+  args.postRecalcDirectFormulaIndices.markScalarDeltaCellsCycleIndependent()
   return true
 }

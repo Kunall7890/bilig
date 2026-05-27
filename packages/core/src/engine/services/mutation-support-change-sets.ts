@@ -1,5 +1,4 @@
 import { growUint32 } from '../../engine-buffer-utils.js'
-import type { FormulaTable } from '../../formula-table.js'
 import type { U32 } from '../runtime-state.js'
 
 export interface MutationSupportChangeSetFormulaRecord {
@@ -7,6 +6,11 @@ export interface MutationSupportChangeSetFormulaRecord {
   readonly compiled: {
     readonly volatile: boolean
   }
+}
+
+interface MutationSupportFormulaTableView {
+  readonly get: (cellIndex: number) => MutationSupportChangeSetFormulaRecord | undefined
+  readonly forEach: (callback: (formula: MutationSupportChangeSetFormulaRecord, cellIndex: number) => void) => void
 }
 
 function advanceEpoch(current: number, setEpoch: (next: number) => void, seen: U32): number {
@@ -37,7 +41,7 @@ export interface MutationSupportChangeSetTracker {
 }
 
 export function createMutationSupportChangeSetTracker(args: {
-  readonly formulas: FormulaTable<MutationSupportChangeSetFormulaRecord>
+  readonly formulas: MutationSupportFormulaTableView
   readonly getVolatileFormulaCellIndices?: () => Iterable<number>
   readonly ensureRecalcScratchCapacity: (size: number) => void
   readonly getCellStoreSize: () => number

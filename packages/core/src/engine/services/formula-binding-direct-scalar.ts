@@ -168,13 +168,13 @@ export function buildDirectScalarDescriptor(args: {
       ...(nextTranslatedCellRef ? { nextTranslatedCellRef } : {}),
     })
     if (left && right) {
-      return {
+      return withDirectScalarDeltaInputCellIndex({
         kind: 'binary',
         operator: node.operator,
         left,
         right,
         ...(unwrapped.resultOffset !== undefined ? { resultOffset: unwrapped.resultOffset } : {}),
-      }
+      })
     }
   }
   if (node.kind === 'CallExpr' && node.callee.trim().toUpperCase() === 'ABS' && node.args.length === 1) {
@@ -221,13 +221,13 @@ function tryBuildTranslatedDirectScalarDescriptor(args: {
       translatedCellRefIndex += 1
     }
     if (left && right && translatedCellRefIndex === parsedRefs.length) {
-      return {
+      return withDirectScalarDeltaInputCellIndex({
         kind: 'binary',
         operator: node.operator,
         left,
         right,
         ...(unwrapped.resultOffset !== undefined ? { resultOffset: unwrapped.resultOffset } : {}),
-      }
+      })
     }
     return undefined
   }
@@ -280,4 +280,31 @@ function buildTranslatedDirectScalarOperand(
     kind: 'cell',
     cellIndex: existingCellIndex ?? args.ensureCellTrackedByCoords(sheetId, parsed.row, parsed.col),
   }
+}
+
+function withDirectScalarDeltaInputCellIndex<T extends RuntimeDirectScalarDescriptor>(descriptor: T): T {
+  if (descriptor.kind !== 'binary') {
+    return descriptor
+  }
+  const cellIndex = directScalarDeltaInputCellIndex(descriptor)
+  if (cellIndex !== undefined) {
+    Object.defineProperty(descriptor, 'deltaInputCellIndex', {
+      configurable: true,
+      enumerable: false,
+      value: cellIndex,
+    })
+  }
+  return descriptor
+}
+
+function directScalarDeltaInputCellIndex(directScalar: Extract<RuntimeDirectScalarDescriptor, { kind: 'binary' }>): number | undefined {
+  const left = directScalar.left
+  const right = directScalar.right
+  if (left.kind === 'cell' && right.kind === 'literal-number' && (directScalar.operator === '+' || directScalar.operator === '-')) {
+    return left.cellIndex
+  }
+  if (directScalar.operator === '+' && right.kind === 'cell' && left.kind === 'literal-number') {
+    return right.cellIndex
+  }
+  return undefined
 }

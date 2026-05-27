@@ -2,7 +2,7 @@ import type { Effect } from 'effect'
 import type { CompiledFormula } from '@bilig/formula'
 import type { EngineOp, EngineOpBatch } from '@bilig/workbook'
 import type { CellRangeRef, CellValue, EngineChangedCell, SelectionState } from '@bilig/protocol'
-import type { EdgeSlice } from '../../edge-arena.js'
+import type { EdgeArena, EdgeSlice } from '../../edge-arena.js'
 import type { FormulaTemplateResolution } from '../../formula/template-bank.js'
 import type {
   EngineCellMutationRef,
@@ -119,6 +119,7 @@ export interface CreateEngineOperationServiceArgs {
     readonly reverseExactLookupColumnEdges: Map<number, EdgeSlice>
     readonly reverseSortedLookupColumnEdges: Map<number, EdgeSlice>
   }
+  readonly edgeArena: EdgeArena
   readonly getSelectionState: () => SelectionState
   readonly setSelection: (sheetName: string, address: string) => void
   readonly rewriteDefinedNamesForSheetRename: (oldSheetName: string, newSheetName: string) => void

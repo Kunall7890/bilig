@@ -52,9 +52,11 @@ function createMarkers(input: {
   readonly numbers: Map<number, number>
   readonly singleDependents: Map<number, number>
   readonly entityDependents?: Map<number, Uint32Array>
+  readonly directScalarDeltaInputCellIndices?: ArrayLike<number | undefined>
   readonly canSkipAllDirectFormulaColumnVersions?: () => boolean
   readonly canSkipDirectFormulaColumnVersion?: (cellIndex: number) => boolean
   readonly directScalarCellNumericValue?: (cellIndex: number) => number | undefined
+  readonly onFormulaGet?: (cellIndex: number) => void
 }) {
   const tags: ValueTag[] = []
   input.numbers.forEach((_value, cellIndex) => {
@@ -71,8 +73,12 @@ function createMarkers(input: {
       },
     },
     formulas: {
-      get: (cellIndex: number) => input.formulas.get(cellIndex),
+      get: (cellIndex: number) => {
+        input.onFormulaGet?.(cellIndex)
+        return input.formulas.get(cellIndex)
+      },
     },
+    directScalarDeltaInputCellIndices: input.directScalarDeltaInputCellIndices,
     strings: {
       get: (id: number) => `s${id}`,
     },
@@ -134,6 +140,71 @@ describe('operation direct post-recalc markers', () => {
     expect(collection.hasValidatedScalarDeltaCells()).toBe(true)
     expect(collection.hasCleanScalarDeltaCells()).toBe(true)
     expect(collection.hasTrustedDirectScalarDeltaCells()).toBe(true)
+    expect(collection.hasCycleIndependentScalarDeltaCells()).toBe(true)
+  })
+
+  it('uses cached direct scalar delta-input metadata for clean same-delta closures', () => {
+    let formulaGetCount = 0
+    const directScalarDeltaInputCellIndices: Array<number | undefined> = []
+    directScalarDeltaInputCellIndices[20] = 10
+    directScalarDeltaInputCellIndices[30] = 20
+    const markers = createMarkers({
+      formulas: new Map(),
+      directScalarDeltaInputCellIndices,
+      numbers: new Map([
+        [20, 3],
+        [30, 5],
+      ]),
+      singleDependents: new Map([
+        [makeCellEntity(10), 20],
+        [makeCellEntity(20), 30],
+        [makeCellEntity(30), -1],
+      ]),
+      onFormulaGet: () => {
+        formulaGetCount += 1
+      },
+    })
+    const collection = new DirectFormulaIndexCollection()
+
+    expect(markers.tryMarkDirectScalarLinearDeltaClosure(10, numberValue(2), numberValue(5), collection)).toBe(true)
+
+    expect(formulaGetCount).toBe(0)
+    expect([...collection.getCellIndicesForRead()]).toEqual([20, 30])
+    expect(collection.getDelta(20)).toBe(3)
+    expect(collection.getDelta(30)).toBe(3)
+    expect(collection.hasCycleIndependentScalarDeltaCells()).toBe(true)
+  })
+
+  it('keeps earlier closure cell indices stable when a later closure appends to the same collection', () => {
+    const formulas = new Map([
+      [20, formula(binaryScalar('+', 10, { kind: 'literal-number', value: 1 }))],
+      [30, formula(binaryScalar('+', 20, { kind: 'literal-number', value: 2 }))],
+      [110, formula(binaryScalar('+', 100, { kind: 'literal-number', value: 1 }))],
+    ])
+    const markers = createMarkers({
+      formulas,
+      numbers: new Map([
+        [20, 3],
+        [30, 5],
+        [110, 12],
+      ]),
+      singleDependents: new Map([
+        [makeCellEntity(10), 20],
+        [makeCellEntity(20), 30],
+        [makeCellEntity(30), -1],
+        [makeCellEntity(100), 110],
+        [makeCellEntity(110), -1],
+      ]),
+    })
+    const collection = new DirectFormulaIndexCollection()
+
+    expect(markers.tryMarkDirectScalarLinearDeltaClosure(10, numberValue(2), numberValue(5), collection)).toBe(true)
+    expect(markers.tryMarkDirectScalarLinearDeltaClosure(100, numberValue(11), numberValue(13), collection)).toBe(true)
+
+    expect([...collection.getCellIndicesForRead()]).toEqual([20, 30, 110])
+    expect(collection.getDelta(20)).toBe(3)
+    expect(collection.getDelta(30)).toBe(3)
+    expect(collection.getDelta(110)).toBe(2)
   })
 
   it('uses the all-column-version skip gate for linear scalar closures', () => {
@@ -175,6 +246,7 @@ describe('operation direct post-recalc markers', () => {
     expect(collection.hasValidatedScalarDeltaCells()).toBe(true)
     expect(collection.hasCleanScalarDeltaCells()).toBe(true)
     expect(collection.hasTrustedDirectScalarDeltaCells()).toBe(true)
+    expect(collection.hasCycleIndependentScalarDeltaCells()).toBe(true)
   })
 
   it('marks right-input affine scalar closures without falling back to graph traversal', () => {

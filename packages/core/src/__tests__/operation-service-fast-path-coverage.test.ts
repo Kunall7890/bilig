@@ -957,6 +957,9 @@ describe('operation-service dense mutation fast paths', () => {
       tag: ValueTag.Number,
       value: downstreamCount + 2,
     })
+    const replacedFormulaIndex = engine.workbook.getCellIndex('Sheet1', 'C1')!
+    expect(engine.state.formulas.get(replacedFormulaIndex)?.programLength).toBe(0)
+    expect(engine.state.formulas.get(replacedFormulaIndex)?.runtimeProgram.length).toBe(0)
     expect(engine.getLastMetrics()).toMatchObject({
       dirtyFormulaCount: 0,
       jsFormulaCount: 0,

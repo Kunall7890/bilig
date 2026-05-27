@@ -212,6 +212,7 @@ export function createFormulaBindingSheetRenameHandler(args: {
           formula.constNumberLength = plan.compiled.constants.length
           formula.directAggregate = nextDirectAggregate
           formula.directScalar = nextDirectScalar
+          args.serviceArgs.state.formulas.refreshTrackedMetadata(cellIndex)
           appendSheetRenameSourceTransformRecord(formula, sourceTransform)
           args.trackFormulaSheetIndexes(cellIndex, ownerSheetName, formula.compiled)
           return

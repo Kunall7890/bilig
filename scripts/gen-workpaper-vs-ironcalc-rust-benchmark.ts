@@ -116,6 +116,7 @@ if (isCheckMode) {
   if (JSON.stringify(artifact.scorecard.unsupportedWorkloads) !== JSON.stringify(WORKPAPER_IRONCALC_RUST_UNSUPPORTED_WORKLOADS)) {
     throw new Error('WorkPaper vs IronCalc Rust unsupported workload list is out of date. Run: pnpm workpaper:bench:ironcalc-rust:generate')
   }
+  assertNoRawBenchmarkSampleArrays(rawArtifact)
 
   console.log(
     JSON.stringify(
@@ -182,7 +183,7 @@ const artifact: WorkPaperVsIronCalcRustBenchmarkArtifact = {
 }
 
 mkdirSync(dirname(outputPath), { recursive: true })
-writeFileSync(outputPath, formatJsonForRepo(`${JSON.stringify(artifact, null, 2)}\n`))
+writeFileSync(outputPath, formatJsonForRepo(`${JSON.stringify(compactRawBenchmarkSampleArrays(artifact), null, 2)}\n`))
 console.log(
   JSON.stringify(
     {
@@ -431,6 +432,60 @@ function parseIronCalcRustWorkload(workload: string): WorkPaperIronCalcRustWorkl
 
 function isIronCalcRustWorkload(workload: string): workload is WorkPaperIronCalcRustWorkload {
   return ironCalcRustWorkloadNames.includes(workload)
+}
+
+function compactRawBenchmarkSampleArrays(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(compactRawBenchmarkSampleArrays)
+  }
+  if (!isRecord(value)) {
+    return value
+  }
+
+  const compacted: Record<string, unknown> = {}
+  for (const [key, child] of Object.entries(value)) {
+    if (key === 'samples' && isRawNumberArray(child)) {
+      continue
+    }
+    compacted[key] = compactRawBenchmarkSampleArrays(child)
+  }
+  return compacted
+}
+
+function assertNoRawBenchmarkSampleArrays(artifactRecord: Record<string, unknown>): void {
+  const sampleArrayCount = countRawBenchmarkSampleArrays(artifactRecord)
+  if (sampleArrayCount === 0) {
+    return
+  }
+
+  throw new Error(
+    `WorkPaper vs IronCalc Rust benchmark artifact stores ${String(
+      sampleArrayCount,
+    )} raw sample arrays. Run: pnpm workpaper:bench:ironcalc-rust:generate`,
+  )
+}
+
+function countRawBenchmarkSampleArrays(value: unknown): number {
+  if (Array.isArray(value)) {
+    return value.reduce((count, child) => count + countRawBenchmarkSampleArrays(child), 0)
+  }
+  if (!isRecord(value)) {
+    return 0
+  }
+
+  let count = 0
+  for (const [key, child] of Object.entries(value)) {
+    if (key === 'samples' && isRawNumberArray(child)) {
+      count += 1
+      continue
+    }
+    count += countRawBenchmarkSampleArrays(child)
+  }
+  return count
+}
+
+function isRawNumberArray(value: unknown): value is number[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'number')
 }
 
 function scorecardsMatch(actual: ParsedWorkPaperIronCalcRustScorecard, expected: ParsedWorkPaperIronCalcRustScorecard): boolean {

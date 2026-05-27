@@ -64,6 +64,8 @@ describe('EdgeArena', () => {
     expect(slice.len).toBe(1)
     expect(slice.cap).toBe(1)
     expect([...arena.readView(slice)]).toEqual([42])
+    expect(arena.singletonValue(slice)).toBe(42)
+    expect(arena.singletonValue(arena.empty())).toBe(-1)
   })
 
   it('replaces small slices without materializing an input array', () => {

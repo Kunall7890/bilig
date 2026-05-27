@@ -296,13 +296,13 @@ export function createEngineFormulaGraphService(args: {
     if (args.getWasmProgramSyncPending()) {
       return
     }
+    if (args.getBatchMutationDepth() > 0) {
+      args.setWasmProgramSyncPending(true)
+      return
+    }
     const wasmFormulaCount = countWasmFastPathFormulas()
     if (wasmFormulaCount === 0) {
       args.setWasmProgramSyncPending(false)
-      return
-    }
-    if (args.getBatchMutationDepth() > 0) {
-      args.setWasmProgramSyncPending(true)
       return
     }
     if (!args.state.wasm.ready && !args.state.wasm.initSyncIfPossible()) {

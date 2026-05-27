@@ -102,6 +102,29 @@ describe('operation post-recalc direct formula helpers', () => {
     expect(evaluateDirectFormula).not.toHaveBeenCalled()
   })
 
+  it('trusts cycle-independent scalar delta closures without re-walking dependencies', () => {
+    const collection = new DirectFormulaIndexCollection()
+    collection.addScalarDelta(2, 1)
+    collection.addScalarDelta(3, 1)
+    collection.markScalarDeltaCellsCycleIndependent()
+    const hasCycleDependency = vi.fn(() => {
+      throw new Error('dependency walk should be skipped')
+    })
+    const tryApplyDirectScalarDeltas = vi.fn((): U32 => Uint32Array.of(2, 3))
+
+    const changed = applyPostRecalcDirectFormulaChanges(
+      makeArgs({
+        collection,
+        hasCycleDependency,
+        tryApplyDirectScalarDeltas,
+      }),
+    )
+
+    expect(Array.from(changed)).toEqual([2, 3])
+    expect(hasCycleDependency).not.toHaveBeenCalled()
+    expect(tryApplyDirectScalarDeltas).toHaveBeenCalledWith(collection, true)
+  })
+
   it('counts post-recalc direct formula metrics by formula mode', () => {
     const counts: DirectFormulaMetricCounts = { wasmFormulaCount: 0, jsFormulaCount: 0 }
     const formulas = new Map<number, OperationPostRecalcFormula>([

@@ -314,6 +314,8 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     getEntityDependents: args.getEntityDependents,
     ...(args.getSingleCellDependent === undefined ? {} : { getSingleCellDependent: args.getSingleCellDependent }),
     ...(args.getCellDependents === undefined ? {} : { getCellDependents: args.getCellDependents }),
+    reverseCellEdges: args.reverseState.reverseCellEdges,
+    edgeArena: args.edgeArena,
     hasNoCellDependents,
     canSkipAllDirectFormulaColumnVersions: () => !hasTrackedColumnDependentsAnywhere(),
     canSkipDirectFormulaColumnVersion: canSkipFormulaColumnVersion,
@@ -644,55 +646,67 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
       request,
     )
 
-  const {
-    tryApplyCoalescedDirectScalarLiteralBatch,
-    tryApplyDenseRowPairDirectScalarLiteralBatch,
-    tryApplyLookupOnlyNumericColumnLiteralBatch,
-    tryApplyDenseRectangularDirectAggregateLiteralBatch,
-    tryApplyFreshDenseRectangularNumericLiteralBatch,
-    tryApplyDenseSingleColumnAffineExistingNumericBatch,
-  } = createOperationDirectScalarBatchFastPaths({
-    state: args.state,
-    emitBatch,
-    hasVolatileFormulas: args.hasVolatileFormulas,
-    hasTrackedExactLookupDependents,
-    hasTrackedSortedLookupDependents,
-    hasTrackedDirectRangeDependents,
-    canFastPathLiteralOverwrite: (cellIndex) => canFastPathLiteralOverwrite(cellIndex),
-    canUseDirectFormulaPostRecalc,
-    canSkipFormulaColumnVersion,
-    directScalarCellNumericValue,
-    writeNumericLiteralToCellStore,
-    applyTerminalDirectFormulaNumericResult,
-    applyTerminalDirectFormulaNumericResults,
-    applyTerminalDirectFormulaAffineNumericResults,
-    applyTerminalDirectFormulaAffineNumericResultsFromRefs,
-    applyDirectFormulaNumericResult,
-    applyDirectFormulaCurrentResult,
-    tryEvaluateDirectScalarWithPendingNumbers,
-    tryEvaluateDirectScalarNumericWithPendingNumbers,
-    planExactLookupNumericColumnWrite,
-    planApproximateLookupNumericColumnWrite,
-    getSingleEntityDependent: args.getSingleEntityDependent,
-    getEntityDependents: args.getEntityDependents,
-    materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
-    beginMutationCollection: args.beginMutationCollection,
-    ensureRecalcScratchCapacity: args.ensureRecalcScratchCapacity,
-    resetMaterializedCellScratch: args.resetMaterializedCellScratch,
-    getBatchMutationDepth: args.getBatchMutationDepth,
-    setBatchMutationDepth: args.setBatchMutationDepth,
-    markInputChanged: args.markInputChanged,
-    markExplicitChanged: args.markExplicitChanged,
-    getChangedInputBuffer: args.getChangedInputBuffer,
-    deferKernelSync: args.deferKernelSync,
-    composeDisjointEventChanges: args.composeDisjointEventChanges,
-    captureChangedCells: args.captureChangedCells,
-    invalidateExactLookupColumn: args.invalidateExactLookupColumn,
-    invalidateSortedLookupColumn: args.invalidateSortedLookupColumn,
-  })
+  let directScalarBatchFastPaths: ReturnType<typeof createOperationDirectScalarBatchFastPaths> | undefined
+  const getDirectScalarBatchFastPaths = (): ReturnType<typeof createOperationDirectScalarBatchFastPaths> =>
+    (directScalarBatchFastPaths ??= createOperationDirectScalarBatchFastPaths({
+      state: args.state,
+      emitBatch,
+      hasVolatileFormulas: args.hasVolatileFormulas,
+      hasTrackedExactLookupDependents,
+      hasTrackedSortedLookupDependents,
+      hasTrackedDirectRangeDependents,
+      canFastPathLiteralOverwrite: (cellIndex) => canFastPathLiteralOverwrite(cellIndex),
+      canUseDirectFormulaPostRecalc,
+      canSkipFormulaColumnVersion,
+      directScalarCellNumericValue,
+      writeNumericLiteralToCellStore,
+      applyTerminalDirectFormulaNumericResult,
+      applyTerminalDirectFormulaNumericResults,
+      applyTerminalDirectFormulaAffineNumericResults,
+      applyTerminalDirectFormulaAffineNumericResultsFromRefs,
+      applyDirectFormulaNumericResult,
+      applyDirectFormulaCurrentResult,
+      tryEvaluateDirectScalarWithPendingNumbers,
+      tryEvaluateDirectScalarNumericWithPendingNumbers,
+      planExactLookupNumericColumnWrite,
+      planApproximateLookupNumericColumnWrite,
+      getSingleEntityDependent: args.getSingleEntityDependent,
+      getEntityDependents: args.getEntityDependents,
+      materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
+      beginMutationCollection: args.beginMutationCollection,
+      ensureRecalcScratchCapacity: args.ensureRecalcScratchCapacity,
+      resetMaterializedCellScratch: args.resetMaterializedCellScratch,
+      getBatchMutationDepth: args.getBatchMutationDepth,
+      setBatchMutationDepth: args.setBatchMutationDepth,
+      markInputChanged: args.markInputChanged,
+      markExplicitChanged: args.markExplicitChanged,
+      getChangedInputBuffer: args.getChangedInputBuffer,
+      deferKernelSync: args.deferKernelSync,
+      composeDisjointEventChanges: args.composeDisjointEventChanges,
+      captureChangedCells: args.captureChangedCells,
+      invalidateExactLookupColumn: args.invalidateExactLookupColumn,
+      invalidateSortedLookupColumn: args.invalidateSortedLookupColumn,
+    }))
+  type DirectScalarBatchFastPaths = ReturnType<typeof createOperationDirectScalarBatchFastPaths>
+  const tryApplyCoalescedDirectScalarLiteralBatch: DirectScalarBatchFastPaths['tryApplyCoalescedDirectScalarLiteralBatch'] = (...input) =>
+    getDirectScalarBatchFastPaths().tryApplyCoalescedDirectScalarLiteralBatch(...input)
+  const tryApplyDenseRowPairDirectScalarLiteralBatch: DirectScalarBatchFastPaths['tryApplyDenseRowPairDirectScalarLiteralBatch'] = (
+    ...input
+  ) => getDirectScalarBatchFastPaths().tryApplyDenseRowPairDirectScalarLiteralBatch(...input)
+  const tryApplyLookupOnlyNumericColumnLiteralBatch: DirectScalarBatchFastPaths['tryApplyLookupOnlyNumericColumnLiteralBatch'] = (
+    ...input
+  ) => getDirectScalarBatchFastPaths().tryApplyLookupOnlyNumericColumnLiteralBatch(...input)
+  const tryApplyDenseRectangularDirectAggregateLiteralBatch: DirectScalarBatchFastPaths['tryApplyDenseRectangularDirectAggregateLiteralBatch'] =
+    (...input) => getDirectScalarBatchFastPaths().tryApplyDenseRectangularDirectAggregateLiteralBatch(...input)
+  const tryApplyFreshDenseRectangularNumericLiteralBatch: DirectScalarBatchFastPaths['tryApplyFreshDenseRectangularNumericLiteralBatch'] = (
+    ...input
+  ) => getDirectScalarBatchFastPaths().tryApplyFreshDenseRectangularNumericLiteralBatch(...input)
+  const tryApplyDenseSingleColumnAffineExistingNumericBatch: DirectScalarBatchFastPaths['tryApplyDenseSingleColumnAffineExistingNumericBatch'] =
+    (...input) => getDirectScalarBatchFastPaths().tryApplyDenseSingleColumnAffineExistingNumericBatch(...input)
 
-  const { tryApplySingleExistingDirectLiteralMutation, applyExistingNumericCellMutationAtNow, applyExistingLiteralCellMutationAtNow } =
-    createOperationSingleExistingLiteralFastPath({
+  let singleExistingLiteralFastPath: ReturnType<typeof createOperationSingleExistingLiteralFastPath> | undefined
+  const getSingleExistingLiteralFastPath = (): ReturnType<typeof createOperationSingleExistingLiteralFastPath> =>
+    (singleExistingLiteralFastPath ??= createOperationSingleExistingLiteralFastPath({
       state: args.state,
       hasVolatileFormulas: args.hasVolatileFormulas,
       getSingleEntityDependent: args.getSingleEntityDependent,
@@ -738,7 +752,15 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
       tryApplyDirectFormulaDeltas,
       countPostRecalcDirectFormulaMetric: (cellIndex, counts) => countPostRecalcDirectFormulaMetric(cellIndex, counts),
       hasDynamicFormulaDependents,
-    })
+    }))
+  type SingleExistingLiteralFastPath = ReturnType<typeof createOperationSingleExistingLiteralFastPath>
+  const tryApplySingleExistingDirectLiteralMutation: SingleExistingLiteralFastPath['tryApplySingleExistingDirectLiteralMutation'] = (
+    ...input
+  ) => getSingleExistingLiteralFastPath().tryApplySingleExistingDirectLiteralMutation(...input)
+  const applyExistingNumericCellMutationAtNow: SingleExistingLiteralFastPath['applyExistingNumericCellMutationAtNow'] = (...input) =>
+    getSingleExistingLiteralFastPath().applyExistingNumericCellMutationAtNow(...input)
+  const applyExistingLiteralCellMutationAtNow: SingleExistingLiteralFastPath['applyExistingLiteralCellMutationAtNow'] = (...input) =>
+    getSingleExistingLiteralFastPath().applyExistingLiteralCellMutationAtNow(...input)
 
   const countPostRecalcDirectFormulaMetric = (cellIndex: number, counts: DirectFormulaMetricCounts): void => {
     countOperationPostRecalcDirectFormulaMetric({

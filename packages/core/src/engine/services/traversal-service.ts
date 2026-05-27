@@ -141,7 +141,7 @@ export function createEngineTraversalService(args: {
     if (slice.len !== 1) {
       return MULTIPLE_ENTITY_DEPENDENTS
     }
-    return args.edgeArena.valueAt(slice, 0)
+    return args.edgeArena.singletonValue(slice)
   }
 
   const getSingleEntityDependentNow = (entityId: number): number => {
@@ -152,7 +152,7 @@ export function createEngineTraversalService(args: {
     if (slice.len !== 1) {
       return MULTIPLE_ENTITY_DEPENDENTS
     }
-    return args.edgeArena.valueAt(slice, 0)
+    return args.edgeArena.singletonValue(slice)
   }
 
   const forEachFormulaDependencyCellNow = (cellIndex: number, fn: (dependencyCellIndex: number) => void): void => {

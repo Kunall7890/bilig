@@ -1,6 +1,7 @@
-import { readdir, readFile, writeFile } from 'node:fs/promises'
+import { readdir, writeFile } from 'node:fs/promises'
 import { extname, join } from 'node:path'
 import { versionedStaticReferenceExtensions, versionedStaticReferenceRoots } from './agent-discovery-constants.ts'
+import { readTextFileIfExists } from './read-if-exists.ts'
 
 interface StaticReferenceSyncOptions {
   readonly checkOnly: boolean
@@ -11,17 +12,6 @@ interface StaticReferenceSyncOptions {
   readonly repoRoot: string
   readonly workbookPackageSpec: string
   readonly workpaperPackageSpec: string
-}
-
-async function readIfExists(path: string): Promise<string | undefined> {
-  try {
-    return await readFile(path, 'utf8')
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      return undefined
-    }
-    throw error
-  }
 }
 
 async function collectVersionedStaticReferenceFiles(repoRoot: string, relativePath: string): Promise<string[]> {
@@ -123,7 +113,7 @@ export async function syncVersionedStaticReferences(options: StaticReferenceSync
   await Promise.all(
     targetFiles.map(async (relativePath) => {
       const absolutePath = join(options.repoRoot, relativePath)
-      const existing = await readIfExists(absolutePath)
+      const existing = await readTextFileIfExists(absolutePath)
       if (existing === undefined) {
         return
       }

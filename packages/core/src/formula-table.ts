@@ -1,12 +1,20 @@
 import type { CellStore } from './cell-store.js'
 
+export interface FormulaTableDirectScalarDeltaIndex<T> {
+  readonly deltaInputCellIndices: Array<number | undefined>
+  readonly readDeltaInputCellIndex: (record: T) => number | undefined
+}
+
 export class FormulaTable<T extends { cellIndex: number }> {
   private readonly records: Array<T | undefined> = []
   private readonly freeSlots: number[] = []
   private activeCount = 0
   private mutationVersion = 0
 
-  constructor(private readonly store: CellStore) {}
+  constructor(
+    private readonly store: CellStore,
+    private readonly directScalarDeltaIndex?: FormulaTableDirectScalarDeltaIndex<T>,
+  ) {}
 
   get size(): number {
     return this.activeCount
@@ -29,6 +37,7 @@ export class FormulaTable<T extends { cellIndex: number }> {
     const existingId = this.store.formulaIds[cellIndex] ?? 0
     if (existingId !== 0) {
       this.records[existingId - 1] = record
+      this.trackDirectScalarDeltaInputCellIndex(cellIndex, record)
       this.mutationVersion += 1
       return existingId
     }
@@ -36,9 +45,19 @@ export class FormulaTable<T extends { cellIndex: number }> {
     const slot = this.freeSlots.pop() ?? this.records.length
     this.records[slot] = record
     this.store.formulaIds[cellIndex] = slot + 1
+    this.trackDirectScalarDeltaInputCellIndex(cellIndex, record)
     this.activeCount += 1
     this.mutationVersion += 1
     return slot + 1
+  }
+
+  refreshTrackedMetadata(cellIndex: number): void {
+    const record = this.get(cellIndex)
+    if (record === undefined) {
+      this.clearDirectScalarDeltaInputCellIndex(cellIndex)
+      return
+    }
+    this.trackDirectScalarDeltaInputCellIndex(cellIndex, record)
   }
 
   delete(cellIndex: number): T | undefined {
@@ -56,6 +75,7 @@ export class FormulaTable<T extends { cellIndex: number }> {
       this.mutationVersion += 1
     }
     this.store.formulaIds[cellIndex] = 0
+    this.clearDirectScalarDeltaInputCellIndex(cellIndex)
     return existing
   }
 
@@ -68,6 +88,9 @@ export class FormulaTable<T extends { cellIndex: number }> {
     }
     this.records.length = 0
     this.freeSlots.length = 0
+    if (this.directScalarDeltaIndex) {
+      this.directScalarDeltaIndex.deltaInputCellIndices.length = 0
+    }
     this.activeCount = 0
     this.mutationVersion += 1
   }
@@ -105,6 +128,19 @@ export class FormulaTable<T extends { cellIndex: number }> {
       if (record !== undefined) {
         yield [record.cellIndex, record]
       }
+    }
+  }
+
+  private trackDirectScalarDeltaInputCellIndex(cellIndex: number, record: T): void {
+    if (!this.directScalarDeltaIndex) {
+      return
+    }
+    this.directScalarDeltaIndex.deltaInputCellIndices[cellIndex] = this.directScalarDeltaIndex.readDeltaInputCellIndex(record)
+  }
+
+  private clearDirectScalarDeltaInputCellIndex(cellIndex: number): void {
+    if (this.directScalarDeltaIndex) {
+      this.directScalarDeltaIndex.deltaInputCellIndices[cellIndex] = undefined
     }
   }
 }

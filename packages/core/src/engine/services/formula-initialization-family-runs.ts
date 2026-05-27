@@ -29,10 +29,18 @@ type MutableDeferredInitialFormulaFamilyRun = Omit<DeferredInitialFormulaFamilyR
   cols?: number[]
 }
 
-export type DeferredInitialFormulaFamilyRunMap = Map<number, Map<number, Map<number, MutableDeferredInitialFormulaFamilyRun>>>
+const MAX_DEFERRED_SINGLETON_FORMULA_FAMILY_RUN_HINTS = 256
+
+export type DeferredInitialFormulaFamilyRunMap = Map<number, Map<number, Map<number, MutableDeferredInitialFormulaFamilyRun>>> & {
+  disabled?: boolean
+  firstSingletonRunRow?: number
+  multiMemberRunCount?: number
+  singletonRunCount?: number
+  singletonRunsShareRow?: boolean
+}
 
 export function createDeferredInitialFormulaFamilyRunMap(): DeferredInitialFormulaFamilyRunMap {
-  return new Map()
+  return new Map() as DeferredInitialFormulaFamilyRunMap
 }
 
 function getDeferredFormulaFamilyRun(
@@ -85,7 +93,9 @@ export function flushDeferredInitialFormulaFamilyRuns(args: {
   readonly checkEvaluationBudget?: (() => void) | undefined
 }): void {
   if (args.shouldDeferFormulaFamilyIndex) {
-    if (args.runs) {
+    if (args.runs?.disabled) {
+      args.deferFormulaFamilyIndexRebuild?.()
+    } else if (args.runs) {
       args.deferFormulaFamilyIndexRuns?.(collectDeferredInitialFormulaFamilyRuns(args.runs))
     } else {
       args.deferFormulaFamilyIndexRebuild?.()
@@ -142,14 +152,17 @@ export function noteDeferredFormulaFamilyRunMember(args: {
 }): void {
   const { prepared, runs } = args
   const templateId = prepared.templateId
-  if (!runs || templateId === undefined) {
+  if (!runs || runs.disabled || templateId === undefined) {
     return
   }
   let run = getDeferredFormulaFamilyRun(runs, prepared.sheetId, templateId, prepared.col)
+  let createdRun = false
+  let existingSingletonRun = false
   if (!run) {
     if (args.runtimeFormula === undefined) {
       return
     }
+    createdRun = true
     run = {
       sheetId: prepared.sheetId,
       templateId,
@@ -164,6 +177,7 @@ export function noteDeferredFormulaFamilyRunMember(args: {
     }
     setDeferredFormulaFamilyRun(runs, prepared.sheetId, templateId, prepared.col, run)
   } else {
+    existingSingletonRun = run.cellIndices.length === 1
     const nextStep = prepared.row - run.lastIndex
     let breaksOrder = false
     if (run.cellIndices.length === 1) {
@@ -186,6 +200,30 @@ export function noteDeferredFormulaFamilyRunMember(args: {
   }
   run.cellIndices.push(prepared.cellIndex)
   run.rows?.push(prepared.row)
+  if (existingSingletonRun) {
+    runs.singletonRunCount = Math.max(0, (runs.singletonRunCount ?? 0) - 1)
+    runs.multiMemberRunCount = (runs.multiMemberRunCount ?? 0) + 1
+  } else if (createdRun) {
+    noteDeferredSingletonFormulaFamilyRunHint(runs, prepared.row)
+  }
+}
+
+function noteDeferredSingletonFormulaFamilyRunHint(runs: DeferredInitialFormulaFamilyRunMap, row: number): void {
+  runs.singletonRunCount = (runs.singletonRunCount ?? 0) + 1
+  if (runs.firstSingletonRunRow === undefined) {
+    runs.firstSingletonRunRow = row
+    runs.singletonRunsShareRow = true
+  } else if (runs.firstSingletonRunRow !== row) {
+    runs.singletonRunsShareRow = false
+  }
+  if (
+    runs.singletonRunsShareRow !== false &&
+    (runs.multiMemberRunCount ?? 0) === 0 &&
+    runs.singletonRunCount > MAX_DEFERRED_SINGLETON_FORMULA_FAMILY_RUN_HINTS
+  ) {
+    runs.clear()
+    runs.disabled = true
+  }
 }
 
 export function registerDeferredFormulaFamilyRunNow(args: {

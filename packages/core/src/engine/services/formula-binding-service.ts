@@ -67,7 +67,7 @@ import { clearFormulaRuntimeFlags, markFormulaCellBound } from './formula-bindin
 import { formulaBindingEffect } from './formula-binding-effect.js'
 import { rebuildAllFormulaBindingsNow } from './formula-binding-rebuild.js'
 import { createFormulaBindingFamilyIndexController } from './formula-binding-family-index-controller.js'
-import { applyFormulaRuntimePlanFields } from './formula-binding-runtime-update.js'
+import { applyDirectScalarReplacementRuntimePlanFields, applyFormulaRuntimePlanFields } from './formula-binding-runtime-update.js'
 import { rebuildDeferredFormulaFamilyIndex } from './formula-family-index-rebuild.js'
 import { bindFreshDirectAggregateFormulaRun } from './formula-binding-fresh-direct-aggregate-run.js'
 import { bindFreshDirectScalarFormulaRun } from './formula-binding-fresh-direct-scalar-run.js'
@@ -81,6 +81,7 @@ import type {
 } from './formula-binding-service-types.js'
 export { formulaBindingServiceTestHooks } from './formula-binding-service-test-hooks.js'
 export type * from './formula-binding-service-types.js'
+
 export function createEngineFormulaBindingService(args: CreateEngineFormulaBindingServiceArgs): EngineFormulaBindingService {
   const resolvedCompiledCache = new Map<string, ParsedCompiledFormula>()
   const formulaMemberCounts = createFormulaBindingMemberCounts()
@@ -273,6 +274,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     existing.directAggregate = undefined
     existing.directScalar = prepared.directScalar
     existing.directCriteria = undefined
+    args.state.formulas.refreshTrackedMetadata(cellIndex)
     updateVolatileFormulaIndex(cellIndex, existing)
     markFormulaCellBound(args.state.workbook.cellStore, cellIndex, existing.compiled.mode)
     if (prepared.compiled.mode === FormulaMode.WasmFastPath && prepared.runtimeProgram.length > 0) {
@@ -347,17 +349,16 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
         const plan = canRetainUnmanagedCompiledPlan(existing.planId, compiled, replacementDirectScalar)
           ? makeUnmanagedCompiledPlan(source, compiled, nextTemplateId)
           : args.compiledPlans.replace(existing.planId, source, compiled, nextTemplateId)
-        applyFormulaRuntimePlanFields(existing, {
+        applyDirectScalarReplacementRuntimePlanFields(existing, {
           source,
           plan,
           templateId: nextTemplateId,
-          runtimeProgram: compiled.program,
-          programLength: compiled.program.length,
         })
         existing.directScalar = replacementDirectScalar
+        args.state.formulas.refreshTrackedMetadata(cellIndex)
         updateVolatileFormulaIndex(cellIndex, existing)
         markFormulaCellBound(args.state.workbook.cellStore, cellIndex, compiled.mode)
-        if (compiled.mode === FormulaMode.WasmFastPath && compiled.program.length > 0) {
+        if (compiled.mode === FormulaMode.WasmFastPath && existing.runtimeProgram.length > 0) {
           args.scheduleWasmProgramSync()
         }
         recordFormulaInstanceNow(cellIndex, source, nextTemplateId, ownerPosition)
@@ -395,6 +396,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     existing.directAggregate = nextDirectAggregate
     existing.directScalar = nextDirectScalar
     existing.directCriteria = undefined
+    args.state.formulas.refreshTrackedMetadata(cellIndex)
     updateVolatileFormulaIndex(cellIndex, existing)
     removeDirectAggregateColumnReverseEdges(
       args.reverseState.reverseAggregateColumnEdges,
@@ -632,6 +634,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
       existing.directAggregate = prepared.directAggregate
       existing.directScalar = prepared.directScalar
       existing.directCriteria = prepared.directCriteria
+      args.state.formulas.refreshTrackedMetadata(cellIndex)
       if (options.preserveCachedValueOnFullRecalc === true) {
         existing.preserveCachedValueOnFullRecalc = true
       } else {

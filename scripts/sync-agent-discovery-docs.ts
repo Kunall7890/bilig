@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { agentNotAFitBoundaries, mcpPromptNames, skillTags } from './agent-discovery-constants.ts'
 import { mcpServerCardManifest } from './agent-discovery-mcp-card.ts'
 import { buildWorkpaperPackageAgentInstructions, buildWorkpaperPackageSkillDocument } from './agent-discovery-package-docs.ts'
+import { readTextFileIfExists } from './read-if-exists.ts'
 import { syncVersionedStaticReferences } from './sync-agent-static-references.ts'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -922,17 +923,6 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
   ] as const
 }
 
-async function readIfExists(path: string): Promise<string | undefined> {
-  try {
-    return await readFile(path, 'utf8')
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      return undefined
-    }
-    throw error
-  }
-}
-
 const staticReferenceMismatches = await syncVersionedStaticReferences({
   checkOnly,
   headlessPackageSpec,
@@ -946,7 +936,7 @@ const staticReferenceMismatches = await syncVersionedStaticReferences({
 const targetResults = await Promise.all(
   (await generatedTargets()).map(async ([relativePath, content]): Promise<string | undefined> => {
     const absolutePath = join(repoRoot, relativePath)
-    const existing = await readIfExists(absolutePath)
+    const existing = await readTextFileIfExists(absolutePath)
     if (existing === content) {
       return undefined
     }

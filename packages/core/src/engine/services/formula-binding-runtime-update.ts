@@ -37,3 +37,12 @@ export function applyFormulaRuntimePlanFields(formula: RuntimeFormula, update: F
   formula.programLength = update.programLength
   formula.constNumberLength = update.plan.compiled.constants.length
 }
+
+export function applyDirectScalarReplacementRuntimePlanFields(
+  formula: RuntimeFormula,
+  update: Omit<FormulaRuntimePlanFieldUpdate, 'programLength' | 'runtimeProgram'>,
+): void {
+  const compiled = update.plan.compiled
+  const runtimeProgram = compiled.volatile || compiled.producesSpill ? compiled.program : compiled.program.subarray(0, 0)
+  applyFormulaRuntimePlanFields(formula, { ...update, runtimeProgram, programLength: runtimeProgram.length })
+}
