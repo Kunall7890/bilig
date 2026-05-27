@@ -15,6 +15,7 @@ import { formatJsonForRepo } from './scorecard-format.ts'
 import {
   proofArchiveManifestPath,
   verifySameCorpusProofArchiveManifestPath,
+  verifySameCorpusProofArchiveZipPath,
   type SameCorpusProofArchiveArtifact,
 } from './ui-responsiveness-same-corpus-proof-archive.ts'
 import {
@@ -104,6 +105,9 @@ export interface UiResponsivenessLiveBrowserScorecard {
 export interface UiResponsivenessLiveBrowserCliArgs {
   readonly isCheckMode: boolean
   readonly capturePath: string | null
+  readonly proofArchiveZipEntryRootDir?: string | null
+  readonly proofArchiveZipManifestEntryPath?: string | null
+  readonly proofArchiveZipPath?: string | null
   readonly refreshSameCorpusProofOnly: boolean
 }
 
@@ -120,6 +124,9 @@ export interface SameCorpusCaptureArtifactValidationOptions {
 
 export interface SameCorpusProofArchiveArtifactValidationOptions {
   readonly capturePath?: string | undefined
+  readonly proofArchiveZipEntryRootDir?: string | undefined
+  readonly proofArchiveZipManifestEntryPath?: string | undefined
+  readonly proofArchiveZipPath?: string | undefined
   readonly requireGitTracked?: boolean | undefined
   readonly rootDir?: string | undefined
   readonly trackedArtifactPaths?: readonly string[] | undefined
@@ -178,7 +185,12 @@ async function main(): Promise<void> {
     validateUiResponsivenessLiveBrowserScorecard(scorecard)
     validateSameCorpusCaptureArtifactMatchesScorecard(scorecard)
     validateSameCorpusScreenshotArtifacts(scorecard.sameCorpusProof, { requireGitTracked: true })
-    validateSameCorpusProofArchiveArtifacts(scorecard.sameCorpusProof, { requireGitTracked: true })
+    validateSameCorpusProofArchiveArtifacts(scorecard.sameCorpusProof, {
+      proofArchiveZipEntryRootDir: args.proofArchiveZipEntryRootDir ?? undefined,
+      proofArchiveZipManifestEntryPath: args.proofArchiveZipManifestEntryPath ?? undefined,
+      proofArchiveZipPath: args.proofArchiveZipPath ?? undefined,
+      requireGitTracked: true,
+    })
     logResult('check', scorecard)
     return
   }
@@ -199,7 +211,12 @@ async function main(): Promise<void> {
     }
     validateUiResponsivenessLiveBrowserScorecard(scorecard)
     validateSameCorpusScreenshotArtifacts(scorecard.sameCorpusProof)
-    validateSameCorpusProofArchiveArtifacts(scorecard.sameCorpusProof, { capturePath: args.capturePath })
+    validateSameCorpusProofArchiveArtifacts(scorecard.sameCorpusProof, {
+      capturePath: args.capturePath,
+      proofArchiveZipEntryRootDir: args.proofArchiveZipEntryRootDir ?? undefined,
+      proofArchiveZipManifestEntryPath: args.proofArchiveZipManifestEntryPath ?? undefined,
+      proofArchiveZipPath: args.proofArchiveZipPath ?? undefined,
+    })
     writeFileSync(outputPath, formatJsonForRepo(`${JSON.stringify(scorecard, null, 2)}\n`))
     logResult('refresh-same-corpus-proof', scorecard)
     return
@@ -212,7 +229,12 @@ async function main(): Promise<void> {
   const scorecard = await buildUiResponsivenessLiveBrowserScorecard(new Date().toISOString(), sameCorpusProof)
   validateUiResponsivenessLiveBrowserScorecard(scorecard)
   validateSameCorpusScreenshotArtifacts(scorecard.sameCorpusProof)
-  validateSameCorpusProofArchiveArtifacts(scorecard.sameCorpusProof, { capturePath: args.capturePath ?? undefined })
+  validateSameCorpusProofArchiveArtifacts(scorecard.sameCorpusProof, {
+    capturePath: args.capturePath ?? undefined,
+    proofArchiveZipEntryRootDir: args.proofArchiveZipEntryRootDir ?? undefined,
+    proofArchiveZipManifestEntryPath: args.proofArchiveZipManifestEntryPath ?? undefined,
+    proofArchiveZipPath: args.proofArchiveZipPath ?? undefined,
+  })
   mkdirSync(dirname(outputPath), { recursive: true })
   writeFileSync(outputPath, formatJsonForRepo(`${JSON.stringify(scorecard, null, 2)}\n`))
   logResult('write', scorecard)
@@ -273,9 +295,15 @@ export function assertUiResponsivenessLiveBrowserRunAllowed(
 }
 
 export function parseUiResponsivenessLiveBrowserCliArgs(argv: readonly string[]): UiResponsivenessLiveBrowserCliArgs {
+  const proofArchiveZipEntryRootDir = argumentValue(argv, '--proof-archive-zip-root')
+  const proofArchiveZipManifestEntryPath = argumentValue(argv, '--proof-archive-zip-manifest')
+  const proofArchiveZipPath = argumentValue(argv, '--proof-archive-zip')
   return {
     isCheckMode: argv.includes('--check'),
     capturePath: argumentValue(argv, '--capture'),
+    ...(proofArchiveZipEntryRootDir !== null ? { proofArchiveZipEntryRootDir } : {}),
+    ...(proofArchiveZipManifestEntryPath !== null ? { proofArchiveZipManifestEntryPath } : {}),
+    ...(proofArchiveZipPath !== null ? { proofArchiveZipPath } : {}),
     refreshSameCorpusProofOnly: argv.includes('--refresh-same-corpus-proof'),
   }
 }
@@ -447,6 +475,34 @@ export function validateSameCorpusProofArchiveArtifacts(
         `${String(manifest.fileVerification.mismatchedArtifactCount)} mismatch`,
       ].join('; '),
     )
+  }
+  if (options.proofArchiveZipPath) {
+    const zipVerification = verifySameCorpusProofArchiveZipPath(resolve(validationRootDir, options.proofArchiveZipPath), {
+      entryRootDir: options.proofArchiveZipEntryRootDir,
+      manifestEntryPath: options.proofArchiveZipManifestEntryPath,
+    })
+    if (zipVerification.manifest.captureRunSignature !== manifest.captureRunSignature) {
+      throw new Error(
+        `UI responsiveness same-corpus proof archive ZIP signature does not match checked manifest: ${zipVerification.manifestEntryPath}`,
+      )
+    }
+    if (stableJsonString(zipVerification.manifest.artifacts) !== stableJsonString(manifest.artifacts)) {
+      throw new Error(
+        `UI responsiveness same-corpus proof archive ZIP artifacts do not match checked manifest: ${zipVerification.manifestEntryPath}`,
+      )
+    }
+    if (!zipVerification.complete) {
+      throw new Error(
+        [
+          `UI responsiveness same-corpus proof archive ZIP is incomplete: ${zipVerification.archivePath}`,
+          `${String(zipVerification.fileVerification.verifiedArtifactCount)}/${String(
+            zipVerification.fileVerification.checkedArtifactCount,
+          )} files verified inside ZIP`,
+          `${String(zipVerification.fileVerification.missingArtifactCount)} missing`,
+          `${String(zipVerification.fileVerification.mismatchedArtifactCount)} mismatch`,
+        ].join('; '),
+      )
+    }
   }
   if (options.requireGitTracked !== true) {
     return

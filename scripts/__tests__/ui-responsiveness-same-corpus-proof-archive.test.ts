@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { strToU8, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
 import { buildWorkbookBenchmarkCorpus } from '../../packages/benchmarks/src/workbook-corpus.js'
@@ -10,8 +11,11 @@ import { buildSameCorpusFingerprint } from '../ui-responsiveness-same-corpus-fin
 import {
   buildSameCorpusProofArchiveManifest,
   proofArchiveManifestPath,
+  type SameCorpusProofArchiveArtifact,
+  type SameCorpusProofArchiveManifest,
   verifySameCorpusProofArchiveFiles,
   verifySameCorpusProofArchiveManifestPath,
+  verifySameCorpusProofArchiveZipPath,
   writeSameCorpusProofArchiveManifest,
 } from '../ui-responsiveness-same-corpus-proof-archive.ts'
 import type { SameCorpusProductSemanticUiProof, SameCorpusScenarioProof } from '../ui-responsiveness-same-corpus-proof.ts'
@@ -179,6 +183,124 @@ describe('same-corpus proof archive manifest', () => {
       complete: true,
     })
     expect(verification.entries.map((entry) => entry.status)).toEqual(['verified', 'verified'])
+  })
+
+  it('verifies final proof archive ZIP contents instead of trusting loose local files', () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'bilig-same-corpus-proof-archive-zip-'))
+    const archivePath = join(rootDir, 'same-corpus-proof.zip')
+    const scenarioBytes = 'zip scenario screenshot bytes'
+    const committedReadback = {
+      value: 'same-corpus-edit-1',
+      formula: null,
+      fillColor: null,
+      visibleText: 'same-corpus-edit-1',
+      source: 'google-sheets-xlsx-export' as const,
+    }
+    const committedBytes = sameCorpusCommittedStateArtifactJson({
+      artifactPath: 'google-sheets-sample-1-after.json',
+      capturedAtMs: 10,
+      exportUrl: 'https://docs.google.com/spreadsheets/d/example/export?format=xlsx',
+      phase: 'after',
+      product: 'google-sheets',
+      readback: committedReadback,
+      sampleIndex: 0,
+      sheetId: 'gid:0',
+      sheetName: 'WideGrid',
+      targetRange: 'C5',
+      workbookByteSize: 123,
+      workbookSha256: 'c'.repeat(64),
+      workload: 'edit-visible-cell',
+    })
+    const artifacts: SameCorpusProofArchiveArtifact[] = [
+      {
+        kind: 'scenario-screenshot',
+        product: 'bilig',
+        workload: 'open-workbook',
+        path: 'bilig-sample-1.png',
+        screenshotSha256: sha256Hex(scenarioBytes),
+      },
+      {
+        kind: 'google-sheets-committed-state-export',
+        product: 'google-sheets',
+        workload: 'edit-visible-cell',
+        sampleIndex: 0,
+        phase: 'after',
+        sheetName: 'WideGrid',
+        sheetId: 'gid:0',
+        targetRange: 'C5',
+        capturedAtMs: 10,
+        artifactPath: 'google-sheets-sample-1-after.json',
+        artifactSha256: sha256Hex(committedBytes),
+        exportUrl: 'https://docs.google.com/spreadsheets/d/example/export?format=xlsx',
+        workbookByteSize: 123,
+        workbookSha256: 'c'.repeat(64),
+        readback: committedReadback,
+        readbackSha256: stableJsonSha256(committedReadback),
+      },
+    ]
+    writeSameCorpusProofZip(archivePath, {
+      'proof-archive-manifest.json': sameCorpusProofArchiveManifestJson(artifacts),
+      'bilig-sample-1.png': scenarioBytes,
+      'google-sheets-sample-1-after.json': committedBytes,
+    })
+
+    const verification = verifySameCorpusProofArchiveZipPath(archivePath)
+
+    expect(verification).toMatchObject({
+      archivePath,
+      manifestEntryPath: 'proof-archive-manifest.json',
+      filesVerified: true,
+      complete: true,
+      fileVerification: {
+        checkedArtifactCount: 2,
+        verifiedArtifactCount: 2,
+        missingArtifactCount: 0,
+        mismatchedArtifactCount: 0,
+        complete: true,
+      },
+    })
+    expect(verification.fileVerification.entries.map((entry) => entry.status)).toEqual(['verified', 'verified'])
+  })
+
+  it('rejects stale final proof archive ZIP bytes even when a matching loose file exists', () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'bilig-same-corpus-proof-archive-zip-stale-'))
+    const archivePath = join(rootDir, 'same-corpus-proof.zip')
+    const artifactPath = 'bilig-sample-1.png'
+    const freshBytes = 'fresh screenshot bytes'
+    const staleBytes = 'stale screenshot bytes'
+    writeFileSync(join(rootDir, artifactPath), freshBytes)
+    const artifacts: SameCorpusProofArchiveArtifact[] = [
+      {
+        kind: 'scenario-screenshot',
+        product: 'bilig',
+        workload: 'open-workbook',
+        path: artifactPath,
+        screenshotSha256: sha256Hex(freshBytes),
+      },
+    ]
+    writeSameCorpusProofZip(archivePath, {
+      'proof-archive-manifest.json': sameCorpusProofArchiveManifestJson(artifacts),
+      [artifactPath]: staleBytes,
+    })
+
+    const verification = verifySameCorpusProofArchiveZipPath(archivePath)
+
+    expect(verification).toMatchObject({
+      filesVerified: false,
+      complete: false,
+      fileVerification: {
+        checkedArtifactCount: 1,
+        verifiedArtifactCount: 0,
+        missingArtifactCount: 0,
+        mismatchedArtifactCount: 1,
+        complete: false,
+      },
+    })
+    expect(verification.fileVerification.entries[0]).toMatchObject({
+      status: 'hash-mismatch',
+      actualSha256: sha256Hex(staleBytes),
+      expectedSha256: sha256Hex(freshBytes),
+    })
   })
 
   it('rejects committed-state archive files whose embedded target identity drifts from the manifest', () => {
@@ -409,6 +531,54 @@ function sameCorpusMeasurement(
     },
     limitations: [],
   }
+}
+
+function writeSameCorpusProofZip(archivePath: string, entries: Record<string, string>): void {
+  writeFileSync(
+    archivePath,
+    zipSync(Object.fromEntries(Object.entries(entries).map(([entryPath, contents]) => [entryPath, strToU8(contents)]))),
+  )
+}
+
+function sameCorpusProofArchiveManifestJson(artifacts: readonly SameCorpusProofArchiveArtifact[]): string {
+  const manifest: SameCorpusProofArchiveManifest = {
+    schemaVersion: 1,
+    suite: 'ui-responsiveness-same-corpus-proof-archive',
+    captureRunSignature: 'd'.repeat(64),
+    requiredArtifactCount: artifacts.length,
+    artifactCount: artifacts.length,
+    filesVerified: true,
+    complete: true,
+    fileVerification: {
+      schemaVersion: 1,
+      checkedArtifactCount: artifacts.length,
+      verifiedArtifactCount: artifacts.length,
+      missingArtifactCount: 0,
+      mismatchedArtifactCount: 0,
+      complete: true,
+      entries: [],
+    },
+    artifacts,
+  }
+  return `${JSON.stringify(manifest, null, 2)}\n`
+}
+
+function sameCorpusCommittedStateArtifactJson(value: {
+  readonly artifactPath: string
+  readonly capturedAtMs: number
+  readonly exportUrl: string
+  readonly phase: 'before' | 'after' | 'restored'
+  readonly product: 'google-sheets'
+  readonly readback: unknown
+  readonly sampleIndex: number
+  readonly sheetId: string | null
+  readonly sheetName: string
+  readonly targetRange: string
+  readonly workbookByteSize: number
+  readonly workbookSha256: string
+  readonly workload: UiResponsivenessSameCorpusWorkload
+}): string {
+  return `${JSON.stringify(value, null, 2)}\n`
 }
 
 function sha256Hex(value: string): string {

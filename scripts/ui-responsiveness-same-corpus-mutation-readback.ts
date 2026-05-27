@@ -10,6 +10,18 @@ interface ScreenshotBuffer {
   toString(encoding: 'base64'): string
 }
 
+interface SameCorpusViewportSize {
+  readonly width: number
+  readonly height: number
+}
+
+export interface SameCorpusVisibleCellInteriorClip {
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+}
+
 export async function readExternalVisibleGridCellReadback(args: {
   readonly page: Page
   readonly product: UiResponsivenessSameCorpusProduct
@@ -312,19 +324,39 @@ async function readExternalVisibleGridCellFillColor(
   targetBox: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
 ): Promise<string | null> {
   const viewport = page.viewportSize() ?? (await page.evaluate(() => ({ height: window.innerHeight, width: window.innerWidth })))
-  const x0 = Math.max(0, Math.floor(targetBox.x + 3))
-  const y0 = Math.max(0, Math.floor(targetBox.y + 3))
-  const x1 = Math.min(viewport.width, Math.ceil(targetBox.x + targetBox.width - 3))
-  const y1 = Math.min(viewport.height, Math.ceil(targetBox.y + targetBox.height - 3))
-  if (x1 <= x0 || y1 <= y0) {
+  const clip = sameCorpusVisibleCellInteriorClip(targetBox, viewport)
+  if (!clip) {
     return null
   }
   const screenshot = await page.screenshot({
     animations: 'disabled',
     caret: 'hide',
-    clip: { height: y1 - y0, width: x1 - x0, x: x0, y: y0 },
+    clip,
   })
   return await readExpectedFillColorFromScreenshot(page, screenshot)
+}
+
+export function sameCorpusVisibleCellInteriorClip(
+  targetBox: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
+  viewport: SameCorpusViewportSize,
+): SameCorpusVisibleCellInteriorClip | null {
+  const xInset = sameCorpusVisibleCellInteriorInset(targetBox.width, 3)
+  const yInset = sameCorpusVisibleCellInteriorInset(targetBox.height, 3)
+  const x0 = Math.max(0, Math.floor(targetBox.x + xInset))
+  const y0 = Math.max(0, Math.floor(targetBox.y + yInset))
+  const x1 = Math.min(viewport.width, Math.ceil(targetBox.x + targetBox.width - xInset))
+  const y1 = Math.min(viewport.height, Math.ceil(targetBox.y + targetBox.height - yInset))
+  if (x1 <= x0 || y1 <= y0) {
+    return null
+  }
+  return { height: y1 - y0, width: x1 - x0, x: x0, y: y0 }
+}
+
+function sameCorpusVisibleCellInteriorInset(size: number, minimumInset: number): number {
+  if (size <= 2) {
+    return 0
+  }
+  return Math.min(Math.max(minimumInset, Math.floor(size * 0.2)), Math.floor((size - 1) / 2))
 }
 
 export async function firstVisibleTargetBox(

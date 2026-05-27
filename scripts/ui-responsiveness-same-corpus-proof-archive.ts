@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, resolve } from 'node:path'
 
+import { strFromU8, unzipSync } from 'fflate'
+
 import type { SameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
 import type { SameCorpusMutationTargetReadback } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import { validateSameCorpusProductSemanticUiProof } from './ui-responsiveness-same-corpus-semantic-proof.ts'
@@ -76,6 +78,22 @@ export interface SameCorpusGoogleSheetsCommittedStateArchiveArtifact {
 
 export interface SameCorpusProofArchiveBuildOptions {
   readonly artifactBaseDir?: string
+}
+
+export interface SameCorpusProofArchiveZipVerificationOptions {
+  readonly entryRootDir?: string
+  readonly manifestEntryPath?: string
+}
+
+export interface SameCorpusProofArchiveZipVerification {
+  readonly schemaVersion: 1
+  readonly archivePath: string
+  readonly manifestEntryPath: string
+  readonly manifestSha256: string
+  readonly filesVerified: boolean
+  readonly complete: boolean
+  readonly manifest: SameCorpusProofArchiveManifest
+  readonly fileVerification: SameCorpusProofArchiveFileVerification
 }
 
 export interface SameCorpusProofArchiveFileVerification {
@@ -301,11 +319,55 @@ export function verifySameCorpusProofArchiveManifestPath(
   }
 }
 
+export function verifySameCorpusProofArchiveZipPath(
+  archivePath: string,
+  options: SameCorpusProofArchiveZipVerificationOptions = {},
+): SameCorpusProofArchiveZipVerification {
+  const resolvedArchivePath = resolve(archivePath)
+  const entriesByPath = normalizeSameCorpusProofArchiveZipEntries(unzipSync(new Uint8Array(readFileSync(resolvedArchivePath))))
+  const manifestEntryPath = resolveSameCorpusProofArchiveZipManifestEntry(entriesByPath, options.manifestEntryPath)
+  const manifestBytes = entriesByPath.get(manifestEntryPath)
+  if (!manifestBytes) {
+    throw new Error(`UI responsiveness same-corpus proof archive ZIP manifest is missing: ${manifestEntryPath}`)
+  }
+  const manifest = parseSameCorpusProofArchiveManifest(JSON.parse(strFromU8(manifestBytes)) as unknown)
+  const fileVerification = verifySameCorpusProofArchiveZipFiles(manifest.artifacts, entriesByPath, {
+    archivePath: resolvedArchivePath,
+    entryRootDir: options.entryRootDir,
+  })
+  const allRequiredArtifactsPresent = manifest.artifactCount === manifest.requiredArtifactCount
+  return {
+    schemaVersion: 1,
+    archivePath: resolvedArchivePath,
+    manifestEntryPath,
+    manifestSha256: sha256Hex(manifestBytes),
+    filesVerified: allRequiredArtifactsPresent && fileVerification.complete,
+    complete: allRequiredArtifactsPresent && fileVerification.complete,
+    manifest,
+    fileVerification,
+  }
+}
+
 export function verifySameCorpusProofArchiveFiles(
   artifacts: readonly SameCorpusProofArchiveArtifact[],
   options: SameCorpusProofArchiveBuildOptions = {},
 ): SameCorpusProofArchiveFileVerification {
   const entries = artifacts.map((artifact) => verifySameCorpusProofArchiveFile(artifact, options))
+  return summarizeSameCorpusProofArchiveFileVerification(entries)
+}
+
+function verifySameCorpusProofArchiveZipFiles(
+  artifacts: readonly SameCorpusProofArchiveArtifact[],
+  entriesByPath: ReadonlyMap<string, Uint8Array>,
+  options: { readonly archivePath: string; readonly entryRootDir?: string },
+): SameCorpusProofArchiveFileVerification {
+  const entries = artifacts.map((artifact) => verifySameCorpusProofArchiveZipFile(artifact, entriesByPath, options))
+  return summarizeSameCorpusProofArchiveFileVerification(entries)
+}
+
+function summarizeSameCorpusProofArchiveFileVerification(
+  entries: readonly SameCorpusProofArchiveFileVerificationEntry[],
+): SameCorpusProofArchiveFileVerification {
   const verifiedArtifactCount = entries.filter((entry) => entry.status === 'verified').length
   const missingArtifactCount = entries.filter((entry) => entry.status === 'missing').length
   const mismatchedArtifactCount = entries.filter((entry) => entry.status === 'hash-mismatch' || entry.status === 'identity-mismatch').length
@@ -612,6 +674,38 @@ function verifySameCorpusProofArchiveFile(
     : { ...baseEntry, status: 'verified', actualSha256 }
 }
 
+function verifySameCorpusProofArchiveZipFile(
+  artifact: SameCorpusProofArchiveArtifact,
+  entriesByPath: ReadonlyMap<string, Uint8Array>,
+  options: { readonly archivePath: string; readonly entryRootDir?: string },
+): SameCorpusProofArchiveFileVerificationEntry {
+  const path = sameCorpusProofArchiveArtifactPath(artifact)
+  const entryPath = resolveSameCorpusProofArchiveZipArtifactEntry(path, options.entryRootDir)
+  const expectedSha256 = sameCorpusProofArchiveArtifactSha256(artifact)
+  const baseEntry = {
+    kind: artifact.kind,
+    product: artifact.product,
+    workload: artifact.workload,
+    ...('sampleIndex' in artifact ? { sampleIndex: artifact.sampleIndex, phase: artifact.phase } : {}),
+    path,
+    resolvedPath: `${options.archivePath}#${entryPath}`,
+    expectedSha256,
+  }
+  const bytes = entriesByPath.get(entryPath)
+  if (!bytes) {
+    return { ...baseEntry, status: 'missing' }
+  }
+  const actualSha256 = sha256Hex(bytes)
+  if (actualSha256 !== expectedSha256) {
+    return { ...baseEntry, status: 'hash-mismatch', actualSha256 }
+  }
+  const identityMismatchReason =
+    artifact.kind === 'google-sheets-committed-state-export' ? committedStateArtifactIdentityMismatchReason(artifact, bytes) : null
+  return identityMismatchReason
+    ? { ...baseEntry, status: 'identity-mismatch', actualSha256, identityMismatchReason }
+    : { ...baseEntry, status: 'verified', actualSha256 }
+}
+
 function sameCorpusProofArchiveArtifactPath(artifact: SameCorpusProofArchiveArtifact): string {
   return artifact.kind === 'google-sheets-committed-state-export' ? artifact.artifactPath : artifact.path
 }
@@ -622,6 +716,59 @@ function sameCorpusProofArchiveArtifactSha256(artifact: SameCorpusProofArchiveAr
 
 function resolveSameCorpusProofArchiveArtifactPath(path: string, artifactBaseDir: string | undefined): string {
   return isAbsolute(path) ? path : resolve(artifactBaseDir ?? process.cwd(), path)
+}
+
+function normalizeSameCorpusProofArchiveZipEntries(zipEntries: Record<string, Uint8Array>): Map<string, Uint8Array> {
+  const entriesByPath = new Map<string, Uint8Array>()
+  for (const [path, bytes] of Object.entries(zipEntries)) {
+    const normalizedPath = normalizeSameCorpusProofArchiveZipEntryPath(path, 'ZIP entry')
+    if (entriesByPath.has(normalizedPath)) {
+      throw new Error(`UI responsiveness same-corpus proof archive ZIP has duplicate normalized entry: ${normalizedPath}`)
+    }
+    entriesByPath.set(normalizedPath, bytes)
+  }
+  return entriesByPath
+}
+
+function resolveSameCorpusProofArchiveZipManifestEntry(
+  entriesByPath: ReadonlyMap<string, Uint8Array>,
+  manifestEntryPath: string | undefined,
+): string {
+  if (manifestEntryPath) {
+    return normalizeSameCorpusProofArchiveZipEntryPath(manifestEntryPath, 'manifest entry')
+  }
+  const candidates = [...entriesByPath.keys()].filter(
+    (entryPath) => entryPath.endsWith('/proof-archive-manifest.json') || entryPath === 'proof-archive-manifest.json',
+  )
+  if (candidates.length === 1) {
+    return candidates[0]
+  }
+  if (candidates.length === 0) {
+    throw new Error('UI responsiveness same-corpus proof archive ZIP manifest is missing')
+  }
+  throw new Error('UI responsiveness same-corpus proof archive ZIP contains multiple proof manifests; pass manifestEntryPath')
+}
+
+function resolveSameCorpusProofArchiveZipArtifactEntry(path: string, entryRootDir: string | undefined): string {
+  const normalizedPath = normalizeSameCorpusProofArchiveZipEntryPath(path, 'artifact entry')
+  if (!entryRootDir) {
+    return normalizedPath
+  }
+  return `${normalizeSameCorpusProofArchiveZipEntryPath(entryRootDir, 'entry root')}/${normalizedPath}`
+}
+
+function normalizeSameCorpusProofArchiveZipEntryPath(path: string, label: string): string {
+  const normalizedPath = path
+    .replaceAll('\\', '/')
+    .replace(/^\.\/+/u, '')
+    .trim()
+  if (normalizedPath.length === 0) {
+    throw new Error(`UI responsiveness same-corpus proof archive ZIP ${label} path is empty`)
+  }
+  if (normalizedPath.startsWith('/') || normalizedPath.split('/').includes('..')) {
+    throw new Error(`UI responsiveness same-corpus proof archive ZIP ${label} escapes the archive: ${path}`)
+  }
+  return normalizedPath
 }
 
 function sha256Hex(bytes: Uint8Array): string {
