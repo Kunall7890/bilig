@@ -690,28 +690,37 @@ describe('wasm kernel aggregate and criteria dispatch', () => {
       [encodePushString(3), encodePushString(4), encodeCall(BuiltinId.Gcd, 2), encodeRet()],
       [encodePushString(5), encodePushString(6), encodeCall(BuiltinId.Lcm, 2), encodeRet()],
       [encodePushString(0), encodePushString(1), encodeCall(BuiltinId.Sumsq, 2), encodeRet()],
+      [encodePushString(0), encodePushString(1), encodeCall(BuiltinId.Geomean, 2), encodeRet()],
+      [encodePushString(0), encodePushString(1), encodeCall(BuiltinId.Harmean, 2), encodeRet()],
       [encodePushString(0), encodePushRange(0), encodeCall(BuiltinId.Product, 2), encodeRet()],
       [encodePushRange(0), encodeCall(BuiltinId.Count, 1), encodeRet()],
       [encodePushRange(0), encodeCall(BuiltinId.Min, 1), encodeRet()],
       [encodePushRange(0), encodeCall(BuiltinId.Max, 1), encodeRet()],
       [encodePushString(2), encodeCall(BuiltinId.Min, 1), encodeRet()],
+      [encodePushString(2), encodePushNumber(0), encodeCall(BuiltinId.Geomean, 2), encodeRet()],
+      [encodePushNumber(1), encodePushNumber(0), encodeCall(BuiltinId.Harmean, 2), encodeRet()],
     ])
     kernel.uploadPrograms(
       packed.programs,
       packed.offsets,
       packed.lengths,
-      Uint32Array.from(Array.from({ length: 12 }, (_, index) => cellIndex(1, index, width))),
+      Uint32Array.from(Array.from({ length: 16 }, (_, index) => cellIndex(1, index, width))),
     )
-    kernel.uploadConstants(new Float64Array(), new Uint32Array(12), new Uint32Array(12))
-    kernel.evalBatch(Uint32Array.from(Array.from({ length: 12 }, (_, index) => cellIndex(1, index, width))))
+    const constants = packConstants([[], [], [], [], [], [], [], [], [], [], [], [], [], [], [2], [0, 2]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 16 }, (_, index) => cellIndex(1, index, width))))
 
-    const expected = [6, 2, 3, 2, 6, 24, 13, 2, 0, 0, 0]
+    const expected = [6, 2, 3, 2, 6, 24, 13, Math.sqrt(6), 2.4, 2, 0, 0, 0]
     for (const [index, value] of expected.entries()) {
       expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Number)
-      expect(kernel.readNumbers()[cellIndex(1, index, width)]).toBe(value)
+      expect(kernel.readNumbers()[cellIndex(1, index, width)]).toBeCloseTo(value, 12)
     }
-    expect(kernel.readTags()[cellIndex(1, 11, width)]).toBe(ValueTag.Error)
-    expect(kernel.readErrors()[cellIndex(1, 11, width)]).toBe(ErrorCode.Value)
+    expect(kernel.readTags()[cellIndex(1, 13, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 13, width)]).toBe(ErrorCode.Value)
+    expect(kernel.readTags()[cellIndex(1, 14, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 14, width)]).toBe(ErrorCode.Value)
+    expect(kernel.readTags()[cellIndex(1, 15, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 15, width)]).toBe(ErrorCode.Num)
   })
 
   it('coerces direct numeric text for AVERAGE without coercing range text on the wasm path', async () => {

@@ -83,7 +83,7 @@ export function skewSampleOf(values: Array<f64>): f64 {
 }
 
 export function skewPopulationOf(values: Array<f64>): f64 {
-  if (values.length == 0) {
+  if (values.length < 3) {
     return NaN
   }
   const mean = meanOf(values)

@@ -181,11 +181,14 @@ export function tryApplyStatisticsSummaryBuiltin(
       result = kurtosisOf(values)
     }
 
+    const invalidResultError =
+      builtinId == BuiltinId.Skew || builtinId == BuiltinId.SkewP || builtinId == BuiltinId.Kurt ? ErrorCode.Div0 : ErrorCode.Value
+
     return writeResult(
       base,
       STACK_KIND_SCALAR,
       isNumericResult(result) ? <u8>ValueTag.Number : <u8>ValueTag.Error,
-      isNumericResult(result) ? result : ErrorCode.Value,
+      isNumericResult(result) ? result : invalidResultError,
       rangeIndexStack,
       valueStack,
       tagStack,

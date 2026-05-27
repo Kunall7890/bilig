@@ -294,6 +294,31 @@ describe('wasm kernel ordered statistics dispatch slab', () => {
     expectNumberCell(kernel, cellIndex(2, 4, width), 0)
   })
 
+  it('returns #DIV/0! for skew and kurt invalid-dispersion domains', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 6, 16, 0, 0)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Skew, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(0), encodePushNumber(0), encodeCall(BuiltinId.Skew, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.SkewP, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(0), encodePushNumber(0), encodeCall(BuiltinId.SkewP, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Kurt, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(0), encodePushNumber(0), encodePushNumber(0), encodeCall(BuiltinId.Kurt, 4), encodeRet()],
+    ])
+    const constants = packConstants([[1, 2], [1], [1, 2], [1], [1, 2, 3], [1]])
+    const targets = Uint32Array.from(Array.from({ length: 6 }, (_, index) => cellIndex(1, index, width)))
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targets)
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(targets)
+
+    for (const target of targets) {
+      expectErrorCell(kernel, target, ErrorCode.Div0)
+    }
+  })
+
   it('returns Excel-compatible domain errors for ordered statistics helpers', async () => {
     const kernel = await createKernel()
     const width = 20

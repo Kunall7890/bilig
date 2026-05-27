@@ -803,7 +803,7 @@ export function skewSample(numbers: number[]): number | undefined {
 }
 
 export function skewPopulation(numbers: number[]): number | undefined {
-  if (numbers.length === 0) {
+  if (numbers.length < 3) {
     return undefined
   }
   const mean = numbers.reduce((sum, value) => sum + value, 0) / numbers.length

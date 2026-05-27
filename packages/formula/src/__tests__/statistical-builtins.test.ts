@@ -9,6 +9,7 @@ const bool = (value: boolean): CellValue => ({ tag: ValueTag.Boolean, value })
 const numError = { tag: ValueTag.Error, code: ErrorCode.Num } as const
 const naError = { tag: ValueTag.Error, code: ErrorCode.NA } as const
 const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
+const div0Error = { tag: ValueTag.Error, code: ErrorCode.Div0 } as const
 
 describe('statistical builtins', () => {
   it('matches Microsoft-documented normal-family numeric-domain errors', () => {
@@ -56,5 +57,14 @@ describe('statistical builtins', () => {
     for (const actual of cases) {
       expect(actual).toEqual(naError)
     }
+  })
+
+  it('matches Microsoft-documented SKEW, SKEW.P, and KURT invalid-dispersion errors', () => {
+    expect(getBuiltin('SKEW')?.(num(1), num(2))).toEqual(div0Error)
+    expect(getBuiltin('SKEW')?.(num(1), num(1), num(1))).toEqual(div0Error)
+    expect(getBuiltin('SKEW.P')?.(num(1), num(2))).toEqual(div0Error)
+    expect(getBuiltin('SKEW.P')?.(num(1), num(1), num(1))).toEqual(div0Error)
+    expect(getBuiltin('KURT')?.(num(1), num(2), num(3))).toEqual(div0Error)
+    expect(getBuiltin('KURT')?.(num(1), num(1), num(1), num(1))).toEqual(div0Error)
   })
 })

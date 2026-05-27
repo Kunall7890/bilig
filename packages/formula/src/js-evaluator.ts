@@ -221,10 +221,26 @@ function coerceDirectNumericTextAggregateArgument(callee: string, value: CellVal
     const numeric = parseNumericText(value.value)
     return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
   }
+  if (callee === 'GEOMEAN' || callee === 'HARMEAN') {
+    const numeric = parseNumericText(value.value)
+    return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
+  }
   return value
 }
 
-const numericReferenceAggregateCallees = new Set(['SUM', 'AVERAGE', 'AVG', 'MIN', 'MAX', 'PRODUCT', 'SUMSQ', 'GCD', 'LCM'])
+const numericReferenceAggregateCallees = new Set([
+  'SUM',
+  'AVERAGE',
+  'AVG',
+  'MIN',
+  'MAX',
+  'PRODUCT',
+  'SUMSQ',
+  'GCD',
+  'LCM',
+  'GEOMEAN',
+  'HARMEAN',
+])
 const numericReferenceStatisticCallees = new Set([
   'MODE',
   'MODE.SNGL',

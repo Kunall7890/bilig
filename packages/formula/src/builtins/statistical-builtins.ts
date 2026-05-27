@@ -154,7 +154,7 @@ export function createStatisticalBuiltins({
         return error
       }
       const skew = skewSample(collectStatNumericArgs(args))
-      return skew === undefined ? valueError() : numberResult(skew)
+      return skew === undefined ? div0Error() : numberResult(skew)
     },
     'SKEW.P': (...args) => {
       const error = firstError(args)
@@ -162,7 +162,7 @@ export function createStatisticalBuiltins({
         return error
       }
       const skew = skewPopulation(collectStatNumericArgs(args))
-      return skew === undefined ? valueError() : numberResult(skew)
+      return skew === undefined ? div0Error() : numberResult(skew)
     },
     SKEWP: (...args) => builtins['SKEW.P']!(...args),
     KURT: (...args) => {
@@ -171,7 +171,7 @@ export function createStatisticalBuiltins({
         return error
       }
       const value = kurtosis(collectStatNumericArgs(args))
-      return value === undefined ? valueError() : numberResult(value)
+      return value === undefined ? div0Error() : numberResult(value)
     },
     NORMDIST: (xArg, meanArg, standardDeviationArg, cumulativeArg) => {
       const x = toNumber(xArg)

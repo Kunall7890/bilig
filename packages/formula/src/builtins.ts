@@ -646,15 +646,19 @@ const scalarBuiltins: Record<string, Builtin> = {
   GEOMEAN: (...args) => {
     const error = firstError(args)
     if (error) return error
-    const numbers = collectNumericArgs(args, toNumber)
+    const numbers: number[] = []
+    for (const arg of args) {
+      const numeric = toDirectAggregateNumber(arg)
+      if (numeric === undefined) {
+        return valueError()
+      }
+      numbers.push(numeric)
+    }
     if (numbers.length === 0) {
       return valueError()
     }
-    if (numbers.some((value) => value < 0)) {
-      return valueError()
-    }
-    if (numbers.some((value) => value === 0)) {
-      return numberResult(0)
+    if (numbers.some((value) => value <= 0)) {
+      return numError()
     }
     const logSum = numbers.reduce((sum, value) => sum + Math.log(value), 0)
     return numberResult(Math.exp(logSum / numbers.length))
@@ -662,9 +666,16 @@ const scalarBuiltins: Record<string, Builtin> = {
   HARMEAN: (...args) => {
     const error = firstError(args)
     if (error) return error
-    const numbers = collectNumericArgs(args, toNumber)
+    const numbers: number[] = []
+    for (const arg of args) {
+      const numeric = toDirectAggregateNumber(arg)
+      if (numeric === undefined) {
+        return valueError()
+      }
+      numbers.push(numeric)
+    }
     if (numbers.length === 0 || numbers.some((value) => value <= 0)) {
-      return valueError()
+      return numbers.length === 0 ? valueError() : numError()
     }
     return numberResult(numbers.length / numbers.reduce((sum, value) => sum + 1 / value, 0))
   },

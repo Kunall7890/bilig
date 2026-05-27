@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import { getBuiltin } from '../builtins.js'
+import { evaluateAst } from '../js-evaluator.js'
+import { parseFormula } from '../parser.js'
 
 const num = (value: number): CellValue => ({ tag: ValueTag.Number, value })
 const str = (value: string, stringId = 1): CellValue => ({ tag: ValueTag.String, value, stringId })
@@ -155,6 +157,51 @@ describe('math builtins', () => {
     expect(getBuiltin('SQRTPI')?.(num(-1))).toEqual(numError)
     expect(getBuiltin('SQRT')?.(str('bad'))).toEqual(valueError)
     expect(getBuiltin('SQRTPI')?.(str('bad'))).toEqual(valueError)
+  })
+
+  it('matches Microsoft Excel GEOMEAN and HARMEAN direct text and positive-domain semantics', () => {
+    expect(getBuiltin('GEOMEAN')?.(num(0), num(2))).toEqual(numError)
+    expect(getBuiltin('GEOMEAN')?.(num(-1), num(2))).toEqual(numError)
+    expect(getBuiltin('HARMEAN')?.(num(0), num(2))).toEqual(numError)
+    expect(getBuiltin('HARMEAN')?.(num(-1), num(2))).toEqual(numError)
+
+    const context = {
+      sheetName: 'Sheet1',
+      resolveCell: (_sheetName: string, address: string): CellValue => {
+        if (address === 'A1') {
+          return str('bad')
+        }
+        if (address === 'A2') {
+          return num(2)
+        }
+        if (address === 'A3') {
+          return { tag: ValueTag.Boolean, value: true }
+        }
+        if (address === 'A4') {
+          return num(0)
+        }
+        return { tag: ValueTag.Empty }
+      },
+      resolveRange: (_sheetName: string, start: string, end: string): CellValue[] => {
+        if (start === 'A1' && end === 'A3') {
+          return [str('bad'), num(2), { tag: ValueTag.Boolean, value: true }]
+        }
+        if (start === 'A1' && end === 'A4') {
+          return [str('bad'), num(2), { tag: ValueTag.Boolean, value: true }, num(0)]
+        }
+        return []
+      },
+    }
+
+    expect(evaluateAst(parseFormula('GEOMEAN("2","8")'), context)).toEqual(num(4))
+    expect(evaluateAst(parseFormula('GEOMEAN("bad",2)'), context)).toEqual(valueError)
+    expect(evaluateAst(parseFormula('GEOMEAN(A1:A3)'), context)).toEqual(num(2))
+    expect(evaluateAst(parseFormula('GEOMEAN(A1:A4)'), context)).toEqual(numError)
+
+    expect(evaluateAst(parseFormula('HARMEAN("2","8")'), context)).toEqual(num(3.2))
+    expect(evaluateAst(parseFormula('HARMEAN("bad",2)'), context)).toEqual(valueError)
+    expect(evaluateAst(parseFormula('HARMEAN(A1:A3)'), context)).toEqual(num(2))
+    expect(evaluateAst(parseFormula('HARMEAN(A1:A4)'), context)).toEqual(numError)
   })
 
   it('matches Microsoft Excel inverse trigonometric numeric-domain errors', () => {

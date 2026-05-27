@@ -567,16 +567,13 @@ export function tryApplyAggregateCriteriaBuiltin(
             continue
           }
           if (builtinId == BuiltinId.Geomean) {
-            if (numeric < 0.0) {
-              return writeAggregateError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-            }
-            if (numeric == 0.0) {
-              return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, 0.0, rangeIndexStack, valueStack, tagStack, kindStack)
+            if (numeric <= 0.0) {
+              return writeAggregateError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
             }
             logSum += Math.log(numeric)
           } else if (builtinId == BuiltinId.Harmean) {
             if (numeric <= 0.0) {
-              return writeAggregateError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+              return writeAggregateError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
             }
             reciprocalSum += 1.0 / numeric
           } else if (builtinId == BuiltinId.Gcd) {
@@ -612,16 +609,13 @@ export function tryApplyAggregateCriteriaBuiltin(
             continue
           }
           if (builtinId == BuiltinId.Geomean) {
-            if (numeric < 0.0) {
-              return writeAggregateError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-            }
-            if (numeric == 0.0) {
-              return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, 0.0, rangeIndexStack, valueStack, tagStack, kindStack)
+            if (numeric <= 0.0) {
+              return writeAggregateError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
             }
             logSum += Math.log(numeric)
           } else if (builtinId == BuiltinId.Harmean) {
             if (numeric <= 0.0) {
-              return writeAggregateError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+              return writeAggregateError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
             }
             reciprocalSum += 1.0 / numeric
           } else if (builtinId == BuiltinId.Gcd) {
@@ -673,16 +667,13 @@ export function tryApplyAggregateCriteriaBuiltin(
         continue
       }
       if (builtinId == BuiltinId.Geomean) {
-        if (numeric < 0.0) {
-          return writeAggregateError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-        }
-        if (numeric == 0.0) {
-          return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, 0.0, rangeIndexStack, valueStack, tagStack, kindStack)
+        if (numeric <= 0.0) {
+          return writeAggregateError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
         }
         logSum += Math.log(numeric)
       } else if (builtinId == BuiltinId.Harmean) {
         if (numeric <= 0.0) {
-          return writeAggregateError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+          return writeAggregateError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
         }
         reciprocalSum += 1.0 / numeric
       } else if (builtinId == BuiltinId.Gcd) {

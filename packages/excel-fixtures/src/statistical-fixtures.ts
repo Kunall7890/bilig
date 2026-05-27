@@ -1,3 +1,4 @@
+import { ErrorCode } from '@bilig/protocol'
 import type {
   ExcelExpectedValue,
   ExcelFixtureCase,
@@ -19,6 +20,10 @@ function createExcelFixtureId(family: ExcelFixtureFamily, slug: string): string 
 
 function numberExpected(value: number): ExcelExpectedValue {
   return { kind: 'number', value }
+}
+
+function errorExpected(code: ErrorCode, display: string): ExcelExpectedValue {
+  return { kind: 'error', code, display }
 }
 
 function input(address: string, value: ExcelFixtureInputCell['input'], note?: string): ExcelFixtureInputCell {
@@ -142,11 +147,32 @@ export const canonicalStatisticalFixtures: readonly ExcelFixtureCase[] = [
     [output('C1', numberExpected(0))],
   ),
   fixture(
+    'skew-insufficient-data-error',
+    'SKEW returns #DIV/0! when fewer than three data points are available',
+    '=SKEW(A1:A2)',
+    [input('A1', 1), input('A2', 2)],
+    [output('C1', errorExpected(ErrorCode.Div0, '#DIV/0!'))],
+  ),
+  fixture(
+    'skew-p-insufficient-data-error',
+    'SKEW.P returns #DIV/0! when fewer than three data points are available',
+    '=SKEW.P(A1:A2)',
+    [input('A1', 1), input('A2', 2)],
+    [output('C1', errorExpected(ErrorCode.Div0, '#DIV/0!'))],
+  ),
+  fixture(
     'kurt-basic',
     'KURT returns the excess kurtosis of the sample',
     '=KURT(A1:A5)',
     [input('A1', 1), input('A2', 2), input('A3', 3), input('A4', 4), input('A5', 5)],
     [output('C1', numberExpected(-1.2))],
+  ),
+  fixture(
+    'kurt-insufficient-data-error',
+    'KURT returns #DIV/0! when fewer than four data points are available',
+    '=KURT(A1:A3)',
+    [input('A1', 1), input('A2', 2), input('A3', 3)],
+    [output('C1', errorExpected(ErrorCode.Div0, '#DIV/0!'))],
   ),
   fixture(
     'normdist-basic',
