@@ -329,10 +329,9 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
       return false
     }
 
-    args.ensureRecalcScratchCapacity(count * 2 + 1)
-    const cellIndexBuffer = args.getChangedInputBuffer()
+    const cellIndexBuffer = new Uint32Array(count * 2)
     const inputCellIndices = cellIndexBuffer.subarray(0, count)
-    const formulaCellIndices = cellIndexBuffer.subarray(count)
+    const formulaCellIndices = cellIndexBuffer.subarray(count, count * 2)
     const formulaNumericResults = new Float64Array(count)
     const cellStore = args.state.workbook.cellStore
     let formulaCount = 0

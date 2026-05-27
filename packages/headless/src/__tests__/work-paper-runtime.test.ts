@@ -166,6 +166,10 @@ interface EngineApplyCellMutationsTarget {
   applyCellMutationsAtWithOptions: (...args: unknown[]) => unknown
 }
 
+interface EngineExistingNumericCellMutationsTarget {
+  tryApplyExistingNumericCellMutationsAt: (...args: unknown[]) => unknown
+}
+
 interface SheetGridEntryTarget {
   forEachCellEntry: (fn: (cellIndex: number, row: number, col: number) => void) => void
 }
@@ -194,6 +198,10 @@ function isEngineApplyCellMutationsTarget(value: unknown): value is EngineApplyC
   return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'applyCellMutationsAtWithOptions') === 'function'
 }
 
+function isEngineExistingNumericCellMutationsTarget(value: unknown): value is EngineExistingNumericCellMutationsTarget {
+  return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'tryApplyExistingNumericCellMutationsAt') === 'function'
+}
+
 function isEngineWorkbookTarget(value: unknown): value is EngineWorkbookTarget {
   const workbook = typeof value === 'object' && value !== null ? Reflect.get(value, 'workbook') : undefined
   return typeof workbook === 'object' && workbook !== null && typeof Reflect.get(workbook, 'getSheetById') === 'function'
@@ -215,6 +223,14 @@ function engineApplyCellMutationsTarget(workbook: WorkPaper): EngineApplyCellMut
   const engine = Reflect.get(workbook, 'engine')
   if (!isEngineApplyCellMutationsTarget(engine)) {
     throw new Error('Expected WorkPaper to expose applyCellMutationsAtWithOptions in tests')
+  }
+  return engine
+}
+
+function engineExistingNumericCellMutationsTarget(workbook: WorkPaper): EngineExistingNumericCellMutationsTarget {
+  const engine = Reflect.get(workbook, 'engine')
+  if (!isEngineExistingNumericCellMutationsTarget(engine)) {
+    throw new Error('Expected WorkPaper to expose tryApplyExistingNumericCellMutationsAt in tests')
   }
   return engine
 }
@@ -1126,7 +1142,7 @@ describe('WorkPaper', () => {
     expect(workbook.getCellValue(cell(sheetId, 0, 1))).toEqual({ tag: ValueTag.Number, value: 6 })
   })
 
-  it('keeps merged literal-only batch history on typed cell-mutation records', () => {
+  it('keeps merged existing-numeric batch history on typed mutation records', () => {
     const workbook = WorkPaper.buildFromArray([[1], [2]])
     const sheetId = workbook.getSheetId('Sheet1')!
 
@@ -1139,7 +1155,7 @@ describe('WorkPaper', () => {
     expect(undoStack).not.toBeNull()
     expect(undoStack).toHaveLength(1)
     expect(Reflect.get(undoStack?.[0], 'forward') ? Reflect.get(Reflect.get(undoStack?.[0], 'forward'), 'kind') : undefined).toBe(
-      'cell-mutations',
+      'existing-numeric-cell-mutations',
     )
     expect(Reflect.get(undoStack?.[0], 'inverse') ? Reflect.get(Reflect.get(undoStack?.[0], 'inverse'), 'kind') : undefined).toBe(
       'existing-numeric-cell-mutations',
@@ -1150,6 +1166,7 @@ describe('WorkPaper', () => {
     const workbook = WorkPaper.buildFromArray([[1], [2]])
     const sheetId = workbook.getSheetId('Sheet1')!
     const applyCellMutationsAt = vi.spyOn(engineApplyCellMutationsTarget(workbook), 'applyCellMutationsAtWithOptions')
+    const applyExistingNumericBatch = vi.spyOn(engineExistingNumericCellMutationsTarget(workbook), 'tryApplyExistingNumericCellMutationsAt')
 
     try {
       workbook.batch(() => {
@@ -1157,15 +1174,14 @@ describe('WorkPaper', () => {
         workbook.setCellContents(cell(sheetId, 1, 0), 20)
       })
 
-      expect(applyCellMutationsAt).toHaveBeenCalledTimes(1)
-      expect(applyCellMutationsAt.mock.calls[0]?.[1]).toMatchObject({
-        captureUndo: true,
-        potentialNewCells: 0,
-        reuseRefs: true,
-        source: 'local',
-      })
+      expect(applyCellMutationsAt).not.toHaveBeenCalled()
+      expect(applyExistingNumericBatch).toHaveBeenCalledTimes(1)
+      const request = Object(applyExistingNumericBatch.mock.calls[0]?.[0])
+      expect(Reflect.get(request, 'potentialNewCells')).toBe(0)
+      expect(Reflect.get(request, 'sheetIds')).toHaveLength(2)
     } finally {
       applyCellMutationsAt.mockRestore()
+      applyExistingNumericBatch.mockRestore()
     }
   })
 
