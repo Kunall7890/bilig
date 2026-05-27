@@ -13,13 +13,13 @@ credentials_for_provider:
   base_url:
     type: text-input
     required: true
-    default: http://localhost:4321
+    default: https://bilig.proompteng.ai/openapi/workpaper
     label:
-      en_US: Bilig API base URL
+      en_US: Bilig OpenAPI base URL
     placeholder:
-      en_US: http://localhost:4321
+      en_US: https://bilig.proompteng.ai/openapi/workpaper
     help:
-      en_US: Local or self-hosted Bilig app base URL.
+      en_US: Hosted no-key smoke endpoint, or your self-hosted Bilig app base URL.
 tools:
   - tools/forecast_formula_readback.yaml
 extra:

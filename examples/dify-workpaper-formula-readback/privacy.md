@@ -1,10 +1,11 @@
 # Bilig WorkPaper Dify Plugin Privacy
 
 This example plugin sends the selected input cell address, sheet name, and value
-to the configured Bilig API base URL. The example defaults to a local Bilig app:
+to the configured Bilig OpenAPI base URL. The example defaults to Bilig's hosted
+request-local smoke endpoint:
 
 ```text
-http://localhost:4321/api/workpaper/n8n/forecast
+https://bilig.proompteng.ai/openapi/workpaper/set-cell-and-readback
 ```
 
 The plugin does not collect API keys, user identity, files, workbook uploads, or

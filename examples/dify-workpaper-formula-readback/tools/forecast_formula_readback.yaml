@@ -38,6 +38,16 @@ parameters:
       en_US: Public demo sheet name. Leave as Inputs unless you run a compatible self-hosted Bilig route.
     llm_description: Public demo sheet name. Leave as Inputs unless the user provides a compatible self-hosted Bilig route.
     form: form
+  - name: readback_range
+    type: string
+    required: false
+    default: Summary!A1:B3
+    label:
+      en_US: Readback range
+    human_description:
+      en_US: Formula output range to read before and after the input edit.
+    llm_description: Formula output range to read before and after the input edit. Use Summary!A1:B3 for the hosted demo.
+    form: form
 extra:
   python:
     source: tools/forecast_formula_readback.py

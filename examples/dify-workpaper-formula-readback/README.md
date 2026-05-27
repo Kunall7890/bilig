@@ -1,8 +1,9 @@
 # Bilig WorkPaper Formula Readback For Dify
 
 This is a standalone Dify tool-plugin source artifact. It gives a Dify agent or
-workflow one focused spreadsheet tool: edit a forecast input cell through Bilig
-WorkPaper, recalculate formulas, and return verified readback.
+workflow one focused spreadsheet tool: edit a forecast input cell through the
+hosted Bilig WorkPaper OpenAPI endpoint, recalculate formulas, and return
+verified readback.
 
 It intentionally lives outside the Bilig pnpm workspace. Packaging this plugin
 does not require changing Bilig's root `package.json` or `pnpm-lock.yaml`.
@@ -12,11 +13,17 @@ does not require changing Bilig's root `package.json` or `pnpm-lock.yaml`.
 `forecast_formula_readback` calls:
 
 ```text
-POST http://localhost:4321/api/workpaper/n8n/forecast
+POST https://bilig.proompteng.ai/openapi/workpaper/set-cell-and-readback
 ```
 
-Set the provider `base_url` to your hosted Bilig app when this route is deployed
-outside local development.
+The provider defaults to the hosted no-key smoke endpoint:
+
+```text
+https://bilig.proompteng.ai/openapi/workpaper
+```
+
+Set `base_url` to your own Bilig app root or OpenAPI base URL when the workbook
+data is private.
 
 with:
 
@@ -24,7 +31,8 @@ with:
 {
   "sheetName": "Inputs",
   "address": "B3",
-  "value": 0.4
+  "value": 0.4,
+  "readbackRange": "Summary!A1:B3"
 }
 ```
 
@@ -34,17 +42,21 @@ The tool returns JSON proof:
 {
   "verified": true,
   "editedCell": "Inputs!B3",
+  "readbackRange": "Summary!A1:B3",
   "before": {
+    "input": 0.25,
+    "expectedCustomers": 5,
     "expectedArr": 60000
   },
   "after": {
-    "expectedArr": 96000,
-    "targetGap": 5600
+    "input": 0.4,
+    "expectedCustomers": 8,
+    "expectedArr": 96000
   },
   "checks": {
-    "formulasPersisted": true,
-    "restoredMatchesAfter": true,
-    "computedOutputChanged": true
+    "readbackChanged": true,
+    "restoredReadbackMatchesAfter": true,
+    "persisted": false
   }
 }
 ```
@@ -69,6 +81,7 @@ plugin repository documents that review flow:
 ## Local Checks
 
 ```sh
-python3 -m py_compile main.py provider/bilig.py tools/forecast_formula_readback.py
+python3 -m py_compile main.py provider/bilig.py tools/bilig_openapi_client.py tools/forecast_formula_readback.py
+PYTHONPATH=. python3 -m unittest discover -s tests
 ruby -e 'require "yaml"; %w[manifest.yaml provider/bilig.yaml tools/forecast_formula_readback.yaml].each { |p| YAML.load_file(p) }'
 ```
