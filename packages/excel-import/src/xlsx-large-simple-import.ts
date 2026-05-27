@@ -19,7 +19,7 @@ import { readImportedWorkbookDrawingArtifactsFromWorksheetRelationships } from '
 import { readImportedWorkbookExternalLinkArtifacts } from './xlsx-external-link-artifacts.js'
 import { readImportedSheetAutoFilters } from './xlsx-filters.js'
 import { readImportedWorkbookChartDrawingArtifacts } from './xlsx-import-chart-drawing-artifacts.js'
-import { externalPivotCachesWarning, unsupportedCellStylesWarning } from './xlsx-import-warnings.js'
+import { externalPivotCachesWarning, externalWorkbookReferencesWarning, unsupportedCellStylesWarning } from './xlsx-import-warnings.js'
 import { readWorkbookDefinedNames } from './xlsx-large-simple-defined-names.js'
 import { readLargeSimpleSheetHyperlinks, resolveLargeSimpleSheetHyperlinks } from './xlsx-large-simple-hyperlinks.js'
 import { LargeSimpleXlsxImportPhaseRecorder } from './xlsx-large-simple-import-telemetry.js'
@@ -151,10 +151,6 @@ export function tryImportLargeSimpleXlsx(
     workbookXml,
     workbookSheets.map((entry) => entry.name),
   )
-  if (workbookDefinedNames.externalWorkbookReferenceSeen) {
-    return null
-  }
-
   const worksheetEntries = workbookSheets.flatMap((entry) => {
     const path = worksheetPathsByRelationshipId.get(entry.relationshipId)
     return path ? [{ name: entry.name, relationshipId: entry.relationshipId, path }] : []
@@ -244,6 +240,9 @@ export function tryImportLargeSimpleXlsx(
   delete zip[importConstants.workbookRelationshipsPath]
   const workbookName = stringPool.intern(normalizeWorkbookName(fileName))
   const warnings = workbookDefinedNames.ignoredCount > 0 ? ['Some defined names were ignored during XLSX import.'] : []
+  if (workbookDefinedNames.externalWorkbookReferenceSeen) {
+    warnings.push(externalWorkbookReferencesWarning)
+  }
   if (hasExternalLargeSimplePivotCaches(zip)) {
     warnings.push(externalPivotCachesWarning)
   }

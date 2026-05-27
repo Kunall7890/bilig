@@ -189,7 +189,7 @@ export class LargeSimpleWorksheetStreamMetadataCollector {
     if (localName === 'extLst') {
       const sheetSlicerListExtXml = readSlicerListExtensionXml(decodeBytes(buffer, startIndex, endIndex))
       if (!sheetSlicerListExtXml) {
-        return false
+        return true
       }
       this.sheetSlicerListExtXml = sheetSlicerListExtXml
       return true

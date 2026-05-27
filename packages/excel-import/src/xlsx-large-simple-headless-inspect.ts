@@ -1,5 +1,5 @@
 import { normalizeWorkbookName } from './workbook-import-helpers.js'
-import { externalPivotCachesWarning, unsupportedCellStylesWarning } from './xlsx-import-warnings.js'
+import { externalPivotCachesWarning, externalWorkbookReferencesWarning, unsupportedCellStylesWarning } from './xlsx-import-warnings.js'
 import { isDataModelPackagePartPath } from './xlsx-data-model-artifacts.js'
 import type {
   LargeSimpleXlsxImportStats,
@@ -103,7 +103,7 @@ export function tryInspectLargeSimpleXlsxHeadless(
     workbookXml,
     workbookSheets.map((entry) => entry.name),
   )
-  if (workbookSheets.length === 0 || worksheetPathsByRelationshipId.size === 0 || definedNames.externalWorkbookReferenceSeen) {
+  if (workbookSheets.length === 0 || worksheetPathsByRelationshipId.size === 0) {
     return null
   }
   const worksheetEntries = workbookSheets.flatMap((entry) => {
@@ -116,6 +116,9 @@ export function tryInspectLargeSimpleXlsxHeadless(
   const hasSharedStrings = packagePaths.includes(sharedStringsPath)
   const hasStyles = packagePaths.includes(stylesPath)
   const warnings = definedNames.ignoredCount > 0 ? ['Some defined names were ignored during XLSX import.'] : []
+  if (definedNames.externalWorkbookReferenceSeen) {
+    warnings.push(externalWorkbookReferencesWarning)
+  }
   if (hasExternalLargeSimplePivotCaches(zip)) {
     warnings.push(externalPivotCachesWarning)
   }
@@ -292,7 +295,7 @@ export async function tryInspectLargeSimpleXlsxHeadlessAsync(
     workbookXml,
     workbookSheets.map((entry) => entry.name),
   )
-  if (workbookSheets.length === 0 || worksheetPathsByRelationshipId.size === 0 || definedNames.externalWorkbookReferenceSeen) {
+  if (workbookSheets.length === 0 || worksheetPathsByRelationshipId.size === 0) {
     return null
   }
   const worksheetEntries = workbookSheets.flatMap((entry) => {
@@ -305,6 +308,9 @@ export async function tryInspectLargeSimpleXlsxHeadlessAsync(
   const hasSharedStrings = packagePaths.includes(sharedStringsPath)
   const hasStyles = packagePaths.includes(stylesPath)
   const warnings = definedNames.ignoredCount > 0 ? ['Some defined names were ignored during XLSX import.'] : []
+  if (definedNames.externalWorkbookReferenceSeen) {
+    warnings.push(externalWorkbookReferencesWarning)
+  }
   if (hasExternalLargeSimplePivotCaches(zip)) {
     warnings.push(externalPivotCachesWarning)
   }
