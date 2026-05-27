@@ -33,7 +33,7 @@ function parseAsciiIntegerSegment(input: string, startIndex: i32, endIndex: i32)
   return value
 }
 
-export function parseTimeValueText(input: string): f64 {
+function parseTimeValueDaysText(input: string, wrapToDayFraction: bool): f64 {
   const text = trimAsciiWhitespace(input)
   if (text.length == 0) {
     return NaN
@@ -100,7 +100,7 @@ export function parseTimeValueText(input: string): f64 {
   if (hour == i32.MIN_VALUE || minute == i32.MIN_VALUE || second == i32.MIN_VALUE) {
     return NaN
   }
-  if (minute < 0 || minute > 59 || second < 0 || second > 59) {
+  if (hour < 0 || minute < 0 || second < 0 || hour > 32767 || minute > 32767 || second > 32767) {
     return NaN
   }
 
@@ -114,13 +114,22 @@ export function parseTimeValueText(input: string): f64 {
     } else if (hasPm) {
       normalizedHour = hour + 12
     }
-  } else if (hour == 24 && minute == 0 && second == 0) {
-    normalizedHour = 0
-  } else if (hour < 0 || hour > 23) {
-    return NaN
   }
 
-  return <f64>(normalizedHour * 3600 + minute * 60 + second) / <f64>EXCEL_SECONDS_PER_DAY
+  const totalSeconds = normalizedHour * 3600 + minute * 60 + second
+  if (!wrapToDayFraction) {
+    return <f64>totalSeconds / <f64>EXCEL_SECONDS_PER_DAY
+  }
+  const secondsOfDay = totalSeconds % EXCEL_SECONDS_PER_DAY
+  return <f64>secondsOfDay / <f64>EXCEL_SECONDS_PER_DAY
+}
+
+export function parseTimeValueText(input: string): f64 {
+  return parseTimeValueDaysText(input, true)
+}
+
+export function parseElapsedTimeValueText(input: string): f64 {
+  return parseTimeValueDaysText(input, false)
 }
 
 export function parseNumericText(input: string): f64 {

@@ -1,6 +1,6 @@
 import { ErrorCode, ValueTag, formatErrorCode, formatGeneralNumberValue, type CellValue } from '@bilig/protocol'
 import { parseNumericText } from '../numeric-text.js'
-import { parseDateValueFromText, parseTimeValueText } from './datetime.js'
+import { parseDateValueFromText, parseElapsedTimeValueText } from './datetime.js'
 import { excelSerialToDateParts, excelSerialWeekdayIndex, type ExcelDateSystem } from './excel-date.js'
 import type { TextBuiltin } from './text.js'
 
@@ -526,7 +526,7 @@ function parseValueText(input: string, dateSystem: ExcelDateSystem): number | un
     return currency
   }
   const date = parseDateValueFromText(input, dateSystem)
-  const time = parseTimeValueText(input)
+  const time = parseElapsedTimeValueText(input)
   if (date !== undefined) {
     return date + (time ?? 0)
   }

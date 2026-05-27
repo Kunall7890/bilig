@@ -24,6 +24,23 @@ describe('TIMEVALUE date text semantics', () => {
     })
   })
 
+  it('normalizes overflow time text and returns the time fraction', () => {
+    const expected = 1 / 24
+
+    expect(datetimeBuiltins.TIMEVALUE({ tag: ValueTag.String, value: '25:00:00', stringId: 1 })).toEqual({
+      tag: ValueTag.Number,
+      value: expected,
+    })
+    expect(datetimeBuiltins.TIMEVALUE({ tag: ValueTag.String, value: '1/1/2024 25:00:00', stringId: 2 })).toEqual({
+      tag: ValueTag.Number,
+      value: expected,
+    })
+    expect(datetimeBuiltins.TIMEVALUE({ tag: ValueTag.String, value: '1:75 PM', stringId: 3 })).toEqual({
+      tag: ValueTag.Number,
+      value: 14.25 / 24,
+    })
+  })
+
   it('still rejects text with no time component', () => {
     expect(datetimeBuiltins.TIMEVALUE({ tag: ValueTag.String, value: '22-Aug-2011', stringId: 1 })).toEqual({
       tag: ValueTag.Error,

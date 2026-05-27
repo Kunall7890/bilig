@@ -581,6 +581,9 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('text:value-date-time-text', 'text', '=VALUE("1/1/2024 12:00:00")', 'implemented-wasm-production', {
     notes: 'VALUE preserves both the date serial and time fraction for date-time text formats recognized by Excel.',
   }),
+  entry('text:value-overflow-time-text', 'text', '=VALUE("25:00:00")', 'implemented-wasm-production', {
+    notes: 'VALUE preserves elapsed days for overflow time text while TIMEVALUE returns the wrapped time-of-day fraction.',
+  }),
   entry('lookup-reference:choose-basic', 'lookup-reference', '=CHOOSE(2,"red","blue","green")', 'implemented-wasm-production'),
   entry('lookup-reference:xmatch-basic', 'lookup-reference', '=XMATCH("pear",A1:A3,0)', 'implemented-wasm-production'),
   entry('lookup-reference:hlookup-basic', 'lookup-reference', '=HLOOKUP("pear",A1:C2,2,FALSE)', 'implemented-wasm-production'),
@@ -636,6 +639,9 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('date-time:workday-intl-basic', 'date-time', '=WORKDAY.INTL(A1,2,7,B1)', 'implemented-wasm-production'),
   entry('date-time:timevalue-basic', 'date-time', '=TIMEVALUE("1:30 PM")', 'implemented-wasm-production'),
   entry('date-time:timevalue-date-text-ignored', 'date-time', '=TIMEVALUE("22-Aug-2011 6:35 AM")', 'implemented-wasm-production'),
+  entry('date-time:timevalue-overflow-time-text', 'date-time', '=TIMEVALUE("25:00:00")', 'implemented-wasm-production', {
+    notes: 'TIMEVALUE normalizes overflow time text and returns the time-of-day fraction.',
+  }),
   entry('date-time:yearfrac-basic', 'date-time', '=YEARFRAC(DATE(2024,1,1),DATE(2024,7,1),3)', 'implemented-wasm-production'),
   entry('date-time:yearfrac-invalid-basis-num', 'date-time', '=YEARFRAC(DATE(2024,1,1),DATE(2024,7,1),5)', 'implemented-wasm-production'),
   entry('date-time:fvschedule-basic', 'date-time', '=FVSCHEDULE(1000,0.09,0.11,0.1)', 'implemented-wasm-production'),

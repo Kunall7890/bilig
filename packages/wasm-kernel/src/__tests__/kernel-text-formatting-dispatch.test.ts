@@ -161,6 +161,7 @@ describe('wasm kernel text-formatting dispatch', () => {
       'ddd',
       '1/1/2024',
       '1/1/2024 12:00:00',
+      '1/1/2024 25:00:00',
     ]
     const packedStrings = packStrings(pooledStrings)
     kernel.init(80, pooledStrings.length, 8, 1, 1)
@@ -197,6 +198,7 @@ describe('wasm kernel text-formatting dispatch', () => {
       [encodePushNumber(0), encodePushString(20), encodeCall(BuiltinId.Text, 2), encodeRet()],
       [encodePushString(22), encodeCall(BuiltinId.Value, 1), encodeRet()],
       [encodePushString(23), encodeCall(BuiltinId.Value, 1), encodeRet()],
+      [encodePushString(24), encodeCall(BuiltinId.Value, 1), encodeRet()],
     ])
     const constants = packConstants([
       [],
@@ -227,8 +229,10 @@ describe('wasm kernel text-formatting dispatch', () => {
       [59],
       [61],
       [],
+      [],
+      [],
     ])
-    const targets = Uint32Array.from(Array.from({ length: 29 }, (_, index) => cellIndex(1, index, width)))
+    const targets = Uint32Array.from(Array.from({ length: 30 }, (_, index) => cellIndex(1, index, width)))
     kernel.ensureFormulaCapacity(packed.offsets.length)
     kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targets)
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
@@ -273,5 +277,6 @@ describe('wasm kernel text-formatting dispatch', () => {
     expect(readStringCell(kernel, cellIndex(1, 26, width), pooledStrings)).toBe('Thursday')
     expect(kernel.readNumbers()[cellIndex(1, 27, width)]).toBe(45292)
     expect(kernel.readNumbers()[cellIndex(1, 28, width)]).toBe(45292.5)
+    expect(kernel.readNumbers()[cellIndex(1, 29, width)]).toBeCloseTo(45292 + 25 / 24, 12)
   })
 })

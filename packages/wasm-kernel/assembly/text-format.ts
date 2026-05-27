@@ -7,7 +7,7 @@ import {
   excelSerialWhole,
   excelYearPartFromSerial,
 } from './date-finance'
-import { parseNumericText, parseTimeValueText } from './text-special'
+import { parseElapsedTimeValueText, parseNumericText } from './text-special'
 
 function roundToDigits(value: f64, digits: i32): f64 {
   if (digits >= 0) {
@@ -740,7 +740,7 @@ export function valueParseText(input: string): f64 {
   }
 
   const dateSerial = excelDateTextSerial(input)
-  parsed = parseTimeValueText(input)
+  parsed = parseElapsedTimeValueText(input)
   if (dateSerial != i32.MIN_VALUE) {
     return isFinite(parsed) ? <f64>dateSerial + parsed : <f64>dateSerial
   }

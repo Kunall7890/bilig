@@ -197,7 +197,12 @@ function coerceDatedifDateSerial(value: CellValue, dateSystem: ExcelDateSystem):
   return truncArg(value)
 }
 
-export function parseTimeValueText(raw: string): number | undefined {
+interface ParsedTimeTextSerial {
+  elapsedDays: number
+  timeFraction: number
+}
+
+function parseTimeTextSerial(raw: string): ParsedTimeTextSerial | undefined {
   const trimmed = raw.trim()
   const amPmMatch = trimmed.match(/^(.+?)\s+([aApP][mM])$/)
   const hasMeridiem = amPmMatch !== null
@@ -244,7 +249,7 @@ export function parseTimeValueText(raw: string): number | undefined {
   const truncSeconds = Math.trunc(seconds)
   const hasPm = hasMeridiem && amPmMatch?.[2]?.toLowerCase() === 'pm'
 
-  if (truncMinutes < 0 || truncMinutes > 59 || truncSeconds < 0 || truncSeconds > 59) {
+  if (truncHours < 0 || truncMinutes < 0 || truncSeconds < 0 || truncHours > 32_767 || truncMinutes > 32_767 || truncSeconds > 32_767) {
     return undefined
   }
 
@@ -258,13 +263,22 @@ export function parseTimeValueText(raw: string): number | undefined {
     } else if (hasPm) {
       hourValue = truncHours + 12
     }
-  } else if (truncHours === 24 && truncMinutes === 0 && truncSeconds === 0) {
-    hourValue = 0
-  } else if (truncHours < 0 || truncHours > 23) {
-    return undefined
   }
 
-  return (hourValue * 3600 + truncMinutes * 60 + truncSeconds) / SECONDS_PER_DAY
+  const totalSeconds = hourValue * 3600 + truncMinutes * 60 + truncSeconds
+  const secondsOfDay = ((totalSeconds % SECONDS_PER_DAY) + SECONDS_PER_DAY) % SECONDS_PER_DAY
+  return {
+    elapsedDays: totalSeconds / SECONDS_PER_DAY,
+    timeFraction: secondsOfDay / SECONDS_PER_DAY,
+  }
+}
+
+export function parseTimeValueText(raw: string): number | undefined {
+  return parseTimeTextSerial(raw)?.timeFraction
+}
+
+export function parseElapsedTimeValueText(raw: string): number | undefined {
+  return parseTimeTextSerial(raw)?.elapsedDays
 }
 
 function createDays360Builtin(dateSystem: ExcelDateSystem = '1900'): Builtin {

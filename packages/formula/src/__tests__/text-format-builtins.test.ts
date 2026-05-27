@@ -23,6 +23,8 @@ describe('text format builtins', () => {
     expect(VALUE(text('$1.25'))).toEqual(number(1.25))
     expect(VALUE(text('1/1/2024'))).toEqual(number(45292))
     expect(VALUE(text('1/1/2024 12:00:00'))).toEqual(number(45292.5))
+    expect(VALUE(text('25:00:00'))).toEqual(number(25 / 24))
+    expect(VALUE(text('1/1/2024 25:00:00'))).toEqual(number(45292 + 25 / 24))
     expect(VALUE(text('16:48:00'))).toEqual(number(0.7))
     expect(VALUE(text('12:00:00'))).toEqual(number(0.5))
     expect(NUMBERVALUE(text('2.500,27'), text(','), text('.'))).toEqual(number(2500.27))
