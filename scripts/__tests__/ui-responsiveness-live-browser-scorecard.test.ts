@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, resolve } from 'node:path'
+import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
@@ -16,6 +16,7 @@ import {
   parseUiResponsivenessLiveBrowserScorecard,
   sameCorpusScenarioCaseFields,
   validateSameCorpusCaptureArtifactMatchesScorecard,
+  validateSameCorpusProofArchiveArtifacts,
   validateSameCorpusScreenshotArtifacts,
   validateUiResponsivenessLiveBrowserScorecard,
   type SameCorpusCapture,
@@ -26,6 +27,12 @@ import {
 } from '../gen-ui-responsiveness-live-browser-scorecard.ts'
 import { readJsonObject } from '../json-scorecard-helpers.ts'
 import { buildSameCorpusFingerprint } from '../ui-responsiveness-same-corpus-fingerprint.ts'
+import {
+  proofArchiveManifestPath,
+  readSameCorpusProofArchiveManifest,
+  writeSameCorpusProofArchiveManifest,
+  type SameCorpusProofArchiveArtifact,
+} from '../ui-responsiveness-same-corpus-proof-archive.ts'
 import {
   buildCaptureScenarioProof,
   validateSameCorpusProductPixelGridProof,
@@ -849,6 +856,55 @@ describe('UI responsiveness live browser scorecard', () => {
     )
   })
 
+  it('requires captured same-corpus proof archive manifests and files to exist', () => {
+    const capture = buildSameCorpusCapture()
+    const proof = buildSameCorpusProof(capture)
+    const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-proof-archive-missing-`)
+    const capturePath = '.cache/ui-responsiveness/same-corpus-capture.json'
+
+    expect(() => validateSameCorpusProofArchiveArtifacts(proof, { rootDir, capturePath })).toThrow(
+      'UI responsiveness same-corpus proof archive manifest is missing',
+    )
+
+    writeSameCorpusProofArchiveManifest(capture, resolve(rootDir, capturePath))
+
+    expect(() => validateSameCorpusProofArchiveArtifacts(proof, { rootDir, capturePath })).toThrow(
+      'UI responsiveness same-corpus proof archive is incomplete',
+    )
+  })
+
+  it('requires committed-state proof archive artifacts to be tracked for checked-in proof', () => {
+    const capture = buildSameCorpusCapture()
+    const proof = buildSameCorpusProof(capture)
+    const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-proof-archive-tracked-`)
+    const capturePath = '.cache/ui-responsiveness/same-corpus-capture.json'
+    const absoluteCapturePath = resolve(rootDir, capturePath)
+    const manifest = writeSameCorpusProofArchiveManifest(capture, absoluteCapturePath)
+    writeSameCorpusProofArchiveArtifacts(rootDir, manifest.artifacts)
+    const trackedPaths = sameCorpusProofArchiveTrackedPaths(rootDir, capturePath)
+    const committedStateArtifact = trackedPaths.find((artifactPath) => artifactPath.includes('/committed-state/'))
+
+    if (!committedStateArtifact) {
+      throw new Error('test fixture is missing committed-state proof artifacts')
+    }
+    expect(() =>
+      validateSameCorpusProofArchiveArtifacts(proof, {
+        capturePath,
+        requireGitTracked: true,
+        rootDir,
+        trackedArtifactPaths: trackedPaths.filter((artifactPath) => artifactPath !== committedStateArtifact),
+      }),
+    ).toThrow('UI responsiveness same-corpus proof archive artifact is not tracked by git')
+    expect(() =>
+      validateSameCorpusProofArchiveArtifacts(proof, {
+        capturePath,
+        requireGitTracked: true,
+        rootDir,
+        trackedArtifactPaths: trackedPaths,
+      }),
+    ).not.toThrow()
+  })
+
   it('rejects stale same-corpus visual proof required-product metadata', () => {
     const scorecard = parseUiResponsivenessLiveBrowserScorecard(
       readJsonObject(resolve(repoRoot, 'packages/benchmarks/baselines/ui-responsiveness-live-browser-scorecard.json')),
@@ -953,6 +1009,32 @@ function writeSameCorpusScreenshotArtifact(
   const absolutePath = resolve(rootDir, artifactPath)
   mkdirSync(dirname(absolutePath), { recursive: true })
   writeFileSync(absolutePath, contents)
+}
+
+function writeSameCorpusProofArchiveArtifacts(rootDir: string, artifacts: readonly SameCorpusProofArchiveArtifact[]): void {
+  for (const artifact of artifacts) {
+    const artifactPath = sameCorpusProofArchiveArtifactPath(artifact)
+    const absolutePath = resolve(rootDir, artifactPath)
+    mkdirSync(dirname(absolutePath), { recursive: true })
+    writeFileSync(absolutePath, sameCorpusProofArchiveArtifactContents(artifact))
+  }
+}
+
+function sameCorpusProofArchiveTrackedPaths(rootDir: string, capturePath: string): string[] {
+  const manifestPath = proofArchiveManifestPath(resolve(rootDir, capturePath))
+  const manifest = readSameCorpusProofArchiveManifest(manifestPath)
+  return [relative(rootDir, manifestPath), ...manifest.artifacts.map(sameCorpusProofArchiveArtifactPath)].toSorted()
+}
+
+function sameCorpusProofArchiveArtifactPath(artifact: SameCorpusProofArchiveArtifact): string {
+  return artifact.kind === 'google-sheets-committed-state-export' ? artifact.artifactPath : artifact.path
+}
+
+function sameCorpusProofArchiveArtifactContents(artifact: SameCorpusProofArchiveArtifact): string {
+  if (artifact.kind === 'scenario-screenshot') {
+    return fixtureScreenshotBytes
+  }
+  return sameCorpusMutationTargetScreenshotBytes(artifact.sampleIndex, artifact.phase)
 }
 
 function sameCorpusScreenshotArtifactContents(artifactPath: string): string {

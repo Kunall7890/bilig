@@ -13,6 +13,11 @@ import { readJsonObject } from './json-scorecard-helpers.ts'
 import { parseSameCorpusCapture, parseUiResponsivenessLiveBrowserScorecard } from './ui-responsiveness-live-browser-scorecard-parse.ts'
 import { formatJsonForRepo } from './scorecard-format.ts'
 import {
+  proofArchiveManifestPath,
+  verifySameCorpusProofArchiveManifestPath,
+  type SameCorpusProofArchiveArtifact,
+} from './ui-responsiveness-same-corpus-proof-archive.ts'
+import {
   buildMissingSameCorpusProof,
   buildSameCorpusProof,
   validateSameCorpusProof,
@@ -113,6 +118,13 @@ export interface SameCorpusCaptureArtifactValidationOptions {
   readonly rootDir?: string | undefined
 }
 
+export interface SameCorpusProofArchiveArtifactValidationOptions {
+  readonly capturePath?: string | undefined
+  readonly requireGitTracked?: boolean | undefined
+  readonly rootDir?: string | undefined
+  readonly trackedArtifactPaths?: readonly string[] | undefined
+}
+
 interface BrowserCaseSpec {
   readonly id: string
   readonly vendor: UiResponsivenessLiveBrowserVendor
@@ -166,6 +178,7 @@ async function main(): Promise<void> {
     validateUiResponsivenessLiveBrowserScorecard(scorecard)
     validateSameCorpusCaptureArtifactMatchesScorecard(scorecard)
     validateSameCorpusScreenshotArtifacts(scorecard.sameCorpusProof, { requireGitTracked: true })
+    validateSameCorpusProofArchiveArtifacts(scorecard.sameCorpusProof, { requireGitTracked: true })
     logResult('check', scorecard)
     return
   }
@@ -186,6 +199,7 @@ async function main(): Promise<void> {
     }
     validateUiResponsivenessLiveBrowserScorecard(scorecard)
     validateSameCorpusScreenshotArtifacts(scorecard.sameCorpusProof)
+    validateSameCorpusProofArchiveArtifacts(scorecard.sameCorpusProof, { capturePath: args.capturePath })
     writeFileSync(outputPath, formatJsonForRepo(`${JSON.stringify(scorecard, null, 2)}\n`))
     logResult('refresh-same-corpus-proof', scorecard)
     return
@@ -198,6 +212,7 @@ async function main(): Promise<void> {
   const scorecard = await buildUiResponsivenessLiveBrowserScorecard(new Date().toISOString(), sameCorpusProof)
   validateUiResponsivenessLiveBrowserScorecard(scorecard)
   validateSameCorpusScreenshotArtifacts(scorecard.sameCorpusProof)
+  validateSameCorpusProofArchiveArtifacts(scorecard.sameCorpusProof, { capturePath: args.capturePath ?? undefined })
   mkdirSync(dirname(outputPath), { recursive: true })
   writeFileSync(outputPath, formatJsonForRepo(`${JSON.stringify(scorecard, null, 2)}\n`))
   logResult('write', scorecard)
@@ -388,6 +403,78 @@ export function validateSameCorpusCaptureArtifactMatchesScorecard(
   if (stableJsonString(scorecard.sameCorpusProof) !== stableJsonString(expectedProof)) {
     throw new Error(`UI responsiveness same-corpus scorecard proof does not match capture artifact: ${repoRelativePath}`)
   }
+}
+
+export function validateSameCorpusProofArchiveArtifacts(
+  proof: UiResponsivenessSameCorpusProof,
+  options: SameCorpusProofArchiveArtifactValidationOptions = {},
+): void {
+  if (!proof.captured) {
+    return
+  }
+  const validationRootDir = options.rootDir ?? rootDir
+  const capturePath = options.capturePath ?? defaultSameCorpusCapturePath
+  const absoluteCapturePath = resolve(validationRootDir, capturePath)
+  const absoluteManifestPath = proofArchiveManifestPath(absoluteCapturePath)
+  const manifestPath = validateProofArchivePath(validationRootDir, absoluteManifestPath, 'manifest')
+  if (!existsSync(absoluteManifestPath)) {
+    throw new Error(`UI responsiveness same-corpus proof archive manifest is missing: ${manifestPath}`)
+  }
+
+  const manifest = verifySameCorpusProofArchiveManifestPath(absoluteManifestPath, { artifactBaseDir: validationRootDir })
+  const expectedSignature = proof.runManifest?.captureRunSignature ?? null
+  if (!expectedSignature || manifest.captureRunSignature !== expectedSignature) {
+    throw new Error(`UI responsiveness same-corpus proof archive signature does not match scorecard proof: ${manifestPath}`)
+  }
+  if (
+    manifest.requiredArtifactCount !== proof.runManifest?.requiredProofArchiveArtifactCount ||
+    manifest.artifactCount !== proof.runManifest?.proofArchiveArtifactCount
+  ) {
+    throw new Error(`UI responsiveness same-corpus proof archive counts do not match scorecard proof: ${manifestPath}`)
+  }
+  const repoRelativeArtifactPaths = manifest.artifacts.map((artifact) =>
+    validateProofArchivePath(validationRootDir, sameCorpusProofArchiveArtifactPath(artifact), 'artifact'),
+  )
+  if (!manifest.complete) {
+    throw new Error(
+      [
+        `UI responsiveness same-corpus proof archive is incomplete: ${manifestPath}`,
+        `${String(manifest.artifactCount)}/${String(manifest.requiredArtifactCount)} artifacts declared`,
+        `${String(manifest.fileVerification.verifiedArtifactCount)}/${String(
+          manifest.fileVerification.checkedArtifactCount,
+        )} files verified`,
+        `${String(manifest.fileVerification.missingArtifactCount)} missing`,
+        `${String(manifest.fileVerification.mismatchedArtifactCount)} hash-mismatch`,
+      ].join('; '),
+    )
+  }
+  if (options.requireGitTracked !== true) {
+    return
+  }
+
+  const repoRelativePaths = [manifestPath, ...repoRelativeArtifactPaths]
+  const trackedPaths = new Set(options.trackedArtifactPaths ?? gitTrackedPaths(validationRootDir, repoRelativePaths))
+  for (const artifactPath of repoRelativePaths) {
+    if (!trackedPaths.has(artifactPath)) {
+      throw new Error(`UI responsiveness same-corpus proof archive artifact is not tracked by git: ${artifactPath}`)
+    }
+  }
+}
+
+function sameCorpusProofArchiveArtifactPath(artifact: SameCorpusProofArchiveArtifact): string {
+  return artifact.kind === 'google-sheets-committed-state-export' ? artifact.artifactPath : artifact.path
+}
+
+function validateProofArchivePath(validationRootDir: string, absoluteOrRelativePath: string, label: string): string {
+  if (absoluteOrRelativePath.trim().length === 0) {
+    throw new Error(`UI responsiveness same-corpus proof archive ${label} path is empty`)
+  }
+  const absolutePath = resolve(validationRootDir, absoluteOrRelativePath)
+  const repoRelativePath = relative(validationRootDir, absolutePath)
+  if (repoRelativePath.length === 0 || repoRelativePath.startsWith('..') || repoRelativePath.startsWith('/')) {
+    throw new Error(`UI responsiveness same-corpus proof archive ${label} escapes the repository: ${absoluteOrRelativePath}`)
+  }
+  return repoRelativePath
 }
 
 function validateSameCorpusMutationTargetScreenshotArtifactHashes(validationRootDir: string, proof: UiResponsivenessSameCorpusProof): void {
