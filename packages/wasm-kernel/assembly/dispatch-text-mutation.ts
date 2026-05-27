@@ -5,6 +5,8 @@ import { repeatText, replaceText, substituteNthText, substituteText } from './te
 import { STACK_KIND_SCALAR, writeResult, writeStringResult } from './result-io'
 import { coerceLength, coerceNonNegativeLength, coercePositiveStart } from './text-foundation'
 
+const MAX_EXCEL_CELL_TEXT_LENGTH: i32 = 32767
+
 export function tryApplyTextMutationBuiltin(
   builtinId: i32,
   argc: i32,
@@ -147,6 +149,9 @@ export function tryApplyTextMutationBuiltin(
     )
     const count = coerceNonNegativeLength(tagStack[base + 1], valueStack[base + 1])
     if (text == null || count == i32.MIN_VALUE) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (text.length > 0 && count > MAX_EXCEL_CELL_TEXT_LENGTH / text.length) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeStringResult(base, repeatText(text, count), rangeIndexStack, valueStack, tagStack, kindStack)

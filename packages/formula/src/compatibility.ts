@@ -545,6 +545,7 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('text:replaceb-inserts-into-empty-text', 'text', '=REPLACEB("",1,0,"Z")', 'implemented-wasm-production'),
   entry('text:replaceb-appends-when-start-past-text', 'text', '=REPLACEB("abc",8,1,"Z")', 'implemented-wasm-production'),
   entry('text:rept-negative-fractional-count', 'text', '=REPT("x",-0.5)', 'implemented-wasm-production'),
+  entry('text:rept-over-cell-text-limit', 'text', '=REPT("x",32768)', 'implemented-wasm-production'),
   entry('text:textbefore-basic', 'text', '=TEXTBEFORE("alpha-beta","-")', 'implemented-wasm-production'),
   entry('text:textbefore-empty-delimiter-front', 'text', '=TEXTBEFORE("alpha","")', 'implemented-wasm-production'),
   entry('text:textbefore-empty-delimiter-back', 'text', '=TEXTBEFORE("alpha","",-1)', 'implemented-wasm-production'),

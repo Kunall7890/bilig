@@ -17,6 +17,8 @@ import type { EvaluationResult } from '../runtime-values.js'
 
 export type TextBuiltin = (...args: CellValue[]) => EvaluationResult
 
+const MAX_EXCEL_CELL_TEXT_LENGTH = 32_767
+
 function error(code: ErrorCode): CellValue {
   return { tag: ValueTag.Error, code }
 }
@@ -234,6 +236,9 @@ function createReptBuiltin(): TextBuiltin {
       return count
     }
     const text = coerceText(textValue)
+    if (text.length > 0 && count > Math.floor(MAX_EXCEL_CELL_TEXT_LENGTH / text.length)) {
+      return error(ErrorCode.Value)
+    }
     let repeated = ''
     for (let index = 0; index < count; index += 1) {
       repeated += text

@@ -443,6 +443,11 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
         args: [text('xo'), number(-0.5)],
         expected: textValueError(),
       },
+      {
+        name: 'rejects repeated text past Excel cell length',
+        args: [text('x'), number(32_768)],
+        expected: textValueError(),
+      },
     ],
   },
   {
@@ -797,6 +802,14 @@ export const canonicalTextFixtures: readonly ExcelFixtureCase[] = [
     '=REPT("x",-0.5)',
     [],
     [output('A1', errorExpected(ErrorCode.Value, '#VALUE!'))],
+  ),
+  fixture(
+    'rept-over-cell-text-limit',
+    'REPT rejects results past the Excel cell text limit',
+    '=REPT("x",32768)',
+    [],
+    [output('A1', errorExpected(ErrorCode.Value, '#VALUE!'))],
+    'Microsoft REPT documentation caps the repeated result at 32,767 characters.',
   ),
   fixture(
     'asc-basic',

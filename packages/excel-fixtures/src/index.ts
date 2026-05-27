@@ -291,6 +291,7 @@ const canonicalBaseFixtureIds = new Set<string>([
   'text:replaceb-inserts-into-empty-text',
   'text:replaceb-appends-when-start-past-text',
   'text:rept-negative-fractional-count',
+  'text:rept-over-cell-text-limit',
   'text:dollarde-nonbinary-denominator',
   'text:dollarfr-nonbinary-denominator',
   'text:dollarde-zero-fraction-div0',
