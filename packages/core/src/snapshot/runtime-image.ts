@@ -10,7 +10,12 @@ import type { DeferredInitialFormulaFamilyRun } from '../engine/services/formula
 import type { InitialFormulaEntryRefSource } from '../engine/services/formula-initialization-refs.js'
 import type { FormulaInstanceSnapshot } from '../formula/formula-instance-table.js'
 import type { FormulaTemplateResolution, FormulaTemplateSnapshot } from '../formula/template-bank.js'
-import { collectDefinedFormulaNames, formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc } from './unsupported-formula-cache.js'
+import {
+  collectDefinedFormulaNames,
+  collectPreservedUnsupportedFormulaCacheKeys,
+  formulaHasPreservedUnsupportedDependencyCache,
+  formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc,
+} from './unsupported-formula-cache.js'
 import type { StringPool } from '../string-pool.js'
 import type { SheetRecord, WorkbookStore } from '../workbook-store.js'
 import {
@@ -509,6 +514,7 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
   const shouldHydrateImportedCachedFormulaValues =
     args.snapshot.workbook.metadata?.calculationSettings?.fullCalcOnLoad === false ||
     args.snapshot.workbook.metadata?.calculationSettings?.mode === 'manual'
+  const preservedUnsupportedFormulaCacheKeys = collectPreservedUnsupportedFormulaCacheKeys(args.snapshot)
   const restoredStringIds = new Map<string, number>()
 
   args.checkEvaluationBudget?.()
@@ -541,7 +547,9 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
           attachFreshCell(coords.row, coords.col, restoredCellIndex, rowId, colId)
           if (cell.formula !== undefined) {
             let hydratedCachedFormula = false
-            const shouldPreserveCachedUnsupportedValue = false
+            const shouldPreserveCachedUnsupportedValue =
+              cell.value !== undefined &&
+              formulaHasPreservedUnsupportedDependencyCache(preservedUnsupportedFormulaCacheKeys, sheet.name, cell.address, cell.formula)
             if (canHydrateImportedCachedFormulaValues && shouldHydrateImportedCachedFormulaValues && cell.value !== undefined) {
               cachedFormulaRefs.push({
                 sheetId,
@@ -675,6 +683,7 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
     args.snapshot.workbook.metadata?.calculationSettings?.fullCalcOnLoad === false ||
     args.snapshot.workbook.metadata?.calculationSettings?.mode === 'manual'
   const definedFormulaNames = shouldHydrateIterativeFormulaValues ? undefined : collectDefinedFormulaNames(args.snapshot)
+  const preservedUnsupportedFormulaCacheKeys = collectPreservedUnsupportedFormulaCacheKeys(args.snapshot)
   const restoredStringIds = new Map<string, number>()
   const previousOnSetValue = args.workbook.cellStore.onSetValue
   args.workbook.cellStore.onSetValue = null
@@ -730,9 +739,15 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
               : formulaValuesByAddress?.get(sheet.name)?.get(toFormulaInstanceKey(row, col))
             const shouldPreserveCachedUnsupportedValue =
               cachedValue !== undefined &&
-              !shouldHydrateIterativeFormulaValues &&
-              definedFormulaNames !== undefined &&
-              formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc(restoredFormula.source, definedFormulaNames)
+              (formulaHasPreservedUnsupportedDependencyCache(
+                preservedUnsupportedFormulaCacheKeys,
+                sheet.name,
+                cell.address,
+                restoredFormula.source,
+              ) ||
+                (!shouldHydrateIterativeFormulaValues &&
+                  definedFormulaNames !== undefined &&
+                  formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc(restoredFormula.source, definedFormulaNames)))
             const template =
               restoredFormula.templateId !== undefined && args.resolveTemplateById
                 ? args.resolveTemplateById(restoredFormula.templateId, restoredFormula.source, row, col)

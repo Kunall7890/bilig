@@ -134,7 +134,8 @@ export function canUseFreshDirectScalarFormulaBinding(compiled: HydratedPrepared
     compiled.symbolicRanges.length !== 0 ||
     compiled.symbolicNames.length !== 0 ||
     compiled.symbolicTables.length !== 0 ||
-    compiled.symbolicSpills.length !== 0
+    compiled.symbolicSpills.length !== 0 ||
+    hasExternalWorkbookCellReference(compiled)
   ) {
     return false
   }
@@ -152,4 +153,20 @@ export function canUseFreshDirectScalarFormulaBinding(compiled: HydratedPrepared
 
 function isFreshDirectScalarOperand(node: HydratedPreparedFormulaInitializationRef['compiled']['optimizedAst']): boolean {
   return node.kind === 'NumberLiteral' || node.kind === 'CellRef'
+}
+
+function hasExternalWorkbookCellReference(compiled: HydratedPreparedFormulaInitializationRef['compiled']): boolean {
+  if (compiled.parsedSymbolicRefs?.some((ref) => ref.sheetName !== undefined && isExternalWorkbookSheetName(ref.sheetName)) === true) {
+    return true
+  }
+  return compiled.symbolicRefs.some(symbolicRefStartsWithExternalWorkbook)
+}
+
+function isExternalWorkbookSheetName(sheetName: string): boolean {
+  return /^\[\d+\]/.test(sheetName)
+}
+
+function symbolicRefStartsWithExternalWorkbook(reference: string): boolean {
+  const trimmed = reference.trim()
+  return /^\[\d+\]/.test(trimmed) || /^'\[\d+\]/.test(trimmed)
 }

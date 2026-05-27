@@ -1,8 +1,18 @@
 import { hasBuiltin, parseFormula, type FormulaNode } from '@bilig/formula'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 
+const UNSUPPORTED_FORMULA_CACHE_KEY_SEPARATOR = '\t'
+
 function normalizeFormulaName(name: string): string {
   return name.trim().toUpperCase()
+}
+
+function normalizeFormulaCacheAddress(address: string): string {
+  return address.trim().toUpperCase()
+}
+
+function unsupportedFormulaCacheKey(sheetName: string, address: string, formula: string): string {
+  return [sheetName, normalizeFormulaCacheAddress(address), formula].join(UNSUPPORTED_FORMULA_CACHE_KEY_SEPARATOR)
 }
 
 type UnavailableCallMatcher = (normalizedName: string) => boolean
@@ -63,6 +73,29 @@ export function collectDefinedFormulaNames(snapshot: WorkbookSnapshot): Readonly
     }
   }
   return names
+}
+
+export function collectPreservedUnsupportedFormulaCacheKeys(snapshot: WorkbookSnapshot): ReadonlySet<string> {
+  const unsupportedFormulaDependencies = snapshot.workbook.metadata?.unsupportedFormulaDependencies
+  if (!unsupportedFormulaDependencies || unsupportedFormulaDependencies.length === 0) {
+    return new Set()
+  }
+  const keys = new Set<string>()
+  for (const dependency of unsupportedFormulaDependencies) {
+    if (dependency.cachedFormulaValuePreserved) {
+      keys.add(unsupportedFormulaCacheKey(dependency.sheetName, dependency.address, dependency.importedFormula))
+    }
+  }
+  return keys
+}
+
+export function formulaHasPreservedUnsupportedDependencyCache(
+  preservedCacheKeys: ReadonlySet<string>,
+  sheetName: string,
+  address: string,
+  formula: string,
+): boolean {
+  return preservedCacheKeys.has(unsupportedFormulaCacheKey(sheetName, address, formula))
 }
 
 function isAvailableFormulaCall(callee: string, definedNames: ReadonlySet<string>, localNames: ReadonlySet<string>): boolean {
