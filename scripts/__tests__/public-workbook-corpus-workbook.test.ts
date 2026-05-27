@@ -86,6 +86,24 @@ describe('public workbook corpus workbook helpers', () => {
     ])
   })
 
+  it('normalizes text formula cache line endings like imported worksheet text', () => {
+    const worksheetXml = [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+      '<sheetData>',
+      '<row r="1"><c r="A1" t="str"><f>VLOOKUP(B1,C:D,2,FALSE)</f><v>Line 1\r\nLine 2\rLine 3</v></c></row>',
+      '</sheetData></worksheet>',
+    ].join('')
+
+    expect(extractFormulaOraclesFromWorksheetXmlChunks('Chunked', chunkedUtf8Reader(worksheetXml, 11))).toEqual([
+      {
+        sheetName: 'Chunked',
+        address: 'A1',
+        expected: { tag: ValueTag.String, value: 'Line 1\nLine 2\nLine 3', stringId: 0 },
+      },
+    ])
+  })
+
   it('keeps unsupported formula cache encodings on the fallback path', () => {
     expect(
       extractFormulaOraclesFromXlsxByteSource(byteSourceFromBytes(buildFormulaOracleWorkbookWithSharedStringCache()), 'shared.xlsx'),

@@ -6,7 +6,7 @@ import { importXlsx, type ImportedWorkbook } from '../packages/excel-import/src/
 import { readImportedExternalWorkbookReferences } from '../packages/excel-import/src/xlsx-external-references.js'
 import { readWorkbookSheets, readWorksheetPathsByRelationshipId } from '../packages/excel-import/src/xlsx-large-simple-workbook-metadata.js'
 import { decodeCellAddress, encodeCellAddress } from '../packages/excel-import/src/xlsx-large-simple-xml-byte-utils.js'
-import { decodeXmlText } from '../packages/excel-import/src/xlsx-large-simple-worksheet-stream-text.js'
+import { decodeXmlText, normalizeWorksheetText } from '../packages/excel-import/src/xlsx-large-simple-worksheet-stream-text.js'
 import {
   forEachInflatedXlsxZipEntryChunk,
   getZipText,
@@ -603,7 +603,7 @@ function cellValueFromWorksheetFormulaCache(type: string | null, rawCachedValue:
       }
       return { kind: 'skip' }
     case 'str':
-      return { kind: 'value', value: { tag: ValueTag.String, value: decodeXmlText(rawCachedValue), stringId: 0 } }
+      return { kind: 'value', value: { tag: ValueTag.String, value: normalizeWorksheetText(decodeXmlText(rawCachedValue)), stringId: 0 } }
     case 'd':
     case 'e':
     case 'z':
