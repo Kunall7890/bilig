@@ -123,7 +123,9 @@ export function tryApplyScalarRoundingMathBuiltin(
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (significance == 0.0) {
-      return writeScalarMathError(base, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
+      return numeric == 0.0
+        ? writeScalarMathNumber(base, 0.0, rangeIndexStack, valueStack, tagStack, kindStack)
+        : writeScalarMathError(base, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (numeric > 0.0 && significance < 0.0) {
       return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -175,7 +177,9 @@ export function tryApplyScalarRoundingMathBuiltin(
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (significance == 0.0) {
-      return writeScalarMathError(base, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
+      return numeric == 0.0
+        ? writeScalarMathNumber(base, 0.0, rangeIndexStack, valueStack, tagStack, kindStack)
+        : writeScalarMathError(base, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (numeric > 0.0 && significance < 0.0) {
       return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)

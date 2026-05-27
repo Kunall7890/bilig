@@ -146,6 +146,12 @@ describe('math builtins', () => {
   })
 
   it('matches spreadsheet zero-multiple rounding semantics', () => {
+    expect(getBuiltin('FLOOR')?.(num(0), num(0))).toEqual(num(0))
+    expect(getBuiltin('FLOOR')?.(str(''), num(0))).toEqual(num(0))
+    expect(getBuiltin('FLOOR')?.(num(0), str(''))).toEqual(num(0))
+    expect(getBuiltin('CEILING')?.(num(0), num(0))).toEqual(num(0))
+    expect(getBuiltin('CEILING')?.(str(''), num(0))).toEqual(num(0))
+    expect(getBuiltin('CEILING')?.(num(0), str(''))).toEqual(num(0))
     expect(getBuiltin('FLOOR')?.(num(2.5), num(0))).toEqual(div0Error)
     expect(getBuiltin('CEILING')?.(num(2.5), num(0))).toEqual(div0Error)
     expect(getBuiltin('FLOOR.MATH')?.(num(2.5), num(0))).toEqual(num(0))

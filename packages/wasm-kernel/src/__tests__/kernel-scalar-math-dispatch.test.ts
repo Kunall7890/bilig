@@ -297,6 +297,42 @@ describe('wasm kernel scalar math dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(1, 2, width)]).toBe(-2)
   })
 
+  it('matches spreadsheet FLOOR and CEILING zero-number zero-significance semantics on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 4, 1, 1, 1)
+    const strings = packStrings([''])
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Floor, 2), encodeRet()],
+      [encodePushString(0), encodePushNumber(1), encodeCall(BuiltinId.Floor, 2), encodeRet()],
+      [encodePushNumber(0), encodePushString(0), encodeCall(BuiltinId.Floor, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Ceiling, 2), encodeRet()],
+      [encodePushString(0), encodePushNumber(1), encodeCall(BuiltinId.Ceiling, 2), encodeRet()],
+      [encodePushNumber(0), encodePushString(0), encodeCall(BuiltinId.Ceiling, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Floor, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Ceiling, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 8 }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([[0, 0], [0], [0], [0, 0], [0], [0], [2.5, 0], [2.5, 0]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 8 }, (_, index) => cellIndex(1, index, width))))
+
+    for (let index = 0; index < 6; index += 1) {
+      expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Number)
+      expect(kernel.readNumbers()[cellIndex(1, index, width)]).toBe(0)
+    }
+    expectKernelError(kernel, cellIndex(1, 6, width), ErrorCode.Div0)
+    expectKernelError(kernel, cellIndex(1, 7, width), ErrorCode.Div0)
+  })
+
   it('matches Microsoft Excel ROUND and CEILING negative-number edge semantics on the wasm path', async () => {
     const kernel = await createKernel()
     const width = 8

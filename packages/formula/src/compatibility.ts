@@ -190,9 +190,15 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('math:round-basic', 'math', '=ROUND(A1,1)', 'implemented-wasm-production'),
   entry('math:trunc-basic', 'math', '=TRUNC(A1,1)', 'implemented-wasm-production'),
   entry('math:floor-basic', 'math', '=FLOOR(A1,2)', 'implemented-wasm-production'),
+  entry('math:floor-zero-number-zero-significance', 'math', '=FLOOR(0,0)', 'implemented-wasm-production', {
+    notes: 'HyperFormula, TrueCalc, and xlsx-calc all return zero; OpenFormula specifies zero if either FLOOR parameter is zero.',
+  }),
   entry('math:floor-math-basic', 'math', '=FLOOR.MATH(A1,2)', 'implemented-wasm-production'),
   entry('math:floor-precise-basic', 'math', '=FLOOR.PRECISE(A1,2)', 'implemented-wasm-production'),
   entry('math:ceiling-basic', 'math', '=CEILING(A1,2)', 'implemented-wasm-production'),
+  entry('math:ceiling-zero-number-zero-significance', 'math', '=CEILING(0,0)', 'implemented-wasm-production', {
+    notes: 'HyperFormula and TrueCalc both return zero; OpenFormula specifies zero if either CEILING parameter is zero.',
+  }),
   entry('math:ceiling-math-basic', 'math', '=CEILING.MATH(A1,2)', 'implemented-wasm-production'),
   entry('math:ceiling-precise-basic', 'math', '=CEILING.PRECISE(A1,2)', 'implemented-wasm-production'),
   entry('math:iso-ceiling-basic', 'math', '=ISO.CEILING(A1,2)', 'implemented-wasm-production'),

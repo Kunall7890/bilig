@@ -65,7 +65,7 @@ export function createNumericBuiltinHelpers({
         return valueError()
       }
       if (significanceValue === 0) {
-        return { tag: ValueTag.Error, code: ErrorCode.Div0 }
+        return numberValue === 0 ? numberResult(0) : { tag: ValueTag.Error, code: ErrorCode.Div0 }
       }
       if (numberValue > 0 && significanceValue < 0) {
         return { tag: ValueTag.Error, code: ErrorCode.Num }
@@ -83,7 +83,7 @@ export function createNumericBuiltinHelpers({
         return valueError()
       }
       if (significanceValue === 0) {
-        return { tag: ValueTag.Error, code: ErrorCode.Div0 }
+        return numberValue === 0 ? numberResult(0) : { tag: ValueTag.Error, code: ErrorCode.Div0 }
       }
       if (numberValue > 0 && significanceValue < 0) {
         return { tag: ValueTag.Error, code: ErrorCode.Num }
