@@ -11,6 +11,7 @@ import { createTextCoreBuiltins } from './text-core-builtins.js'
 import { createTextFormatBuiltins } from './text-format-builtins.js'
 import { createTextScalarBuiltins } from './text-scalar-builtins.js'
 import { createTextSearchBuiltins } from './text-search-builtins.js'
+import { excelTextLength, excelTextReplace, excelTextSlice } from './text-unicode.js'
 import type { ExcelDateSystem } from './excel-date.js'
 import { parseArithmeticNumericText } from '../numeric-text.js'
 import type { EvaluationResult } from '../runtime-values.js'
@@ -138,11 +139,7 @@ function coerceNonNegativeInt(value: CellValue | undefined, defaultValue: number
 }
 
 function replaceSingle(text: string, start: number, count: number, replacement: string): string {
-  const index = start - 1
-  if (index >= text.length) {
-    return text + replacement
-  }
-  return text.slice(0, index) + replacement + text.slice(index + count)
+  return excelTextReplace(text, start, count, replacement)
 }
 
 function substituteText(text: string, oldText: string, newText: string, instance?: number): string {
@@ -317,7 +314,7 @@ export function createTextBuiltins(options: { readonly dateSystem?: ExcelDateSys
       if (value === undefined) {
         return error(ErrorCode.Value)
       }
-      return numberResult(coerceText(value).length)
+      return numberResult(excelTextLength(coerceText(value)))
     },
     LENB: (...args) => {
       const existingError = firstError(args)
@@ -383,7 +380,7 @@ export function createTextBuiltins(options: { readonly dateSystem?: ExcelDateSys
         return count
       }
       const text = coerceText(textValue)
-      return stringResult(text.slice(start - 1, start - 1 + count))
+      return stringResult(excelTextSlice(text, start - 1, count))
     },
     ENCODEURL: (...args) => {
       const existingError = firstError(args)

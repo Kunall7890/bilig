@@ -542,6 +542,12 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('text:left-basic', 'text', '=LEFT("alpha",3)', 'implemented-wasm-production'),
   entry('text:right-basic', 'text', '=RIGHT("alpha",2)', 'implemented-wasm-production'),
   entry('text:mid-basic', 'text', '=MID("alphabet",2,3)', 'implemented-wasm-production'),
+  entry('text:len-counts-surrogate-pair-as-one-character', 'text', '=LEN("😀")', 'implemented-wasm-production', {
+    notes: 'Excel Compatibility Version 2 counts Unicode surrogate pairs as one character for LEN.',
+  }),
+  entry('text:mid-extracts-surrogate-pair-as-one-character', 'text', '=MID("x😀y",2,1)', 'implemented-wasm-production', {
+    notes: 'Excel Compatibility Version 2 counts Unicode surrogate pairs as one character for MID.',
+  }),
   entry('text:left-negative-fractional-count', 'text', '=LEFT("abc",-0.5)', 'implemented-wasm-production'),
   entry('text:right-negative-fractional-count', 'text', '=RIGHT("abc",-0.5)', 'implemented-wasm-production'),
   entry('text:mid-negative-fractional-count', 'text', '=MID("abc",1,-0.5)', 'implemented-wasm-production'),
@@ -549,12 +555,21 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('text:upper-basic', 'text', '=UPPER("Alpha beta")', 'implemented-wasm-production'),
   entry('text:lower-basic', 'text', '=LOWER("Alpha BETA")', 'implemented-wasm-production'),
   entry('text:find-basic', 'text', '=FIND("ph","alphabet")', 'implemented-wasm-production'),
+  entry('text:find-counts-surrogate-pair-as-one-character', 'text', '=FIND("y","x😀y")', 'implemented-wasm-production', {
+    notes: 'Excel Compatibility Version 2 counts Unicode surrogate pairs as one character for FIND positions.',
+  }),
   entry('text:search-basic', 'text', '=SEARCH("PH","alphabet")', 'implemented-wasm-production'),
+  entry('text:search-counts-surrogate-pair-as-one-character', 'text', '=SEARCH("Y","x😀y")', 'implemented-wasm-production', {
+    notes: 'Excel Compatibility Version 2 counts Unicode surrogate pairs as one character for SEARCH positions.',
+  }),
   entry('text:find-empty-needle-start-past-text', 'text', '=FIND("","abc",4)', 'implemented-wasm-production'),
   entry('text:findb-empty-needle-start-past-text', 'text', '=FINDB("","abc",4)', 'implemented-wasm-production'),
   entry('text:search-empty-needle-start-past-text', 'text', '=SEARCH("","abc",4)', 'implemented-wasm-production'),
   entry('text:searchb-empty-needle-start-past-text', 'text', '=SEARCHB("","abc",4)', 'implemented-wasm-production'),
   entry('text:replace-inserts-into-empty-text', 'text', '=REPLACE("",1,0,"Z")', 'implemented-wasm-production'),
+  entry('text:replace-counts-surrogate-pair-as-one-character', 'text', '=REPLACE("x😀y",2,1,"Q")', 'implemented-wasm-production', {
+    notes: 'Excel Compatibility Version 2 counts Unicode surrogate pairs as one character for REPLACE.',
+  }),
   entry('text:replace-appends-when-start-past-text', 'text', '=REPLACE("abc",8,1,"Z")', 'implemented-wasm-production'),
   entry('text:replace-negative-fractional-count', 'text', '=REPLACE("abc",1,-0.5,"Z")', 'implemented-wasm-production'),
   entry('text:replaceb-inserts-into-empty-text', 'text', '=REPLACEB("",1,0,"Z")', 'implemented-wasm-production'),

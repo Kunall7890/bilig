@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
-import { evaluatePlan, evaluatePlanResult, lowerToPlan, parseFormula } from '../index.js'
+import { compileFormula, evaluatePlan, evaluatePlanResult, lowerToPlan, parseFormula } from '../index.js'
 
 const context = {
   sheetName: 'Sheet2',
@@ -88,6 +88,10 @@ describe('js evaluator context special calls', () => {
 
   it('preserves validation and NA or REF branches', () => {
     expect(evaluatePlan(lowerToPlan(parseFormula('CHOOSE(1)')), context)).toEqual(err(ErrorCode.Value))
+    expect(evaluatePlan(lowerToPlan(parseFormula('CHOOSE(1,)')), context)).toEqual({ tag: ValueTag.Empty })
+    expect(evaluatePlan(lowerToPlan(parseFormula('CHOOSE(2,1,)')), context)).toEqual({ tag: ValueTag.Empty })
+    expect(evaluatePlan(compileFormula('CHOOSE(1,)').jsPlan, context)).toEqual({ tag: ValueTag.Empty })
+    expect(evaluatePlan(compileFormula('CHOOSE(2,1,)').jsPlan, context)).toEqual({ tag: ValueTag.Empty })
     expect(evaluatePlan(lowerToPlan(parseFormula('ROW(A1,B1)')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('COLUMN(A1,B1)')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('ISOMITTED()')), context)).toEqual(err(ErrorCode.Value))

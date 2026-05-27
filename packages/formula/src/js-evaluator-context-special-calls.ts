@@ -47,7 +47,14 @@ function chooseMatrixForIndex(indexValue: CellValue, rawArgs: StackValue[], deps
   if (typeof choice !== 'number') {
     return choice
   }
+  if (rawArgs[choice]?.kind === 'omitted') {
+    return { rows: 1, cols: 1, values: [deps.emptyValue()] }
+  }
   return deps.matrixFromStackValue(rawArgs[choice]!) ?? deps.error(ErrorCode.Value)
+}
+
+function chooseSelectedStackValue(rawArg: StackValue, deps: ContextSpecialCallDeps): StackValue {
+  return rawArg.kind === 'omitted' ? deps.stackScalar(deps.emptyValue()) : deps.cloneStackValue(rawArg)
 }
 
 function chosenValueAt(matrix: ChosenMatrix, row: number, col: number, deps: ContextSpecialCallDeps): CellValue {
@@ -214,7 +221,7 @@ export function evaluateContextSpecialCall(
       if (typeof choice !== 'number') {
         return deps.stackScalar(choice)
       }
-      return deps.cloneStackValue(rawArgs[choice]!)
+      return chooseSelectedStackValue(rawArgs[choice]!, deps)
     }
     case 'OFFSET': {
       if (rawArgs.length < 3 || rawArgs.length > 5) {

@@ -98,46 +98,14 @@ function fixture(
   return notes === undefined ? base : { ...base, notes }
 }
 
-export const TEXT_FIXTURE_METADATA = {
-  source: 'excel-web-like text builtin tranche',
-  version: 2,
-  builtins: [
-    'LEN',
-    'LENB',
-    'CONCAT',
-    'LEFT',
-    'LEFTB',
-    'RIGHT',
-    'RIGHTB',
-    'MID',
-    'MIDB',
-    'CLEAN',
-    'TRIM',
-    'UPPER',
-    'LOWER',
-    'FIND',
-    'FINDB',
-    'SEARCH',
-    'SEARCHB',
-    'REPLACE',
-    'REPLACEB',
-    'REPT',
-    'ASC',
-    'JIS',
-    'DBCS',
-    'VALUE',
-    'TEXTBEFORE',
-    'TEXTAFTER',
-    'TEXTJOIN',
-    'TEXTSPLIT',
-  ] as const,
-} as const
+export { TEXT_FIXTURE_METADATA } from './text-fixture-metadata.js'
 
 export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
   {
     builtin: 'LEN',
     cases: [
       { name: 'counts plain string length', args: [text('hello')], expected: number(5) },
+      { name: 'counts a Unicode surrogate pair as one character', args: [text('😀')], expected: number(1) },
       { name: 'coerces booleans to text', args: [bool(true)], expected: number(4) },
       { name: 'treats empty as empty string', args: [empty()], expected: number(0) },
     ],
@@ -245,6 +213,11 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
         expected: text('lph'),
       },
       {
+        name: 'counts a Unicode surrogate pair as one character',
+        args: [text('x😀y'), number(2), number(1)],
+        expected: text('😀'),
+      },
+      {
         name: 'start beyond end returns empty string',
         args: [text('alpha'), number(9), number(2)],
         expected: text(''),
@@ -323,6 +296,11 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
         expected: number(4),
       },
       {
+        name: 'returns positions after a Unicode surrogate pair as one character',
+        args: [text('y'), text('x😀y')],
+        expected: number(3),
+      },
+      {
         name: 'empty needle returns start position',
         args: [text(''), text('alpha'), number(3)],
         expected: number(3),
@@ -350,6 +328,11 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
       {
         name: 'searches case-insensitively',
         args: [text('PH'), text('alphabet')],
+        expected: number(3),
+      },
+      {
+        name: 'returns positions after a Unicode surrogate pair as one character',
+        args: [text('Y'), text('x😀y')],
         expected: number(3),
       },
       {
@@ -382,6 +365,11 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
         name: 'replaces a character span',
         args: [text('alphabet'), number(3), number(2), text('Z')],
         expected: text('alZabet'),
+      },
+      {
+        name: 'replaces a Unicode surrogate pair as one character',
+        args: [text('x😀y'), number(2), number(1), text('Q')],
+        expected: text('xQy'),
       },
       {
         name: 'inserts into empty text',

@@ -10,7 +10,15 @@ import {
   utf8ByteLength,
 } from './text-codec'
 import { STACK_KIND_SCALAR, writeResult, writeStringResult } from './result-io'
-import { coerceLength, coercePositiveStart, excelTrim, findPosition } from './text-foundation'
+import {
+  coerceLength,
+  coercePositiveStart,
+  excelTrim,
+  findPosition,
+  findPositionCodeUnits,
+  scalarTextLength,
+  sliceTextScalars,
+} from './text-foundation'
 
 const MAX_EXCEL_CELL_TEXT_LENGTH: i32 = 32767
 
@@ -73,11 +81,29 @@ export function tryApplyScalarTextBuiltin(
   }
 
   if (builtinId == BuiltinId.Len && argc == 1) {
-    const length = textLength(tagStack[base], valueStack[base], stringLengths, outputStringLengths)
-    if (length < 0) {
+    const text = scalarText(
+      tagStack[base],
+      valueStack[base],
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    if (text == null) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, <f64>length, rangeIndexStack, valueStack, tagStack, kindStack)
+    return writeResult(
+      base,
+      STACK_KIND_SCALAR,
+      <u8>ValueTag.Number,
+      <f64>scalarTextLength(text),
+      rangeIndexStack,
+      valueStack,
+      tagStack,
+      kindStack,
+    )
   }
 
   if (builtinId == BuiltinId.Lenb && argc == 1) {
@@ -197,7 +223,7 @@ export function tryApplyScalarTextBuiltin(
     if (text == null || start == i32.MIN_VALUE || count == i32.MIN_VALUE) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    return writeStringResult(base, text.slice(start - 1, start - 1 + count), rangeIndexStack, valueStack, tagStack, kindStack)
+    return writeStringResult(base, sliceTextScalars(text, start - 1, count), rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.Midb && argc == 3) {
@@ -324,7 +350,7 @@ export function tryApplyScalarTextBuiltin(
       }
       start = bytePositionToCharPositionUtf8(haystack, startByte)
     }
-    const found = findPosition(needle, haystack, start, builtinId == BuiltinId.Findb, builtinId == BuiltinId.Searchb)
+    const found = findPositionCodeUnits(needle, haystack, start, builtinId == BuiltinId.Findb, builtinId == BuiltinId.Searchb)
     if (found == i32.MIN_VALUE) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }

@@ -1,5 +1,6 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import type { TextBuiltin } from './text.js'
+import { excelTextIndexToCodeUnitIndex, excelTextLength, excelTextPositionFromCodeUnitIndex } from './text-unicode.js'
 
 interface TextSearchBuiltinDeps {
   error: (code: ErrorCode) => CellValue
@@ -114,11 +115,12 @@ function hasSearchSyntax(pattern: string): boolean {
 
 function buildSearchRegex(pattern: string): RegExp {
   let source = '^'
+  const chars = Array.from(pattern)
 
-  for (let index = 0; index < pattern.length; index += 1) {
-    const char = pattern[index]!
+  for (let index = 0; index < chars.length; index += 1) {
+    const char = chars[index]!
     if (char === '~') {
-      const next = pattern[index + 1]
+      const next = chars[index + 1]
       if (next === undefined) {
         source += escapeRegExp(char)
       } else {
@@ -138,7 +140,7 @@ function buildSearchRegex(pattern: string): RegExp {
     source += escapeRegExp(char)
   }
 
-  return new RegExp(source, 'i')
+  return new RegExp(source, 'iu')
 }
 
 function findPosition(
@@ -148,27 +150,34 @@ function findPosition(
   start: number,
   caseSensitive: boolean,
   wildcardAware: boolean,
+  countSurrogatePairsAsOne: boolean,
 ): number | CellValue {
-  const startIndex = start - 1
+  const textLength = countSurrogatePairsAsOne ? excelTextLength(haystack) : haystack.length
 
-  if (start > haystack.length) {
+  if (start > textLength) {
     return deps.error(ErrorCode.Value)
   }
   if (needle === '') {
     return start
   }
 
+  const startIndex = countSurrogatePairsAsOne ? excelTextIndexToCodeUnitIndex(haystack, start - 1) : start - 1
   if (!wildcardAware || !hasSearchSyntax(needle)) {
     const normalizedHaystack = caseSensitive ? haystack : haystack.toLowerCase()
     const normalizedNeedle = caseSensitive ? needle : needle.toLowerCase()
     const found = normalizedHaystack.indexOf(normalizedNeedle, startIndex)
-    return found === -1 ? deps.error(ErrorCode.Value) : found + 1
+    return found === -1
+      ? deps.error(ErrorCode.Value)
+      : countSurrogatePairsAsOne
+        ? excelTextPositionFromCodeUnitIndex(haystack, found)
+        : found + 1
   }
 
   const regex = buildSearchRegex(needle)
-  for (let index = startIndex; index <= haystack.length; index += 1) {
+  for (let offset = start - 1; offset <= textLength; offset += 1) {
+    const index = countSurrogatePairsAsOne ? excelTextIndexToCodeUnitIndex(haystack, offset) : offset
     if (regex.test(haystack.slice(index))) {
-      return index + 1
+      return countSurrogatePairsAsOne ? offset + 1 : index + 1
     }
   }
   return deps.error(ErrorCode.Value)
@@ -189,7 +198,7 @@ export function createTextSearchBuiltins(deps: TextSearchBuiltinDeps): Record<st
       if (deps.isErrorValue(start)) {
         return start
       }
-      const found = findPosition(deps, deps.coerceText(findTextValue), deps.coerceText(withinTextValue), start, true, false)
+      const found = findPosition(deps, deps.coerceText(findTextValue), deps.coerceText(withinTextValue), start, true, false, true)
       return deps.isErrorValue(found) ? found : deps.numberResult(found)
     },
     SEARCH: (...args) => {
@@ -205,7 +214,7 @@ export function createTextSearchBuiltins(deps: TextSearchBuiltinDeps): Record<st
       if (deps.isErrorValue(start)) {
         return start
       }
-      const found = findPosition(deps, deps.coerceText(findTextValue), deps.coerceText(withinTextValue), start, false, true)
+      const found = findPosition(deps, deps.coerceText(findTextValue), deps.coerceText(withinTextValue), start, false, true, true)
       return deps.isErrorValue(found) ? found : deps.numberResult(found)
     },
     SEARCHB: (...args) => {
@@ -225,7 +234,15 @@ export function createTextSearchBuiltins(deps: TextSearchBuiltinDeps): Record<st
       if (start > deps.utf8Bytes(text).length) {
         return deps.error(ErrorCode.Value)
       }
-      const found = findPosition(deps, deps.coerceText(findTextValue), text, deps.bytePositionToCharPosition(text, start), false, true)
+      const found = findPosition(
+        deps,
+        deps.coerceText(findTextValue),
+        text,
+        deps.bytePositionToCharPosition(text, start),
+        false,
+        true,
+        false,
+      )
       return deps.isErrorValue(found) ? found : deps.numberResult(deps.charPositionToBytePosition(text, found))
     },
     FINDB: (...args) => {

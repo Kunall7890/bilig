@@ -1,9 +1,13 @@
+import { codeUnitIndexFromScalarIndex, scalarTextLength } from './text-foundation'
+
 export function replaceText(text: string, start: i32, count: i32, replacement: string): string {
   const startIndex = start - 1
-  if (startIndex >= text.length) {
-    return text
+  if (startIndex >= scalarTextLength(text)) {
+    return text + replacement
   }
-  return text.slice(0, startIndex) + replacement + text.slice(startIndex + count)
+  const startCodeUnitIndex = codeUnitIndexFromScalarIndex(text, startIndex)
+  const endCodeUnitIndex = codeUnitIndexFromScalarIndex(text, startIndex + count)
+  return text.slice(0, startCodeUnitIndex) + replacement + text.slice(endCodeUnitIndex)
 }
 
 export function substituteText(text: string, oldText: string, newText: string): string {

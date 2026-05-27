@@ -213,7 +213,7 @@ export function replaceBytesText(text: string, start: i32, count: i32, replaceme
   const textBytes = Uint8Array.wrap(String.UTF8.encode(text))
   const zeroBasedStart = max<i32>(0, start - 1)
   if (zeroBasedStart >= textBytes.length) {
-    return text
+    return text + replacement
   }
   const zeroBasedEnd = min<i32>(textBytes.length, zeroBasedStart + max<i32>(0, count))
   const replacementBytes = Uint8Array.wrap(String.UTF8.encode(replacement))
