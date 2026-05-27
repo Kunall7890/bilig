@@ -331,6 +331,30 @@ describe('SpreadsheetEngine formula initialization', () => {
     expect(engine.getPerformanceCounters().directFormulaInitialEvaluations).toBe(3)
   })
 
+  it('recomputes scalar pre-evaluations that depended on stale formula values', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-stale-scalar-pre-eval' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 2)
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+
+    engine.resetPerformanceCounters()
+    engine.initializeCellFormulasAt(
+      [
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 1, formula: 'SUM(A1:A1)' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 2, formula: 'A1/B1' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 3, formula: 'C1-E1' } },
+      ],
+      3,
+    )
+
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getPerformanceCounters().topoRebuilds).toBe(0)
+    expect(engine.getPerformanceCounters().directFormulaInitialEvaluations).toBe(3)
+  })
+
   it('materializes anchored prefix aggregate families during initial direct evaluation', async () => {
     const rowCount = 128
     const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-prefix-aggregate-family' })
