@@ -1230,10 +1230,10 @@ describe('wasm kernel', () => {
     expect(kernel.readNumbers()[cellIndex(1, 2, width)]).toBe(-172.5)
     expect(kernel.readTags()[cellIndex(1, 3, width)]).toBe(ValueTag.Error)
     expect(kernel.readErrors()[cellIndex(1, 3, width)]).toBe(ErrorCode.Value)
-    expect(kernel.readTags()[cellIndex(1, 4, width)]).toBe(ValueTag.Number)
-    expect(kernel.readNumbers()[cellIndex(1, 4, width)]).toBe(1)
-    expect(kernel.readTags()[cellIndex(1, 5, width)]).toBe(ValueTag.Number)
-    expect(kernel.readNumbers()[cellIndex(1, 5, width)]).toBe(0)
+    expect(kernel.readTags()[cellIndex(1, 4, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 4, width)]).toBe(ErrorCode.Value)
+    expect(kernel.readTags()[cellIndex(1, 5, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 5, width)]).toBe(ErrorCode.Value)
   })
 
   it('evaluates NUMBERVALUE and VALUETOTEXT on the wasm path', async () => {
