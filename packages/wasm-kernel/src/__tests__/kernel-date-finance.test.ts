@@ -188,6 +188,45 @@ describe('wasm kernel date/finance helpers', () => {
     expectErrorCell(kernel, cellIndex(1, 5, width), ErrorCode.Num)
   })
 
+  it('returns documented date-domain errors on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 7, 0, 1, 1)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(1), encodeCall(BuiltinId.Date, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(1), encodeCall(BuiltinId.Date, 3), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Isoweeknum, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Isoweeknum, 1), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Eomonth, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Eomonth, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Edate, 2), encodeRet()],
+    ])
+    const targetCells = Uint32Array.from([
+      cellIndex(1, 0, width),
+      cellIndex(1, 1, width),
+      cellIndex(1, 2, width),
+      cellIndex(1, 3, width),
+      cellIndex(1, 4, width),
+      cellIndex(1, 5, width),
+      cellIndex(1, 6, width),
+    ])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targetCells)
+    const constants = packConstants([[-1, 1], [10000, 1], [-1], [2_958_466], [-1, 0], [2_958_465, 1], [-1, 1]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(targetCells)
+
+    expectErrorCell(kernel, cellIndex(1, 0, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 1, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 2, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 3, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 4, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 5, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 6, width), ErrorCode.Value)
+  })
+
   it('keeps date-basis helper behavior stable across refactors', async () => {
     const kernel = await createKernel()
     const width = 8

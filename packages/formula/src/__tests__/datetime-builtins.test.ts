@@ -1145,7 +1145,7 @@ describe('datetime builtins', () => {
       datetimeBuiltins.DATE({ tag: ValueTag.Number, value: 10000 }, { tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 1 }),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(datetimeBuiltins.DATE()).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
 

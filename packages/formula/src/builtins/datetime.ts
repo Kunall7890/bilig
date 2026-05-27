@@ -347,10 +347,13 @@ function createIsoWeeknumBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin 
     if (typeof serial !== 'number') {
       return serial
     }
+    if (!isValidDaysDateSerial(serial, dateSystem)) {
+      return numError()
+    }
 
     const parts = excelSerialToDateParts(serial, dateSystem)
     if (parts === undefined) {
-      return valueError()
+      return numError()
     }
 
     return numberResult(isoWeeknumFromDateParts(parts))
@@ -482,9 +485,12 @@ export function createDateBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin
     if (typeof year !== 'number') return year
     if (typeof month !== 'number') return month
     if (typeof day !== 'number') return day
+    if (year < 0 || year >= 10000) {
+      return numError()
+    }
 
     const serial = excelDatePartsToSerial(year, month, day, dateSystem)
-    return serial === undefined ? valueError() : numberResult(serial)
+    return serial === undefined ? numError() : numberResult(serial)
   }
 }
 
@@ -789,6 +795,9 @@ export function createEdateBuiltin(dateSystem: ExcelDateSystem = '1900'): Builti
     if (typeof monthOffset !== 'number') {
       return monthOffset
     }
+    if (!isValidDaysDateSerial(startSerial, dateSystem)) {
+      return valueError()
+    }
 
     const serial = addMonthsToExcelDate(startSerial, monthOffset, dateSystem)
     return serial === undefined ? valueError() : numberResult(serial)
@@ -810,9 +819,12 @@ export function createEomonthBuiltin(dateSystem: ExcelDateSystem = '1900'): Buil
     if (typeof monthOffset !== 'number') {
       return monthOffset
     }
+    if (!isValidDaysDateSerial(startSerial, dateSystem)) {
+      return numError()
+    }
 
     const serial = endOfMonthExcelDate(startSerial, monthOffset, dateSystem)
-    return serial === undefined ? valueError() : numberResult(serial)
+    return serial === undefined ? numError() : numberResult(serial)
   }
 }
 

@@ -39,6 +39,19 @@ export function tryApplyDateTimeBuiltin(
   outputStringData: Uint16Array,
 ): i32 {
   if (builtinId == BuiltinId.Date && argc == 3) {
+    const scalarError = scalarErrorAt(base, argc, kindStack, tagStack, valueStack)
+    if (scalarError >= 0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const year = truncToInt(tagStack[base], valueStack[base])
+    const month = truncToInt(tagStack[base + 1], valueStack[base + 1])
+    const day = truncToInt(tagStack[base + 2], valueStack[base + 2])
+    if (year == i32.MIN_VALUE || month == i32.MIN_VALUE || day == i32.MIN_VALUE) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (year < 0 || year >= 10000) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const serial = excelDateSerial(
       tagStack[base],
       valueStack[base],
@@ -48,7 +61,7 @@ export function tryApplyDateTimeBuiltin(
       valueStack[base + 2],
     )
     if (isNaN(serial)) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, serial, rangeIndexStack, valueStack, tagStack, kindStack)
   }
@@ -192,7 +205,13 @@ export function tryApplyDateTimeBuiltin(
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const whole = excelSerialWhole(tagStack[base], valueStack[base])
-    const week = whole == i32.MIN_VALUE ? i32.MIN_VALUE : excelIsoWeeknumValue(whole)
+    if (whole == i32.MIN_VALUE) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (!isExcelDateSerialInRange(whole)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const week = excelIsoWeeknumValue(whole)
     if (week == i32.MIN_VALUE) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -200,6 +219,18 @@ export function tryApplyDateTimeBuiltin(
   }
 
   if (builtinId == BuiltinId.Edate && argc == 2) {
+    const scalarError = scalarErrorAt(base, argc, kindStack, tagStack, valueStack)
+    if (scalarError >= 0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const startWhole = excelSerialWhole(tagStack[base], valueStack[base])
+    const offset = truncToInt(tagStack[base + 1], valueStack[base + 1])
+    if (startWhole == i32.MIN_VALUE || offset == i32.MIN_VALUE) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (!isExcelDateSerialInRange(startWhole)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const serial = addMonthsExcelSerial(tagStack[base], valueStack[base], tagStack[base + 1], valueStack[base + 1], false)
     if (isNaN(serial)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -208,9 +239,24 @@ export function tryApplyDateTimeBuiltin(
   }
 
   if (builtinId == BuiltinId.Eomonth && argc == 2) {
+    const scalarError = scalarErrorAt(base, argc, kindStack, tagStack, valueStack)
+    if (scalarError >= 0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const startWhole = excelSerialWhole(tagStack[base], valueStack[base])
+    const offset = truncToInt(tagStack[base + 1], valueStack[base + 1])
+    if (startWhole == i32.MIN_VALUE || offset == i32.MIN_VALUE) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (!isExcelDateSerialInRange(startWhole)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const serial = addMonthsExcelSerial(tagStack[base], valueStack[base], tagStack[base + 1], valueStack[base + 1], true)
     if (isNaN(serial)) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (!isExcelDateSerialInRange(<i32>Math.floor(serial))) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, serial, rangeIndexStack, valueStack, tagStack, kindStack)
   }
