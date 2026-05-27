@@ -3,6 +3,27 @@ import { ErrorCode } from '@bilig/protocol'
 import { rewriteSpecialCall } from '../special-call-rewrites.js'
 
 describe('special call rewrites', () => {
+  it('rewrites missing IF false branches to explicit FALSE literals', () => {
+    expect(
+      rewriteSpecialCall({
+        kind: 'CallExpr',
+        callee: 'IF',
+        args: [
+          { kind: 'CellRef', ref: 'A1' },
+          { kind: 'NumberLiteral', value: 1 },
+        ],
+      }),
+    ).toEqual({
+      kind: 'CallExpr',
+      callee: 'IF',
+      args: [
+        { kind: 'CellRef', ref: 'A1' },
+        { kind: 'NumberLiteral', value: 1 },
+        { kind: 'BooleanLiteral', value: false },
+      ],
+    })
+  })
+
   it('rewrites TRUE and FALSE into literals or VALUE errors', () => {
     expect(rewriteSpecialCall({ kind: 'CallExpr', callee: 'TRUE', args: [] })).toEqual({
       kind: 'BooleanLiteral',

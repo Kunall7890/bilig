@@ -301,15 +301,19 @@ function emitNode(node: FormulaNode, state: CompilerState): void {
           return
         }
         if (callee === 'IF') {
-          if (node.args.length !== 3) {
-            throw new Error('IF requires exactly three arguments on the wasm fast path')
+          if (node.args.length !== 2 && node.args.length !== 3) {
+            throw new Error('IF requires two or three arguments on the wasm fast path')
           }
           emitNode(node.args[0]!, state)
           const jumpIfFalseIndex = state.program.push(encodeInstruction(Opcode.JumpIfFalse, 0)) - 1
           emitNode(node.args[1]!, state)
           const jumpIndex = state.program.push(encodeInstruction(Opcode.Jump, 0)) - 1
           const falseBranchStart = state.program.length
-          emitNode(node.args[2]!, state)
+          if (node.args.length === 3) {
+            emitNode(node.args[2]!, state)
+          } else {
+            state.program.push(encodeInstruction(Opcode.PushBoolean, 0))
+          }
           const end = state.program.length
           state.program[jumpIfFalseIndex] = encodeInstruction(Opcode.JumpIfFalse, falseBranchStart)
           state.program[jumpIndex] = encodeInstruction(Opcode.Jump, end)

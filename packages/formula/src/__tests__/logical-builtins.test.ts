@@ -15,7 +15,9 @@ describe('logical/info builtins', () => {
 
     expect(IF(bool(true), text('yes'), text('no'))).toEqual(text('yes'))
     expect(IF(num(0), text('yes'), text('no'))).toEqual(text('no'))
-    expect(IF(empty(), num(1))).toEqual(empty())
+    expect(IF(empty(), num(1))).toEqual(bool(false))
+    expect(IF(bool(false), num(1))).toEqual(bool(false))
+    expect(IF(bool(false), num(1), empty())).toEqual(empty())
     expect(IF(text('TRUE'), num(1), num(2))).toEqual(num(1))
     expect(IF(text('FALSE'), num(1), num(2))).toEqual(num(2))
     expect(IF(text(''), num(1), num(2))).toEqual(num(2))

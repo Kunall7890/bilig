@@ -353,8 +353,8 @@ export function isWasmSafeBuiltinArgs(callee: string, args: readonly FormulaNode
       return argc >= 2 && isScalarArg(args[0]!) && args.slice(1).every((arg) => deps.isWasmSafe(arg, true) || isNativeSequenceArg(arg))
     case 'IF':
       return (
-        argc === 3 &&
-        !hasMixedConditionalResultKinds(args, [1, 2]) &&
+        (argc === 2 || argc === 3) &&
+        (argc === 2 ? !isTextLiteralLike(args[1]!) : !hasMixedConditionalResultKinds(args, [1, 2])) &&
         isScalarArg(args[0]!) &&
         args.slice(1).every((arg) => deps.isWasmSafe(arg, true))
       )

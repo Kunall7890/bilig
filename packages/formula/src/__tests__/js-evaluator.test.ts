@@ -136,6 +136,10 @@ describe('js evaluator', () => {
       ['IF("TRUE",1,2)', num(1)],
       ['IF("FALSE",1,2)', num(2)],
       ['IF("",1,2)', num(2)],
+      ['IF(FALSE(),1)', { tag: ValueTag.Boolean, value: false }],
+      ['IF(A2,1)', { tag: ValueTag.Boolean, value: false }],
+      ['IF(FALSE(),1,)', num(0)],
+      ['IF(TRUE(),,2)', num(0)],
       ['IFS("FALSE",1,"TRUE",2)', num(2)],
     ] as const
 

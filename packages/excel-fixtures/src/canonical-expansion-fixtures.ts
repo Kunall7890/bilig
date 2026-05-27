@@ -204,6 +204,15 @@ export const canonicalExpansionFixtures: readonly ExcelFixtureCase[] = [
     'Evaluator differential confirms TIMEVALUE accepts overflow time text and returns the normalized time-of-day fraction.',
   ),
   fixture(
+    'logical',
+    'if-missing-false-branch',
+    'IF with missing false branch returns FALSE',
+    '=IF(FALSE(),1)',
+    [],
+    [output('A1', { kind: 'boolean', value: false })],
+    'Microsoft documents value_if_false as optional; evaluator differential confirms a missing false branch returns FALSE, unlike an explicitly omitted comma argument.',
+  ),
+  fixture(
     'dynamic-array',
     'take-basic',
     'TAKE returns leading rows',

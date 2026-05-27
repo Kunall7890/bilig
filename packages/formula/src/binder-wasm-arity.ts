@@ -29,7 +29,7 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
     case 'NA':
       return argc === 0
     case 'IF':
-      return argc === 3
+      return argc === 2 || argc === 3
     case 'IFS':
       return argc >= 2 && argc % 2 === 0
     case 'IFERROR':

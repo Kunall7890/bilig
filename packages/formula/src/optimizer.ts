@@ -428,7 +428,8 @@ function optimizeCall(node: CallExprNode): FormulaNode {
       if (!coerced.ok) {
         return cellValueToAst(coerced.error) ?? { kind: 'ErrorLiteral', code: ErrorCode.Value }
       }
-      return optimizeFormula(coerced.value ? args[1]! : args[2]!)
+      const selectedBranch = coerced.value ? args[1]! : args[2]!
+      return selectedBranch.kind === 'OmittedArgument' ? { kind: 'NumberLiteral', value: 0 } : optimizeFormula(selectedBranch)
     }
   }
 

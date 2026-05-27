@@ -598,6 +598,8 @@ describe('formula', () => {
     const compiled = compileFormula('IF(A1>0,A1*2,A2-1)')
     expect(compiled.mode).toBe(1)
     expect(compileFormula('IF(A1>0,"yes","no")').mode).toBe(1)
+    expect(compileFormula('IF(FALSE(),1)').mode).toBe(1)
+    expect(compileFormula('IF(A1,1)').mode).toBe(1)
     expect(compileFormula('IF(A1>0,B1,"")').mode).toBe(0)
     expect(compileFormula('IFERROR(A1,"missing")').mode).toBe(1)
     expect(compileFormula('IFNA(NA(),"missing")').mode).toBe(1)
@@ -675,7 +677,7 @@ describe('formula', () => {
   })
 
   it('keeps unsupported candidate builtin arities on the JS path', () => {
-    expect(compileFormula('IF(A1,1)').mode).toBe(0)
+    expect(compileFormula('IF(A1)').mode).toBe(0)
     expect(compileFormula('NOT(A1,A2)').mode).toBe(0)
     expect(compileFormula('COUNTIF(A:A,">0")').mode).toBe(0)
     expect(compileFormula('SUMIF(A1:A4,B1:B4,C1:C4,D1:D4)').mode).toBe(0)

@@ -78,7 +78,8 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
     }
     return errorValue(ErrorCode.NA)
   },
-  IF: (condition, truthy, falsy = emptyValue()) => {
+  IF: (...args) => {
+    const [condition, truthy, falsy] = args
     if (condition === undefined || truthy === undefined) {
       return errorValue(ErrorCode.Value)
     }
@@ -88,7 +89,7 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
       return coerced.error
     }
 
-    return coerced.value ? truthy : falsy
+    return coerced.value ? truthy : args.length >= 3 ? (falsy ?? emptyValue()) : booleanResult(false)
   },
   IFERROR: (value, valueIfError = emptyValue()) => {
     if (value === undefined) {

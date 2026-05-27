@@ -51,6 +51,8 @@ function rewriteSwitch(args: readonly FormulaNode[]): FormulaNode {
 
 export function rewriteSpecialCall(node: CallExprNode): FormulaNode | undefined {
   switch (node.callee.toUpperCase()) {
+    case 'IF':
+      return node.args.length === 2 ? callNode('IF', [node.args[0]!, node.args[1]!, booleanNode(false)]) : undefined
     case 'TRUE':
       return node.args.length === 0 ? booleanNode(true) : errorNode(ErrorCode.Value)
     case 'FALSE':

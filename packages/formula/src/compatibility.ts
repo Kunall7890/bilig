@@ -525,6 +525,9 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('logical:if-direct-logical-text-false', 'logical', '=IF("FALSE",1,2)', 'implemented-wasm-production'),
   entry('logical:if-direct-logical-text-invalid', 'logical', '=IF("x",1,2)', 'implemented-wasm-production'),
   entry('logical:ifs-direct-logical-text', 'logical', '=IFS("FALSE",1,"TRUE",2)', 'implemented-wasm-production'),
+  entry('logical:if-missing-false-branch', 'logical', '=IF(FALSE(),1)', 'implemented-wasm-production', {
+    notes: 'Missing value_if_false returns the Boolean FALSE; explicit omitted comma arguments still evaluate as blank/zero.',
+  }),
   entry('logical:and-direct-logical-text', 'logical', '=AND("TRUE","true")', 'implemented-wasm-production'),
   entry('logical:or-direct-logical-text', 'logical', '=OR("FALSE","")', 'implemented-wasm-production'),
   entry('logical:not-direct-empty-text', 'logical', '=NOT("")', 'implemented-wasm-production'),

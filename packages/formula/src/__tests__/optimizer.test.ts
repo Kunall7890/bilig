@@ -39,6 +39,18 @@ describe('optimizer', () => {
       kind: 'NumberLiteral',
       value: 1,
     })
+    expect(optimizeFormula(parseFormula('IF(FALSE(),1)'))).toEqual({
+      kind: 'BooleanLiteral',
+      value: false,
+    })
+    expect(optimizeFormula(parseFormula('IF(FALSE(),1,)'))).toEqual({
+      kind: 'NumberLiteral',
+      value: 0,
+    })
+    expect(optimizeFormula(parseFormula('IF(TRUE(),,2)'))).toEqual({
+      kind: 'NumberLiteral',
+      value: 0,
+    })
     expect(optimizeFormula(parseFormula('+A1'))).toEqual({
       kind: 'CellRef',
       ref: 'A1',

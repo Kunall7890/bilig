@@ -575,7 +575,7 @@ describe('formula builtins', () => {
       stringId: 1,
     })
 
-    expect(getBuiltin('IF')?.({ tag: ValueTag.Empty }, { tag: ValueTag.Number, value: 1 })).toEqual({ tag: ValueTag.Empty })
+    expect(getBuiltin('IF')?.({ tag: ValueTag.Empty }, { tag: ValueTag.Number, value: 1 })).toEqual({ tag: ValueTag.Boolean, value: false })
   })
 
   it('supports radix conversion and complex engineering builtins', () => {
