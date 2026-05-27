@@ -87,6 +87,32 @@ export interface SerializedSameCorpusCaptureError {
   readonly cause: SerializedSameCorpusCaptureError | null
 }
 
+export class SameCorpusMutationTargetCaptureDiagnosticError extends Error {
+  readonly diagnosticArtifactPath: string
+  readonly failurePhase: SameCorpusMutationTargetCaptureFailurePhase
+
+  constructor(args: {
+    readonly artifactPath: string
+    readonly cause: unknown
+    readonly failurePhase: SameCorpusMutationTargetCaptureFailurePhase
+    readonly product: UiResponsivenessSameCorpusProduct
+    readonly sampleIndex: number
+    readonly targetRange: string
+    readonly workload: UiResponsivenessSameCorpusMutatingWorkload
+  }) {
+    const causeMessage = args.cause instanceof Error ? args.cause.message : String(args.cause)
+    super(
+      `Same-corpus mutation target proof failed for ${args.product} ${args.workload} sample ${String(args.sampleIndex + 1)} ${
+        args.targetRange
+      } during ${args.failurePhase}. Diagnostic artifact: ${args.artifactPath}. Cause: ${causeMessage}`,
+      { cause: args.cause },
+    )
+    this.name = 'SameCorpusMutationTargetCaptureDiagnosticError'
+    this.diagnosticArtifactPath = args.artifactPath
+    this.failurePhase = args.failurePhase
+  }
+}
+
 export function sameCorpusMutationTargetFailureDiagnosticArtifactPath(args: {
   readonly caseId?: string
   readonly outputPath: string

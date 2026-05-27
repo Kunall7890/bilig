@@ -26,6 +26,7 @@ import type {
 } from './ui-responsiveness-same-corpus-proof.ts'
 import { readSameCorpusVisibleSelectedRange } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import {
+  SameCorpusMutationTargetCaptureDiagnosticError,
   writeSameCorpusMutationTargetCaptureFailureDiagnostic,
   type SameCorpusMutationTargetCaptureFailurePhase,
   type SameCorpusMutationTargetFailureCleanupStatus,
@@ -223,8 +224,9 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       reselectStatus = 'failed'
       reselectError = cleanupError
     }
+    let diagnosticArtifactPath: string | null = null
     try {
-      writeSameCorpusMutationTargetCaptureFailureDiagnostic({
+      diagnosticArtifactPath = writeSameCorpusMutationTargetCaptureFailureDiagnostic({
         after,
         afterCommittedStateProof,
         afterScreenshot,
@@ -255,6 +257,17 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       })
     } catch {
       // Preserve the original capture failure; accepted or stale committed-state phase artifacts remain on disk.
+    }
+    if (diagnosticArtifactPath) {
+      throw new SameCorpusMutationTargetCaptureDiagnosticError({
+        artifactPath: diagnosticArtifactPath,
+        cause: error,
+        failurePhase,
+        product: args.product,
+        sampleIndex: args.sampleIndex,
+        targetRange: args.target.targetRange,
+        workload: args.workload,
+      })
     }
     throw error
   } finally {

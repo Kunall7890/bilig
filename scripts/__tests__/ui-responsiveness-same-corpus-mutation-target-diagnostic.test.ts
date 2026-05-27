@@ -9,6 +9,7 @@ import {
   type SameCorpusMutationTargetCommittedStatePhaseProof,
 } from '../ui-responsiveness-same-corpus-committed-state-proof.ts'
 import {
+  SameCorpusMutationTargetCaptureDiagnosticError,
   sameCorpusMutationTargetFailureDiagnosticArtifactPath,
   writeSameCorpusMutationTargetCaptureFailureDiagnostic,
 } from '../ui-responsiveness-same-corpus-mutation-target-diagnostic.ts'
@@ -101,6 +102,29 @@ describe('same-corpus mutation target failure diagnostics', () => {
         },
       },
     })
+  })
+
+  it('surfaces the diagnostic artifact path in the capture failure error', () => {
+    const cause = new Error('committed XLSX export never showed the intended fill')
+    const error = new SameCorpusMutationTargetCaptureDiagnosticError({
+      artifactPath: 'capture.json.proof/same-corpus-fill-format-change/mutation-target-diagnostics/google-sheets-sample-1-failure.json',
+      cause,
+      failurePhase: 'capture-after-committed-state',
+      product: 'google-sheets',
+      sampleIndex: 0,
+      targetRange: 'C5',
+      workload: 'fill-format-change',
+    })
+
+    expect(error).toMatchObject({
+      name: 'SameCorpusMutationTargetCaptureDiagnosticError',
+      diagnosticArtifactPath:
+        'capture.json.proof/same-corpus-fill-format-change/mutation-target-diagnostics/google-sheets-sample-1-failure.json',
+      failurePhase: 'capture-after-committed-state',
+    })
+    expect(error.message).toContain('Diagnostic artifact:')
+    expect(error.message).toContain('google-sheets-sample-1-failure.json')
+    expect(error.cause).toBe(cause)
   })
 })
 
