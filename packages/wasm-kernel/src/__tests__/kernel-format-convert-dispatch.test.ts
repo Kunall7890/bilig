@@ -285,6 +285,56 @@ describe('wasm kernel format and conversion dispatch', () => {
     }
   })
 
+  it('matches Microsoft Excel DOLLARDE and DOLLARFR denominator semantics on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 0, 8, 1, 1)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Dollarde, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Dollarfr, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Dollarde, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Dollarfr, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Dollarde, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Dollarfr, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Dollarde, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Dollarfr, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 8 }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([
+      [1.06, 12],
+      [1.5, 12],
+      [1.02, 12.9],
+      [1.5, 12.9],
+      [1.5, -1],
+      [1.5, -1],
+      [1.5, 0.5],
+      [1.5, 0.5],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 8 }, (_, index) => cellIndex(1, index, width))))
+
+    expectNumberCell(kernel, cellIndex(1, 0, width), 1.5)
+    expectNumberCell(kernel, cellIndex(1, 1, width), 1.06)
+    expectNumberCell(kernel, cellIndex(1, 2, width), 1 + 2 / 12)
+    expectNumberCell(kernel, cellIndex(1, 3, width), 1.06)
+
+    expect(kernel.readTags()[cellIndex(1, 4, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 4, width)]).toBe(ErrorCode.Num)
+    expect(kernel.readTags()[cellIndex(1, 5, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 5, width)]).toBe(ErrorCode.Num)
+    expect(kernel.readTags()[cellIndex(1, 6, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 6, width)]).toBe(ErrorCode.Div0)
+    expect(kernel.readTags()[cellIndex(1, 7, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 7, width)]).toBe(ErrorCode.Div0)
+  })
+
   it('renders NULL error labels on the wasm VALUETOTEXT path', async () => {
     const kernel = await createKernel()
     const width = 2

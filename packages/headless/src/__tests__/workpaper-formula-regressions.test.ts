@@ -211,7 +211,7 @@ describe('Workpaper formula regressions', () => {
     expectNumber(cellValue(workbook, 'Summary', 0, 3), 1)
     expectNumber(cellValue(workbook, 'Summary', 0, 4), 0)
     expectString(cellValue(workbook, 'Summary', 0, 5), 'x')
-    expect(cellValue(workbook, 'Summary', 1, 4)).toEqual({ tag: ValueTag.Empty })
+    expectString(cellValue(workbook, 'Summary', 1, 4), '')
     expectString(cellValue(workbook, 'Summary', 1, 5), '')
 
     workbook.setCellContents({ sheet: inputs, row: 0, col: 0 }, 7)

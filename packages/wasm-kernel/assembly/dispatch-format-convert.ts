@@ -61,17 +61,7 @@ function digitCount(value: i32): i32 {
 }
 
 function isValidDollarFractionNative(fraction: i32): bool {
-  if (fraction <= 0) {
-    return false
-  }
-  if (fraction == 1) {
-    return true
-  }
-  let current = fraction
-  while ((current & 1) == 0) {
-    current >>= 1
-  }
-  return current == 1
+  return fraction >= 1
 }
 
 function parsePositiveDigits(value: string): i32 {
@@ -298,14 +288,17 @@ export function tryApplyFormatConvertBuiltin(
     if (!isFinite(value) || !isFinite(fractionNumeric)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (fractionNumeric < 0.0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const fraction = <i32>fractionNumeric
     if (!isValidDollarFractionNative(fraction)) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (builtinId == BuiltinId.Dollarde) {
       const integerPart = <i32>Math.floor(Math.abs(value))
       const fractionalNumerator = dollarFractionalNumerator(value)
-      if (fractionalNumerator == i32.MIN_VALUE || fractionalNumerator >= fraction) {
+      if (fractionalNumerator == i32.MIN_VALUE) {
         return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
       }
       const sign = value < 0.0 ? -1.0 : 1.0

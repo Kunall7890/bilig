@@ -18,7 +18,9 @@ describe('formatting builtin helpers', () => {
   it('parses dollar fractions with Excel-compatible constraints', () => {
     expect(isValidDollarFraction(1)).toBe(true)
     expect(isValidDollarFraction(16)).toBe(true)
-    expect(isValidDollarFraction(12)).toBe(false)
+    expect(isValidDollarFraction(12)).toBe(true)
+    expect(isValidDollarFraction(0)).toBe(false)
+    expect(isValidDollarFraction(1.5)).toBe(false)
     expect(parseDollarDecimal(-5.08)).toEqual({ integerPart: 5, fractionalNumerator: 8 })
     expect(countLeadingZeros(32)).toBe(2)
     expect(countLeadingZeros(0)).toBe(1)

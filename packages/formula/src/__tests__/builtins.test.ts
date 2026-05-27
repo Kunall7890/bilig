@@ -727,7 +727,16 @@ describe('formula builtins', () => {
       value: 'text',
       stringId: 1,
     })
-    expect(getBuiltin('T')?.({ tag: ValueTag.Number, value: 7 })).toEqual({ tag: ValueTag.Empty })
+    expect(getBuiltin('T')?.({ tag: ValueTag.Number, value: 7 })).toEqual({
+      tag: ValueTag.String,
+      value: '',
+      stringId: 0,
+    })
+    expect(getBuiltin('T')?.({ tag: ValueTag.Boolean, value: true })).toEqual({
+      tag: ValueTag.String,
+      value: '',
+      stringId: 0,
+    })
     expect(getBuiltin('T')?.({ tag: ValueTag.Error, code: ErrorCode.Ref })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Ref,
@@ -1184,7 +1193,7 @@ describe('formula builtins', () => {
     })
     expect(getBuiltin('DOLLARFR')?.({ tag: ValueTag.Number, value: 1.5 }, { tag: ValueTag.Number, value: 0 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Div0,
     })
 
     expect(getBuiltin('GEOMEAN')?.({ tag: ValueTag.Number, value: 4 }, { tag: ValueTag.Number, value: 1 })).toEqual({
@@ -2103,7 +2112,7 @@ describe('formula builtins', () => {
     })
     expect(getBuiltin('DOLLARDE')?.({ tag: ValueTag.Number, value: 1.5 }, { tag: ValueTag.Number, value: 0 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Div0,
     })
     expect(getBuiltin('DOLLARDE')?.({ tag: ValueTag.Error, code: ErrorCode.NA }, { tag: ValueTag.Number, value: 16 })).toEqual({
       tag: ValueTag.Error,
@@ -2114,8 +2123,8 @@ describe('formula builtins', () => {
       code: ErrorCode.NA,
     })
     expect(getBuiltin('DOLLARDE')?.({ tag: ValueTag.Number, value: 1.6 }, { tag: ValueTag.Number, value: 2 })).toEqual({
-      tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      tag: ValueTag.Number,
+      value: 4,
     })
   })
 
@@ -2209,7 +2218,11 @@ describe('formula builtins', () => {
       value: 'alpha',
       stringId: 1,
     })
-    expect(T({ tag: ValueTag.Number, value: 42 })).toEqual({ tag: ValueTag.Empty })
+    expect(T({ tag: ValueTag.Number, value: 42 })).toEqual({
+      tag: ValueTag.String,
+      value: '',
+      stringId: 0,
+    })
     expect(T({ tag: ValueTag.Error, code: ErrorCode.Ref })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Ref,
@@ -3409,7 +3422,7 @@ describe('formula builtins', () => {
 
     expect(FISHER({ tag: ValueTag.Number, value: 1 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       GAMMADIST(
@@ -3457,7 +3470,7 @@ describe('formula builtins', () => {
     })
     expect(GAMMA({ tag: ValueTag.Number, value: 0 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(CHIDIST({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 4 })).toEqual({
       tag: ValueTag.Error,

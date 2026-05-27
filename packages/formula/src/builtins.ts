@@ -5,7 +5,7 @@ import { createComplexBuiltins } from './builtins/complex.js'
 import { createDistributionBuiltins } from './builtins/distribution-builtins.js'
 import { createFinancialBuiltins } from './builtins/financial-builtins.js'
 import { createFixedIncomeBuiltins } from './builtins/fixed-income-builtins.js'
-import { countLeadingZeros, formatFixed, isValidDollarFraction, parseDollarDecimal, toColumnLabel } from './builtins/formatting.js'
+import { countLeadingZeros, formatFixed, parseDollarDecimal, toColumnLabel } from './builtins/formatting.js'
 import {
   buildIdentityMatrix,
   combinationValue,
@@ -324,6 +324,21 @@ function coercePaymentType(value: CellValue | undefined, fallback: number): numb
   return type === 0 || type === 1 ? type : undefined
 }
 
+function coerceDollarFraction(value: CellValue | undefined): number | CellValue {
+  if (value === undefined) {
+    return valueError()
+  }
+  const numeric = toNumber(value)
+  if (numeric === undefined || !Number.isFinite(numeric)) {
+    return valueError()
+  }
+  if (numeric < 0) {
+    return numError()
+  }
+  const fraction = Math.trunc(numeric)
+  return fraction < 1 ? div0Error() : fraction
+}
+
 function toZeroNumericValue(value: CellValue): number | undefined {
   if (value.tag === ValueTag.String) {
     return 0
@@ -615,12 +630,15 @@ const scalarBuiltins: Record<string, Builtin> = {
       return error
     }
     const value = toNumber(valueArg)
-    const fraction = toInteger(fractionArg)
-    if (value === undefined || fraction === undefined || !isValidDollarFraction(fraction)) {
+    const fraction = coerceDollarFraction(fractionArg)
+    if (value === undefined || !Number.isFinite(value)) {
       return valueError()
     }
+    if (typeof fraction !== 'number') {
+      return fraction
+    }
     const { integerPart, fractionalNumerator } = parseDollarDecimal(value)
-    if (fractionalNumerator >= fraction || !Number.isInteger(fractionalNumerator)) {
+    if (!Number.isInteger(fractionalNumerator)) {
       return valueError()
     }
     const sign = value < 0 ? -1 : 1
@@ -632,9 +650,12 @@ const scalarBuiltins: Record<string, Builtin> = {
       return error
     }
     const value = toNumber(valueArg)
-    const fraction = toInteger(fractionArg)
-    if (value === undefined || fraction === undefined || !isValidDollarFraction(fraction)) {
+    const fraction = coerceDollarFraction(fractionArg)
+    if (value === undefined || !Number.isFinite(value)) {
       return valueError()
+    }
+    if (typeof fraction !== 'number') {
+      return fraction
     }
     const sign = value < 0 ? -1 : 1
     const absolute = Math.abs(value)
@@ -765,11 +786,15 @@ const scalarBuiltins: Record<string, Builtin> = {
     euroconvertBuiltin(numberArg, sourceArg, targetArg, fullPrecisionArg, triangulationPrecisionArg),
   ...radixBuiltins,
   ...complexBuiltins,
-  T: (value = { tag: ValueTag.Empty }) => {
+  T: (...args) => {
+    if (args.length === 0) {
+      return { tag: ValueTag.Empty }
+    }
+    const value = args[0]!
     if (value.tag === ValueTag.Error) {
       return value
     }
-    return value.tag === ValueTag.String ? value : { tag: ValueTag.Empty }
+    return value.tag === ValueTag.String ? value : { tag: ValueTag.String, value: '', stringId: 0 }
   },
   ISOMITTED: (...args) => {
     if (args.length !== 1) {

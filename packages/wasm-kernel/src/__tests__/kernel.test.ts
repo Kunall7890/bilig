@@ -565,10 +565,6 @@ function expectErrorCell(kernel: KernelInstance, index: number, expected: ErrorC
   expect(kernel.readErrors()[index]).toBe(expected)
 }
 
-function expectEmptyCell(kernel: KernelInstance, index: number): void {
-  expect(kernel.readTags()[index]).toBe(ValueTag.Empty)
-}
-
 describe('wasm kernel', () => {
   it('evaluates a simple program batch', async () => {
     const kernel = await createKernel()
@@ -2005,7 +2001,7 @@ describe('wasm kernel', () => {
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
     kernel.evalBatch(outputCells)
 
-    expectEmptyCell(kernel, cellIndex(1, 0, width))
+    expect(kernel.readTags()[cellIndex(1, 0, width)]).toBe(ValueTag.String)
     expectNumberCell(kernel, cellIndex(1, 1, width), 0, 12)
     expectNumberCell(kernel, cellIndex(1, 2, width), 1, 12)
     expectNumberCell(kernel, cellIndex(1, 3, width), 1, 12)
@@ -2014,7 +2010,8 @@ describe('wasm kernel', () => {
     expectNumberCell(kernel, cellIndex(1, 6, width), 1, 12)
     expectNumberCell(kernel, cellIndex(1, 7, width), 0, 8)
     expectNumberCell(kernel, cellIndex(2, 0, width), 0.3989422804014327, 12)
-    expectEmptyCell(kernel, cellIndex(2, 1, width))
+    expect(kernel.readTags()[cellIndex(2, 1, width)]).toBe(ValueTag.String)
+    expect(kernel.readOutputStrings()).toEqual(['', ''])
   })
 
   it('evaluates IFERROR, IFNA, and NA on the wasm path', async () => {
@@ -6284,8 +6281,8 @@ describe('wasm kernel', () => {
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
     kernel.evalBatch(Uint32Array.from(Array.from({ length: 5 }, (_, index) => cellIndex(1, index, width))))
 
-    expectErrorCell(kernel, cellIndex(1, 0, width), ErrorCode.Value)
-    expectErrorCell(kernel, cellIndex(1, 1, width), ErrorCode.Value)
+    expectErrorCell(kernel, cellIndex(1, 0, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 1, width), ErrorCode.Num)
     expectErrorCell(kernel, cellIndex(1, 2, width), ErrorCode.Num)
     expectErrorCell(kernel, cellIndex(1, 3, width), ErrorCode.Value)
     expectErrorCell(kernel, cellIndex(1, 4, width), ErrorCode.Ref)

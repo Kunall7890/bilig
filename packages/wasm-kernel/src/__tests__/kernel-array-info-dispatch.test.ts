@@ -237,6 +237,8 @@ describe('wasm kernel array/info dispatch', () => {
       [encodePushError(ErrorCode.Ref), encodePushString(0), encodeCall(BuiltinId.Iferror, 2), encodeRet()],
       [encodeCall(BuiltinId.Na, 0), encodePushString(1), encodeCall(BuiltinId.Ifna, 2), encodeRet()],
       [encodePushString(2), encodeCall(BuiltinId.T, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.T, 1), encodeRet()],
+      [encodePushBoolean(false), encodeCall(BuiltinId.T, 1), encodeRet()],
       [encodePushBoolean(true), encodeCall(BuiltinId.N, 1), encodeRet()],
       [encodePushRange(0), encodeCall(BuiltinId.Type, 1), encodeRet()],
       [encodePushString(6), encodePushNumber(0), encodeCall(BuiltinId.Delta, 2), encodeRet()],
@@ -246,11 +248,11 @@ describe('wasm kernel array/info dispatch', () => {
       packed.programs,
       packed.offsets,
       packed.lengths,
-      Uint32Array.from(Array.from({ length: 17 }, (_, index) => ownerBase + index)),
+      Uint32Array.from(Array.from({ length: 19 }, (_, index) => ownerBase + index)),
     )
-    const constants = packConstants([[], [1], [], [], [], [], [], [2, 10, 20, 30], [], [], [], [], [], [], [], [3], [4, 5]])
+    const constants = packConstants([[], [1], [], [], [], [], [], [2, 10, 20, 30], [], [], [], [], [], [7], [], [], [], [3], [4, 5]])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
-    kernel.evalBatch(Uint32Array.from(Array.from({ length: 17 }, (_, index) => ownerBase + index)))
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 19 }, (_, index) => ownerBase + index)))
 
     expect(readScalarValue(kernel, ownerBase, pooledStrings)).toEqual({
       tag: ValueTag.Number,
@@ -320,18 +322,28 @@ describe('wasm kernel array/info dispatch', () => {
       stringId: 0,
     })
     expect(readScalarValue(kernel, ownerBase + 13, pooledStrings)).toEqual({
-      tag: ValueTag.Number,
-      value: 1,
+      tag: ValueTag.String,
+      value: '',
+      stringId: 0,
     })
     expect(readScalarValue(kernel, ownerBase + 14, pooledStrings)).toEqual({
-      tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      tag: ValueTag.String,
+      value: '',
+      stringId: 0,
     })
     expect(readScalarValue(kernel, ownerBase + 15, pooledStrings)).toEqual({
       tag: ValueTag.Number,
       value: 1,
     })
     expect(readScalarValue(kernel, ownerBase + 16, pooledStrings)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
+    })
+    expect(readScalarValue(kernel, ownerBase + 17, pooledStrings)).toEqual({
+      tag: ValueTag.Number,
+      value: 1,
+    })
+    expect(readScalarValue(kernel, ownerBase + 18, pooledStrings)).toEqual({
       tag: ValueTag.Number,
       value: 0,
     })

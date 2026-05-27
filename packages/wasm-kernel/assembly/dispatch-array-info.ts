@@ -590,7 +590,7 @@ export function tryApplyArrayInfoBuiltin(
     if (tagStack[base] == ValueTag.Error || tagStack[base] == ValueTag.String) {
       return base + 1
     }
-    return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Empty, 0, rangeIndexStack, valueStack, tagStack, kindStack)
+    return writeStringResult(base, '', rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.N && (argc == 0 || argc == 1)) {

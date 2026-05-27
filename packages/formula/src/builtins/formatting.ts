@@ -40,13 +40,7 @@ export function countLeadingZeros(value: number): number {
 }
 
 export function isValidDollarFraction(fraction: number): boolean {
-  if (!Number.isInteger(fraction) || fraction <= 0) {
-    return false
-  }
-  if (fraction === 1) {
-    return true
-  }
-  return Number.isInteger(Math.log2(fraction))
+  return Number.isInteger(fraction) && fraction >= 1
 }
 
 export function parseDollarDecimal(value: number): {

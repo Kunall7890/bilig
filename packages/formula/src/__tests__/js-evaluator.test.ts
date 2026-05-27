@@ -37,7 +37,11 @@ describe('js evaluator', () => {
       tag: ValueTag.String,
       value: 'x',
     })
-    expect(evaluatePlan(lowerToPlan(parseFormula('T(1)')), context)).toEqual(empty())
+    expect(evaluatePlan(lowerToPlan(parseFormula('T(1)')), context)).toEqual({
+      tag: ValueTag.String,
+      value: '',
+      stringId: 0,
+    })
   })
 
   it('resolves sheet-qualified defined names through the target sheet scope', () => {
