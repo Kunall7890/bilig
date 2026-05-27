@@ -16,6 +16,7 @@ const ALLOWED_BILIG_INSTANCE_METHODS = [
   'getCellFormulaDiagnostics',
   'getPerformanceCounters',
   'getRangeValueBlock',
+  'moveSheet',
   'offDetailed',
   'onDetailed',
   'onceDetailed',
