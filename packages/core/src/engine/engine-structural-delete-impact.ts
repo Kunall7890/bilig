@@ -1,6 +1,7 @@
 import type { CellRangeRef, CellSnapshot, WorkbookDataValidationSnapshot, WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
 import { ValueTag } from '@bilig/protocol'
 import { parseCellAddress, rewriteFormulaForStructuralTransform } from '@bilig/formula'
+import { CellFlags } from '../cell-store.js'
 import type { WorkbookSortRecord, WorkbookStore, WorkbookTableRecord } from '../workbook-store.js'
 import { drawingArtifactsTouchStructuralDelete } from './services/structure-drawing-artifact-rewrite.js'
 import {
@@ -69,6 +70,9 @@ function cellHasSemanticDeleteImpact(args: {
     return true
   }
   if (args.workbook.getCellFormat(args.cellIndex) !== undefined) {
+    return true
+  }
+  if ((snapshot.flags & CellFlags.AuthoredBlank) !== 0) {
     return true
   }
   return snapshot.value.tag === ValueTag.Number || snapshot.value.tag === ValueTag.Boolean || snapshot.value.tag === ValueTag.String
