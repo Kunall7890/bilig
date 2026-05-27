@@ -6,6 +6,7 @@ import type {
   SameCorpusMutationTargetScreenshotProof,
 } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import type { UiResponsivenessSameCorpusMutatingWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
+import { sameCorpusMutationTargetBrowserVisibleReadbackSourceAccepted } from './ui-responsiveness-same-corpus-visible-readback-source.ts'
 
 interface SameCorpusMutationTargetPreflightProof {
   readonly before: SameCorpusMutationTargetReadback | null
@@ -46,7 +47,7 @@ export function sameCorpusMutationTargetPreflightInvalidReasons(args: SameCorpus
   if (!args.before || args.before.source === 'unknown') {
     invalidReasons.push('missing authoritative before readback for target range')
   }
-  if (!args.visibleBefore || !sameCorpusVisibleReadbackSourceAccepted(args.product, args.visibleBefore.source)) {
+  if (!args.visibleBefore || !sameCorpusMutationTargetBrowserVisibleReadbackSourceAccepted(args.visibleBefore.source)) {
     invalidReasons.push('missing browser-visible before readback for target cell')
   }
   invalidReasons.push(...sameCorpusBeforeScreenshotInvalidReasons(args))
@@ -54,13 +55,6 @@ export function sameCorpusMutationTargetPreflightInvalidReasons(args: SameCorpus
     invalidReasons.push(...sameCorpusGoogleCommittedStatePreflightInvalidReasons(args))
   }
   return [...new Set(invalidReasons)]
-}
-
-function sameCorpusVisibleReadbackSourceAccepted(
-  product: UiResponsivenessSameCorpusProduct,
-  source: SameCorpusMutationTargetReadback['source'],
-): boolean {
-  return source === 'visible-grid-cell' || (product !== 'bilig' && source === 'visible-formula-bar')
 }
 
 function sameCorpusBeforeScreenshotInvalidReasons(args: SameCorpusMutationTargetPreflightProof): readonly string[] {

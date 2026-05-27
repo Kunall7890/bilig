@@ -3,6 +3,7 @@ import type { UiResponsivenessSameCorpusProduct } from './ui-responsiveness-same
 import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 import { sameCorpusFillColorsMatch } from './ui-responsiveness-same-corpus-fill-proof.ts'
 import { sameCorpusBiligVisibleSceneProofInvalidReasons } from './ui-responsiveness-same-corpus-bilig-visible-proof.ts'
+import { sameCorpusMutationTargetBrowserVisibleReadbackSourceAccepted } from './ui-responsiveness-same-corpus-visible-readback-source.ts'
 
 type SameCorpusMutationTargetScreenshotPhase = 'before' | 'after' | 'restored'
 
@@ -33,7 +34,7 @@ function sameCorpusMutationTargetScreenshotPhaseSemanticInvalidReasons(
   if (!readback) {
     return [`semantic UI mutation target proof for ${workload} ${phase} screenshot is missing semantic target readback`]
   }
-  if (!sameCorpusScreenshotSemanticSourceAccepted(product, readback.source)) {
+  if (!sameCorpusScreenshotSemanticSourceAccepted(readback.source)) {
     return [
       `semantic UI mutation target proof for ${workload} ${phase} screenshot semantic readback did not come from an accepted browser-visible source`,
     ]
@@ -55,11 +56,8 @@ function sameCorpusMutationTargetScreenshotPhaseSemanticInvalidReasons(
   return []
 }
 
-function sameCorpusScreenshotSemanticSourceAccepted(
-  product: UiResponsivenessSameCorpusProduct,
-  source: SameCorpusMutationTargetReadback['source'],
-): boolean {
-  return source === 'visible-grid-cell' || (product !== 'bilig' && source === 'visible-formula-bar')
+function sameCorpusScreenshotSemanticSourceAccepted(source: SameCorpusMutationTargetReadback['source']): boolean {
+  return sameCorpusMutationTargetBrowserVisibleReadbackSourceAccepted(source)
 }
 
 function sameCorpusScreenshotReadbackMatches(

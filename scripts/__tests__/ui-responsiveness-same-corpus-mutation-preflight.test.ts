@@ -94,6 +94,24 @@ describe('same-corpus mutation target preflight proof', () => {
       }),
     ).toEqual([])
   })
+
+  it('rejects Google Sheets preflight proof when visible before readback is only formula-bar chrome', () => {
+    const invalidReasons = sameCorpusMutationTargetPreflightInvalidReasons({
+      before: beforeReadback,
+      beforeCommittedStateProof: committedBeforeProof({
+        ...beforeReadback,
+        source: 'google-sheets-xlsx-export',
+      }),
+      beforeScreenshot: beforeScreenshotProof('google-sheets', beforeReadback),
+      product: 'google-sheets',
+      sampleIndex: 0,
+      target,
+      visibleBefore: { ...beforeReadback, source: 'visible-formula-bar' },
+      workload: 'edit-visible-cell',
+    })
+
+    expect(invalidReasons).toContain('missing browser-visible before readback for target cell')
+  })
 })
 
 function beforeScreenshotProof(

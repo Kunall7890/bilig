@@ -50,9 +50,9 @@
           "same-corpus strict rendered-grid proof cases: 9/9",
           "same-corpus visible operation-response proof cases: 9/9",
           "same-corpus Bilig authoritative render proof cases: 9/9",
-          "same-corpus semantic UI proof cases: 7/9",
+          "same-corpus semantic UI proof cases: 6/9",
           "same-corpus legacy-insufficient rendered-grid proof cases: 0/9",
-          "same-corpus run manifest invalid reasons: semantic UI proof covers 7/9 cases; mutation target proof covers 1/3 mutating cases; mutation target proof covers 14/18 required per-sample product proofs; committed target proof timing covers 1/3 mutating cases; committed target proof timing covers 14/18 required per-sample product timings; proof archive covers 61/99 required proof artifacts; not every required workload is 10x against Google Sheets",
+          "same-corpus run manifest invalid reasons: semantic UI proof covers 6/9 cases; mutation target proof covers 0/3 mutating cases; mutation target proof covers 9/18 required per-sample product proofs; committed target proof timing covers 0/3 mutating cases; committed target proof timing covers 9/18 required per-sample product timings; proof archive covers 42/99 required proof artifacts; not every required workload is 10x against Google Sheets",
           "same-corpus UI 10x speed gap: fill-format-change (visibleTargetRenderMs): current Google/Bilig mean 0.00x: p95 0.00x: needs infinitex additional Bilig speedup to satisfy 10x mean+p95",
           "same-corpus UI 10x speed gap: edit-visible-cell (visibleTargetRenderMs): current Google/Bilig mean 0.74x: p95 0.76x: needs 13.5x additional Bilig speedup to satisfy 10x mean+p95",
           "same-corpus UI 10x speed gap: formula-edit (visibleTargetRenderMs): current Google/Bilig mean 0.92x: p95 0.98x: needs 10.9x additional Bilig speedup to satisfy 10x mean+p95",
@@ -63,12 +63,12 @@
           "same-corpus UI 10x speed gap: select-cell (operationResponseMs): current Google/Bilig mean 2.79x: p95 2.85x: needs 3.59x additional Bilig speedup to satisfy 10x mean+p95"
         ],
         "gaps": [
-          "same-corpus UI run manifest: semantic UI proof covers 7/9 cases",
-          "same-corpus UI run manifest: mutation target proof covers 1/3 mutating cases",
-          "same-corpus UI run manifest: mutation target proof covers 14/18 required per-sample product proofs",
-          "same-corpus UI run manifest: committed target proof timing covers 1/3 mutating cases",
-          "same-corpus UI run manifest: committed target proof timing covers 14/18 required per-sample product timings",
-          "same-corpus UI run manifest: proof archive covers 61/99 required proof artifacts",
+          "same-corpus UI run manifest: semantic UI proof covers 6/9 cases",
+          "same-corpus UI run manifest: mutation target proof covers 0/3 mutating cases",
+          "same-corpus UI run manifest: mutation target proof covers 9/18 required per-sample product proofs",
+          "same-corpus UI run manifest: committed target proof timing covers 0/3 mutating cases",
+          "same-corpus UI run manifest: committed target proof timing covers 9/18 required per-sample product timings",
+          "same-corpus UI run manifest: proof archive covers 42/99 required proof artifacts",
           "same-corpus UI run manifest: not every required workload is 10x against Google Sheets",
           "same-corpus UI 10x speed gap: fill-format-change (visibleTargetRenderMs): current Google/Bilig mean 0.00x: p95 0.00x: needs infinitex additional Bilig speedup to satisfy 10x mean+p95",
           "same-corpus UI 10x speed gap: edit-visible-cell (visibleTargetRenderMs): current Google/Bilig mean 0.74x: p95 0.76x: needs 13.5x additional Bilig speedup to satisfy 10x mean+p95",
@@ -83,7 +83,7 @@
       }
     ],
     "unmetRequirements": [
-      "ui-responsiveness: same-corpus UI run manifest: semantic UI proof covers 7/9 cases; same-corpus UI run manifest: mutation target proof covers 1/3 mutating cases; same-corpus UI run manifest: mutation target proof covers 14/18 required per-sample product proofs; same-corpus UI run manifest: committed target proof timing covers 1/3 mutating cases; same-corpus UI run manifest: committed target proof timing covers 14/18 required per-sample product timings; same-corpus UI run manifest: proof archive covers 61/99 required proof artifacts; same-corpus UI run manifest: not every required workload is 10x against Google Sheets; same-corpus UI 10x speed gap: fill-format-change (visibleTargetRenderMs): current Google/Bilig mean 0.00x: p95 0.00x: needs infinitex additional Bilig speedup to satisfy 10x mean+p95; same-corpus UI 10x speed gap: edit-visible-cell (visibleTargetRenderMs): current Google/Bilig mean 0.74x: p95 0.76x: needs 13.5x additional Bilig speedup to satisfy 10x mean+p95; same-corpus UI 10x speed gap: formula-edit (visibleTargetRenderMs): current Google/Bilig mean 0.92x: p95 0.98x: needs 10.9x additional Bilig speedup to satisfy 10x mean+p95; same-corpus UI 10x speed gap: open-workbook (operationResponseMs): current Google/Bilig mean 1.08x: p95 1.09x: needs 9.27x additional Bilig speedup to satisfy 10x mean+p95; same-corpus UI 10x speed gap: jump-deep-row (operationResponseMs): current Google/Bilig mean 1.30x: p95 1.37x: needs 7.67x additional Bilig speedup to satisfy 10x mean+p95; same-corpus UI 10x speed gap: wide-sheet-navigation (scrollEventResponseMs): current Google/Bilig mean 1.78x: p95 1.79x: needs 5.61x additional Bilig speedup to satisfy 10x mean+p95; same-corpus UI 10x speed gap: scroll-horizontal (scrollEventResponseMs): current Google/Bilig mean 1.96x: p95 2.11x: needs 5.09x additional Bilig speedup to satisfy 10x mean+p95; same-corpus UI 10x speed gap: select-cell (operationResponseMs): current Google/Bilig mean 2.79x: p95 2.85x: needs 3.59x additional Bilig speedup to satisfy 10x mean+p95; live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof"
+      "ui-responsiveness: same-corpus UI run manifest: semantic UI proof covers 6/9 cases; same-corpus UI run manifest: mutation target proof covers 0/3 mutating cases; same-corpus UI run manifest: mutation target proof covers 9/18 required per-sample product proofs; same-corpus UI run manifest: committed target proof timing covers 0/3 mutating cases; same-corpus UI run manifest: committed target proof timing covers 9/18 required per-sample product timings; same-corpus UI run manifest: proof archive covers 42/99 required proof artifacts; same-corpus UI run manifest: not every required workload is 10x against Google Sheets; same-corpus UI 10x speed gap: fill-format-change (visibleTargetRenderMs): current Google/Bilig mean 0.00x: p95 0.00x: needs infinitex additional Bilig speedup to satisfy 10x mean+p95; same-corpus UI 10x speed gap: edit-visible-cell (visibleTargetRenderMs): current Google/Bilig mean 0.74x: p95 0.76x: needs 13.5x additional Bilig speedup to satisfy 10x mean+p95; same-corpus UI 10x speed gap: formula-edit (visibleTargetRenderMs): current Google/Bilig mean 0.92x: p95 0.98x: needs 10.9x additional Bilig speedup to satisfy 10x mean+p95; same-corpus UI 10x speed gap: open-workbook (operationResponseMs): current Google/Bilig mean 1.08x: p95 1.09x: needs 9.27x additional Bilig speedup to satisfy 10x mean+p95; same-corpus UI 10x speed gap: jump-deep-row (operationResponseMs): current Google/Bilig mean 1.30x: p95 1.37x: needs 7.67x additional Bilig speedup to satisfy 10x mean+p95; same-corpus UI 10x speed gap: wide-sheet-navigation (scrollEventResponseMs): current Google/Bilig mean 1.78x: p95 1.79x: needs 5.61x additional Bilig speedup to satisfy 10x mean+p95; same-corpus UI 10x speed gap: scroll-horizontal (scrollEventResponseMs): current Google/Bilig mean 1.96x: p95 2.11x: needs 5.09x additional Bilig speedup to satisfy 10x mean+p95; same-corpus UI 10x speed gap: select-cell (operationResponseMs): current Google/Bilig mean 2.79x: p95 2.85x: needs 3.59x additional Bilig speedup to satisfy 10x mean+p95; live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof"
     ],
     "evidenceArtifacts": [
       "packages/benchmarks/baselines/google-sheets-live-recalculation-scorecard.json",
@@ -109,7 +109,7 @@
       "Operator workflow must preserve one-command verification and prevent unverifiable blanket claims."
     ],
     "unmetRequirements": [
-      "ui-responsiveness: same-corpus mutation target proof gap: edit-visible-cell/google-sheets accepted 2/3 samples (raw 3); missing samples: none; rejected samples: 1; invalid reasons: sample 1: semantic UI mutation target proof for edit-visible-cell did not prove a before/after target change; sample 1: semantic UI mutation target proof for edit-visible-cell before and after target screenshots are identical; sample 1: semantic UI mutation target proof for edit-visible-cell after and restored target screenshots are identical; +5 more; same-corpus mutation target proof gap: fill-format-change/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI mutation target proof for fill-format-change covers 0/3 samples; live UI browser evidence is not a same-corpus 10x proof against incumbents"
+      "ui-responsiveness: same-corpus mutation target proof gap: edit-visible-cell/google-sheets accepted 0/3 samples (raw 3); missing samples: none; rejected samples: 0, 1, 2; invalid reasons: sample 0: semantic UI mutation target proof for edit-visible-cell before screenshot semantic readback did not come from an accepted browser-visible source; sample 0: semantic UI mutation target proof for edit-visible-cell after screenshot semantic readback did not come from an accepted browser-visible source; sample 0: semantic UI mutation target proof for edit-visible-cell restored screenshot semantic readback did not come from an accepted browser-visible source; +25 more; same-corpus mutation target proof gap: formula-edit/google-sheets accepted 0/3 samples (raw 3); missing samples: none; rejected samples: 0, 1, 2; invalid reasons: sample 0: semantic UI mutation target proof for formula-edit before screenshot semantic readback did not come from an accepted browser-visible source; sample 0: semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source; sample 0: semantic UI mutation target proof for formula-edit restored screenshot semantic readback did not come from an accepted browser-visible source; +17 more; same-corpus mutation target proof gap: fill-format-change/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI mutation target proof for fill-format-change covers 0/3 samples; live UI browser evidence is not a same-corpus 10x proof against incumbents"
     ],
     "workloadSpecificTenXWins": [
       {
@@ -165,7 +165,7 @@
   "completionAudit": {
     "allCriteriaPassed": false,
     "unmetRequirements": [
-      "ui-responsiveness: same-corpus mutation target proof gap: edit-visible-cell/google-sheets accepted 2/3 samples (raw 3); missing samples: none; rejected samples: 1; invalid reasons: sample 1: semantic UI mutation target proof for edit-visible-cell did not prove a before/after target change; sample 1: semantic UI mutation target proof for edit-visible-cell before and after target screenshots are identical; sample 1: semantic UI mutation target proof for edit-visible-cell after and restored target screenshots are identical; +5 more; same-corpus mutation target proof gap: fill-format-change/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI mutation target proof for fill-format-change covers 0/3 samples; live UI browser evidence is not a same-corpus 10x proof against incumbents"
+      "ui-responsiveness: same-corpus mutation target proof gap: edit-visible-cell/google-sheets accepted 0/3 samples (raw 3); missing samples: none; rejected samples: 0, 1, 2; invalid reasons: sample 0: semantic UI mutation target proof for edit-visible-cell before screenshot semantic readback did not come from an accepted browser-visible source; sample 0: semantic UI mutation target proof for edit-visible-cell after screenshot semantic readback did not come from an accepted browser-visible source; sample 0: semantic UI mutation target proof for edit-visible-cell restored screenshot semantic readback did not come from an accepted browser-visible source; +25 more; same-corpus mutation target proof gap: formula-edit/google-sheets accepted 0/3 samples (raw 3); missing samples: none; rejected samples: 0, 1, 2; invalid reasons: sample 0: semantic UI mutation target proof for formula-edit before screenshot semantic readback did not come from an accepted browser-visible source; sample 0: semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source; sample 0: semantic UI mutation target proof for formula-edit restored screenshot semantic readback did not come from an accepted browser-visible source; +17 more; same-corpus mutation target proof gap: fill-format-change/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI mutation target proof for fill-format-change covers 0/3 samples; live UI browser evidence is not a same-corpus 10x proof against incumbents"
     ],
     "criteria": [
       {
@@ -217,20 +217,21 @@
           "same-corpus first-class scenario summary fields: 9/9",
           "same-corpus strict rendered-grid proof cases: 9/9",
           "same-corpus visible operation-response proof cases: 9/9",
-          "same-corpus semantic UI proof cases: 7/9",
-          "same-corpus mutation target proof cases: 1/3",
-          "same-corpus mutation target proof samples: 14/18",
-          "same-corpus committed target proof timing cases: 1/3",
-          "same-corpus committed target proof timing samples: 14/18",
+          "same-corpus semantic UI proof cases: 6/9",
+          "same-corpus mutation target proof cases: 0/3",
+          "same-corpus mutation target proof samples: 9/18",
+          "same-corpus committed target proof timing cases: 0/3",
+          "same-corpus committed target proof timing samples: 9/18",
           "same-corpus mutation target product proof: edit-visible-cell/bilig accepted 3/3 samples (raw 3); missing samples: none; rejected samples: none; invalid reasons: none",
-          "same-corpus mutation target product proof: edit-visible-cell/google-sheets accepted 2/3 samples (raw 3); missing samples: none; rejected samples: 1; invalid reasons: sample 1: semantic UI mutation target proof for edit-visible-cell did not prove a before/after target change; sample 1: semantic UI mutation target proof for edit-visible-cell before and after target screenshots are identical; sample 1: semantic UI mutation target proof for edit-visible-cell after and restored target screenshots are identical; +5 more",
+          "same-corpus mutation target product proof: edit-visible-cell/google-sheets accepted 0/3 samples (raw 3); missing samples: none; rejected samples: 0, 1, 2; invalid reasons: sample 0: semantic UI mutation target proof for edit-visible-cell before screenshot semantic readback did not come from an accepted browser-visible source; sample 0: semantic UI mutation target proof for edit-visible-cell after screenshot semantic readback did not come from an accepted browser-visible source; sample 0: semantic UI mutation target proof for edit-visible-cell restored screenshot semantic readback did not come from an accepted browser-visible source; +25 more",
           "same-corpus mutation target product proof: formula-edit/bilig accepted 3/3 samples (raw 3); missing samples: none; rejected samples: none; invalid reasons: none",
-          "same-corpus mutation target product proof: formula-edit/google-sheets accepted 3/3 samples (raw 3); missing samples: none; rejected samples: none; invalid reasons: none",
+          "same-corpus mutation target product proof: formula-edit/google-sheets accepted 0/3 samples (raw 3); missing samples: none; rejected samples: 0, 1, 2; invalid reasons: sample 0: semantic UI mutation target proof for formula-edit before screenshot semantic readback did not come from an accepted browser-visible source; sample 0: semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source; sample 0: semantic UI mutation target proof for formula-edit restored screenshot semantic readback did not come from an accepted browser-visible source; +17 more",
           "same-corpus mutation target product proof: fill-format-change/bilig accepted 3/3 samples (raw 3); missing samples: none; rejected samples: none; invalid reasons: none",
           "same-corpus mutation target product proof: fill-format-change/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI mutation target proof for fill-format-change covers 0/3 samples"
         ],
         "gaps": [
-          "same-corpus mutation target proof gap: edit-visible-cell/google-sheets accepted 2/3 samples (raw 3); missing samples: none; rejected samples: 1; invalid reasons: sample 1: semantic UI mutation target proof for edit-visible-cell did not prove a before/after target change; sample 1: semantic UI mutation target proof for edit-visible-cell before and after target screenshots are identical; sample 1: semantic UI mutation target proof for edit-visible-cell after and restored target screenshots are identical; +5 more",
+          "same-corpus mutation target proof gap: edit-visible-cell/google-sheets accepted 0/3 samples (raw 3); missing samples: none; rejected samples: 0, 1, 2; invalid reasons: sample 0: semantic UI mutation target proof for edit-visible-cell before screenshot semantic readback did not come from an accepted browser-visible source; sample 0: semantic UI mutation target proof for edit-visible-cell after screenshot semantic readback did not come from an accepted browser-visible source; sample 0: semantic UI mutation target proof for edit-visible-cell restored screenshot semantic readback did not come from an accepted browser-visible source; +25 more",
+          "same-corpus mutation target proof gap: formula-edit/google-sheets accepted 0/3 samples (raw 3); missing samples: none; rejected samples: 0, 1, 2; invalid reasons: sample 0: semantic UI mutation target proof for formula-edit before screenshot semantic readback did not come from an accepted browser-visible source; sample 0: semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source; sample 0: semantic UI mutation target proof for formula-edit restored screenshot semantic readback did not come from an accepted browser-visible source; +17 more",
           "same-corpus mutation target proof gap: fill-format-change/google-sheets accepted 0/3 samples (raw 0); missing samples: 0, 1, 2; rejected samples: none; invalid reasons: semantic UI mutation target proof for fill-format-change covers 0/3 samples",
           "live UI browser evidence is not a same-corpus 10x proof against incumbents"
         ]
@@ -716,10 +717,10 @@
         "same-corpus UI strict rendered-grid proof cases: 9/9",
         "same-corpus UI visible operation-response proof cases: 9/9",
         "same-corpus UI Bilig authoritative render proof cases: 9/9",
-        "same-corpus UI semantic proof cases: 7/9",
+        "same-corpus UI semantic proof cases: 6/9",
         "same-corpus UI legacy-insufficient rendered-grid proof cases: 0/9",
         "same-corpus UI current-contract evidence complete: false",
-        "same-corpus UI run manifest invalid reasons: semantic UI proof covers 7/9 cases; mutation target proof covers 1/3 mutating cases; mutation target proof covers 14/18 required per-sample product proofs; committed target proof timing covers 1/3 mutating cases; committed target proof timing covers 14/18 required per-sample product timings; proof archive covers 61/99 required proof artifacts; not every required workload is 10x against Google Sheets",
+        "same-corpus UI run manifest invalid reasons: semantic UI proof covers 6/9 cases; mutation target proof covers 0/3 mutating cases; mutation target proof covers 9/18 required per-sample product proofs; committed target proof timing covers 0/3 mutating cases; committed target proof timing covers 9/18 required per-sample product timings; proof archive covers 42/99 required proof artifacts; not every required workload is 10x against Google Sheets",
         "same-corpus UI 10x speed gap: fill-format-change (visibleTargetRenderMs): current Google/Bilig mean 0.00x: p95 0.00x: needs infinitex additional Bilig speedup to satisfy 10x mean+p95",
         "same-corpus UI 10x speed gap: edit-visible-cell (visibleTargetRenderMs): current Google/Bilig mean 0.74x: p95 0.76x: needs 13.5x additional Bilig speedup to satisfy 10x mean+p95",
         "same-corpus UI 10x speed gap: formula-edit (visibleTargetRenderMs): current Google/Bilig mean 0.92x: p95 0.98x: needs 10.9x additional Bilig speedup to satisfy 10x mean+p95",
@@ -728,8 +729,8 @@
         "same-corpus UI 10x speed gap: wide-sheet-navigation (scrollEventResponseMs): current Google/Bilig mean 1.78x: p95 1.79x: needs 5.61x additional Bilig speedup to satisfy 10x mean+p95",
         "same-corpus UI 10x speed gap: scroll-horizontal (scrollEventResponseMs): current Google/Bilig mean 1.96x: p95 2.11x: needs 5.09x additional Bilig speedup to satisfy 10x mean+p95",
         "same-corpus UI 10x speed gap: select-cell (operationResponseMs): current Google/Bilig mean 2.79x: p95 2.85x: needs 3.59x additional Bilig speedup to satisfy 10x mean+p95",
-        "google-sheets: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 133.54475000000002ms and postScrollFrameMs.p95 14.300000000000182ms (3 samples, public-comment-only)",
-        "microsoft-excel-web: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 99.4464999999982ms and postScrollFrameMs.p95 9.899999999999636ms (3 samples, public-office-web-viewer)",
+        "google-sheets: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 140.23412499999995ms and postScrollFrameMs.p95 18ms (3 samples, public-comment-only)",
+        "microsoft-excel-web: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 102.19666700000016ms and postScrollFrameMs.p95 11.399999999999636ms (3 samples, public-office-web-viewer)",
         "headedWide250kVisibleEditCommit: mutationToVisibleMs.p95 budget 50ms on 250000 materialized cells via pnpm test:browser:full"
       ],
       "evidenceArtifacts": [
@@ -756,12 +757,12 @@
         "pnpm bench:smoke"
       ],
       "blockers": [
-        "same-corpus UI run manifest: semantic UI proof covers 7/9 cases",
-        "same-corpus UI run manifest: mutation target proof covers 1/3 mutating cases",
-        "same-corpus UI run manifest: mutation target proof covers 14/18 required per-sample product proofs",
-        "same-corpus UI run manifest: committed target proof timing covers 1/3 mutating cases",
-        "same-corpus UI run manifest: committed target proof timing covers 14/18 required per-sample product timings",
-        "same-corpus UI run manifest: proof archive covers 61/99 required proof artifacts",
+        "same-corpus UI run manifest: semantic UI proof covers 6/9 cases",
+        "same-corpus UI run manifest: mutation target proof covers 0/3 mutating cases",
+        "same-corpus UI run manifest: mutation target proof covers 9/18 required per-sample product proofs",
+        "same-corpus UI run manifest: committed target proof timing covers 0/3 mutating cases",
+        "same-corpus UI run manifest: committed target proof timing covers 9/18 required per-sample product timings",
+        "same-corpus UI run manifest: proof archive covers 42/99 required proof artifacts",
         "same-corpus UI run manifest: not every required workload is 10x against Google Sheets",
         "same-corpus UI 10x speed gap: fill-format-change (visibleTargetRenderMs): current Google/Bilig mean 0.00x: p95 0.00x: needs infinitex additional Bilig speedup to satisfy 10x mean+p95",
         "same-corpus UI 10x speed gap: edit-visible-cell (visibleTargetRenderMs): current Google/Bilig mean 0.74x: p95 0.76x: needs 13.5x additional Bilig speedup to satisfy 10x mean+p95",

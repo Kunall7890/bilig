@@ -533,7 +533,7 @@ export function validateSameCorpusProofArchiveArtifacts(
 }
 
 function sameCorpusProofRequiresCompleteArchive(proof: UiResponsivenessSameCorpusProof): boolean {
-  return proof.runManifest?.claimReadinessState === 'claim-grade-10x-passed'
+  return proof.runManifest?.currentContractEvidenceComplete === true
 }
 
 function sameCorpusProofArchiveArtifactPath(artifact: SameCorpusProofArchiveArtifact): string {

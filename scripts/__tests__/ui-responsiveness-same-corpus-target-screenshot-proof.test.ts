@@ -62,6 +62,32 @@ describe('same-corpus mutation target screenshot semantic proof', () => {
 
     expect(sameCorpusMutationTargetScreenshotSemanticInvalidReasons('bilig', 'fill-format-change', targetProof)).toEqual([])
   })
+
+  it('rejects Google Sheets screenshot semantic readback from formula-bar chrome', () => {
+    const before = readback('metric-1', { source: 'visible-grid-cell' })
+    const after = readback('edited-value', { source: 'visible-grid-cell' })
+    const restored = readback('metric-1', { source: 'visible-grid-cell' })
+    const targetProof = proof({
+      product: 'google-sheets',
+      before,
+      after,
+      restored,
+      visibleAfter: after,
+      visibleRestored: restored,
+      targetScreenshots: {
+        before: screenshot('before', before),
+        after: {
+          ...screenshot('after', after),
+          semanticReadback: { ...after, source: 'visible-formula-bar' },
+        },
+        restored: screenshot('restored', restored),
+      },
+    })
+
+    expect(sameCorpusMutationTargetScreenshotSemanticInvalidReasons('google-sheets', 'edit-visible-cell', targetProof)).toEqual([
+      'semantic UI mutation target proof for edit-visible-cell after screenshot semantic readback did not come from an accepted browser-visible source',
+    ])
+  })
 })
 
 function proof(overrides: Partial<SameCorpusMutationTargetProof> = {}): SameCorpusMutationTargetProof {

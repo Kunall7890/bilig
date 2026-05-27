@@ -22,6 +22,7 @@ import { sameCorpusFormulaEditRenderedResultProven } from './ui-responsiveness-s
 import { sameCorpusBiligVisibleSceneProofInvalidReasons } from './ui-responsiveness-same-corpus-bilig-visible-proof.ts'
 import { sameCorpusMutationTargetTimingInvalidReasons } from './ui-responsiveness-same-corpus-mutation-target-timing.ts'
 import { sameCorpusMutationTargetRangeForSample } from './ui-responsiveness-same-corpus-mutation-target-spec.ts'
+import { sameCorpusMutationTargetBrowserVisibleReadbackSourceAccepted } from './ui-responsiveness-same-corpus-visible-readback-source.ts'
 import {
   isSameCorpusMutationTargetProofSignature,
   sameCorpusMutationTargetProofSignature,
@@ -711,7 +712,7 @@ function sameCorpusMutationTargetReadbackSourceInvalidReasons(
   if (product === 'bilig' && readbacks.some((readback) => readback.source !== 'bilig-authoritative-range')) {
     return [`semantic UI mutation target proof for ${workload} used visible editor text instead of Bilig authoritative range readback`]
   }
-  if (product !== 'bilig' && readbacks.some((readback) => !sameCorpusVisibleReadbackSourceAccepted(product, readback.source))) {
+  if (product !== 'bilig' && readbacks.some((readback) => !sameCorpusMutationTargetBrowserVisibleReadbackSourceAccepted(readback.source))) {
     return [`semantic UI mutation target proof for ${workload} target readback did not come from an accepted browser-visible source`]
   }
   return []
@@ -726,7 +727,7 @@ function sameCorpusMutationTargetVisibleReadbackInvalidReasons(
   if (readbacks.some((readback) => readback.source === 'unknown')) {
     return [`semantic UI mutation target proof for ${workload} is missing visible render readback source`]
   }
-  if (readbacks.some((readback) => !sameCorpusVisibleReadbackSourceAccepted(product, readback.source))) {
+  if (readbacks.some((readback) => !sameCorpusMutationTargetBrowserVisibleReadbackSourceAccepted(readback.source))) {
     return [
       `semantic UI mutation target proof for ${workload} visible render readback did not come from an accepted browser-visible source`,
     ]
@@ -762,13 +763,6 @@ function sameCorpusMutationTargetVisibleReadbackInvalidReasons(
     )
   }
   return invalidReasons
-}
-
-function sameCorpusVisibleReadbackSourceAccepted(
-  product: UiResponsivenessSameCorpusProduct,
-  source: SameCorpusMutationTargetReadbackSource,
-): boolean {
-  return source === 'visible-grid-cell' || (product !== 'bilig' && source === 'visible-formula-bar')
 }
 
 function sameCorpusMutationTargetRevisionInvalidReasons(

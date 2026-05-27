@@ -655,7 +655,7 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
-  it('accepts Google Sheets formula proof when the formula bar proves the edit and XLSX proves the result', () => {
+  it('rejects Google Sheets formula proof when target-grid proof is replaced by formula-bar chrome', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validGoogleSheetsSemanticProof({
         selectedRange: sameCorpusMutationTargetRangeForSample('formula-edit', 0),
@@ -717,8 +717,12 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     )
 
     expect(verdict).toMatchObject({
-      acceptedForCurrentScorecard: true,
-      invalidReasons: [],
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for formula-edit target readback did not come from an accepted browser-visible source',
+        'semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source',
+        'semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source',
+      ]),
     })
   })
 
@@ -803,7 +807,7 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
-  it('accepts Google Sheets mutation proof when selected-target visible readback comes from the formula bar', () => {
+  it('rejects Google Sheets mutation proof when selected-target visible readback comes from the formula bar', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validGoogleSheetsSemanticProof({
         mutationTargetProofs: validGoogleSheetsMutationTargetProofs().map((proof) =>
@@ -823,12 +827,14 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     )
 
     expect(verdict).toMatchObject({
-      acceptedForCurrentScorecard: true,
-      invalidReasons: [],
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell visible render readback did not come from an accepted browser-visible source',
+      ]),
     })
   })
 
-  it('accepts Google Sheets target screenshots backed by selected-target formula-bar semantic readback', () => {
+  it('rejects Google Sheets target screenshots backed by selected-target formula-bar semantic readback', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validGoogleSheetsSemanticProof({
         mutationTargetProofs: validGoogleSheetsMutationTargetProofs().map((proof) =>
@@ -853,8 +859,10 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     )
 
     expect(verdict).toMatchObject({
-      acceptedForCurrentScorecard: true,
-      invalidReasons: [],
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell after screenshot semantic readback did not come from an accepted browser-visible source',
+      ]),
     })
   })
 

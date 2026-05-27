@@ -1243,7 +1243,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     )
   })
 
-  it('accepts Google Sheets selected-cell proof backed by formula bar text when the target selection is proven', () => {
+  it('rejects Google Sheets selected-cell proof backed by formula bar text even when the target selection is proven', () => {
     const proof = buildCaptureScenarioProof({
       workload: 'edit-visible-cell',
       bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'edit-visible-cell'),
@@ -1267,15 +1267,17 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     })
 
     expect(proof.semanticUiProof).toMatchObject({
-      captured: true,
-      missingProducts: [],
+      captured: false,
+      missingProducts: ['google-sheets'],
     })
     expect(proof.semanticUiProof.productVerdicts).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           product: 'google-sheets',
-          acceptedForCurrentScorecard: true,
-          invalidReasons: [],
+          acceptedForCurrentScorecard: false,
+          invalidReasons: expect.arrayContaining([
+            'semantic UI mutation target proof for edit-visible-cell visible render readback did not come from an accepted browser-visible source',
+          ]),
         }),
       ]),
     )

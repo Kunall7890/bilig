@@ -97,15 +97,15 @@ describe('UI responsiveness live browser scorecard', () => {
       strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       visibleOperationResponseProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       biligAuthoritativeRenderProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
-      semanticUiProofCaseCount: 7,
+      semanticUiProofCaseCount: 6,
       requiredMutationTargetProofCaseCount: 3,
-      mutationTargetProofCaseCount: 1,
+      mutationTargetProofCaseCount: 0,
       requiredMutationTargetProofSampleCount: 18,
-      mutationTargetProofSampleCount: 14,
+      mutationTargetProofSampleCount: 9,
       requiredCommittedTargetProofTimingCaseCount: 3,
-      committedTargetProofTimingCaseCount: 1,
+      committedTargetProofTimingCaseCount: 0,
       requiredCommittedTargetProofTimingSampleCount: 18,
-      committedTargetProofTimingSampleCount: 14,
+      committedTargetProofTimingSampleCount: 9,
       legacyInsufficientRenderedGridProofCaseCount: 0,
       tenXMeanAndP95CaseCount: 1,
       claimReadinessState: 'diagnostic-capture-incomplete',
@@ -114,12 +114,16 @@ describe('UI responsiveness live browser scorecard', () => {
     })
     expect(scorecard.sameCorpusProof.runManifest?.capturedWorkloads).toEqual(requiredUiResponsivenessSameCorpusWorkloads)
     expect(scorecard.sameCorpusProof.runManifest?.captureRunSignature).toMatch(/^[a-f0-9]{64}$/u)
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('semantic UI proof covers 7/9 cases')
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('mutation target proof covers 1/3 mutating cases')
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('semantic UI proof covers 6/9 cases')
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('mutation target proof covers 0/3 mutating cases')
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain(
-      'mutation target proof covers 14/18 required per-sample product proofs',
+      'mutation target proof covers 9/18 required per-sample product proofs',
     )
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('proof archive covers 61/99 required proof artifacts')
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('committed target proof timing covers 0/3 mutating cases')
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain(
+      'committed target proof timing covers 9/18 required per-sample product timings',
+    )
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('proof archive covers 42/99 required proof artifacts')
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('not every required workload is 10x against Google Sheets')
     validateUiResponsivenessLiveBrowserScorecard(scorecard)
     validateSameCorpusCaptureArtifactMatchesScorecard(scorecard)
@@ -856,6 +860,31 @@ describe('UI responsiveness live browser scorecard', () => {
     writeSameCorpusProofArchiveManifest(capture, resolve(rootDir, capturePath))
 
     expect(() => validateSameCorpusProofArchiveArtifacts(proof, { rootDir, capturePath })).toThrow(
+      'UI responsiveness same-corpus proof archive is incomplete',
+    )
+  })
+
+  it('requires complete proof archives for claim-grade captures even when speed still fails', () => {
+    const capture = buildSameCorpusCapture()
+    const proof = buildSameCorpusProof(capture)
+    const speedFailedProof = {
+      ...proof,
+      runManifest: proof.runManifest
+        ? {
+            ...proof.runManifest,
+            claimReadinessState: 'claim-grade-capture-speed-failed' as const,
+            currentContractEvidenceComplete: true,
+            googleSheetsTenXRequirementSatisfied: false,
+            invalidReasons: ['not every required workload is 10x against Google Sheets'],
+          }
+        : proof.runManifest,
+    }
+    const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-proof-archive-speed-failed-`)
+    const capturePath = '.cache/ui-responsiveness/same-corpus-capture.json'
+
+    writeSameCorpusProofArchiveManifest(capture, resolve(rootDir, capturePath))
+
+    expect(() => validateSameCorpusProofArchiveArtifacts(speedFailedProof, { rootDir, capturePath })).toThrow(
       'UI responsiveness same-corpus proof archive is incomplete',
     )
   })
