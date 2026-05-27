@@ -781,57 +781,67 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     })
   }
 
-  const { applyDerivedOpNow, applySpillRangeOp, applyPivotUpsertOp, applyPivotDeleteOp } = createOperationDerivedOpApplier({
-    state: {
-      workbook: args.state.workbook,
-      replicaState: args.state.replicaState,
-    },
-    reverseSpillEdges: args.reverseState.reverseSpillEdges,
-    setEntityVersionForOp,
-    materializePivot: args.materializePivot,
-    clearOwnedPivot: args.clearOwnedPivot,
-    rebindFormulaCells: args.rebindFormulaCells,
-  })
+  let derivedOpApplier: ReturnType<typeof createOperationDerivedOpApplier> | undefined
+  const getDerivedOpApplier = (): ReturnType<typeof createOperationDerivedOpApplier> =>
+    (derivedOpApplier ??= createOperationDerivedOpApplier({
+      state: {
+        workbook: args.state.workbook,
+        replicaState: args.state.replicaState,
+      },
+      reverseSpillEdges: args.reverseState.reverseSpillEdges,
+      setEntityVersionForOp,
+      materializePivot: args.materializePivot,
+      clearOwnedPivot: args.clearOwnedPivot,
+      rebindFormulaCells: args.rebindFormulaCells,
+    }))
+  type DerivedOpApplier = ReturnType<typeof createOperationDerivedOpApplier>
+  const applyDerivedOpNow: DerivedOpApplier['applyDerivedOpNow'] = (...input) => getDerivedOpApplier().applyDerivedOpNow(...input)
+  const applySpillRangeOp: DerivedOpApplier['applySpillRangeOp'] = (...input) => getDerivedOpApplier().applySpillRangeOp(...input)
+  const applyPivotUpsertOp: DerivedOpApplier['applyPivotUpsertOp'] = (...input) => getDerivedOpApplier().applyPivotUpsertOp(...input)
+  const applyPivotDeleteOp: DerivedOpApplier['applyPivotDeleteOp'] = (...input) => getDerivedOpApplier().applyPivotDeleteOp(...input)
 
-  const batchApplier = createOperationBatchApplier({
-    serviceArgs: args,
-    emitBatch,
-    replicaVersionWriter,
-    isNullLiteralWriteNoOp,
-    isClearCellNoOp,
-    readCellValueForLookup,
-    readExactNumericValueForLookup,
-    hasTrackedExactLookupDependents,
-    hasTrackedSortedLookupDependents,
-    hasTrackedDirectRangeDependents,
-    planExactLookupNumericColumnWrite,
-    planApproximateLookupNumericColumnWrite,
-    noteExactLookupLiteralWriteWhenDirty,
-    noteSortedLookupLiteralWriteWhenDirty,
-    markAffectedDirectRangeDependents,
-    markPostRecalcDirectFormulaDependents,
-    markDirectScalarDeltaClosure,
-    collectAffectedDirectRangeDependents,
-    tryApplyFormulaReplacementAsDirectScalarDeltaRoot,
-    rebindDynamicFormulaDependents,
-    refreshDependentRangesAndRebindFormulaDependents,
-    pruneCellIfOrphaned,
-    normalizeHistoryDependencyPlaceholder,
-    markCycleMemberInputsChanged,
-    hasCycleMembersNow,
-    canSkipDirtyTraversalForChangedInputs,
-    directFormulaCallbacks: {
-      applyDirectFormulaCurrentResult,
-      applyDirectFormulaNumericDelta,
-      applyDirectScalarCurrentValue,
-      tryApplyDirectScalarDeltas,
-      tryApplyDirectFormulaDeltas,
-      countPostRecalcDirectFormulaMetric,
-    },
-    applySpillRangeOp,
-    applyPivotUpsertOp,
-    applyPivotDeleteOp,
-  })
+  let batchApplier: ReturnType<typeof createOperationBatchApplier> | undefined
+  const getBatchApplier = (): ReturnType<typeof createOperationBatchApplier> =>
+    (batchApplier ??= createOperationBatchApplier({
+      serviceArgs: args,
+      emitBatch,
+      replicaVersionWriter,
+      isNullLiteralWriteNoOp,
+      isClearCellNoOp,
+      readCellValueForLookup,
+      readExactNumericValueForLookup,
+      hasTrackedExactLookupDependents,
+      hasTrackedSortedLookupDependents,
+      hasTrackedDirectRangeDependents,
+      planExactLookupNumericColumnWrite,
+      planApproximateLookupNumericColumnWrite,
+      noteExactLookupLiteralWriteWhenDirty,
+      noteSortedLookupLiteralWriteWhenDirty,
+      markAffectedDirectRangeDependents,
+      markPostRecalcDirectFormulaDependents,
+      markDirectScalarDeltaClosure,
+      collectAffectedDirectRangeDependents,
+      tryApplyFormulaReplacementAsDirectScalarDeltaRoot,
+      rebindDynamicFormulaDependents,
+      refreshDependentRangesAndRebindFormulaDependents,
+      pruneCellIfOrphaned,
+      normalizeHistoryDependencyPlaceholder,
+      markCycleMemberInputsChanged,
+      hasCycleMembersNow,
+      canSkipDirtyTraversalForChangedInputs,
+      directFormulaCallbacks: {
+        applyDirectFormulaCurrentResult,
+        applyDirectFormulaNumericDelta,
+        applyDirectScalarCurrentValue,
+        tryApplyDirectScalarDeltas,
+        tryApplyDirectFormulaDeltas,
+        countPostRecalcDirectFormulaMetric,
+      },
+      applySpillRangeOp,
+      applyPivotUpsertOp,
+      applyPivotDeleteOp,
+    }))
+  type BatchApplier = ReturnType<typeof createOperationBatchApplier>
   const withOperationEvaluationBudget = <Result>(run: () => Result): Result => {
     args.beginEvaluationBudget(performance.now())
     try {
@@ -842,11 +852,11 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     }
   }
 
-  const applyBatchNow = (...input: Parameters<typeof batchApplier.applyBatchNow>) =>
-    withOperationEvaluationBudget(() => batchApplier.applyBatchNow(...input))
+  const applyBatchNow = (...input: Parameters<BatchApplier['applyBatchNow']>) =>
+    withOperationEvaluationBudget(() => getBatchApplier().applyBatchNow(...input))
   const applyLocalSingleStructuralAxisOpWithoutBatchNow = (
-    ...input: Parameters<typeof batchApplier.applyLocalSingleStructuralAxisOpWithoutBatchNow>
-  ) => withOperationEvaluationBudget(() => batchApplier.applyLocalSingleStructuralAxisOpWithoutBatchNow(...input))
+    ...input: Parameters<BatchApplier['applyLocalSingleStructuralAxisOpWithoutBatchNow']>
+  ) => withOperationEvaluationBudget(() => getBatchApplier().applyLocalSingleStructuralAxisOpWithoutBatchNow(...input))
 
   const applyCellMutationsAtNowCore = createOperationCellMutationApplier({
     serviceArgs: args,
