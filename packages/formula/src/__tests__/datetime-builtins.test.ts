@@ -666,8 +666,8 @@ describe('datetime builtins', () => {
       code: ErrorCode.Value,
     })
     expect(datetimeBuiltins.TIMEVALUE({ tag: ValueTag.String, value: '12:60', stringId: 1 })).toEqual({
-      tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      tag: ValueTag.Number,
+      value: 13 / 24,
     })
     expect(datetimeBuiltins.TIMEVALUE()).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(datetimeBuiltins.TIMEVALUE({ tag: ValueTag.Error, code: ErrorCode.Ref })).toEqual({
@@ -786,6 +786,10 @@ describe('datetime builtins', () => {
       code: ErrorCode.Value,
     })
     expect(datetimeBuiltins.TIMEVALUE({ tag: ValueTag.String, value: '23:59:60', stringId: 1 })).toEqual({
+      tag: ValueTag.Number,
+      value: 0,
+    })
+    expect(datetimeBuiltins.TIMEVALUE({ tag: ValueTag.String, value: '32768:00', stringId: 1 })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,
     })
