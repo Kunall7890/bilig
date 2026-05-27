@@ -95,6 +95,12 @@ export type TransactionRecord =
       preparedCellAddress?: PreparedCellAddress | null
     }
   | {
+      kind: 'rename-sheet'
+      oldName: string
+      newName: string
+      potentialNewCells?: number
+    }
+  | {
       kind: 'single-existing-numeric-cell-mutation'
       sheetId: number
       row: number

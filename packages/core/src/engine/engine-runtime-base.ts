@@ -481,7 +481,6 @@ export abstract class SpreadsheetEngineRuntimeBase {
   }
 
   private recordMetadataOnlySheetRename(oldName: string, trimmedName: string): void {
-    const op: EngineOp = { kind: 'renameSheet', oldName, newName: trimmedName }
     if (this.state.trackReplicaVersions) {
       const order = createLocalOpOrder(this.replicaState)
       this.entityVersions.set(`sheet:${oldName}`, order)
@@ -500,8 +499,8 @@ export abstract class SpreadsheetEngineRuntimeBase {
     }
     this.runtime.binding.deferCellFormulasForSheetRenameNow(oldName, trimmedName)
     this.undoStack.push({
-      forward: { kind: 'single-op', op },
-      inverse: { kind: 'single-op', op: { kind: 'renameSheet', oldName: trimmedName, newName: oldName } },
+      forward: { kind: 'rename-sheet', oldName, newName: trimmedName },
+      inverse: { kind: 'rename-sheet', oldName: trimmedName, newName: oldName },
     })
     this.redoStack.length = 0
   }

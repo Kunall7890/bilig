@@ -4,6 +4,7 @@ import type { RawCellContent } from './work-paper-types.js'
 export type WorkPaperHistoryTransactionRecord =
   | { kind: 'ops'; ops: unknown[]; potentialNewCells?: number }
   | { kind: 'single-op'; op: unknown; potentialNewCells?: number }
+  | { kind: 'rename-sheet'; oldName: string; newName: string; potentialNewCells?: number }
   | {
       kind: 'single-existing-numeric-cell-mutation'
       sheetId: number
@@ -84,6 +85,13 @@ function cloneWorkPaperHistoryTransactionRecord(record: WorkPaperHistoryTransact
         op: structuredClone(record.op),
         ...(record.potentialNewCells !== undefined ? { potentialNewCells: record.potentialNewCells } : {}),
       }
+    case 'rename-sheet':
+      return {
+        kind: 'rename-sheet',
+        oldName: record.oldName,
+        newName: record.newName,
+        ...(record.potentialNewCells !== undefined ? { potentialNewCells: record.potentialNewCells } : {}),
+      }
     case 'single-existing-numeric-cell-mutation':
       return {
         kind: 'single-existing-numeric-cell-mutation',
@@ -125,6 +133,8 @@ export function workPaperHistoryTransactionOps(
       return record.ops
     case 'single-op':
       return [record.op]
+    case 'rename-sheet':
+      return [{ kind: 'renameSheet', oldName: record.oldName, newName: record.newName }]
     case 'single-existing-numeric-cell-mutation': {
       const sheetName = resolveSheetName(record.sheetId)
       return sheetName

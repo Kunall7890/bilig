@@ -31,6 +31,10 @@ export function createLazySingleOpTransactionRecord(op: EngineOp, potentialNewCe
   return potentialNewCells === undefined ? { kind: 'single-op', op } : { kind: 'single-op', op, potentialNewCells }
 }
 
+function renameSheetTransactionRecordToOp(record: Extract<TransactionRecord, { kind: 'rename-sheet' }>): EngineOp {
+  return { kind: 'renameSheet', oldName: record.oldName, newName: record.newName }
+}
+
 export function createLazyCellMutationTransactionRecord(
   refs: readonly EngineCellMutationRef[],
   potentialNewCells?: number,
@@ -269,6 +273,9 @@ export function transactionRecordOps(workbook: WorkbookStore, record: Transactio
   if (record.kind === 'single-op') {
     return [record.op]
   }
+  if (record.kind === 'rename-sheet') {
+    return [renameSheetTransactionRecordToOp(record)]
+  }
   if (record.kind === 'single-existing-numeric-cell-mutation') {
     return [cellMutationRefToEngineOp(workbook, singleExistingNumericCellMutationRecordToRef(record))]
   }
@@ -287,6 +294,9 @@ export function transactionRecordOps(workbook: WorkbookStore, record: Transactio
 export function cloneTransactionRecordOps(workbook: WorkbookStore, record: TransactionRecord): EngineOp[] {
   if (record.kind === 'single-op') {
     return [structuredClone(record.op)]
+  }
+  if (record.kind === 'rename-sheet') {
+    return [renameSheetTransactionRecordToOp(record)]
   }
   if (record.kind === 'single-existing-numeric-cell-mutation') {
     return [cellMutationRefToEngineOp(workbook, singleExistingNumericCellMutationRecordToRef(record))]

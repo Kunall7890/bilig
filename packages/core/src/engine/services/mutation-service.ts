@@ -278,6 +278,11 @@ export function createEngineMutationService(args: {
       args.applyCellMutationsAtBatchNow(materializedRefs, batch, source, record.potentialNewCells)
       return
     }
+    if (record.kind === 'rename-sheet') {
+      const batch = createBatch(args.state.replicaState, [{ kind: 'renameSheet', oldName: record.oldName, newName: record.newName }])
+      args.applyBatchNow(batch, source, undefined, undefined, options)
+      return
+    }
     if (
       record.kind === 'single-op' &&
       source === 'local' &&
