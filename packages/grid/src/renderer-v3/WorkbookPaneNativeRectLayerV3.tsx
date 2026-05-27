@@ -24,6 +24,10 @@ export interface WorkbookPaneNativeRectLayerV3Props {
   readonly cameraStore?: GridCameraStore | null | undefined
   readonly geometry: GridGeometrySnapshot | null
   readonly headerPanes: readonly GridHeaderPaneState[]
+  readonly nativeRectPresentedFrameId?: string | null | undefined
+  readonly nativeRectSceneEpoch?: string | number | null | undefined
+  readonly nativeRectSignature?: string | null | undefined
+  readonly nativeRectVisibleRenderRevision?: string | number | null | undefined
   readonly presentedScrollSnapshot?: WorkbookGridScrollSnapshot | null | undefined
   readonly scrollTransformStore: WorkbookGridScrollStore | null
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
@@ -161,6 +165,10 @@ export const WorkbookPaneNativeRectLayerV3 = memo(function WorkbookPaneNativeRec
   cameraStore = null,
   geometry,
   headerPanes,
+  nativeRectPresentedFrameId = null,
+  nativeRectSceneEpoch = null,
+  nativeRectSignature = null,
+  nativeRectVisibleRenderRevision = null,
   presentedScrollSnapshot = null,
   scrollTransformStore,
   tilePanes,
@@ -211,6 +219,10 @@ export const WorkbookPaneNativeRectLayerV3 = memo(function WorkbookPaneNativeRec
       data-testid="grid-native-rect-layer"
       data-v3-native-rect-layer="mounted"
       data-v3-native-rect-count={rectCount}
+      data-v3-native-rect-presented-frame-id={nativeRectPresentedFrameId ?? ''}
+      data-v3-native-rect-scene-epoch={nativeRectSceneEpoch ?? ''}
+      data-v3-native-rect-signature={nativeRectSignature ?? ''}
+      data-v3-native-rect-visible-render-revision={nativeRectVisibleRenderRevision ?? ''}
       style={{ contain: 'strict' }}
     >
       {renderedPanes.map(({ pane, rects }) => (

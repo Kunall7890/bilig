@@ -3,6 +3,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { createGridAxisWorldIndex } from '../gridAxisWorldIndex.js'
+import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
 import { createGridGeometrySnapshotFromAxes } from '../gridGeometry.js'
 import { getGridMetrics } from '../gridMetrics.js'
 import { GridCameraStore } from '../runtime/gridCameraStore.js'
@@ -102,6 +103,25 @@ function createTextTilePane(rowStart = 0): WorkbookRenderTilePaneState {
         },
       ],
     },
+  }
+}
+
+function createHeaderPane(paneId: GridHeaderPaneState['paneId'] = 'top-body'): GridHeaderPaneState {
+  return {
+    borderRectCount: 0,
+    contentOffset: { x: 0, y: 0 },
+    fillRectCount: 0,
+    frame: { x: 46, y: 0, width: 594, height: 24 },
+    paneId,
+    rectCount: 0,
+    rectInstances: new Float32Array(0),
+    rects: new Float32Array(0),
+    rectSignature: `${paneId}:rects`,
+    scrollAxes: { x: true, y: false },
+    surfaceSize: { height: 360, width: 640 },
+    textCount: 0,
+    textRuns: [],
+    textSignature: `${paneId}:text`,
   }
 }
 
@@ -277,7 +297,23 @@ describe('WorkbookPaneRendererV3', () => {
     expect(ready.showNativeRectLayer).toBe(false)
     expect(ready.showNativeTextLayer).toBe(true)
     expect(ready.nativeLayerSource).toBe('browser-native-text-live')
+    expect(ready.nativeRectFrameSource).toBe('current')
+    expect(ready.nativeTextFrameSource).toBe('current')
     expect(ready.nativeTilePanes).toHaveLength(1)
+
+    const presentedPane = createTextTilePane(32)
+    const presentedReady = resolveWorkbookPaneTextLayerModeV3({
+      active: true,
+      backendStatus: 'ready',
+      headerPanes: [createHeaderPane('top-body')],
+      hasPresentedVisibleFrame: true,
+      presentedHeaderPanes: [createHeaderPane('left-body')],
+      presentedTilePanes: [presentedPane],
+      tilePanes: [textPane],
+    })
+    expect(presentedReady.nativeRectFrameSource).toBe('presented')
+    expect(presentedReady.nativeTextFrameSource).toBe('presented')
+    expect(presentedReady.nativeTilePanes).toEqual([presentedPane])
 
     const initializing = resolveWorkbookPaneTextLayerModeV3({
       active: true,
@@ -287,9 +323,11 @@ describe('WorkbookPaneRendererV3', () => {
     })
     expect(initializing.typeGpuDrawText).toBe(false)
     expect(initializing.showTypeGpuCanvas).toBe(true)
-    expect(initializing.showNativeRectLayer).toBe(true)
+    expect(initializing.showNativeRectLayer).toBe(false)
     expect(initializing.showNativeTextLayer).toBe(true)
     expect(initializing.nativeLayerSource).toBe('typegpu-pending-native-visuals')
+    expect(initializing.nativeRectFrameSource).toBe('current')
+    expect(initializing.nativeTextFrameSource).toBe('current')
     expect(initializing.nativeTilePanes).toHaveLength(1)
 
     const unavailable = resolveWorkbookPaneTextLayerModeV3({
@@ -300,10 +338,31 @@ describe('WorkbookPaneRendererV3', () => {
     })
     expect(unavailable.typeGpuDrawText).toBe(false)
     expect(unavailable.showTypeGpuCanvas).toBe(false)
-    expect(unavailable.showNativeRectLayer).toBe(true)
+    expect(unavailable.showNativeRectLayer).toBe(false)
     expect(unavailable.showNativeTextLayer).toBe(true)
     expect(unavailable.nativeLayerSource).toBe('backend-unavailable-live')
+    expect(unavailable.nativeRectFrameSource).toBe('current')
+    expect(unavailable.nativeTextFrameSource).toBe('current')
     expect(unavailable.nativeTilePanes).toHaveLength(1)
+  })
+
+  test('keeps browser-native rects tied to the presented TypeGPU frame', () => {
+    const rectPane = createRectTilePane()
+    const presentedRectPane = createRectTilePane()
+
+    const ready = resolveWorkbookPaneTextLayerModeV3({
+      active: true,
+      backendStatus: 'ready',
+      headerPanes: [],
+      hasPresentedVisibleFrame: true,
+      presentedHeaderPanes: [createHeaderPane('top-body')],
+      presentedTilePanes: [presentedRectPane],
+      tilePanes: [rectPane],
+    })
+
+    expect(ready.showNativeRectLayer).toBe(true)
+    expect(ready.nativeRectFrameSource).toBe('presented')
+    expect(ready.nativeTilePanes).toEqual([presentedRectPane])
   })
 
   test('mounts native vector rects while TypeGPU is not ready yet', async () => {

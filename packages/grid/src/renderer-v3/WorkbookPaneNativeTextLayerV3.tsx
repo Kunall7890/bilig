@@ -54,6 +54,10 @@ export interface WorkbookPaneNativeTextLayerV3Props {
   readonly cameraStore?: GridCameraStore | null | undefined
   readonly geometry: GridGeometrySnapshot | null
   readonly headerPanes: readonly GridHeaderPaneState[]
+  readonly nativeTextPresentedFrameId?: string | null | undefined
+  readonly nativeTextSceneEpoch?: string | number | null | undefined
+  readonly nativeTextSignature?: string | null | undefined
+  readonly nativeTextVisibleRenderRevision?: string | number | null | undefined
   readonly presentedScrollSnapshot?: WorkbookGridScrollSnapshot | null | undefined
   readonly scrollTransformStore: WorkbookGridScrollStore | null
   readonly selectionOcclusionRanges?: readonly Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>[] | null | undefined
@@ -519,6 +523,10 @@ export const WorkbookPaneNativeTextLayerV3 = memo(function WorkbookPaneNativeTex
   cameraStore = null,
   geometry,
   headerPanes,
+  nativeTextPresentedFrameId = null,
+  nativeTextSceneEpoch = null,
+  nativeTextSignature = null,
+  nativeTextVisibleRenderRevision = null,
   presentedScrollSnapshot = null,
   scrollTransformStore,
   selectionOcclusionRanges = null,
@@ -594,11 +602,15 @@ export const WorkbookPaneNativeTextLayerV3 = memo(function WorkbookPaneNativeTex
       aria-hidden="true"
       className="pointer-events-none absolute inset-0 z-[15] overflow-hidden"
       data-v3-native-text-layer="mounted"
+      data-v3-native-text-presented-frame-id={nativeTextPresentedFrameId ?? ''}
       data-v3-native-text-presented-scroll-left={drawScrollSnapshot.scrollLeft ?? ''}
       data-v3-native-text-presented-scroll-top={drawScrollSnapshot.scrollTop ?? ''}
       data-v3-native-text-render-tx={drawScrollSnapshot.renderTx ?? drawScrollSnapshot.tx}
       data-v3-native-text-render-ty={drawScrollSnapshot.renderTy ?? drawScrollSnapshot.ty}
       data-v3-native-text-run-count={textRunCount}
+      data-v3-native-text-scene-epoch={nativeTextSceneEpoch ?? ''}
+      data-v3-native-text-signature={nativeTextSignature ?? ''}
+      data-v3-native-text-visible-render-revision={nativeTextVisibleRenderRevision ?? ''}
       data-testid="grid-native-text-layer"
       ref={layerRef}
       style={{ contain: 'strict' }}

@@ -25,7 +25,7 @@ import type {
 import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
-export const sameCorpusUiRenderProofContractVersion = 'same-corpus-ui-v8'
+export const sameCorpusUiRenderProofContractVersion = 'same-corpus-ui-v10'
 
 export {
   validateSameCorpusMutationTargetProofSample,
@@ -188,8 +188,18 @@ function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof,
   const gridAuthoritativeRevision = evidence.get('gridAuthoritativeRevision') ?? ''
   const gridLocalRevision = evidence.get('gridLocalRevision') ?? ''
   const tileSceneRevision = evidence.get('tileSceneRevision') ?? ''
+  const visibleRenderRevision = evidence.get('visibleRenderRevision') ?? ''
   const frameProofSignature = evidence.get('frameProofSignature') ?? ''
   const presentedFrameProofSignature = evidence.get('presentedFrameProofSignature') ?? ''
+  const nativeRectPresentedFrameId = evidence.get('nativeRectPresentedFrameId') ?? ''
+  const nativeRectSceneEpoch = evidence.get('nativeRectSceneEpoch') ?? ''
+  const nativeRectSignature = evidence.get('nativeRectSignature') ?? ''
+  const nativeRectVisibleRenderRevision = evidence.get('nativeRectVisibleRenderRevision') ?? ''
+  const nativeTextPresentedFrameId = evidence.get('nativeTextPresentedFrameId') ?? ''
+  const nativeTextSceneEpoch = evidence.get('nativeTextSceneEpoch') ?? ''
+  const nativeTextSignature = evidence.get('nativeTextSignature') ?? ''
+  const nativeTextVisibleRenderRevision = evidence.get('nativeTextVisibleRenderRevision') ?? ''
+  const presentedSceneEpoch = evidence.get('presentedSceneEpoch') ?? ''
   const currentSceneEpochSignature = evidence.get('currentSceneEpochSignature') ?? ''
   const presentedSceneEpochSignature = evidence.get('presentedSceneEpochSignature') ?? ''
   const currentSceneOwnershipSignature = evidence.get('currentSceneOwnershipSignature') ?? ''
@@ -216,6 +226,7 @@ function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof,
   const presentedHeaderPaneCount = numericEvidence(evidence, 'presentedHeaderPaneCount')
   const currentTextRunCount = numericEvidence(evidence, 'currentTextRunCount')
   const presentedTextRunCount = numericEvidence(evidence, 'presentedTextRunCount')
+  const nativeTextRunCount = numericEvidence(evidence, 'nativeTextRunCount')
   const currentRectCount = numericEvidence(evidence, 'currentRectCount')
   const presentedRectCount = numericEvidence(evidence, 'presentedRectCount')
   const expectedPixelWidth = numericEvidence(evidence, 'expectedPixelWidth')
@@ -230,6 +241,9 @@ function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof,
   }
   if (evidence.get('backendStatus') !== 'ready') {
     invalidReasons.push(`TypeGPU backend is ${evidence.get('backendStatus') ?? 'missing'}`)
+  }
+  if (evidence.get('nativeLayerSource') !== 'browser-native-text-live') {
+    invalidReasons.push(`ready TypeGPU native text layer source is ${evidence.get('nativeLayerSource') ?? 'missing'}`)
   }
   if (evidence.get('frameProofStatus') !== 'presented') {
     invalidReasons.push(`frame proof is ${evidence.get('frameProofStatus') ?? 'missing'}`)
@@ -321,6 +335,21 @@ function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof,
   if (currentTextSignature.length > 0 && presentedTextSignature.length > 0 && presentedTextSignature !== currentTextSignature) {
     invalidReasons.push('presented visible text signature does not match current tiles')
   }
+  if (currentTextRunCount !== null && currentTextRunCount > 0) {
+    if (evidence.get('nativeTextLayerMounted') !== 'true') {
+      invalidReasons.push('ready TypeGPU browser-native text proof is missing')
+    }
+    if (evidence.get('nativeTextFrameSource') !== 'presented') {
+      invalidReasons.push(`ready TypeGPU browser-native text source is ${evidence.get('nativeTextFrameSource') ?? 'missing'}`)
+    }
+    compareNativeFrameProof(invalidReasons, nativeTextSignature, presentedTextSignature, 'text', 'signature')
+    compareNativeFrameProof(invalidReasons, nativeTextSceneEpoch, presentedSceneEpoch, 'text', 'scene epoch')
+    compareNativeFrameProof(invalidReasons, nativeTextVisibleRenderRevision, visibleRenderRevision, 'text', 'visible render revision')
+    compareNativeFrameProof(invalidReasons, nativeTextPresentedFrameId, presentedFrameProofSignature, 'text', 'presented frame')
+    if (!isPositiveNumber(nativeTextRunCount)) {
+      invalidReasons.push('ready TypeGPU browser-native text run proof is missing')
+    }
+  }
   if (currentRectSignature.length === 0) {
     invalidReasons.push('current visible rect signature is missing')
   }
@@ -329,6 +358,21 @@ function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof,
   }
   if (currentRectSignature.length > 0 && presentedRectSignature.length > 0 && presentedRectSignature !== currentRectSignature) {
     invalidReasons.push('presented visible rect signature does not match current tiles')
+  }
+  if (currentRectCount !== null && currentRectCount > 0) {
+    if (evidence.get('nativeRectLayerMounted') !== 'true') {
+      invalidReasons.push('ready TypeGPU browser-native rect proof is missing')
+    }
+    if (!minimumEvidenceNumber(evidence, 'nativeRectCount', 1)) {
+      invalidReasons.push('ready TypeGPU browser-native rect count proof is missing')
+    }
+    if (evidence.get('nativeRectFrameSource') !== 'presented') {
+      invalidReasons.push(`ready TypeGPU browser-native rect source is ${evidence.get('nativeRectFrameSource') ?? 'missing'}`)
+    }
+    compareNativeFrameProof(invalidReasons, nativeRectSignature, presentedRectSignature, 'rect', 'signature')
+    compareNativeFrameProof(invalidReasons, nativeRectSceneEpoch, presentedSceneEpoch, 'rect', 'scene epoch')
+    compareNativeFrameProof(invalidReasons, nativeRectVisibleRenderRevision, visibleRenderRevision, 'rect', 'visible render revision')
+    compareNativeFrameProof(invalidReasons, nativeRectPresentedFrameId, presentedFrameProofSignature, 'rect', 'presented frame')
   }
   if (!isNonNegativeNumber(currentTextRunCount) || !isNonNegativeNumber(presentedTextRunCount)) {
     invalidReasons.push('visible text run payload counts are missing')
@@ -391,7 +435,7 @@ function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof,
   if (tileSceneRevision.length === 0) {
     invalidReasons.push('tile scene revision is missing')
   }
-  if (evidence.get('visibleRenderRevision') !== tileSceneRevision) {
+  if (visibleRenderRevision !== tileSceneRevision) {
     invalidReasons.push('visible render revision does not match the tile scene revision')
   }
   return invalidReasons
@@ -709,6 +753,26 @@ function comparePresentedOwnershipRevision(invalidReasons: string[], current: st
   }
   if (presented !== current) {
     invalidReasons.push(`presented visible-scene ${label} does not match current scene`)
+  }
+}
+
+function compareNativeFrameProof(
+  invalidReasons: string[],
+  nativeValue: string,
+  presentedValue: string,
+  kind: 'rect' | 'text',
+  label: string,
+): void {
+  if (nativeValue.length === 0) {
+    invalidReasons.push(`ready TypeGPU browser-native ${kind} ${label} proof is missing`)
+    return
+  }
+  if (presentedValue.length === 0) {
+    invalidReasons.push(`presented ${label} proof is missing`)
+    return
+  }
+  if (nativeValue !== presentedValue) {
+    invalidReasons.push(`ready TypeGPU browser-native ${kind} ${label} does not match presented frame`)
   }
 }
 

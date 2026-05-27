@@ -14,15 +14,24 @@ const readyTypeGpuSurface: BiligRenderedSurfaceState = {
   gridLocalRenderRevision: 'rev-local-2',
   gridProjectedRenderRevision: 'rev-3',
   gridWidth: 500,
-  nativeRectCount: 0,
-  nativeRectLayerMounted: false,
+  nativeRectCount: 88,
+  nativeRectLayerMounted: true,
+  nativeRectPresentedFrameId: 'frame-current',
+  nativeRectSceneEpoch: 'scene-epoch-current',
+  nativeRectSignature: 'rect:current',
+  nativeRectVisibleRenderRevision: 'scene-7',
   nativeTextLayerMounted: true,
+  nativeTextPresentedFrameId: 'frame-current',
   nativeTextRunCount: 12,
+  nativeTextSceneEpoch: 'scene-epoch-current',
+  nativeTextSignature: 'text:current',
+  nativeTextVisibleRenderRevision: 'scene-7',
   typeGpu: {
     authoritativeRenderRevision: 'rev-3',
     backendStatus: 'ready',
     currentContentSignature: 'content:current',
     currentFillHandleRevision: 'fill:current',
+    currentSceneEpoch: 'scene-epoch-current',
     currentSceneEpochSignature: 'epoch:current',
     currentSceneOwnershipSignature: 'scene:current',
     currentSelectionRevision: 'selection:current',
@@ -43,12 +52,23 @@ const readyTypeGpuSurface: BiligRenderedSurfaceState = {
     nativeHeaderPaneCount: 1,
     nativeHeaderTextRunCount: 1,
     nativeLayerSource: 'browser-native-text-live',
+    nativeRectFrameSource: 'presented',
+    nativeRectPresentedFrameId: 'frame-current',
+    nativeRectSceneEpoch: 'scene-epoch-current',
+    nativeRectSignature: 'rect:current',
+    nativeRectVisibleRenderRevision: 'scene-7',
+    nativeTextFrameSource: 'presented',
+    nativeTextPresentedFrameId: 'frame-current',
+    nativeTextSceneEpoch: 'scene-epoch-current',
+    nativeTextSignature: 'text:current',
+    nativeTextVisibleRenderRevision: 'scene-7',
     nativeTilePaneCount: 1,
     nativeTileTextRunCount: 11,
     pixelHeight: 600,
     pixelWidth: 1000,
     presentedContentSignature: 'content:current',
     presentedFillHandleRevision: 'fill:current',
+    presentedSceneEpoch: 'scene-epoch-current',
     presentedSceneEpochSignature: 'epoch:current',
     presentedSceneOwnershipSignature: 'scene:current',
     presentedFrameProofSignature: 'frame-current',
@@ -241,15 +261,54 @@ describe('same-corpus Bilig rendered surface proof', () => {
     expect(readiness.gaps).toContain('presented tile/header pane counts do not cover the current visible panes')
   })
 
-  it('rejects browser-native rect ownership in the ready TypeGPU path', () => {
+  it('rejects stale browser-native rect frame proof in the ready TypeGPU path', () => {
     const readiness = biligRenderedSurfaceReadiness({
       ...readyTypeGpuSurface,
-      nativeRectCount: 24,
-      nativeRectLayerMounted: true,
+      nativeRectPresentedFrameId: 'frame-stale',
+      nativeRectSceneEpoch: 'scene-epoch-stale',
+      nativeRectSignature: 'rect:stale',
+      nativeRectVisibleRenderRevision: 'scene-stale',
+      typeGpu: {
+        ...readyTypeGpuSurface.typeGpu!,
+        nativeRectFrameSource: 'current',
+      },
     })
 
     expect(readiness.ready).toBe(false)
-    expect(readiness.gaps).toContain('ready TypeGPU path must not mount browser-native rects')
+    expect(readiness.gaps).toEqual(
+      expect.arrayContaining([
+        'ready TypeGPU browser-native rect source is current',
+        'ready TypeGPU browser-native rect signature does not match presented frame',
+        'ready TypeGPU browser-native rect scene epoch does not match presented frame',
+        'ready TypeGPU browser-native rect visible render revision does not match presented frame',
+        'ready TypeGPU browser-native rect presented frame does not match presented frame',
+      ]),
+    )
+  })
+
+  it('rejects stale browser-native text frame proof in the ready TypeGPU path', () => {
+    const readiness = biligRenderedSurfaceReadiness({
+      ...readyTypeGpuSurface,
+      nativeTextPresentedFrameId: 'frame-stale',
+      nativeTextSceneEpoch: 'scene-epoch-stale',
+      nativeTextSignature: 'text:stale',
+      nativeTextVisibleRenderRevision: 'scene-stale',
+      typeGpu: {
+        ...readyTypeGpuSurface.typeGpu!,
+        nativeTextFrameSource: 'current',
+      },
+    })
+
+    expect(readiness.ready).toBe(false)
+    expect(readiness.gaps).toEqual(
+      expect.arrayContaining([
+        'ready TypeGPU browser-native text source is current',
+        'ready TypeGPU browser-native text signature does not match presented frame',
+        'ready TypeGPU browser-native text scene epoch does not match presented frame',
+        'ready TypeGPU browser-native text visible render revision does not match presented frame',
+        'ready TypeGPU browser-native text presented frame does not match presented frame',
+      ]),
+    )
   })
 
   it('rejects stale visible text and rect payloads even when the frame signature is presented', () => {

@@ -129,6 +129,7 @@ function emptyPixelGridProof(
 }
 
 async function analyzeScreenshotGridPixels(page: Page, screenshotBuffer: ScreenshotBuffer): Promise<ScreenshotGridPixelAnalysis> {
+  await page.evaluate('globalThis.__name ??= ((fn) => fn)')
   return await page.evaluate(
     async ({ dataUrl }) => {
       const image = await new Promise<HTMLImageElement>((resolveImage, reject) => {

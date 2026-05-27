@@ -16,10 +16,26 @@ export async function readBiligRenderedSurfaceState(page: Page): Promise<BiligRe
       nativeRectLayer instanceof HTMLElement
         ? Number.parseInt(nativeRectLayer.getAttribute('data-v3-native-rect-count') ?? '0', 10) || 0
         : 0
+    const nativeRectPresentedFrameId =
+      nativeRectLayer instanceof HTMLElement ? nativeRectLayer.getAttribute('data-v3-native-rect-presented-frame-id') : null
+    const nativeRectSceneEpoch =
+      nativeRectLayer instanceof HTMLElement ? nativeRectLayer.getAttribute('data-v3-native-rect-scene-epoch') : null
+    const nativeRectSignature =
+      nativeRectLayer instanceof HTMLElement ? nativeRectLayer.getAttribute('data-v3-native-rect-signature') : null
+    const nativeRectVisibleRenderRevision =
+      nativeRectLayer instanceof HTMLElement ? nativeRectLayer.getAttribute('data-v3-native-rect-visible-render-revision') : null
     const nativeTextRunCount =
       nativeTextLayer instanceof HTMLElement
         ? Number.parseInt(nativeTextLayer.getAttribute('data-v3-native-text-run-count') ?? '0', 10) || 0
         : 0
+    const nativeTextPresentedFrameId =
+      nativeTextLayer instanceof HTMLElement ? nativeTextLayer.getAttribute('data-v3-native-text-presented-frame-id') : null
+    const nativeTextSceneEpoch =
+      nativeTextLayer instanceof HTMLElement ? nativeTextLayer.getAttribute('data-v3-native-text-scene-epoch') : null
+    const nativeTextSignature =
+      nativeTextLayer instanceof HTMLElement ? nativeTextLayer.getAttribute('data-v3-native-text-signature') : null
+    const nativeTextVisibleRenderRevision =
+      nativeTextLayer instanceof HTMLElement ? nativeTextLayer.getAttribute('data-v3-native-text-visible-render-revision') : null
     const editor = document.querySelector('[data-testid="cell-editor-input"]')
     const editorVisibleRevision =
       editor instanceof HTMLTextAreaElement
@@ -49,6 +65,7 @@ export async function readBiligRenderedSurfaceState(page: Page): Promise<BiligRe
             backendStatus: fallback.getAttribute('data-v3-backend-status'),
             currentContentSignature: fallback.getAttribute('data-v3-current-content-signature'),
             currentFillHandleRevision: fallback.getAttribute('data-v3-current-fill-handle-revision'),
+            currentSceneEpoch: fallback.getAttribute('data-v3-current-scene-epoch'),
             currentSceneEpochSignature: fallback.getAttribute('data-v3-current-scene-epoch-signature'),
             currentSceneOwnershipSignature: fallback.getAttribute('data-v3-current-scene-ownership-signature'),
             currentSelectionRevision: fallback.getAttribute('data-v3-current-selection-revision'),
@@ -70,12 +87,23 @@ export async function readBiligRenderedSurfaceState(page: Page): Promise<BiligRe
             nativeHeaderPaneCount: Number.parseInt(fallback.getAttribute('data-v3-native-header-pane-count') ?? '0', 10) || 0,
             nativeHeaderTextRunCount: Number.parseInt(fallback.getAttribute('data-v3-native-header-text-run-count') ?? '0', 10) || 0,
             nativeLayerSource: fallback.getAttribute('data-v3-native-layer-source'),
+            nativeRectFrameSource: fallback.getAttribute('data-v3-native-rect-frame-source'),
+            nativeRectPresentedFrameId: fallback.getAttribute('data-v3-native-rect-presented-frame-id'),
+            nativeRectSceneEpoch: fallback.getAttribute('data-v3-native-rect-scene-epoch'),
+            nativeRectSignature: fallback.getAttribute('data-v3-native-rect-signature'),
+            nativeRectVisibleRenderRevision: fallback.getAttribute('data-v3-native-rect-visible-render-revision'),
+            nativeTextFrameSource: fallback.getAttribute('data-v3-native-text-frame-source'),
+            nativeTextPresentedFrameId: fallback.getAttribute('data-v3-native-text-presented-frame-id'),
+            nativeTextSceneEpoch: fallback.getAttribute('data-v3-native-text-scene-epoch'),
+            nativeTextSignature: fallback.getAttribute('data-v3-native-text-signature'),
+            nativeTextVisibleRenderRevision: fallback.getAttribute('data-v3-native-text-visible-render-revision'),
             nativeTilePaneCount: Number.parseInt(fallback.getAttribute('data-v3-native-tile-pane-count') ?? '0', 10) || 0,
             nativeTileTextRunCount: Number.parseInt(fallback.getAttribute('data-v3-native-text-run-count') ?? '0', 10) || 0,
             pixelHeight: fallback.height,
             pixelWidth: fallback.width,
             presentedContentSignature: fallback.getAttribute('data-v3-presented-content-signature'),
             presentedFillHandleRevision: fallback.getAttribute('data-v3-presented-fill-handle-revision'),
+            presentedSceneEpoch: fallback.getAttribute('data-v3-presented-scene-epoch'),
             presentedSceneEpochSignature: fallback.getAttribute('data-v3-presented-scene-epoch-signature'),
             presentedSceneOwnershipSignature: fallback.getAttribute('data-v3-presented-scene-ownership-signature'),
             presentedFrameProofSignature: fallback.getAttribute('data-v3-presented-frame-proof-signature'),
@@ -105,6 +133,7 @@ export async function readBiligRenderedSurfaceState(page: Page): Promise<BiligRe
             backendStatus: typeGpu.getAttribute('data-v3-backend-status'),
             currentContentSignature: typeGpu.getAttribute('data-v3-current-content-signature'),
             currentFillHandleRevision: typeGpu.getAttribute('data-v3-current-fill-handle-revision'),
+            currentSceneEpoch: typeGpu.getAttribute('data-v3-current-scene-epoch'),
             currentSceneEpochSignature: typeGpu.getAttribute('data-v3-current-scene-epoch-signature'),
             currentSceneOwnershipSignature: typeGpu.getAttribute('data-v3-current-scene-ownership-signature'),
             currentSelectionRevision: typeGpu.getAttribute('data-v3-current-selection-revision'),
@@ -126,12 +155,23 @@ export async function readBiligRenderedSurfaceState(page: Page): Promise<BiligRe
             nativeHeaderPaneCount: Number.parseInt(typeGpu.getAttribute('data-v3-native-header-pane-count') ?? '0', 10) || 0,
             nativeHeaderTextRunCount: Number.parseInt(typeGpu.getAttribute('data-v3-native-header-text-run-count') ?? '0', 10) || 0,
             nativeLayerSource: typeGpu.getAttribute('data-v3-native-layer-source'),
+            nativeRectFrameSource: typeGpu.getAttribute('data-v3-native-rect-frame-source'),
+            nativeRectPresentedFrameId: typeGpu.getAttribute('data-v3-native-rect-presented-frame-id'),
+            nativeRectSceneEpoch: typeGpu.getAttribute('data-v3-native-rect-scene-epoch'),
+            nativeRectSignature: typeGpu.getAttribute('data-v3-native-rect-signature'),
+            nativeRectVisibleRenderRevision: typeGpu.getAttribute('data-v3-native-rect-visible-render-revision'),
+            nativeTextFrameSource: typeGpu.getAttribute('data-v3-native-text-frame-source'),
+            nativeTextPresentedFrameId: typeGpu.getAttribute('data-v3-native-text-presented-frame-id'),
+            nativeTextSceneEpoch: typeGpu.getAttribute('data-v3-native-text-scene-epoch'),
+            nativeTextSignature: typeGpu.getAttribute('data-v3-native-text-signature'),
+            nativeTextVisibleRenderRevision: typeGpu.getAttribute('data-v3-native-text-visible-render-revision'),
             nativeTilePaneCount: Number.parseInt(typeGpu.getAttribute('data-v3-native-tile-pane-count') ?? '0', 10) || 0,
             nativeTileTextRunCount: Number.parseInt(typeGpu.getAttribute('data-v3-native-text-run-count') ?? '0', 10) || 0,
             pixelHeight: typeGpu.height,
             pixelWidth: typeGpu.width,
             presentedContentSignature: typeGpu.getAttribute('data-v3-presented-content-signature'),
             presentedFillHandleRevision: typeGpu.getAttribute('data-v3-presented-fill-handle-revision'),
+            presentedSceneEpoch: typeGpu.getAttribute('data-v3-presented-scene-epoch'),
             presentedSceneEpochSignature: typeGpu.getAttribute('data-v3-presented-scene-epoch-signature'),
             presentedSceneOwnershipSignature: typeGpu.getAttribute('data-v3-presented-scene-ownership-signature'),
             presentedFrameProofSignature: typeGpu.getAttribute('data-v3-presented-frame-proof-signature'),
@@ -169,8 +209,16 @@ export async function readBiligRenderedSurfaceState(page: Page): Promise<BiligRe
       gridWidth: Math.max(0, Math.floor(grid.clientWidth)),
       nativeRectCount,
       nativeRectLayerMounted: nativeRectLayer instanceof HTMLElement,
+      nativeRectPresentedFrameId,
+      nativeRectSceneEpoch,
+      nativeRectSignature,
+      nativeRectVisibleRenderRevision,
       nativeTextLayerMounted: nativeTextLayer instanceof HTMLElement,
+      nativeTextPresentedFrameId,
       nativeTextRunCount,
+      nativeTextSceneEpoch,
+      nativeTextSignature,
+      nativeTextVisibleRenderRevision,
       typeGpu: typeGpuState,
     }
   })

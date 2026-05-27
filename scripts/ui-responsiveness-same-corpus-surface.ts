@@ -2,6 +2,7 @@ export interface BiligRenderedCanvasState {
   readonly authoritativeRenderRevision?: string | null | undefined
   readonly backendStatus?: string | null | undefined
   readonly currentContentSignature?: string | null | undefined
+  readonly currentSceneEpoch?: string | null | undefined
   readonly currentSceneEpochSignature?: string | null | undefined
   readonly currentSceneOwnershipSignature?: string | null | undefined
   readonly currentFillHandleRevision?: string | null | undefined
@@ -24,11 +25,22 @@ export interface BiligRenderedCanvasState {
   readonly nativeHeaderPaneCount?: number | undefined
   readonly nativeHeaderTextRunCount?: number | undefined
   readonly nativeLayerSource?: string | null | undefined
+  readonly nativeRectFrameSource?: string | null | undefined
+  readonly nativeRectPresentedFrameId?: string | null | undefined
+  readonly nativeRectSceneEpoch?: string | null | undefined
+  readonly nativeRectSignature?: string | null | undefined
+  readonly nativeRectVisibleRenderRevision?: string | null | undefined
+  readonly nativeTextFrameSource?: string | null | undefined
+  readonly nativeTextPresentedFrameId?: string | null | undefined
+  readonly nativeTextSceneEpoch?: string | null | undefined
+  readonly nativeTextSignature?: string | null | undefined
+  readonly nativeTextVisibleRenderRevision?: string | null | undefined
   readonly nativeTilePaneCount?: number | undefined
   readonly nativeTileTextRunCount?: number | undefined
   readonly pixelHeight: number
   readonly pixelWidth: number
   readonly presentedContentSignature?: string | null | undefined
+  readonly presentedSceneEpoch?: string | null | undefined
   readonly presentedSceneEpochSignature?: string | null | undefined
   readonly presentedSceneOwnershipSignature?: string | null | undefined
   readonly presentedFillHandleRevision?: string | null | undefined
@@ -68,8 +80,16 @@ export interface BiligRenderedSurfaceState {
   readonly gridWidth: number
   readonly nativeRectCount: number
   readonly nativeRectLayerMounted: boolean
+  readonly nativeRectPresentedFrameId?: string | null | undefined
+  readonly nativeRectSceneEpoch?: string | null | undefined
+  readonly nativeRectSignature?: string | null | undefined
+  readonly nativeRectVisibleRenderRevision?: string | null | undefined
   readonly nativeTextLayerMounted: boolean
+  readonly nativeTextPresentedFrameId?: string | null | undefined
   readonly nativeTextRunCount: number
+  readonly nativeTextSceneEpoch?: string | null | undefined
+  readonly nativeTextSignature?: string | null | undefined
+  readonly nativeTextVisibleRenderRevision?: string | null | undefined
   readonly typeGpu: BiligRenderedCanvasState | null
 }
 
@@ -190,14 +210,34 @@ export function biligRenderedSurfaceReadiness(state: BiligRenderedSurfaceState |
     gaps.push('TypeGPU canvas backing pixels do not cover the viewport')
   }
   if (canvas.nativeLayerSource === 'browser-native-text-live') {
-    if (state.nativeRectLayerMounted || state.nativeRectCount > 0) {
-      gaps.push('ready TypeGPU path must not mount browser-native rects')
+    const hasVisibleTextPayload = (canvas.currentTextRunCount ?? 0) > 0 || (canvas.presentedTextRunCount ?? 0) > 0
+    const hasVisibleRectPayload = (canvas.currentRectCount ?? 0) > 0 || (canvas.presentedRectCount ?? 0) > 0
+    if (hasVisibleRectPayload && (!state.nativeRectLayerMounted || state.nativeRectCount <= 0)) {
+      gaps.push('ready TypeGPU browser-native rect proof is missing')
     }
-    if ((canvas.currentTextRunCount ?? 0) > 0 && (!state.nativeTextLayerMounted || state.nativeTextRunCount <= 0)) {
+    if (hasVisibleTextPayload && (!state.nativeTextLayerMounted || state.nativeTextRunCount <= 0)) {
       gaps.push('ready TypeGPU browser-native text proof is missing')
     }
     if ((canvas.nativeTilePaneCount ?? 0) !== canvas.tilePaneCount || (canvas.nativeHeaderPaneCount ?? 0) !== canvas.headerPaneCount) {
-      gaps.push('ready TypeGPU browser-native text pane coverage does not match current panes')
+      gaps.push('ready TypeGPU browser-native pane coverage does not match current panes')
+    }
+    if (hasVisibleRectPayload) {
+      if (canvas.nativeRectFrameSource !== 'presented') {
+        gaps.push(`ready TypeGPU browser-native rect source is ${canvas.nativeRectFrameSource ?? 'missing'}`)
+      }
+      compareNativeFrameProof(gaps, state.nativeRectSignature, canvas.presentedRectSignature, 'rect', 'signature')
+      compareNativeFrameProof(gaps, state.nativeRectSceneEpoch, canvas.presentedSceneEpoch, 'rect', 'scene epoch')
+      compareNativeFrameProof(gaps, state.nativeRectVisibleRenderRevision, canvas.visibleRenderRevision, 'rect', 'visible render revision')
+      compareNativeFrameProof(gaps, state.nativeRectPresentedFrameId, canvas.presentedFrameProofSignature, 'rect', 'presented frame')
+    }
+    if (hasVisibleTextPayload) {
+      if (canvas.nativeTextFrameSource !== 'presented') {
+        gaps.push(`ready TypeGPU browser-native text source is ${canvas.nativeTextFrameSource ?? 'missing'}`)
+      }
+      compareNativeFrameProof(gaps, state.nativeTextSignature, canvas.presentedTextSignature, 'text', 'signature')
+      compareNativeFrameProof(gaps, state.nativeTextSceneEpoch, canvas.presentedSceneEpoch, 'text', 'scene epoch')
+      compareNativeFrameProof(gaps, state.nativeTextVisibleRenderRevision, canvas.visibleRenderRevision, 'text', 'visible render revision')
+      compareNativeFrameProof(gaps, state.nativeTextPresentedFrameId, canvas.presentedFrameProofSignature, 'text', 'presented frame')
     }
   }
   if (!hasText(canvas.currentContentSignature)) {
@@ -363,8 +403,16 @@ function baseSurfaceEvidence(state: BiligRenderedSurfaceState): string[] {
     `fallbackMounted=${String(Boolean(state.fallback))}`,
     `nativeRectLayerMounted=${String(state.nativeRectLayerMounted)}`,
     `nativeRectCount=${String(state.nativeRectCount)}`,
+    `nativeRectPresentedFrameId=${state.nativeRectPresentedFrameId ?? ''}`,
+    `nativeRectSceneEpoch=${state.nativeRectSceneEpoch ?? ''}`,
+    `nativeRectSignature=${state.nativeRectSignature ?? ''}`,
+    `nativeRectVisibleRenderRevision=${state.nativeRectVisibleRenderRevision ?? ''}`,
     `nativeTextLayerMounted=${String(state.nativeTextLayerMounted)}`,
+    `nativeTextPresentedFrameId=${state.nativeTextPresentedFrameId ?? ''}`,
     `nativeTextRunCount=${String(state.nativeTextRunCount)}`,
+    `nativeTextSceneEpoch=${state.nativeTextSceneEpoch ?? ''}`,
+    `nativeTextSignature=${state.nativeTextSignature ?? ''}`,
+    `nativeTextVisibleRenderRevision=${state.nativeTextVisibleRenderRevision ?? ''}`,
   ]
 }
 
@@ -378,11 +426,23 @@ function canvasEvidence(canvas: BiligRenderedCanvasState, state: BiligRenderedSu
     `nativeHeaderPaneCount=${String(canvas.nativeHeaderPaneCount ?? 0)}`,
     `nativeTileTextRunCount=${String(canvas.nativeTileTextRunCount ?? 0)}`,
     `nativeHeaderTextRunCount=${String(canvas.nativeHeaderTextRunCount ?? 0)}`,
+    `nativeRectFrameSource=${canvas.nativeRectFrameSource ?? ''}`,
+    `nativeRectPresentedFrameId=${canvas.nativeRectPresentedFrameId ?? ''}`,
+    `nativeRectSceneEpoch=${canvas.nativeRectSceneEpoch ?? ''}`,
+    `nativeRectSignature=${canvas.nativeRectSignature ?? ''}`,
+    `nativeRectVisibleRenderRevision=${canvas.nativeRectVisibleRenderRevision ?? ''}`,
+    `nativeTextFrameSource=${canvas.nativeTextFrameSource ?? ''}`,
+    `nativeTextPresentedFrameId=${canvas.nativeTextPresentedFrameId ?? ''}`,
+    `nativeTextSceneEpoch=${canvas.nativeTextSceneEpoch ?? ''}`,
+    `nativeTextSignature=${canvas.nativeTextSignature ?? ''}`,
+    `nativeTextVisibleRenderRevision=${canvas.nativeTextVisibleRenderRevision ?? ''}`,
     `frameProofStatus=${canvas.frameProofStatus ?? ''}`,
     `frameProofSignature=${canvas.frameProofSignature ?? ''}`,
     `hasPresentedFrame=${String(canvas.hasPresentedFrame === true)}`,
     `hasPresentedVisibleFrame=${String(canvas.hasPresentedVisibleFrame === true)}`,
     `presentedFrameProofSignature=${canvas.presentedFrameProofSignature ?? ''}`,
+    `currentSceneEpoch=${canvas.currentSceneEpoch ?? ''}`,
+    `presentedSceneEpoch=${canvas.presentedSceneEpoch ?? ''}`,
     `currentSceneEpochSignature=${canvas.currentSceneEpochSignature ?? ''}`,
     `presentedSceneEpochSignature=${canvas.presentedSceneEpochSignature ?? ''}`,
     `currentSceneOwnershipSignature=${canvas.currentSceneOwnershipSignature ?? ''}`,
@@ -445,5 +505,25 @@ function comparePresentedOwnershipRevision(
   }
   if (presented !== current) {
     gaps.push(`presented visible-scene ${label} does not match current scene`)
+  }
+}
+
+function compareNativeFrameProof(
+  gaps: string[],
+  nativeValue: string | null | undefined,
+  presentedValue: string | null | undefined,
+  kind: 'rect' | 'text',
+  label: string,
+): void {
+  if (!hasText(nativeValue)) {
+    gaps.push(`ready TypeGPU browser-native ${kind} ${label} proof is missing`)
+    return
+  }
+  if (!hasText(presentedValue)) {
+    gaps.push(`presented ${label} proof is missing`)
+    return
+  }
+  if (nativeValue !== presentedValue) {
+    gaps.push(`ready TypeGPU browser-native ${kind} ${label} does not match presented frame`)
   }
 }

@@ -601,6 +601,43 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
     }
   })
 
+  test('exposes presented-frame proof attributes for the native text source', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    try {
+      await act(async () => {
+        root.render(
+          <WorkbookPaneNativeTextLayerV3
+            active
+            cameraStore={null}
+            geometry={null}
+            headerPanes={[]}
+            nativeTextPresentedFrameId="frame-current"
+            nativeTextSceneEpoch="scene-epoch-current"
+            nativeTextSignature="text-current"
+            nativeTextVisibleRenderRevision="scene-7"
+            scrollTransformStore={null}
+            tilePanes={[createPane(createRun({ text: 'proof-cell' }))]}
+          />,
+        )
+      })
+
+      const layer = host.querySelector<HTMLElement>('[data-testid="grid-native-text-layer"]')
+      expect(layer?.getAttribute('data-v3-native-text-presented-frame-id')).toBe('frame-current')
+      expect(layer?.getAttribute('data-v3-native-text-scene-epoch')).toBe('scene-epoch-current')
+      expect(layer?.getAttribute('data-v3-native-text-signature')).toBe('text-current')
+      expect(layer?.getAttribute('data-v3-native-text-visible-render-revision')).toBe('scene-7')
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+      host.remove()
+    }
+  })
+
   test('rerenders snapped native text geometry when device pixel ratio changes', async () => {
     const originalDevicePixelRatio = Object.getOwnPropertyDescriptor(window, 'devicePixelRatio')
     const host = document.createElement('div')
