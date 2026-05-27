@@ -259,9 +259,11 @@ describe('wasm kernel lookup dispatch slab', () => {
       [encodePushNumber(0), encodePushRange(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Xmatch, 4), encodeRet()],
       [encodePushNumber(0), encodePushRange(0), encodePushRange(1), encodeCall(BuiltinId.Xlookup, 3), encodeRet()],
       [encodePushNumber(0), encodePushRange(0), encodePushRange(1), encodePushNumber(1), encodeCall(BuiltinId.Lookup, 3), encodeRet()],
+      [encodePushNumber(0), encodePushRange(0), encodePushRange(1), encodeCall(BuiltinId.Lookup, 3), encodeRet()],
+      [encodePushNumber(0), encodePushRange(0), encodePushRange(1), encodeCall(BuiltinId.Lookup, 3), encodeRet()],
       [encodePushNumber(0), encodePushRange(3), encodePushNumber(1), encodeCall(BuiltinId.Match, 3), encodeRet()],
     ])
-    const constants = packConstants([[20, 2], [20, 0, 2], [20], [20], [20, 0]])
+    const constants = packConstants([[20, 2], [20, 0, 2], [20], [20], [20], [30], [20, 0]])
     kernel.uploadPrograms(
       packed.programs,
       packed.offsets,
@@ -272,6 +274,8 @@ describe('wasm kernel lookup dispatch slab', () => {
         cellIndex(5, 2, width),
         cellIndex(5, 3, width),
         cellIndex(5, 4, width),
+        cellIndex(5, 5, width),
+        cellIndex(5, 6, width),
       ]),
     )
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
@@ -282,6 +286,8 @@ describe('wasm kernel lookup dispatch slab', () => {
         cellIndex(5, 2, width),
         cellIndex(5, 3, width),
         cellIndex(5, 4, width),
+        cellIndex(5, 5, width),
+        cellIndex(5, 6, width),
       ]),
     )
 
@@ -289,6 +295,8 @@ describe('wasm kernel lookup dispatch slab', () => {
     expectErrorCell(kernel, cellIndex(5, 1, width), ErrorCode.Value)
     expectErrorCell(kernel, cellIndex(5, 2, width), ErrorCode.Value)
     expectErrorCell(kernel, cellIndex(5, 3, width), ErrorCode.Value)
-    expectErrorCell(kernel, cellIndex(5, 4, width), ErrorCode.Value)
+    expectNumberCell(kernel, cellIndex(5, 4, width), 200)
+    expectErrorCell(kernel, cellIndex(5, 5, width), ErrorCode.NA)
+    expectErrorCell(kernel, cellIndex(5, 6, width), ErrorCode.Value)
   })
 })

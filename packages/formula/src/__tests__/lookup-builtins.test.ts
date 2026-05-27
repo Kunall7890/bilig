@@ -375,9 +375,38 @@ describe('lookup builtins', () => {
 
     const lookupValues = cellRange([num(1), num(2), num(3)], 3, 1)
     const resultValues = cellRange([num(10), num(20), num(30)], 3, 1)
+    const publicCorpusThresholds = cellRange(
+      [
+        num(0),
+        num(0.199),
+        num(0.299),
+        num(0.599),
+        num(1.1),
+        num(2.1),
+        num(4.1),
+        num(8.1),
+        num(16.1),
+        num(32.1),
+        num(64.1),
+        num(128.1),
+        num(256.1),
+        num(512.1),
+        num(1024.1),
+        num(2048),
+      ],
+      16,
+      1,
+    )
+    const publicCorpusScores = cellRange(
+      [num(1), num(2), num(3), num(4), num(5), num(6), num(7), num(8), num(9), num(10), num(11), num(12), num(13), num(14), num(15)],
+      15,
+      1,
+    )
 
     expect(LOOKUP(num(2), lookupValues, resultValues)).toEqual(num(20))
     expect(LOOKUP(num(4), lookupValues, resultValues)).toEqual(num(30))
+    expect(LOOKUP(num(0.6666666666666666), publicCorpusThresholds, publicCorpusScores)).toEqual(num(4))
+    expect(LOOKUP(num(2048), publicCorpusThresholds, publicCorpusScores)).toEqual(err(ErrorCode.NA))
     expect(
       LOOKUP(text('not-found'), cellRange([text('a'), text('b'), text('c')], 3, 1), cellRange([num(1), num(2), num(3)], 3, 1)),
     ).toEqual(err(ErrorCode.NA))
@@ -1567,7 +1596,7 @@ describe('lookup builtins', () => {
     expect(LOOKUP(text('pear'), err(ErrorCode.Name))).toEqual(err(ErrorCode.Name))
     expect(LOOKUP(text('pear'), cellRange([text('pear')], 1, 1), err(ErrorCode.NA))).toEqual(err(ErrorCode.NA))
     expect(LOOKUP(text('pear'), cellRange([text('pear'), text('apple'), text('plum'), text('berry')], 2, 2))).toEqual(err(ErrorCode.Value))
-    expect(LOOKUP(text('pear'), duplicateLookup, cellRange([num(1), num(2)], 2, 1))).toEqual(err(ErrorCode.Value))
+    expect(LOOKUP(text('pear'), duplicateLookup, cellRange([num(1), num(2)], 2, 1))).toEqual(num(1))
 
     const verticalTable = cellRange([text('apple'), num(10), text('pear'), num(20), text('plum'), num(30)], 3, 2)
     const horizontalTable = cellRange([text('apple'), text('pear'), text('plum'), num(10), num(20), num(30)], 2, 3)

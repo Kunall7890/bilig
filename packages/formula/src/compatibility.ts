@@ -353,6 +353,16 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('lookup-reference:vlookup-exact', 'lookup-reference', '=VLOOKUP("pear",A1:B3,2,FALSE)', 'implemented-wasm-production'),
   entry('lookup-reference:xlookup-exact', 'lookup-reference', '=XLOOKUP("pear",A1:A3,B1:B3)', 'implemented-wasm-production'),
   entry(
+    'lookup-reference:lookup-short-result-vector',
+    'lookup-reference',
+    '=LOOKUP(0.6666666666666666,B1:B16,C1:C15)',
+    'implemented-wasm-production',
+    {
+      notes:
+        'Public workbook corpus case Biomass-spreadsheet-CEND0313.xlsx caches this mismatched LOOKUP vector shape as the fourth result slot rather than #VALUE!.',
+    },
+  ),
+  entry(
     'lookup-reference:xlookup-approximate-scalar-vector',
     'lookup-reference',
     '=XLOOKUP(72,G1:G5,H1:H5,,-1)',

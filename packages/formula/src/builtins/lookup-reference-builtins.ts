@@ -7,6 +7,7 @@ import {
   approximateMatchDescending,
   exactMatch,
   findReferenceMatchIndex,
+  getVectorValue,
   hasLookupWildcardSyntax,
   vectorLength,
   type LookupReferenceMatchMode,
@@ -222,7 +223,8 @@ export function createLookupReferenceBuiltins(deps: LookupReferenceBuiltinDeps):
       if (resultRangeOrError.rows !== 1 && resultRangeOrError.cols !== 1) {
         return deps.errorValue(ErrorCode.Value)
       }
-      if (lookupRangeOrError.values.length !== resultRangeOrError.values.length) {
+      const resultLength = vectorLength(resultRangeOrError)
+      if (resultLength === undefined) {
         return deps.errorValue(ErrorCode.Value)
       }
 
@@ -235,8 +237,10 @@ export function createLookupReferenceBuiltins(deps: LookupReferenceBuiltinDeps):
       }
 
       const resultIndex = position - 1
-      const result = resultRangeOrError.values[resultIndex]
-      return result === undefined ? deps.errorValue(ErrorCode.NA) : coerceLookupReturnValue(result, deps)
+      if (resultIndex >= resultLength) {
+        return deps.errorValue(ErrorCode.NA)
+      }
+      return coerceLookupReturnValue(getVectorValue(resultRangeOrError, resultIndex, deps), deps)
     },
     VLOOKUP: (lookupValue, tableArray, colIndexValue, rangeLookupValue = { tag: ValueTag.Boolean, value: true }) => {
       if (lookupValue === undefined || tableArray === undefined || colIndexValue === undefined) {

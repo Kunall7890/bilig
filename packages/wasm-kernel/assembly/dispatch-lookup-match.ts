@@ -667,7 +667,7 @@ export function tryApplyLookupMatchBuiltin(
     const lookupLength = lookupVectorSlotLength(base + 1, kindStack, rangeIndexStack, rangeLengths, rangeRowCounts, rangeColCounts)
     const resultSlot = argc == 3 ? base + 2 : base + 1
     const resultLength = lookupVectorSlotLength(resultSlot, kindStack, rangeIndexStack, rangeLengths, rangeRowCounts, rangeColCounts)
-    if (lookupLength == i32.MIN_VALUE || resultLength == i32.MIN_VALUE || lookupLength != resultLength) {
+    if (lookupLength == i32.MIN_VALUE || resultLength == i32.MIN_VALUE) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
 
@@ -789,6 +789,9 @@ export function tryApplyLookupMatchBuiltin(
 
     const resultRows = inputRowsFromSlot(resultSlot, kindStack, rangeIndexStack, rangeRowCounts)
     const resultIndex = position - 1
+    if (resultIndex >= resultLength) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.NA, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const resultRow = resultRows == 1 ? 0 : resultIndex
     const resultCol = resultRows == 1 ? resultIndex : 0
     const resultTag = inputCellTag(
