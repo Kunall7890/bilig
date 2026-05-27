@@ -2,6 +2,7 @@ import type { SameCorpusMutationTargetProof, SameCorpusMutationTargetReadback } 
 import type { UiResponsivenessSameCorpusProduct } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 import { sameCorpusFillColorsMatch } from './ui-responsiveness-same-corpus-fill-proof.ts'
+import { sameCorpusBiligVisibleSceneProofInvalidReasons } from './ui-responsiveness-same-corpus-bilig-visible-proof.ts'
 
 type SameCorpusMutationTargetScreenshotPhase = 'before' | 'after' | 'restored'
 
@@ -36,6 +37,17 @@ function sameCorpusMutationTargetScreenshotPhaseSemanticInvalidReasons(
     return [
       `semantic UI mutation target proof for ${workload} ${phase} screenshot semantic readback did not come from an accepted browser-visible source`,
     ]
+  }
+  if (product === 'bilig') {
+    const sceneProofInvalidReasons = sameCorpusBiligVisibleSceneProofInvalidReasons({
+      actual: readback,
+      expected: expectedReadback,
+      label: `${phase} screenshot semantic readback`,
+      workload,
+    })
+    if (sceneProofInvalidReasons.length > 0) {
+      return sceneProofInvalidReasons
+    }
   }
   if (!sameCorpusScreenshotReadbackMatches(product, workload, expectedReadback, readback)) {
     return [`semantic UI mutation target proof for ${workload} ${phase} screenshot semantic readback does not match target readback`]

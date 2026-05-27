@@ -24,6 +24,25 @@ describe('same-corpus mutation target screenshot semantic proof', () => {
     ])
   })
 
+  it('rejects a Bilig target screenshot whose semantic readback is tied to a stale visible scene', () => {
+    const expectedScene = 'a'.repeat(64)
+    const staleScene = 'f'.repeat(64)
+    const targetProof = proof({
+      after: readback('edited-value', { visibleSceneProofSha256: expectedScene }),
+      targetScreenshots: {
+        ...proof().targetScreenshots!,
+        after: {
+          ...proof().targetScreenshots!.after,
+          semanticReadback: readback('edited-value', { source: 'visible-grid-cell', visibleSceneProofSha256: staleScene }),
+        },
+      },
+    })
+
+    expect(sameCorpusMutationTargetScreenshotSemanticInvalidReasons('bilig', 'edit-visible-cell', targetProof)).toEqual([
+      'semantic UI mutation target proof for edit-visible-cell after screenshot semantic readback visible scene proof does not match target readback',
+    ])
+  })
+
   it('matches fill-color screenshots by normalized color rather than hash-only evidence', () => {
     const targetProof = proof({
       workload: 'fill-format-change',
@@ -110,6 +129,7 @@ function readback(value: string, overrides: Partial<SameCorpusMutationTargetRead
     fillColor: null,
     visibleText: value,
     source: 'bilig-authoritative-range',
+    visibleSceneProofSha256: 'a'.repeat(64),
     ...overrides,
   }
 }

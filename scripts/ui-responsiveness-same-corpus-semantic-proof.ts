@@ -18,6 +18,7 @@ import {
   sameCorpusFillColorsMatch,
   sameCorpusFillFormatTargetProofInvalidReasons,
 } from './ui-responsiveness-same-corpus-fill-proof.ts'
+import { sameCorpusBiligVisibleSceneProofInvalidReasons } from './ui-responsiveness-same-corpus-bilig-visible-proof.ts'
 import { sameCorpusMutationTargetTimingInvalidReasons } from './ui-responsiveness-same-corpus-mutation-target-timing.ts'
 import { sameCorpusMutationTargetRangeForSample } from './ui-responsiveness-same-corpus-mutation-target-spec.ts'
 import { uiSameCorpusWorkloadMutatesWorkbook, type UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
@@ -713,13 +714,34 @@ function sameCorpusMutationTargetVisibleReadbackInvalidReasons(
   if (product !== 'bilig') {
     return []
   }
+  const invalidReasons: string[] = []
+  invalidReasons.push(
+    ...sameCorpusBiligVisibleSceneProofInvalidReasons({
+      actual: sample.visibleAfter,
+      expected: sample.after,
+      label: 'post-mutation visible render readback',
+      workload,
+    }),
+  )
+  invalidReasons.push(
+    ...sameCorpusBiligVisibleSceneProofInvalidReasons({
+      actual: sample.visibleRestored,
+      expected: sample.restored,
+      label: 'restored visible render readback',
+      workload,
+    }),
+  )
   if (!sameCorpusVisibleReadbackMatchesAuthoritative(workload, sample.after, sample.visibleAfter)) {
-    return [`semantic UI mutation target proof for ${workload} rendered readback does not match Bilig authoritative range readback`]
+    invalidReasons.push(
+      `semantic UI mutation target proof for ${workload} rendered readback does not match Bilig authoritative range readback`,
+    )
   }
   if (!sameCorpusVisibleReadbackMatchesAuthoritative(workload, sample.restored, sample.visibleRestored)) {
-    return [`semantic UI mutation target proof for ${workload} rendered restore readback does not match Bilig authoritative range readback`]
+    invalidReasons.push(
+      `semantic UI mutation target proof for ${workload} rendered restore readback does not match Bilig authoritative range readback`,
+    )
   }
-  return []
+  return invalidReasons
 }
 
 function sameCorpusVisibleReadbackSourceAccepted(

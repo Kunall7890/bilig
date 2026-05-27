@@ -362,9 +362,10 @@ async function readBiligVisibleGridCellReadback(
   page: Page,
   target: SameCorpusMutationTargetSelection,
 ): Promise<SameCorpusMutationTargetReadback> {
-  const [visibleText, fillColor] = await Promise.all([
+  const [visibleText, fillColor, visibleSceneProofSha256] = await Promise.all([
     readBiligVisibleGridCellText(page, target),
     readBiligVisibleGridCellFillColor(page, target),
+    readBiligVisibleSceneProofSha256(page, target),
   ])
   const text = normalizeNullableText(visibleText)
   return {
@@ -373,7 +374,21 @@ async function readBiligVisibleGridCellReadback(
     fillColor,
     visibleText: text,
     source: 'visible-grid-cell',
+    visibleSceneProofSha256,
   }
+}
+
+async function readBiligVisibleSceneProofSha256(page: Page, target: SameCorpusMutationTargetSelection): Promise<string | null> {
+  const visibleSceneProof = await page.evaluate(
+    ({ endAddress, sheetName, startAddress }) =>
+      window.__biligSameCorpusProof?.readRange(sheetName, startAddress, endAddress)?.visibleSceneProof ?? null,
+    {
+      endAddress: target.endAddress,
+      sheetName: target.sheetName,
+      startAddress: target.startAddress,
+    },
+  )
+  return visibleSceneProof ? sha256Hex(stableJsonBytes(visibleSceneProof)) : null
 }
 
 async function readBiligVisibleGridCellText(page: Page, target: SameCorpusMutationTargetSelection): Promise<string | null> {

@@ -530,6 +530,34 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('rejects Bilig visible readback when native text is tied to a stale visible scene', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0
+            ? Object.assign({}, proof, {
+                visibleAfter: {
+                  ...proof.visibleAfter,
+                  visibleSceneProofSha256: 'f'.repeat(64),
+                },
+              })
+            : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell post-mutation visible render readback visible scene proof does not match target readback',
+      ]),
+    })
+  })
+
   it('accepts Google Sheets mutation proof only when an independent XLSX export proves committed state', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(validGoogleSheetsSemanticProof(), {
       workload: 'edit-visible-cell',
@@ -988,6 +1016,7 @@ function mutationTargetProof(
       visibleText: mutationTargetBeforeValue(workload),
       source: authoritativeSource,
       capturedRevision: `before-readback-${String(sampleIndex + 1)}`,
+      ...(product === 'bilig' ? { visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex) } : {}),
     },
     after: Object.assign(mutationTargetAfterReadback(workload, sampleIndex), {
       source: authoritativeSource,
@@ -1001,6 +1030,7 @@ function mutationTargetProof(
       visibleText: mutationTargetBeforeValue(workload),
       source: authoritativeSource,
       capturedRevision: `restored-readback-${String(sampleIndex + 1)}`,
+      ...(product === 'bilig' ? { visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex) } : {}),
     },
     visibleAfter: mutationTargetVisibleReadback(product, workload, 'after', sampleIndex),
     visibleAfterSelectedRange: sameCorpusMutationTargetRangeForSample(workload, sampleIndex),
@@ -1090,6 +1120,7 @@ function mutationTargetVisibleReadback(
       fillColor: null,
       visibleText: value,
       source,
+      ...(product === 'bilig' ? { visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex) } : {}),
     }
   }
   const after = mutationTargetAfterReadback(workload, sampleIndex)
@@ -1099,6 +1130,7 @@ function mutationTargetVisibleReadback(
     fillColor: after.fillColor,
     visibleText: after.visibleText,
     source,
+    ...(product === 'bilig' ? { visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex) } : {}),
   }
 }
 
@@ -1141,6 +1173,7 @@ function fillMutationTargetProof(
       visibleText: 'metric-1',
       source: 'bilig-authoritative-range',
       capturedRevision: `before-readback-${String(sampleIndex + 1)}`,
+      visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex),
     },
     after: {
       value: 'metric-1',
@@ -1158,6 +1191,7 @@ function fillMutationTargetProof(
       visibleText: 'metric-1',
       source: 'bilig-authoritative-range',
       capturedRevision: `restored-readback-${String(sampleIndex + 1)}`,
+      visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex),
     },
     visibleAfter: {
       value: null,
@@ -1165,6 +1199,7 @@ function fillMutationTargetProof(
       fillColor,
       visibleText: null,
       source: visibleSource,
+      visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex),
     },
     visibleAfterSelectedRange: targetRange,
     visibleRestored: {
@@ -1173,6 +1208,7 @@ function fillMutationTargetProof(
       fillColor: null,
       visibleText: null,
       source: visibleSource,
+      visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex),
     },
     visibleRestoredSelectedRange: targetRange,
     authoritativeReadbackRevision: authoritativeReadbackRevision(sampleIndex),
