@@ -117,6 +117,7 @@ export function createFormulaBindingSheetRenameHandler(args: {
       if (!formula) {
         return
       }
+      const referencedByOldSheet = referencedCandidates?.has(cellIndex) === true
       const ownerSheetName = args.serviceArgs.state.workbook.getSheetNameById(
         args.serviceArgs.state.workbook.cellStore.sheetIds[cellIndex]!,
       )
@@ -140,6 +141,9 @@ export function createFormulaBindingSheetRenameHandler(args: {
         if (sourceChanged) {
           args.formulaSheetIndex.removeReference(oldSheetName, cellIndex)
           appendSheetRenameSourceTransformRecord(formula, sourceTransform)
+        } else if (referencedByOldSheet) {
+          args.formulaSheetIndex.removeReference(oldSheetName, cellIndex)
+          appendSheetRenameSourceTransformRecord(formula, sourceTransform)
         }
         if (formula.directAggregate !== undefined) {
           formula.directAggregate = renameDirectAggregateDescriptorSheetForRuntime({
@@ -153,11 +157,25 @@ export function createFormulaBindingSheetRenameHandler(args: {
         }
         if (sourceChanged) {
           args.formulaSheetIndex.appendReference(newSheetName, cellIndex)
+        } else if (referencedByOldSheet) {
+          args.formulaSheetIndex.appendReference(newSheetName, cellIndex)
         }
         return
       }
       const renamedMetadata = renameCompiledFormulaSheetReferenceMetadata(formula.compiled, oldSheetName, newSheetName)
       if (!renamedMetadata.sourceChanged) {
+        if (referencedByOldSheet) {
+          args.formulaSheetIndex.removeReference(oldSheetName, cellIndex)
+          appendSheetRenameSourceTransformRecord(formula, sourceTransform)
+          if (formula.directAggregate !== undefined) {
+            formula.directAggregate = renameDirectAggregateDescriptorSheetForRuntime({
+              descriptor: formula.directAggregate,
+              oldSheetName,
+              newSheetName,
+            })
+          }
+          args.formulaSheetIndex.appendReference(newSheetName, cellIndex)
+        }
         if (ownerSheetName === newSheetName) {
           args.untrackFormulaSheetIndexes(cellIndex, oldSheetName, formula.compiled)
           args.trackFormulaSheetIndexes(cellIndex, newSheetName, formula.compiled)

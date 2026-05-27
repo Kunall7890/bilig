@@ -2100,6 +2100,16 @@ describe('WorkPaper', () => {
       expect(workbook.getCellValue(cell(summarySheetId, 0, 0))).toEqual({ tag: ValueTag.Number, value: 2 })
       expect(workbook.getCellValue(cell(summarySheetId, 0, 1))).toEqual({ tag: ValueTag.Number, value: 6 })
       expect(visibilitySnapshots.count).toBe(0)
+
+      workbook.undo()
+      expect(workbook.getSheetNames()).toEqual(['Data', 'Summary'])
+      expect(workbook.getCellFormula(cell(summarySheetId, 0, 0))).toBe('=Data!A1+1')
+      expect(workbook.getCellFormula(cell(summarySheetId, 0, 1))).toBe('=SUM(Data!A1:A3)')
+
+      workbook.redo()
+      expect(workbook.getSheetNames()).toEqual(['Source', 'Summary'])
+      expect(workbook.getCellFormula(cell(summarySheetId, 0, 0))).toBe('=Source!A1+1')
+      expect(workbook.getCellFormula(cell(summarySheetId, 0, 1))).toBe('=SUM(Source!A1:A3)')
     } finally {
       visibilitySnapshots.restore()
     }
