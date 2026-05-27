@@ -80,25 +80,18 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
   function targetCellCandidates(): HTMLElement[] {
     const seen = new Set<HTMLElement>()
     const add = (element: Element | null | undefined): void => {
-      if (!(element instanceof HTMLElement) || seen.has(element) || isExcludedChromeElement(element)) {
+      if (!(element instanceof HTMLElement) || seen.has(element) || isExcludedChromeElement(element) || isTransientEditorElement(element)) {
         return
       }
       seen.add(element)
-      for (const child of Array.from(element.querySelectorAll<HTMLElement>('input, textarea, [contenteditable="true"]'))) {
-        if (!isExcludedChromeElement(child)) {
-          seen.add(child)
-        }
-      }
     }
     for (const selector of [
-      '.waffle-cell-input',
       '.waffle-cell',
       '[role="gridcell"]',
       '[aria-selected="true"]',
       '[class*="active-cell" i]',
       '[class*="selected-cell" i]',
       '[class*="waffle" i][class*="cell" i]',
-      '[contenteditable="true"]',
     ]) {
       for (const element of Array.from(document.querySelectorAll(selector))) {
         add(element)
@@ -149,13 +142,7 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
       return null
     }
     if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
-      return normalizeText(element.value)
-    }
-    const editable = element.matches('[contenteditable="true"]')
-      ? element
-      : element.querySelector<HTMLElement>('[contenteditable="true"], input, textarea')
-    if (editable && editable !== element) {
-      return textFromElement(editable)
+      return null
     }
     return normalizeText(element.textContent ?? '')
   }
@@ -203,6 +190,19 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
       element.closest(
         '#t-formula-bar-input, #t-formula-bar, #t-name-box, input.waffle-name-box, [aria-label="Formula bar"], [aria-label="Name box"], .docs-toolbar, .waffle-menu, .range-border, .waffle-border-cell-active',
       ),
+    )
+  }
+
+  // oxlint-disable-next-line eslint-plugin-unicorn(consistent-function-scoping) -- Playwright serializes this helper with the page function.
+  function isTransientEditorElement(element: HTMLElement): boolean {
+    const className = element.className.toString().toLowerCase()
+    return (
+      element instanceof HTMLInputElement ||
+      element instanceof HTMLTextAreaElement ||
+      element.isContentEditable ||
+      element.matches('[contenteditable="true"]') ||
+      element.querySelector('input, textarea, [contenteditable="true"]') !== null ||
+      /\b(?:waffle-cell-input|cell-input|formula-input)\b/u.test(className)
     )
   }
 

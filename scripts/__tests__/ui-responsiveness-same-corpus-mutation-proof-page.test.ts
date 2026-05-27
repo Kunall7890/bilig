@@ -49,7 +49,7 @@ describe('same-corpus mutation target page proof helpers', () => {
     })
   })
 
-  it('uses an active in-grid editor only when it spatially overlaps the selected cell', () => {
+  it('rejects active in-grid editor text as committed target-cell proof', () => {
     document.body.innerHTML = `
       <div class="waffle-cell-input" contenteditable="true">2</div>
       <div class="waffle-cell-input" contenteditable="true">outside target</div>
@@ -61,10 +61,33 @@ describe('same-corpus mutation target page proof helpers', () => {
     setRect(targetEditor, { height: 22, width: 104, x: 220, y: 144 })
     setRect(outsideEditor, { height: 22, width: 104, x: 420, y: 144 })
 
-    expect(readSameCorpusVisibleTargetCellReadbackFromPage({ targetBox: { height: 22, width: 104, x: 220, y: 144 } })).toMatchObject({
+    expect(readSameCorpusVisibleTargetCellReadbackFromPage({ targetBox: { height: 22, width: 104, x: 220, y: 144 } })).toEqual({
+      fillColor: null,
+      formula: null,
+      source: 'unknown',
+      value: null,
+      visibleText: null,
+    })
+  })
+
+  it('prefers stale committed grid text over overlapping editor text so the validator can reject drift', () => {
+    document.body.innerHTML = `
+      <div class="waffle-cell">stale committed text</div>
+      <div class="waffle-cell-input" contenteditable="true">same-corpus-edit-1</div>
+    `
+    const cell = document.querySelector<HTMLElement>('.waffle-cell')
+    const editor = document.querySelector<HTMLElement>('.waffle-cell-input')
+    expect(cell).not.toBeNull()
+    expect(editor).not.toBeNull()
+    setRect(cell!, { height: 22, width: 104, x: 220, y: 144 })
+    setRect(editor!, { height: 22, width: 104, x: 220, y: 144 })
+
+    expect(readSameCorpusVisibleTargetCellReadbackFromPage({ targetBox: { height: 22, width: 104, x: 220, y: 144 } })).toEqual({
+      fillColor: null,
+      formula: null,
       source: 'visible-grid-cell',
-      value: '2',
-      visibleText: '2',
+      value: 'stale committed text',
+      visibleText: 'stale committed text',
     })
   })
 
