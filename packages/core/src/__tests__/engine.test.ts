@@ -1136,6 +1136,8 @@ describe('SpreadsheetEngine', () => {
     engine.setCellFormula('Sheet1', 'I1', 'CELL("contents",A1)')
     engine.setCellFormula('Sheet1', 'J1', 'CELL("type",A2)')
     engine.setCellFormula('Sheet1', 'K1', 'MID(CELL("filename",F4),FIND("]",CELL("filename",F4))+1,99)')
+    engine.setCellFormula('Sheet1', 'L1', 'ISFORMULA(Sheet2!B1)')
+    engine.setCellFormula('Sheet1', 'M1', 'ISFORMULA(A1)')
 
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 1 })
     expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 4 })
@@ -1158,8 +1160,11 @@ describe('SpreadsheetEngine', () => {
       tag: ValueTag.String,
       value: 'Sheet1',
     })
+    expect(engine.getCellValue('Sheet1', 'L1')).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(engine.getCellValue('Sheet1', 'M1')).toEqual({ tag: ValueTag.Boolean, value: false })
     expect(engine.explainCell('Sheet1', 'C1').mode).toBe(FormulaMode.JsOnly)
     expect(engine.explainCell('Sheet1', 'E1').mode).toBe(FormulaMode.JsOnly)
+    expect(engine.explainCell('Sheet1', 'L1').mode).toBe(FormulaMode.JsOnly)
   })
 
   it('routes TEXTSPLIT, EXPAND, and TRIMRANGE through wasm while keeping indirection helpers on JS', async () => {

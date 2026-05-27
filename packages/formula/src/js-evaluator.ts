@@ -367,7 +367,6 @@ const arrayLiftedScalarBuiltinArities = new Map<string, number>([
   ['ISERR', 1],
   ['ISERROR', 1],
   ['ISEVEN', 1],
-  ['ISFORMULA', 1],
   ['ISLOGICAL', 1],
   ['ISNA', 1],
   ['ISNONTEXT', 1],

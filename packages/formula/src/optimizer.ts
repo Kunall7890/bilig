@@ -11,6 +11,7 @@ const CONTEXTUAL_BUILTINS = new Set([
   'CELL',
   'COLUMN',
   'FORMULATEXT',
+  'ISFORMULA',
   'INDIRECT',
   'OFFSET',
   'ROW',

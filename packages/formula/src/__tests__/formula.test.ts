@@ -564,10 +564,12 @@ describe('formula', () => {
     const rowCompiled = compileFormula('ROW()')
     const rowOffsetCompiled = compileFormula('ROW()-18')
     const sheetCompiled = compileFormula('SHEET("Sheet2")')
+    const isFormulaCompiled = compileFormula('ISFORMULA(A1)')
 
     expect(rowCompiled.mode).toBe(0)
     expect(rowOffsetCompiled.mode).toBe(0)
     expect(sheetCompiled.mode).toBe(0)
+    expect(isFormulaCompiled.mode).toBe(0)
     expect(
       evaluatePlan(rowCompiled.jsPlan, {
         sheetName: 'Sheet1',
@@ -592,6 +594,14 @@ describe('formula', () => {
         listSheetNames: (): string[] => ['Sheet1', 'Sheet2'],
       }),
     ).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(
+      evaluatePlan(isFormulaCompiled.jsPlan, {
+        sheetName: 'Sheet1',
+        resolveCell: (): CellValue => ({ tag: ValueTag.Empty }),
+        resolveRange: (): CellValue[] => [],
+        resolveFormula: (_sheetName: string, address: string): string | undefined => (address === 'A1' ? 'SUM(B1:B2)' : undefined),
+      }),
+    ).toEqual({ tag: ValueTag.Boolean, value: true })
   })
 
   it('compiles IF, IFERROR, IFNA, and NA onto the wasm-safe path alongside exact-parity logical formulas', () => {

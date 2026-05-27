@@ -199,6 +199,7 @@ const ARRAY_CONTEXT_ARGUMENT_INDEXES = new Map<string, ReadonlySet<number>>([
   ['COLUMN', new Set([0])],
   ['FORMULA', new Set([0])],
   ['FORMULATEXT', new Set([0])],
+  ['ISFORMULA', new Set([0])],
   ['CELL', new Set([1])],
 ])
 

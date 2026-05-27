@@ -3610,7 +3610,7 @@ export const formulaInventory = [
     protocolId: undefined,
     protocolName: undefined,
     protocolSupportsWasm: false,
-    jsStatus: 'implemented',
+    jsStatus: 'special-js-only',
     wasmStatus: 'not-started',
     placeholder: false,
     registeredInCodebase: true,

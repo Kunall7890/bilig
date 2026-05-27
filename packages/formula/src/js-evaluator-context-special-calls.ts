@@ -192,6 +192,17 @@ export function evaluateContextSpecialCall(
       const formula = context.resolveFormula?.(sheetName, address)
       return deps.stackScalar(formula ? deps.stringValue(formula.startsWith('=') ? formula : `=${formula}`) : deps.error(ErrorCode.NA))
     }
+    case 'ISFORMULA': {
+      if (rawArgs.length !== 1) {
+        return deps.stackScalar(deps.error(ErrorCode.Value))
+      }
+      const address = deps.referenceTopLeftAddress(argRefs[0])
+      const sheetName = deps.referenceSheetName(argRefs[0], context)
+      if (!address || !sheetName) {
+        return deps.stackScalar(deps.error(ErrorCode.Value))
+      }
+      return deps.stackScalar({ tag: ValueTag.Boolean, value: context.resolveFormula?.(sheetName, address) !== undefined })
+    }
     case 'PHONETIC': {
       if (rawArgs.length !== 1) {
         return deps.stackScalar(deps.error(ErrorCode.Value))

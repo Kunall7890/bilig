@@ -27,6 +27,8 @@ describe('js evaluator context special calls', () => {
     expect(evaluatePlan(lowerToPlan(parseFormula('COLUMN(B:D)')), context)).toEqual(number(2))
     expect(evaluatePlan(lowerToPlan(parseFormula('FORMULATEXT(Sheet2!B1)')), context)).toEqual(text('=SUM(A1:A2)'))
     expect(evaluatePlan(lowerToPlan(parseFormula('FORMULA(Sheet2!C1)')), context)).toEqual(text('=A1*2'))
+    expect(evaluatePlan(lowerToPlan(parseFormula('ISFORMULA(Sheet2!B1)')), context)).toEqual(bool(true))
+    expect(evaluatePlan(lowerToPlan(parseFormula('ISFORMULA(Sheet2!A1)')), context)).toEqual(bool(false))
     expect(evaluatePlan(lowerToPlan(parseFormula('PHONETIC(42)')), context)).toEqual(text('42'))
     expect(evaluatePlan(lowerToPlan(parseFormula('CHOOSE(2,"a","b")')), context)).toEqual(text('b'))
     expect(evaluatePlan(lowerToPlan(parseFormula('LAMBDA(x,IF(ISOMITTED(x),1,0))()')), context)).toEqual(number(1))
@@ -95,6 +97,7 @@ describe('js evaluator context special calls', () => {
     expect(evaluatePlan(lowerToPlan(parseFormula('ROW(A1,B1)')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('COLUMN(A1,B1)')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('ISOMITTED()')), context)).toEqual(err(ErrorCode.Value))
+    expect(evaluatePlan(lowerToPlan(parseFormula('ISFORMULA(1)')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('FORMULATEXT(1)')), context)).toEqual(err(ErrorCode.Ref))
     expect(evaluatePlan(lowerToPlan(parseFormula('FORMULATEXT(A1,B1)')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('SHEET("Missing")')), context)).toEqual(err(ErrorCode.NA))
@@ -267,6 +270,10 @@ function number(value: number): CellValue {
 
 function text(value: string): CellValue {
   return { tag: ValueTag.String, value, stringId: 0 }
+}
+
+function bool(value: boolean): CellValue {
+  return { tag: ValueTag.Boolean, value }
 }
 
 function empty(): CellValue {
