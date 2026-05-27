@@ -204,6 +204,106 @@ describe('same-corpus mutation target proof summary', () => {
     )
   })
 
+  it('does not count screenshot-only target chrome changes as committed target proof', () => {
+    const cases = [
+      mutationTargetCase({
+        biligSamples: [],
+        googleProofMode: 'screenshot-only',
+        googleSamples: [0],
+      }),
+    ]
+
+    expect(sameCorpusMutationTargetProofSampleCount(cases, 1)).toBe(0)
+    expect(sameCorpusMutationTargetProofProductSummaries(cases, 1)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          workload: 'edit-visible-cell',
+          product: 'google-sheets',
+          rawSampleCount: 1,
+          acceptedSampleCount: 0,
+          accepted: false,
+          samples: [
+            expect.objectContaining({
+              sampleIndex: 0,
+              accepted: false,
+              invalidReasons: expect.arrayContaining([
+                'semantic UI mutation target proof for edit-visible-cell did not prove a before/after target change',
+                'semantic UI mutation target proof for edit-visible-cell did not prove the intended committed target value',
+              ]),
+            }),
+          ],
+        }),
+      ]),
+    )
+  })
+
+  it('does not count formula-bar or editor-only readbacks as grid proof', () => {
+    const cases = [
+      mutationTargetCase({
+        biligSamples: [],
+        googleProofMode: 'formula-bar-only',
+        googleSamples: [0],
+      }),
+    ]
+
+    expect(sameCorpusMutationTargetProofSampleCount(cases, 1)).toBe(0)
+    expect(sameCorpusMutationTargetProofProductSummaries(cases, 1)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          workload: 'edit-visible-cell',
+          product: 'google-sheets',
+          rawSampleCount: 1,
+          acceptedSampleCount: 0,
+          accepted: false,
+          samples: [
+            expect.objectContaining({
+              sampleIndex: 0,
+              accepted: false,
+              invalidReasons: expect.arrayContaining([
+                'semantic UI mutation target proof for edit-visible-cell target readback did not come from an accepted browser-visible source',
+                'semantic UI mutation target proof for edit-visible-cell visible render readback did not come from an accepted browser-visible source',
+                'semantic UI mutation target proof for edit-visible-cell after screenshot semantic readback did not come from an accepted browser-visible source',
+              ]),
+            }),
+          ],
+        }),
+      ]),
+    )
+  })
+
+  it('does not count diagnostic captures that preserve only browser-visible state without committed workbook proof', () => {
+    const cases = [
+      mutationTargetCase({
+        biligSamples: [],
+        googleProofMode: 'missing-committed-state',
+        googleSamples: [0],
+      }),
+    ]
+
+    expect(sameCorpusMutationTargetProofSampleCount(cases, 1)).toBe(0)
+    expect(sameCorpusMutationTargetProofProductSummaries(cases, 1)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          workload: 'edit-visible-cell',
+          product: 'google-sheets',
+          rawSampleCount: 1,
+          acceptedSampleCount: 0,
+          accepted: false,
+          samples: [
+            expect.objectContaining({
+              sampleIndex: 0,
+              accepted: false,
+              committedStateProof: null,
+              invalidReasons: expect.arrayContaining([
+                'semantic UI mutation target proof for edit-visible-cell is missing independent Google Sheets committed-state proof',
+              ]),
+            }),
+          ],
+        }),
+      ]),
+    )
+  })
+
   it('formats actionable product-level target proof gaps for the dominance audit', () => {
     const summaries = sameCorpusMutationTargetProofProductSummaries(
       [
@@ -235,8 +335,10 @@ describe('same-corpus mutation target proof summary', () => {
 function mutationTargetCase(args: {
   readonly biligSamples: readonly number[]
   readonly corruptGoogleProof?: boolean
+  readonly googleProofMode?: GoogleProofMode
   readonly googleSamples: readonly number[]
 }): { readonly workload: 'edit-visible-cell'; readonly scenarioProof: SameCorpusScenarioProof } {
+  const googleProofMode = args.googleProofMode ?? (args.corruptGoogleProof === true ? 'stale-value' : 'valid')
   return {
     workload: 'edit-visible-cell',
     scenarioProof: {
@@ -264,7 +366,7 @@ function mutationTargetCase(args: {
         requiredProducts: ['bilig', 'google-sheets'],
         products: [
           productSemanticProof('bilig', args.biligSamples),
-          productSemanticProof('google-sheets', args.googleSamples, args.corruptGoogleProof ?? false),
+          productSemanticProof('google-sheets', args.googleSamples, googleProofMode),
         ],
         productVerdicts: [],
         missingProducts: ['google-sheets'],
@@ -273,10 +375,12 @@ function mutationTargetCase(args: {
   }
 }
 
+type GoogleProofMode = 'valid' | 'stale-value' | 'screenshot-only' | 'formula-bar-only' | 'missing-committed-state'
+
 function productSemanticProof(
   product: UiResponsivenessSameCorpusProduct,
   sampleIndexes: readonly number[],
-  corruptProof = false,
+  googleProofMode: GoogleProofMode = 'valid',
 ): SameCorpusProductSemanticUiProof {
   return {
     product,
@@ -293,7 +397,9 @@ function productSemanticProof(
     authoritativeRenderRevision: product === 'bilig' ? 'authoritative-1' : null,
     visibleRenderRevision: product === 'bilig' ? 'visible-1' : null,
     screenshotSha256: 'a'.repeat(64),
-    mutationTargetProofs: sampleIndexes.map((sampleIndex) => mutationTargetProof(product, sampleIndex, corruptProof && sampleIndex === 0)),
+    mutationTargetProofs: sampleIndexes.map((sampleIndex) =>
+      mutationTargetProof(product, sampleIndex, product === 'google-sheets' && sampleIndex === 0 ? googleProofMode : 'valid'),
+    ),
     evidence: ['semanticUiProofVersion=semantic-ui-v1', `sheetId=${productSemanticSheetId(product)}`],
   }
 }
@@ -311,10 +417,12 @@ function productSemanticSheetId(product: UiResponsivenessSameCorpusProduct): str
 function mutationTargetProof(
   product: UiResponsivenessSameCorpusProduct,
   sampleIndex: number,
-  corruptProof: boolean,
+  proofMode: GoogleProofMode,
 ): SameCorpusMutationTargetProof {
   const value = sameCorpusEditVisibleCellValue(sampleIndex)
-  const afterValue = corruptProof ? 'stale-value' : value
+  const beforeValue = 'metric-1'
+  const afterValue = proofMode === 'stale-value' ? 'stale-value' : proofMode === 'screenshot-only' ? beforeValue : value
+  const visibleSource = proofMode === 'formula-bar-only' ? 'visible-formula-bar' : 'visible-grid-cell'
   const committedTargetProofMs = 40 + sampleIndex
   const visibleTargetRenderMs = 12 + sampleIndex
   const committedStateValidationMs = committedTargetProofMs - visibleTargetRenderMs
@@ -340,23 +448,23 @@ function mutationTargetProof(
     sheetName: 'WideGrid',
     sheetId: productSemanticSheetId(product),
     targetRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
-    before: readback(product, 'metric-1', sampleIndex, 'before'),
-    after: readback(product, afterValue, sampleIndex, 'after'),
-    restored: readback(product, 'metric-1', sampleIndex, 'restored'),
+    before: readback(product, beforeValue, sampleIndex, 'before'),
+    after: readback(product, afterValue, sampleIndex, 'after', visibleSource),
+    restored: readback(product, beforeValue, sampleIndex, 'restored'),
     visibleAfter: {
       value: afterValue,
       formula: null,
       fillColor: null,
       visibleText: afterValue,
-      source: 'visible-grid-cell',
+      source: visibleSource,
       ...(product === 'bilig' ? { visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex) } : {}),
     },
     visibleAfterSelectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
     visibleRestored: {
-      value: 'metric-1',
+      value: beforeValue,
       formula: null,
       fillColor: null,
-      visibleText: 'metric-1',
+      visibleText: beforeValue,
       source: 'visible-grid-cell',
       ...(product === 'bilig' ? { visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex) } : {}),
     },
@@ -366,14 +474,18 @@ function mutationTargetProof(
       product === 'bilig'
         ? `bilig-visible-scene-sha256:${visibleSceneProofSha256(sampleIndex)}`
         : `google-sheets-screenshot-sha256:${'b'.repeat(64)}`,
-    targetScreenshots: targetScreenshots(product, sampleIndex),
+    targetScreenshots: targetScreenshots(product, sampleIndex, afterValue, visibleSource),
     screenshotSha256: targetScreenshotSha256(sampleIndex, 'after'),
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/${product}-sample-${String(
       sampleIndex + 1,
     )}-after.png`,
     undoRestoreStatus: 'verified',
   }
-  return signedMutationTargetProof(product === 'google-sheets' ? { ...proof, committedStateProof: committedStateProof(proof) } : proof)
+  return signedMutationTargetProof(
+    product === 'google-sheets' && proofMode !== 'missing-committed-state'
+      ? { ...proof, committedStateProof: committedStateProof(proof) }
+      : proof,
+  )
 }
 
 function signedMutationTargetProof(
@@ -445,11 +557,13 @@ function committedStateReadback(sourceReadback: SameCorpusMutationTargetProof['b
 function targetScreenshots(
   product: UiResponsivenessSameCorpusProduct,
   sampleIndex: number,
+  afterValue: string = sameCorpusEditVisibleCellValue(sampleIndex),
+  afterSource: SameCorpusMutationTargetProof['after']['source'] = 'visible-grid-cell',
 ): SameCorpusMutationTargetProof['targetScreenshots'] {
   return {
-    before: targetScreenshot(product, sampleIndex, 'before'),
-    after: targetScreenshot(product, sampleIndex, 'after'),
-    restored: targetScreenshot(product, sampleIndex, 'restored'),
+    before: targetScreenshot(product, sampleIndex, 'before', 'metric-1', 'visible-grid-cell'),
+    after: targetScreenshot(product, sampleIndex, 'after', afterValue, afterSource),
+    restored: targetScreenshot(product, sampleIndex, 'restored', 'metric-1', 'visible-grid-cell'),
   }
 }
 
@@ -457,6 +571,8 @@ function targetScreenshot(
   product: UiResponsivenessSameCorpusProduct,
   sampleIndex: number,
   phase: 'before' | 'after' | 'restored',
+  value: string,
+  source: SameCorpusMutationTargetProof['after']['source'],
 ): NonNullable<SameCorpusMutationTargetProof['targetScreenshots']>['before'] {
   return {
     phase,
@@ -470,8 +586,8 @@ function targetScreenshot(
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/${product}-sample-${String(sampleIndex + 1)}-${phase}.png`,
     screenshotSha256: targetScreenshotSha256(sampleIndex, phase),
     semanticReadback: {
-      ...readback(product, phase === 'after' ? sameCorpusEditVisibleCellValue(sampleIndex) : 'metric-1', sampleIndex, phase),
-      source: 'visible-grid-cell',
+      ...readback(product, value, sampleIndex, phase, source),
+      source,
     },
   }
 }
@@ -487,13 +603,14 @@ function readback(
   value: string,
   sampleIndex: number,
   phase: 'after' | 'before' | 'restored',
+  source: SameCorpusMutationTargetProof['after']['source'] = 'visible-grid-cell',
 ): SameCorpusMutationTargetProof['after'] {
   return {
     value,
     formula: null,
     fillColor: null,
     visibleText: value,
-    source: product === 'bilig' ? 'bilig-authoritative-range' : 'visible-grid-cell',
+    source: product === 'bilig' ? 'bilig-authoritative-range' : source,
     capturedRevision:
       product === 'bilig' ? (phase === 'after' ? authoritativeReadbackRevision(sampleIndex) : `${phase}-${sampleIndex}`) : null,
     visibleSceneProofSha256: product === 'bilig' ? visibleSceneProofSha256(sampleIndex) : null,

@@ -824,7 +824,12 @@ function sameCorpusReadbacksEqual(left: SameCorpusMutationTargetReadback, right:
 }
 
 function sameCorpusReadbacksDiffer(left: SameCorpusMutationTargetReadback, right: SameCorpusMutationTargetReadback): boolean {
-  return !sameCorpusReadbacksEqual(left, right)
+  return (
+    left.value !== right.value ||
+    left.formula !== right.formula ||
+    left.fillColor !== right.fillColor ||
+    left.visibleText !== right.visibleText
+  )
 }
 
 function sameCorpusSelectedRangeMatchesTarget(selectedRange: string | null, targetRange: string): boolean {
