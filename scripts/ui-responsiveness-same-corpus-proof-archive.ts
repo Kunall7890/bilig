@@ -65,6 +65,7 @@ export interface SameCorpusGoogleSheetsCommittedStateArchiveArtifact {
   readonly workload: UiResponsivenessSameCorpusWorkload
   readonly sampleIndex: number
   readonly phase: 'before' | 'after' | 'restored'
+  readonly intendedFillColor?: string
   readonly sheetName: string
   readonly sheetId: string | null
   readonly targetRange: string
@@ -313,6 +314,7 @@ function parseSameCorpusProofArchiveArtifact(value: unknown): SameCorpusProofArc
     workload,
     sampleIndex: numberField(record, 'sampleIndex'),
     phase: parseSameCorpusProofArchivePhase(stringField(record, 'phase')),
+    ...(Object.hasOwn(record, 'intendedFillColor') ? { intendedFillColor: stringField(record, 'intendedFillColor') } : {}),
     sheetName: stringField(record, 'sheetName'),
     sheetId: Object.hasOwn(record, 'sheetId') && record.sheetId !== null ? stringField(record, 'sheetId') : null,
     targetRange: stringField(record, 'targetRange'),
@@ -690,6 +692,7 @@ function sameCorpusCommittedStateArchiveArtifactsForProduct(
           workload: phaseProof.workload,
           sampleIndex,
           phase,
+          ...sameCorpusCommittedStateArchiveIntendedFill(sample),
           artifactPath: phaseProof.artifactPath,
           artifactSha256: phaseProof.artifactSha256,
           sheetName: phaseProof.sheetName,
@@ -706,6 +709,14 @@ function sameCorpusCommittedStateArchiveArtifactsForProduct(
     }
   }
   return artifacts
+}
+
+function sameCorpusCommittedStateArchiveIntendedFill(
+  sample: SameCorpusScenarioProof['semanticUiProof']['products'][number]['mutationTargetProofs'][number],
+): { readonly intendedFillColor?: string } {
+  return sample.workload === 'fill-format-change' && sample.intendedPayload.kind === 'fill-color'
+    ? { intendedFillColor: sample.intendedPayload.expectedFillColor }
+    : {}
 }
 
 function sameCorpusProductSemanticProofAccepted(
@@ -890,7 +901,7 @@ function committedStateArtifactSemanticMismatchReason(artifact: SameCorpusGoogle
   if (artifact.workload !== 'fill-format-change') {
     return null
   }
-  const expectedFillColor = sameCorpusFillColorExpectedColor(artifact.sampleIndex)
+  const expectedFillColor = artifact.intendedFillColor ?? sameCorpusFillColorExpectedColor(artifact.sampleIndex)
   const hasExpectedFill = sameCorpusFillColorsMatch(artifact.readback.fillColor, expectedFillColor)
   if (artifact.phase === 'after') {
     return hasExpectedFill ? null : 'committed-state after fill does not match intended swatch'
