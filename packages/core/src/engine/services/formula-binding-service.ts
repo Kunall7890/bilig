@@ -63,7 +63,7 @@ import { primeFormulaBindingLookupCandidates } from './formula-binding-lookup-pr
 import { directAggregateContainsFormulaOwnerCell } from './formula-binding-direct-aggregate-owner.js'
 import { ensureFormulaBindingDependencyBuildCapacity } from './formula-binding-dependency-build-capacity.js'
 import { createFormulaBindingRangeDependencyUpdater } from './formula-binding-range-dependencies.js'
-import { clearFormulaRuntimeFlags, markFormulaCellBound } from './formula-binding-cell-flags.js'
+import { clearFormulaRuntimeFlags } from './formula-binding-cell-flags.js'
 import { formulaBindingEffect } from './formula-binding-effect.js'
 import { rebuildAllFormulaBindingsNow } from './formula-binding-rebuild.js'
 import { createFormulaBindingFamilyIndexController } from './formula-binding-family-index-controller.js'
@@ -73,6 +73,7 @@ import { bindFreshDirectAggregateFormulaRun } from './formula-binding-fresh-dire
 import { bindFreshDirectScalarFormulaRun } from './formula-binding-fresh-direct-scalar-run.js'
 import { tryRewriteSimpleDirectScalarFormulaSourcePreservingBinding } from './formula-binding-direct-scalar-rewrite.js'
 import { updateFormulaBindingVolatileIndex } from './formula-binding-volatile-index.js'
+import { refreshFormulaBindingTrackedMetadata } from './formula-binding-tracked-metadata.js'
 import type {
   BindPreparedFormulaOptions,
   CreateEngineFormulaBindingServiceArgs,
@@ -274,9 +275,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     existing.directAggregate = undefined
     existing.directScalar = prepared.directScalar
     existing.directCriteria = undefined
-    args.state.formulas.refreshTrackedMetadata(cellIndex)
-    updateVolatileFormulaIndex(cellIndex, existing)
-    markFormulaCellBound(args.state.workbook.cellStore, cellIndex, existing.compiled.mode)
+    refreshFormulaBindingTrackedMetadata(args, cellIndex, existing)
     if (prepared.compiled.mode === FormulaMode.WasmFastPath && prepared.runtimeProgram.length > 0) {
       args.scheduleWasmProgramSync()
     }
@@ -355,9 +354,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
           templateId: nextTemplateId,
         })
         existing.directScalar = replacementDirectScalar
-        args.state.formulas.refreshTrackedMetadata(cellIndex)
-        updateVolatileFormulaIndex(cellIndex, existing)
-        markFormulaCellBound(args.state.workbook.cellStore, cellIndex, compiled.mode)
+        refreshFormulaBindingTrackedMetadata(args, cellIndex, existing)
         if (compiled.mode === FormulaMode.WasmFastPath && existing.runtimeProgram.length > 0) {
           args.scheduleWasmProgramSync()
         }
@@ -396,8 +393,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     existing.directAggregate = nextDirectAggregate
     existing.directScalar = nextDirectScalar
     existing.directCriteria = undefined
-    args.state.formulas.refreshTrackedMetadata(cellIndex)
-    updateVolatileFormulaIndex(cellIndex, existing)
+    refreshFormulaBindingTrackedMetadata(args, cellIndex, existing)
     removeDirectAggregateColumnReverseEdges(
       args.reverseState.reverseAggregateColumnEdges,
       args.state.workbook,
@@ -420,7 +416,6 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
         )
       }
     }
-    markFormulaCellBound(args.state.workbook.cellStore, cellIndex, compiled.mode)
     recordFormulaInstanceNow(cellIndex, source, nextTemplateId, ownerPosition)
     registerFormulaFamilyNow(cellIndex, existing)
     if (shouldRefreshSheetIndexes) {
@@ -634,14 +629,12 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
       existing.directAggregate = prepared.directAggregate
       existing.directScalar = prepared.directScalar
       existing.directCriteria = prepared.directCriteria
-      args.state.formulas.refreshTrackedMetadata(cellIndex)
       if (options.preserveCachedValueOnFullRecalc === true) {
         existing.preserveCachedValueOnFullRecalc = true
       } else {
         delete existing.preserveCachedValueOnFullRecalc
       }
-      updateVolatileFormulaIndex(cellIndex, existing)
-      markFormulaCellBound(args.state.workbook.cellStore, cellIndex, existing.compiled.mode)
+      refreshFormulaBindingTrackedMetadata(args, cellIndex, existing)
       if (prepared.compiled.mode === FormulaMode.WasmFastPath && prepared.runtimeProgram.length > 0) {
         args.scheduleWasmProgramSync()
       }
