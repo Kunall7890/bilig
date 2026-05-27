@@ -269,6 +269,7 @@
       "googleSheetsTenXRequirementSatisfied": false,
       "captureRunSignature": null,
       "invalidReasons": [
+        "sample count 0 is below required 3 for mean and p95 evidence",
         "required workload count is incomplete",
         "missing required workloads: open-workbook, select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation",
         "same-corpus evidence must use exactly one corpus case",

@@ -5,7 +5,10 @@ import {
   type UiResponsivenessSameCorpusWorkload,
 } from './ui-responsiveness-same-corpus-workloads.ts'
 
+export const minimumUiResponsivenessSameCorpusSampleCount = 3
+
 export function sameCorpusManifestInvalidReasons(args: {
+  readonly sampleCount: number
   readonly capturedWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
   readonly caseCount: number
   readonly corpusCaseIds: readonly string[]
@@ -33,6 +36,13 @@ export function sameCorpusManifestInvalidReasons(args: {
 }): string[] {
   const invalidReasons: string[] = []
   const requiredWorkloads = requiredUiResponsivenessSameCorpusWorkloads
+  if (args.sampleCount < minimumUiResponsivenessSameCorpusSampleCount) {
+    invalidReasons.push(
+      `sample count ${String(args.sampleCount)} is below required ${String(
+        minimumUiResponsivenessSameCorpusSampleCount,
+      )} for mean and p95 evidence`,
+    )
+  }
   if (args.caseCount !== requiredWorkloads.length) {
     invalidReasons.push('required workload count is incomplete')
   }

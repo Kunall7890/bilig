@@ -516,6 +516,7 @@ function readOoxmlCellFillColor(bytes: Uint8Array, target: SameCorpusMutationTar
   }
   const sheetXml = readOoxmlText(archive, sheetPath)
   const stylesXml = readOoxmlText(archive, 'xl/styles.xml')
+  const themeXml = readOoxmlText(archive, 'xl/theme/theme1.xml')
   if (!sheetXml || !stylesXml) {
     return null
   }
@@ -524,7 +525,7 @@ function readOoxmlCellFillColor(bytes: Uint8Array, target: SameCorpusMutationTar
     return null
   }
   const fillId = readOoxmlCellXfFillId(stylesXml, styleIndex)
-  return fillId === null ? null : readOoxmlFillColor(stylesXml, fillId)
+  return fillId === null ? null : readOoxmlFillColor(stylesXml, fillId, themeXml)
 }
 
 function readOoxmlSheetPath(archive: Record<string, Uint8Array>, sheetName: string): string | null {
@@ -588,13 +589,68 @@ function readOoxmlCellXfFillId(stylesXml: string, styleIndex: number): number | 
   return Number.isInteger(fillId) && fillId >= 0 ? fillId : null
 }
 
-function readOoxmlFillColor(stylesXml: string, fillId: number): string | null {
+function readOoxmlFillColor(stylesXml: string, fillId: number, themeXml: string | null): string | null {
   const fillsXml = readXmlSection(stylesXml, 'fills')
   const fillXml = (fillsXml.match(/<fill\b[^>]*>[\s\S]*?<\/fill>/gu) ?? [])[fillId]
   if (!fillXml) {
     return null
   }
-  return normalizeXlsxRgb(readXmlAttribute(fillXml, 'rgb', 'fgColor')) ?? normalizeXlsxRgb(readXmlAttribute(fillXml, 'rgb', 'bgColor'))
+  return readOoxmlColorTag(fillXml, 'fgColor', themeXml) ?? readOoxmlColorTag(fillXml, 'bgColor', themeXml)
+}
+
+function readOoxmlColorTag(xml: string, tagName: string, themeXml: string | null): string | null {
+  const tag = readFirstXmlTag(xml, tagName)
+  if (!tag) {
+    return null
+  }
+  return (
+    normalizeXlsxRgb(readXmlAttribute(tag, 'rgb')) ??
+    readOoxmlThemeColor(themeXml, readXmlAttribute(tag, 'theme'), readXmlAttribute(tag, 'tint'))
+  )
+}
+
+function readOoxmlThemeColor(themeXml: string | null, themeIndexValue: string | null, tintValue: string | null): string | null {
+  if (!themeXml || themeIndexValue === null) {
+    return null
+  }
+  const themeIndex = Number(themeIndexValue)
+  if (!Number.isInteger(themeIndex) || themeIndex < 0) {
+    return null
+  }
+  const color = ooxmlThemeColors(themeXml)[themeIndex] ?? null
+  return color ? applyOoxmlTint(color, tintValue) : null
+}
+
+function ooxmlThemeColors(themeXml: string): readonly (string | null)[] {
+  const colorSlots = ['lt1', 'dk1', 'lt2', 'dk2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6', 'hlink', 'folHlink']
+  return colorSlots.map((slot) => readOoxmlThemeSlotColor(themeXml, slot))
+}
+
+function readOoxmlThemeSlotColor(themeXml: string, slotName: string): string | null {
+  const slotXml =
+    new RegExp(`<(?:[A-Za-z0-9_]+:)?${slotName}\\b[^>]*>[\\s\\S]*?<\\/(?:[A-Za-z0-9_]+:)?${slotName}>`, 'u').exec(themeXml)?.[0] ?? ''
+  if (!slotXml) {
+    return null
+  }
+  const srgbTag = readFirstXmlTag(slotXml, 'srgbClr')
+  const systemTag = readFirstXmlTag(slotXml, 'sysClr')
+  return normalizeXlsxRgb(readXmlAttribute(srgbTag ?? '', 'val')) ?? normalizeXlsxRgb(readXmlAttribute(systemTag ?? '', 'lastClr'))
+}
+
+function applyOoxmlTint(hexColor: string, tintValue: string | null): string {
+  const tint = tintValue === null ? 0 : Number(tintValue)
+  if (!Number.isFinite(tint) || tint === 0) {
+    return hexColor
+  }
+  const hex = hexColor.replace(/^#/u, '')
+  const channels = [hex.slice(0, 2), hex.slice(2, 4), hex.slice(4, 6)].map((channel) => Number.parseInt(channel, 16))
+  const tintedChannels = channels.map((channel) => {
+    const transformed = tint < 0 ? channel * (1 + tint) : channel * (1 - tint) + 255 * tint
+    return Math.min(255, Math.max(0, Math.round(transformed)))
+      .toString(16)
+      .padStart(2, '0')
+  })
+  return `#${tintedChannels.join('')}`
 }
 
 function readOoxmlText(archive: Record<string, Uint8Array>, path: string): string | null {
@@ -609,6 +665,14 @@ function normalizeOoxmlWorkbookRelativePath(target: string): string {
 
 function readXmlSection(xml: string, tagName: string): string {
   return new RegExp(`<${tagName}\\b[^>]*>([\\s\\S]*?)<\\/${tagName}>`, 'u').exec(xml)?.[1] ?? ''
+}
+
+function readFirstXmlTag(xml: string, tagName: string): string | null {
+  return (
+    new RegExp(`<(?:[A-Za-z0-9_]+:)?${tagName}\\b[^>]*\\/>`, 'u').exec(xml)?.[0] ??
+    new RegExp(`<(?:[A-Za-z0-9_]+:)?${tagName}\\b[^>]*>[\\s\\S]*?<\\/(?:[A-Za-z0-9_]+:)?${tagName}>`, 'u').exec(xml)?.[0] ??
+    null
+  )
 }
 
 function readXmlAttribute(tag: string, attributeName: string, nestedTagName?: string): string | null {

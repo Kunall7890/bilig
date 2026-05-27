@@ -1654,6 +1654,25 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(() => assertSameCorpusCaptureEvidenceReady(capture)).toThrow(/not every required workload is 10x against Google Sheets/u)
   })
 
+  it('rejects same-corpus captures with too few samples for p95 claim evidence', () => {
+    const capture = buildSameCorpusCaptureArtifact({
+      sampleCount: 1,
+      limitations: ['test limitation'],
+      cases: requiredUiResponsivenessSameCorpusWorkloads.map((workload) =>
+        sameCorpusCaptureCase({
+          workload,
+          biligRuntimeProof: sameCorpusBiligRuntimeProof('production'),
+        }),
+      ),
+    })
+
+    expect(capture.runManifest.currentContractEvidenceComplete).toBe(false)
+    expect(capture.runManifest.invalidReasons).toContain('sample count 1 is below required 3 for mean and p95 evidence')
+    expect(() => assertSameCorpusCaptureCurrentContractEvidenceReady(capture)).toThrow(
+      /sample count 1 is below required 3 for mean and p95 evidence/u,
+    )
+  })
+
   it('downgrades legacy Bilig canvas evidence that lacks strict rendered-frame proof', () => {
     const proof = buildCaptureScenarioProof({
       bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state'),

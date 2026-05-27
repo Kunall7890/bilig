@@ -122,6 +122,33 @@ describe('same-corpus committed-state proof capture', () => {
     })
   })
 
+  it('resolves Google Sheets theme fill colors from OOXML committed-state exports', async () => {
+    const committedBytes = xlsxBytesForTargetThemeFill('WideGrid', 'C5', 'segment-5', '#c9daf8')
+    const page = mockGoogleSheetsExportPage([committedBytes])
+
+    const proof = await captureSameCorpusCommittedStatePhaseProof({
+      expectedReadback: {
+        ...sameCorpusGoogleReadback('segment-5'),
+        fillColor: '#c9daf8',
+      },
+      page: page.page,
+      phase: 'after',
+      product: 'google-sheets',
+      sampleIndex: 0,
+      target: sameCorpusTargetSelection(),
+      timeoutMs: 1_000,
+      pollIntervalMs: 0,
+      workload: 'fill-format-change',
+    })
+
+    expect(page.requestCount()).toBe(1)
+    expect(proof?.readback).toMatchObject({
+      value: 'segment-5',
+      fillColor: '#c9daf8',
+      source: 'google-sheets-xlsx-export',
+    })
+  })
+
   it('waits for Google Sheets to finish saving before reading the XLSX export when browser state is available', async () => {
     const committedBytes = xlsxBytesForTargetFill('WideGrid', 'C5', 'segment-5', '#c9daf8')
     let saveIdleWaitCount = 0
@@ -277,6 +304,17 @@ function xlsxBytesForTargetFill(sheetName: string, address: string, value: strin
   return zipSync(archive)
 }
 
+function xlsxBytesForTargetThemeFill(sheetName: string, address: string, value: string, fillColor: string): Uint8Array {
+  const archive = unzipSync(xlsxBytesForTargetValue(sheetName, address, value))
+  const stylesXml = strFromU8(archive['xl/styles.xml'] ?? new Uint8Array())
+  const sheetXml = strFromU8(archive['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+  const themeXml = strFromU8(archive['xl/theme/theme1.xml'] ?? new Uint8Array())
+  archive['xl/styles.xml'] = strToU8(addTargetThemeFillStyle(stylesXml))
+  archive['xl/worksheets/sheet1.xml'] = strToU8(addTargetCellStyle(sheetXml, address, 1))
+  archive['xl/theme/theme1.xml'] = strToU8(setThemeAccent1(themeXml, fillColor))
+  return zipSync(archive)
+}
+
 function addTargetFillStyle(stylesXml: string, fillColor: string): string {
   const rgb = `FF${fillColor.replace(/^#/u, '').toUpperCase()}`
   return stylesXml
@@ -288,6 +326,23 @@ function addTargetFillStyle(stylesXml: string, fillColor: string): string {
       /<cellXfs count="1">([\s\S]*?)<\/cellXfs>/u,
       '<cellXfs count="2">$1<xf numFmtId="0" fontId="0" fillId="2" borderId="0" xfId="0" applyFill="1"/></cellXfs>',
     )
+}
+
+function addTargetThemeFillStyle(stylesXml: string): string {
+  return stylesXml
+    .replace(
+      /<fills count="2">[\s\S]*?<\/fills>/u,
+      '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor theme="4"/><bgColor indexed="64"/></patternFill></fill></fills>',
+    )
+    .replace(
+      /<cellXfs count="1">([\s\S]*?)<\/cellXfs>/u,
+      '<cellXfs count="2">$1<xf numFmtId="0" fontId="0" fillId="2" borderId="0" xfId="0" applyFill="1"/></cellXfs>',
+    )
+}
+
+function setThemeAccent1(themeXml: string, fillColor: string): string {
+  const rgb = fillColor.replace(/^#/u, '').toUpperCase()
+  return themeXml.replace(/<a:accent1>[\s\S]*?<\/a:accent1>/u, `<a:accent1><a:srgbClr val="${rgb}"/></a:accent1>`)
 }
 
 function addTargetCellStyle(sheetXml: string, address: string, styleIndex: number): string {
