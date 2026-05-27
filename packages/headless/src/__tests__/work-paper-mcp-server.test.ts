@@ -213,6 +213,7 @@ describe('WorkPaper MCP server', () => {
       'read_range',
       'read_cell',
       'set_cell_contents',
+      'set_cell_contents_and_readback',
       'get_cell_display_value',
       'export_workpaper_document',
       'validate_formula',
@@ -224,6 +225,17 @@ describe('WorkPaper MCP server', () => {
       'before',
       'after',
       'restored',
+      'persistence',
+      'checks',
+    ])
+    expect(readToolOutputSchemaRequired(tools.result, 'set_cell_contents_and_readback')).toEqual([
+      'editedCell',
+      'readbackRange',
+      'before',
+      'after',
+      'beforeReadback',
+      'afterReadback',
+      'restoredReadback',
       'persistence',
       'checks',
     ])
@@ -380,6 +392,54 @@ describe('WorkPaper MCP server', () => {
     })
     expect(persistCalls).toHaveLength(1)
 
+    const transactionalWrite = server.handleJsonRpc({
+      jsonrpc: '2.0',
+      id: 12,
+      method: 'tools/call',
+      params: {
+        name: 'set_cell_contents_and_readback',
+        arguments: {
+          sheetName: 'Inputs',
+          address: 'B3',
+          value: 0.5,
+          readbackRange: 'Summary!A1:B3',
+        },
+      },
+    })
+    expect(transactionalWrite.result).toMatchObject({
+      isError: false,
+      structuredContent: {
+        editedCell: 'Inputs!B3',
+        readbackRange: 'Summary!A1:B3',
+        before: {
+          serialized: 0.4,
+        },
+        after: {
+          serialized: 0.5,
+        },
+        afterReadback: {
+          values: [
+            [expect.objectContaining({ value: 'Metric' }), expect.objectContaining({ value: 'Value' })],
+            [expect.objectContaining({ value: 'Expected customers' }), expect.objectContaining({ value: 10 })],
+            [expect.objectContaining({ value: 'Expected ARR' }), expect.objectContaining({ value: 120000 })],
+          ],
+        },
+        restoredReadback: {
+          values: [
+            [expect.objectContaining({ value: 'Metric' }), expect.objectContaining({ value: 'Value' })],
+            [expect.objectContaining({ value: 'Expected customers' }), expect.objectContaining({ value: 10 })],
+            [expect.objectContaining({ value: 'Expected ARR' }), expect.objectContaining({ value: 120000 })],
+          ],
+        },
+        checks: {
+          persisted: true,
+          readbackChanged: true,
+          restoredReadbackMatchesAfter: true,
+        },
+      },
+    })
+    expect(persistCalls).toHaveLength(2)
+
     const validate = server.handleJsonRpc({
       jsonrpc: '2.0',
       id: 4,
@@ -466,6 +526,7 @@ describe('WorkPaper MCP server', () => {
         .map((line) => JSON.parse(line))
 
       expect(responses[1].result.tools.map((tool: { name: string }) => tool.name)).toContain('set_cell_contents')
+      expect(responses[1].result.tools.map((tool: { name: string }) => tool.name)).toContain('set_cell_contents_and_readback')
       expect(responses[2].result.resources.map((resource: { uri: string }) => resource.uri)).toContain('bilig://workpaper/agent-handoff')
       expect(responses[3].result.prompts.map((prompt: { name: string }) => prompt.name)).toContain('edit_and_verify_workpaper')
       expect(responses[4].result.structuredContent).toMatchObject({
@@ -620,6 +681,7 @@ describe('WorkPaper MCP server', () => {
       'read_range',
       'read_cell',
       'set_cell_contents',
+      'set_cell_contents_and_readback',
       'get_cell_display_value',
       'export_workpaper_document',
       'validate_formula',

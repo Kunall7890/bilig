@@ -62,6 +62,7 @@ interface WorkPaperMcpToolDefinition {
     | 'read_range'
     | 'read_cell'
     | 'set_cell_contents'
+    | 'set_cell_contents_and_readback'
     | 'get_cell_display_value'
     | 'export_workpaper_document'
     | 'validate_formula'
@@ -391,6 +392,111 @@ function createFileBackedToolDefinitions(writable: boolean): WorkPaperMcpToolDef
       },
     },
     {
+      name: 'set_cell_contents_and_readback',
+      title: 'Set WorkPaper Cell Contents And Read Back',
+      description:
+        'Write raw content to one cell, recalculate dependents, read a dependent range in the same tool call, and return persistence proof. Use this for stateless MCP clients such as hosted Open WebUI integrations.',
+      inputSchema: {
+        type: 'object',
+        required: ['sheetName', 'address', 'value', 'readbackRange'],
+        properties: {
+          sheetName: {
+            type: 'string',
+            description: 'Existing sheet name for the cell to edit, for example Inputs.',
+          },
+          address: {
+            type: 'string',
+            description: 'Single A1 cell address to edit, such as B3. Ranges are not accepted.',
+          },
+          value: {
+            type: 'string',
+            description:
+              'Raw cell content. Formula strings must start with =; plain strings are stored as literals. Strict MCP hosts require a single parameter type, so pass evaluated numbers/booleans as formulas such as =0.4 or =TRUE(). The server still accepts JSON number, boolean, or null arguments from clients that support them.',
+          },
+          readbackRange: {
+            type: 'string',
+            description: 'Dependent A1 range to read before and after the edit, for example Summary!A1:B5.',
+          },
+          readbackSheetName: {
+            type: 'string',
+            description: 'Default sheet name when readbackRange omits a sheet name.',
+          },
+        },
+        additionalProperties: false,
+      },
+      outputSchema: {
+        type: 'object',
+        required: [
+          'editedCell',
+          'readbackRange',
+          'before',
+          'after',
+          'beforeReadback',
+          'afterReadback',
+          'restoredReadback',
+          'persistence',
+          'checks',
+        ],
+        properties: {
+          editedCell: {
+            type: 'string',
+            description: 'Canonical sheet-qualified address that was edited.',
+          },
+          readbackRange: {
+            type: 'string',
+            description: 'Canonical sheet-qualified range read before and after the edit.',
+          },
+          before: cellReadOutputSchema(),
+          after: cellReadOutputSchema(),
+          beforeReadback: rangeReadOutputSchema(),
+          afterReadback: rangeReadOutputSchema(),
+          restoredReadback: rangeReadOutputSchema(),
+          persistence: {
+            type: 'object',
+            required: ['persisted', 'serializedBytes'],
+            properties: {
+              persisted: {
+                type: 'boolean',
+              },
+              path: {
+                type: 'string',
+              },
+              serializedBytes: {
+                type: 'number',
+              },
+            },
+          },
+          checks: {
+            type: 'object',
+            required: ['persisted', 'readbackChanged', 'restoredReadbackMatchesAfter', 'previousSerialized', 'newSerialized'],
+            properties: {
+              persisted: {
+                type: 'boolean',
+              },
+              readbackChanged: {
+                type: 'boolean',
+                description: 'True when the dependent readback values differ after the edit.',
+              },
+              restoredReadbackMatchesAfter: {
+                type: 'boolean',
+                description: 'True when exported and re-imported JSON preserves the dependent readback range.',
+              },
+              previousSerialized: rawCellContentSchema(),
+              newSerialized: rawCellContentSchema(),
+            },
+          },
+        },
+        additionalProperties: false,
+      },
+      annotations: {
+        title: 'Set WorkPaper Cell Contents And Read Back',
+        readOnlyHint: false,
+        destructiveHint: writable,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    {
       name: 'get_cell_display_value',
       title: 'Get WorkPaper Cell Display Value',
       description:
@@ -507,17 +613,7 @@ function callFileBackedTool(input: {
   }
 
   if (toolName === 'read_range') {
-    const range = requireString(args['range'], 'range')
-    const defaultSheet = optionalSheetId(input.workbook, args['sheetName'])
-    const parsedRange = input.workbook.simpleCellRangeFromString(range, defaultSheet)
-    if (parsedRange === undefined) {
-      throw new Error(`Invalid range: ${range}`)
-    }
-    return {
-      range: input.workbook.simpleCellRangeToString(parsedRange, { includeSheetName: true }),
-      values: input.workbook.getRangeValues(parsedRange),
-      serialized: input.workbook.getRangeSerialized(parsedRange),
-    }
+    return readRange(input.workbook, requireString(args['range'], 'range'), args['sheetName'])
   }
 
   if (toolName === 'read_cell') {
@@ -550,6 +646,40 @@ function callFileBackedTool(input: {
       checks: {
         persisted: persistence.persisted,
         restoredMatchesAfter: JSON.stringify(after) === JSON.stringify(restoredCell),
+        previousSerialized: before['serialized'],
+        newSerialized: after['serialized'],
+      },
+    }
+  }
+
+  if (toolName === 'set_cell_contents_and_readback') {
+    const address = parseCellArgs(input.workbook, args)
+    const value = parseRawCellContent(args['value'])
+    const readbackRange = requireString(args['readbackRange'], 'readbackRange')
+    const before = readCell(input.workbook, address)
+    const beforeReadback = readRange(input.workbook, readbackRange, args['readbackSheetName'])
+
+    input.workbook.setCellContents(address, value)
+
+    const after = readCell(input.workbook, address)
+    const afterReadback = readRange(input.workbook, readbackRange, args['readbackSheetName'])
+    const persistence = input.persist(input.workbook)
+    const restored = createWorkPaperFromDocument(parseWorkPaperDocument(serializeWorkbook(input.workbook)))
+    const restoredReadback = readRange(restored, readbackRange, args['readbackSheetName'])
+
+    return {
+      editedCell: input.workbook.simpleCellAddressToString(address, { includeSheetName: true }),
+      readbackRange: afterReadback['range'],
+      before,
+      after,
+      beforeReadback,
+      afterReadback,
+      restoredReadback,
+      persistence,
+      checks: {
+        persisted: persistence.persisted,
+        readbackChanged: JSON.stringify(beforeReadback['values']) !== JSON.stringify(afterReadback['values']),
+        restoredReadbackMatchesAfter: JSON.stringify(afterReadback) === JSON.stringify(restoredReadback),
         previousSerialized: before['serialized'],
         newSerialized: after['serialized'],
       },
@@ -595,6 +725,19 @@ function readCell(workbook: WorkPaper, address: WorkPaperCellAddress): JsonObjec
     serialized: workbook.getCellSerialized(address),
     formula: workbook.getCellFormula(address) ?? null,
     displayValue: formatCellDisplayValue(value, format),
+  }
+}
+
+function readRange(workbook: WorkPaper, range: string, sheetName: unknown): JsonObject {
+  const defaultSheet = optionalSheetId(workbook, sheetName)
+  const parsedRange = workbook.simpleCellRangeFromString(range, defaultSheet)
+  if (parsedRange === undefined) {
+    throw new Error(`Invalid range: ${range}`)
+  }
+  return {
+    range: workbook.simpleCellRangeToString(parsedRange, { includeSheetName: true }),
+    values: workbook.getRangeValues(parsedRange),
+    serialized: workbook.getRangeSerialized(parsedRange),
   }
 }
 
@@ -755,6 +898,28 @@ function cellReadOutputSchema(): JsonObject {
       displayValue: {
         type: 'string',
         description: 'Formatted value as a user would see it.',
+      },
+    },
+    additionalProperties: false,
+  }
+}
+
+function rangeReadOutputSchema(): JsonObject {
+  return {
+    type: 'object',
+    required: ['range', 'values', 'serialized'],
+    properties: {
+      range: {
+        type: 'string',
+        description: 'Canonical A1 range including the sheet name.',
+      },
+      values: {
+        type: 'array',
+        description: 'Two-dimensional array of evaluated cell values.',
+      },
+      serialized: {
+        type: 'array',
+        description: 'Two-dimensional array of raw serialized cell contents, including formulas.',
       },
     },
     additionalProperties: false,

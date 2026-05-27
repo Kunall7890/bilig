@@ -840,8 +840,10 @@ upload workbook contents.
 Without `--workpaper`, the binary starts the built-in demo workbook. With
 `--workpaper`, it loads your persisted WorkPaper JSON and exposes
 `list_sheets`, `read_range`, `read_cell`, `set_cell_contents`,
-`get_cell_display_value`, `export_workpaper_document`, and `validate_formula`;
-`--writable` persists `set_cell_contents` edits back to the same file. It also
+`set_cell_contents_and_readback`, `get_cell_display_value`,
+`export_workpaper_document`, and `validate_formula`; `--writable` persists
+`set_cell_contents` or `set_cell_contents_and_readback` edits back to the same
+file. It also
 exposes MCP resources and prompts for `bilig://workpaper/agent-handoff`,
 `bilig://workpaper/current-document`, `edit_and_verify_workpaper`, and
 `debug_workpaper_formula`, so capable clients can discover the workflow before
@@ -856,8 +858,8 @@ Streamable HTTP endpoint for tool discovery and write/readback smoke tests.
 It is published in the official MCP Registry as
 `io.github.proompteng/bilig-workpaper`:
 <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper>.
-It is also live on Glama with `Try in Browser`, A-grade tool pages, and all
-seven file-backed WorkPaper tools:
+It is also live on Glama with `Try in Browser`, A-grade tool pages, and the
+file-backed WorkPaper tools:
 <https://glama.ai/mcp/servers/proompteng/bilig>.
 
 ## Proof You Can Reproduce

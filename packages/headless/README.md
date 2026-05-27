@@ -432,10 +432,13 @@ requested cells through WorkPaper, and prints a Markdown fixture report.
 
 Default mode starts the built-in demo workbook. File-backed mode loads a
 persisted WorkPaper JSON document and exposes `list_sheets`, `read_range`,
-`read_cell`, `set_cell_contents`, `get_cell_display_value`,
-`export_workpaper_document`, and `validate_formula`; `--init-demo-workpaper`
+`read_cell`, `set_cell_contents`, `set_cell_contents_and_readback`,
+`get_cell_display_value`, `export_workpaper_document`, and `validate_formula`;
+`--init-demo-workpaper`
 creates the demo JSON file when it is missing, and `--writable` persists
-`set_cell_contents` edits back to the same file. File-backed mode also exposes
+`set_cell_contents` edits back to the same file. The
+`set_cell_contents_and_readback` tool does the same write while reading a
+dependent output range in the same MCP call. File-backed mode also exposes
 `resources/list`, `resources/read`, `prompts/list`, and `prompts/get` for
 `bilig://workpaper/manifest`, `bilig://workpaper/agent-handoff`,
 `bilig://workpaper/sheets`, `bilig://workpaper/current-document`,
@@ -451,8 +454,8 @@ The package metadata includes
 `mcpName: io.github.proompteng/bilig-workpaper`, and the server is listed in the
 official MCP Registry:
 <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper>.
-It is also live on Glama with `Try in Browser`, A-grade tool pages, and all
-seven file-backed WorkPaper tools:
+It is also live on Glama with `Try in Browser`, A-grade tool pages, and the
+file-backed WorkPaper tools:
 <https://glama.ai/mcp/servers/proompteng/bilig>.
 
 Clients that support Streamable HTTP MCP can also use the hosted stateless demo

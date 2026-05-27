@@ -35,7 +35,7 @@ In Sim:
 4. Set **Server URL** to `https://bilig.proompteng.ai/mcp`.
 5. Leave headers empty.
 6. Keep transport as Streamable HTTP.
-7. Click **Test Connection** and confirm seven tools are discovered.
+7. Click **Test Connection** and confirm the WorkPaper tools are discovered.
 8. Save the server.
 
 The hosted endpoint is stateless and request-local. It proves tool discovery and
@@ -47,7 +47,7 @@ Use this when the workflow should let the model choose the WorkPaper tool calls.
 
 1. Open an Agent block.
 2. Add tools from the `bilig-workpaper` MCP server.
-3. Select all seven tools.
+3. Select the WorkPaper tools.
 4. Use a prompt that requires readback and persistence proof:
 
 ```text
@@ -63,6 +63,7 @@ The useful Bilig tools are:
 - `read_range`
 - `read_cell`
 - `set_cell_contents`
+- `set_cell_contents_and_readback`
 - `get_cell_display_value`
 - `export_workpaper_document`
 - `validate_formula`

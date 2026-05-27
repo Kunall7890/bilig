@@ -87,6 +87,7 @@ For agents, expose small tools:
 - `read_cell`
 - `read_range`
 - `set_cell_contents`
+- `set_cell_contents_and_readback`
 - `get_cell_display_value`
 - `export_workpaper_document`
 

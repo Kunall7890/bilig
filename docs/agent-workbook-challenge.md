@@ -99,7 +99,7 @@ Required tool sequence:
 
 1. `list_sheets`
 2. `read_range` for the input and summary ranges
-3. `set_cell_contents` for `Inputs!B2`
+3. `set_cell_contents` or `set_cell_contents_and_readback` for `Inputs!B2`
 4. `get_cell_display_value` for the dependent summary cell
 5. `export_workpaper_document`
 

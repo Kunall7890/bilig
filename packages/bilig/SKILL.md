@@ -80,11 +80,14 @@ The useful file-backed tools are:
 - `read_range`
 - `read_cell`
 - `set_cell_contents`
+- `set_cell_contents_and_readback`
 - `get_cell_display_value`
 - `export_workpaper_document`
 - `validate_formula`
 
-After a write, always read the dependent output cell and export the WorkPaper document.
+After a write, always read the dependent output cell and export the WorkPaper
+document. For stateless HTTP clients, prefer `set_cell_contents_and_readback`
+so the edit and dependent readback happen in one tool call.
 
 For remote MCP clients, use the stateless demo endpoint when the client supports
 Streamable HTTP:

@@ -83,6 +83,7 @@ The server should expose:
 - `read_range`
 - `read_cell`
 - `set_cell_contents`
+- `set_cell_contents_and_readback`
 - `get_cell_display_value`
 - `export_workpaper_document`
 - `validate_formula`

@@ -151,11 +151,14 @@ The useful file-backed tools are:
 - `read_range`
 - `read_cell`
 - `set_cell_contents`
+- `set_cell_contents_and_readback`
 - `get_cell_display_value`
 - `export_workpaper_document`
 - `validate_formula`
 
-After a write, always read the dependent output cell and export the WorkPaper document.
+After a write, always read the dependent output cell and export the WorkPaper
+document. For stateless HTTP clients, prefer `set_cell_contents_and_readback`
+so the edit and dependent readback happen in one tool call.
 
 For remote MCP clients, use the stateless demo endpoint when the client supports
 Streamable HTTP:
@@ -1109,8 +1112,10 @@ upload workbook contents.
 Without `--workpaper`, the binary starts the built-in demo workbook. With
 `--workpaper`, it loads your persisted WorkPaper JSON and exposes
 `list_sheets`, `read_range`, `read_cell`, `set_cell_contents`,
-`get_cell_display_value`, `export_workpaper_document`, and `validate_formula`;
-`--writable` persists `set_cell_contents` edits back to the same file. It also
+`set_cell_contents_and_readback`, `get_cell_display_value`,
+`export_workpaper_document`, and `validate_formula`; `--writable` persists
+`set_cell_contents` or `set_cell_contents_and_readback` edits back to the same
+file. It also
 exposes MCP resources and prompts for `bilig://workpaper/agent-handoff`,
 `bilig://workpaper/current-document`, `edit_and_verify_workpaper`, and
 `debug_workpaper_formula`, so capable clients can discover the workflow before
@@ -1125,8 +1130,8 @@ Streamable HTTP endpoint for tool discovery and write/readback smoke tests.
 It is published in the official MCP Registry as
 `io.github.proompteng/bilig-workpaper`:
 <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper>.
-It is also live on Glama with `Try in Browser`, A-grade tool pages, and all
-seven file-backed WorkPaper tools:
+It is also live on Glama with `Try in Browser`, A-grade tool pages, and the
+file-backed WorkPaper tools:
 <https://glama.ai/mcp/servers/proompteng/bilig>.
 
 ## Proof You Can Reproduce
@@ -1619,6 +1624,7 @@ The current challenge prints this shape:
     "read_range",
     "read_cell",
     "set_cell_contents",
+    "set_cell_contents_and_readback",
     "get_cell_display_value",
     "export_workpaper_document",
     "validate_formula"
@@ -2382,10 +2388,13 @@ requested cells through WorkPaper, and prints a Markdown fixture report.
 
 Default mode starts the built-in demo workbook. File-backed mode loads a
 persisted WorkPaper JSON document and exposes `list_sheets`, `read_range`,
-`read_cell`, `set_cell_contents`, `get_cell_display_value`,
-`export_workpaper_document`, and `validate_formula`; `--init-demo-workpaper`
+`read_cell`, `set_cell_contents`, `set_cell_contents_and_readback`,
+`get_cell_display_value`, `export_workpaper_document`, and `validate_formula`;
+`--init-demo-workpaper`
 creates the demo JSON file when it is missing, and `--writable` persists
-`set_cell_contents` edits back to the same file. File-backed mode also exposes
+`set_cell_contents` edits back to the same file. The
+`set_cell_contents_and_readback` tool does the same write while reading a
+dependent output range in the same MCP call. File-backed mode also exposes
 `resources/list`, `resources/read`, `prompts/list`, and `prompts/get` for
 `bilig://workpaper/manifest`, `bilig://workpaper/agent-handoff`,
 `bilig://workpaper/sheets`, `bilig://workpaper/current-document`,
@@ -2401,8 +2410,8 @@ The package metadata includes
 `mcpName: io.github.proompteng/bilig-workpaper`, and the server is listed in the
 official MCP Registry:
 <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper>.
-It is also live on Glama with `Try in Browser`, A-grade tool pages, and all
-seven file-backed WorkPaper tools:
+It is also live on Glama with `Try in Browser`, A-grade tool pages, and the
+file-backed WorkPaper tools:
 <https://glama.ai/mcp/servers/proompteng/bilig>.
 
 Clients that support Streamable HTTP MCP can also use the hosted stateless demo
@@ -2874,6 +2883,7 @@ Expected file-backed tools:
 - `read_range`
 - `read_cell`
 - `set_cell_contents`
+- `set_cell_contents_and_readback`
 - `get_cell_display_value`
 - `export_workpaper_document`
 - `validate_formula`
@@ -3071,6 +3081,7 @@ Expected tools:
 - `read_range`
 - `read_cell`
 - `set_cell_contents`
+- `set_cell_contents_and_readback`
 - `get_cell_display_value`
 - `export_workpaper_document`
 - `validate_formula`
@@ -3309,7 +3320,7 @@ Required tool sequence:
 
 1. `list_sheets`
 2. `read_range` for the input and summary ranges
-3. `set_cell_contents` for `Inputs!B2`
+3. `set_cell_contents` or `set_cell_contents_and_readback` for `Inputs!B2`
 4. `get_cell_display_value` for the dependent summary cell
 5. `export_workpaper_document`
 
@@ -6749,9 +6760,9 @@ Then open a chat, enable the Bilig tool from the integrations/tools menu, and
 ask:
 
 ```text
-List the available Bilig WorkPaper tools. Then read the sample sheets, set the
-conversion-rate input to 0.4, read the recalculated ARR output, and return the
-proof object.
+Use the Bilig WorkPaper tools. Call set_cell_contents_and_readback with
+sheetName Inputs, address B3, value =0.4, and readbackRange Summary!A1:B3.
+Return the proof object and say whether the dependent formula readback changed.
 ```
 
 Expected tools:
@@ -6760,13 +6771,16 @@ Expected tools:
 - `read_range`
 - `read_cell`
 - `set_cell_contents`
+- `set_cell_contents_and_readback`
 - `get_cell_display_value`
 - `export_workpaper_document`
 - `validate_formula`
 
-The hosted endpoint is stateless and request-local. It is good for verifying
-Open WebUI can discover and call the tools. It does not persist a private
-project workbook.
+The hosted endpoint is stateless and request-local. Use
+`set_cell_contents_and_readback` when Open WebUI needs a single call that writes
+an input and returns dependent formula readback before the request ends. The
+endpoint is good for verifying Open WebUI can discover and call the tools. It
+does not persist a private project workbook.
 
 ## Persistent project file: mcpo bridge
 
@@ -6808,10 +6822,10 @@ http://host.docker.internal:8000
 
 ## Native MCP versus mcpo
 
-| Path | Use when | URL to add |
-| --- | --- | --- |
-| Native MCP | Open WebUI can call a Streamable HTTP MCP endpoint directly. | `https://bilig.proompteng.ai/mcp` |
-| mcpo | Open WebUI should call a local stdio MCP server through OpenAPI. | `http://localhost:8000` or `http://host.docker.internal:8000` |
+| Path       | Use when                                                         | URL to add                                                    |
+| ---------- | ---------------------------------------------------------------- | ------------------------------------------------------------- |
+| Native MCP | Open WebUI can call a Streamable HTTP MCP endpoint directly.     | `https://bilig.proompteng.ai/mcp`                             |
+| mcpo       | Open WebUI should call a local stdio MCP server through OpenAPI. | `http://localhost:8000` or `http://host.docker.internal:8000` |
 
 Start with native MCP for tool-discovery smoke tests. Use mcpo for a real
 writable WorkPaper file that must persist across turns or jobs.
@@ -6827,14 +6841,13 @@ Ask the model to return a concrete proof instead of "the cell was updated":
     "Summary!B2": "60000"
   },
   "after": {
-    "Summary!B2": "96000"
+    "Summary!B3": "96000"
   },
+  "readbackRange": "Summary!A1:B3",
+  "restoredReadbackMatchesAfter": true,
   "persistedDocumentBytes": 1000,
   "verified": true,
-  "limitations": [
-    "Hosted smoke endpoint is request-local.",
-    "Use mcpo or local stdio for a private writable WorkPaper file."
-  ]
+  "limitations": ["Hosted smoke endpoint is request-local.", "Use mcpo or local stdio for a private writable WorkPaper file."]
 }
 ```
 
@@ -6999,6 +7012,7 @@ The hosted endpoint exposes these tools:
 - `read_range`
 - `read_cell`
 - `set_cell_contents`
+- `set_cell_contents_and_readback`
 - `get_cell_display_value`
 - `export_workpaper_document`
 - `validate_formula`
@@ -7081,10 +7095,10 @@ and the persisted document can be restored.
 
 ## Which path to use
 
-| Path | Use when | LobeHub surface |
-| --- | --- | --- |
+| Path                   | Use when                                           | LobeHub surface           |
+| ---------------------- | -------------------------------------------------- | ------------------------- |
 | Hosted Streamable HTTP | You need a quick remote tool-discovery smoke test. | Web or desktop Custom MCP |
-| Local STDIO | You need a private writable WorkPaper JSON file. | Desktop Custom MCP |
+| Local STDIO            | You need a private writable WorkPaper JSON file.   | Desktop Custom MCP        |
 
 Start with hosted HTTP when you only need to verify tool calling. Use local
 STDIO when the agent should own durable workbook state on your machine.
@@ -7259,6 +7273,7 @@ The Bilig server exposes these tools:
 - `read_range`
 - `read_cell`
 - `set_cell_contents`
+- `set_cell_contents_and_readback`
 - `get_cell_display_value`
 - `export_workpaper_document`
 - `validate_formula`
@@ -7590,7 +7605,7 @@ In Sim:
 4. Set **Server URL** to `https://bilig.proompteng.ai/mcp`.
 5. Leave headers empty.
 6. Keep transport as Streamable HTTP.
-7. Click **Test Connection** and confirm seven tools are discovered.
+7. Click **Test Connection** and confirm the WorkPaper tools are discovered.
 8. Save the server.
 
 The hosted endpoint is stateless and request-local. It proves tool discovery and
@@ -7602,7 +7617,7 @@ Use this when the workflow should let the model choose the WorkPaper tool calls.
 
 1. Open an Agent block.
 2. Add tools from the `bilig-workpaper` MCP server.
-3. Select all seven tools.
+3. Select the WorkPaper tools.
 4. Use a prompt that requires readback and persistence proof:
 
 ```text
@@ -7618,6 +7633,7 @@ The useful Bilig tools are:
 - `read_range`
 - `read_cell`
 - `set_cell_contents`
+- `set_cell_contents_and_readback`
 - `get_cell_display_value`
 - `export_workpaper_document`
 - `validate_formula`
@@ -8406,9 +8422,10 @@ https://bilig.proompteng.ai/mcp/workpaper
 The endpoint is stateless and request-local. It loads the packaged demo
 WorkPaper for each JSON-RPC request, exposes the same file-backed tool catalog,
 resources, and prompts, and returns write/readback proof without writing user
-files or issuing an MCP session id. Use it for Claude custom connector smoke
-tests, directory probes, and agent onboarding. Use local file-backed stdio when
-an agent needs to persist a real project WorkPaper JSON file.
+files or issuing an MCP session id. Use `set_cell_contents_and_readback` when a
+hosted client needs to write one input and read dependent formula output in the
+same request. Use local file-backed stdio when an agent needs to persist a real
+project WorkPaper JSON file.
 
 Protocol smoke:
 
@@ -8437,10 +8454,12 @@ recalculated `Summary!B3`, exports WorkPaper JSON, restarts from disk, and
 prints `verified: true`.
 
 File-backed mode loads `./pricing.workpaper.json`, exposes `list_sheets`,
-`read_range`, `read_cell`, `set_cell_contents`, `get_cell_display_value`,
+`read_range`, `read_cell`, `set_cell_contents`,
+`set_cell_contents_and_readback`, `get_cell_display_value`,
 `export_workpaper_document`, and `validate_formula`, then writes the updated
-WorkPaper JSON back to the same file after `set_cell_contents` when `--writable`
-is present. It also exposes `resources/list`, `resources/read`,
+WorkPaper JSON back to the same file after `set_cell_contents` or
+`set_cell_contents_and_readback` when `--writable` is present. It also exposes
+`resources/list`, `resources/read`,
 `prompts/list`, and `prompts/get` so clients can discover the live workbook
 manifest, agent handoff instructions, current document JSON, and reusable edit
 or formula-debug prompts. Omit `--writable` for read-only inspection.
@@ -8497,7 +8516,8 @@ The target installs `@bilig/workpaper` from npm, seeds
 `bilig-workpaper-mcp --workpaper /workpaper/pricing.workpaper.json --init-demo-workpaper --writable`
 over stdio. That makes directory introspection see the general WorkPaper tools:
 `list_sheets`, `read_range`, `read_cell`, `set_cell_contents`,
-`get_cell_display_value`, `export_workpaper_document`, and `validate_formula`.
+`set_cell_contents_and_readback`, `get_cell_display_value`,
+`export_workpaper_document`, and `validate_formula`.
 It also carries the OCI label
 `io.modelcontextprotocol.server.name=io.github.proompteng/bilig-workpaper`, so
 registry and directory tooling can match the container target to the official
@@ -8507,9 +8527,10 @@ For crawlers that cannot run Docker or stdio, the docs site also publishes a
 static MCP server card at
 `https://proompteng.github.io/bilig/.well-known/mcp/server-card.json`. The card
 lists the same `list_sheets`, `read_range`, `read_cell`, `set_cell_contents`,
-`get_cell_display_value`, `export_workpaper_document`, and `validate_formula`
-tools, plus the WorkPaper resources and prompts, without requiring account auth
-or a live server connection.
+`set_cell_contents_and_readback`, `get_cell_display_value`,
+`export_workpaper_document`, and `validate_formula` tools, plus the WorkPaper
+resources and prompts, without requiring account auth or a live server
+connection.
 
 The hosted endpoint origin serves the same crawler-friendly card at
 `https://bilig.proompteng.ai/.well-known/mcp/server-card.json`, with
@@ -8581,9 +8602,9 @@ try {
     tools,
     prompt: [
       'Read Summary!A1:B5 with read_range.',
-      'Then set Inputs!B3 to 0.4 with set_cell_contents.',
-      'Read Summary!B3 with read_cell and export the document.',
-      'Return editedCell, before, after, persisted, and restoredMatchesAfter.',
+      'Then set Inputs!B3 to =0.4 with set_cell_contents_and_readback.',
+      'Use readbackRange Summary!A1:B5 and export the document.',
+      'Return editedCell, beforeReadback, afterReadback, persisted, and restoredReadbackMatchesAfter.',
     ].join('\n'),
   })
 
@@ -8623,8 +8644,9 @@ The packaged binary has two tool sets:
 
 - default demo mode: `read_workpaper_summary` and `set_workpaper_input_cell`
 - file-backed mode: `list_sheets`, `read_range`, `read_cell`,
-  `set_cell_contents`, `get_cell_display_value`, `export_workpaper_document`,
-  and `validate_formula`
+  `set_cell_contents`, `set_cell_contents_and_readback`,
+  `get_cell_display_value`, `export_workpaper_document`, and
+  `validate_formula`
 
 The annotations are explicit for directory reviewers and cautious MCP clients:
 `read_workpaper_summary` is read-only, idempotent, and closed-world.

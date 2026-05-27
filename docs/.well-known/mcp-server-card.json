@@ -393,6 +393,232 @@
       }
     },
     {
+      "name": "set_cell_contents_and_readback",
+      "title": "Set WorkPaper Cell Contents And Read Back",
+      "description": "Write raw content to one cell, recalculate dependents, read a dependent range in the same tool call, and return persistence proof. Use this for stateless MCP clients such as hosted Open WebUI integrations.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["sheetName", "address", "value", "readbackRange"],
+        "properties": {
+          "sheetName": {
+            "type": "string",
+            "description": "Existing sheet name for the cell to edit, for example Inputs."
+          },
+          "address": {
+            "type": "string",
+            "description": "Single A1 cell address to edit, such as B3. Ranges are not accepted."
+          },
+          "value": {
+            "type": "string",
+            "description": "Raw cell content. Formula strings must start with =. Strict MCP hosts require a single parameter type, so pass evaluated numbers/booleans as formulas such as =0.4 or =TRUE()."
+          },
+          "readbackRange": {
+            "type": "string",
+            "description": "Dependent A1 range to read before and after the edit, for example Summary!A1:B5."
+          },
+          "readbackSheetName": {
+            "type": "string",
+            "description": "Default sheet name when readbackRange omits a sheet name."
+          }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "editedCell",
+          "readbackRange",
+          "before",
+          "after",
+          "beforeReadback",
+          "afterReadback",
+          "restoredReadback",
+          "persistence",
+          "checks"
+        ],
+        "properties": {
+          "editedCell": {
+            "type": "string",
+            "description": "Canonical sheet-qualified address that was edited."
+          },
+          "readbackRange": {
+            "type": "string",
+            "description": "Canonical sheet-qualified range read before and after the edit."
+          },
+          "before": {
+            "type": "object",
+            "description": "Edited cell before the edit.",
+            "required": ["address", "value", "serialized", "formula", "displayValue"],
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "Canonical sheet-qualified A1 address."
+              },
+              "value": {
+                "description": "Calculated cell value."
+              },
+              "serialized": {
+                "type": ["string", "number", "boolean", "null"],
+                "description": "Raw serialized cell content, preserving formulas."
+              },
+              "formula": {
+                "type": ["string", "null"],
+                "description": "Formula text without losing the original calculated value context, or null for literal cells."
+              },
+              "displayValue": {
+                "type": "string",
+                "description": "Formatted value as a user would see it."
+              }
+            },
+            "additionalProperties": false
+          },
+          "after": {
+            "type": "object",
+            "description": "Edited cell after recalculation.",
+            "required": ["address", "value", "serialized", "formula", "displayValue"],
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "Canonical sheet-qualified A1 address."
+              },
+              "value": {
+                "description": "Calculated cell value."
+              },
+              "serialized": {
+                "type": ["string", "number", "boolean", "null"],
+                "description": "Raw serialized cell content, preserving formulas."
+              },
+              "formula": {
+                "type": ["string", "null"],
+                "description": "Formula text without losing the original calculated value context, or null for literal cells."
+              },
+              "displayValue": {
+                "type": "string",
+                "description": "Formatted value as a user would see it."
+              }
+            },
+            "additionalProperties": false
+          },
+          "beforeReadback": {
+            "type": "object",
+            "description": "Dependent range before the edit.",
+            "required": ["range", "values", "serialized"],
+            "properties": {
+              "range": {
+                "type": "string",
+                "description": "Canonical A1 range including the sheet name."
+              },
+              "values": {
+                "type": "array",
+                "description": "Two-dimensional array of evaluated cell values."
+              },
+              "serialized": {
+                "type": "array",
+                "description": "Two-dimensional array of raw serialized cell contents, including formulas."
+              }
+            },
+            "additionalProperties": false
+          },
+          "afterReadback": {
+            "type": "object",
+            "description": "Dependent range after recalculation.",
+            "required": ["range", "values", "serialized"],
+            "properties": {
+              "range": {
+                "type": "string",
+                "description": "Canonical A1 range including the sheet name."
+              },
+              "values": {
+                "type": "array",
+                "description": "Two-dimensional array of evaluated cell values."
+              },
+              "serialized": {
+                "type": "array",
+                "description": "Two-dimensional array of raw serialized cell contents, including formulas."
+              }
+            },
+            "additionalProperties": false
+          },
+          "restoredReadback": {
+            "type": "object",
+            "description": "Dependent range after exporting and restoring WorkPaper JSON.",
+            "required": ["range", "values", "serialized"],
+            "properties": {
+              "range": {
+                "type": "string",
+                "description": "Canonical A1 range including the sheet name."
+              },
+              "values": {
+                "type": "array",
+                "description": "Two-dimensional array of evaluated cell values."
+              },
+              "serialized": {
+                "type": "array",
+                "description": "Two-dimensional array of raw serialized cell contents, including formulas."
+              }
+            },
+            "additionalProperties": false
+          },
+          "persistence": {
+            "type": "object",
+            "description": "Persistence result for the WorkPaper JSON document.",
+            "required": ["persisted", "serializedBytes"],
+            "properties": {
+              "persisted": {
+                "type": "boolean",
+                "description": "True when the server wrote the updated WorkPaper JSON file."
+              },
+              "path": {
+                "type": "string",
+                "description": "Absolute JSON file path written by the server when writable."
+              },
+              "serializedBytes": {
+                "type": "number",
+                "description": "UTF-8 byte length of the serialized WorkPaper document."
+              }
+            },
+            "additionalProperties": false
+          },
+          "checks": {
+            "type": "object",
+            "description": "Boolean receipt for computed readback and restored state.",
+            "required": ["persisted", "readbackChanged", "restoredReadbackMatchesAfter", "previousSerialized", "newSerialized"],
+            "properties": {
+              "persisted": {
+                "type": "boolean",
+                "description": "Echo of whether the edit was persisted to disk."
+              },
+              "readbackChanged": {
+                "type": "boolean",
+                "description": "True when dependent readback values differ after the edit."
+              },
+              "restoredReadbackMatchesAfter": {
+                "type": "boolean",
+                "description": "True when exported and re-imported JSON preserves the dependent readback range."
+              },
+              "previousSerialized": {
+                "type": ["string", "number", "boolean", "null"],
+                "description": "Raw serialized cell content before the edit."
+              },
+              "newSerialized": {
+                "type": ["string", "number", "boolean", "null"],
+                "description": "Raw serialized cell content after the edit."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Set WorkPaper Cell Contents And Read Back",
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
       "name": "get_cell_display_value",
       "title": "Get WorkPaper Cell Display Value",
       "description": "Return the formatted display string for one cell. Use when an agent needs what a user would see, not the raw numeric value.",

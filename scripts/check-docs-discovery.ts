@@ -219,7 +219,11 @@ requireIncludes(
   'docs/mcp-workpaper-tool-server.md',
 )
 requireIncludes(mcpWorkpaperToolServerDoc, 'Read Summary!A1:B5 with read_range.', 'docs/mcp-workpaper-tool-server.md')
-requireIncludes(mcpWorkpaperToolServerDoc, 'Then set Inputs!B3 to 0.4 with set_cell_contents.', 'docs/mcp-workpaper-tool-server.md')
+requireIncludes(
+  mcpWorkpaperToolServerDoc,
+  'Then set Inputs!B3 to =0.4 with set_cell_contents_and_readback.',
+  'docs/mcp-workpaper-tool-server.md',
+)
 for (const required of homepageRequiredLinks) {
   requireIncludes(index, required, 'docs/index.html')
 }
@@ -655,6 +659,7 @@ if (!Array.isArray(agentJsonMcpTools) || !agentJsonMcpTools.every((tool) => type
 for (const requiredTool of [
   'list_sheets',
   'set_cell_contents',
+  'set_cell_contents_and_readback',
   'get_cell_display_value',
   'export_workpaper_document',
   'validate_formula',

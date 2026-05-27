@@ -126,8 +126,8 @@ npm exec --package @bilig/workpaper@latest -- \
 ```
 
 File-backed mode exposes tools such as `list_sheets`, `read_range`,
-`set_cell_contents`, `get_cell_display_value`, `export_workpaper_document`, and
-`validate_formula`.
+`set_cell_contents`, `set_cell_contents_and_readback`,
+`get_cell_display_value`, `export_workpaper_document`, and `validate_formula`.
 
 ## What To Ask Before Choosing A Spreadsheet MCP Server
 

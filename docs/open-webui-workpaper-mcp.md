@@ -43,9 +43,9 @@ Then open a chat, enable the Bilig tool from the integrations/tools menu, and
 ask:
 
 ```text
-List the available Bilig WorkPaper tools. Then read the sample sheets, set the
-conversion-rate input to 0.4, read the recalculated ARR output, and return the
-proof object.
+Use the Bilig WorkPaper tools. Call set_cell_contents_and_readback with
+sheetName Inputs, address B3, value =0.4, and readbackRange Summary!A1:B3.
+Return the proof object and say whether the dependent formula readback changed.
 ```
 
 Expected tools:
@@ -54,13 +54,16 @@ Expected tools:
 - `read_range`
 - `read_cell`
 - `set_cell_contents`
+- `set_cell_contents_and_readback`
 - `get_cell_display_value`
 - `export_workpaper_document`
 - `validate_formula`
 
-The hosted endpoint is stateless and request-local. It is good for verifying
-Open WebUI can discover and call the tools. It does not persist a private
-project workbook.
+The hosted endpoint is stateless and request-local. Use
+`set_cell_contents_and_readback` when Open WebUI needs a single call that writes
+an input and returns dependent formula readback before the request ends. The
+endpoint is good for verifying Open WebUI can discover and call the tools. It
+does not persist a private project workbook.
 
 ## Persistent project file: mcpo bridge
 
@@ -102,10 +105,10 @@ http://host.docker.internal:8000
 
 ## Native MCP versus mcpo
 
-| Path | Use when | URL to add |
-| --- | --- | --- |
-| Native MCP | Open WebUI can call a Streamable HTTP MCP endpoint directly. | `https://bilig.proompteng.ai/mcp` |
-| mcpo | Open WebUI should call a local stdio MCP server through OpenAPI. | `http://localhost:8000` or `http://host.docker.internal:8000` |
+| Path       | Use when                                                         | URL to add                                                    |
+| ---------- | ---------------------------------------------------------------- | ------------------------------------------------------------- |
+| Native MCP | Open WebUI can call a Streamable HTTP MCP endpoint directly.     | `https://bilig.proompteng.ai/mcp`                             |
+| mcpo       | Open WebUI should call a local stdio MCP server through OpenAPI. | `http://localhost:8000` or `http://host.docker.internal:8000` |
 
 Start with native MCP for tool-discovery smoke tests. Use mcpo for a real
 writable WorkPaper file that must persist across turns or jobs.
@@ -121,14 +124,13 @@ Ask the model to return a concrete proof instead of "the cell was updated":
     "Summary!B2": "60000"
   },
   "after": {
-    "Summary!B2": "96000"
+    "Summary!B3": "96000"
   },
+  "readbackRange": "Summary!A1:B3",
+  "restoredReadbackMatchesAfter": true,
   "persistedDocumentBytes": 1000,
   "verified": true,
-  "limitations": [
-    "Hosted smoke endpoint is request-local.",
-    "Use mcpo or local stdio for a private writable WorkPaper file."
-  ]
+  "limitations": ["Hosted smoke endpoint is request-local.", "Use mcpo or local stdio for a private writable WorkPaper file."]
 }
 ```
 

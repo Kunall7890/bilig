@@ -47,6 +47,7 @@ The hosted endpoint exposes these tools:
 - `read_range`
 - `read_cell`
 - `set_cell_contents`
+- `set_cell_contents_and_readback`
 - `get_cell_display_value`
 - `export_workpaper_document`
 - `validate_formula`
@@ -129,10 +130,10 @@ and the persisted document can be restored.
 
 ## Which path to use
 
-| Path | Use when | LobeHub surface |
-| --- | --- | --- |
+| Path                   | Use when                                           | LobeHub surface           |
+| ---------------------- | -------------------------------------------------- | ------------------------- |
 | Hosted Streamable HTTP | You need a quick remote tool-discovery smoke test. | Web or desktop Custom MCP |
-| Local STDIO | You need a private writable WorkPaper JSON file. | Desktop Custom MCP |
+| Local STDIO            | You need a private writable WorkPaper JSON file.   | Desktop Custom MCP        |
 
 Start with hosted HTTP when you only need to verify tool calling. Use local
 STDIO when the agent should own durable workbook state on your machine.

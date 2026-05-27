@@ -264,6 +264,69 @@ function fileBackedWorkPaperTools(): readonly JsonObject[] {
       annotations: toolAnnotations('Set WorkPaper Cell Contents', false, true),
     },
     {
+      name: 'set_cell_contents_and_readback',
+      title: 'Set WorkPaper Cell Contents And Read Back',
+      description:
+        'Write raw content to one cell, recalculate dependents, read a dependent range in the same tool call, and return persistence proof. Use this for stateless MCP clients such as hosted Open WebUI integrations.',
+      inputSchema: objectSchema({
+        required: ['sheetName', 'address', 'value', 'readbackRange'],
+        properties: {
+          sheetName: stringInput('Existing sheet name for the cell to edit, for example Inputs.'),
+          address: stringInput('Single A1 cell address to edit, such as B3. Ranges are not accepted.'),
+          value: stringInput(
+            'Raw cell content. Formula strings must start with =. Strict MCP hosts require a single parameter type, so pass evaluated numbers/booleans as formulas such as =0.4 or =TRUE().',
+          ),
+          readbackRange: stringInput('Dependent A1 range to read before and after the edit, for example Summary!A1:B5.'),
+          readbackSheetName: stringInput('Default sheet name when readbackRange omits a sheet name.'),
+        },
+      }),
+      outputSchema: objectSchema({
+        required: [
+          'editedCell',
+          'readbackRange',
+          'before',
+          'after',
+          'beforeReadback',
+          'afterReadback',
+          'restoredReadback',
+          'persistence',
+          'checks',
+        ],
+        properties: {
+          editedCell: stringOutput('Canonical sheet-qualified address that was edited.'),
+          readbackRange: stringOutput('Canonical sheet-qualified range read before and after the edit.'),
+          before: cellReadOutputSchema('Edited cell before the edit.'),
+          after: cellReadOutputSchema('Edited cell after recalculation.'),
+          beforeReadback: rangeReadOutputSchema('Dependent range before the edit.'),
+          afterReadback: rangeReadOutputSchema('Dependent range after recalculation.'),
+          restoredReadback: rangeReadOutputSchema('Dependent range after exporting and restoring WorkPaper JSON.'),
+          persistence: objectSchema({
+            description: 'Persistence result for the WorkPaper JSON document.',
+            required: ['persisted', 'serializedBytes'],
+            properties: {
+              persisted: booleanOutput('True when the server wrote the updated WorkPaper JSON file.'),
+              path: stringOutput('Absolute JSON file path written by the server when writable.'),
+              serializedBytes: numberOutput('UTF-8 byte length of the serialized WorkPaper document.'),
+            },
+          }),
+          checks: objectSchema({
+            description: 'Boolean receipt for computed readback and restored state.',
+            required: ['persisted', 'readbackChanged', 'restoredReadbackMatchesAfter', 'previousSerialized', 'newSerialized'],
+            properties: {
+              persisted: booleanOutput('Echo of whether the edit was persisted to disk.'),
+              readbackChanged: booleanOutput('True when dependent readback values differ after the edit.'),
+              restoredReadbackMatchesAfter: booleanOutput(
+                'True when exported and re-imported JSON preserves the dependent readback range.',
+              ),
+              previousSerialized: rawCellContentOutput('Raw serialized cell content before the edit.'),
+              newSerialized: rawCellContentOutput('Raw serialized cell content after the edit.'),
+            },
+          }),
+        },
+      }),
+      annotations: toolAnnotations('Set WorkPaper Cell Contents And Read Back', false, true),
+    },
+    {
       name: 'get_cell_display_value',
       title: 'Get WorkPaper Cell Display Value',
       description:
@@ -371,6 +434,18 @@ function cellReadOutputSchema(description?: string): JsonObject {
         description: 'Formula text without losing the original calculated value context, or null for literal cells.',
       },
       displayValue: stringOutput('Formatted value as a user would see it.'),
+    },
+  })
+}
+
+function rangeReadOutputSchema(description?: string): JsonObject {
+  return objectSchema({
+    description,
+    required: ['range', 'values', 'serialized'],
+    properties: {
+      range: stringOutput('Canonical A1 range including the sheet name.'),
+      values: arrayOutput('Two-dimensional array of evaluated cell values.'),
+      serialized: arrayOutput('Two-dimensional array of raw serialized cell contents, including formulas.'),
     },
   })
 }
