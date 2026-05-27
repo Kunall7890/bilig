@@ -2,6 +2,7 @@ import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import type { CallExprNode, FormulaNode, InvokeExprNode } from './ast.js'
 import { formatAddress, parseCellAddress, parseRangeAddress } from './addressing.js'
 import { evaluateAstResult, type EvaluationContext } from './js-evaluator.js'
+import { coerceLogicalValue } from './logical-coercion.js'
 import { isArrayValue } from './runtime-values.js'
 import { rewriteSpecialCall } from './special-call-rewrites.js'
 
@@ -422,16 +423,12 @@ function optimizeCall(node: CallExprNode): FormulaNode {
 
   if (callee === 'IF' && args.length === 3) {
     const conditionValue = tryEvaluateStatic(args[0]!)
-    if (conditionValue && conditionValue.tag !== ValueTag.Error) {
-      const truthy =
-        conditionValue.tag === ValueTag.Boolean
-          ? conditionValue.value
-          : conditionValue.tag === ValueTag.Number
-            ? conditionValue.value !== 0
-            : conditionValue.tag === ValueTag.String
-              ? conditionValue.value.length > 0
-              : false
-      return optimizeFormula(truthy ? args[1]! : args[2]!)
+    if (conditionValue) {
+      const coerced = coerceLogicalValue(conditionValue)
+      if (!coerced.ok) {
+        return cellValueToAst(coerced.error) ?? { kind: 'ErrorLiteral', code: ErrorCode.Value }
+      }
+      return optimizeFormula(coerced.value ? args[1]! : args[2]!)
     }
   }
 

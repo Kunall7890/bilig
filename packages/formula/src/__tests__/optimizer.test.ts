@@ -23,6 +23,18 @@ describe('optimizer', () => {
       kind: 'NumberLiteral',
       value: 2,
     })
+    expect(optimizeFormula(parseFormula('IF("TRUE",1,2)'))).toEqual({
+      kind: 'NumberLiteral',
+      value: 1,
+    })
+    expect(optimizeFormula(parseFormula('IF("FALSE",1,2)'))).toEqual({
+      kind: 'NumberLiteral',
+      value: 2,
+    })
+    expect(optimizeFormula(parseFormula('IF("x",1,2)'))).toEqual({
+      kind: 'ErrorLiteral',
+      code: ErrorCode.Value,
+    })
     expect(optimizeFormula(parseFormula('IF(TRUE(),1,2)'))).toEqual({
       kind: 'NumberLiteral',
       value: 1,
@@ -46,6 +58,14 @@ describe('optimizer', () => {
     expect(optimizeFormula(parseFormula('IFS(FALSE,1,TRUE,2)'))).toEqual({
       kind: 'NumberLiteral',
       value: 2,
+    })
+    expect(optimizeFormula(parseFormula('IFS("FALSE",1,"TRUE",2)'))).toEqual({
+      kind: 'NumberLiteral',
+      value: 2,
+    })
+    expect(optimizeFormula(parseFormula('IFS("x",1,TRUE,2)'))).toEqual({
+      kind: 'ErrorLiteral',
+      code: ErrorCode.Value,
     })
     expect(optimizeFormula(parseFormula('SWITCH("b","a",1,"b",2,9)'))).toEqual({
       kind: 'NumberLiteral',

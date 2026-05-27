@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
-import { evaluatePlan, evaluatePlanResult, lowerToPlan, optimizeFormula, parseFormula } from '../index.js'
+import { compileFormula, evaluatePlan, evaluatePlanResult, lowerToPlan, optimizeFormula, parseFormula } from '../index.js'
 import type { FormulaNode } from '../ast.js'
 
 const context = {
@@ -120,6 +120,36 @@ describe('js evaluator', () => {
       tag: ValueTag.Error,
       code: ErrorCode.Num,
     })
+  })
+
+  it('coerces direct logical text consistently in interpreted and compiled plans', () => {
+    const cases = [
+      ['AND("TRUE","true")', { tag: ValueTag.Boolean, value: true }],
+      ['AND("FALSE",TRUE())', { tag: ValueTag.Boolean, value: false }],
+      ['AND("")', { tag: ValueTag.Boolean, value: false }],
+      ['OR("FALSE","")', { tag: ValueTag.Boolean, value: false }],
+      ['OR("TRUE","FALSE")', { tag: ValueTag.Boolean, value: true }],
+      ['XOR("TRUE","FALSE","")', { tag: ValueTag.Boolean, value: true }],
+      ['NOT("FALSE")', { tag: ValueTag.Boolean, value: true }],
+      ['NOT("TRUE")', { tag: ValueTag.Boolean, value: false }],
+      ['NOT("")', { tag: ValueTag.Boolean, value: true }],
+      ['IF("TRUE",1,2)', num(1)],
+      ['IF("FALSE",1,2)', num(2)],
+      ['IF("",1,2)', num(2)],
+      ['IFS("FALSE",1,"TRUE",2)', num(2)],
+    ] as const
+
+    for (const [formula, expected] of cases) {
+      expect(evaluatePlan(lowerToPlan(parseFormula(formula)), context), formula).toEqual(expected)
+      expect(evaluatePlan(compileFormula(formula).jsPlan, context), formula).toEqual(expected)
+    }
+
+    const invalidCases = ['AND("x")', 'OR("x")', 'XOR("x")', 'NOT("x")', 'IF("x",1,2)', 'IFS("x",1,TRUE(),2)']
+    for (const formula of invalidCases) {
+      const expected = { tag: ValueTag.Error, code: ErrorCode.Value }
+      expect(evaluatePlan(lowerToPlan(parseFormula(formula)), context), formula).toEqual(expected)
+      expect(evaluatePlan(compileFormula(formula).jsPlan, context), formula).toEqual(expected)
+    }
   })
 
   it('evaluates direct plans for ranges, jumps, and fallback stack handling', () => {

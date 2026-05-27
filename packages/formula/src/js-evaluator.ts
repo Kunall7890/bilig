@@ -45,9 +45,9 @@ import {
   toRangeArgument,
   toRangeLike,
   toStringValue,
-  truthy,
   vectorIntegerArgument,
 } from './js-evaluator-runtime-helpers.js'
+import { coerceLogicalValue } from './logical-coercion.js'
 import { evaluateWorkbookSpecialCall } from './js-evaluator-workbook-special-calls.js'
 import { parseNumericText } from './numeric-text.js'
 import type { EvaluationContext, JsPlanInstruction, ReferenceOperand, StackValue } from './js-evaluator-types.js'
@@ -739,7 +739,11 @@ function executePlan(
         if (value.tag === ValueTag.Error) {
           return stackScalar(value)
         }
-        if (!truthy(value)) {
+        const coerced = coerceLogicalValue(value)
+        if (!coerced.ok) {
+          return stackScalar(coerced.error)
+        }
+        if (!coerced.value) {
           pc = instruction.target
           continue
         }

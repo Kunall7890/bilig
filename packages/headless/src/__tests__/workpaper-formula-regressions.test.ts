@@ -567,6 +567,31 @@ describe('Workpaper formula regressions', () => {
     expectNumberClose(cellValue(workbook, 'Sheet1', 2, 1), 46_053.9138888889)
   })
 
+  it('coerces direct logical text in workbook formulas', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Logic: [
+          ['if false text', '=IF("FALSE",1,2)'],
+          ['if invalid text', '=IF("x",1,2)'],
+          ['and true text', '=AND("TRUE","true")'],
+          ['or false empty text', '=OR("FALSE","")'],
+          ['not empty text', '=NOT("")'],
+          ['xor text', '=XOR("TRUE","FALSE","")'],
+          ['ifs text', '=IFS("FALSE",1,"TRUE",2)'],
+        ],
+      },
+      { maxRows: 20, maxColumns: 10, useColumnIndex: true },
+    )
+
+    expectNumber(cellValue(workbook, 'Logic', 0, 1), 2)
+    expect(cellValue(workbook, 'Logic', 1, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(cellValue(workbook, 'Logic', 2, 1)).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(cellValue(workbook, 'Logic', 3, 1)).toEqual({ tag: ValueTag.Boolean, value: false })
+    expect(cellValue(workbook, 'Logic', 4, 1)).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(cellValue(workbook, 'Logic', 5, 1)).toEqual({ tag: ValueTag.Boolean, value: true })
+    expectNumber(cellValue(workbook, 'Logic', 6, 1), 2)
+  })
+
   it('evaluates INDEX reference endpoints in dynamic ranges lazily', () => {
     const workbook = WorkPaper.buildFromSheets(
       {

@@ -1,10 +1,9 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import { createBlockedBuiltinMap, logicalPlaceholderBuiltinNames } from './placeholder.js'
 import { parseArithmeticNumericText } from '../numeric-text.js'
+import { coerceLogicalValue } from '../logical-coercion.js'
 
 export type LogicalBuiltin = (...args: CellValue[]) => CellValue
-
-type LogicalCoercion = { ok: true; value: boolean } | { ok: false; error: CellValue }
 
 function emptyValue(): CellValue {
   return { tag: ValueTag.Empty }
@@ -48,22 +47,6 @@ function compareScalars(left: CellValue, right: CellValue): number | undefined {
   return leftNumeric < rightNumeric ? -1 : 1
 }
 
-function coerceLogical(value: CellValue): LogicalCoercion {
-  switch (value.tag) {
-    case ValueTag.Boolean:
-      return { ok: true, value: value.value }
-    case ValueTag.Number:
-      return { ok: true, value: value.value !== 0 }
-    case ValueTag.Empty:
-      return { ok: true, value: false }
-    case ValueTag.Error:
-      return { ok: false, error: value }
-    case ValueTag.String:
-    default:
-      return { ok: false, error: errorValue(ErrorCode.Value) }
-  }
-}
-
 function coerceNumberLike(value: CellValue): number | undefined {
   switch (value.tag) {
     case ValueTag.Number:
@@ -100,7 +83,7 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
       return errorValue(ErrorCode.Value)
     }
 
-    const coerced = coerceLogical(condition)
+    const coerced = coerceLogicalValue(condition)
     if (!coerced.ok) {
       return coerced.error
     }
@@ -125,7 +108,7 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
     }
 
     for (const arg of args) {
-      const coerced = coerceLogical(arg)
+      const coerced = coerceLogicalValue(arg)
       if (!coerced.ok) {
         return coerced.error
       }
@@ -142,7 +125,7 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
     }
 
     for (const arg of args) {
-      const coerced = coerceLogical(arg)
+      const coerced = coerceLogicalValue(arg)
       if (!coerced.ok) {
         return coerced.error
       }
@@ -158,7 +141,7 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
       return errorValue(ErrorCode.Value)
     }
 
-    const coerced = coerceLogical(value)
+    const coerced = coerceLogicalValue(value)
     if (!coerced.ok) {
       return coerced.error
     }
@@ -172,7 +155,7 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
 
     let parity = false
     for (const arg of args) {
-      const coerced = coerceLogical(arg)
+      const coerced = coerceLogicalValue(arg)
       if (!coerced.ok) {
         return coerced.error
       }
@@ -189,7 +172,7 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
     for (let index = 0; index < args.length; index += 2) {
       const condition = args[index]!
       const result = args[index + 1]!
-      const coerced = coerceLogical(condition)
+      const coerced = coerceLogicalValue(condition)
       if (!coerced.ok) {
         return coerced.error
       }
