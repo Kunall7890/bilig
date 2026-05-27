@@ -326,9 +326,24 @@ function parseSameCorpusMeasurement(value: Record<string, unknown>): UiResponsiv
   const scrollMovementPx = optionalNumericSummary(value, 'scrollMovementPx')
   const authoritativeRenderProofMs = optionalNumericSummary(value, 'authoritativeRenderProofMs')
   const committedTargetProofMs = optionalNumericSummary(value, 'committedTargetProofMs')
+  const committedTargetProofMsSamples = Object.hasOwn(value, 'committedTargetProofMsSamples')
+    ? numericArrayField(value, 'committedTargetProofMsSamples')
+    : undefined
+  const committedTargetProofTimingSamples = Object.hasOwn(value, 'committedTargetProofTimingSamples')
+    ? arrayField(value, 'committedTargetProofTimingSamples').map(parseSameCorpusMutationTargetTimingSample)
+    : undefined
   const visibleTargetRenderMs = optionalNumericSummary(value, 'visibleTargetRenderMs')
+  const visibleTargetRenderMsSamples = Object.hasOwn(value, 'visibleTargetRenderMsSamples')
+    ? numericArrayField(value, 'visibleTargetRenderMsSamples')
+    : undefined
   const committedStateValidationMs = optionalNumericSummary(value, 'committedStateValidationMs')
+  const committedStateValidationMsSamples = Object.hasOwn(value, 'committedStateValidationMsSamples')
+    ? numericArrayField(value, 'committedStateValidationMsSamples')
+    : undefined
   const restoreValidationMs = optionalNumericSummary(value, 'restoreValidationMs')
+  const restoreValidationMsSamples = Object.hasOwn(value, 'restoreValidationMsSamples')
+    ? numericArrayField(value, 'restoreValidationMsSamples')
+    : undefined
   const biligRuntimeProof = Object.hasOwn(value, 'biligRuntimeProof')
     ? parseBiligRuntimeProof(objectField(value, 'biligRuntimeProof'))
     : undefined
@@ -339,9 +354,14 @@ function parseSameCorpusMeasurement(value: Record<string, unknown>): UiResponsiv
     operationResponseProofs: stringArrayField(value, 'operationResponseProofs').map(parseSameCorpusOperationResponseProof),
     ...(authoritativeRenderProofMs ? { authoritativeRenderProofMs } : {}),
     ...(committedTargetProofMs ? { committedTargetProofMs } : {}),
+    ...(committedTargetProofMsSamples ? { committedTargetProofMsSamples } : {}),
+    ...(committedTargetProofTimingSamples ? { committedTargetProofTimingSamples } : {}),
     ...(visibleTargetRenderMs ? { visibleTargetRenderMs } : {}),
+    ...(visibleTargetRenderMsSamples ? { visibleTargetRenderMsSamples } : {}),
     ...(committedStateValidationMs ? { committedStateValidationMs } : {}),
+    ...(committedStateValidationMsSamples ? { committedStateValidationMsSamples } : {}),
     ...(restoreValidationMs ? { restoreValidationMs } : {}),
+    ...(restoreValidationMsSamples ? { restoreValidationMsSamples } : {}),
     postOperationFrameMs: parseNumericSummary(objectField(value, 'postOperationFrameMs')),
     ...(scrollEventResponseMs ? { scrollEventResponseMs } : {}),
     ...(scrollMovementPx ? { scrollMovementPx } : {}),

@@ -7,6 +7,7 @@ export interface CaptureArgs {
   readonly allowIncompleteEvidence: boolean
   readonly biligProductionHost: string
   readonly biligProductionPort: number
+  readonly biligProductionPortSource: 'default' | 'explicit'
   readonly biligUrl: string
   readonly biligUrlSource: 'default-dev' | 'explicit' | 'served-production'
   readonly biligStorageStatePath: string | null
@@ -55,6 +56,7 @@ export interface RefreshProductArgs {
   readonly allowIncompleteEvidence: boolean
   readonly biligProductionHost: string
   readonly biligProductionPort: number
+  readonly biligProductionPortSource: 'default' | 'explicit'
   readonly biligUrl: string | null
   readonly biligUrlSource: 'default-dev' | 'explicit' | 'served-production'
   readonly biligStorageStatePath: string | null
@@ -151,12 +153,14 @@ export function parseRefreshProductArgs(argv: readonly string[]): RefreshProduct
   if (serveBiligProduction && explicitBiligUrl) {
     throw new Error('Use either --serve-bilig-production or --bilig-url, not both.')
   }
+  const biligProductionPortValue = argumentValue(argv, '--bilig-production-port')
   const biligProductionHost = parseHost(argumentValue(argv, '--bilig-production-host') ?? defaultBiligProductionPreviewHost)
-  const biligProductionPort = parsePort(argumentValue(argv, '--bilig-production-port') ?? String(defaultBiligProductionPreviewPort))
+  const biligProductionPort = parsePort(biligProductionPortValue ?? String(defaultBiligProductionPreviewPort))
   return {
     allowIncompleteEvidence: argv.includes('--allow-incomplete-evidence'),
     biligProductionHost,
     biligProductionPort,
+    biligProductionPortSource: biligProductionPortValue ? 'explicit' : 'default',
     biligUrl: serveBiligProduction ? null : explicitBiligUrl,
     biligUrlSource: serveBiligProduction ? 'served-production' : explicitBiligUrl ? 'explicit' : 'default-dev',
     biligStorageStatePath: resolveOptionalPath(argumentValue(argv, '--bilig-storage-state')),
@@ -201,12 +205,14 @@ export function parseCaptureArgs(argv: readonly string[]): CaptureArgs {
   if (serveBiligProduction && explicitBiligUrl) {
     throw new Error('Use either --serve-bilig-production or --bilig-url, not both.')
   }
+  const biligProductionPortValue = argumentValue(argv, '--bilig-production-port')
   const biligProductionHost = parseHost(argumentValue(argv, '--bilig-production-host') ?? defaultBiligProductionPreviewHost)
-  const biligProductionPort = parsePort(argumentValue(argv, '--bilig-production-port') ?? String(defaultBiligProductionPreviewPort))
+  const biligProductionPort = parsePort(biligProductionPortValue ?? String(defaultBiligProductionPreviewPort))
   return {
     allowIncompleteEvidence: argv.includes('--allow-incomplete-evidence'),
     biligProductionHost,
     biligProductionPort,
+    biligProductionPortSource: biligProductionPortValue ? 'explicit' : 'default',
     biligUrl: serveBiligProduction
       ? productionBiligSameCorpusUrl(biligProductionHost, biligProductionPort, corpusId)
       : (explicitBiligUrl ?? defaultBiligSameCorpusUrl(corpusId)),

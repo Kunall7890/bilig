@@ -63,6 +63,9 @@ function validateMutationTimingSamples(
   caseId: string,
   product: UiResponsivenessSameCorpusProduct,
 ): void {
+  if (!sameCorpusScorecardMeasurementHasAnyMutationTargetTiming(measurement)) {
+    return
+  }
   validateOrderedSameCorpusTimingSamples(
     measurement.committedTargetProofMsSamples,
     measurement.committedTargetProofMs,
@@ -91,5 +94,19 @@ function validateMutationTimingSamples(
     measurement.restoreValidationMsSamples,
     measurement.restoreValidationMs,
     `${caseId} ${product} restoreValidationMs`,
+  )
+}
+
+function sameCorpusScorecardMeasurementHasAnyMutationTargetTiming(measurement: UiResponsivenessSameCorpusMeasurement): boolean {
+  return (
+    measurement.committedTargetProofTimingSamples !== undefined ||
+    measurement.committedTargetProofMsSamples !== undefined ||
+    measurement.visibleTargetRenderMsSamples !== undefined ||
+    measurement.committedStateValidationMsSamples !== undefined ||
+    measurement.restoreValidationMsSamples !== undefined ||
+    measurement.committedTargetProofMs !== undefined ||
+    measurement.visibleTargetRenderMs !== undefined ||
+    measurement.committedStateValidationMs !== undefined ||
+    measurement.restoreValidationMs !== undefined
   )
 }

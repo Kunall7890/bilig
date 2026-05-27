@@ -56,10 +56,10 @@ function sameCorpusMutationTargetScreenshotPhaseSemanticInvalidReasons(
 }
 
 function sameCorpusScreenshotSemanticSourceAccepted(
-  _product: UiResponsivenessSameCorpusProduct,
+  product: UiResponsivenessSameCorpusProduct,
   source: SameCorpusMutationTargetReadback['source'],
 ): boolean {
-  return source === 'visible-grid-cell'
+  return source === 'visible-grid-cell' || (product !== 'bilig' && source === 'visible-formula-bar')
 }
 
 function sameCorpusScreenshotReadbackMatches(

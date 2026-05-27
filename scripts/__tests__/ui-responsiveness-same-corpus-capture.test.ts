@@ -517,6 +517,36 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     ).rejects.toThrow('same-corpus UI measurement for bilig is missing committed target proof samples')
   })
 
+  it('keeps diagnostic mutating captures alive when committed target proof timing is incomplete', async () => {
+    const measurements = await collectSameCorpusProductMeasurements(
+      {
+        allowIncompleteEvidence: true,
+        biligUrl: 'http://127.0.0.1:5173/?benchmarkCorpus=wide-mixed-250k',
+        googleSheetsUrl: 'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+        microsoftExcelWebUrl: null,
+      },
+      async (product, url) => ({
+        product,
+        source: url,
+        operationResponseMsSamples: [10, 11, 12],
+        ...(product === 'bilig' ? { authoritativeRenderProofMsSamples: [14, 15, 16] } : {}),
+        postOperationFrameMsSamples: [8, 9, 10],
+        corpusVerification: {
+          verified: true,
+          method: product === 'bilig' ? 'bilig-benchmark-state' : 'google-sheets-xlsx-export',
+          sheetName: 'WideGrid',
+          materializedCells: 250000,
+          checkedCells: [],
+        },
+        limitations: [],
+      }),
+      'edit-visible-cell',
+    )
+
+    expect(measurements.bilig.committedTargetProofMsSamples).toBeUndefined()
+    expect(measurements.googleSheets.committedTargetProofMsSamples).toBeUndefined()
+  })
+
   it('rejects mutating measurements without separated visible and restore proof samples', async () => {
     await expect(
       collectSameCorpusProductMeasurements(
@@ -1176,7 +1206,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     )
   })
 
-  it('rejects Google Sheets selected-cell proof backed by formula bar text instead of target grid cells', () => {
+  it('accepts Google Sheets selected-cell proof backed by formula bar text when the target selection is proven', () => {
     const proof = buildCaptureScenarioProof({
       workload: 'edit-visible-cell',
       bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'edit-visible-cell'),
@@ -1200,23 +1230,21 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     })
 
     expect(proof.semanticUiProof).toMatchObject({
-      captured: false,
-      missingProducts: ['google-sheets'],
+      captured: true,
+      missingProducts: [],
     })
     expect(proof.semanticUiProof.productVerdicts).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           product: 'google-sheets',
-          acceptedForCurrentScorecard: false,
-          invalidReasons: expect.arrayContaining([
-            'semantic UI mutation target proof for edit-visible-cell visible render readback did not come from an accepted browser-visible source',
-          ]),
+          acceptedForCurrentScorecard: true,
+          invalidReasons: [],
         }),
       ]),
     )
   })
 
-  it('rejects Google Sheets formula edits when visible proof is formula bar instead of target grid cells', () => {
+  it('rejects Google Sheets formula edits when formula-bar proof lacks rendered result proof', () => {
     const proof = buildCaptureScenarioProof({
       workload: 'formula-edit',
       bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'formula-edit'),
@@ -1245,8 +1273,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
           product: 'google-sheets',
           acceptedForCurrentScorecard: false,
           invalidReasons: expect.arrayContaining([
-            'semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source',
-            'semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source',
+            'semantic UI mutation target proof for formula-edit did not prove the rendered formula result',
           ]),
         }),
       ]),
@@ -2656,7 +2683,7 @@ function driftVisibleTargetReadback(proof: SameCorpusMutationTargetProof): SameC
 }
 
 function useVisibleFormulaBarTargetReadback(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
-  return {
+  return signedMutationTargetProof({
     ...proof,
     visibleAfter: { ...proof.visibleAfter, source: 'visible-formula-bar' },
     visibleRestored: { ...proof.visibleRestored, source: 'visible-formula-bar' },
@@ -2676,7 +2703,7 @@ function useVisibleFormulaBarTargetReadback(proof: SameCorpusMutationTargetProof
           },
         }
       : proof.targetScreenshots,
-  }
+  })
 }
 
 function useVisibleFormulaBarFormulaProof(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
@@ -2690,7 +2717,7 @@ function useVisibleFormulaBarFormulaProof(proof: SameCorpusMutationTargetProof):
     visibleText: proof.intendedPayload.formula,
     source: 'visible-formula-bar' as const,
   }
-  return {
+  return signedMutationTargetProof({
     ...proof,
     after: { ...proof.after, formula: proof.intendedPayload.formula },
     visibleAfter: formulaReadback,
@@ -2700,7 +2727,7 @@ function useVisibleFormulaBarFormulaProof(proof: SameCorpusMutationTargetProof):
           after: { ...proof.targetScreenshots.after, semanticReadback: formulaReadback },
         }
       : proof.targetScreenshots,
-  }
+  })
 }
 
 function driftIntendedFormulaPayload(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {

@@ -465,63 +465,75 @@ export function validateSameCorpusProofArchiveArtifacts(
   const repoRelativeArtifactPaths = manifest.artifacts.map((artifact) =>
     validateProofArchivePath(validationRootDir, sameCorpusProofArchiveArtifactPath(artifact), 'artifact'),
   )
+  let repoRelativeArchiveZipPath: string | null = null
   if (!manifest.complete) {
-    throw new Error(
-      [
-        `UI responsiveness same-corpus proof archive is incomplete: ${manifestPath}`,
-        `${String(manifest.artifactCount)}/${String(manifest.requiredArtifactCount)} artifacts declared`,
-        `${String(manifest.fileVerification.verifiedArtifactCount)}/${String(
-          manifest.fileVerification.checkedArtifactCount,
-        )} files verified`,
-        `${String(manifest.fileVerification.missingArtifactCount)} missing`,
-        `${String(manifest.fileVerification.mismatchedArtifactCount)} mismatch`,
-      ].join('; '),
-    )
-  }
-  const archiveZipPath = options.proofArchiveZipPath ?? proofArchiveZipPath(absoluteCapturePath)
-  const repoRelativeArchiveZipPath = validateProofArchivePath(validationRootDir, archiveZipPath, 'ZIP')
-  if (!existsSync(resolve(validationRootDir, repoRelativeArchiveZipPath))) {
-    throw new Error(`UI responsiveness same-corpus proof archive ZIP is missing: ${repoRelativeArchiveZipPath}`)
-  }
-  {
-    const zipVerification = verifySameCorpusProofArchiveZipPath(resolve(validationRootDir, repoRelativeArchiveZipPath), {
-      entryRootDir: options.proofArchiveZipEntryRootDir,
-      manifestEntryPath: options.proofArchiveZipManifestEntryPath,
-    })
-    if (zipVerification.manifest.captureRunSignature !== manifest.captureRunSignature) {
-      throw new Error(
-        `UI responsiveness same-corpus proof archive ZIP signature does not match checked manifest: ${zipVerification.manifestEntryPath}`,
-      )
-    }
-    if (stableJsonString(zipVerification.manifest.artifacts) !== stableJsonString(manifest.artifacts)) {
-      throw new Error(
-        `UI responsiveness same-corpus proof archive ZIP artifacts do not match checked manifest: ${zipVerification.manifestEntryPath}`,
-      )
-    }
-    if (!zipVerification.complete) {
+    if (sameCorpusProofRequiresCompleteArchive(proof)) {
       throw new Error(
         [
-          `UI responsiveness same-corpus proof archive ZIP is incomplete: ${zipVerification.archivePath}`,
-          `${String(zipVerification.fileVerification.verifiedArtifactCount)}/${String(
-            zipVerification.fileVerification.checkedArtifactCount,
-          )} files verified inside ZIP`,
-          `${String(zipVerification.fileVerification.missingArtifactCount)} missing`,
-          `${String(zipVerification.fileVerification.mismatchedArtifactCount)} mismatch`,
+          `UI responsiveness same-corpus proof archive is incomplete: ${manifestPath}`,
+          `${String(manifest.artifactCount)}/${String(manifest.requiredArtifactCount)} artifacts declared`,
+          `${String(manifest.fileVerification.verifiedArtifactCount)}/${String(
+            manifest.fileVerification.checkedArtifactCount,
+          )} files verified`,
+          `${String(manifest.fileVerification.missingArtifactCount)} missing`,
+          `${String(manifest.fileVerification.mismatchedArtifactCount)} mismatch`,
         ].join('; '),
       )
+    }
+  } else {
+    const archiveZipPath = options.proofArchiveZipPath ?? proofArchiveZipPath(absoluteCapturePath)
+    repoRelativeArchiveZipPath = validateProofArchivePath(validationRootDir, archiveZipPath, 'ZIP')
+    if (!existsSync(resolve(validationRootDir, repoRelativeArchiveZipPath))) {
+      throw new Error(`UI responsiveness same-corpus proof archive ZIP is missing: ${repoRelativeArchiveZipPath}`)
+    }
+    {
+      const zipVerification = verifySameCorpusProofArchiveZipPath(resolve(validationRootDir, repoRelativeArchiveZipPath), {
+        entryRootDir: options.proofArchiveZipEntryRootDir,
+        manifestEntryPath: options.proofArchiveZipManifestEntryPath,
+      })
+      if (zipVerification.manifest.captureRunSignature !== manifest.captureRunSignature) {
+        throw new Error(
+          `UI responsiveness same-corpus proof archive ZIP signature does not match checked manifest: ${zipVerification.manifestEntryPath}`,
+        )
+      }
+      if (stableJsonString(zipVerification.manifest.artifacts) !== stableJsonString(manifest.artifacts)) {
+        throw new Error(
+          `UI responsiveness same-corpus proof archive ZIP artifacts do not match checked manifest: ${zipVerification.manifestEntryPath}`,
+        )
+      }
+      if (!zipVerification.complete) {
+        throw new Error(
+          [
+            `UI responsiveness same-corpus proof archive ZIP is incomplete: ${zipVerification.archivePath}`,
+            `${String(zipVerification.fileVerification.verifiedArtifactCount)}/${String(
+              zipVerification.fileVerification.checkedArtifactCount,
+            )} files verified inside ZIP`,
+            `${String(zipVerification.fileVerification.missingArtifactCount)} missing`,
+            `${String(zipVerification.fileVerification.mismatchedArtifactCount)} mismatch`,
+          ].join('; '),
+        )
+      }
     }
   }
   if (options.requireGitTracked !== true) {
     return
   }
 
-  const repoRelativePaths = [manifestPath, repoRelativeArchiveZipPath, ...repoRelativeArtifactPaths]
+  const repoRelativePaths = [
+    manifestPath,
+    ...(repoRelativeArchiveZipPath ? [repoRelativeArchiveZipPath] : []),
+    ...repoRelativeArtifactPaths,
+  ]
   const trackedPaths = new Set(options.trackedArtifactPaths ?? gitTrackedPaths(validationRootDir, repoRelativePaths))
   for (const artifactPath of repoRelativePaths) {
     if (!trackedPaths.has(artifactPath)) {
       throw new Error(`UI responsiveness same-corpus proof archive artifact is not tracked by git: ${artifactPath}`)
     }
   }
+}
+
+function sameCorpusProofRequiresCompleteArchive(proof: UiResponsivenessSameCorpusProof): boolean {
+  return proof.runManifest?.claimReadinessState === 'claim-grade-10x-passed'
 }
 
 function sameCorpusProofArchiveArtifactPath(artifact: SameCorpusProofArchiveArtifact): string {

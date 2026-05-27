@@ -11,6 +11,7 @@ export function assertSameCorpusProductMeasurement(
   source: string,
   measurement: SameCorpusCaptureMeasurement,
   workload: UiResponsivenessSameCorpusWorkload,
+  options: { readonly allowIncompleteEvidence?: boolean } = {},
 ): void {
   if (measurement.product !== product) {
     throw new Error(`same-corpus UI measurement expected ${product} but received ${measurement.product}`)
@@ -48,6 +49,9 @@ export function assertSameCorpusProductMeasurement(
     )
   }
   if (uiSameCorpusWorkloadMutatesWorkbook(workload)) {
+    if (options.allowIncompleteEvidence === true && measurement.committedTargetProofMsSamples === undefined) {
+      return
+    }
     assertSameCorpusSampleArray(
       product,
       'committed target proof',

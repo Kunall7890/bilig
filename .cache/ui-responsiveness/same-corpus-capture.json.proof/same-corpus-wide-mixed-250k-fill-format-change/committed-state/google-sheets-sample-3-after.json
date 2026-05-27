@@ -1,6 +1,6 @@
 {
   "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-fill-format-change/committed-state/google-sheets-sample-3-after.json",
-  "capturedAtMs": 166306.939834,
+  "capturedAtMs": 418276.356375,
   "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
   "phase": "after",
   "product": "google-sheets",
@@ -15,7 +15,7 @@
   "sheetId": "gid:160971404",
   "sheetName": "WideGrid",
   "targetRange": "B7",
-  "workbookByteSize": 1441028,
-  "workbookSha256": "917bf701d9413864b6128cff3c6d7f9fd2a157c5ad3ced5ef0eca14d87750874",
+  "workbookByteSize": 1440428,
+  "workbookSha256": "053f9148e75596ec592def235081ec053502f6f9265ced4d06e919dab7a63a23",
   "workload": "fill-format-change"
 }

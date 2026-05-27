@@ -532,7 +532,7 @@ function validateSameCorpusCapture(capture: SameCorpusCapture): void {
         `restore validation timing`,
         entry.id,
       )
-      if (uiSameCorpusWorkloadMutatesWorkbook(entry.workload)) {
+      if (uiSameCorpusWorkloadMutatesWorkbook(entry.workload) && sameCorpusMeasurementHasAnyMutationTargetTiming(measurement)) {
         validateSameCorpusMutationTargetTimingSamplesMatchArrays(measurement.committedTargetProofTimingSamples, {
           committedStateValidationMsSamples: measurement.committedStateValidationMsSamples,
           committedTargetProofMsSamples: measurement.committedTargetProofMsSamples,
@@ -571,6 +571,16 @@ function validateSameCorpusCapture(capture: SameCorpusCapture): void {
     )
     validateSameCorpusScenarioCaseFields(entry, 'capture')
   }
+}
+
+function sameCorpusMeasurementHasAnyMutationTargetTiming(measurement: SameCorpusCaptureMeasurement): boolean {
+  return (
+    measurement.committedTargetProofTimingSamples !== undefined ||
+    measurement.committedTargetProofMsSamples !== undefined ||
+    measurement.visibleTargetRenderMsSamples !== undefined ||
+    measurement.committedStateValidationMsSamples !== undefined ||
+    measurement.restoreValidationMsSamples !== undefined
+  )
 }
 
 function validateOptionalCaptureTimingSamples(

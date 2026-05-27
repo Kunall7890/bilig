@@ -79,51 +79,48 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(scorecard.cases.map((entry) => entry.id)).toEqual(['google-sheets-public-grid-scroll', 'microsoft-excel-web-public-xlsx-scroll'])
     expect(scorecard.cases.every((entry) => entry.sampleCount >= 3 && entry.limitations.length > 0)).toBe(true)
     expect(scorecard.sameCorpusProof).toMatchObject({
-      captured: false,
-      evidenceKind: 'not-captured',
+      captured: true,
+      evidenceKind: 'same-corpus-browser-capture',
       requiredProductCount: 2,
       requiredCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
-      coveredCorpusCaseIds: [],
+      coveredCorpusCaseIds: ['wide-mixed-250k'],
     })
-    expect(scorecard.sameCorpusProof.cases).toHaveLength(0)
+    expect(scorecard.sameCorpusProof.cases).toHaveLength(requiredUiResponsivenessSameCorpusWorkloads.length)
     expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(
       scorecard.sameCorpusProof.cases.filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length,
     )
-    expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(0)
+    expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(1)
     expect(scorecard.sameCorpusProof.runManifest).toMatchObject({
       contractVersion: 'same-corpus-ui-v10',
-      caseCount: 0,
-      scenarioSummaryFieldCaseCount: 0,
-      strictRenderedGridProofCaseCount: 0,
-      visibleOperationResponseProofCaseCount: 0,
-      biligAuthoritativeRenderProofCaseCount: 0,
-      semanticUiProofCaseCount: 0,
+      caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+      scenarioSummaryFieldCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+      strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+      visibleOperationResponseProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+      biligAuthoritativeRenderProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+      semanticUiProofCaseCount: 6,
       requiredMutationTargetProofCaseCount: 3,
       mutationTargetProofCaseCount: 0,
-      requiredMutationTargetProofSampleCount: 0,
-      mutationTargetProofSampleCount: 0,
+      requiredMutationTargetProofSampleCount: 18,
+      mutationTargetProofSampleCount: 11,
       requiredCommittedTargetProofTimingCaseCount: 3,
       committedTargetProofTimingCaseCount: 0,
-      requiredCommittedTargetProofTimingSampleCount: 0,
-      committedTargetProofTimingSampleCount: 0,
+      requiredCommittedTargetProofTimingSampleCount: 18,
+      committedTargetProofTimingSampleCount: 11,
       legacyInsufficientRenderedGridProofCaseCount: 0,
-      tenXMeanAndP95CaseCount: 0,
+      tenXMeanAndP95CaseCount: 1,
+      claimReadinessState: 'diagnostic-capture-incomplete',
       currentContractEvidenceComplete: false,
       googleSheetsTenXRequirementSatisfied: false,
-      captureRunSignature: null,
     })
-    expect(scorecard.sameCorpusProof.runManifest?.capturedWorkloads).toEqual([])
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('required workload count is incomplete')
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain(
-      `missing required workloads: ${requiredUiResponsivenessSameCorpusWorkloads.join(', ')}`,
-    )
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('semantic UI proof covers 0/9 cases')
+    expect(scorecard.sameCorpusProof.runManifest?.capturedWorkloads).toEqual(requiredUiResponsivenessSameCorpusWorkloads)
+    expect(scorecard.sameCorpusProof.runManifest?.captureRunSignature).toMatch(/^[a-f0-9]{64}$/u)
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('semantic UI proof covers 6/9 cases')
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('mutation target proof covers 0/3 mutating cases')
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('proof archive covers 0/18 required proof artifacts')
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('not every required workload is 10x against Google Sheets')
-    expect(scorecard.sameCorpusProof.limitations).toContain(
-      'Same-corpus live browser timing against Bilig and Google Sheets has not been captured yet.',
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain(
+      'mutation target proof covers 11/18 required per-sample product proofs',
     )
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('proof archive covers 42/99 required proof artifacts')
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('not every required workload is 10x against Google Sheets')
     validateUiResponsivenessLiveBrowserScorecard(scorecard)
     validateSameCorpusCaptureArtifactMatchesScorecard(scorecard)
   })
@@ -350,7 +347,7 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(() => buildSameCorpusProof(staleCapture)).toThrow('UI responsiveness same-corpus capture scenario summary fields are stale')
   })
 
-  it('rejects mutating workloads without committed target proof timing records', () => {
+  it('keeps mutating workloads with missing committed target proof timing as incomplete diagnostic proof', () => {
     const capture = buildSameCorpusCapture()
     const cases = capture.cases.map((entry) => {
       if (entry.workload !== 'edit-visible-cell') {
@@ -375,14 +372,14 @@ describe('UI responsiveness live browser scorecard', () => {
         ...(microsoftExcelWeb ? { microsoftExcelWeb } : {}),
       }
     })
-    expect(() =>
-      buildSameCorpusProof(
-        withCaptureRunManifest({
-          ...capture,
-          cases,
-        }),
-      ),
-    ).toThrow('same-corpus-wide-mixed-250k-edit-visible-cell bilig is missing mutation target timing samples')
+    const proof = buildSameCorpusProof(
+      withCaptureRunManifest({
+        ...capture,
+        cases,
+      }),
+    )
+
+    expect(proof.runManifest?.invalidReasons).toContain('committed target proof timing covers 2/3 mutating cases')
   })
 
   it('keeps the same-corpus blocker for honestly reported weak Bilig pixel proof', () => {

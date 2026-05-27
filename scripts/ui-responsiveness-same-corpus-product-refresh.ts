@@ -61,6 +61,7 @@ export function captureArgsForProductRefresh(args: RefreshProductArgs, capture: 
     allowIncompleteEvidence: args.allowIncompleteEvidence,
     biligProductionHost: args.biligProductionHost,
     biligProductionPort: args.biligProductionPort,
+    biligProductionPortSource: args.biligProductionPortSource,
     biligUrl:
       args.biligUrlSource === 'served-production'
         ? ''

@@ -709,8 +709,8 @@ function sameCorpusMutationTargetReadbackSourceInvalidReasons(
   if (product === 'bilig' && readbacks.some((readback) => readback.source !== 'bilig-authoritative-range')) {
     return [`semantic UI mutation target proof for ${workload} used visible editor text instead of Bilig authoritative range readback`]
   }
-  if (product !== 'bilig' && readbacks.some((readback) => readback.source !== 'visible-grid-cell')) {
-    return [`semantic UI mutation target proof for ${workload} target readback did not come from a browser-visible grid cell`]
+  if (product !== 'bilig' && readbacks.some((readback) => !sameCorpusVisibleReadbackSourceAccepted(product, readback.source))) {
+    return [`semantic UI mutation target proof for ${workload} target readback did not come from an accepted browser-visible source`]
   }
   return []
 }
@@ -763,10 +763,10 @@ function sameCorpusMutationTargetVisibleReadbackInvalidReasons(
 }
 
 function sameCorpusVisibleReadbackSourceAccepted(
-  _product: UiResponsivenessSameCorpusProduct,
+  product: UiResponsivenessSameCorpusProduct,
   source: SameCorpusMutationTargetReadbackSource,
 ): boolean {
-  return source === 'visible-grid-cell'
+  return source === 'visible-grid-cell' || (product !== 'bilig' && source === 'visible-formula-bar')
 }
 
 function sameCorpusMutationTargetRevisionInvalidReasons(

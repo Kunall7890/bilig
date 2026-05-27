@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { createServer } from 'node:net'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -96,7 +97,7 @@ async function main(): Promise<void> {
     const existingCapture = readSameCorpusCapture(refreshProductArgs.existingCapturePath)
     const args = captureArgsForProductRefresh(refreshProductArgs, existingCapture)
     const servedBilig = refreshProductArgs.biligUrlSource === 'served-production' ? await startServedBiligProductionRuntime(args) : null
-    const captureArgs = servedBilig ? { ...args, biligUrl: servedBilig.url } : args
+    const captureArgs = servedBilig ? { ...args, biligProductionPort: servedBilig.port, biligUrl: servedBilig.url } : args
     try {
       const capture = await refreshSameCorpusCaptureProduct({
         capture: existingCapture,
@@ -139,23 +140,24 @@ async function main(): Promise<void> {
   assertSameCorpusBrowserRunAllowed()
   await assertClaimGradeCaptureIncumbentsReady(args)
   const servedBilig = args.biligUrlSource === 'served-production' ? await startServedBiligProductionRuntime(args) : null
+  const captureArgs = servedBilig ? { ...args, biligProductionPort: servedBilig.port, biligUrl: servedBilig.url } : args
   try {
-    const capture = await captureSameCorpusUiResponsiveness(args)
-    writeSameCorpusCapture(args.outputPath, capture)
-    const proofArchiveManifest = writeSameCorpusProofArchiveManifest(capture, args.outputPath, { artifactBaseDir: rootDir })
+    const capture = await captureSameCorpusUiResponsiveness(captureArgs)
+    writeSameCorpusCapture(captureArgs.outputPath, capture)
+    const proofArchiveManifest = writeSameCorpusProofArchiveManifest(capture, captureArgs.outputPath, { artifactBaseDir: rootDir })
     const proofArchiveZip = proofArchiveManifest.complete
-      ? writeSameCorpusProofArchiveZip(capture, args.outputPath, { artifactBaseDir: rootDir })
+      ? writeSameCorpusProofArchiveZip(capture, captureArgs.outputPath, { artifactBaseDir: rootDir })
       : null
     console.log(
       JSON.stringify(
         {
-          outputPath: args.outputPath,
-          proofArchiveManifestPath: `${args.outputPath}.proof/proof-archive-manifest.json`,
-          proofArchiveZipPath: proofArchiveZip?.archivePath ?? proofArchiveZipPath(args.outputPath),
+          outputPath: captureArgs.outputPath,
+          proofArchiveManifestPath: `${captureArgs.outputPath}.proof/proof-archive-manifest.json`,
+          proofArchiveZipPath: proofArchiveZip?.archivePath ?? proofArchiveZipPath(captureArgs.outputPath),
           proofArchiveComplete: proofArchiveManifest.complete,
           proofArchiveZipComplete: proofArchiveZip?.complete ?? false,
-          corpusCaseId: args.corpusId,
-          sampleCount: args.sampleCount,
+          corpusCaseId: captureArgs.corpusId,
+          sampleCount: captureArgs.sampleCount,
           workloads: capture.cases.map((entry) => entry.workload),
           currentContractEvidenceComplete: capture.runManifest.currentContractEvidenceComplete,
           googleSheetsTenXRequirementSatisfied: capture.runManifest.googleSheetsTenXRequirementSatisfied,
@@ -322,12 +324,12 @@ export function assertProductionBiligEvidenceSource(args: CaptureArgs): void {
 }
 
 interface ServedBiligProductionRuntime {
-  readonly process: ReturnType<typeof Bun.spawn>
+  readonly previewProcess: ReturnType<typeof Bun.spawn>
+  readonly port: number
   readonly url: string
 }
 
 async function startServedBiligProductionRuntime(args: CaptureArgs): Promise<ServedBiligProductionRuntime> {
-  const url = productionBiligSameCorpusUrl(args.biligProductionHost, args.biligProductionPort, args.corpusId)
   console.log(`Building @bilig/web production bundle for same-corpus capture...`)
   const build = Bun.spawnSync(['pnpm', '--filter', '@bilig/web', 'build'], {
     cwd: rootDir,
@@ -340,8 +342,10 @@ async function startServedBiligProductionRuntime(args: CaptureArgs): Promise<Ser
     throw new Error(`Failed to build @bilig/web production bundle for same-corpus capture: exit ${String(build.exitCode)}`)
   }
 
+  const port = await resolveServedBiligProductionPort(args)
+  const url = productionBiligSameCorpusUrl(args.biligProductionHost, port, args.corpusId)
   console.log(`Serving @bilig/web production bundle for same-corpus capture at ${url}...`)
-  const process = Bun.spawn(
+  const previewProcess = Bun.spawn(
     [
       'pnpm',
       '--dir',
@@ -352,7 +356,7 @@ async function startServedBiligProductionRuntime(args: CaptureArgs): Promise<Ser
       '--host',
       args.biligProductionHost,
       '--port',
-      String(args.biligProductionPort),
+      String(port),
       '--strictPort',
     ],
     {
@@ -362,8 +366,53 @@ async function startServedBiligProductionRuntime(args: CaptureArgs): Promise<Ser
       stderr: 'inherit',
     },
   )
-  await waitForServedBiligProductionRuntime(process, url, args.readyTimeoutMs)
-  return { process, url }
+  await waitForServedBiligProductionRuntime(previewProcess, url, args.readyTimeoutMs)
+  return { previewProcess, port, url }
+}
+
+export async function resolveServedBiligProductionPort(
+  args: Pick<CaptureArgs, 'biligProductionHost' | 'biligProductionPort' | 'biligProductionPortSource'>,
+): Promise<number> {
+  if (args.biligProductionPortSource === 'explicit') {
+    return args.biligProductionPort
+  }
+  const availablePort = await findAvailableTcpPort(args.biligProductionHost, args.biligProductionPort)
+  if (availablePort !== args.biligProductionPort) {
+    console.warn(
+      `Default same-corpus production preview port ${String(args.biligProductionPort)} is busy; using ${String(availablePort)} for this capture.`,
+    )
+  }
+  return availablePort
+}
+
+async function findAvailableTcpPort(host: string, startPort: number): Promise<number> {
+  return await findAvailableTcpPortFromOffset(host, startPort, 0)
+}
+
+async function findAvailableTcpPortFromOffset(host: string, startPort: number, offset: number): Promise<number> {
+  if (offset > 100 || startPort + offset > 65_535) {
+    throw new Error(`Could not find a free same-corpus production preview port starting at ${String(startPort)}.`)
+  }
+  const port = startPort + offset
+  if (await canListenOnTcpPort(host, port)) {
+    return port
+  }
+  return await findAvailableTcpPortFromOffset(host, startPort, offset + 1)
+}
+
+function canListenOnTcpPort(host: string, port: number): Promise<boolean> {
+  return new Promise((resolvePort) => {
+    const server = createServer()
+    const finish = (available: boolean): void => {
+      server.removeAllListeners()
+      resolvePort(available)
+    }
+    server.once('error', () => finish(false))
+    server.once('listening', () => {
+      server.close(() => finish(true))
+    })
+    server.listen({ host, port, exclusive: true })
+  })
 }
 
 export function sameCorpusProductionBuildEnv(env: Readonly<Record<string, string | undefined>>): Record<string, string | undefined> {
@@ -398,14 +447,14 @@ async function pollServedBiligProductionRuntime(process: ReturnType<typeof Bun.s
 
 async function stopServedBiligProductionRuntime(runtime: ServedBiligProductionRuntime): Promise<void> {
   try {
-    runtime.process.kill('SIGTERM')
+    runtime.previewProcess.kill('SIGTERM')
   } catch {
     return
   }
-  const stopped = await Promise.race([runtime.process.exited.then(() => true), sleep(3_000).then(() => false)])
+  const stopped = await Promise.race([runtime.previewProcess.exited.then(() => true), sleep(3_000).then(() => false)])
   if (!stopped) {
-    runtime.process.kill('SIGKILL')
-    await runtime.process.exited
+    runtime.previewProcess.kill('SIGKILL')
+    await runtime.previewProcess.exited
   }
 }
 

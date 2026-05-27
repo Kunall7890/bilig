@@ -128,6 +128,31 @@ describe('same-corpus mutation target page proof helpers', () => {
     })
   })
 
+  it('does not use Google Sheets formula-bar text as target-cell visible proof', async () => {
+    const page = fakeGoogleSheetsCanvasTargetPage({ formulaBarText: 'note-4-5', selectedRange: 'F5' })
+
+    await expect(
+      readSameCorpusVisibleMutationTargetReadback({
+        page,
+        product: 'google-sheets',
+        target: {
+          endAddress: 'F5',
+          sheetId: 'gid:160971404',
+          sheetName: 'WideGrid',
+          startAddress: 'F5',
+          targetRange: 'F5',
+        },
+        workload: 'edit-visible-cell',
+      }),
+    ).resolves.toEqual({
+      fillColor: null,
+      formula: null,
+      source: 'visible-grid-cell',
+      value: null,
+      visibleText: null,
+    })
+  })
+
   it('captures external mutation target screenshots from the cell interior, not the selection border', async () => {
     let capturedClip: { height: number; width: number; x: number; y: number } | null = null
     const page = fakePageWithExternalTargetBox((clip) => {
@@ -231,12 +256,16 @@ function fakePageWithExternalTargetBox(
 function fakePageWithoutTargetBox(): Page {
   const page = {
     frames: () => [],
+    keyboard: {
+      press: async () => undefined,
+    },
     locator: () => ({
       boundingBox: async () => null,
       count: async () => 0,
       first() {
         return this
       },
+      inputValue: async () => '',
     }),
     evaluate: async () => {
       throw new Error('Formula bar fallback must not be used for external target-cell proof')
@@ -264,6 +293,42 @@ function fakePageWithExternalGridButNoTargetBox(): Page {
     }),
   }
   // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- Unit test only exercises missing target box plus present grid surface.
+  return page as unknown as Page
+}
+
+function fakeGoogleSheetsCanvasTargetPage(args: { readonly formulaBarText: string; readonly selectedRange: string }): Page {
+  let evaluateCallCount = 0
+  const page = {
+    frames: () => [],
+    keyboard: {
+      press: async () => undefined,
+    },
+    locator: (selector: string) => ({
+      boundingBox: async () => (selector === '.waffle-cell-input' ? { height: 22, width: 104, x: 120, y: 80 } : null),
+      count: async () => (selector === '.waffle-cell-input' ? 1 : 0),
+      first() {
+        return this
+      },
+      inputValue: async () => args.selectedRange,
+    }),
+    evaluate: async () => {
+      evaluateCallCount += 1
+      if (evaluateCallCount === 1) {
+        return null
+      }
+      if (evaluateCallCount === 2) {
+        return {
+          fillColor: null,
+          formula: null,
+          source: 'visible-grid-cell',
+          value: null,
+          visibleText: null,
+        }
+      }
+      return args.formulaBarText
+    },
+  }
+  // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- Unit test only exercises the canvas-grid readback fallback path.
   return page as unknown as Page
 }
 

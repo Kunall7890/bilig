@@ -42,10 +42,12 @@ import {
   captureSameCorpusMutationTargetPhaseScreenshot,
   captureSameCorpusMutationTargetProofForSample,
 } from './ui-responsiveness-same-corpus-mutation-target-capture.ts'
+import { SameCorpusMutationTargetCaptureDiagnosticError } from './ui-responsiveness-same-corpus-mutation-target-diagnostic.ts'
 import { sameCorpusMutationTargetTimingSample } from './ui-responsiveness-same-corpus-mutation-timing-samples.ts'
 import {
   captureSameCorpusCommittedStatePhaseProof,
   sameCorpusCommittedStateProofArtifactPath,
+  type SameCorpusMutationTargetCommittedStatePhaseProof,
 } from './ui-responsiveness-same-corpus-committed-state-proof.ts'
 import { withSameCorpusMutationFailureRestore } from './ui-responsiveness-same-corpus-mutation-failure-restore.ts'
 import { assertSameCorpusMutationTargetPreflightProof } from './ui-responsiveness-same-corpus-mutation-preflight.ts'
@@ -79,6 +81,7 @@ interface ProductSampleCollection {
 }
 
 interface SameCorpusProductMeasurementUrls {
+  readonly allowIncompleteEvidence?: boolean
   readonly biligUrl: string
   readonly googleSheetsUrl: string
   readonly microsoftExcelWebUrl: string | null
@@ -216,14 +219,20 @@ export async function collectSameCorpusProductMeasurements(
   workload: UiResponsivenessSameCorpusWorkload = 'scroll-vertical',
 ): Promise<SameCorpusProductMeasurements> {
   const bilig = await measure('bilig', urls.biligUrl, workload)
-  assertSameCorpusProductMeasurement('bilig', urls.biligUrl, bilig, workload)
+  assertSameCorpusProductMeasurement('bilig', urls.biligUrl, bilig, workload, {
+    allowIncompleteEvidence: urls.allowIncompleteEvidence === true,
+  })
   const googleSheets = await measure('google-sheets', urls.googleSheetsUrl, workload)
-  assertSameCorpusProductMeasurement('google-sheets', urls.googleSheetsUrl, googleSheets, workload)
+  assertSameCorpusProductMeasurement('google-sheets', urls.googleSheetsUrl, googleSheets, workload, {
+    allowIncompleteEvidence: urls.allowIncompleteEvidence === true,
+  })
   if (!urls.microsoftExcelWebUrl) {
     return { bilig, googleSheets }
   }
   const microsoftExcelWeb = await measure('microsoft-excel-web', urls.microsoftExcelWebUrl, workload)
-  assertSameCorpusProductMeasurement('microsoft-excel-web', urls.microsoftExcelWebUrl, microsoftExcelWeb, workload)
+  assertSameCorpusProductMeasurement('microsoft-excel-web', urls.microsoftExcelWebUrl, microsoftExcelWeb, workload, {
+    allowIncompleteEvidence: urls.allowIncompleteEvidence === true,
+  })
   return { bilig, googleSheets, microsoftExcelWeb }
 }
 
@@ -404,6 +413,10 @@ export async function measureProduct(
       }),
     )
   }
+  const includeMutationTimingProof =
+    uiSameCorpusWorkloadMutatesWorkbook(workload) &&
+    (!args.allowIncompleteEvidence ||
+      sameCorpusSamplesHaveCompleteMutationTargetTiming(collection.samples, collection.mutationTargetProofs, args.sampleCount))
 
   return {
     product,
@@ -413,7 +426,7 @@ export async function measureProduct(
     ...(product === 'bilig'
       ? { authoritativeRenderProofMsSamples: collection.samples.map((entry) => entry.authoritativeRenderProofMs ?? Number.NaN) }
       : {}),
-    ...(uiSameCorpusWorkloadMutatesWorkbook(workload)
+    ...(includeMutationTimingProof
       ? {
           committedTargetProofMsSamples: collection.samples.map((entry) => entry.committedTargetProofMs ?? Number.NaN),
           committedTargetProofTimingSamples: collection.mutationTargetProofs.map(sameCorpusMutationTargetTimingSample),
@@ -433,6 +446,28 @@ export async function measureProduct(
     corpusVerification: collection.corpusVerification,
     limitations: productLimitations(product, storageStatePathForProduct(product, args)),
   }
+}
+
+function sameCorpusSamplesHaveCompleteMutationTargetTiming(
+  samples: readonly ProductOperationSample[],
+  mutationTargetProofs: readonly SameCorpusMutationTargetProof[],
+  sampleCount: number,
+): boolean {
+  return (
+    samples.length === sampleCount &&
+    mutationTargetProofs.length === sampleCount &&
+    samples.every(
+      (sample) =>
+        sameCorpusTimingSampleIsFinite(sample.committedTargetProofMs) &&
+        sameCorpusTimingSampleIsFinite(sample.visibleTargetRenderMs) &&
+        sameCorpusTimingSampleIsFinite(sample.committedStateValidationMs) &&
+        sameCorpusTimingSampleIsFinite(sample.restoreValidationMs),
+    )
+  )
+}
+
+function sameCorpusTimingSampleIsFinite(value: number | undefined): boolean {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
 }
 
 async function measureProductSamples(
@@ -503,23 +538,26 @@ async function measureProductSamples(
     const mutationTargetBeforeCommittedState =
       mutationTarget === null || mutationTargetBefore === null || mutatingWorkload === null
         ? null
-        : await captureSameCorpusCommittedStatePhaseProof({
-            artifactPath: sameCorpusCommittedStateProofArtifactPath({
-              caseId,
-              outputPath: args.outputPath,
+        : await maybeCaptureIncompleteCommittedStateProof(
+            args,
+            captureSameCorpusCommittedStatePhaseProof({
+              artifactPath: sameCorpusCommittedStateProofArtifactPath({
+                caseId,
+                outputPath: args.outputPath,
+                phase: 'before',
+                sampleIndex,
+                workload: mutatingWorkload,
+              }),
+              expectedReadback: mutationTargetBefore,
+              page,
               phase: 'before',
+              product,
               sampleIndex,
+              target: mutationTarget,
+              timeoutMs: args.readyTimeoutMs,
               workload: mutatingWorkload,
             }),
-            expectedReadback: mutationTargetBefore,
-            page,
-            phase: 'before',
-            product,
-            sampleIndex,
-            target: mutationTarget,
-            timeoutMs: args.readyTimeoutMs,
-            workload: mutatingWorkload,
-          })
+          )
     const mutationTargetBeforeScreenshot =
       mutationTarget === null || mutatingWorkload === null || mutationTargetVisibleBefore === null
         ? null
@@ -534,8 +572,9 @@ async function measureProductSamples(
             target: mutationTarget,
             workload: mutatingWorkload,
           })
-    if (mutatingWorkload) {
-      assertSameCorpusMutationTargetPreflightProof({
+    const mutationTargetPreflightProofReady =
+      !mutatingWorkload ||
+      maybeAssertIncompleteMutationTargetPreflightProof(args, {
         before: mutationTargetBefore,
         beforeCommittedStateProof: mutationTargetBeforeCommittedState,
         beforeScreenshot: mutationTargetBeforeScreenshot,
@@ -545,7 +584,6 @@ async function measureProductSamples(
         visibleBefore: mutationTargetVisibleBefore,
         workload: mutatingWorkload,
       })
-    }
     const operationStartedAt = workload === 'open-workbook' ? loadStartedAt : performance.now()
     const sampleWithRenderProof = await withSameCorpusMutationFailureRestore({
       workload,
@@ -568,29 +606,36 @@ async function measureProductSamples(
       restore: () => restoreProductWorkbookMutation(page, workload),
       reselectTarget: mutationTarget ? () => selectSameCorpusMutationTargetRange({ page, product, target: mutationTarget }) : undefined,
     })
-    if (mutationTarget && mutationTargetBefore && mutationTargetBeforeScreenshot && mutatingWorkload) {
-      const mutationTargetProof = await captureSameCorpusMutationTargetProofForSample({
-        before: mutationTargetBefore,
-        beforeCommittedStateProof: mutationTargetBeforeCommittedState,
-        beforeScreenshot: mutationTargetBeforeScreenshot,
-        caseId,
-        operationStartedAt,
-        outputPath: args.outputPath,
-        page,
-        product,
-        readyTimeoutMs: args.readyTimeoutMs,
-        sampleIndex,
-        target: mutationTarget,
-        workload: mutatingWorkload,
-      })
-      mutationTargetProofs.push(mutationTargetProof)
-      samples.push({
-        ...sampleWithRenderProof,
-        committedStateValidationMs: mutationTargetProof.committedStateValidationMs,
-        committedTargetProofMs: mutationTargetProof.committedTargetProofMs,
-        restoreValidationMs: mutationTargetProof.restoreValidationMs,
-        visibleTargetRenderMs: mutationTargetProof.visibleTargetRenderMs,
-      })
+    if (mutationTarget && mutationTargetBefore && mutationTargetBeforeScreenshot && mutatingWorkload && mutationTargetPreflightProofReady) {
+      try {
+        const mutationTargetProof = await captureSameCorpusMutationTargetProofForSample({
+          before: mutationTargetBefore,
+          beforeCommittedStateProof: mutationTargetBeforeCommittedState,
+          beforeScreenshot: mutationTargetBeforeScreenshot,
+          caseId,
+          operationStartedAt,
+          outputPath: args.outputPath,
+          page,
+          product,
+          readyTimeoutMs: args.readyTimeoutMs,
+          sampleIndex,
+          target: mutationTarget,
+          workload: mutatingWorkload,
+        })
+        mutationTargetProofs.push(mutationTargetProof)
+        samples.push({
+          ...sampleWithRenderProof,
+          committedStateValidationMs: mutationTargetProof.committedStateValidationMs,
+          committedTargetProofMs: mutationTargetProof.committedTargetProofMs,
+          restoreValidationMs: mutationTargetProof.restoreValidationMs,
+          visibleTargetRenderMs: mutationTargetProof.visibleTargetRenderMs,
+        })
+      } catch (error: unknown) {
+        if (!args.allowIncompleteEvidence || !(error instanceof SameCorpusMutationTargetCaptureDiagnosticError)) {
+          throw error
+        }
+        samples.push(sampleWithRenderProof)
+      }
     } else {
       samples.push(sampleWithRenderProof)
       await restoreProductWorkbookMutation(page, workload)
@@ -676,6 +721,35 @@ function mutationTargetSelectionFromProof(proof: SameCorpusMutationTargetProof):
     sheetId: proof.sheetId,
     startAddress,
     targetRange: proof.targetRange,
+  }
+}
+
+async function maybeCaptureIncompleteCommittedStateProof(
+  args: CaptureArgs,
+  proof: Promise<SameCorpusMutationTargetCommittedStatePhaseProof>,
+): Promise<SameCorpusMutationTargetCommittedStatePhaseProof | null> {
+  try {
+    return await proof
+  } catch (error: unknown) {
+    if (!args.allowIncompleteEvidence) {
+      throw error
+    }
+    return null
+  }
+}
+
+function maybeAssertIncompleteMutationTargetPreflightProof(
+  args: CaptureArgs,
+  proof: Parameters<typeof assertSameCorpusMutationTargetPreflightProof>[0],
+): boolean {
+  try {
+    assertSameCorpusMutationTargetPreflightProof(proof)
+    return true
+  } catch (error: unknown) {
+    if (!args.allowIncompleteEvidence) {
+      throw error
+    }
+    return false
   }
 }
 
