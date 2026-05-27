@@ -56,6 +56,42 @@ function fixture(
 
 export const canonicalExpansionFixtures: readonly ExcelFixtureCase[] = [
   fixture(
+    'logical',
+    'switch-does-not-match-boolean-number',
+    'SWITCH does not match booleans to numbers',
+    '=SWITCH(1,TRUE(),"yes","no")',
+    [],
+    [output('A1', stringExpected('no'))],
+    'Microsoft and Google document SWITCH as a first matching value/case selector; HyperFormula returns the default for this mixed boolean-number case.',
+  ),
+  fixture(
+    'logical',
+    'switch-does-not-match-number-boolean',
+    'SWITCH does not match numbers to booleans',
+    '=SWITCH(TRUE(),1,"number","default")',
+    [],
+    [output('A1', stringExpected('default'))],
+    'HyperFormula and TrueCalc return the default for this mixed boolean-number case.',
+  ),
+  fixture(
+    'logical',
+    'switch-does-not-match-numeric-text',
+    'SWITCH does not match numeric text to numbers',
+    '=SWITCH(12,"12","numeric text","default")',
+    [],
+    [output('A1', stringExpected('default'))],
+    'Microsoft and Google document SWITCH as a first matching value/case selector; HyperFormula returns the default for this mixed numeric-text case.',
+  ),
+  fixture(
+    'logical',
+    'switch-does-not-match-text-number',
+    'SWITCH does not match text to numbers',
+    '=SWITCH("12",12,"number","default")',
+    [],
+    [output('A1', stringExpected('default'))],
+    'HyperFormula and TrueCalc return the default for this mixed numeric-text case.',
+  ),
+  fixture(
     'text',
     'exact-basic',
     'EXACT case-sensitive text comparison',

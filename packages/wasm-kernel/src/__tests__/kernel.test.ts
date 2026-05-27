@@ -4761,10 +4761,12 @@ describe('wasm kernel', () => {
         encodeCall(BUILTIN.IFS, 4),
         encodeRet(),
       ],
-      [encodePushNumber(3), encodePushNumber(4), encodePushString(3), encodePushString(4), encodeCall(BUILTIN.SWITCH, 4), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushString(3), encodePushString(4), encodeCall(BUILTIN.SWITCH, 4), encodeRet()],
       [encodePushBoolean(true), encodePushBoolean(false), encodePushBoolean(true), encodeCall(BUILTIN.XOR, 3), encodeRet()],
+      [encodePushNumber(0), encodePushBoolean(true), encodePushString(3), encodePushString(4), encodeCall(BUILTIN.SWITCH, 4), encodeRet()],
+      [encodePushNumber(0), encodePushString(5), encodePushString(3), encodePushString(4), encodeCall(BUILTIN.SWITCH, 4), encodeRet()],
     ])
-    const constants = packConstants([[], [], [4], [], [0.05, 1, 100], [], [1, 1], []])
+    const constants = packConstants([[], [], [4], [], [0.05, 1, 100], [], [3, 3], [], [1], [2]])
     const outputCells = Uint32Array.from([
       cellIndex(1, 0, width),
       cellIndex(1, 1, width),
@@ -4774,6 +4776,8 @@ describe('wasm kernel', () => {
       cellIndex(1, 5, width),
       cellIndex(1, 6, width),
       cellIndex(1, 7, width),
+      cellIndex(2, 0, width),
+      cellIndex(2, 1, width),
     ])
     kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, outputCells)
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
@@ -4794,6 +4798,10 @@ describe('wasm kernel', () => {
     expect(pooledStrings[kernel.readStringIds()[cellIndex(1, 6, width)]] ?? '').toBe('one')
     expect(kernel.readTags()[cellIndex(1, 7, width)]).toBe(ValueTag.Boolean)
     expect(kernel.readNumbers()[cellIndex(1, 7, width)]).toBe(0)
+    expect(kernel.readTags()[cellIndex(2, 0, width)]).toBe(ValueTag.String)
+    expect(pooledStrings[kernel.readStringIds()[cellIndex(2, 0, width)]] ?? '').toBe('other')
+    expect(kernel.readTags()[cellIndex(2, 1, width)]).toBe(ValueTag.String)
+    expect(pooledStrings[kernel.readStringIds()[cellIndex(2, 1, width)]] ?? '').toBe('other')
   })
 
   it('evaluates PROB and TRIMMEAN on the wasm path', async () => {

@@ -1,6 +1,6 @@
 import { BuiltinId, ErrorCode, ValueTag } from './protocol'
 import { coerceLogical } from './builtin-args'
-import { compareScalarValues } from './comparison'
+import { compareSwitchValues } from './comparison'
 import { BITWISE_NUM_ERROR, BITWISE_VALUE_ERROR, coerceBitwiseInteger, coerceBitwiseShift } from './numeric-core'
 import { copySlotResult, STACK_KIND_RANGE, STACK_KIND_SCALAR, writeResult } from './result-io'
 
@@ -288,12 +288,11 @@ export function tryApplyLogicInfoBuiltin(
       if (tagStack[base + index] == ValueTag.Error) {
         return writeLogicInfoError(base, <i32>valueStack[base + index], rangeIndexStack, valueStack, tagStack, kindStack)
       }
-      const comparison = compareScalarValues(
+      const comparison = compareSwitchValues(
         tagStack[base],
         valueStack[base],
         tagStack[base + index],
         valueStack[base + index],
-        null,
         stringOffsets,
         stringLengths,
         stringData,

@@ -155,6 +155,26 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('logical:or-basic', 'logical', '=OR(A1,A2)', 'implemented-wasm-production'),
   entry('logical:not-basic', 'logical', '=NOT(A1)', 'implemented-wasm-production'),
   entry('logical:switch-basic', 'logical', '=SWITCH(A1,1,"one","other")', 'implemented-wasm-production'),
+  entry('logical:switch-does-not-match-boolean-number', 'logical', '=SWITCH(1,TRUE(),"yes","no")', 'implemented-wasm-production', {
+    notes:
+      'Microsoft and Google document SWITCH as a first matching value/case selector; HyperFormula returns the default for this mixed boolean-number case.',
+  }),
+  entry('logical:switch-does-not-match-number-boolean', 'logical', '=SWITCH(TRUE(),1,"number","default")', 'implemented-wasm-production', {
+    notes: 'HyperFormula and TrueCalc return the default for this mixed boolean-number case.',
+  }),
+  entry(
+    'logical:switch-does-not-match-numeric-text',
+    'logical',
+    '=SWITCH(12,"12","numeric text","default")',
+    'implemented-wasm-production',
+    {
+      notes:
+        'Microsoft and Google document SWITCH as a first matching value/case selector; HyperFormula returns the default for this mixed numeric-text case.',
+    },
+  ),
+  entry('logical:switch-does-not-match-text-number', 'logical', '=SWITCH("12",12,"number","default")', 'implemented-wasm-production', {
+    notes: 'HyperFormula and TrueCalc return the default for this mixed numeric-text case.',
+  }),
   entry('logical:xor-basic', 'logical', '=XOR(TRUE(),FALSE(),TRUE())', 'implemented-wasm-production'),
   entry('aggregation:sum-range', 'aggregation', '=SUM(A1:A3)', 'implemented-wasm-production'),
   entry('aggregation:avg-range', 'aggregation', '=AVG(A1:A3)', 'implemented-wasm-production'),

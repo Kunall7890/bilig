@@ -30,21 +30,25 @@ function compareText(left: string, right: string): number {
   return normalizedLeft < normalizedRight ? -1 : 1
 }
 
-function compareScalars(left: CellValue, right: CellValue): number | undefined {
+function compareSwitchScalars(left: CellValue, right: CellValue): number | undefined {
   const leftTextLike = left.tag === ValueTag.String || left.tag === ValueTag.Empty
   const rightTextLike = right.tag === ValueTag.String || right.tag === ValueTag.Empty
   if (leftTextLike && rightTextLike) {
     return compareText(left.tag === ValueTag.String ? left.value : '', right.tag === ValueTag.String ? right.value : '')
   }
-  const leftNumeric = coerceNumberLike(left)
-  const rightNumeric = coerceNumberLike(right)
-  if (leftNumeric === undefined || rightNumeric === undefined) {
-    return undefined
+  if (left.tag === ValueTag.Number && right.tag === ValueTag.Number) {
+    if (left.value === right.value) {
+      return 0
+    }
+    return left.value < right.value ? -1 : 1
   }
-  if (leftNumeric === rightNumeric) {
-    return 0
+  if (left.tag === ValueTag.Boolean && right.tag === ValueTag.Boolean) {
+    if (left.value === right.value) {
+      return 0
+    }
+    return left.value ? 1 : -1
   }
-  return leftNumeric < rightNumeric ? -1 : 1
+  return undefined
 }
 
 function coerceNumberLike(value: CellValue): number | undefined {
@@ -201,7 +205,7 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
       if (isError(candidate)) {
         return candidate
       }
-      if (compareScalars(expression, candidate) === 0) {
+      if (compareSwitchScalars(expression, candidate) === 0) {
         return args[index + 1]!
       }
     }

@@ -68,44 +68,34 @@ describe('special call rewrites', () => {
       ],
     })
 
-    expect(
-      rewriteSpecialCall({
-        kind: 'CallExpr',
-        callee: 'SWITCH',
-        args: [
-          { kind: 'StringLiteral', value: 'b' },
-          { kind: 'StringLiteral', value: 'a' },
-          { kind: 'NumberLiteral', value: 1 },
-          { kind: 'StringLiteral', value: 'b' },
-          { kind: 'NumberLiteral', value: 2 },
-          { kind: 'NumberLiteral', value: 9 },
-        ],
-      }),
-    ).toEqual({
+    const switchRewrite = rewriteSpecialCall({
+      kind: 'CallExpr',
+      callee: 'SWITCH',
+      args: [
+        { kind: 'StringLiteral', value: 'b' },
+        { kind: 'StringLiteral', value: 'a' },
+        { kind: 'NumberLiteral', value: 1 },
+        { kind: 'StringLiteral', value: 'b' },
+        { kind: 'NumberLiteral', value: 2 },
+        { kind: 'NumberLiteral', value: 9 },
+      ],
+    })
+    expect(switchRewrite).toMatchObject({
       kind: 'CallExpr',
       callee: 'IF',
       args: [
-        {
-          kind: 'BinaryExpr',
-          operator: '=',
-          left: { kind: 'StringLiteral', value: 'b' },
-          right: { kind: 'StringLiteral', value: 'a' },
-        },
+        { kind: 'CallExpr', callee: 'OR' },
         { kind: 'NumberLiteral', value: 1 },
-        {
-          kind: 'CallExpr',
-          callee: 'IF',
-          args: [
-            {
-              kind: 'BinaryExpr',
-              operator: '=',
-              left: { kind: 'StringLiteral', value: 'b' },
-              right: { kind: 'StringLiteral', value: 'b' },
-            },
-            { kind: 'NumberLiteral', value: 2 },
-            { kind: 'NumberLiteral', value: 9 },
-          ],
-        },
+        { kind: 'CallExpr', callee: 'IF' },
+      ],
+    })
+    expect(switchRewrite?.kind === 'CallExpr' ? switchRewrite.args[2] : undefined).toMatchObject({
+      kind: 'CallExpr',
+      callee: 'IF',
+      args: [
+        { kind: 'CallExpr', callee: 'OR' },
+        { kind: 'NumberLiteral', value: 2 },
+        { kind: 'NumberLiteral', value: 9 },
       ],
     })
     expect(

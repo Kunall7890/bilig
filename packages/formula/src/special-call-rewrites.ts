@@ -17,6 +17,23 @@ function binaryNode(operator: BinaryExprNode['operator'], left: FormulaNode, rig
   return { kind: 'BinaryExpr', operator, left, right }
 }
 
+function isTextLikeNode(node: FormulaNode): FormulaNode {
+  return callNode('OR', [callNode('ISTEXT', [node]), callNode('ISBLANK', [node])])
+}
+
+function isLogicalLikeNode(node: FormulaNode): FormulaNode {
+  return callNode('NOT', [callNode('OR', [callNode('ISNUMBER', [node]), callNode('ISTEXT', [node]), callNode('ISBLANK', [node])])])
+}
+
+function switchMatchCondition(expression: FormulaNode, candidate: FormulaNode): FormulaNode {
+  const valueEqualsCandidate = binaryNode('=', expression, candidate)
+  return callNode('OR', [
+    callNode('AND', [callNode('ISNUMBER', [expression]), callNode('ISNUMBER', [candidate]), valueEqualsCandidate]),
+    callNode('AND', [isLogicalLikeNode(expression), isLogicalLikeNode(candidate), valueEqualsCandidate]),
+    callNode('AND', [isTextLikeNode(expression), isTextLikeNode(candidate), valueEqualsCandidate]),
+  ])
+}
+
 function rewriteIfs(args: readonly FormulaNode[]): FormulaNode {
   if (args.length < 2 || args.length % 2 !== 0) {
     return errorNode(ErrorCode.Value)
@@ -44,7 +61,7 @@ function rewriteSwitch(args: readonly FormulaNode[]): FormulaNode {
   let fallback: FormulaNode = hasDefault ? entries[entries.length - 1]! : errorNode(ErrorCode.NA)
   const pairLimit = hasDefault ? entries.length - 1 : entries.length
   for (let index = pairLimit - 2; index >= 0; index -= 2) {
-    fallback = callNode('IF', [binaryNode('=', expression, entries[index]!), entries[index + 1]!, fallback])
+    fallback = callNode('IF', [switchMatchCondition(expression, entries[index]!), entries[index + 1]!, fallback])
   }
   return fallback
 }

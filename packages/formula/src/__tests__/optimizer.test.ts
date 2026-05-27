@@ -83,6 +83,14 @@ describe('optimizer', () => {
       kind: 'NumberLiteral',
       value: 2,
     })
+    expect(optimizeFormula(parseFormula('SWITCH(1,TRUE(),"yes","no")'))).toEqual({
+      kind: 'StringLiteral',
+      value: 'no',
+    })
+    expect(optimizeFormula(parseFormula('SWITCH(12,"12","numeric text","default")'))).toEqual({
+      kind: 'StringLiteral',
+      value: 'default',
+    })
     expect(optimizeFormula(parseFormula('XOR(TRUE(),FALSE(),TRUE())'))).toEqual({
       kind: 'BooleanLiteral',
       value: false,

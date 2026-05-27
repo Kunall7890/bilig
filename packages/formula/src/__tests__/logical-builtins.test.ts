@@ -157,9 +157,11 @@ describe('logical/info builtins', () => {
     expect(IFS(err(ErrorCode.Name), text('no'), bool(true), text('yes'))).toEqual(err(ErrorCode.Name))
 
     expect(SWITCH(text('b'), text('a'), num(1), text('B'), num(2), num(9))).toEqual(num(2))
-    expect(SWITCH(num(12), text('12'), text('numeric text'), text('x'))).toEqual(text('numeric text'))
+    expect(SWITCH(num(12), text('12'), text('numeric text'), text('x'))).toEqual(text('x'))
+    expect(SWITCH(text('12'), num(12), text('text numeric'), text('x'))).toEqual(text('x'))
     expect(SWITCH(num(12), text('abc'), text('no'), text('default'))).toEqual(text('default'))
-    expect(SWITCH(bool(true), num(1), text('bool numeric'))).toEqual(text('bool numeric'))
+    expect(SWITCH(bool(true), num(1), text('bool numeric'), text('x'))).toEqual(text('x'))
+    expect(SWITCH(num(1), bool(true), text('numeric bool'), text('x'))).toEqual(text('x'))
     expect(SWITCH(empty(), text(''), text('empty text'))).toEqual(text('empty text'))
     expect(SWITCH(text('z'), text('a'), num(1), text('b'), num(2))).toEqual(err(ErrorCode.NA))
     expect(SWITCH(err(ErrorCode.Ref), text('a'), num(1))).toEqual(err(ErrorCode.Ref))

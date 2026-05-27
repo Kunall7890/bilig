@@ -523,6 +523,16 @@ describe('js evaluator', () => {
       tag: ValueTag.Number,
       value: 2,
     })
+    expect(evaluatePlan(lowerToPlan(parseFormula('SWITCH(1,TRUE(),"yes","no")')), context)).toEqual({
+      tag: ValueTag.String,
+      value: 'no',
+      stringId: 0,
+    })
+    expect(evaluatePlan(lowerToPlan(parseFormula('SWITCH(12,"12","numeric text","default")')), context)).toEqual({
+      tag: ValueTag.String,
+      value: 'default',
+      stringId: 0,
+    })
     expect(evaluatePlan(lowerToPlan(parseFormula('XOR(TRUE,FALSE,TRUE)')), context)).toEqual({
       tag: ValueTag.Boolean,
       value: false,

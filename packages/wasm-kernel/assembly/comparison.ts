@@ -159,3 +159,63 @@ export function compareScalarValues(
   }
   return leftNumeric < rightNumeric ? -1 : 1
 }
+
+export function compareSwitchValues(
+  leftTag: u8,
+  leftValue: f64,
+  rightTag: u8,
+  rightValue: f64,
+  stringOffsets: Uint32Array,
+  stringLengths: Uint32Array,
+  stringData: Uint16Array,
+  outputStringOffsets: Uint32Array,
+  outputStringLengths: Uint32Array,
+  outputStringData: Uint16Array,
+): i32 {
+  const leftTextlike = leftTag == ValueTag.String || leftTag == ValueTag.Empty
+  const rightTextlike = rightTag == ValueTag.String || rightTag == ValueTag.Empty
+  if (leftTextlike && rightTextlike) {
+    const leftText = scalarText(
+      leftTag,
+      leftValue,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const rightText = scalarText(
+      rightTag,
+      rightValue,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    if (leftText == null || rightText == null) {
+      return i32.MIN_VALUE
+    }
+    const normalizedLeft = leftText.toUpperCase()
+    const normalizedRight = rightText.toUpperCase()
+    if (normalizedLeft == normalizedRight) {
+      return 0
+    }
+    return normalizedLeft < normalizedRight ? -1 : 1
+  }
+  if (leftTag == ValueTag.Number && rightTag == ValueTag.Number) {
+    if (sameExactNumericValue(leftValue, rightValue)) {
+      return 0
+    }
+    return leftValue < rightValue ? -1 : 1
+  }
+  if (leftTag == ValueTag.Boolean && rightTag == ValueTag.Boolean) {
+    if (leftValue == rightValue) {
+      return 0
+    }
+    return leftValue < rightValue ? -1 : 1
+  }
+  return i32.MIN_VALUE
+}
