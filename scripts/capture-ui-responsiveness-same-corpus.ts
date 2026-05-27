@@ -29,7 +29,11 @@ import {
 import type { SameCorpusPreflight } from './ui-responsiveness-same-corpus-preflight.ts'
 import { sameCorpusPreflightProductInvalidReasons } from './ui-responsiveness-same-corpus-preflight.ts'
 import { captureArgsForProductRefresh, refreshSameCorpusCaptureProduct } from './ui-responsiveness-same-corpus-product-refresh.ts'
-import { writeSameCorpusProofArchiveManifest } from './ui-responsiveness-same-corpus-proof-archive.ts'
+import {
+  proofArchiveZipPath,
+  writeSameCorpusProofArchiveManifest,
+  writeSameCorpusProofArchiveZip,
+} from './ui-responsiveness-same-corpus-proof-archive.ts'
 
 export {
   parseCaptureArgs,
@@ -100,7 +104,10 @@ async function main(): Promise<void> {
         product: refreshProductArgs.product,
       })
       writeSameCorpusCapture(refreshProductArgs.outputPath, capture)
-      const proofArchiveManifest = writeSameCorpusProofArchiveManifest(capture, refreshProductArgs.outputPath)
+      const proofArchiveManifest = writeSameCorpusProofArchiveManifest(capture, refreshProductArgs.outputPath, { artifactBaseDir: rootDir })
+      const proofArchiveZip = proofArchiveManifest.complete
+        ? writeSameCorpusProofArchiveZip(capture, refreshProductArgs.outputPath, { artifactBaseDir: rootDir })
+        : null
       console.log(
         JSON.stringify(
           {
@@ -109,7 +116,9 @@ async function main(): Promise<void> {
             fromCapture: refreshProductArgs.existingCapturePath,
             outputPath: refreshProductArgs.outputPath,
             proofArchiveManifestPath: `${refreshProductArgs.outputPath}.proof/proof-archive-manifest.json`,
+            proofArchiveZipPath: proofArchiveZip?.archivePath ?? proofArchiveZipPath(refreshProductArgs.outputPath),
             proofArchiveComplete: proofArchiveManifest.complete,
+            proofArchiveZipComplete: proofArchiveZip?.complete ?? false,
             currentContractEvidenceComplete: capture.runManifest.currentContractEvidenceComplete,
             googleSheetsTenXRequirementSatisfied: capture.runManifest.googleSheetsTenXRequirementSatisfied,
           },
@@ -133,13 +142,18 @@ async function main(): Promise<void> {
   try {
     const capture = await captureSameCorpusUiResponsiveness(args)
     writeSameCorpusCapture(args.outputPath, capture)
-    const proofArchiveManifest = writeSameCorpusProofArchiveManifest(capture, args.outputPath)
+    const proofArchiveManifest = writeSameCorpusProofArchiveManifest(capture, args.outputPath, { artifactBaseDir: rootDir })
+    const proofArchiveZip = proofArchiveManifest.complete
+      ? writeSameCorpusProofArchiveZip(capture, args.outputPath, { artifactBaseDir: rootDir })
+      : null
     console.log(
       JSON.stringify(
         {
           outputPath: args.outputPath,
           proofArchiveManifestPath: `${args.outputPath}.proof/proof-archive-manifest.json`,
+          proofArchiveZipPath: proofArchiveZip?.archivePath ?? proofArchiveZipPath(args.outputPath),
           proofArchiveComplete: proofArchiveManifest.complete,
+          proofArchiveZipComplete: proofArchiveZip?.complete ?? false,
           corpusCaseId: args.corpusId,
           sampleCount: args.sampleCount,
           workloads: capture.cases.map((entry) => entry.workload),

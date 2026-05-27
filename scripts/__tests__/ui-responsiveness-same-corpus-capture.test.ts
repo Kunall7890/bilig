@@ -2789,7 +2789,7 @@ function sameCorpusBiligRevisionReadbackFields(
   }
   return {
     capturedRevision: sameCorpusBiligCapturedRevision(phase, sampleIndex),
-    ...(phase === 'after' ? { visibleSceneProofSha256: sameCorpusBiligVisibleSceneSha256(sampleIndex) } : {}),
+    visibleSceneProofSha256: sameCorpusBiligVisibleSceneSha256(sampleIndex),
   }
 }
 

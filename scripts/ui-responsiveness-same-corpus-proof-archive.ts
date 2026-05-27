@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, resolve } from 'node:path'
 
-import { strFromU8, unzipSync } from 'fflate'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 
 import type { SameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
 import type { SameCorpusMutationTargetReadback } from './ui-responsiveness-same-corpus-semantic-proof.ts'
@@ -87,6 +87,10 @@ export interface SameCorpusProofArchiveZipVerificationOptions {
   readonly manifestEntryPath?: string
 }
 
+export interface SameCorpusProofArchiveZipWriteOptions extends SameCorpusProofArchiveBuildOptions {
+  readonly entryRootDir?: string
+}
+
 export interface SameCorpusProofArchiveZipVerification {
   readonly schemaVersion: 1
   readonly archivePath: string
@@ -151,12 +155,79 @@ export function proofArchiveManifestPath(outputPath: string): string {
   return resolve(`${outputPath}.proof`, 'proof-archive-manifest.json')
 }
 
-export function writeSameCorpusProofArchiveManifest(capture: SameCorpusCapture, outputPath: string): SameCorpusProofArchiveManifest {
-  const manifest = buildSameCorpusProofArchiveManifest(capture)
+export function proofArchiveZipPath(outputPath: string): string {
+  return resolve(`${outputPath}.proof`, 'proof-archive.zip')
+}
+
+export function writeSameCorpusProofArchiveManifest(
+  capture: SameCorpusCapture,
+  outputPath: string,
+  options: SameCorpusProofArchiveBuildOptions = {},
+): SameCorpusProofArchiveManifest {
+  const manifest = buildSameCorpusProofArchiveManifest(capture, options)
   const manifestPath = proofArchiveManifestPath(outputPath)
   mkdirSync(dirname(manifestPath), { recursive: true })
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
   return manifest
+}
+
+export function writeSameCorpusProofArchiveZip(
+  capture: SameCorpusCapture,
+  outputPath: string,
+  options: SameCorpusProofArchiveZipWriteOptions = {},
+): SameCorpusProofArchiveZipVerification {
+  return writeSameCorpusProofArchiveZipFromManifest(
+    buildSameCorpusProofArchiveManifest(capture, options),
+    proofArchiveZipPath(outputPath),
+    options,
+  )
+}
+
+export function writeSameCorpusProofArchiveZipFromManifest(
+  manifest: SameCorpusProofArchiveManifest,
+  archivePath: string,
+  options: SameCorpusProofArchiveZipWriteOptions = {},
+): SameCorpusProofArchiveZipVerification {
+  const fileVerification = verifySameCorpusProofArchiveFiles(manifest.artifacts, options)
+  const sealedManifest: SameCorpusProofArchiveManifest = {
+    ...manifest,
+    filesVerified: manifest.artifactCount === manifest.requiredArtifactCount && fileVerification.complete,
+    complete: manifest.artifactCount === manifest.requiredArtifactCount && fileVerification.complete,
+    fileVerification,
+  }
+  if (!sealedManifest.complete) {
+    throw new Error(
+      [
+        'Cannot write incomplete UI responsiveness same-corpus proof archive ZIP',
+        `${String(sealedManifest.artifactCount)}/${String(sealedManifest.requiredArtifactCount)} artifacts declared`,
+        `${String(sealedManifest.fileVerification.verifiedArtifactCount)}/${String(
+          sealedManifest.fileVerification.checkedArtifactCount,
+        )} files verified`,
+        `${String(sealedManifest.fileVerification.missingArtifactCount)} missing`,
+        `${String(sealedManifest.fileVerification.mismatchedArtifactCount)} mismatch`,
+      ].join('; '),
+    )
+  }
+
+  const archiveEntries: Record<string, Uint8Array> = {
+    [sameCorpusProofArchiveZipEntryPath('proof-archive-manifest.json', options.entryRootDir)]: strToU8(
+      `${JSON.stringify(sealedManifest, null, 2)}\n`,
+    ),
+  }
+  for (const artifact of sealedManifest.artifacts) {
+    const artifactPath = sameCorpusProofArchiveArtifactPath(artifact)
+    archiveEntries[sameCorpusProofArchiveZipEntryPath(artifactPath, options.entryRootDir)] = readFileSync(
+      resolveSameCorpusProofArchiveArtifactPath(artifactPath, options.artifactBaseDir),
+    )
+  }
+
+  const resolvedArchivePath = resolve(archivePath)
+  mkdirSync(dirname(resolvedArchivePath), { recursive: true })
+  writeFileSync(resolvedArchivePath, zipSync(archiveEntries))
+  return verifySameCorpusProofArchiveZipPath(resolvedArchivePath, {
+    entryRootDir: options.entryRootDir,
+    manifestEntryPath: sameCorpusProofArchiveZipEntryPath('proof-archive-manifest.json', options.entryRootDir),
+  })
 }
 
 export function readSameCorpusProofArchiveManifest(manifestPath: string): SameCorpusProofArchiveManifest {
@@ -752,6 +823,14 @@ function resolveSameCorpusProofArchiveZipManifestEntry(
 }
 
 function resolveSameCorpusProofArchiveZipArtifactEntry(path: string, entryRootDir: string | undefined): string {
+  const normalizedPath = normalizeSameCorpusProofArchiveZipEntryPath(path, 'artifact entry')
+  if (!entryRootDir) {
+    return normalizedPath
+  }
+  return `${normalizeSameCorpusProofArchiveZipEntryPath(entryRootDir, 'entry root')}/${normalizedPath}`
+}
+
+function sameCorpusProofArchiveZipEntryPath(path: string, entryRootDir: string | undefined): string {
   const normalizedPath = normalizeSameCorpusProofArchiveZipEntryPath(path, 'artifact entry')
   if (!entryRootDir) {
     return normalizedPath

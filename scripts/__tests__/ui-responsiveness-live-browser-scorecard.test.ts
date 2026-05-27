@@ -29,8 +29,10 @@ import { readJsonObject } from '../json-scorecard-helpers.ts'
 import { buildSameCorpusFingerprint } from '../ui-responsiveness-same-corpus-fingerprint.ts'
 import {
   proofArchiveManifestPath,
+  proofArchiveZipPath,
   readSameCorpusProofArchiveManifest,
   writeSameCorpusProofArchiveManifest,
+  writeSameCorpusProofArchiveZipFromManifest,
   type SameCorpusProofArchiveArtifact,
 } from '../ui-responsiveness-same-corpus-proof-archive.ts'
 import {
@@ -873,6 +875,20 @@ describe('UI responsiveness live browser scorecard', () => {
     )
   })
 
+  it('requires captured same-corpus proof archive ZIPs to exist beside complete manifests', () => {
+    const capture = buildSameCorpusCapture()
+    const proof = buildSameCorpusProof(capture)
+    const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-proof-archive-zip-required-`)
+    const capturePath = '.cache/ui-responsiveness/same-corpus-capture.json'
+    const absoluteCapturePath = resolve(rootDir, capturePath)
+    const manifest = writeSameCorpusProofArchiveManifest(capture, absoluteCapturePath)
+    writeSameCorpusProofArchiveArtifacts(rootDir, manifest.artifacts)
+
+    expect(() => validateSameCorpusProofArchiveArtifacts(proof, { rootDir, capturePath })).toThrow(
+      'UI responsiveness same-corpus proof archive ZIP is missing',
+    )
+  })
+
   it('requires committed-state proof archive artifacts to be tracked for checked-in proof', () => {
     const capture = buildSameCorpusCapture()
     const proof = buildSameCorpusProof(capture)
@@ -881,6 +897,7 @@ describe('UI responsiveness live browser scorecard', () => {
     const absoluteCapturePath = resolve(rootDir, capturePath)
     const manifest = writeSameCorpusProofArchiveManifest(capture, absoluteCapturePath)
     writeSameCorpusProofArchiveArtifacts(rootDir, manifest.artifacts)
+    writeSameCorpusProofArchiveZipFromManifest(manifest, proofArchiveZipPath(absoluteCapturePath), { artifactBaseDir: rootDir })
     const trackedPaths = sameCorpusProofArchiveTrackedPaths(rootDir, capturePath)
     const committedStateArtifact = trackedPaths.find((artifactPath) => artifactPath.includes('/committed-state/'))
 
@@ -1022,8 +1039,13 @@ function writeSameCorpusProofArchiveArtifacts(rootDir: string, artifacts: readon
 
 function sameCorpusProofArchiveTrackedPaths(rootDir: string, capturePath: string): string[] {
   const manifestPath = proofArchiveManifestPath(resolve(rootDir, capturePath))
+  const zipPath = proofArchiveZipPath(resolve(rootDir, capturePath))
   const manifest = readSameCorpusProofArchiveManifest(manifestPath)
-  return [relative(rootDir, manifestPath), ...manifest.artifacts.map(sameCorpusProofArchiveArtifactPath)].toSorted()
+  return [
+    relative(rootDir, manifestPath),
+    relative(rootDir, zipPath),
+    ...manifest.artifacts.map(sameCorpusProofArchiveArtifactPath),
+  ].toSorted()
 }
 
 function sameCorpusProofArchiveArtifactPath(artifact: SameCorpusProofArchiveArtifact): string {
@@ -1702,7 +1724,7 @@ function sameCorpusBiligRevisionReadbackFields(
   }
   return {
     capturedRevision: sameCorpusBiligCapturedRevision(phase, sampleIndex),
-    ...(phase === 'after' ? { visibleSceneProofSha256: sameCorpusBiligVisibleSceneSha256(sampleIndex) } : {}),
+    visibleSceneProofSha256: sameCorpusBiligVisibleSceneSha256(sampleIndex),
   }
 }
 

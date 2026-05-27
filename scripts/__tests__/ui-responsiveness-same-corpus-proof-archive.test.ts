@@ -11,11 +11,13 @@ import { buildSameCorpusFingerprint } from '../ui-responsiveness-same-corpus-fin
 import {
   buildSameCorpusProofArchiveManifest,
   proofArchiveManifestPath,
+  proofArchiveZipPath,
   type SameCorpusProofArchiveArtifact,
   type SameCorpusProofArchiveManifest,
   verifySameCorpusProofArchiveFiles,
   verifySameCorpusProofArchiveManifestPath,
   verifySameCorpusProofArchiveZipPath,
+  writeSameCorpusProofArchiveZipFromManifest,
   writeSameCorpusProofArchiveManifest,
 } from '../ui-responsiveness-same-corpus-proof-archive.ts'
 import type { SameCorpusProductSemanticUiProof, SameCorpusScenarioProof } from '../ui-responsiveness-same-corpus-proof.ts'
@@ -262,6 +264,62 @@ describe('same-corpus proof archive manifest', () => {
     expect(verification.fileVerification.entries.map((entry) => entry.status)).toEqual(['verified', 'verified'])
   })
 
+  it('writes a sealed final proof archive ZIP from verified manifest artifacts', () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'bilig-same-corpus-proof-archive-seal-'))
+    const archivePath = join(rootDir, 'same-corpus-proof.zip')
+    const screenshotBytes = 'sealed screenshot bytes'
+    const artifactPath = 'bilig-sample-1.png'
+    writeFileSync(join(rootDir, artifactPath), screenshotBytes)
+    const artifacts: SameCorpusProofArchiveArtifact[] = [
+      {
+        kind: 'scenario-screenshot',
+        product: 'bilig',
+        workload: 'open-workbook',
+        path: artifactPath,
+        screenshotSha256: sha256Hex(screenshotBytes),
+      },
+    ]
+
+    const written = writeSameCorpusProofArchiveZipFromManifest(sameCorpusProofArchiveManifest(artifacts), archivePath, {
+      artifactBaseDir: rootDir,
+    })
+
+    expect(written).toMatchObject({
+      archivePath,
+      manifestEntryPath: 'proof-archive-manifest.json',
+      complete: true,
+      fileVerification: {
+        checkedArtifactCount: 1,
+        verifiedArtifactCount: 1,
+        complete: true,
+      },
+    })
+    expect(verifySameCorpusProofArchiveZipPath(archivePath)).toMatchObject({
+      complete: true,
+      manifest: { artifactCount: 1, requiredArtifactCount: 1 },
+    })
+  })
+
+  it('refuses to write a sealed final proof archive ZIP from incomplete proof artifacts', () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'bilig-same-corpus-proof-archive-incomplete-seal-'))
+    const archivePath = join(rootDir, 'same-corpus-proof.zip')
+    const artifacts: SameCorpusProofArchiveArtifact[] = [
+      {
+        kind: 'scenario-screenshot',
+        product: 'bilig',
+        workload: 'open-workbook',
+        path: 'missing.png',
+        screenshotSha256: sha256Hex('missing bytes'),
+      },
+    ]
+
+    expect(() =>
+      writeSameCorpusProofArchiveZipFromManifest(sameCorpusProofArchiveManifest(artifacts), archivePath, {
+        artifactBaseDir: rootDir,
+      }),
+    ).toThrow('Cannot write incomplete UI responsiveness same-corpus proof archive ZIP')
+  })
+
   it('rejects stale final proof archive ZIP bytes even when a matching loose file exists', () => {
     const rootDir = mkdtempSync(join(tmpdir(), 'bilig-same-corpus-proof-archive-zip-stale-'))
     const archivePath = join(rootDir, 'same-corpus-proof.zip')
@@ -483,6 +541,11 @@ describe('same-corpus proof archive manifest', () => {
       },
     })
   })
+
+  it('uses the conventional proof archive ZIP path beside a capture artifact', () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'bilig-same-corpus-proof-archive-path-'))
+    expect(proofArchiveZipPath(join(rootDir, 'capture.json'))).toBe(join(rootDir, 'capture.json.proof', 'proof-archive.zip'))
+  })
 })
 
 function sameCorpusCaptureCase(
@@ -603,6 +666,10 @@ function writeSameCorpusProofZip(archivePath: string, entries: Record<string, st
 }
 
 function sameCorpusProofArchiveManifestJson(artifacts: readonly SameCorpusProofArchiveArtifact[]): string {
+  return `${JSON.stringify(sameCorpusProofArchiveManifest(artifacts), null, 2)}\n`
+}
+
+function sameCorpusProofArchiveManifest(artifacts: readonly SameCorpusProofArchiveArtifact[]): SameCorpusProofArchiveManifest {
   const manifest: SameCorpusProofArchiveManifest = {
     schemaVersion: 1,
     suite: 'ui-responsiveness-same-corpus-proof-archive',
@@ -622,7 +689,7 @@ function sameCorpusProofArchiveManifestJson(artifacts: readonly SameCorpusProofA
     },
     artifacts,
   }
-  return `${JSON.stringify(manifest, null, 2)}\n`
+  return manifest
 }
 
 function sameCorpusCommittedStateArtifactJson(value: {

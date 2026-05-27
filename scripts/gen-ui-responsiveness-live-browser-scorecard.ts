@@ -14,6 +14,7 @@ import { parseSameCorpusCapture, parseUiResponsivenessLiveBrowserScorecard } fro
 import { formatJsonForRepo } from './scorecard-format.ts'
 import {
   proofArchiveManifestPath,
+  proofArchiveZipPath,
   verifySameCorpusProofArchiveManifestPath,
   verifySameCorpusProofArchiveZipPath,
   type SameCorpusProofArchiveArtifact,
@@ -297,13 +298,13 @@ export function assertUiResponsivenessLiveBrowserRunAllowed(
 export function parseUiResponsivenessLiveBrowserCliArgs(argv: readonly string[]): UiResponsivenessLiveBrowserCliArgs {
   const proofArchiveZipEntryRootDir = argumentValue(argv, '--proof-archive-zip-root')
   const proofArchiveZipManifestEntryPath = argumentValue(argv, '--proof-archive-zip-manifest')
-  const proofArchiveZipPath = argumentValue(argv, '--proof-archive-zip')
+  const proofArchiveZipPathArg = argumentValue(argv, '--proof-archive-zip')
   return {
     isCheckMode: argv.includes('--check'),
     capturePath: argumentValue(argv, '--capture'),
     ...(proofArchiveZipEntryRootDir !== null ? { proofArchiveZipEntryRootDir } : {}),
     ...(proofArchiveZipManifestEntryPath !== null ? { proofArchiveZipManifestEntryPath } : {}),
-    ...(proofArchiveZipPath !== null ? { proofArchiveZipPath } : {}),
+    ...(proofArchiveZipPathArg !== null ? { proofArchiveZipPath: proofArchiveZipPathArg } : {}),
     refreshSameCorpusProofOnly: argv.includes('--refresh-same-corpus-proof'),
   }
 }
@@ -476,8 +477,13 @@ export function validateSameCorpusProofArchiveArtifacts(
       ].join('; '),
     )
   }
-  if (options.proofArchiveZipPath) {
-    const zipVerification = verifySameCorpusProofArchiveZipPath(resolve(validationRootDir, options.proofArchiveZipPath), {
+  const archiveZipPath = options.proofArchiveZipPath ?? proofArchiveZipPath(absoluteCapturePath)
+  const repoRelativeArchiveZipPath = validateProofArchivePath(validationRootDir, archiveZipPath, 'ZIP')
+  if (!existsSync(resolve(validationRootDir, repoRelativeArchiveZipPath))) {
+    throw new Error(`UI responsiveness same-corpus proof archive ZIP is missing: ${repoRelativeArchiveZipPath}`)
+  }
+  {
+    const zipVerification = verifySameCorpusProofArchiveZipPath(resolve(validationRootDir, repoRelativeArchiveZipPath), {
       entryRootDir: options.proofArchiveZipEntryRootDir,
       manifestEntryPath: options.proofArchiveZipManifestEntryPath,
     })
@@ -508,7 +514,7 @@ export function validateSameCorpusProofArchiveArtifacts(
     return
   }
 
-  const repoRelativePaths = [manifestPath, ...repoRelativeArtifactPaths]
+  const repoRelativePaths = [manifestPath, repoRelativeArchiveZipPath, ...repoRelativeArtifactPaths]
   const trackedPaths = new Set(options.trackedArtifactPaths ?? gitTrackedPaths(validationRootDir, repoRelativePaths))
   for (const artifactPath of repoRelativePaths) {
     if (!trackedPaths.has(artifactPath)) {
