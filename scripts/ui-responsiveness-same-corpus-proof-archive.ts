@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, resolve } from 'node:path'
 
 import type { SameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
+import type { SameCorpusMutationTargetReadback } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import { validateSameCorpusProductSemanticUiProof } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import type { SameCorpusCapture, UiResponsivenessSameCorpusProduct } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import { arrayField, asObject, booleanField, literalField, numberField, stringField } from './json-scorecard-helpers.ts'
@@ -60,11 +61,17 @@ export interface SameCorpusGoogleSheetsCommittedStateArchiveArtifact {
   readonly workload: UiResponsivenessSameCorpusWorkload
   readonly sampleIndex: number
   readonly phase: 'before' | 'after' | 'restored'
+  readonly sheetName: string
+  readonly sheetId: string | null
+  readonly targetRange: string
+  readonly capturedAtMs: number
   readonly artifactPath: string
   readonly artifactSha256: string
   readonly exportUrl: string
   readonly workbookByteSize: number
   readonly workbookSha256: string
+  readonly readback: SameCorpusMutationTargetReadback
+  readonly readbackSha256: string
 }
 
 export interface SameCorpusProofArchiveBuildOptions {
@@ -82,7 +89,7 @@ export interface SameCorpusProofArchiveFileVerification {
 }
 
 export interface SameCorpusProofArchiveFileVerificationEntry {
-  readonly status: 'verified' | 'missing' | 'hash-mismatch'
+  readonly status: 'verified' | 'missing' | 'hash-mismatch' | 'identity-mismatch'
   readonly kind: SameCorpusProofArchiveArtifact['kind']
   readonly product: UiResponsivenessSameCorpusProduct
   readonly workload: UiResponsivenessSameCorpusWorkload
@@ -92,6 +99,7 @@ export interface SameCorpusProofArchiveFileVerificationEntry {
   readonly resolvedPath: string
   readonly expectedSha256: string
   readonly actualSha256?: string
+  readonly identityMismatchReason?: string
 }
 
 const requiredProofArchiveProducts = ['bilig', 'google-sheets'] as const satisfies readonly UiResponsivenessSameCorpusProduct[]
@@ -166,6 +174,9 @@ function parseSameCorpusProofArchiveFileVerification(value: unknown): SameCorpus
 function parseSameCorpusProofArchiveFileVerificationEntry(value: unknown): SameCorpusProofArchiveFileVerificationEntry {
   const record = asObject(value, 'same-corpus proof archive file verification entry')
   const actualSha256 = Object.hasOwn(record, 'actualSha256') ? { actualSha256: stringField(record, 'actualSha256') } : {}
+  const identityMismatchReason = Object.hasOwn(record, 'identityMismatchReason')
+    ? { identityMismatchReason: stringField(record, 'identityMismatchReason') }
+    : {}
   return {
     status: parseSameCorpusProofArchiveFileVerificationStatus(stringField(record, 'status')),
     kind: parseSameCorpusProofArchiveArtifactKind(stringField(record, 'kind')),
@@ -177,6 +188,7 @@ function parseSameCorpusProofArchiveFileVerificationEntry(value: unknown): SameC
     resolvedPath: stringField(record, 'resolvedPath'),
     expectedSha256: stringField(record, 'expectedSha256'),
     ...actualSha256,
+    ...identityMismatchReason,
   }
 }
 
@@ -210,11 +222,17 @@ function parseSameCorpusProofArchiveArtifact(value: unknown): SameCorpusProofArc
     workload,
     sampleIndex: numberField(record, 'sampleIndex'),
     phase: parseSameCorpusProofArchivePhase(stringField(record, 'phase')),
+    sheetName: stringField(record, 'sheetName'),
+    sheetId: Object.hasOwn(record, 'sheetId') && record.sheetId !== null ? stringField(record, 'sheetId') : null,
+    targetRange: stringField(record, 'targetRange'),
+    capturedAtMs: numberField(record, 'capturedAtMs'),
     artifactPath: stringField(record, 'artifactPath'),
     artifactSha256: stringField(record, 'artifactSha256'),
     exportUrl: stringField(record, 'exportUrl'),
     workbookByteSize: numberField(record, 'workbookByteSize'),
     workbookSha256: stringField(record, 'workbookSha256'),
+    readback: parseCommittedStateReadback(record.readback),
+    readbackSha256: stringField(record, 'readbackSha256'),
   }
 }
 
@@ -226,10 +244,25 @@ function parseSameCorpusProofArchiveArtifactKind(value: string): SameCorpusProof
 }
 
 function parseSameCorpusProofArchiveFileVerificationStatus(value: string): SameCorpusProofArchiveFileVerificationEntry['status'] {
-  if (value === 'verified' || value === 'missing' || value === 'hash-mismatch') {
+  if (value === 'verified' || value === 'missing' || value === 'hash-mismatch' || value === 'identity-mismatch') {
     return value
   }
   throw new Error(`Unexpected same-corpus proof archive artifact verification status: ${value}`)
+}
+
+function parseCommittedStateReadback(value: unknown): SameCorpusMutationTargetReadback {
+  const record = asObject(value, 'same-corpus committed-state readback')
+  return {
+    value: nullableStringField(record, 'value'),
+    formula: nullableStringField(record, 'formula'),
+    fillColor: nullableStringField(record, 'fillColor'),
+    visibleText: nullableStringField(record, 'visibleText'),
+    source: literalField(record, 'source', 'google-sheets-xlsx-export'),
+  }
+}
+
+function nullableStringField(record: Record<string, unknown>, key: string): string | null {
+  return Object.hasOwn(record, key) && record[key] !== null ? stringField(record, key) : null
 }
 
 function parseSameCorpusProofArchiveProduct(value: string): UiResponsivenessSameCorpusProduct {
@@ -275,7 +308,7 @@ export function verifySameCorpusProofArchiveFiles(
   const entries = artifacts.map((artifact) => verifySameCorpusProofArchiveFile(artifact, options))
   const verifiedArtifactCount = entries.filter((entry) => entry.status === 'verified').length
   const missingArtifactCount = entries.filter((entry) => entry.status === 'missing').length
-  const mismatchedArtifactCount = entries.filter((entry) => entry.status === 'hash-mismatch').length
+  const mismatchedArtifactCount = entries.filter((entry) => entry.status === 'hash-mismatch' || entry.status === 'identity-mismatch').length
   return {
     schemaVersion: 1,
     checkedArtifactCount: entries.length,
@@ -524,9 +557,15 @@ function sameCorpusCommittedStateArchiveArtifactsForProduct(
           phase,
           artifactPath: phaseProof.artifactPath,
           artifactSha256: phaseProof.artifactSha256,
+          sheetName: phaseProof.sheetName,
+          sheetId: phaseProof.sheetId,
+          targetRange: phaseProof.targetRange,
+          capturedAtMs: phaseProof.capturedAtMs,
           exportUrl: phaseProof.exportUrl,
           workbookByteSize: phaseProof.workbookByteSize,
           workbookSha256: phaseProof.workbookSha256,
+          readback: phaseProof.readback,
+          readbackSha256: sha256Hex(stableJsonBytes(phaseProof.readback)),
         })
       }
     }
@@ -561,10 +600,16 @@ function verifySameCorpusProofArchiveFile(
   if (!existsSync(resolvedPath)) {
     return { ...baseEntry, status: 'missing' }
   }
-  const actualSha256 = sha256Hex(readFileSync(resolvedPath))
-  return actualSha256 === expectedSha256
-    ? { ...baseEntry, status: 'verified', actualSha256 }
-    : { ...baseEntry, status: 'hash-mismatch', actualSha256 }
+  const bytes = readFileSync(resolvedPath)
+  const actualSha256 = sha256Hex(bytes)
+  if (actualSha256 !== expectedSha256) {
+    return { ...baseEntry, status: 'hash-mismatch', actualSha256 }
+  }
+  const identityMismatchReason =
+    artifact.kind === 'google-sheets-committed-state-export' ? committedStateArtifactIdentityMismatchReason(artifact, bytes) : null
+  return identityMismatchReason
+    ? { ...baseEntry, status: 'identity-mismatch', actualSha256, identityMismatchReason }
+    : { ...baseEntry, status: 'verified', actualSha256 }
 }
 
 function sameCorpusProofArchiveArtifactPath(artifact: SameCorpusProofArchiveArtifact): string {
@@ -581,6 +626,64 @@ function resolveSameCorpusProofArchiveArtifactPath(path: string, artifactBaseDir
 
 function sha256Hex(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex')
+}
+
+function committedStateArtifactIdentityMismatchReason(
+  artifact: SameCorpusGoogleSheetsCommittedStateArchiveArtifact,
+  bytes: Uint8Array,
+): string | null {
+  const record = parseJsonRecord(bytes, artifact.artifactPath)
+  const expectedFields: ReadonlyArray<readonly [string, unknown]> = [
+    ['product', artifact.product],
+    ['workload', artifact.workload],
+    ['sampleIndex', artifact.sampleIndex],
+    ['phase', artifact.phase],
+    ['sheetName', artifact.sheetName],
+    ['sheetId', artifact.sheetId],
+    ['targetRange', artifact.targetRange],
+    ['capturedAtMs', artifact.capturedAtMs],
+    ['artifactPath', artifact.artifactPath],
+    ['exportUrl', artifact.exportUrl],
+    ['workbookByteSize', artifact.workbookByteSize],
+    ['workbookSha256', artifact.workbookSha256],
+  ]
+  const mismatchedField = expectedFields.find(([key, expected]) => !sameStableJsonValue(record[key], expected))?.[0]
+  if (mismatchedField) {
+    return `committed-state ${mismatchedField} does not match archive manifest`
+  }
+  const readbackHash = sha256Hex(stableJsonBytes(record.readback ?? null))
+  return readbackHash === artifact.readbackSha256 ? null : 'committed-state readback does not match archive manifest'
+}
+
+function parseJsonRecord(bytes: Uint8Array, path: string): Record<string, unknown> {
+  try {
+    return asObject(JSON.parse(new TextDecoder().decode(bytes)) as unknown, `same-corpus committed-state artifact ${path}`)
+  } catch (error: unknown) {
+    throw new Error(`Unable to parse same-corpus committed-state artifact ${path}`, { cause: error })
+  }
+}
+
+function sameStableJsonValue(left: unknown, right: unknown): boolean {
+  return JSON.stringify(stableJsonValue(left)) === JSON.stringify(stableJsonValue(right))
+}
+
+function stableJsonBytes(value: unknown): Uint8Array {
+  return new TextEncoder().encode(JSON.stringify(stableJsonValue(value)))
+}
+
+function stableJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(stableJsonValue)
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, entryValue]) => entryValue !== undefined)
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([key, entryValue]) => [key, stableJsonValue(entryValue)]),
+    )
+  }
+  return value
 }
 
 function sampleIndexes(sampleCount: number): number[] {

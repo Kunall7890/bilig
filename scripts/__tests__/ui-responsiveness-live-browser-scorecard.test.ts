@@ -1034,6 +1034,23 @@ function sameCorpusProofArchiveArtifactContents(artifact: SameCorpusProofArchive
   if (artifact.kind === 'scenario-screenshot') {
     return fixtureScreenshotBytes
   }
+  if (artifact.kind === 'google-sheets-committed-state-export') {
+    return sameCorpusCommittedStateArtifactJson({
+      artifactPath: artifact.artifactPath,
+      capturedAtMs: artifact.capturedAtMs,
+      exportUrl: artifact.exportUrl,
+      phase: artifact.phase,
+      product: artifact.product,
+      readback: artifact.readback,
+      sampleIndex: artifact.sampleIndex,
+      sheetId: artifact.sheetId,
+      sheetName: artifact.sheetName,
+      targetRange: artifact.targetRange,
+      workbookByteSize: artifact.workbookByteSize,
+      workbookSha256: artifact.workbookSha256,
+      workload: artifact.workload,
+    })
+  }
   return sameCorpusMutationTargetScreenshotBytes(artifact.sampleIndex, artifact.phase)
 }
 
@@ -1461,7 +1478,7 @@ function sameCorpusCommittedStatePhaseProof(
       : phase === 'after'
         ? proof.operationStartedAtMs + Math.max(1, proof.committedTargetProofMs / 2)
         : proof.postMutationProofCapturedAtMs + 11
-  return {
+  const phaseProof = {
     product: 'google-sheets',
     phase,
     sampleIndex: proof.sampleIndex,
@@ -1474,11 +1491,51 @@ function sameCorpusCommittedStatePhaseProof(
     artifactPath: `tmp/same-corpus-wide-mixed-250k-${proof.workload}/committed-state/google-sheets-sample-${String(
       proof.sampleIndex + 1,
     )}-${phase}.json`,
-    artifactSha256: sameCorpusMutationTargetScreenshotSha256(proof.sampleIndex, phase),
     workbookByteSize: 123456 + proof.sampleIndex,
     workbookSha256: ((proof.sampleIndex + hashOffset) % 16).toString(16).repeat(64),
     readback: sameCorpusCommittedStateReadback(readback),
   }
+  return {
+    ...phaseProof,
+    artifactSha256: sha256Hex(sameCorpusCommittedStateArtifactJson(phaseProof)),
+  }
+}
+
+function sameCorpusCommittedStateArtifactJson(value: {
+  readonly artifactPath: string
+  readonly capturedAtMs?: number
+  readonly exportUrl: string
+  readonly phase: 'before' | 'after' | 'restored'
+  readonly product: 'google-sheets'
+  readonly readback: SameCorpusMutationTargetProof['before']
+  readonly sampleIndex: number
+  readonly sheetId: string | null
+  readonly sheetName: string
+  readonly targetRange: string
+  readonly workbookByteSize: number
+  readonly workbookSha256: string
+  readonly workload: SameCorpusMutationTargetProof['workload']
+}): string {
+  return `${JSON.stringify(stableJsonValue(value), null, 2)}\n`
+}
+
+function sha256Hex(value: string): string {
+  return createHash('sha256').update(value).digest('hex')
+}
+
+function stableJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(stableJsonValue)
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, entryValue]) => entryValue !== undefined)
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([key, entryValue]) => [key, stableJsonValue(entryValue)]),
+    )
+  }
+  return value
 }
 
 function sameCorpusCommittedStateReadback(readback: SameCorpusMutationTargetProof['before']): SameCorpusMutationTargetProof['before'] {

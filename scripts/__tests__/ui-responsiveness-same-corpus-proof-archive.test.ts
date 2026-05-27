@@ -111,7 +111,32 @@ describe('same-corpus proof archive manifest', () => {
   it('verifies file-backed archive artifacts by reading bytes and matching sha256 digests', () => {
     const rootDir = mkdtempSync(join(tmpdir(), 'bilig-same-corpus-proof-archive-'))
     const scenarioBytes = 'scenario screenshot bytes'
-    const committedBytes = '{"committed":true}\n'
+    const committedReadback = {
+      value: 'same-corpus-edit-1',
+      formula: null,
+      fillColor: null,
+      visibleText: 'same-corpus-edit-1',
+      source: 'google-sheets-xlsx-export' as const,
+    }
+    const committedBytes = `${JSON.stringify(
+      {
+        artifactPath: 'google-sheets-sample-1-after.json',
+        capturedAtMs: 10,
+        exportUrl: 'https://docs.google.com/spreadsheets/d/example/export?format=xlsx',
+        phase: 'after',
+        product: 'google-sheets',
+        readback: committedReadback,
+        sampleIndex: 0,
+        sheetId: 'gid:0',
+        sheetName: 'WideGrid',
+        targetRange: 'C5',
+        workbookByteSize: 123,
+        workbookSha256: 'c'.repeat(64),
+        workload: 'edit-visible-cell',
+      },
+      null,
+      2,
+    )}\n`
     writeFileSync(join(rootDir, 'bilig-sample-1.png'), scenarioBytes)
     writeFileSync(join(rootDir, 'google-sheets-sample-1-after.json'), committedBytes)
 
@@ -130,11 +155,17 @@ describe('same-corpus proof archive manifest', () => {
           workload: 'edit-visible-cell',
           sampleIndex: 0,
           phase: 'after',
+          sheetName: 'WideGrid',
+          sheetId: 'gid:0',
+          targetRange: 'C5',
+          capturedAtMs: 10,
           artifactPath: 'google-sheets-sample-1-after.json',
           artifactSha256: sha256Hex(committedBytes),
           exportUrl: 'https://docs.google.com/spreadsheets/d/example/export?format=xlsx',
           workbookByteSize: 123,
           workbookSha256: 'c'.repeat(64),
+          readback: committedReadback,
+          readbackSha256: stableJsonSha256(committedReadback),
         },
       ],
       { artifactBaseDir: rootDir },
@@ -148,6 +179,68 @@ describe('same-corpus proof archive manifest', () => {
       complete: true,
     })
     expect(verification.entries.map((entry) => entry.status)).toEqual(['verified', 'verified'])
+  })
+
+  it('rejects committed-state archive files whose embedded target identity drifts from the manifest', () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'bilig-same-corpus-proof-archive-'))
+    const committedPayload = {
+      artifactPath: 'google-sheets-sample-1-after.json',
+      capturedAtMs: 10,
+      exportUrl: 'https://docs.google.com/spreadsheets/d/example/export?format=xlsx',
+      phase: 'after',
+      product: 'google-sheets',
+      readback: {
+        value: 'same-corpus-edit-1',
+        formula: null,
+        fillColor: null,
+        visibleText: 'same-corpus-edit-1',
+        source: 'google-sheets-xlsx-export',
+      },
+      sampleIndex: 0,
+      sheetId: 'gid:0',
+      sheetName: 'WideGrid',
+      targetRange: 'D9',
+      workbookByteSize: 123,
+      workbookSha256: 'c'.repeat(64),
+      workload: 'edit-visible-cell',
+    }
+    const committedBytes = `${JSON.stringify(committedPayload, null, 2)}\n`
+    writeFileSync(join(rootDir, 'google-sheets-sample-1-after.json'), committedBytes)
+
+    const verification = verifySameCorpusProofArchiveFiles(
+      [
+        {
+          kind: 'google-sheets-committed-state-export',
+          product: 'google-sheets',
+          workload: 'edit-visible-cell',
+          sampleIndex: 0,
+          phase: 'after',
+          sheetName: 'WideGrid',
+          sheetId: 'gid:0',
+          targetRange: 'C5',
+          capturedAtMs: 10,
+          artifactPath: 'google-sheets-sample-1-after.json',
+          artifactSha256: sha256Hex(committedBytes),
+          exportUrl: 'https://docs.google.com/spreadsheets/d/example/export?format=xlsx',
+          workbookByteSize: 123,
+          workbookSha256: 'c'.repeat(64),
+          readback: committedPayload.readback,
+          readbackSha256: stableJsonSha256(committedPayload.readback),
+        },
+      ],
+      { artifactBaseDir: rootDir },
+    )
+
+    expect(verification).toMatchObject({
+      checkedArtifactCount: 1,
+      verifiedArtifactCount: 0,
+      mismatchedArtifactCount: 1,
+      complete: false,
+    })
+    expect(verification.entries[0]).toMatchObject({
+      status: 'identity-mismatch',
+      identityMismatchReason: 'committed-state targetRange does not match archive manifest',
+    })
   })
 
   it('rejects missing and mismatched proof archive files', () => {
@@ -320,4 +413,25 @@ function sameCorpusMeasurement(
 
 function sha256Hex(value: string): string {
   return createHash('sha256').update(value).digest('hex')
+}
+
+function stableJsonSha256(value: unknown): string {
+  return createHash('sha256')
+    .update(JSON.stringify(stableJsonValue(value)))
+    .digest('hex')
+}
+
+function stableJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(stableJsonValue)
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, entryValue]) => entryValue !== undefined)
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([key, entryValue]) => [key, stableJsonValue(entryValue)]),
+    )
+  }
+  return value
 }

@@ -444,7 +444,7 @@ export function validateSameCorpusProofArchiveArtifacts(
           manifest.fileVerification.checkedArtifactCount,
         )} files verified`,
         `${String(manifest.fileVerification.missingArtifactCount)} missing`,
-        `${String(manifest.fileVerification.mismatchedArtifactCount)} hash-mismatch`,
+        `${String(manifest.fileVerification.mismatchedArtifactCount)} mismatch`,
       ].join('; '),
     )
   }
