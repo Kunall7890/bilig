@@ -40,6 +40,27 @@ describe('text search builtins', () => {
     expect(SEARCH(text('north~*'), text('north* zone'))).toEqual(number(1))
     expect(SEARCH(text('north*'), text('northwest zone'))).toEqual(number(1))
   })
+
+  it('returns value errors when an empty search starts past the searched text', () => {
+    const FIND = getTextBuiltin('FIND')!
+    const FINDB = getTextBuiltin('FINDB')!
+    const SEARCH = getTextBuiltin('SEARCH')!
+    const SEARCHB = getTextBuiltin('SEARCHB')!
+
+    expect(FIND(text(''), text('abc'), number(3))).toEqual(number(3))
+    expect(SEARCH(text(''), text('abc'), number(3))).toEqual(number(3))
+    expect(FINDB(text(''), text('abc'), number(3))).toEqual(number(3))
+    expect(SEARCHB(text(''), text('abc'), number(3))).toEqual(number(3))
+
+    expect(FIND(text(''), text('abc'), number(4))).toEqual(valueError())
+    expect(SEARCH(text(''), text('abc'), number(4))).toEqual(valueError())
+    expect(FINDB(text(''), text('abc'), number(4))).toEqual(valueError())
+    expect(SEARCHB(text(''), text('abc'), number(4))).toEqual(valueError())
+    expect(FIND(text(''), text(''), number(1))).toEqual(valueError())
+    expect(SEARCH(text(''), text(''), number(1))).toEqual(valueError())
+    expect(FINDB(text(''), text(''), number(1))).toEqual(valueError())
+    expect(SEARCHB(text(''), text(''), number(1))).toEqual(valueError())
+  })
 })
 
 function number(value: number): CellValue {

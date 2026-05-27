@@ -151,11 +151,11 @@ function findPosition(
 ): number | CellValue {
   const startIndex = start - 1
 
+  if (start > haystack.length) {
+    return deps.error(ErrorCode.Value)
+  }
   if (needle === '') {
     return start
-  }
-  if (startIndex > haystack.length) {
-    return deps.error(ErrorCode.Value)
   }
 
   if (!wildcardAware || !hasSearchSyntax(needle)) {
@@ -222,7 +222,7 @@ export function createTextSearchBuiltins(deps: TextSearchBuiltinDeps): Record<st
       if (deps.isErrorValue(start)) {
         return start
       }
-      if (start > deps.utf8Bytes(text).length + 1) {
+      if (start > deps.utf8Bytes(text).length) {
         return deps.error(ErrorCode.Value)
       }
       const found = findPosition(deps, deps.coerceText(findTextValue), text, deps.bytePositionToCharPosition(text, start), false, true)
@@ -243,7 +243,7 @@ export function createTextSearchBuiltins(deps: TextSearchBuiltinDeps): Record<st
       }
       const findBytes = deps.utf8Bytes(deps.coerceText(findTextValue))
       const withinBytes = deps.utf8Bytes(deps.coerceText(withinTextValue))
-      if (start > withinBytes.length + 1) {
+      if (start > withinBytes.length) {
         return deps.error(ErrorCode.Value)
       }
       const found = deps.findSubBytes(withinBytes, findBytes, start - 1)
