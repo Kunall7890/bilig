@@ -665,7 +665,16 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
     prerequisites: ['core:value-model', 'core:date-serial-model', 'core:volatile-context'],
     notes: 'NOW now captures a single recalc-epoch serial on the host and executes on the AssemblyScript path.',
   }),
+  entry('date-time:date-direct-numeric-text-coercion', 'date-time', '=DATE("2024","1","2")', 'implemented-wasm-production', {
+    notes: 'HyperFormula and TrueCalc both return serial 45293 for direct numeric text arguments.',
+  }),
   entry('date-time:time-basic', 'date-time', '=TIME(12,30,0)', 'implemented-wasm-production'),
+  entry('date-time:time-direct-numeric-text-coercion', 'date-time', '=TIME("1","2","3")', 'implemented-wasm-production', {
+    notes: 'HyperFormula and TrueCalc both return the 01:02:03 day fraction for direct numeric text arguments.',
+  }),
+  entry('date-time:time-direct-empty-text-coercion', 'date-time', '=TIME("",0,0)', 'implemented-wasm-production', {
+    notes: 'HyperFormula, TrueCalc, and xlsx-calc all return zero for an empty text hour argument.',
+  }),
   entry('date-time:hour-basic', 'date-time', '=HOUR(A1)', 'implemented-wasm-production'),
   entry('date-time:minute-basic', 'date-time', '=MINUTE(A1)', 'implemented-wasm-production'),
   entry('date-time:second-basic', 'date-time', '=SECOND(A1)', 'implemented-wasm-production'),

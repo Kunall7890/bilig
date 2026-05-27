@@ -1,5 +1,6 @@
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import type { CellValue } from '@bilig/protocol'
+import { parseArithmeticNumericText } from '../numeric-text.js'
 import { coerceNumber, coerceText, firstError, integerValue, numberResult, truncArg, valueError } from './cell-value-utils.js'
 import {
   MS_PER_DAY,
@@ -486,6 +487,23 @@ function numError(): CellValue {
   return { tag: ValueTag.Error, code: ErrorCode.Num }
 }
 
+function coerceDateTimeNumber(value: CellValue): number | CellValue {
+  if (value.tag === ValueTag.Error) {
+    return value
+  }
+  if (value.tag === ValueTag.String) {
+    const parsed = parseArithmeticNumericText(value.value)
+    return parsed === undefined ? valueError() : parsed
+  }
+  const numeric = coerceNumber(value)
+  return numeric === undefined ? valueError() : numeric
+}
+
+function truncDateTimeArg(value: CellValue): number | CellValue {
+  const numeric = coerceDateTimeNumber(value)
+  return typeof numeric === 'number' ? Math.trunc(numeric) : numeric
+}
+
 export function createDateBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin {
   return (...args) => {
     const error = firstError(args)
@@ -496,9 +514,9 @@ export function createDateBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin
       return valueError()
     }
 
-    const year = truncArg(args[0]!)
-    const month = truncArg(args[1]!)
-    const day = truncArg(args[2]!)
+    const year = truncDateTimeArg(args[0]!)
+    const month = truncDateTimeArg(args[1]!)
+    const day = truncDateTimeArg(args[2]!)
     if (typeof year !== 'number') return year
     if (typeof month !== 'number') return month
     if (typeof day !== 'number') return day
@@ -557,9 +575,9 @@ function createTimeBuiltin(): Builtin {
       return valueError()
     }
 
-    const hour = truncArg(args[0]!)
-    const minute = truncArg(args[1]!)
-    const second = truncArg(args[2]!)
+    const hour = truncDateTimeArg(args[0]!)
+    const minute = truncDateTimeArg(args[1]!)
+    const second = truncDateTimeArg(args[2]!)
     if (typeof hour !== 'number') return hour
     if (typeof minute !== 'number') return minute
     if (typeof second !== 'number') return second

@@ -3,6 +3,7 @@ import { scalarErrorAt } from './builtin-args'
 import {
   addMonthsExcelSerial,
   excelDateSerial,
+  excelDateSerialFromNumbers,
   excelDateTextSerial,
   excelDatedifValue,
   excelDayPartFromSerial,
@@ -11,6 +12,7 @@ import {
   excelSecondOfDay,
   excelSerialWhole,
   excelTimeSerial,
+  excelTimeSerialFromNumbers,
   excelWeekdayFromSerial,
   excelYearPartFromSerial,
   isExcelDateSerialInRange,
@@ -18,10 +20,33 @@ import {
 } from './date-finance'
 import { truncToInt } from './numeric-core'
 import { scalarText, trimAsciiWhitespace } from './text-codec'
-import { parseTimeValueText } from './text-special'
+import { coerceScalarNumberLikeText, parseTimeValueText } from './text-special'
 import { STACK_KIND_SCALAR, writeResult } from './result-io'
 
 const DATEDIF_VALUE_ERROR: i32 = i32.MIN_VALUE
+
+function coerceDateTimeNumberAt(
+  index: i32,
+  tagStack: Uint8Array,
+  valueStack: Float64Array,
+  stringOffsets: Uint32Array,
+  stringLengths: Uint32Array,
+  stringData: Uint16Array,
+  outputStringOffsets: Uint32Array,
+  outputStringLengths: Uint32Array,
+  outputStringData: Uint16Array,
+): f64 {
+  return coerceScalarNumberLikeText(
+    tagStack[index],
+    valueStack[index],
+    stringOffsets,
+    stringLengths,
+    stringData,
+    outputStringOffsets,
+    outputStringLengths,
+    outputStringData,
+  )
+}
 
 export function tryApplyDateTimeBuiltin(
   builtinId: i32,
@@ -43,23 +68,47 @@ export function tryApplyDateTimeBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const year = truncToInt(tagStack[base], valueStack[base])
-    const month = truncToInt(tagStack[base + 1], valueStack[base + 1])
-    const day = truncToInt(tagStack[base + 2], valueStack[base + 2])
-    if (year == i32.MIN_VALUE || month == i32.MIN_VALUE || day == i32.MIN_VALUE) {
+    const yearNumeric = coerceDateTimeNumberAt(
+      base,
+      tagStack,
+      valueStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const monthNumeric = coerceDateTimeNumberAt(
+      base + 1,
+      tagStack,
+      valueStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const dayNumeric = coerceDateTimeNumberAt(
+      base + 2,
+      tagStack,
+      valueStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    if (!isFinite(yearNumeric) || !isFinite(monthNumeric) || !isFinite(dayNumeric)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    const year = <i32>yearNumeric
     if (year < 0 || year >= 10000) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const serial = excelDateSerial(
-      tagStack[base],
-      valueStack[base],
-      tagStack[base + 1],
-      valueStack[base + 1],
-      tagStack[base + 2],
-      valueStack[base + 2],
-    )
+    const serial = excelDateSerialFromNumbers(yearNumeric, monthNumeric, dayNumeric)
     if (isNaN(serial)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -95,23 +144,49 @@ export function tryApplyDateTimeBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const hour = truncToInt(tagStack[base], valueStack[base])
-    const minute = truncToInt(tagStack[base + 1], valueStack[base + 1])
-    const second = truncToInt(tagStack[base + 2], valueStack[base + 2])
-    if (hour == i32.MIN_VALUE || minute == i32.MIN_VALUE || second == i32.MIN_VALUE) {
+    const hourNumeric = coerceDateTimeNumberAt(
+      base,
+      tagStack,
+      valueStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const minuteNumeric = coerceDateTimeNumberAt(
+      base + 1,
+      tagStack,
+      valueStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const secondNumeric = coerceDateTimeNumberAt(
+      base + 2,
+      tagStack,
+      valueStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    if (!isFinite(hourNumeric) || !isFinite(minuteNumeric) || !isFinite(secondNumeric)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    const hour = <i32>hourNumeric
+    const minute = <i32>minuteNumeric
+    const second = <i32>secondNumeric
     if (hour < 0 || minute < 0 || second < 0 || hour > 32767 || minute > 32767 || second > 32767) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const serial = excelTimeSerial(
-      tagStack[base],
-      valueStack[base],
-      tagStack[base + 1],
-      valueStack[base + 1],
-      tagStack[base + 2],
-      valueStack[base + 2],
-    )
+    const serial = excelTimeSerialFromNumbers(hourNumeric, minuteNumeric, secondNumeric)
     if (isNaN(serial)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }

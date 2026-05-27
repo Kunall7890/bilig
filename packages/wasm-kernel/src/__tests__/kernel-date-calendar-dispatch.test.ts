@@ -157,6 +157,40 @@ describe('wasm kernel date/calendar dispatch seams', () => {
     expectErrorCell(kernel, cellIndex(1, 2, width), ErrorCode.Num)
   })
 
+  it('coerces DATE and TIME direct numeric text arguments on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 4, 6, 6, 1)
+    kernel.uploadStrings(
+      Uint32Array.from([0, 4, 5, 6, 7, 7]),
+      Uint32Array.from([4, 1, 1, 1, 0, 1]),
+      Uint16Array.from(Array.from('2024123 ', (char) => char.charCodeAt(0))),
+    )
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushString(0), encodePushString(1), encodePushString(2), encodeCall(BuiltinId.Date, 3), encodeRet()],
+      [encodePushString(1), encodePushString(2), encodePushString(3), encodeCall(BuiltinId.Time, 3), encodeRet()],
+      [encodePushString(4), encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Time, 3), encodeRet()],
+      [encodePushString(5), encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Time, 3), encodeRet()],
+    ])
+    kernel.ensureFormulaCapacity(packed.offsets.length)
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: packed.offsets.length }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([[], [], [0, 0], [0, 0]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: packed.offsets.length }, (_, index) => cellIndex(1, index, width))))
+
+    expectNumberCell(kernel, cellIndex(1, 0, width), 45293)
+    expectNumberCell(kernel, cellIndex(1, 1, width), 3723 / 86400)
+    expectNumberCell(kernel, cellIndex(1, 2, width), 0)
+    expectErrorCell(kernel, cellIndex(1, 3, width), ErrorCode.Value)
+  })
+
   it('keeps date, weekday, and workday dispatch behavior stable', async () => {
     const kernel = await createKernel()
     const width = 20

@@ -40,7 +40,31 @@ describe('datetime builtins', () => {
         { tag: ValueTag.Number, value: 2 },
         { tag: ValueTag.Number, value: 29 },
       ),
-    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    ).toEqual({ tag: ValueTag.Number, value: 45351 })
+
+    expect(
+      datetimeBuiltins.DATE(
+        { tag: ValueTag.String, value: '2024', stringId: 1 },
+        { tag: ValueTag.String, value: '1', stringId: 2 },
+        { tag: ValueTag.String, value: '2', stringId: 3 },
+      ),
+    ).toEqual({ tag: ValueTag.Number, value: 45293 })
+
+    expect(
+      datetimeBuiltins.DATE(
+        { tag: ValueTag.Number, value: 2024 },
+        { tag: ValueTag.String, value: '', stringId: 4 },
+        { tag: ValueTag.Number, value: 1 },
+      ),
+    ).toEqual({ tag: ValueTag.Number, value: 45261 })
+
+    expect(
+      datetimeBuiltins.DATE(
+        { tag: ValueTag.Number, value: 2024 },
+        { tag: ValueTag.Number, value: 1 },
+        { tag: ValueTag.String, value: '', stringId: 5 },
+      ),
+    ).toEqual({ tag: ValueTag.Number, value: 45291 })
 
     expect(
       datetimeBuiltins.DATE(
@@ -86,6 +110,22 @@ describe('datetime builtins', () => {
     expect(
       datetimeBuiltins.TIME({ tag: ValueTag.Number, value: 12 }, { tag: ValueTag.Number, value: 30 }, { tag: ValueTag.Number, value: 0 }),
     ).toEqual({ tag: ValueTag.Number, value: 0.5208333333333334 })
+
+    expect(
+      datetimeBuiltins.TIME(
+        { tag: ValueTag.String, value: '1', stringId: 1 },
+        { tag: ValueTag.String, value: '2', stringId: 2 },
+        { tag: ValueTag.String, value: '3', stringId: 3 },
+      ),
+    ).toEqual({ tag: ValueTag.Number, value: 3723 / 86400 })
+
+    expect(
+      datetimeBuiltins.TIME(
+        { tag: ValueTag.String, value: '', stringId: 4 },
+        { tag: ValueTag.Number, value: 0 },
+        { tag: ValueTag.Number, value: 0 },
+      ),
+    ).toEqual({ tag: ValueTag.Number, value: 0 })
 
     expect(datetimeBuiltins.HOUR({ tag: ValueTag.Number, value: 0.5208333333333334 })).toEqual({
       tag: ValueTag.Number,
@@ -877,6 +917,16 @@ describe('datetime builtins', () => {
     expect(
       datetimeBuiltins.TIME(
         { tag: ValueTag.String, value: 'bad', stringId: 1 },
+        { tag: ValueTag.Number, value: 0 },
+        { tag: ValueTag.Number, value: 0 },
+      ),
+    ).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
+    })
+    expect(
+      datetimeBuiltins.TIME(
+        { tag: ValueTag.String, value: ' ', stringId: 2 },
         { tag: ValueTag.Number, value: 0 },
         { tag: ValueTag.Number, value: 0 },
       ),

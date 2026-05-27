@@ -314,11 +314,8 @@ export function excelDayPartFromSerial(tag: u8, value: f64): i32 {
   return civilDay(EXCEL_EPOCH_DAYS + adjustedWhole)
 }
 
-export function excelTimeSerial(hourTag: u8, hourValue: f64, minuteTag: u8, minuteValue: f64, secondTag: u8, secondValue: f64): f64 {
-  const hourNumeric = toNumberExact(hourTag, hourValue)
-  const minuteNumeric = toNumberExact(minuteTag, minuteValue)
-  const secondNumeric = toNumberExact(secondTag, secondValue)
-  if (isNaN(hourNumeric) || isNaN(minuteNumeric) || isNaN(secondNumeric)) {
+export function excelTimeSerialFromNumbers(hourNumeric: f64, minuteNumeric: f64, secondNumeric: f64): f64 {
+  if (!isFinite(hourNumeric) || !isFinite(minuteNumeric) || !isFinite(secondNumeric)) {
     return NaN
   }
   const hour = <f64>(<i32>hourNumeric)
@@ -333,6 +330,14 @@ export function excelTimeSerial(hourTag: u8, hourValue: f64, minuteTag: u8, minu
     totalSeconds += <f64>EXCEL_SECONDS_PER_DAY
   }
   return totalSeconds / <f64>EXCEL_SECONDS_PER_DAY
+}
+
+export function excelTimeSerial(hourTag: u8, hourValue: f64, minuteTag: u8, minuteValue: f64, secondTag: u8, secondValue: f64): f64 {
+  return excelTimeSerialFromNumbers(
+    toNumberExact(hourTag, hourValue),
+    toNumberExact(minuteTag, minuteValue),
+    toNumberExact(secondTag, secondValue),
+  )
 }
 
 export function excelSecondOfDay(tag: u8, value: f64): i32 {
@@ -439,13 +444,13 @@ export function excelWeeknumFromSerial(tag: u8, value: f64, returnType: i32): i3
   return <i32>Math.floor(<f64>(dayOfYear - 1 + shift) / 7.0) + 1
 }
 
-export function excelDateSerial(yearTag: u8, yearValue: f64, monthTag: u8, monthValue: f64, dayTag: u8, dayValue: f64): f64 {
-  let year = truncToInt(yearTag, yearValue)
-  const month = truncToInt(monthTag, monthValue)
-  const day = truncToInt(dayTag, dayValue)
-  if (year == i32.MIN_VALUE || month == i32.MIN_VALUE || day == i32.MIN_VALUE) {
+export function excelDateSerialFromNumbers(yearNumeric: f64, monthNumeric: f64, dayNumeric: f64): f64 {
+  if (!isFinite(yearNumeric) || !isFinite(monthNumeric) || !isFinite(dayNumeric)) {
     return NaN
   }
+  let year = <i32>yearNumeric
+  const month = <i32>monthNumeric
+  const day = <i32>dayNumeric
   if (year >= 0 && year <= 1899) {
     year += 1900
   }
@@ -469,6 +474,16 @@ export function excelDateSerial(yearTag: u8, yearValue: f64, monthTag: u8, month
     serial += 1
   }
   return <f64>serial
+}
+
+export function excelDateSerial(yearTag: u8, yearValue: f64, monthTag: u8, monthValue: f64, dayTag: u8, dayValue: f64): f64 {
+  const year = truncToInt(yearTag, yearValue)
+  const month = truncToInt(monthTag, monthValue)
+  const day = truncToInt(dayTag, dayValue)
+  if (year == i32.MIN_VALUE || month == i32.MIN_VALUE || day == i32.MIN_VALUE) {
+    return NaN
+  }
+  return excelDateSerialFromNumbers(<f64>year, <f64>month, <f64>day)
 }
 
 export function addMonthsExcelSerial(tag: u8, value: f64, offsetTag: u8, offsetValue: f64, endOfMonth: bool): f64 {
