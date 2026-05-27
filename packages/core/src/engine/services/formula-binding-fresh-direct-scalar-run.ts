@@ -26,14 +26,13 @@ interface FreshDirectScalarDependencySlots {
   readonly dependencyEntityCount: number
 }
 
-interface PreparedFreshDirectScalarRunMember {
-  readonly cellIndex: number
-  readonly formulaEntity: number
-  readonly member: FreshDirectScalarFormulaBindingMember
-  readonly directScalar: RuntimeDirectScalarDescriptor
-  readonly dependencies: FreshDirectScalarDependencySlots
-  readonly dependencyIndexOffset: number
-  readonly dependencyEntityOffset: number
+interface FreshDirectScalarRunSlots {
+  readonly dependencyIndex0: Uint32Array
+  readonly dependencyIndex1: Uint32Array
+  readonly dependencyIndexCounts: Uint8Array
+  readonly dependencyEntity0: Uint32Array
+  readonly dependencyEntity1: Uint32Array
+  readonly dependencyEntityCounts: Uint8Array
 }
 
 export function bindFreshDirectScalarFormulaRun(args: {
@@ -117,11 +116,22 @@ function tryBindFreshDirectScalarFormulaRunBulk(args: {
   if (args.run.members.length === 0) {
     return true
   }
-  const prepared: PreparedFreshDirectScalarRunMember[] = []
+  const memberCount = args.run.members.length
+  const directScalars: RuntimeDirectScalarDescriptor[] = []
+  directScalars.length = memberCount
+  const formulaEntities = new Uint32Array(memberCount)
+  const dependencySlots: FreshDirectScalarRunSlots = {
+    dependencyIndex0: new Uint32Array(memberCount),
+    dependencyIndex1: new Uint32Array(memberCount),
+    dependencyIndexCounts: new Uint8Array(memberCount),
+    dependencyEntity0: new Uint32Array(memberCount),
+    dependencyEntity1: new Uint32Array(memberCount),
+    dependencyEntityCounts: new Uint8Array(memberCount),
+  }
   let totalDependencyIndexCount = 0
   let totalDependencyEntityCount = 0
 
-  for (let index = 0; index < args.run.members.length; index += 1) {
+  for (let index = 0; index < memberCount; index += 1) {
     const cellIndex = args.run.cellIndices[index]!
     const member = args.run.members[index]!
     assertFreshDirectScalarFormulaCell(args.serviceArgs, cellIndex)
@@ -136,64 +146,84 @@ function tryBindFreshDirectScalarFormulaRunBulk(args: {
     if (directScalar === undefined) {
       return false
     }
-    const dependencies = materializeFreshDirectScalarDependencySlots(member.compiled, directScalar)
-    if (dependencies === undefined) {
+    const dependencyCounts = writeFreshDirectScalarDependencySlotsForRun(member.compiled, directScalar, dependencySlots, index)
+    if (dependencyCounts < 0) {
       return false
     }
-    prepared.push({
-      cellIndex,
-      formulaEntity: makeCellEntity(cellIndex),
-      member,
-      directScalar,
-      dependencies,
-      dependencyIndexOffset: totalDependencyIndexCount,
-      dependencyEntityOffset: totalDependencyEntityCount,
-    })
-    totalDependencyIndexCount += dependencies.dependencyIndexCount
-    totalDependencyEntityCount += dependencies.dependencyEntityCount
+    directScalars[index] = directScalar
+    formulaEntities[index] = makeCellEntity(cellIndex)
+    totalDependencyIndexCount += dependencyCounts & 0b11
+    totalDependencyEntityCount += dependencyCounts >> 2
   }
 
   const packedDependencyIndices = new Uint32Array(totalDependencyIndexCount)
   const packedDependencyEntities = new Uint32Array(totalDependencyEntityCount)
-  for (const entry of prepared) {
-    writeFreshDirectScalarDependencySlots(entry.dependencies, packedDependencyIndices, packedDependencyEntities, entry)
+  let dependencyIndexOffset = 0
+  let dependencyEntityOffset = 0
+  for (let index = 0; index < memberCount; index += 1) {
+    writePackedFreshDirectScalarDependencySlots(
+      dependencySlots,
+      index,
+      packedDependencyIndices,
+      dependencyIndexOffset,
+      packedDependencyEntities,
+      dependencyEntityOffset,
+    )
+    dependencyIndexOffset += dependencySlots.dependencyIndexCounts[index]!
+    dependencyEntityOffset += dependencySlots.dependencyEntityCounts[index]!
   }
 
   const dependencyEntityBlock =
     totalDependencyEntityCount === 0 ? args.edgeArena.empty() : args.edgeArena.replace(args.edgeArena.empty(), packedDependencyEntities)
 
-  for (const entry of prepared) {
+  dependencyIndexOffset = 0
+  dependencyEntityOffset = 0
+  for (let index = 0; index < memberCount; index += 1) {
+    const cellIndex = args.run.cellIndices[index]!
+    const member = args.run.members[index]!
+    const dependencyIndexCount = dependencySlots.dependencyIndexCounts[index]!
+    const dependencyEntityCount = dependencySlots.dependencyEntityCounts[index]!
     const runtimeFormula = makeFreshDirectScalarRuntimeFormula(
-      entry.cellIndex,
-      entry.member,
-      entry.directScalar,
-      packedDependencyIndices.subarray(entry.dependencyIndexOffset, entry.dependencyIndexOffset + entry.dependencies.dependencyIndexCount),
-      subSlice(dependencyEntityBlock, entry.dependencyEntityOffset, entry.dependencies.dependencyEntityCount),
+      cellIndex,
+      member,
+      directScalars[index]!,
+      packedDependencyIndices.subarray(dependencyIndexOffset, dependencyIndexOffset + dependencyIndexCount),
+      subSlice(dependencyEntityBlock, dependencyEntityOffset, dependencyEntityCount),
     )
-    const formulaSlotId = args.serviceArgs.state.formulas.set(entry.cellIndex, runtimeFormula)
+    const formulaSlotId = args.serviceArgs.state.formulas.set(cellIndex, runtimeFormula)
     runtimeFormula.formulaSlotId = formulaSlotId
-    args.formulaMemberCounts.increment(args.run.sheetId, entry.member.col)
-    markFormulaCellBound(args.serviceArgs.state.workbook.cellStore, entry.cellIndex, entry.member.compiled.mode)
-    args.trackFormulaSheetIndexes(entry.cellIndex, args.run.ownerSheetName, entry.member.compiled)
+    args.formulaMemberCounts.increment(args.run.sheetId, member.col)
+    markFormulaCellBound(args.serviceArgs.state.workbook.cellStore, cellIndex, member.compiled.mode)
+    args.trackFormulaSheetIndexes(cellIndex, args.run.ownerSheetName, member.compiled)
+    dependencyIndexOffset += dependencyIndexCount
+    dependencyEntityOffset += dependencyEntityCount
   }
 
-  if (!tryInstallFreshDirectScalarBulkReverseEdges(args.serviceArgs, args.edgeArena, prepared, packedDependencyEntities)) {
-    for (const entry of prepared) {
+  if (
+    !tryInstallFreshDirectScalarBulkReverseEdges(
+      args.serviceArgs,
+      args.edgeArena,
+      formulaEntities,
+      dependencySlots.dependencyEntityCounts,
+      packedDependencyEntities,
+    )
+  ) {
+    dependencyEntityOffset = 0
+    for (let index = 0; index < memberCount; index += 1) {
+      const dependencyEntityCount = dependencySlots.dependencyEntityCounts[index]!
       appendFreshFormulaDependencyReverseEdges(
-        packedDependencyEntities.subarray(
-          entry.dependencyEntityOffset,
-          entry.dependencyEntityOffset + entry.dependencies.dependencyEntityCount,
-        ),
-        entry.formulaEntity,
+        packedDependencyEntities.subarray(dependencyEntityOffset, dependencyEntityOffset + dependencyEntityCount),
+        formulaEntities[index]!,
         args.appendKnownUniqueReverseEdge,
       )
+      dependencyEntityOffset += dependencyEntityCount
     }
   }
 
   if (args.serviceArgs.state.counters) {
     addEngineCounter(args.serviceArgs.state.counters, 'freshDirectScalarBulkRunBindings')
-    addEngineCounter(args.serviceArgs.state.counters, 'freshDirectScalarBulkMembers', prepared.length)
-    addEngineCounter(args.serviceArgs.state.counters, 'freshDirectScalarFormulaObjectsMaterialized', prepared.length)
+    addEngineCounter(args.serviceArgs.state.counters, 'freshDirectScalarBulkMembers', memberCount)
+    addEngineCounter(args.serviceArgs.state.counters, 'freshDirectScalarFormulaObjectsMaterialized', memberCount)
   }
   return true
 }
@@ -370,6 +400,64 @@ function materializeFreshDirectScalarDependencyIndices(slots: FreshDirectScalarD
   return dependencyIndices
 }
 
+function writeFreshDirectScalarDependencySlotsForRun(
+  compiled: FreshDirectScalarFormulaBindingMember['compiled'],
+  directScalar: RuntimeDirectScalarDescriptor,
+  target: FreshDirectScalarRunSlots,
+  index: number,
+): number {
+  if (
+    compiled.symbolicRanges.length !== 0 ||
+    compiled.symbolicNames.length !== 0 ||
+    compiled.symbolicTables.length !== 0 ||
+    compiled.symbolicSpills.length !== 0
+  ) {
+    return -1
+  }
+
+  let dependencyIndex0 = 0
+  let dependencyIndex1 = 0
+  let dependencyIndexCount = 0
+  let dependencyEntity0 = 0
+  let dependencyEntity1 = 0
+  let dependencyEntityCount = 0
+  const operandCount = directScalar.kind === 'abs' ? 1 : 2
+  for (let operandIndex = 0; operandIndex < operandCount; operandIndex += 1) {
+    const operand = directScalar.kind === 'abs' ? directScalar.operand : operandIndex === 0 ? directScalar.left : directScalar.right
+    if (operand.kind === 'literal-number') {
+      continue
+    }
+    if (operand.kind === 'error' || dependencyEntityCount >= 2) {
+      return -1
+    }
+    const cellIndex = operand.cellIndex
+    if (dependencyIndexCount === 0) {
+      dependencyIndex0 = cellIndex
+      dependencyIndexCount = 1
+    } else if (dependencyIndex0 !== cellIndex && dependencyIndexCount === 1) {
+      dependencyIndex1 = cellIndex
+      dependencyIndexCount = 2
+    } else if (dependencyIndex0 !== cellIndex && dependencyIndex1 !== cellIndex) {
+      return -1
+    }
+    const entity = makeCellEntity(cellIndex)
+    if (dependencyEntityCount === 0) {
+      dependencyEntity0 = entity
+    } else {
+      dependencyEntity1 = entity
+    }
+    dependencyEntityCount += 1
+  }
+
+  target.dependencyIndex0[index] = dependencyIndex0
+  target.dependencyIndex1[index] = dependencyIndex1
+  target.dependencyIndexCounts[index] = dependencyIndexCount
+  target.dependencyEntity0[index] = dependencyEntity0
+  target.dependencyEntity1[index] = dependencyEntity1
+  target.dependencyEntityCounts[index] = dependencyEntityCount
+  return dependencyIndexCount | (dependencyEntityCount << 2)
+}
+
 function freshDirectScalarSmallDependencyCount(count: number): 0 | 1 | 2 {
   if (count === 0) {
     return 0
@@ -397,23 +485,27 @@ function appendFreshDirectScalarDependencyReverseEdgeSlots(
   }
 }
 
-function writeFreshDirectScalarDependencySlots(
-  slots: FreshDirectScalarDependencySlots,
+function writePackedFreshDirectScalarDependencySlots(
+  slots: FreshDirectScalarRunSlots,
+  index: number,
   packedDependencyIndices: Uint32Array,
+  dependencyIndexOffset: number,
   packedDependencyEntities: Uint32Array,
-  entry: PreparedFreshDirectScalarRunMember,
+  dependencyEntityOffset: number,
 ): void {
-  if (slots.dependencyIndexCount > 0) {
-    packedDependencyIndices[entry.dependencyIndexOffset] = slots.dependencyIndex0
+  const dependencyIndexCount = slots.dependencyIndexCounts[index]!
+  if (dependencyIndexCount > 0) {
+    packedDependencyIndices[dependencyIndexOffset] = slots.dependencyIndex0[index]!
   }
-  if (slots.dependencyIndexCount > 1) {
-    packedDependencyIndices[entry.dependencyIndexOffset + 1] = slots.dependencyIndex1
+  if (dependencyIndexCount > 1) {
+    packedDependencyIndices[dependencyIndexOffset + 1] = slots.dependencyIndex1[index]!
   }
-  if (slots.dependencyEntityCount > 0) {
-    packedDependencyEntities[entry.dependencyEntityOffset] = slots.dependencyEntity0
+  const dependencyEntityCount = slots.dependencyEntityCounts[index]!
+  if (dependencyEntityCount > 0) {
+    packedDependencyEntities[dependencyEntityOffset] = slots.dependencyEntity0[index]!
   }
-  if (slots.dependencyEntityCount > 1) {
-    packedDependencyEntities[entry.dependencyEntityOffset + 1] = slots.dependencyEntity1
+  if (dependencyEntityCount > 1) {
+    packedDependencyEntities[dependencyEntityOffset + 1] = slots.dependencyEntity1[index]!
   }
 }
 
@@ -433,7 +525,8 @@ const EMPTY_EDGE_SLICE: EdgeSlice = { ptr: -1, len: 0, cap: 0 }
 function tryInstallFreshDirectScalarBulkReverseEdges(
   serviceArgs: CreateEngineFormulaBindingServiceArgs,
   edgeArena: EdgeArena,
-  prepared: readonly PreparedFreshDirectScalarRunMember[],
+  formulaEntities: Uint32Array,
+  dependencyEntityCounts: Uint8Array,
   packedDependencyEntities: Uint32Array,
 ): boolean {
   if (packedDependencyEntities.length === 0) {
@@ -464,10 +557,14 @@ function tryInstallFreshDirectScalarBulkReverseEdges(
   }
 
   const reverseBlock = edgeArena.replaceWith(edgeArena.empty(), packedDependencyEntities.length, (buffer, ptr) => {
-    for (const entry of prepared) {
-      for (let offset = 0; offset < entry.dependencies.dependencyEntityCount; offset += 1) {
-        buffer[ptr + entry.dependencyEntityOffset + offset] = entry.formulaEntity
+    let dependencyEntityOffset = 0
+    for (let index = 0; index < formulaEntities.length; index += 1) {
+      const formulaEntity = formulaEntities[index]!
+      const dependencyEntityCount = dependencyEntityCounts[index]!
+      for (let offset = 0; offset < dependencyEntityCount; offset += 1) {
+        buffer[ptr + dependencyEntityOffset + offset] = formulaEntity
       }
+      dependencyEntityOffset += dependencyEntityCount
     }
   })
   for (let offset = 0; offset < packedDependencyEntities.length; offset += 1) {

@@ -80,6 +80,7 @@ type WorkbookSnapshotWorkbook = WorkbookSnapshot['workbook']
 type WorkbookSnapshotSheetMetadata = NonNullable<WorkbookSnapshot['sheets'][number]['metadata']>
 type MetadataRenameEngine = SpreadsheetEngine & {
   readonly renameSheetMetadataOnlyById?: (sheetId: number, newName: string) => boolean
+  readonly renameSheetMetadataOnlyByIdPrevalidated?: (sheetId: number, oldName: string, newName: string) => boolean
 }
 
 type WorkPaperStructuralInsertEngine = SpreadsheetEngine & {
@@ -308,6 +309,32 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
 
     const oldName = sheet.name
     this.preservedImportedSnapshot = undefined
+    if (
+      this.batchDepth === 0 &&
+      !this.evaluationSuspended &&
+      this.visibilityCache === null &&
+      !this.emitter.hasAnyListeners() &&
+      !this.engineEvents.hasPendingLazyChanges &&
+      !this.batchUsesTrackedFastPath &&
+      !this.engineEvents.hasTrackedEvents
+    ) {
+      try {
+        const metadataRenameEngine = this.engine as MetadataRenameEngine
+        const renamed =
+          metadataRenameEngine.renameSheetMetadataOnlyByIdPrevalidated?.(sheet.id, oldName, newName) ??
+          metadataRenameEngine.renameSheetMetadataOnlyById?.(sheet.id, newName) ??
+          this.engine.renameSheetMetadataOnly(oldName, newName)
+        if (renamed) {
+          this.sheetRecordsCache = null
+          return []
+        }
+      } catch (error) {
+        if (error instanceof Error && WORKPAPER_PUBLIC_ERROR_NAMES.has(error.name)) {
+          throw error
+        }
+        throw new WorkPaperOperationError(this.messageOf(error, 'Mutation failed'))
+      }
+    }
     const fastPathChanges = this.tryRenameSheetWithoutRuntimeAdapters(sheet, newName)
     if (fastPathChanges !== null) {
       return fastPathChanges
@@ -503,7 +530,9 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     try {
       const metadataRenameEngine = this.engine as MetadataRenameEngine
       const renamed =
-        metadataRenameEngine.renameSheetMetadataOnlyById?.(sheet.id, newName) ?? this.engine.renameSheetMetadataOnly(oldName, newName)
+        metadataRenameEngine.renameSheetMetadataOnlyByIdPrevalidated?.(sheet.id, oldName, newName) ??
+        metadataRenameEngine.renameSheetMetadataOnlyById?.(sheet.id, newName) ??
+        this.engine.renameSheetMetadataOnly(oldName, newName)
       if (renamed) {
         this.sheetRecordsCache = null
         this.engineEvents.clearEvents()

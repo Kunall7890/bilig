@@ -215,6 +215,7 @@ describe('SpreadsheetEngine protections', () => {
     ).toThrow(/Failed to apply remote batch/)
     expect(engine.renameSheetMetadataOnly('Data', 'Source')).toBe(false)
     expect(engine.renameSheetMetadataOnlyById(engine.workbook.getSheet('Data')!.id, 'Source')).toBe(false)
+    expect(engine.renameSheetMetadataOnlyByIdPrevalidated(engine.workbook.getSheet('Data')!.id, 'Data', 'Source')).toBe(false)
 
     expect(engine.exportSnapshot().sheets.map((sheet) => sheet.name)).toEqual(['Data', 'Report'])
     expect(engine.exportSnapshot().workbook.metadata?.workbookProtection).toEqual({

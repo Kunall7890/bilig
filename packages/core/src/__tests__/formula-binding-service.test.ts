@@ -534,6 +534,28 @@ describe('EngineFormulaBindingService', () => {
     expect(engine.getCellValue('Summary', 'A1')).toEqual({ tag: ValueTag.Number, value: 14 })
   })
 
+  it('renames sheets by prevalidated id while deferring formula source materialization', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'binding-rename-deferred-by-prevalidated-id' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.createSheet('Summary')
+    engine.setCellValue('Data', 'A1', 7)
+    engine.setCellFormula('Summary', 'A1', 'Data!A1*2')
+    const dataSheetId = engine.workbook.getSheet('Data')!.id
+
+    expect(engine.renameSheetMetadataOnlyByIdPrevalidated(dataSheetId, 'Data', 'Source')).toBe(true)
+    expect(engine.renameSheetMetadataOnlyByIdPrevalidated(dataSheetId, 'Data', 'Archive')).toBe(false)
+
+    const formulaIndex = engine.workbook.getCellIndex('Summary', 'A1')!
+    const runtimeFormula = readRuntimeFormula(engine, formulaIndex)
+    expect(readRuntimeFormulaProperty(runtimeFormula, 'source')).toBe('Data!A1*2')
+    expect(readRuntimeFormulaProperty(runtimeFormula, 'sourceRenameTransform')).toEqual({ oldSheetName: 'Data', newSheetName: 'Source' })
+    expect(readRuntimeFormulaProperty(runtimeFormula, 'sourceRenameTransforms')).toBeUndefined()
+    expect(engine.getCell('Summary', 'A1').formula).toBe('Source!A1*2')
+    expect(engine.getDependencies('Source', 'A1').directDependents).toContain('Summary!A1')
+    expect(engine.getCellValue('Summary', 'A1')).toEqual({ tag: ValueTag.Number, value: 14 })
+  })
+
   it('retargets deferred sheet rename direct aggregate subscriptions without rebinding formulas', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'binding-rename-deferred-direct-aggregate' })
     await engine.ready()

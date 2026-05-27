@@ -453,6 +453,32 @@ export abstract class SpreadsheetEngineRuntimeBase {
     return true
   }
 
+  renameSheetMetadataOnlyByIdPrevalidated(sheetId: number, oldName: string, trimmedName: string): boolean {
+    if (
+      trimmedName.length === 0 ||
+      oldName === trimmedName ||
+      this.workbook.getSheet(trimmedName) ||
+      this.syncClientConnection !== null ||
+      this.batchListeners.size > 0 ||
+      this.batchMutationDepth !== 0 ||
+      this.transactionReplayDepth !== 0 ||
+      this.workbook.getWorkbookProtection()?.lockStructure === true
+    ) {
+      return false
+    }
+
+    const sheet = this.workbook.getSheetById(sheetId)
+    if (!sheet || sheet.name !== oldName) {
+      return false
+    }
+    const renamedSheet = this.workbook.renameSheetById(sheetId, trimmedName)
+    if (!renamedSheet) {
+      return false
+    }
+    this.recordMetadataOnlySheetRename(oldName, trimmedName)
+    return true
+  }
+
   private recordMetadataOnlySheetRename(oldName: string, trimmedName: string): void {
     const op: EngineOp = { kind: 'renameSheet', oldName, newName: trimmedName }
     if (this.state.trackReplicaVersions) {

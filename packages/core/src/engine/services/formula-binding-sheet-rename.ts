@@ -71,10 +71,10 @@ export function createFormulaBindingSheetRenameHandler(args: {
     const movedSheetCells = args.formulaSheetIndex.moveSheetName(oldSheetName, newSheetName)
     if (movedSheetCells.references.size > 0) {
       const sourceTransform: FormulaBindingSourceRenameTransform = { oldSheetName, newSheetName }
-      movedSheetCells.references.forEach((cellIndex) => {
+      for (const cellIndex of movedSheetCells.references) {
         const formula = args.serviceArgs.state.formulas.get(cellIndex)
         if (!formula) {
-          return
+          continue
         }
         appendSheetRenameSourceTransformRecord(formula, sourceTransform)
         if (formula.directAggregate !== undefined) {
@@ -85,7 +85,7 @@ export function createFormulaBindingSheetRenameHandler(args: {
           })
         }
         touchedCount += 1
-      })
+      }
     }
     return touchedCount
   }
