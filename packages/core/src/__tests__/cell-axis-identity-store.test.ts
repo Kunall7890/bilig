@@ -15,6 +15,38 @@ describe('CellAxisIdentityStore', () => {
     expect(store.get(7)).toBeUndefined()
   })
 
+  it('resolves dense row-major identities without materializing every cell upfront', () => {
+    const store = new CellAxisIdentityStore()
+
+    store.setDenseRowMajorParts(10, 4, ['row-a', 'row-b'], ['column-a', 'column-b', 'column-c'])
+
+    expect(store.get(10)).toEqual({ sheetId: 4, rowId: 'row-a', colId: 'column-a' })
+    expect(store.get(14)).toEqual({ sheetId: 4, rowId: 'row-b', colId: 'column-b' })
+    expect(store.entries()).toContainEqual([15, { sheetId: 4, rowId: 'row-b', colId: 'column-c' }])
+
+    store.set(14, { sheetId: 4, rowId: 'row-override', colId: 'column-override' })
+    expect(store.get(14)).toEqual({ sheetId: 4, rowId: 'row-override', colId: 'column-override' })
+
+    expect(store.delete(12)).toBe(true)
+    expect(store.get(12)).toBeUndefined()
+    expect(store.delete(12)).toBe(false)
+  })
+
+  it('enumerates overlapping dense row-major identities once with latest block precedence', () => {
+    const store = new CellAxisIdentityStore()
+
+    store.setDenseRowMajorParts(10, 4, ['row-a', 'row-b'], ['column-a', 'column-b'])
+    store.setDenseRowMajorParts(12, 4, ['row-c'], ['column-c', 'column-d'])
+
+    expect(store.get(12)).toEqual({ sheetId: 4, rowId: 'row-c', colId: 'column-c' })
+    expect(store.entries()).toEqual([
+      [12, { sheetId: 4, rowId: 'row-c', colId: 'column-c' }],
+      [13, { sheetId: 4, rowId: 'row-c', colId: 'column-d' }],
+      [10, { sheetId: 4, rowId: 'row-a', colId: 'column-a' }],
+      [11, { sheetId: 4, rowId: 'row-a', colId: 'column-b' }],
+    ])
+  })
+
   it('indexes resident cells by row and column ids for structural deletes', () => {
     const index = new AxisResidentCellIndex()
 

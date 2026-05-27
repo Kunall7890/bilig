@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { AxisMap } from '../storage/axis-map.js'
 
+function createNumberedRowIds(count: number): string[] {
+  return Array.from({ length: count }, (_value, index) => `row-${index + 1}`)
+}
+
 describe('AxisMap', () => {
   it('preserves sparse insert holes and stable ids at visible positions', () => {
     const axisMap = new AxisMap()
@@ -96,6 +100,17 @@ describe('AxisMap', () => {
       { id: 'row-4', index: 3 },
     ])
     expect(axisMap.indexOf('row-4')).toBe(3)
+  })
+
+  it('resolves ids after large dense allocation defers reverse index population', () => {
+    const axisMap = new AxisMap()
+
+    axisMap.ensureDenseIdsFrom(0, 64, createNumberedRowIds)
+    axisMap.splice(2, 1, 1, [{ id: 'row-x', index: 2 }])
+
+    expect(axisMap.indexOf('row-x')).toBe(2)
+    expect(axisMap.indexOf('row-4')).toBe(3)
+    expect(axisMap.indexOf('row-64')).toBe(63)
   })
 
   it('reports length and no-ops for empty snapshots or moves', () => {

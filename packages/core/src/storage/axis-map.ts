@@ -5,6 +5,8 @@ export interface AxisEntrySnapshot {
   readonly index: number
 }
 
+const DENSE_REVERSE_INDEX_DEFER_THRESHOLD = 32
+
 function createAxisEntrySnapshot(id: string, index: number): AxisEntrySnapshot {
   return { id, index }
 }
@@ -12,6 +14,7 @@ function createAxisEntrySnapshot(id: string, index: number): AxisEntrySnapshot {
 export class AxisMap {
   private readonly entries: Array<string | undefined> = []
   private readonly idToIndex = new Map<string, number>()
+  private reverseIndexDirty = false
 
   get(index: number): string | undefined {
     return this.entries[index]
@@ -23,11 +26,13 @@ export class AxisMap {
 
   set(index: number, id: string): void {
     const previous = this.entries[index]
-    if (previous !== undefined) {
+    if (!this.reverseIndexDirty && previous !== undefined) {
       this.idToIndex.delete(previous)
     }
     this.entries[index] = id
-    this.idToIndex.set(id, index)
+    if (!this.reverseIndexDirty) {
+      this.idToIndex.set(id, index)
+    }
   }
 
   setId(index: number, id: string): void {
@@ -44,7 +49,9 @@ export class AxisMap {
     }
     const id = createId()
     this.entries[index] = id
-    this.idToIndex.set(id, index)
+    if (!this.reverseIndexDirty) {
+      this.idToIndex.set(id, index)
+    }
     return id
   }
 
@@ -68,7 +75,11 @@ export class AxisMap {
       if (id === undefined) {
         id = createId()
         this.entries[index] = id
-        this.idToIndex.set(id, index)
+        if (count > DENSE_REVERSE_INDEX_DEFER_THRESHOLD) {
+          this.reverseIndexDirty = true
+        } else if (!this.reverseIndexDirty) {
+          this.idToIndex.set(id, index)
+        }
       }
       ids[offset] = id
     }
@@ -79,8 +90,6 @@ export class AxisMap {
     if (count <= 0) {
       return []
     }
-    const ids: string[] = []
-    ids.length = count
     const end = start + count
     if (this.entries.length <= start) {
       if (this.entries.length < end) {
@@ -91,11 +100,17 @@ export class AxisMap {
         throw new Error(`Expected ${String(count)} dense axis ids, got ${String(created.length)}`)
       }
       const createdIds = Array.isArray(created) ? created : [...created]
+      const deferReverseIndex = count > DENSE_REVERSE_INDEX_DEFER_THRESHOLD
+      if (deferReverseIndex) {
+        this.reverseIndexDirty = true
+      }
       for (let offset = 0; offset < count; offset += 1) {
         const index = start + offset
         const id = createdIds[offset]!
         this.entries[index] = id
-        this.idToIndex.set(id, index)
+        if (!deferReverseIndex && !this.reverseIndexDirty) {
+          this.idToIndex.set(id, index)
+        }
       }
       return createdIds
     }
@@ -112,6 +127,12 @@ export class AxisMap {
     if (created.length !== missingCount) {
       throw new Error(`Expected ${String(missingCount)} dense axis ids, got ${String(created.length)}`)
     }
+    const deferReverseIndex = missingCount > DENSE_REVERSE_INDEX_DEFER_THRESHOLD
+    if (deferReverseIndex) {
+      this.reverseIndexDirty = true
+    }
+    const ids: string[] = []
+    ids.length = count
     let createdIndex = 0
     for (let offset = 0; offset < count; offset += 1) {
       const index = start + offset
@@ -120,7 +141,9 @@ export class AxisMap {
         id = created[createdIndex]!
         createdIndex += 1
         this.entries[index] = id
-        this.idToIndex.set(id, index)
+        if (!deferReverseIndex && !this.reverseIndexDirty) {
+          this.idToIndex.set(id, index)
+        }
       }
       ids[offset] = id
     }
@@ -128,6 +151,7 @@ export class AxisMap {
   }
 
   indexOf(id: string): number {
+    this.ensureReverseIndex()
     return this.idToIndex.get(id) ?? -1
   }
 
@@ -169,24 +193,18 @@ export class AxisMap {
       if (entry.index < start) {
         return
       }
-      const previous = this.entries[entry.index]
-      if (previous !== undefined) {
-        this.idToIndex.delete(previous)
-      }
       this.entries[entry.index] = entry.id
-      this.idToIndex.set(entry.id, entry.index)
+      this.reverseIndexDirty = true
       return
     }
     for (const entry of entries) {
       if (entry.index < start) {
         continue
       }
-      const previous = this.entries[entry.index]
-      if (previous !== undefined) {
-        this.idToIndex.delete(previous)
-      }
       this.entries[entry.index] = entry.id
-      this.idToIndex.set(entry.id, entry.index)
+    }
+    if (entries.length > 0) {
+      this.reverseIndexDirty = true
     }
   }
 
@@ -210,10 +228,7 @@ export class AxisMap {
       const entry = entries[0]
       const insertedId = entry?.index === start ? entry.id : undefined
       this.entries.splice(start, 0, insertedId)
-      if (insertedId !== undefined) {
-        this.idToIndex.set(insertedId, start)
-      }
-      this.rebuildIndexFrom(start + 1)
+      this.reverseIndexDirty = true
       return []
     }
     const insertLength = Math.max(
@@ -229,12 +244,7 @@ export class AxisMap {
       inserted[offset] = entry.id
     }
     const removed = this.entries.splice(start, deleteCount, ...inserted)
-    removed.forEach((id) => {
-      if (id !== undefined) {
-        this.idToIndex.delete(id)
-      }
-    })
-    this.rebuildIndexFrom(start)
+    this.reverseIndexDirty = true
     return removed.flatMap((id, index) => (id === undefined ? [] : [createAxisEntrySnapshot(id, start + index)]))
   }
 
@@ -244,12 +254,20 @@ export class AxisMap {
     }
     const moved = this.entries.splice(start, count)
     this.entries.splice(target, 0, ...moved)
+    this.reverseIndexDirty = true
+  }
+
+  private ensureReverseIndex(): void {
+    if (!this.reverseIndexDirty) {
+      return
+    }
     this.rebuildIndex()
   }
 
   private rebuildIndex(): void {
     this.idToIndex.clear()
     this.rebuildIndexFrom(0)
+    this.reverseIndexDirty = false
   }
 
   private rebuildIndexFrom(start: number): void {
