@@ -44,6 +44,7 @@ describe('same-corpus UI dominance status', () => {
         sampleCount: null,
         caseCount: null,
         tenXMeanAndP95CaseCount: null,
+        claimReadinessState: 'diagnostic-capture-incomplete',
         missingRequiredWorkloads: [...requiredUiResponsivenessSameCorpusWorkloads],
         readinessErrors: [
           'legacy same-corpus capture artifact is missing the current runManifest contract',
@@ -93,6 +94,7 @@ describe('same-corpus UI dominance status', () => {
         displayPath: '.cache/ui-responsiveness/same-corpus-capture.json',
       })
 
+      expect(status.claimReadinessState).toBe('diagnostic-capture-incomplete')
       expect(status.legacyCapture).toMatchObject({
         caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
         missingRequiredWorkloads: [],

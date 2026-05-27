@@ -52,6 +52,7 @@ describe('bilig dominance status', () => {
       biligAuthoritativeRenderProofCaseCount: 0,
       semanticUiProofCaseCount: 0,
       legacyInsufficientRenderedGridProofCaseCount: 0,
+      claimReadinessState: 'not-captured',
       currentContractEvidenceComplete: false,
       googleSheetsTenXRequirementSatisfied: false,
       runManifestInvalidReasons: expect.arrayContaining([
@@ -79,6 +80,7 @@ describe('bilig dominance status', () => {
         biligAuthoritativeRenderProofCaseCount: null,
         semanticUiProofCaseCount: null,
         tenXMeanAndP95CaseCount: null,
+        claimReadinessState: 'not-captured',
         currentContractEvidenceComplete: null,
         googleSheetsTenXRequirementSatisfied: null,
         missingRequiredWorkloads: [...requiredUiResponsivenessSameCorpusWorkloads],
@@ -308,6 +310,7 @@ describe('bilig dominance status', () => {
       visibleOperationResponseProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       biligAuthoritativeRenderProofCaseCount: 0,
       semanticUiProofCaseCount: 0,
+      claimReadinessState: 'diagnostic-capture-incomplete',
       googleSheetsUrl: 'https://docs.google.com/spreadsheets/d/sameCorpusSheet/edit',
       googleSheetsUrlSource: 'checked-in-capture',
       missingInputs: [],

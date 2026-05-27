@@ -25,6 +25,7 @@ describe('Google Sheets 10x claim gate', () => {
         'dominance scorecard completionAudit.allCriteriaPassed is not true',
         'dominance scorecard overallGoogleSheets10xStatus is not passed',
         'same-corpus UI proof is not captured',
+        'same-corpus UI runManifest.claimReadinessState is not-captured, expected claim-grade-10x-passed',
         `same-corpus UI proof has 0/${String(requiredUiResponsivenessSameCorpusWorkloads.length)} required cases`,
         `same-corpus UI proof has 0/${String(requiredUiResponsivenessSameCorpusWorkloads.length)} 10x mean+p95 cases`,
         'same-corpus UI mutation target proof covers 0/3 mutating cases',
@@ -101,6 +102,7 @@ function passingUiScorecard(): unknown {
         tenXMeanAndP95AgainstGoogleSheets: true,
       })),
       runManifest: {
+        claimReadinessState: 'claim-grade-10x-passed',
         currentContractEvidenceComplete: true,
         googleSheetsTenXRequirementSatisfied: true,
         invalidReasons: [],

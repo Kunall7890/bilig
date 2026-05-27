@@ -54,6 +54,7 @@ import {
   parseSameCorpusMutationTargetProofProductSummary,
 } from './ui-responsiveness-same-corpus-mutation-target-parse.ts'
 import { sameCorpusUiCaptureToolVersion } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
+import { parseSameCorpusClaimReadinessState } from './ui-responsiveness-same-corpus-readiness-state.ts'
 import type { SameCorpusOperationResponseProof } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import { isUiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
@@ -194,6 +195,7 @@ function parseSameCorpusRunManifest(value: Record<string, unknown>): UiResponsiv
     proofArchiveArtifactCount: optionalNumberField(value, 'proofArchiveArtifactCount') ?? 0,
     legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
+    claimReadinessState: parseSameCorpusClaimReadinessState(stringField(value, 'claimReadinessState')),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
     googleSheetsTenXRequirementSatisfied: booleanField(value, 'googleSheetsTenXRequirementSatisfied'),
     captureRunSignature: nullableStringField(value, 'captureRunSignature'),
@@ -253,6 +255,7 @@ function parseSameCorpusCaptureRunManifest(value: Record<string, unknown>): Same
     proofArchiveArtifactCount: optionalNumberField(value, 'proofArchiveArtifactCount') ?? 0,
     legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
+    claimReadinessState: parseSameCorpusClaimReadinessState(stringField(value, 'claimReadinessState')),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
     googleSheetsTenXRequirementSatisfied: booleanField(value, 'googleSheetsTenXRequirementSatisfied'),
     captureRunSignature: stringField(value, 'captureRunSignature'),

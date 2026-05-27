@@ -71,13 +71,13 @@
     "biligAuthoritativeRenderProofCaseCount": 9,
     "semanticUiProofCaseCount": 8,
     "requiredMutationTargetProofCaseCount": 3,
-    "mutationTargetProofCaseCount": 2,
+    "mutationTargetProofCaseCount": 0,
     "requiredMutationTargetProofSampleCount": 18,
-    "mutationTargetProofSampleCount": 15,
+    "mutationTargetProofSampleCount": 9,
     "requiredCommittedTargetProofTimingCaseCount": 3,
-    "committedTargetProofTimingCaseCount": 2,
+    "committedTargetProofTimingCaseCount": 0,
     "requiredCommittedTargetProofTimingSampleCount": 18,
-    "committedTargetProofTimingSampleCount": 15,
+    "committedTargetProofTimingSampleCount": 9,
     "mutationTargetProofProductSummaries": [
       {
         "workload": "edit-visible-cell",
@@ -497,13 +497,13 @@
         "product": "google-sheets",
         "requiredSampleCount": 3,
         "rawSampleCount": 3,
-        "acceptedSampleCount": 3,
-        "accepted": true,
+        "acceptedSampleCount": 0,
+        "accepted": false,
         "samples": [
           {
             "sampleIndex": 0,
             "present": true,
-            "accepted": true,
+            "accepted": false,
             "product": "google-sheets",
             "committedTargetProofMs": 2962.2268330000006,
             "visibleTargetRenderMs": 339.6768749999974,
@@ -697,12 +697,18 @@
             "screenshotPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-1-after.png",
             "screenshotSha256": "7b62c125b4a2c94a97aef97338cc1043f079f336c44fd756e5757e5a12d839f2",
             "undoRestoreStatus": "verified",
-            "invalidReasons": []
+            "invalidReasons": [
+              "semantic UI mutation target proof for edit-visible-cell before screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for edit-visible-cell after screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for edit-visible-cell restored screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for edit-visible-cell target readback did not come from a browser-visible grid cell",
+              "semantic UI mutation target proof for edit-visible-cell visible render readback did not come from an accepted browser-visible source"
+            ]
           },
           {
             "sampleIndex": 1,
             "present": true,
-            "accepted": true,
+            "accepted": false,
             "product": "google-sheets",
             "committedTargetProofMs": 2164.4392919999955,
             "visibleTargetRenderMs": 361.08979199999885,
@@ -896,12 +902,18 @@
             "screenshotPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-2-after.png",
             "screenshotSha256": "7b62c125b4a2c94a97aef97338cc1043f079f336c44fd756e5757e5a12d839f2",
             "undoRestoreStatus": "verified",
-            "invalidReasons": []
+            "invalidReasons": [
+              "semantic UI mutation target proof for edit-visible-cell before screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for edit-visible-cell after screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for edit-visible-cell restored screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for edit-visible-cell target readback did not come from a browser-visible grid cell",
+              "semantic UI mutation target proof for edit-visible-cell visible render readback did not come from an accepted browser-visible source"
+            ]
           },
           {
             "sampleIndex": 2,
             "present": true,
-            "accepted": true,
+            "accepted": false,
             "product": "google-sheets",
             "committedTargetProofMs": 2416.6105830000015,
             "visibleTargetRenderMs": 357.64075000000594,
@@ -1095,10 +1107,22 @@
             "screenshotPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-3-after.png",
             "screenshotSha256": "7b62c125b4a2c94a97aef97338cc1043f079f336c44fd756e5757e5a12d839f2",
             "undoRestoreStatus": "verified",
-            "invalidReasons": []
+            "invalidReasons": [
+              "semantic UI mutation target proof for edit-visible-cell before screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for edit-visible-cell after screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for edit-visible-cell restored screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for edit-visible-cell target readback did not come from a browser-visible grid cell",
+              "semantic UI mutation target proof for edit-visible-cell visible render readback did not come from an accepted browser-visible source"
+            ]
           }
         ],
-        "invalidReasons": []
+        "invalidReasons": [
+          "semantic UI mutation target proof for edit-visible-cell before screenshot semantic readback did not come from an accepted browser-visible source",
+          "semantic UI mutation target proof for edit-visible-cell after screenshot semantic readback did not come from an accepted browser-visible source",
+          "semantic UI mutation target proof for edit-visible-cell restored screenshot semantic readback did not come from an accepted browser-visible source",
+          "semantic UI mutation target proof for edit-visible-cell target readback did not come from a browser-visible grid cell",
+          "semantic UI mutation target proof for edit-visible-cell visible render readback did not come from an accepted browser-visible source"
+        ]
       },
       {
         "workload": "formula-edit",
@@ -1518,13 +1542,13 @@
         "product": "google-sheets",
         "requiredSampleCount": 3,
         "rawSampleCount": 3,
-        "acceptedSampleCount": 3,
-        "accepted": true,
+        "acceptedSampleCount": 0,
+        "accepted": false,
         "samples": [
           {
             "sampleIndex": 0,
             "present": true,
-            "accepted": true,
+            "accepted": false,
             "product": "google-sheets",
             "committedTargetProofMs": 2553.1150000000052,
             "visibleTargetRenderMs": 320.95379200000025,
@@ -1718,12 +1742,19 @@
             "screenshotPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-1-after.png",
             "screenshotSha256": "458753c4d63d1d0cd0606d6ef0f4297ac13b5370212e8b4105159119b20afe17",
             "undoRestoreStatus": "verified",
-            "invalidReasons": []
+            "invalidReasons": [
+              "semantic UI mutation target proof for formula-edit before screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for formula-edit restored screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for formula-edit target readback did not come from a browser-visible grid cell",
+              "semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for formula-edit did not prove the rendered formula result"
+            ]
           },
           {
             "sampleIndex": 1,
             "present": true,
-            "accepted": true,
+            "accepted": false,
             "product": "google-sheets",
             "committedTargetProofMs": 2550.7287090000027,
             "visibleTargetRenderMs": 382.3049170000013,
@@ -1917,12 +1948,19 @@
             "screenshotPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-2-after.png",
             "screenshotSha256": "458753c4d63d1d0cd0606d6ef0f4297ac13b5370212e8b4105159119b20afe17",
             "undoRestoreStatus": "verified",
-            "invalidReasons": []
+            "invalidReasons": [
+              "semantic UI mutation target proof for formula-edit before screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for formula-edit restored screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for formula-edit target readback did not come from a browser-visible grid cell",
+              "semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for formula-edit did not prove the rendered formula result"
+            ]
           },
           {
             "sampleIndex": 2,
             "present": true,
-            "accepted": true,
+            "accepted": false,
             "product": "google-sheets",
             "committedTargetProofMs": 2339.2221659999923,
             "visibleTargetRenderMs": 367.95170799999323,
@@ -2116,10 +2154,24 @@
             "screenshotPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-3-after.png",
             "screenshotSha256": "458753c4d63d1d0cd0606d6ef0f4297ac13b5370212e8b4105159119b20afe17",
             "undoRestoreStatus": "verified",
-            "invalidReasons": []
+            "invalidReasons": [
+              "semantic UI mutation target proof for formula-edit before screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for formula-edit restored screenshot semantic readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for formula-edit target readback did not come from a browser-visible grid cell",
+              "semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source",
+              "semantic UI mutation target proof for formula-edit did not prove the rendered formula result"
+            ]
           }
         ],
-        "invalidReasons": []
+        "invalidReasons": [
+          "semantic UI mutation target proof for formula-edit before screenshot semantic readback did not come from an accepted browser-visible source",
+          "semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source",
+          "semantic UI mutation target proof for formula-edit restored screenshot semantic readback did not come from an accepted browser-visible source",
+          "semantic UI mutation target proof for formula-edit target readback did not come from a browser-visible grid cell",
+          "semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source",
+          "semantic UI mutation target proof for formula-edit did not prove the rendered formula result"
+        ]
       },
       {
         "workload": "fill-format-change",
@@ -2748,6 +2800,7 @@
               "semantic UI mutation target proof for fill-format-change before screenshot semantic readback does not match target readback",
               "semantic UI mutation target proof for fill-format-change after screenshot semantic readback does not match target readback",
               "semantic UI mutation target proof for fill-format-change restored screenshot semantic readback does not match target readback",
+              "semantic UI mutation target proof for fill-format-change target readback did not come from a browser-visible grid cell",
               "semantic UI mutation target proof for fill-format-change did not prove the intended fill color",
               "semantic UI mutation target proof for fill-format-change committed-state export did not prove a before/after change",
               "semantic UI mutation target proof for fill-format-change did not prove a fill color change",
@@ -2957,6 +3010,7 @@
               "semantic UI mutation target proof for fill-format-change before screenshot semantic readback does not match target readback",
               "semantic UI mutation target proof for fill-format-change after screenshot semantic readback does not match target readback",
               "semantic UI mutation target proof for fill-format-change restored screenshot semantic readback does not match target readback",
+              "semantic UI mutation target proof for fill-format-change target readback did not come from a browser-visible grid cell",
               "semantic UI mutation target proof for fill-format-change did not prove the intended fill color",
               "semantic UI mutation target proof for fill-format-change committed-state export did not prove a before/after change",
               "semantic UI mutation target proof for fill-format-change did not prove a fill color change",
@@ -3166,6 +3220,7 @@
               "semantic UI mutation target proof for fill-format-change before screenshot semantic readback does not match target readback",
               "semantic UI mutation target proof for fill-format-change after screenshot semantic readback does not match target readback",
               "semantic UI mutation target proof for fill-format-change restored screenshot semantic readback does not match target readback",
+              "semantic UI mutation target proof for fill-format-change target readback did not come from a browser-visible grid cell",
               "semantic UI mutation target proof for fill-format-change did not prove the intended fill color",
               "semantic UI mutation target proof for fill-format-change committed-state export did not prove a before/after change",
               "semantic UI mutation target proof for fill-format-change did not prove a fill color change",
@@ -3178,6 +3233,7 @@
           "semantic UI mutation target proof for fill-format-change before screenshot semantic readback does not match target readback",
           "semantic UI mutation target proof for fill-format-change after screenshot semantic readback does not match target readback",
           "semantic UI mutation target proof for fill-format-change restored screenshot semantic readback does not match target readback",
+          "semantic UI mutation target proof for fill-format-change target readback did not come from a browser-visible grid cell",
           "semantic UI mutation target proof for fill-format-change did not prove the intended fill color",
           "semantic UI mutation target proof for fill-format-change committed-state export did not prove a before/after change",
           "semantic UI mutation target proof for fill-format-change did not prove a fill color change",
@@ -3186,19 +3242,20 @@
       }
     ],
     "requiredProofArchiveArtifactCount": 99,
-    "proofArchiveArtifactCount": 80,
+    "proofArchiveArtifactCount": 42,
     "legacyInsufficientRenderedGridProofCaseCount": 0,
     "tenXMeanAndP95CaseCount": 1,
+    "claimReadinessState": "diagnostic-capture-incomplete",
     "currentContractEvidenceComplete": false,
     "googleSheetsTenXRequirementSatisfied": false,
     "captureRunSignature": "e192da0310fecd5bc29523cd011479e4d1ce860b72685e306ab842c720454e75",
     "invalidReasons": [
       "semantic UI proof covers 8/9 cases",
-      "mutation target proof covers 2/3 mutating cases",
-      "mutation target proof covers 15/18 required per-sample product proofs",
-      "committed target proof timing covers 2/3 mutating cases",
-      "committed target proof timing covers 15/18 required per-sample product timings",
-      "proof archive covers 80/99 required proof artifacts",
+      "mutation target proof covers 0/3 mutating cases",
+      "mutation target proof covers 9/18 required per-sample product proofs",
+      "committed target proof timing covers 0/3 mutating cases",
+      "committed target proof timing covers 9/18 required per-sample product timings",
+      "proof archive covers 42/99 required proof artifacts",
       "not every required workload is 10x against Google Sheets"
     ]
   },

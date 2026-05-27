@@ -265,6 +265,7 @@
       "proofArchiveArtifactCount": 0,
       "legacyInsufficientRenderedGridProofCaseCount": 0,
       "tenXMeanAndP95CaseCount": 0,
+      "claimReadinessState": "not-captured",
       "currentContractEvidenceComplete": false,
       "googleSheetsTenXRequirementSatisfied": false,
       "captureRunSignature": null,

@@ -9,6 +9,7 @@ import type {
   UiResponsivenessSameCorpusWorkload,
 } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import { parseSameCorpusCapture } from './ui-responsiveness-live-browser-scorecard-parse.ts'
+import { sameCorpusClaimReadinessState, type SameCorpusClaimReadinessState } from './ui-responsiveness-same-corpus-readiness-state.ts'
 import type { SameCorpusMutationTargetProofProductSummary } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import { buildSameCorpusProof, validateSameCorpusCaptureRunManifest } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import { sameCorpusScenarioSummaryFieldsCurrent } from './ui-responsiveness-same-corpus-scenario-fields.ts'
@@ -47,6 +48,7 @@ export interface UiSameCorpusStatus {
   readonly committedTargetProofTimingSampleCount: number
   readonly mutationTargetProofProductSummaries: readonly SameCorpusMutationTargetProofProductSummary[]
   readonly legacyInsufficientRenderedGridProofCaseCount: number
+  readonly claimReadinessState: SameCorpusClaimReadinessState
   readonly currentContractEvidenceComplete: boolean
   readonly googleSheetsTenXRequirementSatisfied: boolean
   readonly runManifestInvalidReasons: readonly string[]
@@ -123,6 +125,7 @@ export interface UiSameCorpusCaptureArtifactStatus {
   readonly committedTargetProofTimingSampleCount: number | null
   readonly legacyInsufficientRenderedGridProofCaseCount: number | null
   readonly tenXMeanAndP95CaseCount: number | null
+  readonly claimReadinessState: SameCorpusClaimReadinessState
   readonly currentContractEvidenceComplete: boolean | null
   readonly googleSheetsTenXRequirementSatisfied: boolean | null
   readonly capturedWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
@@ -294,6 +297,14 @@ export function buildUiSameCorpusStatus(
     mutationTargetProofProductSummaries: runManifest?.mutationTargetProofProductSummaries ?? [],
     legacyInsufficientRenderedGridProofCaseCount:
       runManifest?.legacyInsufficientRenderedGridProofCaseCount ?? proof.cases.filter(hasLegacyInsufficientRenderedGridProof).length,
+    claimReadinessState:
+      runManifest?.claimReadinessState ??
+      sameCorpusClaimReadinessState({
+        captured: proof.captured,
+        currentContractEvidenceComplete: false,
+        googleSheetsTenXRequirementSatisfied: false,
+        invalidReasons: runManifest?.invalidReasons ?? ['same-corpus UI proof is missing a run manifest'],
+      }),
     currentContractEvidenceComplete: runManifest?.currentContractEvidenceComplete ?? false,
     googleSheetsTenXRequirementSatisfied: runManifest?.googleSheetsTenXRequirementSatisfied ?? false,
     runManifestInvalidReasons: runManifest?.invalidReasons ?? ['same-corpus UI proof is missing a run manifest'],
@@ -377,7 +388,7 @@ export function readUiSameCorpusCaptureArtifactStatus(args: {
 }
 
 export function buildMissingUiSameCorpusCaptureArtifactStatus(path: string): UiSameCorpusCaptureArtifactStatus {
-  return buildInvalidUiSameCorpusCaptureArtifactStatus(path, false, false, 'same-corpus capture artifact is missing')
+  return buildInvalidUiSameCorpusCaptureArtifactStatus(path, false, false, 'same-corpus capture artifact is missing', null, 'not-captured')
 }
 
 function buildUiSameCorpusCaptureArtifactStatus(path: string, capture: SameCorpusCapture): UiSameCorpusCaptureArtifactStatus {
@@ -413,6 +424,7 @@ function buildUiSameCorpusCaptureArtifactStatus(path: string, capture: SameCorpu
       committedTargetProofTimingSampleCount: runManifest?.committedTargetProofTimingSampleCount ?? null,
       legacyInsufficientRenderedGridProofCaseCount: runManifest?.legacyInsufficientRenderedGridProofCaseCount ?? null,
       tenXMeanAndP95CaseCount: proof.tenXMeanAndP95CaseCount,
+      claimReadinessState: runManifest?.claimReadinessState ?? 'diagnostic-capture-incomplete',
       currentContractEvidenceComplete: runManifest?.currentContractEvidenceComplete ?? null,
       googleSheetsTenXRequirementSatisfied: runManifest?.googleSheetsTenXRequirementSatisfied ?? null,
       capturedWorkloads: [...capture.runManifest.capturedWorkloads],
@@ -467,6 +479,7 @@ function buildParsedUiSameCorpusCaptureArtifactStatus(
     committedTargetProofTimingSampleCount: capture.runManifest.committedTargetProofTimingSampleCount,
     legacyInsufficientRenderedGridProofCaseCount: capture.runManifest.legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount: capture.runManifest.tenXMeanAndP95CaseCount,
+    claimReadinessState: capture.runManifest.claimReadinessState,
     currentContractEvidenceComplete: capture.runManifest.currentContractEvidenceComplete,
     googleSheetsTenXRequirementSatisfied: capture.runManifest.googleSheetsTenXRequirementSatisfied,
     capturedWorkloads: [...capture.runManifest.capturedWorkloads],
@@ -484,6 +497,7 @@ function buildInvalidUiSameCorpusCaptureArtifactStatus(
   parseable: boolean,
   readinessErrors: string | readonly string[],
   legacyCapture: UiSameCorpusLegacyCaptureArtifactStatus | null = null,
+  claimReadinessState: SameCorpusClaimReadinessState = 'diagnostic-capture-incomplete',
 ): UiSameCorpusCaptureArtifactStatus {
   return {
     path,
@@ -508,6 +522,7 @@ function buildInvalidUiSameCorpusCaptureArtifactStatus(
     committedTargetProofTimingSampleCount: null,
     legacyInsufficientRenderedGridProofCaseCount: null,
     tenXMeanAndP95CaseCount: null,
+    claimReadinessState,
     currentContractEvidenceComplete: null,
     googleSheetsTenXRequirementSatisfied: null,
     capturedWorkloads: [],

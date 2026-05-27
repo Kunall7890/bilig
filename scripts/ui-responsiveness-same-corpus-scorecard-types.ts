@@ -8,6 +8,7 @@ import type {
   SameCorpusScreenshotProof,
   sameCorpusUiRenderProofContractVersion,
 } from './ui-responsiveness-same-corpus-proof.ts'
+import type { SameCorpusClaimReadinessState } from './ui-responsiveness-same-corpus-readiness-state.ts'
 import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export type UiResponsivenessSameCorpusProduct = 'bilig' | 'google-sheets' | 'microsoft-excel-web'
@@ -125,6 +126,7 @@ export interface UiResponsivenessSameCorpusRunManifest {
   readonly proofArchiveArtifactCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
+  readonly claimReadinessState: SameCorpusClaimReadinessState
   readonly currentContractEvidenceComplete: boolean
   readonly googleSheetsTenXRequirementSatisfied: boolean
   readonly captureRunSignature: string | null
@@ -179,6 +181,7 @@ export interface SameCorpusCaptureRunManifest {
   readonly proofArchiveArtifactCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
+  readonly claimReadinessState: SameCorpusClaimReadinessState
   readonly currentContractEvidenceComplete: boolean
   readonly googleSheetsTenXRequirementSatisfied: boolean
   readonly captureRunSignature: string

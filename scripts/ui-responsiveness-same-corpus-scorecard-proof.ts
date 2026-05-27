@@ -50,6 +50,7 @@ import {
   requiredUiResponsivenessSameCorpusProofArchiveArtifactCount,
   sameCorpusProofArchiveArtifactCount,
 } from './ui-responsiveness-same-corpus-proof-archive.ts'
+import { sameCorpusClaimReadinessState, sameCorpusTenXSpeedInvalidReason } from './ui-responsiveness-same-corpus-readiness-state.ts'
 import { sameCorpusManifestInvalidReasons } from './ui-responsiveness-same-corpus-manifest-invalid-reasons.ts'
 import {
   buildSameCorpusMeasurement,
@@ -251,9 +252,13 @@ function buildSameCorpusRunManifest(
     proofArchiveArtifactCount,
     legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
-    currentContractEvidenceComplete: !invalidReasons.some(
-      (reason) => reason !== 'not every required workload is 10x against Google Sheets',
-    ),
+    claimReadinessState: sameCorpusClaimReadinessState({
+      captured: cases.length > 0 || captureRunSignature !== null,
+      currentContractEvidenceComplete: !invalidReasons.some((reason) => reason !== sameCorpusTenXSpeedInvalidReason),
+      googleSheetsTenXRequirementSatisfied: invalidReasons.length === 0,
+      invalidReasons,
+    }),
+    currentContractEvidenceComplete: !invalidReasons.some((reason) => reason !== sameCorpusTenXSpeedInvalidReason),
     googleSheetsTenXRequirementSatisfied: invalidReasons.length === 0,
     captureRunSignature,
     invalidReasons,
@@ -344,9 +349,13 @@ export function buildSameCorpusCaptureRunManifest(
     proofArchiveArtifactCount,
     legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
-    currentContractEvidenceComplete: !invalidReasons.some(
-      (reason) => reason !== 'not every required workload is 10x against Google Sheets',
-    ),
+    claimReadinessState: sameCorpusClaimReadinessState({
+      captured: cases.length > 0,
+      currentContractEvidenceComplete: !invalidReasons.some((reason) => reason !== sameCorpusTenXSpeedInvalidReason),
+      googleSheetsTenXRequirementSatisfied: invalidReasons.length === 0,
+      invalidReasons,
+    }),
+    currentContractEvidenceComplete: !invalidReasons.some((reason) => reason !== sameCorpusTenXSpeedInvalidReason),
     googleSheetsTenXRequirementSatisfied: invalidReasons.length === 0,
     captureRunSignature: sameCorpusCaptureRunSignature(cases),
     invalidReasons,

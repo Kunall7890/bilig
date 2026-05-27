@@ -124,6 +124,11 @@ function sameCorpusUiProofFailures(uiScorecard: unknown, requiredWorkloadCount: 
     failures.push('same-corpus UI proof is missing runManifest')
     return failures
   }
+  if (runManifest['claimReadinessState'] !== 'claim-grade-10x-passed') {
+    failures.push(
+      `same-corpus UI runManifest.claimReadinessState is ${String(runManifest['claimReadinessState'])}, expected claim-grade-10x-passed`,
+    )
+  }
   if (runManifest['currentContractEvidenceComplete'] !== true) {
     failures.push('same-corpus UI runManifest.currentContractEvidenceComplete is not true')
   }
