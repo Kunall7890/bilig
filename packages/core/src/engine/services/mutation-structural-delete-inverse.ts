@@ -350,6 +350,14 @@ export function createMutationStructuralDeleteInverseHelpers(
       if (!ownerSheetName) {
         return
       }
+      if (
+        axis === 'column' &&
+        formula.structuralSourceTransform === undefined &&
+        formula.sourceRenameTransform === undefined &&
+        formula.sourceRenameTransforms === undefined
+      ) {
+        return
+      }
       const ownerPosition = readCellPosition(cellIndex)
       const axisIndex = axis === 'row' ? ownerPosition?.row : ownerPosition?.col
       const ownerPositionAffected = ownerSheetName === sheetName && axisIndex !== undefined && axisIndex >= start

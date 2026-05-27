@@ -44,7 +44,7 @@ function getUndoStack(engine: SpreadsheetEngine): TransactionLogEntry[] {
 
 interface StructuralInsertHistoryEntry {
   forward: { kind: string; op?: { kind: string; entries?: unknown[] } }
-  inverse: { kind: string; op?: { kind: string }; ops?: unknown[]; potentialNewCells?: number }
+  inverse: { kind: string; op?: { kind: string } }
 }
 
 function isStructuralInsertHistoryEntry(value: unknown): value is StructuralInsertHistoryEntry {
@@ -1057,12 +1057,8 @@ describe('EngineMutationService', () => {
     expect(latest?.forward.kind).toBe('single-op')
     expect(latest?.forward.op).toMatchObject({ kind: 'insertColumns', sheetName: 'Sheet1', start: 1, count: 1 })
     expect(latest?.forward.op?.entries).toEqual([])
-    expect(latest?.inverse.kind).toBe('ops')
-    expect(latest?.inverse.ops).toEqual([
-      { kind: 'deleteColumns', sheetName: 'Sheet1', start: 1, count: 1 },
-      { kind: 'setCellFormula', sheetName: 'Sheet1', address: 'C1', formula: 'A1+B1' },
-    ])
-    expect(latest?.inverse.potentialNewCells).toBe(1)
+    expect(latest?.inverse.kind).toBe('single-op')
+    expect(latest?.inverse.op).toMatchObject({ kind: 'deleteColumns', sheetName: 'Sheet1', start: 1, count: 1 })
     expect(engine.getPerformanceCounters().cycleFormulaScans).toBe(0)
     expect(engine.getColumnAxisEntries('Sheet1')).toEqual([])
     expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 3 })
