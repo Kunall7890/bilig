@@ -31,6 +31,8 @@ describe('same-corpus committed-state proof capture', () => {
     })
 
     expect(page.requestCount()).toBe(2)
+    expect(new Set(page.requestUrls()).size).toBe(2)
+    expect(page.requestUrls().every((url) => url.includes('biligProofNonce='))).toBe(true)
     expect(proof).toMatchObject({
       product: 'google-sheets',
       phase: 'after',
@@ -210,6 +212,46 @@ describe('same-corpus committed-state proof capture', () => {
     })
   })
 
+  it('uses page-context fetch when a live Google Sheets page is available', async () => {
+    const committedBytes = xlsxBytesForTargetFill('WideGrid', 'C5', 'segment-5', '#c9daf8')
+    let pageFetchCount = 0
+    const page = mockGoogleSheetsExportPage([committedBytes], {
+      requestError: new TypeError('"/spreadsheets/d/test-spreadsheet/export?format=xlsx" cannot be parsed as a URL.'),
+      evaluate: async (_pageFunction, _arg) => {
+        pageFetchCount += 1
+        return {
+          bodyText: '',
+          bytes: Array.from(committedBytes),
+          ok: true,
+          status: 200,
+        }
+      },
+    })
+
+    const proof = await captureSameCorpusCommittedStatePhaseProof({
+      expectedReadback: {
+        ...sameCorpusGoogleReadback('segment-5'),
+        fillColor: '#c9daf8',
+      },
+      page: page.page,
+      phase: 'after',
+      product: 'google-sheets',
+      sampleIndex: 0,
+      target: sameCorpusTargetSelection(),
+      timeoutMs: 5_000,
+      pollIntervalMs: 0,
+      workload: 'fill-format-change',
+    })
+
+    expect(page.requestCount()).toBe(0)
+    expect(pageFetchCount).toBe(1)
+    expect(proof?.readback).toMatchObject({
+      fillColor: '#c9daf8',
+      source: 'google-sheets-xlsx-export',
+      value: 'segment-5',
+    })
+  })
+
   it('fails when Google Sheets XLSX export never proves the expected committed target readback', async () => {
     const page = mockGoogleSheetsExportPage([xlsxBytesForTargetValue('WideGrid', 'C5', 'stale-browser-only-value')])
 
@@ -282,17 +324,26 @@ function sameCorpusTargetSelection(): SameCorpusMutationTargetSelection {
 function mockGoogleSheetsExportPage(
   responses: readonly Uint8Array[],
   options: {
+    readonly evaluate?: NonNullable<SameCorpusCommittedStatePage['evaluate']>
+    readonly requestError?: Error
     readonly waitForFunction?: NonNullable<SameCorpusCommittedStatePage['waitForFunction']>
   } = {},
 ): {
   readonly page: SameCorpusCommittedStatePage
   readonly requestCount: () => number
+  readonly requestUrls: () => readonly string[]
 } {
   let requestCount = 0
+  const requestUrls: string[] = []
   const page: SameCorpusCommittedStatePage = {
     context: () => ({
       request: {
-        get: async () => {
+        get: async (url) => {
+          requestUrls.push(url)
+          if (options.requestError) {
+            requestCount += 1
+            throw options.requestError
+          }
           const body = responses[Math.min(requestCount, responses.length - 1)] ?? responses[0]
           requestCount += 1
           return {
@@ -305,10 +356,11 @@ function mockGoogleSheetsExportPage(
       },
     }),
     url: () => 'https://docs.google.com/spreadsheets/d/test-spreadsheet/edit#gid=0',
+    ...(options.evaluate ? { evaluate: options.evaluate } : {}),
     ...(options.waitForFunction ? { waitForFunction: options.waitForFunction } : {}),
     waitForTimeout: async () => {},
   }
-  return { page, requestCount: () => requestCount }
+  return { page, requestCount: () => requestCount, requestUrls: () => [...requestUrls] }
 }
 
 function xlsxBytesForTargetValue(sheetName: string, address: string, value: string): Uint8Array {

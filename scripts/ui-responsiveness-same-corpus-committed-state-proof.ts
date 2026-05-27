@@ -25,6 +25,7 @@ export interface SameCorpusCommittedStatePage {
       }>
     }
   }
+  evaluate?<Result, Arg>(pageFunction: (arg: Arg) => Result | Promise<Result>, arg: Arg): Promise<Result>
   url(): string
   waitForFunction?(pageFunction: () => boolean, arg?: unknown, options?: { readonly timeout?: number }): Promise<unknown>
   waitForTimeout(timeoutMs: number): Promise<void>
@@ -107,10 +108,9 @@ export async function captureSameCorpusCommittedStatePhaseProof(args: {
   if (args.product !== 'google-sheets') {
     return null
   }
-  const exportUrl = googleSheetsExportUrl(args.page.url())
   const timeoutMs = Math.max(0, args.timeoutMs ?? 30_000)
   const pollIntervalMs = Math.max(0, args.pollIntervalMs ?? 500)
-  return await captureGoogleSheetsCommittedStatePhaseProofUntilMatched(args, exportUrl, performance.now() + timeoutMs, pollIntervalMs)
+  return await captureGoogleSheetsCommittedStatePhaseProofUntilMatched(args, performance.now() + timeoutMs, pollIntervalMs)
 }
 
 export function sameCorpusCommittedStateProofArtifactPath(args: {
@@ -131,12 +131,11 @@ export function sameCorpusCommittedStateProofArtifactPath(args: {
 
 async function captureGoogleSheetsCommittedStatePhaseProofUntilMatched(
   args: Parameters<typeof captureSameCorpusCommittedStatePhaseProof>[0],
-  exportUrl: string,
   deadlineMs: number,
   pollIntervalMs: number,
 ): Promise<SameCorpusMutationTargetCommittedStatePhaseProof> {
   await waitForGoogleSheetsSaveIdle(args.page, Math.max(0, deadlineMs - performance.now()))
-  const proof = await captureGoogleSheetsCommittedStatePhaseProofSnapshot(args, exportUrl)
+  const proof = await captureGoogleSheetsCommittedStatePhaseProofSnapshot(args, googleSheetsExportUrl(args.page.url()))
   if (sameCorpusCommittedReadbackMatches(args.workload, args.expectedReadback, proof.readback)) {
     return proof
   }
@@ -145,7 +144,7 @@ async function captureGoogleSheetsCommittedStatePhaseProofUntilMatched(
     throwGoogleSheetsCommittedStateMismatch(args, proof)
   }
   await args.page.waitForTimeout(Math.min(pollIntervalMs, remainingMs))
-  return await captureGoogleSheetsCommittedStatePhaseProofUntilMatched(args, exportUrl, deadlineMs, pollIntervalMs)
+  return await captureGoogleSheetsCommittedStatePhaseProofUntilMatched(args, deadlineMs, pollIntervalMs)
 }
 
 function throwGoogleSheetsCommittedStateMismatch(
@@ -478,6 +477,13 @@ function sameCorpusReadbackTextValue(readback: SameCorpusMutationTargetReadback)
 }
 
 async function fetchGoogleSheetsXlsxExport(page: SameCorpusCommittedStatePage, exportUrl: string): Promise<Uint8Array> {
+  if (page.evaluate) {
+    return await fetchGoogleSheetsXlsxExportInPage(page, exportUrl)
+  }
+  return await fetchGoogleSheetsXlsxExportWithRequest(page, exportUrl)
+}
+
+async function fetchGoogleSheetsXlsxExportWithRequest(page: SameCorpusCommittedStatePage, exportUrl: string): Promise<Uint8Array> {
   const response = await page.context().request.get(exportUrl, { timeout: 60_000 })
   if (!response.ok()) {
     const bodySnippet = (await response.text().catch(() => '')).replace(/\s+/g, ' ').trim().slice(0, 300)
@@ -490,12 +496,39 @@ async function fetchGoogleSheetsXlsxExport(page: SameCorpusCommittedStatePage, e
   return bytes
 }
 
+async function fetchGoogleSheetsXlsxExportInPage(page: SameCorpusCommittedStatePage, exportUrl: string): Promise<Uint8Array> {
+  if (!page.evaluate) {
+    throw new Error('Google Sheets committed-state XLSX export fallback requires page.evaluate')
+  }
+  const response = await page.evaluate(async (url) => {
+    const result = await fetch(url, { cache: 'no-store', credentials: 'include' })
+    const buffer = await result.arrayBuffer()
+    return {
+      bodyText: result.ok ? '' : new TextDecoder().decode(buffer).replace(/\s+/gu, ' ').trim().slice(0, 300),
+      bytes: Array.from(new Uint8Array(buffer)),
+      ok: result.ok,
+      status: result.status,
+    }
+  }, exportUrl)
+  if (!response.ok) {
+    throw new Error(`Google Sheets committed-state XLSX export returned HTTP ${String(response.status)}: ${response.bodyText}`)
+  }
+  const bytes = Uint8Array.from(response.bytes)
+  if (looksLikeHtml(bytes)) {
+    throw new Error('Google Sheets committed-state XLSX export returned HTML instead of XLSX bytes')
+  }
+  return bytes
+}
+
 function googleSheetsExportUrl(sourceUrl: string): string {
   const spreadsheetId = /\/spreadsheets\/d\/([^/?#]+)/u.exec(sourceUrl)?.[1]
   if (!spreadsheetId) {
     throw new Error(`Unable to extract Google Sheets spreadsheet ID from URL: ${sourceUrl}`)
   }
-  return `https://docs.google.com/spreadsheets/d/${encodeURIComponent(spreadsheetId)}/export?format=xlsx`
+  const url = new URL(`https://docs.google.com/spreadsheets/d/${encodeURIComponent(spreadsheetId)}/export`)
+  url.searchParams.set('format', 'xlsx')
+  url.searchParams.set('biligProofNonce', `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`)
+  return url.toString()
 }
 
 function readGoogleSheetsExportTargetReadback(
