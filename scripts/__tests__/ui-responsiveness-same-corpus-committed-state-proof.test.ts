@@ -152,6 +152,33 @@ describe('same-corpus committed-state proof capture', () => {
     expect(proof?.readback.fillColor).toBe('#c9daf8')
   })
 
+  it('fails before XLSX export when Google Sheets save-idle proof cannot settle', async () => {
+    const committedBytes = xlsxBytesForTargetFill('WideGrid', 'C5', 'segment-5', '#c9daf8')
+    const page = mockGoogleSheetsExportPage([committedBytes], {
+      waitForFunction: async () => {
+        throw new Error('Saving still visible')
+      },
+    })
+
+    await expect(
+      captureSameCorpusCommittedStatePhaseProof({
+        expectedReadback: {
+          ...sameCorpusGoogleReadback('segment-5'),
+          fillColor: '#c9daf8',
+        },
+        page: page.page,
+        phase: 'after',
+        product: 'google-sheets',
+        sampleIndex: 0,
+        target: sameCorpusTargetSelection(),
+        timeoutMs: 5_000,
+        pollIntervalMs: 0,
+        workload: 'fill-format-change',
+      }),
+    ).rejects.toThrow('Google Sheets save-idle proof did not settle before committed-state XLSX export')
+    expect(page.requestCount()).toBe(0)
+  })
+
   it('fails when Google Sheets XLSX export never proves the expected committed target readback', async () => {
     const page = mockGoogleSheetsExportPage([xlsxBytesForTargetValue('WideGrid', 'C5', 'stale-browser-only-value')])
 

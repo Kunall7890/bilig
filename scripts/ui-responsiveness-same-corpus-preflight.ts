@@ -2,6 +2,7 @@ import type {
   SameCorpusCaptureCorpusVerification,
   UiResponsivenessSameCorpusProduct,
 } from './gen-ui-responsiveness-live-browser-scorecard.ts'
+import type { SameCorpusMutationTargetCommittedStateProof } from './ui-responsiveness-same-corpus-committed-state-proof.ts'
 import type { SameCorpusMutationTargetReadback } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 
 export interface PreflightEditableMutationProof {
@@ -23,6 +24,25 @@ export interface PreflightEditableMutationProof {
   readonly evidence: readonly string[]
 }
 
+export interface PreflightFillFormatMutationProof {
+  readonly product: 'google-sheets'
+  readonly captured: boolean
+  readonly method: 'fill-color-commit-readback-restore'
+  readonly sampleIndex: number
+  readonly sheetName: string
+  readonly sheetId: string | null
+  readonly targetRange: string
+  readonly intendedOperation: 'fill-format-change'
+  readonly intendedFillColor: string
+  readonly swatchLabel: string
+  readonly before: SameCorpusMutationTargetReadback
+  readonly after: SameCorpusMutationTargetReadback
+  readonly restored: SameCorpusMutationTargetReadback
+  readonly committedStateProof: SameCorpusMutationTargetCommittedStateProof | null
+  readonly undoRestoreStatus: 'verified' | 'failed'
+  readonly evidence: readonly string[]
+}
+
 export interface PreflightProductResult {
   readonly product: Exclude<UiResponsivenessSameCorpusProduct, 'bilig'>
   readonly source: string
@@ -32,6 +52,7 @@ export interface PreflightProductResult {
   readonly blocker: string | null
   readonly corpusVerification: SameCorpusCaptureCorpusVerification | null
   readonly editableMutationProof: PreflightEditableMutationProof | null
+  readonly fillFormatMutationProof: PreflightFillFormatMutationProof | null
   readonly limitations: string[]
 }
 
@@ -91,11 +112,50 @@ export function sameCorpusPreflightProductInvalidReasons(product: PreflightProdu
   if (proof.authoritativeReadbackRevision.trim().length === 0 || proof.visibleReadbackRevision.trim().length === 0) {
     invalidReasons.push(`${product.product} editable sentinel proof is missing readback revisions`)
   }
+  if (product.product === 'google-sheets') {
+    invalidReasons.push(...sameCorpusPreflightFillFormatProofInvalidReasons(product))
+  }
   return invalidReasons
 }
 
 export function sameCorpusPreflightReadbackProvesValue(readback: SameCorpusMutationTargetReadback, value: string): boolean {
   return readback.value === value || readback.visibleText === value || readback.formula === value
+}
+
+function sameCorpusPreflightFillFormatProofInvalidReasons(product: PreflightProductResult): readonly string[] {
+  const proof = product.fillFormatMutationProof
+  if (!proof) {
+    return ['google-sheets is missing fill-format commit/readback/restore preflight proof']
+  }
+  const invalidReasons: string[] = []
+  if (proof.product !== 'google-sheets') {
+    invalidReasons.push('google-sheets fill-format preflight proof has mismatched product')
+  }
+  if (!proof.captured) {
+    invalidReasons.push('google-sheets fill-format preflight proof is not marked captured')
+  }
+  if (proof.method !== 'fill-color-commit-readback-restore') {
+    invalidReasons.push('google-sheets fill-format preflight proof method is stale')
+  }
+  if (product.corpusVerification && proof.sheetName !== product.corpusVerification.sheetName) {
+    invalidReasons.push('google-sheets fill-format preflight proof sheet does not match corpus verification')
+  }
+  if (proof.targetRange.trim().length === 0) {
+    invalidReasons.push('google-sheets fill-format preflight proof is missing target range')
+  }
+  if (normalizeColor(proof.after.fillColor) !== normalizeColor(proof.intendedFillColor)) {
+    invalidReasons.push('google-sheets fill-format preflight did not prove the intended rendered fill color')
+  }
+  if (normalizeColor(proof.committedStateProof?.after.readback.fillColor ?? null) !== normalizeColor(proof.intendedFillColor)) {
+    invalidReasons.push('google-sheets fill-format preflight did not prove committed workbook fill color')
+  }
+  if (proof.undoRestoreStatus !== 'verified') {
+    invalidReasons.push('google-sheets fill-format preflight did not verify undo/restore')
+  }
+  if (normalizeColor(proof.before.fillColor) !== normalizeColor(proof.restored.fillColor)) {
+    invalidReasons.push('google-sheets fill-format preflight restored fill does not match before fill')
+  }
+  return invalidReasons
 }
 
 function sameCorpusPreflightReadbacksEqual(left: SameCorpusMutationTargetReadback, right: SameCorpusMutationTargetReadback): boolean {
@@ -106,4 +166,8 @@ function sameCorpusPreflightReadbacksEqual(left: SameCorpusMutationTargetReadbac
     left.visibleText === right.visibleText &&
     left.source === right.source
   )
+}
+
+function normalizeColor(value: string | null): string | null {
+  return value ? value.trim().toLowerCase() : null
 }

@@ -67,6 +67,7 @@ import {
   type SameCorpusPreflight,
 } from './ui-responsiveness-same-corpus-preflight.ts'
 import { captureSameCorpusPreflightEditableMutationProof } from './ui-responsiveness-same-corpus-preflight-editable-proof.ts'
+import { captureSameCorpusPreflightFillFormatMutationProof } from './ui-responsiveness-same-corpus-preflight-fill-proof.ts'
 
 interface ProductSampleCollection {
   readonly corpusVerification: SameCorpusCaptureCorpusVerification
@@ -356,6 +357,8 @@ async function preflightIncumbentProduct(
     await assertIncumbentEditableForPreflight(page, product)
     const corpusVerification = await verifyProductCorpus(page, product, url, corpus)
     const editableMutationProof = await captureSameCorpusPreflightEditableMutationProof({ corpusVerification, page, product })
+    const fillFormatMutationProof =
+      product === 'google-sheets' ? await captureSameCorpusPreflightFillFormatMutationProof({ corpusVerification, page }) : null
     return {
       product,
       source: url,
@@ -365,6 +368,7 @@ async function preflightIncumbentProduct(
       blocker: null,
       corpusVerification,
       editableMutationProof,
+      fillFormatMutationProof,
       limitations: productLimitations(product, storageStatePathForPreflightProduct(product, args)),
     }
   } catch (error: unknown) {
@@ -378,6 +382,7 @@ async function preflightIncumbentProduct(
       blocker: await productReadyFailureMessage(page, product, url, 0, error),
       corpusVerification: null,
       editableMutationProof: null,
+      fillFormatMutationProof: null,
       limitations: productLimitations(product, storageStatePathForPreflightProduct(product, args)),
     }
   } finally {

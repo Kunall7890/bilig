@@ -5,8 +5,13 @@ import {
   parseCaptureArgs,
   preflightArgsForClaimGradeCapture,
 } from '../capture-ui-responsiveness-same-corpus.ts'
+import type { SameCorpusMutationTargetCommittedStatePhaseProof } from '../ui-responsiveness-same-corpus-committed-state-proof.ts'
 import type { PreflightArgs } from '../ui-responsiveness-same-corpus-args.ts'
-import type { PreflightEditableMutationProof, SameCorpusPreflight } from '../ui-responsiveness-same-corpus-preflight.ts'
+import type {
+  PreflightEditableMutationProof,
+  PreflightFillFormatMutationProof,
+  SameCorpusPreflight,
+} from '../ui-responsiveness-same-corpus-preflight.ts'
 
 describe('same-corpus claim-grade capture incumbent preflight', () => {
   it('maps claim-grade capture options to incumbent-only preflight options', () => {
@@ -112,6 +117,90 @@ describe('same-corpus claim-grade capture incumbent preflight', () => {
     ).rejects.toThrow('google-sheets is missing editable sentinel write/readback/restore proof')
   })
 
+  it('requires Google Sheets claim-grade preflight to prove fill commit/readback/restore', async () => {
+    const args = parseCaptureArgs([
+      '--output',
+      'tmp/ui-capture.json',
+      '--google-sheets-url',
+      'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+      '--serve-bilig-production',
+    ])
+    const readyPreflight = readyGoogleSheetsPreflight()
+
+    await expect(
+      assertClaimGradeCaptureIncumbentsReady(args, async () => ({
+        ...readyPreflight,
+        allCheckedProductsReady: true,
+        products: [
+          {
+            ...readyPreflight.products[0],
+            fillFormatMutationProof: null,
+          },
+        ],
+      })),
+    ).rejects.toThrow('google-sheets is missing fill-format commit/readback/restore preflight proof')
+  })
+
+  it('rejects Google Sheets fill preflight that only proves browser repaint without committed XLSX readback', async () => {
+    const args = parseCaptureArgs([
+      '--output',
+      'tmp/ui-capture.json',
+      '--google-sheets-url',
+      'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+      '--serve-bilig-production',
+    ])
+    const readyPreflight = readyGoogleSheetsPreflight()
+    const browserOnlyFillProof: PreflightFillFormatMutationProof = {
+      ...verifiedFillFormatMutationProof(),
+      committedStateProof: null,
+    }
+
+    await expect(
+      assertClaimGradeCaptureIncumbentsReady(args, async () => ({
+        ...readyPreflight,
+        allCheckedProductsReady: true,
+        products: [
+          {
+            ...readyPreflight.products[0],
+            fillFormatMutationProof: browserOnlyFillProof,
+          },
+        ],
+      })),
+    ).rejects.toThrow('google-sheets fill-format preflight did not prove committed workbook fill color')
+  })
+
+  it('rejects Google Sheets fill preflight when undo does not restore the original fill', async () => {
+    const args = parseCaptureArgs([
+      '--output',
+      'tmp/ui-capture.json',
+      '--google-sheets-url',
+      'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+      '--serve-bilig-production',
+    ])
+    const readyPreflight = readyGoogleSheetsPreflight()
+    const staleRestoredFillProof: PreflightFillFormatMutationProof = {
+      ...verifiedFillFormatMutationProof(),
+      restored: {
+        ...verifiedFillFormatMutationProof().restored,
+        fillColor: '#c9daf8',
+      },
+      undoRestoreStatus: 'failed',
+    }
+
+    await expect(
+      assertClaimGradeCaptureIncumbentsReady(args, async () => ({
+        ...readyPreflight,
+        allCheckedProductsReady: true,
+        products: [
+          {
+            ...readyPreflight.products[0],
+            fillFormatMutationProof: staleRestoredFillProof,
+          },
+        ],
+      })),
+    ).rejects.toThrow('google-sheets fill-format preflight did not verify undo/restore')
+  })
+
   it('allows claim-grade incumbent preflight only after editable restore proof is verified', async () => {
     const args = parseCaptureArgs([
       '--output',
@@ -146,6 +235,7 @@ function blockedGoogleSheetsPreflight(): SameCorpusPreflight {
           'Cannot preflight same-corpus editable workloads on google-sheets: Google Sheets page is not authenticated; provide an authenticated storage state.',
         corpusVerification: null,
         editableMutationProof: null,
+        fillFormatMutationProof: null,
         limitations: ['storage state was not provided'],
       },
     ],
@@ -198,9 +288,80 @@ function readyGoogleSheetsPreflight(): SameCorpusPreflight {
           ],
         },
         editableMutationProof: verifiedEditableMutationProof(),
+        fillFormatMutationProof: verifiedFillFormatMutationProof(),
         limitations: [],
       },
     ],
+  }
+}
+
+function verifiedFillFormatMutationProof(): PreflightFillFormatMutationProof {
+  const before = {
+    value: 'segment-5',
+    formula: null,
+    fillColor: null,
+    visibleText: 'segment-5',
+    source: 'visible-grid-cell',
+  } as const
+  const after = {
+    ...before,
+    fillColor: '#c9daf8',
+  }
+  return {
+    product: 'google-sheets',
+    captured: true,
+    method: 'fill-color-commit-readback-restore',
+    sampleIndex: 0,
+    sheetName: 'Sheet1',
+    sheetId: 'google-sheet-id',
+    targetRange: 'B5:B7',
+    intendedOperation: 'fill-format-change',
+    intendedFillColor: '#c9daf8',
+    swatchLabel: 'light cornflower blue 3',
+    before,
+    after,
+    restored: before,
+    committedStateProof: {
+      product: 'google-sheets',
+      source: 'google-sheets-xlsx-export',
+      sampleIndex: 0,
+      workload: 'fill-format-change',
+      sheetName: 'Sheet1',
+      sheetId: 'google-sheet-id',
+      targetRange: 'B5:B7',
+      before: committedFillPhase('before', { ...before, source: 'google-sheets-xlsx-export' }),
+      after: committedFillPhase('after', { ...after, source: 'google-sheets-xlsx-export' }),
+      restored: committedFillPhase('restored', { ...before, source: 'google-sheets-xlsx-export' }),
+    },
+    undoRestoreStatus: 'verified',
+    evidence: [
+      'method=fill-color-commit-readback-restore',
+      'targetRange=B5:B7',
+      'intendedFillColor=#c9daf8',
+      'renderedFillVerified=true',
+      'committedFillVerified=true',
+      'undoRestoreStatus=verified',
+    ],
+  }
+}
+
+function committedFillPhase(
+  phase: 'before' | 'after' | 'restored',
+  readback: PreflightFillFormatMutationProof['before'],
+): SameCorpusMutationTargetCommittedStatePhaseProof {
+  return {
+    product: 'google-sheets',
+    phase,
+    sampleIndex: 0,
+    workload: 'fill-format-change',
+    sheetName: 'Sheet1',
+    sheetId: 'google-sheet-id',
+    targetRange: 'B5:B7',
+    exportUrl: 'https://docs.google.com/spreadsheets/d/sheet-id/export?format=xlsx',
+    capturedAtMs: phase === 'before' ? 1 : phase === 'after' ? 2 : 3,
+    workbookByteSize: 128,
+    workbookSha256: 'e'.repeat(64),
+    readback,
   }
 }
 

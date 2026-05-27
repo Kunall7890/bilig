@@ -133,8 +133,8 @@ async function waitForGoogleSheetsSaveIdle(page: SameCorpusCommittedStatePage, t
   if (!page.url().includes('docs.google.com/spreadsheets') || !page.waitForFunction || timeoutMs <= 0) {
     return
   }
-  await page
-    .waitForFunction(
+  try {
+    await page.waitForFunction(
       () => {
         const text = document.body?.innerText.replace(/\s+/gu, ' ').trim() ?? ''
         return !/\bSaving(?:\.\.\.|…)?\b/iu.test(text)
@@ -142,7 +142,9 @@ async function waitForGoogleSheetsSaveIdle(page: SameCorpusCommittedStatePage, t
       undefined,
       { timeout: Math.max(1, Math.min(10_000, timeoutMs)) },
     )
-    .catch(() => undefined)
+  } catch (error: unknown) {
+    throw new Error('Google Sheets save-idle proof did not settle before committed-state XLSX export', { cause: error })
+  }
 }
 
 async function captureGoogleSheetsCommittedStatePhaseProofSnapshot(

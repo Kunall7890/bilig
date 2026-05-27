@@ -207,13 +207,14 @@ async function performSameCorpusKeyboardOperations(
   await performSameCorpusKeyboardOperations(page, operations, index + 1)
 }
 
-async function performSameCorpusFillColorOperation(
+export async function performSameCorpusFillColorOperation(
   page: Page,
   product: UiResponsivenessSameCorpusProduct,
   sampleIndex: number,
+  options: { readonly exactSwatchOnly?: boolean } = {},
 ): Promise<void> {
   const swatchLabel = sameCorpusFillColorSwatchLabel(sampleIndex)
-  const swatchCandidateLabels = sameCorpusFillColorCandidateLabels(swatchLabel)
+  const swatchCandidateLabels = sameCorpusFillColorCandidateLabels(swatchLabel, options)
   await clickFirstAvailableLocator(
     [
       page.getByLabel('Fill color', { exact: true }),
@@ -254,14 +255,17 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
 
-function sameCorpusFillColorCandidateLabels(swatchLabel: string): readonly string[] {
+function sameCorpusFillColorCandidateLabels(swatchLabel: string, options: { readonly exactSwatchOnly?: boolean } = {}): readonly string[] {
+  if (options.exactSwatchOnly) {
+    return [swatchLabel]
+  }
   if (swatchLabel === 'green') {
     return ['green']
   }
   if (swatchLabel === 'light cornflower blue 2') {
-    return ['light cornflower blue 2', 'light blue 2', 'blue']
+    return ['light cornflower blue 2', 'light blue 2']
   }
-  return [swatchLabel, 'light cornflower blue', 'blue']
+  return [swatchLabel, 'light cornflower blue']
 }
 
 async function assertIncumbentEditableForWorkload(
