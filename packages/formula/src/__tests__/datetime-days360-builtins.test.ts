@@ -11,11 +11,11 @@ describe('DAYS360 date-time builtin', () => {
 
     expect(datetimeBuiltins.DAYS360({ tag: ValueTag.Number, value: nonLeapFeb28 }, { tag: ValueTag.Number, value: nonLeapMar31 })).toEqual({
       tag: ValueTag.Number,
-      value: 30,
+      value: 31,
     })
     expect(datetimeBuiltins.DAYS360({ tag: ValueTag.Number, value: leapFeb29 }, { tag: ValueTag.Number, value: leapMar31 })).toEqual({
       tag: ValueTag.Number,
-      value: 30,
+      value: 31,
     })
   })
 })

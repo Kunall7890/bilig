@@ -44,7 +44,7 @@ describe('fixed-income builtin helpers', () => {
     expect(yearFracByBasis(serial(2019, 1, 1), serial(2021, 7, 1), 1)).toBeCloseTo(912 / ((365 + 366 + 365) / 3), 12)
     expect(yearFracByBasis(jul1, jan1, 1)).toBeCloseTo(182 / 366, 12)
     expect(yearFracByBasis(serial(2020, 1, 31), serial(2020, 2, 29), 0)).toBeCloseTo(29 / 360, 12)
-    expect(yearFracByBasis(serial(2020, 2, 29), serial(2020, 3, 31), 0)).toBeCloseTo(30 / 360, 12)
+    expect(yearFracByBasis(serial(2020, 2, 29), serial(2020, 3, 31), 0)).toBeCloseTo(31 / 360, 12)
     expect(yearFracByBasis(serial(2021, 2, 28), serial(2021, 2, 28), 0)).toBeCloseTo(0, 12)
     expect(yearFracByBasis(serial(2020, 2, 29), serial(2020, 2, 29), 0)).toBeCloseTo(0, 12)
     expect(yearFracByBasis(serial(2020, 1, 31), serial(2020, 2, 29), 4)).toBeCloseTo(29 / 360, 12)
@@ -226,7 +226,7 @@ describe('fixed-income builtin helpers', () => {
     expect(yearFracByBasis(Number.NaN, jul1, 0)).toBeUndefined()
     expect(yearFracByBasis(serial(2019, 3, 1), serial(2020, 3, 1), 1)).toBeCloseTo(366 / 366, 12)
     expect(yearFracByBasis(serial(2021, 3, 1), serial(2022, 3, 1), 1)).toBeCloseTo(365 / 365, 12)
-    expect(yearFracByBasis(serial(2020, 2, 29), serial(2020, 3, 31), 0)).toBeCloseTo(30 / 360, 12)
+    expect(yearFracByBasis(serial(2020, 2, 29), serial(2020, 3, 31), 0)).toBeCloseTo(31 / 360, 12)
     expect(yearFracByBasis(serial(2020, 1, 31), serial(2020, 3, 31), 0)).toBeCloseTo(60 / 360, 12)
 
     expect(oddLastCouponFractions(serial(2022, 1, 1), serial(2040, 1, 1), serial(2020, 1, 1), 2, 0)).toBeUndefined()

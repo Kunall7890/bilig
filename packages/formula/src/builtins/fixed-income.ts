@@ -77,10 +77,11 @@ export function yearFracByBasis(startSerial: number, endSerial: number, basis: n
     case 0: {
       const startIsFebruaryMonthEnd = startMonth === 2 && startDay === daysInExcelMonth(startYear, startMonth)
       const endIsFebruaryMonthEnd = endMonth === 2 && endDay === daysInExcelMonth(endYear, endMonth)
+      const startWasDayThirtyOrThirtyOne = startDay >= 30
       if (startDay === 31 || startIsFebruaryMonthEnd) {
         startDay = 30
       }
-      if ((endDay === 31 && startDay >= 30) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
+      if ((endDay === 31 && startWasDayThirtyOrThirtyOne) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
         endDay = 30
       }
       totalDays = (endYear - startYear) * 360 + (endMonth - startMonth) * 30 + (endDay - startDay)
@@ -468,10 +469,11 @@ function days360Us(startSerial: number, endSerial: number): number | undefined {
   let endDay = endParts.day
   const startIsFebruaryMonthEnd = startParts.month === 2 && startDay === daysInExcelMonth(startParts.year, startParts.month)
   const endIsFebruaryMonthEnd = endParts.month === 2 && endDay === daysInExcelMonth(endParts.year, endParts.month)
+  const startWasDayThirtyOrThirtyOne = startDay >= 30
   if (startDay === 31 || startIsFebruaryMonthEnd) {
     startDay = 30
   }
-  if ((endDay === 31 && startDay >= 30) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
+  if ((endDay === 31 && startWasDayThirtyOrThirtyOne) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
     endDay = 30
   }
 

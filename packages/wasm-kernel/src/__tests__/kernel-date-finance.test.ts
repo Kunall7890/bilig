@@ -102,7 +102,7 @@ describe('wasm kernel date/finance helpers', () => {
 
     kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width)]))
 
-    expectNumberCell(kernel, cellIndex(1, 0, width), 30)
+    expectNumberCell(kernel, cellIndex(1, 0, width), 31)
   })
 
   it('keeps date-basis helper behavior stable across refactors', async () => {

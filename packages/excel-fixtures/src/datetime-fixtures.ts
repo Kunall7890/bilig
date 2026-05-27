@@ -231,7 +231,7 @@ export const excelDateTimeFixtureSuite: ExcelFixtureSuite = {
       formula: '=DAYS360(DATE(2024,2,29),DATE(2024,3,31))',
       sheetName: 'Sheet1',
       inputs: [],
-      outputs: [{ address: 'A1', expected: numberExpected(30) }],
+      outputs: [{ address: 'A1', expected: numberExpected(31) }],
     },
     {
       id: createExcelFixtureId('date-time', 'yearfrac-basic'),

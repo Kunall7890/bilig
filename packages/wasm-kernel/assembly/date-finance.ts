@@ -385,10 +385,11 @@ export function excelDays360Value(startWhole: i32, endWhole: i32, method: i32): 
   if (method == 0) {
     const startIsFebruaryMonthEnd = startMonth == 2 && startDay == daysInExcelMonth(startYear, startMonth)
     const endIsFebruaryMonthEnd = endMonth == 2 && endDay == daysInExcelMonth(endYear, endMonth)
+    const startWasDayThirtyOrThirtyOne = startDay >= 30
     if (startDay == 31 || startIsFebruaryMonthEnd) {
       startDay = 30
     }
-    if ((endDay == 31 && startDay >= 30) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
+    if ((endDay == 31 && startWasDayThirtyOrThirtyOne) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
       endDay = 30
     }
   } else {
@@ -437,10 +438,11 @@ export function excelYearfracValue(startWhole: i32, endWhole: i32, basis: i32): 
   if (basis == 0) {
     const startIsFebruaryMonthEnd = startMonth == 2 && startDay == daysInExcelMonth(startYear, startMonth)
     const endIsFebruaryMonthEnd = endMonth == 2 && endDay == daysInExcelMonth(endYear, endMonth)
+    const startWasDayThirtyOrThirtyOne = startDay >= 30
     if (startDay == 31 || startIsFebruaryMonthEnd) {
       startDay = 30
     }
-    if ((endDay == 31 && startDay >= 30) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
+    if ((endDay == 31 && startWasDayThirtyOrThirtyOne) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
       endDay = 30
     }
     totalDays = <f64>((endYear - startYear) * 360 + (endMonth - startMonth) * 30 + (endDay - startDay))
@@ -537,10 +539,11 @@ export function couponDaysByBasisValue(startWhole: i32, endWhole: i32, basis: i3
     if (basis == 0) {
       const startIsFebruaryMonthEnd = startMonth == 2 && startDay == daysInExcelMonth(startYear, startMonth)
       const endIsFebruaryMonthEnd = endMonth == 2 && endDay == daysInExcelMonth(endYear, endMonth)
+      const startWasDayThirtyOrThirtyOne = startDay >= 30
       if (startDay == 31 || startIsFebruaryMonthEnd) {
         startDay = 30
       }
-      if ((endDay == 31 && startDay >= 30) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
+      if ((endDay == 31 && startWasDayThirtyOrThirtyOne) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
         endDay = 30
       }
     } else {

@@ -139,10 +139,11 @@ function createDays360Builtin(dateSystem: ExcelDateSystem = '1900'): Builtin {
     if (method === 0) {
       const startIsFebruaryMonthEnd = startParts.month === 2 && startDay === daysInExcelMonth(startParts.year, startParts.month)
       const endIsFebruaryMonthEnd = endParts.month === 2 && endDay === daysInExcelMonth(endParts.year, endParts.month)
+      const startWasDayThirtyOrThirtyOne = startDay >= 30
       if (startDay === 31 || startIsFebruaryMonthEnd) {
         startDay = 30
       }
-      if ((endDay === 31 && startDay >= 30) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
+      if ((endDay === 31 && startWasDayThirtyOrThirtyOne) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
         endDay = 30
       }
     } else {

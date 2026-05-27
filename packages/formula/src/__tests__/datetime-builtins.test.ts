@@ -545,7 +545,7 @@ describe('datetime builtins', () => {
 
     expect(datetimeBuiltins.DAYS360({ tag: ValueTag.Number, value: feb28 }, { tag: ValueTag.Number, value: mar31 })).toEqual({
       tag: ValueTag.Number,
-      value: 30,
+      value: 31,
     })
     expect(
       datetimeBuiltins.DAYS360(
@@ -586,7 +586,7 @@ describe('datetime builtins', () => {
         { tag: ValueTag.Number, value: mar31 },
         { tag: ValueTag.Number, value: 0 },
       ),
-    ).toEqual({ tag: ValueTag.Number, value: 30 / 360 })
+    ).toEqual({ tag: ValueTag.Number, value: 31 / 360 })
     expect(
       datetimeBuiltins.YEARFRAC(
         { tag: ValueTag.Number, value: jan1 },
