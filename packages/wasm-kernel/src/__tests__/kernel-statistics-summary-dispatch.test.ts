@@ -319,6 +319,46 @@ describe('wasm kernel ordered statistics dispatch slab', () => {
     }
   })
 
+  it('matches Excel RANK order semantics and ignores nonnumeric reference values on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(64, 4, 8, 1, 7)
+    const cellTags = new Uint8Array(64)
+    const cellNumbers = new Float64Array(64)
+    ;[
+      [ValueTag.Number, 10],
+      [ValueTag.String, 0],
+      [ValueTag.Boolean, 1],
+      [ValueTag.Empty, 0],
+      [ValueTag.Number, 20],
+      [ValueTag.Number, 20],
+      [ValueTag.Number, 30],
+    ].forEach(([tag, value], index) => {
+      cellTags[index] = tag
+      cellNumbers[index] = value
+    })
+    kernel.writeCells(cellTags, cellNumbers, new Uint32Array(64), new Uint16Array(64))
+    kernel.uploadRangeMembers(Uint32Array.from([0, 1, 2, 3, 4, 5, 6]), Uint32Array.from([0]), Uint32Array.from([7]))
+    kernel.uploadRangeShapes(Uint32Array.from([7]), Uint32Array.from([1]))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushRange(0), encodePushNumber(1), encodeCall(BuiltinId.Rank, 3), encodeRet()],
+      [encodePushNumber(0), encodePushRange(0), encodePushNumber(1), encodeCall(BuiltinId.RankEq, 3), encodeRet()],
+      [encodePushNumber(0), encodePushRange(0), encodePushNumber(1), encodeCall(BuiltinId.RankAvg, 3), encodeRet()],
+      [encodePushNumber(0), encodePushRange(0), encodeCall(BuiltinId.Rank, 2), encodeRet()],
+    ])
+    const constants = packConstants([[30, 2], [30, -1], [10, 99], [20]])
+    const targets = Uint32Array.from(Array.from({ length: 4 }, (_, index) => cellIndex(2, index, width)))
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targets)
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(targets)
+
+    expectNumberCell(kernel, cellIndex(2, 0, width), 4)
+    expectNumberCell(kernel, cellIndex(2, 1, width), 4)
+    expectNumberCell(kernel, cellIndex(2, 2, width), 1)
+    expectNumberCell(kernel, cellIndex(2, 3, width), 2)
+  })
+
   it('returns Excel-compatible domain errors for ordered statistics helpers', async () => {
     const kernel = await createKernel()
     const width = 20

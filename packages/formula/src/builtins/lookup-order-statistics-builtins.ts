@@ -82,9 +82,10 @@ function rankFromValues(
     return deps.errorValue(ErrorCode.Value)
   }
   const order = orderArg === undefined ? 0 : deps.toInteger(orderArg)
-  if (order === undefined || ![0, 1].includes(order)) {
+  if (order === undefined) {
     return deps.errorValue(ErrorCode.Value)
   }
+  const ascending = order !== 0
 
   const values = flattenNumbersOrValueError(arrayArg, deps)
   if (!Array.isArray(values)) {
@@ -101,7 +102,7 @@ function rankFromValues(
       ties += 1
       continue
     }
-    if (order === 0 ? value > target : value < target) {
+    if (ascending ? value < target : value > target) {
       preceding += 1
     }
   }

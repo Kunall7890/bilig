@@ -1001,7 +1001,7 @@ describe('formula builtins', () => {
     })
     expect(getBuiltin('DECIMAL')?.({ tag: ValueTag.String, value: '1Z', stringId: 1 }, { tag: ValueTag.Number, value: 10 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('DECIMAL')?.({ tag: ValueTag.Error, code: ErrorCode.Ref }, { tag: ValueTag.Number, value: 16 })).toEqual({
       tag: ValueTag.Error,
@@ -1193,14 +1193,14 @@ describe('formula builtins', () => {
     })
     expect(getBuiltin('GEOMEAN')?.({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 4 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       getBuiltin('HARMEAN')?.({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Number, value: 4 }),
     ).toEqual({ tag: ValueTag.Number, value: 3 / 1.75 })
     expect(getBuiltin('HARMEAN')?.({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 0 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
   })
 
@@ -1791,7 +1791,7 @@ describe('formula builtins', () => {
     expect(getBuiltin('HARMEAN')?.()).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(getBuiltin('HARMEAN')?.({ tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Number, value: -1 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
 
     expect(getBuiltin('LOG10')?.({ tag: ValueTag.Number, value: 1000 })).toEqual({
@@ -2533,7 +2533,7 @@ describe('formula builtins', () => {
     })
     expect(KURT({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Number, value: 3 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Div0,
     })
     expect(SKEW({ tag: ValueTag.Error, code: ErrorCode.Name })).toEqual({
       tag: ValueTag.Error,
@@ -3028,8 +3028,8 @@ describe('formula builtins', () => {
       value: expect.closeTo(2, 10),
     })
     expect(GAMMA_INV({ tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Number, value: 3 }, { tag: ValueTag.Number, value: 2 })).toEqual({
-      tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      tag: ValueTag.Number,
+      value: 0,
     })
     expect(
       GAMMA_INV(
@@ -3039,7 +3039,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       GAMMAINV(

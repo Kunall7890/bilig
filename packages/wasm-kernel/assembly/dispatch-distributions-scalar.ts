@@ -335,12 +335,21 @@ export function tryApplyScalarDistributionBuiltin(
     const probability = toNumberExact(tagStack[base], valueStack[base])
     const alpha = toNumberExact(tagStack[base + 1], valueStack[base + 1])
     const beta = toNumberExact(tagStack[base + 2], valueStack[base + 2])
+    if (isNaN(probability) || isNaN(alpha) || isNaN(beta)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (probability < 0.0 || probability >= 1.0 || alpha <= 0.0 || beta <= 0.0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (probability == 0.0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, 0.0, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const result = inverseGammaDistribution(probability, alpha, beta)
     return writeResult(
       base,
       STACK_KIND_SCALAR,
       isNumericResult(result) ? <u8>ValueTag.Number : <u8>ValueTag.Error,
-      isNumericResult(result) ? result : ErrorCode.Value,
+      isNumericResult(result) ? result : ErrorCode.NA,
       rangeIndexStack,
       valueStack,
       tagStack,

@@ -128,8 +128,10 @@ describe('wasm kernel extended distribution error semantics', () => {
         encodeCall(BuiltinId.NegbinomDist, 4),
         encodeRet(),
       ],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.GammaInv, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Gammainv, 3), encodeRet()],
     ])
-    const outputs = Uint32Array.from(Array.from({ length: 16 }, (_, index) => cellIndex(1, index, width)))
+    const outputs = Uint32Array.from(Array.from({ length: 18 }, (_, index) => cellIndex(1, index, width)))
     kernel.uploadPrograms(programs.programs, programs.offsets, programs.lengths, outputs)
 
     const constants = packConstants([
@@ -149,6 +151,8 @@ describe('wasm kernel extended distribution error semantics', () => {
       [1, 11, 3, 10],
       [-1, 3, 0.5],
       [1, 0, 0.5],
+      [-0.1, 3, 2],
+      [0.5, 3, 0],
     ])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
     kernel.evalBatch(outputs)
@@ -180,11 +184,12 @@ describe('wasm kernel extended distribution error semantics', () => {
         encodeRet(),
       ],
       [encodePushString(0), encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Negbinomdist, 3), encodeRet()],
+      [encodePushString(0), encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.GammaInv, 3), encodeRet()],
     ])
-    const outputs = Uint32Array.from(Array.from({ length: 6 }, (_, index) => cellIndex(1, index, width)))
+    const outputs = Uint32Array.from(Array.from({ length: 7 }, (_, index) => cellIndex(1, index, width)))
     kernel.uploadPrograms(programs.programs, programs.offsets, programs.lengths, outputs)
 
-    const constants = packConstants([[1], [1, 1], [1, 1], [1], [3, 0.5], [3, 0.5]])
+    const constants = packConstants([[1], [1, 1], [1, 1], [1], [3, 0.5], [3, 0.5], [3, 2]])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
     kernel.evalBatch(outputs)
 

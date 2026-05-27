@@ -140,6 +140,15 @@ describe('lookup order-statistics builtins', () => {
     expect(RANK(num(4), sample)).toEqual(num(1))
     expect(RANK(num(1), sample)).toEqual(num(5))
     expect(RANK(num(3), sample, num(1))).toEqual(num(3))
+    expect(RANK(num(4), sample, num(2))).toEqual(num(4))
+    expect(RANKEQ(num(4), sample, num(-1))).toEqual(num(4))
+    expect(RANKAVG(num(4), sample, num(99))).toEqual(num(4.5))
+    expect(
+      RANK(
+        num(4),
+        cellRange([num(1), text('skip'), { tag: ValueTag.Boolean, value: true }, { tag: ValueTag.Empty }, num(4), num(2)], 6, 1),
+      ),
+    ).toEqual(num(1))
     expect(RANKEQ(num(4), sample)).toEqual(num(1))
     expect(RANKAVG(num(4), sample)).toEqual(num(1.5))
     expect(RANKEQ(num(8), sample)).toEqual(err(ErrorCode.NA))
@@ -208,7 +217,6 @@ describe('lookup order-statistics builtins', () => {
     expect(RANK(num(1), ordered, err(ErrorCode.NA))).toEqual(err(ErrorCode.NA))
     expect(RANK(text('bad'), ordered)).toEqual(err(ErrorCode.Value))
     expect(RANK(num(1), ordered, text('bad'))).toEqual(err(ErrorCode.Value))
-    expect(RANK(num(1), ordered, num(2))).toEqual(err(ErrorCode.Value))
     expect(RANK(num(1), cellRange([], 0, 0))).toEqual(err(ErrorCode.NA))
     expect(RANKAVG(num(2), cellRange([num(2), num(2), num(3), num(4)], 4, 1))).toEqual(num(3.5))
     expect(Reflect.apply(TRIMMEAN, undefined, [ordered])).toEqual(err(ErrorCode.Value))

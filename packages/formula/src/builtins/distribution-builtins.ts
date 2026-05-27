@@ -309,18 +309,25 @@ export function createDistributionBuiltins({
       const probability = toNumber(probabilityArg)
       const alpha = toNumber(alphaArg)
       const beta = toNumber(betaArg)
-      if (
-        probability === undefined ||
-        alpha === undefined ||
-        beta === undefined ||
-        !(probability > 0 && probability < 1) ||
-        !(alpha > 0) ||
-        !(beta > 0)
-      ) {
+      if (probability === undefined || alpha === undefined || beta === undefined) {
         return valueError()
       }
+      if (
+        !Number.isFinite(probability) ||
+        !Number.isFinite(alpha) ||
+        !Number.isFinite(beta) ||
+        probability < 0 ||
+        probability >= 1 ||
+        alpha <= 0 ||
+        beta <= 0
+      ) {
+        return numError()
+      }
+      if (probability === 0) {
+        return numberResult(0)
+      }
       const result = inverseGammaDistribution(probability, alpha, beta)
-      return result === undefined ? valueError() : numericResultOrError(result)
+      return result === undefined ? naError() : numericResultOrError(result)
     },
     GAMMAINV: (probabilityArg, alphaArg, betaArg) => builtins['GAMMA.INV']!(probabilityArg, alphaArg, betaArg),
     CHIDIST: (xArg, degreesArg) => {

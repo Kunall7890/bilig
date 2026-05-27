@@ -49,6 +49,16 @@ describe('distribution builtins domain errors', () => {
     expect(getBuiltin('F.INV')?.(text('bad'), num(1), num(1))).toEqual(valueError)
   })
 
+  it('separates gamma inverse numeric-domain errors from coercion errors', () => {
+    expect(getBuiltin('GAMMA.INV')?.(num(-0.1), num(3), num(2))).toEqual(numError)
+    expect(getBuiltin('GAMMA.INV')?.(num(1.1), num(3), num(2))).toEqual(numError)
+    expect(getBuiltin('GAMMA.INV')?.(num(0.5), num(0), num(2))).toEqual(numError)
+    expect(getBuiltin('GAMMAINV')?.(num(0.5), num(3), num(0))).toEqual(numError)
+
+    expect(getBuiltin('GAMMA.INV')?.(text('bad'), num(3), num(2))).toEqual(valueError)
+    expect(getBuiltin('GAMMA.INV')?.(num(0.5), text('bad'), num(2))).toEqual(valueError)
+  })
+
   it('separates student-t numeric-domain errors from coercion errors', () => {
     expect(getBuiltin('T.DIST')?.(num(1), num(0), bool(true))).toEqual(numError)
     expect(getBuiltin('T.DIST.RT')?.(num(1), num(0))).toEqual(numError)

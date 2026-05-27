@@ -37,7 +37,7 @@ export function tryApplyStatisticsRankBuiltin(
     return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
-  let order = 0
+  let orderAscending = false
   if (argc == 3) {
     if (kindStack[base + 2] != STACK_KIND_SCALAR) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -55,10 +55,10 @@ export function tryApplyStatisticsRankBuiltin(
       )
     }
     const requestedOrder = coerceInteger(tagStack[base + 2], valueStack[base + 2])
-    if (requestedOrder == i32.MIN_VALUE || (requestedOrder != 0 && requestedOrder != 1)) {
+    if (requestedOrder == i32.MIN_VALUE) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    order = requestedOrder
+    orderAscending = requestedOrder != 0
   }
 
   const arraySlot = base + 1
@@ -70,6 +70,7 @@ export function tryApplyStatisticsRankBuiltin(
 
   let preceding = 0
   let ties = 0
+  const arrayKind = kindStack[arraySlot]
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
       const valueTag = inputCellTag(
@@ -117,6 +118,9 @@ export function tryApplyStatisticsRankBuiltin(
           kindStack,
         )
       }
+      if (arrayKind != STACK_KIND_SCALAR && valueTag != ValueTag.Number) {
+        continue
+      }
 
       const numeric = inputCellNumeric(
         arraySlot,
@@ -142,7 +146,7 @@ export function tryApplyStatisticsRankBuiltin(
         ties += 1
         continue
       }
-      if ((order == 0 && numeric > target) || (order == 1 && numeric < target)) {
+      if ((orderAscending && numeric < target) || (!orderAscending && numeric > target)) {
         preceding += 1
       }
     }
