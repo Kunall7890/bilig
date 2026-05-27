@@ -71,8 +71,13 @@ export function createRadixBuiltins({ toNumber, integerValue, valueError, number
       return typeof numeric === 'number' ? numberResult(numeric) : numeric
     },
     OCT2HEX: (valueArg, placesArg) => convertSignedRadixToRadix(valueArg, 8, 16, 10, 10, -549755813888, 549755813887, placesArg),
-    ROMAN: (value) => {
-      const roman = romanValue(toNumber(value) ?? Number.NaN)
+    ROMAN: (value, formArg) => {
+      const numberValue = romanNumberArgument(value)
+      const formValue = romanFormArgument(formArg)
+      if (numberValue === undefined || formValue === undefined) {
+        return valueError()
+      }
+      const roman = romanValue(numberValue, formValue)
       return roman === undefined ? valueError() : { tag: ValueTag.String, value: roman, stringId: 0 }
     },
     ARABIC: (value) => {
@@ -113,12 +118,12 @@ export function createRadixBuiltins({ toNumber, integerValue, valueError, number
       return textArg
     }
     const radixValue = integerValue(radixArg)
-    if (radixValue === undefined || radixValue < 2 || radixValue > 36) {
+    if (radixValue === undefined) {
       return valueError()
     }
     const raw = textArg.tag === ValueTag.String ? textArg.value.trim() : String(Math.trunc(toNumber(textArg) ?? Number.NaN))
-    if (raw === '' || raw === 'NaN' || !isValidBaseDigits(raw, radixValue)) {
-      return valueError()
+    if (radixValue < 2 || radixValue > 36 || raw === '' || raw === 'NaN' || !isValidBaseDigits(raw, radixValue)) {
+      return numError()
     }
     return numberResult(Number.parseInt(raw, radixValue))
   }
@@ -192,37 +197,94 @@ export function createRadixBuiltins({ toNumber, integerValue, valueError, number
       stringId: 0,
     }
   }
+  function romanNumberArgument(value: CellValue): number | undefined {
+    if (value.tag === ValueTag.String) {
+      return numericTextValue(value.value)
+    }
+    const numeric = toNumber(value)
+    return numeric !== undefined && Number.isFinite(numeric) ? numeric : undefined
+  }
+
+  function romanFormArgument(value: CellValue | undefined): number | undefined {
+    if (value === undefined) {
+      return 0
+    }
+    if (value.tag === ValueTag.Boolean) {
+      return value.value ? 0 : 4
+    }
+    const numeric = value.tag === ValueTag.String ? numericTextValue(value.value) : toNumber(value)
+    if (numeric === undefined || !Number.isFinite(numeric)) {
+      return undefined
+    }
+    const form = Math.trunc(numeric)
+    return form >= 0 && form <= 4 ? form : undefined
+  }
 }
 
-function romanValue(numberValue: number): string | undefined {
+function numericTextValue(text: string): number | undefined {
+  const trimmed = text.trim()
+  if (trimmed === '') {
+    return 0
+  }
+  const numeric = Number(trimmed)
+  return Number.isFinite(numeric) ? numeric : undefined
+}
+
+function romanValue(numberValue: number, form: number): string | undefined {
   const number = Math.trunc(numberValue)
   if (!Number.isFinite(numberValue) || number < 1 || number > 3999) {
     return undefined
   }
-  const numerals: Array<[number, string]> = [
-    [1000, 'M'],
-    [900, 'CM'],
-    [500, 'D'],
-    [400, 'CD'],
-    [100, 'C'],
-    [90, 'XC'],
-    [50, 'L'],
-    [40, 'XL'],
-    [10, 'X'],
-    [9, 'IX'],
-    [5, 'V'],
-    [4, 'IV'],
-    [1, 'I'],
-  ]
-  let remaining = number
-  let result = ''
-  for (const [value, numeral] of numerals) {
-    while (remaining >= value) {
-      result += numeral
-      remaining -= value
-    }
+  const work = {
+    value: number % 1000,
+    result: 'M'.repeat(Math.floor(number / 1000)),
   }
-  return result
+  if (form === 4) {
+    absorbRoman(work, 'IM', 999, 1000)
+    absorbRoman(work, 'ID', 499, 500)
+  }
+  if (form >= 3) {
+    absorbRoman(work, 'VM', 995, 1000)
+    absorbRoman(work, 'VD', 495, 500)
+  }
+  if (form >= 2) {
+    absorbRoman(work, 'XM', 990, 1000)
+    absorbRoman(work, 'XD', 490, 500)
+  }
+  if (form >= 1) {
+    absorbRoman(work, 'LM', 950, 1000)
+    absorbRoman(work, 'LD', 450, 500)
+  }
+  absorbRoman(work, 'CM', 900, 1000)
+  absorbRoman(work, 'CD', 400, 500)
+  absorbRoman(work, 'D', 500, 900)
+  work.result += 'C'.repeat(Math.floor(work.value / 100))
+  work.value %= 100
+  if (form >= 2) {
+    absorbRoman(work, 'IC', 99, 100)
+    absorbRoman(work, 'IL', 49, 50)
+  }
+  if (form >= 1) {
+    absorbRoman(work, 'VC', 95, 100)
+    absorbRoman(work, 'VL', 45, 50)
+  }
+  absorbRoman(work, 'XC', 90, 100)
+  absorbRoman(work, 'XL', 40, 50)
+  absorbRoman(work, 'L', 50, 90)
+  work.result += 'X'.repeat(Math.floor(work.value / 10))
+  work.value %= 10
+  absorbRoman(work, 'IX', 9, 10)
+  absorbRoman(work, 'IV', 4, 5)
+  absorbRoman(work, 'V', 5, 9)
+  work.result += 'I'.repeat(work.value)
+  return work.result
+}
+
+function absorbRoman(work: { value: number; result: string }, token: string, lower: number, upper: number): void {
+  if (work.value >= lower && work.value < upper) {
+    work.value -= lower
+    work.result += token
+  }
 }
 
 function arabicValue(text: string): number | undefined {
