@@ -5,6 +5,17 @@ import { EngineRuntimeScratchError } from '../errors.js'
 
 export const INITIAL_RUNTIME_SCRATCH_CAPACITY = 16
 
+function createScratchBuffer(): U32 {
+  return new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+}
+
+function growScratchBuffer(buffer: U32 | undefined, size: number): U32 | undefined {
+  if (size <= (buffer?.length ?? INITIAL_RUNTIME_SCRATCH_CAPACITY)) {
+    return buffer
+  }
+  return growUint32(buffer ?? createScratchBuffer(), size)
+}
+
 function scratchErrorMessage(message: string, cause: unknown): string {
   return cause instanceof Error && cause.message.length > 0 ? cause.message : message
 }
@@ -61,76 +72,46 @@ export interface EngineRuntimeScratchService {
 }
 
 export function createEngineRuntimeScratchService(): EngineRuntimeScratchService {
-  let pendingKernelSync: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+  let pendingKernelSync: U32 | undefined
   let deferredKernelSyncCount = 0
   let deferredKernelSyncEpoch = 1
-  let deferredKernelSyncSeen: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
-  let wasmBatch: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
-  let mutationRoots: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+  let deferredKernelSyncSeen: U32 | undefined
+  let wasmBatch: U32 | undefined
+  let mutationRoots: U32 | undefined
   let changedInputEpoch = 1
-  let changedInputSeen: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
-  let changedInputBuffer: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+  let changedInputSeen: U32 | undefined
+  let changedInputBuffer: U32 | undefined
   let changedFormulaEpoch = 1
-  let changedFormulaSeen: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
-  let changedFormulaBuffer: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+  let changedFormulaSeen: U32 | undefined
+  let changedFormulaBuffer: U32 | undefined
   let changedUnionEpoch = 1
-  let changedUnionSeen: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
-  let changedUnion: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+  let changedUnionSeen: U32 | undefined
+  let changedUnion: U32 | undefined
   let materializedCellCount = 0
-  let materializedCells: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+  let materializedCells: U32 | undefined
   let explicitChangedEpoch = 1
-  let explicitChangedSeen: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
-  let explicitChangedBuffer: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+  let explicitChangedSeen: U32 | undefined
+  let explicitChangedBuffer: U32 | undefined
   let impactedFormulaEpoch = 1
-  let impactedFormulaSeen: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
-  let impactedFormulaBuffer: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+  let impactedFormulaSeen: U32 | undefined
+  let impactedFormulaBuffer: U32 | undefined
 
   const ensureRecalcCapacityNow = (size: number): void => {
-    if (size > mutationRoots.length) {
-      mutationRoots = growUint32(mutationRoots, size)
-    }
-    if (size > changedInputSeen.length) {
-      changedInputSeen = growUint32(changedInputSeen, size)
-    }
-    if (size > changedInputBuffer.length) {
-      changedInputBuffer = growUint32(changedInputBuffer, size)
-    }
-    if (size > changedFormulaSeen.length) {
-      changedFormulaSeen = growUint32(changedFormulaSeen, size)
-    }
-    if (size > changedFormulaBuffer.length) {
-      changedFormulaBuffer = growUint32(changedFormulaBuffer, size)
-    }
-    if (size > pendingKernelSync.length) {
-      pendingKernelSync = growUint32(pendingKernelSync, size)
-    }
-    if (size > deferredKernelSyncSeen.length) {
-      deferredKernelSyncSeen = growUint32(deferredKernelSyncSeen, size)
-    }
-    if (size > wasmBatch.length) {
-      wasmBatch = growUint32(wasmBatch, size)
-    }
-    if (size > changedUnion.length) {
-      changedUnion = growUint32(changedUnion, size)
-    }
-    if (size > changedUnionSeen.length) {
-      changedUnionSeen = growUint32(changedUnionSeen, size)
-    }
-    if (size > materializedCells.length) {
-      materializedCells = growUint32(materializedCells, size)
-    }
-    if (size > explicitChangedSeen.length) {
-      explicitChangedSeen = growUint32(explicitChangedSeen, size)
-    }
-    if (size > explicitChangedBuffer.length) {
-      explicitChangedBuffer = growUint32(explicitChangedBuffer, size)
-    }
-    if (size > impactedFormulaSeen.length) {
-      impactedFormulaSeen = growUint32(impactedFormulaSeen, size)
-    }
-    if (size > impactedFormulaBuffer.length) {
-      impactedFormulaBuffer = growUint32(impactedFormulaBuffer, size)
-    }
+    mutationRoots = growScratchBuffer(mutationRoots, size)
+    changedInputSeen = growScratchBuffer(changedInputSeen, size)
+    changedInputBuffer = growScratchBuffer(changedInputBuffer, size)
+    changedFormulaSeen = growScratchBuffer(changedFormulaSeen, size)
+    changedFormulaBuffer = growScratchBuffer(changedFormulaBuffer, size)
+    pendingKernelSync = growScratchBuffer(pendingKernelSync, size)
+    deferredKernelSyncSeen = growScratchBuffer(deferredKernelSyncSeen, size)
+    wasmBatch = growScratchBuffer(wasmBatch, size)
+    changedUnion = growScratchBuffer(changedUnion, size)
+    changedUnionSeen = growScratchBuffer(changedUnionSeen, size)
+    materializedCells = growScratchBuffer(materializedCells, size)
+    explicitChangedSeen = growScratchBuffer(explicitChangedSeen, size)
+    explicitChangedBuffer = growScratchBuffer(explicitChangedBuffer, size)
+    impactedFormulaSeen = growScratchBuffer(impactedFormulaSeen, size)
+    impactedFormulaBuffer = growScratchBuffer(impactedFormulaBuffer, size)
   }
 
   return {
@@ -147,7 +128,7 @@ export function createEngineRuntimeScratchService(): EngineRuntimeScratchService
       })
     },
     ensureRecalcCapacityNow,
-    getPendingKernelSyncNow: () => pendingKernelSync,
+    getPendingKernelSyncNow: () => (pendingKernelSync ??= createScratchBuffer()),
     setPendingKernelSyncNow: (next) => {
       pendingKernelSync = next
     },
@@ -159,15 +140,15 @@ export function createEngineRuntimeScratchService(): EngineRuntimeScratchService
     setDeferredKernelSyncEpochNow: (next) => {
       deferredKernelSyncEpoch = next
     },
-    getDeferredKernelSyncSeenNow: () => deferredKernelSyncSeen,
+    getDeferredKernelSyncSeenNow: () => (deferredKernelSyncSeen ??= createScratchBuffer()),
     setDeferredKernelSyncSeenNow: (next) => {
       deferredKernelSyncSeen = next
     },
-    getWasmBatchNow: () => wasmBatch,
+    getWasmBatchNow: () => (wasmBatch ??= createScratchBuffer()),
     setWasmBatchNow: (next) => {
       wasmBatch = next
     },
-    getMutationRootsNow: () => mutationRoots,
+    getMutationRootsNow: () => (mutationRoots ??= createScratchBuffer()),
     setMutationRootsNow: (next) => {
       mutationRoots = next
     },
@@ -175,11 +156,11 @@ export function createEngineRuntimeScratchService(): EngineRuntimeScratchService
     setChangedInputEpochNow: (next) => {
       changedInputEpoch = next
     },
-    getChangedInputSeenNow: () => changedInputSeen,
+    getChangedInputSeenNow: () => (changedInputSeen ??= createScratchBuffer()),
     setChangedInputSeenNow: (next) => {
       changedInputSeen = next
     },
-    getChangedInputBufferNow: () => changedInputBuffer,
+    getChangedInputBufferNow: () => (changedInputBuffer ??= createScratchBuffer()),
     setChangedInputBufferNow: (next) => {
       changedInputBuffer = next
     },
@@ -187,11 +168,11 @@ export function createEngineRuntimeScratchService(): EngineRuntimeScratchService
     setChangedFormulaEpochNow: (next) => {
       changedFormulaEpoch = next
     },
-    getChangedFormulaSeenNow: () => changedFormulaSeen,
+    getChangedFormulaSeenNow: () => (changedFormulaSeen ??= createScratchBuffer()),
     setChangedFormulaSeenNow: (next) => {
       changedFormulaSeen = next
     },
-    getChangedFormulaBufferNow: () => changedFormulaBuffer,
+    getChangedFormulaBufferNow: () => (changedFormulaBuffer ??= createScratchBuffer()),
     setChangedFormulaBufferNow: (next) => {
       changedFormulaBuffer = next
     },
@@ -199,11 +180,11 @@ export function createEngineRuntimeScratchService(): EngineRuntimeScratchService
     setChangedUnionEpochNow: (next) => {
       changedUnionEpoch = next
     },
-    getChangedUnionSeenNow: () => changedUnionSeen,
+    getChangedUnionSeenNow: () => (changedUnionSeen ??= createScratchBuffer()),
     setChangedUnionSeenNow: (next) => {
       changedUnionSeen = next
     },
-    getChangedUnionNow: () => changedUnion,
+    getChangedUnionNow: () => (changedUnion ??= createScratchBuffer()),
     setChangedUnionNow: (next) => {
       changedUnion = next
     },
@@ -211,7 +192,7 @@ export function createEngineRuntimeScratchService(): EngineRuntimeScratchService
     setMaterializedCellCountNow: (next) => {
       materializedCellCount = next
     },
-    getMaterializedCellsNow: () => materializedCells,
+    getMaterializedCellsNow: () => (materializedCells ??= createScratchBuffer()),
     setMaterializedCellsNow: (next) => {
       materializedCells = next
     },
@@ -219,11 +200,11 @@ export function createEngineRuntimeScratchService(): EngineRuntimeScratchService
     setExplicitChangedEpochNow: (next) => {
       explicitChangedEpoch = next
     },
-    getExplicitChangedSeenNow: () => explicitChangedSeen,
+    getExplicitChangedSeenNow: () => (explicitChangedSeen ??= createScratchBuffer()),
     setExplicitChangedSeenNow: (next) => {
       explicitChangedSeen = next
     },
-    getExplicitChangedBufferNow: () => explicitChangedBuffer,
+    getExplicitChangedBufferNow: () => (explicitChangedBuffer ??= createScratchBuffer()),
     setExplicitChangedBufferNow: (next) => {
       explicitChangedBuffer = next
     },
@@ -231,11 +212,11 @@ export function createEngineRuntimeScratchService(): EngineRuntimeScratchService
     setImpactedFormulaEpochNow: (next) => {
       impactedFormulaEpoch = next
     },
-    getImpactedFormulaSeenNow: () => impactedFormulaSeen,
+    getImpactedFormulaSeenNow: () => (impactedFormulaSeen ??= createScratchBuffer()),
     setImpactedFormulaSeenNow: (next) => {
       impactedFormulaSeen = next
     },
-    getImpactedFormulaBufferNow: () => impactedFormulaBuffer,
+    getImpactedFormulaBufferNow: () => (impactedFormulaBuffer ??= createScratchBuffer()),
     setImpactedFormulaBufferNow: (next) => {
       impactedFormulaBuffer = next
     },
