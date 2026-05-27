@@ -166,6 +166,22 @@ describe('wasm kernel format and conversion dispatch', () => {
     expect(kernel.readOutputStrings()).toEqual(['$C$12', "'O''Brien'!$AB2", '-$1,234.5', '00FF', '00FF'])
   })
 
+  it('formats currency text with the maximum supported decimal width on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 4
+    kernel.init(8, 2, 1, 1, 1)
+    kernel.writeCells(new Uint8Array(8), new Float64Array(8), new Uint32Array(8), new Uint16Array(8))
+    const packed = packPrograms([[encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Dollar, 2), encodeRet()]])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, Uint32Array.from([cellIndex(1, 0, width)]))
+    const constants = packConstants([[1, 127]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width)]))
+
+    expect(kernel.readTags()[cellIndex(1, 0, width)]).toBe(ValueTag.String)
+    expect(kernel.readOutputStrings()).toEqual([`$1.${'0'.repeat(127)}`])
+  })
+
   it('preserves error codes for invalid conversion inputs', async () => {
     const kernel = await createKernel()
     const width = 8

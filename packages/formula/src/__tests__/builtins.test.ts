@@ -1195,6 +1195,20 @@ describe('formula builtins', () => {
         { tag: ValueTag.Boolean, value: true },
       ),
     ).toEqual({ tag: ValueTag.String, value: '1234.6', stringId: 0 })
+    expect(
+      getBuiltin('FIXED')?.(
+        { tag: ValueTag.Number, value: 1 },
+        { tag: ValueTag.Number, value: 127 },
+        { tag: ValueTag.Boolean, value: true },
+      ),
+    ).toEqual({ tag: ValueTag.String, value: `1.${'0'.repeat(127)}`, stringId: 0 })
+    expect(
+      getBuiltin('FIXED')?.(
+        { tag: ValueTag.Number, value: 1 },
+        { tag: ValueTag.Number, value: 128 },
+        { tag: ValueTag.Boolean, value: true },
+      ),
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(getBuiltin('FIXED')?.({ tag: ValueTag.Number, value: 1234.567 }, { tag: ValueTag.String, value: 'bad', stringId: 1 })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,

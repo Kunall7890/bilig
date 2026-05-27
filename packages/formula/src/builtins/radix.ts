@@ -11,6 +11,8 @@ interface RadixBuiltinHelpers {
   numberResult(this: void, value: number): CellValue
 }
 
+const arabicMaxRomanLength = 255
+
 export function createRadixBuiltins({ toNumber, integerValue, valueError, numberResult }: RadixBuiltinHelpers): Record<string, Builtin> {
   const baseMaxNumber = 2 ** 53
   const baseMaxMinLength = 255
@@ -304,7 +306,7 @@ function arabicValue(text: string): number | undefined {
   }
   const sign = upper.startsWith('-') ? -1 : 1
   const roman = sign < 0 ? upper.slice(1) : upper
-  if (!/^[IVXLCDM]+$/.test(roman)) {
+  if (roman.length > arabicMaxRomanLength || !/^[IVXLCDM]+$/.test(roman)) {
     return undefined
   }
   if (/(I{4}|X{4}|C{4}|D{4}|V{2}|L{2})/.test(roman)) {

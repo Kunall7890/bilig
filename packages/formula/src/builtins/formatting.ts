@@ -22,11 +22,18 @@ export function formatFixed(value: number, decimals: number, includeThousands: b
   if (!Number.isFinite(value) || !Number.isInteger(decimals)) {
     return ''
   }
+  if (decimals > 127) {
+    return ''
+  }
   const rounded = roundToDigits(value, decimals)
+  if (!Number.isFinite(rounded)) {
+    return ''
+  }
   const sign = rounded < 0 ? '-' : ''
   const unsigned = Math.abs(rounded)
   const fixedDecimals = decimals >= 0 ? decimals : 0
-  const fixed = unsigned.toFixed(fixedDecimals)
+  const nativeFixedDecimals = Math.min(fixedDecimals, 100)
+  const fixed = `${unsigned.toFixed(nativeFixedDecimals)}${'0'.repeat(fixedDecimals - nativeFixedDecimals)}`
   const [integerPart = '0', fractionPart] = fixed.split('.')
   const normalizedInteger = includeThousands ? formatThousands(integerPart) : integerPart
   return `${sign}${normalizedInteger}${fractionPart === undefined ? '' : `.${fractionPart}`}`
