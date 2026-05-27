@@ -12,6 +12,7 @@ interface RadixBuiltinHelpers {
 }
 
 const arabicMaxRomanLength = 255
+const decimalMaxTextLength = 255
 
 export function createRadixBuiltins({ toNumber, integerValue, valueError, numberResult }: RadixBuiltinHelpers): Record<string, Builtin> {
   const baseMaxNumber = 2 ** 53
@@ -124,6 +125,9 @@ export function createRadixBuiltins({ toNumber, integerValue, valueError, number
       return valueError()
     }
     const raw = textArg.tag === ValueTag.String ? textArg.value.trim() : String(Math.trunc(toNumber(textArg) ?? Number.NaN))
+    if (raw.length > decimalMaxTextLength) {
+      return valueError()
+    }
     if (radixValue < 2 || radixValue > 36 || raw === '' || raw === 'NaN' || !isValidBaseDigits(raw, radixValue)) {
       return numError()
     }

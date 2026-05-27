@@ -43,6 +43,11 @@ describe('radix conversion domain errors', () => {
     expect(getBuiltin('HEX2BIN')?.(text('F'), text('bad'))).toEqual(valueError)
   })
 
+  it('returns #VALUE! when DECIMAL text exceeds the documented 255-character limit', () => {
+    expect(getBuiltin('DECIMAL')?.(text('1'.repeat(255)), num(2))).toEqual(num(5.78960446186581e76))
+    expect(getBuiltin('DECIMAL')?.(text('1'.repeat(256)), num(2))).toEqual(valueError)
+  })
+
   it('preserves incoming radix errors before coercion and domain checks', () => {
     expect(getBuiltin('BASE')?.(err(ErrorCode.Ref), num(2))).toEqual(err(ErrorCode.Ref))
     expect(getBuiltin('DECIMAL')?.(text('10'), err(ErrorCode.NA))).toEqual(err(ErrorCode.NA))

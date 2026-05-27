@@ -17,6 +17,8 @@ import {
 } from './result-io'
 import { allocateSpillArrayResult, writeSpillArrayValue } from './vm'
 
+const MAX_EXCEL_CELL_TEXT_LENGTH: i32 = 32767
+
 function isCellRangeLike(kind: u8): bool {
   return kind == STACK_KIND_RANGE || kind == STACK_KIND_ARRAY
 }
@@ -474,6 +476,7 @@ export function tryApplyArrayInfoBuiltin(
 
     const ignoreEmpty = ignoreEmptyNumeric != 0
     let joined = ''
+    let joinedLength: i32 = 0
     let hasJoinedValue = false
     for (let slot = base + 2; slot < base + argc; slot += 1) {
       const kind = kindStack[slot]
@@ -550,9 +553,35 @@ export function tryApplyArrayInfoBuiltin(
             continue
           }
           if (hasJoinedValue) {
+            if (delimiter.length > MAX_EXCEL_CELL_TEXT_LENGTH - joinedLength) {
+              return writeResult(
+                base,
+                STACK_KIND_SCALAR,
+                <u8>ValueTag.Error,
+                ErrorCode.Value,
+                rangeIndexStack,
+                valueStack,
+                tagStack,
+                kindStack,
+              )
+            }
             joined += delimiter
+            joinedLength += delimiter.length
+          }
+          if (part.length > MAX_EXCEL_CELL_TEXT_LENGTH - joinedLength) {
+            return writeResult(
+              base,
+              STACK_KIND_SCALAR,
+              <u8>ValueTag.Error,
+              ErrorCode.Value,
+              rangeIndexStack,
+              valueStack,
+              tagStack,
+              kindStack,
+            )
           }
           joined += part
+          joinedLength += part.length
           hasJoinedValue = true
         }
       }

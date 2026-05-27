@@ -17,6 +17,10 @@ function encodePushString(stringId: number): number {
   return (Opcode.PushString << 24) | stringId
 }
 
+function encodePushBoolean(value: boolean): number {
+  return (Opcode.PushBoolean << 24) | (value ? 1 : 0)
+}
+
 function encodeRet(): number {
   return Opcode.Ret << 24
 }
@@ -105,5 +109,61 @@ describe('wasm kernel REPT domain errors', () => {
     expect(readStringCell(kernel, cellIndex(1, 0, width), pooledStrings)).toHaveLength(maxExcelCellTextLength)
     expectErrorCell(kernel, cellIndex(1, 1, width), ErrorCode.Value)
     expectErrorCell(kernel, cellIndex(1, 2, width), ErrorCode.Value)
+  })
+
+  it('returns #VALUE when CONCAT and TEXTJOIN exceed Excel cell text length', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    const boundary = 'x'.repeat(maxExcelCellTextLength)
+    const one = 'x'
+    const okLeft = 'x'.repeat(16_383)
+    const okRight = 'x'.repeat(16_383)
+    const overflowLeft = 'x'.repeat(16_384)
+    const overflowRight = 'x'.repeat(16_383)
+    const delimiter = '-'
+    const pooledStrings = [boundary, one, okLeft, okRight, overflowLeft, overflowRight, delimiter]
+    const offsets: number[] = []
+    let nextOffset = 0
+    for (const value of pooledStrings) {
+      offsets.push(nextOffset)
+      nextOffset += value.length
+    }
+    const lengths = Uint32Array.from(pooledStrings.map((value) => value.length))
+    const data = Uint16Array.from(Array.from(pooledStrings.join(''), (char) => char.charCodeAt(0)))
+    kernel.init(32, pooledStrings.length, 0, 1, 1)
+    kernel.uploadStrings(Uint32Array.from(offsets), lengths, data)
+    kernel.writeCells(new Uint8Array(32), new Float64Array(32), new Uint32Array(32), new Uint16Array(32))
+
+    const packed = packPrograms([
+      [encodePushString(0), encodeCall(BuiltinId.Concat, 1), encodeRet()],
+      [encodePushString(0), encodePushString(1), encodeCall(BuiltinId.Concat, 2), encodeRet()],
+      [
+        encodePushString(6),
+        encodePushBoolean(true),
+        encodePushString(2),
+        encodePushString(3),
+        encodeCall(BuiltinId.Textjoin, 4),
+        encodeRet(),
+      ],
+      [
+        encodePushString(6),
+        encodePushBoolean(true),
+        encodePushString(4),
+        encodePushString(5),
+        encodeCall(BuiltinId.Textjoin, 4),
+        encodeRet(),
+      ],
+    ])
+    const targetCells = Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width), cellIndex(1, 3, width)])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targetCells)
+    const constants = packConstants([[], [], [], []])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(targetCells)
+
+    expect(readStringCell(kernel, cellIndex(1, 0, width), pooledStrings)).toHaveLength(maxExcelCellTextLength)
+    expectErrorCell(kernel, cellIndex(1, 1, width), ErrorCode.Value)
+    expect(readStringCell(kernel, cellIndex(1, 2, width), pooledStrings)).toHaveLength(maxExcelCellTextLength)
+    expectErrorCell(kernel, cellIndex(1, 3, width), ErrorCode.Value)
   })
 })

@@ -24,6 +24,9 @@ function error(code: ErrorCode): CellValue {
 }
 
 function stringResult(value: string): CellValue {
+  if (value.length > MAX_EXCEL_CELL_TEXT_LENGTH) {
+    return error(ErrorCode.Value)
+  }
   return { tag: ValueTag.String, value, stringId: 0 }
 }
 

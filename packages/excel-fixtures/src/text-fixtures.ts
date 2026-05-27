@@ -812,6 +812,22 @@ export const canonicalTextFixtures: readonly ExcelFixtureCase[] = [
     'Microsoft REPT documentation caps the repeated result at 32,767 characters.',
   ),
   fixture(
+    'concat-over-cell-text-limit',
+    'CONCAT rejects results past the Excel cell text limit',
+    '=CONCAT(REPT("x",32767),"x")',
+    [],
+    [output('A1', errorExpected(ErrorCode.Value, '#VALUE!'))],
+    'Microsoft CONCAT documentation caps the resulting string at 32,767 characters.',
+  ),
+  fixture(
+    'textjoin-over-cell-text-limit',
+    'TEXTJOIN rejects results past the Excel cell text limit',
+    '=TEXTJOIN("",TRUE,REPT("x",32767),"x")',
+    [],
+    [output('A1', errorExpected(ErrorCode.Value, '#VALUE!'))],
+    'Microsoft TEXTJOIN documentation caps the resulting string at 32,767 characters.',
+  ),
+  fixture(
     'asc-basic',
     'ASC converts full-width text to half-width',
     '=ASC("ＡＢＣ　１２３")',

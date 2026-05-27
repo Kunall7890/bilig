@@ -178,6 +178,30 @@ describe('wasm kernel radix conversion error semantics', () => {
     }
   })
 
+  it('returns #VALUE! when DECIMAL text exceeds the documented 255-character limit on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 2, 4, 1, 1)
+    const strings = packStrings(['1'.repeat(255), '1'.repeat(256)])
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const programs = packPrograms([
+      [encodePushString(0), encodePushNumber(0), encodeCall(BuiltinId.Decimal, 2), encodeRet()],
+      [encodePushString(1), encodePushNumber(0), encodeCall(BuiltinId.Decimal, 2), encodeRet()],
+    ])
+    const outputs = Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width)])
+    kernel.uploadPrograms(programs.programs, programs.offsets, programs.lengths, outputs)
+    const constants = packConstants([[2], [2]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(outputs)
+
+    expect(kernel.readTags()[outputs[0]]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[outputs[0]]).toBeCloseTo(5.78960446186581e76)
+    expect(kernel.readTags()[outputs[1]]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[outputs[1]]).toBe(ErrorCode.Value)
+  })
+
   it('preserves incoming radix conversion errors before coercion and domain checks', async () => {
     const kernel = await createKernel()
     const width = 8

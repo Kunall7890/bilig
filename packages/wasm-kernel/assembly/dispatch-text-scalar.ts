@@ -12,6 +12,8 @@ import {
 import { STACK_KIND_SCALAR, writeResult, writeStringResult } from './result-io'
 import { coerceLength, coercePositiveStart, excelTrim, findPosition } from './text-foundation'
 
+const MAX_EXCEL_CELL_TEXT_LENGTH: i32 = 32767
+
 export function tryApplyScalarTextBuiltin(
   builtinId: i32,
   argc: i32,
@@ -39,11 +41,16 @@ export function tryApplyScalarTextBuiltin(
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
 
+    let totalLength: i32 = 0
     for (let index = 0; index < argc; index += 1) {
       const len = textLength(tagStack[base + index], valueStack[base + index], stringLengths, outputStringLengths)
       if (len < 0) {
         return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
       }
+      if (len > MAX_EXCEL_CELL_TEXT_LENGTH - totalLength) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
+      totalLength += len
     }
 
     let text = ''

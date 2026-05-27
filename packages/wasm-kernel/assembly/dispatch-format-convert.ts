@@ -18,6 +18,7 @@ import { STACK_KIND_SCALAR, writeResult, writeStringResult } from './result-io'
 const MAX_SAFE_INTEGER_F64: f64 = 9007199254740991.0
 const BASE_LIMIT_F64: f64 = 9007199254740992.0
 const BASE_MAX_MIN_LENGTH: i32 = 255
+const DECIMAL_MAX_TEXT_LENGTH: i32 = 255
 const RADIX_PLACES_VALUE_ERROR: i64 = i64.MIN_VALUE
 const RADIX_PLACES_NUM_ERROR: i64 = i64.MIN_VALUE + 1
 const RADIX_PLACES_OMITTED: i64 = -1
@@ -379,6 +380,9 @@ export function tryApplyFormatConvertBuiltin(
         return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
       }
       raw = (<i64>numeric).toString()
+    }
+    if (raw.length > DECIMAL_MAX_TEXT_LENGTH) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (raw.length == 0 || !isValidBaseText(raw, radixValue)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
