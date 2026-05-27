@@ -671,7 +671,7 @@ describe('datetime builtins', () => {
     ).toEqual({ tag: ValueTag.Number, value: 12 })
     expect(
       datetimeBuiltins.WEEKNUM({ tag: ValueTag.Number, value: excelDatePartsToSerial(2026, 3, 15)! }, { tag: ValueTag.Number, value: 21 }),
-    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    ).toEqual({ tag: ValueTag.Number, value: 11 })
   })
 
   it('handles reverse ranges, weekend starts, and invalid helper inputs', () => {

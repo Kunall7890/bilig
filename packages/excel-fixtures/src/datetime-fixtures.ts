@@ -751,6 +751,15 @@ export const excelDateTimeFixtureSuite: ExcelFixtureSuite = {
       outputs: [{ address: 'A1', expected: numberExpected(1) }],
     },
     {
+      id: createExcelFixtureId('date-time', 'weeknum-iso-system-2'),
+      family: 'date-time',
+      title: 'WEEKNUM return type 21 uses ISO system 2 week numbering',
+      formula: '=WEEKNUM(DATE(2021,1,1),21)',
+      sheetName: 'Sheet1',
+      inputs: [],
+      outputs: [{ address: 'A1', expected: numberExpected(53) }],
+    },
+    {
       id: createExcelFixtureId('date-time', 'timevalue-basic'),
       family: 'date-time',
       title: 'TIMEVALUE parses 12-hour clock strings',

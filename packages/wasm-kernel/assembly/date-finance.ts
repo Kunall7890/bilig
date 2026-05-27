@@ -204,6 +204,10 @@ export function excelWeeknumFromSerial(tag: u8, value: f64, returnType: i32): i3
   if (year == i32.MIN_VALUE || month == i32.MIN_VALUE || day == i32.MIN_VALUE) {
     return i32.MIN_VALUE
   }
+  if (returnType == 21) {
+    const whole = excelSerialWhole(tag, value)
+    return whole == i32.MIN_VALUE ? i32.MIN_VALUE : excelIsoWeeknumValue(whole)
+  }
 
   let weekStartDay = 0
   if (returnType == 1 || returnType == 17) {

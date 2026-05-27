@@ -681,6 +681,10 @@ describe('formula builtins and JS evaluator', () => {
       tag: ValueTag.Number,
       value: 1,
     })
+    expect(evaluateAst(parseFormula('WEEKNUM(DATE(2021,1,1),21)'), context)).toEqual({
+      tag: ValueTag.Number,
+      value: 53,
+    })
     expect(evaluateAst(parseFormula('TIMEVALUE("1:30 PM")'), context)).toEqual({
       tag: ValueTag.Number,
       value: 0.5625,

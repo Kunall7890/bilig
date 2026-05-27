@@ -159,6 +159,17 @@ function createDays360Builtin(dateSystem: ExcelDateSystem = '1900'): Builtin {
   }
 }
 
+function isoWeeknumFromDateParts(parts: ExcelDateParts): number {
+  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day))
+  const dow = date.getUTCDay()
+  const dayShift = dow === 0 ? 7 : dow
+  const shifted = new Date(date.getTime())
+  shifted.setUTCDate(date.getUTCDate() + 4 - dayShift)
+  const yearStart = new Date(Date.UTC(shifted.getUTCFullYear(), 0, 1))
+  const dayOfYear = Math.floor((shifted.getTime() - yearStart.getTime()) / MS_PER_DAY) + 1
+  return Math.floor((dayOfYear - 1) / 7) + 1
+}
+
 function createIsoWeeknumBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin {
   return (...args) => {
     const error = firstError(args)
@@ -179,14 +190,7 @@ function createIsoWeeknumBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin 
       return valueError()
     }
 
-    const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day))
-    const dow = date.getUTCDay()
-    const dayShift = dow === 0 ? 7 : dow
-    const shifted = new Date(date.getTime())
-    shifted.setUTCDate(date.getUTCDate() + 4 - dayShift)
-    const yearStart = new Date(Date.UTC(shifted.getUTCFullYear(), 0, 1))
-    const dayOfYear = Math.floor((shifted.getTime() - yearStart.getTime()) / MS_PER_DAY) + 1
-    return numberResult(Math.floor((dayOfYear - 1) / 7) + 1)
+    return numberResult(isoWeeknumFromDateParts(parts))
   }
 }
 
@@ -511,6 +515,9 @@ function createWeeknumBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin {
     const dateParts = excelSerialToDateParts(serial, dateSystem)
     if (!dateParts) {
       return valueError()
+    }
+    if (returnType === 21) {
+      return numberResult(isoWeeknumFromDateParts(dateParts))
     }
 
     let weekStartDay: number
