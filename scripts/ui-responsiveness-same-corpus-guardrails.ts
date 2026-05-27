@@ -103,10 +103,10 @@ export function hasBiligAuthoritativeRenderProofTiming(
 
 export function hasCommittedTargetProofTiming(measurement: SameCorpusCommittedTargetProofTimingMeasurement, sampleCount: number): boolean {
   return (
-    hasSameCorpusTimingSamples(committedTargetProofTimingSamples(measurement), sampleCount) &&
-    hasSameCorpusTimingSamples(visibleTargetRenderTimingSamples(measurement), sampleCount) &&
-    hasSameCorpusTimingSamples(committedStateValidationTimingSamples(measurement), sampleCount) &&
-    hasSameCorpusTimingSamples(restoreValidationTimingSamples(measurement), sampleCount)
+    hasSameCorpusTimingSamples(measurement.committedTargetProofMsSamples, sampleCount) &&
+    hasSameCorpusTimingSamples(measurement.visibleTargetRenderMsSamples, sampleCount) &&
+    hasSameCorpusTimingSamples(measurement.committedStateValidationMsSamples, sampleCount) &&
+    hasSameCorpusTimingSamples(measurement.restoreValidationMsSamples, sampleCount)
   )
 }
 
@@ -221,60 +221,22 @@ function committedTargetProofTimingMatchesMeasurement(
   sampleIndex: number,
 ): boolean {
   return (
-    sameCorpusTimingSampleMatches(
-      measurement,
-      'committedTargetProofMsSamples',
-      committedTargetProofTimingSamples(measurement),
-      sampleIndex,
-      sample.committedTargetProofMs,
-    ) &&
-    sameCorpusTimingSampleMatches(
-      measurement,
-      'visibleTargetRenderMsSamples',
-      visibleTargetRenderTimingSamples(measurement),
-      sampleIndex,
-      sample.visibleTargetRenderMs,
-    ) &&
-    sameCorpusTimingSampleMatches(
-      measurement,
-      'committedStateValidationMsSamples',
-      committedStateValidationTimingSamples(measurement),
-      sampleIndex,
-      sample.committedStateValidationMs,
-    ) &&
-    sameCorpusTimingSampleMatches(
-      measurement,
-      'restoreValidationMsSamples',
-      restoreValidationTimingSamples(measurement),
-      sampleIndex,
-      sample.restoreValidationMs,
-    )
+    sameCorpusTimingSampleMatches(committedTargetProofTimingSamples(measurement), sampleIndex, sample.committedTargetProofMs) &&
+    sameCorpusTimingSampleMatches(visibleTargetRenderTimingSamples(measurement), sampleIndex, sample.visibleTargetRenderMs) &&
+    sameCorpusTimingSampleMatches(committedStateValidationTimingSamples(measurement), sampleIndex, sample.committedStateValidationMs) &&
+    sameCorpusTimingSampleMatches(restoreValidationTimingSamples(measurement), sampleIndex, sample.restoreValidationMs)
   )
 }
 
-function sameCorpusTimingSampleMatches(
-  measurement: SameCorpusCommittedTargetProofTimingMeasurement,
-  samplesKey:
-    | 'committedTargetProofMsSamples'
-    | 'visibleTargetRenderMsSamples'
-    | 'committedStateValidationMsSamples'
-    | 'restoreValidationMsSamples',
-  samples: readonly number[] | undefined,
-  sampleIndex: number,
-  expectedValue: number,
-): boolean {
+function sameCorpusTimingSampleMatches(samples: readonly number[] | undefined, sampleIndex: number, expectedValue: number): boolean {
   if (!samples || samples.length <= sampleIndex) {
     return false
   }
-  const timing =
-    samplesKey in measurement ? samples[sampleIndex] : samples.find((value) => sameCorpusTimingValuesMatch(value, expectedValue))
+  const timing = samples[sampleIndex]
   return timing !== undefined && sameCorpusTimingValuesMatch(timing, expectedValue)
 }
 
 function committedTargetProofTimingSamples(measurement: SameCorpusCommittedTargetProofTimingMeasurement): readonly number[] | undefined {
-  if ('committedTargetProofMs' in measurement && measurement.committedTargetProofMs) {
-    return measurement.committedTargetProofMs.samples
-  }
   if ('committedTargetProofMsSamples' in measurement) {
     return measurement.committedTargetProofMsSamples
   }
@@ -282,9 +244,6 @@ function committedTargetProofTimingSamples(measurement: SameCorpusCommittedTarge
 }
 
 function visibleTargetRenderTimingSamples(measurement: SameCorpusCommittedTargetProofTimingMeasurement): readonly number[] | undefined {
-  if ('visibleTargetRenderMs' in measurement && measurement.visibleTargetRenderMs) {
-    return measurement.visibleTargetRenderMs.samples
-  }
   if ('visibleTargetRenderMsSamples' in measurement) {
     return measurement.visibleTargetRenderMsSamples
   }
@@ -294,9 +253,6 @@ function visibleTargetRenderTimingSamples(measurement: SameCorpusCommittedTarget
 function committedStateValidationTimingSamples(
   measurement: SameCorpusCommittedTargetProofTimingMeasurement,
 ): readonly number[] | undefined {
-  if ('committedStateValidationMs' in measurement && measurement.committedStateValidationMs) {
-    return measurement.committedStateValidationMs.samples
-  }
   if ('committedStateValidationMsSamples' in measurement) {
     return measurement.committedStateValidationMsSamples
   }
@@ -304,9 +260,6 @@ function committedStateValidationTimingSamples(
 }
 
 function restoreValidationTimingSamples(measurement: SameCorpusCommittedTargetProofTimingMeasurement): readonly number[] | undefined {
-  if ('restoreValidationMs' in measurement && measurement.restoreValidationMs) {
-    return measurement.restoreValidationMs.samples
-  }
   if ('restoreValidationMsSamples' in measurement) {
     return measurement.restoreValidationMsSamples
   }

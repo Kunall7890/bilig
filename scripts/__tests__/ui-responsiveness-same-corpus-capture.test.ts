@@ -516,6 +516,40 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     ).rejects.toThrow('same-corpus UI measurement for bilig is missing committed target proof samples')
   })
 
+  it('rejects mutating measurements without separated visible and restore proof samples', async () => {
+    await expect(
+      collectSameCorpusProductMeasurements(
+        {
+          biligUrl: 'http://127.0.0.1:5173/?benchmarkCorpus=wide-mixed-250k',
+          googleSheetsUrl: 'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+          microsoftExcelWebUrl: 'https://view.officeapps.live.com/op/view.aspx?src=example.xlsx',
+        },
+        async (product, url) => ({
+          product,
+          source: url,
+          operationResponseMsSamples: [10, 11, 12],
+          ...(product === 'bilig' ? { authoritativeRenderProofMsSamples: [14, 15, 16] } : {}),
+          committedTargetProofMsSamples: [40, 41, 42],
+          postOperationFrameMsSamples: [8, 9, 10],
+          corpusVerification: {
+            verified: true,
+            method:
+              product === 'bilig'
+                ? 'bilig-benchmark-state'
+                : product === 'google-sheets'
+                  ? 'google-sheets-xlsx-export'
+                  : 'microsoft-excel-web-source-xlsx',
+            sheetName: 'WideGrid',
+            materializedCells: 250000,
+            checkedCells: [],
+          },
+          limitations: [],
+        }),
+        'formula-edit',
+      ),
+    ).rejects.toThrow('same-corpus UI measurement for bilig is missing visible target render samples')
+  })
+
   it('declares the fixed same-corpus workload suite in capture order', () => {
     expect(requiredUiResponsivenessSameCorpusWorkloads).toEqual([
       'open-workbook',

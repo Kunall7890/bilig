@@ -15,12 +15,30 @@ export function buildSameCorpusMeasurement(capture: SameCorpusCaptureMeasurement
     ...(capture.authoritativeRenderProofMsSamples
       ? { authoritativeRenderProofMs: summarizeNumbers(capture.authoritativeRenderProofMsSamples) }
       : {}),
-    ...(capture.committedTargetProofMsSamples ? { committedTargetProofMs: summarizeNumbers(capture.committedTargetProofMsSamples) } : {}),
-    ...(capture.visibleTargetRenderMsSamples ? { visibleTargetRenderMs: summarizeNumbers(capture.visibleTargetRenderMsSamples) } : {}),
-    ...(capture.committedStateValidationMsSamples
-      ? { committedStateValidationMs: summarizeNumbers(capture.committedStateValidationMsSamples) }
+    ...(capture.committedTargetProofMsSamples
+      ? {
+          committedTargetProofMs: summarizeNumbers(capture.committedTargetProofMsSamples),
+          committedTargetProofMsSamples: [...capture.committedTargetProofMsSamples],
+        }
       : {}),
-    ...(capture.restoreValidationMsSamples ? { restoreValidationMs: summarizeNumbers(capture.restoreValidationMsSamples) } : {}),
+    ...(capture.visibleTargetRenderMsSamples
+      ? {
+          visibleTargetRenderMs: summarizeNumbers(capture.visibleTargetRenderMsSamples),
+          visibleTargetRenderMsSamples: [...capture.visibleTargetRenderMsSamples],
+        }
+      : {}),
+    ...(capture.committedStateValidationMsSamples
+      ? {
+          committedStateValidationMs: summarizeNumbers(capture.committedStateValidationMsSamples),
+          committedStateValidationMsSamples: [...capture.committedStateValidationMsSamples],
+        }
+      : {}),
+    ...(capture.restoreValidationMsSamples
+      ? {
+          restoreValidationMs: summarizeNumbers(capture.restoreValidationMsSamples),
+          restoreValidationMsSamples: [...capture.restoreValidationMsSamples],
+        }
+      : {}),
     postOperationFrameMs: summarizeNumbers(capture.postOperationFrameMsSamples),
     ...(capture.scrollEventResponseMsSamples ? { scrollEventResponseMs: summarizeNumbers(capture.scrollEventResponseMsSamples) } : {}),
     ...(capture.scrollMovementPxSamples ? { scrollMovementPx: summarizeNumbers(capture.scrollMovementPxSamples) } : {}),

@@ -58,12 +58,13 @@ import {
   sameCorpusTimingRatio as ratio,
   sameCorpusVisibleTargetRenderMetrics,
 } from './ui-responsiveness-same-corpus-scorecard-measurement.ts'
+import { validateSameCorpusScorecardMeasurement } from './ui-responsiveness-same-corpus-scorecard-measurement-validation.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadMutatesWorkbook,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
 } from './ui-responsiveness-same-corpus-workloads.ts'
-import { isSha256Hex, validateSameCorpusCaptureVerification, validateSummary } from './ui-responsiveness-same-corpus-validation-helpers.ts'
+import { isSha256Hex, validateSameCorpusCaptureVerification } from './ui-responsiveness-same-corpus-validation-helpers.ts'
 
 export { sameCorpusUiCaptureToolVersion } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 export { sameCorpusScenarioCaseFields } from './ui-responsiveness-same-corpus-scenario-fields.ts'
@@ -758,10 +759,24 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
   if (entry.materializedCells <= 0 || !Number.isInteger(entry.materializedCells)) {
     throw new Error(`UI responsiveness same-corpus case has invalid materialized cell count: ${entry.id}`)
   }
-  validateSameCorpusMeasurement(entry.bilig, 'bilig', entry.id, entry.corpusCaseId, entry.materializedCells)
-  validateSameCorpusMeasurement(entry.googleSheets, 'google-sheets', entry.id, entry.corpusCaseId, entry.materializedCells)
+  validateSameCorpusScorecardMeasurement(entry.bilig, 'bilig', entry.id, entry.corpusCaseId, entry.materializedCells, entry.workload)
+  validateSameCorpusScorecardMeasurement(
+    entry.googleSheets,
+    'google-sheets',
+    entry.id,
+    entry.corpusCaseId,
+    entry.materializedCells,
+    entry.workload,
+  )
   if (entry.microsoftExcelWeb) {
-    validateSameCorpusMeasurement(entry.microsoftExcelWeb, 'microsoft-excel-web', entry.id, entry.corpusCaseId, entry.materializedCells)
+    validateSameCorpusScorecardMeasurement(
+      entry.microsoftExcelWeb,
+      'microsoft-excel-web',
+      entry.id,
+      entry.corpusCaseId,
+      entry.materializedCells,
+      entry.workload,
+    )
   }
   if (
     uiSameCorpusWorkloadRequiresScrollEventEvidence(entry.workload) &&
@@ -936,49 +951,4 @@ function hasSameCorpusScrollEvidence(measurement: UiResponsivenessSameCorpusMeas
 
 function hasCapturedSourceWorkbookFingerprint(measurement: UiResponsivenessSameCorpusMeasurement): boolean {
   return measurement.corpusVerification.sourceWorkbookSha256 !== null && isSha256Hex(measurement.corpusVerification.sourceWorkbookSha256)
-}
-
-function validateSameCorpusMeasurement(
-  measurement: UiResponsivenessSameCorpusMeasurement,
-  product: UiResponsivenessSameCorpusProduct,
-  caseId: string,
-  corpusCaseId: string,
-  materializedCells: number,
-): void {
-  if (measurement.product !== product) {
-    throw new Error(`UI responsiveness same-corpus product mismatch for ${caseId}`)
-  }
-  if (measurement.source.length === 0) {
-    throw new Error(`UI responsiveness same-corpus source is missing for ${caseId}`)
-  }
-  if (product === 'bilig' && measurement.biligRuntimeProof) {
-    validateBiligRuntimeProof(measurement.biligRuntimeProof, measurement.source, caseId)
-  }
-  validateSummary(measurement.operationResponseMs, `${caseId} ${product} operationResponseMs`, sameCorpusSampleCount)
-  if (measurement.operationResponseProofs.length < sameCorpusSampleCount) {
-    throw new Error(`UI responsiveness same-corpus proof is missing operation-response proof for ${caseId}`)
-  }
-  if (measurement.authoritativeRenderProofMs) {
-    validateSummary(measurement.authoritativeRenderProofMs, `${caseId} ${product} authoritativeRenderProofMs`, sameCorpusSampleCount)
-  }
-  if (measurement.committedTargetProofMs) {
-    validateSummary(measurement.committedTargetProofMs, `${caseId} ${product} committedTargetProofMs`, sameCorpusSampleCount)
-  }
-  if (measurement.visibleTargetRenderMs) {
-    validateSummary(measurement.visibleTargetRenderMs, `${caseId} ${product} visibleTargetRenderMs`, sameCorpusSampleCount)
-  }
-  if (measurement.committedStateValidationMs) {
-    validateSummary(measurement.committedStateValidationMs, `${caseId} ${product} committedStateValidationMs`, sameCorpusSampleCount)
-  }
-  if (measurement.restoreValidationMs) {
-    validateSummary(measurement.restoreValidationMs, `${caseId} ${product} restoreValidationMs`, sameCorpusSampleCount)
-  }
-  validateSummary(measurement.postOperationFrameMs, `${caseId} ${product} postOperationFrameMs`, sameCorpusSampleCount)
-  if (measurement.scrollEventResponseMs) {
-    validateSummary(measurement.scrollEventResponseMs, `${caseId} ${product} scrollEventResponseMs`, sameCorpusSampleCount)
-  }
-  if (measurement.scrollMovementPx) {
-    validateSummary(measurement.scrollMovementPx, `${caseId} ${product} scrollMovementPx`, sameCorpusSampleCount)
-  }
-  validateSameCorpusCaptureVerification(measurement.corpusVerification, product, materializedCells, corpusCaseId, caseId)
 }

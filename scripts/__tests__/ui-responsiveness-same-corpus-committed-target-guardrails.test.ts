@@ -57,6 +57,25 @@ describe('same-corpus committed target proof guardrails', () => {
     })
   })
 
+  it('rejects aggregate-only scorecard timings that lost ordered sample identity', () => {
+    const entry = sameCorpusEditVisibleCellCase({
+      mapBiligMeasurement: (measurement) => ({
+        product: measurement.product,
+        committedTargetProofMs: { samples: sortedTimingSamples(measurement.committedTargetProofMsSamples) },
+        visibleTargetRenderMs: { samples: sortedTimingSamples(measurement.visibleTargetRenderMsSamples) },
+        committedStateValidationMs: { samples: sortedTimingSamples(measurement.committedStateValidationMsSamples) },
+        restoreValidationMs: { samples: sortedTimingSamples(measurement.restoreValidationMsSamples) },
+      }),
+    })
+
+    expect(hasAcceptedCommittedTargetProofTiming(entry, entry.bilig, 3)).toBe(false)
+    expect(hasAcceptedCommittedTargetProofTiming(entry, entry.googleSheets, 3)).toBe(true)
+    expect(sameCorpusCommittedTargetProofTimingCounts([entry], 3)).toMatchObject({
+      committedTargetProofTimingCaseCount: 0,
+      committedTargetProofTimingSampleCount: 3,
+    })
+  })
+
   it('rejects stale target proof samples even when raw timing samples are present', () => {
     const cases = [
       sameCorpusEditVisibleCellCase({
@@ -133,6 +152,9 @@ function sameCorpusEditVisibleCellCase(
   args: {
     readonly biligProofs?: readonly SameCorpusMutationTargetProof[]
     readonly googleProofs?: readonly SameCorpusMutationTargetProof[]
+    readonly mapBiligMeasurement?: (
+      measurement: SameCorpusCommittedTargetProofTimingMeasurement,
+    ) => SameCorpusCommittedTargetProofTimingMeasurement
     readonly mapBiligProductProof?: (proof: SameCorpusProductSemanticUiProof) => SameCorpusProductSemanticUiProof
     readonly mapGoogleSheetsProductProof?: (proof: SameCorpusProductSemanticUiProof) => SameCorpusProductSemanticUiProof
   } = {},
@@ -152,7 +174,7 @@ function sameCorpusEditVisibleCellCase(
   return {
     workload: 'edit-visible-cell',
     scenarioProof,
-    bilig: sameCorpusMeasurement('bilig'),
+    bilig: args.mapBiligMeasurement ? args.mapBiligMeasurement(sameCorpusMeasurement('bilig')) : sameCorpusMeasurement('bilig'),
     googleSheets: sameCorpusMeasurement('google-sheets'),
   }
 }
@@ -165,6 +187,10 @@ function sameCorpusMeasurement(product: 'bilig' | 'google-sheets'): SameCorpusCo
     committedStateValidationMsSamples: [0, 1, 2].map((sampleIndex) => committedStateValidationMs(product, sampleIndex)),
     restoreValidationMsSamples: [0, 1, 2].map((sampleIndex) => restoreValidationMs(product, sampleIndex)),
   }
+}
+
+function sortedTimingSamples(samples: readonly number[] | undefined): number[] {
+  return [...(samples ?? [])].toSorted((left, right) => left - right)
 }
 
 function sameCorpusProductSemanticProof(

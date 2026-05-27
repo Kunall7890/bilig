@@ -21,9 +21,13 @@ export interface UiResponsivenessSameCorpusMeasurement {
   readonly operationResponseProofs: readonly SameCorpusOperationResponseProof[]
   readonly authoritativeRenderProofMs?: NumericSummary
   readonly committedTargetProofMs?: NumericSummary
+  readonly committedTargetProofMsSamples?: readonly number[]
   readonly visibleTargetRenderMs?: NumericSummary
+  readonly visibleTargetRenderMsSamples?: readonly number[]
   readonly committedStateValidationMs?: NumericSummary
+  readonly committedStateValidationMsSamples?: readonly number[]
   readonly restoreValidationMs?: NumericSummary
+  readonly restoreValidationMsSamples?: readonly number[]
   readonly postOperationFrameMs: NumericSummary
   readonly scrollEventResponseMs?: NumericSummary
   readonly scrollMovementPx?: NumericSummary

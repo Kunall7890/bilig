@@ -68,6 +68,7 @@ import {
 } from './ui-responsiveness-same-corpus-preflight.ts'
 import { captureSameCorpusPreflightEditableMutationProof } from './ui-responsiveness-same-corpus-preflight-editable-proof.ts'
 import { captureSameCorpusPreflightFillFormatMutationProof } from './ui-responsiveness-same-corpus-preflight-fill-proof.ts'
+import { assertSameCorpusProductMeasurement } from './ui-responsiveness-same-corpus-product-measurement.ts'
 
 interface ProductSampleCollection {
   readonly corpusVerification: SameCorpusCaptureCorpusVerification
@@ -223,78 +224,6 @@ export async function collectSameCorpusProductMeasurements(
   const microsoftExcelWeb = await measure('microsoft-excel-web', urls.microsoftExcelWebUrl, workload)
   assertSameCorpusProductMeasurement('microsoft-excel-web', urls.microsoftExcelWebUrl, microsoftExcelWeb, workload)
   return { bilig, googleSheets, microsoftExcelWeb }
-}
-
-function assertSameCorpusProductMeasurement(
-  product: UiResponsivenessSameCorpusProduct,
-  source: string,
-  measurement: SameCorpusCaptureMeasurement,
-  workload: UiResponsivenessSameCorpusWorkload,
-): void {
-  if (measurement.product !== product) {
-    throw new Error(`same-corpus UI measurement expected ${product} but received ${measurement.product}`)
-  }
-  if (measurement.source !== source) {
-    throw new Error(`same-corpus UI measurement for ${product} used an unexpected source URL`)
-  }
-  assertSameCorpusSampleArray(product, 'operation response', measurement.operationResponseMsSamples)
-  if (product === 'bilig') {
-    assertSameCorpusSampleArray(
-      product,
-      'authoritative render proof',
-      measurement.authoritativeRenderProofMsSamples,
-      measurement.operationResponseMsSamples.length,
-    )
-  }
-  assertSameCorpusSampleArray(
-    product,
-    'post-operation frame',
-    measurement.postOperationFrameMsSamples,
-    measurement.operationResponseMsSamples.length,
-  )
-  if (uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)) {
-    assertSameCorpusSampleArray(
-      product,
-      'scroll-event response',
-      measurement.scrollEventResponseMsSamples,
-      measurement.operationResponseMsSamples.length,
-    )
-    assertSameCorpusSampleArray(
-      product,
-      'scroll movement',
-      measurement.scrollMovementPxSamples,
-      measurement.operationResponseMsSamples.length,
-    )
-  }
-  if (uiSameCorpusWorkloadMutatesWorkbook(workload)) {
-    assertSameCorpusSampleArray(
-      product,
-      'committed target proof',
-      measurement.committedTargetProofMsSamples,
-      measurement.operationResponseMsSamples.length,
-    )
-  }
-}
-
-function assertSameCorpusSampleArray(
-  product: UiResponsivenessSameCorpusProduct,
-  label: string,
-  samples: readonly number[] | undefined,
-  expectedLength?: number,
-): void {
-  if (!samples || samples.length === 0) {
-    throw new Error(`same-corpus UI measurement for ${product} is missing ${label} samples`)
-  }
-  if (expectedLength !== undefined && samples.length !== expectedLength) {
-    throw new Error(
-      `same-corpus UI measurement for ${product} has ${String(samples.length)} ${label} samples but expected ${String(expectedLength)}`,
-    )
-  }
-  for (const sample of samples) {
-    if (!Number.isFinite(sample)) {
-      throw new Error(`same-corpus UI measurement for ${product} has a non-finite ${label} sample`)
-    }
-  }
 }
 
 export async function preflightSameCorpusIncumbentAccess(args: PreflightArgs): Promise<SameCorpusPreflight> {
