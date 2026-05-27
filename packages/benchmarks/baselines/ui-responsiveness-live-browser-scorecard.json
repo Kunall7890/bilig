@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "ui-responsiveness-live-browser-timing",
-  "generatedAt": "2026-05-27T20:12:17.230Z",
+  "generatedAt": "2026-05-27T22:06:10.430Z",
   "host": {
     "arch": "arm64",
     "platform": "darwin"
@@ -1955,7 +1955,8 @@
                 "semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source",
                 "semantic UI mutation target proof for formula-edit restored screenshot semantic readback did not come from an accepted browser-visible source",
                 "semantic UI mutation target proof for formula-edit target readback did not come from an accepted browser-visible source",
-                "semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source"
+                "semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source",
+                "semantic UI mutation target proof for formula-edit did not prove the rendered formula result"
               ]
             },
             {
@@ -2161,7 +2162,8 @@
                 "semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source",
                 "semantic UI mutation target proof for formula-edit restored screenshot semantic readback did not come from an accepted browser-visible source",
                 "semantic UI mutation target proof for formula-edit target readback did not come from an accepted browser-visible source",
-                "semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source"
+                "semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source",
+                "semantic UI mutation target proof for formula-edit did not prove the rendered formula result"
               ]
             },
             {
@@ -2367,7 +2369,8 @@
                 "semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source",
                 "semantic UI mutation target proof for formula-edit restored screenshot semantic readback did not come from an accepted browser-visible source",
                 "semantic UI mutation target proof for formula-edit target readback did not come from an accepted browser-visible source",
-                "semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source"
+                "semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source",
+                "semantic UI mutation target proof for formula-edit did not prove the rendered formula result"
               ]
             }
           ],
@@ -2376,7 +2379,8 @@
             "semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source",
             "semantic UI mutation target proof for formula-edit restored screenshot semantic readback did not come from an accepted browser-visible source",
             "semantic UI mutation target proof for formula-edit target readback did not come from an accepted browser-visible source",
-            "semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source"
+            "semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source",
+            "semantic UI mutation target proof for formula-edit did not prove the rendered formula result"
           ]
         },
         {
@@ -2937,7 +2941,7 @@
       "claimReadinessState": "diagnostic-capture-incomplete",
       "currentContractEvidenceComplete": false,
       "googleSheetsTenXRequirementSatisfied": false,
-      "captureRunSignature": "98944712b68f8f4fe0de79d3421f69f8bd60ae5767dca86e1aa5526c325a9ec8",
+      "captureRunSignature": "5b0e676a997791844f7cf18bdbb47d414ca004b83c783856415844e9195ea807",
       "invalidReasons": [
         "semantic UI proof covers 6/9 cases",
         "mutation target proof covers 0/3 mutating cases",
@@ -12152,7 +12156,8 @@
                 "semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source",
                 "semantic UI mutation target proof for formula-edit restored screenshot semantic readback did not come from an accepted browser-visible source",
                 "semantic UI mutation target proof for formula-edit target readback did not come from an accepted browser-visible source",
-                "semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source"
+                "semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source",
+                "semantic UI mutation target proof for formula-edit did not prove the rendered formula result"
               ]
             }
           ],
@@ -13463,7 +13468,8 @@
                   "semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source",
                   "semantic UI mutation target proof for formula-edit restored screenshot semantic readback did not come from an accepted browser-visible source",
                   "semantic UI mutation target proof for formula-edit target readback did not come from an accepted browser-visible source",
-                  "semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source"
+                  "semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source",
+                  "semantic UI mutation target proof for formula-edit did not prove the rendered formula result"
                 ]
               }
             ],
