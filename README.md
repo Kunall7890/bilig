@@ -268,10 +268,11 @@ The source example lives in:
 examples/airbyte-workpaper-validation
 ```
 
-It reads Airbyte-style `RECORD` and `STATE` JSONL messages, writes the committed
-state cursor and expected totals into `Inputs!B2:B5`, recalculates summary
-formulas, exports WorkPaper JSON, restores it, and returns
-`validation_passed: true` only when the restored proof matches.
+It reads Airbyte-style `RECORD` and `STATE` JSONL messages, covers both
+`STREAM` and `GLOBAL` state shapes, writes the committed state cursor and
+expected totals into `Inputs!B2:B5`, recalculates summary formulas, exports
+WorkPaper JSON, restores it, and returns `validation_passed: true` only when
+the restored proof matches.
 
 See [Airbyte WorkPaper Validation](docs/airbyte-workpaper-validation.md) for
 the post-sync boundary, local smoke command, official Airbyte references, and

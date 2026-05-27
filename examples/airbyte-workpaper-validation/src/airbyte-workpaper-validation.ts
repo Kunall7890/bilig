@@ -36,6 +36,19 @@ export interface AirbyteStateMessage {
     readonly data?: {
       readonly cursor?: string
     }
+    readonly global?: {
+      readonly shared_state?: {
+        readonly cursor?: string
+      }
+      readonly stream_states?: readonly {
+        readonly stream_descriptor?: {
+          readonly name?: string
+        }
+        readonly stream_state?: {
+          readonly cursor?: string
+        }
+      }[]
+    }
   }
 }
 
@@ -52,6 +65,7 @@ export interface AirbyteWorkPaperValidationInput {
 export interface AirbyteWorkPaperValidationResult {
   readonly patch: {
     readonly stream: string
+    readonly state_type: 'STREAM' | 'LEGACY' | 'GLOBAL'
     readonly committed_state_cursor: string
     readonly record_count: number
     readonly gross_amount: number
@@ -61,6 +75,7 @@ export interface AirbyteWorkPaperValidationResult {
   }
   readonly proof: {
     readonly editedCells: readonly ['Inputs!B2', 'Inputs!B3', 'Inputs!B4', 'Inputs!B5']
+    readonly stateCursorSource: string
     readonly before: AirbyteWorkPaperValidationSummary
     readonly after: AirbyteWorkPaperValidationSummary
     readonly afterRestore: AirbyteWorkPaperValidationSummary
@@ -97,6 +112,12 @@ interface NormalizedOrderRecord {
   readonly rejectedFlag: 0 | 1
 }
 
+interface FinalStateCursor {
+  readonly cursor: string
+  readonly stateType: 'STREAM' | 'LEGACY' | 'GLOBAL'
+  readonly source: string
+}
+
 export function readAirbyteMessagesFromJsonl(jsonl: string): AirbyteMessage[] {
   return jsonl
     .split(/\r?\n/u)
@@ -111,12 +132,12 @@ export function validateAirbyteOrdersWithWorkPaper(input: AirbyteWorkPaperValida
     (message): message is AirbyteRecordMessage => message.type === 'RECORD' && message.record.stream === stream,
   )
   const normalizedRecords = records.map(normalizeOrderRecord)
-  const finalStateCursor = readFinalStateCursor(input.messages, stream)
+  const finalState = readFinalStateCursor(input.messages, stream)
   const expectedPaidAmount = readFiniteNumber(input.expectedPaidAmount, 'expectedPaidAmount')
   const expectedRecordCount = readInteger(input.expectedRecordCount, 'expectedRecordCount')
-  const initialStateCursor = input.initialStateCursor ?? finalStateCursor
+  const initialStateCursor = input.initialStateCursor ?? finalState.cursor
   const initialStateCursorMillis = readCursorMillis(initialStateCursor, 'initialStateCursor')
-  const finalStateCursorMillis = readCursorMillis(finalStateCursor, 'finalStateCursor')
+  const finalStateCursorMillis = readCursorMillis(finalState.cursor, 'finalStateCursor')
   const lastRecord = normalizedRecords.at(-1)
 
   if (lastRecord === undefined) {
@@ -155,7 +176,7 @@ export function validateAirbyteOrdersWithWorkPaper(input: AirbyteWorkPaperValida
     const summarySheet = requireSheet(workbook, 'Summary')
     const before = readSummary(workbook, summarySheet)
 
-    workbook.setCellContents({ sheet: inputsSheet, row: 1, col: 1 }, finalStateCursor)
+    workbook.setCellContents({ sheet: inputsSheet, row: 1, col: 1 }, finalState.cursor)
     workbook.setCellContents({ sheet: inputsSheet, row: 2, col: 1 }, finalStateCursorMillis)
     workbook.setCellContents({ sheet: inputsSheet, row: 3, col: 1 }, expectedPaidAmount)
     workbook.setCellContents({ sheet: inputsSheet, row: 4, col: 1 }, expectedRecordCount)
@@ -178,6 +199,7 @@ export function validateAirbyteOrdersWithWorkPaper(input: AirbyteWorkPaperValida
       return {
         patch: {
           stream,
+          state_type: finalState.stateType,
           committed_state_cursor: after.committedStateCursor,
           record_count: after.recordCount,
           gross_amount: after.grossAmount,
@@ -187,6 +209,7 @@ export function validateAirbyteOrdersWithWorkPaper(input: AirbyteWorkPaperValida
         },
         proof: {
           editedCells: ['Inputs!B2', 'Inputs!B3', 'Inputs!B4', 'Inputs!B5'],
+          stateCursorSource: finalState.source,
           before,
           after,
           afterRestore,
@@ -196,7 +219,7 @@ export function validateAirbyteOrdersWithWorkPaper(input: AirbyteWorkPaperValida
         limitations: [
           'This example validates an Airbyte-style record/state export after sync; it is not an Airbyte connector or official Airbyte integration.',
           'Airbyte state is source-defined; keep source, destination, and platform checkpoint semantics as the authority for replication correctness.',
-          'Keep warehouse constraints, destination acknowledgements, and domain data-quality checks in the loop for production pipelines.',
+          'Keep warehouse constraints, destination acknowledgements, Airbyte job metadata, and domain data-quality checks in the loop for production pipelines.',
         ],
       }
     } finally {
@@ -256,23 +279,72 @@ function normalizeOrderRecord(message: AirbyteRecordMessage): NormalizedOrderRec
   }
 }
 
-function readFinalStateCursor(messages: readonly AirbyteMessage[], stream: string): string {
+function readFinalStateCursor(messages: readonly AirbyteMessage[], stream: string): FinalStateCursor {
   const stateMessages = messages.filter((message): message is AirbyteStateMessage => message.type === 'STATE')
   for (let index = stateMessages.length - 1; index >= 0; index -= 1) {
     const state = stateMessages[index]?.state
+
+    const globalCursor = readGlobalStateCursor(state?.global, stream)
+    if (globalCursor !== undefined) {
+      return globalCursor
+    }
+
     const streamName = state?.stream?.stream_descriptor?.name
     const streamCursor = state?.stream?.stream_state?.cursor
     if ((streamName === undefined || streamName === stream) && streamCursor !== undefined) {
-      return readNonEmptyString(streamCursor, 'state.stream.stream_state.cursor')
+      return {
+        cursor: readNonEmptyString(streamCursor, 'state.stream.stream_state.cursor'),
+        stateType: 'STREAM',
+        source: 'state.stream.stream_state.cursor',
+      }
     }
 
     const legacyCursor = state?.data?.cursor
     if (legacyCursor !== undefined) {
-      return readNonEmptyString(legacyCursor, 'state.data.cursor')
+      return {
+        cursor: readNonEmptyString(legacyCursor, 'state.data.cursor'),
+        stateType: 'LEGACY',
+        source: 'state.data.cursor',
+      }
     }
   }
 
   throw new Error(`Airbyte stream ${stream} did not include a usable STATE cursor`)
+}
+
+function readGlobalStateCursor(
+  globalState: AirbyteStateMessage['state']['global'] | undefined,
+  stream: string,
+): FinalStateCursor | undefined {
+  if (globalState === undefined) {
+    return undefined
+  }
+
+  for (const streamState of globalState.stream_states ?? []) {
+    if (streamState.stream_descriptor?.name !== stream) {
+      continue
+    }
+
+    const streamCursor = streamState.stream_state?.cursor
+    if (streamCursor !== undefined) {
+      return {
+        cursor: readNonEmptyString(streamCursor, 'state.global.stream_states[].stream_state.cursor'),
+        stateType: 'GLOBAL',
+        source: 'state.global.stream_states[].stream_state.cursor',
+      }
+    }
+  }
+
+  const sharedCursor = globalState.shared_state?.cursor
+  if (sharedCursor !== undefined) {
+    return {
+      cursor: readNonEmptyString(sharedCursor, 'state.global.shared_state.cursor'),
+      stateType: 'GLOBAL',
+      source: 'state.global.shared_state.cursor',
+    }
+  }
+
+  return undefined
 }
 
 function buildRecordsSheet(records: readonly NormalizedOrderRecord[]): (readonly (number | string)[])[] {

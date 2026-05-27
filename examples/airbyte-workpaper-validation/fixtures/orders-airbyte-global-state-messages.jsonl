@@ -1,0 +1,5 @@
+{"type":"RECORD","record":{"stream":"orders","data":{"order_id":"order-1001","customer_id":"acme","updated_at":"2026-05-27T10:00:00Z","amount":120,"status":"paid"},"emitted_at":1779876000000}}
+{"type":"RECORD","record":{"stream":"orders","data":{"order_id":"order-1002","customer_id":"globex","updated_at":"2026-05-27T10:05:00Z","amount":45.5,"status":"paid"},"emitted_at":1779876300000}}
+{"type":"RECORD","record":{"stream":"orders","data":{"order_id":"order-1003","customer_id":"initech","updated_at":"2026-05-27T10:07:00Z","amount":13.25,"status":"rejected"},"emitted_at":1779876420000}}
+{"type":"RECORD","record":{"stream":"orders","data":{"order_id":"order-1004","customer_id":"umbrella","updated_at":"2026-05-27T10:10:00Z","amount":136.25,"status":"paid"},"emitted_at":1779876600000}}
+{"type":"STATE","state":{"state_type":"GLOBAL","global":{"shared_state":{"cursor":"2026-05-27T10:10:00Z","wal_position":"orders-demo-lsn-20260527-1010"},"stream_states":[{"stream_descriptor":{"name":"customers"},"stream_state":{"cursor":"2026-05-27T09:55:00Z"}},{"stream_descriptor":{"name":"orders"},"stream_state":{"cursor":"2026-05-27T10:10:00Z"}}]}}}

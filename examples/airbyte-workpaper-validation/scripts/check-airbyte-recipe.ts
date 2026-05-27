@@ -2,12 +2,14 @@ import { readFile } from 'node:fs/promises'
 
 const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8')
 const fixture = await readFile(new URL('../fixtures/orders-airbyte-messages.jsonl', import.meta.url), 'utf8')
+const globalFixture = await readFile(new URL('../fixtures/orders-airbyte-global-state-messages.jsonl', import.meta.url), 'utf8')
 const helperSource = await readFile(new URL('../src/airbyte-workpaper-validation.ts', import.meta.url), 'utf8')
 const smokeSource = await readFile(new URL('../src/smoke.ts', import.meta.url), 'utf8')
 
 for (const needle of [
   'Airbyte WorkPaper Validation',
   'fixtures/orders-airbyte-messages.jsonl',
+  'fixtures/orders-airbyte-global-state-messages.jsonl',
   'https://docs.airbyte.com/platform/understanding-airbyte/airbyte-protocol',
   'https://docs.airbyte.com/platform/using-airbyte/core-concepts/sync-modes/incremental-append-deduped',
   'Airbyte owns the sync and checkpoint semantics.',
@@ -23,13 +25,21 @@ for (const needle of ['"type":"RECORD"', '"type":"STATE"', '"stream":"orders"', 
   }
 }
 
+for (const needle of ['"state_type":"GLOBAL"', '"global"', '"stream_states"', '"stream_descriptor"', '"stream_state"']) {
+  if (!globalFixture.includes(needle)) {
+    throw new Error(`fixtures/orders-airbyte-global-state-messages.jsonl is missing ${needle}`)
+  }
+}
+
 for (const needle of [
   '@bilig/workpaper',
   'readAirbyteMessagesFromJsonl',
   'validateAirbyteOrdersWithWorkPaper',
+  'readGlobalStateCursor',
   'WorkPaper.buildFromSheets',
   'exportWorkPaperDocument',
   'afterRestore',
+  'state_type',
   'persistedDocumentBytes',
   'validation_passed',
 ]) {
@@ -40,6 +50,7 @@ for (const needle of [
 
 for (const needle of [
   'orders-airbyte-messages.jsonl',
+  'orders-airbyte-global-state-messages.jsonl',
   'expectedPaidAmount: 301.75',
   'expectedRecordCount: 4',
   'stateCursorMatchesRecords',

@@ -18,7 +18,8 @@ The Airbyte Protocol describes record and state messages as JSON envelopes. A
 source `read` emits `AirbyteRecordMessage` values and `AirbyteStateMessage`
 checkpoints, and state lets the next sync resume from a checkpoint instead of
 starting over. Incremental syncs use a cursor to determine which records are new
-or updated.
+or updated. The protocol has stream-scoped, global, and legacy state shapes;
+global state carries shared state plus per-stream state entries.
 
 Official Airbyte references:
 
@@ -36,9 +37,13 @@ examples/airbyte-workpaper-validation
 It contains:
 
 - `fixtures/orders-airbyte-messages.jsonl` for an Airbyte-style `RECORD` and
-  `STATE` stream.
+  `STREAM` state stream.
+- `fixtures/orders-airbyte-global-state-messages.jsonl` for the same record
+  stream with `GLOBAL` state and an `orders` entry inside
+  `global.stream_states`.
 - `src/airbyte-workpaper-validation.ts` for JSONL parsing, WorkPaper formula
-  recalculation, JSON restore, and proof output.
+  recalculation, `STREAM`/`GLOBAL` state cursor extraction, JSON restore, and
+  proof output.
 - `src/smoke.ts` for the local verification path.
 - `scripts/check-airbyte-recipe.ts` for recipe drift checks.
 
@@ -52,10 +57,11 @@ pnpm run typecheck
 pnpm run smoke
 ```
 
-The smoke test reads the JSONL stream, writes the committed state cursor into
+The smoke test reads both JSONL streams, writes the committed state cursor into
 `Inputs!B2`, writes the numeric cursor proof into `Inputs!B3`, writes expected
 paid amount and record count into `Inputs!B4:B5`, recalculates the workbook,
-exports WorkPaper JSON, restores it, and verifies restored readback.
+exports WorkPaper JSON, restores it, and verifies restored readback for both
+state shapes.
 
 ## Output Shape
 
@@ -64,6 +70,7 @@ The returned patch is deliberately compact enough for a downstream job step:
 ```json
 {
   "stream": "orders",
+  "state_type": "GLOBAL",
   "committed_state_cursor": "2026-05-27T10:10:00Z",
   "record_count": 4,
   "gross_amount": 315,
@@ -78,6 +85,7 @@ The proof keeps the spreadsheet evidence:
 ```json
 {
   "editedCells": ["Inputs!B2", "Inputs!B3", "Inputs!B4", "Inputs!B5"],
+  "stateCursorSource": "state.global.stream_states[].stream_state.cursor",
   "before": {
     "stateCursorMatchesRecords": false
   },
@@ -97,16 +105,18 @@ The proof keeps the spreadsheet evidence:
 ## Boundary
 
 Airbyte owns extraction, replication, sync mode selection, destination writes,
-and checkpoint semantics. Bilig owns the post-sync formula workbook, formula
-recalculation, JSON persistence, restore, and readback proof.
+checkpoint semantics, and job metadata. Bilig owns the post-sync formula
+workbook, formula recalculation, JSON persistence, restore, and readback proof.
 
 This is not an Airbyte connector and it is not an official Airbyte integration.
 Use it after records are available from Airbyte, a warehouse export, object
 storage, or a job log.
 
 Keep source-specific state semantics, destination acknowledgement, warehouse
-constraints, and domain data-quality checks in the loop for production
-pipelines.
+constraints, Airbyte job metadata, and domain data-quality checks in the loop
+for production pipelines. Destination-level validation should read the
+destination tables and job metadata directly; the JSONL fixture here is only a
+portable recipe artifact.
 
 ## Outreach Note
 

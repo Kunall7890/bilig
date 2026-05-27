@@ -2,22 +2,29 @@ import { readFile } from 'node:fs/promises'
 
 import { readAirbyteMessagesFromJsonl, validateAirbyteOrdersWithWorkPaper } from './airbyte-workpaper-validation.js'
 
-const fixture = await readFile(new URL('../fixtures/orders-airbyte-messages.jsonl', import.meta.url), 'utf8')
-const messages = readAirbyteMessagesFromJsonl(fixture)
-const result = validateAirbyteOrdersWithWorkPaper({
-  initialStateCursor: '2026-05-27T10:05:00Z',
-  expectedPaidAmount: 301.75,
-  expectedRecordCount: 4,
-  messages,
-})
+const streamState = await validateFixture('../fixtures/orders-airbyte-messages.jsonl', 'STREAM')
+const globalState = await validateFixture('../fixtures/orders-airbyte-global-state-messages.jsonl', 'GLOBAL')
 
-console.log(JSON.stringify(result, null, 2))
+console.log(JSON.stringify({ streamState, globalState }, null, 2))
 
-if (!isExpectedProof(result)) {
-  throw new Error(`Unexpected Airbyte WorkPaper validation proof: ${JSON.stringify(result)}`)
+async function validateFixture(path: string, expectedStateType: 'STREAM' | 'GLOBAL') {
+  const fixture = await readFile(new URL(path, import.meta.url), 'utf8')
+  const messages = readAirbyteMessagesFromJsonl(fixture)
+  const result = validateAirbyteOrdersWithWorkPaper({
+    initialStateCursor: '2026-05-27T10:05:00Z',
+    expectedPaidAmount: 301.75,
+    expectedRecordCount: 4,
+    messages,
+  })
+
+  if (!isExpectedProof(result, expectedStateType)) {
+    throw new Error(`Unexpected Airbyte WorkPaper validation proof for ${path}: ${JSON.stringify(result)}`)
+  }
+
+  return result
 }
 
-function isExpectedProof(value: unknown): boolean {
+function isExpectedProof(value: unknown, expectedStateType: 'STREAM' | 'GLOBAL'): boolean {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return false
   }
@@ -30,6 +37,7 @@ function isExpectedProof(value: unknown): boolean {
   }
 
   return (
+    Reflect.get(patch, 'state_type') === expectedStateType &&
     Reflect.get(patch, 'committed_state_cursor') === '2026-05-27T10:10:00Z' &&
     Reflect.get(patch, 'record_count') === 4 &&
     Reflect.get(patch, 'gross_amount') === 315 &&
@@ -39,6 +47,7 @@ function isExpectedProof(value: unknown): boolean {
     readNestedBoolean(proof, 'before', 'stateCursorMatchesRecords') === false &&
     readNestedBoolean(proof, 'after', 'stateCursorMatchesRecords') === true &&
     readNestedBoolean(proof, 'afterRestore', 'stateCursorMatchesRecords') === true &&
+    typeof Reflect.get(proof, 'stateCursorSource') === 'string' &&
     Reflect.get(proof, 'verified') === true
   )
 }
