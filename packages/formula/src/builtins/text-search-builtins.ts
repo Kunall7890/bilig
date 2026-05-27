@@ -384,9 +384,6 @@ export function createTextSearchBuiltins(deps: TextSearchBuiltinDeps): Record<st
 
       const text = deps.coerceText(textValue)
       const delimiter = deps.coerceText(delimiterValue)
-      if (delimiter === '') {
-        return deps.error(ErrorCode.Value)
-      }
 
       const instanceNumber = instanceValue === undefined ? 1 : deps.coerceNumber(instanceValue)
       const matchMode = matchModeValue === undefined ? 0 : deps.coerceNumber(matchModeValue)
@@ -398,9 +395,21 @@ export function createTextSearchBuiltins(deps: TextSearchBuiltinDeps): Record<st
         !Number.isInteger(instanceNumber) ||
         instanceNumber === 0 ||
         !Number.isInteger(matchMode) ||
-        (matchMode !== 0 && matchMode !== 1)
+        (matchMode !== 0 && matchMode !== 1) ||
+        !Number.isInteger(matchEndNumber) ||
+        (matchEndNumber !== 0 && matchEndNumber !== 1)
       ) {
         return deps.error(ErrorCode.Value)
+      }
+
+      if (text === '') {
+        return deps.stringResult('')
+      }
+      if (Math.abs(instanceNumber) > text.length) {
+        return deps.error(ErrorCode.Value)
+      }
+      if (delimiter === '') {
+        return deps.stringResult(instanceNumber > 0 ? '' : text)
       }
 
       const matchEnd = matchEndNumber !== 0
@@ -410,6 +419,9 @@ export function createTextSearchBuiltins(deps: TextSearchBuiltinDeps): Record<st
         for (let count = 0; count < instanceNumber; count += 1) {
           found = indexOfWithMode(text, delimiter, searchFrom, matchMode)
           if (found === -1) {
+            if (matchEnd && count === instanceNumber - 1) {
+              return deps.stringResult(text)
+            }
             return ifNotFoundValue ?? deps.error(ErrorCode.NA)
           }
           searchFrom = found + delimiter.length
@@ -418,8 +430,14 @@ export function createTextSearchBuiltins(deps: TextSearchBuiltinDeps): Record<st
       }
 
       let searchFrom = text.length
-      let found = matchEnd ? text.length : -1
-      for (let count = 0; count < Math.abs(instanceNumber); count += 1) {
+      let found = -1
+      const targetCount = Math.abs(instanceNumber)
+      let matchedCount = 0
+      if (matchEnd) {
+        found = text.length
+        matchedCount = 1
+      }
+      for (let count = matchedCount; count < targetCount; count += 1) {
         found = lastIndexOfWithMode(text, delimiter, searchFrom, matchMode)
         if (found === -1) {
           return ifNotFoundValue ?? deps.error(ErrorCode.NA)
@@ -440,9 +458,6 @@ export function createTextSearchBuiltins(deps: TextSearchBuiltinDeps): Record<st
 
       const text = deps.coerceText(textValue)
       const delimiter = deps.coerceText(delimiterValue)
-      if (delimiter === '') {
-        return deps.error(ErrorCode.Value)
-      }
 
       const instanceNumber = instanceValue === undefined ? 1 : deps.coerceNumber(instanceValue)
       const matchMode = matchModeValue === undefined ? 0 : deps.coerceNumber(matchModeValue)
@@ -454,8 +469,20 @@ export function createTextSearchBuiltins(deps: TextSearchBuiltinDeps): Record<st
         !Number.isInteger(instanceNumber) ||
         instanceNumber === 0 ||
         !Number.isInteger(matchMode) ||
-        (matchMode !== 0 && matchMode !== 1)
+        (matchMode !== 0 && matchMode !== 1) ||
+        !Number.isInteger(matchEndNumber) ||
+        (matchEndNumber !== 0 && matchEndNumber !== 1)
       ) {
+        return deps.error(ErrorCode.Value)
+      }
+
+      if (delimiter === '') {
+        if (text.length > 0 && Math.abs(instanceNumber) > text.length) {
+          return deps.error(ErrorCode.Value)
+        }
+        return deps.stringResult(instanceNumber > 0 ? text : '')
+      }
+      if (Math.abs(instanceNumber) > text.length) {
         return deps.error(ErrorCode.Value)
       }
 
@@ -466,6 +493,9 @@ export function createTextSearchBuiltins(deps: TextSearchBuiltinDeps): Record<st
         for (let count = 0; count < instanceNumber; count += 1) {
           found = indexOfWithMode(text, delimiter, searchFrom, matchMode)
           if (found === -1) {
+            if (matchEnd && count === instanceNumber - 1) {
+              return deps.stringResult('')
+            }
             return ifNotFoundValue ?? deps.error(ErrorCode.NA)
           }
           searchFrom = found + delimiter.length
@@ -474,8 +504,14 @@ export function createTextSearchBuiltins(deps: TextSearchBuiltinDeps): Record<st
       }
 
       let searchFrom = text.length
-      let found = matchEnd ? text.length : -1
-      for (let count = 0; count < Math.abs(instanceNumber); count += 1) {
+      let found = -1
+      const targetCount = Math.abs(instanceNumber)
+      let matchedCount = 0
+      if (matchEnd) {
+        found = text.length
+        matchedCount = 1
+      }
+      for (let count = matchedCount; count < targetCount; count += 1) {
         found = lastIndexOfWithMode(text, delimiter, searchFrom, matchMode)
         if (found === -1) {
           return ifNotFoundValue ?? deps.error(ErrorCode.NA)

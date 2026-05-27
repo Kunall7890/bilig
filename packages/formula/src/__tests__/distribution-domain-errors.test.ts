@@ -11,6 +11,42 @@ const naError = { tag: ValueTag.Error, code: ErrorCode.NA } as const
 const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
 
 describe('distribution builtins domain errors', () => {
+  it('coerces direct numeric and logical text for scalar distribution forms', () => {
+    expect(getBuiltin('CONFIDENCE.NORM')?.(text('0.05'), text('1'), text('10'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(0.6197950322720068, 8),
+    })
+    expect(getBuiltin('CONFIDENCE.T')?.(text('0.05'), text('1'), text('10'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(0.7153569045163291, 8),
+    })
+    expect(getBuiltin('ERF')?.(text('1'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(0.8427007929497149, 6),
+    })
+    expect(getBuiltin('FISHER')?.(text('0.5'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(0.5493061443340548, 12),
+    })
+    expect(getBuiltin('GAMMA')?.(text('2'))).toEqual(num(1))
+    expect(getBuiltin('GAMMALN')?.(text('2'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(0, 8),
+    })
+    expect(getBuiltin('GAMMA.INV')?.(text('0.08030139707139418'), text('3'), text('2'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(2, 8),
+    })
+    expect(getBuiltin('BETA.DIST')?.(text('0.5'), text('2'), text('3'), text('TRUE'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(0.6875, 12),
+    })
+    expect(getBuiltin('BINOM.DIST')?.(text('1'), text('3'), text('0.5'), text('FALSE'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(0.375, 12),
+    })
+  })
+
   it('separates chi-square numeric-domain errors from coercion errors', () => {
     expect(getBuiltin('CHIDIST')?.(num(-1), num(1))).toEqual(numError)
     expect(getBuiltin('CHISQ.DIST.RT')?.(num(1), num(0))).toEqual(numError)

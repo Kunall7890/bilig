@@ -229,7 +229,7 @@ export function tryApplyTextFormattingBuiltin(
       outputStringLengths,
       outputStringData,
     )
-    if (text == null || delimiter == null || delimiter.length == 0) {
+    if (text == null || delimiter == null) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
 
@@ -292,12 +292,36 @@ export function tryApplyTextFormattingBuiltin(
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
 
+    if (builtinId == BuiltinId.Textbefore && text.length == 0) {
+      return writeStringResult(base, '', rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (delimiter.length == 0) {
+      if (text.length > 0 && <i32>Math.abs(<f64>instance) > text.length) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
+      return writeStringResult(
+        base,
+        builtinId == BuiltinId.Textbefore ? (instance > 0 ? '' : text) : instance > 0 ? text : '',
+        rangeIndexStack,
+        valueStack,
+        tagStack,
+        kindStack,
+      )
+    }
+    if (<i32>Math.abs(<f64>instance) > text.length) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+
+    const matchEnd = <i32>matchEndNumeric == 1
     let found = -1
     if (instance > 0) {
       let searchFrom = 0
       for (let count = 0; count < instance; count += 1) {
         found = indexOfTextWithMode(text, delimiter, searchFrom, matchMode)
         if (found < 0) {
+          if (matchEnd && count == instance - 1) {
+            return writeStringResult(base, builtinId == BuiltinId.Textbefore ? text : '', rangeIndexStack, valueStack, tagStack, kindStack)
+          }
           return argc == 6
             ? copySlotResult(base, base + 5, rangeIndexStack, valueStack, tagStack, kindStack)
             : writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.NA, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -306,7 +330,13 @@ export function tryApplyTextFormattingBuiltin(
       }
     } else {
       let searchFrom = text.length
-      for (let count = 0; count < -instance; count += 1) {
+      const targetCount = -instance
+      let matchedCount = 0
+      if (matchEnd) {
+        found = text.length
+        matchedCount = 1
+      }
+      for (let count = matchedCount; count < targetCount; count += 1) {
         found = lastIndexOfTextWithMode(text, delimiter, searchFrom, matchMode)
         if (found < 0) {
           return argc == 6

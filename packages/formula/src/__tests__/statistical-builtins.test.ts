@@ -12,6 +12,40 @@ const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
 const div0Error = { tag: ValueTag.Error, code: ErrorCode.Div0 } as const
 
 describe('statistical builtins', () => {
+  it('coerces direct numeric text for scalar normal-family functions', () => {
+    expect(getBuiltin('GAUSS')?.(text('0'))).toEqual(num(0))
+    expect(getBuiltin('PHI')?.(text('0'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(0.3989422804014327, 12),
+    })
+    expect(getBuiltin('STANDARDIZE')?.(text('2'), text('1'), text('2'))).toEqual(num(0.5))
+    expect(getBuiltin('NORMINV')?.(text('0.5'), text('0'), text('1'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(0, 8),
+    })
+    expect(getBuiltin('NORM.S.INV')?.(text('0.5'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(0, 8),
+    })
+  })
+
+  it('coerces direct numeric and logical text for normal and lognormal distribution forms', () => {
+    expect(getBuiltin('NORMDIST')?.(text('1'), text('0'), text('1'), text('TRUE'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(0.8413447460685429, 8),
+    })
+    expect(getBuiltin('NORM.DIST')?.(text('1'), text('0'), text('1'), text('TRUE'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(0.8413447460685429, 8),
+    })
+    expect(getBuiltin('NORM.S.DIST')?.(text('1'), text('FALSE'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(0.24197072451914337, 8),
+    })
+    expect(getBuiltin('LOGINV')?.(text('0.5'), text('0'), text('1'))).toEqual(num(1))
+    expect(getBuiltin('LOGNORM.DIST')?.(text('1'), text('0'), text('1'), text('TRUE'))).toEqual(num(0.5))
+  })
+
   it('matches Microsoft-documented normal-family numeric-domain errors', () => {
     expect(getBuiltin('STANDARDIZE')?.(num(42), num(40), num(0))).toEqual(numError)
     expect(getBuiltin('NORMDIST')?.(num(1), num(0), num(0), bool(true))).toEqual(numError)

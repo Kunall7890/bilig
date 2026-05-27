@@ -34,6 +34,7 @@ import { logicalBuiltins } from './builtins/logical.js'
 import { lookupBuiltins } from './builtins/lookup.js'
 import { createBlockedBuiltinMap, scalarPlaceholderBuiltinNames } from './builtins/placeholder.js'
 import { getExternalScalarFunction, hasExternalFunction } from './external-function-adapter.js'
+import { coerceLogicalValue } from './logical-coercion.js'
 import { parseNumericText } from './numeric-text.js'
 import type { ArrayValue, EvaluationResult } from './runtime-values.js'
 import { createTextBuiltins, textBuiltins } from './builtins/text.js'
@@ -233,11 +234,8 @@ function coerceBoolean(value: CellValue | undefined, fallback: boolean): boolean
   if (value === undefined) {
     return fallback
   }
-  if (value.tag === ValueTag.Boolean) {
-    return value.value
-  }
-  const numeric = toNumber(value)
-  return numeric === undefined ? undefined : numeric !== 0
+  const coerced = coerceLogicalValue(value)
+  return coerced.ok ? coerced.value : undefined
 }
 
 const complexBuiltins = preserveIncomingErrors(createComplexBuiltins({ toNumber, numberResult, valueError }))
@@ -271,7 +269,7 @@ const fixedIncomeBuiltins = preserveIncomingErrors(
 )
 const statisticalBuiltins = preserveIncomingErrors(
   createStatisticalBuiltins({
-    toNumber,
+    toNumber: toScalarMathNumber,
     coerceBoolean,
     firstError,
     numberResult,
@@ -282,7 +280,7 @@ const statisticalBuiltins = preserveIncomingErrors(
 )
 const distributionBuiltins = preserveIncomingErrors(
   createDistributionBuiltins({
-    toNumber,
+    toNumber: toScalarMathNumber,
     coerceBoolean,
     coerceNumber,
     nonNegativeIntegerValue,

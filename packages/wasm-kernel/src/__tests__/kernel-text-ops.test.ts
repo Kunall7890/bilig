@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BuiltinId, Opcode, ValueTag, type CellValue } from '@bilig/protocol'
+import { BuiltinId, ErrorCode, Opcode, ValueTag, type CellValue } from '@bilig/protocol'
 import { createKernel, type KernelInstance } from '../index.js'
 
 function asciiCodes(text: string): Uint16Array {
@@ -191,5 +191,70 @@ describe('wasm kernel text helper seams', () => {
       { tag: ValueTag.String, value: 'beta', stringId: 0 },
       { tag: ValueTag.String, value: 'gamma', stringId: 0 },
     ])
+  })
+
+  it('aligns TEXTBEFORE and TEXTAFTER delimiter boundary behavior', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 3, 9, 1, 1)
+    kernel.uploadStrings(Uint32Array.from([0, 0, 5]), Uint32Array.from([0, 5, 1]), asciiCodes('alpha-'))
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushString(1), encodePushString(0), encodeCall(BuiltinId.Textbefore, 2), encodeRet()],
+      [encodePushString(1), encodePushString(0), encodePushNumber(0), encodeCall(BuiltinId.Textbefore, 3), encodeRet()],
+      [encodePushString(1), encodePushString(0), encodeCall(BuiltinId.Textafter, 2), encodeRet()],
+      [encodePushString(1), encodePushString(0), encodePushNumber(0), encodeCall(BuiltinId.Textafter, 3), encodeRet()],
+      [
+        encodePushString(1),
+        encodePushString(2),
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodeCall(BuiltinId.Textbefore, 5),
+        encodeRet(),
+      ],
+      [
+        encodePushString(1),
+        encodePushString(2),
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodeCall(BuiltinId.Textafter, 5),
+        encodeRet(),
+      ],
+      [encodePushString(1), encodePushString(2), encodePushNumber(0), encodeCall(BuiltinId.Textbefore, 3), encodeRet()],
+    ])
+    const constants = packConstants([[], [-1], [], [-1], [1, 0, 1], [1, 0, 1], [6]])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([
+        cellIndex(1, 0, width),
+        cellIndex(1, 1, width),
+        cellIndex(1, 2, width),
+        cellIndex(1, 3, width),
+        cellIndex(1, 4, width),
+        cellIndex(1, 5, width),
+        cellIndex(1, 6, width),
+      ]),
+    )
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(
+      Uint32Array.from([
+        cellIndex(1, 0, width),
+        cellIndex(1, 1, width),
+        cellIndex(1, 2, width),
+        cellIndex(1, 3, width),
+        cellIndex(1, 4, width),
+        cellIndex(1, 5, width),
+        cellIndex(1, 6, width),
+      ]),
+    )
+
+    expect(kernel.readOutputStrings()).toEqual(['', 'alpha', 'alpha', '', 'alpha', ''])
+    expect(kernel.readTags()[cellIndex(1, 6, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 6, width)]).toBe(ErrorCode.Value)
   })
 })

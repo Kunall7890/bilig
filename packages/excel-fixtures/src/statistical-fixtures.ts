@@ -91,11 +91,32 @@ export const canonicalStatisticalFixtures: readonly ExcelFixtureCase[] = [
     [output('C1', numberExpected(1))],
   ),
   fixture(
+    'gauss-numeric-text-coercion',
+    'GAUSS coerces direct numeric text arguments',
+    '=GAUSS("0")',
+    [],
+    [output('C1', numberExpected(0))],
+  ),
+  fixture(
+    'norm-dist-numeric-logical-text-coercion',
+    'NORM.DIST coerces direct numeric text and logical text arguments',
+    '=NORM.DIST("1","0","1","TRUE")',
+    [],
+    [output('C1', numberExpected(0.8413447460685429))],
+  ),
+  fixture(
     'confidence-norm-basic',
     'CONFIDENCE.NORM returns the normal confidence interval half-width',
     '=CONFIDENCE.NORM(0.05,1,100)',
     [],
     [output('C1', numberExpected(0.1959963984540054))],
+  ),
+  fixture(
+    'confidence-norm-numeric-text-coercion',
+    'CONFIDENCE.NORM coerces direct numeric text arguments',
+    '=CONFIDENCE.NORM("0.05","1","10")',
+    [],
+    [output('C1', numberExpected(0.6197950322720068))],
   ),
   fixture(
     'confidence-norm-alpha-domain-error',
@@ -487,6 +508,13 @@ export const canonicalStatisticalFixtures: readonly ExcelFixtureCase[] = [
     [output('C1', numberExpected(24))],
   ),
   fixture(
+    'gamma-numeric-text-coercion',
+    'GAMMA coerces direct numeric text arguments',
+    '=GAMMA("2")',
+    [],
+    [output('C1', numberExpected(1))],
+  ),
+  fixture(
     'gamma-nonpositive-integer-num-error',
     'GAMMA returns #NUM! for zero and negative integers',
     '=GAMMA(0)',
@@ -541,6 +569,20 @@ export const canonicalStatisticalFixtures: readonly ExcelFixtureCase[] = [
     '=GAMMA.INV(-0.1,3,2)',
     [],
     [output('C1', errorExpected(ErrorCode.Num, '#NUM!'))],
+  ),
+  fixture(
+    'beta-dist-numeric-logical-text-coercion',
+    'BETA.DIST coerces direct numeric text and logical text arguments',
+    '=BETA.DIST("0.5","2","3","TRUE")',
+    [],
+    [output('C1', numberExpected(0.6875))],
+  ),
+  fixture(
+    'binom-dist-numeric-logical-text-coercion',
+    'BINOM.DIST coerces direct numeric text and logical text arguments',
+    '=BINOM.DIST("1","3","0.5","FALSE")',
+    [],
+    [output('C1', numberExpected(0.375))],
   ),
   fixture(
     'gammainv-parameter-domain-error',

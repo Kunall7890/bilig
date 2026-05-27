@@ -179,7 +179,10 @@ describe('text builtins', () => {
     expect(TEXTAFTER(text('Alpha-beta'), text('A'), number(1), number(1))).toEqual(text('lpha-beta'))
     expect(TEXTAFTER(text('alpha'), text('-'), number(1), number(0), number(0), text('fallback'))).toEqual(text('fallback'))
     expect(TEXTAFTER(text('alpha-beta-gamma'), text('-'), number(-1))).toEqual(text('gamma'))
-    expect(TEXTAFTER(text('alpha'), text('-'), number(-1), number(0), number(1))).toEqual(err(ErrorCode.NA))
+    expect(TEXTAFTER(text('alpha'), text('-'), number(1), number(0), number(1))).toEqual(text(''))
+    expect(TEXTAFTER(text('alpha'), text('-'), number(-1), number(0), number(1))).toEqual(text(''))
+    expect(TEXTAFTER(text('alpha'), text(''))).toEqual(text('alpha'))
+    expect(TEXTAFTER(text('alpha'), text(''), number(-1))).toEqual(text(''))
     expect(TEXTAFTER(err(ErrorCode.Ref), text('-'))).toEqual(err(ErrorCode.Ref))
   })
 
@@ -210,7 +213,10 @@ describe('text builtins', () => {
     expect(TEXTBEFORE(text('Alpha-beta'), text('a'), number(2), number(1))).toEqual(text('Alph'))
     expect(TEXTBEFORE(text('alpha'), text('-'), number(1), number(0), number(0), text('fallback'))).toEqual(text('fallback'))
     expect(TEXTBEFORE(text('alpha-beta'), text('-'), number(-5), number(0), number(1), text('edge'))).toEqual(text('edge'))
-    expect(TEXTBEFORE(text('alpha'), text('-'), number(-1), number(0), number(1))).toEqual(err(ErrorCode.NA))
+    expect(TEXTBEFORE(text('alpha'), text('-'), number(1), number(0), number(1))).toEqual(text('alpha'))
+    expect(TEXTBEFORE(text('alpha'), text('-'), number(-1), number(0), number(1))).toEqual(text('alpha'))
+    expect(TEXTBEFORE(text('alpha'), text(''))).toEqual(text(''))
+    expect(TEXTBEFORE(text('alpha'), text(''), number(-1))).toEqual(text('alpha'))
   })
 
   it('supports REPLACE, SUBSTITUTE, and REPT', () => {
@@ -373,9 +379,13 @@ describe('text builtins', () => {
     const TEXTBEFORE = getTextBuiltin('TEXTBEFORE')!
 
     expect(TEXTBEFORE()).toEqual(valueError())
-    expect(TEXTBEFORE(text('alpha'), text(''))).toEqual(valueError())
+    expect(TEXTBEFORE(text('alpha'), text(''))).toEqual(text(''))
+    expect(TEXTBEFORE(text(''), text('-'))).toEqual(text(''))
     expect(TEXTBEFORE(text('alpha'), text('-'), number(0))).toEqual(valueError())
+    expect(TEXTBEFORE(text('abc'), text('-'), number(4))).toEqual(valueError())
+    expect(TEXTBEFORE(text('abc'), text(''), number(4))).toEqual(valueError())
     expect(TEXTBEFORE(text('alpha'), text('-'), number(1), number(2))).toEqual(valueError())
+    expect(TEXTBEFORE(text('alpha'), text('-'), number(1), number(0), number(2))).toEqual(valueError())
     expect(TEXTBEFORE(text('alpha'), text('-'), number(1), number(0), number(0))).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.NA,
@@ -387,8 +397,11 @@ describe('text builtins', () => {
     expect(getTextBuiltin('VALUE')?.()).toEqual(valueError())
     expect(getTextBuiltin('VALUE')?.(err(ErrorCode.Name))).toEqual(err(ErrorCode.Name))
     expect(getTextBuiltin('TEXTAFTER')?.()).toEqual(valueError())
-    expect(getTextBuiltin('TEXTAFTER')?.(text('alpha'), text(''))).toEqual(valueError())
+    expect(getTextBuiltin('TEXTAFTER')?.(text('alpha'), text(''))).toEqual(text('alpha'))
+    expect(getTextBuiltin('TEXTAFTER')?.(text('abc'), text('-'), number(4))).toEqual(valueError())
+    expect(getTextBuiltin('TEXTAFTER')?.(text('abc'), text(''), number(4))).toEqual(valueError())
     expect(getTextBuiltin('TEXTAFTER')?.(text('alpha'), text('-'), number(1), number(2))).toEqual(valueError())
+    expect(getTextBuiltin('TEXTAFTER')?.(text('alpha'), text('-'), number(1), number(0), number(2))).toEqual(valueError())
     expect(getTextBuiltin('TEXTAFTER')?.(text('alpha'), text('-'), number(1), number(0), number(0))).toEqual(err(ErrorCode.NA))
   })
 
