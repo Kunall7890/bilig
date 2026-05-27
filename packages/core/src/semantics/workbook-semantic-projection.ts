@@ -180,10 +180,22 @@ export function normalizeWorkbookSnapshotForSemanticComparison(snapshot: Workboo
     }
     const metadata: WorkbookSheetMetadataSemantics = { ...sheet.metadata }
     if (sheet.metadata.rows) {
-      metadata.rows = sheet.metadata.rows.map(({ id: _id, ...rest }) => rest).toSorted((left, right) => left.index - right.index)
+      metadata.rows = sheet.metadata.rows
+        .map(({ id: _id, ...rest }) => rest)
+        .filter(hasUserVisibleAxisEntry)
+        .toSorted((left, right) => left.index - right.index)
+      if (metadata.rows.length === 0) {
+        delete metadata.rows
+      }
     }
     if (sheet.metadata.columns) {
-      metadata.columns = sheet.metadata.columns.map(({ id: _id, ...rest }) => rest).toSorted((left, right) => left.index - right.index)
+      metadata.columns = sheet.metadata.columns
+        .map(({ id: _id, ...rest }) => rest)
+        .filter(hasUserVisibleAxisEntry)
+        .toSorted((left, right) => left.index - right.index)
+      if (metadata.columns.length === 0) {
+        delete metadata.columns
+      }
     }
     if (metadata.rowMetadata) {
       metadata.rowMetadata = metadata.rowMetadata.toSorted((left, right) => left.start - right.start || left.count - right.count)
@@ -346,8 +358,8 @@ export function projectWorkbookSemanticSnapshot(snapshot: WorkbookSnapshot): Wor
       .toSorted((left, right) => left.order - right.order)
       .map((sheet) => ({
         name: sheet.name,
-        columns: (sheet.metadata?.columns ?? []).map(projectDimensionAxisEntry).toSorted((left, right) => left.index - right.index),
-        rows: (sheet.metadata?.rows ?? []).map(projectDimensionAxisEntry).toSorted((left, right) => left.index - right.index),
+        columns: projectDimensionAxisEntries(sheet.metadata?.columns ?? []),
+        rows: projectDimensionAxisEntries(sheet.metadata?.rows ?? []),
         merges: (sheet.metadata?.merges ?? [])
           .map(({ sheetName, startAddress, endAddress }) => ({ sheetName, startAddress, endAddress }))
           .toSorted((left, right) => compareRangeSortKeys(left, right)),
@@ -481,6 +493,19 @@ function projectDimensionAxisEntry(entry: { readonly index: number; readonly siz
     index: entry.index,
     ...(entry.size !== undefined ? { size: entry.size } : {}),
   }
+}
+
+function projectDimensionAxisEntries(
+  entries: readonly { readonly index: number; readonly size?: number | null }[],
+): ProjectedWorkbookDimensionAxisEntry[] {
+  return entries
+    .map(projectDimensionAxisEntry)
+    .filter((entry) => entry.size !== undefined)
+    .toSorted((left, right) => left.index - right.index)
+}
+
+function hasUserVisibleAxisEntry(entry: { readonly index: number; readonly [key: string]: unknown }): boolean {
+  return Object.keys(entry).some((key) => key !== 'index' && entry[key] !== undefined)
 }
 
 function projectValidationSemantics(validation: WorkbookDataValidationSnapshot): WorkbookDataValidationSnapshot {

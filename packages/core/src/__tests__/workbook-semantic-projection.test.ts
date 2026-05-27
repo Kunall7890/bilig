@@ -197,6 +197,41 @@ describe('workbook semantic projection', () => {
     expect(projectWorkbookSemanticSnapshot(left)).toEqual(projectWorkbookSemanticSnapshot(right))
   })
 
+  it('ignores identity-only dimension entries with no user-visible geometry', () => {
+    const withIdentityOnlyColumn: WorkbookSnapshot = {
+      ...baseSnapshot,
+      sheets: [
+        {
+          name: 'Sheet1',
+          order: 0,
+          metadata: {
+            columns: [{ id: 'column-1', index: 0 }],
+            rows: [{ id: 'row-1', index: 0, size: 28 }],
+          },
+          cells: [],
+        },
+      ],
+    }
+    const withoutIdentityOnlyColumn: WorkbookSnapshot = {
+      ...baseSnapshot,
+      sheets: [
+        {
+          name: 'Sheet1',
+          order: 0,
+          metadata: {
+            rows: [{ id: 'row-1', index: 0, size: 28 }],
+          },
+          cells: [],
+        },
+      ],
+    }
+
+    expect(projectWorkbookSemanticSnapshot(withIdentityOnlyColumn)).toEqual(projectWorkbookSemanticSnapshot(withoutIdentityOnlyColumn))
+    expect(normalizeWorkbookSnapshotForSemanticComparison(withIdentityOnlyColumn)).toEqual(
+      normalizeWorkbookSnapshotForSemanticComparison(withoutIdentityOnlyColumn),
+    )
+  })
+
   it('reports stable projection paths for semantic differences', () => {
     const left: WorkbookSnapshot = {
       ...baseSnapshot,
