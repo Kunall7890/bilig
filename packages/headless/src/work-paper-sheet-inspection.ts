@@ -226,7 +226,11 @@ export function cellHasFormulaPrefix(value: string): boolean {
 }
 
 export function workPaperFormulaMayResizeDynamically(value: string): boolean {
-  const formula = stripFormulaPrefix(value)
+  const formulaStart = formulaBodyStart(value)
+  if (formulaStart >= 0 && isSimpleScalarExpressionSource(value, formulaStart, value.length)) {
+    return false
+  }
+  const formula = formulaStart < 0 ? stripFormulaPrefix(value) : value.slice(formulaStart)
   if (isDefinitelyScalarFormulaShape(formula)) {
     return false
   }
@@ -273,6 +277,120 @@ function isSimpleScalarExpressionShape(formula: string): boolean {
     }
   }
   return true
+}
+
+function formulaBodyStart(value: string): number {
+  let index = 0
+  while (index < value.length && isScalarFormulaWhitespace(value.charCodeAt(index))) {
+    index += 1
+  }
+  return value.charCodeAt(index) === 61 ? index + 1 : -1
+}
+
+function isSimpleScalarExpressionSource(value: string, start: number, end: number): boolean {
+  let index = readSimpleScalarOperandSource(value, start, end)
+  if (index <= start) {
+    return false
+  }
+  while (index < end) {
+    const operator = value.charCodeAt(index)
+    if (operator !== 43 && operator !== 45 && operator !== 42 && operator !== 47) {
+      return false
+    }
+    const next = readSimpleScalarOperandSource(value, index + 1, end)
+    if (next <= index + 1) {
+      return false
+    }
+    index = next
+  }
+  return true
+}
+
+function readSimpleScalarOperandSource(value: string, start: number, end: number): number {
+  const numberEnd = readSimpleScalarNumberSource(value, start, end)
+  if (numberEnd > start) {
+    return numberEnd
+  }
+  return readSimpleScalarCellRefSource(value, start, end)
+}
+
+function readSimpleScalarNumberSource(value: string, start: number, end: number): number {
+  let index = start
+  while (index < end && isAsciiDigit(value.charCodeAt(index))) {
+    index += 1
+  }
+  if (index < end && value.charCodeAt(index) === 46) {
+    const fractionStart = index + 1
+    index = fractionStart
+    while (index < end && isAsciiDigit(value.charCodeAt(index))) {
+      index += 1
+    }
+    return index === fractionStart ? start : index
+  }
+  return index
+}
+
+function readSimpleScalarCellRefSource(value: string, start: number, end: number): number {
+  let index = skipSimpleSheetQualifier(value, start, end)
+  if (value.charCodeAt(index) === 36) {
+    index += 1
+  }
+  const columnStart = index
+  while (index < end && isAsciiAlpha(value.charCodeAt(index))) {
+    index += 1
+  }
+  if (index === columnStart) {
+    return start
+  }
+  if (value.charCodeAt(index) === 36) {
+    index += 1
+  }
+  const rowStart = index
+  while (index < end && isAsciiDigit(value.charCodeAt(index))) {
+    index += 1
+  }
+  return index === rowStart ? start : index
+}
+
+function skipSimpleSheetQualifier(value: string, start: number, end: number): number {
+  if (value.charCodeAt(start) === 39) {
+    let index = start + 1
+    while (index < end) {
+      const charCode = value.charCodeAt(index)
+      if (charCode === 39) {
+        if (value.charCodeAt(index + 1) === 39) {
+          index += 2
+          continue
+        }
+        return value.charCodeAt(index + 1) === 33 ? index + 2 : start
+      }
+      index += 1
+    }
+    return start
+  }
+
+  let index = start
+  while (index < end) {
+    const charCode = value.charCodeAt(index)
+    if (charCode === 33) {
+      return index > start ? index + 1 : start
+    }
+    if (
+      charCode === 36 ||
+      charCode === 43 ||
+      charCode === 45 ||
+      charCode === 42 ||
+      charCode === 47 ||
+      charCode === 40 ||
+      charCode === 41 ||
+      charCode === 44 ||
+      charCode === 58
+    ) {
+      return start
+    }
+    index += 1
+  }
+  return start
 }
 
 function readSimpleScalarOperand(formula: string, start: number): number {
@@ -377,6 +495,10 @@ function isAsciiDigit(charCode: number): boolean {
 
 function isAsciiUpperAlpha(charCode: number): boolean {
   return charCode >= 65 && charCode <= 90
+}
+
+function isAsciiAlpha(charCode: number): boolean {
+  return (charCode >= 65 && charCode <= 90) || (charCode >= 97 && charCode <= 122)
 }
 
 function stripFormulaPrefix(value: string): string {
