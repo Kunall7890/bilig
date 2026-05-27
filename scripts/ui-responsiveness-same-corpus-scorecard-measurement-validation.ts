@@ -3,6 +3,7 @@ import type {
   UiResponsivenessSameCorpusProduct,
 } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import { sameCorpusSampleCount } from './ui-responsiveness-same-corpus-guardrails.ts'
+import { validateSameCorpusMutationTargetTimingSamplesMatchArrays } from './ui-responsiveness-same-corpus-mutation-timing-samples.ts'
 import { validateOrderedSameCorpusTimingSamples } from './ui-responsiveness-same-corpus-ordered-timing-samples.ts'
 import { validateBiligRuntimeProof } from './ui-responsiveness-same-corpus-bilig-runtime-proof.ts'
 import { validateSameCorpusCaptureVerification, validateSummary } from './ui-responsiveness-same-corpus-validation-helpers.ts'
@@ -67,6 +68,15 @@ function validateMutationTimingSamples(
     measurement.committedTargetProofMs,
     `${caseId} ${product} committedTargetProofMs`,
   )
+  validateSameCorpusMutationTargetTimingSamplesMatchArrays(measurement.committedTargetProofTimingSamples, {
+    committedStateValidationMsSamples: measurement.committedStateValidationMsSamples,
+    committedTargetProofMsSamples: measurement.committedTargetProofMsSamples,
+    expectedLength: sameCorpusSampleCount,
+    expectedProduct: product,
+    label: `${caseId} ${product} committedTargetProofMs`,
+    restoreValidationMsSamples: measurement.restoreValidationMsSamples,
+    visibleTargetRenderMsSamples: measurement.visibleTargetRenderMsSamples,
+  })
   validateOrderedSameCorpusTimingSamples(
     measurement.visibleTargetRenderMsSamples,
     measurement.visibleTargetRenderMs,

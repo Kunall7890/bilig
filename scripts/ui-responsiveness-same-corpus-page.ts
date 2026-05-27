@@ -42,6 +42,7 @@ import {
   captureSameCorpusMutationTargetPhaseScreenshot,
   captureSameCorpusMutationTargetProofForSample,
 } from './ui-responsiveness-same-corpus-mutation-target-capture.ts'
+import { sameCorpusMutationTargetTimingSample } from './ui-responsiveness-same-corpus-mutation-timing-samples.ts'
 import {
   captureSameCorpusCommittedStatePhaseProof,
   sameCorpusCommittedStateProofArtifactPath,
@@ -415,6 +416,7 @@ export async function measureProduct(
     ...(uiSameCorpusWorkloadMutatesWorkbook(workload)
       ? {
           committedTargetProofMsSamples: collection.samples.map((entry) => entry.committedTargetProofMs ?? Number.NaN),
+          committedTargetProofTimingSamples: collection.mutationTargetProofs.map(sameCorpusMutationTargetTimingSample),
           visibleTargetRenderMsSamples: collection.samples.map((entry) => entry.visibleTargetRenderMs ?? Number.NaN),
           committedStateValidationMsSamples: collection.samples.map((entry) => entry.committedStateValidationMs ?? Number.NaN),
           restoreValidationMsSamples: collection.samples.map((entry) => entry.restoreValidationMs ?? Number.NaN),

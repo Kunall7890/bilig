@@ -36,6 +36,7 @@ import {
   type SameCorpusProofArchiveArtifact,
 } from '../ui-responsiveness-same-corpus-proof-archive.ts'
 import { sameCorpusMutationTargetProofSignature } from '../ui-responsiveness-same-corpus-mutation-target-signature.ts'
+import { sameCorpusMutationTargetTimingSample } from '../ui-responsiveness-same-corpus-mutation-timing-samples.ts'
 import {
   buildCaptureScenarioProof,
   validateSameCorpusProductPixelGridProof,
@@ -349,7 +350,7 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(() => buildSameCorpusProof(staleCapture)).toThrow('UI responsiveness same-corpus capture scenario summary fields are stale')
   })
 
-  it('does not count mutating workloads as claim-ready without committed target proof timing', () => {
+  it('rejects mutating workloads without committed target proof timing records', () => {
     const capture = buildSameCorpusCapture()
     const cases = capture.cases.map((entry) => {
       if (entry.workload !== 'edit-visible-cell') {
@@ -374,28 +375,14 @@ describe('UI responsiveness live browser scorecard', () => {
         ...(microsoftExcelWeb ? { microsoftExcelWeb } : {}),
       }
     })
-    const proof = buildSameCorpusProof(
-      withCaptureRunManifest({
-        ...capture,
-        cases,
-      }),
-    )
-
-    expect(proof.cases.find((entry) => entry.workload === 'edit-visible-cell')).toMatchObject({
-      committedTargetProofGuardrailPassed: false,
-      tenXMeanAndP95Metric: 'visibleTargetRenderMs',
-      tenXMeanAndP95AgainstGoogleSheets: false,
-      passed: false,
-    })
-    expect(proof.runManifest).toMatchObject({
-      requiredCommittedTargetProofTimingCaseCount: 3,
-      committedTargetProofTimingCaseCount: 2,
-      requiredCommittedTargetProofTimingSampleCount: 18,
-      committedTargetProofTimingSampleCount: 12,
-      currentContractEvidenceComplete: false,
-    })
-    expect(proof.runManifest?.invalidReasons).toContain('committed target proof timing covers 2/3 mutating cases')
-    expect(proof.runManifest?.invalidReasons).toContain('committed target proof timing covers 12/18 required per-sample product timings')
+    expect(() =>
+      buildSameCorpusProof(
+        withCaptureRunManifest({
+          ...capture,
+          cases,
+        }),
+      ),
+    ).toThrow('same-corpus-wide-mixed-250k-edit-visible-cell bilig is missing mutation target timing samples')
   })
 
   it('keeps the same-corpus blocker for honestly reported weak Bilig pixel proof', () => {
@@ -1191,6 +1178,7 @@ function sameCorpusCaptureMeasurementFixture(
     ...(uiSameCorpusWorkloadMutatesWorkbook(workload)
       ? {
           committedTargetProofMsSamples: [0, 1, 2].map((sampleIndex) => sameCorpusMutationTargetCommittedProofMs(product, sampleIndex)),
+          committedTargetProofTimingSamples: sameCorpusMutationTargetProofs(product, workload).map(sameCorpusMutationTargetTimingSample),
           visibleTargetRenderMsSamples: [0, 1, 2].map((sampleIndex) => sameCorpusMutationTargetVisibleRenderMs(product, sampleIndex)),
           committedStateValidationMsSamples: [0, 1, 2].map(
             (sampleIndex) =>
@@ -1761,12 +1749,14 @@ function withoutCommittedTargetProofTiming(measurement: SameCorpusCaptureMeasure
   const {
     committedStateValidationMsSamples,
     committedTargetProofMsSamples,
+    committedTargetProofTimingSamples,
     restoreValidationMsSamples,
     visibleTargetRenderMsSamples,
     ...rest
   } = measurement
   void committedStateValidationMsSamples
   void committedTargetProofMsSamples
+  void committedTargetProofTimingSamples
   void restoreValidationMsSamples
   void visibleTargetRenderMsSamples
   return rest

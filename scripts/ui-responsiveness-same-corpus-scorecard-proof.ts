@@ -59,6 +59,7 @@ import {
   sameCorpusVisibleTargetRenderMetrics,
 } from './ui-responsiveness-same-corpus-scorecard-measurement.ts'
 import { validateSameCorpusScorecardMeasurement } from './ui-responsiveness-same-corpus-scorecard-measurement-validation.ts'
+import { validateSameCorpusMutationTargetTimingSamplesMatchArrays } from './ui-responsiveness-same-corpus-mutation-timing-samples.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadMutatesWorkbook,
@@ -77,6 +78,7 @@ export type {
   SameCorpusCaptureMeasurement,
   SameCorpusCaptureRunManifest,
   SameCorpusCaptureVerifiedCell,
+  SameCorpusMutationTargetTimingSample,
   SameCorpusOperationResponseProof,
   SameCorpusScenarioCaseFields,
   SameCorpusProductSourceWorkbookFingerprint,
@@ -530,6 +532,17 @@ function validateSameCorpusCapture(capture: SameCorpusCapture): void {
         `restore validation timing`,
         entry.id,
       )
+      if (uiSameCorpusWorkloadMutatesWorkbook(entry.workload)) {
+        validateSameCorpusMutationTargetTimingSamplesMatchArrays(measurement.committedTargetProofTimingSamples, {
+          committedStateValidationMsSamples: measurement.committedStateValidationMsSamples,
+          committedTargetProofMsSamples: measurement.committedTargetProofMsSamples,
+          expectedLength: capture.sampleCount,
+          expectedProduct: measurement.product,
+          label: `${entry.id} ${measurement.product}`,
+          restoreValidationMsSamples: measurement.restoreValidationMsSamples,
+          visibleTargetRenderMsSamples: measurement.visibleTargetRenderMsSamples,
+        })
+      }
       if (
         requiresScrollEventSamples &&
         ((measurement.scrollEventResponseMsSamples?.length ?? 0) < capture.sampleCount ||

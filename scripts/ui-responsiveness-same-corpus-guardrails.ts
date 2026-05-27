@@ -1,6 +1,7 @@
 import type {
   SameCorpusCaptureCase,
   SameCorpusCaptureMeasurement,
+  SameCorpusMutationTargetTimingSample,
   SameCorpusOperationResponseProof,
   UiResponsivenessSameCorpusCase,
   UiResponsivenessSameCorpusMeasurement,
@@ -11,6 +12,10 @@ import {
   type SameCorpusMutationTargetProof,
   type SameCorpusProductSemanticUiProof,
 } from './ui-responsiveness-same-corpus-proof.ts'
+import {
+  sameCorpusMutationTargetTimingSampleMatchesProof,
+  sameCorpusTimingValuesMatch,
+} from './ui-responsiveness-same-corpus-mutation-timing-samples.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadMutatesWorkbook,
@@ -24,6 +29,7 @@ export interface SameCorpusCommittedTargetProofTimingMeasurement {
   readonly product: UiResponsivenessSameCorpusProduct
   readonly committedTargetProofMs?: { readonly samples: readonly number[] } | undefined
   readonly committedTargetProofMsSamples?: readonly number[] | undefined
+  readonly committedTargetProofTimingSamples?: readonly SameCorpusMutationTargetTimingSample[] | undefined
   readonly visibleTargetRenderMs?: { readonly samples: readonly number[] } | undefined
   readonly visibleTargetRenderMsSamples?: readonly number[] | undefined
   readonly committedStateValidationMs?: { readonly samples: readonly number[] } | undefined
@@ -103,6 +109,7 @@ export function hasBiligAuthoritativeRenderProofTiming(
 
 export function hasCommittedTargetProofTiming(measurement: SameCorpusCommittedTargetProofTimingMeasurement, sampleCount: number): boolean {
   return (
+    hasSameCorpusTimingProofSamples(measurement, sampleCount) &&
     hasSameCorpusTimingSamples(measurement.committedTargetProofMsSamples, sampleCount) &&
     hasSameCorpusTimingSamples(measurement.visibleTargetRenderMsSamples, sampleCount) &&
     hasSameCorpusTimingSamples(measurement.committedStateValidationMsSamples, sampleCount) &&
@@ -220,6 +227,10 @@ function committedTargetProofTimingMatchesMeasurement(
   sample: SameCorpusMutationTargetProof,
   sampleIndex: number,
 ): boolean {
+  const timingSample = measurement.committedTargetProofTimingSamples?.find((candidate) => candidate.sampleIndex === sampleIndex)
+  if (!timingSample || !sameCorpusMutationTargetTimingSampleMatchesProof(timingSample, sample)) {
+    return false
+  }
   return (
     sameCorpusTimingSampleMatches(committedTargetProofTimingSamples(measurement), sampleIndex, sample.committedTargetProofMs) &&
     sameCorpusTimingSampleMatches(visibleTargetRenderTimingSamples(measurement), sampleIndex, sample.visibleTargetRenderMs) &&
@@ -270,8 +281,35 @@ function hasSameCorpusTimingSamples(samples: readonly number[] | undefined, samp
   return Boolean(samples && samples.length >= sampleCount && samples.every((value) => Number.isFinite(value) && value >= 0))
 }
 
-function sameCorpusTimingValuesMatch(left: number, right: number): boolean {
-  return Number.isFinite(left) && left >= 0 && Number.isFinite(right) && right >= 0 && Math.abs(left - right) <= 1
+function hasSameCorpusTimingProofSamples(measurement: SameCorpusCommittedTargetProofTimingMeasurement, sampleCount: number): boolean {
+  const samples = measurement.committedTargetProofTimingSamples
+  if (!samples || samples.length < sampleCount) {
+    return false
+  }
+  const sampleIndexes = new Set<number>()
+  for (const sample of samples) {
+    if (
+      sample.product !== measurement.product ||
+      !Number.isInteger(sample.sampleIndex) ||
+      sample.sampleIndex < 0 ||
+      sampleIndexes.has(sample.sampleIndex) ||
+      sample.targetRange.trim().length === 0 ||
+      sample.targetProofSignature.trim().length === 0 ||
+      !sameCorpusTimingValuesMatch(sample.committedTargetProofMs, sample.committedTargetProofMs) ||
+      !sameCorpusTimingValuesMatch(sample.visibleTargetRenderMs, sample.visibleTargetRenderMs) ||
+      !sameCorpusTimingValuesMatch(sample.committedStateValidationMs, sample.committedStateValidationMs) ||
+      !sameCorpusTimingValuesMatch(sample.restoreValidationMs, sample.restoreValidationMs)
+    ) {
+      return false
+    }
+    sampleIndexes.add(sample.sampleIndex)
+  }
+  for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex += 1) {
+    if (!sampleIndexes.has(sampleIndex)) {
+      return false
+    }
+  }
+  return true
 }
 
 function sameCorpusSemanticProductProof(

@@ -48,6 +48,7 @@ import {
   type SameCorpusNameBoxPage,
 } from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
 import { sameCorpusMutationTargetProofSignature } from '../ui-responsiveness-same-corpus-mutation-target-signature.ts'
+import { sameCorpusMutationTargetTimingSample } from '../ui-responsiveness-same-corpus-mutation-timing-samples.ts'
 import { sameCorpusChromiumLaunchOptions } from '../ui-responsiveness-same-corpus-page-utils.ts'
 import {
   captureArgsForProductRefresh,
@@ -530,6 +531,9 @@ describe('same-corpus UI responsiveness capture CLI', () => {
           operationResponseMsSamples: [10, 11, 12],
           ...(product === 'bilig' ? { authoritativeRenderProofMsSamples: [14, 15, 16] } : {}),
           committedTargetProofMsSamples: [40, 41, 42],
+          committedTargetProofTimingSamples: sameCorpusMutationTargetProofs(product, 'formula-edit').map(
+            sameCorpusMutationTargetTimingSample,
+          ),
           postOperationFrameMsSamples: [8, 9, 10],
           corpusVerification: {
             verified: true,
@@ -962,6 +966,9 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       ...sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export', 'fill-format-change'),
       operationResponseMsSamples: [90, 91, 92],
       committedTargetProofMsSamples: [120, 121, 122],
+      committedTargetProofTimingSamples: sameCorpusMutationTargetProofs('google-sheets', 'fill-format-change').map((proof) =>
+        Object.assign(sameCorpusMutationTargetTimingSample(proof), { committedTargetProofMs: 120 + proof.sampleIndex }),
+      ),
     }
     const visualProofs = [
       ...sameCorpusVisualProofsFromScenarioProof(entry.scenarioProof, entry.id).filter((proof) => proof.product !== 'google-sheets'),
@@ -2173,6 +2180,7 @@ function sameCorpusCaptureMeasurement(
     ...(uiSameCorpusWorkloadMutatesWorkbook(workload)
       ? {
           committedTargetProofMsSamples: [40, 41, 42],
+          committedTargetProofTimingSamples: sameCorpusMutationTargetProofs(product, workload).map(sameCorpusMutationTargetTimingSample),
           visibleTargetRenderMsSamples: [12, 13, 14],
           committedStateValidationMsSamples: [28, 28, 28],
           restoreValidationMsSamples: [80, 80, 80],

@@ -14,6 +14,19 @@ import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-sam
 export type UiResponsivenessSameCorpusProduct = 'bilig' | 'google-sheets' | 'microsoft-excel-web'
 export type SameCorpusOperationResponseProof = 'load-to-ready' | 'visible-non-scroll-response' | 'visible-scroll-movement'
 
+export interface SameCorpusMutationTargetTimingSample {
+  readonly sampleIndex: number
+  readonly product: UiResponsivenessSameCorpusProduct
+  readonly sheetName: string
+  readonly sheetId: string | null
+  readonly targetRange: string
+  readonly targetProofSignature: string
+  readonly committedTargetProofMs: number
+  readonly visibleTargetRenderMs: number
+  readonly committedStateValidationMs: number
+  readonly restoreValidationMs: number
+}
+
 export interface UiResponsivenessSameCorpusMeasurement {
   readonly product: UiResponsivenessSameCorpusProduct
   readonly source: string
@@ -22,6 +35,7 @@ export interface UiResponsivenessSameCorpusMeasurement {
   readonly authoritativeRenderProofMs?: NumericSummary
   readonly committedTargetProofMs?: NumericSummary
   readonly committedTargetProofMsSamples?: readonly number[]
+  readonly committedTargetProofTimingSamples?: readonly SameCorpusMutationTargetTimingSample[]
   readonly visibleTargetRenderMs?: NumericSummary
   readonly visibleTargetRenderMsSamples?: readonly number[]
   readonly committedStateValidationMs?: NumericSummary
@@ -257,6 +271,7 @@ export interface SameCorpusCaptureMeasurement {
   readonly operationResponseProofs: SameCorpusOperationResponseProof[]
   readonly authoritativeRenderProofMsSamples?: number[]
   readonly committedTargetProofMsSamples?: number[]
+  readonly committedTargetProofTimingSamples?: SameCorpusMutationTargetTimingSample[]
   readonly visibleTargetRenderMsSamples?: number[]
   readonly committedStateValidationMsSamples?: number[]
   readonly restoreValidationMsSamples?: number[]
@@ -312,4 +327,4 @@ export interface SameCorpusCaptureCorpusVerification {
   readonly checkedCells: readonly SameCorpusCaptureVerifiedCell[]
 }
 
-export const sameCorpusUiCaptureToolVersion = 'same-corpus-capture-v9'
+export const sameCorpusUiCaptureToolVersion = 'same-corpus-capture-v10'

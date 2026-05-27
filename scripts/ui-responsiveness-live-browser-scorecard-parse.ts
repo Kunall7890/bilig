@@ -55,7 +55,10 @@ import {
 } from './ui-responsiveness-same-corpus-mutation-target-parse.ts'
 import { sameCorpusUiCaptureToolVersion } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import { parseSameCorpusClaimReadinessState } from './ui-responsiveness-same-corpus-readiness-state.ts'
-import type { SameCorpusOperationResponseProof } from './ui-responsiveness-same-corpus-scorecard-types.ts'
+import type {
+  SameCorpusMutationTargetTimingSample,
+  SameCorpusOperationResponseProof,
+} from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import { isUiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export function parseUiResponsivenessLiveBrowserScorecard(value: Record<string, unknown>): UiResponsivenessLiveBrowserScorecard {
@@ -408,6 +411,13 @@ function parseSameCorpusCaptureMeasurement(
     ...(Object.hasOwn(value, 'committedTargetProofMsSamples')
       ? { committedTargetProofMsSamples: numericArrayField(value, 'committedTargetProofMsSamples') }
       : {}),
+    ...(Object.hasOwn(value, 'committedTargetProofTimingSamples')
+      ? {
+          committedTargetProofTimingSamples: arrayField(value, 'committedTargetProofTimingSamples').map(
+            parseSameCorpusMutationTargetTimingSample,
+          ),
+        }
+      : {}),
     ...(Object.hasOwn(value, 'visibleTargetRenderMsSamples')
       ? { visibleTargetRenderMsSamples: numericArrayField(value, 'visibleTargetRenderMsSamples') }
       : {}),
@@ -429,6 +439,22 @@ function parseSameCorpusCaptureMeasurement(
       : {}),
     corpusVerification: parseSameCorpusVerification(objectField(value, 'corpusVerification')),
     limitations: stringArrayField(value, 'limitations'),
+  }
+}
+
+function parseSameCorpusMutationTargetTimingSample(value: unknown): SameCorpusMutationTargetTimingSample {
+  const record = asObject(value, 'same-corpus mutation target timing sample')
+  return {
+    sampleIndex: numberField(record, 'sampleIndex'),
+    product: parseSameCorpusProduct(stringField(record, 'product')),
+    sheetName: stringField(record, 'sheetName'),
+    sheetId: nullableStringField(record, 'sheetId'),
+    targetRange: stringField(record, 'targetRange'),
+    targetProofSignature: stringField(record, 'targetProofSignature'),
+    committedTargetProofMs: numberField(record, 'committedTargetProofMs'),
+    visibleTargetRenderMs: numberField(record, 'visibleTargetRenderMs'),
+    committedStateValidationMs: numberField(record, 'committedStateValidationMs'),
+    restoreValidationMs: numberField(record, 'restoreValidationMs'),
   }
 }
 

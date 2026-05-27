@@ -4,6 +4,7 @@ import type {
   SameCorpusCaptureMeasurement,
   UiResponsivenessSameCorpusMeasurement,
 } from './ui-responsiveness-same-corpus-scorecard-types.ts'
+import { cloneSameCorpusMutationTargetTimingSamples } from './ui-responsiveness-same-corpus-mutation-timing-samples.ts'
 import { cloneSameCorpusVerification } from './ui-responsiveness-same-corpus-validation-helpers.ts'
 
 export function buildSameCorpusMeasurement(capture: SameCorpusCaptureMeasurement): UiResponsivenessSameCorpusMeasurement {
@@ -19,6 +20,9 @@ export function buildSameCorpusMeasurement(capture: SameCorpusCaptureMeasurement
       ? {
           committedTargetProofMs: summarizeNumbers(capture.committedTargetProofMsSamples),
           committedTargetProofMsSamples: [...capture.committedTargetProofMsSamples],
+          ...(capture.committedTargetProofTimingSamples
+            ? { committedTargetProofTimingSamples: cloneSameCorpusMutationTargetTimingSamples(capture.committedTargetProofTimingSamples) }
+            : {}),
         }
       : {}),
     ...(capture.visibleTargetRenderMsSamples

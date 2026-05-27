@@ -1,4 +1,5 @@
 import type { SameCorpusCaptureMeasurement, UiResponsivenessSameCorpusProduct } from './ui-responsiveness-same-corpus-scorecard-types.ts'
+import { validateSameCorpusMutationTargetTimingSamplesMatchArrays } from './ui-responsiveness-same-corpus-mutation-timing-samples.ts'
 import {
   uiSameCorpusWorkloadMutatesWorkbook,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
@@ -71,6 +72,15 @@ export function assertSameCorpusProductMeasurement(
       measurement.restoreValidationMsSamples,
       measurement.operationResponseMsSamples.length,
     )
+    validateSameCorpusMutationTargetTimingSamplesMatchArrays(measurement.committedTargetProofTimingSamples, {
+      committedStateValidationMsSamples: measurement.committedStateValidationMsSamples,
+      committedTargetProofMsSamples: measurement.committedTargetProofMsSamples,
+      expectedLength: measurement.operationResponseMsSamples.length,
+      expectedProduct: product,
+      label: `same-corpus UI measurement for ${product}`,
+      restoreValidationMsSamples: measurement.restoreValidationMsSamples,
+      visibleTargetRenderMsSamples: measurement.visibleTargetRenderMsSamples,
+    })
   }
 }
 

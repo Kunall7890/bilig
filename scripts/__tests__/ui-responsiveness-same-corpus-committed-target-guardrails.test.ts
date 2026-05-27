@@ -76,6 +76,41 @@ describe('same-corpus committed target proof guardrails', () => {
     })
   })
 
+  it('rejects timing records whose identity does not match the accepted target proof', () => {
+    const wrongRangeEntry = sameCorpusEditVisibleCellCase({
+      mapBiligMeasurement: (measurement) => ({
+        ...measurement,
+        committedTargetProofTimingSamples: measurement.committedTargetProofTimingSamples?.map((sample) =>
+          sample.sampleIndex === 1 ? { ...sample, targetRange: 'Z99' } : sample,
+        ),
+      }),
+    })
+    const wrongSignatureEntry = sameCorpusEditVisibleCellCase({
+      mapBiligMeasurement: (measurement) => ({
+        ...measurement,
+        committedTargetProofTimingSamples: measurement.committedTargetProofTimingSamples?.map((sample) =>
+          sample.sampleIndex === 2
+            ? {
+                ...sample,
+                targetProofSignature:
+                  measurement.committedTargetProofTimingSamples?.find((candidate) => candidate.sampleIndex === 0)?.targetProofSignature ??
+                  sample.targetProofSignature,
+              }
+            : sample,
+        ),
+      }),
+    })
+
+    for (const entry of [wrongRangeEntry, wrongSignatureEntry]) {
+      expect(hasAcceptedCommittedTargetProofTiming(entry, entry.bilig, 3)).toBe(false)
+      expect(hasAcceptedCommittedTargetProofTiming(entry, entry.googleSheets, 3)).toBe(true)
+      expect(sameCorpusCommittedTargetProofTimingCounts([entry], 3)).toMatchObject({
+        committedTargetProofTimingCaseCount: 0,
+        committedTargetProofTimingSampleCount: 5,
+      })
+    }
+  })
+
   it('rejects stale target proof samples even when raw timing samples are present', () => {
     const cases = [
       sameCorpusEditVisibleCellCase({
@@ -183,6 +218,18 @@ function sameCorpusMeasurement(product: 'bilig' | 'google-sheets'): SameCorpusCo
   return {
     product,
     committedTargetProofMsSamples: [0, 1, 2].map((sampleIndex) => committedTargetProofMs(product, sampleIndex)),
+    committedTargetProofTimingSamples: sameCorpusMutationTargetProofs(product).map((proof) => ({
+      sampleIndex: proof.sampleIndex,
+      product: proof.product,
+      sheetName: proof.sheetName,
+      sheetId: proof.sheetId,
+      targetRange: proof.targetRange,
+      targetProofSignature: proof.targetProofSignature ?? '',
+      committedTargetProofMs: proof.committedTargetProofMs,
+      visibleTargetRenderMs: proof.visibleTargetRenderMs,
+      committedStateValidationMs: proof.committedStateValidationMs,
+      restoreValidationMs: proof.restoreValidationMs,
+    })),
     visibleTargetRenderMsSamples: [0, 1, 2].map((sampleIndex) => visibleTargetRenderMs(product, sampleIndex)),
     committedStateValidationMsSamples: [0, 1, 2].map((sampleIndex) => committedStateValidationMs(product, sampleIndex)),
     restoreValidationMsSamples: [0, 1, 2].map((sampleIndex) => restoreValidationMs(product, sampleIndex)),
