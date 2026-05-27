@@ -35,6 +35,7 @@ export interface TextFixtureGroup {
     | 'SEARCHB'
     | 'REPLACE'
     | 'REPLACEB'
+    | 'REPT'
     | 'ASC'
     | 'JIS'
     | 'DBCS'
@@ -120,6 +121,7 @@ export const TEXT_FIXTURE_METADATA = {
     'SEARCHB',
     'REPLACE',
     'REPLACEB',
+    'REPT',
     'ASC',
     'JIS',
     'DBCS',
@@ -176,6 +178,11 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
         args: [text('alpha'), empty()],
         expected: text(''),
       },
+      {
+        name: 'rejects negative fractional length',
+        args: [text('alpha'), number(-0.5)],
+        expected: textValueError(),
+      },
     ],
   },
   {
@@ -185,6 +192,11 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
         name: 'takes requested byte prefix length',
         args: [text('alpha'), number(3)],
         expected: text('alp'),
+      },
+      {
+        name: 'rejects negative fractional byte length',
+        args: [text('alpha'), number(-0.5)],
+        expected: textValueError(),
       },
     ],
   },
@@ -202,6 +214,11 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
         args: [text('alpha'), number(99)],
         expected: text('alpha'),
       },
+      {
+        name: 'rejects negative fractional length',
+        args: [text('alpha'), number(-0.5)],
+        expected: textValueError(),
+      },
     ],
   },
   {
@@ -211,6 +228,11 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
         name: 'takes requested byte suffix length',
         args: [text('alpha'), number(2)],
         expected: text('ha'),
+      },
+      {
+        name: 'rejects negative fractional byte length',
+        args: [text('alpha'), number(-0.5)],
+        expected: textValueError(),
       },
     ],
   },
@@ -232,6 +254,11 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
         args: [text('alpha'), number(2), empty()],
         expected: text(''),
       },
+      {
+        name: 'rejects negative fractional count',
+        args: [text('alpha'), number(1), number(-0.5)],
+        expected: textValueError(),
+      },
     ],
   },
   {
@@ -241,6 +268,11 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
         name: 'extracts byte-based substring from one-based start',
         args: [text('alphabet'), number(2), number(3)],
         expected: text('lph'),
+      },
+      {
+        name: 'rejects negative fractional byte count',
+        args: [text('alpha'), number(1), number(-0.5)],
+        expected: textValueError(),
       },
     ],
   },
@@ -361,6 +393,11 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
         args: [text('abc'), number(8), number(1), text('Z')],
         expected: text('abcZ'),
       },
+      {
+        name: 'rejects negative fractional count',
+        args: [text('abc'), number(1), number(-0.5), text('Z')],
+        expected: textValueError(),
+      },
     ],
   },
   {
@@ -380,6 +417,31 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
         name: 'appends when start is past text',
         args: [text('abc'), number(8), number(1), text('Z')],
         expected: text('abcZ'),
+      },
+      {
+        name: 'rejects negative fractional byte count',
+        args: [text('abc'), number(1), number(-0.5), text('Z')],
+        expected: textValueError(),
+      },
+    ],
+  },
+  {
+    builtin: 'REPT',
+    cases: [
+      {
+        name: 'repeats text requested times',
+        args: [text('xo'), number(3)],
+        expected: text('xoxoxo'),
+      },
+      {
+        name: 'truncates positive fractional repeat count',
+        args: [text('xo'), number(1.9)],
+        expected: text('xo'),
+      },
+      {
+        name: 'rejects negative fractional repeat count',
+        args: [text('xo'), number(-0.5)],
+        expected: textValueError(),
       },
     ],
   },
@@ -523,6 +585,13 @@ export const canonicalTextFixtures: readonly ExcelFixtureCase[] = [
     [input('A1', null)],
     [output('A2', stringExpected(''))],
   ),
+  fixture(
+    'left-negative-fractional-count',
+    'LEFT rejects negative fractional count',
+    '=LEFT("abc",-0.5)',
+    [],
+    [output('A1', errorExpected(ErrorCode.Value, '#VALUE!'))],
+  ),
   fixture('right-defaults-to-one-character', 'RIGHT defaults to one character', '=RIGHT("alpha")', [], [output('A1', stringExpected('a'))]),
   fixture(
     'right-takes-requested-suffix-length',
@@ -537,6 +606,13 @@ export const canonicalTextFixtures: readonly ExcelFixtureCase[] = [
     '=RIGHT("alpha",99)',
     [],
     [output('A1', stringExpected('alpha'))],
+  ),
+  fixture(
+    'right-negative-fractional-count',
+    'RIGHT rejects negative fractional count',
+    '=RIGHT("abc",-0.5)',
+    [],
+    [output('A1', errorExpected(ErrorCode.Value, '#VALUE!'))],
   ),
   fixture(
     'mid-extracts-substring-from-one-based-start',
@@ -558,6 +634,13 @@ export const canonicalTextFixtures: readonly ExcelFixtureCase[] = [
     '=MID("alpha",2,A1)',
     [input('A1', null)],
     [output('A2', stringExpected(''))],
+  ),
+  fixture(
+    'mid-negative-fractional-count',
+    'MID rejects negative fractional count',
+    '=MID("abc",1,-0.5)',
+    [],
+    [output('A1', errorExpected(ErrorCode.Value, '#VALUE!'))],
   ),
   fixture(
     'clean-preserves-delete-character',
@@ -668,6 +751,13 @@ export const canonicalTextFixtures: readonly ExcelFixtureCase[] = [
     [output('A1', stringExpected('abcZ'))],
   ),
   fixture(
+    'replace-negative-fractional-count',
+    'REPLACE rejects negative fractional count',
+    '=REPLACE("abc",1,-0.5,"Z")',
+    [],
+    [output('A1', errorExpected(ErrorCode.Value, '#VALUE!'))],
+  ),
+  fixture(
     'replaceb-inserts-into-empty-text',
     'REPLACEB inserts into empty text',
     '=REPLACEB("",1,0,"Z")',
@@ -680,6 +770,13 @@ export const canonicalTextFixtures: readonly ExcelFixtureCase[] = [
     '=REPLACEB("abc",8,1,"Z")',
     [],
     [output('A1', stringExpected('abcZ'))],
+  ),
+  fixture(
+    'rept-negative-fractional-count',
+    'REPT rejects negative fractional count',
+    '=REPT("x",-0.5)',
+    [],
+    [output('A1', errorExpected(ErrorCode.Value, '#VALUE!'))],
   ),
   fixture(
     'asc-basic',

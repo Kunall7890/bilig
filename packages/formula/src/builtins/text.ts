@@ -109,7 +109,7 @@ function coerceLength(value: CellValue | undefined, defaultValue: number): numbe
     return defaultValue
   }
   const numeric = coerceNumber(value)
-  if (numeric === undefined) {
+  if (numeric === undefined || numeric < 0) {
     return error(ErrorCode.Value)
   }
   const truncated = Math.trunc(numeric)
@@ -125,7 +125,7 @@ function coerceNonNegativeInt(value: CellValue | undefined, defaultValue: number
     return defaultValue
   }
   const numeric = coerceNumber(value)
-  if (numeric === undefined) {
+  if (numeric === undefined || numeric < 0) {
     return error(ErrorCode.Value)
   }
   const truncated = Math.trunc(numeric)
