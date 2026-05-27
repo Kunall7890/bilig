@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(n8n): evaluate WorkPaper JSON documents (1520edf9)
 - feat(xlsx): add external workbook proof conversion (5f4525c7)
 - feat(workbook): expose resolved ref proof option (fc16d103)
@@ -21,6 +22,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(openwebui): add WorkPaper OpenAPI tool route (1044d88e)
 
 ## Fixes
+
 - fix(workbook): close strict format proof gaps (2da279d3)
 - fix(workbook): avoid inherited plan accessors (d280def0)
 - fix(workbook): align comparison schemas (e158c4a7)
@@ -162,6 +164,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(formula): support negative odd root exponentiation (e5086bad)
 
 ## Internal runtime changes
+
 - docs(growth): add Sim MCP setup (e353fb02)
 - docs(growth): add Windmill WorkPaper script (479a394f)
 - chore(release): runtime packages v0.107.9 (383e2bd2)
