@@ -138,9 +138,10 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
       return argc >= 2 && argc <= 6
     case 'TEXTJOIN':
       return argc >= 3
-    case 'POWER':
     case 'CONVERT':
       return argc === 3
+    case 'POWER':
+      return argc === 2
     case 'EXACT':
     case 'ATAN2':
       return argc === 2

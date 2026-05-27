@@ -818,8 +818,8 @@ describe('formula builtins', () => {
       value: 8,
     })
     expect(getBuiltin('POWER')?.({ tag: ValueTag.Number, value: -32 }, { tag: ValueTag.Number, value: 1 / 5 })).toEqual({
-      tag: ValueTag.Number,
-      value: -2,
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('LOG')?.({ tag: ValueTag.Number, value: 1000 })).toEqual({
       tag: ValueTag.Number,
@@ -1945,6 +1945,10 @@ describe('formula builtins', () => {
     expect(getBuiltin('POWER')?.({ tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Number, value: 3 })).toEqual({
       tag: ValueTag.Number,
       value: 8,
+    })
+    expect(getBuiltin('POWER')?.({ tag: ValueTag.Number, value: -32 }, { tag: ValueTag.Number, value: 1 / 5 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('SQRT')?.({ tag: ValueTag.Number, value: 9 })).toEqual({
       tag: ValueTag.Number,

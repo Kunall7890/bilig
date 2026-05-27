@@ -340,7 +340,7 @@ export function evaluateScalar(args: {
           return rightNumber === 0 ? errorValue(ErrorCode.Div0) : numberValue(leftNumber / rightNumber)
         case '^': {
           const value = excelPower(leftNumber, rightNumber)
-          return Number.isFinite(value) ? numberValue(value) : errorValue(ErrorCode.Value)
+          return Number.isFinite(value) ? numberValue(value) : errorValue(ErrorCode.Num)
         }
         case ':':
           return undefined

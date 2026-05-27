@@ -592,8 +592,12 @@ describe('formula builtins and JS evaluator', () => {
       value: 8,
     })
     expect(evaluateAst(parseFormula('(-32)^(1/5)'), context)).toEqual({
-      tag: ValueTag.Number,
-      value: -2,
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(evaluateAst(parseFormula('POWER(-32,0.2)'), context)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
     })
     expect(evaluateAst(parseFormula('TRUNC(-3.98,1)'), context)).toEqual({
       tag: ValueTag.Number,

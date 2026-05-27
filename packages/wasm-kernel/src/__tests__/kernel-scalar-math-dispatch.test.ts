@@ -468,7 +468,7 @@ describe('wasm kernel scalar math dispatch', () => {
     expect(kernel.readErrors()[cellIndex(1, 19, width)]).toBe(ErrorCode.Div0)
     expect(kernel.readNumbers()[cellIndex(1, 20, width)]).toBeCloseTo(1, 12)
     expect(kernel.readNumbers()[cellIndex(1, 21, width)]).toBe(-1)
-    expect(kernel.readNumbers()[cellIndex(1, 22, width)]).toBeCloseTo(-2, 12)
+    expectKernelError(kernel, cellIndex(1, 22, width), ErrorCode.Num)
   })
 
   it('matches Excel scalar math text coercion and overflow errors on the wasm path', async () => {

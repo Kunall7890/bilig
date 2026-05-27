@@ -40,6 +40,7 @@ describe('math builtins', () => {
 
     expect(getBuiltin('EXP')?.(num(1000))).toEqual(numError)
     expect(getBuiltin('POWER')?.(num(10), num(400))).toEqual(numError)
+    expect(getBuiltin('POWER')?.(num(-32), num(1 / 5))).toEqual(numError)
     expect(getBuiltin('SINH')?.(num(1000))).toEqual(numError)
     expect(getBuiltin('COSH')?.(num(1000))).toEqual(numError)
   })

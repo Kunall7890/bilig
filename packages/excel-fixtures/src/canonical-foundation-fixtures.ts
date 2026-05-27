@@ -78,6 +78,14 @@ export const canonicalFoundationFixtures: ExcelFixtureCase[] = [
   fixture('arithmetic', 'power-basic', 'Exponentiation', '=A1^A2', [input('A1', 2), input('A2', 3)], [output('A3', numberExpected(8))]),
   fixture(
     'arithmetic',
+    'power-negative-fractional-error',
+    'Exponentiation negative fractional base domain error',
+    '=A1^A2',
+    [input('A1', -32), input('A2', 0.2)],
+    [output('A3', errorExpected(ErrorCode.Num, '#NUM!'))],
+  ),
+  fixture(
+    'arithmetic',
     'percent-operator',
     'Percent postfix operator',
     '=A1*10%',
@@ -328,6 +336,14 @@ export const canonicalFoundationFixtures: ExcelFixtureCase[] = [
     '=PRODUCT(A1:A3)',
     [input('A1', 2), input('A2', 3), input('A3', 4)],
     [output('A4', numberExpected(24))],
+  ),
+  fixture(
+    'math',
+    'power-negative-fractional-error',
+    'POWER negative fractional base domain error',
+    '=POWER(A1,A2)',
+    [input('A1', -32), input('A2', 0.2)],
+    [output('A3', errorExpected(ErrorCode.Num, '#NUM!'))],
   ),
   fixture(
     'math',

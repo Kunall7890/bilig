@@ -45,6 +45,8 @@ describe('binder wasm rules', () => {
     expect(isWasmSafeBuiltinArity('COUNTIFS', 3)).toBe(false)
     expect(isWasmSafeBuiltinArity('LOOKUP', 2)).toBe(true)
     expect(isWasmSafeBuiltinArity('LOOKUP', 4)).toBe(false)
+    expect(isWasmSafeBuiltinArity('POWER', 2)).toBe(true)
+    expect(isWasmSafeBuiltinArity('POWER', 3)).toBe(false)
     expect(isWasmSafeBuiltinArity('NA', 0)).toBe(true)
     expect(isWasmSafeBuiltinArity('NA', 1)).toBe(false)
 

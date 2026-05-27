@@ -138,6 +138,9 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('arithmetic:unary-negation', 'arithmetic', '=-A1', 'implemented-wasm-production'),
   entry('arithmetic:division-basic', 'arithmetic', '=A1/A2', 'implemented-wasm-production'),
   entry('arithmetic:power-basic', 'arithmetic', '=A1^A2', 'implemented-wasm-production'),
+  entry('arithmetic:power-negative-fractional-error', 'arithmetic', '=A1^A2', 'implemented-wasm-production', {
+    notes: 'Negative bases raised to fractional exponents return #NUM! in the Excel-compatible real-number domain.',
+  }),
   entry('arithmetic:percent-operator', 'arithmetic', '=A1*10%', 'implemented-wasm-production', {
     notes: 'Postfix percent is in the canonical formula corpus and tracked as part of the arithmetic lane.',
   }),
@@ -202,6 +205,9 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('math:seriessum-basic', 'math', '=SERIESSUM(2,1,2,1,2)', 'implemented-wasm-production'),
   entry('math:gcd-basic', 'math', '=GCD(A1:A3)', 'implemented-wasm-production'),
   entry('math:product-basic', 'math', '=PRODUCT(A1:A3)', 'implemented-wasm-production'),
+  entry('math:power-negative-fractional-error', 'math', '=POWER(A1,A2)', 'implemented-wasm-production', {
+    notes: 'Negative bases raised to fractional exponents return #NUM! in the Excel-compatible real-number domain.',
+  }),
   entry('math:product-direct-empty-text', 'math', '=PRODUCT("")', 'implemented-wasm-production'),
   entry('math:geomean-basic', 'math', '=GEOMEAN(A1:A3)', 'implemented-wasm-production'),
   entry('math:geomean-direct-numeric-text', 'math', '=GEOMEAN("2","8")', 'implemented-wasm-production'),

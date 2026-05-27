@@ -12,8 +12,8 @@ describe('calculation semantics scorecard', () => {
     const scorecard = buildCalculationSemanticsScorecard()
 
     expect(scorecard.summary.allCommittedFormulaSemanticsCovered).toBe(true)
-    expect(scorecard.summary.canonicalFormulaFixtureCount).toBe(399)
-    expect(scorecard.summary.coveredCanonicalFixtureCount).toBe(399)
+    expect(scorecard.summary.canonicalFormulaFixtureCount).toBe(401)
+    expect(scorecard.summary.coveredCanonicalFixtureCount).toBe(401)
     expect(scorecard.summary.workbookSemanticsFixtureCount).toBe(12)
     expect(scorecard.summary.coveredWorkbookSemanticsFixtureCount).toBe(12)
     expect(scorecard.summary.coveredWorkbookSemanticsCategories).toEqual([

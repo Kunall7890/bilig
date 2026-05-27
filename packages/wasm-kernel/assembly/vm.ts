@@ -466,8 +466,14 @@ function computeBinaryScalarResult(opcode: i32, leftTag: u8, leftValue: f64, rig
     binaryResultValue = ErrorCode.Div0
     return
   }
+  const value = binaryNumeric(opcode, left, right)
+  if (!isFinite(value)) {
+    binaryResultTag = <u8>ValueTag.Error
+    binaryResultValue = opcode == Opcode.Pow ? ErrorCode.Num : ErrorCode.Value
+    return
+  }
   binaryResultTag = <u8>ValueTag.Number
-  binaryResultValue = binaryNumeric(opcode, left, right)
+  binaryResultValue = value
 }
 
 export function init(cellCapacity: i32, formulaCapacity: i32, constantCapacity: i32, rangeCapacity: i32, memberCapacity: i32): void {

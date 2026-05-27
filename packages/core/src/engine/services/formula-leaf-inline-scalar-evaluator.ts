@@ -1,5 +1,6 @@
 import { ErrorCode, ValueTag, formatGeneralNumberValue, type CellValue, type NumberValue } from '@bilig/protocol'
 import {
+  excelPower,
   getBuiltin,
   getDateSystemBuiltin,
   isArrayValue,
@@ -782,8 +783,8 @@ function evaluateInlineBinary(
             ? leftNumber * rightNumber
             : operator === '/'
               ? leftNumber / rightNumber
-              : Math.pow(leftNumber, rightNumber)
-    return Number.isFinite(value) ? numberValue(value) : errorValue(ErrorCode.Value)
+              : excelPower(leftNumber, rightNumber)
+    return Number.isFinite(value) ? numberValue(value) : errorValue(operator === '^' ? ErrorCode.Num : ErrorCode.Value)
   }
   const comparison = compareInlineScalars(left, right)
   if (comparison === undefined) {

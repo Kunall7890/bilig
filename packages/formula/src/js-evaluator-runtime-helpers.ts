@@ -259,7 +259,7 @@ function scalarBinary(operator: BinaryOperator, leftValue: CellValue, rightValue
     }
     if (operator === '^') {
       const value = excelPower(left, right)
-      return Number.isFinite(value) ? { tag: ValueTag.Number, value } : error(ErrorCode.Value)
+      return Number.isFinite(value) ? { tag: ValueTag.Number, value } : error(ErrorCode.Num)
     }
     const value = operator === '+' ? left + right : operator === '-' ? left - right : operator === '*' ? left * right : left / right
     return { tag: ValueTag.Number, value }
