@@ -187,7 +187,32 @@ describe('same-corpus mutation target page proof helpers', () => {
     ).resolves.toEqual({
       fillColor: null,
       formula: null,
-      source: 'visible-grid-cell',
+      source: 'unknown',
+      value: null,
+      visibleText: null,
+    })
+  })
+
+  it('does not call an empty Google Sheets target cell committed text proof for edit/formula workloads', async () => {
+    const page = fakeGoogleSheetsEmptyTargetPage()
+
+    await expect(
+      readSameCorpusVisibleMutationTargetReadback({
+        page,
+        product: 'google-sheets',
+        target: {
+          endAddress: 'F5',
+          sheetId: 'gid:160971404',
+          sheetName: 'WideGrid',
+          startAddress: 'F5',
+          targetRange: 'F5',
+        },
+        workload: 'edit-visible-cell',
+      }),
+    ).resolves.toEqual({
+      fillColor: null,
+      formula: null,
+      source: 'unknown',
       value: null,
       visibleText: null,
     })
@@ -369,6 +394,29 @@ function fakeGoogleSheetsCanvasTargetPage(args: { readonly formulaBarText: strin
     },
   }
   // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- Unit test only exercises the canvas-grid readback fallback path.
+  return page as unknown as Page
+}
+
+function fakeGoogleSheetsEmptyTargetPage(): Page {
+  const page = {
+    frames: () => [],
+    locator: (selector: string) => ({
+      boundingBox: async () => (selector === '.waffle-cell-input' ? { height: 22, width: 104, x: 120, y: 80 } : null),
+      count: async () => (selector === '.waffle-cell-input' ? 1 : 0),
+      first() {
+        return this
+      },
+      inputValue: async () => 'F5',
+    }),
+    evaluate: async () => ({
+      fillColor: null,
+      formula: null,
+      source: 'visible-grid-cell',
+      value: null,
+      visibleText: null,
+    }),
+  }
+  // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- Unit test only exercises empty external target-cell readback.
   return page as unknown as Page
 }
 

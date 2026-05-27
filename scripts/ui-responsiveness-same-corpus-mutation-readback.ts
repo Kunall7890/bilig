@@ -48,6 +48,9 @@ export async function readExternalVisibleGridCellReadback(args: {
   if (targetCellReadback.source !== 'visible-grid-cell' && screenshotFillColor === null) {
     return null
   }
+  if (args.workload !== 'fill-format-change' && targetCellReadback.visibleText === null) {
+    return null
+  }
   return {
     ...targetCellReadback,
     fillColor: screenshotFillColor,
@@ -120,7 +123,7 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
       return 0
     }
     const className = element.className.toString().toLowerCase()
-    const cellLike = /active|selected|waffle-cell-input|waffle-cell/u.test(className) || element.getAttribute('aria-selected') === 'true'
+    const cellLike = /active|selected|waffle-cell/u.test(className) || element.getAttribute('aria-selected') === 'true'
     if (!cellLike && (rect.width > targetBox.width * 1.5 || rect.height > targetBox.height * 1.5)) {
       return 0
     }

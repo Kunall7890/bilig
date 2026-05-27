@@ -12,11 +12,5 @@ export function sameCorpusFormulaEditRenderedResultProven(
   if (sample.visibleAfter.value === expectedRenderedValue || sample.visibleAfter.visibleText === expectedRenderedValue) {
     return true
   }
-  return (
-    product !== 'bilig' &&
-    sample.visibleAfter.source === 'visible-formula-bar' &&
-    sample.visibleAfter.formula === sample.intendedPayload.formula &&
-    (sample.committedStateProof?.after.readback.value === expectedRenderedValue ||
-      sample.committedStateProof?.after.readback.visibleText === expectedRenderedValue)
-  )
+  return false
 }
