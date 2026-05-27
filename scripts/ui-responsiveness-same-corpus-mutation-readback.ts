@@ -93,7 +93,6 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
     for (const selector of [
       '.waffle-cell-input',
       '.waffle-cell',
-      '.waffle-border-cell-active',
       '[role="gridcell"]',
       '[aria-selected="true"]',
       '[class*="active-cell" i]',
@@ -192,9 +191,17 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
 
   // oxlint-disable-next-line eslint-plugin-unicorn(consistent-function-scoping) -- Playwright serializes this helper with the page function.
   function isExcludedChromeElement(element: HTMLElement): boolean {
+    const className = element.className.toString().toLowerCase()
+    const ariaLabel = element.getAttribute('aria-label')?.toLowerCase() ?? ''
+    if (
+      /\b(?:range-border|waffle-border-cell|fill-handle|autofill-handle)\b/u.test(className) ||
+      /\b(?:fill handle|autofill handle|selection border)\b/u.test(ariaLabel)
+    ) {
+      return true
+    }
     return Boolean(
       element.closest(
-        '#t-formula-bar-input, #t-formula-bar, #t-name-box, input.waffle-name-box, [aria-label="Formula bar"], [aria-label="Name box"], .docs-toolbar, .waffle-menu',
+        '#t-formula-bar-input, #t-formula-bar, #t-name-box, input.waffle-name-box, [aria-label="Formula bar"], [aria-label="Name box"], .docs-toolbar, .waffle-menu, .range-border, .waffle-border-cell-active',
       ),
     )
   }

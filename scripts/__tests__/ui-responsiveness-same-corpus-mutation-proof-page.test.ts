@@ -69,6 +69,24 @@ describe('same-corpus mutation target page proof helpers', () => {
     })
   })
 
+  it('rejects Google Sheets selection-border elements as target-cell proof', () => {
+    document.body.innerHTML = `
+      <div class="waffle-border-cell-active range-border active-cell-border" style="background-color: rgb(11, 87, 208);"></div>
+      <div class="autofill-handle" aria-label="Fill handle" style="background-color: rgb(11, 87, 208);"></div>
+    `
+    for (const element of Array.from(document.querySelectorAll<HTMLElement>('div'))) {
+      setRect(element, { height: 22, width: 104, x: 120, y: 144 })
+    }
+
+    expect(readSameCorpusVisibleTargetCellReadbackFromPage({ targetBox: { height: 22, width: 104, x: 120, y: 144 } })).toEqual({
+      fillColor: null,
+      formula: null,
+      source: 'unknown',
+      value: null,
+      visibleText: null,
+    })
+  })
+
   it('returns an unknown source when no target-cell grid evidence overlaps the selection', () => {
     document.body.innerHTML = `
       <input id="t-formula-bar-input" value="formula bar only" />
@@ -110,6 +128,44 @@ describe('same-corpus mutation target page proof helpers', () => {
     })
   })
 
+  it('captures external mutation target screenshots from the cell interior, not the selection border', async () => {
+    let capturedClip: { height: number; width: number; x: number; y: number } | null = null
+    const page = fakePageWithExternalTargetBox((clip) => {
+      capturedClip = clip
+    })
+
+    await expect(
+      captureSameCorpusMutationTargetScreenshotProof({
+        page,
+        phase: 'after',
+        product: 'google-sheets',
+        relativeScreenshotPath: 'same-corpus/google-sheets/target.png',
+        sampleIndex: 0,
+        screenshotPath: '/tmp/bilig-target-interior.png',
+        semanticReadback: {
+          fillColor: 'rgb(52, 168, 83)',
+          formula: null,
+          source: 'visible-grid-cell',
+          value: 'grid committed text',
+          visibleText: 'grid committed text',
+        },
+        target: {
+          endAddress: 'C5',
+          sheetId: 'sheet-id',
+          sheetName: 'Sheet1',
+          startAddress: 'C5',
+          targetRange: 'C5',
+        },
+        workload: 'edit-visible-cell',
+      }),
+    ).resolves.toMatchObject({
+      scope: 'target-cell',
+      screenshotPath: 'same-corpus/google-sheets/target.png',
+    })
+
+    expect(capturedClip).toEqual({ height: 14, width: 64, x: 140, y: 84 })
+  })
+
   it('does not write a misleading external target screenshot when the selected cell box is missing', async () => {
     const page = fakePageWithExternalGridButNoTargetBox()
 
@@ -145,9 +201,35 @@ describe('same-corpus mutation target page proof helpers', () => {
   })
 })
 
+function fakePageWithExternalTargetBox(
+  onScreenshotClip: (clip: { readonly height: number; readonly width: number; readonly x: number; readonly y: number }) => void,
+): Page {
+  const page = {
+    frames: () => [],
+    viewportSize: () => ({ height: 200, width: 300 }),
+    locator: (selector: string) => ({
+      boundingBox: async () => (selector === '.waffle-cell-input' ? { height: 22, width: 104, x: 120, y: 80 } : null),
+      count: async () => (selector === '.waffle-cell-input' ? 1 : 0),
+      first() {
+        return this
+      },
+    }),
+    evaluate: async () => null,
+    screenshot: async (options: {
+      readonly clip?: { readonly height: number; readonly width: number; readonly x: number; readonly y: number }
+    }) => {
+      if (options.clip) {
+        onScreenshotClip(options.clip)
+      }
+      return Buffer.from('target screenshot')
+    },
+  }
+  // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- Unit test only exercises the external target screenshot path.
+  return page as unknown as Page
+}
+
 function fakePageWithoutTargetBox(): Page {
-  // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- Unit test only exercises this narrow no-target-box page surface.
-  return {
+  const page = {
     frames: () => [],
     locator: () => ({
       boundingBox: async () => null,
@@ -162,12 +244,13 @@ function fakePageWithoutTargetBox(): Page {
     screenshot: async () => {
       throw new Error('Whole-grid fallback screenshot must not be written for missing external target-cell proof')
     },
-  } as unknown as Page
+  }
+  // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- Unit test only exercises this narrow no-target-box page surface.
+  return page as unknown as Page
 }
 
 function fakePageWithExternalGridButNoTargetBox(): Page {
-  // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- Unit test only exercises missing target box plus present grid surface.
-  return {
+  const page = {
     frames: () => [],
     locator: (selector: string) => ({
       boundingBox: async () => null,
@@ -179,7 +262,9 @@ function fakePageWithExternalGridButNoTargetBox(): Page {
         throw new Error('Whole-grid fallback screenshot must not be written for missing external target-cell proof')
       },
     }),
-  } as unknown as Page
+  }
+  // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- Unit test only exercises missing target box plus present grid surface.
+  return page as unknown as Page
 }
 
 function setRect(

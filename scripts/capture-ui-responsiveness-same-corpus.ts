@@ -20,7 +20,7 @@ import {
   type PreflightArgs,
   type RefreshProductArgs,
 } from './ui-responsiveness-same-corpus-args.ts'
-import type { SameCorpusCapture } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
+import { validateSameCorpusCaptureRunManifest, type SameCorpusCapture } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import {
   captureSameCorpusUiResponsiveness,
   preflightSameCorpusIncumbentAccess,
@@ -174,7 +174,7 @@ async function main(): Promise<void> {
   }
 }
 
-function readSameCorpusCapture(path: string): SameCorpusCapture {
+export function readSameCorpusCapture(path: string): SameCorpusCapture {
   const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'))
   if (!isSameCorpusCaptureArtifact(parsed)) {
     throw new Error(`Unexpected same-corpus capture artifact: ${path}`)
@@ -184,6 +184,7 @@ function readSameCorpusCapture(path: string): SameCorpusCapture {
       throw new Error(`Unexpected same-corpus capture corpus id: ${String(corpusId)}`)
     }
   }
+  validateSameCorpusCaptureRunManifest(parsed)
   return parsed
 }
 

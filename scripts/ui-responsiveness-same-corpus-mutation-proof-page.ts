@@ -19,6 +19,7 @@ import {
   readExternalVisibleGridCellReadback,
   readVisibleFormulaBarText,
   sameCorpusCellAddressCoordinates,
+  sameCorpusVisibleCellInteriorClip,
 } from './ui-responsiveness-same-corpus-mutation-readback.ts'
 import type { UiResponsivenessSameCorpusMutatingWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
@@ -253,10 +254,15 @@ async function captureMutationTargetScreenshot(
   }
   const selectedTargetBox = await firstVisibleTargetBox(page, product)
   if (selectedTargetBox) {
+    const viewport = page.viewportSize() ?? (await page.evaluate(() => ({ height: window.innerHeight, width: window.innerWidth })))
+    const clip = sameCorpusVisibleCellInteriorClip(selectedTargetBox, viewport)
+    if (!clip) {
+      return { buffer: null, captured: false, scope: 'visible-grid-fallback' }
+    }
     const buffer = await page.screenshot({
       animations: 'disabled',
       caret: 'hide',
-      clip: selectedTargetBox,
+      clip,
       path: screenshotPath,
     })
     return { buffer, captured: true, scope: 'target-cell' }

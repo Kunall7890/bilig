@@ -20,6 +20,7 @@ import {
   parsePreflightArgs,
   parseRefreshProductArgs,
   parseSaveStorageStateArgs,
+  readSameCorpusCapture,
   verifyXlsxCorpusFingerprint,
 } from '../capture-ui-responsiveness-same-corpus.ts'
 import {
@@ -1557,6 +1558,36 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       pixelGridProof: scenarioProof.pixelGridProof,
     })
     expect(parseSameCorpusCapture(capture).runManifest.captureRunSignature).toBe(capture.runManifest.captureRunSignature)
+  })
+
+  it('rejects stale capture run manifests before reusing diagnostic evidence', () => {
+    const capture = buildSameCorpusCaptureArtifact({
+      sampleCount: 3,
+      limitations: ['test limitation'],
+      cases: [
+        sameCorpusCaptureCase({
+          workload: 'open-workbook',
+        }),
+      ],
+    })
+    const rootDir = mkdtempSync(join(tmpdir(), 'bilig-same-corpus-stale-capture-'))
+    const capturePath = join(rootDir, 'same-corpus-capture.json')
+    writeFileSync(
+      capturePath,
+      `${JSON.stringify(
+        {
+          ...capture,
+          runManifest: {
+            ...capture.runManifest,
+            proofArchiveArtifactCount: capture.runManifest.proofArchiveArtifactCount + 1,
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    )
+
+    expect(() => readSameCorpusCapture(capturePath)).toThrow('UI responsiveness same-corpus capture run manifest is stale')
   })
 
   it('counts Bilig production-runtime proof in same-corpus capture manifests', () => {
