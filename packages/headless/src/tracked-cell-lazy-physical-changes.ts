@@ -145,13 +145,7 @@ export function createLazyPhysicalTrackedIndexChanges(
       }
       return
     }
-    if (orderedCellIndices === undefined) {
-      orderedCellIndices = new Uint32Array(length)
-      copyOrderedTrackedCellIndices(cellStore, changedCellIndicesForMaterialization, orderedCellIndices, 0, sortedSliceSplit)
-    }
-    for (let index = 0; index < length; index += 1) {
-      fn(index, orderedCellIndices[index]!)
-    }
+    forEachOrderedTrackedCellIndex(cellStore, changedCellIndicesForMaterialization, sortedSliceSplit, fn)
   }
   const materialize = (index: number): WorkPaperCellChange => {
     if (hasMaterializedIndex(index)) {
@@ -536,6 +530,39 @@ export function copyOrderedTrackedCellIndices(
     outputIndex += 1
   }
   return outputIndex
+}
+
+function forEachOrderedTrackedCellIndex(
+  cellStore: TrackedCellStore,
+  changedCellIndices: readonly number[] | Uint32Array,
+  sortedSliceSplit: number,
+  fn: (index: number, cellIndex: number) => void,
+): void {
+  let explicitIndex = 0
+  let recalculatedIndex = sortedSliceSplit
+  let outputIndex = 0
+  while (explicitIndex < sortedSliceSplit && recalculatedIndex < changedCellIndices.length) {
+    const explicitCellIndex = changedCellIndices[explicitIndex]!
+    const recalculatedCellIndex = changedCellIndices[recalculatedIndex]!
+    if (compareTrackedPhysicalCellIndices(cellStore, explicitCellIndex, recalculatedCellIndex) <= 0) {
+      fn(outputIndex, explicitCellIndex)
+      explicitIndex += 1
+    } else {
+      fn(outputIndex, recalculatedCellIndex)
+      recalculatedIndex += 1
+    }
+    outputIndex += 1
+  }
+  while (explicitIndex < sortedSliceSplit) {
+    fn(outputIndex, changedCellIndices[explicitIndex]!)
+    explicitIndex += 1
+    outputIndex += 1
+  }
+  while (recalculatedIndex < changedCellIndices.length) {
+    fn(outputIndex, changedCellIndices[recalculatedIndex]!)
+    recalculatedIndex += 1
+    outputIndex += 1
+  }
 }
 
 export function copyTrackedCellIndices(changedCellIndices: readonly number[] | Uint32Array): Uint32Array {

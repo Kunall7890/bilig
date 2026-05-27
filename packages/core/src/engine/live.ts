@@ -9,9 +9,9 @@ import { createEngineChangeSetEmitterService } from './services/change-set-emitt
 import { createEnginePatchEmitterService } from '../patches/patch-emitter.js'
 import { createEngineFormulaEvaluationService } from './services/formula-evaluation-service.js'
 import { createCriterionRangeCacheService } from './services/criterion-range-cache-service.js'
-import { createExactColumnIndexService } from './services/exact-column-index-service.js'
+import { createExactColumnIndexService, type ExactColumnIndexService } from './services/exact-column-index-service.js'
 import { createRangeAggregateCacheService } from './services/range-aggregate-cache-service.js'
-import { createSortedColumnSearchService } from './services/sorted-column-search-service.js'
+import { createSortedColumnSearchService, type SortedColumnSearchService } from './services/sorted-column-search-service.js'
 import { createEngineFormulaBindingService, type EngineFormulaBindingService } from './services/formula-binding-service.js'
 import {
   createEngineFormulaInitializationService,
@@ -285,8 +285,53 @@ export function createEngineServiceRuntime(args: {
     regionGraph,
     aggregateStateStore,
   })
-  const exactLookup = createExactColumnIndexService({ state: args.state, runtimeColumnStore, columnIndexStore })
-  const sortedLookup = createSortedColumnSearchService({ state: args.state, runtimeColumnStore, columnIndexStore })
+  let exactLookupService: ExactColumnIndexService | undefined
+  const getExactLookup = (): ExactColumnIndexService =>
+    (exactLookupService ??= createExactColumnIndexService({ state: args.state, runtimeColumnStore, columnIndexStore }))
+  const exactLookup: ExactColumnIndexService = {
+    primeColumnIndex: (request) => getExactLookup().primeColumnIndex(request),
+    prepareUniformNumericVectorLookup: (request) => getExactLookup().prepareUniformNumericVectorLookup(request),
+    prepareVectorLookup: (request) => getExactLookup().prepareVectorLookup(request),
+    findPreparedVectorMatch: (request) => getExactLookup().findPreparedVectorMatch(request),
+    findVectorMatch: (request) => getExactLookup().findVectorMatch(request),
+    invalidateColumn: (request) => {
+      if (exactLookupService) {
+        exactLookupService.invalidateColumn(request)
+      } else {
+        columnIndexStore.invalidateColumn(request)
+      }
+    },
+    recordLiteralWrite: (request) => {
+      if (exactLookupService) {
+        exactLookupService.recordLiteralWrite(request)
+      } else {
+        columnIndexStore.recordLiteralWrite(request, { updateApproximateSummaries: false })
+      }
+    },
+  }
+  let sortedLookupService: SortedColumnSearchService | undefined
+  const getSortedLookup = (): SortedColumnSearchService =>
+    (sortedLookupService ??= createSortedColumnSearchService({ state: args.state, runtimeColumnStore, columnIndexStore }))
+  const sortedLookup: SortedColumnSearchService = {
+    primeColumnIndex: (request) => getSortedLookup().primeColumnIndex(request),
+    prepareVectorLookup: (request) => getSortedLookup().prepareVectorLookup(request),
+    findPreparedVectorMatch: (request) => getSortedLookup().findPreparedVectorMatch(request),
+    findVectorMatch: (request) => getSortedLookup().findVectorMatch(request),
+    invalidateColumn: (request) => {
+      if (sortedLookupService) {
+        sortedLookupService.invalidateColumn(request)
+      } else {
+        columnIndexStore.invalidateColumn(request)
+      }
+    },
+    recordLiteralWrite: (request) => {
+      if (sortedLookupService) {
+        sortedLookupService.recordLiteralWrite(request)
+      } else {
+        columnIndexStore.recordLiteralWrite(request)
+      }
+    },
+  }
   const deferKernelSync = (cellIndices: readonly number[] | Uint32Array): void =>
     deferKernelSyncNow({ scratch, cellStoreSize: args.state.workbook.cellStore.size, cellIndices, wasmReady: args.state.wasm.ready })
   const graph = createEngineFormulaGraphService({
