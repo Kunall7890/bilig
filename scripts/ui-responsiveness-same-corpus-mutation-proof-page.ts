@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 
 import type { Page } from '@playwright/test'
+import { formatCellDisplayValue, isCellValue } from '@bilig/protocol'
 
 import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import {
@@ -69,6 +70,8 @@ export async function selectSameCorpusMutationTargetRange(args: {
     const nameBox = args.page.getByTestId('name-box')
     await nameBox.fill(args.target.targetRange)
     await nameBox.press('Enter')
+    await assertBiligNameBoxSelectionCommitted(args.page, args.target)
+    await focusBiligGridForKeyboardMutation(args.page)
     await settleFrames(args.page, 8)
     return
   }
@@ -114,6 +117,31 @@ export async function selectGoogleSheetsTargetRange(page: SameCorpusNameBoxPage,
     targetRange,
     `Cannot select same-corpus target range ${targetRange} on google-sheets`,
   )
+}
+
+async function assertBiligNameBoxSelectionCommitted(page: Page, target: SameCorpusMutationTargetSelection): Promise<void> {
+  await page.waitForFunction(
+    ({ expectedRange, expectedStatus }) => {
+      const nameBox = document.querySelector<HTMLInputElement>('[data-testid="name-box"]')
+      const status = document.querySelector('[data-testid="status-selection"]')
+      const normalizedNameBox = nameBox?.value.replace(/\$/gu, '').trim().toUpperCase() ?? ''
+      const normalizedStatus = status?.textContent?.replace(/\$/gu, '').trim().toUpperCase() ?? ''
+      return normalizedNameBox === expectedRange || normalizedStatus === expectedStatus
+    },
+    {
+      expectedRange: target.targetRange.toUpperCase(),
+      expectedStatus: `${target.sheetName}!${target.targetRange}`.toUpperCase(),
+    },
+    { timeout: 3_000 },
+  )
+}
+
+async function focusBiligGridForKeyboardMutation(page: Page): Promise<void> {
+  const focusTarget = page.getByTestId('sheet-grid-focus-target')
+  await focusTarget.focus()
+  await page.waitForFunction(() => document.activeElement?.getAttribute('data-testid') === 'sheet-grid-focus-target', undefined, {
+    timeout: 1_500,
+  })
 }
 
 export async function readSameCorpusMutationTargetReadback(args: {
@@ -437,11 +465,11 @@ async function readBiligMutationTargetReadback(
     return null
   }
   const formula = normalizeNullableText(cell.formula)
-  const value = normalizeUnknownCellValue(cell.value ?? cell.input)
+  const value = normalizeUnknownCellDisplayValue(cell.value ?? cell.input)
   const fillColor = normalizeNullableText(readCellFillColor(cell.style))
   return {
     batchId: readNullableNumber(range.batchId),
-    capturedRevision: normalizeNullableText(normalizeUnknownCellValue(range.capturedRevision)),
+    capturedRevision: normalizeNullableText(normalizeUnknownCellDisplayValue(range.capturedRevision)),
     value,
     formula,
     fillColor,
@@ -727,11 +755,17 @@ async function readExpectedFillColorFromScreenshot(page: Page, screenshot: Scree
           continue
         }
         colorfulPixels += 1
+        let nearestTargetIndex = -1
+        let nearestTargetDistance = Number.POSITIVE_INFINITY
         for (const [targetIndex, target] of targetColors.entries()) {
           const distance = Math.hypot(red - target.red, green - target.green, blue - target.blue)
-          if (distance <= 72) {
-            counts[targetIndex] = (counts[targetIndex] ?? 0) + 1
+          if (distance < nearestTargetDistance) {
+            nearestTargetDistance = distance
+            nearestTargetIndex = targetIndex
           }
+        }
+        if (nearestTargetIndex >= 0 && nearestTargetDistance <= 72) {
+          counts[nearestTargetIndex] = (counts[nearestTargetIndex] ?? 0) + 1
         }
       }
       const best = counts.reduce((currentBest, count, index) => (count > currentBest.count ? { count, index } : currentBest), {
@@ -863,9 +897,12 @@ function readCellFillColor(style: unknown): string | null {
   return typeof color === 'string' ? color : null
 }
 
-function normalizeUnknownCellValue(value: unknown): string | null {
+function normalizeUnknownCellDisplayValue(value: unknown): string | null {
   if (value === null || value === undefined) {
     return null
+  }
+  if (isCellValue(value)) {
+    return normalizeNullableText(formatCellDisplayValue(value, undefined))
   }
   if (typeof value === 'string') {
     return value

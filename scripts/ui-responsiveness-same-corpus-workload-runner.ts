@@ -96,7 +96,9 @@ async function measureNonScrollProductWorkload(
   sampleIndex: number,
   hooks: SameCorpusWorkloadRunnerHooks,
 ): Promise<ProductOperationSample> {
-  await hooks.movePointerToProductViewport(page, product)
+  if (!sameCorpusWorkloadMutatesWorkbook(workload)) {
+    await hooks.movePointerToProductViewport(page, product)
+  }
   return await hooks.measureVisibleNonScrollResponse(page, product, workload, sampleIndex, async () => {
     await performProductUiOperation(page, product, workload, sampleIndex)
   })

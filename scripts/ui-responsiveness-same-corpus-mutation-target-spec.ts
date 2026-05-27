@@ -2,9 +2,9 @@ import type { UiResponsivenessSameCorpusMutatingWorkload } from './ui-responsive
 
 export function sameCorpusMutationTargetRangeForSample(workload: UiResponsivenessSameCorpusMutatingWorkload, sampleIndex: number): string {
   const columnByWorkload: Record<UiResponsivenessSameCorpusMutatingWorkload, string> = {
-    'edit-visible-cell': 'C',
-    'fill-format-change': 'E',
-    'formula-edit': 'D',
+    'edit-visible-cell': 'F',
+    'fill-format-change': 'B',
+    'formula-edit': 'C',
   }
   return `${columnByWorkload[workload]}${String(sampleIndex + 5)}`
 }

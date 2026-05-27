@@ -444,7 +444,7 @@ function captureArgsForPreflight(
   }
 }
 
-async function measureProduct(
+export async function measureProduct(
   browser: Browser,
   product: UiResponsivenessSameCorpusProduct,
   url: string,

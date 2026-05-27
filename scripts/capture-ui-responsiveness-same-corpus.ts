@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { buildWorkbookBenchmarkCorpus } from '../packages/benchmarks/src/workbook-corpus.js'
+import { buildWorkbookBenchmarkCorpus, isWorkbookBenchmarkCorpusId } from '../packages/benchmarks/src/workbook-corpus.js'
 import { exportXlsx } from '../packages/excel-import/src/index.js'
 import { assertLocalCiResourceGuardAllowsRun } from './ci-local-resource-guard.ts'
 import { formatJsonForRepo } from './scorecard-format.ts'
@@ -12,11 +12,13 @@ import {
   parseCaptureArgs,
   parseEmitXlsxArgs,
   parsePreflightArgs,
+  parseRefreshProductArgs,
   parseSaveStorageStateArgs,
   productionBiligSameCorpusUrl,
   type CaptureArgs,
   type EmitXlsxArgs,
   type PreflightArgs,
+  type RefreshProductArgs,
 } from './ui-responsiveness-same-corpus-args.ts'
 import type { SameCorpusCapture } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import {
@@ -26,9 +28,16 @@ import {
 } from './ui-responsiveness-same-corpus-page.ts'
 import type { SameCorpusPreflight } from './ui-responsiveness-same-corpus-preflight.ts'
 import { sameCorpusPreflightProductInvalidReasons } from './ui-responsiveness-same-corpus-preflight.ts'
+import { captureArgsForProductRefresh, refreshSameCorpusCaptureProduct } from './ui-responsiveness-same-corpus-product-refresh.ts'
 import { writeSameCorpusProofArchiveManifest } from './ui-responsiveness-same-corpus-proof-archive.ts'
 
-export { parseCaptureArgs, parseEmitXlsxArgs, parsePreflightArgs, parseSaveStorageStateArgs } from './ui-responsiveness-same-corpus-args.ts'
+export {
+  parseCaptureArgs,
+  parseEmitXlsxArgs,
+  parsePreflightArgs,
+  parseRefreshProductArgs,
+  parseSaveStorageStateArgs,
+} from './ui-responsiveness-same-corpus-args.ts'
 export { buildSameCorpusFingerprint, verifyXlsxCorpusFingerprint } from './ui-responsiveness-same-corpus-fingerprint.ts'
 export {
   buildSameCorpusCaptureArtifact,
@@ -75,6 +84,46 @@ async function main(): Promise<void> {
     return
   }
 
+  const refreshProductArgs = parseRefreshProductArgs(process.argv.slice(2))
+  if (refreshProductArgs) {
+    assertSameCorpusBrowserRunAllowed()
+    assertSameCorpusRefreshIsDiagnostic(refreshProductArgs)
+    const existingCapture = readSameCorpusCapture(refreshProductArgs.existingCapturePath)
+    const args = captureArgsForProductRefresh(refreshProductArgs, existingCapture)
+    const servedBilig = refreshProductArgs.biligUrlSource === 'served-production' ? await startServedBiligProductionRuntime(args) : null
+    const captureArgs = servedBilig ? { ...args, biligUrl: servedBilig.url } : args
+    try {
+      const capture = await refreshSameCorpusCaptureProduct({
+        capture: existingCapture,
+        captureArgs,
+        product: refreshProductArgs.product,
+      })
+      writeSameCorpusCapture(refreshProductArgs.outputPath, capture)
+      const proofArchiveManifest = writeSameCorpusProofArchiveManifest(capture, refreshProductArgs.outputPath)
+      console.log(
+        JSON.stringify(
+          {
+            mode: 'refresh-product',
+            product: refreshProductArgs.product,
+            fromCapture: refreshProductArgs.existingCapturePath,
+            outputPath: refreshProductArgs.outputPath,
+            proofArchiveManifestPath: `${refreshProductArgs.outputPath}.proof/proof-archive-manifest.json`,
+            proofArchiveComplete: proofArchiveManifest.complete,
+            currentContractEvidenceComplete: capture.runManifest.currentContractEvidenceComplete,
+            googleSheetsTenXRequirementSatisfied: capture.runManifest.googleSheetsTenXRequirementSatisfied,
+          },
+          null,
+          2,
+        ),
+      )
+    } finally {
+      if (servedBilig) {
+        await stopServedBiligProductionRuntime(servedBilig)
+      }
+    }
+    return
+  }
+
   const args = parseCaptureArgs(process.argv.slice(2))
   assertProductionBiligEvidenceSource(args)
   assertSameCorpusBrowserRunAllowed()
@@ -82,15 +131,7 @@ async function main(): Promise<void> {
   const servedBilig = args.biligUrlSource === 'served-production' ? await startServedBiligProductionRuntime(args) : null
   try {
     const capture = await captureSameCorpusUiResponsiveness(args)
-    mkdirSync(dirname(args.outputPath), { recursive: true })
-    writeFileSync(
-      args.outputPath,
-      formatJsonForRepo({
-        rootDir,
-        serializedJson: `${JSON.stringify(capture, null, 2)}\n`,
-        tempPrefix: 'ui-responsiveness-same-corpus-capture',
-      }),
-    )
+    writeSameCorpusCapture(args.outputPath, capture)
     const proofArchiveManifest = writeSameCorpusProofArchiveManifest(capture, args.outputPath)
     console.log(
       JSON.stringify(
@@ -116,6 +157,55 @@ async function main(): Promise<void> {
       await stopServedBiligProductionRuntime(servedBilig)
     }
   }
+}
+
+function readSameCorpusCapture(path: string): SameCorpusCapture {
+  const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'))
+  if (!isSameCorpusCaptureArtifact(parsed)) {
+    throw new Error(`Unexpected same-corpus capture artifact: ${path}`)
+  }
+  for (const corpusId of new Set(parsed.cases.map((entry) => entry.corpusCaseId))) {
+    if (!isWorkbookBenchmarkCorpusId(corpusId)) {
+      throw new Error(`Unexpected same-corpus capture corpus id: ${String(corpusId)}`)
+    }
+  }
+  return parsed
+}
+
+function isSameCorpusCaptureArtifact(value: unknown): value is SameCorpusCapture {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+  return (
+    Reflect.get(value, 'schemaVersion') === 1 &&
+    Reflect.get(value, 'suite') === 'ui-responsiveness-same-corpus-capture' &&
+    Number.isInteger(Reflect.get(value, 'sampleCount')) &&
+    Array.isArray(Reflect.get(value, 'cases'))
+  )
+}
+
+function writeSameCorpusCapture(path: string, capture: SameCorpusCapture): void {
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(
+    path,
+    formatJsonForRepo({
+      rootDir,
+      serializedJson: `${JSON.stringify(capture, null, 2)}\n`,
+      tempPrefix: 'ui-responsiveness-same-corpus-capture',
+    }),
+  )
+}
+
+function assertSameCorpusRefreshIsDiagnostic(args: RefreshProductArgs): void {
+  if (args.allowIncompleteEvidence) {
+    return
+  }
+  throw new Error(
+    [
+      'Same-corpus product refresh is diagnostic and must not be mistaken for a claim-grade capture.',
+      'Pass --allow-incomplete-evidence and keep the claim gate red until every required product and workload is freshly proven.',
+    ].join('\n'),
+  )
 }
 
 export function assertSameCorpusBrowserRunAllowed(

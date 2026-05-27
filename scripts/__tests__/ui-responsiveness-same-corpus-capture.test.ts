@@ -18,6 +18,7 @@ import {
   parseCaptureArgs,
   parseEmitXlsxArgs,
   parsePreflightArgs,
+  parseRefreshProductArgs,
   parseSaveStorageStateArgs,
   verifyXlsxCorpusFingerprint,
 } from '../capture-ui-responsiveness-same-corpus.ts'
@@ -46,6 +47,11 @@ import {
   type SameCorpusNameBoxPage,
 } from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
 import { sameCorpusChromiumLaunchOptions } from '../ui-responsiveness-same-corpus-page-utils.ts'
+import {
+  captureArgsForProductRefresh,
+  rebuildSameCorpusCaseWithRefreshedProduct,
+  sameCorpusVisualProofsFromScenarioProof,
+} from '../ui-responsiveness-same-corpus-product-refresh.ts'
 import { sameCorpusScrollProbeSelectorsForProduct } from '../ui-responsiveness-same-corpus-scroll-page.ts'
 import { readGoogleSheetsNameBoxSelection, type SameCorpusNameBoxReaderPage } from '../ui-responsiveness-same-corpus-semantic-proof.ts'
 import {
@@ -174,6 +180,41 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       biligUrl: 'http://127.0.0.1:4181/?benchmarkCorpus=wide-mixed-250k&persist=0',
       biligUrlSource: 'served-production',
     })
+  })
+
+  it('parses diagnostic product refresh options for Bilig evidence refreshes', () => {
+    const args = parseRefreshProductArgs([
+      '--refresh-product',
+      'bilig',
+      '--from-capture',
+      '.cache/ui-responsiveness/same-corpus-capture.json',
+      '--output',
+      'tmp/refreshed-capture.json',
+      '--serve-bilig-production',
+      '--allow-incomplete-evidence',
+    ])
+
+    expect(args).toMatchObject({
+      allowIncompleteEvidence: true,
+      biligUrl: null,
+      biligUrlSource: 'served-production',
+      product: 'bilig',
+    })
+    expect(args?.existingCapturePath.endsWith('/.cache/ui-responsiveness/same-corpus-capture.json')).toBe(true)
+    expect(args?.outputPath.endsWith('/tmp/refreshed-capture.json')).toBe(true)
+  })
+
+  it('rejects incumbent product refreshes until they can be independently authenticated', () => {
+    expect(() =>
+      parseRefreshProductArgs([
+        '--refresh-product',
+        'google-sheets',
+        '--from-capture',
+        '.cache/ui-responsiveness/same-corpus-capture.json',
+        '--output',
+        'tmp/refreshed-capture.json',
+      ]),
+    ).toThrow('Same-corpus product refresh currently supports --refresh-product bilig only.')
   })
 
   it('rejects ambiguous Bilig production serving and explicit URL options', () => {
@@ -501,9 +542,23 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(sameCorpusWorkloadMutatesWorkbook('formula-edit')).toBe(true)
     expect(sameCorpusWorkloadMutatesWorkbook('fill-format-change')).toBe(true)
     expect(sameCorpusWorkloadMutatesWorkbook('jump-deep-row')).toBe(false)
-    expect(sameCorpusMutationTargetRangeForSample('edit-visible-cell', 0)).toBe('C5')
-    expect(sameCorpusMutationTargetRangeForSample('formula-edit', 1)).toBe('D6')
-    expect(sameCorpusMutationTargetRangeForSample('fill-format-change', 2)).toBe('E7')
+    expect(sameCorpusMutationTargetRangeForSample('edit-visible-cell', 0)).toBe('F5')
+    expect(sameCorpusMutationTargetRangeForSample('formula-edit', 1)).toBe('C6')
+    expect(sameCorpusMutationTargetRangeForSample('fill-format-change', 2)).toBe('B7')
+  })
+
+  it('chooses same-corpus mutation targets that match the benchmark cell role under test', () => {
+    const sheet = buildWorkbookBenchmarkCorpus('wide-mixed-250k').snapshot.sheets[0]
+    const cellByAddress = new Map(sheet?.cells.map((cell) => [cell.address, cell]) ?? [])
+    const editTarget = cellByAddress.get(sameCorpusMutationTargetRangeForSample('edit-visible-cell', 0))
+    const formulaTarget = cellByAddress.get(sameCorpusMutationTargetRangeForSample('formula-edit', 0))
+    const fillTarget = cellByAddress.get(sameCorpusMutationTargetRangeForSample('fill-format-change', 0))
+
+    expect(editTarget?.value).toBe('note-4-5')
+    expect(editTarget?.formula).toBeUndefined()
+    expect(formulaTarget?.formula).toBe('A5+B5')
+    expect(fillTarget?.value).toBe('segment-5')
+    expect(fillTarget?.formula).toBeUndefined()
   })
 
   it('routes non-scroll timings through the browser-visible response barrier', async () => {
@@ -549,6 +604,52 @@ describe('same-corpus UI responsiveness capture CLI', () => {
 
     expect(sample).toEqual({ operationResponseMs: 42, postOperationFrameMs: 7 })
     expect(events).toEqual(['pointer', 'visible:bilig:select-cell:0', 'press:ArrowRight'])
+  })
+
+  it('does not retarget declared mutation cells by clicking the viewport before typing', async () => {
+    const events: string[] = []
+    // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- This test supplies the minimal Playwright Page surface used by the keyboard workload path.
+    const page = {
+      keyboard: {
+        press: async (key: string) => {
+          events.push(`press:${key}`)
+        },
+        type: async (text: string) => {
+          events.push(`type:${text}`)
+        },
+      },
+    } as unknown as Page
+
+    const sample = await measureProductWorkload({
+      page,
+      product: 'bilig',
+      captureArgs: parseCaptureArgs([
+        '--output',
+        'tmp/ui-capture.json',
+        '--google-sheets-url',
+        'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+        '--allow-incomplete-evidence',
+      ]),
+      workload: 'edit-visible-cell',
+      sampleIndex: 0,
+      loadToReadyMs: 999,
+      hooks: {
+        measureVisibleScrollResponseWithRetries: async () => {
+          throw new Error('scroll hook should not be used for edit-visible-cell')
+        },
+        measureVisibleNonScrollResponse: async (_page, product, workload, sampleIndex, runOperation) => {
+          events.push(`visible:${product}:${workload}:${String(sampleIndex)}`)
+          await runOperation()
+          return { operationResponseMs: 42, postOperationFrameMs: 7 }
+        },
+        movePointerToProductViewport: async () => {
+          events.push('pointer')
+        },
+      },
+    })
+
+    expect(sample).toEqual({ operationResponseMs: 42, postOperationFrameMs: 7 })
+    expect(events).toEqual(['visible:bilig:edit-visible-cell:0', `type:${sameCorpusEditVisibleCellValue(0)}`, 'press:Enter'])
   })
 
   it('requires Bilig interaction-visible state movement instead of arbitrary screenshot noise', () => {
@@ -767,6 +868,74 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       captured: true,
       requiredProducts: ['bilig', 'google-sheets'],
       missingProducts: [],
+    })
+  })
+
+  it('rebuilds a capture case with fresh Bilig mutation target proof without rewriting incumbent proof', () => {
+    const entry = sameCorpusCaptureCase({
+      workload: 'edit-visible-cell',
+      biligRuntimeProof: sameCorpusBiligRuntimeProof(),
+    })
+    const oldGoogleSheetsProof = entry.scenarioProof.semanticUiProof.products.find((proof) => proof.product === 'google-sheets')
+    const refreshedBilig = {
+      ...sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'edit-visible-cell'),
+      operationResponseMsSamples: [5, 6, 7],
+    }
+    const visualProofs = [
+      ...sameCorpusVisualProofsFromScenarioProof(entry.scenarioProof, entry.id).filter((proof) => proof.product !== 'bilig'),
+      sameCorpusVisualProof('bilig', 'typegpu-visible-canvas', entry.id, 'edit-visible-cell'),
+    ]
+
+    const rebuilt = rebuildSameCorpusCaseWithRefreshedProduct({
+      entry,
+      measurement: refreshedBilig,
+      product: 'bilig',
+      visualProofs,
+    })
+
+    expect(rebuilt.bilig.operationResponseMsSamples).toEqual([5, 6, 7])
+    expect(rebuilt.googleSheets).toEqual(entry.googleSheets)
+    expect(rebuilt.scenarioProof.semanticUiProof.products.find((proof) => proof.product === 'google-sheets')).toEqual(oldGoogleSheetsProof)
+    expect(rebuilt.scenarioProof.semanticUiProof.products.find((proof) => proof.product === 'bilig')?.mutationTargetProofs).toHaveLength(3)
+    expect(rebuilt.scenarioProof.semanticUiProof.productVerdicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          product: 'bilig',
+          acceptedForCurrentScorecard: true,
+        }),
+      ]),
+    )
+  })
+
+  it('derives capture args for a Bilig-only product refresh from the existing incumbent evidence', () => {
+    const entry = sameCorpusCaptureCase({
+      workload: 'edit-visible-cell',
+      biligRuntimeProof: sameCorpusBiligRuntimeProof(),
+    })
+    const capture = buildSameCorpusCaptureArtifact({ sampleCount: 3, cases: [entry] })
+    const refreshArgs = parseRefreshProductArgs([
+      '--refresh-product',
+      'bilig',
+      '--from-capture',
+      'tmp/current.json',
+      '--output',
+      'tmp/current.json',
+      '--bilig-url',
+      'http://127.0.0.1:4180/?benchmarkCorpus=wide-mixed-250k&persist=0',
+      '--allow-incomplete-evidence',
+    ])
+    if (!refreshArgs) {
+      throw new Error('Expected refresh args')
+    }
+
+    const captureArgs = captureArgsForProductRefresh(refreshArgs, capture)
+
+    expect(captureArgs).toMatchObject({
+      allowIncompleteEvidence: true,
+      biligUrl: 'http://127.0.0.1:4180/?benchmarkCorpus=wide-mixed-250k&persist=0',
+      corpusId: 'wide-mixed-250k',
+      googleSheetsUrl: 'https://example.com/sheet',
+      sampleCount: 3,
     })
   })
 

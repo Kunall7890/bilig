@@ -51,6 +51,21 @@ export interface PreflightArgs {
   readonly storageStatePath: string | null
 }
 
+export interface RefreshProductArgs {
+  readonly allowIncompleteEvidence: boolean
+  readonly biligProductionHost: string
+  readonly biligProductionPort: number
+  readonly biligUrl: string | null
+  readonly biligUrlSource: 'default-dev' | 'explicit' | 'served-production'
+  readonly biligStorageStatePath: string | null
+  readonly existingCapturePath: string
+  readonly headless: boolean
+  readonly outputPath: string
+  readonly product: 'bilig'
+  readonly readyTimeoutMs: number
+  readonly storageStatePath: string | null
+}
+
 export const defaultCorpusId: WorkbookBenchmarkCorpusId = 'wide-mixed-250k'
 export const defaultViewport = { width: 1440, height: 900 } as const
 export const defaultBiligProductionPreviewHost = '127.0.0.1'
@@ -118,6 +133,40 @@ export function parseSaveStorageStateArgs(argv: readonly string[]): SaveStorageS
     product,
     readyTimeoutMs: parsePositiveInteger(argumentValue(argv, '--ready-timeout-ms') ?? '300000', '--ready-timeout-ms'),
     targetPath: resolve(targetPath),
+  }
+}
+
+export function parseRefreshProductArgs(argv: readonly string[]): RefreshProductArgs | null {
+  const refreshProduct = argumentValue(argv, '--refresh-product')
+  if (!refreshProduct) {
+    return null
+  }
+  const product = parseSameCorpusProduct(refreshProduct)
+  if (product !== 'bilig') {
+    throw new Error('Same-corpus product refresh currently supports --refresh-product bilig only.')
+  }
+  const existingCapturePath = resolveRequiredArgument(argv, '--from-capture')
+  const outputPath = resolveRequiredArgument(argv, '--output')
+  const serveBiligProduction = argv.includes('--serve-bilig-production')
+  const explicitBiligUrl = argumentValue(argv, '--bilig-url')
+  if (serveBiligProduction && explicitBiligUrl) {
+    throw new Error('Use either --serve-bilig-production or --bilig-url, not both.')
+  }
+  const biligProductionHost = parseHost(argumentValue(argv, '--bilig-production-host') ?? defaultBiligProductionPreviewHost)
+  const biligProductionPort = parsePort(argumentValue(argv, '--bilig-production-port') ?? String(defaultBiligProductionPreviewPort))
+  return {
+    allowIncompleteEvidence: argv.includes('--allow-incomplete-evidence'),
+    biligProductionHost,
+    biligProductionPort,
+    biligUrl: serveBiligProduction ? null : explicitBiligUrl,
+    biligUrlSource: serveBiligProduction ? 'served-production' : explicitBiligUrl ? 'explicit' : 'default-dev',
+    biligStorageStatePath: resolveOptionalPath(argumentValue(argv, '--bilig-storage-state')),
+    existingCapturePath,
+    headless: !argv.includes('--headed'),
+    outputPath,
+    product,
+    readyTimeoutMs: parsePositiveInteger(argumentValue(argv, '--ready-timeout-ms') ?? '60000', '--ready-timeout-ms'),
+    storageStatePath: resolveOptionalPath(argumentValue(argv, '--storage-state')),
   }
 }
 
@@ -235,6 +284,14 @@ function parseNonNegativeNumber(value: string, flag: string): number {
 
 function resolveOptionalPath(value: string | null): string | null {
   return value ? resolve(value) : null
+}
+
+function resolveRequiredArgument(argv: readonly string[], name: string): string {
+  const value = argumentValue(argv, name)
+  if (!value) {
+    throw new Error(`Missing required ${name} <path> argument.`)
+  }
+  return resolve(value)
 }
 
 function argumentValue(argv: readonly string[], name: string): string | null {
