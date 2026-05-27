@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx'
 
 import { formatStructuredReferenceColumnSpecifier } from '@bilig/formula'
 import type { LiteralInput, WorkbookDefinedNameSnapshot, WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
+import { translateImportedFormulaExternalReferences, type ImportedExternalLinkCaches } from './xlsx-external-references.js'
 
 interface ImportedSheetBounds {
   readonly endRow: number
@@ -190,12 +191,23 @@ function parseDefinedNameScalarValue(value: string): WorkbookDefinedNameValueSna
 function parseImportedDefinedNameValue(
   ref: string,
   sheetBoundsByName: ReadonlyMap<string, ImportedSheetBounds>,
+  externalLinkCaches: ImportedExternalLinkCaches | undefined,
 ): WorkbookDefinedNameValueSnapshot | null {
   const trimmed = ref.trim()
   if (trimmed.length === 0) {
     return null
   }
   const expression = trimmed.startsWith('=') ? trimmed.slice(1).trim() : trimmed
+  if (externalLinkCaches && expression.includes('[')) {
+    const translated = translateImportedFormulaExternalReferences(expression, externalLinkCaches)
+    if (translated.resolvedCount > 0 && translated.unresolvedCount === 0) {
+      const scalar = parseDefinedNameScalarValue(translated.formula)
+      if (scalar) {
+        return scalar
+      }
+      return { kind: 'formula', formula: `=${translated.formula}` }
+    }
+  }
   const sheetReference = parseSheetReference(expression)
   if (sheetReference && !sheetReference.sheetName.startsWith('[')) {
     const parsedReference = parseDefinedNameReferenceValue(sheetReference.sheetName, sheetReference.reference, sheetBoundsByName)
@@ -228,7 +240,10 @@ function compareImportedDefinedNames(left: WorkbookDefinedNameSnapshot, right: W
   return left.name.localeCompare(right.name) || (left.scopeSheetName ?? '').localeCompare(right.scopeSheetName ?? '')
 }
 
-export function readImportedDefinedNames(workbook: XLSX.WorkBook): {
+export function readImportedDefinedNames(
+  workbook: XLSX.WorkBook,
+  options: { readonly externalLinkCaches?: ImportedExternalLinkCaches } = {},
+): {
   definedNames: WorkbookDefinedNameSnapshot[] | undefined
   ignoredCount: number
 } {
@@ -250,7 +265,7 @@ export function readImportedDefinedNames(workbook: XLSX.WorkBook): {
     }
     const value = isBuiltInPrintDefinedName(name)
       ? parseImportedPrintDefinedNameValue(ref)
-      : parseImportedDefinedNameValue(ref, sheetBoundsByName)
+      : parseImportedDefinedNameValue(ref, sheetBoundsByName, options.externalLinkCaches)
     if (!value) {
       ignoredCount += 1
       continue

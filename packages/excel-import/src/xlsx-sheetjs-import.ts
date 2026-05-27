@@ -224,6 +224,9 @@ function collectWorkbookExternalLinkCacheUsage(
       addExternalLinkCacheFormulaUsage(usage, cell['f'])
     }
   }
+  for (const entry of workbook.Workbook?.Names ?? []) {
+    addExternalLinkCacheFormulaUsage(usage, entry.Ref)
+  }
   return usage.size > 0 ? usage : undefined
 }
 
@@ -330,11 +333,6 @@ function importParsedSheetJsWorkbook(args: {
   const sheetPathsByName = workbookSheetPathsByName(workbook, artifactPathSource)
   const fallbackSheetPaths = workbookDirectorySheetPaths(workbook, artifactPathSource)
   const warnings: string[] = []
-  const importedDefinedNames = readImportedDefinedNames(workbook)
-  addWorkbookWarnings(workbook, warnings, importedDefinedNames.ignoredCount)
-  if (workbookDefinedNamesReferenceExternalWorkbook(workbook)) {
-    warnings.push(externalWorkbookReferencesWarning)
-  }
   const styleArtifactSource =
     contentType === XLSX_CONTENT_TYPE || contentType === XLSM_CONTENT_TYPE ? (workbookZip ?? fallbackArtifactSource) : undefined
   const importedStyleArtifacts = readImportedWorkbookStyleArtifacts(workbook, workbook.SheetNames, styleArtifactSource)
@@ -393,6 +391,11 @@ function importParsedSheetJsWorkbook(args: {
     options?.externalLinkCacheArtifactMode,
   )
   const importedExternalLinkCaches = importedExternalLinkCacheRefresh.caches
+  const importedDefinedNames = readImportedDefinedNames(workbook, { externalLinkCaches: importedExternalLinkCaches })
+  addWorkbookWarnings(workbook, warnings, importedDefinedNames.ignoredCount)
+  if (workbookDefinedNamesReferenceExternalWorkbook(workbook)) {
+    warnings.push(externalWorkbookReferencesWarning)
+  }
   addExternalWorkbookHydrationWarnings(warnings, importedExternalLinkCacheRefresh.diagnostics)
   const importedExternalLinkArtifacts = refreshImportedWorkbookExternalLinkArtifactCaches(
     workbookZip ? readImportedWorkbookExternalLinkArtifacts(workbookZip) : undefined,
