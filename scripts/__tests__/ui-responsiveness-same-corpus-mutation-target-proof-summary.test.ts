@@ -9,6 +9,7 @@ import {
   sameCorpusMutationTargetProofProductEvidenceLines,
   sameCorpusMutationTargetProofProductGapLines,
 } from '../ui-responsiveness-same-corpus-mutation-target-proof-gaps.ts'
+import { sameCorpusMutationTargetProofSignature } from '../ui-responsiveness-same-corpus-mutation-target-signature.ts'
 import type { SameCorpusMutationTargetProof, SameCorpusScenarioProof } from '../ui-responsiveness-same-corpus-proof.ts'
 import { sameCorpusMutationTargetRangeForSample } from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
 import type { SameCorpusProductSemanticUiProof } from '../ui-responsiveness-same-corpus-semantic-proof.ts'
@@ -348,6 +349,7 @@ function mutationTargetProof(
       fillColor: null,
       visibleText: afterValue,
       source: 'visible-grid-cell',
+      ...(product === 'bilig' ? { visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex) } : {}),
     },
     visibleAfterSelectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
     visibleRestored: {
@@ -356,6 +358,7 @@ function mutationTargetProof(
       fillColor: null,
       visibleText: 'metric-1',
       source: 'visible-grid-cell',
+      ...(product === 'bilig' ? { visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex) } : {}),
     },
     visibleRestoredSelectedRange: sameCorpusMutationTargetRangeForSample('edit-visible-cell', sampleIndex),
     authoritativeReadbackRevision: authoritativeReadbackRevision(sampleIndex),
@@ -370,7 +373,16 @@ function mutationTargetProof(
     )}-after.png`,
     undoRestoreStatus: 'verified',
   }
-  return product === 'google-sheets' ? { ...proof, committedStateProof: committedStateProof(proof) } : proof
+  return signedMutationTargetProof(product === 'google-sheets' ? { ...proof, committedStateProof: committedStateProof(proof) } : proof)
+}
+
+function signedMutationTargetProof(
+  proof: Omit<SameCorpusMutationTargetProof, 'targetProofSignature'> | SameCorpusMutationTargetProof,
+): SameCorpusMutationTargetProof {
+  return {
+    ...proof,
+    targetProofSignature: sameCorpusMutationTargetProofSignature(proof),
+  }
 }
 
 function committedStateProof(proof: SameCorpusMutationTargetProof): NonNullable<SameCorpusMutationTargetProof['committedStateProof']> {
@@ -484,7 +496,7 @@ function readback(
     source: product === 'bilig' ? 'bilig-authoritative-range' : 'visible-grid-cell',
     capturedRevision:
       product === 'bilig' ? (phase === 'after' ? authoritativeReadbackRevision(sampleIndex) : `${phase}-${sampleIndex}`) : null,
-    visibleSceneProofSha256: product === 'bilig' && phase === 'after' ? visibleSceneProofSha256(sampleIndex) : null,
+    visibleSceneProofSha256: product === 'bilig' ? visibleSceneProofSha256(sampleIndex) : null,
   }
 }
 

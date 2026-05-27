@@ -47,6 +47,7 @@ import {
   sameCorpusMutationTargetRangeForSample,
   type SameCorpusNameBoxPage,
 } from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
+import { sameCorpusMutationTargetProofSignature } from '../ui-responsiveness-same-corpus-mutation-target-signature.ts'
 import { sameCorpusChromiumLaunchOptions } from '../ui-responsiveness-same-corpus-page-utils.ts'
 import {
   captureArgsForProductRefresh,
@@ -2430,8 +2431,19 @@ function sameCorpusMutationTargetProofs(product: SameCorpusProductVisualProof['p
       screenshotSha256: sameCorpusMutationTargetScreenshotSha256(sampleIndex, 'after'),
       undoRestoreStatus: 'verified' as const,
     }
-    return product === 'google-sheets' ? Object.assign(proof, { committedStateProof: sameCorpusCommittedStateProof(proof) }) : proof
+    return signedMutationTargetProof(
+      product === 'google-sheets' ? Object.assign(proof, { committedStateProof: sameCorpusCommittedStateProof(proof) }) : proof,
+    )
   })
+}
+
+function signedMutationTargetProof(
+  proof: Omit<SameCorpusMutationTargetProof, 'targetProofSignature'> | SameCorpusMutationTargetProof,
+): SameCorpusMutationTargetProof {
+  return {
+    ...proof,
+    targetProofSignature: sameCorpusMutationTargetProofSignature(proof),
+  }
 }
 
 function sameCorpusCommittedStateProof(

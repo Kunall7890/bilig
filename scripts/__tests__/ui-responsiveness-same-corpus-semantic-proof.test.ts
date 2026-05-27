@@ -6,6 +6,7 @@ import {
   type SameCorpusProductSemanticUiProof,
 } from '../ui-responsiveness-same-corpus-proof.ts'
 import { sameCorpusMutationTargetRangeForSample } from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
+import { sameCorpusMutationTargetProofSignature } from '../ui-responsiveness-same-corpus-mutation-target-signature.ts'
 import type { UiResponsivenessSameCorpusProduct } from '../ui-responsiveness-same-corpus-scorecard-proof.ts'
 import type { UiResponsivenessSameCorpusMutatingWorkload } from '../ui-responsiveness-same-corpus-workloads.ts'
 import { sameCorpusEditVisibleCellValue, sameCorpusFormulaEditFormula } from '../ui-responsiveness-same-corpus-workload-runner.ts'
@@ -20,6 +21,57 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     expect(verdict).toMatchObject({
       acceptedForCurrentScorecard: true,
       invalidReasons: [],
+    })
+  })
+
+  it('rejects mutation target proof without a per-sample target proof signature', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) => {
+          if (proof.sampleIndex !== 0) {
+            return proof
+          }
+          const { targetProofSignature: _targetProofSignature, ...unsignedProof } = proof
+          return unsignedProof as SameCorpusMutationTargetProof
+        }),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining(['semantic UI mutation target proof for edit-visible-cell is missing target proof signature']),
+    })
+  })
+
+  it('rejects mutation target proof when signed sample fields drift', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validSemanticProof({
+        mutationTargetProofs: validMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0
+            ? Object.assign({}, proof, {
+                visibleAfter: Object.assign({}, proof.visibleAfter, {
+                  value: 'stale-editor-text',
+                  visibleText: 'stale-editor-text',
+                }),
+              })
+            : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell target proof signature does not match sample fields',
+      ]),
     })
   })
 
@@ -955,7 +1007,7 @@ function validGoogleSheetsMutationTargetProofs(): SameCorpusMutationTargetProof[
 function validGoogleSheetsFormulaMutationTargetProofs(): SameCorpusMutationTargetProof[] {
   return [0, 1, 2].map((sampleIndex) => {
     const proof = mutationTargetProof('google-sheets', 'formula-edit', sampleIndex)
-    return Object.assign(proof, { committedStateProof: googleCommittedStateProof(proof) })
+    return signedMutationTargetProof({ ...proof, committedStateProof: googleCommittedStateProof(proof) })
   })
 }
 
@@ -965,7 +1017,7 @@ function validGoogleSheetsFillMutationTargetProofs(): SameCorpusMutationTargetPr
 
 function googleSheetsMutationTargetProof(sampleIndex: number): SameCorpusMutationTargetProof {
   const proof = mutationTargetProof('google-sheets', 'edit-visible-cell', sampleIndex)
-  return { ...proof, committedStateProof: googleCommittedStateProof(proof) }
+  return signedMutationTargetProof({ ...proof, committedStateProof: googleCommittedStateProof(proof) })
 }
 
 function googleSheetsFillMutationTargetProof(sampleIndex: number): SameCorpusMutationTargetProof {
@@ -978,7 +1030,7 @@ function googleSheetsFillMutationTargetProof(sampleIndex: number): SameCorpusMut
     )}-after.png`,
     targetScreenshots: mutationTargetScreenshots('google-sheets', 'fill-format-change', sampleIndex),
   }
-  return { ...proof, committedStateProof: googleCommittedStateProof(proof) }
+  return signedMutationTargetProof({ ...proof, committedStateProof: googleCommittedStateProof(proof) })
 }
 
 function mutationTargetProof(
@@ -992,7 +1044,7 @@ function mutationTargetProof(
   const committedStateValidationMs = committedTargetProofMs - visibleTargetRenderMs
   const restoreValidationMs = 80
   const authoritativeSource = product === 'bilig' ? 'bilig-authoritative-range' : 'visible-grid-cell'
-  return {
+  return signedMutationTargetProof({
     product,
     sampleIndex,
     committedTargetProofMs,
@@ -1042,7 +1094,7 @@ function mutationTargetProof(
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/${product}-sample-${String(sampleIndex + 1)}-after.png`,
     screenshotSha256: mutationTargetScreenshotSha256(sampleIndex, 'after'),
     undoRestoreStatus: 'verified',
-  }
+  })
 }
 
 function biligMutationTargetProofWithVisibleSource(
@@ -1051,11 +1103,11 @@ function biligMutationTargetProofWithVisibleSource(
   source: 'visible-formula-bar' | 'visible-grid-cell',
 ): SameCorpusMutationTargetProof {
   const proof = mutationTargetProof('bilig', workload, sampleIndex)
-  return {
+  return signedMutationTargetProof({
     ...proof,
     visibleAfter: { ...proof.visibleAfter, source },
     visibleRestored: { ...proof.visibleRestored, source },
-  }
+  })
 }
 
 function mutationTargetIntendedPayload(
@@ -1145,7 +1197,7 @@ function fillMutationTargetProof(
   const committedStateValidationMs = committedTargetProofMs - visibleTargetRenderMs
   const restoreValidationMs = 80
   const targetRange = sameCorpusMutationTargetRangeForSample('fill-format-change', sampleIndex)
-  return {
+  return signedMutationTargetProof({
     product: 'bilig',
     sampleIndex,
     committedTargetProofMs,
@@ -1217,6 +1269,15 @@ function fillMutationTargetProof(
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-fill-format-change/mutation-target/bilig-sample-${String(sampleIndex + 1)}-after.png`,
     screenshotSha256: mutationTargetScreenshotSha256(sampleIndex, 'after'),
     undoRestoreStatus: 'verified',
+  })
+}
+
+function signedMutationTargetProof(
+  proof: Omit<SameCorpusMutationTargetProof, 'targetProofSignature'> | SameCorpusMutationTargetProof,
+): SameCorpusMutationTargetProof {
+  return {
+    ...proof,
+    targetProofSignature: sameCorpusMutationTargetProofSignature(proof),
   }
 }
 

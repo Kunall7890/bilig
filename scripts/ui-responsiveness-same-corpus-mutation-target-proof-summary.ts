@@ -166,6 +166,7 @@ function sameCorpusMutationTargetProofSampleSummaries(
         screenshotPath: null,
         screenshotSha256: null,
         undoRestoreStatus: null,
+        targetProofSignature: null,
         invalidReasons: [`semantic UI mutation target proof for ${workload} is missing sample ${String(sampleIndex + 1)}`],
       }
     }
@@ -210,6 +211,7 @@ function sameCorpusMutationTargetProofSampleSummaries(
       screenshotPath: sample.screenshotPath,
       screenshotSha256: sample.screenshotSha256,
       undoRestoreStatus: sample.undoRestoreStatus,
+      targetProofSignature: sample.targetProofSignature ?? null,
       invalidReasons,
     }
   })
@@ -283,6 +285,7 @@ function sameCorpusMissingMutationTargetSamples(requiredSampleCount: number): Sa
     screenshotPath: null,
     screenshotSha256: null,
     undoRestoreStatus: null,
+    targetProofSignature: null,
     invalidReasons: ['semantic UI mutation target proof sample is missing'],
   }))
 }

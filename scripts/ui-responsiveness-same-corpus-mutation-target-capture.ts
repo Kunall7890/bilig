@@ -38,6 +38,7 @@ import {
   sameCorpusFillColorSwatchLabel,
   sameCorpusFormulaEditFormula,
 } from './ui-responsiveness-same-corpus-workload-runner.ts'
+import { sameCorpusMutationTargetProofSignature } from './ui-responsiveness-same-corpus-mutation-target-signature.ts'
 import type { UiResponsivenessSameCorpusMutatingWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export async function captureSameCorpusMutationTargetProofForSample(args: {
@@ -160,7 +161,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     const restoreProofCapturedAtMs = performance.now()
     const restoreValidationMs = Math.max(0, restoreProofCapturedAtMs - postMutationProofCapturedAtMs)
     failurePhase = 'build-proof'
-    return {
+    const proof: Omit<SameCorpusMutationTargetProof, 'targetProofSignature'> = {
       after,
       authoritativeReadbackRevision: revisions.authoritativeReadbackRevision,
       before: args.before,
@@ -203,6 +204,10 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       visibleRestored,
       visibleRestoredSelectedRange,
       workload: args.workload,
+    }
+    return {
+      ...proof,
+      targetProofSignature: sameCorpusMutationTargetProofSignature(proof),
     }
   } catch (error: unknown) {
     let restoreStatus: SameCorpusMutationTargetFailureCleanupStatus = restoredAfterMutation ? 'not-needed' : 'restored'

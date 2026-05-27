@@ -21,6 +21,10 @@ import {
 import { sameCorpusBiligVisibleSceneProofInvalidReasons } from './ui-responsiveness-same-corpus-bilig-visible-proof.ts'
 import { sameCorpusMutationTargetTimingInvalidReasons } from './ui-responsiveness-same-corpus-mutation-target-timing.ts'
 import { sameCorpusMutationTargetRangeForSample } from './ui-responsiveness-same-corpus-mutation-target-spec.ts'
+import {
+  isSameCorpusMutationTargetProofSignature,
+  sameCorpusMutationTargetProofSignature,
+} from './ui-responsiveness-same-corpus-mutation-target-signature.ts'
 import { uiSameCorpusWorkloadMutatesWorkbook, type UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export interface SameCorpusSemanticUiProof {
@@ -77,6 +81,7 @@ export interface SameCorpusMutationTargetProof {
   readonly screenshotSha256: string | null
   readonly screenshotPath: string | null
   readonly undoRestoreStatus: 'verified' | 'missing' | 'failed'
+  readonly targetProofSignature?: string | null
 }
 
 export interface SameCorpusMutationTargetScreenshotProofSet {
@@ -355,6 +360,7 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
   if (sample.product !== proof.product) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} has mismatched product`)
   }
+  invalidReasons.push(...sameCorpusMutationTargetProofSignatureInvalidReasons(workload, sample))
   invalidReasons.push(...sameCorpusMutationTargetPayloadInvalidReasons(workload, sample))
   if (sample.sheetName.trim().length === 0 || sample.sheetName !== proof.sheetName) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing the target sheet`)
@@ -422,6 +428,18 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
     invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing rendered post-mutation fill color`)
   }
   return invalidReasons
+}
+
+function sameCorpusMutationTargetProofSignatureInvalidReasons(
+  workload: UiResponsivenessSameCorpusWorkload,
+  sample: SameCorpusMutationTargetProof,
+): string[] {
+  if (!isSameCorpusMutationTargetProofSignature(sample.targetProofSignature)) {
+    return [`semantic UI mutation target proof for ${workload} is missing target proof signature`]
+  }
+  return sample.targetProofSignature === sameCorpusMutationTargetProofSignature(sample)
+    ? []
+    : [`semantic UI mutation target proof for ${workload} target proof signature does not match sample fields`]
 }
 
 function sameCorpusMutationTargetVisibleSelectionInvalidReasons(

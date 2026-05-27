@@ -231,6 +231,7 @@ export interface SameCorpusMutationTargetProofSampleSummary {
   readonly screenshotPath: string | null
   readonly screenshotSha256: string | null
   readonly undoRestoreStatus: SameCorpusMutationTargetProof['undoRestoreStatus'] | null
+  readonly targetProofSignature: string | null
   readonly invalidReasons: readonly string[]
 }
 

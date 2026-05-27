@@ -7,6 +7,7 @@ import {
   type SameCorpusCommittedTargetProofTimingMeasurement,
 } from '../ui-responsiveness-same-corpus-guardrails.ts'
 import { sameCorpusMutationTargetRangeForSample } from '../ui-responsiveness-same-corpus-mutation-proof-page.ts'
+import { sameCorpusMutationTargetProofSignature } from '../ui-responsiveness-same-corpus-mutation-target-signature.ts'
 import type { UiResponsivenessSameCorpusProduct } from '../ui-responsiveness-same-corpus-scorecard-types.ts'
 import type { SameCorpusMutationTargetProof, SameCorpusProductSemanticUiProof } from '../ui-responsiveness-same-corpus-proof.ts'
 import { sameCorpusEditVisibleCellValue } from '../ui-responsiveness-same-corpus-workload-runner.ts'
@@ -219,9 +220,9 @@ function sameCorpusMutationTargetProofs(product: 'bilig' | 'google-sheets'): Sam
       before: sameCorpusReadback(product, sampleIndex, 'metric-1'),
       after: sameCorpusReadback(product, sampleIndex, targetValue),
       restored: sameCorpusReadback(product, sampleIndex, 'metric-1'),
-      visibleAfter: sameCorpusVisibleReadback(product, targetValue),
+      visibleAfter: sameCorpusVisibleReadback(product, targetValue, sampleIndex),
       visibleAfterSelectedRange: targetRange,
-      visibleRestored: sameCorpusVisibleReadback(product, 'metric-1'),
+      visibleRestored: sameCorpusVisibleReadback(product, 'metric-1', sampleIndex),
       visibleRestoredSelectedRange: targetRange,
       authoritativeReadbackRevision:
         product === 'bilig' ? `after-readback-${String(sampleIndex + 1)}` : `readback-${String(sampleIndex + 1)}`,
@@ -232,8 +233,19 @@ function sameCorpusMutationTargetProofs(product: 'bilig' | 'google-sheets'): Sam
       screenshotSha256: screenshotSha256(sampleIndex, 'after'),
       undoRestoreStatus: 'verified',
     }
-    return product === 'google-sheets' ? Object.assign(proof, { committedStateProof: sameCorpusCommittedStateProof(proof) }) : proof
+    return signedMutationTargetProof(
+      product === 'google-sheets' ? Object.assign(proof, { committedStateProof: sameCorpusCommittedStateProof(proof) }) : proof,
+    )
   })
+}
+
+function signedMutationTargetProof(
+  proof: Omit<SameCorpusMutationTargetProof, 'targetProofSignature'> | SameCorpusMutationTargetProof,
+): SameCorpusMutationTargetProof {
+  return {
+    ...proof,
+    targetProofSignature: sameCorpusMutationTargetProofSignature(proof),
+  }
 }
 
 function sameCorpusCommittedStateProof(
@@ -306,19 +318,20 @@ function sameCorpusReadback(product: UiResponsivenessSameCorpusProduct, sampleIn
     ...(product === 'bilig'
       ? {
           capturedRevision: `${after ? 'after' : 'before'}-readback-${String(sampleIndex + 1)}`,
-          ...(after ? { visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex) } : {}),
+          visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex),
         }
       : {}),
   }
 }
 
-function sameCorpusVisibleReadback(product: 'bilig' | 'google-sheets', value: string) {
+function sameCorpusVisibleReadback(product: 'bilig' | 'google-sheets', value: string, sampleIndex: number) {
   return {
     value,
     formula: null,
     fillColor: null,
     visibleText: value,
     source: 'visible-grid-cell' as const,
+    ...(product === 'bilig' ? { visibleSceneProofSha256: visibleSceneProofSha256(sampleIndex) } : {}),
   }
 }
 
@@ -342,7 +355,11 @@ function sameCorpusTargetScreenshot(product: 'bilig' | 'google-sheets', sampleIn
     workload: 'edit-visible-cell' as const,
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/${product}-sample-${String(sampleIndex + 1)}-${phase}.png`,
     screenshotSha256: screenshotSha256(sampleIndex, phase),
-    semanticReadback: sameCorpusVisibleReadback(product, phase === 'after' ? sameCorpusEditVisibleCellValue(sampleIndex) : 'metric-1'),
+    semanticReadback: sameCorpusVisibleReadback(
+      product,
+      phase === 'after' ? sameCorpusEditVisibleCellValue(sampleIndex) : 'metric-1',
+      sampleIndex,
+    ),
   }
 }
 

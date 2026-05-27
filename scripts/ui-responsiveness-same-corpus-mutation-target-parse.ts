@@ -57,6 +57,7 @@ export function parseSameCorpusMutationTargetProof(value: unknown): SameCorpusMu
     screenshotPath: nullableStringField(record, 'screenshotPath'),
     screenshotSha256: nullableStringField(record, 'screenshotSha256'),
     undoRestoreStatus: parseSameCorpusMutationUndoRestoreStatus(stringField(record, 'undoRestoreStatus')),
+    targetProofSignature: Object.hasOwn(record, 'targetProofSignature') ? nullableStringField(record, 'targetProofSignature') : null,
   }
 }
 
@@ -197,6 +198,7 @@ function parseSameCorpusMutationTargetProofSampleSummary(value: unknown): SameCo
     screenshotPath: nullableStringField(record, 'screenshotPath'),
     screenshotSha256: nullableStringField(record, 'screenshotSha256'),
     undoRestoreStatus: nullableSameCorpusMutationUndoRestoreStatus(record, 'undoRestoreStatus'),
+    targetProofSignature: Object.hasOwn(record, 'targetProofSignature') ? nullableStringField(record, 'targetProofSignature') : null,
     invalidReasons: Object.hasOwn(record, 'invalidReasons') ? stringArrayField(record, 'invalidReasons') : [],
   }
 }

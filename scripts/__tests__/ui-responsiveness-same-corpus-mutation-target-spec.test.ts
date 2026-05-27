@@ -8,6 +8,7 @@ import {
   type SameCorpusProductSemanticUiProof,
 } from '../ui-responsiveness-same-corpus-proof.ts'
 import { sameCorpusMutationTargetRangeForSample } from '../ui-responsiveness-same-corpus-mutation-target-spec.ts'
+import { sameCorpusMutationTargetProofSignature } from '../ui-responsiveness-same-corpus-mutation-target-signature.ts'
 import type { UiResponsivenessSameCorpusMutatingWorkload } from '../ui-responsiveness-same-corpus-workloads.ts'
 
 describe('same-corpus mutation target range contract', () => {
@@ -70,7 +71,7 @@ function mutationTargetProof(workload: UiResponsivenessSameCorpusMutatingWorkloa
   const committedTargetProofMs = 40
   const restoreValidationMs = 8
   const after = afterReadback(workload, sampleIndex)
-  return {
+  const proof: Omit<SameCorpusMutationTargetProof, 'targetProofSignature'> = {
     product: 'bilig',
     sampleIndex,
     committedTargetProofMs,
@@ -105,6 +106,16 @@ function mutationTargetProof(workload: UiResponsivenessSameCorpusMutatingWorkloa
     screenshotPath: `tmp/same-corpus-wide-mixed-250k-${workload}/mutation-target/bilig-sample-${String(sampleIndex + 1)}-after.png`,
     screenshotSha256: screenshotHash(sampleIndex, 'after'),
     undoRestoreStatus: 'verified',
+  }
+  return signedMutationTargetProof(proof)
+}
+
+function signedMutationTargetProof(
+  proof: Omit<SameCorpusMutationTargetProof, 'targetProofSignature'> | SameCorpusMutationTargetProof,
+): SameCorpusMutationTargetProof {
+  return {
+    ...proof,
+    targetProofSignature: sameCorpusMutationTargetProofSignature(proof),
   }
 }
 
