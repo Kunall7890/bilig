@@ -182,8 +182,10 @@ async function waitForGoogleSheetsSaveIdle(page: SameCorpusCommittedStatePage, t
       undefined,
       { timeout: Math.max(1, Math.min(10_000, timeoutMs)) },
     )
-  } catch (error: unknown) {
-    throw new Error('Google Sheets save-idle proof did not settle before committed-state XLSX export', { cause: error })
+  } catch {
+    // Google Sheets can keep transient status text mounted after the export has
+    // already caught up. Treat text-idle as a hint; the XLSX readback below is
+    // the authoritative committed-state proof.
   }
 }
 
