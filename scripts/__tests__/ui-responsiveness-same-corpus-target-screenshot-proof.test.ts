@@ -28,15 +28,15 @@ describe('same-corpus mutation target screenshot semantic proof', () => {
     const targetProof = proof({
       workload: 'fill-format-change',
       intendedOperation: 'fill-format-change',
-      intendedPayload: { kind: 'fill-color', expectedFillColor: '#34a853', swatchLabel: 'theme green' },
+      intendedPayload: { kind: 'fill-color', expectedFillColor: '#00ff00', swatchLabel: 'green' },
       before: readback('metric-1', { fillColor: null }),
-      after: readback('metric-1', { fillColor: '#34a853' }),
+      after: readback('metric-1', { fillColor: '#00ff00' }),
       restored: readback('metric-1', { fillColor: null }),
-      visibleAfter: readback('metric-1', { fillColor: '#34a853', source: 'visible-grid-cell' }),
+      visibleAfter: readback('metric-1', { fillColor: '#00ff00', source: 'visible-grid-cell' }),
       visibleRestored: readback('metric-1', { fillColor: null, source: 'visible-grid-cell' }),
       targetScreenshots: {
         before: screenshot('before', readback('metric-1', { fillColor: null }), 'fill-format-change'),
-        after: screenshot('after', readback('metric-1', { fillColor: 'rgb(52, 168, 83)' }), 'fill-format-change'),
+        after: screenshot('after', readback('metric-1', { fillColor: 'rgb(0, 255, 0)' }), 'fill-format-change'),
         restored: screenshot('restored', readback('metric-1', { fillColor: null }), 'fill-format-change'),
       },
     })

@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 
+import { strFromU8, unzipSync } from 'fflate'
 import * as XLSX from 'xlsx'
 
 import type { SameCorpusMutationTargetSelection } from './ui-responsiveness-same-corpus-mutation-proof-page.ts'
@@ -25,6 +26,7 @@ export interface SameCorpusCommittedStatePage {
     }
   }
   url(): string
+  waitForFunction?(pageFunction: () => boolean, arg?: unknown, options?: { readonly timeout?: number }): Promise<unknown>
   waitForTimeout(timeoutMs: number): Promise<void>
 }
 
@@ -76,8 +78,7 @@ export async function captureSameCorpusCommittedStatePhaseProof(args: {
   const exportUrl = googleSheetsExportUrl(args.page.url())
   const timeoutMs = Math.max(0, args.timeoutMs ?? 30_000)
   const pollIntervalMs = Math.max(0, args.pollIntervalMs ?? 500)
-  const maxAttempts = Math.max(1, Math.ceil(timeoutMs / Math.max(1, pollIntervalMs)) + 1)
-  return await captureGoogleSheetsCommittedStatePhaseProofUntilMatched(args, exportUrl, maxAttempts, pollIntervalMs)
+  return await captureGoogleSheetsCommittedStatePhaseProofUntilMatched(args, exportUrl, performance.now() + timeoutMs, pollIntervalMs)
 }
 
 export function sameCorpusCommittedStateProofArtifactPath(args: {
@@ -99,24 +100,49 @@ export function sameCorpusCommittedStateProofArtifactPath(args: {
 async function captureGoogleSheetsCommittedStatePhaseProofUntilMatched(
   args: Parameters<typeof captureSameCorpusCommittedStatePhaseProof>[0],
   exportUrl: string,
-  attemptsRemaining: number,
+  deadlineMs: number,
   pollIntervalMs: number,
 ): Promise<SameCorpusMutationTargetCommittedStatePhaseProof> {
+  await waitForGoogleSheetsSaveIdle(args.page, Math.max(0, deadlineMs - performance.now()))
   const proof = await captureGoogleSheetsCommittedStatePhaseProofSnapshot(args, exportUrl)
   if (sameCorpusCommittedReadbackMatches(args.workload, args.expectedReadback, proof.readback)) {
     return proof
   }
-  if (attemptsRemaining <= 1) {
-    throw new Error(
-      `Google Sheets committed-state XLSX export did not match expected ${args.phase} target readback for ${args.workload} ${
-        args.target.targetRange
-      }: expected ${sameCorpusCommittedStateReadbackSummary(args.expectedReadback)}, last export ${sameCorpusCommittedStateReadbackSummary(
-        proof.readback,
-      )}`,
-    )
+  const remainingMs = deadlineMs - performance.now()
+  if (remainingMs <= 0) {
+    throwGoogleSheetsCommittedStateMismatch(args, proof)
   }
-  await args.page.waitForTimeout(pollIntervalMs)
-  return await captureGoogleSheetsCommittedStatePhaseProofUntilMatched(args, exportUrl, attemptsRemaining - 1, pollIntervalMs)
+  await args.page.waitForTimeout(Math.min(pollIntervalMs, remainingMs))
+  return await captureGoogleSheetsCommittedStatePhaseProofUntilMatched(args, exportUrl, deadlineMs, pollIntervalMs)
+}
+
+function throwGoogleSheetsCommittedStateMismatch(
+  args: Parameters<typeof captureSameCorpusCommittedStatePhaseProof>[0],
+  proof: SameCorpusMutationTargetCommittedStatePhaseProof,
+): never {
+  throw new Error(
+    `Google Sheets committed-state XLSX export did not match expected ${args.phase} target readback for ${args.workload} ${
+      args.target.targetRange
+    }: expected ${sameCorpusCommittedStateReadbackSummary(args.expectedReadback)}, last export ${sameCorpusCommittedStateReadbackSummary(
+      proof.readback,
+    )}`,
+  )
+}
+
+async function waitForGoogleSheetsSaveIdle(page: SameCorpusCommittedStatePage, timeoutMs: number): Promise<void> {
+  if (!page.url().includes('docs.google.com/spreadsheets') || !page.waitForFunction || timeoutMs <= 0) {
+    return
+  }
+  await page
+    .waitForFunction(
+      () => {
+        const text = document.body?.innerText.replace(/\s+/gu, ' ').trim() ?? ''
+        return !/\bSaving(?:\.\.\.|…)?\b/iu.test(text)
+      },
+      undefined,
+      { timeout: Math.max(1, Math.min(10_000, timeoutMs)) },
+    )
+    .catch(() => undefined)
 }
 
 async function captureGoogleSheetsCommittedStatePhaseProofSnapshot(
@@ -438,7 +464,7 @@ function readGoogleSheetsExportTargetReadback(
   return {
     value,
     formula,
-    fillColor: readXlsxCellFillColor(cell),
+    fillColor: readXlsxCellFillColor(cell) ?? readOoxmlCellFillColor(bytes, target),
     visibleText: value ?? formula,
     source: 'google-sheets-xlsx-export',
   }
@@ -468,6 +494,131 @@ function normalizeXlsxRgb(value: unknown): string | null {
     return `#${hex.slice(2)}`
   }
   return /^[0-9a-f]{6}$/u.test(hex) ? `#${hex}` : null
+}
+
+function readOoxmlCellFillColor(bytes: Uint8Array, target: SameCorpusMutationTargetSelection): string | null {
+  const archive = unzipSync(bytes)
+  const sheetPath = readOoxmlSheetPath(archive, target.sheetName)
+  if (!sheetPath) {
+    return null
+  }
+  const sheetXml = readOoxmlText(archive, sheetPath)
+  const stylesXml = readOoxmlText(archive, 'xl/styles.xml')
+  if (!sheetXml || !stylesXml) {
+    return null
+  }
+  const styleIndex = readOoxmlCellStyleIndex(sheetXml, normalizeTargetStartAddress(target.startAddress))
+  if (styleIndex === null) {
+    return null
+  }
+  const fillId = readOoxmlCellXfFillId(stylesXml, styleIndex)
+  return fillId === null ? null : readOoxmlFillColor(stylesXml, fillId)
+}
+
+function readOoxmlSheetPath(archive: Record<string, Uint8Array>, sheetName: string): string | null {
+  const workbookXml = readOoxmlText(archive, 'xl/workbook.xml')
+  if (!workbookXml) {
+    return null
+  }
+  const sheet = readOoxmlSheet(workbookXml, sheetName)
+  if (!sheet) {
+    return null
+  }
+  const relsXml = readOoxmlText(archive, 'xl/_rels/workbook.xml.rels')
+  const relationshipTarget = sheet.relationshipId && relsXml ? readOoxmlRelationshipTarget(relsXml, sheet.relationshipId) : null
+  if (relationshipTarget) {
+    return normalizeOoxmlWorkbookRelativePath(relationshipTarget)
+  }
+  return sheet.index >= 0 ? `xl/worksheets/sheet${String(sheet.index + 1)}.xml` : null
+}
+
+function readOoxmlSheet(workbookXml: string, sheetName: string): { readonly index: number; readonly relationshipId: string | null } | null {
+  const normalizedName = decodeXmlAttribute(sheetName)
+  const sheetTags = workbookXml.match(/<sheet\b[^>]*\/?>/gu) ?? []
+  for (const [index, tag] of sheetTags.entries()) {
+    if (decodeXmlAttribute(readXmlAttribute(tag, 'name') ?? '') !== normalizedName) {
+      continue
+    }
+    return {
+      index,
+      relationshipId: readXmlAttribute(tag, 'r:id'),
+    }
+  }
+  return null
+}
+
+function readOoxmlRelationshipTarget(relsXml: string, relationshipId: string): string | null {
+  const relationshipTags = relsXml.match(/<Relationship\b[^>]*\/?>/gu) ?? []
+  for (const tag of relationshipTags) {
+    if (readXmlAttribute(tag, 'Id') === relationshipId) {
+      return readXmlAttribute(tag, 'Target')
+    }
+  }
+  return null
+}
+
+function readOoxmlCellStyleIndex(sheetXml: string, address: string): number | null {
+  const cellTagMatch = new RegExp(`<c\\b(?=[^>]*\\br="${escapeRegExp(address)}")[^>]*>`, 'u').exec(sheetXml)
+  if (!cellTagMatch) {
+    return null
+  }
+  const styleIndex = Number(readXmlAttribute(cellTagMatch[0], 's'))
+  return Number.isInteger(styleIndex) && styleIndex >= 0 ? styleIndex : null
+}
+
+function readOoxmlCellXfFillId(stylesXml: string, styleIndex: number): number | null {
+  const cellXfsXml = readXmlSection(stylesXml, 'cellXfs')
+  const xfTag = (cellXfsXml.match(/<xf\b[^>]*(?:\/>|>)/gu) ?? [])[styleIndex]
+  if (!xfTag) {
+    return null
+  }
+  const fillId = Number(readXmlAttribute(xfTag, 'fillId'))
+  return Number.isInteger(fillId) && fillId >= 0 ? fillId : null
+}
+
+function readOoxmlFillColor(stylesXml: string, fillId: number): string | null {
+  const fillsXml = readXmlSection(stylesXml, 'fills')
+  const fillXml = (fillsXml.match(/<fill\b[^>]*>[\s\S]*?<\/fill>/gu) ?? [])[fillId]
+  if (!fillXml) {
+    return null
+  }
+  return normalizeXlsxRgb(readXmlAttribute(fillXml, 'rgb', 'fgColor')) ?? normalizeXlsxRgb(readXmlAttribute(fillXml, 'rgb', 'bgColor'))
+}
+
+function readOoxmlText(archive: Record<string, Uint8Array>, path: string): string | null {
+  const bytes = archive[path]
+  return bytes ? strFromU8(bytes) : null
+}
+
+function normalizeOoxmlWorkbookRelativePath(target: string): string {
+  const cleanTarget = target.replace(/^\/+|^\.\//gu, '')
+  return cleanTarget.startsWith('xl/') ? cleanTarget : `xl/${cleanTarget}`
+}
+
+function readXmlSection(xml: string, tagName: string): string {
+  return new RegExp(`<${tagName}\\b[^>]*>([\\s\\S]*?)<\\/${tagName}>`, 'u').exec(xml)?.[1] ?? ''
+}
+
+function readXmlAttribute(tag: string, attributeName: string, nestedTagName?: string): string | null {
+  const source =
+    nestedTagName === undefined
+      ? tag
+      : (new RegExp(`<${nestedTagName}\\b[^>]*>`, 'u').exec(tag)?.[0] ??
+        new RegExp(`<${nestedTagName}\\b[^>]*/>`, 'u').exec(tag)?.[0] ??
+        '')
+  const escapedAttributeName = escapeRegExp(attributeName)
+  const match =
+    new RegExp(`\\b${escapedAttributeName}="([^"]*)"`, 'u').exec(source) ??
+    new RegExp(`\\b${escapedAttributeName}='([^']*)'`, 'u').exec(source)
+  return match?.[1] ? decodeXmlAttribute(match[1]) : null
+}
+
+function decodeXmlAttribute(value: string): string {
+  return value.replaceAll('&quot;', '"').replaceAll('&apos;', "'").replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&')
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
 
 function normalizeSameCorpusColor(value: string | null | undefined): string | null {

@@ -155,6 +155,7 @@ export async function readSameCorpusMutationTargetReadback(args: {
   readonly page: Page
   readonly product: UiResponsivenessSameCorpusProduct
   readonly target: SameCorpusMutationTargetSelection
+  readonly workload?: UiResponsivenessSameCorpusMutatingWorkload
 }): Promise<SameCorpusMutationTargetReadback> {
   if (args.product === 'bilig') {
     const biligReadback = await readBiligMutationTargetReadback(args.page, args.target)

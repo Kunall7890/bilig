@@ -136,7 +136,7 @@ function afterReadback(workload: UiResponsivenessSameCorpusMutatingWorkload, sam
     return {
       value: `before-${sampleIndex}`,
       formula: null,
-      fillColor: '#34a853',
+      fillColor: '#00ff00',
       visibleText: `before-${sampleIndex}`,
       source: 'bilig-authoritative-range',
       capturedRevision: `bilig-authoritative-readback:${sampleIndex}`,
@@ -162,7 +162,7 @@ function intendedPayload(
     return { kind: 'formula', formula: `=${String(sampleIndex + 1)}+1` }
   }
   if (workload === 'fill-format-change') {
-    return { kind: 'fill-color', expectedFillColor: '#34a853', swatchLabel: 'green' }
+    return { kind: 'fill-color', expectedFillColor: '#00ff00', swatchLabel: 'green' }
   }
   return { kind: 'cell-value', value: `same-corpus-edit-${String(sampleIndex + 1)}` }
 }

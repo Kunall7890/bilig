@@ -48,7 +48,7 @@ type MutatingSameCorpusWorkload = Extract<NonScrollWorkload, 'edit-visible-cell'
 
 const sameCorpusFillColorSwatches = [
   { label: 'light cornflower blue 3', value: '#c9daf8' },
-  { label: 'theme green', value: '#34a853' },
+  { label: 'green', value: '#00ff00' },
   { label: 'light cornflower blue 2', value: '#a4c2f4' },
 ] as const
 
@@ -255,8 +255,8 @@ function escapeRegExp(value: string): string {
 }
 
 function sameCorpusFillColorCandidateLabels(swatchLabel: string): readonly string[] {
-  if (swatchLabel === 'theme green') {
-    return ['theme green', 'green']
+  if (swatchLabel === 'green') {
+    return ['green']
   }
   if (swatchLabel === 'light cornflower blue 2') {
     return ['light cornflower blue 2', 'light blue 2', 'blue']

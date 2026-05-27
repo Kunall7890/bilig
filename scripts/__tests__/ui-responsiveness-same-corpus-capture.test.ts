@@ -533,7 +533,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(sameCorpusKeyboardOperations('jump-deep-row', 0, 'darwin')).toEqual([{ kind: 'press', key: 'Meta+ArrowDown' }])
     expect(sameCorpusKeyboardOperations('fill-format-change', 0, 'linux')).toEqual([])
     expect(sameCorpusFillColorSwatchLabel(0)).toBe('light cornflower blue 3')
-    expect(sameCorpusFillColorSwatchLabel(1)).toBe('theme green')
+    expect(sameCorpusFillColorSwatchLabel(1)).toBe('green')
     expect(sameCorpusKeyboardOperations('formula-edit', 1, 'darwin')).toEqual([
       { kind: 'type', text: sameCorpusFormulaEditFormula(1) },
       { kind: 'press', key: 'Enter' },
@@ -2487,7 +2487,7 @@ function sameCorpusMutationTargetIntendedPayload(
   if (workload === 'fill-format-change') {
     const swatches = [
       { label: 'light cornflower blue 3', value: '#c9daf8' },
-      { label: 'theme green', value: '#34a853' },
+      { label: 'green', value: '#00ff00' },
       { label: 'light cornflower blue 2', value: '#a4c2f4' },
     ] as const
     const swatch = swatches[sampleIndex % swatches.length]
@@ -2497,7 +2497,7 @@ function sameCorpusMutationTargetIntendedPayload(
 }
 
 function sameCorpusExpectedFillColor(sampleIndex: number): string {
-  const colors = ['#c9daf8', '#34a853', '#a4c2f4'] as const
+  const colors = ['#c9daf8', '#00ff00', '#a4c2f4'] as const
   return colors[sampleIndex % colors.length]
 }
 
@@ -2610,9 +2610,9 @@ function removeRenderedPostMutationFill(proof: SameCorpusMutationTargetProof): S
   }
   return {
     ...proof,
-    before: { ...proof.before, fillColor: '#34a853' },
-    restored: { ...proof.before, fillColor: '#34a853' },
-    visibleRestored: { ...proof.visibleRestored, fillColor: '#34a853' },
+    before: { ...proof.before, fillColor: '#00ff00' },
+    restored: { ...proof.before, fillColor: '#00ff00' },
+    visibleRestored: { ...proof.visibleRestored, fillColor: '#00ff00' },
     visibleAfter: { ...proof.visibleAfter, fillColor: null },
   }
 }
@@ -2623,8 +2623,8 @@ function driftIntendedFillColor(proof: SameCorpusMutationTargetProof): SameCorpu
   }
   return {
     ...proof,
-    after: { ...proof.after, fillColor: '#34a853' },
-    visibleAfter: { ...proof.visibleAfter, fillColor: '#34a853' },
+    after: { ...proof.after, fillColor: '#00ff00' },
+    visibleAfter: { ...proof.visibleAfter, fillColor: '#00ff00' },
   }
 }
 

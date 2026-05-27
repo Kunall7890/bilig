@@ -557,7 +557,9 @@ async function measureProductSamples(
       await selectSameCorpusMutationTargetRange({ page, product, target: mutationTarget })
     }
     const mutationTargetBefore =
-      mutationTarget === null ? null : await readSameCorpusMutationTargetReadback({ page, product, target: mutationTarget })
+      mutationTarget === null
+        ? null
+        : await readSameCorpusMutationTargetReadback({ page, product, target: mutationTarget, workload: mutatingWorkload ?? undefined })
     const mutationTargetVisibleBefore =
       mutationTarget === null || mutatingWorkload === null
         ? null
@@ -579,6 +581,7 @@ async function measureProductSamples(
             product,
             sampleIndex,
             target: mutationTarget,
+            timeoutMs: args.readyTimeoutMs,
             workload: mutatingWorkload,
           })
     const mutationTargetBeforeScreenshot =
@@ -639,6 +642,7 @@ async function measureProductSamples(
         outputPath: args.outputPath,
         page,
         product,
+        readyTimeoutMs: args.readyTimeoutMs,
         sampleIndex,
         target: mutationTarget,
         workload: mutatingWorkload,

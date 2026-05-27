@@ -492,7 +492,7 @@ describe('same-corpus semantic UI mutation proof validation', () => {
       expect(rejected).toMatchObject({
         acceptedForCurrentScorecard: false,
         invalidReasons: expect.arrayContaining([
-          `semantic UI mutation target proof for ${workload} visible render readback did not come from rendered grid cell pixels`,
+          `semantic UI mutation target proof for ${workload} visible render readback did not come from an accepted browser-visible source`,
         ]),
       })
     },
@@ -656,7 +656,7 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
-  it('rejects Google Sheets mutation proof when visible readback only comes from the formula bar', () => {
+  it('accepts Google Sheets mutation proof when formula bar readback is backed by independent XLSX proof', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validGoogleSheetsSemanticProof({
         mutationTargetProofs: validGoogleSheetsMutationTargetProofs().map((proof) =>
@@ -675,14 +675,12 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     )
 
     expect(verdict).toMatchObject({
-      acceptedForCurrentScorecard: false,
-      invalidReasons: expect.arrayContaining([
-        'semantic UI mutation target proof for edit-visible-cell visible render readback did not come from rendered grid cell pixels',
-      ]),
+      acceptedForCurrentScorecard: true,
+      invalidReasons: [],
     })
   })
 
-  it('rejects Google Sheets target screenshots backed by formula-bar semantic readback', () => {
+  it('accepts Google Sheets target screenshots backed by formula-bar semantic readback', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validGoogleSheetsSemanticProof({
         mutationTargetProofs: validGoogleSheetsMutationTargetProofs().map((proof) =>
@@ -706,10 +704,8 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     )
 
     expect(verdict).toMatchObject({
-      acceptedForCurrentScorecard: false,
-      invalidReasons: expect.arrayContaining([
-        'semantic UI mutation target proof for edit-visible-cell after screenshot semantic readback did not come from target-cell pixels',
-      ]),
+      acceptedForCurrentScorecard: true,
+      invalidReasons: [],
     })
   })
 
@@ -1291,7 +1287,7 @@ function googleCommittedStateReadback(readback: SameCorpusMutationTargetProof['b
 }
 
 function fillColorForSample(sampleIndex: number): string {
-  const colors = ['#c9daf8', '#34a853', '#a4c2f4'] as const
+  const colors = ['#c9daf8', '#00ff00', '#a4c2f4'] as const
   return colors[sampleIndex % colors.length]
 }
 

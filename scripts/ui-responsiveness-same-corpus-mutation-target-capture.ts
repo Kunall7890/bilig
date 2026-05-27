@@ -43,6 +43,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
   readonly outputPath: string
   readonly page: Page
   readonly product: UiResponsivenessSameCorpusProduct
+  readonly readyTimeoutMs?: number
   readonly sampleIndex: number
   readonly target: SameCorpusMutationTargetSelection
   readonly workload: UiResponsivenessSameCorpusMutatingWorkload
@@ -50,7 +51,12 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
   let restoredAfterMutation = false
   try {
     await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
-    const after = await readSameCorpusMutationTargetReadback({ page: args.page, product: args.product, target: args.target })
+    const after = await readSameCorpusMutationTargetReadback({
+      page: args.page,
+      product: args.product,
+      target: args.target,
+      workload: args.workload,
+    })
     const visibleAfter = await readSameCorpusVisibleMutationTargetReadback({
       page: args.page,
       product: args.product,
@@ -67,6 +73,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       page: args.page,
       phase: 'after',
       product: args.product,
+      timeoutMs: args.readyTimeoutMs,
       sampleIndex: args.sampleIndex,
       target: args.target,
       workload: args.workload,
@@ -84,7 +91,12 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     await restoreProductWorkbookMutation(args.page, args.workload)
     restoredAfterMutation = true
     await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
-    const restored = await readSameCorpusMutationTargetReadback({ page: args.page, product: args.product, target: args.target })
+    const restored = await readSameCorpusMutationTargetReadback({
+      page: args.page,
+      product: args.product,
+      target: args.target,
+      workload: args.workload,
+    })
     const visibleRestored = await readSameCorpusVisibleMutationTargetReadback({
       page: args.page,
       product: args.product,
@@ -99,6 +111,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       page: args.page,
       phase: 'restored',
       product: args.product,
+      timeoutMs: args.readyTimeoutMs,
       sampleIndex: args.sampleIndex,
       target: args.target,
       workload: args.workload,

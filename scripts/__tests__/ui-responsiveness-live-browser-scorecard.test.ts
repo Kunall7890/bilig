@@ -1480,7 +1480,7 @@ function sameCorpusMutationTargetIntendedPayload(workload: UiResponsivenessSameC
   if (workload === 'fill-format-change') {
     const swatches = [
       { label: 'light cornflower blue 3', value: '#c9daf8' },
-      { label: 'theme green', value: '#34a853' },
+      { label: 'green', value: '#00ff00' },
       { label: 'light cornflower blue 2', value: '#a4c2f4' },
     ] as const
     const swatch = swatches[sampleIndex % swatches.length]
@@ -1490,7 +1490,7 @@ function sameCorpusMutationTargetIntendedPayload(workload: UiResponsivenessSameC
 }
 
 function sameCorpusExpectedFillColor(sampleIndex: number): string {
-  const colors = ['#c9daf8', '#34a853', '#a4c2f4'] as const
+  const colors = ['#c9daf8', '#00ff00', '#a4c2f4'] as const
   return colors[sampleIndex % colors.length]
 }
 

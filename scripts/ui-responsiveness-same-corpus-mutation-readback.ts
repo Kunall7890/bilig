@@ -39,9 +39,7 @@ export async function readExternalVisibleGridCellReadback(args: {
       ? null
       : await readExternalSelectedFormulaBarReadback(args.page, args.product, args.target)
   const screenshotFillColor =
-    args.workload === 'fill-format-change'
-      ? (targetCellReadback.fillColor ?? (await readExternalVisibleGridCellFillColor(args.page, selectedTargetBox)))
-      : null
+    args.workload === 'fill-format-change' ? await readExternalVisibleGridCellFillColor(args.page, selectedTargetBox) : null
   if (selectedFormulaBarReadback) {
     return {
       ...selectedFormulaBarReadback,

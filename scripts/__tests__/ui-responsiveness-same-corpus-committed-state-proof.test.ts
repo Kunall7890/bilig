@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -93,6 +94,64 @@ describe('same-corpus committed-state proof capture', () => {
     })
   })
 
+  it('uses raw OOXML styles when Google Sheets fill color is not exposed by SheetJS style readback', async () => {
+    const staleBytes = xlsxBytesForTargetValue('WideGrid', 'C5', 'segment-5')
+    const committedBytes = xlsxBytesForTargetFill('WideGrid', 'C5', 'segment-5', '#c9daf8')
+    const page = mockGoogleSheetsExportPage([staleBytes, committedBytes])
+
+    const proof = await captureSameCorpusCommittedStatePhaseProof({
+      expectedReadback: {
+        ...sameCorpusGoogleReadback('segment-5'),
+        fillColor: '#c9daf8',
+      },
+      page: page.page,
+      phase: 'after',
+      product: 'google-sheets',
+      sampleIndex: 0,
+      target: sameCorpusTargetSelection(),
+      timeoutMs: 1_000,
+      pollIntervalMs: 0,
+      workload: 'fill-format-change',
+    })
+
+    expect(page.requestCount()).toBe(2)
+    expect(proof?.readback).toMatchObject({
+      value: 'segment-5',
+      fillColor: '#c9daf8',
+      source: 'google-sheets-xlsx-export',
+    })
+  })
+
+  it('waits for Google Sheets to finish saving before reading the XLSX export when browser state is available', async () => {
+    const committedBytes = xlsxBytesForTargetFill('WideGrid', 'C5', 'segment-5', '#c9daf8')
+    let saveIdleWaitCount = 0
+    const page = mockGoogleSheetsExportPage([committedBytes], {
+      waitForFunction: async (_pageFunction, _arg, options) => {
+        saveIdleWaitCount += 1
+        expect(options?.timeout).toBeGreaterThan(0)
+      },
+    })
+
+    const proof = await captureSameCorpusCommittedStatePhaseProof({
+      expectedReadback: {
+        ...sameCorpusGoogleReadback('segment-5'),
+        fillColor: '#c9daf8',
+      },
+      page: page.page,
+      phase: 'after',
+      product: 'google-sheets',
+      sampleIndex: 0,
+      target: sameCorpusTargetSelection(),
+      timeoutMs: 5_000,
+      pollIntervalMs: 0,
+      workload: 'fill-format-change',
+    })
+
+    expect(saveIdleWaitCount).toBe(1)
+    expect(page.requestCount()).toBe(1)
+    expect(proof?.readback.fillColor).toBe('#c9daf8')
+  })
+
   it('fails when Google Sheets XLSX export never proves the expected committed target readback', async () => {
     const page = mockGoogleSheetsExportPage([xlsxBytesForTargetValue('WideGrid', 'C5', 'stale-browser-only-value')])
 
@@ -132,7 +191,12 @@ function sameCorpusTargetSelection(): SameCorpusMutationTargetSelection {
   }
 }
 
-function mockGoogleSheetsExportPage(responses: readonly Uint8Array[]): {
+function mockGoogleSheetsExportPage(
+  responses: readonly Uint8Array[],
+  options: {
+    readonly waitForFunction?: NonNullable<SameCorpusCommittedStatePage['waitForFunction']>
+  } = {},
+): {
   readonly page: SameCorpusCommittedStatePage
   readonly requestCount: () => number
 } {
@@ -153,6 +217,7 @@ function mockGoogleSheetsExportPage(responses: readonly Uint8Array[]): {
       },
     }),
     url: () => 'https://docs.google.com/spreadsheets/d/test-spreadsheet/edit#gid=0',
+    ...(options.waitForFunction ? { waitForFunction: options.waitForFunction } : {}),
     waitForTimeout: async () => {},
   }
   return { page, requestCount: () => requestCount }
@@ -174,4 +239,30 @@ function xlsxBytesForFormulaResult(sheetName: string, address: string, formula: 
   worksheet['!ref'] = `A1:${address}`
   XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
   return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+}
+
+function xlsxBytesForTargetFill(sheetName: string, address: string, value: string, fillColor: string): Uint8Array {
+  const archive = unzipSync(xlsxBytesForTargetValue(sheetName, address, value))
+  const stylesXml = strFromU8(archive['xl/styles.xml'] ?? new Uint8Array())
+  const sheetXml = strFromU8(archive['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+  archive['xl/styles.xml'] = strToU8(addTargetFillStyle(stylesXml, fillColor))
+  archive['xl/worksheets/sheet1.xml'] = strToU8(addTargetCellStyle(sheetXml, address, 1))
+  return zipSync(archive)
+}
+
+function addTargetFillStyle(stylesXml: string, fillColor: string): string {
+  const rgb = `FF${fillColor.replace(/^#/u, '').toUpperCase()}`
+  return stylesXml
+    .replace(
+      /<fills count="2">[\s\S]*?<\/fills>/u,
+      `<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="${rgb}"/><bgColor indexed="64"/></patternFill></fill></fills>`,
+    )
+    .replace(
+      /<cellXfs count="1">([\s\S]*?)<\/cellXfs>/u,
+      '<cellXfs count="2">$1<xf numFmtId="0" fontId="0" fillId="2" borderId="0" xfId="0" applyFill="1"/></cellXfs>',
+    )
+}
+
+function addTargetCellStyle(sheetXml: string, address: string, styleIndex: number): string {
+  return sheetXml.replace(new RegExp(`<c r="${address}"`, 'u'), `<c r="${address}" s="${String(styleIndex)}"`)
 }
