@@ -42,6 +42,7 @@ describe('formula binding direct scalar helpers', () => {
       operator: '+',
       left: { kind: 'cell', cellIndex: 11 },
       right: { kind: 'literal-number', value: 2 },
+      deltaInputCellIndex: 11,
       resultOffset: 5,
     })
 
@@ -80,6 +81,7 @@ describe('formula binding direct scalar helpers', () => {
       operator: '+',
       left: { kind: 'cell', cellIndex: 44 },
       right: { kind: 'literal-number', value: 2 },
+      deltaInputCellIndex: 44,
     })
     expect(ensureByCoords).toHaveBeenCalledWith(sheet.id, 2, 2)
   })
@@ -100,7 +102,7 @@ describe('formula binding direct scalar helpers', () => {
       throw new Error('Expected binary descriptor')
     }
     expect(descriptor.deltaInputCellIndex).toBe(11)
-    expect(Object.keys(descriptor)).not.toContain('deltaInputCellIndex')
+    expect(Object.keys(descriptor)).toContain('deltaInputCellIndex')
 
     const inverted = buildDirectScalarDescriptor({
       compiled: compiled(parseFormula('2-A1')),
@@ -144,6 +146,7 @@ describe('formula binding direct scalar helpers', () => {
       operator: '+',
       left: { kind: 'cell', cellIndex: 77 },
       right: { kind: 'literal-number', value: 2 },
+      deltaInputCellIndex: 77,
     })
     expect(getFreshCellIndexAt).toHaveBeenCalledWith(1, 2, 2)
     expect(getCellIndexAt).not.toHaveBeenCalled()

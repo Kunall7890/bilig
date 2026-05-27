@@ -288,11 +288,7 @@ function withDirectScalarDeltaInputCellIndex<T extends RuntimeDirectScalarDescri
   }
   const cellIndex = directScalarDeltaInputCellIndex(descriptor)
   if (cellIndex !== undefined) {
-    Object.defineProperty(descriptor, 'deltaInputCellIndex', {
-      configurable: true,
-      enumerable: false,
-      value: cellIndex,
-    })
+    descriptor.deltaInputCellIndex = cellIndex
   }
   return descriptor
 }

@@ -3,7 +3,7 @@ import { makeCellEntity } from '../../entity-ids.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import { markFormulaCellBound } from './formula-binding-cell-flags.js'
 import { ensureFormulaBindingDependencyBuildCapacity } from './formula-binding-dependency-build-capacity.js'
-import { buildDirectScalarDescriptor } from './formula-binding-direct-scalar.js'
+import { buildDirectScalarDescriptor, type DirectScalarWorkbook } from './formula-binding-direct-scalar.js'
 import { appendFreshFormulaDependencyReverseEdges } from './formula-binding-install.js'
 import type { FormulaBindingMemberCounts } from './formula-binding-member-counts.js'
 import { makeUnmanagedCompiledPlan } from './formula-binding-plan-helpers.js'
@@ -130,6 +130,7 @@ function tryBindFreshDirectScalarFormulaRunBulk(args: {
   }
   let totalDependencyIndexCount = 0
   let totalDependencyEntityCount = 0
+  const directScalarWorkbook = createFreshRunDirectScalarWorkbook(args.serviceArgs.state.workbook, args.run.sheetId)
 
   for (let index = 0; index < memberCount; index += 1) {
     const cellIndex = args.run.cellIndices[index]!
@@ -139,7 +140,7 @@ function tryBindFreshDirectScalarFormulaRunBulk(args: {
       compiled: member.compiled,
       ownerSheetName: args.run.ownerSheetName,
       ownerSheetId: args.run.sheetId,
-      workbook: args.serviceArgs.state.workbook,
+      workbook: directScalarWorkbook,
       ensureCellTracked: args.serviceArgs.ensureCellTracked,
       ensureCellTrackedByCoords: args.serviceArgs.ensureCellTrackedByCoords,
     })
@@ -226,6 +227,39 @@ function tryBindFreshDirectScalarFormulaRunBulk(args: {
     addEngineCounter(args.serviceArgs.state.counters, 'freshDirectScalarFormulaObjectsMaterialized', memberCount)
   }
   return true
+}
+
+function createFreshRunDirectScalarWorkbook(
+  workbook: CreateEngineFormulaBindingServiceArgs['state']['workbook'],
+  ownerSheetId: number,
+): DirectScalarWorkbook {
+  const ownerSheet = workbook.getSheetById(ownerSheetId)
+  const cellStore = workbook.cellStore
+  const fastFreshOwnerCellIndexAt =
+    ownerSheet && ownerSheet.structureVersion === 1
+      ? (row: number, col: number): number | undefined => {
+          const cellIndex = ownerSheet.grid.getPhysical(row, col)
+          return cellIndex !== -1 &&
+            cellStore.sheetIds[cellIndex] === ownerSheetId &&
+            cellStore.rows[cellIndex] === row &&
+            cellStore.cols[cellIndex] === col
+            ? cellIndex
+            : undefined
+        }
+      : undefined
+
+  return {
+    getSheet: (sheetName) => workbook.getSheet(sheetName),
+    getFreshCellIndexAt(sheetId, row, col) {
+      if (sheetId === ownerSheetId && fastFreshOwnerCellIndexAt) {
+        return fastFreshOwnerCellIndexAt(row, col)
+      }
+      return workbook.getFreshCellIndexAt(sheetId, row, col)
+    },
+    getCellIndexAt(sheetId, row, col) {
+      return workbook.getCellIndexAt(sheetId, row, col)
+    },
+  }
 }
 
 function assertFreshDirectScalarFormulaCell(serviceArgs: CreateEngineFormulaBindingServiceArgs, cellIndex: number): void {
