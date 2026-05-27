@@ -392,8 +392,11 @@ function createYearfracBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin {
     const startSerial = truncArg(args[0]!)
     const endSerial = truncArg(args[1]!)
     const basis = args[2] === undefined ? 0 : integerValue(args[2])
-    if (typeof startSerial !== 'number' || typeof endSerial !== 'number' || basis === undefined || !isValidYearfracBasis(basis)) {
+    if (typeof startSerial !== 'number' || typeof endSerial !== 'number' || basis === undefined) {
       return valueError()
+    }
+    if (!isValidYearfracBasis(basis)) {
+      return numError()
     }
 
     const fraction = yearFracByBasis(startSerial, endSerial, basis, dateSystem)

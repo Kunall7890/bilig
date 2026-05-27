@@ -618,6 +618,20 @@ describe('datetime builtins', () => {
         { tag: ValueTag.Number, value: jul1 },
         { tag: ValueTag.Number, value: 9 },
       ),
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+    expect(
+      datetimeBuiltins.YEARFRAC(
+        { tag: ValueTag.Number, value: jan1 },
+        { tag: ValueTag.Number, value: jul1 },
+        { tag: ValueTag.Number, value: -1 },
+      ),
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+    expect(
+      datetimeBuiltins.YEARFRAC(
+        { tag: ValueTag.Number, value: jan1 },
+        { tag: ValueTag.Number, value: jul1 },
+        { tag: ValueTag.String, value: 'bad', stringId: 1 },
+      ),
     ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
   })
 
@@ -1057,6 +1071,15 @@ describe('datetime builtins', () => {
         expect.objectContaining({
           id: 'volatile:rand-captured',
           outputs: [{ address: 'A1', expected: { kind: 'number', value: 0.625 } }],
+        }),
+        expect.objectContaining({
+          id: 'date-time:yearfrac-invalid-basis-num',
+          outputs: [
+            {
+              address: 'A1',
+              expected: { kind: 'error', code: ErrorCode.Num, display: '#NUM!' },
+            },
+          ],
         }),
       ]),
     )

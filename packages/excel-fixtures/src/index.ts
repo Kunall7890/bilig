@@ -349,6 +349,7 @@ const canonicalBaseFixtureIds = new Set<string>([
   'date-time:timevalue-basic',
   'date-time:timevalue-date-text-ignored',
   'date-time:yearfrac-basic',
+  'date-time:yearfrac-invalid-basis-num',
   'date-time:fvschedule-basic',
   'date-time:effect-basic',
   'date-time:nominal-basic',

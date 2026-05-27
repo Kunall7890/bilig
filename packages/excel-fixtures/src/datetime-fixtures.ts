@@ -273,6 +273,16 @@ export const excelDateTimeFixtureSuite: ExcelFixtureSuite = {
       outputs: [{ address: 'A1', expected: numberExpected(182 / 365) }],
     },
     {
+      id: createExcelFixtureId('date-time', 'yearfrac-invalid-basis-num'),
+      family: 'date-time',
+      title: 'YEARFRAC returns #NUM! for invalid basis values',
+      formula: '=YEARFRAC(DATE(2024,1,1),DATE(2024,7,1),5)',
+      sheetName: 'Sheet1',
+      notes: 'Microsoft YEARFRAC documentation states that basis values below 0 or above 4 return #NUM!.',
+      inputs: [],
+      outputs: [{ address: 'A1', expected: errorExpected(ErrorCode.Num, '#NUM!') }],
+    },
+    {
       id: createExcelFixtureId('date-time', 'fvschedule-basic'),
       family: 'date-time',
       title: 'FVSCHEDULE compounds a principal by a schedule of rates',

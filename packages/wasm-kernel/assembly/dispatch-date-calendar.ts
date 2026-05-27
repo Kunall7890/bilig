@@ -99,10 +99,19 @@ export function tryApplyDateCalendarBuiltin(
     const startWhole = excelSerialWhole(tagStack[base], valueStack[base])
     const endWhole = excelSerialWhole(tagStack[base + 1], valueStack[base + 1])
     const basis = argc == 3 ? truncToInt(tagStack[base + 2], valueStack[base + 2]) : 0
-    const value =
-      startWhole == i32.MIN_VALUE || endWhole == i32.MIN_VALUE || basis < 0 || basis > 4
-        ? NaN
-        : excelYearfracValue(startWhole, endWhole, basis)
+    if (basis < 0 || basis > 4) {
+      return writeResult(
+        base,
+        STACK_KIND_SCALAR,
+        <u8>ValueTag.Error,
+        basis == i32.MIN_VALUE ? ErrorCode.Value : ErrorCode.Num,
+        rangeIndexStack,
+        valueStack,
+        tagStack,
+        kindStack,
+      )
+    }
+    const value = startWhole == i32.MIN_VALUE || endWhole == i32.MIN_VALUE ? NaN : excelYearfracValue(startWhole, endWhole, basis)
     if (isNaN(value)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }

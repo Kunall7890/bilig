@@ -309,6 +309,30 @@ describe('wasm kernel date/finance helpers', () => {
     expectNumberCell(kernel, cellIndex(1, 3, width), 1)
   })
 
+  it('returns #NUM for invalid YEARFRAC basis values on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 4
+    kernel.init(8, 2, 0, 1, 1)
+    kernel.writeCells(new Uint8Array(8), new Float64Array(8), new Uint32Array(8), new Uint16Array(8))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Yearfrac, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Yearfrac, 3), encodeRet()],
+    ])
+    const targetCells = Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width)])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targetCells)
+    const constants = packConstants([
+      [45292, 45474, 5],
+      [45292, 45474, -1],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(targetCells)
+
+    expectErrorCell(kernel, cellIndex(1, 0, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 1, width), ErrorCode.Num)
+  })
+
   it('keeps depreciation helper behavior stable across refactors', async () => {
     const kernel = await createKernel()
     const width = 8

@@ -12,13 +12,13 @@
   },
   "summary": {
     "allCommittedFormulaSemanticsCovered": true,
-    "canonicalFormulaFixtureCount": 401,
+    "canonicalFormulaFixtureCount": 402,
     "workbookSemanticsFixtureCount": 12,
-    "executableStableFormulaFixtureCount": 398,
+    "executableStableFormulaFixtureCount": 399,
     "deterministicVolatileFixtureCount": 3,
     "executableWorkbookSemanticsFixtureCount": 12,
-    "dateTimeEdgeFixtureCount": 70,
-    "coveredCanonicalFixtureCount": 401,
+    "dateTimeEdgeFixtureCount": 71,
+    "coveredCanonicalFixtureCount": 402,
     "coveredWorkbookSemanticsFixtureCount": 12,
     "workbookSemanticsCategoryCount": 6,
     "coveredWorkbookSemanticsCategories": [
@@ -142,6 +142,7 @@
       "date-time:xirr-basic",
       "date-time:xnpv-basic",
       "date-time:yearfrac-basic",
+      "date-time:yearfrac-invalid-basis-num",
       "date-time:yield-basic",
       "date-time:yielddisc-basic",
       "date-time:yieldmat-basic",
@@ -568,6 +569,7 @@
       "date-time:xirr-basic",
       "date-time:xnpv-basic",
       "date-time:yearfrac-basic",
+      "date-time:yearfrac-invalid-basis-num",
       "date-time:yield-basic",
       "date-time:yielddisc-basic",
       "date-time:yieldmat-basic"

@@ -616,6 +616,7 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('date-time:timevalue-basic', 'date-time', '=TIMEVALUE("1:30 PM")', 'implemented-wasm-production'),
   entry('date-time:timevalue-date-text-ignored', 'date-time', '=TIMEVALUE("22-Aug-2011 6:35 AM")', 'implemented-wasm-production'),
   entry('date-time:yearfrac-basic', 'date-time', '=YEARFRAC(DATE(2024,1,1),DATE(2024,7,1),3)', 'implemented-wasm-production'),
+  entry('date-time:yearfrac-invalid-basis-num', 'date-time', '=YEARFRAC(DATE(2024,1,1),DATE(2024,7,1),5)', 'implemented-wasm-production'),
   entry('date-time:fvschedule-basic', 'date-time', '=FVSCHEDULE(1000,0.09,0.11,0.1)', 'implemented-wasm-production'),
   entry('date-time:effect-basic', 'date-time', '=EFFECT(12%,12)', 'implemented-wasm-production'),
   entry('date-time:nominal-basic', 'date-time', '=NOMINAL(0.12682503013196977,12)', 'implemented-wasm-production'),
