@@ -57,13 +57,10 @@ export function sameCorpusMutationTargetPreflightInvalidReasons(args: SameCorpus
 }
 
 function sameCorpusVisibleReadbackSourceAccepted(
-  product: UiResponsivenessSameCorpusProduct,
+  _product: UiResponsivenessSameCorpusProduct,
   source: SameCorpusMutationTargetReadback['source'],
 ): boolean {
-  if (source === 'visible-grid-cell') {
-    return true
-  }
-  return product !== 'bilig' && source === 'visible-formula-bar'
+  return source === 'visible-grid-cell'
 }
 
 function sameCorpusBeforeScreenshotInvalidReasons(args: SameCorpusMutationTargetPreflightProof): readonly string[] {

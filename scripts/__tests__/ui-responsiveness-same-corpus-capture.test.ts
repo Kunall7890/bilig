@@ -1133,7 +1133,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     )
   })
 
-  it('accepts Google Sheets selected-cell proof backed by visible formula bar text and target screenshots', () => {
+  it('rejects Google Sheets selected-cell proof backed by formula bar text instead of target grid cells', () => {
     const proof = buildCaptureScenarioProof({
       workload: 'edit-visible-cell',
       bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'edit-visible-cell'),
@@ -1157,21 +1157,23 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     })
 
     expect(proof.semanticUiProof).toMatchObject({
-      captured: true,
-      missingProducts: [],
+      captured: false,
+      missingProducts: ['google-sheets'],
     })
     expect(proof.semanticUiProof.productVerdicts).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           product: 'google-sheets',
-          acceptedForCurrentScorecard: true,
-          invalidReasons: [],
+          acceptedForCurrentScorecard: false,
+          invalidReasons: expect.arrayContaining([
+            'semantic UI mutation target proof for edit-visible-cell visible render readback did not come from an accepted browser-visible source',
+          ]),
         }),
       ]),
     )
   })
 
-  it('accepts Google Sheets formula edits when formula bar proves the formula and XLSX export proves the result', () => {
+  it('rejects Google Sheets formula edits when visible proof is formula bar instead of target grid cells', () => {
     const proof = buildCaptureScenarioProof({
       workload: 'formula-edit',
       bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'formula-edit'),
@@ -1198,8 +1200,11 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       expect.arrayContaining([
         expect.objectContaining({
           product: 'google-sheets',
-          acceptedForCurrentScorecard: true,
-          invalidReasons: [],
+          acceptedForCurrentScorecard: false,
+          invalidReasons: expect.arrayContaining([
+            'semantic UI mutation target proof for formula-edit after screenshot semantic readback did not come from an accepted browser-visible source',
+            'semantic UI mutation target proof for formula-edit visible render readback did not come from an accepted browser-visible source',
+          ]),
         }),
       ]),
     )
@@ -2714,7 +2719,7 @@ function sameCorpusMutationReadback(
   sampleIndex: number,
 ) {
   const after = phase === 'after'
-  const source = product === 'bilig' ? ('bilig-authoritative-range' as const) : ('visible-formula-bar' as const)
+  const source = product === 'bilig' ? ('bilig-authoritative-range' as const) : ('visible-grid-cell' as const)
   if (workload === 'formula-edit') {
     return {
       value: after ? String(sampleIndex + 2) : 'metric-1',

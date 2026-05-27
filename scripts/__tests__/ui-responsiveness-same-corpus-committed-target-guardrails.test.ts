@@ -302,7 +302,7 @@ function sameCorpusReadback(product: UiResponsivenessSameCorpusProduct, sampleIn
     formula: null,
     fillColor: null,
     visibleText: value,
-    source: product === 'bilig' ? ('bilig-authoritative-range' as const) : ('visible-formula-bar' as const),
+    source: product === 'bilig' ? ('bilig-authoritative-range' as const) : ('visible-grid-cell' as const),
     ...(product === 'bilig'
       ? {
           capturedRevision: `${after ? 'after' : 'before'}-readback-${String(sampleIndex + 1)}`,

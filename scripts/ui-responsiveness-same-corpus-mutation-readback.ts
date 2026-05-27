@@ -2,10 +2,7 @@ import type { Page } from '@playwright/test'
 
 import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import type { SameCorpusMutationTargetSelection } from './ui-responsiveness-same-corpus-mutation-proof-page.ts'
-import {
-  readSameCorpusVisibleSelectedRange,
-  type SameCorpusMutationTargetReadback,
-} from './ui-responsiveness-same-corpus-semantic-proof.ts'
+import type { SameCorpusMutationTargetReadback } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import { sameCorpusFillColorExpectedColors } from './ui-responsiveness-same-corpus-workload-runner.ts'
 import type { UiResponsivenessSameCorpusMutatingWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
@@ -34,18 +31,8 @@ export async function readExternalVisibleGridCellReadback(args: {
         visibleText: null,
       }),
     )
-  const selectedFormulaBarReadback =
-    targetCellReadback.source === 'visible-grid-cell' && sameCorpusTargetReadbackHasVisibleEvidence(targetCellReadback, args.workload)
-      ? null
-      : await readExternalSelectedFormulaBarReadback(args.page, args.product, args.target)
   const screenshotFillColor =
     args.workload === 'fill-format-change' ? await readExternalVisibleGridCellFillColor(args.page, selectedTargetBox) : null
-  if (selectedFormulaBarReadback) {
-    return {
-      ...selectedFormulaBarReadback,
-      fillColor: screenshotFillColor,
-    }
-  }
   if (targetCellReadback.source !== 'visible-grid-cell' && screenshotFillColor === null) {
     return null
   }
@@ -320,47 +307,6 @@ export async function readVisibleFormulaBarText(page: Page, product: UiResponsiv
   })
 }
 
-function sameCorpusTargetReadbackHasVisibleEvidence(
-  readback: SameCorpusMutationTargetReadback,
-  workload: UiResponsivenessSameCorpusMutatingWorkload | undefined,
-): boolean {
-  if (readback.value !== null || readback.formula !== null || readback.visibleText !== null) {
-    return true
-  }
-  return workload === 'fill-format-change' && readback.fillColor !== null
-}
-
-async function readExternalSelectedFormulaBarReadback(
-  page: Page,
-  product: UiResponsivenessSameCorpusProduct,
-  target: SameCorpusMutationTargetSelection,
-): Promise<SameCorpusMutationTargetReadback | null> {
-  const selectedRange = await readSameCorpusVisibleSelectedRange(page, product)
-  if (!sameCorpusRenderedRangeMatches(selectedRange, target.targetRange)) {
-    return null
-  }
-  const formulaBarText = await readVisibleFormulaBarText(page, product)
-  const text = normalizeNullableText(formulaBarText)
-  if (!text) {
-    return null
-  }
-  return {
-    value: text.startsWith('=') ? null : text,
-    formula: text.startsWith('=') ? text : null,
-    fillColor: null,
-    visibleText: text,
-    source: 'visible-formula-bar',
-  }
-}
-
-function sameCorpusRenderedRangeMatches(selectedRange: string | null, targetRange: string): boolean {
-  return normalizeRenderedRange(selectedRange) === normalizeRenderedRange(targetRange)
-}
-
-function normalizeRenderedRange(value: string | null): string {
-  return value?.split('!').at(-1)?.replace(/\$/gu, '').trim().toUpperCase() ?? ''
-}
-
 async function readExternalVisibleGridCellFillColor(
   page: Page,
   targetBox: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
@@ -453,9 +399,4 @@ async function visibleLocatorBox(locator: {
     width: Math.max(1, Math.ceil(box.width)),
     height: Math.max(1, Math.ceil(box.height)),
   }
-}
-
-function normalizeNullableText(value: string | null | undefined): string | null {
-  const trimmed = value?.trim() ?? ''
-  return trimmed.length > 0 ? trimmed : null
 }

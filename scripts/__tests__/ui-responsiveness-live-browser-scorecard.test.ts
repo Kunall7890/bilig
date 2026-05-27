@@ -68,53 +68,50 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(scorecard.cases.map((entry) => entry.id)).toEqual(['google-sheets-public-grid-scroll', 'microsoft-excel-web-public-xlsx-scroll'])
     expect(scorecard.cases.every((entry) => entry.sampleCount >= 3 && entry.limitations.length > 0)).toBe(true)
     expect(scorecard.sameCorpusProof).toMatchObject({
-      captured: true,
-      evidenceKind: 'same-corpus-browser-capture',
+      captured: false,
+      evidenceKind: 'not-captured',
       requiredProductCount: 2,
       requiredCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
-      coveredCorpusCaseIds: ['wide-mixed-250k'],
+      coveredCorpusCaseIds: [],
     })
-    expect(scorecard.sameCorpusProof.cases).toHaveLength(requiredUiResponsivenessSameCorpusWorkloads.length)
+    expect(scorecard.sameCorpusProof.cases).toHaveLength(0)
     expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(
       scorecard.sameCorpusProof.cases.filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length,
     )
-    expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(1)
+    expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(0)
     expect(scorecard.sameCorpusProof.runManifest).toMatchObject({
       contractVersion: 'same-corpus-ui-v10',
-      caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
-      scenarioSummaryFieldCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
-      strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
-      visibleOperationResponseProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
-      biligAuthoritativeRenderProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
-      semanticUiProofCaseCount: 8,
+      caseCount: 0,
+      scenarioSummaryFieldCaseCount: 0,
+      strictRenderedGridProofCaseCount: 0,
+      visibleOperationResponseProofCaseCount: 0,
+      biligAuthoritativeRenderProofCaseCount: 0,
+      semanticUiProofCaseCount: 0,
       requiredMutationTargetProofCaseCount: 3,
-      mutationTargetProofCaseCount: 2,
-      requiredMutationTargetProofSampleCount: 18,
-      mutationTargetProofSampleCount: 15,
+      mutationTargetProofCaseCount: 0,
+      requiredMutationTargetProofSampleCount: 0,
+      mutationTargetProofSampleCount: 0,
       requiredCommittedTargetProofTimingCaseCount: 3,
-      committedTargetProofTimingCaseCount: 2,
-      requiredCommittedTargetProofTimingSampleCount: 18,
-      committedTargetProofTimingSampleCount: 15,
+      committedTargetProofTimingCaseCount: 0,
+      requiredCommittedTargetProofTimingSampleCount: 0,
+      committedTargetProofTimingSampleCount: 0,
       legacyInsufficientRenderedGridProofCaseCount: 0,
-      tenXMeanAndP95CaseCount: 1,
+      tenXMeanAndP95CaseCount: 0,
       currentContractEvidenceComplete: false,
       googleSheetsTenXRequirementSatisfied: false,
-      captureRunSignature: expect.stringMatching(/^[a-f0-9]{64}$/u),
+      captureRunSignature: null,
     })
-    expect(scorecard.sameCorpusProof.runManifest?.capturedWorkloads).toEqual(requiredUiResponsivenessSameCorpusWorkloads)
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('semantic UI proof covers 8/9 cases')
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('mutation target proof covers 2/3 mutating cases')
+    expect(scorecard.sameCorpusProof.runManifest?.capturedWorkloads).toEqual([])
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('required workload count is incomplete')
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain(
-      'mutation target proof covers 15/18 required per-sample product proofs',
+      `missing required workloads: ${requiredUiResponsivenessSameCorpusWorkloads.join(', ')}`,
     )
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('committed target proof timing covers 2/3 mutating cases')
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain(
-      'committed target proof timing covers 15/18 required per-sample product timings',
-    )
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('semantic UI proof covers 0/9 cases')
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('mutation target proof covers 0/3 mutating cases')
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('proof archive covers 0/18 required proof artifacts')
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('not every required workload is 10x against Google Sheets')
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).not.toContain('Bilig authoritative render proof timing covers 0/9 cases')
     expect(scorecard.sameCorpusProof.limitations).toContain(
-      'Caller must supply a Google Sheets URL for the same exported Bilig benchmark corpus.',
+      'Same-corpus live browser timing against Bilig and Google Sheets has not been captured yet.',
     )
     validateUiResponsivenessLiveBrowserScorecard(scorecard)
     validateSameCorpusCaptureArtifactMatchesScorecard(scorecard)
@@ -1515,7 +1512,7 @@ function sameCorpusMutationReadback(
   sampleIndex: number,
 ) {
   const after = phase === 'after'
-  const source = product === 'bilig' ? ('bilig-authoritative-range' as const) : ('visible-formula-bar' as const)
+  const source = product === 'bilig' ? ('bilig-authoritative-range' as const) : ('visible-grid-cell' as const)
   if (workload === 'formula-edit') {
     return {
       value: after ? String(sampleIndex + 2) : 'metric-1',

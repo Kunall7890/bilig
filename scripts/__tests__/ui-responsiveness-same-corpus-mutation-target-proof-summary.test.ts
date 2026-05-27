@@ -481,7 +481,7 @@ function readback(
     formula: null,
     fillColor: null,
     visibleText: value,
-    source: product === 'bilig' ? 'bilig-authoritative-range' : 'visible-formula-bar',
+    source: product === 'bilig' ? 'bilig-authoritative-range' : 'visible-grid-cell',
     capturedRevision:
       product === 'bilig' ? (phase === 'after' ? authoritativeReadbackRevision(sampleIndex) : `${phase}-${sampleIndex}`) : null,
     visibleSceneProofSha256: product === 'bilig' && phase === 'after' ? visibleSceneProofSha256(sampleIndex) : null,

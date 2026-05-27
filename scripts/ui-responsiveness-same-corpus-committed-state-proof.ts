@@ -401,6 +401,9 @@ function sameCorpusCommittedStateReadbackInvalidReasons(
     )
   }
   if (workload === 'formula-edit') {
+    if (sample.intendedPayload.kind !== 'formula' || proof.after.readback.formula !== sample.intendedPayload.formula) {
+      invalidReasons.push(`semantic UI mutation target proof for ${workload} committed-state after readback did not prove formula text`)
+    }
     const expectedRenderedValue = String(sample.sampleIndex + 2)
     if (proof.after.readback.value !== expectedRenderedValue && proof.after.readback.visibleText !== expectedRenderedValue) {
       invalidReasons.push(`semantic UI mutation target proof for ${workload} committed-state after readback did not prove formula result`)
@@ -415,12 +418,19 @@ function sameCorpusCommittedReadbackMatches(
   right: SameCorpusMutationTargetReadback,
 ): boolean {
   if (workload === 'formula-edit') {
-    return left.formula === right.formula
+    if (left.formula !== null && right.formula !== null) {
+      return left.formula === right.formula
+    }
+    return sameCorpusReadbackTextValue(left) !== null && sameCorpusReadbackTextValue(left) === sameCorpusReadbackTextValue(right)
   }
   if (workload === 'fill-format-change') {
     return normalizeSameCorpusColor(left.fillColor) === normalizeSameCorpusColor(right.fillColor)
   }
   return left.value === right.value || left.visibleText === right.visibleText
+}
+
+function sameCorpusReadbackTextValue(readback: SameCorpusMutationTargetReadback): string | null {
+  return readback.value ?? readback.visibleText
 }
 
 async function fetchGoogleSheetsXlsxExport(page: SameCorpusCommittedStatePage, exportUrl: string): Promise<Uint8Array> {

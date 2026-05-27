@@ -656,7 +656,7 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
-  it('accepts Google Sheets mutation proof when formula bar readback is backed by independent XLSX proof', () => {
+  it('rejects Google Sheets mutation proof when visible readback comes from formula bar instead of the target grid cell', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validGoogleSheetsSemanticProof({
         mutationTargetProofs: validGoogleSheetsMutationTargetProofs().map((proof) =>
@@ -675,12 +675,14 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     )
 
     expect(verdict).toMatchObject({
-      acceptedForCurrentScorecard: true,
-      invalidReasons: [],
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell visible render readback did not come from an accepted browser-visible source',
+      ]),
     })
   })
 
-  it('accepts Google Sheets target screenshots backed by formula-bar semantic readback', () => {
+  it('rejects Google Sheets target screenshots backed by formula-bar semantic readback', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validGoogleSheetsSemanticProof({
         mutationTargetProofs: validGoogleSheetsMutationTargetProofs().map((proof) =>
@@ -704,8 +706,10 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     )
 
     expect(verdict).toMatchObject({
-      acceptedForCurrentScorecard: true,
-      invalidReasons: [],
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell after screenshot semantic readback did not come from an accepted browser-visible source',
+      ]),
     })
   })
 
@@ -934,7 +938,7 @@ function mutationTargetProof(
   const visibleTargetRenderMs = 8 + sampleIndex
   const committedStateValidationMs = committedTargetProofMs - visibleTargetRenderMs
   const restoreValidationMs = 80
-  const authoritativeSource = product === 'bilig' ? 'bilig-authoritative-range' : 'visible-formula-bar'
+  const authoritativeSource = product === 'bilig' ? 'bilig-authoritative-range' : 'visible-grid-cell'
   return {
     product,
     sampleIndex,

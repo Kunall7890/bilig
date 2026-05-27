@@ -614,19 +614,17 @@ function sameCorpusMutationTargetExpectedReadbackInvalidReasons(
     return []
   }
   if (workload === 'formula-edit') {
-    if (payload.kind !== 'formula' || sample.after.formula !== payload.formula) {
+    if (payload.kind !== 'formula') {
+      return ['semantic UI mutation target proof for formula-edit did not prove the intended edited formula']
+    }
+    const committedFormula = sample.committedStateProof?.after.readback.formula ?? null
+    const formulaProven = sample.after.formula === payload.formula || (product !== 'bilig' && committedFormula === payload.formula)
+    if (!formulaProven) {
       return ['semantic UI mutation target proof for formula-edit did not prove the intended edited formula']
     }
     const expectedRenderedValue = expectedSameCorpusFormulaEditRenderedValue(sample.sampleIndex)
     if (sample.visibleAfter.value !== expectedRenderedValue && sample.visibleAfter.visibleText !== expectedRenderedValue) {
-      const committedResult = sample.committedStateProof?.after.readback
-      const externalFormulaProofAccepted =
-        product !== 'bilig' &&
-        sample.visibleAfter.formula === payload.formula &&
-        (committedResult?.value === expectedRenderedValue || committedResult?.visibleText === expectedRenderedValue)
-      return externalFormulaProofAccepted
-        ? []
-        : ['semantic UI mutation target proof for formula-edit did not prove the rendered formula result']
+      return ['semantic UI mutation target proof for formula-edit did not prove the rendered formula result']
     }
     return []
   }
@@ -684,6 +682,9 @@ function sameCorpusMutationTargetReadbackSourceInvalidReasons(
   if (product === 'bilig' && readbacks.some((readback) => readback.source !== 'bilig-authoritative-range')) {
     return [`semantic UI mutation target proof for ${workload} used visible editor text instead of Bilig authoritative range readback`]
   }
+  if (product !== 'bilig' && readbacks.some((readback) => readback.source !== 'visible-grid-cell')) {
+    return [`semantic UI mutation target proof for ${workload} target readback did not come from a browser-visible grid cell`]
+  }
   return []
 }
 
@@ -714,13 +715,10 @@ function sameCorpusMutationTargetVisibleReadbackInvalidReasons(
 }
 
 function sameCorpusVisibleReadbackSourceAccepted(
-  product: UiResponsivenessSameCorpusProduct,
+  _product: UiResponsivenessSameCorpusProduct,
   source: SameCorpusMutationTargetReadbackSource,
 ): boolean {
-  if (source === 'visible-grid-cell') {
-    return true
-  }
-  return product !== 'bilig' && source === 'visible-formula-bar'
+  return source === 'visible-grid-cell'
 }
 
 function sameCorpusMutationTargetRevisionInvalidReasons(

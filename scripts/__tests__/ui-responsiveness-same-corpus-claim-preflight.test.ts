@@ -210,7 +210,7 @@ function verifiedEditableMutationProof(): PreflightEditableMutationProof {
     formula: null,
     fillColor: null,
     visibleText: 'metric-1',
-    source: 'visible-formula-bar',
+    source: 'visible-grid-cell',
   } as const
   const after = {
     ...before,
