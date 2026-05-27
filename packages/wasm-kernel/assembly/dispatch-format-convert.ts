@@ -49,6 +49,22 @@ function escapeSheetNameText(value: string): string {
   return output
 }
 
+function isUnquotedSheetNameCode(code: i32): bool {
+  return (code >= 65 && code <= 90) || (code >= 97 && code <= 122) || (code >= 48 && code <= 57) || code == 95 || code == 46 || code == 36
+}
+
+function quoteSheetNameTextIfNeeded(value: string): string {
+  if (value.length == 0) {
+    return "''"
+  }
+  for (let index = 0; index < value.length; index++) {
+    if (!isUnquotedSheetNameCode(value.charCodeAt(index))) {
+      return `'${escapeSheetNameText(value)}'`
+    }
+  }
+  return value
+}
+
 function digitCount(value: i32): i32 {
   if (value <= 0) {
     return 1
@@ -241,7 +257,7 @@ export function tryApplyFormatConvertBuiltin(
       if (sheetText == null) {
         return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
       }
-      sheetPrefix = `'${escapeSheetNameText(sheetText)}'!`
+      sheetPrefix = `${quoteSheetNameTextIfNeeded(sheetText)}!`
     }
     const columnLabel = columnLabelText(column)
     if (columnLabel == null) {

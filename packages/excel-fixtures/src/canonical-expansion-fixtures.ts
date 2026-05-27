@@ -151,6 +151,15 @@ export const canonicalExpansionFixtures: readonly ExcelFixtureCase[] = [
   ),
   fixture(
     'lookup-reference',
+    'address-simple-sheet-unquoted',
+    'ADDRESS leaves simple sheet names unquoted',
+    '=ADDRESS(1,1,1,TRUE(),"Sheet2")',
+    [],
+    [output('A1', stringExpected('Sheet2!$A$1'))],
+    'Microsoft documents ADDRESS sheet_text example =ADDRESS(1,1,,,"Sheet2") returning Sheet2!$A$1 without quoting the simple sheet name.',
+  ),
+  fixture(
+    'lookup-reference',
     'columns-scalar-array',
     'COLUMNS treats a scalar argument as a one-cell array',
     '=COLUMNS("x")',

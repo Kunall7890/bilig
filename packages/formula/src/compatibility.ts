@@ -307,6 +307,15 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   }),
   entry('lookup-reference:address-basic', 'lookup-reference', '=ADDRESS(12,3)', 'implemented-wasm-production'),
   entry('lookup-reference:address-r1c1-logical-false', 'lookup-reference', '=ADDRESS(2,3,2,FALSE())', 'implemented-wasm-production'),
+  entry(
+    'lookup-reference:address-simple-sheet-unquoted',
+    'lookup-reference',
+    '=ADDRESS(1,1,1,TRUE(),"Sheet2")',
+    'implemented-wasm-production',
+    {
+      notes: 'ADDRESS sheet_text leaves simple sheet identifiers unquoted while quoting names that require formula escaping.',
+    },
+  ),
   entry('lookup-reference:index-basic', 'lookup-reference', '=INDEX(A1:B2,2,1)', 'implemented-wasm-production'),
   entry('lookup-reference:rows-scalar-array', 'lookup-reference', '=ROWS(1)', 'implemented-wasm-production', {
     notes: 'Scalar ROWS arguments are treated as one-cell arrays; direct scalar errors propagate.',

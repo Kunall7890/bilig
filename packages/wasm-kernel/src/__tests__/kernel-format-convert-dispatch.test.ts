@@ -207,6 +207,60 @@ describe('wasm kernel format and conversion dispatch', () => {
     expect(kernel.readOutputStrings()).toEqual(['R2C[3]', 'R2C[3]', 'C$2', 'C$2'])
   })
 
+  it('quotes ADDRESS sheet names only when formula syntax requires quoting on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 3, 4, 1, 1)
+    kernel.uploadStrings(
+      Uint32Array.from([0, 6, 17]),
+      Uint32Array.from([6, 11, 7]),
+      Uint16Array.from(Array.from("Sheet2EXCEL SHEETO'Brien", (char) => char.charCodeAt(0))),
+    )
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushBoolean(true),
+        encodePushString(0),
+        encodeCall(BuiltinId.Address, 5),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushBoolean(false),
+        encodePushString(1),
+        encodeCall(BuiltinId.Address, 5),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(0),
+        encodePushNumber(0),
+        encodePushNumber(2),
+        encodePushBoolean(true),
+        encodePushString(2),
+        encodeCall(BuiltinId.Address, 5),
+        encodeRet(),
+      ],
+    ])
+    const outputs = Uint32Array.from(Array.from({ length: 3 }, (_, index) => cellIndex(1, index, width)))
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, outputs)
+    const constants = packConstants([
+      [1, 1, 1],
+      [2, 3, 1],
+      [1, 1, 1],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(outputs)
+
+    expect(kernel.readOutputStrings()).toEqual(['Sheet2!$A$1', "'EXCEL SHEET'!R2C3", "'O''Brien'!$A$1"])
+  })
+
   it('formats currency text with the maximum supported decimal width on the wasm path', async () => {
     const kernel = await createKernel()
     const width = 4

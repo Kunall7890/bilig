@@ -18,4 +18,12 @@ describe('ADDRESS builtins', () => {
     expect(ADDRESS(num(2), num(3), num(2), num(2))).toEqual(stringResult('C$2'))
     expect(ADDRESS(num(2), num(3), num(2), text('not logical'))).toEqual(valueError)
   })
+
+  it('quotes ADDRESS sheet names only when formula syntax requires quoting', () => {
+    const ADDRESS = getBuiltin('ADDRESS')!
+
+    expect(ADDRESS(num(1), num(1), num(1), bool(true), text('Sheet2'))).toEqual(stringResult('Sheet2!$A$1'))
+    expect(ADDRESS(num(2), num(3), num(1), bool(false), text('EXCEL SHEET'))).toEqual(stringResult("'EXCEL SHEET'!R2C3"))
+    expect(ADDRESS(num(1), num(1), num(1), bool(true), text("O'Brien"))).toEqual(stringResult("'O''Brien'!$A$1"))
+  })
 })

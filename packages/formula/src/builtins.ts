@@ -37,6 +37,7 @@ import { getExternalScalarFunction, hasExternalFunction } from './external-funct
 import { coerceLogicalValue } from './logical-coercion.js'
 import type { ArrayValue, EvaluationResult } from './runtime-values.js'
 import { createTextBuiltins, textBuiltins } from './builtins/text.js'
+import { quoteSheetNameIfNeeded } from './translation-reference-utils.js'
 
 type Builtin = (...args: CellValue[]) => EvaluationResult
 
@@ -555,7 +556,7 @@ const scalarBuiltins: Record<string, Builtin> = {
     if (columnLabel === undefined) {
       return valueError()
     }
-    const sheetPrefix = sheetTextArg?.tag === ValueTag.String ? `'${sheetTextArg.value.replace(/'/g, "''")}'!` : ''
+    const sheetPrefix = sheetTextArg?.tag === ValueTag.String ? `${quoteSheetNameIfNeeded(sheetTextArg.value)}!` : ''
     if (!a1Style.value) {
       const rowLabel = absNum === 1 || absNum === 2 ? String(row) : `[${row}]`
       const colLabel = absNum === 1 || absNum === 3 ? String(column) : `[${column}]`
