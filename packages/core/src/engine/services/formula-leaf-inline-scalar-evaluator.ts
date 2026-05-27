@@ -1,6 +1,6 @@
 import { ErrorCode, ValueTag, formatGeneralNumberValue, type CellValue, type NumberValue } from '@bilig/protocol'
 import {
-  excelPower,
+  excelExponentiation,
   getBuiltin,
   getDateSystemBuiltin,
   isArrayValue,
@@ -574,7 +574,7 @@ function evaluateFastInlineNumericBinary(
           : operator === '/'
             ? left / right
             : operator === '^'
-              ? Math.pow(left, right)
+              ? excelExponentiation(left, right)
               : undefined
   return value !== undefined && Number.isFinite(value) ? value : undefined
 }
@@ -783,7 +783,7 @@ function evaluateInlineBinary(
             ? leftNumber * rightNumber
             : operator === '/'
               ? leftNumber / rightNumber
-              : excelPower(leftNumber, rightNumber)
+              : excelExponentiation(leftNumber, rightNumber)
     return Number.isFinite(value) ? numberValue(value) : errorValue(operator === '^' ? ErrorCode.Num : ErrorCode.Value)
   }
   const comparison = compareInlineScalars(left, right)

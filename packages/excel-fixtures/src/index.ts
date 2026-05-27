@@ -178,7 +178,7 @@ const canonicalBaseFixtureIds = new Set<string>([
   'arithmetic:unary-negation',
   'arithmetic:division-basic',
   'arithmetic:power-basic',
-  'arithmetic:power-negative-fractional-error',
+  'arithmetic:power-negative-odd-root',
   'arithmetic:percent-operator',
   'comparison:equality-number',
   'comparison:equality-text',

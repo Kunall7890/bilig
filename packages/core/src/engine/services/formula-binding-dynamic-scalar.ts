@@ -1,4 +1,4 @@
-import { excelPower, parseCellAddress, parseRangeAddress, type FormulaNode } from '@bilig/formula'
+import { excelExponentiation, parseCellAddress, parseRangeAddress, type FormulaNode } from '@bilig/formula'
 import { ErrorCode, ValueTag, type CellValue, type LiteralInput } from '@bilig/protocol'
 import type { StringPool } from '../../string-pool.js'
 import type { WorkbookStore } from '../../workbook-store.js'
@@ -339,7 +339,7 @@ export function evaluateScalar(args: {
         case '/':
           return rightNumber === 0 ? errorValue(ErrorCode.Div0) : numberValue(leftNumber / rightNumber)
         case '^': {
-          const value = excelPower(leftNumber, rightNumber)
+          const value = excelExponentiation(leftNumber, rightNumber)
           return Number.isFinite(value) ? numberValue(value) : errorValue(ErrorCode.Num)
         }
         case ':':

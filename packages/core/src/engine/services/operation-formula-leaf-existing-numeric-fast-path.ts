@@ -1,4 +1,4 @@
-import { parseArithmeticNumericText, type JsPlanInstruction } from '@bilig/formula'
+import { excelExponentiation, parseArithmeticNumericText, type JsPlanInstruction } from '@bilig/formula'
 import {
   ErrorCode,
   FormulaMode,
@@ -599,7 +599,7 @@ function evaluateFastInlineNumericBinary(
           : operator === '/'
             ? left / right
             : operator === '^'
-              ? Math.pow(left, right)
+              ? excelExponentiation(left, right)
               : undefined
   return value !== undefined && Number.isFinite(value) ? value : undefined
 }

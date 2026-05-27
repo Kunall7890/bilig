@@ -67,7 +67,7 @@
       "arithmetic:division-basic",
       "arithmetic:percent-operator",
       "arithmetic:power-basic",
-      "arithmetic:power-negative-fractional-error",
+      "arithmetic:power-negative-odd-root",
       "arithmetic:precedence-basic",
       "arithmetic:unary-negation",
       "comparison:equality-number",

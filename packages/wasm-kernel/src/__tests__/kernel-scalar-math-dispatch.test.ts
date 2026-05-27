@@ -22,6 +22,10 @@ function encodeRet(): number {
   return Opcode.Ret << 24
 }
 
+function encodeBinary(opcode: Opcode): number {
+  return opcode << 24
+}
+
 function packPrograms(programs: number[][]): {
   programs: Uint32Array
   offsets: Uint32Array
@@ -104,6 +108,34 @@ function expectKernelError(kernel: Awaited<ReturnType<typeof createKernel>>, ind
 }
 
 describe('wasm kernel scalar math dispatch', () => {
+  it('keeps exponentiation operator odd roots separate from POWER domain errors', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 0, 8, 1, 1)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodeBinary(Opcode.Pow), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Power, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width)]),
+    )
+    const constants = packConstants([
+      [-32, 0.2],
+      [-32, 0.2],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width)]))
+
+    expect(kernel.readTags()[cellIndex(1, 0, width)]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBeCloseTo(-2, 12)
+    expectKernelError(kernel, cellIndex(1, 1, width), ErrorCode.Num)
+  })
+
   it('keeps rounding and core scalar math dispatch stable across refactors', async () => {
     const kernel = await createKernel()
     const width = 32

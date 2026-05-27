@@ -2,7 +2,7 @@ import { ErrorCode, ValueTag, formatErrorCode, formatGeneralNumberValue, type Ce
 import type { RangeBuiltinArgument } from './builtins/lookup.js'
 import { normalizeExactLookupNumber } from './builtins/lookup-core-helpers.js'
 import type { MatrixValue } from './group-pivot-evaluator.js'
-import { excelPower } from './excel-power.js'
+import { excelExponentiation } from './excel-power.js'
 import { emptyValue, error, numberValue } from './js-evaluator-cell-values.js'
 import type { JsPlanInstruction, StackValue } from './js-evaluator-types.js'
 import { parseArithmeticNumericText } from './numeric-text.js'
@@ -258,7 +258,7 @@ function scalarBinary(operator: BinaryOperator, leftValue: CellValue, rightValue
       return error(ErrorCode.Div0)
     }
     if (operator === '^') {
-      const value = excelPower(left, right)
+      const value = excelExponentiation(left, right)
       return Number.isFinite(value) ? { tag: ValueTag.Number, value } : error(ErrorCode.Num)
     }
     const value = operator === '+' ? left + right : operator === '-' ? left - right : operator === '*' ? left * right : left / right

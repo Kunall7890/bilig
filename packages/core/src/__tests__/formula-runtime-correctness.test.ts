@@ -123,6 +123,22 @@ describe('formula runtime correctness', () => {
       }),
     )
   })
+
+  it('matches Excel-saved CAGR caches for negative odd reciprocal exponentiation', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'negative-odd-root-cagr' })
+    await engine.ready()
+    engine.createSheet('English')
+    engine.setCellValue('English', 'N2', 2019)
+    engine.setCellValue('English', 'S2', 2024)
+    engine.setCellValue('English', 'N12', 0.052233)
+    engine.setCellValue('English', 'S12', -0.155578)
+    engine.setCellFormula('English', 'T12', '(S12/N12)^(1/($S$2-$N$2))-1')
+
+    expect(engine.explainCell('English', 'T12').mode).toBe(FormulaMode.WasmFastPath)
+    const value = engine.getCellValue('English', 'T12')
+    expect(value.tag).toBe(ValueTag.Number)
+    expect(value.value).toBeCloseTo(-2.2439434647031096, 12)
+  })
 })
 
 async function expectFixtureParity(fixture: ExcelFixtureCase): Promise<void> {

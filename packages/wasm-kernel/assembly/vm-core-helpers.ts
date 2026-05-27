@@ -73,7 +73,7 @@ export function binaryNumeric(op: i32, left: f64, right: f64): f64 {
   if (op == Opcode.Sub) return left - right
   if (op == Opcode.Mul) return left * right
   if (op == Opcode.Div) return right == 0 ? NaN : left / right
-  if (op == Opcode.Pow) return excelPower(left, right)
+  if (op == Opcode.Pow) return excelExponentiation(left, right)
   if (op == Opcode.Eq) return left == right ? 1 : 0
   if (op == Opcode.Neq) return left != right ? 1 : 0
   if (op == Opcode.Gt) return left > right ? 1 : 0
@@ -85,4 +85,23 @@ export function binaryNumeric(op: i32, left: f64, right: f64): f64 {
 
 export function excelPower(base: f64, exponent: f64): f64 {
   return Math.pow(base, exponent)
+}
+
+export function excelExponentiation(base: f64, exponent: f64): f64 {
+  if (base < 0.0 && isOddRootReciprocalExponent(exponent)) {
+    return -Math.pow(-base, exponent)
+  }
+  return Math.pow(base, exponent)
+}
+
+function isOddRootReciprocalExponent(exponent: f64): bool {
+  if (!isFinite(exponent) || exponent == 0.0) return false
+  const reciprocal = 1.0 / exponent
+  if (!isFinite(reciprocal)) return false
+  const denominator = Math.round(Math.abs(reciprocal))
+  if (denominator < 3.0 || denominator > 1000000.0) return false
+  const integerDenominator = <i32>denominator
+  if ((integerDenominator & 1) == 0) return false
+  const tolerance = denominator * 0.000000000001 > 0.000000000001 ? denominator * 0.000000000001 : 0.000000000001
+  return Math.abs(Math.abs(reciprocal) - denominator) <= tolerance
 }
