@@ -1,10 +1,12 @@
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
-import { spawn } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import {
   DEFAULT_COMPETITIVE_WARMUP_COUNT,
   DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT,
+  type ComparativeMeasuredEngineResult,
+  type ComparativeMemorySummary,
 } from '../packages/benchmarks/src/benchmark-workpaper-vs-hyperformula.ts'
 import {
   buildIronCalcRustRunnerInput,
@@ -18,9 +20,21 @@ import {
   type IronCalcRustRunnerOutput,
   type WorkPaperIronCalcRustWorkload,
   type WorkPaperIronCalcRustBenchmarkResult,
+  type WorkPaperIronCalcRustFixture,
   type WorkPaperIronCalcRustScorecard,
 } from '../packages/benchmarks/src/benchmark-workpaper-vs-ironcalc-rust.ts'
-import { arrayField, asObject, numberArrayField, numberField, objectField, readJsonObject, stringField } from './json-scorecard-helpers.ts'
+import { univerScenario } from '../packages/benchmarks/src/benchmark-workpaper-vs-univer-workload-resolver.ts'
+import type { NumericSummary } from '../packages/benchmarks/src/stats.ts'
+import {
+  arrayField,
+  asObject,
+  literalField,
+  numberArrayField,
+  numberField,
+  objectField,
+  readJsonObject,
+  stringField,
+} from './json-scorecard-helpers.ts'
 import { formatJsonForRepo } from './scorecard-format.ts'
 import { ironCalcRustSidecarCargoToml, ironCalcRustSidecarMainRs } from './ironcalc-rust-sidecar-template.ts'
 import {
@@ -69,6 +83,7 @@ const sidecarManifestPath = join(cacheDir, 'Cargo.toml')
 const sidecarMainPath = join(sidecarSrcDir, 'main.rs')
 const cargoTargetDir = join(rootDir, '.cache', 'ironcalc-rust-target')
 const lockPath = join(cacheDir, 'artifact.lock')
+const workPaperResultCacheDir = join(cacheDir, 'workpaper-results')
 const isCheckMode = process.argv.slice(2).includes('--check')
 if (isCheckMode && process.env['BILIG_IRONCALC_RUST_WORKLOADS']) {
   throw new Error('BILIG_IRONCALC_RUST_WORKLOADS is only supported in generate mode, not --check')
@@ -159,7 +174,7 @@ if (runnerOutput.engine.crate !== IRONCALC_RUST_CRATE_NAME || runnerOutput.engin
   )
 }
 const report = buildWorkPaperVsIronCalcRustBenchmarkReport(
-  runWorkPaperVsIronCalcRustBenchmarkSuite(runnerOutput, {
+  runWorkPaperVsIronCalcRustBenchmarkSuiteWithCache(runnerOutput, {
     onWorkloadStart: (workload, index, total) => {
       console.log(`WorkPaper IronCalc workload ${String(index + 1)}/${String(total)}: ${workload}`)
     },
@@ -321,6 +336,305 @@ async function runIronCalcRustSidecarChunks(): Promise<IronCalcRustRunnerOutput>
   }
   writeFileSync(sidecarOutputPath, `${JSON.stringify(output, null, 2)}\n`)
   return output
+}
+
+function runWorkPaperVsIronCalcRustBenchmarkSuiteWithCache(
+  ironCalcRunnerOutput: IronCalcRustRunnerOutput,
+  options: {
+    readonly onWorkloadStart?: (workload: WorkPaperIronCalcRustWorkload, index: number, total: number) => void
+    readonly sampleCount: number
+    readonly workloads: readonly WorkPaperIronCalcRustWorkload[]
+    readonly warmupCount: number
+  },
+): WorkPaperIronCalcRustBenchmarkResult[] {
+  const sourceHash = workPaperBenchmarkSourceHash()
+  const ironCalcResultsByWorkload = new Map(ironCalcRunnerOutput.results.map((result) => [result.workload, result]))
+  const results: WorkPaperIronCalcRustBenchmarkResult[] = []
+  mkdirSync(workPaperResultCacheDir, { recursive: true })
+  for (let index = 0; index < options.workloads.length; index += 1) {
+    const workload = options.workloads[index]
+    const ironCalcResult = ironCalcResultsByWorkload.get(workload)
+    if (ironCalcResult === undefined) {
+      throw new Error(`IronCalc Rust runner did not return workload ${workload}`)
+    }
+    options.onWorkloadStart?.(workload, index, options.workloads.length)
+    const expectedMetadata = buildWorkPaperResultCacheMetadata(workload, ironCalcResult, sourceHash)
+    const resultPath = join(workPaperResultCacheDir, `${workload}.json`)
+    const metadataPath = join(workPaperResultCacheDir, `${workload}.meta.json`)
+    const reusableResult = readReusableWorkPaperResult(resultPath, metadataPath, expectedMetadata)
+    if (reusableResult !== undefined) {
+      console.log(`WorkPaper IronCalc workload ${String(index + 1)}/${String(options.workloads.length)} reused: ${workload}`)
+      results.push(reusableResult)
+      continue
+    }
+    const [result] = runWorkPaperVsIronCalcRustBenchmarkSuite(
+      {
+        engine: ironCalcRunnerOutput.engine,
+        results: [ironCalcResult],
+      },
+      {
+        sampleCount: options.sampleCount,
+        workloads: [workload],
+        warmupCount: options.warmupCount,
+      },
+    )
+    if (result === undefined) {
+      throw new Error(`WorkPaper vs IronCalc Rust benchmark did not produce workload ${workload}`)
+    }
+    writeFileSync(resultPath, `${JSON.stringify(result, null, 2)}\n`)
+    writeWorkPaperResultCacheMetadata(metadataPath, expectedMetadata)
+    results.push(result)
+  }
+  return results
+}
+
+interface WorkPaperResultCacheMetadata {
+  readonly schemaVersion: 1
+  readonly cacheKey: string
+  readonly sampleCount: number
+  readonly warmupCount: number
+  readonly workload: WorkPaperIronCalcRustWorkload
+  readonly host: {
+    readonly arch: string
+    readonly nodeVersion: string
+    readonly platform: string
+  }
+  readonly hashes: {
+    readonly ironCalcRunnerResult: string
+    readonly source: string
+  }
+}
+
+function buildWorkPaperResultCacheMetadata(
+  workload: WorkPaperIronCalcRustWorkload,
+  ironCalcResult: IronCalcRustRunnerOutput['results'][number],
+  sourceHash: string,
+): WorkPaperResultCacheMetadata {
+  const hashes = {
+    ironCalcRunnerResult: sha256(JSON.stringify(ironCalcResult)),
+    source: sourceHash,
+  }
+  const keyPayload = {
+    schemaVersion: 1,
+    sampleCount,
+    warmupCount,
+    workload,
+    host: {
+      arch: process.arch,
+      nodeVersion: process.version,
+      platform: process.platform,
+    },
+    hashes,
+  }
+  return {
+    ...keyPayload,
+    cacheKey: sha256(JSON.stringify(keyPayload)),
+  }
+}
+
+function readReusableWorkPaperResult(
+  resultPath: string,
+  metadataPath: string,
+  expected: WorkPaperResultCacheMetadata,
+): WorkPaperIronCalcRustBenchmarkResult | undefined {
+  if (!existsSync(resultPath) || !workPaperResultCacheMetadataMatches(metadataPath, expected)) {
+    return undefined
+  }
+  try {
+    const result = parseCachedWorkPaperResult(readJsonObject(resultPath))
+    if (
+      result.workload !== expected.workload ||
+      result.engines.workpaper.status !== 'supported' ||
+      result.engines.ironCalcRust.status !== 'supported' ||
+      result.engines.workpaper.elapsedMs.samples.length !== expected.sampleCount ||
+      result.engines.ironCalcRust.elapsedMs.samples.length !== expected.sampleCount
+    ) {
+      return undefined
+    }
+    return result
+  } catch {
+    return undefined
+  }
+}
+
+function parseCachedWorkPaperResult(value: Record<string, unknown>): WorkPaperIronCalcRustBenchmarkResult {
+  const workload = parseIronCalcRustWorkload(stringField(value, 'workload'))
+  return {
+    workload,
+    category: literalField(value, 'category', 'workbook-wide-limited'),
+    comparable: literalField(value, 'comparable', true),
+    fixture: parseCachedWorkPaperFixture(objectField(value, 'fixture'), workload),
+    comparison: parseCachedWorkPaperComparison(objectField(value, 'comparison')),
+    engines: parseCachedWorkPaperEngines(objectField(value, 'engines')),
+  }
+}
+
+function parseCachedWorkPaperFixture(
+  value: Record<string, unknown>,
+  workload: WorkPaperIronCalcRustWorkload,
+): WorkPaperIronCalcRustFixture {
+  const expectedFamily = univerScenario(workload).fixture.family
+  const actualFamily = stringField(value, 'family')
+  if (actualFamily !== expectedFamily) {
+    throw new Error(`Cached WorkPaper result family mismatch for ${workload}: ${actualFamily}`)
+  }
+  const result = objectField(value, 'result')
+  const editValue = value['edit']
+  const edit = editValue === undefined ? undefined : parseCachedWorkPaperFixtureEdit(asObject(editValue, 'fixture.edit'))
+  return {
+    ...(edit !== undefined ? { edit } : {}),
+    family: expectedFamily,
+    formula: stringField(value, 'formula'),
+    result: {
+      address: stringField(result, 'address'),
+      col: numberField(result, 'col'),
+      row: numberField(result, 'row'),
+      sheetName: stringField(result, 'sheetName'),
+    },
+    rowCount: numberField(value, 'rowCount'),
+  }
+}
+
+function parseCachedWorkPaperFixtureEdit(value: Record<string, unknown>): NonNullable<WorkPaperIronCalcRustFixture['edit']> {
+  return {
+    address: stringField(value, 'address'),
+    col: numberField(value, 'col'),
+    row: numberField(value, 'row'),
+    sheetName: stringField(value, 'sheetName'),
+    value: parseCachedEditableValue(value['value']),
+  }
+}
+
+function parseCachedEditableValue(value: unknown): boolean | number | string {
+  if (typeof value === 'boolean' || typeof value === 'string') {
+    return value
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+  throw new Error('Expected cached fixture edit value to be a finite primitive')
+}
+
+function parseCachedWorkPaperComparison(value: Record<string, unknown>): WorkPaperIronCalcRustBenchmarkResult['comparison'] {
+  const fasterEngine = stringField(value, 'fasterEngine')
+  if (fasterEngine !== 'workpaper' && fasterEngine !== 'ironcalc-rust') {
+    throw new Error(`Unexpected cached fasterEngine: ${fasterEngine}`)
+  }
+  return {
+    confidenceIntervalOverlaps: literalBooleanField(value, 'confidenceIntervalOverlaps'),
+    fasterEngine,
+    maxRelativeNoise: numberField(value, 'maxRelativeNoise'),
+    meanSpeedup: numberField(value, 'meanSpeedup'),
+    verificationEquivalent: literalField(value, 'verificationEquivalent', true),
+    workpaperToIronCalcRustMeanRatio: numberField(value, 'workpaperToIronCalcRustMeanRatio'),
+    workpaperToIronCalcRustMedianRatio: numberField(value, 'workpaperToIronCalcRustMedianRatio'),
+    workpaperToIronCalcRustP95Ratio: numberField(value, 'workpaperToIronCalcRustP95Ratio'),
+  }
+}
+
+function parseCachedWorkPaperEngines(value: Record<string, unknown>): WorkPaperIronCalcRustBenchmarkResult['engines'] {
+  const ironCalcRust = objectField(value, 'ironCalcRust')
+  return {
+    ironCalcRust: {
+      status: literalField(ironCalcRust, 'status', 'supported'),
+      apiPath: parseIronCalcRustApiPath(stringField(ironCalcRust, 'apiPath')),
+      elapsedMs: parseNumericSummary(objectField(ironCalcRust, 'elapsedMs')),
+      verification: objectField(ironCalcRust, 'verification'),
+    },
+    workpaper: parseCachedMeasuredEngineResult(objectField(value, 'workpaper')),
+  }
+}
+
+function parseCachedMeasuredEngineResult(value: Record<string, unknown>): ComparativeMeasuredEngineResult {
+  const engineCountersValue = value['engineCounters']
+  const engineCounters =
+    engineCountersValue === undefined ? undefined : parseCachedEngineCounters(asObject(engineCountersValue, 'engineCounters'))
+  return {
+    status: literalField(value, 'status', 'supported'),
+    elapsedMs: parseNumericSummary(objectField(value, 'elapsedMs')),
+    memoryDeltaBytes: parseMemorySummary(objectField(value, 'memoryDeltaBytes')),
+    ...(engineCounters !== undefined ? { engineCounters } : {}),
+    verification: objectField(value, 'verification'),
+  }
+}
+
+function parseCachedEngineCounters(value: Record<string, unknown>): Record<string, NumericSummary> {
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, parseNumericSummary(asObject(entry, `engineCounters.${key}`))]),
+  )
+}
+
+function parseMemorySummary(value: Record<string, unknown>): ComparativeMemorySummary {
+  return {
+    rssBytes: parseNumericSummary(objectField(value, 'rssBytes')),
+    heapUsedBytes: parseNumericSummary(objectField(value, 'heapUsedBytes')),
+    heapTotalBytes: parseNumericSummary(objectField(value, 'heapTotalBytes')),
+    externalBytes: parseNumericSummary(objectField(value, 'externalBytes')),
+    arrayBuffersBytes: parseNumericSummary(objectField(value, 'arrayBuffersBytes')),
+  }
+}
+
+function parseNumericSummary(value: Record<string, unknown>): NumericSummary {
+  return {
+    samples: numberArrayField(value, 'samples'),
+    min: numberField(value, 'min'),
+    median: numberField(value, 'median'),
+    p95: numberField(value, 'p95'),
+    max: numberField(value, 'max'),
+    mean: numberField(value, 'mean'),
+    standardDeviation: numberField(value, 'standardDeviation'),
+    relativeStandardDeviation: numberField(value, 'relativeStandardDeviation'),
+    standardError: numberField(value, 'standardError'),
+    confidence95: {
+      low: numberField(objectField(value, 'confidence95'), 'low'),
+      high: numberField(objectField(value, 'confidence95'), 'high'),
+    },
+  }
+}
+
+function literalBooleanField(value: Record<string, unknown>, field: string): boolean {
+  const fieldValue = value[field]
+  if (typeof fieldValue !== 'boolean') {
+    throw new Error(`Expected ${field} to be a boolean`)
+  }
+  return fieldValue
+}
+
+function workPaperResultCacheMetadataMatches(metadataPath: string, expected: WorkPaperResultCacheMetadata): boolean {
+  if (!existsSync(metadataPath)) {
+    return false
+  }
+  const actual = readJsonObject(metadataPath)
+  return stringField(actual, 'cacheKey') === expected.cacheKey
+}
+
+function writeWorkPaperResultCacheMetadata(metadataPath: string, metadata: WorkPaperResultCacheMetadata): void {
+  writeFileSync(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`)
+}
+
+function workPaperBenchmarkSourceHash(): string {
+  const trackedFiles = execFileSync(
+    'git',
+    ['ls-files', 'packages/core/src', 'packages/headless/src', 'packages/benchmarks/src', 'scripts'],
+    { cwd: rootDir, encoding: 'utf8' },
+  )
+    .split('\n')
+    .filter((path) => path.length > 0)
+    .toSorted()
+  const hash = createHash('sha256')
+  for (const filePath of trackedFiles) {
+    hash.update(filePath)
+    hash.update('\0')
+    hash.update(readFileSync(join(rootDir, filePath)))
+    hash.update('\0')
+  }
+  const diff = execFileSync(
+    'git',
+    ['diff', '--no-ext-diff', '--binary', '--', 'packages/core/src', 'packages/headless/src', 'packages/benchmarks/src', 'scripts'],
+    { cwd: rootDir },
+  )
+  hash.update(diff)
+  return hash.digest('hex')
 }
 
 function readReusableIronCalcRustChunkOutput(
