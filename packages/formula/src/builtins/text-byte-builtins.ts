@@ -72,7 +72,7 @@ function replaceBytes(text: string, start: number, byteCount: number, replacemen
   const replacementBytes = utf8Bytes(replacement)
   const zeroBasedStart = Math.max(0, start - 1)
   if (zeroBasedStart >= bytes.length) {
-    return text
+    return text + replacement
   }
   const zeroBasedEnd = Math.min(bytes.length, zeroBasedStart + Math.max(0, byteCount))
   return utf8Text(new Uint8Array([...bytes.slice(0, zeroBasedStart), ...replacementBytes, ...bytes.slice(zeroBasedEnd)]))

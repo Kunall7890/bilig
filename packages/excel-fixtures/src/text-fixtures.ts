@@ -33,6 +33,7 @@ export interface TextFixtureGroup {
     | 'FINDB'
     | 'SEARCH'
     | 'SEARCHB'
+    | 'REPLACE'
     | 'REPLACEB'
     | 'ASC'
     | 'JIS'
@@ -117,6 +118,7 @@ export const TEXT_FIXTURE_METADATA = {
     'FINDB',
     'SEARCH',
     'SEARCHB',
+    'REPLACE',
     'REPLACEB',
     'ASC',
     'JIS',
@@ -342,12 +344,42 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
     ],
   },
   {
+    builtin: 'REPLACE',
+    cases: [
+      {
+        name: 'replaces a character span',
+        args: [text('alphabet'), number(3), number(2), text('Z')],
+        expected: text('alZabet'),
+      },
+      {
+        name: 'inserts into empty text',
+        args: [text(''), number(1), number(0), text('Z')],
+        expected: text('Z'),
+      },
+      {
+        name: 'appends when start is past text',
+        args: [text('abc'), number(8), number(1), text('Z')],
+        expected: text('abcZ'),
+      },
+    ],
+  },
+  {
     builtin: 'REPLACEB',
     cases: [
       {
         name: 'replaces a byte-based span',
         args: [text('alphabet'), number(3), number(2), text('Z')],
         expected: text('alZabet'),
+      },
+      {
+        name: 'inserts into empty text',
+        args: [text(''), number(1), number(0), text('Z')],
+        expected: text('Z'),
+      },
+      {
+        name: 'appends when start is past text',
+        args: [text('abc'), number(8), number(1), text('Z')],
+        expected: text('abcZ'),
       },
     ],
   },
@@ -620,6 +652,34 @@ export const canonicalTextFixtures: readonly ExcelFixtureCase[] = [
     '=SEARCH("~*","a*b")',
     [],
     [output('A1', numberExpected(2))],
+  ),
+  fixture(
+    'replace-inserts-into-empty-text',
+    'REPLACE inserts into empty text',
+    '=REPLACE("",1,0,"Z")',
+    [],
+    [output('A1', stringExpected('Z'))],
+  ),
+  fixture(
+    'replace-appends-when-start-past-text',
+    'REPLACE appends when start is past text',
+    '=REPLACE("abc",8,1,"Z")',
+    [],
+    [output('A1', stringExpected('abcZ'))],
+  ),
+  fixture(
+    'replaceb-inserts-into-empty-text',
+    'REPLACEB inserts into empty text',
+    '=REPLACEB("",1,0,"Z")',
+    [],
+    [output('A1', stringExpected('Z'))],
+  ),
+  fixture(
+    'replaceb-appends-when-start-past-text',
+    'REPLACEB appends when start is past text',
+    '=REPLACEB("abc",8,1,"Z")',
+    [],
+    [output('A1', stringExpected('abcZ'))],
   ),
   fixture(
     'asc-basic',

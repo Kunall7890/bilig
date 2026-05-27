@@ -135,7 +135,7 @@ function coerceNonNegativeInt(value: CellValue | undefined, defaultValue: number
 function replaceSingle(text: string, start: number, count: number, replacement: string): string {
   const index = start - 1
   if (index >= text.length) {
-    return text
+    return text + replacement
   }
   return text.slice(0, index) + replacement + text.slice(index + count)
 }
