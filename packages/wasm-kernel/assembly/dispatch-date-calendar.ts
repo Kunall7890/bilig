@@ -1,9 +1,20 @@
 import { BuiltinId, ErrorCode, ValueTag } from './protocol'
 import { scalarErrorAt } from './builtin-args'
 import { coerceWeekendMask, isWorkdaySerial, isWorkdaySerialWithWeekendMask, validateHolidayArgument } from './calendar-workdays'
-import { excelDays360Value, excelSerialWhole, excelWeeknumFromSerial, excelYearfracValue } from './date-finance'
+import {
+  excelDateTextSerial,
+  excelDays360Value,
+  excelSerialWhole,
+  excelWeeknumFromSerial,
+  excelYearfracValue,
+  isExcelDateSerialInRange,
+} from './date-finance'
 import { truncToInt } from './numeric-core'
+import { scalarText } from './text-codec'
 import { STACK_KIND_SCALAR, writeResult } from './result-io'
+
+const DAYS_VALUE_ERROR: i32 = i32.MIN_VALUE
+const DAYS_NUM_ERROR: i32 = i32.MIN_VALUE + 1
 
 export function tryApplyDateCalendarBuiltin(
   builtinId: i32,
@@ -32,10 +43,31 @@ export function tryApplyDateCalendarBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const end = excelSerialWhole(tagStack[base], valueStack[base])
-    const start = excelSerialWhole(tagStack[base + 1], valueStack[base + 1])
-    if (end == i32.MIN_VALUE || start == i32.MIN_VALUE) {
+    const end = daysDateSerial(
+      tagStack[base],
+      valueStack[base],
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const start = daysDateSerial(
+      tagStack[base + 1],
+      valueStack[base + 1],
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    if (end == DAYS_VALUE_ERROR || start == DAYS_VALUE_ERROR) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (end == DAYS_NUM_ERROR || start == DAYS_NUM_ERROR) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, <f64>(end - start), rangeIndexStack, valueStack, tagStack, kindStack)
   }
@@ -330,4 +362,39 @@ export function tryApplyDateCalendarBuiltin(
   }
 
   return -1
+}
+
+function daysDateSerial(
+  tag: u8,
+  value: f64,
+  stringOffsets: Uint32Array,
+  stringLengths: Uint32Array,
+  stringData: Uint16Array,
+  outputStringOffsets: Uint32Array,
+  outputStringLengths: Uint32Array,
+  outputStringData: Uint16Array,
+): i32 {
+  if (tag == ValueTag.String) {
+    const text = scalarText(
+      tag,
+      value,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    if (text == null) {
+      return DAYS_VALUE_ERROR
+    }
+    const serial = excelDateTextSerial(text)
+    return serial == i32.MIN_VALUE ? DAYS_VALUE_ERROR : serial
+  }
+
+  const serial = excelSerialWhole(tag, value)
+  if (serial == i32.MIN_VALUE) {
+    return DAYS_VALUE_ERROR
+  }
+  return isExcelDateSerialInRange(serial) ? serial : DAYS_NUM_ERROR
 }

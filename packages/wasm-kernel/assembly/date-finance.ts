@@ -65,11 +65,16 @@ function civilDay(days: i32): i32 {
 }
 
 const EXCEL_EPOCH_DAYS: i32 = -25568
+const EXCEL_MAX_DATE_SERIAL_1900: i32 = 2958465
 export const EXCEL_SECONDS_PER_DAY: i32 = 86400
 
 export function excelSerialWhole(tag: u8, value: f64): i32 {
   const numeric = toNumberExact(tag, value)
   return isNaN(numeric) ? i32.MIN_VALUE : <i32>Math.floor(numeric)
+}
+
+export function isExcelDateSerialInRange(serial: i32): bool {
+  return serial >= 0 && serial <= EXCEL_MAX_DATE_SERIAL_1900
 }
 
 function daysInExcelMonth(year: i32, month: i32): i32 {
@@ -81,6 +86,162 @@ function daysInExcelMonth(year: i32, month: i32): i32 {
   const nextYear = month == 12 ? year + 1 : year
   const end = daysFromCivil(nextYear, nextMonth, 1)
   return end - start
+}
+
+function strictExcelDateSerial(year: i32, month: i32, day: i32): i32 {
+  if (year < 1900 || year > 9999 || month < 1 || month > 12) {
+    return i32.MIN_VALUE
+  }
+  if (day < 1 || day > daysInExcelMonth(year, month)) {
+    return i32.MIN_VALUE
+  }
+  if (year == 1900 && month == 2 && day == 29) {
+    return 60
+  }
+
+  const days = daysFromCivil(year, month, day)
+  let serial = days - EXCEL_EPOCH_DAYS
+  if (serial >= 60) {
+    serial += 1
+  }
+  return isExcelDateSerialInRange(serial) ? serial : i32.MIN_VALUE
+}
+
+function trimAscii(input: string): string {
+  let start = 0
+  let end = input.length
+  while (start < end && input.charCodeAt(start) <= 32) {
+    start += 1
+  }
+  while (end > start && input.charCodeAt(end - 1) <= 32) {
+    end -= 1
+  }
+  return input.slice(start, end)
+}
+
+function isDigitCode(code: i32): bool {
+  return code >= 48 && code <= 57
+}
+
+function isLetterCode(code: i32): bool {
+  return (code >= 65 && code <= 90) || (code >= 97 && code <= 122)
+}
+
+function tokenIsDigits(token: string): bool {
+  if (token.length == 0) {
+    return false
+  }
+  for (let index = 0; index < token.length; index += 1) {
+    if (!isDigitCode(token.charCodeAt(index))) {
+      return false
+    }
+  }
+  return true
+}
+
+function collectDateTextTokens(raw: string): Array<string> {
+  const tokens = new Array<string>()
+  const trimmed = trimAscii(raw)
+  let token = ''
+  for (let index = 0; index < trimmed.length; index += 1) {
+    const code = trimmed.charCodeAt(index)
+    if ((code == 84 || code == 116) && tokens.length == 2 && token.length > 0 && tokenIsDigits(token)) {
+      tokens.push(token)
+      break
+    }
+    if (isDigitCode(code) || isLetterCode(code)) {
+      token += String.fromCharCode(code)
+      continue
+    }
+    if (token.length > 0) {
+      tokens.push(token)
+      if (tokens.length == 3) {
+        break
+      }
+      token = ''
+    }
+  }
+  if (token.length > 0 && tokens.length < 3) {
+    tokens.push(token)
+  }
+  return tokens
+}
+
+function parseUnsignedDateToken(token: string): i32 {
+  if (!tokenIsDigits(token)) {
+    return i32.MIN_VALUE
+  }
+  let value: i32 = 0
+  for (let index = 0; index < token.length; index += 1) {
+    value = value * 10 + (token.charCodeAt(index) - 48)
+    if (value > 9999) {
+      return i32.MIN_VALUE
+    }
+  }
+  return value
+}
+
+function upperAscii(code: i32): i32 {
+  return code >= 97 && code <= 122 ? code - 32 : code
+}
+
+function monthFromToken(token: string): i32 {
+  if (token.length < 3) {
+    return i32.MIN_VALUE
+  }
+  const first = upperAscii(token.charCodeAt(0))
+  const second = upperAscii(token.charCodeAt(1))
+  const third = upperAscii(token.charCodeAt(2))
+  if (first == 74 && second == 65 && third == 78) return 1
+  if (first == 70 && second == 69 && third == 66) return 2
+  if (first == 77 && second == 65 && third == 82) return 3
+  if (first == 65 && second == 80 && third == 82) return 4
+  if (first == 77 && second == 65 && third == 89) return 5
+  if (first == 74 && second == 85 && third == 78) return 6
+  if (first == 74 && second == 85 && third == 76) return 7
+  if (first == 65 && second == 85 && third == 71) return 8
+  if (first == 83 && second == 69 && third == 80) return 9
+  if (first == 79 && second == 67 && third == 84) return 10
+  if (first == 78 && second == 79 && third == 86) return 11
+  if (first == 68 && second == 69 && third == 67) return 12
+  return i32.MIN_VALUE
+}
+
+function normalizeDateTextYear(year: i32, tokenLength: i32): i32 {
+  if (tokenLength <= 2) {
+    return year <= 29 ? 2000 + year : 1900 + year
+  }
+  return year
+}
+
+export function excelDateTextSerial(raw: string): i32 {
+  const tokens = collectDateTextTokens(raw)
+  if (tokens.length < 3) {
+    return i32.MIN_VALUE
+  }
+
+  const first = tokens[0]
+  const second = tokens[1]
+  const third = tokens[2]
+  const firstNumber = parseUnsignedDateToken(first)
+  const secondNumber = parseUnsignedDateToken(second)
+  const thirdNumber = parseUnsignedDateToken(third)
+  const firstMonth = monthFromToken(first)
+  const secondMonth = monthFromToken(second)
+
+  if (firstNumber != i32.MIN_VALUE && first.length == 4 && secondNumber != i32.MIN_VALUE && thirdNumber != i32.MIN_VALUE) {
+    return strictExcelDateSerial(firstNumber, secondNumber, thirdNumber)
+  }
+  if (firstNumber != i32.MIN_VALUE && secondMonth != i32.MIN_VALUE && thirdNumber != i32.MIN_VALUE) {
+    return strictExcelDateSerial(normalizeDateTextYear(thirdNumber, third.length), secondMonth, firstNumber)
+  }
+  if (firstMonth != i32.MIN_VALUE && secondNumber != i32.MIN_VALUE && thirdNumber != i32.MIN_VALUE) {
+    return strictExcelDateSerial(normalizeDateTextYear(thirdNumber, third.length), firstMonth, secondNumber)
+  }
+  if (firstNumber != i32.MIN_VALUE && secondNumber != i32.MIN_VALUE && thirdNumber != i32.MIN_VALUE) {
+    return strictExcelDateSerial(normalizeDateTextYear(thirdNumber, third.length), firstNumber, secondNumber)
+  }
+  return i32.MIN_VALUE
 }
 
 function isLeapYear(year: i32): bool {

@@ -594,6 +594,7 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('date-time:datedif-ym', 'date-time', '=DATEDIF(DATE(2020,1,15),DATE(2021,3,20),"YM")', 'implemented-wasm-production'),
   entry('date-time:days360-basic', 'date-time', '=DAYS360(DATE(2024,1,29),DATE(2024,3,31))', 'implemented-wasm-production'),
   entry('date-time:days360-us-february-month-end', 'date-time', '=DAYS360(DATE(2024,2,29),DATE(2024,3,31))', 'implemented-wasm-production'),
+  entry('date-time:days-text-datevalue-coercion', 'date-time', '=DAYS("15-MAR-2021","1-FEB-2021")', 'implemented-wasm-production'),
   entry('date-time:isoweeknum-basic', 'date-time', '=ISOWEEKNUM(DATE(2024,1,1))', 'implemented-wasm-production'),
   entry('date-time:weeknum-iso-system-2', 'date-time', '=WEEKNUM(DATE(2021,1,1),21)', 'implemented-wasm-production'),
   entry('date-time:workday-intl-basic', 'date-time', '=WORKDAY.INTL(A1,2,7,B1)', 'implemented-wasm-production'),

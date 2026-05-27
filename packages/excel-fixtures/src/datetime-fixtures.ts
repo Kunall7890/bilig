@@ -234,6 +234,16 @@ export const excelDateTimeFixtureSuite: ExcelFixtureSuite = {
       outputs: [{ address: 'A1', expected: numberExpected(31) }],
     },
     {
+      id: createExcelFixtureId('date-time', 'days-text-datevalue-coercion'),
+      family: 'date-time',
+      title: 'DAYS treats text date arguments as DATEVALUE dates',
+      formula: '=DAYS("15-MAR-2021","1-FEB-2021")',
+      sheetName: 'Sheet1',
+      notes: 'Microsoft DAYS documentation example: text date arguments are treated as DATEVALUE(date_text).',
+      inputs: [],
+      outputs: [{ address: 'A1', expected: numberExpected(42) }],
+    },
+    {
       id: createExcelFixtureId('date-time', 'yearfrac-basic'),
       family: 'date-time',
       title: 'YEARFRAC supports actual/365 basis values',

@@ -38,17 +38,155 @@ export type DateTimeProvider = () => Date
 export type RandomProvider = () => number
 
 const SECONDS_PER_DAY = 86_400
+const MAX_EXCEL_DATE_SERIAL_BY_SYSTEM: Record<ExcelDateSystem, number> = {
+  '1900': 2_958_465,
+  '1904': 2_957_003,
+}
 
 function parseDateValueFromText(raw: string, dateSystem: ExcelDateSystem): number | undefined {
+  const tokens = collectDateTextTokens(raw)
+  if (tokens.length < 3) {
+    return undefined
+  }
+  const parsed = parseDateTextTokens(tokens)
+  if (parsed === undefined) {
+    return undefined
+  }
+  return strictDatePartsToSerial(parsed.year, parsed.month, parsed.day, dateSystem)
+}
+
+function collectDateTextTokens(raw: string): string[] {
+  const tokens: string[] = []
+  let token = ''
   const trimmed = raw.trim()
-  if (trimmed === '') {
+
+  for (const char of trimmed) {
+    const code = char.charCodeAt(0)
+    const isDigit = code >= 48 && code <= 57
+    const isLetter = (code >= 65 && code <= 90) || (code >= 97 && code <= 122)
+    if ((char === 'T' || char === 't') && tokens.length === 2 && token !== '' && /^\d+$/.test(token)) {
+      tokens.push(token)
+      break
+    }
+    if (isDigit || isLetter) {
+      token += char
+      continue
+    }
+    if (token !== '') {
+      tokens.push(token)
+      if (tokens.length === 3) {
+        break
+      }
+      token = ''
+    }
+  }
+
+  if (token !== '' && tokens.length < 3) {
+    tokens.push(token)
+  }
+  return tokens
+}
+
+function parseDateTextTokens(tokens: readonly string[]): ExcelDateParts | undefined {
+  const [first, second, third] = tokens
+  if (first === undefined || second === undefined || third === undefined) {
     return undefined
   }
-  const parsed = new Date(trimmed)
-  if (Number.isNaN(parsed.getTime())) {
+
+  const firstNumber = parseUnsignedDateToken(first)
+  const secondNumber = parseUnsignedDateToken(second)
+  const thirdNumber = parseUnsignedDateToken(third)
+  const firstMonth = parseMonthNameToken(first)
+  const secondMonth = parseMonthNameToken(second)
+
+  if (firstNumber !== undefined && first.length === 4 && secondNumber !== undefined && thirdNumber !== undefined) {
+    return { year: firstNumber, month: secondNumber, day: thirdNumber }
+  }
+  if (firstNumber !== undefined && secondMonth !== undefined && thirdNumber !== undefined) {
+    return { year: normalizeDateTextYear(thirdNumber, third.length), month: secondMonth, day: firstNumber }
+  }
+  if (firstMonth !== undefined && secondNumber !== undefined && thirdNumber !== undefined) {
+    return { year: normalizeDateTextYear(thirdNumber, third.length), month: firstMonth, day: secondNumber }
+  }
+  if (firstNumber !== undefined && secondNumber !== undefined && thirdNumber !== undefined) {
+    return { year: normalizeDateTextYear(thirdNumber, third.length), month: firstNumber, day: secondNumber }
+  }
+  return undefined
+}
+
+function parseUnsignedDateToken(token: string): number | undefined {
+  if (!/^\d+$/.test(token)) {
     return undefined
   }
-  return Math.floor(utcDateToExcelSerial(parsed, dateSystem))
+  const value = Number(token)
+  return Number.isSafeInteger(value) ? value : undefined
+}
+
+function parseMonthNameToken(token: string): number | undefined {
+  const key = token.slice(0, 3).toUpperCase()
+  switch (key) {
+    case 'JAN':
+      return 1
+    case 'FEB':
+      return 2
+    case 'MAR':
+      return 3
+    case 'APR':
+      return 4
+    case 'MAY':
+      return 5
+    case 'JUN':
+      return 6
+    case 'JUL':
+      return 7
+    case 'AUG':
+      return 8
+    case 'SEP':
+      return 9
+    case 'OCT':
+      return 10
+    case 'NOV':
+      return 11
+    case 'DEC':
+      return 12
+    default:
+      return undefined
+  }
+}
+
+function normalizeDateTextYear(year: number, tokenLength: number): number {
+  if (tokenLength <= 2) {
+    return year <= 29 ? 2000 + year : 1900 + year
+  }
+  return year
+}
+
+function strictDatePartsToSerial(year: number, month: number, day: number, dateSystem: ExcelDateSystem): number | undefined {
+  if (year < 1900 || year > 9999 || month < 1 || month > 12 || day < 1 || day > daysInExcelMonth(year, month)) {
+    return undefined
+  }
+  const serial = excelDatePartsToSerial(year, month, day, dateSystem)
+  const roundTrip = serial === undefined ? undefined : excelSerialToDateParts(serial, dateSystem)
+  if (serial === undefined || roundTrip === undefined || roundTrip.year !== year || roundTrip.month !== month || roundTrip.day !== day) {
+    return undefined
+  }
+  return serial
+}
+
+function isValidDaysDateSerial(serial: number, dateSystem: ExcelDateSystem): boolean {
+  return Number.isFinite(serial) && serial >= 0 && serial <= MAX_EXCEL_DATE_SERIAL_BY_SYSTEM[dateSystem]
+}
+
+function coerceDaysDateSerial(value: CellValue, dateSystem: ExcelDateSystem): number | CellValue {
+  if (value.tag === ValueTag.String) {
+    const serial = parseDateValueFromText(value.value, dateSystem)
+    return serial === undefined ? valueError() : serial
+  }
+  const serial = truncArg(value)
+  if (typeof serial !== 'number') {
+    return serial
+  }
+  return isValidDaysDateSerial(serial, dateSystem) ? serial : numError()
 }
 
 export function parseTimeValueText(raw: string): number | undefined {
@@ -488,7 +626,7 @@ function createWeekdayBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin {
   }
 }
 
-function createDaysBuiltin(): Builtin {
+function createDaysBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin {
   return (...args) => {
     const error = firstError(args)
     if (error) {
@@ -497,8 +635,8 @@ function createDaysBuiltin(): Builtin {
     if (args.length !== 2) {
       return valueError()
     }
-    const endSerial = truncArg(args[0]!)
-    const startSerial = truncArg(args[1]!)
+    const endSerial = coerceDaysDateSerial(args[0]!, dateSystem)
+    const startSerial = coerceDaysDateSerial(args[1]!, dateSystem)
     if (typeof endSerial !== 'number') {
       return endSerial
     }
@@ -698,7 +836,7 @@ export function createDateTimeBuiltins(dateSystem: ExcelDateSystem = '1900'): Re
     MINUTE: createTimePartBuiltin('minute'),
     SECOND: createTimePartBuiltin('second'),
     WEEKDAY: createWeekdayBuiltin(dateSystem),
-    DAYS: createDaysBuiltin(),
+    DAYS: createDaysBuiltin(dateSystem),
     WEEKNUM: createWeeknumBuiltin(dateSystem),
     DAYS360: createDays360Builtin(dateSystem),
     ISOWEEKNUM: createIsoWeeknumBuiltin(dateSystem),

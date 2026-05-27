@@ -337,6 +337,7 @@ const canonicalBaseFixtureIds = new Set<string>([
   'date-time:datedif-ym',
   'date-time:days360-basic',
   'date-time:days360-us-february-month-end',
+  'date-time:days-text-datevalue-coercion',
   'date-time:isoweeknum-basic',
   'date-time:weeknum-iso-system-2',
   'date-time:workday-intl-basic',

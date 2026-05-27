@@ -81,6 +81,38 @@ function expectErrorCell(kernel: Awaited<ReturnType<typeof createKernel>>, index
 }
 
 describe('wasm kernel date/calendar dispatch seams', () => {
+  it('treats DAYS text date arguments as DATEVALUE dates on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 4
+    kernel.init(8, 4, 4, 4, 1)
+    kernel.uploadStrings(
+      Uint32Array.from([0, 11, 21]),
+      Uint32Array.from([11, 10, 10]),
+      Uint16Array.from(Array.from('15-MAR-20211-FEB-2021not-a-date', (char) => char.charCodeAt(0))),
+    )
+    kernel.writeCells(new Uint8Array(8), new Float64Array(8), new Uint32Array(8), new Uint16Array(8))
+
+    const packed = packPrograms([
+      [encodePushString(0), encodePushString(1), encodeCall(BuiltinId.Days, 2), encodeRet()],
+      [encodePushString(2), encodePushString(1), encodeCall(BuiltinId.Days, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Days, 2), encodeRet()],
+    ])
+    kernel.ensureFormulaCapacity(packed.offsets.length)
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width)]),
+    )
+    const constants = packConstants([[], [], [2958466, 1]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width)]))
+
+    expectNumberCell(kernel, cellIndex(1, 0, width), 42)
+    expectErrorCell(kernel, cellIndex(1, 1, width), ErrorCode.Value)
+    expectErrorCell(kernel, cellIndex(1, 2, width), ErrorCode.Num)
+  })
+
   it('keeps date, weekday, and workday dispatch behavior stable', async () => {
     const kernel = await createKernel()
     const width = 20

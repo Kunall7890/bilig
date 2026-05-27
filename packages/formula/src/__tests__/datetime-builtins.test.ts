@@ -526,6 +526,10 @@ describe('datetime builtins', () => {
       tag: ValueTag.Number,
       value: excelDatePartsToSerial(2024, 2, 29)!,
     })
+    expect(datetimeBuiltins.DATEVALUE({ tag: ValueTag.String, value: '1-FEB-2021 11:59 PM', stringId: 2 })).toEqual({
+      tag: ValueTag.Number,
+      value: excelDatePartsToSerial(2021, 2, 1)!,
+    })
     expect(datetimeBuiltins.DATEVALUE()).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(datetimeBuiltins.DATEVALUE({ tag: ValueTag.Error, code: ErrorCode.Name })).toEqual({
       tag: ValueTag.Error,
