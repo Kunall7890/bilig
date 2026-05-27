@@ -166,6 +166,47 @@ describe('wasm kernel format and conversion dispatch', () => {
     expect(kernel.readOutputStrings()).toEqual(['$C$12', "'O''Brien'!$AB2", '-$1,234.5', '00FF', '00FF'])
   })
 
+  it('uses the documented logical ADDRESS A1 flag on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 1, 8, 1, 1)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushBoolean(false),
+        encodeCall(BuiltinId.Address, 4),
+        encodeRet(),
+      ],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodePushNumber(3), encodeCall(BuiltinId.Address, 4), encodeRet()],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushBoolean(true),
+        encodeCall(BuiltinId.Address, 4),
+        encodeRet(),
+      ],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodePushNumber(3), encodeCall(BuiltinId.Address, 4), encodeRet()],
+    ])
+    const outputs = Uint32Array.from(Array.from({ length: 4 }, (_, index) => cellIndex(1, index, width)))
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, outputs)
+    const constants = packConstants([
+      [2, 3, 2],
+      [2, 3, 2, 0],
+      [2, 3, 2],
+      [2, 3, 2, 2],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(outputs)
+
+    expect(kernel.readOutputStrings()).toEqual(['R2C[3]', 'R2C[3]', 'C$2', 'C$2'])
+  })
+
   it('formats currency text with the maximum supported decimal width on the wasm path', async () => {
     const kernel = await createKernel()
     const width = 4

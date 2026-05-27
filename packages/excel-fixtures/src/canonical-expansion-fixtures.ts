@@ -142,6 +142,15 @@ export const canonicalExpansionFixtures: readonly ExcelFixtureCase[] = [
   ),
   fixture(
     'lookup-reference',
+    'address-r1c1-logical-false',
+    'ADDRESS uses FALSE for R1C1 reference style',
+    '=ADDRESS(2,3,2,FALSE())',
+    [],
+    [output('A1', stringExpected('R2C[3]'))],
+    'Microsoft documents ADDRESS a1 as a logical flag: TRUE or omitted returns A1 style; FALSE returns R1C1 style.',
+  ),
+  fixture(
+    'lookup-reference',
     'columns-scalar-array',
     'COLUMNS treats a scalar argument as a one-cell array',
     '=COLUMNS("x")',

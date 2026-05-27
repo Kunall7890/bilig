@@ -538,11 +538,11 @@ const scalarBuiltins: Record<string, Builtin> = {
     const row = positiveIntegerValue(rowArg)
     const column = positiveIntegerValue(columnArg)
     const absNum = integerValue(absNumArg, 1)
-    const refStyle = integerValue(refStyleArg, 1)
-    if (row === undefined || column === undefined || absNum === undefined || refStyle === undefined) {
+    const a1Style = coerceLogicalValue(refStyleArg)
+    if (row === undefined || column === undefined || absNum === undefined || !a1Style.ok) {
       return valueError()
     }
-    if (![1, 2, 3, 4].includes(absNum) || ![1, 2].includes(refStyle)) {
+    if (![1, 2, 3, 4].includes(absNum)) {
       return valueError()
     }
     if (sheetTextArg !== undefined && sheetTextArg.tag !== ValueTag.String && sheetTextArg.tag !== ValueTag.Empty) {
@@ -556,7 +556,7 @@ const scalarBuiltins: Record<string, Builtin> = {
       return valueError()
     }
     const sheetPrefix = sheetTextArg?.tag === ValueTag.String ? `'${sheetTextArg.value.replace(/'/g, "''")}'!` : ''
-    if (refStyle === 2) {
+    if (!a1Style.value) {
       const rowLabel = absNum === 1 || absNum === 2 ? String(row) : `[${row}]`
       const colLabel = absNum === 1 || absNum === 3 ? String(column) : `[${column}]`
       return {

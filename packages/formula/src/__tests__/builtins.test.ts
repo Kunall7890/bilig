@@ -1160,7 +1160,7 @@ describe('formula builtins', () => {
         { tag: ValueTag.Number, value: 2 },
         { tag: ValueTag.Number, value: 28 },
         { tag: ValueTag.Number, value: 2 },
-        { tag: ValueTag.Number, value: 2 },
+        { tag: ValueTag.Boolean, value: false },
       ),
     ).toEqual({ tag: ValueTag.String, value: 'R2C[28]', stringId: 0 })
     expect(
@@ -2179,7 +2179,7 @@ describe('formula builtins', () => {
         { tag: ValueTag.Number, value: 4 },
         { tag: ValueTag.Number, value: 5 },
         { tag: ValueTag.Number, value: 1 },
-        { tag: ValueTag.Number, value: 2 },
+        { tag: ValueTag.Boolean, value: false },
       ),
     ).toEqual({
       tag: ValueTag.String,

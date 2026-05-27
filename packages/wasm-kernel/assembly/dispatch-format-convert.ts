@@ -12,7 +12,7 @@ import {
   resolvedConvertTemperature,
 } from './unit-convert'
 import { toNumberExact } from './operands'
-import { coercePositiveIntegerArg, scalarErrorAt } from './builtin-args'
+import { coerceLogical, coercePositiveIntegerArg, scalarErrorAt } from './builtin-args'
 import { STACK_KIND_SCALAR, writeResult, writeStringResult } from './result-io'
 
 const MAX_SAFE_INTEGER_F64: f64 = 9007199254740991.0
@@ -214,13 +214,13 @@ export function tryApplyFormatConvertBuiltin(
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const absNumeric = argc >= 3 ? toNumberExact(tagStack[base + 2], valueStack[base + 2]) : 1.0
-    const refStyleNumeric = argc >= 4 ? toNumberExact(tagStack[base + 3], valueStack[base + 3]) : 1.0
-    if (!isFinite(absNumeric) || !isFinite(refStyleNumeric)) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    const a1Style = argc >= 4 ? coerceLogical(tagStack[base + 3], valueStack[base + 3]) : 1
+    if (!isFinite(absNumeric) || a1Style < 0) {
+      const errorCode = a1Style < 0 ? -a1Style - 1 : ErrorCode.Value
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, errorCode, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const absNum = <i32>absNumeric
-    const refStyle = <i32>refStyleNumeric
-    if (absNum < 1 || absNum > 4 || (refStyle != 1 && refStyle != 2)) {
+    if (absNum < 1 || absNum > 4) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     let sheetPrefix = ''
@@ -247,7 +247,7 @@ export function tryApplyFormatConvertBuiltin(
     if (columnLabel == null) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    if (refStyle == 2) {
+    if (a1Style == 0) {
       const rowLabel = absNum == 1 || absNum == 2 ? row.toString() : `[${row}]`
       const colLabel = absNum == 1 || absNum == 3 ? column.toString() : `[${column}]`
       return writeStringResult(base, `${sheetPrefix}R${rowLabel}C${colLabel}`, rangeIndexStack, valueStack, tagStack, kindStack)
