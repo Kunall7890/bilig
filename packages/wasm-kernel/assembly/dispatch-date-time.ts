@@ -13,6 +13,8 @@ import {
   excelTimeSerial,
   excelWeekdayFromSerial,
   excelYearPartFromSerial,
+  isExcelDateSerialInRange,
+  isExcelWeekdayReturnType,
 } from './date-finance'
 import { truncToInt } from './numeric-core'
 import { scalarText, trimAsciiWhitespace } from './text-codec'
@@ -159,8 +161,25 @@ export function tryApplyDateTimeBuiltin(
   }
 
   if (builtinId == BuiltinId.Weekday && (argc == 1 || argc == 2)) {
+    const scalarError = scalarErrorAt(base, argc, kindStack, tagStack, valueStack)
+    if (scalarError >= 0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const returnType = argc == 2 ? truncToInt(tagStack[base + 1], valueStack[base + 1]) : 1
-    const weekday = returnType == i32.MIN_VALUE ? i32.MIN_VALUE : excelWeekdayFromSerial(tagStack[base], valueStack[base], returnType)
+    if (returnType == i32.MIN_VALUE) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (!isExcelWeekdayReturnType(returnType)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const serialWhole = excelSerialWhole(tagStack[base], valueStack[base])
+    if (serialWhole == i32.MIN_VALUE) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (!isExcelDateSerialInRange(serialWhole)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const weekday = excelWeekdayFromSerial(tagStack[base], valueStack[base], returnType)
     if (weekday == i32.MIN_VALUE) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }

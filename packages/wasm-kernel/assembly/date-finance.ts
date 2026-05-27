@@ -77,6 +77,36 @@ export function isExcelDateSerialInRange(serial: i32): bool {
   return serial >= 0 && serial <= EXCEL_MAX_DATE_SERIAL_1900
 }
 
+export function isExcelWeekdayReturnType(returnType: i32): bool {
+  return (
+    returnType == 1 ||
+    returnType == 2 ||
+    returnType == 3 ||
+    returnType == 11 ||
+    returnType == 12 ||
+    returnType == 13 ||
+    returnType == 14 ||
+    returnType == 15 ||
+    returnType == 16 ||
+    returnType == 17
+  )
+}
+
+export function isExcelWeeknumReturnType(returnType: i32): bool {
+  return (
+    returnType == 1 ||
+    returnType == 2 ||
+    returnType == 11 ||
+    returnType == 12 ||
+    returnType == 13 ||
+    returnType == 14 ||
+    returnType == 15 ||
+    returnType == 16 ||
+    returnType == 17 ||
+    returnType == 21
+  )
+}
+
 function daysInExcelMonth(year: i32, month: i32): i32 {
   if (year == 1900 && month == 2) {
     return 29
@@ -324,7 +354,7 @@ export function excelSecondOfDay(tag: u8, value: f64): i32 {
 
 export function excelWeekdayFromSerial(tag: u8, value: f64, returnType: i32): i32 {
   const whole = excelSerialWhole(tag, value)
-  if (whole == i32.MIN_VALUE || whole < 0) {
+  if (whole == i32.MIN_VALUE || !isExcelDateSerialInRange(whole)) {
     return i32.MIN_VALUE
   }
   const adjustedWhole = whole < 60 ? whole : whole - 1
@@ -359,6 +389,10 @@ export function excelWeekdayFromSerial(tag: u8, value: f64, returnType: i32): i3
 }
 
 export function excelWeeknumFromSerial(tag: u8, value: f64, returnType: i32): i32 {
+  const whole = excelSerialWhole(tag, value)
+  if (whole == i32.MIN_VALUE || !isExcelDateSerialInRange(whole)) {
+    return i32.MIN_VALUE
+  }
   const year = excelYearPartFromSerial(tag, value)
   const month = excelMonthPartFromSerial(tag, value)
   const day = excelDayPartFromSerial(tag, value)
@@ -366,8 +400,7 @@ export function excelWeeknumFromSerial(tag: u8, value: f64, returnType: i32): i3
     return i32.MIN_VALUE
   }
   if (returnType == 21) {
-    const whole = excelSerialWhole(tag, value)
-    return whole == i32.MIN_VALUE ? i32.MIN_VALUE : excelIsoWeeknumValue(whole)
+    return excelIsoWeeknumValue(whole)
   }
 
   let weekStartDay = 0

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BuiltinId, Opcode, ValueTag } from '@bilig/protocol'
+import { BuiltinId, ErrorCode, Opcode, ValueTag } from '@bilig/protocol'
 import { createKernel } from '../index.js'
 
 function encodeCall(builtinId: number, argc: number): number {
@@ -75,6 +75,11 @@ function expectNumberCell(kernel: Awaited<ReturnType<typeof createKernel>>, inde
   expect(kernel.readNumbers()[index]).toBeCloseTo(expected, digits)
 }
 
+function expectErrorCell(kernel: Awaited<ReturnType<typeof createKernel>>, index: number, expected: ErrorCode): void {
+  expect(kernel.readTags()[index]).toBe(ValueTag.Error)
+  expect(kernel.readErrors()[index]).toBe(expected)
+}
+
 describe('wasm kernel date/finance helpers', () => {
   it('keeps US DAYS360 February month-end handling on the wasm path', async () => {
     const kernel = await createKernel()
@@ -129,6 +134,58 @@ describe('wasm kernel date/finance helpers', () => {
     kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width)]))
 
     expectNumberCell(kernel, cellIndex(1, 0, width), 53)
+  })
+
+  it('returns #NUM for invalid WEEKDAY and WEEKNUM date domains on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 6, 0, 1, 1)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodeCall(BuiltinId.Date, 3),
+        encodePushNumber(3),
+        encodeCall(BuiltinId.Weekday, 2),
+        encodeRet(),
+      ],
+      [encodePushNumber(0), encodeCall(BuiltinId.Weekday, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Weekday, 1), encodeRet()],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodeCall(BuiltinId.Date, 3),
+        encodePushNumber(3),
+        encodeCall(BuiltinId.Weeknum, 2),
+        encodeRet(),
+      ],
+      [encodePushNumber(0), encodeCall(BuiltinId.Weeknum, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Weeknum, 1), encodeRet()],
+    ])
+    const targetCells = Uint32Array.from([
+      cellIndex(1, 0, width),
+      cellIndex(1, 1, width),
+      cellIndex(1, 2, width),
+      cellIndex(1, 3, width),
+      cellIndex(1, 4, width),
+      cellIndex(1, 5, width),
+    ])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targetCells)
+    const constants = packConstants([[2024, 1, 1, 0], [-1], [2_958_466], [2024, 1, 1, 3], [-1], [2_958_466]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(targetCells)
+
+    expectErrorCell(kernel, cellIndex(1, 0, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 1, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 2, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 3, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 4, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 5, width), ErrorCode.Num)
   })
 
   it('keeps date-basis helper behavior stable across refactors', async () => {

@@ -594,13 +594,16 @@ function createWeekdayBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin {
       return valueError()
     }
     const serial = coerceNumber(args[0]!)
-    if (serial === undefined || serial < 0) {
+    if (serial === undefined) {
       return valueError()
+    }
+    if (!isValidDaysDateSerial(serial, dateSystem)) {
+      return numError()
     }
 
     const weekdayIndex = excelSerialWeekdayIndex(serial, dateSystem)
     if (weekdayIndex === undefined) {
-      return valueError()
+      return numError()
     }
     const sundayOne = weekdayIndex + 1
     if (args.length === 1) {
@@ -628,7 +631,7 @@ function createWeekdayBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin {
     }
     const startDay = startDayMap[returnType]
     if (startDay === undefined) {
-      return valueError()
+      return numError()
     }
     return numberResult(((sundayOne - startDay + 7) % 7) + 1)
   }
@@ -674,10 +677,13 @@ function createWeeknumBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin {
     if (typeof returnType !== 'number') {
       return returnType
     }
+    if (!isValidDaysDateSerial(serial, dateSystem)) {
+      return numError()
+    }
 
     const dateParts = excelSerialToDateParts(serial, dateSystem)
     if (!dateParts) {
-      return valueError()
+      return numError()
     }
     if (returnType === 21) {
       return numberResult(isoWeeknumFromDateParts(dateParts))
@@ -699,7 +705,7 @@ function createWeeknumBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin {
     } else if (returnType === 16) {
       weekStartDay = 6
     } else {
-      return valueError()
+      return numError()
     }
 
     const serialJan1 = excelDatePartsToSerial(dateParts.year, 1, 1, dateSystem)

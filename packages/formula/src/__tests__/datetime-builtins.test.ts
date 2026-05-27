@@ -113,7 +113,7 @@ describe('datetime builtins', () => {
     })
   })
 
-  it('returns #VALUE for unsupported time-part coercions and weekday return types', () => {
+  it('returns Excel errors for unsupported time-part coercions and weekday return types', () => {
     expect(
       datetimeBuiltins.TIME({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 30 }, { tag: ValueTag.Number, value: 0 }),
     ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
@@ -123,7 +123,7 @@ describe('datetime builtins', () => {
     })
     expect(
       datetimeBuiltins.WEEKDAY({ tag: ValueTag.Number, value: excelDatePartsToSerial(2026, 3, 15)! }, { tag: ValueTag.Number, value: 99 }),
-    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
 
     const sundaySerial = excelDatePartsToSerial(2026, 3, 15)!
     const weekdayTypes = [1, 2, 11, 12, 13, 14, 15, 16, 17]
@@ -1215,7 +1215,7 @@ describe('datetime builtins', () => {
     expect(datetimeBuiltins.MINUTE({ tag: ValueTag.Error, code: ErrorCode.Ref })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
     expect(datetimeBuiltins.SECOND({ tag: ValueTag.Number, value: -0.25 })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(datetimeBuiltins.WEEKDAY({ tag: ValueTag.Error, code: ErrorCode.Name })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Name })
-    expect(datetimeBuiltins.WEEKDAY({ tag: ValueTag.Number, value: -1 })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(datetimeBuiltins.WEEKDAY({ tag: ValueTag.Number, value: -1 })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
     expect(datetimeBuiltins.WEEKDAY({ tag: ValueTag.Number, value: jan31 }, { tag: ValueTag.Error, code: ErrorCode.Ref })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Ref,
