@@ -26,6 +26,11 @@ import type {
 } from './ui-responsiveness-same-corpus-proof.ts'
 import { readSameCorpusVisibleSelectedRange } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import {
+  writeSameCorpusMutationTargetCaptureFailureDiagnostic,
+  type SameCorpusMutationTargetCaptureFailurePhase,
+  type SameCorpusMutationTargetFailureCleanupStatus,
+} from './ui-responsiveness-same-corpus-mutation-target-diagnostic.ts'
+import {
   restoreProductWorkbookMutation,
   sameCorpusEditVisibleCellValue,
   sameCorpusFillColorExpectedColor,
@@ -49,25 +54,41 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
   readonly workload: UiResponsivenessSameCorpusMutatingWorkload
 }): Promise<SameCorpusMutationTargetProof> {
   let restoredAfterMutation = false
+  let failurePhase: SameCorpusMutationTargetCaptureFailurePhase = 'select-target'
+  let after: SameCorpusMutationTargetReadback | null = null
+  let visibleAfter: SameCorpusMutationTargetReadback | null = null
+  let visibleAfterSelectedRange: string | null = null
+  let afterScreenshot: SameCorpusMutationTargetScreenshotProof | null = null
+  let afterCommittedStateProof: SameCorpusMutationTargetCommittedStatePhaseProof | null = null
+  let restored: SameCorpusMutationTargetReadback | null = null
+  let visibleRestored: SameCorpusMutationTargetReadback | null = null
+  let visibleRestoredSelectedRange: string | null = null
+  let restoredScreenshot: SameCorpusMutationTargetScreenshotProof | null = null
+  let restoredCommittedStateProof: SameCorpusMutationTargetCommittedStatePhaseProof | null = null
   try {
     await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
-    const after = await readSameCorpusMutationTargetReadback({
+    failurePhase = 'read-after'
+    after = await readSameCorpusMutationTargetReadback({
       page: args.page,
       product: args.product,
       target: args.target,
       workload: args.workload,
     })
-    const visibleAfter = await readSameCorpusVisibleMutationTargetReadback({
+    failurePhase = 'read-visible-after'
+    visibleAfter = await readSameCorpusVisibleMutationTargetReadback({
       page: args.page,
       product: args.product,
       target: args.target,
       workload: args.workload,
     })
-    const visibleAfterSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
-    const afterScreenshot = await captureTargetScreenshot({ ...args, semanticReadback: visibleAfter }, 'after')
+    failurePhase = 'read-visible-after-selection'
+    visibleAfterSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
+    failurePhase = 'capture-after-screenshot'
+    afterScreenshot = await captureTargetScreenshot({ ...args, semanticReadback: visibleAfter }, 'after')
     const visibleTargetRenderCapturedAtMs = performance.now()
     const visibleTargetRenderMs = Math.max(0, visibleTargetRenderCapturedAtMs - args.operationStartedAt)
-    const afterCommittedStateProof = await captureSameCorpusCommittedStatePhaseProof({
+    failurePhase = 'capture-after-committed-state'
+    afterCommittedStateProof = await captureSameCorpusCommittedStatePhaseProof({
       artifactPath: committedStateArtifactPath(args, 'after'),
       expectedReadback: sameCorpusCommittedStateExpectedReadback({
         before: args.before,
@@ -84,6 +105,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       target: args.target,
       workload: args.workload,
     })
+    failurePhase = 'read-revisions'
     const revisions = await readSameCorpusMutationTargetRevisionProof({
       page: args.page,
       product: args.product,
@@ -94,24 +116,30 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     const postMutationProofCapturedAtMs = performance.now()
     const committedTargetProofMs = Math.max(0, postMutationProofCapturedAtMs - args.operationStartedAt)
     const committedStateValidationMs = Math.max(0, postMutationProofCapturedAtMs - visibleTargetRenderCapturedAtMs)
+    failurePhase = 'restore-mutation'
     await restoreProductWorkbookMutation(args.page, args.workload)
     restoredAfterMutation = true
     await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
-    const restored = await readSameCorpusMutationTargetReadback({
+    failurePhase = 'read-restored'
+    restored = await readSameCorpusMutationTargetReadback({
       page: args.page,
       product: args.product,
       target: args.target,
       workload: args.workload,
     })
-    const visibleRestored = await readSameCorpusVisibleMutationTargetReadback({
+    failurePhase = 'read-visible-restored'
+    visibleRestored = await readSameCorpusVisibleMutationTargetReadback({
       page: args.page,
       product: args.product,
       target: args.target,
       workload: args.workload,
     })
-    const visibleRestoredSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
-    const restoredScreenshot = await captureTargetScreenshot({ ...args, semanticReadback: visibleRestored }, 'restored')
-    const restoredCommittedStateProof = await captureSameCorpusCommittedStatePhaseProof({
+    failurePhase = 'read-visible-restored-selection'
+    visibleRestoredSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
+    failurePhase = 'capture-restored-screenshot'
+    restoredScreenshot = await captureTargetScreenshot({ ...args, semanticReadback: visibleRestored }, 'restored')
+    failurePhase = 'capture-restored-committed-state'
+    restoredCommittedStateProof = await captureSameCorpusCommittedStatePhaseProof({
       artifactPath: committedStateArtifactPath(args, 'restored'),
       expectedReadback: sameCorpusCommittedStateExpectedReadback({
         before: args.before,
@@ -130,6 +158,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     })
     const restoreProofCapturedAtMs = performance.now()
     const restoreValidationMs = Math.max(0, restoreProofCapturedAtMs - postMutationProofCapturedAtMs)
+    failurePhase = 'build-proof'
     return {
       after,
       authoritativeReadbackRevision: revisions.authoritativeReadbackRevision,
@@ -174,6 +203,60 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       visibleRestoredSelectedRange,
       workload: args.workload,
     }
+  } catch (error: unknown) {
+    let restoreStatus: SameCorpusMutationTargetFailureCleanupStatus = restoredAfterMutation ? 'not-needed' : 'restored'
+    let restoreError: unknown = null
+    if (!restoredAfterMutation) {
+      try {
+        await restoreProductWorkbookMutation(args.page, args.workload)
+        restoredAfterMutation = true
+      } catch (cleanupError: unknown) {
+        restoreStatus = 'failed'
+        restoreError = cleanupError
+      }
+    }
+    let reselectStatus: SameCorpusMutationTargetFailureCleanupStatus = 'restored'
+    let reselectError: unknown = null
+    try {
+      await selectSameCorpusMutationTargetRange({ page: args.page, product: args.product, target: args.target })
+    } catch (cleanupError: unknown) {
+      reselectStatus = 'failed'
+      reselectError = cleanupError
+    }
+    try {
+      writeSameCorpusMutationTargetCaptureFailureDiagnostic({
+        after,
+        afterCommittedStateProof,
+        afterScreenshot,
+        before: args.before,
+        beforeCommittedStateProof: args.beforeCommittedStateProof ?? null,
+        beforeScreenshot: args.beforeScreenshot,
+        caseId: args.caseId,
+        error,
+        failurePhase,
+        intendedPayload: intendedMutationTargetPayload(args.workload, args.sampleIndex),
+        operationStartedAt: args.operationStartedAt,
+        outputPath: args.outputPath,
+        product: args.product,
+        restoreError,
+        restored,
+        restoredCommittedStateProof,
+        restoredScreenshot,
+        restoreStatus,
+        reselectError,
+        reselectStatus,
+        sampleIndex: args.sampleIndex,
+        target: args.target,
+        visibleAfter,
+        visibleAfterSelectedRange,
+        visibleRestored,
+        visibleRestoredSelectedRange,
+        workload: args.workload,
+      })
+    } catch {
+      // Preserve the original capture failure; accepted or stale committed-state phase artifacts remain on disk.
+    }
+    throw error
   } finally {
     if (!restoredAfterMutation) {
       await restoreProductWorkbookMutation(args.page, args.workload).catch(() => undefined)

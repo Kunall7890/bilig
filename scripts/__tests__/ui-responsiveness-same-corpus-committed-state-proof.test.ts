@@ -223,6 +223,36 @@ describe('same-corpus committed-state proof capture', () => {
       }),
     ).rejects.toThrow(/did not match expected after target readback/u)
   })
+
+  it('carries the last committed export readback in mismatch diagnostics', async () => {
+    const page = mockGoogleSheetsExportPage([xlsxBytesForTargetValue('WideGrid', 'C5', 'stale-browser-only-value')])
+
+    await expect(
+      captureSameCorpusCommittedStatePhaseProof({
+        expectedReadback: sameCorpusGoogleReadback('same-corpus-edit-1'),
+        page: page.page,
+        phase: 'after',
+        product: 'google-sheets',
+        sampleIndex: 0,
+        target: sameCorpusTargetSelection(),
+        timeoutMs: 1,
+        pollIntervalMs: 1,
+        workload: 'edit-visible-cell',
+      }),
+    ).rejects.toMatchObject({
+      name: 'SameCorpusCommittedStateMismatchError',
+      diagnostic: {
+        expectedReadback: {
+          value: 'same-corpus-edit-1',
+        },
+        lastReadback: {
+          value: 'stale-browser-only-value',
+          source: 'google-sheets-xlsx-export',
+        },
+        targetRange: 'C5',
+      },
+    })
+  })
 })
 
 function sameCorpusGoogleReadback(value: string): SameCorpusMutationTargetReadback {

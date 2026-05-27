@@ -60,6 +60,38 @@ export interface SameCorpusMutationTargetCommittedStatePhaseProof {
   readonly readback: SameCorpusMutationTargetReadback
 }
 
+export interface SameCorpusCommittedStateMismatchDiagnostic {
+  readonly product: UiResponsivenessSameCorpusProduct
+  readonly phase: SameCorpusMutationTargetCommittedStatePhaseProof['phase']
+  readonly sampleIndex: number
+  readonly workload: UiResponsivenessSameCorpusWorkload
+  readonly sheetName: string
+  readonly sheetId: string | null
+  readonly targetRange: string
+  readonly expectedReadback: SameCorpusMutationTargetReadback
+  readonly lastReadback: SameCorpusMutationTargetReadback
+  readonly exportUrl: string
+  readonly lastArtifactPath: string | null
+  readonly lastArtifactSha256: string | null
+  readonly lastWorkbookSha256: string
+}
+
+export class SameCorpusCommittedStateMismatchError extends Error {
+  readonly diagnostic: SameCorpusCommittedStateMismatchDiagnostic
+
+  constructor(diagnostic: SameCorpusCommittedStateMismatchDiagnostic) {
+    super(
+      `Google Sheets committed-state XLSX export did not match expected ${diagnostic.phase} target readback for ${
+        diagnostic.workload
+      } ${diagnostic.targetRange}: expected ${sameCorpusCommittedStateReadbackSummary(
+        diagnostic.expectedReadback,
+      )}, last export ${sameCorpusCommittedStateReadbackSummary(diagnostic.lastReadback)}`,
+    )
+    this.name = 'SameCorpusCommittedStateMismatchError'
+    this.diagnostic = diagnostic
+  }
+}
+
 export async function captureSameCorpusCommittedStatePhaseProof(args: {
   readonly expectedReadback: SameCorpusMutationTargetReadback
   readonly artifactPath?: string | null
@@ -120,13 +152,21 @@ function throwGoogleSheetsCommittedStateMismatch(
   args: Parameters<typeof captureSameCorpusCommittedStatePhaseProof>[0],
   proof: SameCorpusMutationTargetCommittedStatePhaseProof,
 ): never {
-  throw new Error(
-    `Google Sheets committed-state XLSX export did not match expected ${args.phase} target readback for ${args.workload} ${
-      args.target.targetRange
-    }: expected ${sameCorpusCommittedStateReadbackSummary(args.expectedReadback)}, last export ${sameCorpusCommittedStateReadbackSummary(
-      proof.readback,
-    )}`,
-  )
+  throw new SameCorpusCommittedStateMismatchError({
+    product: args.product,
+    phase: args.phase,
+    sampleIndex: args.sampleIndex,
+    workload: args.workload,
+    sheetName: args.target.sheetName,
+    sheetId: args.target.sheetId,
+    targetRange: args.target.targetRange,
+    expectedReadback: args.expectedReadback,
+    lastReadback: proof.readback,
+    exportUrl: proof.exportUrl,
+    lastArtifactPath: proof.artifactPath ?? null,
+    lastArtifactSha256: proof.artifactSha256 ?? null,
+    lastWorkbookSha256: proof.workbookSha256,
+  })
 }
 
 async function waitForGoogleSheetsSaveIdle(page: SameCorpusCommittedStatePage, timeoutMs: number): Promise<void> {
