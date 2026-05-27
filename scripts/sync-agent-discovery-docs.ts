@@ -408,7 +408,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Agent handbook: ${siteRoot}/headless-workpaper-agent-handbook.html
 - Agent workbook challenge: ${siteRoot}/agent-workbook-challenge.html
 - MCP server guide: ${siteRoot}/mcp-workpaper-tool-server.html
-- Open WebUI MCP setup: ${siteRoot}/open-webui-workpaper-mcp.html
+- Open WebUI tool setup: ${siteRoot}/open-webui-workpaper-mcp.html
 - LobeHub MCP setup: ${siteRoot}/lobehub-workpaper-mcp.html
 - AnythingLLM MCP setup: ${siteRoot}/anythingllm-workpaper-mcp.html
 - Sim MCP setup: ${siteRoot}/sim-workpaper-mcp.html
@@ -535,7 +535,7 @@ const llmsFullSources = [
   llmsSource('Dagster WorkPaper Asset', 'docs/dagster-workpaper-asset.md'),
   llmsSource('Kestra WorkPaper Node Flow', 'docs/kestra-workpaper-flow.md'),
   llmsSource('Prefect WorkPaper Flow', 'docs/prefect-workpaper-flow.md'),
-  llmsSource('Open WebUI WorkPaper MCP Setup', 'docs/open-webui-workpaper-mcp.md'),
+  llmsSource('Open WebUI WorkPaper Tool Setup', 'docs/open-webui-workpaper-mcp.md'),
   llmsSource('Open Multi-Agent WorkPaper MCP Example', 'docs/open-multi-agent-workpaper-mcp.md'),
   llmsSource('LobeHub WorkPaper MCP Setup', 'docs/lobehub-workpaper-mcp.md'),
   llmsSource('AnythingLLM WorkPaper MCP Setup', 'docs/anythingllm-workpaper-mcp.md'),

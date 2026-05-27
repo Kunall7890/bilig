@@ -246,7 +246,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Agent handbook: https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html
 - Agent workbook challenge: https://proompteng.github.io/bilig/agent-workbook-challenge.html
 - MCP server guide: https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
-- Open WebUI MCP setup: https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html
+- Open WebUI tool setup: https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html
 - LobeHub MCP setup: https://proompteng.github.io/bilig/lobehub-workpaper-mcp.html
 - AnythingLLM MCP setup: https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
 - Sim MCP setup: https://proompteng.github.io/bilig/sim-workpaper-mcp.html
@@ -347,10 +347,18 @@ Those commands are intentionally small. If one matches your workflow, continue
 into the package matrix below; if none match, Bilig is probably not the first
 tool to evaluate.
 
-## Open WebUI MCP Tools
+## Open WebUI Tools
 
 Need Open WebUI to call spreadsheet tools without driving Excel through a
-browser? Use the hosted Streamable HTTP MCP endpoint for a quick smoke test:
+browser? Use the hosted OpenAPI tool server for the quickest no-bridge smoke
+test:
+
+```text
+https://bilig.proompteng.ai/openapi/workpaper
+```
+
+Use the hosted Streamable HTTP MCP endpoint when your Open WebUI deployment
+prefers native MCP:
 
 ```text
 https://bilig.proompteng.ai/mcp
@@ -359,8 +367,9 @@ https://bilig.proompteng.ai/mcp
 Use `mcpo` when Open WebUI needs an OpenAPI tool server around the local npm
 stdio process and a writable project WorkPaper file.
 
-See [Open WebUI WorkPaper MCP setup](docs/open-webui-workpaper-mcp.md) for the
-native MCP path, the `mcpo` command, Docker URL boundaries, and proof prompt.
+See [Open WebUI WorkPaper tool setup](docs/open-webui-workpaper-mcp.md) for the
+hosted OpenAPI path, native MCP path, the `mcpo` command, Docker URL
+boundaries, and proof prompt.
 
 ## LobeHub Custom MCP
 
@@ -4253,26 +4262,26 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 
 ## Framework map
 
-| Host | Use | Link |
-| --- | --- | --- |
-| Codex | Local stdio MCP server or direct package import in repo tools. | [MCP client setup](mcp-client-setup.md#codex) |
-| Claude Code and Claude Desktop | File-backed MCP server, or MCPB when a desktop extension is easier. | [Claude MCPB guide](claude-desktop-mcpb-workpaper.md) |
-| Cursor | Project-local `.cursor/mcp.json` pointing at `bilig-workpaper-mcp`. | [MCP client setup](mcp-client-setup.md#cursor) |
-| VS Code and Cline | Project-local MCP config with a writable WorkPaper file. | [MCP client setup](mcp-client-setup.md) |
-| Open WebUI | Native Streamable HTTP MCP for hosted smoke tests, or `mcpo` around the npm stdio server for local writable files. | [Open WebUI WorkPaper MCP setup](open-webui-workpaper-mcp.md) |
-| LobeHub | Custom MCP import JSON for hosted Streamable HTTP, or desktop STDIO for a writable WorkPaper file. | [LobeHub WorkPaper MCP setup](lobehub-workpaper-mcp.md) |
-| AnythingLLM | `anythingllm_mcp_servers.json` with hosted Streamable HTTP, Desktop stdio, or Docker storage-backed stdio. | [AnythingLLM WorkPaper MCP setup](anythingllm-workpaper-mcp.md) |
-| OpenAI Agents SDK | Function tools around WorkPaper read/write/readback. | [OpenAI Agents SDK WorkPaper tool](openai-agents-sdk-workpaper-tool.md) |
-| OpenAI Responses API | Function-call wrapper returning proof objects. | [OpenAI Responses WorkPaper tool call](openai-responses-workpaper-tool-call.md) |
-| Vercel AI SDK | Tool definitions that call a WorkPaper service function. | [Vercel AI SDK spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md) |
-| LangChain.js | Tool wrappers around the same WorkPaper contract. | [Vercel AI SDK and LangChain spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md) |
-| LangGraph.js | `ToolNode` with verified readback after mutation. | [LangGraph WorkPaper ToolNode](langgraph-workpaper-toolnode-spreadsheet.md) |
-| LlamaIndex.TS | `tool(fn, { parameters })` with a compact proof return. | [LlamaIndex.TS WorkPaper tool](llamaindex-workpaper-spreadsheet-tool.md) |
-| Open Multi-Agent | `connectMCPTools()` with the file-backed WorkPaper MCP server registered on an `Agent`. | [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md) |
-| Mastra | `createTool()` wrapper for formula-backed workbook edits. | [Mastra WorkPaper tool](mastra-workpaper-spreadsheet-tool.md) |
-| Cloudflare Agents | Agent tool calling a Node-compatible WorkPaper boundary. | [Cloudflare Agents WorkPaper tool](cloudflare-agents-workpaper-spreadsheet-tool.md) |
-| Runtime adapter authors | `@bilig/workbook` models, plan data, checks, schemas, command receipts, and strict proof. | [Workbook agent intent API](workbook-agent-intent-api.md) |
-| MCP directories and remote clients | Hosted server card or local file-backed server. | [MCP WorkPaper server](mcp-workpaper-tool-server.md) |
+| Host                               | Use                                                                                                                                   | Link                                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Codex                              | Local stdio MCP server or direct package import in repo tools.                                                                        | [MCP client setup](mcp-client-setup.md#codex)                                                |
+| Claude Code and Claude Desktop     | File-backed MCP server, or MCPB when a desktop extension is easier.                                                                   | [Claude MCPB guide](claude-desktop-mcpb-workpaper.md)                                        |
+| Cursor                             | Project-local `.cursor/mcp.json` pointing at `bilig-workpaper-mcp`.                                                                   | [MCP client setup](mcp-client-setup.md#cursor)                                               |
+| VS Code and Cline                  | Project-local MCP config with a writable WorkPaper file.                                                                              | [MCP client setup](mcp-client-setup.md)                                                      |
+| Open WebUI                         | Hosted OpenAPI for no-bridge smoke tests, native Streamable HTTP MCP, or `mcpo` around the npm stdio server for local writable files. | [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)                                    |
+| LobeHub                            | Custom MCP import JSON for hosted Streamable HTTP, or desktop STDIO for a writable WorkPaper file.                                    | [LobeHub WorkPaper MCP setup](lobehub-workpaper-mcp.md)                                      |
+| AnythingLLM                        | `anythingllm_mcp_servers.json` with hosted Streamable HTTP, Desktop stdio, or Docker storage-backed stdio.                            | [AnythingLLM WorkPaper MCP setup](anythingllm-workpaper-mcp.md)                              |
+| OpenAI Agents SDK                  | Function tools around WorkPaper read/write/readback.                                                                                  | [OpenAI Agents SDK WorkPaper tool](openai-agents-sdk-workpaper-tool.md)                      |
+| OpenAI Responses API               | Function-call wrapper returning proof objects.                                                                                        | [OpenAI Responses WorkPaper tool call](openai-responses-workpaper-tool-call.md)              |
+| Vercel AI SDK                      | Tool definitions that call a WorkPaper service function.                                                                              | [Vercel AI SDK spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md)               |
+| LangChain.js                       | Tool wrappers around the same WorkPaper contract.                                                                                     | [Vercel AI SDK and LangChain spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md) |
+| LangGraph.js                       | `ToolNode` with verified readback after mutation.                                                                                     | [LangGraph WorkPaper ToolNode](langgraph-workpaper-toolnode-spreadsheet.md)                  |
+| LlamaIndex.TS                      | `tool(fn, { parameters })` with a compact proof return.                                                                               | [LlamaIndex.TS WorkPaper tool](llamaindex-workpaper-spreadsheet-tool.md)                     |
+| Open Multi-Agent                   | `connectMCPTools()` with the file-backed WorkPaper MCP server registered on an `Agent`.                                               | [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)                  |
+| Mastra                             | `createTool()` wrapper for formula-backed workbook edits.                                                                             | [Mastra WorkPaper tool](mastra-workpaper-spreadsheet-tool.md)                                |
+| Cloudflare Agents                  | Agent tool calling a Node-compatible WorkPaper boundary.                                                                              | [Cloudflare Agents WorkPaper tool](cloudflare-agents-workpaper-spreadsheet-tool.md)          |
+| Runtime adapter authors            | `@bilig/workbook` models, plan data, checks, schemas, command receipts, and strict proof.                                             | [Workbook agent intent API](workbook-agent-intent-api.md)                                    |
+| MCP directories and remote clients | Hosted server card or local file-backed server.                                                                                       | [MCP WorkPaper server](mcp-workpaper-tool-server.md)                                         |
 
 ## Proof object
 
@@ -4312,7 +4321,7 @@ Do not claim success from a write call alone.
 - [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
 - [MCP client setup](mcp-client-setup.md)
-- [Open WebUI WorkPaper MCP setup](open-webui-workpaper-mcp.md)
+- [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)
 - [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
 - [Node framework WorkPaper adapters](node-framework-workpaper-adapters.md)
@@ -6720,18 +6729,19 @@ WorkPaper step would be useful as a Prefect example.
 
 ---
 
-## Open WebUI WorkPaper MCP Setup
+## Open WebUI WorkPaper Tool Setup
 
 Source: https://github.com/proompteng/bilig/blob/main/docs/open-webui-workpaper-mcp.md
 
-# Open WebUI WorkPaper MCP setup
+# Open WebUI WorkPaper tool setup
 
 Use this when Open WebUI should call spreadsheet tools, but the spreadsheet
 logic should stay in a formula-backed WorkPaper instead of an Excel browser
 session.
 
-Open WebUI has two useful integration paths:
+Open WebUI has three useful integration paths:
 
+- hosted **OpenAPI tool server** for the quickest no-bridge demo;
 - native **MCP (Streamable HTTP)** for an HTTP MCP endpoint;
 - **mcpo** when the tool server is a local stdio MCP process that needs to be
   exposed as an OpenAPI tool server.
@@ -6742,6 +6752,40 @@ Official Open WebUI references:
 - <https://docs.openwebui.com/features/extensibility/plugin/tools/>
 - <https://docs.openwebui.com/features/extensibility/plugin/tools/openapi-servers/mcp/>
 - <https://docs.openwebui.com/features/extensibility/plugin/tools/openapi-servers/open-webui/>
+
+## Fastest smoke test: hosted OpenAPI
+
+Open WebUI's OpenAPI tool-server path can connect to ordinary HTTP JSON
+endpoints. For a no-bridge Bilig proof, add this tool server URL:
+
+```text
+https://bilig.proompteng.ai/openapi/workpaper
+```
+
+If your Open WebUI build expects the explicit OpenAPI document URL, use:
+
+```text
+https://bilig.proompteng.ai/openapi/workpaper/openapi.json
+```
+
+The hosted OpenAPI server exposes three stateless demo operations:
+
+- `list_workpaper_sheets`
+- `read_workpaper_range`
+- `set_workpaper_cell_and_readback`
+
+Ask:
+
+```text
+Use the Bilig WorkPaper OpenAPI tool. Call set_workpaper_cell_and_readback
+with sheetName Inputs, address B3, value 0.4, and readbackRange Summary!A1:B3.
+Return the before, after, restoredReadback, and checks object.
+```
+
+The important check is `checks.readbackChanged === true` and
+`checks.restoredReadbackMatchesAfter === true`. The hosted OpenAPI endpoint is
+request-local and does not persist a private workbook. Use the local `mcpo`
+bridge below when Open WebUI needs a writable project file.
 
 ## Fastest smoke test: hosted Streamable HTTP
 
@@ -6822,12 +6866,14 @@ http://host.docker.internal:8000
 
 ## Native MCP versus mcpo
 
-| Path       | Use when                                                         | URL to add                                                    |
-| ---------- | ---------------------------------------------------------------- | ------------------------------------------------------------- |
-| Native MCP | Open WebUI can call a Streamable HTTP MCP endpoint directly.     | `https://bilig.proompteng.ai/mcp`                             |
-| mcpo       | Open WebUI should call a local stdio MCP server through OpenAPI. | `http://localhost:8000` or `http://host.docker.internal:8000` |
+| Path           | Use when                                                         | URL to add                                                    |
+| -------------- | ---------------------------------------------------------------- | ------------------------------------------------------------- |
+| Hosted OpenAPI | Open WebUI should call ordinary HTTP tools without a bridge.     | `https://bilig.proompteng.ai/openapi/workpaper`               |
+| Native MCP     | Open WebUI can call a Streamable HTTP MCP endpoint directly.     | `https://bilig.proompteng.ai/mcp`                             |
+| mcpo           | Open WebUI should call a local stdio MCP server through OpenAPI. | `http://localhost:8000` or `http://host.docker.internal:8000` |
 
-Start with native MCP for tool-discovery smoke tests. Use mcpo for a real
+Start with hosted OpenAPI when you want the fewest moving parts in Open WebUI.
+Use native MCP when your deployment already prefers MCP. Use mcpo for a real
 writable WorkPaper file that must persist across turns or jobs.
 
 ## Proof object to ask for

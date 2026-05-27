@@ -166,7 +166,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Agent handbook: https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html
 - Agent workbook challenge: https://proompteng.github.io/bilig/agent-workbook-challenge.html
 - MCP server guide: https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
-- Open WebUI MCP setup: https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html
+- Open WebUI tool setup: https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html
 - LobeHub MCP setup: https://proompteng.github.io/bilig/lobehub-workpaper-mcp.html
 - AnythingLLM MCP setup: https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
 - Sim MCP setup: https://proompteng.github.io/bilig/sim-workpaper-mcp.html

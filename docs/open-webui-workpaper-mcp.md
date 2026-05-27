@@ -1,20 +1,21 @@
 ---
-title: Open WebUI WorkPaper MCP setup
+title: Open WebUI WorkPaper tool setup
 published: true
-description: Connect Bilig WorkPaper to Open WebUI through native Streamable HTTP MCP or mcpo so chats can edit workbook inputs and verify formula readback.
-tags: open-webui, mcp, mcpo, spreadsheet-agent, workbook-api
+description: Connect Bilig WorkPaper to Open WebUI through hosted OpenAPI tools, native Streamable HTTP MCP, or mcpo so chats can edit workbook inputs and verify formula readback.
+tags: open-webui, openapi, mcp, mcpo, spreadsheet-agent, workbook-api
 canonical_url: https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html
 image: /assets/github-social-preview.png
 ---
 
-# Open WebUI WorkPaper MCP setup
+# Open WebUI WorkPaper tool setup
 
 Use this when Open WebUI should call spreadsheet tools, but the spreadsheet
 logic should stay in a formula-backed WorkPaper instead of an Excel browser
 session.
 
-Open WebUI has two useful integration paths:
+Open WebUI has three useful integration paths:
 
+- hosted **OpenAPI tool server** for the quickest no-bridge demo;
 - native **MCP (Streamable HTTP)** for an HTTP MCP endpoint;
 - **mcpo** when the tool server is a local stdio MCP process that needs to be
   exposed as an OpenAPI tool server.
@@ -25,6 +26,40 @@ Official Open WebUI references:
 - <https://docs.openwebui.com/features/extensibility/plugin/tools/>
 - <https://docs.openwebui.com/features/extensibility/plugin/tools/openapi-servers/mcp/>
 - <https://docs.openwebui.com/features/extensibility/plugin/tools/openapi-servers/open-webui/>
+
+## Fastest smoke test: hosted OpenAPI
+
+Open WebUI's OpenAPI tool-server path can connect to ordinary HTTP JSON
+endpoints. For a no-bridge Bilig proof, add this tool server URL:
+
+```text
+https://bilig.proompteng.ai/openapi/workpaper
+```
+
+If your Open WebUI build expects the explicit OpenAPI document URL, use:
+
+```text
+https://bilig.proompteng.ai/openapi/workpaper/openapi.json
+```
+
+The hosted OpenAPI server exposes three stateless demo operations:
+
+- `list_workpaper_sheets`
+- `read_workpaper_range`
+- `set_workpaper_cell_and_readback`
+
+Ask:
+
+```text
+Use the Bilig WorkPaper OpenAPI tool. Call set_workpaper_cell_and_readback
+with sheetName Inputs, address B3, value 0.4, and readbackRange Summary!A1:B3.
+Return the before, after, restoredReadback, and checks object.
+```
+
+The important check is `checks.readbackChanged === true` and
+`checks.restoredReadbackMatchesAfter === true`. The hosted OpenAPI endpoint is
+request-local and does not persist a private workbook. Use the local `mcpo`
+bridge below when Open WebUI needs a writable project file.
 
 ## Fastest smoke test: hosted Streamable HTTP
 
@@ -105,12 +140,14 @@ http://host.docker.internal:8000
 
 ## Native MCP versus mcpo
 
-| Path       | Use when                                                         | URL to add                                                    |
-| ---------- | ---------------------------------------------------------------- | ------------------------------------------------------------- |
-| Native MCP | Open WebUI can call a Streamable HTTP MCP endpoint directly.     | `https://bilig.proompteng.ai/mcp`                             |
-| mcpo       | Open WebUI should call a local stdio MCP server through OpenAPI. | `http://localhost:8000` or `http://host.docker.internal:8000` |
+| Path           | Use when                                                         | URL to add                                                    |
+| -------------- | ---------------------------------------------------------------- | ------------------------------------------------------------- |
+| Hosted OpenAPI | Open WebUI should call ordinary HTTP tools without a bridge.     | `https://bilig.proompteng.ai/openapi/workpaper`               |
+| Native MCP     | Open WebUI can call a Streamable HTTP MCP endpoint directly.     | `https://bilig.proompteng.ai/mcp`                             |
+| mcpo           | Open WebUI should call a local stdio MCP server through OpenAPI. | `http://localhost:8000` or `http://host.docker.internal:8000` |
 
-Start with native MCP for tool-discovery smoke tests. Use mcpo for a real
+Start with hosted OpenAPI when you want the fewest moving parts in Open WebUI.
+Use native MCP when your deployment already prefers MCP. Use mcpo for a real
 writable WorkPaper file that must persist across turns or jobs.
 
 ## Proof object to ask for

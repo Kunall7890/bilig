@@ -75,10 +75,18 @@ Those commands are intentionally small. If one matches your workflow, continue
 into the package matrix below; if none match, Bilig is probably not the first
 tool to evaluate.
 
-## Open WebUI MCP Tools
+## Open WebUI Tools
 
 Need Open WebUI to call spreadsheet tools without driving Excel through a
-browser? Use the hosted Streamable HTTP MCP endpoint for a quick smoke test:
+browser? Use the hosted OpenAPI tool server for the quickest no-bridge smoke
+test:
+
+```text
+https://bilig.proompteng.ai/openapi/workpaper
+```
+
+Use the hosted Streamable HTTP MCP endpoint when your Open WebUI deployment
+prefers native MCP:
 
 ```text
 https://bilig.proompteng.ai/mcp
@@ -87,8 +95,9 @@ https://bilig.proompteng.ai/mcp
 Use `mcpo` when Open WebUI needs an OpenAPI tool server around the local npm
 stdio process and a writable project WorkPaper file.
 
-See [Open WebUI WorkPaper MCP setup](docs/open-webui-workpaper-mcp.md) for the
-native MCP path, the `mcpo` command, Docker URL boundaries, and proof prompt.
+See [Open WebUI WorkPaper tool setup](docs/open-webui-workpaper-mcp.md) for the
+hosted OpenAPI path, native MCP path, the `mcpo` command, Docker URL
+boundaries, and proof prompt.
 
 ## LobeHub Custom MCP
 

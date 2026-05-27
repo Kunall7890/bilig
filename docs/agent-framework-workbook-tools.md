@@ -64,26 +64,26 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 
 ## Framework map
 
-| Host | Use | Link |
-| --- | --- | --- |
-| Codex | Local stdio MCP server or direct package import in repo tools. | [MCP client setup](mcp-client-setup.md#codex) |
-| Claude Code and Claude Desktop | File-backed MCP server, or MCPB when a desktop extension is easier. | [Claude MCPB guide](claude-desktop-mcpb-workpaper.md) |
-| Cursor | Project-local `.cursor/mcp.json` pointing at `bilig-workpaper-mcp`. | [MCP client setup](mcp-client-setup.md#cursor) |
-| VS Code and Cline | Project-local MCP config with a writable WorkPaper file. | [MCP client setup](mcp-client-setup.md) |
-| Open WebUI | Native Streamable HTTP MCP for hosted smoke tests, or `mcpo` around the npm stdio server for local writable files. | [Open WebUI WorkPaper MCP setup](open-webui-workpaper-mcp.md) |
-| LobeHub | Custom MCP import JSON for hosted Streamable HTTP, or desktop STDIO for a writable WorkPaper file. | [LobeHub WorkPaper MCP setup](lobehub-workpaper-mcp.md) |
-| AnythingLLM | `anythingllm_mcp_servers.json` with hosted Streamable HTTP, Desktop stdio, or Docker storage-backed stdio. | [AnythingLLM WorkPaper MCP setup](anythingllm-workpaper-mcp.md) |
-| OpenAI Agents SDK | Function tools around WorkPaper read/write/readback. | [OpenAI Agents SDK WorkPaper tool](openai-agents-sdk-workpaper-tool.md) |
-| OpenAI Responses API | Function-call wrapper returning proof objects. | [OpenAI Responses WorkPaper tool call](openai-responses-workpaper-tool-call.md) |
-| Vercel AI SDK | Tool definitions that call a WorkPaper service function. | [Vercel AI SDK spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md) |
-| LangChain.js | Tool wrappers around the same WorkPaper contract. | [Vercel AI SDK and LangChain spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md) |
-| LangGraph.js | `ToolNode` with verified readback after mutation. | [LangGraph WorkPaper ToolNode](langgraph-workpaper-toolnode-spreadsheet.md) |
-| LlamaIndex.TS | `tool(fn, { parameters })` with a compact proof return. | [LlamaIndex.TS WorkPaper tool](llamaindex-workpaper-spreadsheet-tool.md) |
-| Open Multi-Agent | `connectMCPTools()` with the file-backed WorkPaper MCP server registered on an `Agent`. | [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md) |
-| Mastra | `createTool()` wrapper for formula-backed workbook edits. | [Mastra WorkPaper tool](mastra-workpaper-spreadsheet-tool.md) |
-| Cloudflare Agents | Agent tool calling a Node-compatible WorkPaper boundary. | [Cloudflare Agents WorkPaper tool](cloudflare-agents-workpaper-spreadsheet-tool.md) |
-| Runtime adapter authors | `@bilig/workbook` models, plan data, checks, schemas, command receipts, and strict proof. | [Workbook agent intent API](workbook-agent-intent-api.md) |
-| MCP directories and remote clients | Hosted server card or local file-backed server. | [MCP WorkPaper server](mcp-workpaper-tool-server.md) |
+| Host                               | Use                                                                                                                                   | Link                                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Codex                              | Local stdio MCP server or direct package import in repo tools.                                                                        | [MCP client setup](mcp-client-setup.md#codex)                                                |
+| Claude Code and Claude Desktop     | File-backed MCP server, or MCPB when a desktop extension is easier.                                                                   | [Claude MCPB guide](claude-desktop-mcpb-workpaper.md)                                        |
+| Cursor                             | Project-local `.cursor/mcp.json` pointing at `bilig-workpaper-mcp`.                                                                   | [MCP client setup](mcp-client-setup.md#cursor)                                               |
+| VS Code and Cline                  | Project-local MCP config with a writable WorkPaper file.                                                                              | [MCP client setup](mcp-client-setup.md)                                                      |
+| Open WebUI                         | Hosted OpenAPI for no-bridge smoke tests, native Streamable HTTP MCP, or `mcpo` around the npm stdio server for local writable files. | [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)                                    |
+| LobeHub                            | Custom MCP import JSON for hosted Streamable HTTP, or desktop STDIO for a writable WorkPaper file.                                    | [LobeHub WorkPaper MCP setup](lobehub-workpaper-mcp.md)                                      |
+| AnythingLLM                        | `anythingllm_mcp_servers.json` with hosted Streamable HTTP, Desktop stdio, or Docker storage-backed stdio.                            | [AnythingLLM WorkPaper MCP setup](anythingllm-workpaper-mcp.md)                              |
+| OpenAI Agents SDK                  | Function tools around WorkPaper read/write/readback.                                                                                  | [OpenAI Agents SDK WorkPaper tool](openai-agents-sdk-workpaper-tool.md)                      |
+| OpenAI Responses API               | Function-call wrapper returning proof objects.                                                                                        | [OpenAI Responses WorkPaper tool call](openai-responses-workpaper-tool-call.md)              |
+| Vercel AI SDK                      | Tool definitions that call a WorkPaper service function.                                                                              | [Vercel AI SDK spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md)               |
+| LangChain.js                       | Tool wrappers around the same WorkPaper contract.                                                                                     | [Vercel AI SDK and LangChain spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md) |
+| LangGraph.js                       | `ToolNode` with verified readback after mutation.                                                                                     | [LangGraph WorkPaper ToolNode](langgraph-workpaper-toolnode-spreadsheet.md)                  |
+| LlamaIndex.TS                      | `tool(fn, { parameters })` with a compact proof return.                                                                               | [LlamaIndex.TS WorkPaper tool](llamaindex-workpaper-spreadsheet-tool.md)                     |
+| Open Multi-Agent                   | `connectMCPTools()` with the file-backed WorkPaper MCP server registered on an `Agent`.                                               | [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)                  |
+| Mastra                             | `createTool()` wrapper for formula-backed workbook edits.                                                                             | [Mastra WorkPaper tool](mastra-workpaper-spreadsheet-tool.md)                                |
+| Cloudflare Agents                  | Agent tool calling a Node-compatible WorkPaper boundary.                                                                              | [Cloudflare Agents WorkPaper tool](cloudflare-agents-workpaper-spreadsheet-tool.md)          |
+| Runtime adapter authors            | `@bilig/workbook` models, plan data, checks, schemas, command receipts, and strict proof.                                             | [Workbook agent intent API](workbook-agent-intent-api.md)                                    |
+| MCP directories and remote clients | Hosted server card or local file-backed server.                                                                                       | [MCP WorkPaper server](mcp-workpaper-tool-server.md)                                         |
 
 ## Proof object
 
@@ -123,7 +123,7 @@ Do not claim success from a write call alone.
 - [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
 - [MCP client setup](mcp-client-setup.md)
-- [Open WebUI WorkPaper MCP setup](open-webui-workpaper-mcp.md)
+- [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)
 - [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
 - [Node framework WorkPaper adapters](node-framework-workpaper-adapters.md)
