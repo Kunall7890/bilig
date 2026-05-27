@@ -167,6 +167,13 @@ function arrayResultFromRangeWindow(
   return sourceRange ? { ...result, sourceRange } : result
 }
 
+function toArrayShapeRange(deps: LookupArrayShapeBuiltinDeps, arg: LookupBuiltinArgument): RangeBuiltinArgument | CellValue {
+  if (deps.isError(arg)) {
+    return arg
+  }
+  return deps.toCellRange(arg)
+}
+
 export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps): Record<string, LookupBuiltin> {
   return {
     AREAS: (arrayArg) => {
@@ -209,14 +216,14 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
       }
     },
     COLUMNS: (arrayArg) => {
-      const range = deps.requireCellRange(arrayArg)
+      const range = toArrayShapeRange(deps, arrayArg)
       if (!deps.isRangeArg(range)) {
         return range
       }
       return { tag: ValueTag.Number, value: range.cols }
     },
     ROWS: (arrayArg) => {
-      const range = deps.requireCellRange(arrayArg)
+      const range = toArrayShapeRange(deps, arrayArg)
       if (!deps.isRangeArg(range)) {
         return range
       }

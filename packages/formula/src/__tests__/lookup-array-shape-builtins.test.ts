@@ -25,7 +25,13 @@ describe('lookup array-shape builtins', () => {
 
     expect(AREAS(matrix)).toEqual(num(1))
     expect(COLUMNS(matrix)).toEqual(num(3))
+    expect(COLUMNS(num(7))).toEqual(num(1))
+    expect(COLUMNS(text('scalar'))).toEqual(num(1))
+    expect(COLUMNS(err(ErrorCode.NA))).toEqual(err(ErrorCode.NA))
     expect(ROWS(matrix)).toEqual(num(2))
+    expect(ROWS(num(7))).toEqual(num(1))
+    expect(ROWS(text('scalar'))).toEqual(num(1))
+    expect(ROWS(err(ErrorCode.Ref))).toEqual(err(ErrorCode.Ref))
     expect(ARRAYTOTEXT(matrix)).toEqual(text('1\ta\tTRUE;\t5\tb'))
     expect(ARRAYTOTEXT(matrix, num(1))).toEqual(text('{1, "a", TRUE;, 5, "b"}'))
     expect(ARRAYTOTEXT(cellRange([err(ErrorCode.Ref)], 1, 1))).toEqual(err(ErrorCode.Value))

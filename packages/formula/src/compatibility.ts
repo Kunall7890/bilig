@@ -298,6 +298,12 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   }),
   entry('lookup-reference:address-basic', 'lookup-reference', '=ADDRESS(12,3)', 'implemented-wasm-production'),
   entry('lookup-reference:index-basic', 'lookup-reference', '=INDEX(A1:B2,2,1)', 'implemented-wasm-production'),
+  entry('lookup-reference:rows-scalar-array', 'lookup-reference', '=ROWS(1)', 'implemented-wasm-production', {
+    notes: 'Scalar ROWS arguments are treated as one-cell arrays; direct scalar errors propagate.',
+  }),
+  entry('lookup-reference:columns-scalar-array', 'lookup-reference', '=COLUMNS("x")', 'implemented-wasm-production', {
+    notes: 'Scalar COLUMNS arguments are treated as one-cell arrays; direct scalar errors propagate.',
+  }),
   entry('lookup-reference:match-exact', 'lookup-reference', '=MATCH("pear",A1:A3,0)', 'implemented-wasm-production'),
   entry('lookup-reference:vlookup-exact', 'lookup-reference', '=VLOOKUP("pear",A1:B3,2,FALSE)', 'implemented-wasm-production'),
   entry('lookup-reference:xlookup-exact', 'lookup-reference', '=XLOOKUP("pear",A1:A3,B1:B3)', 'implemented-wasm-production'),

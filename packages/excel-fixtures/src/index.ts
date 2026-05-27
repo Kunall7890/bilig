@@ -400,6 +400,8 @@ const canonicalBaseFixtureIds = new Set<string>([
   'date-time:tbilleq-basic',
   'date-time:today-volatile',
   'lookup-reference:index-basic',
+  'lookup-reference:rows-scalar-array',
+  'lookup-reference:columns-scalar-array',
   'lookup-reference:choose-basic',
   'lookup-reference:address-basic',
   'lookup-reference:match-exact',

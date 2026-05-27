@@ -165,6 +165,12 @@ export function tryApplyArrayInfoBuiltin(
   }
 
   if (builtinId == BuiltinId.Columns && argc == 1) {
+    if (kindStack[base] == STACK_KIND_SCALAR) {
+      if (tagStack[base] == ValueTag.Error) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, valueStack[base], rangeIndexStack, valueStack, tagStack, kindStack)
+      }
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, 1, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     if (!isCellRangeLike(kindStack[base])) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -176,6 +182,12 @@ export function tryApplyArrayInfoBuiltin(
   }
 
   if (builtinId == BuiltinId.Rows && argc == 1) {
+    if (kindStack[base] == STACK_KIND_SCALAR) {
+      if (tagStack[base] == ValueTag.Error) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, valueStack[base], rangeIndexStack, valueStack, tagStack, kindStack)
+      }
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, 1, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     if (!isCellRangeLike(kindStack[base])) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }

@@ -1546,8 +1546,10 @@ describe('lookup builtins', () => {
     expect(DCOUNT(database, text('Yield'), ageCriteriaWithBlankClause)).toEqual(num(2))
 
     expect(AREAS(num(1))).toEqual(err(ErrorCode.Value))
-    expect(ROWS(num(1))).toEqual(err(ErrorCode.Value))
-    expect(COLUMNS(num(1))).toEqual(err(ErrorCode.Value))
+    expect(ROWS(num(1))).toEqual(num(1))
+    expect(ROWS(err(ErrorCode.Ref))).toEqual(err(ErrorCode.Ref))
+    expect(COLUMNS(num(1))).toEqual(num(1))
+    expect(COLUMNS(err(ErrorCode.NA))).toEqual(err(ErrorCode.NA))
     expect(ARRAYTOTEXT(cellRange([err(ErrorCode.Ref)], 1, 1))).toEqual(err(ErrorCode.Value))
 
     const duplicateLookup = cellRange([text('pear'), text('apple'), text('pear')], 3, 1)
