@@ -379,7 +379,7 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
             value: mutation.value,
           })
         }
-        args.state.workbook.notifyColumnsWritten(firstRef.sheetId, Uint32Array.of(firstMutation.col))
+        args.state.workbook.notifyColumnWritten(firstRef.sheetId, firstMutation.col)
       } finally {
         args.setBatchMutationDepth(args.getBatchMutationDepth() - 1)
       }
@@ -441,7 +441,7 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
           explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
         }
       }
-      args.state.workbook.notifyColumnsWritten(firstRef.sheetId, Uint32Array.of(firstMutation.col))
+      args.state.workbook.notifyColumnWritten(firstRef.sheetId, firstMutation.col)
     } finally {
       args.setBatchMutationDepth(args.getBatchMutationDepth() - 1)
     }

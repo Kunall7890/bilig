@@ -159,7 +159,7 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
         numbers[cellIndex] = inputNumericValues[index]!
         errors[cellIndex] = ErrorCode.None
       }
-      args.state.workbook.notifyColumnsWritten(firstRef.sheetId, Uint32Array.of(firstMutation.col))
+      args.state.workbook.notifyColumnWritten(firstRef.sheetId, firstMutation.col)
     } finally {
       args.setBatchMutationDepth(args.getBatchMutationDepth() - 1)
     }
@@ -349,7 +349,7 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
         numbers[formulaCellIndex] = value * affineScale + affineOffset
         errors[formulaCellIndex] = ErrorCode.None
       }
-      args.state.workbook.notifyColumnsWritten(firstRef.sheetId, Uint32Array.of(firstMutation.col))
+      args.state.workbook.notifyColumnWritten(firstRef.sheetId, firstMutation.col)
     } finally {
       args.setBatchMutationDepth(args.getBatchMutationDepth() - 1)
     }
@@ -525,7 +525,7 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
         numbers[formulaCellIndex] = value * affineScale + affineOffset
         errors[formulaCellIndex] = ErrorCode.None
       }
-      args.state.workbook.notifyColumnsWritten(firstSheetId, Uint32Array.of(firstCol))
+      args.state.workbook.notifyColumnWritten(firstSheetId, firstCol)
     } finally {
       args.setBatchMutationDepth(args.getBatchMutationDepth() - 1)
     }

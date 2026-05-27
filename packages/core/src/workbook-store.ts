@@ -277,6 +277,14 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     this.columnVersionStore.notifyColumnsWritten(sheetId, columns)
   }
 
+  notifyColumnWritten(sheetId: number, col: number): void {
+    this.columnVersionStore.notifyColumnWritten(sheetId, col)
+  }
+
+  notifyColumnPairWritten(sheetId: number, firstCol: number, secondCol: number): void {
+    this.columnVersionStore.notifyColumnPairWritten(sheetId, firstCol, secondCol)
+  }
+
   getCellIndex(sheetName: string, address: string): number | undefined {
     return this.cellRecordStore.getCellIndex(sheetName, address)
   }

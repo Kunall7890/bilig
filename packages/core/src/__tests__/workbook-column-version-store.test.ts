@@ -23,4 +23,26 @@ describe('workbook column versions', () => {
     expect(workbook.getSheetColumnVersion('Sheet1', 0)).toBe(2)
     expect(workbook.getSheetColumnVersion('Sheet1', 1)).toBe(1)
   })
+
+  it('updates single and paired columns without materialized column arrays', () => {
+    const workbook = new WorkbookStore('column-version-scalars')
+    workbook.createSheet('Sheet1')
+
+    workbook.notifyColumnWritten(1, 2)
+    expect(workbook.getSheetColumnVersion('Sheet1', 2)).toBe(1)
+
+    workbook.notifyColumnPairWritten(1, 2, 4)
+    expect(workbook.getSheetColumnVersion('Sheet1', 2)).toBe(2)
+    expect(workbook.getSheetColumnVersion('Sheet1', 4)).toBe(1)
+
+    workbook.withBatchedColumnVersionUpdates(() => {
+      workbook.notifyColumnWritten(1, 2)
+      workbook.notifyColumnPairWritten(1, 2, 4)
+      expect(workbook.getSheetColumnVersion('Sheet1', 2)).toBe(2)
+      expect(workbook.getSheetColumnVersion('Sheet1', 4)).toBe(1)
+    })
+
+    expect(workbook.getSheetColumnVersion('Sheet1', 2)).toBe(3)
+    expect(workbook.getSheetColumnVersion('Sheet1', 4)).toBe(2)
+  })
 })

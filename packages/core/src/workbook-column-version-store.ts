@@ -37,11 +37,7 @@ export class WorkbookColumnVersionStore {
   notifyColumnsWritten(sheetId: number, columns: readonly number[] | Uint32Array): void {
     const pending = this.batchedColumnVersionUpdates
     if (pending) {
-      let pendingColumns = pending.get(sheetId)
-      if (!pendingColumns) {
-        pendingColumns = new Set<number>()
-        pending.set(sheetId, pendingColumns)
-      }
+      const pendingColumns = ensurePendingColumns(pending, sheetId)
       for (let index = 0; index < columns.length; index += 1) {
         pendingColumns.add(columns[index]!)
       }
@@ -49,6 +45,29 @@ export class WorkbookColumnVersionStore {
     }
     for (let index = 0; index < columns.length; index += 1) {
       this.bumpColumnVersion(sheetId, columns[index]!)
+    }
+  }
+
+  notifyColumnWritten(sheetId: number, col: number): void {
+    const pending = this.batchedColumnVersionUpdates
+    if (pending) {
+      ensurePendingColumns(pending, sheetId).add(col)
+      return
+    }
+    this.bumpColumnVersion(sheetId, col)
+  }
+
+  notifyColumnPairWritten(sheetId: number, firstCol: number, secondCol: number): void {
+    const pending = this.batchedColumnVersionUpdates
+    if (pending) {
+      const pendingColumns = ensurePendingColumns(pending, sheetId)
+      pendingColumns.add(firstCol)
+      pendingColumns.add(secondCol)
+      return
+    }
+    this.bumpColumnVersion(sheetId, firstCol)
+    if (secondCol !== firstCol) {
+      this.bumpColumnVersion(sheetId, secondCol)
     }
   }
 
@@ -84,6 +103,15 @@ export class WorkbookColumnVersionStore {
     const columnVersions = ensureColumnVersionCapacity(sheet, col)
     columnVersions[col] = (columnVersions[col] ?? 0) + 1
   }
+}
+
+function ensurePendingColumns(pending: Map<number, Set<number>>, sheetId: number): Set<number> {
+  let pendingColumns = pending.get(sheetId)
+  if (!pendingColumns) {
+    pendingColumns = new Set<number>()
+    pending.set(sheetId, pendingColumns)
+  }
+  return pendingColumns
 }
 
 function ensureColumnVersionCapacity(sheet: SheetRecord, col: number): Uint32Array {

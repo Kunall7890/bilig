@@ -268,7 +268,7 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
         numbers[cellIndex] = mutation.value
         versions[cellIndex] = (versions[cellIndex] ?? 0) + 1
       }
-      args.state.workbook.notifyColumnsWritten(firstRef.sheetId, Uint32Array.of(firstMutation.col, secondMutation.col))
+      args.state.workbook.notifyColumnPairWritten(firstRef.sheetId, firstMutation.col, secondMutation.col)
     } finally {
       args.setBatchMutationDepth(args.getBatchMutationDepth() - 1)
     }
@@ -471,7 +471,7 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
         numbers[cellIndex] = record.numbers[index]!
         versions[cellIndex] = (versions[cellIndex] ?? 0) + 1
       }
-      args.state.workbook.notifyColumnsWritten(firstSheetId, Uint32Array.of(firstCol, secondCol))
+      args.state.workbook.notifyColumnPairWritten(firstSheetId, firstCol, secondCol)
     } finally {
       args.setBatchMutationDepth(args.getBatchMutationDepth() - 1)
     }
@@ -689,7 +689,7 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
         numbers[cellIndex] = inputNumericValues[index]!
         versions[cellIndex] = (versions[cellIndex] ?? 0) + 1
       }
-      args.state.workbook.notifyColumnsWritten(firstRef.sheetId, Uint32Array.of(firstMutation.col, secondMutation.col))
+      args.state.workbook.notifyColumnPairWritten(firstRef.sheetId, firstMutation.col, secondMutation.col)
     } finally {
       args.setBatchMutationDepth(args.getBatchMutationDepth() - 1)
     }
