@@ -239,10 +239,19 @@ describe('EngineFormulaEvaluationService', () => {
 
     engine.resetPerformanceCounters()
     engine.setCellValue('Sheet1', 'E1', 6)
+    const evaluation = getEvaluationService(engine)
+    for (const address of ['F1', 'G1', 'H1', 'I1', 'J1', 'K1', 'L1', 'M1']) {
+      evaluation.evaluateUnsupportedFormulaNow(engine.workbook.getCellIndex('Sheet1', address)!)
+    }
 
-    expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: 3 })
-    expect(engine.getCellValue('Sheet1', 'J1')).toEqual({ tag: ValueTag.Number, value: 36 })
+    for (const address of ['F1', 'G1', 'H1', 'I1']) {
+      expect(engine.getCellValue('Sheet1', address)).toEqual({ tag: ValueTag.Number, value: 3 })
+    }
+    for (const address of ['J1', 'K1', 'L1', 'M1']) {
+      expect(engine.getCellValue('Sheet1', address)).toEqual({ tag: ValueTag.Number, value: 36 })
+    }
     expect(engine.getPerformanceCounters().nativeDirectCriteriaPredicateAggregateEvaluations).toBe(0)
+    expect(engine.getPerformanceCounters().directCriteriaAggregateCacheHits).toBeGreaterThanOrEqual(6)
     expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBe(0)
   })
 

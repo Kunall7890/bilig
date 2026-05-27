@@ -337,7 +337,9 @@ export function createEngineFormulaEvaluationService(args: {
     const criteriaVersionKey = directCriteriaSharing.directCriteriaVersionKeyForPairs(resolvedPairs)
     const aggregateCacheKey =
       aggregateRange === undefined
-        ? undefined
+        ? directCriteria.aggregateKind === 'count'
+          ? [directCriteria.aggregateKind, criteriaVersionKey].join('\u0000')
+          : undefined
         : [directCriteria.aggregateKind, directCriteriaRangeVersionKey(args.state, aggregateRange), criteriaVersionKey].join('\u0000')
     const cachedAggregate = aggregateCacheKey === undefined ? undefined : directCriteriaAggregateCache.get(aggregateCacheKey)
     if (cachedAggregate) {
