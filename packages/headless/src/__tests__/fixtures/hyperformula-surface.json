@@ -133,7 +133,6 @@
       "moveCells",
       "moveColumns",
       "moveRows",
-      "moveSheet",
       "normalizeFormula",
       "numberToDate",
       "numberToDateTime",
