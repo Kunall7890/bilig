@@ -12,17 +12,21 @@ const EXCEL_BITWISE_LIMIT = 2 ** 48 - 1
 const EXCEL_BITWISE_SHIFT_LIMIT = 53
 
 interface MathBuiltinDeps {
-  toNumber: (value: CellValue) => number | undefined
+  toNumber: (value: CellValue | undefined) => number | undefined
   firstError: (args: readonly (CellValue | undefined)[]) => CellValue | undefined
   numberResult: (value: number) => EvaluationResult
   valueError: () => EvaluationResult
   numError: () => EvaluationResult
   numericResultOrError: (value: number) => EvaluationResult
-  unaryMath: (value: CellValue, operation: (numeric: number) => number) => EvaluationResult
-  binaryMath: (left: CellValue, right: CellValue, operation: (leftNumeric: number, rightNumeric: number) => number) => EvaluationResult
-  ceilingWith: (value: CellValue, significance: CellValue) => EvaluationResult
-  floorWith: (value: CellValue, significance: CellValue) => EvaluationResult
-  roundWith: (value: CellValue, digits: CellValue) => EvaluationResult
+  unaryMath: (value: CellValue | undefined, operation: (numeric: number) => number) => EvaluationResult
+  binaryMath: (
+    left: CellValue | undefined,
+    right: CellValue | undefined,
+    operation: (leftNumeric: number, rightNumeric: number) => number,
+  ) => EvaluationResult
+  ceilingWith: (value: CellValue | undefined, significance: CellValue | undefined) => EvaluationResult
+  floorWith: (value: CellValue | undefined, significance: CellValue | undefined) => EvaluationResult
+  roundWith: (value: CellValue | undefined, digits: CellValue | undefined) => EvaluationResult
   roundUpToDigits: (value: number, digits: number) => number
   roundDownToDigits: (value: number, digits: number) => number
   roundTowardZero: (value: number, digits: number) => number
@@ -71,7 +75,7 @@ export function createMathBuiltins({
   gcdPair,
   lcmPair,
 }: MathBuiltinDeps): Record<string, Builtin> {
-  const toScalarMathNumber = (value: CellValue): number | undefined => coerceScalarMathNumber(value, toNumber)
+  const toScalarMathNumber = (value: CellValue | undefined): number | undefined => coerceScalarMathNumber(value, toNumber)
   const toScalarMathInteger = (value: CellValue): number | undefined => {
     const numeric = toScalarMathNumber(value)
     return numeric === undefined ? undefined : Math.trunc(numeric)

@@ -10,7 +10,6 @@ import {
   buildIdentityMatrix,
   combinationValue,
   collectNumericArgs,
-  coerceScalarMathNumber,
   createNumericBuiltinHelpers,
   doubleFactorialValue,
   evenValue,
@@ -24,6 +23,7 @@ import {
   roundTowardZero,
   roundUpToDigits,
 } from './builtins/numeric.js'
+import { toAverageNumber, toDirectAggregateNumber, toNumber, toScalarMathNumber } from './builtins/scalar-coercion.js'
 import { createMathBuiltins } from './builtins/math-builtins.js'
 import { createRadixBuiltins } from './builtins/radix.js'
 import { populationVariance, sampleVariance } from './builtins/statistics.js'
@@ -35,7 +35,6 @@ import { lookupBuiltins } from './builtins/lookup.js'
 import { createBlockedBuiltinMap, scalarPlaceholderBuiltinNames } from './builtins/placeholder.js'
 import { getExternalScalarFunction, hasExternalFunction } from './external-function-adapter.js'
 import { coerceLogicalValue } from './logical-coercion.js'
-import { parseNumericText } from './numeric-text.js'
 import type { ArrayValue, EvaluationResult } from './runtime-values.js'
 import { createTextBuiltins, textBuiltins } from './builtins/text.js'
 
@@ -44,51 +43,6 @@ type Builtin = (...args: CellValue[]) => EvaluationResult
 export function normalizeBuiltinLookupName(name: string): string {
   const upper = name.toUpperCase()
   return upper.startsWith('_XLFN.') || upper.startsWith('_XLWS.') ? upper.slice(6) : upper
-}
-
-function toNumber(value: CellValue): number | undefined {
-  switch (value.tag) {
-    case ValueTag.Number:
-      return value.value
-    case ValueTag.Boolean:
-      return value.value ? 1 : 0
-    case ValueTag.Empty:
-      return 0
-    case ValueTag.String:
-    case ValueTag.Error:
-      return undefined
-    default:
-      return undefined
-  }
-}
-
-function toAverageNumber(value: CellValue): number | undefined {
-  switch (value.tag) {
-    case ValueTag.Number:
-      return value.value
-    case ValueTag.Boolean:
-      return value.value ? 1 : 0
-    case ValueTag.Empty:
-    case ValueTag.String:
-    case ValueTag.Error:
-    default:
-      return undefined
-  }
-}
-
-function toScalarMathNumber(value: CellValue): number | undefined {
-  return coerceScalarMathNumber(value, toNumber)
-}
-
-function parseDirectAggregateNumericText(value: string): number | undefined {
-  return value === '' ? 0 : parseNumericText(value)
-}
-
-function toDirectAggregateNumber(value: CellValue): number | undefined {
-  if (value.tag === ValueTag.String) {
-    return parseDirectAggregateNumericText(value.value)
-  }
-  return toNumber(value)
 }
 
 function isCountedDirectNumber(value: CellValue): boolean {
@@ -563,8 +517,9 @@ const scalarBuiltins: Record<string, Builtin> = {
     return numberResult(blanks)
   },
   ABS: (value) => {
-    if (value.tag === ValueTag.Error) {
-      return value
+    const error = firstError([value])
+    if (error) {
+      return error
     }
     const numeric = toScalarMathNumber(value)
     return numeric === undefined ? valueError() : numberResult(Math.abs(numeric))
@@ -796,8 +751,9 @@ const scalarBuiltins: Record<string, Builtin> = {
     return numberResult(sum)
   },
   SQRTPI: (value) => {
-    if (value.tag === ValueTag.Error) {
-      return value
+    const error = firstError([value])
+    if (error) {
+      return error
     }
     const numeric = toScalarMathNumber(value)
     if (numeric === undefined) {

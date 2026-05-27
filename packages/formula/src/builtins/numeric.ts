@@ -3,21 +3,27 @@ import type { ArrayValue } from '../runtime-values.js'
 import { parseArithmeticNumericText } from '../numeric-text.js'
 
 interface NumericBuiltinDependencies {
-  toNumber: (value: CellValue) => number | undefined
+  toNumber: (value: CellValue | undefined) => number | undefined
   numberResult: (value: number) => CellValue
   valueError: () => CellValue
   numError: () => CellValue
 }
 
 export interface NumericBuiltinHelpers {
-  roundWith: (value: CellValue, digits: CellValue | undefined) => CellValue
-  floorWith: (value: CellValue, significance?: CellValue) => CellValue
-  ceilingWith: (value: CellValue, significance?: CellValue) => CellValue
-  unaryMath: (value: CellValue, evaluate: (numeric: number) => number) => CellValue
-  binaryMath: (left: CellValue, right: CellValue, evaluate: (left: number, right: number) => number) => CellValue
+  roundWith: (value: CellValue | undefined, digits: CellValue | undefined) => CellValue
+  floorWith: (value: CellValue | undefined, significance?: CellValue) => CellValue
+  ceilingWith: (value: CellValue | undefined, significance?: CellValue) => CellValue
+  unaryMath: (value: CellValue | undefined, evaluate: (numeric: number) => number) => CellValue
+  binaryMath: (left: CellValue | undefined, right: CellValue | undefined, evaluate: (left: number, right: number) => number) => CellValue
 }
 
-export function coerceScalarMathNumber(value: CellValue, toNumber: (value: CellValue) => number | undefined): number | undefined {
+export function coerceScalarMathNumber(
+  value: CellValue | undefined,
+  toNumber: (value: CellValue | undefined) => number | undefined,
+): number | undefined {
+  if (value === undefined) {
+    return undefined
+  }
   if (value.tag === ValueTag.String) {
     return parseArithmeticNumericText(value.value)
   }
@@ -32,11 +38,11 @@ export function createNumericBuiltinHelpers({
 }: NumericBuiltinDependencies): NumericBuiltinHelpers {
   const firstError = (args: readonly (CellValue | undefined)[]): CellValue | undefined =>
     args.find((arg): arg is CellValue => arg?.tag === ValueTag.Error)
-  const toScalarMathNumber = (value: CellValue): number | undefined => coerceScalarMathNumber(value, toNumber)
+  const toScalarMathNumber = (value: CellValue | undefined): number | undefined => coerceScalarMathNumber(value, toNumber)
   const scalarMathResult = (value: number): CellValue => (Number.isFinite(value) ? numberResult(value) : numError())
 
   return {
-    roundWith: (value: CellValue, digits: CellValue | undefined): CellValue => {
+    roundWith: (value: CellValue | undefined, digits: CellValue | undefined): CellValue => {
       const error = firstError([value, digits])
       if (error) {
         return error
@@ -48,7 +54,7 @@ export function createNumericBuiltinHelpers({
       }
       return numberResult(roundToDigits(numberValue, Math.trunc(digitValue)))
     },
-    floorWith: (value: CellValue, significance?: CellValue): CellValue => {
+    floorWith: (value: CellValue | undefined, significance?: CellValue): CellValue => {
       const error = firstError([value, significance])
       if (error) {
         return error
@@ -66,7 +72,7 @@ export function createNumericBuiltinHelpers({
       }
       return numberResult(Math.floor(numberValue / significanceValue) * significanceValue)
     },
-    ceilingWith: (value: CellValue, significance?: CellValue): CellValue => {
+    ceilingWith: (value: CellValue | undefined, significance?: CellValue): CellValue => {
       const error = firstError([value, significance])
       if (error) {
         return error
@@ -84,14 +90,18 @@ export function createNumericBuiltinHelpers({
       }
       return numberResult(Math.ceil(numberValue / significanceValue) * significanceValue)
     },
-    unaryMath: (value: CellValue, evaluate: (numeric: number) => number): CellValue => {
-      if (value.tag === ValueTag.Error) {
+    unaryMath: (value: CellValue | undefined, evaluate: (numeric: number) => number): CellValue => {
+      if (value?.tag === ValueTag.Error) {
         return value
       }
       const numeric = toScalarMathNumber(value)
       return numeric === undefined ? valueError() : scalarMathResult(evaluate(numeric))
     },
-    binaryMath: (left: CellValue, right: CellValue, evaluate: (left: number, right: number) => number): CellValue => {
+    binaryMath: (
+      left: CellValue | undefined,
+      right: CellValue | undefined,
+      evaluate: (left: number, right: number) => number,
+    ): CellValue => {
       const error = firstError([left, right])
       if (error) {
         return error

@@ -5,6 +5,19 @@ import { evaluateAst, evaluateAstResult } from '../js-evaluator.js'
 import { parseFormula } from '../parser.js'
 
 describe('formula builtins and JS evaluator', () => {
+  it('returns value errors for missing required scalar builtin arguments instead of throwing', () => {
+    const context = {
+      sheetName: 'Sheet1',
+      resolveCell: (): CellValue => ({ tag: ValueTag.Empty }),
+      resolveRange: (): CellValue[] => [],
+    }
+    const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
+
+    for (const formula of ['ABS()', 'SIN()', 'POWER(2)', 'ATAN2(1)', 'DOLLAR()', 'SQRTPI()']) {
+      expect(evaluateAst(parseFormula(formula), context)).toEqual(valueError)
+    }
+  })
+
   it('covers scalar builtins and builtin id lookup', () => {
     const SUM = getBuiltin('sum')!
     const AVG = getBuiltin('AVG')!
