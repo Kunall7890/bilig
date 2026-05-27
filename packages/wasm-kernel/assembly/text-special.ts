@@ -81,7 +81,20 @@ export function parseTimeValueText(input: string): f64 {
     return NaN
   }
 
-  const hour = parseAsciiIntegerSegment(text, 0, firstColon)
+  let hourEnd = firstColon - 1
+  while (hourEnd >= 0 && text.charCodeAt(hourEnd) <= 32) {
+    hourEnd -= 1
+  }
+  let coreStart = 0
+  for (let index = hourEnd; index >= 0; index -= 1) {
+    const char = text.charCodeAt(index)
+    if (char <= 32 || char == 84 || char == 116) {
+      coreStart = index + 1
+      break
+    }
+  }
+
+  const hour = parseAsciiIntegerSegment(text, coreStart, firstColon)
   const minute = parseAsciiIntegerSegment(text, firstColon + 1, secondColon < 0 ? coreEnd : secondColon)
   const second = secondColon < 0 ? 0 : parseAsciiIntegerSegment(text, secondColon + 1, coreEnd)
   if (hour == i32.MIN_VALUE || minute == i32.MIN_VALUE || second == i32.MIN_VALUE) {

@@ -598,6 +598,7 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('date-time:weeknum-iso-system-2', 'date-time', '=WEEKNUM(DATE(2021,1,1),21)', 'implemented-wasm-production'),
   entry('date-time:workday-intl-basic', 'date-time', '=WORKDAY.INTL(A1,2,7,B1)', 'implemented-wasm-production'),
   entry('date-time:timevalue-basic', 'date-time', '=TIMEVALUE("1:30 PM")', 'implemented-wasm-production'),
+  entry('date-time:timevalue-date-text-ignored', 'date-time', '=TIMEVALUE("22-Aug-2011 6:35 AM")', 'implemented-wasm-production'),
   entry('date-time:yearfrac-basic', 'date-time', '=YEARFRAC(DATE(2024,1,1),DATE(2024,7,1),3)', 'implemented-wasm-production'),
   entry('date-time:fvschedule-basic', 'date-time', '=FVSCHEDULE(1000,0.09,0.11,0.1)', 'implemented-wasm-production'),
   entry('date-time:effect-basic', 'date-time', '=EFFECT(12%,12)', 'implemented-wasm-production'),

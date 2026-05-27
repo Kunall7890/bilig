@@ -55,7 +55,24 @@ export function parseTimeValueText(raw: string): number | undefined {
   const trimmed = raw.trim()
   const amPmMatch = trimmed.match(/^(.+?)\s+([aApP][mM])$/)
   const hasMeridiem = amPmMatch !== null
-  const timeText = hasMeridiem ? (amPmMatch?.[1] ?? '') : trimmed
+  const coreText = (hasMeridiem ? (amPmMatch?.[1] ?? '') : trimmed).trim()
+  const firstColonIndex = coreText.indexOf(':')
+  if (firstColonIndex < 0) {
+    return undefined
+  }
+  let hourEndIndex = firstColonIndex - 1
+  while (hourEndIndex >= 0 && /\s/.test(coreText[hourEndIndex] ?? '')) {
+    hourEndIndex -= 1
+  }
+  let timeStartIndex = 0
+  for (let index = hourEndIndex; index >= 0; index -= 1) {
+    const char = coreText[index] ?? ''
+    if (/\s/.test(char) || char === 'T' || char === 't') {
+      timeStartIndex = index + 1
+      break
+    }
+  }
+  const timeText = coreText.slice(timeStartIndex).trim()
   const timeParts = timeText.split(':')
   if (timeParts.length < 2 || timeParts.length > 3) {
     return undefined

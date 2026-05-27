@@ -79,11 +79,11 @@ describe('wasm kernel text-special helpers', () => {
   it('keeps numeric and time text coercion stable across refactors', async () => {
     const kernel = await createKernel()
     const width = 8
-    kernel.init(24, 5, 4, 1, 1)
+    kernel.init(24, 6, 5, 1, 1)
     kernel.uploadStrings(
-      Uint32Array.from([0, 10, 17, 25]),
-      Uint32Array.from([10, 7, 8, 3]),
-      Uint16Array.from(Array.from('  -12.5e1 2:30 PM24:00:00bad', (char) => char.charCodeAt(0))),
+      Uint32Array.from([0, 10, 17, 25, 28]),
+      Uint32Array.from([10, 7, 8, 3, 20]),
+      Uint16Array.from(Array.from('  -12.5e1 2:30 PM24:00:00bad22-Aug-2011 6:35 AM', (char) => char.charCodeAt(0))),
     )
     kernel.writeCells(new Uint8Array(24), new Float64Array(24), new Uint32Array(24), new Uint16Array(24))
 
@@ -92,20 +92,37 @@ describe('wasm kernel text-special helpers', () => {
       [encodePushString(1), encodeCall(BuiltinId.Timevalue, 1), encodeRet()],
       [encodePushString(2), encodeCall(BuiltinId.Timevalue, 1), encodeRet()],
       [encodePushString(3), encodeCall(BuiltinId.Value, 1), encodeRet()],
+      [encodePushString(4), encodeCall(BuiltinId.Timevalue, 1), encodeRet()],
     ])
     kernel.uploadPrograms(
       packed.programs,
       packed.offsets,
       packed.lengths,
-      Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width), cellIndex(1, 3, width)]),
+      Uint32Array.from([
+        cellIndex(1, 0, width),
+        cellIndex(1, 1, width),
+        cellIndex(1, 2, width),
+        cellIndex(1, 3, width),
+        cellIndex(1, 4, width),
+      ]),
     )
-    kernel.uploadConstants(new Float64Array(0), Uint32Array.from([0, 0, 0, 0]), Uint32Array.from([0, 0, 0, 0]))
-    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width), cellIndex(1, 3, width)]))
+    kernel.uploadConstants(new Float64Array(0), Uint32Array.from([0, 0, 0, 0, 0]), Uint32Array.from([0, 0, 0, 0, 0]))
+    kernel.evalBatch(
+      Uint32Array.from([
+        cellIndex(1, 0, width),
+        cellIndex(1, 1, width),
+        cellIndex(1, 2, width),
+        cellIndex(1, 3, width),
+        cellIndex(1, 4, width),
+      ]),
+    )
 
     expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBeCloseTo(-125, 12)
     expect(kernel.readNumbers()[cellIndex(1, 1, width)]).toBeCloseTo(0.604166666667, 12)
     expect(kernel.readNumbers()[cellIndex(1, 2, width)]).toBe(0)
     expect(kernel.readTags()[cellIndex(1, 3, width)]).toBe(ValueTag.Error)
+    expect(kernel.readTags()[cellIndex(1, 4, width)]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[cellIndex(1, 4, width)]).toBeCloseTo((6 * 3600 + 35 * 60) / 86_400, 12)
   })
 
   it('keeps unicode and width-conversion text helpers stable across refactors', async () => {

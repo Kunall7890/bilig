@@ -769,6 +769,15 @@ export const excelDateTimeFixtureSuite: ExcelFixtureSuite = {
       outputs: [{ address: 'A1', expected: numberExpected(0.5625) }],
     },
     {
+      id: createExcelFixtureId('date-time', 'timevalue-date-text-ignored'),
+      family: 'date-time',
+      title: 'TIMEVALUE ignores date text and returns the time fraction',
+      formula: '=TIMEVALUE("22-Aug-2011 6:35 AM")',
+      sheetName: 'Sheet1',
+      inputs: [],
+      outputs: [{ address: 'A1', expected: numberExpected(0.2743055555555556) }],
+    },
+    {
       id: createExcelFixtureId('date-time', 'workday-intl-basic'),
       family: 'date-time',
       title: 'WORKDAY.INTL skips configured weekend days and holidays',
