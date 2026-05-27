@@ -217,20 +217,18 @@ export function yearFracByBasis(
 
   let totalDays: number
   switch (basis) {
-    case 0:
-      if (startDay === 31) {
-        startDay -= 1
-      }
-      if (startDay === 30 && endDay === 31) {
-        endDay -= 1
-      } else if (startMonth === 2 && startDay === (isLeapYear(startYear) ? 29 : 28)) {
+    case 0: {
+      const startIsFebruaryMonthEnd = startMonth === 2 && startDay === daysInExcelMonth(startYear, startMonth)
+      const endIsFebruaryMonthEnd = endMonth === 2 && endDay === daysInExcelMonth(endYear, endMonth)
+      if (startDay === 31 || startIsFebruaryMonthEnd) {
         startDay = 30
-        if (endMonth === 2 && endDay === (isLeapYear(endYear) ? 29 : 28)) {
-          endDay = 30
-        }
+      }
+      if ((endDay === 31 && startDay >= 30) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
+        endDay = 30
       }
       totalDays = (endYear - startYear) * 360 + (endMonth - startMonth) * 30 + (endDay - startDay)
       break
+    }
     case 1:
     case 2:
     case 3:

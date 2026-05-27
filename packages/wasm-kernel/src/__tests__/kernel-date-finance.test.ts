@@ -76,6 +76,35 @@ function expectNumberCell(kernel: Awaited<ReturnType<typeof createKernel>>, inde
 }
 
 describe('wasm kernel date/finance helpers', () => {
+  it('keeps US DAYS360 February month-end handling on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 4
+    kernel.init(8, 1, 0, 1, 1)
+    kernel.writeCells(new Uint8Array(8), new Float64Array(8), new Uint32Array(8), new Uint16Array(8))
+
+    const packed = packPrograms([
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodeCall(BuiltinId.Date, 3),
+        encodePushNumber(0),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodeCall(BuiltinId.Date, 3),
+        encodeCall(BuiltinId.Days360, 2),
+        encodeRet(),
+      ],
+    ])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, Uint32Array.from([cellIndex(1, 0, width)]))
+    const constants = packConstants([[2024, 2, 29, 3, 31]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width)]))
+
+    expectNumberCell(kernel, cellIndex(1, 0, width), 30)
+  })
+
   it('keeps date-basis helper behavior stable across refactors', async () => {
     const kernel = await createKernel()
     const width = 8

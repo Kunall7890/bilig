@@ -1,4 +1,5 @@
 import { addMonthsToExcelDate, excelSerialToDateParts } from './datetime.js'
+import { daysInExcelMonth } from './excel-date.js'
 
 export interface MaturityAtIssueFractions {
   issueToMaturity: number
@@ -73,20 +74,18 @@ export function yearFracByBasis(startSerial: number, endSerial: number, basis: n
 
   let totalDays: number
   switch (basis) {
-    case 0:
-      if (startDay === 31) {
-        startDay -= 1
-      }
-      if (startDay === 30 && endDay === 31) {
-        endDay -= 1
-      } else if (startMonth === 2 && startDay === (isLeapYear(startYear) ? 29 : 28)) {
+    case 0: {
+      const startIsFebruaryMonthEnd = startMonth === 2 && startDay === daysInExcelMonth(startYear, startMonth)
+      const endIsFebruaryMonthEnd = endMonth === 2 && endDay === daysInExcelMonth(endYear, endMonth)
+      if (startDay === 31 || startIsFebruaryMonthEnd) {
         startDay = 30
-        if (endMonth === 2 && endDay === (isLeapYear(endYear) ? 29 : 28)) {
-          endDay = 30
-        }
+      }
+      if ((endDay === 31 && startDay >= 30) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
+        endDay = 30
       }
       totalDays = (endYear - startYear) * 360 + (endMonth - startMonth) * 30 + (endDay - startDay)
       break
+    }
     case 1:
     case 2:
     case 3:
@@ -467,16 +466,13 @@ function days360Us(startSerial: number, endSerial: number): number | undefined {
 
   let startDay = startParts.day
   let endDay = endParts.day
-  if (startDay === 31) {
+  const startIsFebruaryMonthEnd = startParts.month === 2 && startDay === daysInExcelMonth(startParts.year, startParts.month)
+  const endIsFebruaryMonthEnd = endParts.month === 2 && endDay === daysInExcelMonth(endParts.year, endParts.month)
+  if (startDay === 31 || startIsFebruaryMonthEnd) {
     startDay = 30
   }
-  if (startDay === 30 && endDay === 31) {
+  if ((endDay === 31 && startDay >= 30) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
     endDay = 30
-  } else if (startParts.month === 2 && startDay === (isLeapYear(startParts.year) ? 29 : 28)) {
-    startDay = 30
-    if (endParts.month === 2 && endDay === (isLeapYear(endParts.year) ? 29 : 28)) {
-      endDay = 30
-    }
   }
 
   return (endParts.year - startParts.year) * 360 + (endParts.month - startParts.month) * 30 + (endDay - startDay)

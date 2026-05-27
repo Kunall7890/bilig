@@ -383,10 +383,12 @@ export function excelDays360Value(startWhole: i32, endWhole: i32, method: i32): 
   let startDay = startDayRaw
   let endDay = endDayRaw
   if (method == 0) {
-    if (startDay == 31) {
+    const startIsFebruaryMonthEnd = startMonth == 2 && startDay == daysInExcelMonth(startYear, startMonth)
+    const endIsFebruaryMonthEnd = endMonth == 2 && endDay == daysInExcelMonth(endYear, endMonth)
+    if (startDay == 31 || startIsFebruaryMonthEnd) {
       startDay = 30
     }
-    if (endDay == 31 && startDay >= 30) {
+    if ((endDay == 31 && startDay >= 30) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
       endDay = 30
     }
   } else {
@@ -433,16 +435,13 @@ export function excelYearfracValue(startWhole: i32, endWhole: i32, basis: i32): 
 
   let totalDays = 0.0
   if (basis == 0) {
-    if (startDay == 31) {
-      startDay -= 1
-    }
-    if (startDay == 30 && endDay == 31) {
-      endDay -= 1
-    } else if (startMonth == 2 && startDay == (isLeapYear(startYear) ? 29 : 28)) {
+    const startIsFebruaryMonthEnd = startMonth == 2 && startDay == daysInExcelMonth(startYear, startMonth)
+    const endIsFebruaryMonthEnd = endMonth == 2 && endDay == daysInExcelMonth(endYear, endMonth)
+    if (startDay == 31 || startIsFebruaryMonthEnd) {
       startDay = 30
-      if (endMonth == 2 && endDay == (isLeapYear(endYear) ? 29 : 28)) {
-        endDay = 30
-      }
+    }
+    if ((endDay == 31 && startDay >= 30) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
+      endDay = 30
     }
     totalDays = <f64>((endYear - startYear) * 360 + (endMonth - startMonth) * 30 + (endDay - startDay))
   } else if (basis == 1 || basis == 2 || basis == 3) {
@@ -536,16 +535,13 @@ export function couponDaysByBasisValue(startWhole: i32, endWhole: i32, basis: i3
     let startDay = startDayRaw
     let endDay = endDayRaw
     if (basis == 0) {
-      if (startDay == 31) {
+      const startIsFebruaryMonthEnd = startMonth == 2 && startDay == daysInExcelMonth(startYear, startMonth)
+      const endIsFebruaryMonthEnd = endMonth == 2 && endDay == daysInExcelMonth(endYear, endMonth)
+      if (startDay == 31 || startIsFebruaryMonthEnd) {
         startDay = 30
       }
-      if (startDay == 30 && endDay == 31) {
+      if ((endDay == 31 && startDay >= 30) || (startIsFebruaryMonthEnd && endIsFebruaryMonthEnd)) {
         endDay = 30
-      } else if (startMonth == 2 && startDay == (isLeapYear(startYear) ? 29 : 28)) {
-        startDay = 30
-        if (endMonth == 2 && endDay == (isLeapYear(endYear) ? 29 : 28)) {
-          endDay = 30
-        }
       }
     } else {
       if (startDay == 31) {

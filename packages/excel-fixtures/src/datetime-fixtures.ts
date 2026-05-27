@@ -225,6 +225,15 @@ export const excelDateTimeFixtureSuite: ExcelFixtureSuite = {
       outputs: [{ address: 'A1', expected: numberExpected(62) }],
     },
     {
+      id: createExcelFixtureId('date-time', 'days360-us-february-month-end'),
+      family: 'date-time',
+      title: 'DAYS360 US method normalizes February month-end starts before 31st end dates',
+      formula: '=DAYS360(DATE(2024,2,29),DATE(2024,3,31))',
+      sheetName: 'Sheet1',
+      inputs: [],
+      outputs: [{ address: 'A1', expected: numberExpected(30) }],
+    },
+    {
       id: createExcelFixtureId('date-time', 'yearfrac-basic'),
       family: 'date-time',
       title: 'YEARFRAC supports actual/365 basis values',
