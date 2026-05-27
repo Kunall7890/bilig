@@ -1,6 +1,6 @@
 import { ErrorCode, ValueTag, formatErrorCode, formatGeneralNumberValue, type CellValue } from '@bilig/protocol'
 import { parseNumericText } from '../numeric-text.js'
-import { parseTimeValueText } from './datetime.js'
+import { parseDateValueFromText, parseTimeValueText } from './datetime.js'
 import { excelSerialToDateParts, excelSerialWeekdayIndex, type ExcelDateSystem } from './excel-date.js'
 import type { TextBuiltin } from './text.js'
 
@@ -513,7 +513,7 @@ function parseCurrencyValueText(input: string): number | undefined {
   return match[1] === '-' ? -parsed : parsed
 }
 
-function parseValueText(input: string): number | undefined {
+function parseValueText(input: string, dateSystem: ExcelDateSystem): number | undefined {
   if (input.trim() === '') {
     return undefined
   }
@@ -525,7 +525,12 @@ function parseValueText(input: string): number | undefined {
   if (currency !== undefined) {
     return currency
   }
-  return parseTimeValueText(input)
+  const date = parseDateValueFromText(input, dateSystem)
+  const time = parseTimeValueText(input)
+  if (date !== undefined) {
+    return date + (time ?? 0)
+  }
+  return time
 }
 
 export function createTextFormatBuiltins(deps: TextFormatBuiltinDeps): Record<string, TextBuiltin> {
@@ -550,7 +555,12 @@ export function createTextFormatBuiltins(deps: TextFormatBuiltinDeps): Record<st
       if (value === undefined) {
         return deps.error(ErrorCode.Value)
       }
-      const coerced = value.tag === ValueTag.String ? parseValueText(value.value) : value.tag === ValueTag.Number ? value.value : undefined
+      const coerced =
+        value.tag === ValueTag.String
+          ? parseValueText(value.value, deps.dateSystem ?? '1900')
+          : value.tag === ValueTag.Number
+            ? value.value
+            : undefined
       return coerced === undefined ? deps.error(ErrorCode.Value) : deps.numberResult(coerced)
     },
     NUMBERVALUE: (...args) => {

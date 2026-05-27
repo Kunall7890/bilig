@@ -12,13 +12,13 @@
   },
   "summary": {
     "allCommittedFormulaSemanticsCovered": true,
-    "canonicalFormulaFixtureCount": 410,
+    "canonicalFormulaFixtureCount": 412,
     "workbookSemanticsFixtureCount": 12,
-    "executableStableFormulaFixtureCount": 407,
+    "executableStableFormulaFixtureCount": 409,
     "deterministicVolatileFixtureCount": 3,
     "executableWorkbookSemanticsFixtureCount": 12,
     "dateTimeEdgeFixtureCount": 71,
-    "coveredCanonicalFixtureCount": 410,
+    "coveredCanonicalFixtureCount": 412,
     "coveredWorkbookSemanticsFixtureCount": 12,
     "workbookSemanticsCategoryCount": 6,
     "coveredWorkbookSemanticsCategories": [
@@ -459,7 +459,9 @@
       "text:trim-basic",
       "text:unichar-basic",
       "text:upper-basic",
-      "text:value-basic"
+      "text:value-basic",
+      "text:value-date-text",
+      "text:value-date-time-text"
     ],
     "deterministicVolatileFixtureIds": ["date-time:now-volatile", "date-time:today-volatile", "volatile:rand-basic"],
     "workbookSemanticsFixtureIds": [

@@ -43,7 +43,7 @@ const MAX_EXCEL_DATE_SERIAL_BY_SYSTEM: Record<ExcelDateSystem, number> = {
   '1904': 2_957_003,
 }
 
-function parseDateValueFromText(raw: string, dateSystem: ExcelDateSystem): number | undefined {
+export function parseDateValueFromText(raw: string, dateSystem: ExcelDateSystem): number | undefined {
   const tokens = collectDateTextTokens(raw)
   if (tokens.length < 3) {
     return undefined

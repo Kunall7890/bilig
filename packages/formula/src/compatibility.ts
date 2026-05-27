@@ -575,6 +575,12 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('text:value-basic', 'text', '=VALUE("42")', 'implemented-wasm-production', {
     notes: 'VALUE now coerces scalar text inputs on the AssemblyScript path, including trimmed decimals and exponent forms.',
   }),
+  entry('text:value-date-text', 'text', '=VALUE("1/1/2024")', 'implemented-wasm-production', {
+    notes: 'VALUE accepts date text formats recognized by Excel, reusing the date-text serial parser shared with DATEVALUE.',
+  }),
+  entry('text:value-date-time-text', 'text', '=VALUE("1/1/2024 12:00:00")', 'implemented-wasm-production', {
+    notes: 'VALUE preserves both the date serial and time fraction for date-time text formats recognized by Excel.',
+  }),
   entry('lookup-reference:choose-basic', 'lookup-reference', '=CHOOSE(2,"red","blue","green")', 'implemented-wasm-production'),
   entry('lookup-reference:xmatch-basic', 'lookup-reference', '=XMATCH("pear",A1:A3,0)', 'implemented-wasm-production'),
   entry('lookup-reference:hlookup-basic', 'lookup-reference', '=HLOOKUP("pear",A1:C2,2,FALSE)', 'implemented-wasm-production'),

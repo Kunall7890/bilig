@@ -1,6 +1,7 @@
 import { ErrorCode } from './protocol'
 import {
   excelDayPartFromSerial,
+  excelDateTextSerial,
   excelMonthPartFromSerial,
   excelSecondOfDay,
   excelSerialWhole,
@@ -738,7 +739,12 @@ export function valueParseText(input: string): f64 {
     return parsed
   }
 
-  return parseTimeValueText(input)
+  const dateSerial = excelDateTextSerial(input)
+  parsed = parseTimeValueText(input)
+  if (dateSerial != i32.MIN_VALUE) {
+    return isFinite(parsed) ? <f64>dateSerial + parsed : <f64>dateSerial
+  }
+  return parsed
 }
 
 export function errorLabel(code: i32): string {
