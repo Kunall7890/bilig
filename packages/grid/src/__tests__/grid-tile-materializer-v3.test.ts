@@ -166,7 +166,7 @@ describe('renderer-v3 grid tile materializer', () => {
     ])
   })
 
-  test('reuses stable tile buffers for style-only local dirty spans', () => {
+  test('rebuilds visual tile buffers for style-only local dirty spans', () => {
     const gridMetrics = getGridMetrics()
     const viewport = {
       colEnd: VIEWPORT_TILE_COLUMN_COUNT - 1,
@@ -200,7 +200,7 @@ describe('renderer-v3 grid tile materializer', () => {
       viewport,
     })
 
-    const reusedTile = materializeGridRenderTileV3({
+    const styleDirtyTile = materializeGridRenderTileV3({
       axisSeqX: 1,
       axisSeqY: 1,
       cameraSeq: 2,
@@ -210,7 +210,7 @@ describe('renderer-v3 grid tile materializer', () => {
       dirtyMasks: new Uint32Array([DirtyMaskV3.Style]),
       dprBucket: 1,
       engine: makeEngine({
-        A1: createCellSnapshot('A1', { tag: ValueTag.String, value: 'should not rebuild text' }),
+        A1: createCellSnapshot('A1', { tag: ValueTag.String, value: 'alpha' }),
       }),
       freezeSeq: 0,
       gridMetrics,
@@ -231,11 +231,11 @@ describe('renderer-v3 grid tile materializer', () => {
       viewport,
     })
 
-    expect(reusedTile.rectInstances).toBe(baseTile.rectInstances)
-    expect(reusedTile.textMetrics).toBe(baseTile.textMetrics)
-    expect(reusedTile.textRuns).toBe(baseTile.textRuns)
-    expect(reusedTile.dirty?.rectSpans).toEqual([])
-    expect(reusedTile.dirty?.textSpans).toEqual([])
+    expect(styleDirtyTile.rectInstances).not.toBe(baseTile.rectInstances)
+    expect(styleDirtyTile.textMetrics).not.toBe(baseTile.textMetrics)
+    expect(styleDirtyTile.textRuns).not.toBe(baseTile.textRuns)
+    expect(styleDirtyTile.dirty?.rectSpans).toEqual([{ offset: 0, length: styleDirtyTile.rectCount }])
+    expect(styleDirtyTile.dirty?.textSpans).toEqual([{ offset: 0, length: 1 }])
   })
 
   test('patches one dirty text run without rebuilding clean text runs', () => {

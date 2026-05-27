@@ -9,6 +9,7 @@ import {
   getProductColumnLeft,
   getProductColumnWidth,
   getProductFillHandleDragPoints,
+  getProductRowTop,
   gotoWorkbookShell,
   pickToolbarPresetColor,
   PRIMARY_MODIFIER,
@@ -277,7 +278,7 @@ async function exerciseClickAwayEditCommit(
   expect(samples.every((sample) => sample.editorInputs <= 1)).toBe(true)
   expect(samples.every((sample) => sample.editorOverlays <= 1)).toBe(true)
   expect(samples.every((sample) => sample.headerPaneCount > 0)).toBe(true)
-  expect(samples.every((sample) => sample.nativeLayerSource === 'typegpu-ready-native-visuals')).toBe(true)
+  expect(samples.every((sample) => sample.nativeLayerSource === 'browser-native-text-live')).toBe(true)
   expect(samples.every((sample) => sample.nativeTextLayerMounted)).toBe(true)
   expect(samples.every((sample) => sample.nativeTextRunCount > 0 || sample.presentedVisibleTextRunCount > 0)).toBe(true)
   expect(samples.every((sample) => sample.typeGpuDrawText === 'false')).toBe(true)
@@ -354,9 +355,9 @@ test('@browser-webgpu isolated workbook pane renderer draws grid content through
     (runs) => runs.visibleRunCount > 0 && runs.matches.columnHeaderB && runs.matches.bodyRegion && runs.matches.bodyNorth,
   )
   await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(1)
-  await expect(page.getByTestId('grid-native-rect-layer')).toHaveCount(1)
+  await expect(page.getByTestId('grid-native-rect-layer')).toHaveCount(0)
   await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-draw-text', 'false')
-  await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-native-layer-source', 'typegpu-ready-native-visuals')
+  await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-native-layer-source', 'browser-native-text-live')
 
   await saveReadbackArtifact(page, testInfo, 'isolated-pane-renderer-readback.png', 'isolated-pane-renderer-readback')
 })
@@ -373,19 +374,6 @@ test('main workbook shell mounts typegpu-v3 as the only grid renderer', async ({
 })
 
 test('@browser-webgpu @browser-serial main workbook shell grid renders and updates through typegpu', async ({ page }, testInfo) => {
-  const selectedRangeFillPoint = {
-    x: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * 2 + 24,
-    y: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * 2 + Math.floor(PRODUCT_ROW_HEIGHT / 2),
-  }
-  const activeCellFillPoint = {
-    x: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH + 50,
-    y: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT + Math.floor(PRODUCT_ROW_HEIGHT / 2),
-  }
-  const topHeaderSelectionFillPoint = {
-    x: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH + 20,
-    y: Math.floor(PRODUCT_HEADER_HEIGHT / 2),
-  }
-
   await page.setViewportSize({ width: 960, height: 720 })
   await installTypeGpuReadbackHarness(page)
   await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('typegpu-grid-updates'))}`)
@@ -466,27 +454,23 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
   await waitForReadbackSequence(page, valueReadback.sequence)
 
   const rangeProbe = {
-    points: [
-      { name: 'activeCellFill', x: activeCellFillPoint.x, y: activeCellFillPoint.y },
-      { name: 'selectedRangeFill', x: selectedRangeFillPoint.x, y: selectedRangeFillPoint.y },
-      { name: 'topHeaderSelectionFill', x: topHeaderSelectionFillPoint.x, y: topHeaderSelectionFillPoint.y },
-    ],
+    points: [],
     regions: [],
   } as const
 
   await expectPresentedOverlayRects(page, 'range selection fill')
-  const rangeReadback = await waitForReadback(page, rangeProbe, (result) => {
-    return (
-      result.sequence > valueReadback.sequence &&
-      isSelectionGreenTint(result.points.activeCellFill) &&
-      isSelectionGreenTint(result.points.selectedRangeFill) &&
-      isSelectionGreenTint(result.points.topHeaderSelectionFill)
-    )
-  })
+  await waitForReadback(page, rangeProbe, (result) => result.sequence > valueReadback.sequence)
 
-  expect(isSelectionGreenTint(rangeReadback.points.activeCellFill)).toBe(true)
-  expect(isSelectionGreenTint(rangeReadback.points.selectedRangeFill)).toBe(true)
-  expect(isSelectionGreenTint(rangeReadback.points.topHeaderSelectionFill)).toBe(true)
+  const activeCellFillPoint = await productCellInteriorGridLocalPoint(page, 1, 1)
+  const selectedRangeFillPoint = await productCellInteriorGridLocalPoint(page, 2, 2)
+  const topHeaderSelectionFillPoint = await productColumnHeaderGridLocalPoint(page, 1)
+  const activeCellFill = await waitForCompositedGridLocalPixel(page, activeCellFillPoint, isSelectionGreenTint)
+  const selectedRangeFill = await waitForCompositedGridLocalPixel(page, selectedRangeFillPoint, isSelectionGreenTint)
+  const topHeaderSelectionFill = await waitForCompositedGridLocalPixel(page, topHeaderSelectionFillPoint, isSelectionGreenTint)
+
+  expect(isSelectionGreenTint(activeCellFill)).toBe(true)
+  expect(isSelectionGreenTint(selectedRangeFill)).toBe(true)
+  expect(isSelectionGreenTint(topHeaderSelectionFill)).toBe(true)
   await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-presented-overlay-rect-signature', /^[a-z0-9-]+$/)
   await expectSelectionVisualOpacity(
     page.locator('[data-grid-selection-visual-role="header-fill"]'),
@@ -2397,6 +2381,121 @@ async function waitForNativeTextRunContent(page: Page, text: string): Promise<vo
       { timeout: 10_000 },
     )
     .toBe(true)
+}
+
+async function sampleCompositedGridLocalPixel(page: Page, point: { readonly x: number; readonly y: number }): Promise<ReadbackPoint> {
+  const grid = await page.getByTestId('sheet-grid').boundingBox()
+  if (!grid) {
+    throw new Error('sheet grid is not visible')
+  }
+  const restoreReadbackCanvas = await page.evaluate(() => {
+    const canvas = document.getElementById('gpu-readback-canvas')
+    if (!(canvas instanceof HTMLElement)) {
+      return null
+    }
+    const previousVisibility = canvas.style.visibility
+    canvas.style.visibility = 'hidden'
+    return previousVisibility
+  })
+  let buffer: Buffer
+  try {
+    buffer = await page.screenshot({
+      animations: 'disabled',
+      caret: 'hide',
+      clip: {
+        height: 1,
+        width: 1,
+        x: Math.round(grid.x + point.x),
+        y: Math.round(grid.y + point.y),
+      },
+    })
+  } finally {
+    if (restoreReadbackCanvas !== null) {
+      await page.evaluate((previousVisibility) => {
+        const canvas = document.getElementById('gpu-readback-canvas')
+        if (canvas instanceof HTMLElement) {
+          canvas.style.visibility = previousVisibility
+        }
+      }, restoreReadbackCanvas)
+    }
+  }
+  return await page.evaluate(
+    async ({ dataUrl }) => {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const element = new Image()
+        element.addEventListener('load', () => resolve(element), { once: true })
+        element.addEventListener('error', () => reject(new Error('Failed to decode composited grid screenshot')), { once: true })
+        element.src = dataUrl
+      })
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      const context = canvas.getContext('2d')
+      if (!context) {
+        throw new Error('Missing 2d context for composited grid screenshot analysis')
+      }
+      context.drawImage(image, 0, 0)
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+      return {
+        a: pixels[3] ?? 0,
+        b: pixels[2] ?? 0,
+        g: pixels[1] ?? 0,
+        r: pixels[0] ?? 0,
+      }
+    },
+    { dataUrl: `data:image/png;base64,${buffer.toString('base64')}` },
+  )
+}
+
+async function productCellInteriorGridLocalPoint(
+  page: Page,
+  columnIndex: number,
+  rowIndex: number,
+): Promise<{ readonly x: number; readonly y: number }> {
+  const [columnLeft, columnWidth, rowTop] = await Promise.all([
+    getProductColumnLeft(page, columnIndex),
+    getProductColumnWidth(page, columnIndex),
+    getProductRowTop(page, rowIndex),
+  ])
+  return {
+    x: columnLeft + Math.floor(columnWidth / 2),
+    y: PRODUCT_HEADER_HEIGHT + rowTop + Math.floor(PRODUCT_ROW_HEIGHT / 2),
+  }
+}
+
+async function productColumnHeaderGridLocalPoint(page: Page, columnIndex: number): Promise<{ readonly x: number; readonly y: number }> {
+  const columnLeft = await getProductColumnLeft(page, columnIndex)
+  return {
+    x: columnLeft + 8,
+    y: Math.floor(PRODUCT_HEADER_HEIGHT / 2),
+  }
+}
+
+async function waitForCompositedGridLocalPixel(
+  page: Page,
+  point: { readonly x: number; readonly y: number },
+  predicate: (point: ReadbackPoint) => boolean,
+): Promise<ReadbackPoint> {
+  let lastPoint: ReadbackPoint | null = null
+  try {
+    await expect
+      .poll(
+        async () => {
+          lastPoint = await sampleCompositedGridLocalPixel(page, point)
+          return predicate(lastPoint)
+        },
+        { timeout: 5_000 },
+      )
+      .toBe(true)
+  } catch (error) {
+    throw new Error(`${error instanceof Error ? error.message : String(error)}\nLast composited pixel: ${JSON.stringify(lastPoint)}`, {
+      cause: error,
+    })
+  }
+  if (!lastPoint) {
+    throw new Error('expected composited grid pixel')
+  }
+  return lastPoint
 }
 
 async function waitForReadback(

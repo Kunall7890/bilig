@@ -87,7 +87,7 @@ function appendBodySelectionVisualRects(
         role: 'selection-border',
         key: stableRangeKey('selection-border:range', input.selectionRange, 0, segmentIndex),
         bounds,
-        strokeWidth: 2,
+        strokeWidth: 1,
       })
       segmentIndex += 1
     }

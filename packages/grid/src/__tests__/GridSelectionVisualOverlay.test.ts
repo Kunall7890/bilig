@@ -289,7 +289,7 @@ describe('GridSelectionVisualOverlay', () => {
     ).toBe(false)
   })
 
-  test('chrome-only mode leaves fills to TypeGPU and paints crisp DOM selection chrome', async () => {
+  test('chrome-only mode keeps selection tint and paints crisp DOM selection chrome', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     const geometry = createGeometry()
     const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])

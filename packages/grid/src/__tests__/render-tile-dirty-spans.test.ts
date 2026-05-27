@@ -87,6 +87,7 @@ describe('render tile dirty spans v3', () => {
         dirtyLocalCols: new Uint32Array([1, 2]),
         dirtyLocalRows: new Uint32Array([2, 2]),
         dirtyMasks: new Uint32Array([DirtyMaskV3.Style | DirtyMaskV3.Rect]),
+        textCount: 0,
       }),
     )
 
@@ -94,7 +95,7 @@ describe('render tile dirty spans v3', () => {
     expect(spans.textSpans).toEqual([])
   })
 
-  test('treats metadata-only style masks as stable content', () => {
+  test('maps style-only masks to visual rect and text damage', () => {
     const spans = resolveGridRenderTileDirtySpansV3(
       createTile({
         dirtyLocalCols: new Uint32Array([0, 0]),
@@ -108,8 +109,8 @@ describe('render tile dirty spans v3', () => {
 
     expect(spans).toEqual({
       glyphSpans: [],
-      rectSpans: [],
-      textSpans: [],
+      rectSpans: [{ offset: 0, length: 4 }],
+      textSpans: [{ offset: 0, length: 1 }],
     })
   })
 
@@ -119,6 +120,7 @@ describe('render tile dirty spans v3', () => {
         dirtyLocalCols: new Uint32Array([1, 3, 0, 1]),
         dirtyLocalRows: new Uint32Array([2, 2, 2, 2]),
         dirtyMasks: new Uint32Array([DirtyMaskV3.Style | DirtyMaskV3.Rect, DirtyMaskV3.Style | DirtyMaskV3.Rect]),
+        textCount: 0,
       }),
     )
 

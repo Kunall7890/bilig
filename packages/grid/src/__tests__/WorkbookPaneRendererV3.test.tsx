@@ -263,7 +263,7 @@ describe('WorkbookPaneRendererV3', () => {
     })
   })
 
-  test('keeps native visual layers mounted while the TypeGPU backend is ready', () => {
+  test('keeps TypeGPU as the ready-path visual owner while browser-native text stays live', () => {
     const textPane = createTextTilePane()
 
     const ready = resolveWorkbookPaneTextLayerModeV3({
@@ -274,8 +274,9 @@ describe('WorkbookPaneRendererV3', () => {
     })
     expect(ready.typeGpuDrawText).toBe(false)
     expect(ready.showTypeGpuCanvas).toBe(true)
+    expect(ready.showNativeRectLayer).toBe(false)
     expect(ready.showNativeTextLayer).toBe(true)
-    expect(ready.nativeLayerSource).toBe('typegpu-ready-native-visuals')
+    expect(ready.nativeLayerSource).toBe('browser-native-text-live')
     expect(ready.nativeTilePanes).toHaveLength(1)
 
     const initializing = resolveWorkbookPaneTextLayerModeV3({
@@ -286,8 +287,9 @@ describe('WorkbookPaneRendererV3', () => {
     })
     expect(initializing.typeGpuDrawText).toBe(false)
     expect(initializing.showTypeGpuCanvas).toBe(true)
+    expect(initializing.showNativeRectLayer).toBe(true)
     expect(initializing.showNativeTextLayer).toBe(true)
-    expect(initializing.nativeLayerSource).toBe('typegpu-pending-native-text')
+    expect(initializing.nativeLayerSource).toBe('typegpu-pending-native-visuals')
     expect(initializing.nativeTilePanes).toHaveLength(1)
 
     const unavailable = resolveWorkbookPaneTextLayerModeV3({
@@ -298,12 +300,13 @@ describe('WorkbookPaneRendererV3', () => {
     })
     expect(unavailable.typeGpuDrawText).toBe(false)
     expect(unavailable.showTypeGpuCanvas).toBe(false)
+    expect(unavailable.showNativeRectLayer).toBe(true)
     expect(unavailable.showNativeTextLayer).toBe(true)
     expect(unavailable.nativeLayerSource).toBe('backend-unavailable-live')
     expect(unavailable.nativeTilePanes).toHaveLength(1)
   })
 
-  test('mounts native vector rects from V3 tile packets without a fallback canvas', async () => {
+  test('mounts native vector rects while TypeGPU is not ready yet', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     const host = document.createElement('div')
     Object.defineProperty(host, 'clientWidth', { configurable: true, value: 640 })

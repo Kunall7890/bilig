@@ -246,7 +246,8 @@ function canReuseStaticGridRectsForTile(input: MaterializeGridRenderTileInputV3,
   if (!dirtyMasks || dirtyMasks.length === 0) {
     return false
   }
-  const rectDirtyMask = DirtyMaskV3.Rect | DirtyMaskV3.Border | DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
+  const rectDirtyMask =
+    DirtyMaskV3.Style | DirtyMaskV3.Rect | DirtyMaskV3.Border | DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
   for (const mask of dirtyMasks) {
     if ((mask & rectDirtyMask) !== 0) {
       return false
@@ -448,7 +449,8 @@ function canReuseTextRunsForTile(input: MaterializeGridRenderTileInputV3, tileId
   if (!dirtyMasks || dirtyMasks.length === 0) {
     return false
   }
-  const textDirtyMask = DirtyMaskV3.Value | DirtyMaskV3.Text | DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
+  const textDirtyMask =
+    DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
   for (const mask of dirtyMasks) {
     if ((mask & textDirtyMask) !== 0) {
       return false

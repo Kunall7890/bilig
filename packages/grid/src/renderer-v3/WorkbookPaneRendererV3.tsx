@@ -39,8 +39,9 @@ export interface WorkbookPaneRendererV3Props {
 export interface WorkbookPaneTextLayerModeV3 {
   readonly hasNativeTextLayerRuns: boolean
   readonly nativeHeaderPanes: readonly GridHeaderPaneState[]
-  readonly nativeLayerSource: 'backend-unavailable-live' | 'typegpu-pending-native-text' | 'typegpu-ready-native-visuals'
+  readonly nativeLayerSource: 'backend-unavailable-live' | 'typegpu-pending-native-visuals' | 'browser-native-text-live'
   readonly nativeTilePanes: readonly WorkbookRenderTilePaneState[]
+  readonly showNativeRectLayer: boolean
   readonly showNativeTextLayer: boolean
   readonly showTypeGpuCanvas: boolean
   readonly typeGpuDrawText: boolean
@@ -53,6 +54,7 @@ export function resolveWorkbookPaneTextLayerModeV3(input: {
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
 }): WorkbookPaneTextLayerModeV3 {
   const showTypeGpuCanvas = input.backendStatus !== 'unavailable'
+  const backendReady = input.backendStatus === 'ready'
   const typeGpuDrawText = false
   const nativeHeaderPanes = input.headerPanes
   const nativeTilePanes = input.tilePanes
@@ -62,13 +64,13 @@ export function resolveWorkbookPaneTextLayerModeV3(input: {
   return {
     hasNativeTextLayerRuns,
     nativeHeaderPanes,
-    nativeLayerSource:
-      input.backendStatus === 'ready'
-        ? 'typegpu-ready-native-visuals'
-        : showTypeGpuCanvas
-          ? 'typegpu-pending-native-text'
-          : 'backend-unavailable-live',
+    nativeLayerSource: backendReady
+      ? 'browser-native-text-live'
+      : showTypeGpuCanvas
+        ? 'typegpu-pending-native-visuals'
+        : 'backend-unavailable-live',
     nativeTilePanes,
+    showNativeRectLayer: input.active && !backendReady,
     showNativeTextLayer: input.active && hasNativeTextLayerRuns,
     showTypeGpuCanvas,
     typeGpuDrawText,
@@ -240,7 +242,15 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     headerPanes,
     tilePanes,
   })
-  const { showTypeGpuCanvas, typeGpuDrawText, nativeLayerSource, nativeHeaderPanes, nativeTilePanes, showNativeTextLayer } = textLayerMode
+  const {
+    showNativeRectLayer,
+    showNativeTextLayer,
+    showTypeGpuCanvas,
+    typeGpuDrawText,
+    nativeLayerSource,
+    nativeHeaderPanes,
+    nativeTilePanes,
+  } = textLayerMode
   const presentedHeaderPanes = presentedVisualFrame?.headerPanes ?? []
   const presentedTilePanes = presentedVisualFrame?.tilePanes ?? []
   const presentedHeaderTextRunCount = countHeaderPaneTextRunsV3(presentedHeaderPanes)
@@ -404,15 +414,17 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-canvas-proof-layer="disabled"
         />
       ) : null}
-      <WorkbookPaneNativeRectLayerV3
-        active={active}
-        cameraStore={cameraStore}
-        geometry={geometry}
-        headerPanes={nativeHeaderPanes}
-        presentedScrollSnapshot={presentedVisualFrame?.scrollSnapshot ?? null}
-        scrollTransformStore={scrollTransformStore}
-        tilePanes={nativeTilePanes}
-      />
+      {showNativeRectLayer ? (
+        <WorkbookPaneNativeRectLayerV3
+          active={active}
+          cameraStore={cameraStore}
+          geometry={geometry}
+          headerPanes={nativeHeaderPanes}
+          presentedScrollSnapshot={presentedVisualFrame?.scrollSnapshot ?? null}
+          scrollTransformStore={scrollTransformStore}
+          tilePanes={nativeTilePanes}
+        />
+      ) : null}
       {showNativeTextLayer ? (
         <WorkbookPaneNativeTextLayerV3
           active={active}

@@ -20,7 +20,7 @@ export async function countBlueFillPixelsInCell(page: Page, columnIndex: number,
 }
 
 export async function countDarkReadbackPixelsInCell(page: Page, columnIndex: number, rowIndex: number): Promise<number> {
-  if (await shouldUseVisibleNativeLayerPixels(page)) {
+  if (await shouldUseVisibleNativeTextPixels(page)) {
     return await countDarkPixelsInCell(page, columnIndex, rowIndex)
   }
 
@@ -79,6 +79,67 @@ export async function countDarkReadbackPixelsInCell(page: Page, columnIndex: num
   return readbackPixels > 0 ? readbackPixels : await countDarkPixelsInCell(page, columnIndex, rowIndex)
 }
 
+export async function sampleTypeGpuAveragePixelsInViewportRegion(
+  page: Page,
+  region: { readonly height: number; readonly width: number; readonly x: number; readonly y: number },
+): Promise<{ readonly blue: number; readonly green: number; readonly red: number } | null> {
+  const [grid, canvas] = await Promise.all([
+    page.getByTestId('sheet-grid').boundingBox(),
+    page.getByTestId('grid-pane-renderer').evaluate((node) => {
+      if (!(node instanceof HTMLCanvasElement)) {
+        return null
+      }
+      return {
+        clientHeight: node.clientHeight,
+        clientWidth: node.clientWidth,
+        height: node.height,
+        width: node.width,
+      }
+    }),
+  ])
+  if (!grid || !canvas) {
+    return null
+  }
+  const x0 = region.x - grid.x
+  const y0 = region.y - grid.y
+  const x1 = x0 + region.width
+  const y1 = y0 + region.height
+  if (x1 <= 0 || y1 <= 0 || x0 >= canvas.clientWidth || y0 >= canvas.clientHeight) {
+    return null
+  }
+  const scaleX = canvas.clientWidth > 0 ? canvas.width / canvas.clientWidth : 1
+  const scaleY = canvas.clientHeight > 0 ? canvas.height / canvas.clientHeight : 1
+  return await page.evaluate(
+    ({ readbackRegion }) => {
+      const inspector = (
+        window as Window & {
+          __biligCellReadbackInspector?: {
+            readonly averagePixels: (region: {
+              readonly x0: number
+              readonly y0: number
+              readonly x1: number
+              readonly y1: number
+            }) => { readonly blue: number; readonly green: number; readonly red: number } | null
+            readonly isReady: () => boolean
+          }
+        }
+      ).__biligCellReadbackInspector
+      if (!inspector?.isReady()) {
+        return null
+      }
+      return inspector.averagePixels(readbackRegion)
+    },
+    {
+      readbackRegion: {
+        x0: Math.max(0, x0) * scaleX,
+        x1: Math.min(canvas.clientWidth, x1) * scaleX,
+        y0: Math.max(0, y0) * scaleY,
+        y1: Math.min(canvas.clientHeight, y1) * scaleY,
+      },
+    },
+  )
+}
+
 export async function installTypeGpuCellReadbackHarness(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const globalWindow = window as Window & {
@@ -92,6 +153,12 @@ export async function installTypeGpuCellReadbackHarness(page: Page): Promise<voi
         width: number
       }
       __biligCellReadbackInspector?: {
+        readonly averagePixels: (region: {
+          readonly x0: number
+          readonly y0: number
+          readonly x1: number
+          readonly y1: number
+        }) => { readonly blue: number; readonly green: number; readonly red: number } | null
         readonly countBluePixels: (region: { readonly x0: number; readonly y0: number; readonly x1: number; readonly y1: number }) => number
         readonly countDarkPixels: (region: { readonly x0: number; readonly y0: number; readonly x1: number; readonly y1: number }) => number
         readonly countGreenPixels: (region: {
@@ -150,6 +217,41 @@ export async function installTypeGpuCellReadbackHarness(page: Page): Promise<voi
       return count
     }
 
+    const averagePixelsInRegion = (region: { readonly x0: number; readonly y0: number; readonly x1: number; readonly y1: number }) => {
+      if (!readbackState.ready) {
+        return null
+      }
+      const x0 = Math.max(0, Math.floor(region.x0))
+      const y0 = Math.max(0, Math.floor(region.y0))
+      const x1 = Math.min(readbackState.width, Math.ceil(region.x1))
+      const y1 = Math.min(readbackState.height, Math.ceil(region.y1))
+      let red = 0
+      let green = 0
+      let blue = 0
+      let count = 0
+      for (let y = y0; y < y1; y += 1) {
+        for (let x = x0; x < x1; x += 1) {
+          const offset = y * readbackState.bytesPerRow + x * 4
+          const alpha = readbackState.bgra[offset + 3] ?? 0
+          if (alpha <= 200) {
+            continue
+          }
+          blue += readbackState.bgra[offset + 0] ?? 255
+          green += readbackState.bgra[offset + 1] ?? 255
+          red += readbackState.bgra[offset + 2] ?? 255
+          count += 1
+        }
+      }
+      if (count === 0) {
+        return null
+      }
+      return {
+        blue: Math.round(blue / count),
+        green: Math.round(green / count),
+        red: Math.round(red / count),
+      }
+    }
+
     const countDarkPixelsInRegion = (region: { readonly x0: number; readonly y0: number; readonly x1: number; readonly y1: number }) => {
       if (!readbackState.ready) {
         return 0
@@ -175,6 +277,9 @@ export async function installTypeGpuCellReadbackHarness(page: Page): Promise<voi
     }
 
     globalWindow.__biligCellReadbackInspector = {
+      averagePixels(region) {
+        return averagePixelsInRegion(region)
+      },
       countBluePixels(region) {
         return countPixels(region, 'blue')
       },
@@ -294,7 +399,7 @@ export async function countBlueFillReadbackPixelsInCell(page: Page, columnIndex:
 }
 
 async function countFillReadbackPixelsInCell(page: Page, columnIndex: number, rowIndex: number, color: 'blue' | 'green'): Promise<number> {
-  if (await shouldUseVisibleNativeLayerPixels(page)) {
+  if (await shouldUseVisibleNativeRectPixels(page)) {
     return await countFillPixelsInCell(page, columnIndex, rowIndex, color)
   }
 
@@ -360,20 +465,20 @@ async function countFillReadbackPixelsInCell(page: Page, columnIndex: number, ro
   return readbackPixels > 0 ? readbackPixels : await countFillPixelsInCell(page, columnIndex, rowIndex, color)
 }
 
-async function shouldUseVisibleNativeLayerPixels(page: Page): Promise<boolean> {
+async function shouldUseVisibleNativeTextPixels(page: Page): Promise<boolean> {
   return await page.evaluate(() => {
     const renderer = document.querySelector('[data-testid="grid-pane-renderer"]')
-    const nativeRectLayer = document.querySelector('[data-testid="grid-native-rect-layer"]')
     const nativeTextLayer = document.querySelector('[data-testid="grid-native-text-layer"]')
     if (!(renderer instanceof HTMLElement)) {
-      return nativeRectLayer instanceof HTMLElement || nativeTextLayer instanceof HTMLElement
+      return nativeTextLayer instanceof HTMLElement
     }
-    return (
-      renderer.getAttribute('data-v3-native-layer-source') === 'typegpu-ready-native-visuals' ||
-      renderer.getAttribute('data-v3-draw-text') === 'false' ||
-      nativeRectLayer instanceof HTMLElement ||
-      nativeTextLayer instanceof HTMLElement
-    )
+    return renderer.getAttribute('data-v3-draw-text') === 'false' || nativeTextLayer instanceof HTMLElement
+  })
+}
+
+async function shouldUseVisibleNativeRectPixels(page: Page): Promise<boolean> {
+  return await page.evaluate(() => {
+    return document.querySelector('[data-testid="grid-native-rect-layer"]') instanceof HTMLElement
   })
 }
 

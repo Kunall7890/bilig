@@ -87,7 +87,7 @@ export function GridSelectionVisualOverlay(props: GridSelectionVisualOverlayProp
         >
           {rect.role === 'selection-border' || rect.role === 'active-border'
             ? SELECTION_BORDER_EDGE_NAMES.map((edge) => (
-                <div aria-hidden="true" data-grid-selection-visual-edge={edge} key={edge} style={styleForSelectionBorderEdge(edge)} />
+                <div aria-hidden="true" data-grid-selection-visual-edge={edge} key={edge} style={styleForSelectionBorderEdge(rect, edge)} />
               ))
             : null}
         </div>
@@ -182,7 +182,8 @@ function styleForRect(
   }
 }
 
-function styleForSelectionBorderEdge(edge: (typeof SELECTION_BORDER_EDGE_NAMES)[number]): CSSProperties {
+function styleForSelectionBorderEdge(rect: GridSelectionVisualRect, edge: (typeof SELECTION_BORDER_EDGE_NAMES)[number]): CSSProperties {
+  const strokeWidth = Math.max(1, rect.strokeWidth ?? SELECTION_STROKE_WIDTH)
   const base: CSSProperties = {
     backgroundColor: workbookThemeColors.selectionAccent,
     position: 'absolute',
@@ -191,34 +192,34 @@ function styleForSelectionBorderEdge(edge: (typeof SELECTION_BORDER_EDGE_NAMES)[
     case 'top':
       return {
         ...base,
-        height: SELECTION_STROKE_WIDTH,
-        left: -SELECTION_STROKE_WIDTH,
+        height: strokeWidth,
+        left: -strokeWidth,
         right: 0,
-        top: -SELECTION_STROKE_WIDTH,
+        top: -strokeWidth,
       }
     case 'right':
       return {
         ...base,
-        bottom: SELECTION_STROKE_WIDTH,
+        bottom: strokeWidth,
         right: 0,
         top: 0,
-        width: SELECTION_STROKE_WIDTH,
+        width: strokeWidth,
       }
     case 'bottom':
       return {
         ...base,
         bottom: 0,
-        height: SELECTION_STROKE_WIDTH,
-        left: -SELECTION_STROKE_WIDTH,
+        height: strokeWidth,
+        left: -strokeWidth,
         right: 0,
       }
     case 'left':
       return {
         ...base,
-        bottom: SELECTION_STROKE_WIDTH,
-        left: -SELECTION_STROKE_WIDTH,
+        bottom: strokeWidth,
+        left: -strokeWidth,
         top: 0,
-        width: SELECTION_STROKE_WIDTH,
+        width: strokeWidth,
       }
   }
 }

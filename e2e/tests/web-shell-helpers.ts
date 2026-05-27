@@ -37,6 +37,7 @@ export {
   countGreenFillPixelsInCell,
   countGreenFillReadbackPixelsInCell,
   installTypeGpuCellReadbackHarness,
+  sampleTypeGpuAveragePixelsInViewportRegion,
 } from './web-shell-typegpu-readback-helpers.js'
 
 interface ToolbarSyncAction {
@@ -620,6 +621,45 @@ export async function waitForWorkbookReady(page: Page) {
     }
   }
   await waitForWorkbookReadyOnce(page)
+}
+
+export async function waitForTypeGpuVisibleFrame(page: Page): Promise<void> {
+  await expect
+    .poll(
+      async () =>
+        await page.getByTestId('grid-pane-renderer').evaluate((node) => {
+          if (!(node instanceof HTMLElement)) {
+            return 'missing-renderer'
+          }
+          const backendStatus = node.getAttribute('data-v3-backend-status') ?? ''
+          if (backendStatus !== 'ready') {
+            return `backend:${backendStatus}`
+          }
+          const frameProofStatus = node.getAttribute('data-v3-frame-proof-status') ?? ''
+          if (frameProofStatus !== 'presented') {
+            return `frame:${frameProofStatus}`
+          }
+          if (node.getAttribute('data-v3-has-presented-visible-frame') !== 'true') {
+            return 'visible-frame:pending'
+          }
+          const currentSelection = node.getAttribute('data-v3-current-selection-revision') ?? ''
+          const presentedSelection = node.getAttribute('data-v3-presented-selection-revision') ?? ''
+          if (currentSelection.length > 0 && currentSelection !== presentedSelection) {
+            return 'selection:pending'
+          }
+          const currentViewport = node.getAttribute('data-v3-current-viewport-revision') ?? ''
+          const presentedViewport = node.getAttribute('data-v3-presented-viewport-revision') ?? ''
+          if (currentViewport.length > 0 && currentViewport !== presentedViewport) {
+            return 'viewport:pending'
+          }
+          return 'ready'
+        }),
+      {
+        message: 'TypeGPU visible frame should be presented before screenshot pixel assertions',
+        timeout: 5_000,
+      },
+    )
+    .toBe('ready')
 }
 
 async function waitForWorkbookReadyOnce(page: Page): Promise<void> {

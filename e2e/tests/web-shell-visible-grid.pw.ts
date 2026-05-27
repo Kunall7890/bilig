@@ -74,7 +74,7 @@ test('@browser-ci web app paints deep querystring-selected cell content in the v
     })
     .toMatchObject({
       fallbackMounted: false,
-      nativeLayerSource: 'typegpu-ready-native-visuals',
+      nativeLayerSource: 'browser-native-text-live',
       textOverlayMounted: true,
       typeGpuDrawText: 'false',
       typeGpuMode: 'typegpu-v3',
@@ -210,7 +210,7 @@ test('@browser-ci web app keeps dense accounting-sheet text payloads complete in
     })
     .toMatchObject({
       fallbackMounted: false,
-      nativeLayerSource: 'typegpu-ready-native-visuals',
+      nativeLayerSource: 'browser-native-text-live',
       textOverlayMounted: true,
       typeGpuDrawText: 'false',
       typeGpuMode: 'typegpu-v3',
@@ -595,7 +595,7 @@ test('@browser-ci web app remaps visible TypeGPU cells exactly while scrolling i
     })
     .toMatchObject({
       fallbackMounted: false,
-      nativeLayerSource: 'typegpu-ready-native-visuals',
+      nativeLayerSource: 'browser-native-text-live',
       textOverlayMounted: true,
       typeGpuDrawText: 'false',
       typeGpuMode: 'typegpu-v3',

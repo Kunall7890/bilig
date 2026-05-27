@@ -14,6 +14,10 @@ const readyTypeGpuSurface: BiligRenderedSurfaceState = {
   gridLocalRenderRevision: 'rev-local-2',
   gridProjectedRenderRevision: 'rev-3',
   gridWidth: 500,
+  nativeRectCount: 0,
+  nativeRectLayerMounted: false,
+  nativeTextLayerMounted: true,
+  nativeTextRunCount: 12,
   typeGpu: {
     authoritativeRenderRevision: 'rev-3',
     backendStatus: 'ready',
@@ -36,6 +40,11 @@ const readyTypeGpuSurface: BiligRenderedSurfaceState = {
     hasPresentedVisibleFrame: true,
     localRenderRevision: 'rev-local-2',
     mode: 'typegpu-v3',
+    nativeHeaderPaneCount: 1,
+    nativeHeaderTextRunCount: 1,
+    nativeLayerSource: 'browser-native-text-live',
+    nativeTilePaneCount: 1,
+    nativeTileTextRunCount: 11,
     pixelHeight: 600,
     pixelWidth: 1000,
     presentedContentSignature: 'content:current',
@@ -230,6 +239,17 @@ describe('same-corpus Bilig rendered surface proof', () => {
 
     expect(readiness.ready).toBe(false)
     expect(readiness.gaps).toContain('presented tile/header pane counts do not cover the current visible panes')
+  })
+
+  it('rejects browser-native rect ownership in the ready TypeGPU path', () => {
+    const readiness = biligRenderedSurfaceReadiness({
+      ...readyTypeGpuSurface,
+      nativeRectCount: 24,
+      nativeRectLayerMounted: true,
+    })
+
+    expect(readiness.ready).toBe(false)
+    expect(readiness.gaps).toContain('ready TypeGPU path must not mount browser-native rects')
   })
 
   it('rejects stale visible text and rect payloads even when the frame signature is presented', () => {

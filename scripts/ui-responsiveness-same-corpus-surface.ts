@@ -189,15 +189,15 @@ export function biligRenderedSurfaceReadiness(state: BiligRenderedSurfaceState |
   if (!canvasPixelsMatchViewport(canvas, state)) {
     gaps.push('TypeGPU canvas backing pixels do not cover the viewport')
   }
-  if (canvas.nativeLayerSource === 'typegpu-ready-native-visuals') {
-    if (!state.nativeRectLayerMounted || state.nativeRectCount <= 0) {
-      gaps.push('ready TypeGPU native visual rect proof is missing')
+  if (canvas.nativeLayerSource === 'browser-native-text-live') {
+    if (state.nativeRectLayerMounted || state.nativeRectCount > 0) {
+      gaps.push('ready TypeGPU path must not mount browser-native rects')
     }
     if ((canvas.currentTextRunCount ?? 0) > 0 && (!state.nativeTextLayerMounted || state.nativeTextRunCount <= 0)) {
-      gaps.push('ready TypeGPU native visual text proof is missing')
+      gaps.push('ready TypeGPU browser-native text proof is missing')
     }
     if ((canvas.nativeTilePaneCount ?? 0) !== canvas.tilePaneCount || (canvas.nativeHeaderPaneCount ?? 0) !== canvas.headerPaneCount) {
-      gaps.push('ready TypeGPU native visual pane coverage does not match current panes')
+      gaps.push('ready TypeGPU browser-native text pane coverage does not match current panes')
     }
   }
   if (!hasText(canvas.currentContentSignature)) {

@@ -605,8 +605,8 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       gridProjectedRenderRevision: '2',
       gridSelectionVisibleRevision: 'grid-selection-before',
       gridWidth: 720,
-      nativeRectCount: 4,
-      nativeRectLayerMounted: true,
+      nativeRectCount: 0,
+      nativeRectLayerMounted: false,
       nativeTextLayerMounted: true,
       nativeTextRunCount: 3,
       typeGpu: {
@@ -692,8 +692,8 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       gridProjectedRenderRevision: 'projected-9',
       gridSelectionVisibleRevision: 'grid-selection-current',
       gridWidth: 720,
-      nativeRectCount: 4,
-      nativeRectLayerMounted: true,
+      nativeRectCount: 0,
+      nativeRectLayerMounted: false,
       nativeTextLayerMounted: true,
       nativeTextRunCount: 3,
       typeGpu: {

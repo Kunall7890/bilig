@@ -130,7 +130,7 @@ export function buildDynamicGridOverlayBatchV3(input: {
 
 function appendStructuralGridlines(input: { readonly geometry: GridGeometrySnapshot; readonly fillRects: GridGpuRect[] }): void {
   const parsedColor = parseGpuColor(workbookThemeColors.gridBorder)
-  const color = { ...parsedColor, a: 0.58 }
+  const color = { ...parsedColor, a: 1 }
   appendCellPaneStructuralGridlines({
     color,
     fillRects: input.fillRects,
@@ -379,7 +379,7 @@ function appendSelectionVisualOverlay(input: {
       case 'selection-border':
       case 'active-border':
         if (showSelectionChrome) {
-          appendBorderRects(input.borderRects, rect.bounds, borderColor, rect.strokeWidth ?? (rect.role === 'active-border' ? 2 : 1))
+          appendSelectionBorderRects(input.borderRects, rect.bounds, borderColor, rect.strokeWidth ?? 1)
         }
         break
       case 'fill-handle':
@@ -558,6 +558,58 @@ function hostRect(geometry: GridGeometrySnapshot): Rectangle {
 
 function appendBorderRects(target: GridGpuRect[], rect: Rectangle, color: GridGpuRect['color'], thickness: number): void {
   appendBorderRectsForSides(target, rect, color, thickness, { bottom: true, left: true, right: true, top: true })
+}
+
+function appendSelectionBorderRects(target: GridGpuRect[], rect: Rectangle, color: GridGpuRect['color'], thickness: number): void {
+  appendSelectionBorderRectsForSides(target, rect, color, thickness, { bottom: true, left: true, right: true, top: true })
+}
+
+function appendSelectionBorderRectsForSides(
+  target: GridGpuRect[],
+  rect: Rectangle,
+  color: GridGpuRect['color'],
+  thickness: number,
+  sides: BorderSides,
+): void {
+  const nextRects: GridGpuRect[] = []
+  const resolvedThickness = Math.max(1, thickness)
+  if (sides.top) {
+    nextRects.push({
+      x: rect.x - resolvedThickness,
+      y: rect.y - resolvedThickness,
+      width: rect.width + resolvedThickness,
+      height: resolvedThickness,
+      color,
+    })
+  }
+  if (sides.bottom) {
+    nextRects.push({
+      x: rect.x - resolvedThickness,
+      y: rect.y + rect.height - resolvedThickness,
+      width: rect.width + resolvedThickness,
+      height: resolvedThickness,
+      color,
+    })
+  }
+  if (sides.left) {
+    nextRects.push({
+      x: rect.x - resolvedThickness,
+      y: rect.y,
+      width: resolvedThickness,
+      height: Math.max(0, rect.height - resolvedThickness),
+      color,
+    })
+  }
+  if (sides.right) {
+    nextRects.push({
+      x: rect.x + rect.width - resolvedThickness,
+      y: rect.y,
+      width: resolvedThickness,
+      height: Math.max(0, rect.height - resolvedThickness),
+      color,
+    })
+  }
+  target.push(...nextRects.filter((candidate) => candidate.width > 0 && candidate.height > 0))
 }
 
 function appendBorderRectsForSides(

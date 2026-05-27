@@ -23,8 +23,14 @@ import {
   settleWorkbookScrollPerf,
   startWorkbookScrollPerf,
   stopWorkbookScrollPerf,
+  waitForTypeGpuVisibleFrame,
   waitForWorkbookReady,
 } from './web-shell-helpers.js'
+
+test.beforeEach(async ({ page }) => {
+  await installTypeGpuCellReadbackHarness(page)
+})
+
 test('web app keeps sheet tabs and status bar visible in a short viewport', async ({ page }) => {
   await page.setViewportSize({ width: 2048, height: 220 })
   await page.goto('/')
@@ -357,16 +363,17 @@ test('@browser-ci web app paints active-cell seams as one owned stroke over grid
   await waitForWorkbookReady(page)
 
   await selectAddress(page, 'A1')
+  await waitForTypeGpuVisibleFrame(page)
   const activeCellBox = await getProductCellRangeBox(page, 0, 0, 0, 0)
 
-  const leftStroke = await sampleViewportPixel(page, activeCellBox.x - 1, activeCellBox.y + 8)
-  const afterLeftStroke = await sampleViewportPixel(page, activeCellBox.x, activeCellBox.y + 8)
-  const topStroke = await sampleViewportPixel(page, activeCellBox.x + 8, activeCellBox.y - 1)
-  const afterTopStroke = await sampleViewportPixel(page, activeCellBox.x + 8, activeCellBox.y)
-  const rightStroke = await sampleViewportPixel(page, activeCellBox.x + activeCellBox.width - 1, activeCellBox.y + 8)
-  const afterRightStroke = await sampleViewportPixel(page, activeCellBox.x + activeCellBox.width, activeCellBox.y + 8)
-  const bottomStroke = await sampleViewportPixel(page, activeCellBox.x + 8, activeCellBox.y + activeCellBox.height - 1)
-  const afterBottomStroke = await sampleViewportPixel(page, activeCellBox.x + 8, activeCellBox.y + activeCellBox.height)
+  const leftStroke = await sampleCompositedViewportPixel(page, activeCellBox.x - 1, activeCellBox.y + 8)
+  const afterLeftStroke = await sampleCompositedViewportPixel(page, activeCellBox.x, activeCellBox.y + 8)
+  const topStroke = await sampleCompositedViewportPixel(page, activeCellBox.x + 8, activeCellBox.y - 1)
+  const afterTopStroke = await sampleCompositedViewportPixel(page, activeCellBox.x + 8, activeCellBox.y)
+  const rightStroke = await sampleCompositedViewportPixel(page, activeCellBox.x + activeCellBox.width - 1, activeCellBox.y + 8)
+  const afterRightStroke = await sampleCompositedViewportPixel(page, activeCellBox.x + activeCellBox.width, activeCellBox.y + 8)
+  const bottomStroke = await sampleCompositedViewportPixel(page, activeCellBox.x + 8, activeCellBox.y + activeCellBox.height - 1)
+  const afterBottomStroke = await sampleCompositedViewportPixel(page, activeCellBox.x + 8, activeCellBox.y + activeCellBox.height)
 
   expect(isSelectionAccentPixel(leftStroke), 'active cell left seam should replace the header/body gridline').toBe(true)
   expect(isSelectionAccentPixel(afterLeftStroke), 'active cell left seam should not leave a second green line inside the body').toBe(false)
@@ -399,6 +406,7 @@ test('@browser-ci web app keeps selected row headers and body cells on a single 
   await dragProductHeaderSelection(page, 'row', 7, 14)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!8:15')
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
+  await waitForTypeGpuVisibleFrame(page)
 
   const gridLocator = page.getByTestId('sheet-grid')
   await expect(gridLocator).toBeVisible()
@@ -409,10 +417,10 @@ test('@browser-ci web app keeps selected row headers and body cells on a single 
   const rowTop = await getProductRowTop(page, 7)
   const seamY = grid.y + PRODUCT_HEADER_HEIGHT + rowTop + 10
   const internalRowSeamY = grid.y + PRODUCT_HEADER_HEIGHT + (await getProductRowTop(page, 8))
-  const headerInteriorPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 4, seamY)
-  const headerLastPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 1, seamY)
-  const bodyFirstPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH, seamY)
-  const headerInternalSeamPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 12, internalRowSeamY)
+  const headerInteriorPixel = await sampleCompositedViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 4, seamY)
+  const headerLastPixel = await sampleCompositedViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 1, seamY)
+  const bodyFirstPixel = await sampleCompositedViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH, seamY)
+  const headerInternalSeamPixel = await sampleCompositedViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 12, internalRowSeamY)
   const selectedHeaderTextPixels = await countDarkViewportPixels(page, {
     height: PRODUCT_ROW_HEIGHT,
     width: PRODUCT_ROW_MARKER_WIDTH - 16,
@@ -450,6 +458,7 @@ test('@browser-ci web app keeps selected row headers and body cells on a single 
 test('@browser-ci web app leaves the top-left selector transparent so the header seam has one owner', async ({ page }) => {
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-corner-header-single-owner'))}&persist=0`)
   await waitForWorkbookReady(page)
+  await waitForTypeGpuVisibleFrame(page)
 
   const cornerButton = page.getByTestId('grid-select-entire-sheet')
   await expect(cornerButton).toHaveCSS('border-right-width', '0px')
@@ -463,8 +472,8 @@ test('@browser-ci web app leaves the top-left selector transparent so the header
     throw new Error('sheet grid is not visible')
   }
   const headerMidY = grid.y + Math.floor(PRODUCT_HEADER_HEIGHT / 2)
-  const ownedSeamPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 1, headerMidY)
-  const firstColumnHeaderPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH, headerMidY)
+  const ownedSeamPixel = await sampleCompositedViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 1, headerMidY)
+  const firstColumnHeaderPixel = await sampleCompositedViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH, headerMidY)
 
   expect(isGridBorderPixel(ownedSeamPixel), 'corner/header seam should have exactly one structural gridline').toBe(true)
   expect(isGridBorderPixel(firstColumnHeaderPixel), 'column header should not start with a second adjacent gridline').toBe(false)
@@ -473,6 +482,7 @@ test('@browser-ci web app leaves the top-left selector transparent so the header
 test('@browser-ci web app keeps unselected header/body pane seams to one structural gridline', async ({ page }) => {
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-unselected-pane-single-seam'))}&persist=0`)
   await waitForWorkbookReady(page)
+  await waitForTypeGpuVisibleFrame(page)
 
   const gridLocator = page.getByTestId('sheet-grid')
   await expect(gridLocator).toBeVisible()
@@ -483,14 +493,14 @@ test('@browser-ci web app keeps unselected header/body pane seams to one structu
 
   const rowTop = await getProductRowTop(page, 9)
   const rowMidY = grid.y + PRODUCT_HEADER_HEIGHT + rowTop + Math.floor(PRODUCT_ROW_HEIGHT / 2)
-  const headerSeamPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 1, rowMidY)
-  const bodyFirstPixel = await sampleViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH, rowMidY)
+  const headerSeamPixel = await sampleCompositedViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH - 1, rowMidY)
+  const bodyFirstPixel = await sampleCompositedViewportPixel(page, grid.x + PRODUCT_ROW_MARKER_WIDTH, rowMidY)
 
   const columnLeft = await getProductColumnLeft(page, 2)
   const columnWidth = await getProductColumnWidth(page, 2)
   const columnMidX = grid.x + columnLeft + Math.floor(columnWidth / 2)
-  const columnHeaderSeamPixel = await sampleViewportPixel(page, columnMidX, grid.y + PRODUCT_HEADER_HEIGHT - 1)
-  const bodyTopPixel = await sampleViewportPixel(page, columnMidX, grid.y + PRODUCT_HEADER_HEIGHT)
+  const columnHeaderSeamPixel = await sampleCompositedViewportPixel(page, columnMidX, grid.y + PRODUCT_HEADER_HEIGHT - 1)
+  const bodyTopPixel = await sampleCompositedViewportPixel(page, columnMidX, grid.y + PRODUCT_HEADER_HEIGHT)
 
   expect(isGridBorderPixel(headerSeamPixel), 'row-header/body seam should have exactly one structural gridline').toBe(true)
   expect(isGridBorderPixel(bodyFirstPixel), 'first body pixel should not draw a second adjacent gridline').toBe(false)
@@ -1308,14 +1318,16 @@ async function sampleCellInteriorPixel(
     })),
   ])
   const sampleSize = 6
+  const sampleX = Math.round(grid.x + columnLeft - scroll.scrollLeft + columnWidth / 2 - sampleSize / 2)
+  const sampleY = Math.round(grid.y + PRODUCT_HEADER_HEIGHT + rowTop - scroll.scrollTop + rowHeight / 2 - sampleSize / 2)
   const buffer = await page.screenshot({
     animations: 'disabled',
     caret: 'hide',
     clip: {
       height: sampleSize,
       width: sampleSize,
-      x: Math.round(grid.x + columnLeft - scroll.scrollLeft + columnWidth / 2 - sampleSize / 2),
-      y: Math.round(grid.y + PRODUCT_HEADER_HEIGHT + rowTop - scroll.scrollTop + rowHeight / 2 - sampleSize / 2),
+      x: sampleX,
+      y: sampleY,
     },
   })
   return await page.evaluate(
@@ -1362,7 +1374,7 @@ async function sampleCellInteriorPixel(
   )
 }
 
-async function sampleViewportPixel(
+async function sampleCompositedViewportPixel(
   page: Page,
   x: number,
   y: number,

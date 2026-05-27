@@ -311,6 +311,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         ]
       })
   }, [props.previewRanges, props.sheetName, getCellLocalBounds, visibleRange.height, visibleRange.width, visibleRange.x, visibleRange.y])
+  const [paneRendererBackendStatus, setPaneRendererBackendStatus] = useState<WorkbookPaneSurfaceBackendStatusV3>('idle')
   const showSelectionFillHandle =
     !props.isEditingCell &&
     displaySelectionRange !== null &&
@@ -319,6 +320,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
     fillPreviewRange === null &&
     !renderState.isFillHandleDragging &&
     !isRangeMoveDragging
+  const typeGpuBackendReady = paneRendererBackendStatus === 'ready'
   const dynamicOverlayBuilder = useCallback(
     (geometry: NonNullable<typeof v2Geometry>) => {
       return buildDynamicGridOverlayBatchV3({
@@ -333,7 +335,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         selectionRange: displaySelectionRange,
         showFillHandle: showSelectionFillHandle,
         showHoverOverlay: true,
-        showSelectionOverlay: true,
+        showSelectionOverlay: !typeGpuBackendReady,
         resizeGuideColumn,
         resizeGuideColumnWidth,
         resizeGuideRow,
@@ -354,6 +356,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
       resizeGuideRowHeight,
       displaySelectionCol,
       displaySelectionRow,
+      typeGpuBackendReady,
     ],
   )
   const editorTargetAddress =
@@ -401,8 +404,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
     ],
   )
   const workbookDisplayFontSize = workbookDisplayFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)
-  const [paneRendererBackendStatus, setPaneRendererBackendStatus] = useState<WorkbookPaneSurfaceBackendStatusV3>('idle')
-  const selectionChromeMode = paneRendererBackendStatus === 'ready' ? 'chrome-only' : 'visible'
+  const selectionChromeMode = typeGpuBackendReady ? 'chrome-only' : 'visible'
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-[var(--wb-surface)]">
