@@ -37,7 +37,7 @@ export class WorkPaperEngineEventTracker {
 
   attach(engine: SpreadsheetEngine): void {
     this.unsubscribe?.()
-    this.trackedEvents = []
+    this.trackedEvents.length = 0
     if (!hasTrackedEngineSubscription(engine.events)) {
       throw new WorkPaperOperationError('Tracked engine event subscription is unavailable')
     }
@@ -66,7 +66,7 @@ export class WorkPaperEngineEventTracker {
   }
 
   clearEvents(): void {
-    this.trackedEvents = []
+    this.trackedEvents.length = 0
   }
 
   drain(): TrackedEngineEvent[] {
@@ -87,12 +87,12 @@ export class WorkPaperEngineEventTracker {
   withCaptureDisabled<T>(callback: () => T): T {
     const previous = this.captureEnabled
     this.captureEnabled = false
-    this.trackedEvents = []
+    this.trackedEvents.length = 0
     try {
       return callback()
     } finally {
       this.captureEnabled = previous
-      this.trackedEvents = []
+      this.trackedEvents.length = 0
     }
   }
 

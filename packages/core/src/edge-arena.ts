@@ -91,6 +91,26 @@ export class EdgeArena {
     }
   }
 
+  replaceWith(slice: EdgeSlice, length: number, writeValues: (buffer: Uint32Array, ptr: number) => void): EdgeSlice {
+    if (length <= 0) {
+      this.free(slice)
+      return EMPTY_SLICE
+    }
+
+    let target = slice
+    if (target.cap < length || target.ptr < 0) {
+      this.free(slice)
+      target = this.alloc(length)
+    }
+
+    writeValues(this.buffer, target.ptr)
+    return {
+      ptr: target.ptr,
+      len: length,
+      cap: target.cap,
+    }
+  }
+
   read(slice: EdgeSlice): Uint32Array {
     if (slice.ptr < 0 || slice.len <= 0) {
       return EMPTY_U32

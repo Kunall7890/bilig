@@ -463,13 +463,13 @@ function tryInstallFreshDirectScalarBulkReverseEdges(
     seenDependencyCells[dependencyEntity] = epoch
   }
 
-  const packedReverseDependents = new Uint32Array(packedDependencyEntities.length)
-  for (const entry of prepared) {
-    for (let offset = 0; offset < entry.dependencies.dependencyEntityCount; offset += 1) {
-      packedReverseDependents[entry.dependencyEntityOffset + offset] = entry.formulaEntity
+  const reverseBlock = edgeArena.replaceWith(edgeArena.empty(), packedDependencyEntities.length, (buffer, ptr) => {
+    for (const entry of prepared) {
+      for (let offset = 0; offset < entry.dependencies.dependencyEntityCount; offset += 1) {
+        buffer[ptr + entry.dependencyEntityOffset + offset] = entry.formulaEntity
+      }
     }
-  }
-  const reverseBlock = edgeArena.replace(edgeArena.empty(), packedReverseDependents)
+  })
   for (let offset = 0; offset < packedDependencyEntities.length; offset += 1) {
     setFormulaBindingReverseEdgeSlice(serviceArgs.reverseState, packedDependencyEntities[offset]!, subSlice(reverseBlock, offset, 1))
   }

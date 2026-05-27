@@ -11,7 +11,7 @@ import {
   canRewriteCompiledPreservingDirectScalar,
 } from './formula-binding-shape-helpers.js'
 import { buildDirectScalarDescriptor } from './formula-binding-direct-scalar.js'
-import { renameDirectAggregateDescriptorSheet, type ParsedCompiledFormula } from './formula-binding-direct-descriptors.js'
+import type { ParsedCompiledFormula } from './formula-binding-direct-descriptors.js'
 import { appendSheetRenameSourceTransformRecord, type FormulaBindingSourceRenameTransform } from './formula-binding-dependency-helpers.js'
 import type { FormulaBindingSheetIndex } from './formula-binding-sheet-index.js'
 import type {
@@ -25,13 +25,10 @@ function renameDirectAggregateDescriptorSheetForRuntime(args: {
   readonly oldSheetName: string
   readonly newSheetName: string
 }): RuntimeDirectAggregateDescriptor {
-  const previous = args.descriptor
-  const next = renameDirectAggregateDescriptorSheet({
-    descriptor: previous,
-    oldSheetName: args.oldSheetName,
-    newSheetName: args.newSheetName,
-  })
-  return next
+  if (args.descriptor.sheetName === args.oldSheetName) {
+    ;(args.descriptor as { sheetName: string }).sheetName = args.newSheetName
+  }
+  return args.descriptor
 }
 
 export function createFormulaBindingSheetRenameHandler(args: {
