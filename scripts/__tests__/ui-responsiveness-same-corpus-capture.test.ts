@@ -204,17 +204,26 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(args?.outputPath.endsWith('/tmp/refreshed-capture.json')).toBe(true)
   })
 
-  it('rejects incumbent product refreshes until they can be independently authenticated', () => {
-    expect(() =>
-      parseRefreshProductArgs([
-        '--refresh-product',
-        'google-sheets',
-        '--from-capture',
-        '.cache/ui-responsiveness/same-corpus-capture.json',
-        '--output',
-        'tmp/refreshed-capture.json',
-      ]),
-    ).toThrow('Same-corpus product refresh currently supports --refresh-product bilig only.')
+  it('parses diagnostic product refresh options for Google Sheets evidence refreshes', () => {
+    const args = parseRefreshProductArgs([
+      '--refresh-product',
+      'google-sheets',
+      '--from-capture',
+      '.cache/ui-responsiveness/same-corpus-capture.json',
+      '--output',
+      'tmp/refreshed-capture.json',
+      '--google-sheets-storage-state',
+      'tmp/google-state.json',
+      '--allow-incomplete-evidence',
+      '--headed',
+    ])
+
+    expect(args).toMatchObject({
+      allowIncompleteEvidence: true,
+      headless: false,
+      product: 'google-sheets',
+    })
+    expect(args?.googleSheetsStorageStatePath?.endsWith('/tmp/google-state.json')).toBe(true)
   })
 
   it('rejects ambiguous Bilig production serving and explicit URL options', () => {
@@ -907,6 +916,46 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     )
   })
 
+  it('rebuilds a capture case with fresh Google Sheets mutation target proof without rewriting Bilig proof', () => {
+    const entry = sameCorpusCaptureCase({
+      workload: 'fill-format-change',
+      biligRuntimeProof: sameCorpusBiligRuntimeProof('production'),
+    })
+    const oldBiligProof = entry.scenarioProof.semanticUiProof.products.find((proof) => proof.product === 'bilig')
+    const refreshedGoogleSheets = {
+      ...sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export', 'fill-format-change'),
+      operationResponseMsSamples: [90, 91, 92],
+      committedTargetProofMsSamples: [120, 121, 122],
+    }
+    const visualProofs = [
+      ...sameCorpusVisualProofsFromScenarioProof(entry.scenarioProof, entry.id).filter((proof) => proof.product !== 'google-sheets'),
+      sameCorpusVisualProof('google-sheets', 'google-sheets-visible-grid', entry.id, 'fill-format-change'),
+    ]
+
+    const rebuilt = rebuildSameCorpusCaseWithRefreshedProduct({
+      entry,
+      measurement: refreshedGoogleSheets,
+      product: 'google-sheets',
+      visualProofs,
+    })
+
+    expect(rebuilt.bilig).toEqual(entry.bilig)
+    expect(rebuilt.googleSheets.operationResponseMsSamples).toEqual([90, 91, 92])
+    expect(rebuilt.googleSheets.committedTargetProofMsSamples).toEqual([120, 121, 122])
+    expect(rebuilt.scenarioProof.semanticUiProof.products.find((proof) => proof.product === 'bilig')).toEqual(oldBiligProof)
+    expect(
+      rebuilt.scenarioProof.semanticUiProof.products.find((proof) => proof.product === 'google-sheets')?.mutationTargetProofs,
+    ).toHaveLength(3)
+    expect(rebuilt.scenarioProof.semanticUiProof.productVerdicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          product: 'google-sheets',
+          acceptedForCurrentScorecard: true,
+        }),
+      ]),
+    )
+  })
+
   it('derives capture args for a Bilig-only product refresh from the existing incumbent evidence', () => {
     const entry = sameCorpusCaptureCase({
       workload: 'edit-visible-cell',
@@ -937,6 +986,39 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       googleSheetsUrl: 'https://example.com/sheet',
       sampleCount: 3,
     })
+  })
+
+  it('derives capture args for a Google Sheets product refresh from existing same-corpus evidence', () => {
+    const entry = sameCorpusCaptureCase({
+      workload: 'edit-visible-cell',
+      biligRuntimeProof: sameCorpusBiligRuntimeProof('production'),
+    })
+    const capture = buildSameCorpusCaptureArtifact({ sampleCount: 3, cases: [entry] })
+    const refreshArgs = parseRefreshProductArgs([
+      '--refresh-product',
+      'google-sheets',
+      '--from-capture',
+      'tmp/current.json',
+      '--output',
+      'tmp/google-refreshed.json',
+      '--google-sheets-storage-state',
+      'tmp/google-state.json',
+      '--allow-incomplete-evidence',
+    ])
+    if (!refreshArgs) {
+      throw new Error('Expected refresh args')
+    }
+
+    const captureArgs = captureArgsForProductRefresh(refreshArgs, capture)
+
+    expect(captureArgs).toMatchObject({
+      allowIncompleteEvidence: true,
+      biligUrl: 'http://localhost:5173/?benchmarkCorpus=wide-mixed-250k',
+      corpusId: 'wide-mixed-250k',
+      googleSheetsUrl: 'https://example.com/sheet',
+      sampleCount: 3,
+    })
+    expect(captureArgs.googleSheetsStorageStatePath?.endsWith('/tmp/google-state.json')).toBe(true)
   })
 
   it('rejects mutating semantic UI proof that lacks target readback and restore evidence', () => {

@@ -31,11 +31,12 @@ export async function refreshSameCorpusCaptureProduct(args: {
       const visualProofs = sameCorpusVisualProofsFromScenarioProof(entry.scenarioProof, entry.id).filter(
         (proof) => proof.product !== args.product,
       )
+      const productUrl = sameCorpusRefreshProductUrl(args.capture, args.captureArgs, args.product)
       // oxlint-disable-next-line eslint(no-await-in-loop) -- Product refreshes run sequentially to avoid cross-workload browser resource contention.
       const measurement = await measureProduct(
         browser,
         args.product,
-        args.captureArgs.biligUrl,
+        productUrl,
         corpus,
         args.captureArgs,
         entry.workload,
@@ -70,10 +71,10 @@ export function captureArgsForProductRefresh(args: RefreshProductArgs, capture: 
     deltaX: 0,
     deltaY: 720,
     googleSheetsUrl: sameCorpusCaptureProductSource(capture, 'google-sheets'),
-    googleSheetsStorageStatePath: null,
+    googleSheetsStorageStatePath: args.googleSheetsStorageStatePath,
     headless: args.headless,
     microsoftExcelWebUrl: sameCorpusCaptureOptionalProductSource(capture, 'microsoft-excel-web'),
-    microsoftExcelWebStorageStatePath: null,
+    microsoftExcelWebStorageStatePath: args.microsoftExcelWebStorageStatePath,
     outputPath: args.outputPath,
     readyTimeoutMs: args.readyTimeoutMs,
     sampleCount: capture.sampleCount,
@@ -90,11 +91,14 @@ export function rebuildSameCorpusCaseWithRefreshedProduct(args: {
   if (args.measurement.product !== args.product) {
     throw new Error(`Cannot refresh ${args.product} same-corpus proof with ${args.measurement.product} measurement`)
   }
-  const bilig = args.measurement
+  const bilig = args.product === 'bilig' ? args.measurement : args.entry.bilig
+  const googleSheets = args.product === 'google-sheets' ? args.measurement : args.entry.googleSheets
+  const microsoftExcelWeb =
+    args.product === 'microsoft-excel-web' ? args.measurement : args.entry.microsoftExcelWeb ? args.entry.microsoftExcelWeb : undefined
   const scenarioProof = buildCaptureScenarioProof({
     bilig,
-    googleSheets: args.entry.googleSheets,
-    microsoftExcelWeb: args.entry.microsoftExcelWeb,
+    googleSheets,
+    microsoftExcelWeb,
     visualProofs: args.visualProofs,
     workload: args.entry.workload,
   })
@@ -103,6 +107,8 @@ export function rebuildSameCorpusCaseWithRefreshedProduct(args: {
     ...sameCorpusScenarioCaseFields(scenarioProof),
     scenarioProof,
     bilig,
+    googleSheets,
+    ...(microsoftExcelWeb ? { microsoftExcelWeb } : {}),
   }
 }
 
@@ -123,15 +129,20 @@ export function sameCorpusVisualProofsFromScenarioProof(
 }
 
 function assertRefreshCaptureMatchesArgs(capture: SameCorpusCapture, args: CaptureArgs, product: RefreshProductArgs['product']): void {
-  if (product !== 'bilig') {
-    throw new Error('Only Bilig same-corpus product refresh is supported.')
-  }
   if (capture.sampleCount !== args.sampleCount) {
     throw new Error('Same-corpus product refresh sample count does not match the existing capture.')
   }
   if (capture.cases.some((entry) => entry.corpusCaseId !== args.corpusId)) {
     throw new Error('Same-corpus product refresh corpus id does not match the existing capture.')
   }
+  sameCorpusCaptureProductSource(capture, product)
+}
+
+function sameCorpusRefreshProductUrl(capture: SameCorpusCapture, args: CaptureArgs, product: RefreshProductArgs['product']): string {
+  if (product === 'bilig') {
+    return args.biligUrl
+  }
+  return sameCorpusCaptureProductSource(capture, product)
 }
 
 function sameCorpusCaptureCorpusId(capture: SameCorpusCapture): CaptureArgs['corpusId'] {

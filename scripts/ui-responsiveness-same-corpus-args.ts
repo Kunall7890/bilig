@@ -59,9 +59,11 @@ export interface RefreshProductArgs {
   readonly biligUrlSource: 'default-dev' | 'explicit' | 'served-production'
   readonly biligStorageStatePath: string | null
   readonly existingCapturePath: string
+  readonly googleSheetsStorageStatePath: string | null
   readonly headless: boolean
+  readonly microsoftExcelWebStorageStatePath: string | null
   readonly outputPath: string
-  readonly product: 'bilig'
+  readonly product: UiResponsivenessSameCorpusProduct
   readonly readyTimeoutMs: number
   readonly storageStatePath: string | null
 }
@@ -142,9 +144,6 @@ export function parseRefreshProductArgs(argv: readonly string[]): RefreshProduct
     return null
   }
   const product = parseSameCorpusProduct(refreshProduct)
-  if (product !== 'bilig') {
-    throw new Error('Same-corpus product refresh currently supports --refresh-product bilig only.')
-  }
   const existingCapturePath = resolveRequiredArgument(argv, '--from-capture')
   const outputPath = resolveRequiredArgument(argv, '--output')
   const serveBiligProduction = argv.includes('--serve-bilig-production')
@@ -162,7 +161,9 @@ export function parseRefreshProductArgs(argv: readonly string[]): RefreshProduct
     biligUrlSource: serveBiligProduction ? 'served-production' : explicitBiligUrl ? 'explicit' : 'default-dev',
     biligStorageStatePath: resolveOptionalPath(argumentValue(argv, '--bilig-storage-state')),
     existingCapturePath,
+    googleSheetsStorageStatePath: resolveOptionalPath(argumentValue(argv, '--google-sheets-storage-state')),
     headless: !argv.includes('--headed'),
+    microsoftExcelWebStorageStatePath: resolveOptionalPath(argumentValue(argv, '--microsoft-excel-web-storage-state')),
     outputPath,
     product,
     readyTimeoutMs: parsePositiveInteger(argumentValue(argv, '--ready-timeout-ms') ?? '60000', '--ready-timeout-ms'),
