@@ -3,6 +3,10 @@ import type { Locator, Page } from '@playwright/test'
 import type { CaptureArgs } from './ui-responsiveness-same-corpus-args.ts'
 import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import type { SameCorpusOperationResponseProof } from './ui-responsiveness-same-corpus-scorecard-types.ts'
+import type {
+  SameCorpusMutationTargetIntendedPayload,
+  SameCorpusMutationTargetReadback,
+} from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import { uiSameCorpusWorkloadMutatesWorkbook, type UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 import { collectFrameIntervals, settleFrames, waitForNextFrame } from './ui-responsiveness-same-corpus-page-utils.ts'
 
@@ -46,11 +50,16 @@ export type NonScrollWorkload = Exclude<
 type SameCorpusKeyboardOperation = { kind: 'press'; key: string } | { kind: 'type'; text: string }
 type MutatingSameCorpusWorkload = Extract<NonScrollWorkload, 'edit-visible-cell' | 'formula-edit' | 'fill-format-change'>
 
+export interface SameCorpusMutationOperationPlan {
+  readonly intendedPayload: SameCorpusMutationTargetIntendedPayload
+}
+
 const sameCorpusFillColorSwatches = [
   { label: 'light cornflower blue 3', value: '#c9daf8' },
   { label: 'green', value: '#00ff00' },
   { label: 'light cornflower blue 2', value: '#a4c2f4' },
 ] as const
+const sameCorpusMutationRunNonce = Date.now().toString(36)
 
 export async function measureProductWorkload(args: {
   readonly page: Page
@@ -59,6 +68,7 @@ export async function measureProductWorkload(args: {
   readonly workload: UiResponsivenessSameCorpusWorkload
   readonly sampleIndex: number
   readonly loadToReadyMs: number
+  readonly mutationPlan?: SameCorpusMutationOperationPlan | null
   readonly hooks: SameCorpusWorkloadRunnerHooks
 }): Promise<ProductOperationSample> {
   if (args.workload === 'open-workbook') {
@@ -73,7 +83,7 @@ export async function measureProductWorkload(args: {
   if (args.workload === 'wide-sheet-navigation') {
     return await args.hooks.measureVisibleScrollResponseWithRetries(args.page, args.product, Math.max(args.captureArgs.deltaX, 1440), 0)
   }
-  return await measureNonScrollProductWorkload(args.page, args.product, args.workload, args.sampleIndex, args.hooks)
+  return await measureNonScrollProductWorkload(args.page, args.product, args.workload, args.sampleIndex, args.hooks, args.mutationPlan)
 }
 
 export async function restoreProductWorkbookMutation(
@@ -95,12 +105,13 @@ async function measureNonScrollProductWorkload(
   workload: NonScrollWorkload,
   sampleIndex: number,
   hooks: SameCorpusWorkloadRunnerHooks,
+  mutationPlan?: SameCorpusMutationOperationPlan | null,
 ): Promise<ProductOperationSample> {
   if (!sameCorpusWorkloadMutatesWorkbook(workload)) {
     await hooks.movePointerToProductViewport(page, product)
   }
   return await hooks.measureVisibleNonScrollResponse(page, product, workload, sampleIndex, async () => {
-    await performProductUiOperation(page, product, workload, sampleIndex)
+    await performProductUiOperation(page, product, workload, sampleIndex, mutationPlan)
   })
 }
 
@@ -123,15 +134,18 @@ async function performProductUiOperation(
   product: UiResponsivenessSameCorpusProduct,
   workload: NonScrollWorkload,
   sampleIndex: number,
+  mutationPlan?: SameCorpusMutationOperationPlan | null,
 ): Promise<void> {
   if (product !== 'bilig') {
     await assertIncumbentEditableForWorkload(page, product, workload)
   }
   if (workload === 'fill-format-change') {
-    await performSameCorpusFillColorOperation(page, product, sampleIndex)
+    await performSameCorpusFillColorOperation(page, product, sampleIndex, {
+      swatchLabel: mutationPlan?.intendedPayload.kind === 'fill-color' ? mutationPlan.intendedPayload.swatchLabel : undefined,
+    })
     return
   }
-  await performSameCorpusKeyboardOperations(page, sameCorpusKeyboardOperations(workload, sampleIndex))
+  await performSameCorpusKeyboardOperations(page, sameCorpusKeyboardOperations(workload, sampleIndex, process.platform, mutationPlan))
 }
 
 export function sameCorpusFillColorSwatchLabel(sampleIndex: number): string {
@@ -146,10 +160,31 @@ export function sameCorpusFillColorExpectedColors(): readonly string[] {
   return sameCorpusFillColorSwatches.map((swatch) => swatch.value)
 }
 
+export function sameCorpusMutationOperationPlan(
+  workload: MutatingSameCorpusWorkload,
+  sampleIndex: number,
+  before: SameCorpusMutationTargetReadback,
+): SameCorpusMutationOperationPlan {
+  if (workload === 'fill-format-change') {
+    const preferred = sameCorpusFillColorSwatches[sampleIndex % sameCorpusFillColorSwatches.length]
+    const fallback = sameCorpusFillColorSwatches[(sampleIndex + 1) % sameCorpusFillColorSwatches.length]
+    const swatch = normalizeColor(before.fillColor) === normalizeColor(preferred.value) ? fallback : preferred
+    return { intendedPayload: { kind: 'fill-color', expectedFillColor: swatch.value, swatchLabel: swatch.label } }
+  }
+  if (workload === 'formula-edit') {
+    return { intendedPayload: { kind: 'formula', formula: sameCorpusFormulaEditFormula(sampleIndex) } }
+  }
+  const preferredValue = sameCorpusEditVisibleCellValue(sampleIndex)
+  const currentValue = before.value ?? before.visibleText
+  const value = currentValue === preferredValue ? `${preferredValue}-run-${sameCorpusMutationRunNonce}` : preferredValue
+  return { intendedPayload: { kind: 'cell-value', value } }
+}
+
 export function sameCorpusKeyboardOperations(
   workload: NonScrollWorkload,
   sampleIndex: number,
   platform: NodeJS.Platform = process.platform,
+  mutationPlan?: SameCorpusMutationOperationPlan | null,
 ): readonly SameCorpusKeyboardOperation[] {
   if (workload === 'select-cell') {
     return [{ kind: 'press', key: 'ArrowRight' }]
@@ -160,7 +195,14 @@ export function sameCorpusKeyboardOperations(
   if (workload === 'fill-format-change') {
     return []
   }
-  const value = workload === 'formula-edit' ? sameCorpusFormulaEditFormula(sampleIndex) : sameCorpusEditVisibleCellValue(sampleIndex)
+  const value =
+    mutationPlan?.intendedPayload.kind === 'formula'
+      ? mutationPlan.intendedPayload.formula
+      : mutationPlan?.intendedPayload.kind === 'cell-value'
+        ? mutationPlan.intendedPayload.value
+        : workload === 'formula-edit'
+          ? sameCorpusFormulaEditFormula(sampleIndex)
+          : sameCorpusEditVisibleCellValue(sampleIndex)
   return [
     { kind: 'type', text: value },
     { kind: 'press', key: 'Enter' },
@@ -211,9 +253,9 @@ export async function performSameCorpusFillColorOperation(
   page: Page,
   product: UiResponsivenessSameCorpusProduct,
   sampleIndex: number,
-  options: { readonly exactSwatchOnly?: boolean } = {},
+  options: { readonly exactSwatchOnly?: boolean; readonly swatchLabel?: string } = {},
 ): Promise<void> {
-  const swatchLabel = sameCorpusFillColorSwatchLabel(sampleIndex)
+  const swatchLabel = options.swatchLabel ?? sameCorpusFillColorSwatchLabel(sampleIndex)
   const swatchCandidateLabels = sameCorpusFillColorCandidateLabels(swatchLabel, {
     exactSwatchOnly: product === 'google-sheets' || options.exactSwatchOnly,
   })
@@ -351,6 +393,11 @@ function googleSheetsBodyLooksLikeAuthWall(normalizedBody: string): boolean {
 
 function googleSheetsBodyHasLoadedEditorChrome(normalizedBody: string): boolean {
   return normalizedBody.includes('file edit') && normalizedBody.includes('format data tools') && normalizedBody.includes('extensions help')
+}
+
+function normalizeColor(value: string | null | undefined): string | null {
+  const trimmed = value?.trim().toLowerCase() ?? ''
+  return trimmed.length > 0 ? trimmed : null
 }
 
 function percentile(values: readonly number[], percentileValue: number): number {

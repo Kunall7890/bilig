@@ -62,6 +62,7 @@ import {
   incumbentEditableWorkloadBlocker,
   measureProductWorkload,
   restoreProductWorkbookMutation,
+  sameCorpusMutationOperationPlan,
   type ProductOperationSample,
 } from './ui-responsiveness-same-corpus-workload-runner.ts'
 import {
@@ -531,6 +532,8 @@ async function measureProductSamples(
       mutationTarget === null
         ? null
         : await readSameCorpusMutationTargetReadback({ page, product, target: mutationTarget, workload: mutatingWorkload ?? undefined })
+    const mutationPlan =
+      mutationTargetBefore && mutatingWorkload ? sameCorpusMutationOperationPlan(mutatingWorkload, sampleIndex, mutationTargetBefore) : null
     const mutationTargetVisibleBefore =
       mutationTarget === null || mutatingWorkload === null
         ? null
@@ -595,6 +598,7 @@ async function measureProductSamples(
           workload,
           sampleIndex,
           loadToReadyMs,
+          mutationPlan,
           hooks: {
             measureVisibleScrollResponseWithRetries,
             measureVisibleNonScrollResponse,
@@ -613,6 +617,7 @@ async function measureProductSamples(
           beforeCommittedStateProof: mutationTargetBeforeCommittedState,
           beforeScreenshot: mutationTargetBeforeScreenshot,
           caseId,
+          intendedPayload: mutationPlan?.intendedPayload,
           operationStartedAt,
           outputPath: args.outputPath,
           page,

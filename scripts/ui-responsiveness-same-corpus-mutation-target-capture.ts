@@ -24,7 +24,10 @@ import type {
   SameCorpusMutationTargetReadback,
   SameCorpusMutationTargetScreenshotProof,
 } from './ui-responsiveness-same-corpus-proof.ts'
-import { readSameCorpusVisibleSelectedRange } from './ui-responsiveness-same-corpus-semantic-proof.ts'
+import {
+  readSameCorpusVisibleSelectedRange,
+  type SameCorpusMutationTargetIntendedPayload,
+} from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import {
   SameCorpusMutationTargetCaptureDiagnosticError,
   writeSameCorpusMutationTargetCaptureFailureDiagnostic,
@@ -46,6 +49,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
   readonly beforeCommittedStateProof?: SameCorpusMutationTargetCommittedStatePhaseProof | null
   readonly beforeScreenshot: SameCorpusMutationTargetScreenshotProof
   readonly caseId?: string
+  readonly intendedPayload?: SameCorpusMutationTargetIntendedPayload | null
   readonly operationStartedAt: number
   readonly outputPath: string
   readonly page: Page
@@ -55,6 +59,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
   readonly target: SameCorpusMutationTargetSelection
   readonly workload: UiResponsivenessSameCorpusMutatingWorkload
 }): Promise<SameCorpusMutationTargetProof> {
+  const intendedPayload = args.intendedPayload ?? intendedMutationTargetPayload(args.workload, args.sampleIndex)
   let restoredAfterMutation = false
   let failurePhase: SameCorpusMutationTargetCaptureFailurePhase = 'select-target'
   let after: SameCorpusMutationTargetReadback | null = null
@@ -94,6 +99,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       artifactPath: committedStateArtifactPath(args, 'after'),
       expectedReadback: sameCorpusCommittedStateExpectedReadback({
         before: args.before,
+        intendedPayload,
         phase: 'after',
         phaseReadback: after,
         sampleIndex: args.sampleIndex,
@@ -145,6 +151,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       artifactPath: committedStateArtifactPath(args, 'restored'),
       expectedReadback: sameCorpusCommittedStateExpectedReadback({
         before: args.before,
+        intendedPayload,
         phase: 'restored',
         phaseReadback: restored,
         sampleIndex: args.sampleIndex,
@@ -177,7 +184,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
         workload: args.workload,
       }),
       intendedOperation: args.workload,
-      intendedPayload: intendedMutationTargetPayload(args.workload, args.sampleIndex),
+      intendedPayload,
       operationStartedAtMs: args.operationStartedAt,
       postMutationProofCapturedAtMs,
       product: args.product,
@@ -241,7 +248,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
         caseId: args.caseId,
         error,
         failurePhase,
-        intendedPayload: intendedMutationTargetPayload(args.workload, args.sampleIndex),
+        intendedPayload,
         operationStartedAt: args.operationStartedAt,
         outputPath: args.outputPath,
         product: args.product,
@@ -348,6 +355,7 @@ function intendedMutationTargetPayload(
 
 export function sameCorpusCommittedStateExpectedReadback(args: {
   readonly before: SameCorpusMutationTargetReadback
+  readonly intendedPayload?: SameCorpusMutationTargetIntendedPayload | null
   readonly phase: 'after' | 'restored'
   readonly phaseReadback: SameCorpusMutationTargetReadback
   readonly sampleIndex: number
@@ -357,7 +365,11 @@ export function sameCorpusCommittedStateExpectedReadback(args: {
     return args.before
   }
   if (args.workload === 'fill-format-change') {
-    return { ...args.phaseReadback, fillColor: sameCorpusFillColorExpectedColor(args.sampleIndex) }
+    const fillColor =
+      args.intendedPayload?.kind === 'fill-color'
+        ? args.intendedPayload.expectedFillColor
+        : sameCorpusFillColorExpectedColor(args.sampleIndex)
+    return { ...args.phaseReadback, fillColor }
   }
   return args.phaseReadback
 }

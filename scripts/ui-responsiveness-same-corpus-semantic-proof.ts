@@ -592,7 +592,7 @@ function sameCorpusMutationTargetPayloadInvalidReasons(
     if (payload.kind !== 'cell-value' || payload.value.trim().length === 0) {
       return ['semantic UI mutation target proof for edit-visible-cell is missing intended value payload']
     }
-    return payload.value === expectedSameCorpusEditVisibleCellValue(sample.sampleIndex)
+    return sameCorpusEditVisibleCellValueIsNeutral(sample.sampleIndex, payload.value)
       ? []
       : ['semantic UI mutation target proof for edit-visible-cell uses a non-neutral intended value payload']
   }
@@ -616,6 +616,12 @@ function sameCorpusMutationTargetPayloadInvalidReasons(
 
 function expectedSameCorpusEditVisibleCellValue(sampleIndex: number): string {
   return `same-corpus-edit-${String(sampleIndex + 1)}`
+}
+
+function sameCorpusEditVisibleCellValueIsNeutral(sampleIndex: number, value: string): boolean {
+  const baseValue = expectedSameCorpusEditVisibleCellValue(sampleIndex)
+  const trimmed = value.trim()
+  return trimmed === baseValue || (trimmed.startsWith(`${baseValue}-run-`) && /^[a-z0-9-]+$/u.test(trimmed.slice(baseValue.length + 5)))
 }
 
 function expectedSameCorpusFormulaEditFormula(sampleIndex: number): string {

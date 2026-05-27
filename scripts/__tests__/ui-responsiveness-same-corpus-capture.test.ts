@@ -61,9 +61,11 @@ import {
   incumbentEditableWorkloadBlocker,
   measureProductWorkload,
   sameCorpusEditVisibleCellValue,
+  sameCorpusFillColorExpectedColor,
   sameCorpusFillColorSwatchLabel,
   sameCorpusFormulaEditFormula,
   sameCorpusKeyboardOperations,
+  sameCorpusMutationOperationPlan,
   sameCorpusWorkbookRestoreOperations,
   sameCorpusWorkloadMutatesWorkbook,
 } from '../ui-responsiveness-same-corpus-workload-runner.ts'
@@ -624,6 +626,41 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(sameCorpusMutationTargetRangeForSample('edit-visible-cell', 0)).toBe('F5')
     expect(sameCorpusMutationTargetRangeForSample('formula-edit', 1)).toBe('C6')
     expect(sameCorpusMutationTargetRangeForSample('fill-format-change', 2)).toBe('B7')
+  })
+
+  it('plans mutating same-corpus operations so reruns do not capture stale no-ops', () => {
+    const staleEditValue = sameCorpusEditVisibleCellValue(1)
+    const editPlan = sameCorpusMutationOperationPlan('edit-visible-cell', 1, {
+      value: staleEditValue,
+      formula: null,
+      fillColor: null,
+      visibleText: staleEditValue,
+      source: 'visible-formula-bar',
+    })
+    expect(editPlan.intendedPayload).toMatchObject({
+      kind: 'cell-value',
+      value: expect.stringMatching(/^same-corpus-edit-2-run-[a-z0-9]+$/u),
+    })
+    if (editPlan.intendedPayload.kind !== 'cell-value') {
+      throw new Error('edit-visible-cell plan should use a cell-value payload')
+    }
+    expect(sameCorpusKeyboardOperations('edit-visible-cell', 1, 'darwin', editPlan)).toEqual([
+      { kind: 'type', text: editPlan.intendedPayload.value },
+      { kind: 'press', key: 'Enter' },
+    ])
+
+    const fillPlan = sameCorpusMutationOperationPlan('fill-format-change', 0, {
+      value: 'segment-5',
+      formula: null,
+      fillColor: sameCorpusFillColorExpectedColor(0),
+      visibleText: 'segment-5',
+      source: 'visible-formula-bar',
+    })
+    expect(fillPlan.intendedPayload).toEqual({
+      kind: 'fill-color',
+      expectedFillColor: sameCorpusFillColorExpectedColor(1),
+      swatchLabel: sameCorpusFillColorSwatchLabel(1),
+    })
   })
 
   it('chooses same-corpus mutation targets that match the benchmark cell role under test', () => {
