@@ -347,7 +347,7 @@ describe('datetime builtins', () => {
         { tag: ValueTag.Number, value: start },
         { tag: ValueTag.String, value: 'D', stringId: 1 },
       ),
-    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
     expect(
       datetimeBuiltins.DATEDIF(
         { tag: ValueTag.Number, value: start },

@@ -3,6 +3,7 @@ import { scalarErrorAt } from './builtin-args'
 import {
   addMonthsExcelSerial,
   excelDateSerial,
+  excelDateTextSerial,
   excelDatedifValue,
   excelDayPartFromSerial,
   excelIsoWeeknumValue,
@@ -17,6 +18,8 @@ import { truncToInt } from './numeric-core'
 import { scalarText, trimAsciiWhitespace } from './text-codec'
 import { parseTimeValueText } from './text-special'
 import { STACK_KIND_SCALAR, writeResult } from './result-io'
+
+const DATEDIF_VALUE_ERROR: i32 = i32.MIN_VALUE
 
 export function tryApplyDateTimeBuiltin(
   builtinId: i32,
@@ -198,8 +201,26 @@ export function tryApplyDateTimeBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const startWhole = excelSerialWhole(tagStack[base], valueStack[base])
-    const endWhole = excelSerialWhole(tagStack[base + 1], valueStack[base + 1])
+    const startWhole = datedifDateSerial(
+      tagStack[base],
+      valueStack[base],
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const endWhole = datedifDateSerial(
+      tagStack[base + 1],
+      valueStack[base + 1],
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     const unitText = scalarText(
       tagStack[base + 2],
       valueStack[base + 2],
@@ -210,8 +231,11 @@ export function tryApplyDateTimeBuiltin(
       outputStringLengths,
       outputStringData,
     )
-    if (startWhole == i32.MIN_VALUE || endWhole == i32.MIN_VALUE || unitText == null) {
+    if (startWhole == DATEDIF_VALUE_ERROR || endWhole == DATEDIF_VALUE_ERROR || unitText == null) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (startWhole > endWhole) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const unit = trimAsciiWhitespace(unitText).toUpperCase()
     const value = unit.length == 0 ? NaN : excelDatedifValue(startWhole, endWhole, unit)
@@ -222,4 +246,34 @@ export function tryApplyDateTimeBuiltin(
   }
 
   return -1
+}
+
+function datedifDateSerial(
+  tag: u8,
+  value: f64,
+  stringOffsets: Uint32Array,
+  stringLengths: Uint32Array,
+  stringData: Uint16Array,
+  outputStringOffsets: Uint32Array,
+  outputStringLengths: Uint32Array,
+  outputStringData: Uint16Array,
+): i32 {
+  if (tag == ValueTag.String) {
+    const text = scalarText(
+      tag,
+      value,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    if (text == null) {
+      return DATEDIF_VALUE_ERROR
+    }
+    const serial = excelDateTextSerial(text)
+    return serial == i32.MIN_VALUE ? DATEDIF_VALUE_ERROR : serial
+  }
+  return excelSerialWhole(tag, value)
 }

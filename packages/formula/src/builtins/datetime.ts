@@ -189,6 +189,14 @@ function coerceDaysDateSerial(value: CellValue, dateSystem: ExcelDateSystem): nu
   return isValidDaysDateSerial(serial, dateSystem) ? serial : numError()
 }
 
+function coerceDatedifDateSerial(value: CellValue, dateSystem: ExcelDateSystem): number | CellValue {
+  if (value.tag === ValueTag.String) {
+    const serial = parseDateValueFromText(value.value, dateSystem)
+    return serial === undefined ? valueError() : serial
+  }
+  return truncArg(value)
+}
+
 export function parseTimeValueText(raw: string): number | undefined {
   const trimmed = raw.trim()
   const amPmMatch = trimmed.match(/^(.+?)\s+([aApP][mM])$/)
@@ -811,11 +819,20 @@ export function createDatedifBuiltin(dateSystem: ExcelDateSystem = '1900'): Buil
     if (args.length !== 3) {
       return valueError()
     }
-    const startSerial = truncArg(args[0]!)
-    const endSerial = truncArg(args[1]!)
+    const startSerial = coerceDatedifDateSerial(args[0]!, dateSystem)
+    const endSerial = coerceDatedifDateSerial(args[1]!, dateSystem)
     const unit = coerceText(args[2]!)?.trim().toUpperCase()
-    if (typeof startSerial !== 'number' || typeof endSerial !== 'number' || !unit) {
+    if (typeof startSerial !== 'number') {
+      return startSerial
+    }
+    if (typeof endSerial !== 'number') {
+      return endSerial
+    }
+    if (!unit) {
       return valueError()
+    }
+    if (startSerial > endSerial) {
+      return numError()
     }
     const value = datedifValue(startSerial, endSerial, unit, dateSystem)
     return value === undefined ? valueError() : numberResult(value)
