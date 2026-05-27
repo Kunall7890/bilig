@@ -582,7 +582,7 @@ describe('excel import', () => {
           },
         ],
         cachedValuesUsed: true,
-        cachedFormulaValuePreserved: true,
+        cachedFormulaValuePreserved: false,
         cachedExternalReferenceValuesUsed: true,
         resolvedExternalReferenceCount: 2,
         unresolvedExternalReferenceCount: 0,
@@ -637,7 +637,7 @@ describe('excel import', () => {
         address: 'C1',
         importedFormula: "SUM('__bilig_ext_1_Rates'!$B$2:$B$4)*B1",
         cachedValuesUsed: true,
-        cachedFormulaValuePreserved: true,
+        cachedFormulaValuePreserved: false,
         cachedExternalReferenceValuesUsed: true,
         resolvedExternalReferenceCount: 3,
         unresolvedExternalReferenceCount: 0,
@@ -646,7 +646,7 @@ describe('excel import', () => {
         address: 'C2',
         importedFormula: "XLOOKUP(\"B\",'__bilig_ext_1_Rates'!$A$2:$A$4,'__bilig_ext_1_Rates'!$B$2:$B$4)*B1",
         cachedValuesUsed: true,
-        cachedFormulaValuePreserved: true,
+        cachedFormulaValuePreserved: false,
         cachedExternalReferenceValuesUsed: true,
         resolvedExternalReferenceCount: 6,
         unresolvedExternalReferenceCount: 0,
@@ -655,7 +655,7 @@ describe('excel import', () => {
         address: 'C3',
         importedFormula: "SUMPRODUCT('__bilig_ext_1_Rates'!$B$2:$B$4,--('__bilig_ext_1_Rates'!$A$2:$A$4=\"C\"))*B1",
         cachedValuesUsed: true,
-        cachedFormulaValuePreserved: true,
+        cachedFormulaValuePreserved: false,
         cachedExternalReferenceValuesUsed: true,
         resolvedExternalReferenceCount: 6,
         unresolvedExternalReferenceCount: 0,
@@ -772,6 +772,17 @@ describe('excel import', () => {
       skippedAmbiguousMatchCount: 0,
       skippedEmptyRefreshCount: 0,
     })
+    expect(imported.snapshot.workbook.metadata?.unsupportedFormulaDependencies).toContainEqual(
+      expect.objectContaining({
+        address: 'C1',
+        importedFormula: "SUM('__bilig_ext_1_Rates'!$B$2:$B$4)*B1",
+        cachedValuesUsed: true,
+        cachedFormulaValuePreserved: false,
+        cachedExternalReferenceValuesUsed: true,
+        resolvedExternalReferenceCount: 3,
+        unresolvedExternalReferenceCount: 0,
+      }),
+    )
 
     const formulaCells = new Map(imported.snapshot.sheets[0]?.cells.map((cell) => [cell.address, cell]) ?? [])
     expect(formulaCells.get('C1')).toMatchObject({
@@ -895,7 +906,7 @@ describe('excel import', () => {
         address: 'C3',
         importedFormula: "SUMIFS('__bilig_ext_1_Rates'!$B$2:$B$4,'__bilig_ext_1_Rates'!$A$2:$A$4,\"C\")*B1",
         cachedValuesUsed: true,
-        cachedFormulaValuePreserved: true,
+        cachedFormulaValuePreserved: false,
         cachedExternalReferenceValuesUsed: true,
         resolvedExternalReferenceCount: 6,
       }),

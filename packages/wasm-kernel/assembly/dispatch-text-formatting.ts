@@ -371,17 +371,10 @@ export function tryApplyTextFormattingBuiltin(
         outputStringData,
       )
       numeric = text == null ? NaN : valueParseText(text)
+    } else if (tagStack[base] == ValueTag.Number) {
+      numeric = valueStack[base]
     } else {
-      numeric = valueNumber(
-        tagStack[base],
-        valueStack[base],
-        stringOffsets,
-        stringLengths,
-        stringData,
-        outputStringOffsets,
-        outputStringLengths,
-        outputStringData,
-      )
+      numeric = NaN
     }
     if (isNaN(numeric)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)

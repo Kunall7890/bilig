@@ -16,6 +16,10 @@ function encodePushString(stringId: number): number {
   return (Opcode.PushString << 24) | stringId
 }
 
+function encodePushBoolean(value: boolean): number {
+  return (Opcode.PushBoolean << 24) | (value ? 1 : 0)
+}
+
 function encodeRet(): number {
   return Opcode.Ret << 24
 }
@@ -182,6 +186,8 @@ describe('wasm kernel text-formatting dispatch', () => {
       [encodePushString(17), encodeCall(BuiltinId.Value, 1), encodeRet()],
       [encodePushString(18), encodeCall(BuiltinId.Value, 1), encodeRet()],
       [encodePushString(19), encodeCall(BuiltinId.Value, 1), encodeRet()],
+      [encodePushBoolean(true), encodeCall(BuiltinId.Value, 1), encodeRet()],
+      [encodePushBoolean(false), encodeCall(BuiltinId.Value, 1), encodeRet()],
     ])
     const constants = packConstants([
       [],
@@ -206,8 +212,10 @@ describe('wasm kernel text-formatting dispatch', () => {
       [],
       [],
       [],
+      [],
+      [],
     ])
-    const targets = Uint32Array.from(Array.from({ length: 22 }, (_, index) => cellIndex(1, index, width)))
+    const targets = Uint32Array.from(Array.from({ length: 24 }, (_, index) => cellIndex(1, index, width)))
     kernel.ensureFormulaCapacity(packed.offsets.length)
     kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targets)
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
@@ -243,5 +251,9 @@ describe('wasm kernel text-formatting dispatch', () => {
     expect(kernel.readErrors()[cellIndex(1, 20, width)]).toBe(ErrorCode.Value)
     expect(kernel.readTags()[cellIndex(1, 21, width)]).toBe(ValueTag.Error)
     expect(kernel.readErrors()[cellIndex(1, 21, width)]).toBe(ErrorCode.Value)
+    expect(kernel.readTags()[cellIndex(1, 22, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 22, width)]).toBe(ErrorCode.Value)
+    expect(kernel.readTags()[cellIndex(1, 23, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 23, width)]).toBe(ErrorCode.Value)
   })
 })

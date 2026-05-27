@@ -15,12 +15,8 @@ import type { FormulaInstanceSnapshot } from '../../formula/formula-instance-tab
 import type { FormulaTemplateResolution, FormulaTemplateSnapshot } from '../../formula/template-bank.js'
 import { exportReplicaSnapshot as exportReplicaStateSnapshot, hydrateReplicaState } from '../../replica-state.js'
 import { attachRuntimeImage, readRuntimeImage } from '../../snapshot/runtime-image-codec.js'
-import {
-  restoreWorkbookFromRuntimeImage,
-  restoreWorkbookFromSnapshot,
-  type CachedRuntimeFormulaRef,
-  type RuntimeImage,
-} from '../../snapshot/runtime-image.js'
+import type { CachedRuntimeFormulaRef } from '../../snapshot/runtime-image-cached-formula-refs.js'
+import { restoreWorkbookFromRuntimeImage, restoreWorkbookFromSnapshot, type RuntimeImage } from '../../snapshot/runtime-image.js'
 import type { RuntimeImageFormulaFamilyRunSnapshot } from '../../snapshot/runtime-image-formula-family-runs.js'
 import type { EngineRuntimeState, EngineReplicaSnapshot } from '../runtime-state.js'
 import { EngineSnapshotError } from '../errors.js'

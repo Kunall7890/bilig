@@ -6,9 +6,9 @@ import { CellFlags } from '../cell-store.js'
 import {
   restoreWorkbookFromRuntimeImage,
   restoreWorkbookFromSnapshot,
-  type CachedRuntimeFormulaRef,
   type HydratedPreparedRuntimeFormulaRef,
 } from '../snapshot/runtime-image.js'
+import type { CachedRuntimeFormulaRef } from '../snapshot/runtime-image-cached-formula-refs.js'
 import { StringPool } from '../string-pool.js'
 import { WorkbookStore } from '../workbook-store.js'
 

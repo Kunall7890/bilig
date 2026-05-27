@@ -43,6 +43,8 @@ describe('text format builtins', () => {
     expect(VALUE(err(ErrorCode.Name))).toEqual(err(ErrorCode.Name))
     expect(VALUE(text(''))).toEqual(valueError())
     expect(VALUE(text('   '))).toEqual(valueError())
+    expect(VALUE({ tag: ValueTag.Boolean, value: true })).toEqual(valueError())
+    expect(VALUE({ tag: ValueTag.Boolean, value: false })).toEqual(valueError())
     expect(NUMBERVALUE(text('1.2.3'), text('.'), text(','))).toEqual(valueError())
     expect(VALUETOTEXT(text('alpha'), number(2))).toEqual(valueError())
   })

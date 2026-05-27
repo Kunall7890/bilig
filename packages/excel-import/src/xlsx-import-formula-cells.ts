@@ -68,6 +68,8 @@ export function buildImportedFormulaSnapshotCell(
         tables: args.tables,
       })
   const cachedLiteral = args.formulaManifest?.cachedValue !== undefined ? args.formulaManifest.cachedValue : args.cachedLiteral
+  const importedFormulaStillReferencesExternalWorkbook =
+    externalReferenceTranslation.unresolvedCount > 0 || formulaReferencesExternalWorkbook(importedFormula)
   const formulaCell: ImportedFormulaCellSnapshot = {
     address: args.address,
     formula: importedFormula,
@@ -83,7 +85,7 @@ export function buildImportedFormulaSnapshotCell(
         importedFormula,
         linkedWorkbooks: [...collectImportedFormulaExternalWorkbookReferences(normalizedFormula, args.externalWorkbookReferences)],
         cachedValuesUsed: cachedLiteral !== undefined || externalReferenceTranslation.resolvedCount > 0,
-        cachedFormulaValuePreserved: cachedLiteral !== undefined,
+        cachedFormulaValuePreserved: cachedLiteral !== undefined && importedFormulaStillReferencesExternalWorkbook,
         cachedExternalReferenceValuesUsed: externalReferenceTranslation.resolvedCount > 0,
         resolvedExternalReferenceCount: externalReferenceTranslation.resolvedCount,
         unresolvedExternalReferenceCount: externalReferenceTranslation.unresolvedCount,

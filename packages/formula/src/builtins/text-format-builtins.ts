@@ -550,7 +550,7 @@ export function createTextFormatBuiltins(deps: TextFormatBuiltinDeps): Record<st
       if (value === undefined) {
         return deps.error(ErrorCode.Value)
       }
-      const coerced = value.tag === ValueTag.String ? parseValueText(value.value) : deps.coerceNumber(value)
+      const coerced = value.tag === ValueTag.String ? parseValueText(value.value) : value.tag === ValueTag.Number ? value.value : undefined
       return coerced === undefined ? deps.error(ErrorCode.Value) : deps.numberResult(coerced)
     },
     NUMBERVALUE: (...args) => {

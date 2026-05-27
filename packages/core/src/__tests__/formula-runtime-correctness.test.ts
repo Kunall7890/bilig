@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { FormulaMode, ValueTag, type CellValue, type WorkbookDefinedNameValueSnapshot, type WorkbookTableSnapshot } from '@bilig/protocol'
+import {
+  ErrorCode,
+  FormulaMode,
+  ValueTag,
+  type CellValue,
+  type WorkbookDefinedNameValueSnapshot,
+  type WorkbookTableSnapshot,
+} from '@bilig/protocol'
 import {
   canonicalFormulaFixtures,
   type ExcelExpectedValue,
@@ -138,6 +145,18 @@ describe('formula runtime correctness', () => {
     const value = engine.getCellValue('English', 'T12')
     expect(value.tag).toBe(ValueTag.Number)
     expect(value.value).toBeCloseTo(-2.2439434647031096, 12)
+  })
+
+  it('matches Excel VALUE text-only argument semantics on the wasm path', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'value-text-only' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellFormula('Sheet1', 'A1', 'VALUE(TRUE())')
+    engine.setCellFormula('Sheet1', 'A2', 'VALUE(FALSE())')
+
+    expect(engine.explainCell('Sheet1', 'A1').mode).toBe(FormulaMode.WasmFastPath)
+    expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(engine.getCellValue('Sheet1', 'A2')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
   })
 })
 

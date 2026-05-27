@@ -24,6 +24,8 @@ import {
   materializeWrittenColumns,
   type WrittenColumnTracker,
 } from '../written-column-tracker.js'
+import { pushRuntimeImageCachedFormulaRef, type CachedRuntimeFormulaRef } from './runtime-image-cached-formula-refs.js'
+import { getOrCreateSheetFormulaMap, toFormulaInstanceKey } from './runtime-image-formula-map.js'
 import { attachRuntimeFormulaFamilyRunHints, selectRuntimeFormulaFamilyRunHints } from './runtime-image-formula-family-run-hints.js'
 import { restoreAlignedRuntimeFormulaFamilyRuns, type RuntimeImageFormulaFamilyRunSnapshot } from './runtime-image-formula-family-runs.js'
 import { formulaCachedLiteralToRestoredValue, restoreFreshRuntimeLiteralCell, restoreLiteralCell } from './runtime-image-literal-restore.js'
@@ -131,17 +133,6 @@ export interface HydratedPreparedRuntimeFormulaRef extends PreparedRuntimeFormul
   readonly preserveCachedValueOnFullRecalc?: boolean
 }
 
-export interface CachedRuntimeFormulaRef {
-  readonly sheetId: number
-  readonly row: number
-  readonly col: number
-  readonly source: string
-  readonly value: CellValue
-  readonly cellIndex?: number
-}
-
-const RUNTIME_IMAGE_COORD_STRIDE = 1_048_576
-
 interface MutableHydratedPreparedRuntimeFormulaRef {
   sheetId: number
   row: number
@@ -152,19 +143,6 @@ interface MutableHydratedPreparedRuntimeFormulaRef {
   cellIndex?: number
   value: CellValue
   preserveCachedValueOnFullRecalc?: boolean
-}
-
-function toFormulaInstanceKey(row: number, col: number): number {
-  return row * RUNTIME_IMAGE_COORD_STRIDE + col
-}
-
-function getOrCreateSheetFormulaMap<T>(maps: Map<string, Map<number, T>>, sheetName: string): Map<number, T> {
-  let sheetMap = maps.get(sheetName)
-  if (!sheetMap) {
-    sheetMap = new Map()
-    maps.set(sheetName, sheetMap)
-  }
-  return sheetMap
 }
 
 function formulaValueMatchesInstance(
@@ -551,14 +529,15 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
               cell.value !== undefined &&
               formulaHasPreservedUnsupportedDependencyCache(preservedUnsupportedFormulaCacheKeys, sheet.name, cell.address, cell.formula)
             if (canHydrateImportedCachedFormulaValues && shouldHydrateImportedCachedFormulaValues && cell.value !== undefined) {
-              cachedFormulaRefs.push({
+              pushRuntimeImageCachedFormulaRef(
+                cachedFormulaRefs,
                 sheetId,
-                row: coords.row,
-                col: coords.col,
-                cellIndex: restoredCellIndex,
-                source: cell.formula,
-                value: formulaCachedLiteralToRestoredValue(cell.value, args.strings, restoredStringIds),
-              })
+                coords.row,
+                coords.col,
+                restoredCellIndex,
+                cell.formula,
+                formulaCachedLiteralToRestoredValue(cell.value, args.strings, restoredStringIds),
+              )
               hydratedCachedFormula = true
             } else if (
               canHydratePreparedCachedFormulaValues &&
@@ -582,7 +561,18 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
                   hydratedCachedFormula = true
                 }
               } catch {
-                hydratedCachedFormula = false
+                if (shouldPreserveCachedUnsupportedValue) {
+                  pushRuntimeImageCachedFormulaRef(
+                    cachedFormulaRefs,
+                    sheetId,
+                    coords.row,
+                    coords.col,
+                    restoredCellIndex,
+                    cell.formula,
+                    formulaCachedLiteralToRestoredValue(cell.value, args.strings, restoredStringIds),
+                  )
+                  hydratedCachedFormula = true
+                }
               }
             }
             if (!hydratedCachedFormula) {
@@ -801,20 +791,27 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
           } else if (cell.formula !== undefined) {
             let hydratedCachedFormula = false
             const shouldPreserveCachedUnsupportedValue =
-              canHydratePreparedSnapshotFormulaValues &&
               cell.value !== undefined &&
-              !shouldHydrateIterativeFormulaValues &&
-              definedFormulaNames !== undefined &&
-              formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc(cell.formula, definedFormulaNames)
+              (formulaHasPreservedUnsupportedDependencyCache(
+                preservedUnsupportedFormulaCacheKeys,
+                sheet.name,
+                cell.address,
+                cell.formula,
+              ) ||
+                (canHydratePreparedSnapshotFormulaValues &&
+                  !shouldHydrateIterativeFormulaValues &&
+                  definedFormulaNames !== undefined &&
+                  formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc(cell.formula, definedFormulaNames)))
             if (canHydrateImportedCachedSnapshotFormulaValues && shouldHydrateImportedCachedFormulaValues && cell.value !== undefined) {
-              cachedFormulaRefs.push({
+              pushRuntimeImageCachedFormulaRef(
+                cachedFormulaRefs,
                 sheetId,
                 row,
                 col,
                 cellIndex,
-                source: cell.formula,
-                value: formulaCachedLiteralToRestoredValue(cell.value, args.strings, restoredStringIds),
-              })
+                cell.formula,
+                formulaCachedLiteralToRestoredValue(cell.value, args.strings, restoredStringIds),
+              )
               hydratedCachedFormula = true
             } else if (
               canHydratePreparedSnapshotFormulaValues &&
@@ -839,7 +836,18 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
                   hydratedCachedFormula = true
                 }
               } catch {
-                hydratedCachedFormula = false
+                if (shouldPreserveCachedUnsupportedValue) {
+                  pushRuntimeImageCachedFormulaRef(
+                    cachedFormulaRefs,
+                    sheetId,
+                    row,
+                    col,
+                    cellIndex,
+                    cell.formula,
+                    formulaCachedLiteralToRestoredValue(cell.value, args.strings, restoredStringIds),
+                  )
+                  hydratedCachedFormula = true
+                }
               }
             }
             if (!hydratedCachedFormula) {

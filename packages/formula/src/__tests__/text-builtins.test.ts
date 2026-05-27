@@ -68,10 +68,11 @@ describe('text builtins', () => {
     })
   })
 
-  it('supports VALUE numeric coercion for trimmed text, booleans, and empties', () => {
+  it('supports VALUE text conversion while rejecting non-text booleans and empties', () => {
     expect(getTextBuiltin('VALUE')?.(text(' 42 '))).toEqual(number(42))
-    expect(getTextBuiltin('VALUE')?.({ tag: ValueTag.Boolean, value: true })).toEqual(number(1))
-    expect(getTextBuiltin('VALUE')?.({ tag: ValueTag.Empty })).toEqual(number(0))
+    expect(getTextBuiltin('VALUE')?.({ tag: ValueTag.Number, value: 42 })).toEqual(number(42))
+    expect(getTextBuiltin('VALUE')?.({ tag: ValueTag.Boolean, value: true })).toEqual(valueError())
+    expect(getTextBuiltin('VALUE')?.({ tag: ValueTag.Empty })).toEqual(valueError())
   })
 
   it('supports ENCODEURL for URL-safe formatting', () => {
@@ -419,7 +420,7 @@ describe('text builtins', () => {
 
     expect(VALUE(text(''))).toEqual(valueError())
     expect(VALUE(text('   '))).toEqual(valueError())
-    expect(VALUE({ tag: ValueTag.Boolean, value: false })).toEqual(number(0))
+    expect(VALUE({ tag: ValueTag.Boolean, value: false })).toEqual(valueError())
 
     // REPT zero count
     expect(REPT(text('abc'), number(0))).toEqual(text(''))

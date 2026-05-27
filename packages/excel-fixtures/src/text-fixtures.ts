@@ -489,8 +489,8 @@ export const TEXT_FIXTURES: readonly TextFixtureGroup[] = [
     builtin: 'VALUE',
     cases: [
       { name: 'parses trimmed numeric text', args: [text(' 42 ')], expected: number(42) },
-      { name: 'coerces booleans to numbers', args: [bool(true)], expected: number(1) },
-      { name: 'treats empty as zero', args: [empty()], expected: number(0) },
+      { name: 'rejects boolean values', args: [bool(true)], expected: textValueError() },
+      { name: 'rejects empty values', args: [empty()], expected: textValueError() },
     ],
   },
   {
@@ -827,13 +827,19 @@ export const canonicalTextFixtures: readonly ExcelFixtureCase[] = [
     [output('A1', numberExpected(42))],
   ),
   fixture(
-    'value-coerces-booleans-to-numbers',
-    'VALUE coerces booleans to numbers',
+    'value-rejects-booleans',
+    'VALUE rejects boolean values',
     '=VALUE(A1)',
     [input('A1', true)],
-    [output('A2', numberExpected(1))],
+    [output('A2', errorExpected(ErrorCode.Value, '#VALUE!'))],
   ),
-  fixture('value-treats-empty-as-zero', 'VALUE treats empty as zero', '=VALUE(A1)', [input('A1', null)], [output('A2', numberExpected(0))]),
+  fixture(
+    'value-rejects-empty',
+    'VALUE rejects empty values',
+    '=VALUE(A1)',
+    [input('A1', null)],
+    [output('A2', errorExpected(ErrorCode.Value, '#VALUE!'))],
+  ),
   fixture(
     'textbefore-basic',
     'TEXTBEFORE returns the substring before the delimiter',

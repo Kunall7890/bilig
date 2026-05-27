@@ -21,6 +21,25 @@ describe('engine external workbook formula caches', () => {
     })
   })
 
+  it('preserves cached values for parser-hostile imported external workbook formulas', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'external-workbook-formula-parser-hostile-cache' })
+    await engine.ready()
+
+    engine.importSnapshot(buildParserHostileExternalWorkbookFormulaSnapshot())
+
+    expect(engine.getCellValue('Opened', 'B2')).toMatchObject({
+      tag: ValueTag.String,
+      value: 'ACCORD MORTGAGES LIMITED',
+    })
+
+    engine.recalculateNow()
+
+    expect(engine.getCellValue('Opened', 'B2')).toMatchObject({
+      tag: ValueTag.String,
+      value: 'ACCORD MORTGAGES LIMITED',
+    })
+  })
+
   it('imports uncached external workbook formulas without using the direct-scalar fast path', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'external-workbook-formula-uncached' })
     await engine.ready()
@@ -90,6 +109,69 @@ function buildExternalWorkbookFormulaSnapshot(options: { readonly preserveCached
         name: 'Regional network',
         order: 0,
         cells,
+      },
+    ],
+  }
+}
+
+function buildParserHostileExternalWorkbookFormulaSnapshot(): WorkbookSnapshot {
+  const formula = 'IFERROR(VLOOKUP(A2,[1]Closed!$A:$B,2,FALSE),"NO GROUP")'
+  return {
+    version: 1,
+    workbook: {
+      name: 'Imported parser-hostile external workbook formulas',
+      metadata: {
+        externalWorkbookReferences: [
+          {
+            bookIndex: 1,
+            target: 'file:///tmp/firm-level-complaints-data-2021-h1.xlsx',
+            targetMode: 'External',
+            workbookName: 'firm-level-complaints-data-2021-h1.xlsx',
+            sheetNames: ['Closed'],
+          },
+        ],
+        unsupportedFormulaDependencies: [
+          {
+            kind: 'external-workbook-reference',
+            sheetName: 'Opened',
+            address: 'B2',
+            formula,
+            importedFormula: formula,
+            linkedWorkbooks: [
+              {
+                bookIndex: 1,
+                target: 'file:///tmp/firm-level-complaints-data-2021-h1.xlsx',
+                targetMode: 'External',
+                workbookName: 'firm-level-complaints-data-2021-h1.xlsx',
+                sheetNames: ['Closed'],
+              },
+            ],
+            cachedValuesUsed: true,
+            cachedFormulaValuePreserved: true,
+            cachedExternalReferenceValuesUsed: false,
+            resolvedExternalReferenceCount: 0,
+            unresolvedExternalReferenceCount: 0,
+            reason:
+              'Formula depends on an external workbook reference; cached linked values are preserved but linked workbooks are not recalculated during import.',
+          },
+        ],
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Opened',
+        order: 0,
+        cells: [
+          { address: 'A2', row: 1, col: 0, value: 'Accord Mortgages Limited' },
+          {
+            address: 'B2',
+            row: 1,
+            col: 1,
+            formula,
+            value: 'ACCORD MORTGAGES LIMITED',
+          },
+        ],
       },
     ],
   }
