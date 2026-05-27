@@ -159,11 +159,30 @@ function coerceNumber(value: CellValue | undefined, fallback: number): number | 
   return numeric !== undefined && Number.isFinite(numeric) ? numeric : undefined
 }
 
+function coerceScalarNumber(value: CellValue | undefined, fallback: number): number | undefined {
+  if (value === undefined) {
+    return fallback
+  }
+  const numeric = toScalarMathNumber(value)
+  return numeric !== undefined && Number.isFinite(numeric) ? numeric : undefined
+}
+
 function integerValue(value: CellValue | undefined, fallback?: number): number | undefined {
   if (value === undefined) {
     return fallback
   }
   const numeric = toNumber(value)
+  if (numeric === undefined || !Number.isFinite(numeric)) {
+    return undefined
+  }
+  return Math.trunc(numeric)
+}
+
+function scalarIntegerValue(value: CellValue | undefined, fallback?: number): number | undefined {
+  if (value === undefined) {
+    return fallback
+  }
+  const numeric = toScalarMathNumber(value)
   if (numeric === undefined || !Number.isFinite(numeric)) {
     return undefined
   }
@@ -293,11 +312,11 @@ const distributionBuiltins = preserveIncomingErrors(
 )
 const financialBuiltins = preserveIncomingErrors(
   createFinancialBuiltins({
-    toNumber,
+    toNumber: toScalarMathNumber,
     coerceBoolean,
-    coerceNumber,
+    coerceNumber: coerceScalarNumber,
     coercePaymentType,
-    integerValue,
+    integerValue: scalarIntegerValue,
     numberResult,
     valueError,
     numError,
@@ -329,7 +348,7 @@ const mathBuiltins = createMathBuiltins({
 })
 
 function coercePaymentType(value: CellValue | undefined, fallback: number): number | undefined {
-  const type = integerValue(value, fallback)
+  const type = scalarIntegerValue(value, fallback)
   return type === 0 || type === 1 ? type : undefined
 }
 

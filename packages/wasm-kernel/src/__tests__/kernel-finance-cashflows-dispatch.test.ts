@@ -66,6 +66,26 @@ function packConstants(constantsByProgram: number[][]): {
   }
 }
 
+function packStrings(strings: readonly string[]): {
+  offsets: Uint32Array
+  lengths: Uint32Array
+  data: Uint16Array
+} {
+  const offsets: number[] = []
+  const lengths: number[] = []
+  const data: number[] = []
+  for (const value of strings) {
+    offsets.push(data.length)
+    lengths.push(value.length)
+    data.push(...Array.from(value, (char) => char.charCodeAt(0)))
+  }
+  return {
+    offsets: Uint32Array.from(offsets),
+    lengths: Uint32Array.from(lengths),
+    data: Uint16Array.from(data),
+  }
+}
+
 function cellIndex(row: number, col: number, width: number): number {
   return row * width + col
 }
@@ -81,6 +101,113 @@ function expectErrorCell(kernel: Awaited<ReturnType<typeof createKernel>>, index
 }
 
 describe('wasm kernel finance/cashflow dispatch', () => {
+  it('coerces direct numeric text for annuity and cumulative loan formulas on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 12
+    kernel.init(24, 9, 0, 1, 1)
+    kernel.writeCells(new Uint8Array(24), new Float64Array(24), new Uint32Array(24), new Uint16Array(24))
+    const strings = packStrings([
+      '0.1',
+      '2',
+      '-100',
+      '-1000',
+      '1000',
+      '0',
+      '1',
+      '-576.1904761904761',
+      '0.0075',
+      '360',
+      '125000',
+      '13',
+      '24',
+    ])
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+
+    const packed = packPrograms([
+      [encodePushString(0), encodePushString(1), encodePushString(2), encodePushString(3), encodeCall(BuiltinId.Fv, 4), encodeRet()],
+      [encodePushString(0), encodePushString(1), encodePushString(7), encodeCall(BuiltinId.Pv, 3), encodeRet()],
+      [encodePushString(0), encodePushString(1), encodePushString(4), encodeCall(BuiltinId.Pmt, 3), encodeRet()],
+      [
+        encodePushString(0),
+        encodePushString(1),
+        encodePushString(4),
+        encodePushString(5),
+        encodePushString(6),
+        encodeCall(BuiltinId.Pmt, 5),
+        encodeRet(),
+      ],
+      [encodePushString(0), encodePushString(7), encodePushString(4), encodeCall(BuiltinId.Nper, 3), encodeRet()],
+      [encodePushString(0), encodePushString(6), encodePushString(1), encodePushString(4), encodeCall(BuiltinId.Ipmt, 4), encodeRet()],
+      [encodePushString(0), encodePushString(6), encodePushString(1), encodePushString(4), encodeCall(BuiltinId.Ppmt, 4), encodeRet()],
+      [
+        encodePushString(8),
+        encodePushString(9),
+        encodePushString(10),
+        encodePushString(11),
+        encodePushString(12),
+        encodePushString(5),
+        encodeCall(BuiltinId.Cumipmt, 6),
+        encodeRet(),
+      ],
+      [
+        encodePushString(8),
+        encodePushString(9),
+        encodePushString(10),
+        encodePushString(11),
+        encodePushString(12),
+        encodePushString(5),
+        encodeCall(BuiltinId.Cumprinc, 6),
+        encodeRet(),
+      ],
+    ])
+    const targets = Uint32Array.from(Array.from({ length: 9 }, (_, index) => cellIndex(1, index, width)))
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targets)
+    const constants = packConstants([[], [], [], [], [], [], [], [], []])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(targets)
+
+    expectNumberCell(kernel, cellIndex(1, 0, width), 1420, 10)
+    expectNumberCell(kernel, cellIndex(1, 1, width), 1000, 10)
+    expectNumberCell(kernel, cellIndex(1, 2, width), -576.1904761904758, 10)
+    expectNumberCell(kernel, cellIndex(1, 3, width), -523.8095238095234, 10)
+    expectNumberCell(kernel, cellIndex(1, 4, width), 2, 10)
+    expectNumberCell(kernel, cellIndex(1, 5, width), -100, 10)
+    expectNumberCell(kernel, cellIndex(1, 6, width), -476.1904761904758, 10)
+    expectNumberCell(kernel, cellIndex(1, 7, width), -11135.232130750845, 8)
+    expectNumberCell(kernel, cellIndex(1, 8, width), -934.1071234208765, 8)
+  })
+
+  it('rejects invalid direct financial text on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 4
+    kernel.init(12, 2, 0, 1, 1)
+    kernel.writeCells(new Uint8Array(12), new Float64Array(12), new Uint32Array(12), new Uint16Array(12))
+    const strings = packStrings(['bad', '2', '1000', '0.0075', '125000', '13', '24', '0'])
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+
+    const packed = packPrograms([
+      [encodePushString(0), encodePushString(1), encodePushString(2), encodeCall(BuiltinId.Pmt, 3), encodeRet()],
+      [
+        encodePushString(3),
+        encodePushString(0),
+        encodePushString(4),
+        encodePushString(5),
+        encodePushString(6),
+        encodePushString(7),
+        encodeCall(BuiltinId.Cumipmt, 6),
+        encodeRet(),
+      ],
+    ])
+    const targets = Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width)])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targets)
+    const constants = packConstants([[], []])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(targets)
+
+    expectErrorCell(kernel, cellIndex(1, 0, width), ErrorCode.Value)
+    expectErrorCell(kernel, cellIndex(1, 1, width), ErrorCode.Value)
+  })
+
   it('keeps annuity formulas stable across refactors', async () => {
     const kernel = await createKernel()
     const width = 8

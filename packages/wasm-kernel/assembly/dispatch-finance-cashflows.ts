@@ -9,10 +9,63 @@ import {
   solveRateCalc,
   totalPeriodsCalc,
 } from './cashflows'
-import { toNumberExact } from './operands'
-import { collectNumericValuesFromArgs, orderStatisticErrorCode } from './statistics-tests'
-import { paymentType, scalarErrorAt } from './builtin-args'
+import { collectNumericValuesFromArgsWithText, orderStatisticErrorCode } from './statistics-tests'
+import { scalarErrorAt } from './builtin-args'
 import { STACK_KIND_SCALAR, writeResult } from './result-io'
+import { coerceScalarNumberLikeText } from './text-special'
+
+class CashflowArgumentContext {
+  valueStack: Float64Array
+  tagStack: Uint8Array
+  stringOffsets: Uint32Array
+  stringLengths: Uint32Array
+  stringData: Uint16Array
+  outputStringOffsets: Uint32Array
+  outputStringLengths: Uint32Array
+  outputStringData: Uint16Array
+
+  constructor(
+    valueStack: Float64Array,
+    tagStack: Uint8Array,
+    stringOffsets: Uint32Array,
+    stringLengths: Uint32Array,
+    stringData: Uint16Array,
+    outputStringOffsets: Uint32Array,
+    outputStringLengths: Uint32Array,
+    outputStringData: Uint16Array,
+  ) {
+    this.valueStack = valueStack
+    this.tagStack = tagStack
+    this.stringOffsets = stringOffsets
+    this.stringLengths = stringLengths
+    this.stringData = stringData
+    this.outputStringOffsets = outputStringOffsets
+    this.outputStringLengths = outputStringLengths
+    this.outputStringData = outputStringData
+  }
+
+  numberAt(slot: i32): f64 {
+    return coerceScalarNumberLikeText(
+      this.tagStack[slot],
+      this.valueStack[slot],
+      this.stringOffsets,
+      this.stringLengths,
+      this.stringData,
+      this.outputStringOffsets,
+      this.outputStringLengths,
+      this.outputStringData,
+    )
+  }
+
+  paymentTypeAt(slot: i32): i32 {
+    const numeric = this.numberAt(slot)
+    if (!isFinite(numeric)) {
+      return -1
+    }
+    const type = <i32>numeric
+    return type == 0 || type == 1 ? type : -1
+  }
+}
 
 export function tryApplyFinanceCashflowBuiltin(
   builtinId: i32,
@@ -22,6 +75,12 @@ export function tryApplyFinanceCashflowBuiltin(
   valueStack: Float64Array,
   tagStack: Uint8Array,
   kindStack: Uint8Array,
+  stringOffsets: Uint32Array,
+  stringLengths: Uint32Array,
+  stringData: Uint16Array,
+  outputStringOffsets: Uint32Array,
+  outputStringLengths: Uint32Array,
+  outputStringData: Uint16Array,
   cellTags: Uint8Array,
   cellNumbers: Float64Array,
   cellStringIds: Uint32Array,
@@ -32,16 +91,27 @@ export function tryApplyFinanceCashflowBuiltin(
   rangeColCounts: Uint32Array,
   rangeMembers: Uint32Array,
 ): i32 {
+  const args = new CashflowArgumentContext(
+    valueStack,
+    tagStack,
+    stringOffsets,
+    stringLengths,
+    stringData,
+    outputStringOffsets,
+    outputStringLengths,
+    outputStringData,
+  )
+
   if (builtinId == BuiltinId.Pv && argc >= 3 && argc <= 5) {
     const scalarError = scalarErrorAt(base, argc, kindStack, tagStack, valueStack)
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const rate = toNumberExact(tagStack[base], valueStack[base])
-    const periods = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const payment = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-    const future = argc >= 4 ? toNumberExact(tagStack[base + 3], valueStack[base + 3]) : 0.0
-    const paymentTypeValue = argc >= 5 ? paymentType(tagStack[base + 4], valueStack[base + 4], true) : 0
+    const rate = args.numberAt(base)
+    const periods = args.numberAt(base + 1)
+    const payment = args.numberAt(base + 2)
+    const future = argc >= 4 ? args.numberAt(base + 3) : 0.0
+    const paymentTypeValue = argc >= 5 ? args.paymentTypeAt(base + 4) : 0
     const present = paymentTypeValue < 0 ? NaN : presentValueCalc(rate, periods, payment, future, paymentTypeValue)
     return isNaN(present)
       ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -53,11 +123,11 @@ export function tryApplyFinanceCashflowBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const rate = toNumberExact(tagStack[base], valueStack[base])
-    const periods = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const present = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-    const future = argc >= 4 ? toNumberExact(tagStack[base + 3], valueStack[base + 3]) : 0.0
-    const paymentTypeValue = argc >= 5 ? paymentType(tagStack[base + 4], valueStack[base + 4], true) : 0
+    const rate = args.numberAt(base)
+    const periods = args.numberAt(base + 1)
+    const present = args.numberAt(base + 2)
+    const future = argc >= 4 ? args.numberAt(base + 3) : 0.0
+    const paymentTypeValue = argc >= 5 ? args.paymentTypeAt(base + 4) : 0
     const payment = paymentTypeValue < 0 ? NaN : periodicPaymentCalc(rate, periods, present, future, paymentTypeValue)
     return isNaN(payment)
       ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -69,11 +139,11 @@ export function tryApplyFinanceCashflowBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const rate = toNumberExact(tagStack[base], valueStack[base])
-    const payment = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const present = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-    const future = argc >= 4 ? toNumberExact(tagStack[base + 3], valueStack[base + 3]) : 0.0
-    const paymentTypeValue = argc >= 5 ? paymentType(tagStack[base + 4], valueStack[base + 4], true) : 0
+    const rate = args.numberAt(base)
+    const payment = args.numberAt(base + 1)
+    const present = args.numberAt(base + 2)
+    const future = argc >= 4 ? args.numberAt(base + 3) : 0.0
+    const paymentTypeValue = argc >= 5 ? args.paymentTypeAt(base + 4) : 0
     const periods = paymentTypeValue < 0 ? NaN : totalPeriodsCalc(rate, payment, present, future, paymentTypeValue)
     return isNaN(periods)
       ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -81,11 +151,11 @@ export function tryApplyFinanceCashflowBuiltin(
   }
 
   if (builtinId == BuiltinId.Npv && argc >= 2) {
-    const rate = toNumberExact(tagStack[base], valueStack[base])
+    const rate = args.numberAt(base)
     if (isNaN(rate)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const values = collectNumericValuesFromArgs(
+    const values = collectNumericValuesFromArgsWithText(
       base + 1,
       argc - 1,
       kindStack,
@@ -101,6 +171,12 @@ export function tryApplyFinanceCashflowBuiltin(
       cellNumbers,
       cellStringIds,
       cellErrors,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
     )
     if (values === null) {
       return writeResult(
@@ -131,12 +207,12 @@ export function tryApplyFinanceCashflowBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const periods = toNumberExact(tagStack[base], valueStack[base])
-    const payment = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const present = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-    const future = argc >= 4 ? toNumberExact(tagStack[base + 3], valueStack[base + 3]) : 0.0
-    const paymentTypeValue = argc >= 5 ? paymentType(tagStack[base + 4], valueStack[base + 4], true) : 0
-    const guess = argc >= 6 ? toNumberExact(tagStack[base + 5], valueStack[base + 5]) : 0.1
+    const periods = args.numberAt(base)
+    const payment = args.numberAt(base + 1)
+    const present = args.numberAt(base + 2)
+    const future = argc >= 4 ? args.numberAt(base + 3) : 0.0
+    const paymentTypeValue = argc >= 5 ? args.paymentTypeAt(base + 4) : 0
+    const guess = argc >= 6 ? args.numberAt(base + 5) : 0.1
     const rate = paymentTypeValue < 0 ? NaN : solveRateCalc(periods, payment, present, future, paymentTypeValue, guess)
     return isNaN(rate)
       ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -148,12 +224,12 @@ export function tryApplyFinanceCashflowBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const rate = toNumberExact(tagStack[base], valueStack[base])
-    const period = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const periods = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-    const present = toNumberExact(tagStack[base + 3], valueStack[base + 3])
-    const future = argc >= 5 ? toNumberExact(tagStack[base + 4], valueStack[base + 4]) : 0.0
-    const paymentTypeValue = argc >= 6 ? paymentType(tagStack[base + 5], valueStack[base + 5], true) : 0
+    const rate = args.numberAt(base)
+    const period = args.numberAt(base + 1)
+    const periods = args.numberAt(base + 2)
+    const present = args.numberAt(base + 3)
+    const future = argc >= 5 ? args.numberAt(base + 4) : 0.0
+    const paymentTypeValue = argc >= 6 ? args.paymentTypeAt(base + 5) : 0
     const result =
       paymentTypeValue < 0
         ? NaN
@@ -170,10 +246,10 @@ export function tryApplyFinanceCashflowBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const rate = toNumberExact(tagStack[base], valueStack[base])
-    const period = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const periods = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-    const present = toNumberExact(tagStack[base + 3], valueStack[base + 3])
+    const rate = args.numberAt(base)
+    const period = args.numberAt(base + 1)
+    const periods = args.numberAt(base + 2)
+    const present = args.numberAt(base + 3)
     if (isNaN(rate) || isNaN(period) || isNaN(periods) || isNaN(present) || periods <= 0.0 || period < 1.0 || period > periods) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -194,12 +270,12 @@ export function tryApplyFinanceCashflowBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const rate = toNumberExact(tagStack[base], valueStack[base])
-    const periods = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const present = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-    const startPeriodNumeric = toNumberExact(tagStack[base + 3], valueStack[base + 3])
-    const endPeriodNumeric = toNumberExact(tagStack[base + 4], valueStack[base + 4])
-    const paymentTypeNumeric = toNumberExact(tagStack[base + 5], valueStack[base + 5])
+    const rate = args.numberAt(base)
+    const periods = args.numberAt(base + 1)
+    const present = args.numberAt(base + 2)
+    const startPeriodNumeric = args.numberAt(base + 3)
+    const endPeriodNumeric = args.numberAt(base + 4)
+    const paymentTypeNumeric = args.numberAt(base + 5)
     if (
       isNaN(rate) ||
       isNaN(periods) ||
@@ -250,11 +326,11 @@ export function tryApplyFinanceCashflowBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const rate = toNumberExact(tagStack[base], valueStack[base])
-    const periods = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const payment = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-    const present = argc >= 4 ? toNumberExact(tagStack[base + 3], valueStack[base + 3]) : 0.0
-    const paymentTypeValue = argc >= 5 ? paymentType(tagStack[base + 4], valueStack[base + 4], true) : 0
+    const rate = args.numberAt(base)
+    const periods = args.numberAt(base + 1)
+    const payment = args.numberAt(base + 2)
+    const present = argc >= 4 ? args.numberAt(base + 3) : 0.0
+    const paymentTypeValue = argc >= 5 ? args.paymentTypeAt(base + 4) : 0
     const future = paymentTypeValue < 0 ? NaN : futureValueCalc(rate, periods, payment, present, paymentTypeValue)
     return isNaN(future)
       ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -266,13 +342,13 @@ export function tryApplyFinanceCashflowBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const principal = toNumberExact(tagStack[base], valueStack[base])
+    const principal = args.numberAt(base)
     if (isNaN(principal)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     let result = principal
     for (let index = 1; index < argc; index += 1) {
-      const rate = toNumberExact(tagStack[base + index], valueStack[base + index])
+      const rate = args.numberAt(base + index)
       if (isNaN(rate)) {
         return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
       }
@@ -286,8 +362,8 @@ export function tryApplyFinanceCashflowBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const rate = toNumberExact(tagStack[base], valueStack[base])
-    const periodsNumeric = toNumberExact(tagStack[base + 1], valueStack[base + 1])
+    const rate = args.numberAt(base)
+    const periodsNumeric = args.numberAt(base + 1)
     const periods = Math.trunc(periodsNumeric)
     if (isNaN(rate) || isNaN(periodsNumeric)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -307,9 +383,9 @@ export function tryApplyFinanceCashflowBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const rate = toNumberExact(tagStack[base], valueStack[base])
-    const present = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const future = toNumberExact(tagStack[base + 2], valueStack[base + 2])
+    const rate = args.numberAt(base)
+    const present = args.numberAt(base + 1)
+    const future = args.numberAt(base + 2)
     if (isNaN(rate) || isNaN(present) || isNaN(future)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -327,9 +403,9 @@ export function tryApplyFinanceCashflowBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const periods = toNumberExact(tagStack[base], valueStack[base])
-    const present = toNumberExact(tagStack[base + 1], valueStack[base + 1])
-    const future = toNumberExact(tagStack[base + 2], valueStack[base + 2])
+    const periods = args.numberAt(base)
+    const present = args.numberAt(base + 1)
+    const future = args.numberAt(base + 2)
     if (isNaN(periods) || isNaN(present) || isNaN(future)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }

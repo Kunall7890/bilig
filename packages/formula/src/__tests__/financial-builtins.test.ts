@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import {
   cumulativePeriodicPayment,
   dbDepreciation,
@@ -12,6 +13,11 @@ import {
   totalPeriods,
   vdbDepreciation,
 } from '../builtins/financial.js'
+import { getBuiltin } from '../builtins.js'
+
+const num = (value: number): CellValue => ({ tag: ValueTag.Number, value })
+const str = (value: string, stringId = 1): CellValue => ({ tag: ValueTag.String, value, stringId })
+const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
 
 describe('financial helpers', () => {
   it('computes time-value-of-money helpers', () => {
@@ -71,5 +77,51 @@ describe('financial helpers', () => {
     expect(cumulativePeriodicPayment(0.09 / 12, 30 * 12, 125000, 24, 13, 0, false)).toBeUndefined()
     expect(cumulativePeriodicPayment(0.09 / 12, 30 * 12, 125000, 13, 400, 0, false)).toBeUndefined()
     expect(cumulativePeriodicPayment(0.1, 2, 100, 1, 1, -10, false)).toBeUndefined()
+  })
+})
+
+describe('financial builtins', () => {
+  it('coerces direct numeric text for annuity functions', () => {
+    expect(getBuiltin('FV')?.(str('0.1'), str('2'), str('-100'), str('-1000'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(1420, 10),
+    })
+    expect(getBuiltin('PV')?.(str('0.1'), str('2'), str('-576.1904761904761'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(1000, 10),
+    })
+    expect(getBuiltin('PMT')?.(str('0.1'), str('2'), str('1000'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(-576.1904761904758, 10),
+    })
+    expect(getBuiltin('PMT')?.(str('0.1'), str('2'), str('1000'), str('0'), str('1'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(-523.8095238095234, 10),
+    })
+    expect(getBuiltin('NPER')?.(str('0.1'), str('-576.1904761904761'), str('1000'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(2, 10),
+    })
+    expect(getBuiltin('IPMT')?.(str('0.1'), str('1'), str('2'), str('1000'))).toEqual(num(-100))
+    expect(getBuiltin('PPMT')?.(str('0.1'), str('1'), str('2'), str('1000'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(-476.1904761904758, 10),
+    })
+  })
+
+  it('coerces direct numeric text for cumulative payment period arguments', () => {
+    expect(getBuiltin('CUMIPMT')?.(str('0.0075'), str('360'), str('125000'), str('13'), str('24'), str('0'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(-11135.232130750845, 8),
+    })
+    expect(getBuiltin('CUMPRINC')?.(str('0.0075'), str('360'), str('125000'), str('13'), str('24'), str('0'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(-934.1071234208765, 8),
+    })
+  })
+
+  it('rejects invalid direct financial text instead of defaulting to zero', () => {
+    expect(getBuiltin('PMT')?.(str('bad'), str('2'), str('1000'))).toEqual(valueError)
+    expect(getBuiltin('CUMIPMT')?.(str('0.0075'), str('bad'), str('125000'), str('13'), str('24'), str('0'))).toEqual(valueError)
   })
 })
