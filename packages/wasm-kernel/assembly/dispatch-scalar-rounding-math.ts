@@ -1,5 +1,5 @@
 import { BuiltinId, ErrorCode } from './protocol'
-import { roundToDigits, roundTowardZeroDigits } from './numeric-core'
+import { ceilingToMultiple, floorToMultiple, moduloValue, roundToDigits, roundTowardZeroDigits } from './numeric-core'
 import { scalarMathNumberLikeText, writeScalarMathError, writeScalarMathNumber } from './dispatch-scalar-math-helpers'
 
 export function tryApplyScalarRoundingMathBuiltin(
@@ -130,7 +130,7 @@ export function tryApplyScalarRoundingMathBuiltin(
     if (numeric > 0.0 && significance < 0.0) {
       return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    return writeScalarMathNumber(base, Math.floor(numeric / significance) * significance, rangeIndexStack, valueStack, tagStack, kindStack)
+    return writeScalarMathNumber(base, floorToMultiple(numeric, significance), rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.Ceiling && argc == 1) {
@@ -184,7 +184,7 @@ export function tryApplyScalarRoundingMathBuiltin(
     if (numeric > 0.0 && significance < 0.0) {
       return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    return writeScalarMathNumber(base, Math.ceil(numeric / significance) * significance, rangeIndexStack, valueStack, tagStack, kindStack)
+    return writeScalarMathNumber(base, ceilingToMultiple(numeric, significance), rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.FloorMath && (argc == 1 || argc == 2 || argc == 3)) {
@@ -236,8 +236,8 @@ export function tryApplyScalarRoundingMathBuiltin(
     const significance = Math.abs(significanceRaw)
     const result =
       numeric >= 0.0
-        ? Math.floor(numeric / significance) * significance
-        : -(mode == 0.0 ? Math.ceil(Math.abs(numeric) / significance) : Math.floor(Math.abs(numeric) / significance)) * significance
+        ? floorToMultiple(numeric, significance)
+        : -(mode == 0.0 ? ceilingToMultiple(Math.abs(numeric), significance) : floorToMultiple(Math.abs(numeric), significance))
     return writeScalarMathNumber(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
@@ -274,7 +274,7 @@ export function tryApplyScalarRoundingMathBuiltin(
       return writeScalarMathNumber(base, 0.0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const significance = Math.abs(significanceRaw)
-    return writeScalarMathNumber(base, Math.floor(numeric / significance) * significance, rangeIndexStack, valueStack, tagStack, kindStack)
+    return writeScalarMathNumber(base, floorToMultiple(numeric, significance), rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.CeilingMath && (argc == 1 || argc == 2 || argc == 3)) {
@@ -326,8 +326,8 @@ export function tryApplyScalarRoundingMathBuiltin(
     const significance = Math.abs(significanceRaw)
     const result =
       numeric >= 0.0
-        ? Math.ceil(numeric / significance) * significance
-        : -(mode == 0.0 ? Math.floor(Math.abs(numeric) / significance) : Math.ceil(Math.abs(numeric) / significance)) * significance
+        ? ceilingToMultiple(numeric, significance)
+        : -(mode == 0.0 ? floorToMultiple(Math.abs(numeric), significance) : ceilingToMultiple(Math.abs(numeric), significance))
     return writeScalarMathNumber(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
@@ -364,7 +364,7 @@ export function tryApplyScalarRoundingMathBuiltin(
       return writeScalarMathNumber(base, 0.0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const significance = Math.abs(significanceRaw)
-    return writeScalarMathNumber(base, Math.ceil(numeric / significance) * significance, rangeIndexStack, valueStack, tagStack, kindStack)
+    return writeScalarMathNumber(base, ceilingToMultiple(numeric, significance), rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.Mod && argc == 2) {
@@ -396,14 +396,7 @@ export function tryApplyScalarRoundingMathBuiltin(
     if (divisor == 0.0) {
       return writeScalarMathError(base, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    return writeScalarMathNumber(
-      base,
-      dividend - divisor * Math.floor(dividend / divisor),
-      rangeIndexStack,
-      valueStack,
-      tagStack,
-      kindStack,
-    )
+    return writeScalarMathNumber(base, moduloValue(dividend, divisor), rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.Int && argc == 1) {

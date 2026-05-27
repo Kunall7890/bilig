@@ -134,6 +134,54 @@ function roundScaledHalfAwayFromZero(value: f64): f64 {
   return Math.abs(fraction - 0.5) <= ROUND_HALF_TOLERANCE ? floor + 1.0 : Math.round(value)
 }
 
+function snapNearIntegerQuotient(value: f64): f64 {
+  if (!isFinite(value)) {
+    return value
+  }
+  const nearest = Math.round(value)
+  return Math.abs(value - nearest) <= ROUND_HALF_TOLERANCE ? nearest : value
+}
+
+function normalizeMultipleResult(value: f64): f64 {
+  if (!isFinite(value) || value == 0.0) {
+    return value
+  }
+  const absolute = Math.abs(value)
+  if (absolute <= ROUND_HALF_TOLERANCE) {
+    return 0.0
+  }
+  if (absolute >= 1e15) {
+    return value
+  }
+  const exponent = <i32>Math.floor(Math.log(absolute) / Math.log(10.0))
+  const rawDigits = 14 - exponent
+  const digits = rawDigits < 0 ? 0 : rawDigits > 15 ? 15 : rawDigits
+  const normalized = roundToDigits(value, digits)
+  return normalized == 0.0 ? 0.0 : normalized
+}
+
+export function floorToMultiple(value: f64, multiple: f64): f64 {
+  return normalizeMultipleResult(Math.floor(snapNearIntegerQuotient(value / multiple)) * multiple)
+}
+
+export function ceilingToMultiple(value: f64, multiple: f64): f64 {
+  return normalizeMultipleResult(Math.ceil(snapNearIntegerQuotient(value / multiple)) * multiple)
+}
+
+export function roundToMultiple(value: f64, multiple: f64): f64 {
+  const quotient = value / multiple
+  const sign = quotient < 0.0 ? -1.0 : 1.0
+  return normalizeMultipleResult(sign * roundScaledHalfAwayFromZero(Math.abs(quotient)) * multiple)
+}
+
+export function moduloValue(dividend: f64, divisor: f64): f64 {
+  return normalizeMultipleResult(dividend - divisor * Math.floor(snapNearIntegerQuotient(dividend / divisor)))
+}
+
+export function truncateQuotient(numerator: f64, denominator: f64): f64 {
+  return Math.trunc(snapNearIntegerQuotient(numerator / denominator))
+}
+
 export function roundTowardZeroDigits(value: f64, digits: i32): f64 {
   if (digits >= 0) {
     const factor = Math.pow(10.0, <f64>digits)

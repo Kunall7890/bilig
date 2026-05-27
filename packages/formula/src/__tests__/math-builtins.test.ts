@@ -189,6 +189,25 @@ describe('math builtins', () => {
     expect(getBuiltin('CEILING')?.(num(-2.5), num(-2))).toEqual(num(-4))
   })
 
+  it('snaps decimal quotient math to spreadsheet multiple semantics', () => {
+    expect(getBuiltin('FLOOR')?.(num(0.3), num(0.1))).toEqual(num(0.3))
+    expect(getBuiltin('CEILING')?.(num(0.3), num(0.1))).toEqual(num(0.3))
+    expect(getBuiltin('FLOOR.MATH')?.(num(0.3), num(0.1))).toEqual(num(0.3))
+    expect(getBuiltin('FLOOR.PRECISE')?.(num(0.3), num(0.1))).toEqual(num(0.3))
+    expect(getBuiltin('CEILING.MATH')?.(num(0.3), num(0.1))).toEqual(num(0.3))
+    expect(getBuiltin('CEILING.PRECISE')?.(num(0.3), num(0.1))).toEqual(num(0.3))
+    expect(getBuiltin('ISO.CEILING')?.(num(0.3), num(0.1))).toEqual(num(0.3))
+
+    expect(getBuiltin('MROUND')?.(num(0.15), num(0.1))).toEqual(num(0.2))
+    expect(getBuiltin('MROUND')?.(num(6.05), num(0.1))).toEqual(num(6.1))
+    expect(getBuiltin('MROUND')?.(num(-6.05), num(-0.1))).toEqual(num(-6.1))
+
+    expect(getBuiltin('MOD')?.(num(0.3), num(0.1))).toEqual(num(0))
+    expect(getBuiltin('MOD')?.(num(0.35), num(0.1))).toEqual(num(0.05))
+    expect(getBuiltin('QUOTIENT')?.(num(0.3), num(0.1))).toEqual(num(3))
+    expect(getBuiltin('QUOTIENT')?.(num(-0.3), num(0.1))).toEqual(num(-3))
+  })
+
   it('matches Microsoft Excel square-root negative-domain errors', () => {
     expect(getBuiltin('SQRT')?.(num(-1))).toEqual(numError)
     expect(getBuiltin('SQRTPI')?.(num(-1))).toEqual(numError)

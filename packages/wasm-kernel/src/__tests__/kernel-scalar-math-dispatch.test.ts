@@ -449,6 +449,62 @@ describe('wasm kernel scalar math dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(1, 2, width)]).toBe(-9)
   })
 
+  it('snaps decimal quotient math to spreadsheet multiple semantics on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 16
+    kernel.init(32, 5, 1, 1, 1)
+    kernel.writeCells(new Uint8Array(32), new Float64Array(32), new Uint32Array(32), new Uint16Array(32))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Floor, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Ceiling, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.FloorMath, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.FloorPrecise, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.CeilingMath, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.CeilingPrecise, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.IsoCeiling, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Mround, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Mround, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Mod, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Mod, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Quotient, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Quotient, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 13 }, (_value, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([
+      [0.3, 0.1],
+      [0.3, 0.1],
+      [0.3, 0.1],
+      [0.3, 0.1],
+      [0.3, 0.1],
+      [0.3, 0.1],
+      [0.3, 0.1],
+      [0.15, 0.1],
+      [6.05, 0.1],
+      [0.35, 0.1],
+      [0.3, 0.1],
+      [0.3, 0.1],
+      [-0.3, 0.1],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 13 }, (_value, index) => cellIndex(1, index, width))))
+
+    for (let index = 0; index < 7; index += 1) {
+      expect(kernel.readNumbers()[cellIndex(1, index, width)]).toBeCloseTo(0.3, 12)
+    }
+    expect(kernel.readNumbers()[cellIndex(1, 7, width)]).toBeCloseTo(0.2, 12)
+    expect(kernel.readNumbers()[cellIndex(1, 8, width)]).toBeCloseTo(6.1, 12)
+    expect(kernel.readNumbers()[cellIndex(1, 9, width)]).toBeCloseTo(0.05, 12)
+    expect(kernel.readNumbers()[cellIndex(1, 10, width)]).toBeCloseTo(0, 12)
+    expect(kernel.readNumbers()[cellIndex(1, 11, width)]).toBe(3)
+    expect(kernel.readNumbers()[cellIndex(1, 12, width)]).toBe(-3)
+  })
+
   it('matches spreadsheet zero-multiple rounding semantics on the wasm path', async () => {
     const kernel = await createKernel()
     const width = 8

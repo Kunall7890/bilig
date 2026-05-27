@@ -1,5 +1,15 @@
 import { BuiltinId, ErrorCode } from './protocol'
-import { combinationCalc, doubleFactorialCalc, evenCalc, factorialCalc, oddCalc, permutationCalc, truncToInt } from './numeric-core'
+import {
+  combinationCalc,
+  doubleFactorialCalc,
+  evenCalc,
+  factorialCalc,
+  oddCalc,
+  permutationCalc,
+  roundToMultiple,
+  truncateQuotient,
+  truncToInt,
+} from './numeric-core'
 import { toNumberExact, toNumberOrZero } from './operands'
 import { besselIValue, besselJValue, besselKValue, besselYValue } from './distributions'
 import { tryApplyScalarRoundingMathBuiltin } from './dispatch-scalar-rounding-math'
@@ -650,7 +660,7 @@ export function tryApplyScalarMathBuiltin(
       if (right == 0.0) {
         return writeScalarMathError(base, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
       }
-      return writeScalarMathNumber(base, Math.trunc(left / right), rangeIndexStack, valueStack, tagStack, kindStack)
+      return writeScalarMathNumber(base, truncateQuotient(left, right), rangeIndexStack, valueStack, tagStack, kindStack)
     }
 
     const numberValue = Math.trunc(left)
@@ -757,7 +767,7 @@ export function tryApplyScalarMathBuiltin(
     if (numeric != 0.0 && Math.sign(numeric) != Math.sign(multiple)) {
       return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    return writeScalarMathNumber(base, Math.round(numeric / multiple) * multiple, rangeIndexStack, valueStack, tagStack, kindStack)
+    return writeScalarMathNumber(base, roundToMultiple(numeric, multiple), rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   return -1

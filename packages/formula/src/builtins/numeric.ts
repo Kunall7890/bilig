@@ -72,7 +72,7 @@ export function createNumericBuiltinHelpers({
       if (numberValue > 0 && significanceValue < 0) {
         return { tag: ValueTag.Error, code: ErrorCode.Num }
       }
-      return numberResult(Math.floor(numberValue / significanceValue) * significanceValue)
+      return numberResult(floorToMultiple(numberValue, significanceValue))
     },
     ceilingWith: (value: CellValue | undefined, significance?: CellValue): CellValue => {
       const error = firstError([value, significance])
@@ -90,7 +90,7 @@ export function createNumericBuiltinHelpers({
       if (numberValue > 0 && significanceValue < 0) {
         return { tag: ValueTag.Error, code: ErrorCode.Num }
       }
-      return numberResult(Math.ceil(numberValue / significanceValue) * significanceValue)
+      return numberResult(ceilingToMultiple(numberValue, significanceValue))
     },
     unaryMath: (value: CellValue | undefined, evaluate: (numeric: number) => number): CellValue => {
       if (value?.tag === ValueTag.Error) {
@@ -130,6 +130,53 @@ function roundScaledHalfAwayFromZero(value: number): number {
   const floor = Math.floor(value)
   const fraction = value - floor
   return Math.abs(fraction - 0.5) <= ROUND_HALF_TOLERANCE ? floor + 1 : Math.round(value)
+}
+
+function snapNearIntegerQuotient(value: number): number {
+  if (!Number.isFinite(value)) {
+    return value
+  }
+  const nearest = Math.round(value)
+  return Math.abs(value - nearest) <= ROUND_HALF_TOLERANCE ? nearest : value
+}
+
+function normalizeMultipleResult(value: number): number {
+  if (!Number.isFinite(value) || value === 0) {
+    return value
+  }
+  const absolute = Math.abs(value)
+  if (absolute <= ROUND_HALF_TOLERANCE) {
+    return 0
+  }
+  if (absolute >= 1e15) {
+    return value
+  }
+  const exponent = Math.floor(Math.log10(absolute))
+  const digits = Math.max(0, Math.min(15, 14 - exponent))
+  const normalized = roundToDigits(value, digits)
+  return Object.is(normalized, -0) ? 0 : normalized
+}
+
+export function floorToMultiple(value: number, multiple: number): number {
+  return normalizeMultipleResult(Math.floor(snapNearIntegerQuotient(value / multiple)) * multiple)
+}
+
+export function ceilingToMultiple(value: number, multiple: number): number {
+  return normalizeMultipleResult(Math.ceil(snapNearIntegerQuotient(value / multiple)) * multiple)
+}
+
+export function roundToMultiple(value: number, multiple: number): number {
+  const quotient = value / multiple
+  const sign = quotient < 0 ? -1 : 1
+  return normalizeMultipleResult(sign * roundScaledHalfAwayFromZero(Math.abs(quotient)) * multiple)
+}
+
+export function moduloValue(dividend: number, divisor: number): number {
+  return normalizeMultipleResult(dividend - divisor * Math.floor(snapNearIntegerQuotient(dividend / divisor)))
+}
+
+export function truncateQuotient(numerator: number, denominator: number): number {
+  return Math.trunc(snapNearIntegerQuotient(numerator / denominator))
 }
 
 export function roundUpToDigits(value: number, digits: number): number {

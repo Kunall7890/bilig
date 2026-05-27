@@ -1,7 +1,15 @@
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import type { CellValue } from '@bilig/protocol'
 import { besselIValue, besselJValue, besselKValue, besselYValue } from './distributions.js'
-import { coerceScalarMathNumber, collectNumericArgs } from './numeric.js'
+import {
+  ceilingToMultiple,
+  coerceScalarMathNumber,
+  collectNumericArgs,
+  floorToMultiple,
+  moduloValue,
+  roundToMultiple,
+  truncateQuotient,
+} from './numeric.js'
 import { excelPower } from '../excel-power.js'
 import type { EvaluationResult } from '../runtime-values.js'
 
@@ -324,11 +332,13 @@ export function createMathBuiltins({
       }
       const significanceValue = Math.abs(significanceRaw)
       if (numberValue >= 0) {
-        return numberResult(Math.floor(numberValue / significanceValue) * significanceValue)
+        return numberResult(floorToMultiple(numberValue, significanceValue))
       }
       const magnitude =
-        modeValue === 0 ? Math.ceil(Math.abs(numberValue) / significanceValue) : Math.floor(Math.abs(numberValue) / significanceValue)
-      return numberResult(-magnitude * significanceValue)
+        modeValue === 0
+          ? ceilingToMultiple(Math.abs(numberValue), significanceValue)
+          : floorToMultiple(Math.abs(numberValue), significanceValue)
+      return numberResult(-magnitude)
     },
     'FLOOR.PRECISE': (value, significance) => {
       const error = firstError([value, significance])
@@ -344,7 +354,7 @@ export function createMathBuiltins({
         return numberResult(0)
       }
       const significanceValue = Math.abs(significanceRaw)
-      return numberResult(Math.floor(numberValue / significanceValue) * significanceValue)
+      return numberResult(floorToMultiple(numberValue, significanceValue))
     },
     'CEILING.MATH': (value, significance, mode) => {
       const error = firstError([value, significance, mode])
@@ -362,11 +372,13 @@ export function createMathBuiltins({
       }
       const significanceValue = Math.abs(significanceRaw)
       if (numberValue >= 0) {
-        return numberResult(Math.ceil(numberValue / significanceValue) * significanceValue)
+        return numberResult(ceilingToMultiple(numberValue, significanceValue))
       }
       const magnitude =
-        modeValue === 0 ? Math.floor(Math.abs(numberValue) / significanceValue) : Math.ceil(Math.abs(numberValue) / significanceValue)
-      return numberResult(-magnitude * significanceValue)
+        modeValue === 0
+          ? floorToMultiple(Math.abs(numberValue), significanceValue)
+          : ceilingToMultiple(Math.abs(numberValue), significanceValue)
+      return numberResult(-magnitude)
     },
     'CEILING.PRECISE': (value, significance) => {
       const error = firstError([value, significance])
@@ -382,7 +394,7 @@ export function createMathBuiltins({
         return numberResult(0)
       }
       const significanceValue = Math.abs(significanceRaw)
-      return numberResult(Math.ceil(numberValue / significanceValue) * significanceValue)
+      return numberResult(ceilingToMultiple(numberValue, significanceValue))
     },
     'ISO.CEILING': (value, significance) => {
       const error = firstError([value, significance])
@@ -398,7 +410,7 @@ export function createMathBuiltins({
         return numberResult(0)
       }
       const significanceValue = Math.abs(significanceRaw)
-      return numberResult(Math.ceil(numberValue / significanceValue) * significanceValue)
+      return numberResult(ceilingToMultiple(numberValue, significanceValue))
     },
     MOD: (left, right) => {
       const error = firstError([left, right])
@@ -413,7 +425,7 @@ export function createMathBuiltins({
       if (divisor === 0) {
         return div0Error()
       }
-      return numberResult(dividend - divisor * Math.floor(dividend / divisor))
+      return numberResult(moduloValue(dividend, divisor))
     },
     BITAND: (...args) => {
       if (args.length < 2) {
@@ -751,7 +763,7 @@ export function createMathBuiltins({
       if (numberValue !== 0 && Math.sign(numberValue) !== Math.sign(multipleValue)) {
         return numError()
       }
-      return numberResult(Math.round(numberValue / multipleValue) * multipleValue)
+      return numberResult(roundToMultiple(numberValue, multipleValue))
     },
     MULTINOMIAL: (...args) => {
       const error = firstError(args)
@@ -796,7 +808,7 @@ export function createMathBuiltins({
       if (denominator === 0) {
         return div0Error()
       }
-      return numberResult(Math.trunc(numerator / denominator))
+      return numberResult(truncateQuotient(numerator, denominator))
     },
   }
 }
