@@ -1244,7 +1244,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     )
   })
 
-  it('rejects Google Sheets formula edits when formula-bar proof lacks rendered result proof', () => {
+  it('rejects Google Sheets formula edits when formula-bar proof lacks committed rendered result proof', () => {
     const proof = buildCaptureScenarioProof({
       workload: 'formula-edit',
       bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'formula-edit'),
@@ -1262,7 +1262,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
           'google-sheets-visible-grid',
           'same-corpus-wide-mixed-250k-formula-edit',
           'formula-edit',
-          useVisibleFormulaBarFormulaProof,
+          useVisibleFormulaBarFormulaProofWithoutCommittedResult,
         ),
       ],
     })
@@ -2727,6 +2727,30 @@ function useVisibleFormulaBarFormulaProof(proof: SameCorpusMutationTargetProof):
           after: { ...proof.targetScreenshots.after, semanticReadback: formulaReadback },
         }
       : proof.targetScreenshots,
+  })
+}
+
+function useVisibleFormulaBarFormulaProofWithoutCommittedResult(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  if (proof.intendedPayload.kind !== 'formula') {
+    return proof
+  }
+  const formulaProof = useVisibleFormulaBarFormulaProof(proof)
+  if (!formulaProof.committedStateProof) {
+    return formulaProof
+  }
+  return signedMutationTargetProof({
+    ...formulaProof,
+    committedStateProof: {
+      ...formulaProof.committedStateProof,
+      after: {
+        ...formulaProof.committedStateProof.after,
+        readback: {
+          ...formulaProof.committedStateProof.after.readback,
+          value: null,
+          visibleText: formulaProof.intendedPayload.formula,
+        },
+      },
+    },
   })
 }
 

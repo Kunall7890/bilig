@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "ui-responsiveness-live-browser-timing",
-  "generatedAt": "2026-05-27T15:33:08.977Z",
+  "generatedAt": "2026-05-27T16:09:47.900Z",
   "host": {
     "arch": "arm64",
     "platform": "darwin"
@@ -44,48 +44,48 @@
       "workload": "open-public-workbook-and-scroll-viewport",
       "sampleCount": 3,
       "loadToReadyMs": {
-        "samples": [2899.5846250000004, 2947.462707999999, 3463.0239170000004],
-        "min": 2899.5846250000004,
-        "median": 2947.462707999999,
-        "p95": 3463.0239170000004,
-        "max": 3463.0239170000004,
-        "mean": 3103.357083333334,
-        "standardDeviation": 255.0728668933555,
-        "relativeStandardDeviation": 0.08219256116649659,
-        "standardError": 147.2663883638484,
+        "samples": [3036.2794999999996, 3058.9506249999995, 3135.268458],
+        "min": 3036.2794999999996,
+        "median": 3058.9506249999995,
+        "p95": 3135.268458,
+        "max": 3135.268458,
+        "mean": 3076.8328609999994,
+        "standardDeviation": 42.3441001380455,
+        "relativeStandardDeviation": 0.013762236056034344,
+        "standardError": 24.44737761329304,
         "confidence95": {
-          "low": 2814.714962140191,
-          "high": 3391.9992045264767
+          "low": 3028.916000877945,
+          "high": 3124.749721122054
         }
       },
       "scrollResponseMs": {
-        "samples": [122.89962500000001, 131.1090409999997, 138.75045899999986],
-        "min": 122.89962500000001,
-        "median": 131.1090409999997,
-        "p95": 138.75045899999986,
-        "max": 138.75045899999986,
-        "mean": 130.9197083333332,
-        "standardDeviation": 6.472460622663177,
-        "relativeStandardDeviation": 0.049438397816956005,
-        "standardError": 3.736876882813838,
+        "samples": [130.51662499999838, 131.98683399999982, 133.54475000000002],
+        "min": 130.51662499999838,
+        "median": 131.98683399999982,
+        "p95": 133.54475000000002,
+        "max": 133.54475000000002,
+        "mean": 132.01606966666608,
+        "standardDeviation": 1.2363996918641895,
+        "relativeStandardDeviation": 0.009365524174337536,
+        "standardError": 0.7138356949237602,
         "confidence95": {
-          "low": 123.59542964301808,
-          "high": 138.24398702364832
+          "low": 130.6169517046155,
+          "high": 133.41518762871667
         }
       },
       "postScrollFrameMs": {
-        "samples": [9.199999999999818, 9.599999999999909, 16.700000000000273],
-        "min": 9.199999999999818,
-        "median": 9.599999999999909,
-        "p95": 16.700000000000273,
-        "max": 16.700000000000273,
-        "mean": 11.833333333333334,
-        "standardDeviation": 3.4451253807213216,
-        "relativeStandardDeviation": 0.29113735611729474,
-        "standardError": 1.989044065951467,
+        "samples": [9, 9.400000000000091, 14.300000000000182],
+        "min": 9,
+        "median": 9.400000000000091,
+        "p95": 14.300000000000182,
+        "max": 14.300000000000182,
+        "mean": 10.900000000000091,
+        "standardDeviation": 2.4097026095904424,
+        "relativeStandardDeviation": 0.2210736339073782,
+        "standardError": 1.3912424503139857,
         "confidence95": {
-          "low": 7.934806964068459,
-          "high": 15.731859702598209
+          "low": 8.173164797384679,
+          "high": 13.626835202615503
         }
       },
       "passed": true,
@@ -105,48 +105,48 @@
       "workload": "open-public-workbook-and-scroll-viewport",
       "sampleCount": 3,
       "loadToReadyMs": {
-        "samples": [5065.961583, 5076.579207999999, 5119.707333],
-        "min": 5065.961583,
-        "median": 5076.579207999999,
-        "p95": 5119.707333,
-        "max": 5119.707333,
-        "mean": 5087.416041333333,
-        "standardDeviation": 23.24118654868939,
-        "relativeStandardDeviation": 0.00456836758776234,
-        "standardError": 13.41830531017213,
+        "samples": [5058.1421249999985, 5081.563624999999, 6322.048791000001],
+        "min": 5058.1421249999985,
+        "median": 5081.563624999999,
+        "p95": 6322.048791000001,
+        "max": 6322.048791000001,
+        "mean": 5487.251513666666,
+        "standardDeviation": 590.3682536337943,
+        "relativeStandardDeviation": 0.10758906388078085,
+        "standardError": 340.84927015648043,
         "confidence95": {
-          "low": 5061.116162925396,
-          "high": 5113.71591974127
+          "low": 4819.186944159965,
+          "high": 6155.316083173368
         }
       },
       "scrollResponseMs": {
-        "samples": [99.21758300000147, 101.93654199999946, 107.67562499999985],
-        "min": 99.21758300000147,
-        "median": 101.93654199999946,
-        "p95": 107.67562499999985,
-        "max": 107.67562499999985,
-        "mean": 102.94325000000026,
-        "standardDeviation": 3.5255935071401696,
-        "relativeStandardDeviation": 0.03424793278957251,
-        "standardError": 2.035502360400574,
+        "samples": [97.50083300000006, 99.04833300000246, 99.4464999999982],
+        "min": 97.50083300000006,
+        "median": 99.04833300000246,
+        "p95": 99.4464999999982,
+        "max": 99.4464999999982,
+        "mean": 98.66522200000024,
+        "standardDeviation": 0.8392399527598233,
+        "relativeStandardDeviation": 0.008505934875004095,
+        "standardError": 0.4845354126405728,
         "confidence95": {
-          "low": 98.95366537361514,
-          "high": 106.93283462638539
+          "low": 97.71553259122472,
+          "high": 99.61491140877577
         }
       },
       "postScrollFrameMs": {
-        "samples": [9.199999999999818, 9.300000000000182, 16.399999999999636],
-        "min": 9.199999999999818,
-        "median": 9.300000000000182,
-        "p95": 16.399999999999636,
-        "max": 16.399999999999636,
-        "mean": 11.633333333333212,
-        "standardDeviation": 3.370789554721724,
-        "relativeStandardDeviation": 0.28975268378697067,
-        "standardError": 1.9461262568001663,
+        "samples": [8.900000000000546, 9.199999999999818, 9.899999999999636],
+        "min": 8.900000000000546,
+        "median": 9.199999999999818,
+        "p95": 9.899999999999636,
+        "max": 9.899999999999636,
+        "mean": 9.333333333333334,
+        "standardDeviation": 0.418993502998885,
+        "relativeStandardDeviation": 0.04489216103559482,
+        "standardError": 0.24190601174511053,
         "confidence95": {
-          "low": 7.818925870004886,
-          "high": 15.447740796661538
+          "low": 8.859197550312917,
+          "high": 9.80746911635375
         }
       },
       "passed": true,
@@ -229,15 +229,15 @@
       "strictRenderedGridProofCaseCount": 9,
       "visibleOperationResponseProofCaseCount": 9,
       "biligAuthoritativeRenderProofCaseCount": 9,
-      "semanticUiProofCaseCount": 6,
+      "semanticUiProofCaseCount": 7,
       "requiredMutationTargetProofCaseCount": 3,
-      "mutationTargetProofCaseCount": 0,
+      "mutationTargetProofCaseCount": 1,
       "requiredMutationTargetProofSampleCount": 18,
-      "mutationTargetProofSampleCount": 11,
+      "mutationTargetProofSampleCount": 14,
       "requiredCommittedTargetProofTimingCaseCount": 3,
-      "committedTargetProofTimingCaseCount": 0,
+      "committedTargetProofTimingCaseCount": 1,
       "requiredCommittedTargetProofTimingSampleCount": 18,
-      "committedTargetProofTimingSampleCount": 11,
+      "committedTargetProofTimingSampleCount": 14,
       "mutationTargetProofProductSummaries": [
         {
           "workload": "edit-visible-cell",
@@ -1727,13 +1727,13 @@
           "product": "google-sheets",
           "requiredSampleCount": 3,
           "rawSampleCount": 3,
-          "acceptedSampleCount": 0,
-          "accepted": false,
+          "acceptedSampleCount": 3,
+          "accepted": true,
           "samples": [
             {
               "sampleIndex": 0,
               "present": true,
-              "accepted": false,
+              "accepted": true,
               "product": "google-sheets",
               "committedTargetProofMs": 4109.485874999984,
               "visibleTargetRenderMs": 324.22166700000525,
@@ -1928,12 +1928,12 @@
               "screenshotSha256": "cc27c2bb36cdb188d8c4adae1527ddc3c53b8067f65cb07752dcffe4fd45d341",
               "undoRestoreStatus": "verified",
               "targetProofSignature": "same-corpus-mutation-target-proof-sha256:2e38b89bfe0e3e060a1539cb60070723d29af89683bde35200ea31cd9bd238b3",
-              "invalidReasons": ["semantic UI mutation target proof for formula-edit did not prove the rendered formula result"]
+              "invalidReasons": []
             },
             {
               "sampleIndex": 1,
               "present": true,
-              "accepted": false,
+              "accepted": true,
               "product": "google-sheets",
               "committedTargetProofMs": 4288.128540999984,
               "visibleTargetRenderMs": 384.0383749999746,
@@ -2128,12 +2128,12 @@
               "screenshotSha256": "cc27c2bb36cdb188d8c4adae1527ddc3c53b8067f65cb07752dcffe4fd45d341",
               "undoRestoreStatus": "verified",
               "targetProofSignature": "same-corpus-mutation-target-proof-sha256:11acbb2b5ac974ae180876b3de210f07dc4b745a6fc1a503d4637e4502d90a93",
-              "invalidReasons": ["semantic UI mutation target proof for formula-edit did not prove the rendered formula result"]
+              "invalidReasons": []
             },
             {
               "sampleIndex": 2,
               "present": true,
-              "accepted": false,
+              "accepted": true,
               "product": "google-sheets",
               "committedTargetProofMs": 4176.253417,
               "visibleTargetRenderMs": 357.3736670000071,
@@ -2328,10 +2328,10 @@
               "screenshotSha256": "cc27c2bb36cdb188d8c4adae1527ddc3c53b8067f65cb07752dcffe4fd45d341",
               "undoRestoreStatus": "verified",
               "targetProofSignature": "same-corpus-mutation-target-proof-sha256:62f24bc9d3863575c9fe4e29a5a5f477d43a760cdc11694f920f294687846d35",
-              "invalidReasons": ["semantic UI mutation target proof for formula-edit did not prove the rendered formula result"]
+              "invalidReasons": []
             }
           ],
-          "invalidReasons": ["semantic UI mutation target proof for formula-edit did not prove the rendered formula result"]
+          "invalidReasons": []
         },
         {
           "workload": "fill-format-change",
@@ -2885,20 +2885,20 @@
         }
       ],
       "requiredProofArchiveArtifactCount": 99,
-      "proofArchiveArtifactCount": 42,
+      "proofArchiveArtifactCount": 61,
       "legacyInsufficientRenderedGridProofCaseCount": 0,
       "tenXMeanAndP95CaseCount": 1,
       "claimReadinessState": "diagnostic-capture-incomplete",
       "currentContractEvidenceComplete": false,
       "googleSheetsTenXRequirementSatisfied": false,
-      "captureRunSignature": "9e0f6a0a77a9406c565e13c16b9ddc364ac74f5d7ae600ac409c51b2e0b54a9d",
+      "captureRunSignature": "ac2ddcff3ce973d7270614589abb12282173a0a652ec541a44f9b7c3286a079b",
       "invalidReasons": [
-        "semantic UI proof covers 6/9 cases",
-        "mutation target proof covers 0/3 mutating cases",
-        "mutation target proof covers 11/18 required per-sample product proofs",
-        "committed target proof timing covers 0/3 mutating cases",
-        "committed target proof timing covers 11/18 required per-sample product timings",
-        "proof archive covers 42/99 required proof artifacts",
+        "semantic UI proof covers 7/9 cases",
+        "mutation target proof covers 1/3 mutating cases",
+        "mutation target proof covers 14/18 required per-sample product proofs",
+        "committed target proof timing covers 1/3 mutating cases",
+        "committed target proof timing covers 14/18 required per-sample product timings",
+        "proof archive covers 61/99 required proof artifacts",
         "not every required workload is 10x against Google Sheets"
       ]
     },
@@ -10966,7 +10966,7 @@
           "missingProducts": []
         },
         "semanticUiProof": {
-          "captured": false,
+          "captured": true,
           "requiredProducts": ["bilig", "google-sheets"],
           "products": [
             {
@@ -12089,12 +12089,12 @@
             },
             {
               "product": "google-sheets",
-              "evidenceStatus": "invalid",
-              "acceptedForCurrentScorecard": false,
-              "invalidReasons": ["semantic UI mutation target proof for formula-edit did not prove the rendered formula result"]
+              "evidenceStatus": "current-contract",
+              "acceptedForCurrentScorecard": true,
+              "invalidReasons": []
             }
           ],
-          "missingProducts": ["google-sheets"]
+          "missingProducts": []
         },
         "scenarioProof": {
           "biligMeanMs": 115.5055139999992,
@@ -12271,7 +12271,7 @@
             "missingProducts": []
           },
           "semanticUiProof": {
-            "captured": false,
+            "captured": true,
             "requiredProducts": ["bilig", "google-sheets"],
             "products": [
               {
@@ -13394,18 +13394,18 @@
               },
               {
                 "product": "google-sheets",
-                "evidenceStatus": "invalid",
-                "acceptedForCurrentScorecard": false,
-                "invalidReasons": ["semantic UI mutation target proof for formula-edit did not prove the rendered formula result"]
+                "evidenceStatus": "current-contract",
+                "acceptedForCurrentScorecard": true,
+                "invalidReasons": []
               }
             ],
-            "missingProducts": ["google-sheets"]
+            "missingProducts": []
           }
         },
         "postOperationFrameGuardrailPassed": true,
         "operationResponseProofGuardrailPassed": true,
         "authoritativeRenderProofGuardrailPassed": true,
-        "committedTargetProofGuardrailPassed": false,
+        "committedTargetProofGuardrailPassed": true,
         "biligRuntimeProofGuardrailPassed": true,
         "sourceWorkbookFingerprintGuardrailPassed": true,
         "tenXMeanAndP95AgainstGoogleSheets": false,

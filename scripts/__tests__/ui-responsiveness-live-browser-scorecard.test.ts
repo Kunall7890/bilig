@@ -97,15 +97,15 @@ describe('UI responsiveness live browser scorecard', () => {
       strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       visibleOperationResponseProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       biligAuthoritativeRenderProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
-      semanticUiProofCaseCount: 6,
+      semanticUiProofCaseCount: 7,
       requiredMutationTargetProofCaseCount: 3,
-      mutationTargetProofCaseCount: 0,
+      mutationTargetProofCaseCount: 1,
       requiredMutationTargetProofSampleCount: 18,
-      mutationTargetProofSampleCount: 11,
+      mutationTargetProofSampleCount: 14,
       requiredCommittedTargetProofTimingCaseCount: 3,
-      committedTargetProofTimingCaseCount: 0,
+      committedTargetProofTimingCaseCount: 1,
       requiredCommittedTargetProofTimingSampleCount: 18,
-      committedTargetProofTimingSampleCount: 11,
+      committedTargetProofTimingSampleCount: 14,
       legacyInsufficientRenderedGridProofCaseCount: 0,
       tenXMeanAndP95CaseCount: 1,
       claimReadinessState: 'diagnostic-capture-incomplete',
@@ -114,12 +114,12 @@ describe('UI responsiveness live browser scorecard', () => {
     })
     expect(scorecard.sameCorpusProof.runManifest?.capturedWorkloads).toEqual(requiredUiResponsivenessSameCorpusWorkloads)
     expect(scorecard.sameCorpusProof.runManifest?.captureRunSignature).toMatch(/^[a-f0-9]{64}$/u)
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('semantic UI proof covers 6/9 cases')
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('mutation target proof covers 0/3 mutating cases')
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('semantic UI proof covers 7/9 cases')
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('mutation target proof covers 1/3 mutating cases')
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain(
-      'mutation target proof covers 11/18 required per-sample product proofs',
+      'mutation target proof covers 14/18 required per-sample product proofs',
     )
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('proof archive covers 42/99 required proof artifacts')
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('proof archive covers 61/99 required proof artifacts')
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('not every required workload is 10x against Google Sheets')
     validateUiResponsivenessLiveBrowserScorecard(scorecard)
     validateSameCorpusCaptureArtifactMatchesScorecard(scorecard)

@@ -18,6 +18,7 @@ import {
   sameCorpusFillColorsMatch,
   sameCorpusFillFormatTargetProofInvalidReasons,
 } from './ui-responsiveness-same-corpus-fill-proof.ts'
+import { sameCorpusFormulaEditRenderedResultProven } from './ui-responsiveness-same-corpus-formula-proof.ts'
 import { sameCorpusBiligVisibleSceneProofInvalidReasons } from './ui-responsiveness-same-corpus-bilig-visible-proof.ts'
 import { sameCorpusMutationTargetTimingInvalidReasons } from './ui-responsiveness-same-corpus-mutation-target-timing.ts'
 import { sameCorpusMutationTargetRangeForSample } from './ui-responsiveness-same-corpus-mutation-target-spec.ts'
@@ -621,10 +622,6 @@ function expectedSameCorpusFormulaEditFormula(sampleIndex: number): string {
   return `=${String(sampleIndex + 1)}+1`
 }
 
-function expectedSameCorpusFormulaEditRenderedValue(sampleIndex: number): string {
-  return String(sampleIndex + 2)
-}
-
 function sameCorpusMutationTargetExpectedReadbackInvalidReasons(
   product: UiResponsivenessSameCorpusProduct,
   workload: UiResponsivenessSameCorpusWorkload,
@@ -649,8 +646,7 @@ function sameCorpusMutationTargetExpectedReadbackInvalidReasons(
     if (!formulaProven) {
       return ['semantic UI mutation target proof for formula-edit did not prove the intended edited formula']
     }
-    const expectedRenderedValue = expectedSameCorpusFormulaEditRenderedValue(sample.sampleIndex)
-    if (sample.visibleAfter.value !== expectedRenderedValue && sample.visibleAfter.visibleText !== expectedRenderedValue) {
+    if (!sameCorpusFormulaEditRenderedResultProven(product, sample)) {
       return ['semantic UI mutation target proof for formula-edit did not prove the rendered formula result']
     }
     return []

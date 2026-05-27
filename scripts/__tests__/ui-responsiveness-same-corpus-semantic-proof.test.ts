@@ -655,6 +655,73 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('accepts Google Sheets formula proof when the formula bar proves the edit and XLSX proves the result', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validGoogleSheetsSemanticProof({
+        selectedRange: sameCorpusMutationTargetRangeForSample('formula-edit', 0),
+        mutationTargetProofs: validGoogleSheetsFormulaMutationTargetProofs().map((proof) =>
+          signedMutationTargetProof({
+            ...proof,
+            after: {
+              ...proof.after,
+              value: null,
+              visibleText: proof.after.formula,
+              source: 'visible-formula-bar',
+            },
+            visibleAfter: {
+              ...proof.visibleAfter,
+              value: null,
+              formula: proof.after.formula,
+              visibleText: proof.after.formula,
+              source: 'visible-formula-bar',
+            },
+            visibleRestored: {
+              ...proof.visibleRestored,
+              value: proof.restored.value,
+              formula: proof.restored.formula,
+              visibleText: proof.restored.visibleText,
+              source: 'visible-formula-bar',
+            },
+            targetScreenshots: proof.targetScreenshots
+              ? {
+                  ...proof.targetScreenshots,
+                  after: {
+                    ...proof.targetScreenshots.after,
+                    semanticReadback: {
+                      ...proof.targetScreenshots.after.semanticReadback,
+                      value: null,
+                      formula: proof.after.formula,
+                      visibleText: proof.after.formula,
+                      source: 'visible-formula-bar',
+                    },
+                  },
+                  restored: {
+                    ...proof.targetScreenshots.restored,
+                    semanticReadback: {
+                      ...proof.targetScreenshots.restored.semanticReadback,
+                      value: proof.restored.value,
+                      formula: proof.restored.formula,
+                      visibleText: proof.restored.visibleText,
+                      source: 'visible-formula-bar',
+                    },
+                  },
+                }
+              : proof.targetScreenshots,
+          }),
+        ),
+      }),
+      {
+        workload: 'formula-edit',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: true,
+      invalidReasons: [],
+    })
+  })
+
   it('rejects Google Sheets mutation proof without independent committed-state export proof', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validGoogleSheetsSemanticProof({
