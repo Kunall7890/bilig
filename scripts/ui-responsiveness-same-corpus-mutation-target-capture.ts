@@ -8,6 +8,7 @@ import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-
 import {
   buildSameCorpusCommittedStateProof,
   captureSameCorpusCommittedStatePhaseProof,
+  SameCorpusCommittedStateMismatchError,
   sameCorpusCommittedStateProofArtifactPath,
   type SameCorpusMutationTargetCommittedStatePhaseProof,
 } from './ui-responsiveness-same-corpus-committed-state-proof.ts'
@@ -54,6 +55,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
   readonly outputPath: string
   readonly page: Page
   readonly product: UiResponsivenessSameCorpusProduct
+  readonly allowIncompleteCommittedStateProof?: boolean
   readonly readyTimeoutMs?: number
   readonly sampleIndex: number
   readonly target: SameCorpusMutationTargetSelection
@@ -95,24 +97,29 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     const visibleTargetRenderCapturedAtMs = performance.now()
     const visibleTargetRenderMs = Math.max(0, visibleTargetRenderCapturedAtMs - args.operationStartedAt)
     failurePhase = 'capture-after-committed-state'
-    afterCommittedStateProof = await captureSameCorpusCommittedStatePhaseProof({
-      artifactPath: committedStateArtifactPath(args, 'after'),
-      expectedReadback: sameCorpusCommittedStateExpectedReadback({
-        before: args.before,
-        intendedPayload,
+    afterCommittedStateProof = await maybeCaptureIncompleteCommittedStatePhaseProof(
+      {
+        allowIncompleteCommittedStateProof: args.allowIncompleteCommittedStateProof === true,
+      },
+      captureSameCorpusCommittedStatePhaseProof({
+        artifactPath: committedStateArtifactPath(args, 'after'),
+        expectedReadback: sameCorpusCommittedStateExpectedReadback({
+          before: args.before,
+          intendedPayload,
+          phase: 'after',
+          phaseReadback: after,
+          sampleIndex: args.sampleIndex,
+          workload: args.workload,
+        }),
+        page: args.page,
         phase: 'after',
-        phaseReadback: after,
+        product: args.product,
+        timeoutMs: args.readyTimeoutMs,
         sampleIndex: args.sampleIndex,
+        target: args.target,
         workload: args.workload,
       }),
-      page: args.page,
-      phase: 'after',
-      product: args.product,
-      timeoutMs: args.readyTimeoutMs,
-      sampleIndex: args.sampleIndex,
-      target: args.target,
-      workload: args.workload,
-    })
+    )
     failurePhase = 'read-revisions'
     const revisions = await readSameCorpusMutationTargetRevisionProof({
       page: args.page,
@@ -147,24 +154,29 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     failurePhase = 'capture-restored-screenshot'
     restoredScreenshot = await captureTargetScreenshot({ ...args, semanticReadback: visibleRestored }, 'restored')
     failurePhase = 'capture-restored-committed-state'
-    restoredCommittedStateProof = await captureSameCorpusCommittedStatePhaseProof({
-      artifactPath: committedStateArtifactPath(args, 'restored'),
-      expectedReadback: sameCorpusCommittedStateExpectedReadback({
-        before: args.before,
-        intendedPayload,
+    restoredCommittedStateProof = await maybeCaptureIncompleteCommittedStatePhaseProof(
+      {
+        allowIncompleteCommittedStateProof: args.allowIncompleteCommittedStateProof === true,
+      },
+      captureSameCorpusCommittedStatePhaseProof({
+        artifactPath: committedStateArtifactPath(args, 'restored'),
+        expectedReadback: sameCorpusCommittedStateExpectedReadback({
+          before: args.before,
+          intendedPayload,
+          phase: 'restored',
+          phaseReadback: restored,
+          sampleIndex: args.sampleIndex,
+          workload: args.workload,
+        }),
+        page: args.page,
         phase: 'restored',
-        phaseReadback: restored,
+        product: args.product,
+        timeoutMs: args.readyTimeoutMs,
         sampleIndex: args.sampleIndex,
+        target: args.target,
         workload: args.workload,
       }),
-      page: args.page,
-      phase: 'restored',
-      product: args.product,
-      timeoutMs: args.readyTimeoutMs,
-      sampleIndex: args.sampleIndex,
-      target: args.target,
-      workload: args.workload,
-    })
+    )
     const restoreProofCapturedAtMs = performance.now()
     const restoreValidationMs = Math.max(0, restoreProofCapturedAtMs - postMutationProofCapturedAtMs)
     failurePhase = 'build-proof'
@@ -351,6 +363,20 @@ function intendedMutationTargetPayload(
     }
   }
   return { kind: 'cell-value', value: sameCorpusEditVisibleCellValue(sampleIndex) }
+}
+
+export async function maybeCaptureIncompleteCommittedStatePhaseProof(
+  options: { readonly allowIncompleteCommittedStateProof: boolean },
+  proof: Promise<SameCorpusMutationTargetCommittedStatePhaseProof>,
+): Promise<SameCorpusMutationTargetCommittedStatePhaseProof | null> {
+  try {
+    return await proof
+  } catch (error: unknown) {
+    if (options.allowIncompleteCommittedStateProof && error instanceof SameCorpusCommittedStateMismatchError) {
+      return null
+    }
+    throw error
+  }
 }
 
 export function sameCorpusCommittedStateExpectedReadback(args: {
