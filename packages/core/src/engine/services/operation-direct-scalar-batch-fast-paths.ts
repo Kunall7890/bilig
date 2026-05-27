@@ -213,49 +213,59 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
   ): boolean =>
     tryApplyDenseSingleColumnAffineExistingNumericBatch(record, batch) || tryApplyDenseRowPairExistingNumericBatch(record, batch)
 
-  const { tryApplyDenseRectangularDirectAggregateLiteralBatch } = createOperationDirectAggregateRectangularBatchFastPath({
-    state: args.state,
-    emitBatch,
-    hasTrackedExactLookupDependents,
-    hasTrackedSortedLookupDependents,
-    canFastPathLiteralOverwrite,
-    canUseDirectFormulaPostRecalc,
-    canSkipFormulaColumnVersion,
-    writeNumericLiteralToCellStore,
-    applyTerminalDirectFormulaNumericResult,
-    getSingleEntityDependent: args.getSingleEntityDependent,
-    materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
-    beginMutationCollection: args.beginMutationCollection,
-    ensureRecalcScratchCapacity: args.ensureRecalcScratchCapacity,
-    resetMaterializedCellScratch: args.resetMaterializedCellScratch,
-    getBatchMutationDepth: args.getBatchMutationDepth,
-    setBatchMutationDepth: args.setBatchMutationDepth,
-    markInputChanged: args.markInputChanged,
-    markExplicitChanged: args.markExplicitChanged,
-    getChangedInputBuffer: args.getChangedInputBuffer,
-    deferKernelSync: args.deferKernelSync,
-    composeDisjointEventChanges: args.composeDisjointEventChanges,
-    captureChangedCells: args.captureChangedCells,
-  })
+  let directAggregateRectangularBatchFastPath: ReturnType<typeof createOperationDirectAggregateRectangularBatchFastPath> | undefined
+  const getDirectAggregateRectangularBatchFastPath = (): ReturnType<typeof createOperationDirectAggregateRectangularBatchFastPath> =>
+    (directAggregateRectangularBatchFastPath ??= createOperationDirectAggregateRectangularBatchFastPath({
+      state: args.state,
+      emitBatch,
+      hasTrackedExactLookupDependents,
+      hasTrackedSortedLookupDependents,
+      canFastPathLiteralOverwrite,
+      canUseDirectFormulaPostRecalc,
+      canSkipFormulaColumnVersion,
+      writeNumericLiteralToCellStore,
+      applyTerminalDirectFormulaNumericResult,
+      getSingleEntityDependent: args.getSingleEntityDependent,
+      materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
+      beginMutationCollection: args.beginMutationCollection,
+      ensureRecalcScratchCapacity: args.ensureRecalcScratchCapacity,
+      resetMaterializedCellScratch: args.resetMaterializedCellScratch,
+      getBatchMutationDepth: args.getBatchMutationDepth,
+      setBatchMutationDepth: args.setBatchMutationDepth,
+      markInputChanged: args.markInputChanged,
+      markExplicitChanged: args.markExplicitChanged,
+      getChangedInputBuffer: args.getChangedInputBuffer,
+      deferKernelSync: args.deferKernelSync,
+      composeDisjointEventChanges: args.composeDisjointEventChanges,
+      captureChangedCells: args.captureChangedCells,
+    }))
+  type DirectAggregateRectangularBatchFastPath = ReturnType<typeof createOperationDirectAggregateRectangularBatchFastPath>
+  const tryApplyDenseRectangularDirectAggregateLiteralBatch: DirectAggregateRectangularBatchFastPath['tryApplyDenseRectangularDirectAggregateLiteralBatch'] =
+    (...input) => getDirectAggregateRectangularBatchFastPath().tryApplyDenseRectangularDirectAggregateLiteralBatch(...input)
 
-  const { tryApplyFreshDenseRectangularNumericLiteralBatch } = createOperationFreshRectangularLiteralBatchFastPath({
-    state: args.state,
-    emitBatch,
-    hasTrackedExactLookupDependents,
-    hasTrackedSortedLookupDependents,
-    writeNumericLiteralToCellStore,
-    materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
-    beginMutationCollection: args.beginMutationCollection,
-    ensureRecalcScratchCapacity: args.ensureRecalcScratchCapacity,
-    resetMaterializedCellScratch: args.resetMaterializedCellScratch,
-    getBatchMutationDepth: args.getBatchMutationDepth,
-    setBatchMutationDepth: args.setBatchMutationDepth,
-    markInputChanged: args.markInputChanged,
-    markExplicitChanged: args.markExplicitChanged,
-    getChangedInputBuffer: args.getChangedInputBuffer,
-    deferKernelSync: args.deferKernelSync,
-    captureChangedCells: args.captureChangedCells,
-  })
+  let freshRectangularLiteralBatchFastPath: ReturnType<typeof createOperationFreshRectangularLiteralBatchFastPath> | undefined
+  const getFreshRectangularLiteralBatchFastPath = (): ReturnType<typeof createOperationFreshRectangularLiteralBatchFastPath> =>
+    (freshRectangularLiteralBatchFastPath ??= createOperationFreshRectangularLiteralBatchFastPath({
+      state: args.state,
+      emitBatch,
+      hasTrackedExactLookupDependents,
+      hasTrackedSortedLookupDependents,
+      writeNumericLiteralToCellStore,
+      materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
+      beginMutationCollection: args.beginMutationCollection,
+      ensureRecalcScratchCapacity: args.ensureRecalcScratchCapacity,
+      resetMaterializedCellScratch: args.resetMaterializedCellScratch,
+      getBatchMutationDepth: args.getBatchMutationDepth,
+      setBatchMutationDepth: args.setBatchMutationDepth,
+      markInputChanged: args.markInputChanged,
+      markExplicitChanged: args.markExplicitChanged,
+      getChangedInputBuffer: args.getChangedInputBuffer,
+      deferKernelSync: args.deferKernelSync,
+      captureChangedCells: args.captureChangedCells,
+    }))
+  type FreshRectangularLiteralBatchFastPath = ReturnType<typeof createOperationFreshRectangularLiteralBatchFastPath>
+  const tryApplyFreshDenseRectangularNumericLiteralBatch: FreshRectangularLiteralBatchFastPath['tryApplyFreshDenseRectangularNumericLiteralBatch'] =
+    (...input) => getFreshRectangularLiteralBatchFastPath().tryApplyFreshDenseRectangularNumericLiteralBatch(...input)
 
   const tryApplyLookupOnlyNumericColumnLiteralBatch = (
     refs: readonly EngineCellMutationRef[],
