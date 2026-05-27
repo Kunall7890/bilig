@@ -310,6 +310,7 @@ export const canonicalExpansionFixtures: readonly ExcelFixtureCase[] = [
     [output('C1', numberExpected(32))],
   ),
   fixture('math', 'int-basic', 'INT rounds toward negative infinity', '=INT(-3.1)', [], [output('A1', numberExpected(-4))]),
+  fixture('math', 'int-empty-text-coercion', 'INT empty text coercion', '=INT("")', [], [output('A1', numberExpected(0))]),
   fixture('math', 'roundup-basic', 'ROUNDUP rounds away from zero', '=ROUNDUP(12.341,2)', [], [output('A1', numberExpected(12.35))]),
   fixture('math', 'rounddown-basic', 'ROUNDDOWN rounds toward zero', '=ROUNDDOWN(12.349,2)', [], [output('A1', numberExpected(12.34))]),
   fixture(

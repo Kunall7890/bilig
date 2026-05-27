@@ -179,7 +179,7 @@ describe('wasm kernel array/info dispatch', () => {
   it('keeps array, text, and info builtin dispatch stable across refactors', async () => {
     const kernel = await createKernel()
     const ownerBase = 64
-    const pooledStrings = ['fallback', 'na-value', 'x', '-', 'a', 'b', '3']
+    const pooledStrings = ['fallback', 'na-value', 'x', '-', 'a', 'b', '3', '', '0']
 
     kernel.init(96, pooledStrings.length, 4, 16, 32)
     uploadPooledStrings(kernel, pooledStrings)
@@ -243,16 +243,42 @@ describe('wasm kernel array/info dispatch', () => {
       [encodePushRange(0), encodeCall(BuiltinId.Type, 1), encodeRet()],
       [encodePushString(6), encodePushNumber(0), encodeCall(BuiltinId.Delta, 2), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Gestep, 2), encodeRet()],
+      [encodePushString(7), encodePushNumber(0), encodeCall(BuiltinId.Delta, 2), encodeRet()],
+      [encodePushString(6), encodePushString(8), encodeCall(BuiltinId.Gestep, 2), encodeRet()],
+      [encodePushString(7), encodePushNumber(0), encodeCall(BuiltinId.Gestep, 2), encodeRet()],
     ])
     kernel.uploadPrograms(
       packed.programs,
       packed.offsets,
       packed.lengths,
-      Uint32Array.from(Array.from({ length: 19 }, (_, index) => ownerBase + index)),
+      Uint32Array.from(Array.from({ length: 22 }, (_, index) => ownerBase + index)),
     )
-    const constants = packConstants([[], [1], [], [], [], [], [], [2, 10, 20, 30], [], [], [], [], [], [7], [], [], [], [3], [4, 5]])
+    const constants = packConstants([
+      [],
+      [1],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [2, 10, 20, 30],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [7],
+      [],
+      [],
+      [],
+      [3],
+      [4, 5],
+      [0],
+      [],
+      [0],
+    ])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
-    kernel.evalBatch(Uint32Array.from(Array.from({ length: 19 }, (_, index) => ownerBase + index)))
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 22 }, (_, index) => ownerBase + index)))
 
     expect(readScalarValue(kernel, ownerBase, pooledStrings)).toEqual({
       tag: ValueTag.Number,
@@ -346,6 +372,18 @@ describe('wasm kernel array/info dispatch', () => {
     expect(readScalarValue(kernel, ownerBase + 18, pooledStrings)).toEqual({
       tag: ValueTag.Number,
       value: 0,
+    })
+    expect(readScalarValue(kernel, ownerBase + 19, pooledStrings)).toEqual({
+      tag: ValueTag.Number,
+      value: 1,
+    })
+    expect(readScalarValue(kernel, ownerBase + 20, pooledStrings)).toEqual({
+      tag: ValueTag.Number,
+      value: 1,
+    })
+    expect(readScalarValue(kernel, ownerBase + 21, pooledStrings)).toEqual({
+      tag: ValueTag.Number,
+      value: 1,
     })
   })
 

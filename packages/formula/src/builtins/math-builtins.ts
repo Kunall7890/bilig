@@ -3,7 +3,6 @@ import type { CellValue } from '@bilig/protocol'
 import { besselIValue, besselJValue, besselKValue, besselYValue } from './distributions.js'
 import { coerceScalarMathNumber, collectNumericArgs } from './numeric.js'
 import { excelPower } from '../excel-power.js'
-import { parseNumericText } from '../numeric-text.js'
 import type { EvaluationResult } from '../runtime-values.js'
 
 type Builtin = (...args: CellValue[]) => EvaluationResult
@@ -14,7 +13,6 @@ const EXCEL_BITWISE_SHIFT_LIMIT = 53
 
 interface MathBuiltinDeps {
   toNumber: (value: CellValue) => number | undefined
-  integerValue: (value: CellValue | undefined, fallback?: number) => number | undefined
   firstError: (args: readonly (CellValue | undefined)[]) => CellValue | undefined
   numberResult: (value: number) => EvaluationResult
   valueError: () => EvaluationResult
@@ -50,28 +48,8 @@ function finiteNumberOrNumError(
   return Number.isFinite(value) ? numberResult(value) : numError()
 }
 
-function toIntegerFunctionNumber(value: CellValue): number | undefined {
-  if (value.tag === ValueTag.String) {
-    if (value.value === '') {
-      return undefined
-    }
-    return parseNumericText(value.value)
-  }
-  switch (value.tag) {
-    case ValueTag.Number:
-      return value.value
-    case ValueTag.Boolean:
-      return value.value ? 1 : 0
-    case ValueTag.Empty:
-      return 0
-    case ValueTag.Error:
-      return undefined
-  }
-}
-
 export function createMathBuiltins({
   toNumber,
-  integerValue,
   firstError,
   numberResult,
   valueError,
@@ -94,6 +72,10 @@ export function createMathBuiltins({
   lcmPair,
 }: MathBuiltinDeps): Record<string, Builtin> {
   const toScalarMathNumber = (value: CellValue): number | undefined => coerceScalarMathNumber(value, toNumber)
+  const toScalarMathInteger = (value: CellValue): number | undefined => {
+    const numeric = toScalarMathNumber(value)
+    return numeric === undefined ? undefined : Math.trunc(numeric)
+  }
 
   const coerceBitwiseOperand = (value: CellValue | undefined): bigint | EvaluationResult => {
     if (value === undefined) {
@@ -512,8 +494,8 @@ export function createMathBuiltins({
       if (error) {
         return error
       }
-      const x = toNumber(xArg)
-      const order = integerValue(orderArg)
+      const x = toScalarMathNumber(xArg)
+      const order = toScalarMathInteger(orderArg)
       if (x === undefined || order === undefined) {
         return valueError()
       }
@@ -528,8 +510,8 @@ export function createMathBuiltins({
       if (error) {
         return error
       }
-      const x = toNumber(xArg)
-      const order = integerValue(orderArg)
+      const x = toScalarMathNumber(xArg)
+      const order = toScalarMathInteger(orderArg)
       if (x === undefined || order === undefined) {
         return valueError()
       }
@@ -544,8 +526,8 @@ export function createMathBuiltins({
       if (error) {
         return error
       }
-      const x = toNumber(xArg)
-      const order = integerValue(orderArg)
+      const x = toScalarMathNumber(xArg)
+      const order = toScalarMathInteger(orderArg)
       if (x === undefined || order === undefined) {
         return valueError()
       }
@@ -560,8 +542,8 @@ export function createMathBuiltins({
       if (error) {
         return error
       }
-      const x = toNumber(xArg)
-      const order = integerValue(orderArg)
+      const x = toScalarMathNumber(xArg)
+      const order = toScalarMathInteger(orderArg)
       if (x === undefined || order === undefined) {
         return valueError()
       }
@@ -576,7 +558,7 @@ export function createMathBuiltins({
       if (error) {
         return error
       }
-      const numberValue = toIntegerFunctionNumber(value)
+      const numberValue = toScalarMathNumber(value)
       if (numberValue === undefined) {
         return valueError()
       }

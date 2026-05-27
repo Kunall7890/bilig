@@ -486,6 +486,7 @@ describe('wasm kernel scalar math dispatch', () => {
       [encodePushString(1), encodeCall(BuiltinId.Sin, 1), encodeRet()],
       [encodePushString(2), encodePushString(3), encodeCall(BuiltinId.Power, 2), encodeRet()],
       [encodePushString(4), encodeCall(BuiltinId.Exp, 1), encodeRet()],
+      [encodePushString(4), encodeCall(BuiltinId.Int, 1), encodeRet()],
       [encodePushNumber(0), encodeCall(BuiltinId.Exp, 1), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Power, 2), encodeRet()],
       [encodePushNumber(0), encodeCall(BuiltinId.Sinh, 1), encodeRet()],
@@ -495,11 +496,11 @@ describe('wasm kernel scalar math dispatch', () => {
       packed.programs,
       packed.offsets,
       packed.lengths,
-      Uint32Array.from(Array.from({ length: 10 }, (_, index) => cellIndex(1, index, width))),
+      Uint32Array.from(Array.from({ length: 11 }, (_, index) => cellIndex(1, index, width))),
     )
-    const constants = packConstants([[2], [], [], [], [], [], [1000], [10, 400], [1000], [1000]])
+    const constants = packConstants([[2], [], [], [], [], [], [], [1000], [10, 400], [1000], [1000]])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
-    kernel.evalBatch(Uint32Array.from(Array.from({ length: 10 }, (_, index) => cellIndex(1, index, width))))
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 11 }, (_, index) => cellIndex(1, index, width))))
 
     for (let index = 0; index < 3; index += 1) {
       expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Error)
@@ -508,7 +509,8 @@ describe('wasm kernel scalar math dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(1, 3, width)]).toBeCloseTo(Math.sin(1), 12)
     expect(kernel.readNumbers()[cellIndex(1, 4, width)]).toBe(8)
     expect(kernel.readNumbers()[cellIndex(1, 5, width)]).toBe(1)
-    for (let index = 6; index < 10; index += 1) {
+    expect(kernel.readNumbers()[cellIndex(1, 6, width)]).toBe(0)
+    for (let index = 7; index < 11; index += 1) {
       expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Error)
       expect(kernel.readErrors()[cellIndex(1, index, width)]).toBe(ErrorCode.Num)
     }
@@ -885,5 +887,43 @@ describe('wasm kernel scalar math dispatch', () => {
     for (let index = 6; index < 8; index += 1) {
       expectKernelError(kernel, cellIndex(1, index, width), ErrorCode.Num)
     }
+  })
+
+  it('coerces direct numeric and empty text for Bessel dispatch', async () => {
+    const kernel = await createKernel()
+    const width = 16
+    kernel.init(32, 3, 8, 1, 1)
+    const strings = packStrings(['1', '0', ''])
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+    kernel.writeCells(new Uint8Array(32), new Float64Array(32), new Uint32Array(32), new Uint16Array(32))
+
+    const packed = packPrograms([
+      [encodePushString(0), encodePushString(1), encodeCall(BuiltinId.Besseli, 2), encodeRet()],
+      [encodePushString(0), encodePushString(1), encodeCall(BuiltinId.Besselj, 2), encodeRet()],
+      [encodePushString(0), encodePushString(0), encodeCall(BuiltinId.Besselk, 2), encodeRet()],
+      [encodePushString(0), encodePushString(0), encodeCall(BuiltinId.Bessely, 2), encodeRet()],
+      [encodePushString(2), encodePushString(1), encodeCall(BuiltinId.Besseli, 2), encodeRet()],
+      [encodePushString(2), encodePushString(1), encodeCall(BuiltinId.Besselj, 2), encodeRet()],
+      [encodePushString(2), encodePushString(0), encodeCall(BuiltinId.Besselk, 2), encodeRet()],
+      [encodePushString(2), encodePushString(0), encodeCall(BuiltinId.Bessely, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 8 }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants(Array.from({ length: 8 }, () => []))
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 8 }, (_, index) => cellIndex(1, index, width))))
+
+    expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBeCloseTo(1.266065878, 8)
+    expect(kernel.readNumbers()[cellIndex(1, 1, width)]).toBeCloseTo(0.765197687, 8)
+    expect(kernel.readNumbers()[cellIndex(1, 2, width)]).toBeCloseTo(0.60190723, 7)
+    expect(kernel.readNumbers()[cellIndex(1, 3, width)]).toBeCloseTo(-0.78121282, 8)
+    expect(kernel.readNumbers()[cellIndex(1, 4, width)]).toBe(1)
+    expect(kernel.readNumbers()[cellIndex(1, 5, width)]).toBe(1)
+    expectKernelError(kernel, cellIndex(1, 6, width), ErrorCode.Num)
+    expectKernelError(kernel, cellIndex(1, 7, width), ErrorCode.Num)
   })
 })

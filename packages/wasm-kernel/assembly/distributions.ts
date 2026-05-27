@@ -1,4 +1,7 @@
 export function erfApprox(value: f64): f64 {
+  if (value == 0.0) {
+    return 0.0
+  }
   const sign = value < 0 ? -1.0 : 1.0
   const absolute = Math.abs(value)
   const t = 1.0 / (1.0 + 0.3275911 * absolute)

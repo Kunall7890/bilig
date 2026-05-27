@@ -34,8 +34,32 @@ export function tryApplyScalarMathBuiltin(
       builtinId == BuiltinId.Bessely) &&
     argc == 2
   ) {
-    const x = toNumberExact(tagStack[base], valueStack[base])
-    const orderNumeric = toNumberExact(tagStack[base + 1], valueStack[base + 1])
+    const error = firstScalarMathError(base, argc, valueStack, tagStack)
+    if (error != ErrorCode.None) {
+      return writeScalarMathError(base, error, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const x = scalarMathNumberLikeText(
+      base,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const orderNumeric = scalarMathNumberLikeText(
+      base + 1,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     if (!isFinite(x) || !isFinite(orderNumeric)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }

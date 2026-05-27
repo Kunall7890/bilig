@@ -305,7 +305,6 @@ const financialBuiltins = preserveIncomingErrors(
 )
 const mathBuiltins = createMathBuiltins({
   toNumber,
-  integerValue,
   firstError,
   numberResult,
   valueError,
@@ -842,8 +841,8 @@ const scalarBuiltins: Record<string, Builtin> = {
     if (error) {
       return error
     }
-    const left = toNumber(leftArg)
-    const right = toNumber(rightArg)
+    const left = toScalarMathNumber(leftArg)
+    const right = toScalarMathNumber(rightArg)
     if (left === undefined || right === undefined) {
       return valueError()
     }
@@ -854,8 +853,8 @@ const scalarBuiltins: Record<string, Builtin> = {
     if (error) {
       return error
     }
-    const numberValue = toNumber(numberArg)
-    const stepValue = toNumber(stepArg)
+    const numberValue = toScalarMathNumber(numberArg)
+    const stepValue = toScalarMathNumber(stepArg)
     if (numberValue === undefined || stepValue === undefined) {
       return valueError()
     }

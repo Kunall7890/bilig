@@ -110,9 +110,9 @@ describe('wasm kernel scalar distribution dispatch', () => {
   it('keeps scalar distribution and special-function dispatch stable across refactors', async () => {
     const kernel = await createKernel()
     const width = 24
-    kernel.init(96, 1, 17, 1, 1)
-    kernel.uploadStrings(Uint32Array.from([0]), Uint32Array.from([1]), Uint16Array.from([50]))
-    kernel.writeCells(new Uint8Array(96), new Float64Array(96), new Uint32Array(96), new Uint16Array(96))
+    kernel.init(120, 4, 21, 1, 1)
+    kernel.uploadStrings(Uint32Array.from([0, 1, 2, 2]), Uint32Array.from([1, 1, 0, 1]), Uint16Array.from([50, 49, 48]))
+    kernel.writeCells(new Uint8Array(120), new Float64Array(120), new Uint32Array(120), new Uint16Array(120))
 
     const packed = packPrograms([
       [encodePushString(0), encodeCall(BuiltinId.Gauss, 1), encodeRet()],
@@ -139,12 +139,16 @@ describe('wasm kernel scalar distribution dispatch', () => {
         encodeRet(),
       ],
       [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.GammaInv, 3), encodeRet()],
+      [encodePushString(1), encodeCall(BuiltinId.Erf, 1), encodeRet()],
+      [encodePushString(2), encodeCall(BuiltinId.Erf, 1), encodeRet()],
+      [encodePushString(2), encodeCall(BuiltinId.Erfc, 1), encodeRet()],
+      [encodePushString(3), encodePushString(1), encodeCall(BuiltinId.Erf, 2), encodeRet()],
     ])
     kernel.uploadPrograms(
       packed.programs,
       packed.offsets,
       packed.lengths,
-      Uint32Array.from(Array.from({ length: 17 }, (_, index) => cellIndex(1, index, width))),
+      Uint32Array.from(Array.from({ length: 21 }, (_, index) => cellIndex(1, index, width))),
     )
     const constants = packConstants([
       [],
@@ -164,15 +168,19 @@ describe('wasm kernel scalar distribution dispatch', () => {
       [0.8, 1, 0.5],
       [3, 1, 0.5, 1],
       [0.08030139707139418, 3, 2],
+      [],
+      [],
+      [],
+      [],
     ])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
-    kernel.evalBatch(Uint32Array.from(Array.from({ length: 17 }, (_, index) => cellIndex(1, index, width))))
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 21 }, (_, index) => cellIndex(1, index, width))))
 
     expectNumberCell(kernel, cellIndex(1, 0, width), 0.477249868052, 12)
     expectNumberCell(kernel, cellIndex(1, 1, width), 0.053990966513, 12)
     expectNumberCell(kernel, cellIndex(1, 2, width), 0.842700689748, 10)
-    expectNumberCell(kernel, cellIndex(1, 3, width), 0.842700688748, 10)
-    expectNumberCell(kernel, cellIndex(1, 4, width), 0.999999999, 9)
+    expectNumberCell(kernel, cellIndex(1, 3, width), 0.842700689748, 10)
+    expectNumberCell(kernel, cellIndex(1, 4, width), 1, 12)
     expectNumberCell(kernel, cellIndex(1, 5, width), 0.46211715726, 12)
     expectNumberCell(kernel, cellIndex(1, 6, width), 3.178053830348, 10)
     expectNumberCell(kernel, cellIndex(1, 7, width), 0.97998199306, 10)
@@ -185,6 +193,10 @@ describe('wasm kernel scalar distribution dispatch', () => {
     expectNumberCell(kernel, cellIndex(1, 14, width), 4.140475417393, 10)
     expectNumberCell(kernel, cellIndex(1, 15, width), 0.578174100803, 12)
     expectNumberCell(kernel, cellIndex(1, 16, width), 2, 10)
+    expectNumberCell(kernel, cellIndex(1, 17, width), 0.842700689748, 10)
+    expectNumberCell(kernel, cellIndex(1, 18, width), 0, 12)
+    expectNumberCell(kernel, cellIndex(1, 19, width), 1, 12)
+    expectNumberCell(kernel, cellIndex(1, 20, width), 0.842700689748, 10)
   })
 
   it('returns Excel-compatible domain errors for scalar distribution dispatch', async () => {

@@ -36,6 +36,7 @@ describe('math builtins', () => {
     expect(getBuiltin('SIN')?.(str('1'))).toEqual(num(Math.sin(1)))
     expect(getBuiltin('POWER')?.(str('2'), str('3'))).toEqual(num(8))
     expect(getBuiltin('EXP')?.(str(''))).toEqual(num(1))
+    expect(getBuiltin('INT')?.(str(''))).toEqual(num(0))
 
     expect(getBuiltin('EXP')?.(num(1000))).toEqual(numError)
     expect(getBuiltin('POWER')?.(num(10), num(400))).toEqual(numError)
@@ -65,6 +66,35 @@ describe('math builtins', () => {
     expect(getBuiltin('PERMUT')?.(str('5'), str('2'))).toEqual(num(20))
     expect(getBuiltin('GCD')?.(str('18'), str('24'))).toEqual(num(6))
     expect(getBuiltin('LCM')?.(str('6'), str('8'))).toEqual(num(24))
+  })
+
+  it('coerces direct numeric and empty text for engineering math helpers', () => {
+    expect(getBuiltin('BESSELI')?.(str('1'), str('0'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(1.266065878, 8),
+    })
+    expect(getBuiltin('BESSELJ')?.(str('1'), str('0'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(0.765197687, 8),
+    })
+    expect(getBuiltin('BESSELK')?.(str('1'), str('1'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(0.60190723, 7),
+    })
+    expect(getBuiltin('BESSELY')?.(str('1'), str('1'))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(-0.78121282, 8),
+    })
+
+    expect(getBuiltin('BESSELI')?.(str(''), str('0'))).toEqual(num(1))
+    expect(getBuiltin('BESSELJ')?.(str(''), str('0'))).toEqual(num(1))
+    expect(getBuiltin('BESSELK')?.(str(''), str('1'))).toEqual(numError)
+    expect(getBuiltin('BESSELY')?.(str(''), str('1'))).toEqual(numError)
+
+    expect(getBuiltin('DELTA')?.(str('1'), str('1'))).toEqual(num(1))
+    expect(getBuiltin('DELTA')?.(str(''), num(0))).toEqual(num(1))
+    expect(getBuiltin('GESTEP')?.(str('1'), str('0'))).toEqual(num(1))
+    expect(getBuiltin('GESTEP')?.(str(''), num(0))).toEqual(num(1))
   })
 
   it('propagates scalar math argument errors before coercion and domain checks', () => {

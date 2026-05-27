@@ -68,6 +68,9 @@ export function modeSingle(numbers: readonly number[]): number | undefined {
 }
 
 export function erfApprox(value: number): number {
+  if (value === 0) {
+    return 0
+  }
   const sign = value < 0 ? -1 : 1
   const absolute = Math.abs(value)
   const t = 1 / (1 + 0.3275911 * absolute)

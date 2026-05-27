@@ -24,6 +24,8 @@ describe('distribution builtins domain errors', () => {
       tag: ValueTag.Number,
       value: expect.closeTo(0.8427007929497149, 6),
     })
+    expect(getBuiltin('ERF')?.(text(''))).toEqual(num(0))
+    expect(getBuiltin('ERFC')?.(text(''))).toEqual(num(1))
     expect(getBuiltin('FISHER')?.(text('0.5'))).toEqual({
       tag: ValueTag.Number,
       value: expect.closeTo(0.5493061443340548, 12),
@@ -177,6 +179,14 @@ describe('distribution builtins domain errors', () => {
     expect(getBuiltin('CRITBINOM')?.(text('bad'), num(0.5), num(0.7))).toEqual(valueError)
     expect(getBuiltin('HYPGEOM.DIST')?.(text('bad'), num(4), num(3), num(10), bool(true))).toEqual(valueError)
     expect(getBuiltin('NEGBINOM.DIST')?.(text('bad'), num(3), num(0.5), bool(true))).toEqual(valueError)
+  })
+
+  it('returns exact ERF and ERFC identities at zero', () => {
+    expect(getBuiltin('ERF')?.(num(0))).toEqual(num(0))
+    expect(getBuiltin('ERF')?.(num(0), num(0))).toEqual(num(0))
+    expect(getBuiltin('ERF.PRECISE')?.(num(0))).toEqual(num(0))
+    expect(getBuiltin('ERFC')?.(num(0))).toEqual(num(1))
+    expect(getBuiltin('ERFC.PRECISE')?.(num(0))).toEqual(num(1))
   })
 
   it('preserves incoming errors before distribution coercion and domain checks', () => {

@@ -39,6 +39,29 @@ function numericScalarTagsAt(base: i32, argc: i32, tagStack: Uint8Array): bool {
   return true
 }
 
+function valueNumberAt(
+  slot: i32,
+  valueStack: Float64Array,
+  tagStack: Uint8Array,
+  stringOffsets: Uint32Array,
+  stringLengths: Uint32Array,
+  stringData: Uint16Array,
+  outputStringOffsets: Uint32Array,
+  outputStringLengths: Uint32Array,
+  outputStringData: Uint16Array,
+): f64 {
+  return valueNumber(
+    tagStack[slot],
+    valueStack[slot],
+    stringOffsets,
+    stringLengths,
+    stringData,
+    outputStringOffsets,
+    outputStringLengths,
+    outputStringData,
+  )
+}
+
 export function tryApplyScalarDistributionBuiltin(
   builtinId: i32,
   argc: i32,
@@ -95,8 +118,31 @@ export function tryApplyScalarDistributionBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const lower = toNumberExact(tagStack[base], valueStack[base])
-    const upper = argc == 2 ? toNumberExact(tagStack[base + 1], valueStack[base + 1]) : 0.0
+    const lower = valueNumberAt(
+      base,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const upper =
+      argc == 2
+        ? valueNumberAt(
+            base + 1,
+            valueStack,
+            tagStack,
+            stringOffsets,
+            stringLengths,
+            stringData,
+            outputStringOffsets,
+            outputStringLengths,
+            outputStringData,
+          )
+        : 0.0
     if (isNaN(lower) || (argc == 2 && isNaN(upper))) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -130,7 +176,17 @@ export function tryApplyScalarDistributionBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const value = toNumberExact(tagStack[base], valueStack[base])
+    const value = valueNumberAt(
+      base,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     if (isNaN(value)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
