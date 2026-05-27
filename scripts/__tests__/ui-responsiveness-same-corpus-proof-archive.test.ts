@@ -365,6 +365,68 @@ describe('same-corpus proof archive manifest', () => {
     })
   })
 
+  it('rejects internally consistent Google Sheets fill artifacts that never commit the intended target fill', () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'bilig-same-corpus-proof-archive-fill-'))
+    const committedPayload = {
+      artifactPath: 'google-sheets-sample-1-after.json',
+      capturedAtMs: 10,
+      exportUrl: 'https://docs.google.com/spreadsheets/d/example/export?format=xlsx',
+      phase: 'after' as const,
+      product: 'google-sheets' as const,
+      readback: {
+        value: 'segment-5',
+        formula: null,
+        fillColor: null,
+        visibleText: 'segment-5',
+        source: 'google-sheets-xlsx-export' as const,
+      },
+      sampleIndex: 0,
+      sheetId: 'gid:0',
+      sheetName: 'WideGrid',
+      targetRange: 'B5',
+      workbookByteSize: 123,
+      workbookSha256: 'c'.repeat(64),
+      workload: 'fill-format-change' as const,
+    }
+    const committedBytes = sameCorpusCommittedStateArtifactJson(committedPayload)
+    writeFileSync(join(rootDir, 'google-sheets-sample-1-after.json'), committedBytes)
+
+    const verification = verifySameCorpusProofArchiveFiles(
+      [
+        {
+          kind: 'google-sheets-committed-state-export',
+          product: 'google-sheets',
+          workload: 'fill-format-change',
+          sampleIndex: 0,
+          phase: 'after',
+          sheetName: 'WideGrid',
+          sheetId: 'gid:0',
+          targetRange: 'B5',
+          capturedAtMs: 10,
+          artifactPath: 'google-sheets-sample-1-after.json',
+          artifactSha256: sha256Hex(committedBytes),
+          exportUrl: 'https://docs.google.com/spreadsheets/d/example/export?format=xlsx',
+          workbookByteSize: 123,
+          workbookSha256: 'c'.repeat(64),
+          readback: committedPayload.readback,
+          readbackSha256: stableJsonSha256(committedPayload.readback),
+        },
+      ],
+      { artifactBaseDir: rootDir },
+    )
+
+    expect(verification).toMatchObject({
+      checkedArtifactCount: 1,
+      verifiedArtifactCount: 0,
+      mismatchedArtifactCount: 1,
+      complete: false,
+    })
+    expect(verification.entries[0]).toMatchObject({
+      status: 'identity-mismatch',
+      identityMismatchReason: 'committed-state after fill does not match intended swatch',
+    })
+  })
+
   it('rejects missing and mismatched proof archive files', () => {
     const rootDir = mkdtempSync(join(tmpdir(), 'bilig-same-corpus-proof-archive-'))
     writeFileSync(join(rootDir, 'stale.png'), 'stale bytes')

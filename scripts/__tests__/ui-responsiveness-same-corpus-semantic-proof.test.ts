@@ -844,6 +844,31 @@ describe('same-corpus semantic UI mutation proof validation', () => {
       invalidReasons: expect.arrayContaining([
         'semantic UI mutation target proof for fill-format-change committed-state export did not prove a before/after change',
         'semantic UI mutation target proof for fill-format-change committed-state after readback does not match target proof',
+        'semantic UI mutation target proof for fill-format-change committed-state after export does not contain intended fill color',
+      ]),
+    })
+  })
+
+  it('rejects Google Sheets fill proof when the visible target only exposes selection-border color', () => {
+    const selectionBorderColor = 'rgb(11, 87, 208)'
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validGoogleSheetsSemanticProof({
+        selectedRange: sameCorpusMutationTargetRangeForSample('fill-format-change', 0),
+        mutationTargetProofs: validGoogleSheetsFillMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0 ? fillProofWithVisibleAfterFill(proof, selectionBorderColor) : proof,
+        ),
+      }),
+      {
+        workload: 'fill-format-change',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for fill-format-change rendered target cell does not show intended fill color',
+        'semantic UI mutation target proof for fill-format-change rendered target fill does not match target readback',
       ]),
     })
   })
@@ -1221,6 +1246,24 @@ function staleRestoredMutationTargetScreenshotProof(proof: SameCorpusMutationTar
       restored: {
         ...proof.targetScreenshots.restored,
         screenshotSha256: proof.targetScreenshots.after.screenshotSha256,
+      },
+    },
+  }
+}
+
+function fillProofWithVisibleAfterFill(proof: SameCorpusMutationTargetProof, fillColor: string): SameCorpusMutationTargetProof {
+  const visibleAfter = { ...proof.visibleAfter, fillColor }
+  if (!proof.targetScreenshots) {
+    return { ...proof, visibleAfter }
+  }
+  return {
+    ...proof,
+    visibleAfter,
+    targetScreenshots: {
+      ...proof.targetScreenshots,
+      after: {
+        ...proof.targetScreenshots.after,
+        semanticReadback: visibleAfter,
       },
     },
   }

@@ -9,7 +9,9 @@ import type { SameCorpusMutationTargetReadback } from './ui-responsiveness-same-
 import { validateSameCorpusProductSemanticUiProof } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import type { SameCorpusCapture, UiResponsivenessSameCorpusProduct } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import { arrayField, asObject, booleanField, literalField, numberField, stringField } from './json-scorecard-helpers.ts'
+import { sameCorpusFillColorsMatch } from './ui-responsiveness-same-corpus-fill-proof.ts'
 import { requiredUiResponsivenessSameCorpusMutationTargetProofWorkloads } from './ui-responsiveness-same-corpus-mutation-target-proof-summary.ts'
+import { sameCorpusFillColorExpectedColor } from './ui-responsiveness-same-corpus-workload-runner.ts'
 import {
   isUiResponsivenessSameCorpusWorkload,
   requiredUiResponsivenessSameCorpusWorkloads,
@@ -799,7 +801,22 @@ function committedStateArtifactIdentityMismatchReason(
     return `committed-state ${mismatchedField} does not match archive manifest`
   }
   const readbackHash = sha256Hex(stableJsonBytes(record.readback ?? null))
-  return readbackHash === artifact.readbackSha256 ? null : 'committed-state readback does not match archive manifest'
+  if (readbackHash !== artifact.readbackSha256) {
+    return 'committed-state readback does not match archive manifest'
+  }
+  return committedStateArtifactSemanticMismatchReason(artifact)
+}
+
+function committedStateArtifactSemanticMismatchReason(artifact: SameCorpusGoogleSheetsCommittedStateArchiveArtifact): string | null {
+  if (artifact.workload !== 'fill-format-change') {
+    return null
+  }
+  const expectedFillColor = sameCorpusFillColorExpectedColor(artifact.sampleIndex)
+  const hasExpectedFill = sameCorpusFillColorsMatch(artifact.readback.fillColor, expectedFillColor)
+  if (artifact.phase === 'after') {
+    return hasExpectedFill ? null : 'committed-state after fill does not match intended swatch'
+  }
+  return hasExpectedFill ? `committed-state ${artifact.phase} fill still matches intended swatch` : null
 }
 
 function parseJsonRecord(bytes: Uint8Array, path: string): Record<string, unknown> {

@@ -13,6 +13,11 @@ import {
   sameCorpusMutationTargetCommittedStateInvalidReasons,
   type SameCorpusMutationTargetCommittedStateProof,
 } from './ui-responsiveness-same-corpus-committed-state-proof.ts'
+import {
+  sameCorpusFillColorValue,
+  sameCorpusFillColorsMatch,
+  sameCorpusFillFormatTargetProofInvalidReasons,
+} from './ui-responsiveness-same-corpus-fill-proof.ts'
 import { sameCorpusMutationTargetTimingInvalidReasons } from './ui-responsiveness-same-corpus-mutation-target-timing.ts'
 import { sameCorpusMutationTargetRangeForSample } from './ui-responsiveness-same-corpus-mutation-target-spec.ts'
 import { uiSameCorpusWorkloadMutatesWorkbook, type UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
@@ -406,6 +411,9 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
   invalidReasons.push(...sameCorpusMutationTargetRevisionInvalidReasons(proof.product, workload, sample))
   invalidReasons.push(...sameCorpusMutationTargetExpectedReadbackInvalidReasons(proof.product, workload, sample))
   invalidReasons.push(...sameCorpusMutationTargetCommittedStateInvalidReasons(proof.product, sample.intendedOperation, sample))
+  if (workload === 'fill-format-change') {
+    invalidReasons.push(...sameCorpusFillFormatTargetProofInvalidReasons(sample))
+  }
   if (workload === 'fill-format-change' && sample.before.fillColor === sample.after.fillColor) {
     invalidReasons.push('semantic UI mutation target proof for fill-format-change did not prove a fill color change')
   }
@@ -633,8 +641,8 @@ function sameCorpusMutationTargetExpectedReadbackInvalidReasons(
       return ['semantic UI mutation target proof for fill-format-change did not prove the intended fill color']
     }
     if (
-      !sameCorpusColorsMatch(sample.after.fillColor, payload.expectedFillColor) ||
-      !sameCorpusColorsMatch(sample.visibleAfter.fillColor, payload.expectedFillColor)
+      !sameCorpusFillColorsMatch(sample.after.fillColor, payload.expectedFillColor) ||
+      !sameCorpusFillColorsMatch(sample.visibleAfter.fillColor, payload.expectedFillColor)
     ) {
       return ['semantic UI mutation target proof for fill-format-change did not prove the intended fill color']
     }
@@ -764,7 +772,7 @@ function sameCorpusVisibleReadbackMatchesAuthoritative(
     if (authoritative.fillColor === null || visible.fillColor === null) {
       return authoritative.fillColor === visible.fillColor
     }
-    return sameCorpusColorsMatch(visible.fillColor, authoritative.fillColor)
+    return sameCorpusFillColorsMatch(visible.fillColor, authoritative.fillColor)
   }
   return authoritative.value === visible.value || authoritative.visibleText === visible.visibleText
 }
@@ -795,28 +803,6 @@ function normalizeSameCorpusRenderedSelectionRange(range: string | null): string
 
 function hasSameCorpusText(value: string | null | undefined): value is string {
   return value !== null && value !== undefined && value.trim().length > 0
-}
-
-function sameCorpusColorsMatch(actual: string | null, expected: string): boolean {
-  const actualColor = sameCorpusFillColorValue(actual)
-  const expectedColor = sameCorpusFillColorValue(expected)
-  return actualColor !== null && expectedColor !== null && actualColor === expectedColor
-}
-
-function sameCorpusFillColorValue(value: string | null | undefined): string | null {
-  const trimmed = value?.trim().toLowerCase() ?? ''
-  if (/^#[0-9a-f]{6}$/u.test(trimmed)) {
-    return trimmed
-  }
-  const rgbMatch = trimmed.match(/^rgba?\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})(?:,\s*(?:0|0?\.\d+|1(?:\.0)?))?\)$/u)
-  if (!rgbMatch) {
-    return null
-  }
-  const channels = rgbMatch.slice(1, 4).map((channel) => Number(channel))
-  if (channels.some((channel) => !Number.isInteger(channel) || channel < 0 || channel > 255)) {
-    return null
-  }
-  return `#${channels.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`
 }
 
 export async function readSameCorpusVisibleSelectedRange(page: Page, product: UiResponsivenessSameCorpusProduct): Promise<string | null> {

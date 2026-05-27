@@ -1,6 +1,7 @@
 import type { SameCorpusMutationTargetProof, SameCorpusMutationTargetReadback } from './ui-responsiveness-same-corpus-semantic-proof.ts'
 import type { UiResponsivenessSameCorpusProduct } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
+import { sameCorpusFillColorsMatch } from './ui-responsiveness-same-corpus-fill-proof.ts'
 
 type SameCorpusMutationTargetScreenshotPhase = 'before' | 'after' | 'restored'
 
@@ -78,23 +79,5 @@ function sameCorpusFillColorMatches(actual: string | null, expected: string | nu
   if (actual === null || expected === null) {
     return actual === expected
   }
-  const actualColor = sameCorpusFillColorValue(actual)
-  const expectedColor = sameCorpusFillColorValue(expected)
-  return actualColor !== null && expectedColor !== null && actualColor === expectedColor
-}
-
-function sameCorpusFillColorValue(value: string | null): string | null {
-  const trimmed = value?.trim().toLowerCase() ?? ''
-  if (/^#[0-9a-f]{6}$/u.test(trimmed)) {
-    return trimmed
-  }
-  const rgbMatch = trimmed.match(/^rgba?\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})(?:,\s*(?:0|0?\.\d+|1(?:\.0)?))?\)$/u)
-  if (!rgbMatch) {
-    return null
-  }
-  const channels = rgbMatch.slice(1, 4).map((channel) => Number(channel))
-  if (channels.some((channel) => !Number.isInteger(channel) || channel < 0 || channel > 255)) {
-    return null
-  }
-  return `#${channels.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`
+  return sameCorpusFillColorsMatch(actual, expected)
 }
