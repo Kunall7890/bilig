@@ -12,6 +12,7 @@ import {
   firstErrorValue,
   nestedAggregateCallees,
   nestedSubtotalCallees,
+  type AggregateCandidateValue,
 } from './js-evaluator-aggregate-special-calls.js'
 import { isArrayValue } from './runtime-values.js'
 import { evaluateIndirectWorkbookSpecialCall, type WorkbookReferenceCallDeps } from './js-evaluator-workbook-reference-calls.js'
@@ -41,6 +42,30 @@ interface WorkbookSpecialCallDeps extends WorkbookReferenceCallDeps {
 
 function valueError(): CellValue {
   return { tag: ValueTag.Error, code: ErrorCode.Value }
+}
+
+function aggregateFunctionCode(functionNum: number): number {
+  return functionNum > 100 ? functionNum - 100 : functionNum
+}
+
+function subtotalLikeCandidateValues(functionNum: number, candidates: readonly AggregateCandidateValue[]): CellValue[] {
+  const normalized = aggregateFunctionCode(functionNum)
+  if (normalized === 2) {
+    return candidates
+      .filter((candidate) => !candidate.address || candidate.value.tag === ValueTag.Number)
+      .map((candidate) => candidate.value)
+  }
+  if (normalized === 3) {
+    return candidates
+      .filter((candidate) => !candidate.address || candidate.value.tag !== ValueTag.Empty)
+      .map((candidate) => candidate.value)
+  }
+  if (normalized >= 1 && normalized <= 11) {
+    return candidates
+      .filter((candidate) => !candidate.address || candidate.value.tag === ValueTag.Number || candidate.value.tag === ValueTag.Error)
+      .map((candidate) => candidate.value)
+  }
+  return candidates.map((candidate) => candidate.value)
 }
 
 type WholeAxisRefKind = 'rows' | 'cols'
@@ -613,9 +638,6 @@ export function evaluateWorkbookSpecialCall(
       const visibilityMode = functionNum > 100 ? 'hidden-or-filter' : 'filter'
       const hasVisibilityFiltering =
         context.isRowFiltered !== undefined || (visibilityMode === 'hidden-or-filter' && context.isRowHidden !== undefined)
-      if (!hasVisibilityFiltering && !context.resolveFormula) {
-        return undefined
-      }
       const subtotal = getBuiltin('SUBTOTAL')
       if (!subtotal) {
         return undefined
@@ -623,7 +645,11 @@ export function evaluateWorkbookSpecialCall(
       const candidates = rawArgs
         .slice(1)
         .flatMap((value, index) => collectAggregateCandidates(value, argRefs[index + 1], context, visibilityMode))
-      const values = filterNestedRollupCandidates(candidates, context, nestedSubtotalCallees).map((candidate) => candidate.value)
+      const subtotalCandidates =
+        hasVisibilityFiltering || context.resolveFormula
+          ? filterNestedRollupCandidates(candidates, context, nestedSubtotalCallees)
+          : candidates
+      const values = subtotalLikeCandidateValues(functionNum, subtotalCandidates)
       const result = subtotal({ tag: ValueTag.Number, value: functionNum }, ...values)
       return isArrayValue(result) ? result : deps.stackScalar(result)
     }
@@ -644,7 +670,7 @@ export function evaluateWorkbookSpecialCall(
       const nestedFilteredCandidates = aggregateOptionIgnoresNestedRollups(option)
         ? filterNestedRollupCandidates(candidates, context, nestedAggregateCallees)
         : candidates
-      let values = nestedFilteredCandidates.map((candidate) => candidate.value)
+      let values = subtotalLikeCandidateValues(functionNum, nestedFilteredCandidates)
       if (aggregateOptionIgnoresErrors(option)) {
         values = values.filter((value) => value.tag !== ValueTag.Error)
       } else {

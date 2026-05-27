@@ -165,7 +165,7 @@ describe('js evaluator', () => {
     })
     expect(evaluatePlan(lowerToPlan(parseFormula('SUBTOTAL(9,A1:B2)')), visibilityContext)).toEqual({
       tag: ValueTag.Number,
-      value: 6,
+      value: 5,
     })
   })
 
@@ -178,7 +178,7 @@ describe('js evaluator', () => {
 
     expect(evaluatePlan(lowerToPlan(parseFormula('SUBTOTAL(9,A1:B2)')), filteredContext)).toEqual({
       tag: ValueTag.Number,
-      value: 1,
+      value: 0,
     })
     expect(evaluatePlan(lowerToPlan(parseFormula('SUBTOTAL(109,A1:B2)')), filteredContext)).toEqual({
       tag: ValueTag.Number,

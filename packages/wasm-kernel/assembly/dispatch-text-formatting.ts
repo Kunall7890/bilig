@@ -21,6 +21,7 @@ import {
   numberValueParseText,
   splitFormatSectionsText,
   stripFormatDecorationsText,
+  valueParseText,
 } from './text-format'
 import { indexOfTextWithMode, lastIndexOfTextWithMode, splitTextByDelimiterWithMode } from './text-ops'
 import { valueNumber } from './comparison'
@@ -327,16 +328,31 @@ export function tryApplyTextFormattingBuiltin(
   }
 
   if (builtinId == BuiltinId.Value && argc == 1) {
-    const numeric = valueNumber(
-      tagStack[base],
-      valueStack[base],
-      stringOffsets,
-      stringLengths,
-      stringData,
-      outputStringOffsets,
-      outputStringLengths,
-      outputStringData,
-    )
+    let numeric: f64
+    if (tagStack[base] == ValueTag.String) {
+      const text = scalarText(
+        tagStack[base],
+        valueStack[base],
+        stringOffsets,
+        stringLengths,
+        stringData,
+        outputStringOffsets,
+        outputStringLengths,
+        outputStringData,
+      )
+      numeric = text == null ? NaN : valueParseText(text)
+    } else {
+      numeric = valueNumber(
+        tagStack[base],
+        valueStack[base],
+        stringOffsets,
+        stringLengths,
+        stringData,
+        outputStringOffsets,
+        outputStringLengths,
+        outputStringData,
+      )
+    }
     if (isNaN(numeric)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }

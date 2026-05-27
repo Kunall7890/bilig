@@ -6,7 +6,7 @@ import {
   excelSerialWhole,
   excelYearPartFromSerial,
 } from './date-finance'
-import { parseNumericText } from './text-special'
+import { parseNumericText, parseTimeValueText } from './text-special'
 
 function roundToDigits(value: f64, digits: i32): f64 {
   if (digits >= 0) {
@@ -699,6 +699,43 @@ export function numberValueParseText(input: string, decimalSeparator: string, gr
     return NaN
   }
   return parsed / Math.pow(100.0, <f64>percentCount)
+}
+
+function currencyValueParseText(input: string): f64 {
+  const compact = removeAsciiWhitespace(input)
+  if (compact.length < 2) {
+    return NaN
+  }
+
+  let sign = 1.0
+  let start = 0
+  const first = compact.charCodeAt(0)
+  if (first == 43) {
+    start = 1
+  } else if (first == 45) {
+    sign = -1.0
+    start = 1
+  }
+  if (start >= compact.length || compact.charCodeAt(start) != 36) {
+    return NaN
+  }
+
+  const parsed = parseNumericText(compact.slice(start + 1))
+  return isFinite(parsed) ? sign * parsed : NaN
+}
+
+export function valueParseText(input: string): f64 {
+  let parsed = numberValueParseText(input, '.', ',')
+  if (isFinite(parsed)) {
+    return parsed
+  }
+
+  parsed = currencyValueParseText(input)
+  if (isFinite(parsed)) {
+    return parsed
+  }
+
+  return parseTimeValueText(input)
 }
 
 export function errorLabel(code: i32): string {

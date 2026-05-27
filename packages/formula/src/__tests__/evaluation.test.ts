@@ -106,9 +106,46 @@ describe('formula builtins and JS evaluator', () => {
 
     expect(evaluateAst(parseFormula('PRODUCT("2",A1)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
     expect(evaluateAst(parseFormula('COUNT(A1:A2)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
-    expect(evaluateAst(parseFormula('AVERAGE(A1:A2)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(evaluateAst(parseFormula('AVERAGE(A1:A2)'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
     expect(evaluateAst(parseFormula('MIN(A1:A2)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
     expect(evaluateAst(parseFormula('MAX(A1:A2)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+  })
+
+  it('returns #DIV/0! for average families when references provide no numeric values', () => {
+    const valuesByAddress: Record<string, CellValue> = {
+      A1: { tag: ValueTag.Empty },
+      A2: { tag: ValueTag.String, value: 'skip', stringId: 1 },
+      A3: { tag: ValueTag.String, value: '', stringId: 2 },
+      B1: { tag: ValueTag.Empty },
+      B2: { tag: ValueTag.Empty },
+      C1: { tag: ValueTag.Boolean, value: true },
+      C2: { tag: ValueTag.Boolean, value: false },
+    }
+    const context = {
+      sheetName: 'Sheet1',
+      resolveCell: (_sheetName: string, address: string): CellValue => valuesByAddress[address] ?? { tag: ValueTag.Empty },
+      resolveRange: (_sheetName: string, start: string, end: string): CellValue[] => {
+        if (start === 'A1' && end === 'A3') {
+          return ['A1', 'A2', 'A3'].map((address) => valuesByAddress[address])
+        }
+        if (start === 'B1' && end === 'B2') {
+          return ['B1', 'B2'].map((address) => valuesByAddress[address])
+        }
+        if (start === 'C1' && end === 'C2') {
+          return ['C1', 'C2'].map((address) => valuesByAddress[address])
+        }
+        return []
+      },
+    }
+
+    const div0Error = { tag: ValueTag.Error, code: ErrorCode.Div0 } as const
+    expect(evaluateAst(parseFormula('AVERAGE(A1:A3)'), context)).toEqual(div0Error)
+    expect(evaluateAst(parseFormula('AVG(A1:A3)'), context)).toEqual(div0Error)
+    expect(evaluateAst(parseFormula('AVERAGEA(B1:B2)'), context)).toEqual(div0Error)
+    expect(evaluateAst(parseFormula('SUBTOTAL(1,A1:A3)'), context)).toEqual(div0Error)
+    expect(evaluateAst(parseFormula('SUBTOTAL(101,A1:A3)'), context)).toEqual(div0Error)
+    expect(evaluateAst(parseFormula('AGGREGATE(1,6,A1:A3)'), context)).toEqual(div0Error)
+    expect(evaluateAst(parseFormula('SUBTOTAL(1,C1:C2)'), context)).toEqual(div0Error)
   })
 
   it('ignores referenced non-numeric aggregate values without changing direct literal coercion', () => {

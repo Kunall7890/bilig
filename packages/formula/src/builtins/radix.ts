@@ -236,18 +236,53 @@ function arabicValue(text: string): number | undefined {
     ['M', 1000],
   ])
   const upper = text.trim().toUpperCase()
-  if (!/^[IVXLCDM]+$/.test(upper)) {
+  if (upper === '') {
+    return 0
+  }
+  const sign = upper.startsWith('-') ? -1 : 1
+  const roman = sign < 0 ? upper.slice(1) : upper
+  if (!/^[IVXLCDM]+$/.test(roman)) {
     return undefined
   }
+  if (/(I{4}|X{4}|C{4}|D{4}|V{2}|L{2})/.test(roman)) {
+    return undefined
+  }
+  const subtractivePairs = new Set([
+    'IV',
+    'IX',
+    'IL',
+    'IC',
+    'ID',
+    'IM',
+    'VL',
+    'VC',
+    'VD',
+    'VM',
+    'XL',
+    'XC',
+    'XD',
+    'XM',
+    'LD',
+    'LM',
+    'CD',
+    'CM',
+  ])
   let total = 0
   let index = 0
-  while (index < upper.length) {
-    const current = numerals.get(upper[index] ?? '')
-    const next = numerals.get(upper[index + 1] ?? '')
+  while (index < roman.length) {
+    const current = numerals.get(roman[index] ?? '')
+    const next = numerals.get(roman[index + 1] ?? '')
     if (current === undefined) {
       return undefined
     }
     if (next !== undefined && current < next) {
+      const pair = `${roman[index] ?? ''}${roman[index + 1] ?? ''}`
+      if (!subtractivePairs.has(pair)) {
+        return undefined
+      }
+      if (roman[index - 1] === roman[index]) {
+        return undefined
+      }
       total += next - current
       index += 2
       continue
@@ -255,7 +290,7 @@ function arabicValue(text: string): number | undefined {
     total += current
     index += 1
   }
-  return romanValue(total) === upper ? total : undefined
+  return sign * total
 }
 
 function isValidBaseDigits(raw: string, radix: number): boolean {

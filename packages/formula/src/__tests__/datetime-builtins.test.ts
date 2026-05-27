@@ -116,7 +116,7 @@ describe('datetime builtins', () => {
   it('returns #VALUE for unsupported time-part coercions and weekday return types', () => {
     expect(
       datetimeBuiltins.TIME({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 30 }, { tag: ValueTag.Number, value: 0 }),
-    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
     expect(datetimeBuiltins.HOUR({ tag: ValueTag.String, value: '12:30', stringId: 1 })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,
@@ -738,7 +738,7 @@ describe('datetime builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       datetimeBuiltins.TIME({ tag: ValueTag.Boolean, value: true }, { tag: ValueTag.Boolean, value: false }, { tag: ValueTag.Empty }),
@@ -1196,7 +1196,7 @@ describe('datetime builtins', () => {
       datetimeBuiltins.TIME({ tag: ValueTag.Number, value: 32768 }, { tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Number, value: 0 }),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(datetimeBuiltins.TIME()).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
 

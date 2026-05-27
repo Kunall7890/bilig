@@ -1,4 +1,6 @@
 import { ErrorCode, ValueTag, formatErrorCode, formatGeneralNumberValue, type CellValue } from '@bilig/protocol'
+import { parseNumericText } from '../numeric-text.js'
+import { parseTimeValueText } from './datetime.js'
 import { excelSerialToDateParts, excelSerialWeekdayIndex, type ExcelDateSystem } from './excel-date.js'
 import type { TextBuiltin } from './text.js'
 
@@ -498,6 +500,31 @@ function parseNumberValueText(input: string, decimalSeparator: string, groupSepa
   return parsed / 100 ** percentCount
 }
 
+function parseCurrencyValueText(input: string): number | undefined {
+  const compact = input.replaceAll(/\s+/g, '')
+  const match = /^([+-]?)\$(.+)$/.exec(compact)
+  if (!match) {
+    return undefined
+  }
+  const parsed = parseNumericText(match[2] ?? '')
+  if (parsed === undefined) {
+    return undefined
+  }
+  return match[1] === '-' ? -parsed : parsed
+}
+
+function parseValueText(input: string): number | undefined {
+  const numeric = parseNumberValueText(input, '.', ',')
+  if (numeric !== undefined) {
+    return numeric
+  }
+  const currency = parseCurrencyValueText(input)
+  if (currency !== undefined) {
+    return currency
+  }
+  return parseTimeValueText(input)
+}
+
 export function createTextFormatBuiltins(deps: TextFormatBuiltinDeps): Record<string, TextBuiltin> {
   return {
     TEXT: (...args) => {
@@ -520,7 +547,7 @@ export function createTextFormatBuiltins(deps: TextFormatBuiltinDeps): Record<st
       if (value === undefined) {
         return deps.error(ErrorCode.Value)
       }
-      const coerced = deps.coerceNumber(value)
+      const coerced = value.tag === ValueTag.String ? parseValueText(value.value) : deps.coerceNumber(value)
       return coerced === undefined ? deps.error(ErrorCode.Value) : deps.numberResult(coerced)
     },
     NUMBERVALUE: (...args) => {

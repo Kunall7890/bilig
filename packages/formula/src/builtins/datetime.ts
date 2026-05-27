@@ -1,4 +1,4 @@
-import { ValueTag } from '@bilig/protocol'
+import { ErrorCode, ValueTag } from '@bilig/protocol'
 import type { CellValue } from '@bilig/protocol'
 import { coerceNumber, coerceText, firstError, integerValue, numberResult, truncArg, valueError } from './cell-value-utils.js'
 import {
@@ -49,6 +49,59 @@ function parseDateValueFromText(raw: string, dateSystem: ExcelDateSystem): numbe
     return undefined
   }
   return Math.floor(utcDateToExcelSerial(parsed, dateSystem))
+}
+
+export function parseTimeValueText(raw: string): number | undefined {
+  const trimmed = raw.trim()
+  const amPmMatch = trimmed.match(/^(.+?)\s+([aApP][mM])$/)
+  const hasMeridiem = amPmMatch !== null
+  const timeText = hasMeridiem ? (amPmMatch?.[1] ?? '') : trimmed
+  const timeParts = timeText.split(':')
+  if (timeParts.length < 2 || timeParts.length > 3) {
+    return undefined
+  }
+
+  const [hoursText, minutesText, secondsText = '0'] = timeParts
+  const hours = Number(hoursText)
+  const minutes = Number(minutesText)
+  const seconds = Number(secondsText)
+  if (
+    Number.isNaN(hours) ||
+    Number.isNaN(minutes) ||
+    Number.isNaN(seconds) ||
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes) ||
+    !Number.isFinite(seconds)
+  ) {
+    return undefined
+  }
+
+  const truncHours = Math.trunc(hours)
+  const truncMinutes = Math.trunc(minutes)
+  const truncSeconds = Math.trunc(seconds)
+  const hasPm = hasMeridiem && amPmMatch?.[2]?.toLowerCase() === 'pm'
+
+  if (truncMinutes < 0 || truncMinutes > 59 || truncSeconds < 0 || truncSeconds > 59) {
+    return undefined
+  }
+
+  let hourValue = truncHours
+  if (hasMeridiem) {
+    if (truncHours < 1 || truncHours > 12) {
+      return undefined
+    }
+    if (truncHours === 12) {
+      hourValue = hasPm ? 12 : 0
+    } else if (hasPm) {
+      hourValue = truncHours + 12
+    }
+  } else if (truncHours === 24 && truncMinutes === 0 && truncSeconds === 0) {
+    hourValue = 0
+  } else if (truncHours < 0 || truncHours > 23) {
+    return undefined
+  }
+
+  return (hourValue * 3600 + truncMinutes * 60 + truncSeconds) / SECONDS_PER_DAY
 }
 
 function createDays360Builtin(dateSystem: ExcelDateSystem = '1900'): Builtin {
@@ -148,56 +201,8 @@ function createTimeValueBuiltin(): Builtin {
       return valueError()
     }
 
-    const trimmed = text.trim()
-    const amPmMatch = trimmed.match(/^(.+?)\s+([aApP][mM])$/)
-    const hasMeridiem = amPmMatch !== null
-    const timeText = hasMeridiem ? (amPmMatch?.[1] ?? '') : trimmed
-    const timeParts = timeText.split(':')
-    if (timeParts.length < 2 || timeParts.length > 3) {
-      return valueError()
-    }
-
-    const [hoursText, minutesText, secondsText = '0'] = timeParts
-    const hours = Number(hoursText)
-    const minutes = Number(minutesText)
-    const seconds = Number(secondsText)
-    if (
-      Number.isNaN(hours) ||
-      Number.isNaN(minutes) ||
-      Number.isNaN(seconds) ||
-      !Number.isFinite(hours) ||
-      !Number.isFinite(minutes) ||
-      !Number.isFinite(seconds)
-    ) {
-      return valueError()
-    }
-
-    const truncHours = Math.trunc(hours)
-    const truncMinutes = Math.trunc(minutes)
-    const truncSeconds = Math.trunc(seconds)
-    const hasPm = hasMeridiem && amPmMatch?.[2]?.toLowerCase() === 'pm'
-
-    if (truncMinutes < 0 || truncMinutes > 59 || truncSeconds < 0 || truncSeconds > 59) {
-      return valueError()
-    }
-
-    let hourValue = truncHours
-    if (hasMeridiem) {
-      if (truncHours < 1 || truncHours > 12) {
-        return valueError()
-      }
-      if (truncHours === 12) {
-        hourValue = hasPm ? 12 : 0
-      } else if (hasPm) {
-        hourValue = truncHours + 12
-      }
-    } else if (truncHours === 24 && truncMinutes === 0 && truncSeconds === 0) {
-      hourValue = 0
-    } else if (truncHours < 0 || truncHours > 23) {
-      return valueError()
-    }
-
-    return numberResult((hourValue * 3600 + truncMinutes * 60 + truncSeconds) / SECONDS_PER_DAY)
+    const parsed = parseTimeValueText(text)
+    return parsed === undefined ? valueError() : numberResult(parsed)
   }
 }
 
@@ -287,6 +292,10 @@ function normalizeTimeSerial(hours: number, minutes: number, seconds: number): n
   return (((totalSeconds % SECONDS_PER_DAY) + SECONDS_PER_DAY) % SECONDS_PER_DAY) / SECONDS_PER_DAY
 }
 
+function numError(): CellValue {
+  return { tag: ValueTag.Error, code: ErrorCode.Num }
+}
+
 export function createDateBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin {
   return (...args) => {
     const error = firstError(args)
@@ -361,6 +370,13 @@ function createTimeBuiltin(): Builtin {
     if (typeof hour !== 'number') return hour
     if (typeof minute !== 'number') return minute
     if (typeof second !== 'number') return second
+
+    if (!Number.isFinite(hour) || !Number.isFinite(minute) || !Number.isFinite(second)) {
+      return valueError()
+    }
+    if (hour < 0 || minute < 0 || second < 0 || hour > 32_767 || minute > 32_767 || second > 32_767) {
+      return numError()
+    }
 
     const serial = normalizeTimeSerial(hour, minute, second)
     return serial === undefined ? valueError() : numberResult(serial)

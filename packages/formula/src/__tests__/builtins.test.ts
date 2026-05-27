@@ -2031,8 +2031,17 @@ describe('formula builtins', () => {
       tag: ValueTag.Error,
       code: ErrorCode.Div0,
     })
-    expect(getBuiltin('AVERAGE')?.()).toEqual({ tag: ValueTag.Number, value: 0 })
-    expect(getBuiltin('AVG')?.()).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(getBuiltin('AVERAGE')?.()).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
+    expect(getBuiltin('AVG')?.()).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
+    expect(getBuiltin('AVERAGEA')?.()).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
+    expect(
+      getBuiltin('AGGREGATE')?.(
+        { tag: ValueTag.Number, value: 1 },
+        { tag: ValueTag.Number, value: 6 },
+        { tag: ValueTag.Error, code: ErrorCode.NA },
+        { tag: ValueTag.String, value: 'skip', stringId: 17 },
+      ),
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
     expect(getBuiltin('AVERAGE')?.({ tag: ValueTag.Error, code: ErrorCode.Value })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,

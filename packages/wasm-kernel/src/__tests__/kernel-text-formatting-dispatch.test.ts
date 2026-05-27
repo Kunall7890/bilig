@@ -149,6 +149,8 @@ describe('wasm kernel text-formatting dispatch', () => {
       '#,##0.00',
       'prefix @',
       'ABCD',
+      '$1,000',
+      '16:48:00',
     ]
     const packedStrings = packStrings(pooledStrings)
     kernel.init(64, pooledStrings.length, 8, 1, 1)
@@ -174,9 +176,12 @@ describe('wasm kernel text-formatting dispatch', () => {
       [encodePushNumber(0), encodePushString(13), encodeCall(BuiltinId.Text, 2), encodeRet()],
       [encodePushString(12), encodePushString(14), encodeCall(BuiltinId.Text, 2), encodeRet()],
       [encodePushString(15), encodeCall(BuiltinId.Phonetic, 1), encodeRet()],
+      [encodePushString(16), encodeCall(BuiltinId.Value, 1), encodeRet()],
+      [encodePushString(17), encodeCall(BuiltinId.Value, 1), encodeRet()],
     ])
-    const constants = packConstants([[], [-1], [], [], [65], [], [], [66], [], [], [], [], [21.25], [], [1], [1234.567], [], []])
-    const targets = Uint32Array.from(Array.from({ length: 18 }, (_, index) => cellIndex(1, index, width)))
+    const constants = packConstants([[], [-1], [], [], [65], [], [], [66], [], [], [], [], [21.25], [], [1], [1234.567], [], [], [], []])
+    const targets = Uint32Array.from(Array.from({ length: 20 }, (_, index) => cellIndex(1, index, width)))
+    kernel.ensureFormulaCapacity(packed.offsets.length)
     kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, targets)
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
     kernel.evalBatch(targets)
@@ -205,5 +210,7 @@ describe('wasm kernel text-formatting dispatch', () => {
     expect(readStringCell(kernel, cellIndex(1, 15, width), pooledStrings)).toBe('1,234.57')
     expect(readStringCell(kernel, cellIndex(1, 16, width), pooledStrings)).toBe('prefix alpha')
     expect(readStringCell(kernel, cellIndex(1, 17, width), pooledStrings)).toBe('ABCD')
+    expect(kernel.readNumbers()[cellIndex(1, 18, width)]).toBe(1000)
+    expect(kernel.readNumbers()[cellIndex(1, 19, width)]).toBeCloseTo(0.7, 12)
   })
 })

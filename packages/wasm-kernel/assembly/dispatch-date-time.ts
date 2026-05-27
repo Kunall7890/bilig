@@ -73,6 +73,19 @@ export function tryApplyDateTimeBuiltin(
   }
 
   if (builtinId == BuiltinId.Time && argc == 3) {
+    const scalarError = scalarErrorAt(base, argc, kindStack, tagStack, valueStack)
+    if (scalarError >= 0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const hour = truncToInt(tagStack[base], valueStack[base])
+    const minute = truncToInt(tagStack[base + 1], valueStack[base + 1])
+    const second = truncToInt(tagStack[base + 2], valueStack[base + 2])
+    if (hour == i32.MIN_VALUE || minute == i32.MIN_VALUE || second == i32.MIN_VALUE) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (hour < 0 || minute < 0 || second < 0 || hour > 32767 || minute > 32767 || second > 32767) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const serial = excelTimeSerial(
       tagStack[base],
       valueStack[base],

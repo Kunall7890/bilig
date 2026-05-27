@@ -19,6 +19,10 @@ describe('text format builtins', () => {
     const VALUETOTEXT = getTextBuiltin('VALUETOTEXT')!
 
     expect(VALUE(text(' 42 '))).toEqual(number(42))
+    expect(VALUE(text('$1,000'))).toEqual(number(1000))
+    expect(VALUE(text('$1.25'))).toEqual(number(1.25))
+    expect(VALUE(text('16:48:00'))).toEqual(number(0.7))
+    expect(VALUE(text('12:00:00'))).toEqual(number(0.5))
     expect(NUMBERVALUE(text('2.500,27'), text(','), text('.'))).toEqual(number(2500.27))
     expect(NUMBERVALUE(text('9%%'))).toEqual(number(0.0009))
     expect(VALUETOTEXT(number(42))).toEqual(text('42'))

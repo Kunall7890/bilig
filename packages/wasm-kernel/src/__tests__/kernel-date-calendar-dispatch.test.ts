@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BuiltinId, Opcode, ValueTag } from '@bilig/protocol'
+import { BuiltinId, ErrorCode, Opcode, ValueTag } from '@bilig/protocol'
 import { createKernel } from '../index.js'
 
 function encodeCall(builtinId: number, argc: number): number {
@@ -73,6 +73,11 @@ function cellIndex(row: number, col: number, width: number): number {
 function expectNumberCell(kernel: Awaited<ReturnType<typeof createKernel>>, index: number, expected: number, digits = 12): void {
   expect(kernel.readTags()[index]).toBe(ValueTag.Number)
   expect(kernel.readNumbers()[index]).toBeCloseTo(expected, digits)
+}
+
+function expectErrorCell(kernel: Awaited<ReturnType<typeof createKernel>>, index: number, expected: ErrorCode): void {
+  expect(kernel.readTags()[index]).toBe(ValueTag.Error)
+  expect(kernel.readErrors()[index]).toBe(expected)
 }
 
 describe('wasm kernel date/calendar dispatch seams', () => {
@@ -235,7 +240,10 @@ describe('wasm kernel date/calendar dispatch seams', () => {
       ],
       [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.WorkdayIntl, 3), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.NetworkdaysIntl, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Time, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Time, 3), encodeRet()],
     ])
+    kernel.ensureFormulaCapacity(packed.offsets.length)
     kernel.uploadPrograms(
       packed.programs,
       packed.offsets,
@@ -262,6 +270,8 @@ describe('wasm kernel date/calendar dispatch seams', () => {
       [2024, 1, 1, 2],
       [46094, 1, 7],
       [46094, 46098, 7],
+      [-1, 0, 0],
+      [32768, 0, 0],
     ])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
     kernel.evalBatch(Uint32Array.from(Array.from({ length: packed.offsets.length }, (_, index) => cellIndex(1, index, width))))
@@ -286,5 +296,7 @@ describe('wasm kernel date/calendar dispatch seams', () => {
     expectNumberCell(kernel, cellIndex(1, 16, width), 1)
     expectNumberCell(kernel, cellIndex(1, 17, width), 46096)
     expectNumberCell(kernel, cellIndex(1, 18, width), 3)
+    expectErrorCell(kernel, cellIndex(1, 19, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 20, width), ErrorCode.Num)
   })
 })

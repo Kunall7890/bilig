@@ -91,6 +91,10 @@ function valueError(): CellValue {
   return { tag: ValueTag.Error, code: ErrorCode.Value }
 }
 
+function div0Error(): CellValue {
+  return { tag: ValueTag.Error, code: ErrorCode.Div0 }
+}
+
 function blockedError(): CellValue {
   return { tag: ValueTag.Error, code: ErrorCode.Blocked }
 }
@@ -335,7 +339,7 @@ function aggregateByCode(functionNum: number, values: CellValue[], options: { re
   switch (normalized) {
     case 1:
       return numericValues.length === 0
-        ? numberResult(0)
+        ? div0Error()
         : numberResult(numericValues.reduce((sum, value) => sum + value, 0) / numericValues.length)
     case 2:
       return numberResult(values.filter((value) => value.tag === ValueTag.Number || value.tag === ValueTag.Boolean).length)
@@ -427,20 +431,20 @@ const scalarBuiltins: Record<string, Builtin> = {
     const error = firstError(args)
     if (error) return error
     const numbers = args.map((arg) => toZeroNumericValue(arg)).filter((value): value is number => value !== undefined)
-    return numberResult(numbers.length === 0 ? 0 : numbers.reduce((sum, value) => sum + value, 0) / numbers.length)
+    return numbers.length === 0 ? div0Error() : numberResult(numbers.reduce((sum, value) => sum + value, 0) / numbers.length)
   },
   AVERAGE: (...args) => {
     const error = firstError(args)
     if (error) return error
     const numbers = collectNumericArgs(args, toAverageNumber)
-    if (numbers.length === 0) return numberResult(0)
+    if (numbers.length === 0) return div0Error()
     return numberResult(numbers.reduce((sum, value) => sum + value, 0) / numbers.length)
   },
   AVG: (...args) => {
     const error = firstError(args)
     if (error) return error
     const numbers = collectNumericArgs(args, toAverageNumber)
-    if (numbers.length === 0) return numberResult(0)
+    if (numbers.length === 0) return div0Error()
     return numberResult(numbers.reduce((sum, value) => sum + value, 0) / numbers.length)
   },
   CHOOSE: (indexValue, ...values) => {

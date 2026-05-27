@@ -3,7 +3,7 @@ import { formatAddress, parseCellAddress, parseRangeAddress } from './addressing
 import { parseFormula } from './parser.js'
 import type { EvaluationContext, ReferenceOperand, StackValue } from './js-evaluator.js'
 
-interface AggregateCandidateValue {
+export interface AggregateCandidateValue {
   value: CellValue
   sheetName?: string
   address?: string
