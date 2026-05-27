@@ -108,6 +108,36 @@ function expectKernelError(kernel: Awaited<ReturnType<typeof createKernel>>, ind
 }
 
 describe('wasm kernel scalar math dispatch', () => {
+  it('validates the left arithmetic operand before propagating right operand errors', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 4, 1, 1, 1)
+    const strings = packStrings(['523a', '42'])
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushString(0), encodePushError(ErrorCode.Ref), encodeBinary(Opcode.Add), encodeRet()],
+      [encodePushError(ErrorCode.Ref), encodePushString(0), encodeBinary(Opcode.Add), encodeRet()],
+      [encodePushString(1), encodePushError(ErrorCode.Ref), encodeBinary(Opcode.Add), encodeRet()],
+      [encodePushNumber(0), encodePushError(ErrorCode.Ref), encodeBinary(Opcode.Add), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width), cellIndex(1, 3, width)]),
+    )
+    const constants = packConstants([[], [], [], [42]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width), cellIndex(1, 3, width)]))
+
+    expectKernelError(kernel, cellIndex(1, 0, width), ErrorCode.Value)
+    expectKernelError(kernel, cellIndex(1, 1, width), ErrorCode.Ref)
+    expectKernelError(kernel, cellIndex(1, 2, width), ErrorCode.Ref)
+    expectKernelError(kernel, cellIndex(1, 3, width), ErrorCode.Ref)
+  })
+
   it('keeps exponentiation operator odd roots separate from POWER domain errors', async () => {
     const kernel = await createKernel()
     const width = 8

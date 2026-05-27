@@ -423,6 +423,26 @@ describe('formula builtins and JS evaluator', () => {
     expect(evaluateAst(parseFormula('A3*2'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
   })
 
+  it('validates the left arithmetic operand before propagating right operand errors', () => {
+    const context = {
+      sheetName: 'Sheet1',
+      resolveCell: (_sheetName: string, address: string): CellValue => {
+        if (address === 'A1') {
+          return { tag: ValueTag.String, value: '523a', stringId: 1 }
+        }
+        if (address === 'A2') {
+          return { tag: ValueTag.String, value: '42', stringId: 2 }
+        }
+        return { tag: ValueTag.Empty }
+      },
+      resolveRange: (): CellValue[] => [],
+    }
+
+    expect(evaluateAst(parseFormula('A1+#REF!'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(evaluateAst(parseFormula('#REF!+A1'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
+    expect(evaluateAst(parseFormula('A2+#REF!'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
+  })
+
   it('treats omitted SUM arguments as empty values instead of errors', () => {
     expect(
       evaluateAst(parseFormula('SUM(2,3,)'), {

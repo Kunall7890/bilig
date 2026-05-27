@@ -1,6 +1,8 @@
 import * as XLSX from 'xlsx'
 
 import { translateFormulaReferences } from '@bilig/formula'
+import { toLiteralInput } from './workbook-import-helpers.js'
+import { decodeExcelEscapedText } from './xlsx-escaped-text.js'
 import { getZipText, type XlsxZipEntries } from './xlsx-zip.js'
 import { workbookSheetPath } from './xlsx-workbook-sheet-paths.js'
 
@@ -137,7 +139,10 @@ function readCachedValue(raw: string | null, cellValueType: string | null): stri
   if (normalizedType === 'b') {
     return raw === '1' || raw.toLowerCase() === 'true'
   }
-  if (normalizedType === 'str' || normalizedType === 's' || normalizedType === 'inlinestr' || normalizedType === 'e') {
+  if (normalizedType === 'str' || normalizedType === 's' || normalizedType === 'inlinestr') {
+    return normalizeCachedFormulaText(raw)
+  }
+  if (normalizedType === 'e') {
     return raw
   }
   const numericValue = Number(raw)
@@ -145,6 +150,11 @@ function readCachedValue(raw: string | null, cellValueType: string | null): stri
     return numericValue
   }
   return raw
+}
+
+function normalizeCachedFormulaText(value: string): string {
+  const literal = toLiteralInput(decodeExcelEscapedText(value))
+  return typeof literal === 'string' ? literal : value
 }
 
 export function readWorksheetFormulaCells(sheetXml: string | null): WorksheetFormulaCell[] {

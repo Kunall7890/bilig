@@ -236,11 +236,11 @@ function scalarBinary(operator: BinaryOperator, leftValue: CellValue, rightValue
   if (leftValue.tag === ValueTag.Error) {
     return leftValue
   }
-  if (rightValue.tag === ValueTag.Error) {
-    return rightValue
-  }
 
   if (operator === '&') {
+    if (rightValue.tag === ValueTag.Error) {
+      return rightValue
+    }
     return {
       tag: ValueTag.String,
       value: `${toStringValue(leftValue)}${toStringValue(rightValue)}`,
@@ -250,8 +250,14 @@ function scalarBinary(operator: BinaryOperator, leftValue: CellValue, rightValue
 
   if (['+', '-', '*', '/', '^'].includes(operator)) {
     const left = toArithmeticNumber(leftValue)
+    if (left === undefined) {
+      return error(ErrorCode.Value)
+    }
+    if (rightValue.tag === ValueTag.Error) {
+      return rightValue
+    }
     const right = toArithmeticNumber(rightValue)
-    if (left === undefined || right === undefined) {
+    if (right === undefined) {
       return error(ErrorCode.Value)
     }
     if (operator === '/' && right === 0) {
@@ -265,6 +271,9 @@ function scalarBinary(operator: BinaryOperator, leftValue: CellValue, rightValue
     return { tag: ValueTag.Number, value }
   }
 
+  if (rightValue.tag === ValueTag.Error) {
+    return rightValue
+  }
   const comparison = compareScalars(leftValue, rightValue)
   if (comparison === undefined) {
     return error(ErrorCode.Value)

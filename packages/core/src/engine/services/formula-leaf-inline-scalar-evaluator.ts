@@ -759,16 +759,22 @@ function evaluateInlineBinary(
   if (left.tag === ValueTag.Error) {
     return left
   }
-  if (right.tag === ValueTag.Error) {
-    return right
-  }
   if (operator === '&') {
+    if (right.tag === ValueTag.Error) {
+      return right
+    }
     return stringValue(`${inlineStringValue(left)}${inlineStringValue(right)}`)
   }
   if (operator === '+' || operator === '-' || operator === '*' || operator === '/' || operator === '^') {
     const leftNumber = inlineArithmeticNumber(left)
+    if (leftNumber === undefined) {
+      return errorValue(ErrorCode.Value)
+    }
+    if (right.tag === ValueTag.Error) {
+      return right
+    }
     const rightNumber = inlineArithmeticNumber(right)
-    if (leftNumber === undefined || rightNumber === undefined) {
+    if (rightNumber === undefined) {
       return errorValue(ErrorCode.Value)
     }
     if (operator === '/' && rightNumber === 0) {
@@ -785,6 +791,9 @@ function evaluateInlineBinary(
               ? leftNumber / rightNumber
               : excelExponentiation(leftNumber, rightNumber)
     return Number.isFinite(value) ? numberValue(value) : errorValue(operator === '^' ? ErrorCode.Num : ErrorCode.Value)
+  }
+  if (right.tag === ValueTag.Error) {
+    return right
   }
   const comparison = compareInlineScalars(left, right)
   if (comparison === undefined) {

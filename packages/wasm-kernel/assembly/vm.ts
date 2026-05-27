@@ -408,13 +408,13 @@ function computeBinaryScalarResult(opcode: i32, leftTag: u8, leftValue: f64, rig
     binaryResultValue = leftValue
     return
   }
-  if (rightTag == ValueTag.Error) {
-    binaryResultTag = <u8>ValueTag.Error
-    binaryResultValue = rightValue
-    return
-  }
 
   if (opcode == Opcode.Concat) {
+    if (rightTag == ValueTag.Error) {
+      binaryResultTag = <u8>ValueTag.Error
+      binaryResultValue = rightValue
+      return
+    }
     const leftText = scalarText(leftTag, leftValue)
     const rightText = scalarText(rightTag, rightValue)
     if (leftText == null || rightText == null) {
@@ -436,6 +436,11 @@ function computeBinaryScalarResult(opcode: i32, leftTag: u8, leftValue: f64, rig
   }
 
   if (isComparisonOpcode(opcode)) {
+    if (rightTag == ValueTag.Error) {
+      binaryResultTag = <u8>ValueTag.Error
+      binaryResultValue = rightValue
+      return
+    }
     const comparison = compareScalars(leftTag, leftValue, rightTag, rightValue)
     if (comparison == i32.MIN_VALUE) {
       binaryResultTag = <u8>ValueTag.Error
@@ -455,8 +460,18 @@ function computeBinaryScalarResult(opcode: i32, leftTag: u8, leftValue: f64, rig
   }
 
   const left = arithmeticNumber(leftTag, leftValue)
+  if (isNaN(left)) {
+    binaryResultTag = <u8>ValueTag.Error
+    binaryResultValue = ErrorCode.Value
+    return
+  }
+  if (rightTag == ValueTag.Error) {
+    binaryResultTag = <u8>ValueTag.Error
+    binaryResultValue = rightValue
+    return
+  }
   const right = arithmeticNumber(rightTag, rightValue)
-  if (isNaN(left) || isNaN(right)) {
+  if (isNaN(right)) {
     binaryResultTag = <u8>ValueTag.Error
     binaryResultValue = ErrorCode.Value
     return

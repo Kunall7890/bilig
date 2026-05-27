@@ -507,6 +507,45 @@ describe('EngineFormulaEvaluationService', () => {
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 4 })
   })
 
+  it('validates the left arithmetic operand before propagating right explicit errors', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-arithmetic-left-error-precedence' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', '523a')
+    engine.setCellValue('Sheet1', 'A2', '42')
+    engine.setCellFormula('Sheet1', 'B1', 'A1+#REF!')
+    engine.setCellFormula('Sheet1', 'B2', '#REF!+A1')
+    engine.setCellFormula('Sheet1', 'B3', 'A2+#REF!')
+
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
+    })
+    expect(engine.getCellValue('Sheet1', 'B2')).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Ref,
+    })
+    expect(engine.getCellValue('Sheet1', 'B3')).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Ref,
+    })
+
+    engine.recalculateNow()
+
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
+    })
+    expect(engine.getCellValue('Sheet1', 'B2')).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Ref,
+    })
+    expect(engine.getCellValue('Sheet1', 'B3')).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Ref,
+    })
+  })
+
   it('preserves explicit reference errors through numeric wrappers', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'evaluation-ref-error-numeric-wrapper' })
     await engine.ready()
