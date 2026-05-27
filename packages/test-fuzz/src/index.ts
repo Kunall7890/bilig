@@ -376,7 +376,7 @@ async function runChecked<Ts extends unknown[]>(
   overrides?: FuzzParameters<Ts>,
 ): Promise<boolean> {
   if (!shouldRunFuzzSuite(suite, kind)) {
-    return false
+    return true
   }
   const parameters = resolveParameters(suite, kind, overrides)
   const startedAt = Date.now()

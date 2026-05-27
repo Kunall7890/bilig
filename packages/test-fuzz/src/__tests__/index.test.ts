@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import * as fc from 'fast-check'
@@ -136,5 +136,28 @@ describe('test-fuzz replay-path extraction', () => {
         }),
       ),
     ).rejects.toThrow('BILIG_FUZZ_CAPTURE must be "1", "true", "0", or "false" when set, got yes')
+  })
+
+  it('skips non-matching replay suites without reporting a failed run', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-test-fuzz-replay-'))
+    tempDirs.push(tempDir)
+    const fixturePath = join(tempDir, 'replay.json')
+    writeFileSync(fixturePath, `${JSON.stringify({ suite: 'target/suite', kind: 'property', seed: 123 })}\n`, 'utf8')
+
+    let predicateRan = false
+    const ran = await withEnv({ BILIG_FUZZ_PROFILE: 'replay', BILIG_FUZZ_REPLAY: fixturePath }, () =>
+      runProperty({
+        suite: 'other/suite',
+        arbitrary: fc.constant('value'),
+        predicate: () => {
+          predicateRan = true
+          throw new Error('non-matching replay suite should not execute')
+        },
+        parameters: { numRuns: 1 },
+      }),
+    )
+
+    expect(ran).toBe(true)
+    expect(predicateRan).toBe(false)
   })
 })

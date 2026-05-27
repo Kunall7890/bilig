@@ -3,7 +3,14 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { availableParallelism } from 'node:os'
 import { join, resolve } from 'node:path'
-import { buildVitestFuzzCommand, parseFuzzMode, resolveSkipBrowserFuzz, type FuzzMode } from './run-fuzz-config.js'
+import {
+  buildVitestFuzzCommand,
+  parseFuzzMode,
+  resolveSkipBrowserFuzz,
+  selectReplayVitestFuzzFiles,
+  type FuzzMode,
+  type ReplayFixtureMetadata,
+} from './run-fuzz-config.js'
 
 function runCommand(command: string[], extraEnv: Record<string, string>): void {
   const result = Bun.spawnSync(command, {
@@ -51,12 +58,18 @@ function shouldRunBrowserFuzz(mode: FuzzMode, replayKind: string | null, hasRepl
   return mode === 'main' || mode === 'nightly'
 }
 
-function parseReplayKind(filePath: string): string | null {
+function parseReplayFixtureMetadata(filePath: string): ReplayFixtureMetadata {
   if (!existsSync(filePath)) {
     throw new Error(`Replay fixture does not exist: ${filePath}`)
   }
   const parsed = JSON.parse(readFileSync(filePath, 'utf8')) as unknown
-  return typeof parsed === 'object' && parsed !== null && typeof parsed['kind'] === 'string' ? parsed['kind'] : null
+  if (!isRecord(parsed) || typeof parsed['suite'] !== 'string') {
+    throw new Error(`Replay fixture must contain a suite string: ${filePath}`)
+  }
+  return {
+    suite: parsed['suite'],
+    kind: typeof parsed['kind'] === 'string' ? parsed['kind'] : null,
+  }
 }
 
 const args = process.argv.slice(2)
@@ -69,22 +82,34 @@ if (mode === 'replay' && !replayFixture) {
 }
 
 const resolvedReplayFixture = replayFixture ? resolve(replayFixture) : null
-const replayKind = resolvedReplayFixture ? parseReplayKind(resolvedReplayFixture) : null
+const replayMetadata = resolvedReplayFixture ? parseReplayFixtureMetadata(resolvedReplayFixture) : null
 const env = {
   BILIG_FUZZ_PROFILE: mode,
   BILIG_FUZZ_CAPTURE: '1',
   ...(resolvedReplayFixture ? { BILIG_FUZZ_REPLAY: resolvedReplayFixture } : {}),
 }
 const skipBrowserFuzz = resolveSkipBrowserFuzzOrExit()
+if (replayMetadata?.kind === 'browser' && skipBrowserFuzz) {
+  console.error('Cannot replay a browser fuzz fixture while BILIG_FUZZ_SKIP_BROWSER is enabled')
+  process.exit(1)
+}
 
-const vitestFuzzFiles = selectVitestFuzzFiles(mode, listVitestFuzzFiles())
-runCommand(buildVitestFuzzCommand(vitestFuzzFiles, availableParallelism()), env)
+const vitestFuzzFiles = selectReplayVitestFuzzFiles(selectVitestFuzzFiles(mode, listVitestFuzzFiles()), replayMetadata, (filePath) =>
+  readFileSync(filePath, 'utf8'),
+)
+if (vitestFuzzFiles.length > 0) {
+  runCommand(buildVitestFuzzCommand(vitestFuzzFiles, availableParallelism()), env)
+}
 
-if (!skipBrowserFuzz && shouldRunBrowserFuzz(mode, replayKind, resolvedReplayFixture !== null)) {
+if (!skipBrowserFuzz && shouldRunBrowserFuzz(mode, replayMetadata?.kind ?? null, resolvedReplayFixture !== null)) {
   runCommand(['bun', 'scripts/run-browser-tests.ts', '--grep', '@fuzz-browser'], {
     ...env,
     BILIG_FUZZ_BROWSER: '1',
   })
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
 }
 
 function walkFuzzFiles(root: string): string[] {
