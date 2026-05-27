@@ -78,7 +78,7 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(
       scorecard.sameCorpusProof.cases.filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length,
     )
-    expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(0)
+    expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(1)
     expect(scorecard.sameCorpusProof.runManifest).toMatchObject({
       contractVersion: 'same-corpus-ui-v10',
       caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
@@ -86,30 +86,30 @@ describe('UI responsiveness live browser scorecard', () => {
       strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       visibleOperationResponseProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       biligAuthoritativeRenderProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
-      semanticUiProofCaseCount: 0,
+      semanticUiProofCaseCount: 8,
       requiredMutationTargetProofCaseCount: 3,
-      mutationTargetProofCaseCount: 0,
+      mutationTargetProofCaseCount: 2,
       requiredMutationTargetProofSampleCount: 18,
-      mutationTargetProofSampleCount: 9,
+      mutationTargetProofSampleCount: 15,
       requiredCommittedTargetProofTimingCaseCount: 3,
-      committedTargetProofTimingCaseCount: 0,
+      committedTargetProofTimingCaseCount: 2,
       requiredCommittedTargetProofTimingSampleCount: 18,
-      committedTargetProofTimingSampleCount: 9,
+      committedTargetProofTimingSampleCount: 15,
       legacyInsufficientRenderedGridProofCaseCount: 0,
-      tenXMeanAndP95CaseCount: 0,
+      tenXMeanAndP95CaseCount: 1,
       currentContractEvidenceComplete: false,
       googleSheetsTenXRequirementSatisfied: false,
       captureRunSignature: expect.stringMatching(/^[a-f0-9]{64}$/u),
     })
     expect(scorecard.sameCorpusProof.runManifest?.capturedWorkloads).toEqual(requiredUiResponsivenessSameCorpusWorkloads)
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('semantic UI proof covers 0/9 cases')
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('mutation target proof covers 0/3 mutating cases')
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('semantic UI proof covers 8/9 cases')
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('mutation target proof covers 2/3 mutating cases')
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain(
-      'mutation target proof covers 9/18 required per-sample product proofs',
+      'mutation target proof covers 15/18 required per-sample product proofs',
     )
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('committed target proof timing covers 0/3 mutating cases')
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('committed target proof timing covers 2/3 mutating cases')
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain(
-      'committed target proof timing covers 9/18 required per-sample product timings',
+      'committed target proof timing covers 15/18 required per-sample product timings',
     )
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('not every required workload is 10x against Google Sheets')
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).not.toContain('Bilig authoritative render proof timing covers 0/9 cases')
@@ -124,6 +124,12 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(parseUiResponsivenessLiveBrowserCliArgs(['--check', '--capture', 'tmp/same-corpus-capture.json'])).toEqual({
       isCheckMode: true,
       capturePath: 'tmp/same-corpus-capture.json',
+      refreshSameCorpusProofOnly: false,
+    })
+    expect(parseUiResponsivenessLiveBrowserCliArgs(['--refresh-same-corpus-proof', '--capture', 'tmp/same-corpus-capture.json'])).toEqual({
+      isCheckMode: false,
+      capturePath: 'tmp/same-corpus-capture.json',
+      refreshSameCorpusProofOnly: true,
     })
   })
 

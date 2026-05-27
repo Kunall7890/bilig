@@ -1,0 +1,21 @@
+{
+  "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-1-before.json",
+  "capturedAtMs": 28870.092542,
+  "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+  "phase": "before",
+  "product": "google-sheets",
+  "readback": {
+    "fillColor": null,
+    "formula": null,
+    "source": "google-sheets-xlsx-export",
+    "value": "note-4-5",
+    "visibleText": "note-4-5"
+  },
+  "sampleIndex": 0,
+  "sheetId": "gid:160971404",
+  "sheetName": "WideGrid",
+  "targetRange": "F5",
+  "workbookByteSize": 1440993,
+  "workbookSha256": "65724cae679780ec5573739adb4d87a8ada0a8d171c103f0e6021354b3bb2a85",
+  "workload": "edit-visible-cell"
+}

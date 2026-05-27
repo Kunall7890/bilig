@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "suite": "ui-responsiveness-same-corpus-proof-archive",
-  "captureRunSignature": "312ddd94f9aae2ca4e18bf197c8a348b30cee0e427b8836a0ccfaa2f3491f60f",
+  "captureRunSignature": "e192da0310fecd5bc29523cd011479e4d1ce860b72685e306ab842c720454e75",
   "requiredArtifactCount": 99,
-  "artifactCount": 36,
+  "artifactCount": 80,
   "filesVerified": false,
   "complete": false,
   "fileVerification": {
     "schemaVersion": 1,
-    "checkedArtifactCount": 36,
-    "verifiedArtifactCount": 36,
+    "checkedArtifactCount": 80,
+    "verifiedArtifactCount": 80,
     "missingArtifactCount": 0,
     "mismatchedArtifactCount": 0,
     "complete": true,
@@ -26,6 +26,16 @@
       },
       {
         "kind": "scenario-screenshot",
+        "product": "google-sheets",
+        "workload": "open-workbook",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-open-workbook/google-sheets-sample-1.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-open-workbook/google-sheets-sample-1.png",
+        "expectedSha256": "14f06b643d76e4005b7235c5b9c0d480fc3b3d125ac659a1a6180ad2f72e836b",
+        "status": "verified",
+        "actualSha256": "14f06b643d76e4005b7235c5b9c0d480fc3b3d125ac659a1a6180ad2f72e836b"
+      },
+      {
+        "kind": "scenario-screenshot",
         "product": "bilig",
         "workload": "select-cell",
         "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-select-cell/bilig-sample-1.png",
@@ -36,6 +46,16 @@
       },
       {
         "kind": "scenario-screenshot",
+        "product": "google-sheets",
+        "workload": "select-cell",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-select-cell/google-sheets-sample-1.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-select-cell/google-sheets-sample-1.png",
+        "expectedSha256": "bd25a5e91e3ad579e60b51cfb03a6379c871e6f11a84ba7bd0f2f9df40602e12",
+        "status": "verified",
+        "actualSha256": "bd25a5e91e3ad579e60b51cfb03a6379c871e6f11a84ba7bd0f2f9df40602e12"
+      },
+      {
+        "kind": "scenario-screenshot",
         "product": "bilig",
         "workload": "edit-visible-cell",
         "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/bilig-sample-1.png",
@@ -43,6 +63,16 @@
         "expectedSha256": "f6542e32c6d44decba8d2d5cc70ab26acf3a9f3904937ff7918623d32bc0e730",
         "status": "verified",
         "actualSha256": "f6542e32c6d44decba8d2d5cc70ab26acf3a9f3904937ff7918623d32bc0e730"
+      },
+      {
+        "kind": "scenario-screenshot",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/google-sheets-sample-1.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/google-sheets-sample-1.png",
+        "expectedSha256": "39cdb6d2b9e64d92fc79d3d263803af46c591085cacd99fa19ebe012d88a1140",
+        "status": "verified",
+        "actualSha256": "39cdb6d2b9e64d92fc79d3d263803af46c591085cacd99fa19ebe012d88a1140"
       },
       {
         "kind": "mutation-target-screenshot",
@@ -153,6 +183,222 @@
         "actualSha256": "9ff2c70b7241fd6538beb0619674667b03b9d1641c2d884d9ab2c5ffb2ca1557"
       },
       {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 0,
+        "phase": "before",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-1-before.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-1-before.png",
+        "expectedSha256": "9de5309bac2c5ffb4210578a586dc67cd43af67fcc272d0c11a6058f9d69c81b",
+        "status": "verified",
+        "actualSha256": "9de5309bac2c5ffb4210578a586dc67cd43af67fcc272d0c11a6058f9d69c81b"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 0,
+        "phase": "after",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-1-after.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-1-after.png",
+        "expectedSha256": "7b62c125b4a2c94a97aef97338cc1043f079f336c44fd756e5757e5a12d839f2",
+        "status": "verified",
+        "actualSha256": "7b62c125b4a2c94a97aef97338cc1043f079f336c44fd756e5757e5a12d839f2"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 0,
+        "phase": "restored",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-1-restored.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-1-restored.png",
+        "expectedSha256": "9de5309bac2c5ffb4210578a586dc67cd43af67fcc272d0c11a6058f9d69c81b",
+        "status": "verified",
+        "actualSha256": "9de5309bac2c5ffb4210578a586dc67cd43af67fcc272d0c11a6058f9d69c81b"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 1,
+        "phase": "before",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-2-before.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-2-before.png",
+        "expectedSha256": "5e58fdfad75781279b6a64b947e78eef91c80f7f06bf4253a8bdee75ed07230d",
+        "status": "verified",
+        "actualSha256": "5e58fdfad75781279b6a64b947e78eef91c80f7f06bf4253a8bdee75ed07230d"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 1,
+        "phase": "after",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-2-after.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-2-after.png",
+        "expectedSha256": "7b62c125b4a2c94a97aef97338cc1043f079f336c44fd756e5757e5a12d839f2",
+        "status": "verified",
+        "actualSha256": "7b62c125b4a2c94a97aef97338cc1043f079f336c44fd756e5757e5a12d839f2"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 1,
+        "phase": "restored",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-2-restored.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-2-restored.png",
+        "expectedSha256": "5e58fdfad75781279b6a64b947e78eef91c80f7f06bf4253a8bdee75ed07230d",
+        "status": "verified",
+        "actualSha256": "5e58fdfad75781279b6a64b947e78eef91c80f7f06bf4253a8bdee75ed07230d"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 2,
+        "phase": "before",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-3-before.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-3-before.png",
+        "expectedSha256": "d7424358973af5f342623d6d0d864d039b053f800e96050282c869cacb6cba51",
+        "status": "verified",
+        "actualSha256": "d7424358973af5f342623d6d0d864d039b053f800e96050282c869cacb6cba51"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 2,
+        "phase": "after",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-3-after.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-3-after.png",
+        "expectedSha256": "7b62c125b4a2c94a97aef97338cc1043f079f336c44fd756e5757e5a12d839f2",
+        "status": "verified",
+        "actualSha256": "7b62c125b4a2c94a97aef97338cc1043f079f336c44fd756e5757e5a12d839f2"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 2,
+        "phase": "restored",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-3-restored.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-3-restored.png",
+        "expectedSha256": "d7424358973af5f342623d6d0d864d039b053f800e96050282c869cacb6cba51",
+        "status": "verified",
+        "actualSha256": "d7424358973af5f342623d6d0d864d039b053f800e96050282c869cacb6cba51"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 0,
+        "phase": "before",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-1-before.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-1-before.json",
+        "expectedSha256": "df95ebb8251ff8670abaf028e086482a751bd3291276f1801911779024a387eb",
+        "status": "verified",
+        "actualSha256": "df95ebb8251ff8670abaf028e086482a751bd3291276f1801911779024a387eb"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 0,
+        "phase": "after",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-1-after.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-1-after.json",
+        "expectedSha256": "e7fd70f0ad415a5ad067e43f39d623c36dfb81de8d93c69d6599036fbabb8775",
+        "status": "verified",
+        "actualSha256": "e7fd70f0ad415a5ad067e43f39d623c36dfb81de8d93c69d6599036fbabb8775"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 0,
+        "phase": "restored",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-1-restored.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-1-restored.json",
+        "expectedSha256": "d5ad20cb595ce8ca586cbacdcb49db46136c37abc4a7146441ad618772e90775",
+        "status": "verified",
+        "actualSha256": "d5ad20cb595ce8ca586cbacdcb49db46136c37abc4a7146441ad618772e90775"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 1,
+        "phase": "before",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-2-before.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-2-before.json",
+        "expectedSha256": "c295559c93ae5e4587e189ee41e9fa99c5561339134ad061cc88aac5870462ef",
+        "status": "verified",
+        "actualSha256": "c295559c93ae5e4587e189ee41e9fa99c5561339134ad061cc88aac5870462ef"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 1,
+        "phase": "after",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-2-after.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-2-after.json",
+        "expectedSha256": "4832275cd2c00d6dedf05ff64272803fdb32804ed76b974a6d7a05b885c77542",
+        "status": "verified",
+        "actualSha256": "4832275cd2c00d6dedf05ff64272803fdb32804ed76b974a6d7a05b885c77542"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 1,
+        "phase": "restored",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-2-restored.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-2-restored.json",
+        "expectedSha256": "53735b8fa0a37063f0ccc20f991c158087d3c1967ec8e3aa835e413811958884",
+        "status": "verified",
+        "actualSha256": "53735b8fa0a37063f0ccc20f991c158087d3c1967ec8e3aa835e413811958884"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 2,
+        "phase": "before",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-3-before.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-3-before.json",
+        "expectedSha256": "0723d041c1f0a8b7d3cede0625d9c6f13feeb31eee63736e614047f00727a13c",
+        "status": "verified",
+        "actualSha256": "0723d041c1f0a8b7d3cede0625d9c6f13feeb31eee63736e614047f00727a13c"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 2,
+        "phase": "after",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-3-after.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-3-after.json",
+        "expectedSha256": "471dd1e8f9a2da560c5fd24d85270097d9ec106c82230bfefe75f7e97778483d",
+        "status": "verified",
+        "actualSha256": "471dd1e8f9a2da560c5fd24d85270097d9ec106c82230bfefe75f7e97778483d"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "edit-visible-cell",
+        "sampleIndex": 2,
+        "phase": "restored",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-3-restored.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-3-restored.json",
+        "expectedSha256": "0ec9bad72fabdd800e1f2e4175c261a26af09a850d26aa1de95c35ecef52d3d0",
+        "status": "verified",
+        "actualSha256": "0ec9bad72fabdd800e1f2e4175c261a26af09a850d26aa1de95c35ecef52d3d0"
+      },
+      {
         "kind": "scenario-screenshot",
         "product": "bilig",
         "workload": "scroll-vertical",
@@ -161,6 +407,16 @@
         "expectedSha256": "a5fdd6a61aed131d7c03f4ae8cbbd2647fd58a1521b3ffaf145ad8e0bb3d8b21",
         "status": "verified",
         "actualSha256": "a5fdd6a61aed131d7c03f4ae8cbbd2647fd58a1521b3ffaf145ad8e0bb3d8b21"
+      },
+      {
+        "kind": "scenario-screenshot",
+        "product": "google-sheets",
+        "workload": "scroll-vertical",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-scroll-vertical/google-sheets-sample-1.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-scroll-vertical/google-sheets-sample-1.png",
+        "expectedSha256": "c4ed9a3c0cf6fd65427e9745811d4473c6fe2ef001faa0ae7ab495ddcc7b8312",
+        "status": "verified",
+        "actualSha256": "c4ed9a3c0cf6fd65427e9745811d4473c6fe2ef001faa0ae7ab495ddcc7b8312"
       },
       {
         "kind": "scenario-screenshot",
@@ -174,6 +430,16 @@
       },
       {
         "kind": "scenario-screenshot",
+        "product": "google-sheets",
+        "workload": "scroll-horizontal",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-scroll-horizontal/google-sheets-sample-1.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-scroll-horizontal/google-sheets-sample-1.png",
+        "expectedSha256": "bdf45831c9a6303ad81c0cf6b95c3e7fb49e5298fccffc7dea875afdbac0505a",
+        "status": "verified",
+        "actualSha256": "bdf45831c9a6303ad81c0cf6b95c3e7fb49e5298fccffc7dea875afdbac0505a"
+      },
+      {
+        "kind": "scenario-screenshot",
         "product": "bilig",
         "workload": "jump-deep-row",
         "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-jump-deep-row/bilig-sample-1.png",
@@ -184,6 +450,16 @@
       },
       {
         "kind": "scenario-screenshot",
+        "product": "google-sheets",
+        "workload": "jump-deep-row",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-jump-deep-row/google-sheets-sample-1.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-jump-deep-row/google-sheets-sample-1.png",
+        "expectedSha256": "9d3bef97bd465bcc7a9d79b0fcf1c1383f0173aaf3131db96f5672b125020d49",
+        "status": "verified",
+        "actualSha256": "9d3bef97bd465bcc7a9d79b0fcf1c1383f0173aaf3131db96f5672b125020d49"
+      },
+      {
+        "kind": "scenario-screenshot",
         "product": "bilig",
         "workload": "formula-edit",
         "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/bilig-sample-1.png",
@@ -191,6 +467,16 @@
         "expectedSha256": "a76f1c862b246819840fddc3523b81b5c8af0b3abf6203f22a2ed64a44e9d48f",
         "status": "verified",
         "actualSha256": "a76f1c862b246819840fddc3523b81b5c8af0b3abf6203f22a2ed64a44e9d48f"
+      },
+      {
+        "kind": "scenario-screenshot",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/google-sheets-sample-1.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/google-sheets-sample-1.png",
+        "expectedSha256": "6a15e384ae478a5b44d033bec7779b63b1eb3d6baca02d9d7f5e204ece546683",
+        "status": "verified",
+        "actualSha256": "6a15e384ae478a5b44d033bec7779b63b1eb3d6baca02d9d7f5e204ece546683"
       },
       {
         "kind": "mutation-target-screenshot",
@@ -299,6 +585,222 @@
         "expectedSha256": "5f40322363ccd72ff9184327cfd0b5403bad5548a1cff68fb0e05e422d10c82d",
         "status": "verified",
         "actualSha256": "5f40322363ccd72ff9184327cfd0b5403bad5548a1cff68fb0e05e422d10c82d"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 0,
+        "phase": "before",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-1-before.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-1-before.png",
+        "expectedSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077",
+        "status": "verified",
+        "actualSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 0,
+        "phase": "after",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-1-after.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-1-after.png",
+        "expectedSha256": "458753c4d63d1d0cd0606d6ef0f4297ac13b5370212e8b4105159119b20afe17",
+        "status": "verified",
+        "actualSha256": "458753c4d63d1d0cd0606d6ef0f4297ac13b5370212e8b4105159119b20afe17"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 0,
+        "phase": "restored",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-1-restored.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-1-restored.png",
+        "expectedSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077",
+        "status": "verified",
+        "actualSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 1,
+        "phase": "before",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-2-before.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-2-before.png",
+        "expectedSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077",
+        "status": "verified",
+        "actualSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 1,
+        "phase": "after",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-2-after.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-2-after.png",
+        "expectedSha256": "458753c4d63d1d0cd0606d6ef0f4297ac13b5370212e8b4105159119b20afe17",
+        "status": "verified",
+        "actualSha256": "458753c4d63d1d0cd0606d6ef0f4297ac13b5370212e8b4105159119b20afe17"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 1,
+        "phase": "restored",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-2-restored.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-2-restored.png",
+        "expectedSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077",
+        "status": "verified",
+        "actualSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 2,
+        "phase": "before",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-3-before.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-3-before.png",
+        "expectedSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077",
+        "status": "verified",
+        "actualSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 2,
+        "phase": "after",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-3-after.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-3-after.png",
+        "expectedSha256": "458753c4d63d1d0cd0606d6ef0f4297ac13b5370212e8b4105159119b20afe17",
+        "status": "verified",
+        "actualSha256": "458753c4d63d1d0cd0606d6ef0f4297ac13b5370212e8b4105159119b20afe17"
+      },
+      {
+        "kind": "mutation-target-screenshot",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 2,
+        "phase": "restored",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-3-restored.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-3-restored.png",
+        "expectedSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077",
+        "status": "verified",
+        "actualSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 0,
+        "phase": "before",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-1-before.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-1-before.json",
+        "expectedSha256": "ba174f5a23cfe3d1f1739973a42e78f729b7c5e0a77af762b9d71f35897b3cd9",
+        "status": "verified",
+        "actualSha256": "ba174f5a23cfe3d1f1739973a42e78f729b7c5e0a77af762b9d71f35897b3cd9"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 0,
+        "phase": "after",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-1-after.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-1-after.json",
+        "expectedSha256": "60415bc9f5f7d9fbf166961ec0c58981d4aa76fcc591a506ce162cf7e3748935",
+        "status": "verified",
+        "actualSha256": "60415bc9f5f7d9fbf166961ec0c58981d4aa76fcc591a506ce162cf7e3748935"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 0,
+        "phase": "restored",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-1-restored.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-1-restored.json",
+        "expectedSha256": "01730c35575693b6a3bd20f4c2570834de8d789b7e36aca4c7a76ceed0400850",
+        "status": "verified",
+        "actualSha256": "01730c35575693b6a3bd20f4c2570834de8d789b7e36aca4c7a76ceed0400850"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 1,
+        "phase": "before",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-2-before.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-2-before.json",
+        "expectedSha256": "52a83fd04eb2316150890bdfbf9f388ab2731aaa984669d59b666f30baa2e37a",
+        "status": "verified",
+        "actualSha256": "52a83fd04eb2316150890bdfbf9f388ab2731aaa984669d59b666f30baa2e37a"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 1,
+        "phase": "after",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-2-after.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-2-after.json",
+        "expectedSha256": "23bb83881501e76fac418a507df7dd510b1a0aac21fb6f9231206635e5ee553c",
+        "status": "verified",
+        "actualSha256": "23bb83881501e76fac418a507df7dd510b1a0aac21fb6f9231206635e5ee553c"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 1,
+        "phase": "restored",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-2-restored.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-2-restored.json",
+        "expectedSha256": "ad6cc3883ac83d178ed0c4c7ed93efcfc5222734f8fe960abc35d15a45b25fa8",
+        "status": "verified",
+        "actualSha256": "ad6cc3883ac83d178ed0c4c7ed93efcfc5222734f8fe960abc35d15a45b25fa8"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 2,
+        "phase": "before",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-3-before.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-3-before.json",
+        "expectedSha256": "aff5b7d92970c9d87590c193872a6347bf08ac22c44bacb79d8a3dfe78ccbc38",
+        "status": "verified",
+        "actualSha256": "aff5b7d92970c9d87590c193872a6347bf08ac22c44bacb79d8a3dfe78ccbc38"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 2,
+        "phase": "after",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-3-after.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-3-after.json",
+        "expectedSha256": "15ba10e19d0c294636f4521b9d1218e6ed3ce237c4a8b689df387dbe4197d61d",
+        "status": "verified",
+        "actualSha256": "15ba10e19d0c294636f4521b9d1218e6ed3ce237c4a8b689df387dbe4197d61d"
+      },
+      {
+        "kind": "google-sheets-committed-state-export",
+        "product": "google-sheets",
+        "workload": "formula-edit",
+        "sampleIndex": 2,
+        "phase": "restored",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-3-restored.json",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-3-restored.json",
+        "expectedSha256": "c5d706320c8c9d0364ee6b9ff7fb535ad4c4b454af02c59d83303d2487b9f76c",
+        "status": "verified",
+        "actualSha256": "c5d706320c8c9d0364ee6b9ff7fb535ad4c4b454af02c59d83303d2487b9f76c"
       },
       {
         "kind": "scenario-screenshot",
@@ -427,6 +929,16 @@
         "expectedSha256": "6ba8435b69dee97831d57ffbf0cbc05f50827413cd109eb9f4ff2d84816f3177",
         "status": "verified",
         "actualSha256": "6ba8435b69dee97831d57ffbf0cbc05f50827413cd109eb9f4ff2d84816f3177"
+      },
+      {
+        "kind": "scenario-screenshot",
+        "product": "google-sheets",
+        "workload": "wide-sheet-navigation",
+        "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-wide-sheet-navigation/google-sheets-sample-1.png",
+        "resolvedPath": "/Users/gregkonush/github.com/bilig2/.cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-wide-sheet-navigation/google-sheets-sample-1.png",
+        "expectedSha256": "5c4d8b368d36ef50ca54d4c8fbcb869f53530d0bfdd54be155063dc5d9fa395b",
+        "status": "verified",
+        "actualSha256": "5c4d8b368d36ef50ca54d4c8fbcb869f53530d0bfdd54be155063dc5d9fa395b"
       }
     ]
   },
@@ -440,6 +952,13 @@
     },
     {
       "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "open-workbook",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-open-workbook/google-sheets-sample-1.png",
+      "screenshotSha256": "14f06b643d76e4005b7235c5b9c0d480fc3b3d125ac659a1a6180ad2f72e836b"
+    },
+    {
+      "kind": "scenario-screenshot",
       "product": "bilig",
       "workload": "select-cell",
       "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-select-cell/bilig-sample-1.png",
@@ -447,10 +966,24 @@
     },
     {
       "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "select-cell",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-select-cell/google-sheets-sample-1.png",
+      "screenshotSha256": "bd25a5e91e3ad579e60b51cfb03a6379c871e6f11a84ba7bd0f2f9df40602e12"
+    },
+    {
+      "kind": "scenario-screenshot",
       "product": "bilig",
       "workload": "edit-visible-cell",
       "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/bilig-sample-1.png",
       "screenshotSha256": "f6542e32c6d44decba8d2d5cc70ab26acf3a9f3904937ff7918623d32bc0e730"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/google-sheets-sample-1.png",
+      "screenshotSha256": "39cdb6d2b9e64d92fc79d3d263803af46c591085cacd99fa19ebe012d88a1140"
     },
     {
       "kind": "mutation-target-screenshot",
@@ -534,11 +1067,207 @@
       "screenshotSha256": "9ff2c70b7241fd6538beb0619674667b03b9d1641c2d884d9ab2c5ffb2ca1557"
     },
     {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 0,
+      "phase": "before",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-1-before.png",
+      "screenshotSha256": "9de5309bac2c5ffb4210578a586dc67cd43af67fcc272d0c11a6058f9d69c81b"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 0,
+      "phase": "after",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-1-after.png",
+      "screenshotSha256": "7b62c125b4a2c94a97aef97338cc1043f079f336c44fd756e5757e5a12d839f2"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 0,
+      "phase": "restored",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-1-restored.png",
+      "screenshotSha256": "9de5309bac2c5ffb4210578a586dc67cd43af67fcc272d0c11a6058f9d69c81b"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 1,
+      "phase": "before",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-2-before.png",
+      "screenshotSha256": "5e58fdfad75781279b6a64b947e78eef91c80f7f06bf4253a8bdee75ed07230d"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 1,
+      "phase": "after",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-2-after.png",
+      "screenshotSha256": "7b62c125b4a2c94a97aef97338cc1043f079f336c44fd756e5757e5a12d839f2"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 1,
+      "phase": "restored",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-2-restored.png",
+      "screenshotSha256": "5e58fdfad75781279b6a64b947e78eef91c80f7f06bf4253a8bdee75ed07230d"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 2,
+      "phase": "before",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-3-before.png",
+      "screenshotSha256": "d7424358973af5f342623d6d0d864d039b053f800e96050282c869cacb6cba51"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 2,
+      "phase": "after",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-3-after.png",
+      "screenshotSha256": "7b62c125b4a2c94a97aef97338cc1043f079f336c44fd756e5757e5a12d839f2"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 2,
+      "phase": "restored",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/mutation-target/google-sheets-sample-3-restored.png",
+      "screenshotSha256": "d7424358973af5f342623d6d0d864d039b053f800e96050282c869cacb6cba51"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 0,
+      "phase": "before",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-1-before.json",
+      "artifactSha256": "df95ebb8251ff8670abaf028e086482a751bd3291276f1801911779024a387eb",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440993,
+      "workbookSha256": "65724cae679780ec5573739adb4d87a8ada0a8d171c103f0e6021354b3bb2a85"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 0,
+      "phase": "after",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-1-after.json",
+      "artifactSha256": "e7fd70f0ad415a5ad067e43f39d623c36dfb81de8d93c69d6599036fbabb8775",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440456,
+      "workbookSha256": "79c10d1572879abf76fa303f986bcb850ce0ce45b8593cd252c3ddddd14c7fe9"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 0,
+      "phase": "restored",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-1-restored.json",
+      "artifactSha256": "d5ad20cb595ce8ca586cbacdcb49db46136c37abc4a7146441ad618772e90775",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440993,
+      "workbookSha256": "29572b83d72b8e50becef5d4f7163a50239d7600179c12f6e035b0c4047605cb"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 1,
+      "phase": "before",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-2-before.json",
+      "artifactSha256": "c295559c93ae5e4587e189ee41e9fa99c5561339134ad061cc88aac5870462ef",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440993,
+      "workbookSha256": "451b78289c9a26d8f37d5a8e0470a78cba6582fe4f8a99445454401633ebf9ce"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 1,
+      "phase": "after",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-2-after.json",
+      "artifactSha256": "4832275cd2c00d6dedf05ff64272803fdb32804ed76b974a6d7a05b885c77542",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440371,
+      "workbookSha256": "9826cda8f72bf59d02e9c7e46410267cb6f98f0435c4c32c528b53829e1c97a9"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 1,
+      "phase": "restored",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-2-restored.json",
+      "artifactSha256": "53735b8fa0a37063f0ccc20f991c158087d3c1967ec8e3aa835e413811958884",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440993,
+      "workbookSha256": "27cb501d6776e51627a4f759aa83f1d9015f2404e0e8d89c1cf4f5ebbe47cf41"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 2,
+      "phase": "before",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-3-before.json",
+      "artifactSha256": "0723d041c1f0a8b7d3cede0625d9c6f13feeb31eee63736e614047f00727a13c",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440993,
+      "workbookSha256": "a8e50ae9c1d583780c466215b708aa89dae683d662e5c1717e128f43ab8c463a"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 2,
+      "phase": "after",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-3-after.json",
+      "artifactSha256": "471dd1e8f9a2da560c5fd24d85270097d9ec106c82230bfefe75f7e97778483d",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1439993,
+      "workbookSha256": "bb6668d9d1ed4e01a0f99de850432b9d92d1c0846e8233c54628f284c4f4f0f9"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "edit-visible-cell",
+      "sampleIndex": 2,
+      "phase": "restored",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-edit-visible-cell/committed-state/google-sheets-sample-3-restored.json",
+      "artifactSha256": "0ec9bad72fabdd800e1f2e4175c261a26af09a850d26aa1de95c35ecef52d3d0",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440993,
+      "workbookSha256": "708212e20e6f363bb7a1318f499bd504054bf362c44e67ca9259d28ddff4fe4b"
+    },
+    {
       "kind": "scenario-screenshot",
       "product": "bilig",
       "workload": "scroll-vertical",
       "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-scroll-vertical/bilig-sample-1.png",
       "screenshotSha256": "a5fdd6a61aed131d7c03f4ae8cbbd2647fd58a1521b3ffaf145ad8e0bb3d8b21"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "scroll-vertical",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-scroll-vertical/google-sheets-sample-1.png",
+      "screenshotSha256": "c4ed9a3c0cf6fd65427e9745811d4473c6fe2ef001faa0ae7ab495ddcc7b8312"
     },
     {
       "kind": "scenario-screenshot",
@@ -549,6 +1278,13 @@
     },
     {
       "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "scroll-horizontal",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-scroll-horizontal/google-sheets-sample-1.png",
+      "screenshotSha256": "bdf45831c9a6303ad81c0cf6b95c3e7fb49e5298fccffc7dea875afdbac0505a"
+    },
+    {
+      "kind": "scenario-screenshot",
       "product": "bilig",
       "workload": "jump-deep-row",
       "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-jump-deep-row/bilig-sample-1.png",
@@ -556,10 +1292,24 @@
     },
     {
       "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "jump-deep-row",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-jump-deep-row/google-sheets-sample-1.png",
+      "screenshotSha256": "9d3bef97bd465bcc7a9d79b0fcf1c1383f0173aaf3131db96f5672b125020d49"
+    },
+    {
+      "kind": "scenario-screenshot",
       "product": "bilig",
       "workload": "formula-edit",
       "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/bilig-sample-1.png",
       "screenshotSha256": "a76f1c862b246819840fddc3523b81b5c8af0b3abf6203f22a2ed64a44e9d48f"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/google-sheets-sample-1.png",
+      "screenshotSha256": "6a15e384ae478a5b44d033bec7779b63b1eb3d6baca02d9d7f5e204ece546683"
     },
     {
       "kind": "mutation-target-screenshot",
@@ -641,6 +1391,195 @@
       "phase": "restored",
       "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/bilig-sample-3-restored.png",
       "screenshotSha256": "5f40322363ccd72ff9184327cfd0b5403bad5548a1cff68fb0e05e422d10c82d"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 0,
+      "phase": "before",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-1-before.png",
+      "screenshotSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 0,
+      "phase": "after",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-1-after.png",
+      "screenshotSha256": "458753c4d63d1d0cd0606d6ef0f4297ac13b5370212e8b4105159119b20afe17"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 0,
+      "phase": "restored",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-1-restored.png",
+      "screenshotSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 1,
+      "phase": "before",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-2-before.png",
+      "screenshotSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 1,
+      "phase": "after",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-2-after.png",
+      "screenshotSha256": "458753c4d63d1d0cd0606d6ef0f4297ac13b5370212e8b4105159119b20afe17"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 1,
+      "phase": "restored",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-2-restored.png",
+      "screenshotSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 2,
+      "phase": "before",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-3-before.png",
+      "screenshotSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 2,
+      "phase": "after",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-3-after.png",
+      "screenshotSha256": "458753c4d63d1d0cd0606d6ef0f4297ac13b5370212e8b4105159119b20afe17"
+    },
+    {
+      "kind": "mutation-target-screenshot",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 2,
+      "phase": "restored",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/mutation-target/google-sheets-sample-3-restored.png",
+      "screenshotSha256": "c27068cdd3bba067b0523f81e9eaeeb3bde34c3780f2b5aea387dca383aa2077"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 0,
+      "phase": "before",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-1-before.json",
+      "artifactSha256": "ba174f5a23cfe3d1f1739973a42e78f729b7c5e0a77af762b9d71f35897b3cd9",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440993,
+      "workbookSha256": "93f8971a5faddebf97100e9aedc26b86742c8a53027a52a1305004565b660664"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 0,
+      "phase": "after",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-1-after.json",
+      "artifactSha256": "60415bc9f5f7d9fbf166961ec0c58981d4aa76fcc591a506ce162cf7e3748935",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440477,
+      "workbookSha256": "b540b5dcd874e69d63139f777772c4e354803b61e4e3cbca18b7e1598d4a2c25"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 0,
+      "phase": "restored",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-1-restored.json",
+      "artifactSha256": "01730c35575693b6a3bd20f4c2570834de8d789b7e36aca4c7a76ceed0400850",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440993,
+      "workbookSha256": "6b1b47288b2b4f5f0c67e8b896ad4ab2e86137a03497ad33861e9f7bd781a37a"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 1,
+      "phase": "before",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-2-before.json",
+      "artifactSha256": "52a83fd04eb2316150890bdfbf9f388ab2731aaa984669d59b666f30baa2e37a",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440993,
+      "workbookSha256": "34ac160a6fb0a73d605c8bc1b5b7b6e7a8e7550272861d05caabe301666c2270"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 1,
+      "phase": "after",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-2-after.json",
+      "artifactSha256": "23bb83881501e76fac418a507df7dd510b1a0aac21fb6f9231206635e5ee553c",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440480,
+      "workbookSha256": "db126a0a5e6750baae2e8655e9db03ecaa592f198d3eefe912755b7520a1330f"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 1,
+      "phase": "restored",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-2-restored.json",
+      "artifactSha256": "ad6cc3883ac83d178ed0c4c7ed93efcfc5222734f8fe960abc35d15a45b25fa8",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440993,
+      "workbookSha256": "b3c0d48e91ec7c22509029db1ff400992037c2109916f4b50258da095118a210"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 2,
+      "phase": "before",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-3-before.json",
+      "artifactSha256": "aff5b7d92970c9d87590c193872a6347bf08ac22c44bacb79d8a3dfe78ccbc38",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440993,
+      "workbookSha256": "41a52ec82d8eb05872e8b5a9386161b9047382433a92a02e4872706fa8bc0f24"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 2,
+      "phase": "after",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-3-after.json",
+      "artifactSha256": "15ba10e19d0c294636f4521b9d1218e6ed3ce237c4a8b689df387dbe4197d61d",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440483,
+      "workbookSha256": "8f0ecd1e9f914f8079d7ab39640bab1030b4deb8284e1b23495878d5f202712f"
+    },
+    {
+      "kind": "google-sheets-committed-state-export",
+      "product": "google-sheets",
+      "workload": "formula-edit",
+      "sampleIndex": 2,
+      "phase": "restored",
+      "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-3-restored.json",
+      "artifactSha256": "c5d706320c8c9d0364ee6b9ff7fb535ad4c4b454af02c59d83303d2487b9f76c",
+      "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+      "workbookByteSize": 1440993,
+      "workbookSha256": "2ea25543bd5f5bdb6a20ea36fa87914cdbb525717431a0b572f3569c4b878b94"
     },
     {
       "kind": "scenario-screenshot",
@@ -736,6 +1675,13 @@
       "workload": "wide-sheet-navigation",
       "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-wide-sheet-navigation/bilig-sample-1.png",
       "screenshotSha256": "6ba8435b69dee97831d57ffbf0cbc05f50827413cd109eb9f4ff2d84816f3177"
+    },
+    {
+      "kind": "scenario-screenshot",
+      "product": "google-sheets",
+      "workload": "wide-sheet-navigation",
+      "path": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-wide-sheet-navigation/google-sheets-sample-1.png",
+      "screenshotSha256": "5c4d8b368d36ef50ca54d4c8fbcb869f53530d0bfdd54be155063dc5d9fa395b"
     }
   ]
 }

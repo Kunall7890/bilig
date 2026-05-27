@@ -99,6 +99,7 @@ export interface UiResponsivenessLiveBrowserScorecard {
 export interface UiResponsivenessLiveBrowserCliArgs {
   readonly isCheckMode: boolean
   readonly capturePath: string | null
+  readonly refreshSameCorpusProofOnly: boolean
 }
 
 export interface SameCorpusScreenshotArtifactValidationOptions {
@@ -166,6 +167,27 @@ async function main(): Promise<void> {
     validateSameCorpusCaptureArtifactMatchesScorecard(scorecard)
     validateSameCorpusScreenshotArtifacts(scorecard.sameCorpusProof, { requireGitTracked: true })
     logResult('check', scorecard)
+    return
+  }
+
+  if (args.refreshSameCorpusProofOnly) {
+    if (!args.capturePath) {
+      throw new Error('UI responsiveness same-corpus proof refresh requires --capture <same-corpus-capture.json>')
+    }
+    if (!existsSync(outputPath)) {
+      throw new Error('UI responsiveness live browser scorecard is missing. Run the full generator before refreshing same-corpus proof.')
+    }
+    const existingScorecard = parseUiResponsivenessLiveBrowserScorecard(readJsonObject(outputPath))
+    const sameCorpusProof = buildSameCorpusProof(parseSameCorpusCapture(readJsonObject(resolve(args.capturePath))))
+    const scorecard: UiResponsivenessLiveBrowserScorecard = {
+      ...existingScorecard,
+      generatedAt: new Date().toISOString(),
+      sameCorpusProof,
+    }
+    validateUiResponsivenessLiveBrowserScorecard(scorecard)
+    validateSameCorpusScreenshotArtifacts(scorecard.sameCorpusProof)
+    writeFileSync(outputPath, formatJsonForRepo(`${JSON.stringify(scorecard, null, 2)}\n`))
+    logResult('refresh-same-corpus-proof', scorecard)
     return
   }
 
@@ -239,6 +261,7 @@ export function parseUiResponsivenessLiveBrowserCliArgs(argv: readonly string[])
   return {
     isCheckMode: argv.includes('--check'),
     capturePath: argumentValue(argv, '--capture'),
+    refreshSameCorpusProofOnly: argv.includes('--refresh-same-corpus-proof'),
   }
 }
 

@@ -1,0 +1,21 @@
+{
+  "artifactPath": ".cache/ui-responsiveness/same-corpus-capture.json.proof/same-corpus-wide-mixed-250k-formula-edit/committed-state/google-sheets-sample-1-before.json",
+  "capturedAtMs": 96566.344334,
+  "exportUrl": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/export?format=xlsx",
+  "phase": "before",
+  "product": "google-sheets",
+  "readback": {
+    "fillColor": null,
+    "formula": "=A5+B5",
+    "source": "google-sheets-xlsx-export",
+    "value": "#VALUE!",
+    "visibleText": "#VALUE!"
+  },
+  "sampleIndex": 0,
+  "sheetId": "gid:160971404",
+  "sheetName": "WideGrid",
+  "targetRange": "C5",
+  "workbookByteSize": 1440993,
+  "workbookSha256": "93f8971a5faddebf97100e9aedc26b86742c8a53027a52a1305004565b660664",
+  "workload": "formula-edit"
+}

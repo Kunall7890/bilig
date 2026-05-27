@@ -1133,6 +1133,78 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     )
   })
 
+  it('accepts Google Sheets selected-cell proof backed by visible formula bar text and target screenshots', () => {
+    const proof = buildCaptureScenarioProof({
+      workload: 'edit-visible-cell',
+      bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'edit-visible-cell'),
+      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export', 'edit-visible-cell'),
+      visualProofs: [
+        sameCorpusVisualProofWithMutationProofs(
+          'bilig',
+          'typegpu-visible-canvas',
+          'same-corpus-wide-mixed-250k-edit-visible-cell',
+          'edit-visible-cell',
+          identityMutationTargetProof,
+        ),
+        sameCorpusVisualProofWithMutationProofs(
+          'google-sheets',
+          'google-sheets-visible-grid',
+          'same-corpus-wide-mixed-250k-edit-visible-cell',
+          'edit-visible-cell',
+          useVisibleFormulaBarTargetReadback,
+        ),
+      ],
+    })
+
+    expect(proof.semanticUiProof).toMatchObject({
+      captured: true,
+      missingProducts: [],
+    })
+    expect(proof.semanticUiProof.productVerdicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          product: 'google-sheets',
+          acceptedForCurrentScorecard: true,
+          invalidReasons: [],
+        }),
+      ]),
+    )
+  })
+
+  it('accepts Google Sheets formula edits when formula bar proves the formula and XLSX export proves the result', () => {
+    const proof = buildCaptureScenarioProof({
+      workload: 'formula-edit',
+      bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state', 'formula-edit'),
+      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export', 'formula-edit'),
+      visualProofs: [
+        sameCorpusVisualProofWithMutationProofs(
+          'bilig',
+          'typegpu-visible-canvas',
+          'same-corpus-wide-mixed-250k-formula-edit',
+          'formula-edit',
+          identityMutationTargetProof,
+        ),
+        sameCorpusVisualProofWithMutationProofs(
+          'google-sheets',
+          'google-sheets-visible-grid',
+          'same-corpus-wide-mixed-250k-formula-edit',
+          'formula-edit',
+          useVisibleFormulaBarFormulaProof,
+        ),
+      ],
+    })
+
+    expect(proof.semanticUiProof.productVerdicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          product: 'google-sheets',
+          acceptedForCurrentScorecard: true,
+          invalidReasons: [],
+        }),
+      ]),
+    )
+  })
+
   it('rejects mutation target proof whose target range does not match the rendered selection', () => {
     const proof = buildCaptureScenarioProof({
       workload: 'fill-format-change',
@@ -1892,6 +1964,13 @@ describe('same-corpus UI responsiveness capture CLI', () => {
         'https://docs.google.com/spreadsheets/d/example/edit',
         'File Edit Insert Format Data Tools Extensions Help Share Sign in',
       ),
+    ).toBeNull()
+    expect(
+      incumbentEditableWorkloadBlocker(
+        'google-sheets',
+        'https://docs.google.com/spreadsheets/d/example/edit',
+        'Sign in to continue to Google Sheets Use your Google Account',
+      ),
     ).toContain('authenticated')
     expect(
       incumbentEditableWorkloadBlocker(
@@ -2449,6 +2528,10 @@ function forceVisibleEditorReadbackSource(proof: SameCorpusMutationTargetProof):
   }
 }
 
+function identityMutationTargetProof(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  return proof
+}
+
 function driftVisibleTargetReadback(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
   if (proof.sampleIndex !== 0) {
     return proof
@@ -2460,6 +2543,54 @@ function driftVisibleTargetReadback(proof: SameCorpusMutationTargetProof): SameC
       value: 'editor-only-ghost',
       visibleText: 'editor-only-ghost',
     },
+  }
+}
+
+function useVisibleFormulaBarTargetReadback(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  return {
+    ...proof,
+    visibleAfter: { ...proof.visibleAfter, source: 'visible-formula-bar' },
+    visibleRestored: { ...proof.visibleRestored, source: 'visible-formula-bar' },
+    targetScreenshots: proof.targetScreenshots
+      ? {
+          before: {
+            ...proof.targetScreenshots.before,
+            semanticReadback: { ...proof.targetScreenshots.before.semanticReadback, source: 'visible-formula-bar' },
+          },
+          after: {
+            ...proof.targetScreenshots.after,
+            semanticReadback: { ...proof.targetScreenshots.after.semanticReadback, source: 'visible-formula-bar' },
+          },
+          restored: {
+            ...proof.targetScreenshots.restored,
+            semanticReadback: { ...proof.targetScreenshots.restored.semanticReadback, source: 'visible-formula-bar' },
+          },
+        }
+      : proof.targetScreenshots,
+  }
+}
+
+function useVisibleFormulaBarFormulaProof(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  if (proof.intendedPayload.kind !== 'formula') {
+    return proof
+  }
+  const formulaReadback = {
+    value: null,
+    formula: proof.intendedPayload.formula,
+    fillColor: null,
+    visibleText: proof.intendedPayload.formula,
+    source: 'visible-formula-bar' as const,
+  }
+  return {
+    ...proof,
+    after: { ...proof.after, formula: proof.intendedPayload.formula },
+    visibleAfter: formulaReadback,
+    targetScreenshots: proof.targetScreenshots
+      ? {
+          ...proof.targetScreenshots,
+          after: { ...proof.targetScreenshots.after, semanticReadback: formulaReadback },
+        }
+      : proof.targetScreenshots,
   }
 }
 

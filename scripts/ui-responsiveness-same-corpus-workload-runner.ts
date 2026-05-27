@@ -289,7 +289,7 @@ export function incumbentEditableWorkloadBlocker(
     if (normalizedBody.includes('view only') || normalizedBody.includes('comment only') || normalizedBody.includes('request edit access')) {
       return 'Google Sheets page is read-only; provide an editable same-corpus Google Sheet URL or authenticated storage state.'
     }
-    if (normalizedBody.includes(' sign in') || normalizedBody.endsWith('sign in')) {
+    if (googleSheetsBodyLooksLikeAuthWall(normalizedBody)) {
       return 'Google Sheets page is not authenticated; provide an authenticated storage state for editable same-corpus workloads.'
     }
     return null
@@ -301,6 +301,23 @@ export function incumbentEditableWorkloadBlocker(
     return 'Microsoft Excel Web page is read-only; provide an editable same-corpus workbook URL or authenticated storage state.'
   }
   return null
+}
+
+function googleSheetsBodyLooksLikeAuthWall(normalizedBody: string): boolean {
+  if (normalizedBody.includes('sign in to continue to google sheets')) {
+    return true
+  }
+  if (normalizedBody.includes('to continue to google sheets') && normalizedBody.includes('use your google account')) {
+    return true
+  }
+  if (normalizedBody.includes('you need access') || normalizedBody.includes('request access')) {
+    return true
+  }
+  return !googleSheetsBodyHasLoadedEditorChrome(normalizedBody) && normalizedBody.endsWith('sign in')
+}
+
+function googleSheetsBodyHasLoadedEditorChrome(normalizedBody: string): boolean {
+  return normalizedBody.includes('file edit') && normalizedBody.includes('format data tools') && normalizedBody.includes('extensions help')
 }
 
 function percentile(values: readonly number[], percentileValue: number): number {

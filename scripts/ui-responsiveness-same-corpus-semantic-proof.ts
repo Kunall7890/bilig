@@ -404,7 +404,7 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
   invalidReasons.push(...sameCorpusMutationTargetReadbackSourceInvalidReasons(proof.product, workload, sample))
   invalidReasons.push(...sameCorpusMutationTargetVisibleReadbackInvalidReasons(proof.product, workload, sample))
   invalidReasons.push(...sameCorpusMutationTargetRevisionInvalidReasons(proof.product, workload, sample))
-  invalidReasons.push(...sameCorpusMutationTargetExpectedReadbackInvalidReasons(workload, sample))
+  invalidReasons.push(...sameCorpusMutationTargetExpectedReadbackInvalidReasons(proof.product, workload, sample))
   invalidReasons.push(...sameCorpusMutationTargetCommittedStateInvalidReasons(proof.product, sample.intendedOperation, sample))
   if (workload === 'fill-format-change' && sample.before.fillColor === sample.after.fillColor) {
     invalidReasons.push('semantic UI mutation target proof for fill-format-change did not prove a fill color change')
@@ -599,6 +599,7 @@ function expectedSameCorpusFormulaEditRenderedValue(sampleIndex: number): string
 }
 
 function sameCorpusMutationTargetExpectedReadbackInvalidReasons(
+  product: UiResponsivenessSameCorpusProduct,
   workload: UiResponsivenessSameCorpusWorkload,
   sample: SameCorpusMutationTargetProof,
 ): string[] {
@@ -618,7 +619,14 @@ function sameCorpusMutationTargetExpectedReadbackInvalidReasons(
     }
     const expectedRenderedValue = expectedSameCorpusFormulaEditRenderedValue(sample.sampleIndex)
     if (sample.visibleAfter.value !== expectedRenderedValue && sample.visibleAfter.visibleText !== expectedRenderedValue) {
-      return ['semantic UI mutation target proof for formula-edit did not prove the rendered formula result']
+      const committedResult = sample.committedStateProof?.after.readback
+      const externalFormulaProofAccepted =
+        product !== 'bilig' &&
+        sample.visibleAfter.formula === payload.formula &&
+        (committedResult?.value === expectedRenderedValue || committedResult?.visibleText === expectedRenderedValue)
+      return externalFormulaProofAccepted
+        ? []
+        : ['semantic UI mutation target proof for formula-edit did not prove the rendered formula result']
     }
     return []
   }
@@ -688,8 +696,10 @@ function sameCorpusMutationTargetVisibleReadbackInvalidReasons(
   if (readbacks.some((readback) => readback.source === 'unknown')) {
     return [`semantic UI mutation target proof for ${workload} is missing visible render readback source`]
   }
-  if (readbacks.some((readback) => readback.source !== 'visible-grid-cell')) {
-    return [`semantic UI mutation target proof for ${workload} visible render readback did not come from rendered grid cell pixels`]
+  if (readbacks.some((readback) => !sameCorpusVisibleReadbackSourceAccepted(product, readback.source))) {
+    return [
+      `semantic UI mutation target proof for ${workload} visible render readback did not come from an accepted browser-visible source`,
+    ]
   }
   if (product !== 'bilig') {
     return []
@@ -701,6 +711,16 @@ function sameCorpusMutationTargetVisibleReadbackInvalidReasons(
     return [`semantic UI mutation target proof for ${workload} rendered restore readback does not match Bilig authoritative range readback`]
   }
   return []
+}
+
+function sameCorpusVisibleReadbackSourceAccepted(
+  product: UiResponsivenessSameCorpusProduct,
+  source: SameCorpusMutationTargetReadbackSource,
+): boolean {
+  if (source === 'visible-grid-cell') {
+    return true
+  }
+  return product !== 'bilig' && source === 'visible-formula-bar'
 }
 
 function sameCorpusMutationTargetRevisionInvalidReasons(

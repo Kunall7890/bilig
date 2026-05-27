@@ -46,7 +46,7 @@ export function sameCorpusMutationTargetPreflightInvalidReasons(args: SameCorpus
   if (!args.before || args.before.source === 'unknown') {
     invalidReasons.push('missing authoritative before readback for target range')
   }
-  if (!args.visibleBefore || args.visibleBefore.source !== 'visible-grid-cell') {
+  if (!args.visibleBefore || !sameCorpusVisibleReadbackSourceAccepted(args.product, args.visibleBefore.source)) {
     invalidReasons.push('missing browser-visible before readback for target cell')
   }
   invalidReasons.push(...sameCorpusBeforeScreenshotInvalidReasons(args))
@@ -54,6 +54,16 @@ export function sameCorpusMutationTargetPreflightInvalidReasons(args: SameCorpus
     invalidReasons.push(...sameCorpusGoogleCommittedStatePreflightInvalidReasons(args))
   }
   return [...new Set(invalidReasons)]
+}
+
+function sameCorpusVisibleReadbackSourceAccepted(
+  product: UiResponsivenessSameCorpusProduct,
+  source: SameCorpusMutationTargetReadback['source'],
+): boolean {
+  if (source === 'visible-grid-cell') {
+    return true
+  }
+  return product !== 'bilig' && source === 'visible-formula-bar'
 }
 
 function sameCorpusBeforeScreenshotInvalidReasons(args: SameCorpusMutationTargetPreflightProof): readonly string[] {

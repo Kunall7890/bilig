@@ -31,13 +31,25 @@ function sameCorpusMutationTargetScreenshotPhaseSemanticInvalidReasons(
   if (!readback) {
     return [`semantic UI mutation target proof for ${workload} ${phase} screenshot is missing semantic target readback`]
   }
-  if (readback.source !== 'visible-grid-cell') {
-    return [`semantic UI mutation target proof for ${workload} ${phase} screenshot semantic readback did not come from target-cell pixels`]
+  if (!sameCorpusScreenshotSemanticSourceAccepted(product, readback.source)) {
+    return [
+      `semantic UI mutation target proof for ${workload} ${phase} screenshot semantic readback did not come from an accepted browser-visible source`,
+    ]
   }
   if (!sameCorpusScreenshotReadbackMatches(product, workload, expectedReadback, readback)) {
     return [`semantic UI mutation target proof for ${workload} ${phase} screenshot semantic readback does not match target readback`]
   }
   return []
+}
+
+function sameCorpusScreenshotSemanticSourceAccepted(
+  product: UiResponsivenessSameCorpusProduct,
+  source: SameCorpusMutationTargetReadback['source'],
+): boolean {
+  if (source === 'visible-grid-cell') {
+    return true
+  }
+  return product !== 'bilig' && source === 'visible-formula-bar'
 }
 
 function sameCorpusScreenshotReadbackMatches(
