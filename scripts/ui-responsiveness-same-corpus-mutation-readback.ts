@@ -163,7 +163,7 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
   function visibleBackgroundColor(element: HTMLElement): string | null {
     for (const candidate of [element, ...Array.from(element.querySelectorAll<HTMLElement>('*'))]) {
       const color = normalizeBackgroundColor(getComputedStyle(candidate).backgroundColor)
-      if (color !== null) {
+      if (color !== null && !isKnownSelectionChromeBackground(candidate, color)) {
         return color
       }
     }
@@ -203,6 +203,25 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
       element.closest(
         '#t-formula-bar-input, #t-formula-bar, #t-name-box, input.waffle-name-box, [aria-label="Formula bar"], [aria-label="Name box"], .docs-toolbar, .waffle-menu, .range-border, .waffle-border-cell-active',
       ),
+    )
+  }
+
+  // oxlint-disable-next-line eslint-plugin-unicorn(consistent-function-scoping) -- Playwright serializes this helper with the page function.
+  function isKnownSelectionChromeBackground(element: HTMLElement, color: string): boolean {
+    const normalizedColor = color.replace(/\s+/gu, '').toLowerCase()
+    if (
+      normalizedColor !== 'rgb(11,87,208)' &&
+      normalizedColor !== 'rgba(11,87,208,1)' &&
+      normalizedColor !== 'rgb(26,115,232)' &&
+      normalizedColor !== 'rgba(26,115,232,1)'
+    ) {
+      return false
+    }
+    const className = element.className.toString().toLowerCase()
+    return (
+      element.getAttribute('aria-selected') === 'true' ||
+      /\b(?:active|selected|selection|range-border|waffle-border-cell)\b/u.test(className) ||
+      element.closest('.range-border, .waffle-border-cell-active, [aria-selected="true"]') !== null
     )
   }
 }

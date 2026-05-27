@@ -32,6 +32,23 @@ describe('same-corpus mutation target page proof helpers', () => {
     })
   })
 
+  it('does not count Google Sheets selected-cell chrome as target fill color', () => {
+    document.body.innerHTML = `
+      <div class="waffle-cell active-cell" aria-selected="true" style="background-color: rgb(11, 87, 208);">segment-5</div>
+    `
+    const cell = document.querySelector<HTMLElement>('.waffle-cell')
+    expect(cell).not.toBeNull()
+    setRect(cell!, { height: 22, width: 104, x: 120, y: 80 })
+
+    expect(readSameCorpusVisibleTargetCellReadbackFromPage({ targetBox: { height: 22, width: 104, x: 120, y: 80 } })).toEqual({
+      fillColor: null,
+      formula: null,
+      source: 'visible-grid-cell',
+      value: 'segment-5',
+      visibleText: 'segment-5',
+    })
+  })
+
   it('uses an active in-grid editor only when it spatially overlaps the selected cell', () => {
     document.body.innerHTML = `
       <div class="waffle-cell-input" contenteditable="true">2</div>
