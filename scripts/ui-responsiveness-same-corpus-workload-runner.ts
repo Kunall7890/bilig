@@ -214,7 +214,9 @@ export async function performSameCorpusFillColorOperation(
   options: { readonly exactSwatchOnly?: boolean } = {},
 ): Promise<void> {
   const swatchLabel = sameCorpusFillColorSwatchLabel(sampleIndex)
-  const swatchCandidateLabels = sameCorpusFillColorCandidateLabels(swatchLabel, options)
+  const swatchCandidateLabels = sameCorpusFillColorCandidateLabels(swatchLabel, {
+    exactSwatchOnly: product === 'google-sheets' || options.exactSwatchOnly,
+  })
   await clickFirstAvailableLocator(
     [
       page.getByLabel('Fill color', { exact: true }),
@@ -224,14 +226,37 @@ export async function performSameCorpusFillColorOperation(
     `Cannot open ${product} fill color control`,
   )
   await clickFirstAvailableLocator(
-    swatchCandidateLabels.flatMap((label) => [
-      page.getByLabel(`Fill color ${label}`, { exact: true }),
-      page.getByLabel(new RegExp(`^${escapeRegExp(label)}$`, 'iu')),
-      page.getByRole('button', { name: new RegExp(escapeRegExp(label), 'iu') }),
-      page.locator(`[aria-label="${label}"]`),
-    ]),
+    sameCorpusFillColorSwatchLocators(page, product, swatchCandidateLabels),
     `Cannot choose ${product} fill color swatch "${swatchLabel}"`,
   )
+}
+
+function sameCorpusFillColorSwatchLocators(
+  page: Page,
+  product: UiResponsivenessSameCorpusProduct,
+  candidateLabels: readonly string[],
+): readonly Locator[] {
+  if (product === 'google-sheets') {
+    return candidateLabels.flatMap((label) => {
+      const labelPattern = new RegExp(`^(?:Fill color\\s+)?${escapeRegExp(label)}$`, 'iu')
+      const labelValue = cssAttributeValue(label)
+      const fillLabelValue = cssAttributeValue(`Fill color ${label}`)
+      return [
+        page.locator(
+          `:is(.goog-menu, .docs-material-menu, [role="menu"], [class*="color-palette" i]) :is([aria-label="${labelValue}"], [aria-label="${fillLabelValue}"], [title="${labelValue}"], [title="${fillLabelValue}"])`,
+        ),
+        page.getByRole('menuitem', { name: labelPattern }),
+        page.getByRole('option', { name: labelPattern }),
+        page.getByRole('button', { name: labelPattern }),
+      ]
+    })
+  }
+  return candidateLabels.flatMap((label) => [
+    page.getByLabel(`Fill color ${label}`, { exact: true }),
+    page.getByLabel(new RegExp(`^${escapeRegExp(label)}$`, 'iu')),
+    page.getByRole('button', { name: new RegExp(escapeRegExp(label), 'iu') }),
+    page.locator(`[aria-label="${cssAttributeValue(label)}"]`),
+  ])
 }
 
 async function clickFirstAvailableLocator(
@@ -253,6 +278,10 @@ async function clickFirstAvailableLocator(
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+}
+
+function cssAttributeValue(value: string): string {
+  return value.replace(/\\/gu, '\\\\').replace(/"/gu, '\\"')
 }
 
 function sameCorpusFillColorCandidateLabels(swatchLabel: string, options: { readonly exactSwatchOnly?: boolean } = {}): readonly string[] {

@@ -69,7 +69,13 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     const visibleTargetRenderMs = Math.max(0, visibleTargetRenderCapturedAtMs - args.operationStartedAt)
     const afterCommittedStateProof = await captureSameCorpusCommittedStatePhaseProof({
       artifactPath: committedStateArtifactPath(args, 'after'),
-      expectedReadback: after,
+      expectedReadback: sameCorpusCommittedStateExpectedReadback({
+        before: args.before,
+        phase: 'after',
+        phaseReadback: after,
+        sampleIndex: args.sampleIndex,
+        workload: args.workload,
+      }),
       page: args.page,
       phase: 'after',
       product: args.product,
@@ -107,7 +113,13 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     const restoredScreenshot = await captureTargetScreenshot({ ...args, semanticReadback: visibleRestored }, 'restored')
     const restoredCommittedStateProof = await captureSameCorpusCommittedStatePhaseProof({
       artifactPath: committedStateArtifactPath(args, 'restored'),
-      expectedReadback: restored,
+      expectedReadback: sameCorpusCommittedStateExpectedReadback({
+        before: args.before,
+        phase: 'restored',
+        phaseReadback: restored,
+        sampleIndex: args.sampleIndex,
+        workload: args.workload,
+      }),
       page: args.page,
       phase: 'restored',
       product: args.product,
@@ -231,6 +243,22 @@ function intendedMutationTargetPayload(
     }
   }
   return { kind: 'cell-value', value: sameCorpusEditVisibleCellValue(sampleIndex) }
+}
+
+export function sameCorpusCommittedStateExpectedReadback(args: {
+  readonly before: SameCorpusMutationTargetReadback
+  readonly phase: 'after' | 'restored'
+  readonly phaseReadback: SameCorpusMutationTargetReadback
+  readonly sampleIndex: number
+  readonly workload: UiResponsivenessSameCorpusMutatingWorkload
+}): SameCorpusMutationTargetReadback {
+  if (args.phase === 'restored') {
+    return args.before
+  }
+  if (args.workload === 'fill-format-change') {
+    return { ...args.phaseReadback, fillColor: sameCorpusFillColorExpectedColor(args.sampleIndex) }
+  }
+  return args.phaseReadback
 }
 
 function mutationTargetScreenshotArtifactPath(args: {
