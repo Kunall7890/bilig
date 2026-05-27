@@ -17,7 +17,7 @@ describe('special call rewrites', () => {
     ).toEqual({ kind: 'ErrorLiteral', code: ErrorCode.Value })
   })
 
-  it('rewrites IFS, SWITCH, and XOR into nested core expressions', () => {
+  it('rewrites IFS and SWITCH into nested core expressions', () => {
     expect(
       rewriteSpecialCall({
         kind: 'CallExpr',
@@ -87,7 +87,6 @@ describe('special call rewrites', () => {
         },
       ],
     })
-
     expect(
       rewriteSpecialCall({
         kind: 'CallExpr',
@@ -97,32 +96,7 @@ describe('special call rewrites', () => {
           { kind: 'BooleanLiteral', value: false },
         ],
       }),
-    ).toEqual({
-      kind: 'BinaryExpr',
-      operator: '<>',
-      left: {
-        kind: 'CallExpr',
-        callee: 'NOT',
-        args: [
-          {
-            kind: 'CallExpr',
-            callee: 'NOT',
-            args: [{ kind: 'BooleanLiteral', value: true }],
-          },
-        ],
-      },
-      right: {
-        kind: 'CallExpr',
-        callee: 'NOT',
-        args: [
-          {
-            kind: 'CallExpr',
-            callee: 'NOT',
-            args: [{ kind: 'BooleanLiteral', value: false }],
-          },
-        ],
-      },
-    })
+    ).toBeUndefined()
   })
 
   it('returns VALUE or NA errors for invalid special-call arities', () => {
@@ -143,10 +117,7 @@ describe('special call rewrites', () => {
         ],
       }),
     ).toEqual({ kind: 'ErrorLiteral', code: ErrorCode.Value })
-    expect(rewriteSpecialCall({ kind: 'CallExpr', callee: 'XOR', args: [] })).toEqual({
-      kind: 'ErrorLiteral',
-      code: ErrorCode.Value,
-    })
+    expect(rewriteSpecialCall({ kind: 'CallExpr', callee: 'XOR', args: [] })).toBeUndefined()
     expect(rewriteSpecialCall({ kind: 'CallExpr', callee: 'UNRELATED', args: [] })).toBeUndefined()
   })
 })

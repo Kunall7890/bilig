@@ -37,6 +37,9 @@ const RANGE_SAFE_BUILTINS = new Set([
   'SKEW',
   'SKEW.P',
   'KURT',
+  'AND',
+  'OR',
+  'XOR',
 ])
 
 const AXIS_AGGREGATE_CODES = new Map<string, number>([

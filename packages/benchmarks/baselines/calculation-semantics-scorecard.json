@@ -163,7 +163,7 @@
       "lambda:let-basic",
       "lambda:map-basic",
       "logical:and-basic",
-      "logical:and-false-on-empty",
+      "logical:and-ignores-empty-reference",
       "logical:if-basic",
       "logical:if-condition-error",
       "logical:if-true-branch",

@@ -45,6 +45,10 @@ function unresolvedRangeOperandError(base: i32, argc: i32, kindStack: Uint8Array
   return -1
 }
 
+function isRangeAwareLogicalBuiltin(builtinId: i32): bool {
+  return builtinId == BuiltinId.And || builtinId == BuiltinId.Or || builtinId == BuiltinId.Xor
+}
+
 export function applyBuiltin(
   builtinId: i32,
   argc: i32,
@@ -497,6 +501,33 @@ export function applyBuiltin(
     return extendedDistributionResult
   }
 
+  if (isRangeAwareLogicalBuiltin(builtinId)) {
+    const rangeAwareLogicInfoResult = tryApplyLogicInfoBuiltin(
+      builtinId,
+      argc,
+      base,
+      rangeIndexStack,
+      valueStack,
+      tagStack,
+      kindStack,
+      cellTags,
+      cellNumbers,
+      cellErrors,
+      rangeOffsets,
+      rangeLengths,
+      rangeMembers,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    if (rangeAwareLogicInfoResult >= 0) {
+      return rangeAwareLogicInfoResult
+    }
+  }
+
   if (!rangeSupportedScalarOnly(base, argc, kindStack)) {
     return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
   }
@@ -552,23 +583,31 @@ export function applyBuiltin(
     return scalarMathResult
   }
 
-  const logicInfoResult = tryApplyLogicInfoBuiltin(
-    builtinId,
-    argc,
-    base,
-    rangeIndexStack,
-    valueStack,
-    tagStack,
-    kindStack,
-    stringOffsets,
-    stringLengths,
-    stringData,
-    outputStringOffsets,
-    outputStringLengths,
-    outputStringData,
-  )
-  if (logicInfoResult >= 0) {
-    return logicInfoResult
+  if (!isRangeAwareLogicalBuiltin(builtinId)) {
+    const logicInfoResult = tryApplyLogicInfoBuiltin(
+      builtinId,
+      argc,
+      base,
+      rangeIndexStack,
+      valueStack,
+      tagStack,
+      kindStack,
+      cellTags,
+      cellNumbers,
+      cellErrors,
+      rangeOffsets,
+      rangeLengths,
+      rangeMembers,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    if (logicInfoResult >= 0) {
+      return logicInfoResult
+    }
   }
 
   const scalarTextResult = tryApplyScalarTextBuiltin(

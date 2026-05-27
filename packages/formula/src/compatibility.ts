@@ -405,7 +405,7 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   }),
   entry('logical:iferror-catches-any-error', 'logical', '=IFERROR(1/0,"fallback")', 'implemented-wasm-production'),
   entry('logical:ifna-catches-na-only', 'logical', '=IFNA(NA(),"missing")', 'implemented-wasm-production'),
-  entry('logical:and-false-on-empty', 'logical', '=AND(TRUE,A1)', 'implemented-wasm-production'),
+  entry('logical:and-ignores-empty-reference', 'logical', '=AND(TRUE,A1)', 'implemented-wasm-production'),
   entry('logical:or-true-branch', 'logical', '=OR(A1,TRUE)', 'implemented-wasm-production'),
   entry('logical:not-number', 'logical', '=NOT(2)', 'implemented-wasm-production'),
   entry('information:isblank-empty', 'information', '=ISBLANK(A1)', 'implemented-wasm-production'),

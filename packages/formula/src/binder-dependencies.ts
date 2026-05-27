@@ -251,7 +251,7 @@ export function collectFormulaDependencyMetadata(ast: FormulaNode): FormulaDepen
           if (index === aggregateArgumentIndex && arg.kind === 'NameRef') {
             return
           }
-          if (callee === 'SUM' && arg.kind === 'CellRef') {
+          if ((callee === 'SUM' || callee === 'AND' || callee === 'OR' || callee === 'XOR') && arg.kind === 'CellRef') {
             deps.add(formatCellAsSingleCellRange(arg.ref, arg.sheetName))
             return
           }

@@ -17,10 +17,6 @@ function binaryNode(operator: BinaryExprNode['operator'], left: FormulaNode, rig
   return { kind: 'BinaryExpr', operator, left, right }
 }
 
-function coerceBooleanNode(node: FormulaNode): FormulaNode {
-  return callNode('NOT', [callNode('NOT', [node])])
-}
-
 function rewriteIfs(args: readonly FormulaNode[]): FormulaNode {
   if (args.length < 2 || args.length % 2 !== 0) {
     return errorNode(ErrorCode.Value)
@@ -53,18 +49,6 @@ function rewriteSwitch(args: readonly FormulaNode[]): FormulaNode {
   return fallback
 }
 
-function rewriteXor(args: readonly FormulaNode[]): FormulaNode {
-  if (args.length === 0) {
-    return errorNode(ErrorCode.Value)
-  }
-
-  let expression = coerceBooleanNode(args[0]!)
-  for (let index = 1; index < args.length; index += 1) {
-    expression = binaryNode('<>', expression, coerceBooleanNode(args[index]!))
-  }
-  return expression
-}
-
 export function rewriteSpecialCall(node: CallExprNode): FormulaNode | undefined {
   switch (node.callee.toUpperCase()) {
     case 'TRUE':
@@ -75,8 +59,6 @@ export function rewriteSpecialCall(node: CallExprNode): FormulaNode | undefined 
       return rewriteIfs(node.args)
     case 'SWITCH':
       return rewriteSwitch(node.args)
-    case 'XOR':
-      return rewriteXor(node.args)
     default:
       return undefined
   }

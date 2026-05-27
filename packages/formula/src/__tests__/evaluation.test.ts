@@ -182,6 +182,57 @@ describe('formula builtins and JS evaluator', () => {
     expect(evaluateAst(parseFormula('AVERAGE(2,A3,A5,A6)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
   })
 
+  it('applies reference-specific logical filtering for AND, OR, and XOR', () => {
+    const valuesByAddress: Record<string, CellValue> = {
+      A1: { tag: ValueTag.Number, value: 2 },
+      A2: { tag: ValueTag.Number, value: 4 },
+      A3: { tag: ValueTag.String, value: 'ignored', stringId: 1 },
+      A4: { tag: ValueTag.String, value: 'also ignored', stringId: 2 },
+      A5: { tag: ValueTag.Boolean, value: true },
+      A6: { tag: ValueTag.Empty },
+      A7: { tag: ValueTag.Number, value: 0 },
+      A8: { tag: ValueTag.Boolean, value: false },
+      B1: { tag: ValueTag.Error, code: ErrorCode.NA },
+    }
+    const addresses = ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'B1']
+    const context = {
+      sheetName: 'Sheet1',
+      resolveCell: (_sheetName: string, address: string): CellValue => valuesByAddress[address] ?? { tag: ValueTag.Empty },
+      resolveRange: (_sheetName: string, start: string, end: string): CellValue[] => {
+        const startIndex = addresses.indexOf(start)
+        const endIndex = addresses.indexOf(end)
+        if (startIndex >= 0 && endIndex >= startIndex) {
+          return addresses.slice(startIndex, endIndex + 1).map((address) => valuesByAddress[address] ?? { tag: ValueTag.Empty })
+        }
+        return []
+      },
+    }
+    const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
+    const naError = { tag: ValueTag.Error, code: ErrorCode.NA } as const
+
+    expect(evaluateAst(parseFormula('AND(A1:A6)'), context)).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(evaluateAst(parseFormula('AND(A1:A8)'), context)).toEqual({ tag: ValueTag.Boolean, value: false })
+    expect(evaluateAst(parseFormula('AND(A3:A6)'), context)).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(evaluateAst(parseFormula('AND(A3:A4)'), context)).toEqual(valueError)
+    expect(evaluateAst(parseFormula('AND(A6)'), context)).toEqual(valueError)
+    expect(evaluateAst(parseFormula('AND(TRUE,A6)'), context)).toEqual({ tag: ValueTag.Boolean, value: true })
+
+    expect(evaluateAst(parseFormula('OR(A3:A6)'), context)).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(evaluateAst(parseFormula('OR(A3:A4)'), context)).toEqual(valueError)
+    expect(evaluateAst(parseFormula('OR(A6)'), context)).toEqual(valueError)
+    expect(evaluateAst(parseFormula('OR(A7:A8)'), context)).toEqual({ tag: ValueTag.Boolean, value: false })
+
+    expect(evaluateAst(parseFormula('XOR(A1:A6)'), context)).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(evaluateAst(parseFormula('XOR(A1:A8)'), context)).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(evaluateAst(parseFormula('XOR(A3:A4)'), context)).toEqual(valueError)
+    expect(evaluateAst(parseFormula('XOR(A6)'), context)).toEqual(valueError)
+
+    expect(evaluateAst(parseFormula('AND(2,4,"bad",TRUE())'), context)).toEqual(valueError)
+    expect(evaluateAst(parseFormula('AND(B1,A1)'), context)).toEqual(naError)
+    expect(evaluateAst(parseFormula('OR(B1,A7)'), context)).toEqual(naError)
+    expect(evaluateAst(parseFormula('XOR(B1,A1)'), context)).toEqual(naError)
+  })
+
   it('applies direct-versus-reference numeric rules for statistical summaries', () => {
     const valuesByAddress: Record<string, CellValue> = {
       A1: { tag: ValueTag.Number, value: 2 },

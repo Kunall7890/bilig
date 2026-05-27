@@ -425,7 +425,7 @@ const canonicalBaseFixtureIds = new Set<string>([
   'logical:if-condition-error',
   'logical:iferror-catches-any-error',
   'logical:ifna-catches-na-only',
-  'logical:and-false-on-empty',
+  'logical:and-ignores-empty-reference',
   'logical:or-true-branch',
   'logical:not-number',
   'information:isblank-empty',

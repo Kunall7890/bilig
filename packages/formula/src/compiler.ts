@@ -126,7 +126,7 @@ function emitXlookupOmittedArgument(argumentIndex: number, state: CompilerState)
 }
 
 function emitCallArgument(callee: string, node: FormulaNode, state: CompilerState, argumentIndex: number): number {
-  if (callee === 'SUM' && node.kind === 'CellRef') {
+  if ((callee === 'SUM' || callee === 'AND' || callee === 'OR' || callee === 'XOR') && node.kind === 'CellRef') {
     emitCellRefAsRange(node.ref, node.sheetName, state)
     return 1
   }

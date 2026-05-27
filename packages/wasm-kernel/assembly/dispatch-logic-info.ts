@@ -2,7 +2,9 @@ import { BuiltinId, ErrorCode, ValueTag } from './protocol'
 import { coerceLogical } from './builtin-args'
 import { compareScalarValues } from './comparison'
 import { BITWISE_NUM_ERROR, BITWISE_VALUE_ERROR, coerceBitwiseInteger, coerceBitwiseShift } from './numeric-core'
-import { copySlotResult, STACK_KIND_SCALAR, writeResult } from './result-io'
+import { copySlotResult, STACK_KIND_RANGE, STACK_KIND_SCALAR, writeResult } from './result-io'
+
+const IGNORED_REFERENCE_LOGICAL: i32 = i32.MIN_VALUE
 
 function writeLogicInfoError(
   base: i32,
@@ -43,6 +45,16 @@ function bitwiseErrorCode(value: i64): i32 {
   return 0
 }
 
+function coerceReferenceLogical(tag: u8, value: f64, errorCode: i32): i32 {
+  if (tag == ValueTag.Boolean || tag == ValueTag.Number) {
+    return value != 0 ? 1 : 0
+  }
+  if (tag == ValueTag.Error) {
+    return -errorCode - 1
+  }
+  return IGNORED_REFERENCE_LOGICAL
+}
+
 export function tryApplyLogicInfoBuiltin(
   builtinId: i32,
   argc: i32,
@@ -51,6 +63,12 @@ export function tryApplyLogicInfoBuiltin(
   valueStack: Float64Array,
   tagStack: Uint8Array,
   kindStack: Uint8Array,
+  cellTags: Uint8Array,
+  cellNumbers: Float64Array,
+  cellErrors: Uint16Array,
+  rangeOffsets: Uint32Array,
+  rangeLengths: Uint32Array,
+  rangeMembers: Uint32Array,
   stringOffsets: Uint32Array,
   stringLengths: Uint32Array,
   stringData: Uint16Array,
@@ -105,14 +123,43 @@ export function tryApplyLogicInfoBuiltin(
     if (argc == 0) {
       return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    let seenLogical = false
     for (let index = 0; index < argc; index += 1) {
-      const coerced = coerceLogical(tagStack[base + index], valueStack[base + index])
+      const slot = base + index
+      if (kindStack[slot] == STACK_KIND_RANGE) {
+        const rangeIndex = rangeIndexStack[slot]
+        const start = rangeOffsets[rangeIndex]
+        const length = <i32>rangeLengths[rangeIndex]
+        for (let cursor = 0; cursor < length; cursor += 1) {
+          const memberIndex = rangeMembers[start + cursor]
+          const coerced = coerceReferenceLogical(cellTags[memberIndex], cellNumbers[memberIndex], cellErrors[memberIndex])
+          if (coerced == IGNORED_REFERENCE_LOGICAL) {
+            continue
+          }
+          if (coerced < 0) {
+            return writeLogicInfoError(base, -coerced - 1, rangeIndexStack, valueStack, tagStack, kindStack)
+          }
+          seenLogical = true
+          if (coerced == 0) {
+            return writeLogicInfoBoolean(base, false, rangeIndexStack, valueStack, tagStack, kindStack)
+          }
+        }
+        continue
+      }
+      const coerced = tagStack[slot] == ValueTag.Empty ? IGNORED_REFERENCE_LOGICAL : coerceLogical(tagStack[slot], valueStack[slot])
+      if (coerced == IGNORED_REFERENCE_LOGICAL) {
+        continue
+      }
       if (coerced < 0) {
         return writeLogicInfoError(base, -coerced - 1, rangeIndexStack, valueStack, tagStack, kindStack)
       }
+      seenLogical = true
       if (coerced == 0) {
         return writeLogicInfoBoolean(base, false, rangeIndexStack, valueStack, tagStack, kindStack)
       }
+    }
+    if (!seenLogical) {
+      return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeLogicInfoBoolean(base, true, rangeIndexStack, valueStack, tagStack, kindStack)
   }
@@ -121,14 +168,43 @@ export function tryApplyLogicInfoBuiltin(
     if (argc == 0) {
       return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    let seenLogical = false
     for (let index = 0; index < argc; index += 1) {
-      const coerced = coerceLogical(tagStack[base + index], valueStack[base + index])
+      const slot = base + index
+      if (kindStack[slot] == STACK_KIND_RANGE) {
+        const rangeIndex = rangeIndexStack[slot]
+        const start = rangeOffsets[rangeIndex]
+        const length = <i32>rangeLengths[rangeIndex]
+        for (let cursor = 0; cursor < length; cursor += 1) {
+          const memberIndex = rangeMembers[start + cursor]
+          const coerced = coerceReferenceLogical(cellTags[memberIndex], cellNumbers[memberIndex], cellErrors[memberIndex])
+          if (coerced == IGNORED_REFERENCE_LOGICAL) {
+            continue
+          }
+          if (coerced < 0) {
+            return writeLogicInfoError(base, -coerced - 1, rangeIndexStack, valueStack, tagStack, kindStack)
+          }
+          seenLogical = true
+          if (coerced != 0) {
+            return writeLogicInfoBoolean(base, true, rangeIndexStack, valueStack, tagStack, kindStack)
+          }
+        }
+        continue
+      }
+      const coerced = tagStack[slot] == ValueTag.Empty ? IGNORED_REFERENCE_LOGICAL : coerceLogical(tagStack[slot], valueStack[slot])
+      if (coerced == IGNORED_REFERENCE_LOGICAL) {
+        continue
+      }
       if (coerced < 0) {
         return writeLogicInfoError(base, -coerced - 1, rangeIndexStack, valueStack, tagStack, kindStack)
       }
+      seenLogical = true
       if (coerced != 0) {
         return writeLogicInfoBoolean(base, true, rangeIndexStack, valueStack, tagStack, kindStack)
       }
+    }
+    if (!seenLogical) {
+      return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeLogicInfoBoolean(base, false, rangeIndexStack, valueStack, tagStack, kindStack)
   }
@@ -137,13 +213,40 @@ export function tryApplyLogicInfoBuiltin(
     if (argc == 0) {
       return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    let seenLogical = false
     let parity = 0
     for (let index = 0; index < argc; index += 1) {
-      const coerced = coerceLogical(tagStack[base + index], valueStack[base + index])
+      const slot = base + index
+      if (kindStack[slot] == STACK_KIND_RANGE) {
+        const rangeIndex = rangeIndexStack[slot]
+        const start = rangeOffsets[rangeIndex]
+        const length = <i32>rangeLengths[rangeIndex]
+        for (let cursor = 0; cursor < length; cursor += 1) {
+          const memberIndex = rangeMembers[start + cursor]
+          const coerced = coerceReferenceLogical(cellTags[memberIndex], cellNumbers[memberIndex], cellErrors[memberIndex])
+          if (coerced == IGNORED_REFERENCE_LOGICAL) {
+            continue
+          }
+          if (coerced < 0) {
+            return writeLogicInfoError(base, -coerced - 1, rangeIndexStack, valueStack, tagStack, kindStack)
+          }
+          seenLogical = true
+          parity = parity ^ (coerced != 0 ? 1 : 0)
+        }
+        continue
+      }
+      const coerced = tagStack[slot] == ValueTag.Empty ? IGNORED_REFERENCE_LOGICAL : coerceLogical(tagStack[slot], valueStack[slot])
+      if (coerced == IGNORED_REFERENCE_LOGICAL) {
+        continue
+      }
       if (coerced < 0) {
         return writeLogicInfoError(base, -coerced - 1, rangeIndexStack, valueStack, tagStack, kindStack)
       }
+      seenLogical = true
       parity = parity ^ (coerced != 0 ? 1 : 0)
+    }
+    if (!seenLogical) {
+      return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeLogicInfoBoolean(base, parity != 0, rangeIndexStack, valueStack, tagStack, kindStack)
   }

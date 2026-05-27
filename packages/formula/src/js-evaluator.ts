@@ -242,6 +242,7 @@ const numericReferenceStatisticCallees = new Set([
   'KURT',
 ])
 const aStyleReferenceCallees = new Set(['AVERAGEA', 'MINA', 'MAXA'])
+const logicalReferenceCallees = new Set(['AND', 'OR', 'XOR'])
 
 function coerceDirectNumericTextStatisticArgument(callee: string, value: CellValue, argRef: ReferenceOperand | undefined): CellValue {
   if (argRef !== undefined || value.tag !== ValueTag.String || !numericReferenceStatisticCallees.has(callee)) {
@@ -271,8 +272,18 @@ function referencedScalarBuiltinStatisticValues(callee: string, value: CellValue
   return undefined
 }
 
+function referencedScalarBuiltinLogicalValues(callee: string, value: CellValue): readonly CellValue[] | undefined {
+  if (!logicalReferenceCallees.has(callee)) {
+    return undefined
+  }
+  return value.tag === ValueTag.Number || value.tag === ValueTag.Boolean || value.tag === ValueTag.Error ? [value] : []
+}
+
 function scalarBuiltinRangeValues(callee: string, rawArg: StackValue): readonly CellValue[] {
   const values = rawArg.kind === 'range' || rawArg.kind === 'array' ? rawArg.values : []
+  if (logicalReferenceCallees.has(callee)) {
+    return values.filter((value) => value.tag === ValueTag.Number || value.tag === ValueTag.Boolean || value.tag === ValueTag.Error)
+  }
   if (callee === 'COUNT') {
     return values.filter((value) => value.tag === ValueTag.Number)
   }
@@ -665,6 +676,11 @@ function executePlan(
               const referencedStatisticValues = referencedScalarBuiltinStatisticValues(instruction.callee, rawArg.value)
               if (referencedStatisticValues) {
                 args.push(...referencedStatisticValues)
+                continue
+              }
+              const referencedLogicalValues = referencedScalarBuiltinLogicalValues(instruction.callee, rawArg.value)
+              if (referencedLogicalValues) {
+                args.push(...referencedLogicalValues)
                 continue
               }
             }

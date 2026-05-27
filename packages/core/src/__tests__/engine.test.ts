@@ -3056,7 +3056,7 @@ describe('SpreadsheetEngine', () => {
     expect(engine.getLastMetrics().wasmFormulaCount).toBe(1)
 
     engine.setCellFormula('Sheet1', 'B11', 'AND(TRUE,A4)')
-    expect(engine.getCellValue('Sheet1', 'B11')).toEqual({ tag: ValueTag.Boolean, value: false })
+    expect(engine.getCellValue('Sheet1', 'B11')).toEqual({ tag: ValueTag.Boolean, value: true })
     expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
 
     engine.setCellFormula('Sheet1', 'B12', 'OR(A4,TRUE)')
@@ -3077,8 +3077,8 @@ describe('SpreadsheetEngine', () => {
     engine.setCellValue('Sheet1', 'A3', 'hello')
     engine.setCellFormula('Sheet1', 'B4', 'AND(A3,TRUE)')
     expect(engine.getCellValue('Sheet1', 'B4')).toEqual({
-      tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      tag: ValueTag.Boolean,
+      value: true,
     })
     expect(engine.getLastMetrics().wasmFormulaCount).toBe(1)
 
@@ -3093,6 +3093,32 @@ describe('SpreadsheetEngine', () => {
     expect(engine.getCellValue('Sheet1', 'B6')).toMatchObject({
       tag: ValueTag.String,
       value: 'missing',
+    })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+
+    engine.setCellValue('Sheet1', 'C1', 2)
+    engine.setCellValue('Sheet1', 'C2', 'ignored')
+    engine.setCellValue('Sheet1', 'C3', true)
+    engine.setCellFormula('Sheet1', 'D1', 'AND(C1:C4)')
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+
+    engine.setCellFormula('Sheet1', 'D2', 'OR(C2:C4)')
+    expect(engine.getCellValue('Sheet1', 'D2')).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+
+    engine.setCellFormula('Sheet1', 'D3', 'XOR(C1:C4)')
+    expect(engine.getCellValue('Sheet1', 'D3')).toEqual({ tag: ValueTag.Boolean, value: false })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+
+    engine.setCellFormula('Sheet1', 'D4', 'AND(C2:C4)')
+    expect(engine.getCellValue('Sheet1', 'D4')).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+
+    engine.setCellFormula('Sheet1', 'D5', 'OR(C2:C2)')
+    expect(engine.getCellValue('Sheet1', 'D5')).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
     })
     expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
   })

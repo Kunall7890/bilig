@@ -202,11 +202,11 @@ export const canonicalLogicalFixtures: readonly ExcelFixtureCase[] = [
   ),
   fixture(
     'logical',
-    'and-false-on-empty',
-    'AND treats empty as FALSE',
+    'and-ignores-empty-reference',
+    'AND ignores empty reference operands',
     '=AND(TRUE,A1)',
     [input('A1', null)],
-    [output('A2', booleanExpected(false))],
+    [output('A2', booleanExpected(true))],
   ),
   fixture(
     'logical',
