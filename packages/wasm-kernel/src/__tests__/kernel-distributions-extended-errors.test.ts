@@ -100,6 +100,7 @@ describe('wasm kernel extended distribution error semantics', () => {
       [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.TDist2T, 2), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Tdist, 3), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.TInv, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.TInv, 2), encodeRet()],
       [
         encodePushNumber(0),
         encodePushNumber(1),
@@ -134,7 +135,7 @@ describe('wasm kernel extended distribution error semantics', () => {
       [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Confidence, 3), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.ConfidenceT, 3), encodeRet()],
     ])
-    const outputs = Uint32Array.from(Array.from({ length: 21 }, (_, index) => cellIndex(1, index, width)))
+    const outputs = Uint32Array.from(Array.from({ length: 22 }, (_, index) => cellIndex(1, index, width)))
     kernel.uploadPrograms(programs.programs, programs.offsets, programs.lengths, outputs)
 
     const constants = packConstants([
@@ -148,6 +149,7 @@ describe('wasm kernel extended distribution error semantics', () => {
       [-1, 1],
       [1, 1, 3],
       [-0.1, 1],
+      [1, 1],
       [4, 3, 0.5],
       [3, -0.1, 1],
       [3, 0.5, 0],

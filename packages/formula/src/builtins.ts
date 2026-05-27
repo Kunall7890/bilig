@@ -8,6 +8,7 @@ import { createFixedIncomeBuiltins } from './builtins/fixed-income-builtins.js'
 import { countLeadingZeros, formatFixed, isValidDollarFraction, parseDollarDecimal, toColumnLabel } from './builtins/formatting.js'
 import {
   buildIdentityMatrix,
+  combinationValue,
   collectNumericArgs,
   coerceScalarMathNumber,
   createNumericBuiltinHelpers,
@@ -16,7 +17,9 @@ import {
   factorialValue,
   gcdPair,
   lcmPair,
+  multinomialValue,
   oddValue,
+  permutationValue,
   roundDownToDigits,
   roundTowardZero,
   roundUpToDigits,
@@ -310,6 +313,8 @@ const mathBuiltins = createMathBuiltins({
   oddValue,
   factorialValue,
   doubleFactorialValue,
+  combinationValue,
+  multinomialValue,
   gcdPair,
   lcmPair,
 })
@@ -836,11 +841,8 @@ const scalarBuiltins: Record<string, Builtin> = {
     if (!Number.isFinite(numberRaw) || !Number.isFinite(chosenRaw) || numberValue <= 0 || chosenValue < 0 || chosenValue > numberValue) {
       return numError()
     }
-    let result = 1
-    for (let index = 0; index < chosenValue; index += 1) {
-      result *= numberValue - index
-    }
-    return numberResult(result)
+    const result = permutationValue(numberValue, chosenValue)
+    return result === undefined || !Number.isFinite(result) ? numError() : numberResult(result)
   },
   PERMUTATIONA: (numberArg, chosenArg) => {
     const error = firstError([numberArg, chosenArg])
@@ -863,7 +865,8 @@ const scalarBuiltins: Record<string, Builtin> = {
     ) {
       return numError()
     }
-    return numberResult(numberValue ** chosenValue)
+    const result = numberValue ** chosenValue
+    return Number.isFinite(result) ? numberResult(result) : numError()
   },
   ...distributionBuiltins,
   SUBTOTAL: (functionNumArg, ...args) => {

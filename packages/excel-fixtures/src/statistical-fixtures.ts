@@ -422,6 +422,20 @@ export const canonicalStatisticalFixtures: readonly ExcelFixtureCase[] = [
     [],
     [output('C1', numberExpected(0.75))],
   ),
+  fixture(
+    't-inv-probability-one-num-error',
+    'T.INV returns #NUM! when the left-tail inverse would be unbounded',
+    '=T.INV(1,1)',
+    [],
+    [output('C1', errorExpected(ErrorCode.Num, '#NUM!'))],
+  ),
+  fixture(
+    't-inv-2t-probability-one',
+    'T.INV.2T accepts probability 1 and returns the zero cutoff',
+    '=T.INV.2T(1,1)',
+    [],
+    [output('C1', numberExpected(0))],
+  ),
   fixture('t-inv-2t-basic', 'T.INV.2T returns the symmetric Student-t cutoff', '=T.INV.2T(0.5,1)', [], [output('C1', numberExpected(1))]),
   fixture(
     'confidence-t-basic',

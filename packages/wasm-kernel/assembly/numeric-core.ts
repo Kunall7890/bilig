@@ -15,6 +15,9 @@ export function factorialCalc(value: f64): f64 {
   let result = 1.0
   for (let index = 2; index <= truncated; index += 1) {
     result *= <f64>index
+    if (!isFinite(result)) {
+      return NaN
+    }
   }
   return result
 }
@@ -27,6 +30,49 @@ export function doubleFactorialCalc(value: f64): f64 {
   let result = 1.0
   for (let index = truncated; index >= 2; index -= 2) {
     result *= <f64>index
+    if (!isFinite(result)) {
+      return NaN
+    }
+  }
+  return result
+}
+
+export function combinationCalc(total: f64, chosen: f64): f64 {
+  if (!isFinite(total) || !isFinite(chosen)) {
+    return NaN
+  }
+  const totalValue = <i32>Math.trunc(total)
+  const chosenValue = <i32>Math.trunc(chosen)
+  if (totalValue < 0 || chosenValue < 0 || chosenValue > totalValue) {
+    return NaN
+  }
+  const remainder = totalValue - chosenValue
+  const selected = chosenValue < remainder ? chosenValue : remainder
+  let result = 1.0
+  for (let index = 1; index <= selected; index += 1) {
+    result = (result * <f64>(totalValue - selected + index)) / <f64>index
+    if (!isFinite(result)) {
+      return NaN
+    }
+  }
+  return result
+}
+
+export function permutationCalc(total: f64, chosen: f64): f64 {
+  if (!isFinite(total) || !isFinite(chosen)) {
+    return NaN
+  }
+  const totalValue = <i32>Math.trunc(total)
+  const chosenValue = <i32>Math.trunc(chosen)
+  if (totalValue <= 0 || chosenValue < 0 || chosenValue > totalValue) {
+    return NaN
+  }
+  let result = 1.0
+  for (let index = 0; index < chosenValue; index += 1) {
+    result *= <f64>(totalValue - index)
+    if (!isFinite(result)) {
+      return NaN
+    }
   }
   return result
 }

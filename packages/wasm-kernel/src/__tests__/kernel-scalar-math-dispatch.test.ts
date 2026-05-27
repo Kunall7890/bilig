@@ -777,6 +777,43 @@ describe('wasm kernel scalar math dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(1, 12, width)]).toBe(-5)
   })
 
+  it('keeps combinatoric cancellation finite and overflow errors on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 32
+    kernel.init(96, 0, 8, 1, 1)
+    kernel.writeCells(new Uint8Array(96), new Float64Array(96), new Uint32Array(96), new Uint16Array(96))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodeCall(BuiltinId.Fact, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Factdouble, 1), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Combin, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Combin, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Combina, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Combina, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Permut, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Permutationa, 2), encodeRet()],
+    ])
+    const outputs = Uint32Array.from(Array.from({ length: 8 }, (_, index) => cellIndex(1, index, width)))
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, outputs)
+
+    const constants = packConstants([[171], [301], [171, 1], [171, 2], [171, 1], [100, 100], [200, 170], [200, 200]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(outputs)
+
+    expectKernelError(kernel, outputs[0], ErrorCode.Num)
+    expectKernelError(kernel, outputs[1], ErrorCode.Num)
+    expect(kernel.readTags()[outputs[2]]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[outputs[2]]).toBe(171)
+    expect(kernel.readTags()[outputs[3]]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[outputs[3]]).toBe(14535)
+    expect(kernel.readTags()[outputs[4]]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[outputs[4]]).toBe(171)
+    expect(kernel.readTags()[outputs[5]]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[outputs[5]] / 4.5274257328e58).toBeCloseTo(1, 11)
+    expectKernelError(kernel, outputs[6], ErrorCode.Num)
+    expectKernelError(kernel, outputs[7], ErrorCode.Num)
+  })
+
   it('returns Excel-compatible numeric-domain errors for combinatorics through wasm dispatch', async () => {
     const kernel = await createKernel()
     const width = 32

@@ -1,5 +1,5 @@
 import { BuiltinId, ErrorCode } from './protocol'
-import { doubleFactorialCalc, evenCalc, factorialCalc, oddCalc, truncToInt } from './numeric-core'
+import { combinationCalc, doubleFactorialCalc, evenCalc, factorialCalc, oddCalc, permutationCalc, truncToInt } from './numeric-core'
 import { toNumberExact, toNumberOrZero } from './operands'
 import { besselIValue, besselJValue, besselKValue, besselYValue } from './distributions'
 import { tryApplyScalarRoundingMathBuiltin } from './dispatch-scalar-rounding-math'
@@ -640,14 +640,13 @@ export function tryApplyScalarMathBuiltin(
 
     let result = 0.0
     if (builtinId == BuiltinId.Combin) {
-      result = factorialCalc(numberValue) / (factorialCalc(chosenValue) * factorialCalc(numberValue - chosenValue))
+      result = combinationCalc(numberValue, chosenValue)
     } else if (chosenValue == 0.0) {
       result = 1.0
     } else if (numberValue == 0.0) {
       result = 0.0
     } else {
-      const combined = numberValue + chosenValue - 1.0
-      result = factorialCalc(combined) / (factorialCalc(chosenValue) * factorialCalc(numberValue - 1.0))
+      result = combinationCalc(numberValue + chosenValue - 1.0, chosenValue)
     }
     return !isFinite(result)
       ? writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
@@ -693,15 +692,12 @@ export function tryApplyScalarMathBuiltin(
     }
     let result = 0.0
     if (builtinId == BuiltinId.Permut) {
-      result = 1.0
-      for (let index = 0; index < <i32>chosenValue; index += 1) {
-        result *= numberValue - <f64>index
-      }
+      result = permutationCalc(numberValue, chosenValue)
     } else {
       result = Math.pow(numberValue, chosenValue)
     }
     return !isFinite(result)
-      ? writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      ? writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeScalarMathNumber(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 

@@ -167,6 +167,9 @@ export function factorialValue(value: number): number | undefined {
   let result = 1
   for (let index = 2; index <= truncated; index += 1) {
     result *= index
+    if (!Number.isFinite(result)) {
+      return undefined
+    }
   }
   return result
 }
@@ -179,6 +182,65 @@ export function doubleFactorialValue(value: number): number | undefined {
   let result = 1
   for (let index = truncated; index >= 2; index -= 2) {
     result *= index
+    if (!Number.isFinite(result)) {
+      return undefined
+    }
+  }
+  return result
+}
+
+export function combinationValue(total: number, chosen: number): number | undefined {
+  if (!Number.isFinite(total) || !Number.isFinite(chosen)) {
+    return undefined
+  }
+  const totalValue = Math.trunc(total)
+  const chosenValue = Math.trunc(chosen)
+  if (totalValue < 0 || chosenValue < 0 || chosenValue > totalValue) {
+    return undefined
+  }
+  const selected = Math.min(chosenValue, totalValue - chosenValue)
+  let result = 1
+  for (let index = 1; index <= selected; index += 1) {
+    result = (result * (totalValue - selected + index)) / index
+    if (!Number.isFinite(result)) {
+      return undefined
+    }
+  }
+  return result
+}
+
+export function permutationValue(total: number, chosen: number): number | undefined {
+  if (!Number.isFinite(total) || !Number.isFinite(chosen)) {
+    return undefined
+  }
+  const totalValue = Math.trunc(total)
+  const chosenValue = Math.trunc(chosen)
+  if (totalValue <= 0 || chosenValue < 0 || chosenValue > totalValue) {
+    return undefined
+  }
+  let result = 1
+  for (let index = 0; index < chosenValue; index += 1) {
+    result *= totalValue - index
+    if (!Number.isFinite(result)) {
+      return undefined
+    }
+  }
+  return result
+}
+
+export function multinomialValue(values: readonly number[]): number | undefined {
+  let total = 0
+  let result = 1
+  for (const value of values) {
+    const ways = combinationValue(total + value, value)
+    if (ways === undefined) {
+      return undefined
+    }
+    result *= ways
+    if (!Number.isFinite(result)) {
+      return undefined
+    }
+    total += value
   }
   return result
 }

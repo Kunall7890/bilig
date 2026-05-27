@@ -92,8 +92,11 @@ describe('distribution builtins domain errors', () => {
     expect(getBuiltin('T.DIST.2T')?.(num(-1), num(1))).toEqual(numError)
     expect(getBuiltin('TDIST')?.(num(1), num(1), num(3))).toEqual(numError)
     expect(getBuiltin('T.INV')?.(num(-0.1), num(1))).toEqual(numError)
+    expect(getBuiltin('T.INV')?.(num(1), num(1))).toEqual(numError)
     expect(getBuiltin('T.INV.2T')?.(num(0.5), num(0))).toEqual(numError)
     expect(getBuiltin('TINV')?.(num(1.1), num(1))).toEqual(numError)
+
+    expect(getBuiltin('T.INV.2T')?.(num(1), num(1))).toEqual(num(0))
 
     expect(getBuiltin('T.DIST')?.(text('bad'), num(1), bool(true))).toEqual(valueError)
     expect(getBuiltin('T.DIST')?.(num(1), num(1), text('bad'))).toEqual(valueError)

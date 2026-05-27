@@ -234,6 +234,22 @@ describe('math builtins', () => {
     expect(getBuiltin('MULTINOMIAL')?.(num(1), num(-1))).toEqual(numError)
   })
 
+  it('keeps combinatoric cancellation finite and reports unrepresentable results as #NUM', () => {
+    expect(getBuiltin('FACT')?.(num(171))).toEqual(numError)
+    expect(getBuiltin('FACTDOUBLE')?.(num(301))).toEqual(numError)
+    expect(getBuiltin('COMBIN')?.(num(171), num(1))).toEqual(num(171))
+    expect(getBuiltin('COMBIN')?.(num(171), num(2))).toEqual(num(14535))
+    expect(getBuiltin('COMBINA')?.(num(171), num(1))).toEqual(num(171))
+
+    const repeatedCombination = getBuiltin('COMBINA')?.(num(100), num(100))
+    expect(repeatedCombination?.tag).toBe(ValueTag.Number)
+    expect(repeatedCombination?.tag === ValueTag.Number ? repeatedCombination.value / 4.5274257328e58 : Number.NaN).toBeCloseTo(1, 11)
+
+    expect(getBuiltin('PERMUT')?.(num(200), num(170))).toEqual(numError)
+    expect(getBuiltin('PERMUTATIONA')?.(num(200), num(200))).toEqual(numError)
+    expect(getBuiltin('MULTINOMIAL')?.(num(171), num(1))).toEqual(num(172))
+  })
+
   it('matches Microsoft Excel Bessel order-domain errors', () => {
     expect(getBuiltin('BESSELI')?.(num(1), num(-1))).toEqual(numError)
     expect(getBuiltin('BESSELJ')?.(num(1), num(-1))).toEqual(numError)

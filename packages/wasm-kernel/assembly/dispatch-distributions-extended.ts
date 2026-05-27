@@ -799,7 +799,14 @@ export function tryApplyExtendedDistributionBuiltin(
     let errorCode = ErrorCode.None
     if (isNaN(probabilityRaw) || isNaN(degreesRaw)) {
       errorCode = ErrorCode.Value
-    } else if (!isFinite(probabilityRaw) || !isFinite(degreesRaw) || probabilityRaw <= 0.0 || probabilityRaw > 1.0 || degrees < 1) {
+    } else if (
+      !isFinite(probabilityRaw) ||
+      !isFinite(degreesRaw) ||
+      probabilityRaw <= 0.0 ||
+      probabilityRaw > 1.0 ||
+      (builtinId == BuiltinId.TInv && probabilityRaw >= 1.0) ||
+      degrees < 1
+    ) {
       errorCode = ErrorCode.Num
     } else {
       result = inverseStudentT(probability, <f64>degrees)
@@ -811,7 +818,7 @@ export function tryApplyExtendedDistributionBuiltin(
       base,
       STACK_KIND_SCALAR,
       isNumericResult(result) ? <u8>ValueTag.Number : <u8>ValueTag.Error,
-      isNumericResult(result) ? result : ErrorCode.Value,
+      isNumericResult(result) ? result : ErrorCode.Num,
       rangeIndexStack,
       valueStack,
       tagStack,

@@ -508,11 +508,11 @@ export function createDistributionBuiltins({
         return valueError()
       }
       const degrees = Math.trunc(degreesRaw)
-      if (hasNonFinite(probability, degreesRaw) || probability <= 0 || probability > 1 || degrees < 1) {
+      if (hasNonFinite(probability, degreesRaw) || probability <= 0 || probability >= 1 || degrees < 1) {
         return numError()
       }
       const result = inverseStudentT(probability, degrees)
-      return result === undefined ? valueError() : numericResultOrError(result)
+      return result === undefined ? numError() : numericResultOrError(result)
     },
     'T.INV.2T': (probabilityArg, degreesArg) => {
       const probability = toNumber(probabilityArg)
@@ -525,7 +525,7 @@ export function createDistributionBuiltins({
         return numError()
       }
       const result = inverseStudentT(1 - probability / 2, degrees)
-      return result === undefined ? valueError() : numericResultOrError(result)
+      return result === undefined ? numError() : numericResultOrError(result)
     },
     TINV: (probabilityArg, degreesArg) => builtins['T.INV.2T']!(probabilityArg, degreesArg),
     BINOMDIST: (successesArg, trialsArg, probabilityArg, cumulativeArg) => {
