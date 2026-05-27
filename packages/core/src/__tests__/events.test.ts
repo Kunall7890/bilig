@@ -24,7 +24,7 @@ function batchEvent(changedCellIndices: Uint32Array = new Uint32Array()): Engine
   }
 }
 
-function getAllocatedListenerEpochs(events: EngineEventBus): Uint32Array {
+function getListenerEpochs(events: EngineEventBus): Uint32Array {
   const listenerEpochs = Reflect.get(events, 'listenerEpochs')
   expect(listenerEpochs).toBeInstanceOf(Uint32Array)
   if (!(listenerEpochs instanceof Uint32Array)) {
@@ -34,25 +34,6 @@ function getAllocatedListenerEpochs(events: EngineEventBus): Uint32Array {
 }
 
 describe('EngineEventBus', () => {
-  it('defers watcher epoch storage until a watched listener is notified', () => {
-    const events = new EngineEventBus()
-    const general = vi.fn()
-    const indexed = vi.fn()
-
-    expect(Reflect.get(events, 'listenerEpochs')).toBeUndefined()
-
-    events.subscribe(general)
-    events.emit(batchEvent(), new Uint32Array())
-    expect(general).toHaveBeenCalledTimes(1)
-    expect(Reflect.get(events, 'listenerEpochs')).toBeUndefined()
-
-    events.subscribeCellIndex(2, indexed)
-    events.emit(batchEvent(new Uint32Array([2])), new Uint32Array([2]))
-
-    expect(indexed).toHaveBeenCalledTimes(1)
-    expect(Reflect.get(events, 'listenerEpochs')).toBeInstanceOf(Uint32Array)
-  })
-
   it('tracks listener presence, handles skipped address resolution, and grows watcher ids', () => {
     const events = new EngineEventBus()
     const general = vi.fn()
@@ -246,18 +227,15 @@ describe('EngineEventBus', () => {
     expect(events.hasCellListeners()).toBe(false)
     expect(events.hasAddressListeners()).toBe(false)
 
-    events.subscribeCellIndex(3, indexed)
-    events.emitAllWatched(batchEvent())
-    expect(indexed).toHaveBeenCalledTimes(1)
-
-    const listenerEpochs = getAllocatedListenerEpochs(events)
+    const listenerEpochs = getListenerEpochs(events)
     Reflect.set(events, 'listenerEpoch', 0xffff_fffe)
     listenerEpochs[0] = 99
 
+    events.subscribeCellIndex(3, indexed)
     events.emitAllWatched(batchEvent())
 
     expect(Reflect.get(events, 'listenerEpoch')).toBe(1)
     expect(listenerEpochs[0]).toBe(0)
-    expect(indexed).toHaveBeenCalledTimes(2)
+    expect(indexed).toHaveBeenCalledTimes(1)
   })
 })

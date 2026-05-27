@@ -276,9 +276,13 @@ export function createEngineFormulaEvaluationService(args: {
     })
     return result.handled ? result.position : undefined
   }
-  const lookupBuiltinResolver = createLookupBuiltinResolver({
-    resolveIndexedExactMatch,
-  })
+  let lookupBuiltinResolver: ReturnType<typeof createLookupBuiltinResolver> | undefined
+  const resolveLookupBuiltin: ReturnType<typeof createLookupBuiltinResolver> = (name) => {
+    lookupBuiltinResolver ??= createLookupBuiltinResolver({
+      resolveIndexedExactMatch,
+    })
+    return lookupBuiltinResolver(name)
+  }
   const resolveExactVectorMatch = (
     _formula: RuntimeFormula,
     request: {
@@ -895,7 +899,7 @@ export function createEngineFormulaEvaluationService(args: {
         }
         return resolveApproximateVectorMatch(formula, request)
       },
-      resolveLookupBuiltin: lookupBuiltinResolver,
+      resolveLookupBuiltin,
     }
     const jsPlan = formula.compiled.jsPlan.length > 0 ? formula.compiled.jsPlan : lowerToPlan(formula.compiled.ast)
     const result = formula.compiled.producesSpill

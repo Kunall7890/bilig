@@ -29,7 +29,7 @@ export class EngineEventBus {
   private readonly addressListeners = new Map<string, Set<() => void>>()
   private readonly listenerIds = new WeakMap<() => void, number>()
   private listenerEpoch = 1
-  private listenerEpochs: Uint32Array | undefined
+  private listenerEpochs = new Uint32Array(64)
   private nextListenerId = 1
 
   hasListeners(): boolean {
@@ -198,17 +198,16 @@ export class EngineEventBus {
     this.listenerEpoch += 1
     if (this.listenerEpoch === 0xffff_ffff) {
       this.listenerEpoch = 1
-      this.listenerEpochs?.fill(0)
+      this.listenerEpochs.fill(0)
     }
   }
 
   private notifyListener(listener: () => void): void {
     const listenerId = this.getListenerId(listener)
-    const listenerEpochs = this.getListenerEpochs()
-    if (listenerEpochs[listenerId] === this.listenerEpoch) {
+    if (this.listenerEpochs[listenerId] === this.listenerEpoch) {
       return
     }
-    listenerEpochs[listenerId] = this.listenerEpoch
+    this.listenerEpochs[listenerId] = this.listenerEpoch
     listener()
   }
 
@@ -219,23 +218,13 @@ export class EngineEventBus {
     }
     const nextId = this.nextListenerId
     this.nextListenerId += 1
-    const listenerEpochs = this.getListenerEpochs()
-    if (nextId >= listenerEpochs.length) {
-      const grown = new Uint32Array(listenerEpochs.length * 2)
-      grown.set(listenerEpochs)
+    if (nextId >= this.listenerEpochs.length) {
+      const grown = new Uint32Array(this.listenerEpochs.length * 2)
+      grown.set(this.listenerEpochs)
       this.listenerEpochs = grown
     }
     this.listenerIds.set(listener, nextId)
     return nextId
-  }
-
-  private getListenerEpochs(): Uint32Array {
-    let listenerEpochs = this.listenerEpochs
-    if (listenerEpochs === undefined) {
-      listenerEpochs = new Uint32Array(64)
-      this.listenerEpochs = listenerEpochs
-    }
-    return listenerEpochs
   }
 }
 
