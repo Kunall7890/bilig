@@ -415,7 +415,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
       this.batchListeners.size > 0 ||
       this.batchMutationDepth !== 0 ||
       this.transactionReplayDepth !== 0 ||
-      this.workbook.getWorkbookProtection()?.lockStructure === true
+      this.workbook.metadata.workbookProtection?.lockStructure === true
     ) {
       return false
     }
@@ -440,7 +440,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
       this.batchListeners.size > 0 ||
       this.batchMutationDepth !== 0 ||
       this.transactionReplayDepth !== 0 ||
-      this.workbook.getWorkbookProtection()?.lockStructure === true
+      this.workbook.metadata.workbookProtection?.lockStructure === true
     ) {
       return false
     }
@@ -463,7 +463,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
       this.batchListeners.size > 0 ||
       this.batchMutationDepth !== 0 ||
       this.transactionReplayDepth !== 0 ||
-      this.workbook.getWorkbookProtection()?.lockStructure === true
+      this.workbook.metadata.workbookProtection?.lockStructure === true
     ) {
       return false
     }

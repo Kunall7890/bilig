@@ -286,6 +286,9 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
   }
 
   override setCellContents(address: WorkPaperCellAddress, content: RawCellContent | WorkPaperSheet): WorkPaperChange[] {
+    if (!(this.preservedImportedSnapshot || this.importedXlsxSource || this.importedXlsxSourceCellPatches.size)) {
+      return super.setCellContents(address, content)
+    }
     const shouldRecordPatch = canRecordImportedXlsxLiteralPatch(this.importedXlsxSource, content)
     if (shouldRecordPatch) {
       this.preservedImportedSnapshot = undefined
@@ -310,16 +313,18 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     mutate: () => void,
     options: { readonly preservePendingTrackedPositions?: boolean } = {},
   ): WorkPaperChange[] {
-    if (this.recordingSourcePreservingImportedXlsxEdit) {
-      this.preservedImportedSnapshot = undefined
-    } else {
-      this.invalidateImportedXlsxSource()
+    if (this.preservedImportedSnapshot || this.importedXlsxSource || this.importedXlsxSourceCellPatches.size) {
+      if (this.recordingSourcePreservingImportedXlsxEdit) {
+        this.preservedImportedSnapshot = undefined
+      } else {
+        this.invalidateImportedXlsxSource()
+      }
     }
     return super.captureChanges(semanticEvent, mutate, options)
   }
 
   private assertWorkbookStructureEditable(): void {
-    if (this.engine.workbook.getWorkbookProtection()?.lockStructure === true) {
+    if (this.engine.workbook.metadata.workbookProtection?.lockStructure === true) {
       throw new WorkPaperSheetError('Workbook structure is protected')
     }
   }

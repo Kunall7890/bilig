@@ -54,6 +54,7 @@ import type { WorkPaperAxisIntervalEditMode, WorkPaperAxisKind } from './work-pa
 
 const FAST_DIRECT_EXISTING_NUMERIC_LITERAL_FLAGS =
   CellFlags.HasFormula | CellFlags.JsOnly | CellFlags.InCycle | CellFlags.SpillChild | CellFlags.PivotOutput
+const EMPTY_DEFERRED_CHANGES: WorkPaperChange[] = []
 
 type ExistingNumericMutationEngine = SpreadsheetEngine & {
   readonly tryApplyExistingNumericCellMutationAt?: (request: {
@@ -90,6 +91,9 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
   private structuralAxisFastPathRuntimeCache: WorkPaperStructuralAxisFastPathRuntime | undefined
   private setCellContentsRuntimeCache: WorkPaperSetCellContentsRuntime | undefined
   private runtimeAdaptersCache: WorkPaperRuntimeAdapters | undefined
+  private deferredBatchLiteralSheetId = -1
+  private deferredBatchLiteralSheet: SheetRecord | undefined
+  private batchUnprotectedSheetNamesById: Map<number, string> | undefined
 
   protected abstract applyAxisIntervalEdit(
     axis: WorkPaperAxisKind,
@@ -200,6 +204,22 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
 
   protected getVisibleCellIndexInSheet(sheet: SheetRecord, row: number, col: number): number | undefined {
     return getVisibleWorkPaperCellIndexInSheet(sheet, row, col)
+  }
+
+  private clearBatchWriteCaches(): void {
+    this.deferredBatchLiteralSheetId = -1
+    this.deferredBatchLiteralSheet = undefined
+    this.batchUnprotectedSheetNamesById?.clear()
+  }
+
+  private batchLiteralSheetRecord(sheetId: number): SheetRecord {
+    if (this.deferredBatchLiteralSheetId === sheetId && this.deferredBatchLiteralSheet !== undefined) {
+      return this.deferredBatchLiteralSheet
+    }
+    const sheet = this.sheetRecord(sheetId)
+    this.deferredBatchLiteralSheetId = sheetId
+    this.deferredBatchLiteralSheet = sheet
+    return sheet
   }
 
   private trySetExistingNumericCellContentsInlineDirectFastPath(
@@ -376,7 +396,7 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
       return null
     }
     this.assertNotDisposed()
-    const sheet = this.sheetRecord(address.sheet)
+    const sheet = this.batchLiteralSheetRecord(address.sheet)
     assertRowAndColumn(address.row, 'address.row')
     assertRowAndColumn(address.col, 'address.col')
     if (address.row >= (this.config.maxRows ?? MAX_ROWS) || address.col >= (this.config.maxColumns ?? MAX_COLS)) {
@@ -386,7 +406,9 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
       throw new WorkPaperOperationError('Workbook protection blocks this change: cell is protected')
     }
     const visibleCellIndex = this.getVisibleCellIndexInSheet(sheet, address.row, address.col)
-    return this.enqueueValidatedDeferredBatchLiteral(address.sheet, address.row, address.col, content, visibleCellIndex) ? [] : null
+    return this.enqueueValidatedDeferredBatchLiteral(address.sheet, address.row, address.col, content, visibleCellIndex)
+      ? EMPTY_DEFERRED_CHANGES
+      : null
   }
 
   private tryEnqueueSuspendedLiteralCellContents(
@@ -409,7 +431,36 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
       throw new WorkPaperOperationError('Workbook protection blocks this change: cell is protected')
     }
     const visibleCellIndex = this.getVisibleCellIndexInSheet(sheet, address.row, address.col)
-    return this.enqueueValidatedSuspendedLiteral(address.sheet, address.row, address.col, content, visibleCellIndex) ? [] : null
+    return this.enqueueValidatedSuspendedLiteral(address.sheet, address.row, address.col, content, visibleCellIndex)
+      ? EMPTY_DEFERRED_CHANGES
+      : null
+  }
+
+  protected override cellContentInSheetIsProtected(sheet: SheetRecord, row: number, col: number): boolean {
+    if (this.batchDepth === 0) {
+      return super.cellContentInSheetIsProtected(sheet, row, col)
+    }
+    const unprotectedSheetNamesById = (this.batchUnprotectedSheetNamesById ??= new Map())
+    const cachedSheetName = unprotectedSheetNamesById.get(sheet.id)
+    if (cachedSheetName === sheet.name) {
+      return false
+    }
+    if (!this.engine.workbook.hasProtectionMetadataForSheet(sheet.name)) {
+      unprotectedSheetNamesById.set(sheet.id, sheet.name)
+      return false
+    }
+    return super.cellContentInSheetIsProtected(sheet, row, col)
+  }
+
+  override batch(batchOperations: () => void): WorkPaperChange[] {
+    const isOutermost = this.batchDepth === 0
+    try {
+      return super.batch(batchOperations)
+    } finally {
+      if (isOutermost) {
+        this.clearBatchWriteCaches()
+      }
+    }
   }
 
   override getCellValue(address: WorkPaperCellAddress): CellValue {
