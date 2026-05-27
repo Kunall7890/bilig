@@ -54,6 +54,12 @@ interface BiligSameCorpusProofApi {
   readonly readRange: (sheetName: string, startAddress: string, endAddress?: string | null) => BiligSameCorpusRenderedRangeProof
 }
 
+export interface SameCorpusProofApiExposureArgs {
+  readonly benchmarkApiEnabled?: string | undefined
+  readonly dev?: boolean | undefined
+  readonly search: string
+}
+
 declare global {
   interface Window {
     __biligSameCorpusProof?: BiligSameCorpusProofApi
@@ -235,7 +241,28 @@ function canExposeSameCorpusProofApi(): boolean {
   if (typeof window === 'undefined') {
     return false
   }
-  return new URLSearchParams(window.location.search).has('benchmarkCorpus')
+  return resolveSameCorpusProofApiExposure({
+    benchmarkApiEnabled: import.meta.env['VITE_BILIG_BENCHMARK_PROOF_API'],
+    dev: import.meta.env.DEV,
+    search: window.location.search,
+  })
+}
+
+export function resolveSameCorpusProofApiExposure(args: SameCorpusProofApiExposureArgs): boolean {
+  if (!new URLSearchParams(args.search).has('benchmarkCorpus')) {
+    return false
+  }
+  if (args.dev === true) {
+    return true
+  }
+  const configured = args.benchmarkApiEnabled
+  if (configured === '1' || configured === 'true') {
+    return true
+  }
+  if (configured === undefined || configured.length === 0 || configured === '0' || configured === 'false') {
+    return false
+  }
+  throw new Error(`VITE_BILIG_BENCHMARK_PROOF_API must be "1", "true", "0", or "false" when set, got ${configured}`)
 }
 
 export function useWorkerWorkbookAgentContext(input: {

@@ -48,6 +48,7 @@ export {
 } from './ui-responsiveness-same-corpus-page.ts'
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
+export const sameCorpusProductionProofApiEnvFlag = 'VITE_BILIG_BENCHMARK_PROOF_API'
 
 async function main(): Promise<void> {
   const saveStorageStateArgs = parseSaveStorageStateArgs(process.argv.slice(2))
@@ -315,6 +316,7 @@ async function startServedBiligProductionRuntime(args: CaptureArgs): Promise<Ser
   console.log(`Building @bilig/web production bundle for same-corpus capture...`)
   const build = Bun.spawnSync(['pnpm', '--filter', '@bilig/web', 'build'], {
     cwd: rootDir,
+    env: sameCorpusProductionBuildEnv(process.env),
     stdin: 'ignore',
     stdout: 'inherit',
     stderr: 'inherit',
@@ -347,6 +349,13 @@ async function startServedBiligProductionRuntime(args: CaptureArgs): Promise<Ser
   )
   await waitForServedBiligProductionRuntime(process, url, args.readyTimeoutMs)
   return { process, url }
+}
+
+export function sameCorpusProductionBuildEnv(env: Readonly<Record<string, string | undefined>>): Record<string, string | undefined> {
+  return {
+    ...env,
+    [sameCorpusProductionProofApiEnvFlag]: '1',
+  }
 }
 
 async function waitForServedBiligProductionRuntime(process: ReturnType<typeof Bun.spawn>, url: string, timeoutMs: number): Promise<void> {

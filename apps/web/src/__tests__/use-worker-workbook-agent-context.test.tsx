@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ValueTag, type CellSnapshot } from '@bilig/protocol'
 import type { GridSelectionSnapshot } from '@bilig/grid'
 import type { WorkerRuntimeSelection } from '../runtime-session.js'
-import { useWorkerWorkbookAgentContext } from '../use-worker-workbook-agent-context.js'
+import { resolveSameCorpusProofApiExposure, useWorkerWorkbookAgentContext } from '../use-worker-workbook-agent-context.js'
 
 function AgentContextHarness(props: {
   selection: WorkerRuntimeSelection
@@ -111,6 +111,32 @@ describe('useWorkerWorkbookAgentContext', () => {
     await act(async () => {
       harness.root.unmount()
     })
+  })
+
+  it('keeps the same-corpus proof API behind both benchmark URL and build-time exposure gates', () => {
+    expect(resolveSameCorpusProofApiExposure({ dev: true, search: '?benchmarkCorpus=wide-mixed-250k' })).toBe(true)
+    expect(resolveSameCorpusProofApiExposure({ dev: true, search: '?sheet=Sheet1' })).toBe(false)
+    expect(
+      resolveSameCorpusProofApiExposure({
+        benchmarkApiEnabled: '1',
+        dev: false,
+        search: '?benchmarkCorpus=wide-mixed-250k',
+      }),
+    ).toBe(true)
+    expect(
+      resolveSameCorpusProofApiExposure({
+        benchmarkApiEnabled: '0',
+        dev: false,
+        search: '?benchmarkCorpus=wide-mixed-250k',
+      }),
+    ).toBe(false)
+    expect(() =>
+      resolveSameCorpusProofApiExposure({
+        benchmarkApiEnabled: 'yes',
+        dev: false,
+        search: '?benchmarkCorpus=wide-mixed-250k',
+      }),
+    ).toThrow('VITE_BILIG_BENCHMARK_PROOF_API must be "1", "true", "0", or "false" when set, got yes')
   })
 
   it('resets the visible viewport when the sheet changes', async () => {
