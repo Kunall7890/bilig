@@ -132,7 +132,7 @@ function roundScaledHalfAwayFromZero(value: number): number {
   return Math.abs(fraction - 0.5) <= ROUND_HALF_TOLERANCE ? floor + 1 : Math.round(value)
 }
 
-function snapNearIntegerQuotient(value: number): number {
+function snapNearInteger(value: number): number {
   if (!Number.isFinite(value)) {
     return value
   }
@@ -158,11 +158,11 @@ function normalizeMultipleResult(value: number): number {
 }
 
 export function floorToMultiple(value: number, multiple: number): number {
-  return normalizeMultipleResult(Math.floor(snapNearIntegerQuotient(value / multiple)) * multiple)
+  return normalizeMultipleResult(Math.floor(snapNearInteger(value / multiple)) * multiple)
 }
 
 export function ceilingToMultiple(value: number, multiple: number): number {
-  return normalizeMultipleResult(Math.ceil(snapNearIntegerQuotient(value / multiple)) * multiple)
+  return normalizeMultipleResult(Math.ceil(snapNearInteger(value / multiple)) * multiple)
 }
 
 export function roundToMultiple(value: number, multiple: number): number {
@@ -172,38 +172,35 @@ export function roundToMultiple(value: number, multiple: number): number {
 }
 
 export function moduloValue(dividend: number, divisor: number): number {
-  return normalizeMultipleResult(dividend - divisor * Math.floor(snapNearIntegerQuotient(dividend / divisor)))
+  return normalizeMultipleResult(dividend - divisor * Math.floor(snapNearInteger(dividend / divisor)))
 }
 
 export function truncateQuotient(numerator: number, denominator: number): number {
-  return Math.trunc(snapNearIntegerQuotient(numerator / denominator))
+  return Math.trunc(snapNearInteger(numerator / denominator))
 }
 
 export function roundUpToDigits(value: number, digits: number): number {
   if (digits >= 0) {
     const factor = 10 ** digits
-    return (value >= 0 ? Math.ceil(value * factor) : Math.floor(value * factor)) / factor
+    const scaled = snapNearInteger(value * factor)
+    return (value >= 0 ? Math.ceil(scaled) : Math.floor(scaled)) / factor
   }
   const factor = 10 ** -digits
-  return (value >= 0 ? Math.ceil(value / factor) : Math.floor(value / factor)) * factor
+  const scaled = snapNearInteger(value / factor)
+  return (value >= 0 ? Math.ceil(scaled) : Math.floor(scaled)) * factor
 }
 
 export function roundDownToDigits(value: number, digits: number): number {
-  if (digits >= 0) {
-    const factor = 10 ** digits
-    return (value >= 0 ? Math.floor(value * factor) : Math.ceil(value * factor)) / factor
-  }
-  const factor = 10 ** -digits
-  return (value >= 0 ? Math.floor(value / factor) : Math.ceil(value / factor)) * factor
+  return roundTowardZero(value, digits)
 }
 
 export function roundTowardZero(value: number, digits: number): number {
   if (digits >= 0) {
     const factor = 10 ** digits
-    return Math.trunc(value * factor) / factor
+    return Math.trunc(snapNearInteger(value * factor)) / factor
   }
   const factor = 10 ** -digits
-  return Math.trunc(value / factor) * factor
+  return Math.trunc(snapNearInteger(value / factor)) * factor
 }
 
 export function collectNumericArgs(args: readonly CellValue[], toNumber: (value: CellValue) => number | undefined): number[] {

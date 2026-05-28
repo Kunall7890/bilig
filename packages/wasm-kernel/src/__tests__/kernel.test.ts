@@ -784,8 +784,8 @@ describe('wasm kernel', () => {
     kernel.init(24, 8, 2, 1, 2)
     kernel.uploadStrings(Uint32Array.from([0, 0, 5, 10]), Uint32Array.from([0, 5, 5, 5]), asciiCodes('AlphaAlphaalpha'))
     kernel.writeCells(
-      new Uint8Array([3, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
-      new Float64Array([0, 0, -3.145, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+      new Uint8Array([3, 3, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+      new Float64Array([0, 0, -3.145, 0.07, 0.29, 16.4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
       new Uint32Array([1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
       new Uint16Array(24),
     )
@@ -794,21 +794,45 @@ describe('wasm kernel', () => {
       [encodePushCell(2), encodeCall(BUILTIN.INT, 1), encodeRet()],
       [encodePushCell(2), encodePushNumber(0), encodeCall(BUILTIN.ROUNDUP, 2), encodeRet()],
       [encodePushCell(2), encodePushNumber(0), encodeCall(BUILTIN.ROUNDDOWN, 2), encodeRet()],
+      [encodePushCell(3), encodePushNumber(0), encodeCall(BUILTIN.ROUNDUP, 2), encodeRet()],
+      [encodePushCell(4), encodePushNumber(0), encodeCall(BUILTIN.ROUNDDOWN, 2), encodeRet()],
+      [encodePushCell(5), encodePushNumber(0), encodeCall(BUILTIN.TRUNC, 2), encodeRet()],
     ])
     kernel.uploadPrograms(
       packed.programs,
       packed.offsets,
       packed.lengths,
-      Uint32Array.from([cellIndex(1, 1, width), cellIndex(1, 2, width), cellIndex(1, 3, width), cellIndex(1, 4, width)]),
+      Uint32Array.from([
+        cellIndex(1, 1, width),
+        cellIndex(1, 2, width),
+        cellIndex(1, 3, width),
+        cellIndex(1, 4, width),
+        cellIndex(1, 5, width),
+        cellIndex(1, 6, width),
+        cellIndex(1, 7, width),
+      ]),
     )
-    kernel.uploadConstants(new Float64Array([2]), new Uint32Array([0, 0, 0, 0]), new Uint32Array([0, 0, 1, 1]))
-    kernel.evalBatch(Uint32Array.from([cellIndex(1, 1, width), cellIndex(1, 2, width), cellIndex(1, 3, width), cellIndex(1, 4, width)]))
+    kernel.uploadConstants(new Float64Array([2]), new Uint32Array([0, 0, 0, 0, 0, 0, 0]), new Uint32Array([0, 0, 1, 1, 1, 1, 1]))
+    kernel.evalBatch(
+      Uint32Array.from([
+        cellIndex(1, 1, width),
+        cellIndex(1, 2, width),
+        cellIndex(1, 3, width),
+        cellIndex(1, 4, width),
+        cellIndex(1, 5, width),
+        cellIndex(1, 6, width),
+        cellIndex(1, 7, width),
+      ]),
+    )
 
     expect(kernel.readTags()[cellIndex(1, 1, width)]).toBe(ValueTag.Boolean)
     expect(kernel.readNumbers()[cellIndex(1, 1, width)]).toBe(0)
     expect(kernel.readNumbers()[cellIndex(1, 2, width)]).toBe(-4)
     expect(kernel.readNumbers()[cellIndex(1, 3, width)]).toBe(-3.15)
     expect(kernel.readNumbers()[cellIndex(1, 4, width)]).toBe(-3.14)
+    expect(kernel.readNumbers()[cellIndex(1, 5, width)]).toBe(0.07)
+    expect(kernel.readNumbers()[cellIndex(1, 6, width)]).toBe(0.29)
+    expect(kernel.readNumbers()[cellIndex(1, 7, width)]).toBe(16.4)
   })
 
   it('evaluates string literals and CONCAT through the wasm path', async () => {

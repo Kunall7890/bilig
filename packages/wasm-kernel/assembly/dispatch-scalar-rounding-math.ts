@@ -1,5 +1,12 @@
 import { BuiltinId, ErrorCode } from './protocol'
-import { ceilingToMultiple, floorToMultiple, moduloValue, roundToDigits, roundTowardZeroDigits } from './numeric-core'
+import {
+  ceilingToMultiple,
+  floorToMultiple,
+  moduloValue,
+  roundAwayFromZeroDigits,
+  roundToDigits,
+  roundTowardZeroDigits,
+} from './numeric-core'
 import { scalarMathNumberLikeText, writeScalarMathError, writeScalarMathNumber } from './dispatch-scalar-math-helpers'
 
 export function tryApplyScalarRoundingMathBuiltin(
@@ -446,30 +453,7 @@ export function tryApplyScalarRoundingMathBuiltin(
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const digits = <i32>digitNumeric
-    let result = 0.0
-    if (digits >= 0) {
-      const factor = Math.pow(10.0, <f64>digits)
-      const scaled = numeric * factor
-      result =
-        (builtinId == BuiltinId.RoundUp
-          ? numeric >= 0.0
-            ? Math.ceil(scaled)
-            : Math.floor(scaled)
-          : numeric >= 0.0
-            ? Math.floor(scaled)
-            : Math.ceil(scaled)) / factor
-    } else {
-      const factor = Math.pow(10.0, <f64>-digits)
-      const scaled = numeric / factor
-      result =
-        (builtinId == BuiltinId.RoundUp
-          ? numeric >= 0.0
-            ? Math.ceil(scaled)
-            : Math.floor(scaled)
-          : numeric >= 0.0
-            ? Math.floor(scaled)
-            : Math.ceil(scaled)) * factor
-    }
+    const result = builtinId == BuiltinId.RoundUp ? roundAwayFromZeroDigits(numeric, digits) : roundTowardZeroDigits(numeric, digits)
     return writeScalarMathNumber(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 

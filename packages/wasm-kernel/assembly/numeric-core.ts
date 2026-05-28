@@ -134,7 +134,7 @@ function roundScaledHalfAwayFromZero(value: f64): f64 {
   return Math.abs(fraction - 0.5) <= ROUND_HALF_TOLERANCE ? floor + 1.0 : Math.round(value)
 }
 
-function snapNearIntegerQuotient(value: f64): f64 {
+function snapNearInteger(value: f64): f64 {
   if (!isFinite(value)) {
     return value
   }
@@ -161,11 +161,11 @@ function normalizeMultipleResult(value: f64): f64 {
 }
 
 export function floorToMultiple(value: f64, multiple: f64): f64 {
-  return normalizeMultipleResult(Math.floor(snapNearIntegerQuotient(value / multiple)) * multiple)
+  return normalizeMultipleResult(Math.floor(snapNearInteger(value / multiple)) * multiple)
 }
 
 export function ceilingToMultiple(value: f64, multiple: f64): f64 {
-  return normalizeMultipleResult(Math.ceil(snapNearIntegerQuotient(value / multiple)) * multiple)
+  return normalizeMultipleResult(Math.ceil(snapNearInteger(value / multiple)) * multiple)
 }
 
 export function roundToMultiple(value: f64, multiple: f64): f64 {
@@ -175,20 +175,31 @@ export function roundToMultiple(value: f64, multiple: f64): f64 {
 }
 
 export function moduloValue(dividend: f64, divisor: f64): f64 {
-  return normalizeMultipleResult(dividend - divisor * Math.floor(snapNearIntegerQuotient(dividend / divisor)))
+  return normalizeMultipleResult(dividend - divisor * Math.floor(snapNearInteger(dividend / divisor)))
 }
 
 export function truncateQuotient(numerator: f64, denominator: f64): f64 {
-  return Math.trunc(snapNearIntegerQuotient(numerator / denominator))
+  return Math.trunc(snapNearInteger(numerator / denominator))
+}
+
+export function roundAwayFromZeroDigits(value: f64, digits: i32): f64 {
+  if (digits >= 0) {
+    const factor = Math.pow(10.0, <f64>digits)
+    const scaled = snapNearInteger(value * factor)
+    return (value >= 0.0 ? Math.ceil(scaled) : Math.floor(scaled)) / factor
+  }
+  const factor = Math.pow(10.0, <f64>-digits)
+  const scaled = snapNearInteger(value / factor)
+  return (value >= 0.0 ? Math.ceil(scaled) : Math.floor(scaled)) * factor
 }
 
 export function roundTowardZeroDigits(value: f64, digits: i32): f64 {
   if (digits >= 0) {
     const factor = Math.pow(10.0, <f64>digits)
-    return Math.trunc(value * factor) / factor
+    return Math.trunc(snapNearInteger(value * factor)) / factor
   }
   const factor = Math.pow(10.0, <f64>-digits)
-  return Math.trunc(value / factor) * factor
+  return Math.trunc(snapNearInteger(value / factor)) * factor
 }
 
 const MAX_BITWISE_INTEGER_F64: f64 = 281474976710655.0

@@ -537,9 +537,21 @@ describe('formula builtins', () => {
       tag: ValueTag.Number,
       value: 3.15,
     })
+    expect(getBuiltin('ROUNDUP')?.({ tag: ValueTag.Number, value: 0.07 }, { tag: ValueTag.Number, value: 2 })).toEqual({
+      tag: ValueTag.Number,
+      value: 0.07,
+    })
     expect(getBuiltin('ROUNDDOWN')?.({ tag: ValueTag.Number, value: -3.145 }, { tag: ValueTag.Number, value: 2 })).toEqual({
       tag: ValueTag.Number,
       value: -3.14,
+    })
+    expect(getBuiltin('ROUNDDOWN')?.({ tag: ValueTag.Number, value: 0.29 }, { tag: ValueTag.Number, value: 2 })).toEqual({
+      tag: ValueTag.Number,
+      value: 0.29,
+    })
+    expect(getBuiltin('TRUNC')?.({ tag: ValueTag.Number, value: 16.4 }, { tag: ValueTag.Number, value: 2 })).toEqual({
+      tag: ValueTag.Number,
+      value: 16.4,
     })
     expect(getBuiltin('ROUND')?.({ tag: ValueTag.Number, value: 3.145 }, { tag: ValueTag.Number, value: 2 })).toEqual({
       tag: ValueTag.Number,
