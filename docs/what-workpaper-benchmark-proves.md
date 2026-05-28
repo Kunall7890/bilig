@@ -13,7 +13,7 @@ inflating what the benchmark can prove.
 The all-provider source of truth is
 `packages/benchmarks/baselines/headless-performance-leadership-scorecard.json`.
 The short artifact name is `headless-performance-leadership-scorecard.json`.
-It currently reports goal status `achieved`: `100/100` comparable workloads win
+It currently reports goal status `active-not-achieved`: `100/100` comparable workloads win
 on both mean and p95 latency across `5` comparison engines and `2` workbook-wide engines.
 
 Comparison engines: HyperFormula, TrueCalc, Univer, xlsx-calc, IronCalc Rust.

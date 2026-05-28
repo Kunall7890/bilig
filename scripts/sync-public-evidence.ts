@@ -307,6 +307,16 @@ function syncProviderBenchmarkTableRow(content: string, comparison: PublicCompar
   return content.replace(pattern, formatProviderBenchmarkTableRow(comparison))
 }
 
+function syncGoalStatus(content: string, goalStatus: string, context: string): string {
+  const patterns = [/goal status `[^`]+`:/u, /reports `[^`]+`:/u] as const
+  for (const pattern of patterns) {
+    if (pattern.test(content)) {
+      return content.replace(pattern, (match) => match.replace(/`[^`]+`/u, `\`${goalStatus}\``))
+    }
+  }
+  throw new Error(`${context} is missing a syncable goal status phrase`)
+}
+
 function formatProviderBenchmarkTableRow(comparison: PublicComparisonEvidence): string {
   const comparableCount = comparison.comparableWorkloadCount.toString()
   const unsupported = comparison.unsupportedWorkloadCount > 0 ? `\`${comparison.unsupportedWorkloadCount.toString()}\` unsupported` : '`0`'
@@ -788,6 +798,7 @@ async function syncPublicSurfaceMarkdown(evidence: PublicEvidence): Promise<void
     (['docs/what-workpaper-benchmark-proves.md', 'docs/headless-workpaper-benchmark-evidence.md'] as const).map(async (relativePath) => {
       const absolutePath = join(repoRoot, relativePath)
       let content = await readFile(absolutePath, 'utf8')
+      content = syncGoalStatus(content, evidence.headlessPerformanceLeadership.goalStatus, relativePath)
       for (const comparison of evidence.headlessPerformanceLeadership.comparisons) {
         content = syncProviderBenchmarkTableRow(content, comparison, relativePath)
       }

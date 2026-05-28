@@ -10,7 +10,7 @@ artifacts instead of README copy alone.
 The goal-tracking scorecard for broad headless-engine performance leadership is
 `packages/benchmarks/baselines/headless-performance-leadership-scorecard.json`.
 The short artifact name is `headless-performance-leadership-scorecard.json`.
-It currently reports `achieved`: `100/100` comparable workloads win both mean
+It currently reports `active-not-achieved`: `100/100` comparable workloads win both mean
 and p95 latency across `5` comparison engines and `2` workbook-wide engines.
 
 Comparison engines: HyperFormula, TrueCalc, Univer, xlsx-calc, IronCalc Rust.
