@@ -114,6 +114,22 @@ function isStrictBuiltinArity(name: string, argc: number): boolean {
   }
 }
 
+export function isFormulaCallArity(name: string, argc: number): boolean {
+  if (!isStrictBuiltinArity(name, argc)) {
+    return false
+  }
+  switch (name) {
+    case 'WORKDAY':
+    case 'NETWORKDAYS':
+      return argc === 2 || argc === 3
+    case 'WORKDAY.INTL':
+    case 'NETWORKDAYS.INTL':
+      return argc >= 2 && argc <= 4
+    default:
+      return true
+  }
+}
+
 export function enforceBuiltinArities(map: Record<string, Builtin>, valueError: () => EvaluationResult): Record<string, Builtin> {
   return Object.fromEntries(
     Object.entries(map).map(([name, builtin]) => [

@@ -55,6 +55,10 @@ describe('formula builtins and JS evaluator', () => {
       'EDATE(1,1,1)',
       'EOMONTH(1,1,1)',
       'TIMEVALUE("12:00",1)',
+      'WORKDAY(46094,1,46097,46098)',
+      'NETWORKDAYS(46094,46101,46097,46101)',
+      'WORKDAY.INTL(46094,1,1,46097,46098)',
+      'NETWORKDAYS.INTL(46094,46101,1,46097,46101)',
       'ABS(1,2)',
       'INT(1,2)',
       'SIN(1,2)',
@@ -842,11 +846,15 @@ describe('formula builtins and JS evaluator', () => {
       tag: ValueTag.Number,
       value: 46098,
     })
+    expect(evaluateAst(parseFormula('WORKDAY(46094,1,{46097,46098})'), context)).toEqual({
+      tag: ValueTag.Number,
+      value: 46099,
+    })
     expect(evaluateAst(parseFormula('WORKDAY(DATE(2026,1,1),3,H2:H3)'), context)).toEqual({
       tag: ValueTag.Number,
       value: 46029,
     })
-    expect(evaluateAst(parseFormula('NETWORKDAYS(46094,46101,46097,46101)'), context)).toEqual({
+    expect(evaluateAst(parseFormula('NETWORKDAYS(46094,46101,{46097,46101})'), context)).toEqual({
       tag: ValueTag.Number,
       value: 4,
     })
@@ -1200,9 +1208,17 @@ describe('formula builtins and JS evaluator', () => {
       tag: ValueTag.Number,
       value: 46029,
     })
+    expect(evaluateAst(parseFormula('WORKDAY.INTL(46094,1,1,{46097,46098})'), context)).toEqual({
+      tag: ValueTag.Number,
+      value: 46099,
+    })
     expect(evaluateAst(parseFormula('NETWORKDAYS.INTL(DATE(2026,3,13),DATE(2026,3,17),7)'), context)).toEqual({
       tag: ValueTag.Number,
       value: 3,
+    })
+    expect(evaluateAst(parseFormula('NETWORKDAYS.INTL(46094,46101,1,{46097,46101})'), context)).toEqual({
+      tag: ValueTag.Number,
+      value: 4,
     })
     expect(evaluateAst(parseFormula('NETWORKDAYS.INTL(DATE(2026,1,1),DATE(2026,1,10),1,H2:H3)'), context)).toEqual({
       tag: ValueTag.Number,

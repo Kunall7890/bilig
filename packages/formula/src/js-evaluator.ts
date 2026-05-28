@@ -2,6 +2,7 @@ import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import type { FormulaNode } from './ast.js'
 import { formatAddress, parseCellAddress, parseRangeAddress } from './addressing.js'
 import { getBuiltin, getDateSystemBuiltin, normalizeBuiltinLookupName } from './builtins.js'
+import { isFormulaCallArity } from './builtins/arity.js'
 import { getLookupBuiltin, type RangeBuiltinArgument } from './builtins/lookup.js'
 import { evaluateArraySpecialCall } from './js-evaluator-array-special-calls.js'
 import { emptyValue, error, numberValue, stringValue } from './js-evaluator-cell-values.js'
@@ -621,6 +622,10 @@ function executePlan(
         const builtin = resolveBuiltinForContext(instruction.callee, context)
         if (!builtin) {
           stack.push({ kind: 'scalar', value: error(unavailableCallErrorCode(instruction.callee)) })
+          break
+        }
+        if (!isFormulaCallArity(normalizeBuiltinLookupName(instruction.callee), rawArgs.length)) {
+          stack.push({ kind: 'scalar', value: error(ErrorCode.Value) })
           break
         }
         const liftedResult = evaluateArrayLiftedScalarBuiltin(instruction.callee, rawArgs, builtin)
