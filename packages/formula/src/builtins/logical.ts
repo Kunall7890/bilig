@@ -254,6 +254,9 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
   ISNONTEXT: (...args) => requireOneArg(args, (value) => booleanResult(value.tag !== ValueTag.String)),
   ISEVEN: (...args) =>
     requireOneArg(args, (value) => {
+      if (value.tag === ValueTag.Error) {
+        return value
+      }
       const numberValue = coerceNumberLike(value)
       if (numberValue === undefined) {
         return errorValue(ErrorCode.Value)
@@ -262,6 +265,9 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
     }),
   ISODD: (...args) =>
     requireOneArg(args, (value) => {
+      if (value.tag === ValueTag.Error) {
+        return value
+      }
       const numberValue = coerceNumberLike(value)
       if (numberValue === undefined) {
         return errorValue(ErrorCode.Value)

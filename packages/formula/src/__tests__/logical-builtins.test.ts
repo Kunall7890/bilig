@@ -126,8 +126,12 @@ describe('logical/info builtins', () => {
 
     expect(ISEVEN(num(4))).toEqual(bool(true))
     expect(ISEVEN(text('7'))).toEqual(bool(false))
+    expect(ISEVEN(err(ErrorCode.NA))).toEqual(err(ErrorCode.NA))
+    expect(ISEVEN(err(ErrorCode.Div0))).toEqual(err(ErrorCode.Div0))
     expect(ISODD(num(3))).toEqual(bool(true))
     expect(ISODD(empty())).toEqual(bool(false))
+    expect(ISODD(err(ErrorCode.Ref))).toEqual(err(ErrorCode.Ref))
+    expect(ISODD(err(ErrorCode.Name))).toEqual(err(ErrorCode.Name))
 
     expect(ISNA(err(ErrorCode.NA))).toEqual(bool(true))
     expect(ISNA(err(ErrorCode.Value))).toEqual(bool(false))

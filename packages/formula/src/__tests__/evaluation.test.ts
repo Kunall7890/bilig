@@ -328,6 +328,27 @@ describe('formula builtins and JS evaluator', () => {
     })
   })
 
+  it('propagates original error inputs for ISEVEN and ISODD', () => {
+    const context = {
+      sheetName: 'Sheet1',
+      resolveCell: (): CellValue => ({ tag: ValueTag.Empty }),
+      resolveRange: (): CellValue[] => [],
+    }
+
+    expect(evaluateAst(parseFormula('ISEVEN(NA())'), context)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
+    })
+    expect(evaluateAst(parseFormula('ISODD(1/0)'), context)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Div0,
+    })
+    expect(evaluateAst(parseFormula('ISEVEN("bad")'), context)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
+    })
+  })
+
   it('coerces direct numeric text for eligible aggregates without coercing referenced text cells', () => {
     const context = {
       sheetName: 'Sheet1',
