@@ -22,7 +22,7 @@ Comparison engines: HyperFormula, TrueCalc, Univer, xlsx-calc, IronCalc Rust.
 | ------------- | --------------------- | ------------: | --------: | --------: | -----------------: | ----------------: | ---------------: |
 | HyperFormula  | workbook-wide         |    `100/100` | `100/100` | `100/100` |         `0.2586x` |        `0.2807x` |              `0` |
 | Univer        | workbook-wide         |    `100/100` | `100/100` | `100/100` |         `0.0028x` |        `0.0034x` |              `0` |
-| IronCalc Rust | workbook-wide-limited |      `73/90` |   `90/90` |   `73/90` |         `0.1675x` |        `0.2605x` | `10` unsupported |
+| IronCalc Rust | workbook-wide-limited |      `78/90` |   `90/90` |   `78/90` |         `0.1624x` |        `0.2514x` | `10` unsupported |
 | xlsx-calc     | workbook-wide-limited |      `16/16` |   `16/16` |   `16/16` |         `0.0839x` |        `0.0786x` |              `0` |
 | TrueCalc      | scalar-formula        |        `7/7` |     `7/7` |     `7/7` |         `0.1837x` |        `0.2359x` |              `0` |
 
