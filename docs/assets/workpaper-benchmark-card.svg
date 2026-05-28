@@ -37,37 +37,54 @@
     <text x="74" y="38" fill="#111820" font-family="Inter, Arial, Helvetica, sans-serif" font-size="34" font-weight="820">bilig</text>
   </g>
 
-  <text x="64" y="182" fill="#147a4b" font-family="Inter, Arial, Helvetica, sans-serif" font-size="28" font-weight="820">WorkPaper benchmark evidence</text>
+  <text x="64" y="182" fill="#147a4b" font-family="Inter, Arial, Helvetica, sans-serif" font-size="28" font-weight="820">Headless performance leadership</text>
   <text x="64" y="252" fill="#111820" font-family="Inter, Arial, Helvetica, sans-serif" font-size="86" font-weight="830" letter-spacing="0">100/100</text>
-  <text x="66" y="310" fill="#111820" font-family="Inter, Arial, Helvetica, sans-serif" font-size="48" font-weight="800" letter-spacing="0">mean wins</text>
-  <text x="66" y="354" fill="#526273" font-family="Inter, Arial, Helvetica, sans-serif" font-size="26" font-weight="650">Comparable HyperFormula-style workloads</text>
+  <text x="66" y="310" fill="#111820" font-family="Inter, Arial, Helvetica, sans-serif" font-size="48" font-weight="800" letter-spacing="0">mean+p95 wins</text>
+  <text x="66" y="354" fill="#526273" font-family="Inter, Arial, Helvetica, sans-serif" font-size="26" font-weight="650">Across 5 comparison engines</text>
 
   <g filter="url(#shadow)">
     <rect x="64" y="382" width="560" height="278" rx="22" fill="url(#panel)" stroke="#cbd8e2"/>
   </g>
-  <g transform="translate(88 428)">
-  <text x="0" y="0" fill="#526273" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" font-weight="760">Overall</text>
-  <text x="438" y="0" text-anchor="end" fill="#111820" font-family="Inter, Arial, Helvetica, sans-serif" font-size="25" font-weight="820">100/100</text>
-  <rect x="0" y="16" width="460" height="22" rx="8" fill="#e6edf3"/>
-  <rect x="0" y="16" width="460.00" height="22" rx="8" fill="#147a4b"/>
+  <g transform="translate(88 424)">
+  <rect x="0" y="-16" width="9" height="9" rx="3" fill="#147a4b"/>
+  <text x="18" y="-8" fill="#526273" font-family="Inter, Arial, Helvetica, sans-serif" font-size="21" font-weight="760">HyperFormula</text>
+  <text x="438" y="0" text-anchor="end" fill="#111820" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" font-weight="820">100/100</text>
+  <text x="18" y="18" fill="#6b7885" font-family="Inter, Arial, Helvetica, sans-serif" font-size="14" font-weight="650">workbook-wide</text>
+  <path d="M0 30 H460" stroke="#d6e1e8" stroke-width="1"/>
 </g>
-  <g transform="translate(88 508)">
-  <text x="0" y="0" fill="#526273" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" font-weight="760">Public</text>
-  <text x="438" y="0" text-anchor="end" fill="#111820" font-family="Inter, Arial, Helvetica, sans-serif" font-size="25" font-weight="820">73/73</text>
-  <rect x="0" y="16" width="460" height="22" rx="8" fill="#e6edf3"/>
-  <rect x="0" y="16" width="460.00" height="22" rx="8" fill="#147a4b"/>
+<g transform="translate(88 469)">
+  <rect x="0" y="-16" width="9" height="9" rx="3" fill="#147a4b"/>
+  <text x="18" y="-8" fill="#526273" font-family="Inter, Arial, Helvetica, sans-serif" font-size="21" font-weight="760">TrueCalc</text>
+  <text x="438" y="0" text-anchor="end" fill="#111820" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" font-weight="820">7/7</text>
+  <text x="18" y="18" fill="#6b7885" font-family="Inter, Arial, Helvetica, sans-serif" font-size="14" font-weight="650">scalar-formula</text>
+  <path d="M0 30 H460" stroke="#d6e1e8" stroke-width="1"/>
 </g>
-  <g transform="translate(88 588)">
-  <text x="0" y="0" fill="#526273" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" font-weight="760">Holdout</text>
-  <text x="438" y="0" text-anchor="end" fill="#111820" font-family="Inter, Arial, Helvetica, sans-serif" font-size="25" font-weight="820">27/27</text>
-  <rect x="0" y="16" width="460" height="22" rx="8" fill="#e6edf3"/>
-  <rect x="0" y="16" width="460.00" height="22" rx="8" fill="#147a4b"/>
+<g transform="translate(88 514)">
+  <rect x="0" y="-16" width="9" height="9" rx="3" fill="#147a4b"/>
+  <text x="18" y="-8" fill="#526273" font-family="Inter, Arial, Helvetica, sans-serif" font-size="21" font-weight="760">Univer</text>
+  <text x="438" y="0" text-anchor="end" fill="#111820" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" font-weight="820">100/100</text>
+  <text x="18" y="18" fill="#6b7885" font-family="Inter, Arial, Helvetica, sans-serif" font-size="14" font-weight="650">workbook-wide</text>
+  <path d="M0 30 H460" stroke="#d6e1e8" stroke-width="1"/>
+</g>
+<g transform="translate(88 559)">
+  <rect x="0" y="-16" width="9" height="9" rx="3" fill="#147a4b"/>
+  <text x="18" y="-8" fill="#526273" font-family="Inter, Arial, Helvetica, sans-serif" font-size="21" font-weight="760">xlsx-calc</text>
+  <text x="438" y="0" text-anchor="end" fill="#111820" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" font-weight="820">16/16</text>
+  <text x="18" y="18" fill="#6b7885" font-family="Inter, Arial, Helvetica, sans-serif" font-size="14" font-weight="650">workbook-wide-limited</text>
+  <path d="M0 30 H460" stroke="#d6e1e8" stroke-width="1"/>
+</g>
+<g transform="translate(88 604)">
+  <rect x="0" y="-16" width="9" height="9" rx="3" fill="#147a4b"/>
+  <text x="18" y="-8" fill="#526273" font-family="Inter, Arial, Helvetica, sans-serif" font-size="21" font-weight="760">IronCalc Rust</text>
+  <text x="438" y="0" text-anchor="end" fill="#111820" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" font-weight="820">90/90</text>
+  <text x="18" y="18" fill="#6b7885" font-family="Inter, Arial, Helvetica, sans-serif" font-size="14" font-weight="650">workbook-wide-limited; 10 unsupported</text>
+  <path d="M0 30 H460" stroke="#d6e1e8" stroke-width="1"/>
 </g>
 
   <g filter="url(#shadow)">
     <rect x="666" y="92" width="550" height="546" rx="26" fill="url(#dark)"/>
   </g>
-  <text x="710" y="154" fill="#9fb2c5" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" font-weight="760">Geomean latency ratios</text>
+  <text x="710" y="154" fill="#9fb2c5" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" font-weight="760">Primary workbook-wide geomean ratios</text>
 
   <g transform="translate(710 196)">
     <rect x="0" y="0" width="462" height="116" rx="18" fill="#ffffff" fill-opacity="0.08" stroke="#36506a"/>
@@ -87,6 +104,6 @@
     <text x="28" y="66" fill="#ffffff" font-family="Inter, Arial, Helvetica, sans-serif" font-size="21" font-weight="650">sheet-rename-dependencies p95: 0.792x</text>
   </g>
 
-  <text x="64" y="686" fill="#526273" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="20">pnpm workpaper:bench:competitive:check</text>
+  <text x="64" y="686" fill="#526273" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="20">pnpm headless:performance:check</text>
   <text x="1216" y="686" text-anchor="end" fill="#526273" font-family="Inter, Arial, Helvetica, sans-serif" font-size="18" font-weight="650">artifact 2026-05-23</text>
 </svg>

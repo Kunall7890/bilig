@@ -45,6 +45,50 @@ interface PublicEvidence {
     readonly meanAndP95WinCount: number
     readonly p95HoldoutCount: number
   }
+  readonly headlessPerformanceLeadership: {
+    readonly artifactPath: string
+    readonly goalStatus: string
+    readonly blanketHeadlessPerformanceLeadershipClaimAllowed: boolean
+    readonly comparisonEngineCount: number
+    readonly comparisonEngines: readonly string[]
+    readonly workbookWideComparisonEngineCount: number
+    readonly workbookWideComparisonEngines: readonly string[]
+    readonly comparableWorkloadCount: number
+    readonly meanAndP95WinCount: number
+    readonly meanWinCount: number
+    readonly p95WinCount: number
+    readonly meanGeomeanRatio: number
+    readonly p95GeomeanRatio: number
+    readonly worstMeanRatio: number
+    readonly worstMeanRatioWorkload: string
+    readonly worstP95Ratio: number
+    readonly worstP95RatioWorkload: string
+    readonly p95HoldoutCount: number
+    readonly p95Holdouts: readonly string[]
+    readonly tenXMeanAndP95WorkloadCountAgainstHyperFormula: number
+    readonly comparisons: readonly PublicComparisonEvidence[]
+  }
+}
+
+interface PublicComparisonEvidence {
+  readonly engineName: string
+  readonly version: string
+  readonly artifactPath: string
+  readonly generatedAt: string
+  readonly coverageTier: string
+  readonly coverageNote: string
+  readonly comparableWorkloadCount: number
+  readonly meanAndP95WinCount: number
+  readonly meanWinCount: number
+  readonly p95WinCount: number
+  readonly directionalMeanRatioGeomean: number
+  readonly directionalP95RatioGeomean: number
+  readonly worstMeanRatio: number
+  readonly worstMeanRatioWorkload: string
+  readonly worstP95Ratio: number
+  readonly worstP95RatioWorkload: string
+  readonly unsupportedWorkloadCount: number
+  readonly unsupportedWorkloads: readonly string[]
 }
 
 function asRecord(value: unknown, context: string): Record<string, unknown> {
@@ -70,8 +114,121 @@ function readNumber(record: Record<string, unknown>, key: string, context: strin
   return value
 }
 
+function readBoolean(record: Record<string, unknown>, key: string, context: string): boolean {
+  const value = record[key]
+  if (typeof value !== 'boolean') {
+    throw new Error(`${context}.${key} must be a boolean`)
+  }
+  return value
+}
+
+function readStringArray(record: Record<string, unknown>, key: string, context: string): readonly string[] {
+  const value = record[key]
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
+    throw new Error(`${context}.${key} must be an array of strings`)
+  }
+  return [...value]
+}
+
 function readJsonRecord(path: string, context: string): Promise<Record<string, unknown>> {
   return readFile(path, 'utf8').then((content) => asRecord(JSON.parse(content) as unknown, context))
+}
+
+function readFirstNumber(record: Record<string, unknown>, keys: readonly string[], context: string): number {
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value
+    }
+  }
+  throw new Error(`${context} must include one of: ${keys.join(', ')}`)
+}
+
+function readUnsupportedWorkloadNames(scorecard: Record<string, unknown>, context: string): readonly string[] {
+  const value = scorecard['unsupportedWorkloads']
+  if (value === undefined) {
+    return []
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(`${context}.unsupportedWorkloads must be an array`)
+  }
+  return value.map((entry, index) => {
+    const record = asRecord(entry, `${context}.unsupportedWorkloads[${index.toString()}]`)
+    return readString(record, 'workload', `${context}.unsupportedWorkloads[${index.toString()}]`)
+  })
+}
+
+function readComparisonEvidence(args: {
+  readonly artifact: Record<string, unknown>
+  readonly artifactPath: string
+  readonly coverageTier: string
+  readonly engineName: string
+  readonly version: string
+  readonly summaryMeanAndP95WinCount?: number
+  readonly summaryMeanWinCount?: number
+  readonly summaryP95WinCount?: number
+}): PublicComparisonEvidence {
+  const scorecard = asRecord(args.artifact['scorecard'], `${args.artifactPath}.scorecard`)
+  const scorecards =
+    scorecard['scorecards'] === undefined ? undefined : asRecord(scorecard['scorecards'], `${args.artifactPath}.scorecard.scorecards`)
+  const laneScorecard =
+    scorecards === undefined ? scorecard : asRecord(scorecards['overall'], `${args.artifactPath}.scorecard.scorecards.overall`)
+  const comparableWorkloadCount =
+    laneScorecard['comparableCount'] === undefined
+      ? readNumber(laneScorecard, 'comparableWorkloadCount', `${args.artifactPath}.scorecard`)
+      : readNumber(laneScorecard, 'comparableCount', `${args.artifactPath}.scorecard.scorecards.overall`)
+  const meanWinCount =
+    args.summaryMeanWinCount ??
+    (laneScorecard['workpaperWins'] === undefined
+      ? readNumber(laneScorecard, 'meanWinCount', `${args.artifactPath}.scorecard`)
+      : readNumber(laneScorecard, 'workpaperWins', `${args.artifactPath}.scorecard.scorecards.overall`))
+  const p95WinCount = args.summaryP95WinCount ?? readNumber(laneScorecard, 'p95WinCount', `${args.artifactPath}.scorecard`)
+  const meanAndP95WinCount =
+    args.summaryMeanAndP95WinCount ?? readNumber(laneScorecard, 'meanAndP95WinCount', `${args.artifactPath}.scorecard`)
+
+  return {
+    engineName: args.engineName,
+    version: args.version,
+    artifactPath: args.artifactPath,
+    generatedAt: readString(args.artifact, 'generatedAt', args.artifactPath),
+    coverageTier: args.coverageTier,
+    coverageNote:
+      typeof laneScorecard['coverageNote'] === 'string'
+        ? laneScorecard['coverageNote']
+        : `${args.engineName} is covered as the ${args.coverageTier} comparison lane for this checked benchmark artifact.`,
+    comparableWorkloadCount,
+    meanAndP95WinCount,
+    meanWinCount,
+    p95WinCount,
+    directionalMeanRatioGeomean: readNumber(laneScorecard, 'directionalMeanRatioGeomean', `${args.artifactPath}.scorecard`),
+    directionalP95RatioGeomean: readNumber(laneScorecard, 'directionalP95RatioGeomean', `${args.artifactPath}.scorecard`),
+    worstMeanRatio: readFirstNumber(
+      laneScorecard,
+      [
+        'worstWorkpaperToHyperFormulaMeanRatio',
+        'worstWorkpaperToTrueCalcMeanRatio',
+        'worstWorkpaperToUniverMeanRatio',
+        'worstWorkpaperToXlsxCalcMeanRatio',
+        'worstWorkpaperToIronCalcRustMeanRatio',
+      ],
+      `${args.artifactPath}.scorecard`,
+    ),
+    worstMeanRatioWorkload: readString(laneScorecard, 'worstMeanRatioWorkload', `${args.artifactPath}.scorecard`),
+    worstP95Ratio: readFirstNumber(
+      laneScorecard,
+      [
+        'worstWorkpaperToHyperFormulaP95Ratio',
+        'worstWorkpaperToTrueCalcP95Ratio',
+        'worstWorkpaperToUniverP95Ratio',
+        'worstWorkpaperToXlsxCalcP95Ratio',
+        'worstWorkpaperToIronCalcRustP95Ratio',
+      ],
+      `${args.artifactPath}.scorecard`,
+    ),
+    worstP95RatioWorkload: readString(laneScorecard, 'worstP95RatioWorkload', `${args.artifactPath}.scorecard`),
+    unsupportedWorkloadCount: readUnsupportedWorkloadNames(laneScorecard, `${args.artifactPath}.scorecard`).length,
+    unsupportedWorkloads: readUnsupportedWorkloadNames(laneScorecard, `${args.artifactPath}.scorecard`),
+  }
 }
 
 function readLane(value: unknown, context: string): LaneScorecard {
@@ -96,6 +253,10 @@ function headline(lane: Pick<LaneScorecard, 'workpaperWins' | 'comparableCount'>
 
 function ratio3(value: number): string {
   return `${value.toFixed(3).replace(/0+$/u, '').replace(/\.$/u, '')}x`
+}
+
+function ratio4(value: number): string {
+  return `${value.toFixed(4).replace(/0+$/u, '').replace(/\.$/u, '')}x`
 }
 
 function requireIncludes(haystack: string, needle: string, context: string): void {
@@ -126,6 +287,18 @@ function requireBenchmarkTableRow(content: string, lane: string, comparableCount
   }
 }
 
+function requireProviderBenchmarkTableRow(content: string, comparison: PublicComparisonEvidence, context: string): void {
+  const pattern = new RegExp(
+    `\\| ${comparison.engineName.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}\\s+\\|\\s+${comparison.coverageTier.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}\\s+\\|\\s+\`${comparison.meanAndP95WinCount.toString()}\\/${comparison.comparableWorkloadCount.toString()}\`\\s+\\|\\s+\`${comparison.meanWinCount.toString()}\\/${comparison.comparableWorkloadCount.toString()}\`\\s+\\|\\s+\`${comparison.p95WinCount.toString()}\\/${comparison.comparableWorkloadCount.toString()}\`\\s+\\|`,
+    'u',
+  )
+  if (!pattern.test(content)) {
+    throw new Error(
+      `${context} is missing all-provider benchmark row for ${comparison.engineName} ${comparison.meanAndP95WinCount.toString()}/${comparison.comparableWorkloadCount.toString()} mean+p95 wins`,
+    )
+  }
+}
+
 function requireNotIncludes(haystack: string, needle: string, context: string): void {
   if (haystack.includes(needle)) {
     throw new Error(`${context} must not include stale public evidence token ${needle}`)
@@ -140,6 +313,10 @@ async function buildEvidence(): Promise<PublicEvidence> {
     workpaperServerManifest,
     releasePleaseManifest,
     benchmarkArtifact,
+    trueCalcArtifact,
+    univerArtifact,
+    xlsxCalcArtifact,
+    ironCalcRustArtifact,
     leadershipScorecard,
   ] = await Promise.all([
     readJsonRecord(join(repoRoot, 'packages', 'headless', 'package.json'), 'packages/headless/package.json'),
@@ -148,6 +325,13 @@ async function buildEvidence(): Promise<PublicEvidence> {
     readJsonRecord(join(repoRoot, 'packages', 'workpaper', 'server.json'), 'packages/workpaper/server.json'),
     readJsonRecord(join(repoRoot, '.release-please-manifest.json'), '.release-please-manifest.json'),
     readJsonRecord(join(repoRoot, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-hyperformula.json'), 'workpaper benchmark artifact'),
+    readJsonRecord(join(repoRoot, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-truecalc.json'), 'truecalc benchmark artifact'),
+    readJsonRecord(join(repoRoot, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-univer.json'), 'univer benchmark artifact'),
+    readJsonRecord(join(repoRoot, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-xlsx-calc.json'), 'xlsx-calc benchmark artifact'),
+    readJsonRecord(
+      join(repoRoot, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-ironcalc-rust.json'),
+      'ironcalc rust benchmark artifact',
+    ),
     readJsonRecord(
       join(repoRoot, 'packages', 'benchmarks', 'baselines', 'headless-performance-leadership-scorecard.json'),
       'headless performance leadership scorecard',
@@ -191,10 +375,33 @@ async function buildEvidence(): Promise<PublicEvidence> {
   const scorecard = asRecord(benchmarkArtifact['scorecard'], 'workpaper benchmark artifact.scorecard')
   const scorecards = asRecord(scorecard['scorecards'], 'workpaper benchmark artifact.scorecard.scorecards')
   const leadershipSummary = asRecord(leadershipScorecard['summary'], 'headless performance leadership scorecard.summary')
+  const leadershipClaimPolicy = asRecord(leadershipScorecard['claimPolicy'], 'headless performance leadership scorecard.claimPolicy')
+  const sourceArtifacts = asRecord(leadershipScorecard['sourceArtifacts'], 'headless performance leadership scorecard.sourceArtifacts')
+  const extraCompetitiveBenchmarks = sourceArtifacts['extraCompetitiveBenchmarks']
+  if (!Array.isArray(extraCompetitiveBenchmarks)) {
+    throw new Error('headless performance leadership scorecard.sourceArtifacts.extraCompetitiveBenchmarks must be an array')
+  }
+  const extraCompetitiveBenchmarkByEngineName = new Map(
+    extraCompetitiveBenchmarks.map((entry) => {
+      const record = asRecord(entry, 'headless performance leadership scorecard.sourceArtifacts.extraCompetitiveBenchmarks[]')
+      return [readString(record, 'engineName', 'headless performance leadership scorecard extra benchmark'), record] as const
+    }),
+  )
+  const readExtraBenchmark = (engineName: string): Record<string, unknown> => {
+    const entry = extraCompetitiveBenchmarkByEngineName.get(engineName)
+    if (!entry) {
+      throw new Error(`headless performance leadership scorecard is missing ${engineName} extra benchmark`)
+    }
+    return entry
+  }
   const p95Holdouts = leadershipSummary['p95Holdouts']
   if (!Array.isArray(p95Holdouts)) {
     throw new Error('headless performance leadership scorecard.summary.p95Holdouts must be an array')
   }
+  const p95HoldoutNames = p95Holdouts.map((entry, index) => {
+    const record = asRecord(entry, `headless performance leadership scorecard.summary.p95Holdouts[${index.toString()}]`)
+    return readString(record, 'workload', `headless performance leadership scorecard.summary.p95Holdouts[${index.toString()}]`)
+  })
 
   const alignedVersionEntries = [
     ['.release-please-manifest.json', releasePleaseVersion],
@@ -209,6 +416,38 @@ async function buildEvidence(): Promise<PublicEvidence> {
       throw new Error(`${context} version ${version} must match ${packageName}@${packageVersion}`)
     }
   }
+
+  const hyperFormulaComparison = readComparisonEvidence({
+    artifact: benchmarkArtifact,
+    artifactPath: 'packages/benchmarks/baselines/workpaper-vs-hyperformula.json',
+    coverageTier: 'workbook-wide',
+    engineName: 'HyperFormula',
+    version: readString(hyperformulaEngine, 'version', 'hyperformula engine'),
+    summaryMeanAndP95WinCount: readNumber(leadershipSummary, 'meanAndP95WinCount', 'headless performance leadership scorecard.summary'),
+    summaryMeanWinCount: readNumber(leadershipSummary, 'meanWinCount', 'headless performance leadership scorecard.summary'),
+    summaryP95WinCount: readNumber(leadershipSummary, 'p95WinCount', 'headless performance leadership scorecard.summary'),
+  })
+  const comparisonArtifacts = [
+    [readExtraBenchmark('TrueCalc'), trueCalcArtifact],
+    [readExtraBenchmark('Univer'), univerArtifact],
+    [readExtraBenchmark('xlsx-calc'), xlsxCalcArtifact],
+    [readExtraBenchmark('IronCalc Rust'), ironCalcRustArtifact],
+  ] as const
+  const comparisons = [
+    hyperFormulaComparison,
+    ...comparisonArtifacts.map(([entry, artifact]) =>
+      readComparisonEvidence({
+        artifact,
+        artifactPath: readString(entry, 'artifactPath', 'headless performance leadership scorecard extra benchmark'),
+        coverageTier: readString(entry, 'coverageTier', 'headless performance leadership scorecard extra benchmark'),
+        engineName: readString(entry, 'engineName', 'headless performance leadership scorecard extra benchmark'),
+        version: readString(entry, 'version', 'headless performance leadership scorecard extra benchmark'),
+        summaryMeanAndP95WinCount: readNumber(entry, 'meanAndP95WinCount', 'headless performance leadership scorecard extra benchmark'),
+        summaryMeanWinCount: readNumber(entry, 'meanWinCount', 'headless performance leadership scorecard extra benchmark'),
+        summaryP95WinCount: readNumber(entry, 'p95WinCount', 'headless performance leadership scorecard extra benchmark'),
+      }),
+    ),
+  ] as const
 
   return {
     schemaVersion: 1,
@@ -233,11 +472,55 @@ async function buildEvidence(): Promise<PublicEvidence> {
       meanAndP95WinCount: readNumber(leadershipSummary, 'meanAndP95WinCount', 'headless performance leadership scorecard.summary'),
       p95HoldoutCount: p95Holdouts.length,
     },
+    headlessPerformanceLeadership: {
+      artifactPath: 'packages/benchmarks/baselines/headless-performance-leadership-scorecard.json',
+      goalStatus: readString(leadershipScorecard, 'goalStatus', 'headless performance leadership scorecard'),
+      blanketHeadlessPerformanceLeadershipClaimAllowed: readBoolean(
+        leadershipClaimPolicy,
+        'blanketHeadlessPerformanceLeadershipClaimAllowed',
+        'headless performance leadership scorecard.claimPolicy',
+      ),
+      comparisonEngineCount: readNumber(leadershipSummary, 'comparisonEngineCount', 'headless performance leadership scorecard.summary'),
+      comparisonEngines: readStringArray(leadershipSummary, 'comparisonEngines', 'headless performance leadership scorecard.summary'),
+      workbookWideComparisonEngineCount: readNumber(
+        leadershipSummary,
+        'workbookWideComparisonEngineCount',
+        'headless performance leadership scorecard.summary',
+      ),
+      workbookWideComparisonEngines: readStringArray(
+        leadershipSummary,
+        'workbookWideComparisonEngines',
+        'headless performance leadership scorecard.summary',
+      ),
+      comparableWorkloadCount: readNumber(
+        leadershipSummary,
+        'comparableWorkloadCount',
+        'headless performance leadership scorecard.summary',
+      ),
+      meanAndP95WinCount: readNumber(leadershipSummary, 'meanAndP95WinCount', 'headless performance leadership scorecard.summary'),
+      meanWinCount: readNumber(leadershipSummary, 'meanWinCount', 'headless performance leadership scorecard.summary'),
+      p95WinCount: readNumber(leadershipSummary, 'p95WinCount', 'headless performance leadership scorecard.summary'),
+      meanGeomeanRatio: readNumber(leadershipSummary, 'meanGeomeanRatio', 'headless performance leadership scorecard.summary'),
+      p95GeomeanRatio: readNumber(leadershipSummary, 'p95GeomeanRatio', 'headless performance leadership scorecard.summary'),
+      worstMeanRatio: readNumber(leadershipSummary, 'worstMeanRatio', 'headless performance leadership scorecard.summary'),
+      worstMeanRatioWorkload: readString(leadershipSummary, 'worstMeanRatioWorkload', 'headless performance leadership scorecard.summary'),
+      worstP95Ratio: readNumber(leadershipSummary, 'worstP95Ratio', 'headless performance leadership scorecard.summary'),
+      worstP95RatioWorkload: readString(leadershipSummary, 'worstP95RatioWorkload', 'headless performance leadership scorecard.summary'),
+      p95HoldoutCount: p95HoldoutNames.length,
+      p95Holdouts: p95HoldoutNames,
+      tenXMeanAndP95WorkloadCountAgainstHyperFormula: readNumber(
+        leadershipSummary,
+        'tenXMeanAndP95WorkloadCountAgainstHyperFormula',
+        'headless performance leadership scorecard.summary',
+      ),
+      comparisons,
+    },
   }
 }
 
 async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
   const benchmark = evidence.workpaperVsHyperFormula
+  const leadership = evidence.headlessPerformanceLeadership
   const overall = benchmark.overall
   const publicLane = benchmark.publicLane
   const holdout = benchmark.holdout
@@ -246,12 +529,21 @@ async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
   const holdoutHeadline = headline(holdout)
   const meanAndP95Headline = `${benchmark.meanAndP95WinCount.toString()}/${overall.comparableCount.toString()}`
   const p95Ratio = ratio3(overall.worstWorkpaperToHyperFormulaP95Ratio)
+  const allProviderHeadline = `${leadership.meanAndP95WinCount.toString()}/${leadership.comparableWorkloadCount.toString()}`
   const currentEvidenceTokens = new Set([
     meanHeadline,
     `${overall.workpaperWins.toString()} of ${overall.comparableCount.toString()}`,
     publicHeadline,
     holdoutHeadline,
     meanAndP95Headline,
+    allProviderHeadline,
+    leadership.goalStatus,
+    leadership.comparisonEngineCount.toString(),
+    leadership.comparisonEngines.join(', '),
+    leadership.workbookWideComparisonEngines.join(', '),
+    leadership.worstMeanRatio.toString(),
+    leadership.worstP95Ratio.toString(),
+    leadership.tenXMeanAndP95WorkloadCountAgainstHyperFormula.toString(),
     p95Ratio,
     overall.directionalMeanRatioGeomean.toString(),
     overall.directionalP95RatioGeomean.toString(),
@@ -260,6 +552,19 @@ async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
     benchmark.generatedAt,
     `@bilig/headless\` \`${benchmark.workpaperPackageVersion}`,
   ])
+  for (const comparison of leadership.comparisons) {
+    currentEvidenceTokens.add(comparison.engineName)
+    currentEvidenceTokens.add(comparison.version)
+    currentEvidenceTokens.add(comparison.coverageTier)
+    currentEvidenceTokens.add(`${comparison.meanAndP95WinCount.toString()}/${comparison.comparableWorkloadCount.toString()}`)
+    currentEvidenceTokens.add(`${comparison.meanWinCount.toString()}/${comparison.comparableWorkloadCount.toString()}`)
+    currentEvidenceTokens.add(`${comparison.p95WinCount.toString()}/${comparison.comparableWorkloadCount.toString()}`)
+    currentEvidenceTokens.add(comparison.directionalMeanRatioGeomean.toString())
+    currentEvidenceTokens.add(comparison.directionalP95RatioGeomean.toString())
+    currentEvidenceTokens.add(comparison.worstMeanRatio.toString())
+    currentEvidenceTokens.add(comparison.worstP95Ratio.toString())
+    currentEvidenceTokens.add(comparison.generatedAt)
+  }
   const scannedPaths = [
     'README.md',
     'packages/headless/README.md',
@@ -382,6 +687,21 @@ async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
     ['docs/what-workpaper-benchmark-proves.md', benchmarkExplainer],
     ['docs/headless-workpaper-benchmark-evidence.md', benchmarkEvidence],
   ] as const) {
+    requireIncludes(content, '`headless-performance-leadership-scorecard.json`', path)
+    requireIncludes(content, `\`${leadership.goalStatus}\``, path)
+    requireIncludes(content, `\`${allProviderHeadline}\` comparable workloads`, path)
+    requireIncludes(content, `\`${leadership.comparisonEngineCount.toString()}\` comparison engines`, path)
+    requireIncludes(content, `\`${leadership.workbookWideComparisonEngineCount.toString()}\` workbook-wide engines`, path)
+    requireIncludes(content, leadership.comparisonEngines.join(', '), path)
+    for (const comparison of leadership.comparisons) {
+      requireProviderBenchmarkTableRow(content, comparison, path)
+      requireIncludes(content, comparison.artifactPath, path)
+      requireIncludes(content, `\`${ratio4(comparison.directionalMeanRatioGeomean)}\``, path)
+      requireIncludes(content, `\`${ratio4(comparison.directionalP95RatioGeomean)}\``, path)
+      if (comparison.unsupportedWorkloadCount > 0) {
+        requireIncludes(content, `\`${comparison.unsupportedWorkloadCount.toString()}\` unsupported`, path)
+      }
+    }
     requireIncludes(content, `\`${meanHeadline}\` mean-latency wins`, path)
     requireBenchmarkTableRow(content, 'Overall', overall.comparableCount, overall.workpaperWins, path)
     requireBenchmarkTableRow(content, 'Public', publicLane.comparableCount, publicLane.workpaperWins, path)
@@ -393,6 +713,10 @@ async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
     requireIncludes(content, `\`${overall.worstP95RatioWorkload}\``, path)
     requireIncludes(content, `\`${overall.worstWorkpaperToHyperFormulaP95Ratio.toString()}\``, path)
   }
+
+  requireIncludes(index, `>${leadership.comparisonEngineCount.toString()} engines<`, 'docs/index.html')
+  requireIncludes(index, leadership.comparisonEngines.join(', '), 'docs/index.html')
+  requireIncludes(index, `${allProviderHeadline} comparable workloads win on both mean and p95`, 'docs/index.html')
 
   requireIncludes(hyperformulaAlternative, `\`${meanHeadline}\` mean wins`, 'docs/hyperformula-alternative-headless-workpaper.md')
   requireIncludes(
@@ -406,9 +730,20 @@ async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
     'docs/hyperformula-alternative-headless-workpaper.md',
   )
 
-  requireIncludes(svgCard, `>${meanHeadline}</text>`, 'docs/assets/workpaper-benchmark-card.svg')
-  requireIncludes(svgCard, `>${publicHeadline}</text>`, 'docs/assets/workpaper-benchmark-card.svg')
-  requireIncludes(svgCard, `>${holdoutHeadline}</text>`, 'docs/assets/workpaper-benchmark-card.svg')
+  requireIncludes(svgCard, `>${allProviderHeadline}</text>`, 'docs/assets/workpaper-benchmark-card.svg')
+  requireIncludes(
+    svgCard,
+    `Across ${leadership.comparisonEngineCount.toString()} comparison engines`,
+    'docs/assets/workpaper-benchmark-card.svg',
+  )
+  for (const comparison of leadership.comparisons) {
+    requireIncludes(svgCard, `>${comparison.engineName}</text>`, 'docs/assets/workpaper-benchmark-card.svg')
+    requireIncludes(
+      svgCard,
+      `>${comparison.meanAndP95WinCount.toString()}/${comparison.comparableWorkloadCount.toString()}</text>`,
+      'docs/assets/workpaper-benchmark-card.svg',
+    )
+  }
   requireIncludes(svgCard, `${overall.worstP95RatioWorkload} p95: ${p95Ratio}`, 'docs/assets/workpaper-benchmark-card.svg')
 }
 

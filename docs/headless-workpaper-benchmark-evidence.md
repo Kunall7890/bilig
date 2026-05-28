@@ -5,45 +5,62 @@ Status: public evidence note for `@bilig/headless`
 This note keeps the public performance claim auditable from checked-in repo
 artifacts instead of README copy alone.
 
-## Current Artifact
-
-The primary workbook-wide decision artifact is
-`packages/benchmarks/baselines/workpaper-vs-hyperformula.json`.
-
-The additional scalar formula-engine comparison artifact is
-`packages/benchmarks/baselines/workpaper-vs-truecalc.json`.
-
-The additional limited workbook-wide comparison artifact is
-`packages/benchmarks/baselines/workpaper-vs-xlsx-calc.json`.
+## Current Source Of Truth
 
 The goal-tracking scorecard for broad headless-engine performance leadership is
 `packages/benchmarks/baselines/headless-performance-leadership-scorecard.json`.
-It intentionally stays `active-not-achieved` until the checked-in evidence covers
-at least two workbook-wide direct headless spreadsheet engines across the full
-eligible workload set and every comparable workload wins both mean and p95
-latency. Scalar formula-engine lanes and partial workbook-wide lanes are tracked
-as useful evidence, but they do not satisfy broad coverage alone.
+The short artifact name is `headless-performance-leadership-scorecard.json`.
+It currently reports `achieved`: `100/100` comparable workloads win both mean
+and p95 latency across `5` comparison engines and `2` workbook-wide engines.
+
+Comparison engines: HyperFormula, TrueCalc, Univer, xlsx-calc, IronCalc Rust.
+
+| Provider | Coverage tier | Mean+p95 wins | Mean wins | p95 wins | Mean geomean ratio | p95 geomean ratio | Unsupported |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| HyperFormula | workbook-wide | `100/100` | `100/100` | `100/100` | `0.2586x` | `0.2807x` | `0` |
+| Univer | workbook-wide | `100/100` | `100/100` | `100/100` | `0.0028x` | `0.0034x` | `0` |
+| IronCalc Rust | workbook-wide-limited | `90/90` | `90/90` | `90/90` | `0.1183x` | `0.1581x` | `10` unsupported |
+| xlsx-calc | workbook-wide-limited | `16/16` | `16/16` | `16/16` | `0.0839x` | `0.0786x` | `0` |
+| TrueCalc | scalar-formula | `7/7` | `7/7` | `7/7` | `0.1837x` | `0.2359x` | `0` |
+
+Coverage tiers matter:
+
+- `workbook-wide`: direct headless workbook engine comparison over the broad
+  eligible workload suite.
+- `workbook-wide-limited`: direct workbook comparison for the subset the other
+  engine can represent fairly.
+- `scalar-formula`: scalar formula API comparison only; it does not claim graph,
+  range, structural-edit, or workbook lifecycle coverage.
+
+## Artifact Inventory
+
+- Primary workbook-wide artifact:
+  `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`.
+- Additional workbook-wide artifact:
+  `packages/benchmarks/baselines/workpaper-vs-univer.json`.
+- Limited workbook-wide artifacts:
+  `packages/benchmarks/baselines/workpaper-vs-ironcalc-rust.json` and
+  `packages/benchmarks/baselines/workpaper-vs-xlsx-calc.json`.
+- Scalar formula-engine artifact:
+  `packages/benchmarks/baselines/workpaper-vs-truecalc.json`.
+- Public generated evidence:
+  `docs/public-evidence.json`.
 
 Current checked-in metadata:
 
-- generated at `2026-05-23T17:51:04.599Z`
-- benchmark sampling: `200` measured samples after `2` warmup samples
-- WorkPaper package in the benchmark artifact: `@bilig/headless` `0.55.0`
+- benchmark sampling: `200` measured samples after `2` warmup samples for the
+  broad WorkPaper-vs-HyperFormula artifact
 - comparison engine: HyperFormula `3.2.0`, local checkout commit
-  `9a510a2acb97c3d3490f9e3b9e961a1c4a98b9ad`, GPL-v3 license key
-- scalar formula comparison engine: TrueCalc `0.6.4`, `7` comparable scalar
-  workloads via `@truecalc/core`
-- limited workbook-wide comparison engine: xlsx-calc `0.9.2`, `16` comparable
-  recalculation workloads covering aggregate, aggregate-2d, overlapping-range,
-  exact lookup, approximate lookup, formula-chain, fanout, range-stat, and
-  cross-sheet families
+  `9a510a2acb97c3d3490f9e3b9e961a1c4a98b9ad`
+- comparison engine: Univer `0.23.0`
+- comparison engine: IronCalc Rust `0.7.1`, pinned through
+  `ironcalc_base = "=0.7.1"` in a release-mode Rust sidecar
+- comparison engine: xlsx-calc `0.9.2`
+- comparison engine: TrueCalc `0.6.4`
 
-## What The Claim Is
+## Primary Workbook-Wide Lane
 
-The current scorecard is not a blanket performance-leadership claim. A fresh
-checked-in run shows WorkPaper leading HyperFormula in aggregate across the
-directly comparable workbook-wide headless spreadsheet-engine workloads, with
-tail-latency evidence kept visible. The current checked-in artifact records
+The current checked-in WorkPaper-vs-HyperFormula artifact records WorkPaper
 `100/100` mean-latency wins:
 
 | Lane    | Comparable Workloads | WorkPaper Mean Wins | HyperFormula Mean Wins |
@@ -52,6 +69,8 @@ tail-latency evidence kept visible. The current checked-in artifact records
 | Public  |                 `73` |                `73` |                    `0` |
 | Holdout |                 `27` |                `27` |                    `0` |
 
+The artifact was generated at `2026-05-23T17:51:04.599Z`.
+
 The overall directional mean-ratio geomean is `0.2586071973976171`. The overall
 directional p95-ratio geomean is `0.2806672128213908`. Ratios below `1.0` mean
 WorkPaper is faster for that metric.
@@ -59,37 +78,8 @@ WorkPaper is faster for that metric.
 The current worst mean row is `sheet-rename-dependencies`, with a mean ratio of
 `0.8056914279903578`. The current worst p95 row is
 `sheet-rename-dependencies`, with a p95 ratio of `0.7917355369127405`. The
-headless leadership scorecard currently records
-`100/100` workloads winning both mean and p95 against HyperFormula.
-
-It is also not a blanket "fastest against every formula evaluator" claim. The
-TrueCalc scalar lane currently reports `7/7` WorkPaper mean+p95 wins, with a
-directional mean-ratio geomean of `0.1836987971377073`. That lane stays in the
-leadership scorecard as limited scalar coverage rather than proof of workbook
-dependency-graph, range, or structural-edit leadership.
-
-The xlsx-calc lane is a direct workbook-wide recalculation comparison for the
-formula families both engines can evaluate equivalently. It currently reports
-`16/16` WorkPaper mean+p95 wins with a directional mean-ratio geomean of
-`0.09196510101241956`, but it covers only the formula families xlsx-calc
-supports equivalently, so the scorecard treats it as workbook-wide-limited
-coverage rather than proof of blanket leadership.
-
-## How To Read The p95 Evidence
-
-The `100/100` count is about mean latency: for each comparable workload row,
-WorkPaper's average measured time is lower than HyperFormula's average measured
-time. Mean wins are useful because they summarize the normal cost of each
-workload, and the current scorecard keeps the worst p95 row visible.
-
-Each p95 row asks a different question: "near the slow end of this workload's
-sample set, which engine was faster?" A single row can lose on p95 even when its
-mean wins, because a small number of slower samples can move the tail without
-moving the average enough to flip the mean result.
-
-The p95 geomean is an aggregate across the per-workload p95 ratios. Read the
-current result as: WorkPaper leads the overall mean and p95 aggregate, with no
-current comparable p95 holdout in this checked-in run.
+headless leadership scorecard records `100/100` workloads winning both mean and
+p95 against HyperFormula.
 
 ## What Is Measured
 
@@ -111,28 +101,46 @@ Scorecard-eligible families cover:
 The scorecard excludes the `config-toggle` control family and `dynamic-array`
 leadership-only family from the directly comparable win count.
 
+## What Is Not Claimed
+
+This is not a blanket "fastest at every spreadsheet task" claim.
+
+IronCalc Rust has `10` unsupported workload adapters in the current artifact.
+Those rows are recorded explicitly and are not counted as wins.
+
+TrueCalc is scalar-only coverage. xlsx-calc and IronCalc Rust are
+workbook-wide-limited lanes. HyperFormula and Univer are the direct workbook-wide
+lanes that satisfy the broad leadership coverage criterion.
+
+Browser-grid rendering, import/export fidelity, collaborative sync, and every
+possible user workbook are outside this headless runtime scorecard.
+
 ## How To Verify
 
-Check that the committed artifact still has the expected workload coverage and
+Check that the committed artifacts still have the expected workload coverage and
 shape:
 
 ```bash
 pnpm workpaper:bench:competitive:check
-pnpm workpaper:bench:truecalc:check
+pnpm workpaper:bench:univer:check
+pnpm workpaper:bench:ironcalc-rust:check
 pnpm workpaper:bench:xlsx-calc:check
+pnpm workpaper:bench:truecalc:check
 pnpm headless:performance:check
+pnpm public:evidence:check
 ```
 
-Regenerate timing evidence only when intentionally refreshing the benchmark
-artifact:
+Regenerate timing evidence only when intentionally refreshing benchmark
+artifacts:
 
 ```bash
 pnpm workpaper:bench:competitive:generate
-pnpm workpaper:bench:competitive:check
-pnpm workpaper:bench:truecalc:generate
-pnpm workpaper:bench:truecalc:check
+pnpm workpaper:bench:univer:generate
+pnpm workpaper:bench:ironcalc-rust:generate
 pnpm workpaper:bench:xlsx-calc:generate
-pnpm workpaper:bench:xlsx-calc:check
+pnpm workpaper:bench:truecalc:generate
+pnpm headless:performance:generate
+pnpm public:evidence:generate
 ```
 
 Do not change workload sizes, sampling, scoring, or definitions to preserve a

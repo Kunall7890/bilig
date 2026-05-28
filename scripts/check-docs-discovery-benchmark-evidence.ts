@@ -13,11 +13,20 @@ type PublicBenchmarkEvidence = {
     }
     readonly meanAndP95WinCount: number
   }
+  readonly headlessPerformanceLeadership: {
+    readonly comparisonEngineCount: number
+    readonly comparisonEngines: readonly string[]
+    readonly comparableWorkloadCount: number
+    readonly meanAndP95WinCount: number
+    readonly workbookWideComparisonEngineCount: number
+  }
 }
 
 export type BenchmarkDiscoveryEvidence = {
   readonly comparableCount: number
   readonly meanAndP95Headline: string
+  readonly allProviderMeanAndP95Headline: string
+  readonly allProviderSummary: string
   readonly meanWinHeadline: string
   readonly meanWinSentencePrefix: string
   readonly packageVersion: string
@@ -35,11 +44,14 @@ export function getBenchmarkDiscoveryEvidence(): BenchmarkDiscoveryEvidence {
 function readBenchmarkDiscoveryEvidence(): BenchmarkDiscoveryEvidence {
   const evidence = parsePublicBenchmarkEvidence(readFileSync(new URL('../docs/public-evidence.json', import.meta.url), 'utf8'))
   const overall = evidence.workpaperVsHyperFormula.overall
+  const leadership = evidence.headlessPerformanceLeadership
   const p95HoldoutRatio = `${overall.worstWorkpaperToHyperFormulaP95Ratio.toFixed(3).replace(/0+$/u, '').replace(/\.$/u, '')}x`
 
   return {
     comparableCount: overall.comparableCount,
     meanAndP95Headline: `${evidence.workpaperVsHyperFormula.meanAndP95WinCount}/${overall.comparableCount}`,
+    allProviderMeanAndP95Headline: `${leadership.meanAndP95WinCount}/${leadership.comparableWorkloadCount}`,
+    allProviderSummary: `${leadership.meanAndP95WinCount}/${leadership.comparableWorkloadCount} comparable workloads across ${leadership.comparisonEngineCount} comparison engines`,
     meanWinHeadline: `${overall.workpaperWins}/${overall.comparableCount}`,
     meanWinSentencePrefix: `${overall.workpaperWins} of ${overall.comparableCount}`,
     packageVersion: evidence.package.version,
@@ -59,11 +71,17 @@ function parsePublicBenchmarkEvidence(rawEvidence: string): PublicBenchmarkEvide
 }
 
 function isPublicBenchmarkEvidence(value: unknown): value is PublicBenchmarkEvidence {
-  if (!isRecord(value) || !isRecord(value.package) || !isRecord(value.workpaperVsHyperFormula)) {
+  if (
+    !isRecord(value) ||
+    !isRecord(value.package) ||
+    !isRecord(value.workpaperVsHyperFormula) ||
+    !isRecord(value.headlessPerformanceLeadership)
+  ) {
     return false
   }
 
   const { overall } = value.workpaperVsHyperFormula
+  const leadership = value.headlessPerformanceLeadership
   return (
     typeof value.package.version === 'string' &&
     isRecord(overall) &&
@@ -71,7 +89,12 @@ function isPublicBenchmarkEvidence(value: unknown): value is PublicBenchmarkEvid
     Number.isFinite(overall.comparableCount) &&
     Number.isFinite(overall.workpaperWins) &&
     typeof overall.worstP95RatioWorkload === 'string' &&
-    Number.isFinite(overall.worstWorkpaperToHyperFormulaP95Ratio)
+    Number.isFinite(overall.worstWorkpaperToHyperFormulaP95Ratio) &&
+    Number.isFinite(leadership.comparisonEngineCount) &&
+    Array.isArray(leadership.comparisonEngines) &&
+    Number.isFinite(leadership.comparableWorkloadCount) &&
+    Number.isFinite(leadership.meanAndP95WinCount) &&
+    Number.isFinite(leadership.workbookWideComparisonEngineCount)
   )
 }
 

@@ -685,25 +685,26 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
               <p class="kicker">Benchmark</p>
               <h2 id="proof-title">The benchmark is public. So is the caveat.</h2>
               <p>
-                The checked JSON has bilig ahead on the aggregate mean and p95 scorecard, with holdouts visible.
-                <span>The worst p95 row is named beside the number.</span>
+                The checked scorecard has bilig ahead across HyperFormula, TrueCalc, Univer, xlsx-calc, IronCalc Rust.
+                <span>Coverage tiers and unsupported rows stay visible.</span>
               </p>
             </div>
 
             <div class="proof-board" aria-label="Benchmark evidence">
               <div class="proof-board-head">
-                <span>workpaper-vs-hyperformula.json</span>
-                <strong>current run</strong>
+                <span>headless-performance-leadership-scorecard.json</span>
+                <strong>5 engines</strong>
               </div>
 
               <div class="proof-result">
                 <div class="proof-metric">
-                  <span class="proof-label">comparable mean rows</span>
+                  <span class="proof-label">mean+p95 scorecard</span>
                   <strong>100/100</strong>
                 </div>
                 <p>
-                  100 of 100 comparable mean-latency rows are faster in the checked file. sheet-rename-dependencies is the current worst p95
-                  row:
+                  100/100 comparable workloads win on both mean and p95 in the checked leadership scorecard.
+                  <span>100 of 100 comparable mean-latency rows are faster in the checked HyperFormula file.</span>
+                  sheet-rename-dependencies is the current worst p95 row:
                   <code>0.792x</code>. Browser UI rendering is not part of this benchmark.
                 </p>
               </div>
@@ -711,13 +712,17 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
               <dl class="proof-facts">
                 <div class="proof-fact proof-command">
                   <dt>Command</dt>
-                  <dd><code>pnpm workpaper:bench:competitive:check</code></dd>
+                  <dd><code>pnpm headless:performance:check</code></dd>
                 </div>
                 <div class="proof-fact proof-row-code">
                   <dt>Artifact</dt>
                   <dd>
-                    <code>packages/benchmarks/baselines/<wbr />workpaper-vs-hyperformula.json</code>
+                    <code>packages/benchmarks/baselines/<wbr />headless-performance-leadership-scorecard.json</code>
                   </dd>
+                </div>
+                <div class="proof-fact">
+                  <dt>Providers</dt>
+                  <dd>HyperFormula, TrueCalc, Univer, xlsx-calc, IronCalc Rust.</dd>
                 </div>
                 <div class="proof-fact">
                   <dt>Worst p95</dt>
