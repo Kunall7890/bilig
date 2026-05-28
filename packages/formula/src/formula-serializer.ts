@@ -84,14 +84,10 @@ export function serializeFormula(node: FormulaNode, parentPrecedence = 0, parent
     }
     case 'BinaryExpr': {
       const precedence = BINARY_PRECEDENCE[node.operator]
-      const isRightAssociative = node.operator === '^'
       const left = serializeFormula(node.left, precedence, 'left')
       const right = serializeFormula(node.right, precedence, 'right')
       const output = `${left}${node.operator}${right}`
-      const needsParens =
-        precedence < parentPrecedence ||
-        (precedence === parentPrecedence &&
-          ((parentAssociativity === 'left' && isRightAssociative) || (parentAssociativity === 'right' && !isRightAssociative)))
+      const needsParens = precedence < parentPrecedence || (precedence === parentPrecedence && parentAssociativity === 'right')
       return needsParens ? `(${output})` : output
     }
   }

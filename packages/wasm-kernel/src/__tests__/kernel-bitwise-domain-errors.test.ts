@@ -151,4 +151,30 @@ describe('wasm kernel bitwise error semantics', () => {
       expectErrorCell(kernel, outputs[index], ErrorCode.Value)
     }
   })
+
+  it('rejects malformed variadic bitwise programs', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(24, 0, 12, 1, 1)
+    kernel.writeCells(new Uint8Array(24), new Float64Array(24), new Uint32Array(24), new Uint16Array(24))
+
+    const programs = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Bitand, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Bitor, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Bitxor, 3), encodeRet()],
+    ])
+    const outputs = Uint32Array.from(Array.from({ length: 3 }, (_, index) => cellIndex(1, index, width)))
+    kernel.uploadPrograms(programs.programs, programs.offsets, programs.lengths, outputs)
+    const constants = packConstants([
+      [6, 3, 1],
+      [6, 3, 1],
+      [6, 3, 1],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(outputs)
+
+    for (const output of outputs) {
+      expectErrorCell(kernel, output, ErrorCode.Value)
+    }
+  })
 })

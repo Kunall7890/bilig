@@ -491,6 +491,45 @@ describe('formula parser/compiler edges', () => {
     })
   })
 
+  it('parses unary negation with Excel exponent precedence', () => {
+    expect(parseFormula('-3^2')).toEqual({
+      kind: 'BinaryExpr',
+      operator: '^',
+      left: {
+        kind: 'UnaryExpr',
+        operator: '-',
+        argument: { kind: 'NumberLiteral', value: 3 },
+      },
+      right: { kind: 'NumberLiteral', value: 2 },
+    })
+    expect(serializeFormula(parseFormula('-3^2'))).toBe('-3^2')
+    expect(serializeFormula(parseFormula('-(3^2)'))).toBe('-(3^2)')
+
+    expect(evaluatePlan(compileFormula('-3^2').jsPlan, context)).toEqual({ tag: ValueTag.Number, value: 9 })
+    expect(evaluatePlan(compileFormula('-(3^2)').jsPlan, context)).toEqual({ tag: ValueTag.Number, value: -9 })
+    expect(evaluatePlan(compileFormula('-3^0.5').jsPlan, context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+    expect(evaluatePlan(compileFormula('2^-3').jsPlan, context)).toEqual({ tag: ValueTag.Number, value: 0.125 })
+  })
+
+  it('parses chained exponentiation left-to-right like Excel', () => {
+    expect(parseFormula('2^3^2')).toEqual({
+      kind: 'BinaryExpr',
+      operator: '^',
+      left: {
+        kind: 'BinaryExpr',
+        operator: '^',
+        left: { kind: 'NumberLiteral', value: 2 },
+        right: { kind: 'NumberLiteral', value: 3 },
+      },
+      right: { kind: 'NumberLiteral', value: 2 },
+    })
+    expect(serializeFormula(parseFormula('2^3^2'))).toBe('2^3^2')
+    expect(serializeFormula(parseFormula('2^(3^2)'))).toBe('2^(3^2)')
+
+    expect(evaluatePlan(compileFormula('2^3^2').jsPlan, context)).toEqual({ tag: ValueTag.Number, value: 64 })
+    expect(evaluatePlan(compileFormula('2^(3^2)').jsPlan, context)).toEqual({ tag: ValueTag.Number, value: 512 })
+  })
+
   it('evaluates lowered plans across comparison, unary, jump, and builtin error paths', () => {
     expect(
       evaluatePlan(

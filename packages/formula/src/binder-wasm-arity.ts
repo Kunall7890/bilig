@@ -219,7 +219,6 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
     case 'BITAND':
     case 'BITOR':
     case 'BITXOR':
-      return argc >= 2
     case 'BITLSHIFT':
     case 'BITRSHIFT':
       return argc === 2

@@ -346,7 +346,20 @@ describe('translateFormulaReferences', () => {
         },
         right: { kind: 'NumberLiteral', value: 4 },
       }),
-    ).toBe('(2^3)^4')
+    ).toBe('2^3^4')
+    expect(
+      serializeFormula({
+        kind: 'BinaryExpr',
+        operator: '^',
+        left: { kind: 'NumberLiteral', value: 2 },
+        right: {
+          kind: 'BinaryExpr',
+          operator: '^',
+          left: { kind: 'NumberLiteral', value: 3 },
+          right: { kind: 'NumberLiteral', value: 4 },
+        },
+      }),
+    ).toBe('2^(3^4)')
     expect(
       serializeFormula({
         kind: 'BinaryExpr',

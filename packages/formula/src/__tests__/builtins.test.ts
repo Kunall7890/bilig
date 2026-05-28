@@ -63,11 +63,11 @@ describe('formula builtins', () => {
       value: 3,
     })
 
-    expect(BITAND({ tag: ValueTag.Number, value: 6 }, { tag: ValueTag.Number, value: 3 }, { tag: ValueTag.Number, value: 1 })).toEqual({
+    expect(BITAND({ tag: ValueTag.Number, value: 6 }, { tag: ValueTag.Number, value: 3 })).toEqual({
       tag: ValueTag.Number,
-      value: 0,
+      value: 2,
     })
-    expect(BITOR({ tag: ValueTag.Number, value: 6 }, { tag: ValueTag.Number, value: 3 }, { tag: ValueTag.Number, value: 1 })).toEqual({
+    expect(BITOR({ tag: ValueTag.Number, value: 6 }, { tag: ValueTag.Number, value: 3 })).toEqual({
       tag: ValueTag.Number,
       value: 7,
     })
@@ -81,6 +81,20 @@ describe('formula builtins', () => {
       tag: ValueTag.Error,
       code: ErrorCode.Value,
     })
+  })
+
+  it('rejects bitwise calls that do not have exactly two arguments', () => {
+    const threeArgs = [
+      { tag: ValueTag.Number, value: 6 },
+      { tag: ValueTag.Number, value: 3 },
+      { tag: ValueTag.Number, value: 1 },
+    ] as const
+
+    for (const name of ['BITAND', 'BITOR', 'BITXOR', 'BITLSHIFT', 'BITRSHIFT']) {
+      const builtin = getBuiltin(name)!
+      expect(builtin({ tag: ValueTag.Number, value: 1 })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+      expect(builtin(...threeArgs)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    }
   })
 
   it('coerces direct empty text aggregate arguments consistently with Excel numeric argument lists', () => {

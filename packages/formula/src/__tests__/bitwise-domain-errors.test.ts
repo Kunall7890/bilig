@@ -44,4 +44,12 @@ describe('bitwise math domain errors', () => {
     expect(getBuiltin('BITLSHIFT')?.(num(8), num(-1))).toEqual(num(4))
     expect(getBuiltin('BITRSHIFT')?.(num(8), num(-1))).toEqual(num(16))
   })
+
+  it('requires exactly two bitwise arguments', () => {
+    for (const name of ['BITAND', 'BITOR', 'BITXOR', 'BITLSHIFT', 'BITRSHIFT']) {
+      const builtin = getBuiltin(name)!
+      expect(builtin(num(1))).toEqual(valueError)
+      expect(builtin(num(6), num(3), num(1))).toEqual(valueError)
+    }
+  })
 })

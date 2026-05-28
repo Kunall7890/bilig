@@ -35,6 +35,7 @@ const PRECEDENCE: Record<string, number> = {
   caret: 5,
   colon: 6,
 }
+const UNARY_PRECEDENCE = PRECEDENCE['colon']! + 1
 
 const ERROR_LITERAL_CODES: Record<string, ErrorCode> = {
   '#NULL!': ErrorCode.Null,
@@ -377,7 +378,7 @@ export function parseFormula(source: string): FormulaNode {
       result = {
         kind: 'UnaryExpr',
         operator: token.kind === 'plus' ? '+' : '-',
-        argument: parseExpression(PRECEDENCE['caret']),
+        argument: parseExpression(UNARY_PRECEDENCE),
       } satisfies UnaryExprNode
     } else if (token.kind === 'lbrace') {
       result = parseArrayConstant()
@@ -512,7 +513,7 @@ export function parseFormula(source: string): FormulaNode {
         continue
       }
 
-      const right = parseExpression(token.kind === 'caret' ? precedence : precedence + 1)
+      const right = parseExpression(precedence + 1)
       const operatorMap: Record<string, BinaryExprNode['operator']> = {
         plus: '+',
         minus: '-',

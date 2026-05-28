@@ -76,7 +76,7 @@ export function tryApplyLogicInfoBuiltin(
   outputStringLengths: Uint32Array,
   outputStringData: Uint16Array,
 ): i32 {
-  if ((builtinId == BuiltinId.Bitand || builtinId == BuiltinId.Bitor || builtinId == BuiltinId.Bitxor) && argc >= 2) {
+  if ((builtinId == BuiltinId.Bitand || builtinId == BuiltinId.Bitor || builtinId == BuiltinId.Bitxor) && argc == 2) {
     let accumulatorValue = coerceBitwiseInteger(tagStack[base], valueStack[base])
     let errorCode = bitwiseErrorCode(accumulatorValue)
     if (errorCode != 0) {

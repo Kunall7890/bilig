@@ -498,6 +498,23 @@ describe('WorkPaper parity surface', () => {
     expect(workbook.calculateScalarFormula('=(-8)^(1/3)')).toEqual({ tag: ValueTag.Number, value: -2 })
   })
 
+  it('matches Excel unary negation precedence before exponentiation', () => {
+    const workbook = WorkPaper.buildEmpty()
+
+    expect(workbook.calculateScalarFormula('=-3^2')).toEqual({ tag: ValueTag.Number, value: 9 })
+    expect(workbook.calculateScalarFormula('=-(3^2)')).toEqual({ tag: ValueTag.Number, value: -9 })
+    expect(workbook.calculateScalarFormula('=-3^0.5')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+    expect(workbook.calculateScalarFormula('=2^-3')).toEqual({ tag: ValueTag.Number, value: 0.125 })
+  })
+
+  it('matches Excel left-to-right chained exponentiation', () => {
+    const workbook = WorkPaper.buildEmpty()
+
+    expect(workbook.calculateScalarFormula('=2^3^2')).toEqual({ tag: ValueTag.Number, value: 64 })
+    expect(workbook.calculateScalarFormula('=(2^3)^2')).toEqual({ tag: ValueTag.Number, value: 64 })
+    expect(workbook.calculateScalarFormula('=2^(3^2)')).toEqual({ tag: ValueTag.Number, value: 512 })
+  })
+
   it('covers mutations, preflights, history controls, clipboard, and fill helpers', () => {
     const workbook = WorkPaper.buildFromArray([[1, 2, '=A1+B1']])
     const sheetId = workbook.getSheetId('Sheet1')!

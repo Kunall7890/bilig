@@ -428,7 +428,7 @@ export function createMathBuiltins({
       return numberResult(moduloValue(dividend, divisor))
     },
     BITAND: (...args) => {
-      if (args.length < 2) {
+      if (args.length !== 2) {
         return valueError()
       }
       const first = coerceBitwiseOperand(args[0])
@@ -446,7 +446,7 @@ export function createMathBuiltins({
       return numberResult(Number(value))
     },
     BITOR: (...args) => {
-      if (args.length < 2) {
+      if (args.length !== 2) {
         return valueError()
       }
       const first = coerceBitwiseOperand(args[0])
@@ -464,7 +464,7 @@ export function createMathBuiltins({
       return numberResult(Number(value))
     },
     BITXOR: (...args) => {
-      if (args.length < 2) {
+      if (args.length !== 2) {
         return valueError()
       }
       const first = coerceBitwiseOperand(args[0])
@@ -481,7 +481,11 @@ export function createMathBuiltins({
       }
       return numberResult(Number(value))
     },
-    BITLSHIFT: (valueArg, shiftArg) => {
+    BITLSHIFT: (...args) => {
+      if (args.length !== 2) {
+        return valueError()
+      }
+      const [valueArg, shiftArg] = args
       const value = coerceBitwiseOperand(valueArg)
       if (typeof value !== 'bigint') {
         return value
@@ -493,7 +497,11 @@ export function createMathBuiltins({
       const numeric = Number(value)
       return numberResult(shift >= 0 ? numeric * 2 ** shift : Math.floor(numeric / 2 ** -shift))
     },
-    BITRSHIFT: (valueArg, shiftArg) => {
+    BITRSHIFT: (...args) => {
+      if (args.length !== 2) {
+        return valueError()
+      }
+      const [valueArg, shiftArg] = args
       const value = coerceBitwiseOperand(valueArg)
       if (typeof value !== 'bigint') {
         return value
