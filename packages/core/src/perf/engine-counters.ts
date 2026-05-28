@@ -42,6 +42,7 @@ export const ENGINE_COUNTER_KEYS = [
   'freshDirectScalarBulkReverseEdgeSlices',
   'freshDirectScalarFormulaObjectsMaterialized',
   'initialFreshDirectScalarFastBindings',
+  'initialFreshDirectAggregateFastBindings',
   'runtimeHydratedDirectAggregateFastBindings',
   'runtimeHydratedDirectScalarFastBindings',
   'structuralTransactions',
@@ -116,6 +117,7 @@ export function createEngineCounters(): EngineCounters {
     freshDirectScalarBulkReverseEdgeSlices: 0,
     freshDirectScalarFormulaObjectsMaterialized: 0,
     initialFreshDirectScalarFastBindings: 0,
+    initialFreshDirectAggregateFastBindings: 0,
     runtimeHydratedDirectAggregateFastBindings: 0,
     runtimeHydratedDirectScalarFastBindings: 0,
     structuralTransactions: 0,
@@ -142,8 +144,19 @@ export function createEngineCounters(): EngineCounters {
   }
 }
 
+const ZERO_ENGINE_COUNTERS: Readonly<EngineCounters> = createEngineCounters()
+
+export function createRuntimeEngineCounters(): EngineCounters {
+  const counters: EngineCounters = Object.create(ZERO_ENGINE_COUNTERS)
+  return counters
+}
+
 export function cloneEngineCounters(counters: Readonly<EngineCounters>): EngineCounters {
-  return { ...counters }
+  const clone = createRuntimeEngineCounters()
+  for (const key of ENGINE_COUNTER_KEYS) {
+    clone[key] = counters[key]
+  }
+  return clone
 }
 
 export function addEngineCounter(counters: EngineCounters, key: EngineCounterKey, delta = 1): number {
@@ -154,12 +167,21 @@ export function addEngineCounter(counters: EngineCounters, key: EngineCounterKey
 
 export function addEngineCounters(target: EngineCounters, delta: Readonly<Partial<EngineCounters>>): EngineCounters {
   for (const key of ENGINE_COUNTER_KEYS) {
-    target[key] += delta[key] ?? 0
+    const deltaValue = delta[key] ?? 0
+    if (deltaValue !== 0) {
+      target[key] += deltaValue
+    }
   }
   return target
 }
 
 export function resetEngineCounters(counters: EngineCounters): EngineCounters {
+  if (Object.getPrototypeOf(counters) === ZERO_ENGINE_COUNTERS) {
+    for (const key of ENGINE_COUNTER_KEYS) {
+      delete counters[key]
+    }
+    return counters
+  }
   for (const key of ENGINE_COUNTER_KEYS) {
     counters[key] = 0
   }

@@ -2,6 +2,8 @@ import { addEngineCounter, type EngineCounters } from './perf/engine-counters.js
 
 export const BLOCK_ROWS = 128
 export const BLOCK_COLS = 32
+const MAX_POOLED_SHEET_GRID_BLOCKS = 96
+const pooledSheetGridBlocks: Uint32Array[] = []
 
 function blockKey(row: number, col: number): number {
   return Math.floor(row / BLOCK_ROWS) * 1_000_000 + Math.floor(col / BLOCK_COLS)
@@ -73,7 +75,7 @@ export class SheetGrid {
     const key = blockKey(row, col)
     let block = blocks.get(key)
     if (!block) {
-      block = new Uint32Array(BLOCK_ROWS * BLOCK_COLS)
+      block = takeSheetGridBlock()
       blocks.set(key, block)
     }
     const offset = (row % BLOCK_ROWS) * BLOCK_COLS + (col % BLOCK_COLS)
@@ -93,6 +95,21 @@ export class SheetGrid {
     const offset = (row % BLOCK_ROWS) * BLOCK_COLS + (col % BLOCK_COLS)
     const value = block[offset]!
     return value === 0 ? -1 : value - 1
+  }
+
+  createPhysicalGetter(): (row: number, col: number) => number {
+    let cachedKey = -1
+    let cachedBlock: Uint32Array | undefined
+    return (row, col) => {
+      const key = blockKey(row, col)
+      const block = key === cachedKey ? cachedBlock : this.blocks.get(key)
+      cachedKey = key
+      cachedBlock = block
+      if (!block) return -1
+      const offset = (row % BLOCK_ROWS) * BLOCK_COLS + (col % BLOCK_COLS)
+      const value = block[offset]!
+      return value === 0 ? -1 : value - 1
+    }
   }
 
   forEachPhysicalRangeEntry(
@@ -162,7 +179,7 @@ export class SheetGrid {
       const key = blockKey(row, col)
       let block = key === cachedKey ? cachedBlock : this.blocks.get(key)
       if (!block) {
-        block = new Uint32Array(BLOCK_ROWS * BLOCK_COLS)
+        block = takeSheetGridBlock()
         this.blocks.set(key, block)
       }
       cachedKey = key
@@ -173,7 +190,15 @@ export class SheetGrid {
   }
 
   setDenseRowMajor(rowStart: number, colStart: number, rowCount: number, colCount: number, firstCellIndex: number): void {
+    this.setDenseRowMajorBlocks(rowStart, colStart, rowCount, colCount, firstCellIndex)
+  }
+
+  private setDenseRowMajorBlocks(rowStart: number, colStart: number, rowCount: number, colCount: number, firstCellIndex: number): void {
     const colEnd = colStart + colCount
+    if (colCount > 0 && colCount <= BLOCK_COLS && Math.floor(colStart / BLOCK_COLS) === Math.floor((colEnd - 1) / BLOCK_COLS)) {
+      this.setDenseRowMajorSingleBlockColumn(rowStart, colStart, rowCount, colCount, firstCellIndex)
+      return
+    }
     for (let rowOffset = 0; rowOffset < rowCount; rowOffset += 1) {
       const row = rowStart + rowOffset
       const blockRow = Math.floor(row / BLOCK_ROWS)
@@ -190,7 +215,7 @@ export class SheetGrid {
         const key = rowBlockKeyBase + blockCol
         let block = this.blocks.get(key)
         if (!block) {
-          block = new Uint32Array(BLOCK_ROWS * BLOCK_COLS)
+          block = takeSheetGridBlock()
           this.blocks.set(key, block)
         }
         for (let localCol = localColStart; localCol < localColEnd; localCol += 1) {
@@ -201,11 +226,53 @@ export class SheetGrid {
     }
   }
 
+  private setDenseRowMajorSingleBlockColumn(
+    rowStart: number,
+    colStart: number,
+    rowCount: number,
+    colCount: number,
+    firstCellIndex: number,
+  ): void {
+    const rowEnd = rowStart + rowCount
+    const blockCol = Math.floor(colStart / BLOCK_COLS)
+    const blockColBase = blockCol * BLOCK_COLS
+    const localColStart = colStart - blockColBase
+    let rowOffset = 0
+    while (rowOffset < rowCount) {
+      const row = rowStart + rowOffset
+      const blockRow = Math.floor(row / BLOCK_ROWS)
+      const blockRowBase = blockRow * BLOCK_ROWS
+      const rowsInBlock = Math.min(rowEnd, blockRowBase + BLOCK_ROWS) - row
+      const key = blockRow * 1_000_000 + blockCol
+      let block = this.blocks.get(key)
+      if (!block) {
+        block = takeSheetGridBlock()
+        this.blocks.set(key, block)
+      }
+      for (let localRowOffset = 0; localRowOffset < rowsInBlock; localRowOffset += 1) {
+        const localRow = row + localRowOffset - blockRowBase
+        const rowBlockOffset = localRow * BLOCK_COLS
+        const rowBaseCellIndex = firstCellIndex + (rowOffset + localRowOffset) * colCount
+        for (let colOffset = 0; colOffset < colCount; colOffset += 1) {
+          block[rowBlockOffset + localColStart + colOffset] = rowBaseCellIndex + colOffset + 1
+        }
+      }
+      rowOffset += rowsInBlock
+    }
+  }
+
   clear(row: number, col: number): void {
     const block = this.blocks.get(blockKey(row, col))
     if (!block) return
     const offset = (row % BLOCK_ROWS) * BLOCK_COLS + (col % BLOCK_COLS)
     block[offset] = 0
+  }
+
+  releaseBlocksToPool(): void {
+    for (const block of this.blocks.values()) {
+      releaseSheetGridBlock(block)
+    }
+    this.blocks.clear()
   }
 
   forEachInRange(rowStart: number, colStart: number, rowEnd: number, colEnd: number, fn: (cellIndex: number) => void): void {
@@ -450,5 +517,16 @@ export class SheetGrid {
       }
     })
     return changedEntries
+  }
+}
+
+function takeSheetGridBlock(): Uint32Array {
+  return pooledSheetGridBlocks.pop() ?? new Uint32Array(BLOCK_ROWS * BLOCK_COLS)
+}
+
+function releaseSheetGridBlock(block: Uint32Array): void {
+  block.fill(0)
+  if (pooledSheetGridBlocks.length < MAX_POOLED_SHEET_GRID_BLOCKS) {
+    pooledSheetGridBlocks.push(block)
   }
 }

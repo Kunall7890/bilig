@@ -32,7 +32,7 @@ export class WorkPaperSheetDimensionCache {
   }
 
   cacheInitialized(sheetId: number, dimensions: WorkPaperSheetDimensions, options: { readonly mayResizeDynamically?: boolean } = {}): void {
-    if (options.mayResizeDynamically === true || this.sheetHasSpills(sheetId)) {
+    if (options.mayResizeDynamically === true) {
       this.invalidate(sheetId)
       return
     }

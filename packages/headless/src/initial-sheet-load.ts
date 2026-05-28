@@ -169,6 +169,19 @@ export function prepareInitialMixedSheetLoad(args: {
   if (potentialCellCount > 0) {
     cellStore.ensureCapacity(cellStore.size + potentialCellCount)
   }
+
+  if (isDenseInitialFormulaOnlySheet(args.content, args.inspection, potentialCellCount, maxColumnCount)) {
+    return prepareDenseInitialFormulaOnlySheetLoad({
+      engine: args.engine,
+      sheet,
+      sheetId: args.sheetId,
+      content: args.content,
+      rewriteFormula: args.rewriteFormula,
+      cellCount: potentialCellCount,
+      maxColumnCount,
+    })
+  }
+
   const writtenColumns = new Uint8Array(maxColumnCount)
   const colIds: string[] = []
   const ensureRowId = args.engine.workbook.createLogicalAxisIdEnsurer(args.sheetId, 'row')
@@ -288,6 +301,66 @@ export function prepareInitialMixedSheetLoad(args: {
   }
 }
 
+function prepareDenseInitialFormulaOnlySheetLoad(args: {
+  engine: SpreadsheetEngine
+  sheet: SheetRecord
+  sheetId: number
+  content: WorkPaperSheet
+  rewriteFormula: (formula: string, row: number, col: number) => string
+  cellCount: number
+  maxColumnCount: number
+}): PreparedInitialMixedSheetLoad {
+  const cellStore = args.engine.workbook.cellStore
+  const firstCellIndex = cellStore.allocateDenseRowMajorReserved(args.sheetId, args.content.length, args.maxColumnCount)
+  initializeDenseInitialMixedCellFields(cellStore, firstCellIndex, args.cellCount)
+  const rowIds = args.engine.workbook.createDenseLogicalAxisIds(args.sheetId, 'row', 0, args.content.length)
+  const colIds = args.engine.workbook.createDenseLogicalAxisIds(args.sheetId, 'column', 0, args.maxColumnCount)
+  const attachedDenseCells = attachDenseFreshInitialCells(args.sheet, firstCellIndex, 0, 0, rowIds, colIds)
+  const formulaRefs = new InitialFormulaSourceRefTable(args.cellCount)
+
+  if (attachedDenseCells) {
+    for (let rowIndex = 0; rowIndex < args.content.length; rowIndex += 1) {
+      const row = args.content[rowIndex]!
+      const rowBaseCellIndex = firstCellIndex + rowIndex * args.maxColumnCount
+      for (let colIndex = 0; colIndex < args.maxColumnCount; colIndex += 1) {
+        const formula = readRequiredInitialFormulaSource(row[colIndex])
+        formulaRefs.push(args.sheetId, rowBaseCellIndex + colIndex, rowIndex, colIndex, args.rewriteFormula(formula, rowIndex, colIndex))
+      }
+    }
+  } else {
+    const attachCell = createFreshInitialCellAttacher(args.sheet)
+    for (let rowIndex = 0; rowIndex < args.content.length; rowIndex += 1) {
+      const row = args.content[rowIndex]!
+      const rowId = rowIds[rowIndex]!
+      const rowBaseCellIndex = firstCellIndex + rowIndex * args.maxColumnCount
+      for (let colIndex = 0; colIndex < args.maxColumnCount; colIndex += 1) {
+        const cellIndex = rowBaseCellIndex + colIndex
+        const formula = readRequiredInitialFormulaSource(row[colIndex])
+        attachCell(rowIndex, colIndex, cellIndex, rowId, colIds[colIndex]!)
+        formulaRefs.push(args.sheetId, cellIndex, rowIndex, colIndex, args.rewriteFormula(formula, rowIndex, colIndex))
+      }
+    }
+  }
+
+  return {
+    formulaRefs,
+    potentialNewCells: 0,
+  }
+}
+
+function isDenseInitialFormulaOnlySheet(
+  content: WorkPaperSheet,
+  inspection: InitialSheetMaterializationInspection | undefined,
+  materializedCellCount: number,
+  maxColumnCount: number,
+): boolean {
+  return (
+    inspection !== undefined &&
+    inspection.formulaCellCount === materializedCellCount &&
+    isDenseInitialMixedSheet(content, materializedCellCount, maxColumnCount)
+  )
+}
+
 function initializeDenseInitialMixedCellFields(
   cellStore: SpreadsheetEngine['workbook']['cellStore'],
   firstCellIndex: number,
@@ -361,6 +434,17 @@ function readInitialFormulaSource(raw: string): string | undefined {
   }
   const trimmed = raw.trim()
   return trimmed.charCodeAt(0) === 61 ? trimmed.slice(1) : undefined
+}
+
+function readRequiredInitialFormulaSource(raw: RawCellContent | undefined): string {
+  if (typeof raw !== 'string') {
+    throw new Error('Formula-only initial sheet inspection does not match sheet content')
+  }
+  const formula = readInitialFormulaSource(raw)
+  if (formula === undefined) {
+    throw new Error('Formula-only initial sheet inspection does not match sheet content')
+  }
+  return formula
 }
 
 function materializeWrittenColumns(writtenColumns: Uint8Array, count: number): Uint32Array {

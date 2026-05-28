@@ -5,6 +5,7 @@ import { addEngineCounter, type EngineCounters } from '../perf/engine-counters.j
 type U32 = Uint32Array
 
 const INITIAL_CALC_CHAIN_BUFFER_CAPACITY = 16
+const EMPTY_U32 = new Uint32Array(0)
 
 export interface CalcChainResult {
   orderedFormulaCellIndices: U32
@@ -12,12 +13,12 @@ export interface CalcChainResult {
 }
 
 export class CalcChain {
-  private rankCounts: U32 = new Uint32Array(INITIAL_CALC_CHAIN_BUFFER_CAPACITY)
-  private formulaIds: U32 = new Uint32Array(INITIAL_CALC_CHAIN_BUFFER_CAPACITY)
-  private orderedChain: U32 = new Uint32Array(INITIAL_CALC_CHAIN_BUFFER_CAPACITY)
-  private chainIndexByCell: U32 = new Uint32Array(INITIAL_CALC_CHAIN_BUFFER_CAPACITY)
-  private orderedDirty: U32 = new Uint32Array(INITIAL_CALC_CHAIN_BUFFER_CAPACITY)
-  private dirtySeen: U32 = new Uint32Array(INITIAL_CALC_CHAIN_BUFFER_CAPACITY)
+  private rankCounts: U32 = EMPTY_U32
+  private formulaIds: U32 = EMPTY_U32
+  private orderedChain: U32 = EMPTY_U32
+  private chainIndexByCell: U32 = EMPTY_U32
+  private orderedDirty: U32 = EMPTY_U32
+  private dirtySeen: U32 = EMPTY_U32
   private dirtyEpoch = 1
   private chainFormulaCount = 0
 
@@ -166,14 +167,14 @@ export class CalcChain {
 
   private ensureRankCapacity(rankCountSize: number, chainSize: number): void {
     if (rankCountSize > this.rankCounts.length) {
-      let capacity = this.rankCounts.length
+      let capacity = Math.max(this.rankCounts.length, INITIAL_CALC_CHAIN_BUFFER_CAPACITY)
       while (capacity < rankCountSize) {
         capacity *= 2
       }
       this.rankCounts = growUint32(this.rankCounts, capacity)
     }
     if (chainSize > this.orderedChain.length) {
-      let capacity = this.orderedChain.length
+      let capacity = Math.max(this.orderedChain.length, INITIAL_CALC_CHAIN_BUFFER_CAPACITY)
       while (capacity < chainSize) {
         capacity *= 2
       }
@@ -186,7 +187,7 @@ export class CalcChain {
     if (size <= this.chainIndexByCell.length) {
       return
     }
-    let capacity = this.chainIndexByCell.length
+    let capacity = Math.max(this.chainIndexByCell.length, INITIAL_CALC_CHAIN_BUFFER_CAPACITY)
     while (capacity < size) {
       capacity *= 2
     }
@@ -198,7 +199,7 @@ export class CalcChain {
     if (size <= this.formulaIds.length) {
       return
     }
-    let capacity = this.formulaIds.length
+    let capacity = Math.max(this.formulaIds.length, INITIAL_CALC_CHAIN_BUFFER_CAPACITY)
     while (capacity < size) {
       capacity *= 2
     }

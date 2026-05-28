@@ -227,6 +227,9 @@ export function cellHasFormulaPrefix(value: string): boolean {
 
 export function workPaperFormulaMayResizeDynamically(value: string): boolean {
   const formulaStart = formulaBodyStart(value)
+  if (formulaStart >= 0 && isSimpleSameSheetScalarBinarySource(value, formulaStart, value.length)) {
+    return false
+  }
   if (formulaStart >= 0 && isSimpleScalarExpressionSource(value, formulaStart, value.length)) {
     return false
   }
@@ -259,6 +262,40 @@ function isDefinitelyScalarFormulaShape(formula: string): boolean {
     return true
   }
   return !normalized.includes(':') && SCALAR_ONLY_FUNCTION_MARKERS.some((marker) => normalized.includes(marker))
+}
+
+function isSimpleSameSheetScalarBinarySource(value: string, start: number, end: number): boolean {
+  const leftEnd = readSimpleSameSheetCellRefSource(value, start, end)
+  if (leftEnd <= start || leftEnd >= end) {
+    return false
+  }
+  const operator = value.charCodeAt(leftEnd)
+  if (operator !== 43 && operator !== 45 && operator !== 42 && operator !== 47) {
+    return false
+  }
+  const rightStart = leftEnd + 1
+  const rightCellEnd = readSimpleSameSheetCellRefSource(value, rightStart, end)
+  if (rightCellEnd === end) {
+    return true
+  }
+  const rightNumberEnd = readSimpleScalarNumberSource(value, rightStart, end)
+  return rightNumberEnd === end
+}
+
+function readSimpleSameSheetCellRefSource(value: string, start: number, end: number): number {
+  let index = start
+  const columnStart = index
+  while (index < end && isAsciiAlpha(value.charCodeAt(index))) {
+    index += 1
+  }
+  if (index === columnStart) {
+    return start
+  }
+  const rowStart = index
+  while (index < end && isAsciiDigit(value.charCodeAt(index))) {
+    index += 1
+  }
+  return index === rowStart ? start : index
 }
 
 function isSimpleScalarExpressionShape(formula: string): boolean {

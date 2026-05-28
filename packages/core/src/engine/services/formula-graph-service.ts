@@ -33,7 +33,7 @@ function graphErrorMessage(message: string, cause: unknown): string {
 
 export function createEngineFormulaGraphService(args: {
   readonly state: Pick<EngineRuntimeState, 'workbook' | 'formulas' | 'ranges' | 'wasm'> & { counters?: EngineCounters }
-  readonly cycleDetector: CycleDetector
+  readonly getCycleDetector: () => CycleDetector
   readonly programArena: Uint32Arena
   readonly constantArena: Float64Arena
   readonly rangeListArena: Uint32Arena
@@ -186,7 +186,7 @@ export function createEngineFormulaGraphService(args: {
 
   const detectCyclesNow = (): void => {
     const iterationEnabled = args.state.workbook.getCalculationSettings().iterate === true
-    const result = args.cycleDetector.detect(
+    const result = args.getCycleDetector().detect(
       args.state.formulas.keys(),
       args.state.workbook.cellStore.size + 1,
       (cellIndex, fn) => args.forEachFormulaDependencyCell(cellIndex, fn),

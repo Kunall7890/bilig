@@ -1,6 +1,33 @@
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import type { CellValue } from '@bilig/protocol'
 
+const EMPTY_U8 = new Uint8Array(0)
+const EMPTY_U16 = new Uint16Array(0)
+const EMPTY_U32 = new Uint32Array(0)
+const EMPTY_I32 = new Int32Array(0)
+const EMPTY_F64 = new Float64Array(0)
+const MAX_POOLED_CELL_STORE_CAPACITY = 131_072
+const MAX_POOLED_CELL_STORE_BUFFER_SETS = 8
+
+interface CellStoreBuffers {
+  readonly capacity: number
+  readonly tags: Uint8Array
+  readonly numbers: Float64Array
+  readonly stringIds: Uint32Array
+  readonly errors: Uint16Array
+  readonly formulaIds: Uint32Array
+  readonly versions: Uint32Array
+  readonly flags: Uint32Array
+  readonly sheetIds: Uint16Array
+  readonly rows: Uint32Array
+  readonly cols: Uint16Array
+  readonly topoRanks: Uint32Array
+  readonly cycleGroupIds: Int32Array
+}
+
+const pooledCellStoreBuffers = new Map<number, CellStoreBuffers[]>()
+let pooledCellStoreBufferSetCount = 0
+
 export const enum CellFlags {
   HasFormula = 1 << 1,
   JsOnly = 1 << 2,
@@ -16,40 +43,47 @@ export class CellStore {
   size = 0
   capacity: number
   onSetValue: ((index: number) => void) | null = null
-  tags: Uint8Array
-  numbers: Float64Array
-  stringIds: Uint32Array
-  errors: Uint16Array
-  formulaIds: Uint32Array
-  versions: Uint32Array
-  flags: Uint32Array
-  sheetIds: Uint16Array
-  rows: Uint32Array
-  cols: Uint16Array
-  topoRanks: Uint32Array
-  cycleGroupIds: Int32Array
+  tags: Uint8Array = EMPTY_U8
+  numbers: Float64Array = EMPTY_F64
+  stringIds: Uint32Array = EMPTY_U32
+  errors: Uint16Array = EMPTY_U16
+  formulaIds: Uint32Array = EMPTY_U32
+  versions: Uint32Array = EMPTY_U32
+  flags: Uint32Array = EMPTY_U32
+  sheetIds: Uint16Array = EMPTY_U16
+  rows: Uint32Array = EMPTY_U32
+  cols: Uint16Array = EMPTY_U16
+  topoRanks: Uint32Array = EMPTY_U32
+  cycleGroupIds: Int32Array = EMPTY_I32
 
-  constructor(initialCapacity = 16) {
+  constructor(initialCapacity = 0) {
     this.capacity = initialCapacity
-    this.tags = new Uint8Array(initialCapacity)
-    this.numbers = new Float64Array(initialCapacity)
-    this.stringIds = new Uint32Array(initialCapacity)
-    this.errors = new Uint16Array(initialCapacity)
-    this.formulaIds = new Uint32Array(initialCapacity)
-    this.versions = new Uint32Array(initialCapacity)
-    this.flags = new Uint32Array(initialCapacity)
-    this.sheetIds = new Uint16Array(initialCapacity)
-    this.rows = new Uint32Array(initialCapacity)
-    this.cols = new Uint16Array(initialCapacity)
-    this.topoRanks = new Uint32Array(initialCapacity)
-    this.cycleGroupIds = new Int32Array(initialCapacity)
-    this.cycleGroupIds.fill(-1)
+    if (initialCapacity === 0) {
+      this.tags = EMPTY_U8
+      this.numbers = EMPTY_F64
+      this.stringIds = EMPTY_U32
+      this.errors = EMPTY_U16
+      this.formulaIds = EMPTY_U32
+      this.versions = EMPTY_U32
+      this.flags = EMPTY_U32
+      this.sheetIds = EMPTY_U16
+      this.rows = EMPTY_U32
+      this.cols = EMPTY_U16
+      this.topoRanks = EMPTY_U32
+      this.cycleGroupIds = EMPTY_I32
+    } else {
+      this.assignBuffers(takeCellStoreBuffers(initialCapacity) ?? createCellStoreBuffers(initialCapacity))
+    }
   }
 
   ensureCapacity(nextSize: number): void {
     if (nextSize <= this.capacity) return
-    let nextCapacity = this.capacity
+    let nextCapacity = Math.max(this.capacity, 1)
     while (nextCapacity < nextSize) nextCapacity *= 2
+    if (this.size === 0) {
+      this.assignBuffers(takeCellStoreBuffers(nextCapacity) ?? createCellStoreBuffers(nextCapacity))
+      return
+    }
     this.tags = grow(this.tags, nextCapacity)
     this.numbers = grow(this.numbers, nextCapacity)
     this.stringIds = grow(this.stringIds, nextCapacity)
@@ -102,6 +136,18 @@ export class CellStore {
     this.errors.fill(ErrorCode.None, firstIndex, firstIndex + count)
     this.flags.fill(CellFlags.Materialized, firstIndex, firstIndex + count)
 
+    if (colCount <= 4) {
+      for (let row = 0; row < rowCount; row += 1) {
+        const rowBase = firstIndex + row * colCount
+        const physicalRow = rowStart + row
+        for (let colOffset = 0; colOffset < colCount; colOffset += 1) {
+          const index = rowBase + colOffset
+          this.rows[index] = physicalRow
+          this.cols[index] = colStart + colOffset
+        }
+      }
+      return firstIndex
+    }
     const colPattern = materializeDenseColumnPattern(colStart, colCount)
     for (let row = 0; row < rowCount; row += 1) {
       const rowBase = firstIndex + row * colCount
@@ -133,18 +179,47 @@ export class CellStore {
 
   reset(): void {
     this.size = 0
-    this.tags.fill(0)
-    this.numbers.fill(0)
-    this.stringIds.fill(0)
-    this.errors.fill(0)
-    this.formulaIds.fill(0)
-    this.versions.fill(0)
-    this.flags.fill(0)
-    this.sheetIds.fill(0)
-    this.rows.fill(0)
-    this.cols.fill(0)
-    this.topoRanks.fill(0)
-    this.cycleGroupIds.fill(-1)
+    clearCellStoreBuffers(this)
+  }
+
+  releaseBuffersToPool(): void {
+    if (this.capacity <= 0) {
+      this.size = 0
+      this.onSetValue = null
+      return
+    }
+    clearCellStoreBuffers(this)
+    const buffers: CellStoreBuffers = {
+      capacity: this.capacity,
+      tags: this.tags,
+      numbers: this.numbers,
+      stringIds: this.stringIds,
+      errors: this.errors,
+      formulaIds: this.formulaIds,
+      versions: this.versions,
+      flags: this.flags,
+      sheetIds: this.sheetIds,
+      rows: this.rows,
+      cols: this.cols,
+      topoRanks: this.topoRanks,
+      cycleGroupIds: this.cycleGroupIds,
+    }
+    releaseCellStoreBuffers(buffers)
+    this.size = 0
+    this.capacity = 0
+    this.onSetValue = null
+    this.tags = EMPTY_U8
+    this.numbers = EMPTY_F64
+    this.stringIds = EMPTY_U32
+    this.errors = EMPTY_U16
+    this.formulaIds = EMPTY_U32
+    this.versions = EMPTY_U32
+    this.flags = EMPTY_U32
+    this.sheetIds = EMPTY_U16
+    this.rows = EMPTY_U32
+    this.cols = EMPTY_U16
+    this.topoRanks = EMPTY_U32
+    this.cycleGroupIds = EMPTY_I32
   }
 
   setValue(index: number, value: CellValue, stringId = 0): void {
@@ -164,6 +239,96 @@ export class CellStore {
     }
     return readValue(this, index, stringLookup)
   }
+
+  private assignBuffers(buffers: CellStoreBuffers): void {
+    this.capacity = buffers.capacity
+    this.tags = buffers.tags
+    this.numbers = buffers.numbers
+    this.stringIds = buffers.stringIds
+    this.errors = buffers.errors
+    this.formulaIds = buffers.formulaIds
+    this.versions = buffers.versions
+    this.flags = buffers.flags
+    this.sheetIds = buffers.sheetIds
+    this.rows = buffers.rows
+    this.cols = buffers.cols
+    this.topoRanks = buffers.topoRanks
+    this.cycleGroupIds = buffers.cycleGroupIds
+  }
+}
+
+function createCellStoreBuffers(capacity: number): CellStoreBuffers {
+  const buffers = {
+    capacity,
+    tags: new Uint8Array(capacity),
+    numbers: new Float64Array(capacity),
+    stringIds: new Uint32Array(capacity),
+    errors: new Uint16Array(capacity),
+    formulaIds: new Uint32Array(capacity),
+    versions: new Uint32Array(capacity),
+    flags: new Uint32Array(capacity),
+    sheetIds: new Uint16Array(capacity),
+    rows: new Uint32Array(capacity),
+    cols: new Uint16Array(capacity),
+    topoRanks: new Uint32Array(capacity),
+    cycleGroupIds: new Int32Array(capacity),
+  }
+  buffers.cycleGroupIds.fill(-1)
+  return buffers
+}
+
+function takeCellStoreBuffers(capacity: number): CellStoreBuffers | undefined {
+  const buffers = pooledCellStoreBuffers.get(capacity)
+  const bufferSet = buffers?.pop()
+  if (bufferSet !== undefined) {
+    pooledCellStoreBufferSetCount -= 1
+  }
+  if (buffers?.length === 0) {
+    pooledCellStoreBuffers.delete(capacity)
+  }
+  return bufferSet
+}
+
+function releaseCellStoreBuffers(buffers: CellStoreBuffers): void {
+  if (
+    buffers.capacity <= 0 ||
+    buffers.capacity > MAX_POOLED_CELL_STORE_CAPACITY ||
+    pooledCellStoreBufferSetCount >= MAX_POOLED_CELL_STORE_BUFFER_SETS
+  ) {
+    return
+  }
+  const pool = pooledCellStoreBuffers.get(buffers.capacity) ?? []
+  pool.push(buffers)
+  pooledCellStoreBuffers.set(buffers.capacity, pool)
+  pooledCellStoreBufferSetCount += 1
+}
+
+function clearCellStoreBuffers(buffers: {
+  readonly tags: Uint8Array
+  readonly numbers: Float64Array
+  readonly stringIds: Uint32Array
+  readonly errors: Uint16Array
+  readonly formulaIds: Uint32Array
+  readonly versions: Uint32Array
+  readonly flags: Uint32Array
+  readonly sheetIds: Uint16Array
+  readonly rows: Uint32Array
+  readonly cols: Uint16Array
+  readonly topoRanks: Uint32Array
+  readonly cycleGroupIds: Int32Array
+}): void {
+  buffers.tags.fill(0)
+  buffers.numbers.fill(0)
+  buffers.stringIds.fill(0)
+  buffers.errors.fill(0)
+  buffers.formulaIds.fill(0)
+  buffers.versions.fill(0)
+  buffers.flags.fill(0)
+  buffers.sheetIds.fill(0)
+  buffers.rows.fill(0)
+  buffers.cols.fill(0)
+  buffers.topoRanks.fill(0)
+  buffers.cycleGroupIds.fill(-1)
 }
 
 const valueReaders: Array<((store: CellStore, index: number, stringLookup: (id: number) => string) => CellValue) | undefined> = []

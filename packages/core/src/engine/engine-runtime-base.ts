@@ -6,7 +6,7 @@ import { CycleDetector } from '../cycle-detection.js'
 import { EdgeArena, type EdgeSlice } from '../edge-arena.js'
 import { EngineEventBus } from '../events.js'
 import { FormulaTable } from '../formula-table.js'
-import { createEngineCounters, type EngineCounters } from '../perf/engine-counters.js'
+import { createRuntimeEngineCounters, type EngineCounters } from '../perf/engine-counters.js'
 import { RangeRegistry } from '../range-registry.js'
 import { compareOpOrder, createLocalOpOrder, createReplicaState, type OpOrder, type ReplicaState } from '../replica-state.js'
 import { RecalcScheduler } from '../scheduler.js'
@@ -28,10 +28,10 @@ import { createEngineServiceRuntime, runEngineEffect, type EngineServiceRuntime 
 import { EngineEvaluationTimeoutError } from './errors.js'
 import type { EngineSnapshotExportOptions } from './services/snapshot-service.js'
 
-const INITIAL_ENGINE_WORK_BUFFER_CAPACITY = 16
+const EMPTY_ENGINE_WORK_BUFFER = new Uint32Array(0)
 
 export abstract class SpreadsheetEngineRuntimeBase {
-  protected readonly performanceCounters: EngineCounters = createEngineCounters()
+  protected readonly performanceCounters: EngineCounters = createRuntimeEngineCounters()
   readonly workbook: WorkbookStore
   readonly strings = new StringPool()
   readonly events = new EngineEventBus()
@@ -41,7 +41,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
   readonly wasm = new WasmKernelFacade()
 
   protected readonly formulas: FormulaTable<RuntimeFormula>
-  private readonly cycleDetector = new CycleDetector()
+  private cycleDetector: CycleDetector | undefined
   private readonly edgeArena = new EdgeArena()
   private readonly programArena = new Uint32Arena()
   private readonly constantArena = new Float64Arena()
@@ -72,25 +72,26 @@ export abstract class SpreadsheetEngineRuntimeBase {
   private evaluationBudgetDepth = 0
   private evaluationBudgetStepCount = 0
   private dependencyBuildEpoch = 1
-  private dependencyBuildSeen: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private dependencyBuildCells: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private dependencyBuildEntities: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private dependencyBuildRanges: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private dependencyBuildNewRanges: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private symbolicRefBindings: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private symbolicRangeBindings: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private wasmProgramTargets: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private wasmProgramOffsets: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private wasmProgramLengths: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private wasmConstantOffsets: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private wasmConstantLengths: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private wasmRangeOffsets: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private wasmRangeLengths: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private wasmRangeRowCounts: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private wasmRangeColCounts: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private topoIndegree: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
-  private topoQueue: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private dependencyBuildSeen: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private dependencyBuildCells: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private dependencyBuildEntities: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private dependencyBuildRanges: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private dependencyBuildNewRanges: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private symbolicRefBindings: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private symbolicRangeBindings: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private wasmProgramTargets: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private wasmProgramOffsets: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private wasmProgramLengths: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private wasmConstantOffsets: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private wasmConstantLengths: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private wasmRangeOffsets: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private wasmRangeLengths: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private wasmRangeRowCounts: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private wasmRangeColCounts: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private topoIndegree: U32 = EMPTY_ENGINE_WORK_BUFFER
+  private topoQueue: U32 = EMPTY_ENGINE_WORK_BUFFER
   private readonly directScalarDeltaInputCellIndices: Array<number | undefined> = []
+  private readonly directScalarDeltaOutputCellIndicesByInput: Array<number | undefined> = []
   protected batchMutationDepth = 0
   private wasmProgramSyncPending = false
   protected lastMetrics: RecalcMetrics = createInitialRecalcMetrics()
@@ -101,6 +102,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
     this.workbook = new WorkbookStore(options.workbookName ?? 'Workbook', this.performanceCounters)
     this.formulas = new FormulaTable(this.workbook.cellStore, {
       deltaInputCellIndices: this.directScalarDeltaInputCellIndices,
+      singleOutputCellIndicesByInput: this.directScalarDeltaOutputCellIndicesByInput,
       readDeltaInputCellIndex: (formula) =>
         formula.directScalar?.kind === 'binary' && !formula.compiled.volatile && !formula.compiled.producesSpill
           ? formula.directScalar.deltaInputCellIndex
@@ -118,6 +120,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
       wasm: this.wasm,
       formulas: this.formulas,
       directScalarDeltaInputCellIndices: this.directScalarDeltaInputCellIndices,
+      directScalarDeltaOutputCellIndicesByInput: this.directScalarDeltaOutputCellIndicesByInput,
       replicaState: this.replicaState,
       entityVersions: this.entityVersions,
       sheetDeleteVersions: this.sheetDeleteVersions,
@@ -251,7 +254,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
       },
       formulaGraph: {
         state: this.state,
-        cycleDetector: this.cycleDetector,
+        getCycleDetector: () => (this.cycleDetector ??= new CycleDetector()),
         programArena: this.programArena,
         constantArena: this.constantArena,
         rangeListArena: this.rangeListArena,
@@ -446,7 +449,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
     }
 
     const oldName = sheet.name
-    const renamedSheet = this.workbook.renameSheetById(sheetId, trimmedName)
+    const renamedSheet = this.workbook.renameSheetByIdTrustedPrevalidated(sheetId, oldName, trimmedName)
     if (!renamedSheet) {
       return false
     }
@@ -472,11 +475,50 @@ export abstract class SpreadsheetEngineRuntimeBase {
     if (!sheet || sheet.name !== oldName) {
       return false
     }
-    const renamedSheet = this.workbook.renameSheetById(sheetId, trimmedName)
+    const renamedSheet = this.workbook.renameSheetByIdTrustedPrevalidated(sheetId, oldName, trimmedName)
     if (!renamedSheet) {
       return false
     }
     this.recordMetadataOnlySheetRename(oldName, trimmedName)
+    return true
+  }
+
+  renameSheetMetadataOnlyByIdTrustedPrevalidated(
+    sheetId: number,
+    oldName: string,
+    trimmedName: string,
+    assumeLocalRuntimeReady = false,
+    assumeNoWorkbookRenameMetadata = false,
+  ): boolean {
+    if (
+      !assumeLocalRuntimeReady &&
+      (this.syncClientConnection !== null ||
+        this.batchListeners.size > 0 ||
+        this.batchMutationDepth !== 0 ||
+        this.transactionReplayDepth !== 0 ||
+        this.workbook.metadata.workbookProtection?.lockStructure === true)
+    ) {
+      return false
+    }
+
+    const renamedSheet = assumeNoWorkbookRenameMetadata
+      ? this.renameSheetNamesOnlyByIdTrustedPrevalidated(sheetId, oldName, trimmedName)
+      : this.workbook.renameSheetByIdTrustedPrevalidated(sheetId, oldName, trimmedName)
+    if (!renamedSheet) {
+      return false
+    }
+    this.recordMetadataOnlySheetRename(oldName, trimmedName)
+    return true
+  }
+
+  private renameSheetNamesOnlyByIdTrustedPrevalidated(sheetId: number, oldName: string, trimmedName: string): boolean {
+    const sheet = this.workbook.sheetsById.get(sheetId)
+    if (!sheet || sheet.name !== oldName || sheet.styleRanges.length !== 0 || sheet.formatRanges.length !== 0) {
+      return false
+    }
+    this.workbook.sheetsByName.delete(oldName)
+    sheet.name = trimmedName
+    this.workbook.sheetsByName.set(trimmedName, sheet)
     return true
   }
 
@@ -502,7 +544,9 @@ export abstract class SpreadsheetEngineRuntimeBase {
       forward: { kind: 'rename-sheet', oldName, newName: trimmedName },
       inverse: { kind: 'rename-sheet', oldName: trimmedName, newName: oldName },
     })
-    this.redoStack.length = 0
+    if (this.redoStack.length !== 0) {
+      this.redoStack.length = 0
+    }
   }
 
   setEvaluationTimeoutMs(timeoutMs: number | undefined): void {

@@ -15,6 +15,21 @@ describe('SheetGrid', () => {
     expect(grid.get(0, 0)).toBe(-1)
   })
 
+  it('reuses cleared blocks after release', () => {
+    const first = new SheetGrid()
+    first.set(0, 0, 4)
+    const [releasedBlock] = first.blocks.values()
+
+    first.releaseBlocksToPool()
+
+    const second = new SheetGrid()
+    second.set(0, 0, 7)
+
+    expect(second.blocks.get(0)).toBe(releasedBlock)
+    expect(second.getPhysical(0, 0)).toBe(7)
+    expect(second.getPhysical(0, 1)).toBe(-1)
+  })
+
   it('iterates visible cells by range and across all occupied blocks', () => {
     const grid = new SheetGrid()
     grid.set(0, 0, 1)
@@ -62,9 +77,27 @@ describe('SheetGrid', () => {
     ])
   })
 
+  it('iterates physical single-column ranges across row blocks', () => {
+    const grid = new SheetGrid()
+    grid.set(2, 5, 1)
+    grid.set(128, 5, 2)
+    grid.set(130, 6, 3)
+    grid.set(255, 5, 4)
+
+    const entries: Array<{ cellIndex: number; row: number; col: number }> = []
+    grid.forEachPhysicalRangeEntry(0, 5, 255, 5, (cellIndex, row, col) => {
+      entries.push({ cellIndex, row, col })
+    })
+
+    expect(entries).toEqual([
+      { cellIndex: 1, row: 2, col: 5 },
+      { cellIndex: 2, row: 128, col: 5 },
+      { cellIndex: 4, row: 255, col: 5 },
+    ])
+  })
+
   it('sets dense row-major rectangles across block boundaries', () => {
     const grid = new SheetGrid()
-
     grid.setDenseRowMajor(127, 31, 2, 3, 10)
 
     expect(grid.getPhysical(127, 31)).toBe(10)
@@ -75,6 +108,24 @@ describe('SheetGrid', () => {
     expect(grid.getPhysical(128, 33)).toBe(15)
     expect(grid.getPhysical(126, 31)).toBe(-1)
     expect(grid.getPhysical(129, 33)).toBe(-1)
+  })
+
+  it('sets narrow dense row-major rectangles across row block boundaries', () => {
+    const grid = new SheetGrid()
+
+    grid.setDenseRowMajor(127, 2, 3, 3, 20)
+
+    expect(grid.getPhysical(127, 2)).toBe(20)
+    expect(grid.getPhysical(127, 3)).toBe(21)
+    expect(grid.getPhysical(127, 4)).toBe(22)
+    expect(grid.getPhysical(128, 2)).toBe(23)
+    expect(grid.getPhysical(128, 3)).toBe(24)
+    expect(grid.getPhysical(128, 4)).toBe(25)
+    expect(grid.getPhysical(129, 2)).toBe(26)
+    expect(grid.getPhysical(129, 3)).toBe(27)
+    expect(grid.getPhysical(129, 4)).toBe(28)
+    expect(grid.getPhysical(126, 2)).toBe(-1)
+    expect(grid.getPhysical(130, 4)).toBe(-1)
   })
 
   it('remaps only cells inside the requested axis scope', () => {

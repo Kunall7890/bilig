@@ -214,17 +214,38 @@ function rememberGlobalCompiledSource(source: string, compiled: CompiledFormula)
 }
 
 function compileSourceFormula(source: string): CompiledFormula {
-  const simpleCompiled = tryCompileSimpleDirectScalarFormula(source) ?? tryCompileSimpleDirectAggregateFormula(source)
-  if (simpleCompiled !== undefined) {
-    return simpleCompiled
-  }
   const cached = globalCompiledSourceCache.get(source)
   if (cached !== undefined) {
     globalCompiledSourceCache.delete(source)
     globalCompiledSourceCache.set(source, cached)
     return cloneCompiledFormula(cached)
   }
+  const directScalar = tryCompileSimpleDirectScalarFormula(source)
+  if (directScalar !== undefined) {
+    rememberGlobalCompiledSource(source, directScalar)
+    return cloneCompiledFormula(directScalar)
+  }
+  const directAggregate = tryCompileSimpleDirectAggregateFormula(source)
+  if (directAggregate !== undefined) {
+    rememberGlobalCompiledSource(source, directAggregate)
+    return cloneCompiledFormula(directAggregate)
+  }
   const compiled = compileFormulaAst(source, parseFormula(source))
+  rememberGlobalCompiledSource(source, compiled)
+  return cloneCompiledFormula(compiled)
+}
+
+function tryCompileCachedDirectAggregateFormula(source: string): CompiledFormula | undefined {
+  const cached = globalCompiledSourceCache.get(source)
+  if (cached !== undefined && cached.directAggregateCandidate !== undefined) {
+    globalCompiledSourceCache.delete(source)
+    globalCompiledSourceCache.set(source, cached)
+    return cloneCompiledFormula(cached)
+  }
+  const compiled = tryCompileSimpleDirectAggregateFormula(source)
+  if (compiled === undefined) {
+    return undefined
+  }
   rememberGlobalCompiledSource(source, compiled)
   return cloneCompiledFormula(compiled)
 }
@@ -337,12 +358,6 @@ function resolveTrustedTemplateCompiled(
 }
 
 function resolveTemplateSourceKey(source: string, ownerRow: number, ownerCol: number): FormulaTemplateSourceKey {
-  if (sourceHasUnsafeA1Row(source)) {
-    return {
-      compiled: undefined,
-      templateKey: `unsafe-a1:${source}:r${ownerRow}:c${ownerCol}`,
-    }
-  }
   const simpleRowRelativeBinaryKey = tryBuildSimpleRowRelativeBinaryTemplateKey(source, ownerRow, ownerCol)
   if (simpleRowRelativeBinaryKey !== undefined) {
     return {
@@ -361,6 +376,12 @@ function resolveTemplateSourceKey(source: string, ownerRow: number, ownerCol: nu
   if (aggregateTemplate) {
     return aggregateTemplate
   }
+  if (sourceHasUnsafeA1Row(source)) {
+    return {
+      compiled: undefined,
+      templateKey: `unsafe-a1:${source}:r${ownerRow}:c${ownerCol}`,
+    }
+  }
   return {
     compiled: undefined,
     templateKey: buildRelativeFormulaTemplateTokenKey(source, ownerRow, ownerCol),
@@ -372,7 +393,7 @@ function tryMatchAnchoredPrefixAggregateTemplate(
   ownerRow: number,
   ownerCol: number,
 ): AnchoredPrefixAggregateTemplateMatch | undefined {
-  const compiled = tryCompileSimpleDirectAggregateFormula(source)
+  const compiled = tryCompileCachedDirectAggregateFormula(source)
   if (!compiled) {
     return undefined
   }
@@ -386,12 +407,15 @@ function tryMatchAnchoredPrefixAggregateTemplate(
   }
   return {
     compiled,
-    templateKey: `anchored-prefix-aggregate:${aggregateKind}:c${range.startCol - ownerCol}`,
+    templateKey:
+      range.sheetName === undefined
+        ? `anchored-prefix-aggregate:${aggregateKind}:c${range.startCol - ownerCol}`
+        : ['sheet-anchored-prefix-aggregate', aggregateKind, range.sheetName, `c${range.startCol - ownerCol}`].join(':'),
   }
 }
 
 function tryMatchAggregateTemplate(source: string, ownerRow: number, ownerCol: number): AnchoredPrefixAggregateTemplateMatch | undefined {
-  const compiled = tryCompileSimpleDirectAggregateFormula(source)
+  const compiled = tryCompileCachedDirectAggregateFormula(source)
   if (!compiled) {
     return undefined
   }
@@ -403,18 +427,31 @@ function tryMatchAggregateTemplate(source: string, ownerRow: number, ownerCol: n
   if (range.startRow === 0 && range.endRow === ownerRow) {
     return {
       compiled,
-      templateKey: `anchored-prefix-aggregate:${aggregateKind}:c${range.startCol - ownerCol}`,
+      templateKey:
+        range.sheetName === undefined
+          ? `anchored-prefix-aggregate:${aggregateKind}:c${range.startCol - ownerCol}`
+          : ['sheet-anchored-prefix-aggregate', aggregateKind, range.sheetName, `c${range.startCol - ownerCol}`].join(':'),
     }
   }
   return {
     compiled,
-    templateKey: [
-      'relative-aggregate',
-      aggregateKind,
-      `c${range.startCol - ownerCol}`,
-      `s${range.startRow - ownerRow}`,
-      `e${range.endRow - ownerRow}`,
-    ].join(':'),
+    templateKey:
+      range.sheetName === undefined
+        ? [
+            'relative-aggregate',
+            aggregateKind,
+            `c${range.startCol - ownerCol}`,
+            `s${range.startRow - ownerRow}`,
+            `e${range.endRow - ownerRow}`,
+          ].join(':')
+        : [
+            'sheet-relative-aggregate',
+            aggregateKind,
+            range.sheetName,
+            `c${range.startCol - ownerCol}`,
+            `s${range.startRow - ownerRow}`,
+            `e${range.endRow - ownerRow}`,
+          ].join(':'),
   }
 }
 

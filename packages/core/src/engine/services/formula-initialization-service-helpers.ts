@@ -18,13 +18,13 @@ export function scanFormulaInitializationCycleMembers(state: FormulaInitializati
 export function createFormulaInitializationSheetNameResolver(state: FormulaInitializationState): (sheetId: number) => string {
   const sheetNameById = new Map<number, string>()
   return (sheetId: number): string => {
-    const cached = sheetNameById.get(sheetId)
-    if (cached !== undefined) {
-      return cached
-    }
     const sheet = state.workbook.getSheetById(sheetId)
     if (!sheet) {
       throw new Error(`Unknown sheet id: ${sheetId}`)
+    }
+    const cached = sheetNameById.get(sheetId)
+    if (cached === sheet.name) {
+      return cached
     }
     sheetNameById.set(sheetId, sheet.name)
     return sheet.name

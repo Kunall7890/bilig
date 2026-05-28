@@ -3,6 +3,7 @@ import { MAX_COLS, MAX_ROWS, type CellSnapshot, type CellValue, type WorkbookSna
 import {
   WorkPaperInvalidArgumentsError,
   WorkPaperNamedExpressionDoesNotExistError,
+  WorkPaperNoSheetWithIdError,
   WorkPaperOperationError,
   WorkPaperSheetError,
 } from './work-paper-errors.js'
@@ -64,7 +65,8 @@ import { tryApplyExistingNumericCellMutationsAtWithOptions } from './work-paper-
 import { WorkPaperEngineEventTracker } from './work-paper-engine-event-tracker.js'
 import { WorkPaperRuntimeLifecycleBase } from './work-paper-runtime-lifecycle-base.js'
 import { tryChangeSimpleNumericNamedExpressionFastPath } from './work-paper-named-expression-fast-path-runtime.js'
-import { createWorkPaperEngine, workPaperEvaluationTimeoutErrorFrom } from './work-paper-runtime-construction.js'
+import { tryRenameSheetMetadataOnlyFast } from './work-paper-sheet-rename-metadata-fast-path.js'
+import { createWorkPaperEngine, releaseWorkPaperEngine, workPaperEvaluationTimeoutErrorFrom } from './work-paper-runtime-construction.js'
 import {
   attachImportedXlsxSourceMetadata,
   canRecordImportedXlsxLiteralPatch,
@@ -74,31 +76,13 @@ import {
   type ImportedXlsxSourceCellPatch,
   type ImportedXlsxSourceReference,
 } from './work-paper-imported-xlsx-source.js'
+import type { MetadataRenameEngine, WorkPaperStructuralInsertEngine } from './work-paper-engine-types.js'
 
 type NamedExpressionValueSnapshot = WorkPaperNamedExpressionValueSnapshot
 
 let nextWorkbookId = 1
 type WorkbookSnapshotWorkbook = WorkbookSnapshot['workbook']
 type WorkbookSnapshotSheetMetadata = NonNullable<WorkbookSnapshot['sheets'][number]['metadata']>
-type MetadataRenameEngine = SpreadsheetEngine & {
-  readonly renameSheetMetadataOnlyById?: (sheetId: number, newName: string) => boolean
-  readonly renameSheetMetadataOnlyByIdPrevalidated?: (sheetId: number, oldName: string, newName: string) => boolean
-}
-
-type WorkPaperStructuralInsertEngine = SpreadsheetEngine & {
-  insertRows(
-    sheetName: string,
-    start: number,
-    count: number,
-    options?: { readonly emitTracked?: boolean; readonly recordHistory?: boolean },
-  ): void
-  insertColumns(
-    sheetName: string,
-    start: number,
-    count: number,
-    options?: { readonly emitTracked?: boolean; readonly recordHistory?: boolean },
-  ): void
-}
 
 function isCloneRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -174,6 +158,14 @@ function clonePreservedImportedSnapshot(snapshot: WorkbookSnapshot): WorkbookSna
   return attachWorkPaperRuntimeImage(snapshot, cloned)
 }
 
+function resolveConfiguredWorkPaperConfig(configInput: WorkPaperConfig): WorkPaperConfig {
+  validateWorkPaperConfig(configInput)
+  return {
+    ...cloneConfig(DEFAULT_CONFIG),
+    ...cloneConfig(configInput),
+  }
+}
+
 export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
   readonly workbookId = nextWorkbookId++
   protected engine: SpreadsheetEngine
@@ -214,13 +206,9 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
       tryApplyExistingNumericCellMutationsAtWithOptions(this.engine, record, options),
     updateSheetDimensionsAfterCellMutationRefs: (refs) => this.updateSheetDimensionsAfterCellMutationRefs(refs),
   })
-  private constructor(configInput: WorkPaperConfig = {}) {
+  private constructor(configInput?: WorkPaperConfig) {
     super()
-    validateWorkPaperConfig(configInput)
-    this.config = {
-      ...cloneConfig(DEFAULT_CONFIG),
-      ...cloneConfig(configInput),
-    }
+    this.config = configInput === undefined ? DEFAULT_CONFIG : resolveConfiguredWorkPaperConfig(configInput)
     const hasFunctionPlugins = (this.config.functionPlugins?.length ?? 0) > 0 || hasRegisteredWorkPaperFunctionPlugins()
     if (hasFunctionPlugins) {
       ensureWorkPaperCustomAdapterInstalled()
@@ -333,46 +321,51 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
   }
 
   override renameSheet(sheetId: number, nextName: string): WorkPaperChange[] {
-    const sheet = this.sheetRecord(sheetId)
+    const sheet = this.engine.workbook.getSheetById(sheetId)
+    if (!sheet) {
+      throw new WorkPaperNoSheetWithIdError(sheetId)
+    }
     const newName = nextName.trim()
     if (newName.length === 0) {
       throw new WorkPaperInvalidArgumentsError('Sheet name must be non-empty')
+    }
+    const oldName = sheet.name
+    if (oldName === newName) {
+      return []
     }
     const existing = this.engine.workbook.getSheet(newName)
     if (existing && existing.id !== sheetId) {
       throw new WorkPaperSheetError(`Sheet '${sheetId}' cannot be renamed to '${nextName}'`)
     }
     this.assertWorkbookStructureEditable()
-
-    const oldName = sheet.name
+    const metadataRenameEngine = this.engine as MetadataRenameEngine
+    if (
+      tryRenameSheetMetadataOnlyFast(
+        sheet.id,
+        oldName,
+        newName,
+        this.batchDepth,
+        this.batchUsesTrackedFastPath,
+        this.emitter.hasAnyListeners(),
+        this.engineEvents.hasPendingLazyChanges,
+        this.engineEvents.hasTrackedEvents,
+        this.evaluationSuspended,
+        Boolean(this.importedXlsxSource),
+        this.importedXlsxSourceCellPatches.size !== 0,
+        Boolean(this.preservedImportedSnapshot),
+        this.visibilityCache !== null,
+        this.namedExpressions.size !== 0,
+        metadataRenameEngine.renameSheetMetadataOnlyByIdTrustedPrevalidated,
+        metadataRenameEngine,
+      )
+    ) {
+      if (this.sheetRecordsCache !== null) {
+        this.sheetRecordsCache = null
+      }
+      return []
+    }
     if (this.preservedImportedSnapshot || this.importedXlsxSource || this.importedXlsxSourceCellPatches.size) {
       this.invalidateImportedXlsxSource()
-    }
-    if (
-      this.batchDepth === 0 &&
-      !this.evaluationSuspended &&
-      this.visibilityCache === null &&
-      !this.emitter.hasAnyListeners() &&
-      !this.engineEvents.hasPendingLazyChanges &&
-      !this.batchUsesTrackedFastPath &&
-      !this.engineEvents.hasTrackedEvents
-    ) {
-      try {
-        const metadataRenameEngine = this.engine as MetadataRenameEngine
-        const renamed =
-          metadataRenameEngine.renameSheetMetadataOnlyByIdPrevalidated?.(sheet.id, oldName, newName) ??
-          metadataRenameEngine.renameSheetMetadataOnlyById?.(sheet.id, newName) ??
-          this.engine.renameSheetMetadataOnly(oldName, newName)
-        if (renamed) {
-          this.sheetRecordsCache = null
-          return []
-        }
-      } catch (error) {
-        if (error instanceof Error && WORKPAPER_PUBLIC_ERROR_NAMES.has(error.name)) {
-          throw error
-        }
-        throw new WorkPaperOperationError(this.messageOf(error, 'Mutation failed'))
-      }
     }
     const fastPathChanges = this.tryRenameSheetWithoutRuntimeAdapters(sheet, newName)
     if (fastPathChanges !== null) {
@@ -607,7 +600,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
 
   static buildFromArray(
     sheet: WorkPaperSheet,
-    configInput: WorkPaperConfig = {},
+    configInput?: WorkPaperConfig,
     namedExpressions: readonly SerializedWorkPaperNamedExpression[] = [],
   ): WorkPaper {
     return this.buildFromSheets({ Sheet1: sheet }, configInput, namedExpressions)
@@ -615,7 +608,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
 
   static buildFromSheets(
     sheets: WorkPaperSheets,
-    configInput: WorkPaperConfig = {},
+    configInput?: WorkPaperConfig,
     namedExpressions: readonly SerializedWorkPaperNamedExpression[] = [],
   ): WorkPaper {
     const workbook = new WorkPaper(configInput)
@@ -648,7 +641,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
 
   static buildFromSheetEntries(
     sheetEntries: readonly (readonly [string, WorkPaperSheet])[],
-    configInput: WorkPaperConfig = {},
+    configInput?: WorkPaperConfig,
     namedExpressions: readonly SerializedWorkPaperNamedExpression[] = [],
   ): WorkPaper {
     const workbook = new WorkPaper(configInput)
@@ -679,7 +672,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     return workbook
   }
 
-  static buildFromSnapshot(snapshot: WorkbookSnapshot, configInput: WorkPaperConfig = {}): WorkPaper {
+  static buildFromSnapshot(snapshot: WorkbookSnapshot, configInput?: WorkPaperConfig): WorkPaper {
     const workbook = new WorkPaper(configInput)
     try {
       initializeWorkPaperFromSnapshot({
@@ -788,6 +781,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     this.sheetDimensionCache.invalidateAll()
     this.queuedEvents = []
     this.namedExpressions.clear()
+    releaseWorkPaperEngine(this.engine)
   }
 
   protected applySerializedMatrix(

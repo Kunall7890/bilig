@@ -335,6 +335,122 @@ describe('WorkPaper', () => {
     })
   })
 
+  it('does not leak conditional aggregation caches across disposed workbooks', () => {
+    const first = WorkPaper.buildFromSheets({
+      Bench: [
+        ['Group', 'Value', '', 'A', '=SUMIF(A2:A5,D1,B2:B5)'],
+        ['A', 1],
+        ['B', 2],
+        ['A', 3],
+        ['B', 4],
+      ],
+    })
+    const firstSheetId = first.getSheetId('Bench')!
+
+    expect(first.getCellValue(cell(firstSheetId, 0, 4))).toMatchObject({
+      tag: ValueTag.Number,
+      value: 4,
+    })
+    first.dispose()
+
+    const second = WorkPaper.buildFromSheets({
+      Bench: [
+        ['Group', 'Value', '', 'A', '=SUMIF(A2:A5,D1,B2:B5)'],
+        ['B', 10],
+        ['B', 20],
+        ['B', 30],
+        ['B', 40],
+      ],
+    })
+    const secondSheetId = second.getSheetId('Bench')!
+
+    expect(second.getCellValue(cell(secondSheetId, 0, 4))).toMatchObject({
+      tag: ValueTag.Number,
+      value: 0,
+    })
+    second.dispose()
+  })
+
+  it('does not reuse stale sheet names for pooled formula initialization', () => {
+    const first = WorkPaper.buildFromSheets({
+      Cases: [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9, '=SUM(INDEX(A1:C3,0,2))'],
+      ],
+    })
+    const firstSheetId = first.getSheetId('Cases')!
+
+    expect(first.getCellValue(cell(firstSheetId, 2, 3))).toEqual({
+      tag: ValueTag.Number,
+      value: 15,
+    })
+    first.dispose()
+
+    const second = WorkPaper.buildFromSheets({
+      Sheet1: [
+        [1, 2, 3, '', '', '', '=SUM(INDEX(A1:C3,0,2))', '=SUM(INDEX(A1:C3,2,0))', '=SUM(INDEX(A1:C3,0,0))'],
+        [4, 5, 6],
+        [7, 8, 9],
+      ],
+    })
+    const secondSheetId = second.getSheetId('Sheet1')!
+
+    expect([6, 7, 8].map((col) => second.getCellValue(cell(secondSheetId, 0, col)))).toEqual([
+      { tag: ValueTag.Number, value: 15 },
+      { tag: ValueTag.Number, value: 15 },
+      { tag: ValueTag.Number, value: 45 },
+    ])
+    second.dispose()
+  })
+
+  it('does not reuse stale region subscriptions for pooled spill recalculation', () => {
+    const first = WorkPaper.buildFromSheets({
+      Cases: [
+        [
+          'North',
+          10,
+          '=COUNTBLANK(A1:A5)',
+          '=COUNTIF(A1:A5,"")',
+          '=COUNTIF(A1:A5,"<>")',
+          '=SUMIF(A1:A5,"",B1:B5)',
+          '=SUMIF(A1:A5,"<>",B1:B5)',
+          '=SUMIFS(B1:B5,A1:A5,"<>")',
+        ],
+        [null, 20],
+        ['=IF(TRUE,"","x")', 30],
+        [' ', 40],
+        ['South', 50],
+      ],
+    })
+    first.dispose()
+
+    const second = WorkPaper.buildFromSheets({
+      Sheet1: [
+        [1, 2, 3, null, '=OFFSET(A1,0,1,3,1)', null, '=SUM(OFFSET(A1,0,1,3,1))'],
+        [4, 5, 6],
+        [7, 8, 9],
+      ],
+    })
+    second.dispose()
+
+    const third = WorkPaper.buildFromSheets({
+      Cases: [[3, '=SEQUENCE(A1,1,1,1)', null, '=SUM(B1#)', '=ROWS(B1#)', '=IFERROR(INDEX(B1#,2),"missing")'], [], []],
+    })
+    const sheetId = third.getSheetId('Cases')!
+    third.setCellContents(cell(sheetId, 0, 0), 1)
+
+    expect([1, 2, 3, 4, 5].map((col) => third.getCellValue(cell(sheetId, 0, col)))).toEqual([
+      { tag: ValueTag.Number, value: 1 },
+      { tag: ValueTag.Empty },
+      { tag: ValueTag.Number, value: 1 },
+      { tag: ValueTag.Number, value: 1 },
+      { tag: ValueTag.String, value: 'missing', stringId: expect.any(Number) },
+    ])
+    expect([1, 2].map((row) => third.getCellValue(cell(sheetId, row, 1)))).toEqual([{ tag: ValueTag.Empty }, { tag: ValueTag.Empty }])
+    third.dispose()
+  })
+
   it('builds from imported workbook snapshots with metadata-backed formulas', () => {
     const snapshot: WorkbookSnapshot = {
       version: 1,

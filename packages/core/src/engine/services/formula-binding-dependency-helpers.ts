@@ -184,6 +184,7 @@ interface DirectAggregateColumnOwnerInterval {
 }
 
 export interface FreshDirectAggregateColumnReverseEdgeRunMember {
+  readonly aggregateSheetName: string
   readonly aggregateColStart: number
   readonly aggregateColEnd: number
   readonly aggregateRowStart: number
@@ -376,12 +377,11 @@ export function appendDirectAggregateColumnReverseEdges(
 
 export function canAppendFreshDirectAggregateColumnReverseEdgesForRun(
   workbook: FormulaBindingSheetLookup,
-  ownerSheetName: string,
   cellIndices: readonly number[] | Uint32Array,
   members: readonly FreshDirectAggregateColumnReverseEdgeRunMember[],
 ): boolean {
   const first = members[0]
-  if (first === undefined || cellIndices.length !== members.length || workbook.getSheet(ownerSheetName) === undefined) {
+  if (first === undefined || cellIndices.length !== members.length || workbook.getSheet(first.aggregateSheetName) === undefined) {
     return false
   }
   if (first.aggregateColStart > first.aggregateColEnd) {
@@ -391,6 +391,7 @@ export function canAppendFreshDirectAggregateColumnReverseEdgesForRun(
     const member = members[index]!
     if (
       cellIndices[index] === undefined ||
+      member.aggregateSheetName !== first.aggregateSheetName ||
       member.aggregateColStart !== first.aggregateColStart ||
       member.aggregateColEnd !== first.aggregateColEnd
     ) {
@@ -403,12 +404,11 @@ export function canAppendFreshDirectAggregateColumnReverseEdgesForRun(
 export function appendFreshDirectAggregateColumnReverseEdgesForRun(
   registry: Map<number, Set<number>>,
   workbook: FormulaBindingSheetLookup,
-  ownerSheetName: string,
   cellIndices: readonly number[] | Uint32Array,
   members: readonly FreshDirectAggregateColumnReverseEdgeRunMember[],
 ): void {
   const first = members[0]
-  const sheet = workbook.getSheet(ownerSheetName)
+  const sheet = first === undefined ? undefined : workbook.getSheet(first.aggregateSheetName)
   if (first === undefined || sheet === undefined) {
     return
   }

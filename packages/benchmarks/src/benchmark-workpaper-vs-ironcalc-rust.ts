@@ -506,7 +506,8 @@ function runIronCalcRustScenario(
   ironCalcRunnerResult: IronCalcRustRunnerWorkloadOutput,
   options: ResolvedBenchmarkSuiteOptions,
 ): WorkPaperIronCalcRustBenchmarkResult {
-  const workpaper = benchmarkSupportedEngine(() => measureWorkPaperScenarioSample(scenario), options)
+  const runWorkPaperSample = createWorkPaperScenarioSampleRunner(scenario)
+  const workpaper = benchmarkSupportedEngine(runWorkPaperSample, options)
   const ironCalcRust = summarizeIronCalcRustResult(ironCalcRunnerResult)
   const workPaperVerification = JSON.stringify(workpaper.verification)
   const ironCalcVerification = JSON.stringify(ironCalcRust.verification)
@@ -544,20 +545,24 @@ function runIronCalcRustScenario(
   }
 }
 
-function measureWorkPaperScenarioSample(scenario: IronCalcRustComparableScenario): BenchmarkSample {
+function createWorkPaperScenarioSampleRunner(scenario: IronCalcRustComparableScenario): () => BenchmarkSample {
+  const sheets = scenario.scenario.buildWorkPaperSheets()
+  return () => measureWorkPaperScenarioSample(scenario, sheets)
+}
+
+function measureWorkPaperScenarioSample(
+  scenario: IronCalcRustComparableScenario,
+  sheets: Record<string, readonly (readonly (boolean | number | string | null)[])[]>,
+): BenchmarkSample {
   if (scenario.operation.kind === 'build') {
     return measureWorkPaperBuildFromSheets(
-      scenario.scenario.buildWorkPaperSheets(),
+      sheets,
       (workbook) => verifyWorkPaperObservations(workbook, scenario.observations),
       scenario.scenario.workpaperOptions,
       scenario.scenario.workpaperNamedExpressions,
     )
   }
-  const workbook = WorkPaper.buildFromSheets(
-    scenario.scenario.buildWorkPaperSheets(),
-    scenario.scenario.workpaperOptions,
-    scenario.scenario.workpaperNamedExpressions,
-  )
+  const workbook = WorkPaper.buildFromSheets(sheets, scenario.scenario.workpaperOptions, scenario.scenario.workpaperNamedExpressions)
   if (scenario.operation.kind !== 'single-cell-edit') {
     if (scenario.operation.kind === 'range-read') {
       return measureMutationSample(

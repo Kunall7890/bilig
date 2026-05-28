@@ -50,4 +50,15 @@ describe('formula binding sheet index', () => {
     expect(index.collectReferencingSheet('Old')).toEqual([])
     expect(index.collectReferencingSheet('New')).toEqual([2, 3])
   })
+
+  it('tracks direct-scalar owner runs lazily until owner membership is read', () => {
+    const index = createFormulaBindingSheetIndex()
+    index.trackFormulaOwnerRun('Old', new Uint32Array([1, 2, 3]))
+    index.trackFormula(4, 'New', { deps: ['Old!A1'] })
+
+    index.moveSheetName('Old', 'New')
+
+    expect(index.collectOwnedBySheet('Old')).toEqual([])
+    expect(index.collectOwnedBySheet('New')).toEqual([4, 1, 2, 3])
+  })
 })

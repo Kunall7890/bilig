@@ -15,7 +15,7 @@ import { runWorkbookMetadataEffect } from './workbook-metadata-service.js'
 import type { WorkbookMetadataService } from './workbook-metadata-service-contract.js'
 
 export abstract class WorkbookStoreCommentAccessors {
-  protected abstract readonly metadataService: WorkbookMetadataService
+  protected abstract get metadataService(): WorkbookMetadataService
 
   setThreadedCommentArtifacts(artifacts: WorkbookThreadedCommentArtifactsSnapshot): WorkbookThreadedCommentArtifactsRecord {
     return runWorkbookMetadataEffect(this.metadataService.setThreadedCommentArtifacts(artifacts))

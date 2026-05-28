@@ -4353,6 +4353,21 @@ describe('SpreadsheetEngine', () => {
     expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
   })
 
+  it('keeps sheet-qualified aggregate templates scoped to their source sheets', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'spec' })
+    await engine.ready()
+    engine.createSheet('Data1')
+    engine.createSheet('Data2')
+    engine.createSheet('Summary')
+    engine.setCellValue('Data1', 'A1', 2)
+    engine.setCellValue('Data2', 'A1', 7)
+    engine.setCellFormula('Summary', 'A1', 'SUM(Data1!A1:A1)')
+    engine.setCellFormula('Summary', 'A2', 'SUM(Data2!A1:A1)')
+
+    expect(engine.getCellValue('Summary', 'A1')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.getCellValue('Summary', 'A2')).toEqual({ tag: ValueTag.Number, value: 7 })
+  })
+
   it('renames sheets without breaking formulas, names, or sheet metadata', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'spec' })
     await engine.ready()

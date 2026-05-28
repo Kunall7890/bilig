@@ -31,6 +31,18 @@ describe('TemplateBank', () => {
     expect(bank.get(first.templateId)?.compiled).toBe(first.compiled)
   })
 
+  it('keeps cached direct aggregate compiles isolated across template banks', () => {
+    const firstBank = createTemplateBank()
+    const secondBank = createTemplateBank()
+
+    const first = firstBank.resolve('SUM(CacheData!A1:A250)', 0, 1)
+    const second = secondBank.resolve('SUM(CacheData!A1:A250)', 0, 1)
+
+    expect(second.compiled).not.toBe(first.compiled)
+    expect(second.compiled.source).toBe('SUM(CacheData!A1:A250)')
+    expect(second.compiled.symbolicRanges).toEqual(['CacheData!A1:A250'])
+  })
+
   it('reuses simple row-relative binary template families without changing semantics', () => {
     const bank = createTemplateBank()
 

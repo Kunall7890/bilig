@@ -3,8 +3,11 @@ export interface ArenaSlice {
   length: number
 }
 
+const EMPTY_U32 = new Uint32Array(0)
+const EMPTY_F64 = new Float64Array(0)
+
 export class Uint32Arena {
-  private data = new Uint32Array(64)
+  private data = EMPTY_U32
   private used = 0
 
   reset(): void {
@@ -31,7 +34,7 @@ export class Uint32Arena {
     if (required <= this.data.length) {
       return
     }
-    let capacity = this.data.length
+    let capacity = Math.max(this.data.length, 1)
     while (capacity < required) {
       capacity *= 2
     }
@@ -42,7 +45,7 @@ export class Uint32Arena {
 }
 
 export class Float64Arena {
-  private data = new Float64Array(64)
+  private data = EMPTY_F64
   private used = 0
 
   reset(): void {
@@ -71,7 +74,7 @@ export class Float64Arena {
     if (required <= this.data.length) {
       return
     }
-    let capacity = this.data.length
+    let capacity = Math.max(this.data.length, 1)
     while (capacity < required) {
       capacity *= 2
     }

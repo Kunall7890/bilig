@@ -163,10 +163,19 @@ export function createFormulaBindingDependencyMaterializer(
         const sheetNames = sheetNamesInSpan(dependency.sheetName ?? currentSheetName, dependency.sheetEndName)
         return count + Math.max((sheetNames?.length ?? 1) - 1, 0)
       }, 0) ?? 0
+    const inlineSmallRangeDependencyCapacity =
+      compiled.parsedDeps?.reduce((count, dependency) => {
+        if (dependency.kind !== 'range' || dependency.sheetEndName !== undefined || dependency.refKind !== 'cells') {
+          return count
+        }
+        const rowCount = dependency.endRow - dependency.startRow + 1
+        const colCount = dependency.endCol - dependency.startCol + 1
+        return rowCount > 0 && colCount > 0 && rowCount * colCount <= 64 ? count + rowCount * colCount : count
+      }, 0) ?? 0
 
     ensureDependencyBuildCapacity(
       args.state.workbook.cellStore.size + 1,
-      deps.length + extraDynamicCellDependencyCount + sheetRangeDependencyCapacity + 1,
+      deps.length + extraDynamicCellDependencyCount + sheetRangeDependencyCapacity + inlineSmallRangeDependencyCapacity + 1,
       compiled.symbolicRefs.length + 1,
       compiled.symbolicRanges.length + 1,
     )

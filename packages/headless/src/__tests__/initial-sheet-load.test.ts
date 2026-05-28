@@ -656,6 +656,72 @@ describe('initial mixed sheet load', () => {
     }
   })
 
+  it('prepares dense formula-only initial sheets without literal column-version batching', () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'initial-formula-only-dense-load' })
+    engine.workbook.createSheet('Summary')
+    const sheetId = engine.workbook.getSheet('Summary')!.id
+    const batchSpy = vi.spyOn(WorkbookStore.prototype, 'withBatchedColumnVersionUpdates')
+    try {
+      const prepared = prepareInitialMixedSheetLoad({
+        engine,
+        sheetId,
+        content: [
+          ['=SUM(Data!A1:A3)', '=SUM(Data!B1:B3)'],
+          ['=Data!A3+Data!B3', '=SUM(Data!A1:A3)+SUM(Data!B1:B3)'],
+        ],
+        rewriteFormula: (source) => source,
+        inspection: {
+          materializedCellCount: 4,
+          maxColumnCount: 2,
+          formulaCellCount: 4,
+        },
+      })
+      const refs = Array.from({ length: prepared.formulaRefs.length }, (_value, index) => ({ ...prepared.formulaRefs.at(index) }))
+
+      expect(refs.map((ref) => ref.source)).toEqual([
+        'SUM(Data!A1:A3)',
+        'SUM(Data!B1:B3)',
+        'Data!A3+Data!B3',
+        'SUM(Data!A1:A3)+SUM(Data!B1:B3)',
+      ])
+      expect(engine.workbook.cellStore.size).toBe(4)
+      expect(engine.workbook.getCellIndex('Summary', 'B2')).toBe(3)
+      expect(batchSpy).not.toHaveBeenCalled()
+    } finally {
+      batchSpy.mockRestore()
+    }
+  })
+
+  it('fast-binds initial cross-sheet direct aggregate formulas', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Data: [
+        [1, 2],
+        [3, 4],
+        [5, 6],
+      ],
+      Summary: [['=SUM(Data!A1:A3)', '=SUM(Data!B1:B3)', '=Data!A3+Data!B3']],
+    })
+    const dataSheetId = workbook.getSheetId('Data')!
+    const summarySheetId = workbook.getSheetId('Summary')!
+
+    expect(workbook.getPerformanceCounters().initialFreshDirectAggregateFastBindings).toBe(2)
+    expect(workbook.getCellValue({ sheet: summarySheetId, row: 0, col: 0 })).toEqual({
+      tag: ValueTag.Number,
+      value: 9,
+    })
+    expect(workbook.getCellValue({ sheet: summarySheetId, row: 0, col: 1 })).toEqual({
+      tag: ValueTag.Number,
+      value: 12,
+    })
+
+    workbook.setCellContents({ sheet: dataSheetId, row: 0, col: 0 }, 10)
+
+    expect(workbook.getCellValue({ sheet: summarySheetId, row: 0, col: 0 })).toEqual({
+      tag: ValueTag.Number,
+      value: 18,
+    })
+  })
+
   it('restores value-only snapshots with dense column metadata without per-range metadata writes', () => {
     const setColumnMetadataSpy = vi.spyOn(WorkbookStore.prototype, 'setColumnMetadata')
     try {

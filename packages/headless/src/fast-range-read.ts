@@ -20,6 +20,11 @@ export function readFastRangeValues(engine: SpreadsheetEngine, range: WorkPaperC
     return readFastLogicalRangeValues(engine, sheet, range, height, width)
   }
 
+  const denseNumericValues = readFastDenseNumericPhysicalRangeValues(engine, sheet, range, height, width)
+  if (denseNumericValues) {
+    return denseNumericValues
+  }
+
   const rows: CellValue[][] = []
   rows.length = height
   for (let rowOffset = 0; rowOffset < height; rowOffset += 1) {
@@ -103,6 +108,61 @@ export function readFastRangeValues(engine: SpreadsheetEngine, range: WorkPaperC
       const row = rows[rowOffset]!
       for (let colOffset = 0; colOffset < width; colOffset += 1) {
         row[colOffset] ??= EMPTY_CELL_VALUE
+      }
+    }
+  }
+  return rows
+}
+
+function readFastDenseNumericPhysicalRangeValues(
+  engine: SpreadsheetEngine,
+  sheet: SheetRecord,
+  range: WorkPaperCellRange,
+  height: number,
+  width: number,
+): CellValue[][] | undefined {
+  const rows: CellValue[][] = []
+  rows.length = height
+  for (let rowOffset = 0; rowOffset < height; rowOffset += 1) {
+    const row: CellValue[] = []
+    row.length = width
+    rows[rowOffset] = row
+  }
+
+  const cellTags = engine.workbook.cellStore.tags
+  const cellNumbers = engine.workbook.cellStore.numbers
+  const blockRowStart = Math.floor(range.start.row / BLOCK_ROWS)
+  const blockRowEnd = Math.floor(range.end.row / BLOCK_ROWS)
+  const blockColStart = Math.floor(range.start.col / BLOCK_COLS)
+  const blockColEnd = Math.floor(range.end.col / BLOCK_COLS)
+  for (let blockRow = blockRowStart; blockRow <= blockRowEnd; blockRow += 1) {
+    const absoluteBlockRow = blockRow * BLOCK_ROWS
+    const localRowStart = Math.max(range.start.row - absoluteBlockRow, 0)
+    const localRowEnd = Math.min(range.end.row - absoluteBlockRow, BLOCK_ROWS - 1)
+    for (let blockCol = blockColStart; blockCol <= blockColEnd; blockCol += 1) {
+      const gridBlock = sheet.grid.blocks.get(blockRow * 1_000_000 + blockCol)
+      if (!gridBlock) {
+        return undefined
+      }
+      const absoluteBlockCol = blockCol * BLOCK_COLS
+      const localColStart = Math.max(range.start.col - absoluteBlockCol, 0)
+      const localColEnd = Math.min(range.end.col - absoluteBlockCol, BLOCK_COLS - 1)
+      for (let localRow = localRowStart; localRow <= localRowEnd; localRow += 1) {
+        const row = rows[absoluteBlockRow + localRow - range.start.row]!
+        const blockRowOffset = localRow * BLOCK_COLS
+        let outputCol = absoluteBlockCol + localColStart - range.start.col
+        for (let localCol = localColStart; localCol <= localColEnd; localCol += 1) {
+          const encodedCellIndex = gridBlock[blockRowOffset + localCol]!
+          if (encodedCellIndex === 0) {
+            return undefined
+          }
+          const cellIndex = encodedCellIndex - 1
+          if (cellTags[cellIndex] !== ValueTag.Number) {
+            return undefined
+          }
+          row[outputCol] = { tag: ValueTag.Number, value: cellNumbers[cellIndex] ?? 0 }
+          outputCol += 1
+        }
       }
     }
   }

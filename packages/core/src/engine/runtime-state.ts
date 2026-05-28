@@ -430,6 +430,7 @@ export interface EngineRuntimeState {
   readonly wasm: WasmKernelFacade
   readonly formulas: FormulaTable<RuntimeFormula>
   readonly directScalarDeltaInputCellIndices: ArrayLike<number | undefined>
+  readonly directScalarDeltaOutputCellIndicesByInput: ArrayLike<number | undefined>
   readonly replicaState: ReplicaState
   readonly entityVersions: Map<string, OpOrder>
   readonly sheetDeleteVersions: Map<string, OpOrder>
@@ -466,6 +467,7 @@ export interface EngineRuntimeStateController {
   readonly wasm: WasmKernelFacade
   readonly formulas: FormulaTable<RuntimeFormula>
   readonly directScalarDeltaInputCellIndices: Array<number | undefined>
+  readonly directScalarDeltaOutputCellIndicesByInput: Array<number | undefined>
   readonly replicaState: ReplicaState
   readonly entityVersions: Map<string, OpOrder>
   readonly sheetDeleteVersions: Map<string, OpOrder>

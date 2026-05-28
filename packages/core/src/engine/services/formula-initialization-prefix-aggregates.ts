@@ -1,6 +1,7 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import { CellFlags } from '../../cell-store.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
+import { BLOCK_COLS, BLOCK_ROWS } from '../../sheet-grid.js'
 import type { InitialFormulaCellIndexList } from './formula-initialization-refs.js'
 import type { EngineFormulaInitializationServiceArgs } from './formula-initialization-service-types.js'
 
@@ -36,6 +37,10 @@ function preferAggregateErrorCode(current: ErrorCode, incoming: ErrorCode): Erro
     return ErrorCode.Cycle
   }
   return current === ErrorCode.None ? incoming : current
+}
+
+function isInitialFormulaMember(args: InitialPrefixAggregateArgs, cellIndex: number): boolean {
+  return args.state.formulas.has(cellIndex) || ((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.HasFormula) !== 0
 }
 
 export function canEvaluateInitialPrefixAggregateGroupsNatively(
@@ -148,7 +153,7 @@ function canUseNativeInitialPrefixAggregateGroup(args: InitialPrefixAggregateArg
     args.checkEvaluationBudget()
     for (let col = group.col; col <= group.colEnd; col += 1) {
       const memberCellIndex = sheet.structureVersion === 1 ? sheet.grid.getPhysical(row, col) : sheet.grid.get(row, col)
-      if (memberCellIndex !== -1 && ((args.state.workbook.cellStore.flags[memberCellIndex] ?? 0) & CellFlags.HasFormula) !== 0) {
+      if (memberCellIndex !== -1 && isInitialFormulaMember(args, memberCellIndex)) {
         return false
       }
     }
@@ -185,7 +190,7 @@ function tryEvaluateNativeInitialPrefixAggregateGroup(
       if (memberCellIndex === -1) {
         tags[offset] = ValueTag.Empty
       } else {
-        if (((args.state.workbook.cellStore.flags[memberCellIndex] ?? 0) & CellFlags.HasFormula) !== 0) {
+        if (isInitialFormulaMember(args, memberCellIndex)) {
           return false
         }
         tags[offset] = (args.state.workbook.cellStore.tags[memberCellIndex] as ValueTag | undefined) ?? ValueTag.Empty
@@ -269,7 +274,7 @@ function evaluateInitialPrefixAggregateGroupInJs(
     for (let col = group.col; col <= group.colEnd; col += 1) {
       const memberCellIndex = sheet.structureVersion === 1 ? sheet.grid.getPhysical(row, col) : sheet.grid.get(row, col)
       if (memberCellIndex !== -1) {
-        if (((args.state.workbook.cellStore.flags[memberCellIndex] ?? 0) & CellFlags.HasFormula) !== 0) {
+        if (isInitialFormulaMember(args, memberCellIndex)) {
           encounteredFormulaMember = true
           break
         }
@@ -325,6 +330,16 @@ function tryEvaluatePhysicalSingleColumnPrefixAggregateGroupInJs(
     return false
   }
   const formulas = orderedGroupFormulas(group)
+  if (formulas.length === 1 && formulas[0]!.rowEnd === group.maxRowEnd) {
+    return tryEvaluatePhysicalSingleColumnTerminalPrefixAggregateInJs(
+      args,
+      group,
+      formulas[0]!,
+      handled,
+      pushChangedCellIndex,
+      writeFormulaValue,
+    )
+  }
   const computedValues: CellValue[] = []
   let formulaIndex = 0
   let sum = 0
@@ -346,42 +361,59 @@ function tryEvaluatePhysicalSingleColumnPrefixAggregateGroupInJs(
         Number.POSITIVE_INFINITY,
         Number.NEGATIVE_INFINITY,
       )
-      computedValues.push(
+      const value =
         formula.resultOffset !== undefined && aggregateValue.tag === ValueTag.Number
           ? { tag: ValueTag.Number as const, value: aggregateValue.value + formula.resultOffset }
-          : aggregateValue,
-      )
+          : aggregateValue
+      computedValues.push(value)
       formulaIndex += 1
     }
   }
 
-  sheet.grid.forEachPhysicalRangeEntry(0, group.col, group.maxRowEnd, group.col, (memberCellIndex, row) => {
-    if (encounteredFormulaMember) {
-      return
+  const blockCol = Math.floor(group.col / BLOCK_COLS)
+  const localCol = group.col - blockCol * BLOCK_COLS
+  let row = 0
+  while (row <= group.maxRowEnd && !encounteredFormulaMember) {
+    const blockRow = Math.floor(row / BLOCK_ROWS)
+    const blockRowStart = blockRow * BLOCK_ROWS
+    const blockRowEnd = Math.min(group.maxRowEnd, blockRowStart + BLOCK_ROWS - 1)
+    const block = sheet.grid.blocks.get(blockRow * 1_000_000 + blockCol)
+    if (!block) {
+      row = blockRowEnd + 1
+      continue
     }
-    args.checkEvaluationBudget()
-    emitThroughRow(row - 1)
-    if (((args.state.workbook.cellStore.flags[memberCellIndex] ?? 0) & CellFlags.HasFormula) !== 0) {
-      encounteredFormulaMember = true
-      return
+    for (let localRow = row - blockRowStart; localRow <= blockRowEnd - blockRowStart; localRow += 1) {
+      const memberCellValue = block[localRow * BLOCK_COLS + localCol]!
+      if (memberCellValue === 0) {
+        continue
+      }
+      const memberCellIndex = memberCellValue - 1
+      const memberRow = blockRowStart + localRow
+      args.checkEvaluationBudget()
+      emitThroughRow(memberRow - 1)
+      if (isInitialFormulaMember(args, memberCellIndex)) {
+        encounteredFormulaMember = true
+        break
+      }
+      const tag = (args.state.workbook.cellStore.tags[memberCellIndex] as ValueTag | undefined) ?? ValueTag.Empty
+      if (tag === ValueTag.Number) {
+        const numeric = args.state.workbook.cellStore.numbers[memberCellIndex] ?? 0
+        sum += numeric
+        count += 1
+        averageCount += 1
+      } else if (tag === ValueTag.Boolean) {
+        // Reference aggregates ignore logical cells.
+      } else if (tag === ValueTag.Error) {
+        errorCode = preferAggregateErrorCode(
+          errorCode,
+          (args.state.workbook.cellStore.errors[memberCellIndex] as ErrorCode | undefined) ?? ErrorCode.None,
+        )
+        errorCount += 1
+      }
+      emitThroughRow(memberRow)
     }
-    const tag = (args.state.workbook.cellStore.tags[memberCellIndex] as ValueTag | undefined) ?? ValueTag.Empty
-    if (tag === ValueTag.Number) {
-      const numeric = args.state.workbook.cellStore.numbers[memberCellIndex] ?? 0
-      sum += numeric
-      count += 1
-      averageCount += 1
-    } else if (tag === ValueTag.Boolean) {
-      // Reference aggregates ignore logical cells.
-    } else if (tag === ValueTag.Error) {
-      errorCode = preferAggregateErrorCode(
-        errorCode,
-        (args.state.workbook.cellStore.errors[memberCellIndex] as ErrorCode | undefined) ?? ErrorCode.None,
-      )
-      errorCount += 1
-    }
-    emitThroughRow(row)
-  })
+    row = blockRowEnd + 1
+  }
   if (encounteredFormulaMember) {
     return false
   }
@@ -396,6 +428,83 @@ function tryEvaluatePhysicalSingleColumnPrefixAggregateGroupInJs(
     handled.add(formula.cellIndex)
     pushChangedCellIndex(formula.cellIndex)
   }
+  return true
+}
+
+function tryEvaluatePhysicalSingleColumnTerminalPrefixAggregateInJs(
+  args: InitialPrefixAggregateArgs,
+  group: InitialPrefixAggregateGroup,
+  formula: InitialPrefixAggregateGroup['formulas'][number],
+  handled: Set<number>,
+  pushChangedCellIndex: (cellIndex: number) => void,
+  writeFormulaValue: (cellIndex: number, value: CellValue) => void,
+): boolean {
+  let sum = 0
+  let count = 0
+  let averageCount = 0
+  let errorCode = ErrorCode.None
+  let errorCount = 0
+  const sheet = args.state.workbook.getSheet(group.sheetName)
+  if (!sheet || sheet.structureVersion !== 1) {
+    return false
+  }
+  const blockCol = Math.floor(group.col / BLOCK_COLS)
+  const localCol = group.col - blockCol * BLOCK_COLS
+  let row = 0
+  while (row <= formula.rowEnd) {
+    const blockRow = Math.floor(row / BLOCK_ROWS)
+    const blockRowStart = blockRow * BLOCK_ROWS
+    const blockRowEnd = Math.min(formula.rowEnd, blockRowStart + BLOCK_ROWS - 1)
+    const block = sheet.grid.blocks.get(blockRow * 1_000_000 + blockCol)
+    if (!block) {
+      row = blockRowEnd + 1
+      continue
+    }
+    for (let localRow = row - blockRowStart; localRow <= blockRowEnd - blockRowStart; localRow += 1) {
+      const memberCellValue = block[localRow * BLOCK_COLS + localCol]!
+      if (memberCellValue === 0) {
+        continue
+      }
+      const memberCellIndex = memberCellValue - 1
+      args.checkEvaluationBudget()
+      if (isInitialFormulaMember(args, memberCellIndex)) {
+        return false
+      }
+      const tag = (args.state.workbook.cellStore.tags[memberCellIndex] as ValueTag | undefined) ?? ValueTag.Empty
+      if (tag === ValueTag.Number) {
+        sum += args.state.workbook.cellStore.numbers[memberCellIndex] ?? 0
+        count += 1
+        averageCount += 1
+      } else if (tag === ValueTag.Boolean) {
+        // Reference aggregates ignore logical cells.
+      } else if (tag === ValueTag.Error) {
+        errorCode = preferAggregateErrorCode(
+          errorCode,
+          (args.state.workbook.cellStore.errors[memberCellIndex] as ErrorCode | undefined) ?? ErrorCode.None,
+        )
+        errorCount += 1
+      }
+    }
+    row = blockRowEnd + 1
+  }
+
+  const aggregateValue = aggregateValueFromState(
+    group.aggregateKind,
+    sum,
+    count,
+    averageCount,
+    errorCode,
+    errorCount,
+    Number.POSITIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+  )
+  const value =
+    formula.resultOffset !== undefined && aggregateValue.tag === ValueTag.Number
+      ? { tag: ValueTag.Number as const, value: aggregateValue.value + formula.resultOffset }
+      : aggregateValue
+  writeFormulaValue(formula.cellIndex, value)
+  handled.add(formula.cellIndex)
+  pushChangedCellIndex(formula.cellIndex)
   return true
 }
 

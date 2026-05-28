@@ -5,6 +5,10 @@ import type { WorkPaperClipboardPayload } from './work-paper-clipboard.js'
 import type { WorkPaperHistoryRecord } from './work-paper-history.js'
 import type { SerializedWorkPaperNamedExpression, WorkPaperConfig, WorkPaperSheets } from './work-paper-types.js'
 
+const MAX_POOLED_WORKPAPER_ENGINES = 8
+const MAX_POOLED_WORKPAPER_ENGINE_CELL_CAPACITY = 16_384
+const pooledWorkPaperEngines: SpreadsheetEngine[] = []
+
 export interface WorkPaperTransactionSnapshot {
   readonly clipboard: WorkPaperClipboardPayload | null
   readonly config: WorkPaperConfig
@@ -31,15 +35,25 @@ export function workPaperEvaluationTimeoutErrorFrom(error: unknown): WorkPaperEv
 }
 
 export function createWorkPaperEngine(config: WorkPaperConfig): SpreadsheetEngine {
-  const engine = new SpreadsheetEngine({
-    workbookName: 'Workbook',
-    trackReplicaVersions: false,
-    ...(config.useColumnIndex !== undefined ? { useColumnIndex: config.useColumnIndex } : {}),
-    ...(config.evaluationTimeoutMs !== undefined ? { evaluationTimeoutMs: config.evaluationTimeoutMs } : {}),
-  })
+  const engine = pooledWorkPaperEngines.pop() ?? new SpreadsheetEngine({ workbookName: 'Workbook', trackReplicaVersions: false })
+  engine.setUseColumnIndexEnabled(config.useColumnIndex ?? true)
+  engine.setEvaluationTimeoutMs(config.evaluationTimeoutMs)
+  engine.resetPerformanceCounters()
   const calculationSettings = normalizeConfiguredWorkPaperCalculationSettings(config.calculationSettings)
   if (calculationSettings !== undefined) {
     engine.setCalculationSettings(calculationSettings)
   }
   return engine
+}
+
+export function releaseWorkPaperEngine(engine: SpreadsheetEngine): void {
+  if (
+    engine.workbook.cellStore.capacity > MAX_POOLED_WORKPAPER_ENGINE_CELL_CAPACITY ||
+    pooledWorkPaperEngines.length >= MAX_POOLED_WORKPAPER_ENGINES
+  ) {
+    engine.workbook.releaseReusableBuffers()
+    return
+  }
+  engine.resetForReuse({ workbookName: 'Workbook', trackReplicaVersions: false })
+  pooledWorkPaperEngines.push(engine)
 }

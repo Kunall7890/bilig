@@ -29,7 +29,7 @@ export function bindFreshDirectAggregateFormulaRun(args: {
   readonly run: FreshDirectAggregateFormulaBindingInput
 }): void {
   if ('member' in args.run) {
-    assertFreshDirectAggregateFormulaCell(args.serviceArgs, args.run.cellIndex, args.run.member)
+    assertFreshDirectAggregateFormulaCell(args.serviceArgs, args.run.ownerSheetName, args.run.cellIndex, args.run.member)
     bindFreshDirectAggregateFormulaMember(
       args.serviceArgs,
       args.edgeArena,
@@ -48,14 +48,13 @@ export function bindFreshDirectAggregateFormulaRun(args: {
   }
   const useBulkReverseEdges = canAppendFreshDirectAggregateColumnReverseEdgesForRun(
     args.serviceArgs.state.workbook,
-    args.run.ownerSheetName,
     args.run.cellIndices,
     args.run.members,
   )
   for (let index = 0; index < args.run.members.length; index += 1) {
     const cellIndex = args.run.cellIndices[index]!
     const member = args.run.members[index]!
-    assertFreshDirectAggregateFormulaCell(args.serviceArgs, cellIndex, member)
+    assertFreshDirectAggregateFormulaCell(args.serviceArgs, args.run.ownerSheetName, cellIndex, member)
     bindFreshDirectAggregateFormulaMember(
       args.serviceArgs,
       args.edgeArena,
@@ -72,7 +71,6 @@ export function bindFreshDirectAggregateFormulaRun(args: {
     appendFreshDirectAggregateColumnReverseEdgesForRun(
       args.serviceArgs.reverseState.reverseAggregateColumnEdges,
       args.serviceArgs.state.workbook,
-      args.run.ownerSheetName,
       args.run.cellIndices,
       args.run.members,
     )
@@ -81,6 +79,7 @@ export function bindFreshDirectAggregateFormulaRun(args: {
 
 function assertFreshDirectAggregateFormulaCell(
   serviceArgs: CreateEngineFormulaBindingServiceArgs,
+  ownerSheetName: string,
   cellIndex: number,
   member: FreshDirectAggregateFormulaBindingMember,
 ): void {
@@ -90,7 +89,8 @@ function assertFreshDirectAggregateFormulaCell(
   if (
     member.aggregateRowStart > member.aggregateRowEnd ||
     member.aggregateColStart > member.aggregateColEnd ||
-    (member.aggregateRowStart <= member.row &&
+    (member.aggregateSheetName === ownerSheetName &&
+      member.aggregateRowStart <= member.row &&
       member.row <= member.aggregateRowEnd &&
       member.aggregateColStart <= member.col &&
       member.col <= member.aggregateColEnd)
@@ -114,7 +114,7 @@ function bindFreshDirectAggregateFormulaMember(
   member: FreshDirectAggregateFormulaBindingMember,
   appendReverseEdges = true,
 ): void {
-  const directAggregate = buildFreshDirectAggregateDescriptor(serviceArgs, ownerSheetName, member)
+  const directAggregate = buildFreshDirectAggregateDescriptor(serviceArgs, member)
   const runtimeFormula: RuntimeFormula = {
     cellIndex,
     formulaSlotId: 0,
@@ -161,18 +161,17 @@ function bindFreshDirectAggregateFormulaMember(
 
 function buildFreshDirectAggregateDescriptor(
   serviceArgs: CreateEngineFormulaBindingServiceArgs,
-  ownerSheetName: string,
   member: FreshDirectAggregateFormulaBindingMember,
 ): RuntimeDirectAggregateDescriptor {
   return {
     regionId: serviceArgs.regionGraph.internSingleColumnRegion({
-      sheetName: ownerSheetName,
+      sheetName: member.aggregateSheetName,
       rowStart: member.aggregateRowStart,
       rowEnd: member.aggregateRowEnd,
       col: member.aggregateColStart,
     }),
     aggregateKind: member.aggregateKind,
-    sheetName: ownerSheetName,
+    sheetName: member.aggregateSheetName,
     rowStart: member.aggregateRowStart,
     rowEnd: member.aggregateRowEnd,
     col: member.aggregateColStart,

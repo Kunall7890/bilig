@@ -2,8 +2,11 @@ import { BuiltinId, FormulaMode, Opcode, type FormulaRecord } from '@bilig/proto
 import type { CompiledFormula, FormulaNode, JsPlanInstruction, ParsedCellReferenceInfo, ParsedDependencyReference } from '@bilig/formula'
 import { parseA1RowIndex } from './a1-row-number.js'
 
-const SIMPLE_DIRECT_BINARY_RE = /^([A-Za-z]+)([1-9][0-9]*)([+\-*/])(?:([A-Za-z]+)([1-9][0-9]*)|(\d+(?:\.\d+)?))(?:\+(\d+(?:\.\d+)?))?$/
-const SIMPLE_DIRECT_ABS_RE = /^ABS\s*\(\s*([A-Za-z]+)([1-9][0-9]*)\s*\)$/i
+const SIMPLE_DIRECT_CELL_REF_PATTERN = String.raw`(?:(?:([A-Za-z_][A-Za-z0-9_.]*)!)?([A-Za-z]+)([1-9][0-9]*))`
+const SIMPLE_DIRECT_BINARY_RE = new RegExp(
+  `^${SIMPLE_DIRECT_CELL_REF_PATTERN}([+\\-*/])(?:${SIMPLE_DIRECT_CELL_REF_PATTERN}|(\\d+(?:\\.\\d+)?))(?:\\+(\\d+(?:\\.\\d+)?))?$`,
+)
+const SIMPLE_DIRECT_ABS_RE = new RegExp(`^ABS\\s*\\(\\s*${SIMPLE_DIRECT_CELL_REF_PATTERN}\\s*\\)$`, 'i')
 const EMPTY_STRINGS: string[] = []
 const EMPTY_CONSTANTS = new Float64Array()
 
@@ -75,14 +78,16 @@ function operatorOpcode(operator: SimpleDirectBinaryOperator): Opcode {
   }
 }
 
-function parsedCellRef(column: string, rowText: string): ParsedCellReferenceInfo | undefined {
+function parsedCellRef(column: string, rowText: string, sheetName?: string): ParsedCellReferenceInfo | undefined {
   const normalizedColumn = column.toUpperCase()
   const row = parseA1RowIndex(rowText)
   if (row === undefined) {
     return undefined
   }
+  const localAddress = `${normalizedColumn}${rowText}`
   return {
-    address: `${normalizedColumn}${rowText}`,
+    address: localAddress,
+    ...(sheetName === undefined ? {} : { sheetName, explicitSheet: true }),
     row,
     col: columnToIndex(normalizedColumn),
     rowAbsolute: false,
@@ -94,6 +99,7 @@ function cellNode(ref: ParsedCellReferenceInfo): FormulaNode {
   return {
     kind: 'CellRef',
     ref: ref.address,
+    ...(ref.sheetName === undefined ? {} : { sheetName: ref.sheetName }),
   }
 }
 
@@ -212,7 +218,7 @@ function translatedRefsFromSource(
     if (!absMatch || parsedRefs.length !== 1) {
       return undefined
     }
-    const operand = parsedTranslatedSourceRef(absMatch[1]!, absMatch[2]!, parsedRefs[0]!, rowDelta, colDelta)
+    const operand = parsedTranslatedSourceRef(absMatch[2]!, absMatch[3]!, parsedRefs[0]!, rowDelta, colDelta)
     return operand ? [operand] : undefined
   }
 
@@ -220,24 +226,24 @@ function translatedRefsFromSource(
   if (!binaryMatch) {
     return undefined
   }
-  const left = parsedTranslatedSourceRef(binaryMatch[1]!, binaryMatch[2]!, parsedRefs[0]!, rowDelta, colDelta)
+  const left = parsedTranslatedSourceRef(binaryMatch[2]!, binaryMatch[3]!, parsedRefs[0]!, rowDelta, colDelta)
   if (!left) {
     return undefined
   }
   if (scalarAst.right.kind !== 'CellRef') {
-    return parsedRefs.length === 1 && binaryMatch[4] === undefined ? [left] : undefined
+    return parsedRefs.length === 1 && binaryMatch[6] === undefined ? [left] : undefined
   }
-  if (parsedRefs.length !== 2 || binaryMatch[4] === undefined) {
+  if (parsedRefs.length !== 2 || binaryMatch[6] === undefined) {
     return undefined
   }
-  const right = parsedTranslatedSourceRef(binaryMatch[4], binaryMatch[5]!, parsedRefs[1]!, rowDelta, colDelta)
+  const right = parsedTranslatedSourceRef(binaryMatch[6], binaryMatch[7]!, parsedRefs[1]!, rowDelta, colDelta)
   return right ? [left, right] : undefined
 }
 
 function simpleDirectSourceHasResultOffset(source: string): boolean {
   const trimmedSource = source.trim()
   const trimmed = trimmedSource.startsWith('=') ? trimmedSource.slice(1).trim() : trimmedSource
-  return SIMPLE_DIRECT_BINARY_RE.exec(trimmed)?.[7] !== undefined
+  return SIMPLE_DIRECT_BINARY_RE.exec(trimmed)?.[9] !== undefined
 }
 
 function translatedCompiledFormula(
@@ -471,7 +477,7 @@ export function tryCompileSimpleDirectScalarFormula(source: string): CompiledFor
   const trimmed = trimmedSource.startsWith('=') ? trimmedSource.slice(1).trim() : trimmedSource
   const absMatch = SIMPLE_DIRECT_ABS_RE.exec(trimmed)
   if (absMatch) {
-    const ref = parsedCellRef(absMatch[1]!, absMatch[2]!)
+    const ref = parsedCellRef(absMatch[2]!, absMatch[3]!, absMatch[1])
     if (!ref) {
       return undefined
     }
@@ -533,25 +539,25 @@ export function tryCompileSimpleDirectScalarFormula(source: string): CompiledFor
     return undefined
   }
 
-  const operator = parseOperator(match[3]!)
+  const operator = parseOperator(match[4]!)
   if (operator === undefined) {
     return undefined
   }
   const opcode = operatorOpcode(operator)
 
-  const leftRef = parsedCellRef(match[1]!, match[2]!)
+  const leftRef = parsedCellRef(match[2]!, match[3]!, match[1])
   if (!leftRef) {
     return undefined
   }
-  const rightRef = match[4] !== undefined ? parsedCellRef(match[4], match[5]!) : undefined
-  if (match[4] !== undefined && !rightRef) {
+  const rightRef = match[6] !== undefined ? parsedCellRef(match[6], match[7]!, match[5]) : undefined
+  if (match[6] !== undefined && !rightRef) {
     return undefined
   }
-  const rightNumber = rightRef === undefined ? Number.parseFloat(match[6]!) : undefined
+  const rightNumber = rightRef === undefined ? Number.parseFloat(match[8]!) : undefined
   if (rightRef === undefined && !Number.isFinite(rightNumber)) {
     return undefined
   }
-  const resultOffset = match[7] === undefined ? undefined : Number.parseFloat(match[7])
+  const resultOffset = match[9] === undefined ? undefined : Number.parseFloat(match[9])
   if (resultOffset !== undefined && !Number.isFinite(resultOffset)) {
     return undefined
   }

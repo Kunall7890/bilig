@@ -1,13 +1,14 @@
 import type { FormulaTemplateResolution } from '../../formula/template-bank.js'
 import {
   translateSimpleDirectScalarFormula,
+  translateSimpleDirectScalarFormulaWithParsedRefs,
   translateTrustedSimpleDirectScalarFormula,
   translateTrustedSimpleDirectScalarFormulaWithResultOffset,
 } from '../../formula/simple-direct-scalar-compile.js'
 import {
   translateInitialPrefixSumFormula,
   tryBuildInitialPrefixSumTemplateKey,
-  tryBuildInitialSimpleRowRelativeBinaryTemplateKeyInfo,
+  tryBuildInitialSimpleRowRelativeBinaryTemplate,
   type InitialTemplateFormulaCacheEntry,
 } from './formula-initialization-template-keys.js'
 
@@ -16,13 +17,13 @@ export function createInitialTemplateFormulaResolver(
 ): (source: string, row: number, col: number) => FormulaTemplateResolution {
   const simpleTemplateCache = new Map<string | number, InitialTemplateFormulaCacheEntry>()
   return (source, row, col) => {
-    const simpleTemplateKey = tryBuildInitialSimpleRowRelativeBinaryTemplateKeyInfo(source, row, col)
-    const templateKey = simpleTemplateKey?.key
+    const simpleTemplate = tryBuildInitialSimpleRowRelativeBinaryTemplate(source, row, col)
+    const templateKey = simpleTemplate?.key
     const cached = templateKey === undefined ? undefined : simpleTemplateCache.get(templateKey)
-    if (cached && simpleTemplateKey !== undefined) {
+    if (cached && simpleTemplate !== undefined) {
       const anchorRowDelta = row - cached.anchorRow
       const anchorColDelta = col - cached.anchorCol
-      const compiled = simpleTemplateKey.usesRowLiteralSuffix
+      const compiled = simpleTemplate.usesRowLiteralSuffix
         ? (translateTrustedSimpleDirectScalarFormulaWithResultOffset(
             cached.anchorCompiled,
             anchorRowDelta,
@@ -30,7 +31,8 @@ export function createInitialTemplateFormulaResolver(
             source,
             row + 1,
           ) ?? translateSimpleDirectScalarFormula(cached.anchorCompiled, anchorRowDelta, anchorColDelta, source))
-        : translateTrustedSimpleDirectScalarFormula(cached.anchorCompiled, anchorRowDelta, anchorColDelta, source)
+        : (translateSimpleDirectScalarFormulaWithParsedRefs(cached.anchorCompiled, source, simpleTemplate.parsedRefs) ??
+          translateTrustedSimpleDirectScalarFormula(cached.anchorCompiled, anchorRowDelta, anchorColDelta, source))
       if (compiled) {
         return {
           ...cached.resolution,

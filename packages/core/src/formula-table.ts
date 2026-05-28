@@ -2,8 +2,11 @@ import type { CellStore } from './cell-store.js'
 
 export interface FormulaTableDirectScalarDeltaIndex<T> {
   readonly deltaInputCellIndices: Array<number | undefined>
+  readonly singleOutputCellIndicesByInput?: Array<number | undefined>
   readonly readDeltaInputCellIndex: (record: T) => number | undefined
 }
+
+export const MULTIPLE_DIRECT_SCALAR_OUTPUTS = -2
 
 export class FormulaTable<T extends { cellIndex: number }> {
   private readonly records: Array<T | undefined> = []
@@ -36,6 +39,7 @@ export class FormulaTable<T extends { cellIndex: number }> {
   set(cellIndex: number, record: T): number {
     const existingId = this.store.formulaIds[cellIndex] ?? 0
     if (existingId !== 0) {
+      this.clearDirectScalarDeltaInputCellIndex(cellIndex)
       this.records[existingId - 1] = record
       this.trackDirectScalarDeltaInputCellIndex(cellIndex, record)
       this.mutationVersion += 1
@@ -90,6 +94,9 @@ export class FormulaTable<T extends { cellIndex: number }> {
     this.freeSlots.length = 0
     if (this.directScalarDeltaIndex) {
       this.directScalarDeltaIndex.deltaInputCellIndices.length = 0
+      if (this.directScalarDeltaIndex.singleOutputCellIndicesByInput) {
+        this.directScalarDeltaIndex.singleOutputCellIndicesByInput.length = 0
+      }
     }
     this.activeCount = 0
     this.mutationVersion += 1
@@ -135,11 +142,31 @@ export class FormulaTable<T extends { cellIndex: number }> {
     if (!this.directScalarDeltaIndex) {
       return
     }
-    this.directScalarDeltaIndex.deltaInputCellIndices[cellIndex] = this.directScalarDeltaIndex.readDeltaInputCellIndex(record)
+    const inputCellIndex = this.directScalarDeltaIndex.readDeltaInputCellIndex(record)
+    this.directScalarDeltaIndex.deltaInputCellIndices[cellIndex] = inputCellIndex
+    const outputCellIndicesByInput = this.directScalarDeltaIndex.singleOutputCellIndicesByInput
+    if (outputCellIndicesByInput === undefined || inputCellIndex === undefined) {
+      return
+    }
+    const currentOutputCellIndex = outputCellIndicesByInput[inputCellIndex]
+    if (currentOutputCellIndex === undefined || currentOutputCellIndex === cellIndex) {
+      outputCellIndicesByInput[inputCellIndex] = cellIndex
+      return
+    }
+    outputCellIndicesByInput[inputCellIndex] = MULTIPLE_DIRECT_SCALAR_OUTPUTS
   }
 
   private clearDirectScalarDeltaInputCellIndex(cellIndex: number): void {
     if (this.directScalarDeltaIndex) {
+      const inputCellIndex = this.directScalarDeltaIndex.deltaInputCellIndices[cellIndex]
+      const outputCellIndicesByInput = this.directScalarDeltaIndex.singleOutputCellIndicesByInput
+      if (
+        outputCellIndicesByInput !== undefined &&
+        inputCellIndex !== undefined &&
+        outputCellIndicesByInput[inputCellIndex] === cellIndex
+      ) {
+        outputCellIndicesByInput[inputCellIndex] = undefined
+      }
       this.directScalarDeltaIndex.deltaInputCellIndices[cellIndex] = undefined
     }
   }

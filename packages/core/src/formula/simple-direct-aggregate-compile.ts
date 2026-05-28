@@ -12,7 +12,8 @@ import { parseA1RowNumber } from './a1-row-number.js'
 
 const SIMPLE_DIRECT_AGGREGATE_RE =
   /^(?<callee>SUM|AVERAGE|AVG|COUNT|MIN|MAX)\s*\(\s*(?<range>[^(),]+:[^(),]+)\s*\)(?:\s*\+\s*(?<offset>[+-]?(?:\d+|\d*\.\d+)))?$/i
-const SIMPLE_COLUMN_RANGE_RE = /^([A-Za-z]+)([1-9][0-9]*):([A-Za-z]+)([1-9][0-9]*)$/
+const SIMPLE_COLUMN_RANGE_RE =
+  /^(?:(?<sheet>[A-Za-z_][A-Za-z0-9_ .]*)!)?(?<startCol>[A-Za-z]+)(?<startRow>[1-9][0-9]*):(?:(?<endSheet>[A-Za-z_][A-Za-z0-9_ .]*)!)?(?<endCol>[A-Za-z]+)(?<endRow>[1-9][0-9]*)$/
 const EMPTY_STRINGS: string[] = []
 const EMPTY_PROGRAM = new Uint32Array()
 const EMPTY_CONSTANTS = new Float64Array()
@@ -30,6 +31,8 @@ const DIRECT_AGGREGATE_KIND_BY_CALLEE: Record<string, DirectAggregateKind> = {
 
 interface SimpleColumnRangeInfo {
   readonly address: string
+  readonly sheetName?: string
+  readonly explicitSheet?: boolean
   readonly startAddress: string
   readonly endAddress: string
   readonly startRow: number
@@ -49,18 +52,24 @@ function columnToIndex(column: string): number {
 
 function tryParseSimpleColumnRange(rawRange: string): SimpleColumnRangeInfo | null | undefined {
   const match = SIMPLE_COLUMN_RANGE_RE.exec(rawRange)
-  if (!match) {
+  const groups = match?.groups
+  if (!match || !groups) {
     return undefined
   }
-  const startColumn = match[1]!.toUpperCase()
-  const endColumn = match[3]!.toUpperCase()
+  const sheetName = groups['sheet']
+  const endSheetName = groups['endSheet']
+  if (sheetName !== undefined && endSheetName !== undefined && sheetName !== endSheetName) {
+    return undefined
+  }
+  const startColumn = groups['startCol']!.toUpperCase()
+  const endColumn = groups['endCol']!.toUpperCase()
   const startCol = columnToIndex(startColumn)
   const endCol = columnToIndex(endColumn)
   if (endCol < startCol) {
     return undefined
   }
-  const startRowNumber = parseA1RowNumber(match[2]!)
-  const endRowNumber = parseA1RowNumber(match[4]!)
+  const startRowNumber = parseA1RowNumber(groups['startRow']!)
+  const endRowNumber = parseA1RowNumber(groups['endRow']!)
   if (startRowNumber === undefined || endRowNumber === undefined) {
     return null
   }
@@ -69,8 +78,10 @@ function tryParseSimpleColumnRange(rawRange: string): SimpleColumnRangeInfo | nu
   }
   const startAddress = `${startColumn}${startRowNumber}`
   const endAddress = `${endColumn}${endRowNumber}`
+  const address = sheetName === undefined ? `${startAddress}:${endAddress}` : `${sheetName}!${startAddress}:${endAddress}`
   return {
-    address: `${startAddress}:${endAddress}`,
+    address,
+    ...(sheetName !== undefined ? { sheetName, explicitSheet: true } : {}),
     startAddress,
     endAddress,
     startRow: startRowNumber - 1,
@@ -110,7 +121,7 @@ export function tryCompileSimpleDirectAggregateFormula(source: string): Compiled
     } catch {
       return undefined
     }
-    if (parsedRange.kind !== 'cells' || parsedRange.sheetName !== undefined) {
+    if (parsedRange.kind !== 'cells') {
       return undefined
     }
     const start = parsedRange.start as { readonly text: string; readonly row: number; readonly col: number }
@@ -120,6 +131,7 @@ export function tryCompileSimpleDirectAggregateFormula(source: string): Compiled
     }
     rangeInfo = {
       address: rawRange,
+      ...(parsedRange.sheetName !== undefined ? { sheetName: parsedRange.sheetName, explicitSheet: true } : {}),
       startAddress: start.text,
       endAddress: end.text,
       startRow: start.row,
@@ -138,6 +150,7 @@ export function tryCompileSimpleDirectAggregateFormula(source: string): Compiled
   const rangeNode: FormulaNode = {
     kind: 'RangeRef',
     refKind: 'cells',
+    ...(rangeInfo.sheetName !== undefined ? { sheetName: rangeInfo.sheetName } : {}),
     start: rangeInfo.startAddress,
     end: rangeInfo.endAddress,
   }
@@ -221,7 +234,7 @@ export function translateSimpleDirectAggregateFormula(
     compiled.symbolicRefs.length !== 0 ||
     range.kind !== 'range' ||
     range.refKind !== 'cells' ||
-    range.sheetName !== undefined
+    range.sheetEndName !== undefined
   ) {
     return undefined
   }
@@ -235,7 +248,7 @@ export function translateSimpleDirectAggregateFormula(
 
   const startAddress = formatAddress(startRow, startCol)
   const endAddress = formatAddress(endRow, endCol)
-  const address = `${startAddress}:${endAddress}`
+  const address = formatSimpleRangeAddress(range.sheetName, startAddress, endAddress)
   const translatedRange: ParsedRangeReferenceInfo = {
     ...range,
     address,
@@ -249,6 +262,7 @@ export function translateSimpleDirectAggregateFormula(
   const rangeNode: FormulaNode = {
     kind: 'RangeRef',
     refKind: 'cells',
+    ...(range.sheetName !== undefined ? { sheetName: range.sheetName } : {}),
     start: startAddress,
     end: endAddress,
   }
@@ -278,6 +292,17 @@ export function translateSimpleDirectAggregateFormula(
     symbolicRanges: [address],
     parsedSymbolicRanges: [translatedRange],
   }
+}
+
+function formatSimpleRangeAddress(sheetName: string | undefined, startAddress: string, endAddress: string): string {
+  if (sheetName === undefined) {
+    return `${startAddress}:${endAddress}`
+  }
+  return `${formatSimpleSheetName(sheetName)}!${startAddress}:${endAddress}`
+}
+
+function formatSimpleSheetName(sheetName: string): string {
+  return /^[A-Za-z_][A-Za-z0-9_.]*$/.test(sheetName) ? sheetName : `'${sheetName.replace(/'/g, "''")}'`
 }
 
 export function translateAnchoredPrefixDirectAggregateFormula(

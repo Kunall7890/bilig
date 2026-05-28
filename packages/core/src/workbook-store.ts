@@ -4,7 +4,7 @@ import type { SheetGridAxisRemapScope } from './sheet-grid.js'
 import { CellStore } from './cell-store.js'
 import type { StructuralTransaction } from './engine/structural-transaction.js'
 import type { EngineCounters } from './perf/engine-counters.js'
-import { createWorkbookMetadataService, runWorkbookMetadataEffect } from './workbook-metadata-service.js'
+import { createWorkbookMetadataService, runWorkbookMetadataEffect, type WorkbookMetadataService } from './workbook-metadata-service.js'
 import {
   createWorkbookMetadataRecord,
   type WorkbookAxisMetadataRecord,
@@ -93,7 +93,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
   readonly numberFormatKeys = new Map<string, string>()
   readonly metadata: WorkbookMetadataRecord = createWorkbookMetadataRecord()
   private readonly idAllocator = new WorkbookIdAllocator()
-  protected readonly metadataService = createWorkbookMetadataService(this.metadata)
+  private metadataServiceValue: WorkbookMetadataService | undefined
   private readonly sheetRegistry: WorkbookSheetRegistryStore
   private readonly cellRecordStore: WorkbookCellRecordStore
   private readonly axisEntryStore: WorkbookAxisEntryStore
@@ -174,6 +174,10 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     ensureWorkbookDefaultStyleFormat(this)
   }
 
+  protected get metadataService(): WorkbookMetadataService {
+    return (this.metadataServiceValue ??= createWorkbookMetadataService(this.metadata))
+  }
+
   hasStructuralMetadataForSheet(sheetName: string): boolean {
     return (
       hasStructuralMetadataForSheetRecord(this.metadata, sheetName, this.getSheet(sheetName)) ||
@@ -211,6 +215,10 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
 
   renameSheetById(sheetId: number, trimmedName: string): SheetRecord | undefined {
     return this.sheetRegistry.renameSheetById(sheetId, trimmedName)
+  }
+
+  renameSheetByIdTrustedPrevalidated(sheetId: number, oldName: string, trimmedName: string): SheetRecord | undefined {
+    return this.sheetRegistry.renameSheetByIdTrustedPrevalidated(sheetId, oldName, trimmedName)
   }
 
   getSheet(name: string): SheetRecord | undefined {
@@ -965,6 +973,13 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     this.idAllocator.reset()
     this.cellStore.reset()
     ensureWorkbookDefaultStyleFormat(this)
+  }
+
+  releaseReusableBuffers(): void {
+    for (const sheet of this.sheetsById.values()) {
+      sheet.grid.releaseBlocksToPool()
+    }
+    this.cellStore.releaseBuffersToPool()
   }
 
   private bumpSheetStructureVersion(sheet: SheetRecord): void {

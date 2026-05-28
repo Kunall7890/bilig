@@ -2,6 +2,7 @@ import type { EngineCounters } from './perf/engine-counters.js'
 import { makeCellKey } from './workbook-cell-key-index.js'
 import type { WorkbookSheetDeletionMetadataContext, WorkbookSheetReorderMetadataContext } from './workbook-metadata-service-contract.js'
 import type { WorkbookMetadataRecord } from './workbook-metadata-types.js'
+import { hasWorkbookMetadataForSheetRename } from './workbook-store-metadata-presence.js'
 import { createWorkbookSheetRecord, type SheetRecord } from './workbook-sheet-record.js'
 
 export class WorkbookSheetRegistryStore {
@@ -110,23 +111,7 @@ export class WorkbookSheetRegistryStore {
       return undefined
     }
 
-    this.options.sheetsByName.delete(oldName)
-    sheet.name = trimmedName
-    this.options.sheetsByName.set(trimmedName, sheet)
-    this.options.renameSheetRecords(oldName, trimmedName)
-
-    if (sheet.styleRanges.length > 0) {
-      sheet.styleRanges = sheet.styleRanges.map((record) =>
-        record.range.sheetName === oldName ? { ...record, range: { ...record.range, sheetName: trimmedName } } : record,
-      )
-    }
-    if (sheet.formatRanges.length > 0) {
-      sheet.formatRanges = sheet.formatRanges.map((record) =>
-        record.range.sheetName === oldName ? { ...record, range: { ...record.range, sheetName: trimmedName } } : record,
-      )
-    }
-
-    return sheet
+    return this.renameExistingSheet(sheet, oldName, trimmedName)
   }
 
   renameSheetById(sheetId: number, trimmedName: string): SheetRecord | undefined {
@@ -145,6 +130,28 @@ export class WorkbookSheetRegistryStore {
       return undefined
     }
 
+    return this.renameExistingSheet(sheet, oldName, trimmedName)
+  }
+
+  renameSheetByIdTrustedPrevalidated(sheetId: number, oldName: string, trimmedName: string): SheetRecord | undefined {
+    const sheet = this.options.sheetsById.get(sheetId)
+    if (!sheet || sheet.name !== oldName) {
+      return undefined
+    }
+    if (
+      !hasWorkbookMetadataForSheetRename(this.options.metadata) &&
+      sheet.styleRanges.length === 0 &&
+      sheet.formatRanges.length === 0
+    ) {
+      this.options.sheetsByName.delete(oldName)
+      sheet.name = trimmedName
+      this.options.sheetsByName.set(trimmedName, sheet)
+      return sheet
+    }
+    return this.renameExistingSheet(sheet, oldName, trimmedName)
+  }
+
+  private renameExistingSheet(sheet: SheetRecord, oldName: string, trimmedName: string): SheetRecord {
     this.options.sheetsByName.delete(oldName)
     sheet.name = trimmedName
     this.options.sheetsByName.set(trimmedName, sheet)

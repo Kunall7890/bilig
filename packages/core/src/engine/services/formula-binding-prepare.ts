@@ -1,4 +1,4 @@
-import { formulaContainsDateSystemSensitiveBuiltin, type CompiledFormula } from '@bilig/formula'
+import { compileFormula, formulaContainsDateSystemSensitiveBuiltin, type CompiledFormula } from '@bilig/formula'
 import { FormulaMode, Opcode } from '@bilig/protocol'
 import { resolveRuntimeDirectLookupBinding } from '../direct-vector-lookup.js'
 import {
@@ -43,6 +43,23 @@ function normalizeWorkbookMetadataMode(compiled: ParsedCompiledFormula): ParsedC
   return shouldEvaluateMetadataNameFormulaInJs(compiled) || shouldEvaluateMetadataTableFormulaInJs(compiled)
     ? { ...compiled, mode: FormulaMode.JsOnly }
     : compiled
+}
+
+function shouldUseGenericCompileForMissingDirectAggregateSheet(
+  compiled: ParsedCompiledFormula,
+  ownerSheetName: string,
+  workbook: CreateEngineFormulaBindingServiceArgs['state']['workbook'],
+): boolean {
+  const directAggregateCandidate = compiled.directAggregateCandidate
+  if (directAggregateCandidate === undefined) {
+    return false
+  }
+  const rangeInfo = compiled.parsedSymbolicRanges?.[directAggregateCandidate.symbolicRangeIndex]
+  if (!rangeInfo || rangeInfo.refKind !== 'cells') {
+    return false
+  }
+  const sheetName = rangeInfo.sheetName ?? ownerSheetName
+  return workbook.getSheet(sheetName) === undefined
 }
 
 function buildInlineScalarFastPlanStringIds(args: {
@@ -145,15 +162,21 @@ export function prepareFormulaBindingFromCompiled(args: {
 }): PreparedFormulaBinding {
   const serviceArgs = args.serviceArgs
   const ownerSheetId = serviceArgs.state.workbook.getSheet(args.ownerSheetName)?.id
-  const isDateSystemSensitive = formulaContainsDateSystemSensitiveBuiltin(args.compiledInput.ast)
+  let compiledInput = args.compiledInput
+  let templateId = args.templateId
+  if (shouldUseGenericCompileForMissingDirectAggregateSheet(compiledInput, args.ownerSheetName, serviceArgs.state.workbook)) {
+    compiledInput = compileFormula(args.source) as ParsedCompiledFormula
+    templateId = undefined
+  }
+  const isDateSystemSensitive = formulaContainsDateSystemSensitiveBuiltin(compiledInput.ast)
   const workbookDateSystem = isDateSystemSensitive
     ? (args.resolveWorkbookDateSystem?.() ?? serviceArgs.state.workbook.getCalculationSettings().dateSystem)
     : undefined
   const requiresWorkbookDateSystemJs = isDateSystemSensitive && workbookDateSystem === '1904'
   const compiled = normalizeWorkbookMetadataMode(
     requiresWorkbookDateSystemJs
-      ? { ...args.normalizeLookupCompileMode(args.compiledInput), mode: FormulaMode.JsOnly }
-      : args.normalizeLookupCompileMode(args.compiledInput),
+      ? { ...args.normalizeLookupCompileMode(compiledInput), mode: FormulaMode.JsOnly }
+      : args.normalizeLookupCompileMode(compiledInput),
   )
   const compiledInlineScalarFastPlanKind = classifyInlineScalarFastPlan(compiled)
   const hasLookupInstruction = hasLookupPlanInstruction(compiled.jsPlan)
@@ -319,9 +342,9 @@ export function prepareFormulaBindingFromCompiled(args: {
     inlineScalarPlanCellIndices,
     runtimeProgram,
     plan: directOnlyRuntimeProgram
-      ? args.makeUnmanagedCompiledPlan(args.source, compiled, args.templateId)
-      : serviceArgs.compiledPlans.intern(args.source, compiled, args.templateId),
-    templateId: args.templateId,
+      ? args.makeUnmanagedCompiledPlan(args.source, compiled, templateId)
+      : serviceArgs.compiledPlans.intern(args.source, compiled, templateId),
+    templateId,
     indexedExactLookupCandidates,
     directApproximateLookupCandidates,
   }

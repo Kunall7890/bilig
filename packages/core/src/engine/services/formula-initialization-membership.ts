@@ -2,6 +2,7 @@ import type { InitialFormulaCellIndexList } from './formula-initialization-refs.
 
 const DENSE_MEMBERSHIP_SMALL_CAPACITY = 256
 const DENSE_MEMBERSHIP_MAX_SPARSE_FACTOR = 8
+const SMALL_LIST_MEMBERSHIP_MAX_CELLS = 32
 
 export interface InitialFormulaCellMembership {
   readonly has: (cellIndex: number) => boolean
@@ -18,39 +19,121 @@ export function createInitialFormulaCellMembership(args: {
   const cellCount = Math.min(args.cellCount ?? args.cellIndices?.length ?? 0, args.cellIndices?.length ?? 0)
   const expectedCellCount = Math.max(args.expectedCellCount ?? cellCount, cellCount)
   const maxCellIndex = args.maxCellIndex ?? findMaxCellIndex(args.cellIndices, cellCount)
+  if (expectedCellCount <= SMALL_LIST_MEMBERSHIP_MAX_CELLS) {
+    return new SmallInitialFormulaCellMembership(args.cellIndices, cellCount, expectedCellCount)
+  }
   if (shouldUseDenseMembership(maxCellIndex, expectedCellCount)) {
-    let cells = new Uint8Array(maxCellIndex + 1)
-    for (let index = 0; index < cellCount; index += 1) {
-      cells[args.cellIndices![index]!] = 1
+    return new DenseInitialFormulaCellMembership(args.cellIndices, cellCount, maxCellIndex + 1)
+  }
+
+  return new SetInitialFormulaCellMembership(args.cellIndices, cellCount)
+}
+
+class SmallInitialFormulaCellMembership implements InitialFormulaCellMembership {
+  private cells: Int32Array
+  private length = 0
+
+  constructor(cellIndices: InitialFormulaCellIndexList | undefined, cellCount: number, expectedCellCount: number) {
+    this.cells = new Int32Array(Math.max(expectedCellCount, 1))
+    if (cellIndices === undefined || cellCount === 0) {
+      return
     }
-    return {
-      has: (cellIndex: number): boolean => (cells[cellIndex] ?? 0) !== 0,
-      add: (cellIndex: number): void => {
-        if (cellIndex >= cells.length) {
-          const next = new Uint8Array(cellIndex + 1)
-          next.set(cells)
-          cells = next
-        }
-        cells[cellIndex] = 1
-      },
-      delete: (cellIndex: number): void => {
-        cells[cellIndex] = 0
-      },
+    for (let index = 0; index < cellCount; index += 1) {
+      this.add(cellIndices[index]!)
     }
   }
 
-  const cells = new Set<number>()
-  for (let index = 0; index < cellCount; index += 1) {
-    cells.add(args.cellIndices![index]!)
+  has(cellIndex: number): boolean {
+    for (let index = 0; index < this.length; index += 1) {
+      if (this.cells[index] === cellIndex) {
+        return true
+      }
+    }
+    return false
   }
-  return {
-    has: (cellIndex: number): boolean => cells.has(cellIndex),
-    add: (cellIndex: number): void => {
-      cells.add(cellIndex)
-    },
-    delete: (cellIndex: number): void => {
-      cells.delete(cellIndex)
-    },
+
+  add(cellIndex: number): void {
+    if (this.has(cellIndex)) {
+      return
+    }
+    for (let index = 0; index < this.length; index += 1) {
+      if (this.cells[index] === -1) {
+        this.cells[index] = cellIndex
+        return
+      }
+    }
+    if (this.length === this.cells.length) {
+      const next = new Int32Array(this.cells.length * 2)
+      next.set(this.cells)
+      this.cells = next
+    }
+    this.cells[this.length] = cellIndex
+    this.length += 1
+  }
+
+  delete(cellIndex: number): void {
+    for (let index = 0; index < this.length; index += 1) {
+      if (this.cells[index] === cellIndex) {
+        this.cells[index] = -1
+        return
+      }
+    }
+  }
+}
+
+class DenseInitialFormulaCellMembership implements InitialFormulaCellMembership {
+  private cells: Uint8Array
+
+  constructor(cellIndices: InitialFormulaCellIndexList | undefined, cellCount: number, capacity: number) {
+    this.cells = new Uint8Array(capacity)
+    if (cellIndices === undefined) {
+      return
+    }
+    for (let index = 0; index < cellCount; index += 1) {
+      this.cells[cellIndices[index]!] = 1
+    }
+  }
+
+  has(cellIndex: number): boolean {
+    return (this.cells[cellIndex] ?? 0) !== 0
+  }
+
+  add(cellIndex: number): void {
+    if (cellIndex >= this.cells.length) {
+      const next = new Uint8Array(cellIndex + 1)
+      next.set(this.cells)
+      this.cells = next
+    }
+    this.cells[cellIndex] = 1
+  }
+
+  delete(cellIndex: number): void {
+    this.cells[cellIndex] = 0
+  }
+}
+
+class SetInitialFormulaCellMembership implements InitialFormulaCellMembership {
+  private readonly cells = new Set<number>()
+
+  constructor(cellIndices: InitialFormulaCellIndexList | undefined, cellCount: number) {
+    if (cellIndices === undefined) {
+      return
+    }
+    for (let index = 0; index < cellCount; index += 1) {
+      this.cells.add(cellIndices[index]!)
+    }
+  }
+
+  has(cellIndex: number): boolean {
+    return this.cells.has(cellIndex)
+  }
+
+  add(cellIndex: number): void {
+    this.cells.add(cellIndex)
+  }
+
+  delete(cellIndex: number): void {
+    this.cells.delete(cellIndex)
   }
 }
 

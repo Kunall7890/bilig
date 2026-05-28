@@ -77,7 +77,7 @@ export interface EngineFormulaBindingService {
     templateId?: number,
     ownerPosition?: FormulaOwnerPosition,
   ) => boolean
-  readonly deferCellFormulasForSheetRenameNow: (oldSheetName: string, newSheetName: string) => number
+  readonly deferCellFormulasForSheetRenameNow: (oldSheetName: string, newSheetName: string) => void
   readonly rewriteCellFormulasForSheetRenameNow: (oldSheetName: string, newSheetName: string, formulaChangedCount: number) => number
   readonly retargetDirectAggregateFormulaForStructuralTransformNow: (
     cellIndex: number,
@@ -160,6 +160,7 @@ export interface FreshDirectAggregateFormulaBindingMember {
   readonly compiled: CompiledFormula
   readonly templateId: number
   readonly aggregateKind: 'sum' | 'average' | 'count' | 'min' | 'max'
+  readonly aggregateSheetName: string
   readonly aggregateRowStart: number
   readonly aggregateRowEnd: number
   readonly aggregateColStart: number

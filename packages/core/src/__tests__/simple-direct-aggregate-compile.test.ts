@@ -50,6 +50,52 @@ describe('tryCompileSimpleDirectAggregateFormula', () => {
     })
   })
 
+  it('compiles sheet-qualified aggregate ranges on the direct compiler fast path', () => {
+    const compiled = tryCompileSimpleDirectAggregateFormula('SUM(Data1!A1:A250)')
+
+    expect(compiled?.directAggregateCandidate?.aggregateKind).toBe('sum')
+    expect(compiled?.symbolicRanges).toEqual(['Data1!A1:A250'])
+    expect(compiled?.parsedSymbolicRanges?.[0]).toMatchObject({
+      sheetName: 'Data1',
+      explicitSheet: true,
+      startAddress: 'A1',
+      endAddress: 'A250',
+      startRow: 0,
+      endRow: 249,
+      startCol: 0,
+      endCol: 0,
+    })
+    expect(compiled?.optimizedAst).toEqual({
+      kind: 'CallExpr',
+      callee: 'SUM',
+      args: [{ kind: 'RangeRef', refKind: 'cells', sheetName: 'Data1', start: 'A1', end: 'A250' }],
+    })
+  })
+
+  it('translates sheet-qualified direct aggregate ranges without losing the sheet scope', () => {
+    const compiled = tryCompileSimpleDirectAggregateFormula('SUM(Data1!A1:A1)')
+    if (!compiled) {
+      throw new Error('expected direct aggregate compilation')
+    }
+
+    const translated = translateSimpleDirectAggregateFormula(compiled, 1, 0, 'SUM(Data1!A2:A2)')
+
+    expect(translated?.symbolicRanges).toEqual(['Data1!A2:A2'])
+    expect(translated?.parsedSymbolicRanges?.[0]).toMatchObject({
+      sheetName: 'Data1',
+      explicitSheet: true,
+      startAddress: 'A2',
+      endAddress: 'A2',
+      startRow: 1,
+      endRow: 1,
+    })
+    expect(translated?.optimizedAst).toEqual({
+      kind: 'CallExpr',
+      callee: 'SUM',
+      args: [{ kind: 'RangeRef', refKind: 'cells', sheetName: 'Data1', start: 'A2', end: 'A2' }],
+    })
+  })
+
   it('preserves literal additive offsets on direct sum formulas', () => {
     const compiled = tryCompileSimpleDirectAggregateFormula('SUM(A1:A32)+7')
 
@@ -100,7 +146,6 @@ describe('tryCompileSimpleDirectAggregateFormula', () => {
       startAddress: 'A1',
       endAddress: 'A32',
     })
-    expect(tryCompileSimpleDirectAggregateFormula('SUM(Sheet2!A1:A2)')).toBeUndefined()
     expect(tryCompileSimpleDirectAggregateFormula('SUM(Jan:Mar!B2)')).toBeUndefined()
     expect(tryCompileSimpleDirectAggregateFormula("SUM('Jan 2026':'Mar 2026'!B2:C2)")).toBeUndefined()
   })

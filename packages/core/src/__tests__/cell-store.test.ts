@@ -3,6 +3,44 @@ import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { CellFlags, CellStore } from '../cell-store.js'
 
 describe('CellStore', () => {
+  it('defers default buffer allocation until cells are materialized', () => {
+    const store = new CellStore()
+
+    expect(store.capacity).toBe(0)
+    expect(store.tags.length).toBe(0)
+
+    const index = store.allocate(1, 2, 3)
+
+    expect(index).toBe(0)
+    expect(store.capacity).toBeGreaterThanOrEqual(1)
+    expect(store.sheetIds[0]).toBe(1)
+    expect(store.rows[0]).toBe(2)
+    expect(store.cols[0]).toBe(3)
+  })
+
+  it('reuses clean released buffers for transient workbooks', () => {
+    const first = new CellStore()
+    const index = first.allocate(1, 2, 3)
+    const tags = first.tags
+    const numbers = first.numbers
+
+    first.setValue(index, { tag: ValueTag.Number, value: 42 })
+    first.releaseBuffersToPool()
+
+    expect(first.capacity).toBe(0)
+    expect(first.tags.length).toBe(0)
+
+    const second = new CellStore()
+    second.ensureCapacity(1)
+
+    expect(second.tags).toBe(tags)
+    expect(second.numbers).toBe(numbers)
+    expect(second.size).toBe(0)
+    expect(second.tags[0]).toBe(0)
+    expect(second.numbers[0]).toBe(0)
+    expect(second.cycleGroupIds[0]).toBe(-1)
+  })
+
   it('allocates materialized empty cells and grows capacity', () => {
     const store = new CellStore(1)
     const first = store.allocate(2, 4, 6)

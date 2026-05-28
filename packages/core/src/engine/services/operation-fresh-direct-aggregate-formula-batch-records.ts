@@ -16,6 +16,7 @@ export interface FreshDirectAggregateFormulaEntry {
   readonly compiled: CompiledFormula
   readonly templateId: number
   readonly aggregateKind: RuntimeDirectAggregateDescriptor['aggregateKind']
+  readonly aggregateSheetName: string
   readonly aggregateRowStart: number
   readonly aggregateRowEnd: number
   readonly aggregateColStart: number

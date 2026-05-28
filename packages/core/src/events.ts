@@ -10,6 +10,8 @@ interface NormalizedRange {
   endCol: number
 }
 
+const EMPTY_LISTENER_EPOCHS = new Uint32Array(0)
+
 export interface EngineTrackedEvent {
   kind: EngineEvent['kind']
   invalidation: EngineEvent['invalidation']
@@ -29,7 +31,7 @@ export class EngineEventBus {
   private readonly addressListeners = new Map<string, Set<() => void>>()
   private readonly listenerIds = new WeakMap<() => void, number>()
   private listenerEpoch = 1
-  private listenerEpochs = new Uint32Array(64)
+  private listenerEpochs = EMPTY_LISTENER_EPOCHS
   private nextListenerId = 1
 
   hasListeners(): boolean {
@@ -219,7 +221,7 @@ export class EngineEventBus {
     const nextId = this.nextListenerId
     this.nextListenerId += 1
     if (nextId >= this.listenerEpochs.length) {
-      const grown = new Uint32Array(this.listenerEpochs.length * 2)
+      const grown = new Uint32Array(Math.max(this.listenerEpochs.length * 2, 64))
       grown.set(this.listenerEpochs)
       this.listenerEpochs = grown
     }

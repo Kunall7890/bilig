@@ -5,15 +5,26 @@ import { EngineRuntimeScratchError } from '../errors.js'
 
 export const INITIAL_RUNTIME_SCRATCH_CAPACITY = 16
 
-function createScratchBuffer(): U32 {
-  return new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+function scratchCapacityFor(required: number): number {
+  let capacity = INITIAL_RUNTIME_SCRATCH_CAPACITY
+  while (capacity < required) {
+    capacity *= 2
+  }
+  return capacity
+}
+
+function createScratchBuffer(required = INITIAL_RUNTIME_SCRATCH_CAPACITY): U32 {
+  return new Uint32Array(scratchCapacityFor(required))
 }
 
 function growScratchBuffer(buffer: U32 | undefined, size: number): U32 | undefined {
   if (size <= (buffer?.length ?? INITIAL_RUNTIME_SCRATCH_CAPACITY)) {
     return buffer
   }
-  return growUint32(buffer ?? createScratchBuffer(), size)
+  if (buffer === undefined) {
+    return createScratchBuffer(size)
+  }
+  return growUint32(buffer, size)
 }
 
 function scratchErrorMessage(message: string, cause: unknown): string {
@@ -71,154 +82,247 @@ export interface EngineRuntimeScratchService {
   readonly setImpactedFormulaBufferNow: (next: U32) => void
 }
 
+class EngineRuntimeScratchServiceImpl implements EngineRuntimeScratchService {
+  private pendingKernelSync: U32 | undefined
+  private deferredKernelSyncCount = 0
+  private deferredKernelSyncEpoch = 1
+  private deferredKernelSyncSeen: U32 | undefined
+  private wasmBatch: U32 | undefined
+  private mutationRoots: U32 | undefined
+  private changedInputEpoch = 1
+  private changedInputSeen: U32 | undefined
+  private changedInputBuffer: U32 | undefined
+  private changedFormulaEpoch = 1
+  private changedFormulaSeen: U32 | undefined
+  private changedFormulaBuffer: U32 | undefined
+  private changedUnionEpoch = 1
+  private changedUnionSeen: U32 | undefined
+  private changedUnion: U32 | undefined
+  private materializedCellCount = 0
+  private materializedCells: U32 | undefined
+  private explicitChangedEpoch = 1
+  private explicitChangedSeen: U32 | undefined
+  private explicitChangedBuffer: U32 | undefined
+  private impactedFormulaEpoch = 1
+  private impactedFormulaSeen: U32 | undefined
+  private impactedFormulaBuffer: U32 | undefined
+
+  ensureRecalcCapacity(size: number): Effect.Effect<void, EngineRuntimeScratchError> {
+    return Effect.try({
+      try: () => {
+        this.ensureRecalcCapacityNow(size)
+      },
+      catch: (cause) =>
+        new EngineRuntimeScratchError({
+          message: scratchErrorMessage('Failed to ensure recalc scratch capacity', cause),
+          cause,
+        }),
+    })
+  }
+
+  ensureRecalcCapacityNow(size: number): void {
+    this.mutationRoots = growScratchBuffer(this.mutationRoots, size)
+    this.changedInputSeen = growScratchBuffer(this.changedInputSeen, size)
+    this.changedInputBuffer = growScratchBuffer(this.changedInputBuffer, size)
+    this.changedFormulaSeen = growScratchBuffer(this.changedFormulaSeen, size)
+    this.changedFormulaBuffer = growScratchBuffer(this.changedFormulaBuffer, size)
+    this.pendingKernelSync = growScratchBuffer(this.pendingKernelSync, size)
+    this.deferredKernelSyncSeen = growScratchBuffer(this.deferredKernelSyncSeen, size)
+    this.wasmBatch = growScratchBuffer(this.wasmBatch, size)
+    this.changedUnion = growScratchBuffer(this.changedUnion, size)
+    this.changedUnionSeen = growScratchBuffer(this.changedUnionSeen, size)
+    this.materializedCells = growScratchBuffer(this.materializedCells, size)
+    this.explicitChangedSeen = growScratchBuffer(this.explicitChangedSeen, size)
+    this.explicitChangedBuffer = growScratchBuffer(this.explicitChangedBuffer, size)
+    this.impactedFormulaSeen = growScratchBuffer(this.impactedFormulaSeen, size)
+    this.impactedFormulaBuffer = growScratchBuffer(this.impactedFormulaBuffer, size)
+  }
+
+  getPendingKernelSyncNow(): U32 {
+    return (this.pendingKernelSync ??= createScratchBuffer())
+  }
+
+  setPendingKernelSyncNow(next: U32): void {
+    this.pendingKernelSync = next
+  }
+
+  getDeferredKernelSyncCountNow(): number {
+    return this.deferredKernelSyncCount
+  }
+
+  setDeferredKernelSyncCountNow(next: number): void {
+    this.deferredKernelSyncCount = next
+  }
+
+  getDeferredKernelSyncEpochNow(): number {
+    return this.deferredKernelSyncEpoch
+  }
+
+  setDeferredKernelSyncEpochNow(next: number): void {
+    this.deferredKernelSyncEpoch = next
+  }
+
+  getDeferredKernelSyncSeenNow(): U32 {
+    return (this.deferredKernelSyncSeen ??= createScratchBuffer())
+  }
+
+  setDeferredKernelSyncSeenNow(next: U32): void {
+    this.deferredKernelSyncSeen = next
+  }
+
+  getWasmBatchNow(): U32 {
+    return (this.wasmBatch ??= createScratchBuffer())
+  }
+
+  setWasmBatchNow(next: U32): void {
+    this.wasmBatch = next
+  }
+
+  getMutationRootsNow(): U32 {
+    return (this.mutationRoots ??= createScratchBuffer())
+  }
+
+  setMutationRootsNow(next: U32): void {
+    this.mutationRoots = next
+  }
+
+  getChangedInputEpochNow(): number {
+    return this.changedInputEpoch
+  }
+
+  setChangedInputEpochNow(next: number): void {
+    this.changedInputEpoch = next
+  }
+
+  getChangedInputSeenNow(): U32 {
+    return (this.changedInputSeen ??= createScratchBuffer())
+  }
+
+  setChangedInputSeenNow(next: U32): void {
+    this.changedInputSeen = next
+  }
+
+  getChangedInputBufferNow(): U32 {
+    return (this.changedInputBuffer ??= createScratchBuffer())
+  }
+
+  setChangedInputBufferNow(next: U32): void {
+    this.changedInputBuffer = next
+  }
+
+  getChangedFormulaEpochNow(): number {
+    return this.changedFormulaEpoch
+  }
+
+  setChangedFormulaEpochNow(next: number): void {
+    this.changedFormulaEpoch = next
+  }
+
+  getChangedFormulaSeenNow(): U32 {
+    return (this.changedFormulaSeen ??= createScratchBuffer())
+  }
+
+  setChangedFormulaSeenNow(next: U32): void {
+    this.changedFormulaSeen = next
+  }
+
+  getChangedFormulaBufferNow(): U32 {
+    return (this.changedFormulaBuffer ??= createScratchBuffer())
+  }
+
+  setChangedFormulaBufferNow(next: U32): void {
+    this.changedFormulaBuffer = next
+  }
+
+  getChangedUnionEpochNow(): number {
+    return this.changedUnionEpoch
+  }
+
+  setChangedUnionEpochNow(next: number): void {
+    this.changedUnionEpoch = next
+  }
+
+  getChangedUnionSeenNow(): U32 {
+    return (this.changedUnionSeen ??= createScratchBuffer())
+  }
+
+  setChangedUnionSeenNow(next: U32): void {
+    this.changedUnionSeen = next
+  }
+
+  getChangedUnionNow(): U32 {
+    return (this.changedUnion ??= createScratchBuffer())
+  }
+
+  setChangedUnionNow(next: U32): void {
+    this.changedUnion = next
+  }
+
+  getMaterializedCellCountNow(): number {
+    return this.materializedCellCount
+  }
+
+  setMaterializedCellCountNow(next: number): void {
+    this.materializedCellCount = next
+  }
+
+  getMaterializedCellsNow(): U32 {
+    return (this.materializedCells ??= createScratchBuffer())
+  }
+
+  setMaterializedCellsNow(next: U32): void {
+    this.materializedCells = next
+  }
+
+  getExplicitChangedEpochNow(): number {
+    return this.explicitChangedEpoch
+  }
+
+  setExplicitChangedEpochNow(next: number): void {
+    this.explicitChangedEpoch = next
+  }
+
+  getExplicitChangedSeenNow(): U32 {
+    return (this.explicitChangedSeen ??= createScratchBuffer())
+  }
+
+  setExplicitChangedSeenNow(next: U32): void {
+    this.explicitChangedSeen = next
+  }
+
+  getExplicitChangedBufferNow(): U32 {
+    return (this.explicitChangedBuffer ??= createScratchBuffer())
+  }
+
+  setExplicitChangedBufferNow(next: U32): void {
+    this.explicitChangedBuffer = next
+  }
+
+  getImpactedFormulaEpochNow(): number {
+    return this.impactedFormulaEpoch
+  }
+
+  setImpactedFormulaEpochNow(next: number): void {
+    this.impactedFormulaEpoch = next
+  }
+
+  getImpactedFormulaSeenNow(): U32 {
+    return (this.impactedFormulaSeen ??= createScratchBuffer())
+  }
+
+  setImpactedFormulaSeenNow(next: U32): void {
+    this.impactedFormulaSeen = next
+  }
+
+  getImpactedFormulaBufferNow(): U32 {
+    return (this.impactedFormulaBuffer ??= createScratchBuffer())
+  }
+
+  setImpactedFormulaBufferNow(next: U32): void {
+    this.impactedFormulaBuffer = next
+  }
+}
+
 export function createEngineRuntimeScratchService(): EngineRuntimeScratchService {
-  let pendingKernelSync: U32 | undefined
-  let deferredKernelSyncCount = 0
-  let deferredKernelSyncEpoch = 1
-  let deferredKernelSyncSeen: U32 | undefined
-  let wasmBatch: U32 | undefined
-  let mutationRoots: U32 | undefined
-  let changedInputEpoch = 1
-  let changedInputSeen: U32 | undefined
-  let changedInputBuffer: U32 | undefined
-  let changedFormulaEpoch = 1
-  let changedFormulaSeen: U32 | undefined
-  let changedFormulaBuffer: U32 | undefined
-  let changedUnionEpoch = 1
-  let changedUnionSeen: U32 | undefined
-  let changedUnion: U32 | undefined
-  let materializedCellCount = 0
-  let materializedCells: U32 | undefined
-  let explicitChangedEpoch = 1
-  let explicitChangedSeen: U32 | undefined
-  let explicitChangedBuffer: U32 | undefined
-  let impactedFormulaEpoch = 1
-  let impactedFormulaSeen: U32 | undefined
-  let impactedFormulaBuffer: U32 | undefined
-
-  const ensureRecalcCapacityNow = (size: number): void => {
-    mutationRoots = growScratchBuffer(mutationRoots, size)
-    changedInputSeen = growScratchBuffer(changedInputSeen, size)
-    changedInputBuffer = growScratchBuffer(changedInputBuffer, size)
-    changedFormulaSeen = growScratchBuffer(changedFormulaSeen, size)
-    changedFormulaBuffer = growScratchBuffer(changedFormulaBuffer, size)
-    pendingKernelSync = growScratchBuffer(pendingKernelSync, size)
-    deferredKernelSyncSeen = growScratchBuffer(deferredKernelSyncSeen, size)
-    wasmBatch = growScratchBuffer(wasmBatch, size)
-    changedUnion = growScratchBuffer(changedUnion, size)
-    changedUnionSeen = growScratchBuffer(changedUnionSeen, size)
-    materializedCells = growScratchBuffer(materializedCells, size)
-    explicitChangedSeen = growScratchBuffer(explicitChangedSeen, size)
-    explicitChangedBuffer = growScratchBuffer(explicitChangedBuffer, size)
-    impactedFormulaSeen = growScratchBuffer(impactedFormulaSeen, size)
-    impactedFormulaBuffer = growScratchBuffer(impactedFormulaBuffer, size)
-  }
-
-  return {
-    ensureRecalcCapacity(size) {
-      return Effect.try({
-        try: () => {
-          ensureRecalcCapacityNow(size)
-        },
-        catch: (cause) =>
-          new EngineRuntimeScratchError({
-            message: scratchErrorMessage('Failed to ensure recalc scratch capacity', cause),
-            cause,
-          }),
-      })
-    },
-    ensureRecalcCapacityNow,
-    getPendingKernelSyncNow: () => (pendingKernelSync ??= createScratchBuffer()),
-    setPendingKernelSyncNow: (next) => {
-      pendingKernelSync = next
-    },
-    getDeferredKernelSyncCountNow: () => deferredKernelSyncCount,
-    setDeferredKernelSyncCountNow: (next) => {
-      deferredKernelSyncCount = next
-    },
-    getDeferredKernelSyncEpochNow: () => deferredKernelSyncEpoch,
-    setDeferredKernelSyncEpochNow: (next) => {
-      deferredKernelSyncEpoch = next
-    },
-    getDeferredKernelSyncSeenNow: () => (deferredKernelSyncSeen ??= createScratchBuffer()),
-    setDeferredKernelSyncSeenNow: (next) => {
-      deferredKernelSyncSeen = next
-    },
-    getWasmBatchNow: () => (wasmBatch ??= createScratchBuffer()),
-    setWasmBatchNow: (next) => {
-      wasmBatch = next
-    },
-    getMutationRootsNow: () => (mutationRoots ??= createScratchBuffer()),
-    setMutationRootsNow: (next) => {
-      mutationRoots = next
-    },
-    getChangedInputEpochNow: () => changedInputEpoch,
-    setChangedInputEpochNow: (next) => {
-      changedInputEpoch = next
-    },
-    getChangedInputSeenNow: () => (changedInputSeen ??= createScratchBuffer()),
-    setChangedInputSeenNow: (next) => {
-      changedInputSeen = next
-    },
-    getChangedInputBufferNow: () => (changedInputBuffer ??= createScratchBuffer()),
-    setChangedInputBufferNow: (next) => {
-      changedInputBuffer = next
-    },
-    getChangedFormulaEpochNow: () => changedFormulaEpoch,
-    setChangedFormulaEpochNow: (next) => {
-      changedFormulaEpoch = next
-    },
-    getChangedFormulaSeenNow: () => (changedFormulaSeen ??= createScratchBuffer()),
-    setChangedFormulaSeenNow: (next) => {
-      changedFormulaSeen = next
-    },
-    getChangedFormulaBufferNow: () => (changedFormulaBuffer ??= createScratchBuffer()),
-    setChangedFormulaBufferNow: (next) => {
-      changedFormulaBuffer = next
-    },
-    getChangedUnionEpochNow: () => changedUnionEpoch,
-    setChangedUnionEpochNow: (next) => {
-      changedUnionEpoch = next
-    },
-    getChangedUnionSeenNow: () => (changedUnionSeen ??= createScratchBuffer()),
-    setChangedUnionSeenNow: (next) => {
-      changedUnionSeen = next
-    },
-    getChangedUnionNow: () => (changedUnion ??= createScratchBuffer()),
-    setChangedUnionNow: (next) => {
-      changedUnion = next
-    },
-    getMaterializedCellCountNow: () => materializedCellCount,
-    setMaterializedCellCountNow: (next) => {
-      materializedCellCount = next
-    },
-    getMaterializedCellsNow: () => (materializedCells ??= createScratchBuffer()),
-    setMaterializedCellsNow: (next) => {
-      materializedCells = next
-    },
-    getExplicitChangedEpochNow: () => explicitChangedEpoch,
-    setExplicitChangedEpochNow: (next) => {
-      explicitChangedEpoch = next
-    },
-    getExplicitChangedSeenNow: () => (explicitChangedSeen ??= createScratchBuffer()),
-    setExplicitChangedSeenNow: (next) => {
-      explicitChangedSeen = next
-    },
-    getExplicitChangedBufferNow: () => (explicitChangedBuffer ??= createScratchBuffer()),
-    setExplicitChangedBufferNow: (next) => {
-      explicitChangedBuffer = next
-    },
-    getImpactedFormulaEpochNow: () => impactedFormulaEpoch,
-    setImpactedFormulaEpochNow: (next) => {
-      impactedFormulaEpoch = next
-    },
-    getImpactedFormulaSeenNow: () => (impactedFormulaSeen ??= createScratchBuffer()),
-    setImpactedFormulaSeenNow: (next) => {
-      impactedFormulaSeen = next
-    },
-    getImpactedFormulaBufferNow: () => (impactedFormulaBuffer ??= createScratchBuffer()),
-    setImpactedFormulaBufferNow: (next) => {
-      impactedFormulaBuffer = next
-    },
-  }
+  return new EngineRuntimeScratchServiceImpl()
 }

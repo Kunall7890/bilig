@@ -16,6 +16,7 @@ export interface InitialFreshDirectScalarFormulaRunQueue {
 export function createInitialFreshDirectScalarFormulaRunQueue(args: {
   readonly bindFreshDirectScalarFormulaRun: ((run: FreshDirectScalarFormulaBindingInput) => void) | undefined
   readonly clearPendingFormulaCell: (cellIndex: number) => void
+  readonly capacity?: number
   readonly counters: EngineCounters
   readonly noteInitializedFormula: (prepared: InitialResolvedFormulaEntry, runtimeFormula: RuntimeFormula | undefined) => void
   readonly readRuntimeFormula: (cellIndex: number) => RuntimeFormula | undefined
@@ -24,7 +25,8 @@ export function createInitialFreshDirectScalarFormulaRunQueue(args: {
     | {
         readonly sheetId: number
         readonly ownerSheetName: string
-        readonly cellIndices: number[]
+        cellIndices: Uint32Array
+        cellIndexCount: number
         readonly members: InitialFreshDirectScalarFormulaBindingMember[]
       }
     | undefined
@@ -51,7 +53,7 @@ export function createInitialFreshDirectScalarFormulaRunQueue(args: {
       bindFreshDirectScalarFormulaRun({
         sheetId: run.sheetId,
         ownerSheetName: run.ownerSheetName,
-        cellIndices: run.cellIndices,
+        cellIndices: run.cellIndexCount === run.cellIndices.length ? run.cellIndices : run.cellIndices.subarray(0, run.cellIndexCount),
         members: run.members,
       })
     }
@@ -71,13 +73,29 @@ export function createInitialFreshDirectScalarFormulaRunQueue(args: {
       pending ??= {
         sheetId: prepared.sheetId,
         ownerSheetName: prepared.ownerSheetName,
-        cellIndices: [],
-        members: [],
+        cellIndices: new Uint32Array(Math.max(1, args.capacity ?? 16)),
+        cellIndexCount: 0,
+        members: preallocatedRunArray<InitialFreshDirectScalarFormulaBindingMember>(args.capacity),
       }
       assertInitialFreshDirectScalarFormulaBindingMember(prepared)
       const member = prepared
-      pending.cellIndices.push(member.cellIndex)
+      if (pending.cellIndexCount === pending.cellIndices.length) {
+        const next = new Uint32Array(pending.cellIndices.length * 2)
+        next.set(pending.cellIndices)
+        pending.cellIndices = next
+      }
+      pending.cellIndices[pending.cellIndexCount] = member.cellIndex
+      pending.cellIndexCount += 1
       pending.members.push(member)
     },
   }
+}
+
+function preallocatedRunArray<T>(capacity: number | undefined): T[] {
+  const values: T[] = []
+  if (capacity !== undefined && capacity > 0) {
+    values.length = capacity
+    values.length = 0
+  }
+  return values
 }

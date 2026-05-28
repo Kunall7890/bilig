@@ -10,6 +10,8 @@ import { tagTrustedPhysicalTrackedChanges } from './operation-change-helpers.js'
 import { emitCellMutationFastPathBatchResult } from './operation-fast-path-batch-result.js'
 
 const EMPTY_CHANGED_CELLS = new Uint32Array(0)
+const EMPTY_NUMERIC_VALUES = new Float64Array(0)
+const EMPTY_EMPTY_FLAGS = new Uint8Array(0)
 
 type FastPathState = Pick<
   EngineRuntimeState,
@@ -93,10 +95,10 @@ export function createOperationDirectAggregateRectangularBatchFastPath(args: Ope
     try {
       for (let index = 0; index < inputCellIndices.length; index += 1) {
         const cellIndex = inputCellIndices[index]!
-        if (rectangle.emptyInputFlags[index] === 1) {
-          writeEmptyLiteralToCellStore(args.state.workbook.cellStore, cellIndex)
-        } else {
-          args.writeNumericLiteralToCellStore(cellIndex, inputNumericValues[index]!)
+      if (rectangle.allInputsClear || rectangle.emptyInputFlags[index] === 1) {
+        writeEmptyLiteralToCellStore(args.state.workbook.cellStore, cellIndex)
+      } else {
+        args.writeNumericLiteralToCellStore(cellIndex, inputNumericValues[index]!)
         }
       }
       const writtenColumns = new Uint32Array(colCount)
@@ -166,6 +168,7 @@ function collectDenseNumericRectangle(
   readonly inputCellIndices: Uint32Array
   readonly inputNumericValues: Float64Array
   readonly emptyInputFlags: Uint8Array
+  readonly allInputsClear: boolean
   readonly rowSums: Float64Array
 } | null {
   const firstMutation = firstRef.mutation
@@ -177,9 +180,10 @@ function collectDenseNumericRectangle(
     return null
   }
   const inputCellIndices = new Uint32Array(refs.length)
-  const inputNumericValues = new Float64Array(refs.length)
-  const emptyInputFlags = new Uint8Array(refs.length)
-  const rowSumsScratch = new Float64Array(refs.length)
+  let inputNumericValues: Float64Array | undefined
+  let emptyInputFlags: Uint8Array | undefined
+  let rowSumsScratch: Float64Array | undefined
+  let allInputsClear = true
   const cellStore = args.state.workbook.cellStore
   const firstRow = firstMutation.row
   const firstCol = firstMutation.col
@@ -227,15 +231,23 @@ function collectDenseNumericRectangle(
     }
     inputCellIndices[refIndex] = existingIndex
     if (mutation.kind === 'clearCell' || mutation.value === null) {
-      emptyInputFlags[refIndex] = 1
-      inputNumericValues[refIndex] = 0
+      if (!allInputsClear) {
+        emptyInputFlags![refIndex] = 1
+      }
     } else {
       const numericValue = mutation.value
       if (typeof numericValue !== 'number') {
         return null
       }
-      inputNumericValues[refIndex] = numericValue
-      rowSumsScratch[rowOffset] = (rowSumsScratch[rowOffset] ?? 0) + numericValue
+      if (allInputsClear) {
+        allInputsClear = false
+        inputNumericValues = new Float64Array(refs.length)
+        emptyInputFlags = new Uint8Array(refs.length)
+        emptyInputFlags.fill(1, 0, refIndex)
+        rowSumsScratch = new Float64Array(refs.length)
+      }
+      inputNumericValues![refIndex] = numericValue
+      rowSumsScratch![rowOffset] = (rowSumsScratch![rowOffset] ?? 0) + numericValue
     }
   }
   if (colCount === 0) {
@@ -255,9 +267,10 @@ function collectDenseNumericRectangle(
     firstCol,
     colCount,
     inputCellIndices,
-    inputNumericValues,
-    emptyInputFlags,
-    rowSums: rowSumsScratch.subarray(0, rowCount),
+    inputNumericValues: inputNumericValues ?? EMPTY_NUMERIC_VALUES,
+    emptyInputFlags: emptyInputFlags ?? EMPTY_EMPTY_FLAGS,
+    allInputsClear,
+    rowSums: allInputsClear ? new Float64Array(rowCount) : rowSumsScratch!.subarray(0, rowCount),
   }
 }
 

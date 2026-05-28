@@ -10,6 +10,7 @@ import {
 } from '../engine/services/lookup-column-owner.js'
 
 export interface ColumnIndexStore {
+  readonly reset: () => void
   readonly getLookupColumnOwner: (request: { sheetName: string; col: number }) => LookupColumnOwner | undefined
   readonly invalidateColumn: (request: { sheetName: string; col: number }) => void
   readonly recordLiteralWrite: (
@@ -76,6 +77,9 @@ export function createColumnIndexStore(args: {
   }
 
   return {
+    reset() {
+      ownerIndices.clear()
+    },
     getLookupColumnOwner(request) {
       return ensureLookupColumnOwner(request.sheetName, request.col)
     },

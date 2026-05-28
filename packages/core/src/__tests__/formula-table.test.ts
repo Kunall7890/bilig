@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CellStore } from '../cell-store.js'
-import { FormulaTable } from '../formula-table.js'
+import { FormulaTable, MULTIPLE_DIRECT_SCALAR_OUTPUTS } from '../formula-table.js'
 
 describe('FormulaTable', () => {
   it('stores formulas in a compact vector and writes real formula ids into the cell store', () => {
@@ -80,5 +80,34 @@ describe('FormulaTable', () => {
     formulas.set(cellIndex, { cellIndex, deltaInputCellIndex: 13 })
     formulas.clear()
     expect(deltaInputCellIndices).toHaveLength(0)
+  })
+
+  it('tracks unambiguous direct scalar output cells by input cell', () => {
+    const store = new CellStore()
+    const firstFormula = store.allocate(0, 0, 1)
+    const secondFormula = store.allocate(0, 1, 1)
+    const deltaInputCellIndices: Array<number | undefined> = []
+    const singleOutputCellIndicesByInput: Array<number | undefined> = []
+    const formulas = new FormulaTable<{ cellIndex: number; deltaInputCellIndex?: number }>(store, {
+      deltaInputCellIndices,
+      singleOutputCellIndicesByInput,
+      readDeltaInputCellIndex: (record) => record.deltaInputCellIndex,
+    })
+
+    formulas.set(firstFormula, { cellIndex: firstFormula, deltaInputCellIndex: 7 })
+    expect(singleOutputCellIndicesByInput[7]).toBe(firstFormula)
+
+    formulas.set(firstFormula, { cellIndex: firstFormula, deltaInputCellIndex: 8 })
+    expect(singleOutputCellIndicesByInput[7]).toBeUndefined()
+    expect(singleOutputCellIndicesByInput[8]).toBe(firstFormula)
+
+    formulas.set(secondFormula, { cellIndex: secondFormula, deltaInputCellIndex: 8 })
+    expect(singleOutputCellIndicesByInput[8]).toBe(MULTIPLE_DIRECT_SCALAR_OUTPUTS)
+
+    formulas.delete(firstFormula)
+    expect(singleOutputCellIndicesByInput[8]).toBe(MULTIPLE_DIRECT_SCALAR_OUTPUTS)
+
+    formulas.clear()
+    expect(singleOutputCellIndicesByInput).toHaveLength(0)
   })
 })

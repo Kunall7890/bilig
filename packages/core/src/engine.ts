@@ -1,4 +1,5 @@
 import {
+  ErrorCode,
   ValueTag,
   type CellRangeRef,
   type CellSnapshot,
@@ -13,7 +14,7 @@ import {
   type WorkbookSnapshot,
 } from '@bilig/protocol'
 import type { CsvParseOptions } from './csv.js'
-import { formatAddress } from '@bilig/formula'
+import { formatAddress, parseCellAddress } from '@bilig/formula'
 import type { EngineOp, EngineOpBatch } from '@bilig/workbook'
 import type {
   EngineCellMutationRef,
@@ -23,11 +24,30 @@ import type {
   EngineExistingNumericCellMutationResult,
   EngineFormulaSourceRefs,
 } from './cell-mutations-at.js'
-import { cloneEngineCounters, resetEngineCounters, type EngineCounters } from './perf/engine-counters.js'
-import type { CommitOp, EngineReplicaSnapshot, EngineSyncClient } from './engine/runtime-state.js'
+import { CellFlags, type CellStore } from './cell-store.js'
+import { addEngineCounter, cloneEngineCounters, resetEngineCounters, type EngineCounters } from './perf/engine-counters.js'
+import type { CommitOp, EngineReplicaSnapshot, EngineSyncClient, SpreadsheetEngineOptions } from './engine/runtime-state.js'
 import { runEngineEffect, runEngineEffectPromise } from './engine/live.js'
 import { SpreadsheetEngineWorkbookFacadeBase } from './engine/engine-workbook-facade-base.js'
-import { createTrustedExistingNumericDirectScalarFastPath } from './engine/services/trusted-existing-numeric-direct-scalar-fast-path.js'
+import {
+  createTrustedExistingNumericDirectScalarFastPath,
+  type TrustedExistingNumericDirectScalarFastPath,
+} from './engine/services/trusted-existing-numeric-direct-scalar-fast-path.js'
+import {
+  createLazyCellMutationTransactionRecord,
+  createExistingNumericCellMutationsTransactionRecord,
+  createLazyReversedExistingNumericCellMutationsTransactionRecord,
+} from './engine/services/mutation-transaction-records.js'
+import {
+  directScalarCellNumber,
+  evaluateDirectScalarWithReplacementNumbers,
+  writeSingleInputAffineDirectScalar,
+} from './engine/services/direct-scalar-helpers.js'
+import { tagTrustedPhysicalTrackedChanges } from './engine/services/operation-change-helpers.js'
+import { buildDirectScalarDescriptor } from './engine/services/formula-binding-direct-scalar.js'
+import { directScalarDependencyCellsEqual } from './engine/services/formula-binding-shape-helpers.js'
+import { isWorkbookTableHeaderCell } from './engine/services/operation-table-header-rename.js'
+import { tryCompileSimpleDirectScalarFormula } from './formula/simple-direct-scalar-compile.js'
 import type { EngineSnapshotExportOptions } from './engine/services/snapshot-service.js'
 
 export type {
@@ -38,6 +58,10 @@ export type {
   SpreadsheetEngineOptions,
 } from './engine/runtime-state.js'
 export { selectors } from './engine-selectors.js'
+
+const DIRECT_SCALAR_FORMULA_REPLACEMENT_LIMIT = 4_096
+const DIRECT_SCALAR_FORMULA_REPLACEMENT_INITIAL_CAPACITY = 2_048
+const DIRECT_SCALAR_FORMULA_REPLACEMENT_BLOCKED_FLAGS = CellFlags.JsOnly | CellFlags.InCycle | CellFlags.SpillChild | CellFlags.PivotOutput
 
 function cellStoreValueToLiteralInput(
   cellStore: {
@@ -64,24 +88,47 @@ function cellStoreValueToLiteralInput(
   }
 }
 
+function cellStoreCanRewriteDirectScalarFormula(
+  cellStore: {
+    readonly tags: ArrayLike<ValueTag | undefined>
+    readonly stringIds: ArrayLike<number | undefined>
+    readonly errors: ArrayLike<ErrorCode | undefined>
+    readonly flags: ArrayLike<number | undefined>
+  },
+  cellIndex: number,
+): boolean {
+  return (
+    cellStore.tags[cellIndex] === ValueTag.Number &&
+    (cellStore.stringIds[cellIndex] ?? 0) === 0 &&
+    (cellStore.errors[cellIndex] ?? ErrorCode.None) === ErrorCode.None &&
+    ((cellStore.flags[cellIndex] ?? 0) & DIRECT_SCALAR_FORMULA_REPLACEMENT_BLOCKED_FLAGS) === 0
+  )
+}
+
+function writeTrustedDirectScalarFormulaNumber(
+  cellStore: Pick<CellStore, 'flags' | 'versions' | 'stringIds' | 'tags' | 'numbers' | 'errors'>,
+  cellIndex: number,
+  value: number,
+): void {
+  cellStore.flags[cellIndex] = (cellStore.flags[cellIndex] ?? 0) & ~(CellFlags.SpillChild | CellFlags.PivotOutput)
+  cellStore.versions[cellIndex] = (cellStore.versions[cellIndex] ?? 0) + 1
+  cellStore.stringIds[cellIndex] = 0
+  cellStore.tags[cellIndex] = ValueTag.Number
+  cellStore.numbers[cellIndex] = value
+  cellStore.errors[cellIndex] = ErrorCode.None
+}
+
+function isStrictlyIncreasing(values: Uint32Array): boolean {
+  for (let index = 1; index < values.length; index += 1) {
+    if (values[index]! <= values[index - 1]!) {
+      return false
+    }
+  }
+  return true
+}
+
 export class SpreadsheetEngine extends SpreadsheetEngineWorkbookFacadeBase {
-  private readonly trustedExistingNumericDirectScalarFastPath = createTrustedExistingNumericDirectScalarFastPath({
-    workbook: this.workbook,
-    formulas: this.formulas,
-    events: this.events,
-    counters: this.performanceCounters,
-    traversal: this.runtime.traversal,
-    deferKernelSync: this.runtime.deferKernelSync,
-    hasVolatileFormulas: this.runtime.hasVolatileFormulas,
-    hasRegionFormulaSubscriptions: this.runtime.hasRegionFormulaSubscriptions,
-    reverseExactLookupColumnEdges: this.reverseExactLookupColumnEdges,
-    reverseSortedLookupColumnEdges: this.reverseSortedLookupColumnEdges,
-    reverseAggregateColumnEdges: this.reverseAggregateColumnEdges,
-    getLastMetrics: () => this.lastMetrics,
-    setLastMetrics: (metrics) => {
-      this.lastMetrics = metrics
-    },
-  })
+  private trustedExistingNumericDirectScalarFastPath: TrustedExistingNumericDirectScalarFastPath | undefined
 
   async ready(): Promise<void> {
     await this.wasm.init()
@@ -133,6 +180,13 @@ export class SpreadsheetEngine extends SpreadsheetEngineWorkbookFacadeBase {
 
   resetPerformanceCounters(): void {
     resetEngineCounters(this.performanceCounters)
+  }
+
+  resetForReuse(options: SpreadsheetEngineOptions = {}): void {
+    runEngineEffect(this.runtime.maintenance.resetWorkbook(options.workbookName ?? 'Workbook'))
+    this.setUseColumnIndexEnabled(options.useColumnIndex ?? true)
+    this.setEvaluationTimeoutMs(options.evaluationTimeoutMs)
+    this.resetPerformanceCounters()
   }
 
   setUseColumnIndexEnabled(enabled: boolean): void {
@@ -225,6 +279,237 @@ export class SpreadsheetEngine extends SpreadsheetEngineWorkbookFacadeBase {
     return this.getCellValue(sheetName, address)
   }
 
+  tryApplyExistingDirectScalarFormulaMutationAt(request: {
+    readonly sheetId: number
+    readonly row: number
+    readonly col: number
+    readonly cellIndex: number
+    readonly formula: string
+  }): boolean {
+    if (
+      this.state.trackReplicaVersions ||
+      this.batchListeners.size > 0 ||
+      this.syncClientConnection !== null ||
+      this.events.hasListeners() ||
+      this.events.hasCellListeners() ||
+      this.runtime.hasVolatileFormulas() ||
+      this.runtime.hasRegionFormulaSubscriptions() ||
+      this.reverseExactLookupColumnEdges.size > 0 ||
+      this.reverseSortedLookupColumnEdges.size > 0 ||
+      this.reverseAggregateColumnEdges.size > 0
+    ) {
+      return false
+    }
+    const sheet = this.workbook.getSheetById(request.sheetId)
+    const cellStore = this.workbook.cellStore
+    if (
+      !sheet ||
+      sheet.structureVersion !== 1 ||
+      cellStore.sheetIds[request.cellIndex] !== request.sheetId ||
+      cellStore.rows[request.cellIndex] !== request.row ||
+      cellStore.cols[request.cellIndex] !== request.col ||
+      isWorkbookTableHeaderCell(this.workbook, sheet.name, request.row, request.col) ||
+      !cellStoreCanRewriteDirectScalarFormula(cellStore, request.cellIndex)
+    ) {
+      return false
+    }
+    const existingFormula = this.formulas.get(request.cellIndex)
+    if (
+      !existingFormula ||
+      existingFormula.directScalar === undefined ||
+      existingFormula.directLookup !== undefined ||
+      existingFormula.directAggregate !== undefined ||
+      existingFormula.directCriteria !== undefined ||
+      existingFormula.compiled.volatile ||
+      existingFormula.compiled.producesSpill
+    ) {
+      return false
+    }
+    if (existingFormula.source === request.formula) {
+      return true
+    }
+    const oldFormulaSource = existingFormula.source
+    const compiled = tryCompileSimpleDirectScalarFormula(request.formula)
+    if (
+      compiled === undefined ||
+      compiled.volatile ||
+      compiled.producesSpill ||
+      compiled.symbolicNames.length !== 0 ||
+      compiled.symbolicTables.length !== 0 ||
+      compiled.symbolicSpills.length !== 0 ||
+      compiled.symbolicRanges.length !== 0
+    ) {
+      return false
+    }
+    const resolveExistingCell = (sheetName: string, address: string): number => {
+      const ownerSheet = this.workbook.getSheet(sheetName)
+      if (!ownerSheet) {
+        return -1
+      }
+      try {
+        const parsed = parseCellAddress(address, sheetName)
+        return this.workbook.getCellIndexAt(ownerSheet.id, parsed.row, parsed.col) ?? -1
+      } catch {
+        return -1
+      }
+    }
+    const replacementDirectScalar = buildDirectScalarDescriptor({
+      compiled,
+      ownerSheetName: sheet.name,
+      ownerSheetId: sheet.id,
+      workbook: this.workbook,
+      ensureCellTracked: resolveExistingCell,
+      ensureCellTrackedByCoords: (sheetId, refRow, refCol) => this.workbook.getCellIndexAt(sheetId, refRow, refCol) ?? -1,
+    })
+    if (!replacementDirectScalar || !directScalarDependencyCellsEqual(existingFormula.directScalar, replacementDirectScalar)) {
+      return false
+    }
+
+    let changed = new Uint32Array(DIRECT_SCALAR_FORMULA_REPLACEMENT_INITIAL_CAPACITY)
+    let values = new Float64Array(DIRECT_SCALAR_FORMULA_REPLACEMENT_INITIAL_CAPACITY)
+    let changedCount = 0
+    const appendChanged = (cellIndex: number, value: number): void => {
+      if (changedCount >= changed.length) {
+        const nextChanged = new Uint32Array(changed.length * 2)
+        nextChanged.set(changed)
+        changed = nextChanged
+        const nextValues = new Float64Array(values.length * 2)
+        nextValues.set(values)
+        values = nextValues
+      }
+      changed[changedCount] = cellIndex
+      values[changedCount] = value
+      changedCount += 1
+    }
+    const readStagedCellNumber = (cellIndex: number): number | undefined => {
+      for (let index = changedCount - 1; index >= 0; index -= 1) {
+        if (changed[index] === cellIndex) {
+          return values[index]
+        }
+      }
+      return directScalarCellNumber(cellStore, cellIndex)
+    }
+    const nextRootNumber = evaluateDirectScalarWithReplacementNumbers(replacementDirectScalar, -1, 0, readStagedCellNumber)
+    if (nextRootNumber === undefined || !Number.isFinite(nextRootNumber)) {
+      return false
+    }
+    appendChanged(request.cellIndex, nextRootNumber)
+
+    let currentCellIndex = request.cellIndex
+    const affine = { scale: 0, offset: 0 }
+    for (;;) {
+      if (changedCount >= DIRECT_SCALAR_FORMULA_REPLACEMENT_LIMIT) {
+        return false
+      }
+      const formulaCellIndex = this.runtime.traversal.getSingleCellDependentNow(currentCellIndex)
+      if (formulaCellIndex === -1) {
+        break
+      }
+      if (formulaCellIndex < 0) {
+        return false
+      }
+      const dependentFormula = this.formulas.get(formulaCellIndex)
+      if (
+        formulaCellIndex === request.cellIndex ||
+        !dependentFormula ||
+        dependentFormula.directScalar === undefined ||
+        dependentFormula.compiled.volatile ||
+        dependentFormula.compiled.producesSpill ||
+        dependentFormula.directLookup !== undefined ||
+        dependentFormula.directAggregate !== undefined ||
+        dependentFormula.directCriteria !== undefined ||
+        !cellStoreCanRewriteDirectScalarFormula(cellStore, formulaCellIndex)
+      ) {
+        return false
+      }
+      const previousNumber = values[changedCount - 1]!
+      const nextFormulaNumber = writeSingleInputAffineDirectScalar(dependentFormula.directScalar, currentCellIndex, affine)
+        ? previousNumber * affine.scale + affine.offset
+        : evaluateDirectScalarWithReplacementNumbers(dependentFormula.directScalar, currentCellIndex, previousNumber, readStagedCellNumber)
+      if (nextFormulaNumber === undefined || !Number.isFinite(nextFormulaNumber)) {
+        return false
+      }
+      appendChanged(formulaCellIndex, nextFormulaNumber)
+      currentCellIndex = formulaCellIndex
+    }
+
+    if (!this.runtime.binding.rewriteFormulaCompiledPreservingBindingNow(request.cellIndex, request.formula, compiled)) {
+      return false
+    }
+    const changedCellIndices = changed.subarray(0, changedCount)
+    const nextNumbers = values.subarray(0, changedCount)
+    for (let index = 0; index < changedCount; index += 1) {
+      writeTrustedDirectScalarFormulaNumber(cellStore, changedCellIndices[index]!, nextNumbers[index]!)
+    }
+    addEngineCounter(this.performanceCounters, 'directScalarDeltaApplications', Math.max(0, changedCount - 1))
+    addEngineCounter(this.performanceCounters, 'directScalarDeltaOnlyRecalcSkips')
+    const metrics = {
+      batchId: this.lastMetrics.batchId + 1,
+      changedInputCount: 1,
+      dirtyFormulaCount: 0,
+      wasmFormulaCount: 0,
+      jsFormulaCount: 0,
+      rangeNodeVisits: 0,
+      recalcMs: 0,
+      compileMs: 0,
+    }
+    this.lastMetrics = metrics
+    if (
+      changedCellIndices.length > 1 &&
+      isStrictlyIncreasing(changedCellIndices) &&
+      cellStore.sheetIds[changedCellIndices[0]!] === request.sheetId
+    ) {
+      let sameSheet = true
+      for (let index = 1; index < changedCellIndices.length; index += 1) {
+        if (cellStore.sheetIds[changedCellIndices[index]!] !== request.sheetId) {
+          sameSheet = false
+          break
+        }
+      }
+      if (sameSheet) {
+        tagTrustedPhysicalTrackedChanges(changedCellIndices, request.sheetId, 1)
+      }
+    }
+    if (this.events.hasTrackedListeners()) {
+      this.events.emitTracked({
+        kind: 'batch',
+        invalidation: 'cells',
+        changedCellIndices,
+        invalidatedRanges: [],
+        invalidatedRows: [],
+        invalidatedColumns: [],
+        metrics,
+        explicitChangedCount: 1,
+      })
+    }
+    if (this.transactionReplayDepth === 0) {
+      this.undoStack.push({
+        forward: createLazyCellMutationTransactionRecord(
+          [
+            {
+              sheetId: request.sheetId,
+              cellIndex: request.cellIndex,
+              mutation: { kind: 'setCellFormula', row: request.row, col: request.col, formula: request.formula },
+            },
+          ],
+          0,
+        ),
+        inverse: createLazyCellMutationTransactionRecord(
+          [
+            {
+              sheetId: request.sheetId,
+              cellIndex: request.cellIndex,
+              mutation: { kind: 'setCellFormula', row: request.row, col: request.col, formula: oldFormulaSource },
+            },
+          ],
+          0,
+        ),
+      })
+      this.redoStack.length = 0
+    }
+    return true
+  }
+
   setCellFormat(sheetName: string, address: string, format: string | null): void {
     this.executeLocalTransaction([{ kind: 'setCellFormat', sheetName, address, format }])
   }
@@ -264,7 +549,7 @@ export class SpreadsheetEngine extends SpreadsheetEngineWorkbookFacadeBase {
         ? request.oldNumericValue
         : (cellStore.numbers[cellIndex] ?? 0)
     const result =
-      this.trustedExistingNumericDirectScalarFastPath.tryApply(request, oldNumericValue) ??
+      this.getTrustedExistingNumericDirectScalarFastPath().tryApply(request, oldNumericValue) ??
       this.runtime.operations.applyExistingNumericCellMutationAtNow(request)
     if (!result) {
       return null
@@ -295,9 +580,59 @@ export class SpreadsheetEngine extends SpreadsheetEngineWorkbookFacadeBase {
     return result
   }
 
+  private getTrustedExistingNumericDirectScalarFastPath(): TrustedExistingNumericDirectScalarFastPath {
+    return (this.trustedExistingNumericDirectScalarFastPath ??= createTrustedExistingNumericDirectScalarFastPath({
+      workbook: this.workbook,
+      formulas: this.formulas,
+      events: this.events,
+      counters: this.performanceCounters,
+      traversal: this.runtime.traversal,
+      directScalarDeltaOutputCellIndicesByInput: this.state.directScalarDeltaOutputCellIndicesByInput,
+      deferKernelSync: this.runtime.deferKernelSync,
+      hasVolatileFormulas: this.runtime.hasVolatileFormulas,
+      hasRegionFormulaSubscriptions: this.runtime.hasRegionFormulaSubscriptions,
+      reverseExactLookupColumnEdges: this.reverseExactLookupColumnEdges,
+      reverseSortedLookupColumnEdges: this.reverseSortedLookupColumnEdges,
+      reverseAggregateColumnEdges: this.reverseAggregateColumnEdges,
+      getLastMetrics: () => this.lastMetrics,
+      setLastMetrics: (metrics) => {
+        this.lastMetrics = metrics
+      },
+    }))
+  }
+
   tryApplyExistingNumericCellMutationsAt(request: EngineExistingNumericCellMutationsRef): boolean {
     if (this.state.trackReplicaVersions || this.batchListeners.size > 0 || this.syncClientConnection !== null) {
       return false
+    }
+    const oldNumbers = this.getTrustedExistingNumericDirectScalarFastPath().tryApplyBatch(request)
+    if (oldNumbers !== null) {
+      if (this.transactionReplayDepth === 0) {
+        this.undoStack.push({
+          forward: createExistingNumericCellMutationsTransactionRecord(
+            {
+              sheetIds: request.sheetIds,
+              cellIndexPlusOnes: request.cellIndexPlusOnes,
+              rows: request.rows,
+              cols: request.cols,
+              numbers: request.numbers,
+            },
+            0,
+          ),
+          inverse: createLazyReversedExistingNumericCellMutationsTransactionRecord(
+            {
+              sheetIds: request.sheetIds,
+              cellIndexPlusOnes: request.cellIndexPlusOnes,
+              rows: request.rows,
+              cols: request.cols,
+            },
+            oldNumbers,
+            1,
+          ),
+        })
+        this.redoStack.length = 0
+      }
+      return true
     }
     return this.runtime.mutation.executeLocalExistingNumericCellMutationsAtNow(request, { returnUndoOps: false })
   }

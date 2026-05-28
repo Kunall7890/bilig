@@ -8,7 +8,7 @@ const EMPTY_SLICE: EdgeSlice = { ptr: -1, len: 0, cap: 0 }
 const EMPTY_U32 = new Uint32Array(0)
 
 export class EdgeArena {
-  private buffer = new Uint32Array(64)
+  private buffer = EMPTY_U32
   private freeList: EdgeSlice[] = []
   private maxFreeCapacity = 0
   private nextPtr = 0
@@ -258,7 +258,7 @@ export class EdgeArena {
     if (nextSize <= this.buffer.length) {
       return
     }
-    let capacity = this.buffer.length
+    let capacity = Math.max(this.buffer.length, 1)
     while (capacity < nextSize) {
       capacity *= 2
     }

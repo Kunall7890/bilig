@@ -1,5 +1,5 @@
 export function growUint32(buffer: Uint32Array, required: number): Uint32Array {
-  let capacity = buffer.length
+  let capacity = Math.max(buffer.length, 1)
   while (capacity < required) {
     capacity *= 2
   }

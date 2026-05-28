@@ -6,6 +6,7 @@ import {
   addEngineCounters,
   cloneEngineCounters,
   createEngineCounters,
+  createRuntimeEngineCounters,
   resetEngineCounters,
 } from '../perf/engine-counters.js'
 
@@ -64,6 +65,8 @@ const oracleFormulaRunCounterKeys = [
   'freshDirectScalarBulkFallbacks',
   'freshDirectScalarBulkReverseEdgeSlices',
   'freshDirectScalarFormulaObjectsMaterialized',
+  'initialFreshDirectAggregateFastBindings',
+  'initialFreshDirectScalarFastBindings',
 ] as const satisfies readonly EngineCounterKey[]
 
 describe('engine counters', () => {
@@ -102,5 +105,25 @@ describe('engine counters', () => {
     resetEngineCounters(counters)
     expect(Object.values(counters)).toEqual(Array.from({ length: ENGINE_COUNTER_KEYS.length }, () => 0))
     expect(clone.cellsRemapped).toBe(3)
+  })
+
+  it('supports sparse runtime counters with a materialized public clone', () => {
+    const counters = createRuntimeEngineCounters()
+
+    expect(Object.keys(counters)).toEqual([])
+    expect(counters.cellsRemapped).toBe(0)
+    expect(addEngineCounter(counters, 'cellsRemapped')).toBe(1)
+    expect(addEngineCounter(counters, 'topoRebuilds', 2)).toBe(2)
+
+    const clone = cloneEngineCounters(counters)
+    expect(Object.keys(clone).toSorted()).toEqual([...ENGINE_COUNTER_KEYS].toSorted())
+    expect(clone.cellsRemapped).toBe(1)
+    expect(clone.formulasParsed).toBe(0)
+    expect(clone.topoRebuilds).toBe(2)
+
+    resetEngineCounters(counters)
+    expect(Object.keys(counters)).toEqual([])
+    expect(counters.cellsRemapped).toBe(0)
+    expect(counters.topoRebuilds).toBe(0)
   })
 })

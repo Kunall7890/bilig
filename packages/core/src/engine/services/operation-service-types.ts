@@ -101,6 +101,7 @@ export interface CreateEngineOperationServiceArgs {
     | 'wasm'
     | 'events'
     | 'formulas'
+    | 'directScalarDeltaOutputCellIndicesByInput'
     | 'counters'
     | 'replicaState'
     | 'entityVersions'

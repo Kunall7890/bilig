@@ -6,6 +6,14 @@ import type {
 import type { FreshDirectAggregateFormulaBindingMember } from './formula-binding-service-types.js'
 import { unwrapDirectScalarBinaryNode } from './formula-binding-direct-scalar.js'
 
+interface FreshDirectAggregateBindingSource {
+  readonly row: number
+  readonly col: number
+  readonly source: string
+  readonly compiled: HydratedPreparedFormulaInitializationRef['compiled']
+  readonly templateId?: number
+}
+
 export function tryBindHydratedFreshDirectFormula(
   serviceArgs: EngineFormulaInitializationServiceArgs,
   hadExistingFormulas: boolean,
@@ -80,9 +88,9 @@ function tryBindHydratedFreshDirectAggregateFormula(
   return true
 }
 
-function buildFreshDirectAggregateMember(
+export function buildFreshDirectAggregateMember(
   ownerSheetName: string,
-  ref: HydratedPreparedFormulaInitializationRef,
+  ref: FreshDirectAggregateBindingSource,
 ): FreshDirectAggregateFormulaBindingMember | undefined {
   const compiled = ref.compiled
   if (
@@ -97,14 +105,19 @@ function buildFreshDirectAggregateMember(
   }
   const aggregate = compiled.directAggregateCandidate
   const range = aggregate === undefined ? undefined : compiled.parsedSymbolicRanges?.[aggregate.symbolicRangeIndex]
+  const aggregateSheetName = range?.sheetName ?? ownerSheetName
   if (
     aggregate === undefined ||
     range === undefined ||
+    ref.templateId === undefined ||
     range.refKind !== 'cells' ||
-    (range.sheetName ?? ownerSheetName) !== ownerSheetName ||
     range.startRow > range.endRow ||
     range.startCol > range.endCol ||
-    (range.startRow <= ref.row && ref.row <= range.endRow && range.startCol <= ref.col && ref.col <= range.endCol)
+    (aggregateSheetName === ownerSheetName &&
+      range.startRow <= ref.row &&
+      ref.row <= range.endRow &&
+      range.startCol <= ref.col &&
+      ref.col <= range.endCol)
   ) {
     return undefined
   }
@@ -113,8 +126,9 @@ function buildFreshDirectAggregateMember(
     col: ref.col,
     source: ref.source,
     compiled,
-    templateId: ref.templateId!,
+    templateId: ref.templateId,
     aggregateKind: aggregate.aggregateKind,
+    aggregateSheetName,
     aggregateRowStart: range.startRow,
     aggregateRowEnd: range.endRow,
     aggregateColStart: range.startCol,
@@ -156,8 +170,15 @@ function isFreshDirectScalarOperand(node: HydratedPreparedFormulaInitializationR
 }
 
 function hasExternalWorkbookCellReference(compiled: HydratedPreparedFormulaInitializationRef['compiled']): boolean {
-  if (compiled.parsedSymbolicRefs?.some((ref) => ref.sheetName !== undefined && isExternalWorkbookSheetName(ref.sheetName)) === true) {
-    return true
+  const parsedRefs = compiled.parsedSymbolicRefs
+  if (parsedRefs !== undefined && parsedRefs.length === compiled.symbolicRefs.length) {
+    for (let index = 0; index < parsedRefs.length; index += 1) {
+      const sheetName = parsedRefs[index]?.sheetName
+      if (sheetName !== undefined && isExternalWorkbookSheetName(sheetName)) {
+        return true
+      }
+    }
+    return false
   }
   return compiled.symbolicRefs.some(symbolicRefStartsWithExternalWorkbook)
 }

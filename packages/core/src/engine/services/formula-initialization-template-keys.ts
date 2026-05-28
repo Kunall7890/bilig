@@ -180,6 +180,45 @@ function initialReadRelativeCellToken(
   }
 }
 
+function initialReadRelativeCellKeyToken(
+  source: string,
+  start: number,
+  ownerRow: number,
+  ownerCol: number,
+): { readonly token: string; readonly next: number } | undefined {
+  let next = start
+  let oneBasedCol = 0
+  while (next < source.length) {
+    const code = source.charCodeAt(next)
+    if (code >= 65 && code <= 90) {
+      oneBasedCol = oneBasedCol * 26 + code - 64
+      next += 1
+      continue
+    }
+    if (code >= 97 && code <= 122) {
+      oneBasedCol = oneBasedCol * 26 + code - 96
+      next += 1
+      continue
+    }
+    break
+  }
+  if (next === start) {
+    return undefined
+  }
+  const row = initialReadRowNumber(source, next)
+  if (!row || row.row - 1 !== ownerRow) {
+    return undefined
+  }
+  const col = oneBasedCol - 1
+  if (col < 0) {
+    return undefined
+  }
+  return {
+    token: `c${col - ownerCol}`,
+    next: row.next,
+  }
+}
+
 export function tryBuildInitialSimpleRowRelativeBinaryTemplateKey(source: string, ownerRow: number, ownerCol: number): string | undefined {
   return tryBuildInitialSimpleRowRelativeBinaryTemplateKeyInfo(source, ownerRow, ownerCol)?.key
 }
@@ -190,7 +229,7 @@ export function tryBuildInitialSimpleRowRelativeBinaryTemplateKeyInfo(
   ownerCol: number,
 ): InitialSimpleRowRelativeBinaryTemplateKey | undefined {
   let index = source.charCodeAt(0) === 61 ? 1 : 0
-  const left = initialReadRelativeCellToken(source, index, ownerRow, ownerCol)
+  const left = initialReadRelativeCellKeyToken(source, index, ownerRow, ownerCol)
   if (!left) {
     return undefined
   }
@@ -200,7 +239,7 @@ export function tryBuildInitialSimpleRowRelativeBinaryTemplateKeyInfo(
     return undefined
   }
   index += 1
-  const rightCell = initialReadRelativeCellToken(source, index, ownerRow, ownerCol)
+  const rightCell = initialReadRelativeCellKeyToken(source, index, ownerRow, ownerCol)
   if (rightCell) {
     if (rightCell.next === source.length) {
       return { key: `${left.token}${operator}${rightCell.token}`, usesRowLiteralSuffix: false }

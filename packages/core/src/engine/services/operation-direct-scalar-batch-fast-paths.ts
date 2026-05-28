@@ -35,6 +35,7 @@ type FastPathState = Pick<
   | 'strings'
   | 'events'
   | 'formulas'
+  | 'directScalarDeltaOutputCellIndicesByInput'
   | 'counters'
   | 'replicaState'
   | 'getLastMetrics'

@@ -16,6 +16,7 @@ import { validateSheetWithinLimits } from './work-paper-sheet-inspection.js'
 import { initializeWorkPaperFromSheets } from './work-paper-sheet-initialization.js'
 import {
   createWorkPaperEngine,
+  releaseWorkPaperEngine,
   workPaperEvaluationTimeoutErrorFrom,
   type WorkPaperTransactionSnapshot,
 } from './work-paper-runtime-construction.js'
@@ -237,6 +238,7 @@ export abstract class WorkPaperRuntimeLifecycleBase extends WorkPaperRuntimeFast
   private replaceEngineForConfig(config: WorkPaperConfig): void {
     this.engineEvents.detach()
     this.engineEventsAttached = false
+    releaseWorkPaperEngine(this.engine)
     this.engine = createWorkPaperEngine(config)
     this.sheetDimensionCache = new WorkPaperSheetDimensionCache(this.engine)
   }

@@ -6,7 +6,13 @@ import type {
 } from '@bilig/core/headless-runtime'
 import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import { WorkPaperOperationError } from './work-paper-errors.js'
-import { assertRowAndColumn, isBlankRawCellContent, isFormulaContent, isWorkPaperSheetMatrix } from './work-paper-runtime-helpers.js'
+import {
+  assertRowAndColumn,
+  isBlankRawCellContent,
+  isFormulaContent,
+  isWorkPaperSheetMatrix,
+  stripLeadingEquals,
+} from './work-paper-runtime-helpers.js'
 import { buildWorkPaperLiteralCellValueMutation, buildWorkPaperRawCellMutation } from './work-paper-literal-mutation-queue.js'
 import type { WorkPaperCellMutationApplyOptions } from './work-paper-cell-mutation-refs.js'
 import type {
@@ -28,6 +34,16 @@ interface ExistingNumericMutationEngine {
     readonly cellIndex: number
     readonly value: number
   }) => EngineExistingNumericCellMutationResult | null
+}
+
+interface ExistingDirectScalarFormulaMutationEngine {
+  readonly tryApplyExistingDirectScalarFormulaMutationAt?: (request: {
+    readonly sheetId: number
+    readonly row: number
+    readonly col: number
+    readonly cellIndex: number
+    readonly formula: string
+  }) => boolean
 }
 
 const PHYSICAL_RANGE_INDEX_RESOLVE_MIN_REFS = 32
@@ -163,6 +179,20 @@ export function setWorkPaperCellContents(
         })
       ) {
         return
+      }
+      if (isFormulaContent(content) && visibleCellIndex !== undefined && sheet.structureVersion === 1) {
+        const formulaMutationEngine = runtime.getEngine() as ExistingDirectScalarFormulaMutationEngine
+        if (
+          formulaMutationEngine.tryApplyExistingDirectScalarFormulaMutationAt?.({
+            sheetId: address.sheet,
+            row: address.row,
+            col: address.col,
+            cellIndex: visibleCellIndex,
+            formula: runtime.rewriteFormulaForStorage(stripLeadingEquals(content), address.sheet),
+          })
+        ) {
+          return
+        }
       }
       const mutation = buildWorkPaperRawCellMutation({
         row: address.row,

@@ -227,11 +227,13 @@ describe('EngineEventBus', () => {
     expect(events.hasCellListeners()).toBe(false)
     expect(events.hasAddressListeners()).toBe(false)
 
+    events.subscribeCellIndex(3, indexed)
+    events.emitAllWatched(batchEvent())
     const listenerEpochs = getListenerEpochs(events)
     Reflect.set(events, 'listenerEpoch', 0xffff_fffe)
     listenerEpochs[0] = 99
+    indexed.mockClear()
 
-    events.subscribeCellIndex(3, indexed)
     events.emitAllWatched(batchEvent())
 
     expect(Reflect.get(events, 'listenerEpoch')).toBe(1)

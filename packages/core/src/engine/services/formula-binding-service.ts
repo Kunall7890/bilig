@@ -127,6 +127,9 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
   ): void => {
     formulaSheetIndex.trackFormula(cellIndex, ownerSheetName, compiled)
   }
+  const trackFormulaSheetOwnerRun = (ownerSheetName: string, cellIndices: readonly number[] | Uint32Array): void => {
+    formulaSheetIndex.trackFormulaOwnerRun(ownerSheetName, cellIndices)
+  }
 
   const untrackFormulaSheetIndexes = (
     cellIndex: number,
@@ -885,6 +888,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
         formulaMemberCounts,
         appendKnownUniqueReverseEdge,
         trackFormulaSheetIndexes,
+        trackFormulaSheetOwnerRun,
         run,
       })
     },
