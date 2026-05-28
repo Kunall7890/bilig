@@ -33,7 +33,10 @@ export async function readExternalVisibleGridCellReadback(args: {
     return null
   }
   const targetCellReadback = await args.page
-    .evaluate(readSameCorpusVisibleTargetCellReadbackFromPage, { targetBox: selectedTargetBox })
+    .evaluate(readSameCorpusVisibleTargetCellReadbackFromPage, {
+      targetBox: selectedTargetBox,
+      targetRange: args.target.targetRange,
+    })
     .catch(
       (): SameCorpusMutationTargetReadback => ({
         fillColor: null,
@@ -60,6 +63,7 @@ export async function readExternalVisibleGridCellReadback(args: {
 
 export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
   readonly targetBox: { readonly x: number; readonly y: number; readonly width: number; readonly height: number }
+  readonly targetRange?: string
 }): SameCorpusMutationTargetReadback {
   const targetBox = args.targetBox
   const candidates = targetCellCandidates()
@@ -67,7 +71,7 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
     .filter((candidate) => candidate.score > 0)
     .toSorted((left, right) => right.score - left.score)
   const targetText = normalizeText(
-    candidates.map((candidate) => textFromElement(candidate.element)).find((candidateText) => candidateText !== null),
+    candidates.map((candidate) => textFromElement(candidate.element, args.targetRange)).find((candidateText) => candidateText !== null),
   )
   const fillColor =
     candidates.map((candidate) => visibleBackgroundColor(candidate.element)).find((color): color is string => color !== null) ?? null
@@ -83,18 +87,22 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
   function targetCellCandidates(): HTMLElement[] {
     const seen = new Set<HTMLElement>()
     const add = (element: Element | null | undefined): void => {
-      if (!(element instanceof HTMLElement) || seen.has(element) || isExcludedChromeElement(element) || isTransientEditorElement(element)) {
+      if (!(element instanceof HTMLElement)) {
         return
       }
-      seen.add(element)
+      const targetCell = nearestGridCellCandidate(element)
+      if (!targetCell || seen.has(targetCell) || isExcludedChromeElement(targetCell) || isTransientEditorElement(targetCell)) {
+        return
+      }
+      seen.add(targetCell)
     }
     for (const selector of [
       '.waffle-cell',
+      '.waffle-active-cell',
       '[role="gridcell"]',
       '[aria-selected="true"]',
-      '[class*="active-cell" i]',
-      '[class*="selected-cell" i]',
-      '[class*="waffle" i][class*="cell" i]',
+      '.active-cell',
+      '.selected-cell',
     ]) {
       for (const element of Array.from(document.querySelectorAll(selector))) {
         add(element)
@@ -122,8 +130,7 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
     if (rect.width <= 0 || rect.height <= 0) {
       return 0
     }
-    const className = element.className.toString().toLowerCase()
-    const cellLike = /active|selected|waffle-cell/u.test(className) || element.getAttribute('aria-selected') === 'true'
+    const cellLike = isGridCellCandidate(element)
     if (!cellLike && (rect.width > targetBox.width * 1.5 || rect.height > targetBox.height * 1.5)) {
       return 0
     }
@@ -136,18 +143,18 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
     const smallerArea = Math.max(1, Math.min(rect.width * rect.height, targetBox.width * targetBox.height))
     const overlapRatio = overlapArea / smallerArea
     const roleBoost = cellLike ? 20 : 0
-    const textBoost = textFromElement(element) !== null ? 5 : 0
+    const textBoost = textFromElement(element, args.targetRange) !== null ? 5 : 0
     return overlapRatio * 100 + roleBoost + textBoost
   }
 
-  function textFromElement(element: HTMLElement): string | null {
+  function textFromElement(element: HTMLElement, targetRange: string | undefined): string | null {
     if (element instanceof HTMLScriptElement || element instanceof HTMLStyleElement || element instanceof HTMLLinkElement) {
       return null
     }
     if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
       return null
     }
-    return normalizeText(element.textContent ?? '')
+    return normalizeText(element.textContent ?? '') ?? visibleTextFromAriaLabel(element, targetRange)
   }
 
   function visibleBackgroundColor(element: HTMLElement): string | null {
@@ -207,6 +214,56 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
       element.querySelector('input, textarea, [contenteditable="true"]') !== null ||
       /\b(?:waffle-cell-input|cell-input|formula-input)\b/u.test(className)
     )
+  }
+
+  function nearestGridCellCandidate(element: HTMLElement): HTMLElement | null {
+    for (let candidate: HTMLElement | null = element; candidate; candidate = candidate.parentElement) {
+      if (isExcludedChromeElement(candidate) || isTransientEditorElement(candidate)) {
+        return null
+      }
+      if (isGridCellCandidate(candidate)) {
+        return candidate
+      }
+    }
+    return null
+  }
+
+  // oxlint-disable-next-line eslint-plugin-unicorn(consistent-function-scoping) -- Playwright serializes this helper with the page function.
+  function isGridCellCandidate(element: HTMLElement): boolean {
+    const classList = element.classList
+    return (
+      element.getAttribute('role') === 'gridcell' ||
+      element.getAttribute('aria-selected') === 'true' ||
+      classList.contains('waffle-cell') ||
+      classList.contains('waffle-active-cell') ||
+      classList.contains('active-cell') ||
+      classList.contains('selected-cell')
+    )
+  }
+
+  function visibleTextFromAriaLabel(element: HTMLElement, targetRange: string | undefined): string | null {
+    const label = normalizeText(element.getAttribute('aria-label'))
+    if (!label) {
+      return null
+    }
+    const normalizedTargetRange = targetRange?.replace(/\$/gu, '').trim().toUpperCase() ?? ''
+    if (normalizedTargetRange && label.toUpperCase() === normalizedTargetRange) {
+      return null
+    }
+    if (normalizedTargetRange && /^[A-Z]+[0-9]+$/u.test(normalizedTargetRange)) {
+      const prefixPattern = new RegExp(`^${escapeRegExp(normalizedTargetRange)}(?:\\s+|\\s*[:,-]\\s*)(.+)$`, 'iu')
+      const match = label.match(prefixPattern)
+      const visibleText = normalizeText(match?.[1])
+      if (visibleText) {
+        return visibleText
+      }
+    }
+    return label
+  }
+
+  // oxlint-disable-next-line eslint-plugin-unicorn(consistent-function-scoping) -- Playwright serializes this helper with the page function.
+  function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
   }
 
   // oxlint-disable-next-line eslint-plugin-unicorn(consistent-function-scoping) -- Playwright serializes this helper with the page function.

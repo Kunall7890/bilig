@@ -91,6 +91,71 @@ describe('same-corpus mutation target page proof helpers', () => {
     })
   })
 
+  it('reads committed target text from a real grid-cell child without accepting broad wrapper text', () => {
+    document.body.innerHTML = `
+      <div class="waffle-cell-wrapper">wrong wrapper text</div>
+      <div role="gridcell"><span>committed aria child text</span></div>
+    `
+    const wrapper = document.querySelector<HTMLElement>('.waffle-cell-wrapper')
+    const cell = document.querySelector<HTMLElement>('[role="gridcell"]')
+    expect(wrapper).not.toBeNull()
+    expect(cell).not.toBeNull()
+    setRect(wrapper!, { height: 220, width: 520, x: 80, y: 80 })
+    setRect(cell!, { height: 22, width: 104, x: 220, y: 144 })
+
+    expect(readSameCorpusVisibleTargetCellReadbackFromPage({ targetBox: { height: 22, width: 104, x: 220, y: 144 } })).toEqual({
+      fillColor: null,
+      formula: null,
+      source: 'visible-grid-cell',
+      value: 'committed aria child text',
+      visibleText: 'committed aria child text',
+    })
+  })
+
+  it('uses a target grid-cell aria label while stripping the coordinate prefix', () => {
+    document.body.innerHTML = `
+      <div role="gridcell" aria-label="F5 same-corpus-edit-1"></div>
+    `
+    const cell = document.querySelector<HTMLElement>('[role="gridcell"]')
+    expect(cell).not.toBeNull()
+    setRect(cell!, { height: 22, width: 104, x: 120, y: 144 })
+
+    expect(
+      readSameCorpusVisibleTargetCellReadbackFromPage({
+        targetBox: { height: 22, width: 104, x: 120, y: 144 },
+        targetRange: 'F5',
+      }),
+    ).toEqual({
+      fillColor: null,
+      formula: null,
+      source: 'visible-grid-cell',
+      value: 'same-corpus-edit-1',
+      visibleText: 'same-corpus-edit-1',
+    })
+  })
+
+  it('rejects an aria-only cell coordinate without committed target text', () => {
+    document.body.innerHTML = `
+      <div role="gridcell" aria-label="F5"></div>
+    `
+    const cell = document.querySelector<HTMLElement>('[role="gridcell"]')
+    expect(cell).not.toBeNull()
+    setRect(cell!, { height: 22, width: 104, x: 120, y: 144 })
+
+    expect(
+      readSameCorpusVisibleTargetCellReadbackFromPage({
+        targetBox: { height: 22, width: 104, x: 120, y: 144 },
+        targetRange: 'F5',
+      }),
+    ).toEqual({
+      fillColor: null,
+      formula: null,
+      source: 'visible-grid-cell',
+      value: null,
+      visibleText: null,
+    })
+  })
+
   it('treats an empty overlapping grid cell as target-cell proof instead of falling back to chrome', () => {
     document.body.innerHTML = `
       <input id="t-formula-bar-input" value="stale formula bar text" />

@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { spawnSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { assertLocalCiResourceGuardAllowsRun } from './ci-local-resource-guard.ts'
@@ -66,15 +67,44 @@ function splitVitestRunArgsForCi(args: readonly string[], env: NodeJS.ProcessEnv
 
   const chunkSize =
     readPositiveInt(env['BILIG_VITEST_FILE_CHUNK_SIZE']) ?? (isBroadCorpusVitestRun(args) ? runArgs.length : DEFAULT_CI_FILE_CHUNK_SIZE)
-  if (runArgs.length <= chunkSize) {
+  const environmentGroups = splitRunFilesByVitestEnvironment(runArgs)
+  if (environmentGroups.length === 1 && runArgs.length <= chunkSize) {
     return [[...args]]
   }
 
   const batches: string[][] = []
-  for (let start = 0; start < runArgs.length; start += chunkSize) {
-    batches.push([...prefixArgs, ...runArgs.slice(start, start + chunkSize)])
+  for (const group of environmentGroups) {
+    for (let start = 0; start < group.length; start += chunkSize) {
+      batches.push([...prefixArgs, ...group.slice(start, start + chunkSize)])
+    }
   }
   return batches
+}
+
+function splitRunFilesByVitestEnvironment(runFiles: readonly string[]): string[][] {
+  const groups: string[][] = []
+  let currentEnvironment: string | undefined
+  for (const file of runFiles) {
+    const environment = readVitestFileEnvironment(file)
+    const currentGroup = groups.at(-1)
+    if (!currentGroup || currentEnvironment !== environment) {
+      groups.push([file])
+      currentEnvironment = environment
+      continue
+    }
+    currentGroup.push(file)
+  }
+  return groups
+}
+
+function readVitestFileEnvironment(file: string): string {
+  try {
+    const sourcePrefix = readFileSync(resolve(process.cwd(), file), 'utf8').slice(0, 1024)
+    const match = sourcePrefix.match(/@vitest-environment\s+([^\s]+)/u)
+    return match?.[1] ?? 'node'
+  } catch {
+    return 'node'
+  }
 }
 
 function hasArg(args: readonly string[], flag: string): boolean {

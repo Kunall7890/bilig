@@ -114,6 +114,31 @@ describe('run-vitest wrapper arguments', () => {
     ])
   })
 
+  it('does not mix jsdom and node environment files in one CI batch', () => {
+    expect(
+      buildVitestArgBatches(
+        [
+          '--run',
+          'apps/web/src/__tests__/workbook-editor-conflict.test.tsx',
+          'apps/web/src/__tests__/worker-runtime-state.test.ts',
+          'apps/web/src/__tests__/worker-workbook-app-model.test.ts',
+        ],
+        { BILIG_CI_PROFILE: 'fast' },
+      ),
+    ).toEqual([
+      ['--run', 'apps/web/src/__tests__/workbook-editor-conflict.test.tsx', '--maxWorkers', '1', '--reporter', 'verbose'],
+      [
+        '--run',
+        'apps/web/src/__tests__/worker-runtime-state.test.ts',
+        'apps/web/src/__tests__/worker-workbook-app-model.test.ts',
+        '--maxWorkers',
+        '1',
+        '--reporter',
+        'verbose',
+      ],
+    ])
+  })
+
   it('ignores malformed CI file chunk size overrides instead of truncating them', () => {
     const files = ['a.test.ts', 'b.test.ts', 'c.test.ts', 'd.test.ts']
 
