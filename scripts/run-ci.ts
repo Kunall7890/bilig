@@ -306,10 +306,7 @@ const parallelFocusedCorrectnessLanes: readonly CiTask[] = [
   directPackageScript('correctness server', 'test:correctness:server'),
   directPackageScript('correctness browser runtime', 'test:correctness:browser'),
 ]
-const corpusCorrectnessLane = withEnv(
-  directPackageScript('correctness public workbook corpus', 'test:correctness:corpus'),
-  vitestChunkEnv('10'),
-)
+const corpusCorrectnessLane = directPackageScript('correctness public workbook corpus', 'test:correctness:corpus')
 const excelOracleCorrectnessLane = directPackageScript('correctness Desktop Excel oracle harness', 'test:correctness:excel-oracle')
 const generatedSourceChecks: readonly CiTask[] = [
   bunScript('protocol check', 'scripts/gen-protocol.ts', '--check'),
