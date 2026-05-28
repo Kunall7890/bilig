@@ -23,6 +23,7 @@ import {
   roundTowardZero,
   roundUpToDigits,
 } from './builtins/numeric.js'
+import { enforceBuiltinArities } from './builtins/arity.js'
 import { toAverageNumber, toDirectAggregateNumber, toNumber, toScalarMathNumber } from './builtins/scalar-coercion.js'
 import { createMathBuiltins } from './builtins/math-builtins.js'
 import { createRadixBuiltins } from './builtins/radix.js'
@@ -911,22 +912,28 @@ const scalarBuiltins: Record<string, Builtin> = {
   ...scalarPlaceholderBuiltins,
 }
 
-const builtins: Record<string, Builtin> = {
-  ...scalarBuiltins,
-  ...logicalBuiltins,
-  ...textBuiltins,
-  ...datetimeBuiltins,
-}
+const builtins: Record<string, Builtin> = enforceBuiltinArities(
+  {
+    ...scalarBuiltins,
+    ...logicalBuiltins,
+    ...textBuiltins,
+    ...datetimeBuiltins,
+  },
+  valueError,
+)
 
 const dateSystemBuiltinCache = new Map<ExcelDateSystem, Record<string, Builtin>>()
 
 function dateSystemBuiltins(dateSystem: ExcelDateSystem): Record<string, Builtin> {
   let cached = dateSystemBuiltinCache.get(dateSystem)
   if (!cached) {
-    cached = {
-      ...createTextBuiltins({ dateSystem }),
-      ...createDateTimeBuiltins(dateSystem),
-    }
+    cached = enforceBuiltinArities(
+      {
+        ...createTextBuiltins({ dateSystem }),
+        ...createDateTimeBuiltins(dateSystem),
+      },
+      valueError,
+    )
     dateSystemBuiltinCache.set(dateSystem, cached)
   }
   return cached

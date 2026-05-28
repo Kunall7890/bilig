@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BuiltinId, Opcode, ValueTag } from '@bilig/protocol'
+import { BuiltinId, ErrorCode, Opcode, ValueTag } from '@bilig/protocol'
 import { createKernel } from '../index.js'
 
 const OUTPUT_STRING_BASE = 2147483648
@@ -75,7 +75,37 @@ function readStringCell(kernel: Awaited<ReturnType<typeof createKernel>>, index:
   return outputIndex >= 0 ? (kernel.readOutputStrings()[outputIndex] ?? '') : (pooledStrings[raw] ?? '')
 }
 
+function expectKernelError(kernel: Awaited<ReturnType<typeof createKernel>>, index: number, code: ErrorCode): void {
+  expect(kernel.readTags()[index]).toBe(ValueTag.Error)
+  expect(kernel.readErrors()[index]).toBe(code)
+}
+
 describe('wasm kernel text-special helpers', () => {
+  it('returns value errors for malformed text helper arities', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 2, 1, 1, 1)
+    kernel.uploadStrings(Uint32Array.from([0]), Uint32Array.from([3]), Uint16Array.from(Array.from('abc', (char) => char.charCodeAt(0))))
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushString(0), encodePushNumber(0), encodeCall(BuiltinId.Len, 2), encodeRet()],
+      [encodePushString(0), encodePushNumber(0), encodePushNumber(0), encodeCall(BuiltinId.Left, 3), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width)]),
+    )
+    const constants = packConstants([[1], [1, 1]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width)]))
+
+    expectKernelError(kernel, cellIndex(1, 0, width), ErrorCode.Value)
+    expectKernelError(kernel, cellIndex(1, 1, width), ErrorCode.Value)
+  })
+
   it('keeps numeric and time text coercion stable across refactors', async () => {
     const kernel = await createKernel()
     const width = 8

@@ -8,6 +8,7 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
     case 'HOUR':
     case 'MINUTE':
     case 'SECOND':
+    case 'ABS':
     case 'INT':
     case 'SIN':
     case 'COS':
