@@ -13,7 +13,7 @@ inflating what the benchmark can prove.
 The all-provider source of truth is
 `packages/benchmarks/baselines/headless-performance-leadership-scorecard.json`.
 The short artifact name is `headless-performance-leadership-scorecard.json`.
-It currently reports goal status `achieved`: `100/100` comparable workloads win
+It currently reports goal status `active-not-achieved`: `100/100` comparable workloads win
 on both mean and p95 latency across `5` comparison engines and `2` workbook-wide engines.
 
 Comparison engines: HyperFormula, TrueCalc, Univer, xlsx-calc, IronCalc Rust.
@@ -22,7 +22,7 @@ Comparison engines: HyperFormula, TrueCalc, Univer, xlsx-calc, IronCalc Rust.
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | HyperFormula | workbook-wide | `100/100` | `100/100` | `100/100` | `0.2586x` | `0.2807x` | `0` |
 | Univer | workbook-wide | `100/100` | `100/100` | `100/100` | `0.0028x` | `0.0034x` | `0` |
-| IronCalc Rust | workbook-wide-limited | `90/90` | `90/90` | `90/90` | `0.1183x` | `0.1581x` | `10` unsupported |
+| IronCalc Rust | workbook-wide-limited | `72/90` | `86/90` | `72/90` | `0.1756x` | `0.2655x` | `10` unsupported |
 | xlsx-calc | workbook-wide-limited | `16/16` | `16/16` | `16/16` | `0.0839x` | `0.0786x` | `0` |
 | TrueCalc | scalar-formula | `7/7` | `7/7` | `7/7` | `0.1837x` | `0.2359x` | `0` |
 
