@@ -446,6 +446,25 @@ describe('wasm kernel format and conversion dispatch', () => {
     expect(kernel.readErrors()[cellIndex(1, 7, width)]).toBe(ErrorCode.Div0)
   })
 
+  it('rejects malformed three-argument DOLLAR calls on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 2
+    kernel.init(4, 0, 1, 1, 1)
+    kernel.writeCells(new Uint8Array(4), new Float64Array(4), new Uint32Array(4), new Uint16Array(4))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Dollar, 3), encodeRet()],
+    ])
+    const output = Uint32Array.from([cellIndex(1, 0, width)])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, output)
+    const constants = packConstants([[1234.567, 1, 1]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(output)
+
+    expect(kernel.readTags()[cellIndex(1, 0, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 0, width)]).toBe(ErrorCode.Value)
+  })
+
   it('renders NULL error labels on the wasm VALUETOTEXT path', async () => {
     const kernel = await createKernel()
     const width = 2

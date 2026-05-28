@@ -574,18 +574,21 @@ const scalarBuiltins: Record<string, Builtin> = {
       stringId: 0,
     }
   },
-  DOLLAR: (valueArg, decimalsArg = { tag: ValueTag.Number, value: 2 }, noCommasArg) => {
-    const error = firstError([valueArg, decimalsArg, noCommasArg])
+  DOLLAR: (...args) => {
+    if (args.length < 1 || args.length > 2) {
+      return valueError()
+    }
+    const [valueArg, decimalsArg = { tag: ValueTag.Number, value: 2 }] = args
+    const error = firstError([valueArg, decimalsArg])
     if (error) {
       return error
     }
     const value = toNumber(valueArg)
     const decimals = toInteger(decimalsArg, 2)
-    const noCommasValue = noCommasArg === undefined ? 0 : (toNumber(noCommasArg) ?? 0)
     if (value === undefined || decimals === undefined) {
       return valueError()
     }
-    const text = formatFixed(value, decimals, noCommasValue === 0)
+    const text = formatFixed(value, decimals, true)
     if (text === '') {
       return valueError()
     }

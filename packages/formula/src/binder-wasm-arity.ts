@@ -192,7 +192,7 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
     case 'VALUETOTEXT':
       return argc === 1 || argc === 2
     case 'DOLLAR':
-      return argc >= 1 && argc <= 3
+      return argc >= 1 && argc <= 2
     case 'DOLLARDE':
     case 'DOLLARFR':
     case 'COMBIN':

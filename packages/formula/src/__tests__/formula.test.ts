@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { compileFormula, evaluateAst, evaluatePlan, parseCellAddress, parseFormula, parseRangeAddress } from '../index.js'
-import { ValueTag, type CellValue } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 
 describe('formula', () => {
   it('parses A1 addresses', () => {
@@ -762,6 +762,8 @@ describe('formula', () => {
     expect(compileFormula('REPLACEB("alphabet",3,2,"Z")').mode).toBe(1)
     expect(compileFormula('ADDRESS(12,3)').mode).toBe(1)
     expect(compileFormula('DOLLAR(-1234.5,1)').mode).toBe(1)
+    const invalidDollar = compileFormula('DOLLAR(-1234.5,1,TRUE())')
+    expect(invalidDollar.optimizedAst).toMatchObject({ kind: 'ErrorLiteral', code: ErrorCode.Value })
     expect(compileFormula('DOLLARDE(1.08,16)').mode).toBe(1)
     expect(compileFormula('DOLLARFR(1.5,16)').mode).toBe(1)
     expect(compileFormula('BASE(255,16,4)').mode).toBe(1)

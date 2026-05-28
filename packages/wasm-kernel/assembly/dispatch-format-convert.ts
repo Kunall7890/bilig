@@ -273,22 +273,21 @@ export function tryApplyFormatConvertBuiltin(
     return writeStringResult(base, `${sheetPrefix}${colLabel}${rowLabel}`, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
-  if (builtinId == BuiltinId.Dollar && argc >= 1 && argc <= 3) {
+  if (builtinId == BuiltinId.Dollar && (argc < 1 || argc > 2)) {
+    return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+  }
+
+  if (builtinId == BuiltinId.Dollar) {
     const scalarError = scalarErrorAt(base, argc, kindStack, tagStack, valueStack)
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const value = toNumberExact(tagStack[base], valueStack[base])
     const decimalsNumeric = argc >= 2 ? toNumberExact(tagStack[base + 1], valueStack[base + 1]) : 2.0
-    let noCommasValue = 0.0
-    if (argc >= 3) {
-      const numeric = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-      noCommasValue = isNaN(numeric) ? 0.0 : numeric
-    }
     if (!isFinite(value) || !isFinite(decimalsNumeric)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const text = formatFixedText(value, <i32>decimalsNumeric, noCommasValue == 0.0)
+    const text = formatFixedText(value, <i32>decimalsNumeric, true)
     if (text == null || text.length == 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }

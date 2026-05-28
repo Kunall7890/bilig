@@ -18,7 +18,7 @@ describe('formula builtins and JS evaluator', () => {
     }
   })
 
-  it('returns value errors for documented information and rounding arity violations', () => {
+  it('returns value errors for documented scalar arity violations', () => {
     const context = {
       sheetName: 'Sheet1',
       resolveCell: (): CellValue => ({ tag: ValueTag.Empty }),
@@ -45,6 +45,7 @@ describe('formula builtins and JS evaluator', () => {
       'PI(1)',
       'FLOOR(2.5)',
       'CEILING(2.5)',
+      'DOLLAR(1234.5,1,TRUE())',
     ]) {
       expect(evaluateAst(parseFormula(formula), context)).toEqual(valueError)
     }

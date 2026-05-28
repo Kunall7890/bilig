@@ -578,18 +578,12 @@ describe('formula builtins', () => {
     expect(getBuiltin('ROUNDDOWN')?.(refError, { tag: ValueTag.Number, value: 0 })).toEqual(refError)
     expect(getBuiltin('TRUNC')?.(refError, { tag: ValueTag.Number, value: 0 })).toEqual(refError)
     expect(getBuiltin('MROUND')?.(refError, { tag: ValueTag.Number, value: 2 })).toEqual(refError)
-    expect(getBuiltin('FLOOR')?.({ tag: ValueTag.Number, value: 3.6 })).toEqual({
-      tag: ValueTag.Number,
-      value: 3,
-    })
+    expect(getBuiltin('FLOOR')?.({ tag: ValueTag.Number, value: 3.6 })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(getBuiltin('FLOOR')?.({ tag: ValueTag.Number, value: 7 }, { tag: ValueTag.Number, value: 2 })).toEqual({
       tag: ValueTag.Number,
       value: 6,
     })
-    expect(getBuiltin('CEILING')?.({ tag: ValueTag.Number, value: 3.1 })).toEqual({
-      tag: ValueTag.Number,
-      value: 4,
-    })
+    expect(getBuiltin('CEILING')?.({ tag: ValueTag.Number, value: 3.1 })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(getBuiltin('CEILING')?.({ tag: ValueTag.Number, value: 7 }, { tag: ValueTag.Number, value: 2 })).toEqual({
       tag: ValueTag.Number,
       value: 8,
@@ -1213,7 +1207,7 @@ describe('formula builtins', () => {
         { tag: ValueTag.Number, value: 1 },
         { tag: ValueTag.Boolean, value: true },
       ),
-    ).toEqual({ tag: ValueTag.String, value: '$1234.6', stringId: 0 })
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(
       getBuiltin('FIXED')?.(
         { tag: ValueTag.Number, value: 1234.567 },
@@ -2224,11 +2218,7 @@ describe('formula builtins', () => {
         { tag: ValueTag.Number, value: 0 },
         { tag: ValueTag.Number, value: 1 },
       ),
-    ).toEqual({
-      tag: ValueTag.String,
-      value: '$1235',
-      stringId: 0,
-    })
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
   })
 
   it('covers the new type, statistical, distribution, and combinatoric builtins', () => {
