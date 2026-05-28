@@ -26,6 +26,7 @@ import { requireTemporalWorkpaperActivityDiscovery } from './check-docs-discover
 import { requireFastMcpWorkpaperClientDiscovery } from './check-docs-discovery-fastmcp.ts'
 import { requireSmolagentsWorkpaperToolDiscovery } from './check-docs-discovery-smolagents.ts'
 import { requireInngestWorkpaperStepDiscovery, requireInngestWorkpaperStepExampleFiles } from './check-docs-discovery-inngest.ts'
+import { requireAgentJsonDiscoveryContract } from './agent-discovery-evaluator-doors.ts'
 
 const docsDiscoveryContext = await loadDocsDiscoveryContext()
 const {
@@ -443,6 +444,13 @@ requireIncludes(llms, 'https://proompteng.github.io/bilig/skill.txt', 'docs/llms
 requireIncludes(llms, 'https://proompteng.github.io/bilig/llms-full.txt', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent-skills/index.json', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/skills/index.json', 'docs/llms.txt')
+requireIncludes(llms, '## proof-first evaluator doors', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-xlsx-recalc.html', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-workpaper-service.html', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-agent-mcp.html', 'docs/llms.txt')
+requireIncludes(llms, 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json', 'docs/llms.txt')
+requireIncludes(llms, 'npm exec --yes --package @bilig/workpaper@latest -- bilig-mcp-challenge --json', 'docs/llms.txt')
+requireIncludes(llms, 'A write call by itself is not success.', 'docs/llms.txt')
 requireIncludes(llms, 'low-code agent workflow formula readback:', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/windmill-workpaper-script.html', 'docs/llms.txt')
@@ -631,18 +639,12 @@ const parsedAgentJson: unknown = JSON.parse(agentJson)
 if (typeof parsedAgentJson !== 'object' || parsedAgentJson === null || Array.isArray(parsedAgentJson)) {
   throw new Error('docs/.well-known/agent.json must be a JSON object')
 }
-for (const [fieldName, expectedValue] of [
-  ['name', 'bilig'],
-  ['repository', 'https://github.com/proompteng/bilig'],
-  ['llms_txt', 'https://proompteng.github.io/bilig/llms.txt'],
-  ['llms_full', 'https://proompteng.github.io/bilig/llms-full.txt'],
-  ['skill_file', 'https://proompteng.github.io/bilig/skill.txt'],
-  ['agent_instructions', 'https://proompteng.github.io/bilig/AGENTS.md'],
-] as const) {
-  if (Reflect.get(parsedAgentJson, fieldName) !== expectedValue) {
-    throw new Error(`docs/.well-known/agent.json ${fieldName} must be ${expectedValue}`)
-  }
-}
+requireAgentJsonDiscoveryContract({
+  parsedAgentJson,
+  repositoryUrl: 'https://github.com/proompteng/bilig',
+  siteRoot,
+  workpaperPackageSpec,
+})
 const parsedAgentJsonMcp = Reflect.get(parsedAgentJson, 'mcp')
 if (typeof parsedAgentJsonMcp !== 'object' || parsedAgentJsonMcp === null || Array.isArray(parsedAgentJsonMcp)) {
   throw new Error('docs/.well-known/agent.json must define an mcp object')

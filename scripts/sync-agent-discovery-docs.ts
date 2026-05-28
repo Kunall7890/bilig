@@ -6,6 +6,7 @@ import { mcpServerCardManifest } from './agent-discovery-mcp-card.ts'
 import { buildWorkpaperPackageAgentInstructions, buildWorkpaperPackageSkillDocument } from './agent-discovery-package-docs.ts'
 import { readTextFileIfExists } from './read-if-exists.ts'
 import { syncVersionedStaticReferences } from './sync-agent-static-references.ts'
+import { buildEvaluatorDoors, buildProofContract, compactProofContractJsonArrays } from './agent-discovery-evaluator-doors.ts'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const siteRoot = 'https://proompteng.github.io/bilig'
@@ -663,6 +664,7 @@ function agentJsonManifest(): string {
             'Use @bilig/workpaper WorkPaper state, MCP tools, and formula-clinic reports instead of spreadsheet UI automation when an agent needs formula readback.',
         },
       ],
+      evaluator_doors: buildEvaluatorDoors({ repositoryUrl, siteRoot, workpaperPackageSpec }),
       mcp: {
         server_name: 'io.github.proompteng/bilig-workpaper',
         server_card: `${siteRoot}/.well-known/mcp/server-card.json`,
@@ -805,6 +807,7 @@ function agentJsonManifest(): string {
           docs: `${siteRoot}/formula-bug-clinic.html`,
         },
       ],
+      proof_contract: buildProofContract(),
       verification_contract: [
         'read the relevant range before editing',
         'write the target input or formula cell',
@@ -865,7 +868,8 @@ function agentJsonManifest(): string {
     null,
     2,
   )
-  const compactPrompts = compactStringArrayProperty(json, 'prompts', mcpPromptNames, '    ')
+  const compactPersistedBytesAlias = compactProofContractJsonArrays(json, compactStringArrayProperty)
+  const compactPrompts = compactStringArrayProperty(compactPersistedBytesAlias, 'prompts', mcpPromptNames, '    ')
   return `${compactStringArrayProperty(compactPrompts, 'not_a_fit', agentNotAFitBoundaries, '    ')}\n`
 }
 

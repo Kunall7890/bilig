@@ -19,6 +19,35 @@
       "description": "Use @bilig/workpaper WorkPaper state, MCP tools, and formula-clinic reports instead of spreadsheet UI automation when an agent needs formula readback."
     }
   ],
+  "evaluator_doors": [
+    {
+      "name": "eval-xlsx-recalc",
+      "audience": "A service has an XLSX file with stale formula results after editing inputs in Node.js.",
+      "docs": "https://proompteng.github.io/bilig/eval-xlsx-recalc.html",
+      "source": "https://github.com/proompteng/bilig/blob/main/docs/eval-xlsx-recalc.md",
+      "package": "@bilig/xlsx-formula-recalc",
+      "command": "npx --yes --package @bilig/xlsx-formula-recalc xlsx-recalc pricing.xlsx --set Inputs!B2=48 --read Summary!B7 --out pricing.recalculated.xlsx --json",
+      "expected_result": "input edit, recalculated readback, output workbook path, and verified true without Excel or LibreOffice"
+    },
+    {
+      "name": "eval-workpaper-service",
+      "audience": "A Node.js service, route, queue worker, or test needs workbook-shaped formula logic as JSON state.",
+      "docs": "https://proompteng.github.io/bilig/eval-workpaper-service.html",
+      "source": "https://github.com/proompteng/bilig/blob/main/docs/eval-workpaper-service.md",
+      "package": "@bilig/workpaper",
+      "command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json",
+      "expected_result": "direct WorkPaper edit, calculated readback, JSON persistence, restore proof, and verified true"
+    },
+    {
+      "name": "eval-agent-mcp",
+      "audience": "A coding agent, MCP client, or tool host needs spreadsheet operations without UI automation.",
+      "docs": "https://proompteng.github.io/bilig/eval-agent-mcp.html",
+      "source": "https://github.com/proompteng/bilig/blob/main/docs/eval-agent-mcp.md",
+      "package": "@bilig/workpaper",
+      "command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-mcp-challenge --json",
+      "expected_result": "MCP tool discovery, cell edit, formula readback, export, restore, tool list, and verified true"
+    }
+  ],
   "mcp": {
     "server_name": "io.github.proompteng/bilig-workpaper",
     "server_card": "https://proompteng.github.io/bilig/.well-known/mcp/server-card.json",
@@ -161,6 +190,22 @@
       "docs": "https://proompteng.github.io/bilig/formula-bug-clinic.html"
     }
   ],
+  "proof_contract": {
+    "rule": "Do not claim spreadsheet or workbook success from a write call alone.",
+    "fields": ["editedCell", "before", "after", "afterRestore", "persistedDocumentBytes", "verified", "limitations"],
+    "accepted_aliases": {
+      "afterRestore": ["afterRestart"],
+      "persistedDocumentBytes": ["persistence.serializedBytes", "serializedBytes"]
+    },
+    "required_steps": [
+      "read the relevant range before editing",
+      "write the target input or formula cell",
+      "read the dependent calculated output after recalculation",
+      "export or serialize the WorkPaper document",
+      "restore or reimport when a file boundary matters",
+      "return editedCell, before, after, afterRestore, persistedDocumentBytes, verified, and limitations"
+    ]
+  },
   "verification_contract": [
     "read the relevant range before editing",
     "write the target input or formula cell",

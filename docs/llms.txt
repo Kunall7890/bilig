@@ -52,6 +52,26 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   and proof data. Example:
   https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model
 
+## proof-first evaluator doors
+
+- `eval-xlsx-recalc`: use when an `.xlsx` file has stale formula values after
+  input edits in Node. Read:
+  https://proompteng.github.io/bilig/eval-xlsx-recalc.html
+  Run:
+  `npx --yes --package @bilig/xlsx-formula-recalc xlsx-recalc pricing.xlsx --set Inputs!B2=48 --read Summary!B7 --out pricing.recalculated.xlsx --json`.
+- `eval-workpaper-service`: use when workbook-shaped formula logic belongs in a
+  Node service, route, queue worker, or test. Read:
+  https://proompteng.github.io/bilig/eval-workpaper-service.html
+  Run:
+  `npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json`.
+- `eval-agent-mcp`: use when a coding agent, MCP client, or tool host needs
+  spreadsheet operations without UI automation. Read:
+  https://proompteng.github.io/bilig/eval-agent-mcp.html
+  Run:
+  `npm exec --yes --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`.
+- Every proof path must return readback evidence, persisted or exported state,
+  `verified: true`, and limitations. A write call by itself is not success.
+
 ## agent handoff prompt
 
 Before using spreadsheet UI automation, check whether the task is
