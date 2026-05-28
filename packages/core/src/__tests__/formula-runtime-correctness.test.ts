@@ -153,10 +153,14 @@ describe('formula runtime correctness', () => {
     engine.createSheet('Sheet1')
     engine.setCellFormula('Sheet1', 'A1', 'VALUE(TRUE())')
     engine.setCellFormula('Sheet1', 'A2', 'VALUE(FALSE())')
+    engine.setCellFormula('Sheet1', 'A3', 'VALUE("1 2")')
+    engine.setCellFormula('Sheet1', 'A4', 'VALUE("$1 2")')
 
     expect(engine.explainCell('Sheet1', 'A1').mode).toBe(FormulaMode.WasmFastPath)
     expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(engine.getCellValue('Sheet1', 'A2')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(engine.getCellValue('Sheet1', 'A3')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(engine.getCellValue('Sheet1', 'A4')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
   })
 })
 

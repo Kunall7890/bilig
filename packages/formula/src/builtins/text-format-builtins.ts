@@ -500,9 +500,38 @@ function parseNumberValueText(input: string, decimalSeparator: string, groupSepa
   return parsed / 100 ** percentCount
 }
 
+function trimAsciiWhitespace(input: string): string {
+  let start = 0
+  let end = input.length
+  while (start < end && input.charCodeAt(start) <= 32) {
+    start += 1
+  }
+  while (end > start && input.charCodeAt(end - 1) <= 32) {
+    end -= 1
+  }
+  return input.slice(start, end)
+}
+
+function parseValueNumberText(input: string): number | undefined {
+  const trimmed = trimAsciiWhitespace(input)
+  if (trimmed === '') {
+    return undefined
+  }
+
+  const percentMatch = trimmed.match(/%+$/)
+  const percentCount = percentMatch?.[0].length ?? 0
+  const core = percentCount === 0 ? trimmed : trimmed.slice(0, -percentCount)
+  if (core.includes('%')) {
+    return undefined
+  }
+
+  const parsed = parseNumericText(core)
+  return parsed === undefined ? undefined : parsed / 100 ** percentCount
+}
+
 function parseCurrencyValueText(input: string): number | undefined {
-  const compact = input.replaceAll(/\s+/g, '')
-  const match = /^([+-]?)\$(.+)$/.exec(compact)
+  const text = trimAsciiWhitespace(input)
+  const match = /^([+-]?)\$(.+)$/.exec(text)
   if (!match) {
     return undefined
   }
@@ -514,10 +543,10 @@ function parseCurrencyValueText(input: string): number | undefined {
 }
 
 function parseValueText(input: string, dateSystem: ExcelDateSystem): number | undefined {
-  if (input.trim() === '') {
+  if (trimAsciiWhitespace(input) === '') {
     return undefined
   }
-  const numeric = parseNumberValueText(input, '.', ',')
+  const numeric = parseValueNumberText(input)
   if (numeric !== undefined) {
     return numeric
   }

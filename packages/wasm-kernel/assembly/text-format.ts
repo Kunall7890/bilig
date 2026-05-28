@@ -1,4 +1,5 @@
 import { ErrorCode } from './protocol'
+import { trimAsciiWhitespace } from './text-codec'
 import {
   excelDayPartFromSerial,
   excelDateTextSerial,
@@ -702,34 +703,55 @@ export function numberValueParseText(input: string, decimalSeparator: string, gr
   return parsed / Math.pow(100.0, <f64>percentCount)
 }
 
+function valueNumberParseText(input: string): f64 {
+  const trimmed = trimAsciiWhitespace(input)
+  if (trimmed.length == 0) {
+    return NaN
+  }
+
+  let percentCount = 0
+  let coreEnd = trimmed.length
+  while (coreEnd > 0 && trimmed.charCodeAt(coreEnd - 1) == 37) {
+    coreEnd -= 1
+    percentCount += 1
+  }
+  const core = coreEnd == trimmed.length ? trimmed : trimmed.slice(0, coreEnd)
+  if (core.indexOf('%') >= 0) {
+    return NaN
+  }
+
+  const parsed = parseNumericText(core)
+  return isFinite(parsed) ? parsed / Math.pow(100.0, <f64>percentCount) : NaN
+}
+
 function currencyValueParseText(input: string): f64 {
-  const compact = removeAsciiWhitespace(input)
-  if (compact.length < 2) {
+  const text = trimAsciiWhitespace(input)
+  if (text.length < 2) {
     return NaN
   }
 
   let sign = 1.0
   let start = 0
-  const first = compact.charCodeAt(0)
+  const first = text.charCodeAt(0)
   if (first == 43) {
     start = 1
   } else if (first == 45) {
     sign = -1.0
     start = 1
   }
-  if (start >= compact.length || compact.charCodeAt(start) != 36) {
+  if (start >= text.length || text.charCodeAt(start) != 36) {
     return NaN
   }
 
-  const parsed = parseNumericText(compact.slice(start + 1))
+  const parsed = parseNumericText(text.slice(start + 1))
   return isFinite(parsed) ? sign * parsed : NaN
 }
 
 export function valueParseText(input: string): f64 {
-  if (removeAsciiWhitespace(input).length == 0) {
+  if (trimAsciiWhitespace(input).length == 0) {
     return NaN
   }
-  let parsed = numberValueParseText(input, '.', ',')
+  let parsed = valueNumberParseText(input)
   if (isFinite(parsed)) {
     return parsed
   }
