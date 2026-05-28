@@ -41,6 +41,13 @@ export function buildWorkpaperPackageSkillDocument(input: WorkpaperSkillDocument
 Use MCP when the host can run a stdio server or call a Streamable HTTP server.
 Configure stdio as an argument array, not a shell-concatenated string:
 
+If the host supports installable skills, first check that the public skill
+package is discoverable:
+
+\`\`\`sh
+npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
+\`\`\`
+
 Before wiring a client, an agent can prove the direct WorkPaper loop with:`,
       `## First Choice: Direct npm proof or TypeScript
 
@@ -48,6 +55,13 @@ Use the package directly when the host can run npm or TypeScript. This is the
 highest-traffic evaluator path because it meets developers where they already
 search: npm, ExcelJS, SheetJS, xlsx-populate, and StackOverflow formula
 recalculation problems.
+
+If the host supports installable skills, first check that the public skill
+package is discoverable:
+
+\`\`\`sh
+npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
+\`\`\`
 
 Start by proving the direct WorkPaper loop:`,
     )

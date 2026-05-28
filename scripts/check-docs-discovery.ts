@@ -608,10 +608,20 @@ requireIncludes(docsAgentNotes, 'Do not claim success from a write call alone.',
 requireIncludes(docsSkill, 'name: bilig-workpaper', 'docs/skill.md')
 requireIncludes(docsSkill, '## Required Verification', 'docs/skill.md')
 requireIncludes(docsSkill, '## Command Safety', 'docs/skill.md')
+requireIncludes(docsSkill, 'npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list', 'docs/skill.md')
+requireIncludes(docsSkill, 'returned `tools` array as the source', 'docs/skill.md')
+requireIncludes(docsSkill, 'currently published package', 'docs/skill.md')
 requireNotIncludes(docsSkill, 'allowed-tools:', 'docs/skill.md')
 requireNotIncludes(docsSkill, 'argument-hint:', 'docs/skill.md')
 requireIncludes(rootSkillNotes, '## Command Safety', 'skills/bilig-workpaper/SKILL.md')
 requireIncludes(rootSkillNotes, 'argument array, not a shell-concatenated string', 'skills/bilig-workpaper/SKILL.md')
+requireIncludes(
+  rootSkillNotes,
+  'npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list',
+  'skills/bilig-workpaper/SKILL.md',
+)
+requireIncludes(rootSkillNotes, 'returned `tools` array as the source', 'skills/bilig-workpaper/SKILL.md')
+requireIncludes(rootSkillNotes, 'currently published package', 'skills/bilig-workpaper/SKILL.md')
 requireNotIncludes(rootSkillNotes, 'allowed-tools:', 'skills/bilig-workpaper/SKILL.md')
 requireNotIncludes(rootSkillNotes, 'argument-hint:', 'skills/bilig-workpaper/SKILL.md')
 if (agentJsonRoot !== agentJson) {

@@ -272,6 +272,13 @@ Do not build shell commands by concatenating user text. Treat the commands below
 Use MCP when the host can run a stdio server or call a Streamable HTTP server.
 Configure stdio as an argument array, not a shell-concatenated string:
 
+If the host supports installable skills, first check that the public skill
+package is discoverable:
+
+\`\`\`sh
+npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
+\`\`\`
+
 Before wiring a client, an agent can prove the direct WorkPaper loop with:
 
 \`\`\`json
@@ -307,20 +314,22 @@ For the actual file-backed MCP path, run the package-owned challenge first:
 }
 \`\`\`
 
-The useful file-backed tools are:
+Run \`bilig-mcp-challenge\` and treat its returned \`tools\` array as the source
+of truth for the currently published package. The core file-backed tools are:
 
 - \`list_sheets\`
 - \`read_range\`
 - \`read_cell\`
 - \`set_cell_contents\`
-- \`set_cell_contents_and_readback\`
 - \`get_cell_display_value\`
 - \`export_workpaper_document\`
 - \`validate_formula\`
 
 After a write, always read the dependent output cell and export the WorkPaper
-document. For stateless HTTP clients, prefer \`set_cell_contents_and_readback\`
-so the edit and dependent readback happen in one tool call.
+document. If the listed tool set includes \`set_cell_contents_and_readback\`,
+prefer it for stateless clients because the edit and dependent readback happen
+in one tool call. If it is absent, call \`set_cell_contents\`, then \`read_cell\`
+or \`read_range\`, then \`export_workpaper_document\`.
 
 For remote MCP clients, use the stateless demo endpoint when the client supports
 Streamable HTTP:
