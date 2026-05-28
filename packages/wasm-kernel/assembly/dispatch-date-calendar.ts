@@ -86,8 +86,26 @@ export function tryApplyDateCalendarBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const startWhole = excelSerialWhole(tagStack[base], valueStack[base])
-    const endWhole = excelSerialWhole(tagStack[base + 1], valueStack[base + 1])
+    const startWhole = dateTextOrNumberWhole(
+      tagStack[base],
+      valueStack[base],
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const endWhole = dateTextOrNumberWhole(
+      tagStack[base + 1],
+      valueStack[base + 1],
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     const method = argc == 3 ? truncToInt(tagStack[base + 2], valueStack[base + 2]) : 0
     const value =
       startWhole == i32.MIN_VALUE || endWhole == i32.MIN_VALUE || (method != 0 && method != 1)
@@ -104,8 +122,26 @@ export function tryApplyDateCalendarBuiltin(
     if (scalarError >= 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, scalarError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const startWhole = excelSerialWhole(tagStack[base], valueStack[base])
-    const endWhole = excelSerialWhole(tagStack[base + 1], valueStack[base + 1])
+    const startWhole = dateTextOrNumberWhole(
+      tagStack[base],
+      valueStack[base],
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const endWhole = dateTextOrNumberWhole(
+      tagStack[base + 1],
+      valueStack[base + 1],
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     const basis = argc == 3 ? truncToInt(tagStack[base + 2], valueStack[base + 2]) : 0
     if (basis < 0 || basis > 4) {
       return writeResult(
@@ -138,14 +174,23 @@ export function tryApplyDateCalendarBuiltin(
     if (!isExcelWeeknumReturnType(returnType)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const serialWhole = excelSerialWhole(tagStack[base], valueStack[base])
+    const serialWhole = dateTextOrNumberWhole(
+      tagStack[base],
+      valueStack[base],
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     if (serialWhole == i32.MIN_VALUE) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (!isExcelDateSerialInRange(serialWhole)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const weeknum = excelWeeknumFromSerial(tagStack[base], valueStack[base], returnType)
+    const weeknum = excelWeeknumFromSerial(<u8>ValueTag.Number, <f64>serialWhole, returnType)
     if (weeknum == i32.MIN_VALUE) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -496,4 +541,30 @@ function daysDateSerial(
     return DAYS_VALUE_ERROR
   }
   return isExcelDateSerialInRange(serial) ? serial : DAYS_NUM_ERROR
+}
+
+function dateTextOrNumberWhole(
+  tag: u8,
+  value: f64,
+  stringOffsets: Uint32Array,
+  stringLengths: Uint32Array,
+  stringData: Uint16Array,
+  outputStringOffsets: Uint32Array,
+  outputStringLengths: Uint32Array,
+  outputStringData: Uint16Array,
+): i32 {
+  if (tag == ValueTag.String) {
+    const text = scalarText(
+      tag,
+      value,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    return text == null ? i32.MIN_VALUE : excelDateTextSerial(text)
+  }
+  return excelSerialWhole(tag, value)
 }

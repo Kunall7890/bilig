@@ -104,6 +104,30 @@ describe('datetime builtins', () => {
     })
   })
 
+  it('treats recognized date text as DATEVALUE dates for serial date consumers', () => {
+    const jan1Text = { tag: ValueTag.String, value: '1/1/31', stringId: 1 } as const
+    const feb2Text = { tag: ValueTag.String, value: '2/2/31', stringId: 2 } as const
+    const jan1Serial = excelDatePartsToSerial(1931, 1, 1)!
+    const feb1Serial = excelDatePartsToSerial(1931, 2, 1)!
+    const feb2Serial = excelDatePartsToSerial(1931, 2, 2)!
+    const febEndSerial = excelDatePartsToSerial(1931, 2, 28)!
+
+    expect(datetimeBuiltins.YEAR(jan1Text)).toEqual({ tag: ValueTag.Number, value: 1931 })
+    expect(datetimeBuiltins.MONTH(jan1Text)).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(datetimeBuiltins.DAY(jan1Text)).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(datetimeBuiltins.WEEKDAY(jan1Text)).toEqual({ tag: ValueTag.Number, value: 5 })
+    expect(datetimeBuiltins.WEEKDAY(jan1Text, { tag: ValueTag.Number, value: 2 })).toEqual({ tag: ValueTag.Number, value: 4 })
+    expect(datetimeBuiltins.WEEKNUM(jan1Text)).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(datetimeBuiltins.WEEKNUM(jan1Text, { tag: ValueTag.Number, value: 2 })).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(datetimeBuiltins.ISOWEEKNUM(jan1Text)).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(datetimeBuiltins.EDATE(jan1Text, { tag: ValueTag.Number, value: 1 })).toEqual({ tag: ValueTag.Number, value: feb1Serial })
+    expect(datetimeBuiltins.EOMONTH(jan1Text, { tag: ValueTag.Number, value: 1 })).toEqual({ tag: ValueTag.Number, value: febEndSerial })
+    expect(datetimeBuiltins.DAYS360(jan1Text, feb2Text)).toEqual({ tag: ValueTag.Number, value: 31 })
+    expect(datetimeBuiltins.YEARFRAC(jan1Text, feb2Text)).toEqual({ tag: ValueTag.Number, value: 31 / 360 })
+
+    expect(datetimeBuiltins.DAYS(feb2Text, jan1Text)).toEqual({ tag: ValueTag.Number, value: feb2Serial - jan1Serial })
+  })
+
   it('supports TIME plus HOUR, MINUTE, SECOND, and WEEKDAY extraction', () => {
     const sundaySerial = excelDatePartsToSerial(2026, 3, 15)!
 

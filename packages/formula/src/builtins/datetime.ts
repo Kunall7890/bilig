@@ -70,6 +70,26 @@ function coerceDatedifDateSerial(value: CellValue, dateSystem: ExcelDateSystem):
   return truncArg(value)
 }
 
+function coerceDateTextOrNumber(value: CellValue, dateSystem: ExcelDateSystem): number | CellValue {
+  if (value.tag === ValueTag.Error) {
+    return value
+  }
+  if (value.tag === ValueTag.String) {
+    const serial = parseDateValueFromText(value.value, dateSystem)
+    return serial === undefined ? valueError() : serial
+  }
+  const numeric = coerceNumber(value)
+  return numeric === undefined ? valueError() : numeric
+}
+
+function truncDateTextOrNumber(value: CellValue, dateSystem: ExcelDateSystem): number | CellValue {
+  if (value.tag === ValueTag.String) {
+    const serial = parseDateValueFromText(value.value, dateSystem)
+    return serial === undefined ? valueError() : serial
+  }
+  return truncArg(value)
+}
+
 function createDays360Builtin(dateSystem: ExcelDateSystem = '1900'): Builtin {
   return (...args) => {
     const error = firstError(args)
@@ -80,8 +100,8 @@ function createDays360Builtin(dateSystem: ExcelDateSystem = '1900'): Builtin {
       return valueError()
     }
 
-    const startSerial = truncArg(args[0]!)
-    const endSerial = truncArg(args[1]!)
+    const startSerial = truncDateTextOrNumber(args[0]!, dateSystem)
+    const endSerial = truncDateTextOrNumber(args[1]!, dateSystem)
     const method = args[2] === undefined ? 0 : integerValue(args[2], 0)
     if (method === undefined || (method !== 0 && method !== 1)) {
       return valueError()
@@ -146,7 +166,7 @@ function createIsoWeeknumBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin 
       return valueError()
     }
 
-    const serial = truncArg(args[0]!)
+    const serial = truncDateTextOrNumber(args[0]!, dateSystem)
     if (typeof serial !== 'number') {
       return serial
     }
@@ -192,8 +212,8 @@ function createYearfracBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin {
       return valueError()
     }
 
-    const startSerial = truncArg(args[0]!)
-    const endSerial = truncArg(args[1]!)
+    const startSerial = truncDateTextOrNumber(args[0]!, dateSystem)
+    const endSerial = truncDateTextOrNumber(args[1]!, dateSystem)
     const basis = args[2] === undefined ? 0 : integerValue(args[2])
     if (typeof startSerial !== 'number' || typeof endSerial !== 'number' || basis === undefined) {
       return valueError()
@@ -352,9 +372,9 @@ function createDatePartBuiltin(part: keyof ExcelDateParts, dateSystem: ExcelDate
       return error
     }
 
-    const serial = coerceNumber(value)
-    if (serial === undefined) {
-      return valueError()
+    const serial = coerceDateTextOrNumber(value, dateSystem)
+    if (typeof serial !== 'number') {
+      return serial
     }
 
     const parts = excelSerialToDateParts(serial, dateSystem)
@@ -431,9 +451,9 @@ function createWeekdayBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin {
     if (args.length < 1 || args.length > 2) {
       return valueError()
     }
-    const serial = coerceNumber(args[0]!)
-    if (serial === undefined) {
-      return valueError()
+    const serial = coerceDateTextOrNumber(args[0]!, dateSystem)
+    if (typeof serial !== 'number') {
+      return serial
     }
     if (!isValidDaysDateSerial(serial, dateSystem)) {
       return numError()
@@ -506,7 +526,7 @@ function createWeeknumBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin {
       return valueError()
     }
 
-    const serial = truncArg(args[0]!)
+    const serial = truncDateTextOrNumber(args[0]!, dateSystem)
     if (typeof serial !== 'number') {
       return serial
     }
@@ -619,10 +639,10 @@ export function createEdateBuiltin(dateSystem: ExcelDateSystem = '1900'): Builti
       return error
     }
 
-    const startSerial = coerceNumber(startDate)
+    const startSerial = coerceDateTextOrNumber(startDate, dateSystem)
     const monthOffset = truncArg(months)
-    if (startSerial === undefined) {
-      return valueError()
+    if (typeof startSerial !== 'number') {
+      return startSerial
     }
     if (typeof monthOffset !== 'number') {
       return monthOffset
@@ -643,10 +663,10 @@ export function createEomonthBuiltin(dateSystem: ExcelDateSystem = '1900'): Buil
       return error
     }
 
-    const startSerial = coerceNumber(startDate)
+    const startSerial = coerceDateTextOrNumber(startDate, dateSystem)
     const monthOffset = truncArg(months)
-    if (startSerial === undefined) {
-      return valueError()
+    if (typeof startSerial !== 'number') {
+      return startSerial
     }
     if (typeof monthOffset !== 'number') {
       return monthOffset

@@ -157,6 +157,56 @@ describe('wasm kernel date/calendar dispatch seams', () => {
     expectErrorCell(kernel, cellIndex(1, 2, width), ErrorCode.Num)
   })
 
+  it('treats recognized date text as DATEVALUE dates in serial date dispatch', async () => {
+    const kernel = await createKernel()
+    const width = 16
+    kernel.init(48, width, 4, 4, 1)
+    kernel.uploadStrings(
+      Uint32Array.from([0, 6]),
+      Uint32Array.from([6, 6]),
+      Uint16Array.from(Array.from('1/1/312/2/31', (char) => char.charCodeAt(0))),
+    )
+    kernel.writeCells(new Uint8Array(48), new Float64Array(48), new Uint32Array(48), new Uint16Array(48))
+
+    const packed = packPrograms([
+      [encodePushString(0), encodeCall(BuiltinId.Year, 1), encodeRet()],
+      [encodePushString(0), encodeCall(BuiltinId.Month, 1), encodeRet()],
+      [encodePushString(0), encodeCall(BuiltinId.Day, 1), encodeRet()],
+      [encodePushString(0), encodeCall(BuiltinId.Weekday, 1), encodeRet()],
+      [encodePushString(0), encodePushNumber(0), encodeCall(BuiltinId.Weekday, 2), encodeRet()],
+      [encodePushString(0), encodeCall(BuiltinId.Weeknum, 1), encodeRet()],
+      [encodePushString(0), encodePushNumber(0), encodeCall(BuiltinId.Weeknum, 2), encodeRet()],
+      [encodePushString(0), encodeCall(BuiltinId.Isoweeknum, 1), encodeRet()],
+      [encodePushString(0), encodePushNumber(1), encodeCall(BuiltinId.Edate, 2), encodeRet()],
+      [encodePushString(0), encodePushNumber(1), encodeCall(BuiltinId.Eomonth, 2), encodeRet()],
+      [encodePushString(0), encodePushString(1), encodePushNumber(2), encodeCall(BuiltinId.Days360, 3), encodeRet()],
+      [encodePushString(0), encodePushString(1), encodePushNumber(2), encodeCall(BuiltinId.Yearfrac, 3), encodeRet()],
+    ])
+    kernel.ensureFormulaCapacity(packed.offsets.length)
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: packed.offsets.length }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([[2], [1], [0]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: packed.offsets.length }, (_, index) => cellIndex(1, index, width))))
+
+    expectNumberCell(kernel, cellIndex(1, 0, width), 1931)
+    expectNumberCell(kernel, cellIndex(1, 1, width), 1)
+    expectNumberCell(kernel, cellIndex(1, 2, width), 1)
+    expectNumberCell(kernel, cellIndex(1, 3, width), 5)
+    expectNumberCell(kernel, cellIndex(1, 4, width), 4)
+    expectNumberCell(kernel, cellIndex(1, 5, width), 1)
+    expectNumberCell(kernel, cellIndex(1, 6, width), 1)
+    expectNumberCell(kernel, cellIndex(1, 7, width), 1)
+    expectNumberCell(kernel, cellIndex(1, 8, width), 11355)
+    expectNumberCell(kernel, cellIndex(1, 9, width), 11382)
+    expectNumberCell(kernel, cellIndex(1, 10, width), 31)
+    expectNumberCell(kernel, cellIndex(1, 11, width), 31 / 360)
+  })
+
   it('coerces DATE and TIME direct numeric text arguments on the wasm path', async () => {
     const kernel = await createKernel()
     const width = 8
