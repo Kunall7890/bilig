@@ -19,6 +19,14 @@ The checked example uses the real `@langchain/langgraph` `ToolNode` with
 `AIMessage` tool calls and returned `ToolMessage` state. It does not require an
 LLM key because the smoke test supplies deterministic tool calls directly.
 
+There are two owned proofs:
+
+- `examples/langgraph-workpaper-tool-state` wraps `@bilig/workpaper` directly
+  as LangChain tools.
+- `examples/langchain-mcp-workpaper-toolnode` loads the published WorkPaper MCP
+  stdio server through `@langchain/mcp-adapters`, then executes those MCP tools
+  with a LangGraph.js `ToolNode`.
+
 ## Run the checked graph
 
 ```sh
@@ -112,11 +120,68 @@ const graph = new StateGraph(MessagesAnnotation)
 - Keep the compatibility caveat visible: this is a WorkPaper API, not full
   desktop Excel UI automation.
 
+## MCP adapter proof
+
+Use this path when the agent stack already loads tools through MCP:
+
+```sh
+git clone https://github.com/proompteng/bilig.git
+cd bilig
+cd examples/langchain-mcp-workpaper-toolnode
+pnpm install --ignore-workspace --lockfile=false
+pnpm run typecheck
+pnpm run smoke
+```
+
+The smoke starts the published WorkPaper MCP server over stdio:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- \
+  bilig-workpaper-mcp \
+  --workpaper .tmp/pricing.workpaper.json \
+  --init-demo-workpaper \
+  --writable
+```
+
+Then `MultiServerMCPClient` discovers the file-backed WorkPaper tools and
+`ToolNode` calls `read_cell`, `set_cell_contents`, `read_cell` again,
+`get_cell_display_value`, and `export_workpaper_document`. Finally it starts a
+second read-only MCP client against the same WorkPaper JSON to prove the
+persisted formula result survives a process boundary.
+
+Expected proof shape:
+
+```json
+{
+  "framework": "langchainjs-mcp-adapters-toolnode",
+  "mcpTransport": "stdio",
+  "workpaperPackage": "@bilig/workpaper@latest",
+  "editedCell": "Inputs!B3",
+  "dependentCell": "Summary!B3",
+  "before": 60000,
+  "after": 96000,
+  "afterRestart": 96000,
+  "displayValue": "96000",
+  "checks": {
+    "discoveredFileBackedTools": true,
+    "dependentCellChanged": true,
+    "persistedToDisk": true,
+    "restartReadbackMatchesAfter": true,
+    "displayValueRead": true,
+    "exportedWorkPaperDocument": true
+  },
+  "verified": true
+}
+```
+
 Official LangGraph.js references:
 
+- <https://docs.langchain.com/oss/javascript/langchain/mcp>
 - <https://docs.langchain.com/oss/javascript/langchain/tools>
 - <https://langchain-ai.github.io/langgraphjs/reference/classes/langgraph.prebuilt.ToolNode.html>
 - <https://langchain-ai.github.io/langgraphjs/reference/functions/langgraph.prebuilt.toolsCondition.html>
 
 Runnable source:
-[`examples/langgraph-workpaper-tool-state`](../examples/langgraph-workpaper-tool-state).
+[`examples/langgraph-workpaper-tool-state`](../examples/langgraph-workpaper-tool-state)
+and
+[`examples/langchain-mcp-workpaper-toolnode`](../examples/langchain-mcp-workpaper-toolnode).

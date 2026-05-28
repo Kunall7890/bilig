@@ -848,6 +848,7 @@ pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text
 pnpm --dir examples/headless-workpaper run agent:framework-adapters
 pnpm --dir examples/langgraph-workpaper-tool-state run smoke
+pnpm --dir examples/langchain-mcp-workpaper-toolnode run smoke
 pnpm --dir examples/headless-workpaper run agent:mcp-tools
 pnpm --dir examples/headless-workpaper run agent:mcp-file-transcript
 pnpm --dir examples/headless-workpaper run agent:mcp-stdio
@@ -865,6 +866,8 @@ The agent framework guide is
 [`docs/vercel-ai-sdk-langchain-spreadsheet-tool.md`](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md).
 The LangGraph.js ToolNode proof is
 [`docs/langgraph-workpaper-toolnode-spreadsheet.md`](docs/langgraph-workpaper-toolnode-spreadsheet.md).
+It includes a no-key `@langchain/mcp-adapters` smoke that discovers the
+published WorkPaper MCP stdio tools and executes them through `ToolNode`.
 
 The package also ships the MCP stdio binary:
 

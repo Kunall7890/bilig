@@ -1,0 +1,20 @@
+{
+  "name": "bilig-langchain-mcp-workpaper-toolnode",
+  "private": true,
+  "description": "LangChain.js MCP adapter plus LangGraph ToolNode smoke test for Bilig WorkPaper formula readback.",
+  "type": "module",
+  "scripts": {
+    "smoke": "tsx src/smoke.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@langchain/core": "latest",
+    "@langchain/langgraph": "latest",
+    "@langchain/mcp-adapters": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.2"
+  }
+}

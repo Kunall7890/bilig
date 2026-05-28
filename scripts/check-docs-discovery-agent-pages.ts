@@ -27,8 +27,10 @@ export const agentFrameworkDocRequirements = [
     includes: [
       'LangGraph.js WorkPaper ToolNode spreadsheet tool',
       '@langchain/langgraph',
+      '@langchain/mcp-adapters',
       'new ToolNode(tools)',
       'examples/langgraph-workpaper-tool-state',
+      'examples/langchain-mcp-workpaper-toolnode',
       'pnpm run smoke',
     ],
   },
