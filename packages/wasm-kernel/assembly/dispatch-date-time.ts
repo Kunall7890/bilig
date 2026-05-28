@@ -7,8 +7,11 @@ import {
   excelDateTextSerial,
   excelDatedifValue,
   excelDayPartFromSerial,
+  excelFloorSecondOfDayFromNumber,
   excelIsoWeeknumValue,
   excelMonthPartFromSerial,
+  excelRoundedSecondOfDay,
+  excelRoundedSecondOfDayFromNumber,
   excelSecondOfDay,
   excelSerialWhole,
   excelTimeSerial,
@@ -46,6 +49,35 @@ function coerceDateTimeNumberAt(
     outputStringLengths,
     outputStringData,
   )
+}
+
+function timePartSecondAt(
+  index: i32,
+  roundSecond: bool,
+  tagStack: Uint8Array,
+  valueStack: Float64Array,
+  stringOffsets: Uint32Array,
+  stringLengths: Uint32Array,
+  stringData: Uint16Array,
+  outputStringOffsets: Uint32Array,
+  outputStringLengths: Uint32Array,
+  outputStringData: Uint16Array,
+): i32 {
+  if (tagStack[index] == <u8>ValueTag.String) {
+    const text = scalarText(
+      tagStack[index],
+      valueStack[index],
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const serial = text == null ? NaN : parseTimeValueText(text)
+    return roundSecond ? excelRoundedSecondOfDayFromNumber(serial) : excelFloorSecondOfDayFromNumber(serial)
+  }
+  return roundSecond ? excelRoundedSecondOfDay(tagStack[index], valueStack[index]) : excelSecondOfDay(tagStack[index], valueStack[index])
 }
 
 export function tryApplyDateTimeBuiltin(
@@ -216,7 +248,18 @@ export function tryApplyDateTimeBuiltin(
   }
 
   if (builtinId == BuiltinId.Hour && argc == 1) {
-    const second = excelSecondOfDay(tagStack[base], valueStack[base])
+    const second = timePartSecondAt(
+      base,
+      false,
+      tagStack,
+      valueStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     if (second == i32.MIN_VALUE) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -224,7 +267,18 @@ export function tryApplyDateTimeBuiltin(
   }
 
   if (builtinId == BuiltinId.Minute && argc == 1) {
-    const second = excelSecondOfDay(tagStack[base], valueStack[base])
+    const second = timePartSecondAt(
+      base,
+      false,
+      tagStack,
+      valueStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     if (second == i32.MIN_VALUE) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -241,7 +295,18 @@ export function tryApplyDateTimeBuiltin(
   }
 
   if (builtinId == BuiltinId.Second && argc == 1) {
-    const second = excelSecondOfDay(tagStack[base], valueStack[base])
+    const second = timePartSecondAt(
+      base,
+      true,
+      tagStack,
+      valueStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
     if (second == i32.MIN_VALUE) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }

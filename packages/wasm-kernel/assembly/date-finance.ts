@@ -340,8 +340,7 @@ export function excelTimeSerial(hourTag: u8, hourValue: f64, minuteTag: u8, minu
   )
 }
 
-export function excelSecondOfDay(tag: u8, value: f64): i32 {
-  const numeric = toNumberExact(tag, value)
+export function excelFloorSecondOfDayFromNumber(numeric: f64): i32 {
   if (isNaN(numeric) || numeric < 0) {
     return i32.MIN_VALUE
   }
@@ -355,6 +354,30 @@ export function excelSecondOfDay(tag: u8, value: f64): i32 {
     seconds = 0
   }
   return seconds
+}
+
+export function excelRoundedSecondOfDayFromNumber(numeric: f64): i32 {
+  if (isNaN(numeric) || numeric < 0) {
+    return i32.MIN_VALUE
+  }
+  const whole = Math.floor(numeric)
+  let fraction = numeric - whole
+  if (fraction < 0) {
+    fraction += 1.0
+  }
+  let seconds = <i32>Math.floor(fraction * <f64>EXCEL_SECONDS_PER_DAY + 0.5)
+  if (seconds >= EXCEL_SECONDS_PER_DAY) {
+    seconds %= EXCEL_SECONDS_PER_DAY
+  }
+  return seconds
+}
+
+export function excelSecondOfDay(tag: u8, value: f64): i32 {
+  return excelFloorSecondOfDayFromNumber(toNumberExact(tag, value))
+}
+
+export function excelRoundedSecondOfDay(tag: u8, value: f64): i32 {
+  return excelRoundedSecondOfDayFromNumber(toNumberExact(tag, value))
 }
 
 export function excelWeekdayFromSerial(tag: u8, value: f64, returnType: i32): i32 {

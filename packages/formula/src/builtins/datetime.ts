@@ -207,13 +207,22 @@ function createYearfracBuiltin(dateSystem: ExcelDateSystem = '1900'): Builtin {
   }
 }
 
-function normalizeSecondOfDay(serial: number): number | undefined {
+function normalizeFloorSecondOfDay(serial: number): number | undefined {
   if (!Number.isFinite(serial) || serial < 0) {
     return undefined
   }
   const fraction = serial - floorDateSerial(serial)
   const normalizedFraction = fraction < 0 ? fraction + 1 : fraction
   return Math.floor(normalizedFraction * SECONDS_PER_DAY + 1e-9) % SECONDS_PER_DAY
+}
+
+function normalizeRoundedSecondOfDay(serial: number): number | undefined {
+  if (!Number.isFinite(serial) || serial < 0) {
+    return undefined
+  }
+  const fraction = serial - floorDateSerial(serial)
+  const normalizedFraction = fraction < 0 ? fraction + 1 : fraction
+  return Math.round(normalizedFraction * SECONDS_PER_DAY) % SECONDS_PER_DAY
 }
 
 function datedifValue(startSerial: number, endSerial: number, unit: string, dateSystem: ExcelDateSystem): number | undefined {
@@ -393,11 +402,11 @@ function createTimePartBuiltin(part: 'hour' | 'minute' | 'second'): Builtin {
       return valueError()
     }
 
-    const serial = coerceNumber(value)
+    const serial = value.tag === ValueTag.String ? parseTimeValueText(value.value) : coerceNumber(value)
     if (serial === undefined) {
       return valueError()
     }
-    const seconds = normalizeSecondOfDay(serial)
+    const seconds = part === 'second' ? normalizeRoundedSecondOfDay(serial) : normalizeFloorSecondOfDay(serial)
     if (seconds === undefined) {
       return valueError()
     }

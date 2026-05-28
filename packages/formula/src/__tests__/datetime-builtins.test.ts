@@ -139,6 +139,26 @@ describe('datetime builtins', () => {
       tag: ValueTag.Number,
       value: 1,
     })
+    expect(datetimeBuiltins.HOUR({ tag: ValueTag.String, value: '6:45 PM', stringId: 1 })).toEqual({
+      tag: ValueTag.Number,
+      value: 18,
+    })
+    expect(datetimeBuiltins.MINUTE({ tag: ValueTag.String, value: '6:45 PM', stringId: 2 })).toEqual({
+      tag: ValueTag.Number,
+      value: 45,
+    })
+    expect(datetimeBuiltins.SECOND({ tag: ValueTag.String, value: '4:48:18 PM', stringId: 3 })).toEqual({
+      tag: ValueTag.Number,
+      value: 18,
+    })
+    expect(datetimeBuiltins.SECOND({ tag: ValueTag.Number, value: 0.50001 })).toEqual({
+      tag: ValueTag.Number,
+      value: 1,
+    })
+    expect(datetimeBuiltins.SECOND({ tag: ValueTag.String, value: '12:00:59.6', stringId: 4 })).toEqual({
+      tag: ValueTag.Number,
+      value: 0,
+    })
     expect(datetimeBuiltins.WEEKDAY({ tag: ValueTag.Number, value: sundaySerial })).toEqual({
       tag: ValueTag.Number,
       value: 1,
@@ -157,7 +177,7 @@ describe('datetime builtins', () => {
     expect(
       datetimeBuiltins.TIME({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 30 }, { tag: ValueTag.Number, value: 0 }),
     ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
-    expect(datetimeBuiltins.HOUR({ tag: ValueTag.String, value: '12:30', stringId: 1 })).toEqual({
+    expect(datetimeBuiltins.HOUR({ tag: ValueTag.String, value: 'not-a-time', stringId: 1 })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,
     })

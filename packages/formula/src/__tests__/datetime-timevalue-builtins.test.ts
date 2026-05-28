@@ -41,6 +41,22 @@ describe('TIMEVALUE date text semantics', () => {
     })
   })
 
+  it('preserves fractional seconds in time text for time-part extraction', () => {
+    const parsed = datetimeBuiltins.TIMEVALUE({ tag: ValueTag.String, value: '12:00:00.6', stringId: 1 })
+    if (parsed.tag !== ValueTag.Number) {
+      throw new Error('Expected TIMEVALUE fractional seconds to parse as a number')
+    }
+    expect(parsed.value).toBeCloseTo((12 * 3600 + 0.6) / 86_400, 15)
+    expect(evaluateAst(parseFormula('SECOND("12:00:00.6")'), context)).toEqual({
+      tag: ValueTag.Number,
+      value: 1,
+    })
+    expect(evaluateAst(parseFormula('SECOND(TIMEVALUE("12:00:00.6"))'), context)).toEqual({
+      tag: ValueTag.Number,
+      value: 1,
+    })
+  })
+
   it('still rejects text with no time component', () => {
     expect(datetimeBuiltins.TIMEVALUE({ tag: ValueTag.String, value: '22-Aug-2011', stringId: 1 })).toEqual({
       tag: ValueTag.Error,

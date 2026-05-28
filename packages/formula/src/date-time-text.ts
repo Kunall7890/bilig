@@ -190,10 +190,9 @@ function parseTimeTextSerial(raw: string): ParsedTimeTextSerial | undefined {
 
   const truncHours = Math.trunc(hours)
   const truncMinutes = Math.trunc(minutes)
-  const truncSeconds = Math.trunc(seconds)
   const hasPm = hasMeridiem && amPmMatch?.[2]?.toLowerCase() === 'pm'
 
-  if (truncHours < 0 || truncMinutes < 0 || truncSeconds < 0 || truncHours > 32_767 || truncMinutes > 32_767 || truncSeconds > 32_767) {
+  if (truncHours < 0 || truncMinutes < 0 || seconds < 0 || truncHours > 32_767 || truncMinutes > 32_767 || seconds > 32_767) {
     return undefined
   }
 
@@ -209,7 +208,7 @@ function parseTimeTextSerial(raw: string): ParsedTimeTextSerial | undefined {
     }
   }
 
-  const totalSeconds = hourValue * 3600 + truncMinutes * 60 + truncSeconds
+  const totalSeconds = hourValue * 3600 + truncMinutes * 60 + seconds
   const secondsOfDay = ((totalSeconds % SECONDS_PER_DAY) + SECONDS_PER_DAY) % SECONDS_PER_DAY
   return {
     elapsedDays: totalSeconds / SECONDS_PER_DAY,

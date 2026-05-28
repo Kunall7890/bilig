@@ -33,6 +33,41 @@ function parseAsciiIntegerSegment(input: string, startIndex: i32, endIndex: i32)
   return value
 }
 
+function parseAsciiNonNegativeNumberSegment(input: string, startIndex: i32, endIndex: i32): f64 {
+  let start = startIndex
+  let end = endIndex
+  while (start < end && input.charCodeAt(start) <= 32) {
+    start += 1
+  }
+  while (end > start && input.charCodeAt(end - 1) <= 32) {
+    end -= 1
+  }
+  if (start >= end) {
+    return NaN
+  }
+
+  let value = 0.0
+  let divisor = 1.0
+  let digitCount = 0
+  let pastDecimal = false
+  for (let index = start; index < end; index += 1) {
+    const char = input.charCodeAt(index)
+    if (char == 46 && !pastDecimal) {
+      pastDecimal = true
+      continue
+    }
+    if (char < 48 || char > 57) {
+      return NaN
+    }
+    digitCount += 1
+    value = value * 10.0 + <f64>(char - 48)
+    if (pastDecimal) {
+      divisor *= 10.0
+    }
+  }
+  return digitCount == 0 ? NaN : value / divisor
+}
+
 function parseTimeValueDaysText(input: string, wrapToDayFraction: bool): f64 {
   const text = trimAsciiWhitespace(input)
   if (text.length == 0) {
@@ -96,8 +131,8 @@ function parseTimeValueDaysText(input: string, wrapToDayFraction: bool): f64 {
 
   const hour = parseAsciiIntegerSegment(text, coreStart, firstColon)
   const minute = parseAsciiIntegerSegment(text, firstColon + 1, secondColon < 0 ? coreEnd : secondColon)
-  const second = secondColon < 0 ? 0 : parseAsciiIntegerSegment(text, secondColon + 1, coreEnd)
-  if (hour == i32.MIN_VALUE || minute == i32.MIN_VALUE || second == i32.MIN_VALUE) {
+  const second = secondColon < 0 ? 0.0 : parseAsciiNonNegativeNumberSegment(text, secondColon + 1, coreEnd)
+  if (hour == i32.MIN_VALUE || minute == i32.MIN_VALUE || isNaN(second)) {
     return NaN
   }
   if (hour < 0 || minute < 0 || second < 0 || hour > 32767 || minute > 32767 || second > 32767) {
@@ -116,11 +151,11 @@ function parseTimeValueDaysText(input: string, wrapToDayFraction: bool): f64 {
     }
   }
 
-  const totalSeconds = normalizedHour * 3600 + minute * 60 + second
+  const totalSeconds = <f64>normalizedHour * 3600.0 + <f64>minute * 60.0 + second
   if (!wrapToDayFraction) {
     return <f64>totalSeconds / <f64>EXCEL_SECONDS_PER_DAY
   }
-  const secondsOfDay = totalSeconds % EXCEL_SECONDS_PER_DAY
+  const secondsOfDay = totalSeconds % <f64>EXCEL_SECONDS_PER_DAY
   return <f64>secondsOfDay / <f64>EXCEL_SECONDS_PER_DAY
 }
 

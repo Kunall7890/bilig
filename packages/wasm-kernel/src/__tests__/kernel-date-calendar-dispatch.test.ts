@@ -191,6 +191,57 @@ describe('wasm kernel date/calendar dispatch seams', () => {
     expectErrorCell(kernel, cellIndex(1, 3, width), ErrorCode.Value)
   })
 
+  it('coerces time text for HOUR, MINUTE, and SECOND on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    const strings = ['6:45 PM', '4:48:18 PM', '12:00:00.6', '12:00:59.6', 'not-a-time']
+    let stringOffset = 0
+    const offsets = strings.map((value) => {
+      const offset = stringOffset
+      stringOffset += value.length
+      return offset
+    })
+    const joined = strings.join('')
+
+    kernel.init(16, 8, strings.length, strings.length, 1)
+    kernel.uploadStrings(
+      Uint32Array.from(offsets),
+      Uint32Array.from(strings.map((value) => value.length)),
+      Uint16Array.from(Array.from(joined, (char) => char.charCodeAt(0))),
+    )
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushString(0), encodeCall(BuiltinId.Hour, 1), encodeRet()],
+      [encodePushString(0), encodeCall(BuiltinId.Minute, 1), encodeRet()],
+      [encodePushString(1), encodeCall(BuiltinId.Second, 1), encodeRet()],
+      [encodePushString(2), encodeCall(BuiltinId.Timevalue, 1), encodeRet()],
+      [encodePushString(2), encodeCall(BuiltinId.Second, 1), encodeRet()],
+      [encodePushString(3), encodeCall(BuiltinId.Second, 1), encodeRet()],
+      [encodePushString(4), encodeCall(BuiltinId.Hour, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Second, 1), encodeRet()],
+    ])
+    kernel.ensureFormulaCapacity(packed.offsets.length)
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: packed.offsets.length }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([[59.6 / 86400]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: packed.offsets.length }, (_, index) => cellIndex(1, index, width))))
+
+    expectNumberCell(kernel, cellIndex(1, 0, width), 18)
+    expectNumberCell(kernel, cellIndex(1, 1, width), 45)
+    expectNumberCell(kernel, cellIndex(1, 2, width), 18)
+    expectNumberCell(kernel, cellIndex(1, 3, width), (12 * 3600 + 0.6) / 86400)
+    expectNumberCell(kernel, cellIndex(1, 4, width), 1)
+    expectNumberCell(kernel, cellIndex(1, 5, width), 0)
+    expectErrorCell(kernel, cellIndex(1, 6, width), ErrorCode.Value)
+    expectNumberCell(kernel, cellIndex(1, 7, width), 0)
+  })
+
   it('keeps date, weekday, and workday dispatch behavior stable', async () => {
     const kernel = await createKernel()
     const width = 20
