@@ -66,6 +66,48 @@ describe('WorkPaper persistence helpers', () => {
     })
   })
 
+  it('keeps restored cross-sheet formula aggregate dependencies live after edits', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Plan: [
+          ['Month', 'Bookings', 'Churn', 'Net MRR'],
+          ['January', 12000, 800, '=B2-C2'],
+          ['February', 15000, 900, '=B3-C3'],
+          ['March', 18000, 1200, '=B4-C4'],
+        ],
+        Summary: [
+          ['Metric', 'Value'],
+          ['Quarter net MRR', '=SUM(Plan!D2:D4)'],
+          ['Annualized run rate', '=B2*12'],
+          ['Expansion-adjusted ARR', null],
+        ],
+      },
+      { maxRows: 1000, maxColumns: 64, useColumnIndex: true },
+    )
+    workbook.addNamedExpression('ExpansionRatePercent', 8)
+    workbook.setCellContents({ sheet: workbook.getSheetId('Summary')!, row: 3, col: 1 }, '=B3*(100+ExpansionRatePercent)/100')
+
+    const restored = createWorkPaperFromDocument(parseWorkPaperDocument(serializeWorkPaperDocument(exportWorkPaperDocument(workbook))))
+    restored.setCellContents({ sheet: restored.getSheetId('Plan')!, row: 3, col: 1 }, 21000)
+
+    expect(restored.getCellValue({ sheet: restored.getSheetId('Plan')!, row: 3, col: 3 })).toEqual({
+      tag: ValueTag.Number,
+      value: 19800,
+    })
+    expect(restored.getCellValue({ sheet: restored.getSheetId('Summary')!, row: 1, col: 1 })).toEqual({
+      tag: ValueTag.Number,
+      value: 45100,
+    })
+    expect(restored.getCellValue({ sheet: restored.getSheetId('Summary')!, row: 2, col: 1 })).toEqual({
+      tag: ValueTag.Number,
+      value: 541200,
+    })
+    expect(restored.getCellValue({ sheet: restored.getSheetId('Summary')!, row: 3, col: 1 })).toEqual({
+      tag: ValueTag.Number,
+      value: 584496,
+    })
+  })
+
   it('preserves imported sheet names that end with spaces during document restore', () => {
     const workbook = WorkPaper.buildFromSheets(
       {

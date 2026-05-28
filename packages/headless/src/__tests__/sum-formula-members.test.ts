@@ -55,4 +55,33 @@ describe('SUM over formula members', () => {
     expectNumber(cellValue(workbook, 'Summary', 3, 2), 650)
     expectNumber(cellValue(workbook, 'Summary', 4, 2), 150)
   })
+
+  it.each([false, true])(
+    'keeps initial cross-sheet direct aggregate dependencies on formula cells loaded before the aggregate with useColumnIndex=%s',
+    (useColumnIndex) => {
+      const workbook = WorkPaper.buildFromSheets(
+        {
+          Plan: [
+            ['January', 12000, 800, '=B1-C1'],
+            ['February', 15000, 900, '=B2-C2'],
+            ['March', 18000, 1200, '=B3-C3'],
+          ],
+          Summary: [
+            ['Quarter net MRR', '=SUM(Plan!D1:D3)'],
+            ['Annualized run rate', '=B1*12'],
+          ],
+        },
+        { maxRows: 1000, maxColumns: 20, useColumnIndex },
+      )
+
+      expectNumber(cellValue(workbook, 'Summary', 0, 1), 42100)
+      expectNumber(cellValue(workbook, 'Summary', 1, 1), 505200)
+
+      workbook.setCellContents({ sheet: workbook.getSheetId('Plan'), row: 2, col: 1 }, 21000)
+
+      expectNumber(cellValue(workbook, 'Plan', 2, 3), 19800)
+      expectNumber(cellValue(workbook, 'Summary', 0, 1), 45100)
+      expectNumber(cellValue(workbook, 'Summary', 1, 1), 541200)
+    },
+  )
 })

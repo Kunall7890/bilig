@@ -439,25 +439,30 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         pendingInitialFreshDirectAggregateRun.members.push(member)
         pendingInitialFreshDirectAggregateRun.preparedEntries.push(prepared)
       }
-      const freshDirectAggregateMemberHasPendingFormulaDependency = (member: FreshDirectAggregateFormulaBindingMember): boolean => {
-        if (!pendingFormulaCells || targetCellIndices.length === 0) {
+      const freshDirectAggregateMemberHasFormulaDependency = (member: FreshDirectAggregateFormulaBindingMember): boolean => {
+        if (targetCellIndices.length === 0) {
           return false
         }
         const aggregateSheetId = args.state.workbook.getSheet(member.aggregateSheetName)?.id
         if (aggregateSheetId === undefined) {
           return false
         }
+        const cellStore = args.state.workbook.cellStore
         for (let index = 0; index < targetCellIndices.length; index += 1) {
-          const pendingCellIndex = targetCellIndices[index]!
-          if (!pendingFormulaCells.has(pendingCellIndex)) {
+          const formulaCellIndex = targetCellIndices[index]!
+          const isFormulaCell =
+            (pendingFormulaCells?.has(formulaCellIndex) ?? false) ||
+            args.state.formulas.has(formulaCellIndex) ||
+            ((cellStore.flags[formulaCellIndex] ?? 0) & CellFlags.HasFormula) !== 0
+          if (!isFormulaCell) {
             continue
           }
           if (
-            args.state.workbook.cellStore.sheetIds[pendingCellIndex] === aggregateSheetId &&
-            member.aggregateRowStart <= args.state.workbook.cellStore.rows[pendingCellIndex]! &&
-            args.state.workbook.cellStore.rows[pendingCellIndex]! <= member.aggregateRowEnd &&
-            member.aggregateColStart <= args.state.workbook.cellStore.cols[pendingCellIndex]! &&
-            args.state.workbook.cellStore.cols[pendingCellIndex]! <= member.aggregateColEnd
+            cellStore.sheetIds[formulaCellIndex] === aggregateSheetId &&
+            member.aggregateRowStart <= cellStore.rows[formulaCellIndex]! &&
+            cellStore.rows[formulaCellIndex]! <= member.aggregateRowEnd &&
+            member.aggregateColStart <= cellStore.cols[formulaCellIndex]! &&
+            cellStore.cols[formulaCellIndex]! <= member.aggregateColEnd
           ) {
             return true
           }
@@ -497,7 +502,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
                     : undefined
                 if (
                   freshDirectAggregateMember !== undefined &&
-                  !freshDirectAggregateMemberHasPendingFormulaDependency(freshDirectAggregateMember)
+                  !freshDirectAggregateMemberHasFormulaDependency(freshDirectAggregateMember)
                 ) {
                   initialFreshDirectScalarRunQueue.flush()
                   queueInitialFreshDirectAggregate(prepared, freshDirectAggregateMember)
