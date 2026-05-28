@@ -14,11 +14,18 @@ describe('run-vitest wrapper arguments', () => {
       'sample.test.ts',
       '--maxWorkers',
       '1',
+      '--reporter',
+      'verbose',
     ])
   })
 
   it('preserves an explicit maxWorkers flag', () => {
-    expect(buildVitestArgs(['--run', '--maxWorkers=1'], { BILIG_CI_PROFILE: 'fast' })).toEqual(['--run', '--maxWorkers=1'])
+    expect(buildVitestArgs(['--run', '--maxWorkers=1'], { BILIG_CI_PROFILE: 'fast' })).toEqual([
+      '--run',
+      '--maxWorkers=1',
+      '--reporter',
+      'verbose',
+    ])
   })
 
   it('allows CI worker limit overrides', () => {
@@ -27,7 +34,7 @@ describe('run-vitest wrapper arguments', () => {
         BILIG_CI_PROFILE: 'fast',
         BILIG_VITEST_MAX_WORKERS: '3',
       }),
-    ).toEqual(['--run', '--maxWorkers', '3'])
+    ).toEqual(['--run', '--maxWorkers', '3', '--reporter', 'verbose'])
   })
 
   it('ignores malformed CI worker limit overrides instead of forwarding them', () => {
@@ -36,14 +43,24 @@ describe('run-vitest wrapper arguments', () => {
         BILIG_CI_PROFILE: 'fast',
         BILIG_VITEST_MAX_WORKERS: '3abc',
       }),
-    ).toEqual(['--run', '--maxWorkers', '1'])
+    ).toEqual(['--run', '--maxWorkers', '1', '--reporter', 'verbose'])
 
     expect(
       buildVitestArgs(['--run'], {
         BILIG_CI_PROFILE: 'fast',
         BILIG_VITEST_MAX_WORKERS: '0',
       }),
-    ).toEqual(['--run', '--maxWorkers', '1'])
+    ).toEqual(['--run', '--maxWorkers', '1', '--reporter', 'verbose'])
+  })
+
+  it('uses the verbose reporter in CI unless a reporter is already explicit', () => {
+    expect(buildVitestArgs(['--run', 'sample.test.ts', '--reporter=dot'], { BILIG_CI_PROFILE: 'fast' })).toEqual([
+      '--run',
+      'sample.test.ts',
+      '--reporter=dot',
+      '--maxWorkers',
+      '1',
+    ])
   })
 
   it('splits large CI run file lists into serial batches', () => {
@@ -54,9 +71,9 @@ describe('run-vitest wrapper arguments', () => {
         BILIG_CI_PROFILE: 'fast',
       }),
     ).toEqual([
-      ['--run', ...files.slice(0, 3), '--maxWorkers', '1'],
-      ['--run', ...files.slice(3, 6), '--maxWorkers', '1'],
-      ['--run', files[6], '--maxWorkers', '1'],
+      ['--run', ...files.slice(0, 3), '--maxWorkers', '1', '--reporter', 'verbose'],
+      ['--run', ...files.slice(3, 6), '--maxWorkers', '1', '--reporter', 'verbose'],
+      ['--run', files[6], '--maxWorkers', '1', '--reporter', 'verbose'],
     ])
   })
 
@@ -82,7 +99,7 @@ describe('run-vitest wrapper arguments', () => {
       buildVitestArgBatches(['--run', ...files], {
         BILIG_CI_PROFILE: 'fast',
       }),
-    ).toEqual([['--run', ...files, '--maxWorkers', '1']])
+    ).toEqual([['--run', ...files, '--maxWorkers', '1', '--reporter', 'verbose']])
   })
 
   it('allows CI file chunk size overrides', () => {
@@ -92,8 +109,8 @@ describe('run-vitest wrapper arguments', () => {
         BILIG_VITEST_FILE_CHUNK_SIZE: '2',
       }),
     ).toEqual([
-      ['--run', 'a.test.ts', 'b.test.ts', '--maxWorkers', '1'],
-      ['--run', 'c.test.ts', '--maxWorkers', '1'],
+      ['--run', 'a.test.ts', 'b.test.ts', '--maxWorkers', '1', '--reporter', 'verbose'],
+      ['--run', 'c.test.ts', '--maxWorkers', '1', '--reporter', 'verbose'],
     ])
   })
 
@@ -106,8 +123,8 @@ describe('run-vitest wrapper arguments', () => {
         BILIG_VITEST_FILE_CHUNK_SIZE: '2abc',
       }),
     ).toEqual([
-      ['--run', 'a.test.ts', 'b.test.ts', 'c.test.ts', '--maxWorkers', '1'],
-      ['--run', 'd.test.ts', '--maxWorkers', '1'],
+      ['--run', 'a.test.ts', 'b.test.ts', 'c.test.ts', '--maxWorkers', '1', '--reporter', 'verbose'],
+      ['--run', 'd.test.ts', '--maxWorkers', '1', '--reporter', 'verbose'],
     ])
   })
 

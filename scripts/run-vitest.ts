@@ -11,10 +11,14 @@ const DEFAULT_CI_BATCH_COOLDOWN_MS = 1_000
 const BROAD_CORPUS_FILE_THRESHOLD = 4
 
 export function buildVitestArgs(args: readonly string[], env: NodeJS.ProcessEnv = process.env): string[] {
-  if (!env['BILIG_CI_PROFILE'] || hasArg(args, '--maxWorkers')) {
+  if (!env['BILIG_CI_PROFILE']) {
     return [...args]
   }
-  return [...args, '--maxWorkers', String(readPositiveInt(env['BILIG_VITEST_MAX_WORKERS']) ?? 1)]
+
+  const boundedWorkerArgs = hasArg(args, '--maxWorkers')
+    ? [...args]
+    : [...args, '--maxWorkers', String(readPositiveInt(env['BILIG_VITEST_MAX_WORKERS']) ?? 1)]
+  return hasArg(boundedWorkerArgs, '--reporter') ? boundedWorkerArgs : [...boundedWorkerArgs, '--reporter', 'verbose']
 }
 
 export function buildVitestArgBatches(args: readonly string[], env: NodeJS.ProcessEnv = process.env): string[][] {
