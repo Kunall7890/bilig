@@ -207,7 +207,7 @@ export function createLookupFinancialBuiltins(deps: LookupFinancialBuiltinDeps):
         return values
       }
       if (!hasPositiveAndNegative(values)) {
-        return deps.errorValue(ErrorCode.Value)
+        return deps.errorValue(ErrorCode.Num)
       }
       const guess = deps.toNumber(guessArg)
       if (guess === undefined) {
@@ -218,7 +218,7 @@ export function createLookupFinancialBuiltins(deps: LookupFinancialBuiltinDeps):
         (candidate) => periodicCashflowNetPresentValue(candidate, values),
         (candidate) => periodicCashflowNetPresentValueDerivative(candidate, values),
       )
-      return rate === undefined ? deps.errorValue(ErrorCode.Value) : deps.numberResult(rate)
+      return rate === undefined ? deps.errorValue(ErrorCode.Num) : deps.numberResult(rate)
     },
     MIRR: (valuesArg, financeRateArg, reinvestRateArg) => {
       if (

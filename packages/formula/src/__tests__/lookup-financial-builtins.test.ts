@@ -38,7 +38,8 @@ describe('lookup financial builtins', () => {
     if (xirr.tag !== ValueTag.Number) throw new Error(`Expected number result, received ${xirr.tag}`)
     expect(xirr.value).toBeCloseTo(0.37336253351883136, 12)
 
-    expect(IRR(cellRange([num(5), num(7)], 2, 1))).toEqual(err(ErrorCode.Value))
+    expect(IRR(cellRange([num(5), num(7)], 2, 1))).toEqual(err(ErrorCode.Num))
+    expect(IRR(cellRange([num(-100), num(10), num(10)], 3, 1))).toEqual(err(ErrorCode.Num))
     expect(MIRR(cellRange([num(5), num(7)], 2, 1), num(0.1), num(0.12))).toEqual(err(ErrorCode.Div0))
     expect(XNPV(num(0.09), xValues, cellRange([num(39448), num(39508)], 2, 1))).toEqual(err(ErrorCode.Value))
     expect(XNPV(num(0.09), xValues, cellRange([num(39448), num(39508), num(39400), num(39859), num(39904)], 5, 1))).toEqual(

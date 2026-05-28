@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BuiltinId, Opcode, ValueTag } from '@bilig/protocol'
+import { BuiltinId, ErrorCode, Opcode, ValueTag } from '@bilig/protocol'
 import { createKernel } from '../index.js'
 
 function encodeCall(builtinId: number, argc: number): number {
@@ -268,5 +268,33 @@ describe('wasm kernel special runtime dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(3, 2, width)]).toBeCloseTo(2086.647602031535, 9)
     expect(kernel.readTags()[cellIndex(3, 3, width)]).toBe(ValueTag.Number)
     expect(kernel.readNumbers()[cellIndex(3, 3, width)]).toBeCloseTo(0.37336253351883136, 12)
+  })
+
+  it('returns NUM for unsupported IRR cash-flow roots on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 4
+    const tags = new Uint8Array(16)
+    const numbers = new Float64Array(16)
+    for (let index = 0; index < 5; index += 1) {
+      tags[index] = ValueTag.Number
+    }
+    numbers.set([5, 7, -100, 10, 10], 0)
+    kernel.init(16, 0, 2, 2, 5)
+    kernel.writeCells(tags, numbers, new Uint32Array(16), new Uint16Array(16))
+    kernel.uploadRangeMembers(Uint32Array.from([0, 1, 2, 3, 4]), Uint32Array.from([0, 2]), Uint32Array.from([2, 3]))
+    kernel.uploadRangeShapes(Uint32Array.from([2, 3]), Uint32Array.from([1, 1]))
+
+    const packed = packPrograms([
+      [encodePushRange(0), encodeCall(BuiltinId.Irr, 1), encodeRet()],
+      [encodePushRange(1), encodeCall(BuiltinId.Irr, 1), encodeRet()],
+    ])
+    const outputCells = Uint32Array.from([cellIndex(3, 0, width), cellIndex(3, 1, width)])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, outputCells)
+    kernel.evalBatch(outputCells)
+
+    expect(kernel.readTags()[cellIndex(3, 0, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(3, 0, width)]).toBe(ErrorCode.Num)
+    expect(kernel.readTags()[cellIndex(3, 1, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(3, 1, width)]).toBe(ErrorCode.Num)
   })
 })

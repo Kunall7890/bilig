@@ -193,6 +193,9 @@ export function tryApplyFinanceCashflowBuiltin(
     if (values.length == 0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (rate == -1.0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     let total = 0.0
     for (let index = 0; index < values.length; index += 1) {
       total += unchecked(values[index]) / Math.pow(1.0 + rate, <f64>(index + 1))
@@ -250,7 +253,7 @@ export function tryApplyFinanceCashflowBuiltin(
     const period = args.numberAt(base + 1)
     const periods = args.numberAt(base + 2)
     const present = args.numberAt(base + 3)
-    if (isNaN(rate) || isNaN(period) || isNaN(periods) || isNaN(present) || periods <= 0.0 || period < 1.0 || period > periods) {
+    if (isNaN(rate) || isNaN(period) || isNaN(periods) || isNaN(present) || periods <= 0.0 || period < 0.0 || period > periods) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeResult(

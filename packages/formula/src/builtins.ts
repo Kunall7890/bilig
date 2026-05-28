@@ -275,6 +275,7 @@ const financialBuiltins = preserveIncomingErrors(
     integerValue: scalarIntegerValue,
     numberResult,
     valueError,
+    div0Error,
     numError,
   }),
 )

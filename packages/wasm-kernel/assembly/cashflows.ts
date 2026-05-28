@@ -56,7 +56,9 @@ export function interestPaymentCalc(rate: f64, period: f64, periods: f64, presen
   if (paymentTypeValue == 1 && period == 1.0) {
     return 0.0
   }
-  const balance = futureValueCalc(rate, paymentTypeValue == 1 ? period - 2.0 : period - 1.0, payment, present, paymentTypeValue)
+  const balance =
+    futureValueCalc(rate, paymentTypeValue == 1 ? period - 2.0 : period - 1.0, payment, present, paymentTypeValue) -
+    (paymentTypeValue == 1 ? payment : 0.0)
   return balance * rate
 }
 

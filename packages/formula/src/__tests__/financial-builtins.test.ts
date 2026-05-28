@@ -18,6 +18,7 @@ import { getBuiltin } from '../builtins.js'
 const num = (value: number): CellValue => ({ tag: ValueTag.Number, value })
 const str = (value: string, stringId = 1): CellValue => ({ tag: ValueTag.String, value, stringId })
 const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
+const div0Error = { tag: ValueTag.Error, code: ErrorCode.Div0 } as const
 
 describe('financial helpers', () => {
   it('computes time-value-of-money helpers', () => {
@@ -66,6 +67,10 @@ describe('financial helpers', () => {
     expect(principalPayment(0.1, 1, 2, 1000, 0, 0)).toBeCloseTo(-476.19047619047615, 12)
     expect(cumulativePeriodicPayment(0.09 / 12, 30 * 12, 125000, 13, 24, 0, false)).toBeCloseTo(-11135.232130750845, 12)
     expect(cumulativePeriodicPayment(0.09 / 12, 30 * 12, 125000, 13, 24, 0, true)).toBeCloseTo(-934.1071234208765, 12)
+    expect(interestPayment(0.08 / 12, 2, 10, 10000, 0, 1)).toBeCloseTo(-59.79890448548015, 12)
+    expect(principalPayment(0.08 / 12, 2, 10, 10000, 0, 1)).toBeCloseTo(-970.365422692497, 12)
+    expect(cumulativePeriodicPayment(0.08 / 12, 10, 10000, 1, 10, 1, false)).toBeCloseTo(-301.64327177965646, 12)
+    expect(cumulativePeriodicPayment(0.08 / 12, 10, 10000, 1, 10, 1, true)).toBeCloseTo(-10000, 9)
   })
 
   it('covers interest, principal, and cumulative validation branches', () => {
@@ -102,6 +107,7 @@ describe('financial builtins', () => {
       tag: ValueTag.Number,
       value: expect.closeTo(2, 10),
     })
+    expect(getBuiltin('ISPMT')?.(str('0.1'), str('0'), str('3'), str('8000'))).toEqual(num(-800))
     expect(getBuiltin('IPMT')?.(str('0.1'), str('1'), str('2'), str('1000'))).toEqual(num(-100))
     expect(getBuiltin('PPMT')?.(str('0.1'), str('1'), str('2'), str('1000'))).toEqual({
       tag: ValueTag.Number,
@@ -123,5 +129,9 @@ describe('financial builtins', () => {
   it('rejects invalid direct financial text instead of defaulting to zero', () => {
     expect(getBuiltin('PMT')?.(str('bad'), str('2'), str('1000'))).toEqual(valueError)
     expect(getBuiltin('CUMIPMT')?.(str('0.0075'), str('bad'), str('125000'), str('13'), str('24'), str('0'))).toEqual(valueError)
+  })
+
+  it('rejects zero NPV discount bases instead of returning Infinity', () => {
+    expect(getBuiltin('NPV')?.(num(-1), num(100), num(200))).toEqual(div0Error)
   })
 })

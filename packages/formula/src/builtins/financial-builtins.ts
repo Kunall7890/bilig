@@ -24,6 +24,7 @@ interface FinancialBuiltinDeps {
   integerValue: (value: CellValue | undefined, fallback?: number) => number | undefined
   numberResult: (value: number) => EvaluationResult
   valueError: () => EvaluationResult
+  div0Error: () => EvaluationResult
   numError: () => EvaluationResult
 }
 
@@ -35,6 +36,7 @@ export function createFinancialBuiltins({
   integerValue,
   numberResult,
   valueError,
+  div0Error,
   numError,
 }: FinancialBuiltinDeps): Record<string, Builtin> {
   const cumulativePeriodicPaymentResult = (
@@ -326,15 +328,22 @@ export function createFinancialBuiltins({
       if (rate === undefined || valueArgs.length === 0) {
         return valueError()
       }
-      let result = 0
-      for (let index = 0; index < valueArgs.length; index += 1) {
-        const value = toNumber(valueArgs[index]!)
+      const values: number[] = []
+      for (const valueArg of valueArgs) {
+        const value = toNumber(valueArg)
         if (value === undefined) {
           return valueError()
         }
-        result += value / (1 + rate) ** (index + 1)
+        values.push(value)
       }
-      return numberResult(result)
+      if (rate === -1) {
+        return div0Error()
+      }
+      let result = 0
+      for (let index = 0; index < values.length; index += 1) {
+        result += values[index]! / (1 + rate) ** (index + 1)
+      }
+      return Number.isFinite(result) ? numberResult(result) : valueError()
     },
     IPMT: (rateArg, periodArg, periodsArg, presentArg, futureArg, typeArg) => {
       const rate = toNumber(rateArg)
@@ -387,7 +396,7 @@ export function createFinancialBuiltins({
         periods === undefined ||
         present === undefined ||
         periods <= 0 ||
-        period < 1 ||
+        period < 0 ||
         period > periods
       ) {
         return valueError()

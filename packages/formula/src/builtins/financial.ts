@@ -251,7 +251,7 @@ export function interestPayment(
   if (type === 1 && period === 1) {
     return 0
   }
-  const balance = futureValue(rate, type === 1 ? period - 2 : period - 1, payment, present, type)
+  const balance = futureValue(rate, type === 1 ? period - 2 : period - 1, payment, present, type) - (type === 1 ? payment : 0)
   return balance * rate
 }
 

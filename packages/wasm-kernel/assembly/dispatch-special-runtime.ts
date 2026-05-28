@@ -72,7 +72,7 @@ export function tryApplySpecialRuntimeBuiltin(
       if (!hasPositiveAndNegativeSeries(values)) {
         return writeValueError(
           base,
-          builtinId == BuiltinId.Mirr ? ErrorCode.Div0 : ErrorCode.Value,
+          builtinId == BuiltinId.Mirr ? ErrorCode.Div0 : ErrorCode.Num,
           rangeIndexStack,
           valueStack,
           tagStack,
@@ -89,7 +89,7 @@ export function tryApplySpecialRuntimeBuiltin(
           base,
           STACK_KIND_SCALAR,
           isNaN(result) ? <u8>ValueTag.Error : <u8>ValueTag.Number,
-          isNaN(result) ? ErrorCode.Value : result,
+          isNaN(result) ? ErrorCode.Num : result,
           rangeIndexStack,
           valueStack,
           tagStack,

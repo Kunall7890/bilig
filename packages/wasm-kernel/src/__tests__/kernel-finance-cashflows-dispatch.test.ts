@@ -346,16 +346,111 @@ describe('wasm kernel finance/cashflow dispatch', () => {
   it('preserves incoming NPV rate errors before scalar coercion', async () => {
     const kernel = await createKernel()
     const width = 4
-    kernel.init(8, 1, 1, 1, 1)
+    kernel.init(8, 3, 2, 1, 1)
     kernel.writeCells(new Uint8Array(8), new Float64Array(8), new Uint32Array(8), new Uint16Array(8))
 
-    const packed = packPrograms([[encodePushError(ErrorCode.NA), encodePushNumber(0), encodeCall(BuiltinId.Npv, 2), encodeRet()]])
-    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, Uint32Array.from([cellIndex(1, 0, width)]))
-    const constants = packConstants([[100]])
+    const packed = packPrograms([
+      [encodePushError(ErrorCode.NA), encodePushNumber(0), encodeCall(BuiltinId.Npv, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Npv, 3), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width)]),
+    )
+    const constants = packConstants([[100], [-1, 100, 200]])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
-    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width)]))
+    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width)]))
 
     expectErrorCell(kernel, cellIndex(1, 0, width), ErrorCode.NA)
+    expectErrorCell(kernel, cellIndex(1, 1, width), ErrorCode.Div0)
+  })
+
+  it('matches beginning-period interest and principal schedules on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 6, 4, 1, 1)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodePushNumber(3), encodeCall(BuiltinId.Ispmt, 4), encodeRet()],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodePushNumber(5),
+        encodeCall(BuiltinId.Ipmt, 6),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodePushNumber(5),
+        encodeCall(BuiltinId.Ppmt, 6),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodePushNumber(5),
+        encodeCall(BuiltinId.Cumipmt, 6),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodePushNumber(5),
+        encodeCall(BuiltinId.Cumprinc, 6),
+        encodeRet(),
+      ],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([
+        cellIndex(1, 0, width),
+        cellIndex(1, 1, width),
+        cellIndex(1, 2, width),
+        cellIndex(1, 3, width),
+        cellIndex(1, 4, width),
+      ]),
+    )
+    const constants = packConstants([
+      [0.1, 0, 3, 8000],
+      [0.08 / 12, 2, 10, 10000, 0, 1],
+      [0.08 / 12, 2, 10, 10000, 0, 1],
+      [0.08 / 12, 10, 10000, 1, 10, 1],
+      [0.08 / 12, 10, 10000, 1, 10, 1],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(
+      Uint32Array.from([
+        cellIndex(1, 0, width),
+        cellIndex(1, 1, width),
+        cellIndex(1, 2, width),
+        cellIndex(1, 3, width),
+        cellIndex(1, 4, width),
+      ]),
+    )
+
+    expectNumberCell(kernel, cellIndex(1, 0, width), -800, 12)
+    expectNumberCell(kernel, cellIndex(1, 1, width), -59.79890448548015, 10)
+    expectNumberCell(kernel, cellIndex(1, 2, width), -970.365422692497, 10)
+    expectNumberCell(kernel, cellIndex(1, 3, width), -301.64327177965646, 10)
+    expectNumberCell(kernel, cellIndex(1, 4, width), -10000, 8)
   })
 
   it('matches Microsoft Excel CUMIPMT and CUMPRINC numeric domain errors on the wasm path', async () => {
