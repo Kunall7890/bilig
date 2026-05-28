@@ -48,6 +48,19 @@ function restoreCellOpsWithTableHeaderRename(args: {
       restoreOp.kind === 'setCellFormula' && restoreOp.sheetName === args.op.sheetName && restoreOp.address === args.op.address,
   )
   if (formulaRestoreIndex < 0) {
+    if (args.op.kind === 'setCellFormula') {
+      const cellRestoreIndex = args.restoreOps.findIndex(
+        (restoreOp) =>
+          (restoreOp.kind === 'setCellValue' || restoreOp.kind === 'clearCell') &&
+          restoreOp.sheetName === args.op.sheetName &&
+          restoreOp.address === args.op.address,
+      )
+      if (cellRestoreIndex >= 0) {
+        // Formula writes do not rename table headers, but literal/empty restores can.
+        const tableRestoreOp: EngineOp = { kind: 'upsertTable', table: structuredClone(header.table) }
+        return [...args.restoreOps.slice(0, cellRestoreIndex + 1), tableRestoreOp, ...args.restoreOps.slice(cellRestoreIndex + 1)]
+      }
+    }
     return [...args.restoreOps]
   }
 

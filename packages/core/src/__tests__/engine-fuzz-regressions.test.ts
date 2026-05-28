@@ -118,6 +118,29 @@ describe('engine fuzz regressions', () => {
     expect(engine.getPivotTable('Pivot', 'B2')?.rows).toBe(3)
   })
 
+  it('keeps table header metadata aligned after undoing a formula over a shifted header cell', async () => {
+    const seedSnapshot = await createEngineSeedSnapshot('pivot-analytics', 'table-header-formula-undo-regression')
+    const engine = new SpreadsheetEngine({
+      workbookName: seedSnapshot.workbook.name,
+      replicaId: 'table-header-formula-undo-regression',
+    })
+    await engine.ready()
+    engine.importSnapshot(structuredClone(seedSnapshot))
+
+    engine.deleteRows('Sheet1', 0, 1)
+    const expectedSnapshot = await exportReplaySnapshot(seedSnapshot, [{ kind: 'deleteRows', start: 0, count: 1 }])
+    expect(engine.getTable('QuarterlySales')?.columnNames).toEqual(['Region', 'Quarter', 'Sales'])
+
+    engine.setCellFormula('Sheet1', 'A1', 'A1+A1')
+    expect(engine.getTable('QuarterlySales')?.columnNames).toEqual(['Region', 'Quarter', 'Sales'])
+
+    expect(engine.undo()).toBe(true)
+    expect(engine.getTable('QuarterlySales')?.columnNames).toEqual(['Region', 'Quarter', 'Sales'])
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(
+      normalizeSnapshotForSemanticComparison(expectedSnapshot),
+    )
+  })
+
   it('keeps pivot dimensions aligned after copy, row delete, and undo replay', async () => {
     const seedSnapshot = await createEngineSeedSnapshot('pivot-analytics', 'pivot-copy-delete-undo-regression')
     const engine = new SpreadsheetEngine({
