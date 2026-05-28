@@ -512,6 +512,10 @@ describe('formula builtins and JS evaluator', () => {
     expect(evaluateAst(parseFormula('MEDIAN(A1:A8)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
     expect(evaluateAst(parseFormula('LARGE(A1:A8,1)'), context)).toEqual({ tag: ValueTag.Number, value: 4 })
     expect(evaluateAst(parseFormula('SMALL(A1:A8,1)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(evaluateAst(parseFormula('LARGE(TRUE(),1)'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+    expect(evaluateAst(parseFormula('SMALL(TRUE(),1)'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+    expect(evaluateAst(parseFormula('LARGE("2",1)'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+    expect(evaluateAst(parseFormula('SMALL("2",1)'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
     expect(evaluateAst(parseFormula('MEDIAN("2","4")'), context)).toEqual({ tag: ValueTag.Number, value: 3 })
 
     expect(evaluateAst(parseFormula('AVERAGEA(A1:A8)'), context)).toEqual({ tag: ValueTag.Number, value: 1 })

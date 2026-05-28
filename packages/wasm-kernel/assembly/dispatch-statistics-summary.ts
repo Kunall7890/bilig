@@ -261,6 +261,18 @@ export function tryApplyStatisticsSummaryBuiltin(
     if (hasEmptyInputShape(base, kindStack, rangeIndexStack, rangeRowCounts, rangeColCounts)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (kindStack[base] == STACK_KIND_SCALAR && tagStack[base] != ValueTag.Number) {
+      return writeResult(
+        base,
+        STACK_KIND_SCALAR,
+        <u8>ValueTag.Error,
+        tagStack[base] == ValueTag.Error ? valueStack[base] : ErrorCode.Num,
+        rangeIndexStack,
+        valueStack,
+        tagStack,
+        kindStack,
+      )
+    }
     const values = collectNumericValuesFromSlotWithText(
       base,
       kindStack,

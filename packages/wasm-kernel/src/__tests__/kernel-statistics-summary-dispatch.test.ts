@@ -10,6 +10,10 @@ function encodePushNumber(constantIndex: number): number {
   return (Opcode.PushNumber << 24) | constantIndex
 }
 
+function encodePushBoolean(value: boolean): number {
+  return (Opcode.PushBoolean << 24) | (value ? 1 : 0)
+}
+
 function encodePushRange(rangeIndex: number): number {
   return (Opcode.PushRange << 24) | rangeIndex
 }
@@ -253,6 +257,30 @@ describe('wasm kernel ordered statistics dispatch slab', () => {
     kernel.evalBatch(Uint32Array.from([target]))
 
     expectNumberCell(kernel, target, 1, 12)
+  })
+
+  it('returns #NUM for direct nonnumeric SMALL and LARGE data inputs on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 4
+    kernel.init(8, 0, 2, 1, 1)
+    kernel.writeCells(new Uint8Array(8), new Float64Array(8), new Uint32Array(8), new Uint16Array(8))
+
+    const packed = packPrograms([
+      [encodePushBoolean(true), encodePushNumber(0), encodeCall(BuiltinId.Small, 2), encodeRet()],
+      [encodePushBoolean(true), encodePushNumber(0), encodeCall(BuiltinId.Large, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width)]),
+    )
+    const constants = packConstants([[1], [1]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width)]))
+
+    expectErrorCell(kernel, cellIndex(1, 0, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 1, width), ErrorCode.Num)
   })
 
   it('returns Excel-compatible division errors for insufficient variance samples', async () => {

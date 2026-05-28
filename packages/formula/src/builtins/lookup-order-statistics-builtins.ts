@@ -129,7 +129,13 @@ function nthValue(
   if (deps.isError(positionArg)) {
     return positionArg
   }
-  const values = flattenNumbersOrValueError(arg, deps)
+  const values = deps.isRangeArg(arg)
+    ? flattenNumbersOrValueError(arg, deps)
+    : deps.isError(arg)
+      ? arg
+      : arg.tag === ValueTag.Number
+        ? [arg.value]
+        : []
   if (!Array.isArray(values)) {
     return values
   }
