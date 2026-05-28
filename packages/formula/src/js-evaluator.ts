@@ -49,7 +49,18 @@ import {
 } from './js-evaluator-runtime-helpers.js'
 import { coerceLogicalValue } from './logical-coercion.js'
 import { evaluateWorkbookSpecialCall } from './js-evaluator-workbook-special-calls.js'
-import { parseArithmeticNumericText, parseNumericText } from './numeric-text.js'
+import {
+  aStyleReferenceCallees,
+  coerceDirectNumericTextAggregateArgument,
+  coerceDirectNumericTextStatisticArgument,
+  logicalReferenceCallees,
+  numericReferenceAggregateCallees,
+  numericReferenceStatisticCallees,
+  referencedScalarBuiltinAStyleValues,
+  referencedScalarBuiltinAggregateValues,
+  referencedScalarBuiltinLogicalValues,
+  referencedScalarBuiltinStatisticValues,
+} from './scalar-builtin-argument-coercion.js'
 import type { EvaluationContext, JsPlanInstruction, ReferenceOperand, StackValue } from './js-evaluator-types.js'
 import { lowerToPlan } from './js-plan-lowering.js'
 import { isArrayValue, scalarFromEvaluationResult, type EvaluationResult } from './runtime-values.js'
@@ -203,94 +214,6 @@ function evaluateSpecialCall(
         })
       )
   }
-}
-
-function coerceDirectNumericTextAggregateArgument(callee: string, value: CellValue, argRef: ReferenceOperand | undefined): CellValue {
-  if (argRef !== undefined || value.tag !== ValueTag.String) {
-    return value
-  }
-  const directNumericText = value.value === '' ? 0 : parseNumericText(value.value)
-  if (callee === 'COUNT') {
-    return directNumericText === undefined ? value : numberValue(directNumericText)
-  }
-  if (callee === 'SUM' || callee === 'AVERAGE' || callee === 'AVG') {
-    const numeric = parseArithmeticNumericText(value.value)
-    return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
-  }
-  if (callee === 'PRODUCT' || callee === 'MIN' || callee === 'MAX' || callee === 'SUMSQ') {
-    return directNumericText === undefined ? error(ErrorCode.Value) : numberValue(directNumericText)
-  }
-  if (callee === 'GEOMEAN' || callee === 'HARMEAN') {
-    return directNumericText === undefined ? error(ErrorCode.Value) : numberValue(directNumericText)
-  }
-  return value
-}
-
-const numericReferenceAggregateCallees = new Set([
-  'SUM',
-  'AVERAGE',
-  'AVG',
-  'MIN',
-  'MAX',
-  'PRODUCT',
-  'SUMSQ',
-  'GCD',
-  'LCM',
-  'GEOMEAN',
-  'HARMEAN',
-])
-const numericReferenceStatisticCallees = new Set([
-  'MODE',
-  'MODE.SNGL',
-  'STDEV',
-  'STDEV.S',
-  'STDEVP',
-  'STDEV.P',
-  'VAR',
-  'VAR.S',
-  'VARP',
-  'VAR.P',
-  'SKEW',
-  'SKEW.P',
-  'SKEWP',
-  'KURT',
-])
-const aStyleReferenceCallees = new Set(['AVERAGEA', 'MINA', 'MAXA'])
-const logicalReferenceCallees = new Set(['AND', 'OR', 'XOR'])
-
-function coerceDirectNumericTextStatisticArgument(callee: string, value: CellValue, argRef: ReferenceOperand | undefined): CellValue {
-  if (argRef !== undefined || value.tag !== ValueTag.String || !numericReferenceStatisticCallees.has(callee)) {
-    return value
-  }
-  const numeric = parseNumericText(value.value)
-  return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
-}
-
-function referencedScalarBuiltinAggregateValues(callee: string, value: CellValue): readonly CellValue[] | undefined {
-  if (callee === 'COUNT') {
-    return value.tag === ValueTag.Number ? [value] : []
-  }
-  if (!numericReferenceAggregateCallees.has(callee)) {
-    return undefined
-  }
-  return value.tag === ValueTag.Number || value.tag === ValueTag.Error ? [value] : []
-}
-
-function referencedScalarBuiltinStatisticValues(callee: string, value: CellValue): readonly CellValue[] | undefined {
-  if (numericReferenceStatisticCallees.has(callee)) {
-    return value.tag === ValueTag.Number || value.tag === ValueTag.Error ? [value] : []
-  }
-  if (aStyleReferenceCallees.has(callee)) {
-    return value.tag === ValueTag.Empty ? [] : [value]
-  }
-  return undefined
-}
-
-function referencedScalarBuiltinLogicalValues(callee: string, value: CellValue): readonly CellValue[] | undefined {
-  if (!logicalReferenceCallees.has(callee)) {
-    return undefined
-  }
-  return value.tag === ValueTag.Number || value.tag === ValueTag.Boolean || value.tag === ValueTag.Error ? [value] : []
 }
 
 function scalarBuiltinRangeValues(callee: string, rawArg: StackValue): readonly CellValue[] {
@@ -700,12 +623,17 @@ function executePlan(
                 args.push(...referencedLogicalValues)
                 continue
               }
+              const referencedAStyleValues = referencedScalarBuiltinAStyleValues(instruction.callee, rawArg.value)
+              if (referencedAStyleValues) {
+                args.push(...referencedAStyleValues)
+                continue
+              }
             }
             args.push(
               coerceDirectNumericTextStatisticArgument(
                 instruction.callee,
-                coerceDirectNumericTextAggregateArgument(instruction.callee, rawArg.value, argRef),
-                argRef,
+                coerceDirectNumericTextAggregateArgument(instruction.callee, rawArg.value, argRef !== undefined),
+                argRef !== undefined,
               ),
             )
             continue

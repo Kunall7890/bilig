@@ -8,6 +8,12 @@ import {
   normalizeBuiltinLookupName,
   parseArithmeticScalarText,
   parseFormula,
+  coerceDirectNumericTextAggregateArgument,
+  coerceDirectNumericTextStatisticArgument,
+  referencedScalarBuiltinAStyleValues,
+  referencedScalarBuiltinAggregateValues,
+  referencedScalarBuiltinLogicalValues,
+  referencedScalarBuiltinStatisticValues,
   scalarFromEvaluationResult,
   type EvaluationContext,
   type EvaluationResult,
@@ -334,7 +340,7 @@ function compileDirectScalarEvaluator(node: FormulaNode, dateSystem: '1900' | '1
         for (let index = 0; index < evaluators.length; index += 1) {
           values[index] = evaluators[index]!(runtime)
         }
-        return scalarFromDirectResult(builtin(...values))
+        return scalarFromDirectResult(builtin(...directScalarCallArguments(callee, values, node.args)))
       }
     }
     case 'ArrayConstant':
@@ -346,6 +352,44 @@ function compileDirectScalarEvaluator(node: FormulaNode, dateSystem: '1900' | '1
     case 'StructuredRef':
       return undefined
   }
+}
+
+function directScalarCallArguments(callee: string, values: readonly CellValue[], argNodes: readonly FormulaNode[]): CellValue[] {
+  const args: CellValue[] = []
+  for (let index = 0; index < values.length; index += 1) {
+    const value = values[index] ?? emptyValue()
+    const isReferenceArg = argNodes[index]?.kind === 'CellRef'
+    if (isReferenceArg) {
+      const aggregateValues = referencedScalarBuiltinAggregateValues(callee, value)
+      if (aggregateValues) {
+        args.push(...aggregateValues)
+        continue
+      }
+      const statisticValues = referencedScalarBuiltinStatisticValues(callee, value)
+      if (statisticValues) {
+        args.push(...statisticValues)
+        continue
+      }
+      const logicalValues = referencedScalarBuiltinLogicalValues(callee, value)
+      if (logicalValues) {
+        args.push(...logicalValues)
+        continue
+      }
+      const aStyleValues = referencedScalarBuiltinAStyleValues(callee, value)
+      if (aStyleValues) {
+        args.push(...aStyleValues)
+        continue
+      }
+    }
+    args.push(
+      coerceDirectNumericTextStatisticArgument(
+        callee,
+        coerceDirectNumericTextAggregateArgument(callee, value, isReferenceArg),
+        isReferenceArg,
+      ),
+    )
+  }
+  return args
 }
 
 function evaluateDirectUnary(operator: string, value: CellValue, dateSystem: ExcelDateSystem): CellValue {
