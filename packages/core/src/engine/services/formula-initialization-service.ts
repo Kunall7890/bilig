@@ -63,6 +63,7 @@ import {
   createFormulaInitializationSheetNameResolver,
   scanFormulaInitializationCycleMembers,
 } from './formula-initialization-service-helpers.js'
+import { createInitialFreshAggregateFormulaDependencyIndex } from './formula-initialization-aggregate-dependency-index.js'
 import { buildFreshDirectAggregateMember } from './formula-initialization-hydrated-direct-scalar.js'
 import { tryEvaluateFormulaLeafInlineScalar } from './formula-leaf-inline-scalar-evaluator.js'
 import { initializeCachedFormulaSourcesAtNow as initializeCachedFormulaSourcesAtNowUnchecked } from './formula-initialization-cached-formulas.js'
@@ -439,36 +440,11 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         pendingInitialFreshDirectAggregateRun.members.push(member)
         pendingInitialFreshDirectAggregateRun.preparedEntries.push(prepared)
       }
-      const freshDirectAggregateMemberHasFormulaDependency = (member: FreshDirectAggregateFormulaBindingMember): boolean => {
-        if (targetCellIndices.length === 0) {
-          return false
-        }
-        const aggregateSheetId = args.state.workbook.getSheet(member.aggregateSheetName)?.id
-        if (aggregateSheetId === undefined) {
-          return false
-        }
-        const cellStore = args.state.workbook.cellStore
-        for (let index = 0; index < targetCellIndices.length; index += 1) {
-          const formulaCellIndex = targetCellIndices[index]!
-          const isFormulaCell =
-            (pendingFormulaCells?.has(formulaCellIndex) ?? false) ||
-            args.state.formulas.has(formulaCellIndex) ||
-            ((cellStore.flags[formulaCellIndex] ?? 0) & CellFlags.HasFormula) !== 0
-          if (!isFormulaCell) {
-            continue
-          }
-          if (
-            cellStore.sheetIds[formulaCellIndex] === aggregateSheetId &&
-            member.aggregateRowStart <= cellStore.rows[formulaCellIndex]! &&
-            cellStore.rows[formulaCellIndex]! <= member.aggregateRowEnd &&
-            member.aggregateColStart <= cellStore.cols[formulaCellIndex]! &&
-            cellStore.cols[formulaCellIndex]! <= member.aggregateColEnd
-          ) {
-            return true
-          }
-        }
-        return false
-      }
+      const freshDirectAggregateFormulaDependencyIndex = createInitialFreshAggregateFormulaDependencyIndex({
+        pendingFormulaCells,
+        state: args.state,
+        targetCellIndices,
+      })
 
       args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
       try {
@@ -502,7 +478,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
                     : undefined
                 if (
                   freshDirectAggregateMember !== undefined &&
-                  !freshDirectAggregateMemberHasFormulaDependency(freshDirectAggregateMember)
+                  !freshDirectAggregateFormulaDependencyIndex.hasFormulaDependency(freshDirectAggregateMember)
                 ) {
                   initialFreshDirectScalarRunQueue.flush()
                   queueInitialFreshDirectAggregate(prepared, freshDirectAggregateMember)
