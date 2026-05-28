@@ -3,6 +3,13 @@ import { scalarText, trimAsciiWhitespace } from './text-codec'
 import { memberScalarValue } from './operands'
 import { STACK_KIND_RANGE, STACK_KIND_SCALAR } from './result-io'
 import { coerceInteger, truncToInt } from './numeric-core'
+import { isExcelDateSerialInRange } from './date-finance'
+
+export const WEEKEND_MASK_VALUE_ERROR: i32 = i32.MIN_VALUE
+export const WEEKEND_MASK_NUM_ERROR: i32 = i32.MIN_VALUE + 1
+export const HOLIDAY_OK: i32 = 0
+export const HOLIDAY_VALUE_ERROR: i32 = 1
+export const HOLIDAY_NUM_ERROR: i32 = 2
 
 export function isWeekendSerial(whole: i32): bool {
   const adjustedWhole = whole < 60 ? whole : whole - 1
@@ -26,19 +33,19 @@ export function weekendMaskFromCode(code: i32): i32 {
   if (code >= 11 && code <= 17) {
     return 1 << (code == 17 ? 0 : code - 10)
   }
-  return i32.MIN_VALUE
+  return WEEKEND_MASK_NUM_ERROR
 }
 
 export function weekendMaskFromString(maskText: string): i32 {
   const trimmed = trimAsciiWhitespace(maskText)
   if (trimmed.length != 7) {
-    return i32.MIN_VALUE
+    return WEEKEND_MASK_VALUE_ERROR
   }
   let mask = 0
   for (let index = 0; index < 7; index += 1) {
     const char = trimmed.charCodeAt(index)
     if (char != 48 && char != 49) {
-      return i32.MIN_VALUE
+      return WEEKEND_MASK_VALUE_ERROR
     }
     if (char != 49) {
       continue
@@ -46,7 +53,7 @@ export function weekendMaskFromString(maskText: string): i32 {
     const day = index == 6 ? 0 : index + 1
     mask |= 1 << day
   }
-  return mask != 0x7f ? mask : i32.MIN_VALUE
+  return mask != 0x7f ? mask : WEEKEND_MASK_VALUE_ERROR
 }
 
 export function coerceWeekendMask(
@@ -74,10 +81,10 @@ export function coerceWeekendMask(
       outputStringLengths,
       outputStringData,
     )
-    return maskText == null ? i32.MIN_VALUE : weekendMaskFromString(maskText)
+    return maskText == null ? WEEKEND_MASK_VALUE_ERROR : weekendMaskFromString(maskText)
   }
   const code = coerceInteger(tag, value)
-  return code == i32.MIN_VALUE ? i32.MIN_VALUE : weekendMaskFromCode(code)
+  return code == i32.MIN_VALUE ? WEEKEND_MASK_VALUE_ERROR : weekendMaskFromCode(code)
 }
 
 function isWeekendWithMask(serial: i32, weekendMask: i32): bool {
@@ -141,35 +148,42 @@ export function validateHolidayArgument(
   cellNumbers: Float64Array,
   cellStringIds: Uint32Array,
   cellErrors: Uint16Array,
-): bool {
+): i32 {
   if (kind == STACK_KIND_SCALAR) {
     if (tag == ValueTag.Empty) {
-      return true
+      return HOLIDAY_OK
     }
     if (tag == ValueTag.Error) {
-      return false
+      return HOLIDAY_VALUE_ERROR
     }
-    return truncToInt(tag, value) != i32.MIN_VALUE
+    const serial = truncToInt(tag, value)
+    if (serial == i32.MIN_VALUE) {
+      return HOLIDAY_VALUE_ERROR
+    }
+    return isExcelDateSerialInRange(serial) ? HOLIDAY_OK : HOLIDAY_NUM_ERROR
   }
   if (kind != STACK_KIND_RANGE) {
-    return true
+    return HOLIDAY_OK
   }
   const start = <i32>rangeOffsets[rangeIndex]
   const length = <i32>rangeLengths[rangeIndex]
   for (let index = 0; index < length; index += 1) {
     const memberIndex = rangeMembers[start + index]
     if (cellTags[memberIndex] == ValueTag.Error) {
-      return false
+      return HOLIDAY_VALUE_ERROR
     }
     const serialCandidate = truncToInt(
       cellTags[memberIndex],
       memberScalarValue(memberIndex, cellTags, cellNumbers, cellStringIds, cellErrors),
     )
     if (serialCandidate == i32.MIN_VALUE) {
-      return false
+      return HOLIDAY_VALUE_ERROR
+    }
+    if (!isExcelDateSerialInRange(serialCandidate)) {
+      return HOLIDAY_NUM_ERROR
     }
   }
-  return true
+  return HOLIDAY_OK
 }
 
 export function isWorkdaySerial(

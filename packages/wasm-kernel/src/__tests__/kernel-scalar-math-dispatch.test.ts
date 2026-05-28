@@ -10,6 +10,10 @@ function encodePushNumber(constantIndex: number): number {
   return (Opcode.PushNumber << 24) | constantIndex
 }
 
+function encodePushBoolean(value: boolean): number {
+  return (Opcode.PushBoolean << 24) | (value ? 1 : 0)
+}
+
 function encodePushString(stringId: number): number {
   return (Opcode.PushString << 24) | stringId
 }
@@ -154,6 +158,49 @@ describe('wasm kernel scalar math dispatch', () => {
     expectKernelError(kernel, cellIndex(1, 3, width), ErrorCode.Value)
     expectKernelError(kernel, cellIndex(1, 4, width), ErrorCode.Value)
     expectKernelError(kernel, cellIndex(1, 5, width), ErrorCode.Value)
+  })
+
+  it('rejects nonnumeric SERIESSUM coefficients', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 2, 4, 1, 1)
+    const strings = packStrings(['bad', '2'])
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodePushNumber(3), encodeCall(BuiltinId.Seriessum, 4), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodePushString(0), encodeCall(BuiltinId.Seriessum, 4), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodePushString(1), encodeCall(BuiltinId.Seriessum, 4), encodeRet()],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushBoolean(true),
+        encodeCall(BuiltinId.Seriessum, 4),
+        encodeRet(),
+      ],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width), cellIndex(1, 3, width)]),
+    )
+    const constants = packConstants([
+      [1, 1, 1, 2],
+      [1, 1, 1],
+      [1, 1, 1],
+      [1, 1, 1],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width), cellIndex(1, 3, width)]))
+
+    expect(kernel.readTags()[cellIndex(1, 0, width)]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBe(2)
+    expectKernelError(kernel, cellIndex(1, 1, width), ErrorCode.Value)
+    expectKernelError(kernel, cellIndex(1, 2, width), ErrorCode.Value)
+    expectKernelError(kernel, cellIndex(1, 3, width), ErrorCode.Value)
   })
 
   it('validates the left arithmetic operand before propagating right operand errors', async () => {

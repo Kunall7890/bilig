@@ -752,10 +752,14 @@ const scalarBuiltins: Record<string, Builtin> = {
       return valueError()
     }
     let sum = 0
-    coefficientArgs.forEach((coefficientArg, index) => {
-      const coefficient = toNumber(coefficientArg) ?? 0
+    for (const [index, coefficientArg] of coefficientArgs.entries()) {
+      const coefficient =
+        coefficientArg.tag === ValueTag.Number ? coefficientArg.value : coefficientArg.tag === ValueTag.Empty ? 0 : undefined
+      if (coefficient === undefined) {
+        return valueError()
+      }
       sum += coefficient * x ** (n + index * m)
-    })
+    }
     return numberResult(sum)
   },
   SQRTPI: (value) => {

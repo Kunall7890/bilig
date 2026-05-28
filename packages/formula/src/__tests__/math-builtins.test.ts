@@ -6,6 +6,7 @@ import { parseFormula } from '../parser.js'
 
 const num = (value: number): CellValue => ({ tag: ValueTag.Number, value })
 const str = (value: string, stringId = 1): CellValue => ({ tag: ValueTag.String, value, stringId })
+const bool = (value: boolean): CellValue => ({ tag: ValueTag.Boolean, value })
 const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
 const div0Error = { tag: ValueTag.Error, code: ErrorCode.Div0 } as const
 const numError = { tag: ValueTag.Error, code: ErrorCode.Num } as const
@@ -67,6 +68,13 @@ describe('math builtins', () => {
     expect(getBuiltin('PERMUT')?.(str('5'), str('2'))).toEqual(num(20))
     expect(getBuiltin('GCD')?.(str('18'), str('24'))).toEqual(num(6))
     expect(getBuiltin('LCM')?.(str('6'), str('8'))).toEqual(num(24))
+  })
+
+  it('rejects nonnumeric SERIESSUM coefficients', () => {
+    expect(getBuiltin('SERIESSUM')?.(num(1), num(1), num(1), str('bad'))).toEqual(valueError)
+    expect(getBuiltin('SERIESSUM')?.(num(1), num(1), num(1), str('2'))).toEqual(valueError)
+    expect(getBuiltin('SERIESSUM')?.(num(1), num(1), num(1), bool(true))).toEqual(valueError)
+    expect(getBuiltin('SERIESSUM')?.(num(1), num(1), num(1), { tag: ValueTag.Empty })).toEqual(num(0))
   })
 
   it('coerces direct numeric and empty text for engineering math helpers', () => {

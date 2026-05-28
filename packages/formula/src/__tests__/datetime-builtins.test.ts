@@ -324,7 +324,7 @@ describe('datetime builtins', () => {
         { tag: ValueTag.Number, value: 1 },
         { tag: ValueTag.Number, value: 99 },
       ),
-    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
     expect(
       datetimeBuiltins['NETWORKDAYS.INTL'](
         { tag: ValueTag.Number, value: fridaySerial },
@@ -332,6 +332,84 @@ describe('datetime builtins', () => {
         { tag: ValueTag.String, value: '1111111', stringId: 4 },
       ),
     ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+  })
+
+  it('rejects out-of-range workday date serials with documented error classes', () => {
+    expect(datetimeBuiltins.WORKDAY({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 1 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
+    })
+    expect(datetimeBuiltins.WORKDAY({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: -10 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(
+      datetimeBuiltins.WORKDAY({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: -1 }),
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+
+    expect(datetimeBuiltins.NETWORKDAYS({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 1 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
+    })
+    expect(datetimeBuiltins.NETWORKDAYS({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: -1 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
+    })
+    expect(
+      datetimeBuiltins.NETWORKDAYS(
+        { tag: ValueTag.Number, value: 1 },
+        { tag: ValueTag.Number, value: 2 },
+        { tag: ValueTag.Number, value: -1 },
+      ),
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+
+    expect(datetimeBuiltins['WORKDAY.INTL']({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 1 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(datetimeBuiltins['WORKDAY.INTL']({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: -10 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(
+      datetimeBuiltins['WORKDAY.INTL'](
+        { tag: ValueTag.Number, value: 1 },
+        { tag: ValueTag.Number, value: 1 },
+        { tag: ValueTag.Number, value: 0 },
+      ),
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+    expect(
+      datetimeBuiltins['WORKDAY.INTL'](
+        { tag: ValueTag.Number, value: 1 },
+        { tag: ValueTag.Number, value: 1 },
+        { tag: ValueTag.Number, value: 1 },
+        { tag: ValueTag.Number, value: -1 },
+      ),
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+
+    expect(datetimeBuiltins['NETWORKDAYS.INTL']({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 1 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(datetimeBuiltins['NETWORKDAYS.INTL']({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: -1 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(
+      datetimeBuiltins['NETWORKDAYS.INTL'](
+        { tag: ValueTag.Number, value: 1 },
+        { tag: ValueTag.Number, value: 2 },
+        { tag: ValueTag.Number, value: 0 },
+      ),
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+    expect(
+      datetimeBuiltins['NETWORKDAYS.INTL'](
+        { tag: ValueTag.Number, value: 1 },
+        { tag: ValueTag.Number, value: 2 },
+        { tag: ValueTag.Number, value: 1 },
+        { tag: ValueTag.Number, value: -1 },
+      ),
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
   })
 
   it('supports DATEDIF units', () => {

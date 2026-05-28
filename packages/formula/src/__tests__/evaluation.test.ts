@@ -1210,6 +1210,18 @@ describe('formula builtins and JS evaluator', () => {
       tag: ValueTag.Error,
       code: ErrorCode.NA,
     })
+    expect(evaluateAst(parseFormula('SERIESSUM(1,1,1,"bad")'), context)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
+    })
+    expect(evaluateAst(parseFormula('SERIESSUM(1,1,1,"2")'), context)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
+    })
+    expect(evaluateAst(parseFormula('SERIESSUM(1,1,1,TRUE())'), context)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
+    })
     expect(evaluateAst(parseFormula('CONVERT(6,"mi","km")'), context)).toEqual({
       tag: ValueTag.Number,
       value: 9.656064,

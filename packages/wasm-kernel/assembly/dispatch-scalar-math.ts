@@ -1,4 +1,4 @@
-import { BuiltinId, ErrorCode } from './protocol'
+import { BuiltinId, ErrorCode, ValueTag } from './protocol'
 import {
   combinationCalc,
   doubleFactorialCalc,
@@ -10,7 +10,7 @@ import {
   truncateQuotient,
   truncToInt,
 } from './numeric-core'
-import { toNumberExact, toNumberOrZero } from './operands'
+import { toNumberExact } from './operands'
 import { besselIValue, besselJValue, besselKValue, besselYValue } from './distributions'
 import { tryApplyScalarRoundingMathBuiltin } from './dispatch-scalar-rounding-math'
 import { excelPower } from './vm-core-helpers'
@@ -461,7 +461,11 @@ export function tryApplyScalarMathBuiltin(
     }
     let sum = 0.0
     for (let index = 0; index < argc - 3; index += 1) {
-      const coefficient = toNumberOrZero(tagStack[base + 3 + index], valueStack[base + 3 + index])
+      const coefficientTag = tagStack[base + 3 + index]
+      if (coefficientTag != ValueTag.Number && coefficientTag != ValueTag.Empty) {
+        return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
+      const coefficient = coefficientTag == ValueTag.Empty ? 0.0 : valueStack[base + 3 + index]
       sum += coefficient * Math.pow(x, <f64>(n + index * m))
     }
     return writeScalarMathNumber(base, sum, rangeIndexStack, valueStack, tagStack, kindStack)

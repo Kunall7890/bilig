@@ -1,8 +1,21 @@
-import { ValueTag, type CellValue } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import { coerceNumber, firstError, integerValue, isErrorValue, numberResult, truncArg, valueError } from './cell-value-utils.js'
 import { excelSerialWeekdayIndex, type ExcelDateSystem } from './excel-date.js'
 
 type Builtin = (...args: CellValue[]) => CellValue
+
+const MAX_EXCEL_DATE_SERIAL_BY_SYSTEM: Record<ExcelDateSystem, number> = {
+  '1900': 2_958_465,
+  '1904': 2_957_003,
+}
+
+function numError(): CellValue {
+  return { tag: ValueTag.Error, code: ErrorCode.Num }
+}
+
+function isValidWorkdaySerial(serial: number, dateSystem: ExcelDateSystem): boolean {
+  return Number.isFinite(serial) && serial >= 0 && serial <= MAX_EXCEL_DATE_SERIAL_BY_SYSTEM[dateSystem]
+}
 
 function isWeekendSerial(serial: number, dateSystem: ExcelDateSystem): boolean {
   const dow = excelSerialWeekdayIndex(serial, dateSystem)
@@ -64,10 +77,14 @@ function normalizeWeekendMask(weekendArg: CellValue | undefined): Set<number> | 
     return valueError()
   }
   const mask = weekendMaskFromCode(code)
-  return mask ?? valueError()
+  return mask ?? numError()
 }
 
-function normalizeHolidayDateSet(holidays: readonly CellValue[] | undefined): Set<number> | CellValue {
+function normalizeHolidayDateSet(
+  holidays: readonly CellValue[] | undefined,
+  dateSystem: ExcelDateSystem,
+  outOfRangeError: () => CellValue,
+): Set<number> | CellValue {
   if (!holidays || holidays.length === 0) {
     return new Set<number>()
   }
@@ -78,7 +95,11 @@ function normalizeHolidayDateSet(holidays: readonly CellValue[] | undefined): Se
     if (raw === undefined) {
       return valueError()
     }
-    set.add(Math.trunc(raw))
+    const serial = Math.trunc(raw)
+    if (!isValidWorkdaySerial(serial, dateSystem)) {
+      return outOfRangeError()
+    }
+    set.add(serial)
   }
   return set
 }
@@ -88,12 +109,20 @@ function isWeekendWithMask(serial: number, weekendDays: ReadonlySet<number>, dat
   return day === undefined || weekendDays.has(day)
 }
 
-function offsetWorkday(start: number, offset: number, isWorkday: (serial: number) => boolean): number {
+function offsetWorkday(
+  start: number,
+  offset: number,
+  dateSystem: ExcelDateSystem,
+  isWorkday: (serial: number) => boolean,
+): number | undefined {
   let cursor = Math.trunc(start)
   const direction = offset >= 0 ? 1 : -1
   let remaining = Math.abs(offset)
   while (remaining > 0) {
     cursor += direction
+    if (!isValidWorkdaySerial(cursor, dateSystem)) {
+      return undefined
+    }
     if (isWorkday(cursor)) {
       remaining -= 1
     }
@@ -119,14 +148,18 @@ export function createWorkdayBuiltin(dateSystem: ExcelDateSystem = '1900'): Buil
     if (typeof offset !== 'number') {
       return offset
     }
+    if (!isValidWorkdaySerial(start, dateSystem)) {
+      return valueError()
+    }
 
-    const holidays = normalizeHolidayDateSet(args.slice(2))
+    const holidays = normalizeHolidayDateSet(args.slice(2), dateSystem, valueError)
     if (isErrorValue(holidays)) {
       return holidays
     }
 
     const isWorkday = (value: number): boolean => !isWeekendSerial(value, dateSystem) && !holidays.has(Math.trunc(value))
-    return numberResult(offsetWorkday(start, offset, isWorkday))
+    const serial = offsetWorkday(start, offset, dateSystem, isWorkday)
+    return serial === undefined ? numError() : numberResult(serial)
   }
 }
 
@@ -148,8 +181,11 @@ export function createNetworkdaysBuiltin(dateSystem: ExcelDateSystem = '1900'): 
     if (typeof end !== 'number') {
       return end
     }
+    if (!isValidWorkdaySerial(start, dateSystem) || !isValidWorkdaySerial(end, dateSystem)) {
+      return valueError()
+    }
 
-    const holidays = normalizeHolidayDateSet(args.slice(2))
+    const holidays = normalizeHolidayDateSet(args.slice(2), dateSystem, valueError)
     if (isErrorValue(holidays)) {
       return holidays
     }
@@ -187,19 +223,23 @@ export function createWorkdayIntlBuiltin(dateSystem: ExcelDateSystem = '1900'): 
     if (typeof offset !== 'number') {
       return offset
     }
+    if (!isValidWorkdaySerial(start, dateSystem)) {
+      return numError()
+    }
 
     const weekendDays = normalizeWeekendMask(args[2])
     if (isErrorValue(weekendDays)) {
       return weekendDays
     }
 
-    const holidays = normalizeHolidayDateSet(args.length <= 3 ? undefined : args.slice(3))
+    const holidays = normalizeHolidayDateSet(args.length <= 3 ? undefined : args.slice(3), dateSystem, numError)
     if (isErrorValue(holidays)) {
       return holidays
     }
 
     const isWorkday = (value: number): boolean => !isWeekendWithMask(value, weekendDays, dateSystem) && !holidays.has(Math.trunc(value))
-    return numberResult(offsetWorkday(start, offset, isWorkday))
+    const serial = offsetWorkday(start, offset, dateSystem, isWorkday)
+    return serial === undefined ? numError() : numberResult(serial)
   }
 }
 
@@ -221,13 +261,16 @@ export function createNetworkdaysIntlBuiltin(dateSystem: ExcelDateSystem = '1900
     if (typeof end !== 'number') {
       return end
     }
+    if (!isValidWorkdaySerial(start, dateSystem) || !isValidWorkdaySerial(end, dateSystem)) {
+      return numError()
+    }
 
     const weekendDays = normalizeWeekendMask(args[2])
     if (isErrorValue(weekendDays)) {
       return weekendDays
     }
 
-    const holidays = normalizeHolidayDateSet(args.length <= 3 ? undefined : args.slice(3))
+    const holidays = normalizeHolidayDateSet(args.length <= 3 ? undefined : args.slice(3), dateSystem, numError)
     if (isErrorValue(holidays)) {
       return holidays
     }

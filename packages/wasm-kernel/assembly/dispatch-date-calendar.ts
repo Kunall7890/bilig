@@ -1,6 +1,14 @@
 import { BuiltinId, ErrorCode, ValueTag } from './protocol'
 import { scalarErrorAt } from './builtin-args'
-import { coerceWeekendMask, isWorkdaySerial, isWorkdaySerialWithWeekendMask, validateHolidayArgument } from './calendar-workdays'
+import {
+  HOLIDAY_NUM_ERROR,
+  HOLIDAY_OK,
+  WEEKEND_MASK_NUM_ERROR,
+  coerceWeekendMask,
+  isWorkdaySerial,
+  isWorkdaySerialWithWeekendMask,
+  validateHolidayArgument,
+} from './calendar-workdays'
 import {
   excelDateTextSerial,
   excelDays360Value,
@@ -154,13 +162,16 @@ export function tryApplyDateCalendarBuiltin(
     if (start == i32.MIN_VALUE || offset == i32.MIN_VALUE) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (!isExcelDateSerialInRange(start)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
 
     const holidayKind = argc == 3 ? kindStack[base + 2] : STACK_KIND_SCALAR
     const holidayTag = argc == 3 ? tagStack[base + 2] : <u8>ValueTag.Empty
     const holidayValue = argc == 3 ? valueStack[base + 2] : 0.0
     const holidayRangeIndex = argc == 3 ? rangeIndexStack[base + 2] : 0
     if (
-      !validateHolidayArgument(
+      validateHolidayArgument(
         holidayKind,
         holidayTag,
         holidayValue,
@@ -172,7 +183,7 @@ export function tryApplyDateCalendarBuiltin(
         cellNumbers,
         cellStringIds,
         cellErrors,
-      )
+      ) != HOLIDAY_OK
     ) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -182,6 +193,9 @@ export function tryApplyDateCalendarBuiltin(
     let remaining = offset >= 0 ? offset : -offset
     while (remaining > 0) {
       cursor += direction
+      if (!isExcelDateSerialInRange(cursor)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       const workday = isWorkdaySerial(
         cursor,
         holidayKind,
@@ -216,11 +230,31 @@ export function tryApplyDateCalendarBuiltin(
     if (start == i32.MIN_VALUE || end == i32.MIN_VALUE) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (!isExcelDateSerialInRange(start) || !isExcelDateSerialInRange(end)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
 
     const holidayKind = argc == 3 ? kindStack[base + 2] : STACK_KIND_SCALAR
     const holidayTag = argc == 3 ? tagStack[base + 2] : <u8>ValueTag.Empty
     const holidayValue = argc == 3 ? valueStack[base + 2] : 0.0
     const holidayRangeIndex = argc == 3 ? rangeIndexStack[base + 2] : 0
+    if (
+      validateHolidayArgument(
+        holidayKind,
+        holidayTag,
+        holidayValue,
+        holidayRangeIndex,
+        rangeOffsets,
+        rangeLengths,
+        rangeMembers,
+        cellTags,
+        cellNumbers,
+        cellStringIds,
+        cellErrors,
+      ) != HOLIDAY_OK
+    ) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
 
     const step = start <= end ? 1 : -1
     let count = 0
@@ -273,27 +307,38 @@ export function tryApplyDateCalendarBuiltin(
     if (start == i32.MIN_VALUE || offset == i32.MIN_VALUE || weekendMask == i32.MIN_VALUE) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (weekendMask == WEEKEND_MASK_NUM_ERROR || !isExcelDateSerialInRange(start)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
 
     const holidayKind = argc == 4 ? kindStack[base + 3] : STACK_KIND_SCALAR
     const holidayTag = argc == 4 ? tagStack[base + 3] : <u8>ValueTag.Empty
     const holidayValue = argc == 4 ? valueStack[base + 3] : 0.0
     const holidayRangeIndex = argc == 4 ? rangeIndexStack[base + 3] : 0
-    if (
-      !validateHolidayArgument(
-        holidayKind,
-        holidayTag,
-        holidayValue,
-        holidayRangeIndex,
-        rangeOffsets,
-        rangeLengths,
-        rangeMembers,
-        cellTags,
-        cellNumbers,
-        cellStringIds,
-        cellErrors,
+    const holidayError = validateHolidayArgument(
+      holidayKind,
+      holidayTag,
+      holidayValue,
+      holidayRangeIndex,
+      rangeOffsets,
+      rangeLengths,
+      rangeMembers,
+      cellTags,
+      cellNumbers,
+      cellStringIds,
+      cellErrors,
+    )
+    if (holidayError != HOLIDAY_OK) {
+      return writeResult(
+        base,
+        STACK_KIND_SCALAR,
+        <u8>ValueTag.Error,
+        holidayError == HOLIDAY_NUM_ERROR ? ErrorCode.Num : ErrorCode.Value,
+        rangeIndexStack,
+        valueStack,
+        tagStack,
+        kindStack,
       )
-    ) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
 
     let cursor = start
@@ -301,6 +346,9 @@ export function tryApplyDateCalendarBuiltin(
     let remaining = offset >= 0 ? offset : -offset
     while (remaining > 0) {
       cursor += direction
+      if (!isExcelDateSerialInRange(cursor)) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       const workday = isWorkdaySerialWithWeekendMask(
         cursor,
         weekendMask,
@@ -347,11 +395,39 @@ export function tryApplyDateCalendarBuiltin(
     if (start == i32.MIN_VALUE || end == i32.MIN_VALUE || weekendMask == i32.MIN_VALUE) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
+    if (weekendMask == WEEKEND_MASK_NUM_ERROR || !isExcelDateSerialInRange(start) || !isExcelDateSerialInRange(end)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
 
     const holidayKind = argc == 4 ? kindStack[base + 3] : STACK_KIND_SCALAR
     const holidayTag = argc == 4 ? tagStack[base + 3] : <u8>ValueTag.Empty
     const holidayValue = argc == 4 ? valueStack[base + 3] : 0.0
     const holidayRangeIndex = argc == 4 ? rangeIndexStack[base + 3] : 0
+    const networkdaysIntlHolidayError = validateHolidayArgument(
+      holidayKind,
+      holidayTag,
+      holidayValue,
+      holidayRangeIndex,
+      rangeOffsets,
+      rangeLengths,
+      rangeMembers,
+      cellTags,
+      cellNumbers,
+      cellStringIds,
+      cellErrors,
+    )
+    if (networkdaysIntlHolidayError != HOLIDAY_OK) {
+      return writeResult(
+        base,
+        STACK_KIND_SCALAR,
+        <u8>ValueTag.Error,
+        networkdaysIntlHolidayError == HOLIDAY_NUM_ERROR ? ErrorCode.Num : ErrorCode.Value,
+        rangeIndexStack,
+        valueStack,
+        tagStack,
+        kindStack,
+      )
+    }
 
     const step = start <= end ? 1 : -1
     let count = 0
