@@ -3837,16 +3837,16 @@ describe('SpreadsheetEngine', () => {
     engine.setCellValue('Sheet1', 'A10', 0.5208333333333334)
     engine.setCellValue('Sheet1', 'A11', 0.5208449074074074)
 
-    engine.setCellFormula('Sheet1', 'B1', 'ISBLANK()')
+    engine.setCellFormula('Sheet1', 'B1', 'ISBLANK(A12)')
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Boolean, value: true })
     expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
 
-    engine.setCellFormula('Sheet1', 'B2', 'ISNUMBER()')
-    expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.Boolean, value: false })
+    engine.setCellFormula('Sheet1', 'B2', 'ISNUMBER(A1)')
+    expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.Boolean, value: true })
     expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
 
-    engine.setCellFormula('Sheet1', 'B3', 'ISTEXT()')
-    expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Boolean, value: false })
+    engine.setCellFormula('Sheet1', 'B3', 'ISTEXT(A3)')
+    expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Boolean, value: true })
     expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
 
     engine.setCellFormula('Sheet1', 'B4', 'ISBLANK(A1)')

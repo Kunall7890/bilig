@@ -310,7 +310,7 @@ export function tryApplyLogicInfoBuiltin(
   }
 
   if (builtinId == BuiltinId.IsBlank && argc == 0) {
-    return writeLogicInfoBoolean(base, true, rangeIndexStack, valueStack, tagStack, kindStack)
+    return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.IsBlank && argc == 1) {
@@ -318,7 +318,7 @@ export function tryApplyLogicInfoBuiltin(
   }
 
   if (builtinId == BuiltinId.IsNumber && argc == 0) {
-    return writeLogicInfoBoolean(base, false, rangeIndexStack, valueStack, tagStack, kindStack)
+    return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.IsNumber && argc == 1) {
@@ -326,7 +326,7 @@ export function tryApplyLogicInfoBuiltin(
   }
 
   if (builtinId == BuiltinId.IsText && argc == 0) {
-    return writeLogicInfoBoolean(base, false, rangeIndexStack, valueStack, tagStack, kindStack)
+    return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.IsText && argc == 1) {

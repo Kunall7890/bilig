@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BuiltinId, Opcode, ValueTag } from '@bilig/protocol'
+import { BuiltinId, ErrorCode, Opcode, ValueTag } from '@bilig/protocol'
 import { createKernel } from '../index.js'
 
 function encodeCall(builtinId: number, argc: number): number {
@@ -113,6 +113,8 @@ describe('wasm kernel logic and info dispatch', () => {
       ],
       [encodePushString(2), encodePushString(0), encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Switch, 4), encodeRet()],
       [encodeCall(BuiltinId.IsBlank, 0), encodeRet()],
+      [encodeCall(BuiltinId.IsNumber, 0), encodeRet()],
+      [encodeCall(BuiltinId.IsText, 0), encodeRet()],
       [encodePushString(3), encodeCall(BuiltinId.IsBlank, 1), encodeRet()],
       [encodePushNumber(0), encodeCall(BuiltinId.IsNumber, 1), encodeRet()],
       [encodePushString(3), encodeCall(BuiltinId.IsNumber, 1), encodeRet()],
@@ -123,7 +125,7 @@ describe('wasm kernel logic and info dispatch', () => {
       packed.programs,
       packed.offsets,
       packed.lengths,
-      Uint32Array.from(Array.from({ length: 18 }, (_, index) => cellIndex(1, index, width))),
+      Uint32Array.from(Array.from({ length: 20 }, (_, index) => cellIndex(1, index, width))),
     )
     const constants = packConstants([
       [6, 3],
@@ -140,13 +142,15 @@ describe('wasm kernel logic and info dispatch', () => {
       [1, 9],
       [],
       [],
+      [],
+      [],
       [5],
       [],
       [],
       [5],
     ])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
-    kernel.evalBatch(Uint32Array.from(Array.from({ length: 18 }, (_, index) => cellIndex(1, index, width))))
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 20 }, (_, index) => cellIndex(1, index, width))))
 
     expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBe(2)
     expect(kernel.readNumbers()[cellIndex(1, 1, width)]).toBe(7)
@@ -164,17 +168,21 @@ describe('wasm kernel logic and info dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(1, 9, width)]).toBe(2)
     expect(kernel.readNumbers()[cellIndex(1, 10, width)]).toBe(2)
     expect(kernel.readNumbers()[cellIndex(1, 11, width)]).toBe(9)
-    expect(kernel.readTags()[cellIndex(1, 12, width)]).toBe(ValueTag.Boolean)
-    expect(kernel.readNumbers()[cellIndex(1, 12, width)]).toBe(1)
-    expect(kernel.readTags()[cellIndex(1, 13, width)]).toBe(ValueTag.Boolean)
-    expect(kernel.readNumbers()[cellIndex(1, 13, width)]).toBe(0)
-    expect(kernel.readTags()[cellIndex(1, 14, width)]).toBe(ValueTag.Boolean)
-    expect(kernel.readNumbers()[cellIndex(1, 14, width)]).toBe(1)
+    expect(kernel.readTags()[cellIndex(1, 12, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 12, width)]).toBe(ErrorCode.Value)
+    expect(kernel.readTags()[cellIndex(1, 13, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 13, width)]).toBe(ErrorCode.Value)
+    expect(kernel.readTags()[cellIndex(1, 14, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 14, width)]).toBe(ErrorCode.Value)
     expect(kernel.readTags()[cellIndex(1, 15, width)]).toBe(ValueTag.Boolean)
     expect(kernel.readNumbers()[cellIndex(1, 15, width)]).toBe(0)
     expect(kernel.readTags()[cellIndex(1, 16, width)]).toBe(ValueTag.Boolean)
     expect(kernel.readNumbers()[cellIndex(1, 16, width)]).toBe(1)
     expect(kernel.readTags()[cellIndex(1, 17, width)]).toBe(ValueTag.Boolean)
     expect(kernel.readNumbers()[cellIndex(1, 17, width)]).toBe(0)
+    expect(kernel.readTags()[cellIndex(1, 18, width)]).toBe(ValueTag.Boolean)
+    expect(kernel.readNumbers()[cellIndex(1, 18, width)]).toBe(1)
+    expect(kernel.readTags()[cellIndex(1, 19, width)]).toBe(ValueTag.Boolean)
+    expect(kernel.readNumbers()[cellIndex(1, 19, width)]).toBe(0)
   })
 })

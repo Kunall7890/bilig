@@ -108,6 +108,32 @@ function expectKernelError(kernel: Awaited<ReturnType<typeof createKernel>>, ind
 }
 
 describe('wasm kernel scalar math dispatch', () => {
+  it('returns value errors for malformed PI, FLOOR, and CEILING arities', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 4, 1, 1, 1)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodeCall(BuiltinId.Pi, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Floor, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Ceiling, 1), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width)]),
+    )
+    const constants = packConstants([[2.5], [2.5], [2.5]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width)]))
+
+    expectKernelError(kernel, cellIndex(1, 0, width), ErrorCode.Value)
+    expectKernelError(kernel, cellIndex(1, 1, width), ErrorCode.Value)
+    expectKernelError(kernel, cellIndex(1, 2, width), ErrorCode.Value)
+  })
+
   it('validates the left arithmetic operand before propagating right operand errors', async () => {
     const kernel = await createKernel()
     const width = 8

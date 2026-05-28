@@ -93,6 +93,13 @@ describe('logical/info builtins', () => {
     expect(ISTEXT(text('hello'))).toEqual(bool(true))
     expect(ISTEXT(empty())).toEqual(bool(false))
     expect(ISTEXT(err(ErrorCode.Value))).toEqual(bool(false))
+
+    expect(ISBLANK()).toEqual(err(ErrorCode.Value))
+    expect(ISNUMBER()).toEqual(err(ErrorCode.Value))
+    expect(ISTEXT()).toEqual(err(ErrorCode.Value))
+    expect(ISBLANK(empty(), empty())).toEqual(err(ErrorCode.Value))
+    expect(ISNUMBER(num(1), num(2))).toEqual(err(ErrorCode.Value))
+    expect(ISTEXT(text('x'), text('y'))).toEqual(err(ErrorCode.Value))
   })
 
   it('supports logical type predicates and ERROR.TYPE', () => {
@@ -137,6 +144,11 @@ describe('logical/info builtins', () => {
     expect(ERROR_TYPE(err(ErrorCode.NA))).toEqual(number(7))
     expect(ERROR_TYPE(err(ErrorCode.Cycle))).toEqual(err(ErrorCode.NA))
     expect(ERROR_TYPE(num(0))).toEqual(err(ErrorCode.NA))
+
+    for (const predicate of [ISERROR, ISERR, ISLOGICAL, ISNONTEXT, ISEVEN, ISODD, ISNA, ISREF, ERROR_TYPE]) {
+      expect(predicate()).toEqual(err(ErrorCode.Value))
+      expect(predicate(empty(), empty())).toEqual(err(ErrorCode.Value))
+    }
   })
 
   it('supports TRUE FALSE XOR IFS and SWITCH', () => {
@@ -171,7 +183,8 @@ describe('logical/info builtins', () => {
     expect(SWITCH(text('z'), text('a'), num(1), text('b'), num(2))).toEqual(err(ErrorCode.NA))
     expect(SWITCH(err(ErrorCode.Ref), text('a'), num(1))).toEqual(err(ErrorCode.Ref))
     expect(SWITCH(text('b'), err(ErrorCode.Name), num(1), text('b'), num(2))).toEqual(err(ErrorCode.Name))
-    expect(getLogicalBuiltin('ISFORMULA')?.()).toEqual(bool(false))
-    expect(getLogicalBuiltin('ISREF')?.()).toEqual(bool(false))
+    expect(getLogicalBuiltin('ISFORMULA')?.(num(1))).toEqual(bool(false))
+    expect(getLogicalBuiltin('ISFORMULA')?.()).toEqual(err(ErrorCode.Value))
+    expect(getLogicalBuiltin('ISREF')?.()).toEqual(err(ErrorCode.Value))
   })
 })

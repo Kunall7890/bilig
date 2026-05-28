@@ -621,10 +621,7 @@ export function tryApplyArrayInfoBuiltin(
     return base + 1
   }
 
-  if (builtinId == BuiltinId.T && (argc == 0 || argc == 1)) {
-    if (argc == 0) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Empty, 0, rangeIndexStack, valueStack, tagStack, kindStack)
-    }
+  if (builtinId == BuiltinId.T && argc == 1) {
     if (!scalarArgsOnly(base, argc, kindStack)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -634,10 +631,7 @@ export function tryApplyArrayInfoBuiltin(
     return writeStringResult(base, '', rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
-  if (builtinId == BuiltinId.N && (argc == 0 || argc == 1)) {
-    if (argc == 0) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, 0, rangeIndexStack, valueStack, tagStack, kindStack)
-    }
+  if (builtinId == BuiltinId.N && argc == 1) {
     if (!scalarArgsOnly(base, argc, kindStack)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -656,10 +650,7 @@ export function tryApplyArrayInfoBuiltin(
     )
   }
 
-  if (builtinId == BuiltinId.Type && (argc == 0 || argc == 1)) {
-    if (argc == 0) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, 1, rangeIndexStack, valueStack, tagStack, kindStack)
-    }
+  if (builtinId == BuiltinId.Type && argc == 1) {
     const typeCode =
       kindStack[base] == STACK_KIND_ARRAY || kindStack[base] == STACK_KIND_RANGE
         ? 64
@@ -671,6 +662,10 @@ export function tryApplyArrayInfoBuiltin(
               ? 4
               : 16
     return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, <f64>typeCode, rangeIndexStack, valueStack, tagStack, kindStack)
+  }
+
+  if (builtinId == BuiltinId.T || builtinId == BuiltinId.N || builtinId == BuiltinId.Type) {
+    return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.Delta && (argc == 1 || argc == 2)) {

@@ -217,7 +217,7 @@ export function createMathBuiltins({
       }
       return numeric < 0 ? numError() : finiteNumberOrNumError(Math.sqrt(numeric), numberResult, numError)
     },
-    PI: () => numberResult(Math.PI),
+    PI: (...args) => (args.length === 0 ? numberResult(Math.PI) : valueError()),
     SINH: (value) => unaryMath(value, Math.sinh),
     COSH: (value) => unaryMath(value, Math.cosh),
     TANH: (value) => unaryMath(value, Math.tanh),
@@ -314,8 +314,8 @@ export function createMathBuiltins({
       return numberResult(numeric === 0 ? 0 : numeric > 0 ? 1 : -1)
     },
     ROUND: (value, digits) => roundWith(value, digits),
-    FLOOR: (value, significance) => floorWith(value, significance),
-    CEILING: (value, significance) => ceilingWith(value, significance),
+    FLOOR: (...args) => (args.length === 2 ? floorWith(args[0], args[1]) : valueError()),
+    CEILING: (...args) => (args.length === 2 ? ceilingWith(args[0], args[1]) : valueError()),
     'FLOOR.MATH': (value, significance, mode) => {
       const error = firstError([value, significance, mode])
       if (error) {

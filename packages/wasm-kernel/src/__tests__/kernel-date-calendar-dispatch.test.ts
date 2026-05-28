@@ -386,8 +386,7 @@ describe('wasm kernel date/calendar dispatch seams', () => {
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
     kernel.evalBatch(Uint32Array.from(Array.from({ length: packed.offsets.length }, (_, index) => cellIndex(1, index, width))))
 
-    expect(kernel.readTags()[cellIndex(1, 0, width)]).toBe(ValueTag.Boolean)
-    expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBe(1)
+    expectErrorCell(kernel, cellIndex(1, 0, width), ErrorCode.Value)
     expectNumberCell(kernel, cellIndex(1, 1, width), 2024)
     expectNumberCell(kernel, cellIndex(1, 2, width), 2)
     expectNumberCell(kernel, cellIndex(1, 3, width), 29)

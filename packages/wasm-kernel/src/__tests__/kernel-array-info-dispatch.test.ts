@@ -429,4 +429,27 @@ describe('wasm kernel array/info dispatch', () => {
       code: ErrorCode.NA,
     })
   })
+
+  it('returns value errors for malformed zero-argument T, N, and TYPE bytecode', async () => {
+    const kernel = await createKernel()
+    const ownerBase = 8
+    kernel.init(16, 0, 1, 4, 0)
+
+    const packed = packPrograms([
+      [encodeCall(BuiltinId.T, 0), encodeRet()],
+      [encodeCall(BuiltinId.N, 0), encodeRet()],
+      [encodeCall(BuiltinId.Type, 0), encodeRet()],
+    ])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, Uint32Array.from([ownerBase, ownerBase + 1, ownerBase + 2]))
+    const constants = packConstants([[], [], []])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from([ownerBase, ownerBase + 1, ownerBase + 2]))
+
+    for (let index = 0; index < 3; index += 1) {
+      expect(readScalarValue(kernel, ownerBase + index, [])).toEqual({
+        tag: ValueTag.Error,
+        code: ErrorCode.Value,
+      })
+    }
+  })
 })

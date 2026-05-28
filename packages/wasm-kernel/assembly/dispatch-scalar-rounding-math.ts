@@ -86,23 +86,6 @@ export function tryApplyScalarRoundingMathBuiltin(
       : writeScalarMathNumber(base, roundToDigits(numeric, <i32>digits), rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
-  if (builtinId == BuiltinId.Floor && argc == 1) {
-    const numeric = scalarMathNumberLikeText(
-      base,
-      valueStack,
-      tagStack,
-      stringOffsets,
-      stringLengths,
-      stringData,
-      outputStringOffsets,
-      outputStringLengths,
-      outputStringData,
-    )
-    return isNaN(numeric)
-      ? writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-      : writeScalarMathNumber(base, Math.floor(numeric), rangeIndexStack, valueStack, tagStack, kindStack)
-  }
-
   if (builtinId == BuiltinId.Floor && argc == 2) {
     const numeric = scalarMathNumberLikeText(
       base,
@@ -140,23 +123,6 @@ export function tryApplyScalarRoundingMathBuiltin(
     return writeScalarMathNumber(base, floorToMultiple(numeric, significance), rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
-  if (builtinId == BuiltinId.Ceiling && argc == 1) {
-    const numeric = scalarMathNumberLikeText(
-      base,
-      valueStack,
-      tagStack,
-      stringOffsets,
-      stringLengths,
-      stringData,
-      outputStringOffsets,
-      outputStringLengths,
-      outputStringData,
-    )
-    return isNaN(numeric)
-      ? writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-      : writeScalarMathNumber(base, Math.ceil(numeric), rangeIndexStack, valueStack, tagStack, kindStack)
-  }
-
   if (builtinId == BuiltinId.Ceiling && argc == 2) {
     const numeric = scalarMathNumberLikeText(
       base,
@@ -192,6 +158,10 @@ export function tryApplyScalarRoundingMathBuiltin(
       return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeScalarMathNumber(base, ceilingToMultiple(numeric, significance), rangeIndexStack, valueStack, tagStack, kindStack)
+  }
+
+  if (builtinId == BuiltinId.Floor || builtinId == BuiltinId.Ceiling) {
+    return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.FloorMath && (argc == 1 || argc == 2 || argc == 3)) {

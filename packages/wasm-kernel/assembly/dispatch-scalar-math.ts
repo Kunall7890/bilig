@@ -493,6 +493,9 @@ export function tryApplyScalarMathBuiltin(
   if (builtinId == BuiltinId.Pi && argc == 0) {
     return writeScalarMathNumber(base, Math.PI, rangeIndexStack, valueStack, tagStack, kindStack)
   }
+  if (builtinId == BuiltinId.Pi) {
+    return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+  }
 
   if (
     (builtinId == BuiltinId.Sinh ||

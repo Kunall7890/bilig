@@ -774,8 +774,8 @@ const scalarBuiltins: Record<string, Builtin> = {
   ...radixBuiltins,
   ...complexBuiltins,
   T: (...args) => {
-    if (args.length === 0) {
-      return { tag: ValueTag.Empty }
+    if (args.length !== 1) {
+      return valueError()
     }
     const value = args[0]!
     if (value.tag === ValueTag.Error) {
@@ -789,13 +789,21 @@ const scalarBuiltins: Record<string, Builtin> = {
     }
     return { tag: ValueTag.Boolean, value: false }
   },
-  N: (value = { tag: ValueTag.Empty }) => {
+  N: (...args) => {
+    if (args.length !== 1) {
+      return valueError()
+    }
+    const value = args[0]!
     if (value.tag === ValueTag.Error) {
       return value
     }
     return numberResult(toNumber(value) ?? 0)
   },
-  TYPE: (value = { tag: ValueTag.Empty }) => {
+  TYPE: (...args) => {
+    if (args.length !== 1) {
+      return valueError()
+    }
+    const value = args[0]!
     if (value.tag === ValueTag.Error) {
       return numberResult(16)
     }

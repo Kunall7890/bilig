@@ -18,6 +18,38 @@ describe('formula builtins and JS evaluator', () => {
     }
   })
 
+  it('returns value errors for documented information and rounding arity violations', () => {
+    const context = {
+      sheetName: 'Sheet1',
+      resolveCell: (): CellValue => ({ tag: ValueTag.Empty }),
+      resolveRange: (): CellValue[] => [],
+    }
+    const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
+
+    for (const formula of [
+      'ISBLANK()',
+      'ISNUMBER()',
+      'ISTEXT()',
+      'ISERROR()',
+      'ISERR()',
+      'ISLOGICAL()',
+      'ISNONTEXT()',
+      'ISEVEN()',
+      'ISODD()',
+      'ISNA()',
+      'ISREF()',
+      'ERROR.TYPE()',
+      'T()',
+      'N()',
+      'TYPE()',
+      'PI(1)',
+      'FLOOR(2.5)',
+      'CEILING(2.5)',
+    ]) {
+      expect(evaluateAst(parseFormula(formula), context)).toEqual(valueError)
+    }
+  })
+
   it('covers scalar builtins and builtin id lookup', () => {
     const SUM = getBuiltin('sum')!
     const AVG = getBuiltin('AVG')!

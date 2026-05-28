@@ -13,6 +13,10 @@ function errorValue(code: ErrorCode): CellValue {
   return { tag: ValueTag.Error, code }
 }
 
+function requireOneArg(args: CellValue[], evaluate: (value: CellValue) => CellValue): CellValue {
+  return args.length === 1 ? evaluate(args[0]!) : errorValue(ErrorCode.Value)
+}
+
 function booleanResult(value: boolean): CellValue {
   return { tag: ValueTag.Boolean, value }
 }
@@ -234,42 +238,46 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
 
     return hasDefault ? args[args.length - 1]! : errorValue(ErrorCode.NA)
   },
-  ISBLANK: (value = emptyValue()) => booleanResult(value.tag === ValueTag.Empty),
-  ISNUMBER: (value = emptyValue()) => booleanResult(value.tag === ValueTag.Number),
-  ISTEXT: (value = emptyValue()) => booleanResult(value.tag === ValueTag.String),
-  ISERROR: (value = emptyValue()) => booleanResult(value.tag === ValueTag.Error),
-  ISERR: (value = emptyValue()) => {
-    if (value.tag !== ValueTag.Error) {
-      return booleanResult(false)
-    }
-    return booleanResult(value.code !== ErrorCode.NA)
-  },
-  ISFORMULA: () => booleanResult(false),
-  ISLOGICAL: (value = emptyValue()) => booleanResult(value.tag === ValueTag.Boolean),
-  ISNONTEXT: (value = emptyValue()) => booleanResult(value.tag !== ValueTag.String),
-  ISEVEN: (value = emptyValue()) => {
-    const numberValue = coerceNumberLike(value)
-    if (numberValue === undefined) {
-      return errorValue(ErrorCode.Value)
-    }
-    return booleanResult(Math.trunc(numberValue) % 2 === 0)
-  },
-  ISODD: (value = emptyValue()) => {
-    const numberValue = coerceNumberLike(value)
-    if (numberValue === undefined) {
-      return errorValue(ErrorCode.Value)
-    }
-    return booleanResult(Math.trunc(numberValue) % 2 !== 0)
-  },
-  ISNA: (value = emptyValue()) => booleanResult(value.tag === ValueTag.Error && value.code === ErrorCode.NA),
-  ISREF: (_value = emptyValue()) => booleanResult(false),
-  'ERROR.TYPE': (value = emptyValue()) => {
-    if (value.tag !== ValueTag.Error) {
-      return errorValue(ErrorCode.NA)
-    }
-    const code = errorTypeCode(value.code)
-    return code === undefined ? errorValue(ErrorCode.NA) : { tag: ValueTag.Number, value: code }
-  },
+  ISBLANK: (...args) => requireOneArg(args, (value) => booleanResult(value.tag === ValueTag.Empty)),
+  ISNUMBER: (...args) => requireOneArg(args, (value) => booleanResult(value.tag === ValueTag.Number)),
+  ISTEXT: (...args) => requireOneArg(args, (value) => booleanResult(value.tag === ValueTag.String)),
+  ISERROR: (...args) => requireOneArg(args, (value) => booleanResult(value.tag === ValueTag.Error)),
+  ISERR: (...args) =>
+    requireOneArg(args, (value) => {
+      if (value.tag !== ValueTag.Error) {
+        return booleanResult(false)
+      }
+      return booleanResult(value.code !== ErrorCode.NA)
+    }),
+  ISFORMULA: (...args) => requireOneArg(args, () => booleanResult(false)),
+  ISLOGICAL: (...args) => requireOneArg(args, (value) => booleanResult(value.tag === ValueTag.Boolean)),
+  ISNONTEXT: (...args) => requireOneArg(args, (value) => booleanResult(value.tag !== ValueTag.String)),
+  ISEVEN: (...args) =>
+    requireOneArg(args, (value) => {
+      const numberValue = coerceNumberLike(value)
+      if (numberValue === undefined) {
+        return errorValue(ErrorCode.Value)
+      }
+      return booleanResult(Math.trunc(numberValue) % 2 === 0)
+    }),
+  ISODD: (...args) =>
+    requireOneArg(args, (value) => {
+      const numberValue = coerceNumberLike(value)
+      if (numberValue === undefined) {
+        return errorValue(ErrorCode.Value)
+      }
+      return booleanResult(Math.trunc(numberValue) % 2 !== 0)
+    }),
+  ISNA: (...args) => requireOneArg(args, (value) => booleanResult(value.tag === ValueTag.Error && value.code === ErrorCode.NA)),
+  ISREF: (...args) => requireOneArg(args, () => booleanResult(false)),
+  'ERROR.TYPE': (...args) =>
+    requireOneArg(args, (value) => {
+      if (value.tag !== ValueTag.Error) {
+        return errorValue(ErrorCode.NA)
+      }
+      const code = errorTypeCode(value.code)
+      return code === undefined ? errorValue(ErrorCode.NA) : { tag: ValueTag.Number, value: code }
+    }),
   ...logicalPlaceholderBuiltins,
 }
 

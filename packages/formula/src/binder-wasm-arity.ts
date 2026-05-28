@@ -25,6 +25,7 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
     case 'TODAY':
     case 'NOW':
     case 'RAND':
+    case 'PI':
       return argc === 0
     case 'NA':
       return argc === 0
@@ -295,17 +296,28 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
       return argc === 2 || argc === 3
     case 'REPLACEB':
       return argc === 4
+    case 'ISERR':
+    case 'ISERROR':
+    case 'ISFORMULA':
+    case 'ISLOGICAL':
+    case 'ISNA':
+    case 'ISNONTEXT':
+    case 'ISEVEN':
+    case 'ISODD':
+    case 'ISREF':
+    case 'ERROR.TYPE':
     case 'ISBLANK':
     case 'ISNUMBER':
     case 'ISTEXT':
-      return argc === 0 || argc === 1
+      return argc === 1
     case 'ROUND':
     case 'ROUNDUP':
     case 'ROUNDDOWN':
-    case 'FLOOR':
-    case 'CEILING':
     case 'LOG':
       return argc === 1 || argc === 2
+    case 'FLOOR':
+    case 'CEILING':
+      return argc === 2
     case 'T':
     case 'N':
     case 'TYPE':
@@ -313,7 +325,7 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
     case 'PHI':
     case 'NORMSDIST':
     case 'NORMSINV':
-      return argc === 1 || (argc === 0 && (callee === 'T' || callee === 'N' || callee === 'TYPE'))
+      return argc === 1
     case 'DELTA':
     case 'GESTEP':
     case 'LOGNORMDIST':
