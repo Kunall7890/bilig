@@ -852,6 +852,7 @@ jobs:
           pnpm workpaper:bench:ironcalc-rust:generate
           pnpm headless:performance:generate
           bun scripts/sync-public-evidence.ts
+          pnpm docs:benchmark-card:generate
           bun scripts/sync-agent-discovery-docs.ts
 
           ensure_workflow_sha_is_current "before release metadata diffing"

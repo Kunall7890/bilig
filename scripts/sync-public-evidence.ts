@@ -299,6 +299,42 @@ function requireProviderBenchmarkTableRow(content: string, comparison: PublicCom
   }
 }
 
+function syncProviderBenchmarkTableRow(content: string, comparison: PublicComparisonEvidence, context: string): string {
+  const pattern = new RegExp(`^\\|\\s*${escapeRegExp(comparison.engineName)}\\s*\\|[^\\n]*$`, 'mu')
+  if (!pattern.test(content)) {
+    throw new Error(`${context} is missing provider benchmark row for ${comparison.engineName}`)
+  }
+  return content.replace(pattern, formatProviderBenchmarkTableRow(comparison))
+}
+
+function formatProviderBenchmarkTableRow(comparison: PublicComparisonEvidence): string {
+  const comparableCount = comparison.comparableWorkloadCount.toString()
+  const unsupported = comparison.unsupportedWorkloadCount > 0 ? `\`${comparison.unsupportedWorkloadCount.toString()}\` unsupported` : '`0`'
+  return [
+    '|',
+    `${comparison.engineName.padEnd(13)} |`,
+    `${comparison.coverageTier.padEnd(21)} |`,
+    `${formatWinCount(comparison.meanAndP95WinCount, comparableCount).padStart(12)} |`,
+    `${formatWinCount(comparison.meanWinCount, comparableCount).padStart(9)} |`,
+    `${formatWinCount(comparison.p95WinCount, comparableCount).padStart(9)} |`,
+    `${formatRatioCell(comparison.directionalMeanRatioGeomean).padStart(17)} |`,
+    `${formatRatioCell(comparison.directionalP95RatioGeomean).padStart(16)} |`,
+    `${unsupported.padStart(16)} |`,
+  ].join(' ')
+}
+
+function formatWinCount(wins: number, comparableCount: string): string {
+  return `\`${wins.toString()}/${comparableCount}\``
+}
+
+function formatRatioCell(value: number): string {
+  return `\`${ratio4(value)}\``
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+}
+
 function requireNotIncludes(haystack: string, needle: string, context: string): void {
   if (haystack.includes(needle)) {
     throw new Error(`${context} must not include stale public evidence token ${needle}`)
@@ -747,6 +783,19 @@ async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
   requireIncludes(svgCard, `${overall.worstP95RatioWorkload} p95: ${p95Ratio}`, 'docs/assets/workpaper-benchmark-card.svg')
 }
 
+async function syncPublicSurfaceMarkdown(evidence: PublicEvidence): Promise<void> {
+  await Promise.all(
+    (['docs/what-workpaper-benchmark-proves.md', 'docs/headless-workpaper-benchmark-evidence.md'] as const).map(async (relativePath) => {
+      const absolutePath = join(repoRoot, relativePath)
+      let content = await readFile(absolutePath, 'utf8')
+      for (const comparison of evidence.headlessPerformanceLeadership.comparisons) {
+        content = syncProviderBenchmarkTableRow(content, comparison, relativePath)
+      }
+      await writeFile(absolutePath, content)
+    }),
+  )
+}
+
 const evidence = await buildEvidence()
 const rendered = formatJsonForRepo(`${JSON.stringify(evidence, null, 2)}\n`)
 
@@ -770,6 +819,7 @@ if (checkMode) {
     ),
   )
 } else {
+  await syncPublicSurfaceMarkdown(evidence)
   await writeFile(outputPath, rendered)
   console.log(
     JSON.stringify(

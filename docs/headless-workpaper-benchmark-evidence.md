@@ -17,11 +17,11 @@ Comparison engines: HyperFormula, TrueCalc, Univer, xlsx-calc, IronCalc Rust.
 
 | Provider      | Coverage tier         | Mean+p95 wins | Mean wins |  p95 wins | Mean geomean ratio | p95 geomean ratio |      Unsupported |
 | ------------- | --------------------- | ------------: | --------: | --------: | -----------------: | ----------------: | ---------------: |
-| HyperFormula  | workbook-wide         |     `100/100` | `100/100` | `100/100` |          `0.2586x` |         `0.2807x` |              `0` |
-| Univer        | workbook-wide         |     `100/100` | `100/100` | `100/100` |          `0.0028x` |         `0.0034x` |              `0` |
-| IronCalc Rust | workbook-wide-limited |       `89/90` |   `90/90` |   `89/90` |          `0.1206x` |         `0.1691x` | `10` unsupported |
-| xlsx-calc     | workbook-wide-limited |       `16/16` |   `16/16` |   `16/16` |          `0.0839x` |         `0.0786x` |              `0` |
-| TrueCalc      | scalar-formula        |         `7/7` |     `7/7` |     `7/7` |          `0.1837x` |         `0.2359x` |              `0` |
+| HyperFormula  | workbook-wide         |    `100/100` | `100/100` | `100/100` |         `0.2586x` |        `0.2807x` |              `0` |
+| Univer        | workbook-wide         |    `100/100` | `100/100` | `100/100` |         `0.0028x` |        `0.0034x` |              `0` |
+| IronCalc Rust | workbook-wide-limited |      `74/90` |   `90/90` |   `74/90` |         `0.1751x` |        `0.2673x` | `10` unsupported |
+| xlsx-calc     | workbook-wide-limited |      `16/16` |   `16/16` |   `16/16` |         `0.0839x` |        `0.0786x` |              `0` |
+| TrueCalc      | scalar-formula        |        `7/7` |     `7/7` |     `7/7` |         `0.1837x` |        `0.2359x` |              `0` |
 
 Coverage tiers matter:
 
