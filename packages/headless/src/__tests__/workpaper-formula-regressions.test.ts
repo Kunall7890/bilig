@@ -636,6 +636,24 @@ describe('Workpaper formula regressions', () => {
     expectNumber(cellValue(workbook, 'Dates', 8, 1), 46_029)
   })
 
+  it('recalculates public-corpus date and time text arithmetic', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        SourceTable: [
+          ['start', 'end', 'years'],
+          ['22/07/2008', '31/12/2019', '=(B2-A2)/365'],
+          [41_153, '30/09/2021', '=(B3-A3)/365'],
+          ['00:00:00', '00:00:00', '=(B4-A4)/365'],
+        ],
+      },
+      { maxRows: 20, maxColumns: 10, useColumnIndex: true },
+    )
+
+    expectNumberClose(cellValue(workbook, 'SourceTable', 1, 2), 11.449315068493151)
+    expectNumberClose(cellValue(workbook, 'SourceTable', 2, 2), 9.084931506849315)
+    expectNumber(cellValue(workbook, 'SourceTable', 3, 2), 0)
+  })
+
   it('throws a public timeout error when initial evaluation exceeds the configured budget', () => {
     const config = {
       maxRows: 10,

@@ -1,5 +1,5 @@
 import { ValueTag, formatErrorCode, formatGeneralNumberValue, type CellValue } from '@bilig/protocol'
-import { parseArithmeticNumericText } from '@bilig/formula'
+import { parseArithmeticScalarText, type ExcelDateSystem } from '@bilig/formula'
 
 const ROUND_HALF_TOLERANCE = 1e-12
 
@@ -53,11 +53,11 @@ export function inlineNumber(value: CellValue): number | undefined {
   }
 }
 
-export function inlineArithmeticNumber(value: CellValue): number | undefined {
+export function inlineArithmeticNumber(value: CellValue, dateSystem: ExcelDateSystem = '1900'): number | undefined {
   if (value.tag !== ValueTag.String) {
     return inlineNumber(value)
   }
-  return parseArithmeticNumericText(value.value)
+  return parseArithmeticScalarText(value.value, dateSystem)
 }
 
 export function inlineTruthy(value: CellValue): boolean {

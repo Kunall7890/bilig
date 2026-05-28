@@ -787,7 +787,7 @@ export function createEngineFormulaEvaluationService(args: {
     }
     const directResult =
       tryEvaluateDirectVectorLookup(directVectorLookupContext, formula) ??
-      tryEvaluateDirectScalar(formula, readCellValueByIndex) ??
+      tryEvaluateDirectScalar(formula, readCellValueByIndex, workbookDateSystem()) ??
       tryEvaluateDirectAggregate({
         formula,
         workbook: args.state.workbook,
@@ -812,7 +812,7 @@ export function createEngineFormulaEvaluationService(args: {
 
     const directResult =
       tryEvaluateDirectVectorLookup(directVectorLookupContext, formula) ??
-      tryEvaluateDirectScalar(formula, readCellValueByIndex) ??
+      tryEvaluateDirectScalar(formula, readCellValueByIndex, workbookDateSystem()) ??
       tryEvaluateDirectAggregate({
         formula,
         workbook: args.state.workbook,

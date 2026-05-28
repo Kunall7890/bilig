@@ -85,6 +85,36 @@ describe('formula builtins and JS evaluator', () => {
     expect(evaluateAst(parseFormula('SUM(A2)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
   })
 
+  it('coerces public-corpus date and time text for arithmetic operators', () => {
+    const valuesByAddress: Record<string, CellValue> = {
+      A1: { tag: ValueTag.String, value: '22/07/2008', stringId: 1 },
+      A2: { tag: ValueTag.String, value: '31/12/2019', stringId: 2 },
+      B1: { tag: ValueTag.Number, value: 41_153 },
+      B2: { tag: ValueTag.String, value: '30/09/2021', stringId: 3 },
+      C1: { tag: ValueTag.String, value: '00:00:00', stringId: 4 },
+      C2: { tag: ValueTag.String, value: '00:00:00', stringId: 5 },
+    }
+    const context = {
+      sheetName: 'Sheet1',
+      dateSystem: '1900' as const,
+      resolveCell: (_sheetName: string, address: string): CellValue => valuesByAddress[address] ?? { tag: ValueTag.Empty },
+      resolveRange: (): CellValue[] => [],
+    }
+
+    expect(evaluateAst(parseFormula('(A2-A1)/365'), context)).toEqual({
+      tag: ValueTag.Number,
+      value: 11.449315068493151,
+    })
+    expect(evaluateAst(parseFormula('(B2-B1)/365'), context)).toEqual({
+      tag: ValueTag.Number,
+      value: 9.084931506849315,
+    })
+    expect(evaluateAst(parseFormula('(C2-C1)/365'), context)).toEqual({
+      tag: ValueTag.Number,
+      value: 0,
+    })
+  })
+
   it('coerces direct numeric text for eligible aggregates without coercing referenced text cells', () => {
     const context = {
       sheetName: 'Sheet1',

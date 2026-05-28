@@ -6,10 +6,12 @@ import {
   isArrayValue,
   lowerToPlan,
   normalizeBuiltinLookupName,
+  parseArithmeticScalarText,
   parseFormula,
   scalarFromEvaluationResult,
   type EvaluationContext,
   type EvaluationResult,
+  type ExcelDateSystem,
   type FormulaNode,
 } from '@bilig/formula'
 import { ErrorCode, ValueTag, type CellValue, type LiteralInput } from '@bilig/protocol'
@@ -285,7 +287,7 @@ function compileDirectScalarEvaluator(node: FormulaNode, dateSystem: '1900' | '1
       if (argument === undefined) {
         return undefined
       }
-      return (runtime) => evaluateDirectUnary(node.operator, argument(runtime))
+      return (runtime) => evaluateDirectUnary(node.operator, argument(runtime), dateSystem ?? '1900')
     }
     case 'BinaryExpr': {
       if (node.operator === ':') {
@@ -296,7 +298,7 @@ function compileDirectScalarEvaluator(node: FormulaNode, dateSystem: '1900' | '1
       if (left === undefined || right === undefined) {
         return undefined
       }
-      return (runtime) => evaluateDirectBinary(node.operator, left(runtime), right(runtime))
+      return (runtime) => evaluateDirectBinary(node.operator, left(runtime), right(runtime), dateSystem ?? '1900')
     }
     case 'CallExpr': {
       const callee = normalizeBuiltinLookupName(node.callee)
@@ -346,22 +348,22 @@ function compileDirectScalarEvaluator(node: FormulaNode, dateSystem: '1900' | '1
   }
 }
 
-function evaluateDirectUnary(operator: string, value: CellValue): CellValue {
+function evaluateDirectUnary(operator: string, value: CellValue, dateSystem: ExcelDateSystem): CellValue {
   if (value.tag === ValueTag.Error) {
     return value
   }
   if (operator === '+') {
-    const numeric = directNumber(value)
+    const numeric = directNumber(value, dateSystem)
     return typeof numeric === 'number' ? { tag: ValueTag.Number, value: numeric } : numeric
   }
   if (operator === '-') {
-    const numeric = directNumber(value)
+    const numeric = directNumber(value, dateSystem)
     return typeof numeric === 'number' ? { tag: ValueTag.Number, value: -numeric } : numeric
   }
   return errorValue(ErrorCode.Value)
 }
 
-function evaluateDirectBinary(operator: string, left: CellValue, right: CellValue): CellValue {
+function evaluateDirectBinary(operator: string, left: CellValue, right: CellValue, dateSystem: ExcelDateSystem): CellValue {
   if (left.tag === ValueTag.Error) {
     return left
   }
@@ -391,11 +393,11 @@ function evaluateDirectBinary(operator: string, left: CellValue, right: CellValu
     return { tag: ValueTag.Boolean, value }
   }
 
-  const leftNumber = directNumber(left)
+  const leftNumber = directNumber(left, dateSystem)
   if (typeof leftNumber !== 'number') {
     return leftNumber
   }
-  const rightNumber = directNumber(right)
+  const rightNumber = directNumber(right, dateSystem)
   if (typeof rightNumber !== 'number') {
     return rightNumber
   }
@@ -415,7 +417,7 @@ function evaluateDirectBinary(operator: string, left: CellValue, right: CellValu
   }
 }
 
-function directNumber(value: CellValue): number | CellValue {
+function directNumber(value: CellValue, dateSystem: ExcelDateSystem = '1900'): number | CellValue {
   switch (value.tag) {
     case ValueTag.Number:
       return value.value
@@ -424,12 +426,8 @@ function directNumber(value: CellValue): number | CellValue {
     case ValueTag.Empty:
       return 0
     case ValueTag.String: {
-      const trimmed = value.value.trim()
-      if (trimmed.length === 0) {
-        return 0
-      }
-      const numeric = Number(trimmed)
-      return Number.isFinite(numeric) ? numeric : errorValue(ErrorCode.Value)
+      const numeric = parseArithmeticScalarText(value.value, dateSystem)
+      return numeric === undefined ? errorValue(ErrorCode.Value) : numeric
     }
     case ValueTag.Error:
       return value

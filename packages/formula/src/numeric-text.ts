@@ -1,3 +1,6 @@
+import type { ExcelDateSystem } from './builtins/excel-date.js'
+import { parseDateValueFromText, parseElapsedTimeValueText } from './date-time-text.js'
+
 const simpleNumericTextPattern = /^[+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?$/
 
 function trimAsciiWhitespace(value: string): string {
@@ -41,4 +44,20 @@ export function parseNumericText(value: string): number | undefined {
 
 export function parseArithmeticNumericText(value: string): number | undefined {
   return value === '' ? 0 : parseNumericText(value)
+}
+
+export function parseArithmeticScalarText(value: string, dateSystem: ExcelDateSystem = '1900'): number | undefined {
+  if (value === '') {
+    return 0
+  }
+  const numeric = parseNumericText(value)
+  if (numeric !== undefined) {
+    return numeric
+  }
+  const date = parseDateValueFromText(value, dateSystem)
+  const time = parseElapsedTimeValueText(value)
+  if (date !== undefined) {
+    return date + (time ?? 0)
+  }
+  return time
 }

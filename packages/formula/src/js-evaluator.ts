@@ -49,7 +49,7 @@ import {
 } from './js-evaluator-runtime-helpers.js'
 import { coerceLogicalValue } from './logical-coercion.js'
 import { evaluateWorkbookSpecialCall } from './js-evaluator-workbook-special-calls.js'
-import { parseNumericText } from './numeric-text.js'
+import { parseArithmeticNumericText, parseNumericText } from './numeric-text.js'
 import type { EvaluationContext, JsPlanInstruction, ReferenceOperand, StackValue } from './js-evaluator-types.js'
 import { lowerToPlan } from './js-plan-lowering.js'
 import { isArrayValue, scalarFromEvaluationResult, type EvaluationResult } from './runtime-values.js'
@@ -214,7 +214,7 @@ function coerceDirectNumericTextAggregateArgument(callee: string, value: CellVal
     return directNumericText === undefined ? value : numberValue(directNumericText)
   }
   if (callee === 'SUM' || callee === 'AVERAGE' || callee === 'AVG') {
-    const numeric = toArithmeticNumber(value)
+    const numeric = parseArithmeticNumericText(value.value)
     return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
   }
   if (callee === 'PRODUCT' || callee === 'MIN' || callee === 'MAX' || callee === 'SUMSQ') {
@@ -407,12 +407,16 @@ function evaluateArrayLiftedScalarBuiltin(
   return shape.rows === 1 && shape.cols === 1 ? stackScalar(values[0] ?? emptyValue()) : makeArrayStack(shape.rows, shape.cols, values)
 }
 
-function evaluateUnary(operator: Extract<JsPlanInstruction, { opcode: 'unary' }>['operator'], value: StackValue): StackValue {
+function evaluateUnary(
+  operator: Extract<JsPlanInstruction, { opcode: 'unary' }>['operator'],
+  value: StackValue,
+  dateSystem: EvaluationContext['dateSystem'],
+): StackValue {
   const coerce = (cellValue: CellValue): CellValue => {
     if (cellValue.tag === ValueTag.Error) {
       return cellValue
     }
-    const numeric = toArithmeticNumber(cellValue)
+    const numeric = toArithmeticNumber(cellValue, dateSystem ?? '1900')
     return numeric === undefined ? error(ErrorCode.Value) : numberValue(operator === '-' ? -numeric : numeric)
   }
 
@@ -616,7 +620,7 @@ function executePlan(
         })
         break
       case 'unary': {
-        stack.push(evaluateUnary(instruction.operator, popArgument(stack)))
+        stack.push(evaluateUnary(instruction.operator, popArgument(stack), context.dateSystem))
         break
       }
       case 'binary': {
@@ -626,7 +630,7 @@ function executePlan(
           stack.push(evaluateDynamicRange(left, right, context))
           break
         }
-        const result = evaluateBinary(instruction.operator, left, right)
+        const result = evaluateBinary(instruction.operator, left, right, context.dateSystem ?? '1900')
         stack.push(isArrayValue(result) ? result : { kind: 'scalar', value: result })
         break
       }

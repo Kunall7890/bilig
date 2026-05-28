@@ -1,5 +1,5 @@
 import { ErrorCode, ValueTag } from '@bilig/protocol'
-import { parseArithmeticNumericText } from '@bilig/formula'
+import { parseArithmeticScalarText } from '@bilig/formula'
 import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
 import { CellFlags } from '../../cell-store.js'
 import type { EngineRuntimeState, RuntimeDirectScalarDescriptor, RuntimeDirectScalarOperand } from '../runtime-state.js'
@@ -7,15 +7,19 @@ import { directScalarCellNumber, directScalarValueNumber } from './direct-scalar
 import type { DirectScalarCurrentOperand, PendingNumericCellValues } from './direct-formula-index-collection.js'
 
 export function createOperationDirectFormulaValues(args: { readonly state: Pick<EngineRuntimeState, 'workbook' | 'strings'> }) {
+  const workbookDateSystem = () => args.state.workbook.getCalculationSettings().dateSystem ?? '1900'
   const readDirectScalarCellNumber = (cellIndex: number): number | undefined =>
-    directScalarValueNumber(args.state.workbook.cellStore.getValue(cellIndex, (id) => args.state.strings.get(id)))
+    directScalarValueNumber(
+      args.state.workbook.cellStore.getValue(cellIndex, (id) => args.state.strings.get(id)),
+      workbookDateSystem(),
+    )
 
   const directScalarCellNumericValue = (cellIndex: number | undefined): number | undefined =>
     directScalarCellNumber(args.state.workbook.cellStore, cellIndex)
 
   const readCellTextNumber = (cellIndex: number): number | undefined => {
     const stringId = args.state.workbook.cellStore.stringIds[cellIndex] ?? 0
-    return parseArithmeticNumericText(args.state.strings.get(stringId))
+    return parseArithmeticScalarText(args.state.strings.get(stringId), workbookDateSystem())
   }
 
   const directScalarCurrentResultMatchesCell = (cellIndex: number, result: DirectScalarCurrentOperand): boolean => {

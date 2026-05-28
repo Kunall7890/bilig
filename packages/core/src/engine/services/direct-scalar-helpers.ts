@@ -1,5 +1,5 @@
 import { ValueTag, type CellValue } from '@bilig/protocol'
-import { parseArithmeticNumericText } from '@bilig/formula'
+import { parseArithmeticScalarText, type ExcelDateSystem } from '@bilig/formula'
 import type { RuntimeDirectScalarDescriptor, RuntimeDirectScalarOperand } from '../runtime-state.js'
 
 export const ROW_PAIR_LEFT_PLUS_RIGHT = 1
@@ -31,7 +31,7 @@ export function directScalarLiteralNumericValue(value: unknown): number | undefi
 
 export type DirectScalarNumberReader = (cellIndex: number) => number | undefined
 
-export function directScalarValueNumber(value: CellValue): number | undefined {
+export function directScalarValueNumber(value: CellValue, dateSystem: ExcelDateSystem = '1900'): number | undefined {
   switch (value.tag) {
     case ValueTag.Number:
       return Object.is(value.value, -0) ? 0 : value.value
@@ -42,7 +42,7 @@ export function directScalarValueNumber(value: CellValue): number | undefined {
     case ValueTag.Error:
       return undefined
     case ValueTag.String:
-      return parseArithmeticNumericText(value.value)
+      return parseArithmeticScalarText(value.value, dateSystem)
   }
 }
 

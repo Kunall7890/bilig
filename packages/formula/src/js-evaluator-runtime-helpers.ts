@@ -1,11 +1,12 @@
 import { ErrorCode, ValueTag, formatErrorCode, formatGeneralNumberValue, type CellValue } from '@bilig/protocol'
+import type { ExcelDateSystem } from './builtins/excel-date.js'
 import type { RangeBuiltinArgument } from './builtins/lookup.js'
 import { normalizeExactLookupNumber } from './builtins/lookup-core-helpers.js'
 import type { MatrixValue } from './group-pivot-evaluator.js'
 import { excelExponentiation } from './excel-power.js'
 import { emptyValue, error, numberValue } from './js-evaluator-cell-values.js'
 import type { JsPlanInstruction, StackValue } from './js-evaluator-types.js'
-import { parseArithmeticNumericText } from './numeric-text.js'
+import { parseArithmeticScalarText } from './numeric-text.js'
 import type { EvaluationResult, RangeLikeValue } from './runtime-values.js'
 
 type BinaryOperator = Extract<JsPlanInstruction, { opcode: 'binary' }>['operator']
@@ -26,9 +27,9 @@ export function toNumber(value: CellValue): number | undefined {
   }
 }
 
-export function toArithmeticNumber(value: CellValue): number | undefined {
+export function toArithmeticNumber(value: CellValue, dateSystem: ExcelDateSystem = '1900'): number | undefined {
   if (value.tag === ValueTag.String) {
-    return parseArithmeticNumericText(value.value)
+    return parseArithmeticScalarText(value.value, dateSystem)
   }
   return toNumber(value)
 }
@@ -232,7 +233,12 @@ export function toRangeLike(value: StackValue): RangeLikeValue {
   return { kind: 'range', values: [value.value], rows: 1, cols: 1, refKind: 'cells' }
 }
 
-function scalarBinary(operator: BinaryOperator, leftValue: CellValue, rightValue: CellValue): CellValue {
+function scalarBinary(
+  operator: BinaryOperator,
+  leftValue: CellValue,
+  rightValue: CellValue,
+  dateSystem: ExcelDateSystem = '1900',
+): CellValue {
   if (leftValue.tag === ValueTag.Error) {
     return leftValue
   }
@@ -249,14 +255,14 @@ function scalarBinary(operator: BinaryOperator, leftValue: CellValue, rightValue
   }
 
   if (['+', '-', '*', '/', '^'].includes(operator)) {
-    const left = toArithmeticNumber(leftValue)
+    const left = toArithmeticNumber(leftValue, dateSystem)
     if (left === undefined) {
       return error(ErrorCode.Value)
     }
     if (rightValue.tag === ValueTag.Error) {
       return rightValue
     }
-    const right = toArithmeticNumber(rightValue)
+    const right = toArithmeticNumber(rightValue, dateSystem)
     if (right === undefined) {
       return error(ErrorCode.Value)
     }
@@ -295,13 +301,18 @@ function scalarBinary(operator: BinaryOperator, leftValue: CellValue, rightValue
   }
 }
 
-export function evaluateBinary(operator: BinaryOperator, leftValue: StackValue, rightValue: StackValue): EvaluationResult {
+export function evaluateBinary(
+  operator: BinaryOperator,
+  leftValue: StackValue,
+  rightValue: StackValue,
+  dateSystem: ExcelDateSystem = '1900',
+): EvaluationResult {
   if (operator === ':') {
     return error(ErrorCode.Value)
   }
 
   if (leftValue.kind === 'scalar' && rightValue.kind === 'scalar') {
-    return scalarBinary(operator, leftValue.value, rightValue.value)
+    return scalarBinary(operator, leftValue.value, rightValue.value, dateSystem)
   }
 
   const leftRange = toRangeLike(leftValue)
@@ -331,7 +342,9 @@ export function evaluateBinary(operator: BinaryOperator, leftValue: StackValue, 
     for (let col = 0; col < cols; col += 1) {
       const leftIndex = Math.min(row, leftRange.rows - 1) * leftRange.cols + Math.min(col, leftRange.cols - 1)
       const rightIndex = Math.min(row, rightRange.rows - 1) * rightRange.cols + Math.min(col, rightRange.cols - 1)
-      values.push(scalarBinary(operator, leftRange.values[leftIndex] ?? emptyValue(), rightRange.values[rightIndex] ?? emptyValue()))
+      values.push(
+        scalarBinary(operator, leftRange.values[leftIndex] ?? emptyValue(), rightRange.values[rightIndex] ?? emptyValue(), dateSystem),
+      )
     }
   }
   return rows === 1 && cols === 1 ? (values[0] ?? emptyValue()) : { kind: 'array', values, rows, cols }

@@ -5,8 +5,9 @@ import {
   getDateSystemBuiltin,
   isArrayValue,
   normalizeBuiltinLookupName,
-  parseArithmeticNumericText,
+  parseArithmeticScalarText,
   type CompiledFormula,
+  type ExcelDateSystem,
   type JsPlanInstruction,
   type ParsedDependencyReference,
 } from '@bilig/formula'
@@ -69,6 +70,7 @@ export function tryEvaluateFormulaLeafInlineScalar(args: {
     return undefined
   }
 
+  const dateSystem = args.state.workbook.getCalculationSettings().dateSystem ?? '1900'
   const stack: CellValue[] = []
   let pc = 0
   while (pc < plan.length) {
@@ -106,7 +108,7 @@ export function tryEvaluateFormulaLeafInlineScalar(args: {
       }
       case 'unary': {
         const value = stack.pop()
-        if (!value || !pushInlineValue(stack, evaluateInlineUnary(instruction.operator, value))) {
+        if (!value || !pushInlineValue(stack, evaluateInlineUnary(instruction.operator, value, dateSystem))) {
           return undefined
         }
         break
@@ -114,7 +116,7 @@ export function tryEvaluateFormulaLeafInlineScalar(args: {
       case 'binary': {
         const right = stack.pop()
         const left = stack.pop()
-        if (!left || !right || !pushInlineValue(stack, evaluateInlineBinary(instruction.operator, left, right))) {
+        if (!left || !right || !pushInlineValue(stack, evaluateInlineBinary(instruction.operator, left, right, dateSystem))) {
           return undefined
         }
         break
@@ -251,8 +253,9 @@ function tryEvaluateFastArithmeticPlan(
   if (!isFastArithmeticPlan(plan)) {
     return undefined
   }
-  const left = inlineArithmeticNumberFromCell(state, cellIndices[0])
-  const rightLeft = inlineArithmeticNumberFromCell(state, cellIndices[1])
+  const dateSystem = state.workbook.getCalculationSettings().dateSystem ?? '1900'
+  const left = inlineArithmeticNumberFromCell(state, cellIndices[0], dateSystem)
+  const rightLeft = inlineArithmeticNumberFromCell(state, cellIndices[1], dateSystem)
   if (left === undefined || rightLeft === undefined) {
     return undefined
   }
@@ -518,7 +521,11 @@ function inlineNumberFromCell(state: InlineScalarState, cellIndex: number | unde
   }
 }
 
-function inlineArithmeticNumberFromCell(state: InlineScalarState, cellIndex: number | undefined): number | undefined {
+function inlineArithmeticNumberFromCell(
+  state: InlineScalarState,
+  cellIndex: number | undefined,
+  dateSystem: ExcelDateSystem = '1900',
+): number | undefined {
   if (cellIndex === undefined || cellIndex === INVALID_INLINE_CELL_INDEX) {
     return undefined
   }
@@ -527,7 +534,7 @@ function inlineArithmeticNumberFromCell(state: InlineScalarState, cellIndex: num
   if (tag !== ValueTag.String) {
     return inlineNumberFromCell(state, cellIndex)
   }
-  return parseArithmeticNumericText(state.strings.get(cellStore.stringIds[cellIndex] ?? 0))
+  return parseArithmeticScalarText(state.strings.get(cellStore.stringIds[cellIndex] ?? 0), dateSystem)
 }
 
 function inlineStringLengthFromCell(state: InlineScalarState, cellIndex: number | undefined): number | undefined {
@@ -740,11 +747,11 @@ function pushInlineValue(stack: CellValue[], value: CellValue): boolean {
   return true
 }
 
-function evaluateInlineUnary(operator: '+' | '-', value: CellValue): CellValue {
+function evaluateInlineUnary(operator: '+' | '-', value: CellValue, dateSystem: ExcelDateSystem): CellValue {
   if (value.tag === ValueTag.Error) {
     return value
   }
-  const numeric = inlineArithmeticNumber(value)
+  const numeric = inlineArithmeticNumber(value, dateSystem)
   return numeric === undefined ? errorValue(ErrorCode.Value) : numberValue(operator === '-' ? -numeric : numeric)
 }
 
@@ -752,6 +759,7 @@ function evaluateInlineBinary(
   operator: Extract<JsPlanInstruction, { opcode: 'binary' }>['operator'],
   left: CellValue,
   right: CellValue,
+  dateSystem: ExcelDateSystem,
 ): CellValue {
   if (operator === ':') {
     return errorValue(ErrorCode.Value)
@@ -766,14 +774,14 @@ function evaluateInlineBinary(
     return stringValue(`${inlineStringValue(left)}${inlineStringValue(right)}`)
   }
   if (operator === '+' || operator === '-' || operator === '*' || operator === '/' || operator === '^') {
-    const leftNumber = inlineArithmeticNumber(left)
+    const leftNumber = inlineArithmeticNumber(left, dateSystem)
     if (leftNumber === undefined) {
       return errorValue(ErrorCode.Value)
     }
     if (right.tag === ValueTag.Error) {
       return right
     }
-    const rightNumber = inlineArithmeticNumber(right)
+    const rightNumber = inlineArithmeticNumber(right, dateSystem)
     if (rightNumber === undefined) {
       return errorValue(ErrorCode.Value)
     }

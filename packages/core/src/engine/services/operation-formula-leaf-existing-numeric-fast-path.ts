@@ -1,4 +1,4 @@
-import { excelExponentiation, parseArithmeticNumericText, type JsPlanInstruction } from '@bilig/formula'
+import { excelExponentiation, parseArithmeticScalarText, type ExcelDateSystem, type JsPlanInstruction } from '@bilig/formula'
 import {
   ErrorCode,
   FormulaMode,
@@ -370,8 +370,9 @@ function storeFastArithmeticPlan(
   if (literal === undefined || innerOperator === undefined || outerOperator === undefined) {
     return undefined
   }
-  const left = inlineArithmeticNumberFromStoredCell(args.state, cellIndices[0])
-  const rightLeft = inlineArithmeticNumberFromStoredCell(args.state, cellIndices[1])
+  const dateSystem = args.state.workbook.getCalculationSettings().dateSystem ?? '1900'
+  const left = inlineArithmeticNumberFromStoredCell(args.state, cellIndices[0], dateSystem)
+  const rightLeft = inlineArithmeticNumberFromStoredCell(args.state, cellIndices[1], dateSystem)
   if (left === undefined || rightLeft === undefined) {
     return undefined
   }
@@ -538,6 +539,7 @@ function inlineNumberFromStoredCell(
 function inlineArithmeticNumberFromStoredCell(
   state: OperationFormulaLeafExistingNumericFastPathArgs['state'],
   cellIndex: number | undefined,
+  dateSystem: ExcelDateSystem = '1900',
 ): number | undefined {
   if (cellIndex === undefined || cellIndex === INVALID_INLINE_CELL_INDEX) {
     return undefined
@@ -547,7 +549,7 @@ function inlineArithmeticNumberFromStoredCell(
   if (tag !== ValueTag.String) {
     return inlineNumberFromStoredCell(state, cellIndex)
   }
-  return parseArithmeticNumericText(state.strings.get(cellStore.stringIds[cellIndex] ?? 0))
+  return parseArithmeticScalarText(state.strings.get(cellStore.stringIds[cellIndex] ?? 0), dateSystem)
 }
 
 function inlineStringLengthFromStoredCell(

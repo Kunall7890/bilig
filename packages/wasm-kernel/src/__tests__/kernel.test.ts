@@ -3303,6 +3303,7 @@ describe('wasm kernel', () => {
     const kernel = await createKernel()
     const width = 10
     kernel.init(20, 10, 5, 2, 2)
+    kernel.uploadStrings(Uint32Array.from([0, 0]), Uint32Array.from([0, 3]), asciiCodes('bad'))
     kernel.writeCells(
       new Uint8Array([3, 2, 4, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
       new Float64Array([0, 1, 0, 45351, 45351.75, 60, 45322, 45337, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
@@ -3338,7 +3339,7 @@ describe('wasm kernel', () => {
         cellIndex(1, 9, width),
       ]),
     )
-    kernel.uploadConstants(new Float64Array([2024, 2, 29, 1.9, 1]), new Uint32Array([0]), new Uint32Array([5]))
+    kernel.uploadConstants(new Float64Array([2024, 2, 29, 1.9, 1]), new Uint32Array(9), new Uint32Array(9).fill(5))
     kernel.evalBatch(
       Uint32Array.from([
         cellIndex(1, 1, width),
