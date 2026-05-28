@@ -4,6 +4,7 @@ import { getBuiltin } from '../builtins.js'
 
 const numError = { tag: ValueTag.Error, code: ErrorCode.Num } as const
 const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
+const div0Error = { tag: ValueTag.Error, code: ErrorCode.Div0 } as const
 
 function num(value: number): CellValue {
   return { tag: ValueTag.Number, value }
@@ -18,6 +19,33 @@ function err(code: ErrorCode): CellValue {
 }
 
 describe('depreciation formula domain errors', () => {
+  it('returns documented depreciation domain errors for DB, DDB, SLN, and SYD', () => {
+    const DB = getBuiltin('DB')!
+    const DDB = getBuiltin('DDB')!
+    const SLN = getBuiltin('SLN')!
+    const SYD = getBuiltin('SYD')!
+
+    expect(DB(num(10000), num(1000), num(5), num(6))).toEqual(numError)
+    expect(DB(num(10000), num(1000), num(5), num(6), num(12))).toEqual(numError)
+    expect(DB(num(10000), num(1000), num(5), num(6), num(6))).toEqual({
+      tag: ValueTag.Number,
+      value: expect.closeTo(238.5271245878818, 12),
+    })
+    expect(DB(num(10000), num(1000), num(5), num(1), num(0))).toEqual(numError)
+    expect(DB(num(10000), num(1000), num(5), num(1), num(13))).toEqual(numError)
+    expect(DB(text('bad'), num(1000), num(5), num(1), num(12))).toEqual(valueError)
+
+    expect(DDB(num(2400), num(300), num(10), num(11))).toEqual(numError)
+
+    expect(SLN(num(10000), num(1000), num(0))).toEqual(div0Error)
+    expect(SLN(text('bad'), num(1000), num(9))).toEqual(valueError)
+
+    expect(SYD(num(10000), num(1000), num(9), num(10))).toEqual(numError)
+    expect(SYD(num(10000), num(1000), num(0), num(1))).toEqual(numError)
+    expect(SYD(num(10000), num(1000), num(9), num(0))).toEqual(numError)
+    expect(SYD(text('bad'), num(1000), num(9), num(1))).toEqual(valueError)
+  })
+
   it('returns #NUM! for DDB and VDB numeric-domain errors while preserving #VALUE! coercion errors', () => {
     const DDB = getBuiltin('DDB')!
     const VDB = getBuiltin('VDB')!

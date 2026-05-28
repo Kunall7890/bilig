@@ -129,7 +129,8 @@ function fixedDecliningBalanceRate(cost: number, salvage: number, life: number):
 
 export function dbDepreciation(cost: number, salvage: number, life: number, period: number, month: number): number | undefined {
   const rate = fixedDecliningBalanceRate(cost, salvage, life)
-  if (rate === undefined || month < 1 || month > 12 || period < 1 || period > life + 1) {
+  const maxPeriod = life + (month < 12 ? 1 : 0)
+  if (rate === undefined || month < 1 || month > 12 || period < 1 || period > maxPeriod) {
     return undefined
   }
 
@@ -173,6 +174,7 @@ export function ddbDepreciation(cost: number, salvage: number, life: number, per
     salvage < 0 ||
     life <= 0 ||
     period <= 0 ||
+    period > life ||
     factor <= 0
   ) {
     return undefined

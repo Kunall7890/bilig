@@ -174,6 +174,19 @@ export function createFinancialBuiltins({
       if (cost === undefined || salvage === undefined || life === undefined || period === undefined || month === undefined) {
         return valueError()
       }
+      const maxPeriod = life + (month < 12 ? 1 : 0)
+      if (
+        !Number.isFinite(life) ||
+        !Number.isFinite(period) ||
+        !Number.isFinite(month) ||
+        life <= 0 ||
+        period < 1 ||
+        month < 1 ||
+        month > 12 ||
+        period > maxPeriod
+      ) {
+        return numError()
+      }
       const depreciation = dbDepreciation(cost, salvage, life, period, month)
       return depreciation === undefined ? valueError() : numberResult(depreciation)
     },
@@ -196,6 +209,7 @@ export function createFinancialBuiltins({
         salvage < 0 ||
         life <= 0 ||
         period <= 0 ||
+        period > life ||
         factor <= 0
       ) {
         return numError()
@@ -288,7 +302,13 @@ export function createFinancialBuiltins({
       const cost = toNumber(costArg)
       const salvage = toNumber(salvageArg)
       const life = toNumber(lifeArg)
-      if (cost === undefined || salvage === undefined || life === undefined || life <= 0) {
+      if (cost === undefined || salvage === undefined || life === undefined) {
+        return valueError()
+      }
+      if (life === 0) {
+        return div0Error()
+      }
+      if (life < 0) {
         return valueError()
       }
       return numberResult((cost - salvage) / life)
@@ -298,16 +318,11 @@ export function createFinancialBuiltins({
       const salvage = toNumber(salvageArg)
       const life = toNumber(lifeArg)
       const period = toNumber(periodArg)
-      if (
-        cost === undefined ||
-        salvage === undefined ||
-        life === undefined ||
-        period === undefined ||
-        life <= 0 ||
-        period <= 0 ||
-        period > life
-      ) {
+      if (cost === undefined || salvage === undefined || life === undefined || period === undefined) {
         return valueError()
+      }
+      if (!Number.isFinite(life) || !Number.isFinite(period) || life <= 0 || period <= 0 || period > life) {
+        return numError()
       }
       return numberResult(((cost - salvage) * (life - period + 1) * 2) / (life * (life + 1)))
     },

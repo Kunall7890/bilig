@@ -38,6 +38,7 @@ function isDdbNumericDomainError(cost: f64, salvage: f64, life: f64, period: f64
     salvage < 0.0 ||
     life <= 0.0 ||
     period <= 0.0 ||
+    period > life ||
     factor <= 0.0
   )
 }
@@ -78,9 +79,22 @@ export function tryApplyDepreciationBuiltin(
     const life = toNumberExact(tagStack[base + 2], valueStack[base + 2])
     const period = toNumberExact(tagStack[base + 3], valueStack[base + 3])
     const month = argc == 5 ? toNumberExact(tagStack[base + 4], valueStack[base + 4]) : 12.0
+    const maxPeriod = life + (month < 12.0 ? 1.0 : 0.0)
+    if (
+      !isFinite(life) ||
+      !isFinite(period) ||
+      !isFinite(month) ||
+      life <= 0.0 ||
+      period < 1.0 ||
+      month < 1.0 ||
+      month > 12.0 ||
+      period > maxPeriod
+    ) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     const depreciation = dbDepreciation(cost, salvage, life, period, month)
     return isNaN(depreciation)
-      ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      ? writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
       : writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, depreciation, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
@@ -142,7 +156,13 @@ export function tryApplyDepreciationBuiltin(
     const cost = toNumberExact(tagStack[base], valueStack[base])
     const salvage = toNumberExact(tagStack[base + 1], valueStack[base + 1])
     const life = toNumberExact(tagStack[base + 2], valueStack[base + 2])
-    if (isNaN(cost) || isNaN(salvage) || isNaN(life) || life <= 0.0) {
+    if (isNaN(cost) || isNaN(salvage) || isNaN(life)) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (life == 0.0) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (life < 0.0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeResult(
@@ -166,8 +186,11 @@ export function tryApplyDepreciationBuiltin(
     const salvage = toNumberExact(tagStack[base + 1], valueStack[base + 1])
     const life = toNumberExact(tagStack[base + 2], valueStack[base + 2])
     const period = toNumberExact(tagStack[base + 3], valueStack[base + 3])
-    if (isNaN(cost) || isNaN(salvage) || isNaN(life) || isNaN(period) || life <= 0.0 || period <= 0.0 || period > life) {
+    if (isNaN(cost) || isNaN(salvage) || isNaN(life) || isNaN(period)) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (life <= 0.0 || period <= 0.0 || period > life) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const denominator = (life * (life + 1.0)) / 2.0
     return writeResult(

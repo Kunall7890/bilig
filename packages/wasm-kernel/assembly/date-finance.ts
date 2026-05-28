@@ -851,7 +851,8 @@ function fixedDecliningBalanceRate(cost: f64, salvage: f64, life: f64): f64 {
 
 export function dbDepreciation(cost: f64, salvage: f64, life: f64, period: f64, month: f64): f64 {
   const rate = fixedDecliningBalanceRate(cost, salvage, life)
-  if (isNaN(rate) || month < 1 || month > 12 || period < 1 || period > life + 1) {
+  const maxPeriod = life + (month < 12.0 ? 1.0 : 0.0)
+  if (isNaN(rate) || month < 1 || month > 12 || period < 1 || period > maxPeriod) {
     return NaN
   }
 
@@ -888,6 +889,7 @@ export function ddbDepreciation(cost: f64, salvage: f64, life: f64, period: f64,
     salvage < 0 ||
     life <= 0 ||
     period <= 0 ||
+    period > life ||
     factor <= 0
   ) {
     return NaN

@@ -272,4 +272,64 @@ describe('wasm kernel depreciation dispatch', () => {
     expectErrorCell(kernel, cellIndex(1, 6, width), ErrorCode.Value)
     expectErrorCell(kernel, cellIndex(1, 7, width), ErrorCode.Value)
   })
+
+  it('uses documented DB, DDB, SLN, and SYD domain errors on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 10, 3, 2, 1)
+    const strings = packStrings(['bad'])
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const programs = packPrograms([
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodePushNumber(3), encodeCall(BuiltinId.Db, 4), encodeRet()],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushNumber(3),
+        encodePushNumber(4),
+        encodeCall(BuiltinId.Db, 5),
+        encodeRet(),
+      ],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushNumber(5),
+        encodePushNumber(6),
+        encodeCall(BuiltinId.Db, 5),
+        encodeRet(),
+      ],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodePushNumber(3), encodeCall(BuiltinId.Ddb, 4), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Sln, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodePushNumber(3), encodeCall(BuiltinId.Syd, 4), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodePushNumber(3), encodeCall(BuiltinId.Syd, 4), encodeRet()],
+      [encodePushString(0), encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Syd, 4), encodeRet()],
+    ])
+    const targetCells = Uint32Array.from(Array.from({ length: 8 }, (_, index) => cellIndex(1, index, width)))
+    kernel.uploadPrograms(programs.programs, programs.offsets, programs.lengths, targetCells)
+    const constants = packConstants([
+      [10000, 1000, 5, 6],
+      [10000, 1000, 5, 6, 12],
+      [10000, 1000, 5, 1, 13],
+      [2400, 300, 10, 11],
+      [10000, 1000, 0],
+      [10000, 1000, 9, 10],
+      [10000, 1000, 9, 0],
+      [1000, 9, 1],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(targetCells)
+
+    expectErrorCell(kernel, cellIndex(1, 0, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 1, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 2, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 3, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 4, width), ErrorCode.Div0)
+    expectErrorCell(kernel, cellIndex(1, 5, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 6, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 7, width), ErrorCode.Value)
+  })
 })
