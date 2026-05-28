@@ -703,7 +703,8 @@ export function tryApplyAggregateCriteriaBuiltin(
       (builtinId == BuiltinId.Gcd || builtinId == BuiltinId.Lcm || builtinId == BuiltinId.Geomean || builtinId == BuiltinId.Harmean) &&
       count == 0
     ) {
-      return writeAggregateError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      const emptyAggregateError = builtinId == BuiltinId.Geomean || builtinId == BuiltinId.Harmean ? ErrorCode.Num : ErrorCode.Value
+      return writeAggregateError(base, emptyAggregateError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
 
     let result = 0.0

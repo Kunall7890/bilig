@@ -683,6 +683,10 @@ function executePlan(
           }
           args.push(...scalarBuiltinRangeValues(instruction.callee, rawArg))
         }
+        if ((normalizedCallee === 'GEOMEAN' || normalizedCallee === 'HARMEAN') && rawArgs.length > 0 && args.length === 0) {
+          stack.push({ kind: 'scalar', value: error(ErrorCode.Num) })
+          break
+        }
         const result = builtin(...args)
         stack.push(isArrayValue(result) ? result : { kind: 'scalar', value: result })
         break

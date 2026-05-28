@@ -253,6 +253,9 @@ describe('math builtins', () => {
         if (start === 'A1' && end === 'A4') {
           return [str('bad'), num(2), { tag: ValueTag.Boolean, value: true }, num(0)]
         }
+        if (start === 'B1' && end === 'B4') {
+          return [str('2'), str('bad'), { tag: ValueTag.Boolean, value: true }, { tag: ValueTag.Empty }]
+        }
         return []
       },
     }
@@ -261,11 +264,13 @@ describe('math builtins', () => {
     expect(evaluateAst(parseFormula('GEOMEAN("bad",2)'), context)).toEqual(valueError)
     expect(evaluateAst(parseFormula('GEOMEAN(A1:A3)'), context)).toEqual(num(2))
     expect(evaluateAst(parseFormula('GEOMEAN(A1:A4)'), context)).toEqual(numError)
+    expect(evaluateAst(parseFormula('GEOMEAN(B1:B4)'), context)).toEqual(numError)
 
     expect(evaluateAst(parseFormula('HARMEAN("2","8")'), context)).toEqual(num(3.2))
     expect(evaluateAst(parseFormula('HARMEAN("bad",2)'), context)).toEqual(valueError)
     expect(evaluateAst(parseFormula('HARMEAN(A1:A3)'), context)).toEqual(num(2))
     expect(evaluateAst(parseFormula('HARMEAN(A1:A4)'), context)).toEqual(numError)
+    expect(evaluateAst(parseFormula('HARMEAN(B1:B4)'), context)).toEqual(numError)
   })
 
   it('matches Microsoft Excel inverse trigonometric numeric-domain errors', () => {

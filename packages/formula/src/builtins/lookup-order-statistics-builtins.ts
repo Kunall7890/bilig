@@ -711,7 +711,7 @@ export function createLookupOrderStatisticsBuiltins(deps: LookupOrderStatisticsB
         return values
       }
       if (values.length === 0) {
-        return deps.errorValue(ErrorCode.Value)
+        return deps.errorValue(ErrorCode.Num)
       }
 
       const sortedValues = values.toSorted((left, right) => left - right)

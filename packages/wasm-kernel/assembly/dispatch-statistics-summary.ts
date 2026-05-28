@@ -233,7 +233,7 @@ export function tryApplyStatisticsSummaryBuiltin(
       )
     }
     if (values.length == 0) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     sortNumericValues(values)
     const middle = values.length >>> 1

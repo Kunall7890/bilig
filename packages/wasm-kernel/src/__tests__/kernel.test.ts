@@ -2027,6 +2027,31 @@ describe('wasm kernel', () => {
     expectErrorCell(kernel, cellIndex(0, 6, width), ErrorCode.Num)
   })
 
+  it('returns #NUM for GEOMEAN and HARMEAN ranges without numeric values on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 2, 0, 1, 2)
+
+    const cellTags = new Uint8Array(16)
+    cellTags[0] = ValueTag.String
+    cellTags[1] = ValueTag.Boolean
+    kernel.writeCells(cellTags, new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+    kernel.uploadRangeMembers(Uint32Array.from([0, 1]), Uint32Array.from([0]), Uint32Array.from([2]))
+    kernel.uploadRangeShapes(Uint32Array.from([1]), Uint32Array.from([2]))
+
+    const packed = packPrograms([
+      [encodePushRange(0), encodeCall(BUILTIN.GEOMEAN, 1), encodeRet()],
+      [encodePushRange(0), encodeCall(BUILTIN.HARMEAN, 1), encodeRet()],
+    ])
+    const outputCells = Uint32Array.from([cellIndex(0, 0, width), cellIndex(0, 1, width)])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, outputCells)
+    kernel.uploadConstants(Float64Array.from([]), Uint32Array.from([0, 0]), Uint32Array.from([0, 0]))
+    kernel.evalBatch(outputCells)
+
+    expectErrorCell(kernel, cellIndex(0, 0, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(0, 1, width), ErrorCode.Num)
+  })
+
   it('evaluates exact-parity information and threshold helpers on the wasm path', async () => {
     const kernel = await createKernel()
     const width = 8

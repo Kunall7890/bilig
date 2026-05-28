@@ -77,6 +77,9 @@ describe('lookup order-statistics builtins', () => {
     expect(MEDIAN(num(7))).toEqual(num(7))
     expect(MEDIAN(cellRange([num(1), num(2), num(3), num(4)], 2, 2))).toEqual(num(2.5))
     expect(MEDIAN(cellRange([text('bad'), num(1)], 1, 2))).toEqual(num(1))
+    expect(MEDIAN(cellRange([text('2'), text('bad'), { tag: ValueTag.Boolean, value: true }, { tag: ValueTag.Empty }], 4, 1))).toEqual(
+      err(ErrorCode.Num),
+    )
     expect(MEDIAN(text('2'), text('4'))).toEqual(num(3))
 
     expect(SMALL(sample, num(1))).toEqual(num(1))
