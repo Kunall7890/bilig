@@ -138,8 +138,8 @@ describe('headless package workflow', () => {
     expect(source).toContain('node scripts/wait-for-github-ci-green.mjs')
     expect(source).toContain('--workflow github-ci')
     expect(source).toContain('--sha "$(git rev-parse HEAD)"')
-    expect(source).toContain('pnpm workpaper:bench:ironcalc-rust:generate')
-    expect(source).toContain('pnpm headless:performance:generate')
+    expect(source).toContain('pnpm workpaper:bench:ironcalc-rust:check')
+    expect(source).toContain('pnpm headless:performance:check')
     expect(source).toContain('sudo apt-get install -y --no-install-recommends librsvg2-bin')
     expect(source).toContain('rsvg-convert --version')
     expect(source).toContain('pnpm docs:benchmark-card:generate')
@@ -151,7 +151,7 @@ describe('headless package workflow', () => {
     const publishRuntimeJobIndex = source.indexOf('name: publish-runtime-packages')
     const rendererInstallIndex = source.indexOf('Install generated asset renderer', publishRuntimeJobIndex)
     const releaseMetadataSyncIndex = source.indexOf('Sync and commit runtime release metadata')
-    const ironCalcReleaseEvidenceIndex = source.indexOf('pnpm workpaper:bench:ironcalc-rust:generate')
+    const ironCalcReleaseEvidenceIndex = source.indexOf('pnpm workpaper:bench:ironcalc-rust:check')
     const releaseEvidenceSyncIndex = source.indexOf('bun scripts/sync-public-evidence.ts')
     const benchmarkCardSyncIndex = source.indexOf('pnpm docs:benchmark-card:generate')
     const agentDiscoverySyncIndex = source.indexOf('bun scripts/sync-agent-discovery-docs.ts')
@@ -203,5 +203,12 @@ describe('headless package workflow', () => {
     expect(source).toContain('npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version')
     expect(source).not.toContain('workbook-domain')
     expect(source).not.toContain('@bilig/workbook-domain')
+  })
+
+  it('does not force IronCalc benchmark regeneration for runtime package version-only releases', () => {
+    const source = readFileSync(resolve(repoRoot, 'scripts/gen-workpaper-vs-ironcalc-rust-benchmark.ts'), 'utf8')
+
+    expect(source).toContain("assertEngineVersion(rawArtifact, 'ironCalcRust', IRONCALC_RUST_CRATE_VERSION)")
+    expect(source).not.toContain("assertEngineVersion(rawArtifact, 'workpaper'")
   })
 })
