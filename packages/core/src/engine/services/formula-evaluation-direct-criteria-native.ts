@@ -5,7 +5,7 @@ import type { EngineRuntimeState, RuntimeDirectCriteriaDescriptor } from '../run
 import type { CriterionRangeDescriptor, CriterionRangeMatch, CriterionRangePair } from './criterion-range-cache-service.js'
 import type { EngineRuntimeColumnStoreService, RuntimeColumnSlice } from './runtime-column-store-service.js'
 
-const MIN_NATIVE_DIRECT_CRITERIA_MATCHED_AGGREGATE_ROWS = 64
+const MIN_NATIVE_DIRECT_CRITERIA_MATCHED_AGGREGATE_ROWS = 512
 const MIN_NATIVE_DIRECT_CRITERIA_PREDICATE_AGGREGATE_ROWS = 65_536
 const MIN_NATIVE_DIRECT_CRITERIA_STRING_PREDICATE_AGGREGATE_ROWS = 512
 const NATIVE_DIRECT_CRITERIA_PREDICATE_LAYOUT_CACHE_LIMIT = 32

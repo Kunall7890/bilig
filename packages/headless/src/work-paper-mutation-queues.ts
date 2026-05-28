@@ -3,7 +3,7 @@ import { applyQueuedWorkPaperCellMutationRefs, type WorkPaperCellMutationApplyOp
 import { tryEnqueueWorkPaperLiteralMutation } from './work-paper-literal-mutation-queue.js'
 import type { RawCellContent } from './work-paper-types.js'
 
-const INITIAL_EXISTING_NUMERIC_BATCH_CAPACITY = 64
+const INITIAL_EXISTING_NUMERIC_BATCH_CAPACITY = 256
 
 export interface WorkPaperMutationQueuesRuntime {
   readonly applyCellMutationsAtWithOptions: (refs: readonly EngineCellMutationRef[], options: WorkPaperCellMutationApplyOptions) => void

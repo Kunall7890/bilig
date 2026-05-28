@@ -117,6 +117,9 @@ function main(): void {
     if (currentScorecard !== serializedScorecard) {
       throw new Error('Generated headless performance leadership scorecard is out of date. Run: pnpm headless:performance:generate')
     }
+    if (scorecard.goalStatus !== 'achieved' || !scorecard.claimPolicy.blanketHeadlessPerformanceLeadershipClaimAllowed) {
+      throw new Error(`Headless performance leadership proof is not achieved: ${scorecard.claimPolicy.unmetRequirements.join('; ')}`)
+    }
   } else {
     mkdirSync(dirname(outputPath), { recursive: true })
     writeFileSync(outputPath, serializedScorecard)

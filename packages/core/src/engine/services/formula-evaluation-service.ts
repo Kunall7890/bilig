@@ -381,54 +381,68 @@ export function createEngineFormulaEvaluationService(args: {
       return applyCachedAggregateResult(exactCriteriaAggregateResult)
     }
 
-    const indexedPredicateAggregateResult =
-      directCriteria.aggregateKind !== 'first'
-        ? args.criterionCache.getOrBuildIndexedPredicateAggregate({
-            criteriaPairs: resolvedPairs,
-            ...(aggregateRange === undefined ? {} : { aggregateRange }),
-            aggregateKind: directCriteria.aggregateKind,
-          })
-        : undefined
-    if (indexedPredicateAggregateResult !== undefined) {
-      return applyCachedAggregateResult(indexedPredicateAggregateResult)
-    }
-
-    const nativePredicateAggregateResult = tryEvaluateNativeDirectCriteriaPredicateAggregate(
-      {
-        state: args.state,
-        runtimeColumnStore: args.runtimeColumnStore,
-      },
-      {
-        aggregateKind: directCriteria.aggregateKind,
-        aggregateRange,
-        criteriaPairs: resolvedPairs,
-        criteriaLayoutCache: nativeDirectCriteriaPredicateLayoutCache,
-        criteriaLayoutCacheKey: criteriaVersionKey,
-        shouldUseSharedCriteriaCache: () => directCriteriaSharing.directCriteriaShareCount(criteriaVersionKey) > 1,
-      },
-    )
-    if (nativePredicateAggregateResult !== undefined) {
-      return applyCachedAggregateResult(nativePredicateAggregateResult)
-    }
-
     const cachedMatches = directCriteriaMatchCache.get(criteriaVersionKey)
     if (cachedMatches !== undefined) {
       addEngineCounter(args.state.counters, 'directCriteriaMatchCacheHits')
     }
-    const matches =
+    const shouldShareCriteriaMatches =
+      directCriteria.aggregateKind !== 'first' &&
+      cachedMatches === undefined &&
+      directCriteriaSharing.directCriteriaShareCount(criteriaVersionKey) > 1
+    let matches =
       cachedMatches ??
-      args.criterionCache.getOrBuildMatchingRows({
+      (shouldShareCriteriaMatches
+        ? args.criterionCache.getOrBuildMatchingRows({
+            criteriaPairs: resolvedPairs,
+          })
+        : undefined)
+    if (matches !== undefined && !('tag' in matches) && cachedMatches === undefined) {
+      rememberDirectCriteriaMatch(criteriaVersionKey, matches)
+    }
+    if (matches === undefined) {
+      const indexedPredicateAggregateResult =
+        directCriteria.aggregateKind !== 'first'
+          ? args.criterionCache.getOrBuildIndexedPredicateAggregate({
+              criteriaPairs: resolvedPairs,
+              ...(aggregateRange === undefined ? {} : { aggregateRange }),
+              aggregateKind: directCriteria.aggregateKind,
+            })
+          : undefined
+      if (indexedPredicateAggregateResult !== undefined) {
+        return applyCachedAggregateResult(indexedPredicateAggregateResult)
+      }
+
+      const nativePredicateAggregateResult = tryEvaluateNativeDirectCriteriaPredicateAggregate(
+        {
+          state: args.state,
+          runtimeColumnStore: args.runtimeColumnStore,
+        },
+        {
+          aggregateKind: directCriteria.aggregateKind,
+          aggregateRange,
+          criteriaPairs: resolvedPairs,
+          criteriaLayoutCache: nativeDirectCriteriaPredicateLayoutCache,
+          criteriaLayoutCacheKey: criteriaVersionKey,
+          shouldUseSharedCriteriaCache: () => directCriteriaSharing.directCriteriaShareCount(criteriaVersionKey) > 1,
+        },
+      )
+      if (nativePredicateAggregateResult !== undefined) {
+        return applyCachedAggregateResult(nativePredicateAggregateResult)
+      }
+
+      matches = args.criterionCache.getOrBuildMatchingRows({
         criteriaPairs: resolvedPairs,
       })
+      if (!('tag' in matches)) {
+        rememberDirectCriteriaMatch(criteriaVersionKey, matches)
+      }
+    }
     if ('tag' in matches) {
       return matches
     }
-    if (cachedMatches === undefined) {
-      rememberDirectCriteriaMatch(criteriaVersionKey, matches)
-    }
 
     if (directCriteria.aggregateKind === 'count') {
-      return applyDirectCriteriaResultTransforms(readCellValueByIndex, formula, directNumberResult(matches.length))
+      return applyCachedAggregateResult(directNumberResult(matches.length))
     }
 
     if (!aggregateRange) {

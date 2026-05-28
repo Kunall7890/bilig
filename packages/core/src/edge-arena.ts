@@ -142,6 +142,17 @@ export class EdgeArena {
     return this.buffer[slice.ptr + index] ?? -1
   }
 
+  copyTo(slice: EdgeSlice, target: Uint32Array): number {
+    if (slice.ptr < 0 || slice.len <= 0) {
+      return 0
+    }
+    const count = Math.min(slice.len, target.length)
+    for (let index = 0; index < count; index += 1) {
+      target[index] = this.buffer[slice.ptr + index] ?? 0
+    }
+    return slice.len
+  }
+
   singletonValue(slice: EdgeSlice): number {
     return slice.ptr < 0 || slice.len !== 1 ? -1 : (this.buffer[slice.ptr] ?? -1)
   }

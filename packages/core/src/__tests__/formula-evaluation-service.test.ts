@@ -216,7 +216,7 @@ describe('EngineFormulaEvaluationService', () => {
     expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBe(0)
   })
 
-  it('evaluates mixed criteria aggregates without materializing matched rows', async () => {
+  it('shares matched rows across repeated mixed criteria aggregates', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-repeated-count-cache' })
     await engine.ready()
     engine.createSheet('Sheet1')
@@ -252,10 +252,10 @@ describe('EngineFormulaEvaluationService', () => {
     }
     expect(engine.getPerformanceCounters().nativeDirectCriteriaPredicateAggregateEvaluations).toBe(0)
     expect(engine.getPerformanceCounters().directCriteriaAggregateCacheHits).toBeGreaterThanOrEqual(6)
-    expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBe(0)
+    expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBeGreaterThanOrEqual(1)
   })
 
-  it('uses indexed predicate aggregation for mixed exact and numeric criteria', async () => {
+  it('shares matched rows for paired COUNTIFS and SUMIFS mixed criteria aggregates', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-indexed-mixed-predicate' })
     await engine.ready()
     engine.createSheet('Sheet1')
@@ -290,7 +290,7 @@ describe('EngineFormulaEvaluationService', () => {
     expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: expectedCount })
     expect(engine.getCellValue('Sheet1', 'G1')).toEqual({ tag: ValueTag.Number, value: expectedSum })
     expect(engine.getPerformanceCounters().nativeDirectCriteriaPredicateAggregateEvaluations).toBe(0)
-    expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBe(0)
+    expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBeGreaterThanOrEqual(1)
   })
 
   it('uses native matched-row reductions for large direct criteria aggregates', async () => {
@@ -299,10 +299,11 @@ describe('EngineFormulaEvaluationService', () => {
     engine.createSheet('Sheet1')
     engine.setCellValue('Sheet1', 'D1', 'A')
     engine.setCellValue('Sheet1', 'E1', 0)
+    const rowCount = 1024
     let expectedSum = 0
     let expectedMin = Number.POSITIVE_INFINITY
     let expectedMax = Number.NEGATIVE_INFINITY
-    for (let row = 2; row <= 129; row += 1) {
+    for (let row = 2; row <= rowCount + 1; row += 1) {
       const value = row - 1
       expectedSum += value
       expectedMin = Math.min(expectedMin, value)
@@ -311,16 +312,16 @@ describe('EngineFormulaEvaluationService', () => {
       engine.setCellValue('Sheet1', `B${row}`, value)
       engine.setCellValue('Sheet1', `C${row}`, value)
     }
-    engine.setCellFormula('Sheet1', 'F1', 'SUMIFS(C2:C129,A2:A129,D1,B2:B129,">="&E1)')
-    engine.setCellFormula('Sheet1', 'F2', 'AVERAGEIFS(C2:C129,A2:A129,D1,B2:B129,">="&E1)')
-    engine.setCellFormula('Sheet1', 'F3', 'MINIFS(C2:C129,A2:A129,D1,B2:B129,">="&E1)')
-    engine.setCellFormula('Sheet1', 'F4', 'MAXIFS(C2:C129,A2:A129,D1,B2:B129,">="&E1)')
+    engine.setCellFormula('Sheet1', 'F1', `SUMIFS(C2:C${rowCount + 1},A2:A${rowCount + 1},D1,B2:B${rowCount + 1},">="&E1)`)
+    engine.setCellFormula('Sheet1', 'F2', `AVERAGEIFS(C2:C${rowCount + 1},A2:A${rowCount + 1},D1,B2:B${rowCount + 1},">="&E1)`)
+    engine.setCellFormula('Sheet1', 'F3', `MINIFS(C2:C${rowCount + 1},A2:A${rowCount + 1},D1,B2:B${rowCount + 1},">="&E1)`)
+    engine.setCellFormula('Sheet1', 'F4', `MAXIFS(C2:C${rowCount + 1},A2:A${rowCount + 1},D1,B2:B${rowCount + 1},">="&E1)`)
 
     engine.resetPerformanceCounters()
     engine.setCellValue('Sheet1', 'E1', 1)
 
     expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: expectedSum })
-    expect(engine.getCellValue('Sheet1', 'F2')).toEqual({ tag: ValueTag.Number, value: expectedSum / 128 })
+    expect(engine.getCellValue('Sheet1', 'F2')).toEqual({ tag: ValueTag.Number, value: expectedSum / rowCount })
     expect(engine.getCellValue('Sheet1', 'F3')).toEqual({ tag: ValueTag.Number, value: expectedMin })
     expect(engine.getCellValue('Sheet1', 'F4')).toEqual({ tag: ValueTag.Number, value: expectedMax })
     expect(engine.getPerformanceCounters().nativeDirectCriteriaAggregateEvaluations).toBeGreaterThanOrEqual(4)

@@ -143,6 +143,16 @@ if (isCheckMode) {
   if (JSON.stringify(artifact.scorecard.unsupportedWorkloads) !== JSON.stringify(WORKPAPER_IRONCALC_RUST_UNSUPPORTED_WORKLOADS)) {
     throw new Error('WorkPaper vs IronCalc Rust unsupported workload list is out of date. Run: pnpm workpaper:bench:ironcalc-rust:generate')
   }
+  if (artifact.scorecard.meanAndP95WinCount !== artifact.scorecard.comparableWorkloadCount) {
+    const losingWorkloads = artifact.results
+      .filter((result) => result.comparison.workpaperToIronCalcRustMeanRatio >= 1 || result.comparison.workpaperToIronCalcRustP95Ratio >= 1)
+      .map((result) => result.workload)
+    throw new Error(
+      `WorkPaper vs IronCalc Rust proof is not achieved: ${String(artifact.scorecard.meanAndP95WinCount)}/${String(
+        artifact.scorecard.comparableWorkloadCount,
+      )} workloads win mean+p95. Losing workloads: ${losingWorkloads.join(', ')}`,
+    )
+  }
   assertNoRawBenchmarkSampleArrays(rawArtifact)
 
   console.log(

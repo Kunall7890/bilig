@@ -856,8 +856,8 @@ jobs:
             --version "${TARGET_VERSION}" \
             --notes-file build/runtime-release-notes.md
 
-          pnpm workpaper:bench:ironcalc-rust:generate
-          pnpm headless:performance:generate
+          pnpm workpaper:bench:ironcalc-rust:check
+          pnpm headless:performance:check
           bun scripts/sync-public-evidence.ts
           pnpm docs:benchmark-card:generate
           bun scripts/sync-agent-discovery-docs.ts

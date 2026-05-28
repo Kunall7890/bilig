@@ -37,6 +37,7 @@ export interface EngineTraversalService {
     fn: (cellIndex: number, row: number, col: number) => void,
   ) => Effect.Effect<void, EngineTraversalError>
   readonly getEntityDependentsNow: (entityId: number) => Uint32Array
+  readonly copySmallEntityDependentsNow: (entityId: number, target: Uint32Array) => number
   readonly getSingleEntityDependentNow: (entityId: number) => number
   readonly getCellDependentsNow: (cellIndex: number) => Uint32Array
   readonly getSingleCellDependentNow: (cellIndex: number) => number
@@ -129,6 +130,9 @@ export function createEngineTraversalService(args: {
 
   const getEntityDependentsNow = (entityId: number): Uint32Array =>
     args.edgeArena.readView(getReverseEdgeSlice(entityId) ?? args.edgeArena.empty())
+
+  const copySmallEntityDependentsNow = (entityId: number, target: Uint32Array): number =>
+    args.edgeArena.copyTo(getReverseEdgeSlice(entityId) ?? args.edgeArena.empty(), target)
 
   const getCellDependentsNow = (cellIndex: number): Uint32Array =>
     args.edgeArena.readView(args.reverseState.reverseCellEdges[cellIndex] ?? args.edgeArena.empty())
@@ -657,6 +661,7 @@ export function createEngineTraversalService(args: {
       })
     },
     getEntityDependentsNow,
+    copySmallEntityDependentsNow,
     getSingleEntityDependentNow,
     getCellDependentsNow,
     getSingleCellDependentNow,

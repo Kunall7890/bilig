@@ -73,7 +73,10 @@ export function createTrustedExistingNumericDirectScalarFastPath(args: {
   readonly formulas: FormulaTable<RuntimeFormula>
   readonly events: EngineEventBus
   readonly counters: EngineCounters
-  readonly traversal: Pick<EngineTraversalService, 'getSingleEntityDependentNow' | 'getEntityDependentsNow' | 'getSingleCellDependentNow'>
+  readonly traversal: Pick<
+    EngineTraversalService,
+    'getSingleEntityDependentNow' | 'getEntityDependentsNow' | 'copySmallEntityDependentsNow' | 'getSingleCellDependentNow'
+  >
   readonly directScalarDeltaOutputCellIndicesByInput?: ArrayLike<number | undefined>
   readonly deferKernelSync: (cellIndices: readonly number[] | Uint32Array) => void
   readonly hasVolatileFormulas: () => boolean
@@ -368,12 +371,15 @@ export function createTrustedExistingNumericDirectScalarFastPath(args: {
     }
 
     const hasProtectionMetadata = args.workbook.hasProtectionMetadataForSheet(sheet.name)
+    const hasTables = args.workbook.hasTables()
     const cellStore = args.workbook.cellStore
     const changedCellIndices = new Uint32Array(count * 2)
     const inputCellIndices = changedCellIndices.subarray(0, count)
     const formulaCellIndices = changedCellIndices.subarray(count)
     const formulaNumericResults = new Float64Array(count)
     const oldNumbers = new Float64Array(count)
+    const leftDependents = new Uint32Array(2)
+    const rightDependents = new Uint32Array(2)
     let formulaCount = 0
     let previousRow = firstRow - 1
     let previousFormulaRow = -1
@@ -420,8 +426,9 @@ export function createTrustedExistingNumericDirectScalarFastPath(args: {
         args.formulas.get(rightIndex) !== undefined ||
         ((cellStore.flags[leftIndex] ?? 0) & TRUSTED_EXISTING_NUMERIC_BLOCKED_FLAGS) !== 0 ||
         ((cellStore.flags[rightIndex] ?? 0) & TRUSTED_EXISTING_NUMERIC_BLOCKED_FLAGS) !== 0 ||
-        isWorkbookTableHeaderCell(args.workbook, sheet.name, leftRow, leftCol) ||
-        isWorkbookTableHeaderCell(args.workbook, sheet.name, rightRow, rightCol)
+        (hasTables &&
+          (isWorkbookTableHeaderCell(args.workbook, sheet.name, leftRow, leftCol) ||
+            isWorkbookTableHeaderCell(args.workbook, sheet.name, rightRow, rightCol)))
       ) {
         return null
       }
@@ -475,21 +482,19 @@ export function createTrustedExistingNumericDirectScalarFastPath(args: {
         return true
       }
 
-      const leftDependents = args.traversal.getEntityDependentsNow(makeCellEntity(leftIndex))
-      const rightDependents = args.traversal.getEntityDependentsNow(makeCellEntity(rightIndex))
-      if (leftDependents.length === 0 || rightDependents.length === 0) {
+      const leftDependentCount = args.traversal.copySmallEntityDependentsNow(makeCellEntity(leftIndex), leftDependents)
+      const rightDependentCount = args.traversal.copySmallEntityDependentsNow(makeCellEntity(rightIndex), rightDependents)
+      if (
+        leftDependentCount !== 2 ||
+        rightDependentCount !== 2 ||
+        leftDependents[0] !== rightDependents[0] ||
+        leftDependents[1] !== rightDependents[1]
+      ) {
         return null
       }
-      for (let index = 0; index < leftDependents.length; index += 1) {
+      for (let index = 0; index < leftDependentCount; index += 1) {
         if (!considerDependent(leftDependents[index]!)) {
           return null
-        }
-      }
-      if (!sameDependentOrder(leftDependents, rightDependents)) {
-        for (let index = 0; index < rightDependents.length; index += 1) {
-          if (!considerDependent(rightDependents[index]!)) {
-            return null
-          }
         }
       }
       if (formulaCount !== rowFormulaStart + 2) {
@@ -589,6 +594,7 @@ export function createTrustedExistingNumericDirectScalarFastPath(args: {
       return null
     }
     const hasProtectionMetadata = args.workbook.hasProtectionMetadataForSheet(sheet.name)
+    const hasTables = args.workbook.hasTables()
 
     const cellStore = args.workbook.cellStore
     const changedCellIndices = new Uint32Array(count * 2)
@@ -624,7 +630,7 @@ export function createTrustedExistingNumericDirectScalarFastPath(args: {
         cellStore.tags[cellIndex] !== ValueTag.Number ||
         args.formulas.get(cellIndex) !== undefined ||
         ((cellStore.flags[cellIndex] ?? 0) & TRUSTED_EXISTING_NUMERIC_BLOCKED_FLAGS) !== 0 ||
-        isWorkbookTableHeaderCell(args.workbook, sheet.name, row, col)
+        (hasTables && isWorkbookTableHeaderCell(args.workbook, sheet.name, row, col))
       ) {
         return null
       }
@@ -721,16 +727,4 @@ export function createTrustedExistingNumericDirectScalarFastPath(args: {
   }
 
   return { tryApply, tryApplyBatch }
-}
-
-function sameDependentOrder(left: Uint32Array, right: Uint32Array): boolean {
-  if (left.length !== right.length) {
-    return false
-  }
-  for (let index = 0; index < left.length; index += 1) {
-    if (left[index] !== right[index]) {
-      return false
-    }
-  }
-  return true
 }

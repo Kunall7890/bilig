@@ -56,6 +56,16 @@ describe('EdgeArena', () => {
     expect([...arena.read(slice)]).toEqual([4, 16, 15])
   })
 
+  it('copies small slices into caller-owned scratch buffers', () => {
+    const arena = new EdgeArena()
+    const slice = arena.replace(arena.empty(), Uint32Array.from([4, 8, 15]))
+    const scratch = new Uint32Array(2)
+
+    expect(arena.copyTo(slice, scratch)).toBe(3)
+    expect([...scratch]).toEqual([4, 8])
+    expect(arena.copyTo(arena.empty(), scratch)).toBe(0)
+  })
+
   it('allocates a singleton slice for fresh reverse-edge inserts', () => {
     const arena = new EdgeArena()
 

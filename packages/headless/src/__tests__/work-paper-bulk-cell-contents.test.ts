@@ -62,8 +62,16 @@ interface NumericBatchOperations {
   applyExistingNumericCellMutationsAtNow: (...args: unknown[]) => boolean
 }
 
+interface ExistingNumericBatchEngine {
+  tryApplyExistingNumericCellMutationsAt: (...args: unknown[]) => boolean
+}
+
 function hasNumericBatchOperations(value: unknown): value is NumericBatchOperations {
   return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'applyExistingNumericCellMutationsAtNow') === 'function'
+}
+
+function hasExistingNumericBatchEngine(value: unknown): value is ExistingNumericBatchEngine {
+  return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'tryApplyExistingNumericCellMutationsAt') === 'function'
 }
 
 function numericBatchOperations(workbook: WorkPaper): NumericBatchOperations {
@@ -73,6 +81,14 @@ function numericBatchOperations(workbook: WorkPaper): NumericBatchOperations {
     throw new Error('Expected existing numeric batch operation')
   }
   return operations
+}
+
+function existingNumericBatchEngine(workbook: WorkPaper): ExistingNumericBatchEngine {
+  const engine = Reflect.get(workbook, 'engine')
+  if (!hasExistingNumericBatchEngine(engine)) {
+    throw new Error('Expected existing numeric batch engine')
+  }
+  return engine
 }
 
 function getWorkbookSheetRecord(workbook: WorkPaper, sheetId: number): SheetRecord {
@@ -148,7 +164,7 @@ describe('bulk cell values', () => {
     const captureVisibilitySnapshot = vi.spyOn(workbook, 'captureVisibilitySnapshot').mockImplementation(() => {
       throw new Error('public literal batches should not rebuild visibility snapshots')
     })
-    const typedNumericBatch = vi.spyOn(numericBatchOperations(workbook), 'applyExistingNumericCellMutationsAtNow')
+    const typedNumericBatch = vi.spyOn(existingNumericBatchEngine(workbook), 'tryApplyExistingNumericCellMutationsAt')
 
     try {
       workbook.resetPerformanceCounters()

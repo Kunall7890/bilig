@@ -557,10 +557,12 @@ class KernelHandle implements SpreadsheetKernel {
 
   evalDirectCriteriaMatchedAggregateBatch(...args: Parameters<SpreadsheetKernel['evalDirectCriteriaMatchedAggregateBatch']>): void {
     this.bridge.evalDirectCriteriaMatchedAggregateBatch(...args)
+    this.refreshViews()
   }
 
   evalDirectCriteriaPredicateAggregateBatch(...args: Parameters<SpreadsheetKernel['evalDirectCriteriaPredicateAggregateBatch']>): void {
     this.bridge.evalDirectCriteriaPredicateAggregateBatch(...args)
+    this.refreshViews()
   }
 
   evalUniformNumericLookupBatch(
