@@ -232,9 +232,6 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
     case 'PEARSON':
     case 'COVARIANCE.P':
     case 'COVARIANCE.S':
-    case 'PERCENTRANK':
-    case 'PERCENTRANK.INC':
-    case 'PERCENTRANK.EXC':
     case 'SMALL':
     case 'LARGE':
     case 'PERCENTILE':
@@ -243,13 +240,17 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
     case 'QUARTILE':
     case 'QUARTILE.INC':
     case 'QUARTILE.EXC':
-    case 'RANK':
-    case 'RANK.EQ':
-    case 'RANK.AVG':
     case 'INTERCEPT':
     case 'RSQ':
     case 'SLOPE':
     case 'STEYX':
+      return argc === 2
+    case 'PERCENTRANK':
+    case 'PERCENTRANK.INC':
+    case 'PERCENTRANK.EXC':
+    case 'RANK':
+    case 'RANK.EQ':
+    case 'RANK.AVG':
       return argc === 2 || argc === 3
     case 'MEDIAN':
     case 'MODE.MULT':
