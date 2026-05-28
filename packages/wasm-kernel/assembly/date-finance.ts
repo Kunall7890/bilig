@@ -498,7 +498,7 @@ export function addMonthsExcelSerial(tag: u8, value: f64, offsetTag: u8, offsetV
   const totalMonths = startYear * 12 + (startMonth - 1) + offset
   const shiftedYear = floorDiv(totalMonths, 12)
   const shiftedMonth = totalMonths - shiftedYear * 12 + 1
-  if (shiftedYear < 0 || shiftedYear > 9999) {
+  if (shiftedYear < 1900 || shiftedYear > 9999) {
     return NaN
   }
 

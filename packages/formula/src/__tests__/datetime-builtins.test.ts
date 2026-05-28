@@ -623,6 +623,7 @@ describe('datetime builtins', () => {
   it('supports EDATE month shifting with end-of-month clamping', () => {
     expect(addMonthsToExcelDate(45322, 1)).toBe(45351)
     expect(addMonthsToExcelDate(45351, -1)).toBe(45320)
+    expect(addMonthsToExcelDate(1, -1)).toBeUndefined()
 
     expect(datetimeBuiltins.EDATE({ tag: ValueTag.Number, value: 45322 }, { tag: ValueTag.Number, value: 1.9 })).toEqual({
       tag: ValueTag.Number,
@@ -632,6 +633,10 @@ describe('datetime builtins', () => {
     expect(datetimeBuiltins.EDATE({ tag: ValueTag.String, value: 'bad', stringId: 1 }, { tag: ValueTag.Number, value: 1 })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,
+    })
+    expect(datetimeBuiltins.EDATE({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: -1 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
     })
   })
 
@@ -756,6 +761,7 @@ describe('datetime builtins', () => {
   it('supports EOMONTH end-of-month lookups', () => {
     expect(endOfMonthExcelDate(45337, 0)).toBe(45351)
     expect(endOfMonthExcelDate(45337, 1)).toBe(45382)
+    expect(endOfMonthExcelDate(1, -1)).toBeUndefined()
 
     expect(datetimeBuiltins.EOMONTH({ tag: ValueTag.Number, value: 45337 }, { tag: ValueTag.Boolean, value: true })).toEqual({
       tag: ValueTag.Number,
@@ -765,6 +771,10 @@ describe('datetime builtins', () => {
     expect(datetimeBuiltins.EOMONTH({ tag: ValueTag.Number, value: 45337 }, { tag: ValueTag.Error, code: ErrorCode.Ref })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Ref,
+    })
+    expect(datetimeBuiltins.EOMONTH({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: -1 })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
     })
   })
 

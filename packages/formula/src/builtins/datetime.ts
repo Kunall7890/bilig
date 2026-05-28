@@ -623,7 +623,7 @@ export function createEdateBuiltin(dateSystem: ExcelDateSystem = '1900'): Builti
     }
 
     const serial = addMonthsToExcelDate(startSerial, monthOffset, dateSystem)
-    return serial === undefined ? valueError() : numberResult(serial)
+    return serial === undefined ? numError() : numberResult(serial)
   }
 }
 

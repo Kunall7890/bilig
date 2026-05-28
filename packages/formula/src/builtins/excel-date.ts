@@ -42,6 +42,11 @@ function normalizeMonth(year: number, month: number): { year: number; month: num
   return { year: normalizedYear, month: normalizedMonth }
 }
 
+function isGeneratedMonthShiftYearInRange(year: number, dateSystem: ExcelDateSystem): boolean {
+  const minimumYear = dateSystem === '1904' ? 1904 : 1900
+  return year >= minimumYear && year <= 9999
+}
+
 export function excelSerialToDateParts(serial: number, dateSystem: ExcelDateSystem = '1900'): ExcelDateParts | undefined {
   if (!Number.isFinite(serial)) {
     return undefined
@@ -155,7 +160,7 @@ export function addMonthsToExcelDate(serial: number, offsetMonths: number, dateS
   const shifted = normalizeMonth(start.year, start.month + Math.trunc(offsetMonths))
   const day = Math.min(start.day, daysInExcelMonth(shifted.year, shifted.month))
 
-  if (shifted.year < 0 || shifted.year > 9999) {
+  if (!isGeneratedMonthShiftYearInRange(shifted.year, dateSystem)) {
     return undefined
   }
 
@@ -175,7 +180,7 @@ export function endOfMonthExcelDate(serial: number, offsetMonths: number, dateSy
   const shifted = normalizeMonth(start.year, start.month + Math.trunc(offsetMonths))
   const day = daysInExcelMonth(shifted.year, shifted.month)
 
-  if (shifted.year < 0 || shifted.year > 9999) {
+  if (!isGeneratedMonthShiftYearInRange(shifted.year, dateSystem)) {
     return undefined
   }
 

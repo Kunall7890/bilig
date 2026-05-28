@@ -903,6 +903,14 @@ describe('formula builtins and JS evaluator', () => {
       tag: ValueTag.Number,
       value: 46029,
     })
+    expect(evaluateAst(parseFormula('EDATE(1,-1)'), context)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
+    expect(evaluateAst(parseFormula('EOMONTH(1,-1)'), context)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
     expect(evaluateAst(parseFormula('NETWORKDAYS(46094,46101,{46097,46101})'), context)).toEqual({
       tag: ValueTag.Number,
       value: 4,
