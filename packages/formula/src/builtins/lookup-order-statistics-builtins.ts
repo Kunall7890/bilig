@@ -15,7 +15,11 @@ interface LookupOrderStatisticsBuiltinDeps {
   flattenNumbers: (arg: LookupBuiltinArgument) => number[] | CellValue
 }
 
-function flattenNumbersOrValueError(arg: LookupBuiltinArgument | undefined, deps: LookupOrderStatisticsBuiltinDeps): number[] | CellValue {
+function flattenNumbersOrValueError(
+  arg: LookupBuiltinArgument | undefined,
+  deps: LookupOrderStatisticsBuiltinDeps,
+  directEmptyTextAsZero = false,
+): number[] | CellValue {
   if (arg === undefined) {
     return deps.errorValue(ErrorCode.Value)
   }
@@ -35,17 +39,21 @@ function flattenNumbersOrValueError(arg: LookupBuiltinArgument | undefined, deps
     return arg
   }
   if (arg.tag === ValueTag.String) {
-    const numeric = parseNumericText(arg.value)
+    const numeric = directEmptyTextAsZero && arg.value === '' ? 0 : parseNumericText(arg.value)
     return numeric === undefined ? deps.errorValue(ErrorCode.Value) : [numeric]
   }
   const numeric = deps.toNumber(arg)
   return numeric === undefined ? deps.errorValue(ErrorCode.Value) : [numeric]
 }
 
-function flattenNumericArguments(args: readonly LookupBuiltinArgument[], deps: LookupOrderStatisticsBuiltinDeps): number[] | CellValue {
+function flattenNumericArguments(
+  args: readonly LookupBuiltinArgument[],
+  deps: LookupOrderStatisticsBuiltinDeps,
+  directEmptyTextAsZero = false,
+): number[] | CellValue {
   const values: number[] = []
   for (const arg of args) {
-    const flattened = flattenNumbersOrValueError(arg, deps)
+    const flattened = flattenNumbersOrValueError(arg, deps, directEmptyTextAsZero)
     if (!Array.isArray(flattened)) {
       return flattened
     }
@@ -679,7 +687,7 @@ function frequencyFromValues(
 export function createLookupOrderStatisticsBuiltins(deps: LookupOrderStatisticsBuiltinDeps): Record<string, LookupBuiltin> {
   return {
     AVEDEV: (...args) => {
-      const values = flattenNumericArguments(args, deps)
+      const values = flattenNumericArguments(args, deps, true)
       if (!Array.isArray(values)) {
         return values
       }
@@ -691,7 +699,7 @@ export function createLookupOrderStatisticsBuiltins(deps: LookupOrderStatisticsB
       return deps.numberResult(totalAbsoluteDeviation / values.length)
     },
     DEVSQ: (...args) => {
-      const values = flattenNumericArguments(args, deps)
+      const values = flattenNumericArguments(args, deps, true)
       if (!Array.isArray(values)) {
         return values
       }
@@ -706,7 +714,7 @@ export function createLookupOrderStatisticsBuiltins(deps: LookupOrderStatisticsB
       return deps.numberResult(total)
     },
     MEDIAN: (...args) => {
-      const values = flattenNumericArguments(args, deps)
+      const values = flattenNumericArguments(args, deps, true)
       if (!Array.isArray(values)) {
         return values
       }

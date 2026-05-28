@@ -64,7 +64,7 @@ export function coerceDirectNumericTextStatisticArgument(callee: string, value: 
   if (isReferenceArg || value.tag !== ValueTag.String || !numericReferenceStatisticCallees.has(callee)) {
     return value
   }
-  const numeric = parseNumericText(value.value)
+  const numeric = value.value === '' ? 0 : parseNumericText(value.value)
   return numeric === undefined ? { tag: ValueTag.Error, code: ErrorCode.Value } : { tag: ValueTag.Number, value: numeric }
 }
 

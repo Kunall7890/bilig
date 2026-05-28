@@ -258,6 +258,37 @@ describe('Workpaper formula regressions', () => {
     expect(cellValue(workbook, 'Summary', 6, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
   })
 
+  it.each([false, true])('coerces direct empty text statistical arguments with useColumnIndex=%s', (useColumnIndex) => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Summary: [
+          ['sample stdev', '=STDEV("",1)'],
+          ['single stdev', '=STDEV("")'],
+          ['population stdev', '=STDEVP("")'],
+          ['sample var', '=VAR("",1)'],
+          ['population var', '=VARP("")'],
+          ['median', '=MEDIAN("")'],
+          ['avedev', '=AVEDEV("")'],
+          ['devsq', '=DEVSQ("")'],
+          ['skew', '=SKEW("",1,2)'],
+          ['skewp', '=SKEW.P("",1,2)'],
+        ],
+      },
+      { maxRows: 20, maxColumns: 8, useColumnIndex },
+    )
+
+    expectNumberClose(cellValue(workbook, 'Summary', 0, 1), Math.sqrt(0.5))
+    expect(cellValue(workbook, 'Summary', 1, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
+    expectNumber(cellValue(workbook, 'Summary', 2, 1), 0)
+    expectNumber(cellValue(workbook, 'Summary', 3, 1), 0.5)
+    expectNumber(cellValue(workbook, 'Summary', 4, 1), 0)
+    expectNumber(cellValue(workbook, 'Summary', 5, 1), 0)
+    expectNumber(cellValue(workbook, 'Summary', 6, 1), 0)
+    expectNumber(cellValue(workbook, 'Summary', 7, 1), 0)
+    expectNumber(cellValue(workbook, 'Summary', 8, 1), 0)
+    expectNumber(cellValue(workbook, 'Summary', 9, 1), 0)
+  })
+
   it('evaluates whole-column criteria ranges in conditional aggregates', () => {
     const workbook = WorkPaper.buildFromSheets(
       {

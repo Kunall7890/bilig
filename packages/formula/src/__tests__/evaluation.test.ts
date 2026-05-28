@@ -582,7 +582,17 @@ describe('formula builtins and JS evaluator', () => {
       tag: ValueTag.Number,
       value: expect.closeTo(Math.sqrt(2), 12),
     })
+    expect(evaluateAst(parseFormula('STDEV("",1)'), context)).toMatchObject({
+      tag: ValueTag.Number,
+      value: expect.closeTo(Math.sqrt(0.5), 12),
+    })
+    expect(evaluateAst(parseFormula('STDEV("")'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
+    expect(evaluateAst(parseFormula('STDEVP("")'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
     expect(evaluateAst(parseFormula('VAR("2","4")'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(evaluateAst(parseFormula('VAR("",1)'), context)).toEqual({ tag: ValueTag.Number, value: 0.5 })
+    expect(evaluateAst(parseFormula('VARP("")'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(evaluateAst(parseFormula('SKEW("",1,2)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(evaluateAst(parseFormula('SKEW.P("",1,2)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
 
     expect(evaluateAst(parseFormula('MEDIAN(A1:A8)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
     expect(evaluateAst(parseFormula('LARGE(A1:A8,1)'), context)).toEqual({ tag: ValueTag.Number, value: 4 })
@@ -592,6 +602,9 @@ describe('formula builtins and JS evaluator', () => {
     expect(evaluateAst(parseFormula('LARGE("2",1)'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
     expect(evaluateAst(parseFormula('SMALL("2",1)'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
     expect(evaluateAst(parseFormula('MEDIAN("2","4")'), context)).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(evaluateAst(parseFormula('MEDIAN("")'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(evaluateAst(parseFormula('AVEDEV("")'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(evaluateAst(parseFormula('DEVSQ("")'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
 
     expect(evaluateAst(parseFormula('AVERAGEA(A1:A8)'), context)).toEqual({ tag: ValueTag.Number, value: 1 })
     expect(evaluateAst(parseFormula('MINA(B1:B2)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
