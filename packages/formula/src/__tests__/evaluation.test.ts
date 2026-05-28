@@ -278,6 +278,56 @@ describe('formula builtins and JS evaluator', () => {
     })
   })
 
+  it('identifies references passed to ISREF before scalar dereferencing', () => {
+    const context = {
+      sheetName: 'Sheet1',
+      currentAddress: 'C3',
+      resolveCell: (): CellValue => ({ tag: ValueTag.Number, value: 1 }),
+      resolveRange: (): CellValue[] => [{ tag: ValueTag.Number, value: 1 }],
+    }
+
+    expect(evaluateAst(parseFormula('ISREF(A1)'), context)).toEqual({
+      tag: ValueTag.Boolean,
+      value: true,
+    })
+    expect(evaluateAst(parseFormula('ISREF(A1:B2)'), context)).toEqual({
+      tag: ValueTag.Boolean,
+      value: true,
+    })
+    expect(evaluateAst(parseFormula('ISREF(A:A)'), context)).toEqual({
+      tag: ValueTag.Boolean,
+      value: true,
+    })
+    expect(evaluateAst(parseFormula('ISREF(1:1)'), context)).toEqual({
+      tag: ValueTag.Boolean,
+      value: true,
+    })
+    expect(evaluateAst(parseFormula('ISREF(OFFSET(A1,0,0))'), context)).toEqual({
+      tag: ValueTag.Boolean,
+      value: true,
+    })
+    expect(evaluateAst(parseFormula('ISREF(INDEX(A1:B2,1,1))'), context)).toEqual({
+      tag: ValueTag.Boolean,
+      value: true,
+    })
+    expect(evaluateAst(parseFormula('ISREF("A1")'), context)).toEqual({
+      tag: ValueTag.Boolean,
+      value: false,
+    })
+    expect(evaluateAst(parseFormula('ISREF(A1+1)'), context)).toEqual({
+      tag: ValueTag.Boolean,
+      value: false,
+    })
+    expect(evaluateAst(parseFormula('ISREF({1,2})'), context)).toEqual({
+      tag: ValueTag.Boolean,
+      value: false,
+    })
+    expect(evaluateAst(parseFormula('ISREF(#REF!)'), context)).toEqual({
+      tag: ValueTag.Boolean,
+      value: false,
+    })
+  })
+
   it('coerces direct numeric text for eligible aggregates without coercing referenced text cells', () => {
     const context = {
       sheetName: 'Sheet1',

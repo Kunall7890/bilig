@@ -146,6 +146,9 @@ function evaluateSpecialCall(
   argRefs: readonly (ReferenceOperand | undefined)[] = [],
 ): StackValue | undefined {
   const normalizedCallee = normalizeBuiltinLookupName(callee)
+  if (normalizedCallee === 'ISREF') {
+    return evaluateIsrefSpecialCall(rawArgs, argRefs)
+  }
   if (normalizedCallee === 'COUNTBLANK') {
     return evaluateCountblankSpecialCall(rawArgs, argRefs)
   }
@@ -218,6 +221,16 @@ function evaluateSpecialCall(
         })
       )
   }
+}
+
+function evaluateIsrefSpecialCall(rawArgs: readonly StackValue[], argRefs: readonly (ReferenceOperand | undefined)[]): StackValue {
+  if (rawArgs.length !== 1) {
+    return stackScalar(error(ErrorCode.Value))
+  }
+  return stackScalar({
+    tag: ValueTag.Boolean,
+    value: argRefs[0] !== undefined || rawArgs[0]?.kind === 'range',
+  })
 }
 
 function isCountblankBlank(value: CellValue): boolean {
