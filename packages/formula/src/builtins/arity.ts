@@ -33,6 +33,26 @@ function isStrictBuiltinArity(name: string, argc: number): boolean {
     case 'FACTDOUBLE':
     case 'HEX2DEC':
     case 'HOUR':
+    case 'IMABS':
+    case 'IMAGINARY':
+    case 'IMARGUMENT':
+    case 'IMCONJUGATE':
+    case 'IMCOS':
+    case 'IMCOSH':
+    case 'IMCOT':
+    case 'IMCSC':
+    case 'IMCSCH':
+    case 'IMEXP':
+    case 'IMLN':
+    case 'IMLOG10':
+    case 'IMLOG2':
+    case 'IMREAL':
+    case 'IMSEC':
+    case 'IMSECH':
+    case 'IMSIN':
+    case 'IMSINH':
+    case 'IMSQRT':
+    case 'IMTAN':
     case 'INT':
     case 'LEN':
     case 'LENB':
@@ -51,6 +71,7 @@ function isStrictBuiltinArity(name: string, argc: number): boolean {
     case 'SIN':
     case 'SINH':
     case 'SQRT':
+    case 'SQRTPI':
     case 'TAN':
     case 'TANH':
     case 'TIMEVALUE':
@@ -78,6 +99,8 @@ function isStrictBuiltinArity(name: string, argc: number): boolean {
     case 'ROUND':
     case 'ROUNDDOWN':
     case 'ROUNDUP':
+    case 'ROMAN':
+    case 'TRUNC':
       return argc === 1 || argc === 2
     case 'BASE':
     case 'DAYS360':
@@ -89,6 +112,9 @@ function isStrictBuiltinArity(name: string, argc: number): boolean {
       return argc >= 2 && argc <= 5
     case 'COMBIN':
     case 'COMBINA':
+    case 'IMDIV':
+    case 'IMPOWER':
+    case 'IMSUB':
     case 'DAYS':
     case 'DECIMAL':
     case 'DOLLARDE':
@@ -98,6 +124,9 @@ function isStrictBuiltinArity(name: string, argc: number): boolean {
     case 'EXACT':
     case 'POWER':
     case 'QUOTIENT':
+    case 'MOD':
+    case 'MROUND':
+    case 'RANDBETWEEN':
     case 'REPT':
     case 'TEXT':
       return argc === 2
@@ -106,6 +135,13 @@ function isStrictBuiltinArity(name: string, argc: number): boolean {
     case 'MID':
     case 'TIME':
       return argc === 3
+    case 'COMPLEX':
+      return argc === 2 || argc === 3
+    case 'ARABIC':
+    case 'MUNIT':
+      return argc === 1
+    case 'RANDARRAY':
+      return argc <= 5
     case 'REPLACE':
       return argc === 4
     case 'SUBSTITUTE':

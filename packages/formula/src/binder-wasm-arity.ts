@@ -224,7 +224,50 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
     case 'BITXOR':
     case 'BITLSHIFT':
     case 'BITRSHIFT':
+    case 'MOD':
+    case 'MROUND':
+    case 'RANDBETWEEN':
+    case 'IMDIV':
+    case 'IMPOWER':
+    case 'IMSUB':
+    case 'SUMX2MY2':
+    case 'SUMX2PY2':
+    case 'SUMXMY2':
+    case 'MMULT':
       return argc === 2
+    case 'COMPLEX':
+      return argc === 2 || argc === 3
+    case 'ROMAN':
+    case 'TRUNC':
+      return argc === 1 || argc === 2
+    case 'ARABIC':
+    case 'MUNIT':
+    case 'SQRTPI':
+    case 'MDETERM':
+    case 'MINVERSE':
+    case 'IMABS':
+    case 'IMAGINARY':
+    case 'IMARGUMENT':
+    case 'IMCONJUGATE':
+    case 'IMCOS':
+    case 'IMCOSH':
+    case 'IMCOT':
+    case 'IMCSC':
+    case 'IMCSCH':
+    case 'IMEXP':
+    case 'IMLN':
+    case 'IMLOG10':
+    case 'IMLOG2':
+    case 'IMREAL':
+    case 'IMSEC':
+    case 'IMSECH':
+    case 'IMSIN':
+    case 'IMSINH':
+    case 'IMSQRT':
+    case 'IMTAN':
+      return argc === 1
+    case 'RANDARRAY':
+      return argc <= 5
     case 'MATCH':
       return argc === 2 || argc === 3
     case 'CORREL':
