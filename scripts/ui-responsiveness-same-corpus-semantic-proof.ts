@@ -724,8 +724,15 @@ function sameCorpusMutationTargetVisibleReadbackInvalidReasons(
   sample: SameCorpusMutationTargetProof,
 ): string[] {
   const readbacks = [sample.visibleAfter, sample.visibleRestored]
+  const invalidReasons: string[] = []
   if (readbacks.some((readback) => readback.source === 'unknown')) {
-    return [`semantic UI mutation target proof for ${workload} is missing visible render readback source`]
+    invalidReasons.push(`semantic UI mutation target proof for ${workload} is missing visible render readback source`)
+    if (product === 'google-sheets' && sample.committedStateProof) {
+      invalidReasons.push(
+        `semantic UI mutation target proof for ${workload} has committed-state proof but is missing browser-visible target grid proof`,
+      )
+    }
+    return invalidReasons
   }
   if (readbacks.some((readback) => !sameCorpusMutationTargetBrowserVisibleReadbackSourceAccepted(readback.source))) {
     return [
@@ -735,7 +742,6 @@ function sameCorpusMutationTargetVisibleReadbackInvalidReasons(
   if (product !== 'bilig') {
     return []
   }
-  const invalidReasons: string[] = []
   invalidReasons.push(
     ...sameCorpusBiligVisibleSceneProofInvalidReasons({
       actual: sample.visibleAfter,

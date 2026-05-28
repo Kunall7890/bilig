@@ -131,7 +131,10 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
       return 0
     }
     const cellLike = isGridCellCandidate(element)
-    if (!cellLike && (rect.width > targetBox.width * 1.5 || rect.height > targetBox.height * 1.5)) {
+    if (!cellLike) {
+      return 0
+    }
+    if (!hasTargetCellLikeGeometry(rect, targetBox)) {
       return 0
     }
     const overlapWidth = Math.max(0, Math.min(rect.right, targetBox.x + targetBox.width) - Math.max(rect.left, targetBox.x))
@@ -159,6 +162,9 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
 
   function visibleBackgroundColor(element: HTMLElement): string | null {
     for (const candidate of [element, ...Array.from(element.querySelectorAll<HTMLElement>('*'))]) {
+      if (!elementPaintsTargetInterior(candidate)) {
+        continue
+      }
       const color = normalizeBackgroundColor(getComputedStyle(candidate).backgroundColor)
       if (color !== null && !isKnownSelectionChromeBackground(candidate, color)) {
         return color
@@ -233,12 +239,28 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
     const classList = element.classList
     return (
       element.getAttribute('role') === 'gridcell' ||
-      element.getAttribute('aria-selected') === 'true' ||
       classList.contains('waffle-cell') ||
       classList.contains('waffle-active-cell') ||
       classList.contains('active-cell') ||
       classList.contains('selected-cell')
     )
+  }
+
+  function elementPaintsTargetInterior(element: HTMLElement): boolean {
+    const rect = element.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) {
+      return false
+    }
+    const insetX = Math.min(Math.max(2, targetBox.width * 0.15), Math.max(2, targetBox.width / 2 - 1))
+    const insetY = Math.min(Math.max(2, targetBox.height * 0.15), Math.max(2, targetBox.height / 2 - 1))
+    const interiorLeft = targetBox.x + insetX
+    const interiorTop = targetBox.y + insetY
+    const interiorRight = targetBox.x + targetBox.width - insetX
+    const interiorBottom = targetBox.y + targetBox.height - insetY
+    const overlapWidth = Math.max(0, Math.min(rect.right, interiorRight) - Math.max(rect.left, interiorLeft))
+    const overlapHeight = Math.max(0, Math.min(rect.bottom, interiorBottom) - Math.max(rect.top, interiorTop))
+    const interiorArea = Math.max(1, (interiorRight - interiorLeft) * (interiorBottom - interiorTop))
+    return (overlapWidth * overlapHeight) / interiorArea >= 0.5
   }
 
   function visibleTextFromAriaLabel(element: HTMLElement, targetRange: string | undefined): string | null {
@@ -284,6 +306,17 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
       element.closest('.range-border, .waffle-border-cell-active, [aria-selected="true"]') !== null
     )
   }
+}
+
+function hasTargetCellLikeGeometry(
+  rect: DOMRect,
+  expected: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
+): boolean {
+  const minimumWidth = Math.max(4, expected.width * 0.35)
+  const minimumHeight = Math.max(4, expected.height * 0.35)
+  const maximumWidth = Math.max(expected.width + 8, expected.width * 1.35)
+  const maximumHeight = Math.max(expected.height + 8, expected.height * 1.35)
+  return rect.width >= minimumWidth && rect.height >= minimumHeight && rect.width <= maximumWidth && rect.height <= maximumHeight
 }
 
 export async function readExpectedFillColorFromScreenshot(page: Page, screenshot: ScreenshotBuffer): Promise<string | null> {
@@ -457,13 +490,7 @@ export async function firstVisibleTargetBox(
   }
   const selectors =
     product === 'google-sheets'
-      ? [
-          '.waffle-cell-input',
-          '.waffle-active-cell',
-          '.waffle-border-cell-active',
-          '[class*="active-cell" i]',
-          '[class*="selected-cell" i]',
-        ]
+      ? ['.waffle-active-cell', '.waffle-border-cell-active', '[class*="active-cell" i]', '[class*="selected-cell" i]']
       : ['.ewr-selection', '.ewr-active-cell', '[class*="active-cell" i]', '[class*="selected-cell" i]']
   const frames = page.frames()
   const targetBoxPromises = selectors.flatMap((selector) =>

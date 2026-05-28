@@ -112,6 +112,66 @@ describe('same-corpus mutation target page proof helpers', () => {
     })
   })
 
+  it('rejects bare selected wrappers as target-cell text proof', () => {
+    document.body.innerHTML = `
+      <div aria-selected="true">selected wrapper text from chrome</div>
+      <div class="waffle-cell">outside target</div>
+    `
+    const wrapper = document.querySelector<HTMLElement>('[aria-selected="true"]')
+    const outsideCell = document.querySelector<HTMLElement>('.waffle-cell')
+    expect(wrapper).not.toBeNull()
+    expect(outsideCell).not.toBeNull()
+    setRect(wrapper!, { height: 220, width: 520, x: 80, y: 80 })
+    setRect(outsideCell!, { height: 22, width: 104, x: 420, y: 144 })
+
+    expect(readSameCorpusVisibleTargetCellReadbackFromPage({ targetBox: { height: 22, width: 104, x: 220, y: 144 } })).toEqual({
+      fillColor: null,
+      formula: null,
+      source: 'unknown',
+      value: null,
+      visibleText: null,
+    })
+  })
+
+  it('rejects grid-looking border strips as target-cell proof', () => {
+    document.body.innerHTML = `
+      <div class="waffle-cell">border-only text</div>
+    `
+    const strip = document.querySelector<HTMLElement>('.waffle-cell')
+    expect(strip).not.toBeNull()
+    setRect(strip!, { height: 2, width: 104, x: 120, y: 80 })
+
+    expect(readSameCorpusVisibleTargetCellReadbackFromPage({ targetBox: { height: 22, width: 104, x: 120, y: 80 } })).toEqual({
+      fillColor: null,
+      formula: null,
+      source: 'unknown',
+      value: null,
+      visibleText: null,
+    })
+  })
+
+  it('ignores child colors that only paint target selection chrome', () => {
+    document.body.innerHTML = `
+      <div class="waffle-cell">
+        <div class="range-border" style="background-color: rgb(52, 168, 83);"></div>
+      </div>
+    `
+    const cell = document.querySelector<HTMLElement>('.waffle-cell')
+    const border = document.querySelector<HTMLElement>('.range-border')
+    expect(cell).not.toBeNull()
+    expect(border).not.toBeNull()
+    setRect(cell!, { height: 22, width: 104, x: 120, y: 80 })
+    setRect(border!, { height: 2, width: 104, x: 120, y: 80 })
+
+    expect(readSameCorpusVisibleTargetCellReadbackFromPage({ targetBox: { height: 22, width: 104, x: 120, y: 80 } })).toEqual({
+      fillColor: null,
+      formula: null,
+      source: 'visible-grid-cell',
+      value: null,
+      visibleText: null,
+    })
+  })
+
   it('uses a target grid-cell aria label while stripping the coordinate prefix', () => {
     document.body.innerHTML = `
       <div role="gridcell" aria-label="F5 same-corpus-edit-1"></div>
@@ -258,6 +318,40 @@ describe('same-corpus mutation target page proof helpers', () => {
     })
   })
 
+  it('does not use an active editor overlay as external target-cell screenshot geometry', async () => {
+    const page = fakePageWithGoogleSheetsEditorOverlay()
+
+    await expect(
+      captureSameCorpusMutationTargetScreenshotProof({
+        page,
+        phase: 'after',
+        product: 'google-sheets',
+        relativeScreenshotPath: 'same-corpus/google-sheets/editor-overlay.png',
+        sampleIndex: 0,
+        screenshotPath: '/tmp/bilig-editor-overlay-should-not-be-written.png',
+        semanticReadback: {
+          fillColor: null,
+          formula: null,
+          source: 'unknown',
+          value: null,
+          visibleText: null,
+        },
+        target: {
+          endAddress: 'C5',
+          sheetId: 'sheet-id',
+          sheetName: 'Sheet1',
+          startAddress: 'C5',
+          targetRange: 'C5',
+        },
+        workload: 'edit-visible-cell',
+      }),
+    ).resolves.toMatchObject({
+      scope: 'visible-grid-fallback',
+      screenshotPath: null,
+      screenshotSha256: null,
+    })
+  })
+
   it('does not call an empty Google Sheets target cell committed text proof for edit/formula workloads', async () => {
     const page = fakeGoogleSheetsEmptyTargetPage()
 
@@ -363,8 +457,8 @@ function fakePageWithExternalTargetBox(
     frames: () => [],
     viewportSize: () => ({ height: 200, width: 300 }),
     locator: (selector: string) => ({
-      boundingBox: async () => (selector === '.waffle-cell-input' ? { height: 22, width: 104, x: 120, y: 80 } : null),
-      count: async () => (selector === '.waffle-cell-input' ? 1 : 0),
+      boundingBox: async () => (selector === '.waffle-active-cell' ? { height: 22, width: 104, x: 120, y: 80 } : null),
+      count: async () => (selector === '.waffle-active-cell' ? 1 : 0),
       first() {
         return this
       },
@@ -380,6 +474,25 @@ function fakePageWithExternalTargetBox(
     },
   }
   // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- Unit test only exercises the external target screenshot path.
+  return page as unknown as Page
+}
+
+function fakePageWithGoogleSheetsEditorOverlay(): Page {
+  const page = {
+    frames: () => [],
+    locator: (selector: string) => ({
+      boundingBox: async () => (selector === '.waffle-cell-input' ? { height: 22, width: 104, x: 120, y: 80 } : null),
+      count: async () => (selector === '.waffle-cell-input' ? 1 : 0),
+      first() {
+        return this
+      },
+    }),
+    evaluate: async () => null,
+    screenshot: async () => {
+      throw new Error('Editor overlay must not be captured as target-cell proof')
+    },
+  }
+  // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- Unit test only exercises editor-overlay exclusion.
   return page as unknown as Page
 }
 

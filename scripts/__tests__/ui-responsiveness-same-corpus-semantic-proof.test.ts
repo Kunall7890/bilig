@@ -807,6 +807,45 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('rejects Google Sheets committed-state proof when the target grid never visibly proves the mutation', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validGoogleSheetsSemanticProof({
+        mutationTargetProofs: validGoogleSheetsMutationTargetProofs().map((proof) =>
+          proof.sampleIndex === 0
+            ? signedMutationTargetProof({
+                ...proof,
+                visibleAfter: {
+                  fillColor: null,
+                  formula: null,
+                  source: 'unknown',
+                  value: null,
+                  visibleText: null,
+                },
+                visibleRestored: {
+                  fillColor: null,
+                  formula: null,
+                  source: 'unknown',
+                  value: null,
+                  visibleText: null,
+                },
+              })
+            : proof,
+        ),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: false,
+      invalidReasons: expect.arrayContaining([
+        'semantic UI mutation target proof for edit-visible-cell has committed-state proof but is missing browser-visible target grid proof',
+      ]),
+    })
+  })
+
   it('rejects Google Sheets mutation proof when selected-target visible readback comes from the formula bar', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validGoogleSheetsSemanticProof({
