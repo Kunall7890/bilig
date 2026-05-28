@@ -1098,11 +1098,13 @@ describe('SpreadsheetEngine', () => {
     const engine = new SpreadsheetEngine({ workbookName: 'spec' })
     await engine.ready()
     engine.createSheet('Sheet1')
-    engine.setCellValue('Sheet1', 'A1', 4)
-    engine.setCellValue('Sheet1', 'A2', 6)
-    engine.setCellFormula('Sheet1', 'B1', 'LEN(A1:A2)')
+    engine.setCellFormula('Sheet1', 'A1', '4+1')
+    engine.setCellFormula('Sheet1', 'B1', 'FORMULATEXT(A1)')
 
-    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getCellValue('Sheet1', 'B1')).toMatchObject({
+      tag: ValueTag.String,
+      value: '=4+1',
+    })
     expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 1 })
     expect(engine.explainCell('Sheet1', 'B1').mode).toBe(FormulaMode.JsOnly)
   })
@@ -3079,6 +3081,20 @@ describe('SpreadsheetEngine', () => {
     })
     expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
 
+    engine.setCellFormula('Sheet1', 'B15', 'AND(FALSE(),NA())')
+    expect(engine.getCellValue('Sheet1', 'B15')).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
+    })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+
+    engine.setCellFormula('Sheet1', 'B16', 'OR(TRUE(),1/0)')
+    expect(engine.getCellValue('Sheet1', 'B16')).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Div0,
+    })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+
     engine.setCellValue('Sheet1', 'A3', 'hello')
     engine.setCellFormula('Sheet1', 'B4', 'AND(A3,TRUE)')
     expect(engine.getCellValue('Sheet1', 'B4')).toEqual({
@@ -3124,6 +3140,23 @@ describe('SpreadsheetEngine', () => {
     expect(engine.getCellValue('Sheet1', 'D5')).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,
+    })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+
+    engine.setCellValue('Sheet1', 'C5', false)
+    engine.setCellFormula('Sheet1', 'C6', 'NA()')
+
+    engine.setCellFormula('Sheet1', 'D6', 'AND(C5:C6)')
+    expect(engine.getCellValue('Sheet1', 'D6')).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
+    })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+
+    engine.setCellFormula('Sheet1', 'D7', 'OR(C3:C6)')
+    expect(engine.getCellValue('Sheet1', 'D7')).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.NA,
     })
     expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
   })

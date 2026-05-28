@@ -509,4 +509,52 @@ describe('wasm kernel date/calendar dispatch seams', () => {
     expectErrorCell(kernel, cellIndex(1, 19, width), ErrorCode.Num)
     expectErrorCell(kernel, cellIndex(1, 20, width), ErrorCode.Num)
   })
+
+  it('maps INTL single-day weekend codes 11 through 17 to Sunday through Saturday on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 14
+    const formulas = Array.from({ length: 14 }, (_, index) => cellIndex(1, index, width))
+    kernel.init(28, 4, 42, 14, 1)
+    kernel.writeCells(new Uint8Array(28), new Float64Array(28), new Uint32Array(28), new Uint16Array(28))
+
+    const workdayPrograms = Array.from({ length: 7 }, () => [
+      encodePushNumber(0),
+      encodePushNumber(1),
+      encodePushNumber(2),
+      encodeCall(BuiltinId.WorkdayIntl, 3),
+      encodeRet(),
+    ])
+    const networkdaysPrograms = Array.from({ length: 7 }, () => [
+      encodePushNumber(0),
+      encodePushNumber(1),
+      encodePushNumber(2),
+      encodeCall(BuiltinId.NetworkdaysIntl, 3),
+      encodeRet(),
+    ])
+    const packed = packPrograms([...workdayPrograms, ...networkdaysPrograms])
+    const constants = packConstants([
+      [46095, 1, 11],
+      [46096, 1, 12],
+      [46097, 1, 13],
+      [46098, 1, 14],
+      [46099, 1, 15],
+      [46100, 1, 16],
+      [46101, 1, 17],
+      [46096, 46096, 11],
+      [46097, 46097, 12],
+      [46098, 46098, 13],
+      [46099, 46099, 14],
+      [46100, 46100, 15],
+      [46101, 46101, 16],
+      [46102, 46102, 17],
+    ])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, Uint32Array.from(formulas))
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(formulas))
+
+    for (let index = 0; index < 7; index += 1) {
+      expectNumberCell(kernel, cellIndex(1, index, width), 46097 + index)
+      expectNumberCell(kernel, cellIndex(1, index + 7, width), 0)
+    }
+  })
 })

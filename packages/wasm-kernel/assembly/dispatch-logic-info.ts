@@ -124,6 +124,8 @@ export function tryApplyLogicInfoBuiltin(
       return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     let seenLogical = false
+    let firstError = 0
+    let result = true
     for (let index = 0; index < argc; index += 1) {
       const slot = base + index
       if (kindStack[slot] == STACK_KIND_RANGE) {
@@ -137,11 +139,14 @@ export function tryApplyLogicInfoBuiltin(
             continue
           }
           if (coerced < 0) {
-            return writeLogicInfoError(base, -coerced - 1, rangeIndexStack, valueStack, tagStack, kindStack)
+            if (firstError == 0) {
+              firstError = -coerced - 1
+            }
+            continue
           }
           seenLogical = true
           if (coerced == 0) {
-            return writeLogicInfoBoolean(base, false, rangeIndexStack, valueStack, tagStack, kindStack)
+            result = false
           }
         }
         continue
@@ -151,17 +156,23 @@ export function tryApplyLogicInfoBuiltin(
         continue
       }
       if (coerced < 0) {
-        return writeLogicInfoError(base, -coerced - 1, rangeIndexStack, valueStack, tagStack, kindStack)
+        if (firstError == 0) {
+          firstError = -coerced - 1
+        }
+        continue
       }
       seenLogical = true
       if (coerced == 0) {
-        return writeLogicInfoBoolean(base, false, rangeIndexStack, valueStack, tagStack, kindStack)
+        result = false
       }
+    }
+    if (firstError != 0) {
+      return writeLogicInfoError(base, firstError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (!seenLogical) {
       return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    return writeLogicInfoBoolean(base, true, rangeIndexStack, valueStack, tagStack, kindStack)
+    return writeLogicInfoBoolean(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.Or) {
@@ -169,6 +180,8 @@ export function tryApplyLogicInfoBuiltin(
       return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     let seenLogical = false
+    let firstError = 0
+    let result = false
     for (let index = 0; index < argc; index += 1) {
       const slot = base + index
       if (kindStack[slot] == STACK_KIND_RANGE) {
@@ -182,11 +195,14 @@ export function tryApplyLogicInfoBuiltin(
             continue
           }
           if (coerced < 0) {
-            return writeLogicInfoError(base, -coerced - 1, rangeIndexStack, valueStack, tagStack, kindStack)
+            if (firstError == 0) {
+              firstError = -coerced - 1
+            }
+            continue
           }
           seenLogical = true
           if (coerced != 0) {
-            return writeLogicInfoBoolean(base, true, rangeIndexStack, valueStack, tagStack, kindStack)
+            result = true
           }
         }
         continue
@@ -196,17 +212,23 @@ export function tryApplyLogicInfoBuiltin(
         continue
       }
       if (coerced < 0) {
-        return writeLogicInfoError(base, -coerced - 1, rangeIndexStack, valueStack, tagStack, kindStack)
+        if (firstError == 0) {
+          firstError = -coerced - 1
+        }
+        continue
       }
       seenLogical = true
       if (coerced != 0) {
-        return writeLogicInfoBoolean(base, true, rangeIndexStack, valueStack, tagStack, kindStack)
+        result = true
       }
+    }
+    if (firstError != 0) {
+      return writeLogicInfoError(base, firstError, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (!seenLogical) {
       return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    return writeLogicInfoBoolean(base, false, rangeIndexStack, valueStack, tagStack, kindStack)
+    return writeLogicInfoBoolean(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.Xor) {

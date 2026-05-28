@@ -531,7 +531,11 @@ describe('formula builtins and JS evaluator', () => {
 
     expect(evaluateAst(parseFormula('AND(2,4,"bad",TRUE())'), context)).toEqual(valueError)
     expect(evaluateAst(parseFormula('AND(B1,A1)'), context)).toEqual(naError)
+    expect(evaluateAst(parseFormula('AND(FALSE(),B1)'), context)).toEqual(naError)
+    expect(evaluateAst(parseFormula('AND(A7:B1)'), context)).toEqual(naError)
     expect(evaluateAst(parseFormula('OR(B1,A7)'), context)).toEqual(naError)
+    expect(evaluateAst(parseFormula('OR(TRUE(),B1)'), context)).toEqual(naError)
+    expect(evaluateAst(parseFormula('OR(A5:B1)'), context)).toEqual(naError)
     expect(evaluateAst(parseFormula('XOR(B1,A1)'), context)).toEqual(naError)
   })
 

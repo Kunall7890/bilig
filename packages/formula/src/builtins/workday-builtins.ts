@@ -40,7 +40,7 @@ function weekendMaskFromCode(code: number): Set<number> | undefined {
     return new Set(twoDayWeekendMap[code])
   }
   if (code >= 11 && code <= 17) {
-    return new Set([(code - 10) % 7])
+    return new Set([code - 11])
   }
   return undefined
 }

@@ -1,8 +1,8 @@
-import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type CellValue, type ErrorValue } from '@bilig/protocol'
 
-export type LogicalCoercion = { ok: true; value: boolean } | { ok: false; error: CellValue }
+export type LogicalCoercion = { ok: true; value: boolean } | { ok: false; error: ErrorValue }
 
-function errorValue(code: ErrorCode): CellValue {
+function errorValue(code: ErrorCode): ErrorValue {
   return { tag: ValueTag.Error, code }
 }
 

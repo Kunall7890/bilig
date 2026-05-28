@@ -31,7 +31,7 @@ export function weekendMaskFromCode(code: i32): i32 {
   if (code == 6) return (1 << 4) | (1 << 5)
   if (code == 7) return (1 << 5) | (1 << 6)
   if (code >= 11 && code <= 17) {
-    return 1 << (code == 17 ? 0 : code - 10)
+    return 1 << (code - 11)
   }
   return WEEKEND_MASK_NUM_ERROR
 }

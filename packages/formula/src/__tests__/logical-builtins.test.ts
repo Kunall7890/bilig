@@ -56,6 +56,8 @@ describe('logical/info builtins', () => {
     expect(AND(text(''))).toEqual(bool(false))
     expect(AND(err(ErrorCode.Name), bool(true))).toEqual(err(ErrorCode.Name))
     expect(AND(text('hello'), bool(true))).toEqual(err(ErrorCode.Value))
+    expect(AND(bool(false), err(ErrorCode.NA))).toEqual(err(ErrorCode.NA))
+    expect(AND(bool(false), text('hello'))).toEqual(err(ErrorCode.Value))
     expect(AND()).toEqual(err(ErrorCode.Value))
 
     expect(OR(empty(), bool(true))).toEqual(bool(true))
@@ -64,6 +66,8 @@ describe('logical/info builtins', () => {
     expect(OR(text('TRUE'), text('FALSE'))).toEqual(bool(true))
     expect(OR(err(ErrorCode.Ref), bool(true))).toEqual(err(ErrorCode.Ref))
     expect(OR(text('hello'), bool(false))).toEqual(err(ErrorCode.Value))
+    expect(OR(bool(true), err(ErrorCode.Div0))).toEqual(err(ErrorCode.Div0))
+    expect(OR(bool(true), text('hello'))).toEqual(err(ErrorCode.Value))
     expect(OR()).toEqual(err(ErrorCode.Value))
 
     expect(NOT(bool(false))).toEqual(bool(true))

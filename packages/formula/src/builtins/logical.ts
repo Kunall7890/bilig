@@ -138,34 +138,40 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
       return errorValue(ErrorCode.Value)
     }
 
+    let firstError: Extract<CellValue, { tag: ValueTag.Error }> | undefined
+    let result = true
     for (const arg of args) {
       const coerced = coerceLogicalValue(arg)
       if (!coerced.ok) {
-        return coerced.error
+        firstError ??= coerced.error
+        continue
       }
       if (!coerced.value) {
-        return booleanResult(false)
+        result = false
       }
     }
 
-    return booleanResult(true)
+    return firstError ?? booleanResult(result)
   },
   OR: (...args) => {
     if (args.length === 0) {
       return errorValue(ErrorCode.Value)
     }
 
+    let firstError: Extract<CellValue, { tag: ValueTag.Error }> | undefined
+    let result = false
     for (const arg of args) {
       const coerced = coerceLogicalValue(arg)
       if (!coerced.ok) {
-        return coerced.error
+        firstError ??= coerced.error
+        continue
       }
       if (coerced.value) {
-        return booleanResult(true)
+        result = true
       }
     }
 
-    return booleanResult(false)
+    return firstError ?? booleanResult(result)
   },
   NOT: (value) => {
     if (value === undefined) {

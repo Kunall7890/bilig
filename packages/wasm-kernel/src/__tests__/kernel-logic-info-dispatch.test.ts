@@ -18,6 +18,10 @@ function encodePushBoolean(value: boolean): number {
   return (Opcode.PushBoolean << 24) | (value ? 1 : 0)
 }
 
+function encodePushError(code: ErrorCode): number {
+  return (Opcode.PushError << 24) | code
+}
+
 function encodeRet(): number {
   return Opcode.Ret << 24
 }
@@ -120,12 +124,14 @@ describe('wasm kernel logic and info dispatch', () => {
       [encodePushString(3), encodeCall(BuiltinId.IsNumber, 1), encodeRet()],
       [encodePushString(3), encodeCall(BuiltinId.IsText, 1), encodeRet()],
       [encodePushNumber(0), encodeCall(BuiltinId.IsText, 1), encodeRet()],
+      [encodePushBoolean(false), encodePushError(ErrorCode.NA), encodeCall(BuiltinId.And, 2), encodeRet()],
+      [encodePushBoolean(true), encodePushError(ErrorCode.Div0), encodeCall(BuiltinId.Or, 2), encodeRet()],
     ])
     kernel.uploadPrograms(
       packed.programs,
       packed.offsets,
       packed.lengths,
-      Uint32Array.from(Array.from({ length: 20 }, (_, index) => cellIndex(1, index, width))),
+      Uint32Array.from(Array.from({ length: 22 }, (_, index) => cellIndex(1, index, width))),
     )
     const constants = packConstants([
       [6, 3],
@@ -148,9 +154,11 @@ describe('wasm kernel logic and info dispatch', () => {
       [],
       [],
       [5],
+      [],
+      [],
     ])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
-    kernel.evalBatch(Uint32Array.from(Array.from({ length: 20 }, (_, index) => cellIndex(1, index, width))))
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 22 }, (_, index) => cellIndex(1, index, width))))
 
     expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBe(2)
     expect(kernel.readNumbers()[cellIndex(1, 1, width)]).toBe(7)
@@ -184,5 +192,9 @@ describe('wasm kernel logic and info dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(1, 18, width)]).toBe(1)
     expect(kernel.readTags()[cellIndex(1, 19, width)]).toBe(ValueTag.Boolean)
     expect(kernel.readNumbers()[cellIndex(1, 19, width)]).toBe(0)
+    expect(kernel.readTags()[cellIndex(1, 20, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 20, width)]).toBe(ErrorCode.NA)
+    expect(kernel.readTags()[cellIndex(1, 21, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 21, width)]).toBe(ErrorCode.Div0)
   })
 })
