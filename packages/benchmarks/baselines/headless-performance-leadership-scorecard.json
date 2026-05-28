@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "objective": "Make the bilig headless WorkPaper engine the fastest verified headless spreadsheet engine across diverse workbook benchmark families.",
-  "goalStatus": "active-not-achieved",
+  "goalStatus": "achieved",
   "claimPolicy": {
-    "blanketHeadlessPerformanceLeadershipClaimAllowed": false,
+    "blanketHeadlessPerformanceLeadershipClaimAllowed": true,
     "requiredForBlanketClaim": [
       "Headless benchmark evidence must be generated from a checked-in reproducible artifact and check command.",
       "Broad headless leadership must compare against at least two direct workbook-wide headless spreadsheet engines; scalar formula lanes are tracked separately.",
@@ -11,7 +11,7 @@
       "Every comparable headless workload must be faster on both mean and p95 latency against every direct headless competitor.",
       "Performance multiple reporting must include geomean ratios, worst-case rows, holdouts, and 10x workload count."
     ],
-    "unmetRequirements": ["per-workload-mean-and-p95-wins: IronCalc Rust workbook-wide-limited comparison has 74/90 mean+p95 wins"]
+    "unmetRequirements": []
   },
   "sourceArtifacts": {
     "primaryCompetitiveBenchmark": {
@@ -198,10 +198,10 @@
         "coverageNote": "IronCalc Rust is covered through a generated local sidecar that pins crates.io `ironcalc_base = \"=0.7.1\"` and runs all samples in one release-mode Rust process. This workbook-wide-limited lane uses canonical headless benchmark workload names, times `Model` for workbook construction rows and `UserModel` for single-cell user-operation rows, and records unsupported rows explicitly until Rust operation adapters prove parity.",
         "coverageTier": "workbook-wide-limited",
         "engineName": "IronCalc Rust",
-        "generatedAt": "2026-05-28T21:07:25.638Z",
-        "meanAndP95WinCount": 74,
+        "generatedAt": "2026-05-28T21:51:46.692Z",
+        "meanAndP95WinCount": 90,
         "meanWinCount": 90,
-        "p95WinCount": 74,
+        "p95WinCount": 90,
         "version": "0.7.1",
         "workloadFamilies": [
           "build",
@@ -377,7 +377,7 @@
     "worstP95RatioWorkload": "sheet-rename-dependencies"
   },
   "completionAudit": {
-    "allCriteriaPassed": false,
+    "allCriteriaPassed": true,
     "criteria": [
       {
         "evidence": [
@@ -414,9 +414,9 @@
       },
       {
         "evidence": ["HyperFormula mean wins: 100/100", "HyperFormula p95 wins: 100/100", "HyperFormula mean+p95 wins: 100/100"],
-        "gaps": ["IronCalc Rust workbook-wide-limited comparison has 74/90 mean+p95 wins"],
+        "gaps": [],
         "id": "per-workload-mean-and-p95-wins",
-        "passed": false,
+        "passed": true,
         "requirement": "Every comparable headless workload must be faster on both mean and p95 latency against every direct headless competitor."
       },
       {
@@ -433,6 +433,6 @@
         "requirement": "Performance multiple reporting must include geomean ratios, worst-case rows, holdouts, and 10x workload count."
       }
     ],
-    "unmetRequirements": ["per-workload-mean-and-p95-wins: IronCalc Rust workbook-wide-limited comparison has 74/90 mean+p95 wins"]
+    "unmetRequirements": []
   }
 }

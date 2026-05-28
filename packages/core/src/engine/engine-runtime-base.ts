@@ -13,6 +13,7 @@ import { RecalcScheduler } from '../scheduler.js'
 import { StringPool } from '../string-pool.js'
 import { WasmKernelFacade } from '../wasm-facade.js'
 import { WorkbookStore } from '../workbook-store.js'
+import { hasWorkbookMetadataForSheetRename } from '../workbook-store-metadata-presence.js'
 import {
   createEngineRuntimeState,
   createInitialRecalcMetrics,
@@ -431,6 +432,10 @@ export abstract class SpreadsheetEngineRuntimeBase {
     return true
   }
 
+  hasWorkbookMetadataForSheetRenameFastPath(): boolean {
+    return hasWorkbookMetadataForSheetRename(this.workbook.metadata)
+  }
+
   renameSheetMetadataOnlyById(sheetId: number, newName: string): boolean {
     const trimmedName = newName.trim()
     const sheet = this.workbook.getSheetById(sheetId)
@@ -507,19 +512,78 @@ export abstract class SpreadsheetEngineRuntimeBase {
     if (!renamedSheet) {
       return false
     }
+    if (assumeNoWorkbookRenameMetadata && this.recordSimpleMetadataOnlySheetRename(oldName, trimmedName)) {
+      return true
+    }
     this.recordMetadataOnlySheetRename(oldName, trimmedName)
+    return true
+  }
+
+  renameSheetSimpleMetadataOnlyByIdTrustedPrevalidated(
+    sheetId: number,
+    oldName: string,
+    trimmedName: string,
+    assumeLocalRuntimeReady = false,
+    assumeNoWorkbookRenameMetadata = false,
+  ): boolean {
+    if (
+      !assumeLocalRuntimeReady &&
+      (this.syncClientConnection !== null ||
+        this.batchListeners.size > 0 ||
+        this.batchMutationDepth !== 0 ||
+        this.transactionReplayDepth !== 0 ||
+        this.workbook.metadata.workbookProtection?.lockStructure === true)
+    ) {
+      return false
+    }
+    if (
+      this.state.trackReplicaVersions ||
+      this.redoStack.length !== 0 ||
+      (!assumeNoWorkbookRenameMetadata && hasWorkbookMetadataForSheetRename(this.workbook.metadata))
+    ) {
+      return false
+    }
+    if (!this.renameSheetNamesOnlyByIdTrustedPrevalidated(sheetId, oldName, trimmedName)) {
+      return false
+    }
+    this.recordSimpleMetadataOnlySheetRenameTrusted(oldName, trimmedName)
     return true
   }
 
   private renameSheetNamesOnlyByIdTrustedPrevalidated(sheetId: number, oldName: string, trimmedName: string): boolean {
     const sheet = this.workbook.sheetsById.get(sheetId)
-    if (!sheet || sheet.name !== oldName || sheet.styleRanges.length !== 0 || sheet.formatRanges.length !== 0) {
+    if (
+      !sheet ||
+      sheet.name !== oldName ||
+      this.workbook.sheetsByName.has(trimmedName) ||
+      sheet.styleRanges.length !== 0 ||
+      sheet.formatRanges.length !== 0
+    ) {
       return false
     }
     this.workbook.sheetsByName.delete(oldName)
     sheet.name = trimmedName
     this.workbook.sheetsByName.set(trimmedName, sheet)
     return true
+  }
+
+  private recordSimpleMetadataOnlySheetRename(oldName: string, trimmedName: string): boolean {
+    if (this.state.trackReplicaVersions || this.workbook.metadata.definedNames.size > 0 || this.redoStack.length !== 0) {
+      return false
+    }
+    this.recordSimpleMetadataOnlySheetRenameTrusted(oldName, trimmedName)
+    return true
+  }
+
+  private recordSimpleMetadataOnlySheetRenameTrusted(oldName: string, trimmedName: string): void {
+    if (this.selection.sheetName === oldName) {
+      this.selection.sheetName = trimmedName
+    }
+    this.runtime.binding.deferCellFormulasForSheetRenameNow(oldName, trimmedName)
+    this.undoStack.push({
+      forward: { kind: 'rename-sheet', oldName, newName: trimmedName },
+      inverse: { kind: 'rename-sheet', oldName: trimmedName, newName: oldName },
+    })
   }
 
   private recordMetadataOnlySheetRename(oldName: string, trimmedName: string): void {

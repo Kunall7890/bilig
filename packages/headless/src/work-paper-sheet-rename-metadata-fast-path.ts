@@ -1,51 +1,16 @@
-export type TrustedMetadataSheetRename = (
-  sheetId: number,
-  oldName: string,
-  newName: string,
-  assumeLocalRuntimeReady?: boolean,
-  assumeNoWorkbookRenameMetadata?: boolean,
-) => boolean
+import type { MetadataRenameEngine } from './work-paper-engine-types.js'
 
-export function tryRenameSheetMetadataOnlyFast(
+export function tryRenameSheetMetadataOnlyPrevalidated(
+  engine: MetadataRenameEngine,
   sheetId: number,
   oldName: string,
   newName: string,
-  batchDepth: number,
-  batchUsesTrackedFastPath: boolean,
-  emitterHasAnyListeners: boolean,
-  engineEventsHasPendingLazyChanges: boolean,
-  engineEventsHasTrackedEvents: boolean,
-  evaluationSuspended: boolean,
-  hasImportedXlsxSource: boolean,
-  hasImportedXlsxSourceCellPatches: boolean,
-  hasPreservedImportedSnapshot: boolean,
-  hasVisibilityCache: boolean,
-  hasNamedExpressions: boolean,
-  renameSheetMetadataOnlyByIdTrustedPrevalidated: TrustedMetadataSheetRename | undefined,
-  renameSheetMetadataOnlyByIdTrustedPrevalidatedThis: object,
+  hasWorkbookRenameMetadata: boolean,
 ): boolean {
-  if (
-    hasPreservedImportedSnapshot ||
-    hasImportedXlsxSource ||
-    hasImportedXlsxSourceCellPatches ||
-    batchDepth !== 0 ||
-    evaluationSuspended ||
-    hasVisibilityCache ||
-    emitterHasAnyListeners ||
-    engineEventsHasPendingLazyChanges ||
-    batchUsesTrackedFastPath ||
-    engineEventsHasTrackedEvents
-  ) {
-    return false
-  }
   return (
-    renameSheetMetadataOnlyByIdTrustedPrevalidated?.call(
-      renameSheetMetadataOnlyByIdTrustedPrevalidatedThis,
-      sheetId,
-      oldName,
-      newName,
-      true,
-      !hasNamedExpressions,
-    ) ?? false
+    engine.renameSheetMetadataOnlyByIdTrustedPrevalidated?.(sheetId, oldName, newName, false, !hasWorkbookRenameMetadata) ??
+    engine.renameSheetMetadataOnlyByIdPrevalidated?.(sheetId, oldName, newName) ??
+    engine.renameSheetMetadataOnlyById?.(sheetId, newName) ??
+    engine.renameSheetMetadataOnly(oldName, newName)
   )
 }

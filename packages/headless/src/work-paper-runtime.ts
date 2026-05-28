@@ -65,7 +65,7 @@ import { tryApplyExistingNumericCellMutationsAtWithOptions } from './work-paper-
 import { WorkPaperEngineEventTracker } from './work-paper-engine-event-tracker.js'
 import { WorkPaperRuntimeLifecycleBase } from './work-paper-runtime-lifecycle-base.js'
 import { tryChangeSimpleNumericNamedExpressionFastPath } from './work-paper-named-expression-fast-path-runtime.js'
-import { tryRenameSheetMetadataOnlyFast } from './work-paper-sheet-rename-metadata-fast-path.js'
+import { tryRenameSheetMetadataOnlyPrevalidated } from './work-paper-sheet-rename-metadata-fast-path.js'
 import { createWorkPaperEngine, releaseWorkPaperEngine, workPaperEvaluationTimeoutErrorFrom } from './work-paper-runtime-construction.js'
 import {
   attachImportedXlsxSourceMetadata,
@@ -77,6 +77,8 @@ import {
   type ImportedXlsxSourceReference,
 } from './work-paper-imported-xlsx-source.js'
 import type { MetadataRenameEngine, WorkPaperStructuralInsertEngine } from './work-paper-engine-types.js'
+
+const EMPTY_WORKPAPER_CHANGES: WorkPaperChange[] = []
 
 type NamedExpressionValueSnapshot = WorkPaperNamedExpressionValueSnapshot
 
@@ -196,6 +198,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
   protected disposed = false
   private preservedImportedSnapshot: WorkbookSnapshot | undefined
   private importedXlsxSource: ImportedXlsxSourceReference | undefined
+  private importedXlsxStateActive = false
   private readonly importedXlsxSourceCellPatches = new Map<string, ImportedXlsxSourceCellPatch>()
   private recordingSourcePreservingImportedXlsxEdit = false
   protected readonly mutationQueues = new WorkPaperMutationQueues({
@@ -254,6 +257,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
   private invalidateImportedXlsxSource(): void {
     this.preservedImportedSnapshot = undefined
     this.importedXlsxSource = undefined
+    this.importedXlsxStateActive = false
     this.importedXlsxSourceCellPatches.clear()
   }
 
@@ -331,39 +335,36 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     }
     const oldName = sheet.name
     if (oldName === newName) {
-      return []
+      return EMPTY_WORKPAPER_CHANGES
+    }
+    const metadataRenameEngine = this.engine as MetadataRenameEngine
+    const workbookMetadata = this.engine.workbook.metadata
+    if (
+      this.batchDepth === 0 &&
+      this.visibilityCache === null &&
+      !this.importedXlsxStateActive &&
+      !this.batchUsesTrackedFastPath &&
+      !this.evaluationSuspended &&
+      !this.engineEvents.hasPendingLazyChanges &&
+      this.emitter.anyListenerCount === 0 &&
+      this.namedExpressions.size === 0 &&
+      workbookMetadata.spills.size === 0 &&
+      workbookMetadata.workbookProtection?.lockStructure !== true &&
+      metadataRenameEngine.renameSheetSimpleMetadataOnlyByIdTrustedPrevalidated(sheet.id, oldName, newName, true, true)
+    ) {
+      if (this.sheetRecordsCache !== null) {
+        this.sheetRecordsCache = null
+      }
+      if (this.engineEvents.hasTrackedEvents) {
+        this.engineEvents.clearEvents()
+      }
+      return EMPTY_WORKPAPER_CHANGES
     }
     const existing = this.engine.workbook.getSheet(newName)
     if (existing && existing.id !== sheetId) {
       throw new WorkPaperSheetError(`Sheet '${sheetId}' cannot be renamed to '${nextName}'`)
     }
     this.assertWorkbookStructureEditable()
-    const metadataRenameEngine = this.engine as MetadataRenameEngine
-    if (
-      tryRenameSheetMetadataOnlyFast(
-        sheet.id,
-        oldName,
-        newName,
-        this.batchDepth,
-        this.batchUsesTrackedFastPath,
-        this.emitter.hasAnyListeners(),
-        this.engineEvents.hasPendingLazyChanges,
-        this.engineEvents.hasTrackedEvents,
-        this.evaluationSuspended,
-        Boolean(this.importedXlsxSource),
-        this.importedXlsxSourceCellPatches.size !== 0,
-        Boolean(this.preservedImportedSnapshot),
-        this.visibilityCache !== null,
-        this.namedExpressions.size !== 0,
-        metadataRenameEngine.renameSheetMetadataOnlyByIdTrustedPrevalidated,
-        metadataRenameEngine,
-      )
-    ) {
-      if (this.sheetRecordsCache !== null) {
-        this.sheetRecordsCache = null
-      }
-      return []
-    }
     if (this.preservedImportedSnapshot || this.importedXlsxSource || this.importedXlsxSourceCellPatches.size) {
       this.invalidateImportedXlsxSource()
     }
@@ -561,10 +562,13 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     }
     try {
       const metadataRenameEngine = this.engine as MetadataRenameEngine
-      const renamed =
-        metadataRenameEngine.renameSheetMetadataOnlyByIdPrevalidated?.(sheet.id, oldName, newName) ??
-        metadataRenameEngine.renameSheetMetadataOnlyById?.(sheet.id, newName) ??
-        this.engine.renameSheetMetadataOnly(oldName, newName)
+      const renamed = tryRenameSheetMetadataOnlyPrevalidated(
+        metadataRenameEngine,
+        sheet.id,
+        oldName,
+        newName,
+        metadataRenameEngine.hasWorkbookMetadataForSheetRenameFastPath?.() ?? true,
+      )
       if (renamed) {
         this.sheetRecordsCache = null
         this.engineEvents.clearEvents()
@@ -695,6 +699,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     }
     workbook.preservedImportedSnapshot = snapshot
     workbook.importedXlsxSource = readImportedXlsxSource(snapshot)
+    workbook.importedXlsxStateActive = true
     for (const patch of readImportedXlsxSourceCellPatches(snapshot)) {
       workbook.importedXlsxSourceCellPatches.set(`${patch.sheetName}!${patch.address}`, patch)
     }

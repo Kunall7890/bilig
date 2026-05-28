@@ -89,6 +89,10 @@ export class WorkPaperEmitter {
     return this.listeners[eventName].size > 0 || this.detailedListeners[eventName].size > 0
   }
 
+  get anyListenerCount(): number {
+    return this.listenerCount + this.detailedListenerCount
+  }
+
   hasAnyListeners(): boolean {
     return this.listenerCount > 0 || this.detailedListenerCount > 0
   }
