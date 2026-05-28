@@ -27,6 +27,7 @@ Pick the path that matches the workflow you are trying to unblock:
 | Trigger.dev durable task fields                                          | `cd examples/triggerdev-workpaper-task && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                              | The task helper returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.   |
 | Inngest durable step fields                                              | `cd examples/inngest-workpaper-step && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                                 | The step helper returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.   |
 | Airbyte post-sync record and state validation                            | `cd examples/airbyte-workpaper-validation && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                           | The validation step reads Airbyte-style `STREAM`/`GLOBAL` state JSONL and returns a patch plus restore proof.       |
+| Meltano custom utility validation                                        | `cd examples/meltano-workpaper-utility && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                              | The utility reads a post-ELT JSONL export and writes a formula-backed WorkPaper proof artifact.                     |
 | Temporal TypeScript Activity decisions                                   | `cd examples/temporal-workpaper-activity && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                            | The Activity owns WorkPaper formula work while Workflow code stays free of workbook imports.                        |
 | Apache Airflow DAG task outputs                                          | `cd examples/airflow-workpaper-dag && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                                  | The Node step writes a full proof file while the DAG returns a compact XCom summary for downstream tasks.           |
 | Dagster asset materialization metadata                                   | `cd examples/dagster-workpaper-asset && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                                | The Node subprocess writes WorkPaper proof and emits compact Dagster Pipes materialization metadata.                |
@@ -175,6 +176,7 @@ Start from the repo examples:
 - `examples/windmill-workpaper-script`
 - `examples/triggerdev-workpaper-task`
 - `examples/airbyte-workpaper-validation`
+- `examples/meltano-workpaper-utility`
 - `examples/temporal-workpaper-activity`
 - `examples/airflow-workpaper-dag`
 - `examples/dagster-workpaper-asset`
@@ -192,6 +194,7 @@ Docs:
 - <https://proompteng.github.io/bilig/windmill-workpaper-script.html>
 - <https://proompteng.github.io/bilig/triggerdev-workpaper-task.html>
 - <https://proompteng.github.io/bilig/airbyte-workpaper-validation.html>
+- <https://proompteng.github.io/bilig/meltano-workpaper-utility.html>
 - <https://proompteng.github.io/bilig/temporal-workpaper-activity.html>
 - <https://proompteng.github.io/bilig/airflow-workpaper-dag.html>
 - <https://proompteng.github.io/bilig/dagster-workpaper-asset.html>

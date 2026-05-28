@@ -418,6 +418,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Trigger.dev task: ${siteRoot}/triggerdev-workpaper-task.html
 - Inngest step: ${siteRoot}/inngest-workpaper-step.html
 - Airbyte validation: ${siteRoot}/airbyte-workpaper-validation.html
+- Meltano utility: ${siteRoot}/meltano-workpaper-utility.html
 - Temporal Activity: ${siteRoot}/temporal-workpaper-activity.html
 - Airflow DAG: ${siteRoot}/airflow-workpaper-dag.html
 - Dagster asset: ${siteRoot}/dagster-workpaper-asset.html
@@ -532,6 +533,7 @@ const llmsFullSources = [
   llmsSource('Trigger.dev WorkPaper Task', 'docs/triggerdev-workpaper-task.md'),
   llmsSource('Inngest WorkPaper Step', 'docs/inngest-workpaper-step.md'),
   llmsSource('Airbyte WorkPaper Validation', 'docs/airbyte-workpaper-validation.md'),
+  llmsSource('Meltano WorkPaper Utility', 'docs/meltano-workpaper-utility.md'),
   llmsSource('Temporal WorkPaper Activity', 'docs/temporal-workpaper-activity.md'),
   llmsSource('Airflow WorkPaper DAG', 'docs/airflow-workpaper-dag.md'),
   llmsSource('Dagster WorkPaper Asset', 'docs/dagster-workpaper-asset.md'),
@@ -780,6 +782,14 @@ function agentJsonManifest(): string {
           source: `${repositoryUrl}/tree/main/examples/airbyte-workpaper-validation`,
         },
         {
+          name: 'meltano-workpaper-utility',
+          type: 'elt-utility-smoke-test',
+          framework: 'Meltano',
+          command: 'cd examples/meltano-workpaper-utility && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke',
+          docs: `${siteRoot}/meltano-workpaper-utility.html`,
+          source: `${repositoryUrl}/tree/main/examples/meltano-workpaper-utility`,
+        },
+        {
           name: 'formula-clinic',
           type: 'local-cli',
           command: `npm exec --package ${workpaperPackageSpec} -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"`,
@@ -834,6 +844,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/triggerdev-workpaper-task.html`,
         `${siteRoot}/inngest-workpaper-step.html`,
         `${siteRoot}/airbyte-workpaper-validation.html`,
+        `${siteRoot}/meltano-workpaper-utility.html`,
         `${siteRoot}/temporal-workpaper-activity.html`,
         `${siteRoot}/airflow-workpaper-dag.html`,
         `${siteRoot}/dagster-workpaper-asset.html`,

@@ -1,0 +1,19 @@
+{
+  "name": "bilig-meltano-workpaper-utility",
+  "private": true,
+  "description": "Meltano utility example that validates post-ELT records with Bilig WorkPaper formulas.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx scripts/check-meltano-recipe.ts",
+    "smoke": "tsx meltano-workpaper-validator.ts --records fixtures/orders.jsonl --expected-record-count 4 --expected-paid-amount 301.75 --output .tmp/workpaper-proof.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@bilig/workpaper": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.2"
+  }
+}

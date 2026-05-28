@@ -33,6 +33,7 @@ export const docsSiteSources = [
   ['triggerdev-workpaper-task.html', 'triggerdev-workpaper-task.md'],
   ['inngest-workpaper-step.html', 'inngest-workpaper-step.md'],
   ['airbyte-workpaper-validation.html', 'airbyte-workpaper-validation.md'],
+  ['meltano-workpaper-utility.html', 'meltano-workpaper-utility.md'],
   ['temporal-workpaper-activity.html', 'temporal-workpaper-activity.md'],
   ['airflow-workpaper-dag.html', 'airflow-workpaper-dag.md'],
   ['dagster-workpaper-asset.html', 'dagster-workpaper-asset.md'],

@@ -1,0 +1,19 @@
+version: 1
+default_environment: dev
+project_id: bilig-workpaper-validator
+
+plugins:
+  utilities:
+    - name: bilig-workpaper-validator
+      namespace: bilig_workpaper
+      executable: npx
+      commands:
+        validate:
+          description: Validate post-ELT records with Bilig WorkPaper formulas and write readback proof.
+          args: "--yes --package @bilig/workpaper@latest --package tsx@4.21.0 tsx meltano-workpaper-validator.ts --records output/orders.jsonl --expected-record-count 4 --expected-paid-amount 301.75 --output .tmp/workpaper-proof.json"
+
+jobs:
+  - name: validate-orders-with-workpaper
+    tasks:
+      - bilig-workpaper-validator:validate
+

@@ -567,6 +567,10 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/airbyte-workpaper-validation.html
   https://github.com/proompteng/bilig/blob/main/docs/airbyte-workpaper-validation.md
   https://github.com/proompteng/bilig/tree/main/examples/airbyte-workpaper-validation
+  Meltano custom utility validation source:
+  https://proompteng.github.io/bilig/meltano-workpaper-utility.html
+  https://github.com/proompteng/bilig/blob/main/docs/meltano-workpaper-utility.md
+  https://github.com/proompteng/bilig/tree/main/examples/meltano-workpaper-utility
   Temporal WorkPaper Activity source:
   https://proompteng.github.io/bilig/temporal-workpaper-activity.html
   https://github.com/proompteng/bilig/blob/main/docs/temporal-workpaper-activity.md

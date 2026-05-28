@@ -1,0 +1,37 @@
+name: bilig-workpaper-validator
+namespace: bilig_workpaper
+variant: proompteng
+label: Bilig WorkPaper Validator
+description: Validate post-ELT records with reviewable WorkPaper formulas and JSON restore proof.
+docs: https://proompteng.github.io/bilig/meltano-workpaper-utility.html
+repo: https://github.com/proompteng/bilig
+executable: npx
+maintenance_status: active
+keywords:
+  - data-quality
+  - formulas
+  - utility
+  - validation
+  - workpaper
+commands:
+  validate:
+    description: Validate a JSONL record export and write a WorkPaper proof artifact.
+    args: "--yes --package @bilig/workpaper@latest --package tsx@4.21.0 tsx meltano-workpaper-validator.ts --records output/orders.jsonl --expected-record-count 4 --expected-paid-amount 301.75 --output .tmp/workpaper-proof.json"
+usage: |
+  Run the utility after an ELT step has produced a JSONL export or after a
+  destination table has been exported to JSONL:
+
+  ```sh
+  meltano invoke bilig-workpaper-validator:validate
+  ```
+
+  The utility writes `.tmp/workpaper-proof.json` with `patch`, `proof`, and
+  `limitations` fields. Keep the destination table and Meltano job metadata as
+  the authority for production pipeline completion.
+next_steps: |
+  1. Point the `--records` argument at a post-load export or destination-table
+     extract.
+  2. Set `--expected-record-count` and `--expected-paid-amount` from job
+     metadata or domain expectations.
+  3. Store the proof artifact with the Meltano job output.
+

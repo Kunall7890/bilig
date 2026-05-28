@@ -278,6 +278,28 @@ See [Airbyte WorkPaper Validation](docs/airbyte-workpaper-validation.md) for
 the post-sync boundary, local smoke command, official Airbyte references, and
 outreach note.
 
+## Meltano Utility Formula Validation
+
+Need a Meltano custom utility to validate post-ELT records with formulas after
+an extractor/loader run? Keep Meltano in charge of plugin installation,
+environments, run history, and schedules, then call a WorkPaper validation
+utility that writes a JSON proof artifact.
+
+The source example lives in:
+
+```text
+examples/meltano-workpaper-utility
+```
+
+It defines a `bilig-workpaper-validator` utility command, reads a JSONL
+destination export, edits `Inputs!B2` and `Inputs!B4`, recalculates record-count
+and paid-amount formulas, exports WorkPaper JSON, restores it, and returns
+`validation_passed: true` only when restored readback matches.
+
+See [Meltano WorkPaper Utility](docs/meltano-workpaper-utility.md) for the
+custom utility boundary, local smoke command, official Meltano references, and
+Hub-shaped utility definition.
+
 ## Temporal Formula Activities
 
 Need a Temporal TypeScript Workflow to make durable formula-backed decisions
