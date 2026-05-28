@@ -1104,8 +1104,8 @@ describe('formula builtins', () => {
       code: ErrorCode.Num,
     })
     expect(getBuiltin('COMBINA')?.({ tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Number, value: 2 })).toEqual({
-      tag: ValueTag.Number,
-      value: 0,
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('GCD')?.()).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(getBuiltin('LCM')?.()).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
@@ -1127,7 +1127,7 @@ describe('formula builtins', () => {
     })
     expect(getBuiltin('RANDBETWEEN')?.({ tag: ValueTag.Number, value: 5 }, { tag: ValueTag.Number, value: 3 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('RANDBETWEEN')?.({ tag: ValueTag.Error, code: ErrorCode.NA }, { tag: ValueTag.Number, value: 1 })).toEqual({
       tag: ValueTag.Error,
@@ -1723,8 +1723,8 @@ describe('formula builtins', () => {
       value: 1,
     })
     expect(getBuiltin('COMBINA')?.({ tag: ValueTag.Number, value: 0 }, { tag: ValueTag.Number, value: 3 })).toEqual({
-      tag: ValueTag.Number,
-      value: 0,
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('COMBINA')?.({ tag: ValueTag.String, value: 'bad', stringId: 1 }, { tag: ValueTag.Number, value: 1 })).toEqual({
       tag: ValueTag.Error,

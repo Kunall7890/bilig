@@ -283,6 +283,8 @@ describe('math builtins', () => {
     expect(getBuiltin('COMBIN')?.(num(2), num(3))).toEqual(numError)
     expect(getBuiltin('COMBINA')?.(num(-1), num(1))).toEqual(numError)
     expect(getBuiltin('COMBINA')?.(num(1), num(-1))).toEqual(numError)
+    expect(getBuiltin('COMBINA')?.(num(0), num(1))).toEqual(numError)
+    expect(getBuiltin('COMBINA')?.(num(1), num(2))).toEqual(numError)
     expect(getBuiltin('PERMUT')?.(num(0), num(1))).toEqual(numError)
     expect(getBuiltin('PERMUT')?.(num(3), num(4))).toEqual(numError)
     expect(getBuiltin('PERMUTATIONA')?.(num(0), num(1))).toEqual(numError)

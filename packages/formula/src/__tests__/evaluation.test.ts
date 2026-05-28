@@ -69,6 +69,8 @@ describe('formula builtins and JS evaluator', () => {
       'IFERROR(1,2,3)',
       'IFNA(1,2,3)',
       'FILTER(A1:A3,A1:A3>1,"none",1)',
+      'SUBTOTAL(9)',
+      'AGGREGATE(9,0)',
       'CORREL(A1:A3,B1:B3,1)',
       'NORM.DIST(1,0,1,TRUE(),1)',
       'NORM.S.DIST(1,TRUE(),1)',

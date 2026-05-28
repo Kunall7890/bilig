@@ -694,14 +694,11 @@ export function createMathBuiltins({
       }
       const numberValue = Math.trunc(numberRaw)
       const chosenValue = Math.trunc(chosenRaw)
-      if (!Number.isFinite(numberRaw) || !Number.isFinite(chosenRaw) || numberValue < 0 || chosenValue < 0) {
+      if (!Number.isFinite(numberRaw) || !Number.isFinite(chosenRaw) || numberValue < 0 || chosenValue < 0 || numberValue < chosenValue) {
         return numError()
       }
       if (chosenValue === 0) {
         return numberResult(1)
-      }
-      if (numberValue === 0) {
-        return numberResult(0)
       }
       const result = combinationValue(numberValue + chosenValue - 1, chosenValue)
       return result === undefined ? numError() : finiteNumberOrNumError(result, numberResult, numError)

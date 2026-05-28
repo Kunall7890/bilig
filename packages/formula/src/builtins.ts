@@ -703,8 +703,11 @@ const scalarBuiltins: Record<string, Builtin> = {
     }
     const bottom = integerValue(bottomArg)
     const top = integerValue(topArg)
-    if (bottom === undefined || top === undefined || top < bottom) {
+    if (bottom === undefined || top === undefined) {
       return valueError()
+    }
+    if (top < bottom) {
+      return numError()
     }
     return numberResult(Math.floor(Math.random() * (top - bottom + 1)) + bottom)
   },

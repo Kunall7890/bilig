@@ -547,6 +547,10 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
     case 'OR':
     case 'XOR':
       return argc >= 1
+    case 'SUBTOTAL':
+      return argc >= 2
+    case 'AGGREGATE':
+      return argc >= 3
     case 'SWITCH':
       return argc >= 3
     case 'SEQUENCE':

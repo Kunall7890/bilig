@@ -668,7 +668,7 @@ export function tryApplyScalarMathBuiltin(
 
     const numberValue = Math.trunc(left)
     const chosenValue = Math.trunc(right)
-    if (numberValue < 0.0 || chosenValue < 0.0) {
+    if (numberValue < 0.0 || chosenValue < 0.0 || (builtinId == BuiltinId.Combina && numberValue < chosenValue)) {
       return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (builtinId == BuiltinId.Combin && chosenValue > numberValue) {
@@ -680,8 +680,6 @@ export function tryApplyScalarMathBuiltin(
       result = combinationCalc(numberValue, chosenValue)
     } else if (chosenValue == 0.0) {
       result = 1.0
-    } else if (numberValue == 0.0) {
-      result = 0.0
     } else {
       result = combinationCalc(numberValue + chosenValue - 1.0, chosenValue)
     }
