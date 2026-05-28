@@ -1,4 +1,5 @@
 import type { CellValue } from '@bilig/protocol'
+import { isWasmSafeBuiltinArity } from '../binder-wasm-arity.js'
 import type { EvaluationResult } from '../runtime-values.js'
 
 type Builtin = (...args: CellValue[]) => EvaluationResult
@@ -115,19 +116,10 @@ function isStrictBuiltinArity(name: string, argc: number): boolean {
 }
 
 export function isFormulaCallArity(name: string, argc: number): boolean {
-  if (!isStrictBuiltinArity(name, argc)) {
-    return false
+  if ((name === 'DELTA' || name === 'GESTEP') && (argc === 1 || argc === 2)) {
+    return true
   }
-  switch (name) {
-    case 'WORKDAY':
-    case 'NETWORKDAYS':
-      return argc === 2 || argc === 3
-    case 'WORKDAY.INTL':
-    case 'NETWORKDAYS.INTL':
-      return argc >= 2 && argc <= 4
-    default:
-      return true
-  }
+  return isStrictBuiltinArity(name, argc) && isWasmSafeBuiltinArity(name, argc)
 }
 
 export function enforceBuiltinArities(map: Record<string, Builtin>, valueError: () => EvaluationResult): Record<string, Builtin> {

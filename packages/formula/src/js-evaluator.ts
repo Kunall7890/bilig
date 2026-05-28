@@ -603,6 +603,11 @@ function executePlan(
         for (let index = 0; index < instruction.argc; index += 1) {
           rawArgs.unshift(popArgument(stack))
         }
+        const normalizedCallee = normalizeBuiltinLookupName(instruction.callee)
+        if (!isFormulaCallArity(normalizedCallee, rawArgs.length)) {
+          stack.push({ kind: 'scalar', value: error(ErrorCode.Value) })
+          break
+        }
         const specialResult = evaluateSpecialCall(instruction.callee, rawArgs, context, instruction.argRefs)
         if (specialResult) {
           stack.push(specialResult)
@@ -622,10 +627,6 @@ function executePlan(
         const builtin = resolveBuiltinForContext(instruction.callee, context)
         if (!builtin) {
           stack.push({ kind: 'scalar', value: error(unavailableCallErrorCode(instruction.callee)) })
-          break
-        }
-        if (!isFormulaCallArity(normalizeBuiltinLookupName(instruction.callee), rawArgs.length)) {
-          stack.push({ kind: 'scalar', value: error(ErrorCode.Value) })
           break
         }
         const liftedResult = evaluateArrayLiftedScalarBuiltin(instruction.callee, rawArgs, builtin)

@@ -68,6 +68,7 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
       return argc === 5 || argc === 6
     case 'ODDFPRICE':
     case 'ODDFYIELD':
+      return argc === 8 || argc === 9
     case 'ODDLPRICE':
     case 'ODDLYIELD':
       return argc === 7 || argc === 8
@@ -329,10 +330,8 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
       return argc === 1
     case 'DELTA':
     case 'GESTEP':
-    case 'LOGNORMDIST':
     case 'EFFECT':
     case 'NOMINAL':
-    case 'RRI':
     case 'PERMUT':
     case 'PERMUTATIONA':
       return argc === 2
@@ -345,6 +344,8 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
     case 'CONFIDENCE.T':
     case 'CRITBINOM':
     case 'BINOM.INV':
+    case 'LOGNORMDIST':
+    case 'RRI':
       return argc === 3
     case 'ERF':
       return argc === 1 || argc === 2
