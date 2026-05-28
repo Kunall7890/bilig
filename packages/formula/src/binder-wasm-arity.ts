@@ -40,7 +40,7 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
     case 'DAYS':
       return argc === 2
     case 'COUNTBLANK':
-      return argc >= 1
+      return argc === 1
     case 'CHOOSE':
       return argc >= 2
     case 'DAYS360':

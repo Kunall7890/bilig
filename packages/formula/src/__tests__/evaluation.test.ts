@@ -191,6 +191,31 @@ describe('formula builtins and JS evaluator', () => {
     expect(evaluateAst(parseFormula('SUBTOTAL(1,C1:C2)'), context)).toEqual(div0Error)
   })
 
+  it('requires COUNTBLANK to evaluate one referenced range or cell', () => {
+    const valuesByAddress: Record<string, CellValue> = {
+      A1: { tag: ValueTag.Empty },
+      A2: { tag: ValueTag.String, value: '', stringId: 1 },
+      A3: { tag: ValueTag.Number, value: 2 },
+    }
+    const context = {
+      sheetName: 'Sheet1',
+      resolveCell: (_sheetName: string, address: string): CellValue => valuesByAddress[address] ?? { tag: ValueTag.Empty },
+      resolveRange: (_sheetName: string, start: string, end: string): CellValue[] => {
+        if (start === 'A1' && end === 'A3') {
+          return ['A1', 'A2', 'A3'].map((address) => valuesByAddress[address])
+        }
+        return []
+      },
+    }
+    const valueError = { tag: ValueTag.Error, code: ErrorCode.Value } as const
+
+    expect(evaluateAst(parseFormula('COUNTBLANK(A1:A3)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(evaluateAst(parseFormula('COUNTBLANK(A1)'), context)).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(evaluateAst(parseFormula('COUNTBLANK()'), context)).toEqual(valueError)
+    expect(evaluateAst(parseFormula('COUNTBLANK("")'), context)).toEqual(valueError)
+    expect(evaluateAst(parseFormula('COUNTBLANK(A1,A2)'), context)).toEqual(valueError)
+  })
+
   it('ignores referenced non-numeric aggregate values without changing direct literal coercion', () => {
     const valuesByAddress: Record<string, CellValue> = {
       A1: { tag: ValueTag.Number, value: 2 },
@@ -716,8 +741,8 @@ describe('formula builtins and JS evaluator', () => {
       value: 5,
     })
     expect(evaluateAst(parseFormula('COUNTBLANK(A1,A3,A4)'), context)).toEqual({
-      tag: ValueTag.Number,
-      value: 2,
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
     })
     expect(evaluateAst(parseFormula('DAYS360(DATE(2024,1,29),DATE(2024,3,31))'), context)).toEqual({
       tag: ValueTag.Number,

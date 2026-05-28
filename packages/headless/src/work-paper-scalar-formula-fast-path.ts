@@ -1,8 +1,11 @@
 import {
   evaluateAstResult,
   evaluatePlanResult,
+  compareScalars,
+  coerceLogicalValue,
   getBuiltin,
   getDateSystemBuiltin,
+  excelExponentiation,
   isArrayValue,
   lowerToPlan,
   normalizeBuiltinLookupName,
@@ -309,18 +312,26 @@ function compileDirectScalarEvaluator(node: FormulaNode, dateSystem: '1900' | '1
     case 'CallExpr': {
       const callee = normalizeBuiltinLookupName(node.callee)
       if (callee === 'IF') {
-        const condition = compileDirectScalarEvaluator(node.args[0] ?? { kind: 'OmittedArgument' }, dateSystem)
-        const whenTrue = compileDirectScalarEvaluator(node.args[1] ?? { kind: 'OmittedArgument' }, dateSystem)
-        const whenFalse = compileDirectScalarEvaluator(node.args[2] ?? { kind: 'OmittedArgument' }, dateSystem)
+        if (node.args.length < 2 || node.args[0]?.kind === 'OmittedArgument') {
+          return () => errorValue(ErrorCode.Value)
+        }
+        const condition = compileDirectScalarEvaluator(node.args[0]!, dateSystem)
+        const whenTrue = compileDirectIfBranchEvaluator(node.args[1], dateSystem, errorValue(ErrorCode.Value))
+        const missingFalseValue: CellValue = { tag: ValueTag.Boolean, value: false }
+        const whenFalse =
+          node.args.length >= 3
+            ? compileDirectIfBranchEvaluator(node.args[2], dateSystem, { tag: ValueTag.Number, value: 0 })
+            : () => missingFalseValue
         if (condition === undefined || whenTrue === undefined || whenFalse === undefined) {
           return undefined
         }
         return (runtime) => {
           const conditionValue = condition(runtime)
-          if (conditionValue.tag === ValueTag.Error) {
-            return conditionValue
+          const coerced = coerceLogicalValue(conditionValue)
+          if (!coerced.ok) {
+            return coerced.error
           }
-          return directTruthy(conditionValue) ? whenTrue(runtime) : whenFalse(runtime)
+          return coerced.value ? whenTrue(runtime) : whenFalse(runtime)
         }
       }
       const builtin = dateSystem !== undefined ? getDateSystemBuiltin(callee, dateSystem) : getBuiltin(callee)
@@ -392,6 +403,21 @@ function directScalarCallArguments(callee: string, values: readonly CellValue[],
   return args
 }
 
+function compileDirectIfBranchEvaluator(
+  node: FormulaNode | undefined,
+  dateSystem: '1900' | '1904' | undefined,
+  missingValue: CellValue,
+): DirectScalarEvaluator | undefined {
+  if (node === undefined) {
+    return () => missingValue
+  }
+  if (node.kind === 'OmittedArgument') {
+    const value: CellValue = { tag: ValueTag.Number, value: 0 }
+    return () => value
+  }
+  return compileDirectScalarEvaluator(node, dateSystem)
+}
+
 function evaluateDirectUnary(operator: string, value: CellValue, dateSystem: ExcelDateSystem): CellValue {
   if (value.tag === ValueTag.Error) {
     return value
@@ -454,8 +480,10 @@ function evaluateDirectBinary(operator: string, left: CellValue, right: CellValu
       return { tag: ValueTag.Number, value: leftNumber * rightNumber }
     case '/':
       return rightNumber === 0 ? errorValue(ErrorCode.Div0) : { tag: ValueTag.Number, value: leftNumber / rightNumber }
-    case '^':
-      return { tag: ValueTag.Number, value: leftNumber ** rightNumber }
+    case '^': {
+      const value = excelExponentiation(leftNumber, rightNumber)
+      return Number.isFinite(value) ? { tag: ValueTag.Number, value } : errorValue(ErrorCode.Num)
+    }
     default:
       return errorValue(ErrorCode.Value)
   }
@@ -494,26 +522,7 @@ function directText(value: CellValue): string {
 }
 
 function directCompare(left: CellValue, right: CellValue): number | undefined {
-  if (left.tag === ValueTag.Number || right.tag === ValueTag.Number || left.tag === ValueTag.Boolean || right.tag === ValueTag.Boolean) {
-    const leftNumber = directNumber(left)
-    const rightNumber = directNumber(right)
-    return typeof leftNumber === 'number' && typeof rightNumber === 'number' ? leftNumber - rightNumber : undefined
-  }
-  return directText(left).localeCompare(directText(right))
-}
-
-function directTruthy(value: CellValue): boolean {
-  switch (value.tag) {
-    case ValueTag.Boolean:
-      return value.value
-    case ValueTag.Number:
-      return value.value !== 0
-    case ValueTag.String:
-      return value.value.length > 0
-    case ValueTag.Empty:
-    case ValueTag.Error:
-      return false
-  }
+  return compareScalars(left, right)
 }
 
 function scalarFromDirectResult(result: EvaluationResult): CellValue {

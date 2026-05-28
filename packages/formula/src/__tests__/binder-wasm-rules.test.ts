@@ -110,6 +110,10 @@ describe('binder wasm rules', () => {
     }
 
     expectArgs('SUM(SEQUENCE(2))', true)
+    expectArgs('COUNTBLANK(A1:A4)', true)
+    expectArgs('COUNTBLANK(A1)', true)
+    expectArgs('COUNTBLANK("")', false)
+    expectArgs('COUNTBLANK(A1,A2)', false)
     expectArgs('CHOOSE(1,A1:A2,SEQUENCE(2))', true)
     expectArgs('IF(A1,1,2)', true)
     expectArgs('IF(A1,1)', true)
@@ -177,6 +181,9 @@ describe('binder wasm rules', () => {
       ['IF', 3, true],
       ['IF', 2, true],
       ['IF', 1, false],
+      ['COUNTBLANK', 1, true],
+      ['COUNTBLANK', 2, false],
+      ['COUNTBLANK', 0, false],
       ['IFS', 4, true],
       ['IFS', 3, false],
       ['DAYS360', 3, true],

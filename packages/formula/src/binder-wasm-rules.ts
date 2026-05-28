@@ -344,8 +344,15 @@ export function isWasmSafeBuiltinArgs(callee: string, args: readonly FormulaNode
     case 'MAX':
     case 'COUNT':
     case 'COUNTA':
-    case 'COUNTBLANK':
       return args.every((arg) => deps.isWasmSafe(arg, true) || isNativeSequenceArg(arg))
+    case 'COUNTBLANK': {
+      const countblankArg = args[0]
+      return (
+        argc === 1 &&
+        countblankArg !== undefined &&
+        (countblankArg.kind === 'CellRef' || isCellRangeLikeArg(countblankArg) || isNativeSequenceArg(countblankArg))
+      )
+    }
     case 'AVERAGE':
     case 'AVG':
       return args.every((arg) => isAxisRangeNode(arg) || isNativeSequenceArg(arg))

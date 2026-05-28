@@ -474,6 +474,30 @@ describe('WorkPaper parity surface', () => {
     expect(workbook.calculateScalarFormula('=OR(A1,FALSE)', { A1: '2' })).toEqual({ tag: ValueTag.Boolean, value: false })
   })
 
+  it('matches scalar comparison, logical, and exponent edge semantics', () => {
+    const workbook = WorkPaper.buildEmpty()
+
+    expect(workbook.calculateScalarFormula('=2="2"')).toEqual({ tag: ValueTag.Boolean, value: false })
+    expect(workbook.calculateScalarFormula('=2<"2"')).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(workbook.calculateScalarFormula('=2<"bad"')).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(workbook.calculateScalarFormula('=0=""')).toEqual({ tag: ValueTag.Boolean, value: false })
+    expect(workbook.calculateScalarFormula('=1>""')).toEqual({ tag: ValueTag.Boolean, value: false })
+    expect(workbook.calculateScalarFormula('=2=A1', { A1: '2' })).toEqual({ tag: ValueTag.Boolean, value: false })
+    expect(workbook.calculateScalarFormula('=2<A1', { A1: '2' })).toEqual({ tag: ValueTag.Boolean, value: true })
+
+    expect(workbook.calculateScalarFormula('=IF("2",1,0)')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(workbook.calculateScalarFormula('=IF(A1,1,0)', { A1: '2' })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(workbook.calculateScalarFormula('=IF("",1,0)')).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(workbook.calculateScalarFormula('=IF(,1,2)')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(workbook.calculateScalarFormula('=IF(TRUE,,2)')).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(workbook.calculateScalarFormula('=IF(FALSE,1,)')).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(workbook.calculateScalarFormula('=IF(FALSE,1)')).toEqual({ tag: ValueTag.Boolean, value: false })
+
+    expect(workbook.calculateScalarFormula('=0^-1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+    expect(workbook.calculateScalarFormula('=(-1)^0.5')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+    expect(workbook.calculateScalarFormula('=(-8)^(1/3)')).toEqual({ tag: ValueTag.Number, value: -2 })
+  })
+
   it('covers mutations, preflights, history controls, clipboard, and fill helpers', () => {
     const workbook = WorkPaper.buildFromArray([[1, 2, '=A1+B1']])
     const sheetId = workbook.getSheetId('Sheet1')!

@@ -145,6 +145,9 @@ function evaluateSpecialCall(
   argRefs: readonly (ReferenceOperand | undefined)[] = [],
 ): StackValue | undefined {
   const normalizedCallee = normalizeBuiltinLookupName(callee)
+  if (normalizedCallee === 'COUNTBLANK') {
+    return evaluateCountblankSpecialCall(rawArgs, argRefs)
+  }
   if (
     (normalizedCallee === 'IFERROR' || normalizedCallee === 'IFNA') &&
     rawArgs[0]?.kind === 'scalar' &&
@@ -214,6 +217,28 @@ function evaluateSpecialCall(
         })
       )
   }
+}
+
+function isCountblankBlank(value: CellValue): boolean {
+  return value.tag === ValueTag.Empty || (value.tag === ValueTag.String && value.value === '')
+}
+
+function evaluateCountblankSpecialCall(rawArgs: readonly StackValue[], argRefs: readonly (ReferenceOperand | undefined)[]): StackValue {
+  if (rawArgs.length !== 1) {
+    return stackScalar(error(ErrorCode.Value))
+  }
+
+  const rawArg = rawArgs[0]!
+  if (rawArg.kind === 'scalar') {
+    if (argRefs[0] === undefined) {
+      return stackScalar(error(ErrorCode.Value))
+    }
+    return stackScalar(numberValue(isCountblankBlank(rawArg.value) ? 1 : 0))
+  }
+  if (rawArg.kind === 'range' || rawArg.kind === 'array') {
+    return stackScalar(numberValue(rawArg.values.filter(isCountblankBlank).length))
+  }
+  return stackScalar(error(ErrorCode.Value))
 }
 
 function scalarBuiltinRangeValues(callee: string, rawArg: StackValue): readonly CellValue[] {

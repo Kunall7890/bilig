@@ -1,13 +1,13 @@
 import { ErrorCode, ValueTag, formatErrorCode, formatGeneralNumberValue, type CellValue } from '@bilig/protocol'
 import type { ExcelDateSystem } from './builtins/excel-date.js'
 import type { RangeBuiltinArgument } from './builtins/lookup.js'
-import { normalizeExactLookupNumber } from './builtins/lookup-core-helpers.js'
 import type { MatrixValue } from './group-pivot-evaluator.js'
 import { excelExponentiation } from './excel-power.js'
 import { emptyValue, error, numberValue } from './js-evaluator-cell-values.js'
 import type { JsPlanInstruction, StackValue } from './js-evaluator-types.js'
 import { parseArithmeticScalarText } from './numeric-text.js'
 import type { EvaluationResult, RangeLikeValue } from './runtime-values.js'
+import { compareScalars } from './scalar-comparison.js'
 
 type BinaryOperator = Extract<JsPlanInstruction, { opcode: 'binary' }>['operator']
 
@@ -46,67 +46,6 @@ export function toStringValue(value: CellValue): string {
       return value.value
     case ValueTag.Error:
       return formatErrorCode(value.code)
-  }
-}
-
-function isNumberLike(value: CellValue): boolean {
-  return value.tag === ValueTag.Number || value.tag === ValueTag.Boolean
-}
-
-function compareText(left: string, right: string): number {
-  const normalizedLeft = left.toUpperCase()
-  const normalizedRight = right.toUpperCase()
-  if (normalizedLeft === normalizedRight) {
-    return 0
-  }
-  return normalizedLeft < normalizedRight ? -1 : 1
-}
-
-function compareScalars(left: CellValue, right: CellValue): number | undefined {
-  if (left.tag === ValueTag.String && right.tag === ValueTag.String) {
-    return compareText(left.value, right.value)
-  }
-  if (left.tag === ValueTag.Empty && right.tag === ValueTag.Empty) {
-    return 0
-  }
-  if (left.tag === ValueTag.String && right.tag === ValueTag.Empty) {
-    return compareText(left.value, '')
-  }
-  if (left.tag === ValueTag.Empty && right.tag === ValueTag.String) {
-    return compareText('', right.value)
-  }
-  if (left.tag === ValueTag.String && isNumberLike(right)) {
-    return 1
-  }
-  if (isNumberLike(left) && right.tag === ValueTag.String) {
-    return -1
-  }
-
-  const leftNum = comparableNumber(left)
-  const rightNum = comparableNumber(right)
-  if (leftNum === undefined || rightNum === undefined) {
-    return undefined
-  }
-  const normalizedLeft = normalizeExactLookupNumber(leftNum)
-  const normalizedRight = normalizeExactLookupNumber(rightNum)
-  if (normalizedLeft === normalizedRight) {
-    return 0
-  }
-  return normalizedLeft < normalizedRight ? -1 : 1
-}
-
-function comparableNumber(value: CellValue): number | undefined {
-  switch (value.tag) {
-    case ValueTag.Number:
-      return value.value
-    case ValueTag.Boolean:
-      return value.value ? 1 : 0
-    case ValueTag.Empty:
-      return 0
-    case ValueTag.String:
-    case ValueTag.Error:
-    default:
-      return undefined
   }
 }
 
