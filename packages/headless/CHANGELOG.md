@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.119.6
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.119.5
+- Manual override: no
+
+## Fixes
+- fix(package): keep headless keywords compressed (ae3dc5d0)
+
+## Internal runtime changes
+- docs(agent): prefer app-host skill discovery (871185d4)
+- docs(growth): add Kestra WorkPaper blueprint (cf46c7d1)
+
 ## 0.119.5
 
 - Release type: patch
