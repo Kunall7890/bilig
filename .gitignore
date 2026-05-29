@@ -12,6 +12,7 @@ artifacts/fuzz/
 __pycache__/
 *.pyc
 .agent-coordination/
+.bilig/
 .playwright-mcp/
 *.tsbuildinfo
 .DS_Store

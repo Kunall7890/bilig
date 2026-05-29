@@ -12,14 +12,18 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 5. Read `https://proompteng.github.io/bilig/skill.txt` when your agent supports skill manifests.
 6. If your host can install skills from GitHub, run
    `npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list`.
-7. If you are inside a cloned Bilig repository with Claude Code, use the
+7. If you are using GitHub Copilot or VS Code agent mode in a cloned checkout,
+   use `.github/copilot-instructions.md`,
+   `.github/prompts/bilig-workpaper-proof.prompt.md`, and
+   `.vscode/mcp.json`.
+8. If you are inside a cloned Bilig repository with Claude Code, use the
    project skill at `.claude/skills/bilig-workpaper/SKILL.md`.
-8. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
+9. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
    `.cursor/rules/bilig-workpaper.mdc` or
    `.windsurf/rules/bilig-workpaper.md`,
    `.clinerules/bilig-workpaper.md`, or
    `.continue/rules/bilig-workpaper.md`.
-9. Start the MCP server or import `@bilig/workpaper` directly.
+10. Start the MCP server or import `@bilig/workpaper` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
 demo endpoint at `https://bilig.proompteng.ai/mcp`. Directory scanners that inspect the

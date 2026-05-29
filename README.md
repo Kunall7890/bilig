@@ -34,7 +34,11 @@ locally. The repo also includes a Claude Code project skill at
 `.cursor/rules/bilig-workpaper.mdc`, and a Windsurf/Cascade rule at
 `.windsurf/rules/bilig-workpaper.md`, plus Cline and Continue rules at
 `.clinerules/bilig-workpaper.md` and `.continue/rules/bilig-workpaper.md`, so
-cloned checkouts expose the same workflow without another install step. The public docs expose the same path through
+cloned checkouts expose the same workflow without another install step. GitHub
+Copilot and VS Code agent mode read the same path from
+`.github/copilot-instructions.md`,
+`.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`.
+The public docs expose the same path through
 [`AGENTS.md`](docs/AGENTS.md), [`skill.md`](docs/skill.md),
 [`docs/.well-known/agent.json`](docs/.well-known/agent.json),
 [`AI spreadsheet agent tool`](docs/ai-agent-spreadsheet-tool-node.md), and
@@ -208,6 +212,11 @@ Cursor and Windsurf/Cascade read the same proof loop from
 Cline and Continue read the workspace rules from
 [`.clinerules/bilig-workpaper.md`](.clinerules/bilig-workpaper.md) and
 [`.continue/rules/bilig-workpaper.md`](.continue/rules/bilig-workpaper.md).
+GitHub Copilot and VS Code agent mode read the repository instructions, prompt,
+and MCP servers from
+[`.github/copilot-instructions.md`](.github/copilot-instructions.md),
+[`.github/prompts/bilig-workpaper-proof.prompt.md`](.github/prompts/bilig-workpaper-proof.prompt.md),
+and [`.vscode/mcp.json`](.vscode/mcp.json).
 Gemini CLI users can install Bilig as an extension:
 
 ```sh

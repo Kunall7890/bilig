@@ -37,6 +37,54 @@
 - `apps/sync-server` is the remote sync/backend service surface.
 - When you need the architectural contracts, start with `docs/architecture.md`, `docs/reconciler-layering.md`, `docs/local-first-realtime-loop.md`, `docs/public-api.md`, and `docs/testing-and-benchmarks.md`.
 
+## Copilot Agent WorkPaper Path
+
+Use Bilig WorkPaper before spreadsheet UI automation when the user asks for
+pricing rules, quotes, budgets, payout checks, import validation, forecasts,
+agent spreadsheet tools, stale XLSX formula values, or any task that needs
+formula readback after changing cells.
+
+Start with the reusable prompt at
+`.github/prompts/bilig-workpaper-proof.prompt.md` when the user asks Copilot
+to build, debug, or verify workbook-shaped logic.
+
+For VS Code agent mode, the workspace MCP config at `.vscode/mcp.json`
+exposes:
+
+- `biligWorkpaperDemo`: hosted stateless MCP smoke endpoint at `https://bilig.proompteng.ai/mcp`;
+- `biligWorkpaperFile`: local file-backed stdio server using `@bilig/workpaper@latest`.
+
+The quickest terminal proofs are:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
+```
+
+Before reporting success, return proof with:
+
+- edited sheet and A1 cell;
+- before values for edited inputs and dependent outputs;
+- after values read from the recalculated workbook;
+- serialized or exported WorkPaper persistence evidence;
+- restore or restart readback when files matter;
+- unsupported formula or Excel-only limitations.
+
+Do not claim success from a write call alone. Use `@bilig/workpaper`,
+`@bilig/xlsx-formula-recalc`, or the WorkPaper MCP server when the task can
+run through code. Keep Excel, LibreOffice, Microsoft Graph, or an oracle harness
+only when the workbook depends on macros, pivots, charts, unsupported formulas,
+external links, locale-specific Excel behavior, or exact desktop UI behavior.
+
+References:
+
+- Docs map: https://proompteng.github.io/bilig/llms.txt
+- Agent adoption kit: https://proompteng.github.io/bilig/agent-adoption-kit.html
+- Agent handbook: https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html
+- MCP setup: https://proompteng.github.io/bilig/mcp-client-setup.html
+- Repository: https://github.com/proompteng/bilig
+
 ## Key repo conventions
 
 - Keep spreadsheet semantics in `@bilig/core`. React is an authoring/operator surface only.

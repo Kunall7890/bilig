@@ -18,6 +18,9 @@ export async function requireAgentInstructionDiscovery(input: {
     windsurfProjectRuleNotes,
     clineProjectRuleNotes,
     continueProjectRuleNotes,
+    copilotInstructions,
+    copilotPrompt,
+    vscodeMcpConfig,
     rootSkillNotes,
     workpaperPackageJson,
     workpaperPackageReadme,
@@ -33,6 +36,9 @@ export async function requireAgentInstructionDiscovery(input: {
     readFile(join(repoRoot, '.windsurf', 'rules', 'bilig-workpaper.md'), 'utf8'),
     readFile(join(repoRoot, '.clinerules', 'bilig-workpaper.md'), 'utf8'),
     readFile(join(repoRoot, '.continue', 'rules', 'bilig-workpaper.md'), 'utf8'),
+    readFile(join(repoRoot, '.github', 'copilot-instructions.md'), 'utf8'),
+    readFile(join(repoRoot, '.github', 'prompts', 'bilig-workpaper-proof.prompt.md'), 'utf8'),
+    readFile(join(repoRoot, '.vscode', 'mcp.json'), 'utf8'),
     readFile(join(repoRoot, 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'bilig', 'package.json'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'bilig', 'README.md'), 'utf8'),
@@ -89,6 +95,9 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsAgentNotes, '.windsurf/rules/bilig-workpaper.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.clinerules/bilig-workpaper.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.continue/rules/bilig-workpaper.md', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, '.github/copilot-instructions.md', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, '.github/prompts/bilig-workpaper-proof.prompt.md', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, '.vscode/mcp.json', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json', 'docs/AGENTS.md')
   requireIncludes(docsSkill, 'name: bilig-workpaper', 'docs/skill.md')
@@ -155,6 +164,27 @@ export async function requireAgentInstructionDiscovery(input: {
   )
   requireIncludes(continueProjectRuleNotes, 'Do not claim success from a write call alone.', '.continue/rules/bilig-workpaper.md')
   requireIncludes(continueProjectRuleNotes, 'https://proompteng.github.io/bilig/llms-full.txt', '.continue/rules/bilig-workpaper.md')
+
+  requireIncludes(copilotInstructions, '## Copilot Agent WorkPaper Path', '.github/copilot-instructions.md')
+  requireIncludes(copilotInstructions, '.github/prompts/bilig-workpaper-proof.prompt.md', '.github/copilot-instructions.md')
+  requireIncludes(copilotInstructions, '.vscode/mcp.json', '.github/copilot-instructions.md')
+  requireIncludes(
+    copilotInstructions,
+    'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json',
+    '.github/copilot-instructions.md',
+  )
+  requireIncludes(copilotInstructions, 'Do not claim success from a write call alone.', '.github/copilot-instructions.md')
+  requireIncludes(copilotPrompt, 'name: bilig-workpaper-proof', '.github/prompts/bilig-workpaper-proof.prompt.md')
+  requireIncludes(copilotPrompt, 'Task: ${input:task:', '.github/prompts/bilig-workpaper-proof.prompt.md')
+  requireIncludes(
+    copilotPrompt,
+    'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json',
+    '.github/prompts/bilig-workpaper-proof.prompt.md',
+  )
+  requireIncludes(copilotPrompt, '`biligWorkpaperFile`', '.github/prompts/bilig-workpaper-proof.prompt.md')
+  requireIncludes(vscodeMcpConfig, '"biligWorkpaperDemo"', '.vscode/mcp.json')
+  requireIncludes(vscodeMcpConfig, '"biligWorkpaperFile"', '.vscode/mcp.json')
+  requireIncludes(vscodeMcpConfig, '"${workspaceFolder}/.bilig/pricing.workpaper.json"', '.vscode/mcp.json')
 
   requireIncludes(rootSkillNotes, '## Command Safety', 'skills/bilig-workpaper/SKILL.md')
   requireIncludes(rootSkillNotes, 'argument array, not a shell-concatenated string', 'skills/bilig-workpaper/SKILL.md')

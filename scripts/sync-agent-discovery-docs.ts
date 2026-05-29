@@ -13,6 +13,9 @@ import {
   buildClineWorkpaperRule,
   buildContinueWorkpaperRule,
   buildCursorWorkpaperRule,
+  buildGithubCopilotInstructions,
+  buildGithubCopilotWorkpaperPrompt,
+  buildVscodeMcpConfig,
   buildWindsurfWorkpaperRule,
 } from './agent-discovery-ide-rules.ts'
 
@@ -913,6 +916,9 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['.windsurf/rules/bilig-workpaper.md', buildWindsurfWorkpaperRule(ideRuleInput)],
     ['.clinerules/bilig-workpaper.md', buildClineWorkpaperRule(ideRuleInput)],
     ['.continue/rules/bilig-workpaper.md', buildContinueWorkpaperRule(ideRuleInput)],
+    ['.github/copilot-instructions.md', buildGithubCopilotInstructions(ideRuleInput)],
+    ['.github/prompts/bilig-workpaper-proof.prompt.md', buildGithubCopilotWorkpaperPrompt(ideRuleInput)],
+    ['.vscode/mcp.json', buildVscodeMcpConfig(ideRuleInput)],
     ['.claude/skills/bilig-workpaper/SKILL.md', skillDocument],
     ['skills/bilig-workpaper/SKILL.md', skillDocument],
     ['packages/workpaper/SKILL.md', skillDocument],

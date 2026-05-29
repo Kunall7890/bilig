@@ -213,7 +213,7 @@ For a project-local setup, create `.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "bilig-workpaper": {
+    "biligWorkpaperFile": {
       "type": "stdio",
       "command": "npm",
       "args": [
@@ -239,12 +239,18 @@ to one repository.
 
 ## VS Code
 
-For GitHub Copilot agent mode in VS Code, add `.vscode/mcp.json`:
+Bilig checkouts already include `.vscode/mcp.json` for GitHub Copilot agent
+mode in VS Code. Copy this shape into another repository when that project
+should get the same WorkPaper tools:
 
 ```json
 {
   "servers": {
-    "bilig-workpaper": {
+    "biligWorkpaperDemo": {
+      "type": "http",
+      "url": "https://bilig.proompteng.ai/mcp"
+    },
+    "biligWorkpaperFile": {
       "type": "stdio",
       "command": "npm",
       "args": [
@@ -254,7 +260,7 @@ For GitHub Copilot agent mode in VS Code, add `.vscode/mcp.json`:
         "--",
         "bilig-workpaper-mcp",
         "--workpaper",
-        "./pricing.workpaper.json",
+        "${workspaceFolder}/.bilig/pricing.workpaper.json",
         "--init-demo-workpaper",
         "--writable"
       ]
@@ -264,7 +270,9 @@ For GitHub Copilot agent mode in VS Code, add `.vscode/mcp.json`:
 ```
 
 Open the Command Palette and run `MCP: List Servers` to start, stop, or inspect
-the server. VS Code also supports `code --add-mcp` for user-level setup; the
+the server. Use `biligWorkpaperDemo` for a no-file hosted smoke test and the
+file-backed stdio server when the agent must persist a project WorkPaper JSON
+file. VS Code also supports `code --add-mcp` for user-level setup; the
 workspace file is easier to review in a repository.
 
 ## Cline
