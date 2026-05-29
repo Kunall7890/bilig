@@ -1,3 +1,13 @@
+---
+title: Dify WorkPaper formula readback
+published: true
+description: Use Bilig WorkPaper from Dify to write workbook inputs, recalculate formulas, and return verified formula readback proof.
+tags: dify, agent, spreadsheet, workpaper, formulas
+canonical_url: https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+image: /assets/github-social-preview.png
+---
+
 # Dify WorkPaper Formula Readback
 
 Bilig is available to Dify as a tool plugin: one tool writes a workbook input

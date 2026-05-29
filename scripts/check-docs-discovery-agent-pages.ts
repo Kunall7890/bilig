@@ -12,12 +12,18 @@ export const agentFrameworkLlmsRequiredLinks = [
 export const agentFrameworkDocRequirements = [
   {
     path: 'docs/mastra-workpaper-spreadsheet-tool.md',
-    includes: ['Mastra WorkPaper spreadsheet tool', 'createTool', 'pnpm --dir examples/headless-workpaper run agent:framework-adapters'],
+    includes: [
+      'Mastra WorkPaper spreadsheet tool',
+      '@bilig/workpaper',
+      'createTool',
+      'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
+    ],
   },
   {
     path: 'docs/llamaindex-workpaper-spreadsheet-tool.md',
     includes: [
       'LlamaIndex.TS WorkPaper spreadsheet tool',
+      '@bilig/workpaper',
       'tool(fn, { parameters })',
       'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
     ],
@@ -42,6 +48,7 @@ export const agentFrameworkDocRequirements = [
     path: 'docs/copilotkit-workpaper-spreadsheet-action.md',
     includes: [
       'CopilotKit WorkPaper spreadsheet action',
+      '@bilig/workpaper',
       'useCopilotAction',
       'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
     ],
@@ -50,13 +57,19 @@ export const agentFrameworkDocRequirements = [
     path: 'docs/cloudflare-agents-workpaper-spreadsheet-tool.md',
     includes: [
       'Cloudflare Agents WorkPaper spreadsheet tool',
+      '@bilig/workpaper',
       'agentTool',
       'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
     ],
   },
   {
     path: 'docs/crewai-workpaper-spreadsheet-tool.md',
-    includes: ['CrewAI WorkPaper spreadsheet tool', 'JSON contract', 'pnpm --dir examples/headless-workpaper run agent:framework-adapters'],
+    includes: [
+      'CrewAI WorkPaper spreadsheet tool',
+      '@bilig/workpaper',
+      'JSON contract',
+      'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
+    ],
   },
   {
     path: 'docs/semantic-kernel-workpaper-mcp.md',

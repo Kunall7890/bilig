@@ -1,3 +1,13 @@
+---
+title: Directus WorkPaper Flow operation
+published: true
+description: Add Bilig WorkPaper to a Directus Flow operation for persisted calculated fields with formula readback proof.
+tags: directus, workflow, spreadsheet, workpaper, formulas
+canonical_url: https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+image: /assets/github-social-preview.png
+---
+
 # Directus WorkPaper Flow Operation
 
 Use this when a Directus Flow needs persisted calculated fields, but the

@@ -1,3 +1,13 @@
+---
+title: WorkPaper Node service recipe
+published: true
+description: Put Bilig WorkPaper behind a small Node service boundary, edit an input, read a formula result, and persist JSON.
+tags: node, service, spreadsheet, workpaper, formulas
+canonical_url: https://proompteng.github.io/bilig/node-service-workpaper-recipe.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+image: /assets/github-social-preview.png
+---
+
 # WorkPaper Node Service Recipe
 
 This recipe shows how to put `@bilig/headless` behind a small Node service
@@ -236,7 +246,6 @@ as a positive persistence signal, not a golden value.
 - Use public `@bilig/headless` exports only. Do not import from this monorepo's
   internal `src/` or `dist/` paths in a consumer service.
 
-
 ## Plain node-postgres (`pg`) JSON persistence
 
 Use this path when the service already owns a `pg` `Pool` or `Client` and you
@@ -330,9 +339,7 @@ function createInitialWorkbook() {
 }
 
 function serializeWorkbook(workbook: WorkPaper) {
-  return serializeWorkPaperDocument(
-    exportWorkPaperDocument(workbook, { includeConfig: true }),
-  )
+  return serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
 }
 
 async function saveLoadAndVerify() {

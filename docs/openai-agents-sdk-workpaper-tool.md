@@ -1,7 +1,7 @@
 ---
 title: OpenAI Agents SDK WorkPaper tools
 published: true
-description: Wrap @bilig/headless workbook reads and verified edits as OpenAI Agents SDK function tools.
+description: Wrap @bilig/workpaper workbook reads and verified edits as OpenAI Agents SDK function tools.
 tags: openai agents sdk, tool calling, spreadsheet, workbook, typescript
 canonical_url: https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -49,7 +49,7 @@ pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-mcp
 ```ts
 import { Agent, RunContext, invokeFunctionTool, tool } from '@openai/agents'
 import { z } from 'zod'
-import { WorkPaper } from '@bilig/headless'
+import { WorkPaper } from '@bilig/workpaper'
 
 const workbook = WorkPaper.buildFromSheets({
   Inputs: [

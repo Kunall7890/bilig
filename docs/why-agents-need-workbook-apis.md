@@ -1,7 +1,7 @@
 ---
 title: Spreadsheet APIs for AI agents
 published: true
-description: Why coding agents should edit workbook formulas through a Node.js WorkPaper API instead of spreadsheet screenshots, with a runnable @bilig/headless example.
+description: Why coding agents should edit workbook formulas through a Node.js WorkPaper API instead of spreadsheet screenshots, with a runnable @bilig/workpaper example.
 tags: ai agents, spreadsheet, node, workpaper, typescript
 canonical_url: https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -18,9 +18,10 @@ verification into a visual guess. If the workflow depends on workbook state, the
 agent needs an API that can read formulas, write cells, recalculate, and prove
 what changed.
 
-`@bilig/headless` is the public WorkPaper runtime from `bilig`. It is a
-TypeScript package for Node services, coding agents, and local workbook
-automation that need spreadsheet behavior without opening a browser grid.
+`@bilig/workpaper` is the public WorkPaper runtime from `bilig`. It is the
+canonical scoped npm package for Node services, coding agents, and local
+workbook automation that need spreadsheet behavior without opening a browser
+grid.
 
 ## The Problem With Screen-Driven Spreadsheets
 
@@ -60,11 +61,11 @@ The shortest trial starts from an empty Node project and uses the published npm
 package:
 
 ```sh
-mkdir bilig-headless-eval
-cd bilig-headless-eval
+mkdir bilig-workpaper-eval
+cd bilig-workpaper-eval
 npm init -y
 npm pkg set type=module
-npm install @bilig/headless
+npm install @bilig/workpaper
 npm install -D tsx typescript @types/node
 curl -fsSLo eval.ts https://proompteng.github.io/bilig/npm-eval.ts
 npx tsx eval.ts
@@ -92,7 +93,7 @@ value as the edited workbook.
 The public package is installable as a normal Node dependency:
 
 ```sh
-npm install @bilig/headless
+npm install @bilig/workpaper
 ```
 
 Build a workbook, change one input, read the recalculated value, and restore the
@@ -105,7 +106,7 @@ import {
   exportWorkPaperDocument,
   parseWorkPaperDocument,
   serializeWorkPaperDocument,
-} from '@bilig/headless'
+} from '@bilig/workpaper'
 
 const workbook = WorkPaper.buildFromSheets({
   Inputs: [
@@ -217,7 +218,7 @@ without bundling a spreadsheet application into the service path.
 `bilig` is not a finished Excel clone. It does not claim full Excel formula
 parity. It does not claim every benchmark p95 row is faster than HyperFormula.
 
-The current public claim is narrower: `@bilig/headless` exposes a WorkPaper API
+The current public claim is narrower: `@bilig/workpaper` exposes a WorkPaper API
 for programmatic workbook creation, formulas, structural operations,
 persistence, and checked-in benchmark evidence. The evidence note records
 WorkPaper `100/100` mean wins on scorecard-eligible comparable workloads against
@@ -230,7 +231,7 @@ Read the benchmark note here:
 
 - GitHub: <https://github.com/proompteng/bilig>
 - Website: <https://proompteng.github.io/bilig/>
-- npm: <https://www.npmjs.com/package/@bilig/headless>
+- npm: <https://www.npmjs.com/package/@bilig/workpaper>
 - Empty-directory eval:
   <https://proompteng.github.io/bilig/try-bilig-headless-in-node.html>
 - Runnable example: [`examples/headless-workpaper`](../examples/headless-workpaper)

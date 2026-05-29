@@ -1,3 +1,13 @@
+---
+title: Local WorkPaper benchmark walkthrough
+published: true
+description: Run the Bilig WorkPaper benchmark checks locally and read the performance evidence without overstating the result.
+tags: benchmark, spreadsheet, node, formulas, workpaper
+canonical_url: https://proompteng.github.io/bilig/local-workpaper-benchmark-walkthrough.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+image: /assets/github-social-preview.png
+---
+
 # Local WorkPaper Benchmark Walkthrough
 
 This walkthrough shows how to run the local WorkPaper benchmark checks for
@@ -34,10 +44,7 @@ Expected successful output starts with:
 {
   "mode": "check",
   "outputPath": "/path/to/bilig/packages/benchmarks/baselines/workpaper-vs-hyperformula.json",
-  "workloads": [
-    "build-from-sheets",
-    "build-dense-literals"
-  ]
+  "workloads": ["build-from-sheets", "build-dense-literals"]
 }
 ```
 

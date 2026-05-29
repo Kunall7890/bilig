@@ -1,3 +1,13 @@
+---
+title: Serverless WorkPaper API route
+published: true
+description: Build a serverless Bilig WorkPaper route that writes inputs, recalculates formulas, returns readback, and persists JSON.
+tags: serverless, node, spreadsheet, workpaper, formulas
+canonical_url: https://proompteng.github.io/bilig/serverless-workpaper-api-route.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+image: /assets/github-social-preview.png
+---
+
 # Serverless WorkPaper API Route
 
 This recipe shows how to put `@bilig/headless` behind a small API route using

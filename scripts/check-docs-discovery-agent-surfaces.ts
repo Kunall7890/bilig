@@ -234,7 +234,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   }
   requireIncludes(
     agentToolCallingDoc,
-    'description: Wrap @bilig/headless workbook reads, writes, formula readback, and persistence as deterministic Node.js tools',
+    'description: Wrap @bilig/workpaper workbook reads, writes, formula readback, and persistence as deterministic Node.js tools',
     'docs/agent-workpaper-tool-calling-recipe.md',
   )
   requireIncludes(agentToolCallingDoc, 'OpenAI Responses API Tool Wrapper', 'docs/agent-workpaper-tool-calling-recipe.md')
@@ -268,7 +268,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   }
   for (const required of [
     'title: OpenAI Agents SDK WorkPaper tools',
-    'description: Wrap @bilig/headless workbook reads and verified edits as OpenAI Agents SDK function tools.',
+    'description: Wrap @bilig/workpaper workbook reads and verified edits as OpenAI Agents SDK function tools.',
     'image: /assets/github-social-preview.png',
     'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk',
     'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-mcp',
@@ -289,7 +289,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   )
   requireIncludes(
     aiSdkLangChainDoc,
-    'description: Wrap @bilig/headless WorkPaper reads, verified edits, formula contracts, and persistence checks as AI SDK, LangChain, Mastra, LlamaIndex.TS, LangGraph.js, CopilotKit, and Cloudflare Agents tools',
+    'description: Wrap @bilig/workpaper WorkPaper reads, verified edits, formula contracts, and persistence checks as AI SDK, LangChain, Mastra, LlamaIndex.TS, LangGraph.js, CopilotKit, and Cloudflare Agents tools',
     'docs/vercel-ai-sdk-langchain-spreadsheet-tool.md',
   )
   requireIncludes(
@@ -574,7 +574,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   )
   requireIncludes(
     agentToolCallLoopDoc,
-    'description: A runnable @bilig/headless loop where an agent writes one workbook input',
+    'description: A runnable @bilig/workpaper loop where an agent writes one workbook input',
     'docs/agent-spreadsheet-tool-call-loop.md',
   )
   for (const [path, content] of [

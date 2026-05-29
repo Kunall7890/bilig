@@ -1,7 +1,7 @@
 ---
 title: Cloudflare Agents WorkPaper spreadsheet tool
 published: true
-description: Use @bilig/headless inside Cloudflare Agents with narrow workbook tools, formula readback, and saved WorkPaper state.
+description: Use @bilig/workpaper inside Cloudflare Agents with narrow workbook tools, formula readback, and saved WorkPaper state.
 tags: cloudflare agents, agentTool, spreadsheet, workpaper, typescript
 canonical_url: https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -14,7 +14,7 @@ Cloudflare Agents can keep state per customer, workspace, or planning session.
 That fits workbook-backed workflows: store the WorkPaper document with the
 agent, expose a small read tool, and expose one validated write tool.
 
-Use `@bilig/headless` for the spreadsheet part: read a computed range, write one
+Use `@bilig/workpaper` for the spreadsheet part: read a computed range, write one
 input cell, verify the dependent formulas, serialize the document, and restore
 it.
 

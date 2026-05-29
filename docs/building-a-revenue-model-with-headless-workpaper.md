@@ -1,3 +1,13 @@
+---
+title: Building a revenue model with Headless WorkPaper
+published: true
+description: Build a formula-backed revenue model with Bilig WorkPaper, edit inputs from code, recalculate, verify readback, and persist JSON.
+tags: typescript, node, spreadsheet, formulas, revenue
+canonical_url: https://proompteng.github.io/bilig/building-a-revenue-model-with-headless-workpaper.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+image: /assets/github-social-preview.png
+---
+
 # Building A Revenue Model With Headless WorkPaper
 
 Status: public adoption article for `@bilig/headless`

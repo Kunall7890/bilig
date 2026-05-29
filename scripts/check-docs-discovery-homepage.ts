@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { getBenchmarkDiscoveryEvidence } from './check-docs-discovery-benchmark-evidence.ts'
 import { docsSiteSources } from './check-docs-discovery-site-sources.ts'
@@ -46,8 +46,17 @@ function requireHomepageLocalHtmlLinksHaveSources(index: string, docsRoot: strin
       continue
     }
 
-    if (!existsSync(join(docsRoot, sourceFile))) {
+    const sourcePath = join(docsRoot, sourceFile)
+    if (!existsSync(sourcePath)) {
       missingSources.push(`${href}: missing source docs/${sourceFile}`)
+      continue
+    }
+
+    if (page.endsWith('.html') && sourceFile.endsWith('.md')) {
+      const sourceText = readFileSync(sourcePath, 'utf8')
+      if (!sourceText.startsWith('---\n')) {
+        missingSources.push(`${href}: docs/${sourceFile} is missing YAML front matter, so GitHub Pages will not emit ${page}`)
+      }
     }
   }
 

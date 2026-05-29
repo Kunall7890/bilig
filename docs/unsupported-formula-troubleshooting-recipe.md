@@ -1,3 +1,13 @@
+---
+title: Unsupported formula troubleshooting recipe
+published: true
+description: Diagnose unsupported Bilig WorkPaper formulas from Node services and agent tools with structured error readback.
+tags: formulas, troubleshooting, spreadsheet, workpaper, node
+canonical_url: https://proompteng.github.io/bilig/unsupported-formula-troubleshooting-recipe.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+image: /assets/github-social-preview.png
+---
+
 # Unsupported Formula Troubleshooting Recipe
 
 Status: runnable recipe for `@bilig/headless` diagnostics

@@ -1,7 +1,7 @@
 ---
 title: Mastra WorkPaper spreadsheet tool
 published: true
-description: "Use @bilig/headless as the workbook logic behind a Mastra createTool: read a range, write one input, and return formula readback."
+description: 'Use @bilig/workpaper as the workbook logic behind a Mastra createTool: read a range, write one input, and return formula readback.'
 tags: mastra, createTool, spreadsheet, workpaper, typescript
 canonical_url: https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -15,7 +15,7 @@ TypeScript. Mastra should get small tool wrappers: one tool reads a summary
 range, and one tool writes a validated input cell and returns the formula
 readback.
 
-That keeps the agent boundary boring. `@bilig/headless` owns formulas,
+That keeps the agent boundary boring. `@bilig/workpaper` owns formulas,
 serialization, and restore checks; `createTool` owns the schema and the tool
 name the model sees.
 
@@ -65,7 +65,7 @@ workbook like an arbitrary mutation surface.
 
 ## What to copy
 
-- Keep `@bilig/headless` WorkPaper construction in your application code.
+- Keep `@bilig/workpaper` WorkPaper construction in your application code.
 - Validate tool arguments before writing.
 - Return before/after formula readback, not just an "updated" message.
 - Serialize and restore the WorkPaper document inside the tool result when the

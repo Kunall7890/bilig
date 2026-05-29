@@ -1,3 +1,13 @@
+---
+title: Submit a workbook fixture
+published: true
+description: Turn a Bilig workbook blocker into a reduced fixture, public test, compatibility note, or formula bug report.
+tags: spreadsheet, workbook, fixture, formulas, compatibility
+canonical_url: https://proompteng.github.io/bilig/submit-workbook-fixture.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+image: /assets/github-social-preview.png
+---
+
 # Submit A Workbook Fixture
 
 Status: public path for turning evaluator blockers into tests, examples, and

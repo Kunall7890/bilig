@@ -1,7 +1,7 @@
 ---
 title: CopilotKit WorkPaper spreadsheet action
 published: true
-description: Use @bilig/headless behind CopilotKit actions so a UI agent can edit one workbook input and show formula readback.
+description: Use @bilig/workpaper behind CopilotKit actions so a UI agent can edit one workbook input and show formula readback.
 tags: copilotkit, useCopilotAction, spreadsheet, workpaper, typescript
 canonical_url: https://proompteng.github.io/bilig/copilotkit-workpaper-spreadsheet-action.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -14,7 +14,7 @@ CopilotKit actions are a practical boundary for user-facing workbook changes.
 The user asks for a forecast or pricing edit, the action changes one WorkPaper
 input, and the UI can show exactly which formula-backed values moved.
 
-Keep the workbook behavior in `@bilig/headless`. The CopilotKit layer should
+Keep the workbook behavior in `@bilig/workpaper`. The CopilotKit layer should
 name the action, describe the parameters, and call the checked WorkPaper
 function.
 

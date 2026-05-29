@@ -1,3 +1,13 @@
+---
+title: Pipedream WorkPaper formula readback
+published: true
+description: Use Bilig WorkPaper from Pipedream to verify formula-backed workflow fields without Excel, LibreOffice, or browser automation.
+tags: pipedream, automation, spreadsheet, workpaper, formulas
+canonical_url: https://proompteng.github.io/bilig/pipedream-workpaper-formula-readback.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+image: /assets/github-social-preview.png
+---
+
 # Pipedream WorkPaper Formula Readback
 
 Bilig can be used from Pipedream as a workflow action. The action writes one

@@ -1,7 +1,7 @@
 ---
 title: Agent spreadsheet tool-call loop
 published: true
-description: A runnable @bilig/headless loop where an agent writes one workbook input, checks formula outputs, and persists the verified result.
+description: A runnable @bilig/workpaper loop where an agent writes one workbook input, checks formula outputs, and persists the verified result.
 tags: ai agents, tool calling, node, spreadsheet, workpaper
 canonical_url: https://proompteng.github.io/bilig/agent-spreadsheet-tool-call-loop.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -13,7 +13,7 @@ image: /assets/github-social-preview.png
 This page is for people building coding agents or backend workers that need a
 spreadsheet engine but do not want to drive a spreadsheet UI.
 
-`@bilig/headless` lets the agent expose workbook operations as ordinary Node
+`@bilig/workpaper` lets the agent expose workbook operations as ordinary Node
 tools: read a range, set a cell, recalculate formulas, verify the result, and
 serialize the workbook for persistence. The important part is the loop, not the
 agent framework around it.
@@ -75,7 +75,7 @@ The agent SDK can change without rewriting the workbook logic.
 - external smoke check:
   [`scripts/workpaper-external-smoke.ts`](../scripts/workpaper-external-smoke.ts)
 - package contract:
-  [`packages/headless/README.md`](../packages/headless/README.md)
+  [`packages/workpaper/README.md`](../packages/workpaper/README.md)
 - longer recipe:
   [`docs/agent-workpaper-tool-calling-recipe.md`](agent-workpaper-tool-calling-recipe.md)
 

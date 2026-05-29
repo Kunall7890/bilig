@@ -1,3 +1,13 @@
+---
+title: Headless spreadsheet engine comparison for Node services and agents
+published: true
+description: Compare Bilig WorkPaper with spreadsheet file libraries, formula engines, browser grids, and headless spreadsheet runtimes.
+tags: spreadsheet, node, formulas, comparison, workpaper
+canonical_url: https://proompteng.github.io/bilig/headless-spreadsheet-engine-comparison.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+image: /assets/github-social-preview.png
+---
+
 # Headless Spreadsheet Engine Comparison For Node Services And Agents
 
 Status: public comparison guide for developers evaluating spreadsheet engines.

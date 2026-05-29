@@ -1,3 +1,13 @@
+---
+title: Flowise WorkPaper formula readback
+published: true
+description: Use Bilig WorkPaper as a Flowise custom tool that edits workbook inputs and returns verified formula readback proof.
+tags: flowise, agent, spreadsheet, workpaper, formulas
+canonical_url: https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+image: /assets/github-social-preview.png
+---
+
 # Flowise WorkPaper Formula Readback
 
 Bilig can be used from Flowise as a custom tool. The agent sends one forecast

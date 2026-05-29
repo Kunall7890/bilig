@@ -1,7 +1,7 @@
 ---
 title: LlamaIndex.TS WorkPaper spreadsheet tool
 published: true
-description: Add @bilig/headless to a LlamaIndex.TS agent as narrow workbook tools with formula readback and persistence checks.
+description: Add @bilig/workpaper to a LlamaIndex.TS agent as narrow workbook tools with formula readback and persistence checks.
 tags: llamaindex, llamaindex ts, spreadsheet, workpaper, typescript
 canonical_url: https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -17,7 +17,7 @@ write one allowed input, and return the cells and formula values that changed.
 The LlamaIndex.TS `tool(fn, { parameters })` shape takes a function plus a
 configuration object with `name`, `description`, and `parameters`. The
 WorkPaper adapter keeps the same pattern: Zod validates the arguments, and
-`@bilig/headless` does the spreadsheet work.
+`@bilig/workpaper` does the spreadsheet work.
 
 ## Run the checked adapter
 

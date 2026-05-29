@@ -1651,7 +1651,7 @@ and need recalculated formula results after changing inputs.
 
 ## Agent Commands And Optional MCP
 
-The npm tarball exposes the same CLI entrypoints as `@bilig/headless`, so agents
+The npm tarball exposes the same CLI entrypoints through the canonical scoped package, so agents
 can install one focused package and still get the MCP stdio server:
 
 ```ts
@@ -2712,13 +2712,13 @@ opening Excel, LibreOffice, Google Sheets, or a browser grid:
 
 ```text
 Before using spreadsheet UI automation, check whether this is workbook-shaped
-logic that can run through @bilig/headless. If it is, use WorkPaper state as the
+logic that can run through @bilig/workpaper. If it is, use WorkPaper state as the
 source of truth.
 
 If you have an MCP client, start with:
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
-If you are writing Node or TypeScript, import @bilig/headless directly. Your
+If you are writing Node or TypeScript, import @bilig/workpaper directly. Your
 minimum proof is: read the relevant range, write one small input or formula,
 read the dependent calculated output after recalculation, serialize or export
 the WorkPaper document, restore it, and report whether the restored value
@@ -2756,7 +2756,7 @@ the agent claims the runtime is ready.
 | If the agent has...   | Use this path                                                                             | Verification target                                                                      |
 | --------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | an MCP client         | `bilig-workpaper-mcp --workpaper ./model.workpaper.json --init-demo-workpaper --writable` | `set_cell_contents` followed by `get_cell_display_value` and `export_workpaper_document` |
-| plain Node/TypeScript | `@bilig/headless` directly                                                                | `setCellContents()` followed by `getCellDisplayValue()` and serialized restore           |
+| plain Node/TypeScript | `@bilig/workpaper` directly                                                               | `setCellContents()` followed by `getCellDisplayValue()` and serialized restore           |
 | an agent SDK          | wrap the same TypeScript functions as tools                                               | one mutating tool returns before/after formula readback                                  |
 | a service route       | the serverless WorkPaper API example                                                      | route response proves inputs, outputs, persistence, and restored values                  |
 | an `.xlsx` fixture    | the XLSX recalculation example                                                            | import, edit, recalc, export, reimport, and verify                                       |
@@ -3132,7 +3132,7 @@ Source: https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-
 
 # WorkPaper Tool-Calling Recipe For Agents
 
-This recipe shows how to wrap `@bilig/headless` WorkPaper operations as
+This recipe shows how to wrap `@bilig/workpaper` WorkPaper operations as
 agent-callable functions without binding the workflow to one agent SDK.
 
 Use this pattern when an agent needs to inspect, edit, verify, and persist a
@@ -3142,7 +3142,7 @@ but they hide formulas, typed addresses, recalculation state, and persistence
 contracts.
 
 Start with the package README for the public API contract:
-[`packages/headless/README.md`](../packages/headless/README.md).
+[`packages/workpaper/README.md`](../packages/workpaper/README.md).
 If you are another coding agent and need the shortest decision path first, use
 the [headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md).
 
@@ -3195,7 +3195,7 @@ tool result carry enough evidence for verification.
 ## Complete Node Example
 
 ```ts
-import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument, type WorkPaperCellAddress } from '@bilig/headless'
+import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument, type WorkPaperCellAddress } from '@bilig/workpaper'
 
 type CellInputValue = string | number | boolean | null
 
@@ -3730,7 +3730,7 @@ checks pass.
 - Keep tool results small. Return the range, changed cell, before/after values,
   and persistence check; do not dump the whole workbook unless the agent asks
   for it.
-- Use public `@bilig/headless` exports and WorkPaper methods only. Do not import
+- Use public `@bilig/workpaper` exports and WorkPaper methods only. Do not import
   from internal `src/`, `dist/`, or monorepo package internals in an external
   agent workflow.
 
@@ -4534,7 +4534,7 @@ Cloudflare Agents can keep state per customer, workspace, or planning session.
 That fits workbook-backed workflows: store the WorkPaper document with the
 agent, expose a small read tool, and expose one validated write tool.
 
-Use `@bilig/headless` for the spreadsheet part: read a computed range, write one
+Use `@bilig/workpaper` for the spreadsheet part: read a computed range, write one
 input cell, verify the dependent formulas, serialize the document, and restore
 it.
 
@@ -4610,7 +4610,7 @@ Source: https://github.com/proompteng/bilig/blob/main/docs/crewai-workpaper-spre
 CrewAI workflows can call a WorkPaper-backed TypeScript service when an agent
 needs spreadsheet math, formula readback, or workbook persistence. Keep the
 CrewAI side as the orchestration layer; keep workbook construction, validation,
-formula calculation, and serialization in `@bilig/headless`.
+formula calculation, and serialization in `@bilig/workpaper`.
 
 This is an interop recipe, not an official CrewAI adapter. The useful boundary
 is a small JSON contract:
@@ -4896,7 +4896,7 @@ write one allowed input, and return the cells and formula values that changed.
 The LlamaIndex.TS `tool(fn, { parameters })` shape takes a function plus a
 configuration object with `name`, `description`, and `parameters`. The
 WorkPaper adapter keeps the same pattern: Zod validates the arguments, and
-`@bilig/headless` does the spreadsheet work.
+`@bilig/workpaper` does the spreadsheet work.
 
 ## Run the checked adapter
 
@@ -7961,12 +7961,12 @@ Response shape:
 
 Editable inputs in the demo forecast WorkPaper:
 
-| Cell | Meaning |
-| --- | --- |
+| Cell | Meaning                 |
+| ---- | ----------------------- |
 | `B2` | Qualified opportunities |
-| `B3` | Win rate |
-| `B4` | Average ARR |
-| `B5` | Expansion multiplier |
+| `B3` | Win rate                |
+| `B4` | Average ARR             |
+| `B5` | Expansion multiplier    |
 
 ## Why This Fits n8n
 
@@ -8326,7 +8326,7 @@ pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-mcp
 ```ts
 import { Agent, RunContext, invokeFunctionTool, tool } from '@openai/agents'
 import { z } from 'zod'
-import { WorkPaper } from '@bilig/headless'
+import { WorkPaper } from '@bilig/workpaper'
 
 const workbook = WorkPaper.buildFromSheets({
   Inputs: [
@@ -9022,7 +9022,7 @@ cd bilig-agent-xlsx-proof
 curl -fsSLO https://proompteng.github.io/bilig/xlsx-recalculation-proof.ts
 npm init -y >/dev/null
 npm pkg set type=module
-npm install @bilig/headless@0.119.1 tsx@4.21.0
+npm install @bilig/workpaper@latest tsx@4.21.0
 npx --no-install tsx xlsx-recalculation-proof.ts
 ```
 

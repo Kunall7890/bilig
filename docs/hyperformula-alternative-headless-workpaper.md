@@ -1,3 +1,13 @@
+---
+title: HyperFormula alternative for Node WorkPaper automation
+published: true
+description: Compare Bilig WorkPaper with HyperFormula for backend formula workbooks, persistence, mutation receipts, and agent readback.
+tags: hyperformula, spreadsheet, node, formulas, comparison
+canonical_url: https://proompteng.github.io/bilig/hyperformula-alternative-headless-workpaper.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+image: /assets/github-social-preview.png
+---
+
 # HyperFormula Alternative For Node WorkPaper Automation
 
 Status: public comparison guide for `@bilig/headless`.

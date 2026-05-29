@@ -1,3 +1,13 @@
+---
+title: Where Bilig is not Excel-compatible yet
+published: true
+description: Review Bilig WorkPaper Excel compatibility gaps before importing real workbooks or relying on formula parity.
+tags: excel, compatibility, spreadsheet, formulas, workpaper
+canonical_url: https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+image: /assets/github-social-preview.png
+---
+
 # Where bilig Is Not Excel-Compatible Yet
 
 Status: public compatibility boundary for `@bilig/headless`

@@ -1,7 +1,7 @@
 ---
 title: CrewAI WorkPaper spreadsheet tool
 published: true
-description: Expose @bilig/headless WorkPaper calculations to CrewAI as a small JSON tool contract with formula readback.
+description: Expose @bilig/workpaper WorkPaper calculations to CrewAI as a small JSON tool contract with formula readback.
 tags: crewai, spreadsheet, workpaper, agent tools, typescript
 canonical_url: https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -13,7 +13,7 @@ image: /assets/github-social-preview.png
 CrewAI workflows can call a WorkPaper-backed TypeScript service when an agent
 needs spreadsheet math, formula readback, or workbook persistence. Keep the
 CrewAI side as the orchestration layer; keep workbook construction, validation,
-formula calculation, and serialization in `@bilig/headless`.
+formula calculation, and serialization in `@bilig/workpaper`.
 
 This is an interop recipe, not an official CrewAI adapter. The useful boundary
 is a small JSON contract:

@@ -1,7 +1,7 @@
 ---
 title: Agent framework spreadsheet tools
 published: true
-description: Wrap @bilig/headless WorkPaper reads, verified edits, formula contracts, and persistence checks as AI SDK, LangChain, Mastra, LlamaIndex.TS, LangGraph.js, CopilotKit, and Cloudflare Agents tools.
+description: Wrap @bilig/workpaper WorkPaper reads, verified edits, formula contracts, and persistence checks as AI SDK, LangChain, Mastra, LlamaIndex.TS, LangGraph.js, CopilotKit, and Cloudflare Agents tools.
 tags: vercel ai sdk, langchain, mastra, llamaindex, langgraph, copilotkit, cloudflare agents, spreadsheet, node
 canonical_url: https://proompteng.github.io/bilig/vercel-ai-sdk-langchain-spreadsheet-tool.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png

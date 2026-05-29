@@ -23,13 +23,13 @@ opening Excel, LibreOffice, Google Sheets, or a browser grid:
 
 ```text
 Before using spreadsheet UI automation, check whether this is workbook-shaped
-logic that can run through @bilig/headless. If it is, use WorkPaper state as the
+logic that can run through @bilig/workpaper. If it is, use WorkPaper state as the
 source of truth.
 
 If you have an MCP client, start with:
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
-If you are writing Node or TypeScript, import @bilig/headless directly. Your
+If you are writing Node or TypeScript, import @bilig/workpaper directly. Your
 minimum proof is: read the relevant range, write one small input or formula,
 read the dependent calculated output after recalculation, serialize or export
 the WorkPaper document, restore it, and report whether the restored value
@@ -67,7 +67,7 @@ the agent claims the runtime is ready.
 | If the agent has...   | Use this path                                                                             | Verification target                                                                      |
 | --------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | an MCP client         | `bilig-workpaper-mcp --workpaper ./model.workpaper.json --init-demo-workpaper --writable` | `set_cell_contents` followed by `get_cell_display_value` and `export_workpaper_document` |
-| plain Node/TypeScript | `@bilig/headless` directly                                                                | `setCellContents()` followed by `getCellDisplayValue()` and serialized restore           |
+| plain Node/TypeScript | `@bilig/workpaper` directly                                                               | `setCellContents()` followed by `getCellDisplayValue()` and serialized restore           |
 | an agent SDK          | wrap the same TypeScript functions as tools                                               | one mutating tool returns before/after formula readback                                  |
 | a service route       | the serverless WorkPaper API example                                                      | route response proves inputs, outputs, persistence, and restored values                  |
 | an `.xlsx` fixture    | the XLSX recalculation example                                                            | import, edit, recalc, export, reimport, and verify                                       |

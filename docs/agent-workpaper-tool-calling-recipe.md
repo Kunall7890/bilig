@@ -1,7 +1,7 @@
 ---
 title: WorkPaper tool-calling recipe for AI agents
 published: true
-description: Wrap @bilig/headless workbook reads, writes, formula readback, and persistence as deterministic Node.js tools for coding agents.
+description: Wrap @bilig/workpaper workbook reads, writes, formula readback, and persistence as deterministic Node.js tools for coding agents.
 tags: ai agents, tool calling, node, spreadsheet, typescript
 canonical_url: https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -10,7 +10,7 @@ image: /assets/github-social-preview.png
 
 # WorkPaper Tool-Calling Recipe For Agents
 
-This recipe shows how to wrap `@bilig/headless` WorkPaper operations as
+This recipe shows how to wrap `@bilig/workpaper` WorkPaper operations as
 agent-callable functions without binding the workflow to one agent SDK.
 
 Use this pattern when an agent needs to inspect, edit, verify, and persist a
@@ -20,7 +20,7 @@ but they hide formulas, typed addresses, recalculation state, and persistence
 contracts.
 
 Start with the package README for the public API contract:
-[`packages/headless/README.md`](../packages/headless/README.md).
+[`packages/workpaper/README.md`](../packages/workpaper/README.md).
 If you are another coding agent and need the shortest decision path first, use
 the [headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md).
 
@@ -73,7 +73,7 @@ tool result carry enough evidence for verification.
 ## Complete Node Example
 
 ```ts
-import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument, type WorkPaperCellAddress } from '@bilig/headless'
+import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument, type WorkPaperCellAddress } from '@bilig/workpaper'
 
 type CellInputValue = string | number | boolean | null
 
@@ -608,7 +608,7 @@ checks pass.
 - Keep tool results small. Return the range, changed cell, before/after values,
   and persistence check; do not dump the whole workbook unless the agent asks
   for it.
-- Use public `@bilig/headless` exports and WorkPaper methods only. Do not import
+- Use public `@bilig/workpaper` exports and WorkPaper methods only. Do not import
   from internal `src/`, `dist/`, or monorepo package internals in an external
   agent workflow.
 

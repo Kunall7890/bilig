@@ -1,3 +1,13 @@
+---
+title: n8n WorkPaper formula readback
+published: true
+description: Use Bilig WorkPaper from n8n to write workbook inputs, recalculate formulas, and verify readback without spreadsheet UI automation.
+tags: n8n, automation, spreadsheet, workpaper, formulas
+canonical_url: https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+image: /assets/github-social-preview.png
+---
+
 # n8n WorkPaper Formula Readback
 
 Use this when an n8n workflow needs spreadsheet formulas but the important
@@ -128,12 +138,12 @@ Response shape:
 
 Editable inputs in the demo forecast WorkPaper:
 
-| Cell | Meaning |
-| --- | --- |
+| Cell | Meaning                 |
+| ---- | ----------------------- |
 | `B2` | Qualified opportunities |
-| `B3` | Win rate |
-| `B4` | Average ARR |
-| `B5` | Expansion multiplier |
+| `B3` | Win rate                |
+| `B4` | Average ARR             |
+| `B5` | Expansion multiplier    |
 
 ## Why This Fits n8n
 

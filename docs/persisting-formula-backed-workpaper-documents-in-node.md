@@ -1,3 +1,13 @@
+---
+title: Persisting formula-backed WorkPaper documents in Node
+published: true
+description: Save and restore Bilig WorkPaper JSON documents while preserving formula recalculation and readback proof.
+tags: node, persistence, spreadsheet, workpaper, formulas
+canonical_url: https://proompteng.github.io/bilig/persisting-formula-backed-workpaper-documents-in-node.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+image: /assets/github-social-preview.png
+---
+
 # Persisting Formula-Backed WorkPaper Documents In Node
 
 `@bilig/headless` can run spreadsheet logic without opening a browser grid, but

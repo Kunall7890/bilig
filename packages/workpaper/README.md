@@ -227,7 +227,7 @@ and need recalculated formula results after changing inputs.
 
 ## Agent Commands And Optional MCP
 
-The npm tarball exposes the same CLI entrypoints as `@bilig/headless`, so agents
+The npm tarball exposes the same CLI entrypoints through the canonical scoped package, so agents
 can install one focused package and still get the MCP stdio server:
 
 ```ts
