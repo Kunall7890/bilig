@@ -1,7 +1,8 @@
+import { createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { agentNotAFitBoundaries, mcpPromptNames, skillTags } from './agent-discovery-constants.ts'
+import { agentNotAFitBoundaries, mcpPromptNames } from './agent-discovery-constants.ts'
 import { buildDocsAgentInstructions } from './agent-discovery-agent-instructions.ts'
 import { mcpServerCardManifest } from './agent-discovery-mcp-card.ts'
 import { buildWorkpaperPackageAgentInstructions, buildWorkpaperPackageSkillDocument } from './agent-discovery-package-docs.ts'
@@ -22,6 +23,7 @@ const remoteMcpAliasEndpoint = 'https://bilig.proompteng.ai/mcp/workpaper'
 const remoteMcpServerCard = 'https://bilig.proompteng.ai/.well-known/mcp/server-card.json'
 const repositoryUrl = 'https://github.com/proompteng/bilig'
 const skillName = 'bilig-workpaper'
+const skillDiscoverySchemaUrl = 'https://schemas.agentskills.io/discovery/0.2.0/schema.json'
 const headlessPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'))
 const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
 const workpaperPackageSpec = '@bilig/workpaper@latest'
@@ -233,6 +235,7 @@ If the host supports installable skills, first check that the public skill
 package is discoverable:
 
 \`\`\`sh
+npx --yes skills@latest add https://proompteng.github.io/bilig --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 \`\`\`
 
@@ -563,26 +566,25 @@ const llmsFullSources = [
   },
 ] as const
 
-function skillIndexJson(basePath: 'agent-skills' | 'skills'): string {
-  const json = JSON.stringify(
+function skillIndexJson(): string {
+  const skillDigest = createHash('sha256').update(skillDocument).digest('hex')
+  return `${JSON.stringify(
     {
-      schema_version: basePath === 'agent-skills' ? 'agent-skills-0.2.0' : 'skills-index-1.0',
+      $schema: skillDiscoverySchemaUrl,
       skills: [
         {
           name: skillName,
-          title: 'Bilig WorkPaper agent workbook formulas',
+          type: 'skill-md',
           description:
             'Use @bilig/workpaper WorkPaper state, MCP tools, and formula-clinic reports instead of spreadsheet UI automation when an agent needs formula readback.',
-          url: `${siteRoot}/.well-known/${basePath}/${skillName}/SKILL.txt`,
-          source_url: `${repositoryUrl}/blob/main/docs/.well-known/${basePath}/${skillName}/SKILL.txt`,
-          tags: skillTags,
+          url: `${skillName}/SKILL.txt`,
+          digest: `sha256:${skillDigest}`,
         },
       ],
     },
     null,
     2,
-  )
-  return `${compactStringArrayProperty(json, 'tags', skillTags, '      ')}\n`
+  )}\n`
 }
 
 function agentJsonManifest(): string {
@@ -896,10 +898,10 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['docs/skill.txt', skillDocument],
     ['docs/llms-full.txt', llmsFull],
     ['docs/.well-known/agent.json', agentJson],
-    ['docs/.well-known/agent-skills/index.json', skillIndexJson('agent-skills')],
+    ['docs/.well-known/agent-skills/index.json', skillIndexJson()],
     ['docs/.well-known/agent-skills/bilig-workpaper/SKILL.md', skillDocument],
     ['docs/.well-known/agent-skills/bilig-workpaper/SKILL.txt', skillDocument],
-    ['docs/.well-known/skills/index.json', skillIndexJson('skills')],
+    ['docs/.well-known/skills/index.json', skillIndexJson()],
     ['docs/.well-known/skills/bilig-workpaper/SKILL.md', skillDocument],
     ['docs/.well-known/skills/bilig-workpaper/SKILL.txt', skillDocument],
     ['docs/.well-known/mcp/server-card.json', mcpServerCard],

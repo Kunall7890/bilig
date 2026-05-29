@@ -713,14 +713,20 @@ for (const requiredEntrypoint of [
 }
 requireIncludes(
   agentSkillsIndex,
-  'https://proompteng.github.io/bilig/.well-known/agent-skills/bilig-workpaper/SKILL.txt',
+  '"$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json"',
   'docs/.well-known/agent-skills/index.json',
 )
+requireIncludes(agentSkillsIndex, '"type": "skill-md"', 'docs/.well-known/agent-skills/index.json')
+requireIncludes(agentSkillsIndex, '"digest": "sha256:', 'docs/.well-known/agent-skills/index.json')
+requireIncludes(agentSkillsIndex, '"url": "bilig-workpaper/SKILL.txt"', 'docs/.well-known/agent-skills/index.json')
 requireIncludes(
   legacySkillsIndex,
-  'https://proompteng.github.io/bilig/.well-known/skills/bilig-workpaper/SKILL.txt',
+  '"$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json"',
   'docs/.well-known/skills/index.json',
 )
+requireIncludes(legacySkillsIndex, '"type": "skill-md"', 'docs/.well-known/skills/index.json')
+requireIncludes(legacySkillsIndex, '"digest": "sha256:', 'docs/.well-known/skills/index.json')
+requireIncludes(legacySkillsIndex, '"url": "bilig-workpaper/SKILL.txt"', 'docs/.well-known/skills/index.json')
 requireIncludes(llmsFull, '## Generated Skill Manifest', 'docs/llms-full.txt')
 requireIncludes(llmsFull, '## Headless WorkPaper Agent Handbook', 'docs/llms-full.txt')
 requireIncludes(llmsFull, `npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge`, 'docs/llms-full.txt')
