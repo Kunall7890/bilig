@@ -30,7 +30,11 @@ fallback for hosts that only support GitHub skill sources.
 If the agent is already inside a cloned Bilig checkout, use the project-local
 rules instead:
 
-- Claude Code: `.claude/skills/bilig-workpaper/SKILL.md`
+- Claude Code: `.claude/skills/bilig-workpaper/SKILL.md` or
+  `/bilig-workpaper-proof` from `.claude/commands/bilig-workpaper-proof.md`
+- GitHub Copilot / VS Code agent mode:
+  `.github/copilot-instructions.md`,
+  `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
 - Windsurf/Cascade: `.windsurf/rules/bilig-workpaper.md`
 - Cline: `.clinerules/bilig-workpaper.md`

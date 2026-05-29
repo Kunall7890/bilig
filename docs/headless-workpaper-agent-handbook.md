@@ -62,6 +62,24 @@ The generated project includes `AGENTS.md`, `CLAUDE.md`, project-root
 file-backed MCP challenge. `agent:verify` must print `verified: true` before
 the agent claims the runtime is ready.
 
+For an existing repository that already uses Claude Code, add the project-local
+skill or slash command and run `/bilig-workpaper-proof` before any workbook
+task that would otherwise open Excel, LibreOffice, Google Sheets, a browser
+grid, or screenshot automation:
+
+```text
+.claude/skills/bilig-workpaper/SKILL.md
+.claude/commands/bilig-workpaper-proof.md
+```
+
+For GitHub Copilot or VS Code agent mode, keep the same rule in the repo:
+
+```text
+.github/copilot-instructions.md
+.github/prompts/bilig-workpaper-proof.prompt.md
+.vscode/mcp.json
+```
+
 ## Installable Agent Skill
 
 Use the [Agent Adoption Kit](agent-adoption-kit.md) when the agent should learn

@@ -14,6 +14,7 @@ import { requireSitemapPublishedSources } from './check-docs-discovery-sitemap.t
 import { requireHomepageDiscovery } from './check-docs-discovery-homepage.ts'
 import { productHuntLaunchAssetFiles } from './check-docs-discovery-launch-kit.ts'
 import { requireFormulaProofDiscovery } from './check-docs-discovery-proof-pages.ts'
+import { requireReadmeAgentWorkflowRecipeLinks } from './check-docs-discovery-readme-recipes.ts'
 import { requireTypeScriptFirstPublicSnippets } from './check-docs-discovery-typescript-snippets.ts'
 import { requireXlsxCorpusVerifierDiscovery } from './check-docs-discovery-xlsx-verifier.ts'
 import { requireXlsxCalcAlternativeDiscovery } from './check-docs-discovery-xlsx-calc.ts'
@@ -447,6 +448,7 @@ requireIncludes(readme, 'acceptance commands for first patches.', 'README.md')
 requireIncludes(readme, 'docs/why-use-bilig.md', 'README.md')
 requireIncludes(readme, 'The published package also carries `AGENTS.md`', 'README.md')
 requireIncludes(readme, '.claude/skills/bilig-workpaper/SKILL.md', 'README.md')
+requireIncludes(readme, '.claude/commands/bilig-workpaper-proof.md', 'README.md')
 requireIncludes(readme, '.cursor/rules/bilig-workpaper.mdc', 'README.md')
 requireIncludes(readme, '.windsurf/rules/bilig-workpaper.md', 'README.md')
 requireIncludes(readme, '.clinerules/bilig-workpaper.md', 'README.md')
@@ -463,6 +465,7 @@ requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent.json
 requireIncludes(llms, 'https://proompteng.github.io/bilig/agent.json', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/skill.txt', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md', 'docs/llms.txt')
+requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.claude/commands/bilig-workpaper-proof.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.github/copilot-instructions.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.github/prompts/bilig-workpaper-proof.prompt.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json', 'docs/llms.txt')
@@ -558,6 +561,7 @@ requireIncludes(scopedWorkpaperPackageReadme, 'Directus Flow operation for persi
 requireIncludes(scopedWorkpaperPackageReadme, 'n8n, Dify, Flowise, or Pipedream formula readback', 'packages/workpaper/README.md')
 requireIncludes(llmsFull, 'Pipedream WorkPaper Formula Readback', 'docs/llms-full.txt')
 requireIncludes(readme, 'docs/pipedream-workpaper-formula-readback.md', 'README.md')
+requireReadmeAgentWorkflowRecipeLinks(readme)
 requireIncludes(
   scopedWorkpaperPackageReadme,
   'https://proompteng.github.io/bilig/triggerdev-workpaper-task.html',

@@ -14,6 +14,7 @@ export async function requireAgentInstructionDiscovery(input: {
     docsAgentNotes,
     docsSkill,
     claudeProjectSkillNotes,
+    claudeProjectCommandNotes,
     cursorProjectRuleNotes,
     windsurfProjectRuleNotes,
     clineProjectRuleNotes,
@@ -32,6 +33,7 @@ export async function requireAgentInstructionDiscovery(input: {
     readFile(join(docsRoot, 'AGENTS.md'), 'utf8'),
     readFile(join(docsRoot, 'skill.md'), 'utf8'),
     readFile(join(repoRoot, '.claude', 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8'),
+    readFile(join(repoRoot, '.claude', 'commands', 'bilig-workpaper-proof.md'), 'utf8'),
     readFile(join(repoRoot, '.cursor', 'rules', 'bilig-workpaper.mdc'), 'utf8'),
     readFile(join(repoRoot, '.windsurf', 'rules', 'bilig-workpaper.md'), 'utf8'),
     readFile(join(repoRoot, '.clinerules', 'bilig-workpaper.md'), 'utf8'),
@@ -91,6 +93,7 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsAgentNotes, '## Discovery Order', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'Do not claim success from a write call alone.', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.claude/skills/bilig-workpaper/SKILL.md', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, '.claude/commands/bilig-workpaper-proof.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.cursor/rules/bilig-workpaper.mdc', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.windsurf/rules/bilig-workpaper.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.clinerules/bilig-workpaper.md', 'docs/AGENTS.md')
@@ -118,6 +121,19 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(claudeProjectSkillNotes, 'Return proof, not vibes.', '.claude/skills/bilig-workpaper/SKILL.md')
   requireNotIncludes(claudeProjectSkillNotes, 'allowed-tools:', '.claude/skills/bilig-workpaper/SKILL.md')
   requireNotIncludes(claudeProjectSkillNotes, 'argument-hint:', '.claude/skills/bilig-workpaper/SKILL.md')
+  requireIncludes(
+    claudeProjectCommandNotes,
+    'description: Prove workbook formula edits with Bilig WorkPaper',
+    '.claude/commands/bilig-workpaper-proof.md',
+  )
+  requireIncludes(claudeProjectCommandNotes, '$ARGUMENTS', '.claude/commands/bilig-workpaper-proof.md')
+  requireIncludes(
+    claudeProjectCommandNotes,
+    'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json',
+    '.claude/commands/bilig-workpaper-proof.md',
+  )
+  requireIncludes(claudeProjectCommandNotes, 'Do not drive', '.claude/commands/bilig-workpaper-proof.md')
+  requireIncludes(claudeProjectCommandNotes, 'do not claim success from a write call alone.', '.claude/commands/bilig-workpaper-proof.md')
 
   requireIncludes(cursorProjectRuleNotes, 'description: Use Bilig WorkPaper', '.cursor/rules/bilig-workpaper.mdc')
   requireIncludes(cursorProjectRuleNotes, 'alwaysApply: false', '.cursor/rules/bilig-workpaper.mdc')

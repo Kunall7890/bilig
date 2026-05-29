@@ -11,6 +11,7 @@ import { syncVersionedStaticReferences } from './sync-agent-static-references.ts
 import { buildEvaluatorDoors, buildProofContract, compactProofContractJsonArrays } from './agent-discovery-evaluator-doors.ts'
 import {
   buildClineWorkpaperRule,
+  buildClaudeCodeWorkpaperCommand,
   buildContinueWorkpaperRule,
   buildCursorWorkpaperRule,
   buildGithubCopilotInstructions,
@@ -919,6 +920,7 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['.github/copilot-instructions.md', buildGithubCopilotInstructions(ideRuleInput)],
     ['.github/prompts/bilig-workpaper-proof.prompt.md', buildGithubCopilotWorkpaperPrompt(ideRuleInput)],
     ['.vscode/mcp.json', buildVscodeMcpConfig(ideRuleInput)],
+    ['.claude/commands/bilig-workpaper-proof.md', buildClaudeCodeWorkpaperCommand(ideRuleInput)],
     ['.claude/skills/bilig-workpaper/SKILL.md', skillDocument],
     ['skills/bilig-workpaper/SKILL.md', skillDocument],
     ['packages/workpaper/SKILL.md', skillDocument],

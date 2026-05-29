@@ -20,6 +20,7 @@ agent discovery manifest: https://proompteng.github.io/bilig/.well-known/agent.j
 root agent discovery manifest: https://proompteng.github.io/bilig/agent.json
 agent skill: https://proompteng.github.io/bilig/skill.txt
 Claude Code project skill: https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md
+Claude Code proof command: https://github.com/proompteng/bilig/blob/main/.claude/commands/bilig-workpaper-proof.md
 GitHub Copilot instructions: https://github.com/proompteng/bilig/blob/main/.github/copilot-instructions.md
 GitHub Copilot prompt: https://github.com/proompteng/bilig/blob/main/.github/prompts/bilig-workpaper-proof.prompt.md
 VS Code MCP workspace config: https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json

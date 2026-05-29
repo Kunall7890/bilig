@@ -16,6 +16,31 @@ Use Node `24+`, Bun, and `pnpm@10.32.1`.
 - `pnpm test`, `pnpm coverage`, `pnpm test:browser`: unit, coverage, and Playwright E2E runs.
 - `pnpm run ci`: full preflight, including generated-file and browser checks.
 
+## Agent Discovery & WorkPaper Proof
+
+When an agent in this repo is asked to automate workbook-shaped logic, prefer a
+Bilig WorkPaper proof path before trying Excel, LibreOffice, Google Sheets, a
+browser grid, or screenshots. The useful proof is read/write/recalculate/export
+or restore evidence, not a write-call status.
+
+- Claude Code: use `.claude/skills/bilig-workpaper/SKILL.md` or invoke
+  `/bilig-workpaper-proof` from `.claude/commands/bilig-workpaper-proof.md`.
+- GitHub Copilot / VS Code agent mode: use `.github/copilot-instructions.md`,
+  `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`.
+- Cursor, Windsurf/Cascade, Cline, and Continue: use the matching workspace
+  rules under `.cursor/`, `.windsurf/`, `.clinerules/`, and `.continue/`.
+- Package-level agents inspecting `node_modules/@bilig/workpaper` should read
+  the published `AGENTS.md` and `SKILL.md`.
+
+The no-key checks are:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
+Both should return `verified: true` before you trust the agent workflow.
+
 ## Coding Style & Naming Conventions
 
 Write strict TypeScript with ESM imports and explicit `.js` suffixes where the codebase already uses them. `oxfmt` enforces 2-space indentation, double quotes, and semicolons. Use `PascalCase` for React components and follow nearby filename conventions elsewhere. Avoid `any`; lint also fails on floating promises.
