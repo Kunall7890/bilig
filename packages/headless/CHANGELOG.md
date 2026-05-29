@@ -4,6 +4,20 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.119.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.119.0
+- Manual override: no
+
+## Fixes
+- fix(ui): reject non-grid mutation screenshot proof (a5a1706c)
+
+## Internal runtime changes
+- docs(growth): compress evaluator path (fbe98a6f)
+- docs(growth): surface merged Dify plugin (086c3d5b)
+- docs(growth): add Pipedream WorkPaper discovery (e3a35105)
+
 ## 0.119.0
 
 - Release type: minor
