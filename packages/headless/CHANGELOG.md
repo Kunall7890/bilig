@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.119.2
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.119.1
+- Manual override: no
+
+## Fixes
+- fix(docs): publish homepage recipe targets (09e61d14)
+
 ## 0.119.1
 
 - Release type: patch
