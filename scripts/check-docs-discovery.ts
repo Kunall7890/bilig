@@ -22,6 +22,7 @@ import { requireExternalWorkbookRecalcProofDiscovery } from './check-docs-discov
 import { requireSharedPublicDocsDiscovery } from './check-docs-discovery-public-docs.ts'
 import { homepageRequiredLinks, llmsRequiredLinks } from './check-docs-discovery-public-link-manifest.ts'
 import { requireAgentPublicSurfaceDiscovery } from './check-docs-discovery-agent-surfaces.ts'
+import { requireAgentInstructionDiscovery } from './check-docs-discovery-agent-instructions.ts'
 import { requireTemporalWorkpaperActivityDiscovery } from './check-docs-discovery-temporal.ts'
 import { requireFastMcpWorkpaperClientDiscovery } from './check-docs-discovery-fastmcp.ts'
 import { requireSmolagentsWorkpaperToolDiscovery } from './check-docs-discovery-smolagents.ts'
@@ -48,8 +49,6 @@ const {
   llmsFull,
   agentJson,
   agentJsonRoot,
-  docsAgentNotes,
-  docsSkill,
   agentSkillsIndex,
   legacySkillsIndex,
   communityLaunchPack,
@@ -57,8 +56,6 @@ const {
   newContributorGuide,
   headlessPackageJson,
   headlessReadme,
-  headlessAgentNotes,
-  headlessSkillNotes,
   excelImportReadme,
   publicApi,
   issueTemplateConfig,
@@ -81,7 +78,6 @@ const {
   serverSideSpreadsheetAutomationNode,
   evaluateExcelFormulasInNodeTypescript,
 } = docsDiscoveryContext
-const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
 const workpaperPackageSpec = '@bilig/workpaper@latest'
 const fileBackedMcpArgsNeedles = [
   `"--package",\n      "${workpaperPackageSpec}",\n      "--",\n      "bilig-workpaper-mcp",\n      "--workpaper",\n      "./pricing.workpaper.json",\n      "--init-demo-workpaper",\n      "--writable"`,
@@ -103,13 +99,8 @@ const mcpServerCard = await readFile(join(docsRoot, '.well-known', 'mcp', 'serve
 const mcpServerCardMcpJson = await readFile(join(docsRoot, '.well-known', 'mcp.json'), 'utf8')
 const mcpServerCardLegacyJson = await readFile(join(docsRoot, '.well-known', 'mcp-server-card.json'), 'utf8')
 const sheetjsFormulaResultNotUpdatingNode = await readFile(join(docsRoot, 'sheetjs-formula-result-not-updating-node.md'), 'utf8')
-const rootSkillNotes = await readFile(join(repoRoot, 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8')
-const workpaperPackageJson = await readFile(join(repoRoot, 'packages', 'bilig', 'package.json'), 'utf8')
 const scopedWorkpaperPackageJson = await readFile(join(repoRoot, 'packages', 'workpaper', 'package.json'), 'utf8')
-const workpaperPackageReadme = await readFile(join(repoRoot, 'packages', 'bilig', 'README.md'), 'utf8')
 const scopedWorkpaperPackageReadme = await readFile(join(repoRoot, 'packages', 'workpaper', 'README.md'), 'utf8')
-const workpaperPackageAgentNotes = await readFile(join(repoRoot, 'packages', 'bilig', 'AGENTS.md'), 'utf8')
-const workpaperPackageSkillNotes = await readFile(join(repoRoot, 'packages', 'bilig', 'SKILL.md'), 'utf8')
 const xlsxRecalcPackageJson = await readFile(join(repoRoot, 'packages', 'xlsx-formula-recalc', 'package.json'), 'utf8')
 const xlsxRecalcPackageReadme = await readFile(join(repoRoot, 'packages', 'xlsx-formula-recalc', 'README.md'), 'utf8')
 const xlsxRecalcPackageAgentNotes = await readFile(join(repoRoot, 'packages', 'xlsx-formula-recalc', 'AGENTS.md'), 'utf8')
@@ -579,69 +570,7 @@ requireIncludes(headlessReadme, 'The npm tarball also includes `AGENTS.md`', 'pa
 requireIncludes(headlessReadme, 'SKILL.md', 'packages/headless/README.md')
 requireIncludes(headlessPackageJson, '"AGENTS.md"', 'packages/headless/package.json')
 requireIncludes(headlessPackageJson, '"SKILL.md"', 'packages/headless/package.json')
-requireIncludes(workpaperPackageJson, '"bilig-agent-challenge": "./dist/agent-workbook-challenge-bin.js"', 'packages/bilig/package.json')
-requireIncludes(workpaperPackageJson, '"bilig-workpaper-mcp": "./dist/work-paper-mcp-stdio-bin.js"', 'packages/bilig/package.json')
-requireIncludes(workpaperPackageJson, '"AGENTS.md"', 'packages/bilig/package.json')
-requireIncludes(workpaperPackageJson, '"SKILL.md"', 'packages/bilig/package.json')
-requireIncludes(workpaperPackageReadme, 'The npm tarball includes `AGENTS.md`, `SKILL.md`', 'packages/bilig/README.md')
-requireIncludes(workpaperPackageReadme, 'npm exec --package bilig-workpaper -- bilig-agent-challenge', 'packages/bilig/README.md')
-requireIncludes(workpaperPackageAgentNotes, 'node_modules/bilig-workpaper', 'packages/bilig/AGENTS.md')
-requireIncludes(workpaperPackageAgentNotes, 'npm exec --package bilig-workpaper@', 'packages/bilig/AGENTS.md')
-requireIncludes(workpaperPackageSkillNotes, 'Use bilig-workpaper WorkPaper state', 'packages/bilig/SKILL.md')
-requireIncludes(workpaperPackageSkillNotes, '## First Choice: Direct npm proof or TypeScript', 'packages/bilig/SKILL.md')
-requireIncludes(workpaperPackageSkillNotes, 'npm, ExcelJS, SheetJS, xlsx-populate, and StackOverflow', 'packages/bilig/SKILL.md')
-requireIncludes(
-  workpaperPackageSkillNotes,
-  'Use MCP only when the host specifically needs an MCP client boundary',
-  'packages/bilig/SKILL.md',
-)
-requireNotIncludes(workpaperPackageSkillNotes, '## First Choice: MCP', 'packages/bilig/SKILL.md')
-requireIncludes(workpaperPackageSkillNotes, '"--package", "bilig-workpaper@', 'packages/bilig/SKILL.md')
-requireIncludes(headlessAgentNotes, '## Handoff prompt', 'packages/headless/AGENTS.md')
-requireIncludes(headlessAgentNotes, 'Do not claim success from a write call alone.', 'packages/headless/AGENTS.md')
-requireIncludes(
-  headlessAgentNotes,
-  `npm exec --package ${headlessPackageSpec} -- bilig-mcp-challenge --json`,
-  'packages/headless/AGENTS.md',
-)
-requireIncludes(
-  headlessAgentNotes,
-  `npm exec --package ${headlessPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable`,
-  'packages/headless/AGENTS.md',
-)
-requireIncludes(headlessSkillNotes, 'name: bilig-workpaper', 'packages/headless/SKILL.md')
-requireIncludes(headlessSkillNotes, '"bilig-formula-clinic"', 'packages/headless/SKILL.md')
-requireIncludes(headlessSkillNotes, '"./reduced.xlsx"', 'packages/headless/SKILL.md')
-requireIncludes(headlessSkillNotes, 'Do not trigger it for manual spreadsheet editing', 'packages/headless/SKILL.md')
-requireIncludes(headlessSkillNotes, '## Command Safety', 'packages/headless/SKILL.md')
-requireIncludes(headlessSkillNotes, 'argument array, not a shell-concatenated string', 'packages/headless/SKILL.md')
-requireNotIncludes(headlessSkillNotes, 'allowed-tools:', 'packages/headless/SKILL.md')
-requireNotIncludes(headlessSkillNotes, 'argument-hint:', 'packages/headless/SKILL.md')
-requireIncludes(docsAgentNotes, '## Discovery Order', 'docs/AGENTS.md')
-requireIncludes(docsAgentNotes, 'Do not claim success from a write call alone.', 'docs/AGENTS.md')
-requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json', 'docs/AGENTS.md')
-requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json', 'docs/AGENTS.md')
-requireIncludes(docsSkill, 'name: bilig-workpaper', 'docs/skill.md')
-requireIncludes(docsSkill, '## Required Verification', 'docs/skill.md')
-requireIncludes(docsSkill, '## Command Safety', 'docs/skill.md')
-requireIncludes(docsSkill, 'npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list', 'docs/skill.md')
-requireIncludes(docsSkill, 'returned `tools` array as the source', 'docs/skill.md')
-requireIncludes(docsSkill, 'currently published package', 'docs/skill.md')
-requireIncludes(docsSkill, '"bilig-agent-challenge", "--json"', 'docs/skill.md')
-requireIncludes(docsSkill, '"bilig-mcp-challenge", "--json"', 'docs/skill.md')
-requireNotIncludes(docsSkill, 'allowed-tools:', 'docs/skill.md')
-requireNotIncludes(docsSkill, 'argument-hint:', 'docs/skill.md')
-requireIncludes(rootSkillNotes, '## Command Safety', 'skills/bilig-workpaper/SKILL.md')
-requireIncludes(rootSkillNotes, 'argument array, not a shell-concatenated string', 'skills/bilig-workpaper/SKILL.md')
-requireIncludes(
-  rootSkillNotes,
-  'npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list',
-  'skills/bilig-workpaper/SKILL.md',
-)
-requireIncludes(rootSkillNotes, 'returned `tools` array as the source', 'skills/bilig-workpaper/SKILL.md')
-requireIncludes(rootSkillNotes, 'currently published package', 'skills/bilig-workpaper/SKILL.md')
-requireNotIncludes(rootSkillNotes, 'allowed-tools:', 'skills/bilig-workpaper/SKILL.md')
-requireNotIncludes(rootSkillNotes, 'argument-hint:', 'skills/bilig-workpaper/SKILL.md')
+await requireAgentInstructionDiscovery({ repoRoot, docsRoot, headlessPackageVersion })
 if (agentJsonRoot !== agentJson) {
   throw new Error('docs/agent.json must match docs/.well-known/agent.json')
 }
