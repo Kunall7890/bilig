@@ -19,7 +19,9 @@ export function buildVitestArgs(args: readonly string[], env: NodeJS.ProcessEnv 
   const boundedWorkerArgs = hasArg(args, '--maxWorkers')
     ? [...args]
     : [...args, '--maxWorkers', String(readPositiveInt(env['BILIG_VITEST_MAX_WORKERS']) ?? 1)]
-  return hasArg(boundedWorkerArgs, '--reporter') ? boundedWorkerArgs : [...boundedWorkerArgs, '--reporter', 'verbose']
+  const pooledArgs = hasArg(boundedWorkerArgs, '--pool') ? boundedWorkerArgs : [...boundedWorkerArgs, '--pool', 'forks']
+  const configLoadedArgs = hasArg(pooledArgs, '--configLoader') ? pooledArgs : [...pooledArgs, '--configLoader', 'runner']
+  return hasArg(configLoadedArgs, '--reporter') ? configLoadedArgs : [...configLoadedArgs, '--reporter', 'verbose']
 }
 
 export function buildVitestArgBatches(args: readonly string[], env: NodeJS.ProcessEnv = process.env): string[][] {

@@ -14,6 +14,10 @@ describe('run-vitest wrapper arguments', () => {
       'sample.test.ts',
       '--maxWorkers',
       '1',
+      '--pool',
+      'forks',
+      '--configLoader',
+      'runner',
       '--reporter',
       'verbose',
     ])
@@ -23,6 +27,10 @@ describe('run-vitest wrapper arguments', () => {
     expect(buildVitestArgs(['--run', '--maxWorkers=1'], { BILIG_CI_PROFILE: 'fast' })).toEqual([
       '--run',
       '--maxWorkers=1',
+      '--pool',
+      'forks',
+      '--configLoader',
+      'runner',
       '--reporter',
       'verbose',
     ])
@@ -34,7 +42,7 @@ describe('run-vitest wrapper arguments', () => {
         BILIG_CI_PROFILE: 'fast',
         BILIG_VITEST_MAX_WORKERS: '3',
       }),
-    ).toEqual(['--run', '--maxWorkers', '3', '--reporter', 'verbose'])
+    ).toEqual(['--run', '--maxWorkers', '3', '--pool', 'forks', '--configLoader', 'runner', '--reporter', 'verbose'])
   })
 
   it('ignores malformed CI worker limit overrides instead of forwarding them', () => {
@@ -43,14 +51,14 @@ describe('run-vitest wrapper arguments', () => {
         BILIG_CI_PROFILE: 'fast',
         BILIG_VITEST_MAX_WORKERS: '3abc',
       }),
-    ).toEqual(['--run', '--maxWorkers', '1', '--reporter', 'verbose'])
+    ).toEqual(['--run', '--maxWorkers', '1', '--pool', 'forks', '--configLoader', 'runner', '--reporter', 'verbose'])
 
     expect(
       buildVitestArgs(['--run'], {
         BILIG_CI_PROFILE: 'fast',
         BILIG_VITEST_MAX_WORKERS: '0',
       }),
-    ).toEqual(['--run', '--maxWorkers', '1', '--reporter', 'verbose'])
+    ).toEqual(['--run', '--maxWorkers', '1', '--pool', 'forks', '--configLoader', 'runner', '--reporter', 'verbose'])
   })
 
   it('uses the verbose reporter in CI unless a reporter is already explicit', () => {
@@ -60,6 +68,10 @@ describe('run-vitest wrapper arguments', () => {
       '--reporter=dot',
       '--maxWorkers',
       '1',
+      '--pool',
+      'forks',
+      '--configLoader',
+      'runner',
     ])
   })
 
@@ -71,9 +83,9 @@ describe('run-vitest wrapper arguments', () => {
         BILIG_CI_PROFILE: 'fast',
       }),
     ).toEqual([
-      ['--run', ...files.slice(0, 3), '--maxWorkers', '1', '--reporter', 'verbose'],
-      ['--run', ...files.slice(3, 6), '--maxWorkers', '1', '--reporter', 'verbose'],
-      ['--run', files[6], '--maxWorkers', '1', '--reporter', 'verbose'],
+      ['--run', ...files.slice(0, 3), '--maxWorkers', '1', '--pool', 'forks', '--configLoader', 'runner', '--reporter', 'verbose'],
+      ['--run', ...files.slice(3, 6), '--maxWorkers', '1', '--pool', 'forks', '--configLoader', 'runner', '--reporter', 'verbose'],
+      ['--run', files[6], '--maxWorkers', '1', '--pool', 'forks', '--configLoader', 'runner', '--reporter', 'verbose'],
     ])
   })
 
@@ -99,7 +111,7 @@ describe('run-vitest wrapper arguments', () => {
       buildVitestArgBatches(['--run', ...files], {
         BILIG_CI_PROFILE: 'fast',
       }),
-    ).toEqual([['--run', ...files, '--maxWorkers', '1', '--reporter', 'verbose']])
+    ).toEqual([['--run', ...files, '--maxWorkers', '1', '--pool', 'forks', '--configLoader', 'runner', '--reporter', 'verbose']])
   })
 
   it('allows CI file chunk size overrides', () => {
@@ -109,8 +121,8 @@ describe('run-vitest wrapper arguments', () => {
         BILIG_VITEST_FILE_CHUNK_SIZE: '2',
       }),
     ).toEqual([
-      ['--run', 'a.test.ts', 'b.test.ts', '--maxWorkers', '1', '--reporter', 'verbose'],
-      ['--run', 'c.test.ts', '--maxWorkers', '1', '--reporter', 'verbose'],
+      ['--run', 'a.test.ts', 'b.test.ts', '--maxWorkers', '1', '--pool', 'forks', '--configLoader', 'runner', '--reporter', 'verbose'],
+      ['--run', 'c.test.ts', '--maxWorkers', '1', '--pool', 'forks', '--configLoader', 'runner', '--reporter', 'verbose'],
     ])
   })
 
@@ -126,13 +138,28 @@ describe('run-vitest wrapper arguments', () => {
         { BILIG_CI_PROFILE: 'fast' },
       ),
     ).toEqual([
-      ['--run', 'apps/web/src/__tests__/workbook-editor-conflict.test.tsx', '--maxWorkers', '1', '--reporter', 'verbose'],
+      [
+        '--run',
+        'apps/web/src/__tests__/workbook-editor-conflict.test.tsx',
+        '--maxWorkers',
+        '1',
+        '--pool',
+        'forks',
+        '--configLoader',
+        'runner',
+        '--reporter',
+        'verbose',
+      ],
       [
         '--run',
         'apps/web/src/__tests__/worker-runtime-state.test.ts',
         'apps/web/src/__tests__/worker-workbook-app-model.test.ts',
         '--maxWorkers',
         '1',
+        '--pool',
+        'forks',
+        '--configLoader',
+        'runner',
         '--reporter',
         'verbose',
       ],
@@ -148,8 +175,21 @@ describe('run-vitest wrapper arguments', () => {
         BILIG_VITEST_FILE_CHUNK_SIZE: '2abc',
       }),
     ).toEqual([
-      ['--run', 'a.test.ts', 'b.test.ts', 'c.test.ts', '--maxWorkers', '1', '--reporter', 'verbose'],
-      ['--run', 'd.test.ts', '--maxWorkers', '1', '--reporter', 'verbose'],
+      [
+        '--run',
+        'a.test.ts',
+        'b.test.ts',
+        'c.test.ts',
+        '--maxWorkers',
+        '1',
+        '--pool',
+        'forks',
+        '--configLoader',
+        'runner',
+        '--reporter',
+        'verbose',
+      ],
+      ['--run', 'd.test.ts', '--maxWorkers', '1', '--pool', 'forks', '--configLoader', 'runner', '--reporter', 'verbose'],
     ])
   })
 
@@ -159,7 +199,7 @@ describe('run-vitest wrapper arguments', () => {
         BILIG_CI_PROFILE: 'fast',
         BILIG_VITEST_FILE_CHUNK_SIZE: '1',
       }),
-    ).toEqual([['--run', 'sample.test.ts', '--reporter=dot', '--maxWorkers', '1']])
+    ).toEqual([['--run', 'sample.test.ts', '--reporter=dot', '--maxWorkers', '1', '--pool', 'forks', '--configLoader', 'runner']])
   })
 
   it('adds a short CI-only cooldown between split batches', () => {
