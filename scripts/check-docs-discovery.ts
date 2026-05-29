@@ -99,6 +99,7 @@ const mcpServerCard = await readFile(join(docsRoot, '.well-known', 'mcp', 'serve
 const mcpServerCardMcpJson = await readFile(join(docsRoot, '.well-known', 'mcp.json'), 'utf8')
 const mcpServerCardLegacyJson = await readFile(join(docsRoot, '.well-known', 'mcp-server-card.json'), 'utf8')
 const sheetjsFormulaResultNotUpdatingNode = await readFile(join(docsRoot, 'sheetjs-formula-result-not-updating-node.md'), 'utf8')
+const geminiExtensionJson = await readFile(join(repoRoot, 'gemini-extension.json'), 'utf8')
 const scopedWorkpaperPackageJson = await readFile(join(repoRoot, 'packages', 'workpaper', 'package.json'), 'utf8')
 const scopedWorkpaperPackageReadme = await readFile(join(repoRoot, 'packages', 'workpaper', 'README.md'), 'utf8')
 const xlsxRecalcPackageJson = await readFile(join(repoRoot, 'packages', 'xlsx-formula-recalc', 'package.json'), 'utf8')
@@ -123,6 +124,26 @@ const airflowWorkpaperDag = await readFile(join(docsRoot, 'airflow-workpaper-dag
 const dagsterWorkpaperAsset = await readFile(join(docsRoot, 'dagster-workpaper-asset.md'), 'utf8')
 const kestraWorkpaperFlow = await readFile(join(docsRoot, 'kestra-workpaper-flow.md'), 'utf8')
 const prefectWorkpaperFlow = await readFile(join(docsRoot, 'prefect-workpaper-flow.md'), 'utf8')
+
+const parsedScopedWorkpaperPackageJson: unknown = JSON.parse(scopedWorkpaperPackageJson)
+if (
+  typeof parsedScopedWorkpaperPackageJson !== 'object' ||
+  parsedScopedWorkpaperPackageJson === null ||
+  Array.isArray(parsedScopedWorkpaperPackageJson)
+) {
+  throw new Error('packages/workpaper/package.json must be a JSON object')
+}
+const scopedWorkpaperPackageVersion = Reflect.get(parsedScopedWorkpaperPackageJson, 'version')
+if (typeof scopedWorkpaperPackageVersion !== 'string') {
+  throw new Error('packages/workpaper/package.json must define a string version')
+}
+const parsedGeminiExtensionJson: unknown = JSON.parse(geminiExtensionJson)
+if (typeof parsedGeminiExtensionJson !== 'object' || parsedGeminiExtensionJson === null || Array.isArray(parsedGeminiExtensionJson)) {
+  throw new Error('gemini-extension.json must be a JSON object')
+}
+if (Reflect.get(parsedGeminiExtensionJson, 'version') !== scopedWorkpaperPackageVersion) {
+  throw new Error('gemini-extension.json version must match packages/workpaper/package.json')
+}
 
 requireHomepageDiscovery(index, siteCss, productCss, docsRoot)
 await requireXlsxCalcAlternativeDiscovery(docsRoot)

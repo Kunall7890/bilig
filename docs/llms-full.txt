@@ -5390,6 +5390,11 @@ Gemini CLI extensions can load MCP servers from a repository manifest. Bilig
 ships a root `gemini-extension.json` that starts the WorkPaper MCP server with
 `@bilig/workpaper@latest`.
 
+The manifest version tracks the published `@bilig/workpaper` release so gallery
+crawlers show current package metadata. The MCP command intentionally stays on
+`@latest`, because installed extensions should pick up the current WorkPaper
+server without editing local config after each Bilig release.
+
 Use this when Gemini needs spreadsheet formulas as a tool contract instead of a
 spreadsheet UI session:
 
@@ -5458,6 +5463,10 @@ Gemini CLI's extension gallery indexes public GitHub repositories with the
 `gemini-cli-extension` topic and a root `gemini-extension.json`. Bilig keeps the
 manifest at the repository root so the gallery crawler can validate it without a
 separate submission issue.
+
+Bilig also checks the extension manifest in CI. If `@bilig/workpaper` is released
+and the manifest version is not updated with it, `pnpm docs:discovery:check`
+fails before the stale metadata reaches the public gallery.
 
 ## Boundary
 
