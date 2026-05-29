@@ -32,22 +32,23 @@ WorkPaper JSON file.
 
 ## Required Proof
 
-After any write, return proof with:
+Before saying the workbook is updated, return proof with:
 
 - edited sheet and A1 cell;
-- input and dependent-output values before the change;
-- recalculated output after the change;
+- before values for edited inputs and dependent outputs;
+- after values read from the recalculated workbook;
 - serialized or exported WorkPaper persistence evidence;
 - restore or restart readback when files matter;
 - unsupported formula or Excel-only limitations.
 
-Do not report success from a write call alone.
+Do not claim success from a write call alone.
 
 ## Safe Command Handling
 
-Do not concatenate user-provided paths or cell references into shell strings.
-Use argument arrays where the host supports them. Reject workbook paths or cell
-arguments containing newlines, backticks, `$(`, `;`, `&`, `|`, `<`, or `>`.
+Do not build shell commands by concatenating user text. Prefer MCP
+`command` plus `args` arrays or direct TypeScript calls. Reject workbook
+paths or cell arguments containing newlines, backticks, `$(`, `;`, `&`,
+`|`, `<`, or `>`.
 
 ## References
 

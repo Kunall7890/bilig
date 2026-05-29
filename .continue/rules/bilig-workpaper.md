@@ -1,16 +1,16 @@
 ---
-description: Use Bilig WorkPaper when Cascade needs workbook formulas, MCP spreadsheet tools, or formula readback proof without Excel UI automation.
-trigger: model_decision
+name: Bilig WorkPaper Formula Proof
+description: Use Bilig WorkPaper for spreadsheet-shaped business logic that needs formula readback proof without Excel UI automation.
 ---
 
-# Bilig WorkPaper Rule
+# Bilig WorkPaper Formula Proof
 
-Use this rule when a Windsurf/Cascade agent needs spreadsheet-shaped business
-logic it can verify from code: pricing models, quote approvals, budget checks,
-payout rules, import validation, forecasts, or other formula-backed workflows.
+Use Bilig when a Continue agent is about to build or debug workbook-shaped
+logic: pricing, quote approval, payout checks, import validation, budgets,
+forecasts, or agent tools that need formulas and persisted state.
 
-Avoid spreadsheet UI automation when WorkPaper state can represent the model.
-Screenshots and browser grids are human-review surfaces, not formula truth.
+Do not start by driving a spreadsheet UI when WorkPaper JSON can represent the
+model. Screenshots are human review evidence, not formula truth.
 
 ## First Checks
 
@@ -19,19 +19,19 @@ npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 ```
 
-For a writable project file, run:
+For local file-backed MCP work:
 
 ```sh
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
-For remote MCP connector smoke tests only:
+For remote MCP connector discovery only:
 
 ```text
 https://bilig.proompteng.ai/mcp
 ```
 
-## Proof Standard
+## Required Proof
 
 Before saying the workbook is updated, return proof with:
 
@@ -44,8 +44,6 @@ Before saying the workbook is updated, return proof with:
 
 Do not claim success from a write call alone.
 
-If any proof step fails, say what failed instead of claiming the workbook was updated.
-
 ## Command Safety
 
 Do not build shell commands by concatenating user text. Prefer MCP
@@ -56,6 +54,6 @@ paths or cell arguments containing newlines, backticks, `$(`, `;`, `&`,
 ## References
 
 - Docs map: https://proompteng.github.io/bilig/llms.txt
+- Full context: https://proompteng.github.io/bilig/llms-full.txt
 - Agent handbook: https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html
-- MCP guide: https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
 - Repository: https://github.com/proompteng/bilig

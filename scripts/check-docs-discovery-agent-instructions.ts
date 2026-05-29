@@ -16,6 +16,8 @@ export async function requireAgentInstructionDiscovery(input: {
     claudeProjectSkillNotes,
     cursorProjectRuleNotes,
     windsurfProjectRuleNotes,
+    clineProjectRuleNotes,
+    continueProjectRuleNotes,
     rootSkillNotes,
     workpaperPackageJson,
     workpaperPackageReadme,
@@ -29,6 +31,8 @@ export async function requireAgentInstructionDiscovery(input: {
     readFile(join(repoRoot, '.claude', 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8'),
     readFile(join(repoRoot, '.cursor', 'rules', 'bilig-workpaper.mdc'), 'utf8'),
     readFile(join(repoRoot, '.windsurf', 'rules', 'bilig-workpaper.md'), 'utf8'),
+    readFile(join(repoRoot, '.clinerules', 'bilig-workpaper.md'), 'utf8'),
+    readFile(join(repoRoot, '.continue', 'rules', 'bilig-workpaper.md'), 'utf8'),
     readFile(join(repoRoot, 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'bilig', 'package.json'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'bilig', 'README.md'), 'utf8'),
@@ -83,6 +87,8 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsAgentNotes, '.claude/skills/bilig-workpaper/SKILL.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.cursor/rules/bilig-workpaper.mdc', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.windsurf/rules/bilig-workpaper.md', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, '.clinerules/bilig-workpaper.md', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, '.continue/rules/bilig-workpaper.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json', 'docs/AGENTS.md')
   requireIncludes(docsSkill, 'name: bilig-workpaper', 'docs/skill.md')
@@ -110,7 +116,7 @@ export async function requireAgentInstructionDiscovery(input: {
     'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json',
     '.cursor/rules/bilig-workpaper.mdc',
   )
-  requireIncludes(cursorProjectRuleNotes, 'Do not report success from a write call alone.', '.cursor/rules/bilig-workpaper.mdc')
+  requireIncludes(cursorProjectRuleNotes, 'Do not claim success from a write call alone.', '.cursor/rules/bilig-workpaper.mdc')
   requireIncludes(cursorProjectRuleNotes, 'https://proompteng.github.io/bilig/llms.txt', '.cursor/rules/bilig-workpaper.mdc')
 
   requireIncludes(windsurfProjectRuleNotes, 'trigger: model_decision', '.windsurf/rules/bilig-workpaper.md')
@@ -126,6 +132,28 @@ export async function requireAgentInstructionDiscovery(input: {
   )
   requireIncludes(windsurfProjectRuleNotes, 'If any proof step fails', '.windsurf/rules/bilig-workpaper.md')
   requireIncludes(windsurfProjectRuleNotes, 'https://proompteng.github.io/bilig/llms.txt', '.windsurf/rules/bilig-workpaper.md')
+
+  requireIncludes(clineProjectRuleNotes, 'Cline can read this workspace rule', '.clinerules/bilig-workpaper.md')
+  requireIncludes(
+    clineProjectRuleNotes,
+    'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json',
+    '.clinerules/bilig-workpaper.md',
+  )
+  requireIncludes(clineProjectRuleNotes, 'Do not claim success from a write call alone.', '.clinerules/bilig-workpaper.md')
+  requireIncludes(
+    clineProjectRuleNotes,
+    'https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html',
+    '.clinerules/bilig-workpaper.md',
+  )
+
+  requireIncludes(continueProjectRuleNotes, 'name: Bilig WorkPaper Formula Proof', '.continue/rules/bilig-workpaper.md')
+  requireIncludes(
+    continueProjectRuleNotes,
+    'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json',
+    '.continue/rules/bilig-workpaper.md',
+  )
+  requireIncludes(continueProjectRuleNotes, 'Do not claim success from a write call alone.', '.continue/rules/bilig-workpaper.md')
+  requireIncludes(continueProjectRuleNotes, 'https://proompteng.github.io/bilig/llms-full.txt', '.continue/rules/bilig-workpaper.md')
 
   requireIncludes(rootSkillNotes, '## Command Safety', 'skills/bilig-workpaper/SKILL.md')
   requireIncludes(rootSkillNotes, 'argument array, not a shell-concatenated string', 'skills/bilig-workpaper/SKILL.md')

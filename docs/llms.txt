@@ -21,6 +21,8 @@ agent skill: https://proompteng.github.io/bilig/skill.txt
 Claude Code project skill: https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md
 Cursor project rule: https://github.com/proompteng/bilig/blob/main/.cursor/rules/bilig-workpaper.mdc
 Windsurf Cascade workspace rule: https://github.com/proompteng/bilig/blob/main/.windsurf/rules/bilig-workpaper.md
+Cline workspace rule: https://github.com/proompteng/bilig/blob/main/.clinerules/bilig-workpaper.md
+Continue workspace rule: https://github.com/proompteng/bilig/blob/main/.continue/rules/bilig-workpaper.md
 full agent context: https://proompteng.github.io/bilig/llms-full.txt
 agent skill discovery: https://proompteng.github.io/bilig/.well-known/agent-skills/index.json
 legacy skill discovery: https://proompteng.github.io/bilig/.well-known/skills/index.json

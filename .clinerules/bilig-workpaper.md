@@ -1,16 +1,12 @@
----
-description: Use Bilig WorkPaper when Cascade needs workbook formulas, MCP spreadsheet tools, or formula readback proof without Excel UI automation.
-trigger: model_decision
----
-
 # Bilig WorkPaper Rule
 
-Use this rule when a Windsurf/Cascade agent needs spreadsheet-shaped business
-logic it can verify from code: pricing models, quote approvals, budget checks,
-payout rules, import validation, forecasts, or other formula-backed workflows.
+Use Bilig WorkPaper when Cline is asked to automate spreadsheet-shaped
+business logic: pricing, quotes, payouts, budgets, imports, forecasts, or
+agent tools that need formula readback.
 
-Avoid spreadsheet UI automation when WorkPaper state can represent the model.
-Screenshots and browser grids are human-review surfaces, not formula truth.
+Cline can read this workspace rule from `.clinerules/bilig-workpaper.md`.
+Use it before trying Excel UI automation, LibreOffice automation, Google
+Sheets screen driving, screenshots, or stale cached XLSX values.
 
 ## First Checks
 
@@ -19,13 +15,13 @@ npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 ```
 
-For a writable project file, run:
+For a writable project WorkPaper file:
 
 ```sh
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
-For remote MCP connector smoke tests only:
+Use the hosted endpoint only for remote MCP connector smoke tests:
 
 ```text
 https://bilig.proompteng.ai/mcp
@@ -44,7 +40,8 @@ Before saying the workbook is updated, return proof with:
 
 Do not claim success from a write call alone.
 
-If any proof step fails, say what failed instead of claiming the workbook was updated.
+If the proof fails, keep the blocker explicit and do not use Cline's completion
+message as proof that formulas recalculated.
 
 ## Command Safety
 
