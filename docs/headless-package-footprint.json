@@ -11,13 +11,13 @@
       "ai-agents",
       "excel",
       "excel-formulas",
-      "exceljs",
       "formula-engine",
       "formula-recalculation",
       "headless-spreadsheet",
       "hyperformula",
       "mcp",
       "mcp-server",
+      "model-context-protocol",
       "node",
       "sheetjs",
       "spreadsheet-agent",
@@ -48,11 +48,11 @@
     "hasMcpBinary": true
   },
   "npmPackDryRun": {
-    "tarballBytes": 820627,
-    "unpackedBytes": 5030684,
-    "entryCount": 798,
+    "tarballBytes": 834799,
+    "unpackedBytes": 5129702,
+    "entryCount": 837,
     "readmeBytes": 48402,
-    "packageJsonBytes": 3142
+    "packageJsonBytes": 3157
   },
   "coldStartProbe": {
     "runtime": "node",
