@@ -54,6 +54,7 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   queue worker, route handler, test, or agent tool.
 - Use `@bilig/xlsx-formula-recalc` when XLSX inputs changed in Node and formula
   outputs must be recalculated before returning. Start with this command:
+  `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json`.
   `npx --package @bilig/xlsx-formula-recalc xlsx-recalc pricing.xlsx --set Inputs!B2=48 --read Summary!B7 --out pricing.recalculated.xlsx --json`.
 - For stale external workbook caches, run the companion-workbook proof:
   https://proompteng.github.io/bilig/external-workbook-recalc-proof.html
@@ -73,6 +74,7 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   input edits in Node. Read:
   https://proompteng.github.io/bilig/eval-xlsx-recalc.html
   Run:
+  `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json`.
   `npx --yes --package @bilig/xlsx-formula-recalc xlsx-recalc pricing.xlsx --set Inputs!B2=48 --read Summary!B7 --out pricing.recalculated.xlsx --json`.
 - `eval-workpaper-service`: use when workbook-shaped formula logic belongs in a
   Node service, route, queue worker, or test. Read:
@@ -107,6 +109,7 @@ For direct XLSX recalculation from a project or one-off command:
 
 ```sh
 npm install @bilig/xlsx-formula-recalc
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
 npx --package @bilig/xlsx-formula-recalc xlsx-recalc pricing.xlsx --set Inputs!B2=48 --read Summary!B7 --out pricing.recalculated.xlsx --json
 ```
 

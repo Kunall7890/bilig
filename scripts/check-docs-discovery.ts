@@ -86,8 +86,8 @@ const fileBackedMcpArgsNeedles = [
 ] as const
 const mcpbReleaseAssetUrl = 'https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb'
 const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
-const xlsxRecalcCli = 'npx --package @bilig/xlsx-formula-recalc xlsx-recalc'
-const liveSheetjsRecalcCli = 'npx --package @bilig/sheetjs-formula-recalc sheetjs-recalc'
+const xlsxRecalcCli = 'xlsx-recalc --demo --json'
+const liveSheetjsRecalcCli = 'sheetjs-recalc --demo --json'
 const liveSheetjsRecalcPackage = '@bilig/sheetjs-formula-recalc'
 
 const headlessSpreadsheetEngineNodeServicesAgents = await readFile(

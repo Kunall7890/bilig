@@ -96,6 +96,11 @@ oracle test around the exact files you accept.
 - [package README](https://github.com/proompteng/bilig/tree/main/packages/bilig-xlsx-formula-recalc#readme)
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 
-If this is the XLSX blocker you need to remove from a backend workflow, star or
-bookmark Bilig so the next Node developer can find the proof:
-<https://github.com/proompteng/bilig/stargazers>.
+## After the proof
+
+- Star Bilig if this removed the external-workbook XLSX blocker:
+  <https://github.com/proompteng/bilig/stargazers>
+- Watch releases if you need formula and workbook compatibility updates:
+  <https://github.com/proompteng/bilig/subscription>
+- Report the exact workbook-link blocker if it almost worked:
+  <https://github.com/proompteng/bilig/discussions/new?category=general>

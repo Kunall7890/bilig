@@ -38,6 +38,8 @@ If you already have an XLSX file and just need fresh values before returning,
 start with the narrow file-level command:
 
 ```sh
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
+
 npx --package @bilig/xlsx-formula-recalc xlsx-recalc quote.xlsx \
   --set Inputs!B2=42 \
   --read Summary!B7 \

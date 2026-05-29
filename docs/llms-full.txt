@@ -387,15 +387,56 @@ Those commands are intentionally small. If one matches your workflow, continue
 into the package matrix below; if none match, Bilig is probably not the first
 tool to evaluate.
 
-For agent adoption, use the
-[Agent Adoption Kit](docs/agent-adoption-kit.md): install the skill, run the
-no-key MCP proof, paste one workbook task into the agent, and require
-`verified: true` before trusting the result.
+## If You Only Try One Thing
+
+Most Excel libraries can edit cells and preserve formulas, but they do not
+refresh the cached formula results that backend jobs actually read. Run this
+without cloning the repo:
 
 ```sh
-npx --yes skills@latest add https://bilig.proompteng.ai --list
-npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
-npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
+```
+
+Expected shape:
+
+```json
+{
+  "verified": true,
+  "star": "https://github.com/proompteng/bilig/stargazers",
+  "watchReleases": "https://github.com/proompteng/bilig/subscription",
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
+  "nextStep": {
+    "ifUseful": "If this XLSX recalculation proof fixed a stale formula path, star or bookmark Bilig so you can find it again.",
+    "ifBlocked": "If it almost worked, open the concrete workbook blocker."
+  }
+}
+```
+
+For linked workbooks, use the
+[external workbook recalculation proof](docs/external-workbook-recalc-proof.md).
+For a narrower CLI evaluator, use
+[Evaluate XLSX formula recalculation](docs/eval-xlsx-recalc.md).
+
+If your pipeline is specifically SheetJS / `xlsx`, run the sibling proof with
+the same shape:
+
+```sh
+npm exec --package @bilig/sheetjs-formula-recalc@latest -- sheetjs-recalc --demo --json
+```
+
+If the workbook is already in ExcelJS, keep that boundary and add
+`@bilig/exceljs-formula-recalc`:
+
+```sh
+npm install exceljs @bilig/exceljs-formula-recalc
+npm exec --package @bilig/exceljs-formula-recalc@latest -- exceljs-recalc --demo --json
+```
+
+For one checkout proof across SheetJS/`xlsx`, `xlsx-populate`, and ExcelJS:
+
+```sh
+npm --prefix examples/recalc-bridge-workflows install
+npm --prefix examples/recalc-bridge-workflows run smoke
 ```
 
 ## Which Package Should I Install?
@@ -411,7 +452,20 @@ npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 | Existing ExcelJS workflow needs recalculated values, not stale cached results     | `npm install exceljs @bilig/exceljs-formula-recalc`           | [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md)  |
 | Advanced runtime subpaths, provenance docs, and package-boundary audits           | `npm install @bilig/headless`                                 | [npm provenance and package trust](docs/npm-provenance-package-trust.md)                |
 
-## Agent And Workflow Recipes
+## Agent And WorkPaper Proof
+
+For agent adoption, use the
+[Agent Adoption Kit](docs/agent-adoption-kit.md): install the skill, run the
+no-key MCP proof, paste one workbook task into the agent, and require
+`verified: true` before trusting the result.
+
+```sh
+npx --yes skills@latest add https://bilig.proompteng.ai --list
+npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
+## Integration Recipes After The Proof
 
 Run one core proof above before wiring a platform-specific integration. These
 recipes are for teams that already know where the workbook tool needs to live.
@@ -433,39 +487,6 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Directus Persisted Calculated Fields                       | A custom operation should persist calculated fields with formula proof.                                                                                                         | [Directus WorkPaper Flow operation](https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html)                                                                                                                                            |
 
 <!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/smolagents-workpaper-tool.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
-
-### Stale XLSX Formula Values? Run This First
-
-If a Node job already has an XLSX file and only needs fresh formula values
-before returning, use the file-level recalculation package before evaluating
-the broader WorkPaper runtime:
-
-```sh
-npx --package @bilig/sheetjs-formula-recalc sheetjs-recalc --demo --json
-
-npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json
-
-npx --package @bilig/xlsx-formula-recalc xlsx-recalc quote.xlsx \
-  --set Inputs!B2=42 \
-  --read Summary!B7 \
-  --out quote.recalculated.xlsx \
-  --json
-```
-
-If the workbook is already in ExcelJS, keep that boundary and add
-`@bilig/exceljs-formula-recalc`:
-
-```sh
-npm install exceljs @bilig/exceljs-formula-recalc
-npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json
-```
-
-For one checkout proof across SheetJS/`xlsx`, `xlsx-populate`, and ExcelJS:
-
-```sh
-npm --prefix examples/recalc-bridge-workflows install
-npm --prefix examples/recalc-bridge-workflows run smoke
-```
 
 ## Choose An Evaluation Path
 
@@ -1315,9 +1336,14 @@ oracle test around the exact files you accept.
 - [package README](https://github.com/proompteng/bilig/tree/main/packages/bilig-xlsx-formula-recalc#readme)
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 
-If this is the XLSX blocker you need to remove from a backend workflow, star or
-bookmark Bilig so the next Node developer can find the proof:
-<https://github.com/proompteng/bilig/stargazers>.
+## After the proof
+
+- Star Bilig if this removed the external-workbook XLSX blocker:
+  <https://github.com/proompteng/bilig/stargazers>
+- Watch releases if you need formula and workbook compatibility updates:
+  <https://github.com/proompteng/bilig/subscription>
+- Report the exact workbook-link blocker if it almost worked:
+  <https://github.com/proompteng/bilig/discussions/new?category=general>
 
 ---
 
