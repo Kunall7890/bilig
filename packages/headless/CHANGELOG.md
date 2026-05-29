@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.119.3
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.119.2
+- Manual override: no
+
+## Fixes
+- fix(agent): align MCP challenge proof contract (fdb0ceac)
+
+## Internal runtime changes
+- docs(growth): align evaluator proof copy (27572894)
+
 ## 0.119.2
 
 - Release type: patch
