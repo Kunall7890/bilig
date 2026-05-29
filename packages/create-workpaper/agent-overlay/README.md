@@ -39,6 +39,12 @@ Project MCP configs are included for Claude Code (`.mcp.json`), Cursor, and VS
 Code. Other clients can use the same command from
 `mcp/bilig-workpaper.mcp.json`.
 
+Agent instruction files are included for Claude Code, Codex/AGENTS-aware
+tools, Gemini CLI, GitHub Copilot, VS Code agent mode, Cursor, Cline, Continue,
+and Windsurf/Cascade. They all point at the same rule: read first, edit one
+cell or formula, recalculate, read the dependent output, persist or export, and
+report proof.
+
 Agent handoff:
 
 ```text

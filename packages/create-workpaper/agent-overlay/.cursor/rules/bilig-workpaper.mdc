@@ -1,0 +1,49 @@
+---
+description: Use Bilig WorkPaper when a coding agent needs spreadsheet formulas, MCP workbook tools, or readback proof without Excel UI automation.
+globs:
+alwaysApply: false
+---
+
+# Bilig WorkPaper Rule
+
+Use this rule when a Cursor agent is about to automate spreadsheet-shaped
+logic: pricing, quote approvals, budgets, payout checks, import validation,
+forecasts, or agent tools that need formula readback.
+
+Do not start with Excel, LibreOffice, Google Sheets, browser grids,
+screenshots, or cached XLSX values when the workflow can run through this
+project's WorkPaper JSON.
+
+## First Checks
+
+```sh
+npm run agent:verify
+npm run mcp:server
+```
+
+Use the project MCP config at `.cursor/mcp.json` for the local
+`bilig-workpaper` server.
+
+## Required Proof
+
+Before saying the workbook is updated, return proof with:
+
+- edited sheet and A1 cell;
+- before values for edited inputs and dependent outputs;
+- after values read from the recalculated workbook;
+- serialized or exported WorkPaper persistence evidence;
+- restore or restart readback when files matter;
+- unsupported formula or Excel-only limitations.
+
+Do not claim success from a write call alone.
+
+## Command Safety
+
+Do not build shell commands by concatenating user text. Prefer MCP `command`
+plus `args` arrays or direct TypeScript calls. Reject workbook paths or cell
+arguments containing newlines, backticks, `$(`, `;`, `&`, `|`, `<`, or `>`.
+
+References:
+
+- Agent adoption kit: https://proompteng.github.io/bilig/agent-adoption-kit.html
+- WorkPaper handbook: https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html

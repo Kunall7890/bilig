@@ -11,12 +11,15 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(xlsx): add workbook formula inspection (9c4c322b)
 
 ## Fixes
+
 - fix(release): sync Gemini extension version (bdd0cc9d)
 
 ## Internal runtime changes
+
 - docs(agent): add copilot workpaper proof surface (c12c7e52)
 - docs(growth): fix public recipe links and proof discovery (65328bf7)
 - chore(release): runtime packages v0.120.0 (f4021431)

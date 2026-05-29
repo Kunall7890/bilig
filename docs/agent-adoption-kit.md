@@ -40,6 +40,17 @@ rules instead:
 - Cline: `.clinerules/bilig-workpaper.md`
 - Continue: `.continue/rules/bilig-workpaper.md`
 
+For a clean project that already contains those instruction files, create the
+starter:
+
+```sh
+npm create @bilig/workpaper@latest pricing-agent -- --agent
+```
+
+The generated project includes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
+Copilot / VS Code instructions, Cursor, Cline, Continue, and Windsurf rules,
+plus local MCP configs and `npm run agent:verify`.
+
 For web fetch, give the agent the compact map first:
 
 ```text

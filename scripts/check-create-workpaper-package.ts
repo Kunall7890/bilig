@@ -150,11 +150,19 @@ function assertPackedTarball(): void {
   for (const entry of [
     'package/package.json',
     'package/README.md',
+    'package/agent-overlay/.claude/commands/bilig-workpaper-proof.md',
+    'package/agent-overlay/.clinerules/bilig-workpaper.md',
+    'package/agent-overlay/.continue/rules/bilig-workpaper.md',
     'package/agent-overlay/.mcp.json',
     'package/agent-overlay/.cursor/mcp.json',
+    'package/agent-overlay/.cursor/rules/bilig-workpaper.mdc',
+    'package/agent-overlay/.github/copilot-instructions.md',
+    'package/agent-overlay/.github/prompts/bilig-workpaper-proof.prompt.md',
     'package/agent-overlay/.vscode/mcp.json',
+    'package/agent-overlay/.windsurf/rules/bilig-workpaper.md',
     'package/agent-overlay/AGENTS.md',
     'package/agent-overlay/CLAUDE.md',
+    'package/agent-overlay/GEMINI.md',
     'package/agent-overlay/README.md',
     'package/agent-overlay/mcp/bilig-workpaper.mcp.json',
     'package/agent-overlay/package.json',
@@ -200,7 +208,22 @@ function assertGeneratedStarters(): void {
     'generated agent starter must include the file-backed MCP server script',
   )
 
-  for (const expected of ['AGENTS.md', 'CLAUDE.md', '.mcp.json', '.cursor/mcp.json', '.vscode/mcp.json', 'mcp/bilig-workpaper.mcp.json']) {
+  for (const expected of [
+    'AGENTS.md',
+    'CLAUDE.md',
+    'GEMINI.md',
+    '.claude/commands/bilig-workpaper-proof.md',
+    '.clinerules/bilig-workpaper.md',
+    '.continue/rules/bilig-workpaper.md',
+    '.mcp.json',
+    '.cursor/mcp.json',
+    '.cursor/rules/bilig-workpaper.mdc',
+    '.github/copilot-instructions.md',
+    '.github/prompts/bilig-workpaper-proof.prompt.md',
+    '.vscode/mcp.json',
+    '.windsurf/rules/bilig-workpaper.md',
+    'mcp/bilig-workpaper.mcp.json',
+  ]) {
     assert(existsSync(join(agentDir, expected)), `generated agent starter is missing ${expected}`)
   }
 }

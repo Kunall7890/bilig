@@ -14,3 +14,6 @@ For MCP use, start:
 ```sh
 npm run mcp:server
 ```
+
+For an explicit proof contract, use the project command in
+`.claude/commands/bilig-workpaper-proof.md`.

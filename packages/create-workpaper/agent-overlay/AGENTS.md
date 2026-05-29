@@ -13,6 +13,21 @@ npm run agent:verify
 That command runs the service smoke test and the package-owned MCP challenge.
 A valid run includes `verified: true`.
 
+## Agent Surfaces
+
+This starter includes project instructions for common coding agents:
+
+- Claude Code: `CLAUDE.md` and `.claude/commands/bilig-workpaper-proof.md`
+- Codex and other AGENTS-aware tools: `AGENTS.md`
+- Gemini CLI: `GEMINI.md`
+- GitHub Copilot and VS Code agent mode:
+  `.github/copilot-instructions.md`,
+  `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`
+- Cursor: `.cursor/rules/bilig-workpaper.mdc` and `.cursor/mcp.json`
+- Cline: `.clinerules/bilig-workpaper.md`
+- Continue: `.continue/rules/bilig-workpaper.md`
+- Windsurf/Cascade: `.windsurf/rules/bilig-workpaper.md`
+
 ## Preferred Agent Loop
 
 1. Read the relevant sheet, range, or API output before editing.
