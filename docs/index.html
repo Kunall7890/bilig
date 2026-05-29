@@ -1136,22 +1136,24 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
     </footer>
     <script>
       ;(() => {
+        const canonicalDocsRoot = 'https://proompteng.github.io/bilig/'
         const isRawFilePreview = window.location.protocol === 'file:'
-        const canProbeLocalHtml =
-          (window.location.protocol === 'http:' || window.location.protocol === 'https:') &&
-          !new Set(['proompteng.github.io', 'bilig.proompteng.ai']).has(window.location.hostname)
+        const isCanonicalGeneratedDocsHost =
+          window.location.hostname === 'proompteng.github.io' && window.location.pathname.startsWith('/bilig/')
+
+        const isGeneratedDocsHref = (href) => href?.startsWith('./') && /\.html(?:$|[?#])/.test(href)
 
         const markdownHrefForLocalSource = (href) => {
-          if (!href?.startsWith('./') || !href.includes('.html')) {
-            return href
-          }
-
-          return href.replace(/\.html(?=$|#)/, '.md')
+          return isGeneratedDocsHref(href) ? href.replace(/\.html(?=$|[?#])/, '.md') : href
         }
 
-        const rewriteLinkToLocalSource = (link) => {
+        const canonicalHrefForGeneratedDocs = (href) => {
+          return isGeneratedDocsHref(href) ? new URL(href.slice(2), canonicalDocsRoot).toString() : href
+        }
+
+        const rewriteLink = (link, nextHrefFor) => {
           const href = link.getAttribute('href')
-          const rewrittenHref = markdownHrefForLocalSource(href)
+          const rewrittenHref = nextHrefFor(href)
           if (rewrittenHref !== href) {
             link.setAttribute('href', rewrittenHref)
             return true
@@ -1160,9 +1162,9 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
           return false
         }
 
-        const rewriteLocalSourceLinks = () => {
+        const rewriteLinks = (nextHrefFor) => {
           for (const link of document.querySelectorAll('a[href]')) {
-            rewriteLinkToLocalSource(link)
+            rewriteLink(link, nextHrefFor)
           }
         }
 
@@ -1176,44 +1178,24 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
           return link instanceof HTMLAnchorElement ? link : null
         }
 
-        const rewriteClickedLocalSourceLink = (event) => {
+        const rewriteClickedLink = (event, nextHrefFor) => {
           const link = linkFromEvent(event)
           if (link === null) {
             return
           }
 
-          rewriteLinkToLocalSource(link)
-        }
-
-        const guardClickedLocalHtmlLink = async (event) => {
-          const link = linkFromEvent(event)
-          if (link === null) {
-            return
-          }
-
-          const href = link.getAttribute('href')
-          const rewrittenHref = markdownHrefForLocalSource(href)
-          if (rewrittenHref === href) {
-            return
-          }
-
-          event.preventDefault()
-          try {
-            const response = await fetch(href, { method: 'HEAD', cache: 'no-store' })
-            window.location.href = response.status === 404 ? rewrittenHref : href
-          } catch {
-            window.location.href = href
-          }
+          rewriteLink(link, nextHrefFor)
         }
 
         if (isRawFilePreview) {
-          rewriteLocalSourceLinks()
-          document.addEventListener('click', rewriteClickedLocalSourceLink)
+          rewriteLinks(markdownHrefForLocalSource)
+          document.addEventListener('click', (event) => rewriteClickedLink(event, markdownHrefForLocalSource))
           return
         }
 
-        if (canProbeLocalHtml) {
-          document.addEventListener('click', guardClickedLocalHtmlLink)
+        if (!isCanonicalGeneratedDocsHost) {
+          rewriteLinks(canonicalHrefForGeneratedDocs)
+          document.addEventListener('click', (event) => rewriteClickedLink(event, canonicalHrefForGeneratedDocs))
         }
       })()
     </script>
