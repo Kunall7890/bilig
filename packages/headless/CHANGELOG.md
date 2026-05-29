@@ -4,6 +4,21 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.119.4
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.119.3
+- Manual override: no
+
+## Fixes
+- fix(agent-discovery): publish skills-compatible index (4854ae93)
+
+## Internal runtime changes
+- docs(agent): add Claude Code WorkPaper skill (e1165a28)
+- docs(agent): add Cursor and Windsurf WorkPaper rules (d034b650)
+- docs(agent): add Cline and Continue WorkPaper rules (8defd5ce)
+- docs(agent): add adoption kit (264d80f8)
+
 ## 0.119.3
 
 - Release type: patch
