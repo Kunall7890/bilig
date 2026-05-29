@@ -3,7 +3,8 @@ import { basename, dirname, extname, join } from 'node:path'
 
 import type { RawCellContent } from '@bilig/headless'
 import type { XlsxExternalWorkbookInput } from '@bilig/headless/xlsx'
-import { exportXlsx, recalculateXlsx, WorkPaper, type XlsxFormulaRecalcEdit } from './index.js'
+import { formatErrorCode, ValueTag } from '@bilig/protocol'
+import { exportXlsx, importXlsx, recalculateXlsx, WorkPaper, type XlsxFormulaRecalcCellValue, type XlsxFormulaRecalcEdit } from './index.js'
 
 interface CliExternalWorkbook {
   readonly path: string
@@ -17,6 +18,8 @@ interface CliOptions {
   readonly edits: readonly XlsxFormulaRecalcEdit[]
   readonly reads: readonly string[]
   readonly externalWorkbooks: readonly CliExternalWorkbook[]
+  readonly inspect: boolean
+  readonly inspectLimit: number
   readonly json: boolean
 }
 
@@ -37,6 +40,7 @@ export interface XlsxFormulaRecalcCliContext {
 const repoStarUrl = 'https://github.com/proompteng/bilig/stargazers'
 const releaseWatchUrl = 'https://github.com/proompteng/bilig/subscription'
 const adoptionBlockerUrl = 'https://github.com/proompteng/bilig/discussions/new?category=general'
+const defaultInspectFormulaLimit = 50
 
 function createCliProofNextStep(): CliProofNextStep {
   return {
@@ -63,6 +67,10 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
     const input = options.mode === 'demo' ? buildDemoWorkbookBytes() : readFileSync(requireInputPath(options))
     const inputName = options.mode === 'demo' ? 'bilig-formula-recalc-demo.xlsx' : basename(requireInputPath(options))
     const externalWorkbooks = readExternalWorkbookInputs(options.externalWorkbooks)
+    if (options.inspect) {
+      printInspectionSummary({ input, inputName, externalWorkbooks, options, writeStdout })
+      return 0
+    }
     const result = recalculateXlsx(input, {
       fileName: inputName,
       ...(externalWorkbooks.length > 0 ? { externalWorkbooks } : {}),
@@ -116,6 +124,8 @@ function parseCliArgs(args: readonly string[], commandName: string): CliOptions 
   const reads: string[] = []
   const externalWorkbooks: CliExternalWorkbook[] = []
   let outputPath: string | undefined
+  let inspect = false
+  let inspectLimit = defaultInspectFormulaLimit
   let json = false
 
   for (let index = demo ? 0 : 1; index < args.length; index += 1) {
@@ -145,6 +155,13 @@ function parseCliArgs(args: readonly string[], commandName: string): CliOptions 
         })
         index += 2
         break
+      case '--inspect':
+        inspect = true
+        break
+      case '--inspect-limit':
+        inspectLimit = parseInspectLimit(requireNextArg(args, index, '--inspect-limit'))
+        index += 1
+        break
       case '--out':
       case '-o':
         outputPath = requireNextArg(args, index, arg)
@@ -166,6 +183,8 @@ function parseCliArgs(args: readonly string[], commandName: string): CliOptions 
     edits: edits.length > 0 ? edits : demoDefaultEdits(demo),
     reads: reads.length > 0 ? reads : demoDefaultReads(demo),
     externalWorkbooks,
+    inspect,
+    inspectLimit,
     json,
   }
 }
@@ -176,6 +195,171 @@ function readExternalWorkbookInputs(workbooks: readonly CliExternalWorkbook[]): 
     fileName: basename(workbook.path),
     ...(workbook.target ? { target: workbook.target } : {}),
   }))
+}
+
+interface PrintInspectionSummaryInput {
+  readonly input: Uint8Array | Buffer
+  readonly inputName: string
+  readonly externalWorkbooks: readonly XlsxExternalWorkbookInput[]
+  readonly options: CliOptions
+  readonly writeStdout: (text: string) => void
+}
+
+function printInspectionSummary(args: PrintInspectionSummaryInput): void {
+  const importOptions =
+    args.externalWorkbooks.length > 0
+      ? {
+          externalWorkbooks: args.externalWorkbooks,
+          externalLinkCacheArtifactMode: 'replace-refreshed' as const,
+        }
+      : {}
+  const imported = importXlsx(args.input, args.inputName, importOptions)
+  const formulaCells = collectFormulaCells(imported.snapshot)
+  const inspectedFormulaCells = formulaCells.slice(0, args.options.inspectLimit)
+  const suggestedReads = inspectedFormulaCells.map((cell) => cell.target)
+  const recalculated = recalculateXlsx(args.input, {
+    fileName: args.inputName,
+    ...(args.externalWorkbooks.length > 0 ? { externalWorkbooks: args.externalWorkbooks } : {}),
+    edits: args.options.edits,
+    reads: suggestedReads,
+  })
+  const formulas = inspectedFormulaCells.map((cell) => {
+    const recalculatedValue = recalculated.reads[cell.target]
+    const literalRecalculatedValue = literalValueForInspection(recalculatedValue)
+    const staleCachedValue =
+      cell.cachedValue === undefined || literalRecalculatedValue === undefined
+        ? null
+        : !literalValuesEqual(cell.cachedValue, literalRecalculatedValue)
+    return {
+      target: cell.target,
+      formula: cell.formula,
+      ...(cell.cachedValue !== undefined ? { cachedValue: cell.cachedValue } : {}),
+      recalculatedValue,
+      ...(literalRecalculatedValue !== undefined ? { literalRecalculatedValue } : {}),
+      staleCachedValue,
+    }
+  })
+  const staleCachedFormulaCount = formulas.filter((formula) => formula.staleCachedValue === true).length
+  const summary = {
+    mode: args.options.mode,
+    input: args.options.inputPath ?? 'generated demo workbook',
+    edits: args.options.edits.length,
+    externalWorkbooks: args.externalWorkbooks.length,
+    sheetNames: imported.sheetNames,
+    formulaCellCount: formulaCells.length,
+    inspectedFormulaCellCount: inspectedFormulaCells.length,
+    staleCachedFormulaCount,
+    suggestedReads,
+    formulas,
+    warnings: recalculated.warnings,
+    ...(recalculated.diagnostics ? { diagnostics: recalculated.diagnostics } : {}),
+    verified: true,
+    star: repoStarUrl,
+    watchReleases: releaseWatchUrl,
+    adoptionBlocker: adoptionBlockerUrl,
+    nextStep: {
+      ifUseful: 'If this inspection found the formula cells you need to refresh, rerun xlsx-recalc with the suggested --read targets.',
+      command: suggestedReads.length > 0 ? suggestedRecalcCommand(args.options, suggestedReads) : null,
+      star: repoStarUrl,
+      watchReleases: releaseWatchUrl,
+      ifBlocked: 'If the workbook imports but the important formula is missing or wrong, open the reduced workbook blocker.',
+      adoptionBlocker: adoptionBlockerUrl,
+    },
+  }
+
+  if (args.options.json) {
+    args.writeStdout(`${JSON.stringify(summary, null, 2)}\n`)
+    return
+  }
+
+  args.writeStdout(`Inspected ${summary.input}\n`)
+  args.writeStdout(`Sheets: ${summary.sheetNames.join(', ')}\n`)
+  args.writeStdout(`Formula cells: ${summary.formulaCellCount.toString()}\n`)
+  args.writeStdout(`Inspected formula cells: ${summary.inspectedFormulaCellCount.toString()}\n`)
+  args.writeStdout(`Stale cached formula cells: ${summary.staleCachedFormulaCount.toString()}\n`)
+  if (suggestedReads.length > 0) {
+    args.writeStdout(`Suggested reads: ${suggestedReads.join(', ')}\n`)
+    args.writeStdout(`${summary.nextStep.command ?? ''}\n`)
+  }
+  if (summary.warnings.length > 0) {
+    args.writeStdout(`Warnings: ${summary.warnings.length.toString()}\n`)
+  }
+}
+
+interface FormulaInspectionCell {
+  readonly target: string
+  readonly formula: string
+  readonly cachedValue?: RawCellContent
+}
+
+type ImportedWorkbookSnapshot = Parameters<typeof WorkPaper.buildFromSnapshot>[0]
+
+function collectFormulaCells(snapshot: ImportedWorkbookSnapshot): FormulaInspectionCell[] {
+  const cells: FormulaInspectionCell[] = []
+  for (const sheet of snapshot.sheets.toSorted((left, right) => left.order - right.order)) {
+    for (const cell of sheet.cells) {
+      if (typeof cell.formula !== 'string' || cell.formula.trim().length === 0) {
+        continue
+      }
+      cells.push({
+        target: formatQualifiedTarget(sheet.name, cell.address),
+        formula: cell.formula.startsWith('=') ? cell.formula : `=${cell.formula}`,
+        ...(cell.value !== undefined ? { cachedValue: cell.value } : {}),
+      })
+    }
+  }
+  return cells
+}
+
+function formatQualifiedTarget(sheetName: string, address: string): string {
+  return `${quoteSheetNameForTarget(sheetName)}!${address}`
+}
+
+function quoteSheetNameForTarget(sheetName: string): string {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/u.test(sheetName) ? sheetName : `'${sheetName.replaceAll("'", "''")}'`
+}
+
+function literalValueForInspection(value: XlsxFormulaRecalcCellValue | undefined): RawCellContent | string | undefined {
+  if (value === undefined || typeof value !== 'object' || value === null || !('tag' in value)) {
+    return undefined
+  }
+  switch (value.tag) {
+    case ValueTag.Empty:
+      return null
+    case ValueTag.Number:
+      return 'value' in value && typeof value.value === 'number' && Number.isFinite(value.value) ? value.value : undefined
+    case ValueTag.Boolean:
+      return 'value' in value && typeof value.value === 'boolean' ? value.value : undefined
+    case ValueTag.String:
+      return 'value' in value && typeof value.value === 'string' ? value.value : undefined
+    case ValueTag.Error:
+      return 'code' in value && typeof value.code === 'number' ? formatErrorCode(value.code) : undefined
+  }
+}
+
+function literalValuesEqual(left: RawCellContent, right: RawCellContent | string): boolean {
+  return JSON.stringify(left) === JSON.stringify(right)
+}
+
+function suggestedRecalcCommand(options: CliOptions, reads: readonly string[]): string {
+  const command = ['xlsx-recalc']
+  if (options.mode === 'demo') {
+    command.push('--demo')
+  } else if (options.inputPath) {
+    command.push(shellQuote(options.inputPath))
+  }
+  for (const edit of options.edits) {
+    command.push('--set', shellQuote(`${edit.target}=${String(edit.value)}`))
+  }
+  for (const read of reads.slice(0, 5)) {
+    command.push('--read', shellQuote(read))
+  }
+  command.push('--json')
+  return command.join(' ')
+}
+
+function shellQuote(value: string): string {
+  return /^[A-Za-z0-9_./:=@-]+$/u.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`
 }
 
 function buildDemoWorkbookBytes(): Uint8Array {
@@ -237,6 +421,14 @@ function parseRawCellContent(raw: string): RawCellContent {
   return raw
 }
 
+function parseInspectLimit(raw: string): number {
+  const value = Number(raw)
+  if (!Number.isInteger(value) || value < 1) {
+    throw new Error(`Expected --inspect-limit to be a positive integer, received: ${raw}`)
+  }
+  return value
+}
+
 function requireNextArg(args: readonly string[], index: number, option: string): string {
   const value = args[index + 1]
   if (!value || value.startsWith('--')) {
@@ -270,6 +462,8 @@ Options:
   --demo                  Generate a tiny workbook, edit inputs, recalculate, and write proof XLSX.
   --set <Sheet!A1=value>  Edit an input cell before recalculation. Repeatable.
   --read <Sheet!A1>       Read a recalculated cell after edits. Repeatable.
+  --inspect               Inspect formula cells, stale cached values, and suggested --read targets.
+  --inspect-limit <n>     Formula cells to recompute during inspection. Defaults to ${defaultInspectFormulaLimit.toString()}.
   --external-workbook <path>
                           Supply a companion XLSX for external-link cache refresh. Repeatable.
   --external-workbook-target <path> <target>

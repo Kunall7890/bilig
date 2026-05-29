@@ -31,6 +31,16 @@ same package:
 npx --package xlsx-formula-recalc sheetjs-recalc --demo --json
 ```
 
+If you have a real workbook but do not yet know which formula cells to verify,
+inspect it without writing an output file:
+
+```sh
+npx --package xlsx-formula-recalc xlsx-recalc workbook.xlsx --inspect --json
+```
+
+The inspection output includes `formulaCellCount`, `staleCachedFormulaCount`,
+`suggestedReads`, and a `nextStep.command` for the recalculation proof.
+
 ## Real Workbook
 
 ```sh

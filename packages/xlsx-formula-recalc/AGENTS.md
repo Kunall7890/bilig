@@ -16,6 +16,16 @@ also exposes a SheetJS-named command:
 npx --package xlsx-formula-recalc sheetjs-recalc --demo --json
 ```
 
+If the caller has a real workbook but does not know which formulas to read yet,
+inspect it first without writing an output file:
+
+```sh
+npx --package xlsx-formula-recalc xlsx-recalc workbook.xlsx --inspect --json
+```
+
+Use the returned `suggestedReads`, stale cached formula counts, and warnings to
+decide the narrow proof command.
+
 For a real workbook, use sheet-qualified A1 targets:
 
 ```sh

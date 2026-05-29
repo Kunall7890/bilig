@@ -11,9 +11,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(package): keep headless keywords compressed (ae3dc5d0)
 
 ## Internal runtime changes
+
 - docs(agent): prefer app-host skill discovery (871185d4)
 - docs(growth): add Kestra WorkPaper blueprint (cf46c7d1)
 
@@ -24,6 +26,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(agent-discovery): serve skill from app host (edc11fb5)
 
 ## 0.119.4
@@ -33,9 +36,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(agent-discovery): publish skills-compatible index (4854ae93)
 
 ## Internal runtime changes
+
 - docs(agent): add Claude Code WorkPaper skill (e1165a28)
 - docs(agent): add Cursor and Windsurf WorkPaper rules (d034b650)
 - docs(agent): add Cline and Continue WorkPaper rules (8defd5ce)

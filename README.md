@@ -115,6 +115,16 @@ For linked workbooks, use the
 For a narrower CLI evaluator, use
 [Evaluate XLSX formula recalculation](docs/eval-xlsx-recalc.md).
 
+If you already have the real workbook but do not know which formulas to read
+yet, inspect it first without writing an output file:
+
+```sh
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc pricing.xlsx --inspect --json
+```
+
+That returns formula cells, stale cached values, and suggested `--read` targets
+so the next command can prove the cells your service actually depends on.
+
 If your pipeline is specifically SheetJS / `xlsx`, run the sibling proof with
 the same shape:
 

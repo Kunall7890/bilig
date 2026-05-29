@@ -58,6 +58,43 @@ and the recalculated cell value under `reads`. The star, release-watch, and
 adoption-blocker links are deliberately after the proof fields so evaluators can
 choose the next action from evidence, not from a launch pitch.
 
+## Inspect your workbook first
+
+If you already have the workbook but do not know the right output cells yet,
+start with inspection:
+
+```sh
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc pricing.xlsx --inspect --json
+```
+
+That command does not write `pricing.recalculated.xlsx`. It imports the
+workbook, lists formula cells, recomputes a bounded sample, reports stale cached
+values, and suggests `--read` targets for the real proof command.
+
+Expected shape:
+
+```json
+{
+  "formulaCellCount": 12,
+  "inspectedFormulaCellCount": 12,
+  "staleCachedFormulaCount": 3,
+  "suggestedReads": ["Summary!B7"],
+  "formulas": [
+    {
+      "target": "Summary!B7",
+      "formula": "=Inputs!B2*Inputs!B3",
+      "cachedValue": 60000,
+      "literalRecalculatedValue": 72000,
+      "staleCachedValue": true
+    }
+  ],
+  "verified": true,
+  "nextStep": {
+    "command": "xlsx-recalc pricing.xlsx --read 'Summary!B7' --json"
+  }
+}
+```
+
 ## Try your workbook
 
 ```sh

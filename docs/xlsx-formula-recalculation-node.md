@@ -62,6 +62,16 @@ The CLI writes the updated workbook and prints the values read after
 recalculation. Cell targets are sheet-qualified A1 references such as
 `Inputs!B2` or `'Pricing Model'!F12`.
 
+If you do not know the output cells yet, inspect the workbook first:
+
+```sh
+npx --package @bilig/xlsx-formula-recalc xlsx-recalc pricing.xlsx --inspect --json
+```
+
+Inspection does not write an output workbook. It lists formula cells, reports
+stale cached values, and suggests `--read` targets so the next command proves
+the cells your service actually depends on.
+
 ## Run the maintained example
 
 If you want the shortest proof without cloning the repo, run the

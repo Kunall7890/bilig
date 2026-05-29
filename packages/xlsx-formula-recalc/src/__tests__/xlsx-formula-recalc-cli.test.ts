@@ -44,6 +44,42 @@ describe('xlsx-recalc CLI', () => {
     }
   })
 
+  it('inspects workbook formula cells and stale cached formula values before writing an output file', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-inspect-'))
+    try {
+      const inputPath = join(tempDir, 'stale-cache.xlsx')
+      writeFileSync(inputPath, buildStaleFormulaCacheWorkbook())
+      let stdout = ''
+
+      const exitCode = runXlsxFormulaRecalcCli([inputPath, '--inspect', '--json'], {
+        stdout: (text) => {
+          stdout += text
+        },
+      })
+
+      expect(exitCode).toBe(0)
+      expect(existsSync(join(tempDir, 'stale-cache.recalculated.xlsx'))).toBe(false)
+      const summary = readCliInspectionSummary(stdout)
+      expect(summary.mode).toBe('file')
+      expect(summary.verified).toBe(true)
+      expect(summary.formulaCellCount).toBe(1)
+      expect(summary.inspectedFormulaCellCount).toBe(1)
+      expect(summary.staleCachedFormulaCount).toBe(1)
+      expect(summary.suggestedReads).toEqual(['Sheet1!B2'])
+      expect(summary.formulas[0]).toMatchObject({
+        target: 'Sheet1!B2',
+        formula: '=A2*10',
+        cachedValue: 999,
+        literalRecalculatedValue: 20,
+        staleCachedValue: true,
+      })
+      expect(summary.nextStep.command).toContain('xlsx-recalc')
+      expect(summary.nextStep.command).toContain("--read 'Sheet1!B2'")
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
   it('hydrates external-link caches from companion workbook paths', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-external-'))
     try {
@@ -179,6 +215,25 @@ interface CliSummary {
   }
 }
 
+interface CliInspectionSummary {
+  readonly mode: string
+  readonly formulaCellCount: number
+  readonly inspectedFormulaCellCount: number
+  readonly staleCachedFormulaCount: number
+  readonly suggestedReads: readonly string[]
+  readonly formulas: ReadonlyArray<{
+    readonly target: string
+    readonly formula: string
+    readonly cachedValue?: unknown
+    readonly literalRecalculatedValue?: unknown
+    readonly staleCachedValue: boolean | null
+  }>
+  readonly verified: boolean
+  readonly nextStep: {
+    readonly command: string | null
+  }
+}
+
 function readCliSummary(stdout: string): CliSummary {
   const parsed: unknown = JSON.parse(stdout)
   if (typeof parsed !== 'object' || parsed === null) {
@@ -223,6 +278,55 @@ function readCliSummary(stdout: string): CliSummary {
   }
 }
 
+function readCliInspectionSummary(stdout: string): CliInspectionSummary {
+  const parsed: unknown = JSON.parse(stdout)
+  if (!isRecord(parsed)) {
+    throw new Error(`Expected CLI inspection summary object, received ${stdout}`)
+  }
+  const mode = parsed['mode']
+  const formulaCellCount = parsed['formulaCellCount']
+  const inspectedFormulaCellCount = parsed['inspectedFormulaCellCount']
+  const staleCachedFormulaCount = parsed['staleCachedFormulaCount']
+  const suggestedReads = parsed['suggestedReads']
+  const formulas = parsed['formulas']
+  const verified = parsed['verified']
+  const nextStep = parsed['nextStep']
+  if (
+    typeof mode !== 'string' ||
+    typeof formulaCellCount !== 'number' ||
+    typeof inspectedFormulaCellCount !== 'number' ||
+    typeof staleCachedFormulaCount !== 'number' ||
+    !Array.isArray(suggestedReads) ||
+    !Array.isArray(formulas) ||
+    typeof verified !== 'boolean' ||
+    !isRecord(nextStep) ||
+    (nextStep['command'] !== null && typeof nextStep['command'] !== 'string')
+  ) {
+    throw new Error(`Unexpected CLI inspection summary shape: ${stdout}`)
+  }
+  return {
+    mode,
+    formulaCellCount,
+    inspectedFormulaCellCount,
+    staleCachedFormulaCount,
+    suggestedReads: suggestedReads.filter((read): read is string => typeof read === 'string'),
+    formulas: formulas.filter(isCliInspectionFormula),
+    verified,
+    nextStep: {
+      command: nextStep['command'],
+    },
+  }
+}
+
+function isCliInspectionFormula(value: unknown): value is CliInspectionSummary['formulas'][number] {
+  return (
+    isRecord(value) &&
+    typeof value['target'] === 'string' &&
+    typeof value['formula'] === 'string' &&
+    (typeof value['staleCachedValue'] === 'boolean' || value['staleCachedValue'] === null)
+  )
+}
+
 function isCliNextStep(value: unknown): value is CliSummary['nextStep'] {
   if (!isRecord(value)) {
     return false
@@ -265,6 +369,25 @@ function readFileBytes(path: string): Uint8Array {
   return new Uint8Array(readFileSync(path))
 }
 
+function buildStaleFormulaCacheWorkbook(): Uint8Array {
+  const workbook = WorkPaper.buildFromSheets({
+    Sheet1: [
+      ['Input', 'Output'],
+      [2, '=A2*10'],
+    ],
+  })
+  try {
+    return replaceWorksheetCellXml(
+      exportXlsx(workbook.exportSnapshot()),
+      'xl/worksheets/sheet1.xml',
+      'B2',
+      '<c r="B2"><f>A2*10</f><v>999</v></c>',
+    )
+  } finally {
+    workbook.dispose()
+  }
+}
+
 function buildExternalSourceWorkbook(rates: readonly [number, number, number]): Uint8Array {
   const workbook = WorkPaper.buildFromSheets({
     Rates: [
@@ -279,6 +402,13 @@ function buildExternalSourceWorkbook(rates: readonly [number, number, number]): 
   } finally {
     workbook.dispose()
   }
+}
+
+function replaceWorksheetCellXml(bytes: Uint8Array, path: string, address: string, replacement: string): Uint8Array {
+  const zip = unzipSync(bytes)
+  const xml = strFromU8(zip[path] ?? new Uint8Array())
+  zip[path] = strToU8(xml.replace(new RegExp(`<c\\b[^>]*\\br="${address}"[^>]*>[\\s\\S]*?<\\/c>`, 'u'), replacement))
+  return zipSync(zip)
 }
 
 function buildExternalLinkRangeCacheWorkbook(target: string): Uint8Array {

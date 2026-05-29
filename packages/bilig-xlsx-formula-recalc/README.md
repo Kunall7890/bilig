@@ -87,6 +87,39 @@ actions:
 Keep the proof first: use the star or release-watch links only after the
 recalculated value and warnings match the workflow you are evaluating.
 
+If you have a real workbook but do not yet know which formula cells matter,
+inspect it without writing an output file:
+
+```sh
+npx --package @bilig/xlsx-formula-recalc xlsx-recalc pricing.xlsx --inspect --json
+```
+
+Inspection imports the workbook, lists formula cells, recomputes a bounded
+sample, reports stale cached values, and returns suggested `--read` targets for
+the recalculation command:
+
+```json
+{
+  "formulaCellCount": 12,
+  "inspectedFormulaCellCount": 12,
+  "staleCachedFormulaCount": 3,
+  "suggestedReads": ["Summary!B7"],
+  "formulas": [
+    {
+      "target": "Summary!B7",
+      "formula": "=Inputs!B2*Inputs!B3",
+      "cachedValue": 60000,
+      "literalRecalculatedValue": 72000,
+      "staleCachedValue": true
+    }
+  ],
+  "verified": true,
+  "nextStep": {
+    "command": "xlsx-recalc pricing.xlsx --read 'Summary!B7' --json"
+  }
+}
+```
+
 For an existing workbook:
 
 ```sh
