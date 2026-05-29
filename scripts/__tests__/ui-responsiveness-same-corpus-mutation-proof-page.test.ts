@@ -133,6 +133,53 @@ describe('same-corpus mutation target page proof helpers', () => {
     })
   })
 
+  it('rejects stale active-cell wrappers as target-cell text proof', () => {
+    document.body.innerHTML = `
+      <div class="active-cell">stale wrapper text from selection chrome</div>
+      <div class="waffle-cell">outside target</div>
+    `
+    const wrapper = document.querySelector<HTMLElement>('.active-cell')
+    const outsideCell = document.querySelector<HTMLElement>('.waffle-cell')
+    expect(wrapper).not.toBeNull()
+    expect(outsideCell).not.toBeNull()
+    setRect(wrapper!, { height: 22, width: 104, x: 120, y: 144 })
+    setRect(outsideCell!, { height: 22, width: 104, x: 420, y: 144 })
+
+    expect(readSameCorpusVisibleTargetCellReadbackFromPage({ targetBox: { height: 22, width: 104, x: 120, y: 144 } })).toEqual({
+      fillColor: null,
+      formula: null,
+      source: 'unknown',
+      value: null,
+      visibleText: null,
+    })
+  })
+
+  it('rejects target-sized selection overlay text as target-cell proof', () => {
+    document.body.innerHTML = `
+      <div class="selection-overlay selected-cell" aria-label="F5 overlay text">overlay text from selection chrome</div>
+      <div role="gridcell">outside target</div>
+    `
+    const overlay = document.querySelector<HTMLElement>('.selection-overlay')
+    const outsideCell = document.querySelector<HTMLElement>('[role="gridcell"]')
+    expect(overlay).not.toBeNull()
+    expect(outsideCell).not.toBeNull()
+    setRect(overlay!, { height: 22, width: 104, x: 120, y: 144 })
+    setRect(outsideCell!, { height: 22, width: 104, x: 420, y: 144 })
+
+    expect(
+      readSameCorpusVisibleTargetCellReadbackFromPage({
+        targetBox: { height: 22, width: 104, x: 120, y: 144 },
+        targetRange: 'F5',
+      }),
+    ).toEqual({
+      fillColor: null,
+      formula: null,
+      source: 'unknown',
+      value: null,
+      visibleText: null,
+    })
+  })
+
   it('rejects grid-looking border strips as target-cell proof', () => {
     document.body.innerHTML = `
       <div class="waffle-cell">border-only text</div>

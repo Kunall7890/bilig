@@ -237,13 +237,7 @@ export function readSameCorpusVisibleTargetCellReadbackFromPage(args: {
   // oxlint-disable-next-line eslint-plugin-unicorn(consistent-function-scoping) -- Playwright serializes this helper with the page function.
   function isGridCellCandidate(element: HTMLElement): boolean {
     const classList = element.classList
-    return (
-      element.getAttribute('role') === 'gridcell' ||
-      classList.contains('waffle-cell') ||
-      classList.contains('waffle-active-cell') ||
-      classList.contains('active-cell') ||
-      classList.contains('selected-cell')
-    )
+    return element.getAttribute('role') === 'gridcell' || classList.contains('waffle-cell') || classList.contains('waffle-active-cell')
   }
 
   function elementPaintsTargetInterior(element: HTMLElement): boolean {
