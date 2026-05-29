@@ -36,6 +36,7 @@ export function syncRuntimePackageVersions(options: SyncRuntimePackageVersionsOp
   syncReleasePleaseManifestVersion(options.rootDir, version, updatedFiles)
   syncMcpServerVersions(options.rootDir, version, runtimePackages, updatedFiles)
   syncDockerfileWorkpaperVersion(options.rootDir, version, updatedFiles)
+  syncGeminiExtensionVersion(options.rootDir, version, updatedFiles)
 
   return {
     version,
@@ -58,6 +59,16 @@ function syncDockerfileWorkpaperVersion(rootDir: string, version: string, update
   }
   writeFileSync(dockerfilePath, nextContent)
   updatedFiles.push(dockerfilePath)
+}
+
+function syncGeminiExtensionVersion(rootDir: string, version: string, updatedFiles: string[]): void {
+  const geminiExtensionPath = join(rootDir, 'gemini-extension.json')
+  const geminiExtension = readJsonRecord(geminiExtensionPath)
+  geminiExtension['version'] = version
+
+  if (writeJsonIfChanged(geminiExtensionPath, geminiExtension)) {
+    updatedFiles.push(geminiExtensionPath)
+  }
 }
 
 function syncReleasePleaseManifestVersion(rootDir: string, version: string, updatedFiles: string[]): void {

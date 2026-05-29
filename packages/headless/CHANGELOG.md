@@ -11,9 +11,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(xlsx): add workbook formula inspection (9c4c322b)
 
 ## Internal runtime changes
+
 - docs(agent): add copilot workpaper proof surface (c12c7e52)
 - docs(growth): fix public recipe links and proof discovery (65328bf7)
 

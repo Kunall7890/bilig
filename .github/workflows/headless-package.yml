@@ -866,6 +866,7 @@ jobs:
 
           release_paths=(
             .release-please-manifest.json
+            gemini-extension.json
             docs
             docs/headless-package-footprint.json
             docs/public-evidence.json

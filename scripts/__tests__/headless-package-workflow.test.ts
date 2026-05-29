@@ -98,6 +98,7 @@ describe('headless package workflow', () => {
     expect(agentDiscoverySource).not.toContain('replace(new RegExp(`@bilig/headless@${stableSemverPattern}`')
     expect(mcpDirectoryDoc).toContain('npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp')
     expect(source).toContain('.release-please-manifest.json')
+    expect(source).toContain('gemini-extension.json')
     expect(source).toContain('skills/bilig-workpaper/SKILL.md')
     expect(source).toContain('runner needs runtime d.ts outputs rebuilt after the version sync')
     expect(source).toContain("group: runtime-packages-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.sha }}")

@@ -371,5 +371,7 @@ describe('runtime release helpers', () => {
 
     expect(source).toContain("manifest['packages/headless'] = version")
     expect(source).toContain('syncReleasePleaseManifestVersion')
+    expect(source).toContain("join(rootDir, 'gemini-extension.json')")
+    expect(source).toContain('syncGeminiExtensionVersion')
   })
 })
