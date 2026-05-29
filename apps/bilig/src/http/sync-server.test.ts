@@ -8,6 +8,7 @@ import type { DocumentControlService } from '@bilig/runtime-kernel'
 import type { ZeroSyncService } from '../zero/service.js'
 import type { WorkbookAgentService } from '../codex-app/workbook-agent-service.js'
 import { createWorkbookAgentServiceError } from '../workbook-agent-errors.js'
+import { createAgentSkillDiscoveryIndex } from './agent-skill-discovery-routes.js'
 import { createSyncServer } from './sync-server.js'
 import { resolveCanonicalDocsRedirectUrl } from './sync-server-spa.js'
 
@@ -417,6 +418,43 @@ describe('sync-server docs redirects', () => {
     expect(resolveCanonicalDocsRedirectUrl('GET', '/runtime-config.json')).toBeNull()
     expect(resolveCanonicalDocsRedirectUrl('GET', '/assets/missing.txt')).toBeNull()
     expect(resolveCanonicalDocsRedirectUrl('GET', '/workbook/session/abc')).toBeNull()
+  })
+})
+
+describe('sync-server agent skill discovery', () => {
+  it('serves installable WorkPaper skill discovery from the app host without redirects', async () => {
+    const { app } = createSyncServer({ logger: false })
+
+    try {
+      const indexResponse = await app.inject({
+        method: 'GET',
+        url: '/.well-known/agent-skills/index.json',
+      })
+      const skillResponse = await app.inject({
+        method: 'GET',
+        url: '/.well-known/agent-skills/bilig-workpaper/SKILL.txt',
+      })
+      const legacyIndexResponse = await app.inject({
+        method: 'GET',
+        url: '/.well-known/skills/index.json',
+      })
+
+      expect(indexResponse.statusCode).toBe(200)
+      expect(indexResponse.headers.location).toBeUndefined()
+      expect(indexResponse.headers['content-type']).toContain('application/json')
+      expect(indexResponse.headers['access-control-allow-origin']).toBe('*')
+      expect(legacyIndexResponse.statusCode).toBe(200)
+      expect(legacyIndexResponse.json()).toEqual(indexResponse.json())
+
+      expect(skillResponse.statusCode).toBe(200)
+      expect(skillResponse.headers.location).toBeUndefined()
+      expect(skillResponse.headers['content-type']).toContain('text/plain')
+      expect(skillResponse.body).toContain('---\nname: bilig-workpaper')
+      expect(skillResponse.body).toContain('Return proof, not vibes.')
+      expect(indexResponse.json()).toEqual(createAgentSkillDiscoveryIndex(skillResponse.body))
+    } finally {
+      await app.close()
+    }
   })
 })
 

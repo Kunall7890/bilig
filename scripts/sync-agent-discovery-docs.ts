@@ -18,6 +18,7 @@ import {
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const siteRoot = 'https://proompteng.github.io/bilig'
+const skillDiscoveryRoot = 'https://bilig.proompteng.ai'
 const remoteMcpEndpoint = 'https://bilig.proompteng.ai/mcp'
 const remoteMcpAliasEndpoint = 'https://bilig.proompteng.ai/mcp/workpaper'
 const remoteMcpServerCard = 'https://bilig.proompteng.ai/.well-known/mcp/server-card.json'
@@ -235,7 +236,7 @@ If the host supports installable skills, first check that the public skill
 package is discoverable:
 
 \`\`\`sh
-npx --yes skills@latest add https://proompteng.github.io/bilig --list
+npx --yes skills@latest add ${skillDiscoveryRoot} --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 \`\`\`
 
@@ -577,7 +578,7 @@ function skillIndexJson(): string {
           type: 'skill-md',
           description:
             'Use @bilig/workpaper WorkPaper state, MCP tools, and formula-clinic reports instead of spreadsheet UI automation when an agent needs formula readback.',
-          url: `${skillName}/SKILL.txt`,
+          url: `${skillDiscoveryRoot}/.well-known/agent-skills/${skillName}/SKILL.txt`,
           digest: `sha256:${skillDigest}`,
         },
       ],

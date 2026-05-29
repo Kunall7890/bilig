@@ -94,7 +94,7 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsSkill, 'name: bilig-workpaper', 'docs/skill.md')
   requireIncludes(docsSkill, '## Required Verification', 'docs/skill.md')
   requireIncludes(docsSkill, '## Command Safety', 'docs/skill.md')
-  requireIncludes(docsSkill, 'npx --yes skills@latest add https://proompteng.github.io/bilig --list', 'docs/skill.md')
+  requireIncludes(docsSkill, 'npx --yes skills@latest add https://bilig.proompteng.ai --list', 'docs/skill.md')
   requireIncludes(docsSkill, 'npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list', 'docs/skill.md')
   requireIncludes(docsSkill, 'returned `tools` array as the source', 'docs/skill.md')
   requireIncludes(docsSkill, 'currently published package', 'docs/skill.md')

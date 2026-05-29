@@ -4,6 +4,7 @@ import { type DocumentControlService, resolveServerRuntimeConfig } from '@bilig/
 
 import { DocumentSessionManager } from '../workbook-runtime/document-session-manager.js'
 import { SyncDocumentSupervisor } from '../workbook-runtime/sync-document-supervisor.js'
+import { registerAgentSkillDiscoveryRoutes } from './agent-skill-discovery-routes.js'
 import { registerSyncServerDocumentRoutes } from './sync-server-document-routes.js'
 import { registerWorkbookAgentRoutes } from './workbook-agent-routes.js'
 import { registerSyncServerRuntimeRoutes } from './sync-server-runtime-routes.js'
@@ -65,6 +66,7 @@ export function createSyncServer(options: SyncServerOptions = {}) {
   })
 
   registerWorkPaperMcpRemoteRoutes(app)
+  registerAgentSkillDiscoveryRoutes(app)
   registerWorkPaperN8nRoutes(app)
   registerWorkPaperOpenApiRoutes(app)
 

@@ -41,7 +41,7 @@ If the host supports installable skills, first check that the public skill
 package is discoverable:
 
 ```sh
-npx --yes skills@latest add https://proompteng.github.io/bilig --list
+npx --yes skills@latest add https://bilig.proompteng.ai --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 ```
 
