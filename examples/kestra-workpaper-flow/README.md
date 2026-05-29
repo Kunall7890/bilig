@@ -4,6 +4,11 @@ This example is a Kestra Node Commands flow that calculates quote fields with
 `@bilig/workpaper`, writes a JSON proof file, and leaves orchestration to
 Kestra.
 
+`blueprint.yaml` is the self-contained Kestra Community Blueprint candidate.
+It embeds the Node script, installs `@bilig/workpaper`, writes one input cell,
+recalculates formula outputs, restores serialized JSON, and persists
+`workpaper-proof.json` with `verified: true`.
+
 Use it when Kestra owns scheduling, retries, task history, and downstream
 workflow steps, but the calculation should stay reviewable as workbook cells and
 formulas.
@@ -53,8 +58,9 @@ The smoke test prints a verified result and writes
 
 ## Kestra Shape
 
-1. Upload or sync `kestra-workpaper-flow.ts` as a namespace file.
-2. Import `flow.yml`.
+1. For the self-contained path, import `blueprint.yaml`.
+2. For the source-file path, upload or sync `kestra-workpaper-flow.ts` as a
+   namespace file and import `flow.yml`.
 3. Run the flow with the default inputs or pass quote fields from an upstream
    task.
 4. Use `outputs.calculate_quote.outputFiles['workpaper-proof.json']` as the
@@ -66,9 +72,9 @@ JSON, restores it, and verifies that restored calculated values match.
 
 ## Boundaries
 
-This is a source example, not an official Kestra Blueprint. The next useful
-upstream step is one focused Blueprint proposal only after the Bilig-owned proof
-is public and validated.
+This is a Bilig-owned Blueprint candidate, not an accepted official Kestra
+Blueprint yet. Submit or update exactly one upstream Blueprint proposal after
+checking for duplicates.
 
 Keep Excel or another oracle in the loop for macros, pivots, external links,
 locale-sensitive desktop behavior, or workbook features outside Bilig's formula

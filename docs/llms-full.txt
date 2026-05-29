@@ -6831,6 +6831,7 @@ examples/kestra-workpaper-flow
 It contains:
 
 - `flow.yml` for the Kestra `io.kestra.plugin.scripts.node.Commands` flow
+- `blueprint.yaml` for a self-contained Kestra Community Blueprint candidate
 - `kestra-workpaper-flow.ts` for the TypeScript WorkPaper proof script
 - `scripts/check-flow.ts` for the local flow wiring check
 
@@ -6873,9 +6874,10 @@ tasks:
 
 {% endraw %}
 
-Upload or sync `kestra-workpaper-flow.ts` as a namespace file, import
-`flow.yml`, and run it with the default inputs or quote fields from another
-task.
+For a self-contained Blueprint-shaped import, use `blueprint.yaml`. For the
+source-file path, upload or sync `kestra-workpaper-flow.ts` as a namespace file,
+import `flow.yml`, and run it with the default inputs or quote fields from
+another task.
 
 ## Flow Output
 
@@ -6936,8 +6938,9 @@ external links, and exact spreadsheet UI behavior.
 
 ## Outreach Note
 
-If this is shared in a Kestra issue, Slack thread, or Blueprint proposal, lead
-with the concrete boundary it solves:
+If this is shared in a Kestra issue, Slack thread, or Blueprint proposal, use
+`examples/kestra-workpaper-flow/blueprint.yaml` and lead with the concrete
+boundary it solves:
 
 > Kestra owns orchestration and output-file routing. Bilig owns the formula
 > workbook and returns both calculated field values and readback proof.

@@ -14,6 +14,7 @@
     "hyperformula",
     "mcp",
     "mcp-server",
+    "model-context-protocol",
     "node",
     "sheetjs",
     "spreadsheet-agent",

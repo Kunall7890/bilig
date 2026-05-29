@@ -276,8 +276,8 @@ await Promise.all(
   ].map((sourceFile) => requireFile(join(repoRoot, 'examples', 'dagster-workpaper-asset', sourceFile))),
 )
 await Promise.all(
-  ['README.md', 'package.json', 'tsconfig.json', 'flow.yml', 'kestra-workpaper-flow.ts', 'scripts/check-flow.ts'].map((sourceFile) =>
-    requireFile(join(repoRoot, 'examples', 'kestra-workpaper-flow', sourceFile)),
+  ['README.md', 'package.json', 'tsconfig.json', 'flow.yml', 'blueprint.yaml', 'kestra-workpaper-flow.ts', 'scripts/check-flow.ts'].map(
+    (sourceFile) => requireFile(join(repoRoot, 'examples', 'kestra-workpaper-flow', sourceFile)),
   ),
 )
 await Promise.all(
@@ -506,6 +506,7 @@ requireIncludes(
   'docs/dagster-workpaper-asset.md',
 )
 requireIncludes(kestraWorkpaperFlow, 'examples/kestra-workpaper-flow', 'docs/kestra-workpaper-flow.md')
+requireIncludes(kestraWorkpaperFlow, 'blueprint.yaml', 'docs/kestra-workpaper-flow.md')
 requireIncludes(kestraWorkpaperFlow, 'io.kestra.plugin.scripts.node.Commands', 'docs/kestra-workpaper-flow.md')
 requireIncludes(kestraWorkpaperFlow, 'Kestra owns orchestration and output-file routing.', 'docs/kestra-workpaper-flow.md')
 requireIncludes(prefectWorkpaperFlow, 'examples/prefect-workpaper-flow', 'docs/prefect-workpaper-flow.md')

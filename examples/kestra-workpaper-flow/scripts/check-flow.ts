@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 
 const flow = await readFile(new URL('../flow.yml', import.meta.url), 'utf8')
+const blueprint = await readFile(new URL('../blueprint.yaml', import.meta.url), 'utf8')
 const script = await readFile(new URL('../kestra-workpaper-flow.ts', import.meta.url), 'utf8')
 
 for (const needle of [
@@ -14,6 +15,23 @@ for (const needle of [
 ]) {
   if (!flow.includes(needle)) {
     throw new Error(`flow.yml is missing ${needle}`)
+  }
+}
+
+for (const needle of [
+  'id: bilig-workpaper-formula-readback',
+  'extend:',
+  'title: Verify spreadsheet-style quote formulas with Bilig WorkPaper',
+  'io.kestra.plugin.scripts.node.Script',
+  'containerImage: node:24-slim',
+  '"@bilig/workpaper": "latest"',
+  'outputFiles:',
+  'workpaper-proof.json',
+  'verified',
+  'metaDescription: Run Bilig WorkPaper formulas in a Kestra Node task',
+]) {
+  if (!blueprint.includes(needle)) {
+    throw new Error(`blueprint.yaml is missing ${needle}`)
   }
 }
 
