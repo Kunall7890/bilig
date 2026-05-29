@@ -19,6 +19,8 @@ agent discovery manifest: https://proompteng.github.io/bilig/.well-known/agent.j
 root agent discovery manifest: https://proompteng.github.io/bilig/agent.json
 agent skill: https://proompteng.github.io/bilig/skill.txt
 Claude Code project skill: https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md
+Cursor project rule: https://github.com/proompteng/bilig/blob/main/.cursor/rules/bilig-workpaper.mdc
+Windsurf Cascade workspace rule: https://github.com/proompteng/bilig/blob/main/.windsurf/rules/bilig-workpaper.md
 full agent context: https://proompteng.github.io/bilig/llms-full.txt
 agent skill discovery: https://proompteng.github.io/bilig/.well-known/agent-skills/index.json
 legacy skill discovery: https://proompteng.github.io/bilig/.well-known/skills/index.json
@@ -110,6 +112,8 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/AGENTS.md
 - https://proompteng.github.io/bilig/skill.txt
 - https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md
+- https://github.com/proompteng/bilig/blob/main/.cursor/rules/bilig-workpaper.mdc
+- https://github.com/proompteng/bilig/blob/main/.windsurf/rules/bilig-workpaper.md
 - https://proompteng.github.io/bilig/llms-full.txt
 - https://context7.com/proompteng/bilig
 - https://proompteng.github.io/bilig/stop-driving-spreadsheets-with-screenshots.html

@@ -14,6 +14,8 @@ export async function requireAgentInstructionDiscovery(input: {
     docsAgentNotes,
     docsSkill,
     claudeProjectSkillNotes,
+    cursorProjectRuleNotes,
+    windsurfProjectRuleNotes,
     rootSkillNotes,
     workpaperPackageJson,
     workpaperPackageReadme,
@@ -25,6 +27,8 @@ export async function requireAgentInstructionDiscovery(input: {
     readFile(join(docsRoot, 'AGENTS.md'), 'utf8'),
     readFile(join(docsRoot, 'skill.md'), 'utf8'),
     readFile(join(repoRoot, '.claude', 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8'),
+    readFile(join(repoRoot, '.cursor', 'rules', 'bilig-workpaper.mdc'), 'utf8'),
+    readFile(join(repoRoot, '.windsurf', 'rules', 'bilig-workpaper.md'), 'utf8'),
     readFile(join(repoRoot, 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'bilig', 'package.json'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'bilig', 'README.md'), 'utf8'),
@@ -77,6 +81,8 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsAgentNotes, '## Discovery Order', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'Do not claim success from a write call alone.', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.claude/skills/bilig-workpaper/SKILL.md', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, '.cursor/rules/bilig-workpaper.mdc', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, '.windsurf/rules/bilig-workpaper.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json', 'docs/AGENTS.md')
   requireIncludes(docsSkill, 'name: bilig-workpaper', 'docs/skill.md')
@@ -96,6 +102,30 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(claudeProjectSkillNotes, 'Return proof, not vibes.', '.claude/skills/bilig-workpaper/SKILL.md')
   requireNotIncludes(claudeProjectSkillNotes, 'allowed-tools:', '.claude/skills/bilig-workpaper/SKILL.md')
   requireNotIncludes(claudeProjectSkillNotes, 'argument-hint:', '.claude/skills/bilig-workpaper/SKILL.md')
+
+  requireIncludes(cursorProjectRuleNotes, 'description: Use Bilig WorkPaper', '.cursor/rules/bilig-workpaper.mdc')
+  requireIncludes(cursorProjectRuleNotes, 'alwaysApply: false', '.cursor/rules/bilig-workpaper.mdc')
+  requireIncludes(
+    cursorProjectRuleNotes,
+    'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json',
+    '.cursor/rules/bilig-workpaper.mdc',
+  )
+  requireIncludes(cursorProjectRuleNotes, 'Do not report success from a write call alone.', '.cursor/rules/bilig-workpaper.mdc')
+  requireIncludes(cursorProjectRuleNotes, 'https://proompteng.github.io/bilig/llms.txt', '.cursor/rules/bilig-workpaper.mdc')
+
+  requireIncludes(windsurfProjectRuleNotes, 'trigger: model_decision', '.windsurf/rules/bilig-workpaper.md')
+  requireIncludes(
+    windsurfProjectRuleNotes,
+    'Windsurf/Cascade agent needs spreadsheet-shaped business',
+    '.windsurf/rules/bilig-workpaper.md',
+  )
+  requireIncludes(
+    windsurfProjectRuleNotes,
+    'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json',
+    '.windsurf/rules/bilig-workpaper.md',
+  )
+  requireIncludes(windsurfProjectRuleNotes, 'If any proof step fails', '.windsurf/rules/bilig-workpaper.md')
+  requireIncludes(windsurfProjectRuleNotes, 'https://proompteng.github.io/bilig/llms.txt', '.windsurf/rules/bilig-workpaper.md')
 
   requireIncludes(rootSkillNotes, '## Command Safety', 'skills/bilig-workpaper/SKILL.md')
   requireIncludes(rootSkillNotes, 'argument array, not a shell-concatenated string', 'skills/bilig-workpaper/SKILL.md')

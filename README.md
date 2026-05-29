@@ -30,7 +30,9 @@ cell value, and save the workbook as JSON. No browser grid is involved.
 The published package also carries `AGENTS.md` and `SKILL.md` so coding agents
 inspecting `node_modules/@bilig/workpaper` can find the write/read/persist loop
 locally. The repo also includes a Claude Code project skill at
-`.claude/skills/bilig-workpaper/SKILL.md` so cloned checkouts expose the same
+`.claude/skills/bilig-workpaper/SKILL.md`, a Cursor project rule at
+`.cursor/rules/bilig-workpaper.mdc`, and a Windsurf/Cascade rule at
+`.windsurf/rules/bilig-workpaper.md` so cloned checkouts expose the same
 workflow without another install step. The public docs expose the same path through
 [`AGENTS.md`](docs/AGENTS.md), [`skill.md`](docs/skill.md),
 [`docs/.well-known/agent.json`](docs/.well-known/agent.json),
@@ -188,6 +190,9 @@ Agent tools that support skill manifests can start from
 Claude Code reads the project skill from
 [`.claude/skills/bilig-workpaper/SKILL.md`](.claude/skills/bilig-workpaper/SKILL.md)
 when the repo is cloned locally.
+Cursor and Windsurf/Cascade read the same proof loop from
+[`.cursor/rules/bilig-workpaper.mdc`](.cursor/rules/bilig-workpaper.mdc) and
+[`.windsurf/rules/bilig-workpaper.md`](.windsurf/rules/bilig-workpaper.md).
 Gemini CLI users can install Bilig as an extension:
 
 ```sh

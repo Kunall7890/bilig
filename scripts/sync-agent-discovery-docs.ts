@@ -7,6 +7,7 @@ import { buildWorkpaperPackageAgentInstructions, buildWorkpaperPackageSkillDocum
 import { readTextFileIfExists } from './read-if-exists.ts'
 import { syncVersionedStaticReferences } from './sync-agent-static-references.ts'
 import { buildEvaluatorDoors, buildProofContract, compactProofContractJsonArrays } from './agent-discovery-evaluator-doors.ts'
+import { buildCursorWorkpaperRule, buildWindsurfWorkpaperRule } from './agent-discovery-ide-rules.ts'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const siteRoot = 'https://proompteng.github.io/bilig'
@@ -47,7 +48,10 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 3. Read \`${siteRoot}/skill.txt\` when your agent supports skill manifests.
 4. If you are inside a cloned Bilig repository with Claude Code, use the
    project skill at \`.claude/skills/bilig-workpaper/SKILL.md\`.
-5. Start the MCP server or import \`@bilig/workpaper\` directly.
+5. If you are using Cursor or Windsurf/Cascade, use
+   \`.cursor/rules/bilig-workpaper.mdc\` or
+   \`.windsurf/rules/bilig-workpaper.md\`.
+6. Start the MCP server or import \`@bilig/workpaper\` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
 demo endpoint at \`${remoteMcpEndpoint}\`. Directory scanners that inspect the
@@ -913,6 +917,7 @@ async function buildLlmsFull(): Promise<string> {
 async function generatedTargets(): Promise<ReadonlyArray<readonly [string, string]>> {
   const llmsFull = await buildLlmsFull()
   const agentJson = agentJsonManifest()
+  const ideRuleInput = { remoteMcpEndpoint, repositoryUrl, siteRoot, workpaperPackageSpec }
   const mcpServerCard = mcpServerCardManifest({
     headlessPackageSpec: workpaperPackageSpec,
     headlessPackageVersion,
@@ -936,6 +941,8 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['docs/.well-known/mcp/server-card.json', mcpServerCard],
     ['docs/.well-known/mcp.json', mcpServerCard],
     ['docs/.well-known/mcp-server-card.json', mcpServerCard],
+    ['.cursor/rules/bilig-workpaper.mdc', buildCursorWorkpaperRule(ideRuleInput)],
+    ['.windsurf/rules/bilig-workpaper.md', buildWindsurfWorkpaperRule(ideRuleInput)],
     ['.claude/skills/bilig-workpaper/SKILL.md', skillDocument],
     ['skills/bilig-workpaper/SKILL.md', skillDocument],
     ['packages/workpaper/SKILL.md', skillDocument],

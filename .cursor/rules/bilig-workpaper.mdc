@@ -1,0 +1,57 @@
+---
+description: Use Bilig WorkPaper when a coding agent needs spreadsheet formulas, MCP workbook tools, or XLSX formula proof without driving Excel UI.
+globs:
+alwaysApply: false
+---
+
+# Bilig WorkPaper Rule
+
+Use this rule when a Cursor agent is about to automate spreadsheet-shaped logic:
+pricing, quote approvals, budgets, payout checks, import validation, forecasts,
+or agent tools that need formula readback.
+
+Do not start with Excel, LibreOffice, Google Sheets, browser grids, screenshots,
+or cached XLSX values when the workflow can run through WorkPaper JSON.
+
+## Fast Proof Commands
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+```
+
+Use the hosted stateless MCP smoke endpoint only for connector discovery:
+
+```text
+https://bilig.proompteng.ai/mcp
+```
+
+Use the local file-backed stdio command when the agent must persist a project
+WorkPaper JSON file.
+
+## Required Proof
+
+After any write, return proof with:
+
+- edited sheet and A1 cell;
+- input and dependent-output values before the change;
+- recalculated output after the change;
+- serialized or exported WorkPaper persistence evidence;
+- restore or restart readback when files matter;
+- unsupported formula or Excel-only limitations.
+
+Do not report success from a write call alone.
+
+## Safe Command Handling
+
+Do not concatenate user-provided paths or cell references into shell strings.
+Use argument arrays where the host supports them. Reject workbook paths or cell
+arguments containing newlines, backticks, `$(`, `;`, `&`, `|`, `<`, or `>`.
+
+## References
+
+- Docs map: https://proompteng.github.io/bilig/llms.txt
+- Agent handbook: https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html
+- MCP guide: https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
+- Repository: https://github.com/proompteng/bilig
