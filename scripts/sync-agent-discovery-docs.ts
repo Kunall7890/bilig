@@ -555,31 +555,11 @@ const llmsFullSources = [
   llmsSource('AnythingLLM WorkPaper MCP Setup', 'docs/anythingllm-workpaper-mcp.md'),
   llmsSource('FastMCP WorkPaper Client', 'docs/fastmcp-workpaper-client.md'),
   llmsSource('smolagents WorkPaper Tool', 'docs/smolagents-workpaper-tool.md'),
-  {
-    title: 'Sim WorkPaper MCP Setup',
-    relativePath: 'docs/sim-workpaper-mcp.md',
-    url: `${repositoryUrl}/blob/main/docs/sim-workpaper-mcp.md`,
-  },
-  {
-    title: 'n8n WorkPaper Formula Readback',
-    relativePath: 'docs/n8n-workpaper-formula-readback.md',
-    url: `${repositoryUrl}/blob/main/docs/n8n-workpaper-formula-readback.md`,
-  },
-  {
-    title: 'Dify WorkPaper Formula Readback',
-    relativePath: 'docs/dify-workpaper-formula-readback.md',
-    url: `${repositoryUrl}/blob/main/docs/dify-workpaper-formula-readback.md`,
-  },
-  {
-    title: 'Flowise WorkPaper Formula Readback',
-    relativePath: 'docs/flowise-workpaper-formula-readback.md',
-    url: `${repositoryUrl}/blob/main/docs/flowise-workpaper-formula-readback.md`,
-  },
-  {
-    title: 'Pipedream WorkPaper Formula Readback',
-    relativePath: 'docs/pipedream-workpaper-formula-readback.md',
-    url: `${repositoryUrl}/blob/main/docs/pipedream-workpaper-formula-readback.md`,
-  },
+  llmsSource('Sim WorkPaper MCP Setup', 'docs/sim-workpaper-mcp.md'),
+  llmsSource('n8n WorkPaper Formula Readback', 'docs/n8n-workpaper-formula-readback.md'),
+  llmsSource('Dify WorkPaper Formula Readback', 'docs/dify-workpaper-formula-readback.md'),
+  llmsSource('Flowise WorkPaper Formula Readback', 'docs/flowise-workpaper-formula-readback.md'),
+  llmsSource('Pipedream WorkPaper Formula Readback', 'docs/pipedream-workpaper-formula-readback.md'),
   {
     title: 'OpenAI Agents SDK WorkPaper Tool',
     relativePath: 'docs/openai-agents-sdk-workpaper-tool.md',
