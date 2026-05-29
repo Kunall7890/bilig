@@ -52,6 +52,7 @@ const docsAgentInstructions = buildDocsAgentInstructions({
   remoteMcpEndpoint,
   remoteMcpServerCard,
   siteRoot,
+  skillDiscoveryRoot,
   workpaperPackageSpec,
 })
 
@@ -664,7 +665,7 @@ function agentJsonManifest(): string {
           name: 'agent-adoption-kit',
           type: 'docs-entrypoint',
           docs: `${siteRoot}/agent-adoption-kit.html`,
-          skill_install: 'npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list',
+          skill_install: `npx --yes skills@latest add ${skillDiscoveryRoot} --list`,
           challenge_command: `npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json`,
         },
         {

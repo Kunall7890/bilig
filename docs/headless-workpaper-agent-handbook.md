@@ -68,6 +68,7 @@ Use the [Agent Adoption Kit](agent-adoption-kit.md) when the agent should learn
 the Bilig workflow before touching a real workbook:
 
 ```sh
+npx --yes skills@latest add https://bilig.proompteng.ai --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 ```

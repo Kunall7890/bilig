@@ -20,8 +20,12 @@ task, and require formula readback before calling the job done.
 If your agent supports installable skills, start here:
 
 ```sh
+npx --yes skills@latest add https://bilig.proompteng.ai --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 ```
+
+Use the app-host discovery URL first. Keep the GitHub repo skill command as a
+fallback for hosts that only support GitHub skill sources.
 
 If the agent is already inside a cloned Bilig checkout, use the project-local
 rules instead:

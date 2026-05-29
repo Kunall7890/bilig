@@ -169,6 +169,7 @@ LibreOffice, Google Sheets, or a screenshot grid, hand it the adoption kit
 instead:
 
 ```sh
+npx --yes skills@latest add https://bilig.proompteng.ai --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 ```

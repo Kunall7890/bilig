@@ -218,6 +218,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     '## Copy-Paste Prompt For Another Agent',
     'Return a compact proof object with editedCell, before, after, afterRestore',
     '[Agent Adoption Kit](agent-adoption-kit.md)',
+    'npx --yes skills@latest add https://bilig.proompteng.ai --list',
     'npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list',
     '## The First Decision',
     '## Minimum Agent Loop',
