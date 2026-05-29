@@ -261,6 +261,8 @@
 
 npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json
 
+npx --package @bilig/xlsx-formula-recalc xlsx-cache-doctor pricing.xlsx --json
+
 npx --package @bilig/sheetjs-formula-recalc sheetjs-recalc pricing.xlsx \
   --set Inputs!B2=48 \
   --read Summary!B7 \
@@ -298,6 +300,11 @@ npx --package @bilig/sheetjs-formula-recalc sheetjs-recalc pricing.xlsx \
               <span>xlsx</span>
               <strong><code>npm install @bilig/xlsx-formula-recalc</code></strong>
               <em>Edit XLSX inputs, refresh companion workbook caches, recalculate formulas, and export the updated workbook.</em>
+            </a>
+            <a class="path-link" href="./xlsx-cache-doctor-github-action.html">
+              <span>ci</span>
+              <strong>XLSX Cache Doctor GitHub Action</strong>
+              <em>Fail pull requests when committed workbook fixtures carry stale cached formula values.</em>
             </a>
             <a class="path-link" href="./sheetjs-formula-result-not-updating-node.html">
               <span>sheetjs</span>
@@ -949,6 +956,7 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
                 </li>
                 <li><a href="./xlsx-recalculation-proof.html">curlable XLSX recalculation proof</a></li>
                 <li><a href="./external-workbook-recalc-proof.html">external workbook recalculation proof</a></li>
+                <li><a href="./xlsx-cache-doctor-github-action.html">XLSX cache doctor GitHub Action</a></li>
                 <li><a href="./xlsx-recalculation-proof.ts">downloadable proof script</a></li>
                 <li><a href="./external-workbook-recalc-proof.ts">downloadable external-workbook proof script</a></li>
               </ul>
@@ -1027,6 +1035,7 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
                 <li><a href="./xlsx-recalculation-proof.ts">downloadable proof script</a></li>
                 <li><a href="./external-workbook-recalc-proof.ts">downloadable external-workbook proof script</a></li>
                 <li><a href="./xlsx-formula-recalculation-node.html">XLSX formula recalculation in Node.js</a></li>
+                <li><a href="./xlsx-cache-doctor-github-action.html">XLSX cache doctor GitHub Action</a></li>
                 <li>
                   <a href="./agent-xlsx-formula-recalculation-without-libreoffice.html"
                     >agent XLSX formula recalculation without LibreOffice</a

@@ -39,6 +39,12 @@ inspect it without writing an output file:
 npx --package xlsx-formula-recalc xlsx-recalc workbook.xlsx --inspect --json
 ```
 
+For CI or issue triage, use the cache-diagnosis alias:
+
+```sh
+npx --package xlsx-formula-recalc xlsx-cache-doctor workbook.xlsx --json
+```
+
 The inspection output includes `formulaCellCount`, `staleCachedFormulaCount`,
 `suggestedReads`, and a `nextStep.command` for the recalculation proof.
 

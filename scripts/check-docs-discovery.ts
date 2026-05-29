@@ -21,6 +21,7 @@ import { requireXlsxCalcAlternativeDiscovery } from './check-docs-discovery-xlsx
 import { requireXlsxRecalcPublicDiscovery } from './check-docs-discovery-xlsx-recalc-public.ts'
 import { requireExternalWorkbookRecalcProofDiscovery } from './check-docs-discovery-external-workbook.ts'
 import { requireSharedPublicDocsDiscovery } from './check-docs-discovery-public-docs.ts'
+import { requirePackageCliSurfaceDiscovery } from './check-docs-discovery-package-cli-surfaces.ts'
 import { homepageRequiredLinks, llmsRequiredLinks } from './check-docs-discovery-public-link-manifest.ts'
 import { requireAgentPublicSurfaceDiscovery } from './check-docs-discovery-agent-surfaces.ts'
 import { requireAgentInstructionDiscovery } from './check-docs-discovery-agent-instructions.ts'
@@ -87,6 +88,7 @@ const fileBackedMcpArgsNeedles = [
 const mcpbReleaseAssetUrl = 'https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb'
 const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
 const xlsxRecalcCli = 'xlsx-recalc --demo --json'
+const xlsxCacheDoctorCli = 'xlsx-cache-doctor pricing.xlsx --json'
 const liveSheetjsRecalcCli = 'sheetjs-recalc --demo --json'
 const liveSheetjsRecalcPackage = '@bilig/sheetjs-formula-recalc'
 
@@ -892,35 +894,20 @@ requireIncludes(
 requireIncludes(headlessReadme, 'npm provenance and package trust guide', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'uploaded to GitHub code scanning on every `main` update', 'packages/headless/README.md')
-requireIncludes(xlsxRecalcPackageJson, '"xlsx-recalc": "./dist/cli.js"', 'packages/xlsx-formula-recalc/package.json')
-requireIncludes(xlsxRecalcPackageJson, '"sheetjs-recalc": "./dist/sheetjs-cli.js"', 'packages/xlsx-formula-recalc/package.json')
-requireIncludes(xlsxRecalcPackageJson, '"./cli-api"', 'packages/xlsx-formula-recalc/package.json')
-requireIncludes(xlsxRecalcPackageReadme, 'xlsx-recalc --demo --json', 'packages/xlsx-formula-recalc/README.md')
-requireIncludes(xlsxRecalcPackageReadme, 'xlsx-recalc pricing.xlsx --inspect --json', 'packages/xlsx-formula-recalc/README.md')
-requireIncludes(xlsxRecalcPackageReadme, 'sheetjs-recalc --demo --json', 'packages/xlsx-formula-recalc/README.md')
-requireIncludes(xlsxRecalcPackageReadme, 'If You Arrived From SheetJS or xlsx-populate', 'packages/xlsx-formula-recalc/README.md')
-requireIncludes(xlsxRecalcPackageReadme, 'SheetJS formula result not updating', 'packages/xlsx-formula-recalc/README.md')
-requireIncludes(xlsxRecalcPackageReadme, 'examples/recalc-bridge-workflows', 'packages/xlsx-formula-recalc/README.md')
-requireIncludes(xlsxRecalcPackageAgentNotes, 'xlsx-recalc --demo --json', 'packages/xlsx-formula-recalc/AGENTS.md')
-requireIncludes(xlsxRecalcPackageAgentNotes, 'xlsx-recalc workbook.xlsx --inspect --json', 'packages/xlsx-formula-recalc/AGENTS.md')
-requireIncludes(xlsxRecalcPackageAgentNotes, 'sheetjs-recalc --demo --json', 'packages/xlsx-formula-recalc/AGENTS.md')
-requireIncludes(xlsxRecalcPackageSkillNotes, 'Summary!B2', 'packages/xlsx-formula-recalc/SKILL.md')
-requireIncludes(xlsxRecalcPackageSkillNotes, 'xlsx-recalc workbook.xlsx --inspect --json', 'packages/xlsx-formula-recalc/SKILL.md')
-requireIncludes(xlsxRecalcPackageSkillNotes, 'sheetjs-recalc --demo --json', 'packages/xlsx-formula-recalc/SKILL.md')
-requireIncludes(sheetjsRecalcPackageJson, '"sheetjs-recalc": "./dist/cli.js"', 'packages/sheetjs-formula-recalc/package.json')
-requireIncludes(sheetjsRecalcPackageReadme, 'sheetjs-recalc --demo --json', 'packages/sheetjs-formula-recalc/README.md')
-requireIncludes(sheetjsRecalcPackageReadme, 'If You Arrived From a SheetJS Formula Issue', 'packages/sheetjs-formula-recalc/README.md')
-requireIncludes(sheetjsRecalcPackageReadme, 'SheetJS formula result not updating', 'packages/sheetjs-formula-recalc/README.md')
-requireIncludes(sheetjsRecalcPackageReadme, 'examples/recalc-bridge-workflows', 'packages/sheetjs-formula-recalc/README.md')
-requireIncludes(sheetjsRecalcPackageAgentNotes, 'recalculateSheetjsWorkbook', 'packages/sheetjs-formula-recalc/AGENTS.md')
-requireIncludes(sheetjsRecalcPackageSkillNotes, 'sheetjs-recalc --demo --json', 'packages/sheetjs-formula-recalc/SKILL.md')
-requireIncludes(exceljsRecalcPackageJson, '"exceljs-recalc": "./dist/cli.js"', 'packages/exceljs-formula-recalc/package.json')
-requireIncludes(exceljsRecalcPackageReadme, 'exceljs-recalc --demo --json', 'packages/exceljs-formula-recalc/README.md')
-requireIncludes(exceljsRecalcPackageReadme, 'If You Arrived From an ExcelJS Formula Issue', 'packages/exceljs-formula-recalc/README.md')
-requireIncludes(exceljsRecalcPackageReadme, 'ExcelJS formula result not updating', 'packages/exceljs-formula-recalc/README.md')
-requireIncludes(exceljsRecalcPackageReadme, 'examples/recalc-bridge-workflows', 'packages/exceljs-formula-recalc/README.md')
-requireIncludes(exceljsRecalcPackageAgentNotes, 'recalculateExceljsWorkbook', 'packages/exceljs-formula-recalc/AGENTS.md')
-requireIncludes(exceljsRecalcPackageSkillNotes, 'exceljs-recalc --demo --json', 'packages/exceljs-formula-recalc/SKILL.md')
+requirePackageCliSurfaceDiscovery({
+  exceljsRecalcPackageAgentNotes,
+  exceljsRecalcPackageJson,
+  exceljsRecalcPackageReadme,
+  exceljsRecalcPackageSkillNotes,
+  sheetjsRecalcPackageAgentNotes,
+  sheetjsRecalcPackageJson,
+  sheetjsRecalcPackageReadme,
+  sheetjsRecalcPackageSkillNotes,
+  xlsxRecalcPackageAgentNotes,
+  xlsxRecalcPackageJson,
+  xlsxRecalcPackageReadme,
+  xlsxRecalcPackageSkillNotes,
+})
 requireIncludes(exceljsFormulaRecalculationNode, 'exceljs-recalc --demo --json', 'docs/exceljs-formula-recalculation-node.md')
 requireIncludes(exceljsFormulaRecalculationNode, 'so:exceljs-44199441', 'docs/exceljs-formula-recalculation-node.md')
 requireIncludes(
@@ -946,6 +933,7 @@ requireXlsxRecalcPublicDiscovery({
   llms,
   readme,
   xlsxFormulaRecalculationNode,
+  xlsxCacheDoctorCli,
   xlsxRecalcCli,
 })
 await requireExternalWorkbookRecalcProofDiscovery({ docsRoot, index, llms, xlsxRecalcPackageReadme })

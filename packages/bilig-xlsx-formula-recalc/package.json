@@ -19,6 +19,7 @@
     "stale-xlsx-cache",
     "workbook",
     "xlsx",
+    "xlsx-cache-doctor",
     "xlsx-calc",
     "xlsx-formula",
     "xlsx-formula-recalculation",
@@ -38,6 +39,7 @@
   },
   "bin": {
     "sheetjs-recalc": "./dist/sheetjs-cli.js",
+    "xlsx-cache-doctor": "./dist/cache-doctor-cli.js",
     "xlsx-recalc": "./dist/cli.js"
   },
   "files": [

@@ -59,11 +59,6 @@ const output = {
     outputXlsxWritten: recalculated.xlsx.byteLength > 0,
     verified: false,
   },
-  star: 'https://github.com/proompteng/bilig/stargazers',
-  watchReleases: 'https://github.com/proompteng/bilig/subscription',
-  adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
-  nextStep:
-    'If external workbook cache refresh is the XLSX blocker in your service, star or bookmark Bilig; if the matching rules are not enough, open the exact workbook-link blocker.',
 }
 output.checks.verified =
   output.checks.externalWorkbookMatched &&

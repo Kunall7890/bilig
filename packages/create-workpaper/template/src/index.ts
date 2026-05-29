@@ -33,10 +33,6 @@ type WorkbookStorage = {
   saveWorkbookJson(nextWorkbookJson: string): Promise<void> | void
 }
 
-const repoStarUrl = 'https://github.com/proompteng/bilig/stargazers'
-const releaseWatchUrl = 'https://github.com/proompteng/bilig/subscription'
-const adoptionBlockerUrl = 'https://github.com/proompteng/bilig/discussions/new?category=general'
-
 const inputCells = {
   units: 'Inputs!B2',
   listPrice: 'Inputs!B3',
@@ -237,16 +233,6 @@ async function runSmoke(): Promise<void> {
     before,
     edit,
     verified: true,
-    star: repoStarUrl,
-    watchReleases: releaseWatchUrl,
-    adoptionBlocker: adoptionBlockerUrl,
-    nextStep: {
-      ifUseful: 'If this proof matched your workflow, star or bookmark Bilig so you can find it again.',
-      star: repoStarUrl,
-      watchReleases: releaseWatchUrl,
-      ifBlocked: 'If it almost worked, open the concrete workbook or agent blocker.',
-      adoptionBlocker: adoptionBlockerUrl,
-    },
   }
   assertSmokeOutput(output)
   console.log(JSON.stringify(output, null, 2))

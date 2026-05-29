@@ -19,6 +19,7 @@ export const docsSiteSources = [
   ['xlsx-recalculation-proof.html', 'xlsx-recalculation-proof.md'],
   ['external-workbook-recalc-proof.html', 'external-workbook-recalc-proof.md'],
   ['agent-xlsx-formula-recalculation-without-libreoffice.html', 'agent-xlsx-formula-recalculation-without-libreoffice.md'],
+  ['xlsx-cache-doctor-github-action.html', 'xlsx-cache-doctor-github-action.md'],
   ['xlsx-formula-recalculation-node.html', 'xlsx-formula-recalculation-node.md'],
   ['sheetjs-formula-result-not-updating-node.html', 'sheetjs-formula-result-not-updating-node.md'],
   ['excel-file-calculation-engine-node.html', 'excel-file-calculation-engine-node.md'],

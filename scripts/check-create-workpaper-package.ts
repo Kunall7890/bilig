@@ -118,21 +118,33 @@ function assertDocs(): void {
       templateSource.indexOf('assertSmokeOutput(output)') < templateSource.indexOf('console.log(JSON.stringify(output, null, 2))'),
     'starter smoke output must be verified before it is printed',
   )
+  assert(!templateSource.includes('nextStep'), 'starter smoke output must not include CTA metadata in the JSON proof')
+  assert(!templateSource.includes('https://github.com/proompteng/bilig/stargazers'), 'starter smoke output must not include the star link')
   assert(
-    templateSource.includes('https://github.com/proompteng/bilig/discussions/new?category=general'),
-    'starter smoke output must include the adoption-feedback link after verification',
+    !templateSource.includes('https://github.com/proompteng/bilig/subscription'),
+    'starter smoke output must not include the release-watch link',
   )
-  assert(templateSource.includes('https://github.com/proompteng/bilig/stargazers'), 'starter smoke output must include the star link')
   assert(
-    templateSource.includes('https://github.com/proompteng/bilig/subscription'),
-    'starter smoke output must include the release-watch link',
+    readme.includes('https://github.com/proompteng/bilig/discussions/new?category=general'),
+    'starter README must include the adoption-feedback link',
+  )
+  assert(
+    readme.includes('https://github.com/proompteng/bilig/stargazers'),
+    'starter README must include the star link after proof guidance',
+  )
+  assert(
+    readme.includes('https://github.com/proompteng/bilig/subscription'),
+    'starter README must include the release-watch link after proof guidance',
   )
   assert(
     docs.includes('https://github.com/proompteng/bilig/discussions/new?category=general'),
     'starter docs must include the adoption-feedback link',
   )
-  assert(docs.includes('https://github.com/proompteng/bilig/stargazers'), 'starter docs must include the star link')
-  assert(docs.includes('https://github.com/proompteng/bilig/subscription'), 'starter docs must include the release-watch link')
+  assert(docs.includes('https://github.com/proompteng/bilig/stargazers'), 'starter docs must include the star link after proof guidance')
+  assert(
+    docs.includes('https://github.com/proompteng/bilig/subscription'),
+    'starter docs must include the release-watch link after proof guidance',
+  )
   assert(readme.includes('agent:verify'), 'starter README must document the agent verification script')
   assert(docs.includes('agent:verify'), 'starter docs must document the agent verification script')
 }

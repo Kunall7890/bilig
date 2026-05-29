@@ -73,8 +73,60 @@ describe('xlsx-recalc CLI', () => {
         literalRecalculatedValue: 20,
         staleCachedValue: true,
       })
-      expect(summary.nextStep.command).toContain('xlsx-recalc')
-      expect(summary.nextStep.command).toContain("--read 'Sheet1!B2'")
+      expect(JSON.parse(stdout)).not.toHaveProperty('nextStep')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('runs xlsx-cache-doctor as the default inspection command', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-cache-doctor-cli-'))
+    try {
+      const inputPath = join(tempDir, 'stale-cache.xlsx')
+      writeFileSync(inputPath, buildStaleFormulaCacheWorkbook())
+      let stdout = ''
+
+      const exitCode = runXlsxFormulaRecalcCli([inputPath, '--json'], {
+        commandName: 'xlsx-cache-doctor',
+        stdout: (text) => {
+          stdout += text
+        },
+      })
+
+      expect(exitCode).toBe(0)
+      expect(existsSync(join(tempDir, 'stale-cache.recalculated.xlsx'))).toBe(false)
+      const summary = readCliInspectionSummary(stdout)
+      expect(summary.commandSucceeded).toBe(true)
+      expect(summary.inspectionCompleted).toBe(true)
+      expect(summary.staleCachedFormulaCount).toBe(1)
+      expect(summary.suggestedReads).toEqual(['Sheet1!B2'])
+      expect(JSON.parse(stdout)).not.toHaveProperty('nextStep')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps xlsx-cache-doctor in recalculation mode when readback output is explicit', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-cache-doctor-recalc-cli-'))
+    try {
+      const inputPath = join(tempDir, 'stale-cache.xlsx')
+      const outputPath = join(tempDir, 'stale-cache.fixed.xlsx')
+      writeFileSync(inputPath, buildStaleFormulaCacheWorkbook())
+      let stdout = ''
+
+      const exitCode = runXlsxFormulaRecalcCli([inputPath, '--read', 'Sheet1!B2', '--out', outputPath, '--json'], {
+        commandName: 'xlsx-cache-doctor',
+        stdout: (text) => {
+          stdout += text
+        },
+      })
+
+      expect(exitCode).toBe(0)
+      expect(existsSync(outputPath)).toBe(true)
+      const summary = readCliSummary(stdout)
+      expect(summary.commandSucceeded).toBe(true)
+      expect(summary.recalculationCompleted).toBe(true)
+      expect(summary.reads['Sheet1!B2']?.value).toBe(20)
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }
@@ -226,9 +278,6 @@ interface CliInspectionSummary {
   readonly inspectionCompleted: boolean
   readonly recalculationCompleted: boolean
   readonly excelParity: 'not_proven'
-  readonly nextStep: {
-    readonly command: string | null
-  }
 }
 
 function readCliSummary(stdout: string): CliSummary {
@@ -288,7 +337,6 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
   const inspectionCompleted = parsed['inspectionCompleted']
   const recalculationCompleted = parsed['recalculationCompleted']
   const excelParity = parsed['excelParity']
-  const nextStep = parsed['nextStep']
   if (
     typeof mode !== 'string' ||
     typeof formulaCellCount !== 'number' ||
@@ -299,9 +347,7 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
     typeof commandSucceeded !== 'boolean' ||
     typeof inspectionCompleted !== 'boolean' ||
     typeof recalculationCompleted !== 'boolean' ||
-    excelParity !== 'not_proven' ||
-    !isRecord(nextStep) ||
-    (nextStep['command'] !== null && typeof nextStep['command'] !== 'string')
+    excelParity !== 'not_proven'
   ) {
     throw new Error(`Unexpected CLI inspection summary shape: ${stdout}`)
   }
@@ -316,9 +362,6 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
     inspectionCompleted,
     recalculationCompleted,
     excelParity,
-    nextStep: {
-      command: nextStep['command'],
-    },
   }
 }
 

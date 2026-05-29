@@ -55,17 +55,7 @@ Expected output includes:
 
 ```json
 {
-  "verified": true,
-  "star": "https://github.com/proompteng/bilig/stargazers",
-  "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": {
-    "ifUseful": "If this proof matched your workflow, star or bookmark Bilig so you can find it again.",
-    "star": "https://github.com/proompteng/bilig/stargazers",
-    "watchReleases": "https://github.com/proompteng/bilig/subscription",
-    "ifBlocked": "If it almost worked, open the concrete workbook or agent blocker.",
-    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
-  }
+  "verified": true
 }
 ```
 
@@ -107,3 +97,7 @@ curl -X POST http://localhost:8788/api/quote/approval \
 If this starter almost matches a service or agent workflow you maintain, open
 one concrete adoption blocker so the package becomes easier to evaluate:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
+
+If the proof already matches your workflow, star or bookmark the repo:
+<https://github.com/proompteng/bilig/stargazers>. Watch releases for API and
+formula compatibility updates: <https://github.com/proompteng/bilig/subscription>.

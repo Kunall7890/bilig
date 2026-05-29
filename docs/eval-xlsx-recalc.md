@@ -65,7 +65,7 @@ If you already have the workbook but do not know the right output cells yet,
 start with inspection:
 
 ```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc pricing.xlsx --inspect --json
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json
 ```
 
 That command does not write `pricing.recalculated.xlsx`. It imports the
@@ -92,10 +92,7 @@ Expected shape:
   "commandSucceeded": true,
   "inspectionCompleted": true,
   "recalculationCompleted": true,
-  "excelParity": "not_proven",
-  "nextStep": {
-    "command": "xlsx-recalc pricing.xlsx --read 'Summary!B7' --json"
-  }
+  "excelParity": "not_proven"
 }
 ```
 
@@ -112,6 +109,22 @@ npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc pricing.xlsx
 
 Use sheet-qualified A1 references. Keep your adapter strict: known input cells,
 known output cells, and tests around the exported workbook.
+
+## Put it in CI
+
+Use the repository action when stale cached formula values should block a pull
+request:
+
+```yaml
+- uses: proompteng/bilig/actions/xlsx-cache-doctor@main
+  with:
+    workbook: fixtures/pricing.xlsx
+    fail-on-stale: "true"
+```
+
+The action writes a JSON report, adds a job summary, and exposes
+`formula-count`, `stale-count`, and `suggested-reads` outputs. See
+[XLSX Cache Doctor GitHub Action](xlsx-cache-doctor-github-action.md).
 
 ## What this proves
 

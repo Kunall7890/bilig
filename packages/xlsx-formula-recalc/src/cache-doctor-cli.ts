@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 
-import { basename } from 'node:path'
-
 import { runXlsxFormulaRecalcCli } from './cli-api.js'
 
 process.exitCode = runXlsxFormulaRecalcCli(process.argv.slice(2), {
-  commandName: basename(process.argv[1] ?? 'xlsx-recalc'),
+  commandName: 'xlsx-cache-doctor',
 })

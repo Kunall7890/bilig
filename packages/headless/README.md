@@ -230,17 +230,7 @@ Expected output:
   "limitations": [
     "This challenge proves the WorkPaper write/read/persist loop, not full Excel desktop compatibility.",
     "For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture."
-  ],
-  "star": "https://github.com/proompteng/bilig/stargazers",
-  "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": {
-    "ifUseful": "If this agent workbook proof matched your workflow, star or bookmark Bilig so you can find it again.",
-    "star": "https://github.com/proompteng/bilig/stargazers",
-    "watchReleases": "https://github.com/proompteng/bilig/subscription",
-    "ifBlocked": "If it almost worked, open the concrete workbook or agent blocker.",
-    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
-  }
+  ]
 }
 ```
 

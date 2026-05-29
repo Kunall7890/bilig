@@ -1,0 +1,104 @@
+name: XLSX Cache Doctor
+description: Diagnose stale cached XLSX formula values in CI without Excel, LibreOffice, or browser automation.
+author: proompteng
+
+inputs:
+  workbook:
+    description: Path to the XLSX workbook to inspect.
+    required: true
+  package-version:
+    description: npm version or dist-tag for @bilig/xlsx-formula-recalc.
+    required: false
+    default: latest
+  inspect-limit:
+    description: Maximum formula cells to recompute during inspection.
+    required: false
+    default: "50"
+  json-output:
+    description: Optional path for the JSON report. Defaults to the runner temp directory.
+    required: false
+    default: ""
+  fail-on-stale:
+    description: Fail the workflow when stale cached formula values are detected.
+    required: false
+    default: "false"
+
+outputs:
+  json:
+    description: Path to the xlsx-cache-doctor JSON report.
+    value: ${{ steps.inspect.outputs.json }}
+  formula-count:
+    description: Number of formula cells found in the workbook.
+    value: ${{ steps.summarize.outputs.formula-count }}
+  stale-count:
+    description: Number of inspected formula cells with stale cached values.
+    value: ${{ steps.summarize.outputs.stale-count }}
+  suggested-reads:
+    description: Comma-separated list of suggested formula cells to read in a recalculation proof.
+    value: ${{ steps.summarize.outputs.suggested-reads }}
+
+runs:
+  using: composite
+  steps:
+    - id: inspect
+      name: Inspect XLSX formula cache
+      shell: bash
+      env:
+        BILIG_WORKBOOK: ${{ inputs.workbook }}
+        BILIG_PACKAGE_VERSION: ${{ inputs.package-version }}
+        BILIG_INSPECT_LIMIT: ${{ inputs.inspect-limit }}
+        BILIG_JSON_OUTPUT: ${{ inputs.json-output }}
+      run: |
+        set -euo pipefail
+        output="${BILIG_JSON_OUTPUT:-$RUNNER_TEMP/bilig-xlsx-cache-doctor.json}"
+        mkdir -p "$(dirname "$output")"
+        npm exec --yes --package "@bilig/xlsx-formula-recalc@${BILIG_PACKAGE_VERSION}" -- \
+          xlsx-cache-doctor "$BILIG_WORKBOOK" \
+          --inspect-limit "$BILIG_INSPECT_LIMIT" \
+          --json | tee "$output"
+        echo "json=$output" >> "$GITHUB_OUTPUT"
+
+    - id: summarize
+      name: Summarize formula cache diagnosis
+      shell: bash
+      env:
+        BILIG_JSON_REPORT: ${{ steps.inspect.outputs.json }}
+        BILIG_FAIL_ON_STALE: ${{ inputs.fail-on-stale }}
+      run: |
+        set -euo pipefail
+        node <<'NODE'
+        const fs = require("node:fs");
+
+        const reportPath = process.env.BILIG_JSON_REPORT;
+        const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+        const formulaCount = Number(report.formulaCellCount ?? 0);
+        const staleCount = Number(report.staleCachedFormulaCount ?? 0);
+        const suggestedReads = Array.isArray(report.suggestedReads) ? report.suggestedReads.join(",") : "";
+
+        fs.appendFileSync(process.env.GITHUB_OUTPUT, `formula-count=${formulaCount}\n`);
+        fs.appendFileSync(process.env.GITHUB_OUTPUT, `stale-count=${staleCount}\n`);
+        fs.appendFileSync(process.env.GITHUB_OUTPUT, `suggested-reads=${suggestedReads}\n`);
+
+        fs.appendFileSync(
+          process.env.GITHUB_STEP_SUMMARY,
+          [
+            "### XLSX cache doctor",
+            "",
+            `- Formula cells: ${formulaCount}`,
+            `- Inspected formula cells: ${Number(report.inspectedFormulaCellCount ?? 0)}`,
+            `- Stale cached values: ${staleCount}`,
+            suggestedReads ? `- Suggested reads: ${suggestedReads}` : "- Suggested reads: none",
+            `- JSON report: ${reportPath}`,
+            "",
+          ].join("\n"),
+        );
+
+        if (process.env.BILIG_FAIL_ON_STALE === "true" && staleCount > 0) {
+          console.error(`xlsx-cache-doctor found ${staleCount} stale cached formula value(s).`);
+          process.exit(2);
+        }
+        NODE
+
+branding:
+  icon: file-text
+  color: green

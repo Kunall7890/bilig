@@ -1,5 +1,4 @@
 import { createWorkPaperFromDocument, exportWorkPaperDocument, parseWorkPaperDocument, serializeWorkPaperDocument } from './persistence.js'
-import { createProofNextStep, proofAdoptionBlockerUrl, proofStarUrl, proofWatchReleasesUrl, type ProofNextStep } from './proof-next-step.js'
 import { WorkPaper } from './work-paper.js'
 
 type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
@@ -19,10 +18,6 @@ export interface AgentWorkbookChallengeProof {
   }
   readonly verified: boolean
   readonly limitations: readonly string[]
-  readonly star: string
-  readonly watchReleases: string
-  readonly adoptionBlocker: string
-  readonly nextStep: ProofNextStep
 }
 
 export interface AgentWorkbookChallengeCliHost {
@@ -144,10 +139,6 @@ export function buildAgentWorkbookChallengeProof(): AgentWorkbookChallengeProof 
       'This challenge proves the WorkPaper write/read/persist loop, not full Excel desktop compatibility.',
       'For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture.',
     ],
-    star: proofStarUrl,
-    watchReleases: proofWatchReleasesUrl,
-    adoptionBlocker: proofAdoptionBlockerUrl,
-    nextStep: createProofNextStep('agent workbook'),
   }
 }
 
@@ -171,6 +162,12 @@ ${JSON.stringify(proof, null, 2)}
 Result: ${proof.verified ? 'verified' : 'failed'}.
 
 The important invariant is that \`${proof.editedCell}\` changed the dependent formula cell \`${proof.dependentCell}\`, and a serialized WorkPaper restore kept the same computed value.
+
+If this proof matched your workflow, star or bookmark Bilig after the JSON proof is clean:
+https://github.com/proompteng/bilig/stargazers
+
+If it almost worked, open the concrete workbook blocker:
+https://github.com/proompteng/bilig/discussions/new?category=general
 `
 }
 

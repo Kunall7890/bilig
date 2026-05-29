@@ -35,10 +35,6 @@ type QuoteJsonStorage = {
 
 type QuoteRequestHandler = (request: Request) => Promise<Response>
 
-const repoStarUrl = 'https://github.com/proompteng/bilig/stargazers'
-const releaseWatchUrl = 'https://github.com/proompteng/bilig/subscription'
-const adoptionBlockerUrl = 'https://github.com/proompteng/bilig/discussions/new?category=general'
-
 const inputCells = {
   units: 'Inputs!B2',
   listPrice: 'Inputs!B3',
@@ -304,16 +300,6 @@ async function runSmoke(): Promise<void> {
     edit,
     after: after.summary,
     verified: true,
-    star: repoStarUrl,
-    watchReleases: releaseWatchUrl,
-    adoptionBlocker: adoptionBlockerUrl,
-    nextStep: {
-      ifUseful: 'If this service or agent proof matched your workflow, star or bookmark Bilig so you can find it again.',
-      star: repoStarUrl,
-      watchReleases: releaseWatchUrl,
-      ifBlocked: 'If it almost worked, open the concrete workbook or agent blocker.',
-      adoptionBlocker: adoptionBlockerUrl,
-    },
   }
 
   assertSmokeOutput(output, storageEvents)

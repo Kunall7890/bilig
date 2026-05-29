@@ -56,6 +56,10 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   outputs must be recalculated before returning. Start with this command:
   `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json`.
   `npx --package @bilig/xlsx-formula-recalc xlsx-recalc pricing.xlsx --set Inputs!B2=48 --read Summary!B7 --out pricing.recalculated.xlsx --json`.
+- For PR checks that only need to diagnose stale XLSX formula caches first:
+  `npx --package @bilig/xlsx-formula-recalc xlsx-cache-doctor pricing.xlsx --json`.
+  https://proompteng.github.io/bilig/xlsx-cache-doctor-github-action.html
+  https://github.com/proompteng/bilig/blob/main/docs/xlsx-cache-doctor-github-action.md
 - For stale external workbook caches, run the companion-workbook proof:
   https://proompteng.github.io/bilig/external-workbook-recalc-proof.html
 - Use `@bilig/exceljs-formula-recalc` when an existing ExcelJS workbook needs

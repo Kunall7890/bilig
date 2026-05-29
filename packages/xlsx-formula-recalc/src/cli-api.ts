@@ -33,6 +33,7 @@ const repoStarUrl = 'https://github.com/proompteng/bilig/stargazers'
 const releaseWatchUrl = 'https://github.com/proompteng/bilig/subscription'
 const adoptionBlockerUrl = 'https://github.com/proompteng/bilig/discussions/new?category=general'
 const defaultInspectFormulaLimit = 50
+const cacheDoctorCommandName = 'xlsx-cache-doctor'
 
 export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFormulaRecalcCliContext = {}): number {
   const commandName = context.commandName ?? 'xlsx-recalc'
@@ -45,7 +46,7 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
       return 0
     }
 
-    const options = parseCliArgs(args, commandName)
+    const options = parseCliArgs(normalizeCliArgsForCommand(args, commandName), commandName)
     const input = options.mode === 'demo' ? buildDemoWorkbookBytes() : readFileSync(requireInputPath(options))
     const inputName = options.mode === 'demo' ? 'bilig-formula-recalc-demo.xlsx' : basename(requireInputPath(options))
     const externalWorkbooks = readExternalWorkbookInputs(options.externalWorkbooks)
@@ -100,6 +101,17 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
     writeStderr(`${error instanceof Error ? error.message : String(error)}\n`)
     return 1
   }
+}
+
+function normalizeCliArgsForCommand(args: readonly string[], commandName: string): readonly string[] {
+  if (commandName !== cacheDoctorCommandName || args.includes('--inspect') || hasExplicitRecalcIntent(args)) {
+    return args
+  }
+  return [...args, '--inspect']
+}
+
+function hasExplicitRecalcIntent(args: readonly string[]): boolean {
+  return args.includes('--read') || args.includes('--out') || args.includes('-o')
 }
 
 function parseCliArgs(args: readonly string[], commandName: string): CliOptions {
@@ -246,9 +258,6 @@ function printInspectionSummary(args: PrintInspectionSummaryInput): void {
     inspectionCompleted: true,
     recalculationCompleted: true,
     excelParity: 'not_proven',
-    nextStep: {
-      command: suggestedReads.length > 0 ? suggestedRecalcCommand(args.options, suggestedReads) : null,
-    },
   }
 
   if (args.options.json) {
@@ -263,7 +272,7 @@ function printInspectionSummary(args: PrintInspectionSummaryInput): void {
   args.writeStdout(`Stale cached formula cells: ${summary.staleCachedFormulaCount.toString()}\n`)
   if (suggestedReads.length > 0) {
     args.writeStdout(`Suggested reads: ${suggestedReads.join(', ')}\n`)
-    args.writeStdout(`${summary.nextStep.command ?? ''}\n`)
+    args.writeStdout(`${suggestedRecalcCommand(args.options, suggestedReads)}\n`)
   }
   if (summary.warnings.length > 0) {
     args.writeStdout(`Warnings: ${summary.warnings.length.toString()}\n`)
@@ -451,6 +460,27 @@ function defaultOutputPath(inputPath: string): string {
 }
 
 function printHelp(commandName: string, writeStdout: (text: string) => void): void {
+  if (commandName === cacheDoctorCommandName) {
+    writeStdout(`Usage: ${commandName} <input.xlsx> [options]
+       ${commandName} --demo [--json]
+
+Diagnose stale cached formula values without writing an output XLSX. This is
+the memorable alias for: xlsx-recalc <input.xlsx> --inspect.
+
+Options:
+  --demo                  Generate a tiny workbook and inspect its formula cache.
+  --set <Sheet!A1=value>  Edit an input cell before diagnosis. Repeatable.
+  --inspect-limit <n>     Formula cells to recompute during inspection. Defaults to ${defaultInspectFormulaLimit.toString()}.
+  --external-workbook <path>
+                          Supply a companion XLSX for external-link cache refresh. Repeatable.
+  --external-workbook-target <path> <target>
+                          Supply a companion XLSX for an exact Excel link target. Repeatable.
+  --json                  Print a JSON summary.
+  --help, -h              Show this help.
+`)
+    return
+  }
+
   writeStdout(`Usage: ${commandName} <input.xlsx> [options]
        ${commandName} --demo [--json] [--out demo.recalculated.xlsx]
 

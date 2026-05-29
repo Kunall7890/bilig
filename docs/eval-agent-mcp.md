@@ -77,17 +77,7 @@ The current challenge prints this shape:
   "limitations": [
     "This challenge proves the file-backed MCP WorkPaper tool surface, not Excel desktop UI automation.",
     "For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture."
-  ],
-  "star": "https://github.com/proompteng/bilig/stargazers",
-  "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": {
-    "ifUseful": "If this file-backed MCP proof matched your workflow, star or bookmark Bilig so you can find it again.",
-    "star": "https://github.com/proompteng/bilig/stargazers",
-    "watchReleases": "https://github.com/proompteng/bilig/subscription",
-    "ifBlocked": "If it almost worked, open the concrete workbook or agent blocker.",
-    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
-  }
+  ]
 }
 ```
 

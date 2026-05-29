@@ -123,11 +123,14 @@ If you already have the real workbook but do not know which formulas to read
 yet, inspect it first without writing an output file:
 
 ```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc pricing.xlsx --inspect --json
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json
 ```
 
 That returns formula cells, stale cached values, and suggested `--read` targets
 so the next command can prove the cells your service actually depends on.
+
+To run that check in CI, use the
+[XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md).
 
 If your pipeline is specifically SheetJS / `xlsx`, run the sibling proof with
 the same shape:
@@ -158,6 +161,7 @@ formula-value problem without asking you to adopt WorkPaper state first.
 
 | Problem you have right now                                                        | Install                                                       | First proof                                                                             |
 | --------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Pull requests can commit XLSX fixtures with stale formula caches                  | `uses: proompteng/bilig/actions/xlsx-cache-doctor@main`       | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md)              |
 | Formula workbook state inside a Node service or agent tool                        | `npm install @bilig/workpaper`                                | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                         |
 | AI agent needs to edit workbook inputs and verify formula readback                | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](docs/ai-agent-spreadsheet-tool-node.md)                     |
 | Agent framework or product runtime needs workbook plan/check/proof data           | `npm install @bilig/workbook`                                 | [Workbook agent intent API](docs/workbook-agent-intent-api.md)                          |
@@ -319,17 +323,7 @@ Expected output includes this proof shape:
       "serializedBytes": 1242
     }
   },
-  "verified": true,
-  "star": "https://github.com/proompteng/bilig/stargazers",
-  "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": {
-    "ifUseful": "If this proof matched your workflow, star or bookmark Bilig so you can find it again.",
-    "star": "https://github.com/proompteng/bilig/stargazers",
-    "watchReleases": "https://github.com/proompteng/bilig/subscription",
-    "ifBlocked": "If it almost worked, open the concrete workbook or agent blocker.",
-    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
-  }
+  "verified": true
 }
 ```
 

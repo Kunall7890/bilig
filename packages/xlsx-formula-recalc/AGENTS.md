@@ -23,6 +23,12 @@ inspect it first without writing an output file:
 npx --package xlsx-formula-recalc xlsx-recalc workbook.xlsx --inspect --json
 ```
 
+Use the memorable cache-diagnosis alias for issue triage or CI:
+
+```sh
+npx --package xlsx-formula-recalc xlsx-cache-doctor workbook.xlsx --json
+```
+
 Use the returned `suggestedReads`, stale cached formula counts, and warnings to
 decide the narrow proof command.
 

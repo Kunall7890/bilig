@@ -433,6 +433,11 @@ const llmsFullSources = [
     url: `${repositoryUrl}/blob/main/docs/external-workbook-recalc-proof.md`,
   },
   {
+    title: 'XLSX Cache Doctor GitHub Action',
+    relativePath: 'docs/xlsx-cache-doctor-github-action.md',
+    url: `${repositoryUrl}/blob/main/docs/xlsx-cache-doctor-github-action.md`,
+  },
+  {
     title: 'Evaluate WorkPaper In A Node Service',
     relativePath: 'docs/eval-workpaper-service.md',
     url: `${repositoryUrl}/blob/main/docs/eval-workpaper-service.md`,

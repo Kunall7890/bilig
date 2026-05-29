@@ -8,7 +8,6 @@ import {
   dispatchWorkPaperMcpJsonRpc,
   type WorkPaperMcpJsonRpcDispatchResult,
 } from './work-paper-mcp-json-rpc.js'
-import { createProofNextStep, proofAdoptionBlockerUrl, proofStarUrl, proofWatchReleasesUrl, type ProofNextStep } from './proof-next-step.js'
 import type { WorkPaperMcpToolServer } from './work-paper-mcp-server.js'
 
 type JsonObject = Record<string, unknown>
@@ -45,10 +44,6 @@ export interface McpChallengeProof {
   }
   readonly verified: boolean
   readonly limitations: readonly string[]
-  readonly star: string
-  readonly watchReleases: string
-  readonly adoptionBlocker: string
-  readonly nextStep: ProofNextStep
 }
 
 export interface McpChallengeCliHost {
@@ -296,10 +291,6 @@ export function buildMcpChallengeProof(options: McpChallengeBuildOptions = {}): 
         'This challenge proves the file-backed MCP WorkPaper tool surface, not Excel desktop UI automation.',
         'For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture.',
       ],
-      star: proofStarUrl,
-      watchReleases: proofWatchReleasesUrl,
-      adoptionBlocker: proofAdoptionBlockerUrl,
-      nextStep: createProofNextStep('file-backed MCP'),
     }
 
     return keepTemp ? { ...proof, workpaperPath } : proof
@@ -327,6 +318,12 @@ ${JSON.stringify(proof, null, 2)}
 Result: ${proof.verified ? 'verified' : 'failed'}.
 
 The important invariant is that \`${proof.editedCell}\` changed the dependent formula cell \`${proof.dependentCell}\`, the edit persisted to WorkPaper JSON, and a restarted file-backed MCP server read the same computed value.
+
+If this proof matched your workflow, star or bookmark Bilig after the JSON proof is clean:
+https://github.com/proompteng/bilig/stargazers
+
+If it almost worked, open the concrete MCP or workbook blocker:
+https://github.com/proompteng/bilig/discussions/new?category=general
 `
 }
 

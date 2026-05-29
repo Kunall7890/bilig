@@ -73,9 +73,6 @@ class BiligWorkPaperFormulaProofTool(Tool):
             "sheets": proof.get("sheets"),
             "checks": proof.get("checks"),
             "limitations": proof.get("limitations"),
-            "star": proof.get("star"),
-            "watchReleases": proof.get("watchReleases"),
-            "adoptionBlocker": proof.get("adoptionBlocker"),
         }
 
 

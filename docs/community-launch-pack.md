@@ -693,7 +693,7 @@ make:
 - `XLSX formula cache verifier`
 
 Every page should have one runnable command, one expected output block, and one
-link back to the repo star URL. Do not ask for stars before the example proves
+repo link after the proof. Do not ask for stars before the example proves
 something.
 
 ### 2. Turn Benchmarks Into A Distribution Loop

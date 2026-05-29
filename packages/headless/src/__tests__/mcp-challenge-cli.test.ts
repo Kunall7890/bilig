@@ -46,16 +46,6 @@ describe('bilig-mcp-challenge', () => {
         displayValueRead: true,
       },
       verified: true,
-      star: 'https://github.com/proompteng/bilig/stargazers',
-      watchReleases: 'https://github.com/proompteng/bilig/subscription',
-      adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
-      nextStep: {
-        ifUseful: 'If this file-backed MCP proof matched your workflow, star or bookmark Bilig so you can find it again.',
-        star: 'https://github.com/proompteng/bilig/stargazers',
-        watchReleases: 'https://github.com/proompteng/bilig/subscription',
-        ifBlocked: 'If it almost worked, open the concrete workbook or agent blocker.',
-        adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
-      },
     })
   })
 
@@ -77,13 +67,11 @@ describe('bilig-mcp-challenge', () => {
       afterRestart: 96_000,
       persistedDocumentBytes: expect.any(Number),
       verified: true,
-      star: 'https://github.com/proompteng/bilig/stargazers',
-      watchReleases: 'https://github.com/proompteng/bilig/subscription',
-      nextStep: {
-        star: 'https://github.com/proompteng/bilig/stargazers',
-        watchReleases: 'https://github.com/proompteng/bilig/subscription',
-      },
     })
+    expect(parsed).not.toHaveProperty('star')
+    expect(parsed).not.toHaveProperty('watchReleases')
+    expect(parsed).not.toHaveProperty('adoptionBlocker')
+    expect(parsed).not.toHaveProperty('nextStep')
     expect(parsed.persistedDocumentBytes).toBe(parsed.persistence.serializedBytes)
     expect(parsed.workpaperPath).toBeUndefined()
   })

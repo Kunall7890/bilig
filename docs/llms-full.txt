@@ -425,11 +425,14 @@ If you already have the real workbook but do not know which formulas to read
 yet, inspect it first without writing an output file:
 
 ```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc pricing.xlsx --inspect --json
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json
 ```
 
 That returns formula cells, stale cached values, and suggested `--read` targets
 so the next command can prove the cells your service actually depends on.
+
+To run that check in CI, use the
+[XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md).
 
 If your pipeline is specifically SheetJS / `xlsx`, run the sibling proof with
 the same shape:
@@ -460,6 +463,7 @@ formula-value problem without asking you to adopt WorkPaper state first.
 
 | Problem you have right now                                                        | Install                                                       | First proof                                                                             |
 | --------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Pull requests can commit XLSX fixtures with stale formula caches                  | `uses: proompteng/bilig/actions/xlsx-cache-doctor@main`       | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md)              |
 | Formula workbook state inside a Node service or agent tool                        | `npm install @bilig/workpaper`                                | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                         |
 | AI agent needs to edit workbook inputs and verify formula readback                | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](docs/ai-agent-spreadsheet-tool-node.md)                     |
 | Agent framework or product runtime needs workbook plan/check/proof data           | `npm install @bilig/workbook`                                 | [Workbook agent intent API](docs/workbook-agent-intent-api.md)                          |
@@ -621,17 +625,7 @@ Expected output includes this proof shape:
       "serializedBytes": 1242
     }
   },
-  "verified": true,
-  "star": "https://github.com/proompteng/bilig/stargazers",
-  "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": {
-    "ifUseful": "If this proof matched your workflow, star or bookmark Bilig so you can find it again.",
-    "star": "https://github.com/proompteng/bilig/stargazers",
-    "watchReleases": "https://github.com/proompteng/bilig/subscription",
-    "ifBlocked": "If it almost worked, open the concrete workbook or agent blocker.",
-    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
-  }
+  "verified": true
 }
 ```
 
@@ -1221,7 +1215,7 @@ If you already have the workbook but do not know the right output cells yet,
 start with inspection:
 
 ```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc pricing.xlsx --inspect --json
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json
 ```
 
 That command does not write `pricing.recalculated.xlsx`. It imports the
@@ -1248,10 +1242,7 @@ Expected shape:
   "commandSucceeded": true,
   "inspectionCompleted": true,
   "recalculationCompleted": true,
-  "excelParity": "not_proven",
-  "nextStep": {
-    "command": "xlsx-recalc pricing.xlsx --read 'Summary!B7' --json"
-  }
+  "excelParity": "not_proven"
 }
 ```
 
@@ -1268,6 +1259,22 @@ npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc pricing.xlsx
 
 Use sheet-qualified A1 references. Keep your adapter strict: known input cells,
 known output cells, and tests around the exported workbook.
+
+## Put it in CI
+
+Use the repository action when stale cached formula values should block a pull
+request:
+
+```yaml
+- uses: proompteng/bilig/actions/xlsx-cache-doctor@main
+  with:
+    workbook: fixtures/pricing.xlsx
+    fail-on-stale: "true"
+```
+
+The action writes a JSON report, adds a job summary, and exposes
+`formula-count`, `stale-count`, and `suggested-reads` outputs. See
+[XLSX Cache Doctor GitHub Action](xlsx-cache-doctor-github-action.md).
 
 ## What this proves
 
@@ -1351,16 +1358,6 @@ Expected output includes:
     "recalculatedExternalLookup": true,
     "outputXlsxWritten": true,
     "verified": true
-  },
-  "star": "https://github.com/proompteng/bilig/stargazers",
-  "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": {
-    "ifUseful": "If external workbook cache refresh is the XLSX blocker in your service, star or bookmark Bilig so you can find it again.",
-    "star": "https://github.com/proompteng/bilig/stargazers",
-    "watchReleases": "https://github.com/proompteng/bilig/subscription",
-    "ifBlocked": "If the matching rules are not enough, open the exact workbook-link blocker.",
-    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
   }
 }
 ```
@@ -1403,6 +1400,92 @@ oracle test around the exact files you accept.
   <https://github.com/proompteng/bilig/subscription>
 - Report the exact workbook-link blocker if it almost worked:
   <https://github.com/proompteng/bilig/discussions/new?category=general>
+
+---
+
+## XLSX Cache Doctor GitHub Action
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/xlsx-cache-doctor-github-action.md
+
+# XLSX Cache Doctor GitHub Action
+
+Use this when a repository keeps `.xlsx` fixtures, pricing models, report
+templates, or approval workbooks under version control and CI needs to catch
+stale cached formula values before a service reads them.
+
+The action wraps the same command you can run locally:
+
+```sh
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor fixtures/pricing.xlsx --json
+```
+
+`xlsx-cache-doctor` imports the workbook, lists formula cells, recomputes a
+bounded sample, reports stale cached values, and returns suggested `--read`
+targets for the follow-up recalculation proof. It does not write a new workbook.
+
+## Workflow
+
+```yaml
+name: workbook-cache
+
+on:
+  pull_request:
+    paths:
+      - "**/*.xlsx"
+
+jobs:
+  xlsx-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: proompteng/bilig/actions/xlsx-cache-doctor@main
+        id: cache-doctor
+        with:
+          workbook: fixtures/pricing.xlsx
+          fail-on-stale: "true"
+
+      - run: |
+          echo "formula cells: ${{ steps.cache-doctor.outputs.formula-count }}"
+          echo "stale values: ${{ steps.cache-doctor.outputs.stale-count }}"
+          echo "suggested reads: ${{ steps.cache-doctor.outputs.suggested-reads }}"
+```
+
+## Inputs
+
+| Input             | Default | Use                                                                 |
+| ----------------- | ------- | ------------------------------------------------------------------- |
+| `workbook`        |         | Path to the workbook to inspect.                                    |
+| `package-version` | latest  | npm version or dist-tag for `@bilig/xlsx-formula-recalc`.           |
+| `inspect-limit`   | `50`    | Maximum formula cells to recompute during inspection.               |
+| `json-output`     |         | Optional path for the JSON report.                                  |
+| `fail-on-stale`   | `false` | Fail the job when inspected formula cells have stale cached values. |
+
+## Outputs
+
+| Output            | Meaning                                                           |
+| ----------------- | ----------------------------------------------------------------- |
+| `json`            | Path to the JSON report written by `xlsx-cache-doctor`.           |
+| `formula-count`   | Total formula cells found in the workbook.                        |
+| `stale-count`     | Inspected formula cells where cached and recalculated values differ. |
+| `suggested-reads` | Comma-separated cells to use in the follow-up `xlsx-recalc` proof. |
+
+## Follow-Up Proof
+
+When the action finds stale cached values, run a narrow proof on the cells that
+matter to the backend:
+
+```sh
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc fixtures/pricing.xlsx \
+  --set Inputs!B2=48 \
+  --read Summary!B7 \
+  --out fixtures/pricing.recalculated.xlsx \
+  --json
+```
+
+That command writes a recalculated workbook and returns the exact readback
+values. Keep the action as the pull-request detector and the `xlsx-recalc`
+command as the explicit proof before production adoption.
 
 ---
 
@@ -1460,17 +1543,7 @@ The starter smoke prints this shape:
       "serializedBytes": 1242
     }
   },
-  "verified": true,
-  "star": "https://github.com/proompteng/bilig/stargazers",
-  "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": {
-    "ifUseful": "If this proof matched your workflow, star or bookmark Bilig so you can find it again.",
-    "star": "https://github.com/proompteng/bilig/stargazers",
-    "watchReleases": "https://github.com/proompteng/bilig/subscription",
-    "ifBlocked": "If it almost worked, open the concrete workbook or agent blocker.",
-    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
-  }
+  "verified": true
 }
 ```
 
@@ -1750,17 +1823,7 @@ The current challenge prints this shape:
   "limitations": [
     "This challenge proves the file-backed MCP WorkPaper tool surface, not Excel desktop UI automation.",
     "For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture."
-  ],
-  "star": "https://github.com/proompteng/bilig/stargazers",
-  "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": {
-    "ifUseful": "If this file-backed MCP proof matched your workflow, star or bookmark Bilig so you can find it again.",
-    "star": "https://github.com/proompteng/bilig/stargazers",
-    "watchReleases": "https://github.com/proompteng/bilig/subscription",
-    "ifBlocked": "If it almost worked, open the concrete workbook or agent blocker.",
-    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
-  }
+  ]
 }
 ```
 
@@ -2325,17 +2388,7 @@ Expected output:
   "limitations": [
     "This challenge proves the WorkPaper write/read/persist loop, not full Excel desktop compatibility.",
     "For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture."
-  ],
-  "star": "https://github.com/proompteng/bilig/stargazers",
-  "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": {
-    "ifUseful": "If this agent workbook proof matched your workflow, star or bookmark Bilig so you can find it again.",
-    "star": "https://github.com/proompteng/bilig/stargazers",
-    "watchReleases": "https://github.com/proompteng/bilig/subscription",
-    "ifBlocked": "If it almost worked, open the concrete workbook or agent blocker.",
-    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
-  }
+  ]
 }
 ```
 
@@ -9755,17 +9808,7 @@ Expected output includes this proof shape:
       "serializedBytes": 1242
     }
   },
-  "verified": true,
-  "star": "https://github.com/proompteng/bilig/stargazers",
-  "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": {
-    "ifUseful": "If this proof matched your workflow, star or bookmark Bilig so you can find it again.",
-    "star": "https://github.com/proompteng/bilig/stargazers",
-    "watchReleases": "https://github.com/proompteng/bilig/subscription",
-    "ifBlocked": "If it almost worked, open the concrete workbook or agent blocker.",
-    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
-  }
+  "verified": true
 }
 ```
 
@@ -9814,17 +9857,7 @@ to `true`:
       "serializedBytes": 1242
     }
   },
-  "verified": true,
-  "star": "https://github.com/proompteng/bilig/stargazers",
-  "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": {
-    "ifUseful": "If this proof matched your workflow, star or bookmark Bilig so you can find it again.",
-    "star": "https://github.com/proompteng/bilig/stargazers",
-    "watchReleases": "https://github.com/proompteng/bilig/subscription",
-    "ifBlocked": "If it almost worked, open the concrete workbook or agent blocker.",
-    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
-  }
+  "verified": true
 }
 ```
 
@@ -9938,17 +9971,7 @@ Expected shape:
       "restoredMatchesAfter": true
     }
   },
-  "verified": true,
-  "star": "https://github.com/proompteng/bilig/stargazers",
-  "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": {
-    "ifUseful": "If this proof matched your workflow, star or bookmark Bilig so you can find it again.",
-    "star": "https://github.com/proompteng/bilig/stargazers",
-    "watchReleases": "https://github.com/proompteng/bilig/subscription",
-    "ifBlocked": "If it almost worked, open the concrete workbook or agent blocker.",
-    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
-  }
+  "verified": true
 }
 ```
 

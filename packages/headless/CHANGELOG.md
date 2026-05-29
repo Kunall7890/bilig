@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(xlsx-recalc): clarify stale readback proof json (a24fe51c)
 
 ## 0.122.0

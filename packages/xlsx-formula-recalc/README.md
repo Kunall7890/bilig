@@ -96,10 +96,10 @@ only after the recalculated value and warnings match the workflow you are
 evaluating.
 
 If you have a real workbook but do not yet know which formula cells matter,
-inspect it without writing an output file:
+diagnose it without writing an output file:
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-recalc pricing.xlsx --inspect --json
+npx --package xlsx-formula-recalc xlsx-cache-doctor pricing.xlsx --json
 ```
 
 Inspection imports the workbook, lists formula cells, recomputes a bounded
@@ -124,12 +124,15 @@ the recalculation command:
   "commandSucceeded": true,
   "inspectionCompleted": true,
   "recalculationCompleted": true,
-  "excelParity": "not_proven",
-  "nextStep": {
-    "command": "xlsx-recalc pricing.xlsx --read 'Summary!B7' --json"
-  }
+  "excelParity": "not_proven"
 }
 ```
+
+`xlsx-cache-doctor` is a readable alias for
+`xlsx-recalc pricing.xlsx --inspect --json`. It is meant for issue triage, CI,
+and pull-request checks where you only want to know whether committed XLSX files
+carry stale cached formula values. The GitHub Action wrapper lives at
+[`actions/xlsx-cache-doctor`](../../actions/xlsx-cache-doctor).
 
 For an existing workbook:
 
