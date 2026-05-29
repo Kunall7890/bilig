@@ -185,7 +185,7 @@ pre,
 
 .hero-inner {
   display: grid;
-  grid-template-columns: minmax(0, 0.62fr) minmax(560px, 0.98fr);
+  grid-template-columns: minmax(440px, 0.78fr) minmax(520px, 1fr);
   gap: clamp(42px, 6vw, 78px);
   align-items: center;
   padding: clamp(48px, 6.4vw, 76px) 0 clamp(42px, 5vw, 62px);
@@ -212,17 +212,17 @@ pre,
 }
 
 .hero-title {
-  max-width: 680px;
+  max-width: 760px;
   font-family: var(--font-display);
-  font-size: clamp(52px, 4.8vw, 72px);
+  font-size: clamp(50px, 4.4vw, 70px);
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.04;
 }
 
 .hero-subtitle {
-  max-width: min(560px, 100%);
+  max-width: min(660px, 100%);
   color: #b9bdb4;
-  font-size: 22px;
+  font-size: clamp(19px, 1.55vw, 22px);
   font-weight: 500;
   line-height: 1.38;
   overflow-wrap: break-word;
@@ -340,6 +340,7 @@ pre,
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  min-width: 0;
 }
 
 .button {
@@ -832,20 +833,21 @@ h2 {
 
 .final .wrap {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 28px;
+  grid-template-columns: minmax(360px, 0.92fr) minmax(0, 1.08fr);
+  gap: clamp(24px, 5vw, 64px);
   align-items: center;
   padding: 54px 0;
 }
 
 .final h2 {
-  max-width: 760px;
-  font-size: 58px;
+  max-width: 860px;
+  font-size: clamp(38px, 4vw, 56px);
+  line-height: 1.04;
 }
 
 .final p {
   margin-top: 9px;
-  max-width: 620px;
+  max-width: 700px;
   color: #c9c7bb;
 }
 

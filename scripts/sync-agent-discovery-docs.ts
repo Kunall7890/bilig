@@ -838,6 +838,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/n8n-workpaper-formula-readback.html`,
         `${siteRoot}/dify-workpaper-formula-readback.html`,
         `${siteRoot}/flowise-workpaper-formula-readback.html`,
+        `${siteRoot}/pipedream-workpaper-formula-readback.html`,
         `${siteRoot}/triggerdev-workpaper-task.html`,
         `${siteRoot}/inngest-workpaper-step.html`,
         `${siteRoot}/airbyte-workpaper-validation.html`,

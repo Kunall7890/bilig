@@ -133,7 +133,7 @@ const dagsterWorkpaperAsset = await readFile(join(docsRoot, 'dagster-workpaper-a
 const kestraWorkpaperFlow = await readFile(join(docsRoot, 'kestra-workpaper-flow.md'), 'utf8')
 const prefectWorkpaperFlow = await readFile(join(docsRoot, 'prefect-workpaper-flow.md'), 'utf8')
 
-requireHomepageDiscovery(index, siteCss, productCss)
+requireHomepageDiscovery(index, siteCss, productCss, docsRoot)
 await requireXlsxCalcAlternativeDiscovery(docsRoot)
 await requireTypeScriptFirstPublicSnippets(repoRoot)
 requireNoUnsupportedGoogleSheetsTenXClaims(dominanceScorecard, {

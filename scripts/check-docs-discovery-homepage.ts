@@ -1,4 +1,7 @@
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { getBenchmarkDiscoveryEvidence } from './check-docs-discovery-benchmark-evidence.ts'
+import { docsSiteSources } from './check-docs-discovery-site-sources.ts'
 
 function requireIncludes(haystack: string, needle: string, context: string): void {
   if (!haystack.includes(needle)) {
@@ -24,8 +27,39 @@ function requireNoIncludes(haystack: string, needles: string[], context: string)
   }
 }
 
-export function requireHomepageDiscovery(index: string, siteCss: string, productCss: string): void {
+function requireHomepageLocalHtmlLinksHaveSources(index: string, docsRoot: string): void {
+  const sourceFilesByPage = new Map(docsSiteSources.map(([urlPath, sourceFile]) => [urlPath, sourceFile]))
+  const missingSources: string[] = []
+  const localHtmlHrefs = Array.from(index.matchAll(/href="([^"]+\.html(?:#[^"]*)?)"/g))
+    .map((match) => match[1])
+    .filter((href) => href.startsWith('./') || href.startsWith('/bilig/'))
+
+  for (const href of localHtmlHrefs) {
+    const page = href
+      .replace(/^\.\//, '')
+      .replace(/^\/bilig\//, '')
+      .split('#')[0]
+    const sourceFile = sourceFilesByPage.get(page)
+
+    if (sourceFile === undefined) {
+      missingSources.push(`${href}: missing from docsSiteSources`)
+      continue
+    }
+
+    if (!existsSync(join(docsRoot, sourceFile))) {
+      missingSources.push(`${href}: missing source docs/${sourceFile}`)
+    }
+  }
+
+  if (missingSources.length > 0) {
+    throw new Error(`docs/index.html has local HTML links without published sources:\n${missingSources.join('\n')}`)
+  }
+}
+
+export function requireHomepageDiscovery(index: string, siteCss: string, productCss: string, docsRoot: string): void {
   const benchmarkEvidence = getBenchmarkDiscoveryEvidence()
+
+  requireHomepageLocalHtmlLinksHaveSources(index, docsRoot)
 
   requireAllIncludes(
     index,
@@ -48,23 +82,25 @@ export function requireHomepageDiscovery(index: string, siteCss: string, product
       '<link rel="stylesheet" href="./assets/site.css?v=2026-05-15-1" />',
       '<link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-15-3" />',
       '<script type="module" src="./assets/hero-scene.js?v=2026-05-15-1"></script>',
-      '<p class="eyebrow">Formula proof paths</p>',
-      '<h1 id="hero-title" class="hero-title">Recalculate XLSX formulas or give agents a workbook API.</h1>',
-      'Pick the narrow command for the job. All three paths prove fresh formula readback before adoption.',
+      '<p class="eyebrow">Start with the workbook you have</p>',
+      '<h1 id="hero-title" class="hero-title">Use spreadsheet formulas without opening the spreadsheet.</h1>',
+      'Bilig writes the inputs, recalculates the formulas, and gives your service or agent a value it can trust.',
       './eval-xlsx-recalc.html',
       './eval-workpaper-service.html',
       './eval-agent-mcp.html',
       'npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json',
       'npm create @bilig/workpaper@latest pricing-workpaper',
       'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json',
-      'Fresh cached values without Excel, LibreOffice, or browser automation.',
-      'Write inputs, recalculate, serialize JSON, restore, and verify readback.',
-      'Discover tools, edit a cell, read a formula, persist JSON, and restart.',
+      'Use this when an XLSX has formulas but the cached values are stale.',
+      'Good for pricing, payouts, import checks, and other rules people still review in cells.',
+      'Let the agent change inputs and read calculated results without screen driving.',
       '<a href="https://context7.com/proompteng/bilig">Ask docs</a>',
       '<a href="#packages">Packages</a>',
       '<a class="button primary" href="#packages">Choose a package</a>',
       '<a class="button" href="https://context7.com/proompteng/bilig">Ask docs</a>',
       '<h2 id="packages-title">Install the package that matches the job.</h2>',
+      'const isRawDocsPreview =',
+      "href.replace(/\\.html(?=$|#)/, '.md')",
       '<code>npm install @bilig/workpaper</code>',
       '<code>npm install @bilig/xlsx-formula-recalc</code>',
       '<code>npm install exceljs @bilig/exceljs-formula-recalc</code>',
@@ -116,7 +152,7 @@ export function requireHomepageDiscovery(index: string, siteCss: string, product
       '<h3>Agents</h3>',
       'Context7 indexed docs',
       '<h3>Decide</h3>',
-      'Run it on one calculation you care about.',
+      'Try it on the spreadsheet that is already slowing you down.',
     ],
     'docs/index.html',
   )
@@ -127,7 +163,9 @@ export function requireHomepageDiscovery(index: string, siteCss: string, product
       "--font-body: 'Bilig Sans'",
       "--font-display: 'Bilig Sans'",
       "--font-mono: 'Bilig Mono'",
-      'grid-template-columns: minmax(0, 0.62fr) minmax(560px, 0.98fr);',
+      'grid-template-columns: minmax(440px, 0.78fr) minmax(520px, 1fr);',
+      'grid-template-columns: minmax(360px, 0.92fr) minmax(0, 1.08fr);',
+      'min-width: 0;',
       '.hero-proof-grid',
       '.hero-proof-card',
       'overflow-wrap: anywhere;',

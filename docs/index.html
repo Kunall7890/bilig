@@ -173,27 +173,29 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="wrap hero-inner">
         <div class="hero-copy">
-          <p class="eyebrow">Formula proof paths</p>
-          <h1 id="hero-title" class="hero-title">Recalculate XLSX formulas or give agents a workbook API.</h1>
-          <p class="hero-subtitle">Pick the narrow command for the job. All three paths prove fresh formula readback before adoption.</p>
+          <p class="eyebrow">Start with the workbook you have</p>
+          <h1 id="hero-title" class="hero-title">Use spreadsheet formulas without opening the spreadsheet.</h1>
+          <p class="hero-subtitle">
+            Bilig writes the inputs, recalculates the formulas, and gives your service or agent a value it can trust.
+          </p>
           <div class="hero-proof-grid" aria-label="First commands">
             <a class="hero-proof-card" href="./eval-xlsx-recalc.html">
               <span>I have an XLSX</span>
-              <strong>Recalculate formulas in Node</strong>
+              <strong>Refresh stale formulas in Node</strong>
               <code>npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json</code>
-              <em>Fresh cached values without Excel, LibreOffice, or browser automation.</em>
+              <em>Use this when an XLSX has formulas but the cached values are stale.</em>
             </a>
             <a class="hero-proof-card" href="./eval-workpaper-service.html">
-              <span>I want a Node service</span>
-              <strong>Create a WorkPaper proof</strong>
+              <span>I need a Node service</span>
+              <strong>Put the workbook behind an API</strong>
               <code>npm create @bilig/workpaper@latest pricing-workpaper</code>
-              <em>Write inputs, recalculate, serialize JSON, restore, and verify readback.</em>
+              <em>Good for pricing, payouts, import checks, and other rules people still review in cells.</em>
             </a>
             <a class="hero-proof-card" href="./eval-agent-mcp.html">
-              <span>I want an agent tool</span>
-              <strong>Run the MCP proof</strong>
+              <span>I need an agent tool</span>
+              <strong>Give agents a workbook contract</strong>
               <code>npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json</code>
-              <em>Discover tools, edit a cell, read a formula, persist JSON, and restart.</em>
+              <em>Let the agent change inputs and read calculated results without screen driving.</em>
             </a>
           </div>
           <div class="hero-actions">
@@ -1096,8 +1098,11 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
       <section class="final" aria-labelledby="final-title">
         <div class="wrap">
           <div>
-            <h2 id="final-title">Run it on one calculation you care about.</h2>
-            <p>If the quickstart matches your workflow, keep the proof in your repo. If it does not, name the blocker.</p>
+            <h2 id="final-title">Try it on the spreadsheet that is already slowing you down.</h2>
+            <p>
+              Bring one real formula path: a price, payout, approval rule, import check, or forecast cell. If it misses, send the fixture;
+              the failure should be reproducible, not mysterious.
+            </p>
           </div>
           <div class="final-actions">
             <a class="button primary" href="https://www.npmjs.com/package/@bilig/workpaper">Install</a>
@@ -1118,6 +1123,38 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
         MIT licensed. Built in the open at github.com/proompteng/bilig. Security and support policies are linked from the repo.
       </div>
     </footer>
+    <script>
+      ;(() => {
+        const isRawDocsPreview =
+          window.location.protocol === 'file:' ||
+          window.location.hostname === 'localhost' ||
+          window.location.hostname === '127.0.0.1' ||
+          window.location.hostname === '::1'
+
+        if (!isRawDocsPreview) {
+          return
+        }
+
+        document.addEventListener('click', (event) => {
+          const target = event.target
+          if (!(target instanceof Element)) {
+            return
+          }
+
+          const link = target.closest('a[href]')
+          if (!(link instanceof HTMLAnchorElement)) {
+            return
+          }
+
+          const href = link.getAttribute('href')
+          if (!href?.startsWith('./') || !href.includes('.html')) {
+            return
+          }
+
+          link.setAttribute('href', href.replace(/\.html(?=$|#)/, '.md'))
+        })
+      })()
+    </script>
     <script type="module" src="./assets/hero-scene.js?v=2026-05-15-1"></script>
   </body>
 </html>
