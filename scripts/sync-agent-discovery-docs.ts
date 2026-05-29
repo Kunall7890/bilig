@@ -576,6 +576,11 @@ const llmsFullSources = [
     url: `${repositoryUrl}/blob/main/docs/flowise-workpaper-formula-readback.md`,
   },
   {
+    title: 'Pipedream WorkPaper Formula Readback',
+    relativePath: 'docs/pipedream-workpaper-formula-readback.md',
+    url: `${repositoryUrl}/blob/main/docs/pipedream-workpaper-formula-readback.md`,
+  },
+  {
     title: 'OpenAI Agents SDK WorkPaper Tool',
     relativePath: 'docs/openai-agents-sdk-workpaper-tool.md',
     url: `${repositoryUrl}/blob/main/docs/openai-agents-sdk-workpaper-tool.md`,

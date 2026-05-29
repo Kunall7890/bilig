@@ -523,7 +523,9 @@ requireIncludes(scopedWorkpaperPackageReadme, 'Dagster asset materialization met
 requireIncludes(scopedWorkpaperPackageReadme, 'Kestra Node Commands flow fields', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Prefect flow fields', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Directus Flow operation for persisted calculated fields', 'packages/workpaper/README.md')
-requireIncludes(scopedWorkpaperPackageReadme, 'n8n, Dify, or Flowise formula readback', 'packages/workpaper/README.md')
+requireIncludes(scopedWorkpaperPackageReadme, 'n8n, Dify, Flowise, or Pipedream formula readback', 'packages/workpaper/README.md')
+requireIncludes(llmsFull, 'Pipedream WorkPaper Formula Readback', 'docs/llms-full.txt')
+requireIncludes(readme, 'docs/pipedream-workpaper-formula-readback.md', 'README.md')
 requireIncludes(
   scopedWorkpaperPackageReadme,
   'https://proompteng.github.io/bilig/triggerdev-workpaper-task.html',

@@ -1,6 +1,6 @@
 # Bilig WorkPaper for Pipedream
 
-This directory stages a Pipedream registry-style action for Bilig WorkPaper.
+This directory stages the Pipedream registry-style action for Bilig WorkPaper.
 
 The first action is intentionally narrow: it writes one forecast input cell,
 asks Bilig to recalculate dependent formulas, and returns proof that the
@@ -35,9 +35,15 @@ curl -sS -X POST https://bilig.proompteng.ai/api/workpaper/n8n/forecast \
 ## Pipedream Path
 
 Pipedream registry components live under `components/[app-slug]` in the
-`PipedreamHQ/pipedream` repository. Because Bilig is not yet an integrated
-Pipedream app, the next public step is to request the Bilig app integration and
-then submit this action in the app directory once it exists.
+`PipedreamHQ/pipedream` repository. The public review is:
+
+```text
+https://github.com/PipedreamHQ/pipedream/pull/20972
+```
+
+The reviewed upstream Pipedream action uses the app slug `bilig_workpaper`,
+stores the base URL in the connected account as `$auth.base_url`, and does not
+expose Base URL as an action prop.
 
 For private testing, install the Pipedream CLI, log in, then publish the action:
 
@@ -45,5 +51,5 @@ For private testing, install the Pipedream CLI, log in, then publish the action:
 pd publish components/bilig/actions/verify-formula-readback/verify-formula-readback.mjs
 ```
 
-Use the hosted endpoint for a zero-credential test, or point `baseUrl` at a
-self-hosted Bilig app.
+Use the hosted endpoint for a proof run, or point the connected account Base URL
+at a self-hosted Bilig app.
