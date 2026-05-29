@@ -1137,9 +1137,9 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
     <script>
       ;(() => {
         const isRawFilePreview = window.location.protocol === 'file:'
-        const loopbackHostnames = new Set(['localhost', '127.0.0.1', '::1'])
-        const canProbeLocalHtml =
-          (window.location.protocol === 'http:' || window.location.protocol === 'https:') && loopbackHostnames.has(window.location.hostname)
+        const publishedDocsHostnames = new Set(['proompteng.github.io'])
+        const isPublishedDocsSite = window.location.protocol === 'https:' && publishedDocsHostnames.has(window.location.hostname)
+        const isSourcePreview = isRawFilePreview || !isPublishedDocsSite
 
         const markdownHrefForLocalSource = (href) => {
           if (!href?.startsWith('./') || !href.includes('.html')) {
@@ -1148,8 +1148,6 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
 
           return href.replace(/\.html(?=$|#)/, '.md')
         }
-
-        const localHtmlLinks = () => Array.from(document.querySelectorAll('a[href^="./"][href*=".html"]'))
 
         const rewriteLinkToLocalSource = (link) => {
           const href = link.getAttribute('href')
@@ -1166,25 +1164,6 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
           for (const link of document.querySelectorAll('a[href]')) {
             rewriteLinkToLocalSource(link)
           }
-        }
-
-        const probeAndRewriteMissingLocalHtml = (link) => {
-          const href = link.getAttribute('href')
-          const rewrittenHref = markdownHrefForLocalSource(href)
-          if (href === null || rewrittenHref === href) {
-            return Promise.resolve(false)
-          }
-
-          return fetch(href, { method: 'HEAD', cache: 'no-store' })
-            .then((response) => {
-              if (response.status === 404) {
-                link.setAttribute('href', rewrittenHref)
-                return true
-              }
-
-              return false
-            })
-            .catch(() => false)
         }
 
         const linkFromEvent = (event) => {
@@ -1206,60 +1185,11 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
           rewriteLinkToLocalSource(link)
         }
 
-        const guardClickedLocalHtmlLink = (event) => {
-          const link = linkFromEvent(event)
-          if (link === null) {
-            return
-          }
-
-          const href = link.getAttribute('href')
-          const rewrittenHref = markdownHrefForLocalSource(href)
-          if (href === null || rewrittenHref === href) {
-            return
-          }
-
-          event.preventDefault()
-          fetch(href, { method: 'HEAD', cache: 'no-store' })
-            .then((response) => {
-              window.location.href = response.status === 404 ? rewrittenHref : href
-            })
-            .catch(() => {
-              window.location.href = href
-            })
-        }
-
-        const probeLocalHtmlLinks = () => {
-          for (const link of localHtmlLinks()) {
-            probeAndRewriteMissingLocalHtml(link)
-          }
-        }
-
-        const probeLocalHtmlFallback = () => {
-          const htmlLink = localHtmlLinks()[0]
-          if (htmlLink === undefined) {
-            return
-          }
-
-          probeAndRewriteMissingLocalHtml(htmlLink).then((rewritten) => {
-            if (rewritten) {
-              rewriteLocalSourceLinks()
-            }
-          })
-        }
-
-        if (isRawFilePreview) {
+        if (isSourcePreview) {
           rewriteLocalSourceLinks()
           document.addEventListener('click', rewriteClickedLocalSourceLink)
           return
         }
-
-        if (!canProbeLocalHtml) {
-          return
-        }
-
-        probeLocalHtmlFallback()
-        probeLocalHtmlLinks()
-        document.addEventListener('click', guardClickedLocalHtmlLink)
       })()
     </script>
     <script type="module" src="./assets/hero-scene.js?v=2026-05-15-1"></script>
