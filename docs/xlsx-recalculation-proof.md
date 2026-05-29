@@ -46,13 +46,14 @@ Expected output includes:
     "recalculatedMargin": true,
     "exportedReimportMatchesAfter": true,
     "formulasSurvivedXlsxRoundTrip": true,
-    "verified": true
+    "allExpectedValuesMatched": true
   },
-  "star": "https://github.com/proompteng/bilig/stargazers",
-  "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
+  "excelParity": "not_proven"
 }
 ```
+
+The JSON is proof data only. Star, watch, and discussion links stay in the page
+copy after the expected values match.
 
 The script writes inspectable files to `bilig-xlsx-proof-output/`:
 

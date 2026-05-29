@@ -23,9 +23,14 @@ Expected output includes:
 
 ```json
 {
-  "verified": true
+  "allExpectedValuesMatched": true
 }
 ```
+
+The smoke JSON is intentionally just proof data: stale cached values before
+recalculation, fresh readback after recalculation, and whether the expected
+demo values matched. It does not put star or release-watch links inside the
+machine-readable output.
 
 ## High-traffic support reproductions
 

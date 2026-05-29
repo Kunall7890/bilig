@@ -27,17 +27,14 @@ describe('xlsx-recalc CLI', () => {
       expect(existsSync(outputPath)).toBe(true)
       const summary = readCliSummary(stdout)
       expect(summary.mode).toBe('demo')
-      expect(summary.verified).toBe(true)
-      expect(summary.star).toBe('https://github.com/proompteng/bilig/stargazers')
-      expect(summary.watchReleases).toBe('https://github.com/proompteng/bilig/subscription')
-      expect(summary.adoptionBlocker).toBe('https://github.com/proompteng/bilig/discussions/new?category=general')
-      expect(summary.nextStep).toMatchObject({
-        ifUseful: 'If this XLSX recalculation proof fixed a stale formula path, star or bookmark Bilig so you can find it again.',
-        star: 'https://github.com/proompteng/bilig/stargazers',
-        watchReleases: 'https://github.com/proompteng/bilig/subscription',
-        ifBlocked: 'If it almost worked, open the concrete workbook blocker.',
-        adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
-      })
+      expect(summary.commandSucceeded).toBe(true)
+      expect(summary.recalculationCompleted).toBe(true)
+      expect(summary.expectedValueMatched).toBe(true)
+      expect(summary.expectedReadback).toEqual({ 'Summary!B2': 72_000 })
+      expect(summary.excelParity).toBe('not_proven')
+      expect(summary).not.toHaveProperty('star')
+      expect(summary).not.toHaveProperty('watchReleases')
+      expect(summary).not.toHaveProperty('adoptionBlocker')
       expect(summary.reads['Summary!B2']?.value).toBe(72_000)
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
@@ -61,7 +58,10 @@ describe('xlsx-recalc CLI', () => {
       expect(existsSync(join(tempDir, 'stale-cache.recalculated.xlsx'))).toBe(false)
       const summary = readCliInspectionSummary(stdout)
       expect(summary.mode).toBe('file')
-      expect(summary.verified).toBe(true)
+      expect(summary.commandSucceeded).toBe(true)
+      expect(summary.inspectionCompleted).toBe(true)
+      expect(summary.recalculationCompleted).toBe(true)
+      expect(summary.excelParity).toBe('not_proven')
       expect(summary.formulaCellCount).toBe(1)
       expect(summary.inspectedFormulaCellCount).toBe(1)
       expect(summary.staleCachedFormulaCount).toBe(1)
@@ -202,17 +202,11 @@ interface CliSummary {
   readonly diagnostics?: {
     readonly externalWorkbookHydration?: Record<string, unknown>
   }
-  readonly verified: boolean
-  readonly star: string
-  readonly watchReleases: string
-  readonly adoptionBlocker: string
-  readonly nextStep: {
-    readonly ifUseful: string
-    readonly star: string
-    readonly watchReleases: string
-    readonly ifBlocked: string
-    readonly adoptionBlocker: string
-  }
+  readonly commandSucceeded: boolean
+  readonly recalculationCompleted: boolean
+  readonly expectedReadback?: Readonly<Record<string, number>>
+  readonly expectedValueMatched?: boolean
+  readonly excelParity: 'not_proven'
 }
 
 interface CliInspectionSummary {
@@ -228,7 +222,10 @@ interface CliInspectionSummary {
     readonly literalRecalculatedValue?: unknown
     readonly staleCachedValue: boolean | null
   }>
-  readonly verified: boolean
+  readonly commandSucceeded: boolean
+  readonly inspectionCompleted: boolean
+  readonly recalculationCompleted: boolean
+  readonly excelParity: 'not_proven'
   readonly nextStep: {
     readonly command: string | null
   }
@@ -244,22 +241,20 @@ function readCliSummary(stdout: string): CliSummary {
   const reads = Reflect.get(parsed, 'reads')
   const warnings = Reflect.get(parsed, 'warnings')
   const diagnostics = Reflect.get(parsed, 'diagnostics')
-  const verified = Reflect.get(parsed, 'verified')
-  const star = Reflect.get(parsed, 'star')
-  const watchReleases = Reflect.get(parsed, 'watchReleases')
-  const adoptionBlocker = Reflect.get(parsed, 'adoptionBlocker')
-  const nextStep = Reflect.get(parsed, 'nextStep')
+  const commandSucceeded = Reflect.get(parsed, 'commandSucceeded')
+  const recalculationCompleted = Reflect.get(parsed, 'recalculationCompleted')
+  const expectedReadback = Reflect.get(parsed, 'expectedReadback')
+  const expectedValueMatched = Reflect.get(parsed, 'expectedValueMatched')
+  const excelParity = Reflect.get(parsed, 'excelParity')
   if (
     typeof mode !== 'string' ||
     typeof externalWorkbooks !== 'number' ||
     typeof reads !== 'object' ||
     reads === null ||
     !Array.isArray(warnings) ||
-    typeof verified !== 'boolean' ||
-    typeof star !== 'string' ||
-    typeof watchReleases !== 'string' ||
-    typeof adoptionBlocker !== 'string' ||
-    !isCliNextStep(nextStep)
+    typeof commandSucceeded !== 'boolean' ||
+    typeof recalculationCompleted !== 'boolean' ||
+    typeof excelParity !== 'string'
   ) {
     throw new Error(`Unexpected CLI summary shape: ${stdout}`)
   }
@@ -270,11 +265,11 @@ function readCliSummary(stdout: string): CliSummary {
     reads: readCliSummaryReads(reads),
     warnings: warnings.filter((warning): warning is string => typeof warning === 'string'),
     ...(parsedDiagnostics ? { diagnostics: parsedDiagnostics } : {}),
-    verified,
-    star,
-    watchReleases,
-    adoptionBlocker,
-    nextStep,
+    commandSucceeded,
+    recalculationCompleted,
+    ...(readNumericRecord(expectedReadback) ? { expectedReadback: readNumericRecord(expectedReadback) } : {}),
+    ...(typeof expectedValueMatched === 'boolean' ? { expectedValueMatched } : {}),
+    excelParity: excelParity === 'not_proven' ? excelParity : 'not_proven',
   }
 }
 
@@ -289,7 +284,10 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
   const staleCachedFormulaCount = parsed['staleCachedFormulaCount']
   const suggestedReads = parsed['suggestedReads']
   const formulas = parsed['formulas']
-  const verified = parsed['verified']
+  const commandSucceeded = parsed['commandSucceeded']
+  const inspectionCompleted = parsed['inspectionCompleted']
+  const recalculationCompleted = parsed['recalculationCompleted']
+  const excelParity = parsed['excelParity']
   const nextStep = parsed['nextStep']
   if (
     typeof mode !== 'string' ||
@@ -298,7 +296,10 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
     typeof staleCachedFormulaCount !== 'number' ||
     !Array.isArray(suggestedReads) ||
     !Array.isArray(formulas) ||
-    typeof verified !== 'boolean' ||
+    typeof commandSucceeded !== 'boolean' ||
+    typeof inspectionCompleted !== 'boolean' ||
+    typeof recalculationCompleted !== 'boolean' ||
+    excelParity !== 'not_proven' ||
     !isRecord(nextStep) ||
     (nextStep['command'] !== null && typeof nextStep['command'] !== 'string')
   ) {
@@ -311,7 +312,10 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
     staleCachedFormulaCount,
     suggestedReads: suggestedReads.filter((read): read is string => typeof read === 'string'),
     formulas: formulas.filter(isCliInspectionFormula),
-    verified,
+    commandSucceeded,
+    inspectionCompleted,
+    recalculationCompleted,
+    excelParity,
     nextStep: {
       command: nextStep['command'],
     },
@@ -327,25 +331,26 @@ function isCliInspectionFormula(value: unknown): value is CliInspectionSummary['
   )
 }
 
-function isCliNextStep(value: unknown): value is CliSummary['nextStep'] {
-  if (!isRecord(value)) {
-    return false
-  }
-  return (
-    typeof value['ifUseful'] === 'string' &&
-    typeof value['star'] === 'string' &&
-    typeof value['watchReleases'] === 'string' &&
-    typeof value['ifBlocked'] === 'string' &&
-    typeof value['adoptionBlocker'] === 'string'
-  )
-}
-
 function readCliSummaryDiagnostics(value: unknown): CliSummary['diagnostics'] | undefined {
   if (!isRecord(value)) {
     return undefined
   }
   const externalWorkbookHydration = value['externalWorkbookHydration']
   return isRecord(externalWorkbookHydration) ? { externalWorkbookHydration } : undefined
+}
+
+function readNumericRecord(value: unknown): Readonly<Record<string, number>> | undefined {
+  if (!isRecord(value)) {
+    return undefined
+  }
+  const parsed: Record<string, number> = {}
+  for (const [entryKey, entryValue] of Object.entries(value)) {
+    if (typeof entryValue !== 'number') {
+      return undefined
+    }
+    parsed[entryKey] = entryValue
+  }
+  return parsed
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

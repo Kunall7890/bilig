@@ -59,8 +59,7 @@ npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json
 
 That command creates a tiny workbook, changes `Inputs!B2` and `Inputs!B3`,
 recalculates `Summary!B2`, writes `bilig-formula-recalc-demo.xlsx`, and prints
-a proof object with `verified: true`, the recalculated value, and explicit next
-actions:
+a proof object with explicit recalculation fields and the recalculated value:
 
 ```json
 {
@@ -70,22 +69,20 @@ actions:
     }
   },
   "warnings": [],
-  "verified": true,
-  "star": "https://github.com/proompteng/bilig/stargazers",
-  "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": {
-    "ifUseful": "If this proof fixed your stale XLSX formula workflow, star or bookmark Bilig so you can find it again.",
-    "star": "https://github.com/proompteng/bilig/stargazers",
-    "watchReleases": "https://github.com/proompteng/bilig/subscription",
-    "ifBlocked": "If this is close but blocked by a workbook edge case, open an adoption blocker with a reduced fixture.",
-    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
-  }
+  "commandSucceeded": true,
+  "recalculationCompleted": true,
+  "excelParity": "not_proven",
+  "expectedReadback": {
+    "Summary!B2": 72000
+  },
+  "expectedValueMatched": true
 }
 ```
 
-Keep the proof first: use the star or release-watch links only after the
-recalculated value and warnings match the workflow you are evaluating.
+Keep the proof first. The JSON is meant for CI and agents, so it does not carry
+star, release-watch, or discussion links. Use the links in the README or docs
+only after the recalculated value and warnings match the workflow you are
+evaluating.
 
 If you have a real workbook but do not yet know which formula cells matter,
 inspect it without writing an output file:
@@ -113,7 +110,10 @@ the recalculation command:
       "staleCachedValue": true
     }
   ],
-  "verified": true,
+  "commandSucceeded": true,
+  "inspectionCompleted": true,
+  "recalculationCompleted": true,
+  "excelParity": "not_proven",
   "nextStep": {
     "command": "xlsx-recalc pricing.xlsx --read 'Summary!B7' --json"
   }
@@ -224,8 +224,8 @@ from `@bilig/workpaper`.
 
 ## After The Proof
 
-If `verified: true` matches the Node/XLSX workflow you need, star or bookmark
-the repo so you can find it again:
+If the recalculation proof matches the Node/XLSX workflow you need, star or
+bookmark the repo so you can find it again:
 <https://github.com/proompteng/bilig/stargazers>.
 
 Watch releases if the package is close to a production path:

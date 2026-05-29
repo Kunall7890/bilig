@@ -45,7 +45,9 @@ npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json
 ```
 
 The demo creates a tiny workbook, edits input cells, recalculates `Summary!B2`,
-writes `bilig-formula-recalc-demo.xlsx`, and prints `verified: true`.
+writes `bilig-formula-recalc-demo.xlsx`, and prints
+`recalculationCompleted: true`, `expectedValueMatched: true`, and
+`excelParity: "not_proven"`.
 
 For an existing workbook:
 

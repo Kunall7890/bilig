@@ -58,7 +58,7 @@ Pick the path that matches the thing in your hands:
 
 | You have...                                                                              | Start with                                                                      | You should see                                                                                         |
 | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| An `.xlsx` file with stale formula results after editing inputs in Node                  | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                        | A changed input, a recalculated output, and `verified: true` without opening Excel or LibreOffice.     |
+| An `.xlsx` file with stale formula results after editing inputs in Node                  | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                        | A changed input, a recalculated output, `recalculationCompleted: true`, and demo `expectedValueMatched: true`. |
 | An `.xlsx` model with stale external-link cache values                                   | [External workbook recalculation proof](docs/external-workbook-recalc-proof.md) | Companion workbook hydration diagnostics, fresh formula readback, and `verified: true`.                |
 | Workbook-shaped business logic that should live in a Node service, test, queue, or route | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)              | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback. |
 | A coding agent, MCP client, or tool host that needs spreadsheet operations               | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)                          | An agent contract with read, write, recalc, persist, restore, and a compact proof object.              |
@@ -99,16 +99,20 @@ Expected shape:
 
 ```json
 {
-  "verified": true,
-  "star": "https://github.com/proompteng/bilig/stargazers",
-  "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": {
-    "ifUseful": "If this XLSX recalculation proof fixed a stale formula path, star or bookmark Bilig so you can find it again.",
-    "ifBlocked": "If it almost worked, open the concrete workbook blocker."
-  }
+  "commandSucceeded": true,
+  "recalculationCompleted": true,
+  "expectedReadback": {
+    "Summary!B2": 72000
+  },
+  "expectedValueMatched": true,
+  "excelParity": "not_proven"
 }
 ```
+
+The JSON is deliberately clean for CI and agents: no star, release-watch, or
+discussion links are mixed into the machine-readable proof. Use the links in
+the surrounding docs after the recalculated value and warnings match your
+workflow.
 
 For linked workbooks, use the
 [external workbook recalculation proof](docs/external-workbook-recalc-proof.md).
@@ -146,6 +150,9 @@ For one checkout proof across SheetJS/`xlsx`, `xlsx-populate`, and ExcelJS:
 npm --prefix examples/recalc-bridge-workflows install
 npm --prefix examples/recalc-bridge-workflows run smoke
 ```
+
+That bridge proof is the fastest way to check whether Bilig solves the stale
+formula-value problem without asking you to adopt WorkPaper state first.
 
 ## Which Package Should I Install?
 
@@ -200,7 +207,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 
 | If you are evaluating...      | Start here                                                                                                                                                                                                                                                                                | What should be true before you adopt                                                                      |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Existing XLSX files           | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                                                                                                                                                                                                                                  | A command edits inputs, reads recalculated values, writes XLSX, and returns `verified: true`.             |
+| Existing XLSX files           | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                                                                                                                                                                                                                                  | A command edits inputs, reads recalculated values, writes XLSX, and returns `recalculationCompleted: true`. |
 | Node service formulas         | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)                                                                                                                                                                                                                        | A starter writes one input, recalculates, persists JSON, restores, and prints `verified: true`.           |
 | Agent MCP contract            | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)                                                                                                                                                                                                                                    | MCP tool discovery, input edit, formula readback, persistence, and restart proof all pass.                |
 | Agent intent/runtime adapters | [Workbook agent intent API](docs/workbook-agent-intent-api.md) and [workbook-agent-model example](https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model)                                                                                                            | A model prepares transport-neutral plan data, strict runtime proof, command receipts, and check evidence. |

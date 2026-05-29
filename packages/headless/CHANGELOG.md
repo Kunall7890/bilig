@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(create-workpaper): seed agent rule starters (dcd49942)
 
 ## 0.121.0

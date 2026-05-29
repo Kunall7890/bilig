@@ -23,14 +23,6 @@ interface CliOptions {
   readonly json: boolean
 }
 
-interface CliProofNextStep {
-  readonly ifUseful: string
-  readonly star: string
-  readonly watchReleases: string
-  readonly ifBlocked: string
-  readonly adoptionBlocker: string
-}
-
 export interface XlsxFormulaRecalcCliContext {
   readonly commandName?: string
   readonly stdout?: (text: string) => void
@@ -41,16 +33,6 @@ const repoStarUrl = 'https://github.com/proompteng/bilig/stargazers'
 const releaseWatchUrl = 'https://github.com/proompteng/bilig/subscription'
 const adoptionBlockerUrl = 'https://github.com/proompteng/bilig/discussions/new?category=general'
 const defaultInspectFormulaLimit = 50
-
-function createCliProofNextStep(): CliProofNextStep {
-  return {
-    ifUseful: 'If this XLSX recalculation proof fixed a stale formula path, star or bookmark Bilig so you can find it again.',
-    star: repoStarUrl,
-    watchReleases: releaseWatchUrl,
-    ifBlocked: 'If it almost worked, open the concrete workbook blocker.',
-    adoptionBlocker: adoptionBlockerUrl,
-  }
-}
 
 export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFormulaRecalcCliContext = {}): number {
   const commandName = context.commandName ?? 'xlsx-recalc'
@@ -88,11 +70,15 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
       reads: result.reads,
       warnings: result.warnings,
       ...(result.diagnostics ? { diagnostics: result.diagnostics } : {}),
-      verified: true,
-      star: repoStarUrl,
-      watchReleases: releaseWatchUrl,
-      adoptionBlocker: adoptionBlockerUrl,
-      nextStep: createCliProofNextStep(),
+      commandSucceeded: true,
+      recalculationCompleted: true,
+      excelParity: 'not_proven',
+      ...(options.mode === 'demo'
+        ? {
+            expectedReadback: { 'Summary!B2': 72_000 },
+            expectedValueMatched: numericReadValue(result.reads['Summary!B2']) === 72_000,
+          }
+        : {}),
     }
 
     if (options.json) {
@@ -105,6 +91,9 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
       if (result.warnings.length > 0) {
         writeStdout(`Warnings: ${result.warnings.length.toString()}\n`)
       }
+      writeStdout(`If this fixed your stale XLSX formula path, star or bookmark Bilig: ${repoStarUrl}\n`)
+      writeStdout(`If it almost worked, open the concrete workbook blocker: ${adoptionBlockerUrl}\n`)
+      writeStdout(`Watch formula and compatibility releases: ${releaseWatchUrl}\n`)
     }
     return 0
   } catch (error) {
@@ -253,17 +242,12 @@ function printInspectionSummary(args: PrintInspectionSummaryInput): void {
     formulas,
     warnings: recalculated.warnings,
     ...(recalculated.diagnostics ? { diagnostics: recalculated.diagnostics } : {}),
-    verified: true,
-    star: repoStarUrl,
-    watchReleases: releaseWatchUrl,
-    adoptionBlocker: adoptionBlockerUrl,
+    commandSucceeded: true,
+    inspectionCompleted: true,
+    recalculationCompleted: true,
+    excelParity: 'not_proven',
     nextStep: {
-      ifUseful: 'If this inspection found the formula cells you need to refresh, rerun xlsx-recalc with the suggested --read targets.',
       command: suggestedReads.length > 0 ? suggestedRecalcCommand(args.options, suggestedReads) : null,
-      star: repoStarUrl,
-      watchReleases: releaseWatchUrl,
-      ifBlocked: 'If the workbook imports but the important formula is missing or wrong, open the reduced workbook blocker.',
-      adoptionBlocker: adoptionBlockerUrl,
     },
   }
 
@@ -284,6 +268,7 @@ function printInspectionSummary(args: PrintInspectionSummaryInput): void {
   if (summary.warnings.length > 0) {
     args.writeStdout(`Warnings: ${summary.warnings.length.toString()}\n`)
   }
+  args.writeStdout(`If the important formula is missing or wrong, open the reduced workbook blocker: ${adoptionBlockerUrl}\n`)
 }
 
 interface FormulaInspectionCell {
@@ -339,6 +324,17 @@ function literalValueForInspection(value: XlsxFormulaRecalcCellValue | undefined
 
 function literalValuesEqual(left: RawCellContent, right: RawCellContent | string): boolean {
   return JSON.stringify(left) === JSON.stringify(right)
+}
+
+function numericReadValue(value: XlsxFormulaRecalcCellValue | undefined): number | undefined {
+  return value !== undefined &&
+    typeof value === 'object' &&
+    value !== null &&
+    'tag' in value &&
+    value.tag === ValueTag.Number &&
+    'value' in value
+    ? value.value
+    : undefined
 }
 
 function suggestedRecalcCommand(options: CliOptions, reads: readonly string[]): string {

@@ -23,7 +23,8 @@ LibreOffice, or a browser.
 npx --package xlsx-formula-recalc xlsx-recalc --demo --json
 ```
 
-The demo should print `verified: true` and a `Summary!B2` value of `72000`.
+The demo should print `recalculationCompleted: true`,
+`expectedValueMatched: true`, and a `Summary!B2` value of `72000`.
 For SheetJS / `xlsx` stale-formula issues, use the SheetJS-named binary from the
 same package:
 

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>bilig - Formula Workbooks for Node Services</title>
+    <title>bilig - Fresh XLSX Formula Readback in Node</title>
     <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
     <link rel="canonical" href="https://proompteng.github.io/bilig/" />
     <link rel="sitemap" type="application/xml" href="https://proompteng.github.io/bilig/sitemap.xml" />
@@ -12,7 +12,7 @@
     <link rel="alternate" type="application/json" href="https://proompteng.github.io/bilig/.well-known/agent.json" title="agent.json" />
     <meta
       name="description"
-      content="Bilig runs formula workbooks inside Node services. Install @bilig/workpaper, @bilig/xlsx-formula-recalc, or @bilig/exceljs-formula-recalc for recalculated formula readback in Node."
+      content="Bilig refreshes stale XLSX formula results in Node for SheetJS, ExcelJS, and xlsx-populate workflows, then lets teams graduate to WorkPaper service state when they need it."
     />
     <meta
       name="keywords"
@@ -21,10 +21,10 @@
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#151713" />
     <meta property="og:site_name" content="bilig" />
-    <meta property="og:title" content="bilig - Formula Workbooks for Node Services" />
+    <meta property="og:title" content="bilig - Fresh XLSX Formula Readback in Node" />
     <meta
       property="og:description"
-      content="Edit cells, recalculate formulas, and save WorkPaper JSON from Node.js services or agent tools."
+      content="Edit XLSX inputs in Node, recalculate formulas, read fresh values, and keep WorkPaper service state when the file boundary is not enough."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://proompteng.github.io/bilig/" />
@@ -33,10 +33,10 @@
     <meta property="og:image:width" content="1280" />
     <meta property="og:image:height" content="640" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="bilig - Formula Workbooks for Node Services" />
+    <meta name="twitter:title" content="bilig - Fresh XLSX Formula Readback in Node" />
     <meta
       name="twitter:description"
-      content="Edit cells, recalculate formulas, and save WorkPaper JSON from Node.js services or agent tools."
+      content="Edit XLSX inputs in Node, recalculate formulas, read fresh values, and keep WorkPaper service state when the file boundary is not enough."
     />
     <meta name="twitter:image" content="https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-15-2" />
     <meta name="twitter:image:alt" content="bilig headless spreadsheet engine workbook formula preview" />
@@ -173,17 +173,18 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="wrap hero-inner">
         <div class="hero-copy">
-          <p class="eyebrow">Start with the workbook you have</p>
-          <h1 id="hero-title" class="hero-title">Use spreadsheet formulas without opening the spreadsheet.</h1>
+          <p class="eyebrow">Start with the XLSX you already have</p>
+          <h1 id="hero-title" class="hero-title">Fix stale formula values before your Node job returns.</h1>
           <p class="hero-subtitle">
-            Bilig writes the inputs, recalculates the formulas, and gives your service or agent a value it can trust.
+            Keep SheetJS, ExcelJS, or xlsx-populate for file work. Add Bilig at the calculation boundary when the cached formula value is
+            old.
           </p>
           <div class="hero-proof-grid" aria-label="First commands">
             <a class="hero-proof-card" href="./eval-xlsx-recalc.html">
               <span>I have an XLSX</span>
               <strong>Refresh stale formulas in Node</strong>
               <code>npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json</code>
-              <em>Use this when an XLSX has formulas but the cached values are stale.</em>
+              <em>The shortest proof for SheetJS, ExcelJS, and xlsx-populate users.</em>
             </a>
             <a class="hero-proof-card" href="./eval-workpaper-service.html">
               <span>I need a Node service</span>

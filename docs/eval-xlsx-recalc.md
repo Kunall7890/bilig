@@ -38,25 +38,26 @@ The current demo prints this shape:
     }
   },
   "warnings": [],
-  "verified": true,
-  "star": "https://github.com/proompteng/bilig/stargazers",
-  "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": {
-    "ifUseful": "If this XLSX recalculation proof fixed a stale formula path, star or bookmark Bilig so you can find it again.",
-    "star": "https://github.com/proompteng/bilig/stargazers",
-    "watchReleases": "https://github.com/proompteng/bilig/subscription",
-    "ifBlocked": "If it almost worked, open the concrete workbook blocker.",
-    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
-  }
+  "commandSucceeded": true,
+  "recalculationCompleted": true,
+  "excelParity": "not_proven",
+  "expectedReadback": {
+    "Summary!B2": 72000
+  },
+  "expectedValueMatched": true
 }
 ```
 
 The exact output file name can change if you pass your own `--out` path. The
-important checks are `verified: true`, an empty or understood `warnings` array,
-and the recalculated cell value under `reads`. The star, release-watch, and
-adoption-blocker links are deliberately after the proof fields so evaluators can
-choose the next action from evidence, not from a launch pitch.
+important checks are `commandSucceeded: true`, `recalculationCompleted: true`,
+an empty or understood `warnings` array, and the recalculated cell value under
+`reads`. `expectedValueMatched: true` is only a demo-fixture check. It is not an
+Excel parity claim; real workbooks still report `excelParity: "not_proven"`
+unless you compare against your own Excel, LibreOffice, or Graph oracle.
+
+The JSON is clean for CI and agents. Star, release-watch, and
+adoption-blocker links stay in prose after the proof so the machine output does
+not look like a growth prompt.
 
 ## Inspect your workbook first
 
@@ -88,7 +89,10 @@ Expected shape:
       "staleCachedValue": true
     }
   ],
-  "verified": true,
+  "commandSucceeded": true,
+  "inspectionCompleted": true,
+  "recalculationCompleted": true,
+  "excelParity": "not_proven",
   "nextStep": {
     "command": "xlsx-recalc pricing.xlsx --read 'Summary!B7' --json"
   }

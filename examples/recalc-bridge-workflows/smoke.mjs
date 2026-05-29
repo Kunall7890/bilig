@@ -53,13 +53,11 @@ const output = {
     sheetjs: sheetjs.verified,
     xlsxPopulate: xlsxPopulate.verified,
     exceljs: exceljs.verified,
-    verified: sheetjs.verified && xlsxPopulate.verified && exceljs.verified,
+    allExpectedValuesMatched: sheetjs.verified && xlsxPopulate.verified && exceljs.verified,
   },
-  nextStep:
-    'If this is the XLSX formula readback workflow you need, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers',
 }
 
-if (!output.checks.verified) {
+if (!output.checks.allExpectedValuesMatched) {
   throw new Error(`Recalc bridge workflow failed: ${JSON.stringify(output, null, 2)}`)
 }
 

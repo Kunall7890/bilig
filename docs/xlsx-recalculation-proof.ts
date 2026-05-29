@@ -76,15 +76,12 @@ async function main(): Promise<void> {
     afterReimport,
     checks: {
       ...checks,
-      verified: Object.values(checks).every(Boolean),
+      allExpectedValuesMatched: Object.values(checks).every(Boolean),
     },
-    repo: 'https://github.com/proompteng/bilig',
-    star: 'https://github.com/proompteng/bilig/stargazers',
-    watchReleases: 'https://github.com/proompteng/bilig/subscription',
-    adoptionBlocker: 'https://github.com/proompteng/bilig/discussions/new?category=general',
+    excelParity: 'not_proven',
   }
 
-  if (!result.checks.verified) {
+  if (!result.checks.allExpectedValuesMatched) {
     throw new Error(`Bilig XLSX recalculation proof failed:\n${JSON.stringify(result, null, 2)}`)
   }
 
