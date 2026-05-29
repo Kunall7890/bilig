@@ -4,6 +4,23 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.121.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.119.6
+- Manual override: no
+
+## Features
+- feat(xlsx): add workbook formula inspection (9c4c322b)
+
+## Fixes
+- fix(release): sync Gemini extension version (bdd0cc9d)
+
+## Internal runtime changes
+- docs(agent): add copilot workpaper proof surface (c12c7e52)
+- docs(growth): fix public recipe links and proof discovery (65328bf7)
+- chore(release): runtime packages v0.120.0 (f4021431)
+
 ## 0.120.0
 
 - Release type: minor
