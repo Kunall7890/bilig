@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.122.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.121.0
+- Manual override: no
+
+## Features
+- feat(create-workpaper): seed agent rule starters (dcd49942)
+
 ## 0.121.0
 
 - Release type: minor
