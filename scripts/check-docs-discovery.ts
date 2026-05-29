@@ -599,7 +599,11 @@ requireNotIncludes(workpaperPackageSkillNotes, '## First Choice: MCP', 'packages
 requireIncludes(workpaperPackageSkillNotes, '"--package", "bilig-workpaper@', 'packages/bilig/SKILL.md')
 requireIncludes(headlessAgentNotes, '## Handoff prompt', 'packages/headless/AGENTS.md')
 requireIncludes(headlessAgentNotes, 'Do not claim success from a write call alone.', 'packages/headless/AGENTS.md')
-requireIncludes(headlessAgentNotes, `npm exec --package ${headlessPackageSpec} -- bilig-mcp-challenge`, 'packages/headless/AGENTS.md')
+requireIncludes(
+  headlessAgentNotes,
+  `npm exec --package ${headlessPackageSpec} -- bilig-mcp-challenge --json`,
+  'packages/headless/AGENTS.md',
+)
 requireIncludes(
   headlessAgentNotes,
   `npm exec --package ${headlessPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable`,
@@ -615,12 +619,16 @@ requireNotIncludes(headlessSkillNotes, 'allowed-tools:', 'packages/headless/SKIL
 requireNotIncludes(headlessSkillNotes, 'argument-hint:', 'packages/headless/SKILL.md')
 requireIncludes(docsAgentNotes, '## Discovery Order', 'docs/AGENTS.md')
 requireIncludes(docsAgentNotes, 'Do not claim success from a write call alone.', 'docs/AGENTS.md')
+requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json', 'docs/AGENTS.md')
+requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json', 'docs/AGENTS.md')
 requireIncludes(docsSkill, 'name: bilig-workpaper', 'docs/skill.md')
 requireIncludes(docsSkill, '## Required Verification', 'docs/skill.md')
 requireIncludes(docsSkill, '## Command Safety', 'docs/skill.md')
 requireIncludes(docsSkill, 'npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list', 'docs/skill.md')
 requireIncludes(docsSkill, 'returned `tools` array as the source', 'docs/skill.md')
 requireIncludes(docsSkill, 'currently published package', 'docs/skill.md')
+requireIncludes(docsSkill, '"bilig-agent-challenge", "--json"', 'docs/skill.md')
+requireIncludes(docsSkill, '"bilig-mcp-challenge", "--json"', 'docs/skill.md')
 requireNotIncludes(docsSkill, 'allowed-tools:', 'docs/skill.md')
 requireNotIncludes(docsSkill, 'argument-hint:', 'docs/skill.md')
 requireIncludes(rootSkillNotes, '## Command Safety', 'skills/bilig-workpaper/SKILL.md')

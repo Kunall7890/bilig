@@ -58,7 +58,7 @@ not a hidden spreadsheet process.
 If you do not want a generated project yet:
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 ```
 
 That command is intentionally small. It proves the minimum loop an agent needs:

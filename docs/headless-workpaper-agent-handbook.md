@@ -178,7 +178,7 @@ Use the package-owned challenge when the agent needs to prove the runtime before
 adopting it:
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 ```
 
 A good run prints `verified: true`. That means one input changed, a dependent

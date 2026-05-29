@@ -28,7 +28,9 @@ describe('bilig-mcp-challenge', () => {
       dependentCell: 'Summary!B3',
       before: 60_000,
       after: 96_000,
+      afterRestore: 96_000,
       afterRestart: 96_000,
+      persistedDocumentBytes: expect.any(Number),
       displayValue: '96000',
       persistence: {
         persisted: true,
@@ -71,7 +73,9 @@ describe('bilig-mcp-challenge', () => {
     expect(parsed).toMatchObject({
       editedCell: 'Inputs!B3',
       after: 96_000,
+      afterRestore: 96_000,
       afterRestart: 96_000,
+      persistedDocumentBytes: expect.any(Number),
       verified: true,
       star: 'https://github.com/proompteng/bilig/stargazers',
       watchReleases: 'https://github.com/proompteng/bilig/subscription',
@@ -80,6 +84,7 @@ describe('bilig-mcp-challenge', () => {
         watchReleases: 'https://github.com/proompteng/bilig/subscription',
       },
     })
+    expect(parsed.persistedDocumentBytes).toBe(parsed.persistence.serializedBytes)
     expect(parsed.workpaperPath).toBeUndefined()
   })
 

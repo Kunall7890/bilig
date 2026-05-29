@@ -26,7 +26,7 @@ logic that can run through @bilig/headless. If it is, use WorkPaper state as the
 source of truth.
 
 For MCP, start with:
-npm exec --package @bilig/headless@0.119.2 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.119.2 -- bilig-mcp-challenge --json
 npm exec --package @bilig/headless@0.119.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
 For Node or TypeScript, import @bilig/headless directly. Prove the edit by
@@ -121,8 +121,8 @@ console.log({ revenue, savedBytes: saved.length })
 From a clean project, run the package-owned challenge:
 
 ```sh
-npm exec --package @bilig/headless@0.119.2 -- bilig-agent-challenge
-npm exec --package @bilig/headless@0.119.2 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.119.2 -- bilig-agent-challenge --json
+npm exec --package @bilig/headless@0.119.2 -- bilig-mcp-challenge --json
 ```
 
 `bilig-agent-challenge` proves the direct WorkPaper API loop.

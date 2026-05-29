@@ -51,8 +51,10 @@ The current challenge prints this shape:
   "dependentCell": "Summary!B3",
   "before": 60000,
   "after": 96000,
+  "afterRestore": 96000,
   "afterRestart": 96000,
   "displayValue": "96000",
+  "persistedDocumentBytes": 1162,
   "persistence": {
     "persisted": true,
     "serializedBytes": 1162

@@ -49,7 +49,7 @@ Before wiring a client, an agent can prove the direct WorkPaper loop with:
 ```json
 {
   "command": "npm",
-  "args": ["exec", "--package", "@bilig/workpaper@latest", "--", "bilig-agent-challenge"]
+  "args": ["exec", "--package", "@bilig/workpaper@latest", "--", "bilig-agent-challenge", "--json"]
 }
 ```
 
@@ -58,7 +58,7 @@ For the actual file-backed MCP path, run the package-owned challenge first:
 ```json
 {
   "command": "npm",
-  "args": ["exec", "--package", "@bilig/workpaper@latest", "--", "bilig-mcp-challenge"]
+  "args": ["exec", "--package", "@bilig/workpaper@latest", "--", "bilig-mcp-challenge", "--json"]
 }
 ```
 

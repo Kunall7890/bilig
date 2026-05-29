@@ -76,8 +76,8 @@ Do not claim success from a write call alone. The proof is computed readback plu
 ## Fast Commands
 
 \`\`\`sh
-npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge
-npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge
+npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
+npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 npm exec --package ${workpaperPackageSpec} -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 \`\`\`
@@ -124,7 +124,7 @@ logic that can run through @bilig/headless. If it is, use WorkPaper state as the
 source of truth.
 
 For MCP, start with:
-npm exec --package ${headlessPackageSpec} -- bilig-mcp-challenge
+npm exec --package ${headlessPackageSpec} -- bilig-mcp-challenge --json
 npm exec --package ${headlessPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
 For Node or TypeScript, import @bilig/headless directly. Prove the edit by
@@ -219,8 +219,8 @@ console.log({ revenue, savedBytes: saved.length })
 From a clean project, run the package-owned challenge:
 
 \`\`\`sh
-npm exec --package ${headlessPackageSpec} -- bilig-agent-challenge
-npm exec --package ${headlessPackageSpec} -- bilig-mcp-challenge
+npm exec --package ${headlessPackageSpec} -- bilig-agent-challenge --json
+npm exec --package ${headlessPackageSpec} -- bilig-mcp-challenge --json
 \`\`\`
 
 \`bilig-agent-challenge\` proves the direct WorkPaper API loop.
@@ -285,7 +285,7 @@ Before wiring a client, an agent can prove the direct WorkPaper loop with:
 \`\`\`json
 {
   "command": "npm",
-  "args": ["exec", "--package", "${workpaperPackageSpec}", "--", "bilig-agent-challenge"]
+  "args": ["exec", "--package", "${workpaperPackageSpec}", "--", "bilig-agent-challenge", "--json"]
 }
 \`\`\`
 
@@ -294,7 +294,7 @@ For the actual file-backed MCP path, run the package-owned challenge first:
 \`\`\`json
 {
   "command": "npm",
-  "args": ["exec", "--package", "${workpaperPackageSpec}", "--", "bilig-mcp-challenge"]
+  "args": ["exec", "--package", "${workpaperPackageSpec}", "--", "bilig-mcp-challenge", "--json"]
 }
 \`\`\`
 

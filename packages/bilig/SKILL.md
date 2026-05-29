@@ -51,7 +51,7 @@ Start by proving the direct WorkPaper loop:
 ```json
 {
   "command": "npm",
-  "args": ["exec", "--package", "bilig-workpaper@latest", "--", "bilig-agent-challenge"]
+  "args": ["exec", "--package", "bilig-workpaper@latest", "--", "bilig-agent-challenge", "--json"]
 }
 ```
 
@@ -60,7 +60,7 @@ Use MCP only when the host specifically needs an MCP client boundary. For that p
 ```json
 {
   "command": "npm",
-  "args": ["exec", "--package", "bilig-workpaper@latest", "--", "bilig-mcp-challenge"]
+  "args": ["exec", "--package", "bilig-workpaper@latest", "--", "bilig-mcp-challenge", "--json"]
 }
 ```
 

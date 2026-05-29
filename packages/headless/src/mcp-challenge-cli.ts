@@ -25,7 +25,9 @@ export interface McpChallengeProof {
   readonly dependentCell: 'Summary!B3'
   readonly before: number
   readonly after: number
+  readonly afterRestore: number
   readonly afterRestart: number
+  readonly persistedDocumentBytes: number
   readonly displayValue: string
   readonly persistence: {
     readonly persisted: boolean
@@ -272,7 +274,9 @@ export function buildMcpChallengeProof(options: McpChallengeBuildOptions = {}): 
       dependentCell: 'Summary!B3',
       before,
       after,
+      afterRestore: afterRestart,
       afterRestart,
+      persistedDocumentBytes: serializedBytes,
       displayValue,
       persistence: {
         persisted: persistence['persisted'] === true,

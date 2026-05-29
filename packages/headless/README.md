@@ -19,7 +19,7 @@ the search or production bug you actually have:
 | `xlsx-populate` writes formulas but Node reads old values     | `npm install @bilig/xlsx-formula-recalc`                      | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json` updates the cached value.                                                |
 | ExcelJS formula cells need recalculated values                | `npm install exceljs @bilig/exceljs-formula-recalc`           | `npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json` mutates the workbook boundary.                                     |
 | An AI agent needs spreadsheet tools instead of UI automation  | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html) shows the write/recalc/read/persist loop. |
-| Formula workbook state belongs in a service or agent tool     | `npm install @bilig/workpaper`                                | `npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge` prints `verified: true`.                                                |
+| Formula workbook state belongs in a service or agent tool     | `npm install @bilig/workpaper`                                | `npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json` prints `verified: true`.                                         |
 | You need the lower-level runtime package and subpaths         | `npm install @bilig/headless`                                 | The examples below prove WorkPaper JSON, XLSX import/export, provenance, and package footprint.                                               |
 
 Use `@bilig/headless` when the spreadsheet is the business logic, but
@@ -78,8 +78,8 @@ npm exec --package @bilig/headless@0.119.2 -- bilig-formula-clinic ./reduced.xls
 Handing a spreadsheet task to another coding agent?
 
 ```sh
-npm exec --package @bilig/headless@0.119.2 -- bilig-agent-challenge
-npm exec --package @bilig/headless@0.119.2 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.119.2 -- bilig-agent-challenge --json
+npm exec --package @bilig/headless@0.119.2 -- bilig-mcp-challenge --json
 ```
 
 The first command proves the direct WorkPaper API. The second command proves
@@ -206,8 +206,8 @@ building a workbook, changing an input, saving the document, restoring it, and
 checking that the dependent formula still reads back correctly.
 
 ```sh
-npm exec --package @bilig/headless@0.119.2 -- bilig-agent-challenge
-npm exec --package @bilig/headless@0.119.2 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.119.2 -- bilig-agent-challenge --json
+npm exec --package @bilig/headless@0.119.2 -- bilig-mcp-challenge --json
 ```
 
 Expected output:

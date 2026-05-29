@@ -73,8 +73,8 @@ This uses the package-owned challenge command. It does not clone the repo, curl
 a TypeScript file, or require a spreadsheet UI:
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge
-npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 ```
 
 A passing run prints `verified: true`.

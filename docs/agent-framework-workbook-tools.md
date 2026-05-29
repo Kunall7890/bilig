@@ -52,13 +52,13 @@ npm run agent:verify
 For a direct package proof without creating a project:
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 ```
 
 For MCP clients:
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 

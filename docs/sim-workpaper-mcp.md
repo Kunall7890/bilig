@@ -123,7 +123,9 @@ Expected local proof:
   "dependentCell": "Summary!B3",
   "before": 60000,
   "after": 96000,
+  "afterRestore": 96000,
   "afterRestart": 96000,
+  "persistedDocumentBytes": 1162,
   "verified": true
 }
 ```
