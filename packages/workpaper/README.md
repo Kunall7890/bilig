@@ -153,10 +153,10 @@ rewriting formula sheets.
 The package ships proof commands for coding agents and service evaluators:
 
 ```sh
-npm exec --package @bilig/workpaper -- bilig-agent-challenge
-npm exec --package @bilig/workpaper -- bilig-mcp-challenge
-npm exec --package @bilig/workpaper -- bilig-n8n-formula-server --port 4321
-npm exec --package @bilig/workpaper -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 The challenge commands edit one input, recalculate dependent formulas, export

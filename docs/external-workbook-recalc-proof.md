@@ -56,7 +56,13 @@ Expected output includes:
   "star": "https://github.com/proompteng/bilig/stargazers",
   "watchReleases": "https://github.com/proompteng/bilig/subscription",
   "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": "If external workbook cache refresh is the XLSX blocker in your service, star or bookmark Bilig; if the matching rules are not enough, open the exact workbook-link blocker."
+  "nextStep": {
+    "ifUseful": "If external workbook cache refresh is the XLSX blocker in your service, star or bookmark Bilig so you can find it again.",
+    "star": "https://github.com/proompteng/bilig/stargazers",
+    "watchReleases": "https://github.com/proompteng/bilig/subscription",
+    "ifBlocked": "If the matching rules are not enough, open the exact workbook-link blocker.",
+    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
+  }
 }
 ```
 

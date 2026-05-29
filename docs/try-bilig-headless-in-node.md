@@ -39,7 +39,13 @@ Expected output:
   "star": "https://github.com/proompteng/bilig/stargazers",
   "watchReleases": "https://github.com/proompteng/bilig/subscription",
   "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
+  "nextStep": {
+    "ifUseful": "If this proof matched your workflow, star or bookmark Bilig so you can find it again.",
+    "star": "https://github.com/proompteng/bilig/stargazers",
+    "watchReleases": "https://github.com/proompteng/bilig/subscription",
+    "ifBlocked": "If it almost worked, open the concrete workbook or agent blocker.",
+    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
+  }
 }
 ```
 
@@ -80,7 +86,13 @@ Expected output (same as above; `verified` must be `true`):
   "star": "https://github.com/proompteng/bilig/stargazers",
   "watchReleases": "https://github.com/proompteng/bilig/subscription",
   "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
+  "nextStep": {
+    "ifUseful": "If this proof matched your workflow, star or bookmark Bilig so you can find it again.",
+    "star": "https://github.com/proompteng/bilig/stargazers",
+    "watchReleases": "https://github.com/proompteng/bilig/subscription",
+    "ifBlocked": "If it almost worked, open the concrete workbook or agent blocker.",
+    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
+  }
 }
 ```
 

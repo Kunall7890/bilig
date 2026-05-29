@@ -85,7 +85,13 @@ actions:
   "star": "https://github.com/proompteng/bilig/stargazers",
   "watchReleases": "https://github.com/proompteng/bilig/subscription",
   "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
-  "nextStep": "If this XLSX recalculation proof matches your workflow, star or bookmark Bilig; if it almost works, open the concrete workbook blocker."
+  "nextStep": {
+    "ifUseful": "If this XLSX recalculation proof fixed a stale formula path, star or bookmark Bilig so you can find it again.",
+    "star": "https://github.com/proompteng/bilig/stargazers",
+    "watchReleases": "https://github.com/proompteng/bilig/subscription",
+    "ifBlocked": "If it almost worked, open the concrete workbook blocker.",
+    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
+  }
 }
 ```
 
