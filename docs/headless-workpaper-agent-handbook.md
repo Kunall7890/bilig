@@ -62,6 +62,20 @@ The generated project includes `AGENTS.md`, `CLAUDE.md`, project-root
 file-backed MCP challenge. `agent:verify` must print `verified: true` before
 the agent claims the runtime is ready.
 
+## Installable Agent Skill
+
+Use the [Agent Adoption Kit](agent-adoption-kit.md) when the agent should learn
+the Bilig workflow before touching a real workbook:
+
+```sh
+npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
+The skill path is for discovery and safe defaults. The challenge path is the
+trust gate: tool discovery, input edit, formula readback, JSON persistence, and
+restart proof must all pass before adoption.
+
 ## The First Decision
 
 | If the agent has...   | Use this path                                                                             | Verification target                                                                      |

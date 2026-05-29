@@ -11,6 +11,7 @@
   "llms_full": "https://proompteng.github.io/bilig/llms-full.txt",
   "skill_file": "https://proompteng.github.io/bilig/skill.txt",
   "agent_instructions": "https://proompteng.github.io/bilig/AGENTS.md",
+  "adoption_kit": "https://proompteng.github.io/bilig/agent-adoption-kit.html",
   "skills": [
     {
       "name": "bilig-workpaper",
@@ -93,6 +94,13 @@
     "prompts": ["edit_and_verify_workpaper", "debug_workpaper_formula"]
   },
   "capabilities": [
+    {
+      "name": "agent-adoption-kit",
+      "type": "docs-entrypoint",
+      "docs": "https://proompteng.github.io/bilig/agent-adoption-kit.html",
+      "skill_install": "npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list",
+      "challenge_command": "npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json"
+    },
     {
       "name": "workbook-agent-intent-api",
       "type": "npm-library",
@@ -225,6 +233,7 @@
   "public_entrypoints": [
     "https://proompteng.github.io/bilig/",
     "https://proompteng.github.io/bilig/why-use-bilig.html",
+    "https://proompteng.github.io/bilig/agent-adoption-kit.html",
     "https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html",
     "https://proompteng.github.io/bilig/agent-workbook-challenge.html",
     "https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html",

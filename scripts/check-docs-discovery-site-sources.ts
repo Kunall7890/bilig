@@ -7,6 +7,7 @@ export const docsSiteSources = [
   ['eval-xlsx-recalc.html', 'eval-xlsx-recalc.md'],
   ['eval-workpaper-service.html', 'eval-workpaper-service.md'],
   ['eval-agent-mcp.html', 'eval-agent-mcp.md'],
+  ['agent-adoption-kit.html', 'agent-adoption-kit.md'],
   ['ai-agent-spreadsheet-tool-node.html', 'ai-agent-spreadsheet-tool-node.md'],
   ['agent-framework-workbook-tools.html', 'agent-framework-workbook-tools.md'],
   ['workbook-agent-intent-api.html', 'workbook-agent-intent-api.md'],

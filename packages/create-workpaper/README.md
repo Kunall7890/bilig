@@ -36,3 +36,7 @@ The agent template adds `AGENTS.md`, `CLAUDE.md`, a project-root `.mcp.json`
 for Claude Code, Cursor and VS Code MCP configs, a generic MCP config at
 `mcp/bilig-workpaper.mcp.json`, and an `agent:verify` script that proves both
 the service API path and the file-backed MCP path.
+
+For an existing agent or MCP client that does not need a generated project yet,
+use the adoption kit first:
+<https://proompteng.github.io/bilig/agent-adoption-kit.html>.

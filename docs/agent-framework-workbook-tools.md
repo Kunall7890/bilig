@@ -40,6 +40,14 @@ the product: manual review, macros, pivots, charts, add-ins, or layout fidelity.
 
 ## Start here
 
+For a coding agent that only needs the shortest no-key path, use the
+[Agent Adoption Kit](agent-adoption-kit.md):
+
+```sh
+npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
 For a generated project with agent files and MCP config:
 
 ```sh

@@ -21,6 +21,10 @@ persisted file, and return proof.
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 ```
 
+If you are handing this to another coding agent, start from the
+[Agent Adoption Kit](agent-adoption-kit.md). It includes the installable skill,
+one MCP config, a paste-ready task, and the pass/fail proof object.
+
 ## Expected proof
 
 The current challenge prints this shape:

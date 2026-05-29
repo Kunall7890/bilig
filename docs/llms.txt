@@ -15,6 +15,7 @@ npm ExcelJS recalculation package: https://www.npmjs.com/package/@bilig/exceljs-
 npm full runtime package: https://www.npmjs.com/package/@bilig/headless
 remote MCP endpoint: https://bilig.proompteng.ai/mcp
 agent instructions: https://proompteng.github.io/bilig/AGENTS.md
+agent adoption kit: https://proompteng.github.io/bilig/agent-adoption-kit.html
 agent discovery manifest: https://proompteng.github.io/bilig/.well-known/agent.json
 root agent discovery manifest: https://proompteng.github.io/bilig/agent.json
 agent skill: https://proompteng.github.io/bilig/skill.txt
@@ -40,6 +41,11 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   https://proompteng.github.io/bilig/eval-workpaper-service.html
 - Copy-paste evaluator for agent and MCP workbook tools:
   https://proompteng.github.io/bilig/eval-agent-mcp.html
+- Shortest agent adoption path:
+  https://proompteng.github.io/bilig/agent-adoption-kit.html
+  https://github.com/proompteng/bilig/blob/main/docs/agent-adoption-kit.md
+  `npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list`
+  `npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`.
 - Use `@bilig/workpaper` for formula workbook state inside a Node service,
   queue worker, route handler, test, or agent tool.
 - Use `@bilig/xlsx-formula-recalc` when XLSX inputs changed in Node and formula
@@ -124,6 +130,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/eval-xlsx-recalc.html
 - https://proompteng.github.io/bilig/eval-workpaper-service.html
 - https://proompteng.github.io/bilig/eval-agent-mcp.html
+- https://proompteng.github.io/bilig/agent-adoption-kit.html
 - https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html
 - https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
 - https://proompteng.github.io/bilig/workbook-agent-intent-api.html

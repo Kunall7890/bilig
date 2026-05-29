@@ -429,6 +429,11 @@ const llmsFullSources = [
     url: `${repositoryUrl}/blob/main/docs/eval-workpaper-service.md`,
   },
   {
+    title: 'Agent Adoption Kit',
+    relativePath: 'docs/agent-adoption-kit.md',
+    url: `${repositoryUrl}/blob/main/docs/agent-adoption-kit.md`,
+  },
+  {
     title: 'Evaluate Bilig As An Agent MCP Workbook Tool',
     relativePath: 'docs/eval-agent-mcp.md',
     url: `${repositoryUrl}/blob/main/docs/eval-agent-mcp.md`,
@@ -596,6 +601,7 @@ function agentJsonManifest(): string {
       llms_full: `${siteRoot}/llms-full.txt`,
       skill_file: `${siteRoot}/skill.txt`,
       agent_instructions: `${siteRoot}/AGENTS.md`,
+      adoption_kit: `${siteRoot}/agent-adoption-kit.html`,
       skills: [
         {
           name: skillName,
@@ -651,6 +657,13 @@ function agentJsonManifest(): string {
         prompts: ['edit_and_verify_workpaper', 'debug_workpaper_formula'],
       },
       capabilities: [
+        {
+          name: 'agent-adoption-kit',
+          type: 'docs-entrypoint',
+          docs: `${siteRoot}/agent-adoption-kit.html`,
+          skill_install: 'npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list',
+          challenge_command: `npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json`,
+        },
         {
           name: 'workbook-agent-intent-api',
           type: 'npm-library',
@@ -768,6 +781,7 @@ function agentJsonManifest(): string {
       public_entrypoints: [
         `${siteRoot}/`,
         `${siteRoot}/why-use-bilig.html`,
+        `${siteRoot}/agent-adoption-kit.html`,
         `${siteRoot}/headless-workpaper-agent-handbook.html`,
         `${siteRoot}/agent-workbook-challenge.html`,
         `${siteRoot}/mcp-workpaper-tool-server.html`,

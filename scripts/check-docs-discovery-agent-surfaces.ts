@@ -217,6 +217,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'description: A compact playbook for agents that need workbook formulas without opening Excel',
     '## Copy-Paste Prompt For Another Agent',
     'Return a compact proof object with editedCell, before, after, afterRestore',
+    '[Agent Adoption Kit](agent-adoption-kit.md)',
+    'npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list',
     '## The First Decision',
     '## Minimum Agent Loop',
     'bilig-workpaper-mcp --workpaper ./model.workpaper.json --init-demo-workpaper --writable',

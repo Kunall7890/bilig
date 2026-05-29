@@ -80,6 +80,16 @@ Those commands are intentionally small. If one matches your workflow, continue
 into the package matrix below; if none match, Bilig is probably not the first
 tool to evaluate.
 
+For agent adoption, use the
+[Agent Adoption Kit](docs/agent-adoption-kit.md): install the skill, run the
+no-key MCP proof, paste one workbook task into the agent, and require
+`verified: true` before trusting the result.
+
+```sh
+npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
 ## Which Package Should I Install?
 
 | Problem you have right now                                                        | Install                                                       | First proof                                                                             |

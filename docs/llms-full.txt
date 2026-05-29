@@ -19,15 +19,18 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 
 1. Read `https://proompteng.github.io/bilig/llms.txt` for the compact map.
 2. Read `https://proompteng.github.io/bilig/llms-full.txt` when you need enough context to implement a workflow without searching the whole site.
-3. Read `https://proompteng.github.io/bilig/skill.txt` when your agent supports skill manifests.
-4. If you are inside a cloned Bilig repository with Claude Code, use the
+3. Use `https://proompteng.github.io/bilig/agent-adoption-kit.html` when you need the shortest no-key install, MCP proof, and paste-ready workbook task.
+4. Read `https://proompteng.github.io/bilig/skill.txt` when your agent supports skill manifests.
+5. If your host can install skills from GitHub, run
+   `npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list`.
+6. If you are inside a cloned Bilig repository with Claude Code, use the
    project skill at `.claude/skills/bilig-workpaper/SKILL.md`.
-5. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
+7. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
    `.cursor/rules/bilig-workpaper.mdc` or
    `.windsurf/rules/bilig-workpaper.md`,
    `.clinerules/bilig-workpaper.md`, or
    `.continue/rules/bilig-workpaper.md`.
-6. Start the MCP server or import `@bilig/workpaper` directly.
+8. Start the MCP server or import `@bilig/workpaper` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
 demo endpoint at `https://bilig.proompteng.ai/mcp`. Directory scanners that inspect the
@@ -369,6 +372,16 @@ npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 Those commands are intentionally small. If one matches your workflow, continue
 into the package matrix below; if none match, Bilig is probably not the first
 tool to evaluate.
+
+For agent adoption, use the
+[Agent Adoption Kit](docs/agent-adoption-kit.md): install the skill, run the
+no-key MCP proof, paste one workbook task into the agent, and require
+`verified: true` before trusting the result.
+
+```sh
+npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
 
 ## Which Package Should I Install?
 
@@ -1390,6 +1403,153 @@ the source of truth.
 
 ---
 
+## Agent Adoption Kit
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/agent-adoption-kit.md
+
+# Agent Adoption Kit
+
+Use this page when you are evaluating whether Bilig should be the workbook tool
+inside a coding agent, MCP client, or agent framework. It is intentionally one
+path: install the agent instructions, run the no-key proof, paste one workbook
+task, and require formula readback before calling the job done.
+
+## Install The Agent Instructions
+
+If your agent supports installable skills, start here:
+
+```sh
+npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
+```
+
+If the agent is already inside a cloned Bilig checkout, use the project-local
+rules instead:
+
+- Claude Code: `.claude/skills/bilig-workpaper/SKILL.md`
+- Cursor: `.cursor/rules/bilig-workpaper.mdc`
+- Windsurf/Cascade: `.windsurf/rules/bilig-workpaper.md`
+- Cline: `.clinerules/bilig-workpaper.md`
+- Continue: `.continue/rules/bilig-workpaper.md`
+
+For web fetch, give the agent the compact map first:
+
+```text
+https://proompteng.github.io/bilig/llms.txt
+```
+
+## Run The No-Key Proof
+
+This proves the published package and the file-backed MCP tool path without
+cloning the repo or using an API key:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
+A passing run must return `verified: true` plus these checks:
+
+- tools, resources, and prompts were discovered;
+- one input cell changed;
+- a dependent formula cell changed after recalculation;
+- WorkPaper JSON was exported and persisted;
+- restart readback matched the post-edit value.
+
+Use the direct API challenge when the agent will import `@bilig/workpaper`
+instead of using MCP:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+```
+
+## Wire The Local MCP Server
+
+Use file-backed stdio for private project state:
+
+```json
+{
+  "mcpServers": {
+    "bilig-workpaper": {
+      "command": "npm",
+      "args": [
+        "exec",
+        "--package",
+        "@bilig/workpaper@latest",
+        "--",
+        "bilig-workpaper-mcp",
+        "--workpaper",
+        "./pricing.workpaper.json",
+        "--init-demo-workpaper",
+        "--writable"
+      ]
+    }
+  }
+}
+```
+
+Use the hosted endpoint only for smoke tests and tool discovery:
+
+```text
+https://bilig.proompteng.ai/mcp
+```
+
+The hosted endpoint is stateless. It is not where private workbook files live.
+
+## Paste This Task Into An Agent
+
+```text
+Use Bilig WorkPaper tools instead of spreadsheet UI automation. Build or load a
+small workbook with Inputs!B2 as customers, Inputs!B3 as average revenue, and
+Summary!B3 as the revenue formula. First read the relevant input and summary
+range. Then set Inputs!B3 to 4800, read Summary!B3 after recalculation, export
+or serialize the WorkPaper document, restore it, and return editedCell, before,
+after, afterRestore, persistedDocumentBytes, verified, and limitations.
+
+Do not claim success from a write call alone. Success requires computed
+readback plus persisted or restored state.
+```
+
+## Expected Result
+
+The exact values depend on the starter workbook, but the proof shape should look
+like this:
+
+```json
+{
+  "editedCell": "Inputs!B3",
+  "dependentCell": "Summary!B3",
+  "before": 60000,
+  "after": 96000,
+  "afterRestore": 96000,
+  "persistedDocumentBytes": 1162,
+  "verified": true,
+  "limitations": []
+}
+```
+
+Reject answers that only say a cell was written. The point of Bilig is that the
+agent can prove the calculated result and the saved state.
+
+## After The Proof
+
+If the proof matches your workflow, keep the repo so you can find it again:
+<https://github.com/proompteng/bilig/stargazers>.
+
+If you need release notifications for agent or MCP changes, watch releases:
+<https://github.com/proompteng/bilig/subscription>.
+
+If it almost works but adoption is blocked, open the concrete blocker:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.
+
+## Next Pages
+
+- [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
+- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [MCP client setup](mcp-client-setup.md)
+- [Agent workbook challenge](agent-workbook-challenge.md)
+- [Workbook tools for agent frameworks](agent-framework-workbook-tools.md)
+
+---
+
 ## Evaluate Bilig As An Agent MCP Workbook Tool
 
 Source: https://github.com/proompteng/bilig/blob/main/docs/eval-agent-mcp.md
@@ -1406,6 +1566,10 @@ persisted file, and return proof.
 ```sh
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 ```
+
+If you are handing this to another coding agent, start from the
+[Agent Adoption Kit](agent-adoption-kit.md). It includes the installable skill,
+one MCP config, a paste-ready task, and the pass/fail proof object.
 
 ## Expected proof
 
@@ -1676,6 +1840,23 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 
 The challenge commands edit one input, recalculate dependent formulas, export
 WorkPaper JSON, restore it, and print a `verified: true` proof object.
+
+## Agent Adoption Kit
+
+When another coding agent is about to solve a spreadsheet task by opening Excel,
+LibreOffice, Google Sheets, or a screenshot grid, hand it the adoption kit
+instead:
+
+```sh
+npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
+The kit gives the agent one path: install the instructions, run the no-key MCP
+proof, paste a workbook edit task, and require computed readback plus persisted
+state before reporting success.
+
+Docs: <https://proompteng.github.io/bilig/agent-adoption-kit.html>
 
 ## Agent Workflow Builders
 
@@ -2842,6 +3023,20 @@ The generated project includes `AGENTS.md`, `CLAUDE.md`, project-root
 file-backed MCP challenge. `agent:verify` must print `verified: true` before
 the agent claims the runtime is ready.
 
+## Installable Agent Skill
+
+Use the [Agent Adoption Kit](agent-adoption-kit.md) when the agent should learn
+the Bilig workflow before touching a real workbook:
+
+```sh
+npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
+The skill path is for discovery and safe defaults. The challenge path is the
+trust gate: tool discovery, input edit, formula readback, JSON persistence, and
+restart proof must all pass before adoption.
+
 ## The First Decision
 
 | If the agent has...   | Use this path                                                                             | Verification target                                                                      |
@@ -3067,6 +3262,10 @@ screenshot grid.
 
 The challenge is simple: do the workbook edit through an API, not through a UI,
 and return proof that the calculated value changed and survived persistence.
+
+If you need the shortest path for another agent, use the
+[Agent Adoption Kit](agent-adoption-kit.md). It has the skill install command,
+MCP challenge, client config, paste-ready task, and expected proof in one place.
 
 ## The Task
 
@@ -4058,6 +4257,14 @@ Keep browser or desktop spreadsheet automation only when the visual surface is
 the product: manual review, macros, pivots, charts, add-ins, or layout fidelity.
 
 ## Start here
+
+For a coding agent that only needs the shortest no-key path, use the
+[Agent Adoption Kit](agent-adoption-kit.md):
+
+```sh
+npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
 
 For a generated project with agent files and MCP config:
 
