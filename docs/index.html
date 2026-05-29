@@ -1126,12 +1126,11 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
     <script>
       ;(() => {
         const isRawFilePreview = window.location.protocol === 'file:'
+        const loopbackHostnames = new Set(['localhost', '127.0.0.1', '::1'])
+        const canProbeLocalHtml =
+          (window.location.protocol === 'http:' || window.location.protocol === 'https:') && loopbackHostnames.has(window.location.hostname)
 
-        if (!isRawFilePreview) {
-          return
-        }
-
-        const rewriteRecipeHref = (href) => {
+        const markdownHrefForLocalSource = (href) => {
           if (!href?.startsWith('./') || !href.includes('.html')) {
             return href
           }
@@ -1139,28 +1138,52 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
           return href.replace(/\.html(?=$|#)/, '.md')
         }
 
-        for (const link of document.querySelectorAll('a[href]')) {
-          const href = link.getAttribute('href')
-          const rewrittenHref = rewriteRecipeHref(href)
-          if (rewrittenHref !== href) {
-            link.setAttribute('href', rewrittenHref)
+        const rewriteLocalSourceLinks = () => {
+          for (const link of document.querySelectorAll('a[href]')) {
+            const href = link.getAttribute('href')
+            const rewrittenHref = markdownHrefForLocalSource(href)
+            if (rewrittenHref !== href) {
+              link.setAttribute('href', rewrittenHref)
+            }
           }
         }
 
-        document.addEventListener('click', (event) => {
-          const target = event.target
-          if (!(target instanceof Element)) {
-            return
-          }
+        if (isRawFilePreview) {
+          rewriteLocalSourceLinks()
+          document.addEventListener('click', (event) => {
+            const target = event.target
+            if (!(target instanceof Element)) {
+              return
+            }
 
-          const link = target.closest('a[href]')
-          if (!(link instanceof HTMLAnchorElement)) {
-            return
-          }
+            const link = target.closest('a[href]')
+            if (!(link instanceof HTMLAnchorElement)) {
+              return
+            }
 
-          const href = link.getAttribute('href')
-          link.setAttribute('href', rewriteRecipeHref(href))
-        })
+            const href = link.getAttribute('href')
+            link.setAttribute('href', markdownHrefForLocalSource(href))
+          })
+          return
+        }
+
+        if (!canProbeLocalHtml) {
+          return
+        }
+
+        const htmlLink = document.querySelector('a[href^="./"][href*=".html"]')
+        const href = htmlLink?.getAttribute('href')
+        if (href === undefined || markdownHrefForLocalSource(href) === href) {
+          return
+        }
+
+        fetch(href, { method: 'HEAD', cache: 'no-store' })
+          .then((response) => {
+            if (response.status === 404) {
+              rewriteLocalSourceLinks()
+            }
+          })
+          .catch(() => {})
       })()
     </script>
     <script type="module" src="./assets/hero-scene.js?v=2026-05-15-1"></script>
