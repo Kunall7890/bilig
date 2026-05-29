@@ -5,11 +5,11 @@ import { formatCellDisplayValue, isCellValue } from '@bilig/protocol'
 
 import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import {
-  readSameCorpusVisibleSheetId,
   readSameCorpusVisibleSelectedRange,
   type SameCorpusMutationTargetReadback,
   type SameCorpusMutationTargetScreenshotProof,
 } from './ui-responsiveness-same-corpus-semantic-proof.ts'
+import { readSameCorpusVisibleSheetId } from './ui-responsiveness-same-corpus-visible-readback.ts'
 import { readBiligRenderedSurfaceState } from './ui-responsiveness-same-corpus-surface-page.ts'
 import { settleFrames } from './ui-responsiveness-same-corpus-page-utils.ts'
 import { sameCorpusMutationTargetRangeForSample } from './ui-responsiveness-same-corpus-mutation-target-spec.ts'
@@ -21,6 +21,7 @@ import {
   sameCorpusCellAddressCoordinates,
   sameCorpusVisibleCellInteriorClip,
 } from './ui-responsiveness-same-corpus-mutation-readback.ts'
+import { sameCorpusMutationTargetBrowserVisibleReadbackSourceAccepted } from './ui-responsiveness-same-corpus-visible-readback-source.ts'
 import type { UiResponsivenessSameCorpusMutatingWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 const BILIG_ROW_MARKER_WIDTH = 36
@@ -221,7 +222,7 @@ export async function captureSameCorpusMutationTargetScreenshotProof(args: {
   readonly relativeScreenshotPath: string
   readonly workload: UiResponsivenessSameCorpusMutatingWorkload
 }): Promise<SameCorpusMutationTargetScreenshotProof> {
-  const screenshot = await captureMutationTargetScreenshot(args.page, args.product, args.target, args.screenshotPath)
+  const screenshot = await captureMutationTargetScreenshot(args.page, args.product, args.target, args.semanticReadback, args.screenshotPath)
   return {
     phase: args.phase,
     product: args.product,
@@ -241,12 +242,16 @@ async function captureMutationTargetScreenshot(
   page: Page,
   product: UiResponsivenessSameCorpusProduct,
   target: SameCorpusMutationTargetSelection,
+  semanticReadback: SameCorpusMutationTargetReadback,
   screenshotPath: string,
 ): Promise<{
   readonly buffer: ScreenshotBuffer | null
   readonly captured: boolean
   readonly scope: SameCorpusMutationTargetScreenshotProof['scope']
 }> {
+  if (!sameCorpusMutationTargetBrowserVisibleReadbackSourceAccepted(semanticReadback.source)) {
+    return { buffer: null, captured: false, scope: 'visible-grid-fallback' }
+  }
   if (product === 'bilig') {
     const address = sameCorpusCellAddressCoordinates(target.startAddress)
     const buffer = address ? await captureBiligCellInteriorScreenshot(page, address.columnIndex, address.rowIndex, screenshotPath) : null

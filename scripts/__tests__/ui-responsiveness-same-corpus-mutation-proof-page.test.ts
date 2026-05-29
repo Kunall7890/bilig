@@ -318,6 +318,42 @@ describe('same-corpus mutation target page proof helpers', () => {
     })
   })
 
+  it('does not write a target-cell screenshot when semantic proof came from formula-bar chrome', async () => {
+    const page = fakePageWithExternalTargetBox(() => {
+      throw new Error('Formula-bar semantic readback must not produce a target-cell screenshot')
+    })
+
+    await expect(
+      captureSameCorpusMutationTargetScreenshotProof({
+        page,
+        phase: 'after',
+        product: 'google-sheets',
+        relativeScreenshotPath: 'same-corpus/google-sheets/formula-bar-target.png',
+        sampleIndex: 0,
+        screenshotPath: '/tmp/bilig-formula-bar-target-should-not-be-written.png',
+        semanticReadback: {
+          fillColor: null,
+          formula: null,
+          source: 'visible-formula-bar',
+          value: 'same-corpus-edit-1',
+          visibleText: 'same-corpus-edit-1',
+        },
+        target: {
+          endAddress: 'F5',
+          sheetId: 'gid:160971404',
+          sheetName: 'WideGrid',
+          startAddress: 'F5',
+          targetRange: 'F5',
+        },
+        workload: 'edit-visible-cell',
+      }),
+    ).resolves.toMatchObject({
+      scope: 'visible-grid-fallback',
+      screenshotPath: null,
+      screenshotSha256: null,
+    })
+  })
+
   it('does not use an active editor overlay as external target-cell screenshot geometry', async () => {
     const page = fakePageWithGoogleSheetsEditorOverlay()
 

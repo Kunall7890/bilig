@@ -95,10 +95,10 @@ export function createOperationDirectAggregateRectangularBatchFastPath(args: Ope
     try {
       for (let index = 0; index < inputCellIndices.length; index += 1) {
         const cellIndex = inputCellIndices[index]!
-      if (rectangle.allInputsClear || rectangle.emptyInputFlags[index] === 1) {
-        writeEmptyLiteralToCellStore(args.state.workbook.cellStore, cellIndex)
-      } else {
-        args.writeNumericLiteralToCellStore(cellIndex, inputNumericValues[index]!)
+        if (rectangle.allInputsClear || rectangle.emptyInputFlags[index] === 1) {
+          writeEmptyLiteralToCellStore(args.state.workbook.cellStore, cellIndex)
+        } else {
+          args.writeNumericLiteralToCellStore(cellIndex, inputNumericValues[index]!)
         }
       }
       const writtenColumns = new Uint32Array(colCount)

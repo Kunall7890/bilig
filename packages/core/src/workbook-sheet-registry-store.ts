@@ -138,11 +138,7 @@ export class WorkbookSheetRegistryStore {
     if (!sheet || sheet.name !== oldName) {
       return undefined
     }
-    if (
-      !hasWorkbookMetadataForSheetRename(this.options.metadata) &&
-      sheet.styleRanges.length === 0 &&
-      sheet.formatRanges.length === 0
-    ) {
+    if (!hasWorkbookMetadataForSheetRename(this.options.metadata) && sheet.styleRanges.length === 0 && sheet.formatRanges.length === 0) {
       this.options.sheetsByName.delete(oldName)
       sheet.name = trimmedName
       this.options.sheetsByName.set(trimmedName, sheet)

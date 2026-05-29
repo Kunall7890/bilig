@@ -56,7 +56,7 @@ import {
   sameCorpusVisualProofsFromScenarioProof,
 } from '../ui-responsiveness-same-corpus-product-refresh.ts'
 import { sameCorpusScrollProbeSelectorsForProduct } from '../ui-responsiveness-same-corpus-scroll-page.ts'
-import { readGoogleSheetsNameBoxSelection, type SameCorpusNameBoxReaderPage } from '../ui-responsiveness-same-corpus-semantic-proof.ts'
+import { readGoogleSheetsNameBoxSelection, type SameCorpusNameBoxReaderPage } from '../ui-responsiveness-same-corpus-visible-readback.ts'
 import {
   incumbentEditableWorkloadBlocker,
   measureProductWorkload,
