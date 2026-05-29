@@ -27,11 +27,37 @@ The starter smoke prints this shape:
 
 ```json
 {
-  "before": 24000,
-  "after": 38400,
-  "afterRestore": 38400,
-  "sheets": ["Inputs", "Summary"],
-  "bytes": 999,
+  "before": {
+    "summary": {
+      "decision": "review"
+    },
+    "inputCells": {
+      "units": "Inputs!B2",
+      "listPrice": "Inputs!B3",
+      "discount": "Inputs!B4"
+    }
+  },
+  "edit": {
+    "input": {
+      "units": 40,
+      "discount": 0.05
+    },
+    "before": {
+      "decision": "review"
+    },
+    "after": {
+      "decision": "approved"
+    },
+    "restored": {
+      "decision": "approved"
+    },
+    "checks": {
+      "decisionChanged": true,
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "serializedBytes": 1242
+    }
+  },
   "verified": true,
   "star": "https://github.com/proompteng/bilig/stargazers",
   "watchReleases": "https://github.com/proompteng/bilig/subscription",
@@ -46,8 +72,9 @@ The starter smoke prints this shape:
 }
 ```
 
-The byte count can change by package version. The invariant is that `after`
-comes from the dependent formula cell and `afterRestore` matches `after`.
+The byte count can change by package version. The invariants are
+`decisionChanged`, `formulasPersisted`, `restoredMatchesAfter`, and
+`verified: true`.
 
 ## What this proves
 

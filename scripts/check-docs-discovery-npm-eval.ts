@@ -40,6 +40,13 @@ export async function requireNpmEvalDiscovery(
   ] as const) {
     requireIncludes(content, 'npm create @bilig/workpaper@latest pricing-workpaper', path)
     requireIncludes(content, 'examples/headless-workpaper/npm-eval.ts', path)
+    requireIncludes(content, '"decisionChanged": true', path)
+    requireIncludes(content, '"formulasPersisted": true', path)
+    requireIncludes(content, '"restoredMatchesAfter": true', path)
+    requireIncludes(content, '"serializedBytes": 1242', path)
+    if (content.includes('"bytes": 999')) {
+      throw new Error(`${path} must not document the stale starter proof field "bytes"`)
+    }
   }
 
   for (const [path, content] of [['packages/headless/README.md', headlessReadme]] as const) {

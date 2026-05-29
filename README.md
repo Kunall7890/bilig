@@ -213,15 +213,36 @@ npm install
 npm run smoke
 ```
 
-Expected output:
+Expected output includes this proof shape:
 
 ```json
 {
-  "before": 24000,
-  "after": 38400,
-  "afterRestore": 38400,
-  "sheets": ["Inputs", "Summary"],
-  "bytes": 999,
+  "before": {
+    "summary": {
+      "decision": "review"
+    },
+    "inputCells": {
+      "units": "Inputs!B2",
+      "listPrice": "Inputs!B3"
+    }
+  },
+  "edit": {
+    "before": {
+      "decision": "review"
+    },
+    "after": {
+      "decision": "approved"
+    },
+    "restored": {
+      "decision": "approved"
+    },
+    "checks": {
+      "decisionChanged": true,
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "serializedBytes": 1242
+    }
+  },
   "verified": true,
   "star": "https://github.com/proompteng/bilig/stargazers",
   "watchReleases": "https://github.com/proompteng/bilig/subscription",
@@ -239,8 +260,9 @@ Expected output:
 The generated starter uses the same maintained WorkPaper proof shape as the
 public mirror at <https://proompteng.github.io/bilig/npm-eval.ts> and
 [`examples/headless-workpaper/npm-eval.ts`](examples/headless-workpaper/npm-eval.ts).
-The exact byte count can change between package versions; `verified: true` and
-matching `after`/`afterRestore` values are the check.
+The exact byte count can change between package versions; `verified: true`,
+`decisionChanged`, `formulasPersisted`, and `restoredMatchesAfter` are the
+checks.
 
 For a route-shaped quote approval API today, run the maintained example:
 

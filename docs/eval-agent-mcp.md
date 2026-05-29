@@ -28,6 +28,7 @@ The current challenge prints this shape:
 ```json
 {
   "transport": "stdio-json-rpc",
+  "protocolVersion": "2025-11-25",
   "serverName": "bilig-headless-workpaper",
   "tools": [
     "list_sheets",
@@ -39,6 +40,13 @@ The current challenge prints this shape:
     "export_workpaper_document",
     "validate_formula"
   ],
+  "resources": [
+    "bilig://workpaper/manifest",
+    "bilig://workpaper/agent-handoff",
+    "bilig://workpaper/sheets",
+    "bilig://workpaper/current-document"
+  ],
+  "prompts": ["edit_and_verify_workpaper", "debug_workpaper_formula"],
   "editedCell": "Inputs!B3",
   "dependentCell": "Summary!B3",
   "before": 60000,
@@ -60,9 +68,20 @@ The current challenge prints this shape:
     "displayValueRead": true
   },
   "verified": true,
+  "limitations": [
+    "This challenge proves the file-backed MCP WorkPaper tool surface, not Excel desktop UI automation.",
+    "For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture."
+  ],
   "star": "https://github.com/proompteng/bilig/stargazers",
   "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
+  "nextStep": {
+    "ifUseful": "If this file-backed MCP proof matched your workflow, star or bookmark Bilig so you can find it again.",
+    "star": "https://github.com/proompteng/bilig/stargazers",
+    "watchReleases": "https://github.com/proompteng/bilig/subscription",
+    "ifBlocked": "If it almost worked, open the concrete workbook or agent blocker.",
+    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
+  }
 }
 ```
 

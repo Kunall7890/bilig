@@ -496,15 +496,36 @@ npm install
 npm run smoke
 ```
 
-Expected output:
+Expected output includes this proof shape:
 
 ```json
 {
-  "before": 24000,
-  "after": 38400,
-  "afterRestore": 38400,
-  "sheets": ["Inputs", "Summary"],
-  "bytes": 999,
+  "before": {
+    "summary": {
+      "decision": "review"
+    },
+    "inputCells": {
+      "units": "Inputs!B2",
+      "listPrice": "Inputs!B3"
+    }
+  },
+  "edit": {
+    "before": {
+      "decision": "review"
+    },
+    "after": {
+      "decision": "approved"
+    },
+    "restored": {
+      "decision": "approved"
+    },
+    "checks": {
+      "decisionChanged": true,
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "serializedBytes": 1242
+    }
+  },
   "verified": true,
   "star": "https://github.com/proompteng/bilig/stargazers",
   "watchReleases": "https://github.com/proompteng/bilig/subscription",
@@ -522,8 +543,9 @@ Expected output:
 The generated starter uses the same maintained WorkPaper proof shape as the
 public mirror at <https://proompteng.github.io/bilig/npm-eval.ts> and
 [`examples/headless-workpaper/npm-eval.ts`](examples/headless-workpaper/npm-eval.ts).
-The exact byte count can change between package versions; `verified: true` and
-matching `after`/`afterRestore` values are the check.
+The exact byte count can change between package versions; `verified: true`,
+`decisionChanged`, `formulasPersisted`, and `restoredMatchesAfter` are the
+checks.
 
 For a route-shaped quote approval API today, run the maintained example:
 
@@ -1265,11 +1287,37 @@ The starter smoke prints this shape:
 
 ```json
 {
-  "before": 24000,
-  "after": 38400,
-  "afterRestore": 38400,
-  "sheets": ["Inputs", "Summary"],
-  "bytes": 999,
+  "before": {
+    "summary": {
+      "decision": "review"
+    },
+    "inputCells": {
+      "units": "Inputs!B2",
+      "listPrice": "Inputs!B3",
+      "discount": "Inputs!B4"
+    }
+  },
+  "edit": {
+    "input": {
+      "units": 40,
+      "discount": 0.05
+    },
+    "before": {
+      "decision": "review"
+    },
+    "after": {
+      "decision": "approved"
+    },
+    "restored": {
+      "decision": "approved"
+    },
+    "checks": {
+      "decisionChanged": true,
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "serializedBytes": 1242
+    }
+  },
   "verified": true,
   "star": "https://github.com/proompteng/bilig/stargazers",
   "watchReleases": "https://github.com/proompteng/bilig/subscription",
@@ -1284,8 +1332,9 @@ The starter smoke prints this shape:
 }
 ```
 
-The byte count can change by package version. The invariant is that `after`
-comes from the dependent formula cell and `afterRestore` matches `after`.
+The byte count can change by package version. The invariants are
+`decisionChanged`, `formulasPersisted`, `restoredMatchesAfter`, and
+`verified: true`.
 
 ## What this proves
 
@@ -1344,6 +1393,7 @@ The current challenge prints this shape:
 ```json
 {
   "transport": "stdio-json-rpc",
+  "protocolVersion": "2025-11-25",
   "serverName": "bilig-headless-workpaper",
   "tools": [
     "list_sheets",
@@ -1355,6 +1405,13 @@ The current challenge prints this shape:
     "export_workpaper_document",
     "validate_formula"
   ],
+  "resources": [
+    "bilig://workpaper/manifest",
+    "bilig://workpaper/agent-handoff",
+    "bilig://workpaper/sheets",
+    "bilig://workpaper/current-document"
+  ],
+  "prompts": ["edit_and_verify_workpaper", "debug_workpaper_formula"],
   "editedCell": "Inputs!B3",
   "dependentCell": "Summary!B3",
   "before": 60000,
@@ -1376,9 +1433,20 @@ The current challenge prints this shape:
     "displayValueRead": true
   },
   "verified": true,
+  "limitations": [
+    "This challenge proves the file-backed MCP WorkPaper tool surface, not Excel desktop UI automation.",
+    "For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture."
+  ],
   "star": "https://github.com/proompteng/bilig/stargazers",
   "watchReleases": "https://github.com/proompteng/bilig/subscription",
-  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
+  "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general",
+  "nextStep": {
+    "ifUseful": "If this file-backed MCP proof matched your workflow, star or bookmark Bilig so you can find it again.",
+    "star": "https://github.com/proompteng/bilig/stargazers",
+    "watchReleases": "https://github.com/proompteng/bilig/subscription",
+    "ifBlocked": "If it almost worked, open the concrete workbook or agent blocker.",
+    "adoptionBlocker": "https://github.com/proompteng/bilig/discussions/new?category=general"
+  }
 }
 ```
 
@@ -9260,15 +9328,36 @@ npm install
 npm run smoke
 ```
 
-Expected output:
+Expected output includes this proof shape:
 
 ```json
 {
-  "before": 24000,
-  "after": 38400,
-  "afterRestore": 38400,
-  "sheets": ["Inputs", "Summary"],
-  "bytes": 999,
+  "before": {
+    "summary": {
+      "decision": "review"
+    },
+    "inputCells": {
+      "units": "Inputs!B2",
+      "listPrice": "Inputs!B3"
+    }
+  },
+  "edit": {
+    "before": {
+      "decision": "review"
+    },
+    "after": {
+      "decision": "approved"
+    },
+    "restored": {
+      "decision": "approved"
+    },
+    "checks": {
+      "decisionChanged": true,
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "serializedBytes": 1242
+    }
+  },
   "verified": true,
   "star": "https://github.com/proompteng/bilig/stargazers",
   "watchReleases": "https://github.com/proompteng/bilig/subscription",
@@ -9284,7 +9373,8 @@ Expected output:
 ```
 
 The exact byte count can change between package versions. The important part is
-that `verified` is `true` and `afterRestore` matches `after`.
+that `verified` is `true`, `decisionChanged` is `true`, and
+`restoredMatchesAfter` is `true`.
 
 The generated starter uses the same maintained TypeScript proof shape as the
 public mirror at <https://proompteng.github.io/bilig/npm-eval.ts> and
@@ -9307,15 +9397,26 @@ docker run --rm \
   bash -c "npm install --silent && npm run smoke"
 ```
 
-Expected output (same as above; `verified` must be `true`):
+Expected output uses the same proof shape as above. The local run must set
+`verified`, `decisionChanged`, `formulasPersisted`, and `restoredMatchesAfter`
+to `true`:
 
 ```json
 {
-  "before": 24000,
-  "after": 38400,
-  "afterRestore": 38400,
-  "sheets": ["Inputs", "Summary"],
-  "bytes": 999,
+  "edit": {
+    "after": {
+      "decision": "approved"
+    },
+    "restored": {
+      "decision": "approved"
+    },
+    "checks": {
+      "decisionChanged": true,
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "serializedBytes": 1242
+    }
+  },
   "verified": true,
   "star": "https://github.com/proompteng/bilig/stargazers",
   "watchReleases": "https://github.com/proompteng/bilig/subscription",

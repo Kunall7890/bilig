@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(docs): publish homepage recipe targets (09e61d14)
 
 ## 0.119.1
@@ -20,9 +21,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(ui): reject non-grid mutation screenshot proof (a5a1706c)
 
 ## Internal runtime changes
+
 - docs(growth): compress evaluator path (fbe98a6f)
 - docs(growth): surface merged Dify plugin (086c3d5b)
 - docs(growth): add Pipedream WorkPaper discovery (e3a35105)
@@ -34,6 +37,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(n8n): evaluate WorkPaper JSON documents (1520edf9)
 - feat(xlsx): add external workbook proof conversion (5f4525c7)
 - feat(workbook): expose resolved ref proof option (fc16d103)
@@ -44,6 +48,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(openwebui): add WorkPaper OpenAPI tool route (1044d88e)
 
 ## Fixes
+
 - fix(workbook): close strict format proof gaps (2da279d3)
 - fix(workbook): avoid inherited plan accessors (d280def0)
 - fix(workbook): align comparison schemas (e158c4a7)
@@ -257,6 +262,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(release): keep benchmark checks stable across version bumps (e892b3cf)
 
 ## Internal runtime changes
+
 - docs(growth): add Sim MCP setup (e353fb02)
 - docs(growth): add Windmill WorkPaper script (479a394f)
 - chore(release): runtime packages v0.107.9 (383e2bd2)

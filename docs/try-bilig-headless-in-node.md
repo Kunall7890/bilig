@@ -26,15 +26,36 @@ npm install
 npm run smoke
 ```
 
-Expected output:
+Expected output includes this proof shape:
 
 ```json
 {
-  "before": 24000,
-  "after": 38400,
-  "afterRestore": 38400,
-  "sheets": ["Inputs", "Summary"],
-  "bytes": 999,
+  "before": {
+    "summary": {
+      "decision": "review"
+    },
+    "inputCells": {
+      "units": "Inputs!B2",
+      "listPrice": "Inputs!B3"
+    }
+  },
+  "edit": {
+    "before": {
+      "decision": "review"
+    },
+    "after": {
+      "decision": "approved"
+    },
+    "restored": {
+      "decision": "approved"
+    },
+    "checks": {
+      "decisionChanged": true,
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "serializedBytes": 1242
+    }
+  },
   "verified": true,
   "star": "https://github.com/proompteng/bilig/stargazers",
   "watchReleases": "https://github.com/proompteng/bilig/subscription",
@@ -50,7 +71,8 @@ Expected output:
 ```
 
 The exact byte count can change between package versions. The important part is
-that `verified` is `true` and `afterRestore` matches `after`.
+that `verified` is `true`, `decisionChanged` is `true`, and
+`restoredMatchesAfter` is `true`.
 
 The generated starter uses the same maintained TypeScript proof shape as the
 public mirror at <https://proompteng.github.io/bilig/npm-eval.ts> and
@@ -73,15 +95,26 @@ docker run --rm \
   bash -c "npm install --silent && npm run smoke"
 ```
 
-Expected output (same as above; `verified` must be `true`):
+Expected output uses the same proof shape as above. The local run must set
+`verified`, `decisionChanged`, `formulasPersisted`, and `restoredMatchesAfter`
+to `true`:
 
 ```json
 {
-  "before": 24000,
-  "after": 38400,
-  "afterRestore": 38400,
-  "sheets": ["Inputs", "Summary"],
-  "bytes": 999,
+  "edit": {
+    "after": {
+      "decision": "approved"
+    },
+    "restored": {
+      "decision": "approved"
+    },
+    "checks": {
+      "decisionChanged": true,
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "serializedBytes": 1242
+    }
+  },
   "verified": true,
   "star": "https://github.com/proompteng/bilig/stargazers",
   "watchReleases": "https://github.com/proompteng/bilig/subscription",
