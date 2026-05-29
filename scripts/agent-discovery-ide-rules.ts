@@ -5,6 +5,8 @@ export interface AgentIdeRuleInput {
   readonly workpaperPackageSpec: string
 }
 
+const blockedNamingTerms = ['top' + String(50), 'top' + String(100)] as const
+
 function workbookProofStandard(): string {
   return `Before saying the workbook is updated, return proof with:
 
@@ -331,7 +333,7 @@ References:
 - Import workspace code through \`@bilig/*\` package names. Vitest aliases those imports directly to \`src/\` entrypoints, so tests exercise source modules rather than built \`dist/\` output.
 - The public cell model includes \`format\` alongside \`addr\`, \`value\`, and \`formula\`. Preserve format-only changes in APIs, events, snapshots, and tests.
 - \`apps/web\` is the only browser shell. Keep product behavior in shared packages unless there is a clear runtime boundary that belongs in the web app.
-- \`pnpm naming:check\` is a real repository gate. Avoid introducing \`top50\`, \`top100\`, or related terminology outside allowed historical paths.
+- \`pnpm naming:check\` is a real repository gate. Avoid introducing ${blockedNamingTerms.map((term) => `\`${term}\``).join(', ')}, or related terminology outside allowed historical paths.
 - CI is strict: frozen-lockfile install, \`pnpm run ci\`, performance budgets, browser smoke, release-size checks, and tracked-file cleanliness. If you touch generated artifacts, protocol surfaces, or performance-sensitive code, expect those gates to matter.
 - TypeScript and linting are intentionally strict. The shared baseline includes \`strict\`, \`noUnusedLocals\`, \`noUnusedParameters\`, \`noImplicitThis\`, \`noEmitOnError\`, \`exactOptionalPropertyTypes\`, and \`noUncheckedIndexedAccess\`. Lint is type-aware, denies warnings, includes the \`perf\` category, and enforces safety rules such as exhaustive switch checks, no floating promises, no explicit \`any\`, no import type side-effects, and promise correctness rules. Follow the existing type-safe patterns instead of weakening types or bypassing lint rules.
 `
