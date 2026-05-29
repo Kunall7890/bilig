@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.123.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.122.0
+- Manual override: no
+
+## Features
+- feat(xlsx-recalc): clarify stale readback proof json (a24fe51c)
+
 ## 0.122.0
 
 - Release type: minor
