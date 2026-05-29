@@ -355,9 +355,22 @@ test('@browser-webgpu isolated workbook pane renderer draws grid content through
     (runs) => runs.visibleRunCount > 0 && runs.matches.columnHeaderB && runs.matches.bodyRegion && runs.matches.bodyNorth,
   )
   await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(1)
-  await expect(page.getByTestId('grid-native-rect-layer')).toHaveCount(0)
   await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-draw-text', 'false')
   await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-native-layer-source', 'browser-native-text-live')
+  await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-native-rect-frame-source', 'presented')
+  await expect(page.getByTestId('grid-native-rect-layer')).toHaveCount(1)
+  await expect
+    .poll(readNativeRectProofState(page), {
+      message: 'browser-native rect proof must mirror the presented TypeGPU frame, not a stale live/current frame',
+      timeout: 5_000,
+    })
+    .toMatchObject({
+      countPresent: true,
+      presentedFrameMatches: true,
+      sceneEpochMatches: true,
+      signatureMatches: true,
+      visibleRevisionMatches: true,
+    })
 
   await saveReadbackArtifact(page, testInfo, 'isolated-pane-renderer-readback.png', 'isolated-pane-renderer-readback')
 })
@@ -2341,6 +2354,38 @@ async function inspectVisibleNativeTextRuns(
     },
     { textExpectations },
   )
+}
+
+function readNativeRectProofState(page: Page): () => Promise<{
+  readonly countPresent: boolean
+  readonly presentedFrameMatches: boolean
+  readonly sceneEpochMatches: boolean
+  readonly signatureMatches: boolean
+  readonly visibleRevisionMatches: boolean
+}> {
+  return async () =>
+    await page.evaluate(() => {
+      const renderer = document.querySelector('[data-testid="grid-pane-renderer"]')
+      const nativeRectLayer = document.querySelector('[data-testid="grid-native-rect-layer"]')
+      const rendererAttr = (name: string) => (renderer instanceof HTMLElement ? (renderer.getAttribute(name) ?? '') : '')
+      const rectAttr = (name: string) => (nativeRectLayer instanceof HTMLElement ? (nativeRectLayer.getAttribute(name) ?? '') : '')
+      const rectCount = Number.parseInt(rectAttr('data-v3-native-rect-count'), 10) || 0
+      return {
+        countPresent: rectCount > 0,
+        presentedFrameMatches:
+          rectAttr('data-v3-native-rect-presented-frame-id').length > 0 &&
+          rectAttr('data-v3-native-rect-presented-frame-id') === rendererAttr('data-v3-presented-frame-proof-signature'),
+        sceneEpochMatches:
+          rectAttr('data-v3-native-rect-scene-epoch').length > 0 &&
+          rectAttr('data-v3-native-rect-scene-epoch') === rendererAttr('data-v3-presented-scene-epoch'),
+        signatureMatches:
+          rectAttr('data-v3-native-rect-signature').length > 0 &&
+          rectAttr('data-v3-native-rect-signature') === rendererAttr('data-v3-presented-rect-signature'),
+        visibleRevisionMatches:
+          rectAttr('data-v3-native-rect-visible-render-revision').length > 0 &&
+          rectAttr('data-v3-native-rect-visible-render-revision') === rendererAttr('data-v3-visible-render-revision'),
+      }
+    })
 }
 
 async function waitForVisibleNativeTextRuns(
