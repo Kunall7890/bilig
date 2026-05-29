@@ -25,6 +25,9 @@ import {
   validateSameCorpusProof,
   type UiResponsivenessSameCorpusProof,
 } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
+import type { SameCorpusMutationTargetProof } from './ui-responsiveness-same-corpus-proof.ts'
+import { sameCorpusMutationTargetScreenshotSemanticInvalidReasons } from './ui-responsiveness-same-corpus-target-screenshot-proof.ts'
+import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export { parseSameCorpusCapture, parseUiResponsivenessLiveBrowserScorecard } from './ui-responsiveness-live-browser-scorecard-parse.ts'
 export { buildMissingSameCorpusProof, buildSameCorpusProof } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
@@ -557,7 +560,7 @@ function validateSameCorpusMutationTargetScreenshotArtifactHashes(validationRoot
   for (const entry of proof.cases) {
     for (const productProof of entry.scenarioProof.semanticUiProof.products) {
       for (const mutationProof of productProof.mutationTargetProofs) {
-        for (const artifact of sameCorpusMutationTargetScreenshotArtifacts(mutationProof)) {
+        for (const artifact of sameCorpusMutationTargetScreenshotArtifacts(productProof.product, entry.workload, mutationProof)) {
           const repoRelativePath = validateScreenshotArtifactPath(validationRootDir, artifact.screenshotPath)
           validateSameCorpusMutationTargetScreenshotArtifactPathForCase(entry.id, repoRelativePath)
           const expectedHash = artifact.screenshotSha256.trim().toLowerCase()
@@ -581,15 +584,14 @@ function validateSameCorpusMutationTargetScreenshotArtifactHashes(validationRoot
   }
 }
 
-function sameCorpusMutationTargetScreenshotArtifacts(mutationProof: {
-  readonly screenshotPath: string | null
-  readonly screenshotSha256: string | null
-  readonly targetScreenshots?: {
-    readonly before: { readonly screenshotPath: string | null; readonly screenshotSha256: string | null }
-    readonly after: { readonly screenshotPath: string | null; readonly screenshotSha256: string | null }
-    readonly restored: { readonly screenshotPath: string | null; readonly screenshotSha256: string | null }
-  } | null
-}): readonly { readonly screenshotPath: string; readonly screenshotSha256: string }[] {
+function sameCorpusMutationTargetScreenshotArtifacts(
+  product: SameCorpusMutationTargetProof['product'],
+  workload: UiResponsivenessSameCorpusWorkload,
+  mutationProof: SameCorpusMutationTargetProof,
+): readonly { readonly screenshotPath: string; readonly screenshotSha256: string }[] {
+  if (sameCorpusMutationTargetScreenshotSemanticInvalidReasons(product, workload, mutationProof).length > 0) {
+    return []
+  }
   const artifacts = [
     mutationProof.targetScreenshots?.before,
     mutationProof.targetScreenshots?.after,
@@ -624,7 +626,9 @@ function uniqueScreenshotArtifactPaths(proof: UiResponsivenessSameCorpusProof): 
         ...(entry.scenarioProof.screenshotProof.captured ? [...entry.scenarioProof.screenshotProof.artifactPaths] : []),
         ...entry.scenarioProof.semanticUiProof.products.flatMap((productProof) =>
           productProof.mutationTargetProofs.flatMap((mutationProof) =>
-            sameCorpusMutationTargetScreenshotArtifacts(mutationProof).map((artifact) => artifact.screenshotPath),
+            sameCorpusMutationTargetScreenshotArtifacts(productProof.product, entry.workload, mutationProof).map(
+              (artifact) => artifact.screenshotPath,
+            ),
           ),
         ),
       ]),

@@ -770,6 +770,22 @@ describe('UI responsiveness live browser scorecard', () => {
     ).toThrow('UI responsiveness same-corpus screenshot artifact is not tracked by git')
   })
 
+  it('does not require rejected formula-bar mutation target screenshots as visible grid artifacts', () => {
+    const proof = googleSheetsFormulaBarMutationTargetScreenshotProof(buildSameCorpusProof(buildSameCorpusCapture()))
+    const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-rejected-mutation-artifacts-`)
+    const rejectedGoogleSheetsTargetPaths = sameCorpusMutationTargetScreenshotArtifactPaths(proof).filter((artifactPath) =>
+      artifactPath.includes('/mutation-target/google-sheets-'),
+    )
+    expect(rejectedGoogleSheetsTargetPaths.length).toBeGreaterThan(0)
+    for (const artifactPath of sameCorpusScreenshotArtifactPaths(proof)) {
+      if (!rejectedGoogleSheetsTargetPaths.includes(artifactPath)) {
+        writeSameCorpusScreenshotArtifact(rootDir, artifactPath)
+      }
+    }
+
+    expect(() => validateSameCorpusScreenshotArtifacts(proof, { rootDir })).not.toThrow()
+  })
+
   it('requires every semantic mutation target screenshot phase to be tracked for checked-in proof', () => {
     const proof = buildSameCorpusProof(buildSameCorpusCapture())
     const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-tracked-mutation-phase-artifacts-`)
@@ -1023,6 +1039,56 @@ function mutationTargetScreenshotScenarioDrift(
         })),
       },
     },
+  }
+}
+
+function googleSheetsFormulaBarMutationTargetScreenshotProof(proof: UiResponsivenessSameCorpusProof): UiResponsivenessSameCorpusProof {
+  return {
+    ...proof,
+    cases: proof.cases.map((entry) => ({
+      ...entry,
+      scenarioProof: {
+        ...entry.scenarioProof,
+        semanticUiProof: {
+          ...entry.scenarioProof.semanticUiProof,
+          products: entry.scenarioProof.semanticUiProof.products.map((productProof) =>
+            productProof.product === 'google-sheets'
+              ? {
+                  ...productProof,
+                  mutationTargetProofs: productProof.mutationTargetProofs.map((mutationProof) => ({
+                    ...mutationProof,
+                    targetScreenshots: mutationProof.targetScreenshots
+                      ? {
+                          before: {
+                            ...mutationProof.targetScreenshots.before,
+                            semanticReadback: {
+                              ...mutationProof.targetScreenshots.before.semanticReadback,
+                              source: 'visible-formula-bar',
+                            },
+                          },
+                          after: {
+                            ...mutationProof.targetScreenshots.after,
+                            semanticReadback: {
+                              ...mutationProof.targetScreenshots.after.semanticReadback,
+                              source: 'visible-formula-bar',
+                            },
+                          },
+                          restored: {
+                            ...mutationProof.targetScreenshots.restored,
+                            semanticReadback: {
+                              ...mutationProof.targetScreenshots.restored.semanticReadback,
+                              source: 'visible-formula-bar',
+                            },
+                          },
+                        }
+                      : null,
+                  })),
+                }
+              : productProof,
+          ),
+        },
+      },
+    })),
   }
 }
 
