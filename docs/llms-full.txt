@@ -376,21 +376,21 @@ tool to evaluate.
 Run one core proof above before wiring a platform-specific integration. These
 recipes are for teams that already know where the workbook tool needs to live.
 
-| Host or workflow runner                                    | Use Bilig when...                                                                                                                              | Guide                                                                                                                                                                                                                     |
-| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Open WebUI                                                 | A local or hosted tool server should expose workbook reads, writes, and formula readback.                                                      | [Open WebUI WorkPaper tool setup](docs/open-webui-workpaper-mcp.md)                                                                                                                                                       |
-| LobeHub                                                    | A LobeHub agent needs a Custom MCP server for workbook tools.                                                                                  | [LobeHub WorkPaper MCP setup](docs/lobehub-workpaper-mcp.md)                                                                                                                                                              |
-| AnythingLLM                                                | Agent Skills should call hosted MCP or a private file-backed stdio server.                                                                     | [AnythingLLM WorkPaper MCP setup](docs/anythingllm-workpaper-mcp.md)                                                                                                                                                      |
-| Sim                                                        | An Agent block or MCP Tool block should read, write, recalculate, and export proof.                                                            | [Sim WorkPaper MCP setup](docs/sim-workpaper-mcp.md)                                                                                                                                                                      |
-| FastMCP Python                                             | A Python client should smoke-test hosted MCP before private agent wiring.                                                                      | [FastMCP WorkPaper client](docs/fastmcp-workpaper-client.md)                                                                                                                                                              |
-| Hugging Face smolagents                                    | A `Tool` should return structured formula readback proof to a `CodeAgent`.                                                                     | [smolagents WorkPaper tool](docs/smolagents-workpaper-tool.md)                                                                                                                                                            |
-| n8n, Dify, Flowise                                         | Workflow builders need formula readback without spreadsheet UI automation; use `@bilig/n8n-nodes-workpaper` for the n8n-native community node. | [n8n](docs/n8n-workpaper-formula-readback.md), [Dify](docs/dify-workpaper-formula-readback.md), [Flowise](docs/flowise-workpaper-formula-readback.md)                                                                     |
-| Vercel AI SDK                                              | `generateText()` or `streamText()` tools need before/after/restore proof.                                                                      | [Vercel AI SDK WorkPaper tools](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md)                                                                                                                                         |
-| LangGraph.js / LangChain MCP                               | ToolNode state should carry WorkPaper proof, or MCP adapters should discover workbook tools.                                                   | [LangGraph](docs/langgraph-workpaper-toolnode-spreadsheet.md), [LangChain MCP example](examples/langchain-mcp-workpaper-toolnode)                                                                                         |
-| Windmill, Trigger.dev Durable Formula Tasks, Inngest       | Durable workflow code should calculate fields from reviewable formulas.                                                                        | [Windmill](docs/windmill-workpaper-script.md), [Trigger.dev](docs/triggerdev-workpaper-task.md), [Inngest](docs/inngest-workpaper-step.md)                                                                                |
-| Airbyte, Meltano                                           | Post-sync or post-ELT validation should return formula-backed record/state proof.                                                              | [Airbyte](docs/airbyte-workpaper-validation.md), [Meltano](docs/meltano-workpaper-utility.md)                                                                                                                             |
-| Temporal, Airflow, Dagster Formula Assets, Kestra, Prefect | Orchestrators should own retries/history while a Node step owns workbook proof.                                                                | [Temporal](docs/temporal-workpaper-activity.md), [Airflow](docs/airflow-workpaper-dag.md), [Dagster](docs/dagster-workpaper-asset.md), [Kestra](docs/kestra-workpaper-flow.md), [Prefect](docs/prefect-workpaper-flow.md) |
-| Directus Persisted Calculated Fields                       | A custom operation should persist calculated fields with formula proof.                                                                        | [Directus WorkPaper Flow operation](docs/directus-workpaper-flow-operation.md)                                                                                                                                            |
+| Host or workflow runner                                    | Use Bilig when...                                                                                                                               | Guide                                                                                                                                                                                                                     |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Open WebUI                                                 | A local or hosted tool server should expose workbook reads, writes, and formula readback.                                                       | [Open WebUI WorkPaper tool setup](docs/open-webui-workpaper-mcp.md)                                                                                                                                                       |
+| LobeHub                                                    | A LobeHub agent needs a Custom MCP server for workbook tools.                                                                                   | [LobeHub WorkPaper MCP setup](docs/lobehub-workpaper-mcp.md)                                                                                                                                                              |
+| AnythingLLM                                                | Agent Skills should call hosted MCP or a private file-backed stdio server.                                                                      | [AnythingLLM WorkPaper MCP setup](docs/anythingllm-workpaper-mcp.md)                                                                                                                                                      |
+| Sim                                                        | An Agent block or MCP Tool block should read, write, recalculate, and export proof.                                                             | [Sim WorkPaper MCP setup](docs/sim-workpaper-mcp.md)                                                                                                                                                                      |
+| FastMCP Python                                             | A Python client should smoke-test hosted MCP before private agent wiring.                                                                       | [FastMCP WorkPaper client](docs/fastmcp-workpaper-client.md)                                                                                                                                                              |
+| Hugging Face smolagents                                    | A `Tool` should return structured formula readback proof to a `CodeAgent`.                                                                      | [smolagents WorkPaper tool](docs/smolagents-workpaper-tool.md)                                                                                                                                                            |
+| n8n, Dify, Flowise                                         | Workflow builders need formula readback without spreadsheet UI automation; use `@bilig/n8n-nodes-workpaper` or the upstream merged Dify plugin. | [n8n](docs/n8n-workpaper-formula-readback.md), [Dify](docs/dify-workpaper-formula-readback.md), [Flowise](docs/flowise-workpaper-formula-readback.md)                                                                     |
+| Vercel AI SDK                                              | `generateText()` or `streamText()` tools need before/after/restore proof.                                                                       | [Vercel AI SDK WorkPaper tools](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md)                                                                                                                                         |
+| LangGraph.js / LangChain MCP                               | ToolNode state should carry WorkPaper proof, or MCP adapters should discover workbook tools.                                                    | [LangGraph](docs/langgraph-workpaper-toolnode-spreadsheet.md), [LangChain MCP example](examples/langchain-mcp-workpaper-toolnode)                                                                                         |
+| Windmill, Trigger.dev Durable Formula Tasks, Inngest       | Durable workflow code should calculate fields from reviewable formulas.                                                                         | [Windmill](docs/windmill-workpaper-script.md), [Trigger.dev](docs/triggerdev-workpaper-task.md), [Inngest](docs/inngest-workpaper-step.md)                                                                                |
+| Airbyte, Meltano                                           | Post-sync or post-ELT validation should return formula-backed record/state proof.                                                               | [Airbyte](docs/airbyte-workpaper-validation.md), [Meltano](docs/meltano-workpaper-utility.md)                                                                                                                             |
+| Temporal, Airflow, Dagster Formula Assets, Kestra, Prefect | Orchestrators should own retries/history while a Node step owns workbook proof.                                                                 | [Temporal](docs/temporal-workpaper-activity.md), [Airflow](docs/airflow-workpaper-dag.md), [Dagster](docs/dagster-workpaper-asset.md), [Kestra](docs/kestra-workpaper-flow.md), [Prefect](docs/prefect-workpaper-flow.md) |
+| Directus Persisted Calculated Fields                       | A custom operation should persist calculated fields with formula proof.                                                                         | [Directus WorkPaper Flow operation](docs/directus-workpaper-flow-operation.md)                                                                                                                                            |
 
 ### Stale XLSX Formula Values? Run This First
 
@@ -1608,7 +1608,9 @@ Start from the repo examples:
 - `examples/kestra-workpaper-flow`
 - `examples/prefect-workpaper-flow`
 - `examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json`
-- `examples/dify-workpaper-formula-readback`
+- `examples/dify-workpaper-formula-readback` mirrors the Dify plugin source;
+  the package was merged upstream in
+  <https://github.com/langgenius/dify-plugins/pull/2451>
 - `examples/flowise-workpaper-formula-readback/bilig-workpaper-formula-readback.flowise-tool.json`
 - `examples/fastmcp-workpaper-client`
 - `examples/langchain-mcp-workpaper-toolnode`
@@ -8013,10 +8015,20 @@ Source: https://github.com/proompteng/bilig/blob/main/docs/dify-workpaper-formul
 
 # Dify WorkPaper Formula Readback
 
-Bilig can be exposed to Dify as a small tool plugin: one tool writes a workbook
-input cell through the hosted WorkPaper OpenAPI endpoint, recalculates dependent
+Bilig is available to Dify as a tool plugin: one tool writes a workbook input
+cell through the hosted WorkPaper OpenAPI endpoint, recalculates dependent
 formulas, and returns JSON proof that the computed output changed and the
 WorkPaper document restores to the same value.
+
+The Dify plugin was merged upstream in `langgenius/dify-plugins`:
+
+- Pull request: <https://github.com/langgenius/dify-plugins/pull/2451>
+- Marketplace package source:
+  <https://github.com/langgenius/dify-plugins/blob/main/proompteng/bilig_workpaper/bilig_workpaper-0.1.2.difypkg>
+
+Use the upstream package when you are evaluating Bilig inside Dify. Use the
+local example below when you want to inspect the plugin source, run tests, or
+adapt the endpoint for a private Bilig deployment.
 
 The plugin source artifact lives at:
 
@@ -8088,6 +8100,13 @@ state: write the input, recalculate, read the computed output, and return proof.
 That avoids a spreadsheet UI dependency and gives the agent a compact, auditable
 tool result. The hosted endpoint is request-local for public smoke tests; use a
 self-hosted Bilig app when Dify needs a private or persistent workbook.
+
+## Trust Boundary
+
+The upstream Dify package proves the integration can pass Dify's plugin review
+and install checks. It does not make the hosted smoke endpoint private or
+persistent. For customer data, deploy Bilig yourself and set the Dify provider
+`base_url` to that private OpenAPI endpoint.
 
 ## Package
 

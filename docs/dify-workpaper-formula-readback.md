@@ -1,9 +1,19 @@
 # Dify WorkPaper Formula Readback
 
-Bilig can be exposed to Dify as a small tool plugin: one tool writes a workbook
-input cell through the hosted WorkPaper OpenAPI endpoint, recalculates dependent
+Bilig is available to Dify as a tool plugin: one tool writes a workbook input
+cell through the hosted WorkPaper OpenAPI endpoint, recalculates dependent
 formulas, and returns JSON proof that the computed output changed and the
 WorkPaper document restores to the same value.
+
+The Dify plugin was merged upstream in `langgenius/dify-plugins`:
+
+- Pull request: <https://github.com/langgenius/dify-plugins/pull/2451>
+- Marketplace package source:
+  <https://github.com/langgenius/dify-plugins/blob/main/proompteng/bilig_workpaper/bilig_workpaper-0.1.2.difypkg>
+
+Use the upstream package when you are evaluating Bilig inside Dify. Use the
+local example below when you want to inspect the plugin source, run tests, or
+adapt the endpoint for a private Bilig deployment.
 
 The plugin source artifact lives at:
 
@@ -75,6 +85,13 @@ state: write the input, recalculate, read the computed output, and return proof.
 That avoids a spreadsheet UI dependency and gives the agent a compact, auditable
 tool result. The hosted endpoint is request-local for public smoke tests; use a
 self-hosted Bilig app when Dify needs a private or persistent workbook.
+
+## Trust Boundary
+
+The upstream Dify package proves the integration can pass Dify's plugin review
+and install checks. It does not make the hosted smoke endpoint private or
+persistent. For customer data, deploy Bilig yourself and set the Dify provider
+`base_url` to that private OpenAPI endpoint.
 
 ## Package
 

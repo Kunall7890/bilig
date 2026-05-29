@@ -184,7 +184,9 @@ Start from the repo examples:
 - `examples/kestra-workpaper-flow`
 - `examples/prefect-workpaper-flow`
 - `examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json`
-- `examples/dify-workpaper-formula-readback`
+- `examples/dify-workpaper-formula-readback` mirrors the Dify plugin source;
+  the package was merged upstream in
+  <https://github.com/langgenius/dify-plugins/pull/2451>
 - `examples/flowise-workpaper-formula-readback/bilig-workpaper-formula-readback.flowise-tool.json`
 - `examples/fastmcp-workpaper-client`
 - `examples/langchain-mcp-workpaper-toolnode`
