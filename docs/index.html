@@ -1137,9 +1137,11 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
     <script>
       ;(() => {
         const isRawFilePreview = window.location.protocol === 'file:'
-        const publishedDocsHostnames = new Set(['proompteng.github.io'])
-        const isPublishedDocsSite = window.location.protocol === 'https:' && publishedDocsHostnames.has(window.location.hostname)
-        const isSourcePreview = isRawFilePreview || !isPublishedDocsSite
+        const localPreviewHostnames = new Set(['localhost', '127.0.0.1', '::1'])
+        const isLocalHttpPreview =
+          (window.location.protocol === 'http:' || window.location.protocol === 'https:') &&
+          localPreviewHostnames.has(window.location.hostname)
+        const isSourcePreview = isRawFilePreview || isLocalHttpPreview
 
         const markdownHrefForLocalSource = (href) => {
           if (!href?.startsWith('./') || !href.includes('.html')) {

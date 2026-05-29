@@ -9,6 +9,7 @@ import type { ZeroSyncService } from '../zero/service.js'
 import type { WorkbookAgentService } from '../codex-app/workbook-agent-service.js'
 import { createWorkbookAgentServiceError } from '../workbook-agent-errors.js'
 import { createSyncServer } from './sync-server.js'
+import { resolveCanonicalDocsRedirectUrl } from './sync-server-spa.js'
 
 type TestServer = Awaited<ReturnType<typeof startHttpServer>>
 
@@ -393,6 +394,29 @@ describe('sync-server cross-origin isolation', () => {
     } finally {
       await app.close()
     }
+  })
+})
+
+describe('sync-server docs redirects', () => {
+  it('redirects docs-style app host misses to the canonical GitHub Pages docs', () => {
+    expect(resolveCanonicalDocsRedirectUrl('GET', '/node-service-workpaper-recipe.html')).toBe(
+      'https://proompteng.github.io/bilig/node-service-workpaper-recipe.html',
+    )
+    expect(resolveCanonicalDocsRedirectUrl('HEAD', '/agent-workpaper-tool-calling-recipe.html?from=app')).toBe(
+      'https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html?from=app',
+    )
+    expect(resolveCanonicalDocsRedirectUrl('GET', '/.well-known/agent-skills/index.json')).toBe(
+      'https://proompteng.github.io/bilig/.well-known/agent-skills/index.json',
+    )
+    expect(resolveCanonicalDocsRedirectUrl('GET', '/llms-full.txt')).toBe('https://proompteng.github.io/bilig/llms-full.txt')
+  })
+
+  it('keeps API, app assets, and SPA paths out of docs redirects', () => {
+    expect(resolveCanonicalDocsRedirectUrl('POST', '/node-service-workpaper-recipe.html')).toBeNull()
+    expect(resolveCanonicalDocsRedirectUrl('GET', '/api/node-service-workpaper-recipe.html')).toBeNull()
+    expect(resolveCanonicalDocsRedirectUrl('GET', '/runtime-config.json')).toBeNull()
+    expect(resolveCanonicalDocsRedirectUrl('GET', '/assets/missing.txt')).toBeNull()
+    expect(resolveCanonicalDocsRedirectUrl('GET', '/workbook/session/abc')).toBeNull()
   })
 })
 
