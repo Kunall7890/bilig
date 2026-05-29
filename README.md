@@ -29,7 +29,9 @@ It gives you a `WorkPaper`: build sheets, write inputs, recalculate, read the
 cell value, and save the workbook as JSON. No browser grid is involved.
 The published package also carries `AGENTS.md` and `SKILL.md` so coding agents
 inspecting `node_modules/@bilig/workpaper` can find the write/read/persist loop
-locally. The public docs expose the same path through
+locally. The repo also includes a Claude Code project skill at
+`.claude/skills/bilig-workpaper/SKILL.md` so cloned checkouts expose the same
+workflow without another install step. The public docs expose the same path through
 [`AGENTS.md`](docs/AGENTS.md), [`skill.md`](docs/skill.md),
 [`docs/.well-known/agent.json`](docs/.well-known/agent.json),
 [`AI spreadsheet agent tool`](docs/ai-agent-spreadsheet-tool-node.md), and
@@ -183,6 +185,9 @@ npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 Agent tools that support skill manifests can start from
 [`skill.md`](docs/skill.md) or the well-known index at
 [`docs/.well-known/agent-skills/index.json`](docs/.well-known/agent-skills/index.json).
+Claude Code reads the project skill from
+[`.claude/skills/bilig-workpaper/SKILL.md`](.claude/skills/bilig-workpaper/SKILL.md)
+when the repo is cloned locally.
 Gemini CLI users can install Bilig as an extension:
 
 ```sh

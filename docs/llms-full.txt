@@ -20,7 +20,9 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 1. Read `https://proompteng.github.io/bilig/llms.txt` for the compact map.
 2. Read `https://proompteng.github.io/bilig/llms-full.txt` when you need enough context to implement a workflow without searching the whole site.
 3. Read `https://proompteng.github.io/bilig/skill.txt` when your agent supports skill manifests.
-4. Start the MCP server or import `@bilig/workpaper` directly.
+4. If you are inside a cloned Bilig repository with Claude Code, use the
+   project skill at `.claude/skills/bilig-workpaper/SKILL.md`.
+5. Start the MCP server or import `@bilig/workpaper` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
 demo endpoint at `https://bilig.proompteng.ai/mcp`. Directory scanners that inspect the
@@ -312,7 +314,9 @@ It gives you a `WorkPaper`: build sheets, write inputs, recalculate, read the
 cell value, and save the workbook as JSON. No browser grid is involved.
 The published package also carries `AGENTS.md` and `SKILL.md` so coding agents
 inspecting `node_modules/@bilig/workpaper` can find the write/read/persist loop
-locally. The public docs expose the same path through
+locally. The repo also includes a Claude Code project skill at
+`.claude/skills/bilig-workpaper/SKILL.md` so cloned checkouts expose the same
+workflow without another install step. The public docs expose the same path through
 [`AGENTS.md`](docs/AGENTS.md), [`skill.md`](docs/skill.md),
 [`docs/.well-known/agent.json`](docs/.well-known/agent.json),
 [`AI spreadsheet agent tool`](docs/ai-agent-spreadsheet-tool-node.md), and
@@ -466,6 +470,9 @@ npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 Agent tools that support skill manifests can start from
 [`skill.md`](docs/skill.md) or the well-known index at
 [`docs/.well-known/agent-skills/index.json`](docs/.well-known/agent-skills/index.json).
+Claude Code reads the project skill from
+[`.claude/skills/bilig-workpaper/SKILL.md`](.claude/skills/bilig-workpaper/SKILL.md)
+when the repo is cloned locally.
 Gemini CLI users can install Bilig as an extension:
 
 ```sh

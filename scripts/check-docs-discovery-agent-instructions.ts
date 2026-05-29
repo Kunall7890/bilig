@@ -13,6 +13,7 @@ export async function requireAgentInstructionDiscovery(input: {
   const [
     docsAgentNotes,
     docsSkill,
+    claudeProjectSkillNotes,
     rootSkillNotes,
     workpaperPackageJson,
     workpaperPackageReadme,
@@ -23,6 +24,7 @@ export async function requireAgentInstructionDiscovery(input: {
   ] = await Promise.all([
     readFile(join(docsRoot, 'AGENTS.md'), 'utf8'),
     readFile(join(docsRoot, 'skill.md'), 'utf8'),
+    readFile(join(repoRoot, '.claude', 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8'),
     readFile(join(repoRoot, 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'bilig', 'package.json'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'bilig', 'README.md'), 'utf8'),
@@ -74,6 +76,7 @@ export async function requireAgentInstructionDiscovery(input: {
 
   requireIncludes(docsAgentNotes, '## Discovery Order', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'Do not claim success from a write call alone.', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, '.claude/skills/bilig-workpaper/SKILL.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json', 'docs/AGENTS.md')
   requireIncludes(docsSkill, 'name: bilig-workpaper', 'docs/skill.md')
@@ -86,6 +89,13 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsSkill, '"bilig-mcp-challenge", "--json"', 'docs/skill.md')
   requireNotIncludes(docsSkill, 'allowed-tools:', 'docs/skill.md')
   requireNotIncludes(docsSkill, 'argument-hint:', 'docs/skill.md')
+
+  requireIncludes(claudeProjectSkillNotes, 'name: bilig-workpaper', '.claude/skills/bilig-workpaper/SKILL.md')
+  requireIncludes(claudeProjectSkillNotes, '## Command Safety', '.claude/skills/bilig-workpaper/SKILL.md')
+  requireIncludes(claudeProjectSkillNotes, '"bilig-mcp-challenge", "--json"', '.claude/skills/bilig-workpaper/SKILL.md')
+  requireIncludes(claudeProjectSkillNotes, 'Return proof, not vibes.', '.claude/skills/bilig-workpaper/SKILL.md')
+  requireNotIncludes(claudeProjectSkillNotes, 'allowed-tools:', '.claude/skills/bilig-workpaper/SKILL.md')
+  requireNotIncludes(claudeProjectSkillNotes, 'argument-hint:', '.claude/skills/bilig-workpaper/SKILL.md')
 
   requireIncludes(rootSkillNotes, '## Command Safety', 'skills/bilig-workpaper/SKILL.md')
   requireIncludes(rootSkillNotes, 'argument array, not a shell-concatenated string', 'skills/bilig-workpaper/SKILL.md')

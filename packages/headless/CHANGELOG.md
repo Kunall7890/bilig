@@ -11,9 +11,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(agent): align MCP challenge proof contract (fdb0ceac)
 
 ## Internal runtime changes
+
 - docs(growth): align evaluator proof copy (27572894)
 
 ## 0.119.2
