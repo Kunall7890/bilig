@@ -92,12 +92,20 @@ describe('xlsx-recalc CLI', () => {
       expect(summary.uninspectedFormulaCellCount).toBe(0)
       expect(summary.inspectionLimit).toBe('all')
       expect(summary.staleCachedFormulaCount).toBe(1)
+      expect(summary.cacheStatusSummary).toEqual({
+        inspected: 1,
+        stale: 1,
+        fresh: 0,
+        missingCache: 0,
+        unsupportedRecalculation: 0,
+      })
       expect(summary.suggestedReads).toEqual(['Sheet1!B2'])
       expect(summary.formulas[0]).toMatchObject({
         target: 'Sheet1!B2',
         formula: '=A2*10',
         cachedValue: 999,
         literalRecalculatedValue: 20,
+        cacheStatus: 'stale',
         staleCachedValue: true,
       })
       expect(JSON.parse(stdout)).not.toHaveProperty('nextStep')
@@ -126,6 +134,7 @@ describe('xlsx-recalc CLI', () => {
       expect(summary.commandSucceeded).toBe(true)
       expect(summary.inspectionCompleted).toBe(true)
       expect(summary.staleCachedFormulaCount).toBe(1)
+      expect(summary.cacheStatusSummary.stale).toBe(1)
       expect(summary.uninspectedFormulaCellCount).toBe(0)
       expect(summary.suggestedReads).toEqual(['Sheet1!B2'])
       expect(JSON.parse(stdout)).not.toHaveProperty('nextStep')
@@ -153,14 +162,59 @@ describe('xlsx-recalc CLI', () => {
     expect(summary.inspectedFormulaCellCount).toBe(1)
     expect(summary.uninspectedFormulaCellCount).toBe(0)
     expect(summary.staleCachedFormulaCount).toBe(1)
+    expect(summary.cacheStatusSummary).toEqual({
+      inspected: 1,
+      stale: 1,
+      fresh: 0,
+      missingCache: 0,
+      unsupportedRecalculation: 0,
+    })
     expect(summary.suggestedReads).toEqual(['Summary!B2'])
     expect(summary.formulas[0]).toMatchObject({
       target: 'Summary!B2',
       formula: '=Inputs!B2*Inputs!B3',
       cachedValue: 60_000,
       literalRecalculatedValue: 72_000,
+      cacheStatus: 'stale',
       staleCachedValue: true,
     })
+  })
+
+  it('separates missing cached formula values from stale cached values', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-cache-doctor-missing-cache-'))
+    try {
+      const inputPath = join(tempDir, 'missing-cache.xlsx')
+      writeFileSync(inputPath, buildMissingFormulaCacheWorkbook())
+      let stdout = ''
+
+      const exitCode = runXlsxFormulaRecalcCli([inputPath, '--json'], {
+        commandName: 'xlsx-cache-doctor',
+        stdout: (text) => {
+          stdout += text
+        },
+      })
+
+      expect(exitCode).toBe(0)
+      const summary = readCliInspectionSummary(stdout)
+      expect(summary.staleCachedFormulaCount).toBe(0)
+      expect(summary.cacheStatusSummary).toEqual({
+        inspected: 1,
+        stale: 0,
+        fresh: 0,
+        missingCache: 1,
+        unsupportedRecalculation: 0,
+      })
+      expect(summary.formulas[0]).toMatchObject({
+        target: 'Sheet1!B2',
+        formula: '=A2*10',
+        literalRecalculatedValue: 20,
+        cacheStatus: 'missing-cache',
+        staleCachedValue: null,
+      })
+      expect(summary.formulas[0]).not.toHaveProperty('cachedValue')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
   })
 
   it('prints a ready-to-commit GitHub Actions workflow for cache doctor adoption', () => {
@@ -322,11 +376,13 @@ describe('xlsx-recalc CLI', () => {
       expect(summary.uninspectedFormulaCellCount).toBe(0)
       expect(summary.inspectionLimit).toBe('all')
       expect(summary.staleCachedFormulaCount).toBe(1)
+      expect(summary.cacheStatusSummary.stale).toBe(1)
       expect(summary.suggestedReads).toContain('Sheet1!B61')
       expect(summary.formulas.find((formula) => formula.target === 'Sheet1!B61')).toMatchObject({
         formula: '=A61*10',
         cachedValue: 999,
         literalRecalculatedValue: 600,
+        cacheStatus: 'stale',
         staleCachedValue: true,
       })
     } finally {
@@ -355,6 +411,7 @@ describe('xlsx-recalc CLI', () => {
       expect(summary.uninspectedFormulaCellCount).toBe(10)
       expect(summary.inspectionLimit).toBe(50)
       expect(summary.staleCachedFormulaCount).toBe(0)
+      expect(summary.cacheStatusSummary).toMatchObject({ inspected: 50, stale: 0 })
       expect(summary.suggestedReads).not.toContain('Sheet1!B61')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
@@ -497,12 +554,20 @@ interface CliInspectionSummary {
   readonly uninspectedFormulaCellCount: number
   readonly inspectionLimit: number | 'all'
   readonly staleCachedFormulaCount: number
+  readonly cacheStatusSummary: {
+    readonly inspected: number
+    readonly stale: number
+    readonly fresh: number
+    readonly missingCache: number
+    readonly unsupportedRecalculation: number
+  }
   readonly suggestedReads: readonly string[]
   readonly formulas: ReadonlyArray<{
     readonly target: string
     readonly formula: string
     readonly cachedValue?: unknown
     readonly literalRecalculatedValue?: unknown
+    readonly cacheStatus: 'fresh' | 'stale' | 'missing-cache' | 'unsupported-recalculation'
     readonly staleCachedValue: boolean | null
   }>
   readonly commandSucceeded: boolean
@@ -564,6 +629,7 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
   const uninspectedFormulaCellCount = parsed['uninspectedFormulaCellCount']
   const inspectionLimit = parsed['inspectionLimit']
   const staleCachedFormulaCount = parsed['staleCachedFormulaCount']
+  const cacheStatusSummary = parsed['cacheStatusSummary']
   const suggestedReads = parsed['suggestedReads']
   const formulas = parsed['formulas']
   const commandSucceeded = parsed['commandSucceeded']
@@ -577,6 +643,7 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
     typeof uninspectedFormulaCellCount !== 'number' ||
     !isInspectionLimit(inspectionLimit) ||
     typeof staleCachedFormulaCount !== 'number' ||
+    !isCliCacheStatusSummary(cacheStatusSummary) ||
     !Array.isArray(suggestedReads) ||
     !Array.isArray(formulas) ||
     typeof commandSucceeded !== 'boolean' ||
@@ -593,6 +660,7 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
     uninspectedFormulaCellCount,
     inspectionLimit,
     staleCachedFormulaCount,
+    cacheStatusSummary,
     suggestedReads: suggestedReads.filter((read): read is string => typeof read === 'string'),
     formulas: formulas.filter(isCliInspectionFormula),
     commandSucceeded,
@@ -629,7 +697,23 @@ function isCliInspectionFormula(value: unknown): value is CliInspectionSummary['
     isRecord(value) &&
     typeof value['target'] === 'string' &&
     typeof value['formula'] === 'string' &&
+    isCliCacheStatus(value['cacheStatus']) &&
     (typeof value['staleCachedValue'] === 'boolean' || value['staleCachedValue'] === null)
+  )
+}
+
+function isCliCacheStatus(value: unknown): value is CliInspectionSummary['formulas'][number]['cacheStatus'] {
+  return value === 'fresh' || value === 'stale' || value === 'missing-cache' || value === 'unsupported-recalculation'
+}
+
+function isCliCacheStatusSummary(value: unknown): value is CliInspectionSummary['cacheStatusSummary'] {
+  return (
+    isRecord(value) &&
+    typeof value['inspected'] === 'number' &&
+    typeof value['stale'] === 'number' &&
+    typeof value['fresh'] === 'number' &&
+    typeof value['missingCache'] === 'number' &&
+    typeof value['unsupportedRecalculation'] === 'number'
   )
 }
 
@@ -690,6 +774,20 @@ function buildStaleFormulaCacheWorkbook(): Uint8Array {
       'B2',
       '<c r="B2"><f>A2*10</f><v>999</v></c>',
     )
+  } finally {
+    workbook.dispose()
+  }
+}
+
+function buildMissingFormulaCacheWorkbook(): Uint8Array {
+  const workbook = WorkPaper.buildFromSheets({
+    Sheet1: [
+      ['Input', 'Output'],
+      [2, '=A2*10'],
+    ],
+  })
+  try {
+    return replaceWorksheetCellXml(exportXlsx(workbook.exportSnapshot()), 'xl/worksheets/sheet1.xml', 'B2', '<c r="B2"><f>A2*10</f></c>')
   } finally {
     workbook.dispose()
   }

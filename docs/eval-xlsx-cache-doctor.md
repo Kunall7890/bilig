@@ -38,6 +38,13 @@ The current demo prints this shape:
   "uninspectedFormulaCellCount": 0,
   "inspectionLimit": "all",
   "staleCachedFormulaCount": 1,
+  "cacheStatusSummary": {
+    "inspected": 1,
+    "stale": 1,
+    "fresh": 0,
+    "missingCache": 0,
+    "unsupportedRecalculation": 0
+  },
   "suggestedReads": ["Summary!B2"],
   "formulas": [
     {
@@ -45,6 +52,7 @@ The current demo prints this shape:
       "formula": "=Inputs!B2*Inputs!B3",
       "cachedValue": 60000,
       "literalRecalculatedValue": 72000,
+      "cacheStatus": "stale",
       "staleCachedValue": true
     }
   ],
@@ -60,6 +68,12 @@ For the demo, the important checks are `commandSucceeded: true`,
 `uninspectedFormulaCellCount: 0`, and `staleCachedFormulaCount: 1`.
 For a real workbook, treat `suggestedReads` as the next cells to prove with
 `xlsx-recalc` after the detector tells you which cached results are stale.
+
+`staleCachedValue: null` is intentionally split into explicit status buckets.
+`cacheStatus: "missing-cache"` means the workbook did not store a cached value
+for that formula. `cacheStatus: "unsupported-recalculation"` means Bilig did not
+produce a comparable literal value for that cell. Neither should be mixed with
+confirmed stale caches.
 
 `excelParity: "not_proven"` is intentional. This check proves fresh Bilig
 formula readback, not desktop Excel parity. Keep an Excel, LibreOffice, Graph,

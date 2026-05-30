@@ -26,8 +26,10 @@ npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor fixtur
 `xlsx-cache-doctor` imports the workbook, lists formula cells, recomputes every
 formula by default, reports stale cached values, and returns suggested `--read`
 targets for the follow-up recalculation proof. It also reports
-`uninspectedFormulaCellCount` when a caller intentionally sets a smaller
-`--inspect-limit`. It does not write a new workbook.
+`cacheStatusSummary` so CI can separate confirmed stale caches from fresh
+caches, missing cached values, and formulas without a comparable recalculated
+value. `uninspectedFormulaCellCount` is reported when a caller intentionally
+sets a smaller `--inspect-limit`. It does not write a new workbook.
 
 ## Generate The Workflow
 
@@ -85,6 +87,9 @@ jobs:
       - run: |
           echo "formula cells: ${{ steps.cache-doctor.outputs.formula-count }}"
           echo "stale values: ${{ steps.cache-doctor.outputs.stale-count }}"
+          echo "fresh values: ${{ steps.cache-doctor.outputs.fresh-count }}"
+          echo "missing caches: ${{ steps.cache-doctor.outputs.missing-cache-count }}"
+          echo "unsupported recalculations: ${{ steps.cache-doctor.outputs.unsupported-recalculation-count }}"
           echo "uninspected formulas: ${{ steps.cache-doctor.outputs.uninspected-count }}"
           echo "suggested reads: ${{ steps.cache-doctor.outputs.suggested-reads }}"
 
@@ -156,6 +161,9 @@ a write token.
 | `workbook-count`    | Number of matched XLSX workbooks inspected.                                                     |
 | `formula-count`     | Total formula cells found across inspected workbooks.                                           |
 | `stale-count`       | Inspected formula cells where cached and recalculated values differ.                            |
+| `fresh-count`       | Inspected formula cells where cached and recalculated values match.                             |
+| `missing-cache-count` | Inspected formula cells that do not store a cached value in the workbook.                     |
+| `unsupported-recalculation-count` | Inspected formula cells without a comparable recalculated value.                 |
 | `uninspected-count` | Formula cells skipped because `inspect-limit` was lower than `formula-count`.                   |
 | `suggested-reads`   | First 25 workbook-qualified cells for the follow-up proof; the JSON report keeps the full list. |
 

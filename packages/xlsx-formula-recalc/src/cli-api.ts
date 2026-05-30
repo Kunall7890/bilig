@@ -384,20 +384,20 @@ function printInspectionSummary(args: PrintInspectionSummaryInput): void {
   const formulas = inspectedFormulaCells.map((cell) => {
     const recalculatedValue = recalculated.reads[cell.target]
     const literalRecalculatedValue = literalValueForInspection(recalculatedValue)
-    const staleCachedValue =
-      cell.cachedValue === undefined || literalRecalculatedValue === undefined
-        ? null
-        : !literalValuesEqual(cell.cachedValue, literalRecalculatedValue)
+    const cacheStatus = cacheStatusForInspection(cell.cachedValue, literalRecalculatedValue)
+    const staleCachedValue = staleCachedValueForInspection(cacheStatus)
     return {
       target: cell.target,
       formula: cell.formula,
       ...(cell.cachedValue !== undefined ? { cachedValue: cell.cachedValue } : {}),
       recalculatedValue,
       ...(literalRecalculatedValue !== undefined ? { literalRecalculatedValue } : {}),
+      cacheStatus,
       staleCachedValue,
     }
   })
   const staleCachedFormulaCount = formulas.filter((formula) => formula.staleCachedValue === true).length
+  const cacheStatusSummary = buildCacheStatusSummary(formulas)
   const summary = {
     mode: args.options.mode,
     input: args.options.inputPath ?? 'generated demo workbook',
@@ -409,6 +409,7 @@ function printInspectionSummary(args: PrintInspectionSummaryInput): void {
     uninspectedFormulaCellCount,
     inspectionLimit: args.options.inspectLimit,
     staleCachedFormulaCount,
+    cacheStatusSummary,
     suggestedReads,
     formulas,
     warnings: recalculated.warnings,
@@ -430,6 +431,9 @@ function printInspectionSummary(args: PrintInspectionSummaryInput): void {
   args.writeStdout(`Inspected formula cells: ${summary.inspectedFormulaCellCount.toString()}\n`)
   args.writeStdout(`Uninspected formula cells: ${summary.uninspectedFormulaCellCount.toString()}\n`)
   args.writeStdout(`Stale cached formula cells: ${summary.staleCachedFormulaCount.toString()}\n`)
+  args.writeStdout(`Fresh cached formula cells: ${summary.cacheStatusSummary.fresh.toString()}\n`)
+  args.writeStdout(`Missing cached formula values: ${summary.cacheStatusSummary.missingCache.toString()}\n`)
+  args.writeStdout(`Unsupported recalculation results: ${summary.cacheStatusSummary.unsupportedRecalculation.toString()}\n`)
   if (suggestedReads.length > 0) {
     args.writeStdout(`Suggested reads: ${suggestedReads.join(', ')}\n`)
     args.writeStdout(`${suggestedRecalcCommand(args.options, suggestedReads)}\n`)
@@ -447,6 +451,12 @@ interface FormulaInspectionCell {
 }
 
 type ImportedWorkbookSnapshot = Parameters<typeof WorkPaper.buildFromSnapshot>[0]
+type InspectionCacheStatus = 'fresh' | 'stale' | 'missing-cache' | 'unsupported-recalculation'
+
+interface FormulaInspectionResult {
+  readonly cacheStatus: InspectionCacheStatus
+  readonly staleCachedValue: boolean | null
+}
 
 function collectFormulaCells(snapshot: ImportedWorkbookSnapshot): FormulaInspectionCell[] {
   const cells: FormulaInspectionCell[] = []
@@ -507,6 +517,47 @@ function literalValueForInspection(value: XlsxFormulaRecalcCellValue | undefined
       return 'value' in value && typeof value.value === 'string' ? value.value : undefined
     case ValueTag.Error:
       return 'code' in value && typeof value.code === 'number' ? formatErrorCode(value.code) : undefined
+  }
+}
+
+function cacheStatusForInspection(
+  cachedValue: RawCellContent | undefined,
+  literalRecalculatedValue: RawCellContent | string | undefined,
+): InspectionCacheStatus {
+  if (cachedValue === undefined) {
+    return 'missing-cache'
+  }
+  if (literalRecalculatedValue === undefined) {
+    return 'unsupported-recalculation'
+  }
+  return literalValuesEqual(cachedValue, literalRecalculatedValue) ? 'fresh' : 'stale'
+}
+
+function staleCachedValueForInspection(cacheStatus: InspectionCacheStatus): FormulaInspectionResult['staleCachedValue'] {
+  switch (cacheStatus) {
+    case 'stale':
+      return true
+    case 'fresh':
+      return false
+    case 'missing-cache':
+    case 'unsupported-recalculation':
+      return null
+  }
+}
+
+function buildCacheStatusSummary(formulas: readonly FormulaInspectionResult[]): {
+  readonly inspected: number
+  readonly stale: number
+  readonly fresh: number
+  readonly missingCache: number
+  readonly unsupportedRecalculation: number
+} {
+  return {
+    inspected: formulas.length,
+    stale: formulas.filter((formula) => formula.cacheStatus === 'stale').length,
+    fresh: formulas.filter((formula) => formula.cacheStatus === 'fresh').length,
+    missingCache: formulas.filter((formula) => formula.cacheStatus === 'missing-cache').length,
+    unsupportedRecalculation: formulas.filter((formula) => formula.cacheStatus === 'unsupported-recalculation').length,
   }
 }
 

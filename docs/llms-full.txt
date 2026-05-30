@@ -422,12 +422,20 @@ Expected shape:
   "inspectedFormulaCellCount": 1,
   "uninspectedFormulaCellCount": 0,
   "staleCachedFormulaCount": 1,
+  "cacheStatusSummary": {
+    "inspected": 1,
+    "stale": 1,
+    "fresh": 0,
+    "missingCache": 0,
+    "unsupportedRecalculation": 0
+  },
   "suggestedReads": ["Summary!B2"],
   "formulas": [
     {
       "target": "Summary!B2",
       "cachedValue": 60000,
       "literalRecalculatedValue": 72000,
+      "cacheStatus": "stale",
       "staleCachedValue": true
     }
   ],
@@ -442,6 +450,10 @@ The JSON is deliberately clean for CI and agents: no star, release-watch, or
 discussion links are mixed into the machine-readable proof. Use the links in
 the surrounding docs after the recalculated value and warnings match your
 workflow.
+
+`staleCachedValue: null` is not a hidden failure bucket. Use
+`cacheStatusSummary` and per-formula `cacheStatus` to separate missing cached
+values from formulas Bilig could not compare yet.
 
 When the detector points at the cells you care about, run the recalculation
 check:
@@ -1272,6 +1284,13 @@ The current demo prints this shape:
   "uninspectedFormulaCellCount": 0,
   "inspectionLimit": "all",
   "staleCachedFormulaCount": 1,
+  "cacheStatusSummary": {
+    "inspected": 1,
+    "stale": 1,
+    "fresh": 0,
+    "missingCache": 0,
+    "unsupportedRecalculation": 0
+  },
   "suggestedReads": ["Summary!B2"],
   "formulas": [
     {
@@ -1279,6 +1298,7 @@ The current demo prints this shape:
       "formula": "=Inputs!B2*Inputs!B3",
       "cachedValue": 60000,
       "literalRecalculatedValue": 72000,
+      "cacheStatus": "stale",
       "staleCachedValue": true
     }
   ],
@@ -1294,6 +1314,12 @@ For the demo, the important checks are `commandSucceeded: true`,
 `uninspectedFormulaCellCount: 0`, and `staleCachedFormulaCount: 1`.
 For a real workbook, treat `suggestedReads` as the next cells to prove with
 `xlsx-recalc` after the detector tells you which cached results are stale.
+
+`staleCachedValue: null` is intentionally split into explicit status buckets.
+`cacheStatus: "missing-cache"` means the workbook did not store a cached value
+for that formula. `cacheStatus: "unsupported-recalculation"` means Bilig did not
+produce a comparable literal value for that cell. Neither should be mixed with
+confirmed stale caches.
 
 `excelParity: "not_proven"` is intentional. This check proves fresh Bilig
 formula readback, not desktop Excel parity. Keep an Excel, LibreOffice, Graph,
@@ -1457,6 +1483,13 @@ Expected shape:
   "uninspectedFormulaCellCount": 0,
   "inspectionLimit": "all",
   "staleCachedFormulaCount": 3,
+  "cacheStatusSummary": {
+    "inspected": 12,
+    "stale": 3,
+    "fresh": 9,
+    "missingCache": 0,
+    "unsupportedRecalculation": 0
+  },
   "suggestedReads": ["Summary!B7"],
   "formulas": [
     {
@@ -1464,6 +1497,7 @@ Expected shape:
       "formula": "=Inputs!B2*Inputs!B3",
       "cachedValue": 60000,
       "literalRecalculatedValue": 72000,
+      "cacheStatus": "stale",
       "staleCachedValue": true
     }
   ],
@@ -1656,8 +1690,10 @@ npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor fixtur
 `xlsx-cache-doctor` imports the workbook, lists formula cells, recomputes every
 formula by default, reports stale cached values, and returns suggested `--read`
 targets for the follow-up recalculation proof. It also reports
-`uninspectedFormulaCellCount` when a caller intentionally sets a smaller
-`--inspect-limit`. It does not write a new workbook.
+`cacheStatusSummary` so CI can separate confirmed stale caches from fresh
+caches, missing cached values, and formulas without a comparable recalculated
+value. `uninspectedFormulaCellCount` is reported when a caller intentionally
+sets a smaller `--inspect-limit`. It does not write a new workbook.
 
 ## Generate The Workflow
 
@@ -1715,6 +1751,9 @@ jobs:
       - run: |
           echo "formula cells: ${{ steps.cache-doctor.outputs.formula-count }}"
           echo "stale values: ${{ steps.cache-doctor.outputs.stale-count }}"
+          echo "fresh values: ${{ steps.cache-doctor.outputs.fresh-count }}"
+          echo "missing caches: ${{ steps.cache-doctor.outputs.missing-cache-count }}"
+          echo "unsupported recalculations: ${{ steps.cache-doctor.outputs.unsupported-recalculation-count }}"
           echo "uninspected formulas: ${{ steps.cache-doctor.outputs.uninspected-count }}"
           echo "suggested reads: ${{ steps.cache-doctor.outputs.suggested-reads }}"
 
@@ -1786,6 +1825,9 @@ a write token.
 | `workbook-count`    | Number of matched XLSX workbooks inspected.                                                     |
 | `formula-count`     | Total formula cells found across inspected workbooks.                                           |
 | `stale-count`       | Inspected formula cells where cached and recalculated values differ.                            |
+| `fresh-count`       | Inspected formula cells where cached and recalculated values match.                             |
+| `missing-cache-count` | Inspected formula cells that do not store a cached value in the workbook.                     |
+| `unsupported-recalculation-count` | Inspected formula cells without a comparable recalculated value.                 |
 | `uninspected-count` | Formula cells skipped because `inspect-limit` was lower than `formula-count`.                   |
 | `suggested-reads`   | First 25 workbook-qualified cells for the follow-up proof; the JSON report keeps the full list. |
 

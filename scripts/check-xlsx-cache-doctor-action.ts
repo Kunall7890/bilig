@@ -111,11 +111,12 @@ try {
       '  inspectedFormulaCellCount: 3,',
       '  uninspectedFormulaCellCount: 0,',
       '  staleCachedFormulaCount: 2,',
+      '  cacheStatusSummary: { inspected: 3, stale: 2, fresh: 0, missingCache: 0, unsupportedRecalculation: 1 },',
       "  suggestedReads: ['Sheet1!B2', 'Sheet1!B3'],",
       '  formulas: [',
-      "    { target: 'Sheet1!B2', formula: '=A2*10', literalRecalculatedValue: 20, staleCachedValue: null },",
-      "    { target: 'Sheet1!B3', formula: '=A3*10', cachedValue: 999, literalRecalculatedValue: 30, staleCachedValue: true },",
-      "    { target: 'Sheet1!B4', formula: '=A4&`|`', cachedValue: 'old\\n%value', literalRecalculatedValue: 'new|value', staleCachedValue: true },",
+      "    { target: 'Sheet1!B2', formula: '=A2*10', cachedValue: 10, cacheStatus: 'unsupported-recalculation', staleCachedValue: null },",
+      "    { target: 'Sheet1!B3', formula: '=A3*10', cachedValue: 999, literalRecalculatedValue: 30, cacheStatus: 'stale', staleCachedValue: true },",
+      "    { target: 'Sheet1!B4', formula: '=A4&`|`', cachedValue: 'old\\n%value', literalRecalculatedValue: 'new|value', cacheStatus: 'stale', staleCachedValue: true },",
       '  ],',
       '  warnings: [],',
       '};',
@@ -165,6 +166,9 @@ try {
   const output = await readFile(outputPath, 'utf8')
   if (
     !output.includes('stale-count=2') ||
+    !output.includes('fresh-count=0') ||
+    !output.includes('missing-cache-count=0') ||
+    !output.includes('unsupported-recalculation-count=1') ||
     !output.includes(`markdown=${markdownPath}`) ||
     !output.includes('suggested-reads=fixtures/stale-pricing.xlsx#Sheet1!B2,fixtures/stale-pricing.xlsx#Sheet1!B3')
   ) {
@@ -174,6 +178,8 @@ try {
   const markdown = await readFile(markdownPath, 'utf8')
   for (const expected of [
     '#### Stale cached formula values',
+    '- Unsupported recalculation results: 1',
+    '| fixtures/stale-pricing.xlsx | 3 | 2 | 0 | 0 | 1 | Sheet1!B2, Sheet1!B3 |',
     '| fixtures/stale-pricing.xlsx | Sheet1!B3 | `=A3*10` | 999 | 30 |',
     '| fixtures/stale-pricing.xlsx | Sheet1!B4 | `=A4&\\`\\|\\`` | old %value | new\\|value |',
     '#### Follow-up check command',
@@ -184,7 +190,11 @@ try {
     }
   }
   const aggregate = parseAggregateReport(JSON.parse(await readFile(reportPath, 'utf8')))
-  if (aggregate.staleCachedFormulaCount !== 2 || aggregate.workbooks?.[0]?.staleFormulas?.length !== 2) {
+  if (
+    aggregate.staleCachedFormulaCount !== 2 ||
+    aggregate.cacheStatusSummary?.unsupportedRecalculation !== 1 ||
+    aggregate.workbooks?.[0]?.staleFormulas?.length !== 2
+  ) {
     throw new Error(`Unexpected inspector JSON report:\n${JSON.stringify(aggregate, null, 2)}`)
   }
 } finally {
@@ -201,7 +211,11 @@ function runGit(cwd: string, args: readonly string[]): void {
   }
 }
 
-function parseAggregateReport(value: unknown): { staleCachedFormulaCount?: number; workbooks?: Array<{ staleFormulas?: unknown[] }> } {
+function parseAggregateReport(value: unknown): {
+  staleCachedFormulaCount?: number
+  cacheStatusSummary?: { unsupportedRecalculation?: number }
+  workbooks?: Array<{ staleFormulas?: unknown[] }>
+} {
   if (!isRecord(value)) {
     throw new Error(`Expected aggregate JSON report object, got ${JSON.stringify(value)}`)
   }
@@ -218,8 +232,18 @@ function parseAggregateReport(value: unknown): { staleCachedFormulaCount?: numbe
       })
     : undefined
   const staleCachedFormulaCount = Reflect.get(value, 'staleCachedFormulaCount')
+  const cacheStatusSummaryValue = Reflect.get(value, 'cacheStatusSummary')
+  const unsupportedRecalculation = isRecord(cacheStatusSummaryValue)
+    ? Reflect.get(cacheStatusSummaryValue, 'unsupportedRecalculation')
+    : undefined
+  const cacheStatusSummary = isRecord(cacheStatusSummaryValue)
+    ? {
+        unsupportedRecalculation: typeof unsupportedRecalculation === 'number' ? unsupportedRecalculation : undefined,
+      }
+    : undefined
   return {
     staleCachedFormulaCount: typeof staleCachedFormulaCount === 'number' ? staleCachedFormulaCount : undefined,
+    cacheStatusSummary,
     workbooks,
   }
 }

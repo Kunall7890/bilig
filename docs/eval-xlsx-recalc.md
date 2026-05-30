@@ -84,6 +84,13 @@ Expected shape:
   "uninspectedFormulaCellCount": 0,
   "inspectionLimit": "all",
   "staleCachedFormulaCount": 3,
+  "cacheStatusSummary": {
+    "inspected": 12,
+    "stale": 3,
+    "fresh": 9,
+    "missingCache": 0,
+    "unsupportedRecalculation": 0
+  },
   "suggestedReads": ["Summary!B7"],
   "formulas": [
     {
@@ -91,6 +98,7 @@ Expected shape:
       "formula": "=Inputs!B2*Inputs!B3",
       "cachedValue": 60000,
       "literalRecalculatedValue": 72000,
+      "cacheStatus": "stale",
       "staleCachedValue": true
     }
   ],

@@ -24,6 +24,9 @@ writeGithubOutput('markdown', markdownOutputPath)
 writeGithubOutput('workbook-count', String(aggregate.workbookCount))
 writeGithubOutput('formula-count', String(aggregate.formulaCellCount))
 writeGithubOutput('stale-count', String(aggregate.staleCachedFormulaCount))
+writeGithubOutput('fresh-count', String(aggregate.cacheStatusSummary.fresh))
+writeGithubOutput('missing-cache-count', String(aggregate.cacheStatusSummary.missingCache))
+writeGithubOutput('unsupported-recalculation-count', String(aggregate.cacheStatusSummary.unsupportedRecalculation))
 writeGithubOutput('uninspected-count', String(aggregate.uninspectedFormulaCellCount))
 writeGithubOutput('suggested-reads', aggregate.suggestedReads.slice(0, 25).join(','))
 writeStaleAnnotations(aggregate)
@@ -66,17 +69,15 @@ function inspectWorkbook(workbook) {
 
 function buildAggregateReport(items) {
   const suggestedReads = items.flatMap((item) => readStringArray(item.report.suggestedReads).map((target) => `${item.workbook}#${target}`))
-  return {
-    mode: 'github-action',
-    packageVersion,
-    inspectLimit,
-    workbookCount: items.length,
-    workbooks: items.map((item) => ({
+  const workbookReports = items.map((item) => {
+    const cacheStatusSummary = readCacheStatusSummary(item.report)
+    return {
       workbook: item.workbook,
       formulaCellCount: numberField(item.report.formulaCellCount),
       inspectedFormulaCellCount: numberField(item.report.inspectedFormulaCellCount),
       uninspectedFormulaCellCount: numberField(item.report.uninspectedFormulaCellCount),
       staleCachedFormulaCount: numberField(item.report.staleCachedFormulaCount),
+      cacheStatusSummary,
       suggestedReads: readStringArray(item.report.suggestedReads),
       staleFormulas: readFormulaArray(item.report.formulas)
         .filter((formula) => formula.staleCachedValue === true)
@@ -87,11 +88,19 @@ function buildAggregateReport(items) {
           literalRecalculatedValue: formula.literalRecalculatedValue,
         })),
       warnings: readStringArray(item.report.warnings),
-    })),
+    }
+  })
+  return {
+    mode: 'github-action',
+    packageVersion,
+    inspectLimit,
+    workbookCount: items.length,
+    workbooks: workbookReports,
     formulaCellCount: sum(items, (item) => numberField(item.report.formulaCellCount)),
     inspectedFormulaCellCount: sum(items, (item) => numberField(item.report.inspectedFormulaCellCount)),
     uninspectedFormulaCellCount: sum(items, (item) => numberField(item.report.uninspectedFormulaCellCount)),
     staleCachedFormulaCount: sum(items, (item) => numberField(item.report.staleCachedFormulaCount)),
+    cacheStatusSummary: sumCacheStatusSummaries(workbookReports.map((workbook) => workbook.cacheStatusSummary)),
     suggestedReads,
     commandSucceeded: true,
     inspectionCompleted: true,
@@ -115,15 +124,18 @@ function buildMarkdownSummary(report) {
     `- Inspected formula cells: ${report.inspectedFormulaCellCount.toString()}`,
     `- Uninspected formula cells: ${report.uninspectedFormulaCellCount.toString()}`,
     `- Stale cached values: ${report.staleCachedFormulaCount.toString()}`,
+    `- Fresh cached values: ${report.cacheStatusSummary.fresh.toString()}`,
+    `- Missing cached values: ${report.cacheStatusSummary.missingCache.toString()}`,
+    `- Unsupported recalculation results: ${report.cacheStatusSummary.unsupportedRecalculation.toString()}`,
     `- JSON report: ${outputPath}`,
     '',
   ]
   if (report.workbooks.length > 0) {
-    lines.push('| Workbook | Formula cells | Stale cached values | Suggested reads |')
-    lines.push('| --- | ---: | ---: | --- |')
+    lines.push('| Workbook | Formula cells | Stale | Fresh | Missing cache | Unsupported | Suggested reads |')
+    lines.push('| --- | ---: | ---: | ---: | ---: | ---: | --- |')
     for (const workbook of report.workbooks) {
       lines.push(
-        `| ${escapeMarkdown(workbook.workbook)} | ${workbook.formulaCellCount.toString()} | ${workbook.staleCachedFormulaCount.toString()} | ${
+        `| ${escapeMarkdown(workbook.workbook)} | ${workbook.formulaCellCount.toString()} | ${workbook.staleCachedFormulaCount.toString()} | ${workbook.cacheStatusSummary.fresh.toString()} | ${workbook.cacheStatusSummary.missingCache.toString()} | ${workbook.cacheStatusSummary.unsupportedRecalculation.toString()} | ${
           workbook.suggestedReads.slice(0, 5).map(escapeMarkdown).join(', ') || 'none'
         } |`,
       )
@@ -254,6 +266,57 @@ function readStringArray(value) {
 
 function readFormulaArray(value) {
   return Array.isArray(value) ? value.filter((item) => typeof item === 'object' && item !== null) : []
+}
+
+function readCacheStatusSummary(report) {
+  if (typeof report.cacheStatusSummary === 'object' && report.cacheStatusSummary !== null) {
+    return {
+      inspected: numberField(report.cacheStatusSummary.inspected),
+      stale: numberField(report.cacheStatusSummary.stale),
+      fresh: numberField(report.cacheStatusSummary.fresh),
+      missingCache: numberField(report.cacheStatusSummary.missingCache),
+      unsupportedRecalculation: numberField(report.cacheStatusSummary.unsupportedRecalculation),
+    }
+  }
+  const formulas = readFormulaArray(report.formulas)
+  return {
+    inspected: formulas.length,
+    stale: formulas.filter((formula) => cacheStatusForFormula(formula) === 'stale').length,
+    fresh: formulas.filter((formula) => cacheStatusForFormula(formula) === 'fresh').length,
+    missingCache: formulas.filter((formula) => cacheStatusForFormula(formula) === 'missing-cache').length,
+    unsupportedRecalculation: formulas.filter((formula) => cacheStatusForFormula(formula) === 'unsupported-recalculation').length,
+  }
+}
+
+function cacheStatusForFormula(formula) {
+  if (
+    formula.cacheStatus === 'fresh' ||
+    formula.cacheStatus === 'stale' ||
+    formula.cacheStatus === 'missing-cache' ||
+    formula.cacheStatus === 'unsupported-recalculation'
+  ) {
+    return formula.cacheStatus
+  }
+  if (formula.staleCachedValue === true) {
+    return 'stale'
+  }
+  if (formula.staleCachedValue === false) {
+    return 'fresh'
+  }
+  if (!Object.hasOwn(formula, 'cachedValue')) {
+    return 'missing-cache'
+  }
+  return 'unsupported-recalculation'
+}
+
+function sumCacheStatusSummaries(summaries) {
+  return {
+    inspected: sum(summaries, (summary) => summary.inspected),
+    stale: sum(summaries, (summary) => summary.stale),
+    fresh: sum(summaries, (summary) => summary.fresh),
+    missingCache: sum(summaries, (summary) => summary.missingCache),
+    unsupportedRecalculation: sum(summaries, (summary) => summary.unsupportedRecalculation),
+  }
 }
 
 function sum(items, read) {

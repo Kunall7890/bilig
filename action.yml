@@ -52,6 +52,15 @@ outputs:
   stale-count:
     description: Number of inspected formula cells with stale cached values across inspected workbooks.
     value: ${{ steps.inspect.outputs.stale-count }}
+  fresh-count:
+    description: Number of inspected formula cells whose cached values match recalculated values.
+    value: ${{ steps.inspect.outputs.fresh-count }}
+  missing-cache-count:
+    description: Number of inspected formula cells that did not store a cached value in the workbook.
+    value: ${{ steps.inspect.outputs.missing-cache-count }}
+  unsupported-recalculation-count:
+    description: Number of inspected formula cells without a comparable recalculated value.
+    value: ${{ steps.inspect.outputs.unsupported-recalculation-count }}
   uninspected-count:
     description: Number of formula cells skipped because inspect-limit was lower than formula-count across inspected workbooks.
     value: ${{ steps.inspect.outputs.uninspected-count }}

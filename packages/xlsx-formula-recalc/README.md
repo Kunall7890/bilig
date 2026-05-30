@@ -81,11 +81,22 @@ Expected shape:
   "inspectedFormulaCellCount": 1,
   "uninspectedFormulaCellCount": 0,
   "staleCachedFormulaCount": 1,
+  "cacheStatusSummary": {
+    "inspected": 1,
+    "stale": 1,
+    "fresh": 0,
+    "missingCache": 0,
+    "unsupportedRecalculation": 0
+  },
   "suggestedReads": ["Summary!B2"],
   "commandSucceeded": true,
   "inspectionCompleted": true
 }
 ```
+
+Use `cacheStatusSummary` and per-formula `cacheStatus` in full reports to
+separate confirmed stale caches from missing cached values or formulas without a
+comparable recalculated value.
 
 When you know which cells matter, run the recalculation check:
 
@@ -139,6 +150,13 @@ the JSON includes the skipped count as `uninspectedFormulaCellCount`.
   "uninspectedFormulaCellCount": 0,
   "inspectionLimit": "all",
   "staleCachedFormulaCount": 3,
+  "cacheStatusSummary": {
+    "inspected": 12,
+    "stale": 3,
+    "fresh": 9,
+    "missingCache": 0,
+    "unsupportedRecalculation": 0
+  },
   "suggestedReads": ["Summary!B7"],
   "formulas": [
     {
@@ -146,6 +164,7 @@ the JSON includes the skipped count as `uninspectedFormulaCellCount`.
       "formula": "=Inputs!B2*Inputs!B3",
       "cachedValue": 60000,
       "literalRecalculatedValue": 72000,
+      "cacheStatus": "stale",
       "staleCachedValue": true
     }
   ],

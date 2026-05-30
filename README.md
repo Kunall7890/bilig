@@ -120,12 +120,20 @@ Expected shape:
   "inspectedFormulaCellCount": 1,
   "uninspectedFormulaCellCount": 0,
   "staleCachedFormulaCount": 1,
+  "cacheStatusSummary": {
+    "inspected": 1,
+    "stale": 1,
+    "fresh": 0,
+    "missingCache": 0,
+    "unsupportedRecalculation": 0
+  },
   "suggestedReads": ["Summary!B2"],
   "formulas": [
     {
       "target": "Summary!B2",
       "cachedValue": 60000,
       "literalRecalculatedValue": 72000,
+      "cacheStatus": "stale",
       "staleCachedValue": true
     }
   ],
@@ -140,6 +148,10 @@ The JSON is deliberately clean for CI and agents: no star, release-watch, or
 discussion links are mixed into the machine-readable proof. Use the links in
 the surrounding docs after the recalculated value and warnings match your
 workflow.
+
+`staleCachedValue: null` is not a hidden failure bucket. Use
+`cacheStatusSummary` and per-formula `cacheStatus` to separate missing cached
+values from formulas Bilig could not compare yet.
 
 When the detector points at the cells you care about, run the recalculation
 check:
