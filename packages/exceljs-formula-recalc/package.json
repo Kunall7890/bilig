@@ -29,9 +29,10 @@
     "directory": "packages/exceljs-formula-recalc"
   },
   "bin": {
-    "exceljs-recalc": "./dist/cli.js"
+    "exceljs-recalc": "./bin/exceljs-recalc.js"
   },
   "files": [
+    "bin",
     "dist",
     "AGENTS.md",
     "SKILL.md",

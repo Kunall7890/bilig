@@ -51,8 +51,8 @@ export async function requireAgentInstructionDiscovery(input: {
     readFile(join(repoRoot, 'packages', 'headless', 'SKILL.md'), 'utf8'),
   ])
 
-  requireIncludes(workpaperPackageJson, '"bilig-agent-challenge": "./dist/agent-workbook-challenge-bin.js"', 'packages/bilig/package.json')
-  requireIncludes(workpaperPackageJson, '"bilig-workpaper-mcp": "./dist/work-paper-mcp-stdio-bin.js"', 'packages/bilig/package.json')
+  requireIncludes(workpaperPackageJson, '"bilig-agent-challenge": "./bin/bilig-agent-challenge.js"', 'packages/bilig/package.json')
+  requireIncludes(workpaperPackageJson, '"bilig-workpaper-mcp": "./bin/bilig-workpaper-mcp.js"', 'packages/bilig/package.json')
   requireIncludes(workpaperPackageJson, '"AGENTS.md"', 'packages/bilig/package.json')
   requireIncludes(workpaperPackageJson, '"SKILL.md"', 'packages/bilig/package.json')
   requireIncludes(workpaperPackageReadme, 'The npm tarball includes `AGENTS.md`, `SKILL.md`', 'packages/bilig/README.md')

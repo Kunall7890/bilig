@@ -37,12 +37,41 @@ export function syncRuntimePackageVersions(options: SyncRuntimePackageVersionsOp
   syncMcpServerVersions(options.rootDir, version, runtimePackages, updatedFiles)
   syncDockerfileWorkpaperVersion(options.rootDir, version, updatedFiles)
   syncGeminiExtensionVersion(options.rootDir, version, updatedFiles)
+  syncXlsxCacheDoctorActionVersion(options.rootDir, version, updatedFiles)
 
   return {
     version,
     updatedFiles,
     updatedPackages: runtimePackages.map((runtimePackage) => runtimePackage.name),
   }
+}
+
+function syncXlsxCacheDoctorActionVersion(rootDir: string, version: string, updatedFiles: string[]): void {
+  const actionPaths = [join(rootDir, 'action.yml'), join(rootDir, 'actions/xlsx-cache-doctor/action.yml')]
+  for (const actionPath of actionPaths) {
+    const currentContent = readFileSync(actionPath, 'utf8')
+    const nextContent = replaceRequired(
+      currentContent,
+      /(package-version:\n\s+description: npm version or dist-tag for @bilig\/xlsx-formula-recalc\. Pin this for production workflows\.\n\s+required: false\n\s+default: )'[^']+'/u,
+      `$1'${version}'`,
+      `${actionPath} must include a package-version default`,
+    )
+    writeTextIfChanged(actionPath, currentContent, nextContent, updatedFiles)
+  }
+
+  const docsPath = join(rootDir, 'docs/xlsx-cache-doctor-github-action.md')
+  const docsContent = readFileSync(docsPath, 'utf8')
+  const nextDocsContent = [
+    (content: string) => content.replaceAll(/package-version: '\d+\.\d+\.\d+'/g, `package-version: '${version}'`),
+    (content: string) =>
+      replaceRequired(
+        content,
+        /(\| `package-version`\s+\|\s+)\d+\.\d+\.\d+(\s+\| npm version or dist-tag for `@bilig\/xlsx-formula-recalc`\. Pin this in production\. \|)/u,
+        `$1${version}$2`,
+        `${docsPath} must include the package-version input table row`,
+      ),
+  ].reduce((content, transform) => transform(content), docsContent)
+  writeTextIfChanged(docsPath, docsContent, nextDocsContent, updatedFiles)
 }
 
 function syncDockerfileWorkpaperVersion(rootDir: string, version: string, updatedFiles: string[]): void {
@@ -134,6 +163,21 @@ function writeJsonIfChanged(path: string, value: Record<string, unknown>): boole
   }
   writeFileSync(path, nextContent)
   return true
+}
+
+function writeTextIfChanged(path: string, currentContent: string, nextContent: string, updatedFiles: string[]): void {
+  if (currentContent === nextContent) {
+    return
+  }
+  writeFileSync(path, nextContent)
+  updatedFiles.push(path)
+}
+
+function replaceRequired(content: string, pattern: RegExp, replacement: string, errorMessage: string): string {
+  if (!pattern.test(content)) {
+    throw new Error(errorMessage)
+  }
+  return content.replace(pattern, replacement)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

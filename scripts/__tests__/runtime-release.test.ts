@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -23,6 +23,29 @@ import {
 } from '../runtime-release.ts'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+
+interface PackageManifestWithBins {
+  readonly bin?: unknown
+  readonly files?: unknown
+}
+
+function readPackageManifestWithBins(packageDir: string): PackageManifestWithBins {
+  const parsed: unknown = JSON.parse(readFileSync(resolve(repoRoot, packageDir, 'package.json'), 'utf8'))
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`Invalid package manifest: ${packageDir}/package.json`)
+  }
+  return parsed
+}
+
+function collectBinTargets(bin: unknown): string[] {
+  if (typeof bin === 'string') {
+    return [bin]
+  }
+  if (typeof bin !== 'object' || bin === null || Array.isArray(bin)) {
+    return []
+  }
+  return Object.values(bin).filter((target): target is string => typeof target === 'string')
+}
 
 describe('runtime release helpers', () => {
   it('parses standard conventional commits', () => {
@@ -304,6 +327,33 @@ describe('runtime release helpers', () => {
     expect(isRuntimeAffectingPath('packages/bilig-exceljs-formula-recalc/package.json')).toBe(true)
     expect(isRuntimePackageContentPath('packages/bilig-exceljs-formula-recalc/src/index.ts')).toBe(true)
     expect(isRuntimePackageContentPath('packages/bilig-exceljs-formula-recalc/README.md')).toBe(true)
+  })
+
+  it('keeps runtime package bins on committed files instead of generated build output', () => {
+    for (const packageDir of RUNTIME_NPM_PACKAGE_DIRS) {
+      const manifest = readPackageManifestWithBins(packageDir)
+      const binTargets = collectBinTargets(manifest.bin)
+
+      for (const target of binTargets) {
+        expect(target.startsWith('./dist/'), `${packageDir} exposes a generated bin target: ${target}`).toBe(false)
+
+        const binPath = resolve(repoRoot, packageDir, target)
+        expect(existsSync(binPath), `${packageDir} bin target does not exist: ${target}`).toBe(true)
+        expect(statSync(binPath).mode & 0o111, `${packageDir} bin target must be executable: ${target}`).not.toBe(0)
+
+        if (target.startsWith('./bin/') && packageDir !== 'packages/create-workpaper') {
+          const source = readFileSync(binPath, 'utf8')
+          expect(source.startsWith('#!/usr/bin/env node\n'), `${packageDir} bin target must start with a node shebang: ${target}`).toBe(
+            true,
+          )
+          expect(source, `${packageDir} bin wrapper must delegate to built output: ${target}`).toContain("await import('../dist/")
+        }
+      }
+
+      if (binTargets.some((target) => target.startsWith('./bin/'))) {
+        expect(manifest.files, `${packageDir} package files must include checked-in bin wrappers`).toContain('bin')
+      }
+    }
   })
 
   it('publishes XLSX import/export through the headless package subpath', () => {

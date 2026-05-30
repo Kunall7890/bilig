@@ -10,6 +10,7 @@ import { runXlsxFormulaRecalcCli } from '../cli-api.js'
 import { WorkPaper, exportXlsx } from '../index.js'
 
 const officeRelationshipNamespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
+const packageVersion = readPackageVersion()
 
 describe('xlsx-recalc CLI', () => {
   it('runs a one-command demo that writes a recalculated XLSX and prints proof JSON', () => {
@@ -335,7 +336,7 @@ describe('xlsx-recalc CLI', () => {
     expect(stdout).toContain('workbooks: "**/*.xlsx"')
     expect(stdout).toContain('changed-files-only: "false"')
     expect(stdout).toContain('inspect-limit: "all"')
-    expect(stdout).toContain('package-version: "0.130.0"')
+    expect(stdout).toContain(`package-version: "${packageVersion}"`)
     expect(stdout).toContain('json-output: "${{ runner.temp }}/xlsx-cache-doctor.json"')
     expect(stdout).toContain('markdown-output: "${{ runner.temp }}/xlsx-cache-doctor.md"')
     expect(stdout).toContain('fail-on-stale: "false"')
@@ -688,6 +689,18 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
 
 function readGeneratedWorkflow(stdout: string): Record<string, unknown> {
   return requireRecord(parseYaml(stdout))
+}
+
+function readPackageVersion(): string {
+  const parsed: unknown = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
+  if (!isRecord(parsed) || Array.isArray(parsed)) {
+    throw new Error('Expected package.json object')
+  }
+  const version = parsed['version']
+  if (typeof version !== 'string' || version.length === 0) {
+    throw new Error('Expected package.json version')
+  }
+  return version
 }
 
 function requireRecord(value: unknown): Record<string, unknown> {

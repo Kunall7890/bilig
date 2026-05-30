@@ -14,13 +14,13 @@ export function requirePackageCliSurfaceDiscovery(args: {
   readonly xlsxRecalcPackageReadme: string
   readonly xlsxRecalcPackageSkillNotes: string
 }): void {
-  requireIncludes(args.xlsxRecalcPackageJson, '"xlsx-recalc": "./dist/cli.js"', 'packages/xlsx-formula-recalc/package.json')
+  requireIncludes(args.xlsxRecalcPackageJson, '"xlsx-recalc": "./bin/xlsx-recalc.js"', 'packages/xlsx-formula-recalc/package.json')
   requireIncludes(
     args.xlsxRecalcPackageJson,
-    '"xlsx-cache-doctor": "./dist/cache-doctor-cli.js"',
+    '"xlsx-cache-doctor": "./bin/xlsx-cache-doctor.js"',
     'packages/xlsx-formula-recalc/package.json',
   )
-  requireIncludes(args.xlsxRecalcPackageJson, '"sheetjs-recalc": "./dist/sheetjs-cli.js"', 'packages/xlsx-formula-recalc/package.json')
+  requireIncludes(args.xlsxRecalcPackageJson, '"sheetjs-recalc": "./bin/sheetjs-recalc.js"', 'packages/xlsx-formula-recalc/package.json')
   requireIncludes(args.xlsxRecalcPackageJson, '"./cli-api"', 'packages/xlsx-formula-recalc/package.json')
   requireIncludes(args.xlsxRecalcPackageReadme, 'xlsx-cache-doctor --demo --json', 'packages/xlsx-formula-recalc/README.md')
   requireIncludes(args.xlsxRecalcPackageReadme, 'xlsx-recalc --demo --json', 'packages/xlsx-formula-recalc/README.md')
@@ -39,7 +39,11 @@ export function requirePackageCliSurfaceDiscovery(args: {
   requireIncludes(args.xlsxRecalcPackageSkillNotes, 'xlsx-recalc workbook.xlsx --inspect --json', 'packages/xlsx-formula-recalc/SKILL.md')
   requireIncludes(args.xlsxRecalcPackageSkillNotes, 'sheetjs-recalc --demo --json', 'packages/xlsx-formula-recalc/SKILL.md')
 
-  requireIncludes(args.sheetjsRecalcPackageJson, '"sheetjs-recalc": "./dist/cli.js"', 'packages/sheetjs-formula-recalc/package.json')
+  requireIncludes(
+    args.sheetjsRecalcPackageJson,
+    '"sheetjs-recalc": "./bin/sheetjs-recalc.js"',
+    'packages/sheetjs-formula-recalc/package.json',
+  )
   requireIncludes(args.sheetjsRecalcPackageReadme, 'sheetjs-recalc --demo --json', 'packages/sheetjs-formula-recalc/README.md')
   requireIncludes(
     args.sheetjsRecalcPackageReadme,
@@ -51,7 +55,11 @@ export function requirePackageCliSurfaceDiscovery(args: {
   requireIncludes(args.sheetjsRecalcPackageAgentNotes, 'recalculateSheetjsWorkbook', 'packages/sheetjs-formula-recalc/AGENTS.md')
   requireIncludes(args.sheetjsRecalcPackageSkillNotes, 'sheetjs-recalc --demo --json', 'packages/sheetjs-formula-recalc/SKILL.md')
 
-  requireIncludes(args.exceljsRecalcPackageJson, '"exceljs-recalc": "./dist/cli.js"', 'packages/exceljs-formula-recalc/package.json')
+  requireIncludes(
+    args.exceljsRecalcPackageJson,
+    '"exceljs-recalc": "./bin/exceljs-recalc.js"',
+    'packages/exceljs-formula-recalc/package.json',
+  )
   requireIncludes(args.exceljsRecalcPackageReadme, 'exceljs-recalc --demo --json', 'packages/exceljs-formula-recalc/README.md')
   requireIncludes(
     args.exceljsRecalcPackageReadme,

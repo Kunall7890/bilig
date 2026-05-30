@@ -129,9 +129,9 @@ export async function requireHeadlessExampleDiscovery({
     llms,
   })
   requireIncludes(headlessPackageManifest, '"mcpName": "io.github.proompteng/bilig-workpaper"', 'packages/headless/package.json')
-  requireIncludes(headlessPackageManifest, '"bilig-formula-clinic": "./dist/formula-clinic-bin.js"', 'packages/headless/package.json')
-  requireIncludes(headlessPackageManifest, '"bilig-mcp-challenge": "./dist/mcp-challenge-bin.js"', 'packages/headless/package.json')
-  requireIncludes(headlessPackageManifest, '"bilig-workpaper-mcp": "./dist/work-paper-mcp-stdio-bin.js"', 'packages/headless/package.json')
+  requireIncludes(headlessPackageManifest, '"bilig-formula-clinic": "./bin/bilig-formula-clinic.js"', 'packages/headless/package.json')
+  requireIncludes(headlessPackageManifest, '"bilig-mcp-challenge": "./bin/bilig-mcp-challenge.js"', 'packages/headless/package.json')
+  requireIncludes(headlessPackageManifest, '"bilig-workpaper-mcp": "./bin/bilig-workpaper-mcp.js"', 'packages/headless/package.json')
   requireIncludes(
     headlessReadme,
     `npm exec --package ${headlessPackageSpec} -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"`,
@@ -154,11 +154,7 @@ export async function requireHeadlessExampleDiscovery({
   requireIncludes(headlessServerJson, '"identifier": "@bilig/headless"', 'packages/headless/server.json')
   requireIncludes(workpaperPackageManifest, '"mcpName": "io.github.proompteng/bilig-workpaper"', 'packages/workpaper/package.json')
   requireIncludes(workpaperPackageManifest, '"server.json"', 'packages/workpaper/package.json')
-  requireIncludes(
-    workpaperPackageManifest,
-    '"bilig-workpaper-mcp": "./dist/work-paper-mcp-stdio-bin.js"',
-    'packages/workpaper/package.json',
-  )
+  requireIncludes(workpaperPackageManifest, '"bilig-workpaper-mcp": "./bin/bilig-workpaper-mcp.js"', 'packages/workpaper/package.json')
   requireIncludes(workpaperServerJson, '"name": "io.github.proompteng/bilig-workpaper"', 'packages/workpaper/server.json')
   requireIncludes(workpaperServerJson, '"identifier": "@bilig/workpaper"', 'packages/workpaper/server.json')
   requireIncludes(headlessReadme, 'npm run invoice-totals', 'packages/headless/README.md')

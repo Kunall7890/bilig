@@ -33,9 +33,10 @@
     "directory": "packages/sheetjs-formula-recalc"
   },
   "bin": {
-    "sheetjs-recalc": "./dist/cli.js"
+    "sheetjs-recalc": "./bin/sheetjs-recalc.js"
   },
   "files": [
+    "bin",
     "dist",
     "AGENTS.md",
     "SKILL.md",

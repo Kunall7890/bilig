@@ -44,6 +44,30 @@ describe('syncRuntimePackageVersions', () => {
         2,
       )}\n`,
     )
+    const xlsxCacheDoctorAction = [
+      'name: XLSX Cache Doctor',
+      'inputs:',
+      '  workbook:',
+      "    default: ''",
+      '  package-version:',
+      '    description: npm version or dist-tag for @bilig/xlsx-formula-recalc. Pin this for production workflows.',
+      '    required: false',
+      "    default: '0.1.95'",
+      '',
+    ].join('\n')
+    writeFileSync(join(rootDir, 'action.yml'), xlsxCacheDoctorAction)
+    mkdirSync(join(rootDir, 'actions/xlsx-cache-doctor'), { recursive: true })
+    writeFileSync(join(rootDir, 'actions/xlsx-cache-doctor/action.yml'), xlsxCacheDoctorAction)
+    mkdirSync(join(rootDir, 'docs'), { recursive: true })
+    writeFileSync(
+      join(rootDir, 'docs/xlsx-cache-doctor-github-action.md'),
+      [
+        "          package-version: '0.1.95'",
+        "    package-version: '0.1.95'",
+        '| `package-version`    | 0.1.95 | npm version or dist-tag for `@bilig/xlsx-formula-recalc`. Pin this in production. |',
+        '',
+      ].join('\n'),
+    )
 
     writeFileSync(
       join(rootDir, 'packages/headless/server.json'),
@@ -97,7 +121,7 @@ describe('syncRuntimePackageVersions', () => {
     const result = syncRuntimePackageVersions({ rootDir, version: '0.14.14' })
 
     expect(result.updatedPackages).toEqual(RUNTIME_PACKAGE_DIRS.map(packageNameForDir))
-    expect(result.updatedFiles).toHaveLength(RUNTIME_PACKAGE_DIRS.length + 5)
+    expect(result.updatedFiles).toHaveLength(RUNTIME_PACKAGE_DIRS.length + 8)
 
     for (const packageDir of RUNTIME_PACKAGE_DIRS) {
       const manifest = JSON.parse(readFileSync(join(rootDir, packageDir, 'package.json'), 'utf8'))
@@ -125,6 +149,10 @@ describe('syncRuntimePackageVersions', () => {
     expect(readFileSync(join(rootDir, 'Dockerfile'), 'utf8')).toBe('ARG BILIG_WORKPAPER_VERSION=0.14.14\n')
     const geminiExtension = JSON.parse(readFileSync(join(rootDir, 'gemini-extension.json'), 'utf8'))
     expect(geminiExtension.version).toBe('0.14.14')
+    expect(readFileSync(join(rootDir, 'action.yml'), 'utf8')).toContain("default: '0.14.14'")
+    expect(readFileSync(join(rootDir, 'actions/xlsx-cache-doctor/action.yml'), 'utf8')).toContain("default: '0.14.14'")
+    expect(readFileSync(join(rootDir, 'docs/xlsx-cache-doctor-github-action.md'), 'utf8')).toContain("package-version: '0.14.14'")
+    expect(readFileSync(join(rootDir, 'docs/xlsx-cache-doctor-github-action.md'), 'utf8')).toContain('| `package-version`    | 0.14.14 |')
   })
 
   it('rejects non-stable semver versions before writing files', () => {

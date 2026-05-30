@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import type { RawCellContent } from '@bilig/headless'
 import type { XlsxExternalWorkbookInput } from '@bilig/headless/xlsx'
@@ -51,7 +52,7 @@ export interface XlsxFormulaRecalcCliContext {
 const defaultInspectFormulaLimit = 'all'
 const cacheDoctorCommandName = 'xlsx-cache-doctor'
 const printGithubActionOption = '--print-github-action'
-const defaultGithubActionPackageVersion = '0.130.0'
+const defaultGithubActionPackageVersion = readPackageVersion()
 
 export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFormulaRecalcCliContext = {}): number {
   const commandName = context.commandName ?? 'xlsx-recalc'
@@ -126,6 +127,19 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
     writeStderr(`${error instanceof Error ? error.message : String(error)}\n`)
     return 1
   }
+}
+
+function readPackageVersion(): string {
+  const packageJsonPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'package.json')
+  const parsed: unknown = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`Expected package.json object at ${packageJsonPath}`)
+  }
+  const version = (parsed as { readonly version?: unknown }).version
+  if (typeof version !== 'string' || version.length === 0) {
+    throw new Error(`Expected package.json version at ${packageJsonPath}`)
+  }
+  return version
 }
 
 function parseGithubActionWorkflowArgs(args: readonly string[], commandName: string): GithubActionWorkflowOptions {

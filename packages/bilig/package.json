@@ -41,12 +41,13 @@
     "directory": "packages/bilig"
   },
   "bin": {
-    "bilig-agent-challenge": "./dist/agent-workbook-challenge-bin.js",
-    "bilig-formula-clinic": "./dist/formula-clinic-bin.js",
-    "bilig-mcp-challenge": "./dist/mcp-challenge-bin.js",
-    "bilig-workpaper-mcp": "./dist/work-paper-mcp-stdio-bin.js"
+    "bilig-agent-challenge": "./bin/bilig-agent-challenge.js",
+    "bilig-formula-clinic": "./bin/bilig-formula-clinic.js",
+    "bilig-mcp-challenge": "./bin/bilig-mcp-challenge.js",
+    "bilig-workpaper-mcp": "./bin/bilig-workpaper-mcp.js"
   },
   "files": [
+    "bin",
     "dist",
     "AGENTS.md",
     "SKILL.md",
