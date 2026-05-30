@@ -340,6 +340,9 @@ blocks anything:
     changed-files-only: true
 ```
 
+Marketplace listing:
+<https://github.com/marketplace/actions/xlsx-cache-doctor>
+
 Use `@bilig/xlsx-formula-recalc` when an `.xlsx` file is still the source of
 truth. Use `@bilig/exceljs-formula-recalc` when the workbook is already moving
 through ExcelJS. Use `@bilig/workpaper` after the file boundary stops being
@@ -442,8 +445,9 @@ That checks every formula by default, reports any skipped formulas as
 `--read` targets so the next command can prove the cells your service actually
 depends on.
 
-To run that check in CI, use the
-[XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) or
+To run that check in CI, install
+[XLSX Cache Doctor from GitHub Marketplace](https://github.com/marketplace/actions/xlsx-cache-doctor),
+read the [GitHub Action guide](docs/xlsx-cache-doctor-github-action.md), or
 copy the runnable example at
 [`examples/xlsx-cache-doctor-ci`](examples/xlsx-cache-doctor-ci).
 
@@ -1316,7 +1320,9 @@ request:
 The action writes a JSON report, adds a job summary, and exposes
 `formula-count`, `stale-count`, `uninspected-count`, and `suggested-reads`
 outputs. See
-[XLSX Cache Doctor GitHub Action](xlsx-cache-doctor-github-action.md).
+[XLSX Cache Doctor GitHub Action](xlsx-cache-doctor-github-action.md), also
+published on GitHub Marketplace at
+<https://github.com/marketplace/actions/xlsx-cache-doctor>.
 
 ## What this proves
 
@@ -1455,6 +1461,9 @@ Use this when a repository keeps `.xlsx` fixtures, pricing models, report
 templates, or approval workbooks under version control and CI needs to catch
 stale cached formula values before a service reads them.
 
+Install from GitHub Marketplace:
+<https://github.com/marketplace/actions/xlsx-cache-doctor>
+
 The action wraps the same command you can run locally:
 
 ```sh
@@ -1538,8 +1547,10 @@ for a complete fixture, workflow, and committed JSON report. The example
 fixture has a formula cell saved with a stale cached value so the action failure
 is easy to inspect before you add it to a real repository.
 
-The root `proompteng/bilig@v1` action is the canonical install path for
-Marketplace-style discovery. The subdirectory action remains available as
+The root `proompteng/bilig@v1` action is the canonical install path and is
+published as
+[XLSX Cache Doctor on GitHub Marketplace](https://github.com/marketplace/actions/xlsx-cache-doctor).
+The subdirectory action remains available as
 `proompteng/bilig/actions/xlsx-cache-doctor@v1` for users who already copied
 that path.
 

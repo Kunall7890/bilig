@@ -14,6 +14,9 @@ Use this when a repository keeps `.xlsx` fixtures, pricing models, report
 templates, or approval workbooks under version control and CI needs to catch
 stale cached formula values before a service reads them.
 
+Install from GitHub Marketplace:
+<https://github.com/marketplace/actions/xlsx-cache-doctor>
+
 The action wraps the same command you can run locally:
 
 ```sh
@@ -97,8 +100,10 @@ for a complete fixture, workflow, and committed JSON report. The example
 fixture has a formula cell saved with a stale cached value so the action failure
 is easy to inspect before you add it to a real repository.
 
-The root `proompteng/bilig@v1` action is the canonical install path for
-Marketplace-style discovery. The subdirectory action remains available as
+The root `proompteng/bilig@v1` action is the canonical install path and is
+published as
+[XLSX Cache Doctor on GitHub Marketplace](https://github.com/marketplace/actions/xlsx-cache-doctor).
+The subdirectory action remains available as
 `proompteng/bilig/actions/xlsx-cache-doctor@v1` for users who already copied
 that path.
 

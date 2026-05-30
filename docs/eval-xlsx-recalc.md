@@ -130,7 +130,9 @@ request:
 The action writes a JSON report, adds a job summary, and exposes
 `formula-count`, `stale-count`, `uninspected-count`, and `suggested-reads`
 outputs. See
-[XLSX Cache Doctor GitHub Action](xlsx-cache-doctor-github-action.md).
+[XLSX Cache Doctor GitHub Action](xlsx-cache-doctor-github-action.md), also
+published on GitHub Marketplace at
+<https://github.com/marketplace/actions/xlsx-cache-doctor>.
 
 ## What this proves
 

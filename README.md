@@ -38,6 +38,9 @@ blocks anything:
     changed-files-only: true
 ```
 
+Marketplace listing:
+<https://github.com/marketplace/actions/xlsx-cache-doctor>
+
 Use `@bilig/xlsx-formula-recalc` when an `.xlsx` file is still the source of
 truth. Use `@bilig/exceljs-formula-recalc` when the workbook is already moving
 through ExcelJS. Use `@bilig/workpaper` after the file boundary stops being
@@ -140,8 +143,9 @@ That checks every formula by default, reports any skipped formulas as
 `--read` targets so the next command can prove the cells your service actually
 depends on.
 
-To run that check in CI, use the
-[XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) or
+To run that check in CI, install
+[XLSX Cache Doctor from GitHub Marketplace](https://github.com/marketplace/actions/xlsx-cache-doctor),
+read the [GitHub Action guide](docs/xlsx-cache-doctor-github-action.md), or
 copy the runnable example at
 [`examples/xlsx-cache-doctor-ci`](examples/xlsx-cache-doctor-ci).
 
