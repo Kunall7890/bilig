@@ -25,6 +25,13 @@ describe('web preview build gate', () => {
     expect(scripts['build']).not.toContain('tsc -p')
   })
 
+  it('uses the runner config loader for production web bundles', () => {
+    const scripts = readWebPackageScripts()
+
+    expect(scripts['build']).toContain('vite/bin/vite.js build --configLoader runner')
+    expect(scripts['build:bundle']).toContain('vite/bin/vite.js build --configLoader runner')
+  })
+
   it('ensures the wasm kernel artifact before the preview web-server build', () => {
     const source = readFileSync(resolve(repoRoot, 'scripts/run-dev-web-local.ts'), 'utf8')
 
