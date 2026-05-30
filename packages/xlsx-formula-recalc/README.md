@@ -191,11 +191,12 @@ npx --package xlsx-formula-recalc xlsx-cache-doctor --print-github-action "**/*.
   > .github/workflows/xlsx-cache-doctor.yml
 ```
 
-The generated workflow is read-only and report-only by default. Add
+The generated workflow is read-only and report-only by default, sets up Node.js
+22, and pins the Bilig npm runtime with `package-version`. Add
 `--fail-on-stale true` when stale formula caches should block pull requests.
 Use `--inspect-limit`, `--json-output`, and `--markdown-output` when your first
 run should sample formulas or write the JSON and Markdown reports somewhere
-specific.
+specific. For production, pin both the Action ref and `package-version`.
 
 For an existing workbook:
 

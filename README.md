@@ -32,10 +32,16 @@ For pull requests, start with the GitHub Action and let it report before it
 blocks anything:
 
 ```yaml
+- uses: actions/setup-node@v6
+  with:
+    node-version: '22'
+    package-manager-cache: false
 - uses: proompteng/bilig@v1
   with:
     workbooks: '**/*.xlsx'
-    changed-files-only: true
+    changed-files-only: 'true'
+    package-version: '0.129.0'
+    fail-on-stale: 'false'
 ```
 
 Marketplace listing:
@@ -46,6 +52,9 @@ Live reviewer path:
 
 The demo pull request runs `proompteng/bilig@v1`, shows one workbook was
 inspected, finds one stale cached formula value, and uploads the JSON report.
+Production workflows should pin both the Action ref and `package-version`; the
+Action ref controls the wrapper, while `package-version` controls the npm
+runtime it executes.
 
 Use `@bilig/xlsx-formula-recalc` when an `.xlsx` file is still the source of
 truth. Use `@bilig/exceljs-formula-recalc` when the workbook is already moving
@@ -74,11 +83,11 @@ Project site: <https://proompteng.github.io/bilig/>
 
 Pick the path that matches the thing in your hands:
 
-| You have...                                                                              | Start with                                                                 | You should see                                                                                                 |
-| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Pull requests or services can read `.xlsx` files with stale formula caches               | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)              | A read-only formula-cache report with stale cells, cached values, recalculated values, suggested reads, and JSON. |
-| An `.xlsx` file with stale formula results after editing inputs in Node                  | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                   | A changed input, a recalculated output, `recalculationCompleted: true`, and demo `expectedValueMatched: true`. |
-| Workbook-shaped business logic that should live in a Node service, test, queue, or route | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)         | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback.         |
+| You have...                                                                              | Start with                                                         | You should see                                                                                                    |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| Pull requests or services can read `.xlsx` files with stale formula caches               | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)      | A read-only formula-cache report with stale cells, cached values, recalculated values, suggested reads, and JSON. |
+| An `.xlsx` file with stale formula results after editing inputs in Node                  | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)           | A changed input, a recalculated output, `recalculationCompleted: true`, and demo `expectedValueMatched: true`.    |
+| Workbook-shaped business logic that should live in a Node service, test, queue, or route | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md) | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback.            |
 
 If you are not sure which one fits, use the file-level XLSX path when a real
 spreadsheet file is already the source of truth. Use `@bilig/workpaper` when

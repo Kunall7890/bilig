@@ -16,9 +16,9 @@ inputs:
     required: false
     default: 'false'
   package-version:
-    description: npm version or dist-tag for @bilig/xlsx-formula-recalc.
+    description: npm version or dist-tag for @bilig/xlsx-formula-recalc. Pin this for production workflows.
     required: false
-    default: latest
+    default: '0.129.0'
   inspect-limit:
     description: Formula cells to recompute during inspection. Use "all" or a positive integer.
     required: false
@@ -71,6 +71,12 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Validate Node.js runtime
+      shell: bash
+      run: |
+        set -euo pipefail
+        node -e "const major = Number(process.versions.node.split('.')[0]); if (major < 22) { console.error('XLSX Cache Doctor requires Node.js 22+. Add actions/setup-node before proompteng/bilig.'); process.exit(1); }"
+
     - id: resolve
       name: Resolve XLSX workbooks
       shell: bash

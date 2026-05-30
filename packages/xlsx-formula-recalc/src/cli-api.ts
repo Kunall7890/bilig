@@ -44,6 +44,7 @@ export interface XlsxFormulaRecalcCliContext {
 const defaultInspectFormulaLimit = 'all'
 const cacheDoctorCommandName = 'xlsx-cache-doctor'
 const printGithubActionOption = '--print-github-action'
+const defaultGithubActionPackageVersion = '0.129.0'
 
 export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFormulaRecalcCliContext = {}): number {
   const commandName = context.commandName ?? 'xlsx-recalc'
@@ -127,7 +128,7 @@ function parseGithubActionWorkflowArgs(args: readonly string[], commandName: str
   let inspectLimit: CliOptions['inspectLimit'] = defaultInspectFormulaLimit
   let jsonOutput = '${{ runner.temp }}/xlsx-cache-doctor.json'
   let markdownOutput = '${{ runner.temp }}/xlsx-cache-doctor.md'
-  let packageVersion = 'latest'
+  let packageVersion = defaultGithubActionPackageVersion
   let workflowName = 'xlsx-cache-doctor'
 
   for (let index = 0; index < args.length; index += 1) {
@@ -199,8 +200,6 @@ function parseGithubActionWorkflowArgs(args: readonly string[], commandName: str
 }
 
 function printGithubActionWorkflow(options: GithubActionWorkflowOptions, writeStdout: (text: string) => void): void {
-  const packageVersionLines =
-    options.packageVersion === 'latest' ? [] : [`          package-version: ${yamlDoubleQuote(options.packageVersion)}`]
   writeStdout(
     [
       `name: ${yamlDoubleQuote(options.workflowName)}`,
@@ -222,12 +221,17 @@ function printGithubActionWorkflow(options: GithubActionWorkflowOptions, writeSt
       '        with:',
       '          fetch-depth: 0',
       '',
+      '      - uses: actions/setup-node@v6',
+      '        with:',
+      '          node-version: "22"',
+      '          package-manager-cache: false',
+      '',
       '      - id: cache-doctor',
       '        uses: proompteng/bilig@v1',
       '        with:',
       `          workbooks: ${yamlDoubleQuote(options.workbooks)}`,
       `          changed-files-only: ${yamlDoubleQuote(String(options.changedFilesOnly))}`,
-      ...packageVersionLines,
+      `          package-version: ${yamlDoubleQuote(options.packageVersion)}`,
       `          inspect-limit: ${yamlDoubleQuote(String(options.inspectLimit))}`,
       `          json-output: ${yamlDoubleQuote(options.jsonOutput)}`,
       `          markdown-output: ${yamlDoubleQuote(options.markdownOutput)}`,
@@ -741,7 +745,7 @@ Options:
   --markdown-output <path>
                           With ${printGithubActionOption}, set the Markdown report path. Defaults to \${{ runner.temp }}/xlsx-cache-doctor.md.
   --package-version <version>
-                          With ${printGithubActionOption}, pin @bilig/xlsx-formula-recalc in the generated workflow.
+                          With ${printGithubActionOption}, pin @bilig/xlsx-formula-recalc in the generated workflow. Defaults to ${defaultGithubActionPackageVersion}.
   --workflow-name <name>  With ${printGithubActionOption}, set the generated workflow name.
   --external-workbook <path>
                           Supply a companion XLSX for external-link cache refresh. Repeatable.

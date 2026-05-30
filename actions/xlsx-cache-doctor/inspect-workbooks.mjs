@@ -328,5 +328,19 @@ function escapeMarkdown(value) {
 }
 
 function writeGithubOutput(name, value) {
-  appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`)
+  const githubOutputPath = process.env.GITHUB_OUTPUT
+  if (!githubOutputPath) {
+    return
+  }
+  const delimiter = githubOutputDelimiter(name, value)
+  appendFileSync(githubOutputPath, `${name}<<${delimiter}\n${value}\n${delimiter}\n`)
+}
+
+function githubOutputDelimiter(name, value) {
+  const safeName = name.replaceAll(/[^A-Za-z0-9_]/gu, '_')
+  let delimiter = `BILIG_${safeName}_OUTPUT`
+  while (value.includes(delimiter)) {
+    delimiter = `${delimiter}_END`
+  }
+  return delimiter
 }

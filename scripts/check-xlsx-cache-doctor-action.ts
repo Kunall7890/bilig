@@ -12,6 +12,9 @@ const resolveScriptPath = join(repoRoot, 'actions', 'xlsx-cache-doctor', 'resolv
 const inspectScriptPath = join(repoRoot, 'actions', 'xlsx-cache-doctor', 'inspect-workbooks.mjs')
 
 const [rootAction, nestedAction] = await Promise.all([readFile(rootActionPath, 'utf8'), readFile(nestedActionPath, 'utf8')])
+const xlsxFormulaRecalcPackage = parsePackageJson(
+  await readFile(join(repoRoot, 'packages', 'bilig-xlsx-formula-recalc', 'package.json'), 'utf8'),
+)
 
 if (rootAction !== nestedAction) {
   throw new Error(
@@ -28,6 +31,16 @@ if (!existsSync(resolveScriptPath) || !existsSync(inspectScriptPath)) {
 
 if (!rootAction.includes('workbooks:') || !rootAction.includes('changed-files-only:')) {
   throw new Error('XLSX Cache Doctor action.yml must expose repo-scale workbooks and changed-files-only inputs.')
+}
+
+if (!rootAction.includes(`default: '${xlsxFormulaRecalcPackage.version}'`)) {
+  throw new Error(
+    `XLSX Cache Doctor action.yml must pin package-version default to @bilig/xlsx-formula-recalc ${xlsxFormulaRecalcPackage.version}.`,
+  )
+}
+
+if (!rootAction.includes('Validate Node.js runtime') || !rootAction.includes('requires Node.js 22+')) {
+  throw new Error('XLSX Cache Doctor action.yml must fail clearly when consumers omit Node.js 22+ setup.')
 }
 
 const tempDir = mkdtempSync(join(tmpdir(), 'bilig-xlsx-cache-doctor-action-'))
@@ -50,7 +63,8 @@ try {
     throw new Error(`XLSX Cache Doctor resolver smoke failed:\n${result.stdout}\n${result.stderr}`)
   }
   const output = await readFile(outputPath, 'utf8')
-  if (!output.includes('workbook-count=1') || !output.includes('workbooks-json=["a.xlsx"]')) {
+  const outputs = parseGithubOutput(output)
+  if (outputs['workbook-count'] !== '1' || outputs['workbooks-json'] !== '["a.xlsx"]') {
     throw new Error(`Unexpected resolver output:\n${output}`)
   }
 } finally {
@@ -86,7 +100,8 @@ try {
     throw new Error(`XLSX Cache Doctor changed-file resolver smoke failed:\n${result.stdout}\n${result.stderr}`)
   }
   const output = await readFile(outputPath, 'utf8')
-  if (!output.includes('workbook-count=1') || !output.includes('workbooks-json=["changed.xlsx"]')) {
+  const outputs = parseGithubOutput(output)
+  if (outputs['workbook-count'] !== '1' || outputs['workbooks-json'] !== '["changed.xlsx"]') {
     throw new Error(`Unexpected changed-file resolver output:\n${output}`)
   }
 } finally {
@@ -164,13 +179,14 @@ try {
     throw new Error(`Expected escaped stale-formula warning annotation in stdout:\n${result.stdout}`)
   }
   const output = await readFile(outputPath, 'utf8')
+  const outputs = parseGithubOutput(output)
   if (
-    !output.includes('stale-count=2') ||
-    !output.includes('fresh-count=0') ||
-    !output.includes('missing-cache-count=0') ||
-    !output.includes('unsupported-recalculation-count=1') ||
-    !output.includes(`markdown=${markdownPath}`) ||
-    !output.includes('suggested-reads=fixtures/stale-pricing.xlsx#Sheet1!B2,fixtures/stale-pricing.xlsx#Sheet1!B3')
+    outputs['stale-count'] !== '2' ||
+    outputs['fresh-count'] !== '0' ||
+    outputs['missing-cache-count'] !== '0' ||
+    outputs['unsupported-recalculation-count'] !== '1' ||
+    outputs['markdown'] !== markdownPath ||
+    outputs['suggested-reads'] !== 'fixtures/stale-pricing.xlsx#Sheet1!B2,fixtures/stale-pricing.xlsx#Sheet1!B3'
   ) {
     throw new Error(`Unexpected inspector outputs:\n${output}`)
   }
@@ -250,4 +266,40 @@ function parseAggregateReport(value: unknown): {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function parsePackageJson(raw: string): { version: string } {
+  const value: unknown = JSON.parse(raw)
+  if (!isRecord(value) || typeof value.version !== 'string') {
+    throw new Error('Expected package.json with string version.')
+  }
+  return { version: value.version }
+}
+
+function parseGithubOutput(raw: string): Record<string, string> {
+  const outputs: Record<string, string> = {}
+  const lines = raw.split('\n')
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]
+    if (!line) {
+      continue
+    }
+    const delimiterMatch = /^(?<name>[A-Za-z_][A-Za-z0-9_-]*)<<(?<delimiter>.+)$/u.exec(line)
+    if (delimiterMatch?.groups) {
+      const { name, delimiter } = delimiterMatch.groups
+      const valueLines: string[] = []
+      index += 1
+      while (index < lines.length && lines[index] !== delimiter) {
+        valueLines.push(lines[index])
+        index += 1
+      }
+      outputs[name] = valueLines.join('\n')
+      continue
+    }
+    const equalsIndex = line.indexOf('=')
+    if (equalsIndex > 0) {
+      outputs[line.slice(0, equalsIndex)] = line.slice(equalsIndex + 1)
+    }
+  }
+  return outputs
 }

@@ -183,5 +183,19 @@ function unique(items) {
 }
 
 function writeGithubOutput(name, value) {
-  appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`)
+  const outputPath = process.env.GITHUB_OUTPUT
+  if (!outputPath) {
+    return
+  }
+  const delimiter = githubOutputDelimiter(name, value)
+  appendFileSync(outputPath, `${name}<<${delimiter}\n${value}\n${delimiter}\n`)
+}
+
+function githubOutputDelimiter(name, value) {
+  const safeName = name.replaceAll(/[^A-Za-z0-9_]/gu, '_')
+  let delimiter = `BILIG_${safeName}_OUTPUT`
+  while (value.includes(delimiter)) {
+    delimiter = `${delimiter}_END`
+  }
+  return delimiter
 }

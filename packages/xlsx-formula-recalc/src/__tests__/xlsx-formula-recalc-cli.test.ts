@@ -250,6 +250,9 @@ describe('xlsx-recalc CLI', () => {
     expect(stdout).toContain('pull_request:')
     expect(stdout).toContain('- "**/*.xlsx"')
     expect(stdout).toContain('fetch-depth: 0')
+    expect(stdout).toContain('uses: actions/setup-node@v6')
+    expect(stdout).toContain('node-version: "22"')
+    expect(stdout).toContain('package-manager-cache: false')
     expect(stdout).toContain('uses: proompteng/bilig@v1')
     expect(stdout).toContain('workbooks: "fixtures/pricing model.xlsx"')
     expect(stdout).toContain('changed-files-only: "true"')
@@ -265,9 +268,10 @@ describe('xlsx-recalc CLI', () => {
     const job = requireRecord(jobs['inspect-xlsx-formula-caches'])
     const steps = requireRecordArray(job['steps'])
     const checkout = steps[0] ?? {}
-    const cacheDoctor = steps[1] ?? {}
+    const setupNode = steps[1] ?? {}
+    const cacheDoctor = steps[2] ?? {}
     const cacheDoctorInputs = requireRecord(cacheDoctor['with'])
-    const uploadArtifact = steps[2] ?? {}
+    const uploadArtifact = steps[3] ?? {}
 
     expect(workflow['name']).toBe('workbook cache doctor')
     expect(workflow['on']).toEqual({
@@ -276,6 +280,10 @@ describe('xlsx-recalc CLI', () => {
     })
     expect(workflow['permissions']).toEqual({ contents: 'read' })
     expect(checkout).toMatchObject({ uses: 'actions/checkout@v5', with: { 'fetch-depth': 0 } })
+    expect(setupNode).toMatchObject({
+      uses: 'actions/setup-node@v6',
+      with: { 'node-version': '22', 'package-manager-cache': false },
+    })
     expect(cacheDoctor).toMatchObject({ id: 'cache-doctor', uses: 'proompteng/bilig@v1' })
     expect(cacheDoctorInputs).toEqual({
       workbooks: 'fixtures/pricing model.xlsx',
@@ -324,6 +332,7 @@ describe('xlsx-recalc CLI', () => {
     expect(stdout).toContain('workbooks: "**/*.xlsx"')
     expect(stdout).toContain('changed-files-only: "false"')
     expect(stdout).toContain('inspect-limit: "all"')
+    expect(stdout).toContain('package-version: "0.129.0"')
     expect(stdout).toContain('json-output: "${{ runner.temp }}/xlsx-cache-doctor.json"')
     expect(stdout).toContain('markdown-output: "${{ runner.temp }}/xlsx-cache-doctor.md"')
     expect(stdout).toContain('fail-on-stale: "false"')

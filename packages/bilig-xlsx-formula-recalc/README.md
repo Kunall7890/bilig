@@ -71,8 +71,11 @@ npx --package @bilig/xlsx-formula-recalc xlsx-cache-doctor --print-github-action
 ```
 
 The generated workflow uses `proompteng/bilig@v1`, uploads JSON and Markdown
-reports, and starts in report-only mode. Add `--fail-on-stale true` when stale
-formula caches should block pull requests.
+reports, sets up Node.js 22, pins the npm runtime with `package-version`, and
+starts in report-only mode. Add `--fail-on-stale true` when stale formula
+caches should block pull requests. For production, pin both the Action ref and
+`package-version`; the Action ref pins the wrapper, and `package-version` pins
+the npm package it executes.
 
 For a live reviewer path, inspect the
 [XLSX Cache Doctor demo PR](https://github.com/proompteng/xlsx-cache-doctor-demo/pull/1).
