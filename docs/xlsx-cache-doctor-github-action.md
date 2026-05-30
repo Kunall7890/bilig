@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: proompteng/bilig/actions/xlsx-cache-doctor@main
+      - uses: proompteng/bilig@v1
         id: cache-doctor
         with:
           workbook: fixtures/pricing.xlsx
@@ -68,6 +68,11 @@ See
 for a complete fixture, workflow, and committed JSON report. The example
 fixture has a formula cell saved with a stale cached value so the action failure
 is easy to inspect before you add it to a real repository.
+
+The root `proompteng/bilig@v1` action is the canonical install path for
+Marketplace-style discovery. The subdirectory action remains available as
+`proompteng/bilig/actions/xlsx-cache-doctor@v1` for users who already copied
+that path.
 
 ## Inputs
 

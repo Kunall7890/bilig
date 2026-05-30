@@ -164,7 +164,7 @@ formula-value problem without asking you to adopt WorkPaper state first.
 
 | Problem you have right now                                                        | Install                                                       | First proof                                                                             |
 | --------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Pull requests can commit XLSX fixtures with stale formula caches                  | `uses: proompteng/bilig/actions/xlsx-cache-doctor@main`       | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md)              |
+| Pull requests can commit XLSX fixtures with stale formula caches                  | `uses: proompteng/bilig@v1`                                   | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md)              |
 | Formula workbook state inside a Node service or agent tool                        | `npm install @bilig/workpaper`                                | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                         |
 | AI agent needs to edit workbook inputs and verify formula readback                | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](docs/ai-agent-spreadsheet-tool-node.md)                     |
 | Agent framework or product runtime needs workbook plan/check/proof data           | `npm install @bilig/workbook`                                 | [Workbook agent intent API](docs/workbook-agent-intent-api.md)                          |

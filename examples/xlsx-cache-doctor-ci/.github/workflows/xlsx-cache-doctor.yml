@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - id: cache-doctor
-        uses: proompteng/bilig/actions/xlsx-cache-doctor@main
+        uses: proompteng/bilig@v1
         with:
           workbook: fixtures/stale-pricing.xlsx
           json-output: ${{ runner.temp }}/stale-pricing.cache-doctor.json

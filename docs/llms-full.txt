@@ -466,7 +466,7 @@ formula-value problem without asking you to adopt WorkPaper state first.
 
 | Problem you have right now                                                        | Install                                                       | First proof                                                                             |
 | --------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Pull requests can commit XLSX fixtures with stale formula caches                  | `uses: proompteng/bilig/actions/xlsx-cache-doctor@main`       | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md)              |
+| Pull requests can commit XLSX fixtures with stale formula caches                  | `uses: proompteng/bilig@v1`                                   | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md)              |
 | Formula workbook state inside a Node service or agent tool                        | `npm install @bilig/workpaper`                                | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                         |
 | AI agent needs to edit workbook inputs and verify formula readback                | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](docs/ai-agent-spreadsheet-tool-node.md)                     |
 | Agent framework or product runtime needs workbook plan/check/proof data           | `npm install @bilig/workbook`                                 | [Workbook agent intent API](docs/workbook-agent-intent-api.md)                          |
@@ -1269,7 +1269,7 @@ Use the repository action when stale cached formula values should block a pull
 request:
 
 ```yaml
-- uses: proompteng/bilig/actions/xlsx-cache-doctor@main
+- uses: proompteng/bilig@v1
   with:
     workbook: fixtures/pricing.xlsx
     fail-on-stale: "true"
@@ -1446,7 +1446,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: proompteng/bilig/actions/xlsx-cache-doctor@main
+      - uses: proompteng/bilig@v1
         id: cache-doctor
         with:
           workbook: fixtures/pricing.xlsx
@@ -1470,6 +1470,11 @@ See
 for a complete fixture, workflow, and committed JSON report. The example
 fixture has a formula cell saved with a stale cached value so the action failure
 is easy to inspect before you add it to a real repository.
+
+The root `proompteng/bilig@v1` action is the canonical install path for
+Marketplace-style discovery. The subdirectory action remains available as
+`proompteng/bilig/actions/xlsx-cache-doctor@v1` for users who already copied
+that path.
 
 ## Inputs
 

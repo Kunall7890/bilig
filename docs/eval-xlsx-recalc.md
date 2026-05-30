@@ -116,7 +116,7 @@ Use the repository action when stale cached formula values should block a pull
 request:
 
 ```yaml
-- uses: proompteng/bilig/actions/xlsx-cache-doctor@main
+- uses: proompteng/bilig@v1
   with:
     workbook: fixtures/pricing.xlsx
     fail-on-stale: "true"
