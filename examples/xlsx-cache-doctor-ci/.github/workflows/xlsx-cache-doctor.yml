@@ -1,0 +1,29 @@
+name: xlsx-cache-doctor
+
+on:
+  pull_request:
+    paths:
+      - "**/*.xlsx"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-xlsx-formula-caches:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - id: cache-doctor
+        uses: proompteng/bilig/actions/xlsx-cache-doctor@main
+        with:
+          workbook: fixtures/stale-pricing.xlsx
+          json-output: ${{ runner.temp }}/stale-pricing.cache-doctor.json
+          fail-on-stale: "true"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xlsx-cache-doctor-report
+          path: ${{ steps.cache-doctor.outputs.json }}

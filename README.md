@@ -8,17 +8,18 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**Formula workbooks for Node services and agent tools.**
+**Detect stale XLSX formula values in Node, then use WorkPaper APIs when the
+calculation needs durable workbook state.**
 
-Use [`@bilig/workpaper`](https://www.npmjs.com/package/@bilig/workpaper) when a
-calculation is easiest to review as cells and formulas, but it has to run in a
-Node service, queue worker, serverless route, test, or coding-agent tool. Use
-[`@bilig/xlsx-formula-recalc`](https://www.npmjs.com/package/@bilig/xlsx-formula-recalc)
+Start with [`@bilig/xlsx-formula-recalc`](https://www.npmjs.com/package/@bilig/xlsx-formula-recalc)
 when the immediate problem is "I changed XLSX inputs in Node and need the
-formula results now," including SheetJS / `xlsx` pipelines that already produce
-XLSX bytes. Use
+formula results now," including SheetJS / `xlsx`, ExcelJS, `xlsx-populate`, and
+CI pipelines that already produce XLSX bytes. Use
 [`@bilig/exceljs-formula-recalc`](https://www.npmjs.com/package/@bilig/exceljs-formula-recalc)
-when the workbook is already moving through ExcelJS.
+when the workbook is already moving through ExcelJS. Use
+[`@bilig/workpaper`](https://www.npmjs.com/package/@bilig/workpaper) when a
+calculation is easiest to review as cells and formulas, but it has to run in a
+Node service, queue worker, serverless route, test, or coding-agent tool.
 
 The scoped `@bilig/*` packages are the canonical install path. Start with
 `@bilig/workpaper` for service-owned workbook state or
@@ -130,7 +131,9 @@ That returns formula cells, stale cached values, and suggested `--read` targets
 so the next command can prove the cells your service actually depends on.
 
 To run that check in CI, use the
-[XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md).
+[XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) or
+copy the runnable example at
+[`examples/xlsx-cache-doctor-ci`](examples/xlsx-cache-doctor-ci).
 
 If your pipeline is specifically SheetJS / `xlsx`, run the sibling proof with
 the same shape:

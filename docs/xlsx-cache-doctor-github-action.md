@@ -33,6 +33,10 @@ on:
   pull_request:
     paths:
       - "**/*.xlsx"
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   xlsx-cache:
@@ -44,13 +48,26 @@ jobs:
         id: cache-doctor
         with:
           workbook: fixtures/pricing.xlsx
+          json-output: ${{ runner.temp }}/pricing.cache-doctor.json
           fail-on-stale: "true"
 
       - run: |
           echo "formula cells: ${{ steps.cache-doctor.outputs.formula-count }}"
           echo "stale values: ${{ steps.cache-doctor.outputs.stale-count }}"
           echo "suggested reads: ${{ steps.cache-doctor.outputs.suggested-reads }}"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xlsx-cache-doctor-report
+          path: ${{ steps.cache-doctor.outputs.json }}
 ```
+
+See
+[`examples/xlsx-cache-doctor-ci`](https://github.com/proompteng/bilig/tree/main/examples/xlsx-cache-doctor-ci)
+for a complete fixture, workflow, and committed JSON report. The example
+fixture has a formula cell saved with a stale cached value so the action failure
+is easy to inspect before you add it to a real repository.
 
 ## Inputs
 

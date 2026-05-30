@@ -132,7 +132,9 @@ the recalculation command:
 `xlsx-recalc pricing.xlsx --inspect --json`. It is meant for issue triage, CI,
 and pull-request checks where you only want to know whether committed XLSX files
 carry stale cached formula values. The GitHub Action wrapper lives at
-[`actions/xlsx-cache-doctor`](../../actions/xlsx-cache-doctor).
+[`actions/xlsx-cache-doctor`](../../actions/xlsx-cache-doctor), and the runnable
+fixture/workflow example lives at
+[`examples/xlsx-cache-doctor-ci`](../../examples/xlsx-cache-doctor-ci).
 
 For an existing workbook:
 

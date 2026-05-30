@@ -1,0 +1,29 @@
+{
+  "mode": "file",
+  "input": "fixtures/stale-pricing.xlsx",
+  "edits": 0,
+  "externalWorkbooks": 0,
+  "sheetNames": ["Sheet1"],
+  "formulaCellCount": 1,
+  "inspectedFormulaCellCount": 1,
+  "staleCachedFormulaCount": 1,
+  "suggestedReads": ["Sheet1!B2"],
+  "formulas": [
+    {
+      "target": "Sheet1!B2",
+      "formula": "=A2*10",
+      "cachedValue": 999,
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 20
+      },
+      "literalRecalculatedValue": 20,
+      "staleCachedValue": true
+    }
+  ],
+  "warnings": [],
+  "commandSucceeded": true,
+  "inspectionCompleted": true,
+  "recalculationCompleted": true,
+  "excelParity": "not_proven"
+}
