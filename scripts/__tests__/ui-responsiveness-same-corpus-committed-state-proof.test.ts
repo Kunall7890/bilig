@@ -331,6 +331,40 @@ describe('same-corpus committed-state proof capture', () => {
     })
   })
 
+  it('falls back to the authenticated request context when page-context export fetch is blocked', async () => {
+    const committedBytes = xlsxBytesForTargetFill('WideGrid', 'C5', 'segment-5', '#c9daf8')
+    let pageFetchCount = 0
+    const page = mockGoogleSheetsExportPage([committedBytes], {
+      evaluate: async () => {
+        pageFetchCount += 1
+        throw new TypeError('Failed to fetch')
+      },
+    })
+
+    const proof = await captureSameCorpusCommittedStatePhaseProof({
+      expectedReadback: {
+        ...sameCorpusGoogleReadback('segment-5'),
+        fillColor: '#c9daf8',
+      },
+      page: page.page,
+      phase: 'after',
+      product: 'google-sheets',
+      sampleIndex: 0,
+      target: sameCorpusTargetSelection(),
+      timeoutMs: 5_000,
+      pollIntervalMs: 0,
+      workload: 'fill-format-change',
+    })
+
+    expect(pageFetchCount).toBe(1)
+    expect(page.requestCount()).toBe(1)
+    expect(proof?.readback).toMatchObject({
+      fillColor: '#c9daf8',
+      source: 'google-sheets-xlsx-export',
+      value: 'segment-5',
+    })
+  })
+
   it('fails when Google Sheets XLSX export never proves the expected committed target readback', async () => {
     const page = mockGoogleSheetsExportPage([xlsxBytesForTargetValue('WideGrid', 'C5', 'stale-browser-only-value')])
 

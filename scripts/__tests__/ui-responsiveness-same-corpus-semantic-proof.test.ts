@@ -1543,7 +1543,7 @@ function googleCommittedStateReadback(readback: SameCorpusMutationTargetProof['b
 }
 
 function fillColorForSample(sampleIndex: number): string {
-  const colors = ['#c9daf8', '#00ff00', '#a4c2f4'] as const
+  const colors = ['#00ff00', '#ffff00', '#ff00ff'] as const
   return colors[sampleIndex % colors.length]
 }
 

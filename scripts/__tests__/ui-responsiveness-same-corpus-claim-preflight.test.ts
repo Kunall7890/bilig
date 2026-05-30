@@ -305,7 +305,7 @@ function verifiedFillFormatMutationProof(): PreflightFillFormatMutationProof {
   } as const
   const after = {
     ...before,
-    fillColor: '#c9daf8',
+    fillColor: '#00ff00',
   }
   return {
     product: 'google-sheets',
@@ -316,8 +316,8 @@ function verifiedFillFormatMutationProof(): PreflightFillFormatMutationProof {
     sheetId: 'google-sheet-id',
     targetRange: 'B5:B7',
     intendedOperation: 'fill-format-change',
-    intendedFillColor: '#c9daf8',
-    swatchLabel: 'light cornflower blue 3',
+    intendedFillColor: '#00ff00',
+    swatchLabel: 'green',
     before,
     after,
     restored: before,
@@ -337,7 +337,7 @@ function verifiedFillFormatMutationProof(): PreflightFillFormatMutationProof {
     evidence: [
       'method=fill-color-commit-readback-restore',
       'targetRange=B5:B7',
-      'intendedFillColor=#c9daf8',
+      'intendedFillColor=#00ff00',
       'renderedFillVerified=true',
       'committedFillVerified=true',
       'undoRestoreStatus=verified',

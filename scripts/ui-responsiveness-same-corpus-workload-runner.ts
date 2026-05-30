@@ -55,9 +55,9 @@ export interface SameCorpusMutationOperationPlan {
 }
 
 const sameCorpusFillColorSwatches = [
-  { label: 'light cornflower blue 3', value: '#c9daf8' },
   { label: 'green', value: '#00ff00' },
-  { label: 'light cornflower blue 2', value: '#a4c2f4' },
+  { label: 'yellow', value: '#ffff00' },
+  { label: 'magenta', value: '#ff00ff' },
 ] as const
 const sameCorpusMutationRunNonce = Date.now().toString(36)
 
@@ -333,8 +333,11 @@ function sameCorpusFillColorCandidateLabels(swatchLabel: string, options: { read
   if (swatchLabel === 'green') {
     return ['green']
   }
-  if (swatchLabel === 'light cornflower blue 2') {
-    return ['light cornflower blue 2', 'light blue 2']
+  if (swatchLabel === 'yellow') {
+    return ['yellow']
+  }
+  if (swatchLabel === 'magenta') {
+    return ['magenta']
   }
   return [swatchLabel, 'light cornflower blue']
 }

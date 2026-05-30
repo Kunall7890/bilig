@@ -479,7 +479,11 @@ function sameCorpusReadbackTextValue(readback: SameCorpusMutationTargetReadback)
 
 async function fetchGoogleSheetsXlsxExport(page: SameCorpusCommittedStatePage, exportUrl: string): Promise<Uint8Array> {
   if (page.evaluate) {
-    return await fetchGoogleSheetsXlsxExportInPage(page, exportUrl)
+    try {
+      return await fetchGoogleSheetsXlsxExportInPage(page, exportUrl)
+    } catch {
+      return await fetchGoogleSheetsXlsxExportWithRequest(page, exportUrl)
+    }
   }
   return await fetchGoogleSheetsXlsxExportWithRequest(page, exportUrl)
 }

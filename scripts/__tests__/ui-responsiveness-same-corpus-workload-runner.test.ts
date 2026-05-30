@@ -11,8 +11,8 @@ describe('same-corpus workload runner', () => {
     await performSameCorpusFillColorOperation(page, 'google-sheets', 0)
 
     expect(events).toEqual(['label:Fill color', expect.stringContaining('.goog-menu')])
-    expect(events[1]).toContain('light cornflower blue 3')
-    expect(events[1]).not.toContain('light cornflower blue"]')
+    expect(events[1]).toContain('green')
+    expect(events[1]).not.toContain('light cornflower blue')
   })
 })
 
@@ -25,7 +25,7 @@ function fakeFillColorPage(events: string[]): Page {
           if (name === 'label:Fill color') {
             return
           }
-          if (name.startsWith('selector:') && name.includes('.goog-menu') && name.includes('light cornflower blue 3')) {
+          if (name.startsWith('selector:') && name.includes('.goog-menu') && name.includes('green')) {
             return
           }
           throw new Error(`unexpected fill locator: ${name}`)

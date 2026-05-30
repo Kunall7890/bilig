@@ -61,6 +61,7 @@ import {
   incumbentEditableWorkloadBlocker,
   measureProductWorkload,
   sameCorpusEditVisibleCellValue,
+  sameCorpusFillColorExpectedColors,
   sameCorpusFillColorExpectedColor,
   sameCorpusFillColorSwatchLabel,
   sameCorpusFormulaEditFormula,
@@ -604,8 +605,10 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(sameCorpusKeyboardOperations('select-cell', 0, 'darwin')).toEqual([{ kind: 'press', key: 'ArrowRight' }])
     expect(sameCorpusKeyboardOperations('jump-deep-row', 0, 'darwin')).toEqual([{ kind: 'press', key: 'Meta+ArrowDown' }])
     expect(sameCorpusKeyboardOperations('fill-format-change', 0, 'linux')).toEqual([])
-    expect(sameCorpusFillColorSwatchLabel(0)).toBe('light cornflower blue 3')
-    expect(sameCorpusFillColorSwatchLabel(1)).toBe('green')
+    expect(sameCorpusFillColorSwatchLabel(0)).toBe('green')
+    expect(sameCorpusFillColorSwatchLabel(1)).toBe('yellow')
+    expect(sameCorpusFillColorExpectedColors()).toEqual(['#00ff00', '#ffff00', '#ff00ff'])
+    expect(sameCorpusFillColorExpectedColors()).not.toContain('#c9daf8')
     expect(sameCorpusKeyboardOperations('formula-edit', 1, 'darwin')).toEqual([
       { kind: 'type', text: sameCorpusFormulaEditFormula(1) },
       { kind: 'press', key: 'Enter' },
@@ -2674,9 +2677,9 @@ function sameCorpusMutationTargetIntendedPayload(
   }
   if (workload === 'fill-format-change') {
     const swatches = [
-      { label: 'light cornflower blue 3', value: '#c9daf8' },
       { label: 'green', value: '#00ff00' },
-      { label: 'light cornflower blue 2', value: '#a4c2f4' },
+      { label: 'yellow', value: '#ffff00' },
+      { label: 'magenta', value: '#ff00ff' },
     ] as const
     const swatch = swatches[sampleIndex % swatches.length]
     return { kind: 'fill-color', expectedFillColor: swatch.value, swatchLabel: swatch.label }
@@ -2685,7 +2688,7 @@ function sameCorpusMutationTargetIntendedPayload(
 }
 
 function sameCorpusExpectedFillColor(sampleIndex: number): string {
-  const colors = ['#c9daf8', '#00ff00', '#a4c2f4'] as const
+  const colors = ['#00ff00', '#ffff00', '#ff00ff'] as const
   return colors[sampleIndex % colors.length]
 }
 
@@ -2835,8 +2838,8 @@ function driftIntendedFillColor(proof: SameCorpusMutationTargetProof): SameCorpu
   }
   return {
     ...proof,
-    after: { ...proof.after, fillColor: '#00ff00' },
-    visibleAfter: { ...proof.visibleAfter, fillColor: '#00ff00' },
+    after: { ...proof.after, fillColor: '#ffff00' },
+    visibleAfter: { ...proof.visibleAfter, fillColor: '#ffff00' },
   }
 }
 

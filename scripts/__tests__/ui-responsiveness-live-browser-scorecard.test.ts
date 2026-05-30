@@ -1729,9 +1729,9 @@ function sameCorpusMutationTargetIntendedPayload(workload: UiResponsivenessSameC
   }
   if (workload === 'fill-format-change') {
     const swatches = [
-      { label: 'light cornflower blue 3', value: '#c9daf8' },
       { label: 'green', value: '#00ff00' },
-      { label: 'light cornflower blue 2', value: '#a4c2f4' },
+      { label: 'yellow', value: '#ffff00' },
+      { label: 'magenta', value: '#ff00ff' },
     ] as const
     const swatch = swatches[sampleIndex % swatches.length]
     return { kind: 'fill-color' as const, expectedFillColor: swatch.value, swatchLabel: swatch.label }
@@ -1740,7 +1740,7 @@ function sameCorpusMutationTargetIntendedPayload(workload: UiResponsivenessSameC
 }
 
 function sameCorpusExpectedFillColor(sampleIndex: number): string {
-  const colors = ['#c9daf8', '#00ff00', '#a4c2f4'] as const
+  const colors = ['#00ff00', '#ffff00', '#ff00ff'] as const
   return colors[sampleIndex % colors.length]
 }
 
