@@ -173,39 +173,27 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="wrap hero-inner">
         <div class="hero-copy">
-          <p class="eyebrow">Start with the XLSX you already have</p>
-          <h1 id="hero-title" class="hero-title">Fix stale XLSX formulas in Node.</h1>
+          <p class="eyebrow">XLSX Cache Doctor is live on GitHub Marketplace</p>
+          <h1 id="hero-title" class="hero-title">Stop stale XLSX formulas before they reach main.</h1>
           <p class="hero-subtitle">
-            SheetJS, ExcelJS, and xlsx-populate can write the file and still leave the formula cache stale. Bilig recalculates the workbook
-            in Node and reads back the value before your API, queue worker, or CI job trusts it.
+            When a script edits an input cell, Excel's cached result can lie. Bilig recalculates the workbook in Node and reports the
+            formula values that changed, without Excel, LibreOffice, or browser automation.
           </p>
-          <div class="hero-proof-grid" aria-label="First commands">
-            <a class="hero-proof-card" href="./eval-xlsx-recalc.html">
-              <span>I have an XLSX</span>
-              <strong>Prove the formula cache is fresh</strong>
-              <code>npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json</code>
-              <em>The shortest proof for SheetJS, ExcelJS, and xlsx-populate users.</em>
-            </a>
-            <a class="hero-proof-card" href="./eval-workpaper-service.html">
-              <span>I need a Node service</span>
-              <strong>Put the workbook behind an API</strong>
-              <code>npm create @bilig/workpaper@latest pricing-workpaper</code>
-              <em>Good for pricing, payouts, import checks, and other rules people still review in cells.</em>
-            </a>
-            <a class="hero-proof-card" href="./eval-agent-mcp.html">
-              <span>I need an agent tool</span>
-              <strong>Give agents a workbook contract</strong>
-              <code>npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json</code>
-              <em>Let the agent change inputs and read calculated results without screen driving.</em>
-            </a>
+          <div class="hero-command" aria-label="XLSX Cache Doctor install command">
+            <span>CI</span>
+            <code>uses: proompteng/bilig@v1</code>
+            <strong>Find stale workbook caches in pull requests.</strong>
           </div>
           <div class="hero-actions">
-            <a class="button primary" href="./stale-xlsx-formula-cache-node.html">Read the stale-value guide</a>
-            <a class="button" href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">XLSX npm</a>
-            <a class="button" href="./eval-xlsx-recalc.html">Run the proof</a>
+            <a class="button primary" href="https://github.com/marketplace/actions/xlsx-cache-doctor">Use the Marketplace Action</a>
+            <a class="button" href="https://github.com/proompteng/xlsx-cache-doctor-demo/pull/1">Inspect the demo PR</a>
             <a class="button" href="https://context7.com/proompteng/bilig">Ask docs</a>
-            <a class="button dark" href="https://github.com/proompteng/bilig">View GitHub</a>
+            <a class="button" href="./eval-xlsx-recalc.html">Run locally</a>
           </div>
+          <p class="hero-note">
+            Need more than CI? Start with <a href="./eval-xlsx-recalc.html">an XLSX proof</a>,
+            <a href="./eval-workpaper-service.html">a Node service</a>, or <a href="./eval-agent-mcp.html">an agent workbook contract</a>.
+          </p>
         </div>
 
         <figure class="hero-media" aria-label="Animated workbook scene showing a formula result after a TypeScript write.">

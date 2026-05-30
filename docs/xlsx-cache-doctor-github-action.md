@@ -100,6 +100,12 @@ for a complete fixture, workflow, and committed JSON report. The example
 fixture has a formula cell saved with a stale cached value so the action failure
 is easy to inspect before you add it to a real repository.
 
+For the live GitHub reviewer path, use the
+[XLSX Cache Doctor demo PR](https://github.com/proompteng/xlsx-cache-doctor-demo/pull/1).
+The green check runs `proompteng/bilig@v1`, inspects one changed workbook,
+asserts 60 formula cells and 1 stale cached formula value, and uploads the JSON
+report artifact.
+
 The root `proompteng/bilig@v1` action is the canonical install path and is
 published as
 [XLSX Cache Doctor on GitHub Marketplace](https://github.com/marketplace/actions/xlsx-cache-doctor).

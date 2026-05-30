@@ -34,7 +34,7 @@ blocks anything:
 ```yaml
 - uses: proompteng/bilig@v1
   with:
-    workbooks: "**/*.xlsx"
+    workbooks: '**/*.xlsx'
     changed-files-only: true
 ```
 
@@ -148,6 +148,10 @@ To run that check in CI, install
 read the [GitHub Action guide](docs/xlsx-cache-doctor-github-action.md), or
 copy the runnable example at
 [`examples/xlsx-cache-doctor-ci`](examples/xlsx-cache-doctor-ci).
+For a live reviewer path, inspect the
+[demo pull request](https://github.com/proompteng/xlsx-cache-doctor-demo/pull/1):
+it runs `proompteng/bilig@v1`, proves 60 formula cells were inspected, finds 1
+stale cached formula value, and uploads the JSON report.
 
 To generate the pull-request workflow instead of hand-writing YAML:
 

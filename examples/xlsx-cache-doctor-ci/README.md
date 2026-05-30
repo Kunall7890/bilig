@@ -58,6 +58,11 @@ or more matched workbooks, writes a job summary, and uploads the JSON report as
 an artifact. It does not comment on pull requests, rewrite workbooks, require
 secrets, or use a write token.
 
+To see the same shape as a live GitHub reviewer, inspect the
+[demo pull request](https://github.com/proompteng/xlsx-cache-doctor-demo/pull/1).
+Its green Action run proves 1 workbook, 60 formula cells, and 1 stale cached
+formula value, then uploads the JSON report artifact.
+
 ## Regenerate The Fixture
 
 The fixture is deliberately tiny. To regenerate it from source:
