@@ -30,8 +30,14 @@ const findHashTarget = (hash) => {
   }
 }
 
+const readScrollMarginTop = (target) => {
+  const margin = Number.parseFloat(window.getComputedStyle(target).scrollMarginTop)
+  return Number.isFinite(margin) ? margin : 0
+}
+
 const scrollToTarget = (target) => {
-  target.scrollIntoView({ block: 'start', behavior: 'auto' })
+  const top = Math.max(0, window.scrollY + target.getBoundingClientRect().top - readScrollMarginTop(target))
+  window.scrollTo(0, top)
 }
 
 ;(() => {
