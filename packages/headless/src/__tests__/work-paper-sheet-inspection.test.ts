@@ -176,7 +176,9 @@ describe('work paper sheet inspection', () => {
   it('detects formula prefixes and compares sheet names', () => {
     expect(cellHasFormulaPrefix('=A1')).toBe(true)
     expect(cellHasFormulaPrefix('  =A1')).toBe(true)
+    expect(cellHasFormulaPrefix('\t=A1')).toBe(true)
     expect(cellHasFormulaPrefix(' A1')).toBe(false)
+    expect(cellHasFormulaPrefix('\tA1')).toBe(false)
     expect(['z', 'a'].toSorted(compareSheetNames)).toEqual(['a', 'z'])
   })
 

@@ -34,6 +34,28 @@ describe('work paper sheet read helpers', () => {
     expect(readWorkPaperSheetRange({ sheetId: 3, dimensions: { width: 0, height: 0 }, readRange: () => [[1]] })).toEqual([])
   })
 
+  it('preserves blank cells inside a sparse dense sheet range', () => {
+    expect(
+      readWorkPaperSheetRange({
+        sheetId: 3,
+        dimensions: { width: 3, height: 2 },
+        readRange: (range) => {
+          expect(range).toEqual({
+            start: { sheet: 3, row: 0, col: 0 },
+            end: { sheet: 3, row: 1, col: 2 },
+          })
+          return [
+            [1, null, 3],
+            [null, 5, null],
+          ]
+        },
+      }),
+    ).toEqual([
+      [1, null, 3],
+      [null, 5, null],
+    ])
+  })
+
   it('collects sheet records by name and preserves runtime snapshots on serialized output', () => {
     const sheets = [
       { id: 1, name: 'Sheet1' },
