@@ -1852,4 +1852,83 @@ describe('WorkbookToolbar', () => {
       root.unmount()
     })
   })
+
+  it('refreshes toolbar overflow cues when mounted toolbar contents change size', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const host = createWorkbookKeyboardScopeHost()
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(
+        <WorkbookToolbar
+          canHideCurrentColumn={false}
+          canHideCurrentRow={false}
+          canMergeSelection={false}
+          canUnmergeSelection={false}
+          canRedo={false}
+          canUndo={false}
+          canUnhideCurrentColumn={false}
+          canUnhideCurrentRow={false}
+          currentFillColor="#ffffff"
+          currentNumberFormatKind="general"
+          currentTextColor="#111827"
+          horizontalAlignment={null}
+          isBoldActive={false}
+          isItalicActive={false}
+          isUnderlineActive={false}
+          isWrapActive={false}
+          onApplyBorderPreset={() => {}}
+          onClearStyle={() => {}}
+          onFillColorReset={() => {}}
+          onFillColorSelect={() => {}}
+          onFontSizeChange={() => {}}
+          onHideCurrentColumn={() => {}}
+          onHideCurrentRow={() => {}}
+          onMergeSelectedCells={() => {}}
+          onHorizontalAlignmentChange={() => {}}
+          onNumberFormatChange={() => {}}
+          onRedo={() => {}}
+          onTextColorReset={() => {}}
+          onTextColorSelect={() => {}}
+          onToggleBold={() => {}}
+          onToggleItalic={() => {}}
+          onToggleUnderline={() => {}}
+          onToggleWrap={() => {}}
+          onUndo={() => {}}
+          onUnmergeSelectedCells={() => {}}
+          onUnhideCurrentColumn={() => {}}
+          onUnhideCurrentRow={() => {}}
+          recentFillColors={[]}
+          recentTextColors={[]}
+          selectedFontSize="11"
+          trailingContent={<div>Trailing</div>}
+          writesAllowed
+        />,
+      )
+    })
+
+    const formattingScroll = host.querySelector("[data-testid='toolbar-formatting-scroll']")
+    if (!formattingScroll) {
+      throw new Error('Expected formatting toolbar scroll region to render')
+    }
+
+    setScrollGeometry(formattingScroll, { clientWidth: 420, scrollWidth: 420 })
+    await act(async () => {
+      window.dispatchEvent(new Event('resize'))
+    })
+    expect(host.querySelector("[data-testid='toolbar-overflow-cue']")).toBeNull()
+
+    setScrollGeometry(formattingScroll, { clientWidth: 220, scrollWidth: 870 })
+    await act(async () => {
+      formattingScroll.appendChild(document.createElement('span'))
+      await Promise.resolve()
+    })
+
+    expect(host.querySelector("[data-testid='toolbar-overflow-cue']")).not.toBeNull()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
 })

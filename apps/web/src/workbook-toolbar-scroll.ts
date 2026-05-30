@@ -20,6 +20,8 @@ export function useToolbarScrollCue() {
       return
     }
 
+    let animationFrameId: number | null = null
+
     const updateScrollCue = () => {
       const maxScrollLeft = Math.max(0, scrollContainer.scrollWidth - scrollContainer.clientWidth)
       const nextState: ToolbarScrollCueState = {
@@ -37,20 +39,57 @@ export function useToolbarScrollCue() {
       )
     }
 
-    updateScrollCue()
-    scrollContainer.addEventListener('scroll', updateScrollCue, { passive: true })
-    window.addEventListener('resize', updateScrollCue)
+    const scheduleScrollCueUpdate = () => {
+      updateScrollCue()
+
+      if (typeof window.requestAnimationFrame !== 'function' || animationFrameId !== null) {
+        return
+      }
+
+      animationFrameId = window.requestAnimationFrame(() => {
+        animationFrameId = null
+        updateScrollCue()
+      })
+    }
+
+    scheduleScrollCueUpdate()
+    scrollContainer.addEventListener('scroll', scheduleScrollCueUpdate, { passive: true })
+    window.addEventListener('resize', scheduleScrollCueUpdate)
 
     let resizeObserver: ResizeObserver | null = null
     if (typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver(updateScrollCue)
+      resizeObserver = new ResizeObserver(scheduleScrollCueUpdate)
       resizeObserver.observe(scrollContainer)
+      for (const child of scrollContainer.children) {
+        resizeObserver.observe(child)
+      }
+    }
+
+    let mutationObserver: MutationObserver | null = null
+    if (typeof MutationObserver !== 'undefined') {
+      mutationObserver = new MutationObserver(() => {
+        if (resizeObserver) {
+          for (const child of scrollContainer.children) {
+            resizeObserver.observe(child)
+          }
+        }
+        scheduleScrollCueUpdate()
+      })
+      mutationObserver.observe(scrollContainer, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+      })
     }
 
     return () => {
-      scrollContainer.removeEventListener('scroll', updateScrollCue)
-      window.removeEventListener('resize', updateScrollCue)
+      if (animationFrameId !== null && typeof window.cancelAnimationFrame === 'function') {
+        window.cancelAnimationFrame(animationFrameId)
+      }
+      scrollContainer.removeEventListener('scroll', scheduleScrollCueUpdate)
+      window.removeEventListener('resize', scheduleScrollCueUpdate)
       resizeObserver?.disconnect()
+      mutationObserver?.disconnect()
     }
   }, [])
 
