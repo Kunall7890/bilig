@@ -39,7 +39,9 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 
 ## package chooser
 
-- Copy-paste evaluator for XLSX files:
+- Copy-paste evaluator for stale XLSX formula caches:
+  https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html
+- Copy-paste evaluator for XLSX recalculation:
   https://proompteng.github.io/bilig/eval-xlsx-recalc.html
 - Copy-paste evaluator for Node service formulas:
   https://proompteng.github.io/bilig/eval-workpaper-service.html
@@ -53,7 +55,10 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 - Use `@bilig/workpaper` for formula workbook state inside a Node service,
   queue worker, route handler, test, or agent tool.
 - Use `@bilig/xlsx-formula-recalc` when XLSX inputs changed in Node and formula
-  outputs must be recalculated before returning. Start with this command:
+  outputs must be inspected or recalculated before returning. Start with the
+  read-only stale-cache detector:
+  `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --demo --json`.
+  Use recalculation once you know the input and output cells:
   `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json`.
   `npx --package @bilig/xlsx-formula-recalc xlsx-recalc pricing.xlsx --set Inputs!B2=48 --read Summary!B7 --out pricing.recalculated.xlsx --json`.
 - For PR checks that only need to diagnose stale XLSX formula caches first:
@@ -74,6 +79,12 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 
 ## proof-first evaluator doors
 
+- `eval-xlsx-cache-doctor`: use when a repo, service, CI job, or agent has an
+  `.xlsx` file that may contain stale cached formula values. Read:
+  https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html
+  Run:
+  `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --demo --json`.
+  `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json`.
 - `eval-xlsx-recalc`: use when an `.xlsx` file has stale formula values after
   input edits in Node. Read:
   https://proompteng.github.io/bilig/eval-xlsx-recalc.html
@@ -138,6 +149,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/stop-driving-spreadsheets-with-screenshots.html
 - https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html
 - https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html
+- https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html
 - https://proompteng.github.io/bilig/eval-xlsx-recalc.html
 - https://proompteng.github.io/bilig/eval-workpaper-service.html
 - https://proompteng.github.io/bilig/eval-agent-mcp.html

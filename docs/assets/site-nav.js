@@ -15,14 +15,33 @@ const localHashForLink = (link) => {
     return null
   }
 
-  if (url.origin !== window.location.origin || url.pathname !== window.location.pathname || url.hash.length === 0) {
+  if (
+    url.origin !== window.location.origin ||
+    normalizePathname(url.pathname) !== normalizePathname(window.location.pathname) ||
+    url.hash.length === 0
+  ) {
     return null
   }
 
   return url.hash
 }
 
+const normalizePathname = (pathname) => {
+  const withoutIndex = pathname.replace(/\/index\.html$/u, '/')
+  return withoutIndex.length > 1 ? withoutIndex.replace(/\/$/u, '') : withoutIndex
+}
+
 const findHashTarget = (hash) => {
+  const id = hash.startsWith('#') ? hash.slice(1) : hash
+  if (id.length === 0) {
+    return null
+  }
+
+  const byId = document.getElementById(id)
+  if (byId !== null) {
+    return byId
+  }
+
   try {
     return document.querySelector(hash)
   } catch {
@@ -38,6 +57,13 @@ const readScrollMarginTop = (target) => {
 const scrollToTarget = (target) => {
   const top = Math.max(0, window.scrollY + target.getBoundingClientRect().top - readScrollMarginTop(target))
   window.scrollTo(0, top)
+}
+
+const scrollToHash = (hash) => {
+  const target = findHashTarget(hash)
+  if (target instanceof HTMLElement) {
+    scrollToTarget(target)
+  }
 }
 
 ;(() => {
@@ -68,4 +94,12 @@ const scrollToTarget = (target) => {
     }
     scrollToTarget(scrollTarget)
   })
+
+  window.addEventListener('hashchange', () => {
+    window.requestAnimationFrame(() => scrollToHash(window.location.hash))
+  })
+
+  if (window.location.hash.length > 0) {
+    window.requestAnimationFrame(() => scrollToHash(window.location.hash))
+  }
 })()

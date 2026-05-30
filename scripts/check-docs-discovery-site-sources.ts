@@ -4,6 +4,7 @@ export const docsSiteSources = [
   ['stop-driving-spreadsheets-with-screenshots.html', 'stop-driving-spreadsheets-with-screenshots.md'],
   ['show-hn-formula-workbooks-node-services.html', 'show-hn-formula-workbooks-node-services.md'],
   ['formula-workbooks-node-services-agent-tools.html', 'formula-workbooks-node-services-agent-tools.md'],
+  ['eval-xlsx-cache-doctor.html', 'eval-xlsx-cache-doctor.md'],
   ['eval-xlsx-recalc.html', 'eval-xlsx-recalc.md'],
   ['eval-workpaper-service.html', 'eval-workpaper-service.md'],
   ['eval-agent-mcp.html', 'eval-agent-mcp.md'],

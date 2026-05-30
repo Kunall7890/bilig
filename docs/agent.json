@@ -22,6 +22,15 @@
   ],
   "evaluator_doors": [
     {
+      "name": "eval-xlsx-cache-doctor",
+      "audience": "A repo, service, CI job, or agent has XLSX files that may contain stale cached formula values.",
+      "docs": "https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html",
+      "source": "https://github.com/proompteng/bilig/blob/main/docs/eval-xlsx-cache-doctor.md",
+      "package": "@bilig/xlsx-formula-recalc",
+      "command": "npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --demo --json",
+      "expected_result": "formula count, inspected count, stale cached formula count, suggested reads, and recalculated values without Excel or LibreOffice"
+    },
+    {
       "name": "eval-xlsx-recalc",
       "audience": "A service has an XLSX file with stale formula results after editing inputs in Node.js.",
       "docs": "https://proompteng.github.io/bilig/eval-xlsx-recalc.html",
@@ -233,6 +242,9 @@
   "public_entrypoints": [
     "https://proompteng.github.io/bilig/",
     "https://proompteng.github.io/bilig/why-use-bilig.html",
+    "https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html",
+    "https://proompteng.github.io/bilig/eval-xlsx-recalc.html",
+    "https://proompteng.github.io/bilig/xlsx-cache-doctor-github-action.html",
     "https://proompteng.github.io/bilig/agent-adoption-kit.html",
     "https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html",
     "https://proompteng.github.io/bilig/agent-workbook-challenge.html",

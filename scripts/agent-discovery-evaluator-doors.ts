@@ -40,6 +40,16 @@ export function buildEvaluatorDoors(args: AgentDiscoveryEvaluatorDoorInputs): re
   const siteRoot = args.siteRoot.replace(/\/+$/, '')
   return [
     {
+      name: 'eval-xlsx-cache-doctor',
+      audience: 'A repo, service, CI job, or agent has XLSX files that may contain stale cached formula values.',
+      docs: `${siteRoot}/eval-xlsx-cache-doctor.html`,
+      source: `${args.repositoryUrl}/blob/main/docs/eval-xlsx-cache-doctor.md`,
+      package: '@bilig/xlsx-formula-recalc',
+      command: 'npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --demo --json',
+      expected_result:
+        'formula count, inspected count, stale cached formula count, suggested reads, and recalculated values without Excel or LibreOffice',
+    },
+    {
       name: 'eval-xlsx-recalc',
       audience: 'A service has an XLSX file with stale formula results after editing inputs in Node.js.',
       docs: `${siteRoot}/eval-xlsx-recalc.html`,

@@ -437,6 +437,11 @@ function llmsSource(title: string, relativePath: string) {
 const llmsFullSources = [
   { title: 'Repository README', relativePath: 'README.md', url: `${repositoryUrl}/blob/main/README.md` },
   {
+    title: 'Evaluate Stale XLSX Formula Caches',
+    relativePath: 'docs/eval-xlsx-cache-doctor.md',
+    url: `${repositoryUrl}/blob/main/docs/eval-xlsx-cache-doctor.md`,
+  },
+  {
     title: 'Evaluate XLSX Formula Recalculation',
     relativePath: 'docs/eval-xlsx-recalc.md',
     url: `${repositoryUrl}/blob/main/docs/eval-xlsx-recalc.md`,
@@ -798,6 +803,9 @@ function agentJsonManifest(): string {
       public_entrypoints: [
         `${siteRoot}/`,
         `${siteRoot}/why-use-bilig.html`,
+        `${siteRoot}/eval-xlsx-cache-doctor.html`,
+        `${siteRoot}/eval-xlsx-recalc.html`,
+        `${siteRoot}/xlsx-cache-doctor-github-action.html`,
         `${siteRoot}/agent-adoption-kit.html`,
         `${siteRoot}/headless-workpaper-agent-handbook.html`,
         `${siteRoot}/agent-workbook-challenge.html`,

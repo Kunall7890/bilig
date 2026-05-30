@@ -479,6 +479,7 @@ requireIncludes(llms, 'https://proompteng.github.io/bilig/llms-full.txt', 'docs/
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent-skills/index.json', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/skills/index.json', 'docs/llms.txt')
 requireIncludes(llms, '## proof-first evaluator doors', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-xlsx-recalc.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-workpaper-service.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-agent-mcp.html', 'docs/llms.txt')

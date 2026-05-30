@@ -76,7 +76,7 @@ Pick the path that matches the thing in your hands:
 
 | You have...                                                                              | Start with                                                                 | You should see                                                                                                 |
 | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Pull requests can commit `.xlsx` files with stale formula caches                         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | A read-only CI report with stale cells, cached values, recalculated values, and JSON/Markdown artifacts.       |
+| Pull requests or services can read `.xlsx` files with stale formula caches               | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)              | A read-only formula-cache report with stale cells, cached values, recalculated values, suggested reads, and JSON. |
 | An `.xlsx` file with stale formula results after editing inputs in Node                  | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                   | A changed input, a recalculated output, `recalculationCompleted: true`, and demo `expectedValueMatched: true`. |
 | Workbook-shaped business logic that should live in a Node service, test, queue, or route | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)         | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback.         |
 
@@ -160,7 +160,9 @@ Trust boundaries:
 
 For linked workbooks, use the
 [external workbook recalculation proof](docs/external-workbook-recalc-proof.md).
-For a narrower CLI evaluator, use
+For the stale-cache detector, use
+[Evaluate stale XLSX formula caches](docs/eval-xlsx-cache-doctor.md).
+For a narrower recalculation evaluator, use
 [Evaluate XLSX formula recalculation](docs/eval-xlsx-recalc.md).
 
 If you already have the real workbook but do not know which formulas to read
