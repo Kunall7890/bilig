@@ -1560,7 +1560,7 @@ report artifact.
 The job summary is meant to be the reviewer artifact. It shows workbook count,
 formula count, stale count, the first stale cells with cached and recalculated
 values, and a copy-paste `xlsx-recalc --read ... --json` command for the
-follow-up proof. The action also writes GitHub warning annotations for the first
+follow-up check. The action also writes GitHub warning annotations for the first
 stale cells so the failure is visible before someone opens the JSON artifact.
 
 The root `proompteng/bilig@v1` action is the canonical install path and is
