@@ -237,7 +237,7 @@ export function factorialValue(value: number): number | undefined {
 }
 
 export function doubleFactorialValue(value: number): number | undefined {
-  if (!Number.isFinite(value) || value < 0) {
+  if (!Number.isFinite(value) || value < -1) {
     return undefined
   }
   const truncated = Math.trunc(value)

@@ -1,16 +1,9 @@
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import type { CellValue } from '@bilig/protocol'
 import { besselIValue, besselJValue, besselKValue, besselYValue } from './distributions.js'
-import {
-  ceilingToMultiple,
-  coerceScalarMathNumber,
-  collectNumericArgs,
-  floorToMultiple,
-  moduloValue,
-  roundToMultiple,
-  truncateQuotient,
-} from './numeric.js'
+import { ceilingToMultiple, coerceScalarMathNumber, floorToMultiple, moduloValue, roundToMultiple, truncateQuotient } from './numeric.js'
 import { excelPower } from '../excel-power.js'
+import { parseNumericText } from '../numeric-text.js'
 import type { EvaluationResult } from '../runtime-values.js'
 
 type Builtin = (...args: CellValue[]) => EvaluationResult
@@ -67,7 +60,6 @@ export function createMathBuiltins({
   valueError,
   numError,
   unaryMath,
-  binaryMath,
   ceilingWith,
   floorWith,
   roundWith,
@@ -84,6 +76,8 @@ export function createMathBuiltins({
   lcmPair,
 }: MathBuiltinDeps): Record<string, Builtin> {
   const toScalarMathNumber = (value: CellValue | undefined): number | undefined => coerceScalarMathNumber(value, toNumber)
+  const toDirectAggregateNumber = (value: CellValue): number | undefined =>
+    value.tag === ValueTag.String ? parseNumericText(value.value) : toNumber(value)
   const toScalarMathInteger = (value: CellValue): number | undefined => {
     const numeric = toScalarMathNumber(value)
     return numeric === undefined ? undefined : Math.trunc(numeric)
@@ -199,13 +193,33 @@ export function createMathBuiltins({
       if (baseValue === undefined) {
         return valueError()
       }
-      if (numeric <= 0 || baseValue <= 0 || baseValue === 1) {
+      if (numeric <= 0 || baseValue <= 0) {
         return numError()
+      }
+      if (baseValue === 1) {
+        return div0Error()
       }
       const result = base === undefined ? Math.log10(numeric) : Math.log(numeric) / Math.log(baseValue)
       return finiteNumberOrNumError(result, numberResult, numError)
     },
-    POWER: (base, exponent) => binaryMath(base, exponent, excelPower),
+    POWER: (base, exponent) => {
+      const error = firstError([base, exponent])
+      if (error) {
+        return error
+      }
+      const baseValue = toScalarMathNumber(base)
+      const exponentValue = toScalarMathNumber(exponent)
+      if (baseValue === undefined || exponentValue === undefined) {
+        return valueError()
+      }
+      if (baseValue === 0 && exponentValue === 0) {
+        return numError()
+      }
+      if (baseValue === 0 && exponentValue < 0) {
+        return div0Error()
+      }
+      return finiteNumberOrNumError(excelPower(baseValue, exponentValue), numberResult, numError)
+    },
     SQRT: (value) => {
       const error = firstError([value])
       if (error) {
@@ -800,7 +814,14 @@ export function createMathBuiltins({
       if (error) {
         return error
       }
-      const numbers = collectNumericArgs(args, toNumber)
+      const numbers: number[] = []
+      for (const arg of args) {
+        const numeric = toDirectAggregateNumber(arg)
+        if (numeric === undefined) {
+          return valueError()
+        }
+        numbers.push(numeric)
+      }
       return numberResult(numbers.length === 0 ? 0 : numbers.reduce((product, value) => product * value, 1))
     },
     QUOTIENT: (numeratorArg, denominatorArg) => {

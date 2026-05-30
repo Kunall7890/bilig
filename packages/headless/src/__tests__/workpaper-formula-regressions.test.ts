@@ -233,7 +233,7 @@ describe('Workpaper formula regressions', () => {
     expectString(cellValue(workbook, 'Summary', 0, 5), 'x')
   })
 
-  it.each([false, true])('coerces direct empty text numeric aggregate arguments with useColumnIndex=%s', (useColumnIndex) => {
+  it.each([false, true])('matches Excel direct empty text numeric aggregate arguments with useColumnIndex=%s', (useColumnIndex) => {
     const workbook = WorkPaper.buildFromSheets(
       {
         Summary: [
@@ -249,13 +249,13 @@ describe('Workpaper formula regressions', () => {
       { maxRows: 20, maxColumns: 8, useColumnIndex },
     )
 
-    expectNumber(cellValue(workbook, 'Summary', 0, 1), 1)
-    expectNumber(cellValue(workbook, 'Summary', 1, 1), 0)
-    expectNumber(cellValue(workbook, 'Summary', 2, 1), 0)
-    expectNumber(cellValue(workbook, 'Summary', 3, 1), 0)
-    expectNumber(cellValue(workbook, 'Summary', 4, 1), 0)
-    expect(cellValue(workbook, 'Summary', 5, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
-    expect(cellValue(workbook, 'Summary', 6, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+    expectNumber(cellValue(workbook, 'Summary', 0, 1), 0)
+    expect(cellValue(workbook, 'Summary', 1, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(cellValue(workbook, 'Summary', 2, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(cellValue(workbook, 'Summary', 3, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(cellValue(workbook, 'Summary', 4, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(cellValue(workbook, 'Summary', 5, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(cellValue(workbook, 'Summary', 6, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
   })
 
   it.each([false, true])('coerces direct empty text statistical arguments with useColumnIndex=%s', (useColumnIndex) => {
@@ -618,7 +618,7 @@ describe('Workpaper formula regressions', () => {
     expect(cellValue(workbook, 'Logic', 1, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(cellValue(workbook, 'Logic', 2, 1)).toEqual({ tag: ValueTag.Boolean, value: true })
     expect(cellValue(workbook, 'Logic', 3, 1)).toEqual({ tag: ValueTag.Boolean, value: false })
-    expect(cellValue(workbook, 'Logic', 4, 1)).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(cellValue(workbook, 'Logic', 4, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(cellValue(workbook, 'Logic', 5, 1)).toEqual({ tag: ValueTag.Boolean, value: true })
     expectNumber(cellValue(workbook, 'Logic', 6, 1), 2)
   })

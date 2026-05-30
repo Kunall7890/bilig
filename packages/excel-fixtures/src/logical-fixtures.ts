@@ -267,10 +267,10 @@ export const canonicalLogicalFixtures: readonly ExcelFixtureCase[] = [
   fixture(
     'logical',
     'not-direct-empty-text',
-    'NOT coerces direct empty text as FALSE before inversion',
+    'NOT returns #VALUE! for direct empty text',
     '=NOT("")',
     [],
-    [output('A1', booleanExpected(true))],
+    [output('A1', errorExpected(ErrorCode.Value, '#VALUE!'))],
   ),
   fixture(
     'logical',

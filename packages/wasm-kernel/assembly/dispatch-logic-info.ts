@@ -3,8 +3,10 @@ import { coerceLogical } from './builtin-args'
 import { compareSwitchValues } from './comparison'
 import { BITWISE_NUM_ERROR, BITWISE_VALUE_ERROR, coerceBitwiseInteger, coerceBitwiseShift } from './numeric-core'
 import { copySlotResult, STACK_KIND_RANGE, STACK_KIND_SCALAR, writeResult } from './result-io'
+import { scalarText } from './text-codec'
 
 const IGNORED_REFERENCE_LOGICAL: i32 = i32.MIN_VALUE
+const INVALID_LOGICAL_TEXT: i32 = i32.MIN_VALUE + 1
 
 function writeLogicInfoError(
   base: i32,
@@ -53,6 +55,84 @@ function coerceReferenceLogical(tag: u8, value: f64, errorCode: i32): i32 {
     return -errorCode - 1
   }
   return IGNORED_REFERENCE_LOGICAL
+}
+
+function parseLogicalText(text: string): i32 {
+  if (text.length == 4) {
+    const c0 = text.charCodeAt(0) | 32
+    const c1 = text.charCodeAt(1) | 32
+    const c2 = text.charCodeAt(2) | 32
+    const c3 = text.charCodeAt(3) | 32
+    if (c0 == 116 && c1 == 114 && c2 == 117 && c3 == 101) {
+      return 1
+    }
+  }
+  if (text.length == 5) {
+    const c0 = text.charCodeAt(0) | 32
+    const c1 = text.charCodeAt(1) | 32
+    const c2 = text.charCodeAt(2) | 32
+    const c3 = text.charCodeAt(3) | 32
+    const c4 = text.charCodeAt(4) | 32
+    if (c0 == 102 && c1 == 97 && c2 == 108 && c3 == 115 && c4 == 101) {
+      return 0
+    }
+  }
+  return INVALID_LOGICAL_TEXT
+}
+
+function coerceDirectLogical(
+  slot: i32,
+  valueStack: Float64Array,
+  tagStack: Uint8Array,
+  stringOffsets: Uint32Array,
+  stringLengths: Uint32Array,
+  stringData: Uint16Array,
+  outputStringOffsets: Uint32Array,
+  outputStringLengths: Uint32Array,
+  outputStringData: Uint16Array,
+): i32 {
+  if (tagStack[slot] == ValueTag.String) {
+    const text = scalarText(
+      tagStack[slot],
+      valueStack[slot],
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    return text == null ? INVALID_LOGICAL_TEXT : parseLogicalText(text)
+  }
+  return coerceLogical(tagStack[slot], valueStack[slot])
+}
+
+function coerceAggregateLogical(
+  slot: i32,
+  valueStack: Float64Array,
+  tagStack: Uint8Array,
+  stringOffsets: Uint32Array,
+  stringLengths: Uint32Array,
+  stringData: Uint16Array,
+  outputStringOffsets: Uint32Array,
+  outputStringLengths: Uint32Array,
+  outputStringData: Uint16Array,
+): i32 {
+  if (tagStack[slot] == ValueTag.Empty) {
+    return IGNORED_REFERENCE_LOGICAL
+  }
+  const coerced = coerceDirectLogical(
+    slot,
+    valueStack,
+    tagStack,
+    stringOffsets,
+    stringLengths,
+    stringData,
+    outputStringOffsets,
+    outputStringLengths,
+    outputStringData,
+  )
+  return coerced == INVALID_LOGICAL_TEXT ? IGNORED_REFERENCE_LOGICAL : coerced
 }
 
 export function tryApplyLogicInfoBuiltin(
@@ -151,7 +231,17 @@ export function tryApplyLogicInfoBuiltin(
         }
         continue
       }
-      const coerced = tagStack[slot] == ValueTag.Empty ? IGNORED_REFERENCE_LOGICAL : coerceLogical(tagStack[slot], valueStack[slot])
+      const coerced = coerceAggregateLogical(
+        slot,
+        valueStack,
+        tagStack,
+        stringOffsets,
+        stringLengths,
+        stringData,
+        outputStringOffsets,
+        outputStringLengths,
+        outputStringData,
+      )
       if (coerced == IGNORED_REFERENCE_LOGICAL) {
         continue
       }
@@ -207,7 +297,17 @@ export function tryApplyLogicInfoBuiltin(
         }
         continue
       }
-      const coerced = tagStack[slot] == ValueTag.Empty ? IGNORED_REFERENCE_LOGICAL : coerceLogical(tagStack[slot], valueStack[slot])
+      const coerced = coerceAggregateLogical(
+        slot,
+        valueStack,
+        tagStack,
+        stringOffsets,
+        stringLengths,
+        stringData,
+        outputStringOffsets,
+        outputStringLengths,
+        outputStringData,
+      )
       if (coerced == IGNORED_REFERENCE_LOGICAL) {
         continue
       }
@@ -257,7 +357,17 @@ export function tryApplyLogicInfoBuiltin(
         }
         continue
       }
-      const coerced = tagStack[slot] == ValueTag.Empty ? IGNORED_REFERENCE_LOGICAL : coerceLogical(tagStack[slot], valueStack[slot])
+      const coerced = coerceAggregateLogical(
+        slot,
+        valueStack,
+        tagStack,
+        stringOffsets,
+        stringLengths,
+        stringData,
+        outputStringOffsets,
+        outputStringLengths,
+        outputStringData,
+      )
       if (coerced == IGNORED_REFERENCE_LOGICAL) {
         continue
       }
@@ -274,7 +384,20 @@ export function tryApplyLogicInfoBuiltin(
   }
 
   if (builtinId == BuiltinId.Not && argc == 1) {
-    const coerced = coerceLogical(tagStack[base], valueStack[base])
+    const coerced = coerceDirectLogical(
+      base,
+      valueStack,
+      tagStack,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    if (coerced == INVALID_LOGICAL_TEXT) {
+      return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     if (coerced < 0) {
       return writeLogicInfoError(base, -coerced - 1, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -286,7 +409,20 @@ export function tryApplyLogicInfoBuiltin(
       return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     for (let index = 0; index < argc; index += 2) {
-      const coerced = coerceLogical(tagStack[base + index], valueStack[base + index])
+      const coerced = coerceDirectLogical(
+        base + index,
+        valueStack,
+        tagStack,
+        stringOffsets,
+        stringLengths,
+        stringData,
+        outputStringOffsets,
+        outputStringLengths,
+        outputStringData,
+      )
+      if (coerced == INVALID_LOGICAL_TEXT) {
+        return writeLogicInfoError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       if (coerced < 0) {
         return writeLogicInfoError(base, -coerced - 1, rangeIndexStack, valueStack, tagStack, kindStack)
       }

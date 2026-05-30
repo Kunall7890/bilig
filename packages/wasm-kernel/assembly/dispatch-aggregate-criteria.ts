@@ -54,6 +54,9 @@ function directScalarNumberLikeText(
   outputStringLengths: Uint32Array,
   outputStringData: Uint16Array,
 ): f64 {
+  if (tagStack[slot] == ValueTag.String && textLength(tagStack[slot], valueStack[slot], stringLengths, outputStringLengths) == 0) {
+    return NaN
+  }
   return coerceScalarNumberLikeText(
     tagStack[slot],
     valueStack[slot],
@@ -174,9 +177,10 @@ export function tryApplyAggregateCriteriaBuiltin(
         }
         continue
       }
-      const numeric = coerceScalarNumberLikeText(
-        tagStack[slot],
-        valueStack[slot],
+      const numeric = directScalarNumberLikeText(
+        slot,
+        valueStack,
+        tagStack,
         stringOffsets,
         stringLengths,
         stringData,

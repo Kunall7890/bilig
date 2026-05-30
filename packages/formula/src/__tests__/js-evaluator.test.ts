@@ -106,36 +106,28 @@ describe('js evaluator', () => {
     })
   })
 
-  it('coerces direct empty text as zero for numeric aggregate argument lists', () => {
-    expect(evaluatePlan(lowerToPlan(parseFormula('COUNT("")')), context)).toEqual(num(1))
-    expect(evaluatePlan(lowerToPlan(parseFormula('MIN("")')), context)).toEqual(num(0))
-    expect(evaluatePlan(lowerToPlan(parseFormula('MAX("",-1)')), context)).toEqual(num(0))
-    expect(evaluatePlan(lowerToPlan(parseFormula('PRODUCT("")')), context)).toEqual(num(0))
-    expect(evaluatePlan(lowerToPlan(parseFormula('SUMSQ("")')), context)).toEqual(num(0))
-    expect(evaluatePlan(lowerToPlan(parseFormula('GEOMEAN("")')), context)).toEqual({
-      tag: ValueTag.Error,
-      code: ErrorCode.Num,
-    })
-    expect(evaluatePlan(lowerToPlan(parseFormula('HARMEAN("")')), context)).toEqual({
-      tag: ValueTag.Error,
-      code: ErrorCode.Num,
-    })
+  it('matches Excel direct empty text aggregate argument semantics in compiled plans', () => {
+    expect(evaluatePlan(lowerToPlan(parseFormula('COUNT("")')), context)).toEqual(num(0))
+    expect(evaluatePlan(lowerToPlan(parseFormula('MIN("")')), context)).toEqual(err(ErrorCode.Value))
+    expect(evaluatePlan(lowerToPlan(parseFormula('MAX("",-1)')), context)).toEqual(err(ErrorCode.Value))
+    expect(evaluatePlan(lowerToPlan(parseFormula('PRODUCT("")')), context)).toEqual(err(ErrorCode.Value))
+    expect(evaluatePlan(lowerToPlan(parseFormula('SUMSQ("")')), context)).toEqual(err(ErrorCode.Value))
+    expect(evaluatePlan(lowerToPlan(parseFormula('GEOMEAN("")')), context)).toEqual(err(ErrorCode.Value))
+    expect(evaluatePlan(lowerToPlan(parseFormula('HARMEAN("")')), context)).toEqual(err(ErrorCode.Value))
   })
 
   it('coerces direct logical text consistently in interpreted and compiled plans', () => {
     const cases = [
       ['AND("TRUE","true")', { tag: ValueTag.Boolean, value: true }],
       ['AND("FALSE",TRUE())', { tag: ValueTag.Boolean, value: false }],
-      ['AND("")', { tag: ValueTag.Boolean, value: false }],
+      ['AND("",TRUE())', { tag: ValueTag.Boolean, value: true }],
       ['OR("FALSE","")', { tag: ValueTag.Boolean, value: false }],
       ['OR("TRUE","FALSE")', { tag: ValueTag.Boolean, value: true }],
       ['XOR("TRUE","FALSE","")', { tag: ValueTag.Boolean, value: true }],
       ['NOT("FALSE")', { tag: ValueTag.Boolean, value: true }],
       ['NOT("TRUE")', { tag: ValueTag.Boolean, value: false }],
-      ['NOT("")', { tag: ValueTag.Boolean, value: true }],
       ['IF("TRUE",1,2)', num(1)],
       ['IF("FALSE",1,2)', num(2)],
-      ['IF("",1,2)', num(2)],
       ['IF(FALSE(),1)', { tag: ValueTag.Boolean, value: false }],
       ['IF(A2,1)', { tag: ValueTag.Boolean, value: false }],
       ['IF(FALSE(),1,)', num(0)],
@@ -148,7 +140,17 @@ describe('js evaluator', () => {
       expect(evaluatePlan(compileFormula(formula).jsPlan, context), formula).toEqual(expected)
     }
 
-    const invalidCases = ['AND("x")', 'OR("x")', 'XOR("x")', 'NOT("x")', 'IF("x",1,2)', 'IFS("x",1,TRUE(),2)']
+    const invalidCases = [
+      'AND("")',
+      'AND("x")',
+      'OR("x")',
+      'XOR("x")',
+      'NOT("")',
+      'NOT("x")',
+      'IF("",1,2)',
+      'IF("x",1,2)',
+      'IFS("x",1,TRUE(),2)',
+    ]
     for (const formula of invalidCases) {
       const expected = { tag: ValueTag.Error, code: ErrorCode.Value }
       expect(evaluatePlan(lowerToPlan(parseFormula(formula)), context), formula).toEqual(expected)
@@ -392,7 +394,7 @@ describe('js evaluator', () => {
 
   it('matches Excel log errors in compiled JS evaluation', () => {
     expect(evaluatePlan(lowerToPlan(parseFormula('LN(-1)')), context)).toEqual(err(ErrorCode.Num))
-    expect(evaluatePlan(lowerToPlan(parseFormula('LOG(10,1)')), context)).toEqual(err(ErrorCode.Num))
+    expect(evaluatePlan(lowerToPlan(parseFormula('LOG(10,1)')), context)).toEqual(err(ErrorCode.Div0))
     expect(evaluatePlan(lowerToPlan(parseFormula('-LOG(P-value)')), context)).toEqual(err(ErrorCode.Name))
   })
 
@@ -1170,8 +1172,8 @@ describe('js evaluator', () => {
       value: 3,
     })
     expect(optimizeFormula(parseFormula('IF("", 1, 2)'))).toEqual({
-      kind: 'NumberLiteral',
-      value: 2,
+      kind: 'ErrorLiteral',
+      code: ErrorCode.Value,
     })
     expect(optimizeFormula(parseFormula('"a"&"b"'))).toEqual({
       kind: 'StringLiteral',

@@ -26,6 +26,30 @@ function encodeRet(): number {
   return Opcode.Ret << 24
 }
 
+function packStrings(values: string[]): {
+  offsets: Uint32Array
+  lengths: Uint32Array
+  data: Uint16Array
+} {
+  const offsets: number[] = []
+  const lengths: number[] = []
+  const data: number[] = []
+  let offset = 0
+  for (const value of values) {
+    offsets.push(offset)
+    lengths.push(value.length)
+    for (const char of value) {
+      data.push(char.charCodeAt(0))
+    }
+    offset += value.length
+  }
+  return {
+    offsets: Uint32Array.from(offsets),
+    lengths: Uint32Array.from(lengths),
+    data: Uint16Array.from(data),
+  }
+}
+
 function packPrograms(programs: number[][]): {
   programs: Uint32Array
   offsets: Uint32Array
@@ -196,5 +220,55 @@ describe('wasm kernel logic and info dispatch', () => {
     expect(kernel.readErrors()[cellIndex(1, 20, width)]).toBe(ErrorCode.NA)
     expect(kernel.readTags()[cellIndex(1, 21, width)]).toBe(ValueTag.Error)
     expect(kernel.readErrors()[cellIndex(1, 21, width)]).toBe(ErrorCode.Div0)
+  })
+
+  it('matches Excel direct logical text coercion edges on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 16
+    const strings = packStrings(['bad', 'TRUE', 'FALSE', ''])
+    kernel.init(32, 4, 4, 1, 1)
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+    kernel.writeCells(new Uint8Array(32), new Float64Array(32), new Uint32Array(32), new Uint16Array(32))
+
+    const packed = packPrograms([
+      [encodePushString(0), encodePushBoolean(true), encodeCall(BuiltinId.And, 2), encodeRet()],
+      [encodePushString(0), encodePushBoolean(false), encodeCall(BuiltinId.Or, 2), encodeRet()],
+      [encodePushString(0), encodePushBoolean(true), encodeCall(BuiltinId.Xor, 2), encodeRet()],
+      [encodePushString(0), encodeCall(BuiltinId.And, 1), encodeRet()],
+      [encodePushString(0), encodeCall(BuiltinId.Or, 1), encodeRet()],
+      [encodePushString(0), encodeCall(BuiltinId.Xor, 1), encodeRet()],
+      [encodePushString(2), encodePushBoolean(true), encodeCall(BuiltinId.And, 2), encodeRet()],
+      [encodePushString(1), encodePushBoolean(false), encodeCall(BuiltinId.Or, 2), encodeRet()],
+      [encodePushString(3), encodeCall(BuiltinId.Not, 1), encodeRet()],
+      [encodePushString(3), encodePushNumber(0), encodePushBoolean(true), encodePushNumber(1), encodeCall(BuiltinId.Ifs, 4), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 10 }, (_value, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([[], [], [], [], [], [], [], [], [], [1, 2]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 10 }, (_value, index) => cellIndex(1, index, width))))
+
+    expect(kernel.readTags()[cellIndex(1, 0, width)]).toBe(ValueTag.Boolean)
+    expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBe(1)
+    expect(kernel.readTags()[cellIndex(1, 1, width)]).toBe(ValueTag.Boolean)
+    expect(kernel.readNumbers()[cellIndex(1, 1, width)]).toBe(0)
+    expect(kernel.readTags()[cellIndex(1, 2, width)]).toBe(ValueTag.Boolean)
+    expect(kernel.readNumbers()[cellIndex(1, 2, width)]).toBe(1)
+    for (let index = 3; index < 6; index += 1) {
+      expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Error)
+      expect(kernel.readErrors()[cellIndex(1, index, width)]).toBe(ErrorCode.Value)
+    }
+    expect(kernel.readTags()[cellIndex(1, 6, width)]).toBe(ValueTag.Boolean)
+    expect(kernel.readNumbers()[cellIndex(1, 6, width)]).toBe(0)
+    expect(kernel.readTags()[cellIndex(1, 7, width)]).toBe(ValueTag.Boolean)
+    expect(kernel.readNumbers()[cellIndex(1, 7, width)]).toBe(1)
+    expect(kernel.readTags()[cellIndex(1, 8, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 8, width)]).toBe(ErrorCode.Value)
+    expect(kernel.readTags()[cellIndex(1, 9, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 9, width)]).toBe(ErrorCode.Value)
   })
 })

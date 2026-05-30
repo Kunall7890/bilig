@@ -42,7 +42,7 @@ export function toScalarMathNumber(value: CellValue | undefined): number | undef
 }
 
 export function parseDirectAggregateNumericText(value: string): number | undefined {
-  return value === '' ? 0 : parseNumericText(value)
+  return parseNumericText(value)
 }
 
 export function toDirectAggregateNumber(value: CellValue): number | undefined {

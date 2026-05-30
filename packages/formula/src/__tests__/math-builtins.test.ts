@@ -50,6 +50,13 @@ describe('math builtins', () => {
     expect(getBuiltin('COSH')?.(num(1000))).toEqual(numError)
   })
 
+  it('matches Microsoft Excel scalar math zero-base and singular-domain errors', () => {
+    expect(getBuiltin('POWER')?.(num(0), num(0))).toEqual(numError)
+    expect(getBuiltin('POWER')?.(num(0), num(-1))).toEqual(div0Error)
+    expect(getBuiltin('LOG')?.(num(100), num(1))).toEqual(div0Error)
+    expect(getBuiltin('FACTDOUBLE')?.(num(-1))).toEqual(num(1))
+  })
+
   it('coerces direct numeric text across scalar math builtins', () => {
     expect(getBuiltin('ABS')?.(str('-2'))).toEqual(num(2))
     expect(getBuiltin('ROUND')?.(str('2.5'), num(0))).toEqual(num(3))
@@ -295,7 +302,8 @@ describe('math builtins', () => {
 
   it('matches Microsoft Excel numeric-domain errors for combinatoric functions', () => {
     expect(getBuiltin('FACT')?.(num(-1))).toEqual(numError)
-    expect(getBuiltin('FACTDOUBLE')?.(num(-1))).toEqual(numError)
+    expect(getBuiltin('FACTDOUBLE')?.(num(-2))).toEqual(numError)
+    expect(getBuiltin('FACTDOUBLE')?.(num(-1))).toEqual(num(1))
     expect(getBuiltin('COMBIN')?.(num(-1), num(0))).toEqual(numError)
     expect(getBuiltin('COMBIN')?.(num(2), num(3))).toEqual(numError)
     expect(getBuiltin('COMBINA')?.(num(-1), num(1))).toEqual(numError)

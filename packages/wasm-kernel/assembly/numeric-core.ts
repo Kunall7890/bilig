@@ -25,7 +25,7 @@ export function factorialCalc(value: f64): f64 {
 }
 
 export function doubleFactorialCalc(value: f64): f64 {
-  if (!isFinite(value) || value < 0.0) {
+  if (!isFinite(value) || value < -1.0) {
     return NaN
   }
   const truncated = <i32>Math.floor(value)

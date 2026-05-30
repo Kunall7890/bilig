@@ -8,7 +8,7 @@ function errorValue(code: ErrorCode): ErrorValue {
 
 export function coerceLogicalText(value: string): LogicalCoercion {
   if (value === '') {
-    return { ok: true, value: false }
+    return { ok: false, error: errorValue(ErrorCode.Value) }
   }
   const normalized = value.toUpperCase()
   if (normalized === 'TRUE') {

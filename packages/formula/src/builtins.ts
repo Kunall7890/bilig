@@ -24,7 +24,7 @@ import {
   roundUpToDigits,
 } from './builtins/numeric.js'
 import { enforceBuiltinArities } from './builtins/arity.js'
-import { toAverageNumber, toDirectAggregateNumber, toNumber, toScalarMathNumber } from './builtins/scalar-coercion.js'
+import { toDirectAggregateNumber, toNumber, toScalarMathNumber } from './builtins/scalar-coercion.js'
 import { createMathBuiltins } from './builtins/math-builtins.js'
 import { createRadixBuiltins } from './builtins/radix.js'
 import { populationVariance, sampleVariance } from './builtins/statistics.js'
@@ -331,6 +331,18 @@ function toZeroNumericValue(value: CellValue): number | undefined {
   return toNumber(value)
 }
 
+function collectDirectAggregateNumbers(args: readonly CellValue[]): number[] | CellValue {
+  const values: number[] = []
+  for (const arg of args) {
+    const numeric = toDirectAggregateNumber(arg)
+    if (numeric === undefined) {
+      return valueError()
+    }
+    values.push(numeric)
+  }
+  return values
+}
+
 function aggregateByCode(functionNum: number, values: CellValue[], options: { readonly propagateErrors?: boolean } = {}): CellValue {
   if (options.propagateErrors) {
     const error = firstError(values)
@@ -429,7 +441,9 @@ const scalarBuiltins: Record<string, Builtin> = {
   SUM: (...args) => {
     const error = firstError(args)
     if (error) return error
-    return numberResult(args.reduce((sum, arg) => sum + (toNumber(arg) ?? 0), 0))
+    const values = collectDirectAggregateNumbers(args)
+    if (!Array.isArray(values)) return values
+    return numberResult(values.reduce((sum, value) => sum + value, 0))
   },
   AVERAGEA: (...args) => {
     const error = firstError(args)
@@ -440,14 +454,16 @@ const scalarBuiltins: Record<string, Builtin> = {
   AVERAGE: (...args) => {
     const error = firstError(args)
     if (error) return error
-    const numbers = collectNumericArgs(args, toAverageNumber)
+    const numbers = collectDirectAggregateNumbers(args)
+    if (!Array.isArray(numbers)) return numbers
     if (numbers.length === 0) return div0Error()
     return numberResult(numbers.reduce((sum, value) => sum + value, 0) / numbers.length)
   },
   AVG: (...args) => {
     const error = firstError(args)
     if (error) return error
-    const numbers = collectNumericArgs(args, toAverageNumber)
+    const numbers = collectDirectAggregateNumbers(args)
+    if (!Array.isArray(numbers)) return numbers
     if (numbers.length === 0) return div0Error()
     return numberResult(numbers.reduce((sum, value) => sum + value, 0) / numbers.length)
   },
@@ -778,7 +794,9 @@ const scalarBuiltins: Record<string, Builtin> = {
   SUMSQ: (...args) => {
     const error = firstError(args)
     if (error) return error
-    return numberResult(collectNumericArgs(args, toNumber).reduce((sum, value) => sum + value ** 2, 0))
+    const values = collectDirectAggregateNumbers(args)
+    if (!Array.isArray(values)) return values
+    return numberResult(values.reduce((sum, value) => sum + value ** 2, 0))
   },
   CONVERT: (numberArg, fromUnitArg, toUnitArg) => convertBuiltin(numberArg, fromUnitArg, toUnitArg),
   EUROCONVERT: (numberArg, sourceArg, targetArg, fullPrecisionArg, triangulationPrecisionArg) =>

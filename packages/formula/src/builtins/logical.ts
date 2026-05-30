@@ -71,6 +71,26 @@ function coerceNumberLike(value: CellValue): number | undefined {
   }
 }
 
+function coerceAggregateLogicalValue(
+  value: CellValue,
+): { kind: 'value'; value: boolean } | { kind: 'ignored' } | { kind: 'error'; error: Extract<CellValue, { tag: ValueTag.Error }> } {
+  if (value.tag === ValueTag.String) {
+    const normalized = value.value.toUpperCase()
+    if (normalized === 'TRUE') {
+      return { kind: 'value', value: true }
+    }
+    if (normalized === 'FALSE') {
+      return { kind: 'value', value: false }
+    }
+    return { kind: 'ignored' }
+  }
+  if (value.tag === ValueTag.Empty) {
+    return { kind: 'ignored' }
+  }
+  const coerced = coerceLogicalValue(value)
+  return coerced.ok ? { kind: 'value', value: coerced.value } : { kind: 'error', error: coerced.error }
+}
+
 function errorTypeCode(code: ErrorCode): number | undefined {
   switch (code) {
     case ErrorCode.Null:
@@ -139,19 +159,24 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
     }
 
     let firstError: Extract<CellValue, { tag: ValueTag.Error }> | undefined
+    let seenLogical = false
     let result = true
     for (const arg of args) {
-      const coerced = coerceLogicalValue(arg)
-      if (!coerced.ok) {
+      const coerced = coerceAggregateLogicalValue(arg)
+      if (coerced.kind === 'ignored') {
+        continue
+      }
+      if (coerced.kind === 'error') {
         firstError ??= coerced.error
         continue
       }
+      seenLogical = true
       if (!coerced.value) {
         result = false
       }
     }
 
-    return firstError ?? booleanResult(result)
+    return firstError ?? (seenLogical ? booleanResult(result) : errorValue(ErrorCode.Value))
   },
   OR: (...args) => {
     if (args.length === 0) {
@@ -159,19 +184,24 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
     }
 
     let firstError: Extract<CellValue, { tag: ValueTag.Error }> | undefined
+    let seenLogical = false
     let result = false
     for (const arg of args) {
-      const coerced = coerceLogicalValue(arg)
-      if (!coerced.ok) {
+      const coerced = coerceAggregateLogicalValue(arg)
+      if (coerced.kind === 'ignored') {
+        continue
+      }
+      if (coerced.kind === 'error') {
         firstError ??= coerced.error
         continue
       }
+      seenLogical = true
       if (coerced.value) {
         result = true
       }
     }
 
-    return firstError ?? booleanResult(result)
+    return firstError ?? (seenLogical ? booleanResult(result) : errorValue(ErrorCode.Value))
   },
   NOT: (value) => {
     if (value === undefined) {
@@ -191,15 +221,20 @@ export const logicalBuiltins: Record<string, LogicalBuiltin> = {
     }
 
     let parity = false
+    let seenLogical = false
     for (const arg of args) {
-      const coerced = coerceLogicalValue(arg)
-      if (!coerced.ok) {
+      const coerced = coerceAggregateLogicalValue(arg)
+      if (coerced.kind === 'ignored') {
+        continue
+      }
+      if (coerced.kind === 'error') {
         return coerced.error
       }
+      seenLogical = true
       parity = parity !== coerced.value
     }
 
-    return booleanResult(parity)
+    return seenLogical ? booleanResult(parity) : errorValue(ErrorCode.Value)
   },
   IFS: (...args) => {
     if (args.length < 2 || args.length % 2 !== 0) {

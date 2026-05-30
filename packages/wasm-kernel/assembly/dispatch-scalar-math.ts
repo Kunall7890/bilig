@@ -388,8 +388,11 @@ export function tryApplyScalarMathBuiltin(
     if (isNaN(num) || isNaN(baseVal)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    if (num <= 0.0 || baseVal <= 0.0 || baseVal == 1.0) {
+    if (num <= 0.0 || baseVal <= 0.0) {
       return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (baseVal == 1.0) {
+      return writeScalarMathError(base, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     const result = Math.log(num) / Math.log(baseVal)
     return isFinite(result)
@@ -421,6 +424,12 @@ export function tryApplyScalarMathBuiltin(
     )
     if (isNaN(baseValue) || isNaN(exponentValue)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (baseValue == 0.0 && exponentValue == 0.0) {
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (baseValue == 0.0 && exponentValue < 0.0) {
+      return writeScalarMathError(base, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     return writeScalarMathFiniteNumberOrNum(base, excelPower(baseValue, exponentValue), rangeIndexStack, valueStack, tagStack, kindStack)
   }
@@ -543,7 +552,7 @@ export function tryApplyScalarMathBuiltin(
     if (!isFinite(numeric)) {
       return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    if ((builtinId == BuiltinId.Fact || builtinId == BuiltinId.Factdouble) && numeric < 0.0) {
+    if ((builtinId == BuiltinId.Fact && numeric < 0.0) || (builtinId == BuiltinId.Factdouble && numeric < -1.0)) {
       return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (

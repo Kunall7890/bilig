@@ -1988,7 +1988,7 @@ describe('wasm kernel', () => {
     expectNumberCell(kernel, cellIndex(4, 1, width), 18, 12)
   })
 
-  it('coerces direct empty text aggregate arguments on the wasm path', async () => {
+  it('matches Excel direct empty text aggregate argument semantics on the wasm path', async () => {
     const kernel = await createKernel()
     const width = 8
     kernel.init(16, 7, 1, 0, 0)
@@ -2018,13 +2018,13 @@ describe('wasm kernel', () => {
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
     kernel.evalBatch(outputCells)
 
-    expectNumberCell(kernel, cellIndex(0, 0, width), 1, 12)
-    expectNumberCell(kernel, cellIndex(0, 1, width), 0, 12)
-    expectNumberCell(kernel, cellIndex(0, 2, width), 0, 12)
-    expectNumberCell(kernel, cellIndex(0, 3, width), 0, 12)
-    expectNumberCell(kernel, cellIndex(0, 4, width), 0, 12)
-    expectErrorCell(kernel, cellIndex(0, 5, width), ErrorCode.Num)
-    expectErrorCell(kernel, cellIndex(0, 6, width), ErrorCode.Num)
+    expectNumberCell(kernel, cellIndex(0, 0, width), 0, 12)
+    expectErrorCell(kernel, cellIndex(0, 1, width), ErrorCode.Value)
+    expectErrorCell(kernel, cellIndex(0, 2, width), ErrorCode.Value)
+    expectErrorCell(kernel, cellIndex(0, 3, width), ErrorCode.Value)
+    expectErrorCell(kernel, cellIndex(0, 4, width), ErrorCode.Value)
+    expectErrorCell(kernel, cellIndex(0, 5, width), ErrorCode.Value)
+    expectErrorCell(kernel, cellIndex(0, 6, width), ErrorCode.Value)
   })
 
   it('returns #NUM for GEOMEAN and HARMEAN ranges without numeric values on the wasm path', async () => {

@@ -1,5 +1,5 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
-import { parseArithmeticNumericText, parseNumericText } from './numeric-text.js'
+import { parseNumericText } from './numeric-text.js'
 
 export const numericReferenceAggregateCallees = new Set([
   'SUM',
@@ -39,12 +39,12 @@ export function coerceDirectNumericTextAggregateArgument(callee: string, value: 
   if (isReferenceArg || value.tag !== ValueTag.String) {
     return value
   }
-  const directNumericText = value.value === '' ? 0 : parseNumericText(value.value)
+  const directNumericText = parseNumericText(value.value)
   if (callee === 'COUNT') {
     return directNumericText === undefined ? value : { tag: ValueTag.Number, value: directNumericText }
   }
   if (callee === 'SUM' || callee === 'AVERAGE' || callee === 'AVG') {
-    const numeric = parseArithmeticNumericText(value.value)
+    const numeric = parseNumericText(value.value)
     return numeric === undefined ? { tag: ValueTag.Error, code: ErrorCode.Value } : { tag: ValueTag.Number, value: numeric }
   }
   if (callee === 'PRODUCT' || callee === 'MIN' || callee === 'MAX' || callee === 'SUMSQ') {

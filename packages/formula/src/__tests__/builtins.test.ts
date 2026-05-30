@@ -190,20 +190,28 @@ describe('formula builtins', () => {
     }
   })
 
-  it('coerces direct empty text aggregate arguments consistently with Excel numeric argument lists', () => {
+  it('matches Excel direct empty text aggregate argument semantics', () => {
+    const SUM = getBuiltin('SUM')!
+    const AVERAGE = getBuiltin('AVERAGE')!
     const COUNT = getBuiltin('COUNT')!
     const MIN = getBuiltin('MIN')!
     const MAX = getBuiltin('MAX')!
+    const PRODUCT = getBuiltin('PRODUCT')!
+    const SUMSQ = getBuiltin('SUMSQ')!
     const GEOMEAN = getBuiltin('GEOMEAN')!
     const HARMEAN = getBuiltin('HARMEAN')!
 
     const emptyText = { tag: ValueTag.String, value: '', stringId: 1 } as const
 
-    expect(COUNT(emptyText)).toEqual({ tag: ValueTag.Number, value: 1 })
-    expect(MIN(emptyText)).toEqual({ tag: ValueTag.Number, value: 0 })
-    expect(MAX(emptyText, { tag: ValueTag.Number, value: -1 })).toEqual({ tag: ValueTag.Number, value: 0 })
-    expect(GEOMEAN(emptyText)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
-    expect(HARMEAN(emptyText)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Num })
+    expect(SUM(emptyText)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(AVERAGE(emptyText)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(COUNT(emptyText)).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(MIN(emptyText)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(MAX(emptyText, { tag: ValueTag.Number, value: -1 })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(PRODUCT(emptyText)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(SUMSQ(emptyText)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(GEOMEAN(emptyText)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(HARMEAN(emptyText)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
   })
 
   it('supports numeric aggregates and error propagation', () => {
@@ -218,7 +226,7 @@ describe('formula builtins', () => {
 
     expect(
       avg?.({ tag: ValueTag.Number, value: 2 }, { tag: ValueTag.String, value: 'skip', stringId: 1 }, { tag: ValueTag.Empty }),
-    ).toEqual({ tag: ValueTag.Number, value: 2 })
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
 
     expect(sum?.({ tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Error, code: ErrorCode.Ref })).toEqual({
       tag: ValueTag.Error,
@@ -242,7 +250,7 @@ describe('formula builtins', () => {
     expect(LN(number(0))).toEqual(error(ErrorCode.Num))
     expect(LOG10(number(0))).toEqual(error(ErrorCode.Num))
     expect(LOG(number(-1))).toEqual(error(ErrorCode.Num))
-    expect(LOG(number(10), number(1))).toEqual(error(ErrorCode.Num))
+    expect(LOG(number(10), number(1))).toEqual(error(ErrorCode.Div0))
     expect(LOG(error(ErrorCode.Name))).toEqual(error(ErrorCode.Name))
   })
 
@@ -441,7 +449,7 @@ describe('formula builtins', () => {
   it('supports boolean and string builtins and builtin ids', () => {
     expect(getBuiltin('AND')?.({ tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Empty })).toEqual({
       tag: ValueTag.Boolean,
-      value: false,
+      value: true,
     })
 
     expect(getBuiltin('OR')?.({ tag: ValueTag.Empty }, { tag: ValueTag.Boolean, value: true })).toEqual({
@@ -505,7 +513,7 @@ describe('formula builtins', () => {
         { tag: ValueTag.Empty },
         { tag: ValueTag.String, value: 'skip', stringId: 1 },
       ),
-    ).toEqual({ tag: ValueTag.Number, value: 2 })
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
 
     expect(getBuiltinId('sum')).toBe(BuiltinId.Sum)
     expect(getBuiltinId('concat')).toBe(BuiltinId.Concat)

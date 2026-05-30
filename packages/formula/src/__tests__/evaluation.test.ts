@@ -181,6 +181,24 @@ describe('formula builtins and JS evaluator', () => {
     }
   })
 
+  it('matches Excel logical empty and invalid text coercion edges', () => {
+    const context = {
+      sheetName: 'Sheet1',
+      resolveCell: (): CellValue => ({ tag: ValueTag.Empty }),
+      resolveRange: (): CellValue[] => [],
+    }
+
+    expect(evaluateAst(parseFormula('IF("",1,2)'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(evaluateAst(parseFormula('NOT("")'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(evaluateAst(parseFormula('IFS("",1,TRUE(),2)'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(evaluateAst(parseFormula('AND("bad",TRUE())'), context)).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(evaluateAst(parseFormula('OR("bad",FALSE())'), context)).toEqual({ tag: ValueTag.Boolean, value: false })
+    expect(evaluateAst(parseFormula('XOR("bad",TRUE())'), context)).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(evaluateAst(parseFormula('AND("bad")'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(evaluateAst(parseFormula('OR("bad")'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(evaluateAst(parseFormula('XOR("bad")'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+  })
+
   it('covers scalar builtins and builtin id lookup', () => {
     const SUM = getBuiltin('sum')!
     const AVG = getBuiltin('AVG')!
@@ -202,7 +220,7 @@ describe('formula builtins and JS evaluator', () => {
     })
     expect(
       AVG({ tag: ValueTag.Number, value: 2 }, { tag: ValueTag.String, value: 'ignored', stringId: 0 }, { tag: ValueTag.Number, value: 4 }),
-    ).toEqual({ tag: ValueTag.Number, value: 3 })
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(MOD({ tag: ValueTag.Number, value: 8 }, { tag: ValueTag.Number, value: 0 })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Div0,
@@ -378,7 +396,15 @@ describe('formula builtins and JS evaluator', () => {
     expect(evaluateAst(parseFormula('COUNT("2","bad")'), context)).toEqual({ tag: ValueTag.Number, value: 1 })
     expect(evaluateAst(parseFormula('AVERAGE("2","4")'), context)).toEqual({ tag: ValueTag.Number, value: 3 })
     expect(evaluateAst(parseFormula('AVG("2","4")'), context)).toEqual({ tag: ValueTag.Number, value: 3 })
-    expect(evaluateAst(parseFormula('AVERAGE("",4)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(evaluateAst(parseFormula('SUM("",4)'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(evaluateAst(parseFormula('AVERAGE("",4)'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(evaluateAst(parseFormula('COUNT("")'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(evaluateAst(parseFormula('MIN("")'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(evaluateAst(parseFormula('MAX("")'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(evaluateAst(parseFormula('PRODUCT("")'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(evaluateAst(parseFormula('SUMSQ("")'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(evaluateAst(parseFormula('GEOMEAN("")'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(evaluateAst(parseFormula('HARMEAN("")'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(evaluateAst(parseFormula('AVERAGE("bad",4)'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
 
     expect(evaluateAst(parseFormula('PRODUCT("2",A1)'), context)).toEqual({ tag: ValueTag.Number, value: 2 })
@@ -529,7 +555,7 @@ describe('formula builtins and JS evaluator', () => {
     expect(evaluateAst(parseFormula('XOR(A3:A4)'), context)).toEqual(valueError)
     expect(evaluateAst(parseFormula('XOR(A6)'), context)).toEqual(valueError)
 
-    expect(evaluateAst(parseFormula('AND(2,4,"bad",TRUE())'), context)).toEqual(valueError)
+    expect(evaluateAst(parseFormula('AND(2,4,"bad",TRUE())'), context)).toEqual({ tag: ValueTag.Boolean, value: true })
     expect(evaluateAst(parseFormula('AND(B1,A1)'), context)).toEqual(naError)
     expect(evaluateAst(parseFormula('AND(FALSE(),B1)'), context)).toEqual(naError)
     expect(evaluateAst(parseFormula('AND(A7:B1)'), context)).toEqual(naError)

@@ -779,6 +779,40 @@ describe('wasm kernel scalar math dispatch', () => {
     }
   })
 
+  it('matches Microsoft Excel scalar math zero-base and singular-domain errors on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(16, 0, 4, 1, 1)
+    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushNumber(0), encodeCall(BuiltinId.Power, 2), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(2), encodeCall(BuiltinId.Power, 2), encodeRet()],
+      [encodePushNumber(3), encodePushNumber(1), encodeCall(BuiltinId.Log, 2), encodeRet()],
+      [encodePushNumber(2), encodeCall(BuiltinId.Factdouble, 1), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 4 }, (_value, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([
+      [0, 1, -1, 100],
+      [0, 1, -1, 100],
+      [0, 1, -1, 100],
+      [0, 1, -1, 100],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 4 }, (_value, index) => cellIndex(1, index, width))))
+
+    expectKernelError(kernel, cellIndex(1, 0, width), ErrorCode.Num)
+    expectKernelError(kernel, cellIndex(1, 1, width), ErrorCode.Div0)
+    expectKernelError(kernel, cellIndex(1, 2, width), ErrorCode.Div0)
+    expect(kernel.readTags()[cellIndex(1, 3, width)]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[cellIndex(1, 3, width)]).toBe(1)
+  })
+
   it('coerces direct numeric text across scalar math dispatch', async () => {
     const kernel = await createKernel()
     const width = 32
@@ -915,7 +949,7 @@ describe('wasm kernel scalar math dispatch', () => {
     expect(kernel.readTags()[cellIndex(1, 1, width)]).toBe(ValueTag.Error)
     expect(kernel.readErrors()[cellIndex(1, 1, width)]).toBe(ErrorCode.Num)
     expect(kernel.readTags()[cellIndex(1, 2, width)]).toBe(ValueTag.Error)
-    expect(kernel.readErrors()[cellIndex(1, 2, width)]).toBe(ErrorCode.Num)
+    expect(kernel.readErrors()[cellIndex(1, 2, width)]).toBe(ErrorCode.Div0)
     expect(kernel.readTags()[cellIndex(1, 3, width)]).toBe(ValueTag.Error)
     expect(kernel.readErrors()[cellIndex(1, 3, width)]).toBe(ErrorCode.Name)
     expect(kernel.readTags()[cellIndex(1, 4, width)]).toBe(ValueTag.Error)
@@ -1104,7 +1138,7 @@ describe('wasm kernel scalar math dispatch', () => {
       packed.lengths,
       Uint32Array.from(Array.from({ length: 11 }, (_, index) => cellIndex(1, index, width))),
     )
-    const constants = packConstants([[-1], [-1], [-1, 0], [2, 3], [-1, 1], [1, -1], [0, 1], [0, 1], [3, 4], [0, 1], [-1, 1]])
+    const constants = packConstants([[-1], [-2], [-1, 0], [2, 3], [-1, 1], [1, -1], [0, 1], [0, 1], [3, 4], [0, 1], [-1, 1]])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
     kernel.evalBatch(Uint32Array.from(Array.from({ length: 11 }, (_, index) => cellIndex(1, index, width))))
 
