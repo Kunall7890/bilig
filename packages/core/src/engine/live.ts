@@ -2,7 +2,7 @@ import { ValueTag, type CellSnapshot, type WorkbookSnapshot } from '@bilig/proto
 import { CellFlags } from '../cell-store.js'
 import { createColumnIndexStore } from '../indexes/column-index-store.js'
 import type { EngineRuntimeState } from './runtime-state.js'
-import type { EngineServiceRuntime } from './service-runtime.js'
+import type { EngineServiceRuntime } from './service-runtime-types.js'
 import { createEngineCellStateService } from './services/cell-state-service.js'
 import { createEngineEventService } from './services/event-service.js'
 import { createEngineChangeSetEmitterService } from './services/change-set-emitter-service.js'
@@ -57,10 +57,10 @@ import type {
   EnginePivotRuntimeConfig,
   EngineRecalcRuntimeConfig,
   EngineTraversalRuntimeConfig,
-} from './live-service-config.js'
+} from './live-service-config-types.js'
 
 export { runEngineEffect, runEngineEffectPromise } from './live-effect.js'
-export type { EngineServiceRuntime } from './service-runtime.js'
+export type { EngineServiceRuntime } from './service-runtime-types.js'
 
 function requireService<Service>(service: Service | undefined, name: string): Service {
   if (service === undefined) {
