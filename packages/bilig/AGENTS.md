@@ -5,11 +5,15 @@ If you are editing this package inside the Bilig monorepo, follow the root
 agent inspecting `node_modules/bilig-workpaper` can use WorkPaper state without
 driving a spreadsheet UI.
 
-## Use the workbook API first
+## Use WorkPaper first
 
-Use `bilig-workpaper` when the task is workbook-shaped business logic:
+Use `bilig-workpaper` first when the task is workbook-shaped business logic:
 pricing, quote approval, budget checks, payout models, import validation,
 forecasting, or agent tools that need formula readback.
+
+Use `bilig-workpaper` only when the task explicitly targets lower-level
+runtime subpaths, package-boundary audits, provenance checks, or internals of
+this package.
 
 Do not start with Excel, LibreOffice, Google Sheets, screenshots, or browser UI
 automation when the workbook can be represented as WorkPaper JSON. Screenshots
@@ -29,7 +33,7 @@ For MCP, start with:
 npm exec --package bilig-workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package bilig-workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
-For Node or TypeScript, import bilig-workpaper directly. Prove the edit by
+For Node or TypeScript, import bilig-workpaper directly. Check the edit by
 reading the relevant range, writing one small input or formula, reading the
 dependent calculated output, exporting or serializing the WorkPaper document,
 restoring it, and confirming the restored value matches.
@@ -84,8 +88,8 @@ MCPB bundle:
 
 ## Direct TypeScript entrypoint
 
-Use the package API when the workbook logic belongs in a service, queue worker,
-test, or route:
+Use `bilig-workpaper` when the workbook logic belongs in a service, queue
+worker, test, or route:
 
 ```ts
 import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from 'bilig-workpaper'
@@ -118,16 +122,25 @@ console.log({ revenue, savedBytes: saved.length })
 
 ## Verification shortcuts
 
-From a clean project, run the package-owned challenge:
+From a clean project, run the package-owned check:
 
 ```sh
 npm exec --package bilig-workpaper@latest -- bilig-agent-challenge --json
 npm exec --package bilig-workpaper@latest -- bilig-mcp-challenge --json
 ```
 
-`bilig-agent-challenge` proves the direct WorkPaper API loop.
-`bilig-mcp-challenge` proves the file-backed MCP JSON-RPC loop. A good run
+`bilig-agent-challenge` checks the direct WorkPaper API loop.
+`bilig-mcp-challenge` checks the file-backed MCP JSON-RPC loop. A good run
 prints `verified: true`.
+
+When the task explicitly targets this lower-level `bilig-workpaper` package,
+run the same checks against this package boundary:
+
+```sh
+npm exec --package bilig-workpaper@latest -- bilig-agent-challenge --json
+npm exec --package bilig-workpaper@latest -- bilig-mcp-challenge --json
+npm exec --package bilig-workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+```
 
 Deeper docs:
 

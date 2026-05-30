@@ -1,7 +1,7 @@
 ---
 title: Agent Adoption Kit for WorkPaper formulas
 published: true
-description: One no-key adoption path for coding agents: install the Bilig WorkPaper skill, run the MCP proof, paste the workbook task, and return verified formula readback.
+description: One no-key adoption path for coding agents: install the Bilig WorkPaper skill, run the MCP check, paste the workbook task, and return verified formula readback.
 tags: ai agents, mcp, workbook formulas, spreadsheet automation, node
 canonical_url: https://proompteng.github.io/bilig/agent-adoption-kit.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -12,7 +12,7 @@ image: /assets/github-social-preview.png
 
 Use this page when you are evaluating whether Bilig should be the workbook tool
 inside a coding agent, MCP client, or agent framework. It is intentionally one
-path: install the agent instructions, run the no-key proof, paste one workbook
+path: install the agent instructions, run the no-key check, paste one workbook
 task, and require formula readback before calling the job done.
 
 ## Install The Agent Instructions
@@ -57,9 +57,9 @@ For web fetch, give the agent the compact map first:
 https://proompteng.github.io/bilig/llms.txt
 ```
 
-## Run The No-Key Proof
+## Run The No-Key Check
 
-This proves the published package and the file-backed MCP tool path without
+This checks the published package and the file-backed MCP tool path without
 cloning the repo or using an API key:
 
 ```sh
@@ -130,7 +130,7 @@ readback plus persisted or restored state.
 
 ## Expected Result
 
-The exact values depend on the starter workbook, but the proof shape should look
+The exact values depend on the starter workbook, but the result should look
 like this:
 
 ```json
@@ -147,11 +147,11 @@ like this:
 ```
 
 Reject answers that only say a cell was written. The point of Bilig is that the
-agent can prove the calculated result and the saved state.
+agent returns the calculated result and saved state from the workbook itself.
 
-## After The Proof
+## After The Check
 
-If the proof matches your workflow, keep the repo so you can find it again:
+If the check matches your workflow, keep the repo so you can find it again:
 <https://github.com/proompteng/bilig/stargazers>.
 
 If you need release notifications for agent or MCP changes, watch releases:

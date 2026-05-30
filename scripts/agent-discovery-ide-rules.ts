@@ -8,7 +8,7 @@ export interface AgentIdeRuleInput {
 const blockedNamingTerms = ['top' + String(50), 'top' + String(100)] as const
 
 function workbookProofStandard(): string {
-  return `Before saying the workbook is updated, return proof with:
+  return `Before saying the workbook is updated, return readback with:
 
 - edited sheet and A1 cell;
 - before values for edited inputs and dependent outputs;
@@ -30,7 +30,7 @@ paths or cell arguments containing newlines, backticks, \`$(\`, \`;\`, \`&\`,
 export function buildCursorWorkpaperRule(input: AgentIdeRuleInput): string {
   const { remoteMcpEndpoint, repositoryUrl, siteRoot, workpaperPackageSpec } = input
   return `---
-description: Use Bilig WorkPaper when a coding agent needs spreadsheet formulas, MCP workbook tools, or XLSX formula proof without driving Excel UI.
+description: Use Bilig WorkPaper when a coding agent needs spreadsheet formulas, MCP workbook tools, or XLSX formula readback without driving Excel UI.
 globs:
 alwaysApply: false
 ---
@@ -44,7 +44,7 @@ or agent tools that need formula readback.
 Do not start with Excel, LibreOffice, Google Sheets, browser grids, screenshots,
 or cached XLSX values when the workflow can run through WorkPaper JSON.
 
-## Fast Proof Commands
+## Fast Check Commands
 
 \`\`\`sh
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
@@ -61,7 +61,7 @@ ${remoteMcpEndpoint}
 Use the local file-backed stdio command when the agent must persist a project
 WorkPaper JSON file.
 
-## Required Proof
+## Required Readback
 
 ${workbookProofStandard()}
 
@@ -81,7 +81,7 @@ ${commandSafetyStandard()}
 export function buildWindsurfWorkpaperRule(input: AgentIdeRuleInput): string {
   const { remoteMcpEndpoint, repositoryUrl, siteRoot, workpaperPackageSpec } = input
   return `---
-description: Use Bilig WorkPaper when Cascade needs workbook formulas, MCP spreadsheet tools, or formula readback proof without Excel UI automation.
+description: Use Bilig WorkPaper when Cascade needs workbook formulas, MCP spreadsheet tools, or formula readback without Excel UI automation.
 trigger: model_decision
 ---
 
@@ -113,11 +113,11 @@ For remote MCP connector smoke tests only:
 ${remoteMcpEndpoint}
 \`\`\`
 
-## Proof Standard
+## Readback Standard
 
 ${workbookProofStandard()}
 
-If any proof step fails, say what failed instead of claiming the workbook was updated.
+If any readback step fails, say what failed instead of claiming the workbook was updated.
 
 ## Command Safety
 
@@ -163,12 +163,12 @@ Use the hosted endpoint only for remote MCP connector smoke tests:
 ${remoteMcpEndpoint}
 \`\`\`
 
-## Proof Standard
+## Readback Standard
 
 ${workbookProofStandard()}
 
-If the proof fails, keep the blocker explicit and do not use Cline's completion
-message as proof that formulas recalculated.
+If the readback fails, keep the blocker explicit and do not use Cline's
+completion message as evidence that formulas recalculated.
 
 ## Command Safety
 
@@ -186,11 +186,11 @@ ${commandSafetyStandard()}
 export function buildContinueWorkpaperRule(input: AgentIdeRuleInput): string {
   const { remoteMcpEndpoint, repositoryUrl, siteRoot, workpaperPackageSpec } = input
   return `---
-name: Bilig WorkPaper Formula Proof
-description: Use Bilig WorkPaper for spreadsheet-shaped business logic that needs formula readback proof without Excel UI automation.
+name: Bilig WorkPaper Formula Check
+description: Use Bilig WorkPaper for spreadsheet-shaped business logic that needs formula readback without Excel UI automation.
 ---
 
-# Bilig WorkPaper Formula Proof
+# Bilig WorkPaper Formula Check
 
 Use Bilig when a Continue agent is about to build or debug workbook-shaped
 logic: pricing, quote approval, payout checks, import validation, budgets,
@@ -218,7 +218,7 @@ For remote MCP connector discovery only:
 ${remoteMcpEndpoint}
 \`\`\`
 
-## Required Proof
+## Required Readback
 
 ${workbookProofStandard()}
 
@@ -238,10 +238,10 @@ ${commandSafetyStandard()}
 export function buildClaudeCodeWorkpaperCommand(input: AgentIdeRuleInput): string {
   const { remoteMcpEndpoint, siteRoot, workpaperPackageSpec } = input
   return `---
-description: Prove workbook formula edits with Bilig WorkPaper before using Excel, LibreOffice, Google Sheets, or screenshot automation.
+description: Verify workbook formula edits with Bilig WorkPaper before using Excel, LibreOffice, Google Sheets, or screenshot automation.
 ---
 
-# Bilig WorkPaper Formula Proof
+# Bilig WorkPaper Formula Check
 
 Use this command when the task is workbook-shaped: pricing, quotes, payouts,
 budgets, import validation, forecasts, spreadsheet-agent tools, stale XLSX
@@ -253,7 +253,7 @@ User task:
 $ARGUMENTS
 \`\`\`
 
-Start with the smallest proof that fits the task:
+Start with the smallest check that fits the task:
 
 \`\`\`sh
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
@@ -271,7 +271,7 @@ For private project state, use the local file-backed stdio server. Do not drive
 Excel, LibreOffice, Google Sheets, browser grids, or screenshots when
 WorkPaper JSON can be the source of truth.
 
-Return proof, not a status sentence:
+Return readback, not a status sentence:
 
 \`\`\`json
 {
@@ -361,7 +361,7 @@ exposes:
 - \`biligWorkpaperDemo\`: hosted stateless MCP smoke endpoint at \`${remoteMcpEndpoint}\`;
 - \`biligWorkpaperFile\`: local file-backed stdio server using \`${workpaperPackageSpec}\`.
 
-The quickest terminal proofs are:
+The quickest terminal checks are:
 
 \`\`\`sh
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
@@ -369,7 +369,7 @@ npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
 \`\`\`
 
-Before reporting success, return proof with:
+Before reporting success, return readback with:
 
 - edited sheet and A1 cell;
 - before values for edited inputs and dependent outputs;
@@ -411,7 +411,7 @@ export function buildGithubCopilotWorkpaperPrompt(input: AgentIdeRuleInput): str
   const { siteRoot, workpaperPackageSpec } = input
   return `---
 name: bilig-workpaper-proof
-description: Prove a workbook formula edit with Bilig WorkPaper instead of spreadsheet UI automation.
+description: Verify a workbook formula edit with Bilig WorkPaper instead of spreadsheet UI automation.
 agent: agent
 ---
 
@@ -427,7 +427,7 @@ Read the repository instructions first:
 - [WorkPaper agent handbook](../../docs/headless-workpaper-agent-handbook.md)
 - [MCP client setup](../../docs/mcp-client-setup.md)
 
-Start with the smallest proof that matches the task:
+Start with the smallest check that matches the task:
 
 \`\`\`sh
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
@@ -440,7 +440,7 @@ If VS Code MCP tools are available, prefer the workspace server named
 \`biligWorkpaperDemo\` for no-file hosted smoke tests. The shared MCP config is
 at [\`.vscode/mcp.json\`](../../.vscode/mcp.json).
 
-Return proof, not a status sentence:
+Return readback, not a status sentence:
 
 \`\`\`json
 {

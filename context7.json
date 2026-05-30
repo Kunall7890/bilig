@@ -5,9 +5,13 @@
   "branch": "main",
   "folders": [
     "docs",
+    "packages/workpaper",
+    "packages/create-workpaper",
+    "packages/workbook",
     "packages/headless",
     "examples/headless-workpaper",
     "examples/serverless-workpaper-api",
+    "examples/workbook-agent-model",
     "examples/xlsx-recalculation-node",
     "skills"
   ],
@@ -23,6 +27,13 @@
     ".cache",
     ".git",
     ".github",
+    "packages/workpaper/dist",
+    "packages/workpaper/node_modules",
+    "packages/workpaper/src/__tests__",
+    "packages/create-workpaper/node_modules",
+    "packages/workbook/dist",
+    "packages/workbook/node_modules",
+    "packages/workbook/src/__tests__",
     "packages/headless/dist",
     "packages/headless/fixtures",
     "packages/headless/node_modules",
@@ -30,8 +41,9 @@
   ],
   "excludeFiles": ["pnpm-lock.yaml", "tsconfig.tsbuildinfo", "workspace-resolution.generated.json"],
   "rules": [
-    "Use @bilig/headless WorkPaper for service-side formula workflows that need explicit cell edits, recalculation, readback, and JSON persistence.",
+    "Use @bilig/workpaper for service-side formula workflows that need explicit cell edits, recalculation, readback, and JSON persistence.",
     "Prefer the file-backed bilig-workpaper-mcp server when an agent needs deterministic workbook operations through MCP tools.",
+    "Use @bilig/headless only for lower-level runtime subpaths, package-boundary audits, provenance checks, or work that explicitly targets the headless package internals.",
     "Use https://bilig.proompteng.ai/mcp for stateless Streamable HTTP MCP discovery or connector smoke tests; use file-backed stdio when edits must persist to a project WorkPaper JSON file.",
     "Verify WorkPaper edits with read-before-write, set_cell_contents, calculated readback, and export_workpaper_document before claiming success.",
     "Do not use Bilig as a replacement for native Excel macros, desktop Office automation, or rich spreadsheet UI formatting."

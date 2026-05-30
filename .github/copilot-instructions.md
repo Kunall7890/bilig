@@ -54,7 +54,7 @@ exposes:
 - `biligWorkpaperDemo`: hosted stateless MCP smoke endpoint at `https://bilig.proompteng.ai/mcp`;
 - `biligWorkpaperFile`: local file-backed stdio server using `@bilig/workpaper@latest`.
 
-The quickest terminal proofs are:
+The quickest terminal checks are:
 
 ```sh
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
@@ -62,7 +62,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
-Before reporting success, return proof with:
+Before reporting success, return readback with:
 
 - edited sheet and A1 cell;
 - before values for edited inputs and dependent outputs;

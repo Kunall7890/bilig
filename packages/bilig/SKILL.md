@@ -32,7 +32,7 @@ Do not trigger it for manual spreadsheet editing, Office macros, VBA, pivots, ch
 
 Do not build shell commands by concatenating user text. Treat the commands below as literal templates, validate workbook paths before use, and reject values containing newlines, backticks, `$(`, `;`, `&`, `|`, `<`, or `>`. Prefer MCP client `command` plus `args` arrays or direct TypeScript calls when inserting user-provided paths or cell references.
 
-## First Choice: Direct npm proof or TypeScript
+## First Choice: Direct npm check or TypeScript
 
 Use the package directly when the host can run npm or TypeScript. This is the
 highest-traffic evaluator path because it meets developers where they already
@@ -47,7 +47,7 @@ npx --yes skills@latest add https://bilig.proompteng.ai --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 ```
 
-Start by proving the direct WorkPaper loop:
+Start by checking the direct WorkPaper loop:
 
 ```json
 {
@@ -158,16 +158,16 @@ The report is local. It does not upload workbook contents. Ask for a reduced pub
 
 ## Required Verification
 
-Return proof, not vibes. A successful agent response should include:
+Return readback, not vibes. A successful agent response should include:
 
 - the exact edited sheet and A1 cell;
 - before values for relevant inputs and dependent outputs;
 - after values read from the recalculated workbook;
 - persistence evidence from serialized or exported WorkPaper state;
-- restore or reimport proof when file boundaries matter;
+- restore or reimport checks when file boundaries matter;
 - limitations for unsupported formulas or Excel-only features.
 
-If any proof step fails, report the blocker instead of claiming the workbook was updated.
+If any readback step fails, report the blocker instead of claiming the workbook was updated.
 
 ## Reference URLs
 

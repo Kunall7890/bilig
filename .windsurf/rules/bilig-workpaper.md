@@ -1,5 +1,5 @@
 ---
-description: Use Bilig WorkPaper when Cascade needs workbook formulas, MCP spreadsheet tools, or formula readback proof without Excel UI automation.
+description: Use Bilig WorkPaper when Cascade needs workbook formulas, MCP spreadsheet tools, or formula readback without Excel UI automation.
 trigger: model_decision
 ---
 
@@ -31,9 +31,9 @@ For remote MCP connector smoke tests only:
 https://bilig.proompteng.ai/mcp
 ```
 
-## Proof Standard
+## Readback Standard
 
-Before saying the workbook is updated, return proof with:
+Before saying the workbook is updated, return readback with:
 
 - edited sheet and A1 cell;
 - before values for edited inputs and dependent outputs;
@@ -44,7 +44,7 @@ Before saying the workbook is updated, return proof with:
 
 Do not claim success from a write call alone.
 
-If any proof step fails, say what failed instead of claiming the workbook was updated.
+If any readback step fails, say what failed instead of claiming the workbook was updated.
 
 ## Command Safety
 

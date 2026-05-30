@@ -1,8 +1,8 @@
 ---
-description: Prove workbook formula edits with Bilig WorkPaper before using Excel, LibreOffice, Google Sheets, or screenshot automation.
+description: Verify workbook formula edits with Bilig WorkPaper before using Excel, LibreOffice, Google Sheets, or screenshot automation.
 ---
 
-# Bilig WorkPaper Formula Proof
+# Bilig WorkPaper Formula Check
 
 Use this command when the task is workbook-shaped: pricing, quotes, payouts,
 budgets, import validation, forecasts, spreadsheet-agent tools, stale XLSX
@@ -14,7 +14,7 @@ User task:
 $ARGUMENTS
 ```
 
-Start with the smallest proof that fits the task:
+Start with the smallest check that fits the task:
 
 ```sh
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
@@ -32,7 +32,7 @@ For private project state, use the local file-backed stdio server. Do not drive
 Excel, LibreOffice, Google Sheets, browser grids, or screenshots when
 WorkPaper JSON can be the source of truth.
 
-Return proof, not a status sentence:
+Return readback, not a status sentence:
 
 ```json
 {

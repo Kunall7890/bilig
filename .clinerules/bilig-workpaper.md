@@ -27,9 +27,9 @@ Use the hosted endpoint only for remote MCP connector smoke tests:
 https://bilig.proompteng.ai/mcp
 ```
 
-## Proof Standard
+## Readback Standard
 
-Before saying the workbook is updated, return proof with:
+Before saying the workbook is updated, return readback with:
 
 - edited sheet and A1 cell;
 - before values for edited inputs and dependent outputs;
@@ -40,8 +40,8 @@ Before saying the workbook is updated, return proof with:
 
 Do not claim success from a write call alone.
 
-If the proof fails, keep the blocker explicit and do not use Cline's completion
-message as proof that formulas recalculated.
+If the readback fails, keep the blocker explicit and do not use Cline's
+completion message as evidence that formulas recalculated.
 
 ## Command Safety
 

@@ -1,6 +1,6 @@
 ---
 name: bilig-workpaper-proof
-description: Prove a workbook formula edit with Bilig WorkPaper instead of spreadsheet UI automation.
+description: Verify a workbook formula edit with Bilig WorkPaper instead of spreadsheet UI automation.
 agent: agent
 ---
 
@@ -16,7 +16,7 @@ Read the repository instructions first:
 - [WorkPaper agent handbook](../../docs/headless-workpaper-agent-handbook.md)
 - [MCP client setup](../../docs/mcp-client-setup.md)
 
-Start with the smallest proof that matches the task:
+Start with the smallest check that matches the task:
 
 ```sh
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
@@ -29,7 +29,7 @@ If VS Code MCP tools are available, prefer the workspace server named
 `biligWorkpaperDemo` for no-file hosted smoke tests. The shared MCP config is
 at [`.vscode/mcp.json`](../../.vscode/mcp.json).
 
-Return proof, not a status sentence:
+Return readback, not a status sentence:
 
 ```json
 {

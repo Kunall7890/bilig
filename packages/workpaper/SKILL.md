@@ -45,7 +45,7 @@ npx --yes skills@latest add https://bilig.proompteng.ai --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 ```
 
-Before wiring a client, an agent can prove the direct WorkPaper loop with:
+Before wiring a client, an agent can check the direct WorkPaper loop with:
 
 ```json
 {
@@ -165,16 +165,16 @@ The report is local. It does not upload workbook contents. Ask for a reduced pub
 
 ## Required Verification
 
-Return proof, not vibes. A successful agent response should include:
+Return readback, not vibes. A successful agent response should include:
 
 - the exact edited sheet and A1 cell;
 - before values for relevant inputs and dependent outputs;
 - after values read from the recalculated workbook;
 - persistence evidence from serialized or exported WorkPaper state;
-- restore or reimport proof when file boundaries matter;
+- restore or reimport checks when file boundaries matter;
 - limitations for unsupported formulas or Excel-only features.
 
-If any proof step fails, report the blocker instead of claiming the workbook was updated.
+If any readback step fails, report the blocker instead of claiming the workbook was updated.
 
 ## Reference URLs
 

@@ -15,7 +15,7 @@ directory and want to test the hosted endpoint or wire a local agent client to a
 project WorkPaper file.
 
 The hosted endpoint is a stateless Streamable HTTP demo for connector smoke
-tests. The local server is the published npm binary from `@bilig/headless`; it
+tests. The local server is the published npm binary from `@bilig/workpaper`; it
 starts over stdio, owns a real WorkPaper JSON file, writes through tools,
 recalculates formulas, and persists edits back to disk.
 
@@ -65,7 +65,7 @@ curl -fsS https://bilig.proompteng.ai/.well-known/mcp/server-card.json | jq '.tr
 ```
 
 Use the remote endpoint when the client cannot launch `npm` locally or when you
-only need tool discovery and write/readback proof. It is request-local: it does
+only need tool discovery and write/readback checks. It is request-local: it does
 not persist user files and does not issue `MCP-Session-Id`.
 
 For persistent project workflows, use the local stdio config below with
@@ -201,7 +201,7 @@ pnpm mcpb:workpaper:build
 open build/mcpb/bilig-workpaper.mcpb
 ```
 
-The bundle installs the same published `@bilig/headless` stdio server, but
+The bundle installs the same published `@bilig/workpaper` stdio server, but
 ships the package and its production dependencies inside the `.mcpb` file. See
 the [Claude Desktop MCPB guide](claude-desktop-mcpb-workpaper.md) for the
 manifest shape and verification prompt.
@@ -346,7 +346,7 @@ saves the WorkPaper document, restores it, and returns checks such as
 
 That is the useful boundary for spreadsheet agents. A tool that only says
 `updated` is not enough; the agent needs the edited address, previous value,
-new value, before/after computed values, and persistence proof.
+new value, before/after computed values, and persistence readback.
 
 ## Troubleshooting
 

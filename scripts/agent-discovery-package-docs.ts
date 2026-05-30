@@ -2,6 +2,7 @@ interface WorkpaperAgentInstructionsInput {
   headlessPackageAgentInstructions: string
   headlessPackageSpec: string
   unscopedWorkpaperPackageSpec: string
+  workpaperPackageSpec: string
 }
 
 interface WorkpaperSkillDocumentInput {
@@ -15,6 +16,8 @@ export function buildWorkpaperPackageAgentInstructions(input: WorkpaperAgentInst
     .replace('# @bilig/headless agent notes', '# bilig-workpaper agent notes')
     .replace('agent inspecting `node_modules/@bilig/headless`', 'agent inspecting `node_modules/bilig-workpaper`')
     .replaceAll(input.headlessPackageSpec, input.unscopedWorkpaperPackageSpec)
+    .replaceAll(input.workpaperPackageSpec, input.unscopedWorkpaperPackageSpec)
+    .replace(/@bilig\/workpaper/g, 'bilig-workpaper')
     .replace(/@bilig\/headless/g, 'bilig-workpaper')
 }
 
@@ -49,8 +52,8 @@ npx --yes skills@latest add https://bilig.proompteng.ai --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 \`\`\`
 
-Before wiring a client, an agent can prove the direct WorkPaper loop with:`,
-      `## First Choice: Direct npm proof or TypeScript
+Before wiring a client, an agent can check the direct WorkPaper loop with:`,
+      `## First Choice: Direct npm check or TypeScript
 
 Use the package directly when the host can run npm or TypeScript. This is the
 highest-traffic evaluator path because it meets developers where they already
@@ -65,7 +68,7 @@ npx --yes skills@latest add https://bilig.proompteng.ai --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 \`\`\`
 
-Start by proving the direct WorkPaper loop:`,
+Start by checking the direct WorkPaper loop:`,
     )
     .replace(
       'For the actual file-backed MCP path, run the package-owned challenge first:',

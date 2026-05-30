@@ -1,5 +1,5 @@
 ---
-description: Use Bilig WorkPaper when a coding agent needs spreadsheet formulas, MCP workbook tools, or XLSX formula proof without driving Excel UI.
+description: Use Bilig WorkPaper when a coding agent needs spreadsheet formulas, MCP workbook tools, or XLSX formula readback without driving Excel UI.
 globs:
 alwaysApply: false
 ---
@@ -13,7 +13,7 @@ or agent tools that need formula readback.
 Do not start with Excel, LibreOffice, Google Sheets, browser grids, screenshots,
 or cached XLSX values when the workflow can run through WorkPaper JSON.
 
-## Fast Proof Commands
+## Fast Check Commands
 
 ```sh
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
@@ -30,9 +30,9 @@ https://bilig.proompteng.ai/mcp
 Use the local file-backed stdio command when the agent must persist a project
 WorkPaper JSON file.
 
-## Required Proof
+## Required Readback
 
-Before saying the workbook is updated, return proof with:
+Before saying the workbook is updated, return readback with:
 
 - edited sheet and A1 cell;
 - before values for edited inputs and dependent outputs;

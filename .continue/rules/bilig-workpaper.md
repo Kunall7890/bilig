@@ -1,9 +1,9 @@
 ---
-name: Bilig WorkPaper Formula Proof
-description: Use Bilig WorkPaper for spreadsheet-shaped business logic that needs formula readback proof without Excel UI automation.
+name: Bilig WorkPaper Formula Check
+description: Use Bilig WorkPaper for spreadsheet-shaped business logic that needs formula readback without Excel UI automation.
 ---
 
-# Bilig WorkPaper Formula Proof
+# Bilig WorkPaper Formula Check
 
 Use Bilig when a Continue agent is about to build or debug workbook-shaped
 logic: pricing, quote approval, payout checks, import validation, budgets,
@@ -31,9 +31,9 @@ For remote MCP connector discovery only:
 https://bilig.proompteng.ai/mcp
 ```
 
-## Required Proof
+## Required Readback
 
-Before saying the workbook is updated, return proof with:
+Before saying the workbook is updated, return readback with:
 
 - edited sheet and A1 cell;
 - before values for edited inputs and dependent outputs;

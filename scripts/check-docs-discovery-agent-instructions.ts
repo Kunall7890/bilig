@@ -59,7 +59,7 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(workpaperPackageAgentNotes, 'node_modules/bilig-workpaper', 'packages/bilig/AGENTS.md')
   requireIncludes(workpaperPackageAgentNotes, 'npm exec --package bilig-workpaper@', 'packages/bilig/AGENTS.md')
   requireIncludes(workpaperPackageSkillNotes, 'Use bilig-workpaper WorkPaper state', 'packages/bilig/SKILL.md')
-  requireIncludes(workpaperPackageSkillNotes, '## First Choice: Direct npm proof or TypeScript', 'packages/bilig/SKILL.md')
+  requireIncludes(workpaperPackageSkillNotes, '## First Choice: Direct npm check or TypeScript', 'packages/bilig/SKILL.md')
   requireIncludes(workpaperPackageSkillNotes, 'npm, ExcelJS, SheetJS, xlsx-populate, and StackOverflow', 'packages/bilig/SKILL.md')
   requireIncludes(
     workpaperPackageSkillNotes,
@@ -118,12 +118,12 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(claudeProjectSkillNotes, 'name: bilig-workpaper', '.claude/skills/bilig-workpaper/SKILL.md')
   requireIncludes(claudeProjectSkillNotes, '## Command Safety', '.claude/skills/bilig-workpaper/SKILL.md')
   requireIncludes(claudeProjectSkillNotes, '"bilig-mcp-challenge", "--json"', '.claude/skills/bilig-workpaper/SKILL.md')
-  requireIncludes(claudeProjectSkillNotes, 'Return proof, not vibes.', '.claude/skills/bilig-workpaper/SKILL.md')
+  requireIncludes(claudeProjectSkillNotes, 'Return readback, not vibes.', '.claude/skills/bilig-workpaper/SKILL.md')
   requireNotIncludes(claudeProjectSkillNotes, 'allowed-tools:', '.claude/skills/bilig-workpaper/SKILL.md')
   requireNotIncludes(claudeProjectSkillNotes, 'argument-hint:', '.claude/skills/bilig-workpaper/SKILL.md')
   requireIncludes(
     claudeProjectCommandNotes,
-    'description: Prove workbook formula edits with Bilig WorkPaper',
+    'description: Verify workbook formula edits with Bilig WorkPaper',
     '.claude/commands/bilig-workpaper-proof.md',
   )
   requireIncludes(claudeProjectCommandNotes, '$ARGUMENTS', '.claude/commands/bilig-workpaper-proof.md')
@@ -156,7 +156,7 @@ export async function requireAgentInstructionDiscovery(input: {
     'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json',
     '.windsurf/rules/bilig-workpaper.md',
   )
-  requireIncludes(windsurfProjectRuleNotes, 'If any proof step fails', '.windsurf/rules/bilig-workpaper.md')
+  requireIncludes(windsurfProjectRuleNotes, 'If any readback step fails', '.windsurf/rules/bilig-workpaper.md')
   requireIncludes(windsurfProjectRuleNotes, 'https://proompteng.github.io/bilig/llms.txt', '.windsurf/rules/bilig-workpaper.md')
 
   requireIncludes(clineProjectRuleNotes, 'Cline can read this workspace rule', '.clinerules/bilig-workpaper.md')
@@ -172,7 +172,7 @@ export async function requireAgentInstructionDiscovery(input: {
     '.clinerules/bilig-workpaper.md',
   )
 
-  requireIncludes(continueProjectRuleNotes, 'name: Bilig WorkPaper Formula Proof', '.continue/rules/bilig-workpaper.md')
+  requireIncludes(continueProjectRuleNotes, 'name: Bilig WorkPaper Formula Check', '.continue/rules/bilig-workpaper.md')
   requireIncludes(
     continueProjectRuleNotes,
     'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json',
