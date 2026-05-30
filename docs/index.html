@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>bilig - Fresh XLSX Formula Readback in Node</title>
+    <title>bilig - Headless WorkPaper Runtime for Node</title>
     <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
     <link rel="canonical" href="https://proompteng.github.io/bilig/" />
     <link rel="sitemap" type="application/xml" href="https://proompteng.github.io/bilig/sitemap.xml" />
@@ -12,7 +12,7 @@
     <link rel="alternate" type="application/json" href="https://proompteng.github.io/bilig/.well-known/agent.json" title="agent.json" />
     <meta
       name="description"
-      content="Bilig refreshes stale XLSX formula results in Node for SheetJS, ExcelJS, and xlsx-populate workflows, then lets teams graduate to WorkPaper service state when they need it."
+      content="Bilig runs spreadsheet-style formulas in Node services and agent tools: edit cells, recalculate formulas, read values back, and persist WorkPaper JSON."
     />
     <meta
       name="keywords"
@@ -21,11 +21,8 @@
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#151713" />
     <meta property="og:site_name" content="bilig" />
-    <meta property="og:title" content="bilig - Fresh XLSX Formula Readback in Node" />
-    <meta
-      property="og:description"
-      content="Edit XLSX inputs in Node, recalculate formulas, read fresh values, and keep WorkPaper service state when the file boundary is not enough."
-    />
+    <meta property="og:title" content="bilig - Headless WorkPaper Runtime for Node" />
+    <meta property="og:description" content="Edit cells, recalculate formulas, read verified values, and save WorkPaper JSON from Node." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://proompteng.github.io/bilig/" />
     <meta property="og:image" content="https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-15-2" />
@@ -33,11 +30,8 @@
     <meta property="og:image:width" content="1280" />
     <meta property="og:image:height" content="640" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="bilig - Fresh XLSX Formula Readback in Node" />
-    <meta
-      name="twitter:description"
-      content="Edit XLSX inputs in Node, recalculate formulas, read fresh values, and keep WorkPaper service state when the file boundary is not enough."
-    />
+    <meta name="twitter:title" content="bilig - Headless WorkPaper Runtime for Node" />
+    <meta name="twitter:description" content="Edit cells, recalculate formulas, read verified values, and save WorkPaper JSON from Node." />
     <meta name="twitter:image" content="https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-15-2" />
     <meta name="twitter:image:alt" content="bilig headless spreadsheet engine workbook formula preview" />
     <script type="application/ld+json">
@@ -45,14 +39,14 @@
         "@context": "https://schema.org",
         "@type": "SoftwareSourceCode",
         "name": "bilig",
-        "description": "Node.js XLSX formula recalculation and formula workbook runtime for services, tests, and agent tools.",
+        "description": "Headless WorkPaper runtime for Node services, tests, and agent tools.",
         "codeRepository": "https://github.com/proompteng/bilig",
         "license": "https://github.com/proompteng/bilig/blob/main/LICENSE",
         "programmingLanguage": "TypeScript",
         "runtimePlatform": "Node.js 22+",
         "url": "https://proompteng.github.io/bilig/",
-        "downloadUrl": "https://www.npmjs.com/package/@bilig/xlsx-formula-recalc",
-        "installUrl": "https://www.npmjs.com/package/@bilig/xlsx-formula-recalc",
+        "downloadUrl": "https://www.npmjs.com/package/@bilig/workpaper",
+        "installUrl": "https://www.npmjs.com/package/@bilig/workpaper",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "macOS, Linux, Windows",
         "isAccessibleForFree": true,
@@ -173,26 +167,23 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="wrap hero-inner">
         <div class="hero-copy">
-          <p class="eyebrow">XLSX Cache Doctor is live on GitHub Marketplace</p>
-          <h1 id="hero-title" class="hero-title">Stop stale XLSX formulas before they reach main.</h1>
-          <p class="hero-subtitle">
-            When a script edits an input cell, Excel's cached result can lie. Bilig recalculates the workbook in Node and reports the
-            formula values that changed, without Excel, LibreOffice, or browser automation.
-          </p>
-          <div class="hero-command" aria-label="XLSX Cache Doctor install command">
-            <span>CI</span>
-            <code>uses: proompteng/bilig@v1</code>
-            <strong>Find stale workbook caches in pull requests.</strong>
+          <p class="eyebrow">Headless WorkPaper runtime</p>
+          <h1 id="hero-title" class="hero-title">Spreadsheet logic without Excel.</h1>
+          <p class="hero-subtitle">Edit cells, recalculate formulas, read verified values, and save JSON from Node.</p>
+          <div class="hero-command" aria-label="Bilig WorkPaper create command">
+            <span>Start</span>
+            <code>npm create @bilig/workpaper@latest pricing-workpaper</code>
+            <strong>Use workbook formulas behind services and agent tools.</strong>
           </div>
           <div class="hero-actions">
-            <a class="button primary" href="https://github.com/marketplace/actions/xlsx-cache-doctor">Use the Marketplace Action</a>
-            <a class="button" href="https://github.com/proompteng/xlsx-cache-doctor-demo/pull/1">Inspect the demo PR</a>
-            <a class="button" href="https://context7.com/proompteng/bilig">Ask docs</a>
-            <a class="button" href="./eval-xlsx-recalc.html">Run locally</a>
+            <a class="button primary" href="#install">Install WorkPaper</a>
+            <a class="button" href="./eval-workpaper-service.html">Build an API</a>
+            <a class="button" href="./eval-agent-mcp.html">Use with agents</a>
+            <a class="button" href="https://github.com/proompteng/bilig">GitHub</a>
           </div>
           <p class="hero-note">
-            Need more than CI? Start with <a href="./eval-xlsx-recalc.html">an XLSX proof</a>,
-            <a href="./eval-workpaper-service.html">a Node service</a>, or <a href="./eval-agent-mcp.html">an agent workbook contract</a>.
+            Need CI for stale XLSX caches?
+            <a href="https://github.com/marketplace/actions/xlsx-cache-doctor">Use the GitHub Marketplace action.</a>
           </p>
         </div>
 

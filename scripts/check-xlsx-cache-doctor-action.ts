@@ -62,6 +62,7 @@ try {
   runGit(changedFilesTempDir, ['init'])
   runGit(changedFilesTempDir, ['config', 'user.email', 'cache-doctor@example.com'])
   runGit(changedFilesTempDir, ['config', 'user.name', 'XLSX Cache Doctor'])
+  runGit(changedFilesTempDir, ['config', 'commit.gpgsign', 'false'])
   writeFileSync(join(changedFilesTempDir, 'unchanged.xlsx'), '')
   runGit(changedFilesTempDir, ['add', 'unchanged.xlsx'])
   runGit(changedFilesTempDir, ['commit', '-m', 'base'])

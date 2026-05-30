@@ -206,7 +206,7 @@ requirePackageKeywords(
   ],
   'packages/workpaper/package.json',
 )
-requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/xlsx-formula-recalc"', 'docs/index.html')
+requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/workpaper"', 'docs/index.html')
 requireIncludes(index, '"https://www.npmjs.com/package/@bilig/xlsx-formula-recalc"', 'docs/index.html')
 requireIncludes(index, '"https://www.npmjs.com/package/@bilig/exceljs-formula-recalc"', 'docs/index.html')
 requireIncludes(index, '<h2 id="packages-title">Install the package that matches the job.</h2>', 'docs/index.html')

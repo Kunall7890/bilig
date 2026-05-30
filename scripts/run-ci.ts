@@ -277,6 +277,9 @@ const vitestFuzzLane = withEnv(pnpm(runDeepGates ? 'vitest fuzz main' : 'vitest 
 const browserWebBundleBuild = withEnv(pnpm('browser web bundle build', '--filter', '@bilig/web', 'build:bundle'), {
   VITE_BILIG_REMOTE_SYNC: '0',
 })
+const productionWebBundleBuild = withEnv(pnpm('production web bundle build', '--filter', '@bilig/web', 'build:bundle'), {
+  VITE_BILIG_REMOTE_SYNC: '0',
+})
 const appRuntimeDependencyBuild = pnpm('app runtime dependency build', '--filter', '@bilig/app^...', 'run', 'build')
 const wasmBuildTask: CiTask = {
   label: 'wasm build',
@@ -479,12 +482,7 @@ try {
     allCompleted.push(...(await runSequential('browser gates', [browserLane])))
   }
 
-  allCompleted.push(
-    ...(await runSequential('release bundle gate', [
-      pnpm('production web bundle build', '--filter', '@bilig/web', 'build:bundle'),
-      pnpm('release check', 'release:check'),
-    ])),
-  )
+  allCompleted.push(...(await runSequential('release bundle gate', [productionWebBundleBuild, pnpm('release check', 'release:check')])))
 
   allCompleted.push(
     ...(await runSequential('performance and clean-diff gates', [

@@ -212,19 +212,19 @@ pre,
 }
 
 .hero-title {
-  max-width: 760px;
+  max-width: 680px;
   font-family: var(--font-display);
-  font-size: clamp(50px, 4.4vw, 70px);
+  font-size: clamp(44px, 4vw, 64px);
   font-weight: 700;
   line-height: 1.04;
 }
 
 .hero-subtitle {
-  max-width: min(660px, 100%);
+  max-width: min(560px, 100%);
   color: #b9bdb4;
-  font-size: clamp(19px, 1.55vw, 22px);
+  font-size: clamp(18px, 1.35vw, 21px);
   font-weight: 500;
-  line-height: 1.38;
+  line-height: 1.35;
   overflow-wrap: break-word;
 }
 
@@ -974,11 +974,11 @@ footer {
   }
 
   .hero-title {
-    font-size: 42px;
+    font-size: 36px;
   }
 
   .hero-subtitle {
-    font-size: 19px;
+    font-size: 18px;
   }
 
   h2 {
