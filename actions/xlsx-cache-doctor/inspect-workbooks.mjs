@@ -1,17 +1,20 @@
 #!/usr/bin/env node
 
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { spawnSync } from 'node:child_process'
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, isAbsolute, join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 const workbooks = JSON.parse(process.env.BILIG_WORKBOOKS_JSON || '[]')
+const workspace = process.env.GITHUB_WORKSPACE || process.cwd()
+const packageRoot = process.env.BILIG_PACKAGE_ROOT || ''
 const packageVersion = process.env.BILIG_PACKAGE_VERSION || 'latest'
 const inspectLimit = process.env.BILIG_INSPECT_LIMIT || 'all'
 const outputPath = process.env.BILIG_JSON_OUTPUT || join(process.env.RUNNER_TEMP || process.cwd(), 'bilig-xlsx-cache-doctor.json')
 const markdownOutputPath = process.env.BILIG_MARKDOWN_OUTPUT || join(process.env.RUNNER_TEMP || process.cwd(), 'bilig-xlsx-cache-doctor.md')
 const failOnStale = process.env.BILIG_FAIL_ON_STALE === 'true'
+const changedFilesOnly = process.env.BILIG_CHANGED_FILES_ONLY === 'true'
 const actionSchemaVersion = 'xlsx-cache-doctor-action.v1'
-const reports = workbooks.map((workbook) => inspectWorkbook(workbook))
+const reports = await inspectWorkbooks(workbooks)
 const aggregate = buildAggregateReport(reports)
 
 mkdirSync(dirname(outputPath), { recursive: true })
@@ -38,34 +41,47 @@ if (failOnStale && aggregate.staleCachedFormulaCount > 0) {
   process.exit(2)
 }
 
-function inspectWorkbook(workbook) {
-  const result = spawnSync(
-    'npm',
-    [
-      'exec',
-      '--yes',
-      '--package',
-      `@bilig/xlsx-formula-recalc@${packageVersion}`,
-      '--',
-      'xlsx-cache-doctor',
-      workbook,
-      '--inspect-limit',
-      inspectLimit,
-      '--json',
-    ],
-    {
-      encoding: 'utf8',
-    },
-  )
-  if (result.status !== 0) {
-    process.stdout.write(result.stdout)
-    process.stderr.write(result.stderr)
-    process.exit(result.status || 1)
+async function inspectWorkbooks(workbookPaths) {
+  if (workbookPaths.length === 0) {
+    return []
   }
+  const inspectXlsxCache = await loadInspectXlsxCache()
+  return workbookPaths.map((workbook) => inspectWorkbook(workbook, inspectXlsxCache))
+}
+
+function inspectWorkbook(workbook, inspectXlsxCache) {
+  const workbookPath = isAbsolute(workbook) ? workbook : join(workspace, workbook)
   return {
     workbook,
-    report: JSON.parse(result.stdout),
+    report: inspectXlsxCache(readFileSync(workbookPath), {
+      fileName: workbook,
+      inspectLimit: parseInspectLimit(inspectLimit),
+    }),
   }
+}
+
+async function loadInspectXlsxCache() {
+  if (!packageRoot) {
+    throw new Error(
+      'BILIG_PACKAGE_ROOT is required when XLSX workbooks are inspected. The action must install @bilig/xlsx-formula-recalc first.',
+    )
+  }
+  const moduleUrl = pathToFileURL(join(packageRoot, 'dist', 'index.js')).href
+  const module = await import(moduleUrl)
+  if (typeof module.inspectXlsxCache !== 'function') {
+    throw new Error(`@bilig/xlsx-formula-recalc at ${packageRoot} does not export inspectXlsxCache.`)
+  }
+  return module.inspectXlsxCache
+}
+
+function parseInspectLimit(raw) {
+  if (raw === 'all') {
+    return raw
+  }
+  if (/^[1-9]\d*$/u.test(raw)) {
+    return Number(raw)
+  }
+  throw new Error(`inspect-limit must be "all" or a positive integer, got ${JSON.stringify(raw)}.`)
 }
 
 function buildAggregateReport(items) {
@@ -104,6 +120,9 @@ function buildAggregateReport(items) {
     staleCachedFormulaCount: sum(items, (item) => numberField(item.report.staleCachedFormulaCount)),
     cacheStatusSummary: sumCacheStatusSummaries(workbookReports.map((workbook) => workbook.cacheStatusSummary)),
     suggestedReads,
+    ...(items.length === 0
+      ? { skipReason: changedFilesOnly ? 'changed-files-only matched no XLSX workbook changes' : 'no XLSX workbooks resolved' }
+      : {}),
     commandSucceeded: true,
     inspectionCompleted: true,
     recalculationCompleted: true,
@@ -132,6 +151,13 @@ function buildMarkdownSummary(report) {
     `- JSON report: ${outputPath}`,
     '',
   ]
+  if (report.workbookCount === 0) {
+    lines.push('- Result: no XLSX workbooks were inspected.')
+    if (report.skipReason) {
+      lines.push(`- Reason: ${report.skipReason}.`)
+    }
+    lines.push('')
+  }
   if (report.workbooks.length > 0) {
     lines.push('| Workbook | Formula cells | Stale | Fresh | Missing cache | Unsupported | Suggested reads |')
     lines.push('| --- | ---: | ---: | ---: | ---: | ---: | --- |')

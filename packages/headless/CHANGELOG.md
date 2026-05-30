@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(packages): stabilize runtime cli bins (e92c7fc5)
 
 ## 0.130.1
@@ -20,9 +21,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(agent): point skill discovery at raw manifest (d8b66cb3)
 
 ## Internal runtime changes
+
 - docs(site): sharpen cache doctor first mile (e604c75e)
 
 ## 0.130.0

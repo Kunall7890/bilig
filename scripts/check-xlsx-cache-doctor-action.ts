@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -41,6 +41,21 @@ if (!rootAction.includes(`default: '${xlsxFormulaRecalcPackage.version}'`)) {
 
 if (!rootAction.includes('Validate Node.js runtime') || !rootAction.includes('requires Node.js 22+')) {
   throw new Error('XLSX Cache Doctor action.yml must fail clearly when consumers omit Node.js 22+ setup.')
+}
+
+if (
+  !rootAction.includes('Install XLSX Cache Doctor package') ||
+  !rootAction.includes('npm install --prefix "$package_dir"') ||
+  !rootAction.includes('BILIG_PACKAGE_ROOT: ${{ steps.package.outputs.package-root }}')
+) {
+  throw new Error('XLSX Cache Doctor action.yml must install @bilig/xlsx-formula-recalc once and pass its package root to the inspector.')
+}
+
+const inspectScript = await readFile(inspectScriptPath, 'utf8')
+if (inspectScript.includes('spawnSync')) {
+  throw new Error(
+    'XLSX Cache Doctor inspector must not spawn npm per workbook; install the package once and call inspectXlsxCache in-process.',
+  )
 }
 
 const tempDir = mkdtempSync(join(tmpdir(), 'bilig-xlsx-cache-doctor-action-'))
@@ -110,55 +125,69 @@ try {
 
 const inspectTempDir = mkdtempSync(join(tmpdir(), 'bilig-xlsx-cache-doctor-inspect-'))
 try {
-  const fakeBinDir = join(inspectTempDir, 'bin')
-  mkdirSync(fakeBinDir)
-  const fakeNpmPath = join(fakeBinDir, 'npm')
+  const fakePackageRoot = join(inspectTempDir, 'package-root')
+  const fakeDistDir = join(fakePackageRoot, 'dist')
+  const fixtureDir = join(inspectTempDir, 'fixtures')
+  mkdirSync(fakeDistDir, { recursive: true })
+  mkdirSync(fixtureDir, { recursive: true })
+  writeFileSync(join(fakePackageRoot, 'package.json'), '{"type":"module"}\n')
   writeFileSync(
-    fakeNpmPath,
+    join(fakeDistDir, 'index.js'),
     [
-      '#!/usr/bin/env node',
-      "const commandIndex = process.argv.indexOf('xlsx-cache-doctor')",
-      "const workbook = commandIndex >= 0 ? process.argv[commandIndex + 1] : 'unknown.xlsx'",
-      'const report = {',
+      "import { appendFileSync } from 'node:fs';",
+      "if (process.env.BILIG_FAKE_IMPORT_MARKER) appendFileSync(process.env.BILIG_FAKE_IMPORT_MARKER, 'loaded\\n');",
+      'export function inspectXlsxCache(_input, options = {}) {',
+      "  const workbook = options.fileName || 'unknown.xlsx';",
+      '  return {',
       "  schemaVersion: 'xlsx-cache-doctor.v1',",
-      "  mode: 'file',",
-      '  input: workbook,',
-      '  formulaCellCount: 3,',
-      '  inspectedFormulaCellCount: 3,',
+      "  sheetNames: ['Sheet1'],",
+      '  formulaCellCount: workbook.includes("fresh") ? 1 : 3,',
+      '  inspectedFormulaCellCount: workbook.includes("fresh") ? 1 : 3,',
       '  uninspectedFormulaCellCount: 0,',
-      '  staleCachedFormulaCount: 2,',
-      '  cacheStatusSummary: { inspected: 3, stale: 2, fresh: 0, missingCache: 0, unsupportedRecalculation: 1 },',
-      "  suggestedReads: ['Sheet1!B2', 'Sheet1!B3'],",
-      '  formulas: [',
+      '  staleCachedFormulaCount: workbook.includes("fresh") ? 0 : 2,',
+      '  cacheStatusSummary: workbook.includes("fresh")',
+      '    ? { inspected: 1, stale: 0, fresh: 1, missingCache: 0, unsupportedRecalculation: 0 }',
+      '    : { inspected: 3, stale: 2, fresh: 0, missingCache: 0, unsupportedRecalculation: 1 },',
+      "  suggestedReads: workbook.includes('fresh') ? ['Sheet1!B9'] : ['Sheet1!B2', 'Sheet1!B3'],",
+      '  formulas: workbook.includes("fresh") ? [',
+      "    { target: 'Sheet1!B9', formula: '=A9*10', cachedValue: 90, literalRecalculatedValue: 90, cacheStatus: 'fresh', staleCachedValue: false },",
+      '  ] : [',
       "    { target: 'Sheet1!B2', formula: '=A2*10', cachedValue: 10, cacheStatus: 'unsupported-recalculation', staleCachedValue: null },",
       "    { target: 'Sheet1!B3', formula: '=A3*10', cachedValue: 999, literalRecalculatedValue: 30, cacheStatus: 'stale', staleCachedValue: true },",
       "    { target: 'Sheet1!B4', formula: '=A4&`|`', cachedValue: 'old\\n%value', literalRecalculatedValue: 'new|value', cacheStatus: 'stale', staleCachedValue: true },",
       '  ],',
       '  warnings: [],',
-      '};',
-      'console.log(JSON.stringify(report));',
+      '  inspectionCompleted: true,',
+      '  recalculationCompleted: true,',
+      "  excelParity: 'not_proven',",
+      '  };',
+      '}',
       '',
     ].join('\n'),
   )
-  chmodSync(fakeNpmPath, 0o755)
+  writeFileSync(join(fixtureDir, 'stale-pricing.xlsx'), '')
+  writeFileSync(join(fixtureDir, 'fresh-pricing.xlsx'), '')
 
   const outputPath = join(inspectTempDir, 'github-output.txt')
   const summaryPath = join(inspectTempDir, 'summary.md')
   const reportPath = join(inspectTempDir, 'report.json')
   const markdownPath = join(inspectTempDir, 'report.md')
+  const importMarkerPath = join(inspectTempDir, 'import-marker.txt')
   const result = spawnSync(process.execPath, [inspectScriptPath], {
     cwd: repoRoot,
     env: {
       ...process.env,
-      PATH: `${fakeBinDir}:${process.env.PATH || ''}`,
+      GITHUB_WORKSPACE: inspectTempDir,
       GITHUB_OUTPUT: outputPath,
       GITHUB_STEP_SUMMARY: summaryPath,
-      BILIG_WORKBOOKS_JSON: '["fixtures/stale-pricing.xlsx"]',
+      BILIG_WORKBOOKS_JSON: '["fixtures/stale-pricing.xlsx","fixtures/fresh-pricing.xlsx"]',
+      BILIG_PACKAGE_ROOT: fakePackageRoot,
       BILIG_PACKAGE_VERSION: 'test',
       BILIG_INSPECT_LIMIT: 'all',
       BILIG_JSON_OUTPUT: reportPath,
       BILIG_MARKDOWN_OUTPUT: markdownPath,
       BILIG_FAIL_ON_STALE: 'false',
+      BILIG_FAKE_IMPORT_MARKER: importMarkerPath,
     },
     encoding: 'utf8',
   })
@@ -183,11 +212,12 @@ try {
   const outputs = parseGithubOutput(output)
   if (
     outputs['stale-count'] !== '2' ||
-    outputs['fresh-count'] !== '0' ||
+    outputs['fresh-count'] !== '1' ||
     outputs['missing-cache-count'] !== '0' ||
     outputs['unsupported-recalculation-count'] !== '1' ||
     outputs['markdown'] !== markdownPath ||
-    outputs['suggested-reads'] !== 'fixtures/stale-pricing.xlsx#Sheet1!B2,fixtures/stale-pricing.xlsx#Sheet1!B3'
+    outputs['suggested-reads'] !==
+      'fixtures/stale-pricing.xlsx#Sheet1!B2,fixtures/stale-pricing.xlsx#Sheet1!B3,fixtures/fresh-pricing.xlsx#Sheet1!B9'
   ) {
     throw new Error(`Unexpected inspector outputs:\n${output}`)
   }
@@ -197,6 +227,7 @@ try {
     '#### Stale cached formula values',
     '- Unsupported recalculation results: 1',
     '| fixtures/stale-pricing.xlsx | 3 | 2 | 0 | 0 | 1 | Sheet1!B2, Sheet1!B3 |',
+    '| fixtures/fresh-pricing.xlsx | 1 | 0 | 1 | 0 | 0 | Sheet1!B9 |',
     '| fixtures/stale-pricing.xlsx | Sheet1!B3 | `=A3*10` | 999 | 30 |',
     '| fixtures/stale-pricing.xlsx | Sheet1!B4 | `=A4&\\`\\|\\`` | old %value | new\\|value |',
     '#### Follow-up check command',
@@ -206,6 +237,10 @@ try {
     if (!summary.includes(expected) || !markdown.includes(expected)) {
       throw new Error(`Missing "${expected}" in inspector Markdown output:\nsummary:\n${summary}\nreport:\n${markdown}`)
     }
+  }
+  const importMarker = await readFile(importMarkerPath, 'utf8')
+  if (importMarker.trim().split('\n').length !== 1) {
+    throw new Error(`Expected @bilig/xlsx-formula-recalc to be imported once, got marker:\n${importMarker}`)
   }
   const aggregate = parseAggregateReport(JSON.parse(await readFile(reportPath, 'utf8')))
   if (
@@ -218,6 +253,56 @@ try {
   }
 } finally {
   rmSync(inspectTempDir, { recursive: true, force: true })
+}
+
+const emptyInspectTempDir = mkdtempSync(join(tmpdir(), 'bilig-xlsx-cache-doctor-empty-'))
+try {
+  const outputPath = join(emptyInspectTempDir, 'github-output.txt')
+  const summaryPath = join(emptyInspectTempDir, 'summary.md')
+  const reportPath = join(emptyInspectTempDir, 'report.json')
+  const markdownPath = join(emptyInspectTempDir, 'report.md')
+  const result = spawnSync(process.execPath, [inspectScriptPath], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      GITHUB_WORKSPACE: emptyInspectTempDir,
+      GITHUB_OUTPUT: outputPath,
+      GITHUB_STEP_SUMMARY: summaryPath,
+      BILIG_WORKBOOKS_JSON: '[]',
+      BILIG_CHANGED_FILES_ONLY: 'true',
+      BILIG_PACKAGE_VERSION: 'test',
+      BILIG_INSPECT_LIMIT: 'all',
+      BILIG_JSON_OUTPUT: reportPath,
+      BILIG_MARKDOWN_OUTPUT: markdownPath,
+      BILIG_FAIL_ON_STALE: 'false',
+    },
+    encoding: 'utf8',
+  })
+  if (result.status !== 0) {
+    throw new Error(`XLSX Cache Doctor empty inspector smoke failed:\n${result.stdout}\n${result.stderr}`)
+  }
+  const output = await readFile(outputPath, 'utf8')
+  const outputs = parseGithubOutput(output)
+  if (outputs['workbook-count'] !== '0' || outputs['stale-count'] !== '0') {
+    throw new Error(`Unexpected empty inspector outputs:\n${output}`)
+  }
+  const summary = await readFile(summaryPath, 'utf8')
+  const markdown = await readFile(markdownPath, 'utf8')
+  for (const expected of [
+    '- Workbooks inspected: 0',
+    '- Result: no XLSX workbooks were inspected.',
+    '- Reason: changed-files-only matched no XLSX workbook changes.',
+  ]) {
+    if (!summary.includes(expected) || !markdown.includes(expected)) {
+      throw new Error(`Missing "${expected}" in empty inspector Markdown output:\nsummary:\n${summary}\nreport:\n${markdown}`)
+    }
+  }
+  const aggregate = parseEmptyAggregateReport(JSON.parse(await readFile(reportPath, 'utf8')))
+  if (aggregate.workbookCount !== 0 || aggregate.skipReason !== 'changed-files-only matched no XLSX workbook changes') {
+    throw new Error(`Unexpected empty inspector JSON report:\n${JSON.stringify(aggregate, null, 2)}`)
+  }
+} finally {
+  rmSync(emptyInspectTempDir, { recursive: true, force: true })
 }
 
 function runGit(cwd: string, args: readonly string[]): void {
@@ -272,6 +357,18 @@ function parseAggregateReport(value: unknown): {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function parseEmptyAggregateReport(value: unknown): { skipReason?: string; workbookCount?: number } {
+  if (!isRecord(value)) {
+    throw new Error(`Expected empty aggregate JSON report object, got ${JSON.stringify(value)}`)
+  }
+  const skipReason = Reflect.get(value, 'skipReason')
+  const workbookCount = Reflect.get(value, 'workbookCount')
+  return {
+    skipReason: typeof skipReason === 'string' ? skipReason : undefined,
+    workbookCount: typeof workbookCount === 'number' ? workbookCount : undefined,
+  }
 }
 
 function parsePackageJson(raw: string): { version: string } {

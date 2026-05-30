@@ -18,7 +18,7 @@ inputs:
   package-version:
     description: npm version or dist-tag for @bilig/xlsx-formula-recalc. Pin this for production workflows.
     required: false
-    default: '0.130.1'
+    default: '0.130.2'
   inspect-limit:
     description: Formula cells to recompute during inspection. Use "all" or a positive integer.
     required: false
@@ -92,11 +92,29 @@ runs:
         fi
         node "$script"
 
+    - id: package
+      name: Install XLSX Cache Doctor package
+      if: ${{ steps.resolve.outputs.workbook-count != '0' }}
+      shell: bash
+      env:
+        BILIG_PACKAGE_VERSION: ${{ inputs.package-version }}
+      run: |
+        set -euo pipefail
+        package_dir="${RUNNER_TEMP:-$PWD/.tmp}/bilig-xlsx-cache-doctor-package"
+        rm -rf "$package_dir"
+        mkdir -p "$package_dir"
+        npm install --prefix "$package_dir" --omit=dev --no-audit --no-fund "@bilig/xlsx-formula-recalc@${BILIG_PACKAGE_VERSION}"
+        package_root="$package_dir/node_modules/@bilig/xlsx-formula-recalc"
+        test -f "$package_root/dist/index.js"
+        echo "package-root=$package_root" >> "$GITHUB_OUTPUT"
+
     - id: inspect
       name: Inspect XLSX formula caches
       shell: bash
       env:
         BILIG_WORKBOOKS_JSON: ${{ steps.resolve.outputs.workbooks-json }}
+        BILIG_PACKAGE_ROOT: ${{ steps.package.outputs.package-root }}
+        BILIG_CHANGED_FILES_ONLY: ${{ inputs.changed-files-only }}
         BILIG_PACKAGE_VERSION: ${{ inputs.package-version }}
         BILIG_INSPECT_LIMIT: ${{ inputs.inspect-limit }}
         BILIG_JSON_OUTPUT: ${{ inputs.json-output }}
