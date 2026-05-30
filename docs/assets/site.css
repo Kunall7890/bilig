@@ -30,7 +30,7 @@ html {
 
 main[id],
 section[id] {
-  scroll-margin-top: 78px;
+  scroll-margin-top: calc(var(--topbar-height) + 18px);
 }
 
 body {
@@ -434,7 +434,7 @@ main {
 }
 
 section {
-  scroll-margin-top: 80px;
+  scroll-margin-top: calc(var(--topbar-height) + 18px);
 }
 
 .section {
