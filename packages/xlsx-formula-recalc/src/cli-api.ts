@@ -43,6 +43,7 @@ export interface XlsxFormulaRecalcCliContext {
 
 const defaultInspectFormulaLimit = 'all'
 const cacheDoctorCommandName = 'xlsx-cache-doctor'
+const cacheDoctorSchemaVersion = 'xlsx-cache-doctor.v1'
 const printGithubActionOption = '--print-github-action'
 const defaultGithubActionPackageVersion = '0.129.1'
 
@@ -403,6 +404,7 @@ function printInspectionSummary(args: PrintInspectionSummaryInput): void {
   const staleCachedFormulaCount = formulas.filter((formula) => formula.staleCachedValue === true).length
   const cacheStatusSummary = buildCacheStatusSummary(formulas)
   const summary = {
+    schemaVersion: cacheDoctorSchemaVersion,
     mode: args.options.mode,
     input: args.options.inputPath ?? 'generated demo workbook',
     edits: args.options.edits.length,

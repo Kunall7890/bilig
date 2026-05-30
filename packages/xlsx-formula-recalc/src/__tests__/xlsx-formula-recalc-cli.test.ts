@@ -82,6 +82,7 @@ describe('xlsx-recalc CLI', () => {
       expect(exitCode).toBe(0)
       expect(existsSync(join(tempDir, 'stale-cache.recalculated.xlsx'))).toBe(false)
       const summary = readCliInspectionSummary(stdout)
+      expect(summary.schemaVersion).toBe('xlsx-cache-doctor.v1')
       expect(summary.mode).toBe('file')
       expect(summary.commandSucceeded).toBe(true)
       expect(summary.inspectionCompleted).toBe(true)
@@ -131,6 +132,7 @@ describe('xlsx-recalc CLI', () => {
       expect(exitCode).toBe(0)
       expect(existsSync(join(tempDir, 'stale-cache.recalculated.xlsx'))).toBe(false)
       const summary = readCliInspectionSummary(stdout)
+      expect(summary.schemaVersion).toBe('xlsx-cache-doctor.v1')
       expect(summary.commandSucceeded).toBe(true)
       expect(summary.inspectionCompleted).toBe(true)
       expect(summary.staleCachedFormulaCount).toBe(1)
@@ -155,6 +157,7 @@ describe('xlsx-recalc CLI', () => {
 
     expect(exitCode).toBe(0)
     const summary = readCliInspectionSummary(stdout)
+    expect(summary.schemaVersion).toBe('xlsx-cache-doctor.v1')
     expect(summary.mode).toBe('demo')
     expect(summary.commandSucceeded).toBe(true)
     expect(summary.inspectionCompleted).toBe(true)
@@ -558,6 +561,7 @@ interface CliSummary {
 
 interface CliInspectionSummary {
   readonly mode: string
+  readonly schemaVersion: 'xlsx-cache-doctor.v1'
   readonly formulaCellCount: number
   readonly inspectedFormulaCellCount: number
   readonly uninspectedFormulaCellCount: number
@@ -633,6 +637,7 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
     throw new Error(`Expected CLI inspection summary object, received ${stdout}`)
   }
   const mode = parsed['mode']
+  const schemaVersion = parsed['schemaVersion']
   const formulaCellCount = parsed['formulaCellCount']
   const inspectedFormulaCellCount = parsed['inspectedFormulaCellCount']
   const uninspectedFormulaCellCount = parsed['uninspectedFormulaCellCount']
@@ -647,6 +652,7 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
   const excelParity = parsed['excelParity']
   if (
     typeof mode !== 'string' ||
+    schemaVersion !== 'xlsx-cache-doctor.v1' ||
     typeof formulaCellCount !== 'number' ||
     typeof inspectedFormulaCellCount !== 'number' ||
     typeof uninspectedFormulaCellCount !== 'number' ||
@@ -664,6 +670,7 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
   }
   return {
     mode,
+    schemaVersion,
     formulaCellCount,
     inspectedFormulaCellCount,
     uninspectedFormulaCellCount,

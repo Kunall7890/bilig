@@ -10,6 +10,7 @@ const inspectLimit = process.env.BILIG_INSPECT_LIMIT || 'all'
 const outputPath = process.env.BILIG_JSON_OUTPUT || join(process.env.RUNNER_TEMP || process.cwd(), 'bilig-xlsx-cache-doctor.json')
 const markdownOutputPath = process.env.BILIG_MARKDOWN_OUTPUT || join(process.env.RUNNER_TEMP || process.cwd(), 'bilig-xlsx-cache-doctor.md')
 const failOnStale = process.env.BILIG_FAIL_ON_STALE === 'true'
+const actionSchemaVersion = 'xlsx-cache-doctor-action.v1'
 const reports = workbooks.map((workbook) => inspectWorkbook(workbook))
 const aggregate = buildAggregateReport(reports)
 
@@ -91,6 +92,7 @@ function buildAggregateReport(items) {
     }
   })
   return {
+    schemaVersion: actionSchemaVersion,
     mode: 'github-action',
     packageVersion,
     inspectLimit,
@@ -217,7 +219,7 @@ function buildFollowUpCommand(report) {
     return undefined
   }
   return [
-    'npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc',
+    `npm exec --package @bilig/xlsx-formula-recalc@${packageVersion} -- xlsx-recalc`,
     shellQuote(workbook.workbook),
     '--read',
     shellQuote(readTarget),

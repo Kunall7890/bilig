@@ -120,6 +120,7 @@ try {
       "const commandIndex = process.argv.indexOf('xlsx-cache-doctor')",
       "const workbook = commandIndex >= 0 ? process.argv[commandIndex + 1] : 'unknown.xlsx'",
       'const report = {',
+      "  schemaVersion: 'xlsx-cache-doctor.v1',",
       "  mode: 'file',",
       '  input: workbook,',
       '  formulaCellCount: 3,',
@@ -199,6 +200,7 @@ try {
     '| fixtures/stale-pricing.xlsx | Sheet1!B3 | `=A3*10` | 999 | 30 |',
     '| fixtures/stale-pricing.xlsx | Sheet1!B4 | `=A4&\\`\\|\\`` | old %value | new\\|value |',
     '#### Follow-up check command',
+    'npm exec --package @bilig/xlsx-formula-recalc@test -- xlsx-recalc',
     "xlsx-recalc 'fixtures/stale-pricing.xlsx' --read 'Sheet1!B3'",
   ]) {
     if (!summary.includes(expected) || !markdown.includes(expected)) {
@@ -207,6 +209,7 @@ try {
   }
   const aggregate = parseAggregateReport(JSON.parse(await readFile(reportPath, 'utf8')))
   if (
+    aggregate.schemaVersion !== 'xlsx-cache-doctor-action.v1' ||
     aggregate.staleCachedFormulaCount !== 2 ||
     aggregate.cacheStatusSummary?.unsupportedRecalculation !== 1 ||
     aggregate.workbooks?.[0]?.staleFormulas?.length !== 2
@@ -228,6 +231,7 @@ function runGit(cwd: string, args: readonly string[]): void {
 }
 
 function parseAggregateReport(value: unknown): {
+  schemaVersion?: string
   staleCachedFormulaCount?: number
   cacheStatusSummary?: { unsupportedRecalculation?: number }
   workbooks?: Array<{ staleFormulas?: unknown[] }>
@@ -236,6 +240,7 @@ function parseAggregateReport(value: unknown): {
     throw new Error(`Expected aggregate JSON report object, got ${JSON.stringify(value)}`)
   }
   const workbooksValue = Reflect.get(value, 'workbooks')
+  const schemaVersion = Reflect.get(value, 'schemaVersion')
   const workbooks = Array.isArray(workbooksValue)
     ? workbooksValue.map((workbook) => {
         if (!isRecord(workbook)) {
@@ -258,6 +263,7 @@ function parseAggregateReport(value: unknown): {
       }
     : undefined
   return {
+    schemaVersion: typeof schemaVersion === 'string' ? schemaVersion : undefined,
     staleCachedFormulaCount: typeof staleCachedFormulaCount === 'number' ? staleCachedFormulaCount : undefined,
     cacheStatusSummary,
     workbooks,

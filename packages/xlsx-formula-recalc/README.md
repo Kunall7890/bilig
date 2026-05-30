@@ -77,6 +77,7 @@ Expected shape:
 
 ```json
 {
+  "schemaVersion": "xlsx-cache-doctor.v1",
   "formulaCellCount": 1,
   "inspectedFormulaCellCount": 1,
   "uninspectedFormulaCellCount": 0,
@@ -145,6 +146,7 @@ the JSON includes the skipped count as `uninspectedFormulaCellCount`.
 
 ```json
 {
+  "schemaVersion": "xlsx-cache-doctor.v1",
   "formulaCellCount": 12,
   "inspectedFormulaCellCount": 12,
   "uninspectedFormulaCellCount": 0,

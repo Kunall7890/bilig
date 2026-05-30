@@ -125,6 +125,7 @@ Expected shape:
 
 ```json
 {
+  "schemaVersion": "xlsx-cache-doctor.v1",
   "formulaCellCount": 1,
   "inspectedFormulaCellCount": 1,
   "uninspectedFormulaCellCount": 0,

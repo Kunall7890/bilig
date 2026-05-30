@@ -128,6 +128,10 @@ cached and recalculated values, and a copy-paste
 writes GitHub warning annotations for the first stale cells so the failure is
 visible before someone opens the JSON artifact.
 
+The JSON reports are versioned for CI and agent consumers:
+`xlsx-cache-doctor.v1` for CLI workbook reports and
+`xlsx-cache-doctor-action.v1` for the GitHub Action aggregate report.
+
 The root `proompteng/bilig@v1` action is the canonical install path and is
 published as
 [XLSX Cache Doctor on GitHub Marketplace](https://github.com/marketplace/actions/xlsx-cache-doctor).
@@ -193,5 +197,7 @@ npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc fixtures/pri
 ```
 
 That command writes a recalculated workbook and returns the exact readback
-values. Keep the action as the pull-request detector and the `xlsx-recalc`
-command as the explicit proof before production adoption.
+values. Generated Action summaries keep the configured `package-version` in the
+follow-up command, so a pinned workflow does not silently fall back to `latest`.
+Keep the action as the pull-request detector and the `xlsx-recalc` command as
+the explicit proof before production adoption.

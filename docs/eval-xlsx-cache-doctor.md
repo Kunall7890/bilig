@@ -31,6 +31,7 @@ The current demo prints this shape:
 
 ```json
 {
+  "schemaVersion": "xlsx-cache-doctor.v1",
   "mode": "demo",
   "input": "generated demo workbook",
   "formulaCellCount": 1,
