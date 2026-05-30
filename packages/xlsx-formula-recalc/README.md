@@ -136,7 +136,7 @@ If you have a real workbook but do not yet know which formula cells matter,
 diagnose it without writing an output file:
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-cache-doctor pricing.xlsx --json
+npx --package @bilig/xlsx-formula-recalc xlsx-cache-doctor pricing.xlsx --json
 ```
 
 Inspection imports the workbook, lists formula cells, recomputes every formula
@@ -189,7 +189,7 @@ To create the GitHub Actions workflow from npm:
 
 ```sh
 mkdir -p .github/workflows
-npx --package xlsx-formula-recalc xlsx-cache-doctor --print-github-action "**/*.xlsx" \
+npx --package @bilig/xlsx-formula-recalc xlsx-cache-doctor --print-github-action "**/*.xlsx" \
   > .github/workflows/xlsx-cache-doctor.yml
 ```
 
@@ -203,7 +203,7 @@ specific. For production, pin both the Action ref and `package-version`.
 For an existing workbook:
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-recalc pricing.xlsx \
+npx --package @bilig/xlsx-formula-recalc xlsx-recalc pricing.xlsx \
   --set Inputs!B2=48 \
   --set Inputs!B3=1500 \
   --read Summary!B7 \
@@ -217,7 +217,7 @@ For workbooks with external links, pass companion workbook files so cached link
 values can be refreshed before recalculation:
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-recalc model.xlsx \
+npx --package @bilig/xlsx-formula-recalc xlsx-recalc model.xlsx \
   --external-workbook rates.xlsx \
   --read Model!C1 \
   --out model.recalculated.xlsx \
@@ -228,7 +228,7 @@ When the link target in the workbook is an exact path or URI that does not match
 the local companion filename, bind the companion explicitly:
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-recalc model.xlsx \
+npx --package @bilig/xlsx-formula-recalc xlsx-recalc model.xlsx \
   --external-workbook-target ./fixtures/rates-current.xlsx file:///tmp/rates.xlsx \
   --read Model!C1 \
   --json
@@ -244,8 +244,32 @@ run
 
 ## API
 
+Use `inspectXlsxCache` when a service or test runner needs the cache-doctor
+report without shelling out to the CLI:
+
 ```ts
-import { recalculateXlsx } from 'xlsx-formula-recalc'
+import { readFile } from 'node:fs/promises'
+import { inspectXlsxCache } from '@bilig/xlsx-formula-recalc'
+
+const report = inspectXlsxCache(await readFile('pricing.xlsx'), {
+  fileName: 'pricing.xlsx',
+})
+
+if (report.staleCachedFormulaCount > 0) {
+  throw new Error(
+    `stale XLSX formula cache: ${report.formulas
+      .filter((formula) => formula.cacheStatus === 'stale')
+      .map((formula) => formula.target)
+      .join(', ')}`,
+  )
+}
+```
+
+The API returns the same `schemaVersion`, `cacheStatusSummary`, per-formula
+`cacheStatus`, and `suggestedReads` fields as the JSON CLI report.
+
+```ts
+import { recalculateXlsx } from '@bilig/xlsx-formula-recalc'
 
 const result = recalculateXlsx(await fs.promises.readFile('pricing.xlsx'), {
   edits: [

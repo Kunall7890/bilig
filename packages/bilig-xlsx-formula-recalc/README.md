@@ -27,6 +27,7 @@ Expected shape:
 
 ```json
 {
+  "schemaVersion": "xlsx-cache-doctor.v1",
   "formulaCellCount": 1,
   "inspectedFormulaCellCount": 1,
   "uninspectedFormulaCellCount": 0,
@@ -128,6 +129,7 @@ the JSON includes the skipped count as `uninspectedFormulaCellCount`.
 
 ```json
 {
+  "schemaVersion": "xlsx-cache-doctor.v1",
   "formulaCellCount": 12,
   "inspectedFormulaCellCount": 12,
   "uninspectedFormulaCellCount": 0,
@@ -218,6 +220,30 @@ run
 [external workbook recalculation proof in Node.js](https://proompteng.github.io/bilig/external-workbook-recalc-proof.html).
 
 ## API
+
+Use `inspectXlsxCache` when a service or test runner needs the cache-doctor
+report without shelling out to the CLI:
+
+```ts
+import { readFile } from 'node:fs/promises'
+import { inspectXlsxCache } from '@bilig/xlsx-formula-recalc'
+
+const report = inspectXlsxCache(await readFile('pricing.xlsx'), {
+  fileName: 'pricing.xlsx',
+})
+
+if (report.staleCachedFormulaCount > 0) {
+  throw new Error(
+    report.formulas
+      .filter((formula) => formula.cacheStatus === 'stale')
+      .map((formula) => formula.target)
+      .join(', '),
+  )
+}
+```
+
+The API returns the same `schemaVersion`, `cacheStatusSummary`, per-formula
+`cacheStatus`, and `suggestedReads` fields as the JSON CLI report.
 
 ```ts
 import { recalculateXlsx } from '@bilig/xlsx-formula-recalc'

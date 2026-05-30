@@ -3,9 +3,16 @@ import { basename, dirname, extname, join } from 'node:path'
 
 import type { RawCellContent } from '@bilig/headless'
 import type { XlsxExternalWorkbookInput } from '@bilig/headless/xlsx'
-import { formatErrorCode, ValueTag } from '@bilig/protocol'
+import { ValueTag } from '@bilig/protocol'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import { exportXlsx, importXlsx, recalculateXlsx, WorkPaper, type XlsxFormulaRecalcCellValue, type XlsxFormulaRecalcEdit } from './index.js'
+import {
+  exportXlsx,
+  inspectXlsxCache,
+  recalculateXlsx,
+  WorkPaper,
+  type XlsxFormulaRecalcCellValue,
+  type XlsxFormulaRecalcEdit,
+} from './index.js'
 
 interface CliExternalWorkbook {
   readonly path: string
@@ -43,9 +50,8 @@ export interface XlsxFormulaRecalcCliContext {
 
 const defaultInspectFormulaLimit = 'all'
 const cacheDoctorCommandName = 'xlsx-cache-doctor'
-const cacheDoctorSchemaVersion = 'xlsx-cache-doctor.v1'
 const printGithubActionOption = '--print-github-action'
-const defaultGithubActionPackageVersion = '0.129.1'
+const defaultGithubActionPackageVersion = '0.129.2'
 
 export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFormulaRecalcCliContext = {}): number {
   const commandName = context.commandName ?? 'xlsx-recalc'
@@ -368,62 +374,33 @@ interface PrintInspectionSummaryInput {
 }
 
 function printInspectionSummary(args: PrintInspectionSummaryInput): void {
-  const importOptions =
-    args.externalWorkbooks.length > 0
-      ? {
-          externalWorkbooks: args.externalWorkbooks,
-          externalLinkCacheArtifactMode: 'replace-refreshed' as const,
-        }
-      : {}
-  const imported = importXlsx(args.input, args.inputName, importOptions)
-  const formulaCells = collectFormulaCells(imported.snapshot)
-  const inspectedFormulaCells = args.options.inspectLimit === 'all' ? formulaCells : formulaCells.slice(0, args.options.inspectLimit)
-  const uninspectedFormulaCellCount = formulaCells.length - inspectedFormulaCells.length
-  const suggestedReads = inspectedFormulaCells.map((cell) => cell.target)
-  const recalculated = recalculateXlsx(args.input, {
+  const inspection = inspectXlsxCache(args.input, {
     fileName: args.inputName,
     ...(args.externalWorkbooks.length > 0 ? { externalWorkbooks: args.externalWorkbooks } : {}),
     edits: args.options.edits,
-    reads: suggestedReads,
+    inspectLimit: args.options.inspectLimit,
   })
-  const formulas = inspectedFormulaCells.map((cell) => {
-    const recalculatedValue = recalculated.reads[cell.target]
-    const literalRecalculatedValue = literalValueForInspection(recalculatedValue)
-    const cacheStatus = cacheStatusForInspection(cell.cachedValue, literalRecalculatedValue)
-    const staleCachedValue = staleCachedValueForInspection(cacheStatus)
-    return {
-      target: cell.target,
-      formula: cell.formula,
-      ...(cell.cachedValue !== undefined ? { cachedValue: cell.cachedValue } : {}),
-      recalculatedValue,
-      ...(literalRecalculatedValue !== undefined ? { literalRecalculatedValue } : {}),
-      cacheStatus,
-      staleCachedValue,
-    }
-  })
-  const staleCachedFormulaCount = formulas.filter((formula) => formula.staleCachedValue === true).length
-  const cacheStatusSummary = buildCacheStatusSummary(formulas)
   const summary = {
-    schemaVersion: cacheDoctorSchemaVersion,
+    schemaVersion: inspection.schemaVersion,
     mode: args.options.mode,
     input: args.options.inputPath ?? 'generated demo workbook',
     edits: args.options.edits.length,
     externalWorkbooks: args.externalWorkbooks.length,
-    sheetNames: imported.sheetNames,
-    formulaCellCount: formulaCells.length,
-    inspectedFormulaCellCount: inspectedFormulaCells.length,
-    uninspectedFormulaCellCount,
-    inspectionLimit: args.options.inspectLimit,
-    staleCachedFormulaCount,
-    cacheStatusSummary,
-    suggestedReads,
-    formulas,
-    warnings: recalculated.warnings,
-    ...(recalculated.diagnostics ? { diagnostics: recalculated.diagnostics } : {}),
+    sheetNames: inspection.sheetNames,
+    formulaCellCount: inspection.formulaCellCount,
+    inspectedFormulaCellCount: inspection.inspectedFormulaCellCount,
+    uninspectedFormulaCellCount: inspection.uninspectedFormulaCellCount,
+    inspectionLimit: inspection.inspectionLimit,
+    staleCachedFormulaCount: inspection.staleCachedFormulaCount,
+    cacheStatusSummary: inspection.cacheStatusSummary,
+    suggestedReads: inspection.suggestedReads,
+    formulas: inspection.formulas,
+    warnings: inspection.warnings,
+    ...(inspection.diagnostics ? { diagnostics: inspection.diagnostics } : {}),
     commandSucceeded: true,
-    inspectionCompleted: true,
-    recalculationCompleted: true,
-    excelParity: 'not_proven',
+    inspectionCompleted: inspection.inspectionCompleted,
+    recalculationCompleted: inspection.recalculationCompleted,
+    excelParity: inspection.excelParity,
   }
 
   if (args.options.json) {
@@ -440,135 +417,14 @@ function printInspectionSummary(args: PrintInspectionSummaryInput): void {
   args.writeStdout(`Fresh cached formula cells: ${summary.cacheStatusSummary.fresh.toString()}\n`)
   args.writeStdout(`Missing cached formula values: ${summary.cacheStatusSummary.missingCache.toString()}\n`)
   args.writeStdout(`Unsupported recalculation results: ${summary.cacheStatusSummary.unsupportedRecalculation.toString()}\n`)
-  if (suggestedReads.length > 0) {
-    args.writeStdout(`Suggested reads: ${suggestedReads.join(', ')}\n`)
-    args.writeStdout(`${suggestedRecalcCommand(args.options, suggestedReads)}\n`)
+  if (summary.suggestedReads.length > 0) {
+    args.writeStdout(`Suggested reads: ${summary.suggestedReads.join(', ')}\n`)
+    args.writeStdout(`${suggestedRecalcCommand(args.options, summary.suggestedReads)}\n`)
   }
   if (summary.warnings.length > 0) {
     args.writeStdout(`Warnings: ${summary.warnings.length.toString()}\n`)
   }
   args.writeStdout('If the important formula is missing, rerun with --inspect-limit all and --read <Sheet!Cell>.\n')
-}
-
-interface FormulaInspectionCell {
-  readonly target: string
-  readonly formula: string
-  readonly cachedValue?: RawCellContent
-}
-
-type ImportedWorkbookSnapshot = Parameters<typeof WorkPaper.buildFromSnapshot>[0]
-type InspectionCacheStatus = 'fresh' | 'stale' | 'missing-cache' | 'unsupported-recalculation'
-
-interface FormulaInspectionResult {
-  readonly cacheStatus: InspectionCacheStatus
-  readonly staleCachedValue: boolean | null
-}
-
-function collectFormulaCells(snapshot: ImportedWorkbookSnapshot): FormulaInspectionCell[] {
-  const cells: FormulaInspectionCell[] = []
-  for (const sheet of snapshot.sheets.toSorted((left, right) => left.order - right.order)) {
-    for (const cell of sheet.cells.toSorted((left, right) => compareA1Addresses(left.address, right.address))) {
-      if (typeof cell.formula !== 'string' || cell.formula.trim().length === 0) {
-        continue
-      }
-      cells.push({
-        target: formatQualifiedTarget(sheet.name, cell.address),
-        formula: cell.formula.startsWith('=') ? cell.formula : `=${cell.formula}`,
-        ...(cell.value !== undefined ? { cachedValue: cell.value } : {}),
-      })
-    }
-  }
-  return cells
-}
-
-function compareA1Addresses(left: string, right: string): number {
-  const leftParts = parseA1AddressForSort(left)
-  const rightParts = parseA1AddressForSort(right)
-  return leftParts.row - rightParts.row || leftParts.col - rightParts.col || left.localeCompare(right)
-}
-
-function parseA1AddressForSort(address: string): { readonly row: number; readonly col: number } {
-  const match = /^([A-Z]+)(\d+)$/iu.exec(address)
-  if (!match) {
-    return { row: Number.MAX_SAFE_INTEGER, col: Number.MAX_SAFE_INTEGER }
-  }
-  const [, letters = '', rowText = ''] = match
-  let col = 0
-  for (const letter of letters.toUpperCase()) {
-    col = col * 26 + letter.charCodeAt(0) - 64
-  }
-  return { row: Number(rowText), col }
-}
-
-function formatQualifiedTarget(sheetName: string, address: string): string {
-  return `${quoteSheetNameForTarget(sheetName)}!${address}`
-}
-
-function quoteSheetNameForTarget(sheetName: string): string {
-  return /^[A-Za-z_][A-Za-z0-9_]*$/u.test(sheetName) ? sheetName : `'${sheetName.replaceAll("'", "''")}'`
-}
-
-function literalValueForInspection(value: XlsxFormulaRecalcCellValue | undefined): RawCellContent | string | undefined {
-  if (value === undefined || typeof value !== 'object' || value === null || !('tag' in value)) {
-    return undefined
-  }
-  switch (value.tag) {
-    case ValueTag.Empty:
-      return null
-    case ValueTag.Number:
-      return 'value' in value && typeof value.value === 'number' && Number.isFinite(value.value) ? value.value : undefined
-    case ValueTag.Boolean:
-      return 'value' in value && typeof value.value === 'boolean' ? value.value : undefined
-    case ValueTag.String:
-      return 'value' in value && typeof value.value === 'string' ? value.value : undefined
-    case ValueTag.Error:
-      return 'code' in value && typeof value.code === 'number' ? formatErrorCode(value.code) : undefined
-  }
-}
-
-function cacheStatusForInspection(
-  cachedValue: RawCellContent | undefined,
-  literalRecalculatedValue: RawCellContent | string | undefined,
-): InspectionCacheStatus {
-  if (cachedValue === undefined) {
-    return 'missing-cache'
-  }
-  if (literalRecalculatedValue === undefined) {
-    return 'unsupported-recalculation'
-  }
-  return literalValuesEqual(cachedValue, literalRecalculatedValue) ? 'fresh' : 'stale'
-}
-
-function staleCachedValueForInspection(cacheStatus: InspectionCacheStatus): FormulaInspectionResult['staleCachedValue'] {
-  switch (cacheStatus) {
-    case 'stale':
-      return true
-    case 'fresh':
-      return false
-    case 'missing-cache':
-    case 'unsupported-recalculation':
-      return null
-  }
-}
-
-function buildCacheStatusSummary(formulas: readonly FormulaInspectionResult[]): {
-  readonly inspected: number
-  readonly stale: number
-  readonly fresh: number
-  readonly missingCache: number
-  readonly unsupportedRecalculation: number
-} {
-  return {
-    inspected: formulas.length,
-    stale: formulas.filter((formula) => formula.cacheStatus === 'stale').length,
-    fresh: formulas.filter((formula) => formula.cacheStatus === 'fresh').length,
-    missingCache: formulas.filter((formula) => formula.cacheStatus === 'missing-cache').length,
-    unsupportedRecalculation: formulas.filter((formula) => formula.cacheStatus === 'unsupported-recalculation').length,
-  }
-}
-
-function literalValuesEqual(left: RawCellContent, right: RawCellContent | string): boolean {
-  return JSON.stringify(left) === JSON.stringify(right)
 }
 
 function numericReadValue(value: XlsxFormulaRecalcCellValue | undefined): number | undefined {

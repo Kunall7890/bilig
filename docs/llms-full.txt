@@ -342,7 +342,7 @@ blocks anything:
   with:
     workbooks: '**/*.xlsx'
     changed-files-only: 'true'
-    package-version: '0.129.1'
+    package-version: '0.129.2'
     fail-on-stale: 'false'
 ```
 
@@ -500,6 +500,27 @@ That checks every formula by default, reports any skipped formulas as
 `uninspectedFormulaCellCount`, returns stale cached values, and suggests
 `--read` targets so the next command can prove the cells your service actually
 depends on.
+
+If your service or test runner needs the same report without a subprocess, use
+the Node API:
+
+```ts
+import { readFile } from "node:fs/promises";
+import { inspectXlsxCache } from "@bilig/xlsx-formula-recalc";
+
+const report = inspectXlsxCache(await readFile("pricing.xlsx"), {
+  fileName: "pricing.xlsx",
+});
+
+if (report.staleCachedFormulaCount > 0) {
+  throw new Error(
+    report.formulas
+      .filter((formula) => formula.cacheStatus === "stale")
+      .map((formula) => formula.target)
+      .join(", "),
+  );
+}
+```
 
 To run that check in CI, install
 [XLSX Cache Doctor from GitHub Marketplace](https://github.com/marketplace/actions/xlsx-cache-doctor),
@@ -1345,6 +1366,30 @@ npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricin
 If the workbook is large and you pass `--inspect-limit`, do not treat the report
 as complete coverage unless `uninspectedFormulaCellCount` is `0`.
 
+## Use the same report in Node
+
+```ts
+import { readFile } from "node:fs/promises";
+import { inspectXlsxCache } from "@bilig/xlsx-formula-recalc";
+
+const report = inspectXlsxCache(await readFile("pricing.xlsx"), {
+  fileName: "pricing.xlsx",
+});
+
+if (report.staleCachedFormulaCount > 0) {
+  throw new Error(
+    report.formulas
+      .filter((formula) => formula.cacheStatus === "stale")
+      .map((formula) => formula.target)
+      .join(", "),
+  );
+}
+```
+
+The API returns the same `schemaVersion`, `cacheStatusSummary`,
+`staleCachedFormulaCount`, `suggestedReads`, and per-formula `cacheStatus` fields
+as the CLI JSON.
+
 ## Turn the report into a fresh XLSX proof
 
 After the detector returns `suggestedReads`, prove the actual cells your service
@@ -1761,7 +1806,7 @@ jobs:
         with:
           workbooks: '**/*.xlsx'
           changed-files-only: 'true'
-          package-version: '0.129.1'
+          package-version: '0.129.2'
           json-output: ${{ runner.temp }}/pricing.cache-doctor.json
           markdown-output: ${{ runner.temp }}/pricing.cache-doctor.md
           fail-on-stale: 'false'
@@ -1820,7 +1865,7 @@ workflow after you test the example:
 ```yaml
 - uses: proompteng/bilig@<full-commit-sha>
   with:
-    package-version: '0.129.1'
+    package-version: '0.129.2'
 ```
 
 Pin both values in production. The Action ref pins the wrapper scripts;
@@ -1837,7 +1882,7 @@ a write token.
 | `workbook`           |         | Path to one workbook to inspect. Kept for existing copied workflows.              |
 | `workbooks`          |         | Glob, comma list, or newline list of XLSX workbooks to inspect.                   |
 | `changed-files-only` | `false` | Only inspect matched XLSX files changed in the pull request or current git diff.  |
-| `package-version`    | 0.129.1 | npm version or dist-tag for `@bilig/xlsx-formula-recalc`. Pin this in production. |
+| `package-version`    | 0.129.2 | npm version or dist-tag for `@bilig/xlsx-formula-recalc`. Pin this in production. |
 | `inspect-limit`      | `all`   | Formula cells to recompute during inspection. Use `all` or a positive integer.    |
 | `json-output`        |         | Optional path for the JSON report.                                                |
 | `markdown-output`    |         | Optional path for the Markdown report.                                            |

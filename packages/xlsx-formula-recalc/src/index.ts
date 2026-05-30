@@ -89,6 +89,226 @@ export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, option
 
 export const recalculateSheetjsWorkbook = recalculateXlsx
 
+export const xlsxCacheDoctorSchemaVersion = 'xlsx-cache-doctor.v1'
+
+export type XlsxCacheInspectionLimit = number | 'all'
+export type XlsxCacheStatus = 'fresh' | 'stale' | 'missing-cache' | 'unsupported-recalculation'
+
+export interface XlsxCacheInspectionOptions {
+  readonly fileName?: string
+  readonly externalWorkbooks?: readonly XlsxExternalWorkbookInput[]
+  readonly edits?: readonly XlsxFormulaRecalcEdit[]
+  readonly inspectLimit?: XlsxCacheInspectionLimit
+  readonly config?: WorkPaperConfig
+}
+
+export interface XlsxCacheStatusSummary {
+  readonly inspected: number
+  readonly stale: number
+  readonly fresh: number
+  readonly missingCache: number
+  readonly unsupportedRecalculation: number
+}
+
+export interface XlsxCacheFormulaInspection {
+  readonly target: string
+  readonly formula: string
+  readonly cachedValue?: RawCellContent
+  readonly recalculatedValue: XlsxFormulaRecalcCellValue | undefined
+  readonly literalRecalculatedValue?: RawCellContent | string
+  readonly cacheStatus: XlsxCacheStatus
+  readonly staleCachedValue: boolean | null
+}
+
+export interface XlsxCacheInspectionResult {
+  readonly schemaVersion: typeof xlsxCacheDoctorSchemaVersion
+  readonly sheetNames: readonly string[]
+  readonly formulaCellCount: number
+  readonly inspectedFormulaCellCount: number
+  readonly uninspectedFormulaCellCount: number
+  readonly inspectionLimit: XlsxCacheInspectionLimit
+  readonly staleCachedFormulaCount: number
+  readonly cacheStatusSummary: XlsxCacheStatusSummary
+  readonly suggestedReads: readonly string[]
+  readonly formulas: readonly XlsxCacheFormulaInspection[]
+  readonly warnings: readonly string[]
+  readonly diagnostics?: ImportedWorkbookDiagnostics
+  readonly inspectionCompleted: true
+  readonly recalculationCompleted: true
+  readonly excelParity: 'not_proven'
+}
+
+interface XlsxCacheFormulaCell {
+  readonly target: string
+  readonly formula: string
+  readonly cachedValue?: RawCellContent
+}
+
+export function inspectXlsxCache(
+  input: Uint8Array | ArrayBuffer | Buffer,
+  options: XlsxCacheInspectionOptions = {},
+): XlsxCacheInspectionResult {
+  const importOptions = options.externalWorkbooks
+    ? { externalWorkbooks: options.externalWorkbooks, externalLinkCacheArtifactMode: 'replace-refreshed' as const }
+    : {}
+  const imported = importXlsx(toUint8Array(input), options.fileName ?? 'workbook.xlsx', importOptions)
+  const formulaCells = collectXlsxCacheFormulaCells(imported.snapshot)
+  const inspectionLimit = normalizeXlsxCacheInspectionLimit(options.inspectLimit ?? 'all')
+  const inspectedFormulaCells = inspectionLimit === 'all' ? formulaCells : formulaCells.slice(0, inspectionLimit)
+  const uninspectedFormulaCellCount = formulaCells.length - inspectedFormulaCells.length
+  const suggestedReads = inspectedFormulaCells.map((cell) => cell.target)
+  const recalculated = recalculateXlsx(input, {
+    ...(options.externalWorkbooks ? { externalWorkbooks: options.externalWorkbooks } : {}),
+    ...(options.fileName ? { fileName: options.fileName } : {}),
+    ...(options.edits ? { edits: options.edits } : {}),
+    reads: suggestedReads,
+    ...(options.config ? { config: options.config } : {}),
+  })
+  const formulas = inspectedFormulaCells.map((cell) => {
+    const recalculatedValue = recalculated.reads[cell.target]
+    const literalRecalculatedValue = literalValueForXlsxCacheInspection(recalculatedValue)
+    const cacheStatus = xlsxCacheStatusForInspection(cell.cachedValue, literalRecalculatedValue)
+    return {
+      target: cell.target,
+      formula: cell.formula,
+      ...(cell.cachedValue !== undefined ? { cachedValue: cell.cachedValue } : {}),
+      recalculatedValue,
+      ...(literalRecalculatedValue !== undefined ? { literalRecalculatedValue } : {}),
+      cacheStatus,
+      staleCachedValue: staleCachedValueForXlsxCacheInspection(cacheStatus),
+    }
+  })
+
+  return {
+    schemaVersion: xlsxCacheDoctorSchemaVersion,
+    sheetNames: imported.sheetNames,
+    formulaCellCount: formulaCells.length,
+    inspectedFormulaCellCount: inspectedFormulaCells.length,
+    uninspectedFormulaCellCount,
+    inspectionLimit,
+    staleCachedFormulaCount: formulas.filter((formula) => formula.staleCachedValue === true).length,
+    cacheStatusSummary: buildXlsxCacheStatusSummary(formulas),
+    suggestedReads,
+    formulas,
+    warnings: recalculated.warnings,
+    ...(recalculated.diagnostics ? { diagnostics: recalculated.diagnostics } : {}),
+    inspectionCompleted: true,
+    recalculationCompleted: true,
+    excelParity: 'not_proven',
+  }
+}
+
+function collectXlsxCacheFormulaCells(snapshot: WorkbookSnapshot): XlsxCacheFormulaCell[] {
+  const cells: XlsxCacheFormulaCell[] = []
+  for (const sheet of snapshot.sheets.toSorted((left, right) => left.order - right.order)) {
+    for (const cell of sheet.cells.toSorted((left, right) => compareA1Addresses(left.address, right.address))) {
+      if (typeof cell.formula !== 'string' || cell.formula.trim().length === 0) {
+        continue
+      }
+      cells.push({
+        target: formatQualifiedTarget(sheet.name, cell.address),
+        formula: cell.formula.startsWith('=') ? cell.formula : `=${cell.formula}`,
+        ...(cell.value !== undefined ? { cachedValue: cell.value } : {}),
+      })
+    }
+  }
+  return cells
+}
+
+function normalizeXlsxCacheInspectionLimit(limit: XlsxCacheInspectionLimit): XlsxCacheInspectionLimit {
+  if (limit === 'all') {
+    return limit
+  }
+  if (Number.isInteger(limit) && limit > 0) {
+    return limit
+  }
+  throw new Error(`Expected inspectLimit to be "all" or a positive integer, received: ${String(limit)}`)
+}
+
+function compareA1Addresses(left: string, right: string): number {
+  const leftParts = parseA1AddressForSort(left)
+  const rightParts = parseA1AddressForSort(right)
+  return leftParts.row - rightParts.row || leftParts.col - rightParts.col || left.localeCompare(right)
+}
+
+function parseA1AddressForSort(address: string): { readonly row: number; readonly col: number } {
+  const match = /^([A-Z]+)(\d+)$/iu.exec(address)
+  if (!match) {
+    return { row: Number.MAX_SAFE_INTEGER, col: Number.MAX_SAFE_INTEGER }
+  }
+  const [, letters = '', rowText = ''] = match
+  let col = 0
+  for (const letter of letters.toUpperCase()) {
+    col = col * 26 + letter.charCodeAt(0) - 64
+  }
+  return { row: Number(rowText), col }
+}
+
+function formatQualifiedTarget(sheetName: string, address: string): string {
+  return `${quoteSheetNameForTarget(sheetName)}!${address}`
+}
+
+function quoteSheetNameForTarget(sheetName: string): string {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/u.test(sheetName) ? sheetName : `'${sheetName.replaceAll("'", "''")}'`
+}
+
+function literalValueForXlsxCacheInspection(value: XlsxFormulaRecalcCellValue | undefined): RawCellContent | string | undefined {
+  if (value === undefined || typeof value !== 'object' || value === null || !('tag' in value)) {
+    return undefined
+  }
+  switch (value.tag) {
+    case ValueTag.Empty:
+      return null
+    case ValueTag.Number:
+      return 'value' in value && typeof value.value === 'number' && Number.isFinite(value.value) ? value.value : undefined
+    case ValueTag.Boolean:
+      return 'value' in value && typeof value.value === 'boolean' ? value.value : undefined
+    case ValueTag.String:
+      return 'value' in value && typeof value.value === 'string' ? value.value : undefined
+    case ValueTag.Error:
+      return 'code' in value && typeof value.code === 'number' ? formatErrorCode(value.code) : undefined
+  }
+}
+
+function xlsxCacheStatusForInspection(
+  cachedValue: RawCellContent | undefined,
+  literalRecalculatedValue: RawCellContent | string | undefined,
+): XlsxCacheStatus {
+  if (cachedValue === undefined) {
+    return 'missing-cache'
+  }
+  if (literalRecalculatedValue === undefined) {
+    return 'unsupported-recalculation'
+  }
+  return literalValuesEqual(cachedValue, literalRecalculatedValue) ? 'fresh' : 'stale'
+}
+
+function staleCachedValueForXlsxCacheInspection(cacheStatus: XlsxCacheStatus): XlsxCacheFormulaInspection['staleCachedValue'] {
+  switch (cacheStatus) {
+    case 'stale':
+      return true
+    case 'fresh':
+      return false
+    case 'missing-cache':
+    case 'unsupported-recalculation':
+      return null
+  }
+}
+
+function buildXlsxCacheStatusSummary(formulas: readonly XlsxCacheFormulaInspection[]): XlsxCacheStatusSummary {
+  return {
+    inspected: formulas.length,
+    stale: formulas.filter((formula) => formula.cacheStatus === 'stale').length,
+    fresh: formulas.filter((formula) => formula.cacheStatus === 'fresh').length,
+    missingCache: formulas.filter((formula) => formula.cacheStatus === 'missing-cache').length,
+    unsupportedRecalculation: formulas.filter((formula) => formula.cacheStatus === 'unsupported-recalculation').length,
+  }
+}
+
+function literalValuesEqual(left: RawCellContent, right: RawCellContent | string): boolean {
+  return JSON.stringify(left) === JSON.stringify(right)
+}
+
 function snapshotWithFormulaCachedValues(
   workbook: WorkPaperInstance,
   snapshot: WorkbookSnapshot,

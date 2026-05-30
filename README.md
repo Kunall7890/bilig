@@ -40,7 +40,7 @@ blocks anything:
   with:
     workbooks: '**/*.xlsx'
     changed-files-only: 'true'
-    package-version: '0.129.1'
+    package-version: '0.129.2'
     fail-on-stale: 'false'
 ```
 
@@ -198,6 +198,27 @@ That checks every formula by default, reports any skipped formulas as
 `uninspectedFormulaCellCount`, returns stale cached values, and suggests
 `--read` targets so the next command can prove the cells your service actually
 depends on.
+
+If your service or test runner needs the same report without a subprocess, use
+the Node API:
+
+```ts
+import { readFile } from "node:fs/promises";
+import { inspectXlsxCache } from "@bilig/xlsx-formula-recalc";
+
+const report = inspectXlsxCache(await readFile("pricing.xlsx"), {
+  fileName: "pricing.xlsx",
+});
+
+if (report.staleCachedFormulaCount > 0) {
+  throw new Error(
+    report.formulas
+      .filter((formula) => formula.cacheStatus === "stale")
+      .map((formula) => formula.target)
+      .join(", "),
+  );
+}
+```
 
 To run that check in CI, install
 [XLSX Cache Doctor from GitHub Marketplace](https://github.com/marketplace/actions/xlsx-cache-doctor),

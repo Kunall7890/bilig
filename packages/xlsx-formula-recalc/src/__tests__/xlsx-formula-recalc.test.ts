@@ -2,7 +2,15 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
 import { runXlsxFormulaRecalcCli } from '../cli-api.js'
-import { WorkPaper, exportXlsx, importXlsx, parseQualifiedA1, recalculateSheetjsWorkbook, recalculateXlsx } from '../index.js'
+import {
+  WorkPaper,
+  exportXlsx,
+  importXlsx,
+  inspectXlsxCache,
+  parseQualifiedA1,
+  recalculateSheetjsWorkbook,
+  recalculateXlsx,
+} from '../index.js'
 
 const officeRelationshipNamespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 
@@ -104,6 +112,51 @@ describe('xlsx-formula-recalc', () => {
     expect(model).toBeTypeOf('number')
     expect(readNumber(restored.getCellValue({ sheet: model!, row: 1, col: 1 }))).toBe(20)
     restored.dispose()
+  })
+
+  it('inspects stale XLSX formula caches through the public API', () => {
+    const sourceWorkbook = WorkPaper.buildFromSheets({
+      Sheet1: [
+        ['Input', 'Output'],
+        [2, '=A2*10'],
+      ],
+    })
+    const sourceBytes = replaceCellXml(
+      exportXlsx(sourceWorkbook.exportSnapshot()),
+      'xl/worksheets/sheet1.xml',
+      'B2',
+      '<c r="B2"><f>A2*10</f><v>999</v></c>',
+    )
+    sourceWorkbook.dispose()
+
+    const report = inspectXlsxCache(sourceBytes, { fileName: 'stale-cache.xlsx' })
+
+    expect(report.schemaVersion).toBe('xlsx-cache-doctor.v1')
+    expect(report.formulaCellCount).toBe(1)
+    expect(report.inspectedFormulaCellCount).toBe(1)
+    expect(report.uninspectedFormulaCellCount).toBe(0)
+    expect(report.inspectionLimit).toBe('all')
+    expect(report.staleCachedFormulaCount).toBe(1)
+    expect(report.cacheStatusSummary).toEqual({
+      inspected: 1,
+      stale: 1,
+      fresh: 0,
+      missingCache: 0,
+      unsupportedRecalculation: 0,
+    })
+    expect(report.suggestedReads).toEqual(['Sheet1!B2'])
+    expect(report.formulas[0]).toMatchObject({
+      target: 'Sheet1!B2',
+      formula: '=A2*10',
+      cachedValue: 999,
+      literalRecalculatedValue: 20,
+      cacheStatus: 'stale',
+      staleCachedValue: true,
+    })
+    expect(report.warnings).toEqual([])
+    expect(report.inspectionCompleted).toBe(true)
+    expect(report.recalculationCompleted).toBe(true)
+    expect(report.excelParity).toBe('not_proven')
   })
 
   it('clears stale calculation metadata after explicit formula recalculation', () => {

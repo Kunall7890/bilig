@@ -89,6 +89,30 @@ npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricin
 If the workbook is large and you pass `--inspect-limit`, do not treat the report
 as complete coverage unless `uninspectedFormulaCellCount` is `0`.
 
+## Use the same report in Node
+
+```ts
+import { readFile } from "node:fs/promises";
+import { inspectXlsxCache } from "@bilig/xlsx-formula-recalc";
+
+const report = inspectXlsxCache(await readFile("pricing.xlsx"), {
+  fileName: "pricing.xlsx",
+});
+
+if (report.staleCachedFormulaCount > 0) {
+  throw new Error(
+    report.formulas
+      .filter((formula) => formula.cacheStatus === "stale")
+      .map((formula) => formula.target)
+      .join(", "),
+  );
+}
+```
+
+The API returns the same `schemaVersion`, `cacheStatusSummary`,
+`staleCachedFormulaCount`, `suggestedReads`, and per-formula `cacheStatus` fields
+as the CLI JSON.
+
 ## Turn the report into a fresh XLSX proof
 
 After the detector returns `suggestedReads`, prove the actual cells your service
