@@ -595,12 +595,15 @@ function readOoxmlCellFillColor(bytes: Uint8Array, target: SameCorpusMutationTar
   if (!sheetXml || !stylesXml) {
     return null
   }
-  const styleIndex = readOoxmlCellStyleIndex(sheetXml, normalizeTargetStartAddress(target.startAddress))
-  if (styleIndex === null) {
-    return null
+  const address = normalizeTargetStartAddress(target.startAddress)
+  const styleIndexes = readOoxmlTargetStyleIndexes(sheetXml, address)
+  for (const styleIndex of styleIndexes) {
+    const color = readOoxmlStyleFillColor(stylesXml, styleIndex, themeXml)
+    if (color) {
+      return color
+    }
   }
-  const fillId = readOoxmlCellXfFillId(stylesXml, styleIndex)
-  return fillId === null ? null : readOoxmlFillColor(stylesXml, fillId, themeXml)
+  return null
 }
 
 function readOoxmlSheetPath(archive: Record<string, Uint8Array>, sheetName: string): string | null {
@@ -654,6 +657,66 @@ function readOoxmlCellStyleIndex(sheetXml: string, address: string): number | nu
   return Number.isInteger(styleIndex) && styleIndex >= 0 ? styleIndex : null
 }
 
+function readOoxmlTargetStyleIndexes(sheetXml: string, address: string): readonly number[] {
+  const indexes = [
+    readOoxmlCellStyleIndex(sheetXml, address),
+    readOoxmlRowStyleIndex(sheetXml, address),
+    readOoxmlColumnStyleIndex(sheetXml, address),
+  ]
+  return [...new Set(indexes.filter((index): index is number => index !== null))]
+}
+
+function readOoxmlRowStyleIndex(sheetXml: string, address: string): number | null {
+  const rowNumber = readOoxmlAddressRowNumber(address)
+  if (rowNumber === null) {
+    return null
+  }
+  const rowTag = new RegExp(`<row\\b(?=[^>]*\\br="${String(rowNumber)}")[^>]*>`, 'u').exec(sheetXml)?.[0] ?? null
+  if (!rowTag) {
+    return null
+  }
+  const styleIndex = Number(readXmlAttribute(rowTag, 's'))
+  return Number.isInteger(styleIndex) && styleIndex >= 0 ? styleIndex : null
+}
+
+function readOoxmlColumnStyleIndex(sheetXml: string, address: string): number | null {
+  const columnIndex = readOoxmlAddressColumnIndex(address)
+  if (columnIndex === null) {
+    return null
+  }
+  const colsXml = readXmlSection(sheetXml, 'cols')
+  const columnTags = colsXml.match(/<col\b[^>]*(?:\/>|>)/gu) ?? []
+  for (const columnTag of columnTags) {
+    const min = Number(readXmlAttribute(columnTag, 'min'))
+    const max = Number(readXmlAttribute(columnTag, 'max'))
+    if (!Number.isInteger(min) || !Number.isInteger(max) || columnIndex < min || columnIndex > max) {
+      continue
+    }
+    const styleIndex = Number(readXmlAttribute(columnTag, 'style'))
+    if (Number.isInteger(styleIndex) && styleIndex >= 0) {
+      return styleIndex
+    }
+  }
+  return null
+}
+
+function readOoxmlAddressRowNumber(address: string): number | null {
+  const rowNumber = Number(address.match(/[0-9]+$/u)?.[0])
+  return Number.isInteger(rowNumber) && rowNumber > 0 ? rowNumber : null
+}
+
+function readOoxmlAddressColumnIndex(address: string): number | null {
+  const columnLetters = address.match(/^[A-Z]+/u)?.[0] ?? ''
+  if (!columnLetters) {
+    return null
+  }
+  let columnIndex = 0
+  for (const letter of columnLetters) {
+    columnIndex = columnIndex * 26 + letter.charCodeAt(0) - 64
+  }
+  return columnIndex > 0 ? columnIndex : null
+}
+
 function readOoxmlCellXfFillId(stylesXml: string, styleIndex: number): number | null {
   const cellXfsXml = readXmlSection(stylesXml, 'cellXfs')
   const xfTag = (cellXfsXml.match(/<xf\b[^>]*(?:\/>|>)/gu) ?? [])[styleIndex]
@@ -662,6 +725,11 @@ function readOoxmlCellXfFillId(stylesXml: string, styleIndex: number): number | 
   }
   const fillId = Number(readXmlAttribute(xfTag, 'fillId'))
   return Number.isInteger(fillId) && fillId >= 0 ? fillId : null
+}
+
+function readOoxmlStyleFillColor(stylesXml: string, styleIndex: number, themeXml: string | null): string | null {
+  const fillId = readOoxmlCellXfFillId(stylesXml, styleIndex)
+  return fillId === null ? null : readOoxmlFillColor(stylesXml, fillId, themeXml)
 }
 
 function readOoxmlFillColor(stylesXml: string, fillId: number, themeXml: string | null): string | null {

@@ -151,6 +151,58 @@ describe('same-corpus committed-state proof capture', () => {
     })
   })
 
+  it('resolves target fills inherited from OOXML row styles', async () => {
+    const committedBytes = xlsxBytesForTargetRowFill('WideGrid', 'C5', 'segment-5', '#00ff00')
+    const page = mockGoogleSheetsExportPage([committedBytes])
+
+    const proof = await captureSameCorpusCommittedStatePhaseProof({
+      expectedReadback: {
+        ...sameCorpusGoogleReadback('segment-5'),
+        fillColor: '#00ff00',
+      },
+      page: page.page,
+      phase: 'after',
+      product: 'google-sheets',
+      sampleIndex: 0,
+      target: sameCorpusTargetSelection(),
+      timeoutMs: 1_000,
+      pollIntervalMs: 0,
+      workload: 'fill-format-change',
+    })
+
+    expect(proof?.readback).toMatchObject({
+      value: 'segment-5',
+      fillColor: '#00ff00',
+      source: 'google-sheets-xlsx-export',
+    })
+  })
+
+  it('resolves target fills inherited from OOXML column styles', async () => {
+    const committedBytes = xlsxBytesForTargetColumnFill('WideGrid', 'C5', 'segment-5', '#a4c2f4')
+    const page = mockGoogleSheetsExportPage([committedBytes])
+
+    const proof = await captureSameCorpusCommittedStatePhaseProof({
+      expectedReadback: {
+        ...sameCorpusGoogleReadback('segment-5'),
+        fillColor: '#a4c2f4',
+      },
+      page: page.page,
+      phase: 'after',
+      product: 'google-sheets',
+      sampleIndex: 0,
+      target: sameCorpusTargetSelection(),
+      timeoutMs: 1_000,
+      pollIntervalMs: 0,
+      workload: 'fill-format-change',
+    })
+
+    expect(proof?.readback).toMatchObject({
+      value: 'segment-5',
+      fillColor: '#a4c2f4',
+      source: 'google-sheets-xlsx-export',
+    })
+  })
+
   it('waits for Google Sheets to finish saving before reading the XLSX export when browser state is available', async () => {
     const committedBytes = xlsxBytesForTargetFill('WideGrid', 'C5', 'segment-5', '#c9daf8')
     let saveIdleWaitCount = 0
@@ -401,6 +453,24 @@ function xlsxBytesForTargetThemeFill(sheetName: string, address: string, value: 
   return zipSync(archive)
 }
 
+function xlsxBytesForTargetRowFill(sheetName: string, address: string, value: string, fillColor: string): Uint8Array {
+  const archive = unzipSync(xlsxBytesForTargetValue(sheetName, address, value))
+  const stylesXml = strFromU8(archive['xl/styles.xml'] ?? new Uint8Array())
+  const sheetXml = strFromU8(archive['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+  archive['xl/styles.xml'] = strToU8(addTargetFillStyle(stylesXml, fillColor))
+  archive['xl/worksheets/sheet1.xml'] = strToU8(addTargetRowStyle(sheetXml, address, 1))
+  return zipSync(archive)
+}
+
+function xlsxBytesForTargetColumnFill(sheetName: string, address: string, value: string, fillColor: string): Uint8Array {
+  const archive = unzipSync(xlsxBytesForTargetValue(sheetName, address, value))
+  const stylesXml = strFromU8(archive['xl/styles.xml'] ?? new Uint8Array())
+  const sheetXml = strFromU8(archive['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+  archive['xl/styles.xml'] = strToU8(addTargetFillStyle(stylesXml, fillColor))
+  archive['xl/worksheets/sheet1.xml'] = strToU8(addTargetColumnStyle(sheetXml, address, 1))
+  return zipSync(archive)
+}
+
 function addTargetFillStyle(stylesXml: string, fillColor: string): string {
   const rgb = `FF${fillColor.replace(/^#/u, '').toUpperCase()}`
   return stylesXml
@@ -433,4 +503,28 @@ function setThemeAccent1(themeXml: string, fillColor: string): string {
 
 function addTargetCellStyle(sheetXml: string, address: string, styleIndex: number): string {
   return sheetXml.replace(new RegExp(`<c r="${address}"`, 'u'), `<c r="${address}" s="${String(styleIndex)}"`)
+}
+
+function addTargetRowStyle(sheetXml: string, address: string, styleIndex: number): string {
+  const rowNumber = address.match(/[0-9]+$/u)?.[0] ?? ''
+  return sheetXml.replace(new RegExp(`<row r="${rowNumber}"`, 'u'), `<row r="${rowNumber}" s="${String(styleIndex)}" customFormat="1"`)
+}
+
+function addTargetColumnStyle(sheetXml: string, address: string, styleIndex: number): string {
+  const columnIndex = columnIndexFromAddress(address)
+  return sheetXml.replace(
+    /<sheetData>/u,
+    `<cols><col min="${String(columnIndex)}" max="${String(columnIndex)}" width="10" customWidth="1" style="${String(
+      styleIndex,
+    )}"/></cols><sheetData>`,
+  )
+}
+
+function columnIndexFromAddress(address: string): number {
+  const columnLetters = address.match(/^[A-Z]+/u)?.[0] ?? ''
+  let columnIndex = 0
+  for (const letter of columnLetters) {
+    columnIndex = columnIndex * 26 + letter.charCodeAt(0) - 64
+  }
+  return columnIndex
 }
