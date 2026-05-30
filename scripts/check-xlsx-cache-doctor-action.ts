@@ -107,14 +107,15 @@ try {
       'const report = {',
       "  mode: 'file',",
       '  input: workbook,',
-      '  formulaCellCount: 2,',
-      '  inspectedFormulaCellCount: 2,',
+      '  formulaCellCount: 3,',
+      '  inspectedFormulaCellCount: 3,',
       '  uninspectedFormulaCellCount: 0,',
-      '  staleCachedFormulaCount: 1,',
+      '  staleCachedFormulaCount: 2,',
       "  suggestedReads: ['Sheet1!B2', 'Sheet1!B3'],",
       '  formulas: [',
       "    { target: 'Sheet1!B2', formula: '=A2*10', literalRecalculatedValue: 20, staleCachedValue: null },",
       "    { target: 'Sheet1!B3', formula: '=A3*10', cachedValue: 999, literalRecalculatedValue: 30, staleCachedValue: true },",
+      "    { target: 'Sheet1!B4', formula: '=A4&`|`', cachedValue: 'old\\n%value', literalRecalculatedValue: 'new|value', staleCachedValue: true },",
       '  ],',
       '  warnings: [],',
       '};',
@@ -152,9 +153,16 @@ try {
   ) {
     throw new Error(`Expected stale-formula warning annotation in stdout:\n${result.stdout}`)
   }
+  if (
+    !result.stdout.includes(
+      '::warning title=Stale cached XLSX formula::fixtures/stale-pricing.xlsx#Sheet1!B4 cached old%0A%25value but recalculated new|value',
+    )
+  ) {
+    throw new Error(`Expected escaped stale-formula warning annotation in stdout:\n${result.stdout}`)
+  }
   const output = await readFile(outputPath, 'utf8')
   if (
-    !output.includes('stale-count=1') ||
+    !output.includes('stale-count=2') ||
     !output.includes('suggested-reads=fixtures/stale-pricing.xlsx#Sheet1!B2,fixtures/stale-pricing.xlsx#Sheet1!B3')
   ) {
     throw new Error(`Unexpected inspector outputs:\n${output}`)
@@ -163,6 +171,7 @@ try {
   for (const expected of [
     '#### Stale cached formula values',
     '| fixtures/stale-pricing.xlsx | Sheet1!B3 | `=A3*10` | 999 | 30 |',
+    '| fixtures/stale-pricing.xlsx | Sheet1!B4 | `=A4&\\`\\|\\`` | old %value | new\\|value |',
     '#### Follow-up check command',
     "xlsx-recalc 'fixtures/stale-pricing.xlsx' --read 'Sheet1!B3'",
   ]) {
@@ -171,7 +180,7 @@ try {
     }
   }
   const aggregate = parseAggregateReport(JSON.parse(await readFile(reportPath, 'utf8')))
-  if (aggregate.staleCachedFormulaCount !== 1 || aggregate.workbooks?.[0]?.staleFormulas?.length !== 1) {
+  if (aggregate.staleCachedFormulaCount !== 2 || aggregate.workbooks?.[0]?.staleFormulas?.length !== 2) {
     throw new Error(`Unexpected inspector JSON report:\n${JSON.stringify(aggregate, null, 2)}`)
   }
 } finally {

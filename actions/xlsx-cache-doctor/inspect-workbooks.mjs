@@ -135,7 +135,7 @@ function writeStepSummary(report) {
     lines.push('| --- | --- | --- | --- | --- |')
     for (const formula of staleFormulas.slice(0, 15)) {
       lines.push(
-        `| ${escapeMarkdown(formula.workbook)} | ${escapeMarkdown(formula.target)} | \`${escapeInlineCode(formula.formula)}\` | ${escapeMarkdown(
+        `| ${escapeMarkdown(formula.workbook)} | ${escapeMarkdown(formula.target)} | \`${escapeInlineCode(formatValue(formula.formula))}\` | ${escapeMarkdown(
           formatValue(formula.cachedValue),
         )} | ${escapeMarkdown(formatValue(formula.literalRecalculatedValue))} |`,
       )
@@ -168,14 +168,20 @@ function writeStaleAnnotations(report) {
     console.log(
       [
         '::warning title=Stale cached XLSX formula::',
-        `${formula.workbook}#${formula.target} cached ${formatValue(formula.cachedValue)} but recalculated ${formatValue(
-          formula.literalRecalculatedValue,
-        )}`,
+        escapeWorkflowCommand(
+          `${formula.workbook}#${formula.target} cached ${formatValue(formula.cachedValue)} but recalculated ${formatValue(
+            formula.literalRecalculatedValue,
+          )}`,
+        ),
       ].join(''),
     )
   }
   if (staleFormulas.length > 10) {
-    console.log(`::warning title=Stale cached XLSX formula::${String(staleFormulas.length - 10)} more stale value(s) in ${outputPath}`)
+    console.log(
+      `::warning title=Stale cached XLSX formula::${escapeWorkflowCommand(
+        `${String(staleFormulas.length - 10)} more stale value(s) in ${outputPath}`,
+      )}`,
+    )
   }
 }
 
@@ -218,7 +224,11 @@ function formatValue(value) {
 }
 
 function escapeInlineCode(value) {
-  return value.replaceAll('`', '\\`')
+  return value.replaceAll('`', '\\`').replaceAll('|', '\\|')
+}
+
+function escapeWorkflowCommand(value) {
+  return value.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A')
 }
 
 function shellQuote(value) {
@@ -242,7 +252,7 @@ function sum(items, read) {
 }
 
 function escapeMarkdown(value) {
-  return value.replaceAll('|', '\\|')
+  return value.replaceAll('\r', ' ').replaceAll('\n', ' ').replaceAll('|', '\\|')
 }
 
 function writeGithubOutput(name, value) {
