@@ -44,6 +44,20 @@ describe('work paper fill helpers', () => {
     ).toEqual([['=B2'], ['=B3']])
   })
 
+  it('relocates formula prefixes with leading whitespace across rows and columns', () => {
+    expect(
+      buildWorkPaperFillRangeData({
+        source: range(0, 0, 0, 0),
+        target: range(1, 1, 2, 2),
+        sourceSerialized: [[' \t=A1']],
+        offsetsFromTarget: false,
+      }),
+    ).toEqual([
+      [' \t=B2', ' \t=C2'],
+      [' \t=B3', ' \t=C3'],
+    ])
+  })
+
   it('can offset formula tiling from the target origin', () => {
     expect(
       buildWorkPaperFillRangeData({

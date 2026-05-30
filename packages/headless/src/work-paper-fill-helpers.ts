@@ -30,10 +30,11 @@ export function buildWorkPaperFillRangeData(input: {
         (((targetCol - (input.offsetsFromTarget ? input.target.start.col : input.source.start.col)) % sourceWidth) + sourceWidth) %
         sourceWidth
       const raw = input.sourceSerialized[sourceRow]?.[sourceCol] ?? null
-      if (typeof raw === 'string' && raw.startsWith('=')) {
+      const formulaBodyStart = typeof raw === 'string' ? readFormulaBodyStart(raw) : -1
+      if (typeof raw === 'string' && formulaBodyStart >= 0) {
         row.push(
-          `=${translateFormulaReferences(
-            raw.slice(1),
+          `${raw.slice(0, formulaBodyStart)}${translateFormulaReferences(
+            raw.slice(formulaBodyStart),
             targetRow - (input.source.start.row + sourceRow),
             targetCol - (input.source.start.col + sourceCol),
           )}`,
@@ -45,4 +46,16 @@ export function buildWorkPaperFillRangeData(input: {
     output.push(row)
   }
   return output
+}
+
+function readFormulaBodyStart(raw: string): number {
+  let index = 0
+  while (index < raw.length && isFormulaPrefixWhitespace(raw.charCodeAt(index))) {
+    index += 1
+  }
+  return raw.charCodeAt(index) === 61 ? index + 1 : -1
+}
+
+function isFormulaPrefixWhitespace(code: number): boolean {
+  return code === 32 || code === 9 || code === 10 || code === 13
 }
