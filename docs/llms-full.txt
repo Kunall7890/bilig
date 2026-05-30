@@ -841,7 +841,7 @@ matters.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.130.0`:
+Current checked npm footprint for `@bilig/headless@0.130.1`:
 
 - Pack dry run: `820 kB` tarball, `5.03 MB` unpacked, `795` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
@@ -9097,7 +9097,7 @@ the Markdown output into the fixture form. It reads the file on your machine and
 does not upload workbook contents.
 
 ```sh
-npm exec --package @bilig/headless@0.130.0 -- bilig-formula-clinic ./reduced.xlsx \
+npm exec --package @bilig/headless@0.130.1 -- bilig-formula-clinic ./reduced.xlsx \
   --cells "Summary!B7,Inputs!B2"
 ```
 

@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.130.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.130.0
+- Manual override: no
+
+## Fixes
+- fix(agent): point skill discovery at raw manifest (d8b66cb3)
+
+## Internal runtime changes
+- docs(site): sharpen cache doctor first mile (e604c75e)
+
 ## 0.130.0
 
 - Release type: minor
