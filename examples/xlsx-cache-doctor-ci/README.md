@@ -50,6 +50,9 @@ npm exec --package @bilig/xlsx-formula-recalc@latest -- \
   > .github/workflows/xlsx-cache-doctor.yml
 ```
 
+That generated workflow is report-only by default. Add `--fail-on-stale true`
+after the first report is clean enough to make the check blocking.
+
 The workflow is intentionally read-only: it checks out the repo, inspects one
 or more matched workbooks, writes a job summary, and uploads the JSON report as
 an artifact. It does not comment on pull requests, rewrite workbooks, require

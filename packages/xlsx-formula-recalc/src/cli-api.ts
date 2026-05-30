@@ -27,6 +27,8 @@ interface GithubActionWorkflowOptions {
   readonly workbooks: string
   readonly changedFilesOnly: boolean
   readonly failOnStale: boolean
+  readonly inspectLimit: CliOptions['inspectLimit']
+  readonly jsonOutput: string
   readonly packageVersion: string
   readonly workflowName: string
 }
@@ -120,7 +122,9 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
 function parseGithubActionWorkflowArgs(args: readonly string[], commandName: string): GithubActionWorkflowOptions {
   let workbooks: string | undefined
   let changedFilesOnly = true
-  let failOnStale = true
+  let failOnStale = false
+  let inspectLimit: CliOptions['inspectLimit'] = defaultInspectFormulaLimit
+  let jsonOutput = '${{ runner.temp }}/xlsx-cache-doctor.json'
   let packageVersion = 'latest'
   let workflowName = 'xlsx-cache-doctor'
 
@@ -143,6 +147,14 @@ function parseGithubActionWorkflowArgs(args: readonly string[], commandName: str
         break
       case '--fail-on-stale':
         failOnStale = parseBooleanOption(requireNextArg(args, index, '--fail-on-stale'), '--fail-on-stale')
+        index += 1
+        break
+      case '--inspect-limit':
+        inspectLimit = parseInspectLimit(requireNextArg(args, index, '--inspect-limit'))
+        index += 1
+        break
+      case '--json-output':
+        jsonOutput = requireNextArg(args, index, '--json-output')
         index += 1
         break
       case '--package-version':
@@ -172,6 +184,8 @@ function parseGithubActionWorkflowArgs(args: readonly string[], commandName: str
     workbooks,
     changedFilesOnly,
     failOnStale,
+    inspectLimit,
+    jsonOutput,
     packageVersion,
     workflowName,
   }
@@ -207,7 +221,8 @@ function printGithubActionWorkflow(options: GithubActionWorkflowOptions, writeSt
       `          workbooks: ${yamlDoubleQuote(options.workbooks)}`,
       `          changed-files-only: ${yamlDoubleQuote(String(options.changedFilesOnly))}`,
       ...packageVersionLines,
-      '          json-output: ${{ runner.temp }}/xlsx-cache-doctor.json',
+      `          inspect-limit: ${yamlDoubleQuote(String(options.inspectLimit))}`,
+      `          json-output: ${yamlDoubleQuote(options.jsonOutput)}`,
       `          fail-on-stale: ${yamlDoubleQuote(String(options.failOnStale))}`,
       '',
       '      - uses: actions/upload-artifact@v4',
@@ -631,9 +646,10 @@ Options:
   --set <Sheet!A1=value>  Edit an input cell before diagnosis. Repeatable.
   --inspect-limit <all|n> Formula cells to recompute during inspection. Defaults to ${defaultInspectFormulaLimit}.
   --fail-on-stale <true|false>
-                          With ${printGithubActionOption}, decide whether the generated workflow fails pull requests.
+                          With ${printGithubActionOption}, decide whether the generated workflow fails pull requests. Defaults to false.
   --changed-files-only <true|false>
                           With ${printGithubActionOption}, inspect only changed XLSX files. Defaults to true.
+  --json-output <path>    With ${printGithubActionOption}, set the JSON report path. Defaults to \${{ runner.temp }}/xlsx-cache-doctor.json.
   --package-version <version>
                           With ${printGithubActionOption}, pin @bilig/xlsx-formula-recalc in the generated workflow.
   --workflow-name <name>  With ${printGithubActionOption}, set the generated workflow name.

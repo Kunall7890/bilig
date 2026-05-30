@@ -144,6 +144,10 @@ npm exec --package @bilig/xlsx-formula-recalc@latest -- \
   > .github/workflows/xlsx-cache-doctor.yml
 ```
 
+The generated workflow is read-only and report-only by default. Add
+`--fail-on-stale true` when you want stale cached values to block pull requests,
+or pass `--inspect-limit` / `--json-output` to match your CI policy.
+
 If your pipeline is specifically SheetJS / `xlsx`, run the sibling proof with
 the same shape:
 

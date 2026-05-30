@@ -42,9 +42,11 @@ That prints a read-only workflow using the root `proompteng/bilig@v1` action,
 `actions/checkout@v5` with enough history for changed-file detection, and an
 uploaded JSON artifact. It does not need secrets. By default, the generated
 pull-request workflow scans changed `.xlsx` files matching the glob. Use
-`--changed-files-only false` for a scheduled or manual-dispatch full scan, and
-use `--fail-on-stale false` for the first run if you want a report before the
-check becomes blocking.
+`--changed-files-only false` for a scheduled or manual-dispatch full scan,
+`--inspect-limit 50` for a deliberately sampled first pass, `--json-output` if
+your artifact path is different, and `--fail-on-stale true` when you are ready
+for the check to block pull requests. The generated workflow starts in
+report-only mode.
 
 ## Workflow
 

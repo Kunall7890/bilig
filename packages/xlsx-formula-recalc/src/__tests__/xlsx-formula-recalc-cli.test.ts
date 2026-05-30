@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
+import { parse as parseYaml } from 'yaml'
 
 import { runXlsxFormulaRecalcCli } from '../cli-api.js'
 import { WorkPaper, exportXlsx } from '../index.js'
@@ -118,6 +119,10 @@ describe('xlsx-recalc CLI', () => {
         'fixtures/pricing model.xlsx',
         '--fail-on-stale',
         'false',
+        '--inspect-limit',
+        '50',
+        '--json-output',
+        '${{ runner.temp }}/custom-cache-doctor.json',
         '--package-version',
         '0.124.1',
         '--workflow-name',
@@ -139,9 +144,45 @@ describe('xlsx-recalc CLI', () => {
     expect(stdout).toContain('uses: proompteng/bilig@v1')
     expect(stdout).toContain('workbooks: "fixtures/pricing model.xlsx"')
     expect(stdout).toContain('changed-files-only: "true"')
+    expect(stdout).toContain('inspect-limit: "50"')
+    expect(stdout).toContain('json-output: "${{ runner.temp }}/custom-cache-doctor.json"')
     expect(stdout).toContain('package-version: "0.124.1"')
     expect(stdout).toContain('fail-on-stale: "false"')
     expect(stdout).toContain('name: xlsx-cache-doctor-report')
+
+    const workflow = readGeneratedWorkflow(stdout)
+    const jobs = requireRecord(workflow['jobs'])
+    const job = requireRecord(jobs['inspect-xlsx-formula-caches'])
+    const steps = requireRecordArray(job['steps'])
+    const checkout = steps[0] ?? {}
+    const cacheDoctor = steps[1] ?? {}
+    const cacheDoctorInputs = requireRecord(cacheDoctor['with'])
+    const uploadArtifact = steps[2] ?? {}
+
+    expect(workflow['name']).toBe('workbook cache doctor')
+    expect(workflow['on']).toEqual({
+      pull_request: { paths: ['**/*.xlsx'] },
+      workflow_dispatch: null,
+    })
+    expect(workflow['permissions']).toEqual({ contents: 'read' })
+    expect(checkout).toMatchObject({ uses: 'actions/checkout@v5', with: { 'fetch-depth': 0 } })
+    expect(cacheDoctor).toMatchObject({ id: 'cache-doctor', uses: 'proompteng/bilig@v1' })
+    expect(cacheDoctorInputs).toEqual({
+      workbooks: 'fixtures/pricing model.xlsx',
+      'changed-files-only': 'true',
+      'package-version': '0.124.1',
+      'inspect-limit': '50',
+      'json-output': '${{ runner.temp }}/custom-cache-doctor.json',
+      'fail-on-stale': 'false',
+    })
+    expect(uploadArtifact).toMatchObject({
+      uses: 'actions/upload-artifact@v4',
+      if: 'always()',
+      with: {
+        name: 'xlsx-cache-doctor-report',
+        path: '${{ steps.cache-doctor.outputs.json }}',
+      },
+    })
   })
 
   it('requires a workbook path when printing a GitHub Actions workflow', () => {
@@ -171,6 +212,9 @@ describe('xlsx-recalc CLI', () => {
     expect(exitCode).toBe(0)
     expect(stdout).toContain('workbooks: "**/*.xlsx"')
     expect(stdout).toContain('changed-files-only: "false"')
+    expect(stdout).toContain('inspect-limit: "all"')
+    expect(stdout).toContain('json-output: "${{ runner.temp }}/xlsx-cache-doctor.json"')
+    expect(stdout).toContain('fail-on-stale: "false"')
   })
 
   it('keeps xlsx-cache-doctor in recalculation mode when readback output is explicit', () => {
@@ -498,6 +542,24 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
     recalculationCompleted,
     excelParity,
   }
+}
+
+function readGeneratedWorkflow(stdout: string): Record<string, unknown> {
+  return requireRecord(parseYaml(stdout))
+}
+
+function requireRecord(value: unknown): Record<string, unknown> {
+  if (!isRecord(value) || Array.isArray(value)) {
+    throw new Error(`Expected object, received ${typeof value}`)
+  }
+  return value
+}
+
+function requireRecordArray(value: unknown): readonly Record<string, unknown>[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`Expected array, received ${typeof value}`)
+  }
+  return value.map(requireRecord)
 }
 
 function isInspectionLimit(value: unknown): value is CliInspectionSummary['inspectionLimit'] {

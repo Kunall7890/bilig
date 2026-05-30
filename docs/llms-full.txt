@@ -446,6 +446,10 @@ npm exec --package @bilig/xlsx-formula-recalc@latest -- \
   > .github/workflows/xlsx-cache-doctor.yml
 ```
 
+The generated workflow is read-only and report-only by default. Add
+`--fail-on-stale true` when you want stale cached values to block pull requests,
+or pass `--inspect-limit` / `--json-output` to match your CI policy.
+
 If your pipeline is specifically SheetJS / `xlsx`, run the sibling proof with
 the same shape:
 
@@ -1469,9 +1473,11 @@ That prints a read-only workflow using the root `proompteng/bilig@v1` action,
 `actions/checkout@v5` with enough history for changed-file detection, and an
 uploaded JSON artifact. It does not need secrets. By default, the generated
 pull-request workflow scans changed `.xlsx` files matching the glob. Use
-`--changed-files-only false` for a scheduled or manual-dispatch full scan, and
-use `--fail-on-stale false` for the first run if you want a report before the
-check becomes blocking.
+`--changed-files-only false` for a scheduled or manual-dispatch full scan,
+`--inspect-limit 50` for a deliberately sampled first pass, `--json-output` if
+your artifact path is different, and `--fail-on-stale true` when you are ready
+for the check to block pull requests. The generated workflow starts in
+report-only mode.
 
 ## Workflow
 

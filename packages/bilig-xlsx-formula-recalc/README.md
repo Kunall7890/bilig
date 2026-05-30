@@ -136,6 +136,11 @@ npx --package @bilig/xlsx-formula-recalc xlsx-cache-doctor --print-github-action
   > .github/workflows/xlsx-cache-doctor.yml
 ```
 
+The generated workflow is read-only and report-only by default. Add
+`--fail-on-stale true` when stale formula caches should block pull requests.
+Use `--inspect-limit` and `--json-output` when your first run should sample
+formulas or write the JSON report somewhere specific.
+
 For an existing workbook:
 
 ```sh
