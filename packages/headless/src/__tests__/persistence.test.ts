@@ -12,6 +12,10 @@ import {
   WorkPaperPersistenceError,
 } from '../index.js'
 
+function restoreThroughSerializedDocument(workbook: WorkPaper): WorkPaper {
+  return createWorkPaperFromDocument(parseWorkPaperDocument(serializeWorkPaperDocument(exportWorkPaperDocument(workbook))))
+}
+
 describe('WorkPaper persistence helpers', () => {
   it('roundtrips sheets, named expressions, config, and sheet order through the persisted document format', () => {
     const workbook = WorkPaper.buildEmpty({
@@ -106,6 +110,65 @@ describe('WorkPaper persistence helpers', () => {
       tag: ValueTag.Number,
       value: 584496,
     })
+  })
+
+  it('keeps computed display readback after JSON document restore', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Inputs: [
+        ['Metric', 'Value'],
+        ['Win rate', 0.25],
+      ],
+      Summary: [
+        ['Metric', 'Value'],
+        ['Expected customers', '=Inputs!B2*20'],
+      ],
+    })
+    const inputId = workbook.getSheetId('Inputs')!
+    const summaryId = workbook.getSheetId('Summary')!
+    const summaryValue = { sheet: summaryId, row: 1, col: 1 }
+
+    workbook.setCellContents({ sheet: inputId, row: 1, col: 1 }, 0.4)
+
+    expect(workbook.getCellValue(summaryValue)).toEqual({ tag: ValueTag.Number, value: 8 })
+    expect(workbook.getCellDisplayValue(summaryValue)).toBe('8')
+
+    const restored = restoreThroughSerializedDocument(workbook)
+    const restoredSummaryValue = { sheet: restored.getSheetId('Summary')!, row: 1, col: 1 }
+
+    expect(restored.getCellSerialized(restoredSummaryValue)).toBe('=Inputs!B2*20')
+    expect(restored.getCellValue(restoredSummaryValue)).toEqual(workbook.getCellValue(summaryValue))
+    expect(restored.getCellDisplayValue(restoredSummaryValue)).toBe(workbook.getCellDisplayValue(summaryValue))
+  })
+
+  it('keeps changed named expressions driving formulas after document restore', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Inputs: [
+          ['Metric', 'Value'],
+          ['Base customers', 100],
+        ],
+        Summary: [
+          ['Metric', 'Value'],
+          ['Projected customers', '=Inputs!B2*GrowthRate'],
+        ],
+      },
+      { useColumnIndex: true },
+      [{ name: 'GrowthRate', expression: '=1.1' }],
+    )
+    const summaryValue = { sheet: workbook.getSheetId('Summary')!, row: 1, col: 1 }
+
+    workbook.changeNamedExpression('GrowthRate', '=1.25')
+
+    expect(workbook.getNamedExpressionFormula('GrowthRate')).toBe('=1.25')
+    expect(workbook.getNamedExpressionValue('GrowthRate')).toEqual({ tag: ValueTag.Number, value: 1.25 })
+    expect(workbook.getCellValue(summaryValue)).toEqual({ tag: ValueTag.Number, value: 125 })
+
+    const restored = restoreThroughSerializedDocument(workbook)
+    const restoredSummaryValue = { sheet: restored.getSheetId('Summary')!, row: 1, col: 1 }
+
+    expect(restored.getNamedExpressionFormula('GrowthRate')).toBe('=1.25')
+    expect(restored.getNamedExpressionValue('GrowthRate')).toEqual({ tag: ValueTag.Number, value: 1.25 })
+    expect(restored.getCellValue(restoredSummaryValue)).toEqual({ tag: ValueTag.Number, value: 125 })
   })
 
   it('preserves imported sheet names that end with spaces during document restore', () => {

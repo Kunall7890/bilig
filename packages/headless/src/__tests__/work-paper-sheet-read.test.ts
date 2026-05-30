@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readRuntimeSnapshot } from '@bilig/core'
-import type { WorkbookSnapshot } from '@bilig/protocol'
+import { ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
+import { WorkPaper } from '../index.js'
 import {
   buildWorkPaperDenseRange,
   collectSerializedWorkPaperSheets,
@@ -54,6 +55,40 @@ describe('work paper sheet read helpers', () => {
       [1, null, 3],
       [null, 5, null],
     ])
+  })
+
+  it('reads range values and serialized formulas after input edits', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Inputs: [
+        ['Metric', 'Value'],
+        ['Win rate', 0.25],
+        ['Leads', 40],
+      ],
+      Summary: [
+        ['Metric', 'Value'],
+        ['Expected customers', '=Inputs!B2*Inputs!B3'],
+      ],
+    })
+    const inputsId = workbook.getSheetId('Inputs')!
+    const summaryId = workbook.getSheetId('Summary')!
+    const summaryRange = {
+      start: { sheet: summaryId, row: 0, col: 0 },
+      end: { sheet: summaryId, row: 1, col: 1 },
+    }
+
+    expect(workbook.getRangeSerialized(summaryRange)).toEqual([
+      ['Metric', 'Value'],
+      ['Expected customers', '=Inputs!B2*Inputs!B3'],
+    ])
+    expect(workbook.getRangeValues(summaryRange)[1]?.[1]).toEqual({ tag: ValueTag.Number, value: 10 })
+
+    workbook.setCellContents({ sheet: inputsId, row: 1, col: 1 }, 0.5)
+
+    expect(workbook.getRangeSerialized(summaryRange)).toEqual([
+      ['Metric', 'Value'],
+      ['Expected customers', '=Inputs!B2*Inputs!B3'],
+    ])
+    expect(workbook.getRangeValues(summaryRange)[1]?.[1]).toEqual({ tag: ValueTag.Number, value: 20 })
   })
 
   it('collects sheet records by name and preserves runtime snapshots on serialized output', () => {
