@@ -45,14 +45,14 @@
         "@context": "https://schema.org",
         "@type": "SoftwareSourceCode",
         "name": "bilig",
-        "description": "TypeScript formula workbook runtime for Node.js services, XLSX recalculation, and ExcelJS formula readback.",
+        "description": "Node.js XLSX formula recalculation and formula workbook runtime for services, tests, and agent tools.",
         "codeRepository": "https://github.com/proompteng/bilig",
         "license": "https://github.com/proompteng/bilig/blob/main/LICENSE",
         "programmingLanguage": "TypeScript",
         "runtimePlatform": "Node.js 22+",
         "url": "https://proompteng.github.io/bilig/",
-        "downloadUrl": "https://www.npmjs.com/package/@bilig/workpaper",
-        "installUrl": "https://www.npmjs.com/package/@bilig/workpaper",
+        "downloadUrl": "https://www.npmjs.com/package/@bilig/xlsx-formula-recalc",
+        "installUrl": "https://www.npmjs.com/package/@bilig/xlsx-formula-recalc",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "macOS, Linux, Windows",
         "isAccessibleForFree": true,
@@ -130,7 +130,7 @@
             "name": "Why use Bilig?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Use Bilig when spreadsheet-shaped business logic needs to run inside Node code with cell writes, formula readback, JSON persistence, and restore proof."
+              "text": "Use Bilig when a Node job edits XLSX inputs and needs fresh formula readback before it returns, or when spreadsheet-shaped business logic needs durable WorkPaper state in a service."
             }
           },
           {
@@ -174,15 +174,15 @@
       <div class="wrap hero-inner">
         <div class="hero-copy">
           <p class="eyebrow">Start with the XLSX you already have</p>
-          <h1 id="hero-title" class="hero-title">Fix stale formula values before your Node job returns.</h1>
+          <h1 id="hero-title" class="hero-title">Fix stale XLSX formulas in Node.</h1>
           <p class="hero-subtitle">
-            Keep SheetJS, ExcelJS, or xlsx-populate for file work. Add Bilig at the calculation boundary when the cached formula value is
-            old.
+            SheetJS, ExcelJS, and xlsx-populate can write the file and still leave the formula cache stale. Bilig recalculates the workbook
+            in Node and reads back the value before your API, queue worker, or CI job trusts it.
           </p>
           <div class="hero-proof-grid" aria-label="First commands">
             <a class="hero-proof-card" href="./eval-xlsx-recalc.html">
               <span>I have an XLSX</span>
-              <strong>Refresh stale formulas in Node</strong>
+              <strong>Prove the formula cache is fresh</strong>
               <code>npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json</code>
               <em>The shortest proof for SheetJS, ExcelJS, and xlsx-populate users.</em>
             </a>
@@ -200,9 +200,9 @@
             </a>
           </div>
           <div class="hero-actions">
-            <a class="button primary" href="#packages">Choose a package</a>
+            <a class="button primary" href="./stale-xlsx-formula-cache-node.html">Read the stale-value guide</a>
             <a class="button" href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">XLSX npm</a>
-            <a class="button" href="https://www.npmjs.com/package/@bilig/workpaper">WorkPaper npm</a>
+            <a class="button" href="./eval-xlsx-recalc.html">Run the proof</a>
             <a class="button" href="https://context7.com/proompteng/bilig">Ask docs</a>
             <a class="button dark" href="https://github.com/proompteng/bilig">View GitHub</a>
           </div>
