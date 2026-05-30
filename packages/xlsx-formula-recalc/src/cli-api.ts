@@ -4,6 +4,7 @@ import { basename, dirname, extname, join } from 'node:path'
 import type { RawCellContent } from '@bilig/headless'
 import type { XlsxExternalWorkbookInput } from '@bilig/headless/xlsx'
 import { formatErrorCode, ValueTag } from '@bilig/protocol'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { exportXlsx, importXlsx, recalculateXlsx, WorkPaper, type XlsxFormulaRecalcCellValue, type XlsxFormulaRecalcEdit } from './index.js'
 
 interface CliExternalWorkbook {
@@ -61,8 +62,13 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
     }
 
     const options = parseCliArgs(normalizeCliArgsForCommand(args, commandName), commandName)
-    const input = options.mode === 'demo' ? buildDemoWorkbookBytes() : readFileSync(requireInputPath(options))
-    const inputName = options.mode === 'demo' ? 'bilig-formula-recalc-demo.xlsx' : basename(requireInputPath(options))
+    const input = inputBytesForCli(options, commandName)
+    const inputName =
+      options.mode === 'demo'
+        ? commandName === cacheDoctorCommandName
+          ? 'bilig-cache-doctor-stale-demo.xlsx'
+          : 'bilig-formula-recalc-demo.xlsx'
+        : basename(requireInputPath(options))
     const externalWorkbooks = readExternalWorkbookInputs(options.externalWorkbooks)
     if (options.inspect) {
       printInspectionSummary({ input, inputName, externalWorkbooks, options, writeStdout })
@@ -540,6 +546,13 @@ function shellQuote(value: string): string {
   return /^[A-Za-z0-9_./:=@-]+$/u.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`
 }
 
+function inputBytesForCli(options: CliOptions, commandName: string): Uint8Array {
+  if (options.mode !== 'demo') {
+    return readFileSync(requireInputPath(options))
+  }
+  return commandName === cacheDoctorCommandName && options.inspect ? buildStaleCacheDoctorDemoWorkbookBytes() : buildDemoWorkbookBytes()
+}
+
 function buildDemoWorkbookBytes(): Uint8Array {
   const sourceWorkbook = WorkPaper.buildFromSheets({
     Inputs: [
@@ -557,6 +570,26 @@ function buildDemoWorkbookBytes(): Uint8Array {
   } finally {
     sourceWorkbook.dispose()
   }
+}
+
+function buildStaleCacheDoctorDemoWorkbookBytes(): Uint8Array {
+  return replaceWorksheetCellXml(
+    buildDemoWorkbookBytes(),
+    'xl/worksheets/sheet2.xml',
+    'B2',
+    '<c r="B2"><f>Inputs!B2*Inputs!B3</f><v>60000</v></c>',
+  )
+}
+
+function replaceWorksheetCellXml(bytes: Uint8Array, path: string, address: string, replacement: string): Uint8Array {
+  const zip = unzipSync(bytes)
+  const xml = strFromU8(zip[path] ?? new Uint8Array())
+  const nextXml = xml.replace(new RegExp(`<c\\b[^>]*\\br="${address}"[^>]*>[\\s\\S]*?<\\/c>`, 'u'), replacement)
+  if (nextXml === xml) {
+    throw new Error(`Demo XLSX is missing ${path} ${address}`)
+  }
+  zip[path] = strToU8(nextXml)
+  return zipSync(zip)
 }
 
 function demoDefaultEdits(enabled: boolean): readonly XlsxFormulaRecalcEdit[] {

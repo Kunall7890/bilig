@@ -317,10 +317,10 @@ turn your Node process into Excel. If your code edits an input cell, the formula
 cell can still carry the old cached value. Bilig recalculates the workbook in
 Node and lets you read back the cells your service actually depends on.
 
-Run the smallest proof without cloning this repo:
+Run the smallest check without cloning this repo:
 
 ```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --demo --json
 ```
 
 If you already have a workbook and do not know which formulas are stale, inspect
@@ -342,6 +342,12 @@ blocks anything:
 
 Marketplace listing:
 <https://github.com/marketplace/actions/xlsx-cache-doctor>
+
+Live reviewer path:
+<https://github.com/proompteng/xlsx-cache-doctor-demo/pull/1>
+
+The demo pull request runs `proompteng/bilig@v1`, shows one workbook was
+inspected, finds one stale cached formula value, and uploads the JSON report.
 
 Use `@bilig/xlsx-formula-recalc` when an `.xlsx` file is still the source of
 truth. Use `@bilig/exceljs-formula-recalc` when the workbook is already moving
@@ -388,6 +394,7 @@ proves, what it does not prove, and the limits to check before adoption.
 The shortest no-project checks are:
 
 ```sh
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --demo --json
 npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
@@ -404,19 +411,29 @@ refresh the cached formula results that backend jobs actually read. Run this
 without cloning the repo:
 
 ```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --demo --json
 ```
 
 Expected shape:
 
 ```json
 {
+  "formulaCellCount": 1,
+  "inspectedFormulaCellCount": 1,
+  "uninspectedFormulaCellCount": 0,
+  "staleCachedFormulaCount": 1,
+  "suggestedReads": ["Summary!B2"],
+  "formulas": [
+    {
+      "target": "Summary!B2",
+      "cachedValue": 60000,
+      "literalRecalculatedValue": 72000,
+      "staleCachedValue": true
+    }
+  ],
   "commandSucceeded": true,
+  "inspectionCompleted": true,
   "recalculationCompleted": true,
-  "expectedReadback": {
-    "Summary!B2": 72000
-  },
-  "expectedValueMatched": true,
   "excelParity": "not_proven"
 }
 ```
@@ -425,6 +442,13 @@ The JSON is deliberately clean for CI and agents: no star, release-watch, or
 discussion links are mixed into the machine-readable proof. Use the links in
 the surrounding docs after the recalculated value and warnings match your
 workflow.
+
+When the detector points at the cells you care about, run the recalculation
+check:
+
+```sh
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
+```
 
 Trust boundaries:
 

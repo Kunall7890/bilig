@@ -1,7 +1,12 @@
 # xlsx-formula-recalc
 
-Recalculate XLSX formula values in Node.js after SheetJS, ExcelJS, or
-xlsx-populate edits without opening Excel, LibreOffice, or a browser.
+Compatibility and search alias for
+[`@bilig/xlsx-formula-recalc`](https://www.npmjs.com/package/@bilig/xlsx-formula-recalc).
+Use the scoped package in new projects.
+
+Diagnose stale cached XLSX formula values in Node and CI, then recalculate the
+cells your service actually reads without opening Excel, LibreOffice, or a
+browser.
 
 This package is a narrow wrapper around Bilig WorkPaper for the high-friction Node XLSX workflow:
 
@@ -57,15 +62,35 @@ npx --package sheetjs-formula-recalc sheetjs-recalc --demo --json
 ## Install
 
 ```sh
-npm install xlsx-formula-recalc
+npm install @bilig/xlsx-formula-recalc
 ```
 
 ## CLI
 
-Run a self-contained proof first:
+Run the cache-doctor check first:
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-recalc --demo --json
+npx --package @bilig/xlsx-formula-recalc xlsx-cache-doctor --demo --json
+```
+
+Expected shape:
+
+```json
+{
+  "formulaCellCount": 1,
+  "inspectedFormulaCellCount": 1,
+  "uninspectedFormulaCellCount": 0,
+  "staleCachedFormulaCount": 1,
+  "suggestedReads": ["Summary!B2"],
+  "commandSucceeded": true,
+  "inspectionCompleted": true
+}
+```
+
+When you know which cells matter, run the recalculation check:
+
+```sh
+npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json
 ```
 
 That command creates a tiny workbook, changes `Inputs!B2` and `Inputs!B3`,

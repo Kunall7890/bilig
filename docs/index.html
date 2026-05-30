@@ -178,23 +178,22 @@
           </p>
           <div class="hero-command" aria-label="XLSX cache doctor command">
             <span>Start</span>
-            <code>npm exec --package @bilig/xlsx-formula-recalc -- xlsx-cache-doctor pricing.xlsx --json</code>
-            <strong>Diagnose stale XLSX formula caches without Excel, LibreOffice, or browser automation.</strong>
+            <code>npm exec --package @bilig/xlsx-formula-recalc -- xlsx-cache-doctor --demo --json</code>
+            <strong>See a stale cached value and the recalculated value without cloning the repo.</strong>
           </div>
           <div class="hero-actions">
-            <a class="button primary" href="https://github.com/marketplace/actions/xlsx-cache-doctor">Use the Action</a>
-            <a class="button" href="./xlsx-cache-doctor-github-action.html">Read the CI guide</a>
-            <a class="button" href="./eval-workpaper-service.html">Build an API</a>
-            <a class="button" href="./eval-agent-mcp.html">Use with agents</a>
+            <a class="button primary" href="https://github.com/proompteng/xlsx-cache-doctor-demo/pull/1">See demo PR</a>
+            <a class="button" href="./xlsx-cache-doctor-github-action.html#generate-the-workflow">Copy workflow</a>
+            <a class="button" href="https://github.com/marketplace/actions/xlsx-cache-doctor">Use the Action</a>
             <a class="button" href="https://github.com/proompteng/bilig">GitHub</a>
           </div>
           <p class="hero-note">
-            Already own workbook state in code?
-            <a href="./eval-workpaper-service.html">Use WorkPaper as the service boundary.</a>
+            Need a fresh workbook artifact after the detector finds the cells?
+            <a href="./eval-xlsx-recalc.html">Run the recalculation check.</a>
           </p>
         </div>
 
-        <figure class="hero-media" aria-label="Animated workbook scene showing a formula result after a TypeScript write.">
+        <figure class="hero-media" aria-label="XLSX Cache Doctor report showing one stale cached formula value.">
           <img
             class="hero-ambient"
             src="./assets/bilig-hero-ambient.png?v=2026-05-15-1"
@@ -205,16 +204,35 @@
             decoding="async"
             fetchpriority="high"
           />
-          <img
-            class="hero-fallback"
-            src="./assets/bilig-hero-workbook-api.png?v=2026-05-15-1"
-            width="1600"
-            height="900"
-            alt="A workbook grid showing cell B2 changed to 32 and cell D5 recalculated to 51,300."
-            decoding="async"
-            fetchpriority="high"
-          />
-          <canvas id="hero-workbook-scene" class="hero-canvas" aria-hidden="true"></canvas>
+          <div class="action-report-card">
+            <div class="report-card-top">
+              <span>GitHub Actions summary</span>
+              <strong>1 stale formula cache</strong>
+            </div>
+            <dl>
+              <div>
+                <dt>Workbook</dt>
+                <dd><code>fixtures/stale-pricing.xlsx</code></dd>
+              </div>
+              <div>
+                <dt>Cell</dt>
+                <dd><code>Sheet1!B61</code></dd>
+              </div>
+              <div>
+                <dt>Cached</dt>
+                <dd><code>999</code></dd>
+              </div>
+              <div>
+                <dt>Recalculated</dt>
+                <dd><code>600</code></dd>
+              </div>
+            </dl>
+            <pre><code>- uses: proompteng/bilig@v1
+  with:
+    workbooks: '**/*.xlsx'
+    changed-files-only: 'true'
+    fail-on-stale: 'false'</code></pre>
+          </div>
         </figure>
       </div>
     </section>
@@ -270,9 +288,9 @@
 
           <p class="section-note">
             Local package checks stay narrow:
-            <code>xlsx-recalc --demo --json</code> for generic XLSX bytes, <code>sheetjs-recalc --demo --json</code> when your pipeline is
-            SheetJS, and the bridge example covers SheetJS, xlsx-populate, and ExcelJS with one workbook. Pick the SheetJS-named package
-            before moving to a full workbook runtime.
+            <code>xlsx-cache-doctor pricing.xlsx --json</code> for a real workbook, <code>xlsx-recalc --demo --json</code> for generic XLSX
+            bytes, <code>sheetjs-recalc --demo --json</code> when your pipeline is SheetJS, and the bridge example covers SheetJS,
+            xlsx-populate, and ExcelJS with one workbook. Pick the SheetJS-named package before moving to a full workbook runtime.
           </p>
         </div>
       </section>

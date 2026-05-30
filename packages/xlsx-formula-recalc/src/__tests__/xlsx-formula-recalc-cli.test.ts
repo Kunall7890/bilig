@@ -134,6 +134,35 @@ describe('xlsx-recalc CLI', () => {
     }
   })
 
+  it('runs a cache-doctor demo that proves a stale cached formula value', () => {
+    let stdout = ''
+
+    const exitCode = runXlsxFormulaRecalcCli(['--demo', '--json'], {
+      commandName: 'xlsx-cache-doctor',
+      stdout: (text) => {
+        stdout += text
+      },
+    })
+
+    expect(exitCode).toBe(0)
+    const summary = readCliInspectionSummary(stdout)
+    expect(summary.mode).toBe('demo')
+    expect(summary.commandSucceeded).toBe(true)
+    expect(summary.inspectionCompleted).toBe(true)
+    expect(summary.formulaCellCount).toBe(1)
+    expect(summary.inspectedFormulaCellCount).toBe(1)
+    expect(summary.uninspectedFormulaCellCount).toBe(0)
+    expect(summary.staleCachedFormulaCount).toBe(1)
+    expect(summary.suggestedReads).toEqual(['Summary!B2'])
+    expect(summary.formulas[0]).toMatchObject({
+      target: 'Summary!B2',
+      formula: '=Inputs!B2*Inputs!B3',
+      cachedValue: 60_000,
+      literalRecalculatedValue: 72_000,
+      staleCachedValue: true,
+    })
+  })
+
   it('prints a ready-to-commit GitHub Actions workflow for cache doctor adoption', () => {
     let stdout = ''
 

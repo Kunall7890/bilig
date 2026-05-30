@@ -22,6 +22,7 @@ export function requirePackageCliSurfaceDiscovery(args: {
   )
   requireIncludes(args.xlsxRecalcPackageJson, '"sheetjs-recalc": "./dist/sheetjs-cli.js"', 'packages/xlsx-formula-recalc/package.json')
   requireIncludes(args.xlsxRecalcPackageJson, '"./cli-api"', 'packages/xlsx-formula-recalc/package.json')
+  requireIncludes(args.xlsxRecalcPackageReadme, 'xlsx-cache-doctor --demo --json', 'packages/xlsx-formula-recalc/README.md')
   requireIncludes(args.xlsxRecalcPackageReadme, 'xlsx-recalc --demo --json', 'packages/xlsx-formula-recalc/README.md')
   requireIncludes(args.xlsxRecalcPackageReadme, 'xlsx-cache-doctor pricing.xlsx --json', 'packages/xlsx-formula-recalc/README.md')
   requireIncludes(args.xlsxRecalcPackageReadme, 'xlsx-recalc pricing.xlsx --inspect --json', 'packages/xlsx-formula-recalc/README.md')

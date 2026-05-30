@@ -1,23 +1,71 @@
 # @bilig/xlsx-formula-recalc
 
-Recalculate XLSX formula values in Node.js after SheetJS, ExcelJS, or
-xlsx-populate edits without Excel, LibreOffice, or browser automation.
+Diagnose stale cached XLSX formula values in Node and CI, then recalculate the
+cells your service actually reads without Excel, LibreOffice, or browser
+automation.
 
-This package is the canonical scoped Bilig entrypoint for the high-friction Node
-XLSX workflow:
+This is the canonical scoped Bilig package for the high-friction Node XLSX
+workflow: a file library edits workbook bytes, but the formula cells still carry
+old cached values. Start with the cache doctor when you do not know which cells
+are stale. Use recalculation after the detector points at the cells that matter.
 
-1. import an XLSX workbook,
-2. edit input cells,
-3. recalculate formulas,
-4. read proof values,
-5. export an updated XLSX.
-
-It fits `xlsx-populate`, SheetJS / `xlsx`, template-generation, and backend file
-pipelines where the file writer can edit the workbook but the Node service also
-needs fresh formula readback before returning.
+It fits `xlsx-populate`, SheetJS / `xlsx`, template-generation, GitHub Actions,
+and backend file pipelines where stale readback is worse than a hard failure.
 
 The unscoped `xlsx-formula-recalc` package remains published as a compatibility
 and search alias.
+
+## Try The Cache Doctor First
+
+Run the no-project demo:
+
+```sh
+npx --package @bilig/xlsx-formula-recalc xlsx-cache-doctor --demo --json
+```
+
+Expected shape:
+
+```json
+{
+  "formulaCellCount": 1,
+  "inspectedFormulaCellCount": 1,
+  "uninspectedFormulaCellCount": 0,
+  "staleCachedFormulaCount": 1,
+  "suggestedReads": ["Summary!B2"],
+  "formulas": [
+    {
+      "target": "Summary!B2",
+      "cachedValue": 60000,
+      "literalRecalculatedValue": 72000,
+      "staleCachedValue": true
+    }
+  ],
+  "commandSucceeded": true,
+  "inspectionCompleted": true
+}
+```
+
+The JSON is meant for CI and agents. It does not include star, release-watch, or
+discussion links.
+
+## CI First
+
+Generate a read-only GitHub Actions workflow from npm:
+
+```sh
+mkdir -p .github/workflows
+npx --package @bilig/xlsx-formula-recalc xlsx-cache-doctor --print-github-action "**/*.xlsx" \
+  > .github/workflows/xlsx-cache-doctor.yml
+```
+
+The generated workflow uses `proompteng/bilig@v1`, uploads JSON and Markdown
+reports, and starts in report-only mode. Add `--fail-on-stale true` when stale
+formula caches should block pull requests.
+
+For a live reviewer path, inspect the
+[XLSX Cache Doctor demo PR](https://github.com/proompteng/xlsx-cache-doctor-demo/pull/1).
+It runs the Action, finds one stale cached formula value, and uploads the JSON
+report artifact.
 
 ## If You Arrived From SheetJS or xlsx-populate
 
@@ -50,39 +98,6 @@ npm install @bilig/xlsx-formula-recalc
 ```
 
 ## CLI
-
-Run a self-contained proof first:
-
-```sh
-npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json
-```
-
-That command creates a tiny workbook, changes `Inputs!B2` and `Inputs!B3`,
-recalculates `Summary!B2`, writes `bilig-formula-recalc-demo.xlsx`, and prints
-a proof object with explicit recalculation fields and the recalculated value:
-
-```json
-{
-  "reads": {
-    "Summary!B2": {
-      "value": 72000
-    }
-  },
-  "warnings": [],
-  "commandSucceeded": true,
-  "recalculationCompleted": true,
-  "excelParity": "not_proven",
-  "expectedReadback": {
-    "Summary!B2": 72000
-  },
-  "expectedValueMatched": true
-}
-```
-
-Keep the proof first. The JSON is meant for CI and agents, so it does not carry
-star, release-watch, or discussion links. Use the links in the README or docs
-only after the recalculated value and warnings match the workflow you are
-evaluating.
 
 If you have a real workbook but do not yet know which formula cells matter,
 diagnose it without writing an output file:
@@ -123,24 +138,17 @@ the JSON includes the skipped count as `uninspectedFormulaCellCount`.
 `xlsx-cache-doctor` is a readable alias for
 `xlsx-recalc pricing.xlsx --inspect --json`. Use it for issue triage, CI, and
 pull-request checks when the only question is whether committed XLSX files have
-stale cached formula values. The GitHub Action wrapper lives at
-[`actions/xlsx-cache-doctor`](../../actions/xlsx-cache-doctor), and the runnable
-fixture/workflow example lives at
-[`examples/xlsx-cache-doctor-ci`](../../examples/xlsx-cache-doctor-ci).
+stale cached formula values.
 
-To create the GitHub Actions workflow from npm:
+When you know which cells matter, run the recalculation check:
 
 ```sh
-mkdir -p .github/workflows
-npx --package @bilig/xlsx-formula-recalc xlsx-cache-doctor --print-github-action "**/*.xlsx" \
-  > .github/workflows/xlsx-cache-doctor.yml
+npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json
 ```
 
-The generated workflow is read-only and report-only by default. Add
-`--fail-on-stale true` when stale formula caches should block pull requests.
-Use `--inspect-limit`, `--json-output`, and `--markdown-output` when your first
-run should sample formulas or write the JSON and Markdown reports somewhere
-specific.
+That command creates a tiny workbook, changes `Inputs!B2` and `Inputs!B3`,
+recalculates `Summary!B2`, writes `bilig-formula-recalc-demo.xlsx`, and prints
+the recalculated value.
 
 For an existing workbook:
 
