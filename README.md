@@ -135,6 +135,15 @@ To run that check in CI, use the
 copy the runnable example at
 [`examples/xlsx-cache-doctor-ci`](examples/xlsx-cache-doctor-ci).
 
+To generate the pull-request workflow instead of hand-writing YAML:
+
+```sh
+mkdir -p .github/workflows
+npm exec --package @bilig/xlsx-formula-recalc@latest -- \
+  xlsx-cache-doctor --print-github-action "**/*.xlsx" \
+  > .github/workflows/xlsx-cache-doctor.yml
+```
+
 If your pipeline is specifically SheetJS / `xlsx`, run the sibling proof with
 the same shape:
 

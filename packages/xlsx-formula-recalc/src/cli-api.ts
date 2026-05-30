@@ -23,6 +23,14 @@ interface CliOptions {
   readonly json: boolean
 }
 
+interface GithubActionWorkflowOptions {
+  readonly workbooks: string
+  readonly changedFilesOnly: boolean
+  readonly failOnStale: boolean
+  readonly packageVersion: string
+  readonly workflowName: string
+}
+
 export interface XlsxFormulaRecalcCliContext {
   readonly commandName?: string
   readonly stdout?: (text: string) => void
@@ -34,6 +42,7 @@ const releaseWatchUrl = 'https://github.com/proompteng/bilig/subscription'
 const adoptionBlockerUrl = 'https://github.com/proompteng/bilig/discussions/new?category=general'
 const defaultInspectFormulaLimit = 'all'
 const cacheDoctorCommandName = 'xlsx-cache-doctor'
+const printGithubActionOption = '--print-github-action'
 
 export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFormulaRecalcCliContext = {}): number {
   const commandName = context.commandName ?? 'xlsx-recalc'
@@ -43,6 +52,11 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
   try {
     if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
       printHelp(commandName, writeStdout)
+      return 0
+    }
+
+    if (commandName === cacheDoctorCommandName && args.includes(printGithubActionOption)) {
+      printGithubActionWorkflow(parseGithubActionWorkflowArgs(args, commandName), writeStdout)
       return 0
     }
 
@@ -101,6 +115,123 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
     writeStderr(`${error instanceof Error ? error.message : String(error)}\n`)
     return 1
   }
+}
+
+function parseGithubActionWorkflowArgs(args: readonly string[], commandName: string): GithubActionWorkflowOptions {
+  let workbooks: string | undefined
+  let changedFilesOnly = true
+  let failOnStale = true
+  let packageVersion = 'latest'
+  let workflowName = 'xlsx-cache-doctor'
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]
+    if (arg === undefined) {
+      throw new Error(`Unexpected missing ${commandName} argument`)
+    }
+    switch (arg) {
+      case printGithubActionOption:
+        break
+      case '--workbook':
+      case '--workbooks':
+        workbooks = requireNextArg(args, index, arg)
+        index += 1
+        break
+      case '--changed-files-only':
+        changedFilesOnly = parseBooleanOption(requireNextArg(args, index, '--changed-files-only'), '--changed-files-only')
+        index += 1
+        break
+      case '--fail-on-stale':
+        failOnStale = parseBooleanOption(requireNextArg(args, index, '--fail-on-stale'), '--fail-on-stale')
+        index += 1
+        break
+      case '--package-version':
+        packageVersion = requireNextArg(args, index, '--package-version')
+        index += 1
+        break
+      case '--workflow-name':
+        workflowName = requireNextArg(args, index, '--workflow-name')
+        index += 1
+        break
+      default:
+        if (arg.startsWith('-')) {
+          throw new Error(`Unknown ${commandName} option for ${printGithubActionOption}: ${arg}`)
+        }
+        if (workbooks !== undefined) {
+          throw new Error(`Unexpected extra workbook glob for ${printGithubActionOption}: ${arg}`)
+        }
+        workbooks = arg
+    }
+  }
+
+  if (!workbooks) {
+    throw new Error(`Expected workbook path or glob after ${printGithubActionOption}`)
+  }
+
+  return {
+    workbooks,
+    changedFilesOnly,
+    failOnStale,
+    packageVersion,
+    workflowName,
+  }
+}
+
+function printGithubActionWorkflow(options: GithubActionWorkflowOptions, writeStdout: (text: string) => void): void {
+  const packageVersionLines =
+    options.packageVersion === 'latest' ? [] : [`          package-version: ${yamlDoubleQuote(options.packageVersion)}`]
+  writeStdout(
+    [
+      `name: ${yamlDoubleQuote(options.workflowName)}`,
+      '',
+      'on:',
+      '  pull_request:',
+      '    paths:',
+      '      - "**/*.xlsx"',
+      '  workflow_dispatch:',
+      '',
+      'permissions:',
+      '  contents: read',
+      '',
+      'jobs:',
+      '  inspect-xlsx-formula-caches:',
+      '    runs-on: ubuntu-latest',
+      '    steps:',
+      '      - uses: actions/checkout@v5',
+      '        with:',
+      '          fetch-depth: 0',
+      '',
+      '      - id: cache-doctor',
+      '        uses: proompteng/bilig@v1',
+      '        with:',
+      `          workbooks: ${yamlDoubleQuote(options.workbooks)}`,
+      `          changed-files-only: ${yamlDoubleQuote(String(options.changedFilesOnly))}`,
+      ...packageVersionLines,
+      '          json-output: ${{ runner.temp }}/xlsx-cache-doctor.json',
+      `          fail-on-stale: ${yamlDoubleQuote(String(options.failOnStale))}`,
+      '',
+      '      - uses: actions/upload-artifact@v4',
+      '        if: always()',
+      '        with:',
+      '          name: xlsx-cache-doctor-report',
+      '          path: ${{ steps.cache-doctor.outputs.json }}',
+      '',
+    ].join('\n'),
+  )
+}
+
+function parseBooleanOption(raw: string, option: string): boolean {
+  if (raw === 'true') {
+    return true
+  }
+  if (raw === 'false') {
+    return false
+  }
+  throw new Error(`Expected ${option} to be "true" or "false", received: ${raw}`)
+}
+
+function yamlDoubleQuote(value: string): string {
+  return JSON.stringify(value)
 }
 
 function normalizeCliArgsForCommand(args: readonly string[], commandName: string): readonly string[] {
@@ -495,8 +626,17 @@ the memorable alias for: xlsx-recalc <input.xlsx> --inspect.
 
 Options:
   --demo                  Generate a tiny workbook and inspect its formula cache.
+  ${printGithubActionOption} <workbook-glob>
+                          Print a ready-to-commit GitHub Actions workflow that uses proompteng/bilig@v1.
   --set <Sheet!A1=value>  Edit an input cell before diagnosis. Repeatable.
   --inspect-limit <all|n> Formula cells to recompute during inspection. Defaults to ${defaultInspectFormulaLimit}.
+  --fail-on-stale <true|false>
+                          With ${printGithubActionOption}, decide whether the generated workflow fails pull requests.
+  --changed-files-only <true|false>
+                          With ${printGithubActionOption}, inspect only changed XLSX files. Defaults to true.
+  --package-version <version>
+                          With ${printGithubActionOption}, pin @bilig/xlsx-formula-recalc in the generated workflow.
+  --workflow-name <name>  With ${printGithubActionOption}, set the generated workflow name.
   --external-workbook <path>
                           Supply a companion XLSX for external-link cache refresh. Repeatable.
   --external-workbook-target <path> <target>

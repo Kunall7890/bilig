@@ -26,6 +26,26 @@ targets for the follow-up recalculation proof. It also reports
 `uninspectedFormulaCellCount` when a caller intentionally sets a smaller
 `--inspect-limit`. It does not write a new workbook.
 
+## Generate The Workflow
+
+If you want the pull-request workflow without copying YAML by hand, generate it
+from npm:
+
+```sh
+mkdir -p .github/workflows
+npm exec --package @bilig/xlsx-formula-recalc@latest -- \
+  xlsx-cache-doctor --print-github-action "**/*.xlsx" \
+  > .github/workflows/xlsx-cache-doctor.yml
+```
+
+That prints a read-only workflow using the root `proompteng/bilig@v1` action,
+`actions/checkout@v5` with enough history for changed-file detection, and an
+uploaded JSON artifact. It does not need secrets. By default, the generated
+pull-request workflow scans changed `.xlsx` files matching the glob. Use
+`--changed-files-only false` for a scheduled or manual-dispatch full scan, and
+use `--fail-on-stale false` for the first run if you want a report before the
+check becomes blocking.
+
 ## Workflow
 
 ```yaml
@@ -34,7 +54,7 @@ name: workbook-cache
 on:
   pull_request:
     paths:
-      - "**/*.xlsx"
+      - '**/*.xlsx'
   workflow_dispatch:
 
 permissions:
@@ -45,13 +65,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - uses: proompteng/bilig@v1
         id: cache-doctor
         with:
-          workbook: fixtures/pricing.xlsx
+          workbooks: '**/*.xlsx'
+          changed-files-only: 'true'
           json-output: ${{ runner.temp }}/pricing.cache-doctor.json
-          fail-on-stale: "true"
+          fail-on-stale: 'true'
 
       - run: |
           echo "formula cells: ${{ steps.cache-doctor.outputs.formula-count }}"
@@ -79,23 +102,26 @@ that path.
 
 ## Inputs
 
-| Input             | Default | Use                                                                 |
-| ----------------- | ------- | ------------------------------------------------------------------- |
-| `workbook`        |         | Path to the workbook to inspect.                                    |
-| `package-version` | latest  | npm version or dist-tag for `@bilig/xlsx-formula-recalc`.         |
-| `inspect-limit`   | `all`   | Formula cells to recompute during inspection. Use `all` or a positive integer. |
-| `json-output`     |         | Optional path for the JSON report.                                  |
-| `fail-on-stale`   | `false` | Fail the job when inspected formula cells have stale cached values. |
+| Input                | Default | Use                                                                              |
+| -------------------- | ------- | -------------------------------------------------------------------------------- |
+| `workbook`           |         | Path to one workbook to inspect. Kept for existing copied workflows.             |
+| `workbooks`          |         | Glob, comma list, or newline list of XLSX workbooks to inspect.                  |
+| `changed-files-only` | `false` | Only inspect matched XLSX files changed in the pull request or current git diff. |
+| `package-version`    | latest  | npm version or dist-tag for `@bilig/xlsx-formula-recalc`.                        |
+| `inspect-limit`      | `all`   | Formula cells to recompute during inspection. Use `all` or a positive integer.   |
+| `json-output`        |         | Optional path for the JSON report.                                               |
+| `fail-on-stale`      | `false` | Fail the job when inspected formula cells have stale cached values.              |
 
 ## Outputs
 
-| Output            | Meaning                                                           |
-| ----------------- | ----------------------------------------------------------------- |
-| `json`            | Path to the JSON report written by `xlsx-cache-doctor`.           |
-| `formula-count`   | Total formula cells found in the workbook.                        |
-| `stale-count`     | Inspected formula cells where cached and recalculated values differ. |
+| Output              | Meaning                                                                       |
+| ------------------- | ----------------------------------------------------------------------------- |
+| `json`              | Path to the JSON report written by `xlsx-cache-doctor`.                       |
+| `workbook-count`    | Number of matched XLSX workbooks inspected.                                   |
+| `formula-count`     | Total formula cells found across inspected workbooks.                         |
+| `stale-count`       | Inspected formula cells where cached and recalculated values differ.          |
 | `uninspected-count` | Formula cells skipped because `inspect-limit` was lower than `formula-count`. |
-| `suggested-reads` | Comma-separated cells to use in the follow-up `xlsx-recalc` proof. |
+| `suggested-reads`   | Comma-separated workbook-qualified cells for the follow-up proof.             |
 
 ## Follow-Up Proof
 

@@ -18,7 +18,8 @@ jobs:
       - id: cache-doctor
         uses: proompteng/bilig@v1
         with:
-          workbook: fixtures/stale-pricing.xlsx
+          workbooks: "fixtures/**/*.xlsx"
+          changed-files-only: "false"
           json-output: ${{ runner.temp }}/stale-pricing.cache-doctor.json
           fail-on-stale: "true"
 

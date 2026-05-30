@@ -128,6 +128,14 @@ stale cached formula values. The GitHub Action wrapper lives at
 fixture/workflow example lives at
 [`examples/xlsx-cache-doctor-ci`](../../examples/xlsx-cache-doctor-ci).
 
+To create the GitHub Actions workflow from npm:
+
+```sh
+mkdir -p .github/workflows
+npx --package @bilig/xlsx-formula-recalc xlsx-cache-doctor --print-github-action "**/*.xlsx" \
+  > .github/workflows/xlsx-cache-doctor.yml
+```
+
 For an existing workbook:
 
 ```sh

@@ -40,10 +40,20 @@ Copy `.github/workflows/xlsx-cache-doctor.yml` into a repository that keeps XLSX
 fixtures. Start with `fail-on-stale: "false"` if you want a non-blocking report,
 then switch it to `"true"` when stale formula caches should fail pull requests.
 
+Or generate the same workflow from npm:
+
+```sh
+mkdir -p .github/workflows
+npm exec --package @bilig/xlsx-formula-recalc@latest -- \
+  xlsx-cache-doctor --print-github-action "fixtures/**/*.xlsx" \
+  --changed-files-only false \
+  > .github/workflows/xlsx-cache-doctor.yml
+```
+
 The workflow is intentionally read-only: it checks out the repo, inspects one
-workbook, writes a job summary, and uploads the JSON report as an artifact. It
-does not comment on pull requests, rewrite workbooks, require secrets, or use a
-write token.
+or more matched workbooks, writes a job summary, and uploads the JSON report as
+an artifact. It does not comment on pull requests, rewrite workbooks, require
+secrets, or use a write token.
 
 ## Regenerate The Fixture
 

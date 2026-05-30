@@ -109,6 +109,70 @@ describe('xlsx-recalc CLI', () => {
     }
   })
 
+  it('prints a ready-to-commit GitHub Actions workflow for cache doctor adoption', () => {
+    let stdout = ''
+
+    const exitCode = runXlsxFormulaRecalcCli(
+      [
+        '--print-github-action',
+        'fixtures/pricing model.xlsx',
+        '--fail-on-stale',
+        'false',
+        '--package-version',
+        '0.124.1',
+        '--workflow-name',
+        'workbook cache doctor',
+      ],
+      {
+        commandName: 'xlsx-cache-doctor',
+        stdout: (text) => {
+          stdout += text
+        },
+      },
+    )
+
+    expect(exitCode).toBe(0)
+    expect(stdout).toContain('name: "workbook cache doctor"')
+    expect(stdout).toContain('pull_request:')
+    expect(stdout).toContain('- "**/*.xlsx"')
+    expect(stdout).toContain('fetch-depth: 0')
+    expect(stdout).toContain('uses: proompteng/bilig@v1')
+    expect(stdout).toContain('workbooks: "fixtures/pricing model.xlsx"')
+    expect(stdout).toContain('changed-files-only: "true"')
+    expect(stdout).toContain('package-version: "0.124.1"')
+    expect(stdout).toContain('fail-on-stale: "false"')
+    expect(stdout).toContain('name: xlsx-cache-doctor-report')
+  })
+
+  it('requires a workbook path when printing a GitHub Actions workflow', () => {
+    let stderr = ''
+
+    const exitCode = runXlsxFormulaRecalcCli(['--print-github-action'], {
+      commandName: 'xlsx-cache-doctor',
+      stderr: (text) => {
+        stderr += text
+      },
+    })
+
+    expect(exitCode).toBe(1)
+    expect(stderr).toContain('Expected workbook path or glob after --print-github-action')
+  })
+
+  it('allows generated GitHub Actions workflows to scan all matching workbooks', () => {
+    let stdout = ''
+
+    const exitCode = runXlsxFormulaRecalcCli(['--print-github-action', '**/*.xlsx', '--changed-files-only', 'false'], {
+      commandName: 'xlsx-cache-doctor',
+      stdout: (text) => {
+        stdout += text
+      },
+    })
+
+    expect(exitCode).toBe(0)
+    expect(stdout).toContain('workbooks: "**/*.xlsx"')
+    expect(stdout).toContain('changed-files-only: "false"')
+  })
+
   it('keeps xlsx-cache-doctor in recalculation mode when readback output is explicit', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-cache-doctor-recalc-cli-'))
     try {
