@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.124.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.123.0
+- Manual override: no
+
+## Features
+- feat(xlsx): add cache doctor action (53ae8c20)
+
 ## 0.123.0
 
 - Release type: minor
