@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.130.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.129.2
+- Manual override: no
+
+## Features
+- feat(xlsx): add cache inspection API (dfc2e41b)
+
 ## 0.129.2
 
 - Release type: patch
