@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(quality): restore static analysis gate (784c9c82)
 
 ## 0.130.4
@@ -20,11 +21,13 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(formula): align text coercion edge cases (6e587448)
 - fix(formula): align choose and radix edge cases (6420e072)
 - fix(formula): align omitted IF condition parity (17b62d1b)
 
 ## Internal runtime changes
+
 - docs(site): sharpen workpaper adoption path (4a92203b)
 
 ## 0.130.3
