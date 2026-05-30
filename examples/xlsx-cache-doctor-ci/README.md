@@ -55,7 +55,10 @@ after the first report is clean enough to make the check blocking.
 
 The workflow is intentionally read-only: it checks out the repo, inspects one
 or more matched workbooks, writes a job summary, and uploads the JSON report as
-an artifact. It does not comment on pull requests, rewrite workbooks, require
+an artifact. The Action also writes the same human-readable summary to a
+Markdown report path, so teams can upload it, paste it into a PR comment from
+their own workflow, or attach it to a release note without giving the detector a
+write token. It does not comment on pull requests, rewrite workbooks, require
 secrets, or use a write token.
 
 To see the same shape as a live GitHub reviewer, inspect the

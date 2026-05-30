@@ -46,10 +46,10 @@ That prints a read-only workflow using the root `proompteng/bilig@v1` action,
 uploaded JSON artifact. It does not need secrets. By default, the generated
 pull-request workflow scans changed `.xlsx` files matching the glob. Use
 `--changed-files-only false` for a scheduled or manual-dispatch full scan,
-`--inspect-limit 50` for a deliberately sampled first pass, `--json-output` if
-your artifact path is different, and `--fail-on-stale true` when you are ready
-for the check to block pull requests. The generated workflow starts in
-report-only mode.
+`--inspect-limit 50` for a deliberately sampled first pass, `--json-output` or
+`--markdown-output` if your artifact paths are different, and
+`--fail-on-stale true` when you are ready for the check to block pull requests.
+The generated workflow starts in report-only mode.
 
 ## Workflow
 
@@ -79,6 +79,7 @@ jobs:
           workbooks: '**/*.xlsx'
           changed-files-only: 'true'
           json-output: ${{ runner.temp }}/pricing.cache-doctor.json
+          markdown-output: ${{ runner.temp }}/pricing.cache-doctor.md
           fail-on-stale: 'true'
 
       - run: |
@@ -91,7 +92,9 @@ jobs:
         if: always()
         with:
           name: xlsx-cache-doctor-report
-          path: ${{ steps.cache-doctor.outputs.json }}
+          path: |
+            ${{ steps.cache-doctor.outputs.json }}
+            ${{ steps.cache-doctor.outputs.markdown }}
 ```
 
 See
@@ -106,11 +109,12 @@ The green check runs `proompteng/bilig@v1`, inspects one changed workbook,
 asserts 60 formula cells and 1 stale cached formula value, and uploads the JSON
 report artifact.
 
-The job summary is meant to be the reviewer artifact. It shows workbook count,
-formula count, stale count, the first stale cells with cached and recalculated
-values, and a copy-paste `xlsx-recalc --read ... --json` command for the
-follow-up check. The action also writes GitHub warning annotations for the first
-stale cells so the failure is visible before someone opens the JSON artifact.
+The job summary and Markdown report are meant to be the reviewer artifacts.
+They show workbook count, formula count, stale count, the first stale cells with
+cached and recalculated values, and a copy-paste
+`xlsx-recalc --read ... --json` command for the follow-up check. The action also
+writes GitHub warning annotations for the first stale cells so the failure is
+visible before someone opens the JSON artifact.
 
 The root `proompteng/bilig@v1` action is the canonical install path and is
 published as
@@ -140,6 +144,7 @@ a write token.
 | `package-version`    | latest  | npm version or dist-tag for `@bilig/xlsx-formula-recalc`.                        |
 | `inspect-limit`      | `all`   | Formula cells to recompute during inspection. Use `all` or a positive integer.   |
 | `json-output`        |         | Optional path for the JSON report.                                               |
+| `markdown-output`    |         | Optional path for the Markdown report.                                           |
 | `fail-on-stale`      | `false` | Fail the job when inspected formula cells have stale cached values.              |
 
 ## Outputs
@@ -147,6 +152,7 @@ a write token.
 | Output              | Meaning                                                                                         |
 | ------------------- | ----------------------------------------------------------------------------------------------- |
 | `json`              | Path to the JSON report written by `xlsx-cache-doctor`.                                         |
+| `markdown`          | Path to the Markdown report written for artifacts, PR comments, or release notes.               |
 | `workbook-count`    | Number of matched XLSX workbooks inspected.                                                     |
 | `formula-count`     | Total formula cells found across inspected workbooks.                                           |
 | `stale-count`       | Inspected formula cells where cached and recalculated values differ.                            |

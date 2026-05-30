@@ -164,7 +164,10 @@ npm exec --package @bilig/xlsx-formula-recalc@latest -- \
 
 The generated workflow is read-only and report-only by default. Add
 `--fail-on-stale true` when you want stale cached values to block pull requests,
-or pass `--inspect-limit` / `--json-output` to match your CI policy.
+or pass `--inspect-limit`, `--json-output`, or `--markdown-output` to match your
+CI artifact policy. The Action uploads machine-readable JSON and a
+human-readable Markdown report path, so reviewers can inspect the stale cells
+without giving the detector write permissions.
 
 If your pipeline is specifically SheetJS / `xlsx`, run the sibling proof with
 the same shape:

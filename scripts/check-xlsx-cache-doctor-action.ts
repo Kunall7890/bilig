@@ -128,6 +128,7 @@ try {
   const outputPath = join(inspectTempDir, 'github-output.txt')
   const summaryPath = join(inspectTempDir, 'summary.md')
   const reportPath = join(inspectTempDir, 'report.json')
+  const markdownPath = join(inspectTempDir, 'report.md')
   const result = spawnSync(process.execPath, [inspectScriptPath], {
     cwd: repoRoot,
     env: {
@@ -139,6 +140,7 @@ try {
       BILIG_PACKAGE_VERSION: 'test',
       BILIG_INSPECT_LIMIT: 'all',
       BILIG_JSON_OUTPUT: reportPath,
+      BILIG_MARKDOWN_OUTPUT: markdownPath,
       BILIG_FAIL_ON_STALE: 'false',
     },
     encoding: 'utf8',
@@ -163,11 +165,13 @@ try {
   const output = await readFile(outputPath, 'utf8')
   if (
     !output.includes('stale-count=2') ||
+    !output.includes(`markdown=${markdownPath}`) ||
     !output.includes('suggested-reads=fixtures/stale-pricing.xlsx#Sheet1!B2,fixtures/stale-pricing.xlsx#Sheet1!B3')
   ) {
     throw new Error(`Unexpected inspector outputs:\n${output}`)
   }
   const summary = await readFile(summaryPath, 'utf8')
+  const markdown = await readFile(markdownPath, 'utf8')
   for (const expected of [
     '#### Stale cached formula values',
     '| fixtures/stale-pricing.xlsx | Sheet1!B3 | `=A3*10` | 999 | 30 |',
@@ -175,8 +179,8 @@ try {
     '#### Follow-up check command',
     "xlsx-recalc 'fixtures/stale-pricing.xlsx' --read 'Sheet1!B3'",
   ]) {
-    if (!summary.includes(expected)) {
-      throw new Error(`Missing "${expected}" in inspector summary:\n${summary}`)
+    if (!summary.includes(expected) || !markdown.includes(expected)) {
+      throw new Error(`Missing "${expected}" in inspector Markdown output:\nsummary:\n${summary}\nreport:\n${markdown}`)
     }
   }
   const aggregate = parseAggregateReport(JSON.parse(await readFile(reportPath, 'utf8')))

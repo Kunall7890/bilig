@@ -124,12 +124,12 @@ request:
 - uses: proompteng/bilig@v1
   with:
     workbook: fixtures/pricing.xlsx
-    fail-on-stale: "true"
+    fail-on-stale: 'true'
 ```
 
-The action writes a JSON report, adds a job summary, and exposes
-`formula-count`, `stale-count`, `uninspected-count`, and `suggested-reads`
-outputs. See
+The action writes JSON and Markdown reports, adds a job summary, and exposes
+`formula-count`, `stale-count`, `uninspected-count`, `suggested-reads`, `json`,
+and `markdown` outputs. See
 [XLSX Cache Doctor GitHub Action](xlsx-cache-doctor-github-action.md), also
 published on GitHub Marketplace at
 <https://github.com/marketplace/actions/xlsx-cache-doctor>.

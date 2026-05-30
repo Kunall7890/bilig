@@ -8,21 +8,26 @@ const workbooks = JSON.parse(process.env.BILIG_WORKBOOKS_JSON || '[]')
 const packageVersion = process.env.BILIG_PACKAGE_VERSION || 'latest'
 const inspectLimit = process.env.BILIG_INSPECT_LIMIT || 'all'
 const outputPath = process.env.BILIG_JSON_OUTPUT || join(process.env.RUNNER_TEMP || process.cwd(), 'bilig-xlsx-cache-doctor.json')
+const markdownOutputPath = process.env.BILIG_MARKDOWN_OUTPUT || join(process.env.RUNNER_TEMP || process.cwd(), 'bilig-xlsx-cache-doctor.md')
 const failOnStale = process.env.BILIG_FAIL_ON_STALE === 'true'
 const reports = workbooks.map((workbook) => inspectWorkbook(workbook))
 const aggregate = buildAggregateReport(reports)
 
 mkdirSync(dirname(outputPath), { recursive: true })
 writeFileSync(outputPath, `${JSON.stringify(aggregate, null, 2)}\n`)
+const markdownSummary = buildMarkdownSummary(aggregate)
+mkdirSync(dirname(markdownOutputPath), { recursive: true })
+writeFileSync(markdownOutputPath, `${markdownSummary}\n`)
 
 writeGithubOutput('json', outputPath)
+writeGithubOutput('markdown', markdownOutputPath)
 writeGithubOutput('workbook-count', String(aggregate.workbookCount))
 writeGithubOutput('formula-count', String(aggregate.formulaCellCount))
 writeGithubOutput('stale-count', String(aggregate.staleCachedFormulaCount))
 writeGithubOutput('uninspected-count', String(aggregate.uninspectedFormulaCellCount))
 writeGithubOutput('suggested-reads', aggregate.suggestedReads.slice(0, 25).join(','))
 writeStaleAnnotations(aggregate)
-writeStepSummary(aggregate)
+writeStepSummary(markdownSummary)
 
 if (failOnStale && aggregate.staleCachedFormulaCount > 0) {
   console.error(`xlsx-cache-doctor found ${aggregate.staleCachedFormulaCount.toString()} stale cached formula value(s).`)
@@ -95,10 +100,7 @@ function buildAggregateReport(items) {
   }
 }
 
-function writeStepSummary(report) {
-  if (!process.env.GITHUB_STEP_SUMMARY) {
-    return
-  }
+function buildMarkdownSummary(report) {
   const staleFormulas = report.workbooks.flatMap((workbook) =>
     workbook.staleFormulas.map((formula) => ({
       workbook: workbook.workbook,
@@ -154,7 +156,14 @@ function writeStepSummary(report) {
     lines.push('```')
     lines.push('')
   }
-  appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`)
+  return lines.join('\n')
+}
+
+function writeStepSummary(summaryMarkdown) {
+  if (!process.env.GITHUB_STEP_SUMMARY) {
+    return
+  }
+  appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summaryMarkdown}\n`)
 }
 
 function writeStaleAnnotations(report) {

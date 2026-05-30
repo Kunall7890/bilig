@@ -123,6 +123,8 @@ describe('xlsx-recalc CLI', () => {
         '50',
         '--json-output',
         '${{ runner.temp }}/custom-cache-doctor.json',
+        '--markdown-output',
+        '${{ runner.temp }}/custom-cache-doctor.md',
         '--package-version',
         '0.124.1',
         '--workflow-name',
@@ -146,6 +148,7 @@ describe('xlsx-recalc CLI', () => {
     expect(stdout).toContain('changed-files-only: "true"')
     expect(stdout).toContain('inspect-limit: "50"')
     expect(stdout).toContain('json-output: "${{ runner.temp }}/custom-cache-doctor.json"')
+    expect(stdout).toContain('markdown-output: "${{ runner.temp }}/custom-cache-doctor.md"')
     expect(stdout).toContain('package-version: "0.124.1"')
     expect(stdout).toContain('fail-on-stale: "false"')
     expect(stdout).toContain('name: xlsx-cache-doctor-report')
@@ -173,6 +176,7 @@ describe('xlsx-recalc CLI', () => {
       'package-version': '0.124.1',
       'inspect-limit': '50',
       'json-output': '${{ runner.temp }}/custom-cache-doctor.json',
+      'markdown-output': '${{ runner.temp }}/custom-cache-doctor.md',
       'fail-on-stale': 'false',
     })
     expect(uploadArtifact).toMatchObject({
@@ -180,7 +184,7 @@ describe('xlsx-recalc CLI', () => {
       if: 'always()',
       with: {
         name: 'xlsx-cache-doctor-report',
-        path: '${{ steps.cache-doctor.outputs.json }}',
+        path: '${{ steps.cache-doctor.outputs.json }}\n${{ steps.cache-doctor.outputs.markdown }}\n',
       },
     })
   })
@@ -214,6 +218,7 @@ describe('xlsx-recalc CLI', () => {
     expect(stdout).toContain('changed-files-only: "false"')
     expect(stdout).toContain('inspect-limit: "all"')
     expect(stdout).toContain('json-output: "${{ runner.temp }}/xlsx-cache-doctor.json"')
+    expect(stdout).toContain('markdown-output: "${{ runner.temp }}/xlsx-cache-doctor.md"')
     expect(stdout).toContain('fail-on-stale: "false"')
   })
 

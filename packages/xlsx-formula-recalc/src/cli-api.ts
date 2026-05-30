@@ -29,6 +29,7 @@ interface GithubActionWorkflowOptions {
   readonly failOnStale: boolean
   readonly inspectLimit: CliOptions['inspectLimit']
   readonly jsonOutput: string
+  readonly markdownOutput: string
   readonly packageVersion: string
   readonly workflowName: string
 }
@@ -125,6 +126,7 @@ function parseGithubActionWorkflowArgs(args: readonly string[], commandName: str
   let failOnStale = false
   let inspectLimit: CliOptions['inspectLimit'] = defaultInspectFormulaLimit
   let jsonOutput = '${{ runner.temp }}/xlsx-cache-doctor.json'
+  let markdownOutput = '${{ runner.temp }}/xlsx-cache-doctor.md'
   let packageVersion = 'latest'
   let workflowName = 'xlsx-cache-doctor'
 
@@ -157,6 +159,10 @@ function parseGithubActionWorkflowArgs(args: readonly string[], commandName: str
         jsonOutput = requireNextArg(args, index, '--json-output')
         index += 1
         break
+      case '--markdown-output':
+        markdownOutput = requireNextArg(args, index, '--markdown-output')
+        index += 1
+        break
       case '--package-version':
         packageVersion = requireNextArg(args, index, '--package-version')
         index += 1
@@ -186,6 +192,7 @@ function parseGithubActionWorkflowArgs(args: readonly string[], commandName: str
     failOnStale,
     inspectLimit,
     jsonOutput,
+    markdownOutput,
     packageVersion,
     workflowName,
   }
@@ -223,13 +230,16 @@ function printGithubActionWorkflow(options: GithubActionWorkflowOptions, writeSt
       ...packageVersionLines,
       `          inspect-limit: ${yamlDoubleQuote(String(options.inspectLimit))}`,
       `          json-output: ${yamlDoubleQuote(options.jsonOutput)}`,
+      `          markdown-output: ${yamlDoubleQuote(options.markdownOutput)}`,
       `          fail-on-stale: ${yamlDoubleQuote(String(options.failOnStale))}`,
       '',
       '      - uses: actions/upload-artifact@v4',
       '        if: always()',
       '        with:',
       '          name: xlsx-cache-doctor-report',
-      '          path: ${{ steps.cache-doctor.outputs.json }}',
+      '          path: |',
+      '            ${{ steps.cache-doctor.outputs.json }}',
+      '            ${{ steps.cache-doctor.outputs.markdown }}',
       '',
     ].join('\n'),
   )
@@ -650,6 +660,8 @@ Options:
   --changed-files-only <true|false>
                           With ${printGithubActionOption}, inspect only changed XLSX files. Defaults to true.
   --json-output <path>    With ${printGithubActionOption}, set the JSON report path. Defaults to \${{ runner.temp }}/xlsx-cache-doctor.json.
+  --markdown-output <path>
+                          With ${printGithubActionOption}, set the Markdown report path. Defaults to \${{ runner.temp }}/xlsx-cache-doctor.md.
   --package-version <version>
                           With ${printGithubActionOption}, pin @bilig/xlsx-formula-recalc in the generated workflow.
   --workflow-name <name>  With ${printGithubActionOption}, set the generated workflow name.
