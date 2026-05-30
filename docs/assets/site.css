@@ -1112,6 +1112,12 @@ footer {
   }
 }
 
+@media (max-width: 389px) {
+  :root {
+    --topbar-height: 126px;
+  }
+}
+
 @media (max-width: 560px) {
   .wrap {
     width: min(calc(100vw - 28px), 362px);
