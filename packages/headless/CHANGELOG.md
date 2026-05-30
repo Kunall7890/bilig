@@ -4,6 +4,16 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.130.3
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.130.2
+- Manual override: no
+
+## Fixes
+- fix(formula): align combina and sln semantics (1eceee65)
+- fix(action): batch xlsx cache doctor inspection (3ce59531)
+
 ## 0.130.2
 
 - Release type: patch
