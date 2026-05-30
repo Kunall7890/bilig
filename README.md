@@ -28,6 +28,16 @@ it first:
 npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json
 ```
 
+For pull requests, start with the GitHub Action and let it report before it
+blocks anything:
+
+```yaml
+- uses: proompteng/bilig@v1
+  with:
+    workbooks: "**/*.xlsx"
+    changed-files-only: true
+```
+
 Use `@bilig/xlsx-formula-recalc` when an `.xlsx` file is still the source of
 truth. Use `@bilig/exceljs-formula-recalc` when the workbook is already moving
 through ExcelJS. Use `@bilig/workpaper` after the file boundary stops being
