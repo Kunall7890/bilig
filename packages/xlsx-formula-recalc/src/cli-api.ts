@@ -51,7 +51,7 @@ export interface XlsxFormulaRecalcCliContext {
 const defaultInspectFormulaLimit = 'all'
 const cacheDoctorCommandName = 'xlsx-cache-doctor'
 const printGithubActionOption = '--print-github-action'
-const defaultGithubActionPackageVersion = '0.129.2'
+const defaultGithubActionPackageVersion = '0.130.0'
 
 export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFormulaRecalcCliContext = {}): number {
   const commandName = context.commandName ?? 'xlsx-recalc'

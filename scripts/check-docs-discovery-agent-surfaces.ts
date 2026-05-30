@@ -70,11 +70,21 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   requireIncludes(jekyllConfig, "layout: 'default'", 'docs/_config.yml')
   requireIncludes(jekyllDefaultLayout, '<header class="topbar">', 'docs/_layouts/default.html')
   requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#packages\' | relative_url }}">Start</a>', 'docs/_layouts/default.html')
-  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#install\' | relative_url }}">WorkPaper</a>', 'docs/_layouts/default.html')
+  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#install\' | relative_url }}">Node API</a>', 'docs/_layouts/default.html')
+  requireIncludes(
+    jekyllDefaultLayout,
+    'href="{{ \'/xlsx-cache-doctor-github-action.html\' | relative_url }}">Action</a>',
+    'docs/_layouts/default.html',
+  )
+  requireIncludes(
+    jekyllDefaultLayout,
+    'href="{{ \'/xlsx-formula-recalculation-node.html\' | relative_url }}">XLSX</a>',
+    'docs/_layouts/default.html',
+  )
   requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#docs\' | relative_url }}">Docs</a>', 'docs/_layouts/default.html')
   requireIncludes(jekyllDefaultLayout, 'href="https://github.com/proompteng/bilig">GitHub</a>', 'docs/_layouts/default.html')
-  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/assets/site.css?v=2026-05-30-7\' | relative_url }}"', 'docs/_layouts/default.html')
-  requireIncludes(jekyllDefaultLayout, 'src="{{ \'/assets/site-nav.js?v=2026-05-30-7\' | relative_url }}"', 'docs/_layouts/default.html')
+  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/assets/site.css?v=2026-05-30-10\' | relative_url }}"', 'docs/_layouts/default.html')
+  requireIncludes(jekyllDefaultLayout, 'src="{{ \'/assets/site-nav.js?v=2026-05-30-10\' | relative_url }}"', 'docs/_layouts/default.html')
   if (mcpServerCardMcpJson !== mcpServerCard) {
     throw new Error('docs/.well-known/mcp.json must match docs/.well-known/mcp/server-card.json')
   }

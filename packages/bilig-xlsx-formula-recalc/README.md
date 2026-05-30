@@ -4,16 +4,13 @@ Diagnose stale cached XLSX formula values in Node and CI, then recalculate the
 cells your service actually reads without Excel, LibreOffice, or browser
 automation.
 
-This is the canonical scoped Bilig package for the high-friction Node XLSX
-workflow: a file library edits workbook bytes, but the formula cells still carry
-old cached values. Start with the cache doctor when you do not know which cells
-are stale. Use recalculation after the detector points at the cells that matter.
+This package is for the high-friction Node XLSX workflow: a file library edits
+workbook bytes, but the formula cells still carry old cached values. Start with
+the cache doctor when you do not know which cells are stale. Use recalculation
+after the detector points at the cells that matter.
 
 It fits `xlsx-populate`, SheetJS / `xlsx`, template-generation, GitHub Actions,
 and backend file pipelines where stale readback is worse than a hard failure.
-
-The unscoped `xlsx-formula-recalc` package remains published as a compatibility
-and search alias.
 
 ## Try The Cache Doctor First
 
@@ -56,6 +53,15 @@ Expected shape:
 
 The JSON is meant for CI and agents. It does not include star, release-watch, or
 discussion links.
+
+If a coding agent needs to edit workbook state instead of only inspecting XLSX
+bytes, do not automate Excel or a browser grid. Run the headless proof:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
+Then use the [agent MCP evaluator](https://proompteng.github.io/bilig/eval-agent-mcp.html).
 
 Use `cacheStatusSummary` and per-formula `cacheStatus` to separate confirmed
 stale caches from missing cached values or formulas without a comparable
@@ -322,3 +328,7 @@ external workbook links, macros, and volatile functions may need review. Import
 warnings are returned in `result.warnings`.
 
 Full docs: <https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html>
+
+Compatibility note: the unscoped `xlsx-formula-recalc` package remains
+published as a search and migration alias. Use `@bilig/xlsx-formula-recalc` in
+new projects.

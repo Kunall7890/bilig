@@ -554,6 +554,11 @@ h2 {
   font-style: normal;
 }
 
+.path-link code {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .path-link:hover strong {
   color: var(--accent);
 }
@@ -583,6 +588,11 @@ h2 {
 
 .path-grid {
   grid-template-columns: minmax(0, 0.86fr) minmax(300px, 0.46fr);
+}
+
+.path-grid > *,
+.link-stack {
+  min-width: 0;
 }
 
 .setup-box,
@@ -649,10 +659,12 @@ h2 {
 .link-stack {
   display: grid;
   border-top: 1px solid var(--line);
+  max-width: 100%;
 }
 
 .link-stack .path-link {
   grid-template-columns: 112px minmax(0, 1fr);
+  max-width: 100%;
 }
 
 .link-stack .path-link em {
@@ -870,6 +882,8 @@ h2 {
 
 .docs-column a {
   font-size: 14px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .final {
@@ -1035,7 +1049,7 @@ footer {
   .section-head,
   .install-grid,
   .path-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .hero-copy,
@@ -1081,7 +1095,7 @@ footer {
   .path-link,
   .link-stack .path-link,
   .proof-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 7px;
   }
 
@@ -1170,6 +1184,12 @@ footer {
 
   .install-command code {
     white-space: normal;
+  }
+
+  .traffic-entry code,
+  .terminal-panel pre {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
   }
 
   .hero-command {

@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(xlsx): add cache inspection API (dfc2e41b)
 
 ## 0.129.2
@@ -20,6 +21,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(action): align cache doctor runtime pin (9d61fbb4)
 - fix(action): version cache doctor reports (baf4a887)
 
@@ -30,6 +32,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(action): pin cache doctor runtime (6488c914)
 
 ## 0.129.0
@@ -39,6 +42,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(xlsx): report cache doctor status buckets (8d05a9b7)
 
 ## 0.128.0
@@ -48,9 +52,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(xlsx): make cache doctor demo first-run check (4d9e68f2)
 
 ## Internal runtime changes
+
 - docs(site): lead with xlsx cache doctor (db9f5780)
 
 ## 0.127.0
@@ -60,9 +66,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(action): publish cache doctor markdown report (5fa1bb9a)
 
 ## Internal runtime changes
+
 - docs(agent): clean WorkPaper discovery copy (c00151bf)
 
 ## 0.126.0
@@ -72,9 +80,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(xlsx): scale cache doctor action to workbook globs (b1cf0324)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.125.0 (12abb604)
 - docs(actions): make cache doctor workflow report-first (0042bca1)
 
@@ -85,6 +95,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(xlsx): scale cache doctor action to workbook globs (b1cf0324)
 
 ## 0.124.1
@@ -94,9 +105,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): inspect all cache doctor formulas (3a4431e5)
 
 ## Internal runtime changes
+
 - docs(xlsx): add cache doctor CI example (f7e31090)
 
 ## 0.124.0
@@ -106,6 +119,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(xlsx): add cache doctor action (53ae8c20)
 
 ## 0.123.0

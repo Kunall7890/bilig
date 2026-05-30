@@ -209,7 +209,7 @@ requirePackageKeywords(
 requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/xlsx-formula-recalc"', 'docs/index.html')
 requireIncludes(index, '"https://www.npmjs.com/package/@bilig/xlsx-formula-recalc"', 'docs/index.html')
 requireIncludes(index, '"https://www.npmjs.com/package/@bilig/exceljs-formula-recalc"', 'docs/index.html')
-requireIncludes(index, '<h2 id="packages-title">Start from the boundary you actually own.</h2>', 'docs/index.html')
+requireIncludes(index, '<h2 id="packages-title">Start with the file before the runtime.</h2>', 'docs/index.html')
 requireIncludes(index, 'highest-traffic entry', 'docs/index.html')
 requireIncludes(index, xlsxCacheDoctorCli, 'docs/index.html')
 requireIncludes(index, '"applicationCategory": "DeveloperApplication"', 'docs/index.html')
