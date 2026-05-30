@@ -40,7 +40,7 @@ blocks anything:
   with:
     workbooks: '**/*.xlsx'
     changed-files-only: 'true'
-    package-version: '0.129.0'
+    package-version: '0.129.1'
     fail-on-stale: 'false'
 ```
 

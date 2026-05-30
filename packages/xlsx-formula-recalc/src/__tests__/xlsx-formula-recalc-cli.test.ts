@@ -332,7 +332,7 @@ describe('xlsx-recalc CLI', () => {
     expect(stdout).toContain('workbooks: "**/*.xlsx"')
     expect(stdout).toContain('changed-files-only: "false"')
     expect(stdout).toContain('inspect-limit: "all"')
-    expect(stdout).toContain('package-version: "0.129.0"')
+    expect(stdout).toContain('package-version: "0.129.1"')
     expect(stdout).toContain('json-output: "${{ runner.temp }}/xlsx-cache-doctor.json"')
     expect(stdout).toContain('markdown-output: "${{ runner.temp }}/xlsx-cache-doctor.md"')
     expect(stdout).toContain('fail-on-stale: "false"')
