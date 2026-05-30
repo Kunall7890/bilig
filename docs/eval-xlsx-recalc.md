@@ -69,8 +69,11 @@ npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricin
 ```
 
 That command does not write `pricing.recalculated.xlsx`. It imports the
-workbook, lists formula cells, recomputes a bounded sample, reports stale cached
-values, and suggests `--read` targets for the real proof command.
+workbook, lists formula cells, recomputes every formula by default, reports
+stale cached values, and suggests `--read` targets for the real proof command.
+If you intentionally pass `--inspect-limit`, require
+`uninspectedFormulaCellCount: 0` before treating the report as complete
+coverage.
 
 Expected shape:
 
@@ -78,6 +81,8 @@ Expected shape:
 {
   "formulaCellCount": 12,
   "inspectedFormulaCellCount": 12,
+  "uninspectedFormulaCellCount": 0,
+  "inspectionLimit": "all",
   "staleCachedFormulaCount": 3,
   "suggestedReads": ["Summary!B7"],
   "formulas": [
@@ -123,7 +128,8 @@ request:
 ```
 
 The action writes a JSON report, adds a job summary, and exposes
-`formula-count`, `stale-count`, and `suggested-reads` outputs. See
+`formula-count`, `stale-count`, `uninspected-count`, and `suggested-reads`
+outputs. See
 [XLSX Cache Doctor GitHub Action](xlsx-cache-doctor-github-action.md).
 
 ## What this proves

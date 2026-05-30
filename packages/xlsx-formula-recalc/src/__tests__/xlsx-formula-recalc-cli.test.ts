@@ -64,6 +64,8 @@ describe('xlsx-recalc CLI', () => {
       expect(summary.excelParity).toBe('not_proven')
       expect(summary.formulaCellCount).toBe(1)
       expect(summary.inspectedFormulaCellCount).toBe(1)
+      expect(summary.uninspectedFormulaCellCount).toBe(0)
+      expect(summary.inspectionLimit).toBe('all')
       expect(summary.staleCachedFormulaCount).toBe(1)
       expect(summary.suggestedReads).toEqual(['Sheet1!B2'])
       expect(summary.formulas[0]).toMatchObject({
@@ -99,6 +101,7 @@ describe('xlsx-recalc CLI', () => {
       expect(summary.commandSucceeded).toBe(true)
       expect(summary.inspectionCompleted).toBe(true)
       expect(summary.staleCachedFormulaCount).toBe(1)
+      expect(summary.uninspectedFormulaCellCount).toBe(0)
       expect(summary.suggestedReads).toEqual(['Sheet1!B2'])
       expect(JSON.parse(stdout)).not.toHaveProperty('nextStep')
     } finally {
@@ -127,6 +130,66 @@ describe('xlsx-recalc CLI', () => {
       expect(summary.commandSucceeded).toBe(true)
       expect(summary.recalculationCompleted).toBe(true)
       expect(summary.reads['Sheet1!B2']?.value).toBe(20)
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('checks every formula by default so stale caches after the old sample cutoff fail inspection', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-cache-doctor-all-formulas-'))
+    try {
+      const inputPath = join(tempDir, 'many-formulas.xlsx')
+      writeFileSync(inputPath, buildManyFormulaCacheWorkbook())
+      let stdout = ''
+
+      const exitCode = runXlsxFormulaRecalcCli([inputPath, '--json'], {
+        commandName: 'xlsx-cache-doctor',
+        stdout: (text) => {
+          stdout += text
+        },
+      })
+
+      expect(exitCode).toBe(0)
+      const summary = readCliInspectionSummary(stdout)
+      expect(summary.formulaCellCount).toBe(60)
+      expect(summary.inspectedFormulaCellCount).toBe(60)
+      expect(summary.uninspectedFormulaCellCount).toBe(0)
+      expect(summary.inspectionLimit).toBe('all')
+      expect(summary.staleCachedFormulaCount).toBe(1)
+      expect(summary.suggestedReads).toContain('Sheet1!B61')
+      expect(summary.formulas.find((formula) => formula.target === 'Sheet1!B61')).toMatchObject({
+        formula: '=A61*10',
+        cachedValue: 999,
+        literalRecalculatedValue: 600,
+        staleCachedValue: true,
+      })
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('reports uninspected formulas when a caller sets an explicit inspection limit', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-cache-doctor-limited-formulas-'))
+    try {
+      const inputPath = join(tempDir, 'many-formulas.xlsx')
+      writeFileSync(inputPath, buildManyFormulaCacheWorkbook())
+      let stdout = ''
+
+      const exitCode = runXlsxFormulaRecalcCli([inputPath, '--inspect-limit', '50', '--json'], {
+        commandName: 'xlsx-cache-doctor',
+        stdout: (text) => {
+          stdout += text
+        },
+      })
+
+      expect(exitCode).toBe(0)
+      const summary = readCliInspectionSummary(stdout)
+      expect(summary.formulaCellCount).toBe(60)
+      expect(summary.inspectedFormulaCellCount).toBe(50)
+      expect(summary.uninspectedFormulaCellCount).toBe(10)
+      expect(summary.inspectionLimit).toBe(50)
+      expect(summary.staleCachedFormulaCount).toBe(0)
+      expect(summary.suggestedReads).not.toContain('Sheet1!B61')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }
@@ -265,6 +328,8 @@ interface CliInspectionSummary {
   readonly mode: string
   readonly formulaCellCount: number
   readonly inspectedFormulaCellCount: number
+  readonly uninspectedFormulaCellCount: number
+  readonly inspectionLimit: number | 'all'
   readonly staleCachedFormulaCount: number
   readonly suggestedReads: readonly string[]
   readonly formulas: ReadonlyArray<{
@@ -330,6 +395,8 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
   const mode = parsed['mode']
   const formulaCellCount = parsed['formulaCellCount']
   const inspectedFormulaCellCount = parsed['inspectedFormulaCellCount']
+  const uninspectedFormulaCellCount = parsed['uninspectedFormulaCellCount']
+  const inspectionLimit = parsed['inspectionLimit']
   const staleCachedFormulaCount = parsed['staleCachedFormulaCount']
   const suggestedReads = parsed['suggestedReads']
   const formulas = parsed['formulas']
@@ -341,6 +408,8 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
     typeof mode !== 'string' ||
     typeof formulaCellCount !== 'number' ||
     typeof inspectedFormulaCellCount !== 'number' ||
+    typeof uninspectedFormulaCellCount !== 'number' ||
+    !isInspectionLimit(inspectionLimit) ||
     typeof staleCachedFormulaCount !== 'number' ||
     !Array.isArray(suggestedReads) ||
     !Array.isArray(formulas) ||
@@ -355,6 +424,8 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
     mode,
     formulaCellCount,
     inspectedFormulaCellCount,
+    uninspectedFormulaCellCount,
+    inspectionLimit,
     staleCachedFormulaCount,
     suggestedReads: suggestedReads.filter((read): read is string => typeof read === 'string'),
     formulas: formulas.filter(isCliInspectionFormula),
@@ -363,6 +434,10 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
     recalculationCompleted,
     excelParity,
   }
+}
+
+function isInspectionLimit(value: unknown): value is CliInspectionSummary['inspectionLimit'] {
+  return value === 'all' || typeof value === 'number'
 }
 
 function isCliInspectionFormula(value: unknown): value is CliInspectionSummary['formulas'][number] {
@@ -430,6 +505,26 @@ function buildStaleFormulaCacheWorkbook(): Uint8Array {
       'xl/worksheets/sheet1.xml',
       'B2',
       '<c r="B2"><f>A2*10</f><v>999</v></c>',
+    )
+  } finally {
+    workbook.dispose()
+  }
+}
+
+function buildManyFormulaCacheWorkbook(): Uint8Array {
+  const rows: Array<[number | string, number | string]> = [['Input', 'Output']]
+  for (let row = 2; row <= 61; row += 1) {
+    rows.push([row - 1, `=A${row}*10`])
+  }
+  const workbook = WorkPaper.buildFromSheets({
+    Sheet1: rows,
+  })
+  try {
+    return replaceWorksheetCellXml(
+      exportXlsx(workbook.exportSnapshot()),
+      'xl/worksheets/sheet1.xml',
+      'B61',
+      '<c r="B61"><f>A61*10</f><v>999</v></c>',
     )
   } finally {
     workbook.dispose()

@@ -30,7 +30,9 @@ npx --package xlsx-formula-recalc xlsx-cache-doctor workbook.xlsx --json
 ```
 
 Use the returned `suggestedReads`, stale cached formula counts, and warnings to
-decide the narrow proof command.
+decide the narrow proof command. By default the doctor recomputes every formula;
+if a caller passes `--inspect-limit`, require `uninspectedFormulaCellCount: 0`
+before treating the report as complete coverage.
 
 For a real workbook, use sheet-qualified A1 targets:
 

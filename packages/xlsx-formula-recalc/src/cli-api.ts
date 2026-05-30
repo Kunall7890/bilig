@@ -19,7 +19,7 @@ interface CliOptions {
   readonly reads: readonly string[]
   readonly externalWorkbooks: readonly CliExternalWorkbook[]
   readonly inspect: boolean
-  readonly inspectLimit: number
+  readonly inspectLimit: number | 'all'
   readonly json: boolean
 }
 
@@ -32,7 +32,7 @@ export interface XlsxFormulaRecalcCliContext {
 const repoStarUrl = 'https://github.com/proompteng/bilig/stargazers'
 const releaseWatchUrl = 'https://github.com/proompteng/bilig/subscription'
 const adoptionBlockerUrl = 'https://github.com/proompteng/bilig/discussions/new?category=general'
-const defaultInspectFormulaLimit = 50
+const defaultInspectFormulaLimit = 'all'
 const cacheDoctorCommandName = 'xlsx-cache-doctor'
 
 export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFormulaRecalcCliContext = {}): number {
@@ -126,7 +126,7 @@ function parseCliArgs(args: readonly string[], commandName: string): CliOptions 
   const externalWorkbooks: CliExternalWorkbook[] = []
   let outputPath: string | undefined
   let inspect = false
-  let inspectLimit = defaultInspectFormulaLimit
+  let inspectLimit: CliOptions['inspectLimit'] = defaultInspectFormulaLimit
   let json = false
 
   for (let index = demo ? 0 : 1; index < args.length; index += 1) {
@@ -216,7 +216,8 @@ function printInspectionSummary(args: PrintInspectionSummaryInput): void {
       : {}
   const imported = importXlsx(args.input, args.inputName, importOptions)
   const formulaCells = collectFormulaCells(imported.snapshot)
-  const inspectedFormulaCells = formulaCells.slice(0, args.options.inspectLimit)
+  const inspectedFormulaCells = args.options.inspectLimit === 'all' ? formulaCells : formulaCells.slice(0, args.options.inspectLimit)
+  const uninspectedFormulaCellCount = formulaCells.length - inspectedFormulaCells.length
   const suggestedReads = inspectedFormulaCells.map((cell) => cell.target)
   const recalculated = recalculateXlsx(args.input, {
     fileName: args.inputName,
@@ -249,6 +250,8 @@ function printInspectionSummary(args: PrintInspectionSummaryInput): void {
     sheetNames: imported.sheetNames,
     formulaCellCount: formulaCells.length,
     inspectedFormulaCellCount: inspectedFormulaCells.length,
+    uninspectedFormulaCellCount,
+    inspectionLimit: args.options.inspectLimit,
     staleCachedFormulaCount,
     suggestedReads,
     formulas,
@@ -269,6 +272,7 @@ function printInspectionSummary(args: PrintInspectionSummaryInput): void {
   args.writeStdout(`Sheets: ${summary.sheetNames.join(', ')}\n`)
   args.writeStdout(`Formula cells: ${summary.formulaCellCount.toString()}\n`)
   args.writeStdout(`Inspected formula cells: ${summary.inspectedFormulaCellCount.toString()}\n`)
+  args.writeStdout(`Uninspected formula cells: ${summary.uninspectedFormulaCellCount.toString()}\n`)
   args.writeStdout(`Stale cached formula cells: ${summary.staleCachedFormulaCount.toString()}\n`)
   if (suggestedReads.length > 0) {
     args.writeStdout(`Suggested reads: ${suggestedReads.join(', ')}\n`)
@@ -291,7 +295,7 @@ type ImportedWorkbookSnapshot = Parameters<typeof WorkPaper.buildFromSnapshot>[0
 function collectFormulaCells(snapshot: ImportedWorkbookSnapshot): FormulaInspectionCell[] {
   const cells: FormulaInspectionCell[] = []
   for (const sheet of snapshot.sheets.toSorted((left, right) => left.order - right.order)) {
-    for (const cell of sheet.cells) {
+    for (const cell of sheet.cells.toSorted((left, right) => compareA1Addresses(left.address, right.address))) {
       if (typeof cell.formula !== 'string' || cell.formula.trim().length === 0) {
         continue
       }
@@ -303,6 +307,25 @@ function collectFormulaCells(snapshot: ImportedWorkbookSnapshot): FormulaInspect
     }
   }
   return cells
+}
+
+function compareA1Addresses(left: string, right: string): number {
+  const leftParts = parseA1AddressForSort(left)
+  const rightParts = parseA1AddressForSort(right)
+  return leftParts.row - rightParts.row || leftParts.col - rightParts.col || left.localeCompare(right)
+}
+
+function parseA1AddressForSort(address: string): { readonly row: number; readonly col: number } {
+  const match = /^([A-Z]+)(\d+)$/iu.exec(address)
+  if (!match) {
+    return { row: Number.MAX_SAFE_INTEGER, col: Number.MAX_SAFE_INTEGER }
+  }
+  const [, letters = '', rowText = ''] = match
+  let col = 0
+  for (const letter of letters.toUpperCase()) {
+    col = col * 26 + letter.charCodeAt(0) - 64
+  }
+  return { row: Number(rowText), col }
 }
 
 function formatQualifiedTarget(sheetName: string, address: string): string {
@@ -426,10 +449,13 @@ function parseRawCellContent(raw: string): RawCellContent {
   return raw
 }
 
-function parseInspectLimit(raw: string): number {
+function parseInspectLimit(raw: string): CliOptions['inspectLimit'] {
+  if (raw === 'all') {
+    return raw
+  }
   const value = Number(raw)
   if (!Number.isInteger(value) || value < 1) {
-    throw new Error(`Expected --inspect-limit to be a positive integer, received: ${raw}`)
+    throw new Error(`Expected --inspect-limit to be "all" or a positive integer, received: ${raw}`)
   }
   return value
 }
@@ -470,7 +496,7 @@ the memorable alias for: xlsx-recalc <input.xlsx> --inspect.
 Options:
   --demo                  Generate a tiny workbook and inspect its formula cache.
   --set <Sheet!A1=value>  Edit an input cell before diagnosis. Repeatable.
-  --inspect-limit <n>     Formula cells to recompute during inspection. Defaults to ${defaultInspectFormulaLimit.toString()}.
+  --inspect-limit <all|n> Formula cells to recompute during inspection. Defaults to ${defaultInspectFormulaLimit}.
   --external-workbook <path>
                           Supply a companion XLSX for external-link cache refresh. Repeatable.
   --external-workbook-target <path> <target>
@@ -489,7 +515,7 @@ Options:
   --set <Sheet!A1=value>  Edit an input cell before recalculation. Repeatable.
   --read <Sheet!A1>       Read a recalculated cell after edits. Repeatable.
   --inspect               Inspect formula cells, stale cached values, and suggested --read targets.
-  --inspect-limit <n>     Formula cells to recompute during inspection. Defaults to ${defaultInspectFormulaLimit.toString()}.
+  --inspect-limit <all|n> Formula cells to recompute during inspection. Defaults to ${defaultInspectFormulaLimit}.
   --external-workbook <path>
                           Supply a companion XLSX for external-link cache refresh. Repeatable.
   --external-workbook-target <path> <target>

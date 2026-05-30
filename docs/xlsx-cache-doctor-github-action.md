@@ -20,9 +20,11 @@ The action wraps the same command you can run locally:
 npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor fixtures/pricing.xlsx --json
 ```
 
-`xlsx-cache-doctor` imports the workbook, lists formula cells, recomputes a
-bounded sample, reports stale cached values, and returns suggested `--read`
-targets for the follow-up recalculation proof. It does not write a new workbook.
+`xlsx-cache-doctor` imports the workbook, lists formula cells, recomputes every
+formula by default, reports stale cached values, and returns suggested `--read`
+targets for the follow-up recalculation proof. It also reports
+`uninspectedFormulaCellCount` when a caller intentionally sets a smaller
+`--inspect-limit`. It does not write a new workbook.
 
 ## Workflow
 
@@ -54,6 +56,7 @@ jobs:
       - run: |
           echo "formula cells: ${{ steps.cache-doctor.outputs.formula-count }}"
           echo "stale values: ${{ steps.cache-doctor.outputs.stale-count }}"
+          echo "uninspected formulas: ${{ steps.cache-doctor.outputs.uninspected-count }}"
           echo "suggested reads: ${{ steps.cache-doctor.outputs.suggested-reads }}"
 
       - uses: actions/upload-artifact@v4
@@ -79,8 +82,8 @@ that path.
 | Input             | Default | Use                                                                 |
 | ----------------- | ------- | ------------------------------------------------------------------- |
 | `workbook`        |         | Path to the workbook to inspect.                                    |
-| `package-version` | latest  | npm version or dist-tag for `@bilig/xlsx-formula-recalc`.           |
-| `inspect-limit`   | `50`    | Maximum formula cells to recompute during inspection.               |
+| `package-version` | latest  | npm version or dist-tag for `@bilig/xlsx-formula-recalc`.         |
+| `inspect-limit`   | `all`   | Formula cells to recompute during inspection. Use `all` or a positive integer. |
 | `json-output`     |         | Optional path for the JSON report.                                  |
 | `fail-on-stale`   | `false` | Fail the job when inspected formula cells have stale cached values. |
 
@@ -91,6 +94,7 @@ that path.
 | `json`            | Path to the JSON report written by `xlsx-cache-doctor`.           |
 | `formula-count`   | Total formula cells found in the workbook.                        |
 | `stale-count`     | Inspected formula cells where cached and recalculated values differ. |
+| `uninspected-count` | Formula cells skipped because `inspect-limit` was lower than `formula-count`. |
 | `suggested-reads` | Comma-separated cells to use in the follow-up `xlsx-recalc` proof. |
 
 ## Follow-Up Proof

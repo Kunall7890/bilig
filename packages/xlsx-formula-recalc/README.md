@@ -102,14 +102,17 @@ diagnose it without writing an output file:
 npx --package xlsx-formula-recalc xlsx-cache-doctor pricing.xlsx --json
 ```
 
-Inspection imports the workbook, lists formula cells, recomputes a bounded
-sample, reports stale cached values, and returns suggested `--read` targets for
-the recalculation command:
+Inspection imports the workbook, lists formula cells, recomputes every formula
+by default, reports stale cached values, and returns suggested `--read` targets
+for the recalculation command. If you intentionally pass `--inspect-limit 50`,
+the JSON includes the skipped count as `uninspectedFormulaCellCount`.
 
 ```json
 {
   "formulaCellCount": 12,
   "inspectedFormulaCellCount": 12,
+  "uninspectedFormulaCellCount": 0,
+  "inspectionLimit": "all",
   "staleCachedFormulaCount": 3,
   "suggestedReads": ["Summary!B7"],
   "formulas": [

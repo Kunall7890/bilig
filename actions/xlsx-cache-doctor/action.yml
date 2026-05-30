@@ -11,9 +11,9 @@ inputs:
     required: false
     default: latest
   inspect-limit:
-    description: Maximum formula cells to recompute during inspection.
+    description: Formula cells to recompute during inspection. Use "all" or a positive integer.
     required: false
-    default: "50"
+    default: 'all'
   json-output:
     description: Optional path for the JSON report. Defaults to the runner temp directory.
     required: false
@@ -33,6 +33,9 @@ outputs:
   stale-count:
     description: Number of inspected formula cells with stale cached values.
     value: ${{ steps.summarize.outputs.stale-count }}
+  uninspected-count:
+    description: Number of formula cells skipped because inspect-limit was lower than formula-count.
+    value: ${{ steps.summarize.outputs.uninspected-count }}
   suggested-reads:
     description: Comma-separated list of suggested formula cells to read in a recalculation proof.
     value: ${{ steps.summarize.outputs.suggested-reads }}
@@ -73,10 +76,12 @@ runs:
         const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
         const formulaCount = Number(report.formulaCellCount ?? 0);
         const staleCount = Number(report.staleCachedFormulaCount ?? 0);
+        const uninspectedCount = Number(report.uninspectedFormulaCellCount ?? 0);
         const suggestedReads = Array.isArray(report.suggestedReads) ? report.suggestedReads.join(",") : "";
 
         fs.appendFileSync(process.env.GITHUB_OUTPUT, `formula-count=${formulaCount}\n`);
         fs.appendFileSync(process.env.GITHUB_OUTPUT, `stale-count=${staleCount}\n`);
+        fs.appendFileSync(process.env.GITHUB_OUTPUT, `uninspected-count=${uninspectedCount}\n`);
         fs.appendFileSync(process.env.GITHUB_OUTPUT, `suggested-reads=${suggestedReads}\n`);
 
         fs.appendFileSync(
@@ -86,6 +91,7 @@ runs:
             "",
             `- Formula cells: ${formulaCount}`,
             `- Inspected formula cells: ${Number(report.inspectedFormulaCellCount ?? 0)}`,
+            `- Uninspected formula cells: ${uninspectedCount}`,
             `- Stale cached values: ${staleCount}`,
             suggestedReads ? `- Suggested reads: ${suggestedReads}` : "- Suggested reads: none",
             `- JSON report: ${reportPath}`,

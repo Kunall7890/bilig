@@ -4,13 +4,13 @@ This example is for repositories that keep `.xlsx` fixtures, pricing models, or
 report templates under version control and want CI to catch stale cached formula
 values before tests or services read the wrong number.
 
-The fixture at `fixtures/stale-pricing.xlsx` has one intentionally stale formula
-cache:
+The fixture at `fixtures/stale-pricing.xlsx` has sixty formula cells and one
+intentionally stale formula cache after the old 50-cell inspection cutoff:
 
-- `Sheet1!A2` is `2`.
-- `Sheet1!B2` contains `=A2*10`.
-- The saved cached value for `Sheet1!B2` is `999`, but the recalculated value is
-  `20`.
+- `Sheet1!A61` is `60`.
+- `Sheet1!B61` contains `=A61*10`.
+- The saved cached value for `Sheet1!B61` is `999`, but the recalculated value is
+  `600`.
 
 Run the same diagnostic locally:
 
@@ -24,9 +24,11 @@ Expected output shape is committed at
 
 ```json
 {
-  "formulaCellCount": 1,
+  "formulaCellCount": 60,
+  "inspectedFormulaCellCount": 60,
+  "uninspectedFormulaCellCount": 0,
   "staleCachedFormulaCount": 1,
-  "suggestedReads": ["Sheet1!B2"],
+  "suggestedReads": ["Sheet1!B2", "...", "Sheet1!B61"],
   "commandSucceeded": true,
   "inspectionCompleted": true
 }
@@ -60,7 +62,7 @@ matter to your service:
 ```sh
 npm exec --package @bilig/xlsx-formula-recalc@latest -- \
   xlsx-recalc fixtures/stale-pricing.xlsx \
-  --read Sheet1!B2 \
+  --read Sheet1!B61 \
   --out fixtures/stale-pricing.recalculated.xlsx \
   --json
 ```

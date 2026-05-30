@@ -127,8 +127,10 @@ yet, inspect it first without writing an output file:
 npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json
 ```
 
-That returns formula cells, stale cached values, and suggested `--read` targets
-so the next command can prove the cells your service actually depends on.
+That checks every formula by default, reports any skipped formulas as
+`uninspectedFormulaCellCount`, returns stale cached values, and suggests
+`--read` targets so the next command can prove the cells your service actually
+depends on.
 
 To run that check in CI, use the
 [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) or

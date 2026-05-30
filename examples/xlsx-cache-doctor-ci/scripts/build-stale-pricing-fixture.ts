@@ -9,11 +9,13 @@ import { WorkPaper, exportXlsx } from '../../../packages/xlsx-formula-recalc/dis
 const exampleDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const outputPath = resolve(exampleDir, 'fixtures/stale-pricing.xlsx')
 
+const rows: Array<[number | string, number | string]> = [['Input', 'Output']]
+for (let row = 2; row <= 61; row += 1) {
+  rows.push([row - 1, `=A${row}*10`])
+}
+
 const workbook = WorkPaper.buildFromSheets({
-  Sheet1: [
-    ['Input', 'Output'],
-    [2, '=A2*10'],
-  ],
+  Sheet1: rows,
 })
 
 mkdirSync(dirname(outputPath), { recursive: true })
@@ -24,8 +26,8 @@ try {
       replaceWorksheetCellXml(
         exportXlsx(workbook.exportSnapshot()),
         'xl/worksheets/sheet1.xml',
-        'B2',
-        '<c r="B2"><f>A2*10</f><v>999</v></c>',
+        'B61',
+        '<c r="B61"><f>A61*10</f><v>999</v></c>',
       ),
     ),
   )

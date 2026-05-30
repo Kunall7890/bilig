@@ -46,7 +46,10 @@ npx --package xlsx-formula-recalc xlsx-cache-doctor workbook.xlsx --json
 ```
 
 The inspection output includes `formulaCellCount`, `staleCachedFormulaCount`,
-`suggestedReads`, and a `nextStep.command` for the recalculation proof.
+`suggestedReads`, and a `nextStep.command` for the recalculation proof. Default
+inspection checks every formula. If a workflow sets `--inspect-limit`, require
+`uninspectedFormulaCellCount: 0` before treating the report as complete
+coverage.
 
 ## Real Workbook
 

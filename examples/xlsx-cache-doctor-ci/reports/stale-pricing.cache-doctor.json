@@ -4,20 +4,673 @@
   "edits": 0,
   "externalWorkbooks": 0,
   "sheetNames": ["Sheet1"],
-  "formulaCellCount": 1,
-  "inspectedFormulaCellCount": 1,
+  "formulaCellCount": 60,
+  "inspectedFormulaCellCount": 60,
+  "uninspectedFormulaCellCount": 0,
+  "inspectionLimit": "all",
   "staleCachedFormulaCount": 1,
-  "suggestedReads": ["Sheet1!B2"],
+  "suggestedReads": [
+    "Sheet1!B2",
+    "Sheet1!B3",
+    "Sheet1!B4",
+    "Sheet1!B5",
+    "Sheet1!B6",
+    "Sheet1!B7",
+    "Sheet1!B8",
+    "Sheet1!B9",
+    "Sheet1!B10",
+    "Sheet1!B11",
+    "Sheet1!B12",
+    "Sheet1!B13",
+    "Sheet1!B14",
+    "Sheet1!B15",
+    "Sheet1!B16",
+    "Sheet1!B17",
+    "Sheet1!B18",
+    "Sheet1!B19",
+    "Sheet1!B20",
+    "Sheet1!B21",
+    "Sheet1!B22",
+    "Sheet1!B23",
+    "Sheet1!B24",
+    "Sheet1!B25",
+    "Sheet1!B26",
+    "Sheet1!B27",
+    "Sheet1!B28",
+    "Sheet1!B29",
+    "Sheet1!B30",
+    "Sheet1!B31",
+    "Sheet1!B32",
+    "Sheet1!B33",
+    "Sheet1!B34",
+    "Sheet1!B35",
+    "Sheet1!B36",
+    "Sheet1!B37",
+    "Sheet1!B38",
+    "Sheet1!B39",
+    "Sheet1!B40",
+    "Sheet1!B41",
+    "Sheet1!B42",
+    "Sheet1!B43",
+    "Sheet1!B44",
+    "Sheet1!B45",
+    "Sheet1!B46",
+    "Sheet1!B47",
+    "Sheet1!B48",
+    "Sheet1!B49",
+    "Sheet1!B50",
+    "Sheet1!B51",
+    "Sheet1!B52",
+    "Sheet1!B53",
+    "Sheet1!B54",
+    "Sheet1!B55",
+    "Sheet1!B56",
+    "Sheet1!B57",
+    "Sheet1!B58",
+    "Sheet1!B59",
+    "Sheet1!B60",
+    "Sheet1!B61"
+  ],
   "formulas": [
     {
       "target": "Sheet1!B2",
       "formula": "=A2*10",
-      "cachedValue": 999,
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 10
+      },
+      "literalRecalculatedValue": 10,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B3",
+      "formula": "=A3*10",
       "recalculatedValue": {
         "tag": 1,
         "value": 20
       },
       "literalRecalculatedValue": 20,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B4",
+      "formula": "=A4*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 30
+      },
+      "literalRecalculatedValue": 30,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B5",
+      "formula": "=A5*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 40
+      },
+      "literalRecalculatedValue": 40,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B6",
+      "formula": "=A6*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 50
+      },
+      "literalRecalculatedValue": 50,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B7",
+      "formula": "=A7*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 60
+      },
+      "literalRecalculatedValue": 60,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B8",
+      "formula": "=A8*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 70
+      },
+      "literalRecalculatedValue": 70,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B9",
+      "formula": "=A9*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 80
+      },
+      "literalRecalculatedValue": 80,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B10",
+      "formula": "=A10*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 90
+      },
+      "literalRecalculatedValue": 90,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B11",
+      "formula": "=A11*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 100
+      },
+      "literalRecalculatedValue": 100,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B12",
+      "formula": "=A12*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 110
+      },
+      "literalRecalculatedValue": 110,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B13",
+      "formula": "=A13*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 120
+      },
+      "literalRecalculatedValue": 120,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B14",
+      "formula": "=A14*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 130
+      },
+      "literalRecalculatedValue": 130,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B15",
+      "formula": "=A15*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 140
+      },
+      "literalRecalculatedValue": 140,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B16",
+      "formula": "=A16*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 150
+      },
+      "literalRecalculatedValue": 150,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B17",
+      "formula": "=A17*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 160
+      },
+      "literalRecalculatedValue": 160,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B18",
+      "formula": "=A18*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 170
+      },
+      "literalRecalculatedValue": 170,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B19",
+      "formula": "=A19*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 180
+      },
+      "literalRecalculatedValue": 180,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B20",
+      "formula": "=A20*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 190
+      },
+      "literalRecalculatedValue": 190,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B21",
+      "formula": "=A21*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 200
+      },
+      "literalRecalculatedValue": 200,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B22",
+      "formula": "=A22*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 210
+      },
+      "literalRecalculatedValue": 210,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B23",
+      "formula": "=A23*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 220
+      },
+      "literalRecalculatedValue": 220,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B24",
+      "formula": "=A24*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 230
+      },
+      "literalRecalculatedValue": 230,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B25",
+      "formula": "=A25*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 240
+      },
+      "literalRecalculatedValue": 240,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B26",
+      "formula": "=A26*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 250
+      },
+      "literalRecalculatedValue": 250,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B27",
+      "formula": "=A27*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 260
+      },
+      "literalRecalculatedValue": 260,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B28",
+      "formula": "=A28*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 270
+      },
+      "literalRecalculatedValue": 270,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B29",
+      "formula": "=A29*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 280
+      },
+      "literalRecalculatedValue": 280,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B30",
+      "formula": "=A30*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 290
+      },
+      "literalRecalculatedValue": 290,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B31",
+      "formula": "=A31*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 300
+      },
+      "literalRecalculatedValue": 300,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B32",
+      "formula": "=A32*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 310
+      },
+      "literalRecalculatedValue": 310,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B33",
+      "formula": "=A33*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 320
+      },
+      "literalRecalculatedValue": 320,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B34",
+      "formula": "=A34*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 330
+      },
+      "literalRecalculatedValue": 330,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B35",
+      "formula": "=A35*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 340
+      },
+      "literalRecalculatedValue": 340,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B36",
+      "formula": "=A36*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 350
+      },
+      "literalRecalculatedValue": 350,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B37",
+      "formula": "=A37*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 360
+      },
+      "literalRecalculatedValue": 360,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B38",
+      "formula": "=A38*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 370
+      },
+      "literalRecalculatedValue": 370,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B39",
+      "formula": "=A39*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 380
+      },
+      "literalRecalculatedValue": 380,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B40",
+      "formula": "=A40*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 390
+      },
+      "literalRecalculatedValue": 390,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B41",
+      "formula": "=A41*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 400
+      },
+      "literalRecalculatedValue": 400,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B42",
+      "formula": "=A42*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 410
+      },
+      "literalRecalculatedValue": 410,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B43",
+      "formula": "=A43*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 420
+      },
+      "literalRecalculatedValue": 420,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B44",
+      "formula": "=A44*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 430
+      },
+      "literalRecalculatedValue": 430,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B45",
+      "formula": "=A45*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 440
+      },
+      "literalRecalculatedValue": 440,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B46",
+      "formula": "=A46*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 450
+      },
+      "literalRecalculatedValue": 450,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B47",
+      "formula": "=A47*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 460
+      },
+      "literalRecalculatedValue": 460,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B48",
+      "formula": "=A48*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 470
+      },
+      "literalRecalculatedValue": 470,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B49",
+      "formula": "=A49*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 480
+      },
+      "literalRecalculatedValue": 480,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B50",
+      "formula": "=A50*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 490
+      },
+      "literalRecalculatedValue": 490,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B51",
+      "formula": "=A51*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 500
+      },
+      "literalRecalculatedValue": 500,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B52",
+      "formula": "=A52*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 510
+      },
+      "literalRecalculatedValue": 510,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B53",
+      "formula": "=A53*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 520
+      },
+      "literalRecalculatedValue": 520,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B54",
+      "formula": "=A54*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 530
+      },
+      "literalRecalculatedValue": 530,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B55",
+      "formula": "=A55*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 540
+      },
+      "literalRecalculatedValue": 540,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B56",
+      "formula": "=A56*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 550
+      },
+      "literalRecalculatedValue": 550,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B57",
+      "formula": "=A57*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 560
+      },
+      "literalRecalculatedValue": 560,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B58",
+      "formula": "=A58*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 570
+      },
+      "literalRecalculatedValue": 570,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B59",
+      "formula": "=A59*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 580
+      },
+      "literalRecalculatedValue": 580,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B60",
+      "formula": "=A60*10",
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 590
+      },
+      "literalRecalculatedValue": 590,
+      "staleCachedValue": null
+    },
+    {
+      "target": "Sheet1!B61",
+      "formula": "=A61*10",
+      "cachedValue": 999,
+      "recalculatedValue": {
+        "tag": 1,
+        "value": 600
+      },
+      "literalRecalculatedValue": 600,
       "staleCachedValue": true
     }
   ],
