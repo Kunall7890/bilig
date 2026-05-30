@@ -25,6 +25,10 @@ describe('math builtins', () => {
   it('keeps representative rounding, combinatoric, and bitwise behavior intact', () => {
     expect(getBuiltin('ROUNDUP')?.(num(12.341), num(2))).toEqual(num(12.35))
     expect(getBuiltin('COMBINA')?.(num(4), num(3))).toEqual(num(20))
+    expect(getBuiltin('COMBINA')?.(num(2), num(3))).toEqual(num(4))
+    expect(getBuiltin('COMBINA')?.(num(1), num(3))).toEqual(num(1))
+    expect(getBuiltin('COMBINA')?.(num(0), num(0))).toEqual(num(1))
+    expect(getBuiltin('COMBINA')?.(num(2.9), num(3.9))).toEqual(num(4))
     expect(getBuiltin('MROUND')?.(num(10), num(3))).toEqual(num(9))
     expect(getBuiltin('BITLSHIFT')?.(num(3), num(2))).toEqual(num(12))
   })
@@ -297,7 +301,6 @@ describe('math builtins', () => {
     expect(getBuiltin('COMBINA')?.(num(-1), num(1))).toEqual(numError)
     expect(getBuiltin('COMBINA')?.(num(1), num(-1))).toEqual(numError)
     expect(getBuiltin('COMBINA')?.(num(0), num(1))).toEqual(numError)
-    expect(getBuiltin('COMBINA')?.(num(1), num(2))).toEqual(numError)
     expect(getBuiltin('PERMUT')?.(num(0), num(1))).toEqual(numError)
     expect(getBuiltin('PERMUT')?.(num(3), num(4))).toEqual(numError)
     expect(getBuiltin('PERMUTATIONA')?.(num(0), num(1))).toEqual(numError)

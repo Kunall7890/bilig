@@ -162,9 +162,6 @@ export function tryApplyDepreciationBuiltin(
     if (life == 0.0) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Div0, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    if (life < 0.0) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-    }
     return writeResult(
       base,
       STACK_KIND_SCALAR,

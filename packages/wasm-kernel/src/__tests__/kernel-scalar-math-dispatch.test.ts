@@ -1023,7 +1023,7 @@ describe('wasm kernel scalar math dispatch', () => {
       packed.lengths,
       Uint32Array.from(Array.from({ length: 13 }, (_, index) => cellIndex(1, index, width))),
     )
-    const constants = packConstants([[1, 0], [1, 0], [1, 0], [1, 0], [5], [6], [5, 2], [3, 2], [7, 3], [4, 2], [3, 2], [-3.2], [-3.2]])
+    const constants = packConstants([[1, 0], [1, 0], [1, 0], [1, 0], [5], [6], [5, 2], [2, 3], [7, 3], [4, 2], [3, 2], [-3.2], [-3.2]])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
     kernel.evalBatch(Uint32Array.from(Array.from({ length: 13 }, (_, index) => cellIndex(1, index, width))))
 
@@ -1034,7 +1034,7 @@ describe('wasm kernel scalar math dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(1, 4, width)]).toBe(120)
     expect(kernel.readNumbers()[cellIndex(1, 5, width)]).toBe(48)
     expect(kernel.readNumbers()[cellIndex(1, 6, width)]).toBe(10)
-    expect(kernel.readNumbers()[cellIndex(1, 7, width)]).toBe(6)
+    expect(kernel.readNumbers()[cellIndex(1, 7, width)]).toBe(4)
     expect(kernel.readNumbers()[cellIndex(1, 8, width)]).toBe(2)
     expect(kernel.readNumbers()[cellIndex(1, 9, width)]).toBe(12)
     expect(kernel.readNumbers()[cellIndex(1, 10, width)]).toBe(9)
@@ -1093,7 +1093,6 @@ describe('wasm kernel scalar math dispatch', () => {
       [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Combina, 2), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Combina, 2), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Combina, 2), encodeRet()],
-      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Combina, 2), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Permut, 2), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Permut, 2), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Permutationa, 2), encodeRet()],
@@ -1103,13 +1102,13 @@ describe('wasm kernel scalar math dispatch', () => {
       packed.programs,
       packed.offsets,
       packed.lengths,
-      Uint32Array.from(Array.from({ length: 12 }, (_, index) => cellIndex(1, index, width))),
+      Uint32Array.from(Array.from({ length: 11 }, (_, index) => cellIndex(1, index, width))),
     )
-    const constants = packConstants([[-1], [-1], [-1, 0], [2, 3], [-1, 1], [1, -1], [0, 1], [1, 2], [0, 1], [3, 4], [0, 1], [-1, 1]])
+    const constants = packConstants([[-1], [-1], [-1, 0], [2, 3], [-1, 1], [1, -1], [0, 1], [0, 1], [3, 4], [0, 1], [-1, 1]])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
-    kernel.evalBatch(Uint32Array.from(Array.from({ length: 12 }, (_, index) => cellIndex(1, index, width))))
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 11 }, (_, index) => cellIndex(1, index, width))))
 
-    for (let index = 0; index < 12; index += 1) {
+    for (let index = 0; index < 11; index += 1) {
       expect(kernel.readTags()[cellIndex(1, index, width)]).toBe(ValueTag.Error)
       expect(kernel.readErrors()[cellIndex(1, index, width)]).toBe(ErrorCode.Num)
     }

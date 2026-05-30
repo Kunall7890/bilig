@@ -308,9 +308,6 @@ export function createFinancialBuiltins({
       if (life === 0) {
         return div0Error()
       }
-      if (life < 0) {
-        return valueError()
-      }
       return numberResult((cost - salvage) / life)
     },
     SYD: (costArg, salvageArg, lifeArg, periodArg) => {

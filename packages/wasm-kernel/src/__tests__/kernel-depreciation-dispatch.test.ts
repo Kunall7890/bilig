@@ -275,11 +275,11 @@ describe('wasm kernel depreciation dispatch', () => {
 
   it('uses documented DB, DDB, SLN, and SYD domain errors on the wasm path', async () => {
     const kernel = await createKernel()
-    const width = 8
-    kernel.init(16, 10, 3, 2, 1)
+    const width = 10
+    kernel.init(32, 10, 3, 2, 1)
     const strings = packStrings(['bad'])
     kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
-    kernel.writeCells(new Uint8Array(16), new Float64Array(16), new Uint32Array(16), new Uint16Array(16))
+    kernel.writeCells(new Uint8Array(32), new Float64Array(32), new Uint32Array(32), new Uint16Array(32))
 
     const programs = packPrograms([
       [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodePushNumber(3), encodeCall(BuiltinId.Db, 4), encodeRet()],
@@ -303,11 +303,12 @@ describe('wasm kernel depreciation dispatch', () => {
       ],
       [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodePushNumber(3), encodeCall(BuiltinId.Ddb, 4), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Sln, 3), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Sln, 3), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodePushNumber(3), encodeCall(BuiltinId.Syd, 4), encodeRet()],
       [encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodePushNumber(3), encodeCall(BuiltinId.Syd, 4), encodeRet()],
       [encodePushString(0), encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Syd, 4), encodeRet()],
     ])
-    const targetCells = Uint32Array.from(Array.from({ length: 8 }, (_, index) => cellIndex(1, index, width)))
+    const targetCells = Uint32Array.from(Array.from({ length: 9 }, (_, index) => cellIndex(1, index, width)))
     kernel.uploadPrograms(programs.programs, programs.offsets, programs.lengths, targetCells)
     const constants = packConstants([
       [10000, 1000, 5, 6],
@@ -315,6 +316,7 @@ describe('wasm kernel depreciation dispatch', () => {
       [10000, 1000, 5, 1, 13],
       [2400, 300, 10, 11],
       [10000, 1000, 0],
+      [10000, 1000, -1],
       [10000, 1000, 9, 10],
       [10000, 1000, 9, 0],
       [1000, 9, 1],
@@ -328,8 +330,9 @@ describe('wasm kernel depreciation dispatch', () => {
     expectErrorCell(kernel, cellIndex(1, 2, width), ErrorCode.Num)
     expectErrorCell(kernel, cellIndex(1, 3, width), ErrorCode.Num)
     expectErrorCell(kernel, cellIndex(1, 4, width), ErrorCode.Div0)
-    expectErrorCell(kernel, cellIndex(1, 5, width), ErrorCode.Num)
+    expectNumberCell(kernel, cellIndex(1, 5, width), -9000)
     expectErrorCell(kernel, cellIndex(1, 6, width), ErrorCode.Num)
-    expectErrorCell(kernel, cellIndex(1, 7, width), ErrorCode.Value)
+    expectErrorCell(kernel, cellIndex(1, 7, width), ErrorCode.Num)
+    expectErrorCell(kernel, cellIndex(1, 8, width), ErrorCode.Value)
   })
 })

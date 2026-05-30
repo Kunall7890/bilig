@@ -672,7 +672,7 @@ export function tryApplyScalarMathBuiltin(
 
     const numberValue = Math.trunc(left)
     const chosenValue = Math.trunc(right)
-    if (numberValue < 0.0 || chosenValue < 0.0 || (builtinId == BuiltinId.Combina && numberValue < chosenValue)) {
+    if (numberValue < 0.0 || chosenValue < 0.0 || (builtinId == BuiltinId.Combina && numberValue == 0.0 && chosenValue > 0.0)) {
       return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (builtinId == BuiltinId.Combin && chosenValue > numberValue) {

@@ -4683,7 +4683,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       DB(
@@ -4858,8 +4858,14 @@ describe('formula builtins', () => {
     })
     expect(SLN({ tag: ValueTag.Number, value: 10000 }, { tag: ValueTag.Number, value: 1000 }, { tag: ValueTag.Number, value: 0 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Div0,
     })
+    expect(SLN({ tag: ValueTag.Number, value: 10000 }, { tag: ValueTag.Number, value: 1000 }, { tag: ValueTag.Number, value: -1 })).toEqual(
+      {
+        tag: ValueTag.Number,
+        value: -9000,
+      },
+    )
     expect(
       SYD(
         { tag: ValueTag.Number, value: 10000 },
@@ -4869,7 +4875,7 @@ describe('formula builtins', () => {
       ),
     ).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(
       DISC(

@@ -38,6 +38,7 @@ describe('depreciation formula domain errors', () => {
     expect(DDB(num(2400), num(300), num(10), num(11))).toEqual(numError)
 
     expect(SLN(num(10000), num(1000), num(0))).toEqual(div0Error)
+    expect(SLN(num(10000), num(1000), num(-1))).toEqual(num(-9000))
     expect(SLN(text('bad'), num(1000), num(9))).toEqual(valueError)
 
     expect(SYD(num(10000), num(1000), num(9), num(10))).toEqual(numError)

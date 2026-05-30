@@ -694,7 +694,10 @@ export function createMathBuiltins({
       }
       const numberValue = Math.trunc(numberRaw)
       const chosenValue = Math.trunc(chosenRaw)
-      if (!Number.isFinite(numberRaw) || !Number.isFinite(chosenRaw) || numberValue < 0 || chosenValue < 0 || numberValue < chosenValue) {
+      if (!Number.isFinite(numberRaw) || !Number.isFinite(chosenRaw) || numberValue < 0 || chosenValue < 0) {
+        return numError()
+      }
+      if (numberValue === 0 && chosenValue > 0) {
         return numError()
       }
       if (chosenValue === 0) {
