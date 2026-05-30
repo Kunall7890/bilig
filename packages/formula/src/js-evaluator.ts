@@ -36,7 +36,6 @@ import {
   matrixFromStackValue,
   normalizeScopeName,
   popArgument,
-  popScalar,
   scalarIntegerArgument,
   stackScalar,
   toArithmeticNumber,
@@ -253,6 +252,20 @@ function evaluateCountblankSpecialCall(rawArgs: readonly StackValue[], argRefs: 
     return stackScalar(numberValue(rawArg.values.filter(isCountblankBlank).length))
   }
   return stackScalar(error(ErrorCode.Value))
+}
+
+function popIfCondition(stack: StackValue[]): CellValue {
+  const value = popArgument(stack)
+  if (value.kind === 'scalar') {
+    return value.value
+  }
+  if (value.kind === 'omitted') {
+    return emptyValue()
+  }
+  if (value.kind === 'lambda') {
+    return error(ErrorCode.Value)
+  }
+  return value.values[0] ?? emptyValue()
 }
 
 function scalarBuiltinRangeValues(callee: string, rawArg: StackValue): readonly CellValue[] {
@@ -714,7 +727,7 @@ function executePlan(
         break
       }
       case 'jump-if-false': {
-        const value = popScalar(stack)
+        const value = popIfCondition(stack)
         if (value.tag === ValueTag.Error) {
           return stackScalar(value)
         }

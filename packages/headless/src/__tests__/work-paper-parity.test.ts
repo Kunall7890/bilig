@@ -464,7 +464,7 @@ describe('WorkPaper parity surface', () => {
     expect(workbook.calculateScalarFormula('=MAX("2","3")')).toEqual({ tag: ValueTag.Number, value: 3 })
     expect(workbook.calculateScalarFormula('=COUNT("2","bad")')).toEqual({ tag: ValueTag.Number, value: 1 })
     expect(workbook.calculateScalarFormula('=AVERAGE("2","4")')).toEqual({ tag: ValueTag.Number, value: 3 })
-    expect(workbook.calculateScalarFormula('=AVERAGE("",4)')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(workbook.calculateScalarFormula('=AVERAGE("",4)')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(workbook.calculateScalarFormula('=SUMSQ("2",3)')).toEqual({ tag: ValueTag.Number, value: 13 })
 
     expect(workbook.calculateScalarFormula('=COUNT(A1)', { A1: '2' })).toEqual({ tag: ValueTag.Number, value: 0 })
@@ -487,8 +487,8 @@ describe('WorkPaper parity surface', () => {
 
     expect(workbook.calculateScalarFormula('=IF("2",1,0)')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(workbook.calculateScalarFormula('=IF(A1,1,0)', { A1: '2' })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
-    expect(workbook.calculateScalarFormula('=IF("",1,0)')).toEqual({ tag: ValueTag.Number, value: 0 })
-    expect(workbook.calculateScalarFormula('=IF(,1,2)')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(workbook.calculateScalarFormula('=IF("",1,0)')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(workbook.calculateScalarFormula('=IF(,1,2)')).toEqual({ tag: ValueTag.Number, value: 2 })
     expect(workbook.calculateScalarFormula('=IF(TRUE,,2)')).toEqual({ tag: ValueTag.Number, value: 0 })
     expect(workbook.calculateScalarFormula('=IF(FALSE,1,)')).toEqual({ tag: ValueTag.Number, value: 0 })
     expect(workbook.calculateScalarFormula('=IF(FALSE,1)')).toEqual({ tag: ValueTag.Boolean, value: false })

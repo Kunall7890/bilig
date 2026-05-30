@@ -312,7 +312,7 @@ function compileDirectScalarEvaluator(node: FormulaNode, dateSystem: '1900' | '1
     case 'CallExpr': {
       const callee = normalizeBuiltinLookupName(node.callee)
       if (callee === 'IF') {
-        if (node.args.length < 2 || node.args[0]?.kind === 'OmittedArgument') {
+        if (node.args.length < 2) {
           return () => errorValue(ErrorCode.Value)
         }
         const condition = compileDirectScalarEvaluator(node.args[0]!, dateSystem)
