@@ -6,15 +6,15 @@ inputs:
   workbook:
     description: Path to one XLSX workbook to inspect. Use workbooks for repo-scale scans.
     required: false
-    default: ""
+    default: ''
   workbooks:
     description: Glob, comma list, or newline list of XLSX workbooks to inspect.
     required: false
-    default: ""
+    default: ''
   changed-files-only:
     description: Only inspect matched XLSX files changed in the pull request or current diff.
     required: false
-    default: "false"
+    default: 'false'
   package-version:
     description: npm version or dist-tag for @bilig/xlsx-formula-recalc.
     required: false
@@ -26,11 +26,11 @@ inputs:
   json-output:
     description: Optional path for the JSON report. Defaults to the runner temp directory.
     required: false
-    default: ""
+    default: ''
   fail-on-stale:
     description: Fail the workflow when stale cached formula values are detected.
     required: false
-    default: "false"
+    default: 'false'
 
 outputs:
   json:
@@ -49,7 +49,7 @@ outputs:
     description: Number of formula cells skipped because inspect-limit was lower than formula-count across inspected workbooks.
     value: ${{ steps.inspect.outputs.uninspected-count }}
   suggested-reads:
-    description: Comma-separated list of workbook-qualified formula cells to read in a recalculation proof.
+    description: Comma-separated workbook-qualified formula cells to read in a recalculation proof, capped at 25. The JSON report keeps the full list.
     value: ${{ steps.inspect.outputs.suggested-reads }}
 
 runs:

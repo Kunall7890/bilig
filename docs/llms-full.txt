@@ -1527,6 +1527,17 @@ Marketplace-style discovery. The subdirectory action remains available as
 `proompteng/bilig/actions/xlsx-cache-doctor@v1` for users who already copied
 that path.
 
+For stricter supply-chain policy, pin the action to a full commit SHA in your
+workflow after you test the example:
+
+```yaml
+- uses: proompteng/bilig@<full-commit-sha>
+```
+
+Keep `permissions: contents: read` unless your workflow adds its own write
+steps. The cache doctor itself does not need secrets, pull-request comments, or
+a write token.
+
 ## Inputs
 
 | Input                | Default | Use                                                                              |
@@ -1541,14 +1552,14 @@ that path.
 
 ## Outputs
 
-| Output              | Meaning                                                                       |
-| ------------------- | ----------------------------------------------------------------------------- |
-| `json`              | Path to the JSON report written by `xlsx-cache-doctor`.                       |
-| `workbook-count`    | Number of matched XLSX workbooks inspected.                                   |
-| `formula-count`     | Total formula cells found across inspected workbooks.                         |
-| `stale-count`       | Inspected formula cells where cached and recalculated values differ.          |
-| `uninspected-count` | Formula cells skipped because `inspect-limit` was lower than `formula-count`. |
-| `suggested-reads`   | Comma-separated workbook-qualified cells for the follow-up proof.             |
+| Output              | Meaning                                                                                         |
+| ------------------- | ----------------------------------------------------------------------------------------------- |
+| `json`              | Path to the JSON report written by `xlsx-cache-doctor`.                                         |
+| `workbook-count`    | Number of matched XLSX workbooks inspected.                                                     |
+| `formula-count`     | Total formula cells found across inspected workbooks.                                           |
+| `stale-count`       | Inspected formula cells where cached and recalculated values differ.                            |
+| `uninspected-count` | Formula cells skipped because `inspect-limit` was lower than `formula-count`.                   |
+| `suggested-reads`   | First 25 workbook-qualified cells for the follow-up proof; the JSON report keeps the full list. |
 
 ## Follow-Up Proof
 

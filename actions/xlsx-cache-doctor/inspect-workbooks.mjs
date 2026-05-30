@@ -20,7 +20,7 @@ writeGithubOutput('workbook-count', String(aggregate.workbookCount))
 writeGithubOutput('formula-count', String(aggregate.formulaCellCount))
 writeGithubOutput('stale-count', String(aggregate.staleCachedFormulaCount))
 writeGithubOutput('uninspected-count', String(aggregate.uninspectedFormulaCellCount))
-writeGithubOutput('suggested-reads', aggregate.suggestedReads.join(','))
+writeGithubOutput('suggested-reads', aggregate.suggestedReads.slice(0, 25).join(','))
 writeStepSummary(aggregate)
 
 if (failOnStale && aggregate.staleCachedFormulaCount > 0) {
