@@ -3,9 +3,32 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-import { buildVitestArgBatches, buildVitestArgs, isBroadCorpusVitestRun, readVitestBatchCooldownMs } from '../run-vitest.ts'
+import {
+  buildVitestArgBatches,
+  buildVitestArgs,
+  isBroadCorpusVitestRun,
+  readVitestBatchCooldownMs,
+  resolveVitestBin,
+} from '../run-vitest.ts'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function readPackageScripts(packageJsonPath: string): Record<string, string> {
+  const manifest: unknown = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
+  if (!isRecord(manifest) || !isRecord(manifest.scripts)) {
+    throw new Error(`${packageJsonPath} must define package scripts`)
+  }
+  for (const [name, script] of Object.entries(manifest.scripts)) {
+    if (typeof script !== 'string') {
+      throw new Error(`${packageJsonPath} script ${name} must be a string`)
+    }
+  }
+  return manifest.scripts
+}
 
 describe('run-vitest wrapper arguments', () => {
   it('bounds Vitest workers in CI by default', () => {
@@ -210,6 +233,11 @@ describe('run-vitest wrapper arguments', () => {
     expect(readVitestBatchCooldownMs({ BILIG_CI_PROFILE: 'fast', BILIG_VITEST_BATCH_COOLDOWN_MS: '2500ms' })).toBe(1000)
   })
 
+  it('resolves the Vitest binary from the workspace root', () => {
+    expect(resolveVitestBin(repoRoot, 'darwin')).toBe(resolve(repoRoot, 'node_modules/.bin/vitest'))
+    expect(resolveVitestBin(repoRoot, 'win32')).toBe(resolve(repoRoot, 'node_modules/.bin/vitest.cmd'))
+  })
+
   it('classifies the public workbook corpus correctness lane as broad', () => {
     expect(
       isBroadCorpusVitestRun([
@@ -238,12 +266,18 @@ describe('run-vitest wrapper arguments', () => {
 
   it('runs package Vitest wrappers through tsx instead of bun', () => {
     const packageJson = readFileSync(resolve(repoRoot, 'package.json'), 'utf8')
+    const headlessPackageScripts = readPackageScripts(resolve(repoRoot, 'packages/headless/package.json'))
+    const xlsxFormulaRecalcPackageScripts = readPackageScripts(resolve(repoRoot, 'packages/xlsx-formula-recalc/package.json'))
     const runVitestSource = readFileSync(resolve(repoRoot, 'scripts/run-vitest.ts'), 'utf8')
 
     expect(packageJson).toContain('"test": "tsx scripts/run-vitest.ts --run"')
     expect(packageJson).toContain('"coverage": "tsx scripts/run-vitest.ts --run --coverage')
     expect(packageJson).toContain('"test:watch": "tsx scripts/run-vitest.ts"')
     expect(packageJson).not.toContain('bun scripts/run-vitest.ts')
+    expect(headlessPackageScripts['test:excel-oracle']).toContain('tsx ../../scripts/run-vitest.ts --root ../.. --run')
+    expect(headlessPackageScripts['test:excel-oracle']).not.toContain('vitest run --root ../..')
+    expect(xlsxFormulaRecalcPackageScripts['test:excel-oracle']).toContain('tsx ../../scripts/run-vitest.ts --root ../.. --run')
+    expect(xlsxFormulaRecalcPackageScripts['test:excel-oracle']).not.toContain('vitest run --root ../..')
     expect(runVitestSource).toContain('process.stderr.write(`${error instanceof Error ? error.message : String(error)}\\n`)')
   })
 })

@@ -2,7 +2,7 @@
 
 import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { assertLocalCiResourceGuardAllowsRun } from './ci-local-resource-guard.ts'
 import { ensureWasmKernelArtifact } from './ensure-wasm-kernel.js'
@@ -26,6 +26,10 @@ export function buildVitestArgs(args: readonly string[], env: NodeJS.ProcessEnv 
 
 export function buildVitestArgBatches(args: readonly string[], env: NodeJS.ProcessEnv = process.env): string[][] {
   return splitVitestRunArgsForCi(args, env).map((batchArgs) => buildVitestArgs(batchArgs, env))
+}
+
+export function resolveVitestBin(rootDir: string, platform: NodeJS.Platform = process.platform): string {
+  return join(rootDir, 'node_modules', '.bin', platform === 'win32' ? 'vitest.cmd' : 'vitest')
 }
 
 export function readVitestBatchCooldownMs(env: NodeJS.ProcessEnv = process.env): number {
@@ -153,7 +157,7 @@ function main(): never {
     assertLocalCiResourceGuardAllowsRun(rootDir, process.env, { runLabel: 'public workbook corpus Vitest lane' })
   }
 
-  const vitestBin = process.platform === 'win32' ? 'node_modules\\.bin\\vitest.cmd' : 'node_modules/.bin/vitest'
+  const vitestBin = resolveVitestBin(rootDir)
   ensureWasmKernelArtifact()
   const batches = buildVitestArgBatches(requestedArgs)
   const batchCooldownMs = readVitestBatchCooldownMs()
