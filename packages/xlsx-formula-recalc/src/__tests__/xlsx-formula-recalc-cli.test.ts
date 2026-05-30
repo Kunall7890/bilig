@@ -42,6 +42,30 @@ describe('xlsx-recalc CLI', () => {
     }
   })
 
+  it('keeps human CLI output focused on recalculation results', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-human-'))
+    try {
+      const outputPath = join(tempDir, 'demo.recalculated.xlsx')
+      let stdout = ''
+
+      const exitCode = runXlsxFormulaRecalcCli(['--demo', '--out', outputPath, '--read', 'Summary!B2'], {
+        stdout: (text) => {
+          stdout += text
+        },
+      })
+
+      expect(exitCode).toBe(0)
+      expect(existsSync(outputPath)).toBe(true)
+      expect(stdout).toContain('Recalculated generated demo workbook ->')
+      expect(stdout).toContain('Summary!B2:')
+      expect(stdout).not.toContain('star or bookmark')
+      expect(stdout).not.toContain('adoption blocker')
+      expect(stdout).not.toContain('Watch formula')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
   it('inspects workbook formula cells and stale cached formula values before writing an output file', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-inspect-'))
     try {

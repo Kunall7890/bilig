@@ -40,9 +40,6 @@ export interface XlsxFormulaRecalcCliContext {
   readonly stderr?: (text: string) => void
 }
 
-const repoStarUrl = 'https://github.com/proompteng/bilig/stargazers'
-const releaseWatchUrl = 'https://github.com/proompteng/bilig/subscription'
-const adoptionBlockerUrl = 'https://github.com/proompteng/bilig/discussions/new?category=general'
 const defaultInspectFormulaLimit = 'all'
 const cacheDoctorCommandName = 'xlsx-cache-doctor'
 const printGithubActionOption = '--print-github-action'
@@ -109,9 +106,6 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
       if (result.warnings.length > 0) {
         writeStdout(`Warnings: ${result.warnings.length.toString()}\n`)
       }
-      writeStdout(`If this fixed your stale XLSX formula path, star or bookmark Bilig: ${repoStarUrl}\n`)
-      writeStdout(`If it almost worked, open the concrete workbook blocker: ${adoptionBlockerUrl}\n`)
-      writeStdout(`Watch formula and compatibility releases: ${releaseWatchUrl}\n`)
     }
     return 0
   } catch (error) {
@@ -437,7 +431,7 @@ function printInspectionSummary(args: PrintInspectionSummaryInput): void {
   if (summary.warnings.length > 0) {
     args.writeStdout(`Warnings: ${summary.warnings.length.toString()}\n`)
   }
-  args.writeStdout(`If the important formula is missing or wrong, open the reduced workbook blocker: ${adoptionBlockerUrl}\n`)
+  args.writeStdout('If the important formula is missing, rerun with --inspect-limit all and --read <Sheet!Cell>.\n')
 }
 
 interface FormulaInspectionCell {
