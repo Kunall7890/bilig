@@ -4,7 +4,7 @@
   "protocolVersion": "2025-11-25",
   "serverInfo": {
     "name": "Bilig WorkPaper",
-    "version": "0.130.3",
+    "version": "0.130.4",
     "description": "Formula-backed WorkPaper MCP tools for workbook reads, input edits, recalculation, formula validation, and JSON persistence."
   },
   "repository": {

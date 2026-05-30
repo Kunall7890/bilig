@@ -4,6 +4,20 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.130.4
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.130.3
+- Manual override: no
+
+## Fixes
+- fix(formula): align text coercion edge cases (6e587448)
+- fix(formula): align choose and radix edge cases (6420e072)
+- fix(formula): align omitted IF condition parity (17b62d1b)
+
+## Internal runtime changes
+- docs(site): sharpen workpaper adoption path (4a92203b)
+
 ## 0.130.3
 
 - Release type: patch
