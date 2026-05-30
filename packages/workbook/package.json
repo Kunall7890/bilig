@@ -1,6 +1,6 @@
 {
   "name": "@bilig/workbook",
-  "version": "0.125.0",
+  "version": "0.126.0",
   "description": "Agent-first workbook model API and transport-neutral workbook operation language for bilig.",
   "keywords": [
     "agent-first",

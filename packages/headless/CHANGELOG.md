@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.126.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.124.1
+- Manual override: no
+
+## Features
+- feat(xlsx): scale cache doctor action to workbook globs (b1cf0324)
+
+## Internal runtime changes
+- chore(release): runtime packages v0.125.0 (12abb604)
+- docs(actions): make cache doctor workflow report-first (0042bca1)
+
 ## 0.125.0
 
 - Release type: minor
