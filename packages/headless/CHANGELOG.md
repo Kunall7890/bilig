@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.127.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.126.0
+- Manual override: no
+
+## Features
+- feat(action): publish cache doctor markdown report (5fa1bb9a)
+
+## Internal runtime changes
+- docs(agent): clean WorkPaper discovery copy (c00151bf)
+
 ## 0.126.0
 
 - Release type: minor
