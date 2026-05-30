@@ -1,2 +1,8 @@
 include:
   - .well-known
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"

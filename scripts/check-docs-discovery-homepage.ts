@@ -88,7 +88,7 @@ export function requireHomepageDiscovery(index: string, siteCss: string, product
       '<meta name="twitter:image" content="https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-15-2" />',
       '<meta name="twitter:image:alt" content="bilig XLSX cache doctor formula readback preview" />',
       '<link rel="stylesheet" href="./assets/fonts.css?v=2026-05-14-1" />',
-      '<link rel="stylesheet" href="./assets/site.css?v=2026-05-15-1" />',
+      '<link rel="stylesheet" href="./assets/site.css?v=2026-05-15-2" />',
       '<link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-15-3" />',
       '<script type="module" src="./assets/hero-scene.js?v=2026-05-15-1"></script>',
       '<p class="eyebrow">XLSX cache doctor for Node and CI</p>',
@@ -206,6 +206,8 @@ export function requireHomepageDiscovery(index: string, siteCss: string, product
       '.proof-metric {\n  display: grid;',
       '.proof-result p {\n  min-width: 0;',
       '.proof-facts',
+      '.page-main',
+      '.markdown-page',
     ],
     'docs/assets/site.css',
   )

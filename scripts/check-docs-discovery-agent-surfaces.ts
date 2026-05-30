@@ -64,8 +64,15 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
 
   const jekyllConfig = await readFile(join(docsRoot, '_config.yml'), 'utf8')
   const openAiAgentsSdkDoc = await readFile(join(docsRoot, 'openai-agents-sdk-workpaper-tool.md'), 'utf8')
+  const jekyllDefaultLayout = await readFile(join(docsRoot, '_layouts/default.html'), 'utf8')
   requireIncludes(jekyllConfig, 'include:', 'docs/_config.yml')
   requireIncludes(jekyllConfig, '  - .well-known', 'docs/_config.yml')
+  requireIncludes(jekyllConfig, 'layout: "default"', 'docs/_config.yml')
+  requireIncludes(jekyllDefaultLayout, '<header class="topbar">', 'docs/_layouts/default.html')
+  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#packages\' | relative_url }}">Start</a>', 'docs/_layouts/default.html')
+  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#install\' | relative_url }}">WorkPaper</a>', 'docs/_layouts/default.html')
+  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#docs\' | relative_url }}">Docs</a>', 'docs/_layouts/default.html')
+  requireIncludes(jekyllDefaultLayout, 'href="https://github.com/proompteng/bilig">GitHub</a>', 'docs/_layouts/default.html')
   if (mcpServerCardMcpJson !== mcpServerCard) {
     throw new Error('docs/.well-known/mcp.json must match docs/.well-known/mcp/server-card.json')
   }
