@@ -151,6 +151,33 @@ describe('same-corpus committed-state proof capture', () => {
     })
   })
 
+  it('resolves Google Sheets indexed fill colors from OOXML committed-state exports', async () => {
+    const committedBytes = xlsxBytesForTargetIndexedFill('WideGrid', 'C5', 'segment-5', 3)
+    const page = mockGoogleSheetsExportPage([committedBytes])
+
+    const proof = await captureSameCorpusCommittedStatePhaseProof({
+      expectedReadback: {
+        ...sameCorpusGoogleReadback('segment-5'),
+        fillColor: '#00ff00',
+      },
+      page: page.page,
+      phase: 'after',
+      product: 'google-sheets',
+      sampleIndex: 0,
+      target: sameCorpusTargetSelection(),
+      timeoutMs: 1_000,
+      pollIntervalMs: 0,
+      workload: 'fill-format-change',
+    })
+
+    expect(page.requestCount()).toBe(1)
+    expect(proof?.readback).toMatchObject({
+      value: 'segment-5',
+      fillColor: '#00ff00',
+      source: 'google-sheets-xlsx-export',
+    })
+  })
+
   it('resolves target fills inherited from OOXML row styles', async () => {
     const committedBytes = xlsxBytesForTargetRowFill('WideGrid', 'C5', 'segment-5', '#00ff00')
     const page = mockGoogleSheetsExportPage([committedBytes])
@@ -453,6 +480,15 @@ function xlsxBytesForTargetThemeFill(sheetName: string, address: string, value: 
   return zipSync(archive)
 }
 
+function xlsxBytesForTargetIndexedFill(sheetName: string, address: string, value: string, colorIndex: number): Uint8Array {
+  const archive = unzipSync(xlsxBytesForTargetValue(sheetName, address, value))
+  const stylesXml = strFromU8(archive['xl/styles.xml'] ?? new Uint8Array())
+  const sheetXml = strFromU8(archive['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+  archive['xl/styles.xml'] = strToU8(addTargetIndexedFillStyle(stylesXml, colorIndex))
+  archive['xl/worksheets/sheet1.xml'] = strToU8(addTargetCellStyle(sheetXml, address, 1))
+  return zipSync(archive)
+}
+
 function xlsxBytesForTargetRowFill(sheetName: string, address: string, value: string, fillColor: string): Uint8Array {
   const archive = unzipSync(xlsxBytesForTargetValue(sheetName, address, value))
   const stylesXml = strFromU8(archive['xl/styles.xml'] ?? new Uint8Array())
@@ -489,6 +525,20 @@ function addTargetThemeFillStyle(stylesXml: string): string {
     .replace(
       /<fills count="2">[\s\S]*?<\/fills>/u,
       '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor theme="4"/><bgColor indexed="64"/></patternFill></fill></fills>',
+    )
+    .replace(
+      /<cellXfs count="1">([\s\S]*?)<\/cellXfs>/u,
+      '<cellXfs count="2">$1<xf numFmtId="0" fontId="0" fillId="2" borderId="0" xfId="0" applyFill="1"/></cellXfs>',
+    )
+}
+
+function addTargetIndexedFillStyle(stylesXml: string, colorIndex: number): string {
+  return stylesXml
+    .replace(
+      /<fills count="2">[\s\S]*?<\/fills>/u,
+      `<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor indexed="${String(
+        colorIndex,
+      )}"/><bgColor indexed="64"/></patternFill></fill></fills>`,
     )
     .replace(
       /<cellXfs count="1">([\s\S]*?)<\/cellXfs>/u,

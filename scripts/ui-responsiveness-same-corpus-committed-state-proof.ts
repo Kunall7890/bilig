@@ -6,6 +6,7 @@ import { performance } from 'node:perf_hooks'
 import { strFromU8, unzipSync } from 'fflate'
 import * as XLSX from 'xlsx'
 
+import { readOoxmlIndexedColor } from './ooxml-indexed-colors.ts'
 import type { SameCorpusMutationTargetSelection } from './ui-responsiveness-same-corpus-mutation-proof-page.ts'
 import type { UiResponsivenessSameCorpusProduct } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 import type { SameCorpusMutationTargetProof, SameCorpusMutationTargetReadback } from './ui-responsiveness-same-corpus-semantic-proof.ts'
@@ -748,6 +749,7 @@ function readOoxmlColorTag(xml: string, tagName: string, themeXml: string | null
   }
   return (
     normalizeXlsxRgb(readXmlAttribute(tag, 'rgb')) ??
+    readOoxmlIndexedColor(readXmlAttribute(tag, 'indexed'), readXmlAttribute(tag, 'tint')) ??
     readOoxmlThemeColor(themeXml, readXmlAttribute(tag, 'theme'), readXmlAttribute(tag, 'tint'))
   )
 }
