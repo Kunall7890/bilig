@@ -106,6 +106,12 @@ The green check runs `proompteng/bilig@v1`, inspects one changed workbook,
 asserts 60 formula cells and 1 stale cached formula value, and uploads the JSON
 report artifact.
 
+The job summary is meant to be the reviewer artifact. It shows workbook count,
+formula count, stale count, the first stale cells with cached and recalculated
+values, and a copy-paste `xlsx-recalc --read ... --json` command for the
+follow-up check. The action also writes GitHub warning annotations for the first
+stale cells so the failure is visible before someone opens the JSON artifact.
+
 The root `proompteng/bilig@v1` action is the canonical install path and is
 published as
 [XLSX Cache Doctor on GitHub Marketplace](https://github.com/marketplace/actions/xlsx-cache-doctor).

@@ -63,6 +63,11 @@ To see the same shape as a live GitHub reviewer, inspect the
 Its green Action run proves 1 workbook, 60 formula cells, and 1 stale cached
 formula value, then uploads the JSON report artifact.
 
+When a stale cache is found, the job summary includes the exact cell, cached
+value, recalculated value, and a follow-up `xlsx-recalc --read ... --json`
+command. The Actions log also gets warning annotations for the first stale
+cells, so reviewers can see the stale value without downloading the artifact.
+
 ## Regenerate The Fixture
 
 The fixture is deliberately tiny. To regenerate it from source:

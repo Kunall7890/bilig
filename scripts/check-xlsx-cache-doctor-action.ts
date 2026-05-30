@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -93,6 +93,91 @@ try {
   rmSync(changedFilesTempDir, { recursive: true, force: true })
 }
 
+const inspectTempDir = mkdtempSync(join(tmpdir(), 'bilig-xlsx-cache-doctor-inspect-'))
+try {
+  const fakeBinDir = join(inspectTempDir, 'bin')
+  mkdirSync(fakeBinDir)
+  const fakeNpmPath = join(fakeBinDir, 'npm')
+  writeFileSync(
+    fakeNpmPath,
+    [
+      '#!/usr/bin/env node',
+      "const commandIndex = process.argv.indexOf('xlsx-cache-doctor')",
+      "const workbook = commandIndex >= 0 ? process.argv[commandIndex + 1] : 'unknown.xlsx'",
+      'const report = {',
+      "  mode: 'file',",
+      '  input: workbook,',
+      '  formulaCellCount: 2,',
+      '  inspectedFormulaCellCount: 2,',
+      '  uninspectedFormulaCellCount: 0,',
+      '  staleCachedFormulaCount: 1,',
+      "  suggestedReads: ['Sheet1!B2', 'Sheet1!B3'],",
+      '  formulas: [',
+      "    { target: 'Sheet1!B2', formula: '=A2*10', literalRecalculatedValue: 20, staleCachedValue: null },",
+      "    { target: 'Sheet1!B3', formula: '=A3*10', cachedValue: 999, literalRecalculatedValue: 30, staleCachedValue: true },",
+      '  ],',
+      '  warnings: [],',
+      '};',
+      'console.log(JSON.stringify(report));',
+      '',
+    ].join('\n'),
+  )
+  chmodSync(fakeNpmPath, 0o755)
+
+  const outputPath = join(inspectTempDir, 'github-output.txt')
+  const summaryPath = join(inspectTempDir, 'summary.md')
+  const reportPath = join(inspectTempDir, 'report.json')
+  const result = spawnSync(process.execPath, [inspectScriptPath], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      PATH: `${fakeBinDir}:${process.env.PATH || ''}`,
+      GITHUB_OUTPUT: outputPath,
+      GITHUB_STEP_SUMMARY: summaryPath,
+      BILIG_WORKBOOKS_JSON: '["fixtures/stale-pricing.xlsx"]',
+      BILIG_PACKAGE_VERSION: 'test',
+      BILIG_INSPECT_LIMIT: 'all',
+      BILIG_JSON_OUTPUT: reportPath,
+      BILIG_FAIL_ON_STALE: 'false',
+    },
+    encoding: 'utf8',
+  })
+  if (result.status !== 0) {
+    throw new Error(`XLSX Cache Doctor inspector smoke failed:\n${result.stdout}\n${result.stderr}`)
+  }
+  if (
+    !result.stdout.includes(
+      '::warning title=Stale cached XLSX formula::fixtures/stale-pricing.xlsx#Sheet1!B3 cached 999 but recalculated 30',
+    )
+  ) {
+    throw new Error(`Expected stale-formula warning annotation in stdout:\n${result.stdout}`)
+  }
+  const output = await readFile(outputPath, 'utf8')
+  if (
+    !output.includes('stale-count=1') ||
+    !output.includes('suggested-reads=fixtures/stale-pricing.xlsx#Sheet1!B2,fixtures/stale-pricing.xlsx#Sheet1!B3')
+  ) {
+    throw new Error(`Unexpected inspector outputs:\n${output}`)
+  }
+  const summary = await readFile(summaryPath, 'utf8')
+  for (const expected of [
+    '#### Stale cached formula values',
+    '| fixtures/stale-pricing.xlsx | Sheet1!B3 | `=A3*10` | 999 | 30 |',
+    '#### Follow-up check command',
+    "xlsx-recalc 'fixtures/stale-pricing.xlsx' --read 'Sheet1!B3'",
+  ]) {
+    if (!summary.includes(expected)) {
+      throw new Error(`Missing "${expected}" in inspector summary:\n${summary}`)
+    }
+  }
+  const aggregate = parseAggregateReport(JSON.parse(await readFile(reportPath, 'utf8')))
+  if (aggregate.staleCachedFormulaCount !== 1 || aggregate.workbooks?.[0]?.staleFormulas?.length !== 1) {
+    throw new Error(`Unexpected inspector JSON report:\n${JSON.stringify(aggregate, null, 2)}`)
+  }
+} finally {
+  rmSync(inspectTempDir, { recursive: true, force: true })
+}
+
 function runGit(cwd: string, args: readonly string[]): void {
   const result = spawnSync('git', args, {
     cwd,
@@ -101,4 +186,31 @@ function runGit(cwd: string, args: readonly string[]): void {
   if (result.status !== 0) {
     throw new Error(`git ${args.join(' ')} failed:\n${result.stdout}\n${result.stderr}`)
   }
+}
+
+function parseAggregateReport(value: unknown): { staleCachedFormulaCount?: number; workbooks?: Array<{ staleFormulas?: unknown[] }> } {
+  if (!isRecord(value)) {
+    throw new Error(`Expected aggregate JSON report object, got ${JSON.stringify(value)}`)
+  }
+  const workbooksValue = Reflect.get(value, 'workbooks')
+  const workbooks = Array.isArray(workbooksValue)
+    ? workbooksValue.map((workbook) => {
+        if (!isRecord(workbook)) {
+          return {}
+        }
+        const staleFormulas = Reflect.get(workbook, 'staleFormulas')
+        return {
+          staleFormulas: Array.isArray(staleFormulas) ? staleFormulas : undefined,
+        }
+      })
+    : undefined
+  const staleCachedFormulaCount = Reflect.get(value, 'staleCachedFormulaCount')
+  return {
+    staleCachedFormulaCount: typeof staleCachedFormulaCount === 'number' ? staleCachedFormulaCount : undefined,
+    workbooks,
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

@@ -21,6 +21,7 @@ writeGithubOutput('formula-count', String(aggregate.formulaCellCount))
 writeGithubOutput('stale-count', String(aggregate.staleCachedFormulaCount))
 writeGithubOutput('uninspected-count', String(aggregate.uninspectedFormulaCellCount))
 writeGithubOutput('suggested-reads', aggregate.suggestedReads.slice(0, 25).join(','))
+writeStaleAnnotations(aggregate)
 writeStepSummary(aggregate)
 
 if (failOnStale && aggregate.staleCachedFormulaCount > 0) {
@@ -98,6 +99,12 @@ function writeStepSummary(report) {
   if (!process.env.GITHUB_STEP_SUMMARY) {
     return
   }
+  const staleFormulas = report.workbooks.flatMap((workbook) =>
+    workbook.staleFormulas.map((formula) => ({
+      workbook: workbook.workbook,
+      ...formula,
+    })),
+  )
   const lines = [
     '### XLSX cache doctor',
     '',
@@ -121,7 +128,101 @@ function writeStepSummary(report) {
     }
     lines.push('')
   }
+  if (staleFormulas.length > 0) {
+    lines.push('#### Stale cached formula values')
+    lines.push('')
+    lines.push('| Workbook | Cell | Formula | Cached value | Recalculated value |')
+    lines.push('| --- | --- | --- | --- | --- |')
+    for (const formula of staleFormulas.slice(0, 15)) {
+      lines.push(
+        `| ${escapeMarkdown(formula.workbook)} | ${escapeMarkdown(formula.target)} | \`${escapeInlineCode(formula.formula)}\` | ${escapeMarkdown(
+          formatValue(formula.cachedValue),
+        )} | ${escapeMarkdown(formatValue(formula.literalRecalculatedValue))} |`,
+      )
+    }
+    if (staleFormulas.length > 15) {
+      lines.push(`| ... | ... | ... | ... | ${String(staleFormulas.length - 15)} more stale value(s) in the JSON report. |`)
+    }
+    lines.push('')
+  }
+  const followUpCommand = buildFollowUpCommand(report)
+  if (followUpCommand) {
+    lines.push('#### Follow-up check command')
+    lines.push('')
+    lines.push('```sh')
+    lines.push(followUpCommand)
+    lines.push('```')
+    lines.push('')
+  }
   appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`)
+}
+
+function writeStaleAnnotations(report) {
+  const staleFormulas = report.workbooks.flatMap((workbook) =>
+    workbook.staleFormulas.map((formula) => ({
+      workbook: workbook.workbook,
+      ...formula,
+    })),
+  )
+  for (const formula of staleFormulas.slice(0, 10)) {
+    console.log(
+      [
+        '::warning title=Stale cached XLSX formula::',
+        `${formula.workbook}#${formula.target} cached ${formatValue(formula.cachedValue)} but recalculated ${formatValue(
+          formula.literalRecalculatedValue,
+        )}`,
+      ].join(''),
+    )
+  }
+  if (staleFormulas.length > 10) {
+    console.log(`::warning title=Stale cached XLSX formula::${String(staleFormulas.length - 10)} more stale value(s) in ${outputPath}`)
+  }
+}
+
+function buildFollowUpCommand(report) {
+  const workbook =
+    report.workbooks.find((item) => item.staleFormulas.length > 0) || report.workbooks.find((item) => item.suggestedReads.length > 0)
+  if (!workbook) {
+    return undefined
+  }
+  const readTarget = workbook.staleFormulas[0]?.target || workbook.suggestedReads[0]
+  if (!readTarget) {
+    return undefined
+  }
+  return [
+    'npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc',
+    shellQuote(workbook.workbook),
+    '--read',
+    shellQuote(readTarget),
+    '--out',
+    shellQuote(recalculatedWorkbookPath(workbook.workbook)),
+    '--json',
+  ].join(' ')
+}
+
+function recalculatedWorkbookPath(workbook) {
+  return workbook.replace(/\.xlsx$/iu, '.recalculated.xlsx')
+}
+
+function formatValue(value) {
+  if (value === undefined) {
+    return '(missing)'
+  }
+  if (value === null) {
+    return 'null'
+  }
+  if (typeof value === 'string') {
+    return value
+  }
+  return JSON.stringify(value)
+}
+
+function escapeInlineCode(value) {
+  return value.replaceAll('`', '\\`')
+}
+
+function shellQuote(value) {
+  return `'${value.replaceAll("'", "'\\''")}'`
 }
 
 function numberField(value) {
