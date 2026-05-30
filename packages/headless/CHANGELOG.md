@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.124.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.124.0
+- Manual override: no
+
+## Fixes
+- fix(xlsx): inspect all cache doctor formulas (3a4431e5)
+
+## Internal runtime changes
+- docs(xlsx): add cache doctor CI example (f7e31090)
+
 ## 0.124.0
 
 - Release type: minor
