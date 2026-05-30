@@ -67,6 +67,7 @@ function requireHomepageLocalHtmlLinksHaveSources(index: string, docsRoot: strin
 
 export function requireHomepageDiscovery(index: string, siteCss: string, productCss: string, docsRoot: string): void {
   const benchmarkEvidence = getBenchmarkDiscoveryEvidence()
+  const siteNav = readFileSync(join(docsRoot, 'assets', 'site-nav.js'), 'utf8')
 
   requireHomepageLocalHtmlLinksHaveSources(index, docsRoot)
 
@@ -90,7 +91,7 @@ export function requireHomepageDiscovery(index: string, siteCss: string, product
       '<link rel="stylesheet" href="./assets/fonts.css?v=2026-05-14-1" />',
       '<link rel="stylesheet" href="./assets/site.css?v=2026-05-30-10" />',
       '<link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-15-3" />',
-      '<script src="./assets/site-nav.js?v=2026-05-30-10"></script>',
+      '<script src="./assets/site-nav.js?v=2026-05-30-11"></script>',
       '<script type="module" src="./assets/hero-scene.js?v=2026-05-15-1"></script>',
       '<p class="eyebrow">XLSX cache doctor for Node and CI</p>',
       '<h1 id="hero-title" class="hero-title">Find stale Excel formula values before production reads them.</h1>',
@@ -187,6 +188,18 @@ export function requireHomepageDiscovery(index: string, siteCss: string, product
       'Try it on the spreadsheet that is already slowing you down.',
     ],
     'docs/index.html',
+  )
+
+  requireAllIncludes(
+    siteNav,
+    [
+      'syncTopbarHeight',
+      'ResizeObserver',
+      'correctCurrentHashScroll',
+      "window.addEventListener('load', correctCurrentHashScroll)",
+      'await document.fonts.ready',
+    ],
+    'docs/assets/site-nav.js',
   )
 
   requireAllIncludes(

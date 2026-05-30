@@ -49,7 +49,20 @@ const findHashTarget = (hash) => {
   }
 }
 
+const syncTopbarHeight = () => {
+  const topbar = document.querySelector('.topbar')
+  if (!(topbar instanceof HTMLElement)) {
+    return
+  }
+
+  const height = Math.ceil(topbar.getBoundingClientRect().height)
+  if (height > 0) {
+    document.documentElement.style.setProperty('--topbar-height', `${height}px`)
+  }
+}
+
 const readScrollMarginTop = (target) => {
+  syncTopbarHeight()
   const margin = Number.parseFloat(window.getComputedStyle(target).scrollMarginTop)
   return Number.isFinite(margin) ? margin : 0
 }
@@ -66,7 +79,32 @@ const scrollToHash = (hash) => {
   }
 }
 
+const correctCurrentHashScroll = () => {
+  if (window.location.hash.length > 0) {
+    window.requestAnimationFrame(() => scrollToHash(window.location.hash))
+  }
+}
+
 ;(() => {
+  syncTopbarHeight()
+
+  const topbar = document.querySelector('.topbar')
+  if (topbar instanceof HTMLElement && 'ResizeObserver' in window) {
+    const resizeObserver = new ResizeObserver(() => {
+      syncTopbarHeight()
+      correctCurrentHashScroll()
+    })
+    resizeObserver.observe(topbar)
+  }
+
+  window.addEventListener('resize', syncTopbarHeight)
+  window.addEventListener('orientationchange', () => {
+    window.requestAnimationFrame(() => {
+      syncTopbarHeight()
+      correctCurrentHashScroll()
+    })
+  })
+
   document.addEventListener('click', (event) => {
     const target = event.target
     if (!(target instanceof Element)) {
@@ -96,10 +134,22 @@ const scrollToHash = (hash) => {
   })
 
   window.addEventListener('hashchange', () => {
-    window.requestAnimationFrame(() => scrollToHash(window.location.hash))
+    correctCurrentHashScroll()
   })
 
-  if (window.location.hash.length > 0) {
-    window.requestAnimationFrame(() => scrollToHash(window.location.hash))
+  window.addEventListener('load', correctCurrentHashScroll)
+  window.addEventListener('pageshow', correctCurrentHashScroll)
+
+  if (document.fonts !== undefined) {
+    void (async () => {
+      try {
+        await document.fonts.ready
+        correctCurrentHashScroll()
+      } catch {
+        // Font readiness can reject in unsupported or interrupted page states.
+      }
+    })()
   }
+
+  correctCurrentHashScroll()
 })()
