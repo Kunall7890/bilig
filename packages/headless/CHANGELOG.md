@@ -4,6 +4,16 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.129.2
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.129.1
+- Manual override: no
+
+## Fixes
+- fix(action): align cache doctor runtime pin (9d61fbb4)
+- fix(action): version cache doctor reports (baf4a887)
+
 ## 0.129.1
 
 - Release type: patch
