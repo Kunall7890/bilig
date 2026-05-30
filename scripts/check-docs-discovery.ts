@@ -207,12 +207,14 @@ requirePackageKeywords(
   ],
   'packages/workpaper/package.json',
 )
-requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/xlsx-formula-recalc"', 'docs/index.html')
+requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')
+requireIncludes(index, '"https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')
+requireIncludes(index, '"https://www.npmjs.com/package/@bilig/workpaper"', 'docs/index.html')
 requireIncludes(index, '"https://www.npmjs.com/package/@bilig/xlsx-formula-recalc"', 'docs/index.html')
 requireIncludes(index, '"https://www.npmjs.com/package/@bilig/exceljs-formula-recalc"', 'docs/index.html')
-requireIncludes(index, '<h2 id="packages-title">Start with the file before the runtime.</h2>', 'docs/index.html')
-requireIncludes(index, 'highest-traffic entry', 'docs/index.html')
-requireIncludes(index, xlsxCacheDoctorCli, 'docs/index.html')
+requireIncludes(index, '<h2 id="market-title">Teams that still audit rules in cells.</h2>', 'docs/index.html')
+requireIncludes(index, 'primary runtime', 'docs/index.html')
+requireIncludes(index, 'npm install @bilig/headless', 'docs/index.html')
 requireIncludes(index, '"applicationCategory": "DeveloperApplication"', 'docs/index.html')
 requireIncludes(index, '"@type": "FAQPage"', 'docs/index.html')
 requireIncludes(

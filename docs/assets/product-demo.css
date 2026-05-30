@@ -130,7 +130,8 @@
 }
 
 .action-report-card pre code {
-  white-space: pre;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .hero-media.is-scene-ready .hero-canvas {
@@ -151,11 +152,17 @@
 
 @media (max-width: 560px) {
   .hero-media {
-    min-height: 340px;
-    aspect-ratio: 1 / 0.82;
+    min-height: auto;
+    aspect-ratio: auto;
+    overflow: visible;
+    padding: 18px;
   }
 
   .action-report-card dl {
     grid-template-columns: 1fr;
+  }
+
+  .action-report-card pre {
+    display: none;
   }
 }

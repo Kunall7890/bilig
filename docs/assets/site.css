@@ -325,7 +325,7 @@ pre,
 
 .hero-command {
   display: grid;
-  grid-template-columns: auto minmax(0, max-content);
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 7px 14px;
   align-items: center;
   width: fit-content;
@@ -348,6 +348,7 @@ pre,
   color: #d8f7dc;
   font-size: 15px;
   overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .hero-command strong {
@@ -1200,6 +1201,7 @@ footer {
 
   .hero-command code {
     font-size: 14px;
+    white-space: normal;
   }
 
   .hero-actions {

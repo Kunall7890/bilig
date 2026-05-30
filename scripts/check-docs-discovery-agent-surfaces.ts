@@ -69,13 +69,9 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   requireIncludes(jekyllConfig, '  - .well-known', 'docs/_config.yml')
   requireIncludes(jekyllConfig, "layout: 'default'", 'docs/_config.yml')
   requireIncludes(jekyllDefaultLayout, '<header class="topbar">', 'docs/_layouts/default.html')
-  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#packages\' | relative_url }}">Start</a>', 'docs/_layouts/default.html')
-  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#install\' | relative_url }}">Node API</a>', 'docs/_layouts/default.html')
-  requireIncludes(
-    jekyllDefaultLayout,
-    'href="{{ \'/xlsx-cache-doctor-github-action.html\' | relative_url }}">Action</a>',
-    'docs/_layouts/default.html',
-  )
+  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#market\' | relative_url }}">Who needs it</a>', 'docs/_layouts/default.html')
+  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#install\' | relative_url }}">Quickstart</a>', 'docs/_layouts/default.html')
+  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#mcp\' | relative_url }}">Agents</a>', 'docs/_layouts/default.html')
   requireIncludes(
     jekyllDefaultLayout,
     'href="{{ \'/xlsx-formula-recalculation-node.html\' | relative_url }}">XLSX</a>',

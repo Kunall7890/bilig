@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(formula): align combina and sln semantics (1eceee65)
 - fix(action): batch xlsx cache doctor inspection (3ce59531)
 
