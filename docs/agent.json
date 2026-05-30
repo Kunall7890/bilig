@@ -9,13 +9,13 @@
   "contact": "https://github.com/proompteng/bilig/discussions/new?category=general",
   "llms_txt": "https://proompteng.github.io/bilig/llms.txt",
   "llms_full": "https://proompteng.github.io/bilig/llms-full.txt",
-  "skill_file": "https://proompteng.github.io/bilig/skill.txt",
+  "skill_file": "https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt",
   "agent_instructions": "https://proompteng.github.io/bilig/AGENTS.md",
   "adoption_kit": "https://proompteng.github.io/bilig/agent-adoption-kit.html",
   "skills": [
     {
       "name": "bilig-workpaper",
-      "url": "https://proompteng.github.io/bilig/.well-known/agent-skills/bilig-workpaper/SKILL.txt",
+      "url": "https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt",
       "index_url": "https://proompteng.github.io/bilig/.well-known/agent-skills/index.json",
       "description": "Use @bilig/workpaper WorkPaper state, MCP tools, and formula-clinic reports instead of spreadsheet UI automation when an agent needs formula readback."
     }

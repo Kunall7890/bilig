@@ -22,7 +22,7 @@ describe('docs discovery public link manifest', () => {
     expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/.well-known/agent.json')
     expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/agent.json')
     expect(llmsRequiredLinks).toContain('https://smithery.ai/servers/gkonushev/bilig-workpaper')
-    expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/skill.txt')
+    expect(llmsRequiredLinks).toContain('https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt')
     expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/llms-full.txt')
     expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/.well-known/agent-skills/index.json')
     expect(llmsRequiredLinks).toContain('https://smithery.ai/servers/gkonushev/bilig-workpaper')

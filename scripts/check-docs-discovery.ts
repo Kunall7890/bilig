@@ -32,6 +32,7 @@ import { requireInngestWorkpaperStepDiscovery, requireInngestWorkpaperStepExampl
 import { requireAgentJsonDiscoveryContract } from './agent-discovery-evaluator-doors.ts'
 
 const docsDiscoveryContext = await loadDocsDiscoveryContext()
+const skillManifestUrl = 'https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt'
 const {
   repoRoot,
   docsRoot,
@@ -465,7 +466,10 @@ requireIncludes(llms, '## agent handoff prompt', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/AGENTS.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent.json', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/agent.json', 'docs/llms.txt')
-requireIncludes(llms, 'https://proompteng.github.io/bilig/skill.txt', 'docs/llms.txt')
+requireIncludes(llms, skillManifestUrl, 'docs/llms.txt')
+requireNotIncludes(llms, 'https://proompteng.github.io/bilig/skill.txt', 'docs/llms.txt')
+requireNotIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent-skills/bilig-workpaper/SKILL.txt', 'docs/llms.txt')
+requireNotIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/skills/bilig-workpaper/SKILL.txt', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.claude/commands/bilig-workpaper-proof.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.github/copilot-instructions.md', 'docs/llms.txt')
@@ -630,6 +634,7 @@ requireAgentJsonDiscoveryContract({
   parsedAgentJson,
   repositoryUrl: 'https://github.com/proompteng/bilig',
   siteRoot,
+  skillManifestUrl,
   workpaperPackageSpec,
 })
 const parsedAgentJsonMcp = Reflect.get(parsedAgentJson, 'mcp')

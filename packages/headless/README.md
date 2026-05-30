@@ -37,7 +37,7 @@ inspecting `node_modules/@bilig/headless` can find the write/read/persist loop
 locally. The public docs expose the same path through
 [`AGENTS.md`](https://proompteng.github.io/bilig/AGENTS.md),
 [`agent.json`](https://proompteng.github.io/bilig/.well-known/agent.json),
-[`skill.txt`](https://proompteng.github.io/bilig/skill.txt),
+[`skill.txt`](https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt),
 [`AI spreadsheet agent tool`](https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html), and
 [`llms-full.txt`](https://proompteng.github.io/bilig/llms-full.txt).
 

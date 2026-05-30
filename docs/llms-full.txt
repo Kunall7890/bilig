@@ -7,7 +7,7 @@ Site: https://proompteng.github.io/bilig/
 npm: https://www.npmjs.com/package/@bilig/workpaper
 npm workbook: https://www.npmjs.com/package/@bilig/workbook
 Agent instructions: https://proompteng.github.io/bilig/AGENTS.md
-Skill manifest: https://proompteng.github.io/bilig/skill.txt
+Skill manifest: https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt
 Compact index: https://proompteng.github.io/bilig/llms.txt
 
 ## Generated Agent Instructions
@@ -22,7 +22,7 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 3. Use `https://proompteng.github.io/bilig/agent-adoption-kit.html` when you need the shortest no-key install, MCP proof, and paste-ready workbook task.
 4. If your host can install skills from a well-known endpoint, run
    `npx --yes skills@latest add https://bilig.proompteng.ai --list`.
-5. Read `https://proompteng.github.io/bilig/skill.txt` when your agent supports skill manifests.
+5. Read `https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt` when your agent supports skill manifests.
 6. If your host can install skills from GitHub, run
    `npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list`.
 7. If you are using GitHub Copilot or VS Code agent mode in a cloned checkout,

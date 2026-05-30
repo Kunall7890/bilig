@@ -5,6 +5,7 @@ export interface DocsAgentInstructionInput {
   readonly remoteMcpServerCard: string
   readonly siteRoot: string
   readonly skillDiscoveryRoot: string
+  readonly skillManifestUrl: string
   readonly workpaperPackageSpec: string
 }
 
@@ -16,6 +17,7 @@ export function buildDocsAgentInstructions(input: DocsAgentInstructionInput): st
     remoteMcpServerCard,
     siteRoot,
     skillDiscoveryRoot,
+    skillManifestUrl,
     workpaperPackageSpec,
   } = input
 
@@ -30,7 +32,7 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 3. Use \`${siteRoot}/agent-adoption-kit.html\` when you need the shortest no-key install, MCP proof, and paste-ready workbook task.
 4. If your host can install skills from a well-known endpoint, run
    \`npx --yes skills@latest add ${skillDiscoveryRoot} --list\`.
-5. Read \`${siteRoot}/skill.txt\` when your agent supports skill manifests.
+5. Read \`${skillManifestUrl}\` when your agent supports skill manifests.
 6. If your host can install skills from GitHub, run
    \`npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list\`.
 7. If you are using GitHub Copilot or VS Code agent mode in a cloned checkout,

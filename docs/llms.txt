@@ -18,7 +18,7 @@ agent instructions: https://proompteng.github.io/bilig/AGENTS.md
 agent adoption kit: https://proompteng.github.io/bilig/agent-adoption-kit.html
 agent discovery manifest: https://proompteng.github.io/bilig/.well-known/agent.json
 root agent discovery manifest: https://proompteng.github.io/bilig/agent.json
-agent skill: https://proompteng.github.io/bilig/skill.txt
+agent skill: https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt
 Claude Code project skill: https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md
 Claude Code proof command: https://github.com/proompteng/bilig/blob/main/.claude/commands/bilig-workpaper-proof.md
 GitHub Copilot instructions: https://github.com/proompteng/bilig/blob/main/.github/copilot-instructions.md
@@ -140,7 +140,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/
 - https://proompteng.github.io/bilig/why-use-bilig.html
 - https://proompteng.github.io/bilig/AGENTS.md
-- https://proompteng.github.io/bilig/skill.txt
+- https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt
 - https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md
 - https://github.com/proompteng/bilig/blob/main/.cursor/rules/bilig-workpaper.mdc
 - https://github.com/proompteng/bilig/blob/main/.windsurf/rules/bilig-workpaper.md
@@ -214,9 +214,8 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/.well-known/mcp.json
 - https://proompteng.github.io/bilig/.well-known/mcp-server-card.json
 - https://proompteng.github.io/bilig/.well-known/agent-skills/index.json
-- https://proompteng.github.io/bilig/.well-known/agent-skills/bilig-workpaper/SKILL.txt
+- https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt
 - https://proompteng.github.io/bilig/.well-known/skills/index.json
-- https://proompteng.github.io/bilig/.well-known/skills/bilig-workpaper/SKILL.txt
 - https://proompteng.github.io/bilig/mcp-client-setup.html
 - https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html
 - https://proompteng.github.io/bilig/lobehub-workpaper-mcp.html

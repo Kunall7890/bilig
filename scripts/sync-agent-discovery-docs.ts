@@ -28,6 +28,7 @@ const remoteMcpAliasEndpoint = 'https://bilig.proompteng.ai/mcp/workpaper'
 const remoteMcpServerCard = 'https://bilig.proompteng.ai/.well-known/mcp/server-card.json'
 const repositoryUrl = 'https://github.com/proompteng/bilig'
 const skillName = 'bilig-workpaper'
+const skillManifestUrl = `${skillDiscoveryRoot}/.well-known/agent-skills/${skillName}/SKILL.txt`
 const skillDiscoverySchemaUrl = 'https://schemas.agentskills.io/discovery/0.2.0/schema.json'
 const headlessPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'))
 const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
@@ -57,6 +58,7 @@ const docsAgentInstructions = buildDocsAgentInstructions({
   remoteMcpServerCard,
   siteRoot,
   skillDiscoveryRoot,
+  skillManifestUrl,
   workpaperPackageSpec,
 })
 
@@ -597,7 +599,7 @@ function skillIndexJson(): string {
           type: 'skill-md',
           description:
             'Use @bilig/workpaper WorkPaper state, MCP tools, and formula-clinic reports instead of spreadsheet UI automation when an agent needs formula readback.',
-          url: `${skillDiscoveryRoot}/.well-known/agent-skills/${skillName}/SKILL.txt`,
+          url: skillManifestUrl,
           digest: `sha256:${skillDigest}`,
         },
       ],
@@ -621,13 +623,13 @@ function agentJsonManifest(): string {
       contact: `${repositoryUrl}/discussions/new?category=general`,
       llms_txt: `${siteRoot}/llms.txt`,
       llms_full: `${siteRoot}/llms-full.txt`,
-      skill_file: `${siteRoot}/skill.txt`,
+      skill_file: skillManifestUrl,
       agent_instructions: `${siteRoot}/AGENTS.md`,
       adoption_kit: `${siteRoot}/agent-adoption-kit.html`,
       skills: [
         {
           name: skillName,
-          url: `${siteRoot}/.well-known/agent-skills/${skillName}/SKILL.txt`,
+          url: skillManifestUrl,
           index_url: `${siteRoot}/.well-known/agent-skills/index.json`,
           description:
             'Use @bilig/workpaper WorkPaper state, MCP tools, and formula-clinic reports instead of spreadsheet UI automation when an agent needs formula readback.',
@@ -878,7 +880,7 @@ async function buildLlmsFull(): Promise<string> {
     `npm: https://www.npmjs.com/package/@bilig/workpaper`,
     `npm workbook: https://www.npmjs.com/package/@bilig/workbook`,
     `Agent instructions: ${siteRoot}/AGENTS.md`,
-    `Skill manifest: ${siteRoot}/skill.txt`,
+    `Skill manifest: ${skillManifestUrl}`,
     `Compact index: ${siteRoot}/llms.txt`,
     '',
     '## Generated Agent Instructions',

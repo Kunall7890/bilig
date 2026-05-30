@@ -116,7 +116,9 @@ export function compactProofContractJsonArrays(json: string, compactStringArrayP
   )
 }
 
-export function requireAgentJsonDiscoveryContract(args: AgentDiscoveryEvaluatorDoorInputs & { readonly parsedAgentJson: unknown }): void {
+export function requireAgentJsonDiscoveryContract(
+  args: AgentDiscoveryEvaluatorDoorInputs & { readonly parsedAgentJson: unknown; readonly skillManifestUrl: string },
+): void {
   const parsedAgentJson = args.parsedAgentJson
   if (typeof parsedAgentJson !== 'object' || parsedAgentJson === null || Array.isArray(parsedAgentJson)) {
     throw new Error('docs/.well-known/agent.json must be a JSON object')
@@ -128,7 +130,7 @@ export function requireAgentJsonDiscoveryContract(args: AgentDiscoveryEvaluatorD
     ['repository', args.repositoryUrl],
     ['llms_txt', `${siteRoot}/llms.txt`],
     ['llms_full', `${siteRoot}/llms-full.txt`],
-    ['skill_file', `${siteRoot}/skill.txt`],
+    ['skill_file', args.skillManifestUrl],
     ['agent_instructions', `${siteRoot}/AGENTS.md`],
   ] as const) {
     if (Reflect.get(parsedAgentJson, fieldName) !== expectedValue) {

@@ -10,6 +10,7 @@ export async function requireAgentInstructionDiscovery(input: {
 }): Promise<void> {
   const { repoRoot, docsRoot, headlessPackageVersion } = input
   const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
+  const rawHostedSkillManifestUrl = 'https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt'
   const [
     docsAgentNotes,
     docsSkill,
@@ -101,6 +102,8 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsAgentNotes, '.github/copilot-instructions.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.github/prompts/bilig-workpaper-proof.prompt.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.vscode/mcp.json', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, rawHostedSkillManifestUrl, 'docs/AGENTS.md')
+  requireNotIncludes(docsAgentNotes, 'https://proompteng.github.io/bilig/skill.txt', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json', 'docs/AGENTS.md')
   requireIncludes(docsSkill, 'name: bilig-workpaper', 'docs/skill.md')
