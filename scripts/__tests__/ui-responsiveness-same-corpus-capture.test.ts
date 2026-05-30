@@ -1574,7 +1574,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
 
   it('selects Google Sheets target ranges through the visible name-box shortcut', async () => {
     const calls: string[] = []
-    const page = fakeGoogleSheetsNameBoxPage(calls, 'A1')
+    const page = fakeGoogleSheetsNameBoxPage(calls, 'Sheet1!$C$7:$C$7')
 
     await selectGoogleSheetsTargetRange(page, 'C7')
 
@@ -1586,7 +1586,20 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       'locator:[aria-label^="Name box"] input',
       'fill:C7',
       'press:Enter',
+      `${testPrimaryShortcut()}+J`,
+      'locator:#t-name-box',
+      'inputValue',
+      'keyboard:Escape',
     ])
+  })
+
+  it('rejects Google Sheets target selection when the visible name box does not commit the intended range', async () => {
+    const calls: string[] = []
+    const page = fakeGoogleSheetsNameBoxPage(calls, 'A1')
+
+    await expect(selectGoogleSheetsTargetRange(page, 'C7')).rejects.toThrow(
+      'Google Sheets target range did not commit before same-corpus mutation: expected C7, got A1',
+    )
   })
 
   it('reads Google Sheets selected ranges through the visible name-box shortcut', async () => {

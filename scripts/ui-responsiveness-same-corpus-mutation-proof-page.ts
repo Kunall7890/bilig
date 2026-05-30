@@ -9,7 +9,7 @@ import {
   type SameCorpusMutationTargetReadback,
   type SameCorpusMutationTargetScreenshotProof,
 } from './ui-responsiveness-same-corpus-semantic-proof.ts'
-import { readSameCorpusVisibleSheetId } from './ui-responsiveness-same-corpus-visible-readback.ts'
+import { readGoogleSheetsNameBoxSelection, readSameCorpusVisibleSheetId } from './ui-responsiveness-same-corpus-visible-readback.ts'
 import { readBiligRenderedSurfaceState } from './ui-responsiveness-same-corpus-surface-page.ts'
 import { settleFrames } from './ui-responsiveness-same-corpus-page-utils.ts'
 import { sameCorpusMutationTargetRangeForSample } from './ui-responsiveness-same-corpus-mutation-target-spec.ts'
@@ -111,6 +111,7 @@ export interface SameCorpusNameBoxPage {
 interface SameCorpusFillableLocator {
   first(): SameCorpusFillableLocator
   fill(value: string, options?: { readonly timeout?: number }): Promise<void>
+  inputValue(options?: { readonly timeout?: number }): Promise<string>
   press(key: string, options?: { readonly timeout?: number }): Promise<void>
 }
 
@@ -126,6 +127,34 @@ export async function selectGoogleSheetsTargetRange(page: SameCorpusNameBoxPage,
     targetRange,
     `Cannot select same-corpus target range ${targetRange} on google-sheets`,
   )
+  const committedRange = await readGoogleSheetsNameBoxSelection(page)
+  if (!sameCorpusGoogleSheetsRangesEqual(committedRange, targetRange)) {
+    throw new Error(
+      `Google Sheets target range did not commit before same-corpus mutation: expected ${targetRange}, got ${committedRange ?? 'empty name box'}`,
+    )
+  }
+}
+
+function sameCorpusGoogleSheetsRangesEqual(actual: string | null, expected: string): boolean {
+  const normalizedActual = normalizeGoogleSheetsNameBoxRange(actual)
+  const normalizedExpected = normalizeGoogleSheetsNameBoxRange(expected)
+  return Boolean(normalizedActual && normalizedExpected && normalizedActual === normalizedExpected)
+}
+
+function normalizeGoogleSheetsNameBoxRange(value: string | null): string | null {
+  if (!value) {
+    return null
+  }
+  let normalized = value.replace(/\$/gu, '').replace(/\s+/gu, '').trim().toUpperCase()
+  const sheetSeparator = normalized.lastIndexOf('!')
+  if (sheetSeparator >= 0) {
+    normalized = normalized.slice(sheetSeparator + 1)
+  }
+  const duplicateSingleCell = normalized.match(/^([A-Z]+[1-9][0-9]*):\1$/u)
+  if (duplicateSingleCell) {
+    return duplicateSingleCell[1] ?? null
+  }
+  return normalized.length > 0 ? normalized : null
 }
 
 async function assertBiligNameBoxSelectionCommitted(page: Page, target: SameCorpusMutationTargetSelection): Promise<void> {
