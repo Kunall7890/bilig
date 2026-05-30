@@ -135,6 +135,7 @@ export type SameCorpusMutationTargetReadbackSource =
   | 'google-sheets-xlsx-export'
   | 'visible-formula-bar'
   | 'visible-grid-cell'
+  | 'visible-grid-target-screenshot'
   | 'unknown'
 
 export type SameCorpusProductSemanticUiProofEvidenceStatus = 'current-contract' | 'missing' | 'invalid'
@@ -394,7 +395,7 @@ function sameCorpusMutationTargetProofSampleInvalidReasons(
     invalidReasons.push(`semantic UI mutation target proof for ${workload} target range does not match the rendered selection`)
   }
   invalidReasons.push(...sameCorpusMutationTargetVisibleSelectionInvalidReasons(workload, sample))
-  if (!sameCorpusReadbacksDiffer(sample.before, sample.after)) {
+  if (!sameCorpusMutationTargetChanged(proof.product, sample)) {
     invalidReasons.push(`semantic UI mutation target proof for ${workload} did not prove a before/after target change`)
   }
   if (!sameCorpusReadbacksEqual(sample.before, sample.restored)) {
@@ -647,7 +648,13 @@ function sameCorpusMutationTargetExpectedReadbackInvalidReasons(
     return []
   }
   if (workload === 'edit-visible-cell') {
-    if (payload.kind !== 'cell-value' || sample.after.value !== payload.value || sample.visibleAfter.value !== payload.value) {
+    if (payload.kind !== 'cell-value') {
+      return ['semantic UI mutation target proof for edit-visible-cell did not prove the intended committed target value']
+    }
+    const committedValue = sample.committedStateProof?.after.readback.value ?? sample.after.value
+    const renderedValueProven =
+      sample.visibleAfter.value === payload.value || sameCorpusExternalScreenshotBackedTargetRenderProven(product, sample)
+    if (committedValue !== payload.value || !renderedValueProven) {
       return ['semantic UI mutation target proof for edit-visible-cell did not prove the intended committed target value']
     }
     return []
@@ -719,6 +726,13 @@ function sameCorpusMutationTargetReadbackSourceInvalidReasons(
   }
   if (product === 'bilig' && readbacks.some((readback) => readback.source !== 'bilig-authoritative-range')) {
     return [`semantic UI mutation target proof for ${workload} used visible editor text instead of Bilig authoritative range readback`]
+  }
+  if (
+    product === 'google-sheets' &&
+    sample.committedStateProof &&
+    readbacks.every((readback) => readback.source === 'google-sheets-xlsx-export')
+  ) {
+    return []
   }
   if (product !== 'bilig' && readbacks.some((readback) => !sameCorpusMutationTargetBrowserVisibleReadbackSourceAccepted(readback.source))) {
     return [`semantic UI mutation target proof for ${workload} target readback did not come from an accepted browser-visible source`]
@@ -843,6 +857,35 @@ function sameCorpusReadbacksDiffer(left: SameCorpusMutationTargetReadback, right
     left.formula !== right.formula ||
     left.fillColor !== right.fillColor ||
     left.visibleText !== right.visibleText
+  )
+}
+
+function sameCorpusMutationTargetChanged(product: UiResponsivenessSameCorpusProduct, sample: SameCorpusMutationTargetProof): boolean {
+  return sameCorpusReadbacksDiffer(sample.before, sample.after) || sameCorpusExternalScreenshotBackedTargetRenderProven(product, sample)
+}
+
+function sameCorpusExternalScreenshotBackedTargetRenderProven(
+  product: UiResponsivenessSameCorpusProduct,
+  sample: SameCorpusMutationTargetProof,
+): boolean {
+  if (product === 'bilig' || sample.visibleAfter.source !== 'visible-grid-target-screenshot') {
+    return false
+  }
+  const screenshots = sample.targetScreenshots
+  if (!screenshots) {
+    return false
+  }
+  const beforeHash = normalizeSameCorpusScreenshotHash(screenshots.before.screenshotSha256)
+  const afterHash = normalizeSameCorpusScreenshotHash(screenshots.after.screenshotSha256)
+  const restoredHash = normalizeSameCorpusScreenshotHash(screenshots.restored.screenshotSha256)
+  return Boolean(
+    beforeHash &&
+    afterHash &&
+    restoredHash &&
+    beforeHash !== afterHash &&
+    afterHash !== restoredHash &&
+    screenshots.after.scope === 'target-cell' &&
+    sameCorpusSelectedRangeMatchesTarget(screenshots.after.targetRange, sample.targetRange),
   )
 }
 

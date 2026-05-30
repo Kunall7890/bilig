@@ -50,7 +50,7 @@ function sameCorpusMutationTargetScreenshotPhaseSemanticInvalidReasons(
       return sceneProofInvalidReasons
     }
   }
-  if (!sameCorpusScreenshotReadbackMatches(product, workload, expectedReadback, readback)) {
+  if (!sameCorpusScreenshotReadbackMatches(product, workload, sample, phase, expectedReadback, readback)) {
     return [`semantic UI mutation target proof for ${workload} ${phase} screenshot semantic readback does not match target readback`]
   }
   return []
@@ -63,9 +63,14 @@ function sameCorpusScreenshotSemanticSourceAccepted(source: SameCorpusMutationTa
 function sameCorpusScreenshotReadbackMatches(
   product: UiResponsivenessSameCorpusProduct,
   workload: UiResponsivenessSameCorpusWorkload,
+  sample: SameCorpusMutationTargetProof,
+  phase: SameCorpusMutationTargetScreenshotPhase,
   expected: SameCorpusMutationTargetReadback,
   actual: SameCorpusMutationTargetReadback,
 ): boolean {
+  if (product !== 'bilig' && actual.source === 'visible-grid-target-screenshot') {
+    return sameCorpusScreenshotPhaseHasTargetCellArtifact(sample, phase)
+  }
   if (workload === 'fill-format-change') {
     return sameCorpusFillColorMatches(actual.fillColor, expected.fillColor)
   }
@@ -79,6 +84,21 @@ function sameCorpusScreenshotReadbackMatches(
     return sameCorpusTextMatches(actual.value, expected.value) || sameCorpusTextMatches(actual.visibleText, expected.visibleText)
   }
   return sameCorpusTextMatches(actual.value, expected.value) || sameCorpusTextMatches(actual.visibleText, expected.visibleText)
+}
+
+function sameCorpusScreenshotPhaseHasTargetCellArtifact(
+  sample: SameCorpusMutationTargetProof,
+  phase: SameCorpusMutationTargetScreenshotPhase,
+): boolean {
+  const screenshot = sample.targetScreenshots?.[phase]
+  return Boolean(
+    screenshot &&
+    screenshot.scope === 'target-cell' &&
+    screenshot.screenshotPath &&
+    screenshot.screenshotPath.trim().length > 0 &&
+    screenshot.screenshotSha256 &&
+    /^[a-f0-9]{64}$/u.test(screenshot.screenshotSha256),
+  )
 }
 
 function sameCorpusTextMatches(actual: string | null, expected: string | null): boolean {

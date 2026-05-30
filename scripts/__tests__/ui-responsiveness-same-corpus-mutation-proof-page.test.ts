@@ -435,7 +435,7 @@ describe('same-corpus mutation target page proof helpers', () => {
     })
   })
 
-  it('does not call an empty Google Sheets target cell committed text proof for edit/formula workloads', async () => {
+  it('treats empty Google Sheets canvas target text as screenshot-backed grid proof for edit/formula workloads', async () => {
     const page = fakeGoogleSheetsEmptyTargetPage()
 
     await expect(
@@ -454,7 +454,7 @@ describe('same-corpus mutation target page proof helpers', () => {
     ).resolves.toEqual({
       fillColor: null,
       formula: null,
-      source: 'unknown',
+      source: 'visible-grid-target-screenshot',
       value: null,
       visibleText: null,
     })

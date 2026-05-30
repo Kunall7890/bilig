@@ -48,16 +48,28 @@ export async function readExternalVisibleGridCellReadback(args: {
     )
   const screenshotFillColor =
     args.workload === 'fill-format-change' ? await readExternalVisibleGridCellFillColor(args.page, selectedTargetBox) : null
-  if (targetCellReadback.source !== 'visible-grid-cell' && screenshotFillColor === null) {
-    return null
-  }
-  if (args.workload !== 'fill-format-change' && targetCellReadback.visibleText === null) {
-    return null
+  if (targetCellReadback.source === 'visible-grid-cell') {
+    if (args.workload !== 'fill-format-change' && targetCellReadback.visibleText === null) {
+      return {
+        fillColor: null,
+        formula: null,
+        source: 'visible-grid-target-screenshot',
+        value: null,
+        visibleText: null,
+      }
+    }
+    return {
+      ...targetCellReadback,
+      fillColor: screenshotFillColor,
+      source: 'visible-grid-cell',
+    }
   }
   return {
-    ...targetCellReadback,
     fillColor: screenshotFillColor,
-    source: 'visible-grid-cell',
+    formula: null,
+    source: args.workload === 'fill-format-change' && screenshotFillColor !== null ? 'visible-grid-cell' : 'visible-grid-target-screenshot',
+    value: null,
+    visibleText: null,
   }
 }
 

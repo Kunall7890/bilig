@@ -846,6 +846,41 @@ describe('same-corpus semantic UI mutation proof validation', () => {
     })
   })
 
+  it('accepts Google Sheets edit proof when XLSX export owns semantics and target screenshots own canvas-grid visibility', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validGoogleSheetsSemanticProof({
+        mutationTargetProofs: validGoogleSheetsMutationTargetProofs().map((proof) => googleSheetsCanvasScreenshotBackedProof(proof)),
+      }),
+      {
+        workload: 'edit-visible-cell',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: true,
+      invalidReasons: [],
+    })
+  })
+
+  it('accepts Google Sheets formula proof when XLSX export proves formula/result and target screenshots own canvas-grid visibility', () => {
+    const verdict = validateSameCorpusProductSemanticUiProof(
+      validGoogleSheetsSemanticProof({
+        selectedRange: sameCorpusMutationTargetRangeForSample('formula-edit', 0),
+        mutationTargetProofs: validGoogleSheetsFormulaMutationTargetProofs().map((proof) => googleSheetsCanvasScreenshotBackedProof(proof)),
+      }),
+      {
+        workload: 'formula-edit',
+        sampleCount: 3,
+      },
+    )
+
+    expect(verdict).toMatchObject({
+      acceptedForCurrentScorecard: true,
+      invalidReasons: [],
+    })
+  })
+
   it('rejects Google Sheets mutation proof when selected-target visible readback comes from the formula bar', () => {
     const verdict = validateSameCorpusProductSemanticUiProof(
       validGoogleSheetsSemanticProof({
@@ -1143,6 +1178,32 @@ function googleSheetsFillMutationTargetProof(sampleIndex: number): SameCorpusMut
     targetScreenshots: mutationTargetScreenshots('google-sheets', 'fill-format-change', sampleIndex),
   }
   return signedMutationTargetProof({ ...proof, committedStateProof: googleCommittedStateProof(proof) })
+}
+
+function googleSheetsCanvasScreenshotBackedProof(proof: SameCorpusMutationTargetProof): SameCorpusMutationTargetProof {
+  if (!proof.committedStateProof || !proof.targetScreenshots) {
+    return proof
+  }
+  const screenshotReadback: SameCorpusMutationTargetProof['visibleAfter'] = {
+    fillColor: null,
+    formula: null,
+    source: 'visible-grid-target-screenshot',
+    value: null,
+    visibleText: null,
+  }
+  return signedMutationTargetProof({
+    ...proof,
+    before: proof.committedStateProof.before.readback,
+    after: proof.committedStateProof.after.readback,
+    restored: proof.committedStateProof.restored.readback,
+    visibleAfter: screenshotReadback,
+    visibleRestored: screenshotReadback,
+    targetScreenshots: {
+      before: { ...proof.targetScreenshots.before, semanticReadback: screenshotReadback },
+      after: { ...proof.targetScreenshots.after, semanticReadback: screenshotReadback },
+      restored: { ...proof.targetScreenshots.restored, semanticReadback: screenshotReadback },
+    },
+  })
 }
 
 function mutationTargetProof(

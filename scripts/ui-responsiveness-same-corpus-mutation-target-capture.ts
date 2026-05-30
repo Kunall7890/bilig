@@ -92,10 +92,10 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     })
     failurePhase = 'read-visible-after-selection'
     visibleAfterSelectedRange = await readSameCorpusVisibleSelectedRange(args.page, args.product)
-    failurePhase = 'capture-after-screenshot'
-    afterScreenshot = await captureTargetScreenshot({ ...args, semanticReadback: visibleAfter }, 'after')
     const visibleTargetRenderCapturedAtMs = performance.now()
     const visibleTargetRenderMs = Math.max(0, visibleTargetRenderCapturedAtMs - args.operationStartedAt)
+    failurePhase = 'capture-after-screenshot'
+    afterScreenshot = await captureTargetScreenshot({ ...args, semanticReadback: visibleAfter }, 'after')
     failurePhase = 'capture-after-committed-state'
     afterCommittedStateProof = await maybeCaptureIncompleteCommittedStatePhaseProof(
       {
@@ -121,10 +121,12 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       }),
     )
     failurePhase = 'read-revisions'
+    const proofBefore = args.beforeCommittedStateProof?.readback ?? args.before
+    const proofAfter = afterCommittedStateProof?.readback ?? after
     const revisions = await readSameCorpusMutationTargetRevisionProof({
       page: args.page,
       product: args.product,
-      readback: after,
+      readback: proofAfter,
       screenshotSha256: afterScreenshot.screenshotSha256,
       target: args.target,
     })
@@ -161,7 +163,8 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       captureSameCorpusCommittedStatePhaseProof({
         artifactPath: committedStateArtifactPath(args, 'restored'),
         expectedReadback: sameCorpusCommittedStateExpectedReadback({
-          before: args.before,
+          before: proofBefore,
+          beforeCommittedStateReadback: args.beforeCommittedStateProof?.readback ?? null,
           intendedPayload,
           phase: 'restored',
           phaseReadback: restored,
@@ -179,11 +182,12 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
     )
     const restoreProofCapturedAtMs = performance.now()
     const restoreValidationMs = Math.max(0, restoreProofCapturedAtMs - postMutationProofCapturedAtMs)
+    const proofRestored = restoredCommittedStateProof?.readback ?? restored
     failurePhase = 'build-proof'
     const proof: Omit<SameCorpusMutationTargetProof, 'targetProofSignature'> = {
-      after,
+      after: proofAfter,
       authoritativeReadbackRevision: revisions.authoritativeReadbackRevision,
-      before: args.before,
+      before: proofBefore,
       committedStateValidationMs,
       committedTargetProofMs,
       committedStateProof: buildSameCorpusCommittedStateProof({
@@ -200,7 +204,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
       operationStartedAtMs: args.operationStartedAt,
       postMutationProofCapturedAtMs,
       product: args.product,
-      restored,
+      restored: proofRestored,
       restoreValidationMs,
       restoreProofCapturedAtMs,
       sampleIndex: args.sampleIndex,
@@ -214,7 +218,7 @@ export async function captureSameCorpusMutationTargetProofForSample(args: {
         before: args.beforeScreenshot,
         restored: restoredScreenshot,
       },
-      undoRestoreStatus: sameCorpusMutationReadbacksEqual(args.before, restored) ? 'verified' : 'failed',
+      undoRestoreStatus: sameCorpusMutationReadbacksEqual(proofBefore, proofRestored) ? 'verified' : 'failed',
       visibleAfter,
       visibleAfterSelectedRange,
       visibleRenderRevision: revisions.visibleRenderRevision,
@@ -381,6 +385,7 @@ export async function maybeCaptureIncompleteCommittedStatePhaseProof(
 
 export function sameCorpusCommittedStateExpectedReadback(args: {
   readonly before: SameCorpusMutationTargetReadback
+  readonly beforeCommittedStateReadback?: SameCorpusMutationTargetReadback | null
   readonly intendedPayload?: SameCorpusMutationTargetIntendedPayload | null
   readonly phase: 'after' | 'restored'
   readonly phaseReadback: SameCorpusMutationTargetReadback
@@ -388,7 +393,24 @@ export function sameCorpusCommittedStateExpectedReadback(args: {
   readonly workload: UiResponsivenessSameCorpusMutatingWorkload
 }): SameCorpusMutationTargetReadback {
   if (args.phase === 'restored') {
-    return args.before
+    return args.beforeCommittedStateReadback ?? args.before
+  }
+  if (args.workload === 'edit-visible-cell' && args.intendedPayload?.kind === 'cell-value') {
+    return {
+      ...args.phaseReadback,
+      formula: null,
+      value: args.intendedPayload.value,
+      visibleText: args.intendedPayload.value,
+    }
+  }
+  if (args.workload === 'formula-edit' && args.intendedPayload?.kind === 'formula') {
+    const value = String(args.sampleIndex + 2)
+    return {
+      ...args.phaseReadback,
+      formula: args.intendedPayload.formula,
+      value,
+      visibleText: value,
+    }
   }
   if (args.workload === 'fill-format-change') {
     const fillColor =

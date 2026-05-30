@@ -193,6 +193,17 @@ export async function readSameCorpusMutationTargetReadback(args: {
     if (biligReadback) {
       return biligReadback
     }
+  } else if (args.workload !== 'fill-format-change') {
+    const formulaBarText = normalizeNullableText(await readVisibleFormulaBarText(args.page, args.product))
+    if (formulaBarText) {
+      return {
+        value: formulaBarText.startsWith('=') ? null : formulaBarText,
+        formula: formulaBarText.startsWith('=') ? formulaBarText : null,
+        fillColor: null,
+        visibleText: formulaBarText,
+        source: 'visible-formula-bar',
+      }
+    }
   }
   return await readSameCorpusVisibleMutationTargetReadback(args)
 }

@@ -6,6 +6,7 @@ import {
   sameCorpusCommittedStateExpectedReadback,
 } from '../ui-responsiveness-same-corpus-mutation-target-capture.ts'
 import type { SameCorpusMutationTargetReadback } from '../ui-responsiveness-same-corpus-proof.ts'
+import { sameCorpusFillColorExpectedColor } from '../ui-responsiveness-same-corpus-workload-runner.ts'
 
 describe('same-corpus mutation target capture', () => {
   it('requires Google Sheets fill exports to prove the intended swatch, not stale browser readback', () => {
@@ -22,13 +23,13 @@ describe('same-corpus mutation target capture', () => {
       }),
     ).toEqual({
       ...selectionChromeAfter,
-      fillColor: '#c9daf8',
+      fillColor: sameCorpusFillColorExpectedColor(0),
     })
   })
 
   it('requires restored committed-state exports to match the pre-mutation target', () => {
     const before = readback({ fillColor: null, value: 'segment-5' })
-    const staleRestored = readback({ fillColor: '#c9daf8', value: 'segment-5' })
+    const staleRestored = readback({ fillColor: sameCorpusFillColorExpectedColor(0), value: 'segment-5' })
 
     expect(
       sameCorpusCommittedStateExpectedReadback({
@@ -54,6 +55,48 @@ describe('same-corpus mutation target capture', () => {
         workload: 'formula-edit',
       }),
     ).toEqual(after)
+  })
+
+  it('uses the intended edit value for committed-state polling when browser-visible proof is screenshot-backed', () => {
+    const before = readback({ value: 'old-value' })
+    const after = readback({ source: 'visible-grid-target-screenshot', value: null, visibleText: null })
+
+    expect(
+      sameCorpusCommittedStateExpectedReadback({
+        before,
+        intendedPayload: { kind: 'cell-value', value: 'same-corpus-edit-1' },
+        phase: 'after',
+        phaseReadback: after,
+        sampleIndex: 0,
+        workload: 'edit-visible-cell',
+      }),
+    ).toEqual({
+      ...after,
+      formula: null,
+      value: 'same-corpus-edit-1',
+      visibleText: 'same-corpus-edit-1',
+    })
+  })
+
+  it('uses the intended formula and expected rendered value for committed-state polling', () => {
+    const before = readback({ formula: '=A5+B5', value: '10' })
+    const after = readback({ source: 'visible-grid-target-screenshot', value: null, visibleText: null })
+
+    expect(
+      sameCorpusCommittedStateExpectedReadback({
+        before,
+        intendedPayload: { kind: 'formula', formula: '=1+1' },
+        phase: 'after',
+        phaseReadback: after,
+        sampleIndex: 0,
+        workload: 'formula-edit',
+      }),
+    ).toEqual({
+      ...after,
+      formula: '=1+1',
+      value: '2',
+      visibleText: '2',
+    })
   })
 
   it('keeps diagnostic captures moving when only Google Sheets committed-state export mismatches', async () => {
@@ -96,7 +139,7 @@ function readback(values: Partial<SameCorpusMutationTargetReadback>): SameCorpus
 }
 
 function committedStateMismatchError(): SameCorpusCommittedStateMismatchError {
-  const expectedReadback = readback({ fillColor: '#c9daf8', source: 'visible-grid-cell', value: 'segment-5' })
+  const expectedReadback = readback({ fillColor: sameCorpusFillColorExpectedColor(0), source: 'visible-grid-cell', value: 'segment-5' })
   const lastReadback = readback({ fillColor: null, source: 'google-sheets-xlsx-export', value: 'segment-5' })
   return new SameCorpusCommittedStateMismatchError({
     expectedReadback,
