@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.129.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.129.0
+- Manual override: no
+
+## Fixes
+- fix(action): pin cache doctor runtime (6488c914)
+
 ## 0.129.0
 
 - Release type: minor
