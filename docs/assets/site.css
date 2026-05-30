@@ -1048,12 +1048,26 @@ footer {
 }
 
 @media (max-width: 820px) {
+  :root {
+    --topbar-height: 104px;
+  }
+
   .topbar .wrap {
+    flex-wrap: wrap;
     gap: 12px;
+    padding: 8px 0 10px;
   }
 
   .nav {
+    flex-basis: 100%;
+    flex-wrap: wrap;
     justify-content: flex-start;
+    overflow: visible;
+  }
+
+  .nav a {
+    min-height: 30px;
+    padding: 5px 8px;
   }
 
   .proof-links,
