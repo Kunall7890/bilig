@@ -73,8 +73,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#install\' | relative_url }}">WorkPaper</a>', 'docs/_layouts/default.html')
   requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#docs\' | relative_url }}">Docs</a>', 'docs/_layouts/default.html')
   requireIncludes(jekyllDefaultLayout, 'href="https://github.com/proompteng/bilig">GitHub</a>', 'docs/_layouts/default.html')
-  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/assets/site.css?v=2026-05-30-6\' | relative_url }}"', 'docs/_layouts/default.html')
-  requireIncludes(jekyllDefaultLayout, 'src="{{ \'/assets/site-nav.js?v=2026-05-30-6\' | relative_url }}"', 'docs/_layouts/default.html')
+  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/assets/site.css?v=2026-05-30-7\' | relative_url }}"', 'docs/_layouts/default.html')
+  requireIncludes(jekyllDefaultLayout, 'src="{{ \'/assets/site-nav.js?v=2026-05-30-7\' | relative_url }}"', 'docs/_layouts/default.html')
   if (mcpServerCardMcpJson !== mcpServerCard) {
     throw new Error('docs/.well-known/mcp.json must match docs/.well-known/mcp/server-card.json')
   }
