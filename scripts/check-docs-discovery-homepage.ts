@@ -106,7 +106,7 @@ export function requireHomepageDiscovery(index: string, siteCss: string, product
       'npm create @bilig/workpaper@latest pricing-agent -- --agent',
       'Workbook tools for agent frameworks',
       'Agent Adoption Kit',
-      'Install the skill, run the no-key MCP proof, paste one task, and require verified formula readback.',
+      'Install the skill, run the no-key MCP check, paste one task, and require verified formula readback.',
       'Need CI for stale XLSX caches?',
       'GitHub Marketplace action',
       '<a href="https://context7.com/proompteng/bilig">Ask docs</a>',
