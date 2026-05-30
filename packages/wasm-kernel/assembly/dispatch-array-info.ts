@@ -3,7 +3,7 @@ import { rangeSupportedScalarOnly, scalarArgsOnly, scalarErrorAt } from './built
 import { inputCellScalarValue, inputCellTag, inputColsFromSlot, inputRowsFromSlot, memberScalarValue, rangeMemberAt } from './operands'
 import { copyInputCellToSpill, materializeSlotResult } from './array-materialize'
 import { truncToInt } from './numeric-core'
-import { arrayToTextCell } from './text-special'
+import { arrayToTextCell, coerceScalarNumberLikeText } from './text-special'
 import { valueNumber } from './comparison'
 import { scalarText } from './text-codec'
 import {
@@ -407,7 +407,17 @@ export function tryApplyArrayInfoBuiltin(
     if (kindStack[base] == STACK_KIND_SCALAR && tagStack[base] == ValueTag.Error) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, valueStack[base], rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const choice = truncToInt(tagStack[base], valueStack[base])
+    const rawChoice = coerceScalarNumberLikeText(
+      tagStack[base],
+      valueStack[base],
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    const choice = isFinite(rawChoice) ? <i32>rawChoice : i32.MIN_VALUE
     if (choice == i32.MIN_VALUE || choice < 1 || choice >= argc) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }

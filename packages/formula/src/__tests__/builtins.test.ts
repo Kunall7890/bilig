@@ -31,6 +31,9 @@ describe('formula builtins', () => {
       ),
     ).toEqual({ tag: ValueTag.Number, value: 10 })
     expect(
+      CHOOSE({ tag: ValueTag.String, value: '1', stringId: 2 }, { tag: ValueTag.Number, value: 10 }, { tag: ValueTag.Number, value: 20 }),
+    ).toEqual({ tag: ValueTag.Number, value: 10 })
+    expect(
       CHOOSE(
         { tag: ValueTag.Number, value: 0 },
         { tag: ValueTag.Boolean, value: true },
@@ -1018,6 +1021,10 @@ describe('formula builtins', () => {
       tag: ValueTag.Number,
       value: 15,
     })
+    expect(getBuiltin('DECIMAL')?.({ tag: ValueTag.String, value: '', stringId: 3 }, { tag: ValueTag.Number, value: 2 })).toEqual({
+      tag: ValueTag.Number,
+      value: 0,
+    })
     expect(getBuiltin('ROMAN')?.({ tag: ValueTag.Number, value: 14 })).toEqual({
       tag: ValueTag.String,
       value: 'XIV',
@@ -1158,8 +1165,12 @@ describe('formula builtins', () => {
       code: ErrorCode.Value,
     })
     expect(getBuiltin('ARABIC')?.({ tag: ValueTag.String, value: 'IIII', stringId: 1 })).toEqual({
-      tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      tag: ValueTag.Number,
+      value: 4,
+    })
+    expect(getBuiltin('ARABIC')?.({ tag: ValueTag.String, value: 'VX', stringId: 1 })).toEqual({
+      tag: ValueTag.Number,
+      value: 5,
     })
     expect(
       getBuiltin('RANDARRAY')?.(

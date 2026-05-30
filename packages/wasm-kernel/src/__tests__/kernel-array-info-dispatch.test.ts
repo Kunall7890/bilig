@@ -430,6 +430,27 @@ describe('wasm kernel array/info dispatch', () => {
     })
   })
 
+  it('coerces direct numeric text indexes for CHOOSE on the wasm path', async () => {
+    const kernel = await createKernel()
+    const ownerBase = 8
+    const pooledStrings = ['1']
+    kernel.init(16, pooledStrings.length, 1, 4, 0)
+    uploadPooledStrings(kernel, pooledStrings)
+
+    const packed = packPrograms([
+      [encodePushString(0), encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Choose, 3), encodeRet()],
+    ])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, Uint32Array.from([ownerBase]))
+    const constants = packConstants([[10, 20]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from([ownerBase]))
+
+    expect(readScalarValue(kernel, ownerBase, pooledStrings)).toEqual({
+      tag: ValueTag.Number,
+      value: 10,
+    })
+  })
+
   it('returns value errors for malformed zero-argument T, N, and TYPE bytecode', async () => {
     const kernel = await createKernel()
     const ownerBase = 8

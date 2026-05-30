@@ -3,7 +3,6 @@ import { BuiltinId, ErrorCode, Opcode, ValueTag } from './protocol'
 import { STACK_KIND_ARRAY, STACK_KIND_RANGE, STACK_KIND_SCALAR } from './result-io'
 import { scalarText as decodeScalarText } from './text-codec'
 import { parseNumericText } from './text-special'
-import { truncToInt } from './numeric-core'
 import { binaryNumeric, compareText, ensureF64, ensureU8, ensureU16, ensureU32, isComparisonOpcode, toNumeric } from './vm-core-helpers'
 import {
   allocateOutputString,
@@ -656,7 +655,8 @@ function passthroughBuiltinBlankReference(builtinId: i32, argc: i32, sp: i32): u
   }
 
   if (builtinId == BuiltinId.Choose && argc >= 2) {
-    const choice = truncToInt(tagStack[base], valueStack[base])
+    const rawChoice = arithmeticNumber(tagStack[base], valueStack[base])
+    const choice = isFinite(rawChoice) ? <i32>rawChoice : i32.MIN_VALUE
     return choice == i32.MIN_VALUE || choice < 1 || choice >= argc ? 0 : scalarEmptyBlankReferenceAt(base + choice)
   }
 

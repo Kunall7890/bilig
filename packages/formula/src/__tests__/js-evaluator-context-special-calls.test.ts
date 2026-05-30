@@ -92,6 +92,7 @@ describe('js evaluator context special calls', () => {
     expect(evaluatePlan(lowerToPlan(parseFormula('CHOOSE(1)')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('CHOOSE(1,)')), context)).toEqual({ tag: ValueTag.Empty })
     expect(evaluatePlan(lowerToPlan(parseFormula('CHOOSE(2,1,)')), context)).toEqual({ tag: ValueTag.Empty })
+    expect(evaluatePlan(lowerToPlan(parseFormula('CHOOSE("1",1,2)')), context)).toEqual(number(1))
     expect(evaluatePlan(compileFormula('CHOOSE(1,)').jsPlan, context)).toEqual({ tag: ValueTag.Empty })
     expect(evaluatePlan(compileFormula('CHOOSE(2,1,)').jsPlan, context)).toEqual({ tag: ValueTag.Empty })
     expect(evaluatePlan(lowerToPlan(parseFormula('ROW(A1,B1)')), context)).toEqual(err(ErrorCode.Value))

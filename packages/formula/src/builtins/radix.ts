@@ -128,7 +128,13 @@ export function createRadixBuiltins({ toNumber, integerValue, valueError, number
     if (raw.length > decimalMaxTextLength) {
       return valueError()
     }
-    if (radixValue < 2 || radixValue > 36 || raw === '' || raw === 'NaN' || !isValidBaseDigits(raw, radixValue)) {
+    if (radixValue < 2 || radixValue > 36) {
+      return numError()
+    }
+    if (raw === '') {
+      return numberResult(0)
+    }
+    if (raw === 'NaN' || !isValidBaseDigits(raw, radixValue)) {
       return numError()
     }
     return numberResult(Number.parseInt(raw, radixValue))
@@ -313,29 +319,6 @@ function arabicValue(text: string): number | undefined {
   if (roman.length > arabicMaxRomanLength || !/^[IVXLCDM]+$/.test(roman)) {
     return undefined
   }
-  if (/(I{4}|X{4}|C{4}|D{4}|V{2}|L{2})/.test(roman)) {
-    return undefined
-  }
-  const subtractivePairs = new Set([
-    'IV',
-    'IX',
-    'IL',
-    'IC',
-    'ID',
-    'IM',
-    'VL',
-    'VC',
-    'VD',
-    'VM',
-    'XL',
-    'XC',
-    'XD',
-    'XM',
-    'LD',
-    'LM',
-    'CD',
-    'CM',
-  ])
   let total = 0
   let index = 0
   while (index < roman.length) {
@@ -345,13 +328,6 @@ function arabicValue(text: string): number | undefined {
       return undefined
     }
     if (next !== undefined && current < next) {
-      const pair = `${roman[index] ?? ''}${roman[index + 1] ?? ''}`
-      if (!subtractivePairs.has(pair)) {
-        return undefined
-      }
-      if (roman[index - 1] === roman[index]) {
-        return undefined
-      }
       total += next - current
       index += 2
       continue

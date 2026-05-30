@@ -471,7 +471,7 @@ const scalarBuiltins: Record<string, Builtin> = {
     if (indexValue?.tag === ValueTag.Error) {
       return indexValue
     }
-    const index = integerValue(indexValue)
+    const index = scalarIntegerValue(indexValue)
     if (index === undefined || index < 1 || index > values.length) {
       return valueError()
     }

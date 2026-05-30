@@ -1,6 +1,7 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import { formatAddress, parseCellAddress } from './addressing.js'
 import type { EvaluationContext, ReferenceOperand, StackValue } from './js-evaluator.js'
+import { parseArithmeticNumericText } from './numeric-text.js'
 
 interface ContextSpecialCallDeps {
   error: (code: ErrorCode) => CellValue
@@ -34,7 +35,12 @@ function chooseIndexValue(value: CellValue, choiceCount: number): number | CellV
   if (value.tag === ValueTag.Error) {
     return value
   }
-  const numeric = value.tag === ValueTag.Number || value.tag === ValueTag.Boolean ? Number(value.value) : undefined
+  const numeric =
+    value.tag === ValueTag.String
+      ? parseArithmeticNumericText(value.value)
+      : value.tag === ValueTag.Number || value.tag === ValueTag.Boolean
+        ? Number(value.value)
+        : undefined
   if (numeric === undefined || !Number.isFinite(numeric)) {
     return { tag: ValueTag.Error, code: ErrorCode.Value }
   }
