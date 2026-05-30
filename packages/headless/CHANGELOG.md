@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.130.2
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.130.1
+- Manual override: no
+
+## Fixes
+- fix(packages): stabilize runtime cli bins (e92c7fc5)
+
 ## 0.130.1
 
 - Release type: patch
