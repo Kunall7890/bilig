@@ -394,7 +394,7 @@ mode and let it show stale cached formulas before it blocks anything:
   with:
     workbooks: '**/*.xlsx'
     changed-files-only: 'true'
-    package-version: '0.130.6'
+    package-version: '0.131.0'
     fail-on-stale: 'false'
 ```
 

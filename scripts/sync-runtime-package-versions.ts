@@ -59,19 +59,27 @@ function syncXlsxCacheDoctorActionVersion(rootDir: string, version: string, upda
     writeTextIfChanged(actionPath, currentContent, nextContent, updatedFiles)
   }
 
-  const docsPath = join(rootDir, 'docs/xlsx-cache-doctor-github-action.md')
-  const docsContent = readFileSync(docsPath, 'utf8')
-  const nextDocsContent = [
-    (content: string) => content.replaceAll(/package-version: '\d+\.\d+\.\d+'/g, `package-version: '${version}'`),
-    (content: string) =>
-      replaceRequired(
-        content,
-        /(\| `package-version`\s+\|\s+)\d+\.\d+\.\d+(\s+\| npm version or dist-tag for `@bilig\/xlsx-formula-recalc`\. Pin this in production\. \|)/u,
-        `$1${version}$2`,
-        `${docsPath} must include the package-version input table row`,
-      ),
-  ].reduce((content, transform) => transform(content), docsContent)
-  writeTextIfChanged(docsPath, docsContent, nextDocsContent, updatedFiles)
+  const markdownPaths = [join(rootDir, 'docs/xlsx-cache-doctor-github-action.md'), join(rootDir, 'README.md')]
+  for (const markdownPath of markdownPaths) {
+    const markdownContent = readFileSync(markdownPath, 'utf8')
+    const nextMarkdownContent = syncXlsxCacheDoctorMarkdownVersion(markdownPath, markdownContent, version)
+    writeTextIfChanged(markdownPath, markdownContent, nextMarkdownContent, updatedFiles)
+  }
+}
+
+function syncXlsxCacheDoctorMarkdownVersion(path: string, content: string, version: string): string {
+  const nextContent = content.replaceAll(/package-version: '\d+\.\d+\.\d+'/g, `package-version: '${version}'`)
+
+  if (path.endsWith('docs/xlsx-cache-doctor-github-action.md')) {
+    return replaceRequired(
+      nextContent,
+      /(\| `package-version`\s+\|\s+)\d+\.\d+\.\d+(\s+\| npm version or dist-tag for `@bilig\/xlsx-formula-recalc`\. Pin this in production\. \|)/u,
+      `$1${version}$2`,
+      `${path} must include the package-version input table row`,
+    )
+  }
+
+  return nextContent
 }
 
 function syncDockerfileWorkpaperVersion(rootDir: string, version: string, updatedFiles: string[]): void {
