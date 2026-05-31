@@ -358,6 +358,18 @@ export function unsupportedPreflightResourceLimitCase(
   footprint: WorkbookFootprint,
   resourceLimit: ResourceLimitPreflight,
 ): PublicWorkbookCorpusCase {
+  return unsupportedPreflightResourceLimitCaseForLimits(artifact, evidence, footprint, [resourceLimit])
+}
+
+export function unsupportedPreflightResourceLimitCaseForLimits(
+  artifact: PublicWorkbookArtifact,
+  evidence: readonly string[],
+  footprint: WorkbookFootprint,
+  resourceLimits: readonly ResourceLimitPreflight[],
+): PublicWorkbookCorpusCase {
+  if (resourceLimits.length === 0) {
+    throw new Error('Expected at least one resource limit preflight')
+  }
   return {
     id: artifact.id,
     sourceId: artifact.sourceId,
@@ -379,7 +391,10 @@ export function unsupportedPreflightResourceLimitCase(
       roundTripPassed: true,
       structuralSmokePassed: null,
     },
-    unsupportedFeatureClassifications: [resourceLimit.classification, ...externalWorkbookReferenceClassifications(footprint)],
+    unsupportedFeatureClassifications: [
+      ...resourceLimits.map((resourceLimit) => resourceLimit.classification),
+      ...externalWorkbookReferenceClassifications(footprint),
+    ],
     evidence: [
       ...evidence,
       publicWorkbookResourceLimitClassifierEvidence,
@@ -387,7 +402,7 @@ export function unsupportedPreflightResourceLimitCase(
       `cells=${String(footprint.featureCounts.cellCount)}`,
       `formulas=${String(footprint.featureCounts.formulaCellCount)}`,
       ...externalWorkbookReferenceEvidence(footprint),
-      ...resourceLimit.evidence,
+      ...resourceLimits.flatMap((resourceLimit) => resourceLimit.evidence),
     ],
   }
 }

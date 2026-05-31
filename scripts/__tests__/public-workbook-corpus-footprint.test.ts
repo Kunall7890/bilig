@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { strToU8, zipSync } from 'fflate'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { inspectWorkbookFootprintIsolated } from '../public-workbook-corpus-footprint.ts'
+import { inspectWorkbookFootprintIsolated, inspectWorkbookFootprintIsolatedWithMetrics } from '../public-workbook-corpus-footprint.ts'
 
 const publicWorkbookCorpusFootprintWorkerScriptPath = fileURLToPath(
   new URL('../public-workbook-corpus-footprint-worker.ts', import.meta.url),
@@ -55,6 +55,28 @@ describe('public workbook corpus footprint worker', () => {
         usedRange: { startRow: 0, startColumn: 0, endRow: 0, endColumn: 1 },
       },
     ])
+  }, 30_000)
+
+  it('reports isolated footprint worker peak RSS for memory gates', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bilig-footprint-metrics-'))
+    tempDirs.push(dir)
+    const filePath = join(dir, 'large-simple.xlsx')
+    writeFileSync(filePath, buildLargeSimpleWorkbook())
+
+    const result = await inspectWorkbookFootprintIsolatedWithMetrics({
+      bytes: new Uint8Array(0),
+      filePath,
+      fileName: 'large-simple.xlsx',
+      scriptPath: publicWorkbookCorpusFootprintWorkerScriptPath,
+      options: {
+        timeoutMs: 30_000,
+        maxRssBytes: 256 * 1024 * 1024,
+        rssCheckIntervalMs: 10,
+      },
+    })
+
+    expect(result.footprint?.featureCounts.cellCount).toBe(2)
+    expect(result.peakRssBytes).toBeGreaterThan(0)
   }, 30_000)
 })
 

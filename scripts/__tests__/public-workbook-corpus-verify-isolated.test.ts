@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest'
 
 import { borrowXlsxZipByteSource as borrowLargeSimpleVerifierXlsxZipByteSource } from '../public-workbook-corpus-large-simple-compact.ts'
 import {
+  buildResourceLimitedFootprintVerificationCase,
   buildVerificationWorkerProcessArgs,
   disableBunSmolVerificationWorkerEnvVar,
   shouldUseBunSmolForVerificationWorker,
 } from '../public-workbook-corpus-verify-isolated.ts'
+import type { PublicWorkbookArtifact } from '../public-workbook-corpus-types.ts'
+import { emptyFeatureCounts, type WorkbookFootprint } from '../public-workbook-corpus-workbook.ts'
 
 describe('public workbook corpus isolated verification worker runtime', () => {
   it('uses Bun smol mode for memory-sensitive isolated verification workers', () => {
@@ -37,6 +40,49 @@ describe('public workbook corpus isolated verification worker runtime', () => {
     expect(source.readIntoCount).toBe(1)
     expect(source.rangeCount).toBe(0)
   })
+
+  it('classifies large-simple resource-limited footprints before starting the heavy verifier worker', () => {
+    const artifact = publicWorkbookArtifact()
+    const corpusCase = buildResourceLimitedFootprintVerificationCase({
+      artifact,
+      footprint: workbookFootprint(
+        {
+          cellCount: 342_986,
+          valueCellCount: 296_781,
+          formulaCellCount: 46_205,
+        },
+        { largeSimpleXlsxImport: { eligible: true, blockers: [] } },
+      ),
+      baseEvidence: [`source=${artifact.sourceUrl}`],
+      runStructuralSmoke: false,
+      maxCellCount: 1_500_000,
+    })
+
+    expect(corpusCase).toMatchObject({
+      status: 'unsupported',
+      passed: true,
+      featureCounts: {
+        cellCount: 342_986,
+        formulaCellCount: 46_205,
+      },
+      validation: {
+        importPassed: false,
+        formulaOraclePassed: true,
+        roundTripPassed: true,
+      },
+    })
+    expect(corpusCase?.unsupportedFeatureClassifications).toEqual([
+      'xlsx.publicCorpus.resourceLimit:preflightFormulaOracleBudget>2000formulas',
+      'xlsx.publicCorpus.resourceLimit:preflightRoundTripBudget>100000cells',
+    ])
+    expect(corpusCase?.evidence).toEqual(
+      expect.arrayContaining([
+        'resource-limit-classifier=2026-05-17-native-streaming-xlsx-footprint',
+        'formula-oracle-formula-count=46205',
+        'rss-limit-phase=round-trip',
+      ]),
+    )
+  })
 })
 
 class InstrumentedByteSource {
@@ -57,5 +103,54 @@ class InstrumentedByteSource {
     this.readIntoCount += 1
     target.set(this.bytes.subarray(start, end), 0)
     return target.subarray(0, end - start)
+  }
+}
+
+function publicWorkbookArtifact(): PublicWorkbookArtifact {
+  return {
+    id: 'workbook-5db97e9230dbaf6b',
+    sourceId: 'source',
+    sourceUrl: 'https://example.com/noibyfarmsize_fr.xlsx',
+    downloadUrl: 'https://example.com/noibyfarmsize_fr.xlsx',
+    fileName: 'noibyfarmsize_fr.xlsx',
+    sha256: '0'.repeat(64),
+    byteSize: 2_000_000,
+    cachePath: 'noibyfarmsize_fr.xlsx',
+    workbookFingerprint: '1'.repeat(64),
+    fetchedAt: '2026-05-17T00:00:00.000Z',
+    license: {
+      title: 'Test',
+      evidenceUrl: 'https://example.com/license',
+      spdxId: 'CC0-1.0',
+    },
+  }
+}
+
+function workbookFootprint(
+  counts: Partial<WorkbookFootprint['featureCounts']>,
+  options: Pick<WorkbookFootprint, 'largeSimpleXlsxImport'>,
+): WorkbookFootprint {
+  const featureCounts = {
+    ...emptyFeatureCounts(),
+    sheetCount: 10,
+    ...counts,
+  }
+  return {
+    featureCounts,
+    workbookMetadata: {
+      workbookName: 'noibyfarmsize_fr.xlsx',
+      sheetNames: ['Sheet1'],
+      dimensions: [
+        {
+          sheetName: 'Sheet1',
+          rowCount: featureCounts.cellCount,
+          columnCount: 1,
+          nonEmptyCellCount: featureCounts.cellCount,
+          usedRange: { startRow: 0, startColumn: 0, endRow: featureCounts.cellCount - 1, endColumn: 0 },
+        },
+      ],
+    },
+    externalWorkbookReferences: [],
+    ...options,
   }
 }

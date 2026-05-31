@@ -17,6 +17,11 @@ export interface PublicWorkbookCorpusWorkerOptions {
   readonly onPhase?: (phase: string) => void
 }
 
+export interface IsolatedWorkbookFootprintResult {
+  readonly footprint: WorkbookFootprint | null
+  readonly peakRssBytes: number
+}
+
 export function inspectWorkbookFootprintIsolated(args: {
   readonly bytes: Uint8Array
   readonly filePath?: string
@@ -24,7 +29,17 @@ export function inspectWorkbookFootprintIsolated(args: {
   readonly scriptPath: string
   readonly options: PublicWorkbookCorpusWorkerOptions
 }): Promise<WorkbookFootprint | null> {
-  return new Promise<WorkbookFootprint | null>((resolvePromise) => {
+  return inspectWorkbookFootprintIsolatedWithMetrics(args).then((result) => result.footprint)
+}
+
+export function inspectWorkbookFootprintIsolatedWithMetrics(args: {
+  readonly bytes: Uint8Array
+  readonly filePath?: string
+  readonly fileName: string
+  readonly scriptPath: string
+  readonly options: PublicWorkbookCorpusWorkerOptions
+}): Promise<IsolatedWorkbookFootprintResult> {
+  return new Promise<IsolatedWorkbookFootprintResult>((resolvePromise) => {
     const childArgs = [
       args.scriptPath,
       'footprint-worker',
@@ -38,6 +53,7 @@ export function inspectWorkbookFootprintIsolated(args: {
       stdio: [args.filePath ? 'ignore' : 'pipe', 'pipe', 'pipe'],
     })
     let stdout = ''
+    let peakRssBytes = 0
     let stopRssWatchdog = noop
     let timer: ReturnType<typeof setTimeout>
     const finish = createOneShotResolver(resolvePromise, () => {
@@ -50,18 +66,21 @@ export function inspectWorkbookFootprintIsolated(args: {
     stopRssWatchdog = startChildRssWatchdog(child, {
       maxRssBytes: args.options.maxRssBytes,
       intervalMs: args.options.rssCheckIntervalMs,
+      onSample: (rssBytes) => {
+        peakRssBytes = Math.max(peakRssBytes, rssBytes)
+      },
       onLimitExceeded: () => {
         terminateChild('SIGTERM')
         const forceKillTimer = setTimeout(() => terminateChild('SIGKILL'), 5_000)
         forceKillTimer.unref()
-        finish(null)
+        finish({ footprint: null, peakRssBytes })
       },
     })
     timer = setTimeout(() => {
       terminateChild('SIGTERM')
       const forceKillTimer = setTimeout(() => terminateChild('SIGKILL'), 5_000)
       forceKillTimer.unref()
-      finish(null)
+      finish({ footprint: null, peakRssBytes })
     }, args.options.timeoutMs)
     child.stdout.setEncoding('utf8')
     child.stdout.on('data', (chunk: string) => {
@@ -72,18 +91,18 @@ export function inspectWorkbookFootprintIsolated(args: {
       child.stdin.end(Buffer.from(args.bytes))
     }
     child.on('error', () => {
-      finish(null)
+      finish({ footprint: null, peakRssBytes })
     })
     child.on('close', (code) => {
       if (code !== 0) {
-        finish(null)
+        finish({ footprint: null, peakRssBytes })
         return
       }
       try {
         const parsed: unknown = JSON.parse(stdout)
-        finish(readFootprintWorkerResult(parsed))
+        finish({ footprint: readFootprintWorkerResult(parsed), peakRssBytes })
       } catch {
-        finish(null)
+        finish({ footprint: null, peakRssBytes })
       }
     })
   })

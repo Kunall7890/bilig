@@ -5,6 +5,7 @@ import {
   formulaOracleSourceFallbackResourceLimitPreflight,
   importResourceLimitPreflight,
   inspectFormulaOracleDependencyFootprint,
+  unsupportedPreflightResourceLimitCaseForLimits,
 } from '../public-workbook-corpus-resource-limits.ts'
 import type { WorkbookSnapshot } from '../../packages/protocol/src/types.ts'
 import type { PublicWorkbookArtifact } from '../public-workbook-corpus-types.ts'
@@ -185,6 +186,44 @@ describe('public workbook corpus resource limit preflights', () => {
     expect(
       importResourceLimitPreflight(workbookArtifact(), workbookFootprint({ cellCount: 800_000, valueCellCount: 800_000 }))?.evidence,
     ).toEqual(expect.arrayContaining(['Public corpus verification import preflight limit exceeded: cell-count 800000 > 750000']))
+  })
+
+  it('builds one resource-limited case from multiple footprint-proven phase limits', () => {
+    const corpusCase = unsupportedPreflightResourceLimitCaseForLimits(
+      workbookArtifact(),
+      ['source=https://example.com/workbook.xlsx'],
+      workbookFootprint({ cellCount: 342_986, valueCellCount: 296_781, formulaCellCount: 46_205 }),
+      [
+        {
+          classification: 'xlsx.publicCorpus.resourceLimit:preflightFormulaOracleBudget>2000formulas',
+          evidence: ['rss-limit-phase=formula-oracle', 'formula-oracle-formula-count=46205'],
+        },
+        {
+          classification: 'xlsx.publicCorpus.resourceLimit:preflightRoundTripBudget>100000cells',
+          evidence: ['rss-limit-phase=round-trip', 'roundtrip-skipped'],
+        },
+      ],
+    )
+
+    expect(corpusCase).toMatchObject({
+      status: 'unsupported',
+      passed: true,
+      featureCounts: {
+        cellCount: 342_986,
+        formulaCellCount: 46_205,
+      },
+    })
+    expect(corpusCase.unsupportedFeatureClassifications).toEqual([
+      'xlsx.publicCorpus.resourceLimit:preflightFormulaOracleBudget>2000formulas',
+      'xlsx.publicCorpus.resourceLimit:preflightRoundTripBudget>100000cells',
+    ])
+    expect(corpusCase.evidence).toEqual(
+      expect.arrayContaining([
+        'resource-limit-classifier=2026-05-17-native-streaming-xlsx-footprint',
+        'formula-oracle-formula-count=46205',
+        'roundtrip-skipped',
+      ]),
+    )
   })
 })
 
