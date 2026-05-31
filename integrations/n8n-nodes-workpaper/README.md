@@ -2,6 +2,10 @@
 
 This is a Bilig WorkPaper community node for n8n.
 
+`@bilig/n8n-nodes-workpaper` is verified on n8n Cloud. Add it from the canvas
+by searching for `Bilig WorkPaper`, or install the scoped package in self-hosted
+n8n.
+
 It gives an n8n workflow two spreadsheet-shaped operations:
 
 1. run the hosted forecast proof for a no-setup smoke test;
@@ -17,9 +21,11 @@ LibreOffice, Google Sheets, or a browser spreadsheet UI.
 
 Install the scoped community node package from n8n:
 
-1. Open **Settings** -> **Community nodes**.
-2. Choose **Install a community node**.
-3. Enter:
+1. Search for `Bilig WorkPaper` from the n8n Cloud canvas and add it directly.
+2. If your instance does not show verified community nodes yet, open
+   **Settings** -> **Community nodes**.
+3. Choose **Install a community node**.
+4. Enter:
 
 ```text
 @bilig/n8n-nodes-workpaper

@@ -24,8 +24,9 @@ zero-install HTTP Request workflow:
 @bilig/n8n-nodes-workpaper
 ```
 
-Install it from **Settings** -> **Community nodes** in n8n, or install the same
-package from npm in a self-hosted deployment:
+The scoped package is verified on n8n Cloud. Add it from the canvas by searching
+for `Bilig WorkPaper`, install it from **Settings** -> **Community nodes**, or
+install the same package from npm in a self-hosted deployment:
 
 ```sh
 npm install @bilig/n8n-nodes-workpaper

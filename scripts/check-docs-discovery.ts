@@ -554,7 +554,9 @@ requireIncludes(scopedWorkpaperPackageReadme, 'Dagster asset materialization met
 requireIncludes(scopedWorkpaperPackageReadme, 'Kestra Node Commands flow fields', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Prefect flow fields', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Directus Flow operation for persisted calculated fields', 'packages/workpaper/README.md')
-requireIncludes(scopedWorkpaperPackageReadme, 'n8n, Dify, Flowise, or Pipedream formula readback', 'packages/workpaper/README.md')
+requireIncludes(scopedWorkpaperPackageReadme, 'n8n formula readback in Cloud or self-hosted workflows', 'packages/workpaper/README.md')
+requireIncludes(scopedWorkpaperPackageReadme, 'Dify formula readback', 'packages/workpaper/README.md')
+requireIncludes(scopedWorkpaperPackageReadme, 'Pipedream formula readback', 'packages/workpaper/README.md')
 requireIncludes(llmsFull, 'Pipedream WorkPaper Formula Readback', 'docs/llms-full.txt')
 requireIncludes(readme, 'docs/pipedream-workpaper-formula-readback.md', 'README.md')
 requireReadmeAgentWorkflowRecipeLinks(readme)
@@ -592,12 +594,22 @@ requireIncludes(
 )
 requireIncludes(
   scopedWorkpaperPackageReadme,
+  'https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html',
+  'packages/workpaper/README.md',
+)
+requireIncludes(
+  scopedWorkpaperPackageReadme,
   'https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html',
   'packages/workpaper/README.md',
 )
 requireIncludes(
   scopedWorkpaperPackageReadme,
   'https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html',
+  'packages/workpaper/README.md',
+)
+requireIncludes(
+  scopedWorkpaperPackageReadme,
+  'https://proompteng.github.io/bilig/pipedream-workpaper-formula-readback.html',
   'packages/workpaper/README.md',
 )
 requireIncludes(llms, 'Do not claim success from a write call alone.', 'docs/llms.txt')

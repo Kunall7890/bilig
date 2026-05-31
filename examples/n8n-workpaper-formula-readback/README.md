@@ -13,6 +13,9 @@ The workflow uses only built-in n8n nodes:
 - HTTP Request
 - Code
 
+If you want a native node instead, `@bilig/n8n-nodes-workpaper` is verified on
+n8n Cloud and can be added from the canvas by searching for `Bilig WorkPaper`.
+
 There are two importable workflow files:
 
 | File | Default endpoint | Use it when |
