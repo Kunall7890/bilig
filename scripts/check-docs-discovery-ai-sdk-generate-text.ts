@@ -32,7 +32,6 @@ export async function requireAiSdkGenerateTextDiscovery({
   docsRoot,
   readme,
   headlessReadme,
-  index,
   llms,
   agentToolCallingDoc,
   aiSdkLangChainDoc,
@@ -54,7 +53,6 @@ export async function requireAiSdkGenerateTextDiscovery({
   for (const [path, content] of [
     ['README.md', readme],
     ['packages/headless/README.md', headlessReadme],
-    ['docs/index.html', index],
     ['docs/llms.txt', llms],
     ['docs/agent-workpaper-tool-calling-recipe.md', agentToolCallingDoc],
     ['docs/vercel-ai-sdk-langchain-spreadsheet-tool.md', aiSdkLangChainDoc],

@@ -150,7 +150,7 @@
         <nav class="nav" aria-label="Primary">
           <a href="#market">Who needs it</a>
           <a href="#install">Quickstart</a>
-          <a href="#mcp">Agents</a>
+          <a href="#mcp">Agent tools</a>
           <a href="./xlsx-formula-recalculation-node.html">XLSX</a>
           <a href="#docs">Docs</a>
           <a href="https://github.com/proompteng/bilig">GitHub</a>
@@ -164,18 +164,17 @@
           <p class="eyebrow">Headless WorkPaper runtime for Node</p>
           <h1 id="hero-title" class="hero-title">Run spreadsheet logic in Node.</h1>
           <p class="hero-subtitle">
-            When a business rule still needs cell review, keep it in a workbook. Bilig lets a Node service write inputs, recalculate
-            formulas, read outputs, and save the state.
+            Keep the rules in cells. Let a TypeScript service edit inputs, recalculate formulas, read the answer, and save the WorkPaper.
           </p>
           <div class="hero-command" aria-label="Bilig headless install command">
             <span>Runtime</span>
             <code>npm install @bilig/headless</code>
-            <strong>Use it for pricing rules, payout checks, quote approvals, import validation, and agent tools.</strong>
+            <strong>For pricing, payouts, approvals, import checks, and agent tools.</strong>
           </div>
           <div class="hero-actions">
-            <a class="button primary" href="https://www.npmjs.com/package/@bilig/headless">Install @bilig/headless</a>
-            <a class="button" href="./try-bilig-headless-in-node.html">Run the quickstart</a>
-            <a class="button" href="./serverless-workpaper-api-route.html">Build a Node service</a>
+            <a class="button primary" href="https://www.npmjs.com/package/@bilig/headless">Install</a>
+            <a class="button" href="./try-bilig-headless-in-node.html">Run sample</a>
+            <a class="button" href="./serverless-workpaper-api-route.html">Node service</a>
             <a class="button" href="https://github.com/proompteng/bilig">GitHub</a>
           </div>
           <p class="hero-note">
@@ -412,229 +411,45 @@ console.log({ revenue, restoredSheets: restored.getSheetNames() });</code></pre>
           </div>
 
           <div class="path-grid">
-            <div class="link-stack" aria-label="Integration paths">
+            <div class="link-stack compact-links" aria-label="Core runtime paths">
               <a class="path-link" href="./why-use-bilig.html">
                 <span>fit</span>
-                <strong>Why use Bilig?</strong>
-                <em>Use it when spreadsheet logic needs API readback, tests, persistence, and agent-readable state.</em>
+                <strong>Use Bilig when the workbook is the rulebook.</strong>
+                <em>Good fit: pricing, payouts, approvals, imports, finance checks, and agent tools that need calculated readback.</em>
               </a>
               <a class="path-link" href="./node-service-workpaper-recipe.html">
                 <span>service</span>
-                <strong>Node service WorkPaper recipe</strong>
-                <em>Load state, change an input, read the output, save JSON.</em>
-              </a>
-              <a class="path-link" href="./stop-driving-spreadsheets-with-screenshots.html">
-                <span>api</span>
-                <strong>Stop driving spreadsheets with screenshots</strong>
-                <em>Use a WorkPaper API when code needs formula readback, persistence, and restored state.</em>
-              </a>
-              <a class="path-link" href="./show-hn-formula-workbooks-node-services.html">
-                <span>show hn</span>
-                <strong>Formula workbooks for Node services</strong>
-                <em>One npm check, visible benchmark caveat, and a concrete feedback ask.</em>
-              </a>
-              <a class="path-link" href="./server-side-spreadsheet-automation-node.html">
-                <span>backend</span>
-                <strong>Server-side spreadsheet automation</strong>
-                <em>Run formulas inside a Node service without a browser grid.</em>
-              </a>
-              <a class="path-link" href="./google-sheets-api-alternative-node-workpaper.html">
-                <span>sheets api</span>
-                <strong>Google Sheets API boundary</strong>
-                <em>Use a hosted sheet for collaboration; use WorkPaper when a Node service owns formula state.</em>
-              </a>
-              <a class="path-link" href="./microsoft-graph-excel-recalculation-node.html">
-                <span>graph api</span>
-                <strong>Microsoft Graph Excel recalculation boundary</strong>
-                <em>Use Excel Online for exact behavior; use WorkPaper when a Node service owns formula state.</em>
-              </a>
-              <a class="path-link" href="./serverless-workpaper-api-route.html">
-                <span>route</span>
-                <strong>Serverless WorkPaper API route</strong>
-                <em>Start with quote approval: write Inputs!B2:B6, recalc formulas, persist JSON, reload state.</em>
-              </a>
-              <a class="path-link" href="./node-framework-workpaper-adapters.html">
-                <span>frameworks</span>
-                <strong>Express, Fastify, Hono, Oak, Hapi, and AdonisJS adapters</strong>
-                <em>Keep framework glue small and leave formula work in the WorkPaper.</em>
-              </a>
-              <a class="path-link" href="./directus-workpaper-flow-operation.html">
-                <span>directus</span>
-                <strong>Directus Flow operation for persisted calculated fields</strong>
-                <em>Return an Update Data patch plus WorkPaper readback from a custom operation extension.</em>
-              </a>
-              <a class="path-link" href="./windmill-workpaper-script.html">
-                <span>windmill</span>
-                <strong>Windmill WorkPaper TypeScript script</strong>
-                <em>Run formula-backed workflow fields with a patch, JSON restore, and readback.</em>
-              </a>
-              <a class="path-link" href="./triggerdev-workpaper-task.html">
-                <span>trigger.dev</span>
-                <strong>Trigger.dev WorkPaper task</strong>
-                <em>Run durable formula-backed tasks with retry settings and readback.</em>
-              </a>
-              <a class="path-link" href="./inngest-workpaper-step.html">
-                <span>inngest</span>
-                <strong>Inngest WorkPaper step</strong>
-                <em>Run formula-backed fields inside one durable step.run boundary with readback.</em>
-              </a>
-              <a class="path-link" href="./airbyte-workpaper-validation.html">
-                <span>airbyte</span>
-                <strong>Airbyte WorkPaper validation</strong>
-                <em>Validate post-sync records and checkpoint state with formula readback.</em>
-              </a>
-              <a class="path-link" href="./meltano-workpaper-utility.html">
-                <span>meltano</span>
-                <strong>Meltano WorkPaper utility</strong>
-                <em>Validate post-ELT records with a custom utility command and JSON result artifact.</em>
-              </a>
-              <a class="path-link" href="./temporal-workpaper-activity.html">
-                <span>temporal</span>
-                <strong>Temporal WorkPaper Activity</strong>
-                <em>Keep WorkPaper formula work in an Activity while Workflow replay code stays deterministic.</em>
-              </a>
-              <a class="path-link" href="./airflow-workpaper-dag.html">
-                <span>airflow</span>
-                <strong>Airflow WorkPaper DAG</strong>
-                <em>Calculate TaskFlow outputs with compact XCom data and a full WorkPaper artifact.</em>
-              </a>
-              <a class="path-link" href="./dagster-workpaper-asset.html">
-                <span>dagster</span>
-                <strong>Dagster WorkPaper asset</strong>
-                <em>Materialize asset metadata from a Node WorkPaper subprocess with readback.</em>
-              </a>
-              <a class="path-link" href="./kestra-workpaper-flow.html">
-                <span>kestra</span>
-                <strong>Kestra WorkPaper Node flow</strong>
-                <em>Write a result file from a Node Commands flow after formula recalculation and JSON restore.</em>
-              </a>
-              <a class="path-link" href="./prefect-workpaper-flow.html">
-                <span>prefect</span>
-                <strong>Prefect WorkPaper flow</strong>
-                <em>Call a Node WorkPaper step from a retrying Prefect task and keep readback in run history.</em>
+                <strong>Put @bilig/headless behind a Node API.</strong>
+                <em>Load a WorkPaper, write inputs, read formula outputs, and save JSON without opening a spreadsheet app.</em>
               </a>
               <a class="path-link" href="./agent-workpaper-tool-calling-recipe.html">
                 <span>agent</span>
-                <strong>Agent tool-calling recipe</strong>
-                <em>Expose workbook reads, writes, formulas, and persistence as tools.</em>
+                <strong>Give agents tools, not a spreadsheet screen.</strong>
+                <em>Expose narrow read/write commands so the agent can change cells and return the calculated answer.</em>
               </a>
-              <a class="path-link" href="./headless-workpaper-agent-handbook.html">
-                <span>agent</span>
-                <strong>Headless WorkPaper agent handbook</strong>
-                <em>Pick MCP, direct TypeScript, service routes, or XLSX import with a required write-read-persist loop.</em>
-              </a>
-              <a class="path-link" href="./agent-adoption-kit.html">
-                <span>agent kit</span>
-                <strong>Agent Adoption Kit</strong>
-                <em>Install the skill, run the no-key MCP check, paste one task, and require verified formula readback.</em>
-              </a>
-              <a class="path-link" href="./workbook-agent-intent-api.html">
-                <span>intent</span>
-                <strong>Workbook agent intent API</strong>
-                <em
-                  >Use @bilig/workbook when a runtime owns calculation but agents need transport-neutral plan data, command receipts, and
-                  verification contracts.</em
-                >
-                <small>Example: https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model</small>
-              </a>
-              <a class="path-link" href="./agent-workbook-challenge.html">
-                <span>challenge</span>
-                <strong>Agent workbook challenge</strong>
-                <em>Give another agent one input edit, one formula readback, one persisted restore, and a pass/fail result object.</em>
-              </a>
-              <a class="path-link" href="./openai-responses-workpaper-tool-call.html">
-                <span>openai</span>
-                <strong>OpenAI Responses WorkPaper tools</strong>
-                <em>Run npm run agent:openai-responses to dispatch function_call items and return computed readback.</em>
-              </a>
-              <a class="path-link" href="./openai-agents-sdk-workpaper-tool.html">
-                <span>openai</span>
-                <strong>OpenAI Agents SDK WorkPaper tools</strong>
-                <em>Run npm run agent:openai-agents-sdk or agent:openai-agents-sdk-mcp to verify function tools and MCP discovery.</em>
-              </a>
-              <a class="path-link" href="./vercel-ai-sdk-langchain-spreadsheet-tool.html">
-                <span>adapters</span>
-                <strong>Agent framework spreadsheet tools</strong>
-                <em
-                  >Run npm run agent:ai-sdk-generate-text, npm run agent:ai-sdk-stream-text, or adapt tools for LangChain, Mastra,
-                  LlamaIndex.TS, LangGraph.js, CopilotKit, and Cloudflare Agents.</em
-                >
-              </a>
-              <a class="path-link" href="./mcp-workpaper-tool-server.html">
-                <span>mcp</span>
-                <strong>MCP spreadsheet tool server</strong>
-                <em>WorkPaper reads and writes over tools/list and tools/call.</em>
-              </a>
-              <a class="path-link" href="./mcp-workpaper-tool-server.html#remote-stateless-endpoint">
-                <span>remote mcp</span>
-                <strong>Hosted MCP smoke endpoint</strong>
-                <em>Stateless Streamable HTTP endpoint for connector tests and tool discovery.</em>
-              </a>
-              <a class="path-link" href="./mcp-client-setup.html">
-                <span>clients</span>
-                <strong>MCP client setup</strong>
-                <em>Remote MCP smoke plus Claude, Cursor, VS Code, Cline, and Codex configs for the npm stdio server.</em>
-              </a>
-              <a class="path-link" href="./gemini-cli-workpaper-extension.html">
-                <span>gemini cli</span>
-                <strong>Gemini CLI WorkPaper extension</strong>
-                <em>Install Bilig as a Gemini extension so Gemini can edit workbook inputs and verify formula readback.</em>
-              </a>
-              <a class="path-link" href="./open-webui-workpaper-mcp.html">
-                <span>open webui</span>
-                <strong>Open WebUI WorkPaper tool setup</strong>
-                <em
-                  >Use hosted OpenAPI, native Streamable HTTP MCP, or mcpo so chats can edit workbook inputs and verify formula
-                  readback.</em
-                >
-              </a>
-              <a class="path-link" href="./lobehub-workpaper-mcp.html">
-                <span>lobehub</span>
-                <strong>LobeHub WorkPaper MCP setup</strong>
-                <em>Import Bilig as a Custom MCP skill for hosted HTTP smoke tests or desktop writable WorkPaper files.</em>
-              </a>
-              <a class="path-link" href="./anythingllm-workpaper-mcp.html">
-                <span>anythingllm</span>
-                <strong>AnythingLLM WorkPaper MCP setup</strong>
-                <em>Connect Agent Skills to hosted MCP smoke tests, Desktop stdio, or Docker-persisted WorkPaper files.</em>
-              </a>
-              <a class="path-link" href="./sim-workpaper-mcp.html">
-                <span>sim</span>
-                <strong>Sim WorkPaper MCP setup</strong>
-                <em>Connect MCP Tools to a hosted WorkPaper smoke test, then use Agent or MCP Tool blocks for readback.</em>
-              </a>
-              <a class="path-link" href="./fastmcp-workpaper-client.html">
-                <span>fastmcp</span>
-                <strong>FastMCP WorkPaper client</strong>
-                <em>Use Python to list Bilig MCP tools, edit Inputs!B3, verify restored state, and export WorkPaper JSON.</em>
-              </a>
-              <a class="path-link" href="./smolagents-workpaper-tool.html">
-                <span>smolagents</span>
-                <strong>smolagents WorkPaper tool</strong>
-                <em>Run a Hugging Face Tool that edits a workbook input, recalculates, restores JSON, and returns a verified result.</em>
-              </a>
-              <a class="path-link" href="./claude-desktop-mcpb-workpaper.html">
-                <span>mcpb</span>
-                <strong>Claude Desktop MCPB bundle</strong>
-                <em>Package the WorkPaper MCP server for local Claude Desktop installs.</em>
+              <a class="path-link" href="./where-bilig-is-not-excel-compatible-yet.html">
+                <span>limits</span>
+                <strong>Review compatibility limits before a production switch.</strong>
+                <em>Bilig is a headless runtime, not a full Excel clone. The missing behavior stays public.</em>
               </a>
             </div>
 
             <div class="terminal-panel">
               <div class="panel-label">
-                <span>bilig-workpaper-mcp</span>
-                <span>stdio</span>
+                <span>@bilig/headless</span>
+                <span>service loop</span>
               </div>
-              <pre><code>$ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
-<span class="ok">ok</span> tools/list
-<span class="ok">ok</span> tools/call read_range
-<span class="ok">ok</span> tools/call set_cell_contents
-<span class="ok">ok</span> WorkPaper JSON persisted to file
+              <pre><code>const paper = WorkPaper.buildFromSheets(model)
+paper.setCellContents(inputCell, 40)
 
-$ curl https://bilig.proompteng.ai/mcp -H 'accept: application/json, text/event-stream' -H 'mcp-protocol-version: 2025-11-25' ...
-<span class="ok">ok</span> stateless Streamable HTTP tools/list
-$ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
-<span class="ok">ok</span> OpenAPI tool server for Open WebUI</code></pre>
+const answer = paper.getCellDisplayValue(outputCell)
+const saved = serializeWorkPaperDocument(exportWorkPaperDocument(paper))
+const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved))
+
+console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
+<span class="ok">ok</span> formula readback
+<span class="ok">ok</span> saved WorkPaper JSON
+<span class="ok">ok</span> restored state</code></pre>
             </div>
           </div>
         </div>
@@ -727,49 +542,29 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
 
           <div class="row-list">
             <a class="path-link" href="./eval-workpaper-service.html">
-              <span>node eval</span>
-              <strong>I want formula workbooks inside a Node service.</strong>
-              <em>Create a starter, write an input, read a formula, serialize JSON, restore, and verify.</em>
+              <span>node</span>
+              <strong>Run a WorkPaper in a service.</strong>
+              <em>Create a starter, write an input, read a formula, save JSON, and restore it.</em>
             </a>
             <a class="path-link" href="./eval-agent-mcp.html">
-              <span>agent eval</span>
-              <strong>I want an agent or MCP client to use workbook tools.</strong>
-              <em>Check tool discovery, set_cell_contents, formula readback, persistence, and restart readback.</em>
+              <span>agent</span>
+              <strong>Give an agent a workbook API.</strong>
+              <em>Expose cell reads, writes, formula readback, and persistence without screen automation.</em>
             </a>
             <a class="path-link" href="./try-bilig-headless-in-node.html">
-              <span>try it</span>
-              <strong>Try it in a blank Node project.</strong>
+              <span>quickstart</span>
+              <strong>Try @bilig/headless in a blank Node project.</strong>
               <em>Edit one input, restore the JSON document, and check the recalculated total.</em>
             </a>
-            <a class="path-link" href="./create-bilig-workpaper.html">
-              <span>create</span>
-              <strong>Prepare a route-shaped WorkPaper starter.</strong>
-              <em>Run the public npm create package or the maintained API example and get a smoke-tested starter.</em>
+            <a class="path-link" href="./serverless-workpaper-api-route.html">
+              <span>api</span>
+              <strong>Ship a small route around the runtime.</strong>
+              <em>Use the quote-approval example when the workbook logic belongs behind HTTP.</em>
             </a>
             <a class="path-link" href="./eval-xlsx-recalc.html">
-              <span>xlsx eval</span>
-              <strong>I need a fresh XLSX after Node edits inputs.</strong>
-              <em>Edit inputs, read recalculated values, write a workbook, and see the limits before adoption.</em>
-            </a>
-            <a class="path-link" href="./eval-xlsx-cache-doctor.html">
-              <span>cache eval</span>
-              <strong>I need to know if saved formula values are stale.</strong>
-              <em>Run one command, inspect every formula cache, get stale cells, and see suggested reads.</em>
-            </a>
-            <a class="path-link" href="./node-service-workpaper-recipe.html">
-              <span>service</span>
-              <strong>Put a WorkPaper behind a Node endpoint.</strong>
-              <em>Load state, write a cell, read the output, and save the document.</em>
-            </a>
-            <a class="path-link" href="./agent-workpaper-tool-calling-recipe.html">
-              <span>agent</span>
-              <strong>Expose workbook reads and writes as tools.</strong>
-              <em>Let the tool write the cell and return the value the workbook calculated.</em>
-            </a>
-            <a class="path-link" href="./agent-workbook-challenge.html">
-              <span>challenge</span>
-              <strong>Give another agent a no-screenshot workbook eval.</strong>
-              <em>Require editedCell, before, after, afterRestore, persistedDocumentBytes, verified, and limitations.</em>
+              <span>xlsx</span>
+              <strong>Keep XLSX only when the file is the contract.</strong>
+              <em>Edit inputs, read recalculated values, and write a fresh workbook file.</em>
             </a>
             <a class="path-link" href="./headless-spreadsheet-engine-comparison.html">
               <span>compare</span>
@@ -780,21 +575,6 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
               <span>limits</span>
               <strong>Read the Excel gaps before importing real workbooks.</strong>
               <em>Known missing behavior is listed before it surprises you.</em>
-            </a>
-            <a class="path-link" href="./submit-workbook-fixture.html">
-              <span>fixture</span>
-              <strong>Send a reduced workbook case.</strong>
-              <em>Turn a real blocker into a public test, example, corpus fixture, or compatibility note.</em>
-            </a>
-            <a class="path-link" href="./formula-bug-clinic.html">
-              <span>clinic</span>
-              <strong>Bring a formula or XLSX blocker.</strong>
-              <em>Reduce stale caches, shared formulas, unsupported functions, and agent readback failures into public tests.</em>
-            </a>
-            <a class="path-link" href="./formula-clinic-report.ts">
-              <span>report</span>
-              <strong>Generate a local clinic report.</strong>
-              <em>Run <code>bilig-formula-clinic</code> against a reduced workbook and paste the Markdown output into GitHub.</em>
             </a>
             <a class="path-link" href="https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only">
               <span>contribute</span>
@@ -826,48 +606,9 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
                 <li><a href="https://www.npmjs.com/package/@bilig/workpaper">@bilig/workpaper npm package</a></li>
                 <li><a href="./try-bilig-headless-in-node.html">Node quickstart</a></li>
                 <li><a href="./create-bilig-workpaper.html">starter package status</a></li>
-                <li><a href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper">TypeScript examples</a></li>
-                <li><a href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">@bilig/xlsx-formula-recalc npm package</a></li>
-                <li><a href="./eval-xlsx-cache-doctor.html">stale XLSX cache evaluator</a></li>
-                <li><a href="./xlsx-cache-doctor-github-action.html">XLSX cache doctor GitHub Action</a></li>
-                <li><a href="https://github.com/proompteng/bilig/tree/main/examples/xlsx-cache-doctor-ci">cache doctor CI fixture</a></li>
-                <li>
-                  <a href="https://github.com/proompteng/bilig/tree/main/examples/recalc-bridge-workflows"
-                    >SheetJS, xlsx-populate, and ExcelJS bridge example</a
-                  >
-                </li>
-                <li><a href="https://www.npmjs.com/package/@bilig/exceljs-formula-recalc">@bilig/exceljs-formula-recalc npm package</a></li>
-                <li><a href="https://www.npmjs.com/package/@bilig/workbook">@bilig/workbook npm package</a></li>
-                <li><a href="./workbook-agent-intent-api.html">workbook agent intent API</a></li>
                 <li><a href="./workbook-automation-examples-node.html">workbook automation examples</a></li>
-                <li>
-                  <a href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input"
-                    >JSON records input</a
-                  >
-                </li>
-                <li>
-                  <a href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#invoice-totals">invoice totals</a>
-                </li>
-                <li>
-                  <a href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#budget-variance-alerts"
-                    >budget variance alerts</a
-                  >
-                </li>
-                <li>
-                  <a href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#fulfillment-capacity-plan"
-                    >fulfillment capacity plan</a
-                  >
-                </li>
-                <li>
-                  <a href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#quote-approval-threshold"
-                    >quote approval threshold</a
-                  >
-                </li>
-                <li>
-                  <a href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#subscription-mrr-forecast"
-                    >subscription MRR forecast</a
-                  >
-                </li>
+                <li><a href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper">TypeScript examples</a></li>
+                <li><a href="./eval-workpaper-service.html">service fit check</a></li>
               </ul>
             </div>
 
@@ -876,45 +617,15 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
               <ul>
                 <li><a href="./node-service-workpaper-recipe.html">Node service recipe</a></li>
                 <li><a href="./server-side-spreadsheet-automation-node.html">server-side spreadsheet automation</a></li>
-                <li><a href="./google-sheets-api-alternative-node-workpaper.html">Google Sheets API boundary</a></li>
                 <li><a href="./serverless-workpaper-api-route.html">serverless WorkPaper API route</a></li>
+                <li><a href="./quote-approval-workpaper-api.html">quote-approval-api route</a></li>
                 <li><a href="./node-framework-workpaper-adapters.html">Express, Fastify, Hono, Oak, Hapi, and AdonisJS adapters</a></li>
-                <li><a href="./directus-workpaper-flow-operation.html">Directus Flow operation for persisted calculated fields</a></li>
-                <li><a href="./windmill-workpaper-script.html">Windmill WorkPaper TypeScript script</a></li>
-                <li><a href="./triggerdev-workpaper-task.html">Trigger.dev WorkPaper task</a></li>
-                <li><a href="./airbyte-workpaper-validation.html">Airbyte WorkPaper validation</a></li>
-                <li><a href="./meltano-workpaper-utility.html">Meltano WorkPaper utility</a></li>
                 <li><a href="./temporal-workpaper-activity.html">Temporal WorkPaper Activity</a></li>
-                <li><a href="./airflow-workpaper-dag.html">Airflow WorkPaper DAG</a></li>
-                <li><a href="./dagster-workpaper-asset.html">Dagster WorkPaper asset</a></li>
-                <li><a href="./kestra-workpaper-flow.html">Kestra WorkPaper Node flow</a></li>
-                <li><a href="./prefect-workpaper-flow.html">Prefect WorkPaper flow</a></li>
                 <li><a href="./persisting-formula-backed-workpaper-documents-in-node.html">formula-backed persistence</a></li>
                 <li><a href="./building-a-revenue-model-with-headless-workpaper.html">build a revenue model</a></li>
                 <li>
                   <a href="https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api">serverless API route example</a>
                 </li>
-                <li>
-                  <a href="https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#quote-approval-api-smoke"
-                    >quote-approval-api smoke</a
-                  >
-                </li>
-                <li>
-                  <a href="https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#persistence-adapters"
-                    >Postgres, Redis, and object storage adapters</a
-                  >
-                </li>
-                <li>
-                  <a href="https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node"
-                    >XLSX formula recalculation in Node</a
-                  >
-                </li>
-                <li><a href="./xlsx-recalculation-proof.html">curlable XLSX recalculation check</a></li>
-                <li><a href="./external-workbook-recalc-proof.html">external workbook recalculation check</a></li>
-                <li><a href="./eval-xlsx-cache-doctor.html">stale XLSX cache evaluator</a></li>
-                <li><a href="./xlsx-cache-doctor-github-action.html">XLSX cache doctor GitHub Action</a></li>
-                <li><a href="./xlsx-recalculation-proof.ts">downloadable check script</a></li>
-                <li><a href="./external-workbook-recalc-proof.ts">downloadable external-workbook check script</a></li>
               </ul>
             </div>
 
@@ -924,57 +635,23 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
                 Coding agent? Do not drive Excel, LibreOffice, Google Sheets, or a browser grid. Run
                 <code>npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json</code> first.
               </p>
+              <p>
+                Use <code>@bilig/workbook</code> only when agents need transport-neutral plan data and command receipts. Example:
+                https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model.
+              </p>
               <ul>
                 <li><a href="./why-agents-need-workbook-apis.html">why agents need workbook APIs</a></li>
                 <li><a href="./AGENTS.md">agent instructions</a></li>
                 <li><a href="./agent-adoption-kit.html">agent adoption kit</a></li>
-                <li>
-                  <a href="https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt">agent skill manifest</a>
-                </li>
-                <li><a href="./llms-full.txt">full LLM context pack</a></li>
                 <li><a href="https://context7.com/proompteng/bilig">Context7 indexed docs</a></li>
                 <li><a href="./headless-workpaper-agent-handbook.html">headless WorkPaper agent handbook</a></li>
-                <li><a href="./agent-workbook-challenge.html">agent workbook challenge</a></li>
                 <li><a href="./agent-workpaper-tool-calling-recipe.html">agent tool-calling recipe</a></li>
                 <li><a href="./agent-framework-workbook-tools.html">agent framework workbook tool chooser</a></li>
+                <li><a href="./workbook-agent-intent-api.html">workbook agent intent API</a></li>
                 <li><a href="./openai-agents-sdk-workpaper-tool.html">OpenAI Agents SDK tool calls</a></li>
-                <li><a href="./openai-responses-workpaper-tool-call.html">OpenAI Responses tool calls</a></li>
-                <li><a href="./agent-spreadsheet-tool-call-loop.html">agent spreadsheet tool-call loop</a></li>
-                <li>
-                  <a href="./agent-xlsx-formula-recalculation-without-libreoffice.html">agent XLSX recalculation without LibreOffice</a>
-                </li>
-                <li><a href="./vercel-ai-sdk-langchain-spreadsheet-tool.html">Agent framework tools</a></li>
-                <li><a href="./semantic-kernel-workpaper-mcp.html">Semantic Kernel MCP plugin</a></li>
-                <li><a href="./mastra-workpaper-spreadsheet-tool.html">Mastra spreadsheet tool</a></li>
-                <li><a href="./llamaindex-workpaper-spreadsheet-tool.html">LlamaIndex.TS spreadsheet tool</a></li>
-                <li><a href="./langgraph-workpaper-toolnode-spreadsheet.html">LangGraph.js ToolNode</a></li>
-                <li><a href="./open-multi-agent-workpaper-mcp.html">Open Multi-Agent MCP example</a></li>
-                <li><a href="./copilotkit-workpaper-spreadsheet-action.html">CopilotKit action</a></li>
-                <li><a href="./cloudflare-agents-workpaper-spreadsheet-tool.html">Cloudflare Agents tool</a></li>
-                <li><a href="./crewai-workpaper-spreadsheet-tool.html">CrewAI spreadsheet tool</a></li>
-                <li><a href="./gemini-cli-workpaper-extension.html">Gemini CLI WorkPaper extension</a></li>
                 <li><a href="./mcp-workpaper-tool-server.html">MCP spreadsheet tool server</a></li>
-                <li><a href="./spreadsheet-mcp-server-comparison.html">spreadsheet MCP server comparison</a></li>
                 <li><a href="./mcp-spreadsheet-server-directory.html">MCP directory status</a></li>
                 <li><a href="./mcp-client-setup.html">MCP client setup</a></li>
-                <li><a href="./open-webui-workpaper-mcp.html">Open WebUI WorkPaper tool setup</a></li>
-                <li><a href="./lobehub-workpaper-mcp.html">LobeHub WorkPaper MCP setup</a></li>
-                <li><a href="./anythingllm-workpaper-mcp.html">AnythingLLM WorkPaper MCP setup</a></li>
-                <li><a href="./sim-workpaper-mcp.html">Sim WorkPaper MCP setup</a></li>
-                <li><a href="./fastmcp-workpaper-client.html">FastMCP WorkPaper client</a></li>
-                <li><a href="./smolagents-workpaper-tool.html">smolagents WorkPaper tool</a></li>
-                <li><a href="./dify-workpaper-formula-readback.html">Dify WorkPaper plugin</a></li>
-                <li><a href="./n8n-workpaper-formula-readback.html">n8n WorkPaper formula readback</a></li>
-                <li><a href="./flowise-workpaper-formula-readback.html">Flowise WorkPaper formula readback</a></li>
-                <li><a href="./pipedream-workpaper-formula-readback.html">Pipedream WorkPaper formula readback</a></li>
-                <li><a href="./claude-desktop-mcpb-workpaper.html">Claude Desktop MCPB bundle</a></li>
-                <li>
-                  <a href="https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper"
-                    >MCP Registry listing</a
-                  >
-                </li>
-                <li><a href="./.well-known/agent-skills/index.json">agent skill discovery index</a></li>
-                <li><a href="https://github.com/proompteng/bilig/discussions/230">MCP workflow discussion</a></li>
               </ul>
             </div>
 
@@ -983,96 +660,27 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
               <ul>
                 <li><a href="./why-use-bilig.html">why use Bilig?</a></li>
                 <li><a href="./stop-driving-spreadsheets-with-screenshots.html">screenshots vs workbook APIs</a></li>
-                <li><a href="./show-hn-formula-workbooks-node-services.html">Show HN formula workbook writeup</a></li>
-                <li>
-                  <a href="./formula-workbooks-node-services-agent-tools.html">formula workbooks for Node services and agent tools</a>
-                </li>
-                <li>
-                  <a href="./ai-agent-spreadsheet-tool-node.html">AI spreadsheet agent tool for Node.js</a>
-                </li>
-                <li><a href="./agent-framework-workbook-tools.html">agent framework workbook tool chooser</a></li>
                 <li><a href="./node-spreadsheet-formula-engine.html">Node spreadsheet formula engine</a></li>
-                <li><a href="./xlsx-recalculation-proof.html">curlable XLSX recalculation check</a></li>
-                <li><a href="./external-workbook-recalc-proof.html">external workbook recalculation check</a></li>
-                <li><a href="./xlsx-recalculation-proof.ts">downloadable check script</a></li>
-                <li><a href="./external-workbook-recalc-proof.ts">downloadable external-workbook check script</a></li>
-                <li><a href="./xlsx-formula-recalculation-node.html">XLSX formula recalculation in Node.js</a></li>
-                <li><a href="./xlsx-cache-doctor-github-action.html">XLSX cache doctor GitHub Action</a></li>
-                <li>
-                  <a href="./agent-xlsx-formula-recalculation-without-libreoffice.html"
-                    >agent XLSX formula recalculation without LibreOffice</a
-                  >
-                </li>
-                <li>
-                  <a href="./excel-file-calculation-engine-node.html">Excel file as a Node calculation engine</a>
-                </li>
-                <li>
-                  <a href="./stale-xlsx-formula-cache-node.html">stale XLSX formula cache in Node.js</a>
-                </li>
-                <li>
-                  <a href="./sheetjs-formula-result-not-updating-node.html">SheetJS formula result not updating in Node.js</a>
-                </li>
-                <li>
-                  <a href="./microsoft-graph-excel-recalculation-node.html">Microsoft Graph Excel recalculation in Node.js</a>
-                </li>
-                <li><a href="./spreadsheet-mcp-server-comparison.html">spreadsheet MCP server comparison</a></li>
-                <li>
-                  <a href="./xlsx-calc-alternative-node-workbook-recalculation.html">xlsx-calc alternative for Node recalculation</a>
-                </li>
-                <li><a href="./exceljs-formula-recalculation-node.html">ExcelJS formula recalculation in Node.js</a></li>
-                <li>
-                  <a href="./exceljs-shared-formula-recalculation-node.html">ExcelJS shared formulas in Node.js</a>
-                </li>
-                <li>
-                  <a href="./xlsx-template-formula-recalculation-node.html">xlsx-template formula recalculation in Node.js</a>
-                </li>
-                <li>
-                  <a href="./xlsx-populate-formula-result-node.html">xlsx-populate formula results in Node.js</a>
-                </li>
-                <li>
-                  <a href="./headless-spreadsheet-engine-node-services-agents.html"
-                    >headless spreadsheet engine for Node services and agents</a
-                  >
-                </li>
-                <li><a href="./quote-approval-workpaper-api.html">quote approval WorkPaper API</a></li>
-                <li><a href="./create-bilig-workpaper.html">starter package status</a></li>
+                <li><a href="./show-hn-formula-workbooks-node-services.html">Show HN writeup</a></li>
                 <li><a href="./production-adoption-checklist-headless-workpaper.html">production adoption checklist</a></li>
-                <li><a href="./npm-provenance-package-trust.html">npm provenance and package trust</a></li>
-                <li><a href="./evaluate-excel-formulas-in-node-typescript.html">evaluate Excel formulas in Node.js</a></li>
-                <li><a href="./google-sheets-api-alternative-node-workpaper.html">Google Sheets API boundary</a></li>
-                <li><a href="./xlsx-corpus-verifier-walkthrough.html">stale XLSX cache and Excel oracle checks</a></li>
-                <li><a href="./javascript-spreadsheet-library-headless-node.html">JavaScript spreadsheet library for Node services</a></li>
-                <li><a href="./sheetjs-exceljs-alternative-formula-workbook-api.html">SheetJS and ExcelJS alternatives</a></li>
-                <li><a href="./hyperformula-alternative-headless-workpaper.html">HyperFormula alternative notes</a></li>
-                <li><a href="./unsupported-formula-troubleshooting-recipe.html">unsupported formula troubleshooting</a></li>
-                <li><a href="./local-workpaper-benchmark-walkthrough.html">local benchmark walkthrough</a></li>
                 <li><a href="./what-workpaper-benchmark-proves.html">what the benchmark proves</a></li>
-                <li><a href="https://github.com/proompteng/bilig/discussions/340">benchmark critique</a></li>
                 <li><a href="./headless-spreadsheet-engine-comparison.html">engine comparison</a></li>
                 <li><a href="./where-bilig-is-not-excel-compatible-yet.html">compatibility limits</a></li>
-                <li><a href="./formula-bug-clinic.html">formula bug clinic</a></li>
-                <li><a href="./formula-clinic-report.ts">formula clinic report script</a></li>
+                <li><a href="https://github.com/proompteng/bilig/subscription">watch releases</a></li>
+                <li><a href="./google-sheets-api-alternative-node-workpaper.html">Google Sheets API boundary</a></li>
+                <li><a href="./microsoft-graph-excel-recalculation-node.html">Microsoft Graph Excel boundary</a></li>
+                <li><a href="./stale-xlsx-formula-cache-node.html">stale XLSX formula caches</a></li>
+                <li><a href="./sheetjs-formula-result-not-updating-node.html">SheetJS stale formula values</a></li>
+                <li><a href="./xlsx-corpus-verifier-walkthrough.html">XLSX corpus checks</a></li>
+                <li><a href="./npm-provenance-package-trust.html">npm provenance and package trust</a></li>
                 <li><a href="./submit-workbook-fixture.html">submit a workbook fixture</a></li>
                 <li>
                   <a href="https://github.com/proompteng/bilig/issues/new?template=workbook_fixture.yml">workbook fixture issue template</a>
                 </li>
                 <li><a href="https://github.com/proompteng/bilig/discussions/414">fixture discussion</a></li>
-                <li><a href="https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md">starter issues</a></li>
-                <li>
-                  <a href="https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only"
-                    >first-timers-only queue</a
-                  >
-                </li>
                 <li>
                   <a href="https://github.com/proompteng/bilig/discussions/new?category=general">adoption blocker form</a>
                 </li>
-                <li><a href="https://github.com/proompteng/bilig/stargazers">GitHub stargazers</a></li>
-                <li><a href="https://github.com/proompteng/bilig/subscription">watch releases</a></li>
-                <li><a href="https://github.com/proompteng/bilig/discussions">GitHub discussions</a></li>
-                <li><a href="https://github.com/proompteng/bilig/discussions/270">quickstart feedback</a></li>
-                <li><a href="https://github.com/proompteng/bilig/discussions/157">workflow feedback</a></li>
-                <li><a href="https://github.com/proompteng/bilig/discussions/167">serverless route feedback</a></li>
-                <li><a href="https://github.com/proompteng/bilig/discussions/307">persistence adapter feedback</a></li>
                 <li><a href="https://github.com/proompteng/bilig/blob/main/SECURITY.md">security policy</a></li>
                 <li><a href="https://github.com/proompteng/bilig/blob/main/SUPPORT.md">support policy</a></li>
               </ul>
@@ -1094,7 +702,7 @@ $ curl https://bilig.proompteng.ai/openapi/workpaper/openapi.json
             <a class="button primary" href="https://www.npmjs.com/package/@bilig/headless">Install @bilig/headless</a>
             <a class="button" href="./try-bilig-headless-in-node.html">Run the quickstart</a>
             <a class="button dark" href="https://github.com/proompteng/bilig">GitHub</a>
-            <a class="button" href="https://context7.com/proompteng/bilig">Ask docs</a>
+            <a class="button" href="https://github.com/proompteng/bilig/stargazers">Star</a>
           </div>
         </div>
       </section>

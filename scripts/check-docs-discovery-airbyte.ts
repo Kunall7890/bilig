@@ -7,11 +7,10 @@ const repoRoot = join(import.meta.dirname, '..')
 const docsRoot = join(repoRoot, 'docs')
 const exampleRoot = join(repoRoot, 'examples', 'airbyte-workpaper-validation')
 
-const [readme, llms, llmsFull, index, workpaperReadme, airbyteDoc, fixture, globalFixture, helperSource, smokeSource] = await Promise.all([
+const [readme, llms, llmsFull, workpaperReadme, airbyteDoc, fixture, globalFixture, helperSource, smokeSource] = await Promise.all([
   readFile(join(repoRoot, 'README.md'), 'utf8'),
   readFile(join(docsRoot, 'llms.txt'), 'utf8'),
   readFile(join(docsRoot, 'llms-full.txt'), 'utf8'),
-  readFile(join(docsRoot, 'index.html'), 'utf8'),
   readFile(join(repoRoot, 'packages', 'workpaper', 'README.md'), 'utf8'),
   readFile(join(docsRoot, 'airbyte-workpaper-validation.md'), 'utf8'),
   readFile(join(exampleRoot, 'fixtures', 'orders-airbyte-messages.jsonl'), 'utf8'),
@@ -33,7 +32,7 @@ await Promise.all(
   ].map((sourceFile) => requireFile(join(exampleRoot, sourceFile))),
 )
 
-for (const source of [readme, llms, llmsFull, index, workpaperReadme]) {
+for (const source of [readme, llms, llmsFull, workpaperReadme]) {
   requireIncludes(source, 'airbyte-workpaper-validation', 'Airbyte discovery surfaces')
 }
 

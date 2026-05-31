@@ -31,7 +31,6 @@ export async function requireOpenAiResponsesDiscovery({
   docsRoot,
   readme,
   headlessReadme,
-  index,
   llms,
   agentToolCallingDoc,
   headlessExampleReadme,
@@ -44,7 +43,6 @@ export async function requireOpenAiResponsesDiscovery({
   for (const [path, content] of [
     ['README.md', readme],
     ['packages/headless/README.md', headlessReadme],
-    ['docs/index.html', index],
     ['docs/llms.txt', llms],
     ['docs/agent-workpaper-tool-calling-recipe.md', agentToolCallingDoc],
     ['docs/openai-responses-workpaper-tool-call.md', openAiDoc],
@@ -56,7 +54,6 @@ export async function requireOpenAiResponsesDiscovery({
   for (const [path, content] of [
     ['README.md', readme],
     ['packages/headless/README.md', headlessReadme],
-    ['docs/index.html', index],
     ['docs/llms.txt', llms],
     ['docs/agent-workpaper-tool-calling-recipe.md', agentToolCallingDoc],
   ] as const) {

@@ -20,7 +20,6 @@ export async function requireSmolagentsWorkpaperToolDiscovery(context: Smolagent
     ),
   )
 
-  requireIncludes(context.index, './smolagents-workpaper-tool.html', 'docs/index.html')
   requireIncludes(smolagentsWorkpaperTool, 'examples/smolagents-workpaper-tool', 'docs/smolagents-workpaper-tool.md')
   requireIncludes(smolagentsWorkpaperTool, 'from smolagents import Tool', 'docs/smolagents-workpaper-tool.md')
   requireIncludes(smolagentsWorkpaperTool, 'verify_workpaper_formula_readback', 'docs/smolagents-workpaper-tool.md')

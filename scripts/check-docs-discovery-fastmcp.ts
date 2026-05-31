@@ -20,7 +20,6 @@ export async function requireFastMcpWorkpaperClientDiscovery(context: FastMcpWor
     ),
   )
 
-  requireIncludes(context.index, './fastmcp-workpaper-client.html', 'docs/index.html')
   requireIncludes(fastmcpWorkpaperClient, 'examples/fastmcp-workpaper-client', 'docs/fastmcp-workpaper-client.md')
   requireIncludes(fastmcpWorkpaperClient, 'from fastmcp import Client', 'docs/fastmcp-workpaper-client.md')
   requireIncludes(

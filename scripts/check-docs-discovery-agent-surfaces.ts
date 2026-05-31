@@ -280,7 +280,6 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   for (const [path, content] of [
     ['README.md', readme],
     ['packages/headless/README.md', headlessReadme],
-    ['docs/index.html', index],
     ['docs/llms.txt', llms],
     ['docs/agent-workpaper-tool-calling-recipe.md', agentToolCallingDoc],
     ['examples/headless-workpaper/package.json', headlessExamplePackageJson],
@@ -735,14 +734,14 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   } as const
 
   const discussionDocChecks = [
-    ['https://github.com/proompteng/bilig/discussions/157', ['readme', 'headless', 'index', 'launch', 'llms']],
+    ['https://github.com/proompteng/bilig/discussions/157', ['readme', 'headless', 'launch', 'llms']],
     ['https://github.com/proompteng/bilig/discussions/213', ['readme', 'launch', 'llms']],
     ['https://github.com/proompteng/bilig/discussions/230', ['mcp', 'llms']],
-    ['https://github.com/proompteng/bilig/discussions/167', ['index', 'launch', 'llms']],
-    ['https://github.com/proompteng/bilig/discussions/307', ['readme', 'headless', 'index', 'launch', 'llms']],
+    ['https://github.com/proompteng/bilig/discussions/167', ['launch', 'llms']],
+    ['https://github.com/proompteng/bilig/discussions/307', ['readme', 'headless', 'launch', 'llms']],
     ['https://github.com/proompteng/bilig/discussions/308', ['readme', 'headless', 'launch', 'llms']],
     ['https://github.com/proompteng/bilig/discussions/335', ['readme', 'headless', 'agent', 'launch', 'llms']],
-    ['https://github.com/proompteng/bilig/discussions/340', ['readme', 'headless', 'index', 'launch', 'llms']],
+    ['https://github.com/proompteng/bilig/discussions/340', ['readme', 'headless', 'launch', 'llms']],
     ['https://github.com/proompteng/bilig/discussions/382', ['launch', 'llms']],
   ] as const
 

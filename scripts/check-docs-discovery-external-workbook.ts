@@ -12,7 +12,6 @@ export async function requireExternalWorkbookRecalcProofDiscovery(args: {
   const proof = await readFile(join(args.docsRoot, 'external-workbook-recalc-proof.md'), 'utf8')
 
   requireIncludes(args.xlsxRecalcPackageReadme, 'external-workbook-recalc-proof.html', 'packages/xlsx-formula-recalc/README.md')
-  requireIncludes(args.index, './external-workbook-recalc-proof.html', 'docs/index.html')
   requireIncludes(args.llms, 'https://proompteng.github.io/bilig/external-workbook-recalc-proof.html', 'docs/llms.txt')
   requireIncludes(args.llms, 'https://proompteng.github.io/bilig/external-workbook-recalc-proof.ts', 'docs/llms.txt')
   for (const required of [

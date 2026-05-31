@@ -7,20 +7,18 @@ const repoRoot = join(import.meta.dirname, '..')
 const docsRoot = join(repoRoot, 'docs')
 const exampleRoot = join(repoRoot, 'examples', 'meltano-workpaper-utility')
 
-const [readme, llms, llmsFull, index, workpaperReadme, meltanoDoc, exampleReadme, meltanoYml, hubDefinition, fixture, source] =
-  await Promise.all([
-    readFile(join(repoRoot, 'README.md'), 'utf8'),
-    readFile(join(docsRoot, 'llms.txt'), 'utf8'),
-    readFile(join(docsRoot, 'llms-full.txt'), 'utf8'),
-    readFile(join(docsRoot, 'index.html'), 'utf8'),
-    readFile(join(repoRoot, 'packages', 'workpaper', 'README.md'), 'utf8'),
-    readFile(join(docsRoot, 'meltano-workpaper-utility.md'), 'utf8'),
-    readFile(join(exampleRoot, 'README.md'), 'utf8'),
-    readFile(join(exampleRoot, 'meltano.yml'), 'utf8'),
-    readFile(join(exampleRoot, 'meltano-hub-utility-definition.yml'), 'utf8'),
-    readFile(join(exampleRoot, 'fixtures', 'orders.jsonl'), 'utf8'),
-    readFile(join(exampleRoot, 'meltano-workpaper-validator.ts'), 'utf8'),
-  ])
+const [readme, llms, llmsFull, workpaperReadme, meltanoDoc, exampleReadme, meltanoYml, hubDefinition, fixture, source] = await Promise.all([
+  readFile(join(repoRoot, 'README.md'), 'utf8'),
+  readFile(join(docsRoot, 'llms.txt'), 'utf8'),
+  readFile(join(docsRoot, 'llms-full.txt'), 'utf8'),
+  readFile(join(repoRoot, 'packages', 'workpaper', 'README.md'), 'utf8'),
+  readFile(join(docsRoot, 'meltano-workpaper-utility.md'), 'utf8'),
+  readFile(join(exampleRoot, 'README.md'), 'utf8'),
+  readFile(join(exampleRoot, 'meltano.yml'), 'utf8'),
+  readFile(join(exampleRoot, 'meltano-hub-utility-definition.yml'), 'utf8'),
+  readFile(join(exampleRoot, 'fixtures', 'orders.jsonl'), 'utf8'),
+  readFile(join(exampleRoot, 'meltano-workpaper-validator.ts'), 'utf8'),
+])
 
 await Promise.all(
   [
@@ -35,7 +33,7 @@ await Promise.all(
   ].map((sourceFile) => requireFile(join(exampleRoot, sourceFile))),
 )
 
-for (const surface of [readme, llms, llmsFull, index, workpaperReadme]) {
+for (const surface of [readme, llms, llmsFull, workpaperReadme]) {
   requireIncludes(surface, 'meltano-workpaper-utility', 'Meltano discovery surfaces')
 }
 
