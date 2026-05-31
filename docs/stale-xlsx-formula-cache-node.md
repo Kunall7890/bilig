@@ -50,6 +50,45 @@ npx --package @bilig/xlsx-formula-recalc xlsx-recalc quote.xlsx \
 That is the first path to try for `xlsx-populate`, SheetJS, or template
 generation jobs where the stale value is the blocker, not workbook ownership.
 
+## If you arrived from SheetJS, ExcelJS, or xlsx-populate
+
+The common question is some version of: "I changed a cell in JavaScript; how do
+I recompute the formula value before reading it?"
+
+Keep the file library for the work it is good at:
+
+- SheetJS or `xlsx` for reading and writing workbook bytes;
+- ExcelJS for workbook structure, rows, styles, tables, and supplied formula
+  results;
+- `xlsx-populate` for template edits and file generation.
+
+Then add one calculation step before the backend trusts a formula cell:
+
+```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
+```
+
+That no-clone check proves the failure mode first: a formula cell can carry an
+old cached value, and the Node process needs a recalculated value before it
+answers an API request, queues a job, or stores a decision.
+
+For a real workbook, inspect first and read only the cells your service uses:
+
+```sh
+npx --package @bilig/xlsx-formula-recalc xlsx-cache-doctor quote.xlsx --json
+npx --package @bilig/xlsx-formula-recalc xlsx-recalc quote.xlsx \
+  --set Inputs!B2=42 \
+  --read Summary!B7 \
+  --out quote.recalculated.xlsx \
+  --json
+```
+
+If the workbook is mostly a presentation artifact, do not move the whole
+pipeline. Keep the file library and run a narrow cache check. If the workbook is
+the business rule itself, move the decision path to WorkPaper so the service can
+edit inputs, recalculate, serialize JSON, restore, and test the exact cells it
+depends on.
+
 ## What not to trust
 
 Do not treat this as a fresh calculated value:
