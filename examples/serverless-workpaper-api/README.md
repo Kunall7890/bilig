@@ -578,6 +578,84 @@ Expected formula readback:
 }
 ```
 
+## tRPC Procedure Smoke
+
+tRPC callers should reuse the same WorkPaper route logic instead of rebuilding
+the workbook inside each procedure. The procedure layer owns validation and API
+shape; `handleWorkPaperRequest()` still owns the formula write, recalculation,
+persistence, and readback.
+
+```ts
+import { initTRPC } from '@trpc/server'
+import { z } from 'zod'
+import { handleWorkPaperRequest } from './route.ts'
+
+const t = initTRPC.create()
+
+const revenueRecordInput = z.object({
+  region: z.string().min(1),
+  customers: z.number().nonnegative(),
+  arpa: z.number().nonnegative(),
+})
+
+async function callWorkPaper(path: 'summary' | 'revenue', init?: RequestInit) {
+  const response = await handleWorkPaperRequest(new Request(`https://workpaper.local/api/workpaper/${path}`, init))
+
+  if (!response.ok) {
+    throw new Error(await response.text())
+  }
+
+  return response.json()
+}
+
+export const appRouter = t.router({
+  workpaper: t.router({
+    summary: t.procedure.query(() => callWorkPaper('summary')),
+    updateRevenue: t.procedure.input(z.object({ records: z.array(revenueRecordInput).min(1) })).mutation(({ input }) =>
+      callWorkPaper('revenue', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(input),
+      }),
+    ),
+  }),
+})
+```
+
+`workpaper.summary` returns the read-only formula surface:
+
+```json
+{
+  "totalRevenue": 36900,
+  "westCustomers": 20,
+  "largestDeal": 24000
+}
+```
+
+`workpaper.updateRevenue` accepts a JSON `records` array and returns the same
+computed readback as the HTTP route:
+
+```json
+{
+  "procedure": "workpaper.updateRevenue",
+  "records": 4,
+  "after": {
+    "totalRevenue": 48600,
+    "westCustomers": 20,
+    "largestDeal": 24000
+  },
+  "checks": {
+    "totalRevenueChanged": true,
+    "formulasPersisted": true,
+    "serializedBytes": 1194
+  },
+  "verified": true
+}
+```
+
+The same route contract is documented in
+[`docs/node-framework-workpaper-adapters.md`](../../docs/node-framework-workpaper-adapters.md).
+
 ## Persistence Adapters
 
 Run the persistence smoke when the route needs durable state instead of module

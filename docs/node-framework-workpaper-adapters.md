@@ -1,14 +1,14 @@
 ---
-title: Express, Fastify, Hono, Oak, Hapi, and AdonisJS adapters for a WorkPaper API
+title: Express, Fastify, Hono, Oak, Hapi, AdonisJS, and tRPC adapters for a WorkPaper API
 published: true
-description: Copyable TypeScript adapters for serving @bilig/headless WorkPaper formulas from Express, Fastify, Hono, Oak, Hapi, AdonisJS, Next.js, Vercel Functions, and Fetch-style route handlers.
+description: Copyable TypeScript adapters for serving @bilig/headless WorkPaper formulas from Express, Fastify, Hono, Oak, Hapi, AdonisJS, tRPC, Next.js, Vercel Functions, and Fetch-style route handlers.
 tags: typescript, node, spreadsheet, express
 canonical_url: https://proompteng.github.io/bilig/node-framework-workpaper-adapters.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png
 ---
 
-# Express, Fastify, Hono, Oak, Hapi, and AdonisJS adapters for a WorkPaper API
+# Express, Fastify, Hono, Oak, Hapi, AdonisJS, and tRPC adapters for a WorkPaper API
 
 Most Node framework code should not know how the workbook is built. Keep the
 spreadsheet logic behind one web-standard `Request -> Response` handler, then
@@ -308,6 +308,80 @@ server.route([...createHapiWorkPaperRoutes()])
 
 await server.start()
 ```
+
+## tRPC Procedure Smoke
+
+tRPC procedures should keep the same boundary as the framework adapters: parse
+typed service input, call the shared WorkPaper route or helper, then return
+computed readback fields. Do not copy workbook-building logic into each
+procedure.
+
+This compact shape maps a nested `workpaper` router onto the same
+[`examples/serverless-workpaper-api`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api)
+handler used by the route and framework examples:
+
+```ts
+import { initTRPC } from '@trpc/server'
+import { z } from 'zod'
+import { handleWorkPaperRequest } from './route.ts'
+
+const t = initTRPC.create()
+
+const revenueRecordInput = z.object({
+  region: z.string().min(1),
+  customers: z.number().nonnegative(),
+  arpa: z.number().nonnegative(),
+})
+
+async function callWorkPaper(path: 'summary' | 'revenue', init?: RequestInit) {
+  const response = await handleWorkPaperRequest(new Request(`https://workpaper.local/api/workpaper/${path}`, init))
+
+  if (!response.ok) {
+    throw new Error(await response.text())
+  }
+
+  return response.json()
+}
+
+export const appRouter = t.router({
+  workpaper: t.router({
+    summary: t.procedure.query(() => callWorkPaper('summary')),
+    updateRevenue: t.procedure.input(z.object({ records: z.array(revenueRecordInput).min(1) })).mutation(({ input }) =>
+      callWorkPaper('revenue', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(input),
+      }),
+    ),
+  }),
+})
+```
+
+Calling `workpaper.updateRevenue` with the same records used by the runnable
+adapter smoke returns deterministic formula readback:
+
+```json
+{
+  "procedure": "workpaper.updateRevenue",
+  "records": 4,
+  "after": {
+    "totalRevenue": 48600,
+    "westCustomers": 20,
+    "largestDeal": 24000
+  },
+  "checks": {
+    "totalRevenueChanged": true,
+    "formulasPersisted": true,
+    "serializedBytes": 1194
+  },
+  "verified": true
+}
+```
+
+Use `workpaper.summary` for read-only callers that only need `totalRevenue`,
+`westCustomers`, and `largestDeal`. Use `workpaper.updateRevenue` for mutations
+that accept a JSON `{ "records": [...] }` input and must prove formulas
+recalculated before returning.
 
 ## What the wrapper must preserve
 

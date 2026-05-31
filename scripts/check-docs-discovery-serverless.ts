@@ -89,6 +89,12 @@ export async function requireServerlessWorkPaperApiDiscovery({
     'curl -X POST http://localhost:8787/api/workpaper/revenue',
     'examples/serverless-workpaper-api/README.md',
   )
+  requireIncludes(serverlessExampleReadme, '## tRPC Procedure Smoke', 'examples/serverless-workpaper-api/README.md')
+  requireIncludes(serverlessExampleReadme, 'workpaper.summary', 'examples/serverless-workpaper-api/README.md')
+  requireIncludes(serverlessExampleReadme, 'workpaper.updateRevenue', 'examples/serverless-workpaper-api/README.md')
+  requireIncludes(serverlessExampleReadme, '"totalRevenue": 48600', 'examples/serverless-workpaper-api/README.md')
+  requireIncludes(serverlessExampleReadme, '"westCustomers": 20', 'examples/serverless-workpaper-api/README.md')
+  requireIncludes(serverlessExampleReadme, '"largestDeal": 24000', 'examples/serverless-workpaper-api/README.md')
   requireIncludes(serverlessExampleReadme, 'Oak-style `context.request.source`', 'examples/serverless-workpaper-api/README.md')
   requireIncludes(serverlessExampleReadme, 'AdonisJS-style `HttpContext`', 'examples/serverless-workpaper-api/README.md')
   requireIncludes(serverlessExampleReadme, 'Hapi-style `request` plus `h.response()`', 'examples/serverless-workpaper-api/README.md')
@@ -118,6 +124,10 @@ export async function requireServerlessWorkPaperApiDiscovery({
   requireIncludes(nodeFrameworkAdapterDoc, 'createAdonisWorkPaperRoutes', 'docs/node-framework-workpaper-adapters.md')
   requireIncludes(nodeFrameworkAdapterDoc, '## Hapi', 'docs/node-framework-workpaper-adapters.md')
   requireIncludes(nodeFrameworkAdapterDoc, 'createHapiWorkPaperRoutes', 'docs/node-framework-workpaper-adapters.md')
+  requireIncludes(nodeFrameworkAdapterDoc, '## tRPC Procedure Smoke', 'docs/node-framework-workpaper-adapters.md')
+  requireIncludes(nodeFrameworkAdapterDoc, 'workpaper.summary', 'docs/node-framework-workpaper-adapters.md')
+  requireIncludes(nodeFrameworkAdapterDoc, 'workpaper.updateRevenue', 'docs/node-framework-workpaper-adapters.md')
+  requireIncludes(nodeFrameworkAdapterDoc, '"verified": true', 'docs/node-framework-workpaper-adapters.md')
 
   requireIncludes(serverlessExampleReadme, 'npm run persistence-adapters', 'examples/serverless-workpaper-api/README.md')
   requireIncludes(serverlessExampleReadme, '## Persistence Adapters', 'examples/serverless-workpaper-api/README.md')
