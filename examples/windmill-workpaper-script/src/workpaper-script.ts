@@ -98,7 +98,7 @@ export async function main(
           verified,
         },
         limitations: [
-          'This example proves a Windmill TypeScript script boundary, not a Windmill Hub package.',
+          'This example proves a Windmill TypeScript/Bun script boundary.',
           'Keep Excel or another oracle in the loop for macros, pivots, external links, and exact desktop Excel behavior.',
           'The Windmill worker must run a JavaScript runtime compatible with @bilig/workpaper.',
         ],

@@ -4,11 +4,12 @@
   "description": "Windmill TypeScript script example that calculates workflow fields with Bilig WorkPaper formulas.",
   "type": "module",
   "scripts": {
+    "hub:url": "tsx scripts/build-hub-url.ts",
     "smoke": "tsx src/smoke.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@bilig/workpaper": "latest"
+    "@bilig/workpaper": "0.131.1"
   },
   "devDependencies": {
     "@types/node": "25.5.0",

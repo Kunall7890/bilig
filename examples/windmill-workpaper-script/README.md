@@ -1,6 +1,6 @@
 # Windmill WorkPaper Script
 
-This example is a Windmill TypeScript script that computes formula-backed
+This example is a Windmill TypeScript/Bun script that computes formula-backed
 quote fields with `@bilig/workpaper`.
 
 Use it when Windmill owns schedules, webhooks, approvals, or workflow routing,
@@ -20,6 +20,7 @@ imports and requires a `main` entrypoint for runnable scripts:
 pnpm install --ignore-workspace --lockfile=false
 pnpm run typecheck
 pnpm run smoke
+pnpm run hub:url
 ```
 
 The smoke test prints a verified result:
@@ -53,9 +54,20 @@ The smoke test prints a verified result:
 
 The live smoke output includes every calculated summary field.
 
+## Windmill Hub Shape
+
+`pnpm run hub:url` writes a Windmill Hub add URL to:
+
+```text
+.tmp/windmill-hub-script-url.txt
+```
+
+Open that URL while logged in to Windmill Hub. It preloads the script content,
+summary, description, language, and input schema.
+
 ## Windmill Shape
 
-1. Create a TypeScript script in Windmill.
+1. Create a TypeScript/Bun script in Windmill or open the generated Hub URL.
 2. Paste `src/workpaper-script.ts`.
 3. Keep the import as `@bilig/workpaper`; Windmill will compute a script
    lockfile from the import on deployment.
@@ -69,8 +81,9 @@ restores it, and verifies that restored calculated values match.
 
 ## Boundaries
 
-This is a local script example, not a Windmill Hub package. Use it as the
-starting point for a workspace script, flow module, or workflow-as-code task.
+This is a script-level example for Windmill Hub or a private Windmill
+workspace. Use it as the starting point for a workspace script, flow module, or
+workflow-as-code task.
 
 Keep Excel or another oracle in the loop for macros, pivots, external links,
 locale-sensitive desktop behavior, or workbook features outside Bilig's formula

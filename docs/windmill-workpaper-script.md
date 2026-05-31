@@ -45,16 +45,21 @@ cd examples/windmill-workpaper-script
 pnpm install --ignore-workspace --lockfile=false
 pnpm run typecheck
 pnpm run smoke
+pnpm run hub:url
 ```
 
 The smoke test edits `Inputs!B2`, recalculates quote formulas, serializes the
 WorkPaper document, restores it, and verifies that the restored calculated
 values match.
 
+`pnpm run hub:url` writes a Windmill Hub add URL to
+`.tmp/windmill-hub-script-url.txt`. Open it while logged in to Windmill Hub to
+preload the script content, summary, description, language, and input schema.
+
 ## Windmill Script
 
-Paste the contents of `src/workpaper-script.ts` into a Windmill TypeScript
-script.
+Open the generated Hub URL or paste the contents of `src/workpaper-script.ts`
+into a Windmill TypeScript/Bun script.
 
 The script shape is intentionally boring:
 
@@ -73,9 +78,9 @@ export async function main(
 ```
 
 Windmill can infer inputs from the `main` parameters and resolve
-`@bilig/workpaper` from the script import. If your workspace requires pinned
-versions, pin or lock the dependency using the Windmill dependency workflow your
-team already uses.
+`@bilig/workpaper` from the script import. The local smoke test pins
+`@bilig/workpaper` to the current public release so the proof and Hub submission
+start from the same package version.
 
 ## Script Output
 
@@ -134,12 +139,12 @@ external links, and exact spreadsheet UI behavior.
 
 ## Outreach Note
 
-If this is shared in a Windmill issue, discussion, or Hub submission, lead with
-the concrete boundary it solves:
+If this is shared in Windmill Hub or a Windmill discussion, lead with the
+concrete boundary it solves:
 
 > Windmill owns the workflow. Bilig owns the formula workbook and returns both
 > calculated field values and readback proof.
 
 Do not post it as a generic spreadsheet-engine pitch. Link the runnable example
-and smoke output, then ask whether a formula-backed workflow field script would
-be useful as a Windmill Hub example.
+and smoke output, then make the submission about calculated workflow fields with
+readback proof.
