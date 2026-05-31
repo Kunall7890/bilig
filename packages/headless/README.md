@@ -8,19 +8,28 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/proompteng/bilig/blob/main/LICENSE)
 
 `@bilig/headless` is the full WorkPaper runtime for Node.js services and agent
-tools.
+tools. It is the lower-level package behind the scoped `@bilig/workpaper`
+entrypoint.
 
-If this npm page is the first thing you found, start with the path that matches
-the search or production bug you actually have:
+If this npm page is the first thing you found, run the no-clone proof before
+reading the full API docs:
 
-| Problem or search intent                                      | Start here                                                    | Proof before adoption                                                                                                                         |
-| ------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SheetJS formula result not updating` or stale `xlsx` results | `npm install @bilig/sheetjs-formula-recalc`                   | `npx --package @bilig/sheetjs-formula-recalc sheetjs-recalc --demo --json` returns fresh readback.                                            |
-| `xlsx-populate` writes formulas but Node reads old values     | `npm install @bilig/xlsx-formula-recalc`                      | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json` updates the cached value.                                                |
-| ExcelJS formula cells need recalculated values                | `npm install exceljs @bilig/exceljs-formula-recalc`           | `npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json` mutates the workbook boundary.                                     |
-| An AI agent needs spreadsheet tools instead of UI automation  | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html) shows the write/recalc/read/persist loop. |
-| Formula workbook state belongs in a service or agent tool     | `npm install @bilig/workpaper`                                | `npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json` prints `verified: true`.                                         |
-| You need the lower-level runtime package and subpaths         | `npm install @bilig/headless`                                 | The examples below prove WorkPaper JSON, XLSX import/export, provenance, and package footprint.                                               |
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
+```
+
+It should print `verified: true` after editing an input cell, recalculating a
+dependent formula, exporting WorkPaper JSON, restoring it, and reading the same
+calculated value again.
+
+Choose the narrow package by the state you own:
+
+| You own...                                  | Start with                                                    | First proof                                                                                  |
+| ------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| WorkPaper state inside a service or agent   | `npm install @bilig/workpaper`                                | `bilig-evaluate --door workpaper-service --json`                                             |
+| Agent or MCP spreadsheet tools              | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | `bilig-evaluate --door agent-mcp --json`                                                     |
+| A saved `.xlsx` file with stale read values | `npm install @bilig/xlsx-formula-recalc`                      | `bilig-evaluate --door xlsx-cache --json`                                                    |
+| Lower-level runtime subpaths                | `npm install @bilig/headless`                                 | The examples below prove WorkPaper JSON, XLSX import/export, provenance, and package weight. |
 
 Use `@bilig/headless` when the spreadsheet is the business logic, but
 production needs API readback, tests, persistence, and agent-readable proof
@@ -52,6 +61,16 @@ or TypeScript path first unless your tool host requires MCP.
 The `bilig-formula-clinic` binary turns a reduced XLSX into a fixture report
 without uploading workbook contents.
 
+Saved XLSX files are a separate entrypoint. Start with
+[`examples/xlsx-recalculation-node`](https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node)
+or [`docs/xlsx-formula-recalculation-node.md`](https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-recalculation-node.md),
+then run `xlsx-recalc --demo --json`. SheetJS users can run
+`sheetjs-recalc --demo --json`. For broader boundaries, see
+[`docs/excel-file-calculation-engine-node.md`](https://github.com/proompteng/bilig/blob/main/docs/excel-file-calculation-engine-node.md),
+[`docs/exceljs-shared-formula-recalculation-node.md`](https://github.com/proompteng/bilig/blob/main/docs/exceljs-shared-formula-recalculation-node.md),
+and
+<https://proompteng.github.io/bilig/agent-xlsx-formula-recalculation-without-libreoffice.html>.
+
 ## Choose An Evaluation Path
 
 | If you are evaluating... | Start here                                                                                                                                                                                                          | What should be true before you star, watch, or adopt                                           |
@@ -78,15 +97,13 @@ npm exec --package @bilig/headless@0.131.1 -- bilig-formula-clinic ./reduced.xls
 Handing a spreadsheet task to another coding agent?
 
 ```sh
-npm exec --package @bilig/headless@0.131.1 -- bilig-agent-challenge --json
-npm exec --package @bilig/headless@0.131.1 -- bilig-mcp-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
-The first command proves the direct WorkPaper API. The second command proves
-the file-backed MCP path by initializing JSON-RPC, listing
-tools/resources/prompts, editing `Inputs!B3`, reading recalculated `Summary!B3`,
-exporting WorkPaper JSON, restarting from disk, and returning `verified: true`.
-Both run without cloning the repository or downloading a TypeScript file.
+The first command proves the direct WorkPaper API. The second proves the agent
+tool path with tool discovery, cell mutation, formula readback, JSON export, and
+restart proof. Both run without cloning the repository.
 
 ## Install
 

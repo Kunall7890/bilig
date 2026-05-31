@@ -17,31 +17,49 @@ npm install @bilig/workpaper
 
 ## Start Here
 
-Pick the path that matches the workflow you are trying to unblock:
+Pick the door that matches the state you own:
 
-| You need...                                                                         | Run this first                                                                                                                                                             | Proof you should get                                                                                                 |
-| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Formula workbook logic inside a Node service, route, queue, or test                 | `npm create @bilig/workpaper@latest pricing-workpaper`                                                                                                                     | Inputs are written, formulas recalculate, JSON persists, restore matches readback, and `verified: true` is printed.  |
-| A coding agent or MCP client that needs spreadsheet operations                      | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                                                                                              | The generated project includes an agent contract, MCP config, and `npm run agent:verify`.                            |
-| Windmill TypeScript workflow fields                                                 | `cd examples/windmill-workpaper-script && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                              | The script returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.         |
-| Trigger.dev durable task fields                                                     | `cd examples/triggerdev-workpaper-task && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                              | The task helper returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.    |
-| Inngest durable step fields                                                         | `cd examples/inngest-workpaper-step && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                                 | The step helper returns a calculated field patch plus before/after/restore WorkPaper proof with `verified: true`.    |
-| Airbyte post-sync record and state validation                                       | `cd examples/airbyte-workpaper-validation && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                           | The validation step reads Airbyte-style `STREAM`/`GLOBAL` state JSONL and returns a patch plus restore proof.        |
-| Meltano custom utility validation                                                   | `cd examples/meltano-workpaper-utility && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                              | The utility reads a post-ELT JSONL export and writes a formula-backed WorkPaper proof artifact.                      |
-| Temporal TypeScript Activity decisions                                              | `cd examples/temporal-workpaper-activity && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                            | The Activity owns WorkPaper formula work while Workflow code stays free of workbook imports.                         |
-| Apache Airflow DAG task outputs                                                     | `cd examples/airflow-workpaper-dag && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                                  | The Node step writes a full proof file while the DAG returns a compact XCom summary for downstream tasks.            |
-| Dagster asset materialization metadata                                              | `cd examples/dagster-workpaper-asset && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                                | The Node subprocess writes WorkPaper proof and emits compact Dagster Pipes materialization metadata.                 |
-| Kestra Node Commands flow fields                                                    | `cd examples/kestra-workpaper-flow && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                                  | The flow script writes a `workpaper-proof.json` artifact with before/after/restore proof and `verified: true`.       |
-| Prefect flow fields                                                                 | `cd examples/prefect-workpaper-flow && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                                 | The Node step writes a `workpaper-proof.json` artifact that a Prefect task can validate and return.                  |
-| Directus Flow operation for persisted calculated fields                             | `cd examples/directus-workpaper-flow-operation && npm install && npm run smoke`                                                                                            | The operation returns a Directus `patch` plus before/after/restore WorkPaper proof with `verified: true`.            |
-| n8n, Dify, Flowise, or Pipedream formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321`                                                                                       | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof.                |
-| Vercel AI SDK `generateText()` or `streamText()` tools                              | Import `createAiSdkWorkPaperTools` from `@bilig/workpaper/ai-sdk`                                                                                                          | The tool call returns before/after/restore formula readback instead of a blind write result.                         |
-| Open WebUI needs MCP spreadsheet tools                                              | `npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`                                                                                                 | Open WebUI can call the hosted Streamable HTTP endpoint or a local stdio server bridged through `mcpo`.              |
-| FastMCP Python client for hosted MCP smoke tests                                    | `cd examples/fastmcp-workpaper-client && uv run --python 3.12 --with 'fastmcp-slim[client]' python fastmcp_workpaper_client.py --output .tmp/fastmcp-workpaper-proof.json` | FastMCP lists Bilig tools, writes `Inputs!B3`, checks restore proof, and exports WorkPaper JSON.                     |
-| LangGraph.js ToolNode should keep formula proof in state                            | `cd examples/langgraph-workpaper-tool-state && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                         | Real `@langchain/langgraph` `ToolNode` returns `ToolMessage` readback proof after a WorkPaper mutation.              |
-| LangChain MCP adapters should load WorkPaper tools                                  | `cd examples/langchain-mcp-workpaper-toolnode && pnpm install --ignore-workspace --lockfile=false && pnpm run smoke`                                                       | `@langchain/mcp-adapters` discovers Bilig MCP tools and `ToolNode` proves write, readback, persistence, and restart. |
-| Hugging Face smolagents tool                                                        | `cd examples/smolagents-workpaper-tool && uv run --python 3.12 --with smolagents python smolagents_workpaper_tool.py --output .tmp/smolagents-workpaper-proof.json`        | A smolagents `Tool` runs Bilig formula readback proof and returns a structured `verified: true` object.              |
-| An existing `.xlsx` file with stale formula results after Node edits                | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json`                                                                                                       | The file-level path updates inputs and returns fresh formula values without Excel, LibreOffice, or a browser.        |
+| Door                       | Run first                                                                                            | What it proves                                                                                     |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Node service or test       | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json` | edit input, recalculate output, persist JSON, restore, and return `verified: true`.                |
+| Coding agent or MCP client | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`         | tool discovery, cell mutation, formula readback, JSON export, restart proof, and `verified: true`. |
+| New project                | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                        | a starter with `AGENTS.md`, MCP config, and `npm run agent:verify` wired to the same proof loop.   |
+
+If one of those matches your workflow, keep Bilig nearby:
+<https://github.com/proompteng/bilig>. Watch releases if this is close to a
+production dependency: <https://github.com/proompteng/bilig/subscription>.
+
+Framework examples live in the repo instead of this first screen. Start with
+the closest runtime:
+
+- Agent tools: Vercel AI SDK, LangGraph, LangChain MCP adapters, Open WebUI,
+  FastMCP, smolagents.
+- Workflow engines: Trigger.dev, Inngest, Temporal, Airflow, Dagster, Kestra,
+  Prefect, Windmill.
+- Low-code and data tools: n8n, Pipedream, Directus, Airbyte, Meltano.
+- Existing `.xlsx` files: use `@bilig/xlsx-formula-recalc` for stale formula
+  caches and exported workbook readback.
+
+## Searchable Example Guides
+
+These are integration guide names that users search for on npm. They are links,
+not the first-run path:
+
+| Guide need                                                                          | Start here                                                                   |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Windmill TypeScript workflow fields                                                 | <https://proompteng.github.io/bilig/windmill-workpaper-script.html>          |
+| Trigger.dev durable task fields                                                     | <https://proompteng.github.io/bilig/triggerdev-workpaper-task.html>          |
+| Inngest durable step fields                                                         | <https://proompteng.github.io/bilig/inngest-workpaper-step.html>             |
+| Temporal TypeScript Activity decisions                                              | <https://proompteng.github.io/bilig/temporal-workpaper-activity.html>        |
+| Apache Airflow DAG task outputs                                                     | <https://proompteng.github.io/bilig/airflow-workpaper-dag.html>              |
+| Dagster asset materialization metadata                                              | <https://proompteng.github.io/bilig/dagster-workpaper-asset.html>            |
+| Kestra Node Commands flow fields                                                    | <https://proompteng.github.io/bilig/kestra-workpaper-flow.html>              |
+| Prefect flow fields                                                                 | <https://proompteng.github.io/bilig/prefect-workpaper-flow.html>             |
+| Directus Flow operation for persisted calculated fields                             | <https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html>  |
+| n8n, Dify, Flowise, or Pipedream formula readback without spreadsheet UI automation | <https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html>    |
+| Flowise formula readback                                                            | <https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html> |
+| FastMCP Python client for hosted MCP smoke tests                                    | <https://proompteng.github.io/bilig/fastmcp-workpaper-client.html>           |
+| Hugging Face smolagents tool                                                        | <https://proompteng.github.io/bilig/smolagents-workpaper-tool.html>          |
 
 ## Use A WorkPaper In Node
 

@@ -97,12 +97,12 @@ Project site: <https://proompteng.github.io/bilig/>
 
 Pick the path that matches the job:
 
-| You have...                                                             | Start with                                                         | You should see                                                                               |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
-| A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md) | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.       |
-| A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                      | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`.    |
-| A real `.xlsx` file has stale formula results after Node edits          | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)           | changed input, recalculated output, output workbook, and `recalculationCompleted: true`.     |
-| Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)      | stale cells, cached values, recalculated values, suggested reads, and JSON output.           |
+| You have...                                                             | Start with                                                         | You should see                                                                            |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md) | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.    |
+| A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                      | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`. |
+| A real `.xlsx` file has stale formula results after Node edits          | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)           | changed input, recalculated output, output workbook, and `recalculationCompleted: true`.  |
+| Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)      | stale cells, cached values, recalculated values, suggested reads, and JSON output.        |
 
 If you are not sure which one fits, start with the thing that owns state. Use
 WorkPaper when your service or agent should own the workbook model. Use the XLSX
@@ -139,59 +139,41 @@ For the GitHub Action listing and a live reviewer path:
 
 ## If You Only Try One Thing
 
-Most Excel libraries can edit cells and preserve formulas, but they do not
-refresh the cached formula results that backend jobs actually read. Run this
-without cloning the repo:
+Prove the headless WorkPaper loop first. It is the core Bilig path: write an
+input cell, recalculate formulas, read the result, persist JSON, restore it, and
+verify the restored value. Run it without cloning the repo:
 
 ```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --demo --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 ```
 
 Expected shape:
 
 ```json
 {
-  "schemaVersion": "xlsx-cache-doctor.v1",
-  "formulaCellCount": 1,
-  "inspectedFormulaCellCount": 1,
-  "uninspectedFormulaCellCount": 0,
-  "staleCachedFormulaCount": 1,
-  "cacheStatusSummary": {
-    "inspected": 1,
-    "stale": 1,
-    "fresh": 0,
-    "missingCache": 0,
-    "unsupportedRecalculation": 0
-  },
-  "suggestedReads": ["Summary!B2"],
-  "formulas": [
-    {
-      "target": "Summary!B2",
-      "cachedValue": 60000,
-      "literalRecalculatedValue": 72000,
-      "cacheStatus": "stale",
-      "staleCachedValue": true
-    }
-  ],
-  "commandSucceeded": true,
-  "inspectionCompleted": true,
-  "recalculationCompleted": true,
-  "excelParity": "not_proven"
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "workpaper-service",
+  "verified": true,
+  "evidence": {
+    "editedCell": "Inputs!B2",
+    "dependentCell": "Summary!B2",
+    "before": 24000,
+    "after": 38400,
+    "afterRestore": 38400
+  }
 }
 ```
 
-The JSON contains only proof fields. Use the docs links after the recalculated
-value and warnings match your workflow.
-
-`staleCachedValue: null` is not a hidden failure bucket. Use
-`cacheStatusSummary` and per-formula `cacheStatus` to separate missing cached
-values from formulas Bilig could not compare yet.
-
-When the detector points at the cells you care about, run the recalculation
-check:
+If an agent or MCP client owns the workflow, run the agent door:
 
 ```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+If the source of truth is already an `.xlsx` file, use the XLSX door:
+
+```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 ```
 
 Trust boundaries:
@@ -201,12 +183,12 @@ Trust boundaries:
 - Does not claim Excel parity. Start with
   [where Bilig is not Excel-compatible yet](docs/where-bilig-is-not-excel-compatible-yet.md)
   before using it for irreversible workflows.
-- The cache doctor is diagnostic by default. It only blocks pull requests when
-  you opt into `fail-on-stale`.
+- The XLSX cache doctor is diagnostic by default. It only blocks pull requests
+  when you opt into `fail-on-stale`.
 
 For linked workbooks, use the
 [external workbook recalculation proof](docs/external-workbook-recalc-proof.md).
-For the stale-cache detector, use
+For stale cached XLSX values, use
 [Evaluate stale XLSX formula caches](docs/eval-xlsx-cache-doctor.md).
 For a narrower recalculation evaluator, use
 [Evaluate XLSX formula recalculation](docs/eval-xlsx-recalc.md).
