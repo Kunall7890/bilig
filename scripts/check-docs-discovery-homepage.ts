@@ -147,7 +147,7 @@ export function requireHomepageDiscovery(index: string, siteCss: string, product
       'createWorkPaperFromDocument',
       'npx tsx quickstart.ts',
       'Coding agent? Do not drive Excel, LibreOffice, Google Sheets, or a browser grid.',
-      'bilig-mcp-challenge --json',
+      'bilig-evaluate --door agent-mcp --json',
       'Put the workbook behind the code that owns the workflow.',
       'Route handler, queue worker, CLI, or MCP server: load the workbook',
       'Use Bilig when the workbook is the rulebook.',

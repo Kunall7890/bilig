@@ -114,7 +114,7 @@
       "type": "docs-entrypoint",
       "docs": "https://proompteng.github.io/bilig/agent-adoption-kit.html",
       "skill_install": "npx --yes skills@latest add https://bilig.proompteng.ai --list",
-      "challenge_command": "npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json"
+      "challenge_command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json"
     },
     {
       "name": "workbook-agent-intent-api",

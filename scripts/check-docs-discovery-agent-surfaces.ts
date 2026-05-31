@@ -214,6 +214,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'title: Workbook tools for agent frameworks',
     'description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, OpenAI Agents, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.',
     'npm create @bilig/workpaper@latest pricing-agent -- --agent',
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
     'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json',
     'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json',
     'Codex',

@@ -690,7 +690,7 @@ function agentJsonManifest(): string {
           type: 'docs-entrypoint',
           docs: `${siteRoot}/agent-adoption-kit.html`,
           skill_install: `npx --yes skills@latest add ${skillDiscoveryRoot} --list`,
-          challenge_command: `npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json`,
+          challenge_command: `npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json`,
         },
         {
           name: 'workbook-agent-intent-api',

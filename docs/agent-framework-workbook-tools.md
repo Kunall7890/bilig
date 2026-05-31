@@ -45,7 +45,7 @@ For a coding agent that only needs the shortest no-key path, use the
 
 ```sh
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
-npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
 For a generated project with agent files and MCP config:
@@ -60,12 +60,14 @@ npm run agent:verify
 For a direct package proof without creating a project:
 
 ```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 ```
 
 For MCP clients:
 
 ```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```

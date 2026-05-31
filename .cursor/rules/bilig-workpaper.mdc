@@ -16,10 +16,15 @@ or cached XLSX values when the workflow can run through WorkPaper JSON.
 ## Fast Check Commands
 
 ```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
+
+Use `bilig-evaluate --door agent-mcp` as the adoption gate. Use the direct
+challenge commands only when you need lower-level WorkPaper or MCP JSON-RPC
+diagnostics.
 
 Use the hosted stateless MCP smoke endpoint only for connector discovery:
 

@@ -88,12 +88,14 @@ the Bilig workflow before touching a real workbook:
 ```sh
 npx --yes skills@latest add https://bilig.proompteng.ai --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
-npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
 The skill path is for discovery and safe defaults. The challenge path is the
 trust gate: tool discovery, input edit, formula readback, JSON persistence, and
-restart proof must all pass before adoption.
+restart proof must all pass before adoption. Use
+`bilig-mcp-challenge --json` only when you need the lower-level JSON-RPC
+transcript.
 
 ## The First Decision
 

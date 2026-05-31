@@ -11,6 +11,7 @@ Sheets screen driving, screenshots, or stale cached XLSX values.
 ## First Checks
 
 ```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 ```
