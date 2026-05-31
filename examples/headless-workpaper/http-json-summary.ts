@@ -78,6 +78,7 @@ try {
 
   const output = await result.json()
   assertOutput(output)
+  await assertInvalidRequest(port)
   console.log(JSON.stringify(output, null, 2))
 } finally {
   await close(server)
@@ -198,6 +199,23 @@ function assertOutput(actual: unknown): asserts actual is OpportunitySummary {
 
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     throw new Error(`Unexpected HTTP JSON summary result: ${JSON.stringify(actual)}`)
+  }
+}
+
+async function assertInvalidRequest(port: number): Promise<void> {
+  const result = await fetch(`http://127.0.0.1:${port}/summary`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ records: opportunityRecords }),
+  })
+
+  const output = await result.json()
+  const expected = { error: 'expected JSON array' }
+
+  if (result.status !== 400 || JSON.stringify(output) !== JSON.stringify(expected)) {
+    throw new Error(`Unexpected HTTP JSON summary invalid-request result: status ${result.status}, body ${JSON.stringify(output)}`)
   }
 }
 
