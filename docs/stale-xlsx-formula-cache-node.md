@@ -153,7 +153,7 @@ For a real service, keep the boundary boring:
 | Must match desktop Excel or add-ins                  | Excel or LibreOffice automation      |
 | SheetJS-shaped workbook with supported formulas      | `xlsx-calc`                          |
 | Broad JS formula engine needed                       | HyperFormula                         |
-| Service-owned formula state and restore proof needed | `@bilig/workpaper`                    |
+| Service-owned formula state and restore proof needed | `@bilig/workpaper`                   |
 
 ## Related
 

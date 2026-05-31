@@ -32,7 +32,7 @@ export function requireXlsxRecalcPublicDiscovery(args: {
   requireIncludes(args.headlessReadme, 'docs/excel-file-calculation-engine-node.md', 'packages/headless/README.md')
   requireIncludes(args.headlessReadme, 'docs/exceljs-shared-formula-recalculation-node.md', 'packages/headless/README.md')
   requireIncludes(args.index, 'examples/xlsx-recalculation-node', 'docs/index.html')
-  requireIncludes(args.index, 'Use <code>@bilig/xlsx-formula-recalc</code> when XLSX is the boundary.', 'docs/index.html')
+  requireIncludes(args.index, 'Use\n            <code>@bilig/xlsx-formula-recalc</code> when XLSX is the boundary.', 'docs/index.html')
   requireIncludes(args.index, './xlsx-formula-recalculation-node.html', 'docs/index.html')
   requireIncludes(args.index, './xlsx-cache-doctor-github-action.html', 'docs/index.html')
   requireIncludes(args.index, './sheetjs-formula-result-not-updating-node.html', 'docs/index.html')
