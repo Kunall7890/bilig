@@ -554,7 +554,7 @@ requireIncludes(scopedWorkpaperPackageReadme, 'Dagster asset materialization met
 requireIncludes(scopedWorkpaperPackageReadme, 'Kestra Node Commands flow fields', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Prefect flow fields', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Directus Flow operation for persisted calculated fields', 'packages/workpaper/README.md')
-requireIncludes(scopedWorkpaperPackageReadme, 'n8n formula readback in Cloud or self-hosted workflows', 'packages/workpaper/README.md')
+requireIncludes(scopedWorkpaperPackageReadme, 'n8n formula readback for self-hosted workflows', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Dify formula readback', 'packages/workpaper/README.md')
 requireIncludes(scopedWorkpaperPackageReadme, 'Pipedream formula readback', 'packages/workpaper/README.md')
 requireIncludes(llmsFull, 'Pipedream WorkPaper Formula Readback', 'docs/llms-full.txt')

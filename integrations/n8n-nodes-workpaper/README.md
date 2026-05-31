@@ -2,9 +2,10 @@
 
 This is a Bilig WorkPaper community node for n8n.
 
-`@bilig/n8n-nodes-workpaper` is verified on n8n Cloud. Add it from the canvas
-by searching for `Bilig WorkPaper`, or install the scoped package in self-hosted
-n8n.
+`@bilig/n8n-nodes-workpaper` is published with npm provenance and passes n8n's
+community-package scanner. Install it in self-hosted n8n today; n8n Cloud canvas
+installation depends on n8n accepting the package through their verified-node
+review.
 
 It gives an n8n workflow two spreadsheet-shaped operations:
 
@@ -21,17 +22,15 @@ LibreOffice, Google Sheets, or a browser spreadsheet UI.
 
 Install the scoped community node package from n8n:
 
-1. Search for `Bilig WorkPaper` from the n8n Cloud canvas and add it directly.
-2. If your instance does not show verified community nodes yet, open
-   **Settings** -> **Community nodes**.
-3. Choose **Install a community node**.
-4. Enter:
+1. In a self-hosted n8n instance, open **Settings** -> **Community nodes**.
+2. Choose **Install a community node**.
+3. Enter:
 
 ```text
 @bilig/n8n-nodes-workpaper
 ```
 
-Self-hosted n8n instances can also install it from npm:
+You can also install it from npm in the n8n environment:
 
 ```sh
 npm install @bilig/n8n-nodes-workpaper
@@ -169,6 +168,8 @@ examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.jso
 
 ## Version history
 
+- `0.2.1`: remove premature n8n Cloud verification wording before Creator
+  Portal review.
 - `0.2.0`: add a generic WorkPaper JSON evaluation operation for user-owned
   documents.
 - `0.1.2`: align the node codex category with n8n's supported `Development`

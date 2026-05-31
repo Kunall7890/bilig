@@ -56,7 +56,7 @@ not the first-run path:
 | Kestra Node Commands flow fields                                                    | <https://proompteng.github.io/bilig/kestra-workpaper-flow.html>              |
 | Prefect flow fields                                                                 | <https://proompteng.github.io/bilig/prefect-workpaper-flow.html>             |
 | Directus Flow operation for persisted calculated fields                             | <https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html>  |
-| n8n formula readback in Cloud or self-hosted workflows                             | <https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html>     |
+| n8n formula readback for self-hosted workflows                                     | <https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html>     |
 | Dify formula readback                                                              | <https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html>    |
 | Flowise formula readback                                                            | <https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html> |
 | Pipedream formula readback                                                          | <https://proompteng.github.io/bilig/pipedream-workpaper-formula-readback.html> |
