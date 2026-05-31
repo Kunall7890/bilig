@@ -4,6 +4,20 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.131.2
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.131.1
+- Manual override: no
+
+## Fixes
+- fix(n8n): align community node verification copy (06ebcdd6)
+
+## Internal runtime changes
+- docs: tighten evaluator copy (cb4abd8b)
+- docs(growth): compress npm evaluator path (c7ea04f2)
+- docs(n8n): surface verified WorkPaper node (f1f69e99)
+
 ## 0.131.1
 
 - Release type: patch
