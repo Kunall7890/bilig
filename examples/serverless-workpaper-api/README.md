@@ -95,7 +95,7 @@ Expected smoke output:
     "checks": {
       "totalRevenueChanged": true,
       "formulasPersisted": true,
-      "serializedBytes": 1195
+      "serializedBytes": 1194
     }
   },
   "after": {
@@ -169,7 +169,7 @@ Expected output:
     },
     "checks": {
       "formulasPersisted": true,
-      "serializedBytes": 1195,
+      "serializedBytes": 1194,
       "totalRevenueChanged": true
     }
   },
@@ -289,7 +289,7 @@ Expected output:
     },
     "checks": {
       "formulasPersisted": true,
-      "serializedBytes": 1195,
+      "serializedBytes": 1194,
       "totalRevenueChanged": true
     },
     "records": 4
@@ -344,7 +344,7 @@ Expected output:
     },
     "checks": {
       "formulasPersisted": true,
-      "serializedBytes": 1195,
+      "serializedBytes": 1194,
       "totalRevenueChanged": true
     },
     "records": 4
@@ -462,7 +462,7 @@ Expected output:
       "checks": {
         "totalRevenueChanged": true,
         "formulasPersisted": true,
-        "serializedBytes": 1195
+        "serializedBytes": 1194
       }
     }
   },
@@ -478,7 +478,7 @@ Expected output:
       "checks": {
         "totalRevenueChanged": true,
         "formulasPersisted": true,
-        "serializedBytes": 1195
+        "serializedBytes": 1194
       }
     }
   },
@@ -494,7 +494,7 @@ Expected output:
       "checks": {
         "totalRevenueChanged": true,
         "formulasPersisted": true,
-        "serializedBytes": 1195
+        "serializedBytes": 1194
       }
     }
   },
@@ -510,7 +510,7 @@ Expected output:
       "checks": {
         "totalRevenueChanged": true,
         "formulasPersisted": true,
-        "serializedBytes": 1195
+        "serializedBytes": 1194
       }
     }
   },
@@ -523,6 +523,58 @@ Expected output:
     }
   },
   "verified": true
+}
+```
+
+## Express Route Smoke
+
+The Express wrapper accepts normal `(req, res, next)` objects, creates a
+web-standard `Request`, calls `handleWorkPaperRequest()`, then writes the
+returned status, headers, and body back through `res`.
+
+```ts
+import express from 'express'
+import { createExpressWorkPaperHandler } from './framework-adapters.ts'
+
+const app = express()
+
+app.use(express.json())
+app.get('/api/workpaper/summary', createExpressWorkPaperHandler())
+app.post('/api/workpaper/revenue', createExpressWorkPaperHandler())
+
+app.listen(8787)
+```
+
+Smoke the route with a revenue update:
+
+```sh
+curl -X POST http://localhost:8787/api/workpaper/revenue \
+  -H 'content-type: application/json' \
+  --data '{
+    "records": [
+      { "region": "West", "customers": 20, "arpa": 1200 },
+      { "region": "East", "customers": 30, "arpa": 250 },
+      { "region": "Central", "customers": 18, "arpa": 300 },
+      { "region": "Enterprise", "customers": 12, "arpa": 475 }
+    ]
+  }'
+```
+
+Expected formula readback:
+
+```json
+{
+  "records": 4,
+  "after": {
+    "totalRevenue": 48600,
+    "westCustomers": 20,
+    "largestDeal": 24000
+  },
+  "checks": {
+    "totalRevenueChanged": true,
+    "formulasPersisted": true,
+    "serializedBytes": 1194
+  }
 }
 ```
 

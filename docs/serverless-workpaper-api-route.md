@@ -318,7 +318,7 @@ The edit response should include formula readback and persistence checks:
   "checks": {
     "totalRevenueChanged": true,
     "formulasPersisted": true,
-    "serializedBytes": 1195
+    "serializedBytes": 1194
   }
 }
 ```
@@ -766,7 +766,7 @@ summary and verification checks as the in-memory demo:
   "checks": {
     "totalRevenueChanged": true,
     "formulasPersisted": true,
-    "serializedBytes": 1195
+    "serializedBytes": 1194
   }
 }
 ```

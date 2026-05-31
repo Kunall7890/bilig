@@ -83,6 +83,12 @@ export async function requireServerlessWorkPaperApiDiscovery({
 
   requireIncludes(serverlessExampleReadme, 'npm run framework-adapters', 'examples/serverless-workpaper-api/README.md')
   requireIncludes(serverlessExampleReadme, '## Framework Adapters', 'examples/serverless-workpaper-api/README.md')
+  requireIncludes(serverlessExampleReadme, '## Express Route Smoke', 'examples/serverless-workpaper-api/README.md')
+  requireIncludes(
+    serverlessExampleReadme,
+    'curl -X POST http://localhost:8787/api/workpaper/revenue',
+    'examples/serverless-workpaper-api/README.md',
+  )
   requireIncludes(serverlessExampleReadme, 'Oak-style `context.request.source`', 'examples/serverless-workpaper-api/README.md')
   requireIncludes(serverlessExampleReadme, 'AdonisJS-style `HttpContext`', 'examples/serverless-workpaper-api/README.md')
   requireIncludes(serverlessExampleReadme, 'Hapi-style `request` plus `h.response()`', 'examples/serverless-workpaper-api/README.md')
@@ -102,6 +108,11 @@ export async function requireServerlessWorkPaperApiDiscovery({
     'examples/serverless-workpaper-api/framework-adapters.ts',
   )
   requireIncludes(nodeFrameworkAdapterDoc, '## Oak', 'docs/node-framework-workpaper-adapters.md')
+  requireIncludes(
+    nodeFrameworkAdapterDoc,
+    'curl -X POST http://localhost:8787/api/workpaper/revenue',
+    'docs/node-framework-workpaper-adapters.md',
+  )
   requireIncludes(nodeFrameworkAdapterDoc, 'createOakWorkPaperRoutes', 'docs/node-framework-workpaper-adapters.md')
   requireIncludes(nodeFrameworkAdapterDoc, '## AdonisJS', 'docs/node-framework-workpaper-adapters.md')
   requireIncludes(nodeFrameworkAdapterDoc, 'createAdonisWorkPaperRoutes', 'docs/node-framework-workpaper-adapters.md')
@@ -144,6 +155,11 @@ export async function requireServerlessWorkPaperApiDiscovery({
   requireIncludes(persistenceDoc, 'Redis or string-KV adapter', 'docs/persisting-formula-backed-workpaper-documents-in-node.md')
   requireIncludes(llms, 'Postgres JSONB, SQLite, Redis/KV, and object storage', 'docs/llms.txt')
 
+  requireIncludes(
+    serverlessExamplePackage,
+    '"test": "npm run smoke && npm run framework-adapters && npm run quote-approval-api && npm run next-route-handler && npm run vercel-function"',
+    'examples/serverless-workpaper-api/package.json',
+  )
   requireIncludes(
     serverlessExamplePackage,
     '"next-route-handler": "tsx next-route-handler.ts"',

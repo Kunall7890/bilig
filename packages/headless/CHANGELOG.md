@@ -11,10 +11,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(headless): relocate whitespace-prefixed fill formulas (1693cb39)
 - fix(ci): route oracle tests through vitest harness (5f581cbc)
 
 ## Internal runtime changes
+
 - test(headless): cover sheet read and formula prefix edges (79e9ec23)
 - docs(growth): make WorkPaper first mile headless (fa2ddbd0)
 - test(headless): cover restored readback invariants (dc70e9d8)

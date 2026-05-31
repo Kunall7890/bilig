@@ -73,7 +73,7 @@ Expected output:
       "checks": {
         "totalRevenueChanged": true,
         "formulasPersisted": true,
-        "serializedBytes": 1195
+        "serializedBytes": 1194
       }
     }
   },
@@ -89,7 +89,7 @@ Expected output:
       "checks": {
         "totalRevenueChanged": true,
         "formulasPersisted": true,
-        "serializedBytes": 1195
+        "serializedBytes": 1194
       }
     }
   },
@@ -105,7 +105,7 @@ Expected output:
       "checks": {
         "totalRevenueChanged": true,
         "formulasPersisted": true,
-        "serializedBytes": 1195
+        "serializedBytes": 1194
       }
     }
   },
@@ -121,7 +121,7 @@ Expected output:
       "checks": {
         "totalRevenueChanged": true,
         "formulasPersisted": true,
-        "serializedBytes": 1195
+        "serializedBytes": 1194
       }
     }
   },
@@ -198,6 +198,41 @@ app.get('/api/workpaper/summary', createExpressWorkPaperHandler())
 app.post('/api/workpaper/revenue', createExpressWorkPaperHandler())
 
 app.listen(8787)
+```
+
+Smoke the Express boundary with the same revenue update used by the runnable
+adapter proof:
+
+```sh
+curl -X POST http://localhost:8787/api/workpaper/revenue \
+  -H 'content-type: application/json' \
+  --data '{
+    "records": [
+      { "region": "West", "customers": 20, "arpa": 1200 },
+      { "region": "East", "customers": 30, "arpa": 250 },
+      { "region": "Central", "customers": 18, "arpa": 300 },
+      { "region": "Enterprise", "customers": 12, "arpa": 475 }
+    ]
+  }'
+```
+
+The response is the shared WorkPaper `Response` copied back through Express
+after the formulas recalculate:
+
+```json
+{
+  "records": 4,
+  "after": {
+    "totalRevenue": 48600,
+    "westCustomers": 20,
+    "largestDeal": 24000
+  },
+  "checks": {
+    "totalRevenueChanged": true,
+    "formulasPersisted": true,
+    "serializedBytes": 1194
+  }
+}
 ```
 
 ## Fastify
