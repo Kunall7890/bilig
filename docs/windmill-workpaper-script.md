@@ -27,6 +27,10 @@ Official Windmill references:
 
 ## Example Artifact
 
+Live Windmill Hub script:
+
+<https://hub.windmill.dev/scripts/bilig/22264/calculate-quote-fields-with-bilig-workpaper-formulas-bilig>
+
 The runnable source lives in:
 
 ```text
@@ -53,13 +57,13 @@ WorkPaper document, restores it, and verifies that the restored calculated
 values match.
 
 `pnpm run hub:url` writes a Windmill Hub add URL to
-`.tmp/windmill-hub-script-url.txt`. Open it while logged in to Windmill Hub to
-preload the script content, summary, description, language, and input schema.
+`.tmp/windmill-hub-script-url.txt`. Use that only when you need to create a
+fresh copy. The submitted Hub script above is the public example.
 
 ## Windmill Script
 
-Open the generated Hub URL or paste the contents of `src/workpaper-script.ts`
-into a Windmill TypeScript/Bun script.
+Open the Hub script above, fork it in Windmill, or paste the contents of
+`src/workpaper-script.ts` into a private Windmill TypeScript/Bun script.
 
 The script shape is intentionally boring:
 

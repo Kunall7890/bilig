@@ -7,6 +7,10 @@ Use it when Windmill owns schedules, webhooks, approvals, or workflow routing,
 but the pricing, payout, or import-validation calculation should stay
 reviewable as workbook cells and formulas.
 
+Live Windmill Hub script:
+
+<https://hub.windmill.dev/scripts/bilig/22264/calculate-quote-fields-with-bilig-workpaper-formulas-bilig>
+
 Windmill's TypeScript runtime can resolve npm dependencies directly from script
 imports and requires a `main` entrypoint for runnable scripts:
 
@@ -62,12 +66,13 @@ The live smoke output includes every calculated summary field.
 .tmp/windmill-hub-script-url.txt
 ```
 
-Open that URL while logged in to Windmill Hub. It preloads the script content,
-summary, description, language, and input schema.
+Use that generated URL only when you need to submit a fresh copy. The live Hub
+script above is the public example.
 
 ## Windmill Shape
 
-1. Create a TypeScript/Bun script in Windmill or open the generated Hub URL.
+1. Fork the live Hub script or create a private TypeScript/Bun script in
+   Windmill.
 2. Paste `src/workpaper-script.ts`.
 3. Keep the import as `@bilig/workpaper`; Windmill will compute a script
    lockfile from the import on deployment.
