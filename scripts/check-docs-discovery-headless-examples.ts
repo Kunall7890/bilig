@@ -1,7 +1,12 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { requireAiSdkDiscovery } from './check-docs-discovery-ai-sdk.ts'
-import { requireDocumentedScriptsExist, requireFile, requireIncludes } from './check-docs-discovery-core.ts'
+import {
+  requireDocumentedScriptsExist,
+  requireFile,
+  requireIncludes,
+  requirePackageScriptsDocumented,
+} from './check-docs-discovery-core.ts'
 import { requireNpmEvalDiscovery } from './check-docs-discovery-npm-eval.ts'
 import { requireOpenAiResponsesDiscovery } from './check-docs-discovery-openai-responses.ts'
 import { requireServerlessWorkPaperApiDiscovery } from './check-docs-discovery-serverless.ts'
@@ -82,6 +87,9 @@ export async function requireHeadlessExampleDiscovery({
   await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'mcp-tool-server.ts'))
   await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'mcp-stdio-server.ts'))
   requireDocumentedScriptsExist(headlessExampleReadme, headlessExamplePackage, 'examples/headless-workpaper/README.md')
+  requirePackageScriptsDocumented(headlessExampleReadme, headlessExamplePackage, 'examples/headless-workpaper/README.md', {
+    ignoredScripts: ['typecheck', 'typecheck:mcp'],
+  })
   requireIncludes(headlessExampleReadme, '90-second npm-only check', 'examples/headless-workpaper/README.md')
   requireIncludes(headlessExampleReadme, 'npm run invoice-totals', 'examples/headless-workpaper/README.md')
   requireIncludes(headlessExampleReadme, '## Invoice Totals', 'examples/headless-workpaper/README.md')

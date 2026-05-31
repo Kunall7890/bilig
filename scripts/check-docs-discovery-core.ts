@@ -91,6 +91,17 @@ export function extractNpmRunScripts(readme: string): string[] {
       scripts.add(script)
     }
   }
+  for (const match of readme.matchAll(/\bnpm\s+start\b/g)) {
+    if (match[0] !== undefined) {
+      scripts.add('start')
+    }
+  }
+  for (const match of readme.matchAll(/\bpnpm(?:\s+--dir\s+\S+)?\s+run(?:\s+--[\w-]+)*\s+([\w:-]+)/g)) {
+    const script = match[1]
+    if (script !== undefined) {
+      scripts.add(script)
+    }
+  }
 
   return [...scripts].toSorted()
 }
@@ -120,6 +131,26 @@ export function requireDocumentedScriptsExist(readme: string, packageJson: strin
   for (const documentedScript of extractNpmRunScripts(readme)) {
     if (!(documentedScript in scripts)) {
       throw new Error(`${context} documents missing package.json script: npm run ${documentedScript}`)
+    }
+  }
+}
+
+export function requirePackageScriptsDocumented(
+  readme: string,
+  packageJson: string,
+  context: string,
+  options: { readonly ignoredScripts?: readonly string[] } = {},
+): void {
+  const scripts = getPackageScripts(packageJson, 'examples/headless-workpaper/package.json')
+  const documentedScripts = new Set(extractNpmRunScripts(readme))
+  const ignoredScripts = new Set(options.ignoredScripts ?? [])
+
+  for (const scriptName of Object.keys(scripts).toSorted()) {
+    if (ignoredScripts.has(scriptName)) {
+      continue
+    }
+    if (!documentedScripts.has(scriptName)) {
+      throw new Error(`${context} is missing README coverage for package.json script: ${scriptName}`)
     }
   }
 }
