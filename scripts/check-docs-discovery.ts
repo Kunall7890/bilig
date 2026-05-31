@@ -452,7 +452,7 @@ await requireSharedPublicDocsDiscovery({
 
 requireIncludes(readme, 'acceptance commands for first patches.', 'README.md')
 requireIncludes(readme, 'docs/why-use-bilig.md', 'README.md')
-await requireAgentEvaluatorDiscovery({ docsRoot, readme, index, llms })
+await requireAgentEvaluatorDiscovery({ docsRoot, readme, index, llms, runtimePackageVersion: scopedWorkpaperPackageVersion })
 requireIncludes(llms, '## agent handoff prompt', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/AGENTS.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent.json', 'docs/llms.txt')

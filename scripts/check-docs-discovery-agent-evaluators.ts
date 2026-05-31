@@ -8,10 +8,13 @@ export async function requireAgentEvaluatorDiscovery(input: {
   readonly readme: string
   readonly index: string
   readonly llms: string
+  readonly runtimePackageVersion: string
 }): Promise<void> {
-  const { docsRoot, readme, index, llms } = input
+  const { docsRoot, readme, index, llms, runtimePackageVersion } = input
   const agentAdoptionKit = await readFile(join(docsRoot, 'agent-adoption-kit.md'), 'utf8')
   const agentMcpEvaluator = await readFile(join(docsRoot, 'eval-agent-mcp.md'), 'utf8')
+  const expectedWorkpaperVersion = `"@bilig/workpaper": "${runtimePackageVersion}"`
+  const expectedXlsxVersion = `"xlsx-formula-recalc": "${runtimePackageVersion}"`
 
   requireIncludes(readme, 'The published package also carries `AGENTS.md`', 'README.md')
   requireIncludes(readme, '.claude/skills/bilig-workpaper/SKILL.md', 'README.md')
@@ -33,6 +36,8 @@ export async function requireAgentEvaluatorDiscovery(input: {
   )
   requireIncludes(agentAdoptionKit, 'schemaVersion: "bilig-evaluator.v1"', 'docs/agent-adoption-kit.md')
   requireIncludes(agentAdoptionKit, 'door: "agent-mcp"', 'docs/agent-adoption-kit.md')
+  requireIncludes(agentAdoptionKit, expectedWorkpaperVersion, 'docs/agent-adoption-kit.md')
+  requireIncludes(agentAdoptionKit, expectedXlsxVersion, 'docs/agent-adoption-kit.md')
   requireIncludes(
     agentAdoptionKit,
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json',
@@ -45,6 +50,8 @@ export async function requireAgentEvaluatorDiscovery(input: {
   )
   requireIncludes(agentMcpEvaluator, '"schemaVersion": "bilig-evaluator.v1"', 'docs/eval-agent-mcp.md')
   requireIncludes(agentMcpEvaluator, '"door": "agent-mcp"', 'docs/eval-agent-mcp.md')
+  requireIncludes(agentMcpEvaluator, expectedWorkpaperVersion, 'docs/eval-agent-mcp.md')
+  requireIncludes(agentMcpEvaluator, expectedXlsxVersion, 'docs/eval-agent-mcp.md')
   requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-agent-mcp.html', 'docs/llms.txt')
   requireIncludes(llms, 'https://proompteng.github.io/bilig/agent-adoption-kit.html', 'docs/llms.txt')
   requireIncludes(llms, 'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json', 'docs/llms.txt')
