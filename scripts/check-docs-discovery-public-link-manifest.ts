@@ -2,8 +2,10 @@ const mcpbReleaseAssetUrl = 'https://github.com/proompteng/bilig/releases/latest
 
 export const homepageRequiredLinks = [
   'https://context7.com/proompteng/bilig',
+  'https://www.npmjs.com/package/@bilig/xlsx-formula-recalc',
   'https://www.npmjs.com/package/@bilig/headless',
   'https://www.npmjs.com/package/@bilig/workpaper',
+  './eval-xlsx-cache-doctor.html',
   './why-use-bilig.html',
   './why-agents-need-workbook-apis.html',
   './stop-driving-spreadsheets-with-screenshots.html',
