@@ -7,6 +7,18 @@ import { resolveCiProfile, resolveCiSkipBrowserGates } from '../run-ci-config.ts
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return typeof value === 'object' && value !== null && Object.values(value).every((entry) => typeof entry === 'string')
+}
+
+function readPackageScripts(): Record<string, string> {
+  const parsed: unknown = JSON.parse(readFileSync(resolve(repoRoot, 'package.json'), 'utf8'))
+  if (typeof parsed !== 'object' || parsed === null || !('scripts' in parsed) || !isStringRecord(parsed.scripts)) {
+    throw new Error('package.json must define string scripts.')
+  }
+  return parsed.scripts
+}
+
 describe('run-ci', () => {
   it('defaults to the fast CI profile and accepts explicit profiles', () => {
     expect(resolveCiProfile({})).toBe('fast')
@@ -72,11 +84,13 @@ describe('run-ci', () => {
 
   it('runs the CI orchestrator through tsx instead of bun', () => {
     const packageJson = readFileSync(resolve(repoRoot, 'package.json'), 'utf8')
+    const scripts = readPackageScripts()
 
-    expect(packageJson).toContain('"ci": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts"')
-    expect(packageJson).toContain('"ci:core": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts"')
-    expect(packageJson).toContain('"ci:github": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts"')
-    expect(packageJson).toContain('"ci:full": "BILIG_CI_PROFILE=full tsx scripts/run-ci.ts"')
+    expect(scripts['ci']).toBe('BILIG_CI_PROFILE=fast tsx scripts/run-ci.ts')
+    expect(scripts['ci']).not.toContain('BILIG_CI_SKIP_BROWSER')
+    expect(scripts['ci:core']).toBe('BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts')
+    expect(scripts['ci:github']).toBe('BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts')
+    expect(scripts['ci:full']).toBe('BILIG_CI_PROFILE=full tsx scripts/run-ci.ts')
     expect(packageJson).toContain(
       '"public-workbook-corpus:memory-gate": "bun scripts/public-workbook-corpus-memory-gate.ts --require-public"',
     )
