@@ -320,12 +320,12 @@ transport-neutral plan data and command receipts, and
 
 For agent adoption, use the
 [Agent Adoption Kit](docs/agent-adoption-kit.md): install the skill, run the
-no-key MCP proof, paste one workbook task into the agent, and require
+no-key agent MCP evaluator, paste one workbook task into the agent, and require
 `verified: true` before trusting the result.
 
 Coding agent? Do not start by driving Excel, LibreOffice, Google Sheets, or a
 browser grid. Use the headless WorkPaper proof instead:
-`npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`.
+`npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.
 Then follow the [agent MCP evaluator](docs/eval-agent-mcp.md).
 
 The published package also carries `AGENTS.md` and `SKILL.md` so coding agents
@@ -341,7 +341,7 @@ The public docs expose the same agent path through
 ```sh
 npx --yes skills@latest add https://bilig.proompteng.ai --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
-npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
 ## Integration Recipes After The Proof
@@ -401,7 +401,8 @@ To prove the package-owned agent loop without cloning the repo or downloading a
 TypeScript file:
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 ```
 

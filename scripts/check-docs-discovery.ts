@@ -128,6 +128,8 @@ const airflowWorkpaperDag = await readFile(join(docsRoot, 'airflow-workpaper-dag
 const dagsterWorkpaperAsset = await readFile(join(docsRoot, 'dagster-workpaper-asset.md'), 'utf8')
 const kestraWorkpaperFlow = await readFile(join(docsRoot, 'kestra-workpaper-flow.md'), 'utf8')
 const prefectWorkpaperFlow = await readFile(join(docsRoot, 'prefect-workpaper-flow.md'), 'utf8')
+const agentAdoptionKit = await readFile(join(docsRoot, 'agent-adoption-kit.md'), 'utf8')
+const agentMcpEvaluator = await readFile(join(docsRoot, 'eval-agent-mcp.md'), 'utf8')
 
 const parsedScopedWorkpaperPackageJson: unknown = JSON.parse(scopedWorkpaperPackageJson)
 if (
@@ -464,6 +466,25 @@ requireIncludes(readme, 'npx --yes skills@latest add https://bilig.proompteng.ai
 requireIncludes(readme, 'npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list', 'README.md')
 requireIncludes(index, './headless-workpaper-agent-handbook.html', 'docs/index.html')
 requireIncludes(index, './agent-adoption-kit.html', 'docs/index.html')
+requireIncludes(
+  agentAdoptionKit,
+  'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
+  'docs/agent-adoption-kit.md',
+)
+requireIncludes(agentAdoptionKit, 'schemaVersion: "bilig-evaluator.v1"', 'docs/agent-adoption-kit.md')
+requireIncludes(agentAdoptionKit, 'door: "agent-mcp"', 'docs/agent-adoption-kit.md')
+requireIncludes(
+  agentAdoptionKit,
+  'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json',
+  'docs/agent-adoption-kit.md',
+)
+requireIncludes(
+  agentMcpEvaluator,
+  'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
+  'docs/eval-agent-mcp.md',
+)
+requireIncludes(agentMcpEvaluator, '"schemaVersion": "bilig-evaluator.v1"', 'docs/eval-agent-mcp.md')
+requireIncludes(agentMcpEvaluator, '"door": "agent-mcp"', 'docs/eval-agent-mcp.md')
 requireIncludes(llms, '## agent handoff prompt', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/AGENTS.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent.json', 'docs/llms.txt')
@@ -490,6 +511,7 @@ requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-xlsx-recalc.html'
 requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-workpaper-service.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-agent-mcp.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/agent-adoption-kit.html', 'docs/llms.txt')
+requireIncludes(llms, 'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json', 'docs/llms.txt')
 requireIncludes(llms, 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json', 'docs/llms.txt')
 requireIncludes(llms, 'npm exec --yes --package @bilig/workpaper@latest -- bilig-mcp-challenge --json', 'docs/llms.txt')
 requireIncludes(llms, 'A write call by itself is not success.', 'docs/llms.txt')

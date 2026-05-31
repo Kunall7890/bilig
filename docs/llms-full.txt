@@ -625,12 +625,12 @@ transport-neutral plan data and command receipts, and
 
 For agent adoption, use the
 [Agent Adoption Kit](docs/agent-adoption-kit.md): install the skill, run the
-no-key MCP proof, paste one workbook task into the agent, and require
+no-key agent MCP evaluator, paste one workbook task into the agent, and require
 `verified: true` before trusting the result.
 
 Coding agent? Do not start by driving Excel, LibreOffice, Google Sheets, or a
 browser grid. Use the headless WorkPaper proof instead:
-`npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`.
+`npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.
 Then follow the [agent MCP evaluator](docs/eval-agent-mcp.md).
 
 The published package also carries `AGENTS.md` and `SKILL.md` so coding agents
@@ -646,7 +646,7 @@ The public docs expose the same agent path through
 ```sh
 npx --yes skills@latest add https://bilig.proompteng.ai --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
-npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
 ## Integration Recipes After The Proof
@@ -706,7 +706,8 @@ To prove the package-owned agent loop without cloning the repo or downloading a
 TypeScript file:
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 ```
 
@@ -2063,9 +2064,9 @@ Source: https://github.com/proompteng/bilig/blob/main/docs/agent-adoption-kit.md
 
 # Agent Adoption Kit
 
-Use this page when you are evaluating whether Bilig should be the workbook tool
-inside a coding agent, MCP client, or agent framework. It is intentionally one
-path: install the agent instructions, run the no-key check, paste one workbook
+Use this page when you are deciding whether Bilig should be the workbook tool
+inside a coding agent, MCP client, or agent framework. The path is deliberately
+short: install the instructions, run one no-key evaluator, paste one workbook
 task, and require formula readback before calling the job done.
 
 ## Install The Agent Instructions
@@ -2116,10 +2117,11 @@ This checks the published package and the file-backed MCP tool path without
 cloning the repo or using an API key:
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
-A passing run must return `verified: true` plus these checks:
+A passing run must return `schemaVersion: "bilig-evaluator.v1"`,
+`door: "agent-mcp"`, `verified: true`, and these checks:
 
 - tools, resources, and prompts were discovered;
 - one input cell changed;
@@ -2127,11 +2129,17 @@ A passing run must return `verified: true` plus these checks:
 - WorkPaper JSON was exported and persisted;
 - restart readback matched the post-edit value.
 
-Use the direct API challenge when the agent will import `@bilig/workpaper`
-instead of using MCP:
+Use the raw MCP challenge only when you need the lower-level JSON-RPC proof:
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
+Use the service evaluator when the agent will import `@bilig/workpaper` instead
+of using MCP:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 ```
 
 ## Wire The Local MCP Server
@@ -2183,19 +2191,34 @@ readback plus persisted or restored state.
 
 ## Expected Result
 
-The exact values depend on the starter workbook, but the result should look
-like this:
+The exact values can change, but the evaluator result should look like this:
 
 ```json
 {
-  "editedCell": "Inputs!B3",
-  "dependentCell": "Summary!B3",
-  "before": 60000,
-  "after": 96000,
-  "afterRestore": 96000,
-  "persistedDocumentBytes": 1162,
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "agent-mcp",
   "verified": true,
-  "limitations": []
+  "packageVersions": {
+    "@bilig/workpaper": "0.131.1",
+    "xlsx-formula-recalc": "0.131.1"
+  },
+  "evidence": {
+    "editedCell": "Inputs!B3",
+    "dependentCell": "Summary!B3",
+    "before": 60000,
+    "after": 96000,
+    "afterRestore": 96000,
+    "afterRestart": 96000,
+    "checks": {
+      "listedFileBackedTools": true,
+      "listedResourcesAndPrompts": true,
+      "formulaValidationPassed": true,
+      "dependentCellChanged": true,
+      "persistedToDisk": true,
+      "exportContainsWorkPaperDocument": true,
+      "restartReadbackMatchesAfter": true
+    }
+  }
 }
 ```
 
@@ -2237,71 +2260,69 @@ persisted file, and return proof.
 ## One command
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
 If you are handing this to another coding agent, start from the
 [Agent Adoption Kit](agent-adoption-kit.md). It includes the installable skill,
 one MCP config, a paste-ready task, and the pass/fail proof object.
 
+If you need the raw JSON-RPC challenge output, run:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
 ## Expected proof
 
-The current challenge prints this shape:
+The evaluator prints this shape:
 
 ```json
 {
-  "transport": "stdio-json-rpc",
-  "protocolVersion": "2025-11-25",
-  "serverName": "bilig-headless-workpaper",
-  "tools": [
-    "list_sheets",
-    "read_range",
-    "read_cell",
-    "set_cell_contents",
-    "set_cell_contents_and_readback",
-    "get_cell_display_value",
-    "export_workpaper_document",
-    "validate_formula"
-  ],
-  "resources": [
-    "bilig://workpaper/manifest",
-    "bilig://workpaper/agent-handoff",
-    "bilig://workpaper/sheets",
-    "bilig://workpaper/current-document"
-  ],
-  "prompts": ["edit_and_verify_workpaper", "debug_workpaper_formula"],
-  "editedCell": "Inputs!B3",
-  "dependentCell": "Summary!B3",
-  "before": 60000,
-  "after": 96000,
-  "afterRestore": 96000,
-  "afterRestart": 96000,
-  "displayValue": "96000",
-  "persistedDocumentBytes": 1162,
-  "persistence": {
-    "persisted": true,
-    "serializedBytes": 1162
-  },
-  "checks": {
-    "listedFileBackedTools": true,
-    "listedResourcesAndPrompts": true,
-    "formulaValidationPassed": true,
-    "dependentCellChanged": true,
-    "persistedToDisk": true,
-    "exportContainsWorkPaperDocument": true,
-    "restartReadbackMatchesAfter": true,
-    "displayValueRead": true
-  },
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "agent-mcp",
+  "doorName": "Agent MCP proof",
   "verified": true,
-  "limitations": [
-    "This challenge proves the file-backed MCP WorkPaper tool surface, not Excel desktop UI automation.",
-    "For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture."
-  ]
+  "packageVersions": {
+    "@bilig/workpaper": "0.131.1",
+    "xlsx-formula-recalc": "0.131.1"
+  },
+  "evidence": {
+    "editedCell": "Inputs!B3",
+    "dependentCell": "Summary!B3",
+    "before": 60000,
+    "after": 96000,
+    "afterRestore": 96000,
+    "afterRestart": 96000,
+    "persistedDocumentBytes": 1162,
+    "toolCount": 8,
+    "tools": [
+      "list_sheets",
+      "read_range",
+      "read_cell",
+      "set_cell_contents",
+      "set_cell_contents_and_readback",
+      "get_cell_display_value",
+      "export_workpaper_document",
+      "validate_formula"
+    ],
+    "checks": {
+      "listedFileBackedTools": true,
+      "listedResourcesAndPrompts": true,
+      "formulaValidationPassed": true,
+      "dependentCellChanged": true,
+      "persistedToDisk": true,
+      "exportContainsWorkPaperDocument": true,
+      "restartReadbackMatchesAfter": true,
+      "displayValueRead": true
+    }
+  }
 }
 ```
 
-The exact byte count can change. The invariants are `dependentCellChanged`,
-`persistedToDisk`, `restartReadbackMatchesAfter`, and `verified: true`.
+The exact package versions, byte count, and duration can change. The invariants
+are `door: "agent-mcp"`, `dependentCellChanged`, `persistedToDisk`,
+`restartReadbackMatchesAfter`, `displayValueRead`, and `verified: true`.
 
 ## What this proves
 

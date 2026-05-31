@@ -32,14 +32,23 @@ or restore evidence, not a write-call status.
 - Package-level agents inspecting `node_modules/@bilig/workpaper` should read
   the published `AGENTS.md` and `SKILL.md`.
 
-The no-key checks are:
+The no-key evaluator checks are:
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
+```
+
+The lower-level direct and MCP challenges remain available for diagnostics:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 ```
 
-Both should return `verified: true` before you trust the agent workflow.
+These commands should return `verified: true` before you trust the agent
+workflow.
 
 ## Coding Style & Naming Conventions
 

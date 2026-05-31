@@ -58,6 +58,7 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   https://proompteng.github.io/bilig/agent-adoption-kit.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-adoption-kit.md
   `npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list`
+  `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.
   `npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`.
 - Use `@bilig/workpaper` for formula workbook state inside a Node service,
   queue worker, route handler, test, or agent tool.

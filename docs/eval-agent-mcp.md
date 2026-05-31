@@ -18,71 +18,69 @@ persisted file, and return proof.
 ## One command
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
 If you are handing this to another coding agent, start from the
 [Agent Adoption Kit](agent-adoption-kit.md). It includes the installable skill,
 one MCP config, a paste-ready task, and the pass/fail proof object.
 
+If you need the raw JSON-RPC challenge output, run:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
 ## Expected proof
 
-The current challenge prints this shape:
+The evaluator prints this shape:
 
 ```json
 {
-  "transport": "stdio-json-rpc",
-  "protocolVersion": "2025-11-25",
-  "serverName": "bilig-headless-workpaper",
-  "tools": [
-    "list_sheets",
-    "read_range",
-    "read_cell",
-    "set_cell_contents",
-    "set_cell_contents_and_readback",
-    "get_cell_display_value",
-    "export_workpaper_document",
-    "validate_formula"
-  ],
-  "resources": [
-    "bilig://workpaper/manifest",
-    "bilig://workpaper/agent-handoff",
-    "bilig://workpaper/sheets",
-    "bilig://workpaper/current-document"
-  ],
-  "prompts": ["edit_and_verify_workpaper", "debug_workpaper_formula"],
-  "editedCell": "Inputs!B3",
-  "dependentCell": "Summary!B3",
-  "before": 60000,
-  "after": 96000,
-  "afterRestore": 96000,
-  "afterRestart": 96000,
-  "displayValue": "96000",
-  "persistedDocumentBytes": 1162,
-  "persistence": {
-    "persisted": true,
-    "serializedBytes": 1162
-  },
-  "checks": {
-    "listedFileBackedTools": true,
-    "listedResourcesAndPrompts": true,
-    "formulaValidationPassed": true,
-    "dependentCellChanged": true,
-    "persistedToDisk": true,
-    "exportContainsWorkPaperDocument": true,
-    "restartReadbackMatchesAfter": true,
-    "displayValueRead": true
-  },
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "agent-mcp",
+  "doorName": "Agent MCP proof",
   "verified": true,
-  "limitations": [
-    "This challenge proves the file-backed MCP WorkPaper tool surface, not Excel desktop UI automation.",
-    "For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture."
-  ]
+  "packageVersions": {
+    "@bilig/workpaper": "0.131.1",
+    "xlsx-formula-recalc": "0.131.1"
+  },
+  "evidence": {
+    "editedCell": "Inputs!B3",
+    "dependentCell": "Summary!B3",
+    "before": 60000,
+    "after": 96000,
+    "afterRestore": 96000,
+    "afterRestart": 96000,
+    "persistedDocumentBytes": 1162,
+    "toolCount": 8,
+    "tools": [
+      "list_sheets",
+      "read_range",
+      "read_cell",
+      "set_cell_contents",
+      "set_cell_contents_and_readback",
+      "get_cell_display_value",
+      "export_workpaper_document",
+      "validate_formula"
+    ],
+    "checks": {
+      "listedFileBackedTools": true,
+      "listedResourcesAndPrompts": true,
+      "formulaValidationPassed": true,
+      "dependentCellChanged": true,
+      "persistedToDisk": true,
+      "exportContainsWorkPaperDocument": true,
+      "restartReadbackMatchesAfter": true,
+      "displayValueRead": true
+    }
+  }
 }
 ```
 
-The exact byte count can change. The invariants are `dependentCellChanged`,
-`persistedToDisk`, `restartReadbackMatchesAfter`, and `verified: true`.
+The exact package versions, byte count, and duration can change. The invariants
+are `door: "agent-mcp"`, `dependentCellChanged`, `persistedToDisk`,
+`restartReadbackMatchesAfter`, `displayValueRead`, and `verified: true`.
 
 ## What this proves
 

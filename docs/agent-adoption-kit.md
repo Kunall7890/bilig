@@ -1,7 +1,7 @@
 ---
 title: Agent Adoption Kit for WorkPaper formulas
 published: true
-description: One no-key adoption path for coding agents: install the Bilig WorkPaper skill, run the MCP check, paste the workbook task, and return verified formula readback.
+description: One no-key adoption path for coding agents: install the Bilig WorkPaper skill, run the agent MCP evaluator, paste the workbook task, and return verified formula readback.
 tags: ai agents, mcp, workbook formulas, spreadsheet automation, node
 canonical_url: https://proompteng.github.io/bilig/agent-adoption-kit.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -10,9 +10,9 @@ image: /assets/github-social-preview.png
 
 # Agent Adoption Kit
 
-Use this page when you are evaluating whether Bilig should be the workbook tool
-inside a coding agent, MCP client, or agent framework. It is intentionally one
-path: install the agent instructions, run the no-key check, paste one workbook
+Use this page when you are deciding whether Bilig should be the workbook tool
+inside a coding agent, MCP client, or agent framework. The path is deliberately
+short: install the instructions, run one no-key evaluator, paste one workbook
 task, and require formula readback before calling the job done.
 
 ## Install The Agent Instructions
@@ -63,10 +63,11 @@ This checks the published package and the file-backed MCP tool path without
 cloning the repo or using an API key:
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
-A passing run must return `verified: true` plus these checks:
+A passing run must return `schemaVersion: "bilig-evaluator.v1"`,
+`door: "agent-mcp"`, `verified: true`, and these checks:
 
 - tools, resources, and prompts were discovered;
 - one input cell changed;
@@ -74,11 +75,17 @@ A passing run must return `verified: true` plus these checks:
 - WorkPaper JSON was exported and persisted;
 - restart readback matched the post-edit value.
 
-Use the direct API challenge when the agent will import `@bilig/workpaper`
-instead of using MCP:
+Use the raw MCP challenge only when you need the lower-level JSON-RPC proof:
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
+Use the service evaluator when the agent will import `@bilig/workpaper` instead
+of using MCP:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 ```
 
 ## Wire The Local MCP Server
@@ -130,19 +137,34 @@ readback plus persisted or restored state.
 
 ## Expected Result
 
-The exact values depend on the starter workbook, but the result should look
-like this:
+The exact values can change, but the evaluator result should look like this:
 
 ```json
 {
-  "editedCell": "Inputs!B3",
-  "dependentCell": "Summary!B3",
-  "before": 60000,
-  "after": 96000,
-  "afterRestore": 96000,
-  "persistedDocumentBytes": 1162,
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "agent-mcp",
   "verified": true,
-  "limitations": []
+  "packageVersions": {
+    "@bilig/workpaper": "0.131.1",
+    "xlsx-formula-recalc": "0.131.1"
+  },
+  "evidence": {
+    "editedCell": "Inputs!B3",
+    "dependentCell": "Summary!B3",
+    "before": 60000,
+    "after": 96000,
+    "afterRestore": 96000,
+    "afterRestart": 96000,
+    "checks": {
+      "listedFileBackedTools": true,
+      "listedResourcesAndPrompts": true,
+      "formulaValidationPassed": true,
+      "dependentCellChanged": true,
+      "persistedToDisk": true,
+      "exportContainsWorkPaperDocument": true,
+      "restartReadbackMatchesAfter": true
+    }
+  }
 }
 ```
 
