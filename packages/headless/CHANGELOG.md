@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.131.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.130.7
+- Manual override: no
+
+## Features
+- feat(evaluator): add unified proof CLI (4bac9336)
+
+## Internal runtime changes
+- docs(examples): cover express workpaper route smoke (8d0d530b)
+
 ## 0.130.7
 
 - Release type: patch
