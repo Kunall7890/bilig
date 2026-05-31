@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>bilig - XLSX Cache Doctor for Node and CI</title>
+    <title>bilig - Headless WorkPaper Runtime for Node</title>
     <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
     <link rel="canonical" href="https://proompteng.github.io/bilig/" />
     <link rel="sitemap" type="application/xml" href="https://proompteng.github.io/bilig/sitemap.xml" />
@@ -12,53 +12,52 @@
     <link rel="alternate" type="application/json" href="https://proompteng.github.io/bilig/.well-known/agent.json" title="agent.json" />
     <meta
       name="description"
-      content="Bilig catches stale XLSX formula values before Node services, queues, CI jobs, or agents read the wrong number."
+      content="Bilig runs formula-backed WorkPapers in Node services and agent tools: write inputs, recalculate, read outputs, and save JSON."
     />
     <meta
       name="keywords"
-      content="stale XLSX formula cache, XLSX formula recalculation Node.js, GitHub Action XLSX formulas, headless workbook runtime, WorkPaper runtime, spreadsheet formulas Node.js, @bilig/xlsx-formula-recalc, @bilig/workpaper, @bilig/headless"
+      content="headless workbook runtime, WorkPaper runtime, spreadsheet formulas Node.js, backend spreadsheet formulas, agent workbook tools, MCP spreadsheet tools, JSON workbook persistence, @bilig/headless, @bilig/workpaper, XLSX formula recalculation Node.js"
     />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#151713" />
     <meta property="og:site_name" content="bilig" />
-    <meta property="og:title" content="bilig - XLSX Cache Doctor for Node and CI" />
-    <meta property="og:description" content="Catch stale XLSX formula values before Node or CI reads the wrong number." />
+    <meta property="og:title" content="bilig - Headless WorkPaper Runtime for Node" />
+    <meta property="og:description" content="Run workbook-shaped business logic from Node without opening a spreadsheet app." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://proompteng.github.io/bilig/" />
     <meta property="og:image" content="https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-15-2" />
-    <meta property="og:image:alt" content="bilig XLSX cache doctor and WorkPaper runtime preview" />
+    <meta property="og:image:alt" content="bilig headless WorkPaper runtime preview" />
     <meta property="og:image:width" content="1280" />
     <meta property="og:image:height" content="640" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="bilig - XLSX Cache Doctor for Node and CI" />
-    <meta name="twitter:description" content="Catch stale XLSX formula values before Node or CI reads the wrong number." />
+    <meta name="twitter:title" content="bilig - Headless WorkPaper Runtime for Node" />
+    <meta name="twitter:description" content="Run workbook-shaped business logic from Node without opening a spreadsheet app." />
     <meta name="twitter:image" content="https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-15-2" />
-    <meta name="twitter:image:alt" content="bilig XLSX cache doctor and WorkPaper runtime preview" />
+    <meta name="twitter:image:alt" content="bilig headless WorkPaper runtime preview" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "SoftwareSourceCode",
         "name": "bilig",
-        "description": "Bilig catches stale XLSX formula values before Node services, queues, CI jobs, or agents read the wrong number.",
+        "description": "Bilig runs formula-backed WorkPapers in Node services and agent tools: write inputs, recalculate, read outputs, and save JSON.",
         "codeRepository": "https://github.com/proompteng/bilig",
         "license": "https://github.com/proompteng/bilig/blob/main/LICENSE",
         "programmingLanguage": "TypeScript",
         "runtimePlatform": "Node.js 22+",
         "url": "https://proompteng.github.io/bilig/",
-        "downloadUrl": "https://www.npmjs.com/package/@bilig/xlsx-formula-recalc",
-        "installUrl": "https://www.npmjs.com/package/@bilig/xlsx-formula-recalc",
+        "downloadUrl": "https://www.npmjs.com/package/@bilig/headless",
+        "installUrl": "https://www.npmjs.com/package/@bilig/headless",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "macOS, Linux, Windows",
         "isAccessibleForFree": true,
         "image": "https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-15-2",
         "featureList": [
-          "Stale XLSX formula cache detection",
-          "Local XLSX formula recalculation for Node.js",
-          "Report-only GitHub Action for workbook fixtures",
-          "Formula-value readback before production code trusts the file",
           "Headless WorkPaper runtime for service-owned workbook models",
+          "Formula-value readback before production code trusts the result",
+          "JSON WorkPaper persistence",
           "Agent and MCP tool contracts",
-          "JSON WorkPaper persistence"
+          "Local XLSX import, export, and formula recalculation when files are the boundary",
+          "Report-only GitHub Action for workbook fixtures"
         ],
         "sameAs": [
           "https://github.com/proompteng/bilig",
@@ -70,14 +69,13 @@
           "https://github.com/marketplace/actions/xlsx-cache-doctor"
         ],
         "keywords": [
-          "stale XLSX formula cache",
-          "XLSX formula recalculation",
-          "spreadsheet formulas in Node",
-          "GitHub Action XLSX formulas",
-          "@bilig/xlsx-formula-recalc",
-          "@bilig/workpaper",
+          "headless workbook runtime",
+          "WorkPaper runtime",
+          "backend spreadsheet formulas",
+          "agent workbook tools",
           "@bilig/headless",
-          "agent workbook tools"
+          "@bilig/workpaper",
+          "XLSX formula recalculation"
         ]
       }
     </script>
@@ -142,10 +140,10 @@
           <span translate="no">bilig</span>
         </a>
         <nav class="nav" aria-label="Primary">
-          <a href="#market">Who needs it</a>
-          <a href="#install">Quickstart</a>
-          <a href="#mcp">Agent tools</a>
-          <a href="./xlsx-formula-recalculation-node.html">XLSX</a>
+          <a href="#runtime">Runtime</a>
+          <a href="#install">Install</a>
+          <a href="#mcp">Agents</a>
+          <a href="#benchmark">Benchmark</a>
           <a href="#docs">Docs</a>
           <a href="https://github.com/proompteng/bilig">GitHub</a>
         </nav>
@@ -155,32 +153,32 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="wrap hero-inner">
         <div class="hero-copy">
-          <p class="eyebrow">XLSX Cache Doctor for Node and CI</p>
-          <h1 id="hero-title" class="hero-title">Catch stale XLSX formulas.</h1>
+          <p class="eyebrow">Headless WorkPaper runtime</p>
+          <h1 id="hero-title" class="hero-title">Run workbook rules in Node.</h1>
           <p class="hero-subtitle">
-            SheetJS, ExcelJS, and xlsx-populate can write the file and still leave old cached formula values behind. Bilig checks the
-            workbook locally before your API, queue worker, CI job, or agent trusts it.
+            Bilig gives services and agents a workbook API: write inputs, recalculate formulas, read outputs, and save JSON. Use the XLSX
+            tools when saved files are still the contract.
           </p>
-          <div class="hero-command" aria-label="Bilig XLSX cache doctor command">
+          <div class="hero-command" aria-label="Bilig WorkPaper evaluator command">
             <span>No-clone check</span>
-            <code>npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --demo --json</code>
-            <strong>See the formula cell, stale cached value, fresh recalculated value, and exact cell address.</strong>
+            <code>npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json</code>
+            <strong>Edits an input cell, recalculates a formula, saves JSON, restores it, and returns <code>verified: true</code>.</strong>
           </div>
           <div class="hero-actions">
-            <a class="button primary" href="./eval-xlsx-cache-doctor.html">Run cache doctor</a>
-            <a class="button" href="./xlsx-cache-doctor-github-action.html">Add the Action</a>
-            <a class="button" href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">XLSX npm</a>
-            <a class="button" href="./eval-workpaper-service.html">Use WorkPaper</a>
+            <a class="button primary" href="https://www.npmjs.com/package/@bilig/headless">Install headless</a>
+            <a class="button" href="./eval-workpaper-service.html">Run WorkPaper</a>
+            <a class="button" href="./eval-agent-mcp.html">Agent API</a>
+            <a class="button" href="./xlsx-formula-recalculation-node.html">XLSX bridge</a>
             <a class="button" href="https://github.com/proompteng/bilig">GitHub</a>
           </div>
           <p class="hero-note">
-            Existing <code>.xlsx</code> file? Start with the cache doctor. Service-owned model? Move the workflow to
-            <a href="https://www.npmjs.com/package/@bilig/workpaper">WorkPaper</a> or the lower-level
-            <a href="https://www.npmjs.com/package/@bilig/headless">headless runtime</a>.
+            Start with <a href="https://www.npmjs.com/package/@bilig/headless">@bilig/headless</a> when your service owns the workbook
+            state. Use <a href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">@bilig/xlsx-formula-recalc</a> when a saved
+            <code>.xlsx</code> file has to stay in the loop.
           </p>
         </div>
 
-        <figure class="hero-media" aria-label="XLSX cache doctor stale formula report.">
+        <figure class="hero-media" aria-label="Headless WorkPaper runtime report.">
           <img
             class="hero-ambient"
             src="./assets/bilig-hero-ambient.png?v=2026-05-15-1"
@@ -194,31 +192,31 @@
           <div class="action-report-card">
             <div class="report-card-top">
               <span>GitHub Actions summary</span>
-              <strong>1 stale formula cache</strong>
+              <strong>WorkPaper run verified</strong>
             </div>
             <dl>
               <div>
-                <dt>Workbook</dt>
-                <dd><code>fixtures/stale-pricing.xlsx</code></dd>
+                <dt>Input</dt>
+                <dd><code>Inputs!B3 = 0.4</code></dd>
               </div>
               <div>
-                <dt>Cell</dt>
-                <dd><code>Sheet1!B61</code></dd>
+                <dt>Formula</dt>
+                <dd><code>Summary!B3</code></dd>
               </div>
               <div>
-                <dt>Cached</dt>
-                <dd><code>999</code></dd>
+                <dt>Before</dt>
+                <dd><code>60000</code></dd>
               </div>
               <div>
-                <dt>Recalculated</dt>
-                <dd><code>600</code></dd>
+                <dt>After</dt>
+                <dd><code>96000</code></dd>
               </div>
             </dl>
             <pre><code>{
-  "staleCachedFormulaCount": 1,
-  "cell": "Sheet1!B61",
-  "cached": 999,
-  "recalculated": 600,
+  "door": "workpaper-service",
+  "editedCell": "Inputs!B3",
+  "dependentCell": "Summary!B3",
+  "persistedDocumentBytes": 1162,
   "verified": true
 }</code></pre>
           </div>
@@ -227,58 +225,58 @@
     </section>
 
     <main id="main">
-      <section id="market" class="section" aria-labelledby="market-title">
+      <section id="runtime" class="section" aria-labelledby="runtime-title">
         <div class="wrap">
           <div class="section-head">
             <div>
               <p class="kicker">Who needs this</p>
-              <h2 id="market-title">Teams that read XLSX formula results in Node.</h2>
+              <h2 id="runtime-title">Teams that keep business rules in workbook formulas.</h2>
             </div>
             <p>
-              The risky moment is boring: a script edits input cells, saves the workbook, then production reads a cached formula value that
-              Excel never refreshed. Bilig makes that state visible.
+              Pricing, payout, approval, import, and forecast rules often start in cells. Bilig lets backend code run those cells directly
+              instead of turning every rule into one-off service code.
             </p>
           </div>
 
-          <div class="traffic-entry" aria-label="Primary XLSX cache doctor command">
+          <div class="traffic-entry" aria-label="Primary WorkPaper evaluator command">
             <div>
-              <span>first doorway</span>
-              <strong>Find stale formula caches before code trusts the file.</strong>
+              <span>first run</span>
+              <strong>Run the workbook model before you adopt it.</strong>
               <p>
-                Run it locally, in CI, or as a report-only GitHub Action. You get the workbook path, formula cell, cached value, fresh
-                recalculated value, and a JSON report a maintainer can inspect.
+                The evaluator writes one input, reads the formula output, saves the WorkPaper JSON, restores it, and checks the restored
+                value. No account, no repo clone, no spreadsheet UI.
               </p>
             </div>
-            <pre><code>npm exec --package @bilig/xlsx-formula-recalc@latest -- \
-  xlsx-cache-doctor pricing.xlsx --json</code></pre>
+            <pre><code>npm exec --yes --package @bilig/workpaper@latest -- \
+  bilig-evaluate --door workpaper-service --json</code></pre>
           </div>
 
           <div class="row-list">
-            <a class="path-link" href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">
-              <span>.xlsx cache</span>
-              <strong><code>xlsx-cache-doctor workbook.xlsx --json</code></strong>
-              <em>Use this when a saved Excel file is the contract and formula caches may be stale.</em>
-            </a>
-            <a class="path-link" href="./xlsx-cache-doctor-github-action.html">
-              <span>GitHub Action</span>
-              <strong><code>uses: proompteng/bilig@v1</code></strong>
-              <em>Add a report-only workflow for repositories with committed workbook fixtures.</em>
-            </a>
-            <a class="path-link" href="./eval-xlsx-recalc.html">
-              <span>recalculate</span>
-              <strong><code>xlsx-recalc --read Summary!B7</code></strong>
-              <em>Write a fresh XLSX when downstream tools need updated cached results.</em>
+            <a class="path-link" href="https://www.npmjs.com/package/@bilig/headless">
+              <span>headless</span>
+              <strong><code>npm install @bilig/headless</code></strong>
+              <em>Use the lower-level runtime when your service owns workbook state.</em>
             </a>
             <a class="path-link" href="https://www.npmjs.com/package/@bilig/workpaper">
               <span>WorkPaper</span>
               <strong><code>npm create @bilig/workpaper@latest pricing-workpaper</code></strong>
-              <em>Use this when the service should own the workbook model instead of passing files around.</em>
+              <em>Generate a small service or agent starter wired to the same runtime.</em>
+            </a>
+            <a class="path-link" href="./eval-agent-mcp.html">
+              <span>agents</span>
+              <strong><code>bilig-evaluate --door agent-mcp --json</code></strong>
+              <em>Expose cell reads, writes, formula readback, and JSON export over MCP.</em>
+            </a>
+            <a class="path-link" href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">
+              <span>XLSX</span>
+              <strong><code>xlsx-recalc --read Summary!B7</code></strong>
+              <em>Import, recalculate, and export files when XLSX is still the contract.</em>
             </a>
           </div>
 
           <p class="section-note">
-            Use <code>@bilig/xlsx-formula-recalc</code> when XLSX is the boundary. Use <code>@bilig/workpaper</code> or
-            <code>@bilig/headless</code> when your service owns the model.
+            Use <code>@bilig/headless</code> for the runtime and <code>@bilig/workpaper</code> for the scoped starter and evaluator. Use
+            <code>@bilig/xlsx-formula-recalc</code> when XLSX is the boundary.
           </p>
         </div>
       </section>
@@ -326,12 +324,9 @@
           <div class="section-head">
             <div>
               <p class="kicker">Quickstart</p>
-              <h2 id="install-title">Run the cache doctor first.</h2>
+              <h2 id="install-title">Run the WorkPaper loop first.</h2>
             </div>
-            <p>
-              No account, no server, no spreadsheet UI. The demo intentionally includes a stale cached value so the JSON report proves the
-              check is doing work.
-            </p>
+            <p>The fastest evaluation path is a real write, recalculate, read, save, and restore cycle from the published package.</p>
           </div>
 
           <div class="install-grid">
@@ -342,35 +337,28 @@
                   <span>terminal</span>
                   <span>Node.js 22+</span>
                 </div>
-                <pre><code>npm exec --package @bilig/xlsx-formula-recalc@latest -- \
-  xlsx-cache-doctor --demo --json</code></pre>
+                <pre><code>npm exec --yes --package @bilig/workpaper@latest -- \
+  bilig-evaluate --door workpaper-service --json</code></pre>
               </div>
               <p>
-                Need this in pull requests? Use the
-                <a href="./xlsx-cache-doctor-github-action.html">report-only GitHub Action</a>. Need a service-owned workbook instead of an
-                XLSX file? Run <code>npm create @bilig/workpaper@latest pricing-workpaper</code>. Need a file-backed example? Open
-                <a href="https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node">examples/xlsx-recalculation-node</a
-                >.
+                Want a starter? Run <code>npm create @bilig/workpaper@latest pricing-workpaper</code>. Want the lower-level API? Install
+                <code>@bilig/headless</code>. Need a saved workbook file? Use the
+                <a href="./xlsx-formula-recalculation-node.html">XLSX bridge</a>.
               </p>
             </div>
 
-            <div class="code-panel" aria-label="XLSX cache doctor JSON report example">
+            <div class="code-panel" aria-label="WorkPaper evaluator JSON report example">
               <div class="panel-label">
-                <span>cache-doctor.json</span>
-                <span>stale cache report</span>
+                <span>workpaper-service.json</span>
+                <span>runtime readback</span>
               </div>
               <pre><code>{
-  "schemaVersion": "xlsx-cache-doctor.v1",
-  "staleCachedFormulaCount": <span class="num">1</span>,
-  "cells": [
-    {
-      "workbook": <span class="str">"fixtures/stale-pricing.xlsx"</span>,
-      "sheet": <span class="str">"Sheet1"</span>,
-      "address": <span class="str">"B61"</span>,
-      "cached": <span class="num">999</span>,
-      "recalculated": <span class="num">600</span>
-    }
-  ],
+  "door": <span class="str">"workpaper-service"</span>,
+  "editedCell": <span class="str">"Inputs!B3"</span>,
+  "dependentCell": <span class="str">"Summary!B3"</span>,
+  "before": <span class="num">60000</span>,
+  "after": <span class="num">96000</span>,
+  "afterRestore": <span class="num">96000</span>,
   "verified": <span class="kw">true</span>
 }</code></pre>
             </div>
@@ -433,12 +421,12 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
         </div>
       </section>
 
-      <section id="proof" class="section proof-section" aria-labelledby="proof-title">
+      <section id="benchmark" class="section proof-section" aria-labelledby="benchmark-title">
         <div class="wrap">
           <div class="proof-layout">
             <div class="proof-intro">
               <p class="kicker">Benchmark</p>
-              <h2 id="proof-title">The benchmark is public. So is the caveat.</h2>
+              <h2 id="benchmark-title">The benchmark artifact is public.</h2>
               <p>
                 The checked scorecard has bilig ahead across HyperFormula, TrueCalc, Univer, xlsx-calc, IronCalc Rust.
                 <span>Coverage tiers and unsupported rows stay visible.</span>
@@ -515,19 +503,14 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
               <p class="kicker">Start here</p>
               <h2 id="learn-title">Pick the path that matches the job.</h2>
             </div>
-            <p>Start with the cache check if the XLSX file is the contract. Move to WorkPaper when the service should own the model.</p>
+            <p>Start with WorkPaper when the service owns the rule. Use the XLSX path only when the file must remain the contract.</p>
           </div>
 
           <div class="row-list">
-            <a class="path-link" href="./eval-xlsx-cache-doctor.html">
-              <span>cache</span>
-              <strong>Find stale formula caches in an XLSX file.</strong>
-              <em>Run the no-clone evaluator and inspect the formula cell, cached value, and recalculated value.</em>
-            </a>
-            <a class="path-link" href="./xlsx-cache-doctor-github-action.html">
-              <span>ci</span>
-              <strong>Add a report-only workbook check to pull requests.</strong>
-              <em>Use the GitHub Action when a repo has committed XLSX fixtures or templates.</em>
+            <a class="path-link" href="https://www.npmjs.com/package/@bilig/headless">
+              <span>runtime</span>
+              <strong>Install the lower-level headless package.</strong>
+              <em>Use this when you want direct TypeScript control over WorkPaper state.</em>
             </a>
             <a class="path-link" href="./eval-workpaper-service.html">
               <span>node</span>
@@ -548,6 +531,11 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
               <span>xlsx</span>
               <strong>Keep XLSX only when the file is the contract.</strong>
               <em>Edit inputs, read recalculated values, and write a fresh workbook file.</em>
+            </a>
+            <a class="path-link" href="./xlsx-cache-doctor-github-action.html">
+              <span>ci</span>
+              <strong>Check committed workbook files in pull requests.</strong>
+              <em>Use the GitHub Action when a repo has XLSX fixtures or templates.</em>
             </a>
             <a class="path-link" href="./headless-spreadsheet-engine-comparison.html">
               <span>compare</span>
@@ -576,8 +564,8 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
               <h2 id="docs-title">Start narrow, then go deeper.</h2>
             </div>
             <p>
-              Choose by boundary. Use <code>@bilig/xlsx-formula-recalc</code> when files are still the contract. Use
-              <code>@bilig/workpaper</code> or <code>@bilig/headless</code> when the service owns workbook state.
+              Choose by boundary. Use <code>@bilig/headless</code> when the service owns workbook state, <code>@bilig/workpaper</code> for
+              starters and evaluators, and <code>@bilig/xlsx-formula-recalc</code> for saved files.
             </p>
           </div>
 
@@ -586,16 +574,19 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
               <h3>Run</h3>
               <ul>
                 <li><a href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">@bilig/xlsx-formula-recalc npm package</a></li>
-                <li><a href="./eval-xlsx-cache-doctor.html">XLSX cache doctor evaluator</a></li>
+                <li><a href="./eval-xlsx-cache-doctor.html">XLSX cache evaluator</a></li>
                 <li><a href="./xlsx-cache-doctor-github-action.html">XLSX Cache Doctor GitHub Action</a></li>
                 <li><a href="./xlsx-formula-recalculation-node.html">XLSX formula recalculation in Node</a></li>
+                <li>
+                  <a href="https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node">XLSX recalculation example</a>
+                </li>
                 <li><a href="https://www.npmjs.com/package/@bilig/headless">@bilig/headless npm package</a></li>
                 <li><a href="https://www.npmjs.com/package/@bilig/workpaper">@bilig/workpaper npm package</a></li>
                 <li><a href="./try-bilig-headless-in-node.html">Node quickstart</a></li>
                 <li><a href="./create-bilig-workpaper.html">starter package status</a></li>
                 <li><a href="./workbook-automation-examples-node.html">workbook automation examples</a></li>
                 <li><a href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper">TypeScript examples</a></li>
-                <li><a href="./eval-workpaper-service.html">service fit check</a></li>
+                <li><a href="./eval-workpaper-service.html">service evaluator</a></li>
               </ul>
             </div>
 
@@ -679,16 +670,16 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
       <section class="final" aria-labelledby="final-title">
         <div class="wrap">
           <div>
-            <h2 id="final-title">Try it on the spreadsheet that is already slowing you down.</h2>
+            <h2 id="final-title">Try it on the workbook rule your code already depends on.</h2>
             <p>
-              Run the cache doctor on one real workbook path: a price, payout, approval rule, import check, or forecast cell. If it misses,
-              send the fixture; the failure should be reproducible, not mysterious.
+              Run one WorkPaper through Node: pricing, payouts, approval rules, import checks, or forecasts. If the model still has to live
+              as XLSX, use the file bridge after the runtime path is clear.
             </p>
           </div>
           <div class="final-actions">
-            <a class="button primary" href="./eval-xlsx-cache-doctor.html">Run cache doctor</a>
-            <a class="button" href="./xlsx-cache-doctor-github-action.html">Add the Action</a>
-            <a class="button" href="https://www.npmjs.com/package/@bilig/workpaper">Use WorkPaper</a>
+            <a class="button primary" href="https://www.npmjs.com/package/@bilig/headless">Install headless</a>
+            <a class="button" href="./eval-workpaper-service.html">Run WorkPaper</a>
+            <a class="button" href="./eval-agent-mcp.html">Agent API</a>
             <a class="button dark" href="https://github.com/proompteng/bilig">GitHub</a>
             <a class="button" href="https://github.com/proompteng/bilig/stargazers">Star</a>
           </div>
