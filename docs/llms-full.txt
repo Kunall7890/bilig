@@ -306,78 +306,54 @@ Source: https://github.com/proompteng/bilig/blob/main/README.md
 # bilig
 
 [![CI](https://github.com/proompteng/bilig/actions/workflows/ci.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/ci.yml)
+[![npm: @bilig/xlsx-formula-recalc](https://img.shields.io/npm/v/@bilig/xlsx-formula-recalc?label=%40bilig%2Fxlsx-formula-recalc)](https://www.npmjs.com/package/@bilig/xlsx-formula-recalc)
 [![npm: @bilig/headless](https://img.shields.io/npm/v/@bilig/headless?label=%40bilig%2Fheadless)](https://www.npmjs.com/package/@bilig/headless)
 [![npm: @bilig/workpaper](https://img.shields.io/npm/v/@bilig/workpaper?label=%40bilig%2Fworkpaper)](https://www.npmjs.com/package/@bilig/workpaper)
 [![CodeQL](https://github.com/proompteng/bilig/actions/workflows/codeql.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**Run spreadsheet logic inside Node services and agent tools.**
+**Catch stale XLSX formulas before Node or CI reads the wrong number.**
 
-Bilig is a headless WorkPaper runtime for code that still needs workbook-shaped
-business logic: pricing rules, payout checks, quote approvals, import
-validation, forecasts, CI fixtures, and agent tools.
+Bilig is for workbook logic that has to run from code. If an existing `.xlsx`
+file is the contract, use the cache doctor to find stale cached formula values.
+If your service or agent should own the workbook model, use WorkPaper/headless
+to edit cells, recalculate formulas, read outputs, and persist JSON.
 
-Use the same loop in services and agent tools: build or load a workbook, write
-an input cell, recalculate formulas, read the output cell, persist JSON, restore
-it, and verify the restored value. Try this before driving Excel, LibreOffice,
-Google Sheets, or a screenshot UI.
+Start with the boundary you actually have. Do not drive Excel, LibreOffice,
+Google Sheets, or a screenshot UI just to learn whether a formula value is
+fresh.
 
-Run the evaluator without cloning this repo:
+Run the no-clone checks:
 
 ```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
-npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 ```
 
-Expected proof:
+Expected XLSX cache result:
 
 ```json
 {
   "schemaVersion": "bilig-evaluator.v1",
-  "door": "workpaper-service",
+  "door": "xlsx-cache",
   "verified": true,
   "evidence": {
-    "editedCell": "Inputs!B2",
-    "dependentCell": "Summary!B2",
-    "before": 24000,
-    "after": 38400,
-    "afterRestore": 38400
+    "target": "Summary!B2",
+    "before": 60000,
+    "after": 72000,
+    "staleCachedFormulaCount": 1,
+    "suggestedReads": ["Summary!B2"]
   }
 }
 ```
 
-Direct proof commands remain available:
-
-```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json
-npm exec --yes --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
-```
-
-Evaluator examples live in
-[`examples/bilig-evaluator-proof`](examples/bilig-evaluator-proof).
-
-For TypeScript services, install the runtime:
-
-```sh
-npm install @bilig/headless
-```
-
-For starter projects with agent instructions and MCP config:
-
-```sh
-npm create @bilig/workpaper@latest pricing-agent -- --agent
-cd pricing-agent
-npm install
-npm run agent:verify
-```
-
-If you already have an `.xlsx` file, use the XLSX path:
+Need the full formula-cache report for a real workbook?
 
 ```sh
 npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc pricing.xlsx --read Summary!B2 --out pricing.recalculated.xlsx --json
 ```
 
 For pull requests with XLSX fixtures, start with the GitHub Action in report
@@ -396,6 +372,31 @@ mode and let it show stale cached formulas before it blocks anything:
     fail-on-stale: 'false'
 ```
 
+For TypeScript services that should own the workbook model:
+
+```sh
+npm create @bilig/workpaper@latest pricing-agent -- --agent
+cd pricing-agent
+npm install
+npm run agent:verify
+```
+
+For lower-level runtime imports:
+
+```sh
+npm install @bilig/headless
+```
+
+Direct diagnostic commands remain available:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
+Evaluator examples live in
+[`examples/bilig-evaluator-proof`](examples/bilig-evaluator-proof).
+
 Project site: <https://proompteng.github.io/bilig/>
 
 ## Start Here
@@ -404,10 +405,11 @@ Pick the path that matches the job:
 
 | You have...                                                             | Start with                                                         | You should see                                                                            |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| A real `.xlsx` file has stale formula results after Node edits          | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)      | stale cells, cached values, recalculated values, suggested reads, and JSON output.        |
+| Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | report-only workbook findings before the workflow blocks anything.                        |
 | A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md) | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.    |
 | A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                      | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`. |
-| A real `.xlsx` file has stale formula results after Node edits          | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)           | changed input, recalculated output, output workbook, and `recalculationCompleted: true`.  |
-| Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)      | stale cells, cached values, recalculated values, suggested reads, and JSON output.        |
+| Existing XLSX outputs need refreshed cached results                     | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)           | changed input, recalculated output, output workbook, and `recalculationCompleted: true`.  |
 
 If you are not sure which one fits, start with the thing that owns state. Use
 WorkPaper when your service or agent should own the workbook model. Use the XLSX
@@ -416,9 +418,9 @@ path when a saved Excel file is still the source of truth.
 The shortest no-project checks are:
 
 ```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
-npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
 ```
 
@@ -444,12 +446,12 @@ For the GitHub Action listing and a live reviewer path:
 
 ## If You Only Try One Thing
 
-Prove the headless WorkPaper loop first. It is the core Bilig path: write an
-input cell, recalculate formulas, read the result, persist JSON, restore it, and
-verify the restored value. Run it without cloning the repo:
+Catch a stale cached formula value first. It is the shortest proof that Bilig is
+doing something ExcelJS, SheetJS, and `xlsx-populate` do not do inside Node:
+recalculate the workbook and show the value your code would otherwise trust.
 
 ```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 ```
 
 Expected shape:
@@ -457,28 +459,29 @@ Expected shape:
 ```json
 {
   "schemaVersion": "bilig-evaluator.v1",
-  "door": "workpaper-service",
+  "door": "xlsx-cache",
   "verified": true,
   "evidence": {
-    "editedCell": "Inputs!B2",
-    "dependentCell": "Summary!B2",
-    "before": 24000,
-    "after": 38400,
-    "afterRestore": 38400
+    "target": "Summary!B2",
+    "before": 60000,
+    "after": 72000,
+    "staleCachedFormulaCount": 1,
+    "suggestedReads": ["Summary!B2"]
   }
 }
+```
+
+If your service should own the workbook model instead of passing XLSX files
+around, run the WorkPaper door:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 ```
 
 If an agent or MCP client owns the workflow, run the agent door:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
-```
-
-If the source of truth is already an `.xlsx` file, use the XLSX door:
-
-```sh
-npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 ```
 
 Trust boundaries:
