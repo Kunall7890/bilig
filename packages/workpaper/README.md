@@ -196,12 +196,13 @@ instead:
 ```sh
 npx --yes skills@latest add https://bilig.proompteng.ai --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
-npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
-The kit gives the agent one path: install the instructions, run the no-key MCP
-proof, paste a workbook edit task, and require computed readback plus persisted
-state before reporting success.
+The kit gives the agent one path: install the instructions, run the no-key
+agent evaluator, paste a workbook edit task, and require computed readback plus
+persisted state before reporting success. Use `bilig-mcp-challenge --json` only
+when debugging the lower-level MCP transcript.
 
 Docs: <https://proompteng.github.io/bilig/agent-adoption-kit.html>
 

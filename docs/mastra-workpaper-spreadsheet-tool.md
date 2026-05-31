@@ -19,7 +19,46 @@ That keeps the agent boundary boring. `@bilig/workpaper` owns formulas,
 serialization, and restore checks; `createTool` owns the schema and the tool
 name the model sees.
 
-## Run the checked adapter
+## Run the real Mastra smoke
+
+```sh
+git clone https://github.com/proompteng/bilig.git
+cd bilig
+pnpm --dir examples/mastra-workpaper-tool install --ignore-workspace --lockfile=false
+pnpm --dir examples/mastra-workpaper-tool run smoke
+```
+
+The smoke uses real `@mastra/core` `createTool()` objects. It does not call a
+model or require an API key. The local run invokes the tools, writes
+`Inputs!B3 = 0.4`, reads recalculated formula values, serializes the WorkPaper,
+restores it, and verifies the restored readback.
+
+Passing output includes:
+
+```json
+{
+  "apiShape": "Mastra createTool -> execute -> WorkPaper readback",
+  "toolIds": ["read-workpaper-summary", "set-workpaper-input-cell"],
+  "writeResult": {
+    "editedCell": "Inputs!B3",
+    "before": { "expectedArr": 60000 },
+    "after": { "expectedArr": 96000 },
+    "checks": {
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "expectedArrChanged": true
+    }
+  }
+}
+```
+
+Runnable source:
+[`examples/mastra-workpaper-tool/src/mastra-workpaper-tool.ts`](../examples/mastra-workpaper-tool/src/mastra-workpaper-tool.ts).
+
+Do not open an upstream Mastra PR unless a maintainer asks for one. This page
+is the local proof lane first.
+
+## Run the framework-shape adapter
 
 ```sh
 git clone https://github.com/proompteng/bilig.git
@@ -28,7 +67,8 @@ pnpm --dir examples/headless-workpaper install --ignore-workspace
 pnpm --dir examples/headless-workpaper run agent:framework-adapters
 ```
 
-The Mastra lane returns tool IDs and a verified write result:
+The adapter lane returns tool IDs and a verified write result without installing
+Mastra:
 
 ```json
 {
@@ -46,8 +86,9 @@ The Mastra lane returns tool IDs and a verified write result:
 
 ## Mastra shape
 
-The example mirrors the `createTool({ id, description, inputSchema,
-outputSchema, execute })` shape from the Mastra docs:
+The real smoke and the framework-shape adapter both follow the
+`createTool({ id, description, inputSchema, outputSchema, execute })` shape from
+the Mastra docs:
 
 ```ts
 export const setWorkPaperInputCell = createTool({
@@ -55,7 +96,7 @@ export const setWorkPaperInputCell = createTool({
   description: 'Set one WorkPaper input cell and return formula readback.',
   inputSchema: setInputCellInputSchema,
   outputSchema: workPaperWriteOutputSchema,
-  execute: async ({ context }) => setWorkPaperInputCellInWorkbook(context),
+  execute: async (input) => setWorkPaperInputCellInWorkbook(input),
 })
 ```
 
@@ -73,5 +114,5 @@ workbook like an arbitrary mutation surface.
 
 Official Mastra reference: <https://mastra.ai/reference/tools/create-tool>.
 
-Runnable source:
+Adapter source:
 [`examples/headless-workpaper/agent-framework-adapters.ts`](../examples/headless-workpaper/agent-framework-adapters.ts).

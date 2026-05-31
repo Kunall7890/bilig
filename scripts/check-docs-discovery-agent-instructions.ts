@@ -60,14 +60,10 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(workpaperPackageAgentNotes, 'node_modules/bilig-workpaper', 'packages/bilig/AGENTS.md')
   requireIncludes(workpaperPackageAgentNotes, 'npm exec --package bilig-workpaper@', 'packages/bilig/AGENTS.md')
   requireIncludes(workpaperPackageSkillNotes, 'Use bilig-workpaper WorkPaper state', 'packages/bilig/SKILL.md')
-  requireIncludes(workpaperPackageSkillNotes, '## First Choice: Direct npm check or TypeScript', 'packages/bilig/SKILL.md')
-  requireIncludes(workpaperPackageSkillNotes, 'npm, ExcelJS, SheetJS, xlsx-populate, and StackOverflow', 'packages/bilig/SKILL.md')
-  requireIncludes(
-    workpaperPackageSkillNotes,
-    'Use MCP only when the host specifically needs an MCP client boundary',
-    'packages/bilig/SKILL.md',
-  )
-  requireNotIncludes(workpaperPackageSkillNotes, '## First Choice: MCP', 'packages/bilig/SKILL.md')
+  requireIncludes(workpaperPackageSkillNotes, '## First Check: Agent Evaluator', 'packages/bilig/SKILL.md')
+  requireIncludes(workpaperPackageSkillNotes, '"bilig-evaluate", "--door", "agent-mcp", "--json"', 'packages/bilig/SKILL.md')
+  requireIncludes(workpaperPackageSkillNotes, 'reduced XLSX formula bugs that need a local report', 'packages/bilig/SKILL.md')
+  requireIncludes(workpaperPackageSkillNotes, '## First Choice: MCP', 'packages/bilig/SKILL.md')
   requireIncludes(workpaperPackageSkillNotes, '"--package", "bilig-workpaper@', 'packages/bilig/SKILL.md')
 
   requireIncludes(headlessAgentNotes, '## Handoff prompt', 'packages/headless/AGENTS.md')
@@ -109,9 +105,12 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsSkill, 'name: bilig-workpaper', 'docs/skill.md')
   requireIncludes(docsSkill, '## Required Verification', 'docs/skill.md')
   requireIncludes(docsSkill, '## Command Safety', 'docs/skill.md')
+  requireIncludes(docsSkill, '## First Check: Agent Evaluator', 'docs/skill.md')
+  requireIncludes(docsSkill, '"bilig-evaluate", "--door", "agent-mcp", "--json"', 'docs/skill.md')
   requireIncludes(docsSkill, 'npx --yes skills@latest add https://bilig.proompteng.ai --list', 'docs/skill.md')
   requireIncludes(docsSkill, 'npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list', 'docs/skill.md')
   requireIncludes(docsSkill, 'returned `tools` array as the source', 'docs/skill.md')
+  requireIncludes(docsSkill, 'set_cell_contents_and_readback', 'docs/skill.md')
   requireIncludes(docsSkill, 'currently published package', 'docs/skill.md')
   requireIncludes(docsSkill, '"bilig-agent-challenge", "--json"', 'docs/skill.md')
   requireIncludes(docsSkill, '"bilig-mcp-challenge", "--json"', 'docs/skill.md')
@@ -120,6 +119,7 @@ export async function requireAgentInstructionDiscovery(input: {
 
   requireIncludes(claudeProjectSkillNotes, 'name: bilig-workpaper', '.claude/skills/bilig-workpaper/SKILL.md')
   requireIncludes(claudeProjectSkillNotes, '## Command Safety', '.claude/skills/bilig-workpaper/SKILL.md')
+  requireIncludes(claudeProjectSkillNotes, '"bilig-evaluate", "--door", "agent-mcp", "--json"', '.claude/skills/bilig-workpaper/SKILL.md')
   requireIncludes(claudeProjectSkillNotes, '"bilig-mcp-challenge", "--json"', '.claude/skills/bilig-workpaper/SKILL.md')
   requireIncludes(claudeProjectSkillNotes, 'Return readback, not vibes.', '.claude/skills/bilig-workpaper/SKILL.md')
   requireNotIncludes(claudeProjectSkillNotes, 'allowed-tools:', '.claude/skills/bilig-workpaper/SKILL.md')
@@ -206,6 +206,8 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(vscodeMcpConfig, '"${workspaceFolder}/.bilig/pricing.workpaper.json"', '.vscode/mcp.json')
 
   requireIncludes(rootSkillNotes, '## Command Safety', 'skills/bilig-workpaper/SKILL.md')
+  requireIncludes(rootSkillNotes, '## First Check: Agent Evaluator', 'skills/bilig-workpaper/SKILL.md')
+  requireIncludes(rootSkillNotes, '"bilig-evaluate", "--door", "agent-mcp", "--json"', 'skills/bilig-workpaper/SKILL.md')
   requireIncludes(rootSkillNotes, 'argument array, not a shell-concatenated string', 'skills/bilig-workpaper/SKILL.md')
   requireIncludes(
     rootSkillNotes,
@@ -213,6 +215,7 @@ export async function requireAgentInstructionDiscovery(input: {
     'skills/bilig-workpaper/SKILL.md',
   )
   requireIncludes(rootSkillNotes, 'returned `tools` array as the source', 'skills/bilig-workpaper/SKILL.md')
+  requireIncludes(rootSkillNotes, 'set_cell_contents_and_readback', 'skills/bilig-workpaper/SKILL.md')
   requireIncludes(rootSkillNotes, 'currently published package', 'skills/bilig-workpaper/SKILL.md')
   requireNotIncludes(rootSkillNotes, 'allowed-tools:', 'skills/bilig-workpaper/SKILL.md')
   requireNotIncludes(rootSkillNotes, 'argument-hint:', 'skills/bilig-workpaper/SKILL.md')

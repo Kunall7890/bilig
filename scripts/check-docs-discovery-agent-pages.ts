@@ -15,7 +15,10 @@ export const agentFrameworkDocRequirements = [
     includes: [
       'Mastra WorkPaper spreadsheet tool',
       '@bilig/workpaper',
+      '@mastra/core',
       'createTool',
+      'pnpm --dir examples/mastra-workpaper-tool run smoke',
+      'examples/mastra-workpaper-tool/src/mastra-workpaper-tool.ts',
       'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
     ],
   },

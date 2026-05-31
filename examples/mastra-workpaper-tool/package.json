@@ -1,0 +1,20 @@
+{
+  "name": "bilig-mastra-workpaper-tool-example",
+  "private": true,
+  "description": "Runnable Mastra createTool example for @bilig/workpaper formula readback.",
+  "type": "module",
+  "scripts": {
+    "smoke": "node --disable-warning=DEP0205 --import tsx src/mastra-workpaper-tool.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@bilig/workpaper": "latest",
+    "@mastra/core": "1.37.1",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.2"
+  }
+}

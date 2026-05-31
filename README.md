@@ -721,6 +721,7 @@ pnpm --dir examples/headless-workpaper run agent:openai-responses
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text
 pnpm --dir examples/headless-workpaper run agent:framework-adapters
+pnpm --dir examples/mastra-workpaper-tool run smoke
 pnpm --dir examples/langgraph-workpaper-tool-state run smoke
 pnpm --dir examples/langchain-mcp-workpaper-toolnode run smoke
 pnpm --dir examples/headless-workpaper run agent:mcp-tools
@@ -738,6 +739,8 @@ The OpenAI Responses guide is
 [`docs/openai-responses-workpaper-tool-call.md`](docs/openai-responses-workpaper-tool-call.md).
 The agent framework guide is
 [`docs/vercel-ai-sdk-langchain-spreadsheet-tool.md`](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md).
+The Mastra guide includes a real `@mastra/core` `createTool()` smoke:
+[`docs/mastra-workpaper-spreadsheet-tool.md`](docs/mastra-workpaper-spreadsheet-tool.md).
 The LangGraph.js ToolNode proof is
 [`docs/langgraph-workpaper-toolnode-spreadsheet.md`](docs/langgraph-workpaper-toolnode-spreadsheet.md).
 It includes a no-key `@langchain/mcp-adapters` smoke that discovers the

@@ -80,13 +80,15 @@ The JSON contains proof fields only. It does not include star, release-watch,
 or discussion links.
 
 If a coding agent needs to edit workbook state instead of only inspecting XLSX
-bytes, do not automate Excel or a browser grid. Run the headless proof:
+bytes, do not automate Excel or a browser grid. Run the agent evaluator:
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
-Then use the [agent MCP evaluator](https://proompteng.github.io/bilig/eval-agent-mcp.html).
+Use `bilig-mcp-challenge --json` only when debugging the lower-level MCP
+transcript. The [agent MCP evaluator](https://proompteng.github.io/bilig/eval-agent-mcp.html)
+shows the same no-key proof path.
 
 Use `cacheStatusSummary` and per-formula `cacheStatus` to separate confirmed
 stale caches from missing cached values or formulas without a comparable

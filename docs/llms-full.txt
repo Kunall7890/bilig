@@ -126,6 +126,28 @@ Do not trigger it for manual spreadsheet editing, Office macros, VBA, pivots, ch
 
 Do not build shell commands by concatenating user text. Treat the commands below as literal templates, validate workbook paths before use, and reject values containing newlines, backticks, `$(`, `;`, `&`, `|`, `<`, or `>`. Prefer MCP client `command` plus `args` arrays or direct TypeScript calls when inserting user-provided paths or cell references.
 
+## First Check: Agent Evaluator
+
+Before wiring a client, prove the published agent door with the package-owned evaluator.
+It exercises MCP discovery, cell mutation, formula readback, JSON export, restart restore, and returns `verified: true`:
+
+```json
+{
+  "command": "npm",
+  "args": ["exec", "--yes", "--package", "@bilig/workpaper@latest", "--", "bilig-evaluate", "--door", "agent-mcp", "--json"]
+}
+```
+
+For service-owned WorkPaper logic without MCP, run `bilig-evaluate --door workpaper-service --json`.
+Use the lower-level challenge commands only when debugging the direct API loop or file-backed MCP JSON-RPC transcript:
+
+```json
+[
+  { "command": "npm", "args": ["exec", "--package", "@bilig/workpaper@latest", "--", "bilig-agent-challenge", "--json"] },
+  { "command": "npm", "args": ["exec", "--package", "@bilig/workpaper@latest", "--", "bilig-mcp-challenge", "--json"] }
+]
+```
+
 ## First Choice: MCP
 
 Use MCP when the host can run a stdio server or call a Streamable HTTP server.
@@ -137,24 +159,6 @@ package is discoverable:
 ```sh
 npx --yes skills@latest add https://bilig.proompteng.ai --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
-```
-
-Before wiring a client, an agent can check the direct WorkPaper loop with:
-
-```json
-{
-  "command": "npm",
-  "args": ["exec", "--package", "@bilig/workpaper@latest", "--", "bilig-agent-challenge", "--json"]
-}
-```
-
-For the actual file-backed MCP path, run the package-owned challenge first:
-
-```json
-{
-  "command": "npm",
-  "args": ["exec", "--package", "@bilig/workpaper@latest", "--", "bilig-mcp-challenge", "--json"]
-}
 ```
 
 ```json
@@ -174,13 +178,15 @@ For the actual file-backed MCP path, run the package-owned challenge first:
 }
 ```
 
-Run `bilig-mcp-challenge` and treat its returned `tools` array as the source
+Run `bilig-evaluate --door agent-mcp --json` first. If the evaluator fails,
+run `bilig-mcp-challenge` and treat its returned `tools` array as the source
 of truth for the currently published package. The core file-backed tools are:
 
 - `list_sheets`
 - `read_range`
 - `read_cell`
 - `set_cell_contents`
+- `set_cell_contents_and_readback`
 - `get_cell_display_value`
 - `export_workpaper_document`
 - `validate_formula`
@@ -1026,6 +1032,7 @@ pnpm --dir examples/headless-workpaper run agent:openai-responses
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text
 pnpm --dir examples/headless-workpaper run agent:framework-adapters
+pnpm --dir examples/mastra-workpaper-tool run smoke
 pnpm --dir examples/langgraph-workpaper-tool-state run smoke
 pnpm --dir examples/langchain-mcp-workpaper-toolnode run smoke
 pnpm --dir examples/headless-workpaper run agent:mcp-tools
@@ -1043,6 +1050,8 @@ The OpenAI Responses guide is
 [`docs/openai-responses-workpaper-tool-call.md`](docs/openai-responses-workpaper-tool-call.md).
 The agent framework guide is
 [`docs/vercel-ai-sdk-langchain-spreadsheet-tool.md`](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md).
+The Mastra guide includes a real `@mastra/core` `createTool()` smoke:
+[`docs/mastra-workpaper-spreadsheet-tool.md`](docs/mastra-workpaper-spreadsheet-tool.md).
 The LangGraph.js ToolNode proof is
 [`docs/langgraph-workpaper-toolnode-spreadsheet.md`](docs/langgraph-workpaper-toolnode-spreadsheet.md).
 It includes a no-key `@langchain/mcp-adapters` smoke that discovers the
@@ -2537,12 +2546,13 @@ instead:
 ```sh
 npx --yes skills@latest add https://bilig.proompteng.ai --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
-npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
-The kit gives the agent one path: install the instructions, run the no-key MCP
-proof, paste a workbook edit task, and require computed readback plus persisted
-state before reporting success.
+The kit gives the agent one path: install the instructions, run the no-key
+agent evaluator, paste a workbook edit task, and require computed readback plus
+persisted state before reporting success. Use `bilig-mcp-challenge --json` only
+when debugging the lower-level MCP transcript.
 
 Docs: <https://proompteng.github.io/bilig/agent-adoption-kit.html>
 
@@ -4013,7 +4023,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | LangGraph.js                       | `ToolNode` with verified readback after mutation.                                                                                     | [LangGraph WorkPaper ToolNode](langgraph-workpaper-toolnode-spreadsheet.md)                  |
 | LlamaIndex.TS                      | `tool(fn, { parameters })` with a compact proof return.                                                                               | [LlamaIndex.TS WorkPaper tool](llamaindex-workpaper-spreadsheet-tool.md)                     |
 | Open Multi-Agent                   | `connectMCPTools()` with the file-backed WorkPaper MCP server registered on an `Agent`.                                               | [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)                  |
-| Mastra                             | `createTool()` wrapper for formula-backed workbook edits.                                                                             | [Mastra WorkPaper tool](mastra-workpaper-spreadsheet-tool.md)                                |
+| Mastra                             | Real `@mastra/core` `createTool()` smoke for formula-backed workbook edits.                                                           | [Mastra WorkPaper tool](mastra-workpaper-spreadsheet-tool.md)                                |
 | Cloudflare Agents                  | Agent tool calling a Node-compatible WorkPaper boundary.                                                                              | [Cloudflare Agents WorkPaper tool](cloudflare-agents-workpaper-spreadsheet-tool.md)          |
 | Runtime adapter authors            | `@bilig/workbook` models, plan data, checks, schemas, command receipts, and strict proof.                                             | [Workbook agent intent API](workbook-agent-intent-api.md)                                    |
 | MCP directories and remote clients | Hosted server card or local file-backed server.                                                                                       | [MCP WorkPaper server](mcp-workpaper-tool-server.md)                                         |

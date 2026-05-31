@@ -32,6 +32,28 @@ Do not trigger it for manual spreadsheet editing, Office macros, VBA, pivots, ch
 
 Do not build shell commands by concatenating user text. Treat the commands below as literal templates, validate workbook paths before use, and reject values containing newlines, backticks, `$(`, `;`, `&`, `|`, `<`, or `>`. Prefer MCP client `command` plus `args` arrays or direct TypeScript calls when inserting user-provided paths or cell references.
 
+## First Check: Agent Evaluator
+
+Before wiring a client, prove the published agent door with the package-owned evaluator.
+It exercises MCP discovery, cell mutation, formula readback, JSON export, restart restore, and returns `verified: true`:
+
+```json
+{
+  "command": "npm",
+  "args": ["exec", "--yes", "--package", "@bilig/workpaper@latest", "--", "bilig-evaluate", "--door", "agent-mcp", "--json"]
+}
+```
+
+For service-owned WorkPaper logic without MCP, run `bilig-evaluate --door workpaper-service --json`.
+Use the lower-level challenge commands only when debugging the direct API loop or file-backed MCP JSON-RPC transcript:
+
+```json
+[
+  { "command": "npm", "args": ["exec", "--package", "@bilig/workpaper@latest", "--", "bilig-agent-challenge", "--json"] },
+  { "command": "npm", "args": ["exec", "--package", "@bilig/workpaper@latest", "--", "bilig-mcp-challenge", "--json"] }
+]
+```
+
 ## First Choice: MCP
 
 Use MCP when the host can run a stdio server or call a Streamable HTTP server.
@@ -43,24 +65,6 @@ package is discoverable:
 ```sh
 npx --yes skills@latest add https://bilig.proompteng.ai --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
-```
-
-Before wiring a client, an agent can check the direct WorkPaper loop with:
-
-```json
-{
-  "command": "npm",
-  "args": ["exec", "--package", "@bilig/workpaper@latest", "--", "bilig-agent-challenge", "--json"]
-}
-```
-
-For the actual file-backed MCP path, run the package-owned challenge first:
-
-```json
-{
-  "command": "npm",
-  "args": ["exec", "--package", "@bilig/workpaper@latest", "--", "bilig-mcp-challenge", "--json"]
-}
 ```
 
 ```json
@@ -80,13 +84,15 @@ For the actual file-backed MCP path, run the package-owned challenge first:
 }
 ```
 
-Run `bilig-mcp-challenge` and treat its returned `tools` array as the source
+Run `bilig-evaluate --door agent-mcp --json` first. If the evaluator fails,
+run `bilig-mcp-challenge` and treat its returned `tools` array as the source
 of truth for the currently published package. The core file-backed tools are:
 
 - `list_sheets`
 - `read_range`
 - `read_cell`
 - `set_cell_contents`
+- `set_cell_contents_and_readback`
 - `get_cell_display_value`
 - `export_workpaper_document`
 - `validate_formula`

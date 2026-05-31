@@ -278,6 +278,8 @@ Framework-specific WorkPaper pages:
 
 - adapter script:
   [`examples/headless-workpaper/agent-framework-adapters.ts`](../examples/headless-workpaper/agent-framework-adapters.ts)
+- real Mastra `createTool()` smoke:
+  [`examples/mastra-workpaper-tool/src/mastra-workpaper-tool.ts`](../examples/mastra-workpaper-tool/src/mastra-workpaper-tool.ts)
 - example README:
   [`examples/headless-workpaper/README.md#agent-framework-adapters`](../examples/headless-workpaper/README.md#agent-framework-adapters)
 - longer tool-calling recipe:

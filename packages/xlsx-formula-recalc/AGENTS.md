@@ -3,30 +3,34 @@
 Use this package when a Node.js task edits an `.xlsx` workbook and needs fresh
 formula results before returning the file or reading output cells.
 
-Start with the one-command proof:
+The canonical public package is `@bilig/xlsx-formula-recalc`. The unscoped
+`xlsx-formula-recalc` package remains a compatibility and search alias, but new
+agent instructions should use the scoped package first.
+
+Start with the no-project evaluator:
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-recalc --demo --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 ```
 
 If the task came from a SheetJS / `xlsx` stale-formula issue, the same package
 also exposes a SheetJS-named command:
 
 ```sh
-npx --package xlsx-formula-recalc sheetjs-recalc --demo --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- sheetjs-recalc --demo --json
 ```
 
 If the caller has a real workbook but does not know which formulas to read yet,
 inspect it first without writing an output file:
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-recalc workbook.xlsx --inspect --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc workbook.xlsx --inspect --json
 ```
 
 Use the memorable cache-diagnosis alias for issue triage or CI:
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-cache-doctor workbook.xlsx --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor workbook.xlsx --json
 ```
 
 Use the returned `suggestedReads`, stale cached formula counts, and warnings to
@@ -37,7 +41,7 @@ before treating the report as complete coverage.
 For a real workbook, use sheet-qualified A1 targets:
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-recalc quote.xlsx \
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc quote.xlsx \
   --set Inputs!B2=48 \
   --read Summary!B7 \
   --out quote.recalculated.xlsx \
@@ -48,7 +52,7 @@ For external workbook links, pass companion files with `--external-workbook`
 or exact link bindings with `--external-workbook-target <path> <target>`:
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-recalc quote.xlsx \
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc quote.xlsx \
   --external-workbook-target ./fixtures/rates-current.xlsx file:///tmp/rates.xlsx \
   --read Summary!B7 \
   --json
@@ -57,7 +61,7 @@ npx --package xlsx-formula-recalc xlsx-recalc quote.xlsx \
 Use the API when code already has workbook bytes:
 
 ```ts
-import { recalculateXlsx } from 'xlsx-formula-recalc'
+import { recalculateXlsx } from '@bilig/xlsx-formula-recalc'
 
 const result = recalculateXlsx(xlsxBytes, {
   edits: [{ target: 'Inputs!B2', value: 48 }],

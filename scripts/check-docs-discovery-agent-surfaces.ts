@@ -65,6 +65,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   const jekyllConfig = await readFile(join(docsRoot, '_config.yml'), 'utf8')
   const openAiAgentsSdkDoc = await readFile(join(docsRoot, 'openai-agents-sdk-workpaper-tool.md'), 'utf8')
   const jekyllDefaultLayout = await readFile(join(docsRoot, '_layouts/default.html'), 'utf8')
+  const mastraExamplePackageJson = await readFile(join(repoRoot, 'examples/mastra-workpaper-tool/package.json'), 'utf8')
+  const mastraExampleSource = await readFile(join(repoRoot, 'examples/mastra-workpaper-tool/src/mastra-workpaper-tool.ts'), 'utf8')
   requireIncludes(jekyllConfig, 'include:', 'docs/_config.yml')
   requireIncludes(jekyllConfig, '  - .well-known', 'docs/_config.yml')
   requireIncludes(jekyllConfig, "layout: 'default'", 'docs/_config.yml')
@@ -335,6 +337,20 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     for (const required of includes) {
       requireIncludes(content, required, path)
     }
+  }
+  for (const required of [
+    '"@mastra/core": "1.37.1"',
+    '"smoke": "node --disable-warning=DEP0205 --import tsx src/mastra-workpaper-tool.ts"',
+  ] as const) {
+    requireIncludes(mastraExamplePackageJson, required, 'examples/mastra-workpaper-tool/package.json')
+  }
+  for (const required of [
+    'createTool',
+    'Mastra createTool -> execute -> WorkPaper readback',
+    'set-workpaper-input-cell',
+    'restoredMatchesAfter',
+  ] as const) {
+    requireIncludes(mastraExampleSource, required, 'examples/mastra-workpaper-tool/src/mastra-workpaper-tool.ts')
   }
   requireIncludes(
     mcpWorkPaperToolServerDoc,

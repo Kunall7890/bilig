@@ -13,36 +13,40 @@ tags:
 
 # XLSX Formula Recalculation
 
-Use `xlsx-formula-recalc` when an agent or Node.js service has changed XLSX
-inputs and must read recalculated formula outputs without opening Excel,
-LibreOffice, or a browser.
+Use `@bilig/xlsx-formula-recalc` when an agent or Node.js service has changed
+XLSX inputs and must read recalculated formula outputs without opening Excel,
+LibreOffice, or a browser. The unscoped `xlsx-formula-recalc` package remains a
+compatibility/search alias; new agent instructions should use the scoped package
+first.
 
 ## First Check
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-recalc --demo --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 ```
 
-The demo should print `recalculationCompleted: true`,
-`expectedValueMatched: true`, and a `Summary!B2` value of `72000`.
+The evaluator should print `schemaVersion: "bilig-evaluator.v1"`,
+`door: "xlsx-cache"`, `verified: true`, and evidence for a stale cached
+formula corrected to a `Summary!B2` value of `72000`.
+
 For SheetJS / `xlsx` stale-formula issues, use the SheetJS-named binary from the
 same package:
 
 ```sh
-npx --package xlsx-formula-recalc sheetjs-recalc --demo --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- sheetjs-recalc --demo --json
 ```
 
 If you have a real workbook but do not yet know which formula cells to verify,
 inspect it without writing an output file:
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-recalc workbook.xlsx --inspect --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc workbook.xlsx --inspect --json
 ```
 
 For CI or issue triage, use the cache-diagnosis alias:
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-cache-doctor workbook.xlsx --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor workbook.xlsx --json
 ```
 
 The inspection output includes `formulaCellCount`, `staleCachedFormulaCount`,
@@ -54,7 +58,7 @@ coverage.
 ## Real Workbook
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-recalc workbook.xlsx \
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc workbook.xlsx \
   --set Inputs!B2=48 \
   --read Summary!B7 \
   --out workbook.recalculated.xlsx \
@@ -64,7 +68,7 @@ npx --package xlsx-formula-recalc xlsx-recalc workbook.xlsx \
 For linked workbooks, pass companion files:
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-recalc workbook.xlsx \
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc workbook.xlsx \
   --external-workbook rates.xlsx \
   --read Summary!B7 \
   --json
@@ -74,7 +78,7 @@ Use an exact target binding when the workbook link target differs from the local
 filename:
 
 ```sh
-npx --package xlsx-formula-recalc xlsx-recalc workbook.xlsx \
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc workbook.xlsx \
   --external-workbook-target ./fixtures/rates-current.xlsx file:///tmp/rates.xlsx \
   --read Summary!B7 \
   --json
@@ -83,7 +87,7 @@ npx --package xlsx-formula-recalc xlsx-recalc workbook.xlsx \
 ## TypeScript
 
 ```ts
-import { recalculateXlsx } from 'xlsx-formula-recalc'
+import { recalculateXlsx } from '@bilig/xlsx-formula-recalc'
 
 const result = recalculateXlsx(inputXlsxBytes, {
   edits: [{ target: 'Inputs!B2', value: 48 }],

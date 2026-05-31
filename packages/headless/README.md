@@ -407,6 +407,10 @@ Agent and tool-call examples:
   operations into AI SDK, LangChain, Mastra, LlamaIndex.TS, LangGraph.js,
   CopilotKit, and Cloudflare Agents:
   <https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-framework-adapters>.
+- `pnpm --dir examples/mastra-workpaper-tool run smoke` uses the real
+  `@mastra/core` `createTool()` API around the same WorkPaper read/write
+  contract:
+  <https://github.com/proompteng/bilig/tree/main/examples/mastra-workpaper-tool>.
 
 MCP examples:
 
