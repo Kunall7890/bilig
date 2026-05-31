@@ -150,7 +150,7 @@ export function mcpChallengeHelpText(): string {
     '',
     'Options:',
     '  --json       Print machine-readable JSON. Default.',
-    '  --markdown   Print a paste-ready Markdown report.',
+    '  --markdown   Print a Markdown report.',
     '  --keep-temp  Keep the temporary WorkPaper JSON file and include its path.',
     '  -h, --help   Print this help text.',
     '',

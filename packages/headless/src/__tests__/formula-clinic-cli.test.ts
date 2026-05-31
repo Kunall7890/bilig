@@ -31,7 +31,7 @@ describe('formula clinic CLI', () => {
     })
   })
 
-  it('prints a paste-ready report with formula samples and readback', () => {
+  it('prints a Markdown report with formula samples and readback', () => {
     let stdout = ''
     const importXlsx: FormulaClinicImportXlsx = () => ({
       snapshot: clinicWorkbookSnapshot(),

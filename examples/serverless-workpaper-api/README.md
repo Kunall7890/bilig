@@ -8,9 +8,9 @@ The route accepts revenue records, writes them into a WorkPaper workbook,
 calculates summary formulas, persists the workbook as JSON, and returns
 computed values that prove the write took effect.
 
-Start with the quote approval smoke when you want the production-shaped proof:
-input JSON writes workbook input cells, formulas recalculate, the WorkPaper JSON
-is persisted, and a restored workbook returns the same approved/review decision.
+Start with the quote approval smoke when you want a route-shaped check: input
+JSON writes workbook input cells, formulas recalculate, the WorkPaper JSON is
+persisted, and a restored workbook returns the same approved/review decision.
 
 Run it outside the monorepo with the published package:
 

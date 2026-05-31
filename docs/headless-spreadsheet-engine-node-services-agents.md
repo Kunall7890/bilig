@@ -73,12 +73,12 @@ The byte count can move between releases. The important signal is
 `verified: true`: an input changed, a dependent formula recalculated, the
 document serialized to JSON, and the restored workbook produced the same value.
 
-For a more production-shaped evaluator path, run the
-[quote approval WorkPaper API proof](quote-approval-workpaper-api.md). It still
-starts from an empty Node directory, but downloads one maintained TypeScript
-route smoke, writes quote inputs into known cells, recalculates net revenue,
-gross margin, and approval decision, serializes the WorkPaper JSON, restores
-it, and verifies `restoredMatchesAfter: true`.
+For a route-shaped evaluator path, run the
+[quote approval WorkPaper API proof](quote-approval-workpaper-api.md). It starts
+from an empty Node directory, downloads one maintained TypeScript route smoke,
+writes quote inputs into known cells, recalculates net revenue, gross margin,
+and approval decision, serializes the WorkPaper JSON, restores it, and verifies
+`restoredMatchesAfter: true`.
 
 ## If you arrived from HN or LibHunt
 

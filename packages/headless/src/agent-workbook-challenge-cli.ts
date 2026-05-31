@@ -88,7 +88,7 @@ export function agentWorkbookChallengeHelpText(): string {
     '',
     'Options:',
     '  --json       Print machine-readable JSON. Default.',
-    '  --markdown   Print a paste-ready Markdown report.',
+    '  --markdown   Print a Markdown report.',
     '  -h, --help   Print this help text.',
     '',
   ].join('\n')

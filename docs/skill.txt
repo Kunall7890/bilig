@@ -24,7 +24,7 @@ Trigger this skill for tasks involving:
 - quote, budget, payout, pricing, import-validation, or forecast models;
 - agent spreadsheet tools that need deterministic cell addresses;
 - MCP clients that can run a stdio server or call a Streamable HTTP endpoint;
-- reduced XLSX formula bugs that need a paste-ready report.
+- reduced XLSX formula bugs that need a local report.
 
 Do not trigger it for manual spreadsheet editing, Office macros, VBA, pivots, charts, COM automation, or exact Excel desktop behavior unless the user explicitly asks to compare Bilig against an Excel oracle.
 

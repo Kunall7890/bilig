@@ -96,8 +96,7 @@ registry refresh:
   Code, Claude Code, Codex, Zed, Continue, and MCPB setup notes. The completed
   Claude Desktop and Cline setup tasks closed `#282` and `#294`.
 - New registry-proof starter issue `#287` asks a first-time contributor to add
-  a copy-pasteable official MCP Registry API verification snippet to the
-  WorkPaper docs.
+  an official MCP Registry API verification snippet to the WorkPaper docs.
 - New agent-client starter issues `#288` through `#290` cover VS Code, Claude
   Code, and Codex MCP setup for the published WorkPaper stdio server.
 - Current editor-client starter issues `#292` and `#293` cover Zed and Continue
@@ -390,7 +389,7 @@ Latest persistence-adapter distribution snapshot on May 13, 2026 after the
 Postgres/Redis/object-storage adapter pass:
 
 - GitHub Discussion `#307` now asks which storage layer should get the next
-  production-shaped WorkPaper persistence recipe, with direct links to the
+  route-shaped WorkPaper persistence recipe, with direct links to the
   runnable adapter source, service docs, and storage starter issues:
   <https://github.com/proompteng/bilig/discussions/307>
 - GitHub Discussion `#308` now asks for feedback on the JavaScript spreadsheet

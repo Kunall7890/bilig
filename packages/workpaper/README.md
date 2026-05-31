@@ -148,10 +148,9 @@ The mutating tool returns `editedCell`, `before`, `after`, `restored`, and
 `checks`. Keep `writableSheets` narrow so the model can edit inputs without
 rewriting formula sheets.
 
-## Prove The Agent Loop Without Cloning
+## Verify Without Cloning
 
-The package ships one evaluator front door plus the narrow proof commands for
-coding agents and service evaluators:
+The package ships evaluator and direct proof commands:
 
 ```sh
 npm exec --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
@@ -163,7 +162,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 ```
 
 `bilig-evaluate` prints a `bilig-evaluator.v1` object with `door`, `evidence`,
-`verified`, `limitations`, and the underlying source proof.
+`verified`, `limitations`, and the source command output.
 
 The challenge commands edit one input, recalculate dependent formulas, export
 WorkPaper JSON, restore it, and print a `verified: true` proof object.

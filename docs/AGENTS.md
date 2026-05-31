@@ -6,7 +6,7 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 
 1. Read `https://proompteng.github.io/bilig/llms.txt` for the compact map.
 2. Read `https://proompteng.github.io/bilig/llms-full.txt` when you need enough context to implement a workflow without searching the whole site.
-3. Use `https://proompteng.github.io/bilig/agent-adoption-kit.html` when you need the shortest no-key install, MCP proof, and paste-ready workbook task.
+3. Use `https://proompteng.github.io/bilig/agent-adoption-kit.html` when you need the shortest no-key install, MCP proof, and workbook task.
 4. If your host can install skills from a well-known endpoint, run
    `npx --yes skills@latest add https://bilig.proompteng.ai --list`.
 5. Read `https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt` when your agent supports skill manifests.

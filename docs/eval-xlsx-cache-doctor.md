@@ -10,9 +10,8 @@ image: /assets/github-social-preview.png
 
 # Evaluate stale XLSX formula caches
 
-Use this when the thing in your hands is an `.xlsx` file and you need to know
-whether stored formula results are stale before a backend, CI job, or agent
-trusts them.
+Use this when you have an `.xlsx` file and need to know whether stored formula
+results are stale before a backend, CI job, or agent trusts them.
 
 This evaluator is read-only by default. It imports the workbook in Node,
 recalculates formula cells in memory, compares those values with the cached

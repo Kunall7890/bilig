@@ -69,7 +69,7 @@ restores it, and verifies that restored calculated values match.
 
 ## Boundaries
 
-This is a copy-paste script example, not a Windmill Hub package. Use it as the
+This is a local script example, not a Windmill Hub package. Use it as the
 starting point for a workspace script, flow module, or workflow-as-code task.
 
 Keep Excel or another oracle in the loop for macros, pivots, external links,

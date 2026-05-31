@@ -49,7 +49,7 @@ export function buildEvaluatorDoors(args: AgentDiscoveryEvaluatorDoorInputs): re
       package: '@bilig/xlsx-formula-recalc',
       command: 'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json',
       expected_result:
-        'bilig-evaluator.v1 proof with stale cached formula count, suggested reads, recalculated value, and verified true without Excel or LibreOffice',
+        'bilig-evaluator.v1 JSON with stale cached formula count, suggested reads, recalculated value, and verified true without Excel or LibreOffice',
       proof_schema: 'bilig-evaluator.v1',
       canonical_door: 'xlsx-cache',
     },
@@ -71,7 +71,7 @@ export function buildEvaluatorDoors(args: AgentDiscoveryEvaluatorDoorInputs): re
       package: '@bilig/workpaper',
       command: `npm exec --yes --package ${args.workpaperPackageSpec} -- bilig-evaluate --door workpaper-service --json`,
       expected_result:
-        'bilig-evaluator.v1 proof with direct WorkPaper edit, calculated readback, JSON persistence, restore proof, and verified true',
+        'bilig-evaluator.v1 JSON with direct WorkPaper edit, calculated readback, JSON persistence, restore check, and verified true',
       proof_schema: 'bilig-evaluator.v1',
       canonical_door: 'workpaper-service',
     },
@@ -83,7 +83,7 @@ export function buildEvaluatorDoors(args: AgentDiscoveryEvaluatorDoorInputs): re
       package: '@bilig/workpaper',
       command: `npm exec --yes --package ${args.workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json`,
       expected_result:
-        'bilig-evaluator.v1 proof with MCP tool discovery, cell edit, formula readback, export, restore, tool list, and verified true',
+        'bilig-evaluator.v1 JSON with MCP tool discovery, cell edit, formula readback, export, restore, tool list, and verified true',
       proof_schema: 'bilig-evaluator.v1',
       canonical_door: 'agent-mcp',
     },

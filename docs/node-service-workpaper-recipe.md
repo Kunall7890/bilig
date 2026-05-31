@@ -380,7 +380,7 @@ WorkPaper has produced the computed readback you expect.
 
 ## Validation
 
-For the standalone copy-paste recipe, run:
+For the standalone recipe, run:
 
 ```sh
 npm start

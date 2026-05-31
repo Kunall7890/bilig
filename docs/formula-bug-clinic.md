@@ -43,7 +43,7 @@ npm exec --package @bilig/headless@0.131.1 -- bilig-formula-clinic ./reduced.xls
 
 That is the lowest-friction path for package users. It imports the workbook,
 samples formulas, reads the requested cells through WorkPaper, and prints a
-paste-ready Markdown report.
+Markdown report.
 
 If you want to pin or edit the reporter script directly:
 
@@ -61,8 +61,7 @@ npx tsx formula-clinic-report.ts ./reduced.xlsx \
 ```
 
 Use `--cells` for the output cells that prove the bug. The report includes
-import warnings, formula samples, requested readback, and a paste-ready fixture
-checklist.
+import warnings, formula samples, requested readback, and a fixture checklist.
 
 ## What to send
 

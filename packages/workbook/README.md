@@ -2,9 +2,9 @@
 
 Generic workbook intent for agents and runtimes.
 
-Build `@bilig/workbook` so an agent would love using it: simple, generic,
-predictable, inspectable, verifiable, and never dependent on hardcoded business
-models or human spreadsheet UI assumptions.
+`@bilig/workbook` defines generic, inspectable workbook intent for agents and
+runtimes. It does not depend on hardcoded business models or human spreadsheet
+UI assumptions.
 
 Use this package when a consumer wants to define their own workbook model and
 hand a runtime a portable plan. Bilig supplies the generic model API, selectors,
@@ -69,7 +69,7 @@ const result = await runWorkbookPlan(prepared.planData, adapter, { strict: true 
 const resultForLogs = describeRunResult(result)
 ```
 
-The core flow is deliberately boring:
+The core flow:
 
 1. `defineModel` freezes a consumer-defined model.
 2. `find` returns generic refs.
@@ -164,7 +164,7 @@ const adapter = {
 ```
 
 Use `runWorkbookPlan(planOrData, adapter, { strict: true })` when an agent needs
-production proof. Strict mode requires:
+strict proof. Strict mode requires:
 
 - a valid plan before mutation
 - at least one planned check before mutating actions

@@ -76,8 +76,8 @@ Expected shape:
 }
 ```
 
-The JSON is meant for CI and agents. It does not include star, release-watch, or
-discussion links.
+The JSON contains proof fields only. It does not include star, release-watch,
+or discussion links.
 
 If a coding agent needs to edit workbook state instead of only inspecting XLSX
 bytes, do not automate Excel or a browser grid. Run the headless proof:

@@ -518,7 +518,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   }
   requireIncludes(
     mcpClientSetupDoc,
-    'description: Remote MCP smoke endpoint plus copy-paste local stdio configuration for Bilig WorkPaper in Claude, Cursor, VS Code, Cline, and Codex.',
+    'description: Remote MCP smoke endpoint and local stdio configuration for Bilig WorkPaper in Claude, Cursor, VS Code, Cline, and Codex.',
     'docs/mcp-client-setup.md',
   )
   for (const required of [

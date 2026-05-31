@@ -67,8 +67,8 @@ npm install @bilig/xlsx-formula-recalc
 
 ## CLI
 
-Run the unified evaluator first when you want one `verified: true` proof shape
-for XLSX stale-cache checks, WorkPaper services, and agent/MCP tooling:
+Run the evaluator first when you want one JSON shape for XLSX stale-cache
+checks, WorkPaper services, and agent/MCP tooling:
 
 ```sh
 npx --package @bilig/xlsx-formula-recalc bilig-evaluate --door xlsx-cache --json
@@ -151,10 +151,9 @@ a proof object with explicit recalculation fields and the recalculated value:
 }
 ```
 
-Keep the proof first. The JSON is meant for CI and agents, so it does not carry
-star, release-watch, or discussion links. Use the links in the README or docs
-only after the recalculated value and warnings match the workflow you are
-evaluating.
+Keep the JSON first. It contains proof fields only; it does not include star,
+release-watch, or discussion links. Use README or docs links after the
+recalculated value and warnings match the workflow.
 
 If you have a real workbook but do not yet know which formula cells matter,
 diagnose it without writing an output file:

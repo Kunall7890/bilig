@@ -1,7 +1,7 @@
 ---
 title: Agent workbook challenge
 published: true
-description: A copy-paste challenge for coding agents: solve a workbook task without spreadsheet UI automation, then prove the edit with Bilig WorkPaper readback and persistence.
+description: A workbook challenge for coding agents: solve the task without spreadsheet UI automation, then prove the edit with Bilig WorkPaper readback and persistence.
 tags: ai agents, mcp, spreadsheet automation, workbook formulas, node
 canonical_url: https://proompteng.github.io/bilig/agent-workbook-challenge.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -14,12 +14,12 @@ Use this page when an agent, MCP client, or coding assistant is about to solve a
 spreadsheet task by clicking through Excel, LibreOffice, Google Sheets, or a
 screenshot grid.
 
-The challenge is simple: do the workbook edit through an API, not through a UI,
-and return proof that the calculated value changed and survived persistence.
+Do the workbook edit through an API, not through a UI, and return proof that
+the calculated value changed and survived persistence.
 
 If you need the shortest path for another agent, use the
 [Agent Adoption Kit](agent-adoption-kit.md). It has the skill install command,
-MCP challenge, client config, paste-ready task, and expected proof in one place.
+MCP challenge, client config, workbook task, and expected proof in one place.
 
 ## The Task
 
@@ -82,7 +82,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 ```
 
 A passing run prints `verified: true`.
-Use `--markdown` when you want a paste-ready report for an issue, PR, or agent
+Use `--markdown` when you want a Markdown report for an issue, PR, or agent
 eval transcript.
 
 Use `bilig-agent-challenge` for the direct WorkPaper API loop. Use

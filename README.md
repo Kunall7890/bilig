@@ -13,12 +13,12 @@ Bilig is a headless WorkPaper runtime for code that still needs workbook-shaped
 business logic: pricing rules, payout checks, quote approvals, import
 validation, forecasts, CI fixtures, and agent tools.
 
-The core loop is deliberately boring: build or load a workbook, write an input
-cell, recalculate formulas, read the output cell, persist JSON, restore it, and
-prove the restored value still matches. That is the path agents should use
-before driving Excel, LibreOffice, Google Sheets, or a screenshot UI.
+Use the same loop in services and agent tools: build or load a workbook, write
+an input cell, recalculate formulas, read the output cell, persist JSON, restore
+it, and verify the restored value. Try this before driving Excel, LibreOffice,
+Google Sheets, or a screenshot UI.
 
-Run one evaluator front door without cloning this repo:
+Run the evaluator without cloning this repo:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
@@ -43,15 +43,14 @@ Expected proof:
 }
 ```
 
-The older narrow proof commands remain available when a tool already knows the
-path it needs:
+Direct proof commands remain available:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 ```
 
-Copy-paste evaluator examples live in
+Evaluator examples live in
 [`examples/bilig-evaluator-proof`](examples/bilig-evaluator-proof).
 
 For TypeScript services, install the runtime:
@@ -69,8 +68,7 @@ npm install
 npm run agent:verify
 ```
 
-If the thing in your hands is already an `.xlsx` file, use the XLSX path
-instead of pretending it is WorkPaper JSON:
+If you already have an `.xlsx` file, use the XLSX path:
 
 ```sh
 npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json
@@ -101,10 +99,10 @@ Pick the path that matches the job:
 
 | You have...                                                             | Start with                                                         | You should see                                                                               |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
-| A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md) | input edit, recalculated output, serialized JSON, restore proof, and `verified: true`.       |
-| A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                      | tool discovery, cell edit, formula readback, export, restart proof, and `verified: true`.    |
+| A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md) | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.       |
+| A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                      | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`.    |
 | A real `.xlsx` file has stale formula results after Node edits          | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)           | changed input, recalculated output, output workbook, and `recalculationCompleted: true`.     |
-| Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)      | stale cells, cached values, recalculated values, suggested reads, and machine-readable JSON. |
+| Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)      | stale cells, cached values, recalculated values, suggested reads, and JSON output.           |
 
 If you are not sure which one fits, start with the thing that owns state. Use
 WorkPaper when your service or agent should own the workbook model. Use the XLSX
@@ -182,10 +180,8 @@ Expected shape:
 }
 ```
 
-The JSON is deliberately clean for CI and agents: no star, release-watch, or
-discussion links are mixed into the machine-readable proof. Use the links in
-the surrounding docs after the recalculated value and warnings match your
-workflow.
+The JSON contains only proof fields. Use the docs links after the recalculated
+value and warnings match your workflow.
 
 `staleCachedValue: null` is not a hidden failure bucket. Use
 `cacheStatusSummary` and per-formula `cacheStatus` to separate missing cached
@@ -379,7 +375,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                                                                                           | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`.     |
 | XLSX or ExcelJS recalculation | [XLSX formula recalculation](docs/xlsx-formula-recalculation-node.md) and [ExcelJS formula recalculation](docs/exceljs-formula-recalculation-node.md)                                                                                                                                     | The package updates inputs, reads recalculated values, and exports or mutates the workbook boundary.        |
 | Backend service shape         | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                                                                                                                                                      | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.                 |
-| Agent or MCP tools            | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), [Gemini CLI extension](docs/gemini-cli-workpaper-extension.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md) | The agent installs a tool path, gets a copy-paste handoff prompt, then proves write/readback/persist.       |
+| Agent or MCP tools            | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), [Gemini CLI extension](docs/gemini-cli-workpaper-extension.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md) | The agent installs a tool path, uses the handoff prompt, then proves write/readback/persist.                |
 | Agent-owned XLSX files        | [Agent XLSX recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md)                                                                                                                                                                              | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.                    |
 | Public technical review       | [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                                                                                | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.                     |
 | Trust and performance         | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                                                                                  | npm shows SLSA provenance, and benchmark claims match the checked artifact.                                 |
@@ -387,8 +383,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Formula or XLSX bug           | [formula bug clinic](docs/formula-bug-clinic.md)                                                                                                                                                                                                                                          | Share a reduced public case that can become a test, example, corpus fixture, or docs proof.                 |
 | Real workbook blocked         | [submit a workbook fixture](docs/submit-workbook-fixture.md)                                                                                                                                                                                                                              | Use the structured form when a reduced workbook is ready.                                                   |
 
-Reduced workbook already in hand? Generate the paste-ready fixture report in
-one command:
+Reduced workbook already in hand? Generate the fixture report in one command:
 
 ```sh
 npm exec --package @bilig/workpaper -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
@@ -432,10 +427,10 @@ gemini extensions install https://github.com/proompteng/bilig --ref main
 
 Claude Desktop users can also install the released MCPB bundle directly:
 <https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb>.
-If you need a copy-paste eval for another tool host, use the
+For another tool host, use the
 [agent workbook challenge](docs/agent-workbook-challenge.md): one input edit,
 one dependent formula readback, one serialized restore, and a `verified: true`
-proof object.
+object.
 
 <p align="center">
   <img src="docs/assets/github-social-preview.png" alt="bilig headless workbook runtime for formulas in TypeScript" />
@@ -454,7 +449,7 @@ npm install
 npm run smoke
 ```
 
-Expected output includes this proof shape:
+Expected output includes these fields:
 
 ```json
 {
@@ -488,7 +483,7 @@ Expected output includes this proof shape:
 }
 ```
 
-The generated starter uses the same maintained WorkPaper proof shape as the
+The generated starter uses the same WorkPaper fields as the
 public mirror at <https://proompteng.github.io/bilig/npm-eval.ts> and
 [`examples/headless-workpaper/npm-eval.ts`](examples/headless-workpaper/npm-eval.ts).
 The exact byte count can change between package versions; `verified: true`,
@@ -817,7 +812,7 @@ file-backed WorkPaper tools:
 
 - The 90-second TypeScript check above edits one input, restores the saved JSON
   document, and verifies the dependent formula result.
-- For a production-shaped evaluator path, run the
+- For a service evaluator path, run the
   [quote approval WorkPaper API proof](docs/quote-approval-workpaper-api.md).
   It starts from an empty Node directory, downloads one maintained TypeScript
   route smoke, writes quote inputs, recalculates an approval decision, persists
@@ -828,10 +823,10 @@ file-backed WorkPaper tools:
   recalculated approval decision, exports XLSX, reimports it, and verifies the
   formulas survived the round trip. The public decision page is
   [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md).
-- For a shorter public decision page, read
+- For a shorter evaluation page, read
   [formula workbooks for Node services and agent tools](docs/formula-workbooks-node-services-agent-tools.md).
   It compresses the WorkPaper boundary, MCP file-backed mode, benchmark caveat,
-  and alternative-tool guidance into one shareable evaluator path.
+  and alternative-tool guidance into one evaluation path.
 - For HN, Lobsters, Reddit, or newsletter review, use the
   [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md).
   It keeps the empty npm-project command, `verified: true` output, benchmark

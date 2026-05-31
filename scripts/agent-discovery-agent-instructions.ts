@@ -29,7 +29,7 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 
 1. Read \`${siteRoot}/llms.txt\` for the compact map.
 2. Read \`${siteRoot}/llms-full.txt\` when you need enough context to implement a workflow without searching the whole site.
-3. Use \`${siteRoot}/agent-adoption-kit.html\` when you need the shortest no-key install, MCP proof, and paste-ready workbook task.
+3. Use \`${siteRoot}/agent-adoption-kit.html\` when you need the shortest no-key install, MCP proof, and workbook task.
 4. If your host can install skills from a well-known endpoint, run
    \`npx --yes skills@latest add ${skillDiscoveryRoot} --list\`.
 5. Read \`${skillManifestUrl}\` when your agent supports skill manifests.

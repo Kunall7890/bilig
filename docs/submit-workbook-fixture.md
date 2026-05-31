@@ -39,7 +39,7 @@ Common clinic cases include stale cached XLSX formula values, ExcelJS shared
 formulas that need expansion before recalculation, unsupported formula families,
 and agent-tool workflows that cannot prove read-after-write calculation.
 
-If the workbook is already reduced, generate a local paste-ready report:
+If the workbook is already reduced, generate a local report:
 
 ```sh
 curl -fsSLo formula-clinic-report.ts \

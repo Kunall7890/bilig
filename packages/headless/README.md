@@ -49,8 +49,8 @@ around the same WorkPaper model.
 The `bilig-workpaper-mcp` binary still ships for hosts that specifically need an
 MCP stdio boundary. It is not the default evaluation path; prove the direct npm
 or TypeScript path first unless your tool host requires MCP.
-The `bilig-formula-clinic` binary turns a reduced XLSX into a paste-ready
-fixture report without uploading workbook contents.
+The `bilig-formula-clinic` binary turns a reduced XLSX into a fixture report
+without uploading workbook contents.
 
 ## Choose An Evaluation Path
 
@@ -152,7 +152,7 @@ Repository security posture is tracked by
 [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 and uploaded to GitHub code scanning on every `main` update.
 
-For a clean copy-paste run, use the
+For a clean local run, use the
 [Node quickstart](https://proompteng.github.io/bilig/try-bilig-headless-in-node.html).
 For the shortest explanation of when the package is worth using, start with
 [Why use Bilig?](https://proompteng.github.io/bilig/why-use-bilig.html).
@@ -488,9 +488,9 @@ pnpm --dir examples/serverless-workpaper-api run persistence-adapters
 ```
 
 Start with `pnpm --dir examples/serverless-workpaper-api run quote-approval-api`
-when you want the production-shaped proof: input JSON writes `Inputs!B2:B6`,
-formulas recalculate, the WorkPaper
-JSON is persisted, and a restored workbook returns the same approval decision.
+when you want a route-shaped check: input JSON writes `Inputs!B2:B6`, formulas
+recalculate, the WorkPaper JSON is persisted, and a restored workbook returns
+the same approval decision.
 
 Useful anchors:
 
@@ -603,7 +603,7 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
 
 - The clean TypeScript sanity check above edits one input, restores the saved
   JSON document, and verifies the dependent formula result.
-- For a production-shaped evaluator path, run the
+- For a route-shaped evaluator path, run the
   [quote approval WorkPaper API proof](https://github.com/proompteng/bilig/blob/main/docs/quote-approval-workpaper-api.md).
   It starts from an empty Node directory, downloads one maintained TypeScript
   route smoke, writes quote inputs, recalculates an approval decision, persists
@@ -613,10 +613,10 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
   It imports a generated XLSX pricing workbook, edits input cells, reads the
   recalculated approval decision, exports XLSX, reimports it, and verifies the
   formulas survived the round trip.
-- For a shorter public decision page, read
+- For a shorter evaluation page, read
   [formula workbooks for Node services and agent tools](https://github.com/proompteng/bilig/blob/main/docs/formula-workbooks-node-services-agent-tools.md).
   It compresses the WorkPaper boundary, MCP file-backed mode, benchmark caveat,
-  and alternative-tool guidance into one shareable evaluator path.
+  and alternative-tool guidance into one evaluation path.
 - For HN, Lobsters, Reddit, or newsletter review, use the
   [Show HN maintainer note](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html).
   It keeps the empty npm-project command, `verified: true` output, benchmark

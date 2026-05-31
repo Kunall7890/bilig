@@ -6,7 +6,7 @@
       "type": "skill-md",
       "description": "Use @bilig/workpaper WorkPaper state, MCP tools, and formula-clinic reports instead of spreadsheet UI automation when an agent needs formula readback.",
       "url": "https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt",
-      "digest": "sha256:7cbcb5b60d4c887d469dcc5b072fe2d9c7622f5bb00ee58ae3af491afc46265a"
+      "digest": "sha256:1c27977225e823b60138c9b5af17db0e3e1fae0e2eb9ad3c88d58b17b76f071f"
     }
   ]
 }

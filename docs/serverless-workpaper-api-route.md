@@ -31,10 +31,10 @@ For a copyable Next.js App Router boundary, the same example ships a runnable
 shared WorkPaper handler. For a plain Vercel Function boundary, use
 `npm run vercel-function` or the example-level `npm run test` proof.
 
-For the most production-shaped evaluator path, run `npm run quote-approval-api`
-inside `examples/serverless-workpaper-api`. It accepts quote input JSON, writes
-`Inputs!B2:B6`, recalculates the quote approval formulas, persists the WorkPaper
-JSON, reloads it, and returns `restoredMatchesAfter: true`.
+For the route-shaped evaluator path, run `npm run quote-approval-api` inside
+`examples/serverless-workpaper-api`. It accepts quote input JSON, writes
+`Inputs!B2:B6`, recalculates the quote approval formulas, persists the
+WorkPaper JSON, reloads it, and returns `restoredMatchesAfter: true`.
 
 ## Quote Approval API Smoke
 

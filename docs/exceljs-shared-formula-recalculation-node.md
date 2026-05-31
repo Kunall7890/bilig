@@ -121,7 +121,7 @@ it through the formula bug clinic:
 When the reduced case is ready, open it as a public fixture:
 <https://github.com/proompteng/bilig/issues/new?template=workbook_fixture.yml>.
 
-To generate a paste-ready local report without uploading the workbook, run:
+To generate a local report without uploading the workbook, run:
 
 ```sh
 curl -fsSLo formula-clinic-report.ts \

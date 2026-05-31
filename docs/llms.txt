@@ -39,19 +39,19 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 
 ## package chooser
 
-- Copy-paste evaluator for stale XLSX formula caches:
+- Evaluator for stale XLSX formula caches:
   https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html
-- Copy-paste evaluator for XLSX recalculation:
+- Evaluator for XLSX recalculation:
   https://proompteng.github.io/bilig/eval-xlsx-recalc.html
-- Copy-paste evaluator for Node service formulas:
+- Evaluator for Node service formulas:
   https://proompteng.github.io/bilig/eval-workpaper-service.html
-- Copy-paste evaluator for agent and MCP workbook tools:
+- Evaluator for agent and MCP workbook tools:
   https://proompteng.github.io/bilig/eval-agent-mcp.html
-- Unified no-project evaluator commands:
+- Evaluator commands:
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json`.
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.
   `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json`.
-- Narrow direct proof commands:
+- Direct proof commands:
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json`.
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`.
 - Shortest agent adoption path:
@@ -85,7 +85,7 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   and proof data. Example:
   https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model
 
-## proof-first evaluator doors
+## evaluator doors
 
 - `eval-xlsx-cache-doctor`: use when a repo, service, CI job, or agent has an
   `.xlsx` file that may contain stale cached formula values. Read:
@@ -310,7 +310,7 @@ npm install
 npm run smoke
 ```
 
-the generated starter uses the maintained TypeScript proof shape from:
+the generated starter uses the same fields as:
 https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/npm-eval.ts
 
 a successful quickstart run prints `verified: true` after formula readback survives
@@ -443,7 +443,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   `npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx
   --cells "Summary!B7,Inputs!B2"` runs locally against a reduced XLSX file,
   imports it with @bilig/headless, reads requested output cells, and prints a
-  paste-ready Markdown report for the fixture issue form.
+  Markdown report for the fixture issue form.
 - Microsoft Graph Excel recalculation in Node.js:
   https://proompteng.github.io/bilig/microsoft-graph-excel-recalculation-node.html
   https://github.com/proompteng/bilig/blob/main/docs/microsoft-graph-excel-recalculation-node.md

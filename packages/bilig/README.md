@@ -72,9 +72,9 @@ npm exec --package bilig-workpaper -- bilig-mcp-challenge
 npm exec --package bilig-workpaper -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
-`bilig-evaluate` prints the shared `bilig-evaluator.v1` proof shape; the
-challenge commands remain available for callers that already know the direct
-WorkPaper or MCP path they need.
+`bilig-evaluate` prints a `bilig-evaluator.v1` object. The challenge commands
+remain available for callers that already know the direct WorkPaper or MCP path
+they need.
 
 For a runnable starter project, use `npm create @bilig/workpaper`.
 

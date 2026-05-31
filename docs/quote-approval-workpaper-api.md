@@ -10,8 +10,8 @@ image: /assets/github-social-preview.png
 
 # Quote approval WorkPaper API in Node
 
-Use this page when you want a production-shaped `@bilig/headless` proof instead
-of a toy arithmetic workbook.
+Use this page when you want a quote-approval workflow instead of a tiny
+arithmetic workbook.
 
 The smoke runs a quote approval workflow:
 

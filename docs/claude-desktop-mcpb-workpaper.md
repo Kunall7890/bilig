@@ -49,7 +49,7 @@ build/mcpb/bilig-workpaper.mcpb
 ```
 
 Resolve the current published `@bilig/headless` version before building. This
-keeps the guide from baking a stale version into copy-paste setup commands:
+keeps the guide from baking a stale version into setup commands:
 
 ```sh
 BILIG_HEADLESS_VERSION=$(npm view @bilig/headless version)

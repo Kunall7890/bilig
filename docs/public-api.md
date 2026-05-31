@@ -46,9 +46,9 @@ package boundaries; not every package name is provisioned on npm yet.
 models. It does not ship business-model templates and does not depend on
 `@bilig/core`, `@bilig/headless`, `@bilig/agent-api`, `zod`, or `effect`.
 
-Build `@bilig/workbook` so an agent would love using it: simple, generic,
-predictable, inspectable, verifiable, and never dependent on hardcoded business
-models or human spreadsheet UI assumptions.
+`@bilig/workbook` defines generic, inspectable workbook intent for agents and
+runtimes. It does not depend on hardcoded business models or human spreadsheet
+UI assumptions.
 
 The stable contract has four layers.
 

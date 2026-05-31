@@ -28,7 +28,7 @@
       "source": "https://github.com/proompteng/bilig/blob/main/docs/eval-xlsx-cache-doctor.md",
       "package": "@bilig/xlsx-formula-recalc",
       "command": "npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json",
-      "expected_result": "bilig-evaluator.v1 proof with stale cached formula count, suggested reads, recalculated value, and verified true without Excel or LibreOffice",
+      "expected_result": "bilig-evaluator.v1 JSON with stale cached formula count, suggested reads, recalculated value, and verified true without Excel or LibreOffice",
       "proof_schema": "bilig-evaluator.v1",
       "canonical_door": "xlsx-cache"
     },
@@ -48,7 +48,7 @@
       "source": "https://github.com/proompteng/bilig/blob/main/docs/eval-workpaper-service.md",
       "package": "@bilig/workpaper",
       "command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json",
-      "expected_result": "bilig-evaluator.v1 proof with direct WorkPaper edit, calculated readback, JSON persistence, restore proof, and verified true",
+      "expected_result": "bilig-evaluator.v1 JSON with direct WorkPaper edit, calculated readback, JSON persistence, restore check, and verified true",
       "proof_schema": "bilig-evaluator.v1",
       "canonical_door": "workpaper-service"
     },
@@ -59,7 +59,7 @@
       "source": "https://github.com/proompteng/bilig/blob/main/docs/eval-agent-mcp.md",
       "package": "@bilig/workpaper",
       "command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json",
-      "expected_result": "bilig-evaluator.v1 proof with MCP tool discovery, cell edit, formula readback, export, restore, tool list, and verified true",
+      "expected_result": "bilig-evaluator.v1 JSON with MCP tool discovery, cell edit, formula readback, export, restore, tool list, and verified true",
       "proof_schema": "bilig-evaluator.v1",
       "canonical_door": "agent-mcp"
     }

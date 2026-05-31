@@ -1,7 +1,7 @@
 ---
 title: MCP client setup for Bilig WorkPaper
 published: true
-description: Remote MCP smoke endpoint plus copy-paste local stdio configuration for Bilig WorkPaper in Claude, Cursor, VS Code, Cline, and Codex.
+description: Remote MCP smoke endpoint and local stdio configuration for Bilig WorkPaper in Claude, Cursor, VS Code, Cline, and Codex.
 tags: mcp, claude, cursor, vscode, cline, codex, spreadsheet
 canonical_url: https://proompteng.github.io/bilig/mcp-client-setup.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png

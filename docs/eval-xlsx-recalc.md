@@ -1,7 +1,7 @@
 ---
 title: Evaluate XLSX formula recalculation
 published: true
-description: Copy-paste evaluator for teams with an XLSX file that needs fresh formula values in Node without Excel, LibreOffice, or browser automation.
+description: Evaluate XLSX formula recalculation in Node without Excel, LibreOffice, or browser automation.
 tags: node, xlsx, formulas, spreadsheet, evaluator
 canonical_url: https://proompteng.github.io/bilig/eval-xlsx-recalc.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -10,9 +10,9 @@ image: /assets/github-social-preview.png
 
 # Evaluate XLSX formula recalculation
 
-Use this when the thing in your hands is an `.xlsx` file. The narrow question is
-whether Node can edit known input cells, recalculate formulas, write a new XLSX,
-and return a proof object without opening Excel, LibreOffice, or a browser UI.
+Use this when you have an `.xlsx` file. The check is whether Node can edit known
+input cells, recalculate formulas, write a new XLSX, and return proof without
+opening Excel, LibreOffice, or a browser UI.
 
 ## One command
 
@@ -55,9 +55,8 @@ an empty or understood `warnings` array, and the recalculated cell value under
 Excel parity claim; real workbooks still report `excelParity: "not_proven"`
 unless you compare against your own Excel, LibreOffice, or Graph oracle.
 
-The JSON is clean for CI and agents. Star, release-watch, and
-adoption-blocker links stay in prose after the proof so the machine output does
-not look like a growth prompt.
+The JSON contains proof fields only. Star, release-watch, and adoption-blocker
+links stay in prose so machine output stays usable in CI and agents.
 
 ## Inspect your workbook first
 

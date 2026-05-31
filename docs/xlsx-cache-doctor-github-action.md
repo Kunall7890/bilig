@@ -123,7 +123,7 @@ report artifact.
 
 The job summary and Markdown report are meant to be the reviewer artifacts.
 They show workbook count, formula count, stale count, the first stale cells with
-cached and recalculated values, and a copy-paste
+cached and recalculated values, and an
 `xlsx-recalc --read ... --json` command for the follow-up check. The action also
 writes GitHub warning annotations for the first stale cells so the failure is
 visible before someone opens the JSON artifact.

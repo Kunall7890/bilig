@@ -1,7 +1,7 @@
-# Bilig Evaluator Proof Examples
+# Bilig Evaluator Examples
 
-Run these no-key checks when an agent, service, or CI evaluator needs one
-production proof shape before choosing a deeper path.
+Run these no-key checks when an agent, service, or CI job needs a workbook
+readback check.
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
@@ -10,7 +10,6 @@ npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --d
 ```
 
 Every command returns `schemaVersion: "bilig-evaluator.v1"`, the selected
-`door`, computed `evidence`, `verified: true`, limitations, and the underlying
-source proof. The older `bilig-agent-challenge`, `bilig-mcp-challenge`,
-`xlsx-cache-doctor`, and `xlsx-recalc` commands remain available when a caller
-needs their full specialized output.
+`door`, `evidence`, `verified: true`, limitations, and the source command
+output. `bilig-agent-challenge`, `bilig-mcp-challenge`, `xlsx-cache-doctor`,
+and `xlsx-recalc` remain available when a caller needs their full output.
