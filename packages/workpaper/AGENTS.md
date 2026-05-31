@@ -56,6 +56,9 @@ Do not claim success from a write call alone. The proof is computed readback plu
 ## Fast Commands
 
 ```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable

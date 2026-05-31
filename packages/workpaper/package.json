@@ -43,6 +43,7 @@
   },
   "bin": {
     "bilig-agent-challenge": "./bin/bilig-agent-challenge.js",
+    "bilig-evaluate": "./bin/bilig-evaluate.js",
     "bilig-formula-clinic": "./bin/bilig-formula-clinic.js",
     "bilig-mcp-challenge": "./bin/bilig-mcp-challenge.js",
     "bilig-n8n-formula-server": "./bin/bilig-n8n-formula-server.js",
@@ -91,6 +92,7 @@
   },
   "dependencies": {
     "@bilig/headless": "workspace:*",
+    "@bilig/xlsx-formula-recalc": "workspace:*",
     "bilig-workpaper": "workspace:*"
   },
   "devDependencies": {

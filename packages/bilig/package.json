@@ -42,6 +42,7 @@
   },
   "bin": {
     "bilig-agent-challenge": "./bin/bilig-agent-challenge.js",
+    "bilig-evaluate": "./bin/bilig-evaluate.js",
     "bilig-formula-clinic": "./bin/bilig-formula-clinic.js",
     "bilig-mcp-challenge": "./bin/bilig-mcp-challenge.js",
     "bilig-workpaper-mcp": "./bin/bilig-workpaper-mcp.js"
@@ -82,7 +83,8 @@
     "build": "pnpm --dir ../.. --filter @bilig/headless build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@bilig/headless": "workspace:*"
+    "@bilig/headless": "workspace:*",
+    "@bilig/xlsx-formula-recalc": "workspace:*"
   },
   "engines": {
     "node": ">=22.0.0"

@@ -94,6 +94,7 @@ logic that can run through @bilig/workpaper. If it is, use WorkPaper state as th
 source of truth.
 
 For MCP, start with:
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
@@ -189,6 +190,9 @@ console.log({ revenue, savedBytes: saved.length })
 From a clean project, run the package-owned check:
 
 \`\`\`sh
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door workpaper-service --json
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 \`\`\`

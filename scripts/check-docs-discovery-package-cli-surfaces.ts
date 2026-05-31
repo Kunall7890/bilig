@@ -9,11 +9,20 @@ export function requirePackageCliSurfaceDiscovery(args: {
   readonly sheetjsRecalcPackageJson: string
   readonly sheetjsRecalcPackageReadme: string
   readonly sheetjsRecalcPackageSkillNotes: string
+  readonly scopedWorkpaperPackageJson: string
+  readonly scopedWorkpaperPackageReadme: string
   readonly xlsxRecalcPackageAgentNotes: string
   readonly xlsxRecalcPackageJson: string
   readonly xlsxRecalcPackageReadme: string
   readonly xlsxRecalcPackageSkillNotes: string
 }): void {
+  requireIncludes(args.scopedWorkpaperPackageJson, '"bilig-evaluate": "./bin/bilig-evaluate.js"', 'packages/workpaper/package.json')
+  requireIncludes(args.scopedWorkpaperPackageJson, '"@bilig/xlsx-formula-recalc": "workspace:*"', 'packages/workpaper/package.json')
+  requireIncludes(args.scopedWorkpaperPackageReadme, 'bilig-evaluate --door workpaper-service --json', 'packages/workpaper/README.md')
+  requireIncludes(args.scopedWorkpaperPackageReadme, 'bilig-evaluate --door agent-mcp --json', 'packages/workpaper/README.md')
+  requireIncludes(args.scopedWorkpaperPackageReadme, 'bilig-evaluator.v1', 'packages/workpaper/README.md')
+
+  requireIncludes(args.xlsxRecalcPackageJson, '"bilig-evaluate": "./bin/bilig-evaluate.js"', 'packages/xlsx-formula-recalc/package.json')
   requireIncludes(args.xlsxRecalcPackageJson, '"xlsx-recalc": "./bin/xlsx-recalc.js"', 'packages/xlsx-formula-recalc/package.json')
   requireIncludes(
     args.xlsxRecalcPackageJson,
@@ -21,7 +30,10 @@ export function requirePackageCliSurfaceDiscovery(args: {
     'packages/xlsx-formula-recalc/package.json',
   )
   requireIncludes(args.xlsxRecalcPackageJson, '"sheetjs-recalc": "./bin/sheetjs-recalc.js"', 'packages/xlsx-formula-recalc/package.json')
+  requireIncludes(args.xlsxRecalcPackageJson, '"./evaluator"', 'packages/xlsx-formula-recalc/package.json')
   requireIncludes(args.xlsxRecalcPackageJson, '"./cli-api"', 'packages/xlsx-formula-recalc/package.json')
+  requireIncludes(args.xlsxRecalcPackageReadme, 'bilig-evaluate --door xlsx-cache --json', 'packages/xlsx-formula-recalc/README.md')
+  requireIncludes(args.xlsxRecalcPackageReadme, 'bilig-evaluator.v1', 'packages/xlsx-formula-recalc/README.md')
   requireIncludes(args.xlsxRecalcPackageReadme, 'xlsx-cache-doctor --demo --json', 'packages/xlsx-formula-recalc/README.md')
   requireIncludes(args.xlsxRecalcPackageReadme, 'xlsx-recalc --demo --json', 'packages/xlsx-formula-recalc/README.md')
   requireIncludes(args.xlsxRecalcPackageReadme, 'xlsx-cache-doctor pricing.xlsx --json', 'packages/xlsx-formula-recalc/README.md')

@@ -48,6 +48,7 @@
       "@bilig/workpaper/xlsx": ["./packages/workpaper/src/xlsx.ts"],
       "@bilig/xlsx-formula-recalc": ["./packages/bilig-xlsx-formula-recalc/src/index.ts"],
       "@bilig/xlsx-formula-recalc/cli-api": ["./packages/bilig-xlsx-formula-recalc/src/cli-api.ts"],
+      "@bilig/xlsx-formula-recalc/evaluator": ["./packages/bilig-xlsx-formula-recalc/src/evaluator.ts"],
       "@bilig/zero-sync": ["./packages/zero-sync/src/index.ts"],
       "bilig-workpaper": ["./packages/bilig/src/index.ts"],
       "bilig-workpaper/mcp": ["./packages/bilig/src/mcp.ts"],
@@ -55,7 +56,8 @@
       "exceljs-formula-recalc": ["./packages/exceljs-formula-recalc/src/index.ts"],
       "sheetjs-formula-recalc": ["./packages/sheetjs-formula-recalc/src/index.ts"],
       "xlsx-formula-recalc": ["./packages/xlsx-formula-recalc/src/index.ts"],
-      "xlsx-formula-recalc/cli-api": ["./packages/xlsx-formula-recalc/src/cli-api.ts"]
+      "xlsx-formula-recalc/cli-api": ["./packages/xlsx-formula-recalc/src/cli-api.ts"],
+      "xlsx-formula-recalc/evaluator": ["./packages/xlsx-formula-recalc/src/evaluator-cli.ts"]
     }
   }
 }

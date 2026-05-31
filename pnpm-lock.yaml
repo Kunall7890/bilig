@@ -321,6 +321,9 @@ importers:
       '@bilig/headless':
         specifier: workspace:*
         version: link:../headless
+      '@bilig/xlsx-formula-recalc':
+        specifier: workspace:*
+        version: link:../bilig-xlsx-formula-recalc
 
   packages/bilig-exceljs-formula-recalc:
     dependencies:
@@ -586,6 +589,9 @@ importers:
       '@bilig/headless':
         specifier: workspace:*
         version: link:../headless
+      '@bilig/xlsx-formula-recalc':
+        specifier: workspace:*
+        version: link:../bilig-xlsx-formula-recalc
       bilig-workpaper:
         specifier: workspace:*
         version: link:../bilig

@@ -22,6 +22,8 @@ export interface AgentDiscoveryEvaluatorDoor {
   readonly package: string
   readonly command: string
   readonly expected_result: string
+  readonly proof_schema?: string
+  readonly canonical_door?: string
 }
 
 export interface AgentDiscoveryProofContract {
@@ -45,9 +47,11 @@ export function buildEvaluatorDoors(args: AgentDiscoveryEvaluatorDoorInputs): re
       docs: `${siteRoot}/eval-xlsx-cache-doctor.html`,
       source: `${args.repositoryUrl}/blob/main/docs/eval-xlsx-cache-doctor.md`,
       package: '@bilig/xlsx-formula-recalc',
-      command: 'npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --demo --json',
+      command: 'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json',
       expected_result:
-        'formula count, inspected count, stale cached formula count, suggested reads, and recalculated values without Excel or LibreOffice',
+        'bilig-evaluator.v1 proof with stale cached formula count, suggested reads, recalculated value, and verified true without Excel or LibreOffice',
+      proof_schema: 'bilig-evaluator.v1',
+      canonical_door: 'xlsx-cache',
     },
     {
       name: 'eval-xlsx-recalc',
@@ -65,8 +69,11 @@ export function buildEvaluatorDoors(args: AgentDiscoveryEvaluatorDoorInputs): re
       docs: `${siteRoot}/eval-workpaper-service.html`,
       source: `${args.repositoryUrl}/blob/main/docs/eval-workpaper-service.md`,
       package: '@bilig/workpaper',
-      command: `npm exec --yes --package ${args.workpaperPackageSpec} -- bilig-agent-challenge --json`,
-      expected_result: 'direct WorkPaper edit, calculated readback, JSON persistence, restore proof, and verified true',
+      command: `npm exec --yes --package ${args.workpaperPackageSpec} -- bilig-evaluate --door workpaper-service --json`,
+      expected_result:
+        'bilig-evaluator.v1 proof with direct WorkPaper edit, calculated readback, JSON persistence, restore proof, and verified true',
+      proof_schema: 'bilig-evaluator.v1',
+      canonical_door: 'workpaper-service',
     },
     {
       name: 'eval-agent-mcp',
@@ -74,8 +81,11 @@ export function buildEvaluatorDoors(args: AgentDiscoveryEvaluatorDoorInputs): re
       docs: `${siteRoot}/eval-agent-mcp.html`,
       source: `${args.repositoryUrl}/blob/main/docs/eval-agent-mcp.md`,
       package: '@bilig/workpaper',
-      command: `npm exec --yes --package ${args.workpaperPackageSpec} -- bilig-mcp-challenge --json`,
-      expected_result: 'MCP tool discovery, cell edit, formula readback, export, restore, tool list, and verified true',
+      command: `npm exec --yes --package ${args.workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json`,
+      expected_result:
+        'bilig-evaluator.v1 proof with MCP tool discovery, cell edit, formula readback, export, restore, tool list, and verified true',
+      proof_schema: 'bilig-evaluator.v1',
+      canonical_door: 'agent-mcp',
     },
   ] as const
 }
@@ -151,6 +161,12 @@ export function requireAgentJsonDiscoveryContract(
     const command = Reflect.get(door, 'command')
     if (Reflect.get(door, 'docs') !== requiredDoor.docs || command !== requiredDoor.command) {
       throw new Error(`docs/.well-known/agent.json evaluator_doors has invalid routing for ${requiredDoor.name}`)
+    }
+    if (requiredDoor.proof_schema !== undefined && Reflect.get(door, 'proof_schema') !== requiredDoor.proof_schema) {
+      throw new Error(`docs/.well-known/agent.json evaluator_doors has invalid proof schema for ${requiredDoor.name}`)
+    }
+    if (requiredDoor.canonical_door !== undefined && Reflect.get(door, 'canonical_door') !== requiredDoor.canonical_door) {
+      throw new Error(`docs/.well-known/agent.json evaluator_doors has invalid canonical door for ${requiredDoor.name}`)
     }
   }
 

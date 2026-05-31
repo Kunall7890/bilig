@@ -47,6 +47,13 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   https://proompteng.github.io/bilig/eval-workpaper-service.html
 - Copy-paste evaluator for agent and MCP workbook tools:
   https://proompteng.github.io/bilig/eval-agent-mcp.html
+- Unified no-project evaluator commands:
+  `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json`.
+  `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.
+  `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json`.
+- Narrow direct proof commands:
+  `npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json`.
+  `npm exec --yes --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`.
 - Shortest agent adoption path:
   https://proompteng.github.io/bilig/agent-adoption-kit.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-adoption-kit.md
@@ -57,7 +64,7 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 - Use `@bilig/xlsx-formula-recalc` when XLSX inputs changed in Node and formula
   outputs must be inspected or recalculated before returning. Start with the
   read-only stale-cache detector:
-  `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --demo --json`.
+  `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json`.
   Use recalculation once you know the input and output cells:
   `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json`.
   `npx --package @bilig/xlsx-formula-recalc xlsx-recalc pricing.xlsx --set Inputs!B2=48 --read Summary!B7 --out pricing.recalculated.xlsx --json`.
@@ -83,7 +90,7 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   `.xlsx` file that may contain stale cached formula values. Read:
   https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html
   Run:
-  `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --demo --json`.
+  `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json`.
   `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json`.
 - `eval-xlsx-recalc`: use when an `.xlsx` file has stale formula values after
   input edits in Node. Read:
@@ -95,12 +102,12 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   Node service, route, queue worker, or test. Read:
   https://proompteng.github.io/bilig/eval-workpaper-service.html
   Run:
-  `npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json`.
+  `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json`.
 - `eval-agent-mcp`: use when a coding agent, MCP client, or tool host needs
   spreadsheet operations without UI automation. Read:
   https://proompteng.github.io/bilig/eval-agent-mcp.html
   Run:
-  `npm exec --yes --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`.
+  `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.
 - Every proof path must return readback evidence, persisted or exported state,
   `verified: true`, and limitations. A write call by itself is not success.
 

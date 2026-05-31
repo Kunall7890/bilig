@@ -18,30 +18,41 @@ cell, recalculate formulas, read the output cell, persist JSON, restore it, and
 prove the restored value still matches. That is the path agents should use
 before driving Excel, LibreOffice, Google Sheets, or a screenshot UI.
 
-Run the direct agent-safe check without cloning this repo:
+Run one evaluator front door without cloning this repo:
 
 ```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 ```
 
 Expected proof:
 
 ```json
 {
-  "editedCell": "Inputs!B2",
-  "dependentCell": "Summary!B2",
-  "before": 24000,
-  "after": 38400,
-  "afterRestore": 38400,
-  "verified": true
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "workpaper-service",
+  "verified": true,
+  "evidence": {
+    "editedCell": "Inputs!B2",
+    "dependentCell": "Summary!B2",
+    "before": 24000,
+    "after": 38400,
+    "afterRestore": 38400
+  }
 }
 ```
 
-For an MCP host, use the no-key file-backed proof:
+The older narrow proof commands remain available when a tool already knows the
+path it needs:
 
 ```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 ```
+
+Copy-paste evaluator examples live in
+[`examples/bilig-evaluator-proof`](examples/bilig-evaluator-proof).
 
 For TypeScript services, install the runtime:
 
@@ -88,12 +99,12 @@ Project site: <https://proompteng.github.io/bilig/>
 
 Pick the path that matches the job:
 
-| You have...                                                            | Start with                                             | You should see                                                                                 |
-| ---------------------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| A Node service, route, queue, test, or tool needs workbook logic       | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md) | input edit, recalculated output, serialized JSON, restore proof, and `verified: true`.         |
-| A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)          | tool discovery, cell edit, formula readback, export, restart proof, and `verified: true`.       |
-| A real `.xlsx` file has stale formula results after Node edits         | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md) | changed input, recalculated output, output workbook, and `recalculationCompleted: true`.        |
-| Pull requests can commit XLSX fixtures with stale cached values        | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md) | stale cells, cached values, recalculated values, suggested reads, and machine-readable JSON.    |
+| You have...                                                             | Start with                                                         | You should see                                                                               |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md) | input edit, recalculated output, serialized JSON, restore proof, and `verified: true`.       |
+| A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                      | tool discovery, cell edit, formula readback, export, restart proof, and `verified: true`.    |
+| A real `.xlsx` file has stale formula results after Node edits          | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)           | changed input, recalculated output, output workbook, and `recalculationCompleted: true`.     |
+| Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)      | stale cells, cached values, recalculated values, suggested reads, and machine-readable JSON. |
 
 If you are not sure which one fits, start with the thing that owns state. Use
 WorkPaper when your service or agent should own the workbook model. Use the XLSX
@@ -102,9 +113,9 @@ path when a saved Excel file is still the source of truth.
 The shortest no-project checks are:
 
 ```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json
-npm exec --yes --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --demo --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
 ```
 
@@ -220,20 +231,20 @@ If your service or test runner needs the same report without a subprocess, use
 the Node API:
 
 ```ts
-import { readFile } from "node:fs/promises";
-import { inspectXlsxCache } from "@bilig/xlsx-formula-recalc";
+import { readFile } from 'node:fs/promises'
+import { inspectXlsxCache } from '@bilig/xlsx-formula-recalc'
 
-const report = inspectXlsxCache(await readFile("pricing.xlsx"), {
-  fileName: "pricing.xlsx",
-});
+const report = inspectXlsxCache(await readFile('pricing.xlsx'), {
+  fileName: 'pricing.xlsx',
+})
 
 if (report.staleCachedFormulaCount > 0) {
   throw new Error(
     report.formulas
-      .filter((formula) => formula.cacheStatus === "stale")
+      .filter((formula) => formula.cacheStatus === 'stale')
       .map((formula) => formula.target)
-      .join(", "),
-  );
+      .join(', '),
+  )
 }
 ```
 

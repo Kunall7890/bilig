@@ -39,6 +39,7 @@
     "directory": "packages/xlsx-formula-recalc"
   },
   "bin": {
+    "bilig-evaluate": "./bin/bilig-evaluate.js",
     "sheetjs-recalc": "./bin/sheetjs-recalc.js",
     "xlsx-cache-doctor": "./bin/xlsx-cache-doctor.js",
     "xlsx-recalc": "./bin/xlsx-recalc.js"
@@ -65,6 +66,11 @@
       "types": "./dist/cli-api.d.ts",
       "import": "./dist/cli-api.js",
       "default": "./dist/cli-api.js"
+    },
+    "./evaluator": {
+      "types": "./dist/evaluator-cli.d.ts",
+      "import": "./dist/evaluator-cli.js",
+      "default": "./dist/evaluator-cli.js"
     }
   },
   "publishConfig": {

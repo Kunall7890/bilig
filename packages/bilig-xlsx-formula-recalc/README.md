@@ -12,7 +12,32 @@ after the detector points at the cells that matter.
 It fits `xlsx-populate`, SheetJS / `xlsx`, template-generation, GitHub Actions,
 and backend file pipelines where stale readback is worse than a hard failure.
 
-## Try The Cache Doctor First
+## Try The Evaluator First
+
+Run the no-project evaluator demo:
+
+```sh
+npx --package @bilig/xlsx-formula-recalc bilig-evaluate --door xlsx-cache --json
+```
+
+Expected evaluator shape:
+
+```json
+{
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "xlsx-cache",
+  "verified": true,
+  "evidence": {
+    "target": "Summary!B2",
+    "before": 60000,
+    "after": 72000,
+    "staleCachedFormulaCount": 1,
+    "suggestedReads": ["Summary!B2"]
+  }
+}
+```
+
+## Try The Cache Doctor Directly
 
 Run the no-project demo:
 

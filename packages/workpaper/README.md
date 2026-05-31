@@ -150,14 +150,20 @@ rewriting formula sheets.
 
 ## Prove The Agent Loop Without Cloning
 
-The package ships proof commands for coding agents and service evaluators:
+The package ships one evaluator front door plus the narrow proof commands for
+coding agents and service evaluators:
 
 ```sh
+npm exec --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
+npm exec --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
+
+`bilig-evaluate` prints a `bilig-evaluator.v1` object with `door`, `evidence`,
+`verified`, `limitations`, and the underlying source proof.
 
 The challenge commands edit one input, recalculate dependent formulas, export
 WorkPaper JSON, restore it, and print a `verified: true` proof object.

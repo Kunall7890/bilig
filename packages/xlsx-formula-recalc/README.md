@@ -67,7 +67,31 @@ npm install @bilig/xlsx-formula-recalc
 
 ## CLI
 
-Run the cache-doctor check first:
+Run the unified evaluator first when you want one `verified: true` proof shape
+for XLSX stale-cache checks, WorkPaper services, and agent/MCP tooling:
+
+```sh
+npx --package @bilig/xlsx-formula-recalc bilig-evaluate --door xlsx-cache --json
+```
+
+Expected evaluator shape:
+
+```json
+{
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "xlsx-cache",
+  "verified": true,
+  "evidence": {
+    "target": "Summary!B2",
+    "before": 60000,
+    "after": 72000,
+    "staleCachedFormulaCount": 1,
+    "suggestedReads": ["Summary!B2"]
+  }
+}
+```
+
+Run the cache-doctor check directly when you need the full formula-cache report:
 
 ```sh
 npx --package @bilig/xlsx-formula-recalc xlsx-cache-doctor --demo --json

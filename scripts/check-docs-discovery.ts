@@ -907,6 +907,8 @@ requirePackageCliSurfaceDiscovery({
   exceljsRecalcPackageJson,
   exceljsRecalcPackageReadme,
   exceljsRecalcPackageSkillNotes,
+  scopedWorkpaperPackageJson,
+  scopedWorkpaperPackageReadme,
   sheetjsRecalcPackageAgentNotes,
   sheetjsRecalcPackageJson,
   sheetjsRecalcPackageReadme,

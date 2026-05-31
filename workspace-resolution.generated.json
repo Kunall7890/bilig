@@ -183,6 +183,10 @@
     "packageDir": "packages/bilig-xlsx-formula-recalc",
     "sourceEntry": "packages/bilig-xlsx-formula-recalc/src/cli-api.ts"
   },
+  "@bilig/xlsx-formula-recalc/evaluator": {
+    "packageDir": "packages/bilig-xlsx-formula-recalc",
+    "sourceEntry": "packages/bilig-xlsx-formula-recalc/src/evaluator.ts"
+  },
   "@bilig/zero-sync": {
     "packageDir": "packages/zero-sync",
     "sourceEntry": "packages/zero-sync/src/index.ts"
@@ -214,5 +218,9 @@
   "xlsx-formula-recalc/cli-api": {
     "packageDir": "packages/xlsx-formula-recalc",
     "sourceEntry": "packages/xlsx-formula-recalc/src/cli-api.ts"
+  },
+  "xlsx-formula-recalc/evaluator": {
+    "packageDir": "packages/xlsx-formula-recalc",
+    "sourceEntry": "packages/xlsx-formula-recalc/src/evaluator-cli.ts"
   }
 }

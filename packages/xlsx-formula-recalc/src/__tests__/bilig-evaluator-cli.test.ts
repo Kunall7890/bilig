@@ -1,0 +1,124 @@
+import { describe, expect, it } from 'vitest'
+
+import { buildBiligEvaluatorProof, listBiligEvaluatorDoors, runBiligEvaluatorCli } from '../evaluator-cli.js'
+
+describe('bilig-evaluate CLI', () => {
+  it('lists the three production evaluator doors', () => {
+    expect(listBiligEvaluatorDoors().map((door) => door.door)).toEqual(['xlsx-cache', 'workpaper-service', 'agent-mcp'])
+  })
+
+  it('prints a verified XLSX stale-cache proof', () => {
+    let stdout = ''
+
+    const exitCode = runBiligEvaluatorCli(['--door', 'xlsx-cache', '--json'], {
+      stdout: (text) => {
+        stdout += text
+      },
+    })
+
+    expect(exitCode).toBe(0)
+    const proof = readProof(stdout)
+    expect(proof.schemaVersion).toBe('bilig-evaluator.v1')
+    expect(proof.door).toBe('xlsx-cache')
+    expect(proof.verified).toBe(true)
+    expect(proof.evidence).toMatchObject({
+      target: 'Summary!B2',
+      before: 60_000,
+      after: 72_000,
+      staleCachedFormulaCount: 1,
+      suggestedReads: ['Summary!B2'],
+      checks: {
+        commandSucceeded: true,
+        inspectionCompleted: true,
+        recalculationCompleted: true,
+        staleCachedFormulaFound: true,
+        readbackSuggested: true,
+      },
+    })
+  })
+
+  it('prints a verified WorkPaper service proof', () => {
+    const proof = buildBiligEvaluatorProof('workpaper-service')
+
+    expect(proof.verified).toBe(true)
+    expect(proof.evidence).toMatchObject({
+      editedCell: 'Inputs!B2',
+      dependentCell: 'Summary!B2',
+      before: 24_000,
+      after: 38_400,
+      afterRestore: 38_400,
+      checks: {
+        formulaReadbackChanged: true,
+        exportedWorkPaperDocument: true,
+        restoredMatchesAfter: true,
+      },
+    })
+  })
+
+  it('prints a verified agent MCP proof', () => {
+    const proof = buildBiligEvaluatorProof('agent-mcp')
+
+    expect(proof.verified).toBe(true)
+    expect(proof.evidence).toMatchObject({
+      editedCell: 'Inputs!B3',
+      dependentCell: 'Summary!B3',
+      before: 60_000,
+      after: 96_000,
+      afterRestore: 96_000,
+      afterRestart: 96_000,
+      checks: {
+        listedFileBackedTools: true,
+        restartReadbackMatchesAfter: true,
+      },
+    })
+    expect(proof.evidence.tools).toContain('read_cell')
+  })
+
+  it('rejects unknown doors with a focused error', () => {
+    let stderr = ''
+
+    const exitCode = runBiligEvaluatorCli(['--door', 'screenshots'], {
+      stderr: (text) => {
+        stderr += text
+      },
+    })
+
+    expect(exitCode).toBe(1)
+    expect(stderr).toContain('Unknown bilig-evaluate door: screenshots')
+  })
+})
+
+interface EvaluatorProofForTest {
+  readonly schemaVersion: string
+  readonly door: string
+  readonly verified: boolean
+  readonly evidence: Record<string, unknown>
+}
+
+function readProof(stdout: string): EvaluatorProofForTest {
+  const parsed: unknown = JSON.parse(stdout)
+  if (!isRecord(parsed)) {
+    throw new Error('Expected evaluator proof object.')
+  }
+  const evidence = parsed.evidence
+  if (!isRecord(evidence)) {
+    throw new Error('Expected evaluator proof evidence object.')
+  }
+  return {
+    schemaVersion: requireString(parsed.schemaVersion),
+    door: requireString(parsed.door),
+    verified: parsed.verified === true,
+    evidence,
+  }
+}
+
+function requireString(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw new Error(`Expected string, got ${JSON.stringify(value)}.`)
+  }
+  return value
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}

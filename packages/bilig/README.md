@@ -65,10 +65,16 @@ import { createWorkPaperMcpServer } from 'bilig-workpaper/mcp'
 For package-owned proof commands, use:
 
 ```sh
+npm exec --package bilig-workpaper -- bilig-evaluate --door workpaper-service --json
+npm exec --package bilig-workpaper -- bilig-evaluate --door agent-mcp --json
 npm exec --package bilig-workpaper -- bilig-agent-challenge
 npm exec --package bilig-workpaper -- bilig-mcp-challenge
 npm exec --package bilig-workpaper -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
+
+`bilig-evaluate` prints the shared `bilig-evaluator.v1` proof shape; the
+challenge commands remain available for callers that already know the direct
+WorkPaper or MCP path they need.
 
 For a runnable starter project, use `npm create @bilig/workpaper`.
 
