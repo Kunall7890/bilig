@@ -7,11 +7,13 @@ primary formula work unless a human explicitly asks for visual review.
 ## Verify First
 
 ```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json
 ```
 
 That command is the package-owned proof gate. A valid run includes
-`verified: true`. Generated starters also include `npm run agent:verify`.
+`verified: true` and covers `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named
+expression, persistence, and restart readback. Generated starters also include
+`npm run agent:verify`.
 
 ## Agent Surfaces
 
@@ -35,8 +37,10 @@ This starter includes project instructions for common coding agents:
 1. Read the relevant sheet, range, or API output before editing.
 2. Name the exact sheet and A1 cell target.
 3. Validate formulas before writing them.
-4. Write one small input or formula change.
-5. Read the dependent calculated output after recalculation.
+4. Prefer `set_cell_contents_and_readback` for one-call edit plus dependent
+   output readback.
+5. Otherwise, write one small input or formula change and then read the
+   dependent calculated output after recalculation.
 6. Export or serialize the WorkPaper document.
 7. Report `editedCell`, `before`, `after`, `afterRestore` or persistence
    evidence, `verified`, and known limitations.
@@ -64,6 +68,7 @@ Expected tools:
 - `read_range`
 - `read_cell`
 - `set_cell_contents`
+- `set_cell_contents_and_readback`
 - `get_cell_display_value`
 - `export_workpaper_document`
 - `validate_formula`

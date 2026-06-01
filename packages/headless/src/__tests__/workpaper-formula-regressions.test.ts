@@ -852,6 +852,33 @@ describe('Workpaper formula regressions', () => {
     expect(workbook.getCellFormulaDiagnostics({ sheet: tax, row: 10, col: 1 })[0]?.code).toBe('financial-invalid-cash-flow')
   })
 
+  it('explains provider-backed formulas as adapter boundaries for agents', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Imports: [
+          ['Metric', 'Value'],
+          ['Remote ARR', '=IMPORTRANGE("https://docs.google.com/spreadsheets/d/source","Revenue!A1:B4")'],
+        ],
+      },
+      { maxRows: 16, maxColumns: 8, useColumnIndex: true },
+    )
+    const imports = workbook.getSheetId('Imports')!
+    const remoteArr = { sheet: imports, row: 1, col: 1 }
+
+    expect(workbook.getCellDisplayValue(remoteArr)).toBe('#BLOCKED!')
+    expect(workbook.getCellFormulaDiagnostics(remoteArr)).toMatchObject([
+      {
+        severity: 'error',
+        code: 'provider-backed-adapter-missing',
+        functionName: 'IMPORTRANGE',
+        adapterSurface: 'web',
+        errorText: '#BLOCKED!',
+      },
+    ])
+    expect(workbook.getCellFormulaDiagnostics(remoteArr)[0]?.message).toContain('Google Sheets range adapter')
+    expect(workbook.getCellFormulaDiagnostics(remoteArr)[0]?.message).toContain('local WorkPaper inputs')
+  })
+
   it('evaluates XIRR over formula-derived numeric cash-flow cells', () => {
     const workbook = WorkPaper.buildFromSheets(
       {

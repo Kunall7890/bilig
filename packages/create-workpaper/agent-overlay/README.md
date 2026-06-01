@@ -3,19 +3,23 @@
 Agent-ready formula WorkPaper starter built with `@bilig/workpaper`.
 
 ```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json
 ```
 
 Generated starters also include `npm run agent:verify`, which runs the service
-smoke and then the package-owned agent evaluator:
+smoke, the basic MCP evaluator, and the richer revenue-plan evaluator:
 
 - `npm run smoke`: writes quote inputs through a service-style API handler,
   recalculates formulas, persists WorkPaper JSON, restores it, and checks
   `verified: true`.
 - `npm run agent:evaluate`: runs
-  `bilig-evaluate --door agent-mcp --json`, discovers MCP tools, edits a
-  WorkPaper cell, reads the recalculated dependent value, exports JSON,
+  `bilig-evaluate --door agent-mcp --scenario revenue-plan --json`,
+  discovers MCP tools, edits a WorkPaper cell, reads recalculated `SUM`,
+  `SUMIF`, `XLOOKUP`, `FILTER`, and named-expression outputs, exports JSON,
   restarts from disk, and checks `verified: true`.
+- `npm run agent:evaluate:basic`: runs the smaller
+  `bilig-evaluate --door agent-mcp --json` smoke when you only need the
+  minimal MCP contract.
 
 Use `npm run mcp:challenge` only when you need the lower-level JSON-RPC
 diagnostic transcript.

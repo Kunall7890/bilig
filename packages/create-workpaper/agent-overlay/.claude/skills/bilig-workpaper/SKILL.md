@@ -35,12 +35,14 @@ Do not build shell commands by concatenating user text. Treat the commands below
 ## First Check: Agent Evaluator
 
 Before wiring a client, prove the published agent door with the package-owned evaluator.
-It exercises MCP discovery, cell mutation, formula readback, JSON export, restart restore, and returns `verified: true`:
+It exercises MCP discovery, cell mutation, recalculated `SUM`, `SUMIF`,
+`XLOOKUP`, `FILTER`, a named expression, JSON export, restart restore, and
+returns `verified: true`:
 
 ```json
 {
   "command": "npm",
-  "args": ["exec", "--yes", "--package", "@bilig/workpaper@latest", "--", "bilig-evaluate", "--door", "agent-mcp", "--json"]
+  "args": ["exec", "--yes", "--package", "@bilig/workpaper@latest", "--", "bilig-evaluate", "--door", "agent-mcp", "--scenario", "revenue-plan", "--json"]
 }
 ```
 
@@ -84,7 +86,7 @@ npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 }
 ```
 
-Run `bilig-evaluate --door agent-mcp --json` first. If the evaluator fails,
+Run `bilig-evaluate --door agent-mcp --scenario revenue-plan --json` first. If the evaluator fails,
 run `bilig-mcp-challenge` and treat its returned `tools` array as the source
 of truth for the currently published package. The core file-backed tools are:
 

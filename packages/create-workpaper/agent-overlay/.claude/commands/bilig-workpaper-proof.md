@@ -12,8 +12,12 @@ Task: ${input:task:Describe the workbook or formula workflow}
 Start with the project proof:
 
 ```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json
 ```
+
+That evaluator checks MCP tool discovery, mutation, recalculated `SUM`,
+`SUMIF`, `XLOOKUP`, `FILTER`, a named expression, persistence, and restart
+readback.
 
 For MCP work, start the project-local server:
 
@@ -38,8 +42,10 @@ Return proof, not a status sentence:
 Rules:
 
 - read the relevant input and dependent output before editing;
-- write one small input or formula change;
-- read the dependent calculated output after recalculation;
+- prefer `set_cell_contents_and_readback` for one-call edit plus dependent
+  output readback;
+- otherwise write one small input or formula change and then read the
+  dependent calculated output after recalculation;
 - export or serialize the WorkPaper document;
 - restore or restart when file boundaries matter;
 - report unsupported formulas or Excel-only features honestly;

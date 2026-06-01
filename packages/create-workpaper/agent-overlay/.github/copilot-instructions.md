@@ -8,8 +8,12 @@ values.
 Before reporting success, run:
 
 ```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json
 ```
+
+That evaluator checks MCP tool discovery, mutation, recalculated `SUM`,
+`SUMIF`, `XLOOKUP`, `FILTER`, a named expression, persistence, and restart
+readback.
 
 For MCP use, start:
 

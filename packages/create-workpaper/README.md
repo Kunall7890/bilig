@@ -38,16 +38,18 @@ project skill and proof command, GitHub Copilot / VS Code instructions, Cursor,
 Cline, Continue, and Windsurf rules, a project-root `.mcp.json` for Claude Code,
 Cursor and VS Code MCP configs, a generic MCP config at
 `mcp/bilig-workpaper.mcp.json`, and an `agent:verify` script that runs the
-service smoke plus the package-owned `bilig-evaluate --door agent-mcp --json`
-proof. The raw MCP challenge remains available as `npm run mcp:challenge` when
-you need the lower-level JSON-RPC transcript.
+service smoke plus the package-owned basic and revenue-plan agent evaluator
+proofs. The revenue-plan evaluator checks MCP tool discovery, mutation,
+recalculated `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression,
+persistence, and restart readback. The raw MCP challenge remains available as
+`npm run mcp:challenge` when you need the lower-level JSON-RPC transcript.
 
 To add the same agent and MCP proof loop to an existing Node repo without
 replacing its app, run:
 
 ```sh
 npm create @bilig/workpaper@latest . -- --add-agent
-npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
 ```
 

@@ -6,8 +6,9 @@
     "dev": "tsx src/index.ts --serve",
     "smoke": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
-    "agent:verify": "npm run smoke && npm run agent:evaluate",
-    "agent:evaluate": "bilig-evaluate --door agent-mcp --json",
+    "agent:verify": "npm run smoke && npm run agent:evaluate:basic && npm run agent:evaluate",
+    "agent:evaluate": "bilig-evaluate --door agent-mcp --scenario revenue-plan --json",
+    "agent:evaluate:basic": "bilig-evaluate --door agent-mcp --json",
     "mcp:challenge": "bilig-mcp-challenge --json",
     "mcp:server": "bilig-workpaper-mcp --workpaper __WORKPAPER_PATH__ --init-demo-workpaper --writable"
   },

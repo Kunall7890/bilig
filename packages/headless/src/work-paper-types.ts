@@ -273,6 +273,7 @@ export type WorkPaperCellValueDetailedType = WorkPaperCellValueType | 'DATE' | '
 export type WorkPaperFormulaDiagnosticSeverity = 'error' | 'warning' | 'info'
 export type WorkPaperFormulaDiagnosticCode =
   | 'formula-error'
+  | 'provider-backed-adapter-missing'
   | 'financial-invalid-argument'
   | 'financial-invalid-cash-flow'
   | 'financial-unsupported-date-coercion'
@@ -292,6 +293,7 @@ export interface WorkPaperFormulaDiagnostic {
   a1: string
   formula?: string
   functionName?: string
+  adapterSurface?: string
   errorCode?: ErrorCode
   errorText?: string
   references?: string[]

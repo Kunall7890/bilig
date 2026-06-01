@@ -46,7 +46,7 @@ Existing Node project:
 
 ```sh
 npm create @bilig/workpaper@latest . -- --add-agent
-npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
@@ -94,9 +94,11 @@ curl -X POST http://localhost:8788/api/quote/approval \
   instructions, Cursor, Cline, Continue, and Windsurf rules, project-root
   `.mcp.json` for Claude Code, Cursor and VS Code MCP configs, a reusable MCP
   config file, and an `agent:verify` command that runs the service smoke plus
-  the package-owned `bilig-evaluate --door agent-mcp --json` proof. Use
-  `npm run mcp:challenge` only when you need the lower-level JSON-RPC
-  transcript.
+  the package-owned basic and revenue-plan agent evaluator proofs. The
+  revenue-plan evaluator checks MCP tool discovery, mutation, recalculated
+  `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression, persistence, and
+  restart readback. Use `npm run mcp:challenge` only when you need the
+  lower-level JSON-RPC transcript.
 
 ## Source
 

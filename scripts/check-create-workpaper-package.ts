@@ -151,8 +151,22 @@ function assertDocs(): void {
   )
   assert(readme.includes('agent:verify'), 'starter README must document the agent verification script')
   assert(docs.includes('agent:verify'), 'starter docs must document the agent verification script')
-  assert(readme.includes('bilig-evaluate --door agent-mcp --json'), 'starter README must document the canonical agent evaluator command')
-  assert(docs.includes('bilig-evaluate --door agent-mcp --json'), 'starter docs must document the canonical agent evaluator command')
+  assert(
+    readme.includes('bilig-evaluate --door agent-mcp --scenario revenue-plan --json'),
+    'starter README must document the revenue-plan agent evaluator command',
+  )
+  assert(
+    docs.includes('bilig-evaluate --door agent-mcp --scenario revenue-plan --json'),
+    'starter docs must document the revenue-plan agent evaluator command',
+  )
+  assert(
+    readme.includes('SUMIF') && readme.includes('XLOOKUP') && readme.includes('FILTER'),
+    'starter README must disclose the formula families covered by the revenue-plan evaluator',
+  )
+  assert(
+    docs.includes('SUMIF') && docs.includes('XLOOKUP') && docs.includes('FILTER'),
+    'starter docs must disclose the formula families covered by the revenue-plan evaluator',
+  )
   assert(
     readme.includes('npm run mcp:challenge') && readme.includes('lower-level JSON-RPC transcript'),
     'starter README must keep the raw MCP challenge as a diagnostic, not the primary proof',
@@ -240,12 +254,16 @@ function assertGeneratedStarters(): void {
   const agentManifest = readJson(join(agentDir, 'package.json'))
   assert(isRecord(agentManifest.scripts), 'generated agent package scripts must be an object')
   assert(
-    agentManifest.scripts['agent:verify'] === 'npm run smoke && npm run agent:evaluate',
-    'generated agent starter must verify the service smoke and canonical agent evaluator paths',
+    agentManifest.scripts['agent:verify'] === 'npm run smoke && npm run agent:evaluate:basic && npm run agent:evaluate',
+    'generated agent starter must verify the service smoke, basic evaluator, and revenue-plan evaluator paths',
   )
   assert(
-    agentManifest.scripts['agent:evaluate'] === 'bilig-evaluate --door agent-mcp --json',
-    'generated agent starter must expose the canonical agent evaluator script',
+    agentManifest.scripts['agent:evaluate'] === 'bilig-evaluate --door agent-mcp --scenario revenue-plan --json',
+    'generated agent starter must expose the revenue-plan agent evaluator script',
+  )
+  assert(
+    agentManifest.scripts['agent:evaluate:basic'] === 'bilig-evaluate --door agent-mcp --json',
+    'generated agent starter must keep the basic agent evaluator script',
   )
   assert(
     agentManifest.scripts['mcp:challenge'] === 'bilig-mcp-challenge --json',
@@ -276,6 +294,16 @@ function assertGeneratedStarters(): void {
   ]) {
     assert(existsSync(join(agentDir, expected)), `generated agent starter is missing ${expected}`)
   }
+
+  const generatedAgentInstructions = readFileSync(join(agentDir, 'AGENTS.md'), 'utf8')
+  assert(
+    generatedAgentInstructions.includes('set_cell_contents_and_readback'),
+    'generated agent starter must teach the composite MCP edit/readback tool',
+  )
+  assert(
+    generatedAgentInstructions.includes('bilig-evaluate --door agent-mcp --scenario revenue-plan --json'),
+    'generated agent starter must teach the revenue-plan evaluator command',
+  )
 
   for (const expected of ['.mcp.json', '.cursor/mcp.json', '.vscode/mcp.json', 'mcp/bilig-workpaper.mcp.json', 'README.md']) {
     const generatedSource = readFileSync(join(agentDir, expected), 'utf8')

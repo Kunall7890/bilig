@@ -1,4 +1,4 @@
-import { ValueTag, formatCellDisplayValue, formatErrorCode, type ErrorCode, type CellValue } from '@bilig/protocol'
+import { ErrorCode, ValueTag, formatCellDisplayValue, formatErrorCode, type CellValue } from '@bilig/protocol'
 import { excelSerialToDateParts, parseCellAddress, parseFormula, parseRangeAddress, type FormulaNode } from '@bilig/formula'
 import type { WorkPaperCellAddress, WorkPaperCellRange, WorkPaperFormulaDiagnostic } from './work-paper-types.js'
 
@@ -33,6 +33,35 @@ interface ResolvedCells {
 
 type FinanceFunctionName = 'XIRR' | 'XNPV'
 type FinanceCallNode = Extract<FormulaNode, { kind: 'CallExpr' }>
+type ProviderBackedFunctionInfo = {
+  readonly functionName: string
+  readonly adapterSurface: string
+  readonly referenceLabel: string
+}
+
+const providerBackedFunctionInfo = new Map<string, Omit<ProviderBackedFunctionInfo, 'functionName'>>([
+  ['CALL', { adapterSurface: 'add-in', referenceLabel: 'legacy add-in adapter' }],
+  ['COPILOT', { adapterSurface: 'host', referenceLabel: 'host AI adapter' }],
+  ['CUBEKPIMEMBER', { adapterSurface: 'cube', referenceLabel: 'cube data adapter' }],
+  ['CUBEMEMBER', { adapterSurface: 'cube', referenceLabel: 'cube data adapter' }],
+  ['CUBEMEMBERPROPERTY', { adapterSurface: 'cube', referenceLabel: 'cube data adapter' }],
+  ['CUBERANKEDMEMBER', { adapterSurface: 'cube', referenceLabel: 'cube data adapter' }],
+  ['CUBESET', { adapterSurface: 'cube', referenceLabel: 'cube data adapter' }],
+  ['CUBESETCOUNT', { adapterSurface: 'cube', referenceLabel: 'cube data adapter' }],
+  ['CUBEVALUE', { adapterSurface: 'cube', referenceLabel: 'cube data adapter' }],
+  ['DDE', { adapterSurface: 'external-data', referenceLabel: 'external data adapter' }],
+  ['DETECTLANGUAGE', { adapterSurface: 'web', referenceLabel: 'language service adapter' }],
+  ['FILTERXML', { adapterSurface: 'web', referenceLabel: 'XML fetch/parse adapter' }],
+  ['IMAGE', { adapterSurface: 'web', referenceLabel: 'image fetch adapter' }],
+  ['IMPORTRANGE', { adapterSurface: 'web', referenceLabel: 'Google Sheets range adapter' }],
+  ['INFO', { adapterSurface: 'host', referenceLabel: 'host environment adapter' }],
+  ['PY', { adapterSurface: 'python', referenceLabel: 'Python execution adapter' }],
+  ['REGISTER.ID', { adapterSurface: 'add-in', referenceLabel: 'legacy add-in adapter' }],
+  ['RTD', { adapterSurface: 'external-data', referenceLabel: 'real-time data adapter' }],
+  ['STOCKHISTORY', { adapterSurface: 'web', referenceLabel: 'market data adapter' }],
+  ['TRANSLATE', { adapterSurface: 'web', referenceLabel: 'translation service adapter' }],
+  ['WEBSERVICE', { adapterSurface: 'web', referenceLabel: 'web request adapter' }],
+])
 
 function readFinanceFunctionName(callee: string): FinanceFunctionName | undefined {
   const normalized = callee.toUpperCase()
@@ -48,7 +77,10 @@ function isFinanceCall(node: FormulaNode): node is FinanceCallNode {
 
 function buildDiagnostic(
   base: DiagnosticBase,
-  diagnostic: Pick<WorkPaperFormulaDiagnostic, 'code' | 'message'> & { references?: string[] },
+  diagnostic: Pick<WorkPaperFormulaDiagnostic, 'code' | 'message'> & {
+    references?: string[]
+    adapterSurface?: string
+  },
 ): WorkPaperFormulaDiagnostic {
   return {
     severity: 'error',
@@ -61,6 +93,79 @@ function buildDiagnostic(
     ...(base.errorText !== undefined ? { errorText: base.errorText } : {}),
     ...diagnostic,
   }
+}
+
+function providerBackedInfoForName(name: string): ProviderBackedFunctionInfo | undefined {
+  const functionName = name.trim().toUpperCase()
+  const info = providerBackedFunctionInfo.get(functionName)
+  return info ? { functionName, ...info } : undefined
+}
+
+function findProviderBackedFunction(node: FormulaNode): ProviderBackedFunctionInfo | undefined {
+  if (node.kind === 'CallExpr') {
+    const direct = providerBackedInfoForName(node.callee)
+    if (direct) {
+      return direct
+    }
+    for (const arg of node.args) {
+      const nested = findProviderBackedFunction(arg)
+      if (nested) {
+        return nested
+      }
+    }
+    return undefined
+  }
+
+  if (node.kind === 'InvokeExpr') {
+    const callee = findProviderBackedFunction(node.callee)
+    if (callee) {
+      return callee
+    }
+    for (const arg of node.args) {
+      const nested = findProviderBackedFunction(arg)
+      if (nested) {
+        return nested
+      }
+    }
+    return undefined
+  }
+
+  if (node.kind === 'UnaryExpr') {
+    return findProviderBackedFunction(node.argument)
+  }
+
+  if (node.kind === 'BinaryExpr') {
+    return findProviderBackedFunction(node.left) ?? findProviderBackedFunction(node.right)
+  }
+
+  if (node.kind === 'ArrayConstant') {
+    for (const row of node.rows) {
+      for (const entry of row) {
+        const nested = findProviderBackedFunction(entry)
+        if (nested) {
+          return nested
+        }
+      }
+    }
+  }
+
+  return undefined
+}
+
+function diagnoseProviderBackedCall(info: ProviderBackedFunctionInfo, base: DiagnosticBase): WorkPaperFormulaDiagnostic[] {
+  return [
+    buildDiagnostic(
+      {
+        ...base,
+        functionName: info.functionName,
+      },
+      {
+        code: 'provider-backed-adapter-missing',
+        adapterSurface: info.adapterSurface,
+        message: `${info.functionName} is provider-backed and returned ${base.errorText ?? '#BLOCKED!'} because no ${info.referenceLabel} is installed. Install an adapter for ${info.functionName}, provide the imported data as local WorkPaper inputs, or route this workbook through the original provider before treating the cell as verified.`,
+      },
+    ),
+  ]
 }
 
 function displayValue(value: CellValue, format: string | undefined): string {
@@ -378,6 +483,11 @@ export function collectWorkPaperFormulaDiagnostics(
 
   if (isFinanceCall(parsed)) {
     return diagnoseFinanceCall(parsed, base, sheetName, hooks)
+  }
+
+  const providerBacked = value.code === ErrorCode.Blocked ? findProviderBackedFunction(parsed) : undefined
+  if (providerBacked) {
+    return diagnoseProviderBackedCall(providerBacked, base)
   }
 
   return [
