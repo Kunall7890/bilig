@@ -80,7 +80,6 @@ const {
   microsoftGraphExcelRecalculationNode,
   formulaWorkbooksProof,
   showHnFormulaWorkbooksProof,
-  showHnXlsxCacheDoctorProof,
   googleSheetsApiBoundaryDoc,
   npmProvenancePackageTrustDoc,
   xlsxCorpusVerifierWalkthrough,
@@ -382,7 +381,6 @@ requireFormulaProofDiscovery({
   readme,
   requireIncludes,
   showHnFormulaWorkbooksProof,
-  showHnXlsxCacheDoctorProof,
 })
 
 for (const required of [
