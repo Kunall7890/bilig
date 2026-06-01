@@ -59,7 +59,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   const workpaperPackageSpec = '@bilig/workpaper@latest'
   const mcpbReleaseAssetUrl = 'https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb'
   const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
-  const officialRegistryLatestMarkedVersion = headlessPackageVersion
+  const currentWorkpaperPackageVersion = headlessPackageVersion
+  const officialRegistryLatestMarkedVersion = '0.131.2'
   const officialRegistryLatestMarkedUpdatedAt = '2026-06-01T00:56:47.948741Z'
 
   const jekyllConfig = await readFile(join(docsRoot, '_config.yml'), 'utf8')
@@ -503,7 +504,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'https://mcprepository.com/proompteng/bilig',
     'MCPRepository search returns a live Bilig page',
     'Live; `smithery mcp add` smoke connected and listed demo workbook sheets',
-    'Live; latest marker matches',
+    'Live; latest marker currently trails current package',
     `\`${workpaperPackageSpec}\``,
     'Live with `Try in Browser`; file-backed tools indexed with A-grade TDQS',
     'Live in PulseMCP-backed lookup as `Bilig WorkPaper`',
@@ -516,11 +517,11 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'file-backed tools',
     'A-grade Tool Definition Quality',
     "Glama's source crawl, hosted smoke build, and JSON API can refresh on\ndifferent cadences",
-    'Latest checked result on June 1, 2026: Live, and the Registry latest marker',
+    'Latest checked result on June 1, 2026: Live, and the Registry latest marker is live but currently trails',
     'official Registry',
     'latest-marked server `io.github.proompteng/bilig-workpaper`',
     `\`${officialRegistryLatestMarkedVersion}\`, package \`@bilig/workpaper\` is version \`${officialRegistryLatestMarkedVersion}\``,
-    `\`@bilig/workpaper\` is version \`${officialRegistryLatestMarkedVersion}\``,
+    `the current repo package version is \`${currentWorkpaperPackageVersion}\``,
     'entry was',
     `updated at \`${officialRegistryLatestMarkedUpdatedAt}\``,
     'hosted server-card path still advertises remote',
