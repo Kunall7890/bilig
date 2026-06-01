@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.140.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.140.0
+- Manual override: no
+
+## Fixes
+- fix(create-workpaper): align agent verifier with evaluator (ae5cb2e9)
+
 ## 0.140.0
 
 - Release type: minor

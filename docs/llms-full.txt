@@ -375,7 +375,7 @@ mode and let it show stale cached formulas before it blocks anything:
   with:
     workbooks: '**/*.xlsx'
     changed-files-only: 'true'
-    package-version: '0.140.0'
+    package-version: '0.140.1'
     fail-on-stale: 'false'
 ```
 
@@ -872,7 +872,7 @@ matters.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.140.0`:
+Current checked npm footprint for `@bilig/headless@0.140.1`:
 
 - Pack dry run: `821 kB` tarball, `5.03 MB` unpacked, `800` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
@@ -1839,7 +1839,7 @@ jobs:
         with:
           workbooks: '**/*.xlsx'
           changed-files-only: 'true'
-          package-version: '0.140.0'
+          package-version: '0.140.1'
           json-output: ${{ runner.temp }}/xlsx-cache-doctor.json
           markdown-output: ${{ runner.temp }}/xlsx-cache-doctor.md
           fail-on-stale: 'false'
@@ -1898,7 +1898,7 @@ workflow after you test the example:
 ```yaml
 - uses: proompteng/bilig@<full-commit-sha>
   with:
-    package-version: '0.140.0'
+    package-version: '0.140.1'
 ```
 
 Pin both values in production. The Action ref pins the wrapper scripts;
@@ -1915,7 +1915,7 @@ a write token.
 | `workbook`           |         | Path to one workbook to inspect. Kept for existing copied workflows.              |
 | `workbooks`          |         | Glob, comma list, or newline list of XLSX workbooks to inspect.                   |
 | `changed-files-only` | `false` | Only inspect matched XLSX files changed in the pull request or current git diff.  |
-| `package-version`    | 0.140.0 | npm version or dist-tag for `@bilig/xlsx-formula-recalc`. Pin this in production. |
+| `package-version`    | 0.140.1 | npm version or dist-tag for `@bilig/xlsx-formula-recalc`. Pin this in production. |
 | `inspect-limit`      | `all`   | Formula cells to recompute during inspection. Use `all` or a positive integer.    |
 | `json-output`        |         | Optional path for the JSON report.                                                |
 | `markdown-output`    |         | Optional path for the Markdown report.                                            |
@@ -2206,8 +2206,8 @@ The exact values can change, but the evaluator result should look like this:
   "door": "agent-mcp",
   "verified": true,
   "packageVersions": {
-    "@bilig/workpaper": "0.140.0",
-    "xlsx-formula-recalc": "0.140.0"
+    "@bilig/workpaper": "0.140.1",
+    "xlsx-formula-recalc": "0.140.1"
   },
   "evidence": {
     "editedCell": "Inputs!B3",
@@ -2291,8 +2291,8 @@ The evaluator prints this shape:
   "doorName": "Agent MCP proof",
   "verified": true,
   "packageVersions": {
-    "@bilig/workpaper": "0.140.0",
-    "xlsx-formula-recalc": "0.140.0"
+    "@bilig/workpaper": "0.140.1",
+    "xlsx-formula-recalc": "0.140.1"
   },
   "evidence": {
     "editedCell": "Inputs!B3",
@@ -9417,7 +9417,7 @@ the Markdown output into the fixture form. It reads the file on your machine and
 does not upload workbook contents.
 
 ```sh
-npm exec --package @bilig/headless@0.140.0 -- bilig-formula-clinic ./reduced.xlsx \
+npm exec --package @bilig/headless@0.140.1 -- bilig-formula-clinic ./reduced.xlsx \
   --cells "Summary!B7,Inputs!B2"
 ```
 
