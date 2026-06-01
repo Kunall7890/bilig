@@ -302,6 +302,7 @@ describe('text builtins', () => {
 
   it('supports REGEXTEST, REGEXREPLACE, and REGEXEXTRACT modes', () => {
     const REGEXTEST = getTextBuiltin('REGEXTEST')!
+    const REGEXMATCH = getTextBuiltin('REGEXMATCH')!
     const REGEXREPLACE = getTextBuiltin('REGEXREPLACE')!
     const REGEXEXTRACT = getTextBuiltin('REGEXEXTRACT')!
 
@@ -312,6 +313,10 @@ describe('text builtins', () => {
     expect(REGEXTEST(text('Alpha-42'), text('^[a-z]+-[0-9]+$'))).toEqual({
       tag: ValueTag.Boolean,
       value: false,
+    })
+    expect(REGEXMATCH(text('Alpha-42'), text('[a-z]+-[0-9]+'), number(1))).toEqual({
+      tag: ValueTag.Boolean,
+      value: true,
     })
 
     expect(REGEXREPLACE(text('a1 b2 c3'), text('[0-9]'), text('X'))).toEqual(text('aX bX cX'))
@@ -349,6 +354,7 @@ describe('text builtins', () => {
   it('covers remaining VALUETOTEXT and regex validation branches', () => {
     const VALUETOTEXT = getTextBuiltin('VALUETOTEXT')!
     const REGEXTEST = getTextBuiltin('REGEXTEST')!
+    const REGEXMATCH = getTextBuiltin('REGEXMATCH')!
     const REGEXREPLACE = getTextBuiltin('REGEXREPLACE')!
     const REGEXEXTRACT = getTextBuiltin('REGEXEXTRACT')!
 
@@ -358,6 +364,7 @@ describe('text builtins', () => {
     expect(REGEXTEST()).toEqual(valueError())
     expect(REGEXTEST(text('abc'), text('a'), number(2))).toEqual(valueError())
     expect(REGEXTEST(err(ErrorCode.Ref), text('a'))).toEqual(err(ErrorCode.Ref))
+    expect(REGEXMATCH(text('abc'), text('('))).toEqual(valueError())
 
     expect(REGEXREPLACE()).toEqual(valueError())
     expect(REGEXREPLACE(err(ErrorCode.Ref), text('a'), text('x'))).toEqual(err(ErrorCode.Ref))

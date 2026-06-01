@@ -445,7 +445,7 @@ async function renderInventoryDoc(source: FormulaInventorySource): Promise<strin
   - https://docs.oasis-open.org/office/OpenDocument/v1.4/os/v1.4-os.html
 - Microsoft Office Excel functions by category:
   - https://support.microsoft.com/en-us/office/excel-functions-by-category-5f91f4e9-7b42-46d2-9bd1-63f26a86c0eb
-- Scope: ODF mandatory functions + Office by-category function list (merged into one list).
+- Scope: ODF mandatory functions + Office by-category function list, plus tracked compatibility aliases.
 
 ## Coverage Summary
 - Unified function count: **${source.entries.length}**

@@ -1987,6 +1987,11 @@
       "inOfficeList": true
     },
     {
+      "name": "REGEXMATCH",
+      "odfStatus": "Google Sheets compatibility alias",
+      "inOfficeList": false
+    },
+    {
       "name": "REGEXREPLACE",
       "odfStatus": "Not in ODF 1.4 mandatory",
       "inOfficeList": true

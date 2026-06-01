@@ -2,17 +2,17 @@
 // Source: scripts/gen-formula-inventory.ts
 
 export const formulaInventorySummary = {
-  total: 530,
+  total: 531,
   odfMandatory: 59,
   officeListed: 513,
   officeListedRegisteredInCodebase: 513,
   overlap: 58,
   odfOnly: 1,
   officeOnly: 455,
-  registeredInCodebase: 530,
+  registeredInCodebase: 531,
   missingInCodebase: 0,
   placeholders: 0,
-  protocolBuiltins: 511,
+  protocolBuiltins: 512,
   runtimeRegisteredMissingProtocol: 0,
 } as const
 
@@ -5569,6 +5569,20 @@ export const formulaInventory = [
     runtimeStatus: 'implemented',
     protocolId: 503,
     protocolName: 'REGEXEXTRACT',
+    protocolSupportsWasm: false,
+    jsStatus: 'implemented',
+    wasmStatus: 'not-started',
+    placeholder: false,
+    registeredInCodebase: true,
+  },
+  {
+    name: 'REGEXMATCH',
+    odfStatus: 'Google Sheets compatibility alias',
+    inOfficeList: false,
+    deterministic: 'deterministic',
+    runtimeStatus: 'implemented',
+    protocolId: 522,
+    protocolName: 'REGEXMATCH',
     protocolSupportsWasm: false,
     jsStatus: 'implemented',
     wasmStatus: 'not-started',

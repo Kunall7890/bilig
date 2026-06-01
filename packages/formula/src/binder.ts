@@ -358,6 +358,7 @@ export function encodeBuiltin(name: string): BuiltinId {
     TEXTAFTER: BuiltinId.Textafter,
     TEXTJOIN: BuiltinId.Textjoin,
     TEXTSPLIT: BuiltinId.Textsplit,
+    REGEXMATCH: BuiltinId.Regexmatch,
     TEXT: BuiltinId.Text,
     PHONETIC: BuiltinId.Phonetic,
     NUMBERVALUE: BuiltinId.Numbervalue,

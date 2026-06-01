@@ -1210,6 +1210,10 @@ describe('formula builtins and JS evaluator', () => {
       tag: ValueTag.Boolean,
       value: true,
     })
+    expect(evaluateAst(parseFormula('REGEXMATCH("Alpha-42","[a-z]+-[0-9]+",1)'), context)).toEqual({
+      tag: ValueTag.Boolean,
+      value: true,
+    })
     expect(evaluateAst(parseFormula('REGEXREPLACE("abc123","([a-z]+)([0-9]+)","$2-$1")'), context)).toEqual({
       tag: ValueTag.String,
       value: '123-abc',

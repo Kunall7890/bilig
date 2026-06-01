@@ -184,6 +184,26 @@ function findPosition(
 }
 
 export function createTextSearchBuiltins(deps: TextSearchBuiltinDeps): Record<string, TextBuiltin> {
+  const regexTestBuiltin: TextBuiltin = (...args) => {
+    const existingError = deps.firstError(args)
+    if (existingError) {
+      return existingError
+    }
+    const [textValue, patternValue, caseSensitivityValue] = args
+    if (textValue === undefined || patternValue === undefined) {
+      return deps.error(ErrorCode.Value)
+    }
+    const caseSensitivity = deps.coerceInteger(caseSensitivityValue, 0)
+    if (deps.isErrorValue(caseSensitivity) || (caseSensitivity !== 0 && caseSensitivity !== 1)) {
+      return deps.error(ErrorCode.Value)
+    }
+    const regex = compileRegex(deps.coerceText(patternValue), caseSensitivity)
+    if (isRegexError(regex)) {
+      return regex
+    }
+    return deps.booleanResult(regex.test(deps.coerceText(textValue)))
+  }
+
   return {
     FIND: (...args) => {
       const existingError = deps.firstError(args)
@@ -266,25 +286,8 @@ export function createTextSearchBuiltins(deps: TextSearchBuiltinDeps): Record<st
       const found = deps.findSubBytes(withinBytes, findBytes, start - 1)
       return found === -1 ? deps.error(ErrorCode.Value) : deps.numberResult(found + 1)
     },
-    REGEXTEST: (...args) => {
-      const existingError = deps.firstError(args)
-      if (existingError) {
-        return existingError
-      }
-      const [textValue, patternValue, caseSensitivityValue] = args
-      if (textValue === undefined || patternValue === undefined) {
-        return deps.error(ErrorCode.Value)
-      }
-      const caseSensitivity = deps.coerceInteger(caseSensitivityValue, 0)
-      if (deps.isErrorValue(caseSensitivity) || (caseSensitivity !== 0 && caseSensitivity !== 1)) {
-        return deps.error(ErrorCode.Value)
-      }
-      const regex = compileRegex(deps.coerceText(patternValue), caseSensitivity)
-      if (isRegexError(regex)) {
-        return regex
-      }
-      return deps.booleanResult(regex.test(deps.coerceText(textValue)))
-    },
+    REGEXTEST: regexTestBuiltin,
+    REGEXMATCH: regexTestBuiltin,
     REGEXREPLACE: (...args) => {
       const existingError = deps.firstError(args)
       if (existingError) {

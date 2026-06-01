@@ -131,6 +131,7 @@ describe('formula', () => {
     expect(compileFormula('LOWER(A1)').mode).toBe(1)
     expect(compileFormula('FIND("a",A1)').mode).toBe(1)
     expect(compileFormula('SEARCH("a",A1)').mode).toBe(1)
+    expect(compileFormula('REGEXMATCH(A1,"[0-9]+")').mode).toBe(0)
     expect(compileFormula('REPLACE(A1,2,3,"x")').mode).toBe(1)
     expect(compileFormula('SUBSTITUTE(A1,"a","b")').mode).toBe(1)
     expect(compileFormula('REPT(A1,3)').mode).toBe(1)

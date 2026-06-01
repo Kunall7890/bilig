@@ -89,6 +89,7 @@ describe('formula inventory', () => {
       'MULTINOMIAL',
       'PERCENTOF',
       'PROPER',
+      'REGEXMATCH',
       'REGEXTEST',
       'ROMAN',
       'SKEWP',

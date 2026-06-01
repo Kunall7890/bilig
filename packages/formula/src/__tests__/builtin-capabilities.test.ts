@@ -382,6 +382,11 @@ describe('builtin capabilities', () => {
       wasmStatus: 'production',
       needsArrayRuntime: true,
     })
+    expect(getBuiltinCapability('REGEXMATCH')).toMatchObject({
+      category: 'text',
+      jsStatus: 'implemented',
+      wasmStatus: 'not-started',
+    })
     expect(getBuiltinCapability('DATEDIF')).toMatchObject({
       category: 'date-time',
       jsStatus: 'implemented',

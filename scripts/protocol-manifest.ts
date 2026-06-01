@@ -573,6 +573,7 @@ export const enumManifest: ProtocolEnumManifest = {
     ['Islogical', 519],
     ['Isna', 520],
     ['Isnontext', 521],
+    ['Regexmatch', 522],
   ],
 }
 

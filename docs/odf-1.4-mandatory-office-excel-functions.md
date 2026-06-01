@@ -8,10 +8,10 @@
   - https://docs.oasis-open.org/office/OpenDocument/v1.4/os/v1.4-os.html
 - Microsoft Office Excel functions by category:
   - https://support.microsoft.com/en-us/office/excel-functions-by-category-5f91f4e9-7b42-46d2-9bd1-63f26a86c0eb
-- Scope: ODF mandatory functions + Office by-category function list (merged into one list).
+- Scope: ODF mandatory functions + Office by-category function list, plus tracked compatibility aliases.
 
 ## Coverage Summary
-- Unified function count: **530**
+- Unified function count: **531**
 - ODF mandatory function count: **59**
 - Office function count (cleaned scrape): **513**
 - Overlap (present in both): **58**
@@ -19,7 +19,7 @@
 - Office-only (not in ODF 1.4 mandatory): **455**
 
 ## Current code coverage snapshot
-- Registered in codebase: **530**
+- Registered in codebase: **531**
 - Not yet registered in codebase: **0**
 - Placeholder-backed registrations: **0**
 - The "Implemented in codebase" column reflects runtime registration, including blocked placeholder registrations.
@@ -425,6 +425,7 @@
 | RECEIVED | Placeholder (blocked) | Yes | Yes |
 | REDUCE | Not in ODF 1.4 mandatory | Yes | Yes |
 | REGEXEXTRACT | Not in ODF 1.4 mandatory | Yes | Yes |
+| REGEXMATCH | Google Sheets compatibility alias | No | Yes |
 | REGEXREPLACE | Not in ODF 1.4 mandatory | Yes | Yes |
 | REGEXTEST | Not in ODF 1.4 mandatory | Yes | Yes |
 | REGISTER.ID | Not in ODF 1.4 mandatory | Yes | Yes |

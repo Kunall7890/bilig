@@ -506,6 +506,7 @@ export const builtinManifest: readonly ProtocolBuiltinManifestEntry[] = [
   { id: 'Regexextract', name: 'REGEXEXTRACT', supportsWasm: false },
   { id: 'Regexreplace', name: 'REGEXREPLACE', supportsWasm: false },
   { id: 'Regextest', name: 'REGEXTEST', supportsWasm: false },
+  { id: 'Regexmatch', name: 'REGEXMATCH', supportsWasm: false },
   { id: 'Roman', name: 'ROMAN', supportsWasm: false },
   { id: 'Row', name: 'ROW', supportsWasm: false },
   { id: 'Scan', name: 'SCAN', supportsWasm: false },

@@ -539,6 +539,7 @@ const textBuiltinNames = new Set([
   'VALUETOTEXT',
   'DOLLAR',
   'ARRAYTOTEXT',
+  'REGEXMATCH',
 ])
 const dateTimeBuiltinNames = new Set([
   'DATE',

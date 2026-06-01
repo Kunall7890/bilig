@@ -541,6 +541,7 @@ export const BUILTINS: BuiltinDescriptor[] = [
   { id: BuiltinId.Regexextract, name: "REGEXEXTRACT", supportsWasm: false },
   { id: BuiltinId.Regexreplace, name: "REGEXREPLACE", supportsWasm: false },
   { id: BuiltinId.Regextest, name: "REGEXTEST", supportsWasm: false },
+  { id: BuiltinId.Regexmatch, name: "REGEXMATCH", supportsWasm: false },
   { id: BuiltinId.Roman, name: "ROMAN", supportsWasm: false },
   { id: BuiltinId.Row, name: "ROW", supportsWasm: false },
   { id: BuiltinId.Scan, name: "SCAN", supportsWasm: false },
