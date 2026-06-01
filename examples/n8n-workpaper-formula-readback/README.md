@@ -13,15 +13,36 @@ The workflow uses only built-in n8n nodes:
 - HTTP Request
 - Code
 
-If you want a native node instead, `@bilig/n8n-nodes-workpaper` is verified on
-n8n Cloud and can be added from the canvas by searching for `Bilig WorkPaper`.
+If you want a native node instead, install the scoped community node package
+`@bilig/n8n-nodes-workpaper` in self-hosted n8n. n8n Cloud canvas installation
+depends on n8n accepting the package through verified-node review.
 
-There are two importable workflow files:
+There are three importable workflow files:
 
-| File | Default endpoint | Use it when |
-| --- | --- | --- |
-| `bilig-workpaper-formula-readback.n8n.json` | `https://bilig.proompteng.ai` | You want the fastest hosted demo before deploying anything. |
+| File                                                    | Default endpoint                                                 | Use it when                                                                                |
+| ------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `bilig-workpaper-native-node.n8n.json`                  | `https://bilig.proompteng.ai`                                    | You want to test the actual Bilig WorkPaper community node after installing it.            |
+| `bilig-workpaper-formula-readback.n8n.json`             | `https://bilig.proompteng.ai`                                    | You want the fastest hosted demo before deploying anything.                                |
 | `bilig-workpaper-formula-readback.self-hosted.n8n.json` | `http://host.docker.internal:4321`, then `http://localhost:4321` | You want the formula readback step to stay inside your own local or self-hosted Bilig app. |
+
+## Native community node
+
+Install the package in self-hosted n8n:
+
+```text
+@bilig/n8n-nodes-workpaper
+```
+
+Then import:
+
+```text
+bilig-workpaper-native-node.n8n.json
+```
+
+That workflow uses the actual Bilig WorkPaper node twice: first for the hosted
+forecast smoke test, then for a caller-owned WorkPaper JSON document. The final
+Code nodes assert `verified: true`, changed formula output, persisted formulas,
+and restored JSON readback.
 
 The hosted workflow calls this public demo endpoint:
 
@@ -64,9 +85,10 @@ review path.
 
 1. Open n8n.
 2. Choose Import from File.
-3. Select `bilig-workpaper-formula-readback.n8n.json` for the hosted demo or
-   `bilig-workpaper-formula-readback.self-hosted.n8n.json` for a local Bilig
-   route.
+3. Select `bilig-workpaper-native-node.n8n.json` after installing the community
+   node, `bilig-workpaper-formula-readback.n8n.json` for the hosted built-in
+   node demo, or `bilig-workpaper-formula-readback.self-hosted.n8n.json` for a
+   local Bilig route.
 4. Run the workflow manually.
 
 n8n documents workflow import/export as JSON:
@@ -125,6 +147,6 @@ setting and the module must be available to the n8n runtime. The workflow here
 avoids that Code-node module setup by keeping the workbook runtime behind one
 HTTP step.
 
-This is intentionally not a custom n8n node yet. It is the smallest reproducible
-workflow that proves the formula-workbook value path in n8n before asking users
-to install anything.
+Use the native community-node workflow when you want the n8n node UX. Use the
+built-in HTTP workflow when you need a no-install proof before adding community
+nodes to the instance.

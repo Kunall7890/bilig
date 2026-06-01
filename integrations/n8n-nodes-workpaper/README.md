@@ -7,7 +7,7 @@ community-package scanner. Install it in self-hosted n8n today; n8n Cloud canvas
 installation depends on n8n accepting the package through their verified-node
 review.
 
-It gives an n8n workflow two spreadsheet-shaped operations:
+It gives an n8n workflow two spreadsheet-shaped resources:
 
 1. run the hosted forecast proof for a no-setup smoke test;
 2. send your own WorkPaper JSON document, apply cell edits, and read formula
@@ -158,6 +158,15 @@ For a no-install workflow, see:
 ```text
 examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json
 ```
+
+After installing this community node, import the native node workflow:
+
+```text
+examples/n8n-workpaper-formula-readback/bilig-workpaper-native-node.n8n.json
+```
+
+That workflow runs both the forecast smoke test and the generic WorkPaper JSON
+operation through the actual Bilig WorkPaper node.
 
 ## Resources
 

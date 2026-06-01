@@ -47,16 +47,27 @@ POST /api/workpaper/n8n/evaluate
 Use it when the workflow already owns the workbook model and needs the next n8n
 node to receive both formula readback proof and the updated WorkPaper JSON.
 
+Import this workflow after installing the community node:
+
+```text
+examples/n8n-workpaper-formula-readback/bilig-workpaper-native-node.n8n.json
+```
+
+It uses the actual `Bilig WorkPaper` node twice: `Forecast` -> `Verify Formula
+Readback` for the hosted smoke test, then `WorkPaper JSON` -> `Evaluate
+Document` for caller-owned workbook state.
+
 ## Importable Workflow
 
 The example workflows live in:
 
 ```text
+examples/n8n-workpaper-formula-readback/bilig-workpaper-native-node.n8n.json
 examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json
 examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.self-hosted.n8n.json
 ```
 
-It uses only built-in n8n nodes:
+The built-in workflow uses only standard n8n nodes:
 
 - Manual Trigger
 - Code

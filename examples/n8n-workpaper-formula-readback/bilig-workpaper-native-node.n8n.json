@@ -1,0 +1,148 @@
+{
+  "name": "Bilig WorkPaper native community node",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "eca5ed7c-27cf-4241-a6d9-8d428d3371a2",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "resource": "forecast",
+        "operation": "verifyReadback",
+        "baseUrl": "https://bilig.proompteng.ai",
+        "sheetName": "Inputs",
+        "address": "B3",
+        "value": 0.4
+      },
+      "id": "231313ef-cb57-436f-b0b9-f0a2fee1efd8",
+      "name": "Verify forecast formula",
+      "type": "@bilig/n8n-nodes-workpaper.biligWorkpaper",
+      "typeVersion": 1,
+      "position": [280, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const proof = $input.first().json;\n\nif (proof.verified !== true) {\n  throw new Error(`Bilig forecast proof did not verify: ${JSON.stringify(proof)}`);\n}\n\nif (proof.editedCell !== 'Inputs!B3') {\n  throw new Error(`Expected Inputs!B3, received ${proof.editedCell}`);\n}\n\nif (!proof.checks?.formulasPersisted || !proof.checks?.restoredMatchesAfter || !proof.checks?.computedOutputChanged) {\n  throw new Error(`Formula proof checks failed: ${JSON.stringify(proof.checks)}`);\n}\n\nreturn [\n  {\n    json: {\n      verdict: 'verified',\n      operation: 'forecast',\n      editedCell: proof.editedCell,\n      beforeExpectedArr: proof.before.expectedArr,\n      afterExpectedArr: proof.after.expectedArr,\n      targetGap: proof.after.targetGap,\n      checks: proof.checks\n    }\n  }\n];"
+      },
+      "id": "1740f50e-f3d0-4131-8f6e-e54bbc5efa8c",
+      "name": "Check forecast proof",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 0]
+    },
+    {
+      "parameters": {
+        "resource": "workpaper",
+        "operation": "evaluateDocument",
+        "baseUrl": "https://bilig.proompteng.ai",
+        "document": "{\"format\":\"bilig.headless.work-paper.document.v1\",\"sheets\":[{\"name\":\"Inputs\",\"content\":[[\"Metric\",\"Value\"],[\"Win rate\",0.25]]},{\"name\":\"Summary\",\"content\":[[\"Metric\",\"Value\"],[\"Expected customers\",\"=Inputs!B2*20\"]]}],\"namedExpressions\":[]}",
+        "edits": "[{\"cell\":\"Inputs!B2\",\"value\":0.4}]",
+        "readCells": "Summary!B2",
+        "includeUpdatedDocument": true
+      },
+      "id": "929ba286-a3c7-4224-b548-deaf1dff1075",
+      "name": "Evaluate WorkPaper JSON",
+      "type": "@bilig/n8n-nodes-workpaper.biligWorkpaper",
+      "typeVersion": 1,
+      "position": [840, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const proof = $input.first().json;\n\nif (proof.verified !== true) {\n  throw new Error(`Bilig WorkPaper JSON proof did not verify: ${JSON.stringify(proof)}`);\n}\n\nconst after = proof.readback?.after?.find((cell) => cell.cell === 'Summary!B2');\nif (!after || after.displayValue !== '8') {\n  throw new Error(`Expected Summary!B2 to recalculate to 8, received ${JSON.stringify(proof.readback?.after)}`);\n}\n\nif (!proof.checks?.formulasPersisted || !proof.checks?.restoredMatchesAfter || !proof.checks?.computedOutputChanged) {\n  throw new Error(`Formula proof checks failed: ${JSON.stringify(proof.checks)}`);\n}\n\nif (proof.updatedDocument?.format !== 'bilig.headless.work-paper.document.v1') {\n  throw new Error('Expected updated WorkPaper JSON document in the response');\n}\n\nreturn [\n  {\n    json: {\n      verdict: 'verified',\n      operation: 'workpaper-json',\n      editedCell: proof.editedCells[0].cell,\n      readbackCell: after.cell,\n      afterDisplayValue: after.displayValue,\n      updatedDocumentFormat: proof.updatedDocument.format,\n      checks: proof.checks\n    }\n  }\n];"
+      },
+      "id": "999d9f35-0d8e-4f89-a03a-329a37915407",
+      "name": "Check WorkPaper JSON proof",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 0]
+    },
+    {
+      "parameters": {
+        "content": "## Native Bilig WorkPaper node\n\nInstall `@bilig/n8n-nodes-workpaper` from self-hosted n8n Community nodes, then import this workflow to test the actual community node.\n\nIt runs the hosted forecast smoke test and then evaluates a caller-owned WorkPaper JSON document.",
+        "height": 300,
+        "width": 420,
+        "color": 4
+      },
+      "id": "e4ee59c2-32a5-4836-b42a-55cfe2a36574",
+      "name": "Community node setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [240, -360]
+    },
+    {
+      "parameters": {
+        "content": "## Production boundary\n\nThe default base URL points at Bilig's public demo endpoint. For private workbook data, run Bilig inside your network and change `Bilig Base URL` on both Bilig WorkPaper nodes.",
+        "height": 240,
+        "width": 420,
+        "color": 5
+      },
+      "id": "38145c5c-8bb0-49f6-8f0f-25cb2dc708a4",
+      "name": "Private data boundary",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [800, -340]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Verify forecast formula",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify forecast formula": {
+      "main": [
+        [
+          {
+            "node": "Check forecast proof",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check forecast proof": {
+      "main": [
+        [
+          {
+            "node": "Evaluate WorkPaper JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate WorkPaper JSON": {
+      "main": [
+        [
+          {
+            "node": "Check WorkPaper JSON proof",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "da5e79da-fd64-414b-a232-7d091f99e8bd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "id": "BiligWorkPaperNativeCommunityNode",
+  "tags": []
+}
