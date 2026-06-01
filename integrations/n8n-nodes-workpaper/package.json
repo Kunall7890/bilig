@@ -1,6 +1,6 @@
 {
   "name": "@bilig/n8n-nodes-workpaper",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "n8n community node for Bilig WorkPaper formula readback.",
   "keywords": [
     "agent-tools",

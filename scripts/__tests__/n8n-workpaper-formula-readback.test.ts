@@ -109,17 +109,22 @@ describe('n8n WorkPaper formula readback workflow', () => {
 
   it('keeps the community-node package metadata aligned with n8n install expectations', () => {
     const packageJson = readJsonRecord(join(n8nNodeDir, 'package.json'))
+    const codexJson = readJsonRecord(join(n8nNodeDir, 'nodes', 'Workpaper', 'BiligWorkpaper.node.json'))
+    const nodeSource = readFileSync(join(n8nNodeDir, 'nodes', 'Workpaper', 'BiligWorkpaper.node.ts'), 'utf8')
+    const packageName = readRequiredString(packageJson['name'], 'package name')
     const keywords = readStringArray(packageJson['keywords'], 'package keywords')
     const n8n = readRecord(packageJson['n8n'], 'package n8n metadata')
     const peerDependencies = readRecord(packageJson['peerDependencies'], 'package peerDependencies')
 
-    expect(packageJson['name']).toBe('@bilig/n8n-nodes-workpaper')
+    expect(packageName).toBe('@bilig/n8n-nodes-workpaper')
     expect(packageJson['license']).toBe('MIT')
     expect(packageJson['dependencies']).toBeUndefined()
     expect(keywords).toContain('n8n-community-node-package')
     expect(n8n['strict']).toBe(true)
     expect(n8n['credentials']).toEqual([])
     expect(n8n['nodes']).toEqual(['dist/nodes/Workpaper/BiligWorkpaper.node.js'])
+    expect(nodeSource).toContain("name: 'biligWorkpaper'")
+    expect(codexJson['node']).toBe(`${packageName}.biligWorkpaper`)
     expect(peerDependencies['n8n-workflow']).toBe('*')
   })
 
@@ -295,6 +300,13 @@ function readRecord(value: unknown, context: string): Record<string, unknown> {
 
 function readJsonRecord(filePath: string): Record<string, unknown> {
   return readRecord(JSON.parse(readFileSync(filePath, 'utf8')), filePath)
+}
+
+function readRequiredString(value: unknown, context: string): string {
+  if (typeof value !== 'string') {
+    throw new Error(`${context} must be a string`)
+  }
+  return value
 }
 
 function readStringArray(value: unknown, context: string): string[] {

@@ -1,5 +1,5 @@
 {
-  "node": "@bilig/n8n-nodes-workpaper",
+  "node": "@bilig/n8n-nodes-workpaper.biligWorkpaper",
   "nodeVersion": "1.0",
   "codexVersion": "1.0",
   "categories": ["Development"],
