@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.141.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.140.1
+- Manual override: no
+
+## Features
+- feat(formula): add provider-backed IMPORTRANGE (ec7be9f2)
+
 ## 0.140.1
 
 - Release type: patch

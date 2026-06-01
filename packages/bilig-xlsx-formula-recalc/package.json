@@ -1,6 +1,6 @@
 {
   "name": "@bilig/xlsx-formula-recalc",
-  "version": "0.140.1",
+  "version": "0.141.0",
   "description": "Diagnose stale cached XLSX formula values and recalculate XLSX formulas in Node.js without Excel, LibreOffice, or browser automation.",
   "keywords": [
     "bilig",
