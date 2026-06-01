@@ -11,15 +11,15 @@
 - Scope: ODF mandatory functions + Office by-category function list, plus tracked compatibility aliases.
 
 ## Coverage Summary
-- Unified function count: **533**
+- Unified function count: **534**
 - ODF mandatory function count: **59**
-- Office function count (cleaned scrape): **518**
+- Office function count (cleaned scrape): **519**
 - Overlap (present in both): **58**
 - ODF-only (mandatory, not listed by Office): **1**
-- Office-only (not in ODF 1.4 mandatory): **460**
+- Office-only (not in ODF 1.4 mandatory): **461**
 
 ## Current code coverage snapshot
-- Registered in codebase: **533**
+- Registered in codebase: **534**
 - Not yet registered in codebase: **0**
 - Placeholder-backed registrations: **0**
 - The "Implemented in codebase" column reflects runtime registration, including blocked placeholder registrations.
@@ -411,6 +411,7 @@
 | PRODUCT | Not in ODF 1.4 mandatory | Yes | Yes |
 | PROPER | Not in ODF 1.4 mandatory | Yes | Yes |
 | PV | Not in ODF 1.4 mandatory | Yes | Yes |
+| PY | Not in ODF 1.4 mandatory | Yes | Yes |
 | QUARTILE | Placeholder (blocked) | Yes | Yes |
 | QUARTILE.EXC | Not in ODF 1.4 mandatory | Yes | Yes |
 | QUARTILE.INC | Not in ODF 1.4 mandatory | Yes | Yes |

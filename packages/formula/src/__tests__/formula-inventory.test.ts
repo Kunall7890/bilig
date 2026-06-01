@@ -35,6 +35,7 @@ describe('formula inventory', () => {
     const sumEntry = formulaInventory.find((entry) => entry.name === 'SUM')
     const copilotEntry = formulaInventory.find((entry) => entry.name === 'COPILOT')
     const imageEntry = formulaInventory.find((entry) => entry.name === 'IMAGE')
+    const pyEntry = formulaInventory.find((entry) => entry.name === 'PY')
     const iserrorEntry = formulaInventory.find((entry) => entry.name === 'ISERROR')
 
     expect(letEntry).toMatchObject({
@@ -68,6 +69,14 @@ describe('formula inventory', () => {
     expect(imageEntry).toMatchObject({
       deterministic: 'provider-backed',
       protocolId: undefined,
+    })
+    expect(pyEntry).toMatchObject({
+      inOfficeList: true,
+      deterministic: 'provider-backed',
+      protocolId: undefined,
+      runtimeStatus: 'implemented',
+      placeholder: false,
+      registeredInCodebase: true,
     })
   })
 

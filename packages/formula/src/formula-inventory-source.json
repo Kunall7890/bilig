@@ -1917,6 +1917,11 @@
       "inOfficeList": true
     },
     {
+      "name": "PY",
+      "odfStatus": "Not in ODF 1.4 mandatory",
+      "inOfficeList": true
+    },
+    {
       "name": "QUARTILE",
       "odfStatus": "Placeholder (blocked)",
       "inOfficeList": true

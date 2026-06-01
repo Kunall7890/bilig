@@ -95,6 +95,7 @@ const providerBackedNames = new Set([
   'HYPERLINK',
   'IMAGE',
   'INFO',
+  'PY',
   'REGISTER.ID',
   'RTD',
   'STOCKHISTORY',

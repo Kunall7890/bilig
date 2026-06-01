@@ -2,7 +2,7 @@ import type { CellValue } from '@bilig/protocol'
 import type { EvaluationResult } from './runtime-values.js'
 import { normalizeFormulaFunctionName } from './function-name-normalization.js'
 
-export const externalFunctionSurfaces = ['cube', 'web', 'host', 'external-data', 'add-in'] as const
+export const externalFunctionSurfaces = ['cube', 'web', 'host', 'external-data', 'add-in', 'python'] as const
 
 export type ExternalFunctionSurface = (typeof externalFunctionSurfaces)[number]
 

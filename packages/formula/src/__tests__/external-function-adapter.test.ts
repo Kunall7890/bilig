@@ -51,4 +51,22 @@ describe('external function adapter registry', () => {
     expect(listExternalFunctionAdapterSurfaces()).toEqual([])
     expect(getExternalScalarFunction('WEBVALUE')).toBeUndefined()
   })
+
+  it('allows Python-in-Excel adapters to own PY evaluation explicitly', () => {
+    const python = vi.fn(() => ({ tag: ValueTag.String, value: 'python-result', stringId: 0 }))
+
+    installExternalFunctionAdapter({
+      surface: 'python',
+      resolveFunction(name) {
+        if (name === 'PY') {
+          return { kind: 'scalar', implementation: python }
+        }
+        return undefined
+      },
+    })
+
+    expect(listExternalFunctionAdapterSurfaces()).toEqual(['python'])
+    expect(hasExternalFunction('py')).toBe(true)
+    expect(getExternalScalarFunction('PY')).toBe(python)
+  })
 })

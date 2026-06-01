@@ -403,6 +403,7 @@ const externalScalarBuiltinNames = [
   'HYPERLINK',
   'IMAGE',
   'INFO',
+  'PY',
   'REGISTER.ID',
   'RTD',
   'TRANSLATE',

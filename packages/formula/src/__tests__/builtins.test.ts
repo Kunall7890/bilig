@@ -5702,6 +5702,7 @@ describe('formula builtins', () => {
     const HYPERLINK = getBuiltin('HYPERLINK')!
     const DDE = getBuiltin('DDE')!
     const INFO = getBuiltin('INFO')!
+    const PY = getBuiltin('PY')!
     const REGISTER_ID = getBuiltin('REGISTER.ID')!
     const FILTERXML = getLookupBuiltin('FILTERXML')!
     const STOCKHISTORY = getLookupBuiltin('STOCKHISTORY')!
@@ -5729,6 +5730,7 @@ describe('formula builtins', () => {
       code: ErrorCode.Blocked,
     })
     expect(INFO(hello)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Blocked })
+    expect(PY(hello)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Blocked })
     expect(REGISTER_ID(hello, sourceLang)).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Blocked,
@@ -5756,6 +5758,7 @@ describe('formula builtins', () => {
     }))
     const ddeImpl = vi.fn(() => ({ tag: ValueTag.Number, value: 42 }))
     const infoImpl = vi.fn(() => ({ tag: ValueTag.String, value: 'mac', stringId: 0 }))
+    const pyImpl = vi.fn(() => ({ tag: ValueTag.String, value: 'dataframe', stringId: 0 }))
     const registerIdImpl = vi.fn(() => ({ tag: ValueTag.Number, value: 17 }))
     const filterXmlImpl = vi.fn(() => ({
       kind: 'array' as const,
@@ -5814,6 +5817,15 @@ describe('formula builtins', () => {
         return undefined
       },
     })
+    installExternalFunctionAdapter({
+      surface: 'python',
+      resolveFunction(name) {
+        if (name === 'PY') {
+          return { kind: 'scalar', implementation: pyImpl }
+        }
+        return undefined
+      },
+    })
 
     expect(TRANSLATE(hello, sourceLang, targetLang)).toEqual({
       tag: ValueTag.String,
@@ -5834,6 +5846,11 @@ describe('formula builtins', () => {
     expect(INFO(hello)).toEqual({
       tag: ValueTag.String,
       value: 'mac',
+      stringId: 0,
+    })
+    expect(PY(hello)).toEqual({
+      tag: ValueTag.String,
+      value: 'dataframe',
       stringId: 0,
     })
     expect(REGISTER_ID(hello, sourceLang)).toEqual({ tag: ValueTag.Number, value: 17 })
@@ -5860,6 +5877,7 @@ describe('formula builtins', () => {
 
     expect(translateImpl).toHaveBeenCalledWith(hello, sourceLang, targetLang)
     expect(copilotImpl).toHaveBeenCalledWith(hello)
+    expect(pyImpl).toHaveBeenCalledWith(hello)
     expect(filterXmlImpl).toHaveBeenCalledWith(hello, sourceLang)
     expect(stockHistoryImpl).toHaveBeenCalledWith(hello, sourceLang)
   })
