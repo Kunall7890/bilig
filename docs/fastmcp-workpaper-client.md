@@ -16,6 +16,8 @@ export a WorkPaper JSON boundary.
 
 ## Run The Client
 
+Hosted smoke test:
+
 ```sh
 cd examples/fastmcp-workpaper-client
 uv run --python 3.12 --with 'fastmcp-slim[client]' \
@@ -48,7 +50,52 @@ Then it reads `Summary!B2` and `Summary!B3`, writes `Inputs!B3 = 0.4`, checks
 the request-local restore proof, exports the WorkPaper document, and prints a
 compact JSON proof with `verified: true`.
 
+Local file-backed check:
+
+```sh
+cd examples/fastmcp-workpaper-client
+uv run --python 3.12 --with 'fastmcp-slim[client]' \
+  python fastmcp_workpaper_client.py \
+    --transport stdio \
+    --workpaper .tmp/fastmcp-pricing.workpaper.json \
+    --output .tmp/fastmcp-workpaper-stdio.json
+```
+
+This launches the published `@bilig/workpaper` MCP stdio server from FastMCP,
+creates the demo WorkPaper JSON when missing, writes `Inputs!B3 = 0.4`, verifies
+`Summary!B2 = 8` and `Summary!B3 = 96000`, closes the client, reopens the same
+file, and verifies the edit persisted.
+
+The example also includes `mcp.json` for agents and clients that read standard
+`mcpServers` config:
+
+```json
+{
+  "mcpServers": {
+    "bilig-workpaper": {
+      "transport": "stdio",
+      "command": "npm",
+      "args": [
+        "exec",
+        "--yes",
+        "--package",
+        "@bilig/workpaper@latest",
+        "--",
+        "bilig-workpaper-mcp",
+        "--workpaper",
+        "./.tmp/fastmcp-pricing.workpaper.json",
+        "--init-demo-workpaper",
+        "--writable"
+      ],
+      "env": {}
+    }
+  }
+}
+```
+
 ## Proof Shape
+
+Hosted output:
 
 ```json
 {
@@ -65,6 +112,23 @@ compact JSON proof with `verified: true`.
     "newSerialized": 0.4,
     "restoredMatchesAfter": true,
     "persisted": false
+  },
+  "verified": true
+}
+```
+
+Local stdio output:
+
+```json
+{
+  "client": "fastmcp",
+  "transport": "stdio",
+  "package": "@bilig/workpaper@latest",
+  "readback": {
+    "editedCell": "Inputs!B3",
+    "expectedCustomers": 8,
+    "expectedArr": 96000,
+    "reopenedInput": 0.4
   },
   "verified": true
 }
@@ -104,4 +168,5 @@ This is a good fit for:
 Official FastMCP references:
 
 - FastMCP client docs: <https://gofastmcp.com/clients/client>
+- FastMCP transport docs: <https://gofastmcp.com/clients/transports>
 - FastMCP community showcase: <https://gofastmcp.com/community/showcase>

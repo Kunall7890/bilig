@@ -60,7 +60,7 @@ not the first-run path:
 | Dify formula readback                                                              | <https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html>    |
 | Flowise formula readback                                                            | <https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html> |
 | Pipedream formula readback                                                          | <https://proompteng.github.io/bilig/pipedream-workpaper-formula-readback.html> |
-| FastMCP Python client for hosted MCP smoke tests                                    | <https://proompteng.github.io/bilig/fastmcp-workpaper-client.html>           |
+| FastMCP Python client for hosted and local stdio checks                             | <https://proompteng.github.io/bilig/fastmcp-workpaper-client.html>           |
 | Hugging Face smolagents tool                                                        | <https://proompteng.github.io/bilig/smolagents-workpaper-tool.html>          |
 
 ## Use A WorkPaper In Node

@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "bilig-workpaper": {
+      "transport": "stdio",
+      "command": "npm",
+      "args": [
+        "exec",
+        "--yes",
+        "--package",
+        "@bilig/workpaper@latest",
+        "--",
+        "bilig-workpaper-mcp",
+        "--workpaper",
+        "./.tmp/fastmcp-pricing.workpaper.json",
+        "--init-demo-workpaper",
+        "--writable"
+      ],
+      "env": {}
+    }
+  }
+}

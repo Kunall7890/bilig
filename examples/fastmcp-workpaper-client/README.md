@@ -10,6 +10,8 @@ export the WorkPaper JSON boundary.
 
 ## Run
 
+Hosted smoke test:
+
 ```sh
 uv run --python 3.12 --with 'fastmcp-slim[client]' \
   python fastmcp_workpaper_client.py --output .tmp/fastmcp-workpaper-proof.json
@@ -29,6 +31,24 @@ Expected output:
 The full proof file includes the discovered tool names, sheet names,
 `Summary!B2` and `Summary!B3` formula readback, the `Inputs!B3` edit proof, and
 the exported WorkPaper document size.
+
+Local file-backed check:
+
+```sh
+uv run --python 3.12 --with 'fastmcp-slim[client]' \
+  python fastmcp_workpaper_client.py \
+    --transport stdio \
+    --workpaper .tmp/fastmcp-pricing.workpaper.json \
+    --output .tmp/fastmcp-workpaper-stdio.json
+```
+
+This launches `@bilig/workpaper` with FastMCP's stdio client config, writes
+`Inputs!B3 = 0.4`, verifies `Summary!B2 = 8` and `Summary!B3 = 96000`, closes
+the client, reopens the same WorkPaper JSON file, and verifies the edit is still
+there.
+
+The same server config is available in `mcp.json` for agents and MCP clients
+that read standard `mcpServers` configuration.
 
 ## Hosted Endpoint Boundary
 
@@ -71,4 +91,5 @@ Use this when your Python agent stack needs:
 Official FastMCP references:
 
 - <https://gofastmcp.com/clients/client>
+- <https://gofastmcp.com/clients/transports>
 - <https://gofastmcp.com/community/showcase>
