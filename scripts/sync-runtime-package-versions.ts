@@ -38,11 +38,44 @@ export function syncRuntimePackageVersions(options: SyncRuntimePackageVersionsOp
   syncDockerfileWorkpaperVersion(options.rootDir, version, updatedFiles)
   syncGeminiExtensionVersion(options.rootDir, version, updatedFiles)
   syncXlsxCacheDoctorActionVersion(options.rootDir, version, updatedFiles)
+  syncAgentEvaluatorDocVersions(options.rootDir, version, updatedFiles)
+  syncMcpDirectoryDocVersion(options.rootDir, version, updatedFiles)
 
   return {
     version,
     updatedFiles,
     updatedPackages: runtimePackages.map((runtimePackage) => runtimePackage.name),
+  }
+}
+
+function syncMcpDirectoryDocVersion(rootDir: string, version: string, updatedFiles: string[]): void {
+  const docPath = join(rootDir, 'docs/mcp-spreadsheet-server-directory.md')
+  const currentContent = readFileSync(docPath, 'utf8')
+  const nextContent = replaceRequired(
+    currentContent,
+    /(`)\d+\.\d+\.\d+(`, package `@bilig\/workpaper` is version `)\d+\.\d+\.\d+(`, and the entry was)/u,
+    `$1${version}$2${version}$3`,
+    `${docPath} must include the current MCP Registry package marker version`,
+  )
+  writeTextIfChanged(docPath, currentContent, nextContent, updatedFiles)
+}
+
+function syncAgentEvaluatorDocVersions(rootDir: string, version: string, updatedFiles: string[]): void {
+  const docPaths = [join(rootDir, 'docs/agent-adoption-kit.md'), join(rootDir, 'docs/eval-agent-mcp.md')]
+  for (const docPath of docPaths) {
+    const currentContent = readFileSync(docPath, 'utf8')
+    const nextContent = replaceRequired(
+      replaceRequired(
+        currentContent,
+        /("@bilig\/workpaper":\s*")\d+\.\d+\.\d+(")/u,
+        `$1${version}$2`,
+        `${docPath} must include a @bilig/workpaper evaluator package version`,
+      ),
+      /("xlsx-formula-recalc":\s*")\d+\.\d+\.\d+(")/u,
+      `$1${version}$2`,
+      `${docPath} must include an xlsx-formula-recalc evaluator package version`,
+    )
+    writeTextIfChanged(docPath, currentContent, nextContent, updatedFiles)
   }
 }
 

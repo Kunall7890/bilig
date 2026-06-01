@@ -224,7 +224,7 @@ The canonical package metadata in this repo includes:
 Latest checked result on June 1, 2026: Live, and the Registry latest marker
 matches the current `@bilig/workpaper` package. The official Registry
 latest-marked server `io.github.proompteng/bilig-workpaper` is version
-`0.131.2`, package `@bilig/workpaper` is version `0.131.2`, and the entry was
+`0.131.3`, package `@bilig/workpaper` is version `0.131.3`, and the entry was
 updated at `2026-06-01T00:56:47.948741Z`. The API also returns historical
 entries, so consumers should follow pagination, request a sufficient limit, and
 select the latest-marked entry when they need the Registry-owned freshest
