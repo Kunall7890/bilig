@@ -1,6 +1,7 @@
 # @bilig/workpaper
 
-Scoped Bilig WorkPaper runtime for Node.js services, agent tools, and server-side spreadsheet formulas.
+WorkPaper API, CLI evaluator, and MCP server for headless spreadsheet formulas
+in Node.js services and agents.
 
 Use this when business logic is easiest to review as workbook cells and
 formulas, but the calculation needs to run in a backend service, queue worker,

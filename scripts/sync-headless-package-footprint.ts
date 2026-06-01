@@ -37,22 +37,26 @@ if (displayValue !== '24000') {
 }
 `
 
-const requiredDescription = 'Formula WorkPaper runtime for Node.js services and agent tools with JSON persistence and formula readback.'
+const requiredDescription =
+  'Headless spreadsheet formula engine for Node.js services and agents with WorkPaper JSON persistence and formula readback.'
 const requiredKeywords = [
   'workpaper',
   'workbook-api',
   'excel-formulas',
   'formula-engine',
   'spreadsheet-engine',
+  'spreadsheet-formula-engine',
   'spreadsheet-formulas',
   'node',
+  'node-spreadsheet',
+  'node-spreadsheet-formulas',
+  'server-side-formula-engine',
   'typescript',
   'agent-tools',
   'ai-agents',
   'excel',
   'mcp',
   'mcp-server',
-  'spreadsheet-mcp',
   'spreadsheet-agent',
   'workbook-agent',
   'xlsx',

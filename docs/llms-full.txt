@@ -871,7 +871,7 @@ matters.
 
 Current checked npm footprint for `@bilig/headless@0.131.2`:
 
-- Pack dry run: `820 kB` tarball, `5.03 MB` unpacked, `800` package entries.
+- Pack dry run: `835 kB` tarball, `5.13 MB` unpacked, `839` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
@@ -2356,7 +2356,8 @@ Source: https://github.com/proompteng/bilig/blob/main/packages/workpaper/README.
 
 # @bilig/workpaper
 
-Scoped Bilig WorkPaper runtime for Node.js services, agent tools, and server-side spreadsheet formulas.
+WorkPaper API, CLI evaluator, and MCP server for headless spreadsheet formulas
+in Node.js services and agents.
 
 Use this when business logic is easiest to review as workbook cells and
 formulas, but the calculation needs to run in a backend service, queue worker,

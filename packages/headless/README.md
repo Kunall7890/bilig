@@ -7,9 +7,9 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/proompteng/bilig/blob/main/LICENSE)
 
-`@bilig/headless` is the full WorkPaper runtime for Node.js services and agent
-tools. It is the lower-level package behind the scoped `@bilig/workpaper`
-entrypoint.
+`@bilig/headless` is a headless spreadsheet formula engine for Node.js services
+and agent tools. It is the lower-level WorkPaper runtime behind the scoped
+`@bilig/workpaper` entrypoint.
 
 If this npm page is the first thing you found, run the no-clone proof before
 reading the full API docs:
@@ -140,7 +140,7 @@ mcp:server`.
 
 Current checked npm footprint for `@bilig/headless@0.131.2`:
 
-- Pack dry run: `820 kB` tarball, `5.03 MB` unpacked, `800` package entries.
+- Pack dry run: `835 kB` tarball, `5.13 MB` unpacked, `839` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the

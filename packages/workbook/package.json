@@ -1,13 +1,14 @@
 {
   "name": "@bilig/workbook",
   "version": "0.131.2",
-  "description": "Agent-first workbook model API and transport-neutral workbook operation language for bilig.",
+  "description": "Transport-neutral workbook intent API for agent plans, command receipts, and formula readback checks.",
   "keywords": [
     "agent-first",
     "agent-tools",
     "ai-agents",
     "bilig",
     "command-receipts",
+    "formula-readback",
     "model-context-protocol",
     "models",
     "plan-data",
