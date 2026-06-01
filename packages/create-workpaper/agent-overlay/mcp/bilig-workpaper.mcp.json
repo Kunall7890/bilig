@@ -11,7 +11,7 @@
         "--",
         "bilig-workpaper-mcp",
         "--workpaper",
-        "./pricing.workpaper.json",
+        "__WORKPAPER_PATH__",
         "--init-demo-workpaper",
         "--writable"
       ],

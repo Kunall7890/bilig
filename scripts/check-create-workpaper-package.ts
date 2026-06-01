@@ -13,6 +13,8 @@ const packDir = join(repoRoot, 'build', 'create-workpaper-package')
 const generatedDir = join(packDir, 'generated')
 const args = new Set(process.argv.slice(2))
 const requirePublished = args.has('--require-published')
+const starterWorkpaperPath = './pricing.workpaper.json'
+const existingRepoWorkpaperPath = './.bilig/pricing.workpaper.json'
 
 function fail(message: string): never {
   throw new Error(message)
@@ -100,6 +102,7 @@ function assertManifest(manifest: PackageManifest): string {
 function assertDocs(): void {
   const readme = readFileSync(join(packageDir, 'README.md'), 'utf8')
   const docs = readFileSync(join(repoRoot, 'docs', 'create-bilig-workpaper.md'), 'utf8')
+  const agentDocs = readFileSync(join(repoRoot, 'docs', 'agent-adoption-kit.md'), 'utf8')
   const rootReadme = readFileSync(join(repoRoot, 'README.md'), 'utf8')
   const templateSource = readFileSync(join(packageDir, 'template', 'src', 'index.ts'), 'utf8')
   for (const [label, source] of [
@@ -148,6 +151,9 @@ function assertDocs(): void {
   )
   assert(readme.includes('agent:verify'), 'starter README must document the agent verification script')
   assert(docs.includes('agent:verify'), 'starter docs must document the agent verification script')
+  assert(readme.includes(existingRepoWorkpaperPath), 'starter README must document the existing-repo WorkPaper state path')
+  assert(docs.includes(existingRepoWorkpaperPath), 'starter docs must document the existing-repo WorkPaper state path')
+  assert(agentDocs.includes(existingRepoWorkpaperPath), 'agent adoption kit must document the existing-repo WorkPaper state path')
 }
 
 function assertPackedTarball(): void {
@@ -228,7 +234,7 @@ function assertGeneratedStarters(): void {
     'generated agent starter must verify API and MCP paths',
   )
   assert(
-    agentManifest.scripts['mcp:server'] === 'bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable',
+    agentManifest.scripts['mcp:server'] === `bilig-workpaper-mcp --workpaper ${starterWorkpaperPath} --init-demo-workpaper --writable`,
     'generated agent starter must include the file-backed MCP server script',
   )
 
@@ -251,6 +257,12 @@ function assertGeneratedStarters(): void {
     'mcp/bilig-workpaper.mcp.json',
   ]) {
     assert(existsSync(join(agentDir, expected)), `generated agent starter is missing ${expected}`)
+  }
+
+  for (const expected of ['.mcp.json', '.cursor/mcp.json', '.vscode/mcp.json', 'mcp/bilig-workpaper.mcp.json', 'README.md']) {
+    const generatedSource = readFileSync(join(agentDir, expected), 'utf8')
+    assert(generatedSource.includes(starterWorkpaperPath), `generated agent starter ${expected} must use the starter WorkPaper path`)
+    assert(!generatedSource.includes('__WORKPAPER_PATH__'), `generated agent starter ${expected} must render WorkPaper path placeholders`)
   }
 
   const existingManifest = readJson(join(existingDir, 'package.json'))
@@ -285,6 +297,20 @@ function assertGeneratedStarters(): void {
       readFileSync(join(existingDir, '.mcp.json'), 'utf8').includes('@bilig/workpaper@latest'),
     'existing-repo MCP config must use direct npm exec instead of project scripts',
   )
+  assert(!existsSync(join(existingDir, '.bilig')), 'existing-repo overlay must not create WorkPaper state before the MCP server runs')
+  for (const expected of [
+    '.mcp.json',
+    '.cursor/mcp.json',
+    '.vscode/mcp.json',
+    'mcp/bilig-workpaper.mcp.json',
+    'BILIG_WORKPAPER.md',
+    'AGENTS.md',
+  ]) {
+    const generatedSource = readFileSync(join(existingDir, expected), 'utf8')
+    assert(generatedSource.includes(existingRepoWorkpaperPath), `existing-repo overlay ${expected} must use the hidden WorkPaper path`)
+    assert(!generatedSource.includes(starterWorkpaperPath), `existing-repo overlay ${expected} must not use the root WorkPaper path`)
+    assert(!generatedSource.includes('__WORKPAPER_PATH__'), `existing-repo overlay ${expected} must render WorkPaper path placeholders`)
+  }
 
   const existingAgentNotes = readFileSync(join(existingDir, 'AGENTS.md'), 'utf8')
   writeFileSync(join(existingDir, 'AGENTS.md'), '# Existing agent policy\n')

@@ -77,7 +77,7 @@ npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
     "--",
     "bilig-workpaper-mcp",
     "--workpaper",
-    "./pricing.workpaper.json",
+    "__WORKPAPER_PATH__",
     "--init-demo-workpaper",
     "--writable"
   ]

@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url'
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)))
 const templateRoot = join(packageRoot, 'template')
 const agentOverlayRoot = join(packageRoot, 'agent-overlay')
+const starterWorkpaperPath = './pricing.workpaper.json'
+const existingRepoWorkpaperPath = './.bilig/pricing.workpaper.json'
 
 const args = process.argv.slice(2)
 let options
@@ -30,7 +32,7 @@ const projectName = normalizePackageName(options.targetDirectory ?? defaultTarge
 
 if (options.addAgent) {
   await ensureDirectory(targetDirectory)
-  const overlayResult = await copyAgentOverlay(agentOverlayRoot, targetDirectory, projectName, options.force)
+  const overlayResult = await copyAgentOverlay(agentOverlayRoot, targetDirectory, projectName, existingRepoWorkpaperPath, options.force)
 
   const targetLabel = relative(process.cwd(), targetDirectory) || '.'
   console.log(`Added Bilig agent files to ${targetLabel}`)
@@ -43,17 +45,17 @@ if (options.addAgent) {
   }
   console.log('  npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json')
   console.log(
-    '  npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable',
+    `  npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ${existingRepoWorkpaperPath} --init-demo-workpaper --writable`,
   )
   console.log('')
   console.log('Expected proof output includes:')
   console.log('  "verified": true')
 } else {
   await ensureWritableTarget(targetDirectory, options.force)
-  await copyTemplate(templateRoot, targetDirectory, projectName)
+  await copyTemplate(templateRoot, targetDirectory, projectName, starterWorkpaperPath)
 
   if (options.template === 'agent') {
-    await copyTemplate(agentOverlayRoot, targetDirectory, projectName)
+    await copyTemplate(agentOverlayRoot, targetDirectory, projectName, starterWorkpaperPath)
   }
 
   console.log(`Created ${relative(process.cwd(), targetDirectory) || '.'}`)
@@ -186,7 +188,7 @@ async function ensureWritableTarget(directory, allowExisting) {
   }
 }
 
-async function copyTemplate(sourceRoot, outputDirectory, packageName) {
+async function copyTemplate(sourceRoot, outputDirectory, packageName, workpaperPath) {
   await cp(sourceRoot, outputDirectory, {
     recursive: true,
     filter: async (source) => {
@@ -198,13 +200,13 @@ async function copyTemplate(sourceRoot, outputDirectory, packageName) {
       const targetPath = join(outputDirectory, relativePath)
       const text = await readFile(source, 'utf8')
       await mkdir(dirname(targetPath), { recursive: true })
-      await writeFile(targetPath, text.replaceAll('__PROJECT_NAME__', packageName))
+      await writeFile(targetPath, renderTemplate(text, packageName, workpaperPath))
       return false
     },
   })
 }
 
-async function copyAgentOverlay(sourceRoot, outputDirectory, packageName, force) {
+async function copyAgentOverlay(sourceRoot, outputDirectory, packageName, workpaperPath, force) {
   const files = await listFiles(sourceRoot)
   const results = await Promise.all(
     files.map(async (sourcePath) => {
@@ -222,7 +224,7 @@ async function copyAgentOverlay(sourceRoot, outputDirectory, packageName, force)
 
       const text = await readFile(sourcePath, 'utf8')
       await mkdir(dirname(targetPath), { recursive: true })
-      await writeFile(targetPath, text.replaceAll('__PROJECT_NAME__', packageName))
+      await writeFile(targetPath, renderTemplate(text, packageName, workpaperPath))
       return { path: targetRelativePath, status: 'written' }
     }),
   )
@@ -231,6 +233,10 @@ async function copyAgentOverlay(sourceRoot, outputDirectory, packageName, force)
     skipped: results.filter((result) => result.status === 'skipped').map((result) => result.path),
     written: results.filter((result) => result.status === 'written').map((result) => result.path),
   }
+}
+
+function renderTemplate(text, packageName, workpaperPath) {
+  return text.replaceAll('__PROJECT_NAME__', packageName).replaceAll('__WORKPAPER_PATH__', workpaperPath)
 }
 
 async function listFiles(directory) {

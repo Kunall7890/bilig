@@ -14,7 +14,7 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-
 For MCP use, start:
 
 ```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper __WORKPAPER_PATH__ --init-demo-workpaper --writable
 ```
 
 Return proof with:

@@ -49,13 +49,13 @@ readback plus persisted WorkPaper state.
 Start the persistent project-local MCP server with:
 
 ```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper __WORKPAPER_PATH__ --init-demo-workpaper --writable
 ```
 
 It launches:
 
 ```sh
-bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+bilig-workpaper-mcp --workpaper __WORKPAPER_PATH__ --init-demo-workpaper --writable
 ```
 
 Expected tools:

@@ -46,10 +46,13 @@ replacing its app, run:
 ```sh
 npm create @bilig/workpaper@latest . -- --add-agent
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 That writes Bilig-specific agent files, keeps an existing `README.md`, does
-not edit `package.json`, and skips existing files unless you pass `--force`.
+not edit `package.json`, keeps WorkPaper state under
+`./.bilig/pricing.workpaper.json`, and skips existing files unless you pass
+`--force`.
 
 For an existing agent or MCP client that does not need a generated project yet,
 use the adoption kit first:

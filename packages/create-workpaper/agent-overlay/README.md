@@ -29,10 +29,10 @@ curl -X POST http://localhost:8788/api/quote/approval \
 Start the persistent project-local MCP server:
 
 ```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper __WORKPAPER_PATH__ --init-demo-workpaper --writable
 ```
 
-The server owns `./pricing.workpaper.json`, initializes it when missing, writes
+The server owns `__WORKPAPER_PATH__`, initializes it when missing, writes
 through MCP tools, recalculates formulas, and persists edits back to disk.
 Project MCP configs are included for Claude Code (`.mcp.json`), Cursor, and VS
 Code. Claude Code also gets the project skill at
@@ -51,6 +51,10 @@ template or editing `package.json`:
 ```sh
 npm create @bilig/workpaper@latest . -- --add-agent
 ```
+
+For existing repos, the generated MCP configs keep WorkPaper state under
+`./.bilig/pricing.workpaper.json` so the overlay does not add a noisy root
+workbook file.
 
 Agent handoff:
 

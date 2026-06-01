@@ -12,10 +12,10 @@ workflow through WorkPaper state.
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
-npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper __WORKPAPER_PATH__ --init-demo-workpaper --writable
 ```
 
-The MCP server owns `./pricing.workpaper.json` and persists edits to disk.
+The MCP server owns `__WORKPAPER_PATH__` and persists edits to disk.
 
 ## Required Proof
 

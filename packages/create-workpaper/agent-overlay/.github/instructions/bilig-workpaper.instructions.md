@@ -1,5 +1,5 @@
 ---
-applyTo: "**/*"
+applyTo: '**/*'
 ---
 
 # Bilig WorkPaper Formula Proof
@@ -21,7 +21,7 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-
 For MCP work, start:
 
 ```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper __WORKPAPER_PATH__ --init-demo-workpaper --writable
 ```
 
 Return proof with the edited sheet and A1 cell, before values, recalculated

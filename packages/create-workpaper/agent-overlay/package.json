@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit",
     "agent:verify": "npm run smoke && npm run mcp:challenge",
     "mcp:challenge": "bilig-mcp-challenge --markdown",
-    "mcp:server": "bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable"
+    "mcp:server": "bilig-workpaper-mcp --workpaper __WORKPAPER_PATH__ --init-demo-workpaper --writable"
   },
   "dependencies": {
     "@bilig/workpaper": "latest"
