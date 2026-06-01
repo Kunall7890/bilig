@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "package": {
     "name": "@bilig/headless",
-    "version": "0.136.1",
+    "version": "0.137.0",
     "description": "Headless spreadsheet formula engine for Node.js services and agents with WorkPaper JSON persistence and formula readback.",
     "nodeEngine": ">=22.0.0",
     "keywordCount": 24,

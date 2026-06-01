@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.137.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.136.1
+- Manual override: no
+
+## Features
+- feat(create-workpaper): add Claude skill overlay (c2f487b2)
+
 ## 0.136.1
 
 - Release type: patch
