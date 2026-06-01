@@ -867,42 +867,45 @@ Sheets API: what would make you reject this API quickly?
 
 ### Hacker News Submission After The Formula Workbooks Page
 
-Use this only when the linked page is live and the submitter is ready to answer
-technical questions in the thread. Do not add an immediate generic first
-comment; the last two HN child comments were dead or flagged. If the HN item
-stays live and someone asks for details, answer with the concrete proof,
-limitations, and maintainer disclosure in the thread.
+Use this only when the linked page is live, the no-key evaluator passes, and
+the submitter is ready to answer technical questions in the thread. Do not ask
+for upvotes or stars. Do not post a duplicate generic Show HN; use this packet
+only because the public artifact now leads with the WorkPaper runtime, the
+agent-MCP evaluator, and the public no-key Hugging Face readback fixture.
 
 Title:
 
 ```text
-Show HN: Bilig runs small formula workbooks in Node
+Show HN: Bilig - formula WorkPapers for Node services and agents
 ```
 
 URL:
 
 ```text
-https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html
+https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html
 ```
 
-Optional response comment, only after the thread is visibly live or someone asks
-for details:
+Optional first comment, only if the thread is visibly live and the maintainer
+can stay around:
 
 ```text
-I maintain this project. The linked page is the shorter version after the
-earlier Show HN.
+I built Bilig because a lot of pricing, approval, payout, and import rules are
+still workbook-shaped, but backend services and coding agents need a state API
+rather than screenshots.
 
-The runnable proof starts from an empty Node directory, installs
-@bilig/headless, changes quote inputs, recalculates net revenue / gross margin /
-approval decision, saves WorkPaper JSON, restores it, and checks the same result
-again.
+The quickest check is:
 
-The package is for backend workflows where spreadsheet formulas are business
-logic but opening a browser grid is the wrong runtime boundary. It is not a full
-Excel clone, and the compatibility gaps are public.
+`npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`
 
-Useful feedback would be specific: missing formula families, import/export
-cases, persistence shape, or any API choice that would make you reject it.
+It writes an input cell, recalculates, reads a dependent formula, saves and
+restores WorkPaper JSON, and returns `verified: true`.
+
+There is also a public no-key Hugging Face Space for the MCP readback path:
+https://huggingface.co/spaces/gregkonush/bilig-workpaper-mcp-readback
+
+Useful feedback: API friction, missing formula semantics, MCP/readback shape, or
+real workbook cases that should become fixtures. This is not a full Excel
+clone; XLSX cache doctor is one doorway into the WorkPaper runtime.
 ```
 
 ### JavaScript Weekly / Node Weekly Editorial Pitch

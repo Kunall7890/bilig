@@ -53,15 +53,16 @@ export function requireFormulaProofDiscovery({
   requireIncludes(communityLaunchPack, 'Hacker News Submission After The Formula Workbooks Page', 'docs/community-launch-pack.md')
 
   for (const required of [
-    "title: 'Show HN: Bilig runs small formula workbooks in Node'",
+    "title: 'Show HN: Bilig - formula WorkPapers for Node services and agents'",
     'uses the latest published package',
-    'curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts',
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
+    'npm install @bilig/headless',
     '"verified": true',
     `wins \`${benchmarkEvidence.meanWinHeadline}\` comparable`,
     `\`${benchmarkEvidence.meanAndP95Headline}\` on both mean and p95`,
     `\`${benchmarkEvidence.p95HoldoutWorkload}\` is the current worst p95`,
-    'Show HN: Bilig runs small formula workbooks in Node',
-    'https://github.com/proompteng/bilig/stargazers',
+    'Show HN: Bilig - formula WorkPapers for Node services and agents',
+    'https://huggingface.co/spaces/gregkonush/bilig-workpaper-mcp-readback',
   ] as const) {
     requireIncludes(showHnFormulaWorkbooksProof, required, 'docs/show-hn-formula-workbooks-node-services.md')
   }
