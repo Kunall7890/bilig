@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.138.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.137.0
+- Manual override: no
+
+## Features
+- feat(create-workpaper): keep overlay state under .bilig (67d3bfb4)
+
 ## 0.137.0
 
 - Release type: minor
