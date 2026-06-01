@@ -3,12 +3,13 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { WorkPaper } from '@bilig/headless'
-import { buildAgentWorkbookChallengeProof, buildMcpChallengeProof } from '@bilig/headless/cli'
+import { buildAgentWorkbookChallengeProof, buildMcpChallengeProof, buildMcpRevenuePlanChallengeProof } from '@bilig/headless/cli'
 import { runXlsxFormulaRecalcCli } from './cli-api.js'
 
 export const biligEvaluatorSchemaVersion = 'bilig-evaluator.v1'
 
 export type BiligEvaluatorDoor = 'xlsx-cache' | 'workpaper-service' | 'agent-mcp'
+export type BiligEvaluatorScenario = 'default' | 'revenue-plan'
 
 export interface BiligEvaluatorCliContext {
   readonly stdout?: (text: string) => void
@@ -23,9 +24,13 @@ export interface BiligEvaluatorDoorSummary {
 }
 
 export interface BiligEvaluatorEvidence {
+  readonly scenario?: BiligEvaluatorScenario | undefined
   readonly target?: string | undefined
   readonly editedCell?: string | undefined
   readonly dependentCell?: string | undefined
+  readonly dependentCells?: readonly string[] | undefined
+  readonly readbackRange?: string | undefined
+  readonly formulaFamilies?: readonly string[] | undefined
   readonly before?: unknown
   readonly after?: unknown
   readonly afterRestore?: unknown
@@ -44,6 +49,7 @@ export interface BiligEvaluatorProof {
   readonly doorName: string
   readonly command: string
   readonly packageVersions: Readonly<Record<string, string>>
+  readonly scenario?: BiligEvaluatorScenario | undefined
   readonly evidence: BiligEvaluatorEvidence
   readonly verified: boolean
   readonly durationMs: number
@@ -57,6 +63,7 @@ export interface BiligEvaluatorProof {
 
 interface ParsedEvaluatorArgs {
   readonly door: BiligEvaluatorDoor | undefined
+  readonly scenario: BiligEvaluatorScenario
   readonly json: boolean
   readonly markdown: boolean
   readonly list: boolean
@@ -111,9 +118,12 @@ export function listBiligEvaluatorDoors(): readonly BiligEvaluatorDoorSummary[] 
   return doorSummaries
 }
 
-export function buildBiligEvaluatorProof(door: BiligEvaluatorDoor): BiligEvaluatorProof {
+export function buildBiligEvaluatorProof(
+  door: BiligEvaluatorDoor,
+  options: { readonly scenario?: BiligEvaluatorScenario } = {},
+): BiligEvaluatorProof {
   const startedAt = Date.now()
-  const proof = buildDoorProof(door)
+  const proof = buildDoorProof(door, options.scenario ?? 'default')
   return {
     ...proof,
     durationMs: Math.max(0, Date.now() - startedAt),
@@ -142,7 +152,7 @@ export function runBiligEvaluatorCli(args: readonly string[], context: BiligEval
       throw new Error('Expected --door xlsx-cache, --door workpaper-service, or --door agent-mcp.')
     }
 
-    const proof = buildBiligEvaluatorProof(parsed.door)
+    const proof = buildBiligEvaluatorProof(parsed.door, { scenario: parsed.scenario })
     writeStdout(parsed.markdown ? renderProofMarkdown(proof) : `${JSON.stringify(proof, null, 2)}\n`)
     return proof.verified ? 0 : 1
   } catch (error) {
@@ -151,14 +161,17 @@ export function runBiligEvaluatorCli(args: readonly string[], context: BiligEval
   }
 }
 
-function buildDoorProof(door: BiligEvaluatorDoor): Omit<BiligEvaluatorProof, 'durationMs'> {
+function buildDoorProof(door: BiligEvaluatorDoor, scenario: BiligEvaluatorScenario): Omit<BiligEvaluatorProof, 'durationMs'> {
+  if (scenario !== 'default' && door !== 'agent-mcp') {
+    throw new Error(`Scenario "${scenario}" is only available for --door agent-mcp.`)
+  }
   switch (door) {
     case 'xlsx-cache':
       return buildXlsxCacheEvaluatorProof()
     case 'workpaper-service':
       return buildWorkpaperServiceEvaluatorProof()
     case 'agent-mcp':
-      return buildAgentMcpEvaluatorProof()
+      return buildAgentMcpEvaluatorProof(scenario)
   }
 }
 
@@ -238,24 +251,35 @@ function buildWorkpaperServiceEvaluatorProof(): Omit<BiligEvaluatorProof, 'durat
   }
 }
 
-function buildAgentMcpEvaluatorProof(): Omit<BiligEvaluatorProof, 'durationMs'> {
-  const sourceProof = buildMcpChallengeProof()
+function buildAgentMcpEvaluatorProof(scenario: BiligEvaluatorScenario): Omit<BiligEvaluatorProof, 'durationMs'> {
+  const sourceProof = scenario === 'revenue-plan' ? buildMcpRevenuePlanChallengeProof() : buildMcpChallengeProof()
   const checks = normalizeBooleanRecord(recordValue(sourceProof, 'checks'))
   const tools = stringArrayValue(sourceProof, 'tools')
   const summary = requireDoorSummary('agent-mcp')
+  const command = commandForScenario(summary, scenario)
+  const formulaFamilies = stringArrayValue(sourceProof, 'formulaFamilies')
 
   return {
     schemaVersion: biligEvaluatorSchemaVersion,
     door: 'agent-mcp',
-    doorName: 'Agent MCP proof',
-    command: summary.command,
+    doorName: scenario === 'revenue-plan' ? 'Agent MCP revenue-plan proof' : 'Agent MCP proof',
+    command,
     packageVersions: {
       '@bilig/workpaper': WorkPaper.version,
       'xlsx-formula-recalc': readLocalPackageVersion(),
     },
+    ...(scenario === 'default' ? {} : { scenario }),
     evidence: {
+      ...(scenario === 'default' ? {} : { scenario }),
       editedCell: stringValue(sourceProof, 'editedCell'),
       dependentCell: stringValue(sourceProof, 'dependentCell'),
+      ...(scenario === 'revenue-plan'
+        ? {
+            dependentCells: ['Summary!B2', 'Summary!B3', 'Summary!B4', 'Summary!B5', 'Summary!B6:B8'],
+            readbackRange: stringValue(sourceProof, 'readbackRange'),
+            formulaFamilies,
+          }
+        : {}),
       before: propertyValue(sourceProof, 'before'),
       after: propertyValue(sourceProof, 'after'),
       afterRestore: propertyValue(sourceProof, 'afterRestore'),
@@ -269,7 +293,7 @@ function buildAgentMcpEvaluatorProof(): Omit<BiligEvaluatorProof, 'durationMs'> 
     limitations: stringArrayValue(sourceProof, 'limitations'),
     next: {
       docs: summary.docs,
-      command: summary.command,
+      command,
     },
     sourceProof,
   }
@@ -318,6 +342,7 @@ function parseXlsxCacheDoctorProof(text: string): XlsxCacheDoctorProofSummary {
 
 function parseEvaluatorArgs(args: readonly string[]): ParsedEvaluatorArgs {
   let door: BiligEvaluatorDoor | undefined
+  let scenario: BiligEvaluatorScenario = 'default'
   let json = true
   let markdown = false
   let list = false
@@ -335,6 +360,15 @@ function parseEvaluatorArgs(args: readonly string[]): ParsedEvaluatorArgs {
     }
     if (arg.startsWith('--door=')) {
       door = parseDoor(arg.slice('--door='.length))
+      continue
+    }
+    if (arg === '--scenario') {
+      scenario = parseScenario(requireNextArg(args, index, '--scenario'))
+      index += 1
+      continue
+    }
+    if (arg.startsWith('--scenario=')) {
+      scenario = parseScenario(arg.slice('--scenario='.length))
       continue
     }
     switch (arg) {
@@ -358,7 +392,7 @@ function parseEvaluatorArgs(args: readonly string[]): ParsedEvaluatorArgs {
     }
   }
 
-  return { door, json, markdown, list, help }
+  return { door, scenario, json, markdown, list, help }
 }
 
 function parseDoor(value: string): BiligEvaluatorDoor {
@@ -380,6 +414,19 @@ function parseDoor(value: string): BiligEvaluatorDoor {
   }
 }
 
+function parseScenario(value: string): BiligEvaluatorScenario {
+  switch (value) {
+    case 'default':
+    case 'basic':
+      return 'default'
+    case 'revenue':
+    case 'revenue-plan':
+      return 'revenue-plan'
+    default:
+      throw new Error(`Unknown bilig-evaluate scenario: ${value}`)
+  }
+}
+
 function requireNextArg(args: readonly string[], index: number, option: string): string {
   const value = args[index + 1]
   if (value === undefined || value.startsWith('-')) {
@@ -389,7 +436,7 @@ function requireNextArg(args: readonly string[], index: number, option: string):
 }
 
 function renderEvaluatorHelp(): string {
-  return `Usage: bilig-evaluate --door <door> [--json|--markdown]
+  return `Usage: bilig-evaluate --door <door> [--scenario <scenario>] [--json|--markdown]
 
 Doors:
   xlsx-cache          Detect stale cached XLSX formulas and prove recalculated readback.
@@ -398,6 +445,7 @@ Doors:
 
 Options:
   --door <door>        Door to run.
+  --scenario <name>    Optional scenario. Use revenue-plan with agent-mcp for a multi-formula workbook proof.
   --list              Print available doors.
   --json              Print JSON proof (default).
   --markdown          Print compact Markdown proof.
@@ -428,6 +476,13 @@ function requireDoorSummary(door: BiligEvaluatorDoor): BiligEvaluatorDoorSummary
     throw new Error(`Missing evaluator door summary for ${door}.`)
   }
   return summary
+}
+
+function commandForScenario(summary: BiligEvaluatorDoorSummary, scenario: BiligEvaluatorScenario): string {
+  if (summary.door !== 'agent-mcp' || scenario === 'default') {
+    return summary.command
+  }
+  return 'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json'
 }
 
 function readLocalPackageVersion(): string {

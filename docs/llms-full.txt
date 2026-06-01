@@ -2129,6 +2129,15 @@ cloning the repo or using an API key:
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
+For a richer workbook check, use the revenue-plan scenario:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json
+```
+
+That scenario proves `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression,
+JSON persistence, and restart readback through the same MCP door.
+
 A passing run must return `schemaVersion: "bilig-evaluator.v1"`,
 `door: "agent-mcp"`, `verified: true`, and these checks:
 
@@ -2284,6 +2293,15 @@ persisted file, and return proof.
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
+For a less toy-like workbook, run the revenue-plan scenario:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json
+```
+
+That path edits `Deals!C2` and verifies `SUM`, `SUMIF`, `XLOOKUP`, a `FILTER`
+spill, a named expression, JSON persistence, and restart readback.
+
 If you are handing this to another coding agent, start from the
 [Agent Adoption Kit](agent-adoption-kit.md). It includes the installable skill,
 one MCP config, a workbook task, and the pass/fail proof object.
@@ -2344,6 +2362,12 @@ The evaluator prints this shape:
 The exact package versions, byte count, and duration can change. The invariants
 are `door: "agent-mcp"`, `dependentCellChanged`, `persistedToDisk`,
 `restartReadbackMatchesAfter`, `displayValueRead`, and `verified: true`.
+
+For `--scenario revenue-plan`, the invariants are `scenario: "revenue-plan"`,
+`editedCell: "Deals!C2"`, `readbackRange: "Summary!B2:B8"`,
+`totalRevenueRecalculated`, `sumifReadbackChanged`, `xlookupReadbackStable`,
+`filterSpillUpdated`, `namedExpressionApplied`, `persistedToDisk`,
+`restartReadbackMatchesAfter`, and `verified: true`.
 
 ## What this proves
 
@@ -2409,6 +2433,10 @@ Pick the door that matches the state you own:
 | Node service or test       | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json` | edit input, recalculate output, persist JSON, restore, and return `verified: true`.                |
 | Coding agent or MCP client | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`         | tool discovery, cell mutation, formula readback, JSON export, restart proof, and `verified: true`. |
 | New project                | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                        | a starter with `AGENTS.md`, MCP config, and `npm run agent:verify` wired to the same proof loop.   |
+
+For a richer agent check, add `--scenario revenue-plan` to the `agent-mcp`
+evaluator. It proves `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression,
+JSON persistence, and restart readback.
 
 If one of those matches your workflow, keep Bilig nearby:
 <https://github.com/proompteng/bilig>. Watch releases if this is close to a

@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workpaper): import xlsx into file-backed mcp (a41da056)
 
 ## 0.141.0
@@ -20,6 +21,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(formula): add provider-backed IMPORTRANGE (ec7be9f2)
 
 ## 0.140.1
@@ -29,6 +31,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(create-workpaper): align agent verifier with evaluator (ae5cb2e9)
 
 ## 0.140.0
@@ -38,6 +41,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(formula): add Google Sheets compatibility helpers (f6943122)
 
 ## 0.139.0
@@ -47,6 +51,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(formula): recognize python in excel formulas (e7c82c88)
 
 ## 0.138.0
@@ -56,6 +61,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(create-workpaper): keep overlay state under .bilig (67d3bfb4)
 
 ## 0.137.0
@@ -65,6 +71,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(create-workpaper): add Claude skill overlay (c2f487b2)
 
 ## 0.136.1
@@ -74,6 +81,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(formula): register copilot provider formula (56253379)
 
 ## 0.136.0
@@ -83,6 +91,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(create-workpaper): add existing repo agent overlay (f6122598)
 
 ## 0.135.0
@@ -92,6 +101,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(formula): support sheets split (65ffc449)
 
 ## 0.134.0
@@ -101,9 +111,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(formula): add regexmatch compatibility alias (89d7a30d)
 
 ## Internal runtime changes
+
 - chore(formula): refresh formula dominance snapshot (36eb1751)
 
 ## 0.133.0
@@ -113,6 +125,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(formula): track Office IS predicates (c959baff)
 
 ## 0.132.0
@@ -122,6 +135,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(formula): add protocol ids for runtime formulas (619bb403)
 
 ## 0.131.3
@@ -131,9 +145,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(packages): sharpen npm spreadsheet formula discovery (dbca8c70)
 
 ## Internal runtime changes
+
 - docs(agent): add mastra workpaper smoke (e93a53cb)
 - docs(fastmcp): add file-backed workpaper proof (9ba9b121)
 - docs(growth): add huggingface workpaper space template (2fac9aa8)
@@ -145,9 +161,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(n8n): align community node verification copy (06ebcdd6)
 
 ## Internal runtime changes
+
 - docs: tighten evaluator copy (cb4abd8b)
 - docs(growth): compress npm evaluator path (c7ea04f2)
 - docs(n8n): surface verified WorkPaper node (f1f69e99)

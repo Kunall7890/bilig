@@ -26,6 +26,10 @@ Pick the door that matches the state you own:
 | Coding agent or MCP client | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`         | tool discovery, cell mutation, formula readback, JSON export, restart proof, and `verified: true`. |
 | New project                | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                        | a starter with `AGENTS.md`, MCP config, and `npm run agent:verify` wired to the same proof loop.   |
 
+For a richer agent check, add `--scenario revenue-plan` to the `agent-mcp`
+evaluator. It proves `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression,
+JSON persistence, and restart readback.
+
 If one of those matches your workflow, keep Bilig nearby:
 <https://github.com/proompteng/bilig>. Watch releases if this is close to a
 production dependency: <https://github.com/proompteng/bilig/subscription>.

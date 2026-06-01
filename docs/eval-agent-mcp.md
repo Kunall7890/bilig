@@ -21,6 +21,15 @@ persisted file, and return proof.
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
+For a less toy-like workbook, run the revenue-plan scenario:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json
+```
+
+That path edits `Deals!C2` and verifies `SUM`, `SUMIF`, `XLOOKUP`, a `FILTER`
+spill, a named expression, JSON persistence, and restart readback.
+
 If you are handing this to another coding agent, start from the
 [Agent Adoption Kit](agent-adoption-kit.md). It includes the installable skill,
 one MCP config, a workbook task, and the pass/fail proof object.
@@ -81,6 +90,12 @@ The evaluator prints this shape:
 The exact package versions, byte count, and duration can change. The invariants
 are `door: "agent-mcp"`, `dependentCellChanged`, `persistedToDisk`,
 `restartReadbackMatchesAfter`, `displayValueRead`, and `verified: true`.
+
+For `--scenario revenue-plan`, the invariants are `scenario: "revenue-plan"`,
+`editedCell: "Deals!C2"`, `readbackRange: "Summary!B2:B8"`,
+`totalRevenueRecalculated`, `sumifReadbackChanged`, `xlookupReadbackStable`,
+`filterSpillUpdated`, `namedExpressionApplied`, `persistedToDisk`,
+`restartReadbackMatchesAfter`, and `verified: true`.
 
 ## What this proves
 

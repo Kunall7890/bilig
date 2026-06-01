@@ -74,6 +74,70 @@ describe('bilig-evaluate CLI', () => {
     expect(proof.evidence.tools).toContain('read_cell')
   })
 
+  it('prints a verified revenue-plan agent MCP proof', () => {
+    let stdout = ''
+
+    const exitCode = runBiligEvaluatorCli(['--door', 'agent-mcp', '--scenario', 'revenue-plan', '--json'], {
+      stdout: (text) => {
+        stdout += text
+      },
+    })
+
+    expect(exitCode).toBe(0)
+    const proof = readProof(stdout)
+    expect(proof.schemaVersion).toBe('bilig-evaluator.v1')
+    expect(proof.door).toBe('agent-mcp')
+    expect(proof.verified).toBe(true)
+    expect(proof.evidence).toMatchObject({
+      scenario: 'revenue-plan',
+      editedCell: 'Deals!C2',
+      readbackRange: 'Summary!B2:B8',
+      formulaFamilies: ['SUM', 'SUMIF', 'XLOOKUP', 'FILTER', 'named-expression', 'persistence', 'restart'],
+      before: {
+        totalRevenue: 27_300,
+        westCustomers: 30,
+        enterpriseArpa: 1_200,
+        targetRevenue: 30_576,
+        qualifiedCustomerCounts: [30, 18],
+      },
+      after: {
+        totalRevenue: 36_900,
+        westCustomers: 38,
+        enterpriseArpa: 1_200,
+        targetRevenue: 41_328,
+        qualifiedCustomerCounts: [20, 30, 18],
+      },
+      afterRestart: {
+        totalRevenue: 36_900,
+        westCustomers: 38,
+        enterpriseArpa: 1_200,
+        targetRevenue: 41_328,
+        qualifiedCustomerCounts: [20, 30, 18],
+      },
+      checks: {
+        totalRevenueRecalculated: true,
+        sumifReadbackChanged: true,
+        xlookupReadbackStable: true,
+        filterSpillUpdated: true,
+        namedExpressionApplied: true,
+        restartReadbackMatchesAfter: true,
+      },
+    })
+  })
+
+  it('rejects unsupported door and scenario combinations', () => {
+    let stderr = ''
+
+    const exitCode = runBiligEvaluatorCli(['--door', 'workpaper-service', '--scenario', 'revenue-plan'], {
+      stderr: (text) => {
+        stderr += text
+      },
+    })
+
+    expect(exitCode).toBe(1)
+    expect(stderr).toContain('Scenario "revenue-plan" is only available for --door agent-mcp.')
+  })
+
   it('rejects unknown doors with a focused error', () => {
     let stderr = ''
 

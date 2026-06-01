@@ -77,6 +77,15 @@ cloning the repo or using an API key:
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
+For a richer workbook check, use the revenue-plan scenario:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json
+```
+
+That scenario proves `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression,
+JSON persistence, and restart readback through the same MCP door.
+
 A passing run must return `schemaVersion: "bilig-evaluator.v1"`,
 `door: "agent-mcp"`, `verified: true`, and these checks:
 

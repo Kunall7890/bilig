@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildMcpChallengeProof, mcpChallengeHelpText, parseMcpChallengeCliArgs, runMcpChallengeCli } from '../mcp-challenge-cli.js'
+import {
+  buildMcpChallengeProof,
+  buildMcpRevenuePlanChallengeProof,
+  mcpChallengeHelpText,
+  parseMcpChallengeCliArgs,
+  runMcpChallengeCli,
+} from '../mcp-challenge-cli.js'
 
 describe('bilig-mcp-challenge', () => {
   it('builds the verified file-backed MCP proof object', () => {
@@ -74,6 +80,53 @@ describe('bilig-mcp-challenge', () => {
     expect(parsed).not.toHaveProperty('nextStep')
     expect(parsed.persistedDocumentBytes).toBe(parsed.persistence.serializedBytes)
     expect(parsed.workpaperPath).toBeUndefined()
+  })
+
+  it('builds a verified revenue-plan MCP scenario with multiple formula families', () => {
+    expect(buildMcpRevenuePlanChallengeProof()).toMatchObject({
+      transport: 'stdio-json-rpc',
+      scenario: 'revenue-plan',
+      serverName: 'bilig-headless-workpaper',
+      formulaFamilies: ['SUM', 'SUMIF', 'XLOOKUP', 'FILTER', 'named-expression', 'persistence', 'restart'],
+      editedCell: 'Deals!C2',
+      readbackRange: 'Summary!B2:B8',
+      before: {
+        totalRevenue: 27_300,
+        westCustomers: 30,
+        enterpriseArpa: 1_200,
+        targetRevenue: 30_576,
+        qualifiedCustomerCounts: [30, 18],
+      },
+      after: {
+        totalRevenue: 36_900,
+        westCustomers: 38,
+        enterpriseArpa: 1_200,
+        targetRevenue: 41_328,
+        qualifiedCustomerCounts: [20, 30, 18],
+      },
+      afterRestart: {
+        totalRevenue: 36_900,
+        westCustomers: 38,
+        enterpriseArpa: 1_200,
+        targetRevenue: 41_328,
+        qualifiedCustomerCounts: [20, 30, 18],
+      },
+      checks: {
+        listedFileBackedTools: true,
+        listedResourcesAndPrompts: true,
+        formulaValidationPassed: true,
+        totalRevenueRecalculated: true,
+        sumifReadbackChanged: true,
+        xlookupReadbackStable: true,
+        filterSpillUpdated: true,
+        namedExpressionApplied: true,
+        persistedToDisk: true,
+        restoredReadbackMatchesAfter: true,
+        exportContainsWorkPaperDocument: true,
+        restartReadbackMatchesAfter: true,
+      },
+      verified: true,
+    })
   })
 
   it('prints a markdown report when requested', () => {

@@ -1,13 +1,15 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import { exportWorkPaperDocument, serializeWorkPaperDocument } from './persistence.js'
 import { createFileBackedWorkPaperMcpToolServerFromFile } from './work-paper-mcp-file-server.js'
 import {
   WORKPAPER_MCP_PROTOCOL_VERSION,
   dispatchWorkPaperMcpJsonRpc,
   type WorkPaperMcpJsonRpcDispatchResult,
 } from './work-paper-mcp-json-rpc.js'
+import { WorkPaper } from './work-paper-runtime.js'
 import type { WorkPaperMcpToolServer } from './work-paper-mcp-server.js'
 
 type JsonObject = Record<string, unknown>
@@ -41,6 +43,52 @@ export interface McpChallengeProof {
     readonly exportContainsWorkPaperDocument: boolean
     readonly restartReadbackMatchesAfter: boolean
     readonly displayValueRead: boolean
+  }
+  readonly verified: boolean
+  readonly limitations: readonly string[]
+}
+
+export interface McpRevenuePlanReadback {
+  readonly totalRevenue: number
+  readonly westCustomers: number
+  readonly enterpriseArpa: number
+  readonly targetRevenue: number
+  readonly qualifiedCustomerCounts: readonly number[]
+}
+
+export interface McpRevenuePlanChallengeProof {
+  readonly transport: 'stdio-json-rpc'
+  readonly scenario: 'revenue-plan'
+  readonly protocolVersion: string
+  readonly serverName: string
+  readonly workpaperPath?: string
+  readonly tools: readonly string[]
+  readonly resources: readonly string[]
+  readonly prompts: readonly string[]
+  readonly formulaFamilies: readonly string[]
+  readonly editedCell: 'Deals!C2'
+  readonly readbackRange: 'Summary!B2:B8'
+  readonly before: McpRevenuePlanReadback
+  readonly after: McpRevenuePlanReadback
+  readonly afterRestart: McpRevenuePlanReadback
+  readonly persistedDocumentBytes: number
+  readonly persistence: {
+    readonly persisted: boolean
+    readonly serializedBytes: number
+  }
+  readonly checks: {
+    readonly listedFileBackedTools: boolean
+    readonly listedResourcesAndPrompts: boolean
+    readonly formulaValidationPassed: boolean
+    readonly totalRevenueRecalculated: boolean
+    readonly sumifReadbackChanged: boolean
+    readonly xlookupReadbackStable: boolean
+    readonly filterSpillUpdated: boolean
+    readonly namedExpressionApplied: boolean
+    readonly persistedToDisk: boolean
+    readonly restoredReadbackMatchesAfter: boolean
+    readonly exportContainsWorkPaperDocument: boolean
+    readonly restartReadbackMatchesAfter: boolean
   }
   readonly verified: boolean
   readonly limitations: readonly string[]
@@ -83,6 +131,8 @@ const expectedResources = [
 ] as const
 
 const expectedPrompts = ['edit_and_verify_workpaper', 'debug_workpaper_formula'] as const
+
+const revenuePlanFormulaFamilies = ['SUM', 'SUMIF', 'XLOOKUP', 'FILTER', 'named-expression', 'persistence', 'restart'] as const
 
 export function runMcpChallengeCli(host: McpChallengeCliHost): number {
   const writeStdout = host.writeStdout ?? ((text: string) => process.stdout.write(text))
@@ -301,6 +351,137 @@ export function buildMcpChallengeProof(options: McpChallengeBuildOptions = {}): 
   }
 }
 
+export function buildMcpRevenuePlanChallengeProof(options: McpChallengeBuildOptions = {}): McpRevenuePlanChallengeProof {
+  const tempDir = mkdtempSync(join(tmpdir(), 'bilig-mcp-revenue-plan-'))
+  const workpaperPath = join(tempDir, 'revenue-plan.workpaper.json')
+  const keepTemp = options.keepTemp ?? false
+
+  try {
+    writeFileSync(workpaperPath, serializeWorkPaperDocument(exportWorkPaperDocument(createRevenuePlanWorkPaper(), { includeConfig: true })))
+
+    const server = createFileBackedWorkPaperMcpToolServerFromFile({
+      workpaperPath,
+      writable: true,
+    })
+    const initialize = rpcResult(
+      dispatchWorkPaperMcpJsonRpc(
+        {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'initialize',
+        },
+        { server, protocolVersion: WORKPAPER_MCP_PROTOCOL_VERSION },
+      ),
+      'initialize',
+    )
+    const initialized = requireRecord(initialize, 'initialize result')
+    const tools = readToolNames(rpcResult(callJsonRpc(server, 2, 'tools/list'), 'tools/list result'))
+    const resources = readResourceUris(rpcResult(callJsonRpc(server, 3, 'resources/list'), 'resources/list result'))
+    const prompts = readPromptNames(rpcResult(callJsonRpc(server, 4, 'prompts/list'), 'prompts/list result'))
+    const formulaValidation = toolStructuredContent(
+      callTool(server, 5, 'validate_formula', {
+        formula: '=SUM(Deals!E2:E4)*(100+GrowthRatePercent)/100',
+      }),
+      'validate_formula',
+    )
+    const write = toolStructuredContent(
+      callTool(server, 6, 'set_cell_contents_and_readback', {
+        sheetName: 'Deals',
+        address: 'C2',
+        value: 20,
+        readbackSheetName: 'Summary',
+        readbackRange: 'B2:B8',
+      }),
+      'set_cell_contents_and_readback',
+    )
+    const exported = toolStructuredContent(
+      callTool(server, 7, 'export_workpaper_document', {
+        includeConfig: true,
+      }),
+      'export_workpaper_document',
+    )
+    const restartedServer = createFileBackedWorkPaperMcpToolServerFromFile({
+      workpaperPath,
+      writable: false,
+    })
+    const restartedReadback = toolStructuredContent(
+      callTool(restartedServer, 8, 'read_range', {
+        sheetName: 'Summary',
+        range: 'B2:B8',
+      }),
+      'read_range after restart',
+    )
+    const serverInfo = requireRecord(initialized['serverInfo'], 'initialize serverInfo')
+    const before = revenuePlanReadback(requireRecord(write['beforeReadback'], 'beforeReadback'))
+    const after = revenuePlanReadback(requireRecord(write['afterReadback'], 'afterReadback'))
+    const afterRestart = revenuePlanReadback(restartedReadback)
+    const persistence = requireRecord(write['persistence'], 'set_cell_contents_and_readback persistence')
+    const serializedBytes = requireNumber(persistence['serializedBytes'], 'persistence.serializedBytes')
+    const writeChecks = requireRecord(write['checks'], 'set_cell_contents_and_readback checks')
+    const checks = {
+      listedFileBackedTools: arraysEqual(tools, expectedFileBackedTools),
+      listedResourcesAndPrompts: arraysEqual(resources, expectedResources) && arraysEqual(prompts, expectedPrompts),
+      formulaValidationPassed: formulaValidation['valid'] === true,
+      totalRevenueRecalculated: before.totalRevenue === 27_300 && after.totalRevenue === 36_900,
+      sumifReadbackChanged: before.westCustomers === 30 && after.westCustomers === 38,
+      xlookupReadbackStable: before.enterpriseArpa === 1_200 && after.enterpriseArpa === 1_200,
+      filterSpillUpdated:
+        numberArraysEqual(before.qualifiedCustomerCounts, [30, 18]) && numberArraysEqual(after.qualifiedCustomerCounts, [20, 30, 18]),
+      namedExpressionApplied: before.targetRevenue === 30_576 && after.targetRevenue === 41_328,
+      persistedToDisk:
+        write['editedCell'] === 'Deals!C2' && writeChecks['persisted'] === true && persistence['persisted'] === true && serializedBytes > 0,
+      restoredReadbackMatchesAfter: writeChecks['restoredReadbackMatchesAfter'] === true,
+      exportContainsWorkPaperDocument:
+        isRecord(exported['document']) && requireNumber(exported['serializedBytes'], 'exported.serializedBytes') > 0,
+      restartReadbackMatchesAfter: JSON.stringify(afterRestart) === JSON.stringify(after),
+    }
+    const proof: McpRevenuePlanChallengeProof = {
+      transport: 'stdio-json-rpc',
+      scenario: 'revenue-plan',
+      protocolVersion: requireString(initialized['protocolVersion'], 'protocolVersion'),
+      serverName: requireString(serverInfo['name'], 'serverInfo.name'),
+      tools,
+      resources,
+      prompts,
+      formulaFamilies: revenuePlanFormulaFamilies,
+      editedCell: 'Deals!C2',
+      readbackRange: 'Summary!B2:B8',
+      before,
+      after,
+      afterRestart,
+      persistedDocumentBytes: serializedBytes,
+      persistence: {
+        persisted: persistence['persisted'] === true,
+        serializedBytes,
+      },
+      checks,
+      verified:
+        checks.listedFileBackedTools &&
+        checks.listedResourcesAndPrompts &&
+        checks.formulaValidationPassed &&
+        checks.totalRevenueRecalculated &&
+        checks.sumifReadbackChanged &&
+        checks.xlookupReadbackStable &&
+        checks.filterSpillUpdated &&
+        checks.namedExpressionApplied &&
+        checks.persistedToDisk &&
+        checks.restoredReadbackMatchesAfter &&
+        checks.exportContainsWorkPaperDocument &&
+        checks.restartReadbackMatchesAfter,
+      limitations: [
+        'This revenue-plan challenge proves a realistic file-backed MCP WorkPaper path, not Excel desktop UI automation.',
+        'It covers formula readback for SUM, SUMIF, XLOOKUP, FILTER spills, and a named expression; use real workbook fixtures for domain-specific parity.',
+      ],
+    }
+
+    return keepTemp ? { ...proof, workpaperPath } : proof
+  } finally {
+    if (!keepTemp) {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  }
+}
+
 export function renderMcpChallengeProof(proof: McpChallengeProof, outputMode: McpChallengeOutputMode): string {
   if (outputMode === 'markdown') {
     return renderMcpChallengeMarkdown(proof)
@@ -389,6 +570,67 @@ function numericCellValue(cell: JsonObject): number {
     return value
   }
   throw new Error(`Expected numeric cell value, got ${JSON.stringify(cell)}`)
+}
+
+function createRevenuePlanWorkPaper(): WorkPaper {
+  const workbook = WorkPaper.buildFromSheets({
+    Deals: [
+      ['Region', 'Segment', 'Customers', 'ARPA', 'Revenue'],
+      ['West', 'Enterprise', 12, 1200, '=C2*D2'],
+      ['East', 'SMB', 30, 250, '=C3*D3'],
+      ['West', 'SMB', 18, 300, '=C4*D4'],
+    ],
+    Summary: [
+      ['Metric', 'Value'],
+      ['Total revenue', '=SUM(Deals!E2:E4)'],
+      ['West customers', '=SUMIF(Deals!A2:A4,"West",Deals!C2:C4)'],
+      ['Enterprise ARPA', '=XLOOKUP("Enterprise",Deals!B2:B4,Deals!D2:D4)'],
+      ['Target revenue', null],
+      ['Qualified customer counts', '=FILTER(Deals!C2:C4,Deals!C2:C4>=18)'],
+    ],
+  })
+  const summarySheet = workbook.getSheetId('Summary')
+  if (summarySheet === undefined) {
+    throw new Error('Expected Summary sheet to exist.')
+  }
+  workbook.addNamedExpression('GrowthRatePercent', 12)
+  workbook.setCellContents({ sheet: summarySheet, row: 4, col: 1 }, '=SUM(Deals!E2:E4)*(100+GrowthRatePercent)/100')
+  return workbook
+}
+
+function revenuePlanReadback(range: JsonObject): McpRevenuePlanReadback {
+  const values = requireArray(range['values'], 'readback values')
+  const numbers = values.map((row, index) => optionalColumnNumber(row, index))
+  return {
+    totalRevenue: requireReadbackNumber(numbers[0], 'total revenue'),
+    westCustomers: requireReadbackNumber(numbers[1], 'west customers'),
+    enterpriseArpa: requireReadbackNumber(numbers[2], 'enterprise ARPA'),
+    targetRevenue: requireReadbackNumber(numbers[3], 'target revenue'),
+    qualifiedCustomerCounts: numbers.slice(4).filter((value): value is number => value !== undefined),
+  }
+}
+
+function optionalColumnNumber(row: unknown, index: number): number | undefined {
+  const cells = requireArray(row, `readback row ${String(index + 1)}`)
+  const cell = cells[0]
+  if (isRecord(cell) && typeof cell['value'] === 'number') {
+    return cell['value']
+  }
+  if (typeof cell === 'number') {
+    return cell
+  }
+  return undefined
+}
+
+function requireReadbackNumber(value: number | undefined, label: string): number {
+  if (value === undefined) {
+    throw new Error(`Expected ${label} readback to be numeric.`)
+  }
+  return value
+}
+
+function numberArraysEqual(actual: readonly number[], expected: readonly number[]): boolean {
+  return actual.length === expected.length && actual.every((item, index) => item === expected[index])
 }
 
 function arraysEqual(actual: readonly string[], expected: readonly string[]): boolean {
