@@ -24,31 +24,55 @@ if (options.help) {
   process.exit(0)
 }
 
-const targetDirectory = resolve(process.cwd(), options.targetDirectory ?? 'bilig-workpaper-starter')
-const projectName = normalizePackageName(options.targetDirectory ?? 'bilig-workpaper-starter')
+const defaultTargetDirectory = options.addAgent ? '.' : 'bilig-workpaper-starter'
+const targetDirectory = resolve(process.cwd(), options.targetDirectory ?? defaultTargetDirectory)
+const projectName = normalizePackageName(options.targetDirectory ?? defaultTargetDirectory)
 
-await ensureWritableTarget(targetDirectory, options.force)
-await copyTemplate(templateRoot, targetDirectory, projectName)
+if (options.addAgent) {
+  await ensureDirectory(targetDirectory)
+  const overlayResult = await copyAgentOverlay(agentOverlayRoot, targetDirectory, projectName, options.force)
 
-if (options.template === 'agent') {
-  await copyTemplate(agentOverlayRoot, targetDirectory, projectName)
+  const targetLabel = relative(process.cwd(), targetDirectory) || '.'
+  console.log(`Added Bilig agent files to ${targetLabel}`)
+  printChangeList('Wrote', overlayResult.written)
+  printChangeList('Skipped existing', overlayResult.skipped)
+  console.log('')
+  console.log('Next:')
+  if (targetLabel !== '.') {
+    console.log(`  cd ${targetLabel}`)
+  }
+  console.log('  npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json')
+  console.log(
+    '  npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable',
+  )
+  console.log('')
+  console.log('Expected proof output includes:')
+  console.log('  "verified": true')
+} else {
+  await ensureWritableTarget(targetDirectory, options.force)
+  await copyTemplate(templateRoot, targetDirectory, projectName)
+
+  if (options.template === 'agent') {
+    await copyTemplate(agentOverlayRoot, targetDirectory, projectName)
+  }
+
+  console.log(`Created ${relative(process.cwd(), targetDirectory) || '.'}`)
+  console.log('')
+  console.log('Next:')
+  console.log(`  cd ${relative(process.cwd(), targetDirectory) || '.'}`)
+  console.log('  npm install')
+  console.log(options.template === 'agent' ? '  npm run agent:verify' : '  npm run smoke')
+  if (options.template === 'agent') {
+    console.log('  npm run mcp:server')
+  }
+  console.log('')
+  console.log('Expected smoke output includes:')
+  console.log('  "verified": true')
 }
-
-console.log(`Created ${relative(process.cwd(), targetDirectory) || '.'}`)
-console.log('')
-console.log('Next:')
-console.log(`  cd ${relative(process.cwd(), targetDirectory) || '.'}`)
-console.log('  npm install')
-console.log(options.template === 'agent' ? '  npm run agent:verify' : '  npm run smoke')
-if (options.template === 'agent') {
-  console.log('  npm run mcp:server')
-}
-console.log('')
-console.log('Expected smoke output includes:')
-console.log('  "verified": true')
 
 function parseCliArgs(inputArgs) {
   const parsed = {
+    addAgent: false,
     force: false,
     help: false,
     targetDirectory: undefined,
@@ -63,6 +87,11 @@ function parseCliArgs(inputArgs) {
     }
     if (arg === '--force') {
       parsed.force = true
+      continue
+    }
+    if (arg === '--add-agent' || arg === '--overlay-only') {
+      parsed.addAgent = true
+      parsed.template = 'agent'
       continue
     }
     if (arg === '--agent') {
@@ -111,14 +140,31 @@ function printHelp() {
 Usage:
   npm create @bilig/workpaper@latest <directory>
   npm create @bilig/workpaper@latest <directory> -- --agent
+  npm create @bilig/workpaper@latest . -- --add-agent
   npm exec @bilig/create-workpaper@latest <directory>
 
 Options:
   --agent                    Add AGENTS.md, MCP client configs, and agent smoke scripts.
+  --add-agent                Add only agent/MCP files to an existing repo.
   --template service|agent   Choose the starter shape. Defaults to service.
-  --force                    Allow writing into an existing directory.
+  --force                    Allow overwriting existing generated/overlay files.
   -h, --help                 Print this help text.
 `)
+}
+
+async function ensureDirectory(directory) {
+  try {
+    const existing = await stat(directory)
+    if (!existing.isDirectory()) {
+      throw new Error(`${directory} exists and is not a directory`)
+    }
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      await mkdir(directory, { recursive: true })
+      return
+    }
+    throw error
+  }
 }
 
 async function ensureWritableTarget(directory, allowExisting) {
@@ -156,6 +202,72 @@ async function copyTemplate(sourceRoot, outputDirectory, packageName) {
       return false
     },
   })
+}
+
+async function copyAgentOverlay(sourceRoot, outputDirectory, packageName, force) {
+  const files = await listFiles(sourceRoot)
+  const results = await Promise.all(
+    files.map(async (sourcePath) => {
+      const relativePath = relative(sourceRoot, sourcePath)
+      if (relativePath === 'package.json') {
+        return { path: relativePath, status: 'ignored' }
+      }
+
+      const targetRelativePath = relativePath === 'README.md' ? 'BILIG_WORKPAPER.md' : relativePath
+      const targetPath = join(outputDirectory, targetRelativePath)
+
+      if (!force && (await pathExists(targetPath))) {
+        return { path: targetRelativePath, status: 'skipped' }
+      }
+
+      const text = await readFile(sourcePath, 'utf8')
+      await mkdir(dirname(targetPath), { recursive: true })
+      await writeFile(targetPath, text.replaceAll('__PROJECT_NAME__', packageName))
+      return { path: targetRelativePath, status: 'written' }
+    }),
+  )
+
+  return {
+    skipped: results.filter((result) => result.status === 'skipped').map((result) => result.path),
+    written: results.filter((result) => result.status === 'written').map((result) => result.path),
+  }
+}
+
+async function listFiles(directory) {
+  const entries = await readdir(directory, { withFileTypes: true })
+  const nestedEntries = await Promise.all(
+    entries.map(async (entry) => {
+      const entryPath = join(directory, entry.name)
+      if (entry.isDirectory()) {
+        return listFiles(entryPath)
+      }
+      return entry.isFile() ? [entryPath] : []
+    }),
+  )
+
+  return nestedEntries.flat()
+}
+
+async function pathExists(path) {
+  try {
+    await stat(path)
+    return true
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      return false
+    }
+    throw error
+  }
+}
+
+function printChangeList(label, values) {
+  if (values.length === 0) {
+    return
+  }
+  console.log(`${label}:`)
+  for (const value of values) {
+    console.log(`  ${value}`)
+  }
 }
 
 function normalizePackageName(name) {

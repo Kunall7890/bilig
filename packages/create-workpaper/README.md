@@ -40,6 +40,17 @@ Code MCP configs, a generic MCP config at `mcp/bilig-workpaper.mcp.json`, and
 an `agent:verify` script that proves both the service API path and the
 file-backed MCP path.
 
+To add the same agent and MCP proof loop to an existing Node repo without
+replacing its app, run:
+
+```sh
+npm create @bilig/workpaper@latest . -- --add-agent
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+That writes Bilig-specific agent files, keeps an existing `README.md`, does
+not edit `package.json`, and skips existing files unless you pass `--force`.
+
 For an existing agent or MCP client that does not need a generated project yet,
 use the adoption kit first:
 <https://proompteng.github.io/bilig/agent-adoption-kit.html>.

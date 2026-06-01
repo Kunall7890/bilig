@@ -12,13 +12,13 @@ Task: ${input:task:Describe the workbook or formula workflow}
 Start with the project proof:
 
 ```sh
-npm run agent:verify
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
 For MCP work, start the project-local server:
 
 ```sh
-npm run mcp:server
+npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 Return proof, not a status sentence:

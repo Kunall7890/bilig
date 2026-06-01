@@ -3,11 +3,10 @@
 Agent-ready formula WorkPaper starter built with `@bilig/workpaper`.
 
 ```sh
-npm install
-npm run agent:verify
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
-`agent:verify` runs two proofs:
+Generated starters also include `npm run agent:verify`, which runs two proofs:
 
 - `npm run smoke`: writes quote inputs through a service-style API handler,
   recalculates formulas, persists WorkPaper JSON, restores it, and checks
@@ -30,7 +29,7 @@ curl -X POST http://localhost:8788/api/quote/approval \
 Start the persistent project-local MCP server:
 
 ```sh
-npm run mcp:server
+npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 The server owns `./pricing.workpaper.json`, initializes it when missing, writes
@@ -44,6 +43,13 @@ tools, Gemini CLI, GitHub Copilot, VS Code agent mode, Cursor, Cline, Continue,
 and Windsurf/Cascade. They all point at the same rule: read first, edit one
 cell or formula, recalculate, read the dependent output, persist or export, and
 report proof.
+
+Existing projects can add only these agent files without replacing their app
+template or editing `package.json`:
+
+```sh
+npm create @bilig/workpaper@latest . -- --add-agent
+```
 
 Agent handoff:
 

@@ -42,6 +42,18 @@ npm run agent:verify
 npm run mcp:server
 ```
 
+Existing Node project:
+
+```sh
+npm create @bilig/workpaper@latest . -- --add-agent
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+```
+
+`--add-agent` only adds Bilig agent/MCP instructions. It keeps your existing
+app template and `README.md`, writes `BILIG_WORKPAPER.md`, does not edit
+`package.json`, and skips existing files unless you pass `--force`.
+
 Full-repo flagship example:
 
 ```sh

@@ -3,7 +3,18 @@
     "bilig-workpaper": {
       "type": "stdio",
       "command": "npm",
-      "args": ["run", "--silent", "mcp:server"],
+      "args": [
+        "exec",
+        "--yes",
+        "--package",
+        "@bilig/workpaper@latest",
+        "--",
+        "bilig-workpaper-mcp",
+        "--workpaper",
+        "./pricing.workpaper.json",
+        "--init-demo-workpaper",
+        "--writable"
+      ],
       "env": {}
     }
   }

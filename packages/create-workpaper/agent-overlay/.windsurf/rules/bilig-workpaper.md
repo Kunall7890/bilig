@@ -15,8 +15,8 @@ Screenshots and browser grids are human-review surfaces, not formula truth.
 ## First Checks
 
 ```sh
-npm run agent:verify
-npm run mcp:server
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 ## Proof Standard

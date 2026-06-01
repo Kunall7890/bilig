@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 
 type PackageManifest = Readonly<Record<string, unknown>>
@@ -110,6 +110,7 @@ function assertDocs(): void {
     assert(source.includes('npm create @bilig/workpaper@latest'), `${label} must document the scoped npm create path`)
     assert(source.includes('@bilig/create-workpaper'), `${label} must include the published package name`)
     assert(source.includes('--agent'), `${label} must document the agent-ready starter path`)
+    assert(source.includes('--add-agent'), `${label} must document the existing-repo agent overlay path`)
   }
   assert(readme.includes('verified: true') || readme.includes('"verified": true'), 'starter README must show the verification output')
   assert(docs.includes('verified: true') || docs.includes('"verified": true'), 'starter docs must show the verification output')
@@ -169,6 +170,7 @@ function assertPackedTarball(): void {
     'package/agent-overlay/.cursor/mcp.json',
     'package/agent-overlay/.cursor/rules/bilig-workpaper.mdc',
     'package/agent-overlay/.github/copilot-instructions.md',
+    'package/agent-overlay/.github/instructions/bilig-workpaper.instructions.md',
     'package/agent-overlay/.github/prompts/bilig-workpaper-proof.prompt.md',
     'package/agent-overlay/.vscode/mcp.json',
     'package/agent-overlay/.windsurf/rules/bilig-workpaper.md',
@@ -200,9 +202,18 @@ function assertGeneratedStarters(): void {
   const cliPath = join(packageDir, 'bin', 'create-bilig-workpaper.js')
   const serviceDir = join(generatedDir, 'service-demo')
   const agentDir = join(generatedDir, 'agent-demo')
+  const existingDir = join(generatedDir, 'existing-demo')
 
   run('node', [cliPath, serviceDir])
   run('node', [cliPath, agentDir, '--agent'])
+  mkdirSync(existingDir, { recursive: true })
+  writeFileSync(
+    join(existingDir, 'package.json'),
+    `${JSON.stringify({ name: 'existing-demo', private: true, scripts: { test: 'node --test' } }, null, 2)}\n`,
+  )
+  writeFileSync(join(existingDir, 'README.md'), '# Existing project\n')
+  writeFileSync(join(existingDir, 'src-index.ts'), 'console.log("keep me")\n')
+  run('node', [cliPath, existingDir, '--add-agent'])
 
   const serviceManifest = readJson(join(serviceDir, 'package.json'))
   assert(isRecord(serviceManifest.scripts), 'generated service package scripts must be an object')
@@ -231,6 +242,7 @@ function assertGeneratedStarters(): void {
     '.cursor/mcp.json',
     '.cursor/rules/bilig-workpaper.mdc',
     '.github/copilot-instructions.md',
+    '.github/instructions/bilig-workpaper.instructions.md',
     '.github/prompts/bilig-workpaper-proof.prompt.md',
     '.vscode/mcp.json',
     '.windsurf/rules/bilig-workpaper.md',
@@ -238,6 +250,53 @@ function assertGeneratedStarters(): void {
   ]) {
     assert(existsSync(join(agentDir, expected)), `generated agent starter is missing ${expected}`)
   }
+
+  const existingManifest = readJson(join(existingDir, 'package.json'))
+  assert(existingManifest.name === 'existing-demo', 'existing-repo overlay must preserve package name')
+  assert(isRecord(existingManifest.scripts), 'existing-repo package scripts must be an object')
+  assert(existingManifest.scripts['test'] === 'node --test', 'existing-repo overlay must preserve existing scripts')
+  assert(existingManifest.scripts['agent:verify'] === undefined, 'existing-repo overlay must not mutate package scripts')
+  assert(existingManifest.scripts['mcp:server'] === undefined, 'existing-repo overlay must not add package scripts')
+  assert(existingManifest.dependencies === undefined, 'existing-repo overlay must not mutate dependencies')
+  assert(
+    readFileSync(join(existingDir, 'README.md'), 'utf8') === '# Existing project\n',
+    'existing-repo overlay must not overwrite README.md',
+  )
+  assert(
+    readFileSync(join(existingDir, 'src-index.ts'), 'utf8') === 'console.log("keep me")\n',
+    'existing-repo overlay must not touch unrelated app files',
+  )
+  assert(!existsSync(join(existingDir, 'src', 'index.ts')), 'existing-repo overlay must not copy the starter template')
+  assert(existsSync(join(existingDir, 'BILIG_WORKPAPER.md')), 'existing-repo overlay must write BILIG_WORKPAPER.md')
+  assert(existsSync(join(existingDir, 'AGENTS.md')), 'existing-repo overlay must write AGENTS.md when absent')
+  assert(
+    existsSync(join(existingDir, '.github', 'instructions', 'bilig-workpaper.instructions.md')),
+    'existing-repo overlay must write path-specific Copilot instructions',
+  )
+  assert(
+    readFileSync(join(existingDir, '.mcp.json'), 'utf8').includes('npm') &&
+      readFileSync(join(existingDir, '.mcp.json'), 'utf8').includes('exec') &&
+      readFileSync(join(existingDir, '.mcp.json'), 'utf8').includes('@bilig/workpaper@latest'),
+    'existing-repo MCP config must use direct npm exec instead of project scripts',
+  )
+
+  const existingAgentNotes = readFileSync(join(existingDir, 'AGENTS.md'), 'utf8')
+  writeFileSync(join(existingDir, 'AGENTS.md'), '# Existing agent policy\n')
+  run('node', [cliPath, existingDir, '--add-agent'])
+  assert(
+    readFileSync(join(existingDir, 'AGENTS.md'), 'utf8') === '# Existing agent policy\n',
+    'existing-repo overlay must skip existing agent files by default',
+  )
+  run('node', [cliPath, existingDir, '--add-agent', '--force'])
+  assert(
+    readFileSync(join(existingDir, 'AGENTS.md'), 'utf8') === existingAgentNotes,
+    'existing-repo overlay --force must overwrite overlay files',
+  )
+  assert(readFileSync(join(existingDir, 'README.md'), 'utf8') === '# Existing project\n', '--force must still not overwrite README.md')
+  assert(
+    JSON.stringify(readJson(join(existingDir, 'package.json'))) === JSON.stringify(existingManifest),
+    '--force must still not mutate package.json',
+  )
 }
 
 function assertPublishedVersion(version: string): void {

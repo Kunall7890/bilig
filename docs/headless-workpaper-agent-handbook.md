@@ -62,6 +62,17 @@ The generated project includes `AGENTS.md`, `CLAUDE.md`, project-root
 file-backed MCP challenge. `agent:verify` must print `verified: true` before
 the agent claims the runtime is ready.
 
+For an existing repo, add only the Bilig agent and MCP files:
+
+```sh
+npm create @bilig/workpaper@latest . -- --add-agent
+```
+
+This writes `AGENTS.md`, Claude/Gemini/Copilot/Cursor/Cline/Continue/Windsurf
+rules, and MCP configs while keeping the existing app template, `README.md`,
+and `package.json` intact. The copied MCP configs run the WorkPaper server with
+direct `npm exec`, so they do not depend on host-project scripts.
+
 For an existing repository that already uses Claude Code, add the project-local
 skill or slash command and run `/bilig-workpaper-proof` before any workbook
 task that would otherwise open Excel, LibreOffice, Google Sheets, a browser

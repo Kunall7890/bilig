@@ -51,6 +51,16 @@ The generated project includes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
 Copilot / VS Code instructions, Cursor, Cline, Continue, and Windsurf rules,
 plus local MCP configs and `npm run agent:verify`.
 
+For an existing repo, add only the agent/MCP files:
+
+```sh
+npm create @bilig/workpaper@latest . -- --add-agent
+```
+
+That keeps the app template, existing `README.md`, and `package.json` intact.
+The generated MCP configs use direct `npm exec` so agents can run the
+WorkPaper server without needing project scripts.
+
 For web fetch, give the agent the compact map first:
 
 ```text

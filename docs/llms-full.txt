@@ -809,6 +809,9 @@ For an agent-ready project with `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
 Copilot / Cursor / Cline / Continue / Windsurf rules, MCP client configs, and
 an `agent:verify` script, run
 `npm create @bilig/workpaper@latest pricing-agent -- --agent`.
+For an existing repo, run
+`npm create @bilig/workpaper@latest . -- --add-agent`; it adds Bilig agent and
+MCP instructions without replacing your app template or editing `package.json`.
 
 If that proof almost matches a service or agent workflow you maintain, the useful next
 step is concrete feedback: open or answer one adoption blocker in
@@ -2098,6 +2101,16 @@ The generated project includes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
 Copilot / VS Code instructions, Cursor, Cline, Continue, and Windsurf rules,
 plus local MCP configs and `npm run agent:verify`.
 
+For an existing repo, add only the agent/MCP files:
+
+```sh
+npm create @bilig/workpaper@latest . -- --add-agent
+```
+
+That keeps the app template, existing `README.md`, and `package.json` intact.
+The generated MCP configs use direct `npm exec` so agents can run the
+WorkPaper server without needing project scripts.
+
 For web fetch, give the agent the compact map first:
 
 ```text
@@ -2724,6 +2737,17 @@ The generated project includes `AGENTS.md`, `CLAUDE.md`, project-root
 `mcp/bilig-workpaper.mcp.json`, a quote approval service smoke test, and a
 file-backed MCP challenge. `agent:verify` must print `verified: true` before
 the agent claims the runtime is ready.
+
+For an existing repo, add only the Bilig agent and MCP files:
+
+```sh
+npm create @bilig/workpaper@latest . -- --add-agent
+```
+
+This writes `AGENTS.md`, Claude/Gemini/Copilot/Cursor/Cline/Continue/Windsurf
+rules, and MCP configs while keeping the existing app template, `README.md`,
+and `package.json` intact. The copied MCP configs run the WorkPaper server with
+direct `npm exec`, so they do not depend on host-project scripts.
 
 For an existing repository that already uses Claude Code, add the project-local
 skill or slash command and run `/bilig-workpaper-proof` before any workbook

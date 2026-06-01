@@ -497,6 +497,9 @@ For an agent-ready project with `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
 Copilot / Cursor / Cline / Continue / Windsurf rules, MCP client configs, and
 an `agent:verify` script, run
 `npm create @bilig/workpaper@latest pricing-agent -- --agent`.
+For an existing repo, run
+`npm create @bilig/workpaper@latest . -- --add-agent`; it adds Bilig agent and
+MCP instructions without replacing your app template or editing `package.json`.
 
 If that proof almost matches a service or agent workflow you maintain, the useful next
 step is concrete feedback: open or answer one adoption blocker in
