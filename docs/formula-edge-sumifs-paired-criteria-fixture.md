@@ -1,3 +1,11 @@
+---
+title: SUMIFS Paired Criteria Fixture Walkthrough
+published: true
+description: Narrow public fixture note for the canonical paired-criteria SUMIFS case covered by Bilig headless formula tests.
+tags: formulas, sumifs, headless, excel, typescript
+canonical_url: https://proompteng.github.io/bilig/formula-edge-sumifs-paired-criteria-fixture.html
+---
+
 # SUMIFS Paired Criteria Fixture Walkthrough
 
 Status: public formula-edge fixture note for `@bilig/headless`.
@@ -40,12 +48,7 @@ The registry entry is in
 [`packages/formula/src/compatibility.ts`](../packages/formula/src/compatibility.ts):
 
 ```ts
-entry(
-  "statistical:sumifs-basic",
-  "statistical",
-  '=SUMIFS(C1:C4,A1:A4,">0",B1:B4,"x")',
-  "implemented-wasm-production",
-)
+entry('statistical:sumifs-basic', 'statistical', '=SUMIFS(C1:C4,A1:A4,">0",B1:B4,"x")', 'implemented-wasm-production')
 ```
 
 That status means this fixture is treated as a production WASM-compatible

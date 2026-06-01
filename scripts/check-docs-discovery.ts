@@ -12,6 +12,7 @@ import {
 import { loadDocsDiscoveryContext } from './check-docs-discovery-context.ts'
 import { requireSitemapPublishedSources } from './check-docs-discovery-sitemap.ts'
 import { requireHomepageDiscovery } from './check-docs-discovery-homepage.ts'
+import { requireDocsLocalHtmlLinksHaveSources } from './check-docs-discovery-local-links.ts'
 import { productHuntLaunchAssetFiles } from './check-docs-discovery-launch-kit.ts'
 import { requireFormulaProofDiscovery } from './check-docs-discovery-proof-pages.ts'
 import { requireReadmeAgentWorkflowRecipeLinks } from './check-docs-discovery-readme-recipes.ts'
@@ -79,6 +80,7 @@ const {
   microsoftGraphExcelRecalculationNode,
   formulaWorkbooksProof,
   showHnFormulaWorkbooksProof,
+  showHnXlsxCacheDoctorProof,
   googleSheetsApiBoundaryDoc,
   npmProvenancePackageTrustDoc,
   xlsxCorpusVerifierWalkthrough,
@@ -153,6 +155,7 @@ if (Reflect.get(parsedGeminiExtensionJson, 'version') !== scopedWorkpaperPackage
 }
 
 requireHomepageDiscovery(index, siteCss, productCss, docsRoot)
+requireDocsLocalHtmlLinksHaveSources(docsRoot)
 await requireXlsxCalcAlternativeDiscovery(docsRoot)
 await requireTypeScriptFirstPublicSnippets(repoRoot)
 requireNoUnsupportedGoogleSheetsTenXClaims(dominanceScorecard, {
@@ -379,6 +382,7 @@ requireFormulaProofDiscovery({
   readme,
   requireIncludes,
   showHnFormulaWorkbooksProof,
+  showHnXlsxCacheDoctorProof,
 })
 
 for (const required of [

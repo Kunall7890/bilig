@@ -3,6 +3,7 @@ export const docsSiteSources = [
   ['why-use-bilig.html', 'why-use-bilig.md'],
   ['stop-driving-spreadsheets-with-screenshots.html', 'stop-driving-spreadsheets-with-screenshots.md'],
   ['show-hn-formula-workbooks-node-services.html', 'show-hn-formula-workbooks-node-services.md'],
+  ['show-hn-xlsx-cache-doctor.html', 'show-hn-xlsx-cache-doctor.md'],
   ['formula-workbooks-node-services-agent-tools.html', 'formula-workbooks-node-services-agent-tools.md'],
   ['eval-xlsx-cache-doctor.html', 'eval-xlsx-cache-doctor.md'],
   ['eval-xlsx-recalc.html', 'eval-xlsx-recalc.md'],

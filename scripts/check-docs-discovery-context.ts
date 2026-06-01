@@ -59,6 +59,7 @@ export interface DocsDiscoveryContext {
   readonly microsoftGraphExcelRecalculationNode: string
   readonly formulaWorkbooksProof: string
   readonly showHnFormulaWorkbooksProof: string
+  readonly showHnXlsxCacheDoctorProof: string
   readonly googleSheetsApiBoundaryDoc: string
   readonly npmProvenancePackageTrustDoc: string
   readonly xlsxCorpusVerifierWalkthrough: string
@@ -139,6 +140,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     microsoftGraphExcelRecalculationNode,
     formulaWorkbooksProof,
     showHnFormulaWorkbooksProof,
+    showHnXlsxCacheDoctorProof,
     googleSheetsApiBoundaryDoc,
     npmProvenancePackageTrustDoc,
     xlsxCorpusVerifierWalkthrough,
@@ -209,6 +211,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     readFile(join(docsRoot, 'microsoft-graph-excel-recalculation-node.md'), 'utf8'),
     readFile(join(docsRoot, 'formula-workbooks-node-services-agent-tools.md'), 'utf8'),
     readFile(join(docsRoot, 'show-hn-formula-workbooks-node-services.md'), 'utf8'),
+    readFile(join(docsRoot, 'show-hn-xlsx-cache-doctor.md'), 'utf8'),
     readFile(join(docsRoot, 'google-sheets-api-alternative-node-workpaper.md'), 'utf8'),
     readFile(join(docsRoot, 'npm-provenance-package-trust.md'), 'utf8'),
     readFile(join(docsRoot, 'xlsx-corpus-verifier-walkthrough.md'), 'utf8'),
@@ -288,6 +291,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     microsoftGraphExcelRecalculationNode,
     formulaWorkbooksProof,
     showHnFormulaWorkbooksProof,
+    showHnXlsxCacheDoctorProof,
     googleSheetsApiBoundaryDoc,
     npmProvenancePackageTrustDoc,
     xlsxCorpusVerifierWalkthrough,

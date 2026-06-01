@@ -1,3 +1,11 @@
+---
+title: XLOOKUP Exact Fixture Walkthrough
+published: true
+description: Narrow public fixture note for the canonical exact-match XLOOKUP case covered by Bilig headless formula tests.
+tags: formulas, xlookup, headless, excel, typescript
+canonical_url: https://proompteng.github.io/bilig/formula-edge-xlookup-exact-fixture.html
+---
+
 # XLOOKUP Exact Fixture Walkthrough
 
 Status: public formula-edge fixture note for `@bilig/headless`.
@@ -41,12 +49,7 @@ The registry entry is in
 [`packages/formula/src/compatibility.ts`](../packages/formula/src/compatibility.ts):
 
 ```ts
-entry(
-  "lookup-reference:xlookup-exact",
-  "lookup-reference",
-  '=XLOOKUP("pear",A1:A3,B1:B3)',
-  "implemented-wasm-production",
-)
+entry('lookup-reference:xlookup-exact', 'lookup-reference', '=XLOOKUP("pear",A1:A3,B1:B3)', 'implemented-wasm-production')
 ```
 
 That status means this fixture is treated as a production WASM-compatible

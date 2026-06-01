@@ -1,3 +1,11 @@
+---
+title: GROUPBY Spill Fixture Walkthrough
+published: true
+description: Narrow public fixture note for the canonical GROUPBY spill case covered by Bilig headless formula tests.
+tags: formulas, groupby, dynamic-arrays, headless, excel
+canonical_url: https://proompteng.github.io/bilig/formula-edge-groupby-spill-fixture.html
+---
+
 # GROUPBY Spill Fixture Walkthrough
 
 Status: public formula-edge fixture note for `@bilig/headless`.
@@ -59,16 +67,10 @@ The registry entry is in
 [`packages/formula/src/compatibility.ts`](../packages/formula/src/compatibility.ts):
 
 ```ts
-entry(
-  "dynamic-array:groupby-basic",
-  "dynamic-array",
-  "=GROUPBY(A1:A5,C1:C5,SUM,3,1)",
-  "implemented-wasm-production",
-  {
-    notes:
-      "The canonical SUM-form GROUPBY case now lowers onto an internal native grouped-array builtin, so the canonical spill executes on the wasm path with oracle coverage.",
-  },
-)
+entry('dynamic-array:groupby-basic', 'dynamic-array', '=GROUPBY(A1:A5,C1:C5,SUM,3,1)', 'implemented-wasm-production', {
+  notes:
+    'The canonical SUM-form GROUPBY case now lowers onto an internal native grouped-array builtin, so the canonical spill executes on the wasm path with oracle coverage.',
+})
 ```
 
 That status means this fixture is treated as a production WASM-compatible

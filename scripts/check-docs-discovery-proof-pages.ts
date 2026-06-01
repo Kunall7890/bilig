@@ -12,6 +12,7 @@ export function requireFormulaProofDiscovery({
   readme,
   requireIncludes,
   showHnFormulaWorkbooksProof,
+  showHnXlsxCacheDoctorProof,
 }: {
   readonly benchmarkEvidence: BenchmarkDiscoveryEvidence
   readonly communityLaunchPack: string
@@ -22,6 +23,7 @@ export function requireFormulaProofDiscovery({
   readonly readme: string
   readonly requireIncludes: RequireIncludes
   readonly showHnFormulaWorkbooksProof: string
+  readonly showHnXlsxCacheDoctorProof: string
 }): void {
   for (const required of [
     'title: Formula workbooks for Node services and agent tools',
@@ -71,7 +73,27 @@ export function requireFormulaProofDiscovery({
     requireIncludes(showHnFormulaWorkbooksProof, required, 'docs/show-hn-formula-workbooks-node-services.md')
   }
 
+  for (const required of [
+    "title: 'Show HN: XLSX Cache Doctor catches stale Excel formula values in CI'",
+    'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json',
+    '"door": "xlsx-cache"',
+    '"verified": true',
+    '"staleCachedFormulaCount": 1',
+    'uses: proompteng/bilig@v1',
+    "fail-on-stale: 'false'",
+    'https://github.com/proompteng/xlsx-cache-doctor-demo/pull/1',
+    'It is not a complete Excel clone.',
+    'Use WorkPaper or `@bilig/headless`',
+    'Open a fixture issue',
+  ] as const) {
+    requireIncludes(showHnXlsxCacheDoctorProof, required, 'docs/show-hn-xlsx-cache-doctor.md')
+  }
+
   requireIncludes(index, './show-hn-formula-workbooks-node-services.html', 'docs/index.html')
+  requireIncludes(index, './show-hn-xlsx-cache-doctor.html', 'docs/index.html')
   requireIncludes(llms, 'https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html', 'docs/llms.txt')
   requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/show-hn-formula-workbooks-node-services.md', 'docs/llms.txt')
+  requireIncludes(llms, 'https://proompteng.github.io/bilig/show-hn-xlsx-cache-doctor.html', 'docs/llms.txt')
+  requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/show-hn-xlsx-cache-doctor.md', 'docs/llms.txt')
+  requireIncludes(readme, 'docs/show-hn-xlsx-cache-doctor.md', 'README.md')
 }

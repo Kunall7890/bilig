@@ -1,3 +1,11 @@
+---
+title: CSV-Shaped Input To WorkPaper
+published: true
+description: Turn a small CSV-shaped payload into a formula-backed Bilig WorkPaper and read calculated cells from Node.
+tags: typescript, node, workpaper, formulas, csv
+canonical_url: https://proompteng.github.io/bilig/csv-shaped-workpaper-input-recipe.html
+---
+
 # CSV-Shaped Input To WorkPaper
 
 This recipe shows how to turn a small tabular payload into a formula-backed
@@ -90,7 +98,10 @@ assertSummary(output)
 console.log(JSON.stringify(output, null, 2))
 
 function parseRevenueCsv(input: string): RevenueCsvRow[] {
-  const lines = input.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0)
+  const lines = input
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
   const headerLine = lines[0]
   const dataLines = lines.slice(1)
   if (headerLine === undefined) {

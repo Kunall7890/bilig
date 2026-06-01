@@ -1,3 +1,11 @@
+---
+title: Starter Issues
+published: true
+description: Current small Bilig starter issues for contributors, focused on credible code, test, example, and integration tasks.
+tags: contributors, starter-issues, open-source, workpaper
+canonical_url: https://proompteng.github.io/bilig/starter-issues.html
+---
+
 # Starter Issues
 
 This page is the stable contributor on-ramp for small public `bilig` tasks. It
