@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.142.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.141.0
+- Manual override: no
+
+## Features
+- feat(workpaper): import xlsx into file-backed mcp (a41da056)
+
 ## 0.141.0
 
 - Release type: minor
