@@ -11,7 +11,7 @@
 - Scope: ODF mandatory functions + Office by-category function list, plus tracked compatibility aliases.
 
 ## Coverage Summary
-- Unified function count: **541**
+- Unified function count: **542**
 - ODF mandatory function count: **59**
 - Office function count (cleaned scrape): **519**
 - Overlap (present in both): **58**
@@ -19,7 +19,7 @@
 - Office-only (not in ODF 1.4 mandatory): **461**
 
 ## Current code coverage snapshot
-- Registered in codebase: **541**
+- Registered in codebase: **542**
 - Not yet registered in codebase: **0**
 - Placeholder-backed registrations: **0**
 - The "Implemented in codebase" column reflects runtime registration, including blocked placeholder registrations.
@@ -254,6 +254,7 @@
 | IFS | Not in ODF 1.4 mandatory | Yes | Yes |
 | IMABS | Placeholder (blocked) | Yes | Yes |
 | IMAGE | Not in ODF 1.4 mandatory | Yes | Yes |
+| IMPORTRANGE | Google Sheets compatibility | No | Yes |
 | IMAGINARY | Placeholder (blocked) | Yes | Yes |
 | IMARGUMENT | Placeholder (blocked) | Yes | Yes |
 | IMCONJUGATE | Placeholder (blocked) | Yes | Yes |

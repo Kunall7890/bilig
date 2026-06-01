@@ -35,6 +35,7 @@ describe('formula inventory', () => {
     const sumEntry = formulaInventory.find((entry) => entry.name === 'SUM')
     const copilotEntry = formulaInventory.find((entry) => entry.name === 'COPILOT')
     const imageEntry = formulaInventory.find((entry) => entry.name === 'IMAGE')
+    const importRangeEntry = formulaInventory.find((entry) => entry.name === 'IMPORTRANGE')
     const pyEntry = formulaInventory.find((entry) => entry.name === 'PY')
     const iserrorEntry = formulaInventory.find((entry) => entry.name === 'ISERROR')
 
@@ -69,6 +70,14 @@ describe('formula inventory', () => {
     expect(imageEntry).toMatchObject({
       deterministic: 'provider-backed',
       protocolId: undefined,
+    })
+    expect(importRangeEntry).toMatchObject({
+      inOfficeList: false,
+      deterministic: 'provider-backed',
+      protocolId: undefined,
+      runtimeStatus: 'implemented',
+      placeholder: false,
+      registeredInCodebase: true,
     })
     expect(pyEntry).toMatchObject({
       inOfficeList: true,

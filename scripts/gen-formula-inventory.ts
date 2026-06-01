@@ -94,6 +94,7 @@ const providerBackedNames = new Set([
   'FILTERXML',
   'HYPERLINK',
   'IMAGE',
+  'IMPORTRANGE',
   'INFO',
   'PY',
   'REGISTER.ID',

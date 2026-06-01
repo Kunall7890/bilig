@@ -43,7 +43,8 @@ The worksheet engine keeps non-worksheet Excel surfaces behind the adapter contr
 - cube, web, host-backed, external-data, add-in-like, and Python-in-Excel surfaces register through `installExternalFunctionAdapter()`
 - adapters can expose scalar or range-aware functions to the JS evaluator
 - adapted functions do **not** receive a `BuiltinId` and do **not** enter the WASM fast path
-- known provider-backed functions such as `PY`, `COPILOT`, `TRANSLATE`, and cube/web data functions fail closed as `#BLOCKED!` when no adapter is installed
+- known provider-backed functions such as `PY`, `COPILOT`, `TRANSLATE`, `IMPORTRANGE`, and cube/web data functions fail closed as `#BLOCKED!` when no adapter is installed
+- `IMPORTRANGE` is a Google Sheets compatibility hook: a host adapter must fetch and authorize the remote sheet range, then return the imported values to the evaluator
 
 ## Semantic rules
 

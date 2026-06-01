@@ -1132,6 +1132,11 @@
       "inOfficeList": true
     },
     {
+      "name": "IMPORTRANGE",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
+    },
+    {
       "name": "IMAGINARY",
       "odfStatus": "Placeholder (blocked)",
       "inOfficeList": true

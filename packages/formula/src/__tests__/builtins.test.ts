@@ -5705,6 +5705,7 @@ describe('formula builtins', () => {
     const PY = getBuiltin('PY')!
     const REGISTER_ID = getBuiltin('REGISTER.ID')!
     const FILTERXML = getLookupBuiltin('FILTERXML')!
+    const IMPORTRANGE = getLookupBuiltin('IMPORTRANGE')!
     const STOCKHISTORY = getLookupBuiltin('STOCKHISTORY')!
 
     const hello = { tag: ValueTag.String, value: 'hello', stringId: 1 } as const
@@ -5714,6 +5715,7 @@ describe('formula builtins', () => {
     expect(placeholderBuiltinNames).not.toContain('TRANSLATE')
     expect(placeholderBuiltinNames).not.toContain('COPILOT')
     expect(placeholderBuiltinNames).not.toContain('FILTERXML')
+    expect(placeholderBuiltinNames).not.toContain('IMPORTRANGE')
     expect(placeholderBuiltinNames).not.toContain('STOCKHISTORY')
 
     expect(TRANSLATE(hello, sourceLang, targetLang)).toEqual({
@@ -5736,6 +5738,10 @@ describe('formula builtins', () => {
       code: ErrorCode.Blocked,
     })
     expect(FILTERXML(hello, sourceLang)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Blocked })
+    expect(IMPORTRANGE(hello, sourceLang)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Blocked,
+    })
     expect(STOCKHISTORY(hello, sourceLang)).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Blocked,
@@ -5769,6 +5775,17 @@ describe('formula builtins', () => {
         { tag: ValueTag.String, value: 'two', stringId: 0 },
       ],
     }))
+    const importRangeImpl = vi.fn(() => ({
+      kind: 'array' as const,
+      rows: 2,
+      cols: 2,
+      values: [
+        { tag: ValueTag.String, value: 'region', stringId: 0 },
+        { tag: ValueTag.String, value: 'arr', stringId: 0 },
+        { tag: ValueTag.String, value: 'west', stringId: 0 },
+        { tag: ValueTag.Number, value: 96_000 },
+      ],
+    }))
     const stockHistoryImpl = vi.fn(() => ({
       kind: 'array' as const,
       rows: 2,
@@ -5798,6 +5815,9 @@ describe('formula builtins', () => {
         }
         if (name === 'FILTERXML') {
           return { kind: 'lookup', implementation: filterXmlImpl }
+        }
+        if (name === 'IMPORTRANGE') {
+          return { kind: 'lookup', implementation: importRangeImpl }
         }
         if (name === 'STOCKHISTORY') {
           return { kind: 'lookup', implementation: stockHistoryImpl }
@@ -5863,6 +5883,17 @@ describe('formula builtins', () => {
         { tag: ValueTag.String, value: 'two', stringId: 0 },
       ],
     })
+    expect(IMPORTRANGE(hello, sourceLang)).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 2,
+      values: [
+        { tag: ValueTag.String, value: 'region', stringId: 0 },
+        { tag: ValueTag.String, value: 'arr', stringId: 0 },
+        { tag: ValueTag.String, value: 'west', stringId: 0 },
+        { tag: ValueTag.Number, value: 96_000 },
+      ],
+    })
     expect(STOCKHISTORY(hello, sourceLang)).toEqual({
       kind: 'array',
       rows: 2,
@@ -5879,6 +5910,7 @@ describe('formula builtins', () => {
     expect(copilotImpl).toHaveBeenCalledWith(hello)
     expect(pyImpl).toHaveBeenCalledWith(hello)
     expect(filterXmlImpl).toHaveBeenCalledWith(hello, sourceLang)
+    expect(importRangeImpl).toHaveBeenCalledWith(hello, sourceLang)
     expect(stockHistoryImpl).toHaveBeenCalledWith(hello, sourceLang)
   })
 })

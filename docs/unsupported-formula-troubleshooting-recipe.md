@@ -181,6 +181,10 @@ visible and gives the agent the exact cell/range it needs to fix.
   supported, but one argument shape is not accepted yet.
 - `#NAME?` usually means the function or defined name is not registered in the
   current workbook/formula environment.
+- `#BLOCKED!` on a provider-backed function means the formula is recognized,
+  but the current host did not install the required adapter. For example,
+  `IMPORTRANGE` needs a Google Sheets range provider that handles authorization
+  and returns the imported cells to the evaluator.
 - Missing host-backed, cube, web, external-data, or add-in-like functions belong
   behind the external function adapter boundary described in
   [`docs/formula-language.md`](formula-language.md).
