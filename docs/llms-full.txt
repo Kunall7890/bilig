@@ -7042,7 +7042,7 @@ formula validation, display-value readback, and JSON export.
 
 ## Open Multi-Agent example
 
-The Open Multi-Agent integration example is under review here:
+The Open Multi-Agent integration example was merged here:
 
 - <https://github.com/open-multi-agent/open-multi-agent/pull/247>
 
@@ -7056,23 +7056,37 @@ It uses Open Multi-Agent's `connectMCPTools()` helper to launch
 4. read the calculated summary cell again;
 5. report whether the WorkPaper recalculated and persisted the edit.
 
-The example pins the Bilig package version in the command instead of exposing
-the npm package spec to the model.
+The upstream example pins the Bilig package version in the command instead of
+exposing the npm package spec to the model. In a new project, pin deliberately
+after checking the current Bilig evaluator.
+
+## No-key Bilig check first
+
+Before wiring an Open Multi-Agent model provider, run Bilig's package-owned MCP
+evaluator. It does not need a Gemini, OpenAI, or other model key:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+A good run returns `verified: true`, `editedCell: "Inputs!B3"`,
+`dependentCell: "Summary!B3"`, formula readback `60000 -> 96000`, JSON export,
+and restart readback.
 
 ## Local command shape
 
 The MCP server command used by the example is:
 
 ```sh
-npm exec --yes --package @bilig/workpaper@0.96.0 -- \
+npm exec --yes --package @bilig/workpaper@latest -- \
   bilig-workpaper-mcp \
   --workpaper ./pricing.workpaper.json \
   --init-demo-workpaper \
   --writable
 ```
 
-For your own project, pin a current `@bilig/workpaper` version and keep the
-WorkPaper file under the application's normal data directory.
+For production, replace `@latest` with the current version you verified and keep
+the WorkPaper file under the application's normal data directory.
 
 ## Agent contract
 

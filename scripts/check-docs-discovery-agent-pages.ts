@@ -45,7 +45,15 @@ export const agentFrameworkDocRequirements = [
   },
   {
     path: 'docs/open-multi-agent-workpaper-mcp.md',
-    includes: ['Open Multi-Agent WorkPaper MCP example', 'connectMCPTools()', '@bilig/workpaper@0.96.0', 'verified'],
+    includes: [
+      'Open Multi-Agent WorkPaper MCP example',
+      'connectMCPTools()',
+      'was merged here',
+      'bilig-evaluate --door agent-mcp --json',
+      '@bilig/workpaper@latest',
+      '60000 -> 96000',
+      'verified',
+    ],
   },
   {
     path: 'docs/copilotkit-workpaper-spreadsheet-action.md',
