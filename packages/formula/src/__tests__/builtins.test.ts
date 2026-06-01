@@ -5691,7 +5691,8 @@ describe('formula builtins', () => {
     expect(getBuiltinId('weeknum')).toBe(BuiltinId.Weeknum)
     expect(getBuiltinId('rept')).toBe(BuiltinId.Rept)
     expect(getBuiltinId('filter')).toBe(BuiltinId.Filter)
-    expect(getBuiltinId('let')).toBeUndefined()
+    expect(getBuiltinId('let')).toBe(BuiltinId.Let)
+    expect(getBuiltinId('multiple.operations')).toBe(BuiltinId.MultipleOperations)
     expect(getBuiltinId('textjoin')).toBe(BuiltinId.Textjoin)
   })
 

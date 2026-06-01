@@ -37,8 +37,11 @@ describe('formula inventory', () => {
 
     expect(letEntry).toMatchObject({
       registeredInCodebase: true,
-      protocolId: undefined,
+      protocolId: expect.any(Number),
+      protocolSupportsWasm: false,
       deterministic: 'deterministic',
+      jsStatus: 'special-js-only',
+      wasmStatus: 'not-started',
     })
     expect(sumEntry).toMatchObject({
       registeredInCodebase: true,
@@ -49,6 +52,15 @@ describe('formula inventory', () => {
       deterministic: 'provider-backed',
       protocolId: undefined,
     })
+  })
+
+  it('keeps every deterministic runtime formula visible in the protocol inventory', () => {
+    const missingProtocolEntries = formulaInventory.filter(
+      (entry) => entry.deterministic === 'deterministic' && entry.registeredInCodebase && entry.protocolId === undefined,
+    )
+
+    expect(formulaInventorySummary.runtimeRegisteredMissingProtocol).toBe(0)
+    expect(missingProtocolEntries).toEqual([])
   })
 
   it('counts runtime builtins registered by source factories', () => {
