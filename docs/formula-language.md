@@ -3,7 +3,7 @@
 ## Current state
 
 - JS is still the semantic oracle
-- canonical production routing is closed for `300` of `300` canonical rows
+- canonical production routing is closed for `431` of `431` canonical rows
 - `0` canonical rows remain `implemented-js`
 - `0` canonical rows remain `blocked`
 - the generated source of truth is
@@ -13,7 +13,7 @@
 
 The active milestone is the canonical Excel for the web worksheet formula corpus represented in `packages/formula/src/compatibility.ts`.
 
-The current code-backed canonical registry contains `300` rows.
+The current code-backed canonical registry contains `431` rows.
 
 There are no non-production canonical rows.
 

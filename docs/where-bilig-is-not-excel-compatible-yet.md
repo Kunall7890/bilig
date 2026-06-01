@@ -27,7 +27,7 @@ artifacts:
 - formula inventory breadth is `100%` for the current office-listed and tracked
   formula inventory in
   [`packages/benchmarks/baselines/bilig-dominance-scorecard.json`](../packages/benchmarks/baselines/bilig-dominance-scorecard.json)
-- formula semantics coverage has `300` canonical fixtures and `10` workbook
+- formula semantics coverage has `431` canonical fixtures and `12` workbook
   semantics fixtures, with no missing committed fixture ids in
   [`packages/benchmarks/baselines/calculation-semantics-scorecard.json`](../packages/benchmarks/baselines/calculation-semantics-scorecard.json)
 - import/export fidelity passes required CSV/XLSX cases, reports no unsupported

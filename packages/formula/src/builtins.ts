@@ -390,6 +390,7 @@ const scalarPlaceholderBuiltins = createBlockedBuiltinMap(scalarPlaceholderBuilt
 
 const externalScalarBuiltinNames = [
   'CALL',
+  'COPILOT',
   'CUBEKPIMEMBER',
   'CUBEMEMBER',
   'CUBEMEMBERPROPERTY',

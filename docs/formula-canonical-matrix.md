@@ -4,7 +4,7 @@
 
 - `packages/formula/src/compatibility.ts` is the authoritative source of canonical row count and status
 - `packages/formula/src/__tests__/fixtures/formula-dominance-snapshot.json` is the generated source of truth for current counts
-- the current code-backed canonical registry contains `300` rows
+- the current code-backed canonical registry contains `431` rows
 - canonical fixture ids must stay aligned with canonical registry ids
 - the checked-in registry is the authoritative source of canonical row count and status
 - scope key in code is `canonical`

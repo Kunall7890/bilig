@@ -111,9 +111,9 @@ This is the scorecard that should drive engineering priority.
 | -------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
 | Surface parity             | Public method inventory                                               | `132/132` method names present on `WorkPaper`                                                      | local checkout baseline                                        | parity                                                                                                                               | keep the snapshot artifact green                                                                     |
 | Surface parity             | Config-key inventory                                                  | `38/38` config keys present on `WorkPaperConfig`                                                   | local checkout baseline                                        | parity                                                                                                                               | keep the snapshot artifact green                                                                     |
-| Formula breadth            | Registered breadth against Office list                                | `508/508` registered in codebase = `100%`                                                          | docs claim `350/515` Excel functions = `68%`                   | `bilig` leads on breadth in the current generated inventory                                                                          | keep the generated inventory current                                                                 |
-| Formula breadth            | Unified inventory breadth                                             | `525/525` unified tracked functions = `100%`                                                       | no comparable local unified inventory artifact                 | `bilig` leads on tracked breadth in the current generated inventory                                                                  | keep the unified inventory generated and current                                                     |
-| Formula production quality | Canonical production closure                                          | `300/300` canonical rows production-closed = `100%`                                                | no matching canonical artifact                                 | `bilig` leads on closure                                                                                                             | keep the dominance snapshot current and extend grouped-array coverage beyond the canonical SUM forms |
+| Formula breadth            | Registered breadth against Office list                                | `518/518` registered in codebase = `100%`                                                          | docs claim `350/515` Excel functions = `68%`                   | `bilig` leads on breadth in the current generated inventory                                                                          | keep the generated inventory current                                                                 |
+| Formula breadth            | Unified inventory breadth                                             | `533/533` unified tracked functions = `100%`                                                       | no comparable local unified inventory artifact                 | `bilig` leads on tracked breadth in the current generated inventory                                                                  | keep the unified inventory generated and current                                                     |
+| Formula production quality | Canonical production closure                                          | `431/431` canonical rows production-closed = `100%`                                                | no matching canonical artifact                                 | `bilig` leads on closure                                                                                                             | keep the dominance snapshot current and extend grouped-array coverage beyond the canonical SUM forms |
 | Feature dominance          | Critical semantics unsupported by HyperFormula but present in `bilig` | dynamic arrays, structured references/tables, multiple workbook instances                          | HyperFormula docs list all three as unsupported/limited        | `bilig` leads                                                                                                                        | add leadership workload benchmarks and soak tests so the lead is not purely semantic                 |
 | Performance dominance      | Directly comparable benchmark workloads                               | unified benchmark includes `100` scorecard-eligible comparable workloads, public and holdout lanes | HyperFormula has `20` current mean wins in the latest artifact | `WorkPaper` leads `80/100` overall mean workloads and `78/100` mean+p95 workloads; the worst p95 row is `structural-append-formula-rows-small` | turn mean wins into larger-margin mean+p95 wins without weakening benchmark gates                    |
 | Performance dominance      | Leadership workloads                                                  | `1/1` leadership workload exercised, with HyperFormula marked unsupported                          | dynamic arrays unsupported                                     | `bilig` leads on capability, not comparable speed                                                                                    | expand leadership artifacts beyond one unsupported workload                                          |
@@ -136,12 +136,12 @@ Current measured values from local repo artifacts and docs:
 - HyperFormula public API coverage in `WorkPaper`: `132/132`
 - HyperFormula config coverage in `WorkPaperConfig`: `38/38`
 - `bilig` registered formula breadth:
-  - `508/508` Office-listed functions = `100%`
-  - `525/525` unified tracked functions = `100%`
+  - `518/518` Office-listed functions = `100%`
+  - `533/533` unified tracked functions = `100%`
 - HyperFormula published Excel coverage from the local docs:
   - `350/515` Excel functions = `68%`
 - `bilig` canonical formula production closure:
-  - `300/300` rows = `100%`
+  - `431/431` rows = `100%`
   - directly comparable legacy control-workload benchmark record:
   - `WorkPaper` wins: `4/6`
   - HyperFormula wins: `2/6`
@@ -803,7 +803,7 @@ Metric:
 
 Current value:
 
-- `300/300` = `100%`
+- `431/431` = `100%`
 
 Interpretation:
 

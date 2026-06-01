@@ -13,11 +13,11 @@ Close the current canonical Excel for the web worksheet formula corpus as repres
 
 ## Current code-backed status
 
-The canonical registry in code currently contains `300` canonical rows.
+The canonical registry in code currently contains `431` canonical rows.
 
 Current status split:
 
-- `300` rows are `implemented-wasm-production`
+- `431` rows are `implemented-wasm-production`
 - `0` rows are `implemented-js`
 - `0` rows are `blocked`
 

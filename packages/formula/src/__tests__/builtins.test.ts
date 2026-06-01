@@ -5698,6 +5698,7 @@ describe('formula builtins', () => {
 
   it('routes provider-backed formulas through external adapters and blocks when none are installed', () => {
     const TRANSLATE = getBuiltin('TRANSLATE')!
+    const COPILOT = getBuiltin('COPILOT')!
     const HYPERLINK = getBuiltin('HYPERLINK')!
     const DDE = getBuiltin('DDE')!
     const INFO = getBuiltin('INFO')!
@@ -5710,10 +5711,15 @@ describe('formula builtins', () => {
     const targetLang = { tag: ValueTag.String, value: 'es', stringId: 3 } as const
 
     expect(placeholderBuiltinNames).not.toContain('TRANSLATE')
+    expect(placeholderBuiltinNames).not.toContain('COPILOT')
     expect(placeholderBuiltinNames).not.toContain('FILTERXML')
     expect(placeholderBuiltinNames).not.toContain('STOCKHISTORY')
 
     expect(TRANSLATE(hello, sourceLang, targetLang)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Blocked,
+    })
+    expect(COPILOT(hello)).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Blocked,
     })
@@ -5736,6 +5742,11 @@ describe('formula builtins', () => {
     const translateImpl = vi.fn(() => ({
       tag: ValueTag.String,
       value: 'hola',
+      stringId: 0,
+    }))
+    const copilotImpl = vi.fn(() => ({
+      tag: ValueTag.String,
+      value: 'summary',
       stringId: 0,
     }))
     const hyperlinkImpl = vi.fn(() => ({
@@ -5773,6 +5784,9 @@ describe('formula builtins', () => {
         if (name === 'TRANSLATE') {
           return { kind: 'scalar', implementation: translateImpl }
         }
+        if (name === 'COPILOT') {
+          return { kind: 'scalar', implementation: copilotImpl }
+        }
         if (name === 'HYPERLINK') {
           return { kind: 'scalar', implementation: hyperlinkImpl }
         }
@@ -5804,6 +5818,11 @@ describe('formula builtins', () => {
     expect(TRANSLATE(hello, sourceLang, targetLang)).toEqual({
       tag: ValueTag.String,
       value: 'hola',
+      stringId: 0,
+    })
+    expect(COPILOT(hello)).toEqual({
+      tag: ValueTag.String,
+      value: 'summary',
       stringId: 0,
     })
     expect(HYPERLINK(hello, sourceLang)).toEqual({
@@ -5840,6 +5859,7 @@ describe('formula builtins', () => {
     })
 
     expect(translateImpl).toHaveBeenCalledWith(hello, sourceLang, targetLang)
+    expect(copilotImpl).toHaveBeenCalledWith(hello)
     expect(filterXmlImpl).toHaveBeenCalledWith(hello, sourceLang)
     expect(stockHistoryImpl).toHaveBeenCalledWith(hello, sourceLang)
   })

@@ -412,6 +412,11 @@
       "inOfficeList": true
     },
     {
+      "name": "COPILOT",
+      "odfStatus": "Not in ODF 1.4 mandatory",
+      "inOfficeList": true
+    },
+    {
       "name": "CORREL",
       "odfStatus": "Placeholder (blocked)",
       "inOfficeList": true
@@ -929,7 +934,7 @@
     {
       "name": "FORECAST",
       "odfStatus": "Placeholder (blocked)",
-      "inOfficeList": false
+      "inOfficeList": true
     },
     {
       "name": "FORMULA",
@@ -1324,7 +1329,7 @@
     {
       "name": "ISODD",
       "odfStatus": "Placeholder (blocked)",
-      "inOfficeList": false
+      "inOfficeList": true
     },
     {
       "name": "ISOMITTED",
@@ -1344,7 +1349,7 @@
     {
       "name": "ISREF",
       "odfStatus": "Placeholder (blocked)",
-      "inOfficeList": false
+      "inOfficeList": true
     },
     {
       "name": "ISTEXT",
@@ -1354,7 +1359,7 @@
     {
       "name": "JIS",
       "odfStatus": "Placeholder (blocked)",
-      "inOfficeList": false
+      "inOfficeList": true
     },
     {
       "name": "KURT",

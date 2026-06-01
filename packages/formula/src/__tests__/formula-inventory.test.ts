@@ -33,6 +33,7 @@ describe('formula inventory', () => {
   it('keeps runtime and protocol reporting for key formulas', () => {
     const letEntry = formulaInventory.find((entry) => entry.name === 'LET')
     const sumEntry = formulaInventory.find((entry) => entry.name === 'SUM')
+    const copilotEntry = formulaInventory.find((entry) => entry.name === 'COPILOT')
     const imageEntry = formulaInventory.find((entry) => entry.name === 'IMAGE')
     const iserrorEntry = formulaInventory.find((entry) => entry.name === 'ISERROR')
 
@@ -56,10 +57,26 @@ describe('formula inventory', () => {
       runtimeStatus: 'implemented',
       wasmStatus: 'not-started',
     })
+    expect(copilotEntry).toMatchObject({
+      inOfficeList: true,
+      deterministic: 'provider-backed',
+      protocolId: undefined,
+      runtimeStatus: 'implemented',
+      placeholder: false,
+      registeredInCodebase: true,
+    })
     expect(imageEntry).toMatchObject({
       deterministic: 'provider-backed',
       protocolId: undefined,
     })
+  })
+
+  it('keeps current Microsoft-listed compatibility functions in the Office inventory', () => {
+    const officeListedNames = new Set(formulaInventory.filter((entry) => entry.inOfficeList).map((entry) => entry.name))
+
+    for (const name of ['COPILOT', 'FORECAST', 'ISODD', 'ISREF', 'JIS']) {
+      expect(officeListedNames.has(name)).toBe(true)
+    }
   })
 
   it('keeps every deterministic runtime formula visible in the protocol inventory', () => {

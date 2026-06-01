@@ -11,15 +11,15 @@
 - Scope: ODF mandatory functions + Office by-category function list, plus tracked compatibility aliases.
 
 ## Coverage Summary
-- Unified function count: **532**
+- Unified function count: **533**
 - ODF mandatory function count: **59**
-- Office function count (cleaned scrape): **513**
+- Office function count (cleaned scrape): **518**
 - Overlap (present in both): **58**
 - ODF-only (mandatory, not listed by Office): **1**
-- Office-only (not in ODF 1.4 mandatory): **455**
+- Office-only (not in ODF 1.4 mandatory): **460**
 
 ## Current code coverage snapshot
-- Registered in codebase: **532**
+- Registered in codebase: **533**
 - Not yet registered in codebase: **0**
 - Placeholder-backed registrations: **0**
 - The "Implemented in codebase" column reflects runtime registration, including blocked placeholder registrations.
@@ -110,6 +110,7 @@
 | CONFIDENCE.NORM | Not in ODF 1.4 mandatory | Yes | Yes |
 | CONFIDENCE.T | Not in ODF 1.4 mandatory | Yes | Yes |
 | CONVERT | Placeholder (blocked) | Yes | Yes |
+| COPILOT | Not in ODF 1.4 mandatory | Yes | Yes |
 | CORREL | Placeholder (blocked) | Yes | Yes |
 | COS | Not in ODF 1.4 mandatory | Yes | Yes |
 | COSH | Implemented | Yes | Yes |
@@ -213,7 +214,7 @@
 | FLOOR | Implemented | Yes | Yes |
 | FLOOR.MATH | Not in ODF 1.4 mandatory | Yes | Yes |
 | FLOOR.PRECISE | Not in ODF 1.4 mandatory | Yes | Yes |
-| FORECAST | Placeholder (blocked) | No | Yes |
+| FORECAST | Placeholder (blocked) | Yes | Yes |
 | FORMULA | Implemented | No | Yes |
 | FORMULATEXT | Not in ODF 1.4 mandatory | Yes | Yes |
 | FREQUENCY | Placeholder (blocked) | Yes | Yes |
@@ -292,13 +293,13 @@
 | ISNONTEXT | Not in ODF 1.4 mandatory | Yes | Yes |
 | ISNUMBER | Not in ODF 1.4 mandatory | Yes | Yes |
 | ISO.CEILING | Not in ODF 1.4 mandatory | Yes | Yes |
-| ISODD | Placeholder (blocked) | No | Yes |
+| ISODD | Placeholder (blocked) | Yes | Yes |
 | ISOMITTED | Not in ODF 1.4 mandatory | Yes | Yes |
 | ISOWEEKNUM | Placeholder (blocked) | Yes | Yes |
 | ISPMT | Placeholder (blocked) | Yes | Yes |
-| ISREF | Placeholder (blocked) | No | Yes |
+| ISREF | Placeholder (blocked) | Yes | Yes |
 | ISTEXT | Not in ODF 1.4 mandatory | Yes | Yes |
-| JIS | Placeholder (blocked) | No | Yes |
+| JIS | Placeholder (blocked) | Yes | Yes |
 | KURT | Placeholder (blocked) | Yes | Yes |
 | LAMBDA | Not in ODF 1.4 mandatory | Yes | Yes |
 | LARGE | Placeholder (blocked) | Yes | Yes |

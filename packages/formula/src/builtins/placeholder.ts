@@ -61,6 +61,7 @@ const implementedScalarBuiltinNames = new Set<string>([
   'BESSELK',
   'BESSELY',
   'CONVERT',
+  'COPILOT',
   'COMPLEX',
   'COUPDAYBS',
   'COUPDAYS',
@@ -333,7 +334,6 @@ const allAdditionalExcelScalarBuiltinNames = [
 
   'CONFIDENCE.T',
   'CONVERT',
-  'COPILOT',
   'COUPDAYBS',
   'COUPDAYS',
   'COUPDAYSNC',
