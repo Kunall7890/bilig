@@ -48,6 +48,25 @@ function splitTextByDelimiter(text: string, delimiter: string, matchMode: 0 | 1)
   return parts
 }
 
+function splitTextByAnyDelimiterCharacter(text: string, delimiters: string): string[] {
+  if (delimiters === '') {
+    return [text]
+  }
+  const delimiterSet = new Set(Array.from(delimiters))
+  const parts: string[] = []
+  let buffer = ''
+  for (const char of Array.from(text)) {
+    if (delimiterSet.has(char)) {
+      parts.push(buffer)
+      buffer = ''
+      continue
+    }
+    buffer += char
+  }
+  parts.push(buffer)
+  return parts
+}
+
 function isTrimRangeEmptyCell(value: CellValue): boolean {
   return value.tag === ValueTag.Empty
 }
@@ -152,6 +171,34 @@ export function evaluateArraySpecialCall(
         }
       }
       return deps.makeArrayStack(rows, cols, values)
+    }
+    case 'SPLIT': {
+      if (rawArgs.length < 2 || rawArgs.length > 4) {
+        return deps.stackScalar(deps.error(ErrorCode.Value))
+      }
+      const text = deps.coerceScalarTextArgument(rawArgs[0])
+      const delimiter = deps.coerceScalarTextArgument(rawArgs[1])
+      const splitByEach = deps.coerceOptionalBooleanArgument(rawArgs[2], true)
+      const removeEmptyText = deps.coerceOptionalBooleanArgument(rawArgs[3], true)
+      if (deps.isCellValueError(text)) {
+        return deps.stackScalar(text)
+      }
+      if (deps.isCellValueError(delimiter)) {
+        return deps.stackScalar(delimiter)
+      }
+      if (deps.isCellValueError(splitByEach)) {
+        return deps.stackScalar(splitByEach)
+      }
+      if (deps.isCellValueError(removeEmptyText)) {
+        return deps.stackScalar(removeEmptyText)
+      }
+      if (delimiter === '') {
+        return deps.stackScalar(deps.error(ErrorCode.Value))
+      }
+      const rawParts = splitByEach ? splitTextByAnyDelimiterCharacter(text, delimiter) : splitTextByDelimiter(text, delimiter, 0)
+      const parts = removeEmptyText ? rawParts.filter((part) => part !== '') : rawParts
+      const values = (parts.length === 0 ? [''] : parts).map((part) => deps.stringValue(part))
+      return deps.makeArrayStack(1, values.length, values)
     }
     case 'TRIMRANGE': {
       if (rawArgs.length < 1 || rawArgs.length > 3) {

@@ -577,5 +577,6 @@ export enum BuiltinId {
   Islogical = 519,
   Isna = 520,
   Isnontext = 521,
-  Regexmatch = 522
+  Regexmatch = 522,
+  Split = 523
 }

@@ -49,6 +49,7 @@ const jsSpecialBuiltinNames = new Set([
   'ROW',
   'SHEET',
   'SHEETS',
+  'SPLIT',
 ])
 
 const wasmProductionBuiltinNames = new Set([
@@ -508,6 +509,7 @@ const textBuiltinNames = new Set([
   'TEXTBEFORE',
   'TEXTAFTER',
   'TEXTJOIN',
+  'SPLIT',
   'LEFT',
   'RIGHT',
   'MID',
@@ -804,6 +806,7 @@ const dynamicArrayBuiltinNames = new Set([
   'HSTACK',
   'VSTACK',
   'TEXTSPLIT',
+  'SPLIT',
   'GROWTH',
   'TREND',
   'TRIMRANGE',

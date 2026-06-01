@@ -167,6 +167,7 @@ export const builtinManifest: readonly ProtocolBuiltinManifestEntry[] = [
   { id: 'Textafter', name: 'TEXTAFTER', supportsWasm: true },
   { id: 'Textjoin', name: 'TEXTJOIN', supportsWasm: true },
   { id: 'Textsplit', name: 'TEXTSPLIT', supportsWasm: true },
+  { id: 'Split', name: 'SPLIT', supportsWasm: false },
   { id: 'Correl', name: 'CORREL', supportsWasm: true },
   { id: 'Covar', name: 'COVAR', supportsWasm: true },
   { id: 'Pearson', name: 'PEARSON', supportsWasm: true },

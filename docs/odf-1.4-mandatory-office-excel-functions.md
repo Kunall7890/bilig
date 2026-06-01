@@ -11,7 +11,7 @@
 - Scope: ODF mandatory functions + Office by-category function list, plus tracked compatibility aliases.
 
 ## Coverage Summary
-- Unified function count: **531**
+- Unified function count: **532**
 - ODF mandatory function count: **59**
 - Office function count (cleaned scrape): **513**
 - Overlap (present in both): **58**
@@ -19,7 +19,7 @@
 - Office-only (not in ODF 1.4 mandatory): **455**
 
 ## Current code coverage snapshot
-- Registered in codebase: **531**
+- Registered in codebase: **532**
 - Not yet registered in codebase: **0**
 - Placeholder-backed registrations: **0**
 - The "Implemented in codebase" column reflects runtime registration, including blocked placeholder registrations.
@@ -464,6 +464,7 @@
 | SMALL | Placeholder (blocked) | Yes | Yes |
 | SORT | Not in ODF 1.4 mandatory | Yes | Yes |
 | SORTBY | Not in ODF 1.4 mandatory | Yes | Yes |
+| SPLIT | Google Sheets compatibility alias | No | Yes |
 | SQRT | Not in ODF 1.4 mandatory | Yes | Yes |
 | SQRTPI | Implemented | Yes | Yes |
 | STANDARDIZE | Placeholder (blocked) | Yes | Yes |

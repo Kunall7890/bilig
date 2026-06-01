@@ -202,6 +202,7 @@ export const BUILTINS: BuiltinDescriptor[] = [
   { id: BuiltinId.Textafter, name: "TEXTAFTER", supportsWasm: true },
   { id: BuiltinId.Textjoin, name: "TEXTJOIN", supportsWasm: true },
   { id: BuiltinId.Textsplit, name: "TEXTSPLIT", supportsWasm: true },
+  { id: BuiltinId.Split, name: "SPLIT", supportsWasm: false },
   { id: BuiltinId.Correl, name: "CORREL", supportsWasm: true },
   { id: BuiltinId.Covar, name: "COVAR", supportsWasm: true },
   { id: BuiltinId.Pearson, name: "PEARSON", supportsWasm: true },

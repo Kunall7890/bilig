@@ -2,17 +2,17 @@
 // Source: scripts/gen-formula-inventory.ts
 
 export const formulaInventorySummary = {
-  total: 531,
+  total: 532,
   odfMandatory: 59,
   officeListed: 513,
   officeListedRegisteredInCodebase: 513,
   overlap: 58,
   odfOnly: 1,
   officeOnly: 455,
-  registeredInCodebase: 531,
+  registeredInCodebase: 532,
   missingInCodebase: 0,
   placeholders: 0,
-  protocolBuiltins: 512,
+  protocolBuiltins: 513,
   runtimeRegisteredMissingProtocol: 0,
 } as const
 
@@ -6118,6 +6118,20 @@ export const formulaInventory = [
     protocolSupportsWasm: true,
     jsStatus: 'implemented',
     wasmStatus: 'production',
+    placeholder: false,
+    registeredInCodebase: true,
+  },
+  {
+    name: 'SPLIT',
+    odfStatus: 'Google Sheets compatibility alias',
+    inOfficeList: false,
+    deterministic: 'deterministic',
+    runtimeStatus: 'implemented',
+    protocolId: 523,
+    protocolName: 'SPLIT',
+    protocolSupportsWasm: false,
+    jsStatus: 'special-js-only',
+    wasmStatus: 'not-started',
     placeholder: false,
     registeredInCodebase: true,
   },

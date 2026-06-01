@@ -2182,6 +2182,11 @@
       "inOfficeList": true
     },
     {
+      "name": "SPLIT",
+      "odfStatus": "Google Sheets compatibility alias",
+      "inOfficeList": false
+    },
+    {
       "name": "SQRT",
       "odfStatus": "Not in ODF 1.4 mandatory",
       "inOfficeList": true

@@ -83,6 +83,27 @@ describe('js evaluator array specials', () => {
       cols: 2,
       values: [number(1), number(2), number(3), empty()],
     })
+
+    expect(evaluatePlanResult(lowerToPlan(parseFormula('SPLIT("red,blue,green",",")')), context)).toEqual({
+      kind: 'array',
+      rows: 1,
+      cols: 3,
+      values: [text('red'), text('blue'), text('green')],
+    })
+
+    expect(evaluatePlanResult(lowerToPlan(parseFormula('SPLIT("a<>b","<>",FALSE())')), context)).toEqual({
+      kind: 'array',
+      rows: 1,
+      cols: 2,
+      values: [text('a'), text('b')],
+    })
+
+    expect(evaluatePlanResult(lowerToPlan(parseFormula('SPLIT("a<>b","<>",TRUE(),FALSE())')), context)).toEqual({
+      kind: 'array',
+      rows: 1,
+      cols: 3,
+      values: [text('a'), text(''), text('b')],
+    })
   })
 
   it('evaluates lambda-based array helpers', () => {
@@ -120,6 +141,8 @@ describe('js evaluator array specials', () => {
     expect(evaluatePlan(lowerToPlan(parseFormula('TEXTSPLIT("a,b",",","",TRUE(),"x")')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('TEXTSPLIT("alpha",",","",SEQUENCE(2))')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('TEXTSPLIT("alpha",",","",TRUE(),SEQUENCE(2))')), context)).toEqual(err(ErrorCode.Value))
+    expect(evaluatePlan(lowerToPlan(parseFormula('SPLIT("alpha","")')), context)).toEqual(err(ErrorCode.Value))
+    expect(evaluatePlan(lowerToPlan(parseFormula('SPLIT("alpha",",",SEQUENCE(2))')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('EXPAND(A1:B2,1,1)')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('EXPAND(A1:B2,"x",3)')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('EXPAND(A1:B2,SEQUENCE(2),3)')), context)).toEqual(err(ErrorCode.Value))
