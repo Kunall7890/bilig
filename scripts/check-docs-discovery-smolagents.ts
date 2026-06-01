@@ -23,6 +23,13 @@ export async function requireSmolagentsWorkpaperToolDiscovery(context: Smolagent
   requireIncludes(smolagentsWorkpaperTool, 'examples/smolagents-workpaper-tool', 'docs/smolagents-workpaper-tool.md')
   requireIncludes(smolagentsWorkpaperTool, 'from smolagents import Tool', 'docs/smolagents-workpaper-tool.md')
   requireIncludes(smolagentsWorkpaperTool, 'verify_workpaper_formula_readback', 'docs/smolagents-workpaper-tool.md')
+  requireIncludes(smolagentsWorkpaperTool, 'read_workpaper_space_formula', 'docs/smolagents-workpaper-tool.md')
+  requireIncludes(smolagentsWorkpaperTool, 'bilig-evaluate --door agent-mcp --json', 'docs/smolagents-workpaper-tool.md')
+  requireIncludes(
+    smolagentsWorkpaperTool,
+    'https://gregkonush-bilig-workpaper-mcp-readback.hf.space/gradio_api/call/v2/prove_workpaper_readback',
+    'docs/smolagents-workpaper-tool.md',
+  )
   requireIncludes(
     smolagentsWorkpaperTool,
     'https://huggingface.co/docs/smolagents/main/en/tutorials/tools',

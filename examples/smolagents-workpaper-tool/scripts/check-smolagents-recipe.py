@@ -15,9 +15,12 @@ def require_contains(path: Path, needle: str) -> None:
 def main() -> None:
     require_contains(ROOT / "smolagents_workpaper_tool.py", "from smolagents import Tool")
     require_contains(ROOT / "smolagents_workpaper_tool.py", "class BiligWorkPaperFormulaProofTool(Tool)")
-    require_contains(ROOT / "smolagents_workpaper_tool.py", "bilig-agent-challenge")
+    require_contains(ROOT / "smolagents_workpaper_tool.py", "class BiligWorkPaperSpaceReadbackTool(Tool)")
+    require_contains(ROOT / "smolagents_workpaper_tool.py", "bilig-evaluate")
+    require_contains(ROOT / "smolagents_workpaper_tool.py", "prove_workpaper_readback")
     require_contains(ROOT / "README.md", "uv run --python 3.12 --with smolagents")
     require_contains(ROOT / "README.md", "verify_workpaper_formula_readback")
+    require_contains(ROOT / "README.md", "read_workpaper_space_formula")
 
 
 if __name__ == "__main__":

@@ -15,9 +15,9 @@ instead of browser automation.
 
 `smolagents` tools are Python classes with a name, description, input schema,
 output type, and a `forward()` method. This example keeps the tool surface
-deliberately narrow: one tool runs Bilig's WorkPaper proof command and returns
-structured evidence that the formula readback changed and survived JSON
-restore.
+small: one tool runs Bilig's local agent-MCP evaluator, and one tool calls the
+public Hugging Face Space fixture. Both return structured readback data an agent
+can inspect before it trusts a formula-backed decision.
 
 Official smolagents references:
 
@@ -35,7 +35,7 @@ examples/smolagents-workpaper-tool
 
 It contains:
 
-- `smolagents_workpaper_tool.py` for the `Tool` subclass
+- `smolagents_workpaper_tool.py` for the two `Tool` subclasses
 - `scripts/check-smolagents-recipe.py` for a static recipe guard
 - `README.md` with the no-key smoke command
 
@@ -53,14 +53,35 @@ Expected top-level result:
 {
   "framework": "smolagents",
   "toolName": "verify_workpaper_formula_readback",
+  "door": "agent-mcp",
   "packageSpec": "@bilig/workpaper@latest",
+  "verified": true
+}
+```
+
+Call the live Hugging Face Space fixture:
+
+```sh
+cd examples/smolagents-workpaper-tool
+uv run --python 3.12 --with smolagents \
+  python smolagents_workpaper_tool.py --mode space --win-rate 0.4 \
+  --output .tmp/smolagents-workpaper-space.json
+```
+
+Expected top-level result:
+
+```json
+{
+  "framework": "smolagents",
+  "toolName": "read_workpaper_space_formula",
+  "space": "gregkonush/bilig-workpaper-mcp-readback",
   "verified": true
 }
 ```
 
 ## Tool Shape
 
-The checked-in tool is a normal smolagents tool:
+The checked-in classes are normal smolagents tools:
 
 ```python
 from smolagents import Tool
@@ -72,17 +93,31 @@ class BiligWorkPaperFormulaProofTool(Tool):
 
     def forward(self, package_spec: str):
         ...
+
+
+class BiligWorkPaperSpaceReadbackTool(Tool):
+    name = "read_workpaper_space_formula"
+    output_type = "object"
+
+    def forward(self, win_rate: float = 0.4):
+        ...
 ```
 
-The tool runs:
+The local tool runs:
 
 ```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
-That command edits `Inputs!B2`, recalculates `Summary!B2`, serializes the
-WorkPaper document, restores it, and returns `verified: true` with explicit
-checks.
+That command edits `Inputs!B3`, recalculates `Summary!B3`, serializes the
+WorkPaper document, restores it, restarts the file-backed MCP server, and
+returns `verified: true` with explicit checks. The Space tool calls:
+
+```text
+https://gregkonush-bilig-workpaper-mcp-readback.hf.space/gradio_api/call/v2/prove_workpaper_readback
+```
+
+For `win_rate: 0.4`, the Space reads `Summary!B3` back as `96000`.
 
 ## Why This Fits smolagents
 
@@ -106,19 +141,23 @@ After the smoke proof passes, wire the tool into a `CodeAgent`:
 
 ```python
 from smolagents import CodeAgent, InferenceClientModel
-from smolagents_workpaper_tool import BiligWorkPaperFormulaProofTool
+from smolagents_workpaper_tool import (
+    BiligWorkPaperFormulaProofTool,
+    BiligWorkPaperSpaceReadbackTool,
+)
 
 model = InferenceClientModel()
 agent = CodeAgent(
-    tools=[BiligWorkPaperFormulaProofTool()],
+    tools=[BiligWorkPaperFormulaProofTool(), BiligWorkPaperSpaceReadbackTool()],
     model=model,
 )
 ```
 
-Ask the agent to call `verify_workpaper_formula_readback` before relying on a
-formula-backed decision. The tool returns the edited cell, dependent cell,
+Ask the agent to call `verify_workpaper_formula_readback` for local npm/MCP
+verification or `read_workpaper_space_formula` for the hosted fixture before
+relying on a formula-backed decision. The tools return the edited cell,
 before/after values, restore result, serialized document size, limitations, and
-links for starring, watching releases, or filing an adoption blocker.
+checks.
 
 ## Boundary
 
