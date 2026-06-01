@@ -63,7 +63,7 @@ mode and let it show stale cached formulas before it blocks anything:
   with:
     workbooks: '**/*.xlsx'
     changed-files-only: 'true'
-    package-version: '0.134.0'
+    package-version: '0.135.0'
     fail-on-stale: 'false'
 ```
 
@@ -557,7 +557,7 @@ matters.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.134.0`:
+Current checked npm footprint for `@bilig/headless@0.135.0`:
 
 - Pack dry run: `821 kB` tarball, `5.03 MB` unpacked, `800` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX

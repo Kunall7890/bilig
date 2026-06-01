@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.135.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.134.0
+- Manual override: no
+
+## Features
+- feat(formula): support sheets split (65ffc449)
+
 ## 0.134.0
 
 - Release type: minor
