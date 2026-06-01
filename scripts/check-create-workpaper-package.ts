@@ -164,6 +164,7 @@ function assertPackedTarball(): void {
     'package/package.json',
     'package/README.md',
     'package/agent-overlay/.claude/commands/bilig-workpaper-proof.md',
+    'package/agent-overlay/.claude/skills/bilig-workpaper/SKILL.md',
     'package/agent-overlay/.clinerules/bilig-workpaper.md',
     'package/agent-overlay/.continue/rules/bilig-workpaper.md',
     'package/agent-overlay/.mcp.json',
@@ -236,6 +237,7 @@ function assertGeneratedStarters(): void {
     'CLAUDE.md',
     'GEMINI.md',
     '.claude/commands/bilig-workpaper-proof.md',
+    '.claude/skills/bilig-workpaper/SKILL.md',
     '.clinerules/bilig-workpaper.md',
     '.continue/rules/bilig-workpaper.md',
     '.mcp.json',
@@ -269,6 +271,10 @@ function assertGeneratedStarters(): void {
   assert(!existsSync(join(existingDir, 'src', 'index.ts')), 'existing-repo overlay must not copy the starter template')
   assert(existsSync(join(existingDir, 'BILIG_WORKPAPER.md')), 'existing-repo overlay must write BILIG_WORKPAPER.md')
   assert(existsSync(join(existingDir, 'AGENTS.md')), 'existing-repo overlay must write AGENTS.md when absent')
+  assert(
+    existsSync(join(existingDir, '.claude', 'skills', 'bilig-workpaper', 'SKILL.md')),
+    'existing-repo overlay must write the Claude Code project skill',
+  )
   assert(
     existsSync(join(existingDir, '.github', 'instructions', 'bilig-workpaper.instructions.md')),
     'existing-repo overlay must write path-specific Copilot instructions',

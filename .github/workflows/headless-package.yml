@@ -24,6 +24,8 @@ on:
       - 'packages/bilig-exceljs-formula-recalc/**'
       - 'packages/benchmarks/**'
       - 'packages/headless/CHANGELOG.md'
+      - 'action.yml'
+      - 'actions/xlsx-cache-doctor/action.yml'
       - 'docs/public-api.md'
       - 'docs/runtime-semantic-release-program-2026-04-16.md'
       - 'package.json'
@@ -866,6 +868,8 @@ jobs:
 
           release_paths=(
             .release-please-manifest.json
+            action.yml
+            actions/xlsx-cache-doctor/action.yml
             gemini-extension.json
             docs
             docs/headless-package-footprint.json

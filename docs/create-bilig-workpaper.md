@@ -89,11 +89,11 @@ curl -X POST http://localhost:8788/api/quote/approval \
 - JSON persistence and restore;
 - a narrow API surface that an agent tool or backend route can own.
 - an optional agent starter with `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
-  a Claude Code proof command, GitHub Copilot / VS Code instructions, Cursor,
-  Cline, Continue, and Windsurf rules, project-root `.mcp.json` for Claude
-  Code, Cursor and VS Code MCP configs, a reusable MCP config file, and an
-  `agent:verify` command that proves both direct TypeScript and file-backed MCP
-  paths.
+  a Claude Code project skill and proof command, GitHub Copilot / VS Code
+  instructions, Cursor, Cline, Continue, and Windsurf rules, project-root
+  `.mcp.json` for Claude Code, Cursor and VS Code MCP configs, a reusable MCP
+  config file, and an `agent:verify` command that proves both direct TypeScript
+  and file-backed MCP paths.
 
 ## Source
 

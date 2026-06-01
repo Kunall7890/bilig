@@ -17,7 +17,8 @@ That command is the package-owned proof gate. A valid run includes
 
 This starter includes project instructions for common coding agents:
 
-- Claude Code: `CLAUDE.md` and `.claude/commands/bilig-workpaper-proof.md`
+- Claude Code: `CLAUDE.md`, `.claude/skills/bilig-workpaper/SKILL.md`,
+  and `.claude/commands/bilig-workpaper-proof.md`
 - Codex and other AGENTS-aware tools: `AGENTS.md`
 - Gemini CLI: `GEMINI.md`
 - GitHub Copilot and VS Code agent mode:

@@ -85,6 +85,8 @@ describe('headless package workflow', () => {
     expect(source).toContain('packages/bilig-exceljs-formula-recalc')
     expect(source).toContain('packages/create-workpaper/package.json')
     expect(source).toContain('packages/create-workpaper')
+    expect(source).toContain('action.yml')
+    expect(source).toContain('actions/xlsx-cache-doctor/action.yml')
     expect(source).toContain('scripts/check-create-workpaper-package.ts')
     expect(source).toContain('allow_new_packages')
     expect(source).toContain('ALLOW_NEW_NPM_PACKAGES')

@@ -263,6 +263,7 @@ describe('runtime release helpers', () => {
     expect(RUNTIME_NPM_PACKAGE_DIRS).toContain('packages/create-workpaper')
     expect(isRuntimeAffectingPath('packages/create-workpaper/package.json')).toBe(true)
     expect(isRuntimePackageContentPath('packages/create-workpaper/bin/create-bilig-workpaper.js')).toBe(true)
+    expect(isRuntimePackageContentPath('packages/create-workpaper/agent-overlay/.claude/skills/bilig-workpaper/SKILL.md')).toBe(true)
   })
 
   it('publishes the unscoped bilig-workpaper package through the common runtime workflow', () => {
@@ -346,7 +347,13 @@ describe('runtime release helpers', () => {
           expect(source.startsWith('#!/usr/bin/env node\n'), `${packageDir} bin target must start with a node shebang: ${target}`).toBe(
             true,
           )
-          expect(source, `${packageDir} bin wrapper must delegate to built output: ${target}`).toContain("await import('../dist/")
+          const delegatesToBuiltOutput = source.includes("await import('../dist/")
+          const delegatesToSharedEvaluator =
+            target.endsWith('/bilig-evaluate.js') && source.includes("await import('@bilig/xlsx-formula-recalc/evaluator')")
+          expect(
+            delegatesToBuiltOutput || delegatesToSharedEvaluator,
+            `${packageDir} bin wrapper must delegate to built output or the shared evaluator: ${target}`,
+          ).toBe(true)
         }
       }
 
