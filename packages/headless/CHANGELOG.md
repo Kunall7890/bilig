@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.136.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.135.0
+- Manual override: no
+
+## Features
+- feat(create-workpaper): add existing repo agent overlay (f6122598)
+
 ## 0.135.0
 
 - Release type: minor
