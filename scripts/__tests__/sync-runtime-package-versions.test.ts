@@ -69,6 +69,18 @@ describe('syncRuntimePackageVersions', () => {
         '',
       ].join('\n'),
     )
+    writeFileSync(
+      join(rootDir, 'docs/mcp-spreadsheet-server-directory.md'),
+      [
+        'Latest checked result on June 1, 2026: Live, and the Registry latest marker is live but currently trails the current package.',
+        'The official Registry latest-marked server `io.github.proompteng/bilig-workpaper` is version',
+        '`0.1.90`, package `@bilig/workpaper` is version `0.1.90`, and the current repo package version is `0.1.95`. The latest-marked entry was updated at `2026-06-01T00:56:47.948741Z`.',
+        '',
+      ].join('\n'),
+    )
+    const agentEvaluatorDoc = ['{', '  "@bilig/workpaper": "0.1.95",', '  "xlsx-formula-recalc": "0.1.95"', '}', ''].join('\n')
+    writeFileSync(join(rootDir, 'docs/agent-adoption-kit.md'), agentEvaluatorDoc)
+    writeFileSync(join(rootDir, 'docs/eval-agent-mcp.md'), agentEvaluatorDoc)
 
     writeFileSync(
       join(rootDir, 'packages/headless/server.json'),
@@ -122,7 +134,7 @@ describe('syncRuntimePackageVersions', () => {
     const result = syncRuntimePackageVersions({ rootDir, version: '0.14.14' })
 
     expect(result.updatedPackages).toEqual(RUNTIME_PACKAGE_DIRS.map(packageNameForDir))
-    expect(result.updatedFiles).toHaveLength(RUNTIME_PACKAGE_DIRS.length + 9)
+    expect(result.updatedFiles).toHaveLength(RUNTIME_PACKAGE_DIRS.length + 12)
 
     for (const packageDir of RUNTIME_PACKAGE_DIRS) {
       const manifest = JSON.parse(readFileSync(join(rootDir, packageDir, 'package.json'), 'utf8'))
@@ -156,6 +168,11 @@ describe('syncRuntimePackageVersions', () => {
     expect(readFileSync(join(rootDir, 'README.md'), 'utf8')).not.toContain("package-version: '0.1.95'")
     expect(readFileSync(join(rootDir, 'docs/xlsx-cache-doctor-github-action.md'), 'utf8')).toContain("package-version: '0.14.14'")
     expect(readFileSync(join(rootDir, 'docs/xlsx-cache-doctor-github-action.md'), 'utf8')).toContain('| `package-version`    | 0.14.14 |')
+    expect(readFileSync(join(rootDir, 'docs/agent-adoption-kit.md'), 'utf8')).toContain('"@bilig/workpaper": "0.14.14"')
+    expect(readFileSync(join(rootDir, 'docs/eval-agent-mcp.md'), 'utf8')).toContain('"xlsx-formula-recalc": "0.14.14"')
+    const mcpDirectoryDoc = readFileSync(join(rootDir, 'docs/mcp-spreadsheet-server-directory.md'), 'utf8')
+    expect(mcpDirectoryDoc).toContain('package `@bilig/workpaper` is version `0.1.90`')
+    expect(mcpDirectoryDoc).toContain('the current repo package version is `0.14.14`')
   })
 
   it('rejects non-stable semver versions before writing files', () => {
