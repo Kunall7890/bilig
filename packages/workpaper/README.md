@@ -181,6 +181,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 ```
 
 `bilig-evaluate` prints a `bilig-evaluator.v1` object with `door`, `evidence`,
@@ -188,6 +189,8 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 
 The challenge commands edit one input, recalculate dependent formulas, export
 WorkPaper JSON, restore it, and print a `verified: true` proof object.
+Use `--from-xlsx` when the agent already has an XLSX file: Bilig imports it once
+into persisted WorkPaper JSON, then starts the same file-backed MCP server.
 
 ## Agent Adoption Kit
 

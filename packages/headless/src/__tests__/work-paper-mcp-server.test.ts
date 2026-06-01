@@ -22,6 +22,7 @@ describe('WorkPaper MCP server', () => {
       demoWorkPaperTools: false,
       help: false,
       initDemoWorkPaper: false,
+      overwriteWorkPaper: false,
       writable: true,
       workpaperPath: 'pricing.workpaper.json',
     })
@@ -29,31 +30,63 @@ describe('WorkPaper MCP server', () => {
       demoWorkPaperTools: false,
       help: true,
       initDemoWorkPaper: false,
+      overwriteWorkPaper: false,
       writable: false,
     })
     expect(parseWorkPaperMcpStdioCliArgs(['--demo-workpaper-tools'])).toEqual({
       demoWorkPaperTools: true,
       help: false,
       initDemoWorkPaper: false,
+      overwriteWorkPaper: false,
       writable: false,
     })
     expect(parseWorkPaperMcpStdioCliArgs(['--workpaper', 'pricing.workpaper.json', '--init-demo-workpaper', '--writable'])).toEqual({
       demoWorkPaperTools: false,
       help: false,
       initDemoWorkPaper: true,
+      overwriteWorkPaper: false,
       writable: true,
       workpaperPath: 'pricing.workpaper.json',
     })
+    expect(
+      parseWorkPaperMcpStdioCliArgs([
+        '--from-xlsx',
+        'pricing.xlsx',
+        '--workpaper',
+        '.bilig/pricing.workpaper.json',
+        '--overwrite-workpaper',
+        '--writable',
+      ]),
+    ).toEqual({
+      demoWorkPaperTools: false,
+      fromXlsxPath: 'pricing.xlsx',
+      help: false,
+      initDemoWorkPaper: false,
+      overwriteWorkPaper: true,
+      writable: true,
+      workpaperPath: '.bilig/pricing.workpaper.json',
+    })
     expect(workPaperMcpStdioHelpText()).toContain('Usage: bilig-workpaper-mcp')
+    expect(workPaperMcpStdioHelpText()).toContain('--from-xlsx ./pricing.xlsx')
   })
 
   it('rejects malformed stdio bin workpaper paths before opening files', () => {
     expect(() => parseWorkPaperMcpStdioCliArgs(['--workpaper', '   '])).toThrow('--workpaper requires a path')
     expect(() => parseWorkPaperMcpStdioCliArgs(['--workpaper', '--writable'])).toThrow('--workpaper requires a path')
+    expect(() => parseWorkPaperMcpStdioCliArgs(['--from-xlsx', '   '])).toThrow('--from-xlsx requires a path')
+    expect(() => parseWorkPaperMcpStdioCliArgs(['--from-xlsx', '--workpaper'])).toThrow('--from-xlsx requires a path')
     expect(() => parseWorkPaperMcpStdioCliArgs(['--demo-workpaper-tools', '--workpaper', 'pricing.workpaper.json'])).toThrow(
       '--demo-workpaper-tools cannot be combined with --workpaper',
     )
+    expect(() => parseWorkPaperMcpStdioCliArgs(['--demo-workpaper-tools', '--from-xlsx', 'pricing.xlsx'])).toThrow(
+      '--demo-workpaper-tools cannot be combined with --from-xlsx',
+    )
     expect(() => parseWorkPaperMcpStdioCliArgs(['--init-demo-workpaper'])).toThrow('--init-demo-workpaper requires --workpaper')
+    expect(() => parseWorkPaperMcpStdioCliArgs(['--from-xlsx', 'pricing.xlsx'])).toThrow('--from-xlsx requires --workpaper')
+    expect(() =>
+      parseWorkPaperMcpStdioCliArgs(['--from-xlsx', 'pricing.xlsx', '--workpaper', 'pricing.workpaper.json', '--init-demo-workpaper']),
+    ).toThrow('--from-xlsx cannot be combined with --init-demo-workpaper')
+    expect(() => parseWorkPaperMcpStdioCliArgs(['--overwrite-workpaper'])).toThrow('--overwrite-workpaper requires --from-xlsx')
   })
 
   it('starts the stdio bin and exposes the expected tools', async () => {

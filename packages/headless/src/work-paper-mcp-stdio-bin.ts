@@ -20,6 +20,16 @@ if (cliOptions.demoWorkPaperTools) {
   })
 } else if (cliOptions.workpaperPath === undefined) {
   runDemoWorkPaperMcpStdioServer()
+} else if (cliOptions.fromXlsxPath !== undefined) {
+  const { createFileBackedWorkPaperMcpToolServerFromXlsxFile } = await import('./work-paper-mcp-xlsx-file.js')
+  runDemoWorkPaperMcpStdioServer({
+    server: createFileBackedWorkPaperMcpToolServerFromXlsxFile({
+      fromXlsxPath: cliOptions.fromXlsxPath,
+      overwriteWorkPaper: cliOptions.overwriteWorkPaper,
+      workpaperPath: cliOptions.workpaperPath,
+      writable: cliOptions.writable,
+    }),
+  })
 } else {
   runDemoWorkPaperMcpStdioServer({
     server: createFileBackedWorkPaperMcpToolServerFromFile({

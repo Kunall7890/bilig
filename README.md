@@ -762,6 +762,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xls
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 npm exec --package @bilig/headless@latest -- bilig-workpaper-mcp
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
@@ -785,7 +786,8 @@ Without `--workpaper`, the binary starts the built-in demo workbook. With
 `set_cell_contents_and_readback`, `get_cell_display_value`,
 `export_workpaper_document`, and `validate_formula`; `--writable` persists
 `set_cell_contents` or `set_cell_contents_and_readback` edits back to the same
-file. It also
+file. If you already have an XLSX, `--from-xlsx` imports it once into the
+WorkPaper JSON path before starting the file-backed server. It also
 exposes MCP resources and prompts for `bilig://workpaper/agent-handoff`,
 `bilig://workpaper/current-document`, `edit_and_verify_workpaper`, and
 `debug_workpaper_formula`, so capable clients can discover the workflow before

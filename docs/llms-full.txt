@@ -1074,6 +1074,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xls
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 npm exec --package @bilig/headless@latest -- bilig-workpaper-mcp
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
@@ -1097,7 +1098,8 @@ Without `--workpaper`, the binary starts the built-in demo workbook. With
 `set_cell_contents_and_readback`, `get_cell_display_value`,
 `export_workpaper_document`, and `validate_formula`; `--writable` persists
 `set_cell_contents` or `set_cell_contents_and_readback` edits back to the same
-file. It also
+file. If you already have an XLSX, `--from-xlsx` imports it once into the
+WorkPaper JSON path before starting the file-backed server. It also
 exposes MCP resources and prompts for `bilig://workpaper/agent-handoff`,
 `bilig://workpaper/current-document`, `edit_and_verify_workpaper`, and
 `debug_workpaper_formula`, so capable clients can discover the workflow before
@@ -2174,6 +2176,18 @@ Use file-backed stdio for private project state:
 }
 ```
 
+If the repository already has a workbook, create the file-backed WorkPaper from
+that XLSX first:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
+```
+
+That command imports the XLSX once, refuses to replace an existing WorkPaper
+JSON unless `--overwrite-workpaper` is present, and then exposes the same
+`read_cell`, `set_cell_contents_and_readback`, and `export_workpaper_document`
+tools.
+
 Use the hosted endpoint only for smoke tests and tool discovery:
 
 ```text
@@ -2551,6 +2565,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 ```
 
 `bilig-evaluate` prints a `bilig-evaluator.v1` object with `door`, `evidence`,
@@ -2558,6 +2573,8 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 
 The challenge commands edit one input, recalculate dependent formulas, export
 WorkPaper JSON, restore it, and print a `verified: true` proof object.
+Use `--from-xlsx` when the agent already has an XLSX file: Bilig imports it once
+into persisted WorkPaper JSON, then starts the same file-backed MCP server.
 
 ## Agent Adoption Kit
 

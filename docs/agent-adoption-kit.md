@@ -124,6 +124,18 @@ Use file-backed stdio for private project state:
 }
 ```
 
+If the repository already has a workbook, create the file-backed WorkPaper from
+that XLSX first:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
+```
+
+That command imports the XLSX once, refuses to replace an existing WorkPaper
+JSON unless `--overwrite-workpaper` is present, and then exposes the same
+`read_cell`, `set_cell_contents_and_readback`, and `export_workpaper_document`
+tools.
+
 Use the hosted endpoint only for smoke tests and tool discovery:
 
 ```text
