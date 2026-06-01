@@ -4,6 +4,20 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.131.3
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.131.2
+- Manual override: no
+
+## Fixes
+- fix(packages): sharpen npm spreadsheet formula discovery (dbca8c70)
+
+## Internal runtime changes
+- docs(agent): add mastra workpaper smoke (e93a53cb)
+- docs(fastmcp): add file-backed workpaper proof (9ba9b121)
+- docs(growth): add huggingface workpaper space template (2fac9aa8)
+
 ## 0.131.2
 
 - Release type: patch

@@ -91,7 +91,7 @@ and
 Reduced workbook already in hand?
 
 ```sh
-npm exec --package @bilig/headless@0.131.2 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.131.3 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Handing a spreadsheet task to another coding agent?
@@ -138,9 +138,9 @@ mcp:server`.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.131.2`:
+Current checked npm footprint for `@bilig/headless@0.131.3`:
 
-- Pack dry run: `835 kB` tarball, `5.13 MB` unpacked, `839` package entries.
+- Pack dry run: `821 kB` tarball, `5.03 MB` unpacked, `800` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
@@ -223,8 +223,8 @@ building a workbook, changing an input, saving the document, restoring it, and
 checking that the dependent formula still reads back correctly.
 
 ```sh
-npm exec --package @bilig/headless@0.131.2 -- bilig-agent-challenge --json
-npm exec --package @bilig/headless@0.131.2 -- bilig-mcp-challenge --json
+npm exec --package @bilig/headless@0.131.3 -- bilig-agent-challenge --json
+npm exec --package @bilig/headless@0.131.3 -- bilig-mcp-challenge --json
 ```
 
 Expected output:
@@ -432,9 +432,9 @@ MCP examples:
 - The package ships npm-executable binaries:
 
 ```sh
-npm exec --package @bilig/headless@0.131.2 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/headless@0.131.2 -- bilig-workpaper-mcp
-npm exec --package @bilig/headless@0.131.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.131.3 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.131.3 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.131.3 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 

@@ -1,6 +1,6 @@
 {
   "name": "@bilig/workpaper",
-  "version": "0.131.2",
+  "version": "0.131.3",
   "description": "WorkPaper API, CLI evaluator, and MCP server for headless spreadsheet formulas in Node.js services and agents.",
   "keywords": [
     "agent-tools",
