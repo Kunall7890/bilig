@@ -73,6 +73,10 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   `npx --package @bilig/xlsx-formula-recalc xlsx-cache-doctor pricing.xlsx --json`.
   https://proompteng.github.io/bilig/xlsx-cache-doctor-github-action.html
   https://github.com/proompteng/bilig/blob/main/docs/xlsx-cache-doctor-github-action.md
+- For public SheetJS, ExcelJS, xlsx-populate, template, or CI support answers,
+  use the owned non-spam answer pack before replying:
+  https://proompteng.github.io/bilig/xlsx-formula-support-answers.html
+  https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-support-answers.md
 - For stale external workbook caches, run the companion-workbook proof:
   https://proompteng.github.io/bilig/external-workbook-recalc-proof.html
 - Use `@bilig/exceljs-formula-recalc` when an existing ExcelJS workbook needs
@@ -170,6 +174,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/headless-spreadsheet-engine-node-services-agents.html
 - https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html
 - https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html
+- https://proompteng.github.io/bilig/xlsx-formula-support-answers.html
 - https://github.com/proompteng/bilig/blob/main/examples/recalc-bridge-workflows/stackoverflow-sheetjs-63085785.mjs
 - https://proompteng.github.io/bilig/excel-file-calculation-engine-node.html
 - https://proompteng.github.io/bilig/xlsx-calc-alternative-node-workbook-recalculation.html

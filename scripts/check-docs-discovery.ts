@@ -18,6 +18,7 @@ import { requireReadmeAgentWorkflowRecipeLinks } from './check-docs-discovery-re
 import { requireTypeScriptFirstPublicSnippets } from './check-docs-discovery-typescript-snippets.ts'
 import { requireXlsxCorpusVerifierDiscovery } from './check-docs-discovery-xlsx-verifier.ts'
 import { requireXlsxCalcAlternativeDiscovery } from './check-docs-discovery-xlsx-calc.ts'
+import { requireXlsxFormulaSupportAnswersDiscovery } from './check-docs-discovery-xlsx-support-answers.ts'
 import { requireXlsxRecalcPublicDiscovery } from './check-docs-discovery-xlsx-recalc-public.ts'
 import { requireExternalWorkbookRecalcProofDiscovery } from './check-docs-discovery-external-workbook.ts'
 import { requireSharedPublicDocsDiscovery } from './check-docs-discovery-public-docs.ts'
@@ -397,6 +398,7 @@ requireIncludes(readme, 'docs/stale-xlsx-formula-cache-node.md', 'README.md')
 requireIncludes(headlessReadme, 'docs/stale-xlsx-formula-cache-node.md', 'packages/headless/README.md')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/stale-xlsx-formula-cache-node.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/stale-xlsx-formula-cache-node.md', 'docs/llms.txt')
+await requireXlsxFormulaSupportAnswersDiscovery({ docsRoot, index, llms, readme })
 
 for (const required of [
   'title: SheetJS formula result not updating in Node.js',

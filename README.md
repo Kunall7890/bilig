@@ -127,6 +127,9 @@ be ceremony.
 
 The canonical XLSX guide is
 [Fix stale XLSX formula values in Node.js](docs/stale-xlsx-formula-cache-node.md).
+If you are answering a public SheetJS, ExcelJS, `xlsx-populate`, template, or CI
+question, use the non-spam
+[XLSX formula support answers](docs/xlsx-formula-support-answers.md) first.
 For a direct before/after proof across SheetJS, `xlsx-populate`, and ExcelJS:
 
 ```sh
@@ -643,6 +646,7 @@ the [MCP server guide](docs/mcp-workpaper-tool-server.md),
 [agent XLSX formula recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md),
 [Excel file as a Node calculation engine](docs/excel-file-calculation-engine-node.md),
 [stale XLSX formula cache in Node.js](docs/stale-xlsx-formula-cache-node.md),
+[XLSX formula support answers](docs/xlsx-formula-support-answers.md),
 [SheetJS formula result not updating in Node.js](docs/sheetjs-formula-result-not-updating-node.md),
 [Microsoft Graph Excel recalculation in Node.js](docs/microsoft-graph-excel-recalculation-node.md),
 [xlsx-calc alternative for Node workbook recalculation](docs/xlsx-calc-alternative-node-workbook-recalculation.md),
