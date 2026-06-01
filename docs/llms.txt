@@ -240,6 +240,8 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/smolagents-workpaper-tool.html
 - https://github.com/proompteng/bilig/blob/main/docs/smolagents-workpaper-tool.md
 - https://github.com/proompteng/bilig/tree/main/examples/smolagents-workpaper-tool
+- https://proompteng.github.io/bilig/huggingface-workpaper-space.html
+- https://github.com/proompteng/bilig/tree/main/examples/huggingface-workpaper-space
 - https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html
 - https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html
 - https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html
@@ -678,6 +680,10 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/smolagents-workpaper-tool.html
   https://github.com/proompteng/bilig/blob/main/docs/smolagents-workpaper-tool.md
   https://github.com/proompteng/bilig/tree/main/examples/smolagents-workpaper-tool
+  Hugging Face WorkPaper MCP Space:
+  https://proompteng.github.io/bilig/huggingface-workpaper-space.html
+  https://huggingface.co/spaces/gregkonush/bilig-workpaper-mcp-readback
+  https://github.com/proompteng/bilig/tree/main/examples/huggingface-workpaper-space
   Use this path when Inngest, Trigger.dev, Windmill, Directus, n8n, Dify, Flowise, smolagents, or another workflow builder
   should orchestrate the task while Bilig owns workbook formula state,
   readback, JSON proof, and persistence.

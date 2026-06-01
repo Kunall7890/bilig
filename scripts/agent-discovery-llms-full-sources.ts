@@ -1,0 +1,70 @@
+export interface LlmsFullSource {
+  readonly title: string
+  readonly relativePath: string
+  readonly url: string
+}
+
+const llmsFullSourceSpecs = [
+  ['Repository README', 'README.md'],
+  ['Evaluate Stale XLSX Formula Caches', 'docs/eval-xlsx-cache-doctor.md'],
+  ['Evaluate XLSX Formula Recalculation', 'docs/eval-xlsx-recalc.md'],
+  ['External Workbook Recalculation Proof', 'docs/external-workbook-recalc-proof.md'],
+  ['XLSX Cache Doctor GitHub Action', 'docs/xlsx-cache-doctor-github-action.md'],
+  ['Evaluate WorkPaper In A Node Service', 'docs/eval-workpaper-service.md'],
+  ['Agent Adoption Kit', 'docs/agent-adoption-kit.md'],
+  ['Evaluate Bilig As An Agent MCP Workbook Tool', 'docs/eval-agent-mcp.md'],
+  ['WorkPaper Package README', 'packages/workpaper/README.md'],
+  ['Headless WorkPaper Agent Handbook', 'docs/headless-workpaper-agent-handbook.md'],
+  ['Agent Workbook Challenge', 'docs/agent-workbook-challenge.md'],
+  ['Agent WorkPaper Tool-Calling Recipe', 'docs/agent-workpaper-tool-calling-recipe.md'],
+  ['AI Spreadsheet Agent Tool For Node.js', 'docs/ai-agent-spreadsheet-tool-node.md'],
+  ['Workbook Tools For Agent Frameworks', 'docs/agent-framework-workbook-tools.md'],
+  ['Workbook Agent Intent API', 'docs/workbook-agent-intent-api.md'],
+  ['Workbook Package README', 'packages/workbook/README.md'],
+  ['Workbook Agent Model Example', 'examples/workbook-agent-model/README.md'],
+  ['Cloudflare Agents WorkPaper Spreadsheet Tool', 'docs/cloudflare-agents-workpaper-spreadsheet-tool.md'],
+  ['CrewAI WorkPaper Spreadsheet Tool', 'docs/crewai-workpaper-spreadsheet-tool.md'],
+  ['LangGraph.js WorkPaper ToolNode Spreadsheet Tool', 'docs/langgraph-workpaper-toolnode-spreadsheet.md'],
+  ['LlamaIndex.TS WorkPaper Spreadsheet Tool', 'docs/llamaindex-workpaper-spreadsheet-tool.md'],
+  ['Semantic Kernel WorkPaper MCP Plugin', 'docs/semantic-kernel-workpaper-mcp.md'],
+  ['Gemini CLI WorkPaper Extension', 'docs/gemini-cli-workpaper-extension.md'],
+  ['Directus WorkPaper Flow Operation', 'docs/directus-workpaper-flow-operation.md'],
+  ['Windmill WorkPaper TypeScript Script', 'docs/windmill-workpaper-script.md'],
+  ['Trigger.dev WorkPaper Task', 'docs/triggerdev-workpaper-task.md'],
+  ['Inngest WorkPaper Step', 'docs/inngest-workpaper-step.md'],
+  ['Airbyte WorkPaper Validation', 'docs/airbyte-workpaper-validation.md'],
+  ['Meltano WorkPaper Utility', 'docs/meltano-workpaper-utility.md'],
+  ['Temporal WorkPaper Activity', 'docs/temporal-workpaper-activity.md'],
+  ['Airflow WorkPaper DAG', 'docs/airflow-workpaper-dag.md'],
+  ['Dagster WorkPaper Asset', 'docs/dagster-workpaper-asset.md'],
+  ['Kestra WorkPaper Node Flow', 'docs/kestra-workpaper-flow.md'],
+  ['Prefect WorkPaper Flow', 'docs/prefect-workpaper-flow.md'],
+  ['Open WebUI WorkPaper Tool Setup', 'docs/open-webui-workpaper-mcp.md'],
+  ['Open Multi-Agent WorkPaper MCP Example', 'docs/open-multi-agent-workpaper-mcp.md'],
+  ['LobeHub WorkPaper MCP Setup', 'docs/lobehub-workpaper-mcp.md'],
+  ['AnythingLLM WorkPaper MCP Setup', 'docs/anythingllm-workpaper-mcp.md'],
+  ['FastMCP WorkPaper Client', 'docs/fastmcp-workpaper-client.md'],
+  ['smolagents WorkPaper Tool', 'docs/smolagents-workpaper-tool.md'],
+  ['Hugging Face WorkPaper MCP Space', 'docs/huggingface-workpaper-space.md'],
+  ['Sim WorkPaper MCP Setup', 'docs/sim-workpaper-mcp.md'],
+  ['n8n WorkPaper Formula Readback', 'docs/n8n-workpaper-formula-readback.md'],
+  ['Dify WorkPaper Formula Readback', 'docs/dify-workpaper-formula-readback.md'],
+  ['Flowise WorkPaper Formula Readback', 'docs/flowise-workpaper-formula-readback.md'],
+  ['Pipedream WorkPaper Formula Readback', 'docs/pipedream-workpaper-formula-readback.md'],
+  ['OpenAI Agents SDK WorkPaper Tool', 'docs/openai-agents-sdk-workpaper-tool.md'],
+  ['MCP WorkPaper Tool Server', 'docs/mcp-workpaper-tool-server.md'],
+  ['Agent XLSX Formula Recalculation Without LibreOffice', 'docs/agent-xlsx-formula-recalculation-without-libreoffice.md'],
+  ['Formula Bug Clinic', 'docs/formula-bug-clinic.md'],
+  ['Try Bilig Headless In Node', 'docs/try-bilig-headless-in-node.md'],
+  ['Quote Approval WorkPaper API', 'docs/quote-approval-workpaper-api.md'],
+  ['Compatibility Limits', 'docs/where-bilig-is-not-excel-compatible-yet.md'],
+  ['npm Provenance And Package Trust', 'docs/npm-provenance-package-trust.md'],
+] as const
+
+export function buildLlmsFullSources(repositoryUrl: string): readonly LlmsFullSource[] {
+  return llmsFullSourceSpecs.map(([title, relativePath]) => ({
+    title,
+    relativePath,
+    url: `${repositoryUrl}/blob/main/${relativePath}`,
+  }))
+}

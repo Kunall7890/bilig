@@ -183,6 +183,14 @@
       "source": "https://github.com/proompteng/bilig/tree/main/examples/smolagents-workpaper-tool"
     },
     {
+      "name": "huggingface-workpaper-space-template",
+      "type": "gradio-mcp-space-template",
+      "framework": "Hugging Face Spaces",
+      "command": "cd examples/huggingface-workpaper-space && npm install --omit=dev --package-lock=false && uv run --python 3.12 --with 'gradio[mcp]>=6.0,<7' python app.py --check",
+      "docs": "https://proompteng.github.io/bilig/huggingface-workpaper-space.html",
+      "source": "https://github.com/proompteng/bilig/tree/main/examples/huggingface-workpaper-space"
+    },
+    {
       "name": "inngest-workpaper-step",
       "type": "durable-workflow-step-smoke-test",
       "framework": "Inngest",
@@ -262,6 +270,7 @@
     "https://proompteng.github.io/bilig/sim-workpaper-mcp.html",
     "https://proompteng.github.io/bilig/fastmcp-workpaper-client.html",
     "https://proompteng.github.io/bilig/smolagents-workpaper-tool.html",
+    "https://proompteng.github.io/bilig/huggingface-workpaper-space.html",
     "https://bilig.proompteng.ai/mcp",
     "https://bilig.proompteng.ai/.well-known/mcp/server-card.json",
     "https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html",

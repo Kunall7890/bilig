@@ -195,6 +195,7 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - Sim MCP setup: https://proompteng.github.io/bilig/sim-workpaper-mcp.html
 - FastMCP Python client: https://proompteng.github.io/bilig/fastmcp-workpaper-client.html
 - smolagents WorkPaper tool: https://proompteng.github.io/bilig/smolagents-workpaper-tool.html
+- Hugging Face WorkPaper Space template: https://proompteng.github.io/bilig/huggingface-workpaper-space.html
 - Windmill TypeScript script: https://proompteng.github.io/bilig/windmill-workpaper-script.html
 - Trigger.dev task: https://proompteng.github.io/bilig/triggerdev-workpaper-task.html
 - Inngest step: https://proompteng.github.io/bilig/inngest-workpaper-step.html

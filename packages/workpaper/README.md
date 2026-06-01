@@ -45,23 +45,24 @@ the closest runtime:
 These are integration guide names that users search for on npm. They are links,
 not the first-run path:
 
-| Guide need                                                                          | Start here                                                                   |
-| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Windmill TypeScript workflow fields                                                 | <https://proompteng.github.io/bilig/windmill-workpaper-script.html>          |
-| Trigger.dev durable task fields                                                     | <https://proompteng.github.io/bilig/triggerdev-workpaper-task.html>          |
-| Inngest durable step fields                                                         | <https://proompteng.github.io/bilig/inngest-workpaper-step.html>             |
-| Temporal TypeScript Activity decisions                                              | <https://proompteng.github.io/bilig/temporal-workpaper-activity.html>        |
-| Apache Airflow DAG task outputs                                                     | <https://proompteng.github.io/bilig/airflow-workpaper-dag.html>              |
-| Dagster asset materialization metadata                                              | <https://proompteng.github.io/bilig/dagster-workpaper-asset.html>            |
-| Kestra Node Commands flow fields                                                    | <https://proompteng.github.io/bilig/kestra-workpaper-flow.html>              |
-| Prefect flow fields                                                                 | <https://proompteng.github.io/bilig/prefect-workpaper-flow.html>             |
-| Directus Flow operation for persisted calculated fields                             | <https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html>  |
-| n8n formula readback for self-hosted workflows                                     | <https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html>     |
-| Dify formula readback                                                              | <https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html>    |
-| Flowise formula readback                                                            | <https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html> |
-| Pipedream formula readback                                                          | <https://proompteng.github.io/bilig/pipedream-workpaper-formula-readback.html> |
-| FastMCP Python client for hosted and local stdio checks                             | <https://proompteng.github.io/bilig/fastmcp-workpaper-client.html>           |
-| Hugging Face smolagents tool                                                        | <https://proompteng.github.io/bilig/smolagents-workpaper-tool.html>          |
+| Guide need                                              | Start here                                                                     |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Windmill TypeScript workflow fields                     | <https://proompteng.github.io/bilig/windmill-workpaper-script.html>            |
+| Trigger.dev durable task fields                         | <https://proompteng.github.io/bilig/triggerdev-workpaper-task.html>            |
+| Inngest durable step fields                             | <https://proompteng.github.io/bilig/inngest-workpaper-step.html>               |
+| Temporal TypeScript Activity decisions                  | <https://proompteng.github.io/bilig/temporal-workpaper-activity.html>          |
+| Apache Airflow DAG task outputs                         | <https://proompteng.github.io/bilig/airflow-workpaper-dag.html>                |
+| Dagster asset materialization metadata                  | <https://proompteng.github.io/bilig/dagster-workpaper-asset.html>              |
+| Kestra Node Commands flow fields                        | <https://proompteng.github.io/bilig/kestra-workpaper-flow.html>                |
+| Prefect flow fields                                     | <https://proompteng.github.io/bilig/prefect-workpaper-flow.html>               |
+| Directus Flow operation for persisted calculated fields | <https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html>    |
+| n8n formula readback for self-hosted workflows          | <https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html>       |
+| Dify formula readback                                   | <https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html>      |
+| Flowise formula readback                                | <https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html>   |
+| Pipedream formula readback                              | <https://proompteng.github.io/bilig/pipedream-workpaper-formula-readback.html> |
+| FastMCP Python client for hosted and local stdio checks | <https://proompteng.github.io/bilig/fastmcp-workpaper-client.html>             |
+| Hugging Face smolagents tool                            | <https://proompteng.github.io/bilig/smolagents-workpaper-tool.html>            |
+| Hugging Face Gradio MCP Space                           | <https://proompteng.github.io/bilig/huggingface-workpaper-space.html>          |
 
 ## Use A WorkPaper In Node
 

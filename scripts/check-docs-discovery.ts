@@ -30,6 +30,7 @@ import { requireAgentEvaluatorDiscovery } from './check-docs-discovery-agent-eva
 import { requireTemporalWorkpaperActivityDiscovery } from './check-docs-discovery-temporal.ts'
 import { requireFastMcpWorkpaperClientDiscovery } from './check-docs-discovery-fastmcp.ts'
 import { requireSmolagentsWorkpaperToolDiscovery } from './check-docs-discovery-smolagents.ts'
+import { requireHuggingFaceWorkpaperSpaceDiscovery } from './check-docs-discovery-huggingface-space.ts'
 import { requireInngestWorkpaperStepDiscovery, requireInngestWorkpaperStepExampleFiles } from './check-docs-discovery-inngest.ts'
 import { requireStarterIssueDiscovery } from './check-docs-discovery-starter-issues.ts'
 import { requireAgentJsonDiscoveryContract } from './agent-discovery-evaluator-doors.ts'
@@ -592,6 +593,15 @@ requireIncludes(
 )
 await requireFastMcpWorkpaperClientDiscovery({ repoRoot, docsRoot, index, llms, llmsFull, scopedWorkpaperPackageReadme })
 await requireSmolagentsWorkpaperToolDiscovery({ repoRoot, docsRoot, index, llms, llmsFull, scopedWorkpaperPackageReadme })
+await requireHuggingFaceWorkpaperSpaceDiscovery({
+  repoRoot,
+  docsRoot,
+  index,
+  llms,
+  llmsFull,
+  readme,
+  scopedWorkpaperPackageReadme,
+})
 requireIncludes(
   scopedWorkpaperPackageReadme,
   'https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html',

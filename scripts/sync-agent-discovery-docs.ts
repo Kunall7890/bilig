@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { agentNotAFitBoundaries, mcpPromptNames } from './agent-discovery-constants.ts'
 import { buildDocsAgentInstructions } from './agent-discovery-agent-instructions.ts'
+import { buildLlmsFullSources } from './agent-discovery-llms-full-sources.ts'
 import { mcpServerCardManifest } from './agent-discovery-mcp-card.ts'
 import { buildWorkpaperPackageAgentInstructions, buildWorkpaperPackageSkillDocument } from './agent-discovery-package-docs.ts'
 import { readTextFileIfExists } from './read-if-exists.ts'
@@ -414,6 +415,7 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - Sim MCP setup: ${siteRoot}/sim-workpaper-mcp.html
 - FastMCP Python client: ${siteRoot}/fastmcp-workpaper-client.html
 - smolagents WorkPaper tool: ${siteRoot}/smolagents-workpaper-tool.html
+- Hugging Face WorkPaper Space template: ${siteRoot}/huggingface-workpaper-space.html
 - Windmill TypeScript script: ${siteRoot}/windmill-workpaper-script.html
 - Trigger.dev task: ${siteRoot}/triggerdev-workpaper-task.html
 - Inngest step: ${siteRoot}/inngest-workpaper-step.html
@@ -442,161 +444,7 @@ const workpaperPackageSkillDocument = buildWorkpaperPackageSkillDocument({
   unscopedWorkpaperPackageSpec,
 })
 
-function llmsSource(title: string, relativePath: string) {
-  return { title, relativePath, url: `${repositoryUrl}/blob/main/${relativePath}` }
-}
-
-const llmsFullSources = [
-  { title: 'Repository README', relativePath: 'README.md', url: `${repositoryUrl}/blob/main/README.md` },
-  {
-    title: 'Evaluate Stale XLSX Formula Caches',
-    relativePath: 'docs/eval-xlsx-cache-doctor.md',
-    url: `${repositoryUrl}/blob/main/docs/eval-xlsx-cache-doctor.md`,
-  },
-  {
-    title: 'Evaluate XLSX Formula Recalculation',
-    relativePath: 'docs/eval-xlsx-recalc.md',
-    url: `${repositoryUrl}/blob/main/docs/eval-xlsx-recalc.md`,
-  },
-  {
-    title: 'External Workbook Recalculation Proof',
-    relativePath: 'docs/external-workbook-recalc-proof.md',
-    url: `${repositoryUrl}/blob/main/docs/external-workbook-recalc-proof.md`,
-  },
-  {
-    title: 'XLSX Cache Doctor GitHub Action',
-    relativePath: 'docs/xlsx-cache-doctor-github-action.md',
-    url: `${repositoryUrl}/blob/main/docs/xlsx-cache-doctor-github-action.md`,
-  },
-  {
-    title: 'Evaluate WorkPaper In A Node Service',
-    relativePath: 'docs/eval-workpaper-service.md',
-    url: `${repositoryUrl}/blob/main/docs/eval-workpaper-service.md`,
-  },
-  {
-    title: 'Agent Adoption Kit',
-    relativePath: 'docs/agent-adoption-kit.md',
-    url: `${repositoryUrl}/blob/main/docs/agent-adoption-kit.md`,
-  },
-  {
-    title: 'Evaluate Bilig As An Agent MCP Workbook Tool',
-    relativePath: 'docs/eval-agent-mcp.md',
-    url: `${repositoryUrl}/blob/main/docs/eval-agent-mcp.md`,
-  },
-  {
-    title: 'WorkPaper Package README',
-    relativePath: 'packages/workpaper/README.md',
-    url: `${repositoryUrl}/blob/main/packages/workpaper/README.md`,
-  },
-  {
-    title: 'Headless WorkPaper Agent Handbook',
-    relativePath: 'docs/headless-workpaper-agent-handbook.md',
-    url: `${repositoryUrl}/blob/main/docs/headless-workpaper-agent-handbook.md`,
-  },
-  {
-    title: 'Agent Workbook Challenge',
-    relativePath: 'docs/agent-workbook-challenge.md',
-    url: `${repositoryUrl}/blob/main/docs/agent-workbook-challenge.md`,
-  },
-  {
-    title: 'Agent WorkPaper Tool-Calling Recipe',
-    relativePath: 'docs/agent-workpaper-tool-calling-recipe.md',
-    url: `${repositoryUrl}/blob/main/docs/agent-workpaper-tool-calling-recipe.md`,
-  },
-  {
-    title: 'AI Spreadsheet Agent Tool For Node.js',
-    relativePath: 'docs/ai-agent-spreadsheet-tool-node.md',
-    url: `${repositoryUrl}/blob/main/docs/ai-agent-spreadsheet-tool-node.md`,
-  },
-  {
-    title: 'Workbook Tools For Agent Frameworks',
-    relativePath: 'docs/agent-framework-workbook-tools.md',
-    url: `${repositoryUrl}/blob/main/docs/agent-framework-workbook-tools.md`,
-  },
-  {
-    title: 'Workbook Agent Intent API',
-    relativePath: 'docs/workbook-agent-intent-api.md',
-    url: `${repositoryUrl}/blob/main/docs/workbook-agent-intent-api.md`,
-  },
-  {
-    title: 'Workbook Package README',
-    relativePath: 'packages/workbook/README.md',
-    url: `${repositoryUrl}/blob/main/packages/workbook/README.md`,
-  },
-  {
-    title: 'Workbook Agent Model Example',
-    relativePath: 'examples/workbook-agent-model/README.md',
-    url: `${repositoryUrl}/blob/main/examples/workbook-agent-model/README.md`,
-  },
-  llmsSource('Cloudflare Agents WorkPaper Spreadsheet Tool', 'docs/cloudflare-agents-workpaper-spreadsheet-tool.md'),
-  llmsSource('CrewAI WorkPaper Spreadsheet Tool', 'docs/crewai-workpaper-spreadsheet-tool.md'),
-  llmsSource('LangGraph.js WorkPaper ToolNode Spreadsheet Tool', 'docs/langgraph-workpaper-toolnode-spreadsheet.md'),
-  llmsSource('LlamaIndex.TS WorkPaper Spreadsheet Tool', 'docs/llamaindex-workpaper-spreadsheet-tool.md'),
-  llmsSource('Semantic Kernel WorkPaper MCP Plugin', 'docs/semantic-kernel-workpaper-mcp.md'),
-  llmsSource('Gemini CLI WorkPaper Extension', 'docs/gemini-cli-workpaper-extension.md'),
-  llmsSource('Directus WorkPaper Flow Operation', 'docs/directus-workpaper-flow-operation.md'),
-  llmsSource('Windmill WorkPaper TypeScript Script', 'docs/windmill-workpaper-script.md'),
-  llmsSource('Trigger.dev WorkPaper Task', 'docs/triggerdev-workpaper-task.md'),
-  llmsSource('Inngest WorkPaper Step', 'docs/inngest-workpaper-step.md'),
-  llmsSource('Airbyte WorkPaper Validation', 'docs/airbyte-workpaper-validation.md'),
-  llmsSource('Meltano WorkPaper Utility', 'docs/meltano-workpaper-utility.md'),
-  llmsSource('Temporal WorkPaper Activity', 'docs/temporal-workpaper-activity.md'),
-  llmsSource('Airflow WorkPaper DAG', 'docs/airflow-workpaper-dag.md'),
-  llmsSource('Dagster WorkPaper Asset', 'docs/dagster-workpaper-asset.md'),
-  llmsSource('Kestra WorkPaper Node Flow', 'docs/kestra-workpaper-flow.md'),
-  llmsSource('Prefect WorkPaper Flow', 'docs/prefect-workpaper-flow.md'),
-  llmsSource('Open WebUI WorkPaper Tool Setup', 'docs/open-webui-workpaper-mcp.md'),
-  llmsSource('Open Multi-Agent WorkPaper MCP Example', 'docs/open-multi-agent-workpaper-mcp.md'),
-  llmsSource('LobeHub WorkPaper MCP Setup', 'docs/lobehub-workpaper-mcp.md'),
-  llmsSource('AnythingLLM WorkPaper MCP Setup', 'docs/anythingllm-workpaper-mcp.md'),
-  llmsSource('FastMCP WorkPaper Client', 'docs/fastmcp-workpaper-client.md'),
-  llmsSource('smolagents WorkPaper Tool', 'docs/smolagents-workpaper-tool.md'),
-  llmsSource('Sim WorkPaper MCP Setup', 'docs/sim-workpaper-mcp.md'),
-  llmsSource('n8n WorkPaper Formula Readback', 'docs/n8n-workpaper-formula-readback.md'),
-  llmsSource('Dify WorkPaper Formula Readback', 'docs/dify-workpaper-formula-readback.md'),
-  llmsSource('Flowise WorkPaper Formula Readback', 'docs/flowise-workpaper-formula-readback.md'),
-  llmsSource('Pipedream WorkPaper Formula Readback', 'docs/pipedream-workpaper-formula-readback.md'),
-  {
-    title: 'OpenAI Agents SDK WorkPaper Tool',
-    relativePath: 'docs/openai-agents-sdk-workpaper-tool.md',
-    url: `${repositoryUrl}/blob/main/docs/openai-agents-sdk-workpaper-tool.md`,
-  },
-  {
-    title: 'MCP WorkPaper Tool Server',
-    relativePath: 'docs/mcp-workpaper-tool-server.md',
-    url: `${repositoryUrl}/blob/main/docs/mcp-workpaper-tool-server.md`,
-  },
-  {
-    title: 'Agent XLSX Formula Recalculation Without LibreOffice',
-    relativePath: 'docs/agent-xlsx-formula-recalculation-without-libreoffice.md',
-    url: `${repositoryUrl}/blob/main/docs/agent-xlsx-formula-recalculation-without-libreoffice.md`,
-  },
-  {
-    title: 'Formula Bug Clinic',
-    relativePath: 'docs/formula-bug-clinic.md',
-    url: `${repositoryUrl}/blob/main/docs/formula-bug-clinic.md`,
-  },
-  {
-    title: 'Try Bilig Headless In Node',
-    relativePath: 'docs/try-bilig-headless-in-node.md',
-    url: `${repositoryUrl}/blob/main/docs/try-bilig-headless-in-node.md`,
-  },
-  {
-    title: 'Quote Approval WorkPaper API',
-    relativePath: 'docs/quote-approval-workpaper-api.md',
-    url: `${repositoryUrl}/blob/main/docs/quote-approval-workpaper-api.md`,
-  },
-  {
-    title: 'Compatibility Limits',
-    relativePath: 'docs/where-bilig-is-not-excel-compatible-yet.md',
-    url: `${repositoryUrl}/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md`,
-  },
-  {
-    title: 'npm Provenance And Package Trust',
-    relativePath: 'docs/npm-provenance-package-trust.md',
-    url: `${repositoryUrl}/blob/main/docs/npm-provenance-package-trust.md`,
-  },
-] as const
+const llmsFullSources = buildLlmsFullSources(repositoryUrl)
 
 function skillIndexJson(): string {
   const skillDigest = createHash('sha256').update(skillDocument).digest('hex')
@@ -765,6 +613,15 @@ function agentJsonManifest(): string {
           source: `${repositoryUrl}/tree/main/examples/smolagents-workpaper-tool`,
         },
         {
+          name: 'huggingface-workpaper-space-template',
+          type: 'gradio-mcp-space-template',
+          framework: 'Hugging Face Spaces',
+          command:
+            "cd examples/huggingface-workpaper-space && npm install --omit=dev --package-lock=false && uv run --python 3.12 --with 'gradio[mcp]>=6.0,<7' python app.py --check",
+          docs: `${siteRoot}/huggingface-workpaper-space.html`,
+          source: `${repositoryUrl}/tree/main/examples/huggingface-workpaper-space`,
+        },
+        {
           name: 'inngest-workpaper-step',
           type: 'durable-workflow-step-smoke-test',
           framework: 'Inngest',
@@ -829,6 +686,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/sim-workpaper-mcp.html`,
         `${siteRoot}/fastmcp-workpaper-client.html`,
         `${siteRoot}/smolagents-workpaper-tool.html`,
+        `${siteRoot}/huggingface-workpaper-space.html`,
         remoteMcpEndpoint,
         remoteMcpServerCard,
         `${siteRoot}/agent-workpaper-tool-calling-recipe.html`,

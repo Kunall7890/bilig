@@ -1,0 +1,14 @@
+{
+  "name": "bilig-huggingface-workpaper-space",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "proof": "node workpaper_proof.mjs 0.4"
+  },
+  "dependencies": {
+    "@bilig/workpaper": "0.131.2"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
