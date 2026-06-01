@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.139.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.138.0
+- Manual override: no
+
+## Features
+- feat(formula): recognize python in excel formulas (e7c82c88)
+
 ## 0.138.0
 
 - Release type: minor
