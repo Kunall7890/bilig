@@ -72,6 +72,11 @@
       "inOfficeList": true
     },
     {
+      "name": "ARRAY_CONSTRAIN",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
+    },
+    {
       "name": "ARRAYTOTEXT",
       "odfStatus": "Not in ODF 1.4 mandatory",
       "inOfficeList": true
@@ -465,6 +470,11 @@
       "name": "COUNTIFS",
       "odfStatus": "Implemented",
       "inOfficeList": true
+    },
+    {
+      "name": "COUNTUNIQUE",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
     },
     {
       "name": "COUPDAYBS",
@@ -917,6 +927,11 @@
       "inOfficeList": true
     },
     {
+      "name": "FLATTEN",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
+    },
+    {
       "name": "FLOOR",
       "odfStatus": "Implemented",
       "inOfficeList": true
@@ -1282,6 +1297,11 @@
       "inOfficeList": true
     },
     {
+      "name": "ISEMAIL",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
+    },
+    {
       "name": "ISERR",
       "odfStatus": "Not in ODF 1.4 mandatory",
       "inOfficeList": true
@@ -1357,9 +1377,19 @@
       "inOfficeList": true
     },
     {
+      "name": "ISURL",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
+    },
+    {
       "name": "JIS",
       "odfStatus": "Placeholder (blocked)",
       "inOfficeList": true
+    },
+    {
+      "name": "JOIN",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
     },
     {
       "name": "KURT",
@@ -2420,6 +2450,11 @@
       "name": "TINV",
       "odfStatus": "Placeholder (blocked)",
       "inOfficeList": true
+    },
+    {
+      "name": "TO_TEXT",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
     },
     {
       "name": "TOCOL",

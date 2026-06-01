@@ -478,7 +478,7 @@ const wasmProductionBuiltinNames = new Set([
   'TBILLEQ',
 ])
 
-const aggregationBuiltinNames = new Set(['SUM', 'AVERAGE', 'AVG', 'MIN', 'MAX', 'COUNT', 'COUNTA', 'COUNTBLANK'])
+const aggregationBuiltinNames = new Set(['SUM', 'AVERAGE', 'AVG', 'MIN', 'MAX', 'COUNT', 'COUNTA', 'COUNTBLANK', 'COUNTUNIQUE'])
 const logicalBuiltinNames = new Set(['IF', 'IFS', 'AND', 'OR', 'NOT', 'SWITCH', 'XOR', 'IFERROR', 'IFNA', 'NA'])
 const informationBuiltinNames = new Set([
   'CELL',
@@ -493,6 +493,8 @@ const informationBuiltinNames = new Set([
   'ISNONTEXT',
   'ISNUMBER',
   'ISTEXT',
+  'ISEMAIL',
+  'ISURL',
   'N',
   'SHEET',
   'SHEETS',
@@ -542,6 +544,8 @@ const textBuiltinNames = new Set([
   'DOLLAR',
   'ARRAYTOTEXT',
   'REGEXMATCH',
+  'JOIN',
+  'TO_TEXT',
 ])
 const dateTimeBuiltinNames = new Set([
   'DATE',
@@ -787,6 +791,7 @@ const statisticalBuiltinNames = new Set([
 const dynamicArrayBuiltinNames = new Set([
   'SEQUENCE',
   'EXPAND',
+  'ARRAY_CONSTRAIN',
   'FILTER',
   'UNIQUE',
   'TAKE',
@@ -807,6 +812,7 @@ const dynamicArrayBuiltinNames = new Set([
   'VSTACK',
   'TEXTSPLIT',
   'SPLIT',
+  'FLATTEN',
   'GROWTH',
   'TREND',
   'TRIMRANGE',

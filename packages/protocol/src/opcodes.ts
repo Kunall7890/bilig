@@ -558,5 +558,12 @@ export const BUILTINS: BuiltinDescriptor[] = [
   { id: BuiltinId.Iserror, name: "ISERROR", supportsWasm: false },
   { id: BuiltinId.Islogical, name: "ISLOGICAL", supportsWasm: false },
   { id: BuiltinId.Isna, name: "ISNA", supportsWasm: false },
-  { id: BuiltinId.Isnontext, name: "ISNONTEXT", supportsWasm: false }
+  { id: BuiltinId.Isnontext, name: "ISNONTEXT", supportsWasm: false },
+  { id: BuiltinId.ArrayConstrain, name: "ARRAY_CONSTRAIN", supportsWasm: false },
+  { id: BuiltinId.Countunique, name: "COUNTUNIQUE", supportsWasm: false },
+  { id: BuiltinId.Flatten, name: "FLATTEN", supportsWasm: false },
+  { id: BuiltinId.Isemail, name: "ISEMAIL", supportsWasm: false },
+  { id: BuiltinId.Isurl, name: "ISURL", supportsWasm: false },
+  { id: BuiltinId.Join, name: "JOIN", supportsWasm: false },
+  { id: BuiltinId.ToText, name: "TO_TEXT", supportsWasm: false }
 ];

@@ -575,6 +575,13 @@ export const enumManifest: ProtocolEnumManifest = {
     ['Isnontext', 521],
     ['Regexmatch', 522],
     ['Split', 523],
+    ['ArrayConstrain', 524],
+    ['Countunique', 525],
+    ['Flatten', 526],
+    ['Isemail', 527],
+    ['Isurl', 528],
+    ['Join', 529],
+    ['ToText', 530],
   ],
 }
 

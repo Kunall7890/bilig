@@ -11,7 +11,7 @@
 - Scope: ODF mandatory functions + Office by-category function list, plus tracked compatibility aliases.
 
 ## Coverage Summary
-- Unified function count: **534**
+- Unified function count: **541**
 - ODF mandatory function count: **59**
 - Office function count (cleaned scrape): **519**
 - Overlap (present in both): **58**
@@ -19,7 +19,7 @@
 - Office-only (not in ODF 1.4 mandatory): **461**
 
 ## Current code coverage snapshot
-- Registered in codebase: **534**
+- Registered in codebase: **541**
 - Not yet registered in codebase: **0**
 - Placeholder-backed registrations: **0**
 - The "Implemented in codebase" column reflects runtime registration, including blocked placeholder registrations.
@@ -42,6 +42,7 @@
 | AND | Not in ODF 1.4 mandatory | Yes | Yes |
 | ARABIC | Implemented | Yes | Yes |
 | AREAS | Placeholder (blocked) | Yes | Yes |
+| ARRAY_CONSTRAIN | Google Sheets compatibility | No | Yes |
 | ARRAYTOTEXT | Not in ODF 1.4 mandatory | Yes | Yes |
 | ASC | Placeholder (blocked) | Yes | Yes |
 | ASIN | Not in ODF 1.4 mandatory | Yes | Yes |
@@ -121,6 +122,7 @@
 | COUNTBLANK | Not in ODF 1.4 mandatory | Yes | Yes |
 | COUNTIF | Not in ODF 1.4 mandatory | Yes | Yes |
 | COUNTIFS | Implemented | Yes | Yes |
+| COUNTUNIQUE | Google Sheets compatibility | No | Yes |
 | COUPDAYBS | Placeholder (blocked) | Yes | Yes |
 | COUPDAYS | Placeholder (blocked) | Yes | Yes |
 | COUPDAYSNC | Placeholder (blocked) | Yes | Yes |
@@ -211,6 +213,7 @@
 | FISHER | Placeholder (blocked) | Yes | Yes |
 | FISHERINV | Placeholder (blocked) | Yes | Yes |
 | FIXED | Placeholder (blocked) | Yes | Yes |
+| FLATTEN | Google Sheets compatibility | No | Yes |
 | FLOOR | Implemented | Yes | Yes |
 | FLOOR.MATH | Not in ODF 1.4 mandatory | Yes | Yes |
 | FLOOR.PRECISE | Not in ODF 1.4 mandatory | Yes | Yes |
@@ -284,6 +287,7 @@
 | IPMT | Placeholder (blocked) | Yes | Yes |
 | IRR | Not in ODF 1.4 mandatory | Yes | Yes |
 | ISBLANK | Not in ODF 1.4 mandatory | Yes | Yes |
+| ISEMAIL | Google Sheets compatibility | No | Yes |
 | ISERR | Not in ODF 1.4 mandatory | Yes | Yes |
 | ISERROR | Not in ODF 1.4 mandatory | Yes | Yes |
 | ISEVEN | Placeholder (blocked) | Yes | Yes |
@@ -299,7 +303,9 @@
 | ISPMT | Placeholder (blocked) | Yes | Yes |
 | ISREF | Placeholder (blocked) | Yes | Yes |
 | ISTEXT | Not in ODF 1.4 mandatory | Yes | Yes |
+| ISURL | Google Sheets compatibility | No | Yes |
 | JIS | Placeholder (blocked) | Yes | Yes |
+| JOIN | Google Sheets compatibility | No | Yes |
 | KURT | Placeholder (blocked) | Yes | Yes |
 | LAMBDA | Not in ODF 1.4 mandatory | Yes | Yes |
 | LARGE | Placeholder (blocked) | Yes | Yes |
@@ -512,6 +518,7 @@
 | TIME | Not in ODF 1.4 mandatory | Yes | Yes |
 | TIMEVALUE | Placeholder (blocked) | Yes | Yes |
 | TINV | Placeholder (blocked) | Yes | Yes |
+| TO_TEXT | Google Sheets compatibility | No | Yes |
 | TOCOL | Not in ODF 1.4 mandatory | Yes | Yes |
 | TODAY | Not in ODF 1.4 mandatory | Yes | Yes |
 | TOROW | Not in ODF 1.4 mandatory | Yes | Yes |

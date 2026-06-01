@@ -215,6 +215,29 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
         stringId: 0,
       }
     },
+    ARRAY_CONSTRAIN: (arrayArg, rowLimitArg, colLimitArg) => {
+      const array = deps.toCellRange(arrayArg)
+      if (!deps.isRangeArg(array)) {
+        return array
+      }
+      if (deps.isRangeArg(rowLimitArg) || deps.isRangeArg(colLimitArg)) {
+        return deps.errorValue(ErrorCode.Value)
+      }
+      if (deps.isError(rowLimitArg) || deps.isError(colLimitArg)) {
+        if (deps.isError(rowLimitArg)) {
+          return rowLimitArg
+        }
+        return deps.isError(colLimitArg) ? colLimitArg : deps.errorValue(ErrorCode.Value)
+      }
+      const rowLimit = deps.toInteger(rowLimitArg)
+      const colLimit = deps.toInteger(colLimitArg)
+      if (rowLimit === undefined || colLimit === undefined || rowLimit < 1 || colLimit < 1) {
+        return deps.errorValue(ErrorCode.Value)
+      }
+      const rowCount = Math.min(rowLimit, array.rows)
+      const colCount = Math.min(colLimit, array.cols)
+      return arrayResultFromRangeWindow(deps, array, 0, 0, rowCount, colCount)
+    },
     COLUMNS: (arrayArg) => {
       const range = toArrayShapeRange(deps, arrayArg)
       if (!deps.isRangeArg(range)) {
@@ -569,6 +592,20 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
         }
       }
       return deps.arrayResult(values, totalRows, colCount)
+    },
+    FLATTEN: (...arrayArgs) => {
+      if (arrayArgs.length === 0) {
+        return deps.errorValue(ErrorCode.Value)
+      }
+      const values: CellValue[] = []
+      for (const arg of arrayArgs) {
+        const array = deps.toCellRange(arg)
+        if (!deps.isRangeArg(array)) {
+          return array
+        }
+        values.push(...flattenValues(array, false, deps.getRangeValue))
+      }
+      return deps.arrayResult(values, values.length, 1)
     },
     TOCOL: (arrayArg, ignoreArg = { tag: ValueTag.Number, value: 0 }, scanByColArg) => {
       const array = deps.toCellRange(arrayArg)

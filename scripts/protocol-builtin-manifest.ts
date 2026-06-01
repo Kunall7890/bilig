@@ -524,4 +524,11 @@ export const builtinManifest: readonly ProtocolBuiltinManifestEntry[] = [
   { id: 'Islogical', name: 'ISLOGICAL', supportsWasm: false },
   { id: 'Isna', name: 'ISNA', supportsWasm: false },
   { id: 'Isnontext', name: 'ISNONTEXT', supportsWasm: false },
+  { id: 'ArrayConstrain', name: 'ARRAY_CONSTRAIN', supportsWasm: false },
+  { id: 'Countunique', name: 'COUNTUNIQUE', supportsWasm: false },
+  { id: 'Flatten', name: 'FLATTEN', supportsWasm: false },
+  { id: 'Isemail', name: 'ISEMAIL', supportsWasm: false },
+  { id: 'Isurl', name: 'ISURL', supportsWasm: false },
+  { id: 'Join', name: 'JOIN', supportsWasm: false },
+  { id: 'ToText', name: 'TO_TEXT', supportsWasm: false },
 ]

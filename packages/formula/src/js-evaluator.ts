@@ -341,6 +341,7 @@ const arrayLiftedScalarBuiltinArities = new Map<string, number>([
   ['ISBLANK', 1],
   ['ISERR', 1],
   ['ISERROR', 1],
+  ['ISEMAIL', 1],
   ['ISEVEN', 1],
   ['ISLOGICAL', 1],
   ['ISNA', 1],
@@ -348,9 +349,11 @@ const arrayLiftedScalarBuiltinArities = new Map<string, number>([
   ['ISNUMBER', 1],
   ['ISODD', 1],
   ['ISREF', 1],
+  ['ISURL', 1],
   ['ISTEXT', 1],
   ['NOT', 1],
   ['ROUND', 2],
+  ['TO_TEXT', 1],
 ])
 
 function evaluateArrayLiftedScalarBuiltin(

@@ -33,6 +33,7 @@ import { createDateTimeBuiltins, datetimeBuiltins, type ExcelDateSystem } from '
 import { convertBuiltin, euroconvertBuiltin } from './builtins/convert.js'
 import { logicalBuiltins } from './builtins/logical.js'
 import { lookupBuiltins } from './builtins/lookup.js'
+import { googleSheetsScalarBuiltins } from './builtins/google-sheets-scalar-builtins.js'
 import { createBlockedBuiltinMap, scalarPlaceholderBuiltinNames } from './builtins/placeholder.js'
 import { getExternalScalarFunction, hasExternalFunction } from './external-function-adapter.js'
 import { coerceLogicalValue } from './logical-coercion.js'
@@ -936,6 +937,7 @@ const scalarBuiltins: Record<string, Builtin> = {
     return aggregateByCode(functionNum, values, { propagateErrors: !ignoreErrors })
   },
   SEQUENCE: (...args) => sequenceResult(args[0], args[1], args[2], args[3]),
+  ...googleSheetsScalarBuiltins,
   ...externalScalarBuiltins,
   ...scalarPlaceholderBuiltins,
 }
