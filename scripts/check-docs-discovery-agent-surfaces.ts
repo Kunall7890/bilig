@@ -72,16 +72,13 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   requireIncludes(jekyllConfig, '  - .well-known', 'docs/_config.yml')
   requireIncludes(jekyllConfig, "layout: 'default'", 'docs/_config.yml')
   requireIncludes(jekyllDefaultLayout, '<header class="topbar">', 'docs/_layouts/default.html')
-  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#market\' | relative_url }}">Who needs it</a>', 'docs/_layouts/default.html')
-  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#install\' | relative_url }}">Quickstart</a>', 'docs/_layouts/default.html')
+  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#runtime\' | relative_url }}">Runtime</a>', 'docs/_layouts/default.html')
+  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#install\' | relative_url }}">Install</a>', 'docs/_layouts/default.html')
   requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#mcp\' | relative_url }}">Agents</a>', 'docs/_layouts/default.html')
-  requireIncludes(
-    jekyllDefaultLayout,
-    'href="{{ \'/xlsx-formula-recalculation-node.html\' | relative_url }}">XLSX</a>',
-    'docs/_layouts/default.html',
-  )
+  requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#benchmark\' | relative_url }}">Benchmark</a>', 'docs/_layouts/default.html')
   requireIncludes(jekyllDefaultLayout, 'href="{{ \'/#docs\' | relative_url }}">Docs</a>', 'docs/_layouts/default.html')
   requireIncludes(jekyllDefaultLayout, 'href="https://github.com/proompteng/bilig">GitHub</a>', 'docs/_layouts/default.html')
+  requireNotIncludes(jekyllDefaultLayout, '/#market', 'docs/_layouts/default.html')
   requireIncludes(jekyllDefaultLayout, 'href="{{ \'/assets/site.css?v=2026-05-30-10\' | relative_url }}"', 'docs/_layouts/default.html')
   requireIncludes(jekyllDefaultLayout, 'src="{{ \'/assets/site-nav.js?v=2026-05-30-11\' | relative_url }}"', 'docs/_layouts/default.html')
   if (mcpServerCardMcpJson !== mcpServerCard) {
