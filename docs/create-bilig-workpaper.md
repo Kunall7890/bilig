@@ -93,8 +93,10 @@ curl -X POST http://localhost:8788/api/quote/approval \
   a Claude Code project skill and proof command, GitHub Copilot / VS Code
   instructions, Cursor, Cline, Continue, and Windsurf rules, project-root
   `.mcp.json` for Claude Code, Cursor and VS Code MCP configs, a reusable MCP
-  config file, and an `agent:verify` command that proves both direct TypeScript
-  and file-backed MCP paths.
+  config file, and an `agent:verify` command that runs the service smoke plus
+  the package-owned `bilig-evaluate --door agent-mcp --json` proof. Use
+  `npm run mcp:challenge` only when you need the lower-level JSON-RPC
+  transcript.
 
 ## Source
 

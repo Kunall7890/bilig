@@ -151,6 +151,16 @@ function assertDocs(): void {
   )
   assert(readme.includes('agent:verify'), 'starter README must document the agent verification script')
   assert(docs.includes('agent:verify'), 'starter docs must document the agent verification script')
+  assert(readme.includes('bilig-evaluate --door agent-mcp --json'), 'starter README must document the canonical agent evaluator command')
+  assert(docs.includes('bilig-evaluate --door agent-mcp --json'), 'starter docs must document the canonical agent evaluator command')
+  assert(
+    readme.includes('npm run mcp:challenge') && readme.includes('lower-level JSON-RPC transcript'),
+    'starter README must keep the raw MCP challenge as a diagnostic, not the primary proof',
+  )
+  assert(
+    docs.includes('npm run mcp:challenge') && docs.includes('lower-level JSON-RPC'),
+    'starter docs must keep the raw MCP challenge as a diagnostic, not the primary proof',
+  )
   assert(readme.includes(existingRepoWorkpaperPath), 'starter README must document the existing-repo WorkPaper state path')
   assert(docs.includes(existingRepoWorkpaperPath), 'starter docs must document the existing-repo WorkPaper state path')
   assert(agentDocs.includes(existingRepoWorkpaperPath), 'agent adoption kit must document the existing-repo WorkPaper state path')
@@ -230,8 +240,16 @@ function assertGeneratedStarters(): void {
   const agentManifest = readJson(join(agentDir, 'package.json'))
   assert(isRecord(agentManifest.scripts), 'generated agent package scripts must be an object')
   assert(
-    agentManifest.scripts['agent:verify'] === 'npm run smoke && npm run mcp:challenge',
-    'generated agent starter must verify API and MCP paths',
+    agentManifest.scripts['agent:verify'] === 'npm run smoke && npm run agent:evaluate',
+    'generated agent starter must verify the service smoke and canonical agent evaluator paths',
+  )
+  assert(
+    agentManifest.scripts['agent:evaluate'] === 'bilig-evaluate --door agent-mcp --json',
+    'generated agent starter must expose the canonical agent evaluator script',
+  )
+  assert(
+    agentManifest.scripts['mcp:challenge'] === 'bilig-mcp-challenge --json',
+    'generated agent starter must keep the raw MCP challenge as a JSON diagnostic script',
   )
   assert(
     agentManifest.scripts['mcp:server'] === `bilig-workpaper-mcp --workpaper ${starterWorkpaperPath} --init-demo-workpaper --writable`,

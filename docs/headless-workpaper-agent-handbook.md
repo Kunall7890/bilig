@@ -58,9 +58,10 @@ npm run mcp:server
 
 The generated project includes `AGENTS.md`, `CLAUDE.md`, project-root
 `.mcp.json` for Claude Code, Cursor and VS Code MCP configs,
-`mcp/bilig-workpaper.mcp.json`, a quote approval service smoke test, and a
-file-backed MCP challenge. `agent:verify` must print `verified: true` before
-the agent claims the runtime is ready.
+`mcp/bilig-workpaper.mcp.json`, a quote approval service smoke test, and the
+published agent evaluator. `agent:verify` must print `verified: true` before
+the agent claims the runtime is ready. Use `npm run mcp:challenge` only when
+you need the lower-level JSON-RPC transcript.
 
 For an existing repo, add only the Bilig agent and MCP files:
 

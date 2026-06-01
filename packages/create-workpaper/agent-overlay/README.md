@@ -6,15 +6,19 @@ Agent-ready formula WorkPaper starter built with `@bilig/workpaper`.
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
-Generated starters also include `npm run agent:verify`, which runs two proofs:
+Generated starters also include `npm run agent:verify`, which runs the service
+smoke and then the package-owned agent evaluator:
 
 - `npm run smoke`: writes quote inputs through a service-style API handler,
   recalculates formulas, persists WorkPaper JSON, restores it, and checks
   `verified: true`.
-- `npm run mcp:challenge`: starts the package-owned file-backed MCP challenge,
-  lists tools/resources/prompts, edits a WorkPaper cell, reads the recalculated
-  dependent value, exports JSON, restarts from disk, and checks
-  `verified: true`.
+- `npm run agent:evaluate`: runs
+  `bilig-evaluate --door agent-mcp --json`, discovers MCP tools, edits a
+  WorkPaper cell, reads the recalculated dependent value, exports JSON,
+  restarts from disk, and checks `verified: true`.
+
+Use `npm run mcp:challenge` only when you need the lower-level JSON-RPC
+diagnostic transcript.
 
 Start the local API:
 
