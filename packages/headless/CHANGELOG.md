@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.133.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.132.0
+- Manual override: no
+
+## Features
+- feat(formula): track Office IS predicates (c959baff)
+
 ## 0.132.0
 
 - Release type: minor
