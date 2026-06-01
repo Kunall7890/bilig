@@ -551,5 +551,10 @@ export const BUILTINS: BuiltinDescriptor[] = [
   { id: BuiltinId.Sumx2my2, name: "SUMX2MY2", supportsWasm: false },
   { id: BuiltinId.Sumx2py2, name: "SUMX2PY2", supportsWasm: false },
   { id: BuiltinId.Sumxmy2, name: "SUMXMY2", supportsWasm: false },
-  { id: BuiltinId.True, name: "TRUE", supportsWasm: false }
+  { id: BuiltinId.True, name: "TRUE", supportsWasm: false },
+  { id: BuiltinId.Iserr, name: "ISERR", supportsWasm: false },
+  { id: BuiltinId.Iserror, name: "ISERROR", supportsWasm: false },
+  { id: BuiltinId.Islogical, name: "ISLOGICAL", supportsWasm: false },
+  { id: BuiltinId.Isna, name: "ISNA", supportsWasm: false },
+  { id: BuiltinId.Isnontext, name: "ISNONTEXT", supportsWasm: false }
 ];

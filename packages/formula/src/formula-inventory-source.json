@@ -1277,6 +1277,16 @@
       "inOfficeList": true
     },
     {
+      "name": "ISERR",
+      "odfStatus": "Not in ODF 1.4 mandatory",
+      "inOfficeList": true
+    },
+    {
+      "name": "ISERROR",
+      "odfStatus": "Not in ODF 1.4 mandatory",
+      "inOfficeList": true
+    },
+    {
       "name": "ISEVEN",
       "odfStatus": "Placeholder (blocked)",
       "inOfficeList": true
@@ -1284,6 +1294,21 @@
     {
       "name": "ISFORMULA",
       "odfStatus": "Placeholder (blocked)",
+      "inOfficeList": true
+    },
+    {
+      "name": "ISLOGICAL",
+      "odfStatus": "Not in ODF 1.4 mandatory",
+      "inOfficeList": true
+    },
+    {
+      "name": "ISNA",
+      "odfStatus": "Not in ODF 1.4 mandatory",
+      "inOfficeList": true
+    },
+    {
+      "name": "ISNONTEXT",
+      "odfStatus": "Not in ODF 1.4 mandatory",
       "inOfficeList": true
     },
     {

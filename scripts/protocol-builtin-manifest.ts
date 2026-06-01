@@ -517,4 +517,9 @@ export const builtinManifest: readonly ProtocolBuiltinManifestEntry[] = [
   { id: 'Sumx2py2', name: 'SUMX2PY2', supportsWasm: false },
   { id: 'Sumxmy2', name: 'SUMXMY2', supportsWasm: false },
   { id: 'True', name: 'TRUE', supportsWasm: false },
+  { id: 'Iserr', name: 'ISERR', supportsWasm: false },
+  { id: 'Iserror', name: 'ISERROR', supportsWasm: false },
+  { id: 'Islogical', name: 'ISLOGICAL', supportsWasm: false },
+  { id: 'Isna', name: 'ISNA', supportsWasm: false },
+  { id: 'Isnontext', name: 'ISNONTEXT', supportsWasm: false },
 ]

@@ -34,6 +34,7 @@ describe('formula inventory', () => {
     const letEntry = formulaInventory.find((entry) => entry.name === 'LET')
     const sumEntry = formulaInventory.find((entry) => entry.name === 'SUM')
     const imageEntry = formulaInventory.find((entry) => entry.name === 'IMAGE')
+    const iserrorEntry = formulaInventory.find((entry) => entry.name === 'ISERROR')
 
     expect(letEntry).toMatchObject({
       registeredInCodebase: true,
@@ -47,6 +48,13 @@ describe('formula inventory', () => {
       registeredInCodebase: true,
       protocolSupportsWasm: true,
       runtimeStatus: 'implemented',
+    })
+    expect(iserrorEntry).toMatchObject({
+      registeredInCodebase: true,
+      protocolId: expect.any(Number),
+      protocolSupportsWasm: false,
+      runtimeStatus: 'implemented',
+      wasmStatus: 'not-started',
     })
     expect(imageEntry).toMatchObject({
       deterministic: 'provider-backed',

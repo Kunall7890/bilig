@@ -11,15 +11,15 @@
 - Scope: ODF mandatory functions + Office by-category function list (merged into one list).
 
 ## Coverage Summary
-- Unified function count: **525**
+- Unified function count: **530**
 - ODF mandatory function count: **59**
-- Office function count (cleaned scrape): **508**
+- Office function count (cleaned scrape): **513**
 - Overlap (present in both): **58**
 - ODF-only (mandatory, not listed by Office): **1**
-- Office-only (not in ODF 1.4 mandatory): **450**
+- Office-only (not in ODF 1.4 mandatory): **455**
 
 ## Current code coverage snapshot
-- Registered in codebase: **525**
+- Registered in codebase: **530**
 - Not yet registered in codebase: **0**
 - Placeholder-backed registrations: **0**
 - The "Implemented in codebase" column reflects runtime registration, including blocked placeholder registrations.
@@ -283,8 +283,13 @@
 | IPMT | Placeholder (blocked) | Yes | Yes |
 | IRR | Not in ODF 1.4 mandatory | Yes | Yes |
 | ISBLANK | Not in ODF 1.4 mandatory | Yes | Yes |
+| ISERR | Not in ODF 1.4 mandatory | Yes | Yes |
+| ISERROR | Not in ODF 1.4 mandatory | Yes | Yes |
 | ISEVEN | Placeholder (blocked) | Yes | Yes |
 | ISFORMULA | Placeholder (blocked) | Yes | Yes |
+| ISLOGICAL | Not in ODF 1.4 mandatory | Yes | Yes |
+| ISNA | Not in ODF 1.4 mandatory | Yes | Yes |
+| ISNONTEXT | Not in ODF 1.4 mandatory | Yes | Yes |
 | ISNUMBER | Not in ODF 1.4 mandatory | Yes | Yes |
 | ISO.CEILING | Not in ODF 1.4 mandatory | Yes | Yes |
 | ISODD | Placeholder (blocked) | No | Yes |

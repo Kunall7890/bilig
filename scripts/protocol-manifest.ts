@@ -568,6 +568,11 @@ export const enumManifest: ProtocolEnumManifest = {
     ['Sumx2py2', 514],
     ['Sumxmy2', 515],
     ['True', 516],
+    ['Iserr', 517],
+    ['Iserror', 518],
+    ['Islogical', 519],
+    ['Isna', 520],
+    ['Isnontext', 521],
   ],
 }
 
