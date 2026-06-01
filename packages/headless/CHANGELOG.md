@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.132.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.131.3
+- Manual override: no
+
+## Features
+- feat(formula): add protocol ids for runtime formulas (619bb403)
+
 ## 0.131.3
 
 - Release type: patch
