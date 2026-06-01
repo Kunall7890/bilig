@@ -621,10 +621,10 @@ Latest LibHunt discovery snapshot on May 17, 2026:
   classifier vocabulary so LibHunt-style indexers refresh toward the sharper
   positioning.
 
-Latest Product Hunt launch surface on May 14, 2026:
+Product Hunt launch surface note from May 14, 2026:
 
-- The public launch kit is now wired into the docs site:
-  <https://proompteng.github.io/bilig/product-hunt-launch-kit.html>.
+- The internal launch kit lives at
+  [`internal/growth/product-hunt-launch-kit.md`](product-hunt-launch-kit.md).
 - It keeps the tagline, short description, first comment, proof links, thumbnail,
   gallery images, WebM demo, and launch checklist together so the next launch
   action can use the real assets instead of rewriting copy in a browser form.
@@ -1032,7 +1032,7 @@ pnpm community:growth:snapshot:markdown
 ```
 
 Current checked-in snapshot:
-[`docs/community-growth-snapshot.md`](community-growth-snapshot.md).
+[`internal/growth/community-growth-snapshot.md`](community-growth-snapshot.md).
 
 Latest JavaScript-library comparison starter snapshot on May 13, 2026:
 

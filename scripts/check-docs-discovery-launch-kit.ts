@@ -46,7 +46,7 @@ export function requireProductHuntLaunchKitDiscovery(
   ] as const
 
   for (const required of requiredText) {
-    requireIncludes(productHuntLaunchKit, required, 'docs/product-hunt-launch-kit.md')
+    requireIncludes(productHuntLaunchKit, required, 'internal/growth/product-hunt-launch-kit.md')
   }
 }
 
@@ -58,7 +58,7 @@ export function requireGrowthSurfaceDiscovery(
   requireIncludes: (haystack: string, needle: string, context: string) => void,
 ): void {
   for (const required of communityLaunchPackRequiredLinks()) {
-    requireIncludes(communityLaunchPack, required, 'docs/community-launch-pack.md')
+    requireIncludes(communityLaunchPack, required, 'internal/growth/community-launch-pack.md')
   }
   requireProductHuntLaunchKitDiscovery(productHuntLaunchKit, requireIncludes)
 }

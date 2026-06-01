@@ -93,7 +93,6 @@ export async function requireSharedPublicDocsDiscovery(args: {
       { path: 'README.md', content: args.readme },
       { path: 'packages/headless/README.md', content: args.headlessReadme },
       { path: 'docs/index.html', content: args.index },
-      { path: 'docs/community-launch-pack.md', content: await readFile(join(args.docsRoot, 'community-launch-pack.md'), 'utf8') },
       { path: 'docs/llms.txt', content: args.llms },
       { path: '.github/ISSUE_TEMPLATE/config.yml', content: args.issueTemplateConfig },
       { path: '.github/ISSUE_TEMPLATE.md', content: args.issueTemplateRoot },

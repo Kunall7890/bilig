@@ -87,6 +87,7 @@ export interface DocsDiscoveryContext {
 export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> {
   const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
   const docsRoot = join(repoRoot, 'docs')
+  const growthRoot = join(repoRoot, 'internal', 'growth')
   const siteRoot = 'https://proompteng.github.io/bilig/'
   const expectedSitemapUrls = docsSiteSources.map(([urlPath]) => `${siteRoot}${urlPath}`)
   const sourceFilesByUrl = new Map<string, string>(docsSiteSources.map(([urlPath, sourceFile]) => [`${siteRoot}${urlPath}`, sourceFile]))
@@ -178,8 +179,8 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     readFile(join(docsRoot, 'skill.md'), 'utf8'),
     readFile(join(docsRoot, '.well-known', 'agent-skills', 'index.json'), 'utf8'),
     readFile(join(docsRoot, '.well-known', 'skills', 'index.json'), 'utf8'),
-    readFile(join(docsRoot, 'community-launch-pack.md'), 'utf8'),
-    readFile(join(docsRoot, 'product-hunt-launch-kit.md'), 'utf8'),
+    readFile(join(growthRoot, 'community-launch-pack.md'), 'utf8'),
+    readFile(join(growthRoot, 'product-hunt-launch-kit.md'), 'utf8'),
     readFile(join(docsRoot, 'starter-issues.md'), 'utf8'),
     readFile(join(docsRoot, 'new-contributor-guide.md'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'),

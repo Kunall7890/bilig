@@ -748,7 +748,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     headless: ['packages/headless/README.md', headlessReadme],
     agent: ['docs/agent-workpaper-tool-calling-recipe.md', agentToolCallingDoc],
     index: ['docs/index.html', index],
-    launch: ['docs/community-launch-pack.md', communityLaunchPack],
+    launch: ['internal/growth/community-launch-pack.md', communityLaunchPack],
     llms: ['docs/llms.txt', llms],
     mcp: ['docs/mcp-workpaper-tool-server.md', mcpWorkPaperToolServerDoc],
   } as const

@@ -149,7 +149,7 @@
     "docs:discovery:check": "pnpm xlsx-cache-doctor:action:check && pnpm agent:discovery:check && tsx scripts/check-docs-discovery.ts && tsx scripts/check-docs-discovery-airbyte.ts && tsx scripts/check-docs-discovery-meltano.ts",
     "mcpb:workpaper:build": "tsx scripts/build-workpaper-mcpb.ts",
     "community:growth:snapshot": "tsx scripts/community-growth-snapshot.ts",
-    "community:growth:snapshot:markdown": "tsx scripts/community-growth-snapshot.ts --format markdown --output docs/community-growth-snapshot.md",
+    "community:growth:snapshot:markdown": "tsx scripts/community-growth-snapshot.ts --format markdown --output internal/growth/community-growth-snapshot.md",
     "sheet:agent": "bun scripts/spreadsheet-agent.ts",
     "format": "oxfmt --write .oxlintrc.json package.json playwright.config.ts tsconfig.base.json tsconfig.json vitest.config.ts vitest.workspace.ts apps packages e2e scripts",
     "format:check": "oxfmt --check .oxlintrc.json package.json playwright.config.ts tsconfig.base.json tsconfig.json vitest.config.ts vitest.workspace.ts apps packages e2e scripts",

@@ -73,19 +73,19 @@ service?
 
 Thumbnail:
 
-![Product Hunt thumbnail](assets/product-hunt-thumbnail.png)
+![Product Hunt thumbnail](../../docs/assets/product-hunt-thumbnail.png)
 
 Gallery:
 
-![Workbook API gallery image](assets/product-hunt-gallery-01-workbook-api.png)
+![Workbook API gallery image](../../docs/assets/product-hunt-gallery-01-workbook-api.png)
 
-![Agent readback gallery image](assets/product-hunt-gallery-02-agent-readback.png)
+![Agent readback gallery image](../../docs/assets/product-hunt-gallery-02-agent-readback.png)
 
-![Node service gallery image](assets/product-hunt-gallery-03-node-service.png)
+![Node service gallery image](../../docs/assets/product-hunt-gallery-03-node-service.png)
 
 Video:
 
-<video controls src="assets/product-hunt-demo.webm" title="bilig Product Hunt launch demo"></video>
+<video controls src="../../docs/assets/product-hunt-demo.webm" title="bilig Product Hunt launch demo"></video>
 
 The WebM is for this docs page and social previews. Product Hunt accepts video
 as a YouTube link, so upload the demo to YouTube first if the launch needs
@@ -108,7 +108,7 @@ These checks follow Product Hunt's own launch prep guidance:
 - Thumbnail: `240x240`, 8.6 KB, below Product Hunt's 2 MB image limit.
 - Gallery images: `1270x760`, all below Product Hunt's 5 MB image limit.
 - Video: use a YouTube link in Product Hunt. The local
-  `assets/product-hunt-demo.webm` is not the launch-form video field.
+  `docs/assets/product-hunt-demo.webm` is not the launch-form video field.
 
 ## Proof To Lead With
 

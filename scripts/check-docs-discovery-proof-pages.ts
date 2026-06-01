@@ -48,9 +48,13 @@ export function requireFormulaProofDiscovery({
   requireIncludes(
     communityLaunchPack,
     'https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html',
-    'docs/community-launch-pack.md',
+    'internal/growth/community-launch-pack.md',
   )
-  requireIncludes(communityLaunchPack, 'Hacker News Submission After The Formula Workbooks Page', 'docs/community-launch-pack.md')
+  requireIncludes(
+    communityLaunchPack,
+    'Hacker News Submission After The Formula Workbooks Page',
+    'internal/growth/community-launch-pack.md',
+  )
 
   for (const required of [
     "title: 'Show HN: Bilig - formula WorkPapers for Node services and agents'",
