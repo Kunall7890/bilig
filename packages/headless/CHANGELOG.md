@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.134.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.133.0
+- Manual override: no
+
+## Features
+- feat(formula): add regexmatch compatibility alias (89d7a30d)
+
+## Internal runtime changes
+- chore(formula): refresh formula dominance snapshot (36eb1751)
+
 ## 0.133.0
 
 - Release type: minor
