@@ -94,7 +94,7 @@ same-origin static server-card discovery.
 
 | Directory                       | Status                                                                                         | Link                                                                                                            |
 | ------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Official MCP Registry           | Live; latest marker currently lags npm (`0.86.1` while `@bilig/workpaper@latest` is published) | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
+| Official MCP Registry           | Live; latest marker matches `@bilig/workpaper@latest`                                         | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
 | Hosted Streamable HTTP endpoint | App runtime endpoint for JSON-only stateless MCP smoke tests                                   | <https://bilig.proompteng.ai/mcp>                                                                               |
 | Hosted MCP server card          | Same-origin server card for Streamable HTTP scanners                                           | <https://bilig.proompteng.ai/.well-known/mcp/server-card.json>                                                  |
 | Static MCP server card          | Live                                                                                           | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                           |
@@ -221,17 +221,15 @@ The canonical package metadata in this repo includes:
 - `transport.type: stdio`
 - `repository.url: https://github.com/proompteng/bilig`
 
-Latest checked result on May 25, 2026: Live, but the Registry latest marker
-currently lags npm. npm latest and packaged `server.json` are
-`@bilig/workpaper@latest`; the official Registry latest-marked server
-`io.github.proompteng/bilig-workpaper` is version `0.86.1`, package
-`@bilig/workpaper` is version `0.86.1`, and the entry was updated at
-`2026-05-24T13:47:46.777553Z`. The API also returns historical entries, so
-consumers should follow pagination, request a sufficient limit, and select the
-latest-marked entry when they need the Registry-owned freshest install
-coordinate. Use npm or the packaged
-`server.json` for the freshest install coordinate until the Registry catches up.
-The hosted server-card path still advertises remote `https://bilig.proompteng.ai/mcp` for live smoke tests.
+Latest checked result on June 1, 2026: Live, and the Registry latest marker
+matches the current `@bilig/workpaper` package. The official Registry
+latest-marked server `io.github.proompteng/bilig-workpaper` is version
+`0.131.2`, package `@bilig/workpaper` is version `0.131.2`, and the entry was
+updated at `2026-06-01T00:56:47.948741Z`. The API also returns historical
+entries, so consumers should follow pagination, request a sufficient limit, and
+select the latest-marked entry when they need the Registry-owned freshest
+install coordinate. The hosted server-card path still advertises remote
+`https://bilig.proompteng.ai/mcp` for live smoke tests.
 
 The `@bilig/workpaper` package itself carries the matching `mcpName` field.
 That is the ownership signal the registry uses for npm package validation.

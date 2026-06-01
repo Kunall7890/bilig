@@ -59,8 +59,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   const workpaperPackageSpec = '@bilig/workpaper@latest'
   const mcpbReleaseAssetUrl = 'https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb'
   const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
-  const officialRegistryLatestMarkedVersion = '0.86.1'
-  const officialRegistryLatestMarkedUpdatedAt = '2026-05-24T13:47:46.777553Z'
+  const officialRegistryLatestMarkedVersion = headlessPackageVersion
+  const officialRegistryLatestMarkedUpdatedAt = '2026-06-01T00:56:47.948741Z'
 
   const jekyllConfig = await readFile(join(docsRoot, '_config.yml'), 'utf8')
   const openAiAgentsSdkDoc = await readFile(join(docsRoot, 'openai-agents-sdk-workpaper-tool.md'), 'utf8')
@@ -503,7 +503,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'https://mcprepository.com/proompteng/bilig',
     'MCPRepository search returns a live Bilig page',
     'Live; `smithery mcp add` smoke connected and listed demo workbook sheets',
-    `Live; latest marker currently lags npm (\`${officialRegistryLatestMarkedVersion}\` while \`${workpaperPackageSpec}\` is published)`,
+    'Live; latest marker matches',
+    `\`${workpaperPackageSpec}\``,
     'Live with `Try in Browser`; file-backed tools indexed with A-grade TDQS',
     'Live in PulseMCP-backed lookup as `Bilig WorkPaper`',
     'https://www.pulsemcp.com/servers?search=bilig&q=bilig',
@@ -515,13 +516,15 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'file-backed tools',
     'A-grade Tool Definition Quality',
     "Glama's source crawl, hosted smoke build, and JSON API can refresh on\ndifferent cadences",
-    'Latest checked result on May 25, 2026: Live, but the Registry latest marker',
-    `npm latest and packaged \`server.json\` are\n\`${workpaperPackageSpec}\``,
-    `official Registry latest-marked server\n\`io.github.proompteng/bilig-workpaper\` is version \`${officialRegistryLatestMarkedVersion}\`, package`,
+    'Latest checked result on June 1, 2026: Live, and the Registry latest marker',
+    'official Registry',
+    'latest-marked server `io.github.proompteng/bilig-workpaper`',
+    `\`${officialRegistryLatestMarkedVersion}\`, package \`@bilig/workpaper\` is version \`${officialRegistryLatestMarkedVersion}\``,
     `\`@bilig/workpaper\` is version \`${officialRegistryLatestMarkedVersion}\``,
-    `entry was updated at\n\`${officialRegistryLatestMarkedUpdatedAt}\``,
-    'Use npm or the packaged\n`server.json` for the freshest install coordinate until the Registry catches up.',
-    'remote `https://bilig.proompteng.ai/mcp`',
+    'entry was',
+    `updated at \`${officialRegistryLatestMarkedUpdatedAt}\``,
+    'hosted server-card path still advertises remote',
+    'https://bilig.proompteng.ai/mcp',
     'limit=100',
     'read_workpaper_summary',
     'set_workpaper_input_cell',
