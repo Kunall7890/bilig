@@ -6,6 +6,7 @@ export interface LlmsFullSource {
 
 const llmsFullSourceSpecs = [
   ['Repository README', 'README.md'],
+  ['Agent Install Context', 'llms-install.md'],
   ['Evaluate Stale XLSX Formula Caches', 'docs/eval-xlsx-cache-doctor.md'],
   ['Evaluate XLSX Formula Recalculation', 'docs/eval-xlsx-recalc.md'],
   ['External Workbook Recalculation Proof', 'docs/external-workbook-recalc-proof.md'],

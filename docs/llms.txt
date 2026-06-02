@@ -17,6 +17,8 @@ remote MCP endpoint: https://bilig.proompteng.ai/mcp
 agent instructions: https://proompteng.github.io/bilig/AGENTS.md
 agent start: https://proompteng.github.io/bilig/agent-start.txt
 well-known agent start: https://proompteng.github.io/bilig/.well-known/agent-start.txt
+agent install context: https://proompteng.github.io/bilig/llms-install.html
+agent install source: https://github.com/proompteng/bilig/blob/main/llms-install.md
 well-known llms.txt: https://proompteng.github.io/bilig/.well-known/llms.txt
 well-known llms-full.txt: https://proompteng.github.io/bilig/.well-known/llms-full.txt
 agent adoption kit: https://proompteng.github.io/bilig/agent-adoption-kit.html
@@ -60,6 +62,8 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json`.
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`.
 - Shortest agent adoption path:
+  https://proompteng.github.io/bilig/llms-install.html
+  https://github.com/proompteng/bilig/blob/main/llms-install.md
   https://proompteng.github.io/bilig/agent-adoption-kit.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-adoption-kit.md
   `npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list`

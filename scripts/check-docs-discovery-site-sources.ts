@@ -87,6 +87,7 @@ export const docsSiteSources = [
   ['skill.html', 'skill.md'],
   ['skill.txt', 'skill.txt'],
   ['llms-full.txt', 'llms-full.txt'],
+  ['llms-install.html', 'llms-install.md'],
   ['mcp-spreadsheet-server-directory.html', 'mcp-spreadsheet-server-directory.md'],
   ['mcp-client-setup.html', 'mcp-client-setup.md'],
   ['claude-desktop-mcpb-workpaper.html', 'claude-desktop-mcpb-workpaper.md'],

@@ -496,6 +496,8 @@ function agentJsonManifest(): string {
       contact: `${repositoryUrl}/discussions/new?category=general`,
       llms_txt: `${siteRoot}/llms.txt`,
       llms_full: `${siteRoot}/llms-full.txt`,
+      llms_install: `${siteRoot}/llms-install.html`,
+      llms_install_source: `${repositoryUrl}/blob/main/llms-install.md`,
       well_known_llms_txt: `${siteRoot}/.well-known/llms.txt`,
       well_known_llms_full: `${siteRoot}/.well-known/llms-full.txt`,
       agent_start: `${siteRoot}/agent-start.txt`,
@@ -699,6 +701,8 @@ function agentJsonManifest(): string {
         `${siteRoot}/`,
         `${siteRoot}/llms.txt`,
         `${siteRoot}/llms-full.txt`,
+        `${siteRoot}/llms-install.html`,
+        `${repositoryUrl}/blob/main/llms-install.md`,
         `${siteRoot}/.well-known/llms.txt`,
         `${siteRoot}/.well-known/llms-full.txt`,
         `${siteRoot}/agent-start.txt`,
@@ -781,6 +785,7 @@ async function buildLlmsFull(): Promise<string> {
     `npm workbook: https://www.npmjs.com/package/@bilig/workbook`,
     `Agent start: ${siteRoot}/agent-start.txt`,
     `Agent instructions: ${siteRoot}/AGENTS.md`,
+    `Agent install context: ${siteRoot}/llms-install.html`,
     `Skill manifest: ${skillManifestUrl}`,
     `Compact index: ${siteRoot}/llms.txt`,
     '',
@@ -809,6 +814,7 @@ async function buildLlmsFull(): Promise<string> {
 async function generatedTargets(): Promise<ReadonlyArray<readonly [string, string]>> {
   const llmsFull = await buildLlmsFull()
   const llms = await readFile(join(repoRoot, 'docs', 'llms.txt'), 'utf8')
+  const llmsInstall = await readFile(join(repoRoot, 'llms-install.md'), 'utf8')
   const agentJson = agentJsonManifest()
   const ideRuleInput = { remoteMcpEndpoint, repositoryUrl, siteRoot, workpaperPackageSpec }
   const mcpServerCard = mcpServerCardManifest({
@@ -824,6 +830,7 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['docs/agent.json', agentJson],
     ['docs/skill.md', skillDocument],
     ['docs/skill.txt', skillDocument],
+    ['docs/llms-install.md', llmsInstall],
     ['docs/llms-full.txt', llmsFull],
     ['docs/.well-known/agent.json', agentJson],
     ['docs/.well-known/agent-start.txt', docsAgentStart],

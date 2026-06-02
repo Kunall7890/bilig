@@ -22,6 +22,7 @@ import { requireXlsxCalcAlternativeDiscovery } from './check-docs-discovery-xlsx
 import { requireXlsxFormulaSupportAnswersDiscovery } from './check-docs-discovery-xlsx-support-answers.ts'
 import { requireXlsxRecalcPublicDiscovery } from './check-docs-discovery-xlsx-recalc-public.ts'
 import { requireExternalWorkbookRecalcProofDiscovery } from './check-docs-discovery-external-workbook.ts'
+import { requireLlmsInstallDiscovery } from './check-docs-discovery-llms-install.ts'
 import { requireSharedPublicDocsDiscovery } from './check-docs-discovery-public-docs.ts'
 import { requirePackageCliSurfaceDiscovery } from './check-docs-discovery-package-cli-surfaces.ts'
 import { homepageRequiredLinks, llmsRequiredLinks } from './check-docs-discovery-public-link-manifest.ts'
@@ -109,6 +110,8 @@ const mcpServerCardMcpJson = await readFile(join(docsRoot, '.well-known', 'mcp.j
 const mcpServerCardLegacyJson = await readFile(join(docsRoot, '.well-known', 'mcp-server-card.json'), 'utf8')
 const wellKnownLlms = await readFile(join(docsRoot, '.well-known', 'llms.txt'), 'utf8')
 const wellKnownLlmsFull = await readFile(join(docsRoot, '.well-known', 'llms-full.txt'), 'utf8')
+const llmsInstall = await readFile(join(repoRoot, 'llms-install.md'), 'utf8')
+const docsLlmsInstall = await readFile(join(docsRoot, 'llms-install.md'), 'utf8')
 const sheetjsFormulaResultNotUpdatingNode = await readFile(join(docsRoot, 'sheetjs-formula-result-not-updating-node.md'), 'utf8')
 const geminiExtensionJson = await readFile(join(repoRoot, 'gemini-extension.json'), 'utf8')
 const scopedWorkpaperPackageJson = await readFile(join(repoRoot, 'packages', 'workpaper', 'package.json'), 'utf8')
@@ -465,9 +468,13 @@ requireIncludes(readme, 'docs/why-use-bilig.md', 'README.md')
 await requireAgentEvaluatorDiscovery({ docsRoot, readme, index, llms, runtimePackageVersion: scopedWorkpaperPackageVersion })
 requireIncludes(llms, '## agent handoff prompt', 'docs/llms.txt')
 requireIncludes(llms, 'agent start: https://proompteng.github.io/bilig/agent-start.txt', 'docs/llms.txt')
+requireIncludes(llms, 'agent install context: https://proompteng.github.io/bilig/llms-install.html', 'docs/llms.txt')
+requireIncludes(llms, 'agent install source: https://github.com/proompteng/bilig/blob/main/llms-install.md', 'docs/llms.txt')
 requireIncludes(llms, 'well-known llms.txt: https://proompteng.github.io/bilig/.well-known/llms.txt', 'docs/llms.txt')
 requireIncludes(llms, 'well-known llms-full.txt: https://proompteng.github.io/bilig/.well-known/llms-full.txt', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/AGENTS.md', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/llms-install.html', 'docs/llms.txt')
+requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/llms-install.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent-start.txt', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent.json', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/agent.json', 'docs/llms.txt')
@@ -667,6 +674,7 @@ if (Reflect.get(parsedAgentJson, 'agent_start') !== 'https://proompteng.github.i
 if (Reflect.get(parsedAgentJson, 'well_known_agent_start') !== 'https://proompteng.github.io/bilig/.well-known/agent-start.txt') {
   throw new Error('docs/.well-known/agent.json must advertise the well-known compact agent start text file')
 }
+requireLlmsInstallDiscovery({ docsLlmsInstall, llmsFull, llmsInstall, parsedAgentJson })
 if (Reflect.get(parsedAgentJson, 'well_known_llms_txt') !== 'https://proompteng.github.io/bilig/.well-known/llms.txt') {
   throw new Error('docs/.well-known/agent.json must advertise the well-known compact llms.txt mirror')
 }
@@ -789,6 +797,8 @@ if (!Array.isArray(agentJsonPublicEntrypoints) || !agentJsonPublicEntrypoints.ev
 for (const requiredEntrypoint of [
   'https://proompteng.github.io/bilig/llms.txt',
   'https://proompteng.github.io/bilig/llms-full.txt',
+  'https://proompteng.github.io/bilig/llms-install.html',
+  'https://github.com/proompteng/bilig/blob/main/llms-install.md',
   'https://proompteng.github.io/bilig/.well-known/llms.txt',
   'https://proompteng.github.io/bilig/.well-known/llms-full.txt',
   'https://proompteng.github.io/bilig/agent-start.txt',
