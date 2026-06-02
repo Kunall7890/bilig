@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(agent): emit installable WorkPaper rules (8baf3b7b)
 
 ## 0.155.0
@@ -20,9 +21,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(agent): add agent start decision CLI (fb47e3a9)
 
 ## Internal runtime changes
+
 - docs(growth): add Agno WorkPaper MCP guide (851e67c0)
 - docs(growth): add Pydantic AI WorkPaper MCP guide (540ca9b0)
 
@@ -33,6 +36,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: yes
 
 ## Internal runtime changes
+
 - docs(workpaper): show npm proof output (cf1ae506)
 
 ## 0.153.0
@@ -42,6 +46,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(create-workpaper): add existing-repo agent handoff (40b80f38)
 
 ## 0.152.0
@@ -51,9 +56,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(formula): support QUERY labels (2b78f772)
 
 ## Internal runtime changes
+
 - docs(growth): add Google Sheets query WorkPaper path (fef12afd)
 
 ## 0.151.0
@@ -63,9 +70,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(formula): support QUERY grouped aggregates (08c4c7e6)
 
 ## Internal runtime changes
+
 - docs(agent): add compact WorkPaper start contract (73b1b989)
 
 ## 0.150.0
@@ -75,6 +84,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(formula): recognize Sheets import functions (3e61e0b7)
 
 ## 0.149.0
@@ -84,6 +94,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(formula): add ARRAYFORMULA (fd76cac8)
 
 ## 0.148.0
@@ -93,6 +104,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(formula): add COUNTUNIQUEIFS (db24a7a5)
 
 ## 0.147.0
@@ -102,6 +114,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(formula): add Google Sheets SORTN (660370a7)
 
 ## 0.146.0
@@ -111,6 +124,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(formula): add Google Sheets QUERY subset (6384f6f6)
 
 ## 0.145.0
@@ -120,6 +134,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workpaper): add provider-backed agent evaluator (78ba66f9)
 
 ## 0.144.0
@@ -129,6 +144,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workpaper): clarify agent formula adapter boundaries (30248af1)
 
 ## 0.143.0
@@ -138,6 +154,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workpaper): add revenue plan evaluator scenario (3c84ae4f)
 
 ## 0.142.0

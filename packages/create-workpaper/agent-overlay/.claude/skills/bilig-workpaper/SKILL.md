@@ -42,7 +42,19 @@ returns `verified: true`:
 ```json
 {
   "command": "npm",
-  "args": ["exec", "--yes", "--package", "@bilig/workpaper@latest", "--", "bilig-evaluate", "--door", "agent-mcp", "--scenario", "revenue-plan", "--json"]
+  "args": [
+    "exec",
+    "--yes",
+    "--package",
+    "@bilig/workpaper@latest",
+    "--",
+    "bilig-evaluate",
+    "--door",
+    "agent-mcp",
+    "--scenario",
+    "revenue-plan",
+    "--json"
+  ]
 }
 ```
 
