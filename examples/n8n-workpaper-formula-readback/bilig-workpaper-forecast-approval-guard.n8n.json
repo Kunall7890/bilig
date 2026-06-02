@@ -171,7 +171,7 @@
     },
     {
       "parameters": {
-        "content": "## Reviewer path\n\nA beginner video can be embedded with `@[youtube](videoId)`, but this workflow is intentionally more than a beginner quickstart: it shows decision logic, error gates, and evidence that can be passed to downstream systems.",
+        "content": "## Reviewer path\n\nThis workflow is intentionally more than a beginner quickstart: it shows decision logic, error gates, and evidence that can be passed to downstream systems.\n\nIf a tutorial video is added later, use a real YouTube video id in the n8n embed.",
         "height": 260,
         "width": 500,
         "color": 6

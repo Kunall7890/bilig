@@ -151,6 +151,12 @@ describe('n8n WorkPaper formula readback workflow', () => {
     expect(getRequiredCode(workflow, 'Verify formula proof')).toContain('proof.verified !== true')
     expect(getRequiredCode(workflow, 'Apply approval policy')).toContain("decision = expectedArrOk && targetGapOk ? 'approve' : 'review'")
     expect(getRequiredCode(workflow, 'Write audit summary')).toContain("package: '@bilig/workpaper'")
+    expect(
+      workflow.nodes
+        .filter((node) => node.type === 'n8n-nodes-base.stickyNote')
+        .map((node) => readStringParameter(node, 'content'))
+        .join('\n\n'),
+    ).not.toContain('@[youtube](videoId)')
   })
 
   it('keeps the community-node package metadata aligned with n8n install expectations', () => {
