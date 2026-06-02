@@ -107,6 +107,52 @@ describe('n8n WorkPaper formula readback workflow', () => {
     expect(documentCheckCode).toContain("proof.updatedDocument?.format !== 'bilig.headless.work-paper.document.v1'")
   })
 
+  it('keeps the template-library workflow use-case driven instead of a thin endpoint call', () => {
+    const workflow = readWorkflow('bilig-workpaper-forecast-approval-guard.n8n.json')
+    const executableNodes = workflow.nodes.filter((node) => node.type !== 'n8n-nodes-base.stickyNote')
+
+    expect(executableNodes.map((node) => `${node.name}:${node.type}`)).toEqual([
+      'Manual Trigger:n8n-nodes-base.manualTrigger',
+      'Load forecast requests:n8n-nodes-base.code',
+      'Validate request rows:n8n-nodes-base.code',
+      'Build Bilig request:n8n-nodes-base.code',
+      'Call Bilig WorkPaper:n8n-nodes-base.httpRequest',
+      'Verify formula proof:n8n-nodes-base.code',
+      'Apply approval policy:n8n-nodes-base.code',
+      'Approved?:n8n-nodes-base.if',
+      'Build approval record:n8n-nodes-base.code',
+      'Build review record:n8n-nodes-base.code',
+      'Write audit summary:n8n-nodes-base.code',
+    ])
+    expect(executableNodes.length).toBeGreaterThan(10)
+    expect(Object.keys(workflow.connections)).toEqual([
+      'Manual Trigger',
+      'Load forecast requests',
+      'Validate request rows',
+      'Build Bilig request',
+      'Call Bilig WorkPaper',
+      'Verify formula proof',
+      'Apply approval policy',
+      'Approved?',
+      'Build approval record',
+      'Build review record',
+    ])
+
+    const loadRequestsCode = getRequiredCode(workflow, 'Load forecast requests')
+    expect(loadRequestsCode).toContain("requestId: 'deal-1042-renewal'")
+    expect(loadRequestsCode).toContain("account: 'Northstar Systems'")
+    expect(loadRequestsCode).toContain("baseUrl = 'https://bilig.proompteng.ai'")
+
+    const requestNode = getRequiredNode(workflow, 'Call Bilig WorkPaper')
+    expect(readStringParameter(requestNode, 'method')).toBe('POST')
+    expect(readStringParameter(requestNode, 'url')).toBe("={{ $json.baseUrl.replace(/\\/$/, '') + '/api/workpaper/n8n/forecast' }}")
+    expect(readStringParameter(requestNode, 'jsonBody')).toBe('={{ JSON.stringify($json.biligPayload) }}')
+
+    expect(getRequiredCode(workflow, 'Verify formula proof')).toContain('proof.verified !== true')
+    expect(getRequiredCode(workflow, 'Apply approval policy')).toContain("decision = expectedArrOk && targetGapOk ? 'approve' : 'review'")
+    expect(getRequiredCode(workflow, 'Write audit summary')).toContain("package: '@bilig/workpaper'")
+  })
+
   it('keeps the community-node package metadata aligned with n8n install expectations', () => {
     const packageJson = readJsonRecord(join(n8nNodeDir, 'package.json'))
     const codexJson = readJsonRecord(join(n8nNodeDir, 'nodes', 'Workpaper', 'BiligWorkpaper.node.json'))
@@ -170,6 +216,7 @@ describe('n8n WorkPaper formula readback workflow', () => {
 
     for (const required of [
       'bilig-workpaper-native-node.n8n.json',
+      'bilig-workpaper-forecast-approval-guard.n8n.json',
       'bilig-workpaper-formula-readback.n8n.json',
       'bilig-workpaper-formula-readback.self-hosted.n8n.json',
       '@bilig/n8n-nodes-workpaper',

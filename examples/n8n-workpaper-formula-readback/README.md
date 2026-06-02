@@ -17,13 +17,27 @@ If you want a native node instead, install the scoped community node package
 `@bilig/n8n-nodes-workpaper` in self-hosted n8n. n8n Cloud canvas installation
 depends on n8n accepting the package through verified-node review.
 
-There are three importable workflow files:
+There are four importable workflow files:
 
 | File                                                    | Default endpoint                                                 | Use it when                                                                                |
 | ------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `bilig-workpaper-forecast-approval-guard.n8n.json`      | `https://bilig.proompteng.ai`                                    | You need a stronger template-library candidate with multiple requests, branching, and audit output. |
 | `bilig-workpaper-native-node.n8n.json`                  | `https://bilig.proompteng.ai`                                    | You want to test the actual Bilig WorkPaper community node after installing it.            |
 | `bilig-workpaper-formula-readback.n8n.json`             | `https://bilig.proompteng.ai`                                    | You want the fastest hosted demo before deploying anything.                                |
 | `bilig-workpaper-formula-readback.self-hosted.n8n.json` | `http://host.docker.internal:4321`, then `http://localhost:4321` | You want the formula readback step to stay inside your own local or self-hosted Bilig app. |
+
+## Template-library candidate
+
+Import this file when preparing a public n8n template submission:
+
+```text
+bilig-workpaper-forecast-approval-guard.n8n.json
+```
+
+It runs three forecast requests, validates input rows, calls Bilig for fresh
+formula readback, applies an approval policy, branches approved and review
+records, and writes an audit summary. That is the reviewer-facing artifact; the
+smaller hosted workflow is only a quick smoke test.
 
 ## Native community node
 
@@ -85,10 +99,12 @@ review path.
 
 1. Open n8n.
 2. Choose Import from File.
-3. Select `bilig-workpaper-native-node.n8n.json` after installing the community
-   node, `bilig-workpaper-formula-readback.n8n.json` for the hosted built-in
-   node demo, or `bilig-workpaper-formula-readback.self-hosted.n8n.json` for a
-   local Bilig route.
+3. Select `bilig-workpaper-forecast-approval-guard.n8n.json` for the richer
+   template-library candidate, `bilig-workpaper-native-node.n8n.json` after
+   installing the community node, `bilig-workpaper-formula-readback.n8n.json`
+   for the hosted built-in node demo, or
+   `bilig-workpaper-formula-readback.self-hosted.n8n.json` for a local Bilig
+   route.
 4. Run the workflow manually.
 
 n8n documents workflow import/export as JSON:

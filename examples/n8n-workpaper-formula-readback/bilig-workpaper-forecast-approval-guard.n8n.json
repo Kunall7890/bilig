@@ -1,0 +1,317 @@
+{
+  "name": "Bilig WorkPaper forecast approval guard",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "4d67376c-8c9c-4e62-8a4d-2d2c601d7278",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const baseUrl = 'https://bilig.proompteng.ai';\n\nreturn [\n  {\n    json: {\n      requestId: 'deal-1042-renewal',\n      account: 'Northstar Systems',\n      owner: 'revops',\n      sheetName: 'Inputs',\n      address: 'B3',\n      value: 0.4,\n      minExpectedArr: 90000,\n      maxTargetGap: 6000,\n      baseUrl\n    }\n  },\n  {\n    json: {\n      requestId: 'deal-1188-expansion',\n      account: 'Harbor Analytics',\n      owner: 'finance',\n      sheetName: 'Inputs',\n      address: 'B4',\n      value: 6500,\n      minExpectedArr: 90000,\n      maxTargetGap: 6000,\n      baseUrl\n    }\n  },\n  {\n    json: {\n      requestId: 'deal-1211-risk-review',\n      account: 'Cedar Works',\n      owner: 'sales-ops',\n      sheetName: 'Inputs',\n      address: 'B3',\n      value: 0.22,\n      minExpectedArr: 90000,\n      maxTargetGap: 6000,\n      baseUrl\n    }\n  }\n];"
+      },
+      "id": "8ff11031-a7bf-40e8-8ad8-b6787950f253",
+      "name": "Load forecast requests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [260, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item) => {\n  const row = item.json;\n  const value = Number(row.value);\n\n  if (!Number.isFinite(value)) {\n    throw new Error(`Forecast value must be numeric for ${row.requestId}`);\n  }\n\n  if (!['B2', 'B3', 'B4', 'B5'].includes(row.address)) {\n    throw new Error(`Unsupported forecast input cell ${row.address} for ${row.requestId}`);\n  }\n\n  return {\n    json: {\n      ...row,\n      value,\n      minExpectedArr: Number(row.minExpectedArr),\n      maxTargetGap: Number(row.maxTargetGap),\n      normalizedAt: new Date().toISOString()\n    }\n  };\n});"
+      },
+      "id": "98033e3d-2e8b-42db-97d8-55ca54a680a0",
+      "name": "Validate request rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item) => {\n  const row = item.json;\n\n  return {\n    json: {\n      ...row,\n      biligPayload: {\n        sheetName: row.sheetName,\n        address: row.address,\n        value: row.value\n      }\n    }\n  };\n});"
+      },
+      "id": "e58be8f1-ad37-4573-82d9-1ff55ef1e3d7",
+      "name": "Build Bilig request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.baseUrl.replace(/\\/$/, '') + '/api/workpaper/n8n/forecast' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.biligPayload) }}",
+        "options": {}
+      },
+      "id": "9f955101-f349-4023-ae05-00d6fbc1d9a5",
+      "name": "Call Bilig WorkPaper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1060, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const scenarios = $('Build Bilig request').all();\n\nreturn $input.all().map((item, index) => {\n  const proof = item.json;\n  const scenario = scenarios[index]?.json;\n\n  if (!scenario) {\n    throw new Error(`Missing source scenario for Bilig response ${index}`);\n  }\n\n  if (proof.verified !== true) {\n    throw new Error(`Bilig did not verify ${scenario.requestId}: ${JSON.stringify(proof)}`);\n  }\n\n  if (!proof.checks?.formulasPersisted || !proof.checks?.restoredMatchesAfter || !proof.checks?.computedOutputChanged) {\n    throw new Error(`Formula checks failed for ${scenario.requestId}: ${JSON.stringify(proof.checks)}`);\n  }\n\n  return {\n    json: {\n      ...scenario,\n      proof,\n      editedCell: proof.editedCell,\n      beforeExpectedArr: proof.before.expectedArr,\n      afterExpectedArr: proof.after.expectedArr,\n      targetGap: proof.after.targetGap,\n      formulaChecks: proof.checks\n    }\n  };\n});"
+      },
+      "id": "cc1b7abe-a792-4d2e-bd4a-5cad59b2a371",
+      "name": "Verify formula proof",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item) => {\n  const row = item.json;\n  const expectedArrOk = row.afterExpectedArr >= row.minExpectedArr;\n  const targetGapOk = Math.abs(row.targetGap) <= row.maxTargetGap;\n  const decision = expectedArrOk && targetGapOk ? 'approve' : 'review';\n\n  return {\n    json: {\n      ...row,\n      expectedArrOk,\n      targetGapOk,\n      decision,\n      decisionReason: decision === 'approve'\n        ? 'Fresh formula output is within policy.'\n        : 'Fresh formula output needs owner review before the workflow continues.'\n    }\n  };\n});"
+      },
+      "id": "fbb705f0-4434-4be9-aecb-7fffe4572f6d",
+      "name": "Apply approval policy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1600, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2dd99761-9350-4a2e-9704-5e7a75f6084d",
+              "leftValue": "={{ $json.decision }}",
+              "rightValue": "approve",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0b97d466-0e96-434d-9552-c1e9c81be8ab",
+      "name": "Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1880, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item) => {\n  const row = item.json;\n\n  return {\n    json: {\n      status: 'approved',\n      requestId: row.requestId,\n      account: row.account,\n      owner: row.owner,\n      editedCell: row.editedCell,\n      expectedArr: row.afterExpectedArr,\n      targetGap: row.targetGap,\n      evidence: {\n        verified: row.proof.verified,\n        formulasPersisted: row.formulaChecks.formulasPersisted,\n        restoredMatchesAfter: row.formulaChecks.restoredMatchesAfter,\n        computedOutputChanged: row.formulaChecks.computedOutputChanged\n      }\n    }\n  };\n});"
+      },
+      "id": "af4569b6-86f9-4f2d-8d17-ecf5f9a84327",
+      "name": "Build approval record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2140, -120]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item) => {\n  const row = item.json;\n\n  return {\n    json: {\n      status: 'needs_review',\n      requestId: row.requestId,\n      account: row.account,\n      owner: row.owner,\n      editedCell: row.editedCell,\n      expectedArr: row.afterExpectedArr,\n      targetGap: row.targetGap,\n      failedPolicy: {\n        expectedArrOk: row.expectedArrOk,\n        targetGapOk: row.targetGapOk\n      },\n      reviewerNote: `${row.account} needs review because the freshly recalculated workbook output missed policy.`\n    }\n  };\n});"
+      },
+      "id": "8d14755e-60ab-435b-b0ea-1904a427725d",
+      "name": "Build review record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2140, 140]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item) => {\n  const row = item.json;\n\n  return {\n    json: {\n      ...row,\n      auditSummary: `${row.status}: ${row.account} ${row.editedCell} expected ARR ${row.expectedArr} target gap ${row.targetGap}`,\n      github: 'https://github.com/proompteng/bilig',\n      package: '@bilig/workpaper'\n    }\n  };\n});"
+      },
+      "id": "f25ae7ad-661f-40d2-948a-0f297dcba8b4",
+      "name": "Write audit summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2420, 0]
+    },
+    {
+      "parameters": {
+        "content": "## Forecast approval guard\n\nThis is the template-library version: multiple forecast requests, policy checks, branching, and an audit record. Bilig is the formula-readback step that proves the spreadsheet output is fresh before the workflow makes a decision.",
+        "height": 280,
+        "width": 480,
+        "color": 4
+      },
+      "id": "1deff2ac-a11b-44d8-a437-cfb5dd62cb6f",
+      "name": "Workflow purpose",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [240, -360]
+    },
+    {
+      "parameters": {
+        "content": "## Private data boundary\n\nThe default endpoint is a public demo for review. For production or private workbook data, run Bilig in your own network and change `baseUrl` in `Load forecast requests`.",
+        "height": 240,
+        "width": 460,
+        "color": 5
+      },
+      "id": "97f8f640-db26-4af9-ad48-b3eb866d54a9",
+      "name": "Data boundary",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [980, -360]
+    },
+    {
+      "parameters": {
+        "content": "## Reviewer path\n\nA beginner video can be embedded with `@[youtube](videoId)`, but this workflow is intentionally more than a beginner quickstart: it shows decision logic, error gates, and evidence that can be passed to downstream systems.",
+        "height": 260,
+        "width": 500,
+        "color": 6
+      },
+      "id": "407664f7-c30d-4600-bd8d-5c36cfcb3d43",
+      "name": "Template review note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1660, -360]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load forecast requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load forecast requests": {
+      "main": [
+        [
+          {
+            "node": "Validate request rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate request rows": {
+      "main": [
+        [
+          {
+            "node": "Build Bilig request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Bilig request": {
+      "main": [
+        [
+          {
+            "node": "Call Bilig WorkPaper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Bilig WorkPaper": {
+      "main": [
+        [
+          {
+            "node": "Verify formula proof",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify formula proof": {
+      "main": [
+        [
+          {
+            "node": "Apply approval policy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply approval policy": {
+      "main": [
+        [
+          {
+            "node": "Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved?": {
+      "main": [
+        [
+          {
+            "node": "Build approval record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build review record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build approval record": {
+      "main": [
+        [
+          {
+            "node": "Write audit summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build review record": {
+      "main": [
+        [
+          {
+            "node": "Write audit summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7a7b33b5-0a60-41df-a6c5-3438f10fe04a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "id": "BiligWorkPaperForecastApprovalGuard",
+  "tags": []
+}
