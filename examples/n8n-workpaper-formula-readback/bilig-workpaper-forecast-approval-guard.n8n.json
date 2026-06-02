@@ -145,68 +145,68 @@
     },
     {
       "parameters": {
-        "content": "## Forecast approval guard\n\nRun three forecast changes through one approval path. n8n owns validation, branching, and the final audit record. Bilig owns the workbook step: edit a cell, recalculate stored formulas, and return fresh readback before the decision runs.\n\nExpected result: at least one approved record and one review record.",
-        "height": 280,
-        "width": 480,
+        "content": "## 1. Start with realistic forecast changes\n\nThe manual trigger feeds three sample requests into the workflow. Edit `Load forecast requests` to use your real account, owner, workbook cell, proposed value, and approval thresholds.\n\nKeep at least one approved and one review example while testing so both branches stay visible.",
+        "height": 300,
+        "width": 620,
         "color": 4
       },
       "id": "1deff2ac-a11b-44d8-a437-cfb5dd62cb6f",
-      "name": "Workflow purpose",
+      "name": "Step 1 - sample forecast requests",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [240, -360]
+      "position": [-20, -420]
     },
     {
       "parameters": {
-        "content": "## Private data boundary\n\nThe default endpoint is a public demo for review. It receives only the sheet name, cell address, and new value.\n\nFor private forecast, quote, payout, or approval workbooks, run Bilig on your own network and change `baseUrl` in `Load forecast requests`.",
-        "height": 240,
-        "width": 460,
+        "content": "## 2. Normalize rows before calling Bilig\n\n`Validate request rows` rejects non-numeric values and unsupported workbook cells before any HTTP request runs.\n\nUse this node for your CRM, form, or queue validation rules. Keep validation close to the input rows so bad data fails early.",
+        "height": 260,
+        "width": 580,
         "color": 5
       },
       "id": "97f8f640-db26-4af9-ad48-b3eb866d54a9",
-      "name": "Data boundary",
+      "name": "Step 2 - validate forecast rows",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [980, -360]
+      "position": [560, -420]
     },
     {
       "parameters": {
-        "content": "## Why this is more than a smoke test\n\nThis canvas has three input rows, row validation, one formula readback call per row, hard failure on stale results, an IF branch, approval/review output records, and a final audit summary.\n\nIt is meant for the template library. The smaller Bilig workflow is only a quickstart.",
-        "height": 260,
-        "width": 500,
+        "content": "## 3. Recalculate the workbook and verify readback\n\n`Build Bilig request` sends only `sheetName`, `address`, and `value`. `Call Bilig WorkPaper` edits the workbook, recalculates formulas, exports/restores JSON, and returns proof.\n\nFor private forecasts, replace `baseUrl` in step 1 with your own Bilig service URL.",
+        "height": 300,
+        "width": 660,
         "color": 6
       },
       "id": "407664f7-c30d-4600-bd8d-5c36cfcb3d43",
-      "name": "Template review note",
+      "name": "Step 3 - Bilig formula readback",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [1660, -360]
+      "position": [960, -420]
     },
     {
       "parameters": {
-        "content": "## What to customize\n\nChange the rows in `Load forecast requests`:\n\n- `account` and `owner` identify the request.\n- `address` chooses the workbook input cell.\n- `value` is the proposed change.\n- `minExpectedArr` and `maxTargetGap` are the approval policy.\n\nKeep the verification checks unless you intentionally trust stale cached formula values.",
-        "height": 320,
-        "width": 520,
+        "content": "## 4. Block stale results before routing approvals\n\n`Verify formula proof` stops the workflow unless Bilig returns fresh formula output, persisted formulas, restored JSON readback, and a changed computed value.\n\n`Apply approval policy` turns that verified workbook output into an `approve` or `review` decision.",
+        "height": 280,
+        "width": 660,
         "color": 3
       },
       "id": "62bb2c8b-f9df-48e7-9c8e-282a76a28426",
-      "name": "Customization guide",
+      "name": "Step 4 - verify and decide",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [520, 260]
+      "position": [1280, 280]
     },
     {
       "parameters": {
-        "content": "## Output records\n\nApproved rows emit:\n\n`status`, `requestId`, `account`, `expectedArr`, `targetGap`, and verification checks.\n\nReview rows keep the failed policy flags and a note for the owner. Replace `Write audit summary` with Slack, Gmail, HubSpot, Airtable, or your queue once the sample output looks right.",
+        "content": "## 5. Replace the demo output with your destination\n\nThe IF node creates separate approved and review records so downstream systems receive clear payloads.\n\nReplace `Write audit summary` with Slack, Gmail, HubSpot, Airtable, or your queue once the sample output is right. Keep the verification fields in the final payload.",
         "height": 300,
-        "width": 560,
+        "width": 660,
         "color": 7
       },
       "id": "f676a33b-d669-4ac2-95e7-201b113060e2",
-      "name": "Output guide",
+      "name": "Step 5 - route records",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [1340, 260]
+      "position": [1980, 280]
     }
   ],
   "pinData": {},

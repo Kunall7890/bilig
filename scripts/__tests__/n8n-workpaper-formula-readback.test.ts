@@ -159,11 +159,12 @@ describe('n8n WorkPaper formula readback workflow', () => {
     const stickyText = stickyNotes.join('\n\n')
     expect(stickyNotes).toHaveLength(5)
     for (const required of [
-      'Expected result: at least one approved record and one review record.',
-      'For private forecast, quote, payout, or approval workbooks',
-      'Why this is more than a smoke test',
-      'What to customize',
-      'Output records',
+      'Start with realistic forecast changes',
+      'Normalize rows before calling Bilig',
+      'Recalculate the workbook and verify readback',
+      'Block stale results before routing approvals',
+      'Replace the demo output with your destination',
+      'Keep the verification fields in the final payload.',
     ]) {
       expect(stickyText).toContain(required)
     }
