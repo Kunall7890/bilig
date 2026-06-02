@@ -585,5 +585,6 @@ export enum BuiltinId {
   Isemail = 527,
   Isurl = 528,
   Join = 529,
-  ToText = 530
+  ToText = 530,
+  Query = 531
 }

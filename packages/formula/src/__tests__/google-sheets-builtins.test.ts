@@ -14,6 +14,25 @@ function cellRange(values: CellValue[], rows: number, cols: number): RangeBuilti
   return { kind: 'range', refKind: 'cells', values, rows, cols }
 }
 
+const queryTable = cellRange(
+  [
+    text('Region'),
+    text('Leads'),
+    text('ARR'),
+    text('North'),
+    num(8),
+    num(96_000),
+    text('West'),
+    num(12),
+    num(144_000),
+    text('South'),
+    num(5),
+    num(60_000),
+  ],
+  4,
+  3,
+)
+
 const context = {
   sheetName: 'Sheet1',
   resolveCell: (_sheetName: string, address: string): CellValue => {
@@ -36,6 +55,9 @@ const context = {
     }
     if (start === 'A1' && end === 'B2') {
       return [text('north'), text('south'), text('north'), empty()]
+    }
+    if (start === 'A1' && end === 'C4') {
+      return queryTable.values
     }
     return []
   },
@@ -71,9 +93,27 @@ describe('Google Sheets compatibility builtins', () => {
     expect(getLookupBuiltin('ARRAY_CONSTRAIN')?.(matrix, num(0), num(1))).toEqual(err(ErrorCode.Value))
   })
 
+  it('supports a local Google Sheets QUERY subset for workbook ranges', () => {
+    expect(getLookupBuiltin('QUERY')?.(queryTable, text('select A, C where B >= 8 order by C desc limit 2'), num(1))).toEqual({
+      kind: 'array',
+      rows: 3,
+      cols: 2,
+      values: [text('Region'), text('ARR'), text('West'), num(144_000), text('North'), num(96_000)],
+    })
+    expect(getLookupBuiltin('QUERY')?.(queryTable, text('select Col1, Col3 where Col2 < 10 offset 1'), num(1))).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 2,
+      values: [text('Region'), text('ARR'), text('South'), num(60_000)],
+    })
+    expect(getLookupBuiltin('QUERY')?.(queryTable, text('select A group by A'), num(1))).toEqual(err(ErrorCode.Value))
+    expect(getLookupBuiltin('QUERY')?.(queryTable, text('select D'), num(1))).toEqual(err(ErrorCode.Value))
+  })
+
   it('evaluates Google Sheets helpers through the JS plan path', () => {
     expect(compileFormula('ARRAY_CONSTRAIN(A1:B2,1,2)')).toMatchObject({ mode: 0, producesSpill: true })
     expect(compileFormula('FLATTEN(A1:B2)')).toMatchObject({ mode: 0, producesSpill: true })
+    expect(compileFormula('QUERY(A1:C4,"select A,C where B >= 8",1)')).toMatchObject({ mode: 0, producesSpill: true })
     expect(compileFormula('JOIN("|",A1:B1)')).toMatchObject({ mode: 0, producesSpill: false })
 
     expect(evaluatePlan(lowerToPlan(parseFormula('JOIN("|",A1:B1)')), context)).toEqual(text('north|south'))
@@ -90,6 +130,14 @@ describe('Google Sheets compatibility builtins', () => {
       rows: 5,
       cols: 1,
       values: [text('north'), text('south'), text('north'), empty(), text('done')],
+    })
+    expect(
+      evaluatePlanResult(lowerToPlan(parseFormula('QUERY(A1:C4,"select A,C where B >= 8 order by C desc limit 1",1)')), context),
+    ).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 2,
+      values: [text('Region'), text('ARR'), text('West'), num(144_000)],
     })
   })
 })

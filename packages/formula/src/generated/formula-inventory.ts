@@ -2,17 +2,17 @@
 // Source: scripts/gen-formula-inventory.ts
 
 export const formulaInventorySummary = {
-  total: 542,
+  total: 543,
   odfMandatory: 59,
   officeListed: 519,
   officeListedRegisteredInCodebase: 519,
   overlap: 58,
   odfOnly: 1,
   officeOnly: 461,
-  registeredInCodebase: 542,
+  registeredInCodebase: 543,
   missingInCodebase: 0,
   placeholders: 0,
-  protocolBuiltins: 520,
+  protocolBuiltins: 521,
   runtimeRegisteredMissingProtocol: 0,
 } as const
 
@@ -5543,6 +5543,20 @@ export const formulaInventory = [
     protocolName: 'QUOTIENT',
     protocolSupportsWasm: true,
     jsStatus: 'implemented',
+    wasmStatus: 'production',
+    placeholder: false,
+    registeredInCodebase: true,
+  },
+  {
+    name: 'QUERY',
+    odfStatus: 'Google Sheets compatibility',
+    inOfficeList: false,
+    deterministic: 'deterministic',
+    runtimeStatus: 'implemented',
+    protocolId: 531,
+    protocolName: 'QUERY',
+    protocolSupportsWasm: false,
+    jsStatus: 'special-js-only',
     wasmStatus: 'production',
     placeholder: false,
     registeredInCodebase: true,

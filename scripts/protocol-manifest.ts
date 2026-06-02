@@ -582,6 +582,7 @@ export const enumManifest: ProtocolEnumManifest = {
     ['Isurl', 528],
     ['Join', 529],
     ['ToText', 530],
+    ['Query', 531],
   ],
 }
 

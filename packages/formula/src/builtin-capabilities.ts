@@ -50,6 +50,7 @@ const jsSpecialBuiltinNames = new Set([
   'SHEET',
   'SHEETS',
   'SPLIT',
+  'QUERY',
 ])
 
 const wasmProductionBuiltinNames = new Set([
@@ -343,6 +344,7 @@ const wasmProductionBuiltinNames = new Set([
   'CHOOSEROWS',
   'SORT',
   'SORTBY',
+  'QUERY',
   'TOCOL',
   'TOROW',
   'WRAPROWS',

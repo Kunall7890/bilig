@@ -40,6 +40,7 @@ import { createLookupFinancialBuiltins } from './lookup-financial-builtins.js'
 import { createLookupHypothesisBuiltins } from './lookup-hypothesis-builtins.js'
 import { createLookupMatrixBuiltins } from './lookup-matrix-builtins.js'
 import { createLookupOrderStatisticsBuiltins } from './lookup-order-statistics-builtins.js'
+import { createLookupQueryBuiltins } from './lookup-query-builtins.js'
 import { createLookupReferenceBuiltins } from './lookup-reference-builtins.js'
 import { createLookupRegressionBuiltins } from './lookup-regression-builtins.js'
 import { createLookupSortFilterBuiltins } from './lookup-sort-filter-builtins.js'
@@ -166,6 +167,18 @@ const lookupCriteriaBuiltins = createLookupCriteriaBuiltins({
   numericAggregateCandidate,
 })
 
+const lookupQueryBuiltins = createLookupQueryBuiltins({
+  errorValue,
+  arrayResult,
+  isError,
+  isRangeArg,
+  toInteger,
+  toStringValue,
+  compareScalars,
+  requireCellRange,
+  getRangeValue,
+})
+
 function createLookupBuiltinMap(options: LookupBuiltinResolverOptions = {}): Record<string, LookupBuiltin> {
   const lookupReferenceBuiltins = createLookupReferenceBuiltins({
     errorValue,
@@ -193,6 +206,7 @@ function createLookupBuiltinMap(options: LookupBuiltinResolverOptions = {}): Rec
     ...lookupOrderStatisticsBuiltins,
     ...lookupMatrixBuiltins,
     ...lookupSortFilterBuiltins,
+    ...lookupQueryBuiltins,
     ...externalLookupBuiltins,
   }
 }

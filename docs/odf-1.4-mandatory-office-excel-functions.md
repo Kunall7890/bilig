@@ -11,7 +11,7 @@
 - Scope: ODF mandatory functions + Office by-category function list, plus tracked compatibility aliases.
 
 ## Coverage Summary
-- Unified function count: **542**
+- Unified function count: **543**
 - ODF mandatory function count: **59**
 - Office function count (cleaned scrape): **519**
 - Overlap (present in both): **58**
@@ -19,7 +19,7 @@
 - Office-only (not in ODF 1.4 mandatory): **461**
 
 ## Current code coverage snapshot
-- Registered in codebase: **542**
+- Registered in codebase: **543**
 - Not yet registered in codebase: **0**
 - Placeholder-backed registrations: **0**
 - The "Implemented in codebase" column reflects runtime registration, including blocked placeholder registrations.
@@ -423,6 +423,7 @@
 | QUARTILE.EXC | Not in ODF 1.4 mandatory | Yes | Yes |
 | QUARTILE.INC | Not in ODF 1.4 mandatory | Yes | Yes |
 | QUOTIENT | Implemented | Yes | Yes |
+| QUERY | Google Sheets compatibility | No | Yes |
 | RADIANS | Not in ODF 1.4 mandatory | Yes | Yes |
 | RAND | Implemented | Yes | Yes |
 | RANDARRAY | Not in ODF 1.4 mandatory | Yes | Yes |

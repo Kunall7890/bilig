@@ -29,6 +29,7 @@ export const FORMULA_SPILL_PRODUCING_FUNCTION_NAMES = [
   'CHOOSEROWS',
   'SORT',
   'SORTBY',
+  'QUERY',
   'TOCOL',
   'TOROW',
   'WRAPROWS',

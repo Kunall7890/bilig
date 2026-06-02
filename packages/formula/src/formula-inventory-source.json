@@ -1977,6 +1977,11 @@
       "inOfficeList": true
     },
     {
+      "name": "QUERY",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
+    },
+    {
       "name": "RADIANS",
       "odfStatus": "Not in ODF 1.4 mandatory",
       "inOfficeList": true
