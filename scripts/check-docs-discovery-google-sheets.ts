@@ -14,6 +14,7 @@ export function requireGoogleSheetsQuerySortnDiscovery(input: {
     '@bilig/workpaper',
     'QUERY(range, "select ... where ... order by ... limit ... offset ...", headers)',
     'QUERY` `group by` with `sum(column)` and `count(column)`',
+    'QUERY` `label` for selected columns and supported aggregate output headers',
     'SORTN(range, n, tie_mode, sort_column_or_range, ascending, ...)',
     'Provider-backed imports such as `IMPORTDATA`, `IMPORTRANGE`, `IMPORTHTML`',
     'blocked result instead of pretending to have',

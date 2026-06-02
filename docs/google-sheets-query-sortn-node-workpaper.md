@@ -24,6 +24,7 @@ Bilig supports the useful service-side subset:
 
 - `QUERY(range, "select ... where ... order by ... limit ... offset ...", headers)`
 - `QUERY` `group by` with `sum(column)` and `count(column)`
+- `QUERY` `label` for selected columns and supported aggregate output headers
 - `SORTN(range, n, tie_mode, sort_column_or_range, ascending, ...)`
 - `COUNTUNIQUEIFS(...)`
 - `ARRAYFORMULA(...)` spill evaluation
@@ -32,7 +33,7 @@ That covers the common backend job: take a small model, group or filter it,
 sort the rows, read the calculated output, and save the state.
 
 Unsupported `QUERY` clauses fail closed. Do not expect `pivot`, `having`,
-`label`, `format`, `options`, arbitrary SQL, or live Google data fetching.
+`format`, `options`, arbitrary SQL, or live Google data fetching.
 
 Provider-backed imports such as `IMPORTDATA`, `IMPORTRANGE`, `IMPORTHTML`,
 `IMPORTXML`, `IMPORTFEED`, and `GOOGLEFINANCE` are a separate boundary. Without
@@ -84,7 +85,7 @@ const workbook = WorkPaper.buildFromSheets({
     ["Metric", "Value"],
     [
       "Top region revenue",
-      '=INDEX(QUERY(Deals!A1:C6,"select A,sum(C) where C >= 30000 group by A order by sum(C) desc",1),2,2)',
+      '=INDEX(QUERY(Deals!A1:C6,"select A,sum(C) where C >= 30000 group by A order by sum(C) desc label A \'Region\', sum(C) \'Revenue\'",1),2,2)',
     ],
     ["Top deal", "=INDEX(SORTN(Deals!A2:C6,1,0,3,FALSE),1,3)"],
   ],
@@ -142,7 +143,7 @@ Expected output:
   "after": 286000,
   "afterRestore": 286000,
   "topDeal": 190000,
-  "persistedDocumentBytes": 1238,
+  "persistedDocumentBytes": 1273,
   "verified": true
 }
 ```

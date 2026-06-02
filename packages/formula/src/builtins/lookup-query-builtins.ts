@@ -20,6 +20,7 @@ interface QueryClauses {
   orderBy?: string
   limit?: string
   offset?: string
+  label?: string
 }
 
 interface QueryPlan {
@@ -29,6 +30,7 @@ interface QueryPlan {
   orderBy?: QueryOrder
   limit?: number
   offset?: number
+  labels?: ReadonlyMap<string, string>
 }
 
 type QueryAggregateFunction = 'sum' | 'count'
@@ -68,11 +70,16 @@ interface QueryAggregateOutputRow {
   readonly groupRows: readonly QueryRow[]
 }
 
-type QueryClauseKey = 'select' | 'where' | 'groupBy' | 'orderBy' | 'limit' | 'offset'
+interface QueryClauseMatch {
+  readonly keyword: string
+  readonly index: number
+}
 
-const clausePattern = /\b(select|where|group\s+by|order\s+by|limit|offset)\b/giu
-const unsupportedClausePattern = /\b(pivot|having|label|format|options)\b/iu
+type QueryClauseKey = 'select' | 'where' | 'groupBy' | 'orderBy' | 'limit' | 'offset' | 'label'
+
+const unsupportedClausePattern = /\b(pivot|having|format|options)\b/iu
 const emptyValue: CellValue = { tag: ValueTag.Empty }
+const queryClauseKeywords = ['group by', 'order by', 'select', 'where', 'limit', 'offset', 'label'] as const
 
 function normalizeQuery(query: string): string {
   return query.replace(/\s+/gu, ' ').trim().replace(/;$/u, '').trim()
@@ -85,6 +92,7 @@ function clauseKey(keyword: string): QueryClauseKey | undefined {
     case 'where':
     case 'limit':
     case 'offset':
+    case 'label':
       return normalized
     case 'group by':
       return 'groupBy'
@@ -95,24 +103,68 @@ function clauseKey(keyword: string): QueryClauseKey | undefined {
   }
 }
 
+function isQueryIdentifierChar(char: string | undefined): boolean {
+  return char !== undefined && /^[a-z0-9_]$/iu.test(char)
+}
+
+function keywordAt(query: string, index: number): string | undefined {
+  for (const keyword of queryClauseKeywords) {
+    const value = query.slice(index, index + keyword.length)
+    if (
+      value.toLowerCase() !== keyword ||
+      isQueryIdentifierChar(query[index - 1]) ||
+      isQueryIdentifierChar(query[index + keyword.length])
+    ) {
+      continue
+    }
+    return value
+  }
+  return undefined
+}
+
+function findClauseMatches(query: string): QueryClauseMatch[] | undefined {
+  const matches: QueryClauseMatch[] = []
+  let inString = false
+  for (let index = 0; index < query.length; index += 1) {
+    const char = query[index]
+    if (char === "'") {
+      if (inString && query[index + 1] === "'") {
+        index += 1
+      } else {
+        inString = !inString
+      }
+      continue
+    }
+    if (inString) {
+      continue
+    }
+    const keyword = keywordAt(query, index)
+    if (keyword !== undefined) {
+      matches.push({ keyword, index })
+      index += keyword.length - 1
+    }
+  }
+  return inString ? undefined : matches
+}
+
 function parseClauses(query: string): QueryClauses | undefined {
   const normalized = normalizeQuery(query)
   if (normalized === '' || unsupportedClausePattern.test(normalized)) {
     return undefined
   }
 
-  const matches = [...normalized.matchAll(clausePattern)]
-  if (matches.length === 0 || matches[0]?.[1]?.toLowerCase() !== 'select') {
+  const matches = findClauseMatches(normalized)
+  if (matches === undefined || matches.length === 0 || matches[0]?.keyword.toLowerCase() !== 'select') {
     return undefined
   }
 
   const clauses: Partial<QueryClauses> = {}
   for (let index = 0; index < matches.length; index += 1) {
     const match = matches[index]
-    const keyword = match?.[1]
-    if (!match || keyword === undefined || match.index === undefined) {
+    if (match === undefined) {
       return undefined
     }
+    const keyword = match.keyword
     const key = clauseKey(keyword)
     if (key === undefined || clauses[key] !== undefined) {
       return undefined
@@ -137,6 +189,7 @@ function parseClauses(query: string): QueryClauses | undefined {
     ...(clauses.orderBy === undefined ? {} : { orderBy: clauses.orderBy }),
     ...(clauses.limit === undefined ? {} : { limit: clauses.limit }),
     ...(clauses.offset === undefined ? {} : { offset: clauses.offset }),
+    ...(clauses.label === undefined ? {} : { label: clauses.label }),
   }
 }
 
@@ -205,6 +258,69 @@ function parseSelect(select: string, cols: number): QuerySelectItem[] | undefine
     items.push(item)
   }
   return items
+}
+
+function splitQueryParts(raw: string): string[] | undefined {
+  const parts: string[] = []
+  let current = ''
+  let inString = false
+  for (let index = 0; index < raw.length; index += 1) {
+    const char = raw[index]
+    if (char === "'") {
+      current += char
+      if (inString && raw[index + 1] === "'") {
+        current += "'"
+        index += 1
+      } else {
+        inString = !inString
+      }
+      continue
+    }
+    if (char === ',' && !inString) {
+      parts.push(current.trim())
+      current = ''
+      continue
+    }
+    current += char
+  }
+  if (inString) {
+    return undefined
+  }
+  parts.push(current.trim())
+  return parts
+}
+
+function selectItemKey(item: QuerySelectItem): string {
+  if (item.kind === 'column') {
+    return `column:${item.col}`
+  }
+  return `aggregate:${item.fn}:${item.col}`
+}
+
+function parseLabels(label: string, cols: number, select: readonly QuerySelectItem[]): ReadonlyMap<string, string> | undefined {
+  const parts = splitQueryParts(label)
+  if (parts === undefined || parts.length === 0 || parts.some((part) => part === '')) {
+    return undefined
+  }
+
+  const selectedKeys = new Set(select.map((item) => selectItemKey(item)))
+  const labels = new Map<string, string>()
+  for (const part of parts) {
+    const match = /^((?:sum|count)\(\s*(?:[a-z]+|col[1-9]\d*)\s*\)|[a-z]+|col[1-9]\d*)\s+'((?:[^']|'')*)'$/iu.exec(part)
+    if (!match) {
+      return undefined
+    }
+    const item = parseSelectItem(match[1] ?? '', cols)
+    if (item === undefined) {
+      return undefined
+    }
+    const key = selectItemKey(item)
+    if (!selectedKeys.has(key) || labels.has(key)) {
+      return undefined
+    }
+    labels.set(key, (match[2] ?? '').replace(/''/gu, "'"))
+  }
+  return labels
 }
 
 function textValue(value: string): CellValue {
@@ -329,6 +445,11 @@ function parsePlan(query: string, cols: number): QueryPlan | undefined {
     return undefined
   }
 
+  const labels = clauses.label === undefined ? undefined : parseLabels(clauses.label, cols, select)
+  if (clauses.label !== undefined && labels === undefined) {
+    return undefined
+  }
+
   const groupBy = clauses.groupBy === undefined ? undefined : parseColumnList(clauses.groupBy, cols)
   if (clauses.groupBy !== undefined && groupBy === undefined) {
     return undefined
@@ -390,6 +511,9 @@ function parsePlan(query: string, cols: number): QueryPlan | undefined {
   }
   if (offset !== undefined) {
     plan.offset = offset
+  }
+  if (labels !== undefined) {
+    plan.labels = labels
   }
   return plan
 }
@@ -461,19 +585,20 @@ function aggregateHeaderLabel(deps: LookupQueryBuiltinDeps, header: QueryRow | u
   return textValue(`${item.fn} ${label}`)
 }
 
-function buildAggregateHeader(
-  deps: LookupQueryBuiltinDeps,
-  header: QueryRow | undefined,
-  select: readonly QuerySelectItem[],
-): QueryAggregateOutputRow[] {
+function applyQueryLabel(plan: QueryPlan, item: QuerySelectItem, fallback: CellValue): CellValue {
+  const label = plan.labels?.get(selectItemKey(item))
+  return label === undefined ? fallback : textValue(label)
+}
+
+function buildAggregateHeader(deps: LookupQueryBuiltinDeps, header: QueryRow | undefined, plan: QueryPlan): QueryAggregateOutputRow[] {
   if (header === undefined) {
     return []
   }
-  const values = select.map((item) => {
+  const values = plan.select.map((item) => {
     if (item.kind === 'column') {
-      return header.values[item.col] ?? emptyValue
+      return applyQueryLabel(plan, item, header.values[item.col] ?? emptyValue)
     }
-    return aggregateHeaderLabel(deps, header, item)
+    return applyQueryLabel(plan, item, aggregateHeaderLabel(deps, header, item))
   })
   return [{ sourceRow: header.sourceRow, values, groupRows: [] }]
 }
@@ -660,7 +785,7 @@ function queryRange(
   }
 
   if (isAggregatePlan(plan)) {
-    const aggregateHeader = buildAggregateHeader(deps, header[0], plan.select)
+    const aggregateHeader = buildAggregateHeader(deps, header[0], plan)
     let aggregateBody = buildAggregateBody(deps, body, plan)
     if (!Array.isArray(aggregateBody)) {
       return aggregateBody
@@ -695,6 +820,11 @@ function queryRange(
   const values = projectPlainRows(outputRows, plan.select)
   if (values === undefined) {
     return deps.errorValue(ErrorCode.Value)
+  }
+  if (header.length > 0 && plan.labels !== undefined) {
+    for (const [col, item] of plan.select.entries()) {
+      values[col] = applyQueryLabel(plan, item, values[col] ?? emptyValue)
+    }
   }
   return deps.arrayResult(values, outputRows.length, plan.select.length)
 }

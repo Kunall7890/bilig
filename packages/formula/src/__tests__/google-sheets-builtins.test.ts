@@ -330,6 +330,38 @@ describe('Google Sheets compatibility builtins', () => {
         num(60_000),
       ],
     })
+    expect(getLookupBuiltin('QUERY')?.(queryTable, text("select A, C where B >= 8 label A 'Market', C 'Pipeline ARR'"), num(1))).toEqual({
+      kind: 'array',
+      rows: 3,
+      cols: 2,
+      values: [text('Market'), text('Pipeline ARR'), text('North'), num(96_000), text('West'), num(144_000)],
+    })
+    expect(
+      getLookupBuiltin('QUERY')?.(
+        queryGroupTable,
+        text("select Col1, sum(Col3), count(Col3) group by Col1 label Col1 'Market', sum(Col3) 'Total ARR', count(Col3) 'Deals'"),
+        num(1),
+      ),
+    ).toEqual({
+      kind: 'array',
+      rows: 3,
+      cols: 3,
+      values: [text('Market'), text('Total ARR'), text('Deals'), text('North'), num(156_000), num(2), text('West'), num(168_000), num(2)],
+    })
+    expect(getLookupBuiltin('QUERY')?.(queryTable, text("select A label A 'Owner''s market'"), num(1))).toEqual({
+      kind: 'array',
+      rows: 4,
+      cols: 1,
+      values: [text("Owner's market"), text('North'), text('West'), text('South')],
+    })
+    expect(getLookupBuiltin('QUERY')?.(queryTable, text("select A where A = 'West' label A 'Market'"), num(1))).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 1,
+      values: [text('Market'), text('West')],
+    })
+    expect(getLookupBuiltin('QUERY')?.(queryTable, text("select A label B 'Lead count'"), num(1))).toEqual(err(ErrorCode.Value))
+    expect(getLookupBuiltin('QUERY')?.(queryTable, text('select A label A Lead count'), num(1))).toEqual(err(ErrorCode.Value))
     expect(getLookupBuiltin('QUERY')?.(queryTable, text('select A group by A'), num(1))).toEqual(err(ErrorCode.Value))
     expect(getLookupBuiltin('QUERY')?.(queryTable, text('select A, avg(C) group by A'), num(1))).toEqual(err(ErrorCode.Value))
     expect(getLookupBuiltin('QUERY')?.(queryTable, text('select A, sum(C) group by B'), num(1))).toEqual(err(ErrorCode.Value))

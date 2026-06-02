@@ -29,9 +29,10 @@ The current deterministic subset covers:
 - `where` comparisons against scalar literals
 - `group by` with projected group columns plus `sum(column)` and `count(column)`
 - `order by`, `limit`, and `offset`
+- bounded `label` clauses for selected output columns and supported aggregate outputs
 
 Unsupported Google Visualization Query Language clauses such as `pivot`,
-`having`, `label`, `format`, and `options` still fail closed with `#VALUE!`.
+`having`, `format`, and `options` still fail closed with `#VALUE!`.
 
 ## Full target
 
