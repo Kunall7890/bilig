@@ -45,8 +45,8 @@
         "programmingLanguage": "TypeScript",
         "runtimePlatform": "Node.js 22+",
         "url": "https://proompteng.github.io/bilig/",
-        "downloadUrl": "https://www.npmjs.com/package/@bilig/headless",
-        "installUrl": "https://www.npmjs.com/package/@bilig/headless",
+        "downloadUrl": "https://www.npmjs.com/package/@bilig/workpaper",
+        "installUrl": "https://www.npmjs.com/package/@bilig/workpaper",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "macOS, Linux, Windows",
         "isAccessibleForFree": true,
@@ -165,16 +165,17 @@
             <strong>Edits an input cell, recalculates a formula, saves JSON, restores it, and returns <code>verified: true</code>.</strong>
           </div>
           <div class="hero-actions">
-            <a class="button primary" href="https://www.npmjs.com/package/@bilig/headless">Install headless</a>
+            <a class="button primary" href="https://www.npmjs.com/package/@bilig/workpaper">Install WorkPaper</a>
             <a class="button" href="./eval-workpaper-service.html">Run WorkPaper</a>
             <a class="button" href="./eval-agent-mcp.html">Agent API</a>
             <a class="button" href="./xlsx-formula-recalculation-node.html">XLSX bridge</a>
             <a class="button" href="https://github.com/proompteng/bilig">GitHub</a>
           </div>
           <p class="hero-note">
-            Start with <a href="https://www.npmjs.com/package/@bilig/headless">@bilig/headless</a> when your service owns the workbook
-            state. Use <a href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">@bilig/xlsx-formula-recalc</a> when a saved
-            <code>.xlsx</code> file has to stay in the loop.
+            Start with <a href="https://www.npmjs.com/package/@bilig/workpaper">@bilig/workpaper</a> when your service or agent owns the
+            workbook state. Use <a href="https://www.npmjs.com/package/@bilig/headless">@bilig/headless</a> for lower-level runtime imports
+            and <a href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">@bilig/xlsx-formula-recalc</a> when a saved
+            <code>.xlsx</code> file stays in the loop.
           </p>
         </div>
 
@@ -197,26 +198,26 @@
             <dl>
               <div>
                 <dt>Input</dt>
-                <dd><code>Inputs!B3 = 0.4</code></dd>
+                <dd><code>Inputs!B2 = 8</code></dd>
               </div>
               <div>
                 <dt>Formula</dt>
-                <dd><code>Summary!B3</code></dd>
+                <dd><code>Summary!B2</code></dd>
               </div>
               <div>
                 <dt>Before</dt>
-                <dd><code>60000</code></dd>
+                <dd><code>24000</code></dd>
               </div>
               <div>
                 <dt>After</dt>
-                <dd><code>96000</code></dd>
+                <dd><code>38400</code></dd>
               </div>
             </dl>
             <pre><code>{
   "door": "workpaper-service",
-  "editedCell": "Inputs!B3",
-  "dependentCell": "Summary!B3",
-  "persistedDocumentBytes": 1162,
+  "editedCell": "Inputs!B2",
+  "dependentCell": "Summary!B2",
+  "persistedDocumentBytes": 999,
   "verified": true
 }</code></pre>
           </div>
@@ -252,15 +253,15 @@
           </div>
 
           <div class="row-list">
-            <a class="path-link" href="https://www.npmjs.com/package/@bilig/headless">
-              <span>headless</span>
-              <strong><code>npm install @bilig/headless</code></strong>
-              <em>Use the lower-level runtime when your service owns workbook state.</em>
-            </a>
             <a class="path-link" href="https://www.npmjs.com/package/@bilig/workpaper">
               <span>WorkPaper</span>
               <strong><code>npm create @bilig/workpaper@latest pricing-workpaper</code></strong>
               <em>Generate a small service or agent starter wired to the same runtime.</em>
+            </a>
+            <a class="path-link" href="https://www.npmjs.com/package/@bilig/headless">
+              <span>headless</span>
+              <strong><code>npm install @bilig/headless</code></strong>
+              <em>Use the lower-level runtime when you need direct WorkPaper imports and subpaths.</em>
             </a>
             <a class="path-link" href="./eval-agent-mcp.html">
               <span>agents</span>
@@ -275,8 +276,8 @@
           </div>
 
           <p class="section-note">
-            Use <code>@bilig/headless</code> for the runtime and <code>@bilig/workpaper</code> for the scoped starter and evaluator. Use
-            <code>@bilig/xlsx-formula-recalc</code> when XLSX is the boundary.
+            Use <code>@bilig/workpaper</code> for starters, evaluators, and agent tools, <code>@bilig/headless</code> for lower-level
+            runtime imports, and <code>@bilig/xlsx-formula-recalc</code> when XLSX is the boundary.
           </p>
         </div>
       </section>
@@ -354,11 +355,11 @@
               </div>
               <pre><code>{
   "door": <span class="str">"workpaper-service"</span>,
-  "editedCell": <span class="str">"Inputs!B3"</span>,
-  "dependentCell": <span class="str">"Summary!B3"</span>,
-  "before": <span class="num">60000</span>,
-  "after": <span class="num">96000</span>,
-  "afterRestore": <span class="num">96000</span>,
+  "editedCell": <span class="str">"Inputs!B2"</span>,
+  "dependentCell": <span class="str">"Summary!B2"</span>,
+  "before": <span class="num">24000</span>,
+  "after": <span class="num">38400</span>,
+  "afterRestore": <span class="num">38400</span>,
   "verified": <span class="kw">true</span>
 }</code></pre>
             </div>
@@ -564,8 +565,8 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
               <h2 id="docs-title">Start narrow, then go deeper.</h2>
             </div>
             <p>
-              Choose by boundary. Use <code>@bilig/headless</code> when the service owns workbook state, <code>@bilig/workpaper</code> for
-              starters and evaluators, and <code>@bilig/xlsx-formula-recalc</code> for saved files.
+              Choose by boundary. Use <code>@bilig/workpaper</code> when the service or agent owns workbook state,
+              <code>@bilig/headless</code> for lower-level runtime imports, and <code>@bilig/xlsx-formula-recalc</code> for saved files.
             </p>
           </div>
 
@@ -684,7 +685,7 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
             </p>
           </div>
           <div class="final-actions">
-            <a class="button primary" href="https://www.npmjs.com/package/@bilig/headless">Install headless</a>
+            <a class="button primary" href="https://www.npmjs.com/package/@bilig/workpaper">Install WorkPaper</a>
             <a class="button" href="./eval-workpaper-service.html">Run WorkPaper</a>
             <a class="button" href="./eval-agent-mcp.html">Agent API</a>
             <a class="button dark" href="https://github.com/proompteng/bilig">GitHub</a>

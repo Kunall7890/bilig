@@ -8,12 +8,13 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**Catch stale XLSX formulas before Node or CI reads the wrong number.**
+**Run workbook rules from Node, with formula readback you can verify.**
 
-Bilig is for workbook logic that has to run from code. If an existing `.xlsx`
-file is the contract, use the cache doctor to find stale cached formula values.
-If your service or agent should own the workbook model, use WorkPaper/headless
-to edit cells, recalculate formulas, read outputs, and persist JSON.
+Bilig is for workbook logic that has to run from code. If your service or agent
+should own the workbook model, start with `@bilig/workpaper`: edit cells,
+recalculate formulas, read outputs, and persist JSON. If an existing `.xlsx`
+file is still the contract, use the XLSX tools to find stale cached formula
+values and refresh readback.
 
 Start with the boundary you actually have. Do not drive Excel, LibreOffice,
 Google Sheets, or a screenshot UI just to learn whether a formula value is
@@ -22,24 +23,25 @@ fresh.
 Run the no-clone checks:
 
 ```sh
-npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 ```
 
-Expected XLSX cache result:
+Expected WorkPaper service result:
 
 ```json
 {
   "schemaVersion": "bilig-evaluator.v1",
-  "door": "xlsx-cache",
+  "door": "workpaper-service",
   "verified": true,
   "evidence": {
-    "target": "Summary!B2",
-    "before": 60000,
-    "after": 72000,
-    "staleCachedFormulaCount": 1,
-    "suggestedReads": ["Summary!B2"]
+    "editedCell": "Inputs!B2",
+    "dependentCell": "Summary!B2",
+    "before": 24000,
+    "after": 38400,
+    "afterRestore": 38400,
+    "persistedDocumentBytes": 999
   }
 }
 ```
@@ -113,9 +115,9 @@ path when a saved Excel file is still the source of truth.
 The shortest no-project checks are:
 
 ```sh
-npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
 ```
 
@@ -144,12 +146,12 @@ For the GitHub Action listing and a live reviewer path:
 
 ## If You Only Try One Thing
 
-Catch a stale cached formula value first. It is the shortest proof that Bilig is
-doing something ExcelJS, SheetJS, and `xlsx-populate` do not do inside Node:
-recalculate the workbook and show the value your code would otherwise trust.
+Run the WorkPaper service proof first. It is the shortest proof that Bilig gives
+backend code a workbook object it can change, recalculate, read back, save, and
+restore without driving Excel, LibreOffice, Google Sheets, or a browser grid.
 
 ```sh
-npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 ```
 
 Expected shape:
@@ -157,29 +159,29 @@ Expected shape:
 ```json
 {
   "schemaVersion": "bilig-evaluator.v1",
-  "door": "xlsx-cache",
+  "door": "workpaper-service",
   "verified": true,
   "evidence": {
-    "target": "Summary!B2",
-    "before": 60000,
-    "after": 72000,
-    "staleCachedFormulaCount": 1,
-    "suggestedReads": ["Summary!B2"]
+    "editedCell": "Inputs!B2",
+    "dependentCell": "Summary!B2",
+    "before": 24000,
+    "after": 38400,
+    "afterRestore": 38400,
+    "persistedDocumentBytes": 999
   }
 }
-```
-
-If your service should own the workbook model instead of passing XLSX files
-around, run the WorkPaper door:
-
-```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 ```
 
 If an agent or MCP client owns the workflow, run the agent door:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+If an existing XLSX file is still the contract, run the XLSX cache door:
+
+```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 ```
 
 Trust boundaries:

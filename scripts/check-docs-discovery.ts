@@ -219,13 +219,15 @@ requirePackageKeywords(
   ],
   'packages/workpaper/package.json',
 )
-requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')
+requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/workpaper"', 'docs/index.html')
+requireIncludes(index, '"installUrl": "https://www.npmjs.com/package/@bilig/workpaper"', 'docs/index.html')
 requireIncludes(index, '"https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')
 requireIncludes(index, '"https://www.npmjs.com/package/@bilig/workpaper"', 'docs/index.html')
 requireIncludes(index, '"https://www.npmjs.com/package/@bilig/xlsx-formula-recalc"', 'docs/index.html')
 requireIncludes(index, '"https://www.npmjs.com/package/@bilig/exceljs-formula-recalc"', 'docs/index.html')
 requireIncludes(index, '<h2 id="runtime-title">Teams that keep business rules in workbook formulas.</h2>', 'docs/index.html')
 requireIncludes(index, 'first run', 'docs/index.html')
+requireIncludes(index, 'npm create @bilig/workpaper@latest pricing-workpaper', 'docs/index.html')
 requireIncludes(index, 'npm install @bilig/headless', 'docs/index.html')
 requireIncludes(index, '"applicationCategory": "DeveloperApplication"', 'docs/index.html')
 requireIncludes(index, '"@type": "FAQPage"', 'docs/index.html')
