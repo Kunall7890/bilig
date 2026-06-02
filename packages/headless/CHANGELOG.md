@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.154.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.153.0
+- Manual override: yes
+
+## Internal runtime changes
+- docs(workpaper): show npm proof output (cf1ae506)
+
 ## 0.153.0
 
 - Release type: minor
