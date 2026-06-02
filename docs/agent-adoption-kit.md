@@ -177,8 +177,8 @@ The exact values can change, but the evaluator result should look like this:
   "door": "agent-mcp",
   "verified": true,
   "packageVersions": {
-    "@bilig/workpaper": "0.143.0",
-    "xlsx-formula-recalc": "0.143.0"
+    "@bilig/workpaper": "0.144.0",
+    "xlsx-formula-recalc": "0.144.0"
   },
   "evidence": {
     "editedCell": "Inputs!B3",
