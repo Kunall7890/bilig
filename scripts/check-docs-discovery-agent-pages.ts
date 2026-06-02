@@ -4,6 +4,7 @@ export const agentFrameworkLlmsRequiredLinks = [
   'https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html',
   'https://proompteng.github.io/bilig/open-multi-agent-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/agno-workpaper-mcp.html',
+  'https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/copilotkit-workpaper-spreadsheet-action.html',
   'https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html',
@@ -67,6 +68,20 @@ export const agentFrameworkDocRequirements = [
       '60000',
       '96000',
       'restoredReadbackMatchesAfter',
+    ],
+  },
+  {
+    path: 'docs/pydantic-ai-workpaper-mcp.md',
+    includes: [
+      'Pydantic AI WorkPaper MCP tools',
+      'MCPToolset',
+      'StdioTransport',
+      'examples/pydantic-ai-workpaper-mcp',
+      '@bilig/workpaper@latest',
+      'set_cell_contents_and_readback',
+      'WorkPaperProof',
+      '60000',
+      '96000',
     ],
   },
   {
