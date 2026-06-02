@@ -244,6 +244,18 @@ Use a user-level Cursor MCP config when you want the server available across
 projects. Use a project-local config when the workbook tooling should be tied
 to one repository.
 
+After Cursor starts the server, ask for a concrete readback check:
+
+```text
+Use the biligWorkpaperFile MCP server. List sheets, read Summary!A1:B5,
+set Inputs!B3 to 0.4 with set_cell_contents_and_readback, then report the
+edited cell, before and after values, and whether the WorkPaper JSON persisted.
+```
+
+The useful Cursor tool set includes `list_sheets`, `read_range`,
+`set_cell_contents_and_readback`, `export_workpaper_document`, and
+`validate_formula`.
+
 ## VS Code
 
 Bilig checkouts already include `.vscode/mcp.json` for GitHub Copilot agent

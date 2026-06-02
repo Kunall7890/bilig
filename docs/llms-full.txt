@@ -9234,6 +9234,12 @@ The npm package exposes the demo server as `bilig-workpaper-mcp` by default:
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp
 ```
 
+For Cursor, use the project-local `.cursor/mcp.json` shape in the
+[MCP client setup guide](mcp-client-setup.md#cursor). That setup uses
+`@bilig/workpaper@latest` in file-backed mode, so Cursor sees the general
+WorkPaper tools such as `list_sheets`, `read_range`,
+`set_cell_contents_and_readback`, and `export_workpaper_document`.
+
 ## Remote Stateless Endpoint
 
 The hosted app runtime also exposes a JSON-only Streamable HTTP MCP endpoint for

@@ -385,6 +385,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     `npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp`,
     'docs/mcp-workpaper-tool-server.md',
   )
+  requireIncludes(mcpWorkPaperToolServerDoc, '[MCP client setup guide](mcp-client-setup.md#cursor)', 'docs/mcp-workpaper-tool-server.md')
+  requireIncludes(mcpWorkPaperToolServerDoc, `\`${workpaperPackageSpec}\` in file-backed mode`, 'docs/mcp-workpaper-tool-server.md')
   requireIncludes(
     mcpWorkPaperToolServerDoc,
     `npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable`,
@@ -559,6 +561,9 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'claude-desktop-mcpb-workpaper.md',
     'claude mcp add-json bilig-workpaper',
     '.cursor/mcp.json',
+    'Use the biligWorkpaperFile MCP server. List sheets, read Summary!A1:B5',
+    'set Inputs!B3 to 0.4 with set_cell_contents_and_readback',
+    'The useful Cursor tool set includes `list_sheets`, `read_range`',
     '.vscode/mcp.json',
     'cline_mcp_settings.json',
     '~/.cline/data/settings/cline_mcp_settings.json',
