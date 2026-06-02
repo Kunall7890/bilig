@@ -22,10 +22,10 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
    explicit formula-proof command from
    `.claude/commands/bilig-workpaper-proof.md`.
 10. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
-   `.cursor/rules/bilig-workpaper.mdc` or
-   `.windsurf/rules/bilig-workpaper.md`,
-   `.clinerules/bilig-workpaper.md`, or
-   `.continue/rules/bilig-workpaper.md`.
+    `.cursor/rules/bilig-workpaper.mdc` or
+    `.windsurf/rules/bilig-workpaper.md`,
+    `.clinerules/bilig-workpaper.md`, or
+    `.continue/rules/bilig-workpaper.md`.
 11. Start the MCP server or import `@bilig/workpaper` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
@@ -57,6 +57,7 @@ Do not claim success from a write call alone. The proof is computed readback plu
 ## Fast Commands
 
 ```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json

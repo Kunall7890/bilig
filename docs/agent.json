@@ -131,6 +131,7 @@
       "type": "plain-text-entrypoint",
       "url": "https://proompteng.github.io/bilig/agent-start.txt",
       "well_known_url": "https://proompteng.github.io/bilig/.well-known/agent-start.txt",
+      "decision_command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json",
       "challenge_command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json"
     },
     {

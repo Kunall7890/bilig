@@ -110,11 +110,13 @@ export async function requireAgentInstructionDiscovery(input: {
     throw new Error('docs/agent-start.txt must match docs/.well-known/agent-start.txt')
   }
   requireIncludes(docsAgentStart, '# Bilig agent start', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json', 'docs/agent-start.txt')
   requireIncludes(
     docsAgentStart,
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
     'docs/agent-start.txt',
   )
+  requireIncludes(docsAgentStart, 'The first command prints the decision card.', 'docs/agent-start.txt')
   requireIncludes(
     docsAgentStart,
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json',

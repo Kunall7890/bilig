@@ -16,6 +16,7 @@ export function requirePackageCliSurfaceDiscovery(args: {
   readonly xlsxRecalcPackageReadme: string
   readonly xlsxRecalcPackageSkillNotes: string
 }): void {
+  requireIncludes(args.scopedWorkpaperPackageJson, '"bilig-agent-start": "./bin/bilig-agent-start.js"', 'packages/workpaper/package.json')
   requireIncludes(args.scopedWorkpaperPackageJson, '"bilig-evaluate": "./bin/bilig-evaluate.js"', 'packages/workpaper/package.json')
   requireIncludes(args.scopedWorkpaperPackageJson, '"@bilig/xlsx-formula-recalc": "workspace:*"', 'packages/workpaper/package.json')
   requireIncludes(
@@ -26,6 +27,8 @@ export function requirePackageCliSurfaceDiscovery(args: {
   requireIncludes(args.scopedWorkpaperPackageJson, 'spreadsheet-formula-engine', 'packages/workpaper/package.json')
   requireIncludes(args.scopedWorkpaperPackageReadme, 'bilig-evaluate --door workpaper-service --json', 'packages/workpaper/README.md')
   requireIncludes(args.scopedWorkpaperPackageReadme, 'bilig-evaluate --door agent-mcp --json', 'packages/workpaper/README.md')
+  requireIncludes(args.scopedWorkpaperPackageReadme, 'bilig-agent-start --json', 'packages/workpaper/README.md')
+  requireIncludes(args.scopedWorkpaperPackageReadme, 'workbook-vs-XLSX decision card', 'packages/workpaper/README.md')
   requireIncludes(args.scopedWorkpaperPackageReadme, 'headless spreadsheet formulas', 'packages/workpaper/README.md')
   requireIncludes(args.scopedWorkpaperPackageReadme, 'bilig-evaluator.v1', 'packages/workpaper/README.md')
   requireIncludes(args.scopedWorkpaperPackageReadme, '## What Success Looks Like', 'packages/workpaper/README.md')

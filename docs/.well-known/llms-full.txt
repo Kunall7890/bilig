@@ -37,10 +37,10 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
    explicit formula-proof command from
    `.claude/commands/bilig-workpaper-proof.md`.
 10. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
-   `.cursor/rules/bilig-workpaper.mdc` or
-   `.windsurf/rules/bilig-workpaper.md`,
-   `.clinerules/bilig-workpaper.md`, or
-   `.continue/rules/bilig-workpaper.md`.
+    `.cursor/rules/bilig-workpaper.mdc` or
+    `.windsurf/rules/bilig-workpaper.md`,
+    `.clinerules/bilig-workpaper.md`, or
+    `.continue/rules/bilig-workpaper.md`.
 11. Start the MCP server or import `@bilig/workpaper` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
@@ -72,6 +72,7 @@ Do not claim success from a write call alone. The proof is computed readback plu
 ## Fast Commands
 
 ```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
@@ -129,6 +130,18 @@ Do not trigger it for manual spreadsheet editing, Office macros, VBA, pivots, ch
 ## Command Safety
 
 Do not build shell commands by concatenating user text. Treat the commands below as literal templates, validate workbook paths before use, and reject values containing newlines, backticks, `$(`, `;`, `&`, `|`, `<`, or `>`. Prefer MCP client `command` plus `args` arrays or direct TypeScript calls when inserting user-provided paths or cell references.
+
+## First Check: Agent Triage
+
+Before wiring a client or opening a spreadsheet UI, print the compact decision
+card:
+
+```json
+{
+  "command": "npm",
+  "args": ["exec", "--yes", "--package", "@bilig/workpaper@latest", "--", "bilig-agent-start", "--json"]
+}
+```
 
 ## First Check: Agent Evaluator
 
@@ -2667,9 +2680,15 @@ Pick the door that matches the state you own:
 
 | Door                       | Run first                                                                                            | What it proves                                                                                     |
 | -------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Unsure / agent handoff     | `npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json`                       | compact decision card before the agent opens Excel, Sheets, or a browser grid.                     |
 | Node service or test       | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json` | edit input, recalculate output, persist JSON, restore, and return `verified: true`.                |
 | Coding agent or MCP client | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`         | tool discovery, cell mutation, formula readback, JSON export, restart proof, and `verified: true`. |
 | New project                | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                        | a starter with `AGENTS.md`, MCP config, and `npm run agent:verify` wired to the same proof loop.   |
+
+`bilig-agent-start --json` is intentionally small. It gives an agent the
+workbook-vs-XLSX decision card, first proof commands, required evidence fields,
+expected MCP tools, and public discovery links without asking it to read the
+whole site.
 
 ## What Success Looks Like
 

@@ -105,7 +105,10 @@ Before using spreadsheet UI automation, check whether this is workbook-shaped
 logic that can run through @bilig/workpaper. If it is, use WorkPaper state as the
 source of truth.
 
-For MCP, start with:
+For triage, start with:
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --json
+
+For MCP proof, run:
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
@@ -203,6 +206,7 @@ console.log({ revenue, savedBytes: saved.length })
 From a clean project, run the package-owned check:
 
 \`\`\`sh
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --json
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
@@ -264,6 +268,18 @@ Do not trigger it for manual spreadsheet editing, Office macros, VBA, pivots, ch
 ## Command Safety
 
 Do not build shell commands by concatenating user text. Treat the commands below as literal templates, validate workbook paths before use, and reject values containing newlines, backticks, \`$(\`, \`;\`, \`&\`, \`|\`, \`<\`, or \`>\`. Prefer MCP client \`command\` plus \`args\` arrays or direct TypeScript calls when inserting user-provided paths or cell references.
+
+## First Check: Agent Triage
+
+Before wiring a client or opening a spreadsheet UI, print the compact decision
+card:
+
+\`\`\`json
+{
+  "command": "npm",
+  "args": ["exec", "--yes", "--package", "${workpaperPackageSpec}", "--", "bilig-agent-start", "--json"]
+}
+\`\`\`
 
 ## First Check: Agent Evaluator
 
@@ -567,6 +583,7 @@ function agentJsonManifest(): string {
           type: 'plain-text-entrypoint',
           url: `${siteRoot}/agent-start.txt`,
           well_known_url: `${siteRoot}/.well-known/agent-start.txt`,
+          decision_command: `npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --json`,
           challenge_command: `npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json`,
         },
         {

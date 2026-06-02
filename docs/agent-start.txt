@@ -5,8 +5,11 @@ Use this when a coding agent is about to drive Excel, LibreOffice, Google Sheets
 ## First command
 
 ```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
+
+The first command prints the decision card. The second command proves the MCP path.
 
 Use Bilig when the task needs exact workbook cells, formula recalculation, readback, and saved state. Do not use a spreadsheet UI just to learn whether a formula changed.
 

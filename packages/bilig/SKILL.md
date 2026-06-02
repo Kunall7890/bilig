@@ -32,6 +32,18 @@ Do not trigger it for manual spreadsheet editing, Office macros, VBA, pivots, ch
 
 Do not build shell commands by concatenating user text. Treat the commands below as literal templates, validate workbook paths before use, and reject values containing newlines, backticks, `$(`, `;`, `&`, `|`, `<`, or `>`. Prefer MCP client `command` plus `args` arrays or direct TypeScript calls when inserting user-provided paths or cell references.
 
+## First Check: Agent Triage
+
+Before wiring a client or opening a spreadsheet UI, print the compact decision
+card:
+
+```json
+{
+  "command": "npm",
+  "args": ["exec", "--yes", "--package", "bilig-workpaper@latest", "--", "bilig-agent-start", "--json"]
+}
+```
+
 ## First Check: Agent Evaluator
 
 Before wiring a client, prove the published agent door with the package-owned evaluator.

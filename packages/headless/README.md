@@ -15,12 +15,14 @@ If this npm page is the first thing you found, run the no-clone proof before
 reading the full API docs:
 
 ```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 ```
 
-It should print `verified: true` after editing an input cell, recalculating a
-dependent formula, exporting WorkPaper JSON, restoring it, and reading the same
-calculated value again.
+The first command prints the workbook-vs-XLSX decision card for agents. The
+second should print `verified: true` after editing an input cell, recalculating
+a dependent formula, exporting WorkPaper JSON, restoring it, and reading the
+same calculated value again.
 
 Choose the narrow package by the state you own:
 
@@ -97,11 +99,13 @@ npm exec --package @bilig/headless@0.154.0 -- bilig-formula-clinic ./reduced.xls
 Handing a spreadsheet task to another coding agent?
 
 ```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
-The first command proves the direct WorkPaper API. The second proves the agent
+The first command tells the agent which proof path to run. The second command
+proves the direct WorkPaper API. The third proves the agent
 tool path with tool discovery, cell mutation, formula readback, JSON export, and
 restart proof. Both run without cloning the repository.
 

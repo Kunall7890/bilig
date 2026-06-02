@@ -40,6 +40,7 @@
   },
   "bin": {
     "bilig-agent-challenge": "./bin/bilig-agent-challenge.js",
+    "bilig-agent-start": "./bin/bilig-agent-start.js",
     "bilig-formula-clinic": "./bin/bilig-formula-clinic.js",
     "bilig-mcp-challenge": "./bin/bilig-mcp-challenge.js",
     "bilig-n8n-formula-server": "./bin/bilig-n8n-formula-server.js",

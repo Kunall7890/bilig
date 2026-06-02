@@ -22,9 +22,15 @@ Pick the door that matches the state you own:
 
 | Door                       | Run first                                                                                            | What it proves                                                                                     |
 | -------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Unsure / agent handoff     | `npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json`                       | compact decision card before the agent opens Excel, Sheets, or a browser grid.                     |
 | Node service or test       | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json` | edit input, recalculate output, persist JSON, restore, and return `verified: true`.                |
 | Coding agent or MCP client | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`         | tool discovery, cell mutation, formula readback, JSON export, restart proof, and `verified: true`. |
 | New project                | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                        | a starter with `AGENTS.md`, MCP config, and `npm run agent:verify` wired to the same proof loop.   |
+
+`bilig-agent-start --json` is intentionally small. It gives an agent the
+workbook-vs-XLSX decision card, first proof commands, required evidence fields,
+expected MCP tools, and public discovery links without asking it to read the
+whole site.
 
 ## What Success Looks Like
 
