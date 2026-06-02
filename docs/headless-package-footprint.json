@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "package": {
     "name": "@bilig/headless",
-    "version": "0.151.0",
+    "version": "0.152.0",
     "description": "Headless spreadsheet formula engine for Node.js services and agents with WorkPaper JSON persistence and formula readback.",
     "nodeEngine": ">=22.0.0",
     "keywordCount": 24,
@@ -48,10 +48,10 @@
     "hasMcpBinary": true
   },
   "npmPackDryRun": {
-    "tarballBytes": 827359,
-    "unpackedBytes": 5080263,
+    "tarballBytes": 827387,
+    "unpackedBytes": 5080398,
     "entryCount": 804,
-    "readmeBytes": 48361,
+    "readmeBytes": 48496,
     "packageJsonBytes": 3335
   },
   "coldStartProbe": {

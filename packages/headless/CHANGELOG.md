@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.152.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.151.0
+- Manual override: no
+
+## Features
+- feat(formula): support QUERY labels (2b78f772)
+
+## Internal runtime changes
+- docs(growth): add Google Sheets query WorkPaper path (fef12afd)
+
 ## 0.151.0
 
 - Release type: minor
