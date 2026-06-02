@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.149.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.148.0
+- Manual override: no
+
+## Features
+- feat(formula): add ARRAYFORMULA (fd76cac8)
+
 ## 0.148.0
 
 - Release type: minor
