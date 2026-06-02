@@ -20,6 +20,8 @@ describe('docs discovery public link manifest', () => {
     expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html')
     expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/agent-start.txt')
     expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/.well-known/agent-start.txt')
+    expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/.well-known/llms.txt')
+    expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/.well-known/llms-full.txt')
     expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/.well-known/mcp/server-card.json')
     expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/.well-known/agent.json')
     expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/agent.json')

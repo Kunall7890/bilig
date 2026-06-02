@@ -73,6 +73,8 @@ export const docsSiteSources = [
   ['.well-known/mcp-server-card.json', '.well-known/mcp-server-card.json'],
   ['.well-known/agent.json', '.well-known/agent.json'],
   ['.well-known/agent-start.txt', '.well-known/agent-start.txt'],
+  ['.well-known/llms.txt', '.well-known/llms.txt'],
+  ['.well-known/llms-full.txt', '.well-known/llms-full.txt'],
   ['.well-known/agent-skills/index.json', '.well-known/agent-skills/index.json'],
   ['.well-known/agent-skills/bilig-workpaper/SKILL.html', '.well-known/agent-skills/bilig-workpaper/SKILL.md'],
   ['.well-known/agent-skills/bilig-workpaper/SKILL.txt', '.well-known/agent-skills/bilig-workpaper/SKILL.txt'],

@@ -698,7 +698,13 @@
   </url>
   <url>
     <loc>https://proompteng.github.io/bilig/llms.txt</loc>
-    <lastmod>2026-05-18</lastmod>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://proompteng.github.io/bilig/.well-known/llms.txt</loc>
+    <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
@@ -734,7 +740,13 @@
   </url>
   <url>
     <loc>https://proompteng.github.io/bilig/llms-full.txt</loc>
-    <lastmod>2026-05-18</lastmod>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://proompteng.github.io/bilig/.well-known/llms-full.txt</loc>
+    <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>

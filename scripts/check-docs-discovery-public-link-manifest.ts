@@ -69,6 +69,8 @@ export const llmsRequiredLinks = [
   'https://proompteng.github.io/bilig/AGENTS.md',
   'https://proompteng.github.io/bilig/agent-start.txt',
   'https://proompteng.github.io/bilig/.well-known/agent-start.txt',
+  'https://proompteng.github.io/bilig/.well-known/llms.txt',
+  'https://proompteng.github.io/bilig/.well-known/llms-full.txt',
   'https://proompteng.github.io/bilig/.well-known/agent.json',
   'https://proompteng.github.io/bilig/agent.json',
   'https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt',

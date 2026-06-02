@@ -496,6 +496,8 @@ function agentJsonManifest(): string {
       contact: `${repositoryUrl}/discussions/new?category=general`,
       llms_txt: `${siteRoot}/llms.txt`,
       llms_full: `${siteRoot}/llms-full.txt`,
+      well_known_llms_txt: `${siteRoot}/.well-known/llms.txt`,
+      well_known_llms_full: `${siteRoot}/.well-known/llms-full.txt`,
       agent_start: `${siteRoot}/agent-start.txt`,
       well_known_agent_start: `${siteRoot}/.well-known/agent-start.txt`,
       skill_file: skillManifestUrl,
@@ -695,6 +697,10 @@ function agentJsonManifest(): string {
       },
       public_entrypoints: [
         `${siteRoot}/`,
+        `${siteRoot}/llms.txt`,
+        `${siteRoot}/llms-full.txt`,
+        `${siteRoot}/.well-known/llms.txt`,
+        `${siteRoot}/.well-known/llms-full.txt`,
         `${siteRoot}/agent-start.txt`,
         `${siteRoot}/.well-known/agent-start.txt`,
         `${siteRoot}/why-use-bilig.html`,
@@ -802,6 +808,7 @@ async function buildLlmsFull(): Promise<string> {
 
 async function generatedTargets(): Promise<ReadonlyArray<readonly [string, string]>> {
   const llmsFull = await buildLlmsFull()
+  const llms = await readFile(join(repoRoot, 'docs', 'llms.txt'), 'utf8')
   const agentJson = agentJsonManifest()
   const ideRuleInput = { remoteMcpEndpoint, repositoryUrl, siteRoot, workpaperPackageSpec }
   const mcpServerCard = mcpServerCardManifest({
@@ -820,6 +827,8 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['docs/llms-full.txt', llmsFull],
     ['docs/.well-known/agent.json', agentJson],
     ['docs/.well-known/agent-start.txt', docsAgentStart],
+    ['docs/.well-known/llms.txt', llms],
+    ['docs/.well-known/llms-full.txt', llmsFull],
     ['docs/.well-known/agent-skills/index.json', skillIndexJson()],
     ['docs/.well-known/agent-skills/bilig-workpaper/SKILL.md', skillDocument],
     ['docs/.well-known/agent-skills/bilig-workpaper/SKILL.txt', skillDocument],

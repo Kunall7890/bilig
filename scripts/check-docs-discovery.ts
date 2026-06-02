@@ -107,6 +107,8 @@ const mcpWorkpaperToolServerDoc = await readFile(join(docsRoot, 'mcp-workpaper-t
 const mcpServerCard = await readFile(join(docsRoot, '.well-known', 'mcp', 'server-card.json'), 'utf8')
 const mcpServerCardMcpJson = await readFile(join(docsRoot, '.well-known', 'mcp.json'), 'utf8')
 const mcpServerCardLegacyJson = await readFile(join(docsRoot, '.well-known', 'mcp-server-card.json'), 'utf8')
+const wellKnownLlms = await readFile(join(docsRoot, '.well-known', 'llms.txt'), 'utf8')
+const wellKnownLlmsFull = await readFile(join(docsRoot, '.well-known', 'llms-full.txt'), 'utf8')
 const sheetjsFormulaResultNotUpdatingNode = await readFile(join(docsRoot, 'sheetjs-formula-result-not-updating-node.md'), 'utf8')
 const geminiExtensionJson = await readFile(join(repoRoot, 'gemini-extension.json'), 'utf8')
 const scopedWorkpaperPackageJson = await readFile(join(repoRoot, 'packages', 'workpaper', 'package.json'), 'utf8')
@@ -463,6 +465,8 @@ requireIncludes(readme, 'docs/why-use-bilig.md', 'README.md')
 await requireAgentEvaluatorDiscovery({ docsRoot, readme, index, llms, runtimePackageVersion: scopedWorkpaperPackageVersion })
 requireIncludes(llms, '## agent handoff prompt', 'docs/llms.txt')
 requireIncludes(llms, 'agent start: https://proompteng.github.io/bilig/agent-start.txt', 'docs/llms.txt')
+requireIncludes(llms, 'well-known llms.txt: https://proompteng.github.io/bilig/.well-known/llms.txt', 'docs/llms.txt')
+requireIncludes(llms, 'well-known llms-full.txt: https://proompteng.github.io/bilig/.well-known/llms-full.txt', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/AGENTS.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent-start.txt', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent.json', 'docs/llms.txt')
@@ -663,6 +667,18 @@ if (Reflect.get(parsedAgentJson, 'agent_start') !== 'https://proompteng.github.i
 if (Reflect.get(parsedAgentJson, 'well_known_agent_start') !== 'https://proompteng.github.io/bilig/.well-known/agent-start.txt') {
   throw new Error('docs/.well-known/agent.json must advertise the well-known compact agent start text file')
 }
+if (Reflect.get(parsedAgentJson, 'well_known_llms_txt') !== 'https://proompteng.github.io/bilig/.well-known/llms.txt') {
+  throw new Error('docs/.well-known/agent.json must advertise the well-known compact llms.txt mirror')
+}
+if (Reflect.get(parsedAgentJson, 'well_known_llms_full') !== 'https://proompteng.github.io/bilig/.well-known/llms-full.txt') {
+  throw new Error('docs/.well-known/agent.json must advertise the well-known full llms mirror')
+}
+if (wellKnownLlms !== llms) {
+  throw new Error('docs/.well-known/llms.txt must match docs/llms.txt')
+}
+if (wellKnownLlmsFull !== llmsFull) {
+  throw new Error('docs/.well-known/llms-full.txt must match docs/llms-full.txt')
+}
 const parsedAgentJsonMcp = Reflect.get(parsedAgentJson, 'mcp')
 if (typeof parsedAgentJsonMcp !== 'object' || parsedAgentJsonMcp === null || Array.isArray(parsedAgentJsonMcp)) {
   throw new Error('docs/.well-known/agent.json must define an mcp object')
@@ -771,6 +787,10 @@ if (!Array.isArray(agentJsonPublicEntrypoints) || !agentJsonPublicEntrypoints.ev
   throw new Error('docs/.well-known/agent.json public_entrypoints must be a string array')
 }
 for (const requiredEntrypoint of [
+  'https://proompteng.github.io/bilig/llms.txt',
+  'https://proompteng.github.io/bilig/llms-full.txt',
+  'https://proompteng.github.io/bilig/.well-known/llms.txt',
+  'https://proompteng.github.io/bilig/.well-known/llms-full.txt',
   'https://proompteng.github.io/bilig/agent-start.txt',
   'https://proompteng.github.io/bilig/.well-known/agent-start.txt',
   'https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html',
