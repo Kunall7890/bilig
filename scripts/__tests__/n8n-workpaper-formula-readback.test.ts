@@ -151,12 +151,23 @@ describe('n8n WorkPaper formula readback workflow', () => {
     expect(getRequiredCode(workflow, 'Verify formula proof')).toContain('proof.verified !== true')
     expect(getRequiredCode(workflow, 'Apply approval policy')).toContain("decision = expectedArrOk && targetGapOk ? 'approve' : 'review'")
     expect(getRequiredCode(workflow, 'Write audit summary')).toContain("package: '@bilig/workpaper'")
-    expect(
-      workflow.nodes
-        .filter((node) => node.type === 'n8n-nodes-base.stickyNote')
-        .map((node) => readStringParameter(node, 'content'))
-        .join('\n\n'),
-    ).not.toContain('@[youtube](videoId)')
+    expect(getRequiredCode(workflow, 'Write audit summary')).toContain('nextStep')
+
+    const stickyNotes = workflow.nodes
+      .filter((node) => node.type === 'n8n-nodes-base.stickyNote')
+      .map((node) => readStringParameter(node, 'content'))
+    const stickyText = stickyNotes.join('\n\n')
+    expect(stickyNotes).toHaveLength(5)
+    for (const required of [
+      'Expected result: at least one approved record and one review record.',
+      'For private forecast, quote, payout, or approval workbooks',
+      'Why this is more than a smoke test',
+      'What to customize',
+      'Output records',
+    ]) {
+      expect(stickyText).toContain(required)
+    }
+    expect(stickyText).not.toContain('@[youtube](videoId)')
   })
 
   it('keeps the community-node package metadata aligned with n8n install expectations', () => {
@@ -226,6 +237,7 @@ describe('n8n WorkPaper formula readback workflow', () => {
       'bilig-workpaper-formula-readback.n8n.json',
       'bilig-workpaper-formula-readback.self-hosted.n8n.json',
       '@bilig/n8n-nodes-workpaper',
+      'five\nsticky notes',
       'POST https://bilig.proompteng.ai/api/workpaper/n8n/forecast',
       '"verdict": "verified"',
       '"beforeExpectedArr": 60000',

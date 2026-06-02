@@ -135,7 +135,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return $input.all().map((item) => {\n  const row = item.json;\n\n  return {\n    json: {\n      ...row,\n      auditSummary: `${row.status}: ${row.account} ${row.editedCell} expected ARR ${row.expectedArr} target gap ${row.targetGap}`,\n      github: 'https://github.com/proompteng/bilig',\n      package: '@bilig/workpaper'\n    }\n  };\n});"
+        "jsCode": "return $input.all().map((item) => {\n  const row = item.json;\n\n  return {\n    json: {\n      ...row,\n      auditSummary: `${row.status}: ${row.account} ${row.editedCell} expected ARR ${row.expectedArr} target gap ${row.targetGap}`,\n      nextStep: row.status === 'approved'\n        ? 'Send this record to CRM, Slack, or a quote approval system.'\n        : 'Route this record to the deal owner before the workflow continues.',\n      github: 'https://github.com/proompteng/bilig',\n      package: '@bilig/workpaper'\n    }\n  };\n});"
       },
       "id": "f25ae7ad-661f-40d2-948a-0f297dcba8b4",
       "name": "Write audit summary",
@@ -145,7 +145,7 @@
     },
     {
       "parameters": {
-        "content": "## Forecast approval guard\n\nThis is the template-library version: multiple forecast requests, policy checks, branching, and an audit record. Bilig is the formula-readback step that proves the spreadsheet output is fresh before the workflow makes a decision.",
+        "content": "## Forecast approval guard\n\nRun three forecast changes through one approval path. n8n owns validation, branching, and the final audit record. Bilig owns the workbook step: edit a cell, recalculate stored formulas, and return fresh readback before the decision runs.\n\nExpected result: at least one approved record and one review record.",
         "height": 280,
         "width": 480,
         "color": 4
@@ -158,7 +158,7 @@
     },
     {
       "parameters": {
-        "content": "## Private data boundary\n\nThe default endpoint is a public demo for review. For production or private workbook data, run Bilig in your own network and change `baseUrl` in `Load forecast requests`.",
+        "content": "## Private data boundary\n\nThe default endpoint is a public demo for review. It receives only the sheet name, cell address, and new value.\n\nFor private forecast, quote, payout, or approval workbooks, run Bilig on your own network and change `baseUrl` in `Load forecast requests`.",
         "height": 240,
         "width": 460,
         "color": 5
@@ -171,7 +171,7 @@
     },
     {
       "parameters": {
-        "content": "## Reviewer path\n\nThis workflow is intentionally more than a beginner quickstart: it shows decision logic, error gates, and evidence that can be passed to downstream systems.\n\nIf a tutorial video is added later, use a real YouTube video id in the n8n embed.",
+        "content": "## Why this is more than a smoke test\n\nThis canvas has three input rows, row validation, one formula readback call per row, hard failure on stale results, an IF branch, approval/review output records, and a final audit summary.\n\nIt is meant for the template library. The smaller Bilig workflow is only a quickstart.",
         "height": 260,
         "width": 500,
         "color": 6
@@ -181,6 +181,32 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [1660, -360]
+    },
+    {
+      "parameters": {
+        "content": "## What to customize\n\nChange the rows in `Load forecast requests`:\n\n- `account` and `owner` identify the request.\n- `address` chooses the workbook input cell.\n- `value` is the proposed change.\n- `minExpectedArr` and `maxTargetGap` are the approval policy.\n\nKeep the verification checks unless you intentionally trust stale cached formula values.",
+        "height": 320,
+        "width": 520,
+        "color": 3
+      },
+      "id": "62bb2c8b-f9df-48e7-9c8e-282a76a28426",
+      "name": "Customization guide",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [520, 260]
+    },
+    {
+      "parameters": {
+        "content": "## Output records\n\nApproved rows emit:\n\n`status`, `requestId`, `account`, `expectedArr`, `targetGap`, and verification checks.\n\nReview rows keep the failed policy flags and a note for the owner. Replace `Write audit summary` with Slack, Gmail, HubSpot, Airtable, or your queue once the sample output looks right.",
+        "height": 300,
+        "width": 560,
+        "color": 7
+      },
+      "id": "f676a33b-d669-4ac2-95e7-201b113060e2",
+      "name": "Output guide",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1340, 260]
     }
   ],
   "pinData": {},

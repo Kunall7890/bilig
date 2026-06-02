@@ -19,12 +19,12 @@ depends on n8n accepting the package through verified-node review.
 
 There are four importable workflow files:
 
-| File                                                    | Default endpoint                                                 | Use it when                                                                                |
-| ------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `bilig-workpaper-forecast-approval-guard.n8n.json`      | `https://bilig.proompteng.ai`                                    | You need a stronger template-library candidate with multiple requests, branching, and audit output. |
-| `bilig-workpaper-native-node.n8n.json`                  | `https://bilig.proompteng.ai`                                    | You want to test the actual Bilig WorkPaper community node after installing it.            |
-| `bilig-workpaper-formula-readback.n8n.json`             | `https://bilig.proompteng.ai`                                    | You want the fastest hosted demo before deploying anything.                                |
-| `bilig-workpaper-formula-readback.self-hosted.n8n.json` | `http://host.docker.internal:4321`, then `http://localhost:4321` | You want the formula readback step to stay inside your own local or self-hosted Bilig app. |
+| File                                                    | Default endpoint                                                 | Use it when                                                                                                  |
+| ------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `bilig-workpaper-forecast-approval-guard.n8n.json`      | `https://bilig.proompteng.ai`                                    | You need the template-library candidate with multiple requests, branching, reviewer notes, and audit output. |
+| `bilig-workpaper-native-node.n8n.json`                  | `https://bilig.proompteng.ai`                                    | You want to test the actual Bilig WorkPaper community node after installing it.                              |
+| `bilig-workpaper-formula-readback.n8n.json`             | `https://bilig.proompteng.ai`                                    | You want the fastest hosted demo before deploying anything.                                                  |
+| `bilig-workpaper-formula-readback.self-hosted.n8n.json` | `http://host.docker.internal:4321`, then `http://localhost:4321` | You want the formula readback step to stay inside your own local or self-hosted Bilig app.                   |
 
 ## Template-library candidate
 
@@ -37,7 +37,9 @@ bilig-workpaper-forecast-approval-guard.n8n.json
 It runs three forecast requests, validates input rows, calls Bilig for fresh
 formula readback, applies an approval policy, branches approved and review
 records, and writes an audit summary. That is the reviewer-facing artifact; the
-smaller hosted workflow is only a quick smoke test.
+smaller hosted workflow is only a quick smoke test. The canvas includes five
+sticky notes that explain the use case, data boundary, customization points,
+template-review shape, and downstream output records.
 
 ## Native community node
 
@@ -91,9 +93,9 @@ The route edits one input cell in a demo forecast WorkPaper, recalculates the
 summary formulas, exports and restores the WorkPaper JSON, and returns proof
 that the formula output changed and survived restore.
 
-Both workflow files include sticky notes with the setup context, data boundary,
-and formula-readback proof criteria so the import is ready for n8n's template
-review path.
+The template-library candidate includes richer sticky notes with the setup
+context, data boundary, customization points, and downstream records. The
+quickstart workflows keep their notes shorter on purpose.
 
 ## Import
 
