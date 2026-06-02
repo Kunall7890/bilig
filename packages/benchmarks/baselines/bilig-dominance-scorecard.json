@@ -571,7 +571,7 @@
       "currentEvidence": [
         "canonical formula closure is 431/431 (100%)",
         "Office-listed formula breadth is 519/519 (100%)",
-        "tracked formula breadth is 545/545 (100%)",
+        "tracked formula breadth is 546/546 (100%)",
         "strategic canonical rows are production-routed; open canonical rows: 0",
         "committed calculation semantics scorecard covers 431/431 canonical fixtures and 12/12 workbook-semantics fixtures",
         "live Microsoft Excel calculation scorecard passes 36/36 required cases on Excel 16.108.2",

@@ -534,4 +534,5 @@ export const builtinManifest: readonly ProtocolBuiltinManifestEntry[] = [
   { id: 'Query', name: 'QUERY', supportsWasm: false },
   { id: 'Sortn', name: 'SORTN', supportsWasm: false },
   { id: 'Countuniqueifs', name: 'COUNTUNIQUEIFS', supportsWasm: false },
+  { id: 'Arrayformula', name: 'ARRAYFORMULA', supportsWasm: false },
 ]

@@ -78,6 +78,12 @@ export function evaluateArraySpecialCall(
   deps: ArraySpecialCallDeps,
 ): StackValue | undefined {
   switch (callee) {
+    case 'ARRAYFORMULA': {
+      if (rawArgs.length !== 1) {
+        return deps.stackScalar(deps.error(ErrorCode.Value))
+      }
+      return rawArgs[0]!
+    }
     case 'EXPAND': {
       if (rawArgs.length < 2 || rawArgs.length > 4) {
         return deps.stackScalar(deps.error(ErrorCode.Value))

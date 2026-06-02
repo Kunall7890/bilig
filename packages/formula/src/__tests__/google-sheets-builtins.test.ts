@@ -285,6 +285,8 @@ describe('Google Sheets compatibility builtins', () => {
   })
 
   it('evaluates Google Sheets helpers through the JS plan path', () => {
+    expect(compileFormula('ARRAYFORMULA(A1:B2)')).toMatchObject({ mode: 0, producesSpill: true })
+    expect(compileFormula('ARRAYFORMULA(A1:A2&"-lead")')).toMatchObject({ mode: 0, producesSpill: true })
     expect(compileFormula('ARRAY_CONSTRAIN(A1:B2,1,2)')).toMatchObject({ mode: 0, producesSpill: true })
     expect(compileFormula('FLATTEN(A1:B2)')).toMatchObject({ mode: 0, producesSpill: true })
     expect(compileFormula('QUERY(A1:C4,"select A,C where B >= 8",1)')).toMatchObject({ mode: 0, producesSpill: true })
@@ -295,6 +297,20 @@ describe('Google Sheets compatibility builtins', () => {
     expect(evaluatePlan(lowerToPlan(parseFormula('JOIN("|",A1:B1)')), context)).toEqual(text('north|south'))
     expect(evaluatePlan(lowerToPlan(parseFormula('COUNTUNIQUE(A1:B2)')), context)).toEqual(num(2))
     expect(evaluatePlan(lowerToPlan(parseFormula('COUNTUNIQUEIFS(A1:A2,B1:B2,"south")')), context)).toEqual(num(1))
+    expect(evaluatePlanResult(lowerToPlan(parseFormula('ARRAYFORMULA(A1:B2)')), context)).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 2,
+      values: [text('north'), text('south'), text('north'), empty()],
+    })
+    expect(evaluatePlanResult(lowerToPlan(parseFormula('ARRAYFORMULA(A1:A2&"-lead")')), context)).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 1,
+      values: [text('north-lead'), text('north-lead')],
+    })
+    expect(evaluatePlan(lowerToPlan(parseFormula('ARRAYFORMULA()')), context)).toEqual(err(ErrorCode.Value))
+    expect(evaluatePlan(lowerToPlan(parseFormula('ARRAYFORMULA(A1,A2)')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlanResult(lowerToPlan(parseFormula('ARRAY_CONSTRAIN(A1:B2,1,2)')), context)).toEqual({
       kind: 'array',
       rows: 1,

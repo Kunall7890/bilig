@@ -129,6 +129,7 @@ describe('formula inventory', () => {
       'ROMAN',
       'SKEWP',
       'COUNTUNIQUEIFS',
+      'ARRAYFORMULA',
     ]
 
     for (const name of factoryRegisteredFunctions) {

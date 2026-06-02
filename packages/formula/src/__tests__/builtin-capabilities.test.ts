@@ -728,6 +728,11 @@ describe('builtin capabilities', () => {
       jsStatus: 'implemented',
       wasmStatus: 'not-started',
     })
+    expect(getBuiltinCapability('ARRAYFORMULA')).toMatchObject({
+      category: 'dynamic-array',
+      jsStatus: 'special-js-only',
+      wasmStatus: 'not-started',
+    })
     expect(getBuiltinCapability('BASE')).toMatchObject({
       category: 'math',
       jsStatus: 'implemented',

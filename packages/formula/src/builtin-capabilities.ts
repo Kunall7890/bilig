@@ -28,6 +28,7 @@ export interface BuiltinCapability {
 }
 
 const jsSpecialBuiltinNames = new Set([
+  'ARRAYFORMULA',
   'LET',
   'LAMBDA',
   'MAKEARRAY',
@@ -802,6 +803,7 @@ const statisticalBuiltinNames = new Set([
   'TRIMMEAN',
 ])
 const dynamicArrayBuiltinNames = new Set([
+  'ARRAYFORMULA',
   'SEQUENCE',
   'EXPAND',
   'ARRAY_CONSTRAIN',

@@ -2,17 +2,17 @@
 // Source: scripts/gen-formula-inventory.ts
 
 export const formulaInventorySummary = {
-  total: 545,
+  total: 546,
   odfMandatory: 59,
   officeListed: 519,
   officeListedRegisteredInCodebase: 519,
   overlap: 58,
   odfOnly: 1,
   officeOnly: 461,
-  registeredInCodebase: 545,
+  registeredInCodebase: 546,
   missingInCodebase: 0,
   placeholders: 0,
-  protocolBuiltins: 523,
+  protocolBuiltins: 524,
   runtimeRegisteredMissingProtocol: 0,
 } as const
 
@@ -210,6 +210,20 @@ export const formulaInventory = [
     protocolSupportsWasm: true,
     jsStatus: 'implemented',
     wasmStatus: 'production',
+    placeholder: false,
+    registeredInCodebase: true,
+  },
+  {
+    name: 'ARRAYFORMULA',
+    odfStatus: 'Google Sheets compatibility',
+    inOfficeList: false,
+    deterministic: 'deterministic',
+    runtimeStatus: 'implemented',
+    protocolId: 534,
+    protocolName: 'ARRAYFORMULA',
+    protocolSupportsWasm: false,
+    jsStatus: 'special-js-only',
+    wasmStatus: 'not-started',
     placeholder: false,
     registeredInCodebase: true,
   },

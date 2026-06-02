@@ -46,6 +46,13 @@ const context = {
 
 describe('js evaluator array specials', () => {
   it('evaluates spill-oriented array helpers', () => {
+    expect(evaluatePlanResult(lowerToPlan(parseFormula('ARRAYFORMULA(A1:B2)')), context)).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 2,
+      values: [number(2), number(3), { tag: ValueTag.Boolean, value: true }, empty()],
+    })
+
     expect(evaluatePlanResult(lowerToPlan(parseFormula('TEXTSPLIT("Ab|aB","|","",FALSE(),1)')), context)).toEqual({
       kind: 'array',
       rows: 1,
@@ -143,6 +150,8 @@ describe('js evaluator array specials', () => {
     expect(evaluatePlan(lowerToPlan(parseFormula('TEXTSPLIT("alpha",",","",TRUE(),SEQUENCE(2))')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('SPLIT("alpha","")')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('SPLIT("alpha",",",SEQUENCE(2))')), context)).toEqual(err(ErrorCode.Value))
+    expect(evaluatePlan(lowerToPlan(parseFormula('ARRAYFORMULA()')), context)).toEqual(err(ErrorCode.Value))
+    expect(evaluatePlan(lowerToPlan(parseFormula('ARRAYFORMULA(A1,A2)')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('EXPAND(A1:B2,1,1)')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('EXPAND(A1:B2,"x",3)')), context)).toEqual(err(ErrorCode.Value))
     expect(evaluatePlan(lowerToPlan(parseFormula('EXPAND(A1:B2,SEQUENCE(2),3)')), context)).toEqual(err(ErrorCode.Value))

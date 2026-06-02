@@ -72,6 +72,11 @@
       "inOfficeList": true
     },
     {
+      "name": "ARRAYFORMULA",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
+    },
+    {
       "name": "ARRAY_CONSTRAIN",
       "odfStatus": "Google Sheets compatibility",
       "inOfficeList": false
