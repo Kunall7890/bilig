@@ -26,6 +26,48 @@ Pick the door that matches the state you own:
 | Coding agent or MCP client | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`         | tool discovery, cell mutation, formula readback, JSON export, restart proof, and `verified: true`. |
 | New project                | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                        | a starter with `AGENTS.md`, MCP config, and `npm run agent:verify` wired to the same proof loop.   |
 
+## What Success Looks Like
+
+Run the agent proof without cloning the repo:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json
+```
+
+The useful output is not a write-call status. It is readback proof:
+
+```json
+{
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "agent-mcp",
+  "verified": true,
+  "packageVersions": {
+    "@bilig/workpaper": "0.153.0"
+  },
+  "evidence": {
+    "scenario": "revenue-plan",
+    "editedCell": "Deals!C2",
+    "readbackRange": "Summary!B2:B8",
+    "after": {
+      "totalRevenue": 36900,
+      "westCustomers": 38
+    },
+    "checks": {
+      "totalRevenueRecalculated": true,
+      "sumifReadbackChanged": true,
+      "xlookupReadbackStable": true,
+      "filterSpillUpdated": true,
+      "persistedToDisk": true,
+      "restartReadbackMatchesAfter": true
+    }
+  }
+}
+```
+
+If that is the contract your service or agent needed, star the repo so you can
+find it again: <https://github.com/proompteng/bilig/stargazers>. Watch releases
+if this is close to production: <https://github.com/proompteng/bilig/subscription>.
+
 For a richer agent check, add `--scenario revenue-plan` to the `agent-mcp`
 evaluator. It proves `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression,
 JSON persistence, and restart readback.
@@ -36,8 +78,7 @@ That proves the formula fails closed with an adapter diagnostic, then verifies a
 local synthetic adapter readback. It does not call Google Sheets.
 
 If one of those matches your workflow, keep Bilig nearby:
-<https://github.com/proompteng/bilig>. Watch releases if this is close to a
-production dependency: <https://github.com/proompteng/bilig/subscription>.
+<https://github.com/proompteng/bilig>.
 
 Framework examples live in the repo instead of this first screen. Start with
 the closest runtime:

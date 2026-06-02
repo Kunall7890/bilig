@@ -28,6 +28,21 @@ export function requirePackageCliSurfaceDiscovery(args: {
   requireIncludes(args.scopedWorkpaperPackageReadme, 'bilig-evaluate --door agent-mcp --json', 'packages/workpaper/README.md')
   requireIncludes(args.scopedWorkpaperPackageReadme, 'headless spreadsheet formulas', 'packages/workpaper/README.md')
   requireIncludes(args.scopedWorkpaperPackageReadme, 'bilig-evaluator.v1', 'packages/workpaper/README.md')
+  requireIncludes(args.scopedWorkpaperPackageReadme, '## What Success Looks Like', 'packages/workpaper/README.md')
+  requireIncludes(
+    args.scopedWorkpaperPackageReadme,
+    'bilig-evaluate --door agent-mcp --scenario revenue-plan --json',
+    'packages/workpaper/README.md',
+  )
+  requireIncludes(args.scopedWorkpaperPackageReadme, '"readbackRange": "Summary!B2:B8"', 'packages/workpaper/README.md')
+  requireIncludes(args.scopedWorkpaperPackageReadme, '"totalRevenueRecalculated": true', 'packages/workpaper/README.md')
+  requireIncludes(args.scopedWorkpaperPackageReadme, '"sumifReadbackChanged": true', 'packages/workpaper/README.md')
+  requireIncludes(args.scopedWorkpaperPackageReadme, '"xlookupReadbackStable": true', 'packages/workpaper/README.md')
+  requireIncludes(args.scopedWorkpaperPackageReadme, '"filterSpillUpdated": true', 'packages/workpaper/README.md')
+  requireIncludes(args.scopedWorkpaperPackageReadme, '"persistedToDisk": true', 'packages/workpaper/README.md')
+  requireIncludes(args.scopedWorkpaperPackageReadme, '"restartReadbackMatchesAfter": true', 'packages/workpaper/README.md')
+  requireIncludes(args.scopedWorkpaperPackageReadme, 'https://github.com/proompteng/bilig/stargazers', 'packages/workpaper/README.md')
+  requireIncludes(args.scopedWorkpaperPackageReadme, 'https://github.com/proompteng/bilig/subscription', 'packages/workpaper/README.md')
   requireIncludes(args.scopedWorkpaperPackageReadme, 'Use `bilig-mcp-challenge --json` only', 'packages/workpaper/README.md')
 
   requireIncludes(args.xlsxRecalcPackageJson, '"bilig-evaluate": "./bin/bilig-evaluate.js"', 'packages/xlsx-formula-recalc/package.json')
