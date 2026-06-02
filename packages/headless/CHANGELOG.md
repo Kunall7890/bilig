@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.150.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.149.0
+- Manual override: no
+
+## Features
+- feat(formula): recognize Sheets import functions (3e61e0b7)
+
 ## 0.149.0
 
 - Release type: minor
