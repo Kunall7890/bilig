@@ -462,7 +462,9 @@ requireIncludes(readme, 'acceptance commands for first patches.', 'README.md')
 requireIncludes(readme, 'docs/why-use-bilig.md', 'README.md')
 await requireAgentEvaluatorDiscovery({ docsRoot, readme, index, llms, runtimePackageVersion: scopedWorkpaperPackageVersion })
 requireIncludes(llms, '## agent handoff prompt', 'docs/llms.txt')
+requireIncludes(llms, 'agent start: https://proompteng.github.io/bilig/agent-start.txt', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/AGENTS.md', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent-start.txt', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent.json', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/agent.json', 'docs/llms.txt')
 requireIncludes(llms, skillManifestUrl, 'docs/llms.txt')
@@ -655,6 +657,12 @@ requireAgentJsonDiscoveryContract({
   skillManifestUrl,
   workpaperPackageSpec,
 })
+if (Reflect.get(parsedAgentJson, 'agent_start') !== 'https://proompteng.github.io/bilig/agent-start.txt') {
+  throw new Error('docs/.well-known/agent.json must advertise the compact agent start text file')
+}
+if (Reflect.get(parsedAgentJson, 'well_known_agent_start') !== 'https://proompteng.github.io/bilig/.well-known/agent-start.txt') {
+  throw new Error('docs/.well-known/agent.json must advertise the well-known compact agent start text file')
+}
 const parsedAgentJsonMcp = Reflect.get(parsedAgentJson, 'mcp')
 if (typeof parsedAgentJsonMcp !== 'object' || parsedAgentJsonMcp === null || Array.isArray(parsedAgentJsonMcp)) {
   throw new Error('docs/.well-known/agent.json must define an mcp object')
@@ -715,6 +723,19 @@ if (
     (capability) =>
       typeof capability === 'object' &&
       capability !== null &&
+      Reflect.get(capability, 'name') === 'agent-start' &&
+      Reflect.get(capability, 'url') === 'https://proompteng.github.io/bilig/agent-start.txt' &&
+      Reflect.get(capability, 'well_known_url') === 'https://proompteng.github.io/bilig/.well-known/agent-start.txt',
+  )
+) {
+  throw new Error('docs/.well-known/agent.json must advertise the compact agent-start capability')
+}
+if (
+  !Array.isArray(agentJsonCapabilities) ||
+  !agentJsonCapabilities.some(
+    (capability) =>
+      typeof capability === 'object' &&
+      capability !== null &&
       Reflect.get(capability, 'name') === 'file-backed-workpaper-mcp' &&
       Reflect.get(capability, 'server_card') === 'https://proompteng.github.io/bilig/.well-known/mcp/server-card.json',
   )
@@ -750,6 +771,8 @@ if (!Array.isArray(agentJsonPublicEntrypoints) || !agentJsonPublicEntrypoints.ev
   throw new Error('docs/.well-known/agent.json public_entrypoints must be a string array')
 }
 for (const requiredEntrypoint of [
+  'https://proompteng.github.io/bilig/agent-start.txt',
+  'https://proompteng.github.io/bilig/.well-known/agent-start.txt',
   'https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html',
   'https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html',
   'https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html',

@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { agentNotAFitBoundaries, mcpPromptNames } from './agent-discovery-constants.ts'
-import { buildDocsAgentInstructions } from './agent-discovery-agent-instructions.ts'
+import { buildDocsAgentInstructions, buildDocsAgentStart } from './agent-discovery-agent-instructions.ts'
 import { buildLlmsFullSources } from './agent-discovery-llms-full-sources.ts'
 import { mcpServerCardManifest } from './agent-discovery-mcp-card.ts'
 import { buildWorkpaperPackageAgentInstructions, buildWorkpaperPackageSkillDocument } from './agent-discovery-package-docs.ts'
@@ -53,6 +53,17 @@ function parsePackageVersion(packageJson: string): string {
 }
 
 const docsAgentInstructions = buildDocsAgentInstructions({
+  mcpbReleaseAssetUrl,
+  mcpbReleaseChecksumUrl,
+  remoteMcpEndpoint,
+  remoteMcpServerCard,
+  siteRoot,
+  skillDiscoveryRoot,
+  skillManifestUrl,
+  workpaperPackageSpec,
+})
+
+const docsAgentStart = buildDocsAgentStart({
   mcpbReleaseAssetUrl,
   mcpbReleaseChecksumUrl,
   remoteMcpEndpoint,
@@ -485,6 +496,8 @@ function agentJsonManifest(): string {
       contact: `${repositoryUrl}/discussions/new?category=general`,
       llms_txt: `${siteRoot}/llms.txt`,
       llms_full: `${siteRoot}/llms-full.txt`,
+      agent_start: `${siteRoot}/agent-start.txt`,
+      well_known_agent_start: `${siteRoot}/.well-known/agent-start.txt`,
       skill_file: skillManifestUrl,
       agent_instructions: `${siteRoot}/AGENTS.md`,
       adoption_kit: `${siteRoot}/agent-adoption-kit.html`,
@@ -543,6 +556,13 @@ function agentJsonManifest(): string {
         prompts: ['edit_and_verify_workpaper', 'debug_workpaper_formula'],
       },
       capabilities: [
+        {
+          name: 'agent-start',
+          type: 'plain-text-entrypoint',
+          url: `${siteRoot}/agent-start.txt`,
+          well_known_url: `${siteRoot}/.well-known/agent-start.txt`,
+          challenge_command: `npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json`,
+        },
         {
           name: 'agent-adoption-kit',
           type: 'docs-entrypoint',
@@ -675,6 +695,8 @@ function agentJsonManifest(): string {
       },
       public_entrypoints: [
         `${siteRoot}/`,
+        `${siteRoot}/agent-start.txt`,
+        `${siteRoot}/.well-known/agent-start.txt`,
         `${siteRoot}/why-use-bilig.html`,
         `${siteRoot}/eval-xlsx-cache-doctor.html`,
         `${siteRoot}/eval-xlsx-recalc.html`,
@@ -751,6 +773,7 @@ async function buildLlmsFull(): Promise<string> {
     `Site: ${siteRoot}/`,
     `npm: https://www.npmjs.com/package/@bilig/workpaper`,
     `npm workbook: https://www.npmjs.com/package/@bilig/workbook`,
+    `Agent start: ${siteRoot}/agent-start.txt`,
     `Agent instructions: ${siteRoot}/AGENTS.md`,
     `Skill manifest: ${skillManifestUrl}`,
     `Compact index: ${siteRoot}/llms.txt`,
@@ -790,11 +813,13 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
   })
   return [
     ['docs/AGENTS.md', docsAgentInstructions],
+    ['docs/agent-start.txt', docsAgentStart],
     ['docs/agent.json', agentJson],
     ['docs/skill.md', skillDocument],
     ['docs/skill.txt', skillDocument],
     ['docs/llms-full.txt', llmsFull],
     ['docs/.well-known/agent.json', agentJson],
+    ['docs/.well-known/agent-start.txt', docsAgentStart],
     ['docs/.well-known/agent-skills/index.json', skillIndexJson()],
     ['docs/.well-known/agent-skills/bilig-workpaper/SKILL.md', skillDocument],
     ['docs/.well-known/agent-skills/bilig-workpaper/SKILL.txt', skillDocument],

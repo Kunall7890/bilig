@@ -9,6 +9,8 @@
   "contact": "https://github.com/proompteng/bilig/discussions/new?category=general",
   "llms_txt": "https://proompteng.github.io/bilig/llms.txt",
   "llms_full": "https://proompteng.github.io/bilig/llms-full.txt",
+  "agent_start": "https://proompteng.github.io/bilig/agent-start.txt",
+  "well_known_agent_start": "https://proompteng.github.io/bilig/.well-known/agent-start.txt",
   "skill_file": "https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt",
   "agent_instructions": "https://proompteng.github.io/bilig/AGENTS.md",
   "adoption_kit": "https://proompteng.github.io/bilig/agent-adoption-kit.html",
@@ -120,6 +122,13 @@
     "prompts": ["edit_and_verify_workpaper", "debug_workpaper_formula"]
   },
   "capabilities": [
+    {
+      "name": "agent-start",
+      "type": "plain-text-entrypoint",
+      "url": "https://proompteng.github.io/bilig/agent-start.txt",
+      "well_known_url": "https://proompteng.github.io/bilig/.well-known/agent-start.txt",
+      "challenge_command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json"
+    },
     {
       "name": "agent-adoption-kit",
       "type": "docs-entrypoint",
@@ -266,6 +275,8 @@
   },
   "public_entrypoints": [
     "https://proompteng.github.io/bilig/",
+    "https://proompteng.github.io/bilig/agent-start.txt",
+    "https://proompteng.github.io/bilig/.well-known/agent-start.txt",
     "https://proompteng.github.io/bilig/why-use-bilig.html",
     "https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html",
     "https://proompteng.github.io/bilig/eval-xlsx-recalc.html",

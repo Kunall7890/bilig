@@ -1,0 +1,55 @@
+# Bilig agent start
+
+Use this when a coding agent is about to drive Excel, LibreOffice, Google Sheets, or a browser grid for workbook-shaped logic.
+
+## First command
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+Use Bilig when the task needs exact workbook cells, formula recalculation, readback, and saved state. Do not use a spreadsheet UI just to learn whether a formula changed.
+
+## Provider-backed formulas
+
+If the workbook uses `IMPORTRANGE`, `GOOGLEFINANCE`, `IMPORTDATA`, `IMPORTFEED`, `IMPORTHTML`, `IMPORTXML`, `FILTERXML`, `STOCKHISTORY`, or another provider-backed formula, run:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
+```
+
+Without an adapter, provider-backed formulas should fail closed with `#BLOCKED!` instead of pretending the result is available.
+
+## Evidence to return
+
+A useful answer includes:
+
+- `schemaVersion: "bilig-evaluator.v1"`
+- `door: "agent-mcp"`
+- `verified: true`
+- `editedCell`
+- `before`
+- `after`
+- `afterRestore` or `afterRestart`
+- `persistedDocumentBytes` or exported WorkPaper JSON size
+- `limitations`
+
+Do not claim success from a write call alone. Read the dependent calculated cell after the edit, export or serialize the WorkPaper, restore or restart when file state matters, and report the blocker if readback fails.
+
+## Local MCP server
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
+```
+
+Expected tools: `list_sheets`, `read_range`, `read_cell`, `set_cell_contents`, `set_cell_contents_and_readback`, `get_cell_display_value`, `export_workpaper_document`, and `validate_formula`.
+
+## More context
+
+- Compact map: https://proompteng.github.io/bilig/llms.txt
+- Full agent context: https://proompteng.github.io/bilig/llms-full.txt
+- Agent instructions: https://proompteng.github.io/bilig/AGENTS.md
+- Agent manifest: https://proompteng.github.io/bilig/.well-known/agent.json
+- Agent adoption kit: https://proompteng.github.io/bilig/agent-adoption-kit.html
+- Skill discovery: `npx --yes skills@latest add https://bilig.proompteng.ai --list`
+- Skill manifest: https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt

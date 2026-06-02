@@ -27,28 +27,29 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 
 ## Discovery Order
 
-1. Read \`${siteRoot}/llms.txt\` for the compact map.
-2. Read \`${siteRoot}/llms-full.txt\` when you need enough context to implement a workflow without searching the whole site.
-3. Use \`${siteRoot}/agent-adoption-kit.html\` when you need the shortest no-key install, MCP proof, and workbook task.
-4. If your host can install skills from a well-known endpoint, run
+1. Read \`${siteRoot}/agent-start.txt\` for the one-command WorkPaper readback contract.
+2. Read \`${siteRoot}/llms.txt\` for the compact map.
+3. Read \`${siteRoot}/llms-full.txt\` when you need enough context to implement a workflow without searching the whole site.
+4. Use \`${siteRoot}/agent-adoption-kit.html\` when you need the shortest no-key install, MCP proof, and workbook task.
+5. If your host can install skills from a well-known endpoint, run
    \`npx --yes skills@latest add ${skillDiscoveryRoot} --list\`.
-5. Read \`${skillManifestUrl}\` when your agent supports skill manifests.
-6. If your host can install skills from GitHub, run
+6. Read \`${skillManifestUrl}\` when your agent supports skill manifests.
+7. If your host can install skills from GitHub, run
    \`npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list\`.
-7. If you are using GitHub Copilot or VS Code agent mode in a cloned checkout,
+8. If you are using GitHub Copilot or VS Code agent mode in a cloned checkout,
    use \`.github/copilot-instructions.md\`,
    \`.github/prompts/bilig-workpaper-proof.prompt.md\`, and
    \`.vscode/mcp.json\`.
-8. If you are inside a cloned Bilig repository with Claude Code, use the
+9. If you are inside a cloned Bilig repository with Claude Code, use the
    project skill at \`.claude/skills/bilig-workpaper/SKILL.md\` or invoke the
    explicit formula-proof command from
    \`.claude/commands/bilig-workpaper-proof.md\`.
-9. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
+10. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
    \`.cursor/rules/bilig-workpaper.mdc\` or
    \`.windsurf/rules/bilig-workpaper.md\`,
    \`.clinerules/bilig-workpaper.md\`, or
    \`.continue/rules/bilig-workpaper.md\`.
-10. Start the MCP server or import \`@bilig/workpaper\` directly.
+11. Start the MCP server or import \`@bilig/workpaper\` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
 demo endpoint at \`${remoteMcpEndpoint}\`. Directory scanners that inspect the
@@ -101,5 +102,66 @@ Use \`WorkPaper.buildFromSheets()\` for hand-authored models, \`setCellContents(
 ## Boundaries
 
 Keep Excel, LibreOffice, Microsoft Graph, or an oracle harness in the loop when the workbook depends on macros, pivots, charts, external links, unsupported functions, locale-specific Excel behavior, or exact desktop UI behavior.
+`
+}
+
+export function buildDocsAgentStart(input: DocsAgentInstructionInput): string {
+  const { siteRoot, skillDiscoveryRoot, skillManifestUrl, workpaperPackageSpec } = input
+
+  return `# Bilig agent start
+
+Use this when a coding agent is about to drive Excel, LibreOffice, Google Sheets, or a browser grid for workbook-shaped logic.
+
+## First command
+
+\`\`\`sh
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
+\`\`\`
+
+Use Bilig when the task needs exact workbook cells, formula recalculation, readback, and saved state. Do not use a spreadsheet UI just to learn whether a formula changed.
+
+## Provider-backed formulas
+
+If the workbook uses \`IMPORTRANGE\`, \`GOOGLEFINANCE\`, \`IMPORTDATA\`, \`IMPORTFEED\`, \`IMPORTHTML\`, \`IMPORTXML\`, \`FILTERXML\`, \`STOCKHISTORY\`, or another provider-backed formula, run:
+
+\`\`\`sh
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
+\`\`\`
+
+Without an adapter, provider-backed formulas should fail closed with \`#BLOCKED!\` instead of pretending the result is available.
+
+## Evidence to return
+
+A useful answer includes:
+
+- \`schemaVersion: "bilig-evaluator.v1"\`
+- \`door: "agent-mcp"\`
+- \`verified: true\`
+- \`editedCell\`
+- \`before\`
+- \`after\`
+- \`afterRestore\` or \`afterRestart\`
+- \`persistedDocumentBytes\` or exported WorkPaper JSON size
+- \`limitations\`
+
+Do not claim success from a write call alone. Read the dependent calculated cell after the edit, export or serialize the WorkPaper, restore or restart when file state matters, and report the blocker if readback fails.
+
+## Local MCP server
+
+\`\`\`sh
+npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
+\`\`\`
+
+Expected tools: \`list_sheets\`, \`read_range\`, \`read_cell\`, \`set_cell_contents\`, \`set_cell_contents_and_readback\`, \`get_cell_display_value\`, \`export_workpaper_document\`, and \`validate_formula\`.
+
+## More context
+
+- Compact map: ${siteRoot}/llms.txt
+- Full agent context: ${siteRoot}/llms-full.txt
+- Agent instructions: ${siteRoot}/AGENTS.md
+- Agent manifest: ${siteRoot}/.well-known/agent.json
+- Agent adoption kit: ${siteRoot}/agent-adoption-kit.html
+- Skill discovery: \`npx --yes skills@latest add ${skillDiscoveryRoot} --list\`
+- Skill manifest: ${skillManifestUrl}
 `
 }

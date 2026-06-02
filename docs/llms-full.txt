@@ -6,6 +6,7 @@ Repository: https://github.com/proompteng/bilig
 Site: https://proompteng.github.io/bilig/
 npm: https://www.npmjs.com/package/@bilig/workpaper
 npm workbook: https://www.npmjs.com/package/@bilig/workbook
+Agent start: https://proompteng.github.io/bilig/agent-start.txt
 Agent instructions: https://proompteng.github.io/bilig/AGENTS.md
 Skill manifest: https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt
 Compact index: https://proompteng.github.io/bilig/llms.txt
@@ -17,28 +18,29 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 
 ## Discovery Order
 
-1. Read `https://proompteng.github.io/bilig/llms.txt` for the compact map.
-2. Read `https://proompteng.github.io/bilig/llms-full.txt` when you need enough context to implement a workflow without searching the whole site.
-3. Use `https://proompteng.github.io/bilig/agent-adoption-kit.html` when you need the shortest no-key install, MCP proof, and workbook task.
-4. If your host can install skills from a well-known endpoint, run
+1. Read `https://proompteng.github.io/bilig/agent-start.txt` for the one-command WorkPaper readback contract.
+2. Read `https://proompteng.github.io/bilig/llms.txt` for the compact map.
+3. Read `https://proompteng.github.io/bilig/llms-full.txt` when you need enough context to implement a workflow without searching the whole site.
+4. Use `https://proompteng.github.io/bilig/agent-adoption-kit.html` when you need the shortest no-key install, MCP proof, and workbook task.
+5. If your host can install skills from a well-known endpoint, run
    `npx --yes skills@latest add https://bilig.proompteng.ai --list`.
-5. Read `https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt` when your agent supports skill manifests.
-6. If your host can install skills from GitHub, run
+6. Read `https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt` when your agent supports skill manifests.
+7. If your host can install skills from GitHub, run
    `npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list`.
-7. If you are using GitHub Copilot or VS Code agent mode in a cloned checkout,
+8. If you are using GitHub Copilot or VS Code agent mode in a cloned checkout,
    use `.github/copilot-instructions.md`,
    `.github/prompts/bilig-workpaper-proof.prompt.md`, and
    `.vscode/mcp.json`.
-8. If you are inside a cloned Bilig repository with Claude Code, use the
+9. If you are inside a cloned Bilig repository with Claude Code, use the
    project skill at `.claude/skills/bilig-workpaper/SKILL.md` or invoke the
    explicit formula-proof command from
    `.claude/commands/bilig-workpaper-proof.md`.
-9. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
+10. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
    `.cursor/rules/bilig-workpaper.mdc` or
    `.windsurf/rules/bilig-workpaper.md`,
    `.clinerules/bilig-workpaper.md`, or
    `.continue/rules/bilig-workpaper.md`.
-10. Start the MCP server or import `@bilig/workpaper` directly.
+11. Start the MCP server or import `@bilig/workpaper` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
 demo endpoint at `https://bilig.proompteng.ai/mcp`. Directory scanners that inspect the

@@ -13,6 +13,8 @@ export async function requireAgentInstructionDiscovery(input: {
   const rawHostedSkillManifestUrl = 'https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt'
   const [
     docsAgentNotes,
+    docsAgentStart,
+    wellKnownAgentStart,
     docsSkill,
     claudeProjectSkillNotes,
     claudeProjectCommandNotes,
@@ -32,6 +34,8 @@ export async function requireAgentInstructionDiscovery(input: {
     headlessSkillNotes,
   ] = await Promise.all([
     readFile(join(docsRoot, 'AGENTS.md'), 'utf8'),
+    readFile(join(docsRoot, 'agent-start.txt'), 'utf8'),
+    readFile(join(docsRoot, '.well-known', 'agent-start.txt'), 'utf8'),
     readFile(join(docsRoot, 'skill.md'), 'utf8'),
     readFile(join(repoRoot, '.claude', 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8'),
     readFile(join(repoRoot, '.claude', 'commands', 'bilig-workpaper-proof.md'), 'utf8'),
@@ -102,6 +106,37 @@ export async function requireAgentInstructionDiscovery(input: {
   requireNotIncludes(docsAgentNotes, 'https://proompteng.github.io/bilig/skill.txt', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json', 'docs/AGENTS.md')
+  if (docsAgentStart !== wellKnownAgentStart) {
+    throw new Error('docs/agent-start.txt must match docs/.well-known/agent-start.txt')
+  }
+  requireIncludes(docsAgentStart, '# Bilig agent start', 'docs/agent-start.txt')
+  requireIncludes(
+    docsAgentStart,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
+    'docs/agent-start.txt',
+  )
+  requireIncludes(
+    docsAgentStart,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json',
+    'docs/agent-start.txt',
+  )
+  requireIncludes(docsAgentStart, 'GOOGLEFINANCE', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'IMPORTXML', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, '#BLOCKED!', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'schemaVersion: "bilig-evaluator.v1"', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'verified: true', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'afterRestore', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'afterRestart', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'persistedDocumentBytes', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'Do not claim success from a write call alone.', 'docs/agent-start.txt')
+  requireIncludes(
+    docsAgentStart,
+    'npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable',
+    'docs/agent-start.txt',
+  )
+  requireIncludes(docsAgentStart, 'set_cell_contents_and_readback', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'https://proompteng.github.io/bilig/llms.txt', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'https://proompteng.github.io/bilig/.well-known/agent.json', 'docs/agent-start.txt')
   requireIncludes(docsSkill, 'name: bilig-workpaper', 'docs/skill.md')
   requireIncludes(docsSkill, '## Required Verification', 'docs/skill.md')
   requireIncludes(docsSkill, '## Command Safety', 'docs/skill.md')

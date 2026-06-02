@@ -15,6 +15,8 @@ npm ExcelJS recalculation package: https://www.npmjs.com/package/@bilig/exceljs-
 npm full runtime package: https://www.npmjs.com/package/@bilig/headless
 remote MCP endpoint: https://bilig.proompteng.ai/mcp
 agent instructions: https://proompteng.github.io/bilig/AGENTS.md
+agent start: https://proompteng.github.io/bilig/agent-start.txt
+well-known agent start: https://proompteng.github.io/bilig/.well-known/agent-start.txt
 agent adoption kit: https://proompteng.github.io/bilig/agent-adoption-kit.html
 agent discovery manifest: https://proompteng.github.io/bilig/.well-known/agent.json
 root agent discovery manifest: https://proompteng.github.io/bilig/agent.json
