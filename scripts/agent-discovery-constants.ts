@@ -42,6 +42,7 @@ export const versionedStaticReferenceRoots = [
   'docs/lobehub-workpaper-mcp.md',
   'docs/anythingllm-workpaper-mcp.md',
   'docs/fastmcp-workpaper-client.md',
+  'docs/agno-workpaper-mcp.md',
   'docs/smolagents-workpaper-tool.md',
   'docs/sim-workpaper-mcp.md',
   'docs/mcp-spreadsheet-server-directory.md',

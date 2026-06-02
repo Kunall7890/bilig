@@ -257,6 +257,9 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/fastmcp-workpaper-client.html
 - https://github.com/proompteng/bilig/blob/main/docs/fastmcp-workpaper-client.md
 - https://github.com/proompteng/bilig/tree/main/examples/fastmcp-workpaper-client
+- https://proompteng.github.io/bilig/agno-workpaper-mcp.html
+- https://github.com/proompteng/bilig/blob/main/docs/agno-workpaper-mcp.md
+- https://github.com/proompteng/bilig/tree/main/examples/agno-workpaper-mcp
 - https://proompteng.github.io/bilig/smolagents-workpaper-tool.html
 - https://github.com/proompteng/bilig/blob/main/docs/smolagents-workpaper-tool.md
 - https://github.com/proompteng/bilig/tree/main/examples/smolagents-workpaper-tool
@@ -618,6 +621,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html
   https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html
   https://proompteng.github.io/bilig/open-multi-agent-workpaper-mcp.html
+  https://proompteng.github.io/bilig/agno-workpaper-mcp.html
   https://proompteng.github.io/bilig/copilotkit-workpaper-spreadsheet-action.html
   https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html
   https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html
@@ -696,7 +700,10 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html
   https://github.com/proompteng/bilig/blob/main/docs/flowise-workpaper-formula-readback.md
   https://github.com/proompteng/bilig/tree/main/examples/flowise-workpaper-formula-readback
-  smolagents tool source:
+  Python agent tool sources:
+  https://proompteng.github.io/bilig/agno-workpaper-mcp.html
+  https://github.com/proompteng/bilig/blob/main/docs/agno-workpaper-mcp.md
+  https://github.com/proompteng/bilig/tree/main/examples/agno-workpaper-mcp
   https://proompteng.github.io/bilig/smolagents-workpaper-tool.html
   https://github.com/proompteng/bilig/blob/main/docs/smolagents-workpaper-tool.md
   https://github.com/proompteng/bilig/tree/main/examples/smolagents-workpaper-tool

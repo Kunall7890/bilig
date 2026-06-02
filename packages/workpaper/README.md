@@ -84,7 +84,7 @@ Framework examples live in the repo instead of this first screen. Start with
 the closest runtime:
 
 - Agent tools: Vercel AI SDK, LangGraph, LangChain MCP adapters, Open WebUI,
-  FastMCP, smolagents.
+  FastMCP, Agno, smolagents.
 - Workflow engines: Trigger.dev, Inngest, Temporal, Airflow, Dagster, Kestra,
   Prefect, Windmill.
 - Low-code and data tools: n8n, Pipedream, Directus, Airbyte, Meltano.
@@ -112,6 +112,7 @@ not the first-run path:
 | Flowise formula readback                                | <https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html>   |
 | Pipedream formula readback                              | <https://proompteng.github.io/bilig/pipedream-workpaper-formula-readback.html> |
 | FastMCP Python client for hosted and local stdio checks | <https://proompteng.github.io/bilig/fastmcp-workpaper-client.html>             |
+| Agno MCPTools workbook readback                         | <https://proompteng.github.io/bilig/agno-workpaper-mcp.html>                   |
 | Hugging Face smolagents tool                            | <https://proompteng.github.io/bilig/smolagents-workpaper-tool.html>            |
 | Hugging Face Gradio MCP Space                           | <https://proompteng.github.io/bilig/huggingface-workpaper-space.html>          |
 

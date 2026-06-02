@@ -187,6 +187,7 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - AnythingLLM MCP setup: https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
 - Sim MCP setup: https://proompteng.github.io/bilig/sim-workpaper-mcp.html
 - FastMCP Python client: https://proompteng.github.io/bilig/fastmcp-workpaper-client.html
+- Agno WorkPaper MCP tools: https://proompteng.github.io/bilig/agno-workpaper-mcp.html
 - smolagents WorkPaper tool: https://proompteng.github.io/bilig/smolagents-workpaper-tool.html
 - Hugging Face WorkPaper Space template: https://proompteng.github.io/bilig/huggingface-workpaper-space.html
 - Windmill TypeScript script: https://proompteng.github.io/bilig/windmill-workpaper-script.html

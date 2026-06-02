@@ -294,6 +294,7 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - AnythingLLM MCP setup: https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
 - Sim MCP setup: https://proompteng.github.io/bilig/sim-workpaper-mcp.html
 - FastMCP Python client: https://proompteng.github.io/bilig/fastmcp-workpaper-client.html
+- Agno WorkPaper MCP tools: https://proompteng.github.io/bilig/agno-workpaper-mcp.html
 - smolagents WorkPaper tool: https://proompteng.github.io/bilig/smolagents-workpaper-tool.html
 - Hugging Face WorkPaper Space template: https://proompteng.github.io/bilig/huggingface-workpaper-space.html
 - Windmill TypeScript script: https://proompteng.github.io/bilig/windmill-workpaper-script.html
@@ -660,6 +661,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | AnythingLLM                                                | Agent Skills should call hosted MCP or a private file-backed stdio server.                                                                                                      | [AnythingLLM WorkPaper MCP setup](https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html)                                                                                                                                                                                                                                                                                      |
 | Sim                                                        | An Agent block or MCP Tool block should read, write, recalculate, and export proof.                                                                                             | [Sim WorkPaper MCP setup](https://proompteng.github.io/bilig/sim-workpaper-mcp.html)                                                                                                                                                                                                                                                                                                      |
 | FastMCP Python                                             | A Python client should smoke-test hosted MCP or launch a private file-backed stdio WorkPaper.                                                                                   | [FastMCP WorkPaper client](https://proompteng.github.io/bilig/fastmcp-workpaper-client.html)                                                                                                                                                                                                                                                                                              |
+| Agno                                                       | `MCPTools` should import workbook tools and return verified formula readback before an agent trusts the result.                                                                | [Agno WorkPaper MCP tools](https://proompteng.github.io/bilig/agno-workpaper-mcp.html)                                                                                                                                                                                                                                                                                                    |
 | Hugging Face smolagents                                    | A `Tool` should return structured formula readback proof to a `CodeAgent`.                                                                                                      | [smolagents WorkPaper tool](https://proompteng.github.io/bilig/smolagents-workpaper-tool.html)                                                                                                                                                                                                                                                                                            |
 | Hugging Face Gradio MCP Space                              | A Space template should expose one no-key WorkPaper readback tool before a team wires private workbook state.                                                                   | [Hugging Face Gradio MCP Space](https://proompteng.github.io/bilig/huggingface-workpaper-space.html)                                                                                                                                                                                                                                                                                      |
 | n8n, Dify, Flowise, Pipedream                              | Workflow builders need formula readback without spreadsheet UI automation; use `@bilig/n8n-nodes-workpaper`, the upstream merged Dify plugin, or the reviewed Pipedream action. | [n8n](https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html), [Dify](https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html), [Flowise](https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html), [Pipedream](https://proompteng.github.io/bilig/pipedream-workpaper-formula-readback.html)                                          |
@@ -670,7 +672,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Temporal, Airflow, Dagster Formula Assets, Kestra, Prefect | Orchestrators should own retries/history while a Node step owns workbook proof.                                                                                                 | [Temporal](https://proompteng.github.io/bilig/temporal-workpaper-activity.html), [Airflow](https://proompteng.github.io/bilig/airflow-workpaper-dag.html), [Dagster](https://proompteng.github.io/bilig/dagster-workpaper-asset.html), [Kestra](https://proompteng.github.io/bilig/kestra-workpaper-flow.html), [Prefect](https://proompteng.github.io/bilig/prefect-workpaper-flow.html) |
 | Directus Persisted Calculated Fields                       | A custom operation should persist calculated fields with formula proof.                                                                                                         | [Directus WorkPaper Flow operation](https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html)                                                                                                                                                                                                                                                                            |
 
-<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
+<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
 
 ## Choose An Evaluation Path
 
@@ -2725,7 +2727,7 @@ Framework examples live in the repo instead of this first screen. Start with
 the closest runtime:
 
 - Agent tools: Vercel AI SDK, LangGraph, LangChain MCP adapters, Open WebUI,
-  FastMCP, smolagents.
+  FastMCP, Agno, smolagents.
 - Workflow engines: Trigger.dev, Inngest, Temporal, Airflow, Dagster, Kestra,
   Prefect, Windmill.
 - Low-code and data tools: n8n, Pipedream, Directus, Airbyte, Meltano.
@@ -2753,6 +2755,7 @@ not the first-run path:
 | Flowise formula readback                                | <https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html>   |
 | Pipedream formula readback                              | <https://proompteng.github.io/bilig/pipedream-workpaper-formula-readback.html> |
 | FastMCP Python client for hosted and local stdio checks | <https://proompteng.github.io/bilig/fastmcp-workpaper-client.html>             |
+| Agno MCPTools workbook readback                         | <https://proompteng.github.io/bilig/agno-workpaper-mcp.html>                   |
 | Hugging Face smolagents tool                            | <https://proompteng.github.io/bilig/smolagents-workpaper-tool.html>            |
 | Hugging Face Gradio MCP Space                           | <https://proompteng.github.io/bilig/huggingface-workpaper-space.html>          |
 
@@ -4382,6 +4385,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | LangGraph.js                       | `ToolNode` with verified readback after mutation.                                                                                     | [LangGraph WorkPaper ToolNode](langgraph-workpaper-toolnode-spreadsheet.md)                  |
 | LlamaIndex.TS                      | `tool(fn, { parameters })` with a compact proof return.                                                                               | [LlamaIndex.TS WorkPaper tool](llamaindex-workpaper-spreadsheet-tool.md)                     |
 | Open Multi-Agent                   | `connectMCPTools()` with the file-backed WorkPaper MCP server registered on an `Agent`.                                               | [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)                  |
+| Agno                               | `MCPTools` with the file-backed WorkPaper MCP server and explicit readback checks.                                                    | [Agno WorkPaper MCP tools](agno-workpaper-mcp.md)                                            |
 | Mastra                             | Real `@mastra/core` `createTool()` smoke for formula-backed workbook edits.                                                           | [Mastra WorkPaper tool](mastra-workpaper-spreadsheet-tool.md)                                |
 | Cloudflare Agents                  | Agent tool calling a Node-compatible WorkPaper boundary.                                                                              | [Cloudflare Agents WorkPaper tool](cloudflare-agents-workpaper-spreadsheet-tool.md)          |
 | Runtime adapter authors            | `@bilig/workbook` models, plan data, checks, schemas, command receipts, and strict proof.                                             | [Workbook agent intent API](workbook-agent-intent-api.md)                                    |
@@ -8017,6 +8021,139 @@ Official FastMCP references:
 - FastMCP client docs: <https://gofastmcp.com/clients/client>
 - FastMCP transport docs: <https://gofastmcp.com/clients/transports>
 - FastMCP community showcase: <https://gofastmcp.com/community/showcase>
+
+---
+
+## Agno WorkPaper MCP Tools
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/agno-workpaper-mcp.md
+
+# Agno WorkPaper MCP tools
+
+Use this when an Agno agent needs spreadsheet formulas through MCP. The workbook
+should be a tool boundary: read a range, write one input, read the dependent
+formula output, persist WorkPaper JSON, and return the proof.
+
+Official Agno references:
+
+- <https://docs.agno.com/tools/mcp>
+- <https://docs.agno.com/agents/introduction>
+- <https://github.com/agno-agi/agno>
+
+## Run The Smoke Test
+
+The runnable source lives in:
+
+```text
+examples/agno-workpaper-mcp
+```
+
+Run it from the repo root:
+
+```sh
+uv run --python 3.12 --with agno --with mcp --with openai \
+  python examples/agno-workpaper-mcp/agno_workpaper_mcp.py \
+  --output .tmp/agno-workpaper-proof.json
+```
+
+Expected top-level result:
+
+```json
+{
+  "framework": "agno",
+  "toolkit": "MCPTools",
+  "packageSpec": "@bilig/workpaper@latest",
+  "verified": true,
+  "beforeExpectedArr": 60000,
+  "afterExpectedArr": 96000,
+  "restoredExpectedArr": 96000
+}
+```
+
+The command starts:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- \
+  bilig-workpaper-mcp \
+  --workpaper /tmp/pricing.workpaper.json \
+  --init-demo-workpaper \
+  --writable
+```
+
+Then Agno imports the MCP tools through `MCPTools` and calls:
+
+1. `list_sheets`
+2. `read_range`
+3. `set_cell_contents_and_readback`
+4. `export_workpaper_document`
+
+The write changes `Inputs!B3` to `0.4` and reads `Summary!A1:B4`. The dependent
+`Summary!B3` value changes from `60000` to `96000`, and the restored WorkPaper
+readback stays `96000`.
+
+## Minimal Code Shape
+
+```python
+from agno.tools.mcp import MCPTools
+from mcp import StdioServerParameters
+
+server_params = StdioServerParameters(
+    command="npm",
+    args=[
+        "exec",
+        "--yes",
+        "--package",
+        "@bilig/workpaper@latest",
+        "--",
+        "bilig-workpaper-mcp",
+        "--workpaper",
+        "./pricing.workpaper.json",
+        "--init-demo-workpaper",
+        "--writable",
+    ],
+)
+
+async with MCPTools(server_params=server_params, timeout_seconds=30) as tools:
+    await tools.initialize()
+    functions = tools.get_functions()
+    result = await functions["set_cell_contents_and_readback"].entrypoint(
+        sheetName="Inputs",
+        address="B3",
+        value=0.4,
+        readbackRange="Summary!A1:B4",
+    )
+```
+
+The checked-in example parses the JSON result, verifies
+`restoredReadbackMatchesAfter`, confirms the persisted WorkPaper file, and fails
+closed if the calculated value does not match.
+
+## Optional Agent Summary
+
+The proof does not need an LLM key. If you want an Agno `Agent` to summarize the
+proof, set `OPENAI_API_KEY` and add `--agent`:
+
+```sh
+uv run --python 3.12 --with agno --with mcp --with openai \
+  python examples/agno-workpaper-mcp/agno_workpaper_mcp.py --agent
+```
+
+Keep the workbook validation outside the model response. The agent may explain
+the proof, but `verified: true` should come from the MCP readback checks.
+
+## Boundary
+
+This is for formula-backed service or agent workflows where WorkPaper JSON can
+represent the workbook state. It is a fit for quote approval, payout checks,
+pricing rules, import validation, and forecast gates.
+
+It is not a claim that Bilig replaces desktop Excel for macros, add-ins, pivot
+tables, or visual workbook review. For raw `.xlsx` files, start with:
+
+```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- \
+  bilig-evaluate --door xlsx-cache --json
+```
 
 ---
 

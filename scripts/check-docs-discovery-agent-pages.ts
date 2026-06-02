@@ -3,6 +3,7 @@ export const agentFrameworkLlmsRequiredLinks = [
   'https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html',
   'https://proompteng.github.io/bilig/open-multi-agent-workpaper-mcp.html',
+  'https://proompteng.github.io/bilig/agno-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/copilotkit-workpaper-spreadsheet-action.html',
   'https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html',
@@ -53,6 +54,19 @@ export const agentFrameworkDocRequirements = [
       '@bilig/workpaper@latest',
       '60000 -> 96000',
       'verified',
+    ],
+  },
+  {
+    path: 'docs/agno-workpaper-mcp.md',
+    includes: [
+      'Agno WorkPaper MCP tools',
+      'MCPTools',
+      'examples/agno-workpaper-mcp',
+      '@bilig/workpaper@latest',
+      'set_cell_contents_and_readback',
+      '60000',
+      '96000',
+      'restoredReadbackMatchesAfter',
     ],
   },
   {

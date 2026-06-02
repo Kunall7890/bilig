@@ -429,6 +429,7 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - AnythingLLM MCP setup: ${siteRoot}/anythingllm-workpaper-mcp.html
 - Sim MCP setup: ${siteRoot}/sim-workpaper-mcp.html
 - FastMCP Python client: ${siteRoot}/fastmcp-workpaper-client.html
+- Agno WorkPaper MCP tools: ${siteRoot}/agno-workpaper-mcp.html
 - smolagents WorkPaper tool: ${siteRoot}/smolagents-workpaper-tool.html
 - Hugging Face WorkPaper Space template: ${siteRoot}/huggingface-workpaper-space.html
 - Windmill TypeScript script: ${siteRoot}/windmill-workpaper-script.html
@@ -633,6 +634,15 @@ function agentJsonManifest(): string {
           source: `${repositoryUrl}/tree/main/examples/fastmcp-workpaper-client`,
         },
         {
+          name: 'agno-workpaper-mcp',
+          type: 'python-agent-mcp-smoke-test',
+          framework: 'Agno',
+          command:
+            'uv run --python 3.12 --with agno --with mcp --with openai python examples/agno-workpaper-mcp/agno_workpaper_mcp.py --output .tmp/agno-workpaper-proof.json',
+          docs: `${siteRoot}/agno-workpaper-mcp.html`,
+          source: `${repositoryUrl}/tree/main/examples/agno-workpaper-mcp`,
+        },
+        {
           name: 'smolagents-workpaper-tool',
           type: 'python-agent-tool-smoke-test',
           framework: 'smolagents',
@@ -721,6 +731,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/anythingllm-workpaper-mcp.html`,
         `${siteRoot}/sim-workpaper-mcp.html`,
         `${siteRoot}/fastmcp-workpaper-client.html`,
+        `${siteRoot}/agno-workpaper-mcp.html`,
         `${siteRoot}/smolagents-workpaper-tool.html`,
         `${siteRoot}/huggingface-workpaper-space.html`,
         remoteMcpEndpoint,

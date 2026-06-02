@@ -53,6 +53,7 @@ export const docsSiteSources = [
   ['anythingllm-workpaper-mcp.html', 'anythingllm-workpaper-mcp.md'],
   ['sim-workpaper-mcp.html', 'sim-workpaper-mcp.md'],
   ['fastmcp-workpaper-client.html', 'fastmcp-workpaper-client.md'],
+  ['agno-workpaper-mcp.html', 'agno-workpaper-mcp.md'],
   ['smolagents-workpaper-tool.html', 'smolagents-workpaper-tool.md'],
   ['huggingface-workpaper-space.html', 'huggingface-workpaper-space.md'],
   ['openai-agents-sdk-workpaper-tool.html', 'openai-agents-sdk-workpaper-tool.md'],

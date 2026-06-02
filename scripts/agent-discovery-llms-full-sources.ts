@@ -45,6 +45,7 @@ const llmsFullSourceSpecs = [
   ['LobeHub WorkPaper MCP Setup', 'docs/lobehub-workpaper-mcp.md'],
   ['AnythingLLM WorkPaper MCP Setup', 'docs/anythingllm-workpaper-mcp.md'],
   ['FastMCP WorkPaper Client', 'docs/fastmcp-workpaper-client.md'],
+  ['Agno WorkPaper MCP Tools', 'docs/agno-workpaper-mcp.md'],
   ['smolagents WorkPaper Tool', 'docs/smolagents-workpaper-tool.md'],
   ['Hugging Face WorkPaper MCP Space', 'docs/huggingface-workpaper-space.md'],
   ['Sim WorkPaper MCP Setup', 'docs/sim-workpaper-mcp.md'],

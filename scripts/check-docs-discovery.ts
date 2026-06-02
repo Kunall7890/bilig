@@ -801,6 +801,7 @@ for (const requiredEntrypoint of [
   'https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html',
   'https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html',
   'https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html',
+  'https://proompteng.github.io/bilig/agno-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html',

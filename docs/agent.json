@@ -199,6 +199,14 @@
       "source": "https://github.com/proompteng/bilig/tree/main/examples/fastmcp-workpaper-client"
     },
     {
+      "name": "agno-workpaper-mcp",
+      "type": "python-agent-mcp-smoke-test",
+      "framework": "Agno",
+      "command": "uv run --python 3.12 --with agno --with mcp --with openai python examples/agno-workpaper-mcp/agno_workpaper_mcp.py --output .tmp/agno-workpaper-proof.json",
+      "docs": "https://proompteng.github.io/bilig/agno-workpaper-mcp.html",
+      "source": "https://github.com/proompteng/bilig/tree/main/examples/agno-workpaper-mcp"
+    },
+    {
       "name": "smolagents-workpaper-tool",
       "type": "python-agent-tool-smoke-test",
       "framework": "smolagents",
@@ -301,6 +309,7 @@
     "https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html",
     "https://proompteng.github.io/bilig/sim-workpaper-mcp.html",
     "https://proompteng.github.io/bilig/fastmcp-workpaper-client.html",
+    "https://proompteng.github.io/bilig/agno-workpaper-mcp.html",
     "https://proompteng.github.io/bilig/smolagents-workpaper-tool.html",
     "https://proompteng.github.io/bilig/huggingface-workpaper-space.html",
     "https://bilig.proompteng.ai/mcp",
