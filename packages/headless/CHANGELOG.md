@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.146.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.145.0
+- Manual override: no
+
+## Features
+- feat(formula): add Google Sheets QUERY subset (6384f6f6)
+
 ## 0.145.0
 
 - Release type: minor
