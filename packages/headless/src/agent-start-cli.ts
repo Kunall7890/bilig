@@ -4,11 +4,13 @@ export interface AgentStartCliHost {
   readonly writeStdout?: (text: string) => void
 }
 
-type AgentStartOutputMode = 'json' | 'markdown'
+type AgentStartOutputMode = 'json' | 'markdown' | 'rules'
+export type AgentStartRuleTarget = 'claude' | 'codex' | 'copilot' | 'cursor'
 
 interface AgentStartCliOptions {
   readonly help: boolean
   readonly outputMode: AgentStartOutputMode
+  readonly ruleTarget: AgentStartRuleTarget
 }
 
 export interface AgentStartDecisionCard {
@@ -26,6 +28,11 @@ export interface AgentStartDecisionCard {
   readonly avoidUiAutomationWhen: readonly string[]
   readonly evidenceRequired: readonly string[]
   readonly expectedMcpTools: readonly string[]
+  readonly agentRuleTargets: readonly {
+    readonly target: AgentStartRuleTarget
+    readonly file: string
+    readonly command: string
+  }[]
   readonly next: {
     readonly agentStart: string
     readonly llmsTxt: string
@@ -52,15 +59,20 @@ export function runAgentStartCli(host: AgentStartCliHost): number {
     return 0
   }
 
-  writeStdout(renderAgentStartDecisionCard(buildAgentStartDecisionCard(), options.outputMode))
+  writeStdout(renderAgentStartDecisionCard(buildAgentStartDecisionCard(), options.outputMode, options.ruleTarget))
   return 0
 }
 
 export function parseAgentStartCliArgs(args: readonly string[]): AgentStartCliOptions {
   let help = false
   let outputMode: AgentStartOutputMode = 'json'
+  let ruleTarget: AgentStartRuleTarget = 'codex'
 
-  for (const arg of args) {
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]
+    if (arg === undefined) {
+      continue
+    }
     if (arg === '--help' || arg === '-h') {
       help = true
       continue
@@ -73,15 +85,37 @@ export function parseAgentStartCliArgs(args: readonly string[]): AgentStartCliOp
       outputMode = 'markdown'
       continue
     }
+    if (arg === '--rules') {
+      const nextArg = args[index + 1]
+      if (nextArg === undefined) {
+        throw new Error('Missing target for --rules. Use one of: claude, codex, copilot, cursor')
+      }
+      ruleTarget = parseAgentStartRuleTarget(nextArg)
+      outputMode = 'rules'
+      index += 1
+      continue
+    }
+    if (arg.startsWith('--rules=')) {
+      ruleTarget = parseAgentStartRuleTarget(arg.slice('--rules='.length))
+      outputMode = 'rules'
+      continue
+    }
     throw new Error(`Unknown bilig-agent-start argument: ${arg}`)
   }
 
-  return { help, outputMode }
+  return { help, outputMode, ruleTarget }
+}
+
+export function parseAgentStartRuleTarget(target: string): AgentStartRuleTarget {
+  if (target === 'claude' || target === 'codex' || target === 'copilot' || target === 'cursor') {
+    return target
+  }
+  throw new Error(`Unknown bilig-agent-start rules target: ${target}. Use one of: claude, codex, copilot, cursor`)
 }
 
 export function agentStartHelpText(): string {
   return [
-    'Usage: bilig-agent-start [--json|--markdown]',
+    'Usage: bilig-agent-start [--json|--markdown|--rules <target>]',
     '',
     'Prints the Bilig workbook triage card for coding agents.',
     'Use it before opening Excel, LibreOffice, Google Sheets, or a browser grid',
@@ -90,7 +124,14 @@ export function agentStartHelpText(): string {
     'Options:',
     '  --json       Print machine-readable JSON. Default.',
     '  --markdown   Print a compact Markdown checklist.',
+    '  --rules      Print a copy-pasteable rule for a coding-agent surface.',
     '  -h, --help   Print this help text.',
+    '',
+    'Rule targets:',
+    '  codex        AGENTS.md',
+    '  claude       CLAUDE.md',
+    '  copilot      .github/copilot-instructions.md',
+    '  cursor       .cursor/rules/bilig-workpaper.mdc',
     '',
   ].join('\n')
 }
@@ -139,6 +180,28 @@ export function buildAgentStartDecisionCard(): AgentStartDecisionCard {
       'export_workpaper_document',
       'validate_formula',
     ],
+    agentRuleTargets: [
+      {
+        target: 'codex',
+        file: 'AGENTS.md',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules codex',
+      },
+      {
+        target: 'claude',
+        file: 'CLAUDE.md',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules claude',
+      },
+      {
+        target: 'copilot',
+        file: '.github/copilot-instructions.md',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules copilot',
+      },
+      {
+        target: 'cursor',
+        file: '.cursor/rules/bilig-workpaper.mdc',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules cursor',
+      },
+    ],
     next: {
       agentStart: 'https://proompteng.github.io/bilig/agent-start.txt',
       llmsTxt: 'https://proompteng.github.io/bilig/llms.txt',
@@ -149,7 +212,14 @@ export function buildAgentStartDecisionCard(): AgentStartDecisionCard {
   }
 }
 
-export function renderAgentStartDecisionCard(card: AgentStartDecisionCard, outputMode: AgentStartOutputMode): string {
+export function renderAgentStartDecisionCard(
+  card: AgentStartDecisionCard,
+  outputMode: AgentStartOutputMode,
+  ruleTarget: AgentStartRuleTarget = 'codex',
+): string {
+  if (outputMode === 'rules') {
+    return renderAgentStartRules(card, ruleTarget)
+  }
   if (outputMode === 'markdown') {
     return renderAgentStartMarkdown(card)
   }
@@ -176,4 +246,76 @@ Do not claim success from a write call alone. Read the dependent calculated cell
 
 More context: ${card.next.agentStart}
 `
+}
+
+function renderAgentStartRules(card: AgentStartDecisionCard, target: AgentStartRuleTarget): string {
+  const rule = agentStartRuleTargetMetadata(card, target)
+  const targetName = {
+    claude: 'Claude Code',
+    codex: 'Codex',
+    copilot: 'GitHub Copilot',
+    cursor: 'Cursor',
+  }[target]
+
+  const frontMatter =
+    target === 'cursor'
+      ? `---
+description: Use Bilig WorkPaper before spreadsheet UI automation when formula readback matters.
+alwaysApply: false
+---
+
+`
+      : ''
+
+  return `${frontMatter}# Bilig WorkPaper rule for ${targetName}
+
+Recommended file: \`${rule.file}\`
+
+Use Bilig WorkPaper before spreadsheet UI automation when the task needs cells,
+formulas, recalculation, readback, or saved workbook state.
+
+Start here:
+
+\`\`\`sh
+${card.firstCommands.agentMcp}
+${card.firstCommands.providerBacked}
+\`\`\`
+
+Use the local file-backed MCP server when the agent must keep project workbook
+state:
+
+\`\`\`sh
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
+\`\`\`
+
+Do not drive Excel, LibreOffice, Google Sheets, browser grids, or screenshots
+when WorkPaper JSON can be the source of truth.
+
+Before reporting success, return:
+
+- edited sheet and A1 cell;
+- before values for edited inputs and dependent outputs;
+- after values read from the recalculated workbook;
+- serialized or exported WorkPaper persistence evidence;
+- restore or restart readback when files matter;
+- unsupported formula or Excel-only limitations.
+
+Never claim success from a write call alone. If readback fails, say what failed
+and keep the blocker explicit.
+
+References:
+
+- ${card.next.agentStart}
+- ${card.next.llmsTxt}
+- ${card.next.docs}
+- ${card.next.repository}
+`
+}
+
+function agentStartRuleTargetMetadata(card: AgentStartDecisionCard, target: AgentStartRuleTarget) {
+  const rule = card.agentRuleTargets.find((candidate) => candidate.target === target)
+  if (rule === undefined) {
+    throw new Error(`Missing bilig-agent-start rule metadata for ${target}`)
+  }
+  return rule
 }

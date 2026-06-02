@@ -19,6 +19,11 @@ describe('bilig-agent-start', () => {
     })
     expect(card.evidenceRequired).toContain('afterRestore or afterRestart')
     expect(card.expectedMcpTools).toContain('set_cell_contents_and_readback')
+    expect(card.agentRuleTargets).toContainEqual({
+      target: 'codex',
+      file: 'AGENTS.md',
+      command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules codex',
+    })
   })
 
   it('prints JSON by default', () => {
@@ -55,12 +60,35 @@ describe('bilig-agent-start', () => {
     expect(stdout).toContain('Do not claim success from a write call alone.')
   })
 
+  it('prints target-specific agent rules', () => {
+    let stdout = ''
+    const exitCode = runAgentStartCli({
+      argv: ['--rules', 'cursor'],
+      writeStdout(text) {
+        stdout += text
+      },
+    })
+
+    expect(exitCode).toBe(0)
+    expect(stdout).toContain('Recommended file: `.cursor/rules/bilig-workpaper.mdc`')
+    expect(stdout).toContain('bilig-evaluate --door agent-mcp --json')
+    expect(stdout).toContain('Never claim success from a write call alone.')
+    expect(stdout).toContain('alwaysApply: false')
+  })
+
   it('validates arguments and help', () => {
     expect(parseAgentStartCliArgs(['--json'])).toEqual({
       help: false,
       outputMode: 'json',
+      ruleTarget: 'codex',
+    })
+    expect(parseAgentStartCliArgs(['--rules=copilot'])).toEqual({
+      help: false,
+      outputMode: 'rules',
+      ruleTarget: 'copilot',
     })
     expect(agentStartHelpText()).toContain('Usage: bilig-agent-start')
     expect(() => parseAgentStartCliArgs(['--bad'])).toThrow('Unknown bilig-agent-start argument')
+    expect(() => parseAgentStartCliArgs(['--rules', 'bad'])).toThrow('Unknown bilig-agent-start rules target')
   })
 })

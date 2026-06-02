@@ -119,6 +119,18 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsAgentStart, 'The first command prints the decision card.', 'docs/agent-start.txt')
   requireIncludes(
     docsAgentStart,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules codex',
+    'docs/agent-start.txt',
+  )
+  requireIncludes(
+    docsAgentStart,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules cursor',
+    'docs/agent-start.txt',
+  )
+  requireIncludes(docsAgentStart, '.github/copilot-instructions.md', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, '.cursor/rules/bilig-workpaper.mdc', 'docs/agent-start.txt')
+  requireIncludes(
+    docsAgentStart,
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json',
     'docs/agent-start.txt',
   )

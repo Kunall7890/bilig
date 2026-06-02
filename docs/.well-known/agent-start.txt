@@ -13,6 +13,19 @@ The first command prints the decision card. The second command proves the MCP pa
 
 Use Bilig when the task needs exact workbook cells, formula recalculation, readback, and saved state. Do not use a spreadsheet UI just to learn whether a formula changed.
 
+## Add this to another agent
+
+Print a compact rule for the agent surface you use:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules codex
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules claude
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules copilot
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules cursor
+```
+
+Suggested files: `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, or `.cursor/rules/bilig-workpaper.mdc`.
+
 ## Provider-backed formulas
 
 If the workbook uses `IMPORTRANGE`, `GOOGLEFINANCE`, `IMPORTDATA`, `IMPORTFEED`, `IMPORTHTML`, `IMPORTXML`, `FILTERXML`, `STOCKHISTORY`, or another provider-backed formula, run:
