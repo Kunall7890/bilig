@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.151.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.150.0
+- Manual override: no
+
+## Features
+- feat(formula): support QUERY grouped aggregates (08c4c7e6)
+
+## Internal runtime changes
+- docs(agent): add compact WorkPaper start contract (73b1b989)
+
 ## 0.150.0
 
 - Release type: minor
