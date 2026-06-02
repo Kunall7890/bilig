@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.155.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.154.0
+- Manual override: no
+
+## Features
+- feat(agent): add agent start decision CLI (fb47e3a9)
+
+## Internal runtime changes
+- docs(growth): add Agno WorkPaper MCP guide (851e67c0)
+- docs(growth): add Pydantic AI WorkPaper MCP guide (540ca9b0)
+
 ## 0.154.0
 
 - Release type: minor
