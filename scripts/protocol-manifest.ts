@@ -583,6 +583,7 @@ export const enumManifest: ProtocolEnumManifest = {
     ['Join', 529],
     ['ToText', 530],
     ['Query', 531],
+    ['Sortn', 532],
   ],
 }
 

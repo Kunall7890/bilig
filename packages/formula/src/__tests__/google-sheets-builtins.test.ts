@@ -59,6 +59,9 @@ const context = {
     if (start === 'A1' && end === 'C4') {
       return queryTable.values
     }
+    if (start === 'A2' && end === 'C4') {
+      return queryTable.values.slice(3)
+    }
     return []
   },
 }
@@ -77,6 +80,11 @@ describe('Google Sheets compatibility builtins', () => {
 
   it('supports Google Sheets array helpers', () => {
     const matrix = cellRange([num(1), num(2), num(3), num(4)], 2, 2)
+    const sortnTable = cellRange(
+      [text('North'), num(96_000), text('West'), num(144_000), text('North'), num(96_000), text('East'), num(60_000)],
+      4,
+      2,
+    )
 
     expect(getLookupBuiltin('ARRAY_CONSTRAIN')?.(matrix, num(2), num(1))).toEqual({
       kind: 'array',
@@ -90,7 +98,150 @@ describe('Google Sheets compatibility builtins', () => {
       cols: 1,
       values: [num(1), num(2), num(3), num(4), text('tail')],
     })
+    expect(getLookupBuiltin('SORTN')?.(sortnTable, num(2), num(0), num(2), bool(false))).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 2,
+      values: [text('West'), num(144_000), text('North'), num(96_000)],
+    })
+    expect(getLookupBuiltin('SORTN')?.(sortnTable, num(2), num(1), num(2), bool(false))).toEqual({
+      kind: 'array',
+      rows: 3,
+      cols: 2,
+      values: [text('West'), num(144_000), text('North'), num(96_000), text('North'), num(96_000)],
+    })
     expect(getLookupBuiltin('ARRAY_CONSTRAIN')?.(matrix, num(0), num(1))).toEqual(err(ErrorCode.Value))
+  })
+
+  it('supports SORTN tie modes on sort-key values and external sort vectors', () => {
+    const rows = cellRange(
+      [
+        text('Alice'),
+        num(100),
+        num(90),
+        text('Devon'),
+        num(100),
+        num(95),
+        text('Carol'),
+        num(80),
+        num(85),
+        text('Eloise'),
+        num(80),
+        num(90),
+        text('Frank'),
+        num(80),
+        num(90),
+        text('Bob'),
+        num(75),
+        num(85),
+      ],
+      6,
+      3,
+    )
+    const scores = cellRange([num(3), num(1), num(2), num(4), num(5), num(6)], 6, 1)
+    const externalTiers = cellRange([num(10), num(10), num(8), num(8), num(8), num(7)], 6, 1)
+
+    expect(getLookupBuiltin('SORTN')?.(rows, num(3), num(1), num(2), bool(false))).toEqual({
+      kind: 'array',
+      rows: 5,
+      cols: 3,
+      values: [
+        text('Alice'),
+        num(100),
+        num(90),
+        text('Devon'),
+        num(100),
+        num(95),
+        text('Carol'),
+        num(80),
+        num(85),
+        text('Eloise'),
+        num(80),
+        num(90),
+        text('Frank'),
+        num(80),
+        num(90),
+      ],
+    })
+    expect(getLookupBuiltin('SORTN')?.(rows, num(3), num(2), num(2), bool(false))).toEqual({
+      kind: 'array',
+      rows: 3,
+      cols: 3,
+      values: [text('Alice'), num(100), num(90), text('Carol'), num(80), num(85), text('Bob'), num(75), num(85)],
+    })
+    expect(getLookupBuiltin('SORTN')?.(rows, num(3), num(3), num(2), bool(false))).toEqual({
+      kind: 'array',
+      rows: 6,
+      cols: 3,
+      values: rows.values,
+    })
+    expect(getLookupBuiltin('SORTN')?.(rows, num(2), num(2), num(2), bool(false), num(3), bool(false))).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 3,
+      values: [text('Devon'), num(100), num(95), text('Alice'), num(100), num(90)],
+    })
+    expect(getLookupBuiltin('SORTN')?.(rows, num(3), num(3), num(2), bool(false), num(3), bool(false))).toEqual({
+      kind: 'array',
+      rows: 4,
+      cols: 3,
+      values: [
+        text('Devon'),
+        num(100),
+        num(95),
+        text('Alice'),
+        num(100),
+        num(90),
+        text('Eloise'),
+        num(80),
+        num(90),
+        text('Frank'),
+        num(80),
+        num(90),
+      ],
+    })
+    expect(getLookupBuiltin('SORTN')?.(rows, num(2), num(0), scores, bool(true))).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 3,
+      values: [text('Devon'), num(100), num(95), text('Carol'), num(80), num(85)],
+    })
+    expect(getLookupBuiltin('SORTN')?.(rows, num(1), num(1), externalTiers, bool(false))).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 3,
+      values: [text('Alice'), num(100), num(90), text('Devon'), num(100), num(95)],
+    })
+    expect(getLookupBuiltin('SORTN')?.(rows, num(2), num(2), externalTiers, bool(false))).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 3,
+      values: [text('Alice'), num(100), num(90), text('Carol'), num(80), num(85)],
+    })
+    expect(getLookupBuiltin('SORTN')?.(rows, num(2), num(3), externalTiers, bool(false))).toEqual({
+      kind: 'array',
+      rows: 5,
+      cols: 3,
+      values: [
+        text('Alice'),
+        num(100),
+        num(90),
+        text('Devon'),
+        num(100),
+        num(95),
+        text('Carol'),
+        num(80),
+        num(85),
+        text('Eloise'),
+        num(80),
+        num(90),
+        text('Frank'),
+        num(80),
+        num(90),
+      ],
+    })
+    expect(getLookupBuiltin('SORTN')?.(rows, num(1), num(4))).toEqual(err(ErrorCode.Value))
+    expect(getLookupBuiltin('SORTN')?.(rows, num(1), num(0), cellRange([num(1), num(2)], 2, 1), bool(true))).toEqual(err(ErrorCode.Value))
   })
 
   it('supports a local Google Sheets QUERY subset for workbook ranges', () => {
@@ -114,6 +265,7 @@ describe('Google Sheets compatibility builtins', () => {
     expect(compileFormula('ARRAY_CONSTRAIN(A1:B2,1,2)')).toMatchObject({ mode: 0, producesSpill: true })
     expect(compileFormula('FLATTEN(A1:B2)')).toMatchObject({ mode: 0, producesSpill: true })
     expect(compileFormula('QUERY(A1:C4,"select A,C where B >= 8",1)')).toMatchObject({ mode: 0, producesSpill: true })
+    expect(compileFormula('SORTN(A1:C4,2,0,2,FALSE)')).toMatchObject({ mode: 0, producesSpill: true })
     expect(compileFormula('JOIN("|",A1:B1)')).toMatchObject({ mode: 0, producesSpill: false })
 
     expect(evaluatePlan(lowerToPlan(parseFormula('JOIN("|",A1:B1)')), context)).toEqual(text('north|south'))
@@ -138,6 +290,12 @@ describe('Google Sheets compatibility builtins', () => {
       rows: 2,
       cols: 2,
       values: [text('Region'), text('ARR'), text('West'), num(144_000)],
+    })
+    expect(evaluatePlanResult(lowerToPlan(parseFormula('SORTN(A2:C4,2,0,3,FALSE)')), context)).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 3,
+      values: [text('West'), num(12), num(144_000), text('North'), num(8), num(96_000)],
     })
   })
 })

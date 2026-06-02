@@ -532,4 +532,5 @@ export const builtinManifest: readonly ProtocolBuiltinManifestEntry[] = [
   { id: 'Join', name: 'JOIN', supportsWasm: false },
   { id: 'ToText', name: 'TO_TEXT', supportsWasm: false },
   { id: 'Query', name: 'QUERY', supportsWasm: false },
+  { id: 'Sortn', name: 'SORTN', supportsWasm: false },
 ]

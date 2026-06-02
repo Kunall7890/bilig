@@ -2227,6 +2227,11 @@
       "inOfficeList": true
     },
     {
+      "name": "SORTN",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
+    },
+    {
       "name": "SORTBY",
       "odfStatus": "Not in ODF 1.4 mandatory",
       "inOfficeList": true

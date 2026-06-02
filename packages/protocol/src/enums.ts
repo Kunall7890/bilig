@@ -586,5 +586,6 @@ export enum BuiltinId {
   Isurl = 528,
   Join = 529,
   ToText = 530,
-  Query = 531
+  Query = 531,
+  Sortn = 532
 }

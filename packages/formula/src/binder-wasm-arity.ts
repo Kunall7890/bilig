@@ -573,6 +573,8 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
       return argc >= 2
     case 'SORT':
       return argc >= 1 && argc <= 4
+    case 'SORTN':
+      return argc >= 1
     case 'SORTBY':
       return argc >= 2
     case 'TOCOL':

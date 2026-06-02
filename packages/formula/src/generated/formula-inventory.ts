@@ -2,17 +2,17 @@
 // Source: scripts/gen-formula-inventory.ts
 
 export const formulaInventorySummary = {
-  total: 543,
+  total: 544,
   odfMandatory: 59,
   officeListed: 519,
   officeListedRegisteredInCodebase: 519,
   overlap: 58,
   odfOnly: 1,
   officeOnly: 461,
-  registeredInCodebase: 543,
+  registeredInCodebase: 544,
   missingInCodebase: 0,
   placeholders: 0,
-  protocolBuiltins: 521,
+  protocolBuiltins: 522,
   runtimeRegisteredMissingProtocol: 0,
 } as const
 
@@ -6244,6 +6244,20 @@ export const formulaInventory = [
     protocolSupportsWasm: true,
     jsStatus: 'implemented',
     wasmStatus: 'production',
+    placeholder: false,
+    registeredInCodebase: true,
+  },
+  {
+    name: 'SORTN',
+    odfStatus: 'Google Sheets compatibility',
+    inOfficeList: false,
+    deterministic: 'deterministic',
+    runtimeStatus: 'implemented',
+    protocolId: 532,
+    protocolName: 'SORTN',
+    protocolSupportsWasm: false,
+    jsStatus: 'implemented',
+    wasmStatus: 'not-started',
     placeholder: false,
     registeredInCodebase: true,
   },

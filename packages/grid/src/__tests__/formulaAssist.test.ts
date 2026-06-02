@@ -13,6 +13,17 @@ describe('formula assist helpers', () => {
     expect(state.suggestions.some((entry) => entry.kind === 'function' && entry.name === 'SUM')).toBe(true)
   })
 
+  it('surfaces Google Sheets SORTN help without generic fallback text', () => {
+    const state = resolveFormulaAssistState({
+      value: '=sortn(',
+      caret: '=sortn('.length,
+    })
+
+    expect(state.activeFunction?.entry.name).toBe('SORTN')
+    expect(state.activeFunction?.entry.summary).toContain('tie')
+    expect(state.activeFunction?.signature).toContain('display_ties_mode')
+  })
+
   it('tracks the active argument for nested functions', () => {
     const state = resolveFormulaAssistState({
       value: '=IF(A1>0,SUM(B1:B3),XLOOKUP("id",A:A,',

@@ -801,6 +801,7 @@ const dynamicArrayBuiltinNames = new Set([
   'CHOOSECOLS',
   'CHOOSEROWS',
   'SORT',
+  'SORTN',
   'SORTBY',
   'TOCOL',
   'TOROW',

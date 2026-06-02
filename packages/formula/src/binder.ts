@@ -437,6 +437,7 @@ export function encodeBuiltin(name: string): BuiltinId {
     CHOOSECOLS: BuiltinId.Choosecols,
     CHOOSEROWS: BuiltinId.Chooserows,
     SORT: BuiltinId.Sort,
+    SORTN: BuiltinId.Sortn,
     SORTBY: BuiltinId.Sortby,
     TOCOL: BuiltinId.Tocol,
     TOROW: BuiltinId.Torow,

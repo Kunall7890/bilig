@@ -291,6 +291,12 @@ describe('builtin capabilities', () => {
       wasmStatus: 'production',
       needsArrayRuntime: true,
     })
+    expect(getBuiltinCapability('SORTN')).toMatchObject({
+      category: 'dynamic-array',
+      jsStatus: 'implemented',
+      wasmStatus: 'not-started',
+      needsArrayRuntime: true,
+    })
     expect(getBuiltinCapability('CORREL')).toMatchObject({
       category: 'statistical',
       jsStatus: 'implemented',

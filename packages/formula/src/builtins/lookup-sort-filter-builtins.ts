@@ -51,6 +51,184 @@ function colKey(range: RangeBuiltinArgument, col: number, deps: LookupSortFilter
   return JSON.stringify(values.map(normalizeKeyValue))
 }
 
+interface SortnCriterion {
+  values: CellValue[]
+  order: 1 | -1
+}
+
+const sortnEmptySortKeyValue: CellValue = { tag: ValueTag.Empty }
+
+function compareSortnRows(
+  left: number,
+  right: number,
+  criteria: readonly SortnCriterion[],
+  deps: LookupSortFilterBuiltinDeps,
+): number | CellValue {
+  if (left === right) {
+    return 0
+  }
+  for (const criterion of criteria) {
+    const cmp = deps.compareScalars(criterion.values[left] ?? sortnEmptySortKeyValue, criterion.values[right] ?? sortnEmptySortKeyValue)
+    if (cmp === undefined) {
+      return deps.errorValue(ErrorCode.Value)
+    }
+    if (cmp !== 0) {
+      return cmp * criterion.order
+    }
+  }
+  return 0
+}
+
+function sameSortnKey(
+  left: number,
+  right: number,
+  criteria: readonly SortnCriterion[],
+  deps: LookupSortFilterBuiltinDeps,
+): boolean | CellValue {
+  const cmp = compareSortnRows(left, right, criteria, deps)
+  if (typeof cmp !== 'number') {
+    return cmp
+  }
+  return cmp === 0
+}
+
+function matchesAnySortnKey(
+  row: number,
+  selectedRows: readonly number[],
+  criteria: readonly SortnCriterion[],
+  deps: LookupSortFilterBuiltinDeps,
+): boolean | CellValue {
+  for (const selectedRow of selectedRows) {
+    const sameKey = sameSortnKey(row, selectedRow, criteria, deps)
+    if (typeof sameKey !== 'boolean') {
+      return sameKey
+    }
+    if (sameKey) {
+      return true
+    }
+  }
+  return false
+}
+
+function buildDefaultSortnCriteria(range: RangeBuiltinArgument, deps: LookupSortFilterBuiltinDeps): SortnCriterion[] {
+  return Array.from({ length: range.cols }, (_, col) => ({
+    values: pickRangeCol(range, col, deps),
+    order: 1,
+  }))
+}
+
+function buildSortnCriteria(
+  range: RangeBuiltinArgument,
+  criteriaArgs: readonly LookupBuiltinArgument[],
+  deps: LookupSortFilterBuiltinDeps,
+): SortnCriterion[] | CellValue {
+  if (criteriaArgs.length === 0) {
+    return buildDefaultSortnCriteria(range, deps)
+  }
+
+  const criteria: SortnCriterion[] = []
+  for (let index = 0; index < criteriaArgs.length; index += 2) {
+    const sortColumnArg = criteriaArgs[index]
+    if (sortColumnArg === undefined) {
+      return deps.errorValue(ErrorCode.Value)
+    }
+    if (deps.isError(sortColumnArg)) {
+      return sortColumnArg
+    }
+
+    let values: CellValue[]
+    if (deps.isRangeArg(sortColumnArg)) {
+      if (sortColumnArg.rows !== range.rows || sortColumnArg.cols !== 1) {
+        return deps.errorValue(ErrorCode.Value)
+      }
+      values = Array.from({ length: sortColumnArg.rows }, (_, row) => deps.getRangeValue(sortColumnArg, row, 0))
+    } else {
+      const sortIndex = deps.toInteger(sortColumnArg)
+      if (sortIndex === undefined || sortIndex < 1 || sortIndex > range.cols) {
+        return deps.errorValue(ErrorCode.Value)
+      }
+      values = Array.from({ length: range.rows }, (_, row) => deps.getRangeValue(range, row, sortIndex - 1))
+    }
+
+    const ascendingArg = criteriaArgs[index + 1]
+    if (deps.isRangeArg(ascendingArg)) {
+      return deps.errorValue(ErrorCode.Value)
+    }
+    if (deps.isError(ascendingArg)) {
+      return ascendingArg
+    }
+    const ascending = ascendingArg === undefined ? true : deps.toBoolean(ascendingArg)
+    if (ascending === undefined) {
+      return deps.errorValue(ErrorCode.Value)
+    }
+    criteria.push({ values, order: ascending ? 1 : -1 })
+  }
+  return criteria
+}
+
+function selectSortnRows(
+  sortedRows: readonly number[],
+  rowLimit: number,
+  displayTiesMode: number,
+  criteria: readonly SortnCriterion[],
+  deps: LookupSortFilterBuiltinDeps,
+): number[] | CellValue {
+  if (displayTiesMode === 0) {
+    return sortedRows.slice(0, rowLimit)
+  }
+
+  if (displayTiesMode === 1) {
+    const selected = sortedRows.slice(0, rowLimit)
+    const nthRow = selected[selected.length - 1]
+    if (nthRow === undefined || rowLimit >= sortedRows.length) {
+      return selected
+    }
+    for (let index = rowLimit; index < sortedRows.length; index += 1) {
+      const row = sortedRows[index]!
+      const sameKey = sameSortnKey(row, nthRow, criteria, deps)
+      if (typeof sameKey !== 'boolean') {
+        return sameKey
+      }
+      if (!sameKey) {
+        break
+      }
+      selected.push(row)
+    }
+    return selected
+  }
+
+  const selectedRows: number[] = []
+  for (const row of sortedRows) {
+    const matched = matchesAnySortnKey(row, selectedRows, criteria, deps)
+    if (typeof matched !== 'boolean') {
+      return matched
+    }
+    if (matched) {
+      continue
+    }
+    selectedRows.push(row)
+    if (selectedRows.length >= rowLimit) {
+      break
+    }
+  }
+
+  if (displayTiesMode === 2) {
+    return selectedRows
+  }
+
+  const rowsWithDuplicates: number[] = []
+  for (const row of sortedRows) {
+    const matched = matchesAnySortnKey(row, selectedRows, criteria, deps)
+    if (typeof matched !== 'boolean') {
+      return matched
+    }
+    if (matched) {
+      rowsWithDuplicates.push(row)
+    }
+  }
+  return rowsWithDuplicates
+}
+
 export function createLookupSortFilterBuiltins(deps: LookupSortFilterBuiltinDeps): Record<string, LookupBuiltin> {
   return {
     SORT: (arrayArg, sortIndexArg, sortOrderArg = { tag: ValueTag.Number, value: 1 }, byColArg) => {
@@ -151,6 +329,63 @@ export function createLookupSortFilterBuiltins(deps: LookupSortFilterBuiltinDeps
         values.push(...deps.pickRangeRow(array, row))
       }
       return deps.arrayResult(values, array.rows, array.cols)
+    },
+    SORTN: (arrayArg, rowLimitArg, displayTiesModeArg, ...criteriaArgs) => {
+      if (arrayArg === undefined) {
+        return deps.errorValue(ErrorCode.Value)
+      }
+      const array = deps.toCellRange(arrayArg)
+      if (!deps.isRangeArg(array)) {
+        return array
+      }
+      if (deps.isRangeArg(rowLimitArg) || deps.isRangeArg(displayTiesModeArg)) {
+        return deps.errorValue(ErrorCode.Value)
+      }
+      if (deps.isError(rowLimitArg)) {
+        return rowLimitArg
+      }
+      if (deps.isError(displayTiesModeArg)) {
+        return displayTiesModeArg
+      }
+
+      const rowLimit = rowLimitArg === undefined ? 1 : deps.toInteger(rowLimitArg)
+      const displayTiesMode = displayTiesModeArg === undefined ? 0 : deps.toInteger(displayTiesModeArg)
+      if (rowLimit === undefined || rowLimit < 1 || displayTiesMode === undefined || displayTiesMode < 0 || displayTiesMode > 3) {
+        return deps.errorValue(ErrorCode.Value)
+      }
+
+      const criteria = buildSortnCriteria(array, criteriaArgs, deps)
+      if (!Array.isArray(criteria)) {
+        return criteria
+      }
+
+      let sortError: CellValue | undefined
+      const sortedRows = Array.from({ length: array.rows }, (_, row) => row)
+      sortedRows.sort((left, right) => {
+        if (left === right) {
+          return 0
+        }
+        const cmp = compareSortnRows(left, right, criteria, deps)
+        if (typeof cmp !== 'number') {
+          sortError = cmp
+          return 0
+        }
+        return cmp !== 0 ? cmp : left - right
+      })
+      if (sortError) {
+        return sortError
+      }
+
+      const selectedRows = selectSortnRows(sortedRows, Math.min(rowLimit, array.rows), displayTiesMode, criteria, deps)
+      if (!Array.isArray(selectedRows)) {
+        return selectedRows
+      }
+
+      const values: CellValue[] = []
+      for (const row of selectedRows) {
+        values.push(...deps.pickRangeRow(array, row))
+      }
+      return deps.arrayResult(values, selectedRows.length, array.cols)
     },
     SORTBY: (arrayArg, ...criteriaArgs) => {
       if (arrayArg === undefined) {

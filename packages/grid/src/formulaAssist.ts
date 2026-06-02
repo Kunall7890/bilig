@@ -77,6 +77,7 @@ const COMMON_FUNCTIONS = new Set([
   'FILTER',
   'UNIQUE',
   'SORT',
+  'SORTN',
   'ROUND',
   'DATE',
   'TODAY',
@@ -244,6 +245,17 @@ const CURATED_HELP: Record<
       { label: '[sort_order]', optional: true },
       { label: '[by_col]', optional: true },
     ],
+  },
+  SORTN: {
+    summary: 'Return the first rows after sorting, with optional tie handling.',
+    args: [
+      { label: 'range' },
+      { label: '[n]', optional: true },
+      { label: '[display_ties_mode]', optional: true },
+      { label: '[sort_column1]', optional: true },
+      { label: '[is_ascending1]', optional: true },
+    ],
+    variadic: true,
   },
   ROUND: {
     summary: 'Round a number to the specified number of digits.',
