@@ -56,7 +56,11 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpa
 That writes Bilig-specific agent files, keeps an existing `README.md`, does
 not edit `package.json`, keeps WorkPaper state under
 `./.bilig/pricing.workpaper.json`, and skips existing files unless you pass
-`--force`.
+`--force`. When existing agent instruction files block part of the install, the
+CLI writes `BILIG_WORKPAPER_INSTALL.md` with the skipped paths and a short
+handoff snippet you can paste into your current agent policy. The overlay uses
+your existing `package.json` name for `BILIG_WORKPAPER.md` instead of rendering
+the directory argument.
 
 For an existing agent or MCP client that does not need a generated project yet,
 use the adoption kit first:

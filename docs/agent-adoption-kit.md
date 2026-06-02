@@ -60,7 +60,10 @@ npm create @bilig/workpaper@latest . -- --add-agent
 That keeps the app template, existing `README.md`, and `package.json` intact.
 The generated MCP configs use direct `npm exec` and store local workbook state
 at `./.bilig/pricing.workpaper.json`, so agents can run the WorkPaper server
-without needing project scripts or a root-level state file.
+without needing project scripts or a root-level state file. If an agent policy
+file already exists, the CLI leaves it untouched and writes
+`BILIG_WORKPAPER_INSTALL.md` with the skipped paths and the short handoff block
+to paste into the current policy.
 
 For web fetch, give the agent the compact map first:
 

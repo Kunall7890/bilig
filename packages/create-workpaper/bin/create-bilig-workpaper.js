@@ -28,7 +28,9 @@ if (options.help) {
 
 const defaultTargetDirectory = options.addAgent ? '.' : 'bilig-workpaper-starter'
 const targetDirectory = resolve(process.cwd(), options.targetDirectory ?? defaultTargetDirectory)
-const projectName = normalizePackageName(options.targetDirectory ?? defaultTargetDirectory)
+const projectName = options.addAgent
+  ? await resolveExistingProjectName(targetDirectory, options.targetDirectory ?? defaultTargetDirectory)
+  : normalizePackageName(options.targetDirectory ?? defaultTargetDirectory)
 
 if (options.addAgent) {
   await ensureDirectory(targetDirectory)
@@ -38,6 +40,9 @@ if (options.addAgent) {
   console.log(`Added Bilig agent files to ${targetLabel}`)
   printChangeList('Wrote', overlayResult.written)
   printChangeList('Skipped existing', overlayResult.skipped)
+  if (overlayResult.installSummary !== undefined) {
+    console.log(`Review skipped-file handoff: ${overlayResult.installSummary}`)
+  }
   console.log('')
   console.log('Next:')
   if (targetLabel !== '.') {
@@ -228,15 +233,60 @@ async function copyAgentOverlay(sourceRoot, outputDirectory, packageName, workpa
       return { path: targetRelativePath, status: 'written' }
     }),
   )
+  const skipped = results.filter((result) => result.status === 'skipped').map((result) => result.path)
+  const written = results.filter((result) => result.status === 'written').map((result) => result.path)
+  let installSummary
+  if (!force && skipped.length > 0) {
+    installSummary = 'BILIG_WORKPAPER_INSTALL.md'
+    const summaryPath = join(outputDirectory, installSummary)
+    await writeFile(summaryPath, renderInstallSummary(packageName, workpaperPath, skipped))
+    if (!written.includes(installSummary)) {
+      written.push(installSummary)
+    }
+  }
 
   return {
-    skipped: results.filter((result) => result.status === 'skipped').map((result) => result.path),
-    written: results.filter((result) => result.status === 'written').map((result) => result.path),
+    installSummary,
+    skipped,
+    written,
   }
 }
 
 function renderTemplate(text, packageName, workpaperPath) {
   return text.replaceAll('__PROJECT_NAME__', packageName).replaceAll('__WORKPAPER_PATH__', workpaperPath)
+}
+
+function renderInstallSummary(packageName, workpaperPath, skipped) {
+  const skippedList = skipped.map((path) => `- ${path}`).join('\n')
+  return `# Bilig WorkPaper Install Notes
+
+Project: \`${packageName}\`
+
+The agent overlay installed the files it could without overwriting existing
+project instructions.
+
+## Skipped Existing Files
+
+${skippedList}
+
+## Add To Existing Agent Instructions
+
+\`\`\`text
+Use Bilig WorkPaper tools instead of spreadsheet UI automation. Read
+BILIG_WORKPAPER.md first. For formula or workbook tasks, edit one exact input
+or formula, read the recalculated dependent value, and report persistence
+evidence. Do not claim success from a write call alone.
+\`\`\`
+
+## Verify
+
+\`\`\`sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ${workpaperPath} --init-demo-workpaper --writable
+\`\`\`
+
+Expected evaluator output includes \`"verified": true\`.
+`
 }
 
 async function listFiles(directory) {
@@ -264,6 +314,27 @@ async function pathExists(path) {
     }
     throw error
   }
+}
+
+async function resolveExistingProjectName(directory, fallbackName) {
+  const manifestPath = join(directory, 'package.json')
+  try {
+    const parsed = JSON.parse(await readFile(manifestPath, 'utf8'))
+    if (typeof parsed?.name === 'string' && parsed.name.trim() !== '') {
+      return normalizePackageName(parsed.name)
+    }
+  } catch (error) {
+    if (error?.code !== 'ENOENT') {
+      throw new Error(`Could not read ${manifestPath}: ${error instanceof Error ? error.message : String(error)}`, {
+        cause: error,
+      })
+    }
+  }
+
+  if (fallbackName === '.' || fallbackName === './') {
+    return normalizePackageName(directory)
+  }
+  return normalizePackageName(fallbackName)
 }
 
 function printChangeList(label, values) {

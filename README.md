@@ -502,6 +502,8 @@ an `agent:verify` script, run
 For an existing repo, run
 `npm create @bilig/workpaper@latest . -- --add-agent`; it adds Bilig agent and
 MCP instructions without replacing your app template or editing `package.json`.
+If an agent policy already exists, it writes `BILIG_WORKPAPER_INSTALL.md` with
+the skipped paths and a short handoff block.
 
 If that proof almost matches a service or agent workflow you maintain, the useful next
 step is concrete feedback: open or answer one adoption blocker in

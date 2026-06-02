@@ -41,9 +41,9 @@ function stringArray(value: unknown): readonly string[] {
   return value
 }
 
-function run(command: string, commandArgs: readonly string[], options: { readonly allowFailure?: boolean } = {}) {
+function run(command: string, commandArgs: readonly string[], options: { readonly allowFailure?: boolean; readonly cwd?: string } = {}) {
   const result = spawnSync(command, commandArgs, {
-    cwd: repoRoot,
+    cwd: options.cwd ?? repoRoot,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   })
@@ -234,6 +234,7 @@ function assertGeneratedStarters(): void {
   const serviceDir = join(generatedDir, 'service-demo')
   const agentDir = join(generatedDir, 'agent-demo')
   const existingDir = join(generatedDir, 'existing-demo')
+  const dotExistingDir = join(generatedDir, 'dot-existing-demo')
 
   run('node', [cliPath, serviceDir])
   run('node', [cliPath, agentDir, '--agent'])
@@ -245,6 +246,13 @@ function assertGeneratedStarters(): void {
   writeFileSync(join(existingDir, 'README.md'), '# Existing project\n')
   writeFileSync(join(existingDir, 'src-index.ts'), 'console.log("keep me")\n')
   run('node', [cliPath, existingDir, '--add-agent'])
+  mkdirSync(dotExistingDir, { recursive: true })
+  writeFileSync(
+    join(dotExistingDir, 'package.json'),
+    `${JSON.stringify({ name: '@demo/pricing-rules-service', private: true }, null, 2)}\n`,
+  )
+  writeFileSync(join(dotExistingDir, 'README.md'), '# Dot existing project\n')
+  run('node', [cliPath, '.', '--add-agent'], { cwd: dotExistingDir })
 
   const serviceManifest = readJson(join(serviceDir, 'package.json'))
   assert(isRecord(serviceManifest.scripts), 'generated service package scripts must be an object')
@@ -365,6 +373,18 @@ function assertGeneratedStarters(): void {
     readFileSync(join(existingDir, 'AGENTS.md'), 'utf8') === '# Existing agent policy\n',
     'existing-repo overlay must skip existing agent files by default',
   )
+  const installSummary = readFileSync(join(existingDir, 'BILIG_WORKPAPER_INSTALL.md'), 'utf8')
+  assert(
+    installSummary.includes('AGENTS.md') &&
+      installSummary.includes('BILIG_WORKPAPER.md') &&
+      installSummary.includes('bilig-evaluate --door agent-mcp --scenario revenue-plan --json'),
+    'existing-repo overlay must write a handoff summary when it skips existing agent files',
+  )
+  run('node', [cliPath, existingDir, '--add-agent'])
+  assert(
+    readFileSync(join(existingDir, 'BILIG_WORKPAPER_INSTALL.md'), 'utf8') === installSummary,
+    'existing-repo skipped-file handoff summary must be idempotent',
+  )
   run('node', [cliPath, existingDir, '--add-agent', '--force'])
   assert(
     readFileSync(join(existingDir, 'AGENTS.md'), 'utf8') === existingAgentNotes,
@@ -374,6 +394,23 @@ function assertGeneratedStarters(): void {
   assert(
     JSON.stringify(readJson(join(existingDir, 'package.json'))) === JSON.stringify(existingManifest),
     '--force must still not mutate package.json',
+  )
+  assert(
+    readFileSync(join(dotExistingDir, 'BILIG_WORKPAPER.md'), 'utf8').startsWith('# `pricing-rules-service`'),
+    'existing-repo dot overlay must derive the project label from package.json instead of rendering "."',
+  )
+  assert(
+    readFileSync(join(dotExistingDir, 'README.md'), 'utf8') === '# Dot existing project\n',
+    'existing-repo dot overlay must not overwrite README.md',
+  )
+  assert(
+    JSON.stringify(readJson(join(dotExistingDir, 'package.json'))) ===
+      JSON.stringify({ name: '@demo/pricing-rules-service', private: true }),
+    'existing-repo dot overlay must not mutate package.json',
+  )
+  assert(
+    !existsSync(join(dotExistingDir, '.bilig')),
+    'existing-repo dot overlay must not create WorkPaper state before the MCP server runs',
   )
 }
 

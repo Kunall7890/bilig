@@ -53,7 +53,11 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpa
 `--add-agent` only adds Bilig agent/MCP instructions. It keeps your existing
 app template and `README.md`, writes `BILIG_WORKPAPER.md`, keeps WorkPaper
 state under `./.bilig/pricing.workpaper.json`, does not edit `package.json`,
-and skips existing files unless you pass `--force`.
+and skips existing files unless you pass `--force`. If an existing agent policy
+blocks part of the overlay, the CLI writes `BILIG_WORKPAPER_INSTALL.md` with
+the skipped paths and a compact handoff snippet for your current agent file.
+For `npm create @bilig/workpaper@latest . -- --add-agent`, the overlay labels
+`BILIG_WORKPAPER.md` from your existing `package.json` name instead of `.`.
 
 Full-repo flagship example:
 
