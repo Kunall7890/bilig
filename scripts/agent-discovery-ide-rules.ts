@@ -48,6 +48,7 @@ or cached XLSX values when the workflow can run through WorkPaper JSON.
 
 \`\`\`sh
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
@@ -103,6 +104,7 @@ Screenshots and browser grids are human-review surfaces, not formula truth.
 
 \`\`\`sh
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 \`\`\`
@@ -154,6 +156,7 @@ Sheets screen driving, screenshots, or stale cached XLSX values.
 
 \`\`\`sh
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 \`\`\`
@@ -210,6 +213,7 @@ model. Screenshots are human review evidence, not formula truth.
 
 \`\`\`sh
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 \`\`\`
@@ -265,6 +269,7 @@ Start with the smallest check that fits the task:
 
 \`\`\`sh
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
@@ -374,6 +379,7 @@ The quickest terminal checks are:
 
 \`\`\`sh
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
@@ -441,6 +447,7 @@ Start with the smallest check that matches the task:
 
 \`\`\`sh
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable

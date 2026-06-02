@@ -62,6 +62,17 @@
       "expected_result": "bilig-evaluator.v1 JSON with MCP tool discovery, cell edit, formula readback, export, restore, tool list, and verified true",
       "proof_schema": "bilig-evaluator.v1",
       "canonical_door": "agent-mcp"
+    },
+    {
+      "name": "eval-agent-mcp-provider-backed",
+      "audience": "A coding agent sees provider-backed formulas such as IMPORTRANGE and needs fail-closed diagnostics before wiring an adapter.",
+      "docs": "https://proompteng.github.io/bilig/eval-agent-mcp.html",
+      "source": "https://github.com/proompteng/bilig/blob/main/docs/eval-agent-mcp.md",
+      "package": "@bilig/workpaper",
+      "command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json",
+      "expected_result": "bilig-evaluator.v1 JSON with IMPORTRANGE blocked diagnostics, synthetic adapter readback, cleared diagnostics, restart proof, and verified true",
+      "proof_schema": "bilig-evaluator.v1",
+      "canonical_door": "agent-mcp"
     }
   ],
   "mcp": {

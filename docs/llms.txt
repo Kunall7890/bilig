@@ -50,6 +50,7 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 - Evaluator commands:
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json`.
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.
+  `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json`.
   `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json`.
 - Direct proof commands:
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json`.
@@ -59,6 +60,7 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   https://github.com/proompteng/bilig/blob/main/docs/agent-adoption-kit.md
   `npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list`
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.
+  `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json`.
   `npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`.
 - Use `@bilig/workpaper` for formula workbook state inside a Node service,
   queue worker, route handler, test, or agent tool.
@@ -114,6 +116,12 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   https://proompteng.github.io/bilig/eval-agent-mcp.html
   Run:
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.
+- `eval-agent-mcp-provider-backed`: use when a coding agent sees
+  provider-backed formulas such as `IMPORTRANGE` and needs fail-closed
+  diagnostics before wiring an adapter. Read:
+  https://proompteng.github.io/bilig/eval-agent-mcp.html
+  Run:
+  `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json`.
 - Every proof path must return readback evidence, persisted or exported state,
   `verified: true`, and limitations. A write call by itself is not success.
 

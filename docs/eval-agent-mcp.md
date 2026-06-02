@@ -30,6 +30,19 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-
 That path edits `Deals!C2` and verifies `SUM`, `SUMIF`, `XLOOKUP`, a `FILTER`
 spill, a named expression, JSON persistence, and restart readback.
 
+If the workbook uses a provider-backed formula such as `IMPORTRANGE`, run the
+adapter-boundary scenario:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
+```
+
+That scenario reads an `IMPORTRANGE` cell with no adapter and expects
+`#BLOCKED!` plus a `provider-backed-adapter-missing` diagnostic. It then
+installs a local synthetic adapter, recalculates a fresh `96000` readback,
+exports WorkPaper JSON, restarts from disk, and verifies the diagnostic is
+gone. It does not call Google Sheets or prove remote authorization.
+
 If you are handing this to another coding agent, start from the
 [Agent Adoption Kit](agent-adoption-kit.md). It includes the installable skill,
 one MCP config, a workbook task, and the pass/fail proof object.
@@ -97,6 +110,13 @@ For `--scenario revenue-plan`, the invariants are `scenario: "revenue-plan"`,
 `filterSpillUpdated`, `namedExpressionApplied`, `persistedToDisk`,
 `restartReadbackMatchesAfter`, and `verified: true`.
 
+For `--scenario provider-backed`, the invariants are
+`scenario: "provider-backed"`, `providerFunction: "IMPORTRANGE"`,
+`adapterSurface: "web"`, `before.displayValue: "#BLOCKED!"`,
+`provider-backed-adapter-missing`, `after.displayValue: "96000"`,
+`adapterBackedDiagnosticsCleared`, `restartReadbackMatchesAfter`, and
+`verified: true`.
+
 ## What this proves
 
 - the published package exposes a file-backed MCP stdio server
@@ -104,13 +124,15 @@ For `--scenario revenue-plan`, the invariants are `scenario: "revenue-plan"`,
 - an input edit changes a dependent formula result
 - the updated WorkPaper document can be exported and persisted
 - restart readback matches the calculated value after the edit
+- provider-backed formulas fail closed with actionable diagnostics until the
+  host supplies an adapter
 
 ## What this does not prove
 
 This does not prove arbitrary workbook compatibility, macros, pivots, charts,
-external links, unsupported formulas, or desktop Excel parity. It proves the
-agent tool contract: no screenshot truth, no blind write-only success, and no
-missing persistence proof.
+live Google Sheets authorization, external links, unsupported formulas, or
+desktop Excel parity. It proves the agent tool contract: no screenshot truth,
+no blind write-only success, and no missing persistence proof.
 
 ## After the proof
 

@@ -2,6 +2,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import { clearExternalFunctionAdapters, installExternalFunctionAdapter } from '@bilig/formula'
+import { ValueTag } from '@bilig/protocol'
 import { exportWorkPaperDocument, serializeWorkPaperDocument } from './persistence.js'
 import { createFileBackedWorkPaperMcpToolServerFromFile } from './work-paper-mcp-file-server.js'
 import {
@@ -94,6 +96,40 @@ export interface McpRevenuePlanChallengeProof {
   readonly limitations: readonly string[]
 }
 
+export interface McpProviderBackedChallengeProof {
+  readonly transport: 'stdio-json-rpc'
+  readonly scenario: 'provider-backed'
+  readonly providerFunction: 'IMPORTRANGE'
+  readonly adapterSurface: 'web'
+  readonly protocolVersion: string
+  readonly serverName: string
+  readonly workpaperPath?: string
+  readonly tools: readonly string[]
+  readonly resources: readonly string[]
+  readonly prompts: readonly string[]
+  readonly target: 'Imports!B2'
+  readonly formula: '=IMPORTRANGE("source","Revenue!B2")'
+  readonly adapterFormula: '=IMPORTRANGE("source","Revenue!B2")+0'
+  readonly before: JsonObject
+  readonly after: JsonObject
+  readonly afterRestart: JsonObject
+  readonly diagnostics: readonly JsonObject[]
+  readonly persistedDocumentBytes: number
+  readonly checks: {
+    readonly listedFileBackedTools: boolean
+    readonly listedResourcesAndPrompts: boolean
+    readonly formulaValidationPassed: boolean
+    readonly blockedReadbackIsBlocked: boolean
+    readonly blockedDiagnosticExplainsAdapter: boolean
+    readonly adapterBackedReadbackIsFresh: boolean
+    readonly adapterBackedDiagnosticsCleared: boolean
+    readonly exportContainsWorkPaperDocument: boolean
+    readonly restartReadbackMatchesAfter: boolean
+  }
+  readonly verified: boolean
+  readonly limitations: readonly string[]
+}
+
 export interface McpChallengeCliHost {
   readonly argv: readonly string[]
   readonly writeStderr?: (text: string) => void
@@ -133,6 +169,8 @@ const expectedResources = [
 const expectedPrompts = ['edit_and_verify_workpaper', 'debug_workpaper_formula'] as const
 
 const revenuePlanFormulaFamilies = ['SUM', 'SUMIF', 'XLOOKUP', 'FILTER', 'named-expression', 'persistence', 'restart'] as const
+const providerBackedBlockedFormula = '=IMPORTRANGE("source","Revenue!B2")' as const
+const providerBackedAdapterFormula = '=IMPORTRANGE("source","Revenue!B2")+0' as const
 
 export function runMcpChallengeCli(host: McpChallengeCliHost): number {
   const writeStdout = host.writeStdout ?? ((text: string) => process.stdout.write(text))
@@ -482,6 +520,172 @@ export function buildMcpRevenuePlanChallengeProof(options: McpChallengeBuildOpti
   }
 }
 
+export function buildMcpProviderBackedChallengeProof(options: McpChallengeBuildOptions = {}): McpProviderBackedChallengeProof {
+  const tempDir = mkdtempSync(join(tmpdir(), 'bilig-mcp-provider-backed-'))
+  const workpaperPath = join(tempDir, 'provider-backed.workpaper.json')
+  const keepTemp = options.keepTemp ?? false
+
+  clearExternalFunctionAdapters()
+  try {
+    writeFileSync(
+      workpaperPath,
+      serializeWorkPaperDocument(exportWorkPaperDocument(createProviderBackedWorkPaper(), { includeConfig: true })),
+    )
+
+    const blockedServer = createFileBackedWorkPaperMcpToolServerFromFile({
+      workpaperPath,
+      writable: false,
+    })
+    const initialize = rpcResult(
+      dispatchWorkPaperMcpJsonRpc(
+        {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'initialize',
+        },
+        { server: blockedServer, protocolVersion: WORKPAPER_MCP_PROTOCOL_VERSION },
+      ),
+      'initialize',
+    )
+    const initialized = requireRecord(initialize, 'initialize result')
+    const tools = readToolNames(rpcResult(callJsonRpc(blockedServer, 2, 'tools/list'), 'tools/list result'))
+    const resources = readResourceUris(rpcResult(callJsonRpc(blockedServer, 3, 'resources/list'), 'resources/list result'))
+    const prompts = readPromptNames(rpcResult(callJsonRpc(blockedServer, 4, 'prompts/list'), 'prompts/list result'))
+    const formulaValidation = toolStructuredContent(
+      callTool(blockedServer, 5, 'validate_formula', {
+        formula: providerBackedBlockedFormula,
+      }),
+      'validate_formula',
+    )
+    const before = toolStructuredContent(
+      callTool(blockedServer, 6, 'read_cell', {
+        sheetName: 'Imports',
+        address: 'B2',
+      }),
+      'read_cell provider-backed blocked',
+    )
+
+    installExternalFunctionAdapter({
+      surface: 'web',
+      resolveFunction(name) {
+        if (name !== 'IMPORTRANGE') {
+          return undefined
+        }
+        return {
+          kind: 'lookup',
+          implementation: () => ({
+            tag: ValueTag.Number,
+            value: 96_000,
+          }),
+        }
+      },
+    })
+
+    const adapterServer = createFileBackedWorkPaperMcpToolServerFromFile({
+      workpaperPath,
+      writable: true,
+    })
+    toolStructuredContent(
+      callTool(adapterServer, 7, 'set_cell_contents', {
+        sheetName: 'Imports',
+        address: 'B2',
+        value: 0,
+      }),
+      'set_cell_contents provider-backed reset',
+    )
+    const adapterWrite = toolStructuredContent(
+      callTool(adapterServer, 8, 'set_cell_contents', {
+        sheetName: 'Imports',
+        address: 'B2',
+        value: providerBackedAdapterFormula,
+      }),
+      'set_cell_contents provider-backed adapter',
+    )
+    const after = requireRecord(adapterWrite['after'], 'set_cell_contents provider-backed after')
+    const exported = toolStructuredContent(
+      callTool(adapterServer, 9, 'export_workpaper_document', {
+        includeConfig: true,
+      }),
+      'export_workpaper_document',
+    )
+    const restartedServer = createFileBackedWorkPaperMcpToolServerFromFile({
+      workpaperPath,
+      writable: false,
+    })
+    const afterRestart = toolStructuredContent(
+      callTool(restartedServer, 10, 'read_cell', {
+        sheetName: 'Imports',
+        address: 'B2',
+      }),
+      'read_cell provider-backed restart',
+    )
+    const serverInfo = requireRecord(initialized['serverInfo'], 'initialize serverInfo')
+    const diagnostics = requireArray(before['formulaDiagnostics'], 'formulaDiagnostics').map((entry) =>
+      requireRecord(entry, 'formula diagnostic'),
+    )
+    const afterDiagnostics = requireArray(after['formulaDiagnostics'], 'after formulaDiagnostics')
+    const checks = {
+      listedFileBackedTools: arraysEqual(tools, expectedFileBackedTools),
+      listedResourcesAndPrompts: arraysEqual(resources, expectedResources) && arraysEqual(prompts, expectedPrompts),
+      formulaValidationPassed: formulaValidation['valid'] === true,
+      blockedReadbackIsBlocked: before['displayValue'] === '#BLOCKED!',
+      blockedDiagnosticExplainsAdapter: diagnostics.some(
+        (diagnostic) =>
+          diagnostic['code'] === 'provider-backed-adapter-missing' &&
+          diagnostic['functionName'] === 'IMPORTRANGE' &&
+          diagnostic['adapterSurface'] === 'web' &&
+          diagnostic['errorText'] === '#BLOCKED!',
+      ),
+      adapterBackedReadbackIsFresh: numericCellValue(after) === 96_000 && after['displayValue'] === '96000',
+      adapterBackedDiagnosticsCleared: afterDiagnostics.length === 0,
+      exportContainsWorkPaperDocument:
+        isRecord(exported['document']) && requireNumber(exported['serializedBytes'], 'exported.serializedBytes') > 0,
+      restartReadbackMatchesAfter: JSON.stringify(afterRestart) === JSON.stringify(after),
+    }
+    const proof: McpProviderBackedChallengeProof = {
+      transport: 'stdio-json-rpc',
+      scenario: 'provider-backed',
+      providerFunction: 'IMPORTRANGE',
+      adapterSurface: 'web',
+      protocolVersion: requireString(initialized['protocolVersion'], 'protocolVersion'),
+      serverName: requireString(serverInfo['name'], 'serverInfo.name'),
+      tools,
+      resources,
+      prompts,
+      target: 'Imports!B2',
+      formula: providerBackedBlockedFormula,
+      adapterFormula: providerBackedAdapterFormula,
+      before,
+      after,
+      afterRestart,
+      diagnostics,
+      persistedDocumentBytes: requireNumber(exported['serializedBytes'], 'exported.serializedBytes'),
+      checks,
+      verified:
+        checks.listedFileBackedTools &&
+        checks.listedResourcesAndPrompts &&
+        checks.formulaValidationPassed &&
+        checks.blockedReadbackIsBlocked &&
+        checks.blockedDiagnosticExplainsAdapter &&
+        checks.adapterBackedReadbackIsFresh &&
+        checks.adapterBackedDiagnosticsCleared &&
+        checks.exportContainsWorkPaperDocument &&
+        checks.restartReadbackMatchesAfter,
+      limitations: [
+        'This provider-backed challenge proves an explicit adapter boundary for IMPORTRANGE without calling Google Sheets.',
+        'The adapter is synthetic and local; production IMPORTRANGE use needs a host adapter that owns authorization and remote range fetching.',
+      ],
+    }
+
+    return keepTemp ? { ...proof, workpaperPath } : proof
+  } finally {
+    clearExternalFunctionAdapters()
+    if (!keepTemp) {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  }
+}
+
 export function renderMcpChallengeProof(proof: McpChallengeProof, outputMode: McpChallengeOutputMode): string {
   if (outputMode === 'markdown') {
     return renderMcpChallengeMarkdown(proof)
@@ -596,6 +800,15 @@ function createRevenuePlanWorkPaper(): WorkPaper {
   workbook.addNamedExpression('GrowthRatePercent', 12)
   workbook.setCellContents({ sheet: summarySheet, row: 4, col: 1 }, '=SUM(Deals!E2:E4)*(100+GrowthRatePercent)/100')
   return workbook
+}
+
+function createProviderBackedWorkPaper(): WorkPaper {
+  return WorkPaper.buildFromSheets({
+    Imports: [
+      ['Metric', 'Value'],
+      ['Remote ARR', providerBackedBlockedFormula],
+    ],
+  })
 }
 
 function revenuePlanReadback(range: JsonObject): McpRevenuePlanReadback {

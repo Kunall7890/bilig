@@ -125,17 +125,67 @@ describe('bilig-evaluate CLI', () => {
     })
   })
 
+  it('prints a verified provider-backed agent MCP proof', () => {
+    let stdout = ''
+
+    const exitCode = runBiligEvaluatorCli(['--door', 'agent-mcp', '--scenario', 'provider-backed', '--json'], {
+      stdout: (text) => {
+        stdout += text
+      },
+    })
+
+    expect(exitCode).toBe(0)
+    const proof = readProof(stdout)
+    expect(proof.schemaVersion).toBe('bilig-evaluator.v1')
+    expect(proof.door).toBe('agent-mcp')
+    expect(proof.verified).toBe(true)
+    expect(proof.evidence).toMatchObject({
+      scenario: 'provider-backed',
+      providerFunction: 'IMPORTRANGE',
+      adapterSurface: 'web',
+      target: 'Imports!B2',
+      formula: '=IMPORTRANGE("source","Revenue!B2")',
+      adapterFormula: '=IMPORTRANGE("source","Revenue!B2")+0',
+      before: {
+        displayValue: '#BLOCKED!',
+      },
+      after: {
+        serialized: '=IMPORTRANGE("source","Revenue!B2")+0',
+        displayValue: '96000',
+      },
+      afterRestart: {
+        serialized: '=IMPORTRANGE("source","Revenue!B2")+0',
+        displayValue: '96000',
+      },
+      diagnostics: [
+        {
+          code: 'provider-backed-adapter-missing',
+          functionName: 'IMPORTRANGE',
+          adapterSurface: 'web',
+          errorText: '#BLOCKED!',
+        },
+      ],
+      checks: {
+        blockedReadbackIsBlocked: true,
+        blockedDiagnosticExplainsAdapter: true,
+        adapterBackedReadbackIsFresh: true,
+        adapterBackedDiagnosticsCleared: true,
+        restartReadbackMatchesAfter: true,
+      },
+    })
+  })
+
   it('rejects unsupported door and scenario combinations', () => {
     let stderr = ''
 
-    const exitCode = runBiligEvaluatorCli(['--door', 'workpaper-service', '--scenario', 'revenue-plan'], {
+    const exitCode = runBiligEvaluatorCli(['--door', 'workpaper-service', '--scenario', 'provider-backed'], {
       stderr: (text) => {
         stderr += text
       },
     })
 
     expect(exitCode).toBe(1)
-    expect(stderr).toContain('Scenario "revenue-plan" is only available for --door agent-mcp.')
+    expect(stderr).toContain('Scenario "provider-backed" is only available for --door agent-mcp.')
   })
 
   it('rejects unknown doors with a focused error', () => {

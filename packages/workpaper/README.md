@@ -30,6 +30,11 @@ For a richer agent check, add `--scenario revenue-plan` to the `agent-mcp`
 evaluator. It proves `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression,
 JSON persistence, and restart readback.
 
+If the workbook has provider-backed formulas such as `IMPORTRANGE`, run
+`npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json`.
+That proves the formula fails closed with an adapter diagnostic, then verifies a
+local synthetic adapter readback. It does not call Google Sheets.
+
 If one of those matches your workflow, keep Bilig nearby:
 <https://github.com/proompteng/bilig>. Watch releases if this is close to a
 production dependency: <https://github.com/proompteng/bilig/subscription>.
@@ -181,6 +186,7 @@ The package ships evaluator and direct proof commands:
 ```sh
 npm exec --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321

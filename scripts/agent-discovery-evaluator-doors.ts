@@ -87,6 +87,19 @@ export function buildEvaluatorDoors(args: AgentDiscoveryEvaluatorDoorInputs): re
       proof_schema: 'bilig-evaluator.v1',
       canonical_door: 'agent-mcp',
     },
+    {
+      name: 'eval-agent-mcp-provider-backed',
+      audience:
+        'A coding agent sees provider-backed formulas such as IMPORTRANGE and needs fail-closed diagnostics before wiring an adapter.',
+      docs: `${siteRoot}/eval-agent-mcp.html`,
+      source: `${args.repositoryUrl}/blob/main/docs/eval-agent-mcp.md`,
+      package: '@bilig/workpaper',
+      command: `npm exec --yes --package ${args.workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json`,
+      expected_result:
+        'bilig-evaluator.v1 JSON with IMPORTRANGE blocked diagnostics, synthetic adapter readback, cleared diagnostics, restart proof, and verified true',
+      proof_schema: 'bilig-evaluator.v1',
+      canonical_door: 'agent-mcp',
+    },
   ] as const
 }
 

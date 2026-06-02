@@ -34,6 +34,12 @@ export async function requireAgentEvaluatorDiscovery(input: {
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
     'docs/agent-adoption-kit.md',
   )
+  requireIncludes(
+    agentAdoptionKit,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json',
+    'docs/agent-adoption-kit.md',
+  )
+  requireIncludes(agentAdoptionKit, 'provider-backed-adapter-missing', 'docs/agent-adoption-kit.md')
   requireIncludes(agentAdoptionKit, 'schemaVersion: "bilig-evaluator.v1"', 'docs/agent-adoption-kit.md')
   requireIncludes(agentAdoptionKit, 'door: "agent-mcp"', 'docs/agent-adoption-kit.md')
   requireIncludes(agentAdoptionKit, expectedWorkpaperVersion, 'docs/agent-adoption-kit.md')
@@ -48,6 +54,13 @@ export async function requireAgentEvaluatorDiscovery(input: {
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
     'docs/eval-agent-mcp.md',
   )
+  requireIncludes(
+    agentMcpEvaluator,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json',
+    'docs/eval-agent-mcp.md',
+  )
+  requireIncludes(agentMcpEvaluator, 'scenario: "provider-backed"', 'docs/eval-agent-mcp.md')
+  requireIncludes(agentMcpEvaluator, 'provider-backed-adapter-missing', 'docs/eval-agent-mcp.md')
   requireIncludes(agentMcpEvaluator, '"schemaVersion": "bilig-evaluator.v1"', 'docs/eval-agent-mcp.md')
   requireIncludes(agentMcpEvaluator, '"door": "agent-mcp"', 'docs/eval-agent-mcp.md')
   requireIncludes(agentMcpEvaluator, expectedWorkpaperVersion, 'docs/eval-agent-mcp.md')
@@ -55,4 +68,9 @@ export async function requireAgentEvaluatorDiscovery(input: {
   requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-agent-mcp.html', 'docs/llms.txt')
   requireIncludes(llms, 'https://proompteng.github.io/bilig/agent-adoption-kit.html', 'docs/llms.txt')
   requireIncludes(llms, 'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json', 'docs/llms.txt')
+  requireIncludes(
+    llms,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json',
+    'docs/llms.txt',
+  )
 }

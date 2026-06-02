@@ -84,9 +84,11 @@ npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 }
 ```
 
-Run `bilig-evaluate --door agent-mcp --json` first. If the evaluator fails,
-run `bilig-mcp-challenge` and treat its returned `tools` array as the source
-of truth for the currently published package. The core file-backed tools are:
+Run `bilig-evaluate --door agent-mcp --json` first. If the workbook contains
+provider-backed formulas such as `IMPORTRANGE`, run
+`bilig-evaluate --door agent-mcp --scenario provider-backed --json` to confirm
+the adapter boundary. If the evaluator fails, run `bilig-mcp-challenge` and
+treat its returned `tools` array as the source of truth for the currently published package. The core file-backed tools are:
 
 - `list_sheets`
 - `read_range`

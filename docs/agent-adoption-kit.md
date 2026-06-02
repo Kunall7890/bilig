@@ -86,6 +86,17 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-
 That scenario proves `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression,
 JSON persistence, and restart readback through the same MCP door.
 
+If the workbook includes provider-backed formulas such as `IMPORTRANGE`, run the
+adapter-boundary check:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
+```
+
+That check should show `#BLOCKED!` and `provider-backed-adapter-missing` before
+a local synthetic adapter is installed, then a fresh `96000` readback with
+diagnostics cleared after the adapter path runs. It does not call Google Sheets.
+
 A passing run must return `schemaVersion: "bilig-evaluator.v1"`,
 `door: "agent-mcp"`, `verified: true`, and these checks:
 

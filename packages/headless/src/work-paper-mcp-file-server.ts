@@ -308,7 +308,7 @@ function createFileBackedToolDefinitions(writable: boolean): WorkPaperMcpToolDef
       name: 'read_cell',
       title: 'Read WorkPaper Cell',
       description:
-        'Read one cell with calculated value, display text, formula text, and serialized content. Use after set_cell_contents to verify readback.',
+        'Read one cell with calculated value, display text, formula text, formula diagnostics, and serialized content. Use after set_cell_contents to verify readback.',
       inputSchema: cellAddressSchema(['sheetName', 'address']),
       outputSchema: cellReadOutputSchema(),
       annotations: readOnlyAnnotation('Read WorkPaper Cell'),
@@ -725,6 +725,7 @@ function readCell(workbook: WorkPaper, address: WorkPaperCellAddress): JsonObjec
     serialized: workbook.getCellSerialized(address),
     formula: workbook.getCellFormula(address) ?? null,
     displayValue: formatCellDisplayValue(value, format),
+    formulaDiagnostics: workbook.getCellFormulaDiagnostics(address),
   }
 }
 
@@ -881,7 +882,7 @@ function cellAddressSchema(required: string[]): JsonObject {
 function cellReadOutputSchema(): JsonObject {
   return {
     type: 'object',
-    required: ['address', 'value', 'serialized', 'formula', 'displayValue'],
+    required: ['address', 'value', 'serialized', 'formula', 'displayValue', 'formulaDiagnostics'],
     properties: {
       address: {
         type: 'string',
@@ -898,6 +899,10 @@ function cellReadOutputSchema(): JsonObject {
       displayValue: {
         type: 'string',
         description: 'Formatted value as a user would see it.',
+      },
+      formulaDiagnostics: {
+        type: 'array',
+        description: 'Structured formula diagnostics. Empty when the cell has no formula error.',
       },
     },
     additionalProperties: false,

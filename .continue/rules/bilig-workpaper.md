@@ -16,6 +16,7 @@ model. Screenshots are human review evidence, not formula truth.
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 ```

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   buildMcpChallengeProof,
+  buildMcpProviderBackedChallengeProof,
   buildMcpRevenuePlanChallengeProof,
   mcpChallengeHelpText,
   parseMcpChallengeCliArgs,
@@ -122,6 +123,55 @@ describe('bilig-mcp-challenge', () => {
         namedExpressionApplied: true,
         persistedToDisk: true,
         restoredReadbackMatchesAfter: true,
+        exportContainsWorkPaperDocument: true,
+        restartReadbackMatchesAfter: true,
+      },
+      verified: true,
+    })
+  })
+
+  it('builds a verified provider-backed MCP scenario with blocked diagnostics and adapter readback', () => {
+    expect(buildMcpProviderBackedChallengeProof()).toMatchObject({
+      transport: 'stdio-json-rpc',
+      scenario: 'provider-backed',
+      providerFunction: 'IMPORTRANGE',
+      adapterSurface: 'web',
+      serverName: 'bilig-headless-workpaper',
+      target: 'Imports!B2',
+      formula: '=IMPORTRANGE("source","Revenue!B2")',
+      adapterFormula: '=IMPORTRANGE("source","Revenue!B2")+0',
+      before: {
+        address: 'Imports!B2',
+        displayValue: '#BLOCKED!',
+        formulaDiagnostics: [
+          {
+            code: 'provider-backed-adapter-missing',
+            functionName: 'IMPORTRANGE',
+            adapterSurface: 'web',
+            errorText: '#BLOCKED!',
+          },
+        ],
+      },
+      after: {
+        address: 'Imports!B2',
+        serialized: '=IMPORTRANGE("source","Revenue!B2")+0',
+        displayValue: '96000',
+        formulaDiagnostics: [],
+      },
+      afterRestart: {
+        address: 'Imports!B2',
+        serialized: '=IMPORTRANGE("source","Revenue!B2")+0',
+        displayValue: '96000',
+        formulaDiagnostics: [],
+      },
+      checks: {
+        listedFileBackedTools: true,
+        listedResourcesAndPrompts: true,
+        formulaValidationPassed: true,
+        blockedReadbackIsBlocked: true,
+        blockedDiagnosticExplainsAdapter: true,
+        adapterBackedReadbackIsFresh: true,
+        adapterBackedDiagnosticsCleared: true,
         exportContainsWorkPaperDocument: true,
         restartReadbackMatchesAfter: true,
       },

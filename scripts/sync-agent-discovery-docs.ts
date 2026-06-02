@@ -96,6 +96,7 @@ source of truth.
 
 For MCP, start with:
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
@@ -193,6 +194,7 @@ From a clean project, run the package-owned check:
 \`\`\`sh
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
 npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
@@ -304,9 +306,11 @@ npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 }
 \`\`\`
 
-Run \`bilig-evaluate --door agent-mcp --json\` first. If the evaluator fails,
-run \`bilig-mcp-challenge\` and treat its returned \`tools\` array as the source
-of truth for the currently published package. The core file-backed tools are:
+Run \`bilig-evaluate --door agent-mcp --json\` first. If the workbook contains
+provider-backed formulas such as \`IMPORTRANGE\`, run
+\`bilig-evaluate --door agent-mcp --scenario provider-backed --json\` to confirm
+the adapter boundary. If the evaluator fails, run \`bilig-mcp-challenge\` and
+treat its returned \`tools\` array as the source of truth for the currently published package. The core file-backed tools are:
 
 - \`list_sheets\`
 - \`read_range\`

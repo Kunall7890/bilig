@@ -18,6 +18,7 @@ Start with the smallest check that fits the task:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
