@@ -115,10 +115,14 @@ describe('n8n WorkPaper formula readback workflow', () => {
     const keywords = readStringArray(packageJson['keywords'], 'package keywords')
     const n8n = readRecord(packageJson['n8n'], 'package n8n metadata')
     const peerDependencies = readRecord(packageJson['peerDependencies'], 'package peerDependencies')
+    const devDependencies = readRecord(packageJson['devDependencies'], 'package devDependencies')
+    const nodeCliVersion = readRequiredString(devDependencies['@n8n/node-cli'], '@n8n/node-cli version')
 
     expect(packageName).toBe('@bilig/n8n-nodes-workpaper')
     expect(packageJson['license']).toBe('MIT')
     expect(packageJson['dependencies']).toBeUndefined()
+    expect(nodeCliVersion).not.toBe('*')
+    expect(isAtLeastNodeCli023(nodeCliVersion)).toBe(true)
     expect(keywords).toContain('n8n-community-node-package')
     expect(n8n['strict']).toBe(true)
     expect(n8n['credentials']).toEqual([])
@@ -307,6 +311,16 @@ function readRequiredString(value: unknown, context: string): string {
     throw new Error(`${context} must be a string`)
   }
   return value
+}
+
+function isAtLeastNodeCli023(value: string): boolean {
+  const match = value.match(/^[~^]?(\d+)\.(\d+)\.(\d+)$/)
+  if (!match) {
+    return false
+  }
+  const major = Number(match[1])
+  const minor = Number(match[2])
+  return major > 0 || (major === 0 && minor >= 23)
 }
 
 function readStringArray(value: unknown, context: string): string[] {
