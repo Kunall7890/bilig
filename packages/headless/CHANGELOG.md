@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.147.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.146.0
+- Manual override: no
+
+## Features
+- feat(formula): add Google Sheets SORTN (660370a7)
+
 ## 0.146.0
 
 - Release type: minor
