@@ -5705,7 +5705,12 @@ describe('formula builtins', () => {
     const PY = getBuiltin('PY')!
     const REGISTER_ID = getBuiltin('REGISTER.ID')!
     const FILTERXML = getLookupBuiltin('FILTERXML')!
+    const GOOGLEFINANCE = getLookupBuiltin('GOOGLEFINANCE')!
+    const IMPORTDATA = getLookupBuiltin('IMPORTDATA')!
+    const IMPORTFEED = getLookupBuiltin('IMPORTFEED')!
+    const IMPORTHTML = getLookupBuiltin('IMPORTHTML')!
     const IMPORTRANGE = getLookupBuiltin('IMPORTRANGE')!
+    const IMPORTXML = getLookupBuiltin('IMPORTXML')!
     const STOCKHISTORY = getLookupBuiltin('STOCKHISTORY')!
 
     const hello = { tag: ValueTag.String, value: 'hello', stringId: 1 } as const
@@ -5715,7 +5720,12 @@ describe('formula builtins', () => {
     expect(placeholderBuiltinNames).not.toContain('TRANSLATE')
     expect(placeholderBuiltinNames).not.toContain('COPILOT')
     expect(placeholderBuiltinNames).not.toContain('FILTERXML')
+    expect(placeholderBuiltinNames).not.toContain('GOOGLEFINANCE')
+    expect(placeholderBuiltinNames).not.toContain('IMPORTDATA')
+    expect(placeholderBuiltinNames).not.toContain('IMPORTFEED')
+    expect(placeholderBuiltinNames).not.toContain('IMPORTHTML')
     expect(placeholderBuiltinNames).not.toContain('IMPORTRANGE')
+    expect(placeholderBuiltinNames).not.toContain('IMPORTXML')
     expect(placeholderBuiltinNames).not.toContain('STOCKHISTORY')
 
     expect(TRANSLATE(hello, sourceLang, targetLang)).toEqual({
@@ -5738,7 +5748,27 @@ describe('formula builtins', () => {
       code: ErrorCode.Blocked,
     })
     expect(FILTERXML(hello, sourceLang)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Blocked })
+    expect(GOOGLEFINANCE(hello, sourceLang)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Blocked,
+    })
+    expect(IMPORTDATA(hello)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Blocked,
+    })
+    expect(IMPORTFEED(hello)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Blocked,
+    })
+    expect(IMPORTHTML(hello, sourceLang, targetLang)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Blocked,
+    })
     expect(IMPORTRANGE(hello, sourceLang)).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Blocked,
+    })
+    expect(IMPORTXML(hello, sourceLang)).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Blocked,
     })
@@ -5775,6 +5805,34 @@ describe('formula builtins', () => {
         { tag: ValueTag.String, value: 'two', stringId: 0 },
       ],
     }))
+    const googleFinanceImpl = vi.fn(() => ({ tag: ValueTag.Number, value: 123.45 }))
+    const importDataImpl = vi.fn(() => ({
+      kind: 'array' as const,
+      rows: 2,
+      cols: 1,
+      values: [
+        { tag: ValueTag.String, value: 'symbol', stringId: 0 },
+        { tag: ValueTag.String, value: 'GOOG', stringId: 0 },
+      ],
+    }))
+    const importFeedImpl = vi.fn(() => ({
+      kind: 'array' as const,
+      rows: 1,
+      cols: 2,
+      values: [
+        { tag: ValueTag.String, value: 'title', stringId: 0 },
+        { tag: ValueTag.String, value: 'link', stringId: 0 },
+      ],
+    }))
+    const importHtmlImpl = vi.fn(() => ({
+      kind: 'array' as const,
+      rows: 1,
+      cols: 2,
+      values: [
+        { tag: ValueTag.String, value: 'rank', stringId: 0 },
+        { tag: ValueTag.Number, value: 1 },
+      ],
+    }))
     const importRangeImpl = vi.fn(() => ({
       kind: 'array' as const,
       rows: 2,
@@ -5784,6 +5842,15 @@ describe('formula builtins', () => {
         { tag: ValueTag.String, value: 'arr', stringId: 0 },
         { tag: ValueTag.String, value: 'west', stringId: 0 },
         { tag: ValueTag.Number, value: 96_000 },
+      ],
+    }))
+    const importXmlImpl = vi.fn(() => ({
+      kind: 'array' as const,
+      rows: 2,
+      cols: 1,
+      values: [
+        { tag: ValueTag.String, value: 'h1', stringId: 0 },
+        { tag: ValueTag.String, value: 'h2', stringId: 0 },
       ],
     }))
     const stockHistoryImpl = vi.fn(() => ({
@@ -5816,8 +5883,23 @@ describe('formula builtins', () => {
         if (name === 'FILTERXML') {
           return { kind: 'lookup', implementation: filterXmlImpl }
         }
+        if (name === 'GOOGLEFINANCE') {
+          return { kind: 'lookup', implementation: googleFinanceImpl }
+        }
+        if (name === 'IMPORTDATA') {
+          return { kind: 'lookup', implementation: importDataImpl }
+        }
+        if (name === 'IMPORTFEED') {
+          return { kind: 'lookup', implementation: importFeedImpl }
+        }
+        if (name === 'IMPORTHTML') {
+          return { kind: 'lookup', implementation: importHtmlImpl }
+        }
         if (name === 'IMPORTRANGE') {
           return { kind: 'lookup', implementation: importRangeImpl }
+        }
+        if (name === 'IMPORTXML') {
+          return { kind: 'lookup', implementation: importXmlImpl }
         }
         if (name === 'STOCKHISTORY') {
           return { kind: 'lookup', implementation: stockHistoryImpl }
@@ -5883,6 +5965,34 @@ describe('formula builtins', () => {
         { tag: ValueTag.String, value: 'two', stringId: 0 },
       ],
     })
+    expect(GOOGLEFINANCE(hello, sourceLang)).toEqual({ tag: ValueTag.Number, value: 123.45 })
+    expect(IMPORTDATA(hello)).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 1,
+      values: [
+        { tag: ValueTag.String, value: 'symbol', stringId: 0 },
+        { tag: ValueTag.String, value: 'GOOG', stringId: 0 },
+      ],
+    })
+    expect(IMPORTFEED(hello)).toEqual({
+      kind: 'array',
+      rows: 1,
+      cols: 2,
+      values: [
+        { tag: ValueTag.String, value: 'title', stringId: 0 },
+        { tag: ValueTag.String, value: 'link', stringId: 0 },
+      ],
+    })
+    expect(IMPORTHTML(hello, sourceLang, targetLang)).toEqual({
+      kind: 'array',
+      rows: 1,
+      cols: 2,
+      values: [
+        { tag: ValueTag.String, value: 'rank', stringId: 0 },
+        { tag: ValueTag.Number, value: 1 },
+      ],
+    })
     expect(IMPORTRANGE(hello, sourceLang)).toEqual({
       kind: 'array',
       rows: 2,
@@ -5892,6 +6002,15 @@ describe('formula builtins', () => {
         { tag: ValueTag.String, value: 'arr', stringId: 0 },
         { tag: ValueTag.String, value: 'west', stringId: 0 },
         { tag: ValueTag.Number, value: 96_000 },
+      ],
+    })
+    expect(IMPORTXML(hello, sourceLang)).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 1,
+      values: [
+        { tag: ValueTag.String, value: 'h1', stringId: 0 },
+        { tag: ValueTag.String, value: 'h2', stringId: 0 },
       ],
     })
     expect(STOCKHISTORY(hello, sourceLang)).toEqual({
@@ -5910,7 +6029,12 @@ describe('formula builtins', () => {
     expect(copilotImpl).toHaveBeenCalledWith(hello)
     expect(pyImpl).toHaveBeenCalledWith(hello)
     expect(filterXmlImpl).toHaveBeenCalledWith(hello, sourceLang)
+    expect(googleFinanceImpl).toHaveBeenCalledWith(hello, sourceLang)
+    expect(importDataImpl).toHaveBeenCalledWith(hello)
+    expect(importFeedImpl).toHaveBeenCalledWith(hello)
+    expect(importHtmlImpl).toHaveBeenCalledWith(hello, sourceLang, targetLang)
     expect(importRangeImpl).toHaveBeenCalledWith(hello, sourceLang)
+    expect(importXmlImpl).toHaveBeenCalledWith(hello, sourceLang)
     expect(stockHistoryImpl).toHaveBeenCalledWith(hello, sourceLang)
   })
 })

@@ -57,7 +57,16 @@ export type {
   RangeBuiltinArgument,
 }
 
-const externalLookupBuiltinNames = ['FILTERXML', 'IMPORTRANGE', 'STOCKHISTORY'] as const
+const externalLookupBuiltinNames = [
+  'FILTERXML',
+  'GOOGLEFINANCE',
+  'IMPORTDATA',
+  'IMPORTFEED',
+  'IMPORTHTML',
+  'IMPORTRANGE',
+  'IMPORTXML',
+  'STOCKHISTORY',
+] as const
 
 function isExternalLookupFunctionArgument(arg: LookupBuiltinArgument): arg is ExternalLookupFunctionArgument {
   return arg !== undefined

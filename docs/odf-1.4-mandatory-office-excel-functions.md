@@ -11,7 +11,7 @@
 - Scope: ODF mandatory functions + Office by-category function list, plus tracked compatibility aliases.
 
 ## Coverage Summary
-- Unified function count: **546**
+- Unified function count: **551**
 - ODF mandatory function count: **59**
 - Office function count (cleaned scrape): **519**
 - Overlap (present in both): **58**
@@ -19,7 +19,7 @@
 - Office-only (not in ODF 1.4 mandatory): **461**
 
 ## Current code coverage snapshot
-- Registered in codebase: **546**
+- Registered in codebase: **551**
 - Not yet registered in codebase: **0**
 - Placeholder-backed registrations: **0**
 - The "Implemented in codebase" column reflects runtime registration, including blocked placeholder registrations.
@@ -209,6 +209,7 @@
 | FDIST | Placeholder (blocked) | Yes | Yes |
 | FILTER | Not in ODF 1.4 mandatory | Yes | Yes |
 | FILTERXML | Not in ODF 1.4 mandatory | Yes | Yes |
+| GOOGLEFINANCE | Google Sheets compatibility | No | Yes |
 | FIND | Not in ODF 1.4 mandatory | Yes | Yes |
 | FINDB | Missing | Yes | Yes |
 | FINV | Placeholder (blocked) | Yes | Yes |
@@ -256,7 +257,11 @@
 | IFS | Not in ODF 1.4 mandatory | Yes | Yes |
 | IMABS | Placeholder (blocked) | Yes | Yes |
 | IMAGE | Not in ODF 1.4 mandatory | Yes | Yes |
+| IMPORTDATA | Google Sheets compatibility | No | Yes |
+| IMPORTFEED | Google Sheets compatibility | No | Yes |
+| IMPORTHTML | Google Sheets compatibility | No | Yes |
 | IMPORTRANGE | Google Sheets compatibility | No | Yes |
+| IMPORTXML | Google Sheets compatibility | No | Yes |
 | IMAGINARY | Placeholder (blocked) | Yes | Yes |
 | IMARGUMENT | Placeholder (blocked) | Yes | Yes |
 | IMCONJUGATE | Placeholder (blocked) | Yes | Yes |

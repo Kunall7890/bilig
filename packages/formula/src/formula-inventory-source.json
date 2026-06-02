@@ -907,6 +907,11 @@
       "inOfficeList": true
     },
     {
+      "name": "GOOGLEFINANCE",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
+    },
+    {
       "name": "FIND",
       "odfStatus": "Not in ODF 1.4 mandatory",
       "inOfficeList": true
@@ -1142,7 +1147,27 @@
       "inOfficeList": true
     },
     {
+      "name": "IMPORTDATA",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
+    },
+    {
+      "name": "IMPORTFEED",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
+    },
+    {
+      "name": "IMPORTHTML",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
+    },
+    {
       "name": "IMPORTRANGE",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
+    },
+    {
+      "name": "IMPORTXML",
       "odfStatus": "Google Sheets compatibility",
       "inOfficeList": false
     },

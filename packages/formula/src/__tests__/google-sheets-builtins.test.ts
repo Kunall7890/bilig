@@ -293,10 +293,41 @@ describe('Google Sheets compatibility builtins', () => {
     expect(compileFormula('SORTN(A1:C4,2,0,2,FALSE)')).toMatchObject({ mode: 0, producesSpill: true })
     expect(compileFormula('COUNTUNIQUEIFS(A1:A2,B1:B2,"south")')).toMatchObject({ mode: 0, producesSpill: false })
     expect(compileFormula('JOIN("|",A1:B1)')).toMatchObject({ mode: 0, producesSpill: false })
+    expect(compileFormula('GOOGLEFINANCE("GOOG","price")')).toMatchObject({
+      mode: 1,
+      optimizedAst: { kind: 'ErrorLiteral', code: ErrorCode.Blocked },
+      producesSpill: false,
+      symbolicNames: [],
+    })
+    expect(compileFormula('IMPORTDATA("https://example.com/data.csv")')).toMatchObject({
+      mode: 1,
+      optimizedAst: { kind: 'ErrorLiteral', code: ErrorCode.Blocked },
+      symbolicNames: [],
+    })
+    expect(compileFormula('IMPORTHTML("https://example.com","table",1)')).toMatchObject({
+      mode: 1,
+      optimizedAst: { kind: 'ErrorLiteral', code: ErrorCode.Blocked },
+      symbolicNames: [],
+    })
+    expect(compileFormula('IMPORTXML("https://example.com","//h1")')).toMatchObject({
+      mode: 1,
+      optimizedAst: { kind: 'ErrorLiteral', code: ErrorCode.Blocked },
+      symbolicNames: [],
+    })
+    expect(compileFormula('IMPORTFEED("https://example.com/feed.xml")')).toMatchObject({
+      mode: 1,
+      optimizedAst: { kind: 'ErrorLiteral', code: ErrorCode.Blocked },
+      symbolicNames: [],
+    })
 
     expect(evaluatePlan(lowerToPlan(parseFormula('JOIN("|",A1:B1)')), context)).toEqual(text('north|south'))
     expect(evaluatePlan(lowerToPlan(parseFormula('COUNTUNIQUE(A1:B2)')), context)).toEqual(num(2))
     expect(evaluatePlan(lowerToPlan(parseFormula('COUNTUNIQUEIFS(A1:A2,B1:B2,"south")')), context)).toEqual(num(1))
+    expect(evaluatePlan(lowerToPlan(parseFormula('GOOGLEFINANCE("GOOG","price")')), context)).toEqual(err(ErrorCode.Blocked))
+    expect(evaluatePlan(lowerToPlan(parseFormula('IMPORTDATA("https://example.com/data.csv")')), context)).toEqual(err(ErrorCode.Blocked))
+    expect(evaluatePlan(lowerToPlan(parseFormula('IMPORTHTML("https://example.com","table",1)')), context)).toEqual(err(ErrorCode.Blocked))
+    expect(evaluatePlan(lowerToPlan(parseFormula('IMPORTXML("https://example.com","//h1")')), context)).toEqual(err(ErrorCode.Blocked))
+    expect(evaluatePlan(lowerToPlan(parseFormula('IMPORTFEED("https://example.com/feed.xml")')), context)).toEqual(err(ErrorCode.Blocked))
     expect(evaluatePlanResult(lowerToPlan(parseFormula('ARRAYFORMULA(A1:B2)')), context)).toEqual({
       kind: 'array',
       rows: 2,

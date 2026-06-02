@@ -34,8 +34,11 @@ describe('formula inventory', () => {
     const letEntry = formulaInventory.find((entry) => entry.name === 'LET')
     const sumEntry = formulaInventory.find((entry) => entry.name === 'SUM')
     const copilotEntry = formulaInventory.find((entry) => entry.name === 'COPILOT')
+    const googleFinanceEntry = formulaInventory.find((entry) => entry.name === 'GOOGLEFINANCE')
     const imageEntry = formulaInventory.find((entry) => entry.name === 'IMAGE')
+    const importDataEntry = formulaInventory.find((entry) => entry.name === 'IMPORTDATA')
     const importRangeEntry = formulaInventory.find((entry) => entry.name === 'IMPORTRANGE')
+    const importXmlEntry = formulaInventory.find((entry) => entry.name === 'IMPORTXML')
     const pyEntry = formulaInventory.find((entry) => entry.name === 'PY')
     const iserrorEntry = formulaInventory.find((entry) => entry.name === 'ISERROR')
 
@@ -71,7 +74,31 @@ describe('formula inventory', () => {
       deterministic: 'provider-backed',
       protocolId: undefined,
     })
+    expect(googleFinanceEntry).toMatchObject({
+      inOfficeList: false,
+      deterministic: 'provider-backed',
+      protocolId: undefined,
+      runtimeStatus: 'implemented',
+      placeholder: false,
+      registeredInCodebase: true,
+    })
+    expect(importDataEntry).toMatchObject({
+      inOfficeList: false,
+      deterministic: 'provider-backed',
+      protocolId: undefined,
+      runtimeStatus: 'implemented',
+      placeholder: false,
+      registeredInCodebase: true,
+    })
     expect(importRangeEntry).toMatchObject({
+      inOfficeList: false,
+      deterministic: 'provider-backed',
+      protocolId: undefined,
+      runtimeStatus: 'implemented',
+      placeholder: false,
+      registeredInCodebase: true,
+    })
+    expect(importXmlEntry).toMatchObject({
       inOfficeList: false,
       deterministic: 'provider-backed',
       protocolId: undefined,
@@ -130,6 +157,11 @@ describe('formula inventory', () => {
       'SKEWP',
       'COUNTUNIQUEIFS',
       'ARRAYFORMULA',
+      'GOOGLEFINANCE',
+      'IMPORTDATA',
+      'IMPORTFEED',
+      'IMPORTHTML',
+      'IMPORTXML',
     ]
 
     for (const name of factoryRegisteredFunctions) {

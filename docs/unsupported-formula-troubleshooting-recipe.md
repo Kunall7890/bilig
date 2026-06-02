@@ -183,9 +183,10 @@ visible and gives the agent the exact cell/range it needs to fix.
   current workbook/formula environment.
 - `#BLOCKED!` on a provider-backed function means the formula is recognized,
   but the current host did not install the required adapter. The diagnostic
-  code is `provider-backed-adapter-missing`. For example, `IMPORTRANGE` needs a
-  Google Sheets range provider that handles authorization and returns the
-  imported cells to the evaluator.
+  code is `provider-backed-adapter-missing`. For example, Google Sheets import
+  functions such as `IMPORTRANGE`, `IMPORTDATA`, `IMPORTHTML`, `IMPORTXML`,
+  `IMPORTFEED`, and `GOOGLEFINANCE` need a provider adapter that handles
+  authorization and returns scalar values or imported cells to the evaluator.
 - Missing host-backed, cube, web, external-data, or add-in-like functions belong
   behind the external function adapter boundary described in
   [`docs/formula-language.md`](formula-language.md).
