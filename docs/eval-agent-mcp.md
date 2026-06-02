@@ -64,8 +64,8 @@ The evaluator prints this shape:
   "doorName": "Agent MCP proof",
   "verified": true,
   "packageVersions": {
-    "@bilig/workpaper": "0.152.0",
-    "xlsx-formula-recalc": "0.152.0"
+    "@bilig/workpaper": "0.153.0",
+    "xlsx-formula-recalc": "0.153.0"
   },
   "evidence": {
     "editedCell": "Inputs!B3",

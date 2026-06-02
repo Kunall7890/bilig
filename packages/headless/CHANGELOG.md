@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.153.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.152.0
+- Manual override: no
+
+## Features
+- feat(create-workpaper): add existing-repo agent handoff (40b80f38)
+
 ## 0.152.0
 
 - Release type: minor
