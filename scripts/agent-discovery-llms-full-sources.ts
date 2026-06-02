@@ -56,6 +56,7 @@ const llmsFullSourceSpecs = [
   ['MCP WorkPaper Tool Server', 'docs/mcp-workpaper-tool-server.md'],
   ['Agent XLSX Formula Recalculation Without LibreOffice', 'docs/agent-xlsx-formula-recalculation-without-libreoffice.md'],
   ['Formula Bug Clinic', 'docs/formula-bug-clinic.md'],
+  ['Google Sheets QUERY and SORTN in Node.js', 'docs/google-sheets-query-sortn-node-workpaper.md'],
   ['Try Bilig Headless In Node', 'docs/try-bilig-headless-in-node.md'],
   ['Quote Approval WorkPaper API', 'docs/quote-approval-workpaper-api.md'],
   ['Compatibility Limits', 'docs/where-bilig-is-not-excel-compatible-yet.md'],

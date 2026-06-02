@@ -53,6 +53,9 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   https://proompteng.github.io/bilig/eval-workpaper-service.html
 - Evaluator for agent and MCP workbook tools:
   https://proompteng.github.io/bilig/eval-agent-mcp.html
+- Google Sheets QUERY/SORTN over local WorkPaper ranges:
+  https://proompteng.github.io/bilig/google-sheets-query-sortn-node-workpaper.html
+  https://github.com/proompteng/bilig/blob/main/docs/google-sheets-query-sortn-node-workpaper.md
 - Evaluator commands:
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json`.
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.

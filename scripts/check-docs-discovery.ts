@@ -26,6 +26,7 @@ import { requireLlmsInstallDiscovery } from './check-docs-discovery-llms-install
 import { requireSharedPublicDocsDiscovery } from './check-docs-discovery-public-docs.ts'
 import { requirePackageCliSurfaceDiscovery } from './check-docs-discovery-package-cli-surfaces.ts'
 import { homepageRequiredLinks, llmsRequiredLinks } from './check-docs-discovery-public-link-manifest.ts'
+import { requireBoundaryPageDiscovery } from './check-docs-discovery-boundary-pages.ts'
 import { requireAgentPublicSurfaceDiscovery } from './check-docs-discovery-agent-surfaces.ts'
 import { requireAgentInstructionDiscovery } from './check-docs-discovery-agent-instructions.ts'
 import { requireAgentEvaluatorDiscovery } from './check-docs-discovery-agent-evaluators.ts'
@@ -82,6 +83,7 @@ const {
   formulaWorkbooksProof,
   showHnFormulaWorkbooksProof,
   googleSheetsApiBoundaryDoc,
+  googleSheetsQuerySortnNodeWorkpaperDoc,
   npmProvenancePackageTrustDoc,
   xlsxCorpusVerifierWalkthrough,
   serverSideSpreadsheetAutomationNode,
@@ -426,22 +428,15 @@ requireIncludes(headlessReadme, 'docs/sheetjs-formula-result-not-updating-node.m
 requireIncludes(llms, 'https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/sheetjs-formula-result-not-updating-node.md', 'docs/llms.txt')
 
-for (const required of [
-  'title: Microsoft Graph Excel recalculation vs local Node WorkPaper',
-  'POST /me/drive/items/{id}/workbook/application/calculate',
-  'Files.ReadWrite',
-  'application permissions are not supported for that API',
-  'Use `@bilig/workpaper` when the workbook is service-owned state',
-  'https://learn.microsoft.com/en-us/graph/api/workbookapplication-calculate',
-  'https://github.com/proompteng/bilig/stargazers',
-] as const) {
-  requireIncludes(microsoftGraphExcelRecalculationNode, required, 'docs/microsoft-graph-excel-recalculation-node.md')
-}
-requireIncludes(index, './microsoft-graph-excel-recalculation-node.html', 'docs/index.html')
-requireIncludes(readme, 'docs/microsoft-graph-excel-recalculation-node.md', 'README.md')
-requireIncludes(headlessReadme, 'docs/microsoft-graph-excel-recalculation-node.md', 'packages/headless/README.md')
-requireIncludes(llms, 'https://proompteng.github.io/bilig/microsoft-graph-excel-recalculation-node.html', 'docs/llms.txt')
-requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/microsoft-graph-excel-recalculation-node.md', 'docs/llms.txt')
+requireBoundaryPageDiscovery({
+  googleSheetsQuerySortnNodeWorkpaperDoc,
+  headlessReadme,
+  index,
+  llms,
+  llmsFull,
+  microsoftGraphExcelRecalculationNode,
+  readme,
+})
 
 await requireSharedPublicDocsDiscovery({
   docsRoot,

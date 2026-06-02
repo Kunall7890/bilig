@@ -627,6 +627,7 @@ For comparison and integration details, use the
 [plain-language fit guide](docs/why-use-bilig.md),
 [screenshot automation boundary](docs/stop-driving-spreadsheets-with-screenshots.md),
 [Google Sheets API boundary](docs/google-sheets-api-alternative-node-workpaper.md),
+[Google Sheets QUERY/SORTN in Node](docs/google-sheets-query-sortn-node-workpaper.md),
 [workbook automation examples](docs/workbook-automation-examples-node.md),
 the [formula workbooks proof page](docs/formula-workbooks-node-services-agent-tools.md),
 the [Node spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine.md),

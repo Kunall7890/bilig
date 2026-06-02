@@ -812,6 +812,7 @@ When the sanity check passes, these are the next useful pages.
   [screenshot automation boundary](https://github.com/proompteng/bilig/blob/main/docs/stop-driving-spreadsheets-with-screenshots.md),
   [Node spreadsheet formula engine](https://github.com/proompteng/bilig/blob/main/docs/node-spreadsheet-formula-engine.md),
   [Google Sheets API boundary](https://github.com/proompteng/bilig/blob/main/docs/google-sheets-api-alternative-node-workpaper.md),
+  [Google Sheets QUERY/SORTN in Node](https://github.com/proompteng/bilig/blob/main/docs/google-sheets-query-sortn-node-workpaper.md),
   [docs/javascript-spreadsheet-library-headless-node.md](https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md),
   [formula workbooks for Node services and agent tools](https://github.com/proompteng/bilig/blob/main/docs/formula-workbooks-node-services-agent-tools.md),
   [headless spreadsheet engine for Node services and agents](https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-node-services-agents.md),

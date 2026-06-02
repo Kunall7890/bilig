@@ -60,6 +60,7 @@ export interface DocsDiscoveryContext {
   readonly formulaWorkbooksProof: string
   readonly showHnFormulaWorkbooksProof: string
   readonly googleSheetsApiBoundaryDoc: string
+  readonly googleSheetsQuerySortnNodeWorkpaperDoc: string
   readonly npmProvenancePackageTrustDoc: string
   readonly xlsxCorpusVerifierWalkthrough: string
   readonly whyAgentsDoc: string
@@ -140,6 +141,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     formulaWorkbooksProof,
     showHnFormulaWorkbooksProof,
     googleSheetsApiBoundaryDoc,
+    googleSheetsQuerySortnNodeWorkpaperDoc,
     npmProvenancePackageTrustDoc,
     xlsxCorpusVerifierWalkthrough,
     whyAgentsDoc,
@@ -210,6 +212,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     readFile(join(docsRoot, 'formula-workbooks-node-services-agent-tools.md'), 'utf8'),
     readFile(join(docsRoot, 'show-hn-formula-workbooks-node-services.md'), 'utf8'),
     readFile(join(docsRoot, 'google-sheets-api-alternative-node-workpaper.md'), 'utf8'),
+    readFile(join(docsRoot, 'google-sheets-query-sortn-node-workpaper.md'), 'utf8'),
     readFile(join(docsRoot, 'npm-provenance-package-trust.md'), 'utf8'),
     readFile(join(docsRoot, 'xlsx-corpus-verifier-walkthrough.md'), 'utf8'),
     readFile(join(docsRoot, 'why-agents-need-workbook-apis.md'), 'utf8'),
@@ -289,6 +292,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     formulaWorkbooksProof,
     showHnFormulaWorkbooksProof,
     googleSheetsApiBoundaryDoc,
+    googleSheetsQuerySortnNodeWorkpaperDoc,
     npmProvenancePackageTrustDoc,
     xlsxCorpusVerifierWalkthrough,
     whyAgentsDoc,
