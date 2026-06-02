@@ -33,6 +33,28 @@ const queryTable = cellRange(
   3,
 )
 
+const queryGroupTable = cellRange(
+  [
+    text('Region'),
+    text('Segment'),
+    text('ARR'),
+    text('North'),
+    text('SMB'),
+    num(96_000),
+    text('West'),
+    text('Enterprise'),
+    num(144_000),
+    text('North'),
+    text('Enterprise'),
+    num(60_000),
+    text('West'),
+    text('SMB'),
+    num(24_000),
+  ],
+  5,
+  3,
+)
+
 const context = {
   sheetName: 'Sheet1',
   resolveCell: (_sheetName: string, address: string): CellValue => {
@@ -280,7 +302,37 @@ describe('Google Sheets compatibility builtins', () => {
       cols: 2,
       values: [text('Region'), text('ARR'), text('South'), num(60_000)],
     })
+    expect(
+      getLookupBuiltin('QUERY')?.(
+        queryGroupTable,
+        text('select A, sum(C), count(C) where C >= 50000 group by A order by sum(C) desc'),
+        num(1),
+      ),
+    ).toEqual({
+      kind: 'array',
+      rows: 3,
+      cols: 3,
+      values: [text('Region'), text('sum ARR'), text('count ARR'), text('North'), num(156_000), num(2), text('West'), num(144_000), num(1)],
+    })
+    expect(getLookupBuiltin('QUERY')?.(queryGroupTable, text('select A, B, sum(C) group by A, B order by A limit 2'), num(1))).toEqual({
+      kind: 'array',
+      rows: 3,
+      cols: 3,
+      values: [
+        text('Region'),
+        text('Segment'),
+        text('sum ARR'),
+        text('North'),
+        text('SMB'),
+        num(96_000),
+        text('North'),
+        text('Enterprise'),
+        num(60_000),
+      ],
+    })
     expect(getLookupBuiltin('QUERY')?.(queryTable, text('select A group by A'), num(1))).toEqual(err(ErrorCode.Value))
+    expect(getLookupBuiltin('QUERY')?.(queryTable, text('select A, avg(C) group by A'), num(1))).toEqual(err(ErrorCode.Value))
+    expect(getLookupBuiltin('QUERY')?.(queryTable, text('select A, sum(C) group by B'), num(1))).toEqual(err(ErrorCode.Value))
     expect(getLookupBuiltin('QUERY')?.(queryTable, text('select D'), num(1))).toEqual(err(ErrorCode.Value))
   })
 
@@ -362,6 +414,17 @@ describe('Google Sheets compatibility builtins', () => {
       rows: 2,
       cols: 2,
       values: [text('Region'), text('ARR'), text('West'), num(144_000)],
+    })
+    expect(
+      evaluatePlanResult(
+        lowerToPlan(parseFormula('QUERY(A1:C4,"select A,sum(C) where B >= 8 group by A order by sum(C) desc",1)')),
+        context,
+      ),
+    ).toEqual({
+      kind: 'array',
+      rows: 3,
+      cols: 2,
+      values: [text('Region'), text('sum ARR'), text('West'), num(144_000), text('North'), num(96_000)],
     })
     expect(evaluatePlanResult(lowerToPlan(parseFormula('SORTN(A2:C4,2,0,3,FALSE)')), context)).toEqual({
       kind: 'array',

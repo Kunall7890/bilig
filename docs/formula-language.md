@@ -20,6 +20,19 @@ There are no non-production canonical rows.
 The canonical grouped-array SUM forms for `GROUPBY` and `PIVOTBY` now route through internal
 native grouped-array builtins on the wasm path.
 
+## Google Sheets compatibility subset
+
+`QUERY` is supported for local WorkPaper ranges, not provider-backed Sheets data.
+The current deterministic subset covers:
+
+- `select` column projections
+- `where` comparisons against scalar literals
+- `group by` with projected group columns plus `sum(column)` and `count(column)`
+- `order by`, `limit`, and `offset`
+
+Unsupported Google Visualization Query Language clauses such as `pivot`,
+`having`, `label`, `format`, and `options` still fail closed with `#VALUE!`.
+
 ## Full target
 
 The full formula target remains Excel 365 worksheet parity as of `2026-03-15`, including:
