@@ -153,21 +153,26 @@ describe('n8n WorkPaper formula readback workflow', () => {
     expect(getRequiredCode(workflow, 'Write audit summary')).toContain("package: '@bilig/workpaper'")
     expect(getRequiredCode(workflow, 'Write audit summary')).toContain('nextStep')
 
-    const stickyNotes = workflow.nodes
-      .filter((node) => node.type === 'n8n-nodes-base.stickyNote')
-      .map((node) => readStringParameter(node, 'content'))
+    const stickyNodes = workflow.nodes.filter((node) => node.type === 'n8n-nodes-base.stickyNote')
+    const stickyNotes = stickyNodes.map((node) => readStringParameter(node, 'content'))
     const stickyText = stickyNotes.join('\n\n')
     expect(stickyNotes).toHaveLength(5)
     for (const required of [
-      'Start with realistic forecast changes',
-      'Normalize rows before calling Bilig',
-      'Recalculate the workbook and verify readback',
-      'Block stale results before routing approvals',
-      'Replace the demo output with your destination',
-      'Keep the verification fields in the final payload.',
+      'Sample forecast changes',
+      'Reject bad rows before HTTP',
+      'Recalculate in Bilig',
+      'Do not route unverified numbers',
+      'Swap in real destinations',
+      'Keep the Bilig proof fields in the final record.',
     ]) {
       expect(stickyText).toContain(required)
     }
+    for (const note of stickyNodes) {
+      expect(note.name).toMatch(/^Sticky - /)
+      expect(readNumberParameter(note, 'height')).toBeGreaterThanOrEqual(260)
+      expect(readNumberParameter(note, 'width')).toBeGreaterThanOrEqual(520)
+    }
+    expectNoStickyNoteOverlaps(stickyNodes)
     expect(stickyText).not.toContain('@[youtube](videoId)')
   })
 
@@ -267,6 +272,7 @@ interface WorkflowNode {
   readonly name: string
   readonly type: string
   readonly parameters: Record<string, unknown>
+  readonly position: readonly [number, number]
 }
 
 function readWorkflow(fileName: string): Workflow {
@@ -299,6 +305,7 @@ function readWorkflowNode(value: unknown, context: string): WorkflowNode {
     name,
     type,
     parameters: readRecord(value['parameters'], `${context} parameters`),
+    position: readPosition(value['position'], `${context} position`),
   }
 }
 
@@ -361,6 +368,28 @@ function expectVerificationCodeReturnsCompactProof(code: string): void {
   }
 }
 
+function expectNoStickyNoteOverlaps(nodes: readonly WorkflowNode[]): void {
+  const boxes = nodes.map((node) => {
+    const [x, y] = node.position
+    return {
+      name: node.name,
+      left: x,
+      top: y,
+      right: x + readNumberParameter(node, 'width'),
+      bottom: y + readNumberParameter(node, 'height'),
+    }
+  })
+
+  for (let index = 0; index < boxes.length; index += 1) {
+    for (let otherIndex = index + 1; otherIndex < boxes.length; otherIndex += 1) {
+      const current = boxes[index]
+      const other = boxes[otherIndex]
+      const overlaps = current.left < other.right && current.right > other.left && current.top < other.bottom && current.bottom > other.top
+      expect(overlaps, `${current.name} overlaps ${other.name}`).toBe(false)
+    }
+  }
+}
+
 function readRecord(value: unknown, context: string): Record<string, unknown> {
   if (!isObject(value)) {
     throw new Error(`${context} must be an object`)
@@ -394,6 +423,13 @@ function readStringArray(value: unknown, context: string): string[] {
     throw new Error(`${context} must be a string array`)
   }
   return value
+}
+
+function readPosition(value: unknown, context: string): readonly [number, number] {
+  if (!Array.isArray(value) || value.length !== 2 || value.some((item) => typeof item !== 'number')) {
+    throw new Error(`${context} must be a two-number array`)
+  }
+  return [value[0], value[1]]
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

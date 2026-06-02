@@ -145,68 +145,68 @@
     },
     {
       "parameters": {
-        "content": "## 1. Start with realistic forecast changes\n\nThe manual trigger feeds three sample requests into the workflow. Edit `Load forecast requests` to use your real account, owner, workbook cell, proposed value, and approval thresholds.\n\nKeep at least one approved and one review example while testing so both branches stay visible.",
-        "height": 300,
-        "width": 620,
+        "content": "## Sample forecast changes\n\nRun the workflow once as-is. It creates three forecast-change requests so both approval paths execute.\n\nReplace the rows in `Load forecast requests` with CRM, form, or queue data. Keep `requestId`, `account`, `owner`, workbook cell, proposed value, and thresholds together.",
+        "height": 280,
+        "width": 520,
         "color": 4
       },
       "id": "1deff2ac-a11b-44d8-a437-cfb5dd62cb6f",
-      "name": "Step 1 - sample forecast requests",
+      "name": "Sticky - sample forecast changes",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-20, -420]
+      "position": [-20, -500]
     },
     {
       "parameters": {
-        "content": "## 2. Normalize rows before calling Bilig\n\n`Validate request rows` rejects non-numeric values and unsupported workbook cells before any HTTP request runs.\n\nUse this node for your CRM, form, or queue validation rules. Keep validation close to the input rows so bad data fails early.",
+        "content": "## Reject bad rows before HTTP\n\n`Validate request rows` stops non-numeric values, missing owners, unsupported cells, and invalid thresholds before the WorkPaper service is called.\n\nPut tenant, account, or permission checks here so bad data fails before formula output is trusted.",
         "height": 260,
-        "width": 580,
+        "width": 520,
         "color": 5
       },
       "id": "97f8f640-db26-4af9-ad48-b3eb866d54a9",
-      "name": "Step 2 - validate forecast rows",
+      "name": "Sticky - validate rows first",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [560, -420]
+      "position": [560, -500]
     },
     {
       "parameters": {
-        "content": "## 3. Recalculate the workbook and verify readback\n\n`Build Bilig request` sends only `sheetName`, `address`, and `value`. `Call Bilig WorkPaper` edits the workbook, recalculates formulas, exports/restores JSON, and returns proof.\n\nFor private forecasts, replace `baseUrl` in step 1 with your own Bilig service URL.",
+        "content": "## Recalculate in Bilig\n\n`Build Bilig request` sends one workbook edit: `sheetName`, `address`, and `value`. `Call Bilig WorkPaper` recalculates formulas and returns before/after readback.\n\nFor private data, replace `baseUrl` with your internal Bilig service.",
         "height": 300,
-        "width": 660,
+        "width": 640,
         "color": 6
       },
       "id": "407664f7-c30d-4600-bd8d-5c36cfcb3d43",
-      "name": "Step 3 - Bilig formula readback",
+      "name": "Sticky - Bilig formula readback",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [960, -420]
+      "position": [1100, -500]
     },
     {
       "parameters": {
-        "content": "## 4. Block stale results before routing approvals\n\n`Verify formula proof` stops the workflow unless Bilig returns fresh formula output, persisted formulas, restored JSON readback, and a changed computed value.\n\n`Apply approval policy` turns that verified workbook output into an `approve` or `review` decision.",
+        "content": "## Do not route unverified numbers\n\n`Verify formula proof` fails unless Bilig reports `verified`, formulas persisted, restored JSON matches, and the computed value changed.\n\n`Apply approval policy` reads only that verified output before choosing approve or review.",
         "height": 280,
-        "width": 660,
+        "width": 620,
         "color": 3
       },
       "id": "62bb2c8b-f9df-48e7-9c8e-282a76a28426",
-      "name": "Step 4 - verify and decide",
+      "name": "Sticky - verify before routing",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [1280, 280]
     },
     {
       "parameters": {
-        "content": "## 5. Replace the demo output with your destination\n\nThe IF node creates separate approved and review records so downstream systems receive clear payloads.\n\nReplace `Write audit summary` with Slack, Gmail, HubSpot, Airtable, or your queue once the sample output is right. Keep the verification fields in the final payload.",
+        "content": "## Swap in real destinations\n\nThe IF node builds separate approved and review records so downstream systems receive clean payloads.\n\nReplace `Write audit summary` with Slack, Gmail, HubSpot, Airtable, or a queue. Keep the Bilig proof fields in the final record.",
         "height": 300,
-        "width": 660,
+        "width": 620,
         "color": 7
       },
       "id": "f676a33b-d669-4ac2-95e7-201b113060e2",
-      "name": "Step 5 - route records",
+      "name": "Sticky - destination handoff",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [1980, 280]
+      "position": [1940, 280]
     }
   ],
   "pinData": {},
