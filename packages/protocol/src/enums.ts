@@ -587,5 +587,6 @@ export enum BuiltinId {
   Join = 529,
   ToText = 530,
   Query = 531,
-  Sortn = 532
+  Sortn = 532,
+  Countuniqueifs = 533
 }

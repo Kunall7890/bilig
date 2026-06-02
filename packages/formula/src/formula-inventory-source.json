@@ -477,6 +477,11 @@
       "inOfficeList": false
     },
     {
+      "name": "COUNTUNIQUEIFS",
+      "odfStatus": "Google Sheets compatibility",
+      "inOfficeList": false
+    },
+    {
       "name": "COUPDAYBS",
       "odfStatus": "Placeholder (blocked)",
       "inOfficeList": true

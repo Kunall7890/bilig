@@ -2,17 +2,17 @@
 // Source: scripts/gen-formula-inventory.ts
 
 export const formulaInventorySummary = {
-  total: 544,
+  total: 545,
   odfMandatory: 59,
   officeListed: 519,
   officeListedRegisteredInCodebase: 519,
   overlap: 58,
   odfOnly: 1,
   officeOnly: 461,
-  registeredInCodebase: 544,
+  registeredInCodebase: 545,
   missingInCodebase: 0,
   placeholders: 0,
-  protocolBuiltins: 522,
+  protocolBuiltins: 523,
   runtimeRegisteredMissingProtocol: 0,
 } as const
 
@@ -1341,6 +1341,20 @@ export const formulaInventory = [
     runtimeStatus: 'implemented',
     protocolId: 525,
     protocolName: 'COUNTUNIQUE',
+    protocolSupportsWasm: false,
+    jsStatus: 'implemented',
+    wasmStatus: 'not-started',
+    placeholder: false,
+    registeredInCodebase: true,
+  },
+  {
+    name: 'COUNTUNIQUEIFS',
+    odfStatus: 'Google Sheets compatibility',
+    inOfficeList: false,
+    deterministic: 'deterministic',
+    runtimeStatus: 'implemented',
+    protocolId: 533,
+    protocolName: 'COUNTUNIQUEIFS',
     protocolSupportsWasm: false,
     jsStatus: 'implemented',
     wasmStatus: 'not-started',

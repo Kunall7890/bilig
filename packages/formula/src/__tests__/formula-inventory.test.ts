@@ -128,6 +128,7 @@ describe('formula inventory', () => {
       'REGEXTEST',
       'ROMAN',
       'SKEWP',
+      'COUNTUNIQUEIFS',
     ]
 
     for (const name of factoryRegisteredFunctions) {

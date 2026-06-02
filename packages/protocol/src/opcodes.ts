@@ -567,5 +567,6 @@ export const BUILTINS: BuiltinDescriptor[] = [
   { id: BuiltinId.Join, name: "JOIN", supportsWasm: false },
   { id: BuiltinId.ToText, name: "TO_TEXT", supportsWasm: false },
   { id: BuiltinId.Query, name: "QUERY", supportsWasm: false },
-  { id: BuiltinId.Sortn, name: "SORTN", supportsWasm: false }
+  { id: BuiltinId.Sortn, name: "SORTN", supportsWasm: false },
+  { id: BuiltinId.Countuniqueifs, name: "COUNTUNIQUEIFS", supportsWasm: false }
 ];

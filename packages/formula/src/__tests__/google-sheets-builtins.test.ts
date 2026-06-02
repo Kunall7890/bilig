@@ -50,6 +50,12 @@ const context = {
     }
   },
   resolveRange: (_sheetName: string, start: string, end: string): CellValue[] => {
+    if (start === 'A1' && end === 'A2') {
+      return [text('north'), text('north')]
+    }
+    if (start === 'B1' && end === 'B2') {
+      return [text('south'), empty()]
+    }
     if (start === 'A1' && end === 'B1') {
       return [text('north'), text('south')]
     }
@@ -76,6 +82,23 @@ describe('Google Sheets compatibility builtins', () => {
     expect(getBuiltin('ISURL')?.(text('https://example.com/workbook'))).toEqual(bool(true))
     expect(getBuiltin('ISURL')?.(text('ftp://example.com/workbook'))).toEqual(bool(false))
     expect(getBuiltin('JOIN')?.(text(','), err(ErrorCode.Ref), text('x'))).toEqual(err(ErrorCode.Ref))
+  })
+
+  it('supports COUNTUNIQUEIFS with Google Sheets criteria semantics', () => {
+    const COUNTUNIQUEIFS = getLookupBuiltin('COUNTUNIQUEIFS')!
+    const uniqueRange = cellRange([text('alice'), text('bob'), text('alice'), text(''), empty(), num(42), num(42)], 7, 1)
+    const regionRange = cellRange([text('west'), text('west'), text('east'), text('west'), text('west'), text('west'), text('west')], 7, 1)
+    const amountRange = cellRange([num(10), num(20), num(30), num(40), num(50), num(60), num(70)], 7, 1)
+
+    expect(COUNTUNIQUEIFS(uniqueRange, regionRange, text('west'))).toEqual(num(3))
+    expect(COUNTUNIQUEIFS(uniqueRange, regionRange, text('west'), amountRange, text('>=50'))).toEqual(num(1))
+    expect(COUNTUNIQUEIFS(uniqueRange, regionRange, text('north'))).toEqual(num(0))
+    expect(COUNTUNIQUEIFS(uniqueRange, regionRange, text('west'), amountRange, text('<>'))).toEqual(num(3))
+    expect(COUNTUNIQUEIFS(uniqueRange, regionRange, text('west'), cellRange([text('west')], 1, 1), text('west'))).toEqual(
+      err(ErrorCode.Value),
+    )
+    expect(COUNTUNIQUEIFS(uniqueRange, regionRange, err(ErrorCode.Name))).toEqual(err(ErrorCode.Name))
+    expect(COUNTUNIQUEIFS(cellRange([err(ErrorCode.Ref)], 1, 1), cellRange([text('west')], 1, 1), text('west'))).toEqual(err(ErrorCode.Ref))
   })
 
   it('supports Google Sheets array helpers', () => {
@@ -266,10 +289,12 @@ describe('Google Sheets compatibility builtins', () => {
     expect(compileFormula('FLATTEN(A1:B2)')).toMatchObject({ mode: 0, producesSpill: true })
     expect(compileFormula('QUERY(A1:C4,"select A,C where B >= 8",1)')).toMatchObject({ mode: 0, producesSpill: true })
     expect(compileFormula('SORTN(A1:C4,2,0,2,FALSE)')).toMatchObject({ mode: 0, producesSpill: true })
+    expect(compileFormula('COUNTUNIQUEIFS(A1:A2,B1:B2,"south")')).toMatchObject({ mode: 0, producesSpill: false })
     expect(compileFormula('JOIN("|",A1:B1)')).toMatchObject({ mode: 0, producesSpill: false })
 
     expect(evaluatePlan(lowerToPlan(parseFormula('JOIN("|",A1:B1)')), context)).toEqual(text('north|south'))
     expect(evaluatePlan(lowerToPlan(parseFormula('COUNTUNIQUE(A1:B2)')), context)).toEqual(num(2))
+    expect(evaluatePlan(lowerToPlan(parseFormula('COUNTUNIQUEIFS(A1:A2,B1:B2,"south")')), context)).toEqual(num(1))
     expect(evaluatePlanResult(lowerToPlan(parseFormula('ARRAY_CONSTRAIN(A1:B2,1,2)')), context)).toEqual({
       kind: 'array',
       rows: 1,

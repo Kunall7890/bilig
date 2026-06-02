@@ -561,6 +561,8 @@ export function isWasmSafeBuiltinArity(callee: string, argc: number): boolean {
       return argc === 2 || argc === 3
     case 'UNIQUE':
       return argc >= 1 && argc <= 3
+    case 'COUNTUNIQUEIFS':
+      return argc >= 3 && argc % 2 === 1
     case 'TRIMRANGE':
       return argc >= 1 && argc <= 3
     case 'OFFSET':

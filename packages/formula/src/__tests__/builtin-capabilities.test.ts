@@ -723,6 +723,11 @@ describe('builtin capabilities', () => {
       jsStatus: 'implemented',
       wasmStatus: 'production',
     })
+    expect(getBuiltinCapability('COUNTUNIQUEIFS')).toMatchObject({
+      category: 'aggregation',
+      jsStatus: 'implemented',
+      wasmStatus: 'not-started',
+    })
     expect(getBuiltinCapability('BASE')).toMatchObject({
       category: 'math',
       jsStatus: 'implemented',

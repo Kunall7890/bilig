@@ -409,6 +409,7 @@ export function encodeBuiltin(name: string): BuiltinId {
     COUNTIF: BuiltinId.Countif,
     'USE.THE.COUNTIF': BuiltinId.Countif,
     COUNTIFS: BuiltinId.Countifs,
+    COUNTUNIQUEIFS: BuiltinId.Countuniqueifs,
     DAVERAGE: BuiltinId.Daverage,
     DCOUNT: BuiltinId.Dcount,
     DCOUNTA: BuiltinId.Dcounta,

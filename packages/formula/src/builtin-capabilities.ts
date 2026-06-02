@@ -480,7 +480,18 @@ const wasmProductionBuiltinNames = new Set([
   'TBILLEQ',
 ])
 
-const aggregationBuiltinNames = new Set(['SUM', 'AVERAGE', 'AVG', 'MIN', 'MAX', 'COUNT', 'COUNTA', 'COUNTBLANK', 'COUNTUNIQUE'])
+const aggregationBuiltinNames = new Set([
+  'SUM',
+  'AVERAGE',
+  'AVG',
+  'MIN',
+  'MAX',
+  'COUNT',
+  'COUNTA',
+  'COUNTBLANK',
+  'COUNTUNIQUE',
+  'COUNTUNIQUEIFS',
+])
 const logicalBuiltinNames = new Set(['IF', 'IFS', 'AND', 'OR', 'NOT', 'SWITCH', 'XOR', 'IFERROR', 'IFNA', 'NA'])
 const informationBuiltinNames = new Set([
   'CELL',

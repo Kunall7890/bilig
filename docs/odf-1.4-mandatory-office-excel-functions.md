@@ -11,7 +11,7 @@
 - Scope: ODF mandatory functions + Office by-category function list, plus tracked compatibility aliases.
 
 ## Coverage Summary
-- Unified function count: **544**
+- Unified function count: **545**
 - ODF mandatory function count: **59**
 - Office function count (cleaned scrape): **519**
 - Overlap (present in both): **58**
@@ -19,7 +19,7 @@
 - Office-only (not in ODF 1.4 mandatory): **461**
 
 ## Current code coverage snapshot
-- Registered in codebase: **544**
+- Registered in codebase: **545**
 - Not yet registered in codebase: **0**
 - Placeholder-backed registrations: **0**
 - The "Implemented in codebase" column reflects runtime registration, including blocked placeholder registrations.
@@ -123,6 +123,7 @@
 | COUNTIF | Not in ODF 1.4 mandatory | Yes | Yes |
 | COUNTIFS | Implemented | Yes | Yes |
 | COUNTUNIQUE | Google Sheets compatibility | No | Yes |
+| COUNTUNIQUEIFS | Google Sheets compatibility | No | Yes |
 | COUPDAYBS | Placeholder (blocked) | Yes | Yes |
 | COUPDAYS | Placeholder (blocked) | Yes | Yes |
 | COUPDAYSNC | Placeholder (blocked) | Yes | Yes |

@@ -135,7 +135,7 @@ system. Do not resubmit there until maintainers reopen that path.
 The mcp.so and Cline MCP Marketplace submissions were refreshed on May 19, 2026
 by editing the existing issue bodies, not by adding more comments. Both now
 point reviewers at the file-backed command with `--init-demo-workpaper
---writable`, the seven current tools, the official Registry entry, and the
+--writable`, the eight current tools, the official Registry entry, and the
 static MCP server card.
 
 Smithery lists Bilig WorkPaper as `gkonushev/bilig-workpaper` and exposes a

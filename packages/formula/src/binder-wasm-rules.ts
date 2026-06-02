@@ -644,6 +644,8 @@ export function isWasmSafeBuiltinArgs(callee: string, args: readonly FormulaNode
       return isCellRangeArg(args[0]!) && args.slice(1).every((arg) => isScalarArg(arg))
     case 'SORTN':
       return false
+    case 'COUNTUNIQUEIFS':
+      return false
     case 'FILTER':
       return (
         (argc === 2 || argc === 3) && isCellRangeArg(args[0]!) && deps.isWasmSafe(args[1]!, true) && (argc === 2 || isScalarArg(args[2]!))

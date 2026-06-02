@@ -584,6 +584,7 @@ export const enumManifest: ProtocolEnumManifest = {
     ['ToText', 530],
     ['Query', 531],
     ['Sortn', 532],
+    ['Countuniqueifs', 533],
   ],
 }
 

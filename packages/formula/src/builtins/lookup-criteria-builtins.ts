@@ -1,5 +1,6 @@
-import { ErrorCode, type CellValue, type ValueTag } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import type { LookupBuiltin, LookupBuiltinArgument, RangeBuiltinArgument } from './lookup.js'
+import { exactLookupNumberKey } from './lookup-core-helpers.js'
 
 interface LookupCriteriaBuiltinDeps {
   errorValue: (code: ErrorCode) => CellValue
@@ -83,6 +84,21 @@ function sumMatchingRows(range: RangeBuiltinArgument, rows: readonly number[], d
   return sum
 }
 
+function countUniqueKey(value: CellValue): string | undefined {
+  switch (value.tag) {
+    case ValueTag.Empty:
+      return undefined
+    case ValueTag.String:
+      return value.value.length === 0 ? undefined : `s:${value.value}`
+    case ValueTag.Number:
+      return exactLookupNumberKey(value.value)
+    case ValueTag.Boolean:
+      return `b:${value.value ? '1' : '0'}`
+    case ValueTag.Error:
+      return `e:${value.code}`
+  }
+}
+
 export function createLookupCriteriaBuiltins(deps: LookupCriteriaBuiltinDeps): Record<string, LookupBuiltin> {
   return {
     COUNTIF: (rangeArg, criteriaArg) => {
@@ -123,6 +139,29 @@ export function createLookupCriteriaBuiltins(deps: LookupCriteriaBuiltinDeps): R
         }
       }
       return deps.numberResult(count)
+    },
+    COUNTUNIQUEIFS: (countUniqueRangeArg, ...criteriaArgs) => {
+      const countUniqueRange = requireCriteriaRange(countUniqueRangeArg, deps)
+      if (!deps.isRangeArg(countUniqueRange)) {
+        return countUniqueRange
+      }
+      const matchingRows = findMatchingRowIndexes(countUniqueRange, criteriaArgs, deps)
+      if (!Array.isArray(matchingRows)) {
+        return matchingRows
+      }
+
+      const seen = new Set<string>()
+      for (const row of matchingRows) {
+        const value = countUniqueRange.values[row]
+        if (deps.isError(value)) {
+          return value
+        }
+        const key = value === undefined ? undefined : countUniqueKey(value)
+        if (key !== undefined) {
+          seen.add(key)
+        }
+      }
+      return deps.numberResult(seen.size)
     },
     SUMIF: (rangeArg, criteriaArg, sumRangeArg = rangeArg) => {
       const range = requireCriteriaRange(rangeArg, deps)
