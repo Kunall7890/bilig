@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.156.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.155.0
+- Manual override: no
+
+## Features
+- feat(agent): emit installable WorkPaper rules (8baf3b7b)
+
 ## 0.155.0
 
 - Release type: minor
