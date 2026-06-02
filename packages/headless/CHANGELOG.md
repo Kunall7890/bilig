@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.145.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.144.0
+- Manual override: no
+
+## Features
+- feat(workpaper): add provider-backed agent evaluator (78ba66f9)
+
 ## 0.144.0
 
 - Release type: minor
