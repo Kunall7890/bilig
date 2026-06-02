@@ -1,4 +1,9 @@
-import type { CommunityGrowthSnapshot, GitHubDiscussionActivitySnapshot, GitHubTrafficSnapshot } from './community-growth-snapshot.ts'
+import type {
+  CommunityGrowthSnapshot,
+  GitHubDiscussionActivitySnapshot,
+  GitHubTrafficReferrer,
+  GitHubTrafficSnapshot,
+} from './community-growth-snapshot.ts'
 
 const starGoal = 1000
 
@@ -97,6 +102,35 @@ function renderExternalDiscoveryMarkdown(): readonly string[] {
   ]
 }
 
+function compareQualifiedTraffic(left: GitHubTrafficReferrer, right: GitHubTrafficReferrer): number {
+  const uniqueVisitorDelta = left.uniques - right.uniques
+  if (uniqueVisitorDelta !== 0) {
+    return uniqueVisitorDelta
+  }
+  return left.count - right.count
+}
+
+function renderHackerNewsTwitterComparison(
+  hackerNews: GitHubTrafficReferrer | undefined,
+  twitter: GitHubTrafficReferrer | undefined,
+): string | undefined {
+  if (hackerNews === undefined || twitter === undefined) {
+    return undefined
+  }
+
+  const hackerNewsTraffic = `${formatCount(hackerNews.count)}/${formatCount(hackerNews.uniques)}`
+  const twitterTraffic = `${formatCount(twitter.count)}/${formatCount(twitter.uniques)}`
+  const comparison = compareQualifiedTraffic(hackerNews, twitter)
+
+  if (comparison > 0) {
+    return `- Hacker News is ahead of X/t.co in qualified GitHub traffic: ${hackerNewsTraffic} versus ${twitterTraffic}.`
+  }
+  if (comparison < 0) {
+    return `- X/t.co is ahead of Hacker News in qualified GitHub traffic: ${twitterTraffic} versus ${hackerNewsTraffic}.`
+  }
+  return `- Hacker News and X/t.co are even in qualified GitHub traffic: ${hackerNewsTraffic} each.`
+}
+
 function renderSpikeReadMarkdown(snapshot: CommunityGrowthSnapshot): readonly string[] {
   if (!snapshot.traffic.available) {
     return [
@@ -119,12 +153,9 @@ function renderSpikeReadMarkdown(snapshot: CommunityGrowthSnapshot): readonly st
     )
   }
 
-  if (hackerNews !== undefined && twitter !== undefined) {
-    lines.push(
-      `- Hacker News is still ahead of X/t.co in qualified GitHub traffic: ${formatCount(hackerNews.count)}/${formatCount(
-        hackerNews.uniques,
-      )} versus ${formatCount(twitter.count)}/${formatCount(twitter.uniques)}.`,
-    )
+  const hackerNewsTwitterComparison = renderHackerNewsTwitterComparison(hackerNews, twitter)
+  if (hackerNewsTwitterComparison !== undefined) {
+    lines.push(hackerNewsTwitterComparison)
   }
 
   lines.push(

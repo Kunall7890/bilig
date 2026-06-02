@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   collectCommunityGrowthSnapshot,
   renderCommunityGrowthSnapshotMarkdown,
+  type CommunityGrowthSnapshot,
   type GitHubCliApiJson,
 } from '../community-growth-snapshot.ts'
 
@@ -742,5 +743,66 @@ describe('community growth snapshot', () => {
     expect(markdown).toContain('## Spike Read')
     expect(markdown).toContain('The strongest current external referrer is news.ycombinator.com with 51 views from 36 unique visitors.')
     expect(markdown).toContain('do not repost the same launch')
+  })
+
+  it('renders the live traffic channel comparison from the current winner', () => {
+    const snapshot: CommunityGrowthSnapshot = {
+      capturedAt: '2026-06-02T23:54:21.971Z',
+      github: {
+        fullName: 'proompteng/bilig',
+        htmlUrl: 'https://github.com/proompteng/bilig',
+        description: 'Headless WorkPaper runtime',
+        stargazerCount: 30,
+        forkCount: 19,
+        watcherCount: 1,
+        openIssueCount: 4,
+        defaultBranch: 'main',
+        topics: ['excel', 'model-context-protocol'],
+      },
+      npm: {
+        name: '@bilig/headless',
+        version: '0.157.0',
+        description: 'Headless WorkPaper runtime',
+        license: 'MIT',
+        modifiedAt: '2026-06-02T21:56:31.425Z',
+        downloads: {
+          lastWeek: { downloads: 31174, start: '2026-05-25', end: '2026-05-31' },
+          lastMonth: { downloads: 100772, start: '2026-05-02', end: '2026-05-31' },
+        },
+      },
+      contributorFunnel: {
+        openGoodFirstIssueCount: 4,
+        openFirstTimersOnlyIssueCount: 4,
+        openDocumentationStarterIssueCount: 4,
+        openNonDocumentationStarterIssueCount: 0,
+        openHelpWantedIssueCount: 4,
+        openPullRequestCount: 0,
+        externalOpenIssueCount: 0,
+        externalOpenPullRequestCount: 0,
+        externalIssuesOpenedLastSevenDays: 1,
+        externalPullRequestsOpenedLastSevenDays: 3,
+      },
+      discussionActivity: {
+        available: false,
+        reason: 'not needed for this renderer branch',
+      },
+      traffic: {
+        available: true,
+        views: { count: 356, uniques: 112 },
+        clones: { count: 36970, uniques: 4180 },
+        referrers: [
+          { referrer: 'github.com', count: 91, uniques: 41 },
+          { referrer: 't.co', count: 12, uniques: 11 },
+          { referrer: 'news.ycombinator.com', count: 1, uniques: 1 },
+        ],
+        paths: [],
+      },
+    }
+
+    const markdown = renderCommunityGrowthSnapshotMarkdown(snapshot)
+
+    expect(markdown).toContain('The strongest current external referrer is t.co with 12 views from 11 unique visitors.')
+    expect(markdown).toContain('X/t.co is ahead of Hacker News in qualified GitHub traffic: 12/11 versus 1/1.')
+    expect(markdown).not.toContain('Hacker News is still ahead')
   })
 })
