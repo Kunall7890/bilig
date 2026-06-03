@@ -65,8 +65,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   const mcpbReleaseAssetUrl = 'https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb'
   const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
   const remoteMcpEndpoint = 'https://bilig.proompteng.ai/mcp'
-  const officialRegistryLatestMarkedVersion = '0.160.2'
-  const officialRegistryLatestMarkedUpdatedAt = '2026-06-03T18:18:29.73846Z'
+  const officialRegistryLatestMarkedVersion = '0.161.0'
+  const officialRegistryLatestMarkedUpdatedAt = '2026-06-03T19:54:13.359111Z'
 
   const jekyllConfig = await readFile(join(docsRoot, '_config.yml'), 'utf8')
   const openAiAgentsSdkDoc = await readFile(join(docsRoot, 'openai-agents-sdk-workpaper-tool.md'), 'utf8')

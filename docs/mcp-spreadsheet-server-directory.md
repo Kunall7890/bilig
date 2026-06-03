@@ -224,8 +224,9 @@ The canonical package metadata in this repo includes:
 
 Latest checked result on June 3, 2026: Live. In the official Registry, the
 latest-marked server `io.github.proompteng/bilig-workpaper` is version
-`0.160.2`, package `@bilig/workpaper` is version `0.160.2`, and the current repo package version is `0.161.0`. The latest-marked entry was updated at
-`2026-06-03T18:18:29.73846Z`. Keep the repo package version separate from
+`0.161.0`, package `@bilig/workpaper` is version `0.161.0`, and the current
+repo package version is `0.161.0`. The latest-marked entry was updated at
+`2026-06-03T19:54:13.359111Z`. Keep the repo package version separate from
 Registry readback because npm and Registry publication can refresh on different
 cadences. The API also returns historical entries, so
 consumers should follow pagination, request a sufficient limit, and select the

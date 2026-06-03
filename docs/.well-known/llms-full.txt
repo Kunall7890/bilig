@@ -2839,6 +2839,36 @@ For the browser/agent boundary, pair this page with the
 [headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md), and
 the [agent framework map](agent-framework-workbook-tools.md).
 
+## Avoid Stale Formula-Cache False Negatives
+
+Agents often test spreadsheet code by writing an `.xlsx` file with ExcelJS,
+SheetJS, openpyxl, pandas, or another file library, then reading the formula
+cell back in the same process. That is a false-negative trap: many file
+libraries can preserve or write formula records without recalculating the
+cached result. The agent may blame its own code, or claim a workbook failed,
+when it only read a stale cache.
+
+Use Bilig at the decision boundary when the agent, CI job, route handler, or
+queue worker must trust the value before Excel or Sheets opens the file:
+
+- If the workbook can stay headless, use `@bilig/workpaper` and require
+  `set_cell_contents_and_readback`, export or restore evidence, and
+  `verified: true`.
+- If the workflow must keep an `.xlsx` file, run
+  `@bilig/xlsx-formula-recalc` or `@bilig/exceljs-formula-recalc` at the
+  recalculation boundary, then read the calculated cells.
+- If the task is a visual layout, chart, pivot, macro, add-in, or human review
+  problem, keep Excel, Sheets, or browser UI automation in the loop and do not
+  overclaim Bilig compatibility.
+
+This is the shortest rule to paste into another agent:
+
+```text
+Do not grade workbook automation from stale formula caches. After a formula or
+input edit, prove the dependent calculated cell changed through WorkPaper
+readback or an XLSX recalculation bridge before reporting success or failure.
+```
+
 ## Install The Agent Instructions
 
 If your agent supports installable skills, start here:

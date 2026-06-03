@@ -59,6 +59,9 @@ export async function requireAgentEvaluatorDiscovery(input: {
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json',
     'docs/agent-adoption-kit.md',
   )
+  requireIncludes(agentAdoptionKit, '## Avoid Stale Formula-Cache False Negatives', 'docs/agent-adoption-kit.md')
+  requireIncludes(agentAdoptionKit, 'Do not grade workbook automation from stale formula caches.', 'docs/agent-adoption-kit.md')
+  requireIncludes(agentAdoptionKit, '@bilig/exceljs-formula-recalc', 'docs/agent-adoption-kit.md')
   requireIncludes(
     agentMcpEvaluator,
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
