@@ -8,6 +8,7 @@ import type { DocsDiscoveryContext } from './check-docs-discovery-context.ts'
 import { llmsExternalSurfaceLinks } from './check-docs-discovery-growth-links.ts'
 import { requireHeadlessExampleDiscovery } from './check-docs-discovery-headless-examples.ts'
 import { requireGrowthSurfaceDiscovery } from './check-docs-discovery-launch-kit.ts'
+import { requireSpreadsheetMcpServerComparisonDiscovery } from './check-docs-discovery-mcp-comparison.ts'
 import { requireStarterIssueDiscovery } from './check-docs-discovery-starter-issues.ts'
 
 export async function requireAgentPublicSurfaceDiscovery(input: {
@@ -536,18 +537,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   requireIncludes(mcpWorkPaperToolServerDoc, 'https://github.com/proompteng/bilig/discussions/230', 'docs/mcp-workpaper-tool-server.md')
   requireIncludes(agentToolCallingDoc, 'https://github.com/proompteng/bilig/discussions/335', 'docs/agent-workpaper-tool-calling-recipe.md')
   requireIncludes(mcpWorkPaperToolServerDoc, 'mcp-client-setup.md', 'docs/mcp-workpaper-tool-server.md')
-  for (const required of [
-    '## Named Public Alternatives',
-    'https://github.com/henilcalagiya/google-sheets-mcp',
-    'https://github.com/dream-num/univer-mcp',
-    'https://github.com/GRID-is/claude-mcp',
-    'A file library can preserve formulas without recalculating fresh results in Node',
-    'Do not pitch Bilig as "another Google\nSheets MCP server"',
-    'A long-running SheetJS issue asks\nwhether a formula value can be refreshed after changing an input cell',
-    'ExcelJS discussion describes JSON-driven workbook edits where shared formulas',
-  ]) {
-    requireIncludes(spreadsheetMcpServerComparison, required, 'docs/spreadsheet-mcp-server-comparison.md')
-  }
+  requireSpreadsheetMcpServerComparisonDiscovery({ spreadsheetMcpServerComparison })
   for (const required of [
     'description: Live directory and install status for the Bilig WorkPaper MCP server',
     `npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp`,

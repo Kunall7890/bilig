@@ -20,6 +20,7 @@ const llmsFullSourceSpecs = [
   ['Agent Workbook Challenge', 'docs/agent-workbook-challenge.md'],
   ['Agent WorkPaper Tool-Calling Recipe', 'docs/agent-workpaper-tool-calling-recipe.md'],
   ['MCP Spreadsheet Formula Server For Coding Agents', 'docs/mcp-spreadsheet-formula-server-for-coding-agents.md'],
+  ['Spreadsheet MCP Server Comparison', 'docs/spreadsheet-mcp-server-comparison.md'],
   ['Vercel AI SDK Spreadsheet Tool Formula Readback', 'docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md'],
   ['AI Spreadsheet Agent Tool For Node.js', 'docs/ai-agent-spreadsheet-tool-node.md'],
   ['Workbook Tools For Agent Frameworks', 'docs/agent-framework-workbook-tools.md'],

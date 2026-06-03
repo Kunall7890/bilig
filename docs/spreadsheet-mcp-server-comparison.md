@@ -39,6 +39,11 @@ somewhere else:
 | [Google Sheets MCP](https://github.com/henilcalagiya/google-sheets-mcp) | Agents that need CRUD operations against live Google Sheets through a service account    | Requires Google Cloud, Sheets API, Drive API, and service-account setup                         |
 | [Univer MCP](https://github.com/dream-num/univer-mcp)                   | Agents that operate a Univer spreadsheet runtime through an MCP session                  | Requires an API key and a running Univer instance; the repo labels plain-text mode experimental |
 | [GRID MCP](https://github.com/GRID-is/claude-mcp)                       | Claude Desktop workflows against spreadsheets uploaded to GRID                           | Requires a GRID account, uploaded workbook, and API key                                         |
+| [mort-lab Excel MCP](https://github.com/mort-lab/excel-mcp)             | Openpyxl-backed local `.xlsx` creation, editing, formatting, and formula authoring       | Treat formula results as cached unless a separate calculation engine refreshed them             |
+| [negokaz Excel MCP Server](https://github.com/negokaz/excel-mcp-server) | Local Excel workbook editing, with Windows live-Excel mode for open workbooks            | Live editing and screenshots are Windows Excel COM/OLE paths; formula writes are not full proof |
+| [haris-musa Excel MCP Server](https://github.com/haris-musa/excel-mcp-server) | Openpyxl-backed Excel file mutation over stdio or HTTP transports                   | Formula validation and formula writing are not the same as recalculated dependent readback      |
+| [SheetForge MCP](https://mcpservers.org/servers/iheldan/sheetforge-mcp) | Workbook inspection, dry-run mutation plans, audits, repairs, and before/after diffs     | Its docs explicitly say read tools do not recalculate Excel formulas                            |
+| [CData MCP Server for Microsoft Excel](https://cdn.cdata.com/help/RXK/mcp/pg_excelformula.htm) | Commercial Excel connector with configurable read-time formula recalculation | Check connector coverage, licensing, and the `Recalculate` setting before relying on results    |
 | Excel file or SheetJS-style tooling                                     | Creating, reading, or preserving `.xlsx` files                                           | A file library can preserve formulas without recalculating fresh results in Node                |
 | Bilig WorkPaper MCP                                                     | Local agent tools that own WorkPaper JSON and need write, recalculate, readback, restore | Not a full Excel editor; use it when formula readback is the product                            |
 
@@ -96,6 +101,23 @@ Bilig takes the opposite boundary for service-owned workbooks:
 That makes the comparison less about "best spreadsheet MCP server" and more
 about the source of truth. Use file-first MCP tools when Excel fidelity is the
 product. Use Bilig WorkPaper MCP when recalculated readback is the product.
+
+## Formula Boundary Checklist
+
+Before an agent trusts a number after a write, classify the spreadsheet server
+by the proof it can return:
+
+| Boundary                                                               | What the agent can safely claim                                                 |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| A server writes formula text into an `.xlsx` file                      | The formula was authored; the result still needs a calculation engine.           |
+| A server reads workbook values through an `.xlsx` file library         | The value may be a cached value from the file unless recalculation is documented. |
+| A server can drive live desktop Excel or a commercial connector engine | The source must stay available and the engine/configuration must be part of proof. |
+| A server returns before/after cells from its own workbook runtime      | The agent can cite the edited input and dependent readback from the same run.    |
+
+That is the practical reason Bilig's MCP smoke is deliberately boring: edit a
+known input, recalculate dependent formulas, export or restore the WorkPaper
+document, and return the readback fields. It is a smaller claim than "Excel
+replacement," but it is the claim an automation system can actually verify.
 
 ## Verify The Bilig MCP Path
 
@@ -156,6 +178,10 @@ or persists anything," choose a formula runtime path and keep the MCP layer thin
 ## Public Directory References
 
 - [SheetForge MCP](https://mcpservers.org/servers/iheldan/sheetforge-mcp)
+- [mort-lab Excel MCP](https://github.com/mort-lab/excel-mcp)
+- [negokaz Excel MCP Server](https://github.com/negokaz/excel-mcp-server)
+- [haris-musa Excel MCP Server](https://github.com/haris-musa/excel-mcp-server)
+- [CData MCP Server for Microsoft Excel formulas](https://cdn.cdata.com/help/RXK/mcp/pg_excelformula.htm)
 - [Excel file manipulation MCP](https://mcp.directory/servers/excel-file-manipulation)
 - [Bilig WorkPaper MCP registry search](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper)
 - [Bilig WorkPaper on Glama](https://glama.ai/mcp/servers/proompteng/bilig)
