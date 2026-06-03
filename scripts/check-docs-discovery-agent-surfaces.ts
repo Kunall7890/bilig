@@ -660,6 +660,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'cline_mcp_settings.json',
     '~/.cline/data/settings/cline_mcp_settings.json',
     '[mcp_servers.bilig-workpaper]',
+    'Codex spreadsheet MCP server',
+    'Use the Bilig WorkPaper MCP server from Codex.',
     'https://code.visualstudio.com/docs/copilot/reference/mcp-configuration',
     'https://docs.cline.bot/mcp/adding-and-configuring-servers',
     'https://platform.openai.com/docs/docs-mcp',

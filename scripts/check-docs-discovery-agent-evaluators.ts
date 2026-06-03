@@ -44,6 +44,12 @@ export async function requireAgentEvaluatorDiscovery(input: {
     'docs/agent-adoption-kit.md',
   )
   requireIncludes(agentAdoptionKit, 'provider-backed-adapter-missing', 'docs/agent-adoption-kit.md')
+  requireIncludes(agentAdoptionKit, '## Agent Manifest Gate', 'docs/agent-adoption-kit.md')
+  requireIncludes(agentAdoptionKit, 'https://proompteng.github.io/bilig/.well-known/agent.json', 'docs/agent-adoption-kit.md')
+  requireIncludes(agentAdoptionKit, '`public_entrypoints`', 'docs/agent-adoption-kit.md')
+  requireIncludes(agentAdoptionKit, '`evaluator_doors`', 'docs/agent-adoption-kit.md')
+  requireIncludes(agentAdoptionKit, '`proof_contract`', 'docs/agent-adoption-kit.md')
+  requireIncludes(agentAdoptionKit, 'bilig-agent-start --json', 'docs/agent-adoption-kit.md')
   requireIncludes(agentAdoptionKit, 'schemaVersion: "bilig-evaluator.v1"', 'docs/agent-adoption-kit.md')
   requireIncludes(agentAdoptionKit, 'door: "agent-mcp"', 'docs/agent-adoption-kit.md')
   requireIncludes(agentAdoptionKit, expectedWorkpaperVersion, 'docs/agent-adoption-kit.md')

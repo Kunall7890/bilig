@@ -340,6 +340,9 @@ the before/after expected ARR, and the persistence checks.
 
 ## Codex
 
+This is the shortest Codex spreadsheet MCP server path for formula readback
+without driving Excel, Sheets, or a browser grid.
+
 For Codex CLI or the Codex IDE extension, add this to `~/.codex/config.toml`:
 
 ```toml
@@ -358,6 +361,15 @@ codex mcp list
 
 Keep this in your user config unless the whole repository needs the same MCP
 server. Do not check personal Codex config into the project.
+
+Ask Codex:
+
+```text
+Use the Bilig WorkPaper MCP server from Codex. List sheets, read Summary!A1:B5,
+set Inputs!B3 to 0.4 with set_cell_contents_and_readback, export the WorkPaper
+document, and report editedCell, before, after, afterRestore,
+persistedDocumentBytes, verified, and limitations.
+```
 
 ## What the tools prove
 

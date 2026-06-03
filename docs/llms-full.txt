@@ -2877,6 +2877,37 @@ When a reviewer wants to see a successful run before adopting the path, use the
 call, result, workbook state change, formula readback, JSON export, and restart
 verification for common coding-agent hosts.
 
+## Agent Manifest Gate
+
+When an agent host, directory scanner, or internal platform wants machine-readable
+entrypoints, start with:
+
+```text
+https://proompteng.github.io/bilig/.well-known/agent.json
+```
+
+Accept the integration only if the manifest exposes `public_entrypoints`,
+`evaluator_doors`, `proof_contract`, and the `mcp` server block. Those fields
+let the host find the compact start file, choose the right evaluator door, and
+verify that success means computed readback plus persisted state.
+
+For a human-readable decision object, run:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json
+```
+
+Then validate the same boundary with the agent MCP evaluator:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+Do not treat a manifest link, installed rule file, or MCP server listing as
+adoption by itself. The gate passes only when the evaluator returns the proof
+fields in `proof_contract`, including `editedCell`, `before`, `after`,
+`afterRestore`, `persistedDocumentBytes`, and `verified`.
+
 ## Run The No-Key Check
 
 This checks the published package and the file-backed MCP tool path without
