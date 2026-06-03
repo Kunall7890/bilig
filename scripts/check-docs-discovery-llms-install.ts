@@ -18,6 +18,7 @@ export function requireLlmsInstallDiscovery({ docsLlmsInstall, llmsFull, llmsIns
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
     'llms-install.md',
   )
+  requireIncludes(llmsInstall, 'CLAUDE.md', 'llms-install.md')
   requireIncludes(llmsInstall, '.clinerules/bilig-workpaper.md', 'llms-install.md')
   requireIncludes(llmsInstall, '.cursor/rules/bilig-workpaper.mdc', 'llms-install.md')
   requireIncludes(llmsInstall, '.devin/rules/bilig-workpaper.md', 'llms-install.md')

@@ -53,7 +53,7 @@ fallback for hosts that only support GitHub skill sources.
 If the agent is already inside a cloned Bilig checkout, use the project-local
 rules instead:
 
-- Claude Code: `.claude/skills/bilig-workpaper/SKILL.md` or
+- Claude Code: `CLAUDE.md`, then `.claude/skills/bilig-workpaper/SKILL.md` or
   `/bilig-workpaper-proof` from `.claude/commands/bilig-workpaper-proof.md`
 - GitHub Copilot / VS Code agent mode:
   `.github/copilot-instructions.md`,
@@ -98,6 +98,11 @@ https://proompteng.github.io/bilig/llms.txt
 
 When you only need to pick the right repo-local rule or MCP config file, use
 the [coding agent rule chooser](agent-rule-chooser.md).
+
+When a reviewer wants to see a successful run before adopting the path, use the
+[agent proof transcripts](agent-proof-transcripts.md). They show prompt, tool
+call, result, workbook state change, formula readback, JSON export, and restart
+verification for common coding-agent hosts.
 
 ## Run The No-Key Check
 

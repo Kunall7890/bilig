@@ -140,6 +140,7 @@ const airflowWorkpaperDag = await readFile(join(docsRoot, 'airflow-workpaper-dag
 const dagsterWorkpaperAsset = await readFile(join(docsRoot, 'dagster-workpaper-asset.md'), 'utf8')
 const kestraWorkpaperFlow = await readFile(join(docsRoot, 'kestra-workpaper-flow.md'), 'utf8')
 const prefectWorkpaperFlow = await readFile(join(docsRoot, 'prefect-workpaper-flow.md'), 'utf8')
+const stopDrivingSpreadsheetsWithScreenshots = await readFile(join(docsRoot, 'stop-driving-spreadsheets-with-screenshots.md'), 'utf8')
 const parsedScopedWorkpaperPackageJson: unknown = JSON.parse(scopedWorkpaperPackageJson)
 if (
   typeof parsedScopedWorkpaperPackageJson !== 'object' ||
@@ -235,6 +236,28 @@ requireIncludes(
   index,
   '<link rel="alternate" type="application/json" href="https://proompteng.github.io/bilig/.well-known/agent.json" title="agent.json" />',
   'docs/index.html',
+)
+for (const required of [
+  'Research refreshed: 2026-06-03.',
+  '@bilig/workpaper',
+  'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
+  'MCP is a tool and context boundary, not a spreadsheet screen.',
+  'GitHub Copilot cloud agent',
+  'Cloud-agent MCP config needs explicit tool',
+  'Browser Use',
+  'The browser DOM, click success, and screenshots are',
+  'context, not formula truth.',
+  'persistedDocumentBytes',
+  'https://developers.openai.com/api/docs/guides/tools-computer-use',
+  'https://docs.github.com/en/copilot/concepts/agents/cloud-agent/mcp-and-cloud-agent',
+  'https://docs.browser-use.com/open-source/customize/tools/add',
+] as const) {
+  requireIncludes(stopDrivingSpreadsheetsWithScreenshots, required, 'docs/stop-driving-spreadsheets-with-screenshots.md')
+}
+requireNotIncludes(
+  stopDrivingSpreadsheetsWithScreenshots,
+  'Research date: 2026-05-16.',
+  'docs/stop-driving-spreadsheets-with-screenshots.md',
 )
 for (const [mcpCardPath, mcpCardContent] of [
   ['docs/.well-known/mcp/server-card.json', mcpServerCard],
@@ -481,6 +504,7 @@ requireIncludes(llms, skillManifestUrl, 'docs/llms.txt')
 requireNotIncludes(llms, 'https://proompteng.github.io/bilig/skill.txt', 'docs/llms.txt')
 requireNotIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent-skills/bilig-workpaper/SKILL.txt', 'docs/llms.txt')
 requireNotIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/skills/bilig-workpaper/SKILL.txt', 'docs/llms.txt')
+requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/CLAUDE.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.claude/commands/bilig-workpaper-proof.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.mcp.json', 'docs/llms.txt')

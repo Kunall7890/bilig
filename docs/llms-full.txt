@@ -33,9 +33,10 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
    `.github/instructions/bilig-workpaper.instructions.md`,
    `.github/prompts/bilig-workpaper-proof.prompt.md`, and
    `.vscode/mcp.json`.
-9. If you are inside a cloned Bilig repository with Claude Code, use the
-   project skill at `.claude/skills/bilig-workpaper/SKILL.md` or invoke the
-   explicit formula-proof command from
+9. If you are inside a cloned Bilig repository with Claude Code, read
+   `CLAUDE.md` first, then use the project skill at
+   `.claude/skills/bilig-workpaper/SKILL.md` or invoke the explicit
+   formula-proof command from
    `.claude/commands/bilig-workpaper-proof.md`.
 10. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
     `.cursor/rules/bilig-workpaper.mdc` or
@@ -430,6 +431,9 @@ Evaluator examples live in
 [`examples/bilig-evaluator-proof`](examples/bilig-evaluator-proof).
 Agent and framework evaluators are ranked in the
 [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md).
+The [agent proof transcripts](docs/agent-proof-transcripts.md) show the
+successful prompt, tool call, workbook state change, formula readback, JSON
+export, and restart verification shape.
 Use the [coding agent rule chooser](docs/agent-rule-chooser.md) when you need
 the exact instruction, rule, prompt, or MCP config file for Codex, Claude Code,
 GitHub Copilot, VS Code, Cursor, Windsurf/Cascade, Cline, Continue, or Gemini
@@ -451,6 +455,7 @@ Pick the path that matches the job:
 | A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Windsurf, Cline, Continue, or Gemini. |
 | You are comparing Excel MCP servers, hosted spreadsheet agents, or file-first XLSX tools | [Spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md) | the account/session/file/runtime boundary before an agent trusts formula readback. |
 | You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md) | the smallest command or example for the host boundary, plus what it does and does not prove. |
+| You need to see a successful agent session shape before adopting        | [Agent proof transcripts](docs/agent-proof-transcripts.md)                 | prompt, tool call, result, workbook state change, formula readback, JSON export, and restart verification.   |
 | Existing XLSX outputs need refreshed cached results                     | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                   | changed input, recalculated output, output workbook, and `recalculationCompleted: true`.  |
 
 If you are not sure which one fits, start with the thing that owns state. Use
@@ -722,7 +727,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Existing XLSX files           | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                                                                                                                                                                                                                                  | A command edits inputs, reads recalculated values, writes XLSX, and returns `recalculationCompleted: true`. |
 | Node service formulas         | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)                                                                                                                                                                                                                        | A starter writes one input, recalculates, persists JSON, restores, and prints `verified: true`.             |
 | Agent MCP contract            | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)                                                                                                                                                                                                                                    | MCP tool discovery, input edit, formula readback, persistence, and restart proof all pass.                  |
-| Agent proof chooser          | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md), [MCP spreadsheet formula server](docs/mcp-spreadsheet-formula-server-for-coding-agents.md), and [Vercel AI SDK formula readback](docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md)                                      | The agent path starts with the smallest verified proof and avoids write-only or UI-only claims.            |
+| Agent proof chooser          | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md), [agent proof transcripts](docs/agent-proof-transcripts.md), [MCP spreadsheet formula server](docs/mcp-spreadsheet-formula-server-for-coding-agents.md), and [Vercel AI SDK formula readback](docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md) | The agent path starts with the smallest verified proof and avoids write-only or UI-only claims.            |
 | Agent intent/runtime adapters | [Workbook agent intent API](docs/workbook-agent-intent-api.md) and [workbook-agent-model example](https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model)                                                                                                            | A model prepares transport-neutral plan data, strict runtime proof, command receipts, and check evidence.   |
 | Basic fit                     | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                                                                                   | The problem is workbook-shaped business logic that needs API readback and persistence.                      |
 | Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                                                                                           | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`.     |
@@ -2365,7 +2370,7 @@ fallback for hosts that only support GitHub skill sources.
 If the agent is already inside a cloned Bilig checkout, use the project-local
 rules instead:
 
-- Claude Code: `.claude/skills/bilig-workpaper/SKILL.md` or
+- Claude Code: `CLAUDE.md`, then `.claude/skills/bilig-workpaper/SKILL.md` or
   `/bilig-workpaper-proof` from `.claude/commands/bilig-workpaper-proof.md`
 - GitHub Copilot / VS Code agent mode:
   `.github/copilot-instructions.md`,
@@ -2410,6 +2415,11 @@ https://proompteng.github.io/bilig/llms.txt
 
 When you only need to pick the right repo-local rule or MCP config file, use
 the [coding agent rule chooser](agent-rule-chooser.md).
+
+When a reviewer wants to see a successful run before adopting the path, use the
+[agent proof transcripts](agent-proof-transcripts.md). They show prompt, tool
+call, result, workbook state change, formula readback, JSON export, and restart
+verification for common coding-agent hosts.
 
 ## Run The No-Key Check
 
@@ -2603,7 +2613,7 @@ call alone is not success.
 | Agent host | Use this Bilig file | Tool hookup | Proof bar |
 | --- | --- | --- | --- |
 | Codex | `AGENTS.md` in the repo directory chain. Public handoff: `docs/AGENTS.md`. | Optional `.mcp.json` when the Codex environment supports MCP. | Run `bilig-agent-start --json`, then `bilig-evaluate --door agent-mcp --json`. |
-| Claude Code | `.claude/skills/bilig-workpaper/SKILL.md` or `.claude/commands/bilig-workpaper-proof.md`. | `.mcp.json` defines the file-backed `bilig-workpaper` stdio server. | Use `/bilig-workpaper-proof <task>` before Excel, LibreOffice, Sheets, browser grids, or screenshots. |
+| Claude Code | `CLAUDE.md`, then `.claude/skills/bilig-workpaper/SKILL.md` or `.claude/commands/bilig-workpaper-proof.md`. | `.mcp.json` defines the file-backed `bilig-workpaper` stdio server. | Use `/bilig-workpaper-proof <task>` before Excel, LibreOffice, Sheets, browser grids, or screenshots. |
 | GitHub Copilot | `.github/copilot-instructions.md` plus `.github/instructions/bilig-workpaper.instructions.md`. | `.github/prompts/bilig-workpaper-proof.prompt.md` for the task prompt, `.vscode/mcp.json` in VS Code. | Copilot should return WorkPaper readback fields, not spreadsheet UI status. |
 | VS Code agent mode | `.github/copilot-instructions.md` and `.github/instructions/bilig-workpaper.instructions.md`. | `.vscode/mcp.json` for `biligWorkpaperDemo` and `biligWorkpaperFile`. | Use the workspace MCP config before copying a generic `mcpServers` manifest. |
 | Cursor | `.cursor/rules/bilig-workpaper.mdc`. | `.cursor/mcp.json` for local file-backed WorkPaper tools. | Treat `.cursorrules` as legacy; use the project rule and MCP config here. |
@@ -2635,8 +2645,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 
 - `docs/AGENTS.md` is a public handoff page. Codex reads `AGENTS.md` from the
   cloned repo directory chain.
-- Claude Code reads `CLAUDE.md`, not `AGENTS.md`; this repo uses a Claude Code
-  skill and slash command for the WorkPaper proof procedure.
+- Claude Code reads `CLAUDE.md`, not `AGENTS.md`; this repo's project memory
+  routes it to the Claude Code skill, slash command, and `.mcp.json`.
 - `.vscode/mcp.json` uses the VS Code `servers` shape. `mcp/bilig-workpaper.mcp.json`
   is the reusable `mcpServers` shape for other clients.
 - Cascade/Devin docs currently prefer `.devin/rules`; the `.windsurf/rules`
@@ -2660,6 +2670,7 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 
 - [Agent Adoption Kit](agent-adoption-kit.md)
 - [Agent WorkPaper proof matrix](agent-proof-matrix.md)
+- [Agent proof transcripts](agent-proof-transcripts.md)
 - [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
 
@@ -2890,6 +2901,12 @@ Use the XLSX and ExcelJS paths when a saved file or ExcelJS object is already
 the contract. Do not force a WorkPaper model when the job is mostly workbook
 formatting, image embedding, or file metadata.
 
+If the reviewer asks what a successful agent session looks like, send the
+[agent proof transcripts](agent-proof-transcripts.md) after this matrix. The
+transcripts show prompt, tool call, result, workbook state change, formula
+readback, JSON export, and restart readback verification for Codex, Claude Code,
+Copilot, Cursor, and Continue.
+
 ## Limits
 
 Bilig is not a desktop Excel replacement. Keep Excel, LibreOffice, Microsoft
@@ -2900,11 +2917,562 @@ manual UI workflows.
 ## Related
 
 - [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
+- [Agent proof transcripts](agent-proof-transcripts.md)
 - [MCP spreadsheet formula server for coding agents](mcp-spreadsheet-formula-server-for-coding-agents.md)
 - [Vercel AI SDK spreadsheet tool: generateText and streamText with formula readback](vercel-ai-sdk-spreadsheet-tool-formula-readback.md)
 - [ExcelJS formula result not updating after Node edits](exceljs-formula-result-not-updating-after-node-edits.md)
 - [Workbook tools for agent frameworks](agent-framework-workbook-tools.md)
 - [Compatibility limits](where-bilig-is-not-excel-compatible-yet.md)
+
+---
+
+## Agent Proof Transcripts
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/agent-proof-transcripts.md
+
+# Agent Proof Transcripts
+
+Use these pages when a reviewer asks what a successful Bilig session actually
+looks like. They are terminal transcripts, not screenshots and not UI recordings.
+The shared proof comes from a public no-key run:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+Observed package versions in the transcript:
+
+```json
+{
+  "@bilig/workpaper": "0.157.0",
+  "xlsx-formula-recalc": "0.157.0"
+}
+```
+
+The important proof shape is the same for every agent host:
+
+| Step | Evidence |
+| --- | --- |
+| Prompt | Ask the agent to prove a workbook-shaped formula edit before driving Excel, LibreOffice, Google Sheets, or a browser grid. |
+| Tool call | Run `bilig-evaluate --door agent-mcp --json` or the local MCP equivalent. |
+| Result | Return `schemaVersion: "bilig-evaluator.v1"`, `door: "agent-mcp"`, and `verified: true`. |
+| Workbook state change | `Inputs!B3` changes the dependent `Summary!B3` value from `60000` to `96000`. |
+| Formula readback | `after`, `afterRestore`, and `afterRestart` all read `96000`. |
+| JSON export | `persistedDocumentBytes` is `1162`, and the exported WorkPaper document is restored. |
+| Restart readback verification | `restartReadbackMatchesAfter: true`. |
+
+Pick the host transcript that matches the agent you are using:
+
+- [Codex](agent-proof-transcripts/codex.md)
+- [Claude Code](agent-proof-transcripts/claude-code.md)
+- [GitHub Copilot and VS Code agent mode](agent-proof-transcripts/copilot.md)
+- [Cursor](agent-proof-transcripts/cursor.md)
+- [Continue](agent-proof-transcripts/continue.md)
+
+## Shared Verified Output
+
+This is the compact output every transcript checks:
+
+```json
+{
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "agent-mcp",
+  "packageVersions": {
+    "@bilig/workpaper": "0.157.0",
+    "xlsx-formula-recalc": "0.157.0"
+  },
+  "evidence": {
+    "editedCell": "Inputs!B3",
+    "dependentCell": "Summary!B3",
+    "before": 60000,
+    "after": 96000,
+    "afterRestore": 96000,
+    "afterRestart": 96000,
+    "persistedDocumentBytes": 1162,
+    "toolCount": 8,
+    "checks": {
+      "listedFileBackedTools": true,
+      "listedResourcesAndPrompts": true,
+      "formulaValidationPassed": true,
+      "dependentCellChanged": true,
+      "persistedToDisk": true,
+      "exportContainsWorkPaperDocument": true,
+      "restartReadbackMatchesAfter": true,
+      "displayValueRead": true
+    }
+  },
+  "verified": true
+}
+```
+
+## What This Proves
+
+The transcript proves that a coding agent can discover the WorkPaper MCP tool
+surface, write a cell, read a dependent formula, export JSON, restore the
+document, and verify restart readback.
+
+It does not prove Excel desktop UI automation, macro execution, pivot refresh,
+chart layout, private workbook compatibility, or hosted multi-user storage.
+
+## Related
+
+- [Agent WorkPaper proof matrix](agent-proof-matrix.md)
+- [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
+- [MCP spreadsheet formula server for coding agents](mcp-spreadsheet-formula-server-for-coding-agents.md)
+- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+
+---
+
+## Codex WorkPaper Proof Transcript
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/agent-proof-transcripts/codex.md
+
+# Codex WorkPaper Proof Transcript
+
+## Prompt
+
+```text
+Before using spreadsheet UI automation, prove this workbook-shaped formula task
+through Bilig WorkPaper. Change the demo input behind Inputs!B3, read the
+dependent Summary!B3 formula result, export the WorkPaper JSON, restore it, and
+report the limitations.
+```
+
+Codex should read `AGENTS.md` first, then run the evaluator before attempting a
+spreadsheet UI path.
+
+## Tool Call
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+## Result
+
+```json
+{
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "agent-mcp",
+  "packageVersions": {
+    "@bilig/workpaper": "0.157.0",
+    "xlsx-formula-recalc": "0.157.0"
+  },
+  "evidence": {
+    "editedCell": "Inputs!B3",
+    "dependentCell": "Summary!B3",
+    "before": 60000,
+    "after": 96000,
+    "afterRestore": 96000,
+    "afterRestart": 96000,
+    "persistedDocumentBytes": 1162,
+    "checks": {
+      "listedFileBackedTools": true,
+      "listedResourcesAndPrompts": true,
+      "formulaValidationPassed": true,
+      "dependentCellChanged": true,
+      "persistedToDisk": true,
+      "exportContainsWorkPaperDocument": true,
+      "restartReadbackMatchesAfter": true,
+      "displayValueRead": true
+    }
+  },
+  "verified": true
+}
+```
+
+## Workbook State Change
+
+| Cell | Meaning | Before | After |
+| --- | --- | ---: | ---: |
+| `Inputs!B3` | Edited input | demo value | changed by evaluator |
+| `Summary!B3` | Dependent formula | `60000` | `96000` |
+
+## Formula Readback
+
+Codex should report `after: 96000`, `afterRestore: 96000`, and
+`afterRestart: 96000`. A write call without these readbacks is not success.
+
+## JSON Export
+
+The run exported a WorkPaper document with `persistedDocumentBytes: 1162` and
+verified `exportContainsWorkPaperDocument: true`.
+
+## Restart Readback Verification
+
+The run verified `restartReadbackMatchesAfter: true`, so the proof survived a
+file-backed restart boundary.
+
+## Limitations
+
+This transcript proves the file-backed WorkPaper MCP loop for Codex. It does not
+prove Excel desktop UI behavior, macros, pivots, charts, or private workbook
+compatibility.
+
+## Related
+
+- [Agent proof transcripts](../agent-proof-transcripts.md)
+- [Agent WorkPaper proof matrix](../agent-proof-matrix.md)
+- [Evaluate Bilig as an agent MCP workbook tool](../eval-agent-mcp.md)
+
+---
+
+## Claude Code WorkPaper Proof Transcript
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/agent-proof-transcripts/claude-code.md
+
+# Claude Code WorkPaper Proof Transcript
+
+## Prompt
+
+```text
+Use the repo WorkPaper instructions. Prove the workbook edit with Bilig before
+driving a spreadsheet UI: change the demo input, read the dependent formula,
+export JSON, restore, and return the verified proof object.
+```
+
+Claude Code should load `CLAUDE.md`, then use
+`.claude/skills/bilig-workpaper/SKILL.md` or
+`.claude/commands/bilig-workpaper-proof.md` for the proof contract.
+
+## Tool Call
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+## Result
+
+```json
+{
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "agent-mcp",
+  "evidence": {
+    "editedCell": "Inputs!B3",
+    "dependentCell": "Summary!B3",
+    "before": 60000,
+    "after": 96000,
+    "afterRestore": 96000,
+    "afterRestart": 96000,
+    "persistedDocumentBytes": 1162,
+    "toolCount": 8,
+    "tools": [
+      "list_sheets",
+      "read_range",
+      "read_cell",
+      "set_cell_contents",
+      "set_cell_contents_and_readback",
+      "get_cell_display_value",
+      "export_workpaper_document",
+      "validate_formula"
+    ],
+    "checks": {
+      "listedFileBackedTools": true,
+      "listedResourcesAndPrompts": true,
+      "dependentCellChanged": true,
+      "persistedToDisk": true,
+      "restartReadbackMatchesAfter": true
+    }
+  },
+  "verified": true
+}
+```
+
+## Workbook State Change
+
+The transcript edits `Inputs!B3` and verifies the dependent `Summary!B3`
+formula changes from `60000` to `96000`.
+
+## Formula Readback
+
+Claude Code should include the computed `after`, `afterRestore`, and
+`afterRestart` values in its final answer. The proof is incomplete if the agent
+only says the MCP write succeeded.
+
+## JSON Export
+
+The evaluator exported and restored a WorkPaper JSON document with
+`persistedDocumentBytes: 1162`.
+
+## Restart Readback Verification
+
+The run checked `restartReadbackMatchesAfter: true`, which is the useful part
+for a local coding agent: another process can reopen the document and see the
+same dependent formula result.
+
+## Limitations
+
+This transcript proves Claude Code can follow a local WorkPaper proof path. It
+does not prove that the hosted remote MCP endpoint should receive private
+workbook data. Use local stdio/file-backed MCP for private workbooks.
+
+## Related
+
+- [Agent proof transcripts](../agent-proof-transcripts.md)
+- [Coding agent rule chooser](../agent-rule-chooser.md)
+- [Headless WorkPaper agent handbook](../headless-workpaper-agent-handbook.md)
+
+---
+
+## GitHub Copilot WorkPaper Proof Transcript
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/agent-proof-transcripts/copilot.md
+
+# GitHub Copilot WorkPaper Proof Transcript
+
+## Prompt
+
+```text
+In VS Code agent mode, use the repo WorkPaper instructions before spreadsheet UI
+automation. Prove that a workbook input edit changes a dependent formula and
+that the result survives JSON export and restart readback.
+```
+
+Copilot should use `.github/copilot-instructions.md`,
+`.github/instructions/bilig-workpaper.instructions.md`,
+`.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`.
+
+## Tool Call
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+## Result
+
+```json
+{
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "agent-mcp",
+  "evidence": {
+    "editedCell": "Inputs!B3",
+    "dependentCell": "Summary!B3",
+    "before": 60000,
+    "after": 96000,
+    "afterRestore": 96000,
+    "afterRestart": 96000,
+    "persistedDocumentBytes": 1162,
+    "checks": {
+      "listedFileBackedTools": true,
+      "listedResourcesAndPrompts": true,
+      "formulaValidationPassed": true,
+      "dependentCellChanged": true,
+      "persistedToDisk": true,
+      "exportContainsWorkPaperDocument": true,
+      "restartReadbackMatchesAfter": true
+    }
+  },
+  "verified": true
+}
+```
+
+## Workbook State Change
+
+`Inputs!B3` is the edited input. `Summary!B3` is the dependent formula cell.
+The dependent value changes from `60000` to `96000`.
+
+## Formula Readback
+
+The transcript includes readback before and after the edit. Copilot should not
+treat a tool completion message as formula truth unless the dependent cell was
+read after recalculation.
+
+## JSON Export
+
+The proof includes `persistedDocumentBytes: 1162` and
+`exportContainsWorkPaperDocument: true`.
+
+## Restart Readback Verification
+
+The proof includes `afterRestart: 96000` and
+`restartReadbackMatchesAfter: true`.
+
+## Limitations
+
+This transcript proves the VS Code/Copilot agent can use WorkPaper proof
+semantics. It does not prove every Copilot UI surface, every MCP client
+configuration, or desktop spreadsheet compatibility.
+
+## Related
+
+- [Agent proof transcripts](../agent-proof-transcripts.md)
+- [Coding agent rule chooser](../agent-rule-chooser.md)
+- [Evaluate Bilig as an agent MCP workbook tool](../eval-agent-mcp.md)
+
+---
+
+## Cursor WorkPaper Proof Transcript
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/agent-proof-transcripts/cursor.md
+
+# Cursor WorkPaper Proof Transcript
+
+## Prompt
+
+```text
+Use the Cursor Bilig WorkPaper rule before spreadsheet UI automation. Prove that
+the agent can edit a workbook input, read the recalculated formula, export JSON,
+restore, and verify the restored result.
+```
+
+Cursor should load `.cursor/rules/bilig-workpaper.mdc` and use
+`.cursor/mcp.json` when it needs a project-local MCP server.
+
+## Tool Call
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+## Result
+
+```json
+{
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "agent-mcp",
+  "sourceProof": {
+    "transport": "stdio-json-rpc",
+    "serverName": "bilig-headless-workpaper",
+    "editedCell": "Inputs!B3",
+    "dependentCell": "Summary!B3",
+    "before": 60000,
+    "after": 96000,
+    "afterRestore": 96000,
+    "afterRestart": 96000,
+    "persistedDocumentBytes": 1162,
+    "displayValue": "96000",
+    "checks": {
+      "listedFileBackedTools": true,
+      "listedResourcesAndPrompts": true,
+      "formulaValidationPassed": true,
+      "dependentCellChanged": true,
+      "persistedToDisk": true,
+      "restartReadbackMatchesAfter": true
+    }
+  },
+  "verified": true
+}
+```
+
+## Workbook State Change
+
+The proof changes `Inputs!B3`, then reads `Summary!B3` as `96000`.
+
+## Formula Readback
+
+Cursor should report the dependent cell readback and the display value, not only
+the raw write response. In this transcript, `displayValue` is `"96000"`.
+
+## JSON Export
+
+The MCP proof exported a WorkPaper document and recorded
+`persistedDocumentBytes: 1162`.
+
+## Restart Readback Verification
+
+The source proof includes `afterRestart: 96000` and
+`restartReadbackMatchesAfter: true`.
+
+## Limitations
+
+This transcript proves the Cursor rule and WorkPaper MCP proof shape. It does
+not prove browser-grid automation, a hosted multi-tenant workbook service, or
+private file handling through the remote demo endpoint.
+
+## Related
+
+- [Agent proof transcripts](../agent-proof-transcripts.md)
+- [Coding agent rule chooser](../agent-rule-chooser.md)
+- [MCP spreadsheet formula server for coding agents](../mcp-spreadsheet-formula-server-for-coding-agents.md)
+
+---
+
+## Continue WorkPaper Proof Transcript
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/agent-proof-transcripts/continue.md
+
+# Continue WorkPaper Proof Transcript
+
+## Prompt
+
+```text
+Use the Continue Bilig WorkPaper rule before automating a spreadsheet UI. Prove
+the workbook edit with formula readback, JSON export, restore, and restart
+verification.
+```
+
+Continue should load `.continue/rules/bilig-workpaper.md`. If the workspace
+needs local file persistence, use the file-backed MCP command from that rule.
+
+## Tool Call
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+## Result
+
+```json
+{
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "agent-mcp",
+  "evidence": {
+    "editedCell": "Inputs!B3",
+    "dependentCell": "Summary!B3",
+    "before": 60000,
+    "after": 96000,
+    "afterRestore": 96000,
+    "afterRestart": 96000,
+    "persistedDocumentBytes": 1162,
+    "checks": {
+      "listedFileBackedTools": true,
+      "listedResourcesAndPrompts": true,
+      "formulaValidationPassed": true,
+      "dependentCellChanged": true,
+      "persistedToDisk": true,
+      "exportContainsWorkPaperDocument": true,
+      "restartReadbackMatchesAfter": true,
+      "displayValueRead": true
+    }
+  },
+  "verified": true,
+  "limitations": [
+    "This challenge proves the file-backed MCP WorkPaper tool surface, not Excel desktop UI automation.",
+    "For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture."
+  ]
+}
+```
+
+## Workbook State Change
+
+`Inputs!B3` is edited, and the dependent formula cell `Summary!B3` changes from
+`60000` to `96000`.
+
+## Formula Readback
+
+The Continue response should include the `before`, `after`, `afterRestore`, and
+`afterRestart` values. If one is missing, the transcript is not complete enough
+to trust.
+
+## JSON Export
+
+The run records `persistedDocumentBytes: 1162` and
+`exportContainsWorkPaperDocument: true`.
+
+## Restart Readback Verification
+
+The run records `restartReadbackMatchesAfter: true`, so the proof is not just an
+in-memory edit.
+
+## Limitations
+
+This transcript proves a local WorkPaper proof path for Continue. It does not
+prove Excel-only features, spreadsheet UI behavior, or unsupported formulas.
+
+## Related
+
+- [Agent proof transcripts](../agent-proof-transcripts.md)
+- [Coding agent rule chooser](../agent-rule-chooser.md)
+- [Agent WorkPaper proof matrix](../agent-proof-matrix.md)
 
 ---
 

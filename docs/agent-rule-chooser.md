@@ -29,7 +29,7 @@ call alone is not success.
 | Agent host | Use this Bilig file | Tool hookup | Proof bar |
 | --- | --- | --- | --- |
 | Codex | `AGENTS.md` in the repo directory chain. Public handoff: `docs/AGENTS.md`. | Optional `.mcp.json` when the Codex environment supports MCP. | Run `bilig-agent-start --json`, then `bilig-evaluate --door agent-mcp --json`. |
-| Claude Code | `.claude/skills/bilig-workpaper/SKILL.md` or `.claude/commands/bilig-workpaper-proof.md`. | `.mcp.json` defines the file-backed `bilig-workpaper` stdio server. | Use `/bilig-workpaper-proof <task>` before Excel, LibreOffice, Sheets, browser grids, or screenshots. |
+| Claude Code | `CLAUDE.md`, then `.claude/skills/bilig-workpaper/SKILL.md` or `.claude/commands/bilig-workpaper-proof.md`. | `.mcp.json` defines the file-backed `bilig-workpaper` stdio server. | Use `/bilig-workpaper-proof <task>` before Excel, LibreOffice, Sheets, browser grids, or screenshots. |
 | GitHub Copilot | `.github/copilot-instructions.md` plus `.github/instructions/bilig-workpaper.instructions.md`. | `.github/prompts/bilig-workpaper-proof.prompt.md` for the task prompt, `.vscode/mcp.json` in VS Code. | Copilot should return WorkPaper readback fields, not spreadsheet UI status. |
 | VS Code agent mode | `.github/copilot-instructions.md` and `.github/instructions/bilig-workpaper.instructions.md`. | `.vscode/mcp.json` for `biligWorkpaperDemo` and `biligWorkpaperFile`. | Use the workspace MCP config before copying a generic `mcpServers` manifest. |
 | Cursor | `.cursor/rules/bilig-workpaper.mdc`. | `.cursor/mcp.json` for local file-backed WorkPaper tools. | Treat `.cursorrules` as legacy; use the project rule and MCP config here. |
@@ -61,8 +61,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 
 - `docs/AGENTS.md` is a public handoff page. Codex reads `AGENTS.md` from the
   cloned repo directory chain.
-- Claude Code reads `CLAUDE.md`, not `AGENTS.md`; this repo uses a Claude Code
-  skill and slash command for the WorkPaper proof procedure.
+- Claude Code reads `CLAUDE.md`, not `AGENTS.md`; this repo's project memory
+  routes it to the Claude Code skill, slash command, and `.mcp.json`.
 - `.vscode/mcp.json` uses the VS Code `servers` shape. `mcp/bilig-workpaper.mcp.json`
   is the reusable `mcpServers` shape for other clients.
 - Cascade/Devin docs currently prefer `.devin/rules`; the `.windsurf/rules`
@@ -86,5 +86,6 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 
 - [Agent Adoption Kit](agent-adoption-kit.md)
 - [Agent WorkPaper proof matrix](agent-proof-matrix.md)
+- [Agent proof transcripts](agent-proof-transcripts.md)
 - [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)

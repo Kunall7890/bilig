@@ -17,6 +17,7 @@ export async function requireAgentEvaluatorDiscovery(input: {
   const expectedXlsxVersion = `"xlsx-formula-recalc": "${runtimePackageVersion}"`
 
   requireIncludes(readme, 'The published package also carries `AGENTS.md`', 'README.md')
+  requireIncludes(readme, 'CLAUDE.md', 'README.md')
   requireIncludes(readme, '.claude/skills/bilig-workpaper/SKILL.md', 'README.md')
   requireIncludes(readme, '.claude/commands/bilig-workpaper-proof.md', 'README.md')
   requireIncludes(readme, '.cursor/rules/bilig-workpaper.mdc', 'README.md')

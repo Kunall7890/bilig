@@ -27,6 +27,66 @@ paths or cell arguments containing newlines, backticks, \`$(\`, \`;\`, \`&\`,
 \`|\`, \`<\`, or \`>\`.`
 }
 
+export function buildClaudeCodeProjectMemory(input: AgentIdeRuleInput): string {
+  const { remoteMcpEndpoint, repositoryUrl, siteRoot, workpaperPackageSpec } = input
+  return `# Claude Code Project Instructions
+
+Read \`AGENTS.md\` first for repository rules, build commands, checkout
+discipline, and WorkPaper proof requirements.
+
+When a task touches workbook-shaped logic, formulas, XLSX cached values,
+spreadsheet-agent tools, pricing, budgets, forecasts, payouts, or import
+validation, start with Bilig WorkPaper instead of Excel, LibreOffice, Google
+Sheets, browser grids, or screenshot automation.
+
+## First Checks
+
+\`\`\`sh
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --json
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
+\`\`\`
+
+If the workbook uses provider-backed formulas such as \`IMPORTRANGE\`,
+\`GOOGLEFINANCE\`, \`IMPORTXML\`, \`FILTERXML\`, or \`STOCKHISTORY\`, run:
+
+\`\`\`sh
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
+\`\`\`
+
+Use lower-level challenges only for diagnostics:
+
+\`\`\`sh
+npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
+npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
+\`\`\`
+
+## Claude Code WorkPaper Paths
+
+- \`.mcp.json\` defines the local file-backed \`bilig-workpaper\` MCP server.
+- \`.claude/skills/bilig-workpaper/SKILL.md\` is the project skill for
+  workbook-shaped tasks.
+- \`.claude/commands/bilig-workpaper-proof.md\` provides the explicit
+  \`/bilig-workpaper-proof <task>\` contract.
+- Use \`${remoteMcpEndpoint}\` only for stateless remote MCP smoke tests and
+  tool discovery. Do not send private workbook data to the hosted demo endpoint.
+
+## Required Readback
+
+${workbookProofStandard()}
+
+## Command Safety
+
+${commandSafetyStandard()}
+
+## References
+
+- Agent start: ${siteRoot}/agent-start.txt
+- Rule chooser: ${siteRoot}/agent-rule-chooser.html
+- Full agent context: ${siteRoot}/llms-full.txt
+- Repository: ${repositoryUrl}
+`
+}
+
 export function buildCursorWorkpaperRule(input: AgentIdeRuleInput): string {
   const { remoteMcpEndpoint, repositoryUrl, siteRoot, workpaperPackageSpec } = input
   return `---

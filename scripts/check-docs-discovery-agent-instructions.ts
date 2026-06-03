@@ -16,6 +16,7 @@ export async function requireAgentInstructionDiscovery(input: {
     docsAgentStart,
     wellKnownAgentStart,
     docsSkill,
+    claudeProjectMemory,
     claudeProjectSkillNotes,
     claudeProjectCommandNotes,
     cursorProjectRuleNotes,
@@ -42,6 +43,7 @@ export async function requireAgentInstructionDiscovery(input: {
     readFile(join(docsRoot, 'agent-start.txt'), 'utf8'),
     readFile(join(docsRoot, '.well-known', 'agent-start.txt'), 'utf8'),
     readFile(join(docsRoot, 'skill.md'), 'utf8'),
+    readFile(join(repoRoot, 'CLAUDE.md'), 'utf8'),
     readFile(join(repoRoot, '.claude', 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8'),
     readFile(join(repoRoot, '.claude', 'commands', 'bilig-workpaper-proof.md'), 'utf8'),
     readFile(join(repoRoot, '.cursor', 'rules', 'bilig-workpaper.mdc'), 'utf8'),
@@ -103,6 +105,7 @@ export async function requireAgentInstructionDiscovery(input: {
 
   requireIncludes(docsAgentNotes, '## Discovery Order', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'Do not claim success from a write call alone.', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, 'read\n   `CLAUDE.md` first', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.claude/skills/bilig-workpaper/SKILL.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.claude/commands/bilig-workpaper-proof.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.cursor/rules/bilig-workpaper.mdc', 'docs/AGENTS.md')
@@ -167,6 +170,7 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsAgentStart, '.github/copilot-instructions.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.github/instructions/bilig-workpaper.instructions.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.github/prompts/bilig-workpaper-proof.prompt.md', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'CLAUDE.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.cursor/rules/bilig-workpaper.mdc', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.devin/rules/bilig-workpaper.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.clinerules/bilig-workpaper.md', 'docs/agent-start.txt')
@@ -214,6 +218,20 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsSkill, '"bilig-mcp-challenge", "--json"', 'docs/skill.md')
   requireNotIncludes(docsSkill, 'allowed-tools:', 'docs/skill.md')
   requireNotIncludes(docsSkill, 'argument-hint:', 'docs/skill.md')
+
+  requireIncludes(claudeProjectMemory, '# Claude Code Project Instructions', 'CLAUDE.md')
+  requireIncludes(claudeProjectMemory, 'Read `AGENTS.md` first', 'CLAUDE.md')
+  requireIncludes(claudeProjectMemory, 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json', 'CLAUDE.md')
+  requireIncludes(
+    claudeProjectMemory,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
+    'CLAUDE.md',
+  )
+  requireIncludes(claudeProjectMemory, '.mcp.json', 'CLAUDE.md')
+  requireIncludes(claudeProjectMemory, '.claude/skills/bilig-workpaper/SKILL.md', 'CLAUDE.md')
+  requireIncludes(claudeProjectMemory, '.claude/commands/bilig-workpaper-proof.md', 'CLAUDE.md')
+  requireIncludes(claudeProjectMemory, 'Do not claim success from a write call alone.', 'CLAUDE.md')
+  requireIncludes(claudeProjectMemory, 'https://proompteng.github.io/bilig/agent-rule-chooser.html', 'CLAUDE.md')
 
   requireIncludes(claudeProjectSkillNotes, 'name: bilig-workpaper', '.claude/skills/bilig-workpaper/SKILL.md')
   requireIncludes(claudeProjectSkillNotes, '## Command Safety', '.claude/skills/bilig-workpaper/SKILL.md')

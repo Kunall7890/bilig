@@ -23,7 +23,7 @@ export async function requireAgentRuleChooserDiscovery(input: {
     'schemaVersion: "bilig-evaluator.v1"',
     'door: "agent-mcp"',
     '| Codex | `AGENTS.md`',
-    '| Claude Code | `.claude/skills/bilig-workpaper/SKILL.md`',
+    '| Claude Code | `CLAUDE.md`, then `.claude/skills/bilig-workpaper/SKILL.md`',
     '| GitHub Copilot | `.github/copilot-instructions.md`',
     '| VS Code agent mode | `.github/copilot-instructions.md`',
     '| Cursor | `.cursor/rules/bilig-workpaper.mdc`',

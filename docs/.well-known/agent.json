@@ -17,6 +17,7 @@
   "well_known_agent_start": "https://proompteng.github.io/bilig/.well-known/agent-start.txt",
   "skill_file": "https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt",
   "agent_instructions": "https://proompteng.github.io/bilig/AGENTS.md",
+  "claude_code_instructions": "https://github.com/proompteng/bilig/blob/main/CLAUDE.md",
   "adoption_kit": "https://proompteng.github.io/bilig/agent-adoption-kit.html",
   "skills": [
     {
@@ -142,6 +143,22 @@
       "challenge_command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json"
     },
     {
+      "name": "agent-proof-transcripts",
+      "type": "docs-proof-pack",
+      "docs": "https://proompteng.github.io/bilig/agent-proof-transcripts.html",
+      "hosts": ["Codex", "Claude Code", "GitHub Copilot", "Cursor", "Continue"],
+      "proof_command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json",
+      "verifies": [
+        "prompt",
+        "tool call",
+        "result",
+        "workbook state change",
+        "formula readback",
+        "JSON export",
+        "restart readback verification"
+      ]
+    },
+    {
       "name": "workbook-agent-intent-api",
       "type": "npm-library",
       "package": "@bilig/workbook",
@@ -164,6 +181,16 @@
       "docs": "https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html",
       "server_card": "https://proompteng.github.io/bilig/.well-known/mcp/server-card.json",
       "challenge_command": "npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge"
+    },
+    {
+      "name": "repo-local-agent-instructions",
+      "type": "project-agent-instructions",
+      "claude_code": "https://github.com/proompteng/bilig/blob/main/CLAUDE.md",
+      "codex": "https://github.com/proompteng/bilig/blob/main/AGENTS.md",
+      "claude_code_skill": "https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md",
+      "claude_code_command": "https://github.com/proompteng/bilig/blob/main/.claude/commands/bilig-workpaper-proof.md",
+      "docs": "https://proompteng.github.io/bilig/agent-rule-chooser.html",
+      "challenge_command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json"
     },
     {
       "name": "repo-local-mcp-configs",
@@ -400,11 +427,13 @@
     "https://proompteng.github.io/bilig/.well-known/llms-full.txt",
     "https://proompteng.github.io/bilig/agent-start.txt",
     "https://proompteng.github.io/bilig/.well-known/agent-start.txt",
+    "https://github.com/proompteng/bilig/blob/main/CLAUDE.md",
     "https://proompteng.github.io/bilig/why-use-bilig.html",
     "https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html",
     "https://proompteng.github.io/bilig/eval-xlsx-recalc.html",
     "https://proompteng.github.io/bilig/xlsx-cache-doctor-github-action.html",
     "https://proompteng.github.io/bilig/agent-adoption-kit.html",
+    "https://proompteng.github.io/bilig/agent-proof-transcripts.html",
     "https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html",
     "https://github.com/proompteng/bilig/blob/main/.mcp.json",
     "https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json",

@@ -12,6 +12,7 @@ import { syncVersionedStaticReferences } from './sync-agent-static-references.ts
 import {
   buildClineWorkpaperRule,
   buildClaudeCodeMcpConfig,
+  buildClaudeCodeProjectMemory,
   buildClaudeCodeWorkpaperCommand,
   buildContinueWorkpaperRule,
   buildCursorMcpConfig,
@@ -602,6 +603,7 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['.github/copilot-instructions.md', buildGithubCopilotInstructions(ideRuleInput)],
     ['.github/instructions/bilig-workpaper.instructions.md', buildGithubCopilotWorkpaperInstructions(ideRuleInput)],
     ['.github/prompts/bilig-workpaper-proof.prompt.md', buildGithubCopilotWorkpaperPrompt(ideRuleInput)],
+    ['CLAUDE.md', buildClaudeCodeProjectMemory(ideRuleInput)],
     ['.mcp.json', buildClaudeCodeMcpConfig(ideRuleInput)],
     ['.cursor/mcp.json', buildCursorMcpConfig(ideRuleInput)],
     ['.vscode/mcp.json', buildVscodeMcpConfig(ideRuleInput)],

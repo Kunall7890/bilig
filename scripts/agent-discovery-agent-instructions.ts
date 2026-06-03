@@ -41,9 +41,10 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
    \`.github/instructions/bilig-workpaper.instructions.md\`,
    \`.github/prompts/bilig-workpaper-proof.prompt.md\`, and
    \`.vscode/mcp.json\`.
-9. If you are inside a cloned Bilig repository with Claude Code, use the
-   project skill at \`.claude/skills/bilig-workpaper/SKILL.md\` or invoke the
-   explicit formula-proof command from
+9. If you are inside a cloned Bilig repository with Claude Code, read
+   \`CLAUDE.md\` first, then use the project skill at
+   \`.claude/skills/bilig-workpaper/SKILL.md\` or invoke the explicit
+   formula-proof command from
    \`.claude/commands/bilig-workpaper-proof.md\`.
 10. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
     \`.cursor/rules/bilig-workpaper.mdc\` or

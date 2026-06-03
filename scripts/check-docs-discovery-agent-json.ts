@@ -7,6 +7,28 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     throw new Error('docs/.well-known/agent.json capabilities must be an array')
   }
 
+  if (Reflect.get(parsedAgentJson, 'claude_code_instructions') !== 'https://github.com/proompteng/bilig/blob/main/CLAUDE.md') {
+    throw new Error('docs/.well-known/agent.json must advertise root Claude Code instructions')
+  }
+
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
+        Reflect.get(capability, 'name') === 'repo-local-agent-instructions' &&
+        Reflect.get(capability, 'type') === 'project-agent-instructions' &&
+        Reflect.get(capability, 'claude_code') === 'https://github.com/proompteng/bilig/blob/main/CLAUDE.md' &&
+        Reflect.get(capability, 'codex') === 'https://github.com/proompteng/bilig/blob/main/AGENTS.md' &&
+        Reflect.get(capability, 'claude_code_skill') ===
+          'https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md' &&
+        Reflect.get(capability, 'claude_code_command') ===
+          'https://github.com/proompteng/bilig/blob/main/.claude/commands/bilig-workpaper-proof.md' &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/agent-rule-chooser.html',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise repo-local agent instructions')
+  }
+
   if (
     !hasCapability(
       agentJsonCapabilities,
@@ -17,6 +39,19 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     )
   ) {
     throw new Error('docs/.well-known/agent.json must advertise the compact agent-start capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
+        Reflect.get(capability, 'name') === 'agent-proof-transcripts' &&
+        Reflect.get(capability, 'type') === 'docs-proof-pack' &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/agent-proof-transcripts.html' &&
+        Reflect.get(capability, 'proof_command') ===
+          'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the agent proof transcript pack')
   }
   if (
     !hasCapability(
@@ -209,6 +244,8 @@ const requiredPublicEntrypoints = [
   'https://proompteng.github.io/bilig/.well-known/llms-full.txt',
   'https://proompteng.github.io/bilig/agent-start.txt',
   'https://proompteng.github.io/bilig/.well-known/agent-start.txt',
+  'https://proompteng.github.io/bilig/agent-proof-transcripts.html',
+  'https://github.com/proompteng/bilig/blob/main/CLAUDE.md',
   'https://github.com/proompteng/bilig/blob/main/.mcp.json',
   'https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json',
   'https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json',

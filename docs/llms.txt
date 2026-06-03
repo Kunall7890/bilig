@@ -26,6 +26,7 @@ well-known llms-full.txt: https://proompteng.github.io/bilig/.well-known/llms-fu
 agent adoption kit: https://proompteng.github.io/bilig/agent-adoption-kit.html
 agent rule chooser: https://proompteng.github.io/bilig/agent-rule-chooser.html
 agent proof matrix: https://proompteng.github.io/bilig/agent-proof-matrix.html
+agent proof transcripts: https://proompteng.github.io/bilig/agent-proof-transcripts.html
 MCP spreadsheet formula server for coding agents: https://proompteng.github.io/bilig/mcp-spreadsheet-formula-server-for-coding-agents.html
 Vercel AI SDK formula readback: https://proompteng.github.io/bilig/vercel-ai-sdk-spreadsheet-tool-formula-readback.html
 ExcelJS formula result not updating after Node edits: https://proompteng.github.io/bilig/exceljs-formula-result-not-updating-after-node-edits.html
@@ -33,6 +34,7 @@ Stale formula readback chooser: https://proompteng.github.io/bilig/stale-formula
 agent discovery manifest: https://proompteng.github.io/bilig/.well-known/agent.json
 root agent discovery manifest: https://proompteng.github.io/bilig/agent.json
 agent skill: https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt
+Claude Code project memory: https://github.com/proompteng/bilig/blob/main/CLAUDE.md
 Claude Code project skill: https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md
 Claude Code proof command: https://github.com/proompteng/bilig/blob/main/.claude/commands/bilig-workpaper-proof.md
 Claude Code MCP config: https://github.com/proompteng/bilig/blob/main/.mcp.json
@@ -72,6 +74,12 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   Use this to choose among WorkPaper service, agent MCP, provider-backed MCP,
   XLSX cache, XLSX recalculation, ExcelJS recalculation, MCP Inspector, file-backed MCP, Vercel AI SDK, OpenAI,
   LangGraph, Semantic Kernel, and Mastra proof paths.
+- Agent proof transcripts:
+  https://proompteng.github.io/bilig/agent-proof-transcripts.html
+  https://github.com/proompteng/bilig/blob/main/docs/agent-proof-transcripts.md
+  Use this to inspect prompt, tool call, result, workbook state change, formula readback,
+  JSON export, and restart readback verification for Codex, Claude Code, Copilot, Cursor,
+  and Continue.
 - MCP spreadsheet formula server for coding agents:
   https://proompteng.github.io/bilig/mcp-spreadsheet-formula-server-for-coding-agents.html
   https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-formula-server-for-coding-agents.md

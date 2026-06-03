@@ -81,6 +81,12 @@ Use the XLSX and ExcelJS paths when a saved file or ExcelJS object is already
 the contract. Do not force a WorkPaper model when the job is mostly workbook
 formatting, image embedding, or file metadata.
 
+If the reviewer asks what a successful agent session looks like, send the
+[agent proof transcripts](agent-proof-transcripts.md) after this matrix. The
+transcripts show prompt, tool call, result, workbook state change, formula
+readback, JSON export, and restart readback verification for Codex, Claude Code,
+Copilot, Cursor, and Continue.
+
 ## Limits
 
 Bilig is not a desktop Excel replacement. Keep Excel, LibreOffice, Microsoft
@@ -91,6 +97,7 @@ manual UI workflows.
 ## Related
 
 - [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
+- [Agent proof transcripts](agent-proof-transcripts.md)
 - [MCP spreadsheet formula server for coding agents](mcp-spreadsheet-formula-server-for-coding-agents.md)
 - [Vercel AI SDK spreadsheet tool: generateText and streamText with formula readback](vercel-ai-sdk-spreadsheet-tool-formula-readback.md)
 - [ExcelJS formula result not updating after Node edits](exceljs-formula-result-not-updating-after-node-edits.md)
