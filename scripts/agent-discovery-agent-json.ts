@@ -159,6 +159,18 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           docs: `${siteRoot}/try-bilig-headless-in-node.html`,
         },
         {
+          name: 'workbook-compatibility-risk-report',
+          type: 'local-cli-evaluator',
+          package: '@bilig/xlsx-formula-recalc',
+          command: 'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json',
+          docs: `${siteRoot}/workbook-compatibility-report.html`,
+          source: `${repositoryUrl}/blob/main/docs/workbook-compatibility-report.md`,
+          expected_result:
+            'bilig-evaluator.v1 JSON with workbook risk reasons, unsupported functions, external links, VBA payloads, pivots, volatile functions, stale cache counts, no compatibility score, and verified true',
+          boundary:
+            'Diagnoses workbook risks before agent or service use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage.',
+        },
+        {
           name: 'file-backed-workpaper-mcp',
           type: 'mcp-stdio-server',
           docs: `${siteRoot}/mcp-workpaper-tool-server.html`,

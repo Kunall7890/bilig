@@ -125,6 +125,11 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsAgentNotes, '.vscode/mcp.json', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, rawHostedSkillManifestUrl, 'docs/AGENTS.md')
   requireNotIncludes(docsAgentNotes, 'https://proompteng.github.io/bilig/skill.txt', 'docs/AGENTS.md')
+  requireIncludes(
+    docsAgentNotes,
+    'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json',
+    'docs/AGENTS.md',
+  )
   requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json', 'docs/AGENTS.md')
   if (docsAgentStart !== wellKnownAgentStart) {

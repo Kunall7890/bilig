@@ -187,6 +187,16 @@
       "docs": "https://proompteng.github.io/bilig/try-bilig-headless-in-node.html"
     },
     {
+      "name": "workbook-compatibility-risk-report",
+      "type": "local-cli-evaluator",
+      "package": "@bilig/xlsx-formula-recalc",
+      "command": "npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json",
+      "docs": "https://proompteng.github.io/bilig/workbook-compatibility-report.html",
+      "source": "https://github.com/proompteng/bilig/blob/main/docs/workbook-compatibility-report.md",
+      "expected_result": "bilig-evaluator.v1 JSON with workbook risk reasons, unsupported functions, external links, VBA payloads, pivots, volatile functions, stale cache counts, no compatibility score, and verified true",
+      "boundary": "Diagnoses workbook risks before agent or service use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage."
+    },
+    {
       "name": "file-backed-workpaper-mcp",
       "type": "mcp-stdio-server",
       "docs": "https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html",

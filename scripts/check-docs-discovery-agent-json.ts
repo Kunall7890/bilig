@@ -60,6 +60,25 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     !hasCapability(
       agentJsonCapabilities,
       (capability) =>
+        Reflect.get(capability, 'name') === 'workbook-compatibility-risk-report' &&
+        Reflect.get(capability, 'type') === 'local-cli-evaluator' &&
+        Reflect.get(capability, 'package') === '@bilig/xlsx-formula-recalc' &&
+        Reflect.get(capability, 'command') ===
+          'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json' &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/workbook-compatibility-report.html' &&
+        Reflect.get(capability, 'source') === 'https://github.com/proompteng/bilig/blob/main/docs/workbook-compatibility-report.md' &&
+        Reflect.get(capability, 'expected_result') ===
+          'bilig-evaluator.v1 JSON with workbook risk reasons, unsupported functions, external links, VBA payloads, pivots, volatile functions, stale cache counts, no compatibility score, and verified true' &&
+        Reflect.get(capability, 'boundary') ===
+          'Diagnoses workbook risks before agent or service use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage.',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the Workbook Compatibility Report evaluator capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
         Reflect.get(capability, 'name') === 'file-backed-workpaper-mcp' &&
         Reflect.get(capability, 'server_card') === 'https://proompteng.github.io/bilig/.well-known/mcp/server-card.json',
     )
