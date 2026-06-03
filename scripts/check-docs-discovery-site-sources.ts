@@ -71,6 +71,7 @@ export const docsSiteSources = [
   ['pydantic-ai-workpaper-mcp.html', 'pydantic-ai-workpaper-mcp.md'],
   ['google-adk-workpaper-mcp.html', 'google-adk-workpaper-mcp.md'],
   ['openhands-workpaper-mcp.html', 'openhands-workpaper-mcp.md'],
+  ['opencode-workpaper-mcp.html', 'opencode-workpaper-mcp.md'],
   ['smolagents-workpaper-tool.html', 'smolagents-workpaper-tool.md'],
   ['huggingface-workpaper-space.html', 'huggingface-workpaper-space.md'],
   ['chatgpt-apps-workpaper-mcp.html', 'chatgpt-apps-workpaper-mcp.md'],

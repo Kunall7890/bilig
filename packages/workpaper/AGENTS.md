@@ -23,13 +23,15 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
    `.claude/skills/bilig-workpaper/SKILL.md` or invoke the explicit
    formula-proof command from
    `.claude/commands/bilig-workpaper-proof.md`.
-10. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
+10. If you are using OpenCode, use `opencode.jsonc` and
+    `.opencode/agents/bilig-workpaper.md`.
+11. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
     `.cursor/rules/bilig-workpaper.mdc` or
     `.devin/rules/bilig-workpaper.md`,
     `.windsurf/rules/bilig-workpaper.md`,
     `.clinerules/bilig-workpaper.md`, or
     `.continue/rules/bilig-workpaper.md`.
-11. Start the MCP server or import `@bilig/workpaper` directly.
+12. Start the MCP server or import `@bilig/workpaper` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
 demo endpoint at `https://bilig.proompteng.ai/mcp`. Directory scanners that inspect the

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md"],
+  "mcp": {
+    "bilig-workpaper": {
+      "type": "local",
+      "command": [
+        "npm",
+        "exec",
+        "--yes",
+        "--package",
+        "@bilig/workpaper@latest",
+        "--",
+        "bilig-workpaper-mcp",
+        "--workpaper",
+        "__WORKPAPER_PATH__",
+        "--init-demo-workpaper",
+        "--writable",
+      ],
+      "enabled": true,
+    },
+    "bilig-workpaper-demo": {
+      "type": "remote",
+      "url": "https://bilig.proompteng.ai/mcp",
+      "enabled": false,
+    },
+  },
+}

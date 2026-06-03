@@ -62,6 +62,7 @@ const llmsFullSourceSpecs = [
   ['Pydantic AI WorkPaper MCP Tools', 'docs/pydantic-ai-workpaper-mcp.md'],
   ['Google ADK WorkPaper MCP Tools', 'docs/google-adk-workpaper-mcp.md'],
   ['OpenHands WorkPaper MCP Setup', 'docs/openhands-workpaper-mcp.md'],
+  ['OpenCode WorkPaper MCP Setup', 'docs/opencode-workpaper-mcp.md'],
   ['smolagents WorkPaper Tool', 'docs/smolagents-workpaper-tool.md'],
   ['Hugging Face WorkPaper MCP Space', 'docs/huggingface-workpaper-space.md'],
   ['ChatGPT Apps WorkPaper MCP', 'docs/chatgpt-apps-workpaper-mcp.md'],

@@ -205,6 +205,7 @@ function assertPackedTarball(): void {
     'package/agent-overlay/.github/copilot-instructions.md',
     'package/agent-overlay/.github/instructions/bilig-workpaper.instructions.md',
     'package/agent-overlay/.github/prompts/bilig-workpaper-proof.prompt.md',
+    'package/agent-overlay/.opencode/agents/bilig-workpaper.md',
     'package/agent-overlay/.vscode/mcp.json',
     'package/agent-overlay/.windsurf/rules/bilig-workpaper.md',
     'package/agent-overlay/AGENTS.md',
@@ -212,6 +213,7 @@ function assertPackedTarball(): void {
     'package/agent-overlay/GEMINI.md',
     'package/agent-overlay/README.md',
     'package/agent-overlay/mcp/bilig-workpaper.mcp.json',
+    'package/agent-overlay/opencode.jsonc',
     'package/agent-overlay/package.json',
     'package/bin/create-bilig-workpaper.js',
     'package/template/package.json',
@@ -300,9 +302,11 @@ function assertGeneratedStarters(): void {
     '.github/copilot-instructions.md',
     '.github/instructions/bilig-workpaper.instructions.md',
     '.github/prompts/bilig-workpaper-proof.prompt.md',
+    '.opencode/agents/bilig-workpaper.md',
     '.vscode/mcp.json',
     '.windsurf/rules/bilig-workpaper.md',
     'mcp/bilig-workpaper.mcp.json',
+    'opencode.jsonc',
   ]) {
     assert(existsSync(join(agentDir, expected)), `generated agent starter is missing ${expected}`)
   }
@@ -357,6 +361,10 @@ function assertGeneratedStarters(): void {
     'existing-repo overlay must write the OpenHands project skill',
   )
   assert(
+    existsSync(join(existingDir, '.opencode', 'agents', 'bilig-workpaper.md')),
+    'existing-repo overlay must write the OpenCode project agent',
+  )
+  assert(
     existsSync(join(existingDir, '.github', 'instructions', 'bilig-workpaper.instructions.md')),
     'existing-repo overlay must write path-specific Copilot instructions',
   )
@@ -371,8 +379,10 @@ function assertGeneratedStarters(): void {
     '.mcp.json',
     '.agents/skills/bilig-workpaper/SKILL.md',
     '.cursor/mcp.json',
+    '.opencode/agents/bilig-workpaper.md',
     '.vscode/mcp.json',
     'mcp/bilig-workpaper.mcp.json',
+    'opencode.jsonc',
     'BILIG_WORKPAPER.md',
     'AGENTS.md',
   ]) {

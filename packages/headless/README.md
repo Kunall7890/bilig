@@ -87,10 +87,18 @@ and
 | Public technical review  | [Show HN maintainer note](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html)                                                                                                          | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.        |
 | Trust and performance    | [npm provenance](https://proompteng.github.io/bilig/npm-provenance-package-trust.html) and [benchmark evidence](https://proompteng.github.io/bilig/what-workpaper-benchmark-proves.html)                            | npm shows SLSA provenance, and benchmark claims match the checked artifact.                    |
 | Almost a fit             | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                       | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.       |
-| Formula or XLSX bug      | [formula bug clinic](https://proompteng.github.io/bilig/formula-bug-clinic.html)                                                                                                                                    | Share a reduced public case that can become a test, example, corpus fixture, or docs proof.    |
+| Formula or XLSX bug      | [formula bug clinic](https://proompteng.github.io/bilig/formula-bug-clinic.html) and [XLSX Cache Doctor transcript](https://proompteng.github.io/bilig/xlsx-cache-doctor-proof-transcript.html)                     | Prove stale cached values locally, then share one reduced public fixture.                      |
 | Real workbook blocked    | [submit a workbook fixture](https://proompteng.github.io/bilig/submit-workbook-fixture.html)                                                                                                                        | Use the structured form when a reduced workbook is ready.                                      |
 
-Reduced workbook already in hand?
+Reduced workbook already in hand? Start with the stale-cache diagnostic when a
+Node process changed cells but formula output stayed old:
+
+```sh
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
+```
+
+If the blocker is an import, formula, or persistence gap, generate the fixture
+report:
 
 ```sh
 npm exec --package @bilig/headless@0.157.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
@@ -680,10 +688,11 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
 
 If it almost matches but a gap blocks adoption, use the adoption blocker form:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
-If a reduced workbook, import/export case, or service workflow would prove the
-gap better, submit a public fixture:
+If the fixture is already reduced and public, submit it through the public
+fixture form. For stale-cache cases, include the exact cell address, formula,
+cached value, recalculated value, and command output:
 <https://github.com/proompteng/bilig/issues/new?template=workbook_fixture.yml>.
-Fixture discussion:
+If you are still reducing the fixture, discuss the shape first:
 <https://github.com/proompteng/bilig/discussions/414>.
 
 ## Production Status

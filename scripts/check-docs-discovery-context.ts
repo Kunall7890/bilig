@@ -43,6 +43,7 @@ export interface DocsDiscoveryContext {
   readonly publicApi: string
   readonly issueTemplateConfig: string
   readonly issueTemplateRoot: string
+  readonly workbookFixtureTemplate: string
   readonly featureRequestTemplate: string
   readonly ideasDiscussionTemplate: string
   readonly qaDiscussionTemplate: string
@@ -126,6 +127,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     publicApi,
     issueTemplateConfig,
     issueTemplateRoot,
+    workbookFixtureTemplate,
     featureRequestTemplate,
     ideasDiscussionTemplate,
     qaDiscussionTemplate,
@@ -199,6 +201,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     readFile(join(docsRoot, 'public-api.md'), 'utf8'),
     readFile(join(repoRoot, '.github', 'ISSUE_TEMPLATE', 'config.yml'), 'utf8'),
     readFile(join(repoRoot, '.github', 'ISSUE_TEMPLATE.md'), 'utf8'),
+    readFile(join(repoRoot, '.github', 'ISSUE_TEMPLATE', 'workbook_fixture.yml'), 'utf8'),
     readFile(join(repoRoot, '.github', 'ISSUE_TEMPLATE', 'feature_request.yml'), 'utf8'),
     readFile(join(repoRoot, '.github', 'DISCUSSION_TEMPLATE', 'ideas.yml'), 'utf8'),
     readFile(join(repoRoot, '.github', 'DISCUSSION_TEMPLATE', 'q-a.yml'), 'utf8'),
@@ -281,6 +284,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     publicApi,
     issueTemplateConfig,
     issueTemplateRoot,
+    workbookFixtureTemplate,
     featureRequestTemplate,
     ideasDiscussionTemplate,
     qaDiscussionTemplate,

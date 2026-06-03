@@ -45,14 +45,15 @@ through MCP tools, recalculates formulas, and persists edits back to disk.
 Project MCP configs are included for Claude Code (`.mcp.json`), Cursor, and VS
 Code. Claude Code gets the project skill at
 `.claude/skills/bilig-workpaper/SKILL.md`; OpenHands gets the same workflow at
-`.agents/skills/bilig-workpaper/SKILL.md`. Other clients can use the same
-command from `mcp/bilig-workpaper.mcp.json`.
+`.agents/skills/bilig-workpaper/SKILL.md`; OpenCode gets `opencode.jsonc` and
+`.opencode/agents/bilig-workpaper.md`. Other clients can use the same command
+from `mcp/bilig-workpaper.mcp.json`.
 
 Agent instruction files are included for Claude Code, Codex/AGENTS-aware
 tools, Gemini CLI, GitHub Copilot, VS Code agent mode, Cursor, OpenHands,
-Cline, Continue, Cascade/Devin, and Windsurf/Cascade. They all point at the same rule: read first, edit one
-cell or formula, recalculate, read the dependent output, persist or export, and
-report proof.
+OpenCode, Cline, Continue, Cascade/Devin, and Windsurf/Cascade. They all point
+at the same rule: read first, edit one cell or formula, recalculate, read the
+dependent output, persist or export, and report proof.
 
 Existing projects can add only these agent files without replacing their app
 template or editing `package.json`:

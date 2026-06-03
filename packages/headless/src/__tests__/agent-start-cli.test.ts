@@ -10,6 +10,7 @@ const expectedRuleTargets = [
     '.github/copilot-instructions.md, .github/instructions/bilig-workpaper.instructions.md, .github/prompts/bilig-workpaper-proof.prompt.md, .vscode/mcp.json',
   ],
   ['cursor', '.cursor/rules/bilig-workpaper.mdc'],
+  ['opencode', 'opencode.jsonc, .opencode/agents/bilig-workpaper.md'],
   ['cline', '.clinerules/bilig-workpaper.md'],
   ['continue', '.continue/rules/bilig-workpaper.md'],
   ['windsurf', '.devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md'],
@@ -96,6 +97,7 @@ describe('bilig-agent-start', () => {
   it.each([
     ['cline', '.clinerules/bilig-workpaper.md', 'Cline', 'Cline can read this workspace rule'],
     ['continue', '.continue/rules/bilig-workpaper.md', 'Continue', 'name: Bilig WorkPaper Formula Check'],
+    ['opencode', 'opencode.jsonc, .opencode/agents/bilig-workpaper.md', 'OpenCode', 'mode: subagent'],
     ['windsurf', '.devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md', 'Windsurf/Cascade', 'trigger: model_decision'],
     ['gemini', 'GEMINI.md, gemini-extension.json, gemini-workpaper-context.md', 'Gemini CLI', 'gemini-workpaper-context.md'],
     ['vscode-mcp', '.vscode/mcp.json', 'VS Code agent mode', 'biligWorkpaperFile'],
@@ -143,16 +145,22 @@ describe('bilig-agent-start', () => {
       outputMode: 'rules',
       ruleTarget: 'vscode-mcp',
     })
+    expect(parseAgentStartCliArgs(['--rules=opencode'])).toEqual({
+      help: false,
+      outputMode: 'rules',
+      ruleTarget: 'opencode',
+    })
     expect(agentStartHelpText()).toContain('Usage: bilig-agent-start')
     expect(agentStartHelpText()).toContain('cline        .clinerules/bilig-workpaper.md')
+    expect(agentStartHelpText()).toContain('opencode     opencode.jsonc, .opencode/agents/bilig-workpaper.md')
     expect(agentStartHelpText()).toContain('windsurf     .devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md')
     expect(agentStartHelpText()).toContain('vscode-mcp   .vscode/mcp.json')
     expect(() => parseAgentStartCliArgs(['--bad'])).toThrow('Unknown bilig-agent-start argument')
     expect(() => parseAgentStartCliArgs(['--rules', 'bad'])).toThrow(
-      'Unknown bilig-agent-start rules target: bad. Use one of: codex, claude, copilot, cursor, cline, continue, windsurf, gemini, vscode-mcp',
+      'Unknown bilig-agent-start rules target: bad. Use one of: codex, claude, copilot, cursor, opencode, cline, continue, windsurf, gemini, vscode-mcp',
     )
     expect(() => parseAgentStartCliArgs(['--rules'])).toThrow(
-      'Missing target for --rules. Use one of: codex, claude, copilot, cursor, cline, continue, windsurf, gemini, vscode-mcp',
+      'Missing target for --rules. Use one of: codex, claude, copilot, cursor, opencode, cline, continue, windsurf, gemini, vscode-mcp',
     )
   })
 })

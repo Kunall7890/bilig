@@ -190,6 +190,7 @@
       "claude_code_skill": "https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md",
       "claude_code_command": "https://github.com/proompteng/bilig/blob/main/.claude/commands/bilig-workpaper-proof.md",
       "openhands_skill": "https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md",
+      "opencode_agent": "https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md",
       "docs": "https://proompteng.github.io/bilig/agent-rule-chooser.html",
       "challenge_command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json"
     },
@@ -198,6 +199,7 @@
       "type": "project-mcp-configs",
       "claude_code": "https://github.com/proompteng/bilig/blob/main/.mcp.json",
       "cursor": "https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json",
+      "opencode": "https://github.com/proompteng/bilig/blob/main/opencode.jsonc",
       "vscode": "https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json",
       "reusable": "https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json",
       "docs": "https://proompteng.github.io/bilig/mcp-client-setup.html",
@@ -333,6 +335,16 @@
       "source": "https://github.com/proompteng/bilig/blob/main/docs/openhands-workpaper-mcp.md"
     },
     {
+      "name": "opencode-workpaper-mcp",
+      "type": "coding-agent-mcp-setup",
+      "framework": "OpenCode",
+      "command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable",
+      "config_path": "https://github.com/proompteng/bilig/blob/main/opencode.jsonc",
+      "agent_path": "https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md",
+      "docs": "https://proompteng.github.io/bilig/opencode-workpaper-mcp.html",
+      "source": "https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md"
+    },
+    {
       "name": "mastra-workpaper-tool",
       "type": "typescript-agent-tool-smoke-test",
       "framework": "Mastra",
@@ -448,6 +460,7 @@
     "https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html",
     "https://github.com/proompteng/bilig/blob/main/.mcp.json",
     "https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json",
+    "https://github.com/proompteng/bilig/blob/main/opencode.jsonc",
     "https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json",
     "https://proompteng.github.io/bilig/agent-workbook-challenge.html",
     "https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html",
@@ -463,6 +476,9 @@
     "https://proompteng.github.io/bilig/openhands-workpaper-mcp.html",
     "https://github.com/proompteng/bilig/blob/main/docs/openhands-workpaper-mcp.md",
     "https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md",
+    "https://proompteng.github.io/bilig/opencode-workpaper-mcp.html",
+    "https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md",
+    "https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md",
     "https://proompteng.github.io/bilig/smolagents-workpaper-tool.html",
     "https://proompteng.github.io/bilig/huggingface-workpaper-space.html",
     "https://bilig.proompteng.ai/mcp",

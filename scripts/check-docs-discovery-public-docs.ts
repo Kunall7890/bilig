@@ -20,6 +20,7 @@ export async function requireSharedPublicDocsDiscovery(args: {
   readonly index: string
   readonly issueTemplateConfig: string
   readonly issueTemplateRoot: string
+  readonly workbookFixtureTemplate: string
   readonly featureRequestTemplate: string
   readonly ideasDiscussionTemplate: string
   readonly qaDiscussionTemplate: string
@@ -29,6 +30,7 @@ export async function requireSharedPublicDocsDiscovery(args: {
   readonly publicApi: string
 }): Promise<void> {
   const benchmarkEvidence = getBenchmarkDiscoveryEvidence()
+  const formulaBugClinic = await readFile(join(args.docsRoot, 'formula-bug-clinic.md'), 'utf8')
 
   requireDocumentsInclude(
     [
@@ -117,6 +119,40 @@ export async function requireSharedPublicDocsDiscovery(args: {
       'https://github.com/proompteng/bilig/discussions/414',
       'adoption blocker',
       'submit a workbook fixture',
+      'formula-bug-clinic',
+    ],
+  )
+  requireDocumentsInclude(
+    [
+      { path: 'README.md', content: args.readme },
+      { path: 'packages/headless/README.md', content: args.headlessReadme },
+    ],
+    ['If the fixture is already reduced', 'If you are still reducing the'],
+  )
+  requireDocumentIncludes({ path: 'docs/formula-bug-clinic.md', content: formulaBugClinic }, [
+    'when the reduced public fixture is ready',
+    'if you are still reducing the case',
+  ])
+  requireDocumentIncludes({ path: 'docs/llms.txt', content: args.llms }, ['while a case is still being reduced before the issue form'])
+  requireDocumentsInclude(
+    [
+      { path: 'README.md', content: args.readme },
+      { path: 'packages/headless/README.md', content: args.headlessReadme },
+      { path: 'docs/llms.txt', content: args.llms },
+    ],
+    ['xlsx-cache-doctor ./reduced.xlsx --json'],
+  )
+  requireIncludes(args.index, 'formula-bug-clinic.html', 'docs/index.html')
+  requireDocumentsInclude(
+    [
+      { path: '.github/ISSUE_TEMPLATE/workbook_fixture.yml', content: args.workbookFixtureTemplate },
+      { path: 'docs/formula-bug-clinic.md', content: formulaBugClinic },
+    ],
+    [
+      'xlsx-cache-doctor ./reduced.xlsx --json',
+      'cachedValue',
+      'literalRecalculatedValue',
+      'https://github.com/proompteng/bilig/discussions/414',
     ],
   )
   requireDocumentsInclude(

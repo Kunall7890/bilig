@@ -29,6 +29,7 @@ This starter includes project instructions for common coding agents:
   `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc` and `.cursor/mcp.json`
 - OpenHands: `.agents/skills/bilig-workpaper/SKILL.md`
+- OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
 - Cascade/Devin: `.devin/rules/bilig-workpaper.md`
 - Cline: `.clinerules/bilig-workpaper.md`
 - Continue: `.continue/rules/bilig-workpaper.md`

@@ -5,7 +5,18 @@ export interface AgentStartCliHost {
 }
 
 type AgentStartOutputMode = 'json' | 'markdown' | 'rules'
-const agentStartRuleTargets = ['codex', 'claude', 'copilot', 'cursor', 'cline', 'continue', 'windsurf', 'gemini', 'vscode-mcp'] as const
+const agentStartRuleTargets = [
+  'codex',
+  'claude',
+  'copilot',
+  'cursor',
+  'opencode',
+  'cline',
+  'continue',
+  'windsurf',
+  'gemini',
+  'vscode-mcp',
+] as const
 export type AgentStartRuleTarget = (typeof agentStartRuleTargets)[number]
 
 interface AgentStartCliOptions {
@@ -135,6 +146,7 @@ export function agentStartHelpText(): string {
     '  claude       CLAUDE.md',
     '  copilot      .github/copilot-instructions.md, .github/instructions/*.instructions.md, .github/prompts/*.prompt.md',
     '  cursor       .cursor/rules/bilig-workpaper.mdc',
+    '  opencode     opencode.jsonc, .opencode/agents/bilig-workpaper.md',
     '  cline        .clinerules/bilig-workpaper.md',
     '  continue     .continue/rules/bilig-workpaper.md',
     '  windsurf     .devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md',
@@ -208,6 +220,11 @@ export function buildAgentStartDecisionCard(): AgentStartDecisionCard {
         target: 'cursor',
         file: '.cursor/rules/bilig-workpaper.mdc',
         command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules cursor',
+      },
+      {
+        target: 'opencode',
+        file: 'opencode.jsonc, .opencode/agents/bilig-workpaper.md',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules opencode',
       },
       {
         target: 'cline',
@@ -291,6 +308,7 @@ function renderAgentStartRules(card: AgentStartDecisionCard, target: AgentStartR
     copilot: 'GitHub Copilot',
     cursor: 'Cursor',
     gemini: 'Gemini CLI',
+    opencode: 'OpenCode',
     'vscode-mcp': 'VS Code agent mode',
     windsurf: 'Windsurf/Cascade',
   }[target]
@@ -374,6 +392,19 @@ description: Use Bilig WorkPaper for spreadsheet-shaped business logic that need
 
 `
   }
+  if (target === 'opencode') {
+    return `---
+description: Verifies workbook-shaped edits with Bilig WorkPaper MCP tools before spreadsheet UI automation.
+mode: subagent
+permission:
+  bash: ask
+  edit: allow
+  read: allow
+  "bilig-workpaper_*": allow
+---
+
+`
+  }
   if (target === 'windsurf') {
     return `---
 description: Use Bilig WorkPaper when Cascade needs workbook formulas, MCP spreadsheet tools, or formula readback without Excel UI automation.
@@ -413,6 +444,11 @@ project starter, put the same rule in \`GEMINI.md\`.`
     return `Use this target when the host needs MCP config rather than prose.
 The \`.vscode/mcp.json\` file should define \`biligWorkpaperDemo\` and
 \`biligWorkpaperFile\` servers.`
+  }
+  if (target === 'opencode') {
+    return `OpenCode should keep the project MCP server in \`opencode.jsonc\`
+and the task-specific subagent in \`.opencode/agents/bilig-workpaper.md\`.
+The local MCP server should be named \`bilig-workpaper\`.`
   }
   if (target === 'cline') {
     return 'Cline can read this workspace rule from `.clinerules/bilig-workpaper.md`.'

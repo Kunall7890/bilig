@@ -120,7 +120,7 @@ Pick the path that matches the job:
 | Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | report-only workbook findings before the workflow blocks anything.                        |
 | A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)         | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.    |
 | A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                              | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`. |
-| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Windsurf, Cline, Continue, or Gemini. |
+| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, OpenCode, Windsurf, Cline, Continue, or Gemini. |
 | You are comparing Excel MCP servers, hosted spreadsheet agents, or file-first XLSX tools | [Spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md) | the account/session/file/runtime boundary before an agent trusts formula readback. |
 | You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md) | the smallest command or example for the host boundary, plus what it does and does not prove. |
 | You need to see a successful agent session shape before adopting        | [Agent proof transcripts](docs/agent-proof-transcripts.md)                 | prompt, tool call, result, workbook state change, formula readback, JSON export, and restart verification.   |
@@ -351,6 +351,7 @@ locally. Cloned checkouts expose the same workflow through
 `.cursor/rules/bilig-workpaper.mdc`, `.devin/rules/bilig-workpaper.md`,
 `.windsurf/rules/bilig-workpaper.md`, `.clinerules/bilig-workpaper.md`,
 `.continue/rules/bilig-workpaper.md`,
+`opencode.jsonc`, `.opencode/agents/bilig-workpaper.md`,
 `.vscode/mcp.json`, and `mcp/bilig-workpaper.mcp.json`.
 The public docs expose the same agent path through
 [`docs/.well-known/agent.json`](docs/.well-known/agent.json).
@@ -377,6 +378,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Pydantic AI                                                | `MCPToolset` should validate typed workbook proof before an agent trusts spreadsheet-style calculations.                                                                        | [Pydantic AI WorkPaper MCP tools](https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html)                                                                                                                                                                                                                                                                                      |
 | Google ADK                                                 | `McpToolset` should import workbook MCP tools and return verified formula readback before an ADK agent trusts the result.                                                       | [Google ADK WorkPaper MCP tools](https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html)                                                                                                                                                                                                                                                                                        |
 | OpenHands                                                  | `openhands mcp add` should launch the file-backed WorkPaper server while `.agents/skills` teaches readback-first workbook edits.                                                | [OpenHands WorkPaper MCP setup](https://proompteng.github.io/bilig/openhands-workpaper-mcp.html)                                                                                                                                                                                                                                                                                          |
+| OpenCode                                                   | `opencode.jsonc` should register the local WorkPaper MCP server while `.opencode/agents` keeps workbook proof work readback-first.                                             | [OpenCode WorkPaper MCP setup](https://proompteng.github.io/bilig/opencode-workpaper-mcp.html)                                                                                                                                                                                                                                                                                             |
 | Microsoft Semantic Kernel                                  | `MCPStdioPlugin` should import workbook tools and verify dependent formula readback before an agent trusts plugin calls.                                                        | [Semantic Kernel WorkPaper MCP plugin](https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html)                                                                                                                                                                                                                                                                             |
 | OpenAI Agents SDK                                          | `tool()`, `MCPServerStdio`, or `MCPServerStreamableHttp` should return computed WorkPaper readback before an agent trusts workbook math.                                        | [OpenAI Agents SDK WorkPaper tools](https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html)                                                                                                                                                                                                                                                                             |
 | ChatGPT Apps / Developer Mode                              | A ChatGPT conversation should add Bilig as a no-auth remote MCP app before trying spreadsheet UI automation.                                                                    | [ChatGPT Apps WorkPaper MCP](https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html)                                                                                                                                                                                                                                                                                          |
@@ -391,7 +393,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Temporal, Airflow, Dagster Formula Assets, Kestra, Prefect | Orchestrators should own retries/history while a Node step owns workbook proof.                                                                                                 | [Temporal](https://proompteng.github.io/bilig/temporal-workpaper-activity.html), [Airflow](https://proompteng.github.io/bilig/airflow-workpaper-dag.html), [Dagster](https://proompteng.github.io/bilig/dagster-workpaper-asset.html), [Kestra](https://proompteng.github.io/bilig/kestra-workpaper-flow.html), [Prefect](https://proompteng.github.io/bilig/prefect-workpaper-flow.html) |
 | Directus Persisted Calculated Fields                       | A custom operation should persist calculated fields with formula proof.                                                                                                         | [Directus WorkPaper Flow operation](https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html)                                                                                                                                                                                                                                                                            |
 
-<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/google-adk-workpaper-mcp.md, docs/openhands-workpaper-mcp.md, docs/semantic-kernel-workpaper-mcp.md, docs/openai-agents-sdk-workpaper-tool.md, docs/chatgpt-apps-workpaper-mcp.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
+<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/google-adk-workpaper-mcp.md, docs/openhands-workpaper-mcp.md, docs/opencode-workpaper-mcp.md, docs/semantic-kernel-workpaper-mcp.md, docs/openai-agents-sdk-workpaper-tool.md, docs/chatgpt-apps-workpaper-mcp.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
 
 ## Choose An Evaluation Path
 
@@ -411,13 +413,21 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Public WorkPaper review       | [Show HN WorkPaper maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                                                                      | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.                     |
 | Trust and performance         | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                                                                                  | npm shows SLSA provenance, and benchmark claims match the checked artifact.                                 |
 | Almost a fit                  | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                                                                                             | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.                    |
-| Formula or XLSX bug           | [formula bug clinic](docs/formula-bug-clinic.md)                                                                                                                                                                                                                                          | Share a reduced public case that can become a test, example, corpus fixture, or docs proof.                 |
+| Formula or XLSX bug           | [formula bug clinic](docs/formula-bug-clinic.md) and [XLSX Cache Doctor proof transcript](docs/xlsx-cache-doctor-proof-transcript.md)                                                                                                                                                    | First prove stale cached values locally, then share one reduced public case that can become a fixture.      |
 | Real workbook blocked         | [submit a workbook fixture](docs/submit-workbook-fixture.md)                                                                                                                                                                                                                              | Use the structured form when a reduced workbook is ready.                                                   |
 
-Reduced workbook already in hand? Generate the fixture report in one command:
+Reduced workbook already in hand? Start with the stale-cache diagnostic when a
+Node process changed cells but formula output stayed old:
 
 ```sh
-npm exec --package @bilig/workpaper -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
+```
+
+If the blocker is an import, formula, or persistence gap, generate the fixture
+report:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Handing a spreadsheet task to another coding agent? Start with the
@@ -538,7 +548,7 @@ For a generated project from a blank directory, run
 [`packages/create-workpaper`](packages/create-workpaper), and the publish gate
 is documented in [create a Bilig WorkPaper starter](docs/create-bilig-workpaper.md).
 For an agent-ready project with `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
-Copilot / Cursor / OpenHands / Cline / Continue / Windsurf rules, MCP client
+Copilot / Cursor / OpenHands / OpenCode / Cline / Continue / Windsurf rules, MCP client
 configs, and an `agent:verify` script, run
 `npm create @bilig/workpaper@latest pricing-agent -- --agent`.
 For an existing repo, run
@@ -657,12 +667,14 @@ matches the next job.
    then use the [MCP server guide](docs/mcp-workpaper-tool-server.md) when the
    caller is an MCP client.
 5. If a real workbook almost works, start with the
-   [formula bug clinic](docs/formula-bug-clinic.md). Then submit a
-   [reduced public fixture](docs/submit-workbook-fixture.md) so the blocker can
-   become a test, example, or corpus case instead of private feedback.
-   Form:
+   [formula bug clinic](docs/formula-bug-clinic.md). For stale XLSX caches, run
+   `xlsx-cache-doctor ./reduced.xlsx --json` and include the exact cell,
+   cached value, and recalculated value. If the fixture is already reduced and
+   public, submit the structured
+   [fixture form](docs/submit-workbook-fixture.md) so the blocker can become a
+   test, example, or corpus case instead of private feedback.
    <https://github.com/proompteng/bilig/issues/new?template=workbook_fixture.yml>.
-   Discussion:
+   If you are still reducing the case, discuss the shape first:
    <https://github.com/proompteng/bilig/discussions/414>.
 
 The rest of the docs are an index, not a prerequisite.
@@ -683,6 +695,7 @@ the [Node spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine
 [Browser Use formula tool](docs/browser-use-workpaper-formula-tool.md),
 [Google ADK MCP tools](docs/google-adk-workpaper-mcp.md),
 [OpenHands MCP setup](docs/openhands-workpaper-mcp.md),
+[OpenCode MCP setup](docs/opencode-workpaper-mcp.md),
 [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md),
 [MCP spreadsheet formula server for coding agents](docs/mcp-spreadsheet-formula-server-for-coding-agents.md),
 [Vercel AI SDK formula readback](docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md),

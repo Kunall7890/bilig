@@ -17,6 +17,10 @@ remote MCP endpoint: https://bilig.proompteng.ai/mcp
 ChatGPT Apps WorkPaper MCP: https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html
 Google ADK WorkPaper MCP: https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html
 OpenHands WorkPaper MCP setup: https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
+OpenCode WorkPaper MCP setup: https://proompteng.github.io/bilig/opencode-workpaper-mcp.html
+OpenCode WorkPaper MCP source: https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md
+OpenCode WorkPaper MCP config: https://github.com/proompteng/bilig/blob/main/opencode.jsonc
+OpenCode WorkPaper agent: https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md
 agent instructions: https://proompteng.github.io/bilig/AGENTS.md
 agent start: https://proompteng.github.io/bilig/agent-start.txt
 well-known agent start: https://proompteng.github.io/bilig/.well-known/agent-start.txt
@@ -246,6 +250,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html
 - https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html
 - https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
+- https://proompteng.github.io/bilig/opencode-workpaper-mcp.html
 - https://proompteng.github.io/bilig/workbook-agent-intent-api.html
 - https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model
 - https://github.com/proompteng/bilig/blob/main/docs/agent-framework-workbook-tools.md
@@ -541,6 +546,9 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - formula bug clinic:
   https://proompteng.github.io/bilig/formula-bug-clinic.html
   https://github.com/proompteng/bilig/blob/main/docs/formula-bug-clinic.md
+  `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json`
+  starts the fixture loop for stale cached XLSX formula values before a user
+  writes a larger formula clinic report.
   asks users to reduce stale cached XLSX values, ExcelJS shared-formula
   failures, unsupported formulas, WorkPaper restore mismatches, and agent
   readback blockers into public fixtures that can become tests, examples, or
@@ -548,8 +556,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - formula clinic report command and script:
   https://proompteng.github.io/bilig/formula-clinic-report.ts
   https://github.com/proompteng/bilig/blob/main/docs/formula-clinic-report.ts
-  `npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx
-  --cells "Summary!B7,Inputs!B2"` runs locally against a reduced XLSX file,
+  `npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"` runs locally against a reduced XLSX file,
   imports it with @bilig/headless, reads requested output cells, and prints a
   Markdown report for the fixture issue form.
 - Microsoft Graph Excel recalculation in Node.js:
@@ -910,7 +917,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - submit a workbook fixture: reduced public workbook cases that should become tests,
   examples, docs, or corpus fixtures:
   https://github.com/proompteng/bilig/issues/new?template=workbook_fixture.yml
-- public fixture discussion for reduced workbook cases:
+- public fixture discussion while a case is still being reduced before the issue form:
   https://github.com/proompteng/bilig/discussions/414
 - watch release notifications for production evaluation:
   https://github.com/proompteng/bilig/subscription

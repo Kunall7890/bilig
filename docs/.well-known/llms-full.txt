@@ -38,13 +38,15 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
    `.claude/skills/bilig-workpaper/SKILL.md` or invoke the explicit
    formula-proof command from
    `.claude/commands/bilig-workpaper-proof.md`.
-10. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
+10. If you are using OpenCode, use `opencode.jsonc` and
+    `.opencode/agents/bilig-workpaper.md`.
+11. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
     `.cursor/rules/bilig-workpaper.mdc` or
     `.devin/rules/bilig-workpaper.md`,
     `.windsurf/rules/bilig-workpaper.md`,
     `.clinerules/bilig-workpaper.md`, or
     `.continue/rules/bilig-workpaper.md`.
-11. Start the MCP server or import `@bilig/workpaper` directly.
+12. Start the MCP server or import `@bilig/workpaper` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
 demo endpoint at `https://bilig.proompteng.ai/mcp`. Directory scanners that inspect the
@@ -306,6 +308,7 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - Agent workbook challenge: https://proompteng.github.io/bilig/agent-workbook-challenge.html
 - MCP server guide: https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
 - OpenHands MCP setup: https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
+- OpenCode MCP setup: https://proompteng.github.io/bilig/opencode-workpaper-mcp.html
 - Open WebUI tool setup: https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html
 - LobeHub MCP setup: https://proompteng.github.io/bilig/lobehub-workpaper-mcp.html
 - AnythingLLM MCP setup: https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
@@ -326,6 +329,7 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - Kestra Node flow: https://proompteng.github.io/bilig/kestra-workpaper-flow.html
 - Prefect flow: https://proompteng.github.io/bilig/prefect-workpaper-flow.html
 - XLSX formula clinic: https://proompteng.github.io/bilig/formula-bug-clinic.html
+- Stale XLSX fixture command: npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
 - Compatibility limits: https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html
 - Repository: https://github.com/proompteng/bilig
 
@@ -457,7 +461,7 @@ Pick the path that matches the job:
 | Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | report-only workbook findings before the workflow blocks anything.                        |
 | A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)         | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.    |
 | A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                              | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`. |
-| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Windsurf, Cline, Continue, or Gemini. |
+| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, OpenCode, Windsurf, Cline, Continue, or Gemini. |
 | You are comparing Excel MCP servers, hosted spreadsheet agents, or file-first XLSX tools | [Spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md) | the account/session/file/runtime boundary before an agent trusts formula readback. |
 | You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md) | the smallest command or example for the host boundary, plus what it does and does not prove. |
 | You need to see a successful agent session shape before adopting        | [Agent proof transcripts](docs/agent-proof-transcripts.md)                 | prompt, tool call, result, workbook state change, formula readback, JSON export, and restart verification.   |
@@ -688,6 +692,7 @@ locally. Cloned checkouts expose the same workflow through
 `.cursor/rules/bilig-workpaper.mdc`, `.devin/rules/bilig-workpaper.md`,
 `.windsurf/rules/bilig-workpaper.md`, `.clinerules/bilig-workpaper.md`,
 `.continue/rules/bilig-workpaper.md`,
+`opencode.jsonc`, `.opencode/agents/bilig-workpaper.md`,
 `.vscode/mcp.json`, and `mcp/bilig-workpaper.mcp.json`.
 The public docs expose the same agent path through
 [`docs/.well-known/agent.json`](docs/.well-known/agent.json).
@@ -714,6 +719,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Pydantic AI                                                | `MCPToolset` should validate typed workbook proof before an agent trusts spreadsheet-style calculations.                                                                        | [Pydantic AI WorkPaper MCP tools](https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html)                                                                                                                                                                                                                                                                                      |
 | Google ADK                                                 | `McpToolset` should import workbook MCP tools and return verified formula readback before an ADK agent trusts the result.                                                       | [Google ADK WorkPaper MCP tools](https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html)                                                                                                                                                                                                                                                                                        |
 | OpenHands                                                  | `openhands mcp add` should launch the file-backed WorkPaper server while `.agents/skills` teaches readback-first workbook edits.                                                | [OpenHands WorkPaper MCP setup](https://proompteng.github.io/bilig/openhands-workpaper-mcp.html)                                                                                                                                                                                                                                                                                          |
+| OpenCode                                                   | `opencode.jsonc` should register the local WorkPaper MCP server while `.opencode/agents` keeps workbook proof work readback-first.                                             | [OpenCode WorkPaper MCP setup](https://proompteng.github.io/bilig/opencode-workpaper-mcp.html)                                                                                                                                                                                                                                                                                             |
 | Microsoft Semantic Kernel                                  | `MCPStdioPlugin` should import workbook tools and verify dependent formula readback before an agent trusts plugin calls.                                                        | [Semantic Kernel WorkPaper MCP plugin](https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html)                                                                                                                                                                                                                                                                             |
 | OpenAI Agents SDK                                          | `tool()`, `MCPServerStdio`, or `MCPServerStreamableHttp` should return computed WorkPaper readback before an agent trusts workbook math.                                        | [OpenAI Agents SDK WorkPaper tools](https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html)                                                                                                                                                                                                                                                                             |
 | ChatGPT Apps / Developer Mode                              | A ChatGPT conversation should add Bilig as a no-auth remote MCP app before trying spreadsheet UI automation.                                                                    | [ChatGPT Apps WorkPaper MCP](https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html)                                                                                                                                                                                                                                                                                          |
@@ -728,7 +734,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Temporal, Airflow, Dagster Formula Assets, Kestra, Prefect | Orchestrators should own retries/history while a Node step owns workbook proof.                                                                                                 | [Temporal](https://proompteng.github.io/bilig/temporal-workpaper-activity.html), [Airflow](https://proompteng.github.io/bilig/airflow-workpaper-dag.html), [Dagster](https://proompteng.github.io/bilig/dagster-workpaper-asset.html), [Kestra](https://proompteng.github.io/bilig/kestra-workpaper-flow.html), [Prefect](https://proompteng.github.io/bilig/prefect-workpaper-flow.html) |
 | Directus Persisted Calculated Fields                       | A custom operation should persist calculated fields with formula proof.                                                                                                         | [Directus WorkPaper Flow operation](https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html)                                                                                                                                                                                                                                                                            |
 
-<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/google-adk-workpaper-mcp.md, docs/openhands-workpaper-mcp.md, docs/semantic-kernel-workpaper-mcp.md, docs/openai-agents-sdk-workpaper-tool.md, docs/chatgpt-apps-workpaper-mcp.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
+<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/google-adk-workpaper-mcp.md, docs/openhands-workpaper-mcp.md, docs/opencode-workpaper-mcp.md, docs/semantic-kernel-workpaper-mcp.md, docs/openai-agents-sdk-workpaper-tool.md, docs/chatgpt-apps-workpaper-mcp.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
 
 ## Choose An Evaluation Path
 
@@ -748,13 +754,21 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Public WorkPaper review       | [Show HN WorkPaper maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                                                                      | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.                     |
 | Trust and performance         | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                                                                                  | npm shows SLSA provenance, and benchmark claims match the checked artifact.                                 |
 | Almost a fit                  | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                                                                                             | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.                    |
-| Formula or XLSX bug           | [formula bug clinic](docs/formula-bug-clinic.md)                                                                                                                                                                                                                                          | Share a reduced public case that can become a test, example, corpus fixture, or docs proof.                 |
+| Formula or XLSX bug           | [formula bug clinic](docs/formula-bug-clinic.md) and [XLSX Cache Doctor proof transcript](docs/xlsx-cache-doctor-proof-transcript.md)                                                                                                                                                    | First prove stale cached values locally, then share one reduced public case that can become a fixture.      |
 | Real workbook blocked         | [submit a workbook fixture](docs/submit-workbook-fixture.md)                                                                                                                                                                                                                              | Use the structured form when a reduced workbook is ready.                                                   |
 
-Reduced workbook already in hand? Generate the fixture report in one command:
+Reduced workbook already in hand? Start with the stale-cache diagnostic when a
+Node process changed cells but formula output stayed old:
 
 ```sh
-npm exec --package @bilig/workpaper -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
+```
+
+If the blocker is an import, formula, or persistence gap, generate the fixture
+report:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Handing a spreadsheet task to another coding agent? Start with the
@@ -875,7 +889,7 @@ For a generated project from a blank directory, run
 [`packages/create-workpaper`](packages/create-workpaper), and the publish gate
 is documented in [create a Bilig WorkPaper starter](docs/create-bilig-workpaper.md).
 For an agent-ready project with `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
-Copilot / Cursor / OpenHands / Cline / Continue / Windsurf rules, MCP client
+Copilot / Cursor / OpenHands / OpenCode / Cline / Continue / Windsurf rules, MCP client
 configs, and an `agent:verify` script, run
 `npm create @bilig/workpaper@latest pricing-agent -- --agent`.
 For an existing repo, run
@@ -994,12 +1008,14 @@ matches the next job.
    then use the [MCP server guide](docs/mcp-workpaper-tool-server.md) when the
    caller is an MCP client.
 5. If a real workbook almost works, start with the
-   [formula bug clinic](docs/formula-bug-clinic.md). Then submit a
-   [reduced public fixture](docs/submit-workbook-fixture.md) so the blocker can
-   become a test, example, or corpus case instead of private feedback.
-   Form:
+   [formula bug clinic](docs/formula-bug-clinic.md). For stale XLSX caches, run
+   `xlsx-cache-doctor ./reduced.xlsx --json` and include the exact cell,
+   cached value, and recalculated value. If the fixture is already reduced and
+   public, submit the structured
+   [fixture form](docs/submit-workbook-fixture.md) so the blocker can become a
+   test, example, or corpus case instead of private feedback.
    <https://github.com/proompteng/bilig/issues/new?template=workbook_fixture.yml>.
-   Discussion:
+   If you are still reducing the case, discuss the shape first:
    <https://github.com/proompteng/bilig/discussions/414>.
 
 The rest of the docs are an index, not a prerequisite.
@@ -1020,6 +1036,7 @@ the [Node spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine
 [Browser Use formula tool](docs/browser-use-workpaper-formula-tool.md),
 [Google ADK MCP tools](docs/google-adk-workpaper-mcp.md),
 [OpenHands MCP setup](docs/openhands-workpaper-mcp.md),
+[OpenCode MCP setup](docs/opencode-workpaper-mcp.md),
 [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md),
 [MCP spreadsheet formula server for coding agents](docs/mcp-spreadsheet-formula-server-for-coding-agents.md),
 [Vercel AI SDK formula readback](docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md),
@@ -1444,7 +1461,7 @@ npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
 That adds `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot/VS Code instructions,
-Cursor, Cline, Continue, Windsurf rules, and MCP client configs without
+Cursor, OpenCode, Cline, Continue, Windsurf rules, and MCP client configs without
 replacing the app template or editing `package.json`.
 
 For a new agent-ready project:
@@ -1518,6 +1535,7 @@ Use the repo-local files when the agent is already inside a checkout:
 - GitHub Copilot prompt: `.github/prompts/bilig-workpaper-proof.prompt.md`
 - VS Code MCP: `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
+- OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
 - Cascade/Devin: `.devin/rules/bilig-workpaper.md`
 - Cline: `.clinerules/bilig-workpaper.md`
 - Continue: `.continue/rules/bilig-workpaper.md`
@@ -2543,6 +2561,7 @@ rules instead:
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
 - OpenHands: `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and
   `openhands mcp add` for the file-backed WorkPaper server
+- OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
 - Windsurf/Cascade: `.devin/rules/bilig-workpaper.md`, with
   `.windsurf/rules/bilig-workpaper.md` as the fallback mirror
 - Cline: `.clinerules/bilig-workpaper.md`
@@ -2556,8 +2575,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 ```
 
 The generated project includes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
-Copilot / VS Code instructions, Cursor, OpenHands, Cline, Continue, and
-Windsurf rules, plus local MCP configs and `npm run agent:verify`.
+Copilot / VS Code instructions, Cursor, OpenHands, OpenCode, Cline, Continue,
+and Windsurf rules, plus local MCP configs and `npm run agent:verify`.
 
 For an existing repo, add only the agent/MCP files:
 
@@ -2750,6 +2769,7 @@ If it almost works but adoption is blocked, open the concrete blocker:
 - [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [MCP client setup](mcp-client-setup.md)
 - [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)
+- [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)
 - [Agent workbook challenge](agent-workbook-challenge.md)
 - [Workbook tools for agent frameworks](agent-framework-workbook-tools.md)
 
@@ -2785,6 +2805,7 @@ call alone is not success.
 | VS Code agent mode | `.github/copilot-instructions.md` and `.github/instructions/bilig-workpaper.instructions.md`. | `.vscode/mcp.json` for `biligWorkpaperDemo` and `biligWorkpaperFile`. | Use the workspace MCP config before copying a generic `mcpServers` manifest. |
 | Cursor | `.cursor/rules/bilig-workpaper.mdc`. | `.cursor/mcp.json` for local file-backed WorkPaper tools. | Treat `.cursorrules` as legacy; use the project rule and MCP config here. |
 | OpenHands | `AGENTS.md`, then `.agents/skills/bilig-workpaper/SKILL.md`. | `openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable`. | Use `/mcp` in the conversation and restart after MCP config changes. |
+| OpenCode | `opencode.jsonc`, then `.opencode/agents/bilig-workpaper.md`. | `opencode.jsonc` defines the local `bilig-workpaper` MCP server and a disabled hosted demo server. | Invoke the `@bilig-workpaper` subagent for workbook-shaped tasks and require readback fields. |
 | Windsurf/Cascade | `.devin/rules/bilig-workpaper.md`, with `.windsurf/rules/bilig-workpaper.md` kept as a fallback. | Start with the same `bilig-evaluate --door agent-mcp --json` command, then file-backed MCP if state must persist. | The rule uses `trigger: model_decision`; require computed readback before reporting success. |
 | Cline | `.clinerules/bilig-workpaper.md`. | Add MCP separately only if your Cline setup exposes custom MCP servers. | Cline should use the workspace rule when workbook formulas, cells, or MCP spreadsheet tools appear. |
 | Continue | `.continue/rules/bilig-workpaper.md`. | Configure MCP separately through Continue if you want direct tool calls. | Local rules are version controlled; use this one for Agent, Chat, and Edit requests that touch workbook logic. |
@@ -2799,9 +2820,9 @@ npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
 That overlay writes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot and VS Code
-instructions, Cursor, OpenHands, Cline, Continue, Cascade/Devin and Windsurf
-rules, and MCP configs. It does not overwrite an existing app `README.md` or
-`package.json`.
+instructions, Cursor, OpenHands, OpenCode, Cline, Continue, Cascade/Devin and
+Windsurf rules, and MCP configs. It does not overwrite an existing app
+`README.md` or `package.json`.
 
 For a blank agent-ready project, use:
 
@@ -2831,6 +2852,9 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - [Cursor rules](https://docs.cursor.com/en/context/rules)
 - [OpenHands MCP servers](https://docs.openhands.dev/openhands/usage/cli/mcp-servers)
 - [OpenHands skills](https://docs.openhands.dev/overview/skills)
+- [OpenCode config](https://opencode.ai/docs/config/)
+- [OpenCode MCP servers](https://opencode.ai/docs/mcp-servers/)
+- [OpenCode agents](https://opencode.ai/docs/agents/)
 - [Windsurf/Cascade memories and rules](https://docs.windsurf.com/windsurf/cascade/memories)
 - [Cline rules](https://docs.cline.bot/customization/cline-rules)
 - [Continue rules](https://docs.continue.dev/customize/rules)
@@ -2840,6 +2864,7 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 
 - [Agent Adoption Kit](agent-adoption-kit.md)
 - [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)
+- [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)
 - [Agent WorkPaper proof matrix](agent-proof-matrix.md)
 - [Agent proof transcripts](agent-proof-transcripts.md)
 - [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
@@ -5986,6 +6011,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | Cursor                             | Project-local `.cursor/mcp.json` pointing at `bilig-workpaper-mcp`.                                                                   | [MCP client setup](mcp-client-setup.md#cursor)                                               |
 | VS Code and Cline                  | Project-local MCP config with a writable WorkPaper file.                                                                              | [MCP client setup](mcp-client-setup.md)                                                      |
 | OpenHands                          | `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and `openhands mcp add` for a file-backed stdio WorkPaper server.             | [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)                                  |
+| OpenCode                           | `opencode.jsonc` for local MCP plus `.opencode/agents/bilig-workpaper.md` for a readback-first workbook subagent.                    | [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)                                    |
 | Open WebUI                         | Hosted OpenAPI for no-bridge smoke tests, native Streamable HTTP MCP, or `mcpo` around the npm stdio server for local writable files. | [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)                                    |
 | LobeHub                            | Custom MCP import JSON for hosted Streamable HTTP, or desktop STDIO for a writable WorkPaper file.                                    | [LobeHub WorkPaper MCP setup](lobehub-workpaper-mcp.md)                                      |
 | AnythingLLM                        | `anythingllm_mcp_servers.json` with hosted Streamable HTTP, Desktop stdio, or Docker storage-backed stdio.                            | [AnythingLLM WorkPaper MCP setup](anythingllm-workpaper-mcp.md)                              |
@@ -6045,6 +6071,7 @@ Do not claim success from a write call alone.
 - [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
 - [MCP client setup](mcp-client-setup.md)
 - [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)
+- [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)
 - [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)
 - [Browser Use WorkPaper formula tool](browser-use-workpaper-formula-tool.md)
 - [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)
@@ -10407,6 +10434,155 @@ no-key WorkPaper readback proof.
 
 ---
 
+## OpenCode WorkPaper MCP Setup
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md
+
+# OpenCode WorkPaper MCP setup
+
+Use this when an OpenCode agent needs spreadsheet formulas while coding in a
+repo. OpenCode should own the code task; Bilig should own workbook truth:
+read a range, write one cell, read the dependent formula output, persist
+WorkPaper JSON, and return proof.
+
+Official OpenCode references:
+
+- <https://opencode.ai/docs/config/>
+- <https://opencode.ai/docs/mcp-servers/>
+- <https://opencode.ai/docs/agents/>
+
+## First Proof Command
+
+Before changing OpenCode config, prove the published WorkPaper MCP door:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+Trust the path only when the result includes `verified: true`, edited cell
+evidence, dependent formula readback, exported WorkPaper JSON, and restart
+readback.
+
+## Add The MCP Server
+
+OpenCode reads project config from `opencode.json` or `opencode.jsonc` and
+supports local MCP servers under the `mcp` option. Use this project-local
+`opencode.jsonc`:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md"],
+  "mcp": {
+    "bilig-workpaper": {
+      "type": "local",
+      "command": [
+        "npm",
+        "exec",
+        "--yes",
+        "--package",
+        "@bilig/workpaper@latest",
+        "--",
+        "bilig-workpaper-mcp",
+        "--workpaper",
+        "./.bilig/pricing.workpaper.json",
+        "--init-demo-workpaper",
+        "--writable"
+      ],
+      "enabled": true
+    },
+    "bilig-workpaper-demo": {
+      "type": "remote",
+      "url": "https://bilig.proompteng.ai/mcp",
+      "enabled": false
+    }
+  }
+}
+```
+
+Use the hidden `.bilig/` path for existing repos so the overlay does not add a
+noisy root workbook file. For a blank generated project, the starter uses
+`./pricing.workpaper.json`.
+
+Enable `bilig-workpaper-demo` only for remote, stateless tool-discovery smoke
+tests. Use `bilig-workpaper` for private project workbook state.
+
+## Add The Project Agent
+
+OpenCode supports markdown agents under `.opencode/agents/`. Add:
+
+```text
+.opencode/agents/bilig-workpaper.md
+```
+
+The generated file tells OpenCode to invoke the WorkPaper proof path when a
+task mentions pricing, quotes, payouts, budgets, imports, forecasts, stale XLSX
+formula caches, or formula readback after cell edits. It also allows
+`bilig-workpaper_*` MCP tools while keeping shell commands reviewable.
+
+The Bilig starter writes `opencode.jsonc` and the OpenCode agent file for a
+blank project:
+
+```sh
+npm create @bilig/workpaper@latest pricing-agent -- --agent
+cd pricing-agent
+npm install
+npm run agent:verify
+```
+
+For an existing repo, add only the agent and MCP files:
+
+```sh
+npm create @bilig/workpaper@latest . -- --add-agent
+```
+
+That overlay writes `opencode.jsonc`, `.opencode/agents/bilig-workpaper.md`,
+and the shared MCP configs while keeping app `README.md` and `package.json`
+untouched.
+
+## OpenCode Task Prompt
+
+```text
+Use the Bilig WorkPaper OpenCode agent and MCP server instead of spreadsheet UI
+automation. Read the relevant range first, write one precise input or formula
+change, read the dependent calculated output after recalculation, export or
+serialize the WorkPaper document, restart or restore when the file boundary
+matters, and return editedCell, before, after, afterRestore,
+persistedDocumentBytes, verified, and limitations. Do not claim success from a
+write call alone.
+```
+
+Expected MCP tools:
+
+- `list_sheets`
+- `read_range`
+- `read_cell`
+- `set_cell_contents`
+- `set_cell_contents_and_readback`
+- `get_cell_display_value`
+- `export_workpaper_document`
+- `validate_formula`
+
+## Boundary
+
+This is for code-owned workbook logic where JSON state can represent the
+workbook. It is a fit for quote approval, payout checks, pricing rules, import
+validation, and forecast gates.
+
+It is not a claim that Bilig replaces desktop Excel for macros, add-ins, pivot
+tables, or visual workbook review. For raw `.xlsx` files, start with:
+
+```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- \
+  bilig-evaluate --door xlsx-cache --json
+```
+
+No upstream OpenCode PR or issue was opened for this guide. It is an owned
+Bilig integration surface backed by public OpenCode config, MCP, and agent docs
+plus a no-key WorkPaper readback proof.
+
+---
+
 ## smolagents WorkPaper Tool
 
 Source: https://github.com/proompteng/bilig/blob/main/docs/smolagents-workpaper-tool.md
@@ -12682,8 +12858,24 @@ public case that proves it. The goal is not to collect private spreadsheets.
 The goal is to turn real failures into public fixtures that future evaluators
 can run.
 
+Start with the cache check when the symptom is "Node changed cells, but the
+formula output stayed old":
+
+```sh
+npm exec --package @bilig/xlsx-formula-recalc@latest -- \
+  xlsx-cache-doctor ./reduced.xlsx --json
+```
+
+That command runs locally, does not upload the workbook, and reports exact
+stale-cache evidence: `target`, `formula`, `cachedValue`,
+`literalRecalculatedValue`, `cacheStatus`, and `suggestedReads`. If it finds a
+stale cell, paste the relevant JSON object into the fixture form or discussion
+instead of describing the bug in prose.
+
 Good cases:
 
+- an ExcelJS, SheetJS, or `xlsx-populate` pipeline writes inputs but keeps a
+  stale cached formula value;
 - an ExcelJS workflow writes inputs but formula readback is stale;
 - an XLSX uses shared formulas and the imported formula text is wrong;
 - a workbook works in Excel but fails in a local Node formula runtime;
@@ -12691,17 +12883,25 @@ Good cases:
 - an agent or MCP tool writes a cell but cannot prove the recalculated output;
 - a service route needs one missing formula family, import detail, or example.
 
-Open the fixture form:
+Open the fixture form when the reduced public fixture is ready:
 <https://github.com/proompteng/bilig/issues/new?template=workbook_fixture.yml>.
 
-Discuss the shape first:
+Discuss the shape first if you are still reducing the case:
 <https://github.com/proompteng/bilig/discussions/414>.
 
 ## Generate a local report
 
-If the workbook is already reduced, run the clinic reporter locally and paste
-the Markdown output into the fixture form. It reads the file on your machine and
-does not upload workbook contents.
+Use the narrowest command that matches the blocker:
+
+| Blocker | First local command | What to paste |
+| --- | --- | --- |
+| Stale cached XLSX formula value after Node edits | `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json` | The stale formula object with cell address, cached value, recalculated value, and `suggestedReads`. |
+| Pull requests can commit stale workbook fixtures | `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --print-github-action "**/*.xlsx"` | The generated report-only workflow, or the GitHub Action report artifact. |
+| WorkPaper import, formula, or persistence mismatch | `npm exec --package @bilig/headless@0.157.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"` | The Markdown clinic report with requested cells, formula samples, warnings, and actual readback. |
+
+If the workbook is already reduced and the stale-cache check is not enough, run
+the clinic reporter locally and paste the Markdown output into the fixture form.
+It reads the file on your machine and does not upload workbook contents.
 
 ```sh
 npm exec --package @bilig/headless@0.157.0 -- bilig-formula-clinic ./reduced.xlsx \
@@ -12743,11 +12943,27 @@ Include:
 - expected output from Excel, LibreOffice, Graph, an existing service, or a
   manual check;
 - actual Bilig output, import error, stale cached value, or missing API;
+- for stale-cache cases: the exact `target`, `formula`, `cachedValue`,
+  `literalRecalculatedValue`, and `cacheStatus` from `xlsx-cache-doctor`;
 - the shortest command or script that maintainers can run.
 
 Do not attach confidential workbooks, customer data, financial models, or files
 that cannot be redistributed in a public test corpus. Replace names and numbers
 with neutral values while keeping the same formula shape.
+
+Good discussion summary:
+
+```text
+Reduced public workbook attached or linked. xlsx-cache-doctor reports stale
+Sheet1!B61: formula =A61*10, cached 999, recalculated 600. The service reads
+Sheet1!B61 after changing Sheet1!A61. Expected output comes from Excel save.
+```
+
+Bad discussion summary:
+
+```text
+My spreadsheet is wrong. Can Bilig support it?
+```
 
 ## Why this helps
 
@@ -12771,11 +12987,14 @@ For stale cached XLSX values, first verify whether the backend is reading an old
 stored value instead of a fresh calculation:
 
 ```sh
-git clone --depth 1 https://github.com/proompteng/bilig.git
-cd bilig/examples/xlsx-recalculation-node
-pnpm install
-pnpm run smoke
+npm exec --package @bilig/xlsx-formula-recalc@latest -- \
+  xlsx-cache-doctor ./reduced.xlsx --json
 ```
+
+If you need to see the exact output shape first, use the committed transcript:
+[XLSX Cache Doctor proof transcript](xlsx-cache-doctor-proof-transcript.md).
+If the check belongs in pull requests, start from the report-only
+[XLSX Cache Doctor GitHub Action](xlsx-cache-doctor-github-action.md).
 
 For a pure WorkPaper case, reduce it to a script:
 

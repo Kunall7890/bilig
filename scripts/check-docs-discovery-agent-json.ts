@@ -25,6 +25,7 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
           'https://github.com/proompteng/bilig/blob/main/.claude/commands/bilig-workpaper-proof.md' &&
         Reflect.get(capability, 'openhands_skill') ===
           'https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md' &&
+        Reflect.get(capability, 'opencode_agent') === 'https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md' &&
         Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/agent-rule-chooser.html',
     )
   ) {
@@ -73,6 +74,7 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
         Reflect.get(capability, 'type') === 'project-mcp-configs' &&
         Reflect.get(capability, 'claude_code') === 'https://github.com/proompteng/bilig/blob/main/.mcp.json' &&
         Reflect.get(capability, 'cursor') === 'https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json' &&
+        Reflect.get(capability, 'opencode') === 'https://github.com/proompteng/bilig/blob/main/opencode.jsonc' &&
         Reflect.get(capability, 'vscode') === 'https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json' &&
         Reflect.get(capability, 'reusable') === 'https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json' &&
         Reflect.get(capability, 'workpaper_state_path') === './.bilig/pricing.workpaper.json',
@@ -213,6 +215,22 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     !hasCapability(
       agentJsonCapabilities,
       (capability) =>
+        Reflect.get(capability, 'name') === 'opencode-workpaper-mcp' &&
+        Reflect.get(capability, 'framework') === 'OpenCode' &&
+        Reflect.get(capability, 'command') ===
+          'npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable' &&
+        Reflect.get(capability, 'config_path') === 'https://github.com/proompteng/bilig/blob/main/opencode.jsonc' &&
+        Reflect.get(capability, 'agent_path') === 'https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md' &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/opencode-workpaper-mcp.html' &&
+        Reflect.get(capability, 'source') === 'https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the OpenCode WorkPaper MCP capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
         Reflect.get(capability, 'name') === 'mastra-workpaper-tool' &&
         Reflect.get(capability, 'framework') === 'Mastra' &&
         Reflect.get(capability, 'api_shape') === 'createTool -> execute -> WorkPaper readback' &&
@@ -266,6 +284,7 @@ const requiredPublicEntrypoints = [
   'https://github.com/proompteng/bilig/blob/main/CLAUDE.md',
   'https://github.com/proompteng/bilig/blob/main/.mcp.json',
   'https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json',
+  'https://github.com/proompteng/bilig/blob/main/opencode.jsonc',
   'https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json',
   'https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html',
@@ -280,6 +299,9 @@ const requiredPublicEntrypoints = [
   'https://proompteng.github.io/bilig/openhands-workpaper-mcp.html',
   'https://github.com/proompteng/bilig/blob/main/docs/openhands-workpaper-mcp.md',
   'https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md',
+  'https://proompteng.github.io/bilig/opencode-workpaper-mcp.html',
+  'https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md',
+  'https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md',
   'https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html',

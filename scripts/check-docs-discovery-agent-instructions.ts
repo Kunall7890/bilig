@@ -24,12 +24,14 @@ export async function requireAgentInstructionDiscovery(input: {
     windsurfProjectRuleNotes,
     clineProjectRuleNotes,
     continueProjectRuleNotes,
+    openCodeAgentNotes,
     copilotInstructions,
     copilotWorkpaperInstructions,
     copilotPrompt,
     claudeCodeMcpConfig,
     cursorMcpConfig,
     vscodeMcpConfig,
+    openCodeMcpConfig,
     reusableMcpConfig,
     rootSkillNotes,
     workpaperPackageJson,
@@ -51,12 +53,14 @@ export async function requireAgentInstructionDiscovery(input: {
     readFile(join(repoRoot, '.windsurf', 'rules', 'bilig-workpaper.md'), 'utf8'),
     readFile(join(repoRoot, '.clinerules', 'bilig-workpaper.md'), 'utf8'),
     readFile(join(repoRoot, '.continue', 'rules', 'bilig-workpaper.md'), 'utf8'),
+    readFile(join(repoRoot, '.opencode', 'agents', 'bilig-workpaper.md'), 'utf8'),
     readFile(join(repoRoot, '.github', 'copilot-instructions.md'), 'utf8'),
     readFile(join(repoRoot, '.github', 'instructions', 'bilig-workpaper.instructions.md'), 'utf8'),
     readFile(join(repoRoot, '.github', 'prompts', 'bilig-workpaper-proof.prompt.md'), 'utf8'),
     readFile(join(repoRoot, '.mcp.json'), 'utf8'),
     readFile(join(repoRoot, '.cursor', 'mcp.json'), 'utf8'),
     readFile(join(repoRoot, '.vscode', 'mcp.json'), 'utf8'),
+    readFile(join(repoRoot, 'opencode.jsonc'), 'utf8'),
     readFile(join(repoRoot, 'mcp', 'bilig-workpaper.mcp.json'), 'utf8'),
     readFile(join(repoRoot, 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'bilig', 'package.json'), 'utf8'),
@@ -113,6 +117,8 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsAgentNotes, '.windsurf/rules/bilig-workpaper.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.clinerules/bilig-workpaper.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.continue/rules/bilig-workpaper.md', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, 'opencode.jsonc', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, '.opencode/agents/bilig-workpaper.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.github/copilot-instructions.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.github/instructions/bilig-workpaper.instructions.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.github/prompts/bilig-workpaper-proof.prompt.md', 'docs/AGENTS.md')
@@ -167,6 +173,11 @@ export async function requireAgentInstructionDiscovery(input: {
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules vscode-mcp',
     'docs/agent-start.txt',
   )
+  requireIncludes(
+    docsAgentStart,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules opencode',
+    'docs/agent-start.txt',
+  )
   requireIncludes(docsAgentStart, '.github/copilot-instructions.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.github/instructions/bilig-workpaper.instructions.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.github/prompts/bilig-workpaper-proof.prompt.md', 'docs/agent-start.txt')
@@ -176,6 +187,8 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsAgentStart, '.clinerules/bilig-workpaper.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.continue/rules/bilig-workpaper.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.windsurf/rules/bilig-workpaper.md', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'opencode.jsonc', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, '.opencode/agents/bilig-workpaper.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, 'GEMINI.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, 'gemini-extension.json', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, 'gemini-workpaper-context.md', 'docs/agent-start.txt')
@@ -313,6 +326,21 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(continueProjectRuleNotes, 'Do not claim success from a write call alone.', '.continue/rules/bilig-workpaper.md')
   requireIncludes(continueProjectRuleNotes, 'https://proompteng.github.io/bilig/llms-full.txt', '.continue/rules/bilig-workpaper.md')
 
+  requireIncludes(openCodeAgentNotes, 'mode: subagent', '.opencode/agents/bilig-workpaper.md')
+  requireIncludes(openCodeAgentNotes, 'bilig-workpaper_*', '.opencode/agents/bilig-workpaper.md')
+  requireIncludes(
+    openCodeAgentNotes,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
+    '.opencode/agents/bilig-workpaper.md',
+  )
+  requireIncludes(openCodeAgentNotes, 'set_cell_contents_and_readback', '.opencode/agents/bilig-workpaper.md')
+  requireIncludes(openCodeAgentNotes, 'Do not claim success from a write call alone.', '.opencode/agents/bilig-workpaper.md')
+  requireIncludes(
+    openCodeAgentNotes,
+    'https://proompteng.github.io/bilig/opencode-workpaper-mcp.html',
+    '.opencode/agents/bilig-workpaper.md',
+  )
+
   requireIncludes(copilotInstructions, '## Copilot Agent WorkPaper Path', '.github/copilot-instructions.md')
   requireIncludes(copilotInstructions, '.github/instructions/bilig-workpaper.instructions.md', '.github/copilot-instructions.md')
   requireIncludes(copilotInstructions, '.github/prompts/bilig-workpaper-proof.prompt.md', '.github/copilot-instructions.md')
@@ -369,6 +397,17 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(vscodeMcpConfig, '"biligWorkpaperDemo"', '.vscode/mcp.json')
   requireIncludes(vscodeMcpConfig, '"biligWorkpaperFile"', '.vscode/mcp.json')
   requireIncludes(vscodeMcpConfig, '"${workspaceFolder}/.bilig/pricing.workpaper.json"', '.vscode/mcp.json')
+  requireIncludes(openCodeMcpConfig, '"$schema": "https://opencode.ai/config.json"', 'opencode.jsonc')
+  requireIncludes(openCodeMcpConfig, '"instructions"', 'opencode.jsonc')
+  requireIncludes(openCodeMcpConfig, '"AGENTS.md"', 'opencode.jsonc')
+  requireIncludes(openCodeMcpConfig, '"bilig-workpaper"', 'opencode.jsonc')
+  requireIncludes(openCodeMcpConfig, '"type": "local"', 'opencode.jsonc')
+  requireIncludes(openCodeMcpConfig, '"command"', 'opencode.jsonc')
+  requireIncludes(openCodeMcpConfig, '"@bilig/workpaper@latest"', 'opencode.jsonc')
+  requireIncludes(openCodeMcpConfig, '"./.bilig/pricing.workpaper.json"', 'opencode.jsonc')
+  requireIncludes(openCodeMcpConfig, '"bilig-workpaper-demo"', 'opencode.jsonc')
+  requireIncludes(openCodeMcpConfig, '"url": "https://bilig.proompteng.ai/mcp"', 'opencode.jsonc')
+  requireIncludes(openCodeMcpConfig, '"enabled": false', 'opencode.jsonc')
   requireIncludes(reusableMcpConfig, '"bilig-workpaper"', 'mcp/bilig-workpaper.mcp.json')
   requireIncludes(reusableMcpConfig, '"@bilig/workpaper@latest"', 'mcp/bilig-workpaper.mcp.json')
   requireIncludes(reusableMcpConfig, '"./.bilig/pricing.workpaper.json"', 'mcp/bilig-workpaper.mcp.json')

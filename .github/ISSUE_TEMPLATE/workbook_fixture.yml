@@ -9,12 +9,15 @@ body:
         Use this when a real workbook, formula workload, import/export case, service route, or agent workflow would make Bilig more useful if it became a public fixture.
 
         Do not attach confidential spreadsheets or customer data. Reduce the case, anonymize it, and only share files that can become part of a public test corpus, example, or documentation page.
+
+        If you are still reducing the case, start in the fixture discussion instead: https://github.com/proompteng/bilig/discussions/414.
   - type: dropdown
     id: area
     attributes:
       label: Fixture area
       description: Which public proof path should this improve?
       options:
+        - Stale cached XLSX formula value
         - Formula result mismatch
         - XLSX import or export
         - WorkPaper JSON persistence
@@ -30,7 +33,7 @@ body:
     attributes:
       label: Package version or commit
       description: Include the @bilig/headless version or commit you tested.
-      placeholder: '@bilig/headless 0.18.3 or commit SHA'
+      placeholder: '@bilig/headless 0.157.0, @bilig/xlsx-formula-recalc 0.157.0, or commit SHA'
     validations:
       required: true
   - type: textarea
@@ -64,6 +67,12 @@ body:
       label: Actual output
       description: Paste the Bilig output, mismatch report, error, missing API, or current workaround.
       placeholder: |
+        target:
+        formula:
+        cachedValue:
+        literalRecalculatedValue:
+        cacheStatus:
+        suggestedReads:
         Actual display value:
         Error:
         Current workaround:
@@ -76,6 +85,10 @@ body:
       label: Reproduction command or script
       description: Include the shortest command, test, or script maintainers can run.
       placeholder: |
+        npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
+
+        or:
+
         pnpm workpaper:xlsx-corpus:check ./path/to/reduced.xlsx -- --from-import-snapshot
 
         or:

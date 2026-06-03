@@ -307,6 +307,78 @@ ${commandSafetyStandard()}
 `
 }
 
+export function buildOpenCodeWorkpaperAgent(input: AgentIdeRuleInput): string {
+  const { remoteMcpEndpoint, repositoryUrl, siteRoot, workpaperPackageSpec } = input
+  return `---
+description: Verifies workbook-shaped edits with Bilig WorkPaper MCP tools before spreadsheet UI automation.
+mode: subagent
+permission:
+  bash: ask
+  edit: allow
+  read: allow
+  "bilig-workpaper_*": allow
+---
+
+You are the Bilig WorkPaper proof agent for OpenCode. Use this agent when a
+task mentions workbook-shaped business logic: pricing, quotes, payout checks,
+budgets, import validation, forecasts, stale XLSX formula caches, or formula
+readback after changing cells.
+
+Start with the published no-key evaluator:
+
+\`\`\`sh
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
+\`\`\`
+
+If the workbook includes provider-backed formulas such as \`IMPORTRANGE\`,
+\`GOOGLEFINANCE\`, \`IMPORTXML\`, \`FILTERXML\`, or \`STOCKHISTORY\`, run:
+
+\`\`\`sh
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
+\`\`\`
+
+Use the project-local MCP server from \`opencode.jsonc\` when state must persist
+to a WorkPaper JSON file:
+
+\`\`\`sh
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
+\`\`\`
+
+Use the hosted endpoint only for stateless remote MCP smoke tests:
+
+\`\`\`text
+${remoteMcpEndpoint}
+\`\`\`
+
+Expected MCP tools:
+
+- \`list_sheets\`
+- \`read_range\`
+- \`read_cell\`
+- \`set_cell_contents\`
+- \`set_cell_contents_and_readback\`
+- \`get_cell_display_value\`
+- \`export_workpaper_document\`
+- \`validate_formula\`
+
+## Required Readback
+
+${workbookProofStandard()}
+
+## Command Safety
+
+${commandSafetyStandard()}
+
+## References
+
+- OpenCode config: opencode.jsonc
+- Docs map: ${siteRoot}/llms.txt
+- Agent rule chooser: ${siteRoot}/agent-rule-chooser.html
+- OpenCode setup: ${siteRoot}/opencode-workpaper-mcp.html
+- Repository: ${repositoryUrl}
+`
+}
+
 export function buildClaudeCodeWorkpaperCommand(input: AgentIdeRuleInput): string {
   const { remoteMcpEndpoint, siteRoot, workpaperPackageSpec } = input
   return `---
@@ -642,6 +714,42 @@ export function buildVscodeMcpConfig(input: AgentIdeRuleInput): string {
             '--init-demo-workpaper',
             '--writable',
           ],
+        },
+      },
+    },
+    null,
+    2,
+  )}\n`
+}
+
+export function buildOpenCodeMcpConfig(input: AgentIdeRuleInput): string {
+  const { remoteMcpEndpoint, workpaperPackageSpec } = input
+  return `${JSON.stringify(
+    {
+      $schema: 'https://opencode.ai/config.json',
+      instructions: ['AGENTS.md'],
+      mcp: {
+        'bilig-workpaper': {
+          type: 'local',
+          command: [
+            'npm',
+            'exec',
+            '--yes',
+            '--package',
+            workpaperPackageSpec,
+            '--',
+            'bilig-workpaper-mcp',
+            '--workpaper',
+            './.bilig/pricing.workpaper.json',
+            '--init-demo-workpaper',
+            '--writable',
+          ],
+          enabled: true,
+        },
+        'bilig-workpaper-demo': {
+          type: 'remote',
+          url: remoteMcpEndpoint,
+          enabled: false,
         },
       },
     },

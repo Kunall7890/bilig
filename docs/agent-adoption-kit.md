@@ -62,6 +62,7 @@ rules instead:
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
 - OpenHands: `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and
   `openhands mcp add` for the file-backed WorkPaper server
+- OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
 - Windsurf/Cascade: `.devin/rules/bilig-workpaper.md`, with
   `.windsurf/rules/bilig-workpaper.md` as the fallback mirror
 - Cline: `.clinerules/bilig-workpaper.md`
@@ -75,8 +76,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 ```
 
 The generated project includes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
-Copilot / VS Code instructions, Cursor, OpenHands, Cline, Continue, and
-Windsurf rules, plus local MCP configs and `npm run agent:verify`.
+Copilot / VS Code instructions, Cursor, OpenHands, OpenCode, Cline, Continue,
+and Windsurf rules, plus local MCP configs and `npm run agent:verify`.
 
 For an existing repo, add only the agent/MCP files:
 
@@ -269,5 +270,6 @@ If it almost works but adoption is blocked, open the concrete blocker:
 - [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [MCP client setup](mcp-client-setup.md)
 - [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)
+- [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)
 - [Agent workbook challenge](agent-workbook-challenge.md)
 - [Workbook tools for agent frameworks](agent-framework-workbook-tools.md)

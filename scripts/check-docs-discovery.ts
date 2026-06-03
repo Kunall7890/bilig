@@ -72,6 +72,7 @@ const {
   publicApi,
   issueTemplateConfig,
   issueTemplateRoot,
+  workbookFixtureTemplate,
   featureRequestTemplate,
   ideasDiscussionTemplate,
   qaDiscussionTemplate,
@@ -476,6 +477,7 @@ await requireSharedPublicDocsDiscovery({
   index,
   issueTemplateConfig,
   issueTemplateRoot,
+  workbookFixtureTemplate,
   featureRequestTemplate,
   ideasDiscussionTemplate,
   qaDiscussionTemplate,
@@ -515,6 +517,8 @@ requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.github/pro
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.cursor/rules/bilig-workpaper.mdc', 'docs/llms.txt')
+requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/opencode.jsonc', 'docs/llms.txt')
+requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.devin/rules/bilig-workpaper.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.windsurf/rules/bilig-workpaper.md', 'docs/llms.txt')

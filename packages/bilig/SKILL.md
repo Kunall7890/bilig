@@ -195,6 +195,7 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - Agent workbook challenge: https://proompteng.github.io/bilig/agent-workbook-challenge.html
 - MCP server guide: https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
 - OpenHands MCP setup: https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
+- OpenCode MCP setup: https://proompteng.github.io/bilig/opencode-workpaper-mcp.html
 - Open WebUI tool setup: https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html
 - LobeHub MCP setup: https://proompteng.github.io/bilig/lobehub-workpaper-mcp.html
 - AnythingLLM MCP setup: https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
@@ -215,5 +216,6 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - Kestra Node flow: https://proompteng.github.io/bilig/kestra-workpaper-flow.html
 - Prefect flow: https://proompteng.github.io/bilig/prefect-workpaper-flow.html
 - XLSX formula clinic: https://proompteng.github.io/bilig/formula-bug-clinic.html
+- Stale XLSX fixture command: npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
 - Compatibility limits: https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html
 - Repository: https://github.com/proompteng/bilig

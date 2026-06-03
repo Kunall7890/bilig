@@ -31,6 +31,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
     workpaperPackageSpec,
   } = input
   const openHandsMcpAddCommand = `openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable`
+  const openCodeMcpCommand = `npm exec --yes --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable`
   const json = JSON.stringify(
     {
       schema_version: 'agent-json-0.1.0',
@@ -172,6 +173,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           claude_code_skill: `${repositoryUrl}/blob/main/.claude/skills/bilig-workpaper/SKILL.md`,
           claude_code_command: `${repositoryUrl}/blob/main/.claude/commands/bilig-workpaper-proof.md`,
           openhands_skill: `${repositoryUrl}/blob/main/.agents/skills/bilig-workpaper/SKILL.md`,
+          opencode_agent: `${repositoryUrl}/blob/main/.opencode/agents/bilig-workpaper.md`,
           docs: `${siteRoot}/agent-rule-chooser.html`,
           challenge_command: `npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json`,
         },
@@ -180,6 +182,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           type: 'project-mcp-configs',
           claude_code: `${repositoryUrl}/blob/main/.mcp.json`,
           cursor: `${repositoryUrl}/blob/main/.cursor/mcp.json`,
+          opencode: `${repositoryUrl}/blob/main/opencode.jsonc`,
           vscode: `${repositoryUrl}/blob/main/.vscode/mcp.json`,
           reusable: `${repositoryUrl}/blob/main/mcp/bilig-workpaper.mcp.json`,
           docs: `${siteRoot}/mcp-client-setup.html`,
@@ -318,6 +321,16 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           source: `${repositoryUrl}/blob/main/docs/openhands-workpaper-mcp.md`,
         },
         {
+          name: 'opencode-workpaper-mcp',
+          type: 'coding-agent-mcp-setup',
+          framework: 'OpenCode',
+          command: openCodeMcpCommand,
+          config_path: `${repositoryUrl}/blob/main/opencode.jsonc`,
+          agent_path: `${repositoryUrl}/blob/main/.opencode/agents/bilig-workpaper.md`,
+          docs: `${siteRoot}/opencode-workpaper-mcp.html`,
+          source: `${repositoryUrl}/blob/main/docs/opencode-workpaper-mcp.md`,
+        },
+        {
           name: 'mastra-workpaper-tool',
           type: 'typescript-agent-tool-smoke-test',
           framework: 'Mastra',
@@ -420,6 +433,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
         `${siteRoot}/headless-workpaper-agent-handbook.html`,
         `${repositoryUrl}/blob/main/.mcp.json`,
         `${repositoryUrl}/blob/main/.cursor/mcp.json`,
+        `${repositoryUrl}/blob/main/opencode.jsonc`,
         `${repositoryUrl}/blob/main/mcp/bilig-workpaper.mcp.json`,
         `${siteRoot}/agent-workbook-challenge.html`,
         `${siteRoot}/mcp-workpaper-tool-server.html`,
@@ -435,6 +449,9 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
         `${siteRoot}/openhands-workpaper-mcp.html`,
         `${repositoryUrl}/blob/main/docs/openhands-workpaper-mcp.md`,
         `${repositoryUrl}/blob/main/.agents/skills/bilig-workpaper/SKILL.md`,
+        `${siteRoot}/opencode-workpaper-mcp.html`,
+        `${repositoryUrl}/blob/main/docs/opencode-workpaper-mcp.md`,
+        `${repositoryUrl}/blob/main/.opencode/agents/bilig-workpaper.md`,
         `${siteRoot}/smolagents-workpaper-tool.html`,
         `${siteRoot}/huggingface-workpaper-space.html`,
         remoteMcpEndpoint,

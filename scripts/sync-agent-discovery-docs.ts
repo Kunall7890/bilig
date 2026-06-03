@@ -20,6 +20,8 @@ import {
   buildGithubCopilotInstructions,
   buildGithubCopilotWorkpaperInstructions,
   buildGithubCopilotWorkpaperPrompt,
+  buildOpenCodeMcpConfig,
+  buildOpenCodeWorkpaperAgent,
   buildReusableMcpConfig,
   buildVscodeMcpConfig,
   buildWindsurfWorkpaperRule,
@@ -445,6 +447,7 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - Agent workbook challenge: ${siteRoot}/agent-workbook-challenge.html
 - MCP server guide: ${siteRoot}/mcp-workpaper-tool-server.html
 - OpenHands MCP setup: ${siteRoot}/openhands-workpaper-mcp.html
+- OpenCode MCP setup: ${siteRoot}/opencode-workpaper-mcp.html
 - Open WebUI tool setup: ${siteRoot}/open-webui-workpaper-mcp.html
 - LobeHub MCP setup: ${siteRoot}/lobehub-workpaper-mcp.html
 - AnythingLLM MCP setup: ${siteRoot}/anythingllm-workpaper-mcp.html
@@ -465,6 +468,7 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - Kestra Node flow: ${siteRoot}/kestra-workpaper-flow.html
 - Prefect flow: ${siteRoot}/prefect-workpaper-flow.html
 - XLSX formula clinic: ${siteRoot}/formula-bug-clinic.html
+- Stale XLSX fixture command: npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
 - Compatibility limits: ${siteRoot}/where-bilig-is-not-excel-compatible-yet.html
 - Repository: ${repositoryUrl}
 `
@@ -604,10 +608,12 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['.github/copilot-instructions.md', buildGithubCopilotInstructions(ideRuleInput)],
     ['.github/instructions/bilig-workpaper.instructions.md', buildGithubCopilotWorkpaperInstructions(ideRuleInput)],
     ['.github/prompts/bilig-workpaper-proof.prompt.md', buildGithubCopilotWorkpaperPrompt(ideRuleInput)],
+    ['.opencode/agents/bilig-workpaper.md', buildOpenCodeWorkpaperAgent(ideRuleInput)],
     ['CLAUDE.md', buildClaudeCodeProjectMemory(ideRuleInput)],
     ['.mcp.json', buildClaudeCodeMcpConfig(ideRuleInput)],
     ['.cursor/mcp.json', buildCursorMcpConfig(ideRuleInput)],
     ['.vscode/mcp.json', buildVscodeMcpConfig(ideRuleInput)],
+    ['opencode.jsonc', buildOpenCodeMcpConfig(ideRuleInput)],
     ['mcp/bilig-workpaper.mcp.json', buildReusableMcpConfig(ideRuleInput)],
     ['.claude/commands/bilig-workpaper-proof.md', buildClaudeCodeWorkpaperCommand(ideRuleInput)],
     ['.claude/skills/bilig-workpaper/SKILL.md', skillDocument],
