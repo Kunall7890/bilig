@@ -69,18 +69,24 @@ export function parseWorkPaperMcpStdioCliArgs(args: readonly string[]): WorkPape
   if (initDemoWorkPaper && workpaperPath === undefined) {
     throw new Error('--init-demo-workpaper requires --workpaper')
   }
-  if (fromXlsxPath !== undefined && workpaperPath === undefined) {
-    throw new Error('--from-xlsx requires --workpaper')
-  }
   if (fromXlsxPath !== undefined && initDemoWorkPaper) {
     throw new Error('--from-xlsx cannot be combined with --init-demo-workpaper')
+  }
+  if (fromXlsxPath !== undefined && workpaperPath === undefined && writable) {
+    throw new Error('--writable requires --workpaper when used with --from-xlsx')
   }
   if (overwriteWorkPaper && fromXlsxPath === undefined) {
     throw new Error('--overwrite-workpaper requires --from-xlsx')
   }
+  if (overwriteWorkPaper && workpaperPath === undefined) {
+    throw new Error('--overwrite-workpaper requires --workpaper')
+  }
 
   if (workpaperPath === undefined) {
-    return { demoWorkPaperTools, help, initDemoWorkPaper, overwriteWorkPaper, writable }
+    if (fromXlsxPath === undefined) {
+      return { demoWorkPaperTools, help, initDemoWorkPaper, overwriteWorkPaper, writable }
+    }
+    return { demoWorkPaperTools, fromXlsxPath, help, initDemoWorkPaper, overwriteWorkPaper, writable }
   }
   if (fromXlsxPath === undefined) {
     return { demoWorkPaperTools, help, initDemoWorkPaper, overwriteWorkPaper, writable, workpaperPath }
@@ -91,6 +97,7 @@ export function parseWorkPaperMcpStdioCliArgs(args: readonly string[]): WorkPape
 export function workPaperMcpStdioHelpText(): string {
   return [
     'Usage: bilig-workpaper-mcp [--workpaper ./model.workpaper.json] [--init-demo-workpaper] [--writable]',
+    '       bilig-workpaper-mcp --from-xlsx ./pricing.xlsx',
     '       bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json [--overwrite-workpaper] [--writable]',
     '       bilig-workpaper-mcp --demo-workpaper-tools',
     '',
@@ -98,7 +105,7 @@ export function workPaperMcpStdioHelpText(): string {
     '--demo-workpaper-tools starts the built-in demo workbook with the general WorkPaper tool surface.',
     'With --workpaper, loads a persisted WorkPaper JSON document and exposes file-backed tools, resources, and prompts.',
     '--init-demo-workpaper creates a demo WorkPaper JSON at --workpaper when the file is missing.',
-    '--from-xlsx imports an existing XLSX once into --workpaper, then starts the file-backed server.',
+    '--from-xlsx imports an existing XLSX into an in-memory WorkPaper MCP server unless --workpaper is also provided.',
     '--overwrite-workpaper allows --from-xlsx to replace an existing WorkPaper JSON file.',
     '--writable persists set_cell_contents edits back to the same JSON file.',
     '',

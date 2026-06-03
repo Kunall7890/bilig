@@ -11,9 +11,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(mcp): expose xlsx risk tool from package bin (19e7bd67)
 
 ## Internal runtime changes
+
 - refactor(smoke): split xlsx risk package smoke helper (22d119ff)
 
 ## 0.160.0

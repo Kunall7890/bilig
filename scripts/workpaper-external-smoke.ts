@@ -494,7 +494,7 @@ function runNodeSmoke(
           '\'{"jsonrpc":"2.0","id":2,"method":"tools/list"}\'',
           '\'{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"analyze_workbook_risk","arguments":{"inspectLimit":"all"}}}\'',
           '|',
-          './node_modules/.bin/bilig-workpaper-mcp --from-xlsx fixtures/pricing-risk.xlsx --workpaper .bilig/pricing-risk.workpaper.json --overwrite-workpaper --writable',
+          './node_modules/.bin/bilig-workpaper-mcp --from-xlsx fixtures/pricing-risk.xlsx',
         ].join(' '),
       ],
       { cwd: projectDir },

@@ -3,7 +3,7 @@ import { basename, dirname, resolve } from 'node:path'
 
 import { exportWorkPaperDocument, serializeWorkPaperDocument } from './persistence.js'
 import { WorkPaper } from './work-paper.js'
-import { createFileBackedWorkPaperMcpToolServerFromFile } from './work-paper-mcp-file-server.js'
+import { createFileBackedWorkPaperMcpToolServer, createFileBackedWorkPaperMcpToolServerFromFile } from './work-paper-mcp-file-server.js'
 import type { WorkPaperMcpToolServer } from './work-paper-mcp-server.js'
 import { importXlsx } from './xlsx.js'
 
@@ -32,10 +32,26 @@ function createFileBackedWorkPaperMcpToolServerFromXlsxFile(input: FileBackedWor
   })
 }
 
+function createWorkPaperMcpToolServerFromXlsxFile(input: { readonly fromXlsxPath: string }): WorkPaperMcpToolServer {
+  const xlsxPath = resolve(input.fromXlsxPath)
+  const imported = importXlsx(new Uint8Array(readFileSync(xlsxPath)), basename(xlsxPath))
+  const workbook = WorkPaper.buildFromSnapshot(imported.snapshot, { useColumnIndex: true })
+
+  return createFileBackedWorkPaperMcpToolServer({
+    workbook,
+    sourcePath: xlsxPath,
+    writable: false,
+  })
+}
+
 function writeFileAtomically(path: string, contents: string): void {
   const tempPath = resolve(dirname(path), `.${basename(path)}.${process.pid.toString()}.tmp`)
   writeFileSync(tempPath, contents)
   renameSync(tempPath, path)
 }
 
-export { createFileBackedWorkPaperMcpToolServerFromXlsxFile, type FileBackedWorkPaperMcpFromXlsxOptions }
+export {
+  createFileBackedWorkPaperMcpToolServerFromXlsxFile,
+  createWorkPaperMcpToolServerFromXlsxFile,
+  type FileBackedWorkPaperMcpFromXlsxOptions,
+}

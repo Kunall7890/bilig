@@ -48,6 +48,14 @@ describe('WorkPaper MCP server', () => {
       writable: true,
       workpaperPath: 'pricing.workpaper.json',
     })
+    expect(parseWorkPaperMcpStdioCliArgs(['--from-xlsx', 'pricing.xlsx'])).toEqual({
+      demoWorkPaperTools: false,
+      fromXlsxPath: 'pricing.xlsx',
+      help: false,
+      initDemoWorkPaper: false,
+      overwriteWorkPaper: false,
+      writable: false,
+    })
     expect(
       parseWorkPaperMcpStdioCliArgs([
         '--from-xlsx',
@@ -82,11 +90,16 @@ describe('WorkPaper MCP server', () => {
       '--demo-workpaper-tools cannot be combined with --from-xlsx',
     )
     expect(() => parseWorkPaperMcpStdioCliArgs(['--init-demo-workpaper'])).toThrow('--init-demo-workpaper requires --workpaper')
-    expect(() => parseWorkPaperMcpStdioCliArgs(['--from-xlsx', 'pricing.xlsx'])).toThrow('--from-xlsx requires --workpaper')
+    expect(() => parseWorkPaperMcpStdioCliArgs(['--from-xlsx', 'pricing.xlsx', '--writable'])).toThrow(
+      '--writable requires --workpaper when used with --from-xlsx',
+    )
     expect(() =>
       parseWorkPaperMcpStdioCliArgs(['--from-xlsx', 'pricing.xlsx', '--workpaper', 'pricing.workpaper.json', '--init-demo-workpaper']),
     ).toThrow('--from-xlsx cannot be combined with --init-demo-workpaper')
     expect(() => parseWorkPaperMcpStdioCliArgs(['--overwrite-workpaper'])).toThrow('--overwrite-workpaper requires --from-xlsx')
+    expect(() => parseWorkPaperMcpStdioCliArgs(['--from-xlsx', 'pricing.xlsx', '--overwrite-workpaper'])).toThrow(
+      '--overwrite-workpaper requires --workpaper',
+    )
   })
 
   it('starts the stdio bin and exposes the expected tools', async () => {

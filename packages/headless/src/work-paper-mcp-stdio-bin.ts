@@ -25,19 +25,25 @@ if (cliOptions.demoWorkPaperTools) {
       writable: false,
     }),
   })
-} else if (cliOptions.workpaperPath === undefined) {
-  runDemoWorkPaperMcpStdioServer()
 } else if (cliOptions.fromXlsxPath !== undefined) {
-  const { createFileBackedWorkPaperMcpToolServerFromXlsxFile } = await import('./work-paper-mcp-xlsx-file.js')
-  const server = createFileBackedWorkPaperMcpToolServerFromXlsxFile({
-    fromXlsxPath: cliOptions.fromXlsxPath,
-    overwriteWorkPaper: cliOptions.overwriteWorkPaper,
-    workpaperPath: cliOptions.workpaperPath,
-    writable: cliOptions.writable,
-  })
+  const { createFileBackedWorkPaperMcpToolServerFromXlsxFile, createWorkPaperMcpToolServerFromXlsxFile } =
+    await import('./work-paper-mcp-xlsx-file.js')
+  const server =
+    cliOptions.workpaperPath === undefined
+      ? createWorkPaperMcpToolServerFromXlsxFile({
+          fromXlsxPath: cliOptions.fromXlsxPath,
+        })
+      : createFileBackedWorkPaperMcpToolServerFromXlsxFile({
+          fromXlsxPath: cliOptions.fromXlsxPath,
+          overwriteWorkPaper: cliOptions.overwriteWorkPaper,
+          workpaperPath: cliOptions.workpaperPath,
+          writable: cliOptions.writable,
+        })
   runDemoWorkPaperMcpStdioServer({
     server: await withOptionalXlsxWorkbookRiskTool(server, cliOptions.fromXlsxPath),
   })
+} else if (cliOptions.workpaperPath === undefined) {
+  runDemoWorkPaperMcpStdioServer()
 } else {
   runDemoWorkPaperMcpStdioServer({
     server: createFileBackedWorkPaperMcpToolServerFromFile({

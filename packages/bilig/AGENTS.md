@@ -37,7 +37,7 @@ npm exec --yes --package bilig-workpaper@latest -- bilig-evaluate --door agent-m
 npm exec --yes --package bilig-workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
 npm exec --package bilig-workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package bilig-workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
-npm exec --package bilig-workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
+npm exec --package bilig-workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
 
 For Node or TypeScript, import bilig-workpaper directly. Check the edit by
 reading the relevant range, writing one small input or formula, reading the
@@ -87,10 +87,12 @@ task should persist `set_cell_contents` edits back to the same WorkPaper JSON
 file.
 
 When the server is started through `bilig-workpaper@latest` with
-`--from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json`,
-`tools/list` also includes `analyze_workbook_risk`. That tool is fixed to
-the source XLSX passed at startup and reports workbook risk indicators before an
-agent trusts the imported WorkPaper. It does not certify Excel compatibility.
+`--from-xlsx ./pricing.xlsx`, `tools/list` also includes
+`analyze_workbook_risk`. That tool is fixed to the source XLSX passed at
+startup and reports workbook risk indicators before an agent trusts the imported
+WorkPaper. Without `--workpaper --writable`, edits stay in memory; add a
+WorkPaper JSON path only when the task needs persisted file state. It does not
+certify Excel compatibility.
 
 Claude Desktop users can skip manual JSON config by installing the released
 MCPB bundle:

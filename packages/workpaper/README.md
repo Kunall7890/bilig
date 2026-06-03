@@ -241,6 +241,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 ```
 
@@ -250,10 +251,11 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./
 The challenge commands edit one input, recalculate dependent formulas, export
 WorkPaper JSON, restore it, and print a `verified: true` proof object.
 Use `--from-xlsx` when the agent already has an XLSX file: Bilig imports it once
-into persisted WorkPaper JSON, then starts the same file-backed MCP server.
-That XLSX-backed MCP path also lists `analyze_workbook_risk`, a read-only tool
-fixed to the source workbook passed at startup. It reports workbook risk
-indicators before an agent trusts the imported WorkPaper and does not certify Excel compatibility.
+into an in-memory MCP server by default, or into persisted WorkPaper JSON when
+`--workpaper --writable` is also supplied. That XLSX-backed MCP path also lists
+`analyze_workbook_risk`, a read-only tool fixed to the source workbook passed at
+startup. It reports workbook risk indicators before an agent trusts the imported
+WorkPaper and does not certify Excel compatibility.
 
 ## Agent Adoption Kit
 

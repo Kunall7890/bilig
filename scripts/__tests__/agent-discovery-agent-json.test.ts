@@ -39,25 +39,14 @@ describe('agent discovery agent.json manifest', () => {
     )
     expect(parsed.mcp).toMatchObject({
       xlsx_import_tools: ['analyze_workbook_risk'],
-      xlsx_import_args: [
-        'exec',
-        '--package',
-        '@bilig/workpaper@latest',
-        '--',
-        'bilig-workpaper-mcp',
-        '--from-xlsx',
-        './pricing.xlsx',
-        '--workpaper',
-        './.bilig/pricing.workpaper.json',
-        '--writable',
-      ],
+      xlsx_import_args: ['exec', '--package', '@bilig/workpaper@latest', '--', 'bilig-workpaper-mcp', '--from-xlsx', './pricing.xlsx'],
     })
     expect(parsed.capabilities).toContainEqual(
       expect.objectContaining({
         name: 'file-backed-workpaper-mcp',
         xlsx_import_tool: 'analyze_workbook_risk',
         boundary:
-          'The XLSX import tool is local and fixed to the --from-xlsx source file; it reports workbook risk indicators and does not certify Excel compatibility.',
+          'The XLSX import tool is local and fixed to the --from-xlsx source file; it reports workbook risk indicators and does not certify Excel compatibility. Without --workpaper --writable, edits stay in memory.',
       }),
     )
   })

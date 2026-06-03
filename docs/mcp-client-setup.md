@@ -70,9 +70,12 @@ not persist user files and does not issue `MCP-Session-Id`.
 
 For persistent project workflows, use the local stdio config below with
 `--workpaper ./pricing.workpaper.json --init-demo-workpaper --writable`.
-If the project already has an XLSX file, start with
-`--from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable`
-to create the WorkPaper JSON before serving it.
+If the project already has an XLSX file and the agent only needs triage,
+readback, or a risk diagnostic, start with `--from-xlsx ./pricing.xlsx`; it
+imports into an in-memory WorkPaper server and does not write a sidecar file.
+In that direct mode, edits stay in memory.
+Add `--workpaper ./.bilig/pricing.workpaper.json --writable` only when the
+workflow needs persisted edits.
 
 ## Persistent file-backed stdio server
 
@@ -81,16 +84,17 @@ Every client below starts the same process:
 ```sh
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 ```
 
-The first command is demo mode. The client configs below use file-backed mode
-because that is the useful agent setup: the server owns a real WorkPaper JSON
-file, initializes it when missing, writes through tools, recalculates formulas,
-and persists edits back to the same path.
-The `--from-xlsx` command imports an existing workbook once; pass
-`--overwrite-workpaper` only when you intentionally want to replace the generated
-WorkPaper JSON.
+The first command is demo mode. The third command imports an XLSX into an in-memory WorkPaper server for readback, throwaway edits, and
+`analyze_workbook_risk` without creating a JSON file. The client configs below use file-backed mode because that is the useful agent setup: the server owns a
+real WorkPaper JSON file, initializes it when missing, writes through tools,
+recalculates formulas, and persists edits back to the same path.
+The persistent `--from-xlsx ... --workpaper` command imports an existing
+workbook once; pass `--overwrite-workpaper` only when you intentionally want to
+replace the generated WorkPaper JSON.
 When started with `--from-xlsx`, `tools/list` also includes
 `analyze_workbook_risk`. That tool is fixed to the source XLSX passed at
 startup, returns workbook risk indicators before an agent trusts the imported

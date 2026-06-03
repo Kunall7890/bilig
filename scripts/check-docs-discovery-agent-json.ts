@@ -82,10 +82,10 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
         Reflect.get(capability, 'name') === 'file-backed-workpaper-mcp' &&
         Reflect.get(capability, 'server_card') === 'https://proompteng.github.io/bilig/.well-known/mcp/server-card.json' &&
         Reflect.get(capability, 'xlsx_import_command') ===
-          'npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable' &&
+          'npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx' &&
         Reflect.get(capability, 'xlsx_import_tool') === 'analyze_workbook_risk' &&
         Reflect.get(capability, 'boundary') ===
-          'The XLSX import tool is local and fixed to the --from-xlsx source file; it reports workbook risk indicators and does not certify Excel compatibility.',
+          'The XLSX import tool is local and fixed to the --from-xlsx source file; it reports workbook risk indicators and does not certify Excel compatibility. Without --workpaper --writable, edits stay in memory.',
     )
   ) {
     throw new Error('docs/.well-known/agent.json must advertise the file-backed MCP capability and XLSX import risk tool boundary')

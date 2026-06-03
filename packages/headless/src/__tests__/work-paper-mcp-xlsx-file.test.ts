@@ -139,6 +139,102 @@ describe('WorkPaper MCP XLSX file bridge', () => {
     }
   })
 
+  it('starts the stdio bin directly from an XLSX and exposes risk analysis', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-workpaper-mcp-xlsx-direct-'))
+    const xlsxPath = join(tempDir, 'pricing.xlsx')
+
+    try {
+      writeFileSync(xlsxPath, exportXlsx(buildDemoWorkPaper().exportSnapshot()))
+      const binPath = fileURLToPath(new URL('../work-paper-mcp-stdio-bin.ts', import.meta.url))
+      const child = spawn(process.execPath, ['--import', 'tsx', binPath, '--from-xlsx', xlsxPath], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+      const stdout: string[] = []
+      const stderr: string[] = []
+      const exitPromise = new Promise<number | null>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          child.kill('SIGKILL')
+          reject(new Error('Timed out waiting for direct XLSX bilig-workpaper-mcp smoke test process to exit'))
+        }, 8000)
+
+        child.once('error', (error) => {
+          clearTimeout(timeout)
+          reject(error)
+        })
+        child.once('exit', (code) => {
+          clearTimeout(timeout)
+          resolve(code)
+        })
+      })
+
+      child.stdout.setEncoding('utf8')
+      child.stdout.on('data', (chunk: string) => stdout.push(chunk))
+      child.stderr.setEncoding('utf8')
+      child.stderr.on('data', (chunk: string) => stderr.push(chunk))
+      child.stdin.end(
+        [
+          { jsonrpc: '2.0', id: 1, method: 'initialize' },
+          { jsonrpc: '2.0', id: 2, method: 'tools/list' },
+          {
+            jsonrpc: '2.0',
+            id: 3,
+            method: 'tools/call',
+            params: {
+              name: 'analyze_workbook_risk',
+              arguments: {
+                inspectLimit: 'all',
+              },
+            },
+          },
+          {
+            jsonrpc: '2.0',
+            id: 4,
+            method: 'tools/call',
+            params: {
+              name: 'read_cell',
+              arguments: {
+                sheetName: 'Summary',
+                address: 'B3',
+              },
+            },
+          },
+        ]
+          .map((request) => JSON.stringify(request))
+          .join('\n') + '\n',
+      )
+
+      await expect(exitPromise).resolves.toBe(0)
+      expect(stderr.join('')).toBe('')
+
+      const responses = stdout
+        .join('')
+        .trim()
+        .split('\n')
+        .filter((line) => line.length > 0)
+        .map((line) => JSON.parse(line))
+
+      expect(responses[1].result.tools.map((tool: { readonly name: string }) => tool.name)).toContain('analyze_workbook_risk')
+      expect(responses[2].result.structuredContent).toMatchObject({
+        schemaVersion: 'bilig-workbook-compatibility-report.v1',
+        verified: true,
+        input: {
+          fileName: 'pricing.xlsx',
+          inspectLimit: 'all',
+        },
+        excelParity: 'not_proven',
+      })
+      expect(responses[3].result.structuredContent).toMatchObject({
+        address: 'Summary!B3',
+        formula: '=B2*Inputs!B4',
+        value: {
+          value: 60000,
+        },
+      })
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
   it('starts the stdio bin from an XLSX and creates the WorkPaper JSON', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'bilig-workpaper-mcp-xlsx-stdio-'))
     const xlsxPath = join(tempDir, 'pricing.xlsx')

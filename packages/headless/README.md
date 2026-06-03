@@ -454,6 +454,7 @@ MCP examples:
 npm exec --package @bilig/headless@0.160.1 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 npm exec --package @bilig/headless@0.160.1 -- bilig-workpaper-mcp
 npm exec --package @bilig/headless@0.160.1 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.160.1 -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
 npm exec --package @bilig/headless@0.160.1 -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
@@ -466,8 +467,10 @@ persisted WorkPaper JSON document and exposes `list_sheets`, `read_range`,
 `read_cell`, `set_cell_contents`, `set_cell_contents_and_readback`,
 `get_cell_display_value`, `export_workpaper_document`, and `validate_formula`;
 `--init-demo-workpaper` creates the demo JSON file when it is missing, and
-`--from-xlsx` imports an existing XLSX once into a WorkPaper JSON file before
-serving it. `--writable` persists `set_cell_contents` edits back to the same file.
+`--from-xlsx ./pricing.xlsx` imports an existing XLSX into an in-memory server
+for readback, throwaway edits, and `analyze_workbook_risk`. Add
+`--workpaper ... --writable` when the imported workbook must persist edits to a
+WorkPaper JSON file. `--writable` persists `set_cell_contents` edits back to the same file.
 The `set_cell_contents_and_readback` tool does the same write while
 reading a dependent output range in the same MCP call. File-backed mode also
 exposes
