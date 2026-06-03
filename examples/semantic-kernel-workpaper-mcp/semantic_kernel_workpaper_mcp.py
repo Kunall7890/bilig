@@ -13,6 +13,8 @@ from semantic_kernel.connectors.mcp import MCPStdioPlugin
 
 DEFAULT_PACKAGE_SPEC = "@bilig/workpaper@latest"
 PLUGIN_NAME = "BiligWorkPaper"
+DEPENDENT_SHEET = "Summary"
+DEPENDENT_CELL = "B3"
 
 
 def parse_args() -> argparse.Namespace:
@@ -50,6 +52,14 @@ def parse_single_json_text(contents: list[Any], label: str) -> dict[str, Any]:
     return parsed
 
 
+def numeric_cell_value(cell: dict[str, Any], label: str) -> float:
+    value = cell.get("value")
+    raw_value = value.get("value") if isinstance(value, dict) else value
+    if isinstance(raw_value, bool) or not isinstance(raw_value, int | float):
+        raise RuntimeError(f"{label} did not return a numeric value: {json.dumps(cell, indent=2)}")
+    return raw_value
+
+
 async def run_smoke(args: argparse.Namespace) -> dict[str, Any]:
     workpaper = args.workpaper or Path(tempfile.mkdtemp()) / "pricing.workpaper.json"
     command, server_args = mcp_server_command(args, workpaper)
@@ -73,27 +83,65 @@ async def run_smoke(args: argparse.Namespace) -> dict[str, Any]:
         if "set_cell_contents" not in tool_names:
             raise RuntimeError(f"Semantic Kernel did not import set_cell_contents. Loaded: {tool_names}")
 
-        before = parse_single_json_text(
+        before_input = parse_single_json_text(
             await plugin.call_tool("read_cell", sheetName="Inputs", address="B3"),
-            "read_cell before",
+            "read_cell input before",
+        )
+        before_dependent = parse_single_json_text(
+            await plugin.call_tool("read_cell", sheetName=DEPENDENT_SHEET, address=DEPENDENT_CELL),
+            "read_cell dependent before",
         )
         write = parse_single_json_text(
             await plugin.call_tool("set_cell_contents", sheetName="Inputs", address="B3", value="=0.4"),
             "set_cell_contents",
         )
-        after = parse_single_json_text(
+        after_input = parse_single_json_text(
             await plugin.call_tool("read_cell", sheetName="Inputs", address="B3"),
-            "read_cell after",
+            "read_cell input after",
+        )
+        after_dependent = parse_single_json_text(
+            await plugin.call_tool("read_cell", sheetName=DEPENDENT_SHEET, address=DEPENDENT_CELL),
+            "read_cell dependent after",
         )
 
+    async with MCPStdioPlugin(
+        name=PLUGIN_NAME,
+        description="Bilig WorkPaper spreadsheet formula tools",
+        command=command,
+        args=server_args,
+        load_prompts=False,
+        request_timeout=30,
+    ) as restarted_plugin:
+        after_restart_dependent = parse_single_json_text(
+            await restarted_plugin.call_tool("read_cell", sheetName=DEPENDENT_SHEET, address=DEPENDENT_CELL),
+            "read_cell dependent after restart",
+        )
+
+    before_expected_arr = numeric_cell_value(before_dependent, "dependent before")
+    after_expected_arr = numeric_cell_value(after_dependent, "dependent after")
+    after_restart_expected_arr = numeric_cell_value(after_restart_dependent, "dependent after restart")
     verified = (
         write.get("checks", {}).get("restoredMatchesAfter") is True
         and write.get("persistence", {}).get("persisted") is True
         and write.get("after", {}).get("value", {}).get("value") == 0.4
-        and after.get("value", {}).get("value") == 0.4
+        and after_input.get("value", {}).get("value") == 0.4
+        and before_expected_arr == 60000
+        and after_expected_arr == 96000
+        and after_restart_expected_arr == 96000
     )
     if not verified:
-        raise RuntimeError(f"Semantic Kernel WorkPaper proof failed: {json.dumps(write, indent=2)}")
+        raise RuntimeError(
+            "Semantic Kernel WorkPaper proof failed: "
+            + json.dumps(
+                {
+                    "write": write,
+                    "beforeExpectedArr": before_expected_arr,
+                    "afterExpectedArr": after_expected_arr,
+                    "afterRestartExpectedArr": after_restart_expected_arr,
+                },
+                indent=2,
+            ),
+        )
 
     return {
         "framework": "semantic-kernel-mcp",
@@ -102,20 +150,29 @@ async def run_smoke(args: argparse.Namespace) -> dict[str, Any]:
         "loadedTools": tool_names,
         "workpaper": str(workpaper),
         "editedCell": write.get("editedCell"),
-        "before": {
-            "serialized": before.get("serialized"),
-            "displayValue": before.get("displayValue"),
+        "dependentCell": f"{DEPENDENT_SHEET}!{DEPENDENT_CELL}",
+        "beforeInput": {
+            "serialized": before_input.get("serialized"),
+            "displayValue": before_input.get("displayValue"),
         },
-        "after": {
-            "serialized": after.get("serialized"),
-            "displayValue": after.get("displayValue"),
+        "afterInput": {
+            "serialized": after_input.get("serialized"),
+            "displayValue": after_input.get("displayValue"),
+        },
+        "beforeExpectedArr": before_expected_arr,
+        "afterExpectedArr": after_expected_arr,
+        "afterRestartExpectedArr": after_restart_expected_arr,
+        "dependentReadback": {
+            "beforeDisplayValue": before_dependent.get("displayValue"),
+            "afterDisplayValue": after_dependent.get("displayValue"),
+            "afterRestartDisplayValue": after_restart_dependent.get("displayValue"),
         },
         "persistence": write.get("persistence"),
         "checks": write.get("checks"),
         "verified": True,
         "boundary": [
             "No LLM key required for this smoke test.",
-            "This proves Semantic Kernel MCP import and WorkPaper read/write/readback.",
+            "This proves Semantic Kernel MCP import and dependent WorkPaper formula readback.",
             "It does not claim desktop Excel macro or external-link compatibility.",
         ],
     }

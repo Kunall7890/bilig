@@ -670,6 +670,15 @@ function agentJsonManifest(): string {
           source: `${repositoryUrl}/tree/main/examples/pydantic-ai-workpaper-mcp`,
         },
         {
+          name: 'semantic-kernel-workpaper-mcp',
+          type: 'python-agent-mcp-smoke-test',
+          framework: 'Microsoft Semantic Kernel',
+          command:
+            "uv run --python 3.12 --with 'semantic-kernel[mcp]' python examples/semantic-kernel-workpaper-mcp/semantic_kernel_workpaper_mcp.py --output .tmp/semantic-kernel-workpaper-proof.json",
+          docs: `${siteRoot}/semantic-kernel-workpaper-mcp.html`,
+          source: `${repositoryUrl}/tree/main/examples/semantic-kernel-workpaper-mcp`,
+        },
+        {
           name: 'smolagents-workpaper-tool',
           type: 'python-agent-tool-smoke-test',
           framework: 'smolagents',

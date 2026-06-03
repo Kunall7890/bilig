@@ -28,10 +28,12 @@ git clone https://github.com/proompteng/bilig.git
 cd bilig
 uv run --python 3.12 --with 'semantic-kernel[mcp]' \
   python examples/semantic-kernel-workpaper-mcp/semantic_kernel_workpaper_mcp.py \
-  --local-source \
   --workpaper .tmp/pricing.workpaper.json \
   --output .tmp/semantic-kernel-workpaper-proof.json
 ```
+
+The command starts the published `@bilig/workpaper@latest` MCP server. It does
+not require an OpenAI, Microsoft, Excel, LibreOffice, or Google Sheets key.
 
 Expected top-level output:
 
@@ -39,15 +41,21 @@ Expected top-level output:
 {
   "framework": "semantic-kernel-mcp",
   "pluginName": "BiligWorkPaper",
+  "packageSpec": "@bilig/workpaper@latest",
+  "dependentCell": "Summary!B3",
+  "beforeExpectedArr": 60000,
+  "afterExpectedArr": 96000,
+  "afterRestartExpectedArr": 96000,
   "verified": true
 }
 ```
 
 The full proof includes the imported tool names, edited cell, before/after
-serialized content, persisted WorkPaper path, and restore checks.
+input content, dependent formula readback, persisted WorkPaper path, and a
+restart readback from the same JSON file.
 
-After the published package release catches up, the same script can run against
-`@bilig/workpaper@latest` by omitting `--local-source`.
+Use `--local-source` only when you are changing the local TypeScript MCP server
+and need to verify unreleased behavior from the repository checkout.
 
 ## Plugin Shape
 
@@ -88,7 +96,8 @@ async with MCPStdioPlugin(
 Use formula strings such as `=0.4` when the target MCP host requires each
 parameter schema to have a single primitive `type`. Bilig still accepts JSON
 number, boolean, and null arguments from MCP clients that support union-typed
-tool parameters.
+tool parameters. After writing, read the dependent formula cell such as
+`Summary!B3` and reopen the same WorkPaper JSON file before reporting success.
 
 ## Why This Fits Semantic Kernel
 
@@ -99,7 +108,8 @@ server is the right boundary when formula work must be deterministic:
 - one cell edit per tool call;
 - recalculation before returning;
 - persisted WorkPaper JSON;
-- restored readback before trusting the result;
+- dependent formula readback before trusting the result;
+- restart readback from the persisted WorkPaper JSON;
 - no spreadsheet screenshots or cached XLSX formula values.
 
 Use this for quote approval, payout rules, budget gates, import validation,

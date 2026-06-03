@@ -113,6 +113,16 @@ export const agentFrameworkDocRequirements = [
   },
   {
     path: 'docs/semantic-kernel-workpaper-mcp.md',
-    includes: ['Semantic Kernel WorkPaper MCP Plugin', 'MCPStdioPlugin', 'examples/semantic-kernel-workpaper-mcp', 'verified'],
+    includes: [
+      'Semantic Kernel WorkPaper MCP Plugin',
+      'MCPStdioPlugin',
+      'examples/semantic-kernel-workpaper-mcp',
+      '@bilig/workpaper@latest',
+      'Summary!B3',
+      '60000',
+      '96000',
+      'afterRestartExpectedArr',
+      'verified',
+    ],
   },
 ] as const

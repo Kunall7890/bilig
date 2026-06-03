@@ -679,6 +679,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | FastMCP Python                                             | A Python client should smoke-test hosted MCP or launch a private file-backed stdio WorkPaper.                                                                                   | [FastMCP WorkPaper client](https://proompteng.github.io/bilig/fastmcp-workpaper-client.html)                                                                                                                                                                                                                                                                                              |
 | Agno                                                       | `MCPTools` should import workbook tools and return verified formula readback before an agent trusts the result.                                                                | [Agno WorkPaper MCP tools](https://proompteng.github.io/bilig/agno-workpaper-mcp.html)                                                                                                                                                                                                                                                                                                    |
 | Pydantic AI                                                | `MCPToolset` should validate typed workbook proof before an agent trusts spreadsheet-style calculations.                                                                        | [Pydantic AI WorkPaper MCP tools](https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html)                                                                                                                                                                                                                                                                                      |
+| Microsoft Semantic Kernel                                  | `MCPStdioPlugin` should import workbook tools and verify dependent formula readback before an agent trusts plugin calls.                                                        | [Semantic Kernel WorkPaper MCP plugin](https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html)                                                                                                                                                                                                                                                                             |
 | Hugging Face smolagents                                    | A `Tool` should return structured formula readback proof to a `CodeAgent`.                                                                                                      | [smolagents WorkPaper tool](https://proompteng.github.io/bilig/smolagents-workpaper-tool.html)                                                                                                                                                                                                                                                                                            |
 | Hugging Face Gradio MCP Space                              | A Space template should expose one no-key WorkPaper readback tool before a team wires private workbook state.                                                                   | [Hugging Face Gradio MCP Space](https://proompteng.github.io/bilig/huggingface-workpaper-space.html)                                                                                                                                                                                                                                                                                      |
 | n8n, Dify, Flowise, Pipedream                              | Workflow builders need formula readback without spreadsheet UI automation; use `@bilig/n8n-nodes-workpaper`, the upstream merged Dify plugin, or the reviewed Pipedream action. | [n8n](https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html), [Dify](https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html), [Flowise](https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html), [Pipedream](https://proompteng.github.io/bilig/pipedream-workpaper-formula-readback.html)                                          |
@@ -689,7 +690,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Temporal, Airflow, Dagster Formula Assets, Kestra, Prefect | Orchestrators should own retries/history while a Node step owns workbook proof.                                                                                                 | [Temporal](https://proompteng.github.io/bilig/temporal-workpaper-activity.html), [Airflow](https://proompteng.github.io/bilig/airflow-workpaper-dag.html), [Dagster](https://proompteng.github.io/bilig/dagster-workpaper-asset.html), [Kestra](https://proompteng.github.io/bilig/kestra-workpaper-flow.html), [Prefect](https://proompteng.github.io/bilig/prefect-workpaper-flow.html) |
 | Directus Persisted Calculated Fields                       | A custom operation should persist calculated fields with formula proof.                                                                                                         | [Directus WorkPaper Flow operation](https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html)                                                                                                                                                                                                                                                                            |
 
-<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
+<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/semantic-kernel-workpaper-mcp.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
 
 ## Choose An Evaluation Path
 
@@ -5385,10 +5386,12 @@ git clone https://github.com/proompteng/bilig.git
 cd bilig
 uv run --python 3.12 --with 'semantic-kernel[mcp]' \
   python examples/semantic-kernel-workpaper-mcp/semantic_kernel_workpaper_mcp.py \
-  --local-source \
   --workpaper .tmp/pricing.workpaper.json \
   --output .tmp/semantic-kernel-workpaper-proof.json
 ```
+
+The command starts the published `@bilig/workpaper@latest` MCP server. It does
+not require an OpenAI, Microsoft, Excel, LibreOffice, or Google Sheets key.
 
 Expected top-level output:
 
@@ -5396,15 +5399,21 @@ Expected top-level output:
 {
   "framework": "semantic-kernel-mcp",
   "pluginName": "BiligWorkPaper",
+  "packageSpec": "@bilig/workpaper@latest",
+  "dependentCell": "Summary!B3",
+  "beforeExpectedArr": 60000,
+  "afterExpectedArr": 96000,
+  "afterRestartExpectedArr": 96000,
   "verified": true
 }
 ```
 
 The full proof includes the imported tool names, edited cell, before/after
-serialized content, persisted WorkPaper path, and restore checks.
+input content, dependent formula readback, persisted WorkPaper path, and a
+restart readback from the same JSON file.
 
-After the published package release catches up, the same script can run against
-`@bilig/workpaper@latest` by omitting `--local-source`.
+Use `--local-source` only when you are changing the local TypeScript MCP server
+and need to verify unreleased behavior from the repository checkout.
 
 ## Plugin Shape
 
@@ -5445,7 +5454,8 @@ async with MCPStdioPlugin(
 Use formula strings such as `=0.4` when the target MCP host requires each
 parameter schema to have a single primitive `type`. Bilig still accepts JSON
 number, boolean, and null arguments from MCP clients that support union-typed
-tool parameters.
+tool parameters. After writing, read the dependent formula cell such as
+`Summary!B3` and reopen the same WorkPaper JSON file before reporting success.
 
 ## Why This Fits Semantic Kernel
 
@@ -5456,7 +5466,8 @@ server is the right boundary when formula work must be deterministic:
 - one cell edit per tool call;
 - recalculation before returning;
 - persisted WorkPaper JSON;
-- restored readback before trusting the result;
+- dependent formula readback before trusting the result;
+- restart readback from the persisted WorkPaper JSON;
 - no spreadsheet screenshots or cached XLSX formula values.
 
 Use this for quote approval, payout rules, budget gates, import validation,

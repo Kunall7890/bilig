@@ -14,13 +14,12 @@ JSON restore.
 ```sh
 uv run --python 3.12 --with 'semantic-kernel[mcp]' \
   python examples/semantic-kernel-workpaper-mcp/semantic_kernel_workpaper_mcp.py \
-  --local-source \
   --workpaper .tmp/pricing.workpaper.json \
   --output .tmp/semantic-kernel-workpaper-proof.json
 ```
 
-Run that command from the repository root. After the published package release
-catches up, omit `--local-source` to call `@bilig/workpaper@latest`.
+Run that command from the repository root. It starts the published
+`@bilig/workpaper@latest` MCP server with no OpenAI or Microsoft key.
 
 Expected top-level output:
 
@@ -28,6 +27,11 @@ Expected top-level output:
 {
   "framework": "semantic-kernel-mcp",
   "pluginName": "BiligWorkPaper",
+  "packageSpec": "@bilig/workpaper@latest",
+  "dependentCell": "Summary!B3",
+  "beforeExpectedArr": 60000,
+  "afterExpectedArr": 96000,
+  "afterRestartExpectedArr": 96000,
   "verified": true
 }
 ```
@@ -39,7 +43,8 @@ parameters.
 
 ## Local Source Smoke
 
-From the repository root, this is the shortest local TypeScript server smoke:
+Use `--local-source` only when you are changing the TypeScript MCP server in
+this repository and need to verify unreleased local behavior:
 
 ```sh
 uv run --python 3.12 --with 'semantic-kernel[mcp]' \
