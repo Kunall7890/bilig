@@ -38,6 +38,7 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
    \`npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list\`.
 8. If you are using GitHub Copilot or VS Code agent mode in a cloned checkout,
    use \`.github/copilot-instructions.md\`,
+   \`.github/instructions/bilig-workpaper.instructions.md\`,
    \`.github/prompts/bilig-workpaper-proof.prompt.md\`, and
    \`.vscode/mcp.json\`.
 9. If you are inside a cloned Bilig repository with Claude Code, use the
@@ -46,6 +47,7 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
    \`.claude/commands/bilig-workpaper-proof.md\`.
 10. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
     \`.cursor/rules/bilig-workpaper.mdc\` or
+    \`.devin/rules/bilig-workpaper.md\`,
     \`.windsurf/rules/bilig-workpaper.md\`,
     \`.clinerules/bilig-workpaper.md\`, or
     \`.continue/rules/bilig-workpaper.md\`.
@@ -146,7 +148,7 @@ For an existing repo that should receive the full starter overlay, run:
 npm create @bilig/workpaper@latest . -- --add-agent
 \`\`\`
 
-Suggested files: \`AGENTS.md\`, \`CLAUDE.md\`, \`GEMINI.md\`, \`.github/copilot-instructions.md\`, \`.github/prompts/bilig-workpaper-proof.prompt.md\`, \`.vscode/mcp.json\`, \`.cursor/rules/bilig-workpaper.mdc\`, \`.clinerules/bilig-workpaper.md\`, \`.continue/rules/bilig-workpaper.md\`, \`.windsurf/rules/bilig-workpaper.md\`, \`gemini-extension.json\`, and \`gemini-workpaper-context.md\`.
+Suggested files: \`AGENTS.md\`, \`CLAUDE.md\`, \`GEMINI.md\`, \`.github/copilot-instructions.md\`, \`.github/instructions/bilig-workpaper.instructions.md\`, \`.github/prompts/bilig-workpaper-proof.prompt.md\`, \`.vscode/mcp.json\`, \`.cursor/rules/bilig-workpaper.mdc\`, \`.devin/rules/bilig-workpaper.md\`, \`.clinerules/bilig-workpaper.md\`, \`.continue/rules/bilig-workpaper.md\`, \`.windsurf/rules/bilig-workpaper.md\`, \`gemini-extension.json\`, and \`gemini-workpaper-context.md\`.
 
 ## Provider-backed formulas
 
@@ -186,6 +188,7 @@ Expected tools: \`list_sheets\`, \`read_range\`, \`read_cell\`, \`set_cell_conte
 
 - Compact map: ${siteRoot}/llms.txt
 - Full agent context: ${siteRoot}/llms-full.txt
+- Agent rule chooser: ${siteRoot}/agent-rule-chooser.html
 - Agent instructions: ${siteRoot}/AGENTS.md
 - Agent manifest: ${siteRoot}/.well-known/agent.json
 - Agent adoption kit: ${siteRoot}/agent-adoption-kit.html

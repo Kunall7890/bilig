@@ -12,7 +12,7 @@ const expectedRuleTargets = [
   ['cursor', '.cursor/rules/bilig-workpaper.mdc'],
   ['cline', '.clinerules/bilig-workpaper.md'],
   ['continue', '.continue/rules/bilig-workpaper.md'],
-  ['windsurf', '.windsurf/rules/bilig-workpaper.md'],
+  ['windsurf', '.devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md'],
   ['gemini', 'GEMINI.md, gemini-extension.json, gemini-workpaper-context.md'],
   ['vscode-mcp', '.vscode/mcp.json'],
 ] as const
@@ -96,7 +96,7 @@ describe('bilig-agent-start', () => {
   it.each([
     ['cline', '.clinerules/bilig-workpaper.md', 'Cline', 'Cline can read this workspace rule'],
     ['continue', '.continue/rules/bilig-workpaper.md', 'Continue', 'name: Bilig WorkPaper Formula Check'],
-    ['windsurf', '.windsurf/rules/bilig-workpaper.md', 'Windsurf/Cascade', 'trigger: model_decision'],
+    ['windsurf', '.devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md', 'Windsurf/Cascade', 'trigger: model_decision'],
     ['gemini', 'GEMINI.md, gemini-extension.json, gemini-workpaper-context.md', 'Gemini CLI', 'gemini-workpaper-context.md'],
     ['vscode-mcp', '.vscode/mcp.json', 'VS Code agent mode', 'biligWorkpaperFile'],
     [
@@ -145,6 +145,7 @@ describe('bilig-agent-start', () => {
     })
     expect(agentStartHelpText()).toContain('Usage: bilig-agent-start')
     expect(agentStartHelpText()).toContain('cline        .clinerules/bilig-workpaper.md')
+    expect(agentStartHelpText()).toContain('windsurf     .devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md')
     expect(agentStartHelpText()).toContain('vscode-mcp   .vscode/mcp.json')
     expect(() => parseAgentStartCliArgs(['--bad'])).toThrow('Unknown bilig-agent-start argument')
     expect(() => parseAgentStartCliArgs(['--rules', 'bad'])).toThrow(

@@ -48,6 +48,10 @@ Start with the reusable prompt at
 `.github/prompts/bilig-workpaper-proof.prompt.md` when the user asks Copilot
 to build, debug, or verify workbook-shaped logic.
 
+Keep the repository-level custom instruction at
+`.github/instructions/bilig-workpaper.instructions.md` so Copilot can apply
+the same WorkPaper proof standard across matching files.
+
 For VS Code agent mode, the workspace MCP config at `.vscode/mcp.json`
 exposes:
 

@@ -9,6 +9,7 @@ export const docsSiteSources = [
   ['eval-workpaper-service.html', 'eval-workpaper-service.md'],
   ['eval-agent-mcp.html', 'eval-agent-mcp.md'],
   ['agent-adoption-kit.html', 'agent-adoption-kit.md'],
+  ['agent-rule-chooser.html', 'agent-rule-chooser.md'],
   ['agent-proof-matrix.html', 'agent-proof-matrix.md'],
   ['ai-agent-spreadsheet-tool-node.html', 'ai-agent-spreadsheet-tool-node.md'],
   ['agent-framework-workbook-tools.html', 'agent-framework-workbook-tools.md'],

@@ -28,9 +28,10 @@ This starter includes project instructions for common coding agents:
   `.github/instructions/bilig-workpaper.instructions.md`,
   `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc` and `.cursor/mcp.json`
+- Cascade/Devin: `.devin/rules/bilig-workpaper.md`
 - Cline: `.clinerules/bilig-workpaper.md`
 - Continue: `.continue/rules/bilig-workpaper.md`
-- Windsurf/Cascade: `.windsurf/rules/bilig-workpaper.md`
+- Windsurf/Cascade fallback: `.windsurf/rules/bilig-workpaper.md`
 
 ## Preferred Agent Loop
 

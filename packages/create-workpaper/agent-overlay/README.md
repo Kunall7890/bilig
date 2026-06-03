@@ -49,7 +49,7 @@ command from `mcp/bilig-workpaper.mcp.json`.
 
 Agent instruction files are included for Claude Code, Codex/AGENTS-aware
 tools, Gemini CLI, GitHub Copilot, VS Code agent mode, Cursor, Cline, Continue,
-and Windsurf/Cascade. They all point at the same rule: read first, edit one
+Cascade/Devin, and Windsurf/Cascade. They all point at the same rule: read first, edit one
 cell or formula, recalculate, read the dependent output, persist or export, and
 report proof.
 

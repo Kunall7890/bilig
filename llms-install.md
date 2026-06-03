@@ -112,12 +112,16 @@ Use the repo-local files when the agent is already inside a checkout:
 - Claude Code: `.claude/skills/bilig-workpaper/SKILL.md`
 - Claude Code command: `.claude/commands/bilig-workpaper-proof.md`
 - GitHub Copilot: `.github/copilot-instructions.md`
+- GitHub Copilot custom instructions: `.github/instructions/bilig-workpaper.instructions.md`
 - GitHub Copilot prompt: `.github/prompts/bilig-workpaper-proof.prompt.md`
 - VS Code MCP: `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
+- Cascade/Devin: `.devin/rules/bilig-workpaper.md`
 - Cline: `.clinerules/bilig-workpaper.md`
 - Continue: `.continue/rules/bilig-workpaper.md`
 - Windsurf/Cascade: `.windsurf/rules/bilig-workpaper.md`
+
+Rule chooser: <https://proompteng.github.io/bilig/agent-rule-chooser.html>
 
 ## Direct TypeScript path
 

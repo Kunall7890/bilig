@@ -13,6 +13,7 @@ const llmsFullSourceSpecs = [
   ['XLSX Cache Doctor GitHub Action', 'docs/xlsx-cache-doctor-github-action.md'],
   ['Evaluate WorkPaper In A Node Service', 'docs/eval-workpaper-service.md'],
   ['Agent Adoption Kit', 'docs/agent-adoption-kit.md'],
+  ['Coding Agent Rule Chooser', 'docs/agent-rule-chooser.md'],
   ['Evaluate Bilig As An Agent MCP Workbook Tool', 'docs/eval-agent-mcp.md'],
   ['Agent WorkPaper Proof Matrix', 'docs/agent-proof-matrix.md'],
   ['WorkPaper Package README', 'packages/workpaper/README.md'],

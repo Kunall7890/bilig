@@ -69,10 +69,11 @@ For an existing repo, add only the Bilig agent and MCP files:
 npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
-This writes `AGENTS.md`, Claude/Gemini/Copilot/Cursor/Cline/Continue/Windsurf
-rules, and MCP configs while keeping the existing app template, `README.md`,
-and `package.json` intact. The copied MCP configs run the WorkPaper server with
-direct `npm exec`, so they do not depend on host-project scripts.
+This writes `AGENTS.md`, Claude/Gemini/Copilot/Cursor/Cline/Continue/Cascade
+and Windsurf rules, and MCP configs while keeping the existing app template,
+`README.md`, and `package.json` intact. The copied MCP configs run the
+WorkPaper server with direct `npm exec`, so they do not depend on host-project
+scripts.
 
 For an existing repository that already uses Claude Code, add the project-local
 skill or slash command and run `/bilig-workpaper-proof` before any workbook
@@ -88,9 +89,13 @@ For GitHub Copilot or VS Code agent mode, keep the same rule in the repo:
 
 ```text
 .github/copilot-instructions.md
+.github/instructions/bilig-workpaper.instructions.md
 .github/prompts/bilig-workpaper-proof.prompt.md
 .vscode/mcp.json
 ```
+
+For the full host-to-file map, use the
+[coding agent rule chooser](agent-rule-chooser.md).
 
 ## Installable Agent Skill
 

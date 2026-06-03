@@ -20,6 +20,8 @@ export function requireLlmsInstallDiscovery({ docsLlmsInstall, llmsFull, llmsIns
   )
   requireIncludes(llmsInstall, '.clinerules/bilig-workpaper.md', 'llms-install.md')
   requireIncludes(llmsInstall, '.cursor/rules/bilig-workpaper.mdc', 'llms-install.md')
+  requireIncludes(llmsInstall, '.devin/rules/bilig-workpaper.md', 'llms-install.md')
+  requireIncludes(llmsInstall, 'https://proompteng.github.io/bilig/agent-rule-chooser.html', 'llms-install.md')
   requireIncludes(llmsInstall, 'set_cell_contents_and_readback', 'llms-install.md')
   requireIncludes(llmsInstall, 'Reject answers that only say a cell was written.', 'llms-install.md')
   if (Reflect.get(parsedAgentJson, 'llms_install') !== 'https://proompteng.github.io/bilig/llms-install.html') {

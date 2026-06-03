@@ -3,6 +3,7 @@ import { join } from 'node:path'
 
 import { agentFrameworkDocRequirements } from './check-docs-discovery-agent-pages.ts'
 import { requireAgentProofMatrixDiscovery } from './check-docs-discovery-agent-proof-matrix.ts'
+import { requireAgentRuleChooserDiscovery } from './check-docs-discovery-agent-rule-chooser.ts'
 import { requireIncludes, requireNotIncludes } from './check-docs-discovery-core.ts'
 import type { DocsDiscoveryContext } from './check-docs-discovery-context.ts'
 import { llmsExternalSurfaceLinks } from './check-docs-discovery-growth-links.ts'
@@ -22,6 +23,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     rootPackageJson,
     index,
     llms,
+    llmsFull,
     mcpServerCard,
     mcpServerCardMcpJson,
     mcpServerCardLegacyJson,
@@ -237,6 +239,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     requireIncludes(agentFrameworkWorkbookToolsDoc, required, 'docs/agent-framework-workbook-tools.md')
   }
   await requireAgentProofMatrixDiscovery({ docsRoot, index, llms, readme })
+  await requireAgentRuleChooserDiscovery({ docsRoot, index, llms, llmsFull, readme })
   for (const required of [
     'description: A compact playbook for agents that need workbook formulas without opening Excel',
     '## Copy-Paste Prompt For Another Agent',
@@ -246,6 +249,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list',
     '/bilig-workpaper-proof',
     '.claude/commands/bilig-workpaper-proof.md',
+    '.github/instructions/bilig-workpaper.instructions.md',
     '.github/prompts/bilig-workpaper-proof.prompt.md',
     '.vscode/mcp.json',
     '## The First Decision',

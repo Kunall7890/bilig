@@ -30,6 +30,7 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
    `npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list`.
 8. If you are using GitHub Copilot or VS Code agent mode in a cloned checkout,
    use `.github/copilot-instructions.md`,
+   `.github/instructions/bilig-workpaper.instructions.md`,
    `.github/prompts/bilig-workpaper-proof.prompt.md`, and
    `.vscode/mcp.json`.
 9. If you are inside a cloned Bilig repository with Claude Code, use the
@@ -38,6 +39,7 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
    `.claude/commands/bilig-workpaper-proof.md`.
 10. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
     `.cursor/rules/bilig-workpaper.mdc` or
+    `.devin/rules/bilig-workpaper.md`,
     `.windsurf/rules/bilig-workpaper.md`,
     `.clinerules/bilig-workpaper.md`, or
     `.continue/rules/bilig-workpaper.md`.
@@ -428,6 +430,10 @@ Evaluator examples live in
 [`examples/bilig-evaluator-proof`](examples/bilig-evaluator-proof).
 Agent and framework evaluators are ranked in the
 [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md).
+Use the [coding agent rule chooser](docs/agent-rule-chooser.md) when you need
+the exact instruction, rule, prompt, or MCP config file for Codex, Claude Code,
+GitHub Copilot, VS Code, Cursor, Windsurf/Cascade, Cline, Continue, or Gemini
+CLI.
 
 Project site: <https://proompteng.github.io/bilig/>
 
@@ -441,6 +447,7 @@ Pick the path that matches the job:
 | Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | report-only workbook findings before the workflow blocks anything.                        |
 | A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)         | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.    |
 | A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                              | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`. |
+| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Windsurf, Cline, Continue, or Gemini. |
 | You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md) | the smallest command or example for the host boundary, plus what it does and does not prove. |
 | Existing XLSX outputs need refreshed cached results                     | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                   | changed input, recalculated output, output workbook, and `recalculationCompleted: true`.  |
 
@@ -659,8 +666,9 @@ locally. Cloned checkouts expose the same workflow through
 `.claude/skills/bilig-workpaper/SKILL.md`,
 `.claude/commands/bilig-workpaper-proof.md`,
 `.cursor/mcp.json`,
-`.cursor/rules/bilig-workpaper.mdc`, `.windsurf/rules/bilig-workpaper.md`,
-`.clinerules/bilig-workpaper.md`, `.continue/rules/bilig-workpaper.md`,
+`.cursor/rules/bilig-workpaper.mdc`, `.devin/rules/bilig-workpaper.md`,
+`.windsurf/rules/bilig-workpaper.md`, `.clinerules/bilig-workpaper.md`,
+`.continue/rules/bilig-workpaper.md`,
 `.vscode/mcp.json`, and `mcp/bilig-workpaper.mcp.json`.
 The public docs expose the same agent path through
 [`docs/.well-known/agent.json`](docs/.well-known/agent.json).
@@ -750,6 +758,8 @@ when the repo is cloned locally, and can invoke the explicit proof prompt from
 [`.claude/commands/bilig-workpaper-proof.md`](.claude/commands/bilig-workpaper-proof.md).
 Cursor and Windsurf/Cascade read the same proof loop from
 [`.cursor/rules/bilig-workpaper.mdc`](.cursor/rules/bilig-workpaper.mdc) and
+the Cascade rule mirrors at
+[`.devin/rules/bilig-workpaper.md`](.devin/rules/bilig-workpaper.md) and
 [`.windsurf/rules/bilig-workpaper.md`](.windsurf/rules/bilig-workpaper.md).
 Cline and Continue read the workspace rules from
 [`.clinerules/bilig-workpaper.md`](.clinerules/bilig-workpaper.md) and
@@ -1482,12 +1492,16 @@ Use the repo-local files when the agent is already inside a checkout:
 - Claude Code: `.claude/skills/bilig-workpaper/SKILL.md`
 - Claude Code command: `.claude/commands/bilig-workpaper-proof.md`
 - GitHub Copilot: `.github/copilot-instructions.md`
+- GitHub Copilot custom instructions: `.github/instructions/bilig-workpaper.instructions.md`
 - GitHub Copilot prompt: `.github/prompts/bilig-workpaper-proof.prompt.md`
 - VS Code MCP: `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
+- Cascade/Devin: `.devin/rules/bilig-workpaper.md`
 - Cline: `.clinerules/bilig-workpaper.md`
 - Continue: `.continue/rules/bilig-workpaper.md`
 - Windsurf/Cascade: `.windsurf/rules/bilig-workpaper.md`
+
+Rule chooser: <https://proompteng.github.io/bilig/agent-rule-chooser.html>
 
 ## Direct TypeScript path
 
@@ -2349,9 +2363,11 @@ rules instead:
   `/bilig-workpaper-proof` from `.claude/commands/bilig-workpaper-proof.md`
 - GitHub Copilot / VS Code agent mode:
   `.github/copilot-instructions.md`,
+  `.github/instructions/bilig-workpaper.instructions.md`,
   `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
-- Windsurf/Cascade: `.windsurf/rules/bilig-workpaper.md`
+- Windsurf/Cascade: `.devin/rules/bilig-workpaper.md`, with
+  `.windsurf/rules/bilig-workpaper.md` as the fallback mirror
 - Cline: `.clinerules/bilig-workpaper.md`
 - Continue: `.continue/rules/bilig-workpaper.md`
 
@@ -2385,6 +2401,9 @@ For web fetch, give the agent the compact map first:
 ```text
 https://proompteng.github.io/bilig/llms.txt
 ```
+
+When you only need to pick the right repo-local rule or MCP config file, use
+the [coding agent rule chooser](agent-rule-chooser.md).
 
 ## Run The No-Key Check
 
@@ -2550,6 +2569,93 @@ If it almost works but adoption is blocked, open the concrete blocker:
 - [MCP client setup](mcp-client-setup.md)
 - [Agent workbook challenge](agent-workbook-challenge.md)
 - [Workbook tools for agent frameworks](agent-framework-workbook-tools.md)
+
+---
+
+## Coding Agent Rule Chooser
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/agent-rule-chooser.md
+
+# Coding Agent Rule Chooser
+
+Use this page when a coding agent is in a cloned repo and you need to know
+which Bilig file it should read before spreadsheet-shaped work.
+
+Run the no-key agent MCP proof first:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+The result must include `schemaVersion: "bilig-evaluator.v1"`,
+`door: "agent-mcp"`, `verified: true`, edited cell evidence, formula readback,
+exported or persisted WorkPaper state, and restore or restart readback. A write
+call alone is not success.
+
+## Quick Choice
+
+| Agent host | Use this Bilig file | Tool hookup | Proof bar |
+| --- | --- | --- | --- |
+| Codex | `AGENTS.md` in the repo directory chain. Public handoff: `docs/AGENTS.md`. | Optional `.mcp.json` when the Codex environment supports MCP. | Run `bilig-agent-start --json`, then `bilig-evaluate --door agent-mcp --json`. |
+| Claude Code | `.claude/skills/bilig-workpaper/SKILL.md` or `.claude/commands/bilig-workpaper-proof.md`. | `.mcp.json` defines the file-backed `bilig-workpaper` stdio server. | Use `/bilig-workpaper-proof <task>` before Excel, LibreOffice, Sheets, browser grids, or screenshots. |
+| GitHub Copilot | `.github/copilot-instructions.md` plus `.github/instructions/bilig-workpaper.instructions.md`. | `.github/prompts/bilig-workpaper-proof.prompt.md` for the task prompt, `.vscode/mcp.json` in VS Code. | Copilot should return WorkPaper readback fields, not spreadsheet UI status. |
+| VS Code agent mode | `.github/copilot-instructions.md` and `.github/instructions/bilig-workpaper.instructions.md`. | `.vscode/mcp.json` for `biligWorkpaperDemo` and `biligWorkpaperFile`. | Use the workspace MCP config before copying a generic `mcpServers` manifest. |
+| Cursor | `.cursor/rules/bilig-workpaper.mdc`. | `.cursor/mcp.json` for local file-backed WorkPaper tools. | Treat `.cursorrules` as legacy; use the project rule and MCP config here. |
+| Windsurf/Cascade | `.devin/rules/bilig-workpaper.md`, with `.windsurf/rules/bilig-workpaper.md` kept as a fallback. | Start with the same `bilig-evaluate --door agent-mcp --json` command, then file-backed MCP if state must persist. | The rule uses `trigger: model_decision`; require computed readback before reporting success. |
+| Cline | `.clinerules/bilig-workpaper.md`. | Add MCP separately only if your Cline setup exposes custom MCP servers. | Cline should use the workspace rule when workbook formulas, cells, or MCP spreadsheet tools appear. |
+| Continue | `.continue/rules/bilig-workpaper.md`. | Configure MCP separately through Continue if you want direct tool calls. | Local rules are version controlled; use this one for Agent, Chat, and Edit requests that touch workbook logic. |
+| Gemini CLI | `gemini-extension.json` plus `gemini-workpaper-context.md`; generated starters also include `GEMINI.md`. | `gemini extensions install https://github.com/proompteng/bilig --ref main`. | The extension starts the `bilig-workpaper` MCP server and injects the WorkPaper proof context. |
+
+## Existing Repo Overlay
+
+For a repo that already has app code, add only the agent and MCP files:
+
+```sh
+npm create @bilig/workpaper@latest . -- --add-agent
+```
+
+That overlay writes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot and VS Code
+instructions, Cursor, Cline, Continue, Cascade/Devin and Windsurf rules, and
+MCP configs. It does not overwrite an existing app `README.md` or
+`package.json`.
+
+For a blank agent-ready project, use:
+
+```sh
+npm create @bilig/workpaper@latest pricing-agent -- --agent
+```
+
+## Confusion Guards
+
+- `docs/AGENTS.md` is a public handoff page. Codex reads `AGENTS.md` from the
+  cloned repo directory chain.
+- Claude Code reads `CLAUDE.md`, not `AGENTS.md`; this repo uses a Claude Code
+  skill and slash command for the WorkPaper proof procedure.
+- `.vscode/mcp.json` uses the VS Code `servers` shape. `mcp/bilig-workpaper.mcp.json`
+  is the reusable `mcpServers` shape for other clients.
+- Cascade/Devin docs currently prefer `.devin/rules`; the `.windsurf/rules`
+  mirror remains for compatible Windsurf/Cascade installs.
+- `GEMINI.md` is the normal Gemini CLI context file, but this repo exposes the
+  installable Gemini extension path first.
+
+## Official Host Docs Checked
+
+- [Codex AGENTS.md](https://github.com/openai/codex/blob/main/docs/agents_md.md)
+- [Claude Code memory](https://code.claude.com/docs/en/memory)
+- [GitHub Copilot response customization](https://docs.github.com/en/copilot/concepts/prompting/response-customization)
+- [VS Code MCP configuration](https://code.visualstudio.com/docs/copilot/reference/mcp-configuration)
+- [Cursor rules](https://docs.cursor.com/en/context/rules)
+- [Windsurf/Cascade memories and rules](https://docs.windsurf.com/windsurf/cascade/memories)
+- [Cline rules](https://docs.cline.bot/customization/cline-rules)
+- [Continue rules](https://docs.continue.dev/customize/rules)
+- [Gemini CLI GEMINI.md context](https://google-gemini.github.io/gemini-cli/docs/cli/gemini-md.html)
+
+## Related
+
+- [Agent Adoption Kit](agent-adoption-kit.md)
+- [Agent WorkPaper proof matrix](agent-proof-matrix.md)
+- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
 
 ---
 
@@ -3241,10 +3347,11 @@ For an existing repo, add only the Bilig agent and MCP files:
 npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
-This writes `AGENTS.md`, Claude/Gemini/Copilot/Cursor/Cline/Continue/Windsurf
-rules, and MCP configs while keeping the existing app template, `README.md`,
-and `package.json` intact. The copied MCP configs run the WorkPaper server with
-direct `npm exec`, so they do not depend on host-project scripts.
+This writes `AGENTS.md`, Claude/Gemini/Copilot/Cursor/Cline/Continue/Cascade
+and Windsurf rules, and MCP configs while keeping the existing app template,
+`README.md`, and `package.json` intact. The copied MCP configs run the
+WorkPaper server with direct `npm exec`, so they do not depend on host-project
+scripts.
 
 For an existing repository that already uses Claude Code, add the project-local
 skill or slash command and run `/bilig-workpaper-proof` before any workbook
@@ -3260,9 +3367,13 @@ For GitHub Copilot or VS Code agent mode, keep the same rule in the repo:
 
 ```text
 .github/copilot-instructions.md
+.github/instructions/bilig-workpaper.instructions.md
 .github/prompts/bilig-workpaper-proof.prompt.md
 .vscode/mcp.json
 ```
+
+For the full host-to-file map, use the
+[coding agent rule chooser](agent-rule-chooser.md).
 
 ## Installable Agent Skill
 

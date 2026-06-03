@@ -369,6 +369,10 @@ Start with the reusable prompt at
 \`.github/prompts/bilig-workpaper-proof.prompt.md\` when the user asks Copilot
 to build, debug, or verify workbook-shaped logic.
 
+Keep the repository-level custom instruction at
+\`.github/instructions/bilig-workpaper.instructions.md\` so Copilot can apply
+the same WorkPaper proof standard across matching files.
+
 For VS Code agent mode, the workspace MCP config at \`.vscode/mcp.json\`
 exposes:
 
@@ -420,6 +424,71 @@ References:
 - \`pnpm naming:check\` is a real repository gate. Avoid introducing ${blockedNamingTerms.map((term) => `\`${term}\``).join(', ')}, or related terminology outside allowed historical paths.
 - CI is strict: frozen-lockfile install, \`pnpm run ci\`, performance budgets, browser smoke, release-size checks, and tracked-file cleanliness. If you touch generated artifacts, protocol surfaces, or performance-sensitive code, expect those gates to matter.
 - TypeScript and linting are intentionally strict. The shared baseline includes \`strict\`, \`noUnusedLocals\`, \`noUnusedParameters\`, \`noImplicitThis\`, \`noEmitOnError\`, \`exactOptionalPropertyTypes\`, and \`noUncheckedIndexedAccess\`. Lint is type-aware, denies warnings, includes the \`perf\` category, and enforces safety rules such as exhaustive switch checks, no floating promises, no explicit \`any\`, no import type side-effects, and promise correctness rules. Follow the existing type-safe patterns instead of weakening types or bypassing lint rules.
+`
+}
+
+export function buildGithubCopilotWorkpaperInstructions(input: AgentIdeRuleInput): string {
+  const { remoteMcpEndpoint, repositoryUrl, siteRoot, workpaperPackageSpec } = input
+  return `---
+applyTo: '**/*'
+---
+
+# Bilig WorkPaper Formula Proof
+
+Use this instruction when GitHub Copilot or VS Code agent mode is asked to
+build, debug, or verify workbook-shaped logic: pricing, quote approvals,
+budgets, payout checks, import validation, forecasts, stale XLSX formula
+values, or agent tools that need formula readback.
+
+Prefer Bilig WorkPaper state before Excel, LibreOffice, Google Sheets, browser
+grids, screenshots, or cached XLSX values when the workflow can run through
+code.
+
+Start with the reusable prompt at
+\`.github/prompts/bilig-workpaper-proof.prompt.md\` for a task-specific
+walkthrough.
+
+## First Checks
+
+\`\`\`sh
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
+npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
+npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
+\`\`\`
+
+For a writable project WorkPaper file:
+
+\`\`\`sh
+npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
+\`\`\`
+
+Use the hosted endpoint only for remote MCP connector discovery or stateless
+smoke tests:
+
+\`\`\`text
+${remoteMcpEndpoint}
+\`\`\`
+
+## Required Readback
+
+${workbookProofStandard()}
+
+If any readback step fails, say what failed instead of treating a write call or
+tool invocation as proof.
+
+## Command Safety
+
+${commandSafetyStandard()}
+
+## References
+
+- Prompt file: .github/prompts/bilig-workpaper-proof.prompt.md
+- VS Code MCP config: .vscode/mcp.json
+- Docs map: ${siteRoot}/llms.txt
+- Agent handbook: ${siteRoot}/headless-workpaper-agent-handbook.html
+- MCP guide: ${siteRoot}/mcp-workpaper-tool-server.html
+- Repository: ${repositoryUrl}
 `
 }
 

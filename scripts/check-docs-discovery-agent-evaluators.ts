@@ -20,6 +20,7 @@ export async function requireAgentEvaluatorDiscovery(input: {
   requireIncludes(readme, '.claude/skills/bilig-workpaper/SKILL.md', 'README.md')
   requireIncludes(readme, '.claude/commands/bilig-workpaper-proof.md', 'README.md')
   requireIncludes(readme, '.cursor/rules/bilig-workpaper.mdc', 'README.md')
+  requireIncludes(readme, '.devin/rules/bilig-workpaper.md', 'README.md')
   requireIncludes(readme, '.windsurf/rules/bilig-workpaper.md', 'README.md')
   requireIncludes(readme, '.clinerules/bilig-workpaper.md', 'README.md')
   requireIncludes(readme, '.continue/rules/bilig-workpaper.md', 'README.md')

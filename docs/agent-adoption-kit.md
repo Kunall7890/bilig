@@ -57,9 +57,11 @@ rules instead:
   `/bilig-workpaper-proof` from `.claude/commands/bilig-workpaper-proof.md`
 - GitHub Copilot / VS Code agent mode:
   `.github/copilot-instructions.md`,
+  `.github/instructions/bilig-workpaper.instructions.md`,
   `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
-- Windsurf/Cascade: `.windsurf/rules/bilig-workpaper.md`
+- Windsurf/Cascade: `.devin/rules/bilig-workpaper.md`, with
+  `.windsurf/rules/bilig-workpaper.md` as the fallback mirror
 - Cline: `.clinerules/bilig-workpaper.md`
 - Continue: `.continue/rules/bilig-workpaper.md`
 
@@ -93,6 +95,9 @@ For web fetch, give the agent the compact map first:
 ```text
 https://proompteng.github.io/bilig/llms.txt
 ```
+
+When you only need to pick the right repo-local rule or MCP config file, use
+the [coding agent rule chooser](agent-rule-chooser.md).
 
 ## Run The No-Key Check
 

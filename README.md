@@ -95,6 +95,10 @@ Evaluator examples live in
 [`examples/bilig-evaluator-proof`](examples/bilig-evaluator-proof).
 Agent and framework evaluators are ranked in the
 [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md).
+Use the [coding agent rule chooser](docs/agent-rule-chooser.md) when you need
+the exact instruction, rule, prompt, or MCP config file for Codex, Claude Code,
+GitHub Copilot, VS Code, Cursor, Windsurf/Cascade, Cline, Continue, or Gemini
+CLI.
 
 Project site: <https://proompteng.github.io/bilig/>
 
@@ -108,6 +112,7 @@ Pick the path that matches the job:
 | Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | report-only workbook findings before the workflow blocks anything.                        |
 | A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)         | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.    |
 | A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                              | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`. |
+| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Windsurf, Cline, Continue, or Gemini. |
 | You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md) | the smallest command or example for the host boundary, plus what it does and does not prove. |
 | Existing XLSX outputs need refreshed cached results                     | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                   | changed input, recalculated output, output workbook, and `recalculationCompleted: true`.  |
 
@@ -326,8 +331,9 @@ locally. Cloned checkouts expose the same workflow through
 `.claude/skills/bilig-workpaper/SKILL.md`,
 `.claude/commands/bilig-workpaper-proof.md`,
 `.cursor/mcp.json`,
-`.cursor/rules/bilig-workpaper.mdc`, `.windsurf/rules/bilig-workpaper.md`,
-`.clinerules/bilig-workpaper.md`, `.continue/rules/bilig-workpaper.md`,
+`.cursor/rules/bilig-workpaper.mdc`, `.devin/rules/bilig-workpaper.md`,
+`.windsurf/rules/bilig-workpaper.md`, `.clinerules/bilig-workpaper.md`,
+`.continue/rules/bilig-workpaper.md`,
 `.vscode/mcp.json`, and `mcp/bilig-workpaper.mcp.json`.
 The public docs expose the same agent path through
 [`docs/.well-known/agent.json`](docs/.well-known/agent.json).
@@ -417,6 +423,8 @@ when the repo is cloned locally, and can invoke the explicit proof prompt from
 [`.claude/commands/bilig-workpaper-proof.md`](.claude/commands/bilig-workpaper-proof.md).
 Cursor and Windsurf/Cascade read the same proof loop from
 [`.cursor/rules/bilig-workpaper.mdc`](.cursor/rules/bilig-workpaper.mdc) and
+the Cascade rule mirrors at
+[`.devin/rules/bilig-workpaper.md`](.devin/rules/bilig-workpaper.md) and
 [`.windsurf/rules/bilig-workpaper.md`](.windsurf/rules/bilig-workpaper.md).
 Cline and Continue read the workspace rules from
 [`.clinerules/bilig-workpaper.md`](.clinerules/bilig-workpaper.md) and

@@ -35,7 +35,7 @@ For an existing repo that should receive the full starter overlay, run:
 npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
-Suggested files: `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.github/prompts/bilig-workpaper-proof.prompt.md`, `.vscode/mcp.json`, `.cursor/rules/bilig-workpaper.mdc`, `.clinerules/bilig-workpaper.md`, `.continue/rules/bilig-workpaper.md`, `.windsurf/rules/bilig-workpaper.md`, `gemini-extension.json`, and `gemini-workpaper-context.md`.
+Suggested files: `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.github/instructions/bilig-workpaper.instructions.md`, `.github/prompts/bilig-workpaper-proof.prompt.md`, `.vscode/mcp.json`, `.cursor/rules/bilig-workpaper.mdc`, `.devin/rules/bilig-workpaper.md`, `.clinerules/bilig-workpaper.md`, `.continue/rules/bilig-workpaper.md`, `.windsurf/rules/bilig-workpaper.md`, `gemini-extension.json`, and `gemini-workpaper-context.md`.
 
 ## Provider-backed formulas
 
@@ -75,6 +75,7 @@ Expected tools: `list_sheets`, `read_range`, `read_cell`, `set_cell_contents`, `
 
 - Compact map: https://proompteng.github.io/bilig/llms.txt
 - Full agent context: https://proompteng.github.io/bilig/llms-full.txt
+- Agent rule chooser: https://proompteng.github.io/bilig/agent-rule-chooser.html
 - Agent instructions: https://proompteng.github.io/bilig/AGENTS.md
 - Agent manifest: https://proompteng.github.io/bilig/.well-known/agent.json
 - Agent adoption kit: https://proompteng.github.io/bilig/agent-adoption-kit.html

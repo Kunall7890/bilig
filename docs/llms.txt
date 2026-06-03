@@ -24,6 +24,7 @@ agent install source: https://github.com/proompteng/bilig/blob/main/llms-install
 well-known llms.txt: https://proompteng.github.io/bilig/.well-known/llms.txt
 well-known llms-full.txt: https://proompteng.github.io/bilig/.well-known/llms-full.txt
 agent adoption kit: https://proompteng.github.io/bilig/agent-adoption-kit.html
+agent rule chooser: https://proompteng.github.io/bilig/agent-rule-chooser.html
 agent proof matrix: https://proompteng.github.io/bilig/agent-proof-matrix.html
 MCP spreadsheet formula server for coding agents: https://proompteng.github.io/bilig/mcp-spreadsheet-formula-server-for-coding-agents.html
 Vercel AI SDK formula readback: https://proompteng.github.io/bilig/vercel-ai-sdk-spreadsheet-tool-formula-readback.html
@@ -35,11 +36,13 @@ Claude Code project skill: https://github.com/proompteng/bilig/blob/main/.claude
 Claude Code proof command: https://github.com/proompteng/bilig/blob/main/.claude/commands/bilig-workpaper-proof.md
 Claude Code MCP config: https://github.com/proompteng/bilig/blob/main/.mcp.json
 GitHub Copilot instructions: https://github.com/proompteng/bilig/blob/main/.github/copilot-instructions.md
+GitHub Copilot custom instructions: https://github.com/proompteng/bilig/blob/main/.github/instructions/bilig-workpaper.instructions.md
 GitHub Copilot prompt: https://github.com/proompteng/bilig/blob/main/.github/prompts/bilig-workpaper-proof.prompt.md
 VS Code MCP workspace config: https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json
 Cursor MCP workspace config: https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json
 Cursor project rule: https://github.com/proompteng/bilig/blob/main/.cursor/rules/bilig-workpaper.mdc
 reusable MCP server config: https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json
+Cascade/Devin workspace rule: https://github.com/proompteng/bilig/blob/main/.devin/rules/bilig-workpaper.md
 Windsurf Cascade workspace rule: https://github.com/proompteng/bilig/blob/main/.windsurf/rules/bilig-workpaper.md
 Cline workspace rule: https://github.com/proompteng/bilig/blob/main/.clinerules/bilig-workpaper.md
 Continue workspace rule: https://github.com/proompteng/bilig/blob/main/.continue/rules/bilig-workpaper.md
@@ -95,6 +98,8 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   https://github.com/proompteng/bilig/blob/main/llms-install.md
   https://proompteng.github.io/bilig/agent-adoption-kit.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-adoption-kit.md
+  https://proompteng.github.io/bilig/agent-rule-chooser.html
+  https://github.com/proompteng/bilig/blob/main/docs/agent-rule-chooser.md
   `npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list`
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json`.

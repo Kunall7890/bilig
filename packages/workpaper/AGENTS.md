@@ -15,6 +15,7 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
    `npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list`.
 8. If you are using GitHub Copilot or VS Code agent mode in a cloned checkout,
    use `.github/copilot-instructions.md`,
+   `.github/instructions/bilig-workpaper.instructions.md`,
    `.github/prompts/bilig-workpaper-proof.prompt.md`, and
    `.vscode/mcp.json`.
 9. If you are inside a cloned Bilig repository with Claude Code, use the
@@ -23,6 +24,7 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
    `.claude/commands/bilig-workpaper-proof.md`.
 10. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
     `.cursor/rules/bilig-workpaper.mdc` or
+    `.devin/rules/bilig-workpaper.md`,
     `.windsurf/rules/bilig-workpaper.md`,
     `.clinerules/bilig-workpaper.md`, or
     `.continue/rules/bilig-workpaper.md`.

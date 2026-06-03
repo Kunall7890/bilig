@@ -137,7 +137,7 @@ export function agentStartHelpText(): string {
     '  cursor       .cursor/rules/bilig-workpaper.mdc',
     '  cline        .clinerules/bilig-workpaper.md',
     '  continue     .continue/rules/bilig-workpaper.md',
-    '  windsurf     .windsurf/rules/bilig-workpaper.md',
+    '  windsurf     .devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md',
     '  gemini       GEMINI.md, gemini-extension.json, gemini-workpaper-context.md',
     '  vscode-mcp   .vscode/mcp.json',
     '',
@@ -221,7 +221,7 @@ export function buildAgentStartDecisionCard(): AgentStartDecisionCard {
       },
       {
         target: 'windsurf',
-        file: '.windsurf/rules/bilig-workpaper.md',
+        file: '.devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md',
         command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules windsurf',
       },
       {
@@ -421,7 +421,7 @@ The \`.vscode/mcp.json\` file should define \`biligWorkpaperDemo\` and
     return 'Continue can read this workspace rule from `.continue/rules/bilig-workpaper.md`.'
   }
   if (target === 'windsurf') {
-    return 'Windsurf/Cascade can read this workspace rule from `.windsurf/rules/bilig-workpaper.md`.'
+    return 'Cascade can read this workspace rule from `.devin/rules/bilig-workpaper.md`; `.windsurf/rules/bilig-workpaper.md` remains the fallback path.'
   }
   return 'Use this as the project-level instruction file for the agent.'
 }
