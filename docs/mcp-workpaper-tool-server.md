@@ -109,6 +109,72 @@ That single response proves the tool changed one input cell, recalculated
 dependent formulas, preserved the formulas through WorkPaper JSON
 serialization, restored the document, and returned machine-checkable readback.
 
+## MCP Inspector Smoke
+
+Use the official MCP Inspector when a directory reviewer, agent host, or
+cautious local user wants to inspect the packaged stdio server with a neutral
+MCP client before adding it to Cursor, Claude, VS Code, or another tool host.
+The Inspector project documents this command shape at
+<https://modelcontextprotocol.io/docs/tools/inspector> and the current package
+is `@modelcontextprotocol/inspector`.
+
+List the default demo tools:
+
+```sh
+npx -y @modelcontextprotocol/inspector@latest --cli \
+  npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp \
+  --method tools/list
+```
+
+Expected tool names:
+
+```text
+read_workpaper_summary
+set_workpaper_input_cell
+```
+
+Then call the write/readback tool:
+
+```sh
+npx -y @modelcontextprotocol/inspector@latest --cli \
+  npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp \
+  --method tools/call \
+  --tool-name set_workpaper_input_cell \
+  --tool-arg sheetName=Inputs \
+  --tool-arg address=B3 \
+  --tool-arg value=0.4
+```
+
+The useful output is the `structuredContent` object. A passing Inspector call
+returns this shape:
+
+```json
+{
+  "editedCell": "Inputs!B3",
+  "before": { "expectedArr": 60000 },
+  "after": { "expectedArr": 96000 },
+  "restored": { "expectedArr": 96000 },
+  "checks": {
+    "formulasPersisted": true,
+    "restoredMatchesAfter": true,
+    "expectedArrChanged": true,
+    "serializedBytes": 1162
+  }
+}
+```
+
+The top-level Inspector result should also report `"isError": false`.
+
+This Inspector smoke launches default demo mode, which intentionally has two
+demo tools. For private workbook files and persistent project state, use the
+file-backed config in `.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, or
+`mcp/bilig-workpaper.mcp.json`; that mode exposes the eight general WorkPaper
+tools listed below.
+
+Keep the Inspector proxy on localhost. It can spawn local processes, so do not
+expose it to untrusted networks or disable its auth token for ordinary
+inspection.
+
 If you want the raw newline-delimited JSON-RPC request stream instead of the
 maintained transcript wrapper, use:
 

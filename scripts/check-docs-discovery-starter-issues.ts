@@ -1,11 +1,11 @@
 import { requireIncludes, requireNotIncludes } from './check-docs-discovery-core.ts'
 
-const currentStarterIssueNumbers = [273, 283, 285, 300, 334, 358, 360, 361, 362, 363, 366, 367, 368, 369, 371] as const
+const currentStarterIssueNumbers = [273, 283, 300, 334, 358, 360, 361, 362, 363, 366, 367, 368, 369, 371] as const
 
 const closedStarterIssueNumbers = [
   137, 138, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 154, 224, 231, 199, 200, 201, 202, 203, 204, 205, 228, 229, 246,
   266, 282, 294, 160, 161, 164, 165, 166, 168, 169, 170, 171, 172, 173, 174, 175, 176, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187,
-  188, 189, 190, 191, 192, 276, 227, 247, 256, 315, 316, 317, 318, 319, 336, 341, 343, 344, 345, 346, 347, 354, 364, 374, 377, 380,
+  188, 189, 190, 191, 192, 276, 227, 247, 256, 315, 316, 317, 318, 319, 336, 341, 343, 344, 345, 346, 347, 354, 364, 374, 377, 380, 285,
 ] as const
 
 interface StarterIssueDiscoveryInputs {
@@ -34,12 +34,12 @@ export function requireStarterIssueDiscovery(inputsOrStarterIssues: StarterIssue
   requireIncludes(contributing, 'pull requests on GitHub are welcome; maintainers', 'CONTRIBUTING.md')
   requireIncludes(starterIssues, 'new-contributor-guide.md#first-time-command-checklist', 'docs/starter-issues.md')
   requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/blob/main/CONTRIBUTING.md', 'docs/starter-issues.md')
-  requireIncludes(starterIssues, 'Current starter queue as of May 16, 2026:', 'docs/starter-issues.md')
-  requireIncludes(starterIssues, '15 open `good first issue` issues.', 'docs/starter-issues.md')
-  requireIncludes(starterIssues, '15 open `first-timers-only` issues.', 'docs/starter-issues.md')
-  requireIncludes(starterIssues, '15 open `help wanted` issues.', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, 'Current starter queue as of June 3, 2026:', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, '14 open `good first issue` issues.', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, '14 open `first-timers-only` issues.', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, '14 open `help wanted` issues.', 'docs/starter-issues.md')
   requireIncludes(starterIssues, '9 starter issues are code or test tasks.', 'docs/starter-issues.md')
-  requireIncludes(starterIssues, '6 starter issues are focused docs or integration transcript tasks.', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, '5 starter issues are focused docs or integration transcript tasks.', 'docs/starter-issues.md')
   requireIncludes(starterIssues, '0 starter issues are currently under active review.', 'docs/starter-issues.md')
   requireIncludes(starterIssues, '## Start Here This Week', 'docs/starter-issues.md')
   requireIncludes(starterIssues, 'adds the most familiar Node service entry point.', 'docs/starter-issues.md')
@@ -61,11 +61,6 @@ export function requireStarterIssueDiscovery(inputsOrStarterIssues: StarterIssue
   requireIncludes(starterIssues, '#371: test(examples): add deterministic markdown-report output test', 'docs/starter-issues.md')
   requireIncludes(starterIssues, '#273: docs(examples): add Express WorkPaper route smoke', 'docs/starter-issues.md')
   requireIncludes(starterIssues, '#283: docs(mcp): add Cursor MCP config for the WorkPaper stdio server', 'docs/starter-issues.md')
-  requireIncludes(
-    starterIssues,
-    '#285: docs(mcp): add MCP Inspector smoke-test transcript for the WorkPaper server',
-    'docs/starter-issues.md',
-  )
   requireIncludes(starterIssues, '#300: docs(examples): add tRPC WorkPaper procedure smoke', 'docs/starter-issues.md')
   requireIncludes(starterIssues, '#334: docs(agent): add OpenAI Responses streaming tool-call transcript', 'docs/starter-issues.md')
   requireIncludes(starterIssues, '#358: docs(agent): add AI SDK onStepFinish WorkPaper transcript', 'docs/starter-issues.md')
@@ -90,7 +85,6 @@ export function requireStarterIssueDiscovery(inputsOrStarterIssues: StarterIssue
   requireIncludes(llms, 'first-patch list capped at 15 scoped issues.', 'docs/llms.txt')
   requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/273', 'docs/llms.txt')
   requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/283', 'docs/llms.txt')
-  requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/285', 'docs/llms.txt')
   requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/300', 'docs/llms.txt')
   requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/334', 'docs/llms.txt')
   requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/358', 'docs/llms.txt')

@@ -416,6 +416,25 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   )
   requireIncludes(mcpWorkPaperToolServerDoc, '"structuredContent": {', 'docs/mcp-workpaper-tool-server.md')
   requireIncludes(mcpWorkPaperToolServerDoc, '"restoredMatchesAfter": true', 'docs/mcp-workpaper-tool-server.md')
+  for (const required of [
+    '## MCP Inspector Smoke',
+    'https://modelcontextprotocol.io/docs/tools/inspector',
+    '@modelcontextprotocol/inspector@latest',
+    '--method tools/list',
+    '--method tools/call',
+    '--tool-name set_workpaper_input_cell',
+    '--tool-arg value=0.4',
+    'read_workpaper_summary',
+    'set_workpaper_input_cell',
+    '"before": { "expectedArr": 60000 }',
+    '"after": { "expectedArr": 96000 }',
+    '"restored": { "expectedArr": 96000 }',
+    '"serializedBytes": 1162',
+    'This Inspector smoke launches default demo mode',
+    'Keep the Inspector proxy on localhost',
+  ]) {
+    requireIncludes(mcpWorkPaperToolServerDoc, required, 'docs/mcp-workpaper-tool-server.md')
+  }
   requireIncludes(
     headlessExamplePackageJson,
     '"agent:mcp-transcript": "node --disable-warning=DEP0205 --import tsx mcp-stdio-transcript.ts"',

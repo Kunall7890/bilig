@@ -883,8 +883,6 @@ including its worst p95 row.
   before browsing the full issue queue.
 - current small docs issue: Cursor MCP config for the WorkPaper stdio server:
   https://github.com/proompteng/bilig/issues/283
-- current small docs issue: MCP Inspector smoke-test transcript:
-  https://github.com/proompteng/bilig/issues/285
 - current small example issue: tRPC WorkPaper procedure smoke:
   https://github.com/proompteng/bilig/issues/300
 - current small example issue: Express WorkPaper route smoke:

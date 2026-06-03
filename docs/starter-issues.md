@@ -13,13 +13,13 @@ intentionally stays short: GitHub's `good first issue`, `first-timers-only`, and
 `help wanted` labels should point to work that is current, scoped, and credible
 for someone opening the repository cold.
 
-Current starter queue as of May 16, 2026:
+Current starter queue as of June 3, 2026:
 
-- 15 open `good first issue` issues.
-- 15 open `first-timers-only` issues.
-- 15 open `help wanted` issues.
+- 14 open `good first issue` issues.
+- 14 open `first-timers-only` issues.
+- 14 open `help wanted` issues.
 - 9 starter issues are code or test tasks.
-- 6 starter issues are focused docs or integration transcript tasks.
+- 5 starter issues are focused docs or integration transcript tasks.
 - 0 starter issues are currently under active review.
 
 ## Start Here This Week
@@ -61,7 +61,6 @@ issue list. They are small, current, and map to the public adoption path for
 
 - [#273: docs(examples): add Express WorkPaper route smoke](https://github.com/proompteng/bilig/issues/273)
 - [#283: docs(mcp): add Cursor MCP config for the WorkPaper stdio server](https://github.com/proompteng/bilig/issues/283)
-- [#285: docs(mcp): add MCP Inspector smoke-test transcript for the WorkPaper server](https://github.com/proompteng/bilig/issues/285)
 - [#300: docs(examples): add tRPC WorkPaper procedure smoke](https://github.com/proompteng/bilig/issues/300)
 - [#334: docs(agent): add OpenAI Responses streaming tool-call transcript](https://github.com/proompteng/bilig/issues/334)
 - [#358: docs(agent): add AI SDK onStepFinish WorkPaper transcript](https://github.com/proompteng/bilig/issues/358)
