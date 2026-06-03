@@ -261,6 +261,18 @@ It starts the Bilig WorkPaper stdio server with `MCPServerStdio`, converts the
 MCP tools with `getAllMcpTools()`, invokes `set_workpaper_input_cell`, and
 verifies computed readback plus restore.
 
+For a zero-install hosted MCP check, run:
+
+```sh
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-hosted-mcp
+```
+
+It connects `MCPServerStreamableHttp` to `https://bilig.proompteng.ai/mcp`,
+discovers the packaged WorkPaper tools, invokes
+`set_cell_contents_and_readback`, and proves `Summary!B3` changes
+`60000 -> 96000` with restored readback still `96000`. The hosted endpoint is
+stateless, so use the stdio MCP smoke for private writable files.
+
 Expected proof:
 
 ```json

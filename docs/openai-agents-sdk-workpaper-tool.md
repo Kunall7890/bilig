@@ -12,11 +12,13 @@ image: /assets/github-social-preview.png
 
 Use this path when an OpenAI Agents SDK app needs a workbook tool it can call
 from Node without opening Excel, LibreOffice, Google Sheets, or a screenshot UI.
-There are two maintained integration shapes:
+There are three maintained integration shapes:
 
 - function tools for apps that want WorkPaper in the same Node process.
 - an MCP stdio server for apps that want the Agents SDK to discover WorkPaper
-  tools through `MCPServerStdio`.
+  tools through `MCPServerStdio` against a private local file or process.
+- a hosted Streamable HTTP MCP server for stateless smoke tests and tool
+  discovery through `MCPServerStreamableHttp`.
 
 The direct function-tool path gives the agent two ordinary function tools:
 
@@ -42,6 +44,15 @@ The same guide documents MCP servers as attachable tool sources through
 
 ```sh
 pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-mcp
+```
+
+OpenAI's Agents SDK MCP guide also documents Streamable HTTP MCP servers,
+tool-list caching, server-prefixed names, and per-server tool filters:
+<https://openai.github.io/openai-agents-js/guides/mcp/>.
+Bilig keeps a no-key hosted smoke for the public stateless endpoint:
+
+```sh
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-hosted-mcp
 ```
 
 ## Minimal Tool Shape
@@ -128,7 +139,8 @@ it, and comparing the computed readback after restore.
 ## MCP Server Shape
 
 Use this when your OpenAI Agents SDK app already manages MCP servers or when you
-want the same Bilig WorkPaper server available to other agent clients:
+want the same Bilig WorkPaper server available to other agent clients. Use
+stdio for private workbook state, writable file-backed runs, and offline CI:
 
 ```ts
 import { Agent, MCPServerStdio, RunContext, getAllMcpTools, invokeFunctionTool } from '@openai/agents'
@@ -175,6 +187,73 @@ It starts the Bilig stdio server, lists MCP tools, converts them into Agents SDK
 function tools with `getAllMcpTools()`, invokes `set_workpaper_input_cell`, and
 asserts formula readback plus JSON restore.
 
+## Hosted MCP Server Shape
+
+Use this when you want a zero-install OpenAI Agents SDK smoke test against the
+public Bilig endpoint:
+
+```ts
+import { Agent, MCPServerStreamableHttp, RunContext, getAllMcpTools, invokeFunctionTool } from '@openai/agents'
+
+const server = new MCPServerStreamableHttp({
+  name: 'bilig-workpaper-hosted',
+  url: 'https://bilig.proompteng.ai/mcp',
+  cacheToolsList: false,
+  timeout: 15_000,
+})
+
+await server.connect()
+try {
+  const agent = new Agent({
+    name: 'WorkPaper hosted MCP verification agent',
+    instructions: 'Answer only from computed WorkPaper MCP readback.',
+    mcpServers: [server],
+  })
+  const runContext = new RunContext()
+  const tools = await getAllMcpTools({
+    mcpServers: [server],
+    runContext,
+    agent,
+    convertSchemasToStrict: true,
+  })
+  const setInput = tools.find((tool) => tool.name === 'set_cell_contents_and_readback')
+  if (setInput === undefined) {
+    throw new Error('Missing set_cell_contents_and_readback')
+  }
+
+  const result = await invokeFunctionTool({
+    tool: setInput,
+    runContext,
+    input: JSON.stringify({
+      sheetName: 'Inputs',
+      address: 'B3',
+      value: '=0.4',
+      readbackRange: 'Summary!A1:B4',
+    }),
+  })
+  console.log(result)
+} finally {
+  await server.close()
+}
+```
+
+The maintained proof file is
+[`examples/headless-workpaper/openai-agents-sdk-hosted-mcp-smoke.ts`](../examples/headless-workpaper/openai-agents-sdk-hosted-mcp-smoke.ts).
+It connects to `https://bilig.proompteng.ai/mcp`, lists all eight packaged
+WorkPaper MCP tools, converts them with `getAllMcpTools()`, invokes
+`set_cell_contents_and_readback`, and asserts `Summary!B3` changes from `60000`
+to `96000` with restored readback still `96000`.
+
+The hosted endpoint is intentionally stateless. The proof asserts
+`persistence.persisted` is `false` while still returning serialized bytes and
+restored readback. Use the stdio server when the task must persist private
+workbook edits.
+
+When an agent mounts several local MCP servers, use the SDK's
+`mcpConfig.includeServerInToolNames` option to avoid duplicate tool names. For
+large or remote tool lists, set `cacheToolsList` deliberately, and use
+`toolFilter` when a run should expose only a safe subset of tools.
+
 ## Expected Proof
 
 The smoke output includes this shape:
@@ -217,6 +296,46 @@ The MCP smoke output includes this shape:
       "formulasPersisted": true,
       "restoredMatchesAfter": true,
       "expectedArrChanged": true
+    }
+  }
+}
+```
+
+The hosted MCP smoke output includes this shape:
+
+```json
+{
+  "apiShape": "OpenAI Agents SDK Agent -> MCPServerStreamableHttp -> getAllMcpTools() -> invokeFunctionTool()",
+  "package": "@openai/agents",
+  "agentName": "WorkPaper hosted MCP verification agent",
+  "mcpServerName": "bilig-workpaper-hosted",
+  "remoteEndpoint": "https://bilig.proompteng.ai/mcp",
+  "transport": "streamable-http",
+  "stateless": true,
+  "rawMcpToolNames": [
+    "list_sheets",
+    "read_range",
+    "read_cell",
+    "set_cell_contents",
+    "set_cell_contents_and_readback",
+    "get_cell_display_value",
+    "export_workpaper_document",
+    "validate_formula"
+  ],
+  "writeResult": {
+    "editedCell": "Inputs!B3",
+    "readbackRange": "Summary!A1:B4",
+    "beforeExpectedArr": 60000,
+    "afterExpectedArr": 96000,
+    "restoredExpectedArr": 96000,
+    "persistence": {
+      "persisted": false,
+      "serializedBytes": 1000
+    },
+    "checks": {
+      "persisted": false,
+      "readbackChanged": true,
+      "restoredReadbackMatchesAfter": true
     }
   }
 }

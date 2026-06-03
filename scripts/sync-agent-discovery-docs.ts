@@ -644,6 +644,16 @@ function agentJsonManifest(): string {
           docs: `${siteRoot}/mcp-workpaper-tool-server.html#remote-stateless-endpoint`,
         },
         {
+          name: 'openai-agents-sdk-hosted-workpaper-mcp',
+          type: 'typescript-agent-mcp-smoke-test',
+          framework: 'OpenAI Agents SDK',
+          transport: 'streamable-http',
+          endpoint: remoteMcpEndpoint,
+          command: 'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-hosted-mcp',
+          docs: `${siteRoot}/openai-agents-sdk-workpaper-tool.html`,
+          source: `${repositoryUrl}/blob/main/examples/headless-workpaper/openai-agents-sdk-hosted-mcp-smoke.ts`,
+        },
+        {
           name: 'fastmcp-workpaper-client',
           type: 'python-mcp-client-smoke-test',
           endpoint: remoteMcpEndpoint,

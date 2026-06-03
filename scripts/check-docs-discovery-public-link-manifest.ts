@@ -61,6 +61,7 @@ export const llmsRequiredLinks = [
   'pnpm --dir bilig/examples/headless-workpaper run agent:tool-call',
   'pnpm --dir bilig/examples/headless-workpaper run agent:openai-agents-sdk',
   'pnpm --dir bilig/examples/headless-workpaper run agent:openai-agents-sdk-mcp',
+  'pnpm --dir bilig/examples/headless-workpaper run agent:openai-agents-sdk-hosted-mcp',
   'pnpm --dir bilig/examples/headless-workpaper run agent:framework-adapters',
   'pnpm --dir bilig/examples/headless-workpaper run agent:verify',
   'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input',

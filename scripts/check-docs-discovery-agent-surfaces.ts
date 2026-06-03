@@ -220,6 +220,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'Codex',
     'Claude Code and Claude Desktop',
     'OpenAI Agents SDK',
+    'MCPServerStreamableHttp',
     'Vercel AI SDK',
     'LangGraph.js',
     'LlamaIndex.TS',
@@ -276,6 +277,12 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-mcp',
     'docs/agent-workpaper-tool-calling-recipe.md',
   )
+  requireIncludes(
+    agentToolCallingDoc,
+    'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-hosted-mcp',
+    'docs/agent-workpaper-tool-calling-recipe.md',
+  )
+  requireIncludes(agentToolCallingDoc, 'MCPServerStreamableHttp', 'docs/agent-workpaper-tool-calling-recipe.md')
   requireIncludes(agentToolCallingDoc, 'openai-agents-sdk-workpaper-tool.md', 'docs/agent-workpaper-tool-calling-recipe.md')
   requireIncludes(agentToolCallingDoc, 'function_call_output', 'docs/agent-workpaper-tool-calling-recipe.md')
   for (const [path, content] of [
@@ -287,6 +294,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     ['examples/headless-workpaper/README.md', await readFile(join(repoRoot, 'examples', 'headless-workpaper', 'README.md'), 'utf8')],
   ] as const) {
     requireIncludes(content, 'agent:openai-agents-sdk', path)
+    requireIncludes(content, 'agent:openai-agents-sdk-hosted-mcp', path)
   }
   for (const required of [
     'title: OpenAI Agents SDK WorkPaper tools',
@@ -294,12 +302,20 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'image: /assets/github-social-preview.png',
     'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk',
     'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-mcp',
+    'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-hosted-mcp',
     'examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts',
     'examples/headless-workpaper/openai-agents-sdk-mcp-smoke.ts',
+    'examples/headless-workpaper/openai-agents-sdk-hosted-mcp-smoke.ts',
     'https://openai.github.io/openai-agents-js/guides/tools/',
+    'https://openai.github.io/openai-agents-js/guides/mcp/',
     'OpenAI Agents SDK Agent -> tool() -> invokeFunctionTool()',
     'OpenAI Agents SDK Agent -> MCPServerStdio -> getAllMcpTools() -> invokeFunctionTool()',
+    'OpenAI Agents SDK Agent -> MCPServerStreamableHttp -> getAllMcpTools() -> invokeFunctionTool()',
     'MCPServerStdio',
+    'MCPServerStreamableHttp',
+    'https://bilig.proompteng.ai/mcp',
+    'set_cell_contents_and_readback',
+    'persistence.persisted',
     'restoredMatchesAfter',
   ] as const) {
     requireIncludes(openAiAgentsSdkDoc, required, 'docs/openai-agents-sdk-workpaper-tool.md')

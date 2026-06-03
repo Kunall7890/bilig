@@ -779,6 +779,19 @@ if (
     (capability) =>
       typeof capability === 'object' &&
       capability !== null &&
+      Reflect.get(capability, 'name') === 'openai-agents-sdk-hosted-workpaper-mcp' &&
+      Reflect.get(capability, 'framework') === 'OpenAI Agents SDK' &&
+      Reflect.get(capability, 'endpoint') === 'https://bilig.proompteng.ai/mcp' &&
+      Reflect.get(capability, 'command') === 'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-hosted-mcp',
+  )
+) {
+  throw new Error('docs/.well-known/agent.json must advertise the OpenAI Agents SDK hosted MCP smoke capability')
+}
+if (
+  !agentJsonCapabilities.some(
+    (capability) =>
+      typeof capability === 'object' &&
+      capability !== null &&
       Reflect.get(capability, 'name') === 'claude-desktop-mcpb' &&
       Reflect.get(capability, 'type') === 'mcpb-desktop-extension' &&
       Reflect.get(capability, 'download_url') === mcpbReleaseAssetUrl &&

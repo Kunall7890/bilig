@@ -192,6 +192,16 @@
       "docs": "https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html#remote-stateless-endpoint"
     },
     {
+      "name": "openai-agents-sdk-hosted-workpaper-mcp",
+      "type": "typescript-agent-mcp-smoke-test",
+      "framework": "OpenAI Agents SDK",
+      "transport": "streamable-http",
+      "endpoint": "https://bilig.proompteng.ai/mcp",
+      "command": "pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-hosted-mcp",
+      "docs": "https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html",
+      "source": "https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/openai-agents-sdk-hosted-mcp-smoke.ts"
+    },
+    {
       "name": "fastmcp-workpaper-client",
       "type": "python-mcp-client-smoke-test",
       "endpoint": "https://bilig.proompteng.ai/mcp",

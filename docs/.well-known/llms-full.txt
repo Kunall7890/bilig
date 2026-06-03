@@ -680,6 +680,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Agno                                                       | `MCPTools` should import workbook tools and return verified formula readback before an agent trusts the result.                                                                | [Agno WorkPaper MCP tools](https://proompteng.github.io/bilig/agno-workpaper-mcp.html)                                                                                                                                                                                                                                                                                                    |
 | Pydantic AI                                                | `MCPToolset` should validate typed workbook proof before an agent trusts spreadsheet-style calculations.                                                                        | [Pydantic AI WorkPaper MCP tools](https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html)                                                                                                                                                                                                                                                                                      |
 | Microsoft Semantic Kernel                                  | `MCPStdioPlugin` should import workbook tools and verify dependent formula readback before an agent trusts plugin calls.                                                        | [Semantic Kernel WorkPaper MCP plugin](https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html)                                                                                                                                                                                                                                                                             |
+| OpenAI Agents SDK                                          | `tool()`, `MCPServerStdio`, or `MCPServerStreamableHttp` should return computed WorkPaper readback before an agent trusts workbook math.                                       | [OpenAI Agents SDK WorkPaper tools](https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html)                                                                                                                                                                                                                                                                             |
 | Hugging Face smolagents                                    | A `Tool` should return structured formula readback proof to a `CodeAgent`.                                                                                                      | [smolagents WorkPaper tool](https://proompteng.github.io/bilig/smolagents-workpaper-tool.html)                                                                                                                                                                                                                                                                                            |
 | Hugging Face Gradio MCP Space                              | A Space template should expose one no-key WorkPaper readback tool before a team wires private workbook state.                                                                   | [Hugging Face Gradio MCP Space](https://proompteng.github.io/bilig/huggingface-workpaper-space.html)                                                                                                                                                                                                                                                                                      |
 | n8n, Dify, Flowise, Pipedream                              | Workflow builders need formula readback without spreadsheet UI automation; use `@bilig/n8n-nodes-workpaper`, the upstream merged Dify plugin, or the reviewed Pipedream action. | [n8n](https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html), [Dify](https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html), [Flowise](https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html), [Pipedream](https://proompteng.github.io/bilig/pipedream-workpaper-formula-readback.html)                                          |
@@ -690,7 +691,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Temporal, Airflow, Dagster Formula Assets, Kestra, Prefect | Orchestrators should own retries/history while a Node step owns workbook proof.                                                                                                 | [Temporal](https://proompteng.github.io/bilig/temporal-workpaper-activity.html), [Airflow](https://proompteng.github.io/bilig/airflow-workpaper-dag.html), [Dagster](https://proompteng.github.io/bilig/dagster-workpaper-asset.html), [Kestra](https://proompteng.github.io/bilig/kestra-workpaper-flow.html), [Prefect](https://proompteng.github.io/bilig/prefect-workpaper-flow.html) |
 | Directus Persisted Calculated Fields                       | A custom operation should persist calculated fields with formula proof.                                                                                                         | [Directus WorkPaper Flow operation](https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html)                                                                                                                                                                                                                                                                            |
 
-<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/semantic-kernel-workpaper-mcp.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
+<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/semantic-kernel-workpaper-mcp.md, docs/openai-agents-sdk-workpaper-tool.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
 
 ## Choose An Evaluation Path
 
@@ -1068,6 +1069,7 @@ pnpm --dir examples/headless-workpaper run agent:verify
 pnpm --dir examples/headless-workpaper run agent:tool-call
 pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk
 pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-mcp
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-hosted-mcp
 pnpm --dir examples/headless-workpaper run agent:openai-responses
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text
@@ -1084,8 +1086,9 @@ The AI SDK example uses
 [`ai-sdk-generate-text-tool-smoke.ts`](examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts).
 The OpenAI Agents SDK guide is
 [`docs/openai-agents-sdk-workpaper-tool.md`](docs/openai-agents-sdk-workpaper-tool.md).
-It includes both direct `tool()` wrapping and `MCPServerStdio` discovery through
-the same WorkPaper MCP tool loop.
+It includes direct `tool()` wrapping, private `MCPServerStdio` discovery, and
+hosted stateless `MCPServerStreamableHttp` discovery through the WorkPaper MCP
+tool loop.
 The OpenAI Responses guide is
 [`docs/openai-responses-workpaper-tool-call.md`](docs/openai-responses-workpaper-tool-call.md).
 The agent framework guide is
@@ -3775,6 +3778,18 @@ It starts the Bilig WorkPaper stdio server with `MCPServerStdio`, converts the
 MCP tools with `getAllMcpTools()`, invokes `set_workpaper_input_cell`, and
 verifies computed readback plus restore.
 
+For a zero-install hosted MCP check, run:
+
+```sh
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-hosted-mcp
+```
+
+It connects `MCPServerStreamableHttp` to `https://bilig.proompteng.ai/mcp`,
+discovers the packaged WorkPaper tools, invokes
+`set_cell_contents_and_readback`, and proves `Summary!B3` changes
+`60000 -> 96000` with restored readback still `96000`. The hosted endpoint is
+stateless, so use the stdio MCP smoke for private writable files.
+
 Expected proof:
 
 ```json
@@ -4403,7 +4418,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | Open WebUI                         | Hosted OpenAPI for no-bridge smoke tests, native Streamable HTTP MCP, or `mcpo` around the npm stdio server for local writable files. | [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)                                    |
 | LobeHub                            | Custom MCP import JSON for hosted Streamable HTTP, or desktop STDIO for a writable WorkPaper file.                                    | [LobeHub WorkPaper MCP setup](lobehub-workpaper-mcp.md)                                      |
 | AnythingLLM                        | `anythingllm_mcp_servers.json` with hosted Streamable HTTP, Desktop stdio, or Docker storage-backed stdio.                            | [AnythingLLM WorkPaper MCP setup](anythingllm-workpaper-mcp.md)                              |
-| OpenAI Agents SDK                  | Function tools around WorkPaper read/write/readback.                                                                                  | [OpenAI Agents SDK WorkPaper tool](openai-agents-sdk-workpaper-tool.md)                      |
+| OpenAI Agents SDK                  | Function tools, `MCPServerStdio`, or hosted `MCPServerStreamableHttp` with computed WorkPaper readback.                               | [OpenAI Agents SDK WorkPaper tool](openai-agents-sdk-workpaper-tool.md)                      |
 | OpenAI Responses API               | Function-call wrapper returning proof objects.                                                                                        | [OpenAI Responses WorkPaper tool call](openai-responses-workpaper-tool-call.md)              |
 | Vercel AI SDK                      | Tool definitions that call a WorkPaper service function.                                                                              | [Vercel AI SDK spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md)               |
 | LangChain.js                       | Tool wrappers around the same WorkPaper contract.                                                                                     | [Vercel AI SDK and LangChain spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md) |
@@ -9196,11 +9211,13 @@ Source: https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-wor
 
 Use this path when an OpenAI Agents SDK app needs a workbook tool it can call
 from Node without opening Excel, LibreOffice, Google Sheets, or a screenshot UI.
-There are two maintained integration shapes:
+There are three maintained integration shapes:
 
 - function tools for apps that want WorkPaper in the same Node process.
 - an MCP stdio server for apps that want the Agents SDK to discover WorkPaper
-  tools through `MCPServerStdio`.
+  tools through `MCPServerStdio` against a private local file or process.
+- a hosted Streamable HTTP MCP server for stateless smoke tests and tool
+  discovery through `MCPServerStreamableHttp`.
 
 The direct function-tool path gives the agent two ordinary function tools:
 
@@ -9226,6 +9243,15 @@ The same guide documents MCP servers as attachable tool sources through
 
 ```sh
 pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-mcp
+```
+
+OpenAI's Agents SDK MCP guide also documents Streamable HTTP MCP servers,
+tool-list caching, server-prefixed names, and per-server tool filters:
+<https://openai.github.io/openai-agents-js/guides/mcp/>.
+Bilig keeps a no-key hosted smoke for the public stateless endpoint:
+
+```sh
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-hosted-mcp
 ```
 
 ## Minimal Tool Shape
@@ -9312,7 +9338,8 @@ it, and comparing the computed readback after restore.
 ## MCP Server Shape
 
 Use this when your OpenAI Agents SDK app already manages MCP servers or when you
-want the same Bilig WorkPaper server available to other agent clients:
+want the same Bilig WorkPaper server available to other agent clients. Use
+stdio for private workbook state, writable file-backed runs, and offline CI:
 
 ```ts
 import { Agent, MCPServerStdio, RunContext, getAllMcpTools, invokeFunctionTool } from '@openai/agents'
@@ -9359,6 +9386,73 @@ It starts the Bilig stdio server, lists MCP tools, converts them into Agents SDK
 function tools with `getAllMcpTools()`, invokes `set_workpaper_input_cell`, and
 asserts formula readback plus JSON restore.
 
+## Hosted MCP Server Shape
+
+Use this when you want a zero-install OpenAI Agents SDK smoke test against the
+public Bilig endpoint:
+
+```ts
+import { Agent, MCPServerStreamableHttp, RunContext, getAllMcpTools, invokeFunctionTool } from '@openai/agents'
+
+const server = new MCPServerStreamableHttp({
+  name: 'bilig-workpaper-hosted',
+  url: 'https://bilig.proompteng.ai/mcp',
+  cacheToolsList: false,
+  timeout: 15_000,
+})
+
+await server.connect()
+try {
+  const agent = new Agent({
+    name: 'WorkPaper hosted MCP verification agent',
+    instructions: 'Answer only from computed WorkPaper MCP readback.',
+    mcpServers: [server],
+  })
+  const runContext = new RunContext()
+  const tools = await getAllMcpTools({
+    mcpServers: [server],
+    runContext,
+    agent,
+    convertSchemasToStrict: true,
+  })
+  const setInput = tools.find((tool) => tool.name === 'set_cell_contents_and_readback')
+  if (setInput === undefined) {
+    throw new Error('Missing set_cell_contents_and_readback')
+  }
+
+  const result = await invokeFunctionTool({
+    tool: setInput,
+    runContext,
+    input: JSON.stringify({
+      sheetName: 'Inputs',
+      address: 'B3',
+      value: '=0.4',
+      readbackRange: 'Summary!A1:B4',
+    }),
+  })
+  console.log(result)
+} finally {
+  await server.close()
+}
+```
+
+The maintained proof file is
+[`examples/headless-workpaper/openai-agents-sdk-hosted-mcp-smoke.ts`](../examples/headless-workpaper/openai-agents-sdk-hosted-mcp-smoke.ts).
+It connects to `https://bilig.proompteng.ai/mcp`, lists all eight packaged
+WorkPaper MCP tools, converts them with `getAllMcpTools()`, invokes
+`set_cell_contents_and_readback`, and asserts `Summary!B3` changes from `60000`
+to `96000` with restored readback still `96000`.
+
+The hosted endpoint is intentionally stateless. The proof asserts
+`persistence.persisted` is `false` while still returning serialized bytes and
+restored readback. Use the stdio server when the task must persist private
+workbook edits.
+
+When an agent mounts several local MCP servers, use the SDK's
+`mcpConfig.includeServerInToolNames` option to avoid duplicate tool names. For
+large or remote tool lists, set `cacheToolsList` deliberately, and use
+`toolFilter` when a run should expose only a safe subset of tools.
+
 ## Expected Proof
 
 The smoke output includes this shape:
@@ -9401,6 +9495,46 @@ The MCP smoke output includes this shape:
       "formulasPersisted": true,
       "restoredMatchesAfter": true,
       "expectedArrChanged": true
+    }
+  }
+}
+```
+
+The hosted MCP smoke output includes this shape:
+
+```json
+{
+  "apiShape": "OpenAI Agents SDK Agent -> MCPServerStreamableHttp -> getAllMcpTools() -> invokeFunctionTool()",
+  "package": "@openai/agents",
+  "agentName": "WorkPaper hosted MCP verification agent",
+  "mcpServerName": "bilig-workpaper-hosted",
+  "remoteEndpoint": "https://bilig.proompteng.ai/mcp",
+  "transport": "streamable-http",
+  "stateless": true,
+  "rawMcpToolNames": [
+    "list_sheets",
+    "read_range",
+    "read_cell",
+    "set_cell_contents",
+    "set_cell_contents_and_readback",
+    "get_cell_display_value",
+    "export_workpaper_document",
+    "validate_formula"
+  ],
+  "writeResult": {
+    "editedCell": "Inputs!B3",
+    "readbackRange": "Summary!A1:B4",
+    "beforeExpectedArr": 60000,
+    "afterExpectedArr": 96000,
+    "restoredExpectedArr": 96000,
+    "persistence": {
+      "persisted": false,
+      "serializedBytes": 1000
+    },
+    "checks": {
+      "persisted": false,
+      "readbackChanged": true,
+      "restoredReadbackMatchesAfter": true
     }
   }
 }
