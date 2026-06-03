@@ -33,6 +33,7 @@ describe('headless package workflow', () => {
     const source = readFileSync(resolve(repoRoot, '.github/workflows/headless-package.yml'), 'utf8')
     const greenCiScript = readFileSync(resolve(repoRoot, 'scripts/wait-for-github-ci-green.mjs'), 'utf8')
     const agentDiscoverySource = readFileSync(resolve(repoRoot, 'scripts/sync-agent-discovery-docs.ts'), 'utf8')
+    const docsDiscoveryAgentSurfacesSource = readFileSync(resolve(repoRoot, 'scripts/check-docs-discovery-agent-surfaces.ts'), 'utf8')
     const staticReferenceSource = readFileSync(resolve(repoRoot, 'scripts/sync-agent-static-references.ts'), 'utf8')
     const mcpDirectoryDoc = readFileSync(resolve(repoRoot, 'docs/mcp-spreadsheet-server-directory.md'), 'utf8')
     expect(source).toMatch(/['"]packages\/excel-import\/\*\*['"]/)
@@ -95,6 +96,10 @@ describe('headless package workflow', () => {
     expect(source).toContain('bun scripts/sync-runtime-release-metadata.ts')
     expect(source).toContain('bun scripts/sync-agent-discovery-docs.ts')
     expect(agentDiscoverySource).toContain('syncVersionedStaticReferences')
+    expect(docsDiscoveryAgentSurfacesSource).toContain('escapeRegExp(headlessPackageVersion)')
+    expect(docsDiscoveryAgentSurfacesSource).not.toContain(
+      '`current\\nrepo package version is \\`${officialRegistryLatestMarkedVersion}\\``',
+    )
     expect(staticReferenceSource).toContain('syncVersionedStaticReferenceLine')
     expect(staticReferenceSource).toContain("^(\\\\s*)'@bilig/workpaper@${stableSemverPattern}'")
     expect(agentDiscoverySource).not.toContain('replace(new RegExp(`@bilig/headless@${stableSemverPattern}`')

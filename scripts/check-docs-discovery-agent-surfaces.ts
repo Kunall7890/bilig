@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { agentFrameworkDocRequirements } from './check-docs-discovery-agent-pages.ts'
 import { requireAgentProofMatrixDiscovery } from './check-docs-discovery-agent-proof-matrix.ts'
 import { requireAgentRuleChooserDiscovery } from './check-docs-discovery-agent-rule-chooser.ts'
-import { requireIncludes, requireNotIncludes } from './check-docs-discovery-core.ts'
+import { requireIncludes, requireMatches, requireNotIncludes } from './check-docs-discovery-core.ts'
 import type { DocsDiscoveryContext } from './check-docs-discovery-context.ts'
 import { llmsExternalSurfaceLinks } from './check-docs-discovery-growth-links.ts'
 import { requireHeadlessExampleDiscovery } from './check-docs-discovery-headless-examples.ts'
@@ -604,7 +604,6 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'official Registry',
     'latest-marked server `io.github.proompteng/bilig-workpaper` is version',
     `\`${officialRegistryLatestMarkedVersion}\`, package \`@bilig/workpaper\` is version \`${officialRegistryLatestMarkedVersion}\``,
-    `current\nrepo package version is \`${officialRegistryLatestMarkedVersion}\``,
     'Keep the repo package version separate from\nRegistry readback because release metadata sync may update it before npm and\nRegistry publication catch up.',
     'entry was',
     `\`${officialRegistryLatestMarkedUpdatedAt}\``,
@@ -621,6 +620,12 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   ]) {
     requireIncludes(mcpSpreadsheetServerDirectoryDoc, required, 'docs/mcp-spreadsheet-server-directory.md')
   }
+  requireMatches(
+    mcpSpreadsheetServerDirectoryDoc,
+    new RegExp(`current\\s+repo\\s+package\\s+version\\s+is\\s+\`${escapeRegExp(headlessPackageVersion)}\``, 'u'),
+    `current repo package version is \`${headlessPackageVersion}\``,
+    'docs/mcp-spreadsheet-server-directory.md',
+  )
   requireIncludes(
     mcpClientSetupDoc,
     'description: Remote MCP smoke endpoint and local stdio configuration for Bilig WorkPaper in Claude, Cursor, VS Code, Cline, and Codex.',
@@ -874,6 +879,10 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     agentToolCallingDoc,
     aiSdkLangChainDoc,
   })
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
 
 function requireMcpToolDiscoveryContract(tool: unknown): void {

@@ -12,6 +12,13 @@ export function requireIncludes(haystack: string, needle: string, context: strin
   }
 }
 
+export function requireMatches(haystack: string, pattern: RegExp, description: string, context: string): void {
+  if (pattern.test(haystack)) {
+    return
+  }
+  throw new Error(`${context} is missing ${description}`)
+}
+
 function normalizeMarkdownTableRows(value: string): string {
   return value
     .split('\n')
