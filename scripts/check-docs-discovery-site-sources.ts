@@ -56,6 +56,7 @@ export const docsSiteSources = [
   ['fastmcp-workpaper-client.html', 'fastmcp-workpaper-client.md'],
   ['agno-workpaper-mcp.html', 'agno-workpaper-mcp.md'],
   ['pydantic-ai-workpaper-mcp.html', 'pydantic-ai-workpaper-mcp.md'],
+  ['google-adk-workpaper-mcp.html', 'google-adk-workpaper-mcp.md'],
   ['smolagents-workpaper-tool.html', 'smolagents-workpaper-tool.md'],
   ['huggingface-workpaper-space.html', 'huggingface-workpaper-space.md'],
   ['chatgpt-apps-workpaper-mcp.html', 'chatgpt-apps-workpaper-mcp.md'],

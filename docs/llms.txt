@@ -15,6 +15,7 @@ npm ExcelJS recalculation package: https://www.npmjs.com/package/@bilig/exceljs-
 npm full runtime package: https://www.npmjs.com/package/@bilig/headless
 remote MCP endpoint: https://bilig.proompteng.ai/mcp
 ChatGPT Apps WorkPaper MCP: https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html
+Google ADK WorkPaper MCP: https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html
 agent instructions: https://proompteng.github.io/bilig/AGENTS.md
 agent start: https://proompteng.github.io/bilig/agent-start.txt
 well-known agent start: https://proompteng.github.io/bilig/.well-known/agent-start.txt
@@ -193,6 +194,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html
 - https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
 - https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html
+- https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html
 - https://proompteng.github.io/bilig/workbook-agent-intent-api.html
 - https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model
 - https://github.com/proompteng/bilig/blob/main/docs/agent-framework-workbook-tools.md
@@ -273,6 +275,9 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html
 - https://github.com/proompteng/bilig/blob/main/docs/pydantic-ai-workpaper-mcp.md
 - https://github.com/proompteng/bilig/tree/main/examples/pydantic-ai-workpaper-mcp
+- https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html
+- https://github.com/proompteng/bilig/blob/main/docs/google-adk-workpaper-mcp.md
+- https://github.com/proompteng/bilig/tree/main/examples/google-adk-workpaper-mcp
 - https://proompteng.github.io/bilig/smolagents-workpaper-tool.html
 - https://github.com/proompteng/bilig/blob/main/docs/smolagents-workpaper-tool.md
 - https://github.com/proompteng/bilig/tree/main/examples/smolagents-workpaper-tool

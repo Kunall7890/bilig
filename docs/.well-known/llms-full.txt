@@ -682,6 +682,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | FastMCP Python                                             | A Python client should smoke-test hosted MCP or launch a private file-backed stdio WorkPaper.                                                                                   | [FastMCP WorkPaper client](https://proompteng.github.io/bilig/fastmcp-workpaper-client.html)                                                                                                                                                                                                                                                                                              |
 | Agno                                                       | `MCPTools` should import workbook tools and return verified formula readback before an agent trusts the result.                                                                 | [Agno WorkPaper MCP tools](https://proompteng.github.io/bilig/agno-workpaper-mcp.html)                                                                                                                                                                                                                                                                                                    |
 | Pydantic AI                                                | `MCPToolset` should validate typed workbook proof before an agent trusts spreadsheet-style calculations.                                                                        | [Pydantic AI WorkPaper MCP tools](https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html)                                                                                                                                                                                                                                                                                      |
+| Google ADK                                                 | `McpToolset` should import workbook MCP tools and return verified formula readback before an ADK agent trusts the result.                                                       | [Google ADK WorkPaper MCP tools](https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html)                                                                                                                                                                                                                                                                                        |
 | Microsoft Semantic Kernel                                  | `MCPStdioPlugin` should import workbook tools and verify dependent formula readback before an agent trusts plugin calls.                                                        | [Semantic Kernel WorkPaper MCP plugin](https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html)                                                                                                                                                                                                                                                                             |
 | OpenAI Agents SDK                                          | `tool()`, `MCPServerStdio`, or `MCPServerStreamableHttp` should return computed WorkPaper readback before an agent trusts workbook math.                                        | [OpenAI Agents SDK WorkPaper tools](https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html)                                                                                                                                                                                                                                                                             |
 | ChatGPT Apps / Developer Mode                              | A ChatGPT conversation should add Bilig as a no-auth remote MCP app before trying spreadsheet UI automation.                                                                    | [ChatGPT Apps WorkPaper MCP](https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html)                                                                                                                                                                                                                                                                                          |
@@ -695,7 +696,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Temporal, Airflow, Dagster Formula Assets, Kestra, Prefect | Orchestrators should own retries/history while a Node step owns workbook proof.                                                                                                 | [Temporal](https://proompteng.github.io/bilig/temporal-workpaper-activity.html), [Airflow](https://proompteng.github.io/bilig/airflow-workpaper-dag.html), [Dagster](https://proompteng.github.io/bilig/dagster-workpaper-asset.html), [Kestra](https://proompteng.github.io/bilig/kestra-workpaper-flow.html), [Prefect](https://proompteng.github.io/bilig/prefect-workpaper-flow.html) |
 | Directus Persisted Calculated Fields                       | A custom operation should persist calculated fields with formula proof.                                                                                                         | [Directus WorkPaper Flow operation](https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html)                                                                                                                                                                                                                                                                            |
 
-<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/semantic-kernel-workpaper-mcp.md, docs/openai-agents-sdk-workpaper-tool.md, docs/chatgpt-apps-workpaper-mcp.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
+<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/google-adk-workpaper-mcp.md, docs/semantic-kernel-workpaper-mcp.md, docs/openai-agents-sdk-workpaper-tool.md, docs/chatgpt-apps-workpaper-mcp.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
 
 ## Choose An Evaluation Path
 
@@ -982,6 +983,7 @@ the [Node spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine
 [workbook fixture submissions](docs/submit-workbook-fixture.md),
 [OpenAI Agents SDK tools](docs/openai-agents-sdk-workpaper-tool.md),
 [Browser Use formula tool](docs/browser-use-workpaper-formula-tool.md),
+[Google ADK MCP tools](docs/google-adk-workpaper-mcp.md),
 [AI SDK and LangChain tools](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md),
 [CrewAI adapter](docs/crewai-workpaper-spreadsheet-tool.md),
 the [headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md),
@@ -2296,6 +2298,29 @@ inside a coding agent, MCP client, or agent framework. The path is deliberately
 short: install the instructions, run one no-key evaluator, paste one workbook
 task, and require formula readback before calling the job done.
 
+## Choose Bilig When Readback Matters
+
+Choose Bilig instead of Excel or Sheets UI automation when the agent needs a
+machine-checkable workbook proof, not a visual session transcript.
+
+| Agent need                  | Use Bilig WorkPaper                                                                                                             | Keep Excel, Sheets, or browser UI automation                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Cell-addressed automation   | The task names exact sheets, ranges, or cells such as `Inputs!B3` and `Summary!B3`.                                              | The task depends on a person inspecting or editing the live grid.                                                  |
+| Formula proof after writes  | Success requires formula readback after writes through `set_cell_contents_and_readback`, not a write-call status.                | The spreadsheet product owns recalculation and the agent only needs to click through the product UI.               |
+| Durable agent state         | The agent must export, persist, restore, or restart from persisted WorkPaper JSON and prove the same calculated value comes back. | The durable artifact is an existing Excel or Sheets file with macros, charts, pivots, add-ins, or visual layout.   |
+| CI and tool-call evidence   | The result must fit logs, MCP transcripts, CI checks, or a compact proof object with `verified: true`.                           | The output is a screenshot, screen recording, manual review note, or collaboration comment in a spreadsheet app.   |
+
+Run the no-key proof before adopting the path:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+For the browser/agent boundary, pair this page with the
+[Browser Use WorkPaper formula tool](browser-use-workpaper-formula-tool.md), the
+[headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md), and
+the [agent framework map](agent-framework-workbook-tools.md).
+
 ## Install The Agent Instructions
 
 If your agent supports installable skills, start here:
@@ -2793,6 +2818,7 @@ not the first-run path:
 | FastMCP Python client for hosted and local stdio checks | <https://proompteng.github.io/bilig/fastmcp-workpaper-client.html>             |
 | Agno MCPTools workbook readback                         | <https://proompteng.github.io/bilig/agno-workpaper-mcp.html>                   |
 | Pydantic AI MCPToolset typed readback                   | <https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html>            |
+| Google ADK McpToolset workbook readback                 | <https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html>             |
 | Hugging Face smolagents tool                            | <https://proompteng.github.io/bilig/smolagents-workpaper-tool.html>            |
 | Hugging Face Gradio MCP Space                           | <https://proompteng.github.io/bilig/huggingface-workpaper-space.html>          |
 
@@ -4533,6 +4559,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | Open Multi-Agent                   | `connectMCPTools()` with the file-backed WorkPaper MCP server registered on an `Agent`.                                               | [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)                  |
 | Agno                               | `MCPTools` with the file-backed WorkPaper MCP server and explicit readback checks.                                                    | [Agno WorkPaper MCP tools](agno-workpaper-mcp.md)                                            |
 | Pydantic AI                        | `MCPToolset` with typed proof validation before an agent trusts workbook calculations.                                                | [Pydantic AI WorkPaper MCP tools](pydantic-ai-workpaper-mcp.md)                              |
+| Google ADK                         | `McpToolset` with file-backed stdio WorkPaper tools and explicit formula readback proof.                                             | [Google ADK WorkPaper MCP tools](google-adk-workpaper-mcp.md)                                |
 | Mastra                             | Real `@mastra/core` `createTool()` smoke for formula-backed workbook edits.                                                           | [Mastra WorkPaper tool](mastra-workpaper-spreadsheet-tool.md)                                |
 | Cloudflare Agents                  | Agent tool calling a Node-compatible WorkPaper boundary.                                                                              | [Cloudflare Agents WorkPaper tool](cloudflare-agents-workpaper-spreadsheet-tool.md)          |
 | Runtime adapter authors            | `@bilig/workbook` models, plan data, checks, schemas, command receipts, and strict proof.                                             | [Workbook agent intent API](workbook-agent-intent-api.md)                                    |
@@ -4579,6 +4606,7 @@ Do not claim success from a write call alone.
 - [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)
 - [Browser Use WorkPaper formula tool](browser-use-workpaper-formula-tool.md)
 - [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)
+- [Google ADK WorkPaper MCP tools](google-adk-workpaper-mcp.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
 - [ChatGPT Apps WorkPaper MCP](chatgpt-apps-workpaper-mcp.md)
 - [Node framework WorkPaper adapters](node-framework-workpaper-adapters.md)
@@ -8633,6 +8661,151 @@ tables, or visual workbook review. For raw `.xlsx` files, start with:
 npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- \
   bilig-evaluate --door xlsx-cache --json
 ```
+
+---
+
+## Google ADK WorkPaper MCP Tools
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/google-adk-workpaper-mcp.md
+
+# Google ADK WorkPaper MCP tools
+
+Use this when a Google Agent Development Kit app needs spreadsheet formulas
+through MCP. ADK should own agent orchestration; Bilig should own the workbook
+truth: read a range, write one input, read the dependent formula output, persist
+WorkPaper JSON, and return the proof.
+
+Official Google ADK references:
+
+- <https://adk.dev/tools-custom/mcp-tools/>
+- <https://adk.dev/integrations/>
+- <https://github.com/google/adk-python>
+
+## Run The Smoke Test
+
+The runnable source lives in:
+
+```text
+examples/google-adk-workpaper-mcp
+```
+
+Run it from the repo root:
+
+```sh
+uv run --python 3.12 --with google-adk --with mcp \
+  python examples/google-adk-workpaper-mcp/google_adk_workpaper_mcp.py \
+  --output .tmp/google-adk-workpaper-proof.json
+```
+
+Expected top-level result:
+
+```json
+{
+  "framework": "google-adk",
+  "toolset": "McpToolset",
+  "packageSpec": "@bilig/workpaper@latest",
+  "verified": true,
+  "beforeExpectedArr": 60000,
+  "afterExpectedArr": 96000,
+  "restoredExpectedArr": 96000
+}
+```
+
+The command starts Bilig's file-backed MCP server through `npm exec`, then ADK's
+`McpToolset` discovers and calls:
+
+1. `read_range`
+2. `set_cell_contents_and_readback`
+3. `export_workpaper_document`
+
+The write changes `Inputs!B3` to `0.4` and reads `Summary!A1:B4`. The dependent
+`Summary!B3` value changes from `60000` to `96000`, and the restored WorkPaper
+readback stays `96000`.
+
+## Minimal Agent Shape
+
+ADK's Python MCP integration uses `McpToolset` with `StdioConnectionParams`.
+Keep `tool_filter` narrow when the workbook task only needs read/write/export
+tools.
+
+```python
+from google.adk.agents import LlmAgent
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from mcp import StdioServerParameters
+
+root_agent = LlmAgent(
+    name="workpaper_pricing_agent",
+    model="gemini-2.5-flash",
+    instruction=(
+        "Use Bilig WorkPaper MCP tools for workbook edits. "
+        "Do not claim success until readback and restored state match."
+    ),
+    tools=[
+        McpToolset(
+            connection_params=StdioConnectionParams(
+                server_params=StdioServerParameters(
+                    command="npm",
+                    args=[
+                        "exec",
+                        "--yes",
+                        "--package",
+                        "@bilig/workpaper@latest",
+                        "--",
+                        "bilig-workpaper-mcp",
+                        "--workpaper",
+                        "./pricing.workpaper.json",
+                        "--init-demo-workpaper",
+                        "--writable",
+                    ],
+                ),
+                timeout=30,
+            ),
+            tool_filter=[
+                "read_range",
+                "set_cell_contents_and_readback",
+                "export_workpaper_document",
+            ],
+        )
+    ],
+)
+```
+
+That is the agent-facing shape. The checked-in smoke test uses the same
+`McpToolset` and direct tool calls so the proof runs without a Gemini key.
+
+## First Proof Command
+
+If you only need to decide whether Bilig fits before wiring ADK, run the no-key
+agent MCP evaluator first:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+Trust the workflow only when it returns `verified: true` with:
+
+- `Inputs!B3` edited;
+- `Summary!B3` changing from `60000` to `96000`;
+- `restoredReadbackMatchesAfter: true`;
+- persisted WorkPaper document bytes.
+
+## Boundary
+
+This is for formula-backed service or agent workflows where WorkPaper JSON can
+represent the workbook state. It is a fit for quote approval, payout checks,
+pricing rules, import validation, and forecast gates.
+
+It is not a claim that Bilig replaces desktop Excel for macros, add-ins, pivot
+tables, or visual workbook review. For raw `.xlsx` files, start with:
+
+```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- \
+  bilig-evaluate --door xlsx-cache --json
+```
+
+No upstream Google ADK PR or issue was opened for this guide; it is an owned
+Bilig integration surface backed by public ADK MCP docs and a local no-key proof.
 
 ---
 

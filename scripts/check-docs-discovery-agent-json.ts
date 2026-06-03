@@ -112,6 +112,20 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     !hasCapability(
       agentJsonCapabilities,
       (capability) =>
+        Reflect.get(capability, 'name') === 'google-adk-workpaper-mcp' &&
+        Reflect.get(capability, 'framework') === 'Google Agent Development Kit' &&
+        Reflect.get(capability, 'command') ===
+          'uv run --python 3.12 --with google-adk --with mcp python examples/google-adk-workpaper-mcp/google_adk_workpaper_mcp.py --output .tmp/google-adk-workpaper-proof.json' &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html' &&
+        Reflect.get(capability, 'source') === 'https://github.com/proompteng/bilig/tree/main/examples/google-adk-workpaper-mcp',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the Google ADK WorkPaper MCP capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
         Reflect.get(capability, 'name') === 'claude-desktop-mcpb' &&
         Reflect.get(capability, 'type') === 'mcpb-desktop-extension' &&
         Reflect.get(capability, 'download_url') === mcpbReleaseAssetUrl &&
@@ -158,6 +172,7 @@ const requiredPublicEntrypoints = [
   'https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/agno-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html',
+  'https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html',

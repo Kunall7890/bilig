@@ -5,6 +5,7 @@ export const agentFrameworkLlmsRequiredLinks = [
   'https://proompteng.github.io/bilig/open-multi-agent-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/agno-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html',
+  'https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/copilotkit-workpaper-spreadsheet-action.html',
   'https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html',
@@ -13,6 +14,19 @@ export const agentFrameworkLlmsRequiredLinks = [
 ] as const
 
 export const agentFrameworkDocRequirements = [
+  {
+    path: 'docs/agent-adoption-kit.md',
+    includes: [
+      'Choose Bilig instead of Excel or Sheets UI automation when',
+      'formula readback after writes through `set_cell_contents_and_readback`',
+      'persisted WorkPaper JSON',
+      'compact proof object with `verified: true`',
+      'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
+      'browser-use-workpaper-formula-tool.md',
+      'headless-workpaper-agent-handbook.md',
+      'agent-framework-workbook-tools.md',
+    ],
+  },
   {
     path: 'docs/mastra-workpaper-spreadsheet-tool.md',
     includes: [
@@ -83,6 +97,62 @@ export const agentFrameworkDocRequirements = [
       'WorkPaperProof',
       '60000',
       '96000',
+    ],
+  },
+  {
+    path: 'docs/google-adk-workpaper-mcp.md',
+    includes: [
+      'Google ADK WorkPaper MCP tools',
+      'https://adk.dev/tools-custom/mcp-tools/',
+      'https://adk.dev/integrations/',
+      'examples/google-adk-workpaper-mcp',
+      '@bilig/workpaper@latest',
+      'McpToolset',
+      'StdioConnectionParams',
+      'StdioServerParameters',
+      'tool_filter',
+      'set_cell_contents_and_readback',
+      '60000',
+      '96000',
+      'verified: true',
+      'No upstream Google ADK PR or issue was opened',
+    ],
+  },
+  {
+    path: 'examples/google-adk-workpaper-mcp/README.md',
+    includes: [
+      'Google ADK WorkPaper MCP tools',
+      'uv run --python 3.12 --with google-adk --with mcp',
+      'McpToolset',
+      'StdioConnectionParams',
+      'StdioServerParameters',
+      'set_cell_contents_and_readback',
+      '60000',
+      '96000',
+      'python examples/google-adk-workpaper-mcp/scripts/check-google-adk-recipe.py',
+    ],
+  },
+  {
+    path: 'examples/google-adk-workpaper-mcp/google_adk_workpaper_mcp.py',
+    includes: [
+      'from google.adk.tools.mcp_tool import McpToolset',
+      'from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams',
+      'from mcp import StdioServerParameters',
+      'tool_filter=MCP_TOOL_FILTER',
+      '"read_range"',
+      '"set_cell_contents_and_readback"',
+      '"export_workpaper_document"',
+      'restoredReadbackMatchesAfter',
+      '"verified": True',
+    ],
+  },
+  {
+    path: 'examples/google-adk-workpaper-mcp/scripts/check-google-adk-recipe.py',
+    includes: [
+      'require_includes(ROOT / "README.md", "uv run --python 3.12 --with google-adk --with mcp")',
+      'require_includes(ROOT / "google_adk_workpaper_mcp.py", "McpToolset")',
+      'require_includes(ROOT / "google_adk_workpaper_mcp.py", "tool_filter=MCP_TOOL_FILTER")',
+      'require_includes(ROOT / "google_adk_workpaper_mcp.py", \'"set_cell_contents_and_readback"\')',
     ],
   },
   {

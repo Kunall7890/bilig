@@ -94,6 +94,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | Open Multi-Agent                   | `connectMCPTools()` with the file-backed WorkPaper MCP server registered on an `Agent`.                                               | [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)                  |
 | Agno                               | `MCPTools` with the file-backed WorkPaper MCP server and explicit readback checks.                                                    | [Agno WorkPaper MCP tools](agno-workpaper-mcp.md)                                            |
 | Pydantic AI                        | `MCPToolset` with typed proof validation before an agent trusts workbook calculations.                                                | [Pydantic AI WorkPaper MCP tools](pydantic-ai-workpaper-mcp.md)                              |
+| Google ADK                         | `McpToolset` with file-backed stdio WorkPaper tools and explicit formula readback proof.                                             | [Google ADK WorkPaper MCP tools](google-adk-workpaper-mcp.md)                                |
 | Mastra                             | Real `@mastra/core` `createTool()` smoke for formula-backed workbook edits.                                                           | [Mastra WorkPaper tool](mastra-workpaper-spreadsheet-tool.md)                                |
 | Cloudflare Agents                  | Agent tool calling a Node-compatible WorkPaper boundary.                                                                              | [Cloudflare Agents WorkPaper tool](cloudflare-agents-workpaper-spreadsheet-tool.md)          |
 | Runtime adapter authors            | `@bilig/workbook` models, plan data, checks, schemas, command receipts, and strict proof.                                             | [Workbook agent intent API](workbook-agent-intent-api.md)                                    |
@@ -140,6 +141,7 @@ Do not claim success from a write call alone.
 - [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)
 - [Browser Use WorkPaper formula tool](browser-use-workpaper-formula-tool.md)
 - [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)
+- [Google ADK WorkPaper MCP tools](google-adk-workpaper-mcp.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
 - [ChatGPT Apps WorkPaper MCP](chatgpt-apps-workpaper-mcp.md)
 - [Node framework WorkPaper adapters](node-framework-workpaper-adapters.md)

@@ -247,6 +247,15 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           source: `${repositoryUrl}/tree/main/examples/pydantic-ai-workpaper-mcp`,
         },
         {
+          name: 'google-adk-workpaper-mcp',
+          type: 'python-agent-mcp-smoke-test',
+          framework: 'Google Agent Development Kit',
+          command:
+            'uv run --python 3.12 --with google-adk --with mcp python examples/google-adk-workpaper-mcp/google_adk_workpaper_mcp.py --output .tmp/google-adk-workpaper-proof.json',
+          docs: `${siteRoot}/google-adk-workpaper-mcp.html`,
+          source: `${repositoryUrl}/tree/main/examples/google-adk-workpaper-mcp`,
+        },
+        {
           name: 'semantic-kernel-workpaper-mcp',
           type: 'python-agent-mcp-smoke-test',
           framework: 'Microsoft Semantic Kernel',
@@ -349,6 +358,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
         `${siteRoot}/fastmcp-workpaper-client.html`,
         `${siteRoot}/agno-workpaper-mcp.html`,
         `${siteRoot}/pydantic-ai-workpaper-mcp.html`,
+        `${siteRoot}/google-adk-workpaper-mcp.html`,
         `${siteRoot}/smolagents-workpaper-tool.html`,
         `${siteRoot}/huggingface-workpaper-space.html`,
         remoteMcpEndpoint,

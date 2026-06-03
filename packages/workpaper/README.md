@@ -120,6 +120,7 @@ not the first-run path:
 | FastMCP Python client for hosted and local stdio checks | <https://proompteng.github.io/bilig/fastmcp-workpaper-client.html>             |
 | Agno MCPTools workbook readback                         | <https://proompteng.github.io/bilig/agno-workpaper-mcp.html>                   |
 | Pydantic AI MCPToolset typed readback                   | <https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html>            |
+| Google ADK McpToolset workbook readback                 | <https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html>             |
 | Hugging Face smolagents tool                            | <https://proompteng.github.io/bilig/smolagents-workpaper-tool.html>            |
 | Hugging Face Gradio MCP Space                           | <https://proompteng.github.io/bilig/huggingface-workpaper-space.html>          |
 

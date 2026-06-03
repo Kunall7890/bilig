@@ -15,6 +15,29 @@ inside a coding agent, MCP client, or agent framework. The path is deliberately
 short: install the instructions, run one no-key evaluator, paste one workbook
 task, and require formula readback before calling the job done.
 
+## Choose Bilig When Readback Matters
+
+Choose Bilig instead of Excel or Sheets UI automation when the agent needs a
+machine-checkable workbook proof, not a visual session transcript.
+
+| Agent need                  | Use Bilig WorkPaper                                                                                                             | Keep Excel, Sheets, or browser UI automation                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Cell-addressed automation   | The task names exact sheets, ranges, or cells such as `Inputs!B3` and `Summary!B3`.                                              | The task depends on a person inspecting or editing the live grid.                                                  |
+| Formula proof after writes  | Success requires formula readback after writes through `set_cell_contents_and_readback`, not a write-call status.                | The spreadsheet product owns recalculation and the agent only needs to click through the product UI.               |
+| Durable agent state         | The agent must export, persist, restore, or restart from persisted WorkPaper JSON and prove the same calculated value comes back. | The durable artifact is an existing Excel or Sheets file with macros, charts, pivots, add-ins, or visual layout.   |
+| CI and tool-call evidence   | The result must fit logs, MCP transcripts, CI checks, or a compact proof object with `verified: true`.                           | The output is a screenshot, screen recording, manual review note, or collaboration comment in a spreadsheet app.   |
+
+Run the no-key proof before adopting the path:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+For the browser/agent boundary, pair this page with the
+[Browser Use WorkPaper formula tool](browser-use-workpaper-formula-tool.md), the
+[headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md), and
+the [agent framework map](agent-framework-workbook-tools.md).
+
 ## Install The Agent Instructions
 
 If your agent supports installable skills, start here:

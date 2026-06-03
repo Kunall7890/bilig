@@ -418,6 +418,11 @@ Agent and tool-call examples:
   `@mastra/core` `createTool()` API around the same WorkPaper read/write
   contract:
   <https://github.com/proompteng/bilig/tree/main/examples/mastra-workpaper-tool>.
+- `uv run --python 3.12 --with google-adk --with mcp python
+  examples/google-adk-workpaper-mcp/google_adk_workpaper_mcp.py` proves Google
+  ADK `McpToolset` can import the same file-backed WorkPaper MCP tools and
+  return verified formula readback:
+  <https://github.com/proompteng/bilig/blob/main/docs/google-adk-workpaper-mcp.md>.
 
 MCP examples:
 
