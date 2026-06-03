@@ -842,6 +842,9 @@ requirePackageCliSurfaceDiscovery({
   xlsxRecalcPackageSkillNotes,
 })
 requireIncludes(exceljsFormulaRecalculationNode, 'exceljs-recalc --demo --json', 'docs/exceljs-formula-recalculation-node.md')
+requireIncludes(exceljsFormulaRecalculationNode, 'commandSucceeded: true', 'docs/exceljs-formula-recalculation-node.md')
+requireIncludes(exceljsFormulaRecalculationNode, 'expectedValueMatched: true', 'docs/exceljs-formula-recalculation-node.md')
+requireNotIncludes(exceljsFormulaRecalculationNode, 'prints\n`verified: true`', 'docs/exceljs-formula-recalculation-node.md')
 requireIncludes(exceljsFormulaRecalculationNode, 'so:exceljs-44199441', 'docs/exceljs-formula-recalculation-node.md')
 requireIncludes(
   exceljsFormulaRecalculationNode,

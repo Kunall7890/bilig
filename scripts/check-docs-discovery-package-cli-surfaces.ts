@@ -1,4 +1,4 @@
-import { requireIncludes } from './check-docs-discovery-core.ts'
+import { requireIncludes, requireNotIncludes } from './check-docs-discovery-core.ts'
 
 export function requirePackageCliSurfaceDiscovery(args: {
   readonly exceljsRecalcPackageAgentNotes: string
@@ -120,4 +120,7 @@ export function requirePackageCliSurfaceDiscovery(args: {
   requireIncludes(args.exceljsRecalcPackageReadme, 'examples/recalc-bridge-workflows', 'packages/exceljs-formula-recalc/README.md')
   requireIncludes(args.exceljsRecalcPackageAgentNotes, 'recalculateExceljsWorkbook', 'packages/exceljs-formula-recalc/AGENTS.md')
   requireIncludes(args.exceljsRecalcPackageSkillNotes, 'exceljs-recalc --demo --json', 'packages/exceljs-formula-recalc/SKILL.md')
+  requireIncludes(args.exceljsRecalcPackageSkillNotes, 'commandSucceeded: true', 'packages/exceljs-formula-recalc/SKILL.md')
+  requireIncludes(args.exceljsRecalcPackageSkillNotes, 'expectedValueMatched: true', 'packages/exceljs-formula-recalc/SKILL.md')
+  requireNotIncludes(args.exceljsRecalcPackageSkillNotes, 'verified: true', 'packages/exceljs-formula-recalc/SKILL.md')
 }

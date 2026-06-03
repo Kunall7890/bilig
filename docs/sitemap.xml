@@ -67,6 +67,12 @@
     <priority>0.96</priority>
   </url>
   <url>
+    <loc>https://proompteng.github.io/bilig/agent-proof-matrix.html</loc>
+    <lastmod>2026-06-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.96</priority>
+  </url>
+  <url>
     <loc>https://proompteng.github.io/bilig/llms-install.html</loc>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
@@ -83,6 +89,18 @@
     <lastmod>2026-05-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://proompteng.github.io/bilig/mcp-spreadsheet-formula-server-for-coding-agents.html</loc>
+    <lastmod>2026-06-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://proompteng.github.io/bilig/vercel-ai-sdk-spreadsheet-tool-formula-readback.html</loc>
+    <lastmod>2026-06-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
   </url>
   <url>
     <loc>https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html</loc>
@@ -111,6 +129,12 @@
   <url>
     <loc>https://proompteng.github.io/bilig/exceljs-formula-recalculation-node.html</loc>
     <lastmod>2026-05-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://proompteng.github.io/bilig/exceljs-formula-result-not-updating-after-node-edits.html</loc>
+    <lastmod>2026-06-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>

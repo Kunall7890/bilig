@@ -99,7 +99,8 @@ npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json
 
 The demo creates a small workbook, changes `Inputs!B2` and `Inputs!B3`,
 recalculates `Summary!B2`, writes `bilig-formula-recalc-demo.xlsx`, and prints
-`verified: true`.
+`commandSucceeded: true`, `recalculationCompleted: true`, and
+`expectedValueMatched: true`.
 
 Exact reproduction for the high-view Stack Overflow question:
 

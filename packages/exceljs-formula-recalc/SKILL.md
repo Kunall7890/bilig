@@ -22,7 +22,8 @@ ExcelJS and needs fresh formula output values after changing cells.
 npx --package exceljs-formula-recalc exceljs-recalc --demo --json
 ```
 
-The demo should print `verified: true` and a `Summary!B2` value of `72000`.
+The demo should print `commandSucceeded: true`, `recalculationCompleted: true`,
+`expectedValueMatched: true`, and a `Summary!B2` value of `72000`.
 
 ## Real Workbook
 

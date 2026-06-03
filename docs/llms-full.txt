@@ -426,6 +426,8 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 
 Evaluator examples live in
 [`examples/bilig-evaluator-proof`](examples/bilig-evaluator-proof).
+Agent and framework evaluators are ranked in the
+[Agent WorkPaper proof matrix](docs/agent-proof-matrix.md).
 
 Project site: <https://proompteng.github.io/bilig/>
 
@@ -439,6 +441,7 @@ Pick the path that matches the job:
 | Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | report-only workbook findings before the workflow blocks anything.                        |
 | A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)         | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.    |
 | A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                              | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`. |
+| You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md) | the smallest command or example for the host boundary, plus what it does and does not prove. |
 | Existing XLSX outputs need refreshed cached results                     | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                   | changed input, recalculated output, output workbook, and `recalculationCompleted: true`.  |
 
 If you are not sure which one fits, start with the thing that owns state. Use
@@ -686,6 +689,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Microsoft Semantic Kernel                                  | `MCPStdioPlugin` should import workbook tools and verify dependent formula readback before an agent trusts plugin calls.                                                        | [Semantic Kernel WorkPaper MCP plugin](https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html)                                                                                                                                                                                                                                                                             |
 | OpenAI Agents SDK                                          | `tool()`, `MCPServerStdio`, or `MCPServerStreamableHttp` should return computed WorkPaper readback before an agent trusts workbook math.                                        | [OpenAI Agents SDK WorkPaper tools](https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html)                                                                                                                                                                                                                                                                             |
 | ChatGPT Apps / Developer Mode                              | A ChatGPT conversation should add Bilig as a no-auth remote MCP app before trying spreadsheet UI automation.                                                                    | [ChatGPT Apps WorkPaper MCP](https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html)                                                                                                                                                                                                                                                                                          |
+| Proof chooser                                              | An agent or reviewer needs the smallest proof for WorkPaper service, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, Mastra, ExcelJS, or XLSX.                                | [Agent WorkPaper proof matrix](https://proompteng.github.io/bilig/agent-proof-matrix.html)                                                                                                                                                                                                                                                                                                |
 | Hugging Face smolagents                                    | A `Tool` should return structured formula readback proof to a `CodeAgent`.                                                                                                      | [smolagents WorkPaper tool](https://proompteng.github.io/bilig/smolagents-workpaper-tool.html)                                                                                                                                                                                                                                                                                            |
 | Hugging Face Gradio MCP Space                              | A Space template should expose one no-key WorkPaper readback tool before a team wires private workbook state.                                                                   | [Hugging Face Gradio MCP Space](https://proompteng.github.io/bilig/huggingface-workpaper-space.html)                                                                                                                                                                                                                                                                                      |
 | n8n, Dify, Flowise, Pipedream                              | Workflow builders need formula readback without spreadsheet UI automation; use `@bilig/n8n-nodes-workpaper`, the upstream merged Dify plugin, or the reviewed Pipedream action. | [n8n](https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html), [Dify](https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html), [Flowise](https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html), [Pipedream](https://proompteng.github.io/bilig/pipedream-workpaper-formula-readback.html)                                          |
@@ -705,6 +709,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Existing XLSX files           | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                                                                                                                                                                                                                                  | A command edits inputs, reads recalculated values, writes XLSX, and returns `recalculationCompleted: true`. |
 | Node service formulas         | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)                                                                                                                                                                                                                        | A starter writes one input, recalculates, persists JSON, restores, and prints `verified: true`.             |
 | Agent MCP contract            | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)                                                                                                                                                                                                                                    | MCP tool discovery, input edit, formula readback, persistence, and restart proof all pass.                  |
+| Agent proof chooser          | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md), [MCP spreadsheet formula server](docs/mcp-spreadsheet-formula-server-for-coding-agents.md), and [Vercel AI SDK formula readback](docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md)                                      | The agent path starts with the smallest verified proof and avoids write-only or UI-only claims.            |
 | Agent intent/runtime adapters | [Workbook agent intent API](docs/workbook-agent-intent-api.md) and [workbook-agent-model example](https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model)                                                                                                            | A model prepares transport-neutral plan data, strict runtime proof, command receipts, and check evidence.   |
 | Basic fit                     | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                                                                                   | The problem is workbook-shaped business logic that needs API readback and persistence.                      |
 | Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                                                                                           | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`.     |
@@ -984,6 +989,9 @@ the [Node spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine
 [OpenAI Agents SDK tools](docs/openai-agents-sdk-workpaper-tool.md),
 [Browser Use formula tool](docs/browser-use-workpaper-formula-tool.md),
 [Google ADK MCP tools](docs/google-adk-workpaper-mcp.md),
+[Agent WorkPaper proof matrix](docs/agent-proof-matrix.md),
+[MCP spreadsheet formula server for coding agents](docs/mcp-spreadsheet-formula-server-for-coding-agents.md),
+[Vercel AI SDK formula readback](docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md),
 [AI SDK and LangChain tools](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md),
 [CrewAI adapter](docs/crewai-workpaper-spreadsheet-tool.md),
 the [headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md),
@@ -1003,6 +1011,7 @@ the [MCP server guide](docs/mcp-workpaper-tool-server.md),
 [stale XLSX formula cache in Node.js](docs/stale-xlsx-formula-cache-node.md),
 [XLSX formula support answers](docs/xlsx-formula-support-answers.md),
 [SheetJS formula result not updating in Node.js](docs/sheetjs-formula-result-not-updating-node.md),
+[ExcelJS formula result not updating after Node edits](docs/exceljs-formula-result-not-updating-after-node-edits.md),
 [Microsoft Graph Excel recalculation in Node.js](docs/microsoft-graph-excel-recalculation-node.md),
 [xlsx-calc alternative for Node workbook recalculation](docs/xlsx-calc-alternative-node-workbook-recalculation.md),
 [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md),
@@ -2692,6 +2701,101 @@ no blind write-only success, and no missing persistence proof.
 
 ---
 
+## Agent WorkPaper Proof Matrix
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/agent-proof-matrix.md
+
+# Agent WorkPaper Proof Matrix
+
+Use this page before an agent drives Excel, LibreOffice, Google Sheets, or a
+browser grid. Pick the smallest proof that writes an input, recalculates a
+dependent formula, reads the value back, and preserves enough state for another
+process to check the result.
+
+If you only run one command, run the agent MCP evaluator:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+Expected invariants:
+
+```json
+{
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "agent-mcp",
+  "verified": true,
+  "evidence": {
+    "editedCell": "Inputs!B3",
+    "dependentCell": "Summary!B3",
+    "before": 60000,
+    "after": 96000,
+    "afterRestore": 96000,
+    "afterRestart": 96000,
+    "persistedDocumentBytes": 1162,
+    "checks": {
+      "listedFileBackedTools": true,
+      "listedResourcesAndPrompts": true,
+      "dependentCellChanged": true,
+      "persistedToDisk": true,
+      "restartReadbackMatchesAfter": true
+    }
+  }
+}
+```
+
+## Proof Matrix
+
+| Proof | Command or asset | Expected JSON field | What it proves | What it does not prove |
+| --- | --- | --- | --- | --- |
+| WorkPaper service | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json` | `door: "workpaper-service"`, `verified: true` | Node can edit a WorkPaper input, recalculate a formula, export JSON, restore it, and verify readback. | MCP discovery, private workbook compatibility, macros, pivots, charts, or Excel UI behavior. |
+| Agent MCP evaluator | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json` | `door: "agent-mcp"`, `listedResourcesAndPrompts`, `restartReadbackMatchesAfter` | A coding agent or MCP client can discover workbook tools, write a cell, read a formula value, persist state, and restart from disk. | Hosted auth, arbitrary client UX, or full workbook compatibility. |
+| Provider-backed formula boundary | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json` | `scenario: "provider-backed"`, `provider-backed-adapter-missing`, `adapterBackedDiagnosticsCleared` | Provider formulas such as `IMPORTRANGE` fail closed until the host supplies an adapter, then verify readback. | Live Google Sheets authorization or remote provider availability. |
+| XLSX cache detector | `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json` | `door: "xlsx-cache"`, `verified: true` | A saved `.xlsx` can be inspected for stale cached formula values without mutating the file. | In-process business state or JSON WorkPaper persistence. |
+| XLSX recalculation | `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json` | `recalculationCompleted: true` | An XLSX file boundary can be edited, recalculated, exported, and reimported for readback. | A full Excel clone, macro execution, charts, pivots, or desktop layout fidelity. |
+| ExcelJS recalculation | `npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json` | `commandSucceeded: true`, `recalculationCompleted: true`, `expectedValueMatched: true` | An existing ExcelJS workbook can get fresh formula readback after Node edits. | ExcelJS styling/export behavior, desktop Excel parity, or every Excel formula. |
+| MCP Inspector | `npx -y @modelcontextprotocol/inspector@latest --cli npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --method tools/list` | tool names such as `read_workpaper_summary`, `set_workpaper_input_cell` | A neutral MCP client can inspect the packaged stdio server before a user adds it to an agent host. | Private workbook persistence unless the file-backed config is used. |
+| File-backed MCP server | `npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable` | `set_cell_contents_and_readback`, `export_workpaper_document` | A local agent can use a persistent WorkPaper JSON file and general workbook tools. | Hosted multi-user storage or secret management. |
+| Vercel AI SDK `generateText()` | `pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text` | `apiShape: "AI SDK generateText -> tool -> execute"` | AI SDK tools can return before/after/restore WorkPaper proof from a `generateText()` loop. | Provider model quality or production prompt behavior. |
+| Vercel AI SDK `streamText()` | `pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text` | `apiShape: "AI SDK streamText -> tool -> execute"`, `streamChunkTypes` | Streaming tool calls can carry the same WorkPaper proof while the model streams final text. | Browser UI streaming, telemetry retention, or non-deterministic provider output. |
+| OpenAI Responses function call | `pnpm --dir examples/headless-workpaper run agent:openai-responses` | `function_call_output`, `verified: true` | OpenAI tool calling can wrap WorkPaper readback as a structured function result. | Hosted remote MCP app review or ChatGPT UI behavior. |
+| OpenAI Agents SDK hosted MCP | `pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-hosted-mcp` | `MCPServerStreamableHttp`, `set_cell_contents_and_readback` | An OpenAI Agents SDK agent can call the hosted Streamable HTTP MCP endpoint. | Private writable workbook state. Use local stdio for that. |
+| LangGraph ToolNode | `pnpm --dir examples/headless-workpaper run agent:langgraph-toolnode` | `SpreadsheetAgentProof`, `restoredMatchesAfter` | Graph state can carry the proof object instead of only a scalar formula value. | Whether every graph architecture should store workbook state. |
+| Semantic Kernel MCP plugin | `python examples/semantic-kernel-workpaper-mcp/semantic_kernel_workpaper_mcp.py --smoke` | `verified: true`, `pluginBoundary` | A .NET-oriented agent path can keep WorkPaper behind a plugin or MCP boundary. | .NET package publication or C# parity for every TypeScript example. |
+| Mastra tool | `pnpm --dir examples/mastra-workpaper-tool run smoke` | `Mastra createTool -> execute -> WorkPaper readback` | The repo-local Mastra example uses a real `createTool()` wrapper around formula readback. | A new Mastra catalog submission, issue, or PR. Do not duplicate that outreach. |
+
+## Selection Rules
+
+Use `agent-mcp` first when the caller is an agent, MCP client, tool host, or
+integration reviewer. It proves discovery, write/readback, resources, prompts,
+and restart state in one command.
+
+Use the Vercel AI SDK, OpenAI, LangGraph, Semantic Kernel, or Mastra examples
+only after the generic evaluator passes. Those examples prove host fit, not a
+stronger workbook runtime.
+
+Use the XLSX and ExcelJS paths when a saved file or ExcelJS object is already
+the contract. Do not force a WorkPaper model when the job is mostly workbook
+formatting, image embedding, or file metadata.
+
+## Limits
+
+Bilig is not a desktop Excel replacement. Keep Excel, LibreOffice, Microsoft
+Graph, or a spreadsheet-specific oracle in the loop for macros, pivots, charts,
+external links, unsupported formulas, locale-specific Excel behavior, or exact
+manual UI workflows.
+
+## Related
+
+- [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
+- [MCP spreadsheet formula server for coding agents](mcp-spreadsheet-formula-server-for-coding-agents.md)
+- [Vercel AI SDK spreadsheet tool: generateText and streamText with formula readback](vercel-ai-sdk-spreadsheet-tool-formula-readback.md)
+- [ExcelJS formula result not updating after Node edits](exceljs-formula-result-not-updating-after-node-edits.md)
+- [Workbook tools for agent frameworks](agent-framework-workbook-tools.md)
+- [Compatibility limits](where-bilig-is-not-excel-compatible-yet.md)
+
+---
+
 ## WorkPaper Package README
 
 Source: https://github.com/proompteng/bilig/blob/main/packages/workpaper/README.md
@@ -4284,6 +4388,261 @@ Add tools only after the agent has a repeated need for them:
 
 The same rule holds: every mutating tool should return computed verification
 and enough context for the caller to explain what changed.
+
+---
+
+## MCP Spreadsheet Formula Server For Coding Agents
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-formula-server-for-coding-agents.md
+
+# MCP Spreadsheet Formula Server For Coding Agents
+
+Use this page when a coding agent needs spreadsheet formulas through MCP and
+should not click through Excel, LibreOffice, Google Sheets, or a browser grid.
+The useful MCP server is not just "cell access." It must prove discovery,
+write/readback, resource context, prompt handoff, and persisted state.
+
+MCP defines servers around capabilities such as tools, resources, prompts, and
+transports. Bilig keeps the formula runtime behind those protocol boundaries:
+the MCP client discovers workbook tools, calls one write/readback tool, and gets
+a structured proof object.
+
+Official protocol references:
+
+- <https://modelcontextprotocol.io/docs/learn/server-concepts>
+- <https://modelcontextprotocol.io/specification/2025-11-25/server/tools>
+- <https://github.com/modelcontextprotocol/typescript-sdk>
+
+## Failure Mode
+
+An agent can list or write spreadsheet cells, but the result it reports is only
+a write-call status. That is not formula proof. The agent needs to read the
+dependent formula value after the edit and prove that the value survives export
+or restart.
+
+## One Command
+
+Run the evaluator from any Node machine:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+Expected output includes:
+
+```json
+{
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "agent-mcp",
+  "verified": true,
+  "evidence": {
+    "editedCell": "Inputs!B3",
+    "dependentCell": "Summary!B3",
+    "before": 60000,
+    "after": 96000,
+    "afterRestore": 96000,
+    "afterRestart": 96000,
+    "checks": {
+      "listedFileBackedTools": true,
+      "listedResourcesAndPrompts": true,
+      "dependentCellChanged": true,
+      "persistedToDisk": true,
+      "restartReadbackMatchesAfter": true
+    }
+  }
+}
+```
+
+The exact version and byte counts can change. The stable fields are
+`door: "agent-mcp"`, `verified: true`, `listedResourcesAndPrompts`,
+`dependentCellChanged`, `persistedToDisk`, and `restartReadbackMatchesAfter`.
+
+## What To Inspect
+
+For a neutral MCP client smoke, use the Inspector guide:
+
+```sh
+npx -y @modelcontextprotocol/inspector@latest --cli \
+  npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp \
+  --method tools/list
+```
+
+The default demo server exposes:
+
+```text
+read_workpaper_summary
+set_workpaper_input_cell
+```
+
+For project files, use the file-backed stdio server instead:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- \
+  bilig-workpaper-mcp \
+  --workpaper ./pricing.workpaper.json \
+  --init-demo-workpaper \
+  --writable
+```
+
+That mode exposes general tools such as `list_sheets`, `read_range`,
+`set_cell_contents_and_readback`, `validate_formula`, and
+`export_workpaper_document`.
+
+## Limitation
+
+The hosted endpoint at `https://bilig.proompteng.ai/mcp` is useful for no-key
+remote MCP smoke tests. It is stateless and should not be used as proof that a
+private workbook file was persisted. For private writable state, use the local
+file-backed stdio command.
+
+## When Not To Use Bilig
+
+Do not use Bilig as the first tool when the real requirement is manual
+spreadsheet editing, macro execution, pivot tables, chart layout, Office add-ins,
+or exact desktop Excel parity. Use the [compatibility limits](where-bilig-is-not-excel-compatible-yet.md)
+before depending on it for production workbook imports.
+
+## Related
+
+- [Agent WorkPaper proof matrix](agent-proof-matrix.md)
+- [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
+- [MCP client setup](mcp-client-setup.md)
+- [Spreadsheet MCP server comparison](spreadsheet-mcp-server-comparison.md)
+- [ChatGPT Apps WorkPaper MCP](chatgpt-apps-workpaper-mcp.md)
+
+---
+
+## Vercel AI SDK Spreadsheet Tool Formula Readback
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md
+
+# Vercel AI SDK Spreadsheet Tool: generateText And streamText With Formula Readback
+
+Use this page when an AI SDK app needs workbook-shaped calculations behind a
+tool call. The tool should return proof, not a vague "updated cell" message.
+
+The AI SDK documents tool calling for `generateText()` and `streamText()`.
+Bilig's wrapper keeps the AI SDK boundary thin: the model calls a tool, the
+tool edits one WorkPaper input, formulas recalculate in Node, and the tool
+returns before/after/restore proof.
+
+Official AI SDK reference:
+
+- <https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling>
+
+## Failure Mode
+
+An agent tool changes `Inputs!B3`, but the app only records that the write call
+completed. The model then explains a stale or unverified value. For workbook
+logic, the tool result must include the dependent formula readback.
+
+## One Command
+
+Run the no-provider `generateText()` smoke from a clean checkout:
+
+```sh
+git clone https://github.com/proompteng/bilig.git
+cd bilig
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text
+```
+
+Expected output includes:
+
+```json
+{
+  "apiShape": "AI SDK generateText -> tool -> execute",
+  "modelCallCount": 2,
+  "toolNames": ["readWorkPaperSummary", "setWorkPaperInputCell"],
+  "writeResult": {
+    "editedCell": "Inputs!B3",
+    "before": { "expectedArr": 60000, "targetGap": -34000 },
+    "after": { "expectedArr": 96000, "targetGap": 5600 },
+    "checks": {
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "expectedArrChanged": true
+    }
+  }
+}
+```
+
+For streaming tools:
+
+```sh
+pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text
+```
+
+Expected streaming output includes:
+
+```json
+{
+  "apiShape": "AI SDK streamText -> tool -> execute",
+  "modelStreamCallCount": 2,
+  "streamChunkTypes": ["tool-call", "tool-result", "tool-call", "tool-result", "text-delta", "text-delta"],
+  "writeResult": {
+    "editedCell": "Inputs!B3",
+    "after": { "expectedArr": 96000, "targetGap": 5600 },
+    "checks": {
+      "restoredMatchesAfter": true,
+      "expectedArrChanged": true
+    }
+  }
+}
+```
+
+## Minimal Tool Boundary
+
+The `@bilig/workpaper/ai-sdk` helper returns AI SDK `tool()` definitions:
+
+```ts
+import { WorkPaper } from '@bilig/workpaper'
+import { createAiSdkWorkPaperTools } from '@bilig/workpaper/ai-sdk'
+
+const workpaper = WorkPaper.buildFromSheets({
+  Inputs: [
+    ['Metric', 'Value'],
+    ['Qualified opportunities', 20],
+    ['Win rate', 0.25],
+    ['Average ARR', 12000],
+  ],
+  Summary: [
+    ['Metric', 'Value'],
+    ['Expected customers', '=Inputs!B2*Inputs!B3'],
+    ['Expected ARR', '=B2*Inputs!B4'],
+  ],
+})
+
+const tools = createAiSdkWorkPaperTools({
+  workpaper,
+  defaultReadRange: 'Summary!A1:B3',
+  proofRange: 'Summary!A1:B3',
+  writableSheets: ['Inputs'],
+})
+```
+
+Keep model prompts separate from formula correctness. The deterministic proof
+comes from the tool result.
+
+## Limitation
+
+The checked examples use `MockLanguageModelV3` and provider-free streams so the
+tool contract is reproducible in CI. They prove the AI SDK tool boundary, not
+the quality of a production model response or provider-specific retry behavior.
+
+## When Not To Use Bilig
+
+Do not wrap Bilig as an AI SDK tool for one-off arithmetic, for manual
+spreadsheet editing, or for workbook files where Excel is allowed to calculate
+later. Use it when the Node process must own the calculated answer before the
+agent continues.
+
+## Related
+
+- [Agent WorkPaper proof matrix](agent-proof-matrix.md)
+- [Agent framework spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md)
+- [Workbook tools for agent frameworks](agent-framework-workbook-tools.md)
+- [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
 
 ---
 
@@ -10866,6 +11225,119 @@ Related:
 If this is the exact agent spreadsheet loop you are trying to avoid rebuilding,
 open one concrete blocker or adoption note so the next developer can evaluate it faster:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
+
+---
+
+## ExcelJS Formula Result Not Updating After Node Edits
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/exceljs-formula-result-not-updating-after-node-edits.md
+
+# ExcelJS Formula Result Not Updating After Node Edits
+
+Use this page for the specific ExcelJS failure where a Node service edits input
+cells, but formula cells still show old cached results in the same process.
+
+ExcelJS is the right tool for many `.xlsx` file tasks. The boundary is
+calculation: a file library can preserve formula records and cached results
+without recalculating the dependency graph after your service changes an input.
+
+ExcelJS documents formula cells as objects with `formula` and optional `result`
+data. If your backend needs the fresh value before returning a response, add a
+formula runtime at that boundary.
+
+Official ExcelJS reference:
+
+- <https://github.com/exceljs/exceljs#formula-value>
+
+## Failure Mode
+
+The workbook has a formula such as `Quote!B2 = Inputs!B2*Inputs!B3`, and ExcelJS
+shows a cached formula result. Your service changes `Inputs!B3`, then reads
+`Quote!B2` before Excel opens the file. The cached result can still be the old
+number.
+
+Setting `workbook.calcProperties.fullCalcOnLoad = true` is not enough for
+in-process readback. It asks a spreadsheet app to recalculate later.
+
+## One Command
+
+Run the ExcelJS bridge demo:
+
+```sh
+npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json
+```
+
+Expected output includes:
+
+```json
+{
+  "commandSucceeded": true,
+  "recalculationCompleted": true,
+  "expectedValueMatched": true,
+  "reads": {
+    "Summary!B2": {
+      "value": 72000
+    }
+  }
+}
+```
+
+For a source-level reproduction:
+
+```sh
+git clone https://github.com/proompteng/bilig.git
+cd bilig
+npm --prefix examples/recalc-bridge-workflows install
+npm --prefix examples/recalc-bridge-workflows run so:exceljs-44199441
+```
+
+That script mirrors the stale-result pattern from "Get computed value of Excel
+sheet cell in Node.js": an input changes, ExcelJS still has the old cached
+formula result, then `@bilig/exceljs-formula-recalc` verifies and patches the
+fresh result.
+
+## Minimal Bridge
+
+Use ExcelJS for workbook files and Bilig only at the recalculation boundary:
+
+```ts
+import ExcelJS from 'exceljs'
+import { recalculateExceljsWorkbook } from '@bilig/exceljs-formula-recalc'
+
+const workbook = new ExcelJS.Workbook()
+// build or load sheets here
+
+const result = await recalculateExceljsWorkbook(workbook, {
+  edits: [{ target: 'Inputs!B3', value: 0.4 }],
+  reads: ['Summary!B2'],
+})
+
+console.log({
+  readback: result.reads['Summary!B2'],
+  workbookMutated: result.workbookMutated,
+  warnings: result.warnings,
+})
+```
+
+## Limitation
+
+This bridge is for fresh formula readback after Node edits. It is not a
+replacement for ExcelJS styling, workbook layout, images, tables, comments, or
+file-generation features.
+
+## When Not To Use Bilig
+
+Do not use Bilig when Excel, LibreOffice, or another spreadsheet application
+will open and calculate the workbook before any service decision depends on the
+value. Do use it when the Node process must reject, persist, route, approve, or
+answer based on the recalculated formula result.
+
+## Related
+
+- [ExcelJS formula recalculation in Node.js](exceljs-formula-recalculation-node.md)
+- [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
+- [SheetJS formula result not updating in Node.js](sheetjs-formula-result-not-updating-node.md)
+- [Agent WorkPaper proof matrix](agent-proof-matrix.md)
 
 ---
 

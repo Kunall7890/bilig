@@ -24,6 +24,10 @@ agent install source: https://github.com/proompteng/bilig/blob/main/llms-install
 well-known llms.txt: https://proompteng.github.io/bilig/.well-known/llms.txt
 well-known llms-full.txt: https://proompteng.github.io/bilig/.well-known/llms-full.txt
 agent adoption kit: https://proompteng.github.io/bilig/agent-adoption-kit.html
+agent proof matrix: https://proompteng.github.io/bilig/agent-proof-matrix.html
+MCP spreadsheet formula server for coding agents: https://proompteng.github.io/bilig/mcp-spreadsheet-formula-server-for-coding-agents.html
+Vercel AI SDK formula readback: https://proompteng.github.io/bilig/vercel-ai-sdk-spreadsheet-tool-formula-readback.html
+ExcelJS formula result not updating after Node edits: https://proompteng.github.io/bilig/exceljs-formula-result-not-updating-after-node-edits.html
 agent discovery manifest: https://proompteng.github.io/bilig/.well-known/agent.json
 root agent discovery manifest: https://proompteng.github.io/bilig/agent.json
 agent skill: https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt
@@ -58,6 +62,23 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   https://proompteng.github.io/bilig/eval-workpaper-service.html
 - Evaluator for agent and MCP workbook tools:
   https://proompteng.github.io/bilig/eval-agent-mcp.html
+- Agent WorkPaper proof matrix:
+  https://proompteng.github.io/bilig/agent-proof-matrix.html
+  https://github.com/proompteng/bilig/blob/main/docs/agent-proof-matrix.md
+  Use this to choose among WorkPaper service, agent MCP, provider-backed MCP,
+  XLSX cache, XLSX recalculation, ExcelJS recalculation, MCP Inspector, file-backed MCP, Vercel AI SDK, OpenAI,
+  LangGraph, Semantic Kernel, and Mastra proof paths.
+- MCP spreadsheet formula server for coding agents:
+  https://proompteng.github.io/bilig/mcp-spreadsheet-formula-server-for-coding-agents.html
+  https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-formula-server-for-coding-agents.md
+  Start with `bilig-evaluate --door agent-mcp --json` and require
+  `listedResourcesAndPrompts`, `dependentCellChanged`, `persistedToDisk`, and
+  `restartReadbackMatchesAfter`.
+- Vercel AI SDK spreadsheet tool formula readback:
+  https://proompteng.github.io/bilig/vercel-ai-sdk-spreadsheet-tool-formula-readback.html
+  https://github.com/proompteng/bilig/blob/main/docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md
+  Use when `generateText()` or `streamText()` tools need before/after/restore
+  WorkPaper proof.
 - Google Sheets QUERY/SORTN over local WorkPaper ranges:
   https://proompteng.github.io/bilig/google-sheets-query-sortn-node-workpaper.html
   https://github.com/proompteng/bilig/blob/main/docs/google-sheets-query-sortn-node-workpaper.md
@@ -468,6 +489,11 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - ExcelJS formula recalculation in Node.js:
   https://proompteng.github.io/bilig/exceljs-formula-recalculation-node.html
   https://github.com/proompteng/bilig/blob/main/docs/exceljs-formula-recalculation-node.md
+- ExcelJS formula result not updating after Node edits:
+  https://proompteng.github.io/bilig/exceljs-formula-result-not-updating-after-node-edits.html
+  https://github.com/proompteng/bilig/blob/main/docs/exceljs-formula-result-not-updating-after-node-edits.md
+  Use when an ExcelJS workbook keeps stale cached formula results after a
+  service changes input cells and the Node process needs fresh readback.
 - Excel file as a calculation engine in Node.js:
   https://proompteng.github.io/bilig/excel-file-calculation-engine-node.html
   https://github.com/proompteng/bilig/blob/main/docs/excel-file-calculation-engine-node.md
@@ -746,6 +772,9 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - MCP spreadsheet tool server guide:
   https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
   https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md
+- MCP spreadsheet formula server for coding agents:
+  https://proompteng.github.io/bilig/mcp-spreadsheet-formula-server-for-coding-agents.html
+  https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-formula-server-for-coding-agents.md
 - Spreadsheet MCP server comparison:
   https://proompteng.github.io/bilig/spreadsheet-mcp-server-comparison.html
   https://github.com/proompteng/bilig/blob/main/docs/spreadsheet-mcp-server-comparison.md
