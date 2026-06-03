@@ -7,6 +7,32 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     throw new Error('docs/.well-known/agent.json capabilities must be an array')
   }
 
+  if (Reflect.get(parsedAgentJson, 'title') !== 'Bilig WorkPaper spreadsheet formula readback') {
+    throw new Error('docs/.well-known/agent.json must advertise the spreadsheet formula readback title')
+  }
+  if (
+    Reflect.get(parsedAgentJson, 'description') !==
+    'Spreadsheet formula readback for Node.js services and agent MCP tools: edit cells, recalculate, verify outputs, and persist JSON without UI automation.'
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the spreadsheet formula readback description')
+  }
+  requireStringArrayIncludes(
+    Reflect.get(parsedAgentJson, 'keywords'),
+    [
+      'spreadsheet formula readback',
+      'MCP spreadsheet tools',
+      'agent workbook automation',
+      'JSON WorkPaper persistence',
+      '@bilig/workpaper',
+    ],
+    'docs/.well-known/agent.json keywords',
+  )
+  requireStringArrayIncludes(
+    Reflect.get(parsedAgentJson, 'tags'),
+    ['spreadsheet-formula-readback', 'mcp-spreadsheet-tools', 'agent-workbook-automation', 'json-workpaper-persistence'],
+    'docs/.well-known/agent.json tags',
+  )
+
   if (Reflect.get(parsedAgentJson, 'claude_code_instructions') !== 'https://github.com/proompteng/bilig/blob/main/CLAUDE.md') {
     throw new Error('docs/.well-known/agent.json must advertise root Claude Code instructions')
   }
@@ -293,6 +319,17 @@ function hasCapability(capabilities: readonly unknown[], predicate: (capability:
   return capabilities.some(
     (capability) => typeof capability === 'object' && capability !== null && !Array.isArray(capability) && predicate(capability),
   )
+}
+
+function requireStringArrayIncludes(value: unknown, requiredValues: readonly string[], context: string): void {
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === 'string')) {
+    throw new Error(`${context} must be a string array`)
+  }
+  for (const requiredValue of requiredValues) {
+    if (!value.includes(requiredValue)) {
+      throw new Error(`${context} is missing ${requiredValue}`)
+    }
+  }
 }
 
 const requiredPublicEntrypoints = [

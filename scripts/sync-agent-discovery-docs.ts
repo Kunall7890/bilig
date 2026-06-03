@@ -537,7 +537,7 @@ async function buildLlmsFull(): Promise<string> {
   const sections: string[] = [
     '# Bilig llms-full',
     '',
-    '> Full agent context for Bilig, a formula WorkPaper runtime for Node services, MCP clients, and coding-agent workbook tools.',
+    '> Full agent context for Bilig, a spreadsheet formula readback runtime for Node services, MCP clients, and coding-agent workbook tools.',
     '',
     `Repository: ${repositoryUrl}`,
     `Site: ${siteRoot}/`,

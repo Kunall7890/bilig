@@ -25,6 +25,11 @@ describe('agent discovery agent.json manifest', () => {
     expect(parsed).toMatchObject({
       schema_version: 'agent-json-0.1.0',
       name: 'bilig',
+      title: 'Bilig WorkPaper spreadsheet formula readback',
+      description:
+        'Spreadsheet formula readback for Node.js services and agent MCP tools: edit cells, recalculate, verify outputs, and persist JSON without UI automation.',
+      keywords: expect.arrayContaining(['spreadsheet formula readback', 'MCP spreadsheet tools', 'agent workbook automation']),
+      tags: expect.arrayContaining(['spreadsheet-formula-readback', 'mcp-spreadsheet-tools', 'agent-workbook-automation']),
     })
     expect(parsed.capabilities).toContainEqual(
       expect.objectContaining({
