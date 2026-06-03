@@ -95,11 +95,32 @@ export async function requireAiSdkGenerateTextDiscovery({
 
   for (const required of [
     'Real AI SDK `generateText()` Smoke',
+    'AI SDK `onStepFinish` WorkPaper Transcript',
+    'onStepFinish',
+    'step.toolCalls',
+    'step.toolResults',
+    'Inputs!B3',
+    '"expectedArr": 60000',
+    '"expectedArr": 96000',
+    '"restoredMatchesAfter": true',
     'MockLanguageModelV3',
     'https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling',
     'https://ai-sdk.dev/docs/reference/ai-sdk-core/tool',
   ]) {
     requireIncludes(aiSdkDoc, required, 'docs/vercel-ai-sdk-langchain-spreadsheet-tool.md')
+  }
+
+  for (const [path, content] of [
+    ['docs/agent-workpaper-tool-calling-recipe.md', agentToolCallingDoc],
+    ['examples/headless-workpaper/README.md', headlessExampleReadme],
+  ] as const) {
+    requireIncludes(content, 'onStepFinish', path)
+    requireIncludes(content, 'step.toolCalls', path)
+    requireIncludes(content, 'step.toolResults', path)
+    requireIncludes(content, 'Inputs!B3', path)
+    requireIncludes(content, '60000', path)
+    requireIncludes(content, '96000', path)
+    requireIncludes(content, 'restoredMatchesAfter', path)
   }
 
   requireIncludes(

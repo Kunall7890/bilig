@@ -130,6 +130,109 @@ Passing output includes:
 Inspect the runnable file here:
 [`examples/headless-workpaper/ai-sdk-stream-text-tool-smoke.ts`](../examples/headless-workpaper/ai-sdk-stream-text-tool-smoke.ts).
 
+## AI SDK `onStepFinish` WorkPaper Transcript
+
+Use `onStepFinish` when your application needs to persist or audit each
+WorkPaper tool step while `generateText()` or `streamText()` is running. The AI
+SDK calls it after a step has text, tool calls, and tool results available, so
+the callback is the right place to record `step.toolCalls` and
+`step.toolResults` before the next model step explains the calculated readback.
+
+```ts
+type ToolStepRecord = {
+  stepNumber: number
+  toolCalls: Array<{
+    toolCallId: string
+    toolName: string
+    input: unknown
+  }>
+  toolResults: Array<{
+    toolCallId: string
+    toolName: string
+    output: unknown
+  }>
+}
+
+const workpaperTranscript: ToolStepRecord[] = []
+
+const result = await generateText({
+  model,
+  tools,
+  stopWhen: stepCountIs(2),
+  prompt: 'Read Summary!A1:B5, set Inputs!B3 to 0.4, then report the ARR proof.',
+  onStepFinish(step) {
+    workpaperTranscript.push({
+      stepNumber: step.stepNumber,
+      toolCalls: step.toolCalls.map(({ toolCallId, toolName, input }) => ({
+        toolCallId,
+        toolName,
+        input,
+      })),
+      toolResults: step.toolResults.map(({ toolCallId, toolName, output }) => ({
+        toolCallId,
+        toolName,
+        output,
+      })),
+    })
+  },
+})
+```
+
+Use the same `onStepFinish` option with `streamText()`. For streaming paths,
+make sure your app consumes the stream or awaits `result.text` / `result.steps`
+so the tool calls execute and the callback can fire.
+
+A compact projected transcript from the checked WorkPaper smokes looks like
+this:
+
+```json
+[
+  {
+    "stepNumber": 0,
+    "toolCalls": [
+      {
+        "toolCallId": "call_read_summary",
+        "toolName": "readWorkPaperSummary",
+        "input": { "range": "Summary!A1:B5" }
+      },
+      {
+        "toolCallId": "call_set_input_b3",
+        "toolName": "setWorkPaperInputCell",
+        "input": { "sheetName": "Inputs", "address": "B3", "value": 0.4 }
+      }
+    ],
+    "toolResults": [
+      {
+        "toolCallId": "call_read_summary",
+        "toolName": "readWorkPaperSummary",
+        "output": { "range": "Summary!A1:B5", "expectedArr": 60000 }
+      },
+      {
+        "toolCallId": "call_set_input_b3",
+        "toolName": "setWorkPaperInputCell",
+        "output": {
+          "editedCell": "Inputs!B3",
+          "before": { "expectedArr": 60000 },
+          "after": { "expectedArr": 96000 },
+          "restored": { "expectedArr": 96000 },
+          "checks": {
+            "formulasPersisted": true,
+            "restoredMatchesAfter": true,
+            "serializedBytes": 1162
+          }
+        }
+      }
+    ]
+  }
+]
+```
+
+Keep this as an application transcript, not a new dependency in this
+repository. The runnable proof still lives in
+[`examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts`](../examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts)
+and
+[`examples/headless-workpaper/ai-sdk-stream-text-tool-smoke.ts`](../examples/headless-workpaper/ai-sdk-stream-text-tool-smoke.ts).
+
 ## Runnable Adapter Example
 
 Run the dependency-free adapter example from a clean checkout:

@@ -470,6 +470,20 @@ Expected proof:
 Use [`ai-sdk-stream-text-tool-smoke.ts`](ai-sdk-stream-text-tool-smoke.ts)
 when you want a copyable TypeScript file for the AI SDK streaming loop.
 
+### AI SDK `onStepFinish` transcript
+
+Production AI SDK apps can persist the same proof while the model loop runs by
+using `onStepFinish`. The callback receives each step after tool calls and tool
+results are available, so log `step.toolCalls` and `step.toolResults` there.
+
+The useful transcript is the WorkPaper proof, not the fact that a tool ran:
+`setWorkPaperInputCell` edits `Inputs!B3`, moves `expectedArr` from `60000` to
+`96000`, and returns `restoredMatchesAfter: true`. The full snippet is in
+[`../../docs/vercel-ai-sdk-langchain-spreadsheet-tool.md`](../../docs/vercel-ai-sdk-langchain-spreadsheet-tool.md).
+The runnable sources are
+[`ai-sdk-generate-text-tool-smoke.ts`](ai-sdk-generate-text-tool-smoke.ts) and
+[`ai-sdk-stream-text-tool-smoke.ts`](ai-sdk-stream-text-tool-smoke.ts).
+
 ## Agent Framework Adapters
 
 Run this when you want copyable TypeScript wrapper shapes for common agent

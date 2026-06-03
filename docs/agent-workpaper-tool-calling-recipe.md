@@ -535,6 +535,34 @@ return `editedCell`, `before`, `after`, and `checks` so the next model step can
 explain exactly what changed. Persist the serialized workbook only after these
 computed readback checks pass.
 
+If the application needs an audit trail, persist the AI SDK step payloads in
+`onStepFinish`. Record `step.toolCalls` and `step.toolResults` there, then keep
+the WorkPaper result structured enough to show `Inputs!B3`, before
+`expectedArr` `60000`, after `expectedArr` `96000`, and
+`restoredMatchesAfter: true`:
+
+```ts
+const transcript: unknown[] = []
+
+await generateText({
+  model,
+  tools: workPaperTools,
+  stopWhen: stepCountIs(2),
+  prompt: 'Read Summary!A1:B5 and set Inputs!B3 to 0.4.',
+  onStepFinish(step) {
+    transcript.push({
+      stepNumber: step.stepNumber,
+      toolCalls: step.toolCalls,
+      toolResults: step.toolResults,
+    })
+  },
+})
+```
+
+The detailed `onStepFinish` transcript shape is in
+[`docs/vercel-ai-sdk-langchain-spreadsheet-tool.md`](vercel-ai-sdk-langchain-spreadsheet-tool.md),
+next to the checked `generateText()` and `streamText()` smokes.
+
 For a dependency-free runnable version of this shape, use
 [`examples/headless-workpaper/agent-framework-adapters.ts`](../examples/headless-workpaper/agent-framework-adapters.ts):
 

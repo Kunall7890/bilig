@@ -15,11 +15,11 @@ for someone opening the repository cold.
 
 Current starter queue as of June 3, 2026:
 
-- 2 open `good first issue` issues.
-- 2 open `first-timers-only` issues.
-- 2 open `help wanted` issues.
+- 1 open `good first issue` issue.
+- 1 open `first-timers-only` issue.
+- 1 open `help wanted` issue.
 - 0 starter issues are code or test tasks.
-- 2 starter issues are focused docs or integration transcript tasks.
+- 1 starter issue is a focused docs or integration transcript task.
 - 0 starter issues are currently under active review.
 
 ## Start Here This Week
@@ -30,8 +30,6 @@ issue list. They are small, current, and map to the public adoption path for
 
 - [#334: docs(agent): add OpenAI Responses streaming tool-call transcript](https://github.com/proompteng/bilig/issues/334)
   helps agent builders see the tool-call loop.
-- [#358: docs(agent): add AI SDK onStepFinish WorkPaper transcript](https://github.com/proompteng/bilig/issues/358)
-  connects the WorkPaper proof loop to a common TypeScript agent stack.
 
 ## Code And Test Starters
 
@@ -41,7 +39,6 @@ ticket before the next contributor push if the queue should include one.
 ## Integration Docs Starters
 
 - [#334: docs(agent): add OpenAI Responses streaming tool-call transcript](https://github.com/proompteng/bilig/issues/334)
-- [#358: docs(agent): add AI SDK onStepFinish WorkPaper transcript](https://github.com/proompteng/bilig/issues/358)
 
 ## Claim A Starter Issue
 
